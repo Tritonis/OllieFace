@@ -1,0 +1,69 @@
+[     0s] starting vite...
+[ 0.124s] vite up; launching chromium...
+[ 0.396s] chromium up; opening page...
+[   0.6s] navigating...
+[ 3.974s] loaded; waiting for stage...
+[ 4.085s] scenario 01-title...
+[ 6.445s] scenario 02-vista...
+[ 7.986s] scenario 03-thirdperson...
+[10.345s] scenario 04-combat...
+[2m9:26:12 AM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m [31m[Unhandled error] [1mTypeError[22m: object.updateWorldMatrix is not a function
+[39m > Box3.expandByObject node_modules/three/build/three.core.js:16025:9
+ > Box3.setFromObject node_modules/three/build/three.core.js:15876:14
+ > VFX.deathDissolve src/systems/VFX.js:469:10
+    467 |    deathDissolve(mesh, colour = 0xff6a1e) {
+    468 |      if (!mesh) return;
+    469 |      _box.setFromObject(mesh);
+        |            ^
+    470 |      if (!isFinite(_box.min.y)) return;
+    471 |  
+ > VFX._onKill src/systems/VFX.js:939:19
+ > src/systems/VFX.js:146:30
+ > EventBus.emit src/core/Engine.js:123:27
+ > Combat._kill src/systems/Combat.js:433:16
+ > Combat.applyDamage src/systems/Combat.js:421:50
+ > hurtPlayer src/entities/Enemy.js:42:29
+ > Enemy.fireBeam src/entities/Enemy.js:634:48
+
+[19.895s] scenario 05-boss...
+[20.309s] scenario 06-loaded-hud...
+[ 20.97s] scenario 07-interactables...
+[21.362s] scenario 08-explosion...
+{
+  "ready": true,
+  "shots": [
+    "01-title",
+    "02-vista",
+    "03-thirdperson",
+    "04-combat",
+    "05-boss",
+    "06-loaded-hud",
+    "07-interactables",
+    "08-explosion"
+  ],
+  "errorCount": 3,
+  "perf": {
+    "programs": 119,
+    "geometries": 130,
+    "textures": 43,
+    "sceneObjects": 1947
+  }
+}
+
+FIRST ERRORS:
+Failed to load resource: the server responded with a status of 404 (Not Found)
+---
+Failed to load resource: the server responded with a status of 404 (Not Found)
+---
+object.updateWorldMatrix is not a function
+TypeError: object.updateWorldMatrix is not a function
+    at Box3.expandByObject (http://127.0.0.1:5199/node_modules/.vite/deps/three.module-DpBjf9BN.js?v=1a8b679e:12105:10)
+    at Box3.setFromObject (http://127.0.0.1:5199/node_modules/.vite/deps/three.module-DpBjf9BN.js?v=1a8b679e:11996:15)
+    at VFX.deathDissolve (http://127.0.0.1:5199/src/systems/VFX.js:469:10)
+    at VFX._onKill (http://127.0.0.1:5199/src/systems/VFX.js:939:19)
+    at http://127.0.0.1:5199/src/systems/VFX.js:146:30
+    at EventBus.emit (http://127.0.0.1:5199/src/core/Engine.js:123:27)
+    at Combat._kill (http://127.0.0.1:5199/src/systems/Combat.js:433:16)
+    at Combat.applyDamage (http://127.0.0.1:5199/src/systems/Combat.js:421:50)
+    at hurtPlayer (http://127.0.0.1:5199/src/entities/Enemy.js:42:29)
+    at Enemy.fireBeam (http://127.0.0.1:5199/src/entities/Enemy.js:634:48)

@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <title>PETRICHOR — a Risk of Rain 2 alike</title>
+    <!-- Inlined so there is no favicon request; the 404 was polluting the
+         capture harness's error count and masking real page errors. -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230d1117'/%3E%3Cpath d='M16 5l9 22H7z' fill='%2339d6d2'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="/src/ui/hud.css" />
+  </head>
+  <body>
+    <canvas id="viewport"></canvas>
+    <div id="hud"></div>
+    <div id="overlay"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
