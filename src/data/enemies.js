@@ -36,7 +36,10 @@ export const ENEMIES = [
     packMax: 6,
     meshFactory: 'beetle',
     attacks: [
-      { id: 'headbutt', kind: 'melee', range: 2.4, windup: 0.5, active: 0.14, recover: 0.42, cooldown: 1.5, damage: 1, arc: 1.1, lunge: 7 },
+      // The beetle is the first thing anyone meets, so its tell is the longest
+      // relative to its reach: it rears back for two thirds of a second before
+      // anything can hurt you.
+      { id: 'headbutt', kind: 'melee', range: 2.4, windup: 0.66, active: 0.14, recover: 0.46, cooldown: 1.6, damage: 1, arc: 1.1, lunge: 8 },
     ],
   },
   {
@@ -59,7 +62,7 @@ export const ENEMIES = [
     packMax: 4,
     meshFactory: 'lemurian',
     attacks: [
-      { id: 'bite', kind: 'melee', range: 3.0, windup: 0.46, active: 0.12, recover: 0.5, cooldown: 1.4, damage: 1, arc: 0.9, lunge: 6 },
+      { id: 'bite', kind: 'melee', range: 3.0, windup: 0.56, active: 0.12, recover: 0.5, cooldown: 1.4, damage: 1, arc: 0.9, lunge: 6 },
       {
         id: 'fireball', kind: 'projectile', range: 24, minRange: 5, windup: 0.9, active: 0.06, recover: 0.65,
         cooldown: 5.0, damage: 1.5, speed: 20, gravity: 3.5, radius: 0.4, blast: 2.2, life: 3.5, color: 0xff6a12,

@@ -195,7 +195,10 @@ export class Player {
   // ---------------------------------------------------------------- gameplay
 
   fixedUpdate(ctx, h) {
-    this.applyCommand(this._sampleCommand(ctx), h);
+    // On a client, NetClient owns this pawn's stepping — it has to tag each
+    // command with its own tick and keep it for replay. Stepping here as well
+    // would run the simulation at double rate.
+    if (ctx.netRole !== 'client') this.applyCommand(this._sampleCommand(ctx), h);
     // Recoil moves the camera rig, never the simulation, so it sits outside the
     // replayable step — otherwise a correction would kick the view again for
     // every shot it re-ran.
@@ -327,8 +330,13 @@ export class Player {
     const cp = Math.cos(cmd.pitch);
     this._camDir.set(Math.sin(cmd.yaw) * cp, Math.sin(cmd.pitch), Math.cos(cmd.yaw) * cp);
     // Movement basis: camera yaw flattened to the ground plane.
+    // Right is `forward x up`. With forward = (sin y, 0, cos y) and up = +Y
+    // that is (-cos y, 0, sin y) — the opposite of the (fwd.z, 0, -fwd.x) this
+    // used to compute, which strafed left on D. CameraRig derives its own right
+    // vector the correct way, which is why the shoulder offset looked fine
+    // while movement did not.
     this._fwd.set(Math.sin(cmd.yaw), 0, Math.cos(cmd.yaw));
-    this._right.set(this._fwd.z, 0, -this._fwd.x);
+    this._right.set(-this._fwd.z, 0, this._fwd.x);
   }
 
   _move(ctx, h, cmd, buttons, pressed) {

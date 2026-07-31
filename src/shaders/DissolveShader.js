@@ -130,21 +130,86 @@ export function applyDissolve(material, opts = {}) {
 }
 
 /**
- * Clones a mesh's material tree and patches every material for dissolve, so the
- * dying instance never mutates a material shared with living enemies.
- * Returns the list of uniform bags to drive.
+ * Free-list of patched clones, keyed by the shared source material. A dying
+ * instance cannot use the prefab material directly (it would dissolve every
+ * living enemy that shares it), but cloning per death leaked one material per
+ * corpse forever and left the recycled rig wearing a dead clone. So each source
+ * material keeps a small pool sized to the peak number of *simultaneous*
+ * dissolves of that material, and everything is handed back on completion.
+ */
+const _pool = new WeakMap();
+
+function acquireVariant(source) {
+  let free = _pool.get(source);
+  if (!free) { free = []; _pool.set(source, free); }
+  if (free.length) return free.pop();
+  const m = source.clone();
+  // `Material.copy` round-trips userData through JSON, so a clone of an
+  // already-patched material inherits a dead uniform bag that would make
+  // `applyDissolve` bail out. Drop it and build a live one.
+  delete m.userData.dissolveUniforms;
+  applyDissolve(m);
+  return m;
+}
+
+function releaseVariant(source, variant) {
+  const free = _pool.get(source);
+  if (free) free.push(variant);
+}
+
+/** Point a pooled variant's uniforms at this particular corpse. */
+function retune(variant, o) {
+  const u = variant.userData.dissolveUniforms;
+  u.uDissolve.value = 0;
+  u.uDissolveEdge.value = o.edge ?? DissolveDefaults.edge;
+  u.uDissolveScale.value = o.scale ?? DissolveDefaults.scale;
+  u.uDissolveEdgeIntensity.value = o.edgeIntensity ?? DissolveDefaults.edgeIntensity;
+  u.uDissolveColor.value.set(o.color ?? DissolveDefaults.color);
+  u.uDissolveBounds.value.set(o.minY ?? 0, o.maxY ?? 2);
+  return u;
+}
+
+/**
+ * Swaps a mesh's material tree for pooled dissolve variants, so the dying
+ * instance never mutates a material shared with living enemies.
+ *
+ * Returns a handle: drive `bags[*].uDissolve.value` 0..1, then call `release()`
+ * to put the variants back and restore the originals.
  */
 export function makeDissolvable(mesh, opts = {}) {
   const bags = [];
+  const restore = [];
   mesh.traverse((child) => {
     if (!child.isMesh || !child.material) return;
     if (Array.isArray(child.material)) {
-      child.material = child.material.map((m) => m.clone());
-      for (const m of child.material) bags.push(applyDissolve(m, opts));
+      const src = child.material;
+      const swapped = src.map((m) => acquireVariant(m));
+      for (const v of swapped) bags.push(retune(v, opts));
+      restore.push({ child, src, swapped });
+      child.material = swapped;
     } else {
-      child.material = child.material.clone();
-      bags.push(applyDissolve(child.material, opts));
+      const src = child.material;
+      const swapped = acquireVariant(src);
+      bags.push(retune(swapped, opts));
+      restore.push({ child, src, swapped });
+      child.material = swapped;
     }
   });
-  return bags;
+  return {
+    bags,
+    release() {
+      for (const r of restore) {
+        // Only give the material back if nothing else has re-dressed the mesh
+        // in the meantime (a pooled rig respawning mid-dissolve).
+        if (r.child.material === r.swapped) r.child.material = r.src;
+        if (Array.isArray(r.src)) {
+          for (let i = 0; i < r.src.length; i++) releaseVariant(r.src[i], r.swapped[i]);
+        } else {
+          releaseVariant(r.src, r.swapped);
+        }
+      }
+      restore.length = 0;
+      bags.length = 0;
+    },
+  };
 }

@@ -123,6 +123,13 @@ async function settle(page, frames, maxMs = 20000) {
 const t0 = Date.now();
 const log = (...a) => console.log(`[${String((Date.now() - t0) / 1000).padStart(6)}s]`, ...a);
 
+// Keep verification runs off the user's desktop. Set CAPTURE_VISIBLE=1 to watch.
+// Duplicated in perf.mjs/spawnprobe.mjs rather than shared: importing it from
+// here would execute this file's top-level capture run as a side effect.
+const OFFSCREEN = process.env.CAPTURE_VISIBLE
+  ? []
+  : ['--window-position=-2400,-2400', `--window-size=${W},${H}`];
+
 log('starting vite...');
 // HMR off, deliberately. With it on, any file saved by a concurrently-running
 // agent full-reloads the page mid-capture and resets the game to the title
@@ -143,7 +150,15 @@ const browser = await chromium.launch({
   headless: SOFTWARE,
   args: SOFTWARE
     ? ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--enable-webgl']
-    : ['--use-angle=d3d11', '--ignore-gpu-blocklist', '--enable-gpu-rasterization', '--disable-frame-rate-limit'],
+    : [
+        '--use-angle=d3d11', '--ignore-gpu-blocklist', '--enable-gpu-rasterization',
+        '--disable-frame-rate-limit',
+        // Parked off the visible desktop. Headed is required for the GPU path,
+        // but a window that flashes up on every verification run is hostile to
+        // whoever is using the machine. Off-screen still composites on the GPU;
+        // minimising would throttle rAF and corrupt the timings.
+        ...OFFSCREEN,
+      ],
 });
 
 log('chromium up; opening page...');

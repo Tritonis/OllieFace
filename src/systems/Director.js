@@ -28,10 +28,13 @@ import { prewarm, makeProjectile, makeShockwave } from '../entities/EnemyMeshes.
 import { clamp, lerp } from '../core/MathUtil.js';
 
 const DIFFICULTY_SCALE = 2.0;   // Rainstorm
-const CREDIT_BASE = 0.75;
+const CREDIT_BASE = 0.95;
+const CREDIT_SEED = 10;         // opening bank, so first contact lands in the first ~15s
 const HARD_POP_CAP = 64;
-const MIN_SPAWN_DIST = 25;
-const MAX_SPAWN_DIST = 80;
+const MIN_SPAWN_DIST = 34;      // far enough that the run-in is audible and visible
+const MAX_SPAWN_DIST = 90;
+const FAR_SPAWN_DIST = 52;      // beyond this, an on-screen spawn reads as "distant", not "popped in"
+const EDGE_SPAWN_CHANCE = 0.3;
 const BOSS_SPAWN_DIST = 22;   // just outside the teleporter's charge radius
 
 const DIFFICULTY_NAMES = [
@@ -72,11 +75,11 @@ export class Director {
     this.playerCount = 1;
     this.stagesCompleted = 0;
 
-    this.credits = 0;
+    this.credits = CREDIT_SEED;
     this.creditRate = 0;
     this.card = null;
     this.rerollT = 0;
-    this.spawnT = 2.5;
+    this.spawnT = 2.0;
     this.eventActive = false;
     this.boss = null;
     this.enabled = true;
@@ -112,7 +115,7 @@ export class Director {
     ctx.events.on('teleporterComplete', () => this.endTeleporterEvent(ctx));
     ctx.events.on('stageStart', (p) => {
       this.stagesCompleted = p && typeof p.index === 'number' ? p.index : this.stagesCompleted + 1;
-      this.credits = 0;
+      this.credits = CREDIT_SEED;
       this.eventActive = false;
       this.boss = null;
       this.clear(ctx);
@@ -152,14 +155,23 @@ export class Director {
     return Math.min(HARD_POP_CAP, Math.round(base * (this.eventActive ? 1.5 : 1)));
   }
 
+  /** Alias used by tools/spawnprobe.mjs. */
+  get popCap() { return this.populationCap; }
+
   get eliteChance() {
     if (this.difficultyCoefficient < 1.25) return 0;
     return clamp(0.02 + (this.difficultyCoefficient - 1.25) * 0.05, 0, 0.38) * (this.eventActive ? 1.35 : 1);
   }
 
-  /** Seconds between spend attempts — tightens as the run heats up. */
+  /**
+   * Seconds between spend attempts — tightens as the run heats up.
+   *
+   * Short on purpose: the bank is spent on whatever it can afford (see
+   * `spendCredits`), so a frequent, small spend is what produces a continuous
+   * trickle early instead of a 30-second lull followed by a six-beetle dump.
+   */
   get spawnInterval() {
-    const base = lerp(4.4, 1.3, clamp((this.difficultyCoefficient - 1) / 6, 0, 1));
+    const base = lerp(2.6, 1.0, clamp((this.difficultyCoefficient - 1) / 6, 0, 1));
     return this.eventActive ? base * 0.5 : base;
   }
 
@@ -270,20 +282,23 @@ export class Director {
       ? ctx.rng.pick(ELITE_AFFIXES)
       : null;
     let unit = card.cost * (eliteAffix ? ELITE_STATS[eliteAffix].cost : 1);
-    // Hold the bank until a whole pack is affordable. Monsters arriving one at
-    // a time never reads as a wave; RoR2's pressure comes from the group.
-    let need = unit * (eliteAffix ? 1 : card.packMin);
-    if (this.credits < need) {
+    if (this.credits < unit) {
       if (!eliteAffix) return;
       eliteAffix = null;
       unit = card.cost;
-      need = unit * card.packMin;
-      if (this.credits < need) return;
+      if (this.credits < unit) return;
     }
 
-    const want = eliteAffix
+    // Partial packs are deliberate. Holding the bank until a whole pack was
+    // affordable meant 18-36 credits at 0.77/s — half a minute of nothing, then
+    // six beetles at once behind the player. Buying whatever the bank covers on
+    // a short interval gives a thin, continuous trickle in the opening minute,
+    // and once the credit rate outgrows the card the same code buys whole packs
+    // on its own, so the escalation shape is unchanged.
+    const affordable = Math.floor(this.credits / unit);
+    const want = Math.min(affordable, eliteAffix
       ? ctx.rng.int(1, Math.max(1, Math.ceil(card.packMax * 0.5)))
-      : ctx.rng.int(card.packMin, card.packMax);
+      : ctx.rng.int(card.packMin, card.packMax));
     const anchor = this.findSpawnPoint(ctx);
     if (!anchor) return;
 
@@ -319,6 +334,12 @@ export class Director {
    * A walkable point at least MIN_SPAWN_DIST from the player and outside the
    * camera frustum. Falls back to the furthest candidate rather than failing —
    * a spawn behind a rock in view beats no pressure at all.
+   *
+   * The off-screen rule is what stops monsters materialising in front of you,
+   * but applied strictly it also means every monster is always behind you, and
+   * a pack that only ever arrives from your blind side reads as an ambush. So a
+   * candidate far enough away is allowed on screen some of the time: watching a
+   * beetle crest a ridge 55m out is a telegraph, not a pop-in.
    */
   findSpawnPoint(ctx) {
     const cam = ctx.camera;
@@ -331,7 +352,7 @@ export class Director {
     let fallback = null;
     let fallbackD = -1;
 
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 16; i++) {
       const p = this.samplePoint(ctx, player);
       if (!p) continue;
       const d = Math.hypot(p.x - player.x, p.z - player.z);
@@ -339,6 +360,7 @@ export class Director {
       this._sphere.center.set(p.x, p.y + 2, p.z);
       const visible = cam ? this._frustum.intersectsSphere(this._sphere) : false;
       if (!visible) return this._point.copy(p);
+      if (d >= FAR_SPAWN_DIST && ctx.rng.next() < EDGE_SPAWN_CHANCE) return this._point.copy(p);
       if (d > fallbackD) { fallbackD = d; fallback = this._point.copy(p); }
     }
     return fallback;

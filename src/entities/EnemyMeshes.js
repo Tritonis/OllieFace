@@ -1211,6 +1211,9 @@ const BUILDERS = {
   titan: buildTitan,
 };
 
+/** Every rig the game can build. Drives the boot-time shader prewarm. */
+export const ENEMY_IDS = Object.keys(BUILDERS);
+
 const POOL = new Map();
 
 /** Take a rig from the pool (or build one). Always returns it in a clean pose. */

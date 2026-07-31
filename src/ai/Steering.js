@@ -18,6 +18,10 @@ const _o = new THREE.Vector3();
 
 const GRAVITY = 26;
 
+// Matches Stage's own walkable-slope threshold (cos 50°). A feeler hit on a
+// surface flatter than this is ground the agent can simply walk up.
+const WALK_DOT = 0.643;
+
 /** Full-speed straight at the target (planar). */
 export function seek(out, agent, target, maxSpeed) {
   _v.set(target.x - agent.position.x, 0, target.z - agent.position.z);
@@ -40,6 +44,28 @@ export function arrive(out, agent, target, maxSpeed, slowRadius, stopRadius = 0)
   return out.copy(_v).multiplyScalar((maxSpeed * t) / d);
 }
 
+/**
+ * Arrive, but along a curve instead of a straight line.
+ *
+ * The heading is the direct one rotated by `sign * curve`, faded out as the
+ * agent closes to `standoff`. A constant angular offset traces a spiral, so the
+ * run-in visibly bends, the last few metres straighten into the commit, and two
+ * units carrying opposite signs split around the target instead of stacking on
+ * the same approach vector. Closure rate drops by cos(offset), which is the
+ * travel time that makes a charge readable.
+ */
+export function approachArc(out, agent, target, maxSpeed, standoff, sign, curve, slowRadius = 2.5, fade = 10) {
+  _v.set(target.x - agent.position.x, 0, target.z - agent.position.z);
+  const d = _v.length();
+  if (d < 1e-4 || d <= standoff) return out.set(0, 0, 0);
+  const t = slowRadius > 1e-4 ? clamp((d - standoff) / slowRadius, 0, 1) : 1;
+  const ang = sign * curve * clamp((d - standoff) / fade, 0, 1);
+  const c = Math.cos(ang), s = Math.sin(ang);
+  const ux = _v.x / d, uz = _v.z / d;
+  const speed = maxSpeed * t;
+  return out.set((ux * c - uz * s) * speed, 0, (ux * s + uz * c) * speed);
+}
+
 /** Away from the target — used to back off when a melee unit is inside range. */
 export function flee(out, agent, target, maxSpeed) {
   seek(out, agent, target, maxSpeed);
@@ -50,8 +76,12 @@ export function flee(out, agent, target, maxSpeed) {
  * Push out of neighbours so a pack spreads into a crescent instead of
  * collapsing to a point. Weighted by overlap depth, and by 1/count so dense
  * clumps don't produce explosive corrections.
+ *
+ * `spread` widens the personal-space radius — melee units use a wider one while
+ * closing so an approaching pack fans across a front rather than funnelling
+ * down one line to the same point on the player.
  */
-export function separate(out, agent, agents, strength = 1, verticalRange = 0) {
+export function separate(out, agent, agents, strength = 1, verticalRange = 0, spread = 1) {
   out.set(0, 0, 0);
   const px = agent.position.x, py = agent.position.y, pz = agent.position.z;
   let n = 0;
@@ -59,7 +89,7 @@ export function separate(out, agent, agents, strength = 1, verticalRange = 0) {
     const o = agents[i];
     if (o === agent || !o.alive) continue;
     const dx = px - o.position.x, dz = pz - o.position.z;
-    const want = (agent.radius + o.radius) * 1.35;
+    const want = (agent.radius + o.radius) * 1.35 * spread;
     const d2 = dx * dx + dz * dz;
     if (d2 > want * want || d2 < 1e-6) continue;
     // Flyers and walkers ignore each other unless they share airspace.
@@ -78,6 +108,12 @@ export function separate(out, agent, agents, strength = 1, verticalRange = 0) {
  * Feeler raycast against the stage. Returns a lateral slide vector (0..1
  * magnitude) that grows as the obstacle gets closer. Callers should cache this
  * across a few fixed steps — the raycast is the expensive part.
+ *
+ * The result is deliberately dominated by the wall tangent. A large push along
+ * the surface normal reads as "back away", and once that push is combined with
+ * a seek of comparable strength the agent parks in front of the obstacle for
+ * good instead of walking around it — which is exactly how packs used to stall
+ * ten metres short of the player and then trickle in one at a time.
  */
 export function avoidObstacles(out, agent, ctx, dir, lookahead, feelerY = 0.9) {
   out.set(0, 0, 0);
@@ -90,6 +126,12 @@ export function avoidObstacles(out, agent, ctx, dir, lookahead, feelerY = 0.9) {
   _o.y += feelerY;
   const hit = ctx.stage.raycast(_o, _d, lookahead);
   if (!hit) return out;
+  // A horizontal feeler half a metre off the ground hits the terrain on every
+  // gentle rise. Treating those as obstacles meant units on rolling ground were
+  // permanently steering away from the hillside in front of them and crawled to
+  // the player at a fraction of their move speed. Only surfaces too steep to
+  // walk up are obstacles; the capsule solver handles the rest.
+  if (hit.normal && hit.normal.y > WALK_DOT) return out;
   const w = 1 - clamp(hit.distance / lookahead, 0, 1);
   // Slide along the wall, picking whichever tangent we're already leaning into.
   _w.set(-_d.z, 0, _d.x);
@@ -98,8 +140,8 @@ export function avoidObstacles(out, agent, ctx, dir, lookahead, feelerY = 0.9) {
   if (n) s = _w.x * n.x + _w.z * n.z >= 0 ? 1 : -1;
   out.set(_w.x * s, 0, _w.z * s).multiplyScalar(w);
   if (n) {
-    out.x += n.x * w * 0.7;
-    out.z += n.z * w * 0.7;
+    out.x += n.x * w * 0.3;
+    out.z += n.z * w * 0.3;
   }
   return out;
 }

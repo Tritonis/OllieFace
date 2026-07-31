@@ -16,6 +16,14 @@ import { RNG } from './MathUtil.js';
 const FIXED = 1 / 60;
 const MAX_SUBSTEPS = 5;
 
+// How fast gameplay runs during an impact frame. Low enough to read as a hit,
+// far enough above zero that input keeps being sampled.
+const HITSTOP_SCALE = 0.15;
+// Fraction of wall time hitstop is allowed to consume, and how much credit can
+// bank before the ceiling engages.
+const HITSTOP_DUTY = 0.15;
+const HITSTOP_BUDGET_MAX = 0.12;
+
 export class Engine {
   constructor({ canvas, seed = Date.now() }) {
     this.canvas = canvas;
@@ -63,6 +71,8 @@ export class Engine {
     };
     // Keyed by "System.phase" so a system that throws every frame logs once.
     this._reported = new Set();
+    // Rolling credit for the hitstop duty-cycle ceiling.
+    this._stopBudget = 0;
   }
 
   /**
@@ -80,11 +90,55 @@ export class Engine {
   }
 
   _call(system, phase, ctx, dt) {
+    if (this.profiling) {
+      const t = performance.now();
+      try { system[phase](ctx, dt); } catch (e) { this._onFrameError(e, system, phase); }
+      const key = `${system.constructor?.name || 'system'}.${phase}`;
+      this.profile[key] = (this.profile[key] || 0) + (performance.now() - t);
+      return;
+    }
     try {
       system[phase](ctx, dt);
     } catch (e) {
       this._onFrameError(e, system, phase);
     }
+  }
+
+  /**
+   * Per-system timing. Off by default — `performance.now()` twice per system
+   * per phase is itself measurable at 60Hz, so profiling must never be the
+   * thing that makes the game slow.
+   */
+  startProfile() {
+    this.profile = {};
+    this.frameTimes = [];
+    this.substepCounts = [];
+    this.hitstopFrames = 0;
+    this.profileFrames = 0;
+    this.profiling = true;
+  }
+
+  stopProfile() {
+    this.profiling = false;
+    const n = Math.max(1, this.profileFrames);
+    const sorted = [...this.frameTimes].sort((a, b) => a - b);
+    const pct = (p) => sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * p))] || 0;
+    const perSystem = Object.entries(this.profile)
+      .map(([k, ms]) => [k, +(ms / n).toFixed(3)])
+      .sort((a, b) => b[1] - a[1]);
+    return {
+      frames: n,
+      avgFrameMs: +(this.frameTimes.reduce((a, b) => a + b, 0) / n).toFixed(2),
+      medianFrameMs: +pct(0.5).toFixed(2),
+      p95FrameMs: +pct(0.95).toFixed(2),
+      worstFrameMs: +(sorted[sorted.length - 1] || 0).toFixed(2),
+      // A frame that ran MAX_SUBSTEPS is one that could not keep up; a run of
+      // them is what the player feels as a freeze.
+      maxSubsteps: Math.max(0, ...this.substepCounts),
+      saturatedFrames: this.substepCounts.filter((s) => s >= MAX_SUBSTEPS).length,
+      hitstopFrames: this.hitstopFrames,
+      perSystemMs: Object.fromEntries(perSystem),
+    };
   }
 
   add(system) {
@@ -118,15 +172,35 @@ export class Engine {
 
   _frame() {
     const ctx = this.ctx;
+    const t0 = this.profiling ? performance.now() : 0;
     // Clamp so a backgrounded tab doesn't fire hundreds of catch-up steps.
     const dt = Math.min(this.clock.getDelta(), 0.1);
     this.frame++;
 
+    let steps = 0;
+    // Hitstop is a heavy slowdown, NOT a freeze.
+    //
+    // Freezing the fixed step also freezes input sampling, so a run of impact
+    // frames reads as unresponsive controls rather than as weight. Profiling a
+    // 24-enemy fight found the game hard-stopped 27% of the time — which is
+    // precisely what "jittery and unplayable" feels like from the outside.
+    // Scaling time instead keeps the punch and keeps the player in control.
+    let scale = 1;
     if (ctx.hitstop > 0) {
       ctx.hitstop = Math.max(0, ctx.hitstop - dt);
-    } else if (!ctx.paused) {
-      this.accumulator += dt;
-      let steps = 0;
+      scale = HITSTOP_SCALE;
+      this._stopBudget += dt;
+      if (this.profiling) this.hitstopFrames++;
+    }
+    // Duty-cycle ceiling: however many sources ask for hitstop, no more than
+    // HITSTOP_DUTY of wall time may be slowed. In a horde, kills overlap and
+    // the effect would otherwise be permanently on, which normalises it into
+    // just feeling broken.
+    this._stopBudget = Math.max(0, this._stopBudget - dt * HITSTOP_DUTY);
+    if (this._stopBudget > HITSTOP_BUDGET_MAX) { ctx.hitstop = 0; scale = 1; }
+
+    if (!ctx.paused) {
+      this.accumulator += dt * scale;
       while (this.accumulator >= FIXED && steps < MAX_SUBSTEPS) {
         this.accumulator -= FIXED;
         steps++;
@@ -139,6 +213,12 @@ export class Engine {
 
     for (const s of this.systems) if (s.update) this._call(s, 'update', ctx, dt);
     for (const s of this.systems) if (s.lateUpdate) this._call(s, 'lateUpdate', ctx, dt);
+
+    if (this.profiling) {
+      this.profileFrames++;
+      this.frameTimes.push(performance.now() - t0);
+      this.substepCounts.push(steps);
+    }
   }
 }
 

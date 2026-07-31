@@ -9,6 +9,7 @@ export const S = {
   SPAWN: 'spawn',
   IDLE: 'idle',
   CHASE: 'chase',
+  CIRCLE: 'circle',
   REPOSITION: 'reposition',
   WINDUP: 'windup',
   ATTACK: 'attack',

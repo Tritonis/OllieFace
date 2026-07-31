@@ -12,7 +12,7 @@ import * as THREE from 'three';
 import { S, StateMachine } from '../ai/StateMachine.js';
 import {
   arrive, seek, separate, avoidObstacles, moveGrounded, moveFlying,
-  groundAt, orbitPoint, turnToward, angleDelta,
+  groundAt, orbitPoint, turnToward, angleDelta, approachArc,
 } from '../ai/Steering.js';
 import { acquireRig, releaseRig, configureShadows, makeAnim } from './EnemyMeshes.js';
 import { ELITE_STATS } from '../data/enemies.js';
@@ -128,6 +128,10 @@ export class Enemy {
     this.sweepDir = 1;
     this.tickT = 0;
     this.orbitSign = 1;
+    this.melee = false;
+    this.arcCurve = 0;
+    this.commitT = 0;
+    this.stallT = 0;
     this.noise = 0;
     this.hasLOS = true;
     this.losT = 0;
@@ -196,6 +200,14 @@ export class Enemy {
     this.auraT = 0;
     this.spawnT = 0;
     this.orbitSign = ctx.rng.next() < 0.5 ? -1 : 1;
+    // Approach personality, rolled once per spawn: which way this unit swings
+    // on the run-in, how hard, and how long it holds at the edge of reach
+    // before the first commit. Two beetles out of the same pack therefore take
+    // two different paths to the same player.
+    this.melee = def.attacks[0].kind === 'melee';
+    this.arcCurve = this.melee ? ctx.rng.range(0.45, 0.95) : 0;
+    this.commitT = this.melee ? ctx.rng.range(0.35, 1.3) : 0;
+    this.stallT = 0;
     this.noise = ctx.rng.range(0, 100);
     this.hasLOS = true;
     this.losT = ctx.rng.range(0, 0.13);
@@ -380,6 +392,36 @@ export class Enemy {
     return !hit;
   }
 
+  /** Radius a melee unit prowls at while waiting for its turn to commit. */
+  get circleRadius() { return Math.max(1.6, this.def.attackRange * 1.15); }
+
+  /** Distance at which a melee unit stops closing and starts prowling. */
+  get engageRadius() { return Math.max(2.6, this.def.attackRange * 1.7); }
+
+  /**
+   * A pack must not all land at once. When one unit commits, its close
+   * neighbours push their own commit back, so five beetles strike as a
+   * readable sequence the player can react to instead of one instant burst.
+   */
+  staggerPack(ctx) {
+    const list = ctx.director ? ctx.director.enemies : null;
+    if (!list) return;
+    for (let i = 0; i < list.length; i++) {
+      const o = list[i];
+      if (o === this || !o.alive || !o.melee) continue;
+      const st = o.fsm.state;
+      if (st !== S.CHASE && st !== S.CIRCLE) continue;
+      // Never extend a unit that has already been holding — otherwise a busy
+      // pack can keep one member waiting forever.
+      if (st === S.CIRCLE && o.fsm.t > 1.2) continue;
+      const dx = o.position.x - this.position.x;
+      const dz = o.position.z - this.position.z;
+      if (dx * dx + dz * dz > 100) continue;
+      const wait = ctx.rng.range(0.35, 0.85);
+      if (wait > o.commitT) o.commitT = wait;
+    }
+  }
+
   /** Wish-velocity for the current state, before separation and avoidance. */
   steer(ctx, h) {
     const def = this.def;
@@ -400,6 +442,13 @@ export class Enemy {
       return seek(d, this, this._orbit, speed * 0.85);
     }
 
+    if (st === S.CIRCLE) {
+      // Hold just outside reach and prowl. The player gets a beat to read the
+      // threat, and a pack in this state occupies a ring rather than a point.
+      orbitPoint(this._orbit, this, this.target, this.circleRadius, this.orbitSign, 0.55);
+      return arrive(d, this, this._orbit, speed * 0.72, 2.0, 0);
+    }
+
     if (st === S.IDLE || !ctx.player) {
       // Loose patrol around the spawn anchor so idle packs still drift.
       const t = ctx.time * 0.25 + this.noise;
@@ -408,7 +457,11 @@ export class Enemy {
     }
 
     // CHASE
-    const melee = def.attacks[0].kind === 'melee' || def.attacks[0].kind === 'dive';
+    if (this.melee) {
+      return approachArc(d, this, this.target, speed,
+        Math.max(0.6, def.attackRange * 0.55), this.orbitSign, this.arcCurve, 2.5);
+    }
+    const melee = def.attacks[0].kind === 'dive';
     const stand = melee ? Math.max(0.6, def.attackRange * 0.55) : (def.preferredRange || def.attackRange * 0.6);
     arrive(d, this, this.target, speed, melee ? 2.5 : 6, stand);
     if (!melee && this.distToPlayer < stand * 0.65) {
@@ -422,12 +475,19 @@ export class Enemy {
   applyMovement(ctx, h) {
     const def = this.def;
     const d = this.steer(ctx, h);
-    const dying = this.fsm.state === S.DIE;
+    const st = this.fsm.state;
+    const dying = st === S.DIE;
 
     if (!dying) {
       const dList = ctx.director ? ctx.director.enemies : null;
       if (dList) {
-        separate(this._sep, this, dList, this.moveSpeed * 1.5, def.isFlyer ? 3.5 : 0);
+        // Melee units closing in claim more room than idle ones, so the pack
+        // spreads across a front instead of converging on a single point. The
+        // wider ring is deliberately the gentler one — at full strength a
+        // five-strong pack just mills against itself and never arrives.
+        const wide = this.melee && (st === S.CHASE || st === S.CIRCLE);
+        separate(this._sep, this, dList, this.moveSpeed * (wide ? 0.8 : 1.5),
+          def.isFlyer ? 3.5 : 0, wide ? 2.0 : 1);
         d.x += this._sep.x;
         d.z += this._sep.z;
       }
@@ -437,9 +497,15 @@ export class Enemy {
         this.avoidT = 0.12;
         avoidObstacles(this._avoid, this, ctx, d, def.isFlyer ? 3 : 2.6, def.isFlyer ? 0 : this.height * 0.5);
       }
-      if (this._avoid.lengthSq() > 1e-5) {
-        d.x += this._avoid.x * this.moveSpeed * 1.4;
-        d.z += this._avoid.z * this.moveSpeed * 1.4;
+      // Weighted by how close the obstruction is. A distant feeler hit is a
+      // gentle bias that bends the approach; only a wall the unit is about to
+      // wear gets to out-vote the chase. A flat 1.4x did the latter always, so
+      // anything that so much as clipped a rock stopped closing for good.
+      const avoidSq = this._avoid.lengthSq();
+      if (avoidSq > 1e-5) {
+        const k = this.moveSpeed * (0.6 + 1.1 * clamp(Math.sqrt(avoidSq), 0, 1));
+        d.x += this._avoid.x * k;
+        d.z += this._avoid.z * k;
       }
 
       // Pests jitter so a flight of them reads as a swarm, not a formation.
@@ -447,6 +513,21 @@ export class Enemy {
         const t = ctx.time * 3.1 + this.noise;
         d.x += Math.sin(t) * this.moveSpeed * 0.35;
         d.z += Math.cos(t * 1.37) * this.moveSpeed * 0.35;
+      }
+    }
+
+    // Wedged on geometry: it wants to move and isn't. There is no navmesh here,
+    // so the recovery is to try passing the obstruction on the other side —
+    // which is also the direction its approach arc swings, so an unstick reads
+    // as the unit choosing a new line rather than as a glitch.
+    if (!dying && (st === S.CHASE || st === S.CIRCLE)) {
+      const wants = d.x * d.x + d.z * d.z > 1;
+      const moving = this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z > 0.6;
+      if (wants && !moving) {
+        this.stallT += h;
+        if (this.stallT > 1.0) { this.stallT = 0; this.orbitSign = -this.orbitSign; }
+      } else {
+        this.stallT = 0;
       }
     }
 
@@ -477,8 +558,10 @@ export class Enemy {
     }
 
     // Facing: track the player while fighting, track motion while roaming.
-    const st = this.fsm.state;
-    const combatFacing = st === S.WINDUP || st === S.ATTACK || st === S.CHASE || st === S.REPOSITION;
+    // A melee unit on the long run-in points along its own curving path, which
+    // is what makes the arc legible; it snaps onto the player once it closes.
+    const combatFacing = st === S.WINDUP || st === S.ATTACK || st === S.CIRCLE || st === S.REPOSITION
+      || (st === S.CHASE && (!this.melee || this.distToPlayer < this.engageRadius * 1.6));
     let want = this.yaw;
     if (combatFacing && ctx.player) {
       want = Math.atan2(this.target.x - this.position.x, this.target.z - this.position.z);
@@ -522,6 +605,7 @@ export class Enemy {
     this.sweepDir = ctx.rng.next() < 0.5 ? -1 : 1;
     this.cd[index] = a.cooldown;
     this.anim.attack = a.id;
+    if (this.melee) this.staggerPack(ctx);
     this.fsm.set(S.WINDUP, ctx);
   }
 
@@ -752,6 +836,12 @@ const STATES = {
   [S.CHASE]: {
     update(e, ctx, h, fsm) {
       if (!ctx.player) { fsm.set(S.IDLE, ctx); return; }
+      // Melee units don't get to walk straight from spawn into contact: once
+      // inside the engage band they prowl until their commit timer runs out.
+      if (e.melee && e.commitT > 0 && e.distToPlayer < e.engageRadius) {
+        fsm.set(S.CIRCLE, ctx);
+        return;
+      }
       const i = e.pickAttack(ctx);
       if (i >= 0) { e.beginAttack(ctx, i); return; }
       // Ranged units that can't shoot yet go find a better angle instead of
@@ -761,6 +851,26 @@ const STATES = {
       if (ranged && fsm.t > 1.2 && (!e.hasLOS || e.distToPlayer < (def.preferredRange || 10) * 0.7)) {
         e.orbitSign = ctx.rng.next() < 0.5 ? -1 : 1;
         fsm.set(S.REPOSITION, ctx);
+      }
+    },
+  },
+
+  [S.CIRCLE]: {
+    update(e, ctx, h, fsm) {
+      if (!ctx.player) { fsm.set(S.IDLE, ctx); return; }
+      e.commitT -= h;
+      // The player broke away — go back to closing, and re-arm a short hold so
+      // the next arrival is prowled rather than charged.
+      if (e.distToPlayer > e.engageRadius * 1.9) {
+        e.commitT = Math.max(e.commitT, ctx.rng.range(0.2, 0.7));
+        fsm.set(S.CHASE, ctx);
+        return;
+      }
+      // Patience cap: a unit prowls for at most this long before it goes in
+      // regardless of what the rest of the pack is doing.
+      if (e.commitT <= 0 || fsm.t > 2.4) {
+        e.commitT = 0;
+        fsm.set(S.CHASE, ctx);
       }
     },
   },
@@ -868,6 +978,9 @@ const STATES = {
         e.gcd = 0.25;
         e.anim.swing = 0;
         e.anim.attack = '';
+        // Re-arm the prowl so a melee unit backs off and circles between
+        // swings rather than grinding against the player.
+        if (e.melee) e.commitT = ctx.rng.range(0.3, 1.0);
         fsm.set(S.CHASE, ctx);
       }
     },

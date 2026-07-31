@@ -133,32 +133,41 @@ function pivot(parent, x, y, z) {
   return g;
 }
 
+/**
+ * The character's material set. Split out of the constructor so the boot-time
+ * shader prewarm can warm these permutations (notably the dissolve-patched
+ * doubled-sided cloth) without assembling a whole throwaway rig.
+ */
+export function makeCharacterMats() {
+  return {
+    coat: mat(COL.coat, { rough: 0.78, rimStrength: 0.85 }),
+    coatDark: mat(COL.coatDark, { rough: 0.85, rimStrength: 0.95 }),
+    // Cloth is the only double-sided material — the open-ended coat and cape
+    // shells need it and nothing else does.
+    cloth: mat(COL.coatDark, { rough: 0.9, rimStrength: 1.0, side: THREE.DoubleSide }),
+    cloak: mat(COL.cloak, { rough: 0.88, rimStrength: 0.22, side: THREE.DoubleSide }),
+    // Light armour. A touch of self-emissive keeps the plates off pure black
+    // when the character walks into a shadow the stage lighting never fills.
+    // Low rim on the light plate: it is already the bright value, and a
+    // strong fresnel on top just tints it toward the rim hue.
+    plate: mat(COL.plate, {
+      rough: 0.42, metal: 0.28, emissive: COL.plate, emissiveIntensity: 0.09, rimStrength: 0.18,
+    }),
+    plateMid: mat(COL.plateMid, { rough: 0.5, metal: 0.3, rimStrength: 0.5 }),
+    accent: mat(COL.accent, {
+      rough: 0.55, emissive: COL.accent, emissiveIntensity: 0.9, rimColor: 0xffc08a, rimStrength: 0.5,
+    }),
+    cell: mat(0x0a1a20, { rough: 0.3, emissive: COL.cell, emissiveIntensity: 1.6, rimStrength: 0.3 }),
+    body: mat(COL.skinDark, { rough: 0.6, metal: 0.2, rimStrength: 0.8 }),
+    metal: mat(COL.metal, { rough: 0.4, metal: 0.7, rimStrength: 0.45 }),
+    gun: mat(COL.gunmetal, { rough: 0.35, metal: 0.8, rimStrength: 0.45 }),
+    visor: mat(0x061418, { rough: 0.2, metal: 0.1, emissive: COL.visor, emissiveIntensity: 2.4 }),
+  };
+}
+
 export class CharacterMesh {
   constructor() {
-    this.mats = {
-      coat: mat(COL.coat, { rough: 0.78, rimStrength: 0.85 }),
-      coatDark: mat(COL.coatDark, { rough: 0.85, rimStrength: 0.95 }),
-      // Cloth is the only double-sided material — the open-ended coat and cape
-      // shells need it and nothing else does.
-      cloth: mat(COL.coatDark, { rough: 0.9, rimStrength: 1.0, side: THREE.DoubleSide }),
-      cloak: mat(COL.cloak, { rough: 0.88, rimStrength: 0.22, side: THREE.DoubleSide }),
-      // Light armour. A touch of self-emissive keeps the plates off pure black
-      // when the character walks into a shadow the stage lighting never fills.
-      // Low rim on the light plate: it is already the bright value, and a
-      // strong fresnel on top just tints it toward the rim hue.
-      plate: mat(COL.plate, {
-        rough: 0.42, metal: 0.28, emissive: COL.plate, emissiveIntensity: 0.09, rimStrength: 0.18,
-      }),
-      plateMid: mat(COL.plateMid, { rough: 0.5, metal: 0.3, rimStrength: 0.5 }),
-      accent: mat(COL.accent, {
-        rough: 0.55, emissive: COL.accent, emissiveIntensity: 0.9, rimColor: 0xffc08a, rimStrength: 0.5,
-      }),
-      cell: mat(0x0a1a20, { rough: 0.3, emissive: COL.cell, emissiveIntensity: 1.6, rimStrength: 0.3 }),
-      body: mat(COL.skinDark, { rough: 0.6, metal: 0.2, rimStrength: 0.8 }),
-      metal: mat(COL.metal, { rough: 0.4, metal: 0.7, rimStrength: 0.45 }),
-      gun: mat(COL.gunmetal, { rough: 0.35, metal: 0.8, rimStrength: 0.45 }),
-      visor: mat(0x061418, { rough: 0.2, metal: 0.1, emissive: COL.visor, emissiveIntensity: 2.4 }),
-    };
+    this.mats = makeCharacterMats();
     this.build();
     this.initState();
   }

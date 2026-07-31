@@ -466,19 +466,23 @@ export class VFX {
    */
   deathDissolve(mesh, colour = 0xff6a1e) {
     if (!mesh?.isObject3D) return;
+    // A second kill event on the same corpse would dissolve the dissolve
+    // variants, stranding the originals when the first pass hands its back.
+    for (const d of this._dissolving) if (d.mesh === mesh) return;
     _box.setFromObject(mesh);
     if (!isFinite(_box.min.y)) return;
 
-    const bags = makeDissolvable(mesh, {
+    const handle = makeDissolvable(mesh, {
       color: colour,
       minY: _box.min.y,
       maxY: _box.max.y,
       scale: 4.5 / Math.max(0.5, _box.max.y - _box.min.y),
     });
-    if (!bags.length) return;
+    const bags = handle.bags;
+    if (!bags.length) { handle.release(); return; }
 
     this._dissolving.push({
-      mesh, bags, t: 0, dur: 0.85,
+      mesh, handle, bags, t: 0, dur: 0.85,
       minY: _box.min.y, maxY: _box.max.y,
       cx: (_box.min.x + _box.max.x) * 0.5,
       cz: (_box.min.z + _box.max.z) * 0.5,
@@ -1105,7 +1109,9 @@ export class VFX {
 
       if (k >= 1) {
         d.mesh.visible = false;
-        for (const bag of d.bags) bag.uDissolve.value = 1;
+        // Hand the patched materials back before the rig returns to its pool,
+        // so a recycled enemy never respawns wearing a corpse's shader.
+        d.handle.release();
         this._dissolving.splice(i, 1);
       }
     }
@@ -1277,8 +1283,15 @@ function firstObject3D(...candidates) {
 
 /**
  * A fixed set of point lights, added at boot and never added or removed after.
- * Adding a light at runtime recompiles every material in the scene, so the pool
- * lives at intensity 0 and is simply repositioned.
+ *
+ * Critically, they are also never hidden. three bakes the count of *visible*
+ * lights into every program's cache key, so `light.visible = false` is not a
+ * cheap way to park a light — it is exactly as expensive as removing it, and
+ * flipping it recompiles every material in the scene. Six pooled lights
+ * flickering on and off used to fork the whole material set seven ways and cost
+ * multi-second compile stalls mid-fight. So the pool is permanently visible and
+ * only ever changes `intensity`, which costs nothing: a point light at
+ * intensity 0 contributes nothing to the shading result.
  */
 class LightPool {
   constructor(ctx, count) {
@@ -1286,7 +1299,6 @@ class LightPool {
     for (let i = 0; i < count; i++) {
       const l = new THREE.PointLight(0xffffff, 0, 20, 2);
       l.castShadow = false;
-      l.visible = false;
       ctx.scene.add(l);
       this.lights.push({ light: l, t: 0, dur: 0, peak: 0 });
     }
@@ -1303,7 +1315,6 @@ class LightPool {
     best.light.position.copy(pos);
     best.light.color.set(colour);
     best.light.distance = distance;
-    best.light.visible = true;
     best.peak = intensity;
     best.t = 0;
     best.dur = duration;
@@ -1319,7 +1330,7 @@ class LightPool {
       // being turned down rather than as a flash.
       const f = (1 - k) * (1 - k) * (1 - k);
       e.light.intensity = e.peak * f;
-      if (k >= 1) { e.light.intensity = 0; e.light.visible = false; }
+      if (k >= 1) e.light.intensity = 0;
     }
   }
 }

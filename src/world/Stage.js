@@ -10,8 +10,12 @@ import { clamp } from '../core/MathUtil.js';
  *
  * capsuleResolve() runs for every entity every fixed step, so it never touches
  * a raycaster. Terrain is an analytic heightfield lookup; props are analytic
- * cylinders bucketed into a uniform grid. Raycasting is reserved for one-off
- * queries (aiming, spawn checks) where the cost is amortised.
+ * cylinders bucketed into a uniform grid.
+ *
+ * raycast() is split the same way: the terrain half is a march over the same
+ * baked height grid sampleHeight() reads, so it never sees a triangle, and only
+ * the props go through THREE.Raycaster — and then only out to the terrain hit,
+ * so a ray that buries itself in a hillside does almost no prop work either.
  */
 
 const WALK_DOT = Math.cos(THREE.MathUtils.degToRad(50)); // ~0.643
@@ -19,6 +23,10 @@ const STEP_HEIGHT = 0.62;
 const SNAP_DIST = 0.42;
 const SLIDE_ACCEL = 32;
 const CELL = 10;
+
+// Safety stop for the terrain DDA. A ray can visit at most 2N+2 cells before
+// leaving the grid; anything beyond that means the stepping has gone wrong.
+const DDA_MAX_CELLS = 1024;
 
 class ColliderGrid {
   constructor(half, cell) {
@@ -79,7 +87,9 @@ const _ray = new THREE.Raycaster();
 const _mat4 = new THREE.Matrix4();
 const _nmat = new THREE.Matrix3();
 const _hitN = new THREE.Vector3();
+const _hitP = new THREE.Vector3();
 const _near = [];
+const _hits = [];
 
 export class Stage {
   init(ctx) {
@@ -106,8 +116,19 @@ export class Stage {
     }
 
     // Raycast targets, cached: rebuilding this list per query would allocate
-    // every time something aims.
-    this.rayTargets = [terrainMesh, ...this.props.meshes];
+    // every time something aims. Terrain is deliberately not in here — it is
+    // marched analytically instead (see _terrainRay).
+    this.propTargets = this.props.meshes.slice();
+    this.terrainMesh = terrainMesh;
+
+    // Vertical extent of the heightfield, used to clip rays before marching.
+    let lo = Infinity, hi = -Infinity;
+    for (const h of this.terrain.grid) {
+      if (h < lo) lo = h;
+      if (h > hi) hi = h;
+    }
+    this.minY = lo;
+    this.maxY = hi;
 
     ctx.stage = this;
   }
@@ -123,33 +144,201 @@ export class Stage {
   }
 
   raycast(origin, dir, maxDist = 1000) {
-    _ray.set(origin, dir);
-    _ray.far = maxDist;
-    _ray.near = 0;
-    const hits = _ray.intersectObjects(this.rayTargets, false);
-    if (!hits.length) return null;
-    const hit = hits[0];
+    const tTerrain = this._terrainRay(origin, dir, maxDist);
+    const prop = this._propRay(origin, dir, tTerrain >= 0 ? tTerrain : maxDist);
 
-    if (hit.face) {
-      _hitN.copy(hit.face.normal);
-      if (hit.object.isInstancedMesh && hit.instanceId !== undefined) {
-        hit.object.getMatrixAt(hit.instanceId, _mat4);
-        _mat4.premultiply(hit.object.matrixWorld);
-        _nmat.getNormalMatrix(_mat4);
+    if (prop) {
+      if (prop.face) {
+        _hitN.copy(prop.face.normal);
+        if (prop.object.isInstancedMesh && prop.instanceId !== undefined) {
+          prop.object.getMatrixAt(prop.instanceId, _mat4);
+          _mat4.premultiply(prop.object.matrixWorld);
+          _nmat.getNormalMatrix(_mat4);
+        } else {
+          _nmat.getNormalMatrix(prop.object.matrixWorld);
+        }
+        _hitN.applyMatrix3(_nmat).normalize();
       } else {
-        _nmat.getNormalMatrix(hit.object.matrixWorld);
+        _hitN.set(0, 1, 0);
       }
-      _hitN.applyMatrix3(_nmat).normalize();
-    } else {
-      _hitN.set(0, 1, 0);
+      return {
+        point: prop.point.clone(),
+        normal: _hitN.clone(),
+        distance: prop.distance,
+        object: prop.object,
+      };
     }
 
+    if (tTerrain < 0) return null;
+    _hitP.copy(dir).multiplyScalar(tTerrain).add(origin);
     return {
-      point: hit.point.clone(),
-      normal: _hitN.clone(),
-      distance: hit.distance,
-      object: hit.object,
+      point: _hitP.clone(),
+      normal: this._terrainNormal(_hitP.x, _hitP.z, _hitN).clone(),
+      distance: tTerrain,
+      object: this.terrainMesh,
     };
+  }
+
+  /**
+   * Distance to the first obstruction, or -1. Same query as raycast() without
+   * the result object — the camera runs a fan of these every frame and cannot
+   * afford the two Vector3 clones per ray.
+   */
+  raycastDistance(origin, dir, maxDist = 1000) {
+    const tTerrain = this._terrainRay(origin, dir, maxDist);
+    const prop = this._propRay(origin, dir, tTerrain >= 0 ? tTerrain : maxDist);
+    return prop ? prop.distance : tTerrain;
+  }
+
+  /** Nearest prop intersection within `far`, or null. */
+  _propRay(origin, dir, far) {
+    if (far <= 0) return null;
+    _ray.set(origin, dir);
+    _ray.near = 0;
+    _ray.far = far;
+    _hits.length = 0;
+    _ray.intersectObjects(this.propTargets, false, _hits);
+    return _hits.length ? _hits[0] : null;
+  }
+
+  /**
+   * Ray vs the terrain heightfield. Returns the hit distance, or -1.
+   *
+   * The surface is piecewise linear over the same baked grid sampleHeight()
+   * reads, so this walks the ray cell by cell with a 2D DDA and solves the
+   * crossing inside each cell in closed form — no stepping, no bisection, and
+   * no chance of skimming over a one-facet crest. Exact to the drawn mesh, and
+   * a camera boom touches four or five cells instead of 51k triangles.
+   *
+   * Front faces only, matching the raycaster it replaces: a ray that starts
+   * underground reports nothing.
+   */
+  _terrainRay(origin, dir, maxDist) {
+    const ox = origin.x, oy = origin.y, oz = origin.z;
+    const dx = dir.x, dy = dir.y, dz = dir.z;
+    const half = this.half;
+
+    // Clip to the heightfield's box first. Outside it sampleHeight() clamps to
+    // the edge row, so marching there would invent ground that isn't drawn.
+    let t0 = 0, t1 = maxDist;
+    if (dx > 1e-9 || dx < -1e-9) {
+      let a = (-half - ox) / dx, b = (half - ox) / dx;
+      if (a > b) { const s = a; a = b; b = s; }
+      if (a > t0) t0 = a;
+      if (b < t1) t1 = b;
+    } else if (ox < -half || ox > half) return -1;
+    if (dz > 1e-9 || dz < -1e-9) {
+      let a = (-half - oz) / dz, b = (half - oz) / dz;
+      if (a > b) { const s = a; a = b; b = s; }
+      if (a > t0) t0 = a;
+      if (b < t1) t1 = b;
+    } else if (oz < -half || oz > half) return -1;
+    if (dy > 1e-9 || dy < -1e-9) {
+      let a = (this.minY - 1e-3 - oy) / dy, b = (this.maxY + 1e-3 - oy) / dy;
+      if (a > b) { const s = a; a = b; b = s; }
+      if (a > t0) t0 = a;
+      if (b < t1) t1 = b;
+    } else if (oy < this.minY - 1e-3 || oy > this.maxY + 1e-3) return -1;
+    if (t1 <= t0) return -1;
+
+    // Grid space: one unit per cell, so the DDA boundaries are integers.
+    const T = this.terrain;
+    const N = T.segments, cs = T.step, g = T.grid, row = N + 1;
+    const gx = (ox + half) / cs, gz = (oz + half) / cs;
+    const gdx = dx / cs, gdz = dz / cs;
+
+    let i = clamp(Math.floor(gx + gdx * t0), 0, N - 1);
+    let j = clamp(Math.floor(gz + gdz * t0), 0, N - 1);
+    const stepI = gdx >= 0 ? 1 : -1;
+    const stepJ = gdz >= 0 ? 1 : -1;
+    const dtI = gdx !== 0 ? Math.abs(1 / gdx) : Infinity;
+    const dtJ = gdz !== 0 ? Math.abs(1 / gdz) : Infinity;
+    let tNextI = gdx !== 0 ? ((gdx > 0 ? i + 1 : i) - gx) / gdx : Infinity;
+    let tNextJ = gdz !== 0 ? ((gdz > 0 ? j + 1 : j) - gz) / gdz : Infinity;
+
+    let t = t0;
+    for (let c = 0; c < DDA_MAX_CELLS && t < t1; c++) {
+      const tOut = Math.min(tNextI, tNextJ, t1);
+      if (tOut > t) {
+        const hA = g[j * row + i];
+        const hB = g[j * row + i + 1];
+        const hC = g[(j + 1) * row + i + 1];
+        const hD = g[(j + 1) * row + i];
+        // The cell's two triangles meet on u + v = 1, which the ray crosses at
+        // most once, so the span inside the cell splits into at most two pieces
+        // that each lie on a single plane.
+        const sc = gx - i + gz - j - 1;
+        const sm = gdx + gdz;
+        let tMid = -1;
+        if (sm !== 0) {
+          const ts = -sc / sm;
+          if (ts > t && ts < tOut) tMid = ts;
+        }
+        const a0 = t, b0 = tMid >= 0 ? tMid : tOut;
+        const hit = this._cellHit(i, j, a0, b0, hA, hB, hC, hD, gx, gz, gdx, gdz, oy, dy, sc, sm);
+        if (hit >= 0) return hit;
+        if (tMid >= 0) {
+          const hit2 = this._cellHit(i, j, tMid, tOut, hA, hB, hC, hD, gx, gz, gdx, gdz, oy, dy, sc, sm);
+          if (hit2 >= 0) return hit2;
+        }
+      }
+      t = tOut;
+      if (t >= t1) break;
+      if (tNextI <= tNextJ) { i += stepI; tNextI += dtI; } else { j += stepJ; tNextJ += dtJ; }
+      if (i < 0 || i >= N || j < 0 || j >= N) break;
+    }
+    return -1;
+  }
+
+  /**
+   * Solve the ray against one of a cell's two triangle planes over [ta, tb].
+   * Height is linear in t there, so the crossing is a single division.
+   *
+   * Only a downward crossing counts, which is what makes this front-face-only
+   * like the raycaster it replaces: a ray that is already under the surface
+   * reports nothing until it has come back out and gone in again.
+   */
+  _cellHit(i, j, ta, tb, hA, hB, hC, hD, gx, gz, gdx, gdz, oy, dy, sc, sm) {
+    if (tb <= ta) return -1;
+    // Which side of the diagonal this piece is on, sampled at its midpoint.
+    const lower = sc + sm * (ta + tb) * 0.5 <= 0;
+    const u0 = gx - i, v0 = gz - j;
+    let m, k;
+    if (lower) {                       // triangle (A, D, B)
+      m = dy - gdx * (hB - hA) - gdz * (hD - hA);
+      k = oy - hA - u0 * (hB - hA) - v0 * (hD - hA);
+    } else {                           // triangle (B, D, C)
+      m = dy + gdx * (hD - hC) + gdz * (hB - hC);
+      k = oy - hC - (1 - u0) * (hD - hC) - (1 - v0) * (hB - hC);
+    }
+    const fa = k + m * ta;
+    if (fa <= 0) return -1;
+    const fb = k + m * tb;
+    if (fb > 0) return -1;
+    return ta + (tb - ta) * (fa / (fa - fb));
+  }
+
+  /**
+   * Face normal of the terrain triangle containing (x, z) — the same split
+   * sampleHeight() uses, so it is the normal of the drawn facet rather than the
+   * smoothed one sampleNormal() returns.
+   */
+  _terrainNormal(x, z, out) {
+    const T = this.terrain;
+    const N = T.segments, half = T.half, step = T.step, g = T.grid;
+    const i = clamp(Math.floor((x + half) / step), 0, N - 1);
+    const j = clamp(Math.floor((z + half) / step), 0, N - 1);
+    const u = clamp((x + half) / step - i, 0, 1);
+    const v = clamp((z + half) / step - j, 0, 1);
+    const row = N + 1;
+    const hA = g[j * row + i];
+    const hB = g[j * row + i + 1];
+    const hC = g[(j + 1) * row + i + 1];
+    const hD = g[(j + 1) * row + i];
+    let du, dv;
+    if (u + v <= 1) { du = hB - hA; dv = hD - hA; }
+    else { du = hC - hD; dv = hC - hB; }
+    return out.set(-du, step, -dv).normalize();
   }
 
   /** True if (x, z) is gentle enough to stand on and clear of prop volumes. */

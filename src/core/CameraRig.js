@@ -133,7 +133,7 @@ export class CameraRig {
     // shortest unobstructed length wins.
     this._desired.copy(this.pivot).addScaledVector(this._dir, -DIST);
     let allowed = DIST;
-    if (ctx.stage?.raycast) {
+    if (ctx.stage?.raycastDistance) {
       const back = this._tmp.copy(this._dir).negate();
       for (let i = 0; i < 5; i++) {
         this._origin.copy(this.pivot);
@@ -142,8 +142,8 @@ export class CameraRig {
           this._origin.addScaledVector(this._right, Math.cos(a) * CAM_RADIUS);
           this._origin.y += Math.sin(a) * CAM_RADIUS;
         }
-        const hit = ctx.stage.raycast(this._origin, back, DIST + CAM_RADIUS);
-        if (hit) allowed = Math.min(allowed, Math.max(0.7, hit.distance - CAM_RADIUS));
+        const d = ctx.stage.raycastDistance(this._origin, back, DIST + CAM_RADIUS);
+        if (d >= 0) allowed = Math.min(allowed, Math.max(0.7, d - CAM_RADIUS));
       }
     }
     // Snap in, ease out — clipping through geometry for even one frame is far
