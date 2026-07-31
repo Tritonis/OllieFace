@@ -457,11 +457,56 @@ export class Director {
     this.trails.spawn(origin, dir, length, color);
   }
 
+  /**
+   * Despawn everything the director owns and put it back in the pools.
+   *
+   * The enemies go back into `this.pool` keyed by card id rather than being
+   * dropped: `despawn()` releases the rig to the mesh pool but the Enemy object
+   * itself is the expensive thing to rebuild, and a run that cleared five
+   * stages by dropping them would have allocated five stages' worth. Note the
+   * id must be read *before* despawn(), which nulls `def`.
+   */
   clear(ctx) {
-    for (const e of this.enemies) e.despawn(ctx);
+    for (const e of this.enemies) {
+      const id = e.def ? e.def.id : null;
+      e.despawn(ctx);
+      if (!id) continue;
+      const p = this.pool.get(id);
+      if (p) p.push(e); else this.pool.set(id, [e]);
+    }
     this.enemies.length = 0;
     this.projectiles.clear();
     this.waves.clear();
+    this.trails.clear();
+    this.boss = null;
+  }
+
+  /**
+   * Stage transition. Progression calls this once the new world exists but
+   * before it is populated, so nothing from the previous stage is left standing
+   * on terrain that no longer matches it — a golem left alive across a rebuild
+   * would be pathing over a heightfield that had been replaced underneath it.
+   *
+   * Everything that carries stage-local state is reset: the live enemies, the
+   * projectile / shockwave / beam-trail lists, the credit bank and its timers,
+   * the teleporter event flag and the boss handle.
+   */
+  reset(stageIndex = this.stagesCompleted) {
+    const ctx = this.ctx;
+    if (ctx) this.clear(ctx);
+
+    this.stagesCompleted = stageIndex;
+    this.credits = CREDIT_SEED;
+    this.creditRate = 0;
+    this.card = SPAWN_CARDS[0];
+    this.rerollT = 0;
+    this.spawnT = 2.0;
+    this.eventActive = false;
+    this.boss = null;
+    // A new stage means the run is still going; only `playerDead` turns the
+    // director off for good.
+    this.enabled = true;
+    if (ctx) this.updateDifficulty(ctx);
   }
 
   /** HUD helper: 0..1 across the current difficulty band. */
@@ -716,13 +761,19 @@ class Trails {
       const k = clamp(t.life / 0.16, 0, 1);
       t.mesh.material.opacity = 0.85 * k;
       t.mesh.scale.x = t.mesh.scale.z = 0.4 + k * 0.6;
-      if (t.life <= 0) {
-        this.ctx.scene.remove(t.mesh);
-        this.meshes.push(t.mesh);
-        t.mesh = null;
-        this.list.splice(i, 1);
-        this.pool.push(t);
-      }
+      if (t.life <= 0) this.recycle(i);
     }
   }
+
+  recycle(i) {
+    const t = this.list[i];
+    this.ctx.scene.remove(t.mesh);
+    this.meshes.push(t.mesh);
+    t.mesh = null;
+    this.list.splice(i, 1);
+    this.pool.push(t);
+  }
+
+  /** Pool every live trail. Meshes are reused, never dropped. */
+  clear() { for (let i = this.list.length - 1; i >= 0; i--) this.recycle(i); }
 }

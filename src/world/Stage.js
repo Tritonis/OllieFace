@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { Terrain, STAGE_HALF } from './TerrainGen.js';
 import { Props } from './Props.js';
-import { getMaterials } from './Materials.js';
-import { clamp } from '../core/MathUtil.js';
+import { getMaterials, applyBiomeMaterials, biomeFor, stageNameFor } from './Materials.js';
+import { clamp, RNG } from '../core/MathUtil.js';
 
 /**
  * The world system: owns the terrain, the props, and every collision query the
@@ -91,6 +91,25 @@ const _hitP = new THREE.Vector3();
 const _near = [];
 const _hits = [];
 
+/**
+ * Stage generation must be a pure function of (ctx.seed, stageIndex) and must
+ * never draw from ctx.rng — see NETCODE.md. The host spends the shared gameplay
+ * stream on loot rolls and spawns and a client does not, so by stage 2 the two
+ * stream positions have diverged; terrain taken from it would put the two
+ * players on visibly different worlds. `salt` separates the independent draws
+ * (terrain noise, prop placement, spawn point) within one stage.
+ */
+function stageSeed(seed, stageIndex, salt) {
+  let s = ((seed >>> 0) ^ Math.imul(stageIndex + 1, 0x9e3779b1) ^ salt) >>> 0;
+  s = Math.imul(s ^ (s >>> 16), 0x85ebca6b) >>> 0;
+  s = Math.imul(s ^ (s >>> 13), 0xc2b2ae35) >>> 0;
+  return ((s ^ (s >>> 16)) >>> 0) || 1;
+}
+
+const SALT_TERRAIN = 0x7f4a91c3;
+const SALT_PROPS = 0x2c1b5de7;
+const SALT_SPAWN = 0x51ed270b;
+
 export class Stage {
   init(ctx) {
     this.ctx = ctx;
@@ -99,14 +118,55 @@ export class Stage {
     // unclimbable but the outermost facets are steep enough to trap a capsule.
     this.bound = STAGE_HALF - 6;
 
+    this.stageIndex = 0;
+    this.biome = null;
+    this.stageName = '';
+    this.terrain = null;
+    this.props = null;
+    this.propsGroup = null;
+    this.terrainMesh = null;
+    this.propTargets = [];
+    this.platforms = [];
+    this.grid = null;
+    this._center = new THREE.Vector3();
+
     getMaterials();
+    ctx.stage = this;
 
-    this.terrain = new Terrain(ctx.rng);
-    const terrainMesh = this.terrain.build();
-    ctx.scene.add(terrainMesh);
+    this.build(0);
+  }
 
-    this.props = new Props(ctx.rng, this.terrain);
-    ctx.scene.add(this.props.build());
+  /**
+   * Tear down whatever stage is standing and generate stage `stageIndex`.
+   *
+   * This is the whole point of the system: every stage of a run is a genuinely
+   * new world — new heightfield, new props, new colliders, new biome — and the
+   * old one's GPU buffers go back to the driver on the way out.
+   *
+   * Deliberately takes no RNG argument. See stageSeed() above.
+   */
+  build(stageIndex = 0) {
+    const ctx = this.ctx;
+    this._teardown();
+
+    const biome = biomeFor(stageIndex);
+    this.stageIndex = stageIndex;
+    this.biome = biome;
+    this.stageName = stageNameFor(stageIndex);
+
+    // Retint the shared library and re-light the sky before anything is built,
+    // so the terrain's first compile already sees the biome's environment.
+    applyBiomeMaterials(biome);
+    ctx.environment?.applyBiome?.(biome);
+
+    this.terrain = new Terrain(stageSeed(ctx.seed, stageIndex, SALT_TERRAIN), biome);
+    this.terrainMesh = this.terrain.build();
+    ctx.scene.add(this.terrainMesh);
+
+    this.props = new Props(
+      new RNG(stageSeed(ctx.seed, stageIndex, SALT_PROPS)), this.terrain, biome, stageIndex);
+    this.propsGroup = this.props.build();
+    ctx.scene.add(this.propsGroup);
 
     this.grid = new ColliderGrid(STAGE_HALF, CELL);
     this.platforms = [];
@@ -119,7 +179,6 @@ export class Stage {
     // every time something aims. Terrain is deliberately not in here — it is
     // marched analytically instead (see _terrainRay).
     this.propTargets = this.props.meshes.slice();
-    this.terrainMesh = terrainMesh;
 
     // Vertical extent of the heightfield, used to clip rays before marching.
     let lo = Infinity, hi = -Infinity;
@@ -130,7 +189,49 @@ export class Stage {
     this.minY = lo;
     this.maxY = hi;
 
-    ctx.stage = this;
+    return this;
+  }
+
+  /**
+   * A walkable player start on the current stage. Deterministic from
+   * (seed, stageIndex) like everything else here, and biased toward the middle
+   * of the basin so the teleporter and both landmarks are a walk away rather
+   * than underfoot.
+   */
+  spawnPoint() {
+    const rng = new RNG(stageSeed(this.ctx.seed, this.stageIndex, SALT_SPAWN));
+    return this.randomWalkablePoint(rng, { minRadius: 0.05, maxRadius: 0.32 });
+  }
+
+  /**
+   * Basin centre at ground level — what the title-screen camera orbits and the
+   * one point every stage is guaranteed to have, since the basin is flat by
+   * construction. Returns a shared vector; callers read it, they don't keep it.
+   */
+  get center() {
+    return this._center.set(0, this.terrain ? this.terrain.sampleHeight(0, 0) : 0, 0);
+  }
+
+  /**
+   * Release the standing stage. Every geometry here was generated for this
+   * stage alone, so all of it is disposed; materials and their textures are the
+   * shared library and are left in place — disposing them would force a shader
+   * recompile on the next stage, which is exactly the multi-second freeze this
+   * design exists to avoid.
+   */
+  _teardown() {
+    const ctx = this.ctx;
+    if (this.terrainMesh) ctx.scene.remove(this.terrainMesh);
+    this.terrain?.dispose();
+    if (this.propsGroup) ctx.scene.remove(this.propsGroup);
+    this.props?.dispose();
+    this.terrain = null;
+    this.terrainMesh = null;
+    this.props = null;
+    this.propsGroup = null;
+    this.propTargets = [];
+    this.platforms = [];
+    this.grid = null;
   }
 
   // --- queries -------------------------------------------------------------
@@ -512,7 +613,6 @@ export class Stage {
   }
 
   dispose() {
-    this.terrain?.dispose();
-    this.props?.dispose();
+    this._teardown();
   }
 }

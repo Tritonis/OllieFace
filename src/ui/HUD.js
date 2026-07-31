@@ -65,6 +65,7 @@ export class HUD {
     this.inv = new Map();    // id -> { el, badge, count, tier }
     this.boss = null;
     this.tpProgress = -1;
+    this.tpFound = false;    // stops the objective chevron once the event ends
     this.objective = '';
     this.stageName = '';
     this.stageIndex = 1;
@@ -132,12 +133,14 @@ export class HUD {
     });
     on('teleporterComplete', () => {
       this.tpProgress = -1;
+      this.tpFound = true;
       this.setObjective('Proceed to the next stage');
     });
     on('stageStart', ({ index, name }) => {
       this.stageIndex = (index ?? 0) + 1;
       this.stageName = name || '';
       this.tpProgress = -1;
+      this.tpFound = false;
       this.clearBoss();
       this.setObjective('Find and activate the teleporter');
       this.toast(name ? `Stage ${this.stageIndex} — ${name}` : `Stage ${this.stageIndex}`, 'stage');
@@ -222,6 +225,27 @@ export class HUD {
     this.pulse(this.refs.objective, 'is-change');
   }
 
+  /**
+   * Interaction prompt, e.g. "Chest ($25)". `Interactables` calls this every
+   * time the focused object changes; null clears it.
+   *
+   * This method did not exist, and the call site is `ctx.hud?.setPrompt?.(...)`
+   * — so nothing rendered and nothing errored. A player standing on a chest had
+   * no indication that E did anything at all.
+   */
+  setPrompt(text) {
+    if (this.promptText === text) return;
+    this.promptText = text;
+    const el = this.refs.prompt;
+    if (!el) return;
+    if (text) {
+      this.refs.promptLabel.textContent = text;
+      el.classList.add('is-on');
+    } else {
+      el.classList.remove('is-on');
+    }
+  }
+
   onDeath() {
     const items = [...this.inv.entries()].map(([id, e]) => ({ id, tier: e.tier, count: e.count }));
     const diff = this.difficultyOf(this.ctx.director?.difficultyCoefficient ?? 1);
@@ -279,6 +303,7 @@ export class HUD {
     this.updateAbilities(ctx);
     this.updateBoss(ctx);
     this.updateTeleporter(ctx);
+    this.updateObjectivePing(ctx);
     this.updateDirections(ctx, dt);
     this.updateToasts(dt);
 
@@ -381,7 +406,10 @@ export class HUD {
   }
 
   updateMoney(ctx, dt) {
-    const gold = Math.max(0, Math.floor(ctx.items?.gold ?? ctx.player?.gold ?? 0));
+    // Gold lives on Items, and only on Items — Player has never carried a
+    // `gold` field, so the old fallback through it was a read that could only
+    // ever be undefined.
+    const gold = Math.max(0, Math.floor(ctx.items?.gold ?? 0));
     if (this.moneyShown !== gold) {
       const step = Math.max(1, Math.abs(gold - this.moneyShown) * 6 * dt);
       this.moneyShown = this.moneyShown < gold
@@ -479,28 +507,58 @@ export class HUD {
    * damage-direction arcs live on.
    */
   updateBossPing(ctx, boss) {
+    this.ping('bossPing', this.refs.bossPing, ctx, boss.position);
+  }
+
+  setBossPing(deg, alpha) { this.setPing('bossPing', this.refs.bossPing, deg, alpha); }
+
+  /**
+   * Point the chevron `el` at a world position whenever that position is
+   * outside the frame, and hide it when it isn't. Shared by the boss bar and
+   * the teleporter objective so both read as the same piece of UI language.
+   */
+  ping(key, el, ctx, pos) {
     const cam = ctx.camera;
-    const pos = boss.position;
     const origin = ctx.player?.position;
-    if (!cam || !pos || !origin) { this.setBossPing(0, 0); return; }
+    if (!cam || !pos || !origin) { this.setPing(key, el, 0, 0); return; }
 
     this.tmp.set(pos.x, pos.y, pos.z).project(cam);
     const onScreen = Math.abs(this.tmp.x) < 0.88 && Math.abs(this.tmp.y) < 0.88 && this.tmp.z < 1;
-    if (onScreen) { this.setBossPing(0, 0); return; }
+    if (onScreen) { this.setPing(key, el, 0, 0); return; }
 
     const f = cam.getWorldDirection(this.tmpF);
     this.tmp.set(pos.x - origin.x, 0, pos.z - origin.z);
     const fwd = this.tmp.x * f.x + this.tmp.z * f.z;
     const right = this.tmp.x * -f.z + this.tmp.z * f.x;
-    this.setBossPing((Math.atan2(right, fwd) * 180) / Math.PI, 1);
+    this.setPing(key, el, (Math.atan2(right, fwd) * 180) / Math.PI, 1);
   }
 
-  setBossPing(deg, alpha) {
-    this.set('bossPing', `${Math.round(deg)}|${alpha}`, () => {
-      const el = this.refs.bossPing;
+  setPing(key, el, deg, alpha) {
+    this.set(key, `${Math.round(deg)}|${alpha}`, () => {
       el.style.transform = `rotate(${deg.toFixed(1)}deg)`;
       el.style.opacity = String(alpha);
     });
+  }
+
+  /**
+   * The objective is "go to the teleporter", so the HUD has to be able to
+   * answer "which way, and how far". Distance is bucketed to 5m; without that
+   * this is a DOM write on every frame the player is moving.
+   */
+  updateObjectivePing(ctx) {
+    const pos = this.tpFound ? null : ctx.progression?.teleporterPosition;
+    const origin = ctx.player?.position;
+    if (!pos || !origin) {
+      this.setPing('tpPing', this.refs.tpPing, 0, 0);
+      this.set('tpDist', '', (v) => { this.refs.objectiveDist.textContent = v; });
+      return;
+    }
+    this.ping('tpPing', this.refs.tpPing, ctx, pos);
+
+    const dx = pos.x - origin.x;
+    const dz = pos.z - origin.z;
+    const metres = Math.round(Math.sqrt(dx * dx + dz * dz) / 5) * 5;
+    this.set('tpDist', metres, (v) => { this.refs.objectiveDist.textContent = `${v}m`; });
   }
 
   updateTeleporter(ctx) {
@@ -640,6 +698,10 @@ function collectRefs(root) {
 
     objective: q('.objective'),
     objectiveText: q('.objective-text'),
+    objectiveDist: q('.objective-dist'),
+
+    prompt: q('.prompt'),
+    promptLabel: q('.prompt-label'),
 
     bossBar: q('.bossbar'),
     bossName: q('.boss-name'),
@@ -647,6 +709,7 @@ function collectRefs(root) {
     bossFill: q('.boss-fill'),
     bossPct: q('.boss-pct'),
     bossPing: q('.boss-ping'),
+    tpPing: q('.tp-ping'),
 
     tp: q('.tp'),
     tpArc: q('.tp-arc'),
@@ -699,9 +762,15 @@ const TEMPLATE = (slots, notches, dirSlots) => `
   <i class="ret-tick"></i>
   <i class="ret-kill"></i>
   <i class="boss-ping"></i>
+  <i class="tp-ping"></i>
   <div class="dir-ring">
     ${Array.from({ length: dirSlots }, () => '<i class="dir"></i>').join('')}
   </div>
+</div>
+
+<div class="prompt">
+  <b class="prompt-key">E</b>
+  <span class="prompt-label"></span>
 </div>
 
 <div class="zone zone--tl">
@@ -730,6 +799,7 @@ const TEMPLATE = (slots, notches, dirSlots) => `
   <div class="objective">
     <i class="objective-mark"></i>
     <span class="objective-text"></span>
+    <b class="objective-dist"></b>
   </div>
 
   <div class="tp">

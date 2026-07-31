@@ -11,6 +11,27 @@ import { ITEMS, ITEM_BY_ID, ITEMS_BY_TIER, TIERS, hyperbolic } from '../data/ite
 
 const TIER_WEIGHTS = { common: 80, uncommon: 20, legendary: 1 };
 
+/**
+ * Kill gold. The economy is deliberately *closed* against the director: a
+ * monster refunds `GOLD_PER_COST x (the credits the director paid for it) x
+ * difficulty`. The director banks `0.95 x difficulty` credits/second, so a
+ * player who clears what spawns earns `0.95 x GOLD_PER_COST x difficulty^2`
+ * gold/second — 57/min at difficulty 1, which buys the first $25 chest inside
+ * half a minute and keeps pace with the 1.25^stage price ladder because the
+ * squared difficulty term outruns it.
+ *
+ * Scaling by the card's credit cost is what makes a boss pay orders of
+ * magnitude more than a beetle (420 credits vs 6) for free, and elites pay
+ * their 4.5-5x affix surcharge back for the same reason.
+ */
+const GOLD_PER_COST = 1.0;
+// Bosses also drop a guaranteed boss item, so their gold is discounted rather
+// than letting one teleporter kill fund an entire stage of chests.
+const BOSS_GOLD_MULT = 0.6;
+// Anything that dies without a spawn card behind it (scripted kills, summons)
+// still pays something rather than nothing.
+const DEFAULT_KILL_COST = 8;
+
 export class Items {
   constructor() {
     this.counts = new Map();
@@ -62,6 +83,15 @@ export class Items {
       ctx.audio?.play?.('pickup');
     });
 
+    // Same story for the purse. Gold is host-authoritative and appears in no
+    // snapshot field, so a client mirrors the host's total off the forwarded
+    // `goldChanged`. The payload is an absolute value, not a delta, so a
+    // dropped or duplicated event self-corrects on the next one.
+    ctx.events.on('goldChanged', (e) => {
+      if (ctx.authority || !e || typeof e.gold !== 'number') return;
+      this.gold = e.gold;
+    });
+
     this._rebuildHooks();
   }
 
@@ -111,6 +141,31 @@ export class Items {
     this.gold += Math.round(amount);
     this.ctx.events.emit('goldChanged', { gold: this.gold });
     return this.gold;
+  }
+
+  /** Gold one monster death is worth. Pure — safe to call for a preview. */
+  killReward(victim) {
+    if (!victim || victim.isPlayer) return 0;
+    const cost = victim.def?.cost ?? DEFAULT_KILL_COST;
+    const eliteMult = victim.elite?.cost ?? 1;
+    const bossMult = victim.isBoss ? BOSS_GOLD_MULT : 1;
+    // The director's own coefficient, not Progression's, so the payout is the
+    // exact inverse of the credits that bought this monster.
+    const d = Math.max(1, this.ctx.director?.difficultyCoefficient ?? this.ctx.difficulty ?? 1);
+    return Math.max(1, Math.round(cost * GOLD_PER_COST * eliteMult * bossMult * d));
+  }
+
+  /**
+   * Pay out a kill. Host only — gold is game state, and a client's purse comes
+   * from its own host-authored events, never from a locally observed death.
+   */
+  rewardKill(victim) {
+    if (!this.ctx.authority) return 0;
+    const amount = this.killReward(victim);
+    if (amount <= 0) return 0;
+    this.addGold(amount);
+    this.ctx.events.emit('goldReward', { amount, victim, position: victim.position });
+    return amount;
   }
 
   spendGold(amount) {

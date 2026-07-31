@@ -445,6 +445,13 @@ export class Combat {
       return;
     }
 
+    // Gold. Every monster death pays, not just the ones the player landed the
+    // last hit on — burns, proc chains and elite death novas all finish kills,
+    // and an income that quietly skipped them would read as the drop table
+    // being broken. This is only reachable on the host: applyDamage early-
+    // returns for clients, so no client ever mints its own gold.
+    ctx.items?.rewardKill?.(victim);
+
     if (source?.isPlayer && depth < MAX_PROC_DEPTH) {
       this._dispatch('onKill', { victim, source, position, procDepth: depth + 1, procCoefficient: 1 });
     }

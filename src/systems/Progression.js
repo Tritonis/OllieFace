@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Interactables } from '../world/Interactables.js';
 import { ITEMS_BY_TIER } from '../data/items.js';
+import { BIOMES, stageNameFor } from '../world/Materials.js';
 
 /**
  * Progression drives the run: which stage we're on, how hard the game is
@@ -11,11 +12,10 @@ import { ITEMS_BY_TIER } from '../data/items.js';
  * knows when a stage ends.
  */
 
-const STAGE_NAMES = [
-  'Distant Roost', 'Titanic Plains', 'Abandoned Aqueduct', 'Wetland Aspect',
-  'Rallypoint Delta', 'Scorched Acres', 'Abyssal Depths', 'Siren\'s Call',
-  'Sundered Grove', 'Sky Meadow',
-];
+// How many stages you can play before a name repeats: four biomes, each with
+// three named variants. The names themselves live with the biomes in
+// Materials.js so a stage's name and its look can never drift apart.
+const NAME_CYCLE = BIOMES.length * BIOMES[0].names.length;
 
 const CHARGE_TIME = 90;      // seconds of standing in the ring to fill it
 const LOOT_WINDOW = 8;       // beat between "boss dead" and the portal opening
@@ -24,7 +24,7 @@ const CHARGE_EMIT_STEP = 0.01;
 export class Progression {
   constructor() {
     this.stageIndex = 0;
-    this.stageName = STAGE_NAMES[0];
+    this.stageName = stageNameFor(0);
     this.difficulty = 1;
     this.state = 'idle'; // idle | charging | complete | portal
 
@@ -33,6 +33,11 @@ export class Progression {
     this.bossAlive = false;
     this.bossCleared = false;
     this.lootTimer = 0;
+
+    // Where this stage's teleporter is, or null before one exists. This is the
+    // one field the objective HUD and VFX.teleporterAura both drive off, so it
+    // has to be published the moment the stage is populated.
+    this.teleporterPosition = null;
 
     this.interactables = new Interactables();
     this.stats = {
@@ -115,7 +120,10 @@ export class Progression {
   /** Host-side stage entry: build it, fill it, announce it. */
   _beginStage(index, first = false) {
     this._applyStage(index, first);
-    this.interactables.populate(index);
+    const tp = this.interactables.populate(index);
+    // Publish before `stageStart` so anything that reacts to the new stage
+    // already has an objective to point at.
+    this.teleporterPosition = tp?.position?.clone() || null;
     this.ctx.events.emit('stageStart', { index, name: this.stageName });
     this.ctx.audio?.play?.('stageStart');
   }
@@ -127,23 +135,31 @@ export class Progression {
   _applyStage(index, first = false) {
     const ctx = this.ctx;
     this.stageIndex = index;
-    this.stageName = STAGE_NAMES[index % STAGE_NAMES.length] + (index >= STAGE_NAMES.length ? ` (Loop ${Math.floor(index / STAGE_NAMES.length) + 1})` : '');
+    this.stageName = stageNameFor(index) +
+      (index >= NAME_CYCLE ? ` (Loop ${Math.floor(index / NAME_CYCLE) + 1})` : '');
     this.state = 'idle';
     this.charge = 0;
     this._lastEmitted = -1;
     this.bossAlive = false;
     this.bossCleared = false;
     this.lootTimer = 0;
+    // The old stage's teleporter is gone; the new one is published by
+    // _beginStage once the stage is populated. A client leaves this null until
+    // the host replicates the interactable.
+    this.teleporterPosition = null;
 
     if (!first) {
-      if (ctx.stage?.build) ctx.stage.build(index, ctx.rng);
-      else ctx.stage?.rebuild?.(index);
+      // Stage 0 is already standing (Stage.init built it); every subsequent
+      // stage is a full regeneration. `build` takes no RNG on purpose — it is a
+      // pure function of (ctx.seed, index), so host and client land on the same
+      // world even though their gameplay streams have long since diverged.
+      ctx.stage?.build?.(index);
       ctx.director?.reset?.(index);
     }
 
     // Reposition the player onto the freshly built ground before anything asks
-    // for a spawn-relative point.
-    const spawn = ctx.stage?.spawnPoint?.() || ctx.stage?.randomWalkablePoint?.(ctx.rng, { minDist: 0 }) || this._tmp.set(0, 2, 0);
+    // for a spawn-relative point. Also derived from the seed, not from ctx.rng.
+    const spawn = ctx.stage?.spawnPoint?.() || this._tmp.set(0, 2, 0);
     const p = ctx.player;
     if (p && !first) {
       if (p.respawnAt) p.respawnAt(spawn);

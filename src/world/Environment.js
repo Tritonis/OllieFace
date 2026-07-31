@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { SkyShader } from '../shaders/SkyShader.js';
-import { PALETTE } from './Materials.js';
+import { PALETTE, BIOMES } from './Materials.js';
 
 /**
  * Lighting, sky, fog and atmosphere.
@@ -57,6 +57,71 @@ export class Environment {
     // but the far terrain keeps enough value to separate from the sky.
     scene.fog = new THREE.FogExp2(PALETTE.fog, 0.0036);
     ctx.environment = this; // convenience handle; not part of the ctx contract
+  }
+
+  /**
+   * Re-dress the atmosphere for a biome. Stage.build() calls this on every
+   * stage transition.
+   *
+   * Everything touched here is a *uniform*: light colours and intensities, the
+   * sun vector, the sky shader's six colours, fog colour and density, the dust
+   * tint. No material is created, no light is added or removed, and no define
+   * changes — so not one shader program is invalidated and the transition costs
+   * nothing beyond the terrain rebuild itself. Adding even one PointLight or
+   * one material variant here would fork every program in the scene.
+   */
+  applyBiome(biome = BIOMES[0]) {
+    const ctx = this.ctx;
+    const scene = ctx.scene;
+
+    // --- sun vector: shared by the sky disc, the key light and the shadows ---
+    const { elevation, azimuth } = biome.sun;
+    const ce = Math.cos(elevation);
+    this.sunDir.set(ce * Math.sin(azimuth), Math.sin(elevation), ce * Math.cos(azimuth)).normalize();
+    this.skyUniforms.uSunDir.value.copy(this.sunDir);
+
+    // --- sky ---
+    // Matching _buildSky: these uniforms are fed to a ShaderMaterial that works
+    // in linear space, and the pipeline's own conversion is applied on top, so
+    // the same double step is repeated here or biome 0 would not reproduce the
+    // reference sky exactly.
+    const S = biome.sky;
+    const set = (name, hex) => {
+      this.skyUniforms[name].value.setHex(hex).convertSRGBToLinear();
+    };
+    set('uZenith', S.zenith);
+    set('uHorizon', S.horizon);
+    set('uHaze', S.haze);
+    set('uGround', S.ground);
+    set('uSunColor', S.sun);
+    set('uCloud', S.cloud);
+    this.skyUniforms.uCloudAmount.value = S.cloudAmount;
+
+    // --- fog ---
+    if (scene.fog) {
+      scene.fog.color.set(biome.fog.color);
+      scene.fog.density = biome.fog.density;
+    }
+
+    // --- lights ---
+    this.key.color.set(biome.sun.color);
+    this.key.intensity = biome.sun.intensity;
+    const L = biome.light;
+    this.hemi.color.set(L.hemiSky);
+    this.hemi.groundColor.set(L.hemiGround);
+    this.hemi.intensity = L.hemiIntensity;
+    this.rim.color.set(L.rim);
+    this.rim.intensity = L.rimIntensity;
+    // Back light stays opposite the key wherever the key has moved to.
+    this.rim.position.set(this.sunDir.x * -120, 34, this.sunDir.z * -120);
+    // The IBL probe is baked once at boot and deliberately not re-rendered per
+    // stage — a PMREM pass mid-run is both a stall and a shader-compile risk.
+    // Scaling its contribution instead is free and carries most of the read.
+    scene.environmentIntensity = L.envIntensity;
+
+    // --- dust ---
+    this.dustMaterial.color.set(biome.dust.color);
+    this.dustMaterial.opacity = biome.dust.opacity;
   }
 
   _buildSky(ctx) {
@@ -221,10 +286,12 @@ export class Environment {
     const fx = Math.round(focus.x / SHADOW_SNAP) * SHADOW_SNAP;
     const fz = Math.round(focus.z / SHADOW_SNAP) * SHADOW_SNAP;
     this.key.target.position.set(fx, 0, fz);
+    // this.sunDir, not the module default: the biome moves the sun.
+    const sd = this.sunDir;
     this.key.position.set(
-      fx + SUN_DIR.x * SUN_DISTANCE,
-      SUN_DIR.y * SUN_DISTANCE,
-      fz + SUN_DIR.z * SUN_DISTANCE,
+      fx + sd.x * SUN_DISTANCE,
+      sd.y * SUN_DISTANCE,
+      fz + sd.z * SUN_DISTANCE,
     );
     this.key.target.updateMatrixWorld();
 

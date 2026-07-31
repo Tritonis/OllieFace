@@ -47,7 +47,10 @@ export class NetHost {
     // Forward one-shot facts clients can't derive from snapshots. Cosmetic
     // events are deliberately excluded — clients generate their own VFX from
     // the events they do receive, which avoids paying bandwidth for particles.
-    for (const name of ['kill', 'itemPickup', 'teleporterCharging', 'teleporterComplete',
+    // `goldChanged` matters as much as `itemPickup`: gold is host-authoritative
+    // and carried in no snapshot field, so without forwarding it a client's
+    // purse sits at 0 forever and it can never buy anything.
+    for (const name of ['kill', 'itemPickup', 'goldChanged', 'teleporterCharging', 'teleporterComplete',
                         'stageStart', 'bossSpawn', 'bossDead', 'playerDead', 'levelUp']) {
       ctx.events.on(name, (payload) => this._forward(name, payload));
     }

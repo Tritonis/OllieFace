@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { getMaterials } from './Materials.js';
+import { BIOMES, getMaterials } from './Materials.js';
 import { makeSimplex2D, STAGE_HALF } from './TerrainGen.js';
 import { lerp } from '../core/MathUtil.js';
 
@@ -265,9 +265,20 @@ function monolithGeo(rng, noise3) {
 // --- placement -------------------------------------------------------------
 
 export class Props {
-  constructor(rng, terrain) {
+  /**
+   * @param {RNG}    rng      stage-local stream, derived from (seed, stageIndex)
+   * @param {Terrain} terrain the freshly built heightfield to sit on
+   * @param {object} biome    entry from BIOMES; supplies the prop mix
+   */
+  constructor(rng, terrain, biome = BIOMES[0], stageIndex = 0) {
     this.rng = rng;
     this.terrain = terrain;
+    this.biome = biome;
+    this.stageIndex = stageIndex;
+    // Every biome drives the *same* nine materials with different counts and
+    // colours. Nothing here may introduce a material the others don't use, or
+    // the program count would step at a stage transition.
+    this.P = biome.props;
     this.group = new THREE.Group();
     this.group.name = 'props';
     this.colliders = [];
@@ -323,16 +334,17 @@ export class Props {
     const rng = this.rng;
     const T = this.terrain;
     const M = getMaterials();
+    const P = this.P;
     const n3 = makeNoise3(rng);
 
     // --- boulders: the connective tissue, everywhere, including slopes ---
     this._batch(
       [boulderGeo(rng, n3), boulderGeo(rng, n3), boulderGeo(rng, n3)],
-      M.rock, 260,
+      M.rock, P.boulders,
       (r) => {
         const s = this._spot({ rMax: 0.8, minDot: 0.45 });
         if (!s) return null;
-        const sc = r.range(0.45, 2.4);
+        const sc = r.range(P.boulderScale[0], P.boulderScale[1]);
         // Sink a fraction of the radius so nothing hovers on uneven facets.
         _v.set(s.x, s.y - sc * 0.28, s.z);
         _q.setFromEuler(_e.set(r.range(-0.2, 0.2), r.range(0, 6.283), r.range(-0.2, 0.2)));
@@ -345,11 +357,11 @@ export class Props {
     // --- shattered pillars: vertical accents, only on ground you could stand on ---
     this._batch(
       [pillarGeo(rng, n3), pillarGeo(rng, n3)],
-      M.cliff, 74,
+      M.cliff, P.pillars,
       (r) => {
         const s = this._spot({ rMin: 0.08, rMax: 0.62, minDot: 0.82 });
         if (!s) return null;
-        const h = r.range(2.2, 7.5);
+        const h = r.range(P.pillarHeight[0], P.pillarHeight[1]);
         const rad = r.range(0.5, 1.05);
         _v.set(s.x, s.y - 0.4, s.z);
         _q.setFromEuler(_e.set(r.range(-0.09, 0.09), r.range(0, 6.283), r.range(-0.09, 0.09)));
@@ -362,11 +374,11 @@ export class Props {
     // --- small arches: read as ruined structure at mid distance ---
     this._batch(
       [archGeo(rng, n3)],
-      M.cliff, 16,
+      M.cliff, P.arches,
       (r) => {
         const s = this._spot({ rMin: 0.12, rMax: 0.6, minDot: 0.9 });
         if (!s) return null;
-        const sc = r.range(2.2, 4.6);
+        const sc = r.range(P.archScale[0], P.archScale[1]);
         _v.set(s.x, s.y - 0.25, s.z);
         _q.setFromEuler(_e.set(0, r.range(0, 6.283), 0));
         _s.setScalar(sc);
@@ -379,11 +391,11 @@ export class Props {
     // --- dead trees: thin high-frequency silhouettes against the sky ---
     this._batch(
       [deadTreeGeo(rng, n3), deadTreeGeo(rng, n3)],
-      M.wood, 110,
+      M.wood, P.trees,
       (r) => {
         const s = this._spot({ rMin: 0.06, rMax: 0.66, minDot: 0.86 });
         if (!s) return null;
-        const sc = r.range(0.8, 1.9);
+        const sc = r.range(P.treeScale[0], P.treeScale[1]);
         _v.set(s.x, s.y - 0.15, s.z);
         _q.setFromEuler(_e.set(0, r.range(0, 6.283), 0));
         _s.set(sc * r.range(0.85, 1.15), sc, sc * r.range(0.85, 1.15));
@@ -399,17 +411,17 @@ export class Props {
     {
       const variants = [crystalGeo(rng, n3), crystalGeo(rng, n3)];
       const lists = [[], []];
-      for (let c = 0; c < 6; c++) {
+      for (let c = 0; c < P.crystalClusters; c++) {
         const s = this._spot({ rMin: 0.14, rMax: 0.7, minDot: 0.7 });
         if (!s) continue;
-        const n = rng.int(6, 10);
+        const n = rng.int(P.crystalPer[0], P.crystalPer[1]);
         for (let i = 0; i < n; i++) {
           const a = rng.range(0, 6.283);
           // sqrt again: without it every cluster is a ring.
           const r = Math.sqrt(rng.next()) * 5.5;
           const px = s.x + Math.cos(a) * r, pz = s.z + Math.sin(a) * r;
           // Big in the middle, small at the fringe, so a cluster has a peak.
-          const sc = rng.range(0.8, 3.0) * (1 - r / 9);
+          const sc = rng.range(P.crystalScale[0], P.crystalScale[1]) * (1 - r / 9);
           _v.set(px, T.sampleHeight(px, pz) - sc * 0.15, pz);
           _q.setFromEuler(_e.set(rng.range(-0.25, 0.25), rng.range(0, 6.283), rng.range(-0.25, 0.25)));
           _s.setScalar(sc);
@@ -443,15 +455,18 @@ export class Props {
     const islandMats = [[], [], []];
     const debrisMats = [];
 
-    const COUNT = 15;
+    const P = this.P;
+    const COUNT = P.islands;
     for (let i = 0; i < COUNT; i++) {
       const a = (i / COUNT) * Math.PI * 2 + rng.range(-0.25, 0.25);
       const rad = rng.range(0.18, 0.72) * STAGE_HALF;
       const x = Math.cos(a) * rad, z = Math.sin(a) * rad;
       const ground = T.sampleHeight(x, z);
-      const scale = rng.range(3.5, 9.5);
+      const scale = rng.range(P.islandScale[0], P.islandScale[1]);
       // Low ones are reachable platforms, high ones are composition.
-      const y = ground + (i % 3 === 0 ? rng.range(6, 11) : rng.range(16, 40));
+      const y = ground + (i % 3 === 0
+        ? rng.range(P.islandLow[0], P.islandLow[1])
+        : rng.range(P.islandHigh[0], P.islandHigh[1]));
 
       const fi = rng.int(0, ISLAND_FAMILIES.length - 1);
       const F = ISLAND_FAMILIES[fi];
@@ -513,12 +528,36 @@ export class Props {
       return mesh;
     };
 
+    const P = this.P;
+    // The two anchors keep their composition — opposed, off-centre, one
+    // horizontal and one vertical — but their bearing rotates per stage, so a
+    // player crossing into a new stage doesn't find the same landmark in the
+    // same place with a new coat of paint.
+    //
+    // The offsets below are the hand-placed originals — arch (46,-34),
+    // monolith (-52,30), boulder stack (8,58) — re-expressed as bearings
+    // relative to the arch, so the spread between the three anchors is exactly
+    // the composition that was tuned. Later stages rotate that whole triangle
+    // as a rigid body, which is what stops every stage having its landmark in
+    // the same place with a new coat of paint.
+    //
+    // The rotation is a function of the stage index and *not* of the RNG, and
+    // it is zero on stage 1. Rolling it meant the reference stage's landmarks
+    // could land anywhere — including squarely on the sight line the framing
+    // was tuned against, with the monolith filling the middle of the frame.
+    // The golden angle keeps successive stages far apart in bearing.
+    const bearing = this.stageIndex * 2.399963;
+    const place = (radius, offsetDeg) => {
+      const a = bearing + (offsetDeg - 36.5) * (Math.PI / 180);
+      return { x: Math.cos(a) * radius, z: Math.sin(a) * radius };
+    };
+
     // The great arch: off-centre and rotated across the main sight line so it
     // frames the sky rather than sitting flat against it.
     {
-      const x = 46, z = -34;
+      const { x, z } = place(57.2, 0);
       const y = T.sampleHeight(x, z);
-      const sc = 17;
+      const sc = P.archHeroScale;
       add(archGeo(rng, n3), M.cliff, x, y - 1.4, z, sc, sc * 1.15, sc * 0.55, -0.62);
       this._collider(x - Math.cos(-0.62) * sc, z + Math.sin(-0.62) * sc, sc * 0.22, y - 2, y + sc * 0.6);
       this._collider(x + Math.cos(-0.62) * sc, z - Math.sin(-0.62) * sc, sc * 0.22, y - 2, y + sc * 0.6);
@@ -527,10 +566,11 @@ export class Props {
     // The monolith: single tall vertical, deliberately opposite the arch so the
     // basin has two anchors instead of one.
     {
-      const x = -52, z = 30;
+      const { x, z } = place(60.0, 186.5);
       const y = T.sampleHeight(x, z);
-      add(monolithGeo(rng, n3), M.metalRuin, x, y + 12, z, 5.2, 27, 3.6, 0.7, 0.045);
-      this._collider(x, z, 3.4, y - 2, y + 26);
+      const mh = P.monolithHeight;
+      add(monolithGeo(rng, n3), M.metalRuin, x, y + mh * 0.44, z, 5.2, mh, 3.6, 0.7, 0.045);
+      this._collider(x, z, 3.4, y - 2, y + mh * 0.96);
       // Crystal spill at the base ties the two accent colours together.
       const cg = crystalGeo(rng, n3);
       const list = [];
@@ -548,7 +588,7 @@ export class Props {
     // A leaning stack of huge boulders near the basin edge — mid-scale mass
     // between the scatter boulders and the two landmarks.
     {
-      const bx = 8, bz = 58;
+      const { x: bx, z: bz } = place(58.5, 118.6);
       const base = T.sampleHeight(bx, bz);
       const g = boulderGeo(rng, n3);
       const list = [];
@@ -585,8 +625,23 @@ export class Props {
     }
   }
 
+  /**
+   * Full teardown. Geometry here is generated per stage and shared with nobody,
+   * so all of it must go back to the driver — a run that reaches stage 5 would
+   * otherwise be holding five stages' worth of buffers. Materials and their
+   * textures come from the cached library and are deliberately left alone.
+   */
   dispose() {
+    for (const m of this.meshes) {
+      // InstancedMesh.dispose() releases the instance matrix buffer, which is
+      // the largest single allocation on a 260-instance boulder batch.
+      m.dispose?.();
+    }
     for (const g of this._geos) g.dispose();
     this._geos.length = 0;
+    this.meshes.length = 0;
+    this.colliders.length = 0;
+    this.group.clear();
+    this.group.removeFromParent();
   }
 }

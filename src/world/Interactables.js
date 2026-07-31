@@ -11,6 +11,11 @@ import { ITEM_BY_ID, TIERS } from '../data/items.js';
  */
 
 const PROMPT_RANGE = 4.0;
+// Tall enough to clear the stage's terrain from anywhere on it.
+const BEACON_HEIGHT = 70;
+// How close the player has to get before a resting orb starts homing. Generous
+// on purpose: walking past the chest you just opened has to collect the item.
+const ORB_SEEK_RANGE = 4.5;
 
 // Snapshot discriminator so a client can build the right view for a replicated
 // interactable. Values are wire constants — append, never renumber.
@@ -299,7 +304,34 @@ class Teleporter extends Interactable {
     );
     this.pillar.position.y = 1.5;
 
-    this.group.add(base, this.ring, this.pillar);
+    // Findability. The teleporter is one prop on a 220m stage and the whole
+    // objective is to go and press E on it, so it carries a beacon column tall
+    // enough to clear the terrain between here and anywhere, plus a static
+    // collar ring so the base still reads once you are close.
+    //
+    // Both are opaque emissive MeshStandardMaterials on purpose. A transparent
+    // or additive material is a new shader permutation, and a PointLight would
+    // change numPointLights and fork *every* program in the scene; these reuse
+    // the permutation the pillar and the charge ring already compiled. Bloom
+    // does the glow work for free because the emissive runs well above 1.
+    this.beacon = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.55, 0.9, BEACON_HEIGHT, 8, 1, true),
+      new THREE.MeshStandardMaterial({
+        color: 0x0a2b3a, emissive: 0x2ad0ff, emissiveIntensity: 2.4, roughness: 0.4,
+      })
+    );
+    this.beacon.position.y = BEACON_HEIGHT * 0.5 + 2.0;
+
+    this.collar = new THREE.Mesh(
+      new THREE.TorusGeometry(3.4, 0.22, 6, 28),
+      new THREE.MeshStandardMaterial({
+        color: 0x102a36, emissive: 0x2ad0ff, emissiveIntensity: 1.6, roughness: 0.3,
+      })
+    );
+    this.collar.rotation.x = -Math.PI / 2;
+    this.collar.position.y = 0.12;
+
+    this.group.add(base, this.ring, this.pillar, this.beacon, this.collar);
   }
 
   available() { return this.state === 'idle'; }
@@ -323,6 +355,17 @@ class Teleporter extends Interactable {
     this.ring.rotation.z += dt * (active ? 1.4 : 0.2);
     const pulse = active ? 1.2 + Math.sin(this.ctx.time * 6) * 0.5 : 0.4;
     this.pillar.material.emissiveIntensity = this.state === 'complete' ? 2.2 : pulse;
+
+    // The beacon breathes while the teleporter is waiting to be found, burns
+    // steady while it charges, and dims to a marker once the event is over so a
+    // cleared stage stops shouting. Emissive intensity only — the meshes are
+    // never toggled, so the draw count and the shader cache both stay put.
+    const breathe = 0.5 + Math.sin(this.ctx.time * 1.6) * 0.5;
+    const k = this.state === 'complete' ? 0.25
+      : active ? 1.15
+      : 0.7 + breathe * 0.6;
+    this.beacon.material.emissiveIntensity = 2.4 * k;
+    this.collar.material.emissiveIntensity = 1.6 * k;
   }
 }
 
@@ -421,7 +464,7 @@ class ItemOrb {
     } else if (this.state === 'hover') {
       this.hover += h;
       this.position.y = this.hoverBase + Math.sin(this.hover * 2.2) * 0.18;
-      if (player?.alive && player.position.distanceToSquared(this.position) < 9) this.state = 'seek';
+      if (player?.alive && player.position.distanceToSquared(this.position) < ORB_SEEK_RANGE * ORB_SEEK_RANGE) this.state = 'seek';
     } else if (this.state === 'seek' && player) {
       // Accelerating homing so the pickup reads as being *pulled* in.
       const dir = TMP.copy(player.position).setY(player.position.y + 1).sub(this.position);
@@ -531,6 +574,11 @@ export class Interactables {
   }
 
   spawnOrb(position, itemId, arc = 1.5) {
+    // A dud orb is worse than no orb: it plays the whole pop-and-fly animation
+    // and then gives nothing, which reads exactly like "the chest ate my gold".
+    // The only way to get here with a bad id is a roll that had no pool, so
+    // fail visibly at the source instead.
+    if (!itemId || !ITEM_BY_ID.has(itemId)) return null;
     const orb = new ItemOrb(this.ctx, position, itemId, arc);
     this.orbs.push(orb);
     this.root.add(orb.group);

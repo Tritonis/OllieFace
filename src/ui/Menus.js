@@ -48,7 +48,9 @@ export class Menus {
 
     // Losing pointer lock mid-run means the player hit Esc — pause for them.
     document.addEventListener('pointerlockchange', () => {
-      if (!document.pointerLockElement && !this.screen && !ctx.player?.dead) {
+      // Player exposes `alive`, never `dead`. `!== false` keeps the original
+      // behaviour for the window before Player has published itself.
+      if (!document.pointerLockElement && !this.screen && ctx.player?.alive !== false) {
         this.open('pause');
       }
     });

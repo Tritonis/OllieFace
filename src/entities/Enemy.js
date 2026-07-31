@@ -730,8 +730,19 @@ export class Enemy {
       ctx.pipeline?.addShake?.(0.22);
     }
     if (this.alive) {
-      this.health = 0;
-      this.onDeath(null);
+      // Route the self-kill through Combat rather than calling onDeath directly.
+      // Combat owns the kill path, and bypassing it meant a suiciding unit
+      // emitted no `kill` event — so it never counted toward the run's kill
+      // tally, never triggered on-kill item procs, and (once kill rewards
+      // existed) paid no gold. Credited to the player, since the pest died
+      // completing an attack on them.
+      const combat = ctx.combat;
+      if (combat?.applyDamage) {
+        combat.applyDamage(this, this.health, { source: ctx.player, procCoefficient: 0 });
+      } else {
+        this.health = 0;
+        this.onDeath(null);
+      }
     }
   }
 

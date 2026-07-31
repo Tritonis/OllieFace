@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { PALETTE, getMaterials } from './Materials.js';
+import { BIOMES, getMaterials } from './Materials.js';
 import { clamp, lerp, invLerp, smoothstep } from '../core/MathUtil.js';
 
 /**
@@ -76,10 +76,32 @@ export const STAGE_HALF = 110;          // 220 x 220 world units
 const SEGMENTS = 160;                    // 1.375u facets — big enough to read as low-poly
 const STEP = (STAGE_HALF * 2) / SEGMENTS;
 
+/**
+ * Sub-seed stream. Stage generation must be a pure function of (seed, index) —
+ * see NETCODE.md: the host consumes ctx.rng for loot and spawns and a client
+ * does not, so any terrain drawn off the shared gameplay stream puts the two
+ * players on different worlds by stage 2. This takes an integer and produces
+ * the eight noise seeds from it, touching nothing shared.
+ */
+function subSeeds(seed) {
+  let s = (seed >>> 0) || 1;
+  return () => {
+    s ^= s << 13; s >>>= 0;
+    s ^= s >>> 17;
+    s ^= s << 5; s >>>= 0;
+    return s;
+  };
+}
+
 export class Terrain {
-  constructor(rng) {
-    // Draw the seeds from ctx.rng so the whole stage is reproducible from ctx.seed.
-    const s = () => (rng.next() * 0xffffffff) >>> 0;
+  /**
+   * @param {number} seed   integer, derived from (ctx.seed, stageIndex)
+   * @param {object} biome  entry from BIOMES; supplies palette and shape params
+   */
+  constructor(seed, biome = BIOMES[0]) {
+    this.biome = biome;
+    this.P = biome.terrain.shape;
+    const s = subSeeds(seed);
     this.nBase = makeSimplex2D(s());
     this.nRidge = makeSimplex2D(s());
     this.nWarp = makeSimplex2D(s());
@@ -118,31 +140,40 @@ export class Terrain {
     return sum / norm * 2 - 1;
   }
 
-  /** Analytic height. sampleHeight() interpolates the baked grid of this. */
+  /**
+   * Analytic height. sampleHeight() interpolates the baked grid of this.
+   *
+   * The stage's character is entirely in `this.P` (the biome's shape block):
+   * amplitude, ridge weight, how hard the terraces bite, how deep and how wide
+   * the basin is, and how tall the bounding massif stands. The passes and their
+   * order are fixed, because the order is what makes the result read as a place.
+   */
   heightAt(x, z) {
+    const P = this.P;
     // Domain warp first: without it every ridge runs along a lattice axis and
     // the whole stage reads as a generated heightmap rather than a place.
-    const wu = this.fbm(this.nWarp, x * 0.0072, z * 0.0072, 3);
-    const wv = this.fbm(this.nWarp2, x * 0.0072 + 51.3, z * 0.0072 - 17.7, 3);
-    const wx = x + wu * 34;
-    const wz = z + wv * 34;
+    const wf = P.warpFreq;
+    const wu = this.fbm(this.nWarp, x * wf, z * wf, 3);
+    const wv = this.fbm(this.nWarp2, x * wf + 51.3, z * wf - 17.7, 3);
+    const wx = x + wu * P.warp;
+    const wz = z + wv * P.warp;
 
     let h = 0;
-    h += this.fbm(this.nBase, wx * 0.0068, wz * 0.0068, 4) * 26;   // landform
-    h += this.ridged(this.nRidge, wx * 0.019, wz * 0.019, 3) * 8;  // spines
-    h += this.fbm(this.nDetail, wx * 0.075, wz * 0.075, 3) * 1.9;  // grit
+    h += this.fbm(this.nBase, wx * P.baseFreq, wz * P.baseFreq, 4) * P.baseAmp;        // landform
+    h += this.ridged(this.nRidge, wx * P.ridgeFreq, wz * P.ridgeFreq, 3) * P.ridgeAmp; // spines
+    h += this.fbm(this.nDetail, wx * P.detailFreq, wz * P.detailFreq, 3) * P.detailAmp;// grit
 
     const r = Math.hypot(x, z) / this.half;
 
     // Playable basin — the arena needs a readable floor, not more ridges.
-    const basin = 1 - smoothstep(invLerp(0.04, 0.5, r));
-    h = lerp(h, h * 0.28 - 3.0, basin * 0.82);
+    const basin = 1 - smoothstep(invLerp(0.04, P.basinRadius, r));
+    h = lerp(h, h * P.basinFlatten + P.basinDrop, basin * P.basinStrength);
 
     // Terracing is masked so shelves appear in bands rather than everywhere,
     // and damped inside the basin — 3m risers in the arena floor would be a
     // navigation problem, not a silhouette.
-    const tmask = clamp(this.fbm(this.nMask, wx * 0.011 + 90, wz * 0.011 - 40, 2) * 2.2 + 0.45, 0, 1);
-    h = lerp(h, terrace(h, 3.0, 0.2), tmask * 0.85 * (1 - basin * 0.8));
+    const tmask = clamp(this.fbm(this.nMask, wx * 0.011 + 90, wz * 0.011 - 40, 2) * 2.2 + P.terraceBias, 0, 1);
+    h = lerp(h, terrace(h, P.terraceStep, P.terraceBlend), tmask * P.terraceStrength * (1 - basin * 0.8));
 
     // Bounding cliff walls. Squared falloff keeps the transition out of the
     // play area while still climbing fast enough to be unclimbable.
@@ -152,8 +183,8 @@ export class Terrain {
     // below the top of a gameplay frame. At the old height the massif occluded
     // the entire sky dome from anywhere in the basin, and what every screenshot
     // read as "flat sky" was in fact this wall saturated in fog.
-    const wall = smoothstep(invLerp(0.82, 1.02, r));
-    h += wall * wall * (46 + this.fbm(this.nWall, x * 0.026, z * 0.026, 3) * 22);
+    const wall = smoothstep(invLerp(P.wallStart, 1.02, r));
+    h += wall * wall * (P.wallBase + this.fbm(this.nWall, x * 0.026, z * 0.026, 3) * P.wallVar);
 
     return h;
   }
@@ -164,20 +195,39 @@ export class Terrain {
     const step = this.step;
 
     const grid = new Float32Array((N + 1) * (N + 1));
+    // The two vertex-colour bands are placed against the *measured* relief of
+    // the play area rather than against absolute world heights, so a biome that
+    // doubles its amplitude doesn't push its whole floor out of the sand band
+    // and lose the colour script. Only the inner region counts — the bounding
+    // massif's 40-80u is not somewhere the palette has to describe.
+    //
+    // 5th/95th percentile, not min/max: a single ravine or spire is enough to
+    // stretch a min/max range by 40%, and the bands would then slide off the
+    // ground the player actually walks on. Percentiles track the bulk of the
+    // surface, which is what the palette is describing.
+    const bandR2 = (0.62 * half) * (0.62 * half);
+    const sample = [];
     for (let j = 0; j <= N; j++) {
       const z = -half + j * step;
       for (let i = 0; i <= N; i++) {
-        grid[j * (N + 1) + i] = this.heightAt(-half + i * step, z);
+        const x = -half + i * step;
+        const y = this.heightAt(x, z);
+        grid[j * (N + 1) + i] = y;
+        if ((i & 1) === 0 && (j & 1) === 0 && x * x + z * z <= bandR2) sample.push(y);
       }
     }
     this.grid = grid;
+    sample.sort((a, b) => a - b);
+    const p = (q) => sample[clamp(Math.round(q * (sample.length - 1)), 0, sample.length - 1)] || 0;
+    this._bandLo = p(0.05);
+    this._bandSpan = Math.max(1e-3, p(0.95) - this._bandLo);
 
     const triCount = N * N * 2;
     const pos = new Float32Array(triCount * 9);
     const col = new Float32Array(triCount * 9);
     let pi = 0, ci = 0;
 
-    const P = PALETTE.terrain;
+    const P = this.biome.terrain;
     const cRock = new THREE.Color(P.rock);
     const cCliff = new THREE.Color(P.cliff);
     const cMoss = new THREE.Color(P.moss);
@@ -207,7 +257,7 @@ export class Terrain {
       }
     };
 
-    this._pal = { cRock, cCliff, cMoss, cSand };
+    this._pal = { cRock, cCliff, cMoss, cSand, sandAmt: P.sandAmt, mossAmt: P.mossAmt };
 
     for (let j = 0; j < N; j++) {
       for (let i = 0; i < N; i++) {
@@ -246,19 +296,29 @@ export class Terrain {
   }
 
   _faceColor(y, slope, x, z, out) {
-    const { cRock, cCliff, cMoss, cSand } = this._pal;
+    const { cRock, cCliff, cMoss, cSand, sandAmt, mossAmt } = this._pal;
     let r = cRock.r, g = cRock.g, b = cRock.b;
 
+    // Height normalised against the measured play-area relief (see build()), so
+    // the band edges below are the same *fractions* of every biome's range.
+    //
+    // The constants are the reference biome's hand-tuned absolute bands divided
+    // through by its own measured band (lo -16.15, span 24.30): sand -7..2.5
+    // becomes 0.38..0.77, moss -6..0 becomes 0.42..0.66, and moss's upper
+    // cutoff 30..52 becomes 1.90..2.80. Same look, in a unit that survives a
+    // change of amplitude.
+    const yn = (y - this._bandLo) / this._bandSpan;
+
     // Sand pools in the low basin.
-    const sandT = (1 - invLerp(-7, 2.5, y)) * (1 - invLerp(0.42, 0.62, slope)) * 0.9;
+    const sandT = (1 - invLerp(0.38, 0.77, yn)) * (1 - invLerp(0.42, 0.62, slope)) * sandAmt;
     r = lerp(r, cSand.r, sandT); g = lerp(g, cSand.g, sandT); b = lerp(b, cSand.b, sandT);
 
     // Moss holds on flat-to-gentle ground in the mid band, patchy via noise.
     // Coverage widened and the patch bias lifted: at the old weights the one
     // green in the palette never covered enough facets to be visible at all.
     const patch = clamp(this.fbm(this.nTint, x * 0.026, z * 0.026, 3) * 2.4 + 0.72, 0, 1);
-    const mossT = (1 - invLerp(0.30, 0.62, slope)) * invLerp(-6, 0, y) *
-                  (1 - invLerp(30, 52, y)) * patch;
+    const mossT = clamp((1 - invLerp(0.30, 0.62, slope)) * invLerp(0.42, 0.66, yn) *
+                  (1 - invLerp(1.90, 2.80, yn)) * patch * mossAmt, 0, 1);
     r = lerp(r, cMoss.r, mossT); g = lerp(g, cMoss.g, mossT); b = lerp(b, cMoss.b, mossT);
 
     // Anything steep is bare rock face — and `cliff` is now the cool violet,
@@ -310,6 +370,8 @@ export class Terrain {
 
   dispose() {
     this.mesh?.geometry.dispose();
+    this.mesh = null;
+    this.grid = null;
   }
 }
 
