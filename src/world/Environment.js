@@ -33,10 +33,28 @@ const SUN_DISTANCE = 150;
 // variance blur then erased every terrace edge, which is why the terrain read
 // as flat. 80 into a 4k map is 0.039 u/texel — 3x sharper before the blur.
 const SHADOW_EXT = 80;
-const SHADOW_MAP = 4096;
-// World-space texel size; the frustum centre snaps to it so the map does not
-// crawl under the camera as the player walks.
-const SHADOW_SNAP = (SHADOW_EXT * 2) / SHADOW_MAP;
+
+/**
+ * Shadow budget per quality tier.
+ *
+ * This was a flat 4096 VSM for every machine, and it was by a wide margin the
+ * most expensive thing in the frame: measured in isolation it cost ~85ms on an
+ * Intel UHD 630 — more than the entire rest of the pipeline put together —
+ * because VSM's variance blur is fill-bound over the whole map, and 4096²
+ * is sixteen times the fill of 1024².
+ *
+ * The extent shrinks alongside the map so the low tiers keep some of the texel
+ * density the sharp edge depends on, rather than only losing resolution. VSM is
+ * kept wherever it is affordable because the soft raking edge is the look;
+ * only the bottom tier falls back to PCF, where the map is small enough that
+ * VSM's blur would erase the edge anyway.
+ */
+const SHADOW_TIERS = [
+  { map: 1024, ext: 55, vsm: false, radius: 1.0, blur: 4 },  // LOW
+  { map: 2048, ext: 70, vsm: true, radius: 1.4, blur: 6 },  // MEDIUM
+  { map: 3072, ext: 80, vsm: true, radius: 1.6, blur: 8 },  // HIGH
+  { map: 4096, ext: 80, vsm: true, radius: 1.6, blur: 8 },  // ULTRA
+];
 
 const DUST_COUNT = 1400;
 const DUST_BOX = 90; // motes wrap inside this cube around the camera
@@ -50,6 +68,7 @@ export class Environment {
     this._buildSky(ctx);
     this._buildLights(scene);
     this._buildDust(ctx);
+    this.applyQuality(ctx.pipeline?.quality ?? 2);
 
     // 0.0072 saturated at 91% by the stage's own 220u extent, so the back half
     // of the level carried under 10% of its own colour and every silhouette out
@@ -57,6 +76,62 @@ export class Environment {
     // but the far terrain keeps enough value to separate from the sky.
     scene.fog = new THREE.FogExp2(PALETTE.fog, 0.0036);
     ctx.environment = this; // convenience handle; not part of the ctx contract
+  }
+
+  /**
+   * Size the shadow map to the quality tier. Called at init and again whenever
+   * the settings screen moves quality.
+   *
+   * The map is disposed rather than resized: `mapSize` is only read when the
+   * render target is allocated, so writing it on a live shadow changes nothing
+   * until the old target is thrown away.
+   */
+  applyQuality(quality) {
+    const t = SHADOW_TIERS[Math.max(0, Math.min(SHADOW_TIERS.length - 1, quality | 0))];
+    if (this._shadowTier === t) return;
+    const prev = this._shadowTier;
+    this._shadowTier = t;
+
+    const sh = this.key.shadow;
+    sh.map?.dispose();
+    sh.map = null;
+    sh.mapSize.set(t.map, t.map);
+    sh.camera.left = -t.ext; sh.camera.right = t.ext;
+    sh.camera.top = t.ext; sh.camera.bottom = -t.ext;
+    sh.camera.updateProjectionMatrix();
+    sh.radius = t.radius;
+    sh.blurSamples = t.blur;
+    sh.needsUpdate = true;
+
+    // World-space texel size, so `update()` can snap the frustum centre to a
+    // whole texel and stop the map crawling as the player walks.
+    this.shadowSnap = (t.ext * 2) / t.map;
+
+    const renderer = this.ctx.pipeline?.renderer;
+    if (renderer) {
+      const type = t.vsm ? THREE.VSMShadowMap : THREE.PCFSoftShadowMap;
+      if (renderer.shadowMap.type !== type) {
+        renderer.shadowMap.type = type;
+        // The shadow type is part of every lit material's program cache key, so
+        // changing it after materials exist leaves them running the old sampler
+        // against a target that no longer matches. Only force the recompile
+        // when the type actually moved and something was already built — doing
+        // it on the init call would throw away the prewarm.
+        if (prev) this._invalidateMaterials();
+      }
+      renderer.shadowMap.needsUpdate = true;
+    }
+  }
+
+  /** Force a shader rebuild across the scene. Expensive and deliberately rare —
+   *  only a shadow-type change needs it. */
+  _invalidateMaterials() {
+    this.ctx.scene.traverse((o) => {
+      const m = o.material;
+      if (!m) return;
+      if (Array.isArray(m)) { for (const mm of m) mm.needsUpdate = true; }
+      else m.needsUpdate = true;
+    });
   }
 
   /**
@@ -187,19 +262,12 @@ export class Environment {
     key.target.position.set(0, 0, 0);
     key.castShadow = true;
     const sh = key.shadow;
-    sh.mapSize.set(SHADOW_MAP, SHADOW_MAP);
-    sh.camera.left = -SHADOW_EXT; sh.camera.right = SHADOW_EXT;
-    sh.camera.top = SHADOW_EXT; sh.camera.bottom = -SHADOW_EXT;
     sh.camera.near = 1;
     sh.camera.far = SUN_DISTANCE + 260;
     // VSM: bias is handled by the variance itself; normalBias is what kills
     // the peter-panning on the big faceted cliff walls.
     sh.bias = 0;
     sh.normalBias = 0.25;
-    // Tight: the whole point of the sharper map is a readable shadow *edge*.
-    sh.radius = 1.6;
-    sh.blurSamples = 8;
-    sh.camera.updateProjectionMatrix();
     scene.add(key);
     scene.add(key.target);
     this.key = key;
@@ -283,8 +351,9 @@ export class Environment {
     // Slide the (small) shadow frustum along with the action. Snapped to a
     // whole shadow texel so the map does not shimmer as the centre moves.
     const focus = ctx.player?.position ?? cam.position;
-    const fx = Math.round(focus.x / SHADOW_SNAP) * SHADOW_SNAP;
-    const fz = Math.round(focus.z / SHADOW_SNAP) * SHADOW_SNAP;
+    const snap = this.shadowSnap;
+    const fx = Math.round(focus.x / snap) * snap;
+    const fz = Math.round(focus.z / snap) * snap;
     this.key.target.position.set(fx, 0, fz);
     // this.sunDir, not the module default: the biome moves the sun.
     const sd = this.sunDir;

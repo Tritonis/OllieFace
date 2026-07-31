@@ -7,6 +7,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { GradeShader } from '../shaders/GradeShader.js';
+import { detectGpu } from './GpuTier.js';
 import { prewarmShaders } from '../fx/Prewarm.js';
 import { clamp, damp } from './MathUtil.js';
 
@@ -22,6 +23,40 @@ const BLOOM = { strength: 0.34, radius: 0.40, threshold: 1.25, clamp: 8.0 };
 
 /** Ceiling on drawing-buffer pixels. See `_applyPixelRatio`. */
 const PIXEL_BUDGET = 5.0e6;
+
+/**
+ * Adaptive resolution. Every pass in this chain is fill-rate bound, so the
+ * drawing-buffer scale is the one knob that moves all of them at once and the
+ * only one that can rescue a GPU we failed to predict.
+ *
+ * The thresholds straddle a 60Hz vsync tick deliberately. On a machine holding
+ * 60fps the frame time sits at ~16.7ms, below `UP_MS`, so the controller walks
+ * back to full resolution and parks there — adaptive scaling must be invisible
+ * when it isn't needed. Only a frame time above `DOWN_MS` (~45fps) pulls it in.
+ */
+const ADAPT = {
+  DOWN_MS: 22,     // slower than this and we shed pixels
+  UP_MS: 17.5,     // faster than this and we can afford to give some back
+  TARGET_MS: 20,   // what a correction aims for — inside the deadband, not on its edge
+  MIN: 0.55,       // below this SMAA can no longer hide the upscale
+  MAX: 1.0,
+  STEP: 0.05,
+  // Reallocating every render target is itself a hitch, so changes are rate
+  // limited and only committed once a trend has held for a while.
+  INTERVAL: 0.75,
+  SAMPLES: 30,
+  // Seconds before a scale that proved too slow is worth trying again.
+  //
+  // Without this the controller cannot settle. Under vsync the frame time is
+  // quantised to the refresh interval — 16.7ms or 25ms on a 60Hz panel, with
+  // nothing in between — so the deadband between UP_MS and DOWN_MS is a range
+  // the hardware can never report. Every scale is therefore either "too fast,
+  // climb" or "too slow, drop", and the controller oscillates between two
+  // adjacent steps indefinitely, which is far more visible than simply sitting
+  // at the lower one. Remembering the failure makes the lower step stable, and
+  // the timeout still lets it climb back once a fight ends.
+  RETRY: 12,
+};
 
 /**
  * Cap the bright-pass input of an UnrealBloomPass. Without this, one additive
@@ -81,6 +116,58 @@ export class RenderPipeline {
     this.shakeScale = 1;
     this.ctx = null;
     this._warmed = false;
+
+    // Adaptive resolution state. `_resScale` multiplies the pixel ratio; it is
+    // the controller's only output and everything else here feeds it.
+    this._resScale = 1;
+    this._adaptOn = true;
+    this._adaptClock = 0;
+    this._frameMs = [];
+    // Lowest scale observed to miss the target, and how long ago. Infinity
+    // means nothing has failed yet, so the full range is available.
+    this._failedAt = Infinity;
+    this._sinceFail = 0;
+
+    // Filled in by `detect()` once there is a GL context to interrogate.
+    this.gpu = null;
+  }
+
+  /**
+   * Interrogate the adapter and, unless the caller pinned a quality, adopt the
+   * tier it can actually carry. Split out of the constructor because callers
+   * need the chance to override the result before `build()`.
+   */
+  detect({ pinned = false } = {}) {
+    this.gpu = detectGpu(this.renderer, QUALITY);
+    if (!pinned) this.quality = this.gpu.quality;
+    // An integrated GPU cannot absorb a bad guess, so it starts already scaled
+    // in rather than spending its first seconds visibly stuttering down to it.
+    if (this.gpu.integrated) this._resScale = 0.75;
+    this._applyPixelRatio();
+    return this.gpu;
+  }
+
+  /**
+   * Re-apply everything that depends on the quality tier.
+   *
+   * The settings screen previously poked `renderer.setPixelRatio` and a couple
+   * of `pass.enabled` flags directly, which meant the two most expensive things
+   * in the frame — the shadow map and the soft-particle depth prepass — never
+   * responded to the quality setting at all. Everything tier-dependent is
+   * routed through here so that cannot drift again.
+   */
+  setQuality(q) {
+    if (q === this.quality) return;
+    this.quality = q;
+    const P = this.passes;
+    if (P.gtao) P.gtao.enabled = q >= QUALITY.MEDIUM;
+    if (P.smaa) P.smaa.enabled = q >= QUALITY.MEDIUM;
+    // Soft particles cost a whole extra scene rasterisation; the low tier
+    // trades the depth fade for that frame time.
+    const particles = this.ctx?.vfx?.particles;
+    if (particles) particles.setSoft(q >= QUALITY.MEDIUM);
+    this.ctx?.environment?.applyQuality?.(q);
+    this.resize();
   }
 
   build(scene, camera) {
@@ -101,8 +188,16 @@ export class RenderPipeline {
     composer.addPass(render);
     this.passes.render = render;
 
-    if (quality >= QUALITY.MEDIUM) {
+    // GTAO and SMAA are always constructed and toggled via `enabled`, never
+    // conditionally added. The settings screen can move quality in both
+    // directions at runtime, and a pass that was never built cannot be turned
+    // back on — which is why raising quality mid-session used to silently do
+    // nothing. EffectComposer skips disabled passes and re-picks the last
+    // enabled one as the presenting pass, so this costs a render target and no
+    // frame time.
+    {
       const gtao = new GTAOPass(scene, camera, size.x, size.y);
+      gtao.enabled = quality >= QUALITY.MEDIUM;
       gtao.output = GTAOPass.OUTPUT.Default;
       gtao.updateGtaoMaterial({
         // The stage is ~220 units across; sub-metre radii produce no visible
@@ -145,8 +240,9 @@ export class RenderPipeline {
     composer.addPass(grade);
     this.passes.grade = grade;
 
-    if (quality >= QUALITY.MEDIUM) {
+    {
       const smaa = new SMAAPass();
+      smaa.enabled = quality >= QUALITY.MEDIUM;
       composer.addPass(smaa);
       this.passes.smaa = smaa;
     }
@@ -172,14 +268,93 @@ export class RenderPipeline {
    * 1080p native, and SMAA resolves the upscale cleanly.
    */
   _applyPixelRatio() {
-    const max = this.quality >= QUALITY.HIGH ? 2 : 1.5;
+    const max = this.quality >= QUALITY.HIGH ? 2 : this.quality >= QUALITY.MEDIUM ? 1.5 : 1;
     const w = innerWidth, h = innerHeight;
     let ratio = Math.min(devicePixelRatio, max);
     if (w > 0 && h > 0) {
       const budget = Math.sqrt(PIXEL_BUDGET / (w * h));
       ratio = Math.min(ratio, Math.max(1, budget));
     }
-    this.renderer.setPixelRatio(ratio);
+    // The adaptive scale is applied last and is allowed to go below 1: the
+    // clamps above exist to stop the ratio climbing, not to stop it falling.
+    this.renderer.setPixelRatio(ratio * this._resScale);
+  }
+
+  /**
+   * Adaptive-resolution controller.
+   *
+   * Reads the real frame delta rather than a GPU timer query: every pass here
+   * is fill-rate bound and the driver blocks in the render call, so wall time
+   * between frames tracks GPU cost closely enough to steer by, and needs no
+   * extension that may not be present.
+   *
+   * Only the median of a window is acted on. A single 80ms frame is a shader
+   * compile or a GC, and dropping resolution in response to one would mean the
+   * resolution visibly lurched every time the player entered a new area.
+   */
+  _adapt(dt) {
+    if (!this._adaptOn) return;
+    // Never adapt behind a menu. The overlay screens sit on a full-screen
+    // backdrop blur that costs more than the game does on weak hardware, so
+    // sampling there measures the pause menu and then hands gameplay a
+    // resolution chosen for it — booting straight to the floor on the title
+    // screen before the player has seen a single gameplay frame.
+    if (this.ctx?.paused) { this._frameMs.length = 0; return; }
+    // Ignore obvious non-frames: tab restores, breakpoints, the first frame
+    // after a stage load. They are not evidence about steady-state cost.
+    const ms = dt * 1000;
+    if (ms > 0 && ms < 500) this._frameMs.push(ms);
+
+    this._adaptClock += dt;
+    if (this._adaptClock < ADAPT.INTERVAL || this._frameMs.length < ADAPT.SAMPLES) return;
+    this._adaptClock = 0;
+
+    const sorted = this._frameMs.slice().sort((a, b) => a - b);
+    const median = sorted[sorted.length >> 1];
+    this._frameMs.length = 0;
+
+    this._sinceFail += ADAPT.INTERVAL;
+
+    let next = this._resScale;
+    if (median > ADAPT.DOWN_MS) {
+      // Solve for the scale directly rather than stepping toward it. Every pass
+      // in this chain is fill-bound, so cost goes with the pixel count and the
+      // pixel count goes with the square of the scale — meaning the scale that
+      // hits the target is the current one times sqrt(target / measured).
+      //
+      // Stepping instead of solving is what a fixed decrement gets wrong at
+      // both ends: it takes twenty seconds to rescue a 5fps frame, and it
+      // overshoots by a whole step when the miss was one percent. This lands on
+      // the right scale in one move either way.
+      next = this._resScale * Math.sqrt(ADAPT.TARGET_MS / median);
+      // This scale could not hold the target. Don't come back to it.
+      this._failedAt = this._resScale;
+      this._sinceFail = 0;
+    } else if (median < ADAPT.UP_MS) {
+      // Give pixels back one step at a time. Recovering slowly is correct:
+      // overshooting up just re-triggers the drop and oscillates.
+      next += ADAPT.STEP;
+      // Refuse to climb back into a scale already known to be too slow until
+      // it has had time to become wrong — the fight that caused it may be over.
+      if (next >= this._failedAt - 1e-6 && this._sinceFail < ADAPT.RETRY) return;
+    } else {
+      return; // inside the deadband — leave it alone
+    }
+
+    next = Math.max(ADAPT.MIN, Math.min(ADAPT.MAX, Math.round(next / ADAPT.STEP) * ADAPT.STEP));
+    if (Math.abs(next - this._resScale) < 1e-3) return;
+    this._resScale = next;
+    this.resize();
+  }
+
+  /** Turn adaptive resolution off and pin the scale (used by the capture
+   *  harness — a screenshot tool must control its own resolution). */
+  setAdaptive(on, scale = 1) {
+    this._adaptOn = on;
+    if (!on) {
+      this._resScale = scale;
+      this.resize();
+    }
   }
 
   /** The live settings object, if the game context has been published yet. */
@@ -196,6 +371,7 @@ export class RenderPipeline {
   }
 
   update(dt) {
+    this._adapt(dt);
     this.shakeTime += dt;
     this.shake = damp(this.shake, 0, 0.995, dt);
     // Explosions add aberration with no ceiling of their own; cap it here so

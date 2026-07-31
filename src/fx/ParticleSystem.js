@@ -84,6 +84,25 @@ export class ParticleSystem {
     if (this.soft) this._ensureDepthTarget();
   }
 
+  /**
+   * Toggle the depth fade, releasing the prepass target when it goes off.
+   *
+   * Worth a method rather than a bare flag because the prepass is a *whole
+   * extra rasterisation of the scene* — measured at ~28ms of a 159ms frame on
+   * an Intel UHD 630 — so the low tier turning it off has to actually stop
+   * paying for it, target included.
+   */
+  setSoft(on) {
+    if (on === this.soft) return;
+    this.soft = on;
+    if (on) {
+      this._ensureDepthTarget();
+    } else {
+      this.depthRT?.dispose();
+      this.depthRT = null;
+    }
+  }
+
   _makeLayer(name, capacity, additive, intensity) {
     const quad = new THREE.PlaneGeometry(1, 1);
     const geo = new THREE.InstancedBufferGeometry();

@@ -34,9 +34,17 @@ const OFFSCREEN = process.env.CAPTURE_VISIBLE
   ? []
   : ['--window-position=-2400,-2400', '--window-size=1600,900'];
 
+// `--force_high_performance_gpu` is load-bearing on a laptop with switchable
+// graphics. Without it Chromium brings the GPU process up on the integrated
+// adapter and stays there — the context-level `powerPreference:
+// 'high-performance'` is decided per-process, not per-context, so it cannot
+// move it. This probe measured an Intel UHD 630 at 5.8fps for months while the
+// machine had an idle GTX 1660 Ti that runs the same frame at 80fps, and every
+// optimisation decision made from those numbers was aimed at the wrong GPU.
 const browser = await chromium.launch({
   headless: false,
-  args: ['--use-angle=d3d11', '--ignore-gpu-blocklist', '--disable-frame-rate-limit', ...OFFSCREEN],
+  args: ['--use-angle=d3d11', '--ignore-gpu-blocklist', '--force_high_performance_gpu',
+         '--disable-frame-rate-limit', ...OFFSCREEN],
 });
 const page = await browser.newPage({ viewport: { width: 1600, height: 900 }, deviceScaleFactor: 1 });
 page.on('pageerror', (e) => console.log('PAGE ERROR:', e.message));

@@ -14,6 +14,11 @@ import { ITEMS } from '../data/items.js';
 export function installHarness(ctx) {
   const { camera } = ctx;
 
+  // Captures and perf runs must control their own resolution. Adaptive scaling
+  // would otherwise quietly change the drawing buffer mid-measurement, which
+  // makes a screenshot non-reproducible and a benchmark meaningless.
+  ctx.pipeline?.setAdaptive?.(false, 1);
+
   // Menus live inside HUD rather than on ctx, and every gameplay scenario needs
   // the title screen gone first — it pauses the sim and blurs the whole frame.
   const dismiss = () => {
@@ -159,6 +164,10 @@ export function installHarness(ctx) {
 
     // Escape hatches for ad-hoc inspection during the critic loop.
     dismiss,
+    setQuality: (q) => ctx.pipeline?.setQuality?.(q),
+    setAdaptive: (on, scale) => ctx.pipeline?.setAdaptive?.(on, scale),
+    resScale: () => ctx.pipeline?._resScale ?? 1,
+    gpu: () => ctx.gpu,
     setTime: (t) => { ctx.time = t; },
     freeCam: (x, y, z, tx, ty, tz) => {
       detach();

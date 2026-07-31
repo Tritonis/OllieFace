@@ -153,6 +153,12 @@ const browser = await chromium.launch({
     : [
         '--use-angle=d3d11', '--ignore-gpu-blocklist', '--enable-gpu-rasterization',
         '--disable-frame-rate-limit',
+        // On a switchable-graphics laptop Chromium otherwise brings its GPU
+        // process up on the integrated adapter and never leaves it, which had
+        // these captures rendering ULTRA on an Intel UHD 630 at ~9fps. The
+        // context-level `powerPreference` cannot override it — the decision is
+        // made per GPU process, before any page script runs.
+        '--force_high_performance_gpu',
         // Parked off the visible desktop. Headed is required for the GPU path,
         // but a window that flashes up on every verification run is hostile to
         // whoever is using the machine. Off-screen still composites on the GPU;

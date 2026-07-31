@@ -39,7 +39,7 @@ export class Menus {
     this.orbitAngle = 0;
     this.bannerTimer = 0;
 
-    this.settings = load();
+    this.settings = load(ctx.pipeline?.quality);
     ctx.settings = this.settings;
 
     this.build();
@@ -214,15 +214,12 @@ export class Menus {
       ctx.camera.updateProjectionMatrix();
     }
 
-    const p = ctx.pipeline;
-    if (p) {
-      const q = settings.quality;
-      p.renderer?.setPixelRatio(Math.min(devicePixelRatio, q >= 2 ? 2 : q >= 1 ? 1.5 : 1));
-      if (p.passes?.gtao) p.passes.gtao.enabled = q >= 1;
-      if (p.passes?.smaa) p.passes.smaa.enabled = q >= 1;
-      if (p.passes?.bloom) p.passes.bloom.strength = q >= 1 ? 0.62 : 0.34;
-      p.resize?.();
-    }
+    // One call, not a scattering of pokes. This used to set the pixel ratio and
+    // two pass flags by hand, which left the two most expensive things in the
+    // frame — the shadow map and the soft-particle depth prepass — completely
+    // unresponsive to the quality setting, and bypassed the pipeline's own
+    // pixel budget on top.
+    ctx.pipeline?.setQuality?.(settings.quality);
 
     const a = ctx.audio;
     if (a) {
@@ -360,18 +357,26 @@ function setAudio(audio, methods, prop, value) {
   else audio[prop] = value;
 }
 
-function load() {
+/**
+ * `fallbackQuality` is what the GPU probe recommended. It is used only when the
+ * player has never touched the quality control: a stored value is an explicit
+ * choice and detection must not overrule it, but shipping a hardcoded "High"
+ * default to an integrated GPU is how a machine ends up at 5fps on first run.
+ */
+function load(fallbackQuality) {
+  const base = { ...DEFAULTS };
+  if (Number.isFinite(fallbackQuality)) base.quality = fallbackQuality;
   try {
     const raw = localStorage.getItem(STORE_KEY);
-    if (!raw) return { ...DEFAULTS };
+    if (!raw) return base;
     const parsed = JSON.parse(raw);
-    const out = { ...DEFAULTS };
+    const out = base;
     for (const k of Object.keys(DEFAULTS)) {
       if (typeof parsed[k] === 'number' && Number.isFinite(parsed[k])) out[k] = parsed[k];
     }
     return out;
   } catch {
-    return { ...DEFAULTS };
+    return base;
   }
 }
 

@@ -13,10 +13,12 @@ import { Progression } from './systems/Progression.js';
 import { VFX } from './systems/VFX.js';
 import { Audio } from './systems/Audio.js';
 import { HUD } from './ui/HUD.js';
+import { maybeShowGpuNotice } from './ui/GpuNotice.js';
 
 const params = new URLSearchParams(location.search);
 const seed = Number(params.get('seed')) || (Math.random() * 0xffffffff) >>> 0;
-const quality = params.has('quality') ? Number(params.get('quality')) : QUALITY.HIGH;
+const pinnedQuality = params.has('quality');
+const quality = pinnedQuality ? Number(params.get('quality')) : QUALITY.HIGH;
 
 const canvas = document.getElementById('viewport');
 const engine = new Engine({ canvas, seed });
@@ -24,6 +26,16 @@ const ctx = engine.ctx;
 
 ctx.input = new Input(canvas);
 ctx.pipeline = new RenderPipeline(canvas, quality);
+// The pipeline reads `settings` and, on a quality change, reaches Environment
+// and the particle system through here. Nothing ever assigned it, so its own
+// `settings` getter had been falling through to the `globalThis.__GAME__`
+// escape hatch for its entire life.
+ctx.pipeline.ctx = ctx;
+
+// Ask the adapter what it is before any system reads `pipeline.quality` —
+// Environment sizes its shadow map off it during init, and that is the most
+// expensive single decision in the frame.
+ctx.gpu = ctx.pipeline.detect({ pinned: pinnedQuality });
 
 // Order matters: world before anything that queries it, presentation last.
 engine.add(new Environment());
@@ -57,6 +69,10 @@ ctx.camera.aspect = innerWidth / innerHeight;
 ctx.camera.updateProjectionMatrix();
 
 engine.start();
+
+// Only after the first frame is scheduled — the banner is advice, not a gate.
+// Suppressed under the harness so it can never land in a capture.
+if (!params.has('harness')) maybeShowGpuNotice(ctx.gpu);
 
 // Exposed for the Playwright screenshot harness (deterministic captures).
 globalThis.__GAME__ = { engine, ctx, THREE, seed };
