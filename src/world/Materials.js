@@ -305,8 +305,8 @@ const DETAIL_BASE = {
 const DETAIL = {
   // Ground. Broad, low, and the one surface the player is always inside the
   // near band of — so its fine octave is nearly a metre and it survives far out.
-  terrain:   { fine: 0.46, fineAmp: 1.00, coarse: 3.0, coarseAmp: 0.55, ridge: 0.0,
-               cavity: 0.70, rough: 0.10, uv: 0.95, uvFade: [55, 160], fineFade: 200 },
+  terrain:   { fine: 0.46, fineAmp: 1.15, coarse: 2.2, coarseAmp: 0.78, ridge: 0.0,
+               cavity: 0.70, rough: 0.20, uv: 0.95, uvFade: [55, 160], fineFade: 400 },
   // Natural rock: ridged, 30 cm pitting over a 1.6 m swell, no straight lines.
   rock:      { fine: 0.30, fineAmp: 1.20, coarse: 1.6, coarseAmp: 0.80, aniso: 1.25,
                ridge: 0.22, cavity: 0.55, rough: 0.14, uv: 0.90, uvFade: [40, 120], fineFade: 110 },
@@ -334,8 +334,8 @@ const DETAIL = {
                cavity: 0.34, rough: 0.26, joint: [0.90, 2.30, 1.55, 0.095],
                uv: 0.85, uvFade: [34, 100], fineFade: 110 },
   // Silt: fine wind ripples drawn out crosswind over broad dunes.
-  sand:      { fine: 0.25, fineAmp: 0.45, coarse: 2.2, coarseAmp: 0.60, aniso: 3.2,
-               cavity: 0.18, rough: 0.04, uv: 0.90, uvFade: [24, 70], fineFade: 60 },
+  sand:      { fine: 0.25, fineAmp: 0.65, coarse: 2.2, coarseAmp: 0.60, aniso: 3.2,
+               cavity: 0.38, rough: 0.12, uv: 0.90, uvFade: [24, 70], fineFade: 60 },
   // Grain. The finest and most anisotropic field in the build by a wide margin:
   // 60 mm across the grain, 0.54 m along it.
   wood:      { fine: 0.060, fineAmp: 1.30, coarse: 0.60, coarseAmp: 0.45, aniso: 9.0,
