@@ -35,14 +35,19 @@ const W = Number(args.width ?? 1600), H = Number(args.height ?? 900);
 const SOFTWARE = 'software' in args;
 const SHOT_TIMEOUT = Number(args.shotTimeout ?? (SOFTWARE ? 180000 : 30000));
 
-// Each scenario is driven entirely inside the page so it stays deterministic:
-// no wall-clock waits that could land mid-animation on a slow machine.
+// Each scenario is driven entirely inside the page. The scenario functions in
+// src/core/Harness.js are async: each owns its settle, composes its own frame,
+// and stops the engine loop before resolving. Adding a `settle()` here on top
+// of that is what put the shutter 0.63 s past the explosion it existed to
+// photograph — the wait belongs next to the effect that knows how long it
+// lives, not next to the screenshot call.
 //
-// The scenario functions in src/core/Harness.js are async: each owns its settle,
-// composes its own frame, and stops the engine loop before resolving. Adding a
-// `settle()` here on top of that is what put the shutter 0.63 s past the
-// explosion it existed to photograph — the wait belongs next to the effect that
-// knows how long it lives, not next to the screenshot call.
+// This comment used to claim "no wall-clock waits that could land mid-animation
+// on a slow machine", and it was wrong. Nothing here waits on the wall clock,
+// but the *engine* did: `Engine._frame` takes its delta from a `THREE.Clock`
+// and hands it to every `update()`, which is where every VFX lifetime is spent.
+// So a shutter counted in rendered frames still landed at a different point in
+// an effect's life on every run. See the `pinClock` call below.
 const SCENARIOS = [
   {
     name: '01-title',
@@ -185,24 +190,12 @@ const SCENARIOS = [
   },
 ];
 
-/**
- * Advance `frames` rendered frames so captures land on a known state.
- *
- * Capped by wall time as well: headless runs on SwiftShader, where a full
- * GTAO+bloom+SMAA frame at 1080p can take ~1s. Waiting on frame count alone
- * turns an 8-scenario run into 20 minutes of nothing.
- */
-async function settle(page, frames, maxMs = 20000) {
-  await page.evaluate(
-    ([n, cap]) => new Promise((res) => {
-      let i = 0;
-      const deadline = performance.now() + cap;
-      const step = () => (++i >= n || performance.now() > deadline ? res() : requestAnimationFrame(step));
-      requestAnimationFrame(step);
-    }),
-    [frames, maxMs]
-  );
-}
+// A `settle(page, frames, maxMs)` helper used to live here, unreferenced since
+// every scenario took ownership of its own settle. It is deleted rather than
+// left: a dead timing helper in the file that documents the shot timings is a
+// second, wrong answer to "how does a shot decide when to fire", and the last
+// two rounds of this harness were lost to timing documentation that did not
+// match the code.
 
 const t0 = Date.now();
 const log = (...a) => console.log(`[${String((Date.now() - t0) / 1000).padStart(6)}s]`, ...a);
@@ -284,16 +277,44 @@ for (const f of await readdir(OUT).catch(() => [])) {
 }
 
 log('navigating...');
-await page.goto(`http://127.0.0.1:${PORT}/?seed=${SEED}&quality=3&harness=1`, { waitUntil: 'load' });
+const tBoot = Date.now();
+// `pinclock` is read by `installHarness`, which runs before the engine's first
+// frame. Pinning from here instead would leave every frame between page load
+// and stage-ready timed by the wall clock, and a variable number of them.
+await page.goto(`http://127.0.0.1:${PORT}/?seed=${SEED}&quality=3&harness=1&pinclock=1`,
+                { waitUntil: 'load' });
 log('loaded; waiting for stage...');
 
 // The game signals readiness itself; a fixed sleep would race stage generation.
+// The 60 s budget is a boot guard, not a wait: measured 8.7 s from navigate to
+// a live stage on this machine's GPU path.
 const ready = await page
   .waitForFunction(() => globalThis.__GAME__?.ctx?.stage != null, null, { timeout: 60000 })
   .then(() => true)
   .catch(() => false);
+const bootMs = Date.now() - tBoot;
 
-const manifest = { seed: SEED, ready, shots: [], errors: [], partial: !!ONLY };
+// Pin the frame delta before any scenario runs.
+//
+// The engine takes its delta from a `THREE.Clock`, hands it to every
+// `update()` — which is where all presentation lives — and advances `ctx.time`
+// separately, inside a fixed step that hitstop scales by 0.15. So a scenario
+// waiting on simulation time to photograph a VFX effect is waiting on a
+// different clock from the one the effect ages on, and the gearing between them
+// depends on how many monsters happened to die. That is why `10-inventory`'s
+// equipment blast failed at 294 px on one run and passed on the next from the
+// same seed with no code change. Pinned, one rendered frame is exactly 1/60 s
+// of both clocks' inputs and a shot is a function of its seed alone.
+const pinned = ready
+  ? await page.evaluate(() => globalThis.__HARNESS__?.pinClock?.(1 / 60) ?? false)
+  : false;
+if (ready && !pinned) console.log('WARNING: capture clock not pinned — shots may vary run to run');
+
+const manifest = {
+  seed: SEED, ready, clockPinned: pinned,
+  ms: { boot: bootMs, bootTimeout: 60000 },
+  shots: [], errors: [], partial: !!ONLY,
+};
 
 if (!ready) {
   manifest.errors = errors;
@@ -304,9 +325,17 @@ if (!ready) {
     const before = errors.length;
     log(`scenario ${s.name}...`);
     try {
+      // Timed, because every timeout in this file is a claim about how long
+      // something takes and none of them had ever been measured. The margins
+      // are published per shot so the next person to touch a timeout can see
+      // what it is actually guarding.
+      const tSetup = Date.now();
       await s.setup(page);
+      const setupMs = Date.now() - tSetup;
       const file = path.join(OUT, `${s.name}.png`);
+      const tShot = Date.now();
       await page.screenshot({ path: file, timeout: SHOT_TIMEOUT, animations: 'disabled' });
+      const shotMs = Date.now() - tShot;
       // A system that throws is now degraded rather than fatal, so a stale or
       // half-dead frame no longer announces itself. Record the engine's own
       // error telemetry per shot instead of trusting the image to look wrong.
@@ -323,6 +352,7 @@ if (!ready) {
         (name) => globalThis.__GAME__?.ctx?.harness?.subjects?.[name] ?? null, s.name);
       manifest.shots.push({
         name: s.name, doc: s.doc, file, engine,
+        ms: { setup: setupMs, screenshot: shotMs, shotTimeout: SHOT_TIMEOUT },
         subject: subject ?? { ok: false, checks: [], note: 'scenario declared no subject' },
         newErrors: errors.slice(before),
       });
@@ -344,6 +374,11 @@ if (!ready) {
       detail: (s.subject.checks ?? []).filter((c) => !c.ok),
     }));
   manifest.subjectsOk = manifest.subjectFailures.length === 0;
+
+  // The one place a settle can silently become wall-clock-dependent is the
+  // hang guard inside `frames()`. It counts itself, so a run that hit it says
+  // so instead of quietly shipping a truncated wait as a deterministic one.
+  manifest.determinism = await page.evaluate(() => globalThis.__HARNESS__?.determinism?.() ?? null);
 
   // render.calls/triangles read here would only reflect the composer's final
   // fullscreen quad, so report the stable counters instead.
@@ -369,6 +404,8 @@ await server.close();
 const failures = manifest.subjectFailures ?? [];
 console.log(JSON.stringify({
   ready,
+  clockPinned: pinned,
+  determinism: manifest.determinism ?? null,
   shots: manifest.shots.map((s) => s.name),
   errorCount: errors.length,
   subjectsOk: manifest.subjectsOk ?? null,

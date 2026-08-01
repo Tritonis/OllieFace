@@ -828,6 +828,158 @@ export const ENEMIES = [
   },
 ];
 
+// ---------------------------------------------------------------------------
+// SPECIAL — placed by name, never bought. `special: true` keeps these out of
+// SPAWN_CARDS and out of the boss bag, so the director can neither afford them
+// nor roll them: the only thing that puts one on the field is the realm or the
+// finale that owns it.
+// ---------------------------------------------------------------------------
+ENEMIES.push(
+  {
+    id: 'anchor',
+    name: 'Rift Anchor',
+    tier: 3,
+    special: true,
+    cost: 0,
+    baseHealth: 700,
+    baseDamage: 22,
+    moveSpeed: 0,
+    turnRate: 1.0,
+    attackRange: 26,
+    radius: 1.2,
+    height: 2.6,
+    mass: 20,
+    xp: 10,
+    isFlyer: false,
+    // Elite-eligible only so the finale can force `warded` on it: the affix
+    // repaints the whole silhouette violet and hangs a barrier shell on it, so
+    // an anchor reads as a piece of the Herald rather than as a brood sac that
+    // wandered in. The director can never roll one — `special` keeps it out of
+    // SPAWN_CARDS entirely.
+    eliteEligible: true,
+    behavior: 'stationary',
+    packMin: 1,
+    packMax: 1,
+    meshFactory: 'brood',
+    attacks: [
+      // It exists to be shot, so it needs exactly enough teeth that standing on
+      // top of one while you do it is a mistake — and no reach at all past that.
+      {
+        id: 'pulse', kind: 'nova', range: 9, windup: 1.3, active: 0.22, recover: 0.9,
+        cooldown: 5.5, damage: 1.4, blast: 10, waveSpeed: 22, color: 0xd050ff,
+      },
+    ],
+  },
+  {
+    id: 'warden_vault',
+    name: 'Vault Warden',
+    tier: 3,
+    special: true,
+    cost: 0,
+    baseHealth: 2200,
+    baseDamage: 30,
+    moveSpeed: 5.0,
+    turnRate: 2.6,
+    attackRange: 34,
+    radius: 1.1,
+    height: 3.0,
+    mass: 9,
+    xp: 30,
+    isFlyer: false,
+    eliteEligible: true,
+    // The vault's guard is a *single elite encounter*, so it is built like one:
+    // a shielded front that has to be walked around, one committed dash that
+    // punishes standing still, and a quake for anyone who answers by hugging it.
+    frontArc: 1.05,
+    frontArmor: 0.7,
+    behavior: 'charger',
+    preferredRange: 11,
+    packMin: 1,
+    packMax: 1,
+    meshFactory: 'warden',
+    attacks: [
+      {
+        id: 'lunge', kind: 'charge', range: 26, minRange: 5, windup: 0.9, active: 1.1, recover: 0.85,
+        cooldown: 5.5, damage: 2.2, chargeSpeed: 30, hitRadius: 1.8, color: 0xffc850, knock: 11, weight: 3,
+      },
+      { id: 'bash', kind: 'melee', range: 3.6, windup: 0.6, active: 0.15, recover: 0.5, cooldown: 1.9, damage: 1.3, arc: 0.9, lunge: 8, weight: 2 },
+      { id: 'quake', kind: 'nova', range: 8, windup: 0.95, active: 0.18, recover: 0.75, cooldown: 7.0, damage: 1.8, blast: 11, waveSpeed: 26, color: 0xffc850, weight: 2 },
+    ],
+  },
+  {
+    // ------------------------------------------------------------------------
+    // THE HERALD OF THE RIFT — the run's last fight.
+    //
+    // Its attack table is not what makes it different from the other six; the
+    // *arena* is. `data/realms.js:FINALE_PHASES` takes the floor away under it
+    // twice, wards it behind three anchors for the whole of phase 2, and turns
+    // healing off for phase 3 — so each break changes what the player is
+    // allowed to do, not just what they are being hit with. Read this table
+    // alongside that one.
+    // ------------------------------------------------------------------------
+    id: 'herald',
+    name: 'Herald of the Rift',
+    tier: 4,
+    special: true,
+    cost: 0,
+    baseHealth: 5400,
+    baseDamage: 38,
+    moveSpeed: 5.4,
+    turnRate: 2.1,
+    attackRange: 60,
+    radius: 2.7,
+    height: 6.8,
+    hoverHeight: 6.0,
+    mass: 26,
+    xp: 90,
+    isFlyer: true,
+    isBoss: true,
+    // No affix: the fight has three rule changes of its own and an elite roll
+    // on top of them would be a fourth nobody asked for.
+    eliteEligible: false,
+    behavior: 'ranged',
+    preferredRange: 20,
+    packMin: 1,
+    packMax: 1,
+    phaseAt: [0.70, 0.40],
+    phase2At: 0.70,
+    // Comes down to head height for the last phase, once there is barely any
+    // floor left to stand on and the fight has to be close.
+    descendAt: 3,
+    meshFactory: 'herald',
+    attacks: [
+      {
+        id: 'lance', kind: 'beam', range: 60, minRange: 0, windup: 1.6, active: 0.32, recover: 0.9,
+        cooldown: 5.0, damage: 2.2, beamRadius: 1.0, trackDuring: 0.8, color: 0xd050ff, weight: 3,
+      },
+      {
+        // Arena denial: eight shells with ground rings, scattered wide. On the
+        // full floor it is a nuisance; on the phase-3 disc it owns most of it.
+        id: 'shardfall', kind: 'projectile', range: 58, minRange: 8, windup: 1.3, active: 0.4, recover: 0.8,
+        cooldown: 6.5, damage: 1.0, speed: 24, gravity: 16, radius: 0.42, blast: 4.4, life: 6,
+        color: 0xb060ff, muzzleY: 2.6, muzzleZ: 1.4, volley: 8, volleySpread: 0.6,
+        telegraph: 4.4, scatter: 6.0, weight: 3,
+      },
+      {
+        id: 'riftlings', kind: 'summon', range: 60, windup: 1.5, active: 0.3, recover: 0.8,
+        cooldown: 13.0, damage: 0, summon: 'wisp', count: 3, spread: 6.0, color: 0xd050ff,
+        phase: 2, weight: 3,
+      },
+      {
+        // The phase-3 signature, and the reason the floor collapse is not just
+        // scenery: it drags you toward the middle of an arena that is mostly
+        // hole, so the counterplay is where you were standing before it started.
+        id: 'collapse', kind: 'pull', range: 40, minRange: 0, windup: 1.2, active: 1.7, recover: 0.9,
+        cooldown: 9.0, damage: 0.6, pull: 30, blast: 10, color: 0xff4ad0, phase: 3, weight: 5,
+      },
+      {
+        id: 'unmake', kind: 'nova', range: 18, windup: 1.35, active: 0.25, recover: 0.9, cooldown: 8.0,
+        damage: 2.4, blast: 19, waveSpeed: 30, color: 0xff4ad0, status: 'shock', phase: 3, weight: 4,
+      },
+    ],
+  },
+);
+
 export const ENEMY_BY_ID = new Map(ENEMIES.map((e) => [e.id, e]));
 
 // Snapshots carry a one-byte `typeId` instead of the string id — it is what a
@@ -837,11 +989,18 @@ ENEMIES.forEach((e, i) => { e.typeId = i + 1; });
 
 export const ENEMY_BY_TYPE = new Map(ENEMIES.map((e) => [e.typeId, e]));
 
-/** Everything the director may buy with credits during normal play. */
-export const SPAWN_CARDS = ENEMIES.filter((e) => !e.isBoss);
+/**
+ * Everything the director may buy with credits during normal play.
+ *
+ * `special` cards are excluded as firmly as bosses are. They are placed by name
+ * by whichever realm owns them, have no meaningful `cost`, and a director that
+ * could roll a Rift Anchor onto an ordinary stage would be spawning a piece of
+ * the finale's scenery into a field.
+ */
+export const SPAWN_CARDS = ENEMIES.filter((e) => !e.isBoss && !e.special);
 
 /** Bosses are only ever placed by the teleporter event. */
-export const BOSS_CARDS = ENEMIES.filter((e) => e.isBoss);
+export const BOSS_CARDS = ENEMIES.filter((e) => e.isBoss && !e.special);
 
 /**
  * Tier unlock thresholds on the difficulty coefficient.

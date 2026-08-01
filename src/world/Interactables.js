@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { ITEM_BY_ID, TIERS } from '../data/items.js';
-import { getTextureSets, withRepeat } from './Materials.js';
+import { getTextureSets, withRepeat, attachDetail } from './Materials.js';
 
 /**
  * Every world object the player can walk up to and press E on, plus the item
@@ -114,16 +114,16 @@ function sharedMat(key, build) {
  */
 const SET = (name, repeat) => withRepeat(getTextureSets()[name], repeat);
 
-const IRON = () => sharedMat('iron', () => new THREE.MeshStandardMaterial({
+const IRON = () => sharedMat('iron', () => attachDetail(new THREE.MeshStandardMaterial({
   ...SET('metal', 1.8),
   color: 0x4c545f, roughness: 0.24, metalness: 0.62, envMapIntensity: 2.6, flatShading: true,
   normalScale: new THREE.Vector2(1.35, 1.35),
-}));
-const IRON_DARK = () => sharedMat('ironDark', () => new THREE.MeshStandardMaterial({
+}), 'ironPart'));
+const IRON_DARK = () => sharedMat('ironDark', () => attachDetail(new THREE.MeshStandardMaterial({
   ...SET('metal', 1.8),
   color: 0x454d5a, roughness: 0.30, metalness: 0.45, envMapIntensity: 3.0, flatShading: true,
   normalScale: new THREE.Vector2(1.35, 1.35),
-}));
+}), 'ironPart'));
 // Polished, and deliberately *smooth*-shaded — the one material in the ladder
 // that is not flat. It is only ever put on surfaces of revolution (basin rims,
 // shrine collars), where an interpolated normal field sweeps every elevation and
@@ -131,16 +131,16 @@ const IRON_DARK = () => sharedMat('ironDark', () => new THREE.MeshStandardMateri
 // highlight a property of the material rather than a coincidence of the mesh: at
 // roughness 0.20 the GGX peak is ~136, so the ring clips white where it crosses
 // the half vector and falls away within a few degrees either side.
-const IRON_POLISH = () => sharedMat('ironPolish', () => new THREE.MeshStandardMaterial({
+const IRON_POLISH = () => sharedMat('ironPolish', () => attachDetail(new THREE.MeshStandardMaterial({
   ...SET('metal', 2.6),
   color: 0x5f6774, roughness: 0.20, metalness: 0.60, envMapIntensity: 3.0,
   normalScale: new THREE.Vector2(0.9, 0.9),
-}));
-const STONE = () => sharedMat('stone', () => new THREE.MeshStandardMaterial({
+}), 'ironPart'));
+const STONE = () => sharedMat('stone', () => attachDetail(new THREE.MeshStandardMaterial({
   ...SET('stone', 1.2),
   color: 0x646875, roughness: 0.88, metalness: 0.0, envMapIntensity: 0.9, flatShading: true,
   normalScale: new THREE.Vector2(1.3, 1.3),
-}));
+}), 'stonePart'));
 /**
  * The warm band. A chest that is one value plus a lid is a slab; the acceptance
  * criterion is three luma plateaus, and this is the top one — brass over cast
@@ -148,17 +148,17 @@ const STONE = () => sharedMat('stone', () => new THREE.MeshStandardMaterial({
  * warm rung in the interactable ladder, so the key's own hue lands on it
  * instead of on a cool grey that neutralises the specular to white.
  */
-const BRASS = () => sharedMat('brass', () => new THREE.MeshStandardMaterial({
+const BRASS = () => sharedMat('brass', () => attachDetail(new THREE.MeshStandardMaterial({
   ...SET('metal', 2.4),
   color: 0xa8794a, roughness: 0.22, metalness: 0.72, envMapIntensity: 2.8, flatShading: true,
   normalScale: new THREE.Vector2(1.0, 1.0),
-}));
-const trimMat = (hex) => sharedMat(`trim${hex}`, () => new THREE.MeshStandardMaterial({
+}), 'ironPart'));
+const trimMat = (hex) => sharedMat(`trim${hex}`, () => attachDetail(new THREE.MeshStandardMaterial({
   ...SET('metal', 2.2),
   color: hex, roughness: 0.18, metalness: 0.62, envMapIntensity: 2.4,
   emissive: hex, emissiveIntensity: 0.22, flatShading: true,
   normalScale: new THREE.Vector2(1.1, 1.1),
-}));
+}), 'ironPart'));
 const glowMat = (hex) => sharedMat(`glow${hex}`, () => new THREE.MeshStandardMaterial({
   color: 0x05070a, emissive: hex, emissiveIntensity: 2.4, roughness: 0.5,
 }));

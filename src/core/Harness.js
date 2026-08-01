@@ -24,7 +24,27 @@ import { ITEMS } from '../data/items.js';
  *     the end, and then stops the engine loop. The last presented frame is
  *     therefore the frame the scenario chose, no matter what fps the machine
  *     manages. `08-explosion` previously let ~0.63 s elapse before the
- *     screenshot against a 0.22 s fireball, and photographed the smoke.
+ *     screenshot against a blast whose whole visible life is ~0.28 s, and
+ *     photographed the smoke.
+ *
+ * Three clocks, and knowing which one a number is in is most of this file:
+ *
+ *  - **frames** — `frames(n)`, rendered frames. Deterministic once the capture
+ *    clock is pinned (`pinClock`), which `tools/capture.mjs` does before the
+ *    first scenario. This is the only clock a *shutter* is ever allowed to use.
+ *  - **simulation seconds** — `ctx.time`, advanced inside `Engine`'s fixed step
+ *    and *scaled by hitstop*. Cooldowns, spawn pops (0.45 s), the hit-flash
+ *    (0.075 s) and the difficulty curve all live here. `waitSim`.
+ *  - **presentation seconds** — the `dt` handed to `update()`. Every VFX
+ *    lifetime lives here. `waitFx`.
+ *
+ * The last two are the same clock only when hitstop is zero, and an explosion
+ * scenario is exactly where it is not: the blast's own kills raise hitstop,
+ * which stretches simulation time against presentation time by up to 1/0.15.
+ * `08-explosion` asked `waitSim` for 0.09 s and photographed the blast at
+ * 0.207 s of its own life; `10-inventory` asked for 0.12 s and landed somewhere
+ * different every run. Both now use `waitFx` and both record the age they
+ * actually got in the manifest.
  *
  * Every scenario is `async` and resolves only when the frame is composed and
  * the engine is frozen; `tools/capture.mjs` just awaits it and shoots.
@@ -113,14 +133,82 @@ export function installHarness(ctx) {
   const freeze = () => engine()?.stop?.();
   const thaw = () => { const e = engine(); if (e && !e.running) e.start(); };
 
-  /**
-   * Resolve after `n` rendered frames. Wall-clock capped so a stalled GPU
-   * cannot hang `page.evaluate`, which has no timeout of its own.
+  /* --- the capture clock ------------------------------------------------
+   *
+   * `Engine._frame` takes its delta from a `THREE.Clock`, i.e. from the wall
+   * clock, and hands that delta to every `update()` — which is where all
+   * presentation lives: VFX particle ages, ring radii, damage-number arcs,
+   * camera springs. `ctx.time`, by contrast, only advances inside the fixed
+   * step, and the fixed step is *scaled by hitstop* (`Engine.js:196-208`,
+   * `HITSTOP_SCALE = 0.15`).
+   *
+   * So the two clocks a scenario can wait on run at different, load-dependent
+   * rates. `waitSim(0.12)` in `10-inventory` waits for 0.12 s of **simulation**
+   * time; the nova it is photographing ages on **wall** time; and the nova's
+   * own kills raise hitstop, which stretches the wall interval needed to buy
+   * those 0.12 s by up to 1/0.15. How many monsters the nova kills before the
+   * shutter varies with frame pacing, so the effect's age at the shutter varied
+   * with frame pacing. That is the whole of the run-to-run instability: the
+   * same seed produced a 294 px blast on one run and a passing one on the next
+   * with no code change.
+   *
+   * The fix is to make the delta a constant instead of a measurement. With the
+   * clock pinned, one rendered frame is exactly `dt` of presentation time and
+   * `dt * scale` of simulation time, both derived from a frame count that is
+   * identical on every machine — so a shot is a function of its seed and its
+   * frame budget and of nothing else. Nothing is silently slowed: the engine
+   * still renders as fast as the GPU allows, it just no longer *asks* how long
+   * that took.
+   *
+   * Off by default, because `tools/perf.mjs` measures how the game behaves on
+   * the real clock and pinning it would make that measurement fiction.
+   * `tools/capture.mjs` turns it on before the first scenario.
    */
+  let _pinnedDt = 0;
+  let _realClock = null;
+  const pinClock = (dt = 1 / 60) => {
+    const e = engine();
+    if (!e) return false;
+    _realClock = _realClock ?? e.clock;
+    _pinnedDt = dt;
+    // Engine only ever calls `start()` and `getDelta()`; the rest is here so a
+    // future caller of the Clock API does not get a surprise `undefined`.
+    let elapsed = 0;
+    e.clock = {
+      running: true,
+      start() {}, stop() {},
+      getDelta: () => { elapsed += dt; return dt; },
+      getElapsedTime: () => elapsed,
+    };
+    return true;
+  };
+  const unpinClock = () => {
+    const e = engine();
+    if (e && _realClock) { e.clock = _realClock; _realClock.getDelta(); }
+    _pinnedDt = 0;
+  };
+  /** Seconds of presentation time one rendered frame buys. */
+  const frameDt = () => _pinnedDt || (1 / 60);
+
+  /**
+   * Resolve after `n` rendered frames.
+   *
+   * The wall-clock cap is a hang guard, not a wait: `page.evaluate` has no
+   * timeout of its own, so a stalled GPU would otherwise take the whole capture
+   * down with it. It is also the one place a shot can silently become
+   * non-deterministic, so every time it fires is counted and the count is
+   * published in the manifest — a truncated settle now shows up as evidence
+   * rather than as a mystery.
+   */
+  let frameTimeouts = 0;
   const frames = (n, maxMs = 20000) => new Promise((res) => {
     let i = 0;
     const deadline = performance.now() + maxMs;
-    const step = () => (++i >= n || performance.now() > deadline ? res() : requestAnimationFrame(step));
+    const step = () => {
+      if (++i >= n) return res();
+      if (performance.now() > deadline) { frameTimeouts++; return res(); }
+      requestAnimationFrame(step);
+    };
     requestAnimationFrame(step);
   });
 
@@ -329,6 +417,12 @@ export function installHarness(ctx) {
     }
     return best;
   };
+
+  /**
+   * Frame height in CSS pixels, so a screen-space measurement can be reported
+   * in the units a reviewer measures the PNG in.
+   */
+  const framePx = () => ctx.pipeline?.renderer?.domElement?.clientHeight || 900;
 
   /** Normalised screen position of a world point, y measured from the top. */
   const _ndc = new THREE.Vector3();
@@ -584,6 +678,71 @@ export function installHarness(ctx) {
   };
 
   /**
+   * Turn the boom until the lens can see the survivor himself.
+   *
+   * `faceOpenGround` asks whether the *arena* is visible, and `04-combat` then
+   * spends half a second re-aiming the rig every frame inside `fireBurst` — so
+   * the camera that gets photographed is not the camera any of that was
+   * measured against. Measured on the frame that failed: the survivor came back
+   * at 311 rendered pixels against a floor of 400, behind the near terrain
+   * wedge that fills the bottom of the frame, in the shot that exists to judge
+   * whether the player is findable under load.
+   *
+   * Frame-locked like every other search in this file: each candidate is
+   * committed to the rig and given two rendered frames, because the boom is a
+   * spring and its position is not a closed form of its yaw.
+   */
+  const clearSurvivorFromLens = async (need = 0.85) => {
+    const rig = ctx.cameraRig;
+    if (!rig) return 1;
+    const y0 = rig.yaw, p0 = rig.pitch;
+    const measure = () => {
+      camera.updateMatrixWorld(true);
+      return visibleFraction(camera.position, playerPos(), {
+        height: 1.9, radius: 0.6, cols: 3, rows: 4, slack: 0.3, y0: 0.05, y1: 0.95,
+      });
+    };
+    // A bearing that clears the survivor by jamming the boom into a rock is not
+    // a fix. `CameraRig` sphere-casts down its own 7.1 m boom and pulls the
+    // lens in when it hits something, so a yaw that buries the camera comes
+    // back with a *perfect* visibility score and a survivor filling the left
+    // third of the frame at 9,839 px — measured, on the first cut of this
+    // search. A shortened boom is therefore a hard reject, not a scoring term.
+    const BOOM_MIN = 6.0;                                // of a nominal 7.1
+    await frames(1);
+    const boom = () => rig.distance ?? BOOM_MIN;
+    let best = { yaw: y0, pitch: p0, vis: measure(), boom: boom() };
+    let fallback = best;
+    const consider = () => {
+      const v = measure(), b = boom();
+      if (b < BOOM_MIN) {
+        if (v > fallback.vis && fallback.boom < BOOM_MIN) fallback = { yaw: rig.yaw, pitch: rig.pitch, vis: v, boom: b };
+        return false;
+      }
+      if (v > best.vis || best.boom < BOOM_MIN) best = { yaw: rig.yaw, pitch: rig.pitch, vis: v, boom: b };
+      return best.vis >= need;
+    };
+    if (best.boom < BOOM_MIN) { fallback = best; best = { ...best, vis: -1 }; }
+    let done = best.vis >= need;
+    for (const dp of [0, -0.12, 0.12, -0.26]) {
+      for (const dy of [0, 0.18, -0.18, 0.36, -0.36, 0.62, -0.62]) {
+        if (done) break;
+        if (dp === 0 && dy === 0) continue;              // already measured
+        rig.yaw = y0 + dy;
+        rig.pitch = p0 + dp;
+        await frames(2);
+        done = consider();
+      }
+      if (done) break;
+    }
+    const pick = best.vis >= 0 ? best : fallback;
+    rig.yaw = pick.yaw;
+    rig.pitch = pick.pitch;
+    await frames(3);
+    return { vis: +measure().toFixed(3), boom: +boom().toFixed(2) };
+  };
+
+  /**
    * Make the player unkillable for the duration of a capture.
    *
    * Combat scenarios drop two dozen enemies at close range, which kills a
@@ -757,20 +916,41 @@ export function installHarness(ctx) {
   };
 
   /**
-   * Wait `s` seconds of *simulation* time.
+   * Wait `s` seconds of *simulation* time — the clock gameplay runs on.
    *
-   * `frames(n)` counts rendered frames, and the render loop is free-running:
-   * the explosion scenario burns ~150 rAF per second against a 60 Hz fixed
-   * step, so a 4-frame wait is 0.026 s, not the 0.067 s it reads as. That is
-   * how the shutter landed on the 0.09 s white core with the fireball, both
-   * shockwave rings and the smoke column still inside it — a flashbulb. The
-   * shutter stays frame-locked (the loop is stopped on a chosen frame, never
-   * on a wall clock); only the budget is now expressed in the same units the
-   * effect's own lifetimes are.
+   * Correct for anything gated on `ctx.time` (cooldowns, spawn pops, the
+   * difficulty curve) and **wrong for anything visual**, which is what it was
+   * being used for. See `waitFx`.
    */
   const waitSim = async (s, maxFrames = 900) => {
     const t0 = ctx.time ?? 0;
     for (let i = 0; i < maxFrames && (ctx.time ?? 0) - t0 < s; i++) await frames(1);
+    return (ctx.time ?? 0) - t0;
+  };
+
+  /**
+   * Wait `s` seconds of *presentation* time and report exactly how much was
+   * bought — the clock every VFX lifetime is written against.
+   *
+   * This is the unit `08-explosion` and `10-inventory` always meant and never
+   * had. Both budgeted their shutter in simulation seconds while the effect
+   * they were photographing aged in wall seconds, and hitstop — which the
+   * blast's own kills raise — drives a load-dependent wedge between the two.
+   * Measured on the shipped build: `08-explosion` asked for 0.09 s and
+   * photographed the blast at 0.207 s of its own life, and `10-inventory`'s
+   * asked-for 0.12 s landed somewhere different on every run, which is why its
+   * blast check failed at 294 px once and passed the next time.
+   *
+   * With the capture clock pinned this is exact: one rendered frame is one
+   * `frameDt()`, so the age is a frame count and a constant. Unpinned it falls
+   * back to counting frames at the nominal rate, which is approximate — and
+   * says so in the number it returns.
+   */
+  const waitFx = async (s) => {
+    const dt = frameDt();
+    const n = Math.max(1, Math.round(s / dt));
+    await frames(n);
+    return { age: +(n * dt).toFixed(4), frames: n, exact: _pinnedDt > 0 };
   };
 
   /** Does the sun actually reach this point, or is the subject sitting in a pit? */
@@ -851,13 +1031,19 @@ export function installHarness(ctx) {
   const _vfP = new THREE.Vector3();
   const visibleFraction = (from, base, {
     height = 2.2, radius = 1.0, cols = 5, rows = 4, slack = 0.4,
+    // The band of the subject's height that is sampled. The default skips the
+    // ankles and the crown, which is right for "is this monster in shot" and
+    // wrong for anything being judged on ground contact — a boulder across a
+    // survivor's shins scores 1.00 under the default. `09-survivors` asks for
+    // the whole figure.
+    y0 = 0.08, y1 = 0.92,
   } = {}) => {
     _vfR.set(base.x - from.x, 0, base.z - from.z);
     if (_vfR.lengthSq() < 1e-6) return 0;
     _vfR.normalize().cross(_fgUp).normalize();
     let seen = 0, n = 0;
     for (let r = 0; r < rows; r++) {
-      const fy = rows === 1 ? 0.5 : 0.08 + (r / (rows - 1)) * 0.84;
+      const fy = rows === 1 ? (y0 + y1) * 0.5 : y0 + (r / (rows - 1)) * (y1 - y0);
       for (let c = 0; c < cols; c++) {
         const fx = cols === 1 ? 0 : -1 + (c / (cols - 1)) * 2;
         _vfP.set(base.x + _vfR.x * fx * radius, base.y + fy * height, base.z + _vfR.z * fx * radius);
@@ -957,7 +1143,13 @@ export function installHarness(ctx) {
   const subjectReport = (objects, { perObject = false } = {}) => {
     const r = ctx.pipeline?.renderer;
     const objs = (objects ?? []).filter((o) => o && o.parent);
-    if (!r || !objs.length) return { px: 0, frac: 0, lum: 0, bgLum: 0, contrast: 0, objects: objs.length, visibleObjects: 0 };
+    if (!r || !objs.length) {
+      return {
+        px: 0, frac: 0, lum: 0, bgLum: 0, contrast: 0,
+        sep: 0, sepP25: 0, sepP50: 0, legible: 0,
+        objects: objs.length, visibleObjects: 0,
+      };
+    }
     if (!_maskRT) {
       _maskRT = new THREE.WebGLRenderTarget(MASK_W, MASK_H);
       _maskA = new Uint8Array(MASK_PX * 4);
@@ -972,8 +1164,30 @@ export function installHarness(ctx) {
     maskPass(r, null);
     r.readRenderTargetPixels(_maskRT, 0, 0, MASK_W, MASK_H, _maskA);
 
-    const count = (buf) => {
-      let n = 0, ls = 0, lb = 0;
+    /* Separation: how far each of the subject's own pixels stands off the
+     * pixel that would be there without it.
+     *
+     * The aggregate `contrast` below is a *signed mean* — `|Σls − Σlb| / Σ(ls
+     * + lb)` — and that is the defect this exists to close. A subject that is
+     * bright down one side and dark down the other cancels itself to nearly
+     * zero, and a subject whose mean simply happens to match its background
+     * reads as zero however sharply each individual pixel differs. Both come
+     * back as "no contrast" whether the subject is invisible or merely
+     * balanced, and neither was ever gated: the only gate on a pixel check was
+     * `minPx`, so `04-combat` recorded the survivor at `contrast: 0.053` —
+     * darker than his own background, the dimmest object in his own combat
+     * frame — and wrote `ok: true`.
+     *
+     * Per-pixel Michelson cannot cancel. `+8` is a black floor so two pixels
+     * six levels apart in near-darkness do not read as full contrast; it is
+     * the same guard the 0-255 space needs anywhere a ratio is taken.
+     */
+    const SEP_BINS = 50;
+    const SEP_MIN = 0.15;      // a pixel that carries its own edge
+    const hist = new Int32Array(SEP_BINS);
+    const count = (buf, stats = false) => {
+      let n = 0, ls = 0, lb = 0, sep = 0, carried = 0;
+      if (stats) hist.fill(0);
       for (let i = 0; i < MASK_PX; i++) {
         const j = i * 4;
         const d = Math.abs(_maskA[j] - buf[j])
@@ -981,15 +1195,39 @@ export function installHarness(ctx) {
           + Math.abs(_maskA[j + 2] - buf[j + 2]);
         if (d <= 6) continue;
         n++;
-        ls += 0.2126 * _maskA[j] + 0.7152 * _maskA[j + 1] + 0.0722 * _maskA[j + 2];
-        lb += 0.2126 * buf[j] + 0.7152 * buf[j + 1] + 0.0722 * buf[j + 2];
+        const a = 0.2126 * _maskA[j] + 0.7152 * _maskA[j + 1] + 0.0722 * _maskA[j + 2];
+        const b = 0.2126 * buf[j] + 0.7152 * buf[j + 1] + 0.0722 * buf[j + 2];
+        ls += a;
+        lb += b;
+        if (!stats) continue;
+        const c = Math.abs(a - b) / (a + b + 8);
+        sep += c;
+        if (c >= SEP_MIN) carried++;
+        hist[Math.min(SEP_BINS - 1, (c * SEP_BINS) | 0)]++;
       }
-      return { n, ls, lb };
+      if (!stats) return { n, ls, lb };
+      // Percentiles off the histogram rather than a sorted array: this runs
+      // over 129,600 pixels per subject per shot and must not allocate.
+      const at = (p) => {
+        let want = n * p, acc = 0;
+        for (let i = 0; i < SEP_BINS; i++) {
+          acc += hist[i];
+          if (acc >= want) return +((i + 0.5) / SEP_BINS).toFixed(3);
+        }
+        return 1;
+      };
+      return {
+        n, ls, lb,
+        sep: n ? +(sep / n).toFixed(3) : 0,
+        sepP25: n ? at(0.25) : 0,
+        sepP50: n ? at(0.50) : 0,
+        legible: n ? +(carried / n).toFixed(3) : 0,
+      };
     };
 
     maskPass(r, objs);
     r.readRenderTargetPixels(_maskRT, 0, 0, MASK_W, MASK_H, _maskB);
-    const all = count(_maskB);
+    const all = count(_maskB, true);
 
     let visibleObjects = objs.length;
     let perPx = null;
@@ -1016,6 +1254,10 @@ export function installHarness(ctx) {
       lum: all.n ? +(all.ls / all.n).toFixed(1) : 0,
       bgLum: all.n ? +(all.lb / all.n).toFixed(1) : 0,
       contrast: all.n ? +(Math.abs(all.ls - all.lb) / Math.max(1, all.ls + all.lb)).toFixed(3) : 0,
+      // Legibility, per pixel and uncancellable. `sepP50` is what the
+      // `minSeparation` gate reads; the rest is there so a reviewer can see the
+      // shape of the distribution rather than one number.
+      sep: all.sep, sepP25: all.sepP25, sepP50: all.sepP50, legible: all.legible,
       objects: objs.length,
       visibleObjects,
       perPx: perPx && perPx.length <= 32 ? perPx : undefined,
@@ -1087,6 +1329,25 @@ export function installHarness(ctx) {
    *                  a raycast over that box.
    *  - `dom()`       the subject is a DOM screen: measured by asking the screen.
    */
+  /**
+   * The legibility floor every `objects()` subject is held to.
+   *
+   * Set from measurement, not from taste. Across the twenty shots the median
+   * per-pixel separation of a subject a human can find in the frame runs
+   * 0.30–0.75 (`03-thirdperson` survivor 0.63, `05-boss` Titan 0.70,
+   * `11-bestiary` roster 0.79, `09-survivors` 0.55). The one subject the round-2
+   * critic independently measured as illegible — the `04-combat` survivor, whose
+   * bbox median luminance is the *lowest of every named object in its own frame*
+   * — sits at 0.11. 0.25 is placed in the empty band between those two
+   * populations, nearer the failure than the pass so it cannot be cleared by
+   * noise.
+   *
+   * A subject may raise its floor. Nothing may lower it below this without a
+   * measurement showing the criterion is wrong for that subject; the whole
+   * point of the gate is that it is not negotiable by whoever is trying to ship.
+   */
+  const MIN_SEPARATION = 0.25;
+
   const mustContain = (shot, specs) => {
     const checks = [];
     for (const s of specs) {
@@ -1107,7 +1368,36 @@ export function installHarness(ctx) {
           Object.assign(c, rep);
           c.minPx = s.minPixels ?? 250;
           c.minObjects = s.minObjects ?? 0;
-          c.ok = rep.px >= c.minPx && (!c.minObjects || rep.visibleObjects >= c.minObjects);
+          // Two independent questions, and until now only the first was asked:
+          // is the subject *there*, and can it be *told apart from what is
+          // behind it*. A subject that is present and indistinguishable is a
+          // failed shot — that is the whole finding of round 2.
+          c.present = rep.px >= c.minPx && (!c.minObjects || rep.visibleObjects >= c.minObjects);
+          // Pixels that carry their own edge, as opposed to pixels the subject
+          // merely touched.
+          c.carriedPx = Math.round(rep.px * rep.legible);
+          if (s.minCarriedPx) {
+            /* The median is the right statistic for a solid subject, where
+             * every masked pixel *is* the subject, and the wrong one for an
+             * effect, where a large share of the mask is the effect's own light
+             * falling on the world. Measured on `08-explosion`: the blast's
+             * mask is 11,143 px of which 6,140 carry >= 0.15 separation and the
+             * remaining 5,000 are the light layer washing across terrain at
+             * p25 = 0.07 — which is that layer working, not failing. A median
+             * over that mask reports 0.17 for an explosion a human cannot miss.
+             *
+             * So an effect is gated on the *area that carries an edge* instead,
+             * against the same floor its pixel count used. That is strictly
+             * tighter than what shipped, not looser: the old check counted the
+             * whole halo toward `minPixels`, this one counts none of it.
+             */
+            c.minCarried = s.minCarriedPx;
+            c.legibleOk = c.carriedPx >= c.minCarried;
+          } else {
+            c.minSep = s.minSeparation ?? MIN_SEPARATION;
+            c.legibleOk = rep.sepP50 >= c.minSep;
+          }
+          c.ok = c.present && c.legibleOk;
         } else if (s.point) {
           c.kind = 'bounds';
           const p = s.point();
@@ -1134,9 +1424,15 @@ export function installHarness(ctx) {
     const failed = checks.filter((c) => !c.ok);
     subjects[shot] = { ok: failed.length === 0, checks };
     if (failed.length) {
-      const msg = `[harness] ${shot}: subject missing — `
+      const msg = `[harness] ${shot}: subject missing or illegible — `
         + failed.map((c) => `${c.subject} (${c.kind}: ${JSON.stringify(
-          c.kind === 'pixels' ? { px: c.px, need: c.minPx, objs: `${c.visibleObjects}/${c.objects}`, need2: c.minObjects }
+          c.kind === 'pixels' ? {
+            why: c.present ? 'illegible' : 'absent',
+            px: c.px, need: c.minPx, objs: `${c.visibleObjects}/${c.objects}`, need2: c.minObjects,
+            sepP50: c.sepP50, needSep: c.minSep,
+            carriedPx: c.carriedPx, needCarried: c.minCarried,
+            lum: c.lum, bgLum: c.bgLum,
+          }
             : c.kind === 'bounds' ? { vis: c.vis, need: c.minVis, onScreen: c.onScreen, screen: c.screen }
               : { detail: c.detail })})`).join('; ');
       ctx.frameErrors = (ctx.frameErrors ?? 0) + failed.length;
@@ -1145,6 +1441,17 @@ export function installHarness(ctx) {
     }
     return subjects[shot];
   };
+
+  // Pinned at install rather than by the first caller, when asked for by URL.
+  //
+  // `tools/capture.mjs` cannot pin earlier than the moment the stage exists,
+  // and the engine has been running on the wall clock for every frame before
+  // that — a variable number of them, advancing the sim by a variable amount.
+  // Measured: pinning only from stage-ready left the twenty shots agreeing to
+  // within ~1-2% instead of exactly. Pinning here moves it ahead of the
+  // engine's first frame, so no frame in the session is ever timed by the wall
+  // clock.
+  if (globalThis.location && new URLSearchParams(location.search).has('pinclock')) pinClock(1 / 60);
 
   const H = {
     ctx,
@@ -1281,9 +1588,11 @@ export function installHarness(ctx) {
       const markAt = mark?.position.clone() ?? null;
       await fireBurst(0.45, { pin: mark, at: markAt });
       // `fireBurst` re-aims the rig every frame, so the camera the declutter
-      // above measured against is not the camera being photographed. Re-seat
-      // once more against the final lens, with the pinned target left alone so
-      // its damage readouts stay where they spawned.
+      // above measured against is not the camera being photographed. Put the
+      // survivor back in clear view of the final lens first, then re-seat the
+      // crowd against it, with the pinned target left alone so its damage
+      // readouts stay where they spawned.
+      const pvis = await clearSurvivorFromLens();
       declutter(12, { keep: mark });
       if (mark && markAt) mark.position.copy(markAt);
       await frames(2);
@@ -1294,8 +1603,14 @@ export function installHarness(ctx) {
           objects: () => rigsOf(ctx.director?.enemies ?? []),
           perObject: true, minPixels: 900, minObjects: 8,
         },
+        // The survivor has to be findable in his own combat frame, which is
+        // two claims and not one: enough of him drawn, and enough of him
+        // standing off what is behind him. The round-2 critic measured him as
+        // the dimmest object in this frame at `contrast: 0.053` while the
+        // manifest wrote `ok: true`, because `minPx` was the only gate.
         { subject: 'survivor', objects: () => [ctx.player?.group], minPixels: 400 },
         { subject: 'open arena', info: true, detail: () => +openness.toFixed(2) },
+        { subject: 'survivor unoccluded by the final lens', info: true, detail: () => pvis },
       ]);
     },
 
@@ -1644,26 +1959,41 @@ export function installHarness(ctx) {
     /**
      * Peak VFX moment.
      *
-     * The blast is fired, then the engine is stopped on the first rendered
-     * frame at or past `blastSeconds` of *simulation* time — still frame-locked
-     * (the loop stops on a chosen frame, never on a wall clock) but budgeted in
-     * the units the effect's own lifetimes are written in.
+     * **The shutter.** `blastSeconds` is the age of the *effect* at the frame
+     * that gets photographed, in presentation seconds — the clock every VFX
+     * lifetime in the game is written against. It used to be spent through
+     * `waitSim`, i.e. in simulation seconds, and the two are not the same
+     * clock: the blast's own kills raise hitstop, hitstop scales the fixed step
+     * by 0.15, and the effect goes on ageing on the wall clock throughout. So
+     * the parameter said 0.09 s and the shutter landed at **0.207 s** of the
+     * blast's life — a factor of 2.3, load-dependent, and two rounds of VFX
+     * tuning were done against it without anyone knowing the number.
      *
-     * Both previous attempts missed, in opposite directions. A fixed 12-frame
-     * settle let 0.63 s elapse and photographed the ember tail. Counting four
-     * rendered frames instead looked like 0.067 s but was 0.026 s: the render
-     * loop free-runs at ~150 fps against a 60 Hz fixed step, so the shutter
-     * landed on the 0.09 s white core with the fireball, both shockwave rings
-     * and the smoke column all still inside it — a flashbulb.
+     * It is now measured and it is now exact (`waitFx` + the pinned capture
+     * clock), and the measured age is written into the manifest as
+     * `shutter (effect seconds)` so it can never silently drift again.
      *
-     * 0.11 s is where the blast has a shape. Measured at radius 6: the core is
-     * dead, the fireball has broken into discrete lobes ~3.2 m out, the two
-     * rings are at 8.6 m and 6.6 m, and the smoke has risen over a ~6 m mass.
+     * **Why 0.20 and not the 0.11 this comment used to claim.** The VFX
+     * constants were retuned in round 5 against the real shutter — core life
+     * 0.20 → 0.42 s, pip 0.16 → 0.28 s (`systems/VFX.js`) — and the round-2
+     * critic verified a live core at 0.207 s in the shipped pixels. Moving the
+     * shutter back to 0.11 now would invalidate that work rather than validate
+     * it. The number stays where the effect was authored for; what changes is
+     * that it is honest, deliberate and identical on every machine.
      */
-    async explosion({ blastSeconds = 0.09, settleFrames = 60 } = {}) {
+    async explosion({ blastSeconds = 0.20, settleFrames = 60 } = {}) {
       await begin();
       attach();
       invulnerable();
+      // A peak-VFX shot of a level-1 survivor at 00:11 with $6 is a peak moment
+      // in a run that has not started. The clock, the level and the purse are
+      // seeded to a real mid-run state — but deliberately *not* the item strip,
+      // which is permanent and would put an inventory panel over the corner of
+      // `11-bestiary` and `12-boss-phases`, both of which are shot after this
+      // one and neither of which documents an inventory.
+      ctx.time = 12 * 60 + 38;
+      seedLevel(11, 0.55);
+      ctx.items?.addGold?.(1840);
       await frames(6);
       await faceOpenGround();
       spawnRing(12, SPAWN_CARDS, 13);
@@ -1671,33 +2001,95 @@ export function installHarness(ctx) {
       await frames(settleFrames);
       declutter(12);
 
-      // Centre of frame, on the ground the camera is actually looking at, and
-      // high enough off it that the hill crest between the player and the blast
-      // does not eat the bottom half of a six-metre fireball.
-      // Closer and higher than it used to be. At 15 m out and 3 m up the blast
-      // sat on the ridge line: its lower half was behind the crest, the rings
-      // were 250 px of thin arc, and a six-metre fireball read as a smudge on
-      // the horizon. Pulled in to 12 m the same blast is a foreground event, and
-      // 4.5 m of clearance keeps the whole sphere above the terrain the shot is
-      // standing on.
+      // Where the blast goes.
       //
       // Sited in screen space, like everything else this file places. `ahead(d,
       // 4.5)` is a world offset off camera forward with a single centre-ray
       // check, and it put the fireball behind the ridge the survivor was
       // standing on: the shot came back with a shake, one damage number and no
       // blast in it at all, measured at 540 mask pixels.
-      let at = null;
-      for (const [sx, sy] of [[0.50, 0.56], [0.44, 0.56], [0.57, 0.56], [0.50, 0.49], [0.50, 0.63]]) {
-        const g = groundAtScreen(sx, sy, { minDist: 9, maxDist: 26 });
-        if (!g) continue;
-        const c = new THREE.Vector3(g.x, g.y + 4.5, g.z);
-        // The ground point is visible by construction; the point 4.5 m above it
-        // is where the fireball's centre goes, and that has to be checked too.
-        if (!seesTarget(camera.position, c, 0.2)) continue;
-        if (!onScreen(c.x, c.y, c.z, 0.10)) continue;
-        at = c; break;
+      //
+      // The version after that fixed presence and not composition, and the
+      // round-2 critic measured the result: the blast sat "in empty sky at
+      // y=236 with its lower half behind a foreground rock" — screen y 0.26,
+      // i.e. the top quarter of the frame. Two consequences, both fatal to the
+      // axis this shot exists to be judged on. The shockwave ring and the
+      // distortion layer had nothing behind them to act *on* (both are read
+      // against geometry, and there was none — only sky), and the fireball's
+      // lower half, where the light contribution lands on the ground, was
+      // behind a rock.
+      //
+      // So the ground point and the lift are searched together against what the
+      // *fireball's centre* projects to, not against what the ground point
+      // does, and the whole sphere is sampled rather than one ray:
+      //
+      //  - the centre wants to sit in the middle band of the frame (0.42-0.60),
+      //    where it has terrain behind it and the ground beneath it in shot;
+      //  - the sphere's extremes — top, bottom and both flanks at the blast
+      //    radius — must be unoccluded, which is what a foreground rock over
+      //    the lower half fails;
+      //  - and it must clear the terrain it stands over, or the bottom of a
+      //    six-metre fireball is inside the hill.
+      const BLAST_R = 6;
+      camera.updateMatrixWorld(true);
+      // Where the survivor is, so the blast is not sited behind him. He stands
+      // near the middle of a third-person frame, the blast is drawn additively,
+      // and at 13 m the fireball is smaller on screen than he is — put them on
+      // the same bearing and the shot is a survivor with a halo. Measured at a
+      // 0.09 s age with the blast at screen (0.439, 0.420) and the survivor at
+      // (0.43, 0.55): the core is bisected by his own silhouette.
+      const pp0 = playerPos();
+      const ps0 = screenOf(pp0.x, pp0.y + 1.0, pp0.z);
+      const camRight = new THREE.Vector3();
+      camera.getWorldDirection(camRight);
+      camRight.set(-camRight.z, 0, camRight.x).normalize();
+      //
+      // Depth is a hard constraint, not a preference. The first cut of this
+      // search scored only on where the centre landed in frame and picked a
+      // ground point 25 m out, because a distant blast can satisfy any
+      // screen-position test you like — and a six-metre fireball at 25 m is a
+      // 200 px smudge under a mountain. The shot is documented as the peak VFX
+      // moment: the blast has to be a *foreground* event, so the ground point
+      // is restricted to 10-18 m and the score pulls toward 13.
+      let at = null, atScore = -Infinity, atDist = 0;
+      for (const sy of [0.66, 0.72, 0.60, 0.78]) {
+        for (const sx of [0.56, 0.50, 0.62, 0.68, 0.44, 0.36]) {
+          const g = groundAtScreen(sx, sy, { minDist: 10, maxDist: 18 });
+          if (!g) continue;
+          const dist = Math.hypot(g.x - camera.position.x, g.z - camera.position.z);
+          for (const lift of [3.0, 3.6, 2.4, 4.4]) {
+            const c = new THREE.Vector3(g.x, g.y + lift, g.z);
+            if (!seesTarget(camera.position, c, 0.2)) continue;
+            const cs = screenOf(c.x, c.y, c.z);
+            if (cs.front <= 0 || cs.y < 0.34 || cs.y > 0.66) continue;
+            if (!onScreen(c.x, c.y, c.z, 0.12)) continue;
+            // Screen distance from the survivor's own silhouette. 0.22 of frame
+            // is about one survivor-width plus the fireball's near radius at
+            // this standoff — below that the core is behind him.
+            const clear = ps0.front > 0 ? Math.hypot(cs.x - ps0.x, cs.y - ps0.y) : 1;
+            if (clear < 0.22) continue;
+            // Five points on the fireball, not one at its centre.
+            let seen = 0;
+            for (const [dx, dy] of [[0, 0.8], [0, -0.7], [1, 0], [-1, 0], [0.7, 0.5]]) {
+              const px = c.x + camRight.x * dx * BLAST_R * 0.8;
+              const pz = c.z + camRight.z * dx * BLAST_R * 0.8;
+              const py = c.y + dy * BLAST_R * 0.8;
+              if (seesTarget(camera.position, _cc.set(px, py, pz), 0.2)) seen++;
+            }
+            if (seen < 4) continue;
+            // Prefer the centre near 0.50 of frame height, the sphere fully
+            // clear over merely mostly clear, and 13 m over the extremes of the
+            // allowed depth band.
+            const score = seen * 4
+              - Math.abs(cs.y - 0.50) * 12
+              - Math.abs(cs.x - 0.52) * 4
+              - Math.abs(dist - 13) * 0.8
+              + Math.min(clear, 0.34) * 14;
+            if (score > atScore) { atScore = score; at = c; atDist = dist; }
+          }
+        }
       }
-      at = at ?? ahead(12, 4.5);
+      at = at ?? ahead(12, 3.4);
 
       // Put monsters inside the blast. An explosion over empty ground is a
       // light source, not impact feedback — the shot is documented as
@@ -1720,19 +2112,36 @@ export function installHarness(ctx) {
       });
       await frames(2);
 
-      ctx.vfx?.explosion?.(at, 6);
+      ctx.vfx?.explosion?.(at, BLAST_R);
       ctx.combat?.explode?.(at, 8, 300, null, {});
       ctx.pipeline?.addShake?.(0.5);
-      await waitSim(blastSeconds);
+      const shutter = await waitFx(blastSeconds);
       freeze();
+      camera.updateMatrixWorld(true);
+      const blastScreen = screenOf(at.x, at.y, at.z);
       mustContain('08-explosion', [
-        { subject: 'the blast', objects: () => vfxObjects(/^vfx\.(particles|rings|trails|beams)$/), minPixels: 1200 },
+        {
+          subject: 'the blast',
+          objects: () => vfxObjects(/^vfx\.(particles|rings|trails|beams)$/),
+          // 1200 px of fireball, ring and debris that each stand off what is
+          // behind them — the light wash the blast throws across the terrain no
+          // longer counts toward it.
+          minPixels: 1200, minCarriedPx: 1200,
+        },
         {
           subject: 'monsters standing in it',
           objects: () => rigsOf(victims),
           perObject: true, minPixels: 200, minObjects: 2,
         },
         { subject: 'damage numbers', objects: () => vfxObjects(/^vfx\.damageNumbers$/), minPixels: 60 },
+        // Composition, recorded on every run so a regression to "blast in empty
+        // sky at screen y 0.26" is visible in the manifest without a critic.
+        {
+          subject: 'blast framed in the middle band',
+          dom: () => blastScreen.y > 0.34 && blastScreen.y < 0.66,
+          detail: () => ({ x: +blastScreen.x.toFixed(3), y: +blastScreen.y.toFixed(3), distM: +atDist.toFixed(1) }),
+        },
+        { subject: 'shutter (effect seconds)', info: true, detail: () => shutter },
       ]);
     },
 
@@ -1836,7 +2245,14 @@ export function installHarness(ctx) {
 
       const fired = ctx.items?.useEquipment?.();
       if (!fired) console.warn('[harness] 10-inventory: equipment refused to fire');
-      await waitSim(blastSeconds);
+      // In effect seconds, not simulation seconds — see `waitFx`. This is the
+      // check that failed at 294 px on one run and passed on the next with no
+      // code change: the nova's own kills raise hitstop, hitstop scales the
+      // fixed step by 0.15, and the `waitSim` budget was therefore buying a
+      // wall interval that depended on how many monsters happened to die
+      // first. The nova ages on the wall clock, so it was photographed at a
+      // different point in its life every run.
+      const shutter = await waitFx(blastSeconds);
       freeze();
       mustContain('10-inventory', [
         {
@@ -1845,12 +2261,17 @@ export function installHarness(ctx) {
           detail: () => ({ shown: ctx.hud?.inv?.size ?? 0, items: ITEMS.length }),
         },
         { subject: 'the equipment effect', dom: () => !!fired },
-        { subject: 'the equipment blast', objects: () => vfxObjects(/^vfx\.(particles|rings|trails|beams)$/), minPixels: 800 },
+        {
+          subject: 'the equipment blast',
+          objects: () => vfxObjects(/^vfx\.(particles|rings|trails|beams)$/),
+          minPixels: 800, minCarriedPx: 800,
+        },
         {
           subject: 'monsters standing in it',
           objects: () => rigsOf(victims),
           perObject: true, minPixels: 200, minObjects: 2,
         },
+        { subject: 'shutter (effect seconds)', info: true, detail: () => shutter },
       ]);
     },
 
@@ -1906,10 +2327,32 @@ export function installHarness(ctx) {
       const standoff = span * 1.7 + 6;
       const LIFT = 1.35;
 
+      // What "identically staged" has to mean, and what the shipped frame did
+      // instead.
+      //
+      // The search this replaces asked two questions per survivor — can the
+      // lens see a point 0.3 m up, and a point 1.9 m up — and accepted the row
+      // if both rays cleared. Two rays up the centre line cannot see a rock
+      // across a survivor's shins, and ROOK shipped buried to the thigh: no
+      // boot, no foot, no ground contact anywhere in the frame, its bbox
+      // footline at y 534 against 558 / 569 / 559 for the other three. A leg
+      // fix measured at 2.00 leg-runs on the offline rig read 1.03 in the only
+      // shot that photographs the roster. One quarter of the sample was being
+      // graded through scenery.
+      //
+      // So: the whole figure is sampled from the ankles up (`y0: 0.02`), every
+      // survivor must clear 0.97, the row is placed on **one** ground height
+      // rather than four, and the height spread the candidate row would have
+      // had is a hard reject rather than a scoring term — a 0.35 m spread is
+      // 35 px of footline at this standoff, which is the defect, not a
+      // tie-break. The result is asserted in pixels at the bottom of the
+      // scenario, so a row that drifts fails the shot instead of shipping.
+      const FLAT_MAX = 0.10;        // metres of height spread across the row
       const base = Math.atan2(forward().x, forward().z);
       const cam = new THREE.Vector3();
       let best = null;
       let bestScore = -Infinity;
+      const rowOffsets = SURVIVORS.map((_, k) => (k - (SURVIVORS.length - 1) / 2) * SPACING);
       for (const d of [20, 24, 17, 28, 14, 32, 11]) {
         for (let i = 0; i < 11; i++) {
           // Alternate either side of the bearing the player is already facing,
@@ -1925,53 +2368,74 @@ export function installHarness(ctx) {
           const camY = Math.min(Math.max(groundY(camX, camZ, by) + 0.6, by + LIFT), by + LIFT + 1.0);
           cam.set(camX, camY, camZ);
 
-          let lo = Infinity, hi = -Infinity, seen = true;
-          for (let k = 0; k < SURVIVORS.length && seen; k++) {
-            const off = (k - (SURVIVORS.length - 1) / 2) * SPACING;
-            const x = bx + rx * off, z = bz + rz * off;
-            const y = groundY(x, z, by);
+          // Flatness first, because it is cheap and it is the hard gate.
+          let lo = Infinity, hi = -Infinity;
+          for (const off of rowOffsets) {
+            const y = groundY(bx + rx * off, by, bz + rz * off);
             lo = Math.min(lo, y); hi = Math.max(hi, y);
-            seen = seesTarget(cam, _probe.set(x, y + 0.3, z), 0.3)
-                && seesTarget(cam, _probe.set(x, y + 1.9, z), 0.3);
           }
-          if (!seen) continue;
+          if (hi - lo > FLAT_MAX) continue;
 
-          // Flatness dominates by an order of magnitude; open depth behind the
-          // row and real sunlight on it are the tie-breakers. Four dark
-          // silhouettes against a cliff face two metres behind them is the
-          // axis-2 "everything at one depth" failure with extra steps.
-          const at = _probe.set(bx, by + 1.2, bz);
+          // Then the full-body visibility of every slot, from the camera that
+          // will actually be used, against the single row height that will
+          // actually be used.
+          const rowY = hi;
+          let worst = 1;
+          for (const off of rowOffsets) {
+            const v = visibleFraction(cam, _probe.set(bx + rx * off, rowY, bz + rz * off), {
+              height: 2.0, radius: 0.75, cols: 3, rows: 5, slack: 0.3, y0: 0.02, y1: 0.98,
+            });
+            worst = Math.min(worst, v);
+            if (worst < 0.97) break;
+          }
+          if (worst < 0.97) continue;
+
+          // Open depth behind the row and real sunlight on it are the
+          // tie-breakers. Four dark silhouettes against a cliff face two metres
+          // behind them is the axis-2 "everything at one depth" failure with
+          // extra steps.
+          const at = _probe.set(bx, rowY + 1.2, bz);
           const score = -(hi - lo) * 20
             + Math.min(backdropDepth(cam, at), 45) * 0.06
-            + (sunlit(_cc.set(bx, by, bz)) ? 3 : 0);
+            + (sunlit(_cc.set(bx, rowY, bz)) ? 3 : 0);
           if (score > bestScore) {
             bestScore = score;
-            best = { x: bx, y: by, z: bz, fx, fz, rx, rz, camX, camY, camZ };
+            best = { x: bx, y: rowY, z: bz, fx, fz, rx, rz, camX, camY, camZ, spread: hi - lo, vis: worst };
           }
         }
       }
       if (!best) {
+        // Nothing on the sweep could hold four figures on one plane in clear
+        // view. Shoot it anyway and let the assertions report it — a fallback
+        // that silently ships is the failure mode this whole file exists to
+        // prevent — but say so in the console as well.
+        console.error('[harness] 09-survivors: no flat, unoccluded row on any bearing; '
+          + 'falling back to the raw forward bearing');
         const f0 = forward();
         const bx = p.x + f0.x * 20, bz = p.z + f0.z * 20;
         const by = groundY(bx, bz, p.y);
         best = {
           x: bx, y: by, z: bz, fx: f0.x, fz: f0.z, rx: -f0.z, rz: f0.x,
           camX: bx - f0.x * standoff, camY: by + LIFT, camZ: bz - f0.z * standoff,
+          spread: NaN, vis: 0,
         };
       }
 
       const rigs = [];
       const spots = [];
       SURVIVORS.forEach((card, i) => {
-        const off = (i - (SURVIVORS.length - 1) / 2) * SPACING;
-        const x = best.x + best.rx * off;
-        const z = best.z + best.rz * off;
-        const y = groundY(x, z, best.y);
+        const x = best.x + best.rx * rowOffsets[i];
+        const z = best.z + best.rz * rowOffsets[i];
+        // One ground plane for all four, not `groundY` per slot. The row is
+        // only accepted when the terrain under it is flat to `FLAT_MAX`, so
+        // this floats a rig by at most 10 cm — against the 35 cm of *staging*
+        // difference that put ROOK on a different footline from its three
+        // peers in a shot whose entire job is comparing them like for like.
         const mesh = new CharacterMesh(card.meshKey);
-        mesh.group.position.set(x, y, z);
+        mesh.group.position.set(x, best.y, z);
         ctx.scene.add(mesh.group);
         rigs.push(mesh);
-        spots.push([x, y, z]);
+        spots.push([x, best.y, z]);
       });
 
       // Face the lens, turned a little off-axis. A dead-on front view flattens
@@ -2025,11 +2489,36 @@ export function installHarness(ctx) {
       // Checked *before* the rigs are taken out of the world, or the mask pass
       // would be hiding objects that are already gone and every survivor would
       // measure zero.
+      // Footlines, in the pixels rather than in the placement code. Each
+      // survivor's feet are projected onto the frame and the spread is
+      // measured: this is the number the critic measured by hand (534 vs
+      // 558 / 569 / 559) and it is now measured on every run. The tolerance is
+      // 12 px of 900 — enough for the perspective difference between the
+      // middle of a 7 m row and its ends at this standoff, and a quarter of
+      // the 35 px spread that shipped.
+      camera.updateMatrixWorld(true);
+      const px = framePx();
+      const footY = spots.map(([x, y, z]) => screenOf(x, y, z).y * px);
+      const footSpread = Math.max(...footY) - Math.min(...footY);
+      const footVis = spots.map(([x, y, z]) => +visibleFraction(
+        camera.position, _probe.set(x, y, z),
+        { height: 2.0, radius: 0.75, cols: 3, rows: 5, slack: 0.3, y0: 0.02, y1: 0.98 },
+      ).toFixed(3));
       mustContain('09-survivors', [
         {
           subject: 'the four survivors',
           objects: () => rigs.map((m) => m.group),
           perObject: true, minPixels: 4000, minObjects: SURVIVORS.length,
+        },
+        {
+          subject: 'all four on one footline',
+          dom: () => footSpread <= 12,
+          detail: () => ({ spreadPx: +footSpread.toFixed(1), footY: footY.map((v) => +v.toFixed(0)) }),
+        },
+        {
+          subject: 'no survivor occluded, ankles included',
+          dom: () => Math.min(...footVis) >= 0.97,
+          detail: () => ({ perSurvivor: footVis, groundSpreadM: +(best.spread ?? NaN).toFixed(3) }),
         },
       ]);
       // See note 3 above: the loop is stopped, so nothing will render again and
@@ -2762,11 +3251,20 @@ export function installHarness(ctx) {
       return { screen: ctx.hud?.menus?.screen ?? null, record };
     },
 
+    // Determinism controls. `tools/capture.mjs` pins the clock before the
+    // first scenario; `tools/perf.mjs` deliberately does not, because it is
+    // measuring the real one.
+    pinClock,
+    unpinClock,
+    /** Everything a caller needs to tell a deterministic run from a lucky one. */
+    determinism: () => ({ clockPinned: _pinnedDt > 0, frameDt: frameDt(), frameTimeouts }),
+
     // Escape hatches for ad-hoc inspection during the critic loop.
     dismiss,
     freeze,
     thaw,
     frames,
+    waitFx,
     setQuality: (q) => ctx.pipeline?.setQuality?.(q),
     setAdaptive: (on, scale) => ctx.pipeline?.setAdaptive?.(on, scale),
     resScale: () => ctx.pipeline?._resScale ?? 1,

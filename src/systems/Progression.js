@@ -91,6 +91,9 @@ export class Progression {
       items: 0, goldEarned: 0, stagesCleared: 0,
     };
 
+    // Set by `finishRun` when the run ends on purpose rather than on a corpse.
+    this.ending = null;
+
     this._started = false;
     this._tmp = new THREE.Vector3();
   }
@@ -193,6 +196,10 @@ export class Progression {
     // Publish before `stageStart` so anything that reacts to the new stage
     // already has an objective to point at.
     this.teleporterPosition = tp?.position?.clone() || null;
+    // Hidden-realm gateways go down after the stage's own loot, so they are
+    // sited against the landmarks the chests already used and can never land on
+    // the teleporter. Host-only inside; see Realms.onStagePopulated.
+    this.ctx.realms?.onStagePopulated?.(index);
     this.ctx.events.emit('stageStart', { index, name: this.stageName });
     this.ctx.audio?.play?.('stageStart');
   }
@@ -305,6 +312,11 @@ export class Progression {
         this.state = 'portal';
         const at = tp.position.clone().add(this._tmp.set(4, 0, 0));
         this.interactables.spawnPortal(at, () => this.advanceStage());
+        // And whatever else this stage has earned beside it: a way into the
+        // market if a Newt Altar was paid for, and — from FINALE_STAGE on — the
+        // rift that ends the run. The ordinary portal is always there, so
+        // reaching the finale never takes the loop away.
+        ctx.realms?.openPortals?.(at, this.stageIndex);
       }
     }
   }
@@ -365,6 +377,29 @@ export class Progression {
 
   // ------------------------------------------------------------------ run end
 
+  /**
+   * End the run deliberately, with a named ending.
+   *
+   * Both of the run's two real conclusions come through here — killing the
+   * Herald and stepping into the Obelisk of Departure — and both commit a
+   * record through `ctx.profile` and raise the same `runEnd` the death screen
+   * already listens to. The only thing that distinguishes them downstream is
+   * `stats.ending`, which is additive: every existing reader of `runStats()`
+   * sees exactly what it saw before.
+   */
+  finishRun(ending) {
+    if (this._ended) return;
+    this.ending = ending || null;
+    this._endRun(ending ? !!ending.won : true);
+    // The run-summary screen is raised by the HUD's `playerDead` handler, which
+    // is the only way it has ever been reached. A deliberate ending emits no
+    // such event — the survivor is standing up — so it calls the same public
+    // entry point directly rather than faking a death on the bus, which would
+    // also fire the death VFX, the death sound and every `playerDead` listener
+    // in the build.
+    this.ctx.hud?.onDeath?.();
+  }
+
   _endRun(won) {
     if (this._ended) return;
     this._ended = true;
@@ -388,6 +423,11 @@ export class Progression {
       gold: this.ctx.items?.gold || 0,
       inventory: items,
       timeText: formatTime(this.stats.time),
+      // Which ending this was, or null for the ordinary one (death). Read by
+      // the summary screen if it knows about it and ignored if it does not.
+      ending: this.ending?.id ?? null,
+      endingTitle: this.ending?.title ?? null,
+      endingLine: this.ending?.line ?? null,
     };
   }
 }

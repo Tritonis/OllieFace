@@ -225,6 +225,28 @@ export class Items {
     return next;
   }
 
+  /**
+   * Remove stacks. Host only, and the mirror of `give` in every respect —
+   * including the `itemPickup` event, which carries an absolute count rather
+   * than a delta precisely so a removal is representable on it and a client's
+   * inventory mirror self-corrects.
+   *
+   * Added for the Hollow Market's refinery, which trades stacks up a tier. It
+   * is deliberately the only consumer: the run's loot must never quietly go
+   * away, so taking an item is something the player asks for by name.
+   */
+  take(id, count = 1) {
+    if (!this.ctx.authority) return this.count(id);
+    const have = this.counts.get(id) || 0;
+    if (have <= 0) return 0;
+    const next = Math.max(0, have - count);
+    if (next === 0) this.counts.delete(id); else this.counts.set(id, next);
+    this._dirty = true;
+    this._rebuildHooks();
+    this.ctx.events.emit('itemPickup', { id, count: next });
+    return next;
+  }
+
   count(id) { return this.counts.get(id) || 0; }
 
   /** [{ id, count, def }] sorted by tier then name — HUD renders this directly. */

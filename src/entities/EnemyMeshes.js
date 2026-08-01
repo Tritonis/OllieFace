@@ -127,6 +127,10 @@ const PALETTE = {
   matron:      { body: 0x6a3a2e, dark: 0x241010, accent: 0xff6a12, eye: 0xff9a3c },
   vizier:      { body: 0x54606e, dark: 0x1a2028, accent: 0x9fe8ff, eye: 0xbfe4ff },
   maw:         { body: 0x4a5e2e, dark: 0x18220e, accent: 0x9be035, eye: 0xd8ff7a },
+  // The finale. Violet is the one hue no spawn card and no other boss owns, and
+  // it is the Fracture's own sky colour — the last fight is meant to look like
+  // it belongs to the place it is standing in and to nothing before it.
+  herald:      { body: 0x3b2f5e, dark: 0x140e26, accent: 0xd050ff, eye: 0xff4ad0 },
 };
 
 /**
@@ -139,17 +143,50 @@ const PALETTE = {
  * orbit style and whether it wears a barrier shell — not just a different tint,
  * because at a distance a tint is the first thing tone mapping takes away.
  */
+/*
+ * Round-5 rebuild. The previous table shipped a filled additive sphere
+ * (`ico(1,2)` at the unit's whole aura radius) as every affix's carrier, and
+ * measurement killed it: `warded` and `withering` came back at 0.91 IoU against
+ * a *perfect circle* and 0.88 against each other, and in `04-combat` the
+ * blazing and overloading spheres photographed as ~150x140 px opaque balls with
+ * blown white cores covering half the host's torso. Not one of the five
+ * declared orbiting bits was visible in either — additive bits drawn inside an
+ * additive shell that is already at the clip point add nothing.
+ *
+ * So the shell is gone. The carrier is now `bands` thin torus rings at `tilt`,
+ * which cover ~5% of the disc the sphere covered, plus the bits, which are
+ * finally on top of something they can be seen against. Silhouette
+ * information now passes *through* the affix instead of being replaced by it.
+ *
+ * The signature triple is bands x bits x orbit style, and no two rows share it:
+ *   blazing      1 flat halo,  4 shards rising and recycling  (fire climbs)
+ *   overloading  3 crossed,    6 icos on a fast flat ring     (a gyroscope)
+ *   glacial      2 shallow,    6 shards nearly static         (a frozen orrery)
+ *   withering    0,            9 spikes on a slow helix       (infection spreads)
+ *   warded       0,            0, a faceted barrier instead   (an actual shell)
+ */
 export const ELITE = {
-  blazing:     { tint: 0xff3a08, aura: 0xff6a10, glow: 2.6, name: 'Blazing', bits: 5, shape: 'ico', bitScale: 0.11 },
-  overloading: { tint: 0x2f5cff, aura: 0x74a6ff, glow: 2.8, name: 'Overloading', bits: 5, shape: 'ico', bitScale: 0.11 },
-  glacial:     { tint: 0xa8e6ff, aura: 0x8fe4ff, glow: 2.2, name: 'Glacial', bits: 6, shape: 'shard', bitScale: 0.16 },
+  blazing:     { tint: 0xff3a08, aura: 0xff6a10, glow: 2.6, name: 'Blazing', bands: 1, tilt: 0, bits: 4, shape: 'shard', bitScale: 0.20, rise: 1, bandAlpha: 0.75 },
+  overloading: { tint: 0x2f5cff, aura: 0x74a6ff, glow: 2.8, name: 'Overloading', bands: 3, tilt: 1.15, bits: 6, shape: 'ico', bitScale: 0.14, spin: 3.4, bandAlpha: 0.55 },
+  // The one tint in the table pale enough to blow out: at the old 0xa8e6ff it
+  // mixed 78% into the body albedo *and* drove a 0.5 emissive, which measured
+  // as a 94x101 px matte lump at mean L 232 with no internal structure — the
+  // host's form was gone even though its outline was not. Pulled down to a
+  // saturated ice blue that still reads as ice at a value the grade can hold.
+  // `aura` pulled off 0x8fe4ff for the same reason as `tint`: it drives the
+  // bands, the bits, the accents and the eyes, and at that value three of them
+  // overlapping measured 24% of the host's own footprint as near-neutral white.
+  // A saturated cyan additively stacked stays cyan; a pale one becomes paper.
+  glacial:     { tint: 0x4fb8e8, aura: 0x46c4f0, glow: 2.2, name: 'Glacial', bands: 2, tilt: 0.5, bits: 6, shape: 'shard', bitScale: 0.18, spin: 0.3, bandAlpha: 0.45 },
   // A cloud of thorns on a sick green body. Nine bits in a slow vertical helix
-  // rather than five on a ring: the read is "infected", and infection spreads
+  // rather than a ring: the read is "infected", and infection spreads
   // rather than orbiting.
-  withering:   { tint: 0x2fbf6a, aura: 0x86ffb4, glow: 2.4, name: 'Withering', tier: 2, bits: 9, shape: 'spike', bitScale: 0.14, helix: 1 },
-  // No bits at all — a hard faceted barrier shell instead, which is the one
-  // silhouette change in the table that alters the unit's actual outline.
-  warded:      { tint: 0x6a4ad0, aura: 0xc9a8ff, glow: 3.0, name: 'Warded', tier: 2, bits: 0, ward: 1 },
+  withering:   { tint: 0x2fbf6a, aura: 0x86ffb4, glow: 2.4, name: 'Withering', tier: 2, bands: 0, bits: 9, shape: 'spike', bitScale: 0.15, helix: 1 },
+  // No bits at all — a hard faceted barrier instead, which is the one
+  // silhouette change in the table that alters the unit's actual outline. It is
+  // allowed to, but it is now a wireframe crystal rather than a filled sphere,
+  // so what it adds is facets and not a disc.
+  warded:      { tint: 0x6a4ad0, aura: 0xc9a8ff, glow: 3.0, name: 'Warded', tier: 2, bands: 0, bits: 0, ward: 1 },
 };
 
 const _c1 = new THREE.Color();
@@ -167,8 +204,12 @@ function matsFor(id, affix) {
   if (m) return m;
   const p = PALETTE[id] || PALETTE.beetle;
   const e = affix ? ELITE[affix] : null;
-  const bodyC = e ? mixHex(p.body, e.tint, 0.78) : p.body;
-  const darkC = e ? mixHex(p.dark, e.tint, 0.45) : p.dark;
+  // 0.78 / 0.45 flooded the whole unit with the affix tint and left no species
+  // value range underneath it — a pale affix turned its host into one matte
+  // patch. Half the mix keeps the affix hue unmistakable while the palette's
+  // own body/dark split survives to carry form.
+  const bodyC = e ? mixHex(p.body, e.tint, 0.52) : p.body;
+  const darkC = e ? mixHex(p.dark, e.tint, 0.26) : p.dark;
   const accC = e ? e.aura : p.accent;
   const eyeC = e ? mixHex(p.eye, e.aura, 0.8) : p.eye;
   // Every body surface carries a faint species-coloured emissive plus a fresnel
@@ -189,13 +230,18 @@ function matsFor(id, affix) {
   m = {
     body: new RimStandardMaterial({
       color: bodyC, roughness: 0.55, metalness: 0.22, flatShading: true,
-      emissive: e ? e.tint : accC, emissiveIntensity: e ? 0.5 : 0.12,
+      // An elite's emissive used to be 0.5 of its tint on every body facet,
+      // which is a flat lift applied equally to lit and shadowed plates — it
+      // adds brightness and *subtracts* shading, so the higher it goes the less
+      // form the unit has. The affix read comes from the rim, the accents and
+      // the bands; the body only needs enough to say "this one is charged".
+      emissive: e ? e.tint : accC, emissiveIntensity: e ? 0.20 : 0.12,
       rimColor: accC, rimStrength: e ? 0.85 : 0.6, rimPower: 3.0,
       hemiStrength: 0.34,
     }),
     dark: new RimStandardMaterial({
       color: darkC, roughness: 0.92, metalness: 0.02, flatShading: true,
-      emissive: e ? e.tint : accC, emissiveIntensity: e ? 0.28 : 0.1,
+      emissive: e ? e.tint : accC, emissiveIntensity: e ? 0.12 : 0.1,
       rimColor: accC, rimStrength: e ? 0.9 : 0.7, rimPower: 2.8,
       hemiStrength: 0.30,
     }),
@@ -217,13 +263,22 @@ function matsFor(id, affix) {
 const FLASH = new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false });
 
 const AURA = new Map();
+/**
+ * Band material. Higher opacity than the sphere it replaces and still far less
+ * total light: a torus of tube radius 0.055 covers roughly a twentieth of the
+ * projected disc a filled shell covers, so the band can be bright enough to
+ * read across the arena without being anything the host has to be seen through.
+ * FrontSide, not BackSide — a band has no interior to look into, and drawing
+ * both faces doubled it wherever the ring turned edge-on.
+ */
 function auraMat(affix) {
   let m = AURA.get(affix);
   if (m) return m;
   m = new THREE.MeshBasicMaterial({
     color: ELITE[affix] ? ELITE[affix].aura : 0xffffff,
-    transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending,
-    depthWrite: false, side: THREE.BackSide, fog: false,
+    transparent: true, opacity: ELITE[affix]?.bandAlpha ?? 0.7,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false, side: THREE.FrontSide, fog: false,
   });
   AURA.set(affix, m);
   return m;
@@ -234,7 +289,7 @@ function bitMat(affix) {
   if (m) return m;
   m = new THREE.MeshBasicMaterial({
     color: ELITE[affix] ? ELITE[affix].aura : 0xffffff,
-    blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.95, fog: false,
+    blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.82, fog: false,
   });
   AURA.set(k, m);
   return m;
@@ -574,16 +629,26 @@ function wardMat(kind) {
   let m = WARD.get(kind);
   if (m) return m;
   const c = ELITE.warded.aura;
+  // The fill used to be 0.16 additive over a 80-face `ico(1,1)` — near enough a
+  // sphere that the barrier measured 0.91 IoU against a perfect disc and its
+  // host stopped having a shape. It is now a token wash under a bright
+  // wireframe on a 20-face crystal: the edges say "there is a barrier here",
+  // and everything between them is the monster.
   m = kind === 'edge'
-    ? new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })
-    : new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.FrontSide, fog: false });
+    ? new THREE.MeshBasicMaterial({ color: c, wireframe: true, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })
+    : new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.05, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.FrontSide, fog: false });
   WARD.set(kind, m);
   return m;
 }
 
-// Max bits any affix asks for. Built once per rig and hidden down to the count
-// the current affix wants, so switching affix never allocates.
+// Max bits and bands any affix asks for. Built once per rig and hidden down to
+// the counts the current affix wants, so switching affix never allocates.
 const AURA_BITS = 9;
+const AURA_BANDS = 3;
+
+// Unit-radius ring, scaled by the rig's aura radius at dress time. 0.055 tube
+// on a radius of 1 is the thinnest band that still survives mip-down to ~25 m.
+const BAND_GEO = () => ring(1, 0.055, 4, 30);
 
 function bitGeo(shape, r) {
   if (shape === 'spike') return cone(r * 0.55, r * 2.6, 4);
@@ -592,11 +657,17 @@ function bitGeo(shape, r) {
 }
 
 function makeAura(rig, radius) {
-  const a = new THREE.Mesh(ico(1, 2), auraMat('blazing'));
-  a.scale.setScalar(radius);
+  // The carrier: up to three thin rings. See the note on ELITE for why this is
+  // not the filled shell it replaced.
+  const a = new THREE.Group();
   a.position.y = rig.centerY;
   a.visible = false;
-  a.frustumCulled = false;
+  for (let i = 0; i < AURA_BANDS; i++) {
+    const b = new THREE.Mesh(BAND_GEO(), auraMat('blazing'));
+    b.scale.setScalar(radius);
+    b.frustumCulled = false;
+    a.add(b);
+  }
   rig.pivot.add(a);
   rig.aura = a;
 
@@ -604,7 +675,7 @@ function makeAura(rig, radius) {
   bits.position.y = rig.centerY;
   bits.visible = false;
   for (let i = 0; i < AURA_BITS; i++) {
-    const b = new THREE.Mesh(bitGeo('ico', radius * 0.11), bitMat('blazing'));
+    const b = new THREE.Mesh(bitGeo('ico', radius * 0.14), bitMat('blazing'));
     const ang = (i / AURA_BITS) * Math.PI * 2;
     b.position.set(Math.cos(ang) * radius, 0, Math.sin(ang) * radius);
     bits.add(b);
@@ -612,13 +683,13 @@ function makeAura(rig, radius) {
   rig.pivot.add(bits);
   rig.auraBits = bits;
 
-  // The barrier: a faceted shell plus its own wireframe edge pass, so it holds
-  // an outline even where the additive fill washes out against a bright sky.
+  // The barrier: a 20-face crystal drawn as a bright wireframe over a token
+  // fill, and scaled taller than it is wide so its own outline is not a circle.
   const ward = new THREE.Group();
-  const shell = new THREE.Mesh(ico(1, 1), wardMat('fill'));
-  const edge = new THREE.Mesh(ico(1.005, 1), wardMat('edge'));
+  const shell = new THREE.Mesh(ico(1, 0), wardMat('fill'));
+  const edge = new THREE.Mesh(ico(1.006, 0), wardMat('edge'));
   ward.add(shell, edge);
-  ward.scale.setScalar(radius * 1.05);
+  ward.scale.set(radius * 0.98, radius * 1.28, radius * 0.98);
   ward.position.y = rig.centerY;
   ward.visible = false;
   ward.frustumCulled = false;
@@ -640,11 +711,24 @@ function setAffix(affix) {
   if (this.aura) {
     const e = this.affix ? ELITE[this.affix] : null;
     const on = !!e;
-    this.aura.visible = on;
+    this.aura.visible = on && (e.bands || 0) > 0;
     this.auraBits.visible = on && (e.bits || 0) > 0;
     if (this.ward) this.ward.visible = on && !!e.ward;
     if (on) {
-      this.aura.material = auraMat(this.affix);
+      const am = auraMat(this.affix);
+      const nb = e.bands || 0;
+      for (let i = 0; i < this.aura.children.length; i++) {
+        const band = this.aura.children[i];
+        band.visible = i < nb;
+        if (!band.visible) continue;
+        band.material = am;
+        // Bands are laid out as a fan about the vertical: one band is a flat
+        // halo, two are a shallow cross, three are a gyroscope cage. The tilt
+        // is the affix's, so the *pose* of the rings is part of the signature
+        // and not only their count.
+        const t = nb === 1 ? 0 : (i / (nb - 1)) * 2 - 1;
+        band.rotation.set(-Math.PI * 0.5 + t * (e.tilt || 0), 0, (i * Math.PI * 2) / Math.max(1, nb));
+      }
       const bm = bitMat(this.affix);
       const n = e.bits || 0;
       const shape = e.shape || 'ico';
@@ -762,40 +846,59 @@ function common(rig, a) {
     pv.scale.set(1 + hu * 0.1, 1 - hu * 0.12, 1 + hu * 0.1);
   }
 
-  if (rig.aura && rig.aura.visible) {
-    const e = ELITE[rig.affix] || ELITE.blazing;
-    const pulse = 1 + Math.sin(a.t * 5.5) * 0.05 + a.windup * 0.12;
-    rig.aura.scale.setScalar(rig.auraR * pulse);
-    rig.aura.material.opacity = (0.16 + a.windup * 0.14) * (1 - a.death);
-    const bits = rig.auraBits;
-    if (bits.visible) {
-      bits.rotation.y = a.t * (e.helix ? 0.9 : 1.4);
-      for (let i = 0; i < bits.children.length; i++) {
-        const b = bits.children[i];
-        if (!b.visible) continue;
-        if (e.helix) {
-          // Thorns climb a slow helix and point outward — a rising column of
-          // spines rather than a ring of sparks, which is what separates a
-          // withering elite from a blazing one at fifty metres.
-          const k = ((a.t * 0.22 + i / bits.children.length) % 1);
-          b.position.y = (k - 0.5) * rig.auraR * 2.1;
-          b.rotation.z = -Math.PI * 0.5;
-          b.rotation.y = k * Math.PI * 2;
-          b.scale.setScalar(0.6 + Math.sin(k * Math.PI) * 0.7);
-        } else {
-          b.position.y = Math.sin(a.t * 3 + i * 1.7) * rig.auraR * 0.5;
-          b.rotation.x = a.t * 2 + i;
-          b.scale.setScalar(0.7 + Math.sin(a.t * 6 + i) * 0.3);
-        }
+  const affixDef = rig.affix ? ELITE[rig.affix] : null;
+  if (rig.aura && rig.aura.visible && affixDef) {
+    // Bands only breathe; they never grow into the host. The whole point of
+    // replacing the shell was that the affix stops competing with the body for
+    // the same pixels, and a band that swells on the wind-up would walk it
+    // straight back.
+    const pulse = 1 + Math.sin(a.t * 5.5) * 0.04 + a.windup * 0.08;
+    const spin = affixDef.spin ?? 0.9;
+    rig.aura.rotation.y = a.t * spin;
+    rig.aura.scale.setScalar(pulse * (1 - a.death * 0.5));
+  }
+  const bits = rig.auraBits;
+  if (bits && bits.visible && affixDef) {
+    const e = affixDef;
+    bits.rotation.y = a.t * (e.helix ? 0.9 : (e.spin ?? 1.4));
+    const n = bits.children.length;
+    for (let i = 0; i < n; i++) {
+      const b = bits.children[i];
+      if (!b.visible) continue;
+      if (e.helix) {
+        // Thorns climb a slow helix and point outward — a rising column of
+        // spines rather than a ring of sparks, which is what separates a
+        // withering elite from a blazing one at fifty metres.
+        const k = ((a.t * 0.22 + i / n) % 1);
+        b.position.y = (k - 0.5) * rig.auraR * 2.1;
+        b.rotation.z = -Math.PI * 0.5;
+        b.rotation.y = k * Math.PI * 2;
+        b.scale.setScalar(0.6 + Math.sin(k * Math.PI) * 0.7);
+      } else if (e.rise) {
+        // Embers: shards climb the outside of the unit, taper as they go and
+        // recycle at the feet. Blazing is the only affix whose bits have a
+        // direction, which is what stops it reading as overloading in orange.
+        const k = ((a.t * 0.55 + i / n) % 1);
+        b.position.y = (k - 0.35) * rig.auraR * 1.9;
+        b.position.x = Math.cos(a.t * 0.6 + (i / n) * Math.PI * 2) * rig.auraR * (1 - k * 0.35);
+        b.position.z = Math.sin(a.t * 0.6 + (i / n) * Math.PI * 2) * rig.auraR * (1 - k * 0.35);
+        b.rotation.set(0, 0, 0);
+        b.scale.setScalar(0.5 + (1 - k) * 0.9);
+      } else {
+        b.position.y = Math.sin(a.t * 3 + i * 1.7) * rig.auraR * 0.5;
+        b.rotation.x = a.t * 2 + i;
+        b.scale.setScalar(0.7 + Math.sin(a.t * 6 + i) * 0.3);
       }
     }
   }
   if (rig.ward && rig.ward.visible) {
     // Slow tumble, and it swells on the wind-up so the barrier is loudest at
-    // exactly the moment the unit is about to be dangerous.
+    // exactly the moment the unit is about to be dangerous. Non-uniform on
+    // purpose — a crystal taller than it is wide is not a disc.
     rig.ward.rotation.y = a.t * 0.55;
     rig.ward.rotation.x = Math.sin(a.t * 0.4) * 0.3;
-    rig.ward.scale.setScalar(rig.auraR * (1.05 + Math.sin(a.t * 3.1) * 0.03 + a.windup * 0.1) * (1 - a.death * 0.6));
+    const s = (1.02 + Math.sin(a.t * 3.1) * 0.03 + a.windup * 0.1) * (1 - a.death * 0.6);
+    rig.ward.scale.set(rig.auraR * 0.98 * s, rig.auraR * 1.28 * s, rig.auraR * 0.98 * s);
   }
 }
 
@@ -3683,7 +3786,159 @@ export function makeTelegraph(color) {
 // factory table + rig pool
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// HERALD OF THE RIFT — the finale. A hovering colossus with no legs at all.
+//
+// Every other boss in the game is a walker or a burrower, so the silhouette cue
+// here is the one thing none of them can do: it *floats*, and the space under
+// it is empty. Vertically it reads top-heavy — a crown of shards over a broken
+// shell over a tapering mantle that comes to a point — which is the inverse of
+// the titan's wide-shouldered pyramid, and it is the only unit in the roster
+// whose widest point is above its middle.
+//
+// The shell is the animated tell: it is *shut* at rest, cracks open on the
+// wind-up to show the core, and slams closed on the follow-through. Nothing
+// about the pose depends on the ground, because it never touches it.
+// ---------------------------------------------------------------------------
+
+const HER_MID = 3.4;
+
+function buildHerald() {
+  const rig = newRig('herald');
+  rig.centerY = HER_MID;
+  rig.height = 6.8;
+  rig.auraR = 3.6;
+  rig.shadowR = 2.4;
+  rig.flyer = true;
+
+  // Mantle: a long tapered skirt hanging under the core. It is what gives the
+  // unit its 6.8 m of height without a single leg, and its point is what makes
+  // "hovering" read from a silhouette rather than from the shadow.
+  const body = grp(rig.pivot, 0, HER_MID, 0);
+  rig.parts.body = body;
+  crumbles(rig, add(rig, body, 'body', merged('her.mantle', [
+    P(cyl(1.5, 0.34, 3.2, 8), 0, -2.0, 0),
+    P(cone(0.4, 1.4, 6), 0, -4.1, 0, Math.PI),
+    P(cyl(1.72, 1.5, 0.5, 8), 0, -0.2, 0),
+    // Four buttress fins down the skirt: at 40 m the mantle is one dark mass
+    // and the fins are the only thing breaking its outline.
+    P(box(0.22, 2.6, 1.0), 1.15, -1.7, 0, 0, 0, 0.16),
+    P(box(0.22, 2.6, 1.0), -1.15, -1.7, 0, 0, 0, -0.16),
+    P(box(1.0, 2.6, 0.22), 0, -1.7, 1.15, 0.16, 0, 0),
+    P(box(1.0, 2.6, 0.22), 0, -1.7, -1.15, -0.16, 0, 0),
+  ])));
+
+  // The core: the only bright mass on the unit, and the thing the shell hides.
+  const core = add(rig, body, 'accent', ico(1.25, 1));
+  rig.parts.core = core;
+  rig.parts.eye = add(rig, body, 'eye', merged('her.eye', [
+    P(ico(0.42, 0), 0, 0.1, 1.05),
+    P(box(1.5, 0.13, 0.13), 0, 0.55, 0.95),
+  ]));
+
+  // Shell: six heavy plates on their own groups so they can hinge outward.
+  rig.parts.plates = [];
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    const g = grp(body, 0, 0, 0);
+    g.rotation.y = a;
+    const plate = add(rig, g, 'dark', merged('her.plate', [
+      P(box(1.5, 2.3, 0.5), 0, 0, 1.5),
+      P(box(1.1, 0.6, 0.34), 0, 1.35, 1.5),
+      P(box(1.1, 0.6, 0.34), 0, -1.35, 1.5),
+    ]));
+    crumbles(rig, plate);
+    rig.parts.plates.push(g);
+  }
+
+  // Crown: five shards angled outward over the shell. The widest point of the
+  // whole unit, which is what makes the silhouette top-heavy.
+  const crown = grp(body, 0, 2.1, 0);
+  rig.parts.crown = crown;
+  const shards = [];
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2 + 0.3;
+    const h = 2.0 + (i % 2) * 0.9;
+    shards.push(P(cone(0.32, h, 5), Math.cos(a) * 1.35, h * 0.4, Math.sin(a) * 1.35, 0.30 * Math.sin(a), -a, -0.30 * Math.cos(a)));
+  }
+  crumbles(rig, add(rig, crown, 'body', merged('her.crown', shards)));
+  add(rig, crown, 'accent', ring(1.55, 0.10, 5, 28)).rotation.x = Math.PI * 0.5;
+
+  // Arms: two long spars reaching down and out, ending in a claw. They carry
+  // the lance and give the wind-up somewhere to travel.
+  rig.parts.arms = [];
+  for (const s of [-1, 1]) {
+    const g = grp(body, s * 1.9, 0.5, 0);
+    crumbles(rig, add(rig, g, 'body', merged('her.arm', [
+      P(cyl(0.34, 0.22, 3.0, 6), 0, -1.4, 0, 0, 0, -0.22),
+      P(box(0.5, 0.5, 0.5), 0.32, -2.9, 0),
+      P(cone(0.16, 1.1, 5), 0.32, -3.6, 0.3, 0.5),
+      P(cone(0.16, 1.1, 5), 0.32, -3.6, -0.3, -0.5),
+    ])));
+    rig.parts.arms.push(g);
+  }
+
+  rig.parts.beam = beam(rig, body, 0.2, 1.4);
+  makeAura(rig, rig.auraR);
+  rig.animate = animHerald;
+  return rig;
+}
+
+function animHerald(rig, a) {
+  const p = rig.parts;
+  const w = anticipate(a.windup);
+  const fire = a.swing > 0 ? 1 - a.swing : 0;
+  // Phase read, straight off the health gates: the whole unit rises, spins
+  // faster and burns hotter as the fight escalates, so a glance says which
+  // third of the fight this is.
+  const rage = clamp((a.phase - 1) / 2, 0, 1);
+
+  const bob = Math.sin(a.t * (0.9 + rage * 0.6)) * (0.22 + rage * 0.1);
+  p.body.position.y = HER_MID + bob + rage * 0.4;
+  p.body.rotation.y = a.t * (0.16 + rage * 0.22);
+  p.body.rotation.x = a.pitch * 0.2 + w * 0.12;
+
+  // Core swells and brightens through the wind-up, then snaps back on release.
+  p.core.scale.setScalar(1 + w * 0.5 + fire * 0.85 + Math.sin(a.t * (3 + rage * 6)) * 0.05);
+  p.core.rotation.y = -a.t * (0.9 + rage);
+  p.core.rotation.x = a.t * 0.4;
+  p.eye.scale.setScalar(1 + w * 0.9 + fire * 1.2);
+
+  // The shell opens on the tell. This is the readable half of the boss: plates
+  // hinge out and up, the core is exposed, and they slam shut on the follow
+  // through — the same anticipation/overshoot language the rest of the roster
+  // speaks, at boss scale.
+  const open = w * 0.85 + fire * 0.5 + rage * 0.18;
+  for (let i = 0; i < p.plates.length; i++) {
+    const g = p.plates[i];
+    const ph = a.t * (0.5 + rage * 0.7) + i * 1.05;
+    g.rotation.x = -open * (0.55 + (i % 2) * 0.2) + Math.sin(ph) * 0.05;
+    g.rotation.z = Math.sin(ph * 0.7) * 0.04;
+    g.position.y = open * 0.5 * (i % 2 ? 1 : -1) + Math.sin(ph) * 0.06;
+    g.scale.setScalar(1 + open * 0.16);
+  }
+
+  p.crown.rotation.y = -a.t * (0.5 + rage * 0.8);
+  p.crown.position.y = 2.1 + w * 0.4 + Math.sin(a.t * 1.6) * 0.1;
+  p.crown.scale.setScalar(1 + w * 0.12);
+
+  // Arms sweep forward on the wind-up and recoil past their rest pose after —
+  // the follow-through is what stops a 7 m boss looking weightless.
+  for (let i = 0; i < 2; i++) {
+    const g = p.arms[i];
+    const s = i ? 1 : -1;
+    g.rotation.x = -w * 1.05 + fire * 0.55 + Math.sin(a.t * 1.3 + i) * 0.07;
+    g.rotation.z = s * (0.16 + w * 0.5 - fire * 0.3);
+    g.position.x = s * (1.9 + open * 0.35);
+  }
+
+  setBeam(p.beam, a.beamLen,
+    a.beamOn ? (a.windup > 0 ? 0.14 + w * 0.4 : 1.3 + Math.sin(a.t * 34) * 0.18) : 0, a.beamOn);
+  common(rig, a);
+}
+
 const BUILDERS = {
+  herald: buildHerald,
   lemurian: buildLemurian,
   beetle: buildBeetle,
   wisp: buildWisp,

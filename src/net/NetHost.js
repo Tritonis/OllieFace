@@ -50,8 +50,13 @@ export class NetHost {
     // `goldChanged` matters as much as `itemPickup`: gold is host-authoritative
     // and carried in no snapshot field, so without forwarding it a client's
     // purse sits at 0 forever and it can never buy anything.
+    // `realmEnter`/`realmExit` belong on this list for the same reason
+    // `stageStart` does: a client cannot derive "we are all somewhere else now"
+    // from a snapshot, and the arenas are authored, so the realm id is the
+    // whole of the state it needs to build the same room.
     for (const name of ['kill', 'itemPickup', 'goldChanged', 'teleporterCharging', 'teleporterComplete',
-                        'stageStart', 'bossSpawn', 'bossDead', 'playerDead', 'levelUp']) {
+                        'stageStart', 'bossSpawn', 'bossDead', 'playerDead', 'levelUp',
+                        'realmEnter', 'realmExit']) {
       ctx.events.on(name, (payload) => this._forward(name, payload));
     }
   }

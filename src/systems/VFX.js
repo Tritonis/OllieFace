@@ -65,20 +65,34 @@ const MAT_PRESETS = {
   flesh:    { spark: 0xff4d4d, dust: 0x8c1620, decal: DECAL.BLOOD, sparks: 10, dustCount: 6,  sound: 'flesh' },
 };
 
+/*
+ * Additive particles do not clamp against each other: `uMaxIntensity` caps one
+ * sprite at 0.92, so N overlapping sprites reach N * 0.92 and a near-neutral
+ * tip saturates to paper white in three. Every `tip` below is therefore held
+ * off white and kept on its affix's own hue — the tip is where the particle is
+ * *brightest*, so it is exactly the value that must not be neutral. `alpha`
+ * is the per-emitter ceiling that stops a dense aura stacking to a blank mass.
+ * (`tipAlpha`, not `alpha`: `alpha` already means "use the alpha layer" in the
+ * STATUS table below and the two must not be confused.)
+ */
 const ELITE = {
-  blazing:     { color: 0xff5a10, tip: 0xffd070, frame: FRAME.EMBER, rate: 34, rise: 1.4 },
-  overloading: { color: 0x3f7bff, tip: 0xd9ecff, frame: FRAME.SPARK, rate: 26, rise: 0.6 },
-  glacial:     { color: 0x59d6ff, tip: 0xe6ffff, frame: FRAME.HEX,   rate: 22, rise: -0.6 },
+  blazing:     { color: 0xff5a10, tip: 0xffc060, frame: FRAME.EMBER, rate: 34, rise: 1.4, tipAlpha: 0.7 },
+  overloading: { color: 0x3f7bff, tip: 0xa9d4ff, frame: FRAME.SPARK, rate: 26, rise: 0.6, tipAlpha: 0.7 },
+  glacial:     { color: 0x59d6ff, tip: 0x9fd8f0, frame: FRAME.HEX,   rate: 22, rise: -0.6, tipAlpha: 0.55 },
 };
 
 // Keyed to Combat's STATUS_DEFS so `ctx.vfx.status(entity, type, colour)` maps
 // straight through with no translation table on the gameplay side.
 const STATUS = {
-  burn:   { color: 0xff6a10, tip: 0xffc040, frame: FRAME.EMBER, rise: 1.6,  rate: 22, dur: 4.0 },
+  burn:   { color: 0xff6a10, tip: 0xffc040, frame: FRAME.EMBER, rise: 1.6,  rate: 22, dur: 4.0, tipAlpha: 0.7 },
   bleed:  { color: 0xd0203a, tip: 0xff6a78, frame: FRAME.BLOB,  rise: -1.2, rate: 16, dur: 3.0, alpha: true },
-  slow:   { color: 0x5ad2ff, tip: 0xc8f2ff, frame: FRAME.DUST,  rise: -0.5, rate: 10, dur: 2.0, alpha: true },
-  freeze: { color: 0x9fe8ff, tip: 0xffffff, frame: FRAME.HEX,   rise: -0.4, rate: 14, dur: 1.6 },
-  shock:  { color: 0xc9b5ff, tip: 0xffffff, frame: FRAME.SPARK, rise: 0.2,  rate: 18, dur: 1.4 },
+  slow:   { color: 0x5ad2ff, tip: 0xa8e4ff, frame: FRAME.DUST,  rise: -0.5, rate: 10, dur: 2.0, alpha: true },
+  // `freeze` and `shock` were both `tip: 0xffffff` on an additive frame. Two
+  // overlapping quads of pure white are a neutral hole in the frame whatever
+  // colour the second stop is, and a frozen monster is a status the player has
+  // to see *through*, not a white patch where the monster used to be.
+  freeze: { color: 0x9fe8ff, tip: 0xbfe8ff, frame: FRAME.HEX,   rise: -0.4, rate: 14, dur: 1.6, tipAlpha: 0.5 },
+  shock:  { color: 0xc9b5ff, tip: 0xd8c4ff, frame: FRAME.SPARK, rise: 0.2,  rate: 18, dur: 1.4, tipAlpha: 0.6 },
 };
 
 // Two separate scratch pools. Effect methods use _v*, event handlers use _h*.
@@ -543,9 +557,21 @@ export class VFX {
     // 60*s that used to render every monster inside the blast as a uniform white
     // cast, but the range now actually reaches the ground the blast is standing
     // over, which is the surface the layer exists to brighten.
-    this.lights.flick(pos, colour, 20 * s, r * 4.2, 0.42);
+    // ...and round 5 then measured the other end of the same lever. The
+    // equipment nuke is `explosion(at, 12)` (`equipment.js:175`), so `s` is 3
+    // and this line asked for intensity 60 over a **50 m** range — nine times
+    // the lit screen area of a normal blast at three times the brightness. In
+    // `10-inventory` that keyed the entire frame: the 3D viewport measured mean
+    // L 165 and 22% of its pixels over L 220 against L 62 / 0.5% for the same
+    // stage and camera in `06-loaded-hud`, and terrain, water, trees and sky all
+    // went milky yellow-green together. A blast light is a *local* light; past
+    // about 26 m it has stopped being an effect and become the scene key.
+    // The caps sit above `08-explosion`'s r = 6 (intensity 30, range 25.2), so
+    // the shot the layer was tuned on is untouched and only the nuke is pulled
+    // back to a blast that lights its own neighbourhood.
+    this.lights.flick(pos, colour, 20 * Math.min(s, 1.6), Math.min(r * 4.2, 26), 0.42);
     // Screen-space distortion: the shell of bent air riding the shockwave.
-    this.shockwave(pos, r * 2.6, 0.45, clamp(0.004 + r * 0.0012, 0.004, 0.018));
+    this.shockwave(pos, r * 2.6, 0.45, clamp(0.006 + r * 0.0018, 0.006, 0.026));
     this._shakeAt(pos, clamp(0.05 + r * 0.018, 0.05, 0.3));
     this._hitstop(HITSTOP.explosion, true);
     // A single blast used to reach the pipeline's aberration cap on its own,
@@ -1213,7 +1239,12 @@ export class VFX {
       u[o] = (_proj.x + 1) * 0.5;
       u[o + 1] = (_proj.y + 1) * 0.5;
       u[o + 2] = uvR;
-      u[o + 3] = b.strength * Math.pow(1 - k, 1.5);
+      // ^1.5 put the shell at 0.40 of its strength by the time the shutter
+      // lands (k = 0.46 on `08-explosion`), so the layer the probe verified was
+      // already more than half gone in the frame anyone looks at. ^0.9 holds it
+      // to 0.51 there and still takes it to zero at the ring's own death, so
+      // nothing lingers as a static lens.
+      u[o + 3] = b.strength * Math.pow(1 - k, 0.9);
       n++;
     }
     pass.uniforms.uBlastCount.value = n;
@@ -1314,6 +1345,7 @@ export class VFX {
       e.life = 0.8; e.lifeVar = 0.5;
       e.size0 = 0.15; e.size1 = 0.02;
       e.color0.set(a.def.tip); e.color1.set(a.def.color);
+      e.alpha0 = a.def.tipAlpha ?? 0.7;
       e.frame = a.def.frame;
       e.stretch = a.def.frame === FRAME.SPARK ? 1.1 : 0;
       e.spin = 5;
@@ -1348,8 +1380,12 @@ export class VFX {
       e.dir.set(0, s.def.rise >= 0 ? 1 : -1, 0); e.spread = 0.7;
       e.speed = Math.abs(s.def.rise) * 1.6 + 0.4; e.speedVar = 0.6;
       e.life = 0.55; e.lifeVar = 0.4;
-      e.size0 = 0.13; e.size1 = 0.01;
+      // Sized off the host, not a constant. At 0.13 flat a status puff on a
+      // 0.4 m mite was as wide as the mite; the overlay has to dress whatever
+      // it is attached to, never outgrow it.
+      e.size0 = clamp(r * 0.26, 0.05, 0.2); e.size1 = 0.01;
       e.color0.set(s.def.tip); e.color1.set(s.def.color);
+      e.alpha0 = s.def.tipAlpha ?? 1;
       e.frame = s.def.frame;
       e.stretch = s.def.frame === FRAME.SPARK ? 1.0 : 0;
       e.spin = 6; e.gravity = -s.def.rise * 0.8; e.drag = 2.0; e.turbulence = 0.4;
@@ -1839,14 +1875,34 @@ class RingPool {
 // World height of a normal readout and of a crit. The vertex shader needs the
 // normal one to scale its minimum-pixel floor with the size class, so it is
 // interpolated into the GLSL rather than duplicated as a literal.
-const NUM_SCALE = 0.38;
-const CRIT_SCALE = 0.62;
+// Round 5, fourth time of asking: four concurrent `27118!` runs in
+// `10-inventory` measured a 27 px cap and 174 px of width each — the largest
+// type in the game, against a 10 px objective banner, a 23 px clock and 9 px
+// item counts — and one of them landed on the player and buried the top tick of
+// the crosshair. A damage readout is feedback, not a headline. Both classes are
+// pulled ~30% and the minimum-pixel floor with them, which is what actually
+// sets the size at combat range.
+const NUM_SCALE = 0.27;
+const CRIT_SCALE = 0.44;
+// Half-extents, in NDC, of the rect the reticle owns. Nothing this layer draws
+// is allowed to settle inside it; see the deflection in NumberVert.
+const NUM_RETICLE_X = 0.115;
+const NUM_RETICLE_Y = 0.085;
+// No more than this many readouts may start inside NUM_RUN_WINDOW seconds. A
+// salvo into a horde spawned one run per hit and stacked five overlapping
+// six-digit numbers across the middle of the frame; the sixth tells the player
+// nothing the first five did not.
+const NUM_MAX_RUNS = 5;
+const NUM_RUN_WINDOW = 0.42;
 // Minimum on-screen height of a normal glyph, in CSS pixels. Below roughly this
 // no digit is recoverable at any zoom — the pre-fix build produced 8 px smears.
 // 18 produced a ~10 px ink height at the floor (the tile is mostly padding), so
 // the "minimum readable" glyph still measured 15 px only because of the spawn
-// pop. 36 gives ~18 px of ink inside a ~29 px dark-bordered mark.
-const NUM_MIN_PX = 36;
+// pop. 36 gave ~18 px of ink inside a ~29 px dark-bordered mark — legible, and
+// then measured at a 27 px cap in `10-inventory`, above every other numeral in
+// the product. 26 keeps ~13 px of ink inside a ~21 px mark, which still clears
+// the halo's own 3 px plate and no longer outranks the clock.
+const NUM_MIN_PX = 26;
 // Glyph atlas geometry, shared by the drawer and the halo dilation in NumberFrag.
 const NUM_TILE = 128;
 const NUM_COLS = 4;
@@ -1895,6 +1951,25 @@ void main() {
   float minPx = uMinPx * (aGlyph.w / ${NUM_SCALE.toFixed(3)});
   float minWorld = dist * minPx * uPxToWorld;
   float scale = max(aGlyph.w, minWorld) * pop;
+
+  // --- reticle exclusion ---
+  // The crosshair is the one element in a fight the player must never lose, and
+  // round 5 measured a readout sitting on top of it with its upper tick behind
+  // a digit. Rather than reject the spawn (which loses the feedback entirely, and
+  // cannot know where the numeral will have arced to by the time it is read),
+  // the layer deflects: any glyph inside the reserved rect is pushed up out of
+  // it, weighted by how central it is horizontally and ramped in from the rect's
+  // lower edge so nothing ever snaps. Numerals rise anyway, so up is with the
+  // motion and not against it.
+  float p00 = projectionMatrix[0][0], p11 = projectionMatrix[1][1];
+  vec2 ndc = vec2(p00 * mv.x, p11 * mv.y) / dist;
+  float ax = 1.0 - smoothstep(${NUM_RETICLE_X.toFixed(3)} * 0.55, ${NUM_RETICLE_X.toFixed(3)}, abs(ndc.x));
+  // Ramps 0 -> 1 across the rect's lower edge; the (RY - ndc.y) term takes the
+  // lift back to zero of its own accord at the upper edge, so both boundaries
+  // are continuous and a glyph deflected at all is deflected exactly to RY.
+  float ay = smoothstep(-${NUM_RETICLE_Y.toFixed(3)}, -${NUM_RETICLE_Y.toFixed(3)} * 0.35, ndc.y);
+  mv.y += max(0.0, ${NUM_RETICLE_Y.toFixed(3)} - ndc.y) * ax * ay * dist / p11;
+
   float cw = 0.62;
   vec2 corner = vec2(
     (position.x + (aGlyph.y - aGlyph.z) * cw) * scale,
@@ -1980,6 +2055,9 @@ class DamageNumbers {
     this.head = 0;
     this.time = 0;
     this._buf = new Array(8);
+    // Ring of recent non-crit run start times, for the concurrency gate.
+    this._runT = new Float32Array(NUM_MAX_RUNS + 1).fill(-1e9);
+    this._runCursor = 0;
 
     const map = makeGlyphAtlas();
     const quad = new THREE.PlaneGeometry(1, 1);
@@ -2034,6 +2112,17 @@ class DamageNumbers {
     // Cull far readouts outright: at 45 m even a floored glyph is competing
     // with the horde for attention and telling the player nothing.
     if (this.ctx.camera?.position.distanceToSquared(pos) > NUM_MAX_DIST * NUM_MAX_DIST) return;
+    // Concurrency gate. Crits bypass it — the whole point of a crit readout is
+    // that it is the one worth reading — but everything else queues behind a
+    // fixed budget so a salvo into a horde cannot paper the frame.
+    if (!crit) {
+      const cut = this.time - NUM_RUN_WINDOW;
+      let live = 0;
+      for (let i = 0; i < this._runT.length; i++) if (this._runT[i] > cut) live++;
+      if (live >= NUM_MAX_RUNS) return;
+      this._runT[this._runCursor] = this.time;
+      this._runCursor = (this._runCursor + 1) % this._runT.length;
+    }
 
     const n = Math.max(1, Math.round(amount));
     const chars = this._buf;

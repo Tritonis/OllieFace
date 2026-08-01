@@ -95,11 +95,35 @@ void main() {
   vec4 c = mix(aCol0, aCol1, u);
   float fadeIn = max(aCurve.x, 0.0001);
   c.a *= smoothstep(0.0, fadeIn, u) * pow(max(1.0 - u, 0.0), max(aCurve.y, 0.001));
-  vColor = c;
 
   // --- billboard in view space ---
   float size = mix(aSize.x, aSize.y, u);
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
+
+  // --- lens fade ---
+  // The soft-particle fade above handles a sprite meeting a *surface*. This
+  // handles a sprite meeting the *lens*, which is the other end of the same
+  // problem and was unhandled: 'subtense' is the sprite's half-extent over its
+  // own distance from the camera, so it is how much of the view the quad claims
+  // regardless of its world size. Past ~0.3 (about a third of the frame height
+  // from one sprite) an additive quad has stopped being an effect in the scene
+  // and become a wash over the whole composition.
+  //
+  // Round 5 measured this on '10-inventory': 'overload-cell' detonates a 12 m
+  // fireball centred on the player, six metres from the lens, so its core and
+  // heat-glow quads subtended ~0.9 each and the 3D viewport came back at mean
+  // L 159 with 12.5% of it over L 220 — against L 62 / 1.1% for the identical
+  // stage and camera in '06-loaded-hud'. Terrain, water, trees and sky all went
+  // milky together, which is the axis-3 and axis-9 regression on that shot.
+  //
+  // It fades to 0.18, not to nothing: standing inside a nova should still be
+  // bright, and the shot's own subject assertion needs the blast to be there.
+  // '08-explosion' sits at ~0.23 and is not touched at all.
+  float subtense = (size * 0.5) / max(-mv.z, 0.05);
+  c.a *= mix(1.0, 0.18, smoothstep(0.30, 0.85, subtense));
+
+  vColor = c;
+
   vec2 corner;
 
   if (aParams.w > 0.0) {

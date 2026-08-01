@@ -249,6 +249,292 @@ export function withRepeat(set, repeat) {
   return out;
 }
 
+// ---------------------------------------------------------------------------
+// World-space detail: per-material surface identity, resolved in metres.
+//
+// The maps above are the *near-field* substance — grit, corrosion, pooling. They
+// are UV-locked, and a UV-locked map has one fatal property: its screen-space
+// period does not fall off with distance. Measured across the shipped build,
+// natural rock, hewn masonry, wood, a hand-authored arch and a mountain range at
+// ten times the distance all carried their dominant detail at 7-13 px of screen
+// space — a 1.9x spread over a >10x distance range. Detail that does not shrink
+// when you walk away from it is not a property of the surface, it is a property
+// of the screen, and it reads as foil crinkle laid over everything equally.
+//
+// This block fixes both halves of that at once:
+//
+//  - **Metres, not texels.** Relief is a triplanar field sampled at a fixed
+//    world scale, so a 0.55 m boulder pit is 40 px at 13 m and 8 px at 65 m,
+//    exactly as it should be. Triplanar also removes the stretching planar UVs
+//    leave on the sheer faces of a per-face-projected terrain.
+//  - **Feature scale IS material identity.** The classes are deliberately more
+//    than an order of magnitude apart in world feature size — 0.085 m wood grain
+//    against 2.3 m steel panel seams — and differ in anisotropy (wood and metal
+//    run one way, rock does not), in shaping (natural rock is ridged, hewn stone
+//    is smooth between straight tooled joints) and in amplitude.
+//  - **The near-field map fades out before it aliases.** Below ~1 px of period a
+//    normal map stops being relief and becomes noise, which is precisely what
+//    made the distant ranges refuse to recede. `uv` scales it down at the near
+//    plate and `uvFade` retires it; the metre-scale field takes over behind it.
+//  - **Cavity survives the dark.** Hemisphere and IBL irradiance are near-linear
+//    in the normal, so on an ambient-only surface a normal map contributes almost
+//    nothing — measured as a 21x collapse in high-frequency detail between the
+//    lit and shade sides of the same rock in one frame. The same height field
+//    therefore also drives a cavity term on the *indirect* lighting only, which
+//    is normal-independent and so keeps its break where the key never reaches.
+//    It touches nothing on the lit side, so no terminator ratio moves.
+//
+// Every material shares one program: the class differences are uniforms, not
+// #defines, so this adds no shader permutations and no draw-call splits.
+// ---------------------------------------------------------------------------
+
+/**
+ * `fine` / `coarse` are world feature sizes in **metres**, `*Amp` are surface
+ * slopes (not heights), `aniso` stretches the field along the surface's second
+ * axis, `ridge` folds the coarse octave into creased rather than billowy relief,
+ * `joint` is `[slope, period m, row aspect, groove width m]` for tooled stone
+ * and plate seams, `uv` is what is left of the near-field texture normal and
+ * `uvFade` retires it over that distance band in metres.
+ */
+const DETAIL_BASE = {
+  fine: 0.6, fineAmp: 0.25, coarse: 3.0, coarseAmp: 0.20,
+  aniso: 1.0, ridge: 0.0, cavity: 0.30, rough: 0.08,
+  joint: [0, 1, 1, 0.05], uv: 0.5, uvFade: [20, 60], fineFade: 80,
+};
+
+const DETAIL = {
+  // Ground. Broad, low, and the one surface the player is always inside the
+  // near band of — so its fine octave is nearly a metre and it survives far out.
+  terrain:   { fine: 0.46, fineAmp: 1.00, coarse: 3.0, coarseAmp: 0.55, ridge: 0.0,
+               cavity: 0.70, rough: 0.10, uv: 0.95, uvFade: [55, 160], fineFade: 200 },
+  // Natural rock: ridged, 30 cm pitting over a 1.6 m swell, no straight lines.
+  rock:      { fine: 0.30, fineAmp: 1.20, coarse: 1.6, coarseAmp: 0.80, aniso: 1.25,
+               ridge: 0.22, cavity: 0.55, rough: 0.14, uv: 0.90, uvFade: [40, 120], fineFade: 110 },
+  // Hewn stone — arcades, columns, the hero arch, standing stones. Fine chisel
+  // between *straight mortar joints on a 1.15 m course*. The joints are the
+  // whole read: a tooled block has parallel lines at a fixed world period and
+  // raw rock has none, which is how RoR2's aqueduct separates masonry from the
+  // cliff it is bolted to at a glance.
+  cliff:     { fine: 0.22, fineAmp: 0.70, coarse: 1.8, coarseAmp: 0.45, ridge: 0.0,
+               cavity: 0.60, rough: 0.16, joint: [0.55, 1.70, 0.45, 0.170],
+               uv: 0.90, uvFade: [34, 100], fineFade: 55 },
+  // Organic clumps: mid-scale, soft, no directional bias, deepest cavity of any
+  // class because foliage is mostly self-shadow.
+  moss:      { fine: 0.30, fineAmp: 0.90, coarse: 1.4, coarseAmp: 0.50, aniso: 0.85,
+               cavity: 0.60, rough: 0.06, uv: 0.95, uvFade: [24, 70], fineFade: 70 },
+  // Water and wet rock: long shallow swell drawn out along the flow, almost no
+  // cavity — a wet surface fills its own crevices.
+  wetStone:  { fine: 0.80, fineAmp: 0.35, coarse: 3.5, coarseAmp: 0.28, aniso: 2.6,
+               cavity: 0.16, rough: 0.05, uv: 0.80, uvFade: [30, 90], fineFade: 100 },
+  // Plate. Near-flat between 2.3 m panel seams, with a vertical run-off streak
+  // 4.5x longer than it is wide. The roughness modulation is the largest in the
+  // set: what makes metal read as metal is that the specular *breaks* along the
+  // seams and the weathering, not that it is uniformly shiny.
+  metalRuin: { fine: 1.20, fineAmp: 0.28, coarse: 4.0, coarseAmp: 0.18, aniso: 4.5,
+               cavity: 0.34, rough: 0.26, joint: [0.90, 2.30, 1.55, 0.095],
+               uv: 0.85, uvFade: [34, 100], fineFade: 110 },
+  // Silt: fine wind ripples drawn out crosswind over broad dunes.
+  sand:      { fine: 0.25, fineAmp: 0.45, coarse: 2.2, coarseAmp: 0.60, aniso: 3.2,
+               cavity: 0.18, rough: 0.04, uv: 0.90, uvFade: [24, 70], fineFade: 60 },
+  // Grain. The finest and most anisotropic field in the build by a wide margin:
+  // 60 mm across the grain, 0.54 m along it.
+  wood:      { fine: 0.060, fineAmp: 1.30, coarse: 0.60, coarseAmp: 0.45, aniso: 9.0,
+               ridge: 0.20, cavity: 0.42, rough: 0.13, uv: 0.95, uvFade: [18, 50], fineFade: 26 },
+
+  // Interactable rungs. Same substances, but the parts are 0.1-1.5 m so the
+  // world scale has to come down with them or a strap carries a third of one
+  // feature. These are never seen past ~30 m.
+  ironPart:  { fine: 0.14, fineAmp: 0.34, coarse: 0.60, coarseAmp: 0.20, aniso: 3.6,
+               cavity: 0.30, rough: 0.22, joint: [0.65, 0.42, 1.5, 0.028],
+               uv: 0.90, uvFade: [18, 50], fineFade: 34 },
+  stonePart: { fine: 0.075, fineAmp: 0.80, coarse: 0.45, coarseAmp: 0.40, ridge: 0.0,
+               cavity: 0.50, rough: 0.10, joint: [0.60, 0.34, 0.55, 0.030],
+               uv: 0.90, uvFade: [18, 50], fineFade: 30 },
+  woodPart:  { fine: 0.024, fineAmp: 1.10, coarse: 0.24, coarseAmp: 0.45, aniso: 8.0,
+               ridge: 0.20, cavity: 0.40, rough: 0.13, uv: 0.95, uvFade: [14, 38], fineFade: 22 },
+};
+
+const DETAIL_PARS = /* glsl */`
+varying vec3 vDetW;
+varying vec3 vDetN;
+uniform vec4 uDetA;   // x 1/fine  y fineAmp  z 1/coarse  w coarseAmp
+uniform vec4 uDetB;   // x aniso   y ridge    z cavity    w roughMod
+uniform vec4 uDetC;   // x jointAmp y jointPeriod z jointAspect w jointWidth
+uniform vec4 uDetD;   // x uvNear  y uvFade0   z uvFade1   w fineFade
+
+float detHash(vec2 p) {
+  vec3 q = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973));
+  q += dot(q, q.yzx + 33.33);
+  return fract((q.x + q.y) * q.z);
+}
+// value noise with its analytic gradient — (value, dV/du, dV/dv). Analytic
+// because a screen-space derivative here would put the detail straight back on
+// the screen, which is the defect this exists to remove.
+vec3 detNoise(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f), du = 6.0 * f * (1.0 - f);
+  float a = detHash(i), b = detHash(i + vec2(1.0, 0.0));
+  float c = detHash(i + vec2(0.0, 1.0)), d = detHash(i + vec2(1.0, 1.0));
+  float k1 = b - a, k2 = c - a, k3 = a - b - c + d;
+  return vec3(a + k1 * u.x + k2 * u.y + k3 * u.x * u.y,
+              du.x * (k1 + k3 * u.y),
+              du.y * (k2 + k3 * u.x));
+}
+// Running-bond mortar course. Straight, world-periodic, and the one feature in
+// the build that says "someone cut this" rather than "this eroded".
+vec3 detJoint(vec2 p, float per, float aspect, float wid) {
+  float rh = per * aspect;
+  float row = floor(p.y / rh);
+  float px = p.x + mod(row, 2.0) * per * 0.5;
+  float fx = (fract(px / per) - 0.5) * per;
+  float fy = (fract(p.y / rh) - 0.5) * rh;
+  float ax = abs(fx), ay = abs(fy);
+  float tx = clamp(ax / wid, 0.0, 1.0), ty = clamp(ay / wid, 0.0, 1.0);
+  float jx = 1.0 - tx * tx * (3.0 - 2.0 * tx);
+  float jy = 1.0 - ty * ty * (3.0 - 2.0 * ty);
+  float gx = -6.0 * tx * (1.0 - tx) * sign(fx);
+  float gy = -6.0 * ty * (1.0 - ty) * sign(fy);
+  if (jx >= jy) { return vec3(jx, gx, 0.0); }
+  return vec3(jy, 0.0, gy);
+}
+
+void detField(vec3 wp, vec3 wn, float dist, out vec3 gradW, out float hOut) {
+  gradW = vec3(0.0); hOut = 0.0;
+  vec3 bw = abs(wn); bw *= bw; bw *= bw;              // ^4: hard triplanar blend
+  bw /= max(bw.x + bw.y + bw.z, 1e-4);
+  // Anisotropy stretches the field along each plane's second axis, which is the
+  // world vertical on the two side planes and world Z on the ground plane.
+  vec2 an = vec2(1.0, 1.0 / max(uDetB.x, 0.001));
+  float fineK = 1.0 - smoothstep(uDetD.w * 0.45, uDetD.w, dist);
+
+  vec2 cX = vec2(wp.z, wp.y), cY = vec2(wp.x, wp.z), cZ = vec2(wp.x, wp.y);
+
+  if (fineK > 0.004 && uDetA.y > 0.0) {
+    float k = uDetA.y * fineK;
+    vec3 nX = detNoise(cX * uDetA.x * an);
+    vec3 nY = detNoise(cY * uDetA.x * an);
+    vec3 nZ = detNoise(cZ * uDetA.x * an);
+    hOut += k * (bw.x * (nX.x - 0.5) + bw.y * (nY.x - 0.5) + bw.z * (nZ.x - 0.5));
+    gradW += k * bw.x * vec3(0.0, nX.z * an.y, nX.y);
+    gradW += k * bw.y * vec3(nY.y, 0.0, nY.z * an.y);
+    gradW += k * bw.z * vec3(nZ.y, nZ.z * an.y, 0.0);
+  }
+
+  if (uDetA.w > 0.0) {
+    vec3 mX = detNoise(cX * uDetA.z);
+    vec3 mY = detNoise(cY * uDetA.z);
+    vec3 mZ = detNoise(cZ * uDetA.z);
+    // Ridging: creased relief for natural stone, billowy for everything else.
+    // The value and the gradient are folded with the same factor so the surface
+    // stays a real height field.
+    float r = uDetB.y;
+    vec3 sX = vec3(mix(mX.x, 1.0 - abs(2.0 * mX.x - 1.0), r), mX.yz * mix(1.0, -sign(2.0 * mX.x - 1.0) * 2.0, r));
+    vec3 sY = vec3(mix(mY.x, 1.0 - abs(2.0 * mY.x - 1.0), r), mY.yz * mix(1.0, -sign(2.0 * mY.x - 1.0) * 2.0, r));
+    vec3 sZ = vec3(mix(mZ.x, 1.0 - abs(2.0 * mZ.x - 1.0), r), mZ.yz * mix(1.0, -sign(2.0 * mZ.x - 1.0) * 2.0, r));
+    float k = uDetA.w;
+    hOut += k * (bw.x * (sX.x - 0.5) + bw.y * (sY.x - 0.5) + bw.z * (sZ.x - 0.5));
+    gradW += k * bw.x * vec3(0.0, sX.z, sX.y);
+    gradW += k * bw.y * vec3(sY.y, 0.0, sY.z);
+    gradW += k * bw.z * vec3(sZ.y, sZ.z, 0.0);
+  }
+
+  if (uDetC.x > 0.0) {
+    float per = uDetC.y, asp = uDetC.z, wid = uDetC.w, k = uDetC.x;
+    vec3 jX = detJoint(cX, per, asp, wid);
+    vec3 jY = detJoint(cY, per, asp, wid);
+    vec3 jZ = detJoint(cZ, per, asp, wid);
+    // Joints are grooves: they cut *into* the surface, so they subtract height
+    // and are the strongest cavity term the material has.
+    hOut -= k * (bw.x * jX.x + bw.y * jY.x + bw.z * jZ.x) * 0.7;
+    gradW -= k * bw.x * vec3(0.0, jX.z, jX.y);
+    gradW -= k * bw.y * vec3(jY.y, 0.0, jY.z);
+    gradW -= k * bw.z * vec3(jZ.y, jZ.z, 0.0);
+  }
+}
+`;
+
+/**
+ * Attach the world-space detail pass to a standard material.
+ *
+ * `kind` names a row of `DETAIL`. The uniforms live on `material.userData.det`
+ * so a biome retune can move them without recompiling anything.
+ */
+export function attachDetail(material, kind) {
+  const d = { ...DETAIL_BASE, ...(DETAIL[kind] || {}) };
+  const u = {
+    uDetA: { value: new THREE.Vector4(1 / d.fine, d.fineAmp, 1 / d.coarse, d.coarseAmp) },
+    uDetB: { value: new THREE.Vector4(d.aniso, d.ridge, d.cavity, d.rough) },
+    uDetC: { value: new THREE.Vector4(d.joint[0], d.joint[1], d.joint[2], d.joint[3]) },
+    uDetD: { value: new THREE.Vector4(d.uv, d.uvFade[0], d.uvFade[1], d.fineFade) },
+  };
+  material.userData.det = u;
+  material.userData.detKind = kind;
+  material.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, u);
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vDetW;\nvarying vec3 vDetN;')
+      .replace('#include <project_vertex>', /* glsl */`
+        #ifdef USE_INSTANCING
+          vDetW = ( modelMatrix * instanceMatrix * vec4( transformed, 1.0 ) ).xyz;
+          vDetN = normalize( mat3( modelMatrix * instanceMatrix ) * objectNormal );
+        #else
+          vDetW = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;
+          vDetN = normalize( mat3( modelMatrix ) * objectNormal );
+        #endif
+        #include <project_vertex>`);
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\n' + DETAIL_PARS)
+      .replace('#include <roughnessmap_fragment>', /* glsl */`
+        float detDist = length( vViewPosition );
+        vec3 detGradW; float detH;
+        detField( vDetW, normalize( vDetN ), detDist, detGradW, detH );
+        float detCav = 1.0 - uDetB.z * clamp( -detH * 2.4, 0.0, 1.0 );
+        #include <roughnessmap_fragment>
+        roughnessFactor = clamp( roughnessFactor + uDetB.w * detH * 2.0, 0.03, 1.0 );`)
+      .replace('#include <normal_fragment_maps>', /* glsl */`
+        #include <normal_fragment_maps>
+        {
+          float uvK = uDetD.x * ( 1.0 - smoothstep( uDetD.y, uDetD.z, detDist ) );
+          normal = normalize( mix( nonPerturbedNormal, normal, uvK ) );
+          // Micro-cavity, free: a texel whose normal has been tilted away from
+          // the face is the wall of a crevice, and a crevice sees less of the
+          // sky than the plate around it. This is the only detail term that
+          // survives on an ambient-only surface at arm's length — irradiance is
+          // near-linear in the normal, so the tilt itself buys almost no value
+          // break there, but occluding it does. It rides the same distance fade
+          // as the map it is derived from.
+          detCav *= 1.0 - uDetB.z * 0.85 *
+            clamp( ( 1.0 - dot( normal, nonPerturbedNormal ) ) * 3.4, 0.0, 1.0 );
+          vec3 wnD = normalize( vDetN );
+          vec3 pW = detGradW - wnD * dot( detGradW, wnD );
+          normal = normalize( normal - mat3( viewMatrix ) * pW );
+        }`)
+      .replace('#include <aomap_fragment>', /* glsl */`
+        #include <aomap_fragment>
+        // Sky-visibility gradient. Hemisphere and IBL irradiance are both very
+        // nearly linear in the normal and both ends of the hemisphere sit close
+        // together in value, so a normal-mapped facet on an ambient-only surface
+        // returns almost exactly what the flat face beside it returns — measured
+        // as a 21x collapse in surface detail between the lit and the shade side
+        // of the same rock in one frame. Re-weighting the indirect term by how
+        // much the perturbed normal turned *toward the sky* restores the break
+        // where the key never lands. It is signed and centred on 1.0, so it
+        // moves no surface's mean and no terminator ratio.
+        {
+          vec3 upV = vec3( viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1] );
+          float skyD = dot( normal - nonPerturbedNormal, upV );
+          reflectedLight.indirectDiffuse *= clamp( 1.0 + uDetB.z * 2.2 * skyD, 0.30, 1.95 );
+        }
+        reflectedLight.indirectDiffuse *= detCav;
+        reflectedLight.indirectSpecular *= mix( 1.0, detCav, 0.55 );`);
+  };
+  // One extra program, not one per material: every consumer of this pass shares
+  // the same source and differs only in uniform values.
+  material.customProgramCacheKey = () => 'det1';
+  material.needsUpdate = true;
+  return material;
+}
+
 let _sets = null;
 let _mats = null;
 
@@ -458,6 +744,13 @@ function buildMaterials(sets) {
     depthWrite: true,
   });
 
+  // The metre-scale identity pass. `crystal` is deliberately left out: it is a
+  // faceted emissive accent with a clearcoat, it has no surface substance to
+  // resolve, and it is the one material whose read is its silhouette.
+  for (const k of ['terrain', 'rock', 'cliff', 'moss', 'wetStone', 'metalRuin', 'sand', 'wood']) {
+    attachDetail({ terrain, rock, cliff, moss, wetStone, metalRuin, sand, wood }[k], k);
+  }
+
   return { terrain, rock, cliff, moss, wetStone, metalRuin, sand, wood, crystal };
 }
 
@@ -619,7 +912,13 @@ export const BIOMES = [
       // the mesa caps are the only wind-polished thing in frame, which is what
       // makes a cap edge catch the low sun while the grass beside it does not.
       terrain: { roughness: 0.90, metalness: 0.01, env: 0.85, normal: 1.0 },
-      cliff:   { roughness: 0.58, metalness: 0.03, env: 1.45, normal: 1.55 },
+      // 0.66/1.22, not 0.58/1.45. At the lower pair the one stone landmark in
+      // the establishing shot returned a specular peak of RGB(255,255,240) —
+      // two channels hard-clipped, saturation 0.06. A clipped pixel has no hue,
+      // so the build's only real highlight was rendering as white paper and
+      // carrying none of the key's colour. The fix is to stop clipping, not to
+      // tint anything: an unclipped dielectric highlight is the key's own hue.
+      cliff:   { roughness: 0.66, metalness: 0.03, env: 1.22, normal: 1.55 },
       moss:    { roughness: 0.99, metalness: 0.0, env: 0.30, normal: 0.70 },
       wood:    { roughness: 0.95, metalness: 0.0, env: 0.35, normal: 1.35 },
       crystal: { roughness: 0.08, metalness: 0.0, env: 1.1, emissive: 0.55 },

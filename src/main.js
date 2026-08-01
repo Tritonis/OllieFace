@@ -11,6 +11,7 @@ import { Items } from './systems/Items.js';
 import { Artifacts } from './systems/Artifacts.js';
 import { Director } from './systems/Director.js';
 import { Progression } from './systems/Progression.js';
+import { Realms } from './world/realms/Realms.js';
 import { VFX } from './systems/VFX.js';
 import { Audio } from './systems/Audio.js';
 import { HUD } from './ui/HUD.js';
@@ -52,6 +53,9 @@ engine.add(new Combat());
 engine.add(new Player());
 engine.add(new Director());
 engine.add(new Progression());
+// After Progression, which owns the stage flow it hooks into and the
+// Interactables list its gateways and market stalls live in.
+engine.add(new Realms());
 engine.add(new VFX());
 engine.add(new Audio());
 engine.add(new CameraRig());
@@ -95,4 +99,9 @@ globalThis.__GAME__ = { engine, ctx, THREE, seed };
 if (params.has('harness')) {
   const { installHarness } = await import('./core/Harness.js');
   installHarness(ctx);
+  // The realm/finale scenarios hang off the same `__HARNESS__` object and are
+  // driven by tools/capture-realms.mjs. They live in the realms directory
+  // rather than in Harness.js so the two sets can be worked on independently.
+  const { installRealmHarness } = await import('./world/realms/RealmHarness.js');
+  installRealmHarness(ctx);
 }

@@ -59,7 +59,14 @@ vec2 blastOffset(vec2 p) {
     if (dist < 1e-5) continue;
     // Gaussian band on the wave front. Width tracks the radius so a small blast
     // bends a thin shell and a large one bends a thick shell.
-    float w = max(b.z * 0.14, 0.004);
+    //
+    // 0.14 was measurable and invisible: the round-5 A/B found the layer real
+    // (126k px displaced in the probe) while the critic reading the shipped PNG
+    // could not see the mountain behind the ring bend at all, because a shell
+    // 0.14 of the radius wide is ~15 px of a 210 px ring and the eye has nothing
+    // to compare across. 0.24 bends a band you can see a straight edge enter and
+    // leave, which is the only way a viewer ever perceives refraction.
+    float w = max(b.z * 0.24, 0.006);
     float e = (dist - b.z) / w;
     float shell = exp(-e * e);
     float dir = e < 0.0 ? -0.45 : 1.0;
