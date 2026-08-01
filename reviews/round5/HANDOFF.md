@@ -1,174 +1,194 @@
-# Round 5 handoff — 2026-08-01
+# Petrichor — Round 5 handoff
 
-Written at a usage-limit boundary. This is the state of play and what to do next.
+Written 2026-08-01 at a usage-limit boundary (resets 5:30pm America/Chicago).
+Supersedes the earlier version of this file. Read this first on resume.
+
+## Read these, in order
+
+1. This file.
+2. `RUBRIC.md` — the visual bar and the **4-round-per-subsystem stopping condition**.
+3. `CONTRACTS.md` — binding system/ctx/event contracts. `NETCODE.md` for authority.
+4. `ART-ASSETS.md` — sourcing notes; explains why axis 5 stalled for six rounds.
+5. The round-3 critiques (below) before touching anything visual.
 
 ## Where the code is
 
+`f9b47c4` is HEAD, build **green**, tree **clean**.
+
 | Commit | What |
 |---|---|
-| `4ec7258` | Content expansion design spec |
-| `4e746e3` | **Wave A** — survivors, items, enemies, stages, meta (+14,353 lines) |
-| `f9d85cf` | **Wave B** — artifacts, difficulty, UI integration (+4,749 lines) |
-| `f88a09b` | `ART-ASSETS.md` sourcing notes |
-| `5618f22` | **WIP** — five fix agents mid-run (+2,319 lines). Build green, **visuals unverified** |
+| `4e746e3` | Wave A — survivors, items, enemies, stages, meta (+14,353) |
+| `f9d85cf` | Wave B — artifacts, difficulty, UI (+4,749) |
+| `619e417` | F2 — affix silhouettes, inventory, distortion |
+| `811fbef` | C1 — hidden realms, final boss, endings |
+| `2a782a0` | F1+F3 — harness determinism, legibility gate, material identity |
+| `f9b47c4` | "in progress" — partial round-4 work from four agents killed mid-edit |
 
-`5618f22` is a safety snapshot taken while agents were still writing. It compiles,
-but nothing in it has been visually verified. Do not treat it as good.
+## Content shipped
 
-## What shipped and is verified
+4 survivors (16 abilities) · 83 items + 12 equipment across 5 tiers · 16 enemies +
+7 bosses · 5 elite affixes in 2 tiers · 4 authored biomes + 3 hidden realms + a
+final stage · 7 artifacts · 3 difficulties · 2 endings · meta-progression with
+challenges, logbook and run history · 30 harness shots across two capture tools.
 
-Verified by me on the merged tree, not taken from agent reports: `npm run build`
-clean, 20/20 shots captured with zero per-shot frame errors, no perf regression
-against a properly measured baseline, world-gen determinism proven by sha1 over
-baked grid + instance matrices + colliders + landmarks.
+## THE IMPORTANT PART: `errorCount: 4` is correct, not a regression
 
-| | Before round 5 | After |
+`node tools/capture.mjs` currently reports `errorCount: 4`, `subjectsOk: false`.
+**Do not "fix" this by loosening thresholds.** A stricter per-object gate landed in
+`f9b47c4` and is correctly surfacing defects that were always there:
+
+| shot | failing subject | evidence |
 |---|---|---|
-| Survivors | 1 hardcoded | 4 selectable, 16 abilities, own rigs |
-| Items | 37 | 83 across 5 tiers + 12 equipment actives |
-| Enemies | 6 + 2 bosses | 16 + 6 multi-phase bosses |
-| Elite affixes | 3 | 5 across 2 unlock tiers |
-| Biomes | 4 recolors | 4 authored generators + 12 landmarks |
-| Artifacts / difficulty | none | 7 artifacts, 3 difficulties |
-| Meta progression | none | profile, challenges, logbook, run history |
-| Harness shots | 8 | 20 |
+| `04-combat` | horde | **18/24 objects** — six render zero pixels |
+| `08-explosion` | monsters, damage numbers | 6/7 objects |
+| `09-survivors` | the four survivors | sepP50 0.41 vs 4/4 objects |
+| `11-bestiary` | spawn roster | sepP50 0.4 |
 
-Measured wins worth protecting: biomes sit 1.36–1.74 hue-distance apart out of 2.0
-(they genuinely are four places); the HUD held with 5 of 6 round-4 defects fixed
-and measured (`.money` contrast 1.94:1 → 11.07:1); the equipment slot works.
+The `04-combat` 18/24 exactly matches the "six zeros of 24" a critic measured by
+hand. The gate is working.
 
-## The critic loop — round 1 of a max 4 (RUBRIC.md caps it)
+## Two harness bugs of the same shape — this is the round's core lesson
 
-All four critics returned **FAIL**. Reports in `reviews/round5/critic-r1-*.md`.
+Round 5 opened with `04-combat.png` containing **zero enemies** and `05-boss.png`
+showing a boss health bar over an empty forest, while `manifest.json` reported
+`ready: true, errorCount: 0`. **Five agents cited that manifest as proof their work
+was verified.** Both were fixed. Then the *replacement* gate was found to certify a
+three-object subject where one object rendered zero pixels, because it tested the
+**sum** and the **union** rather than each object.
 
-| Domain | Mean range | Headline |
-|---|---|---|
-| Character | 3.5–4.9 | axis 4 = **3/10**; RANGER and ANVIL are one silhouette |
-| Enemies | 3.7–4.7 | 2 shots contain no subject; ~3 of 16 survive a threshold |
-| Stages | 4.8–6.3 | materials root-caused at last; `02-vista` regressed 6.6 → 4.8 |
-| UI/VFX | 4.6–5.9 | icons in OS symbol font; explosion has 1 of 4 layers |
+Same shape both times: **an aggregate hiding an absence.** Assume it recurs. When
+adding any check, ask what a zero inside it would look like.
 
-### The three findings that actually matter
+## The harness was never deterministic — now it is
 
-1. **The instrument was lying.** `04-combat.png` contained **zero enemies** and
-   `05-boss.png` rendered a boss health bar over an empty forest — while
-   `manifest.json` reported `ready: true, errorCount: 0`. **Five agents cited that
-   manifest as proof their work was verified.** I confirmed both by eye.
-2. **Axis 5 (materials), stuck at 5/10 for five rounds, finally has a root cause.**
-   The roughness ladder in `world/Materials.js:490-514` is authored correctly and
-   *cannot express itself*, because the PMREM in `world/Environment.js:324-332` is
-   a featureless analytic gradient — roughness 0.12 and 0.90 reflect the same
-   constant. **Four rounds of tuning those numbers was wasted work.** Measured:
-   73–92% of every unbroken surface carries no high-frequency detail.
-3. **Possible gameplay bug, not just a screenshot bug.** In the empty combat frame
-   the tracer terminates mid-air on an entity that is not drawn — enemies are
-   solid to hitscan but their meshes do not render. If that reproduces outside the
-   harness, enemies can be invisible in a real game. **Unresolved — check this
-   first.**
+Root cause (`FIX-harness2.md` §2): `Engine._frame` took its delta from the wall
+clock and fed it to every `update()` (where all VFX age), while `ctx.time` advanced
+in a fixed step **scaled by hitstop 0.15**. Shutters budgeted in simulation seconds
+photographed effects at a load-dependent age.
 
-## UPDATE — after the session limit hit
+Measured before: **0 of 21 PNGs byte-identical** across same-seed runs; the
+inventory blast swung 26,130 px → 1,523 px (−94%).
 
-All four fix agents were **killed mid-edit** by the usage limit. None wrote its
-`FIX-*.md` report. Partial work recovered and committed; build green.
+Fixed by `pinClock(1/60)` + `waitFx()` in presentation seconds. **I verified
+independently: 14 of 16 pixel subjects are now bit-identical**, the two that drift
+move 0.12–0.22%. PNGs are still not byte-identical (grain, GPU float) — that was
+never the claim.
 
-**The critical bug is fixed and I verified it by eye, not by manifest:**
+**Consequence: every measurement taken before `2a782a0` was one draw from a
+distribution.** Round-1 and round-2 numbers are estimates.
 
-- `tools/capture.mjs` now emits a `subjectFailures` key (currently `[]`).
-- `Harness.js` now has `visibleFraction()`, which samples the subject's whole
-  projected box instead of one centre ray, plus foreground-occluder rejection.
-- **`04-combat.png` now contains a full enemy field** (mechs, flyers, a red heavy,
-  teal and tan types) — previously zero enemies.
-- **`05-boss.png` now contains the Stone Titan**, in frame centre taking 113
-  damage — previously a boss health bar over empty forest.
-- Lighting/materials also leapt: sunset sky with real gradient, warm/cool contrast,
-  genuine fog depth separation. Shader programs 63 → 68, consistent with the PMREM
-  work landing.
+## Critic scores (bar: 7+ on every axis, none below 6)
 
-**Caveats — do not read this as "done":**
+All rounds FAIL. Round 3 per-shot means:
 
-- ~~No root cause is documented.~~ **RESOLVED** — see `DIAG-invisible-enemies.md`.
-  Verdict **(A): harness framing, no rendering bug.** 22 of 24 enemies were
-  LOS-blocked by terrain 4–12 m in front of a lens 14–40 m away; the survivor stood
-  on a plateau edge (16.04 m) while `spawnRing` dropped the ring down the cliff
-  (−8.93 m). (B) was ruled out affirmatively by 190 isolated draw measurements
-  across recycled rigs, affix re-dressing and 6 spawn/kill/respawn cycles: zero
-  zero-pixel live enemies. The critic's "tracer terminates on an undrawn entity"
-  was a **wrong inference** — the trail is depth-tested and ends on the near slope.
+| Domain | r1 → r2 → r3 |
+|---|---|
+| Character/enemies | `11-bestiary` 4.7→5.6 · `09-survivors` 5.1→5.4 · `03-thirdperson` 5.3→5.4 · `04-combat` 5.0→4.5 · `05-boss` 3.8→4.0 |
+| Stages | build mean 5.7 → **5.6** |
+| UI/VFX | `10-inventory` stuck 4.2 (worst all 3 rounds) · `08-explosion` 5.7→**5.3** · `17-artifacts` 4.6→5.8 |
+| Realms | **4.5** (first critique) |
 
-- **NEW, HIGH PRIORITY — a trap, not just a defect.** `VFX.deathDissolve` never
-  fires for monsters (`resolveObject`, `VFX.js:1424`, does not know about
-  `Enemy.rig.root`; measured `_dissolving.length === 0` after a real kill), so
-  monsters just vanish. **Do not apply the obvious one-line fix.** `VFX.js:1269`
-  sets `d.mesh.visible = false` on a rig `Director.clear()` may already have
-  recycled onto a *live* enemy — that would create genuine invisible-but-alive
-  enemies in gameplay. Add a visibility sibling/generation guard first, mirroring
-  the material guard at `DissolveShader.js:200-204`, then wire `resolveObject`.
-- The boss still does not read at 3× enemy scale, and trunks still partly occlude
-  it in `05-boss`. The critic's measured 1.52× finding likely still stands.
-- Foreground values are still crushed in places.
-- The stages/character/UI fixes are all **partial** — mid-edit snapshots.
-- One correction the UI agent found before dying, worth keeping: the artifact-card
-  title stagger is **not** the font-fallback cause the critic diagnosed — the card
-  is a `<button>`, whose content Chrome centres vertically. Fix the element, not
-  the font.
+**Axis 4 (silhouette) cleared 7 for the first time in the project**, on three shots.
+It opened round 1 at 3/10, the worst in the build. **Axes 2 and 5 are flat for three
+rounds; axis 1 tops out at 5.** Per the rubric's stopping condition, those get an
+honest report, not another grinding round.
 
-## In flight when the session ended (state unknown)
+## Fix claims that did NOT survive independent measurement
 
-Five agents were running. Their partial work is in `5618f22`. **Assume none
-finished; re-verify rather than trusting the diff.** Expected report files, which
-tell you whether each got there:
+Five this round. Not dishonesty — each measured a *different artifact* than ships.
+See memory `name-the-baseline-capture`.
 
-- `reviews/round5/FIX-harness.md` — subject-presence assertion + the render bug
-- `reviews/round5/FIX-character.md` — silhouette collapse, terrain merge, stat bars
-- `reviews/round5/FIX-stages.md` — PMREM, `02-vista` regression, teleporter beam
-- `reviews/round5/FIX-ui-vfx.md` — icons, explosion layers, icon collision floor
+- `10-inventory` 165.4 → 116.4: **the 165.4 baseline is not reproducible on any
+  capture on disk.** Real delta −5.1 L. Shipped frame reads 132.3 — brighter than
+  anything measured. Regression is real and open.
+- `08` "centre out of the sky": clears its own bound by 0.001. "Away from the sun":
+  he sits on the brightest sky quadrant by 4×.
+- Distortion: verifies on `vfxprobe` **to a single pixel**, but the probe
+  photographs a frame that no longer ships.
+- `glacial` 40.5% → 4.4%: **unverifiable — the subject renders zero pixels.**
+- ROOK leg-runs 1.31 → 2.00: shipped pixels read 1.03 (offline rig only). *Later
+  refuted in the other direction — round 3 confirmed the legs ARE fixed.*
+- Monolith specular 0.149: measured 0.111.
 
-If a file is absent, that agent did not finish; re-dispatch from the matching
-`critic-r1-*.md` defect list.
+## Critics correcting themselves (the loop working)
 
-**Already confirmed done inside the WIP commit:** the artifact/difficulty icons are
-fixed — 10 raw Unicode literals became 10 `mark:` keys against 11 drawn glyphs in
-`ui/Icons.js` (`markIcon` at :706 returns null on unknown key so callers fall back).
+- Round-2 stages **retracted its own materials root cause**: "one texture at a fixed
+  7–13px screen-space period" was an artefact of its own 15-tap filter bandwidth.
+  World-locking is verified. It also withdrew its own ≥4× HF-sd criterion as
+  confounded by a 9.7× within-material shading spread.
+- Round-2 enemies **rebuilt and calibrated** its silhouette instrument (disc-vs-square
+  0.777) and refuted three round-1 claims. Round 1's own IoU was garbage.
+- Round-3 UI/VFX **withdrew its own round-2 withdrawal** on chromatic aberration —
+  it had cleared it by sampling a HUD chamfer composited after post.
+- The realms critic withdrew four findings it couldn't reproduce.
+
+## Work in flight when the limit hit (all four killed mid-edit)
+
+Partial work is in `f9b47c4`. **No `FIX-*` report was written for any of them —
+re-verify, don't trust the diff.** Their last words:
+
+- **Harness per-object gate** — "verify the difficulty PNG now matches the
+  assertion". Gate landed and works. Also fixing `18-difficulty`, which asserts
+  `monsoon` and photographs `rainstorm` (`Harness.js:3218` restores the previous
+  rung before the shutter).
+- **Stages r4** — "The gates barely moved the needle. I need to isolate whether the
+  detail pass is actually the salt source." Target: detail-pass **aliasing**
+  (isolated-bright fraction rose at identical bearings in all six shots, worst on the
+  most distant surfaces, b1 far mountain 5.3×). `Materials.js:403` gates only
+  `uDetA.y`; the ridge octave and analytic `detJoint` have no distance/filter-width
+  term.
+- **VFX r4** — "cap the blast light at `08-explosion`'s own values so only the nuke
+  moves." Targets: `08` blast is edgeless clipped white (core R clipped on 100% of
+  pixels, max radial gradient 6.6 L); frame-wide radial chromatic aberration 4–6px,
+  10px peak.
+- **Realms identity** — blocked on another agent re-breaking `ParticleShader.js`
+  (now fine). Targets below.
+
+## Realms: the biggest open content gap
+
+Critic verdict: *"structurally a destination, visually three more stages and one real
+place."* Mean 4.5.
+
+- Three realms sit **12.5 dE76** apart; the four ordinary biomes sit **28.5** apart.
+  Each realm is closer to biome 4 (8.8–9.8) than any two biomes are to each other.
+- **The safe hub and the kill-pit are photometrically identical** — meanL 52.5 vs
+  52.4, and the pit is *brighter* at the median. "Safe" is carried by a HUD string.
+- Victory / obliterate / `YOU DIED` headlines are **identical within 0.5/255**.
+- Rift Anchors colour-match the floor (245.9°), not the Herald (294.3°) they ward.
+- The Fracture *does* commit (62.3 dE from base) — use it as the reference for how
+  far to push the other three.
 
 ## Next actions, in order
 
-1. **Re-run `node tools/capture.mjs` and LOOK at the PNGs.** Do not trust
-   `errorCount: 0` — that is the exact failure this round exposed. Confirm
-   `04-combat` has enemies and `05-boss` has a boss.
-2. **Resolve finding 3**: is the invisible-enemy bug a harness artifact or a real
-   rendering bug? This gates everything else.
-3. Read whichever `FIX-*.md` exist; re-dispatch the missing ones.
-4. **Round 2 critics** on the same four domains. Rubric caps at 4 rounds — after
-   that, report honestly which axes still fall short rather than looping.
-5. Close the integration debts — full `file:line` map is in task #5, already
-   scouted.
+1. Re-dispatch the four killed agents from their briefs above. Tell each to **assess
+   what already landed first** — that instruction saved a full redo last time.
+2. Fix the 4 failing shots properly (framing/content), **never by loosening the gate**.
+3. Round-4 critics — the last scheduled round for character/enemies, stages, UI/VFX.
+4. Then report honestly which axes still fall short. Axes 1, 2, 5 are the likely
+   permanent shortfalls.
+5. Content depth still queued: more survivors, a void/corruption item tier, shrine
+   variety, Command chooser UI.
 
-## Known debts (mapped, not fixed)
+## Standing hazards
 
-- Equipment barrel is an interim `stageStart` seed at `systems/Items.js:150-164`;
-  real interactable goes alongside `world/Interactables.js:165` (base), `:1019` (spawn loop).
-- Co-op: client equipment press has no BTN bit. `net/Protocol.js:36-44`, bits 0–6
-  used, 7–31 free. Pack `NetClient.js:148-164`, unpack `NetHost.js:115-128`.
-- `PROTOCOL_VERSION` went 1→2; **no live two-peer co-op test has ever been run.**
-- Rook's deployables are not `ctx.combat`-registered → invulnerable, absent from
-  the snapshot. Non-scoring damageable must bypass `Combat.js:432-458`.
-- `UNLOCK_BINDINGS` in `data/challenges.js` has 7 artifact bindings; survivor/item/
-  enemy ids still unbound.
-- Artifact of Command has no chooser UI (`Artifacts.js:310` hook is live).
-- Honour does not force affixes on bosses (bosses *do* roll them at a 60% cap —
-  smaller defect than first recorded).
-- `survivorChanged` (`Player.js:299` → `HUD.js:170`) undocumented in `CONTRACTS.md`.
+- **`npm install` breaks this repo.** npm 6.13.6 is on PATH with node v24; it
+  downgrades `lockfileVersion` 3→1 and destroys the rolldown native binding. It has
+  broken the build twice. Recover with
+  `npx -y --package=npm@11 -- npm install`.
+- **The `deathDissolve` trap.** `VFX.js:1424`'s `resolveObject` doesn't know about
+  `Enemy.rig.root`, so monsters never dissolve. The obvious one-line fix **arms a
+  real invisible-enemy bug**: `VFX.js:1269` sets `visible = false` on a rig
+  `Director.clear()` may have recycled onto a live enemy. Add a visibility sibling
+  guard first, mirroring `DissolveShader.js:200-204`. See `DIAG-invisible-enemies.md` §5.
+- **No two-peer co-op test has ever been run** under `PROTOCOL_VERSION` 2.
+- `archGeo` shifted the shared RNG stream — golden hashes need re-baselining.
+- Branding: ~40 item/enemy/stage names are verbatim RoR2, incl. **"Hopoo Feather"**
+  (the actual developer's name). See the branding analysis in task #5 notes.
 
-## Process notes that earned their keep
+## Open debts
 
-- **Disjoint file ownership** is what let 5–6 agents run concurrently without
-  clobbering. Keep enforcing it; publish API contracts up front so parallel agents
-  can build against each other.
-- **Critics must be read-only and separate from fixers.** They cost 5–15× less than
-  executors and found every defect above. Four critics = $24 and caught what $186
-  of content agents shipped and declared verified.
-- **Make critics measure, not describe.** Four rounds of adjectives never moved
-  axis 5; one round of pixel measurement root-caused it.
-- **Scout informs, never verifies.** The haiku scout returned two findings that
-  were wrong-or-stale; validating them cost little and would have misled an agent
-  otherwise.
+Full `file:line` map is in the task list (task #5, scouted). Headlines: equipment
+barrel is still an interim `stageStart` seed; a co-op client's equipment press has no
+BTN bit; Rook's deployables aren't `ctx.combat`-registered; `UNLOCK_BINDINGS` unbound
+for survivor/item/enemy ids; Artifact of Command has no chooser UI; boss scale 2.29×
+against a 3× target.
