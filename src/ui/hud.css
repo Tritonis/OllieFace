@@ -287,11 +287,14 @@ body.menu-open { cursor: default; }
   align-items: center;
   gap: 0.5em;
   padding: 0.36em 0.9em 0.36em 0.55em;
-  background: linear-gradient(90deg, rgba(60, 42, 0, 0.72), rgba(6, 10, 16, 0.45));
+  /* Round 4, N1: the plate was translucent, so over a bright sky the gold ink
+     landed on tan and the currency readout — the number an RoR2 player checks
+     most — measured 1.94:1. Same opaque chip and black keyline `.slot-name`
+     got, so the contrast comes from the element and not from the stage. */
+  background: linear-gradient(90deg, rgba(34, 24, 2, 0.93), rgba(4, 7, 12, 0.86));
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.85);
   border-left: 3px solid var(--gold);
   clip-path: polygon(0 0, 100% 0, calc(100% - 0.85em) 100%, 0 100%);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
 }
 .money-chip {
   width: 0.9em; height: 0.9em;
@@ -574,11 +577,13 @@ body.menu-open { cursor: default; }
   align-items: flex-end;
   gap: 0.28em;
   padding: 0.5em 0.9em 0.6em 1.0em;
-  background: var(--panel);
+  /* Round 4, N5: same failure as `.money`. A sunlit cliff read straight through
+     this plate, complete with aberration fringing, and `HARD` measured 2.09:1
+     on top of it. Opaque. */
+  background: rgba(4, 7, 12, 0.9);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.8);
   border-right: 3px solid var(--diff);
   clip-path: polygon(1.1em 0, 100% 0, 100% 100%, 0 100%);
-  backdrop-filter: blur(7px) saturate(1.2);
-  -webkit-backdrop-filter: blur(7px) saturate(1.2);
 }
 .clock-time {
   font-size: 2.5em;
@@ -771,7 +776,11 @@ body.menu-open { cursor: default; }
    ABILITIES  (bottom-right)
    ===================================================================== */
 
-.abilities { display: flex; gap: 0.55em; align-items: flex-end; }
+/* Round 4, N2: `flex-end` bottom-aligned five columns of unequal height, so the
+   one slot without a pip row keyed 6px lower than its siblings — the rubric's
+   own 4-marker for axis 7. Top-aligned, the frames share one line whatever is
+   under them. */
+.abilities { display: flex; gap: 0.55em; align-items: flex-start; }
 
 .abilities::before {
   /* A single backing rail ties the four slots into one instrument cluster. */
@@ -880,14 +889,17 @@ body.menu-open { cursor: default; }
    against its background, i.e. gone. HUD text has to survive whatever the
    game puts behind it, so the legibility comes from the element and not from
    the stage: an opaque chip, a black keyline and a bright ink. */
+/* Round 4, N3: `max-width: 100%` bounded the chip to the 5.2em tile and
+   "PHASE ROUND" does not fit in it, so the ability's name was truncated to
+   `PHASE ROU…` in every frame of the game — not a transient state. The row has
+   horizontal slack between tiles; let the chip use it, and drop a fifth of a
+   step of size so most names never need to. */
 .slot-name {
-  font-size: 0.66em;
-  letter-spacing: 0.05em;
+  font-size: 0.62em;
+  letter-spacing: 0.04em;
   color: var(--ink);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
+  overflow: visible;
   padding: 0.12em 0.5em;
   background: rgba(4, 7, 12, 0.72);
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.85);
@@ -899,7 +911,7 @@ body.menu-open { cursor: default; }
    spill a ragged strip of dashes across the neighbouring slots again. */
 .slot-pips {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: center;
   align-items: center;
   gap: 3px;
@@ -922,7 +934,12 @@ body.menu-open { cursor: default; }
 /* Two characters at 0.62em in --ink-dim measured ~1.2:1 over snow. The
    overflow count is the only thing telling you a six-charge build is a six-
    charge build, so it gets white on a hard black outline like the item counts. */
+/* Round 4, N6: `gap` applies between the `i` run and the `b` only as a flex
+   gap, which the wrap was defeating — the `+N` chip landed on top of the fifth
+   pip. Wrap is gone (the cap of five makes it unreachable) and the chip carries
+   its own clearance. */
 .pip-more {
+  margin-left: 4px;
   font-size: 0.85em;
   font-weight: 700;
   font-style: normal;
@@ -933,6 +950,37 @@ body.menu-open { cursor: default; }
     1px 1px 0 #05070a, -1px 1px 0 #05070a, 1px -1px 0 #05070a, -1px -1px 0 #05070a,
     0 0 5px rgba(0, 0, 0, 0.95);
 }
+
+/* ---------------------------------------------------------- equipment slot
+   The fifth control in the cluster, and deliberately not a fifth skill. It
+   carries the equipment tier's orange rather than the cluster's cyan, its
+   frame is notched on the opposite diagonal, and it is separated from the four
+   by a rule — so at a glance the row reads "one active, four skills" and not
+   "five buttons". Absent from the layout entirely until something is held. */
+.slot--equip {
+  display: none;
+  margin-right: 0.35em;
+  padding-right: 0.5em;
+  border-right: 1px solid rgba(148, 182, 214, 0.22);
+}
+.slot--equip.is-on { display: flex; }
+.slot--equip .slot-frame {
+  background: linear-gradient(160deg, rgba(58, 32, 10, 0.94), rgba(9, 6, 4, 0.96));
+  border-color: rgba(255, 154, 60, 0.7);
+  /* Mirrored chamfer: the same shape language, read from the other corner. */
+  clip-path: polygon(0 0, calc(100% - 0.85em) 0, 100% 0.85em, 100% 100%, 0.85em 100%, 0 calc(100% - 0.85em));
+}
+.slot--equip .slot-key {
+  color: #170b02;
+  background: var(--t-equipment);
+}
+.slot--equip .slot-sweep { border-bottom-color: rgba(255, 178, 96, 0.9); }
+.slot--equip.is-ready-state .slot-frame {
+  border-color: #ffb972;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.75), 0 0 16px rgba(255, 154, 60, 0.4);
+}
+.slot--equip .slot-pips i.is-on { background: #ffc98d; box-shadow: 0 0 7px rgba(255, 170, 90, 0.85); }
+.slot--equip.is-fire .slot-glow { animation: readyflash 0.5s ease-out; }
 
 /* =====================================================================
    LOG / TOASTS  (bottom-right, above abilities)
@@ -1082,6 +1130,14 @@ body.menu-open { cursor: default; }
    the low-poly terrain edges aliased: neither sharp enough to read as scenery
    nor soft enough to read as a backdrop. Target is a clean value field at
    roughly 45-55/255. */
+/* The survivor screen sits over the same live orbit the title does and its
+   panel occupies the middle band, so it takes the title's directional wash
+   rather than the pause screen's near-opaque radial: the stage behind the
+   roster is depth, and erasing it leaves a panel floating in black. */
+#overlay[data-screen='select'] .scrim,
+#overlay[data-screen='difficulty'] .scrim,
+#overlay[data-screen='artifacts'] .scrim,
+#overlay[data-screen='logbook'] .scrim,
 #overlay[data-screen='title'] .scrim {
   background:
     linear-gradient(100deg,
@@ -1598,4 +1654,671 @@ body.menu-open { cursor: default; }
   text-transform: uppercase;
   color: var(--ink);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+}
+
+/* =====================================================================
+   SHARED MENU CHROME — focus ring, chips, option rows
+   The menus were mouse-only. Every navigable control now carries a
+   `data-nav` attribute and takes `.is-focus` from Menus' keyboard/gamepad
+   navigator; the mouse moves the same ring on hover, so the two paths can
+   never disagree about what "confirm" would press.
+   ===================================================================== */
+
+.is-focus { position: relative; }
+.is-focus::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  pointer-events: none;
+  border: 1px solid var(--t-lunar);
+  box-shadow: 0 0 12px rgba(95, 217, 247, 0.55), inset 0 0 10px rgba(95, 217, 247, 0.18);
+  clip-path: polygon(0.7em 0, 100% 0, calc(100% - 0.7em) 100%, 0 100%);
+}
+.mbtn.is-focus { transform: translateX(0.7em); border-left-color: var(--t-lunar); color: #fff; }
+.mbtn.is-focus::before { opacity: 1; }
+
+/* A chip is a compact two-line readout that is also a button: label above,
+   current value below. Used for the difficulty and artifact selectors on the
+   survivor screen, where a full-size button would outweigh Begin. */
+.chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2em;
+  padding: 0.5em 1.4em 0.55em 0.9em;
+  font: inherit;
+  text-align: left;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: rgba(8, 13, 21, 0.86);
+  border: 1px solid var(--line);
+  border-left: 3px solid rgba(148, 182, 214, 0.5);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 0.8em) 100%, 0 100%);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.chip em { font-size: 0.68em; font-style: normal; letter-spacing: 0.24em; color: var(--ink-faint); }
+.chip span { font-size: 1em; font-weight: 700; letter-spacing: 0.12em; }
+.chip:hover, .chip.is-focus { border-left-color: var(--t-lunar); color: #fff; }
+
+/* One-of-N option row: name, description, and a tick that is the only thing
+   that moves between states. */
+.opt-list { display: flex; flex-direction: column; gap: 0.4em; margin-bottom: 1.4em; }
+.opt {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0.8em 3em 0.85em 1.1em;
+  font: inherit;
+  text-align: left;
+  text-transform: none;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.028);
+  border: 1px solid transparent;
+  border-left: 3px solid rgba(148, 182, 214, 0.28);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.opt { --accent: var(--t-lunar); }
+.opt:hover { background: rgba(255, 255, 255, 0.055); }
+.opt.is-on {
+  border-left-color: var(--accent);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 16%, transparent), transparent 62%);
+}
+.opt-name {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6em;
+  font-size: 1.05em;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+.opt-glyph { font-style: normal; font-size: 1.2em; line-height: 1; color: var(--accent); }
+.opt-desc { margin-top: 0.3em; font-size: 0.88em; line-height: 1.45; color: var(--ink-dim); letter-spacing: 0.03em; }
+.opt-tick {
+  position: absolute;
+  right: 1.1em; top: 50%;
+  width: 0.75em; height: 0.75em;
+  margin-top: -0.375em;
+  background: rgba(148, 182, 214, 0.22);
+  transform: rotate(45deg);
+}
+.opt.is-on .opt-tick { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+
+/* =====================================================================
+   SURVIVOR SELECT
+   Three columns: who (roster), what they look like (portrait), what they do
+   (loadout + stats). The lore sits under the portrait because it is the one
+   thing on the screen that is not a decision.
+   ===================================================================== */
+
+.screen--select { --accent: var(--t-lunar); gap: 0; justify-content: center; }
+.sel {
+  width: min(96em, 95vw);
+  padding: 1.3em 1.6em 1.2em;
+  background: rgba(6, 11, 18, 0.9);
+  border: 1px solid var(--line);
+  border-top: 2px solid var(--accent);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 1.6em), calc(100% - 1.6em) 100%, 0 100%);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.65);
+}
+.sel-body {
+  display: grid;
+  grid-template-columns: 16em minmax(0, 1fr) 24em;
+  gap: 1.4em;
+  align-items: stretch;
+}
+
+/* --- roster ------------------------------------------------------------- */
+.sel-roster { display: flex; flex-direction: column; gap: 0.4em; }
+.sur {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0.7em 0.9em 0.75em 1.1em;
+  font: inherit;
+  text-align: left;
+  color: var(--ink-dim);
+  background: rgba(255, 255, 255, 0.022);
+  border: 1px solid transparent;
+  clip-path: polygon(0.7em 0, 100% 0, 100% 100%, 0 100%);
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease, transform 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.sur-rule {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: rgba(148, 182, 214, 0.28);
+  transition: background-color 0.15s ease;
+}
+.sur-name { display: block; font-size: 1.15em; font-weight: 700; letter-spacing: 0.2em; }
+.sur-sub {
+  display: block;
+  margin-top: 0.2em;
+  font-size: 0.72em;
+  font-style: normal;
+  letter-spacing: 0.2em;
+  color: var(--ink-faint);
+}
+.sur-lock { display: none; }
+.sur:hover, .sur.is-focus { color: var(--ink); background: rgba(255, 255, 255, 0.05); }
+.sur.is-on {
+  color: #fff;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 22%, transparent), rgba(8, 13, 21, 0.8) 70%);
+  transform: translateX(0.4em);
+}
+.sur.is-on .sur-rule { background: var(--accent); box-shadow: 0 0 12px var(--accent); }
+.sur.is-on .sur-sub { color: var(--accent); }
+.sur.is-locked { color: var(--ink-faint); cursor: not-allowed; }
+.sur.is-locked .sur-name { color: var(--ink-faint); }
+.sur.is-locked .sur-lock {
+  display: block;
+  position: absolute;
+  right: 0.7em; top: 50%;
+  margin-top: -0.5em;
+  padding: 0.1em 0.5em;
+  font-size: 0.66em;
+  font-style: normal;
+  letter-spacing: 0.18em;
+  color: #05070a;
+  background: var(--ink-faint);
+}
+
+/* --- portrait ----------------------------------------------------------- */
+.sel-stage { display: flex; flex-direction: column; min-width: 0; }
+.sel-view {
+  position: relative;
+  flex: 1;
+  min-height: 30em;
+  background:
+    radial-gradient(ellipse 62% 54% at 50% 62%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 72%),
+    linear-gradient(180deg, rgba(9, 14, 22, 0.9), rgba(3, 5, 9, 0.96));
+  border: 1px solid rgba(148, 182, 214, 0.2);
+  clip-path: polygon(1.4em 0, 100% 0, 100% calc(100% - 1.4em), calc(100% - 1.4em) 100%, 0 100%, 0 1.4em);
+  overflow: hidden;
+}
+/* The floor line: a single raking rule under the rig so the portrait has a
+   ground plane instead of floating in a vignette. */
+.sel-view::after {
+  content: '';
+  position: absolute;
+  left: 12%; right: 12%;
+  bottom: 13%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 70%, transparent), transparent);
+}
+.mv-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.sel-plate {
+  display: flex;
+  align-items: baseline;
+  gap: 1em;
+  margin-top: 0.7em;
+  padding: 0.35em 0.9em 0.4em;
+  background: rgba(4, 7, 12, 0.86);
+  border-left: 3px solid var(--accent);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 0.9em) 100%, 0 100%);
+}
+.sel-name { font-size: 1.9em; font-weight: 800; letter-spacing: 0.16em; color: #fff; }
+.sel-sub { font-size: 0.82em; letter-spacing: 0.3em; color: var(--accent); }
+.sel-lore {
+  margin: 0.6em 0 0;
+  font-size: 0.88em;
+  line-height: 1.55;
+  letter-spacing: 0.03em;
+  text-transform: none;
+  color: #b3c1d2;
+}
+
+/* --- loadout + stats ---------------------------------------------------- */
+.sel-info { display: flex; flex-direction: column; gap: 0.5em; min-width: 0; }
+.sel-h {
+  font-size: 0.74em;
+  letter-spacing: 0.3em;
+  color: var(--ink-faint);
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid rgba(148, 182, 214, 0.2);
+}
+.sel-skills { display: flex; flex-direction: column; gap: 0.3em; }
+.sk {
+  display: grid;
+  grid-template-columns: 2.9em minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.6em;
+  padding: 0.35em 0.5em;
+  background: rgba(255, 255, 255, 0.025);
+  border-left: 2px solid color-mix(in srgb, var(--accent) 60%, transparent);
+}
+.sk-icon {
+  width: 2.9em; height: 2.9em;
+  background: linear-gradient(160deg, rgba(28, 39, 54, 0.9), rgba(5, 9, 15, 0.95));
+  border: 1px solid rgba(174, 205, 235, 0.4);
+  clip-path: polygon(0.55em 0, 100% 0, 100% calc(100% - 0.55em), calc(100% - 0.55em) 100%, 0 100%, 0 0.55em);
+}
+.sk-copy { min-width: 0; }
+.sk-name {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5em;
+  font-size: 0.86em;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #fff;
+}
+.sk-key {
+  padding: 0 0.4em;
+  font-size: 0.76em;
+  color: #0a0f16;
+  background: rgba(198, 226, 255, 0.85);
+  clip-path: polygon(0.25em 0, 100% 0, calc(100% - 0.25em) 100%, 0 100%);
+}
+.sk-desc {
+  margin-top: 0.18em;
+  font-size: 0.75em;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--ink-dim);
+}
+.sk-cd {
+  font-size: 0.78em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+
+/* Stat bars are drawn against the roster maximum, not against an absolute —
+   the only useful question here is "more or less than the other three". */
+.sel-stats { display: flex; flex-direction: column; gap: 0.28em; }
+.sbar { display: grid; grid-template-columns: 5.4em 1fr 3.2em; align-items: center; gap: 0.6em; }
+.sbar-k { font-size: 0.74em; letter-spacing: 0.16em; color: var(--ink-faint); }
+.sbar-track {
+  position: relative;
+  height: 0.6em;
+  background: rgba(3, 6, 10, 0.8);
+  border: 1px solid rgba(148, 182, 214, 0.22);
+  transform: skewX(var(--skew));
+  overflow: hidden;
+}
+.sbar-track i {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 55%, #05070a), var(--accent));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.sbar-v {
+  font-size: 0.82em;
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+}
+
+/* --- footer ------------------------------------------------------------- */
+.sel-foot {
+  display: flex;
+  align-items: stretch;
+  gap: 0.6em;
+  margin-top: 1.1em;
+  padding-top: 0.9em;
+  border-top: 1px solid rgba(148, 182, 214, 0.2);
+}
+.sel-spacer { flex: 1; }
+.sel-foot .mbtn { padding: 0.7em 1.6em 0.7em 1.2em; }
+
+/* =====================================================================
+   ARTIFACTS
+   ===================================================================== */
+
+.art-note {
+  display: none;
+  padding: 0.7em 0.9em;
+  margin-bottom: 1.1em;
+  font-size: 0.9em;
+  line-height: 1.5;
+  text-transform: none;
+  color: var(--ink-dim);
+  background: rgba(255, 255, 255, 0.025);
+  border-left: 2px solid var(--t-boss);
+}
+.art-note.is-on { display: block; }
+/* The rules screens carry cards, not rows, so they get their own width. */
+.panel--rules { width: min(74em, 94vw); }
+.art-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16em, 1fr));
+  gap: 0.5em;
+  margin-bottom: 1.3em;
+}
+.art {
+  position: relative;
+  display: block;
+  padding: 0.8em 0.9em 0.9em;
+  font: inherit;
+  text-align: left;
+  color: var(--ink-dim);
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid transparent;
+  border-left: 3px solid rgba(148, 182, 214, 0.25);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 0.8em), calc(100% - 0.8em) 100%, 0 100%);
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+.art-mark { font-size: 1.5em; line-height: 1; color: var(--ink-faint); }
+.art-name { margin-top: 0.35em; font-size: 0.95em; font-weight: 700; letter-spacing: 0.18em; }
+.art-desc {
+  margin-top: 0.28em;
+  font-size: 0.8em;
+  line-height: 1.45;
+  text-transform: none;
+  color: var(--ink-faint);
+}
+.art:hover { color: var(--ink); background: rgba(255, 255, 255, 0.05); }
+.art { --accent: var(--t-boss); }
+.art.is-on {
+  color: #fff;
+  border-left-color: var(--accent);
+  background: linear-gradient(120deg, color-mix(in srgb, var(--accent) 18%, transparent), transparent 70%);
+}
+.art.is-on .art-mark { color: var(--accent); text-shadow: 0 0 14px var(--accent); }
+/* Locked is a *state*, not a dimmer. A blanket half-opacity pass over a card
+   that was already low-contrast made a fresh profile's grid read as broken UI
+   rather than as seven things to go and earn -- and the condition line is the
+   most useful thing on the card while it is locked, so it is the last thing
+   that should fade. Muted plate, no accent, an explicit chip. */
+.art.is-locked {
+  cursor: not-allowed;
+  border-left-color: rgba(148, 182, 214, 0.18);
+  background: rgba(255, 255, 255, 0.012);
+}
+.art.is-locked:hover { background: rgba(255, 255, 255, 0.012); }
+.art.is-locked .art-mark { color: rgba(148, 182, 214, 0.35); }
+.art.is-locked .art-name { color: var(--ink-dim); }
+.art.is-locked .art-desc { color: var(--ink-faint); }
+.art.is-locked::after {
+  content: 'LOCKED';
+  position: absolute;
+  right: 0.7em; top: 0.6em;
+  padding: 0.05em 0.45em;
+  font-size: 0.62em;
+  letter-spacing: 0.2em;
+  color: #05070a;
+  background: var(--ink-faint);
+}
+
+/* =====================================================================
+   LOGBOOK
+   Tab rail, a scrolling index and a detail pane. The 3D stage inside the
+   detail pane is the same ModelPreview the survivor screen uses.
+   ===================================================================== */
+
+.panel--book { width: min(94em, 95vw); }
+.book-tabs { display: flex; gap: 3px; margin-bottom: 1em; }
+.tabbtn {
+  flex: 1;
+  padding: 0.55em 0.4em;
+  font: inherit;
+  font-size: 0.86em;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid transparent;
+  clip-path: polygon(0.55em 0, 100% 0, calc(100% - 0.55em) 100%, 0 100%);
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+.tabbtn:hover { color: #fff; background: rgba(95, 217, 247, 0.12); }
+.tabbtn.is-on {
+  color: #04080c;
+  background: var(--t-lunar);
+  font-weight: 700;
+}
+
+.book-body {
+  display: grid;
+  grid-template-columns: 21em minmax(0, 1fr);
+  gap: 1.2em;
+  height: min(48vh, 32em);
+  margin-bottom: 1.2em;
+}
+.book-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+  padding-right: 0.4em;
+  border-right: 1px solid rgba(148, 182, 214, 0.18);
+}
+.book-list::-webkit-scrollbar { width: 6px; }
+.book-list::-webkit-scrollbar-thumb { background: rgba(148, 182, 214, 0.35); }
+.book-row {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0.42em 0.7em 0.45em 1em;
+  font: inherit;
+  text-align: left;
+  color: var(--ink-dim);
+  background: rgba(255, 255, 255, 0.018);
+  border: none;
+  cursor: pointer;
+  transition: color 0.12s ease, background-color 0.12s ease;
+}
+.book-row-mark {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: currentColor;
+  opacity: 0.55;
+}
+.book-row-name { display: block; font-size: 0.9em; font-weight: 600; letter-spacing: 0.14em; color: inherit; }
+.book-row-sub {
+  display: block;
+  font-size: 0.68em;
+  font-style: normal;
+  letter-spacing: 0.16em;
+  color: var(--ink-faint);
+}
+.book-row:hover { background: rgba(255, 255, 255, 0.05); }
+.book-row.is-sel { background: rgba(95, 217, 247, 0.14); }
+.book-row.is-sel .book-row-name { color: #fff; }
+.book-row.is-sel .book-row-mark { opacity: 1; box-shadow: 0 0 9px currentColor; }
+/* Two different absences, two different treatments: never *earned* keeps its
+   plate and says so; never *met* is simply dim. Collapsing them would make the
+   logbook stop being a reason to keep playing. */
+/* Never *met* is a hollow mark, not faded type: a fresh profile has met
+   nothing, and dimming every name in the index made the whole list read as
+   disabled. The name stays legible; the header counter carries the progress. */
+.book-row.is-unseen .book-row-name { color: var(--ink-dim); }
+.book-row.is-unseen .book-row-mark { opacity: 0.18; }
+.book-row.is-locked .book-row-name { color: var(--ink-faint); letter-spacing: 0.3em; }
+
+.book-detail { overflow-y: auto; padding-right: 0.4em; min-width: 0; }
+.book-detail::-webkit-scrollbar { width: 6px; }
+.book-detail::-webkit-scrollbar-thumb { background: rgba(148, 182, 214, 0.35); }
+.book-head { --accent: var(--t-lunar); padding-left: 0.8em; border-left: 3px solid var(--accent); }
+.book-title { font-size: 1.6em; font-weight: 800; letter-spacing: 0.16em; color: #fff; }
+.book-sub { font-size: 0.78em; letter-spacing: 0.28em; color: var(--accent); margin-top: 0.15em; }
+.book-stage {
+  position: relative;
+  height: 20em;
+  margin: 0.8em 0;
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 62%, rgba(120, 170, 220, 0.13), transparent 72%),
+    linear-gradient(180deg, rgba(9, 14, 22, 0.9), rgba(3, 5, 9, 0.96));
+  border: 1px solid rgba(148, 182, 214, 0.2);
+  clip-path: polygon(1.2em 0, 100% 0, 100% calc(100% - 1.2em), calc(100% - 1.2em) 100%, 0 100%, 0 1.2em);
+  overflow: hidden;
+}
+.book-stage.is-nogl::before {
+  content: 'MODEL UNAVAILABLE';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8em;
+  letter-spacing: 0.3em;
+  color: var(--ink-faint);
+}
+.book-art { display: flex; justify-content: center; margin: 1em 0; }
+.book-art img { width: 6.5em; height: 6.5em; display: block; }
+.book-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7em, 1fr));
+  gap: 1px;
+  background: rgba(148, 182, 214, 0.18);
+  margin: 0.8em 0;
+}
+.book-stat { padding: 0.6em 0.8em; background: rgba(6, 11, 18, 0.92); }
+.book-stat-k { font-size: 0.7em; letter-spacing: 0.2em; color: var(--ink-faint); }
+.book-stat-v { margin-top: 0.25em; font-size: 1.2em; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; }
+.book-lore {
+  margin: 0.8em 0 0;
+  font-size: 0.9em;
+  line-height: 1.6;
+  letter-spacing: 0.02em;
+  font-style: italic;
+  text-transform: none;
+  color: #aebbcc;
+}
+.book-lore--plain { font-style: normal; color: #c7d4e3; }
+.book-flavour {
+  margin: 0.6em 0 0;
+  font-size: 0.85em;
+  line-height: 1.5;
+  font-style: italic;
+  text-transform: none;
+  color: var(--ink-faint);
+}
+.book-skills { display: flex; flex-direction: column; gap: 0.3em; margin-top: 0.9em; }
+.book-skill {
+  display: grid;
+  grid-template-columns: 2.6em minmax(0, 1fr);
+  gap: 0.7em;
+  align-items: center;
+  padding: 0.35em 0.5em;
+  background: rgba(255, 255, 255, 0.025);
+  border-left: 2px solid rgba(148, 182, 214, 0.3);
+}
+.book-skill img {
+  width: 2.6em; height: 2.6em;
+  background: linear-gradient(160deg, rgba(28, 39, 54, 0.9), rgba(5, 9, 15, 0.95));
+  border: 1px solid rgba(174, 205, 235, 0.35);
+}
+.book-skill-name {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5em;
+  font-size: 0.85em;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #fff;
+}
+.book-skill-name b {
+  padding: 0 0.4em;
+  font-size: 0.76em;
+  color: #0a0f16;
+  background: rgba(198, 226, 255, 0.85);
+}
+.book-skill-desc {
+  margin-top: 0.15em;
+  font-size: 0.76em;
+  line-height: 1.4;
+  text-transform: none;
+  color: var(--ink-dim);
+}
+.book-prog {
+  height: 0.7em;
+  margin-top: 1em;
+  background: rgba(3, 6, 10, 0.8);
+  border: 1px solid rgba(148, 182, 214, 0.25);
+  transform: skewX(var(--skew));
+  overflow: hidden;
+}
+.book-prog i {
+  display: block;
+  height: 100%;
+  transform-origin: left center;
+  background: linear-gradient(90deg, #7ba81c, var(--xp));
+}
+.book-prog-read { margin-top: 0.4em; font-size: 0.85em; letter-spacing: 0.16em; color: var(--ink-dim); }
+.book-prog-read b { color: #fff; }
+.book-reward { margin-top: 0.8em; font-size: 0.8em; letter-spacing: 0.16em; color: var(--t-boss); }
+.book-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 0.7em;
+  font-size: 0.9em;
+  text-transform: none;
+  color: var(--ink-faint);
+}
+.book-lock {
+  padding: 0.3em 1.4em;
+  font-size: 1em;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  border: 1px solid var(--line);
+  clip-path: polygon(0.7em 0, 100% 0, calc(100% - 0.7em) 100%, 0 100%);
+}
+.book-empty p { margin: 0; max-width: 24em; text-align: center; line-height: 1.55; }
+
+/* =====================================================================
+   RUN SUMMARY  (extends the death screen)
+   ===================================================================== */
+
+.run-id {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: rgba(148, 182, 214, 0.18);
+  margin-bottom: 1.1em;
+}
+.run-id-cell {
+  --accent: var(--line-hot);
+  padding: 0.7em 1em;
+  background: rgba(6, 11, 18, 0.92);
+  border-top: 2px solid var(--accent);
+}
+.run-id-k { font-size: 0.72em; letter-spacing: 0.24em; color: var(--ink-faint); }
+.run-id-v {
+  margin-top: 0.3em;
+  font-size: 1.25em;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.run-unlocks:empty { display: none; }
+.run-unlock-row { display: flex; flex-wrap: wrap; gap: 0.4em; margin-bottom: 1.2em; }
+.run-unlock {
+  padding: 0.3em 0.9em;
+  font-size: 0.82em;
+  letter-spacing: 0.16em;
+  color: #05070a;
+  background: var(--t-boss);
+  clip-path: polygon(0.4em 0, 100% 0, calc(100% - 0.4em) 100%, 0 100%);
+}
+.run-unlock.unlock { background: var(--t-lunar); }
+
+/* Narrow / tall: the three-column select collapses to portrait-over-info, and
+   the logbook drops to a single column with the index above the detail. */
+@media (max-width: 1240px), (max-aspect-ratio: 3/2) {
+  .sel-body { grid-template-columns: 14em minmax(0, 1fr); }
+  .sel-info { grid-column: 1 / -1; }
+  .sel-view { min-height: 17em; }
+}
+@media (max-width: 900px) {
+  .book-body { grid-template-columns: 1fr; height: auto; }
+  .book-list { max-height: 14em; border-right: none; border-bottom: 1px solid rgba(148, 182, 214, 0.18); }
+  .run-id { grid-template-columns: 1fr; }
 }

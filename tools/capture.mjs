@@ -49,6 +49,16 @@ const SCENARIOS = [
     doc: 'First frame the player sees. Menu framing and background composition.',
     setup: async (page) => { await settle(page, 90); },
   },
+  // Second, and it has to be: `Artifacts.setActive` is pre-run only and latches
+  // on the first `stageStart`, which `Progression` raises from `fixedUpdate` —
+  // skipped while the title screen holds `ctx.paused`. Any scenario that has
+  // called `begin()` has already ended the only window in which artifacts can
+  // be chosen, so this runs before the first one does.
+  {
+    name: '17-artifacts',
+    doc: 'Pre-run artifact grid: earned artifacts enabled, unearned ones showing the challenge that opens them. Judges the card grid and the active/locked state pair.',
+    setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.artifacts?.()),
+  },
   {
     name: '02-vista',
     doc: 'Wide establishing shot of the stage. Judges terrain, lighting, fog, sky.',
@@ -68,6 +78,22 @@ const SCENARIOS = [
     name: '09-survivors',
     doc: 'The full roster side by side. Judges silhouette read and how distinguishable the four survivors are from one another.',
     setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.survivors?.()),
+  },
+  // The two browsing screens go here for the same reason `09-survivors` does:
+  // both are full-bleed overlays over a *live* stage with a translucent scrim,
+  // so what is behind them is part of the composition — and from
+  // `06-loaded-hud` onward that background is a stage strewn with the leftovers
+  // of a twenty-two minute run. `16-run-summary` is the exception and runs
+  // dead last; see below.
+  {
+    name: '14-survivor-select',
+    doc: 'Survivor select: the four-strong roster, a rotating 3D portrait, the selected survivor\'s four abilities and roster-relative stat bars. Judges menu hierarchy, typography and whether the new content is legible before a run starts.',
+    setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.survivorSelect?.()),
+  },
+  {
+    name: '15-logbook',
+    doc: 'Logbook, survivors tab, with the 3D model viewer live. Judges the index/detail split, unlock and discovery states, and whether the browsing UI reads as the same product as the HUD.',
+    setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.logbook?.()),
   },
   // Biome identity: one establishing frame per stage type, each framed on that
   // kit's primary landmark. A single `02-vista` photographs one biome and says
@@ -137,6 +163,15 @@ const SCENARIOS = [
     name: '10-inventory',
     doc: 'Dense late-run inventory across every tier, with an equipment nuke firing. Judges item icon craft, tier legibility and equipment effect quality.',
     setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.inventory?.()),
+  },
+  // Dead last, literally. This scenario reaches the summary the way a player
+  // does — by taking a lethal hit — which ends the run, latches
+  // `Progression._ended` and leaves the player dead. Nothing can be
+  // photographed after it, so nothing is scheduled after it.
+  {
+    name: '16-run-summary',
+    doc: 'Run-end summary after a real death: survivor, difficulty, artifacts, time, stages, kills, damage, the run\'s item haul and anything earned. Judges whether the run reads back as a story rather than a number dump.',
+    setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.runSummary?.()),
   },
 ];
 

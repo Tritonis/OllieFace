@@ -201,7 +201,11 @@ export class Director {
 
   updateDifficulty(ctx) {
     const pf = this.playerFactor;
-    const timeFactor = (ctx.time / 60) * 0.0506 * Math.pow(this.playerCount, 0.2) * DIFFICULTY_SCALE;
+    // Drizzle/Rainstorm/Monsoon multiply the *time* term and nothing else, so
+    // the per-player and per-stage factors keep their tuned meaning and
+    // Rainstorm (1.0) is bit-for-bit the curve this file was measured on.
+    const scale = DIFFICULTY_SCALE * (ctx.difficulty?.current?.().coeff ?? 1);
+    const timeFactor = (ctx.time / 60) * 0.0506 * Math.pow(this.playerCount, 0.2) * scale;
     const stageFactor = Math.pow(1.15, this.stagesCompleted);
     this.difficultyCoefficient = (pf + timeFactor) * stageFactor;
 
@@ -218,7 +222,12 @@ export class Director {
   }
 
   get populationCap() {
-    const base = (12 + this.difficultyCoefficient * 6) * this.spawnRateMult;
+    // Swarms doubles the ceiling as well as the pack size: doubling the packs
+    // against an unchanged cap just fills the same field twice as fast and then
+    // stops, which is not what "twice as many monsters" means. HARD_POP_CAP
+    // still wins, as it does over the spawn-rate setting.
+    const swarm = this.ctx?.artifacts?.has('swarms') ? 2 : 1;
+    const base = (12 + this.difficultyCoefficient * 6) * this.spawnRateMult * swarm;
     return Math.min(HARD_POP_CAP, Math.round(base * (this.eventActive ? 1.5 : 1)));
   }
 
@@ -430,11 +439,17 @@ export class Director {
     if (!card) return;
     const cap = this.populationCap;
     if (this.enemies.length >= cap) return;
+    // Swarms: twice the bodies at half the price and half the health (the
+    // health half is `Artifacts.monsterScale`). Every bound on a pack — the
+    // per-card ceiling, the unit price, the pack roll — has to double together,
+    // or whichever one binds first quietly eats the other two.
+    const swarm = ctx.artifacts?.has('swarms') ? 2 : 1;
     // Per-card ceiling. Without it the cheapest card wins every spend until the
     // population cap is full of it, and the other fifteen cards never appear no
     // matter what the roll says.
-    let room = (card.maxAlive || 99) - this.countAlive(card);
-    if (room <= 0) { this.card = card = this.rollCard(ctx); room = (card.maxAlive || 99) - this.countAlive(card); }
+    const roomFor = (c) => (c.maxAlive || 99) * swarm - this.countAlive(c);
+    let room = roomFor(card);
+    if (room <= 0) { this.card = card = this.rollCard(ctx); room = roomFor(card); }
 
     // Saving toward a card the bank cannot cover yet. Rather than spending
     // nothing, put HALF the bank into the cheapest thing available and keep
@@ -449,7 +464,7 @@ export class Director {
       const filler = this.fillerCard(ctx, this.credits * 0.5);
       if (!filler) return;
       card = filler;
-      room = (card.maxAlive || 99) - this.countAlive(card);
+      room = roomFor(card);
       if (room <= 0) return;
       budget = this.credits * 0.5;
     }
@@ -458,14 +473,23 @@ export class Director {
     // can't cover one, quietly downgrade to a normal pack rather than stalling.
     // The affix pool widens with the run: tier-2 affixes simply do not exist
     // until the difficulty coefficient says the run has earned them.
-    let eliteAffix = ctx.rng.next() < this.eliteChance && card.eliteEligible
+    // Honour forces the affix rather than rolling for it, and asks what an
+    // affix is allowed to cost while it does — at the normal 4.5-7.2x an
+    // elite-only run buys about one monster a minute.
+    const forceElite = !!ctx.artifacts?.has('honour') && card.eliteEligible;
+    let eliteAffix = (forceElite || ctx.rng.next() < this.eliteChance) && card.eliteEligible
       ? ctx.rng.pick(eliteAffixesFor(this.difficultyCoefficient))
       : null;
-    let unit = card.cost * (eliteAffix ? ELITE_STATS[eliteAffix].cost : 1);
+    const eliteCost = eliteAffix
+      ? ELITE_STATS[eliteAffix].cost * (ctx.artifacts?.eliteCostMult?.() ?? 1) : 1;
+    let unit = card.cost * eliteCost / swarm;
     if (budget < unit) {
-      if (!eliteAffix) return;
+      // Under Honour there is no plain pack to downgrade to — the bank saves
+      // for another interval instead, which is the same thing it does for any
+      // card it cannot yet afford.
+      if (!eliteAffix || forceElite) return;
       eliteAffix = null;
-      unit = card.cost;
+      unit = card.cost / swarm;
       if (budget < unit) return;
     }
 
@@ -476,9 +500,9 @@ export class Director {
     // and once the credit rate outgrows the card the same code buys whole packs
     // on its own, so the escalation shape is unchanged.
     const affordable = Math.floor(budget / unit);
-    const want = Math.min(affordable, room, eliteAffix
+    const want = Math.min(affordable, room, swarm * (eliteAffix
       ? ctx.rng.int(1, Math.max(1, Math.ceil(card.packMax * 0.5)))
-      : ctx.rng.int(card.packMin, card.packMax));
+      : ctx.rng.int(card.packMin, card.packMax)));
     const anchor = this.findSpawnPoint(ctx);
     if (!anchor) return;
 
@@ -500,11 +524,16 @@ export class Director {
     let list = this.pool.get(def.id);
     if (!list) { list = []; this.pool.set(def.id, list); }
     const e = list.length ? list.pop() : new Enemy();
+    // Difficulty and the stat-side artifacts (Swarms, Honour, Evolution) fold
+    // into the multipliers the Director already passes, so a monster's stats
+    // are still decided in exactly one place. Baked in at spawn: an Evolution
+    // monster is as strong as your inventory was when it arrived.
+    const mod = ctx.artifacts?.monsterScale?.();
     e.spawn(ctx, def, at, {
       affix: def.eliteEligible ? affix : null,
       level: this.level,
-      healthMult: this.healthMult,
-      damageMult: this.damageMult,
+      healthMult: this.healthMult * (mod?.health ?? 1),
+      damageMult: this.damageMult * (mod?.damage ?? 1),
     });
     this.enemies.push(e);
     return e;

@@ -81,10 +81,18 @@ export class NetClient {
         const stageIndex = r.u16();
         this.myNetId = r.u16();
         const time = r.f32();
+        // The host's artifact set and difficulty (PROTOCOL_VERSION 2). Read
+        // defensively: a 1.x host sends no trailing bytes, and joining it with
+        // vanilla rules is a far better failure than throwing out of the one
+        // message that tells this client who it is.
+        const artifactMask = r.remaining >= 5 ? r.u32() : 0;
+        const difficulty = r.remaining >= 1 ? r.u8() : 1;
         // Regenerate the world locally from the host's seed instead of
         // streaming geometry — the stage is fully deterministic from it, so
         // this costs one number instead of megabytes.
-        this.ctx.events.emit('netWelcome', { seed, stageIndex, time, myNetId: this.myNetId });
+        this.ctx.events.emit('netWelcome', {
+          seed, stageIndex, time, myNetId: this.myNetId, artifactMask, difficulty,
+        });
         break;
       }
       case MSG.SNAPSHOT:

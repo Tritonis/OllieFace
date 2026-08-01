@@ -299,6 +299,176 @@ export function abilityIcon(slot, color = '#dfe9f7') {
 }
 
 /**
+ * One glyph per *ability*, not per slot.
+ *
+ * Four slot glyphs were enough while there was one survivor. With four of them
+ * the M1 tile drew the same three-round burst whether the button fired a
+ * carbine, a hammer, a rifle or a rivet gun — i.e. the icon carried the slot,
+ * which the key chip under it already says, and carried nothing about the
+ * ability. Sixteen shapes, keyed by `ability.id`, so the loadout is readable
+ * from the cluster alone.
+ *
+ * Same two-tone contract as the item glyphs: `c.main` is the survivor's accent,
+ * `c.deep` its shaded half. Nothing here draws a plate — the slot supplies one.
+ */
+const ABILITY_ART = {
+  // ---- RANGER — carbine kit, everything is a round in flight -------------
+  rangerDoubleTap: (g, s, c) => {
+    for (let i = 0; i < 2; i++) {
+      const x = s * (0.36 + i * 0.22);
+      poly(g, [[x - s * 0.07, s * 0.7], [x, s * 0.26], [x + s * 0.07, s * 0.7]]); g.fill();
+    }
+    g.fillStyle = c.deep;
+    for (let i = 0; i < 2; i++) g.fillRect(s * (0.31 + i * 0.22), s * 0.74, s * 0.1, s * 0.1);
+  },
+  rangerPhaseRound: (g, s, c) => {
+    g.fillStyle = c.deep; g.fillRect(s * 0.1, s * 0.46, s * 0.8, s * 0.08);
+    g.fillStyle = c.main;
+    poly(g, [[s * 0.5, s * 0.16], [s * 0.72, s * 0.5], [s * 0.5, s * 0.84], [s * 0.28, s * 0.5]]); g.fill();
+    g.fillStyle = c.plate;
+    poly(g, [[s * 0.5, s * 0.32], [s * 0.62, s * 0.5], [s * 0.5, s * 0.68], [s * 0.38, s * 0.5]]); g.fill();
+  },
+  rangerTacticalDive: (g, s, c) => {
+    poly(g, [[s * 0.34, s * 0.18], [s * 0.82, s * 0.5], [s * 0.34, s * 0.82], [s * 0.48, s * 0.5]]); g.fill();
+    g.fillStyle = c.deep;
+    for (let i = 0; i < 3; i++) g.fillRect(s * 0.08, s * (0.31 + i * 0.19), s * (0.22 - i * 0.05), s * 0.06);
+  },
+  rangerSalvo: (g, s, c) => {
+    for (let i = 0; i < 4; i++) {
+      const x = s * (0.22 + i * 0.19), y = s * (0.2 + Math.abs(i - 1.5) * 0.09);
+      poly(g, [[x, y], [x + s * 0.09, y + s * 0.16], [x - s * 0.05, y + s * 0.16]]); g.fill();
+      g.fillStyle = c.deep; g.fillRect(x - s * 0.03, y + s * 0.18, s * 0.05, s * 0.3); g.fillStyle = c.main;
+    }
+  },
+
+  // ---- ANVIL — mass, contact, everything happens at arm's length --------
+  anvilSweep: (g, s, c) => {
+    g.lineWidth = s * 0.16; g.lineCap = 'butt';
+    g.beginPath(); g.arc(s * 0.24, s * 0.5, s * 0.44, -Math.PI * 0.42, Math.PI * 0.42); g.stroke();
+    g.fillStyle = c.deep;
+    poly(g, [[s * 0.1, s * 0.36], [s * 0.34, s * 0.5], [s * 0.1, s * 0.64]]); g.fill();
+  },
+  anvilSlam: (g, s, c) => {
+    g.fillRect(s * 0.44, s * 0.12, s * 0.12, s * 0.42);
+    poly(g, [[s * 0.24, s * 0.12], [s * 0.76, s * 0.12], [s * 0.68, s * 0.3], [s * 0.32, s * 0.3]]); g.fill();
+    g.fillStyle = c.deep;
+    for (let i = 0; i < 3; i++) {
+      const w = s * (0.2 + i * 0.13);
+      g.fillRect(s * 0.5 - w / 2, s * (0.62 + i * 0.11), w, s * 0.055);
+    }
+  },
+  anvilBreach: (g, s, c) => {
+    poly(g, [[s * 0.12, s * 0.3], [s * 0.58, s * 0.5], [s * 0.12, s * 0.7], [s * 0.24, s * 0.5]]); g.fill();
+    g.fillStyle = c.deep;
+    starPath(g, s * 0.72, s * 0.5, s * 0.26, s * 0.08, 5, -Math.PI / 2); g.fill();
+  },
+  anvilBulwark: (g, s, c) => {
+    poly(g, [[s * 0.5, s * 0.14], [s * 0.82, s * 0.3], [s * 0.78, s * 0.66],
+             [s * 0.5, s * 0.88], [s * 0.22, s * 0.66], [s * 0.18, s * 0.3]]); g.fill();
+    g.fillStyle = c.plate;
+    g.lineWidth = s * 0.05; g.strokeStyle = c.plate;
+    for (let i = -1; i <= 1; i++) {
+      g.beginPath(); g.moveTo(s * (0.5 + i * 0.18), s * 0.22); g.lineTo(s * (0.5 + i * 0.1), s * 0.8); g.stroke();
+    }
+  },
+
+  // ---- KESTREL — optics, windups, one committed shot --------------------
+  kestrelMark: (g, s, c) => {
+    g.lineWidth = s * 0.07; g.beginPath(); g.arc(s / 2, s / 2, s * 0.3, 0, 7); g.stroke();
+    g.fillStyle = c.deep;
+    g.fillRect(s * 0.48, s * 0.06, s * 0.04, s * 0.2);
+    g.fillRect(s * 0.48, s * 0.74, s * 0.04, s * 0.2);
+    g.fillRect(s * 0.06, s * 0.48, s * 0.2, s * 0.04);
+    g.fillRect(s * 0.74, s * 0.48, s * 0.2, s * 0.04);
+    g.fillStyle = c.main; ngon(g, s / 2, s / 2, s * 0.1, 4, 0); g.fill();
+  },
+  kestrelLance: (g, s, c) => {
+    poly(g, [[s * 0.88, s * 0.5], [s * 0.42, s * 0.36], [s * 0.42, s * 0.64]]); g.fill();
+    g.fillStyle = c.deep;
+    for (let i = 0; i < 3; i++) { g.beginPath(); g.arc(s * (0.32 - i * 0.09), s * 0.5, s * (0.075 - i * 0.018), 0, 7); g.fill(); }
+  },
+  kestrelVault: (g, s, c) => {
+    g.lineWidth = s * 0.1; g.lineJoin = 'miter';
+    for (let i = 0; i < 3; i++) {
+      const y = s * (0.34 + i * 0.19);
+      g.strokeStyle = i ? c.deep : c.main;
+      g.beginPath(); g.moveTo(s * 0.24, y + s * 0.16); g.lineTo(s * 0.5, y); g.lineTo(s * 0.76, y + s * 0.16); g.stroke();
+    }
+  },
+  kestrelEclipse: (g, s, c) => {
+    g.beginPath(); g.arc(s / 2, s / 2, s * 0.3, 0, 7); g.fill();
+    g.fillStyle = c.plate; g.beginPath(); g.arc(s * 0.4, s * 0.42, s * 0.24, 0, 7); g.fill();
+    g.strokeStyle = c.deep; g.lineWidth = s * 0.045;
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2 + 0.3;
+      g.beginPath();
+      g.moveTo(s / 2 + Math.cos(a) * s * 0.36, s / 2 + Math.sin(a) * s * 0.36);
+      g.lineTo(s / 2 + Math.cos(a) * s * 0.46, s / 2 + Math.sin(a) * s * 0.46);
+      g.stroke();
+    }
+  },
+
+  // ---- ROOK — hardware you leave behind you -----------------------------
+  rookRivet: (g, s, c) => {
+    for (let i = 0; i < 3; i++) {
+      const x = s * (0.24 + i * 0.24);
+      g.fillRect(x - s * 0.05, s * 0.34, s * 0.1, s * 0.22);
+      g.fillStyle = c.deep;
+      poly(g, [[x - s * 0.05, s * 0.34], [x + s * 0.05, s * 0.34], [x, s * 0.2]]); g.fill();
+      g.fillStyle = c.main;
+    }
+  },
+  rookMines: (g, s, c) => {
+    for (let i = 0; i < 3; i++) {
+      const x = s * (0.26 + i * 0.24), y = s * (0.6 - (i === 1 ? 0.14 : 0));
+      ngon(g, x, y, s * 0.11, 6, Math.PI / 6); g.fill();
+      g.strokeStyle = c.deep; g.lineWidth = s * 0.035;
+      g.beginPath(); g.arc(x, y, s * 0.19, -Math.PI * 0.85, -Math.PI * 0.15); g.stroke();
+    }
+  },
+  rookWard: (g, s, c) => {
+    g.lineWidth = s * 0.07;
+    g.beginPath(); g.arc(s / 2, s * 0.72, s * 0.34, Math.PI, 0); g.stroke();
+    g.fillStyle = c.deep;
+    g.beginPath(); g.arc(s / 2, s * 0.72, s * 0.15, Math.PI, 0); g.fill();
+    g.strokeStyle = c.deep; g.lineWidth = s * 0.04;
+    g.beginPath(); g.arc(s / 2, s * 0.72, s * 0.47, Math.PI, 0); g.stroke();
+    g.fillStyle = c.main; g.fillRect(s * 0.14, s * 0.72, s * 0.72, s * 0.05);
+  },
+  rookTurret: (g, s, c) => {
+    g.fillRect(s * 0.34, s * 0.34, s * 0.3, s * 0.22);
+    g.fillRect(s * 0.62, s * 0.4, s * 0.28, s * 0.08);
+    g.fillStyle = c.deep;
+    poly(g, [[s * 0.46, s * 0.56], [s * 0.54, s * 0.56], [s * 0.72, s * 0.86], [s * 0.28, s * 0.86]]); g.fill();
+    g.fillStyle = c.main; g.beginPath(); g.arc(s * 0.44, s * 0.3, s * 0.07, 0, 7); g.fill();
+  },
+};
+
+/**
+ * The icon for a specific ability, tinted with the survivor's accent.
+ *
+ * Falls back to the slot glyph for anything without art, so a survivor added
+ * tomorrow renders a sensible tile rather than an empty one.
+ */
+export function abilityArt(id, slot = 'primary', color = '#dfe9f7') {
+  const draw = ABILITY_ART[id];
+  if (!draw) return abilityIcon(slot, color);
+  return cached(`abil:${id}:${color}`, (g, s) => {
+    const colors = { main: color, deep: mix(color, '#000000', 0.5), plate: '#06080b' };
+    g.fillStyle = colors.main;
+    g.strokeStyle = colors.main;
+    g.lineJoin = 'miter';
+    g.lineCap = 'butt';
+    draw(g, s, colors);
+  });
+}
+
+/** `0xff7a3d` (survivor cards carry numbers, CSS wants a string). */
+export function hexOf(n, fallback = '#dfe9f7') {
+  return Number.isFinite(n) ? `#${(n >>> 0).toString(16).padStart(6, '0')}` : fallback;
+}
+
+/**
  * The Q-slot card. Identical machinery to an item tile, but it always resolves
  * to the equipment plate — the HUD slot has no tier to pass and should not have
  * to know one.
@@ -338,8 +508,12 @@ export function unknownIcon(tier = 'common') {
  *
  * Ids with no definition fall back to the generic tier plate above.
  */
-const ART_CENTRE_Y = 0.41;
-const ART_RADIUS = 0.30;
+// Round 4 (D6/N7) measured the stack count still sitting across the glyph on
+// every wide emblem — the comment in `hud.css` claimed this corner was reserved
+// and the geometry did not reserve it. Lifting the centre and shrinking the
+// radius is the fix that review specified.
+const ART_CENTRE_Y = 0.38;
+const ART_RADIUS = 0.27;
 
 export function itemArt(id, tier = 'common') {
   const item = cardDef(id);

@@ -213,7 +213,11 @@ export function loadoutOf(card) {
  * unlocks everything rather than nothing.
  */
 export function isUnlocked(card, profile) {
-  if (!card?.unlock) return true;
-  if (!profile?.hasUnlock) return true;
-  return !!profile.hasUnlock(card.unlock);
+  if (!card?.id) return true;
+  if (!profile?.isUnlocked) return true;
+  // Ask about the survivor *id*, not the card's `unlock` field. Profile's model
+  // is that content is unlocked by default and only becomes gated when some
+  // challenge names it as a reward (see `UNLOCK_BINDINGS` in data/challenges.js),
+  // so the id is the key and `unlock` is only documentation for the UI.
+  return profile.isUnlocked('survivor', card.id);
 }

@@ -4,8 +4,7 @@
 // Lives inside #hud so it inherits `pointer-events: none`; it is positioned
 // with a transform only, so showing it never triggers layout on the HUD tree.
 
-import { ITEM_BY_ID } from '../data/items.js';
-import { tierMeta } from './Icons.js';
+import { tierMeta, cardDef } from './Icons.js';
 
 export class Tooltip {
   constructor(ctx, parent) {
@@ -29,9 +28,14 @@ export class Tooltip {
     this.current = null;
   }
 
-  /** The item catalogue is a single source of truth — read it directly. */
+  /**
+   * One lookup across items *and* equipment. Reading `ITEM_BY_ID` alone meant
+   * an equipment hovered anywhere rendered as a bare id with no description
+   * and no tier colour — `cardDef` is the single-source read that covers both
+   * catalogues.
+   */
   def(id) {
-    return ITEM_BY_ID.get(id) ?? null;
+    return cardDef(id);
   }
 
   show(anchor, id, tier, count) {

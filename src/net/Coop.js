@@ -26,7 +26,7 @@ export class Coop {
     ctx.despawnRemotePlayer = (pawn) => this._despawnPawn(pawn);
 
     // --- client side: adopt the host's world -------------------------------
-    ctx.events.on('netWelcome', ({ seed, stageIndex, time }) => this._onWelcome(seed, stageIndex, time));
+    ctx.events.on('netWelcome', (w) => this._onWelcome(w.seed, w.stageIndex, w.time, w.artifactMask, w.difficulty));
   }
 
   /** Called by Lobby the moment a NetClient exists, before it connects. */
@@ -67,8 +67,12 @@ export class Coop {
 
   // ---------------------------------------------------------------- client
 
-  _onWelcome(seed, stageIndex, time) {
+  _onWelcome(seed, stageIndex, time, artifactMask = 0, difficulty = 1) {
     const ctx = this.ctx;
+    // Rules before the world: `Interactables` and the stat block both read the
+    // artifact set the moment the stage below is rebuilt, and a client that
+    // adopted Sacrifice one frame late would have spawned the chests first.
+    ctx.artifacts?.adoptHost?.(artifactMask, difficulty);
     // The world is never streamed — it is regenerated from this one number.
     // Stage.build is a pure function of (ctx.seed, index), so setting the seed
     // before the rebuild is what makes host and client stand on the same rock.

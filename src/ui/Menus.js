@@ -1,9 +1,13 @@
-// Full-screen overlay screens: title, pause, settings, death, pickup banner.
+// Full-screen overlay screens: title, survivor select, difficulty, artifacts,
+// logbook, pause, settings, co-op, run summary, pickup banner.
 //
 // Owned and driven by HUD (main.js only registers the HUD system), so this
 // class exposes plain methods rather than the system lifecycle.
 
-import { itemArt, tierMeta } from './Icons.js';
+import * as THREE from 'three';
+import { itemArt, tierMeta, abilityArt, hexOf } from './Icons.js';
+import { SURVIVORS, getSurvivor, loadoutOf } from '../data/survivors.js';
+import { Logbook, ModelPreview, disposeTree } from './Logbook.js';
 
 const STORE_KEY = 'petrichor.settings';
 
@@ -34,6 +38,33 @@ const SLIDERS = [
   { key: 'spawnRate', label: 'Enemy spawn rate', min: 0, max: 3, step: 0.05, fmt: pct },
 ];
 
+/**
+ * Fallback difficulty ladder, used only while `ctx.difficulty` (agent B2) does
+ * not exist.
+ *
+ * It is not decoration. `spawnRate` is a real `ctx.settings` key that Director
+ * already reads every frame, and `Menus` owns that object — so choosing a
+ * difficulty here genuinely changes the run today, and `ctx.difficultyId` is
+ * the field B1's run record is already looking for. The moment B2's system
+ * lands, `ctx.difficulty.list()` wins and this table stops being consulted.
+ */
+const FALLBACK_DIFFICULTIES = [
+  { id: 'drizzle', name: 'Drizzle', description: 'Fewer monsters, a gentler clock. For learning a survivor.', spawnRate: 0.65 },
+  { id: 'rainstorm', name: 'Rainstorm', description: 'The tuned curve. This is the game as it is balanced.', spawnRate: 1.0 },
+  { id: 'monsoon', name: 'Monsoon', description: 'More of everything, sooner. Mistakes stop being survivable.', spawnRate: 1.6 },
+];
+
+/** The five stats the select screen bars, and the roster-relative scale each
+ *  is drawn against. Absolute numbers mean nothing to a new player; the length
+ *  of the bar next to the other three survivors' is the whole point. */
+const STAT_BARS = [
+  { key: 'maxHealth', label: 'Health' },
+  { key: 'damage', label: 'Damage' },
+  { key: 'moveSpeed', label: 'Speed' },
+  { key: 'armor', label: 'Armor', floor: 12 },
+  { key: 'critChance', label: 'Crit', fmt: (v) => `${Math.round(v * 100)}%` },
+];
+
 function pct(v) { return `${Math.round(v * 100)}%`; }
 
 export class Menus {
@@ -41,7 +72,11 @@ export class Menus {
     this.ctx = ctx;
     this.root = document.getElementById('overlay');
     this.screen = null;
-    this.returnTo = 'title';
+    // A stack, not a single `returnTo`. Settings opened from the difficulty
+    // screen opened from select used to overwrite the one slot and leave Back
+    // pointing at the screen it had just come from — three levels deep, Back
+    // was a loop.
+    this.stack = [];
     // Angle 0 puts the camera at `centre + (r, 16, 0)` looking straight down
     // the key light — the flattest bearing on the compass, and the first frame
     // the player ever sees. Start cross-lit instead.
@@ -51,8 +86,22 @@ export class Menus {
     this.settings = load(ctx.pipeline?.quality);
     ctx.settings = this.settings;
 
+    // Pre-run selections. `survivorId` is the ctx field A1's Player boots from;
+    // difficulty and artifacts are held here until B2's systems exist to own
+    // them, and mirrored onto ctx so B1's run record can read them either way.
+    this.survivorId = ctx.survivorId || SURVIVORS[0].id;
+    this.difficultyId = null;
+    this.artifactIds = new Set();
+
+    this.preview = null;         // survivor-select 3D portrait
+    this.navIndex = 0;
+    this.navRepeat = 0;
+    this.pad = { axis: 0, buttons: new Set() };
+    this.newChallenges = [];     // completed during the run in flight
+
     this.build();
     this.apply();
+    this.bindProgress(ctx);
     this.open('title');
 
     // Losing pointer lock mid-run means the player hit Esc — pause for them.
@@ -84,21 +133,82 @@ export class Menus {
                action is promoted (rule, wash, marker) and the destructive one
                demoted, and the subtitles give each plate's empty right-hand
                three quarters something to do. -->
-          <button class="mbtn mbtn--go" data-act="play"><span>Play</span><em class="mbtn-sub">begin a run</em></button>
-          <button class="mbtn" data-act="coop"><span>Co-op</span><em class="mbtn-sub">host or join</em></button>
-          <button class="mbtn" data-act="settings"><span>Settings</span><em class="mbtn-sub">video &amp; input</em></button>
-          <button class="mbtn mbtn--quiet" data-act="quit"><span>Quit</span><em class="mbtn-sub">exit</em></button>
+          <button class="mbtn mbtn--go" data-nav data-act="play"><span>Play</span><em class="mbtn-sub">choose a survivor</em></button>
+          <button class="mbtn" data-nav data-act="logbook"><span>Logbook</span><em class="mbtn-sub">roster &amp; bestiary</em></button>
+          <button class="mbtn" data-nav data-act="coop"><span>Co-op</span><em class="mbtn-sub">host or join</em></button>
+          <button class="mbtn" data-nav data-act="settings"><span>Settings</span><em class="mbtn-sub">video &amp; input</em></button>
+          <button class="mbtn mbtn--quiet" data-nav data-act="quit"><span>Quit</span><em class="mbtn-sub">exit</em></button>
         </nav>
+      </section>
+
+      <section class="screen screen--select" data-screen="select">
+        <div class="sel">
+          <header class="panel-head">
+            <h2>Select Survivor</h2>
+            <div class="panel-tag" data-sel-tag></div>
+          </header>
+          <div class="sel-body">
+            <nav class="sel-roster" data-sel-roster></nav>
+            <div class="sel-stage">
+              <div class="sel-view" data-sel-view></div>
+              <div class="sel-plate">
+                <div class="sel-name" data-sel-name></div>
+                <div class="sel-sub" data-sel-sub></div>
+              </div>
+              <p class="sel-lore" data-sel-lore></p>
+            </div>
+            <aside class="sel-info">
+              <div class="sel-h">Loadout</div>
+              <div class="sel-skills" data-sel-skills></div>
+              <div class="sel-h">Base stats</div>
+              <div class="sel-stats" data-sel-stats></div>
+            </aside>
+          </div>
+          <footer class="sel-foot">
+            <button class="chip" data-nav data-act="difficulty">
+              <em>Difficulty</em><span data-chip-diff>—</span>
+            </button>
+            <button class="chip" data-nav data-act="artifacts">
+              <em>Artifacts</em><span data-chip-arts>None</span>
+            </button>
+            <div class="sel-spacer"></div>
+            <button class="mbtn mbtn--quiet" data-nav data-act="back"><span>Back</span></button>
+            <button class="mbtn mbtn--go" data-nav data-act="launch"><span>Begin run</span><em class="mbtn-sub">drop</em></button>
+          </footer>
+        </div>
+      </section>
+
+      <section class="screen screen--difficulty" data-screen="difficulty">
+        <div class="panel panel--wide">
+          <header class="panel-head"><h2>Difficulty</h2><div class="panel-tag" data-diff-src></div></header>
+          <div class="opt-list" data-diff-list></div>
+          <nav class="menu-list menu-list--row">
+            <button class="mbtn mbtn--go" data-nav data-act="back"><span>Back</span></button>
+          </nav>
+        </div>
+      </section>
+
+      <section class="screen screen--artifacts" data-screen="artifacts">
+        <div class="panel panel--rules">
+          <header class="panel-head"><h2>Artifacts</h2><div class="panel-tag" data-art-src></div></header>
+          <div class="art-note" data-art-note></div>
+          <div class="art-grid" data-art-grid></div>
+          <nav class="menu-list menu-list--row">
+            <button class="mbtn" data-nav data-act="art-clear"><span>Clear all</span></button>
+            <button class="mbtn mbtn--go" data-nav data-act="back"><span>Back</span></button>
+          </nav>
+        </div>
       </section>
 
       <section class="screen screen--pause" data-screen="pause">
         <div class="panel">
           <header class="panel-head"><h2>Paused</h2><div class="panel-tag">Run suspended</div></header>
           <nav class="menu-list">
-            <button class="mbtn mbtn--go" data-act="resume"><span>Resume</span></button>
-            <button class="mbtn" data-act="coop"><span>Co-op</span></button>
-            <button class="mbtn" data-act="settings"><span>Settings</span></button>
-            <button class="mbtn" data-act="quit"><span>Quit to title</span></button>
+            <button class="mbtn mbtn--go" data-nav data-act="resume"><span>Resume</span></button>
+            <button class="mbtn" data-nav data-act="logbook"><span>Logbook</span></button>
+            <button class="mbtn" data-nav data-act="coop"><span>Co-op</span></button>
+            <button class="mbtn" data-nav data-act="settings"><span>Settings</span></button>
+            <button class="mbtn mbtn--quiet" data-nav data-act="quit"><span>Quit to title</span></button>
           </nav>
         </div>
       </section>
@@ -108,8 +218,8 @@ export class Menus {
           <header class="panel-head"><h2>Settings</h2><div class="panel-tag">Saved locally</div></header>
           <div class="settings-grid" data-settings></div>
           <nav class="menu-list menu-list--row">
-            <button class="mbtn" data-act="reset"><span>Defaults</span></button>
-            <button class="mbtn mbtn--go" data-act="back"><span>Back</span></button>
+            <button class="mbtn" data-nav data-act="reset"><span>Defaults</span></button>
+            <button class="mbtn mbtn--go" data-nav data-act="back"><span>Back</span></button>
           </nav>
         </div>
       </section>
@@ -131,8 +241,8 @@ export class Menus {
               <p class="coop-hint">Create an invite code and send it to a friend. When they
                 send a reply code back, paste it below to connect them. No server needed.</p>
               <nav class="menu-list menu-list--row">
-                <button class="mbtn mbtn--go" data-act="coop-invite"><span>Create invite</span></button>
-                <button class="mbtn" data-act="coop-copy"><span>Copy</span></button>
+                <button class="mbtn mbtn--go" data-nav data-act="coop-invite"><span>Create invite</span></button>
+                <button class="mbtn" data-nav data-act="coop-copy"><span>Copy</span></button>
               </nav>
               <label class="coop-field">
                 <span>Invite code — send this to your friend</span>
@@ -143,7 +253,7 @@ export class Menus {
                 <textarea data-coop-answer placeholder="Paste the code they send back"></textarea>
               </label>
               <nav class="menu-list menu-list--row">
-                <button class="mbtn mbtn--go" data-act="coop-accept"><span>Connect them</span></button>
+                <button class="mbtn mbtn--go" data-nav data-act="coop-accept"><span>Connect them</span></button>
               </nav>
             </div>
 
@@ -156,8 +266,8 @@ export class Menus {
                 <textarea data-coop-offer placeholder="Paste the invite they sent you"></textarea>
               </label>
               <nav class="menu-list menu-list--row">
-                <button class="mbtn mbtn--go" data-act="coop-join"><span>Join</span></button>
-                <button class="mbtn" data-act="coop-copy-reply"><span>Copy reply</span></button>
+                <button class="mbtn mbtn--go" data-nav data-act="coop-join"><span>Join</span></button>
+                <button class="mbtn" data-nav data-act="coop-copy-reply"><span>Copy reply</span></button>
               </nav>
               <label class="coop-field">
                 <span>Your reply code — send this back</span>
@@ -169,8 +279,8 @@ export class Menus {
           <div class="coop-players" data-coop-players></div>
 
           <nav class="menu-list menu-list--row">
-            <button class="mbtn" data-act="coop-leave"><span>Leave co-op</span></button>
-            <button class="mbtn mbtn--go" data-act="back"><span>Back</span></button>
+            <button class="mbtn" data-nav data-act="coop-leave"><span>Leave co-op</span></button>
+            <button class="mbtn mbtn--go" data-nav data-act="back"><span>Back</span></button>
           </nav>
         </div>
       </section>
@@ -182,13 +292,19 @@ export class Menus {
           <div class="death-sub" data-death-sub></div>
         </div>
         <div class="panel panel--wide">
+          <!-- The run's identity — who, on what, under which rules — leads the
+               summary. Time and kills without it describe a run nobody can
+               place next to their last one. -->
+          <div class="run-id" data-run-id></div>
           <div class="stat-grid" data-stats></div>
           <div class="stat-items">
             <div class="stat-items-label">Items Collected</div>
             <div class="stat-items-row" data-death-items></div>
           </div>
+          <div class="run-unlocks" data-run-unlocks></div>
           <nav class="menu-list menu-list--row">
-            <button class="mbtn mbtn--go" data-act="restart"><span>Restart run</span></button>
+            <button class="mbtn" data-nav data-act="logbook"><span>Logbook</span></button>
+            <button class="mbtn mbtn--go" data-nav data-act="restart"><span>Restart run</span></button>
           </nav>
         </div>
       </section>
@@ -201,6 +317,10 @@ export class Menus {
           <div class="pickup-desc"></div>
         </div>
       </div>`;
+
+    // The logbook builds its own screen into the overlay, so it is never in the
+    // markup above and cannot be edited into an inconsistent state from here.
+    this.logbook = new Logbook(this.ctx, this.root);
 
     this.screens = {};
     for (const el of this.root.querySelectorAll('[data-screen]')) {
@@ -217,10 +337,24 @@ export class Menus {
     if (seed) seed.textContent = String(this.ctx.seed ?? '—');
 
     this.buildSettings();
+    this.buildSelect();
 
     this.root.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-act]');
-      if (btn) this.act(btn.dataset.act);
+      if (btn) { this.act(btn.dataset.act); return; }
+      const diff = e.target.closest('[data-difficulty]');
+      if (diff) { this.setDifficulty(diff.dataset.difficulty); return; }
+      const art = e.target.closest('[data-artifact]');
+      if (art) this.toggleArtifact(art.dataset.artifact);
+    });
+    // Hovering a control makes it the focus target, so the keyboard ring and
+    // the mouse never disagree about what "confirm" would press.
+    this.root.addEventListener('mousemove', (e) => {
+      const el = e.target.closest('[data-nav]');
+      if (!el) return;
+      const list = this.navTargets();
+      const i = list.indexOf(el);
+      if (i >= 0 && i !== this.navIndex) { this.navIndex = i; this.paintFocus(list); }
     });
   }
 
@@ -231,13 +365,13 @@ export class Menus {
 
     let html = row('Quality preset',
       `<div class="sseg" data-seg="quality">${QUALITY_NAMES
-        .map((n, i) => `<button class="segbtn" data-val="${i}">${n}</button>`)
+        .map((n, i) => `<button class="segbtn" data-nav data-val="${i}">${n}</button>`)
         .join('')}</div>`);
 
     for (const s of SLIDERS) {
       html += row(s.label,
         `<div class="sslider">
-           <input type="range" data-key="${s.key}" min="${s.min}" max="${s.max}" step="${s.step}" />
+           <input type="range" data-nav data-key="${s.key}" min="${s.min}" max="${s.max}" step="${s.step}" />
            <output data-out="${s.key}"></output>
          </div>`);
     }
@@ -273,6 +407,271 @@ export class Menus {
     }
   }
 
+  // ---------------------------------------------------------- survivor select
+
+  buildSelect() {
+    const roster = this.root.querySelector('[data-sel-roster]');
+    roster.innerHTML = SURVIVORS.map((c) => `
+      <button class="sur" data-nav data-survivor="${c.id}" style="--accent:${hexOf(c.accentColor)}">
+        <i class="sur-rule"></i>
+        <span class="sur-name">${escapeHtml(c.name)}</span>
+        <em class="sur-sub">${escapeHtml(c.subtitle)}</em>
+        <b class="sur-lock">Locked</b>
+      </button>`).join('');
+    roster.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-survivor]');
+      if (b) this.pickSurvivor(b.dataset.survivor);
+    });
+    // Roster-relative scale, computed once — a bar is only informative next to
+    // the other three.
+    this.statMax = {};
+    for (const s of STAT_BARS) {
+      this.statMax[s.key] = Math.max(s.floor ?? 0,
+        ...SURVIVORS.map((c) => c.baseStats[s.key] ?? 0));
+    }
+    this.renderSelect();
+  }
+
+  /** Is this survivor playable? Profile first, card default second. */
+  survivorUnlocked(card) {
+    const p = this.ctx.profile;
+    if (!card.unlock) return true;
+    return p?.isUnlocked ? p.isUnlocked('survivor', card.id) : true;
+  }
+
+  pickSurvivor(id) {
+    const card = getSurvivor(id);
+    if (!this.survivorUnlocked(card)) return;
+    this.survivorId = card.id;
+    this.renderSelect();
+    if (this.screen === 'select') this.mountPreview();
+  }
+
+  renderSelect() {
+    const card = getSurvivor(this.survivorId);
+    const accent = hexOf(card.accentColor);
+    const q = (s) => this.root.querySelector(s);
+
+    let available = 0;
+    for (const b of this.root.querySelectorAll('[data-survivor]')) {
+      const c = getSurvivor(b.dataset.survivor);
+      const ok = this.survivorUnlocked(c);
+      if (ok) available++;
+      b.classList.toggle('is-on', c.id === card.id);
+      b.classList.toggle('is-locked', !ok);
+    }
+    q('[data-sel-tag]').textContent = `${available} of ${SURVIVORS.length} available`;
+
+    q('[data-sel-name]').textContent = card.name;
+    q('[data-sel-sub]').textContent = card.subtitle;
+    q('[data-sel-lore]').textContent = card.lore;
+    this.screens.select.style.setProperty('--accent', accent);
+
+    q('[data-sel-skills]').innerHTML = loadoutOf(card).map((a) => `
+      <div class="sk">
+        <img class="sk-icon" src="${abilityArt(a.id, a.slot, accent)}" alt="" draggable="false" />
+        <div class="sk-copy">
+          <div class="sk-name">${escapeHtml(a.name)}<b class="sk-key">${escapeHtml(a.key)}</b></div>
+          <div class="sk-desc">${escapeHtml(a.description)}</div>
+        </div>
+        <div class="sk-cd">${a.cooldown >= 1 ? `${a.cooldown}s` : ''}</div>
+      </div>`).join('');
+
+    q('[data-sel-stats]').innerHTML = STAT_BARS.map((s) => {
+      const v = card.baseStats[s.key] ?? 0;
+      const frac = Math.max(0, Math.min(1, v / (this.statMax[s.key] || 1)));
+      const text = s.fmt ? s.fmt(v) : String(round1(v));
+      return `<div class="sbar">
+          <div class="sbar-k">${s.label}</div>
+          <div class="sbar-track"><i style="transform:scaleX(${frac.toFixed(3)})"></i></div>
+          <div class="sbar-v">${text}</div>
+        </div>`;
+    }).join('');
+
+    this.syncChips();
+  }
+
+  syncChips() {
+    const d = this.currentDifficulty();
+    const diff = this.root.querySelector('[data-chip-diff]');
+    if (diff) diff.textContent = d ? d.name : '—';
+    const arts = this.root.querySelector('[data-chip-arts]');
+    if (arts) {
+      const n = this.activeArtifacts().length;
+      arts.textContent = n ? `${n} active` : 'None';
+    }
+  }
+
+  /**
+   * The portrait.
+   *
+   * Built fresh on every open and destroyed on close — see `ModelPreview`. Four
+   * survivors is four `CharacterMesh` builds; caching them would hold four rigs
+   * and their materials alive for the whole session so a menu could open six
+   * milliseconds faster.
+   */
+  mountPreview() {
+    const host = this.root.querySelector('[data-sel-view]');
+    if (!host) return;
+    if (!this.preview) this.preview = new ModelPreview(host);
+    if (!this.preview.mount()) return;
+    const card = getSurvivor(this.survivorId);
+    const want = card.id;
+    import('../entities/CharacterMesh.js').then(({ CharacterMesh }) => {
+      // The player can click a second survivor while this import resolves.
+      if (this.screen !== 'select' || this.survivorId !== want || !this.preview) return;
+      const mesh = new CharacterMesh(card.meshKey);
+      const state = {
+        velocity: new THREE.Vector3(), grounded: true, aimYaw: 0, aimPitch: -0.05,
+        dashT: 0, sprint: false, moveSpeed: 7, dead: false,
+      };
+      // Past the settle time of the slowest spring on the rig, so the portrait
+      // is the idle pose rather than the raw build pose.
+      for (let i = 0; i < 140; i++) mesh.update(1 / 60, state);
+      this.preview.setSubject(mesh.group, { release: disposeTree, spin: 0.5 });
+    }).catch(() => { /* no portrait rather than no menu */ });
+  }
+
+  unmountPreview() {
+    if (!this.preview) return;
+    this.preview.dispose();
+    this.preview = null;
+  }
+
+  // ------------------------------------------------------- difficulty / artifacts
+
+  /** B2's system if it is up, our own table if it is not. */
+  difficultyList() {
+    const list = this.ctx.difficulty?.list?.();
+    return Array.isArray(list) && list.length ? list : FALLBACK_DIFFICULTIES;
+  }
+
+  currentDifficulty() {
+    const list = this.difficultyList();
+    const id = this.ctx.difficulty?.current?.()?.id ?? this.difficultyId ?? list[1]?.id ?? list[0]?.id;
+    return list.find((d) => d.id === id) || list[0] || null;
+  }
+
+  setDifficulty(id) {
+    const d = this.difficultyList().find((x) => x.id === id);
+    if (!d) return;
+    this.difficultyId = d.id;
+    // B2's system owns the real value when it exists; ctx.difficultyId is the
+    // field B1's run record reads and is set either way.
+    this.ctx.difficulty?.set?.(d.id);
+    this.ctx.difficultyId = d.id;
+    if (!this.ctx.difficulty && Number.isFinite(d.spawnRate)) {
+      // Our own fallback still has to *do* something. `spawnRate` is a live
+      // Director read and this class owns the settings object it lives on.
+      this.settings.spawnRate = d.spawnRate;
+      this.apply();
+      save(this.settings);
+    }
+    this.renderDifficulty();
+    this.syncChips();
+  }
+
+  renderDifficulty() {
+    const host = this.root.querySelector('[data-diff-list]');
+    if (!host) return;
+    const cur = this.currentDifficulty();
+    const live = !!this.ctx.difficulty;
+    this.root.querySelector('[data-diff-src]').textContent =
+      live ? 'Run rules' : 'Run rules — spawn pacing';
+    host.innerHTML = this.difficultyList().map((d) => `
+      <button class="opt${d.id === cur?.id ? ' is-on' : ''}" data-nav data-difficulty="${escapeHtml(d.id)}"
+              style="--accent:${escapeHtml(d.color || '#5fd9f7')}">
+        <div class="opt-name"><i class="opt-glyph">${escapeHtml(d.icon || '◆')}</i>${escapeHtml(d.name)}</div>
+        <div class="opt-desc">${escapeHtml(d.description || '')}</div>
+        <i class="opt-tick"></i>
+      </button>`).join('');
+  }
+
+  artifactList() {
+    const list = this.ctx.artifacts?.list?.();
+    return Array.isArray(list) ? list : [];
+  }
+
+  activeArtifacts() {
+    const live = this.ctx.artifacts?.active?.();
+    if (Array.isArray(live)) return live;
+    return [...this.artifactIds];
+  }
+
+  artifactLocked(a) {
+    if (!a?.unlock) return false;
+    const p = this.ctx.profile;
+    return p?.isUnlocked ? !p.isUnlocked('artifact', a.id) : false;
+  }
+
+  toggleArtifact(id) {
+    const live = this.ctx.artifacts;
+    // An unearned artifact is a preview of a reward, not a switch.
+    if (this.artifactLocked(this.artifactList().find((a) => a.id === id))) return;
+    // Read the live set back before editing it: `Artifacts` restores a stored
+    // selection at boot, so a local mirror that started empty would silently
+    // clear whatever the player last chose the first time they toggled one.
+    const cur = new Set(this.activeArtifacts());
+    if (cur.has(id)) cur.delete(id);
+    else cur.add(id);
+    this.artifactIds = cur;
+    const ids = [...cur];
+    live?.setActive?.(ids);
+    // Did it take? A pre-run-only system that ignores the call is the one case
+    // where the UI must not just re-render its own optimistic state.
+    if (live) {
+      const now = new Set(live.active?.() ?? []);
+      this._artifactWriteRefused = now.size !== cur.size || [...cur].some((x) => !now.has(x));
+      if (this._artifactWriteRefused) this.artifactIds = now;
+    }
+    this.ctx.artifactIds = ids;
+    this.renderArtifacts();
+    this.syncChips();
+  }
+
+  renderArtifacts() {
+    const grid = this.root.querySelector('[data-art-grid]');
+    const note = this.root.querySelector('[data-art-note]');
+    const src = this.root.querySelector('[data-art-src]');
+    if (!grid) return;
+    const list = this.artifactList();
+    const active = new Set(this.activeArtifacts());
+    src.textContent = `${active.size} active`;
+
+    if (!list.length) {
+      // Honest empty state. A grid of invented cards that toggle nothing would
+      // photograph better and lie to the player about what the build contains.
+      note.textContent = 'No artifacts are present in this build. When the artifact system lands, every one it registers appears here.';
+      note.classList.add('is-on');
+      grid.innerHTML = '';
+      return;
+    }
+    // `Artifacts.setActive` is pre-run only and refuses silently once a stage
+    // has started, which from inside a pause menu is indistinguishable from a
+    // broken button. Say it instead.
+    const locked = !!this.ctx.artifacts && this._artifactWriteRefused;
+    note.textContent = locked
+      ? 'The rules are set when you drop. These take effect on your next run — choose them from the title screen.'
+      : '';
+    note.classList.toggle('is-on', locked);
+    grid.innerHTML = list.map((a) => {
+      const locked = this.artifactLocked(a);
+      // A locked artifact still shows its name and its condition — it is a
+      // reason to keep playing, not a hole in the grid. Only the effect is
+      // withheld, and only because knowing it is the reward.
+      const hint = locked ? this.ctx.profile?.challengeState?.(a.unlock) : null;
+      return `<button class="art${active.has(a.id) ? ' is-on' : ''}${locked ? ' is-locked' : ''}"
+                data-nav data-artifact="${escapeHtml(a.id)}"
+                style="--accent:${escapeHtml(a.color || '#ffd44f')}">
+          <div class="art-mark">${escapeHtml(String(a.icon ?? '◆')).slice(0, 2)}</div>
+          <div class="art-name">${escapeHtml(a.name || a.id)}</div>
+          <div class="art-desc">${escapeHtml(locked
+            ? (hint ? `Locked — ${hint.name}: ${hint.description}` : 'Locked')
+            : (a.description || ''))}</div>
+        </button>`;
+    }).join('');
+  }
+
   // ------------------------------------------------------------------ apply
 
   /** Push settings into the live systems. Every read is guarded — the other
@@ -306,10 +705,23 @@ export class Menus {
     }
   }
 
+  /** Challenges completed during the run in flight, for the summary screen. */
+  bindProgress(ctx) {
+    ctx.events?.on?.('challengeComplete', (e) => {
+      if (e?.name) this.newChallenges.push({ kind: 'challenge', name: e.name });
+    });
+    ctx.events?.on?.('stageStart', ({ index }) => {
+      if ((index ?? 0) === 0) this.newChallenges.length = 0;
+    });
+  }
+
   // ----------------------------------------------------------------- screens
 
   open(name) {
+    const prev = this.screen;
     this.screen = name;
+    // Root screens are where a journey starts, so they end the one before it.
+    if (!name || name === 'title' || name === 'death' || name === 'pause') this.stack.length = 0;
     for (const [key, el] of Object.entries(this.screens)) {
       el.classList.toggle('is-open', key === name);
     }
@@ -320,25 +732,63 @@ export class Menus {
     document.body.classList.toggle('menu-open', !!name);
     this.ctx.paused = !!name;
     if (name && document.pointerLockElement) document.exitPointerLock();
+
+    // Every screen that owns a GL context releases it on the way out. This is
+    // the single place that happens, so no exit path can miss it.
+    if (prev === 'select' && name !== 'select') this.unmountPreview();
+    if (prev === 'logbook' && name !== 'logbook') this.logbook.onClose();
+
+    if (name === 'select') { this.renderSelect(); this.mountPreview(); }
+    if (name === 'difficulty') this.renderDifficulty();
+    if (name === 'artifacts') this.renderArtifacts();
+    if (name === 'logbook') this.logbook.onOpen();
+
+    this.navIndex = 0;
+    this.paintFocus();
   }
 
   close() {
     this.open(null);
   }
 
+  /** Open `name` as a sub-screen of the current one, so Back returns here. */
+  push(name) {
+    if (this.screen === name) return;
+    if (this.screen) this.stack.push(this.screen);
+    this.open(name);
+  }
+
+  back() {
+    this.open(this.stack.pop() || 'title');
+  }
+
   act(action) {
     switch (action) {
       case 'play':
+        this.push('select');
+        break;
+      case 'launch':
+        this.launch();
+        break;
       case 'resume':
         this.close();
         this.ctx.input?.canvas?.requestPointerLock?.();
         break;
       case 'settings':
-        this.returnTo = this.screen === 'settings' ? this.returnTo : this.screen;
-        this.open('settings');
+      case 'logbook':
+      case 'difficulty':
+      case 'artifacts':
+        this.push(action);
+        break;
+      case 'art-clear':
+        this.artifactIds = new Set();
+        this.ctx.artifacts?.setActive?.([]);
+        this.ctx.artifactIds = [];
+        this.renderArtifacts();
+        this.syncChips();
         break;
       case 'back':
-        this.open(this.returnTo || 'title');
+        this.back();
         break;
       case 'reset':
         Object.assign(this.settings, DEFAULTS);
@@ -353,7 +803,6 @@ export class Menus {
         location.reload();
         break;
       case 'coop':
-        this.returnTo = this.screen === 'coop' ? this.returnTo : this.screen;
         this.openCoop();
         break;
       case 'coop-invite':
@@ -367,6 +816,24 @@ export class Menus {
     }
   }
 
+  /**
+   * Commit the pre-run selections and drop.
+   *
+   * `ctx.setSurvivor` is Player's live-swap and only exists once Player has
+   * published itself; `ctx.survivorId` is what a not-yet-booted Player reads at
+   * init. Writing both means the selection holds whichever side of boot the
+   * player is on.
+   */
+  launch() {
+    const card = getSurvivor(this.survivorId);
+    this.ctx.survivorId = card.id;
+    this.ctx.setSurvivor?.(card.id);
+    if (!this.ctx.difficultyId) this.setDifficulty(this.currentDifficulty()?.id);
+    this.newChallenges.length = 0;
+    this.close();
+    this.ctx.input?.canvas?.requestPointerLock?.();
+  }
+
   // -------------------------------------------------------------------- co-op
 
   openCoop() {
@@ -377,7 +844,7 @@ export class Menus {
       this._coopBound = true;
       lobby.onStatus = (status, detail) => this.coopStatus(status, detail);
     }
-    this.open('coop');
+    this.push('coop');
     this.coopStatus(lobby?.status || 'idle');
   }
 
@@ -479,16 +946,40 @@ export class Menus {
     if (el) el.textContent = text;
   }
 
+  /**
+   * The run summary.
+   *
+   * `stats` is what HUD assembles from its own counters; the run's *identity*
+   * (survivor, difficulty, artifacts) and anything newly earned come from the
+   * profile, which `Progression` has already committed by the time `playerDead`
+   * reaches us.
+   */
   showDeath(stats) {
     const sub = this.root.querySelector('[data-death-sub]');
     sub.textContent = stats.stageName ? `Stage ${stats.stage} — ${stats.stageName}` : '';
 
+    const card = getSurvivor(this.ctx.player?.survivorId ?? this.survivorId);
+    const diff = this.currentDifficulty();
+    // Ids are storage keys, not copy — name them.
+    const byId = new Map(this.artifactList().map((a) => [a.id, a.name || a.id]));
+    const arts = this.activeArtifacts().map((id) => byId.get(id) || id);
+    this.root.querySelector('[data-run-id]').innerHTML = `
+      <div class="run-id-cell" style="--accent:${hexOf(card.accentColor)}">
+        <div class="run-id-k">Survivor</div><div class="run-id-v">${escapeHtml(card.name)}</div>
+      </div>
+      <div class="run-id-cell">
+        <div class="run-id-k">Difficulty</div><div class="run-id-v">${escapeHtml(diff?.name || '—')}</div>
+      </div>
+      <div class="run-id-cell">
+        <div class="run-id-k">Artifacts</div>
+        <div class="run-id-v">${arts.length ? escapeHtml(arts.join(', ')) : 'None'}</div>
+      </div>`;
+
     const host = this.root.querySelector('[data-stats]');
     const rows = [
       ['Time survived', stats.time],
-      ['Stage reached', stats.stage],
+      ['Stages cleared', stats.stage],
       ['Level reached', stats.level ?? 1],
-      ['Difficulty', stats.difficulty],
       ['Enemies killed', stats.kills],
       ['Damage dealt', stats.damage],
       ['Items collected', stats.itemCount],
@@ -504,6 +995,21 @@ export class Menus {
              ${it.count > 1 ? `<b>x${it.count}</b>` : ''}</div>`)
           .join('')
       : '<div class="ditem-empty">None</div>';
+
+    // Unlocks are drained rather than read, so the same one is never announced
+    // on two consecutive death screens.
+    const earned = [
+      ...this.newChallenges,
+      ...(this.ctx.profile?.drainPendingUnlocks?.() ?? [])
+        .map((u) => ({ kind: 'unlock', name: byId.get(u.id) || `${u.type}: ${u.id}` })),
+    ];
+    const un = this.root.querySelector('[data-run-unlocks]');
+    un.innerHTML = earned.length
+      ? `<div class="stat-items-label">Earned this run</div>
+         <div class="run-unlock-row">${earned
+           .map((e) => `<span class="run-unlock ${e.kind}">${escapeHtml(e.name)}</span>`).join('')}</div>`
+      : '';
+    this.newChallenges.length = 0;
 
     this.open('death');
   }
@@ -523,22 +1029,151 @@ export class Menus {
     this.bannerTimer = 4.2;
   }
 
+  // ------------------------------------------------------- keyboard / gamepad
+
+  /** Every focusable control on the open screen, in DOM order. */
+  navTargets() {
+    if (this.screen === 'logbook') return this.logbook.navTargets();
+    const el = this.screens[this.screen];
+    if (!el) return [];
+    return [...el.querySelectorAll('[data-nav]')].filter((n) => !n.disabled);
+  }
+
+  paintFocus(list = this.navTargets()) {
+    for (let i = 0; i < list.length; i++) list[i].classList.toggle('is-focus', i === this.navIndex);
+    list[this.navIndex]?.scrollIntoView?.({ block: 'nearest' });
+  }
+
+  navMove(delta) {
+    const list = this.navTargets();
+    if (!list.length) return;
+    this.navIndex = (this.navIndex + delta + list.length) % list.length;
+    this.paintFocus(list);
+  }
+
+  navConfirm() {
+    const el = this.navTargets()[this.navIndex];
+    if (!el) return;
+    // A range input confirms nothing; left/right already adjust it.
+    if (el.tagName === 'INPUT') return;
+    el.click();
+  }
+
+  /**
+   * Keyboard and gamepad for every screen.
+   *
+   * The menus were mouse-only. Arrows / WASD / D-pad move the ring, Enter,
+   * Space and A confirm, Escape and B go back — and the ring is the same object
+   * the mouse hovers, so the two input paths can never disagree about what is
+   * selected. Typing into the co-op code fields is excluded, or a paste would
+   * navigate away mid-word.
+   */
+  navigate(ctx) {
+    if (!this.screen) return;
+    const tag = document.activeElement?.tagName;
+    if (tag === 'TEXTAREA' || tag === 'INPUT') return;
+    const input = ctx.input;
+    const hit = (c) => input?.hit?.(c);
+
+    let dy = 0, dx = 0, confirm = false, back = false;
+    if (hit('ArrowDown') || hit('KeyS')) dy++;
+    if (hit('ArrowUp') || hit('KeyW')) dy--;
+    if (hit('ArrowRight') || hit('KeyD')) dx++;
+    if (hit('ArrowLeft') || hit('KeyA')) dx--;
+    if (hit('Enter') || hit('Space') || hit('NumpadEnter')) confirm = true;
+    if (hit('Escape') || hit('Backspace')) back = true;
+
+    const pad = this.readPad();
+    dy += pad.dy; dx += pad.dx;
+    confirm = confirm || pad.confirm;
+    back = back || pad.back;
+
+    // Horizontal is only distinct from vertical where a row of controls needs
+    // it; everywhere else both walk the same list, which is what makes one
+    // navigator work on a grid, a column and a tab rail alike.
+    const step = dy || dx;
+    if (step) this.navMove(step > 0 ? 1 : -1);
+    if (confirm) this.navConfirm();
+    if (back) this.escape();
+  }
+
+  /** Escape / B: one level out, never straight to the desktop. */
+  escape() {
+    switch (this.screen) {
+      case null:
+      case undefined:
+        this.open('pause');
+        break;
+      case 'pause':
+        this.act('resume');
+        break;
+      case 'title':
+      case 'death':
+        break;
+      default:
+        this.back();
+    }
+  }
+
+  /**
+   * First connected pad, edge-triggered.
+   *
+   * Polled rather than event-driven because the Gamepad API has no press
+   * events, and rate-limited by hand: a held stick at 60 Hz walks a nine-entry
+   * menu eight times before a human notices it moved.
+   */
+  readPad() {
+    const out = { dx: 0, dy: 0, confirm: false, back: false };
+    const pads = navigator.getGamepads?.();
+    if (!pads) return out;
+    let gp = null;
+    for (const p of pads) if (p?.connected) { gp = p; break; }
+    if (!gp) return out;
+
+    const ax = (gp.axes[0] || 0) + (gp.buttons[15]?.pressed ? 1 : 0) - (gp.buttons[14]?.pressed ? 1 : 0);
+    const ay = (gp.axes[1] || 0) + (gp.buttons[13]?.pressed ? 1 : 0) - (gp.buttons[12]?.pressed ? 1 : 0);
+    const now = performance.now();
+    const live = Math.abs(ax) > 0.55 || Math.abs(ay) > 0.55;
+    if (live && now >= (this._padNext ?? 0)) {
+      // 380 ms to first repeat, 140 ms after — the same shape every console
+      // menu uses, and the reason a stick is usable at all here.
+      this._padNext = now + (this._padHeld ? 140 : 380);
+      this._padHeld = true;
+      if (Math.abs(ay) > Math.abs(ax)) out.dy = ay > 0 ? 1 : -1;
+      else out.dx = ax > 0 ? 1 : -1;
+    } else if (!live) {
+      this._padHeld = false;
+      this._padNext = 0;
+    }
+
+    const edge = (i) => {
+      const down = !!gp.buttons[i]?.pressed;
+      const was = this.pad.buttons.has(i);
+      if (down) this.pad.buttons.add(i); else this.pad.buttons.delete(i);
+      return down && !was;
+    };
+    out.confirm = edge(0);
+    out.back = edge(1);
+    return out;
+  }
+
   update(ctx, dt) {
     if (this.bannerTimer > 0) {
       this.bannerTimer -= dt;
       if (this.bannerTimer <= 0) this.banner.classList.remove('is-on');
     }
-    if (ctx.input?.hit?.('Escape')) {
-      if (!this.screen) this.open('pause');
-      else if (this.screen === 'settings' || this.screen === 'coop') this.open(this.returnTo || 'title');
-      else if (this.screen === 'pause') this.act('resume');
-    }
+    this.navigate(ctx);
+    // Only the open screen's viewer is stepped; the other is disposed, not idle.
+    if (this.screen === 'select') this.preview?.update?.(dt);
+    else if (this.screen === 'logbook') this.logbook.update(dt);
   }
 
   /** Slow orbit over the generated stage behind the title screen. Runs in
    *  lateUpdate so it wins over CameraRig, which has already had its turn. */
   orbit(ctx, dt) {
-    if (this.screen !== 'title' || !ctx.camera) return;
+    // The select screen sits over the same live stage the title does, and a
+    // frozen camera behind a menu reads as a still image rather than a world.
+    if ((this.screen !== 'title' && this.screen !== 'select') || !ctx.camera) return;
     this.orbitAngle += dt * 0.06;
     const c = ctx.stage?.center ?? ctx.player?.position ?? { x: 0, y: 0, z: 0 };
     const r = 34;
@@ -557,6 +1192,12 @@ function setAudio(audio, methods, prop, value) {
   }
   if (prop in audio) audio[prop] = value;
   else audio[prop] = value;
+}
+
+const round1 = (v) => Math.round(v * 10) / 10;
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }
 
 /**

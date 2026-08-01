@@ -443,6 +443,21 @@ export function installHarness(ctx) {
     p._iframeUntil = Infinity;
   };
 
+  /**
+   * Stop a menu's 3D portrait on a chosen bearing.
+   *
+   * The viewers turn continuously off real elapsed time, so a frame-locked
+   * shutter still lands on whatever angle this machine's frame rate reached —
+   * which on the first capture of `14` was near side-on, the one view that
+   * flattens a survivor's shoulder mass. Freezing the spin and setting the
+   * angle by hand makes the composition the same on every machine.
+   */
+  const pinPreview = (preview, angle) => {
+    if (!preview) return;
+    preview.spin = 0;
+    preview.angle = angle;
+  };
+
   // --- aiming ----------------------------------------------------------------
 
   const SHOULDER = 0.65;   // must match CameraRig.SHOULDER
@@ -1703,6 +1718,195 @@ export function installHarness(ctx) {
       pin();
       await frames(1);
       freeze();
+    },
+
+    /* ---------------------------------------------------------------------
+     * UI screens.
+     *
+     * These three photograph DOM, not the 3D scene, so they break one of this
+     * file's two rules on purpose: there is no subject to place and no effect
+     * to time. What they still have to get right is that the screen is
+     * *populated* — a menu shot of an empty panel grades nothing — and that
+     * anything asynchronous behind it has landed before the shutter. The
+     * survivor portrait and the logbook's model viewer both import their mesh
+     * module dynamically and both render through their own WebGL context, so
+     * each of these settles well past the first frame the screen appears on.
+     * ------------------------------------------------------------------- */
+
+    /** Survivor select, with the roster, the rotating portrait and a loadout. */
+    async survivorSelect({ survivor = 'kestrel', settleFrames = 90 } = {}) {
+      await begin();
+      attach();
+      invulnerable();
+      // A live stage behind the panel rather than a black void: the select
+      // screen inherits the title's slow orbit and the scrim is deliberately
+      // translucent, so what is behind it is part of the composition.
+      await frames(20);
+
+      const menus = ctx.hud?.menus;
+      if (!menus) throw new Error('[harness] 14-survivor-select: no menus');
+      menus.open('title');
+      menus.act('play');
+      // Not the default: the shot has to prove the roster is a *choice*, and
+      // the tallest silhouette is the one that tests the portrait framing.
+      menus.pickSurvivor(survivor);
+      // The portrait is behind a dynamic import plus a context creation plus a
+      // 140-step spring settle. 90 frames is comfortably past all three.
+      await frames(settleFrames);
+      // The portrait turns continuously, so the shutter otherwise lands on
+      // whatever bearing the machine's frame rate happened to reach — on the
+      // first capture that was near side-on, which is the one view that hides
+      // a survivor's shoulder mass. Pin a three-quarter and render again.
+      pinPreview(menus.preview, 0.62);
+      await frames(2);
+      freeze();
+      return { survivor: menus.survivorId, screen: menus.screen };
+    },
+
+    /**
+     * Logbook, on a tab whose entries carry a 3D rig.
+     *
+     * `enemies`, not `survivors`: the roster is four rows in a thirty-two-em
+     * index, so the survivors tab photographs three quarters of an empty
+     * column, and the survivor loadout is already the subject of
+     * `14-survivor-select`. The bestiary fills the index, carries a stat block
+     * and a lore line, and is the tab the screen has to prove it can hold.
+     */
+    async logbook({ tab = 'enemies', entry = 'golem', settleFrames = 90 } = {}) {
+      await begin();
+      attach();
+      invulnerable();
+      await frames(20);
+
+      const menus = ctx.hud?.menus;
+      const book = menus?.logbook;
+      if (!book) throw new Error('[harness] 15-logbook: no logbook');
+      menus.open('title');
+      menus.act('logbook');
+      book.setTab(tab, true);
+      if (entry) book.select(entry, true);
+      await frames(settleFrames);
+      pinPreview(book.preview, 0.62);
+      await frames(2);
+      freeze();
+      return { tab: book.tab, entry: book.selected, recorded: book.entries.length };
+    },
+
+    /**
+     * The two pre-run rule screens.
+     *
+     * Shot on the artifact grid rather than the difficulty list: the grid is
+     * the denser of the two, it carries the locked/earned states the profile
+     * drives, and the difficulty selection is legible on the chip in `14`.
+     *
+     * It deliberately does **not** call `begin()`, and it is scheduled
+     * immediately after `01-title` for that reason: `Artifacts.setActive` is
+     * pre-run only and latches shut on the first `stageStart`, and
+     * `Progression` builds stage 0 in `fixedUpdate`, which the Engine skips
+     * while `ctx.paused`. So the only moment in a capture at which artifacts
+     * can actually be chosen is before any scenario has dismissed the title —
+     * which is also the only moment a *player* can choose them. Running this
+     * after `begin()` photographed seven cards and `0 ACTIVE`, correctly and
+     * uselessly.
+     */
+    async artifacts({ settleFrames = 30 } = {}) {
+      thaw();
+      const menus = ctx.hud?.menus;
+      if (!menus) throw new Error('[harness] 17-artifacts: no menus');
+      menus.open('title');
+      menus.act('play');
+      menus.act('artifacts');
+      // A capture runs on a fresh profile, so every artifact is behind a
+      // challenge and the grid photographed as seven identical locked cards —
+      // which documents one state twice and the other never. Grant the first
+      // three the way the profile grants them, then switch two on: the shot
+      // now carries active, earned-but-off, and locked-with-its-condition.
+      const cards = menus.artifactList();
+      for (let i = 0; i < 3 && i < cards.length; i++) {
+        ctx.profile?.unlock?.('artifact', cards[i].id, { silent: true });
+      }
+      menus.renderArtifacts();
+      for (let i = 0; i < 2 && i < cards.length; i++) menus.toggleArtifact(cards[i].id);
+      await frames(settleFrames);
+      freeze();
+      const active = menus.activeArtifacts();
+      // Cleared *after* the freeze, the same trick `09-survivors` uses to take
+      // its rigs out of the world without taking them out of the photograph.
+      // Left on, the Tithe would delete every chest in the stage and
+      // `07-interactables` would photograph a prop shot with no props.
+      ctx.artifacts?.setActive?.([]);
+      return { screen: menus.screen, active };
+    },
+
+    /**
+     * Run summary, reached the way a player reaches it: by dying.
+     *
+     * Deliberately not `menus.showDeath(...)` with invented numbers. The whole
+     * point of this screen is that it reports a real run — the profile has to
+     * have committed a record, the challenge pass has to have run, and the
+     * inventory strip has to be the one the player actually built. So the
+     * scenario plays a compressed run and then takes a lethal hit.
+     */
+    async runSummary({ settleFrames = 50 } = {}) {
+      await begin();
+      attach();
+      ctx.time = 17 * 60 + 42;
+      seedLevel(14, 0.35);
+
+      // A believable mid-run inventory rather than one of everything: the
+      // summary's item strip is graded on whether a real haul reads, and a
+      // player at seventeen minutes has thirty-odd items across three tiers,
+      // not eighty-three across five.
+      const haul = ITEMS.filter((d) => d.tier === 'common' || d.tier === 'uncommon' || d.tier === 'legendary');
+      for (let i = 0; i < haul.length && i < 22; i++) {
+        ctx.items?.give?.(haul[i * 2 % haul.length].id, 1 + ((i * 3) % 5));
+      }
+      ctx.items?.addGold?.(2870);
+      // Kills and damage are HUD counters fed off the bus, so they only exist
+      // if something actually died. Fight for a moment.
+      spawnRing(10, SPAWN_CARDS, 12, 3);
+      if (ctx.input) ctx.input.mouse.left = true;
+      await frames(120);
+      if (ctx.input) ctx.input.mouse.left = false;
+
+      // Killing the survivor is considerably harder than it sounds, and two
+      // attempts got it wrong before this one.
+      //
+      // First: one ordinary hit. A loaded inventory carries near-total block
+      // chance and hundreds of armour, and it was simply negated — the shot
+      // came back as gameplay with a full health bar. `isDot` skips both the
+      // i-frame gate and the Tougher Times roll and `ignoreArmor` skips the
+      // curve, which fixes that.
+      //
+      // Second: it still would not die when this ran after `10-inventory`.
+      // Measured, not guessed (`ctx.combat.applyDamage` returned `dealt:
+      // 1000000` while `player.health` stayed at 307.2 and `player.shield`
+      // *rose* to its cap): `applyDamage` dispatches the `onDamaged` item hooks
+      // before it tests `health <= 0`, and with one of every item in the game
+      // held at once something in that set restores the player inside the same
+      // call. That is correct behaviour for the game and unbeatable by damage.
+      //
+      // So: the real path first, and if a full inventory refuses it, end the
+      // run through the same two bus events `Combat._kill` emits for a player.
+      // The summary is still reporting a real run either way — the profile
+      // record, the challenge pass and the inventory strip are all unchanged.
+      const p = ctx.player;
+      for (let i = 0; i < 30 && p?.alive; i++) {
+        p._iframeUntil = 0;
+        ctx.combat?.applyDamage?.(p, 1e6, { type: 'harness', isDot: true, ignoreArmor: true });
+        await frames(1);
+      }
+      if (p?.alive) {
+        p.health = 0;
+        p.alive = false;
+        p.onDeath?.();
+        ctx.events.emit('kill', { victim: p, source: null, position: p.position, isElite: false, isBoss: false });
+        ctx.events.emit('playerDead', {});
+      }
+      await frames(settleFrames);
+      freeze();
+      const record = ctx.profile?.runHistory?.()[0] ?? null;
+      return { screen: ctx.hud?.menus?.screen ?? null, record };
     },
 
     // Escape hatches for ad-hoc inspection during the critic loop.

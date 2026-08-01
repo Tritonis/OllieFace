@@ -238,7 +238,33 @@ export const CHALLENGE_BY_ID = Object.fromEntries(CHALLENGES.map((c) => [c.id, c
 //     untouchable: { type: 'equipment', id: 'blastShower' },
 //   };
 //
-export const UNLOCK_BINDINGS = {};
+// The seven artifacts, one per challenge, chosen so the condition reads as the
+// artifact's own premise rather than as an arbitrary toll:
+//
+//   - `glass` behind a 1,000-damage hit — the challenge is literally named
+//     Glass Cannon, and the artifact is what a glass cannon is.
+//   - `honour` behind 100 elites, `evolution` behind 10 bosses: you unlock the
+//     thing that makes every monster elite by having fought elites.
+//   - `command` behind 30 items in a run and `sacrifice` behind 5,000 gold —
+//     both are about the loot economy, and both are earned by mastering the one
+//     they then replace.
+//   - `caprice` behind stage 5 and `swarms` behind 1,000 kills are the two
+//     "keep playing" slots, deliberately reachable inside the first evening.
+//
+// `looper`, `untouchable`, `veteran`, `noSurvivors`, `firstBlood`, `warmingUp`,
+// `shockAndAwe` and `marathon` are left unbound on purpose: some are the
+// tutorial beats and some are the very long tail, and gating an artifact behind
+// stage 13 would mean most players never see one. Survivors and equipment are
+// not bound here — nobody owns those catalogues this round.
+export const UNLOCK_BINDINGS = {
+  hoarder: { type: 'artifact', id: 'command' },
+  richBeyondReason: { type: 'artifact', id: 'sacrifice' },
+  thousandCuts: { type: 'artifact', id: 'swarms' },
+  oneShot: { type: 'artifact', id: 'glass' },
+  theLongHaul: { type: 'artifact', id: 'caprice' },
+  eliteHunter: { type: 'artifact', id: 'honour' },
+  bossSlayer: { type: 'artifact', id: 'evolution' },
+};
 
 // Bumped by `applyUnlockBindings` so `Profile`'s cached gate map can tell it is
 // stale. Only matters for hot reload and for tests that rebind at runtime;

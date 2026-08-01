@@ -169,7 +169,12 @@ export class Progression {
     // Difficulty climbs with wall clock and jumps per stage — the clock is what
     // makes looting slowly a real cost.
     this.difficulty = (1 + 0.4 * (ctx.time / 60)) * Math.pow(1.15, this.stageIndex);
-    ctx.difficulty = this.difficulty;
+    // `ctx.difficulty` used to mirror this number. It is now the difficulty
+    // *selection* API owned by `systems/Artifacts.js` (Drizzle/Rainstorm/
+    // Monsoon), and this value keeps the one name it was ever read under —
+    // `progression.difficulty`, which `_tickTeleporter` and `runStats` already
+    // use. Its single external reader (`Items.killReward`, as a fallback behind
+    // the director's coefficient) now reads the director directly.
 
     // Teleporter charge, boss gating and stage transitions are host decisions;
     // clients see the outcome as events.

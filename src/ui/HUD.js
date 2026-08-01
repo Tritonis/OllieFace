@@ -1,7 +1,12 @@
 import * as THREE from 'three';
 import { clamp, damp, invLerp } from '../core/MathUtil.js';
 import { ITEM_BY_ID } from '../data/items.js';
-import { abilityIcon, itemArt, TIER_ORDER } from './Icons.js';
+// A constant, not the system: the key the equipment slot is bound to is decided
+// in one place (`Items`) and printed in another, and hardcoding 'F' here is how
+// a rebind ships a HUD that lies about its own controls. Nothing else about
+// Items is imported — the slot itself is read through `ctx.items`.
+import { EQUIPMENT_KEY_LABEL } from '../systems/Items.js';
+import { abilityIcon, abilityArt, equipmentArt, itemArt, hexOf, TIER_ORDER } from './Icons.js';
 import { Tooltip, describeItem, prettify } from './Tooltip.js';
 import { Menus } from './Menus.js';
 
@@ -52,6 +57,13 @@ const PIP_CAP = 5;
 // `.inventory` sets; see `onItemPickup` for why the rows are explicit.
 const INV_ROW = 12;
 
+// Full-bleed screens own the frame outright. A pause or settings panel is a
+// sheet over a live run and the HUD behind it is still that run's state, but
+// the title, the survivor select, the logbook and the summary each fill the
+// viewport — leaving the corners of the HUD poking out from behind one of them
+// is two interfaces at once.
+const FULL_SCREENS = new Set(['title', 'death', 'select', 'logbook', 'difficulty', 'artifacts']);
+
 export class HUD {
   init(ctx) {
     this.ctx = ctx;
@@ -72,6 +84,7 @@ export class HUD {
     this.hurtFlash = 0;
     this.lowPulse = 0;
     this.abilityReady = SLOTS.map(() => true);
+    this.equipReady = true;
     this.dirs = [];          // fallback damage-direction ledger
     this.toasts = [];
     this.inv = new Map();    // id -> { el, badge, count, tier }
@@ -87,17 +100,37 @@ export class HUD {
     this.tmpF = new THREE.Vector3();
 
     this.buildSlots();
+    this.syncEquipment();
     this.bind(ctx);
     this.setObjective('Find and activate the teleporter');
   }
 
   // -------------------------------------------------------------- wiring
 
+  /**
+   * Paint the four skill tiles for whichever survivor is live.
+   *
+   * The icons used to be four *slot* glyphs baked once at init, so M1 drew the
+   * same three-round burst whether the button fired a carbine, a hammer, a
+   * rifle or a rivet gun — the tile carried the thing the key chip under it
+   * already said. Now each tile carries its ability's own emblem in the
+   * survivor's accent, and this is called again on `survivorChanged`.
+   */
   buildSlots() {
-    for (const s of SLOTS) {
-      const img = this.root.querySelector(`[data-slot="${s.id}"] .slot-icon`);
-      if (img) img.src = abilityIcon(s.id);
+    const p = this.ctx.player;
+    const accent = hexOf(p?.survivor?.accentColor, '#dfe9f7');
+    for (let i = 0; i < SLOTS.length; i++) {
+      const s = SLOTS[i];
+      const ref = this.refs.slots[i];
+      if (!ref?.icon) continue;
+      const ability = p?.slots?.[i]?.ability;
+      ref.icon.src = ability ? abilityArt(ability.id, s.id, accent) : abilityIcon(s.id);
+      if (ability?.name) {
+        ref.name.textContent = shortName(ability.name);
+        this.c[`aname${i}`] = shortName(ability.name);
+      }
     }
+    this.root.style.setProperty('--accent', accent);
   }
 
   bind(ctx) {
@@ -130,6 +163,16 @@ export class HUD {
         this.pulse(this.refs.reticle, 'is-kill');
       }
       if (e?.isBoss && this.boss && e.victim === this.boss) this.clearBoss();
+    });
+
+    // The loadout changed under us — repaint the tiles rather than leaving four
+    // icons describing a survivor who is no longer on the drop pod.
+    on('survivorChanged', () => this.buildSlots());
+
+    on('equipmentChanged', () => this.syncEquipment());
+    on('equipmentUsed', () => {
+      this.pulse(this.refs.equip.el, 'is-fire');
+      this.equipReady = false;
     });
 
     on('itemPickup', ({ id, count }) => this.onItemPickup(id, count));
@@ -368,7 +411,7 @@ export class HUD {
     this.set('cursor', cursor, (v) => this.root.classList.toggle('has-cursor', v));
     if (!cursor && this.hoverId) { this.hoverId = null; this.tooltip.hide(); }
 
-    const hidden = this.menus.screen === 'title' || this.menus.screen === 'death';
+    const hidden = FULL_SCREENS.has(this.menus.screen);
     this.set('hidden', hidden, (v) => this.root.classList.toggle('is-hidden', v));
     if (hidden) return;
 
@@ -377,6 +420,7 @@ export class HUD {
     this.updateMoney(ctx, dt);
     this.updateClock(ctx);
     this.updateAbilities(ctx);
+    this.updateEquipment(ctx);
     this.updateBoss(ctx);
     this.updateTeleporter(ctx);
     this.updateObjectivePing(ctx);
@@ -580,6 +624,56 @@ export class HUD {
         this.set(`aname${i}`, shortName(a.name), (v) => { ref.name.textContent = v; });
       }
     }
+  }
+
+  /**
+   * The equipment slot.
+   *
+   * It is the fifth control in the bottom-right cluster and it only exists when
+   * the player is holding something — an empty orange tile parked next to four
+   * skills for the first ten minutes of a run is screen space nothing has
+   * earned. Everything about the tile is read through `ctx.items`' snapshot;
+   * the sweep specifically comes from `equipmentFraction()`, which handles the
+   * banked-charge case that `cooldown / cooldownMax` cannot express.
+   */
+  syncEquipment() {
+    const eq = this.ctx.items?.equipment ?? null;
+    const ref = this.refs.equip;
+    if (!ref?.el) return;
+    this.set('eqId', eq?.id ?? '', (id) => {
+      ref.el.classList.toggle('is-on', !!id);
+      if (!id) return;
+      ref.icon.src = equipmentArt(id);
+      ref.name.textContent = shortName(eq.def?.name || prettify(id));
+    });
+  }
+
+  updateEquipment(ctx) {
+    const ref = this.refs.equip;
+    if (!ref?.el) return;
+    const items = ctx.items;
+    const eq = items?.equipment ?? null;
+    if (!eq) { this.set('eqOn', false, (v) => ref.el.classList.toggle('is-on', v)); return; }
+    this.set('eqOn', true, (v) => ref.el.classList.toggle('is-on', v));
+
+    // 1 means "banked, press it"; the sweep draws the *unfilled* remainder, so
+    // a full slot has no sweep at all.
+    const frac = clamp(items.equipmentFraction?.() ?? 1, 0, 1);
+    const ready = eq.charges > 0;
+    this.set('eqSweep', round3(1 - frac), (v) => {
+      ref.sweep.style.transform = `scaleY(${v})`;
+      ref.el.classList.toggle('is-cooling', v > 0.001);
+    });
+    const rem = ready ? 0 : Math.max(0, eq.cooldown ?? 0);
+    this.set('eqTimer', rem >= 1 ? String(Math.ceil(rem)) : rem > TIMER_MIN ? rem.toFixed(1) : '', (v) => {
+      ref.timer.textContent = v;
+    });
+    if (ready && !this.equipReady) this.pulse(ref.el, 'is-ready');
+    this.equipReady = ready;
+    this.set('eqReady', ready, (v) => ref.el.classList.toggle('is-ready-state', v));
+    this.set('eqPips', `${eq.charges}/${eq.maxCharges}`, () => {
+      renderPips(ref.pips, eq.charges, eq.maxCharges);
+    });
   }
 
   updateBoss(ctx) {
@@ -842,16 +936,20 @@ function collectRefs(root) {
 
     log: q('.log'),
 
-    slots: SLOTS.map((s) => {
-      const el = root.querySelector(`[data-slot="${s.id}"]`);
-      return {
-        el,
-        sweep: el.querySelector('.slot-sweep'),
-        timer: el.querySelector('.slot-timer'),
-        pips: el.querySelector('.slot-pips'),
-        name: el.querySelector('.slot-name'),
-      };
-    }),
+    slots: SLOTS.map((s) => slotRefs(root.querySelector(`[data-slot="${s.id}"]`))),
+    equip: slotRefs(q('.slot--equip')),
+  };
+}
+
+function slotRefs(el) {
+  if (!el) return { el: null };
+  return {
+    el,
+    icon: el.querySelector('.slot-icon'),
+    sweep: el.querySelector('.slot-sweep'),
+    timer: el.querySelector('.slot-timer'),
+    pips: el.querySelector('.slot-pips'),
+    name: el.querySelector('.slot-name'),
   };
 }
 
@@ -955,6 +1053,21 @@ const TEMPLATE = (slots, notches, dirSlots) => `
 <div class="zone zone--br">
   <div class="log"></div>
   <div class="abilities">
+    <!-- The equipment tile leads the cluster and is styled apart from the four
+         skills (orange plate, notched frame): it is a different kind of thing
+         on a different key, and a fifth identical tile would read as a fifth
+         skill. Hidden entirely until something is held — see HUD.syncEquipment. -->
+    <div class="slot slot--equip">
+      <div class="slot-frame">
+        <img class="slot-icon" alt="" draggable="false" />
+        <div class="slot-sweep"></div>
+        <div class="slot-timer"></div>
+        <div class="slot-glow"></div>
+      </div>
+      <div class="slot-key">${EQUIPMENT_KEY_LABEL}</div>
+      <div class="slot-name">Equipment</div>
+      <div class="slot-pips"></div>
+    </div>
     ${slots.map((s) => `
       <div class="slot" data-slot="${s.id}">
         <div class="slot-frame">

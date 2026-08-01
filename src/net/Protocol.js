@@ -14,7 +14,12 @@
  * would allocate hard enough to show up as GC hitches during fights.
  */
 
-export const PROTOCOL_VERSION = 1;
+// 2 — WELCOME gained the run's rules (artifact bitmask + difficulty index) on
+// the end. Nothing validates this today; NetClient reads the two new fields
+// only if the bytes are there, so a 1.x host degrades to vanilla rules rather
+// than to a throw. Bumped because the message layout genuinely changed and the
+// next person to add a check needs the number to already be honest.
+export const PROTOCOL_VERSION = 2;
 
 export const MSG = {
   HELLO: 1,       // client -> host

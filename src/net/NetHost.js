@@ -86,6 +86,13 @@ export class NetHost {
     // fight its own prediction for the rest of the session.
     w.u16(pawn ? this._netId(pawn) : 0);
     w.f32(this.ctx.time);
+    // The run's rules. A client must play the host's artifacts and difficulty,
+    // not its own — its stat block, its loot and the monsters it is looking at
+    // are all the host's simulation. Packed as a bitmask over `ARTIFACTS` order
+    // plus the difficulty index; see `Artifacts.netPack`.
+    const rules = this.ctx.artifacts?.netPack?.() ?? { mask: 0, difficulty: 1 };
+    w.u32(rules.mask);
+    w.u8(rules.difficulty);
     peer.sendEvent(w.bytes());
 
     this.ctx.events.emit('netPlayerJoined', { id: peer.id, pawn });

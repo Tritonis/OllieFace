@@ -265,9 +265,13 @@ export class Items {
     const eliteMult = victim.elite?.cost ?? 1;
     const bossMult = victim.isBoss ? BOSS_GOLD_MULT : 1;
     // The director's own coefficient, not Progression's, so the payout is the
-    // exact inverse of the credits that bought this monster.
-    const d = Math.max(1, this.ctx.director?.difficultyCoefficient ?? this.ctx.difficulty ?? 1);
-    return Math.max(1, Math.round(cost * GOLD_PER_COST * eliteMult * bossMult * d));
+    // exact inverse of the credits that bought this monster. (`ctx.difficulty`
+    // used to be the fallback here; it is now the difficulty *selection* API,
+    // and the director's coefficient — which is never absent — is the honest
+    // single source anyway.)
+    const d = Math.max(1, this.ctx.director?.difficultyCoefficient ?? 1);
+    const gold = this.ctx.artifacts?.runMods?.().gold ?? 1;
+    return Math.max(1, Math.round(cost * GOLD_PER_COST * eliteMult * bossMult * d * gold));
   }
 
   /**
@@ -276,6 +280,16 @@ export class Items {
    */
   rewardKill(victim) {
     if (!this.ctx.authority) return 0;
+    // Sacrifice: the loot the stage no longer carries comes off the corpses.
+    // The roll and the orb are both done here rather than in Artifacts —
+    // Items owns the gameplay RNG draw and the drop table, and Artifacts only
+    // answers what the odds are.
+    const sacChance = this.ctx.artifacts?.sacrificeChance?.(victim) ?? 0;
+    if (sacChance > 0 && this.ctx.rng.next() < sacChance) {
+      const id = this.rollItem(null, 'small');
+      if (id) this.ctx.interactables?.spawnOrb?.(victim.position, id, 1.4);
+    }
+
     const amount = this.killReward(victim);
     if (amount <= 0) return 0;
     this.addGold(amount);
@@ -346,6 +360,18 @@ export class Items {
 
     s.damage *= s.damageMult;
     s.maxHealth *= s.healthMult;
+
+    // The run's own rules go on last, over the top of every item: Glass is a
+    // multiplier on the finished number, and the difficulty's regen scale is
+    // not something an item should be able to argue with. Before the clamps
+    // below on purpose — the 20 HP floor is exactly what stops Glass reducing
+    // an early survivor to a rounding error.
+    const mods = this.ctx.artifacts?.runMods?.();
+    if (mods) {
+      s.damage *= mods.damage;
+      s.maxHealth *= mods.health;
+      s.healthRegen *= mods.regen;
+    }
 
     // Buffs sit on top of items so a frenzy always feels like a burst rather
     // than being diluted by a big inventory.
@@ -738,9 +764,18 @@ export class Items {
    */
   rollItem(tier = null, bias = null) {
     if (!this.ctx.authority) return null;
-    const t = tier || this.rollTier(bias);
+    const art = this.ctx.artifacts;
+    let t = tier || this.rollTier(bias);
+    // Caprice replaces the *tier* first, so a small chest can pay a legendary.
+    // It composes with Command rather than competing with it: Caprice decides
+    // which shelf the drop comes off, Command decides what is taken from it.
+    if (art?.has('caprice')) t = art.capriceTier();
     const pool = ITEMS_BY_TIER[t] || ITEMS_BY_TIER.common;
     if (!pool.length) return null;
+    // Command: this is the single funnel every random item id in the game comes
+    // out of, which is why the choice is installed here and not in the six
+    // callers that would otherwise each need to know about it.
+    if (art?.has('command')) return art.commandPick(t, pool);
     return this.ctx.rng.pick(pool).id;
   }
 

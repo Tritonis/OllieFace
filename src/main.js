@@ -8,6 +8,7 @@ import { Player } from './entities/Player.js';
 import { CameraRig } from './core/CameraRig.js';
 import { Combat } from './systems/Combat.js';
 import { Items } from './systems/Items.js';
+import { Artifacts } from './systems/Artifacts.js';
 import { Director } from './systems/Director.js';
 import { Progression } from './systems/Progression.js';
 import { VFX } from './systems/VFX.js';
@@ -40,6 +41,10 @@ ctx.pipeline.ctx = ctx;
 ctx.gpu = ctx.pipeline.detect({ pinned: pinnedQuality });
 
 // Order matters: world before anything that queries it, presentation last.
+// Artifacts is first of all: it owns no frame time, but Items, Director and
+// Interactables all consult it and `ctx.difficulty` has to exist before the
+// Director derives its first coefficient in `init`.
+engine.add(new Artifacts());
 engine.add(new Environment());
 engine.add(new Stage());
 engine.add(new Items());

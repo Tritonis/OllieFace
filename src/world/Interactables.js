@@ -942,7 +942,13 @@ export class Interactables {
     // player is never rewarded for visiting only the nearest one.
     const mark = (i) => (marks.length ? marks[i % marks.length] : null);
 
-    const chestCount = 6 + stageIndex * 2;
+    // Sacrifice takes the shops away — everything purchasable, not just chests,
+    // or the artifact's premise ("nothing is bought") survives as three
+    // terminals in a field. Shrines stay: they cost health or risk, not gold,
+    // and the teleporter is the run, not loot.
+    const bought = !ctx.artifacts?.has('sacrifice');
+
+    const chestCount = bought ? 6 + stageIndex * 2 : 0;
     for (let i = 0; i < chestCount; i++) {
       const roll = ctx.rng.next();
       const size = roll > 0.94 ? 'legendary' : roll > 0.75 ? 'large' : 'small';
@@ -956,7 +962,7 @@ export class Interactables {
       this.add(new Chest(ctx, pos, size, Math.round(base * scale)));
     }
 
-    const shopCount = 1 + Math.floor(stageIndex / 2);
+    const shopCount = bought ? 1 + Math.floor(stageIndex / 2) : 0;
     for (let s = 0; s < shopCount; s++) {
       // Terminals go *between* two landmarks rather than at either, so the
       // walk between the stage's two anchors has a reason to be taken.
