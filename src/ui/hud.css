@@ -21,6 +21,12 @@
   --xp:         #c6f24a;
   --gold:       #ffc93a;
   --alert:      #ff3b28;
+  /* Enemy health, player currency and difficulty escalation all used to share
+     one gold, so the top band of the screen had no colour hierarchy. Gold is
+     currency; the boss track gets its own violet-crimson. */
+  --boss:       #c264e0;
+  --boss-hot:   #e79bff;
+  --boss-deep:  #6c2a8c;
 
   --t-common:    #e6ecf4;
   --t-uncommon:  #63e06a;
@@ -221,7 +227,7 @@ body.menu-open { cursor: default; }
   left: 50%; top: 0;
   width: 1.1em; height: 0.85em;
   transform: translateX(-50%);
-  background: var(--t-boss);
+  background: var(--boss);
   clip-path: polygon(50% 0, 100% 100%, 0 100%);
   animation: bossping 1.6s ease-in-out infinite;
 }
@@ -313,18 +319,38 @@ body.menu-open { cursor: default; }
   gap: 0.55em;
   max-width: min(34vw, 460px);
 }
+/* No backing panel, and the plate shrink-wraps its icons.
+   A tier row is a flex item of `.inventory`, so a full row used to stretch its
+   translucent plate across the whole container and leave a ~330x90px frosted
+   rectangle of blurred, darkened gameplay hanging off the right of it — four
+   rows, four different widths. Dropping the fill and the blur ended the
+   occlusion. The 2px tier rule is the separator, which is all RoR2's strip
+   uses.
+
+   `width: max-content` alone did not end the ragged edge: on a `flex-wrap:
+   wrap` group it resolves to the unwrapped width of every child and clamps to
+   `max-width`, so a wrapped tier was always exactly the container width and
+   its rule overhung the last tile by ~40px. The group is a *column* of
+   non-wrapping `.inv-row`s (chunked in `HUD.onItemPickup`), so max-content is
+   the width of the widest row — the rule ends where the icons do. */
 .inv-group {
   display: none;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: flex-start;
+  width: max-content;
+  max-width: 100%;
   gap: 0.28em;
-  padding: 0.3em 0.4em;
+  padding: 0.3em 0.35em 0.1em;
   border-top: 2px solid currentColor;
-  background: rgba(5, 9, 14, 0.45);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
-  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 0.5em), calc(100% - 0.5em) 100%, 0 100%);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.85));
 }
 .inv-group.has-items { display: flex; }
+.inv-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: 0.28em;
+}
 
 /* `--tc` carries the tier colour to descendants that need to recolour their
    own text (badges), where `currentColor` would resolve to the wrong value. */
@@ -337,6 +363,7 @@ body.menu-open { cursor: default; }
 
 .item {
   position: relative;
+  flex: 0 0 auto;
   width: 2.6em;
   height: 2.6em;
   opacity: 0;
@@ -351,19 +378,29 @@ body.menu-open { cursor: default; }
   0%   { transform: scale(1.42); filter: brightness(2.6); }
   100% { transform: scale(1); filter: brightness(1); }
 }
+/* Counts are secondary information. As a solid near-white chip in the gutter
+   they were the brightest thing in the top-left — read before any icon — and
+   they ate half the gap between one tile and the next. Inside the tile, plain
+   white on a hard black outline, the way RoR2 does it.
+
+   Secondary is not the same as sub-pixel: at 0.7em on a 2.6em tile the count
+   rendered at a ~5px cap height, which is a smudge, and it sat on top of the
+   glyph. `Icons.itemArt` now draws the glyph high and small enough to leave
+   this corner free (ART_CENTRE_Y / ART_RADIUS), so the count owns it. */
 .item-stack {
   position: absolute;
-  right: -0.15em;
-  bottom: -0.35em;
+  right: 0.14em;
+  bottom: 0.04em;
   display: none;
-  padding: 0.05em 0.28em;
-  font-size: 0.82em;
+  font-size: 0.95em;
+  line-height: 1;
   font-weight: 700;
   font-style: normal;
-  color: #05070a;
-  background: var(--tc, #fff);
-  clip-path: polygon(0.35em 0, 100% 0, 100% 100%, 0 100%);
+  color: #fff;
   letter-spacing: 0;
+  text-shadow:
+    1px 1px 0 #05070a, -1px 1px 0 #05070a, 1px -1px 0 #05070a, -1px -1px 0 #05070a,
+    0 0 4px rgba(0, 0, 0, 0.95);
 }
 .item-stack.is-on { display: block; }
 
@@ -439,8 +476,8 @@ body.menu-open { cursor: default; }
   font-size: 1.35em;
   font-weight: 700;
   letter-spacing: 0.24em;
-  color: var(--t-boss);
-  text-shadow: 0 0 14px rgba(255, 212, 79, 0.4), 0 2px 4px #000;
+  color: var(--boss-hot);
+  text-shadow: 0 0 14px rgba(194, 100, 224, 0.45), 0 2px 4px #000;
 }
 .boss-pct {
   font-size: 0.95em;
@@ -451,7 +488,7 @@ body.menu-open { cursor: default; }
   position: relative;
   height: 1.05em;
   background: rgba(4, 7, 12, 0.78);
-  border: 1px solid rgba(255, 212, 79, 0.45);
+  border: 1px solid rgba(194, 100, 224, 0.5);
   transform: skewX(var(--skew));
   overflow: hidden;
 }
@@ -459,8 +496,8 @@ body.menu-open { cursor: default; }
   position: absolute;
   inset: 0;
   transform-origin: left center;
-  background: linear-gradient(180deg, #ffe58a, #ffb01f 55%, #d1741a);
-  box-shadow: 0 0 16px rgba(255, 176, 31, 0.5);
+  background: linear-gradient(180deg, var(--boss-hot), var(--boss) 55%, var(--boss-deep));
+  box-shadow: 0 0 16px rgba(194, 100, 224, 0.5);
   will-change: transform;
 }
 .boss-segs {
@@ -536,7 +573,7 @@ body.menu-open { cursor: default; }
   flex-direction: column;
   align-items: flex-end;
   gap: 0.28em;
-  padding: 0.5em 0.9em 0.6em 1.6em;
+  padding: 0.5em 0.9em 0.6em 1.0em;
   background: var(--panel);
   border-right: 3px solid var(--diff);
   clip-path: polygon(1.1em 0, 100% 0, 100% 100%, 0 100%);
@@ -559,9 +596,12 @@ body.menu-open { cursor: default; }
   color: var(--diff);
   text-shadow: 0 0 14px color-mix(in srgb, var(--diff) 55%, transparent);
 }
+/* The coefficient is the number an experienced player actually reads; it has
+   no business being the dimmest text on the panel. */
 .clock-coef {
-  font-size: 0.85em;
-  color: var(--ink-faint);
+  font-size: 0.9em;
+  font-weight: 700;
+  color: var(--ink-dim);
   font-variant-numeric: tabular-nums;
 }
 .clock.is-escalate .clock-diff { animation: escalate 0.9s ease-out; }
@@ -570,9 +610,11 @@ body.menu-open { cursor: default; }
   100% { transform: scale(1); filter: brightness(1); }
 }
 
+/* Ten notches at 0.85em made the meter the widest child of the panel, so the
+   plate sized to it and left 40% dead space under the numerals. */
 .diffmeter { display: flex; gap: 2px; margin-top: 0.15em; }
 .notch {
-  width: 0.85em;
+  width: 0.55em;
   height: 0.5em;
   background: rgba(120, 150, 180, 0.18);
   transform: skewX(var(--skew));
@@ -771,8 +813,12 @@ body.menu-open { cursor: default; }
   width: 76%;
   height: 76%;
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.8));
-  transition: opacity 0.15s ease;
+  transition: opacity 0.15s ease, filter 0.15s ease;
 }
+/* Dim the icon while cooling instead of burying it. The measured peak value
+   inside a cooling tile was 72/255 against 232 ready — the slot read as
+   disabled rather than as recharging. */
+.slot.is-cooling .slot-icon { filter: brightness(0.86) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.8)); }
 
 /* Cooldown drains top-down, transform only. */
 .slot-sweep {
@@ -780,7 +826,7 @@ body.menu-open { cursor: default; }
   inset: 0;
   transform-origin: top center;
   transform: scaleY(0);
-  background: linear-gradient(180deg, rgba(3, 6, 10, 0.82), rgba(3, 6, 10, 0.66));
+  background: linear-gradient(180deg, rgba(3, 6, 10, 0.46), rgba(3, 6, 10, 0.32));
   border-bottom: 2px solid rgba(160, 200, 240, 0.85);
   will-change: transform;
 }
@@ -828,25 +874,64 @@ body.menu-open { cursor: default; }
   border-top: 1px solid var(--line);
   clip-path: polygon(0.35em 0, 100% 0, calc(100% - 0.35em) 100%, 0 100%);
 }
+/* The ability cluster is the one zone with no plate of its own — `.money`,
+   `.clock`, `.log` and `.objective` all carry one. Over dark terrain a dim
+   grey label reads fine; over the snow stage `SUPP. SALVO` measured 1.02:1
+   against its background, i.e. gone. HUD text has to survive whatever the
+   game puts behind it, so the legibility comes from the element and not from
+   the stage: an opaque chip, a black keyline and a bright ink. */
 .slot-name {
   font-size: 0.66em;
   letter-spacing: 0.05em;
-  color: var(--ink-dim);
+  color: var(--ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
+  padding: 0.12em 0.5em;
+  background: rgba(4, 7, 12, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.85);
+  clip-path: polygon(0.35em 0, 100% 0, calc(100% - 0.35em) 100%, 0 100%);
+  text-shadow: 0 1px 0 #000, 0 0 6px rgba(0, 0, 0, 0.95);
 }
-.slot-pips { display: flex; gap: 3px; height: 0.4em; }
+/* Charge pips are capped at five in JS (see PIP_CAP); the wrap and the width
+   cap are the second line of defence, so a stacked cooldown build can never
+   spill a ragged strip of dashes across the neighbouring slots again. */
+.slot-pips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 3px;
+  max-width: 5.2em;
+  min-height: 0.4em;
+}
 .slot-pips i {
   width: 0.5em;
   height: 0.4em;
-  background: rgba(120, 150, 180, 0.22);
+  /* At 0.22 alpha an empty pip vanished over a bright scene, so 2-of-6 and
+     2-of-2 looked identical. */
+  background: rgba(140, 172, 205, 0.4);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.7);
   transform: skewX(var(--skew));
 }
 .slot-pips i.is-on {
   background: #cfe6ff;
   box-shadow: 0 0 7px rgba(160, 210, 255, 0.8);
+}
+/* Two characters at 0.62em in --ink-dim measured ~1.2:1 over snow. The
+   overflow count is the only thing telling you a six-charge build is a six-
+   charge build, so it gets white on a hard black outline like the item counts. */
+.pip-more {
+  font-size: 0.85em;
+  font-weight: 700;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: 0;
+  color: #fff;
+  text-shadow:
+    1px 1px 0 #05070a, -1px 1px 0 #05070a, 1px -1px 0 #05070a, -1px -1px 0 #05070a,
+    0 0 5px rgba(0, 0, 0, 0.95);
 }
 
 /* =====================================================================
@@ -877,13 +962,26 @@ body.menu-open { cursor: default; }
   transition: opacity 0.25s ease, transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   will-change: transform;
 }
-.toast.is-in { opacity: 1; transform: none; }
+/* `--age` is stamped by HUD.restackToasts so six stacked pickups don't all
+   shout at once. It lives on the class the entry transition targets, because
+   `opacity` is what that transition animates. */
+.toast.is-in { opacity: var(--age, 1); transform: none; }
 .toast.is-out { opacity: 0; transform: translateX(1.2em); }
 .toast-mark {
   width: 0.5em; height: 0.5em;
   background: currentColor;
   transform: rotate(45deg);
   flex: none;
+}
+/* The log sits two inches from 37 item icons; leading a pickup line with the
+   same emblem stops the player having to learn two representations of one
+   object. */
+.toast-icon {
+  width: 1.7em;
+  height: 1.7em;
+  flex: none;
+  display: block;
+  margin: -0.15em 0;
 }
 .toast span {
   font-size: 0.92em;
@@ -978,14 +1076,20 @@ body.menu-open { cursor: default; }
 /* The title runs a live orbit over the stage — the scrim has to sit behind the
    type rather than erase the shot. Left-anchored, unblurred at the right edge,
    no desaturation. Pause/settings/death keep the heavy radial above. */
+/* The two washes multiply: at 0.88 horizontal over 0.55 vertical the region
+   the wordmark sits in was reaching ~0.95 combined and the whole frame measured
+   9% mean luminance — the shot was erased, not backed off. And 3px of blur left
+   the low-poly terrain edges aliased: neither sharp enough to read as scenery
+   nor soft enough to read as a backdrop. Target is a clean value field at
+   roughly 45-55/255. */
 #overlay[data-screen='title'] .scrim {
   background:
     linear-gradient(100deg,
-      rgba(2, 4, 7, 0.88) 0%, rgba(3, 6, 11, 0.74) 38%,
-      rgba(2, 4, 7, 0.36) 72%, rgba(2, 4, 7, 0.18) 100%),
-    linear-gradient(180deg, rgba(2, 4, 7, 0.55), transparent 34%, transparent 66%, rgba(2, 4, 7, 0.6));
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
+      rgba(2, 4, 7, 0.72) 0%, rgba(3, 6, 11, 0.52) 40%,
+      rgba(2, 4, 7, 0.16) 74%, rgba(2, 4, 7, 0) 100%),
+    linear-gradient(180deg, rgba(2, 4, 7, 0.30), transparent 40%, transparent 62%, rgba(2, 4, 7, 0.34));
+  backdrop-filter: blur(9px);
+  -webkit-backdrop-filter: blur(9px);
 }
 
 .screen {
@@ -1013,30 +1117,39 @@ body.menu-open { cursor: default; }
   color: var(--t-lunar);
   margin-bottom: 0.9em;
   text-indent: 0.62em;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95);
 }
-/* The wordmark commits to the same angular language as the buttons: the
-   -16deg family softened to a readable skew, a chamfered plate, and the cyan
-   rule carried up into the letterforms as a leading edge. */
+/* The wordmark commits to the same angular language as the HUD: one shear
+   token (`--skew`), one chamfer, and the cyan rule carried up into the
+   letterforms as a leading edge. It used to run its own -7deg, `.mbtn` a third
+   angle again — four chamfer conventions across one design system, so the menu
+   and the HUD did not read as the same product.
+   The size cap closes the 2.7:1 jump to the button column below it. */
 .title-word {
   position: relative;
   display: inline-block;
   margin: 0;
   padding: 0.1em 0.36em 0.12em 0.3em;
-  font-size: clamp(3.2rem, 11vw, 9.5rem);
+  font-size: clamp(3.2rem, 8vw, 7rem);
   font-weight: 800;
   letter-spacing: 0.05em;
   line-height: 0.92;
   text-indent: 0.05em;
   color: #fff;
-  transform: skewX(-7deg);
-  text-shadow: 0 0 60px rgba(95, 217, 247, 0.28), 0 6px 30px rgba(0, 0, 0, 0.85);
+  transform: skewX(var(--skew));
+  /* The lockup carries its own contrast rather than leaning on the scrim, so
+     the scrim is free to stay light enough to show the shot behind it. */
+  text-shadow:
+    0 0 60px rgba(95, 217, 247, 0.28),
+    0 2px 6px rgba(0, 0, 0, 0.95),
+    0 6px 30px rgba(0, 0, 0, 0.9);
 }
 .title-word::before {
   content: '';
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: linear-gradient(100deg, rgba(9, 18, 28, 0.78), rgba(9, 18, 28, 0.1) 68%, transparent);
+  background: linear-gradient(100deg, rgba(6, 12, 20, 0.9), rgba(6, 12, 20, 0.5) 62%, rgba(6, 12, 20, 0.18));
   border-left: 0.055em solid var(--t-lunar);
   box-shadow: -0.055em 0 1.2em rgba(95, 217, 247, 0.35);
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - 0.28em), calc(100% - 0.28em) 100%, 0 100%);
@@ -1047,20 +1160,27 @@ body.menu-open { cursor: default; }
   width: min(54vw, 40em);
   background: linear-gradient(90deg, transparent, var(--t-lunar) 18%, #fff 50%, var(--t-lunar) 82%, transparent);
   clip-path: polygon(1.5em 0, 100% 0, calc(100% - 1.5em) 100%, 0 100%);
-  transform: skewX(-7deg);
+  transform: skewX(var(--skew));
 }
+/* Was `--ink-faint` (#5f6e80) at 0.85em over a near-black plate — measured
+   barely above the detection floor and effectively invisible at 100% zoom. */
 .title-seed {
   font-size: 0.85em;
   letter-spacing: 0.4em;
-  color: var(--ink-faint);
+  color: var(--ink-dim);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95);
 }
 
 /* Buttons */
-.menu-list { display: flex; flex-direction: column; gap: 0.55em; min-width: min(24em, 70vw); }
+.menu-list { display: flex; flex-direction: column; gap: 0.55em; min-width: min(30em, 70vw); }
 .menu-list--row { flex-direction: row; justify-content: flex-end; min-width: 0; }
 
 .mbtn {
   position: relative;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1.4em;
   padding: 0.85em 2.2em 0.85em 1.6em;
   font: inherit;
   font-size: 1.15em;
@@ -1069,10 +1189,12 @@ body.menu-open { cursor: default; }
   text-align: left;
   text-transform: uppercase;
   color: var(--ink);
-  background: rgba(10, 16, 24, 0.72);
+  background: rgba(8, 13, 21, 0.82);
   border: 1px solid var(--line);
   border-left: 3px solid rgba(148, 182, 214, 0.5);
-  clip-path: polygon(0 0, 100% 0, calc(100% - 1.3em) 100%, 0 100%);
+  /* Same both-edge chamfer as `.slot-key` and the wordmark shear, rather than
+     the right-edge-only cut this used to run. */
+  clip-path: polygon(1.1em 0, 100% 0, calc(100% - 1.1em) 100%, 0 100%);
   cursor: pointer;
   overflow: hidden;
   transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1), color 0.16s ease, border-color 0.16s ease;
@@ -1094,7 +1216,36 @@ body.menu-open { cursor: default; }
 }
 .mbtn:hover::before, .mbtn:focus-visible::before { opacity: 1; }
 .mbtn:active { transform: translateX(0.35em) scale(0.985); }
-.mbtn--go { border-left-color: var(--t-lunar); }
+
+/* Hierarchy. The default action gets the full-height cyan rule, a plate wash
+   and a marker; the destructive one drops to --ink-dim until it is hovered. */
+.mbtn--go {
+  border-left-color: var(--t-lunar);
+  background:
+    linear-gradient(90deg, rgba(120, 200, 255, 0.13), rgba(8, 13, 21, 0.86) 62%);
+  box-shadow: -2px 0 14px rgba(95, 217, 247, 0.22);
+}
+.mbtn--quiet {
+  color: var(--ink-dim);
+  border-left-color: rgba(148, 182, 214, 0.2);
+}
+.mbtn--quiet:hover, .mbtn--quiet:focus-visible { color: #fff; }
+
+.mbtn-sub {
+  position: relative;
+  z-index: 1;
+  font-size: 0.56em;
+  font-weight: 400;
+  font-style: normal;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--ink-faint);
+  transition: color 0.16s ease;
+}
+.mbtn--go .mbtn-sub { color: var(--t-lunar); }
+.mbtn--go .mbtn-sub::after { content: '  \25B6'; }
+.mbtn:hover .mbtn-sub, .mbtn:focus-visible .mbtn-sub { color: var(--ink); }
 
 /* Panels */
 .panel {

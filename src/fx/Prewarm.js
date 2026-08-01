@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {
   ENEMY_IDS, ELITE, acquireRig, releaseRig,
-  makeProjectile, makeShockwave, makeTelegraph,
+  makeProjectile, makeShockwave, makeTelegraph, shadowPrewarmMesh,
 } from '../entities/EnemyMeshes.js';
 import { makeCharacterMats } from '../entities/CharacterMesh.js';
 import { applyDissolve, makeDissolvable } from '../shaders/DissolveShader.js';
@@ -91,6 +91,13 @@ export function prewarmShaders(renderer, scene, camera) {
     mesh.frustumCulled = false;
     cat.add(mesh);
   }
+
+  // The horde's blob-shadow pool. It goes in as the real InstancedMesh rather
+  // than through `collect`: the instancing define is part of the program cache
+  // key, so a plain proxy Mesh would warm a program the pool never uses.
+  // `cat.clear()` below drops it back to parentless, which is the state
+  // `updateShadow` looks for when it adopts the pool into the live scene.
+  cat.add(shadowPrewarmMesh());
 
   // Compiling gets the programs into the cache; actually drawing the catalogue
   // once is what uploads the vertex buffers and links the shadow-depth variants,

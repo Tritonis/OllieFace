@@ -62,7 +62,9 @@ export class ParticleSystem {
 
   init(ctx) {
     this.ctx = ctx;
-    this._rng = ctx.rng;
+    // Cosmetic only — never ctx.rng, or a client drawing one extra spark
+    // desynchronises the simulation stream. See NETCODE.md.
+    this._rng = ctx.fxRng ?? ctx.rng;
 
     const map = makeParticleAtlas();
     this.atlas = map;
@@ -72,8 +74,12 @@ export class ParticleSystem {
     this.root.frustumCulled = false;
     ctx.scene.add(this.root);
 
-    this._makeLayer('add', this._caps.add, true, 1.35);
-    this._makeLayer('alpha', this._caps.alpha, false, 1.0);
+    // maxIntensity is a ceiling on a *single* additive sprite. 1.6 was above the
+    // display clip point of 1.0, so it never fired and every flash still landed
+    // at 255,255,24x. 0.92 puts one sprite just under white with its hue intact;
+    // two overlapping sprites still clip, and that overlap is what reads as heat.
+    this._makeLayer('add', this._caps.add, true, 1.35, 0.92);
+    this._makeLayer('alpha', this._caps.alpha, false, 1.0, 1.0);
 
     this._depthMat = new THREE.MeshBasicMaterial({ colorWrite: false });
     this._depthMat.name = 'vfx.depthPrepass';
@@ -103,7 +109,7 @@ export class ParticleSystem {
     }
   }
 
-  _makeLayer(name, capacity, additive, intensity) {
+  _makeLayer(name, capacity, additive, intensity, maxIntensity) {
     const quad = new THREE.PlaneGeometry(1, 1);
     const geo = new THREE.InstancedBufferGeometry();
     geo.index = quad.index;
@@ -122,7 +128,7 @@ export class ParticleSystem {
     }
 
     const mat = createParticleMaterial({
-      map: this.atlas, additive, atlasCols: ATLAS_COLS, intensity,
+      map: this.atlas, additive, atlasCols: ATLAS_COLS, intensity, maxIntensity,
     });
 
     const mesh = new THREE.Mesh(geo, mat);
@@ -524,22 +530,34 @@ function flareStar(g, s) {
     [1, 'rgba(255,255,255,0)'],
   ]);
   g.globalCompositeOperation = 'lighter';
-  for (let k = 0; k < 4; k++) {
-    g.save();
-    g.translate(r, r);
-    g.rotate((Math.PI / 2) * k + Math.PI / 4 * (k % 2 ? 1 : 0));
-    const grad = g.createLinearGradient(0, 0, 0, -r);
-    grad.addColorStop(0, 'rgba(255,255,255,0.9)');
-    grad.addColorStop(1, 'rgba(255,255,255,0)');
-    g.fillStyle = grad;
-    g.beginPath();
-    g.moveTo(-s * 0.035, 0);
-    g.lineTo(0, -r);
-    g.lineTo(s * 0.035, 0);
-    g.closePath();
-    g.fill();
-    g.restore();
-  }
+  // Each spoke is drawn twice: a narrow inset core, then a blurred, half-alpha
+  // copy that supplies the shoulder. A filled triangle with a gradient along its
+  // axis only has no falloff *across* it, so both long edges are alpha
+  // discontinuities — at 700 px on screen that reads as a lens-flare sticker
+  // laid over the render rather than as heat.
+  const spoke = (halfW, reach, alpha) => {
+    for (let k = 0; k < 4; k++) {
+      g.save();
+      g.translate(r, r);
+      g.rotate((Math.PI / 2) * k + (Math.PI / 4) * (k % 2 ? 1 : 0));
+      const grad = g.createLinearGradient(0, 0, 0, -r * reach);
+      grad.addColorStop(0, `rgba(255,255,255,${alpha})`);
+      grad.addColorStop(0.45, `rgba(255,255,255,${alpha * 0.35})`);
+      grad.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = grad;
+      g.beginPath();
+      g.moveTo(-halfW, 0);
+      g.lineTo(0, -r * reach);
+      g.lineTo(halfW, 0);
+      g.closePath();
+      g.fill();
+      g.restore();
+    }
+  };
+  g.filter = `blur(${Math.max(1, s * 0.02)}px)`;
+  spoke(s * 0.055, 0.94, 0.45);
+  g.filter = 'none';
+  spoke(s * 0.022, 0.86, 0.5);
   g.globalCompositeOperation = 'source-over';
 }
 
@@ -570,23 +588,39 @@ function bloodBlob(g, s) {
 
 function debrisChunk(g, s) {
   const r = s * 0.5;
+  const pts = 6;
+  // Fixed silhouette, traced twice: once blurred as a shoulder, once filled.
+  const path = (scale) => {
+    let h = 99991;
+    g.beginPath();
+    for (let i = 0; i <= pts; i++) {
+      h = (h * 1664525 + 1013904223) >>> 0;
+      const jitter = 0.5 + (h / 4294967296) * 0.5;
+      const a = (i / pts) * Math.PI * 2;
+      const rr = r * 0.68 * jitter * scale;
+      const x = Math.cos(a) * rr, y = Math.sin(a) * rr;
+      if (i === 0) g.moveTo(x, y); else g.lineTo(x, y);
+    }
+    g.closePath();
+  };
   g.save();
   g.translate(r, r);
-  g.beginPath();
-  const pts = 6;
-  let h = 99991;
-  for (let i = 0; i <= pts; i++) {
-    h = (h * 1664525 + 1013904223) >>> 0;
-    const jitter = 0.5 + (h / 4294967296) * 0.5;
-    const a = (i / pts) * Math.PI * 2;
-    const rr = r * 0.8 * jitter;
-    const x = Math.cos(a) * rr, y = Math.sin(a) * rr;
-    if (i === 0) g.moveTo(x, y); else g.lineTo(x, y);
-  }
-  g.closePath();
+  g.filter = 'blur(5px)';
+  g.globalAlpha = 0.5;
   g.fillStyle = 'rgba(255,255,255,1)';
+  path(1.2);
+  g.fill();
+  g.filter = 'none';
+  g.globalAlpha = 1;
+  path(1);
+  const grad = g.createRadialGradient(0, 0, 0, 0, 0, r * 0.68);
+  grad.addColorStop(0, 'rgba(255,255,255,0.95)');
+  grad.addColorStop(0.75, 'rgba(255,255,255,0.75)');
+  grad.addColorStop(1, 'rgba(255,255,255,0.3)');
+  g.fillStyle = grad;
   g.fill();
   g.restore();
+  featherTile(g, s, 0.66);
 }
 
 function emberDot(g, s) {
@@ -638,33 +672,79 @@ function crossFlash(g, s) {
   g.globalCompositeOperation = 'source-over';
 }
 
-function hexShard(g, s) {
-  const r = s * 0.45;
-  g.save();
-  g.translate(s * 0.5, s * 0.5);
+/**
+ * Erase the outer margin of a tile with a radial destination-out pass.
+ *
+ * Any sprite that reaches the edge of its own tile at alpha 1 is a hard polygon
+ * at every scale — the "hard-clipped particle edge" failure. Every solid-filled
+ * frame is inset inside its tile and then feathered through here so the sprite
+ * fades out inside its own footprint instead of being cut by the tile boundary.
+ */
+function featherTile(g, s, inner) {
+  const r = s * 0.5;
+  const fade = g.createRadialGradient(r, r, r * inner, r, r, r);
+  fade.addColorStop(0, 'rgba(0,0,0,0)');
+  fade.addColorStop(1, 'rgba(0,0,0,1)');
+  g.globalCompositeOperation = 'destination-out';
+  g.fillStyle = fade;
+  g.fillRect(0, 0, s, s);
+  g.globalCompositeOperation = 'source-over';
+}
+
+/** Traces a regular n-gon of radius `r` centred on the current origin. */
+function polyPath(g, n, r, phase = 0) {
   g.beginPath();
-  for (let i = 0; i < 6; i++) {
-    const a = (i / 6) * Math.PI * 2 + Math.PI / 6;
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2 + phase;
     const x = Math.cos(a) * r, y = Math.sin(a) * r;
     if (i === 0) g.moveTo(x, y); else g.lineTo(x, y);
   }
   g.closePath();
+}
+
+function hexShard(g, s) {
+  const r = s * 0.38;   // was 0.45 — leaves a margin inside the tile
+  g.save();
+  g.translate(s * 0.5, s * 0.5);
+
+  // Soft shoulder underneath: a blurred oversized silhouette so the shard has a
+  // glow rather than a knife edge.
+  g.filter = 'blur(6px)';
+  g.globalAlpha = 0.5;
+  g.fillStyle = 'rgba(255,255,255,1)';
+  polyPath(g, 6, r * 1.18, Math.PI / 6);
+  g.fill();
+  g.filter = 'none';
+  g.globalAlpha = 1;
+
+  polyPath(g, 6, r, Math.PI / 6);
   const grad = g.createRadialGradient(0, 0, 0, 0, 0, r);
-  grad.addColorStop(0, 'rgba(255,255,255,0.85)');
-  grad.addColorStop(0.75, 'rgba(255,255,255,0.35)');
-  grad.addColorStop(1, 'rgba(255,255,255,1)');
+  grad.addColorStop(0.00, 'rgba(255,255,255,0.95)');
+  grad.addColorStop(0.70, 'rgba(255,255,255,0.55)');
+  grad.addColorStop(1.00, 'rgba(255,255,255,0)');
   g.fillStyle = grad;
   g.fill();
   g.restore();
+  featherTile(g, s, 0.74);
 }
 
 function softSquare(g, s) {
-  const grad = g.createLinearGradient(0, 0, 0, s);
-  grad.addColorStop(0, 'rgba(255,255,255,0.9)');
-  grad.addColorStop(1, 'rgba(255,255,255,0.5)');
+  const p = s * 0.26;
+  const w = s - p * 2;
+  g.save();
+  g.filter = 'blur(5px)';
+  g.globalAlpha = 0.45;
+  g.fillStyle = 'rgba(255,255,255,1)';
+  g.fillRect(p - s * 0.04, p - s * 0.04, w + s * 0.08, w + s * 0.08);
+  g.filter = 'none';
+  g.globalAlpha = 1;
+  const grad = g.createLinearGradient(0, p, 0, s - p);
+  grad.addColorStop(0, 'rgba(255,255,255,0.85)');
+  grad.addColorStop(1, 'rgba(255,255,255,0.45)');
   g.fillStyle = grad;
-  const p = s * 0.18;
-  g.fillRect(p, p, s - p * 2, s - p * 2);
+  g.fillRect(p, p, w, w);
+  g.restore();
+  featherTile(g, s, 0.58);
 }
 
 function speckle(g, s) {

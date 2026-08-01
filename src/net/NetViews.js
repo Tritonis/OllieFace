@@ -66,6 +66,9 @@ class EnemyView {
     this.radius = this.def.radius;
     this.height = this.def.height;
     this.isBoss = !!this.def.isBoss;
+    // Mirrors Enemy.js — without it a client's boss bar falls back to the
+    // literal placeholder "BOSS" while the host's reads the real card name.
+    this.name = this.def.name;
 
     this.dying = false;
     this.deathT = 0;

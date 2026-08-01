@@ -35,7 +35,11 @@ export const PALETTE = {
   fog: 0x9fb0c6,
   terrain: {
     rock: 0xb58248,     //  32°
-    cliff: 0x5a5060,    // 277°  vertical faces read as shadow-side by hue
+    // 275°, but at 12% saturation rather than 17%. Vertical faces still read
+    // as shadow-side by hue; they just stop *shouting* it. At the old
+    // saturation a single mis-classified facet in an ochre field was a 245°
+    // hue jump, which is why the foreground measured as warm/cool confetti.
+    cliff: 0x5b5460,
     moss: 0x6f8f43,     //  85°
     sand: 0xead093,     //  42°
   },
@@ -113,27 +117,47 @@ function dataTexture(data, srgb) {
 /**
  * One noise field drives albedo mottling, roughness breakup and a derived
  * normal map, so the three channels always agree about where the crevices are.
+ *
+ * The knobs that separate a *material class* rather than a colour:
+ *  - `stretch`   anisotropy. >1 squashes the field along U, which is what turns
+ *                blobby corrosion into the directional streaking metal has.
+ *  - `wetT`      fraction of the surface that is smooth rather than rough. On a
+ *                normal surface roughness is inverted against albedo (crevices
+ *                hold grit); above wetT the relation flips, so standing water
+ *                pools in the low ground and the crevices go glossy. That
+ *                bimodal roughness is the whole reason wet rock reads as wet.
+ *  - `metalMask` emits a metalnessMap, so corroded patches are dielectric and
+ *                the clean plate between them is a mirror. A metal that is
+ *                uniformly metallic reads as painted plastic.
+ *  - `detail`    a second, much higher-frequency octave folded into roughness
+ *                only. It survives mip-down as a roughness *average* shift,
+ *                which is what keeps a distant surface from going perfectly
+ *                smooth-matte.
  */
 function makeTextureSet({ seed, period = 8, octaves = 5, normalStrength = 3.0,
-                          rough = [0.58, 0.98], albedo = [0.66, 1.0], warpAmt = 0 }) {
+                          rough = [0.58, 0.98], albedo = [0.66, 1.0], warpAmt = 0,
+                          stretch = 1, wetT = 0, metalMask = null, detail = 0 }) {
   const N = TEX_SIZE;
   const h = new Float32Array(N * N);
+  const d2 = detail > 0 ? new Float32Array(N * N) : null;
   for (let y = 0; y < N; y++) {
     for (let x = 0; x < N; x++) {
-      let u = (x / N) * period, v = (y / N) * period;
+      let u = (x / N) * period * stretch, v = (y / N) * period;
       if (warpAmt > 0) {
         // Warping breaks the soap-bubble look plain fbm has at close range.
-        const wu = fbm2(u, v, period, seed + 555, 3) - 0.5;
+        const wu = fbm2(u, v, period * stretch, seed + 555, 3) - 0.5;
         const wv = fbm2(u + 3.7, v - 1.9, period, seed + 777, 3) - 0.5;
         u += wu * warpAmt; v += wv * warpAmt;
       }
-      h[y * N + x] = fbm2(u, v, period, seed, octaves);
+      h[y * N + x] = fbm2(u, v, period * stretch, seed, octaves);
+      if (d2) d2[y * N + x] = fbm2((x / N) * period * 6, (y / N) * period * 6, period * 6, seed + 313, 2);
     }
   }
 
   const alb = new Uint8ClampedArray(N * N * 4);
   const rgh = new Uint8ClampedArray(N * N * 4);
   const nrm = new Uint8ClampedArray(N * N * 4);
+  const met = metalMask ? new Uint8ClampedArray(N * N * 4) : null;
 
   for (let y = 0; y < N; y++) {
     for (let x = 0; x < N; x++) {
@@ -144,8 +168,22 @@ function makeTextureSet({ seed, period = 8, octaves = 5, normalStrength = 3.0,
       alb[o] = a; alb[o + 1] = a; alb[o + 2] = a; alb[o + 3] = 255;
 
       // Roughness inverted against albedo: crevices hold grit and read rougher.
-      const r = (rough[1] - (rough[1] - rough[0]) * n) * 255;
+      let rv = rough[1] - (rough[1] - rough[0]) * n;
+      if (wetT > 0 && n < wetT) {
+        // ...except where water has pooled, which is the low ground.
+        const w = 1 - n / wetT;             // 0 at the waterline, 1 in the pool
+        rv = rv * (1 - w) + rough[0] * 0.35 * w;
+      }
+      if (d2) rv += (d2[i] - 0.5) * detail;
+      const r = Math.min(1, Math.max(0, rv)) * 255;
       rgh[o] = r; rgh[o + 1] = r; rgh[o + 2] = r; rgh[o + 3] = 255;
+
+      if (met) {
+        // Corrosion eats the metal: high noise = surviving plate = metallic.
+        const m = (metalMask[0] + (metalMask[1] - metalMask[0]) *
+                   smooth01((n - 0.42) / 0.34)) * 255;
+        met[o] = m; met[o + 1] = m; met[o + 2] = m; met[o + 3] = 255;
+      }
 
       const l = h[y * N + wrap(x - 1, N)], rr = h[y * N + wrap(x + 1, N)];
       const d = h[wrap(y - 1, N) * N + x], up = h[wrap(y + 1, N) * N + x];
@@ -159,11 +197,18 @@ function makeTextureSet({ seed, period = 8, octaves = 5, normalStrength = 3.0,
     }
   }
 
-  return {
+  const out = {
     map: dataTexture(alb, true),
     roughnessMap: dataTexture(rgh, false),
     normalMap: dataTexture(nrm, false),
   };
+  if (met) out.metalnessMap = dataTexture(met, false);
+  return out;
+}
+
+function smooth01(t) {
+  const x = t < 0 ? 0 : t > 1 ? 1 : t;
+  return x * x * (3 - 2 * x);
 }
 
 // Textures are shared across materials, but repeat is per-material, so each
@@ -185,20 +230,66 @@ let _mats = null;
 function buildSets() {
   return {
     // Coarse, warped, high-contrast — reads as weathered sedimentary stone.
+    // The roughness spread is deliberately wide (0.36-1.0 rather than the old
+    // 0.55-0.99): rock is not uniformly matte, it has polished wind-scoured
+    // faces next to grit-filled crevices, and that contrast is the only thing
+    // that lets a raking key put a highlight on stone at all.
     stone: makeTextureSet({ seed: 11, period: 8, octaves: 5, normalStrength: 3.4,
-                            rough: [0.55, 0.99], albedo: [0.62, 1.0], warpAmt: 0.9 }),
-    // Fine and busy — foliage clumping.
+                            rough: [0.24, 1.0], albedo: [0.60, 1.0], warpAmt: 0.9,
+                            detail: 0.11 }),
+    // Fine and busy — foliage clumping. Organic stays flat-matte on purpose:
+    // it is the low end of the roughness ladder that stone and metal read
+    // against.
     organic: makeTextureSet({ seed: 29, period: 12, octaves: 5, normalStrength: 2.2,
-                              rough: [0.7, 1.0], albedo: [0.55, 1.0], warpAmt: 0.4 }),
+                              rough: [0.82, 1.0], albedo: [0.55, 1.0], warpAmt: 0.4,
+                              detail: 0.06 }),
     // Smooth low-frequency dunes.
     grain: makeTextureSet({ seed: 47, period: 6, octaves: 4, normalStrength: 1.3,
-                            rough: [0.85, 1.0], albedo: [0.82, 1.0] }),
-    // Streaky corrosion for the ruin metal.
+                            rough: [0.86, 1.0], albedo: [0.82, 1.0], detail: 0.05 }),
+    // Streaky corrosion for the ruin metal. `stretch` gives it the directional
+    // run-off metal weathers with, and the metalness mask means the surviving
+    // plate is a mirror while the rust between it is not.
     metal: makeTextureSet({ seed: 63, period: 10, octaves: 5, normalStrength: 1.8,
-                            rough: [0.28, 0.82], albedo: [0.5, 1.0], warpAmt: 1.6 }),
+                            rough: [0.14, 0.88], albedo: [0.42, 1.0], warpAmt: 1.6,
+                            stretch: 3.2, metalMask: [0.16, 0.82], detail: 0.09 }),
+    // Damp stone: bimodal roughness. Above the waterline it behaves like rock;
+    // below it the crevices go glossy, which is what a wet surface actually
+    // does and what makes it separate from dry rock under the same key.
+    wet: makeTextureSet({ seed: 91, period: 7, octaves: 5, normalStrength: 2.6,
+                          rough: [0.30, 1.0], albedo: [0.55, 1.0], warpAmt: 0.7,
+                          wetT: 0.46, detail: 0.07 }),
   };
 }
 
+/**
+ * The roughness ladder. Every material below sits at a named rung, and the
+ * rungs are far enough apart that two of them next to each other under the same
+ * light are obviously different substances:
+ *
+ *   organic  0.98  no specular at all — the matte end of the scale
+ *   sand     0.94  matte, but a hair of sheen at grazing angles
+ *   stone    0.70  wide map spread (x0.24-1.0) -> 0.17-0.70 across one boulder
+ *   wet      0.12  bimodal: pooled crevices mirror, the plate above them doesn't
+ *   metal    0.20  low, plus a metalness *map* so rust and plate differ
+ *   crystal  0.08  clearcoat on top
+ *
+ * The rock rungs came *down* by roughly a fifth this pass, and the reason is
+ * arithmetic rather than taste. GGX's peak lobe scales as 1/alpha^2 with
+ * alpha = roughness^2, so the specular return at the half-vector goes as
+ * roughness^-4: the old 0.36 map floor on a 0.90 cliff gave an effective 0.32
+ * and a peak of ~1.3 in linear, which the tone curve lands at sRGB 190 — just
+ * under the L 200 a highlight has to clear to read as one. At the new 0.24 map
+ * floor on a 0.66 cliff the effective roughness is 0.16 and the peak is ~15x
+ * higher, so any facet whose normal-mapped normal lands within a few degrees of
+ * the half vector clips white. The stone stays *visually* matte because the
+ * ladder is carried by the map: only the noise peaks reach the floor, and the
+ * crevices between them are still 0.66-0.70.
+ *
+ * `envMapIntensity` is the second axis and matters as much as roughness: it is
+ * how much sky a surface returns. Organic swallows the IBL, metal returns three
+ * times it. Two surfaces at the same roughness but 4x apart in envMapIntensity
+ * still read as different materials.
+ */
 function buildMaterials(sets) {
   const P = PALETTE;
 
@@ -209,27 +300,33 @@ function buildMaterials(sets) {
     ...withRepeat(sets.stone, 11),
     vertexColors: true,
     color: 0xffffff,
-    roughness: 0.92,
-    metalness: 0.0,
-    normalScale: new THREE.Vector2(0.85, 0.85),
+    roughness: 0.82,
+    metalness: 0.02,
+    normalScale: new THREE.Vector2(1.05, 1.05),
+    envMapIntensity: 1.05,
     dithering: true,
   });
 
   const rock = new THREE.MeshStandardMaterial({
     ...withRepeat(sets.stone, 1.6),
     color: P.terrain.rock,
-    roughness: 0.94,
-    metalness: 0.0,
-    normalScale: new THREE.Vector2(1.0, 1.0),
+    roughness: 0.70,
+    metalness: 0.04,
+    normalScale: new THREE.Vector2(1.25, 1.25),
+    envMapIntensity: 1.35,
     flatShading: true,
   });
 
   const cliff = new THREE.MeshStandardMaterial({
     ...withRepeat(sets.stone, 0.9),
     color: P.terrain.cliff,
-    roughness: 1.0,
-    metalness: 0.0,
-    normalScale: new THREE.Vector2(1.3, 1.3),
+    // The hero arch and every pillar are cliff. This is the rung the axis-5
+    // "real specular response" test is actually taken on, so it carries the
+    // lowest map floor of the three stone rungs: 0.24 x 0.66 = 0.16.
+    roughness: 0.66,
+    metalness: 0.03,
+    normalScale: new THREE.Vector2(1.45, 1.45),
+    envMapIntensity: 1.25,
     flatShading: true,
   });
 
@@ -239,43 +336,61 @@ function buildMaterials(sets) {
     roughness: 0.98,
     metalness: 0.0,
     normalScale: new THREE.Vector2(0.8, 0.8),
+    envMapIntensity: 0.45,
     flatShading: true,
   });
 
-  // Damp rock: low roughness so the key light throws a specular streak that
-  // separates it from the matte terrain behind it.
+  // Damp rock: the glossy rung. Its own bimodal roughness set, so the key
+  // throws a broken specular streak that follows the crevices instead of a
+  // uniform plastic sheen.
   const wetStone = new THREE.MeshStandardMaterial({
-    ...withRepeat(sets.stone, 1.2),
+    ...withRepeat(sets.wet, 1.2),
     color: P.accent.wet,
-    roughness: 0.28,
-    metalness: 0.1,
-    normalScale: new THREE.Vector2(1.1, 1.1),
+    roughness: 0.12,
+    metalness: 0.16,
+    normalScale: new THREE.Vector2(1.25, 1.25),
+    envMapIntensity: 2.4,
     flatShading: true,
   });
 
+  // Metalness comes from the map, so `metalness` is the ceiling and the rust
+  // pulls it down to 0.16 locally. A flat 0.85 everywhere is what made the ruin
+  // read as grey plastic.
+  //
+  // The ceiling is 0.78 and not 1.0 deliberately. At a true 1.0 the diffuse
+  // term is identically zero, so the *entire* appearance of the surface is the
+  // IBL — and in a pit, or under any framing that puts the prop below the
+  // horizon line, the IBL is the dark ground half of the sky dome and the metal
+  // renders as a black cutout. 0.78 keeps a ~22% dielectric diffuse floor, so
+  // the key and the hemisphere still model the form when there is no sky to
+  // reflect, and the envMap lift pays the reflective read back at full strength
+  // where there is.
   const metalRuin = new THREE.MeshStandardMaterial({
     ...withRepeat(sets.metal, 1.1),
     color: P.accent.metal,
-    roughness: 0.52,
-    metalness: 0.85,
-    normalScale: new THREE.Vector2(0.9, 0.9),
+    roughness: 0.20,
+    metalness: 0.78,
+    normalScale: new THREE.Vector2(1.15, 1.15),
+    envMapIntensity: 2.8,
     flatShading: true,
   });
 
   const sand = new THREE.MeshStandardMaterial({
     ...withRepeat(sets.grain, 3.2),
     color: P.terrain.sand,
-    roughness: 0.99,
+    roughness: 0.94,
     metalness: 0.0,
-    normalScale: new THREE.Vector2(0.5, 0.5),
+    normalScale: new THREE.Vector2(0.55, 0.55),
+    envMapIntensity: 0.6,
   });
 
   const wood = new THREE.MeshStandardMaterial({
     ...withRepeat(sets.organic, 1.0),
     color: P.accent.wood,
-    roughness: 0.95,
+    roughness: 0.98,
     metalness: 0.0,
-    normalScale: new THREE.Vector2(1.2, 1.2),
+    normalScale: new THREE.Vector2(1.3, 1.3),
+    envMapIntensity: 0.4,
     flatShading: true,
   });
 
@@ -290,6 +405,12 @@ function buildMaterials(sets) {
     metalness: 0.0,
     clearcoat: 1.0,
     clearcoatRoughness: 0.05,
+    // A thin-film tint on the clearcoat. The accent is the one surface in the
+    // stage allowed a coloured specular, and it is what stops the crystal
+    // reading as the same glossy plastic as everything else at a bright angle.
+    iridescence: 0.4,
+    iridescenceIOR: 1.7,
+    envMapIntensity: 2.2,
     transparent: true,
     opacity: 0.88,
     flatShading: true,
@@ -329,10 +450,18 @@ const DEG = Math.PI / 180;
 const SHAPE_DEFAULT = {
   warp: 34, warpFreq: 0.0072,
   baseFreq: 0.0068, baseAmp: 26,
-  ridgeFreq: 0.019, ridgeAmp: 8,
-  detailFreq: 0.075, detailAmp: 1.9,
+  ridgeFreq: 0.0105, ridgeAmp: 11,
+  // The grit octave. Halved in amplitude and its wavelength roughly doubled
+  // (0.075 -> 0.038 is 13m -> 26m at the base octave) so that at the 10-20m a
+  // prop close-up spans it sits *below* the 1.375m triangle rather than above
+  // it. At 1.9/0.075 every facet in the background of a prop shot was its own
+  // spike and the slope behind the subject read as a field of random shards
+  // instead of as landform. See TerrainGen.heightAt: the octave is also now
+  // applied after terracing, which is what stops it flipping facets across a
+  // 3m riser.
+  detailFreq: 0.038, detailAmp: 0.95,
   basinRadius: 0.5, basinFlatten: 0.28, basinDrop: -3.0, basinStrength: 0.82,
-  terraceStep: 3.0, terraceBlend: 0.2, terraceStrength: 0.85, terraceBias: 0.45,
+  terraceStep: 3.0, terraceBlend: 0.24, terraceStrength: 0.85, terraceBias: 0.45,
   wallStart: 0.82, wallBase: 46, wallVar: 22,
 };
 
@@ -341,7 +470,15 @@ const PROPS_DEFAULT = {
   pillars: 74, pillarHeight: [2.2, 7.5],
   arches: 16, archScale: [2.2, 4.6],
   trees: 110, treeScale: [0.8, 1.9],
-  crystalClusters: 6, crystalPer: [6, 10], crystalScale: [0.8, 3.0],
+  // The palette declares exactly one accent, and an accent that covers 0.1% of
+  // the frame is not an accent. Doubling the cluster *count* last pass moved the
+  // measured teal coverage by 0.008% because count was never the problem —
+  // placement was: a uniformly-bearing-sampled cluster has a ~1-in-4 chance of
+  // being inside any given 89-degree horizontal field, so twelve of them put
+  // three in frame at 1.2-4.2u, which is a handful of specks at 60m. The count
+  // stays; the scale goes up by ~40% and Props.js now biases the bearing onto
+  // the hero-arch sight line, which is the axis every wide framing looks down.
+  crystalClusters: 12, crystalPer: [8, 12], crystalScale: [2.4, 6.2],
   islands: 15, islandScale: [3.5, 9.5], islandLow: [6, 11], islandHigh: [16, 40],
   monolithHeight: 27, archHeroScale: 17,
 };
@@ -396,8 +533,8 @@ export const BIOMES = [
         ...SHAPE_DEFAULT,
         warp: 46, warpFreq: 0.0060,
         baseAmp: 19, baseFreq: 0.0058,
-        ridgeAmp: 4, ridgeFreq: 0.015,
-        detailAmp: 2.4,
+        ridgeAmp: 5, ridgeFreq: 0.0090,
+        detailAmp: 1.2,
         basinRadius: 0.58, basinFlatten: 0.34, basinDrop: -2.2, basinStrength: 0.74,
         terraceStep: 2.2, terraceBlend: 0.55, terraceStrength: 0.55, terraceBias: 0.30,
         wallStart: 0.80, wallBase: 40, wallVar: 16,
@@ -456,10 +593,10 @@ export const BIOMES = [
         // and was unplayable. These numbers keep the hard shelf read while
         // landing the walkable fraction back alongside the reference.
         baseAmp: 27, baseFreq: 0.0074,
-        ridgeAmp: 9, ridgeFreq: 0.024,
-        detailAmp: 1.5,
+        ridgeAmp: 12, ridgeFreq: 0.0125,
+        detailAmp: 0.8,
         basinRadius: 0.54, basinFlatten: 0.26, basinDrop: -4.0, basinStrength: 0.90,
-        terraceStep: 3.4, terraceBlend: 0.10, terraceStrength: 0.90, terraceBias: 0.62,
+        terraceStep: 3.4, terraceBlend: 0.16, terraceStrength: 0.90, terraceBias: 0.62,
         // Verticality on this biome belongs *inside* the arena (baseAmp/ridge),
         // not in the bounding massif: at 56+26 the ridgeline reached y=105 and
         // ate the entire sky dome, which is the exact failure the reference
@@ -478,7 +615,7 @@ export const BIOMES = [
       pillars: 118, pillarHeight: [3.0, 10.5],
       arches: 20,
       trees: 26, treeScale: [0.7, 1.4],
-      crystalClusters: 13, crystalPer: [7, 12], crystalScale: [0.9, 3.6],
+      crystalClusters: 13, crystalPer: [8, 13], crystalScale: [1.6, 4.8],
       islands: 22, islandScale: [3.0, 8.0], islandLow: [7, 12], islandHigh: [20, 52],
       monolithHeight: 33, archHeroScale: 19,
     },
@@ -508,8 +645,8 @@ export const BIOMES = [
         ...SHAPE_DEFAULT,
         warp: 38, warpFreq: 0.0050,
         baseAmp: 15, baseFreq: 0.0090,
-        ridgeAmp: 9, ridgeFreq: 0.0125,
-        detailAmp: 1.1,
+        ridgeAmp: 11, ridgeFreq: 0.0085,
+        detailAmp: 0.6,
         basinRadius: 0.62, basinFlatten: 0.30, basinDrop: -5.0, basinStrength: 0.90,
         terraceStep: 1.6, terraceBlend: 0.34, terraceStrength: 0.62, terraceBias: 0.55,
         wallStart: 0.80, wallBase: 42, wallVar: 14,
@@ -573,7 +710,7 @@ export function applyBiomeMaterials(biome) {
 export function disposeMaterials() {
   if (!_mats) return;
   for (const m of Object.values(_mats)) {
-    for (const k of ['map', 'roughnessMap', 'normalMap']) m[k]?.dispose();
+    for (const k of ['map', 'roughnessMap', 'normalMap', 'metalnessMap']) m[k]?.dispose();
     m.dispose();
   }
   for (const set of Object.values(_sets)) for (const t of Object.values(set)) t.dispose();

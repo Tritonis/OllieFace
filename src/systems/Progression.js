@@ -26,6 +26,28 @@ const CHARGE_TIME = 90;      // seconds of standing in the ring to fill it
 const LOOT_WINDOW = 8;       // beat between "boss dead" and the portal opening
 const CHARGE_EMIT_STEP = 0.01;
 
+/**
+ * Survivor level.
+ *
+ * The run levels the whole team, RoR2-style: one shared level, earned from
+ * every kill, driving the player stat curve in `Player._levelBase`. It lives
+ * here rather than on Player because it is run state, not entity state — a
+ * co-op host has several Player instances and they must all read one number,
+ * or the host's simulation of a remote pawn and that client's own prediction
+ * of it would use different stats.
+ *
+ * Cost curve: `5 * level^1.35`. Level 20 lands a little past 2500 total XP,
+ * which is roughly a 20-minute run at the tuned spawn rate.
+ */
+const XP_BASE = 5;
+const XP_EXP = 1.35;
+export function xpForLevel(level) {
+  return Math.max(1, Math.round(XP_BASE * Math.pow(Math.max(1, level), XP_EXP)));
+}
+// Same shape the Director uses for monster levels, so a level of parity means
+// parity. See Director.js:10-11.
+const XP_PER_MONSTER_LEVEL = 0.2;
+
 export class Progression {
   constructor() {
     this.stageIndex = 0;
@@ -38,6 +60,13 @@ export class Progression {
     this.bossAlive = false;
     this.bossCleared = false;
     this.lootTimer = 0;
+
+    // Survivor level — read by the HUD through `ctx.player.level` and by
+    // `Player._levelBase` for the stat curve. Run-scoped, so a stage change
+    // deliberately leaves it alone.
+    this.level = 1;
+    this.xp = 0;
+    this.xpToNext = xpForLevel(1);
 
     // Where this stage's teleporter is, or null before one exists. This is the
     // one field the objective HUD and VFX.teleporterAura both drive off, so it
@@ -72,6 +101,21 @@ export class Progression {
       if (e.victim?.isPlayer) return;
       this.stats.kills++;
       if (e.isElite) this.stats.elites++;
+      // XP is game state, so only the host awards it. Clients learn the result
+      // from the `levelUp` event below, which NetHost already forwards.
+      if (ctx.authority) this._awardKillXp(e);
+    });
+
+    // Client side of the same fact. The wire strips object references, so this
+    // payload carries only the three numbers the HUD and the stat curve need.
+    ctx.events.on('levelUp', (e) => {
+      if (!ctx.authority && e) {
+        this.level = e.level ?? this.level;
+        this.xp = e.xp ?? 0;
+        this.xpToNext = e.xpToNext ?? xpForLevel(this.level);
+      }
+      // Cosmetic, so both roles run it.
+      if (ctx.player) ctx.vfx?.levelUp?.(ctx.player.position);
     });
     ctx.events.on('damage', (e) => {
       if (e.source?.isPlayer) {
@@ -242,6 +286,48 @@ export class Progression {
         const at = tp.position.clone().add(this._tmp.set(4, 0, 0));
         this.interactables.spawnPortal(at, () => this.advanceStage());
       }
+    }
+  }
+
+  // ----------------------------------------------------------------- levelling
+
+  /**
+   * Host-only. A monster is worth its card's `xp`, scaled by the level the
+   * Director spawned it at (the same 0.2/level ramp its health and damage use)
+   * and doubled for elites, so the reward tracks the effort.
+   */
+  _awardKillXp(e) {
+    const v = e.victim;
+    if (!v) return;
+    const base = v.def?.xp ?? v.xp ?? 1;
+    const lvl = Math.max(1, v.level || 1);
+    let amount = base * (1 + XP_PER_MONSTER_LEVEL * (lvl - 1));
+    if (e.isElite) amount *= 2;
+    this.addExperience(amount);
+  }
+
+  /**
+   * Host-only entry point. Announces every level gained as one `levelUp` event
+   * carrying the whole state, which is what keeps a client's bar honest without
+   * adding a snapshot field.
+   */
+  addExperience(amount) {
+    if (!this.ctx.authority || !(amount > 0)) return;
+    this.xp += amount;
+    let levelled = false;
+    // A boss can be worth several levels at once; drain the whole surplus.
+    while (this.xp >= this.xpToNext) {
+      this.xp -= this.xpToNext;
+      this.level++;
+      this.xpToNext = xpForLevel(this.level);
+      levelled = true;
+    }
+    if (levelled) {
+      this.ctx.events.emit('levelUp', {
+        level: this.level,
+        xp: Math.round(this.xp),
+        xpToNext: this.xpToNext,
+      });
     }
   }
 

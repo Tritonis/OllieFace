@@ -127,11 +127,15 @@ void main() {
   vSoft = aMisc.w;
 
   // --- atlas frame ---
+  // The atlas uploads with flipY = false, so texture t = 0 is the canvas's TOP
+  // row while the quad's uv.y = 0 is its BOTTOM. Without the 1.0 - uv.y every
+  // tile samples inverted in V; it only hides here because most sprites are
+  // vertically symmetric. Keep this identical to NumberVert in VFX.js.
   float cols = uAtlasCols;
   float frame = floor(aMisc.y + 0.5);
   float fx = mod(frame, cols);
   float fy = floor(frame / cols);
-  vUv = (uv + vec2(fx, fy)) / cols;
+  vUv = (vec2(uv.x, 1.0 - uv.y) + vec2(fx, fy)) / cols;
 
   gl_Position = projectionMatrix * mv;
 }
@@ -146,6 +150,7 @@ uniform vec2  uResolution;
 uniform vec2  uCamPlanes;
 uniform float uSoftEnabled;
 uniform float uIntensity;
+uniform float uMaxIntensity;
 
 varying vec4 vColor;
 varying vec2 vUv;
@@ -160,6 +165,12 @@ void main() {
   vec4 tex = texture2D(uMap, vUv);
   vec4 c = tex * vColor;
   c.rgb *= uIntensity;
+  // Ceiling on a *single* sprite. Additive blending plus bloom means anything
+  // that reaches white on its own stays white for its whole visible life, which
+  // is how five different effects all measured 255,255,245. Capping here keeps
+  // one sprite hot-but-tinted and lets only overlapping sprites clip to white —
+  // that is what reads as heat rather than as a blank disc.
+  c.rgb = min(c.rgb, vec3(uMaxIntensity));
 
   if (uSoftEnabled > 0.5 && vSoft > 0.0) {
     vec2 suv = gl_FragCoord.xy / uResolution;
@@ -178,7 +189,9 @@ void main() {
 `;
 
 /** Builds the ShaderMaterial for one blend layer. */
-export function createParticleMaterial({ map, additive, atlasCols = 4, intensity = 1 }) {
+export function createParticleMaterial({
+  map, additive, atlasCols = 4, intensity = 1, maxIntensity = 0.92,
+}) {
   return new THREE.ShaderMaterial({
     uniforms: {
       uMap: { value: map },
@@ -190,6 +203,7 @@ export function createParticleMaterial({ map, additive, atlasCols = 4, intensity
       uCamPlanes: { value: new THREE.Vector2(0.1, 2000) },
       uSoftEnabled: { value: 0 },
       uIntensity: { value: intensity },
+      uMaxIntensity: { value: maxIntensity },
     },
     vertexShader: ParticleVertexShader,
     fragmentShader: ParticleFragmentShader,

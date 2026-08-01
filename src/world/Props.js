@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { BIOMES, getMaterials } from './Materials.js';
 import { makeSimplex2D, STAGE_HALF } from './TerrainGen.js';
-import { lerp } from '../core/MathUtil.js';
+import { lerp, clamp } from '../core/MathUtil.js';
 
 /**
  * Procedural set dressing. Everything here is either an InstancedMesh (scatter)
@@ -103,7 +103,7 @@ function pillarGeo(rng, noise3) {
   return facet(g, 0.6);
 }
 
-function archGeo(rng, noise3) {
+function archGeo(rng, noise3, uvScale = 0.5) {
   // Torus arc of PI in the XY plane is already a standing arch.
   const span = new THREE.TorusGeometry(1, 0.17, 5, 16, Math.PI);
   deform(span, noise3, 0.05, 3.0, rng.range(0, 40));
@@ -116,7 +116,7 @@ function archGeo(rng, noise3) {
   );
   span.dispose(); legL.dispose(); legR.dispose();
   merged.translate(0, 0.5, 0); // origin at ground level
-  return facet(merged, 0.5);
+  return facet(merged, uvScale);
 }
 
 function deadTreeGeo(rng, noise3) {
@@ -146,10 +146,15 @@ function deadTreeGeo(rng, noise3) {
 
 function crystalGeo(rng, noise3) {
   const parts = [];
-  const n = rng.int(3, 6);
+  // 5-8 shards at 0.18-0.34 rather than 3-6 at 0.14-0.3. The accent's problem
+  // was never its brightness, it was how few pixels it covered: a cluster of
+  // three needles 14% as wide as they are tall has an almost empty silhouette,
+  // so an "accent" of sixty of them still measured under a tenth of a percent
+  // of frame. This is the same shape, filled in.
+  const n = rng.int(5, 8);
   for (let i = 0; i < n; i++) {
     const c = new THREE.OctahedronGeometry(1, 0);
-    c.scale(rng.range(0.14, 0.3), rng.range(0.7, 1.7), rng.range(0.14, 0.3));
+    c.scale(rng.range(0.18, 0.34), rng.range(0.7, 1.7), rng.range(0.18, 0.34));
     const m = new THREE.Matrix4().makeRotationZ(rng.range(-0.42, 0.42));
     m.premultiply(new THREE.Matrix4().makeRotationY(rng.range(0, Math.PI * 2)));
     m.setPosition(rng.range(-0.34, 0.34), rng.range(0.35, 0.8), rng.range(-0.34, 0.34));
@@ -197,7 +202,12 @@ function islandDiscGeo(rng, noise3) {
   deform(top, noise3, 0.09, 1.6, rng.range(0, 40));
   const keel = new THREE.ConeGeometry(0.93, 2.6, 9, 3);
   keel.rotateX(Math.PI);
-  keel.translate(0, -1.55, 0);
+  // -1.30, not -1.55. The cone's base cap (r 0.93) used to land at y -0.25
+  // against the shelf's own bottom cap (r 0.94) at -0.275: two opaque caps
+  // 0.025 local units apart, which at island scale 3.5-9.5 is inside the VSM
+  // normal-bias envelope and stipples into a 1px dotted black seam along the
+  // rim. Burying the cap at dead centre of the shelf leaves no coincident pair.
+  keel.translate(0, -1.30, 0);
   deform(keel, noise3, 0.16, 1.1, rng.range(0, 40));
   const merged = mergeGeometries([flat(top), flat(keel)], false);
   top.dispose(); keel.dispose();
@@ -210,10 +220,13 @@ function islandSlabGeo(rng, noise3) {
   a.scale(1.25, 1, 0.7);
   const b = new THREE.CylinderGeometry(0.72, 0.58, 0.5, 6, 1);
   b.scale(1.2, 1, 0.72);
-  b.translate(rng.range(-0.3, 0.3), 0.44, rng.range(-0.2, 0.2));
+  // Same seam as islandDiscGeo: b's bottom cap sat 0.02 above a's top cap and
+  // the keel's top cap 0.04 below a's bottom cap. Both are now buried 0.16
+  // inside the shell they meet, so no two opaque caps are coplanar.
+  b.translate(rng.range(-0.3, 0.3), 0.30, rng.range(-0.2, 0.2));
   const keel = new THREE.CylinderGeometry(0.8, 0.16, 1.5, 6, 2);
   keel.scale(1.2, 1, 0.72);
-  keel.translate(0, -0.92, 0);
+  keel.translate(0, -0.80, 0);
   deform(keel, noise3, 0.14, 1.3, rng.range(0, 40));
   const merged = mergeGeometries([flat(a), flat(b), flat(keel)], false);
   a.dispose(); b.dispose(); keel.dispose();
@@ -234,32 +247,57 @@ function islandSpireGeo(rng, noise3) {
 
 // Per-family placement: local top-face height, platform radius, and the
 // height/width aspect range that makes each family read as its own form.
+// `top` is the local Y of the walkable cap and has to track the geometry — the
+// slab's second plate moved from 0.44+0.25 to 0.30+0.25 when its buried cap was
+// fixed, so the platform collider moves with it or the player stands in air.
 const ISLAND_FAMILIES = [
   { top: 0.275, rad: 0.85, aspect: [0.75, 1.25] },
-  { top: 0.690, rad: 0.90, aspect: [0.45, 0.75] },
+  { top: 0.550, rad: 0.90, aspect: [0.45, 0.75] },
   { top: 0.350, rad: 0.46, aspect: [1.35, 2.10] },
 ];
 
+// Bigger, and there are fewer of them. At 0.35-1.4 a keel fragment subtended
+// ~35x10px against a lit hero face and read as a dead-pixel cluster on the
+// lens rather than as a rock: too small to catch a key, too hard-edged to be
+// atmosphere. Below ~20px on the long axis a lump of rock is just dirt.
 function debrisGeo(rng, noise3) {
-  const g = new THREE.IcosahedronGeometry(1, 0);
-  deform(g, noise3, 0.34, 1.8, rng.range(0, 40));
-  g.scale(rng.range(0.6, 1.2), rng.range(0.6, 1.4), rng.range(0.6, 1.2));
-  return facet(g, 0.8);
+  const g = new THREE.IcosahedronGeometry(1, 1);
+  deform(g, noise3, 0.30, 1.8, rng.range(0, 40));
+  g.scale(rng.range(0.7, 1.2), rng.range(0.6, 1.3), rng.range(0.7, 1.2));
+  return facet(g, 0.55);
 }
 
-function monolithGeo(rng, noise3) {
-  const g = new THREE.BoxGeometry(1, 1, 1, 3, 10, 3);
-  deform(g, noise3, 0.055, 2.4, rng.range(0, 40));
-  // Taper toward the top so the silhouette has direction.
+/**
+ * The hero slab. Three separate things were making it read as an airbrushed
+ * box at vista range:
+ *  - 0.055 of deformation on a form scaled to 27m is ~1.5m of wobble, i.e.
+ *    invisible, so the silhouette had no chips in it;
+ *  - 3x10x3 segments gave the faces nowhere to break;
+ *  - facet(g, 0.25) on an object scaled by 27 put one texture cycle every
+ *    ~100m, which is a soft gradient by definition.
+ * `uvScale` and `segY` are parameters because the same geometry is reused for
+ * the 2.6m ruin slabs at the arena centre, where a 27m tiling would be absurd.
+ */
+function monolithGeo(rng, noise3, uvScale = 4.0, segY = 18, bands = 6) {
+  const g = new THREE.BoxGeometry(1, 1, 1, 4, segY, 4);
+  deform(g, noise3, 0.13, 4.5, rng.range(0, 40));
   const p = g.attributes.position;
+  const phase = rng.range(0, 6.283);
   for (let i = 0; i < p.count; i++) {
-    const t = p.getY(i) + 0.5;
-    const k = lerp(1.0, 0.62, t);
+    const t = clamp(p.getY(i) + 0.5, 0, 1);
+    // Taper toward the top so the silhouette has direction.
+    let k = lerp(1.0, 0.62, t);
+    // Sedimentary strata. Every ring in a band shares one inset, so the band
+    // boundaries are real horizontal plane breaks: hard value steps down the
+    // lit face and notches on the silhouette, which is the rock incident the
+    // smooth taper had none of.
+    const band = Math.min(bands - 1, Math.floor(t * bands));
+    k *= 1 + Math.sin(band * 2.399963 + phase) * 0.048;
     p.setX(i, p.getX(i) * k);
     p.setZ(i, p.getZ(i) * k);
   }
   p.needsUpdate = true;
-  return facet(g, 0.25);
+  return facet(g, uvScale);
 }
 
 // --- placement -------------------------------------------------------------
@@ -294,13 +332,34 @@ export class Props {
     this.colliders.push({ kind: 'platform', x, z, r, y });
   }
 
-  /** Rejection sampling for a spot that satisfies slope / radius constraints. */
-  _spot({ rMin = 0, rMax = 0.66, minDot = 0.7, tries = 30 }) {
+  /**
+   * The bearing the composition is built around: the hero arch's, which is the
+   * axis `_buildHeroes` places everything else relative to and the axis the
+   * wide establishing framing looks down (its camera offset is the arch offset
+   * negated, so the arch sits behind the player at frame centre).
+   *
+   * Anything that has to be *seen* rather than merely *present* is placed
+   * against this, not against a uniform bearing.
+   */
+  _heroBearing() {
+    return this.stageIndex * 2.399963 - 36.5 * (Math.PI / 180);
+  }
+
+  /**
+   * Rejection sampling for a spot that satisfies slope / radius constraints.
+   *
+   * `bearing`/`spread` restrict the azimuth to an arc. Left undefined the
+   * azimuth is uniform over the full circle, which is right for connective
+   * scatter and wrong for anything whose job is to be in shot.
+   */
+  _spot({ rMin = 0, rMax = 0.66, minDot = 0.7, tries = 30, bearing = null, spread = Math.PI }) {
     const rng = this.rng, T = this.terrain, H = STAGE_HALF;
     for (let i = 0; i < tries; i++) {
       // sqrt keeps the distribution area-uniform instead of centre-heavy.
       const rad = Math.sqrt(lerp(rMin * rMin, rMax * rMax, rng.next())) * H;
-      const a = rng.range(0, Math.PI * 2);
+      const a = bearing === null
+        ? rng.range(0, Math.PI * 2)
+        : bearing + rng.range(-spread, spread);
       const x = Math.cos(a) * rad, z = Math.sin(a) * rad;
       if (T.slopeDot(x, z) < minDot) continue;
       return { x, z, y: T.sampleHeight(x, z) };
@@ -338,20 +397,29 @@ export class Props {
     const n3 = makeNoise3(rng);
 
     // --- boulders: the connective tissue, everywhere, including slopes ---
+    const boulderPlace = (opts) => (r) => {
+      const s = this._spot(opts);
+      if (!s) return null;
+      const sc = r.range(P.boulderScale[0], P.boulderScale[1]);
+      // Sink a fraction of the radius so nothing hovers on uneven facets.
+      _v.set(s.x, s.y - sc * 0.28, s.z);
+      _q.setFromEuler(_e.set(r.range(-0.2, 0.2), r.range(0, 6.283), r.range(-0.2, 0.2)));
+      _s.setScalar(sc);
+      if (sc > 1.5) this._collider(s.x, s.z, sc * 0.85, s.y - 1, s.y + sc * 0.9);
+      return _m.compose(_v, _q, _s).clone();
+    };
     this._batch(
       [boulderGeo(rng, n3), boulderGeo(rng, n3), boulderGeo(rng, n3)],
-      M.rock, P.boulders,
-      (r) => {
-        const s = this._spot({ rMax: 0.8, minDot: 0.45 });
-        if (!s) return null;
-        const sc = r.range(P.boulderScale[0], P.boulderScale[1]);
-        // Sink a fraction of the radius so nothing hovers on uneven facets.
-        _v.set(s.x, s.y - sc * 0.28, s.z);
-        _q.setFromEuler(_e.set(r.range(-0.2, 0.2), r.range(0, 6.283), r.range(-0.2, 0.2)));
-        _s.setScalar(sc);
-        if (sc > 1.5) this._collider(s.x, s.z, sc * 0.85, s.y - 1, s.y + sc * 0.9);
-        return _m.compose(_v, _q, _s).clone();
-      }
+      M.rock, Math.round(P.boulders * 0.78), boulderPlace({ rMax: 0.8, minDot: 0.45 })
+    );
+    // A fifth of the scatter is damp rock, kept to the basin floor where water
+    // would actually collect. This exists to put the two ends of the roughness
+    // ladder side by side in the same frame at the same distance under the same
+    // key: matte 0.84 rock against 0.17 glossy stone is the single cheapest
+    // demonstration that this world has more than one material in it.
+    this._batch(
+      [boulderGeo(rng, n3), boulderGeo(rng, n3)],
+      M.wetStone, Math.round(P.boulders * 0.22), boulderPlace({ rMax: 0.5, minDot: 0.72 })
     );
 
     // --- shattered pillars: vertical accents, only on ground you could stand on ---
@@ -411,8 +479,26 @@ export class Props {
     {
       const variants = [crystalGeo(rng, n3), crystalGeo(rng, n3)];
       const lists = [[], []];
+      const hb = this._heroBearing();
       for (let c = 0; c < P.crystalClusters; c++) {
-        const s = this._spot({ rMin: 0.14, rMax: 0.7, minDot: 0.7 });
+        // Biased out to the basin rim rather than spread over the whole floor:
+        // a camera anywhere in the arena is looking *across* the basin at the
+        // far rim, so that annulus is the band that is actually in frame.
+        //
+        // And biased *in bearing* onto the hero-arch axis. Radius alone was not
+        // enough: a uniform azimuth put roughly three quarters of the clusters
+        // outside any given frustum, which is why doubling the count moved the
+        // measured accent coverage by 0.008%. Half of them now land within
+        // +/-66 deg of the composition axis; the other half is left uniform so
+        // the accent still exists for a player facing anywhere. They also sit
+        // further out than they used to (0.44-0.80 rather than 0.34-0.74), so
+        // they read as the far rim *behind* the hero vein rather than as a
+        // second body of accent competing with it at the same depth.
+        const onAxis = c % 2 === 0;
+        const s = this._spot({
+          rMin: 0.44, rMax: 0.80, minDot: 0.62,
+          bearing: onAxis ? hb : null, spread: 1.15,
+        });
         if (!s) continue;
         const n = rng.int(P.crystalPer[0], P.crystalPer[1]);
         for (let i = 0; i < n; i++) {
@@ -477,12 +563,17 @@ export class Props {
       islandMats[fi].push(_m.compose(_v, _q, _s).clone());
       this._platform(x, z, scale * F.rad, y + _s.y * F.top);
 
-      // Hanging debris trailing off the keel sells the "torn loose" read.
-      const debrisCount = rng.int(3, 6);
+      // Hanging debris trailing off the keel sells the "torn loose" read —
+      // but only at a size that reads as a rock. Halved in count and roughly
+      // doubled in scale: three 1.1-2.2u lumps say "this was torn out of the
+      // ground", six 0.35u ones say "there is dirt on the lens". They also hug
+      // the keel now (0.15-0.7 of radius) instead of drifting out to 1.1, which
+      // is what put them in front of hero silhouettes.
+      const debrisCount = rng.int(2, 3);
       for (let d = 0; d < debrisCount; d++) {
         const da = rng.range(0, 6.283);
-        const dr = rng.range(0.2, 1.1) * scale;
-        const ds = rng.range(0.35, 1.4);
+        const dr = rng.range(0.15, 0.7) * scale;
+        const ds = rng.range(1.1, 2.2);
         _v.set(x + Math.cos(da) * dr, y - rng.range(2, 9) * (scale / 6), z + Math.sin(da) * dr);
         _q.setFromEuler(_e.set(rng.range(0, 6.283), rng.range(0, 6.283), rng.range(0, 6.283)));
         _s.setScalar(ds);
@@ -558,9 +649,56 @@ export class Props {
       const { x, z } = place(57.2, 0);
       const y = T.sampleHeight(x, z);
       const sc = P.archHeroScale;
-      add(archGeo(rng, n3), M.cliff, x, y - 1.4, z, sc, sc * 1.15, sc * 0.55, -0.62);
+      // Its own UV scale. At 0.5 the hero arch got the same *one* texture cycle
+      // across 17m that a 3m scatter arch gets across 3m, which is why it read
+      // as a smooth ribbon next to hard-faceted terrain.
+      add(archGeo(rng, n3, 2.4), M.cliff, x, y - 1.4, z, sc, sc * 1.15, sc * 0.55, -0.62);
       this._collider(x - Math.cos(-0.62) * sc, z + Math.sin(-0.62) * sc, sc * 0.22, y - 2, y + sc * 0.6);
       this._collider(x + Math.cos(-0.62) * sc, z - Math.sin(-0.62) * sc, sc * 0.22, y - 2, y + sc * 0.6);
+
+      // The accent vein.
+      //
+      // The palette declares exactly one accent and it measured 0.090% of the
+      // establishing frame — 6.7x under target, and statistically unchanged
+      // from the pass before it, because that pass doubled the cluster *count*
+      // and left the placement uniform in bearing. Count was never the lever.
+      //
+      // This is: a vein of crystal running from the arch's feet back along the
+      // establishing camera's sight line. That line is not a guess — the
+      // camera's world offset is this arch's offset negated, so the arch sits
+      // behind the player at frame centre and the ground between the two is the
+      // middle of the shot from any spawn.
+      //
+      // It runs *toward* the camera and grows as it comes, which does three
+      // jobs at once: the near end is only ~80m out rather than ~115m so it
+      // subtends real pixels (a 16m spire is ~160px tall there against ~90px at
+      // the arch); the size ramp is a depth cue in its own right; and the vein
+      // points at the arch, so the accent leads the eye to the landmark instead
+      // of competing with it. The angular spread opens with distance from the
+      // arch so it reads as a fan converging on the landmark rather than a row.
+      const inward = Math.atan2(-z, -x);
+      const cg = crystalGeo(rng, n3);
+      const reef = [];
+      for (let i = 0; i < 48; i++) {
+        const t = i / 47;                              // 0 at the arch, 1 nearest camera
+        const r = 4.0 + t * 24 + rng.range(-2.2, 2.2);
+        const a = inward + rng.range(-1, 1) * (0.34 + t * 0.52);
+        const px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r;
+        const py = T.sampleHeight(px, pz);
+        // The near end stops ~30m short of the arena centre and the ramp tops
+        // out at the biome's own crystalScale ceiling. Both are limiters: an
+        // accent that fills a third of the frame has stopped being an accent,
+        // and a spawn point can land anywhere in the inner 35m.
+        const cs = lerp(P.crystalScale[0] * 1.1, P.crystalScale[1], t) *
+                   rng.range(0.7, 1.12);
+        _v.set(px, py - cs * 0.16, pz);
+        _q.setFromEuler(_e.set(rng.range(-0.22, 0.22), rng.range(0, 6.283), rng.range(-0.22, 0.22)));
+        _s.setScalar(cs);
+        reef.push(_m.compose(_v, _q, _s).clone());
+        // The big ones are chest-high walls at this scale, so they collide.
+        if (cs > 3.4) this._collider(px, pz, cs * 0.24, py - 1, py + cs * 1.8);
+      }
+      this._addInstanced(cg, M.crystal, reef);
     }
 
     // The monolith: single tall vertical, deliberately opposite the arch so the
@@ -569,17 +707,21 @@ export class Props {
       const { x, z } = place(60.0, 186.5);
       const y = T.sampleHeight(x, z);
       const mh = P.monolithHeight;
-      add(monolithGeo(rng, n3), M.metalRuin, x, y + mh * 0.44, z, 5.2, mh, 3.6, 0.7, 0.045);
+      add(monolithGeo(rng, n3, 4.0, 18, 6), M.metalRuin, x, y + mh * 0.44, z, 5.2, mh, 3.6, 0.7, 0.045);
       this._collider(x, z, 3.4, y - 2, y + mh * 0.96);
-      // Crystal spill at the base ties the two accent colours together.
+      // Crystal spill at the base ties the two accent colours together — and
+      // is the one place the accent is guaranteed to be co-framed with the
+      // largest silhouette in the stage, which is what makes it read as a
+      // deliberate focal point rather than as three stray teal specks.
       const cg = crystalGeo(rng, n3);
       const list = [];
-      for (let i = 0; i < 9; i++) {
-        const a = rng.range(0, 6.283), r = rng.range(3.5, 9);
+      for (let i = 0; i < 16; i++) {
+        const a = rng.range(0, 6.283), r = rng.range(3.0, 10);
         const px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r;
         _v.set(px, T.sampleHeight(px, pz) - 0.3, pz);
         _q.setFromEuler(_e.set(rng.range(-0.2, 0.2), rng.range(0, 6.283), rng.range(-0.2, 0.2)));
-        _s.setScalar(rng.range(1.6, 3.6));
+        // Biggest nearest the slab so the cluster has a peak against it.
+        _s.setScalar(rng.range(2.2, 5.0) * (1 - (r - 3) / 18));
         list.push(_m.compose(_v, _q, _s).clone());
       }
       this._addInstanced(cg, M.crystal, list);
@@ -608,7 +750,8 @@ export class Props {
     // A ring of half-buried metal ruin slabs marks the arena centre without
     // blocking it — reads as a teleporter pad site.
     {
-      const g = monolithGeo(rng, n3);
+      // 2.6m slabs, so a much tighter tiling and fewer strata than the 27m one.
+      const g = monolithGeo(rng, n3, 1.6, 8, 4);
       const list = [];
       for (let i = 0; i < 8; i++) {
         const a = (i / 8) * Math.PI * 2 + 0.3;

@@ -51,6 +51,9 @@ const HITSTOP_GATE = 0.085;
 // hard and a fight across the arena barely registers.
 const SHAKE_HALF_DIST = 18;
 
+// Metres of tracer actually drawn, measured back from the impact point.
+const TRACER_LENGTH = 8;
+
 const MAT_PRESETS = {
   stone:    { spark: 0x9fb0c4, dust: 0x8d8577, decal: DECAL.CRACK, sparks: 8,  dustCount: 10, sound: 'stone' },
   concrete: { spark: 0xb8b0a0, dust: 0x9a948a, decal: DECAL.CRACK, sparks: 7,  dustCount: 12, sound: 'stone' },
@@ -245,13 +248,26 @@ export class VFX {
   /** Tracer: bright core beam plus a soft outer beam plus a travelling glint. */
   tracer(from, to, colour = 0xfff0c0) {
     _tmpColor.set(colour);
-    // Outer glow first so the core reads as hotter than the falloff.
-    this.beams.spawn(from, to, _tmpColor, 0.16, 0.02, 0.18, 0.35);
-    this.beams.spawn(from, to, WHITE_HOT, 0.055, 0.005, 0.12, 2.4);
+    // A tracer is a streak, not a wire between two points. Drawing muzzle-to-
+    // target makes a 60 m shot a screen-spanning straight line of uniform width
+    // and brightness, which cuts the composition into wedges and reads as a CAD
+    // overlay. Draw only the last few metres before the impact and let the
+    // muzzle flash own the other end.
+    _v2.subVectors(to, from);
+    const len = _v2.length();
+    if (len < 1e-4) return;
+    _v2.divideScalar(len);
+    const drawn = Math.min(len, TRACER_LENGTH);
+    _v1.copy(to).addScaledVector(_v2, -drawn);
+
+    // Outer glow first so the core reads as hotter than the falloff. taper = 1
+    // gives the segment a bright head at `to` and a dissolving tail.
+    this.beams.spawn(_v1, to, _tmpColor, 0.16, 0.02, 0.18, 0.35, 1);
+    this.beams.spawn(_v1, to, WHITE_HOT, 0.055, 0.005, 0.12, 2.4, 1);
 
     let e = this._ep();
-    e.count = 3; e.position.copy(from);
-    e.dir.subVectors(to, from).normalize();
+    e.count = 3; e.position.copy(_v1);
+    e.dir.copy(_v2);
     e.spread = 0.25; e.speed = 6; e.life = 0.14;
     e.size0 = 0.16; e.size1 = 0.0;
     e.color0.set(colour); e.color1.set(colour);
@@ -270,7 +286,10 @@ export class VFX {
     e.count = 1; e.position.copy(pos).addScaledVector(_v1, 0.05);
     e.life = 0.07; e.lifeVar = 0;
     e.size0 = 0.5; e.size1 = 0.1;
-    e.color0.set(0xffffff); e.color1.set(preset.spark);
+    // Start at a hot *tint*, not at white. A core that begins at 1,1,1 saturates
+    // on the first frame and stays saturated, so the material's own colour never
+    // reaches the eye — stone and flesh both read as the same blank disc.
+    e.color0.set(preset.spark).multiplyScalar(1.6); e.color1.set(preset.spark);
     e.frame = FRAME.CROSS; e.drag = 8; e.alphaPow = 0.8; e.fadeIn = 0.001; e.soft = 0;
     this.particles.emit(e);
 
@@ -312,7 +331,7 @@ export class VFX {
     e.count = 1; e.position.copy(pos);
     e.life = 0.085; e.lifeVar = 0;
     e.size0 = 0.85 * scale; e.size1 = 0.12;
-    e.color0.set(0xffffff); e.color1.set(colour);
+    e.color0.set(0xfff0c8).multiplyScalar(1.35); e.color1.set(colour);
     e.frame = FRAME.CROSS; e.drag = 9; e.alphaPow = 0.9; e.fadeIn = 0.001; e.soft = 0;
     this.particles.emit(e);
 
@@ -322,7 +341,7 @@ export class VFX {
     e.speed = 8 * scale; e.speedVar = 0.8;
     e.life = 0.19; e.lifeVar = 0.45;
     e.size0 = 0.11 * scale; e.size1 = 0.01;
-    e.color0.set(0xffffff); e.color1.set(colour);
+    e.color0.set(0xffeccf); e.color1.set(colour);
     e.frame = FRAME.SPARK; e.stretch = 1.4; e.drag = 5.5; e.gravity = 6;
     this.particles.emit(e);
 
@@ -381,38 +400,50 @@ export class VFX {
     const r = Math.max(0.5, radius);
     const s = r / 4;
 
-    // 1. Instant white core — the frame that hides the transition.
+    // 1. Flash core. Deliberately *smaller* than the fireball it sits inside.
+    // A core wider than the blast body occludes every other layer for the first
+    // three frames, which is how this effect photographed as a flashbulb: one
+    // luminous disc with nothing in it. Short life, no multiplyScalar — the
+    // additive ceiling in ParticleShader keeps it hot-tinted rather than clipped,
+    // and it can only do that if the colour it is handed is below the ceiling.
     let e = this._ep();
     e.count = 1; e.position.copy(pos);
-    e.life = 0.09; e.lifeVar = 0;
-    e.size0 = r * 1.7; e.size1 = r * 0.5;
-    e.color0.set(0xffffff); e.color1.set(0xffe08a);
-    e.frame = FRAME.CORE; e.drag = 8; e.alphaPow = 0.8; e.fadeIn = 0.001; e.soft = 0;
+    e.life = 0.07; e.lifeVar = 0;
+    e.size0 = r * 0.7; e.size1 = r * 1.25;
+    e.color0.set(0xffdc96); e.color1.set(0xffb44a);
+    e.frame = FRAME.CORE; e.drag = 8; e.alphaPow = 1.4; e.fadeIn = 0.001; e.soft = 0.8;
     this.particles.emit(e);
 
+    // Heat glow on the blast, not a lens sticker over the composition: at
+    // r * 2.4 this quad was ~700 px across and washed the whole midground.
     e = this._ep();
     e.count = 1; e.position.copy(pos);
-    e.life = 0.22; e.lifeVar = 0;
-    e.size0 = r * 2.4; e.size1 = r * 0.8;
-    e.color0.set(0xffffff); e.color1.set(colour);
-    e.frame = FRAME.FLARE; e.spin = 2.5; e.drag = 7; e.alphaPow = 1.1; e.soft = 0;
+    e.life = 0.26; e.lifeVar = 0;
+    e.size0 = r * 1.15; e.size1 = r * 1.9;
+    e.color0.set(0xffc87a); e.color1.set(colour);
+    e.frame = FRAME.FLARE; e.spin = 2.5; e.drag = 7; e.alphaPow = 1.6; e.soft = 1.5;
     this.particles.emit(e);
 
     // 2. Fireball: fat additive blobs pushing outward and cooling to smoke.
+    // Drag-limited so terminal radius is speed/drag ≈ r * 1.07; the point of the
+    // high launch speed is that most of that travel happens in the first 100 ms,
+    // so the blast has a *body* — a ring of discrete blobs — from 0.04 s on
+    // rather than a solid core that only breaks up once the embers appear.
     e = this._ep();
-    e.count = 26; e.position.copy(pos); e.shell = r * 0.18;
+    e.count = 30; e.position.copy(pos); e.shell = r * 0.22;
     e.dir.set(0, 1, 0); e.spread = Math.PI;
-    e.speed = 9 * s; e.speedVar = 0.7;
-    e.life = 0.42; e.lifeVar = 0.45;
-    e.size0 = r * 0.55; e.size1 = r * 0.95;
-    e.color0.set(0xfff0b0); e.color1.set(colour);
+    e.speed = 30 * s; e.speedVar = 0.75;
+    e.life = 0.45; e.lifeVar = 0.4;
+    e.size0 = r * 0.6; e.size1 = r * 1.05;
+    e.color0.set(0xffe6a0); e.color1.set(colour);
     e.alpha0 = 0.95; e.frame = FRAME.SMOKE; e.spin = 2.2;
-    e.drag = 4.2; e.gravity = -3; e.turbulence = 0.5; e.fadeIn = 0.02; e.soft = 1.2;
+    e.drag = 7; e.gravity = -3; e.turbulence = 0.5; e.fadeIn = 0.006; e.soft = 1.2;
     this.particles.emit(e);
 
-    // 3. Shockwave ring, ground-plane aligned.
+    // 3. Shockwave ring, ground-plane aligned. Both tinted: a white ring on a
+    // white core is invisible, and the inner-edge boost in RingFrag clips it.
     this.rings.spawn(pos, UP, colour, r * 0.35, r * 2.6, 0.45, 0.95);
-    this.rings.spawn(pos, UP, 0xffffff, r * 0.2, r * 1.5, 0.28, 0.7);
+    this.rings.spawn(pos, UP, 0xffd2a0, r * 0.2, r * 1.5, 0.28, 0.7);
 
     // 4. Debris chunks, gravity-bound and spinning.
     e = this._ep();
@@ -442,21 +473,32 @@ export class VFX {
     // 6. Smoke column, the slowest layer, keeps the hit on screen for a second.
     e = this._ep();
     e.layer = 'alpha';
-    e.count = 20; e.position.copy(pos); e.shell = r * 0.3;
+    // `fadeIn` is a *fraction of life*, so 0.12 of a 2.2 s life meant the smoke
+    // was still at zero alpha a quarter of a second in — the blast had no dark
+    // mass to silhouette the fireball against for its entire hot phase.
+    // 0.028 puts the column up inside 60 ms, which is where RoR2 has it.
+    e.count = 22; e.position.copy(pos); e.shell = r * 0.3;
     e.dir.set(0, 1, 0); e.spread = 1.5;
-    e.speed = 3.4 * s; e.speedVar = 0.8;
+    e.speed = 6 * s; e.speedVar = 0.8;
     e.life = 2.2; e.lifeVar = 0.45;
-    e.size0 = r * 0.45; e.size1 = r * 1.5;
+    e.size0 = r * 0.5; e.size1 = r * 1.5;
     e.color0.set(0x54504c); e.color1.set(0x1e1c1e);
-    e.alpha0 = 0.5; e.frame = FRAME.SMOKE; e.spin = 1.1;
-    e.drag = 1.6; e.gravity = -1.6; e.turbulence = 0.45; e.fadeIn = 0.12;
+    e.alpha0 = 0.62; e.frame = FRAME.SMOKE; e.spin = 1.1;
+    e.drag = 2.2; e.gravity = -1.6; e.turbulence = 0.45; e.fadeIn = 0.028;
     this.particles.emit(e);
 
     this.decals.project(pos, DOWN, DECAL.SCORCH, { size: r * 0.8, maxDist: r + 3 });
-    this.lights.flick(pos, colour, 60 * s, r * 2.5, 0.32);
+    // Intensity 60*s put ~90 units into a 15 m range and rendered every monster
+    // inside the blast as a uniform white cast (variance under 3/255). A quarter
+    // of the intensity over a 36% larger radius keeps the falloff at 8-10 m and
+    // stops saturating anything within 4 m, so the blast silhouettes rather than
+    // erases what is standing in it.
+    this.lights.flick(pos, colour, 14 * s, r * 3.4, 0.32);
     this._shakeAt(pos, clamp(0.05 + r * 0.018, 0.05, 0.3));
     this._hitstop(HITSTOP.explosion, true);
-    if (this.ctx.pipeline) this.ctx.pipeline.aberration += 0.004 * s;
+    // A single blast used to reach the pipeline's aberration cap on its own,
+    // which is 6-7 px of RGB separation at the frame edge. Subtle is under 1 px.
+    if (this.ctx.pipeline) this.ctx.pipeline.aberration += 0.0012 * s;
     this.ctx.audio?.explosion(pos, r);
   }
 
@@ -608,7 +650,7 @@ export class VFX {
 
   /** Jagged chained bolt: segments + branch sparks + a light + a crackle. */
   lightning(from, to, colour = 0x9fd4ff) {
-    const rng = this.ctx.rng;
+    const rng = this.ctx.fxRng ?? this.ctx.rng;
     const segs = 8;
     _v1.subVectors(to, from);
     const len = _v1.length();
@@ -726,8 +768,10 @@ export class VFX {
   beam(from, to, colour = 0x9fd8ff) {
     if (!from || !to) return;
     _tmpColor.set(colour);
-    this.beams.spawn(from, to, _tmpColor, 0.3, 0.03, 0.26, 0.5);
-    this.beams.spawn(from, to, WHITE_HOT, 0.1, 0.008, 0.2, 2.6);
+    // Part-tapered: a chain link has to stay legible end to end (it is the
+    // "it jumped to that one" cue) but still wants a brighter receiving end.
+    this.beams.spawn(from, to, _tmpColor, 0.3, 0.03, 0.26, 0.5, 0.6);
+    this.beams.spawn(from, to, WHITE_HOT, 0.1, 0.008, 0.2, 2.6, 0.6);
 
     // Sparks at the receiving end are what make a chain read as "it hit that one".
     let e = this._ep();
@@ -1102,8 +1146,9 @@ export class VFX {
         e.frame = FRAME.EMBER;
         e.gravity = -1.6; e.drag = 1.0; e.turbulence = 0.5;
         // Spread the spawn across the silhouette footprint.
-        e.position.x += (this.ctx.rng.next() * 2 - 1) * d.rx;
-        e.position.z += (this.ctx.rng.next() * 2 - 1) * d.rz;
+        const rng = this.ctx.fxRng ?? this.ctx.rng;
+        e.position.x += (rng.next() * 2 - 1) * d.rx;
+        e.position.z += (rng.next() * 2 - 1) * d.rz;
         this.particles.emit(e);
       }
 
@@ -1340,15 +1385,16 @@ attribute vec3 aFrom;
 attribute vec3 aTo;
 attribute vec2 aTime;
 attribute vec4 aColor;
-attribute vec4 aShape;  // width0, width1, core, unused
+attribute vec4 aShape;  // width0, width1, core, taper
 uniform float uTime;
 varying vec2 vUv;
 varying vec4 vColor;
 varying float vCore;
+varying float vTaper;
 void main() {
   float age = uTime - aTime.x;
   if (age < 0.0 || age >= aTime.y || aTime.y <= 0.0) {
-    vUv = vec2(0.0); vColor = vec4(0.0); vCore = 0.0;
+    vUv = vec2(0.0); vColor = vec4(0.0); vCore = 0.0; vTaper = 0.0;
     gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
     return;
   }
@@ -1367,6 +1413,7 @@ void main() {
   vColor = aColor;
   vColor.a *= pow(1.0 - k, 1.7);
   vCore = aShape.z;
+  vTaper = aShape.w;
   gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.0);
 }
 `;
@@ -1376,14 +1423,25 @@ precision highp float;
 varying vec2 vUv;
 varying vec4 vColor;
 varying float vCore;
+varying float vTaper;
 void main() {
   float edge = 1.0 - abs(vUv.x * 2.0 - 1.0);
   float soft = smoothstep(0.0, 0.7, edge);
   float core = pow(edge, 10.0) * vCore;
-  float ends = smoothstep(0.0, 0.04, vUv.y) * smoothstep(1.0, 0.96, vUv.y);
-  float a = vColor.a * (soft + core) * ends;
+
+  // vUv.y runs 0 at the origin to 1 at the far end, so a tracer's head is y = 1.
+  // A tapered segment fades in over a tenth of its length, dies over the last
+  // eighth, and decays along its length so the head is bright and the tail
+  // dissolves. Untapered segments (lightning links, which are chained end to
+  // end) keep the old tight end mask so the bolt doesn't read as beaded.
+  float f0 = mix(0.04, 0.10, vTaper);
+  float f1 = mix(0.96, 0.88, vTaper);
+  float ends = smoothstep(0.0, f0, vUv.y) * smoothstep(1.0, f1, vUv.y);
+  float decay = mix(1.0, mix(0.15, 1.0, pow(vUv.y, 1.8)), vTaper);
+
+  float a = vColor.a * (soft + core) * ends * decay;
   if (a < 0.004) discard;
-  gl_FragColor = vec4(vColor.rgb * (soft + core * 1.6), a);
+  gl_FragColor = vec4(vColor.rgb * (soft + core * 1.6) * decay, a);
 }
 `;
 
@@ -1431,7 +1489,7 @@ class BeamPool {
     ctx.scene.add(this.mesh);
   }
 
-  spawn(from, to, color, width0, width1, life, core) {
+  spawn(from, to, color, width0, width1, life, core, taper = 0) {
     const i = this.head;
     this.head = (this.head + 1) % this.capacity;
     const f = this.aFrom.array, t = this.aTo.array;
@@ -1442,7 +1500,7 @@ class BeamPool {
     const c = this.aColor.array;
     c[i * 4] = color.r; c[i * 4 + 1] = color.g; c[i * 4 + 2] = color.b; c[i * 4 + 3] = 1;
     const s = this.aShape.array;
-    s[i * 4] = width0; s[i * 4 + 1] = width1; s[i * 4 + 2] = core; s[i * 4 + 3] = 0;
+    s[i * 4] = width0; s[i * 4 + 1] = width1; s[i * 4 + 2] = core; s[i * 4 + 3] = taper;
     this.dirty = true;
   }
 
@@ -1510,7 +1568,9 @@ void main() {
   ring = pow(ring, 1.6);
   float fill = (1.0 - smoothstep(0.0, 0.86, r)) * 0.1 * (1.0 - vK);
   // Hot inner edge, cooler outer edge — a flat-coloured ring reads as a decal.
-  vec3 col = mix(vColor.rgb * 1.6, vColor.rgb * 0.6, smoothstep(-th, th, d));
+  // 1.6 drove every channel of a warm ring past 1.0, so the hot edge clipped to
+  // hueless white — the same failure as the flash cores. 1.15 keeps it hot.
+  vec3 col = mix(vColor.rgb * 1.15, vColor.rgb * 0.6, smoothstep(-th, th, d));
   float a = (ring + fill) * vColor.a * pow(1.0 - vK, 1.2);
   if (a < 0.004) discard;
   gl_FragColor = vec4(col * (ring + fill), a);
@@ -1588,6 +1648,29 @@ class RingPool {
   }
 }
 
+// World height of a normal readout and of a crit. The vertex shader needs the
+// normal one to scale its minimum-pixel floor with the size class, so it is
+// interpolated into the GLSL rather than duplicated as a literal.
+const NUM_SCALE = 0.38;
+const CRIT_SCALE = 0.62;
+// Minimum on-screen height of a normal glyph, in CSS pixels. Below roughly this
+// no digit is recoverable at any zoom — the pre-fix build produced 8 px smears.
+// 18 produced a ~10 px ink height at the floor (the tile is mostly padding), so
+// the "minimum readable" glyph still measured 15 px only because of the spawn
+// pop. 36 gives ~18 px of ink inside a ~29 px dark-bordered mark.
+const NUM_MIN_PX = 36;
+// Glyph atlas geometry, shared by the drawer and the halo dilation in NumberFrag.
+const NUM_TILE = 128;
+const NUM_COLS = 4;
+const NUM_FONT_PX = 88;
+const NUM_STROKE_PX = 20;
+// Halo radius in atlas texels. Must stay inside the tile's padding
+// (tile/2 - (font*0.9 + stroke)/2 ≈ 14 texels) or a tap reads the next glyph.
+const NUM_HALO_PX = 9;
+// Beyond this the readout is chip damage on something the player is not
+// fighting; spending instances on it only adds noise.
+const NUM_MAX_DIST = 45;
+
 const NumberVert = /* glsl */ `
 attribute vec3 aOrigin;
 attribute vec3 aVel;
@@ -1596,6 +1679,8 @@ attribute vec4 aGlyph;   // char index, column offset, half-width in chars, scal
 attribute vec4 aColor;
 uniform float uTime;
 uniform float uAtlasCols;
+uniform float uMinPx;
+uniform float uPxToWorld;   // 2 * tan(fov/2) / viewportHeight
 varying vec2 vUv;
 varying vec4 vColor;
 void main() {
@@ -1612,7 +1697,16 @@ void main() {
 
   // Overshoot pop on the first ~12% of life, then settle.
   float pop = 1.0 + 0.55 * exp(-k * 26.0) - 0.25 * smoothstep(0.0, 0.12, k);
-  float scale = aGlyph.w * pop;
+
+  // The corner offset is added in view space, so without a floor the glyph is
+  // aGlyph.w metres tall at every distance and shrinks with perspective — at
+  // 40 m that is ~7 px, i.e. an unreadable smear. Clamp the projected height to
+  // a minimum number of screen pixels, scaled by the readout's own size class
+  // so a crit keeps its weight advantage at every range.
+  float dist = max(-mv.z, 0.001);
+  float minPx = uMinPx * (aGlyph.w / ${NUM_SCALE.toFixed(3)});
+  float minWorld = dist * minPx * uPxToWorld;
+  float scale = max(aGlyph.w, minWorld) * pop;
   float cw = 0.62;
   vec2 corner = vec2(
     (position.x + (aGlyph.y - aGlyph.z) * cw) * scale,
@@ -1620,25 +1714,66 @@ void main() {
   );
   mv.xy += corner;
 
-  vUv = (uv + vec2(mod(aGlyph.x, uAtlasCols), floor(aGlyph.x / uAtlasCols))) / uAtlasCols;
+  // The atlas uploads with flipY = false, so texture t = 0 is the canvas's TOP
+  // row while the quad's uv.y = 0 is its BOTTOM. Sampling with a raw uv.y makes
+  // every glyph render upside-down; zeros survive because they are symmetric,
+  // which is why the bug reads as "garbled" rather than "flipped".
+  vUv = (vec2(uv.x, 1.0 - uv.y)
+    + vec2(mod(aGlyph.x, uAtlasCols), floor(aGlyph.x / uAtlasCols))) / uAtlasCols;
   vColor = aColor;
-  vColor.a *= smoothstep(0.0, 0.06, k) * (1.0 - smoothstep(0.55, 1.0, k));
+  // Full opacity within one frame of the hit: a 0.06 fade-in meant any shutter
+  // inside the first 60 ms photographed the readout at 40% alpha.
+  vColor.a *= smoothstep(0.0, 0.02, k) * (1.0 - smoothstep(0.55, 1.0, k));
   gl_Position = projectionMatrix * mv;
 }
 `;
 
+/**
+ * The readout has to be legible on *any* background, including the middle of
+ * this build's own blast, where the previous version measured 250,240,225 ink
+ * on a 255,255,241 blowout — a 5-16/255 delta, i.e. invisible.
+ *
+ * Near-white ink cannot solve that on its own, so the glyph is carried by dark
+ * geometry instead: an opaque near-black keyline (from the atlas silhouette)
+ * plus a dilated halo around it, built here by nine taps of the atlas alpha at
+ * `uHaloPx` of tile. The halo is a screen-space-stable dark plate roughly 3 px
+ * wide at the minimum glyph size, which is what keeps the number readable after
+ * additive bloom bleeds over it — exactly how the crosshair, the one legible
+ * element in the same frame, survives the same background.
+ */
 const NumberFrag = /* glsl */ `
 precision highp float;
 uniform sampler2D uMap;
+uniform float uHaloUv;
 varying vec2 vUv;
 varying vec4 vColor;
+
 void main() {
   vec4 t = texture2D(uMap, vUv);
-  float a = t.a * vColor.a;
+
+  // Dilate the silhouette to get a halo mask. Eight taps on a ring; the atlas
+  // tile has ~12 px of padding around the strokes so this cannot cross a tile.
+  float h = t.a;
+  float d = uHaloUv, dd = d * 0.7071;
+  h = max(h, texture2D(uMap, vUv + vec2( d, 0.0)).a);
+  h = max(h, texture2D(uMap, vUv + vec2(-d, 0.0)).a);
+  h = max(h, texture2D(uMap, vUv + vec2(0.0,  d)).a);
+  h = max(h, texture2D(uMap, vUv + vec2(0.0, -d)).a);
+  h = max(h, texture2D(uMap, vUv + vec2( dd,  dd)).a);
+  h = max(h, texture2D(uMap, vUv + vec2(-dd,  dd)).a);
+  h = max(h, texture2D(uMap, vUv + vec2( dd, -dd)).a);
+  h = max(h, texture2D(uMap, vUv + vec2(-dd, -dd)).a);
+
+  // Coverage: the halo never dilutes the keyline, and the keyline is at the
+  // glyph's own opacity rather than at the *fill's*, so it does not dissolve
+  // into a bright background as the readout fades.
+  float cover = max(t.a, h * 0.82);
+  float a = cover * vColor.a;
   if (a < 0.01) discard;
-  // The atlas stores the glyph in .r and its outline in .g, so one texture
-  // gives coloured text with a dark keyline that survives any background.
-  vec3 col = mix(vec3(0.02), vColor.rgb, t.r);
+
+  // The atlas stores the fill mask in .r and the whole silhouette in .a, so one
+  // texture gives coloured text inside a keyline that survives any background.
+  vec3 col = mix(vec3(0.015, 0.015, 0.022), vColor.rgb, t.r);
   gl_FragColor = vec4(col, a);
 }
 `;
@@ -1681,7 +1816,10 @@ class DamageNumbers {
       uniforms: {
         uMap: { value: map },
         uTime: { value: 0 },
-        uAtlasCols: { value: 4 },
+        uAtlasCols: { value: NUM_COLS },
+        uHaloUv: { value: NUM_HALO_PX / (NUM_TILE * NUM_COLS) },
+        uMinPx: { value: NUM_MIN_PX },
+        uPxToWorld: { value: 0 },
       },
       vertexShader: NumberVert,
       fragmentShader: NumberFrag,
@@ -1698,9 +1836,17 @@ class DamageNumbers {
     this.mesh.matrixAutoUpdate = false;
     this.mesh.name = 'vfx.damageNumbers';
     ctx.scene.add(this.mesh);
+
+    this._fov = 0;
+    this._vh = 0;
+    this.resize();
   }
 
   spawn(pos, amount, crit, colour) {
+    // Cull far readouts outright: at 45 m even a floored glyph is competing
+    // with the horde for attention and telling the player nothing.
+    if (this.ctx.camera?.position.distanceToSquared(pos) > NUM_MAX_DIST * NUM_MAX_DIST) return;
+
     const n = Math.max(1, Math.round(amount));
     const chars = this._buf;
     let len = 0;
@@ -1714,9 +1860,9 @@ class DamageNumbers {
     }
     if (crit) chars[len++] = 10; // '!'
 
-    const rng = this.ctx.rng;
+    const rng = this.ctx.fxRng ?? this.ctx.rng;
     const half = len * 0.5 - 0.5;
-    const scale = crit ? 0.62 : 0.38;
+    const scale = crit ? CRIT_SCALE : NUM_SCALE;
     _tmpColor.set(colour ?? (crit ? 0xffc23a : 0xfff2d8));
 
     const vx = (rng.next() * 2 - 1) * 1.1;
@@ -1747,13 +1893,27 @@ class DamageNumbers {
   update(ctx, dt) {
     this.time += dt;
     this.mat.uniforms.uTime.value = this.time;
+    // FOV changes from settings without a resize event, so re-derive on the two
+    // inputs rather than only on resize. Both are cached; this is two compares.
+    if (ctx.camera && (ctx.camera.fov !== this._fov || innerHeight !== this._vh)) this.resize();
     if (!this.dirty) return;
     this.dirty = false;
     this.aOrigin.needsUpdate = this.aVel.needsUpdate = this.aTime.needsUpdate = true;
     this.aGlyph.needsUpdate = this.aColor.needsUpdate = true;
   }
 
-  resize() { /* atlas is resolution-independent; nothing to do */ }
+  /**
+   * The atlas is resolution-independent but the *scale* is not: the pixel floor
+   * in NumberVert needs metres-per-pixel-at-one-metre for the current camera.
+   */
+  resize() {
+    const cam = this.ctx.camera;
+    const fov = cam?.fov ?? 60;
+    const vh = Math.max(1, innerHeight);
+    this._fov = fov;
+    this._vh = vh;
+    this.mat.uniforms.uPxToWorld.value = (2 * Math.tan((fov * Math.PI) / 360)) / vh;
+  }
 }
 
 function inst(capacity, size) {
@@ -1763,8 +1923,8 @@ function inst(capacity, size) {
 }
 
 function makeGlyphAtlas() {
-  const tile = 128;
-  const cols = 4;
+  const tile = NUM_TILE;
+  const cols = NUM_COLS;
   const cv = document.createElement('canvas');
   cv.width = cv.height = tile * cols;
   const g = cv.getContext('2d');
@@ -1775,20 +1935,58 @@ function makeGlyphAtlas() {
     const ch = GLYPHS[i];
     const x = (i % cols) * tile + tile * 0.5;
     const y = Math.floor(i / cols) * tile + tile * 0.5;
-    g.font = 'bold 96px "Arial Black", Impact, sans-serif';
+    g.font = `bold ${NUM_FONT_PX}px "Arial Black", Impact, sans-serif`;
     // Alpha carries the silhouette (glyph + outline); red carries the fill mask
-    // so the shader can tint the body and keep the keyline black.
+    // so the shader can tint the body and keep the keyline black. The font is
+    // smaller than the tile by more than the stroke so NumberFrag's halo taps
+    // stay inside the tile — see NUM_HALO_PX.
     g.lineJoin = 'round';
-    g.lineWidth = 16;
+    g.lineWidth = NUM_STROKE_PX;
     g.strokeStyle = 'rgba(0,0,0,1)';
     g.strokeText(ch, x, y);
     g.fillStyle = 'rgba(255,0,0,1)';
     g.fillText(ch, x, y);
   }
 
+  assertGlyphOrientation(g, tile, cols);
+
   const tex = new THREE.CanvasTexture(cv);
   tex.flipY = false;
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 4;
   return tex;
+}
+
+/**
+ * Boot guard for the V-orientation contract.
+ *
+ * `flipY = false` means canvas row 0 uploads to t = 0, so NumberVert has to
+ * sample with `1.0 - uv.y`. If either half of that pair is changed alone every
+ * glyph renders upside-down and only the symmetric ones (0, 8, x) still look
+ * right — which is exactly why the bug survived to a shipped screenshot.
+ *
+ * '1' is strongly top-heavy in Arial Black (flag plus stem above the midline,
+ * bare stem below), so comparing ink mass across the tile's midline proves the
+ * canvas is drawn the way the shader assumes. Runs once at boot.
+ */
+function assertGlyphOrientation(g, tile, cols) {
+  const idx = GLYPHS.indexOf('1');
+  if (idx < 0) return;
+  let data;
+  try {
+    data = g.getImageData((idx % cols) * tile, Math.floor(idx / cols) * tile, tile, tile).data;
+  } catch { return; }   // tainted canvas in some embeddings; the guard is advisory
+  let top = 0, bottom = 0;
+  for (let y = 0; y < tile; y++) {
+    let row = 0;
+    for (let x = 0; x < tile; x++) row += data[(y * tile + x) * 4 + 3];
+    if (y < tile / 2) top += row; else bottom += row;
+  }
+  if (top < bottom) {
+    console.error(
+      '[VFX] Damage-number atlas is upside-down: glyph "1" is bottom-heavy on the ' +
+      'canvas. NumberVert samples with 1.0 - uv.y against tex.flipY = false; ' +
+      'changing one without the other flips every glyph.'
+    );
+  }
 }

@@ -552,10 +552,32 @@ function poly(g, sides, r, rot = 0, inner = 0) {
   g.closePath();
 }
 
-function drawGlyph(g, glyph, r, hue) {
+/**
+ * Draws one item glyph centred on the current transform origin, inside a
+ * roughly `r`-radius box. Exported because the HUD's icon factory
+ * (`src/ui/Icons.js`) draws it straight onto its own plate: it used to blit
+ * this whole canvas overscanned to push the rounded plate off the clip, which
+ * also scaled the glyph and cropped the wide ones flush into the tile border.
+ */
+export function drawGlyph(g, glyph, r, hue) {
   g.fillStyle = `hsl(${hue} 70% 62%)`;
   switch (glyph) {
-    case 'circle': g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.fill(); g.stroke(); break;
+    // Roll of Pennies — a stack of coins. A plain disc was a hexagon with the
+    // corners knocked off next to `hex`, and the tier recolour means the two
+    // no longer differ in anything but shape.
+    case 'circle':
+      for (let i = 1; i >= -1; i--) {
+        g.beginPath(); g.ellipse(0, i * r * 0.52, r * 0.92, r * 0.34, 0, 0, Math.PI * 2);
+        g.fill(); g.stroke();
+      }
+      // Dark rims, or the white strokes weld the three coins into one blob at
+      // 33px and it reads as `hex`.
+      g.save(); g.strokeStyle = '#0d0f14'; g.lineWidth = Math.max(1, r * 0.14);
+      for (let i = 1; i >= 0; i--) {
+        g.beginPath(); g.ellipse(0, i * r * 0.52 - r * 0.26, r * 0.92, r * 0.34, 0, 0.15, Math.PI - 0.15);
+        g.stroke();
+      }
+      g.restore(); break;
     case 'ring':
       g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.stroke();
       g.beginPath(); g.arc(0, 0, r * 0.45, 0, Math.PI * 2); g.fill(); break;
@@ -563,12 +585,40 @@ function drawGlyph(g, glyph, r, hue) {
     case 'diamond': poly(g, 4, r, -Math.PI / 2); g.fill(); g.stroke(); break;
     case 'hex': poly(g, 6, r, 0); g.fill(); g.stroke(); break;
     case 'star': poly(g, 5, r, -Math.PI / 2, 0.45); g.fill(); g.stroke(); break;
-    case 'gem': poly(g, 6, r, Math.PI / 6, 0.75); g.fill(); g.stroke(); break;
+    // A table-cut brooch, not a soft hexagon — `shield` is the other broad
+    // six-ish blob in the common tier.
+    case 'gem':
+      g.beginPath();
+      g.moveTo(-r * 0.5, -r * 0.62); g.lineTo(r * 0.5, -r * 0.62);
+      g.lineTo(r, -r * 0.1); g.lineTo(0, r); g.lineTo(-r, -r * 0.1);
+      g.closePath(); g.fill(); g.stroke();
+      g.beginPath();
+      g.moveTo(-r, -r * 0.1); g.lineTo(r, -r * 0.1);
+      g.moveTo(-r * 0.5, -r * 0.62); g.lineTo(-r * 0.16, -r * 0.1);
+      g.moveTo(r * 0.5, -r * 0.62); g.lineTo(r * 0.16, -r * 0.1);
+      g.stroke(); break;
     case 'monolith':
       g.fillRect(-r * 0.45, -r, r * 0.9, r * 2); g.strokeRect(-r * 0.45, -r, r * 0.9, r * 2); break;
-    case 'plus': case 'cross':
+    case 'plus':
       g.fillRect(-r * 0.28, -r, r * 0.56, r * 2);
       g.fillRect(-r, -r * 0.28, r * 2, r * 0.56); break;
+    // A crowbar, not a second medkit. `plus` and `cross` used to share this
+    // case; once the tier recolour made every common item the same grey, two
+    // items drawing one shape became two identical tiles.
+    case 'cross':
+      g.save(); g.rotate(-0.62);
+      g.fillRect(-r * 0.17, -r * 0.5, r * 0.34, r * 1.5);
+      g.strokeRect(-r * 0.17, -r * 0.5, r * 0.34, r * 1.5);
+      g.beginPath();
+      g.moveTo(-r * 0.17, -r * 0.44);
+      g.lineTo(-r * 0.78, -r * 0.86);
+      g.lineTo(-r * 0.34, -r * 1.04);
+      g.lineTo(0, -r * 0.72);
+      g.lineTo(r * 0.34, -r * 1.04);
+      g.lineTo(r * 0.78, -r * 0.86);
+      g.lineTo(r * 0.17, -r * 0.44);
+      g.closePath(); g.fill(); g.stroke();
+      g.restore(); break;
     case 'bars':
       for (let i = -1; i <= 1; i++) g.fillRect(i * r * 0.55 - r * 0.16, -r, r * 0.32, r * 2);
       break;
@@ -582,12 +632,18 @@ function drawGlyph(g, glyph, r, hue) {
     case 'drop': case 'polyp':
       g.beginPath(); g.moveTo(0, -r); g.quadraticCurveTo(r, 0, 0, r); g.quadraticCurveTo(-r, 0, 0, -r);
       g.fill(); g.stroke(); break;
+    // Three licks off a common base. The old single lobe was a teardrop with a
+    // kinked bottom, i.e. `drop` — and drop and flame are both common tier, so
+    // they have nothing but shape to tell them apart.
     case 'flame': case 'flamering':
       g.beginPath(); g.moveTo(0, -r);
-      g.quadraticCurveTo(r * 0.9, -r * 0.1, r * 0.35, r * 0.85);
-      g.quadraticCurveTo(0, r * 0.4, -r * 0.35, r * 0.85);
-      g.quadraticCurveTo(-r * 0.9, -r * 0.1, 0, -r);
-      g.fill(); g.stroke();
+      g.quadraticCurveTo(r * 0.92, -r * 0.15, r * 0.62, r * 0.9);
+      g.lineTo(r * 0.3, r * 0.26);
+      g.lineTo(r * 0.04, r * 0.9);
+      g.lineTo(-r * 0.3, r * 0.26);
+      g.lineTo(-r * 0.62, r * 0.9);
+      g.quadraticCurveTo(-r * 0.92, -r * 0.15, 0, -r);
+      g.closePath(); g.fill(); g.stroke();
       if (glyph === 'flamering') { g.beginPath(); g.arc(0, 0, r * 1.15, 0, Math.PI * 2); g.stroke(); }
       break;
     case 'rocket':
@@ -595,11 +651,22 @@ function drawGlyph(g, glyph, r, hue) {
       g.lineTo(-r * 0.4, r * 0.7); g.lineTo(-r * 0.4, -r * 0.1); g.closePath(); g.fill(); g.stroke();
       g.beginPath(); g.moveTo(-r * 0.4, r * 0.2); g.lineTo(-r * 0.9, r); g.lineTo(-r * 0.4, r);
       g.moveTo(r * 0.4, r * 0.2); g.lineTo(r * 0.9, r); g.lineTo(r * 0.4, r); g.stroke(); break;
-    case 'blade': case 'scythe': case 'daggers':
+    case 'blade': case 'daggers':
       g.beginPath(); g.moveTo(-r * 0.1, r); g.lineTo(-r * 0.1, -r * 0.3);
       g.lineTo(r * 0.6, -r); g.lineTo(r * 0.25, r * 0.2); g.closePath(); g.fill(); g.stroke();
       if (glyph === 'daggers') { g.save(); g.rotate(Math.PI); g.beginPath(); g.moveTo(-r * 0.1, r); g.lineTo(-r * 0.1, -r * 0.3); g.lineTo(r * 0.6, -r); g.lineTo(r * 0.25, r * 0.2); g.closePath(); g.fill(); g.stroke(); g.restore(); }
       break;
+    // Haft plus a hooked blade — the silhouette a straight `blade` cannot make.
+    case 'scythe':
+      g.beginPath();
+      g.moveTo(r * 0.34, r); g.lineTo(r * 0.62, r * 0.86);
+      g.lineTo(r * 0.05, -r * 0.52); g.lineTo(-r * 0.22, -r * 0.4);
+      g.closePath(); g.fill(); g.stroke();
+      g.beginPath();
+      g.moveTo(r * 0.1, -r * 0.6);
+      g.quadraticCurveTo(-r * 1.0, -r * 0.95, -r * 0.86, r * 0.3);
+      g.quadraticCurveTo(-r * 0.62, -r * 0.36, r * 0.02, -r * 0.2);
+      g.closePath(); g.fill(); g.stroke(); break;
     case 'burst': case 'nova':
       for (let i = 0; i < 8; i++) {
         const a = (i / 8) * Math.PI * 2;
@@ -629,10 +696,30 @@ function drawGlyph(g, glyph, r, hue) {
         g.quadraticCurveTo(-r * 0.8, -r * 0.5, 0, 0); g.fill(); g.stroke(); g.restore();
       }
       break;
-    case 'wing': case 'feather': case 'plume':
+    // Three items used to share one upright quill. Uncommon is a single hue,
+    // so the shapes have to carry Afterburner / Wax Quail / Hopoo Feather on
+    // their own: a swept wing, one quill, a three-quill plume.
+    case 'wing':
+      g.beginPath();
+      g.moveTo(-r, -r * 0.42); g.quadraticCurveTo(r * 0.55, -r * 0.9, r, -r * 0.05);
+      g.lineTo(-r * 0.86, r * 0.16); g.closePath(); g.fill(); g.stroke();
+      for (let i = 0; i < 3; i++) {
+        const x = -r * 0.46 + i * r * 0.46;
+        g.beginPath(); g.moveTo(x, r * 0.06); g.lineTo(x - r * 0.2, r * 0.9);
+        g.lineTo(x + r * 0.2, r * 0.72); g.closePath(); g.fill(); g.stroke();
+      }
+      break;
+    case 'feather':
       g.beginPath(); g.moveTo(0, r); g.quadraticCurveTo(r * 0.9, 0, 0, -r);
       g.quadraticCurveTo(-r * 0.3, 0, 0, r); g.fill(); g.stroke();
       g.beginPath(); g.moveTo(0, r); g.lineTo(0, -r); g.stroke(); break;
+    case 'plume':
+      for (let i = -1; i <= 1; i++) {
+        g.save(); g.translate(0, r * 0.78); g.rotate(i * 0.62);
+        g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(r * 0.4, -r * 0.85, 0, -r * 1.5);
+        g.quadraticCurveTo(-r * 0.4, -r * 0.85, 0, 0); g.fill(); g.stroke(); g.restore();
+      }
+      break;
     case 'shield': case 'pauldron':
       g.beginPath(); g.moveTo(0, -r); g.lineTo(r * 0.8, -r * 0.5); g.lineTo(r * 0.6, r * 0.6);
       g.lineTo(0, r); g.lineTo(-r * 0.6, r * 0.6); g.lineTo(-r * 0.8, -r * 0.5);

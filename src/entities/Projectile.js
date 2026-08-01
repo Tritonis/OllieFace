@@ -108,7 +108,10 @@ export class ProjectilePool {
     // full, so a big volley degrades gracefully instead of failing.
     p.trail = this.ctx.vfx?.trails?.spawn({
       position: p.position, color, coreColor: 0xffffff,
-      width: p.radius * 1.1, life: o.trailLife ?? 0.22, minDist: 0.12,
+      // radius * 1.1 put a 0.44 m additive ribbon on a 0.4 m projectile, which
+      // at 8-15 m is 25+ px before bloom doubles it. Half that reads as a trail
+      // rather than as a lens flare crossing the frame.
+      width: p.radius * 0.55, life: o.trailLife ?? 0.22, minDist: 0.12,
     }) || null;
     return p;
   }

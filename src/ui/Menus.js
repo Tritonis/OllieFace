@@ -42,7 +42,10 @@ export class Menus {
     this.root = document.getElementById('overlay');
     this.screen = null;
     this.returnTo = 'title';
-    this.orbitAngle = 0;
+    // Angle 0 puts the camera at `centre + (r, 16, 0)` looking straight down
+    // the key light — the flattest bearing on the compass, and the first frame
+    // the player ever sees. Start cross-lit instead.
+    this.orbitAngle = 2.2;
     this.bannerTimer = 0;
 
     this.settings = load(ctx.pipeline?.quality);
@@ -70,16 +73,21 @@ export class Menus {
 
       <section class="screen screen--title" data-screen="title">
         <div class="title-mark">
-          <div class="title-kicker">A Risk of Rain 2 alike</div>
+          <div class="title-kicker">The smell of rain on dead ground</div>
           <h1 class="title-word">PETRICHOR</h1>
           <div class="title-rule"></div>
           <div class="title-seed">SEED <span data-seed>—</span></div>
         </div>
         <nav class="menu-list">
-          <button class="mbtn mbtn--go" data-act="play"><span>Play</span></button>
-          <button class="mbtn" data-act="coop"><span>Co-op</span></button>
-          <button class="mbtn" data-act="settings"><span>Settings</span></button>
-          <button class="mbtn" data-act="quit"><span>Quit</span></button>
+          <!-- Four entries at identical weight is not a menu, it is a list: the
+               first frame of the game has to say where to click. The default
+               action is promoted (rule, wash, marker) and the destructive one
+               demoted, and the subtitles give each plate's empty right-hand
+               three quarters something to do. -->
+          <button class="mbtn mbtn--go" data-act="play"><span>Play</span><em class="mbtn-sub">begin a run</em></button>
+          <button class="mbtn" data-act="coop"><span>Co-op</span><em class="mbtn-sub">host or join</em></button>
+          <button class="mbtn" data-act="settings"><span>Settings</span><em class="mbtn-sub">video &amp; input</em></button>
+          <button class="mbtn mbtn--quiet" data-act="quit"><span>Quit</span><em class="mbtn-sub">exit</em></button>
         </nav>
       </section>
 
@@ -479,6 +487,7 @@ export class Menus {
     const rows = [
       ['Time survived', stats.time],
       ['Stage reached', stats.stage],
+      ['Level reached', stats.level ?? 1],
       ['Difficulty', stats.difficulty],
       ['Enemies killed', stats.kills],
       ['Damage dealt', stats.damage],

@@ -46,28 +46,49 @@ const COL = {
   coatDark: 0x121a24,  // cloth / underlayer, near-black
   plate: 0xcbcec9,     // light armour — the light half. Carries the read.
   plateMid: 0x76808a,  // secondary plate, sits between the two
-  cloak: 0xb6bcbc,     // pale cloth — the big back-facing light mass
+  // The cape is the largest surface the gameplay camera sees, so it must be the
+  // MID value, not the light one — the helmet owns the light end. Pale cloth
+  // next to a pale helm gave the character no head in the outline.
+  cloak: 0x5a646c,
   accent: 0xff7a3d,
   skinDark: 0x39404b,
   metal: 0x8d97a3,
-  gunmetal: 0x232a33,
+  // Not near-black: at 0.8 metalness with no env map this rendered at 1/255,
+  // i.e. darker than the terrain behind it, and the slung weapon punched a hole
+  // through the middle of the body instead of drawing a line across it.
+  gunmetal: 0x3d4753,
   visor: 0x35e0ff,
   cell: 0x4de3ff,
 };
 
 /**
- * MeshStandardMaterial + a fresnel rim term folded into the emissive radiance.
- * The character cannot rely on the stage key light (it changes per stage), so
- * every edge lifts itself against whatever is behind it. Implemented as a
- * subclass rather than a bare `onBeforeCompile` assignment so `clone()` — which
- * VFX.hitFlash does to every mesh on the rig — keeps the patch and the params.
+ * MeshStandardMaterial + two cheap form terms folded in before lighting:
+ *
+ *  - a fresnel RIM in the emissive radiance. The character cannot rely on the
+ *    stage key light (it changes per stage), so every edge lifts itself against
+ *    whatever is behind it.
+ *  - a HEMISPHERIC bias on the diffuse albedo. The stage key is a single
+ *    low-contrast directional, so two facets of the same body 40 deg apart were
+ *    measured at under 6/255 apart — `flatShading` had geometry to differentiate
+ *    and no light to do it with. Tilting albedo by the facet's world-space
+ *    up-ness gives every rig sky-over-bounce separation that is independent of
+ *    the key direction, which is what makes a faceted body read as a solid.
+ *
+ * Implemented as a subclass rather than a bare `onBeforeCompile` assignment so
+ * `clone()` — which VFX.hitFlash does to every mesh on the rig — keeps the patch
+ * and the params.
+ *
+ * Exported because the monster rigs need exactly the same tricks: without them
+ * an enemy standing on shadowed rock is one flat shape on another.
  */
-class RimStandardMaterial extends THREE.MeshStandardMaterial {
-  constructor({ rimColor = 0xa9d2ff, rimStrength = 0.55, rimPower = 2.6, ...rest } = {}) {
+export class RimStandardMaterial extends THREE.MeshStandardMaterial {
+  constructor({ rimColor = 0xa9d2ff, rimStrength = 0.55, rimPower = 2.6,
+    hemiStrength = 0.22, ...rest } = {}) {
     super(rest);
     this.rimColor = new THREE.Color(rimColor);
     this.rimStrength = rimStrength;
     this.rimPower = rimPower;
+    this.hemiStrength = hemiStrength;
   }
 
   copy(src) {
@@ -75,6 +96,7 @@ class RimStandardMaterial extends THREE.MeshStandardMaterial {
     this.rimColor = src.rimColor.clone();
     this.rimStrength = src.rimStrength;
     this.rimPower = src.rimPower;
+    this.hemiStrength = src.hemiStrength;
     return this;
   }
 
@@ -82,30 +104,39 @@ class RimStandardMaterial extends THREE.MeshStandardMaterial {
     shader.uniforms.uRimColor = { value: this.rimColor };
     shader.uniforms.uRimStrength = { value: this.rimStrength };
     shader.uniforms.uRimPower = { value: this.rimPower };
+    shader.uniforms.uHemi = { value: this.hemiStrength };
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', /* glsl */`
         #include <common>
         uniform vec3 uRimColor;
         uniform float uRimStrength;
         uniform float uRimPower;
+        uniform float uHemi;
       `)
-      // After emissivemap_fragment `normal` and `totalEmissiveRadiance` both
-      // exist, and lighting downstream is left completely untouched.
+      // After emissivemap_fragment `normal`, `diffuseColor` and
+      // `totalEmissiveRadiance` all exist and none of them has been consumed
+      // yet — `lights_physical_fragment` is the next chunk. Lighting downstream
+      // is left completely untouched.
       .replace('#include <emissivemap_fragment>', /* glsl */`
         #include <emissivemap_fragment>
         {
-          float rimF = 1.0 - clamp(dot(normalize(normal), normalize(vViewPosition)), 0.0, 1.0);
+          vec3 nrm = normalize(normal);
+          float rimF = 1.0 - clamp(dot(nrm, normalize(vViewPosition)), 0.0, 1.0);
           totalEmissiveRadiance += uRimColor * (pow(rimF, uRimPower) * uRimStrength);
+          // World up expressed in view space, so the term is view-independent.
+          vec3 upV = normalize((viewMatrix * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
+          float hemi = dot(nrm, upV) * 0.5 + 0.5;
+          diffuseColor.rgb *= mix(1.0 - uHemi, 1.0 + uHemi, hemi);
         }
       `);
   }
 }
 
 function mat(color, { rough = 0.72, metal = 0.05, emissive = 0, emissiveIntensity = 1,
-  rimColor, rimStrength, rimPower, side } = {}) {
+  rimColor, rimStrength, rimPower, hemiStrength, side } = {}) {
   return new RimStandardMaterial({
     color, roughness: rough, metalness: metal, flatShading: true,
-    emissive, emissiveIntensity, rimColor, rimStrength, rimPower,
+    emissive, emissiveIntensity, rimColor, rimStrength, rimPower, hemiStrength,
     ...(side ? { side } : null),
   });
 }
@@ -126,6 +157,49 @@ function boxMesh(w, h, d, material) {
   return m;
 }
 
+// Contact-shadow blob. This is a MULTIPLY decal, not a composite: the previous
+// version tried to solve "a subtractive blob is invisible on luma-6 ground" by
+// *adding* a grey ring, and on the lit grade that ships now that ring measured
+// 77-165 against a floor of 24 — the brightest object on the ground plane and
+// the exact inverse of a shadow.
+//
+// The rule this shader holds instead: a contact decal may only ever attenuate
+// what is under it. `gl_FragColor.rgb` is premultiplied by `a`, so with
+// (DstColor, OneMinusSrcAlpha) blending the result is
+//   dst * (SHADE * a) + dst * (1 - a)  ==  dst * (1 - a * (1 - SHADE))
+// which is <= dst for every channel at every alpha. Visibility on near-black
+// ground comes from the *hue* rather than the value: red is attenuated hardest
+// and blue least, so deepening contact goes cool instead of grey, and the
+// ground's own texture survives instead of being flattened by a constant.
+//
+// Deliberately duplicated from the monsters' instanced version in
+// EnemyMeshes.js rather than shared — that module imports this one, and a
+// cycle between the two entity modules is not worth six lines of GLSL.
+const BLOB_FRAG = /* glsl */`
+uniform float uFade;
+varying vec2 vBlobUv;
+varying float vGraze;
+void main() {
+  float r = length(vBlobUv - 0.5) * 2.0;
+  float core = smoothstep(1.00, 0.14, r);
+  float ring = smoothstep(0.48, 0.80, r) * smoothstep(1.02, 0.82, r);
+  // A ground disc seen edge-on projects to a bar a few pixels tall — all
+  // annulus, no disc — which reads as a rendering glitch rather than contact.
+  float a = (core * 0.62 + ring * 0.16) * uFade * smoothstep(0.05, 0.22, vGraze);
+  if (a <= 0.004) discard;
+  gl_FragColor = vec4(vec3(0.06, 0.09, 0.16) * a, a);
+}`;
+
+const BLOB_VERT = /* glsl */`
+varying vec2 vBlobUv;
+varying float vGraze;
+void main() {
+  vBlobUv = uv;
+  vec4 wp = modelMatrix * vec4(position, 1.0);
+  vGraze = abs(normalize(cameraPosition - wp.xyz).y);
+  gl_Position = projectionMatrix * viewMatrix * wp;
+}`;
+
 function pivot(parent, x, y, z) {
   const g = new THREE.Group();
   g.position.set(x, y, z);
@@ -140,12 +214,18 @@ function pivot(parent, x, y, z) {
  */
 export function makeCharacterMats() {
   return {
-    coat: mat(COL.coat, { rough: 0.78, rimStrength: 0.85 }),
-    coatDark: mat(COL.coatDark, { rough: 0.85, rimStrength: 0.95 }),
+    // The dark half of the value break still has to be *readable* dark, not a
+    // hole in the frame: a sliver of self-emissive keeps the navy shell off the
+    // crushed-black floor when the survivor walks into terrain shadow.
+    coat: mat(COL.coat, { rough: 0.78, rimStrength: 0.85, emissive: COL.coat, emissiveIntensity: 0.16 }),
+    coatDark: mat(COL.coatDark, { rough: 0.85, rimStrength: 0.95, emissive: 0x1d2a38, emissiveIntensity: 0.2 }),
     // Cloth is the only double-sided material — the open-ended coat and cape
     // shells need it and nothing else does.
     cloth: mat(COL.coatDark, { rough: 0.9, rimStrength: 1.0, side: THREE.DoubleSide }),
-    cloak: mat(COL.cloak, { rough: 0.88, rimStrength: 0.22, side: THREE.DoubleSide }),
+    cloak: mat(COL.cloak, {
+      rough: 0.88, rimStrength: 0.55, emissive: 0x2a3540, emissiveIntensity: 0.22,
+      side: THREE.DoubleSide,
+    }),
     // Light armour. A touch of self-emissive keeps the plates off pure black
     // when the character walks into a shadow the stage lighting never fills.
     // Low rim on the light plate: it is already the bright value, and a
@@ -160,7 +240,9 @@ export function makeCharacterMats() {
     cell: mat(0x0a1a20, { rough: 0.3, emissive: COL.cell, emissiveIntensity: 1.6, rimStrength: 0.3 }),
     body: mat(COL.skinDark, { rough: 0.6, metal: 0.2, rimStrength: 0.8 }),
     metal: mat(COL.metal, { rough: 0.4, metal: 0.7, rimStrength: 0.45 }),
-    gun: mat(COL.gunmetal, { rough: 0.35, metal: 0.8, rimStrength: 0.45 }),
+    gun: mat(COL.gunmetal, {
+      rough: 0.42, metal: 0.45, emissive: 0x141b24, emissiveIntensity: 0.5, rimStrength: 0.7,
+    }),
     visor: mat(0x061418, { rough: 0.2, metal: 0.1, emissive: COL.visor, emissiveIntensity: 2.4 }),
   };
 }
@@ -203,7 +285,11 @@ export class CharacterMesh {
     // one mass: a bright yoke and chest plate against a near-black coat is
     // what makes the form legible at 5.4 units with no help from the stage
     // key light.
-    const yoke = boxMesh(0.32, 0.09, 0.26, M.plate);
+    // Runs the full shoulder width — clavicle to clavicle — so the light plate
+    // is one continuous bar from the torso out into both deltoids. A yoke that
+    // stops short of the shoulder pivots leaves the arms as separate objects
+    // sharing a row.
+    const yoke = boxMesh(0.44, 0.09, 0.26, M.plate);
     yoke.position.set(0, 0.20, 0);
     chest.add(yoke);
 
@@ -219,41 +305,71 @@ export class CharacterMesh {
     // onto the torso itself would just be occluded by the cloth. Everything
     // that has to read from behind therefore hangs off the cloak pivot, on
     // the outside of the shell.
-    const capeGeo = new THREE.CylinderGeometry(0.22, 0.33, 0.52, 5, 1, true, Math.PI * 0.66, Math.PI * 0.84);
+    // The cape is built as two shells, not one: a bright plate yoke across the
+    // shoulders over a mid-value lower cape. That light-over-dark break is the
+    // whole value structure of the character from behind, where the camera
+    // actually is — the plated chest is occluded 100% of the time. It is also
+    // short (0.38 rather than 0.52) and narrow at the hem (0.24 rather than
+    // 0.33) so it stops at the ribs instead of swallowing the arms and merging
+    // with the coat into one continuous cone.
+    const capePivot = pivot(chest, -0.02, 0.19, -0.02);
+    this.cape = capePivot;
+
+    const yokeGeo = new THREE.CylinderGeometry(0.205, 0.245, 0.14, 5, 1, true, Math.PI * 0.66, Math.PI * 0.84);
+    yokeGeo.translate(0, -0.07, 0);
+    const capeYoke = new THREE.Mesh(yokeGeo, M.plate);
+    capeYoke.castShadow = true;
+    capePivot.add(capeYoke);
+
+    const capeGeo = new THREE.CylinderGeometry(0.245, 0.24, 0.24, 5, 1, true, Math.PI * 0.66, Math.PI * 0.84);
     capeGeo.translate(0, -0.26, 0);
     const cape = new THREE.Mesh(capeGeo, M.cloak);
     cape.castShadow = true;
-    const capePivot = pivot(chest, -0.02, 0.19, -0.02);
     capePivot.add(cape);
-    this.cape = capePivot;
 
-    const spineTrim = boxMesh(0.05, 0.34, 0.03, M.accent);
-    spineTrim.position.set(0.03, -0.14, -0.275);
+    // Accent runs the full centre seam, tying the two shells together and
+    // giving the back one saturated vertical line.
+    const spineTrim = boxMesh(0.055, 0.36, 0.03, M.accent);
+    spineTrim.position.set(0.02, -0.19, -0.255);
     capePivot.add(spineTrim);
 
-    const canister = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.055, 0.28, 6), M.gun);
-    canister.position.set(0.16, -0.12, -0.255);
-    canister.castShadow = true;
-    capePivot.add(canister);
-    const cell = boxMesh(0.05, 0.13, 0.03, M.cell);
-    cell.position.set(0.16, -0.10, -0.320);
-    capePivot.add(cell);
+    // The back canister and its cyan cell used to live at x +0.155, i.e. inside
+    // the same 30 px of shoulder as the sling stock, the pauldron and the spine
+    // trim: that patch measured SD 50.7 against a mean of 66.4 — six competing
+    // shapes in a strip narrower than the helmet. They are gone. The sling and
+    // the accent seam are the two things that shoulder is allowed to say.
 
     // Slung carbine across the cloak. Reads from behind no matter where the
     // held weapon is pointing, it is the strongest single line in the
     // silhouette, and dark hardware on pale cloth is the biggest value
     // contrast on the model.
+    // Slung carbine. Canted hard enough that the muzzle and the stock both
+    // break the cape outline — a weapon that stays inside the cloth footprint
+    // contributes nothing to the silhouette no matter what value it is. The
+    // light receiver plate is what actually draws the line across the back.
     const sling = new THREE.Group();
-    sling.position.set(-0.02, -0.14, -0.275);
-    sling.rotation.set(0.16, 0, -0.55);
+    sling.position.set(-0.03, -0.17, -0.255);
+    sling.rotation.set(0.14, 0, -0.92);
     capePivot.add(sling);
-    const slingBody = boxMesh(0.10, 0.62, 0.14, M.gun);
+    const slingBody = boxMesh(0.09, 0.46, 0.13, M.gun);
     sling.add(slingBody);
-    const slingPlate = boxMesh(0.11, 0.20, 0.15, M.plateMid);
-    slingPlate.position.y = 0.16;
-    sling.add(slingPlate);
-    const slingCell = boxMesh(0.03, 0.26, 0.03, M.cell);
-    slingCell.position.set(0, -0.08, 0.08);
+    // Stock: a stepped wedge, so the top end is not a bare rectangle.
+    const slingStock = boxMesh(0.115, 0.17, 0.15, M.plateMid);
+    slingStock.position.y = 0.28;
+    sling.add(slingStock);
+    const slingComb = boxMesh(0.07, 0.09, 0.10, M.gun);
+    slingComb.position.set(0, 0.40, -0.02);
+    sling.add(slingComb);
+    // Barrel + muzzle step, tapering out past the hem.
+    const slingBarrel = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.028, 0.30, 6), M.metal);
+    slingBarrel.position.y = -0.36;
+    slingBarrel.castShadow = true;
+    sling.add(slingBarrel);
+    const slingMuzzle = boxMesh(0.055, 0.07, 0.055, M.plateMid);
+    slingMuzzle.position.y = -0.53;
+    sling.add(slingMuzzle);
+    const slingCell = boxMesh(0.03, 0.24, 0.03, M.cell);
+    slingCell.position.set(0, -0.06, 0.075);
     sling.add(slingCell);
 
     // Coat: open-ended taper hung from the pelvis. The accent hem draws a
@@ -274,10 +390,12 @@ export class CharacterMesh {
     // the brightest thing on the model.
     const neck = pivot(chest, 0, 0.28, 0);
     this.neck = neck;
-    const helmet = new THREE.Mesh(new THREE.IcosahedronGeometry(0.16, 0), M.plate);
+    // Bigger and lifted clear of the shoulder line: at 0.32 wide sitting level
+    // with a 0.66-wide cape there was no head/neck notch in the outline at all.
+    const helmet = new THREE.Mesh(new THREE.IcosahedronGeometry(0.19, 0), M.plate);
     helmet.scale.set(1, 1.05, 1.08);
     helmet.rotation.y = 0.4;
-    helmet.position.y = 0.10;
+    helmet.position.y = 0.16;
     helmet.castShadow = true;
     neck.add(helmet);
     const jaw = boxMesh(0.17, 0.09, 0.18, M.coatDark);
@@ -286,8 +404,14 @@ export class CharacterMesh {
     // Dark nape guard: without it the pale helm reads as one round blob from
     // the gameplay camera, which sits directly behind the head.
     const nape = boxMesh(0.19, 0.115, 0.07, M.coat);
-    nape.position.set(0, 0.045, -0.11);
+    nape.position.set(0, 0.06, -0.12);
     neck.add(nape);
+    // The visor is on the face and the camera is behind the head, so the head
+    // would otherwise never own the brightest pixel on the model. This strip is
+    // the visor's read from the only angle the player has.
+    const napeLamp = boxMesh(0.11, 0.028, 0.02, M.cell);
+    napeLamp.position.set(0, 0.085, -0.155);
+    neck.add(napeLamp);
     const visor = boxMesh(0.20, 0.075, 0.09, M.visor);
     visor.position.set(0, 0.11, 0.11);
     neck.add(visor);
@@ -295,46 +419,56 @@ export class CharacterMesh {
     // Crest runs front-to-back over the crown so the accent is visible from
     // behind too, which is where the camera actually is.
     const crest = boxMesh(0.035, 0.09, 0.30, M.accent);
-    crest.position.set(0, 0.215, -0.04);
+    crest.position.set(0, 0.30, -0.04);
     crest.rotation.x = -0.12;
     neck.add(crest);
     // Off-centre antenna: a single asymmetric spike out of the head profile.
     const antenna = boxMesh(0.022, 0.30, 0.022, M.metal);
-    antenna.position.set(-0.10, 0.26, -0.05);
+    antenna.position.set(-0.115, 0.33, -0.05);
     antenna.rotation.set(-0.28, 0, 0.34);
     neck.add(antenna);
     const beacon = boxMesh(0.04, 0.04, 0.04, M.cell);
-    beacon.position.set(-0.145, 0.40, -0.09);
+    beacon.position.set(-0.16, 0.47, -0.09);
     neck.add(beacon);
 
     // Arms
     this.arms = {};
     for (const side of [-1, 1]) {
       const key = side < 0 ? 'L' : 'R';
-      const shoulder = pivot(chest, 0.20 * side, 0.20, 0);
-      const pad = new THREE.Mesh(new THREE.IcosahedronGeometry(0.11, 0), M.coat);
-      pad.scale.set(1.1, 0.9, 1.0);
+      // The arm has to do two contradictory things: clear the cape hem (0.245)
+      // so it is IN the outline, and overlap the torso (edge ~0.21) so it is
+      // ATTACHED to it. At a pivot of 0.26 with a 0.065 upper arm it did
+      // neither — there were 4 px of pure terrain between torso and arm, and in
+      // a black-key test the arm was a floating lozenge. Pulling the pivot in
+      // to 0.215 and fattening the deltoid to 0.105 makes the arm span
+      // 0.11 -> 0.32: a ~0.03 unit (~4 px) overlap onto the torso at the
+      // shoulder, and still 0.075 clear of the cape at the outside. The arm now
+      // separates from the body by VALUE (dark limb under a light yoke), which
+      // is what it should have been doing all along.
+      const shoulder = pivot(chest, 0.215 * side, 0.20, 0);
+      const pad = new THREE.Mesh(new THREE.IcosahedronGeometry(0.115, 0), M.coat);
+      pad.scale.set(1.15, 0.9, 1.0);
       pad.castShadow = true;
       shoulder.add(pad);
       if (side < 0) {
-        // Heavy layered pauldron, left only.
-        const p1 = boxMesh(0.21, 0.10, 0.24, M.plate);
-        p1.position.set(-0.05, 0.05, 0);
-        p1.rotation.z = 0.30;
+        // One pauldron plane, not two. The second plate was a 0.19 slab sitting
+        // 0.06 below the first at a different angle, and at gameplay distance
+        // the pair read as noise rather than as layered armour.
+        const p1 = boxMesh(0.23, 0.11, 0.25, M.plate);
+        p1.position.set(-0.04, 0.045, 0);
+        p1.rotation.z = 0.32;
         shoulder.add(p1);
-        const p2 = boxMesh(0.19, 0.09, 0.21, M.plateMid);
-        p2.position.set(-0.10, -0.06, 0);
-        p2.rotation.z = 0.48;
-        shoulder.add(p2);
       } else {
-        const cap = boxMesh(0.14, 0.07, 0.16, M.plateMid);
-        cap.position.set(0.02, 0.06, 0);
+        const cap = boxMesh(0.16, 0.075, 0.17, M.plateMid);
+        cap.position.set(0.015, 0.055, 0);
         shoulder.add(cap);
       }
-      const upper = limb(0.27, 0.065, 0.055, M.body);
+      // Fat at the deltoid, thin at the elbow: the taper is what reads as an
+      // arm at 240 px tall, and the fat end is what welds it to the torso.
+      const upper = limb(0.28, 0.105, 0.058, M.body);
       shoulder.add(upper);
-      const elbow = pivot(shoulder, 0, -0.27, 0);
-      const fore = limb(0.25, 0.055, 0.048, M.coatDark);
+      const elbow = pivot(shoulder, 0, -0.28, 0);
+      const fore = limb(0.25, 0.058, 0.048, M.coatDark);
       elbow.add(fore);
       const bracer = boxMesh(0.085, 0.11, 0.09, side < 0 ? M.plateMid : M.plate);
       bracer.position.y = -0.15;
@@ -400,6 +534,38 @@ export class CharacterMesh {
     }
 
     root.traverse((o) => { if (o.isMesh) o.receiveShadow = true; });
+
+    // Contact shadow. The stage's shadow map is one cascade over a big stage,
+    // so the survivor's own cast shadow is soft to the point of absence right
+    // under the feet — which is exactly where the eye looks for the ground
+    // plane. This blob is what tells you the character is standing on the rock
+    // rather than floating in front of it. One draw call, no shadow-map cost.
+    const blobGeo = new THREE.PlaneGeometry(1, 1);
+    blobGeo.rotateX(-Math.PI / 2);
+    this.blobMat = new THREE.ShaderMaterial({
+      uniforms: { uFade: { value: 0.9 } },
+      vertexShader: BLOB_VERT,
+      fragmentShader: BLOB_FRAG,
+      transparent: true,
+      depthWrite: false,
+      // Multiply, so the decal can only darken the floor it lands on.
+      blending: THREE.CustomBlending,
+      blendSrc: THREE.DstColorFactor,
+      blendDst: THREE.OneMinusSrcAlphaFactor,
+      fog: false,
+    });
+    const blob = new THREE.Mesh(blobGeo, this.blobMat);
+    // Tight to the stance. At 1.15 the disc projected ~100 px against a 37 px
+    // foot span and ran off the lip of whatever rock the survivor was standing
+    // on, so the terrain clipped its uphill half and the remainder read as an
+    // offset smear. A footprint that stays under the boots cannot do that.
+    blob.scale.setScalar(0.8);
+    blob.position.y = 0.04;
+    blob.renderOrder = -1;
+    blob.castShadow = false;
+    blob.receiveShadow = false;
+    root.add(blob);
+    this.blob = blob;
   }
 
   initState() {
@@ -604,6 +770,14 @@ export class CharacterMesh {
     this.coat.rotation.z = this.sStrafe.value * 0.24;
     this.cape.rotation.x = -0.06 - this.sLean.value * 0.55 - dash * 0.5 + flutter * 1.6;
     this.cape.rotation.z = this.sStrafe.value * 0.35;
+
+    // Contact shadow: full strength on the ground, gone by the top of a jump.
+    // The blob rides the root, which does not know the terrain height, so
+    // fading it out is what keeps it from following the character into the air.
+    const grounded01 = (1 - air) * (1 - air);
+    this.blobMat.uniforms.uFade.value = 0.9 * grounded01;
+    this.blob.visible = grounded01 > 0.02;
+    this.blob.scale.setScalar(0.8 + air * 0.25);
 
     // Visor pulses hot on fire — cheap but it sells the shot from behind.
     this.mats.visor.emissiveIntensity = 2.4 + clamp(-recoil, 0, 1) * 3.5;

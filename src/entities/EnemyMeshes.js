@@ -21,6 +21,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { RimStandardMaterial } from './CharacterMesh.js';
 import { clamp, lerp } from '../core/MathUtil.js';
 
 // ---------------------------------------------------------------------------
@@ -86,13 +87,24 @@ function mirror(pieces) {
 // palettes + materials
 // ---------------------------------------------------------------------------
 
+// Eye colours are *saturated*, never pale. A near-white eye at a high emissive
+// intensity clips to 255,255,246 through bloom on every species at once, which
+// is how six different monsters ended up wearing the same white disc. A hue at
+// emissive 1.1 survives tone-mapping and reads hotter than a clipped 2.4,
+// because the eye is then the only saturated thing in its neighbourhood.
 const PALETTE = {
-  lemurian: { body: 0x8a3f2c, dark: 0x38180f, accent: 0xff5a12, eye: 0xffc23a },
-  beetle:   { body: 0x77705a, dark: 0x2b2820, accent: 0xc4d044, eye: 0xe9ff5a },
-  wisp:     { body: 0x2c1a34, dark: 0x120a18, accent: 0xff7a1e, eye: 0xffd9a0 },
-  golem:    { body: 0x646b78, dark: 0x282c34, accent: 0x22d3ff, eye: 0xa8f2ff },
-  pest:     { body: 0xa03f7e, dark: 0x3a1330, accent: 0xff3566, eye: 0xffd0e2 },
-  titan:    { body: 0x6d7480, dark: 0x2c3038, accent: 0xffa514, eye: 0xffe08a },
+  lemurian: { body: 0x8a3f2c, dark: 0x38180f, accent: 0xff5a12, eye: 0xff8a00 },
+  beetle:   { body: 0x77705a, dark: 0x2b2820, accent: 0xc4d044, eye: 0xb4ff10 },
+  wisp:     { body: 0x2c1a34, dark: 0x120a18, accent: 0xff7a1e, eye: 0xff5a00 },
+  golem:    { body: 0x646b78, dark: 0x282c34, accent: 0x22d3ff, eye: 0x00d0ff },
+  pest:     { body: 0xa03f7e, dark: 0x3a1330, accent: 0xff3566, eye: 0xff2f7a },
+  // Stone, not putty. 0x6d7480 was a near-neutral mid grey, and a near-neutral
+  // mid grey has no pigment of its own to resist the stage light — under this
+  // warm key the whole eight-metre boss rendered #905c71, a flat mauve. A
+  // darker, distinctly cool slate keeps its hue under the same light, holds the
+  // orange core as the only warm thing on the model, and gives the plates room
+  // to be lighter than the joints instead of everything landing on one value.
+  titan:    { body: 0x424a58, dark: 0x1c2029, accent: 0xffa514, eye: 0xffb020 },
 };
 
 /** RoR2's tier-1 elite affixes. Each one repaints the whole silhouette. */
@@ -121,22 +133,41 @@ function matsFor(id, affix) {
   const darkC = e ? mixHex(p.dark, e.tint, 0.45) : p.dark;
   const accC = e ? e.aura : p.accent;
   const eyeC = e ? mixHex(p.eye, e.aura, 0.8) : p.eye;
+  // Every body surface carries a faint species-coloured emissive plus a fresnel
+  // rim, so a monster standing on shadowed rock is still a shape and not a hole
+  // in the frame. The rim is the RoR2 read: the silhouette edge lights itself,
+  // which is what lets you count a horde against terrain of the same value.
+  //
+  // The rim alone was not enough: it is a 1-2 px edge at combat range, and two
+  // facets of the same torso 40 deg apart measured under 6/255 apart, so the
+  // bodies were flat rectangles with a lit outline. `hemiStrength` tilts albedo
+  // by world up-ness (up-facing plates lighter, undersides darker) so a faceted
+  // body separates without depending on the key direction — monsters get more
+  // of it than the player because they are lit worse and seen smaller.
+  //
+  // `body` and `dark` are also split on specular now, not just on value: plate
+  // is smooth and slightly metallic, the joints and underside it hangs off are
+  // matte. A rock's plates and its recesses should not share a highlight.
   m = {
-    body: new THREE.MeshStandardMaterial({
-      color: bodyC, roughness: 0.82, metalness: 0.04, flatShading: true,
-      emissive: e ? e.tint : 0x000000, emissiveIntensity: e ? 0.5 : 0,
+    body: new RimStandardMaterial({
+      color: bodyC, roughness: 0.55, metalness: 0.22, flatShading: true,
+      emissive: e ? e.tint : accC, emissiveIntensity: e ? 0.5 : 0.12,
+      rimColor: accC, rimStrength: e ? 0.85 : 0.6, rimPower: 3.0,
+      hemiStrength: 0.34,
     }),
-    dark: new THREE.MeshStandardMaterial({
-      color: darkC, roughness: 0.9, metalness: 0.02, flatShading: true,
-      emissive: e ? e.tint : 0x000000, emissiveIntensity: e ? 0.28 : 0,
+    dark: new RimStandardMaterial({
+      color: darkC, roughness: 0.92, metalness: 0.02, flatShading: true,
+      emissive: e ? e.tint : accC, emissiveIntensity: e ? 0.28 : 0.1,
+      rimColor: accC, rimStrength: e ? 0.9 : 0.7, rimPower: 2.8,
+      hemiStrength: 0.30,
     }),
     accent: new THREE.MeshStandardMaterial({
       color: accC, roughness: 0.4, metalness: 0, emissive: accC,
-      emissiveIntensity: e ? e.glow : 1.7,
+      emissiveIntensity: e ? e.glow * 0.62 : 1.35,
     }),
     eye: new THREE.MeshStandardMaterial({
       color: eyeC, roughness: 0.3, metalness: 0, emissive: eyeC,
-      emissiveIntensity: e ? e.glow * 1.2 : 2.4,
+      emissiveIntensity: e ? e.glow * 0.5 : 1.1,
     }),
   };
   MATS.set(key, m);
@@ -179,12 +210,22 @@ const BEAM = new Map();
 // around its own axis in the vertex shader, and its half-width is clamped to a
 // fixed on-screen angle so the near end tapers instead of filling the frame.
 const BEAM_MAX_HALF_ANGLE = Math.tan(6 * Math.PI / 180);
+// ...and a FLOOR on the same angle. A golem tracking from 35 m drew its 0.06 m
+// charge line at ~1 px wide, which is not a beam, it is a hairline scratch
+// ruling the composition into wedges — 455 px of it crossed 04. Below ~4 px the
+// quad has no mass anywhere along its length and reads as a render artefact.
+const BEAM_MIN_HALF_ANGLE = Math.tan(0.18 * Math.PI / 180);
 // Hard ceiling on world diameter. The widest gameplay beam hitbox is 1.5 radius
 // and the visual should read thinner than its hitbox, never wider.
 const BEAM_MAX_WIDTH = 1.2;
+// Hard ceiling on drawn length. The gameplay ray still reaches `attackRange`
+// (55 m for the titan); the *visual* stops at 14 m so the shot reads as a bolt
+// leaving the muzzle rather than a wire spanning the frame.
+export const BEAM_MAX_LEN = 14;
 
 const BEAM_VERT = /* glsl */`
 uniform float uMaxAngle;
+uniform float uMinAngle;
 varying vec2 vBeamUv;
 varying float vDist;
 void main() {
@@ -202,7 +243,7 @@ void main() {
     side /= sl;
   }
   float halfW = 0.5 * length((modelMatrix * vec4(1.0, 0.0, 0.0, 0.0)).xyz);
-  halfW = min(halfW, uMaxAngle * dist);
+  halfW = clamp(halfW, uMinAngle * dist, uMaxAngle * dist);
   vec3 p = center + side * (position.x * 2.0 * halfW);
   vBeamUv = vec2(position.x * 2.0, position.y + 0.5);
   vDist = dist;
@@ -218,7 +259,10 @@ void main() {
   float r = min(abs(vBeamUv.x), 1.0);
   float edge = pow(1.0 - r, 2.2);           // soft radial falloff — no hard rim
   float core = pow(1.0 - r, 14.0);          // white-hot filament down the middle
-  float along = mix(1.0, 0.32, vBeamUv.y);  // hot at the muzzle, cooling to the tip
+  // Hot at the muzzle, gone by the tip. A linear mix to 0.32 only decayed to
+  // 32% over the whole run, which at 455 px is a constant-brightness wire with
+  // no direction — you could not tell which end it came out of.
+  float along = pow(1.0 - vBeamUv.y, 1.6);
   float near = smoothstep(0.5, 2.4, vDist); // fade out rather than swallow the lens
   float a = edge * along * near * uOpacity;
   if (a <= 0.001) discard;
@@ -234,6 +278,7 @@ export function beamMat(id) {
       uColor: { value: new THREE.Color(p.accent) },
       uOpacity: { value: 0.85 },
       uMaxAngle: { value: BEAM_MAX_HALF_ANGLE },
+      uMinAngle: { value: BEAM_MIN_HALF_ANGLE },
     },
     vertexShader: BEAM_VERT,
     fragmentShader: BEAM_FRAG,
@@ -244,6 +289,151 @@ export function beamMat(id) {
   });
   BEAM.set(id, m);
   return m;
+}
+
+// ---------------------------------------------------------------------------
+// contact shadows
+// ---------------------------------------------------------------------------
+//
+// The stage's shadow map is one cascade over a large arena, so under a horde it
+// resolves to nothing at the point that matters most — the few pixels where a
+// monster meets the ground. Without that cue you cannot depth-order a horde:
+// a hovering pest and a pest on the ridge behind it are the same picture.
+//
+// So every rig gets a projected blob. The whole horde is ONE InstancedMesh and
+// therefore one draw call total, not one per enemy: slots are handed out for
+// the life of a rig (rigs are pooled, never destroyed) and an unused slot is
+// simply drawn at zero size with zero alpha.
+
+const SHADOW_MAX = 192;
+
+const SHADOW_VERT = /* glsl */`
+attribute float aFade;
+varying vec2 vBlobUv;
+varying float vFade;
+varying float vGraze;
+void main() {
+  vBlobUv = uv;
+  vFade = aFade;
+  vec4 wp = modelMatrix * instanceMatrix * vec4(position, 1.0);
+  // Camera elevation over this point of the disc, for the grazing-angle fade.
+  vGraze = abs(normalize(cameraPosition - wp.xyz).y);
+  gl_Position = projectionMatrix * viewMatrix * wp;
+}`;
+
+// MULTIPLY decal, not a composite. The previous version answered "a subtractive
+// blob is invisible on luma-6 ground" by *adding* a grey ring, and on the lit
+// grade that ships now the ring measured 2.4x the floor luma under the player
+// and, on the boss's 3 m disc seen edge-on, a 286x7 px bright bar clean across
+// the midground. A contact decal may only ever attenuate what is under it.
+//
+// `gl_FragColor.rgb` is premultiplied by `a`, so with (DstColor, OneMinusSrcAlpha)
+// the result is dst * (1 - a * (1 - SHADE)) — never above dst on any channel at
+// any alpha. Visibility on near-black ground comes from HUE, not value: red is
+// attenuated hardest and blue least, so deeper contact goes cool rather than
+// grey, and the floor's own texture survives instead of being flattened.
+const SHADOW_FRAG = /* glsl */`
+varying vec2 vBlobUv;
+varying float vFade;
+varying float vGraze;
+void main() {
+  float r = length(vBlobUv - 0.5) * 2.0;
+  float core = smoothstep(1.00, 0.14, r);
+  float ring = smoothstep(0.48, 0.80, r) * smoothstep(1.02, 0.82, r);
+  // A ground disc seen near edge-on projects to an all-annulus sliver a few
+  // pixels tall, which reads as a rendering glitch and not as contact. Below
+  // ~3 degrees of camera elevation it is simply not drawn.
+  float a = (core * 0.62 + ring * 0.16) * vFade * smoothstep(0.05, 0.22, vGraze);
+  if (a <= 0.004) discard;
+  gl_FragColor = vec4(vec3(0.06, 0.09, 0.16) * a, a);
+}`;
+
+let SHADOW = null;
+
+function shadowPool() {
+  if (SHADOW) return SHADOW;
+  const geo = new THREE.PlaneGeometry(1, 1);
+  geo.rotateX(-Math.PI * 0.5);
+  const fade = new Float32Array(SHADOW_MAX);
+  geo.setAttribute('aFade', new THREE.InstancedBufferAttribute(fade, 1));
+  const mat = new THREE.ShaderMaterial({
+    vertexShader: SHADOW_VERT,
+    fragmentShader: SHADOW_FRAG,
+    transparent: true,
+    depthWrite: false,
+    // Multiply, so the decal can only darken the floor it lands on.
+    blending: THREE.CustomBlending,
+    blendSrc: THREE.DstColorFactor,
+    blendDst: THREE.OneMinusSrcAlphaFactor,
+    fog: false,
+  });
+  const mesh = new THREE.InstancedMesh(geo, mat, SHADOW_MAX);
+  mesh.frustumCulled = false;
+  mesh.castShadow = false;
+  mesh.receiveShadow = false;
+  mesh.renderOrder = -1;              // under every transparent effect
+  const zero = new THREE.Matrix4().makeScale(0, 0, 0);
+  for (let i = 0; i < SHADOW_MAX; i++) mesh.setMatrixAt(i, zero);
+  SHADOW = { mesh, fade, attr: geo.attributes.aFade, next: 0 };
+  return SHADOW;
+}
+
+/**
+ * Hand the blob pool's mesh to the boot prewarm.
+ *
+ * The pool builds itself lazily on the first live rig, which puts its GLSL
+ * compile+link on the frame the first enemy appears — exactly the mid-fight
+ * hitch `fx/Prewarm.js` exists to prevent. Building it at boot instead costs
+ * one InstancedMesh that the game was going to allocate anyway.
+ */
+export function shadowPrewarmMesh() {
+  return shadowPool().mesh;
+}
+
+/** One slot per rig, held for the rig's life. -1 once the pool is full. */
+function acquireShadowSlot() {
+  const s = shadowPool();
+  return s.next < SHADOW_MAX ? s.next++ : -1;
+}
+
+const _shq = new THREE.Quaternion();
+
+function setShadow(slot, x, y, z, radius, fade) {
+  if (slot < 0) return;
+  const s = SHADOW;
+  _m4.compose(_p3.set(x, y, z), _shq, _s3.set(radius * 2, 1, radius * 2));
+  s.mesh.setMatrixAt(slot, _m4);
+  s.mesh.instanceMatrix.needsUpdate = true;
+  s.fade[slot] = fade;
+  s.attr.needsUpdate = true;
+}
+
+/**
+ * Project a rig's blob onto the ground. `a.ground` is the terrain height under
+ * the unit; when it is null (a replicated view that never sampled the terrain)
+ * a walker's own root height is the ground by definition, and a flyer simply
+ * goes without rather than dragging a shadow through the air with it.
+ */
+function updateShadow(rig, a) {
+  const slot = rig.shadow;
+  if (slot < 0) return;
+  // The pool has no owner to init it, so it adopts whatever scene the first
+  // live rig is parented into (and re-adopts one if a stage swap drops it).
+  if (SHADOW.mesh.parent === null) {
+    let o = rig.root;
+    while (o.parent) o = o.parent;
+    if (o !== rig.root) o.add(SHADOW.mesh);
+  }
+  const p = rig.root.position;
+  const gy = a.ground != null ? a.ground : (rig.flyer ? null : p.y);
+  if (gy == null || !rig.root.visible) { setShadow(slot, 0, 0, 0, 0, 0); return; }
+  const scale = rig.root.scale.x;
+  const lift = Math.max(0, p.y - gy);
+  // Blurs out and dims with altitude, which is what encodes hover height.
+  const k = 1 - clamp(lift / 3.2, 0, 1);
+  const fade = 0.85 * k * k * (1 - a.death) * scale;
+  const r = rig.shadowR * scale * (1 + lift * 0.2);
+  setShadow(slot, p.x, gy + 0.04, p.z, r, fade);
 }
 
 // ---------------------------------------------------------------------------
@@ -264,6 +454,9 @@ function newRig(id) {
     affix: null, flashing: false,
     mats: matsFor(id, null),
     centerY: 1, height: 2, animate: null,
+    // Contact shadow: slot in the shared instanced pool, footprint radius, and
+    // whether this species ever touches the ground at all.
+    shadow: acquireShadowSlot(), shadowR: 0.7, flyer: false,
     setAffix, setFlash, beginDeath, resetRig,
   };
   return rig;
@@ -389,6 +582,7 @@ function resetRig() {
     c.o.rotation.set(0, 0, 0);
   }
   for (const b of this.beams) b.visible = false;
+  setShadow(this.shadow, 0, 0, 0, 0, 0);
   this.setAffix(null);
 }
 
@@ -429,6 +623,8 @@ function anticipate(t) { return t * t * (3 - 2 * t); }
 function common(rig, a) {
   const pv = rig.pivot;
   const d = a.death;
+
+  updateShadow(rig, a);
 
   if (d > 0) {
     // Ragdoll-ish collapse: buckle, tip over, squash, and let the merged
@@ -477,17 +673,22 @@ function buildLemurian() {
   rig.centerY = 0.95;
   rig.height = 1.7;
   rig.auraR = 1.35;
+  rig.shadowR = 0.7;
 
   const spine = grp(rig.pivot, 0, LEM_HIP, 0);
   rig.parts.spine = spine;
 
+  // Narrow in X, long in Z, and crested: as a black shape the lemurian has to
+  // be the *lean* biped, distinct from the golem's slab at any distance. The
+  // dorsal blades are the cue that survives once the head is a few pixels.
   add(rig, spine, 'body', merged('lem.torso', [
-    P(box(0.5, 0.5, 0.55), 0, 0, -0.14),
-    P(box(0.56, 0.5, 0.8), 0, 0.05, 0.42),
-    P(box(0.44, 0.3, 0.3), 0, 0.02, 0.82),
-    P(cone(0.09, 0.3), 0, 0.3, 0.5, -0.25),
-    P(cone(0.1, 0.34), 0, 0.31, 0.14, -0.1),
-    P(cone(0.09, 0.3), 0, 0.28, -0.2, 0.15),
+    P(box(0.42, 0.5, 0.55), 0, 0, -0.14),
+    P(box(0.48, 0.5, 0.8), 0, 0.05, 0.42),
+    P(box(0.38, 0.3, 0.3), 0, 0.02, 0.82),
+    P(cone(0.2, 0.56), 0, 0.42, 0.48, -0.22, 0, 0, 0.3, 1, 1),
+    P(cone(0.22, 0.64), 0, 0.46, 0.12, -0.08, 0, 0, 0.3, 1, 1),
+    P(cone(0.2, 0.54), 0, 0.4, -0.24, 0.14, 0, 0, 0.3, 1, 1),
+    P(cone(0.15, 0.38), 0, 0.3, -0.5, 0.3, 0, 0, 0.3, 1, 1),
   ]));
 
   const neck = grp(spine, 0, 0.18, 0.78);
@@ -501,14 +702,16 @@ function buildLemurian() {
   crumbles(rig, head);
   add(rig, head, 'body', merged('lem.head', [
     P(box(0.3, 0.26, 0.38), 0, 0, 0.15),
-    P(box(0.21, 0.16, 0.32), 0, -0.04, 0.44),
+    P(box(0.2, 0.16, 0.44), 0, -0.04, 0.5),
     P(box(0.34, 0.07, 0.18), 0, 0.14, 0.2),
     P(cone(0.05, 0.24), 0.12, 0.19, 0.04, -0.5),
     P(cone(0.05, 0.24), -0.12, 0.19, 0.04, -0.5),
   ]));
+  // Angled slits, not discs. The eye shape is half of what identifies a
+  // species at the distance where the body is one value.
   add(rig, head, 'eye', merged('lem.eyes', [
-    P(ico(0.05, 0), 0.125, 0.07, 0.24),
-    P(ico(0.05, 0), -0.125, 0.07, 0.24),
+    P(box(0.13, 0.035, 0.05), 0.115, 0.075, 0.25, 0, 0, -0.28),
+    P(box(0.13, 0.035, 0.05), -0.115, 0.075, 0.25, 0, 0, 0.28),
   ]));
 
   const jaw = grp(head, 0, -0.09, 0.14);
@@ -638,15 +841,18 @@ function buildBeetle() {
   rig.centerY = 0.45;
   rig.height = 0.95;
   rig.auraR = 0.95;
+  rig.shadowR = 0.78;
 
   const body = grp(rig.pivot, 0, 0.44, 0);
   rig.parts.body = body;
 
   add(rig, body, 'body', merged('bee.shell', [
-    P(hemi(0.5, 12, 5), 0, -0.02, -0.06, 0, 0, 0, 1.3, 0.72, 1.5),
+    P(hemi(0.5, 12, 5), 0, -0.02, -0.06, 0, 0, 0, 1.42, 0.66, 1.5),
     P(box(0.08, 0.18, 1.12), 0, 0.3, -0.06),
-    P(box(0.5, 0.1, 0.34), 0.3, 0.18, -0.5, 0, 0, -0.35),
-    P(box(0.5, 0.1, 0.34), -0.3, 0.18, -0.5, 0, 0, 0.35),
+    // Flared rear plates — the widest point is behind the middle, which is
+    // what makes the beetle read as a wedge rather than a lump.
+    P(box(0.62, 0.11, 0.4), 0.34, 0.16, -0.52, 0, 0, -0.4),
+    P(box(0.62, 0.11, 0.4), -0.34, 0.16, -0.52, 0, 0, 0.4),
   ]));
   add(rig, body, 'dark', merged('bee.underside', [
     P(box(0.9, 0.16, 1.15), 0, -0.12, -0.04),
@@ -655,13 +861,24 @@ function buildBeetle() {
   const head = grp(body, 0, -0.04, 0.6);
   rig.parts.head = head;
   crumbles(rig, head);
+  // Rhino horn. It is the one vertical line on an otherwise entirely
+  // horizontal animal, so a beetle is identifiable as a black shape from any
+  // angle — and it points where the headbutt is going.
   add(rig, head, 'dark', merged('bee.head', [
     P(box(0.36, 0.26, 0.3), 0, 0, 0.02),
     P(box(0.42, 0.1, 0.12), 0, 0.12, 0.06),
+    P(cone(0.075, 0.62, 6), 0, 0.3, 0.1, -0.5),
+    P(cone(0.04, 0.3, 5), 0.19, 0.12, 0.06, -0.75),
+    P(cone(0.04, 0.3, 5), -0.19, 0.12, 0.06, -0.75),
   ]));
+  // Compound eye: a cluster of small facets, never one disc.
   add(rig, head, 'eye', merged('bee.eyes', [
-    P(ico(0.055, 0), 0.15, 0.06, 0.1),
-    P(ico(0.055, 0), -0.15, 0.06, 0.1),
+    P(ico(0.045, 0), 0.16, 0.06, 0.1),
+    P(ico(0.033, 0), 0.185, 0.0, 0.05),
+    P(ico(0.03, 0), 0.13, 0.11, 0.07),
+    P(ico(0.045, 0), -0.16, 0.06, 0.1),
+    P(ico(0.033, 0), -0.185, 0.0, 0.05),
+    P(ico(0.03, 0), -0.13, 0.11, 0.07),
   ]));
 
   const mandR = [P(cyl(0.06, 0.02, 0.4, 5), 0.02, 0, 0.2, Math.PI * 0.5, 0, 0.18)];
@@ -741,17 +958,24 @@ function buildWisp() {
   rig.centerY = 0;
   rig.height = 1.1;
   rig.auraR = 1.0;
+  rig.shadowR = 0.6;
+  rig.flyer = true;
 
   const core = add(rig, rig.pivot, 'accent', ico(0.32, 1), 0, 0, 0);
   rig.parts.core = core;
 
+  // Tall, narrow, spired — a vertical diamond. The pest is the other floating
+  // ~1 m unit in the roster and it is a wide flat dome; these two must never
+  // resolve to the same blob.
   const shell = grp(rig.pivot, 0, 0, 0);
   rig.parts.shell = shell;
   const plates = [];
   for (let i = 0; i < 5; i++) {
     const ang = (i / 5) * Math.PI * 2;
-    plates.push(P(box(0.16, 0.5, 0.34), Math.cos(ang) * 0.46, 0, Math.sin(ang) * 0.46, 0, -ang, 0.2));
+    plates.push(P(box(0.15, 0.78, 0.3), Math.cos(ang) * 0.38, 0, Math.sin(ang) * 0.38, 0, -ang, 0.2));
   }
+  plates.push(P(cone(0.19, 0.6, 5), 0, 0.62, 0));
+  plates.push(P(cone(0.16, 0.44, 5), 0, -0.52, 0, Math.PI));
   add(rig, shell, 'dark', merged('wisp.shell', plates));
 
   const emb = grp(rig.pivot, 0, 0, 0);
@@ -824,15 +1048,19 @@ function buildGolem() {
   rig.centerY = 1.9;
   rig.height = 3.6;
   rig.auraR = 2.3;
+  rig.shadowR = 1.35;
 
+  // Wide, shallow, top-heavy: the golem is a slab carried on stubby legs, and
+  // the shoulder line has to be the widest thing in the horde short of the
+  // titan. Deep-set head under an overhanging brow, no neck.
   const spine = grp(rig.pivot, 0, GOL_HIP, 0);
   rig.parts.spine = spine;
   add(rig, spine, 'body', merged('gol.torso', [
-    P(box(1.5, 1.3, 0.95), 0, 0.28, 0),
-    P(box(1.05, 0.55, 0.85), 0, -0.52, 0),
-    P(box(0.55, 0.6, 0.78), 0.92, 0.58, 0, 0, 0, -0.14),
-    P(box(0.55, 0.6, 0.78), -0.92, 0.58, 0, 0, 0, 0.14),
-    P(box(1.2, 0.22, 0.3), 0, 0.9, -0.4),
+    P(box(1.9, 1.35, 0.8), 0, 0.3, 0),
+    P(box(1.15, 0.5, 0.75), 0, -0.55, 0),
+    P(box(0.62, 0.72, 0.9), 1.12, 0.62, 0, 0, 0, -0.18),
+    P(box(0.62, 0.72, 0.9), -1.12, 0.62, 0, 0, 0, 0.18),
+    P(box(1.6, 0.26, 0.34), 0, 0.95, -0.34),
   ]));
   add(rig, spine, 'accent', merged('gol.cracks', [
     P(ico(0.26, 0), 0, 0.3, 0.48),
@@ -844,12 +1072,14 @@ function buildGolem() {
   rig.parts.head = head;
   crumbles(rig, head);
   add(rig, head, 'body', merged('gol.head', [
-    P(box(0.58, 0.48, 0.55), 0, 0, 0),
-    P(box(0.66, 0.14, 0.24), 0, 0.24, 0.2),
-    P(cone(0.1, 0.32), 0.22, 0.3, -0.05, -0.3),
-    P(cone(0.1, 0.32), -0.22, 0.3, -0.05, -0.3),
+    P(box(0.58, 0.44, 0.5), 0, -0.04, 0),
+    P(box(0.98, 0.24, 0.46), 0, 0.26, 0.1),
+    P(cone(0.1, 0.32), 0.34, 0.36, -0.05, -0.3),
+    P(cone(0.1, 0.32), -0.34, 0.36, -0.05, -0.3),
   ]));
-  rig.parts.eye = add(rig, head, 'eye', ico(0.17, 1), 0, -0.01, 0.3);
+  // The one species that keeps a single big disc — and it only reads as
+  // "cyclops" because nothing else in the roster has one any more.
+  rig.parts.eye = add(rig, head, 'eye', ico(0.19, 1), 0, -0.04, 0.28);
   rig.parts.beam = beam(rig, head, -0.01, 0.34);
 
   const armR = [
@@ -863,7 +1093,7 @@ function buildGolem() {
   rig.parts.elbow = [];
   for (let i = 0; i < 2; i++) {
     const s = i === 0 ? 1 : -1;
-    const sh = grp(spine, 0.98 * s, 0.6, 0);
+    const sh = grp(spine, 1.14 * s, 0.6, 0);
     add(rig, sh, 'body', merged('gol.upper', armR));
     const el = grp(sh, 0, -0.85, 0);
     add(rig, el, 'body', merged('gol.fore', foreR));
@@ -941,29 +1171,38 @@ function buildPest() {
   rig.centerY = 0;
   rig.height = 1.0;
   rig.auraR = 0.95;
+  rig.shadowR = 0.62;
+  rig.flyer = true;
 
+  // Wide and flat — a parasol. Against the wisp's vertical spire this is the
+  // horizontal floating shape, and the overhang is what the long tendrils hang
+  // off so the whole thing reads top-heavy.
   const bell = grp(rig.pivot, 0, 0.06, 0);
   rig.parts.bell = bell;
   add(rig, bell, 'body', merged('pest.bell', [
-    P(hemi(0.5, 12, 6), 0, 0, 0, 0, 0, 0, 1, 0.95, 1),
-    P(cyl(0.52, 0.42, 0.14, 12), 0, -0.05, 0),
-    P(cone(0.08, 0.26), 0.3, 0.34, 0, 0, 0, -0.5),
-    P(cone(0.08, 0.26), -0.3, 0.34, 0, 0, 0, 0.5),
+    P(hemi(0.5, 12, 6), 0, 0, 0, 0, 0, 0, 1.26, 0.62, 1.26),
+    P(cyl(0.63, 0.46, 0.1, 12), 0, -0.04, 0),
+    P(cone(0.08, 0.34), 0.4, 0.16, 0, 0, 0, -0.9),
+    P(cone(0.08, 0.34), -0.4, 0.16, 0, 0, 0, 0.9),
+    P(cone(0.08, 0.34), 0, 0.16, 0.4, 0.9),
   ]));
   rig.parts.sac = add(rig, rig.pivot, 'accent', ico(0.27, 1), 0, -0.02, 0);
+  // A row of spots around the rim rather than a pair of headlights.
   add(rig, bell, 'eye', merged('pest.spots', [
-    P(ico(0.05, 0), 0.24, 0.26, 0.3),
-    P(ico(0.05, 0), -0.24, 0.26, 0.3),
-    P(ico(0.045, 0), 0, 0.34, -0.36),
+    P(ico(0.05, 0), 0.2, 0.2, 0.44),
+    P(ico(0.05, 0), -0.2, 0.2, 0.44),
+    P(ico(0.04, 0), 0.44, 0.16, 0.24),
+    P(ico(0.04, 0), -0.44, 0.16, 0.24),
+    P(ico(0.045, 0), 0, 0.25, -0.46),
   ]));
 
   rig.parts.tendril = [];
   for (let i = 0; i < 5; i++) {
     const ang = (i / 5) * Math.PI * 2;
-    const g = grp(rig.pivot, Math.cos(ang) * 0.34, -0.1, Math.sin(ang) * 0.34);
+    const g = grp(rig.pivot, Math.cos(ang) * 0.44, -0.08, Math.sin(ang) * 0.44);
     add(rig, g, 'dark', merged('pest.tendril', [
-      P(cyl(0.05, 0.012, 0.8, 5), 0, -0.4, 0),
-      P(ico(0.035, 0), 0, -0.8, 0),
+      P(cyl(0.05, 0.012, 1.05, 5), 0, -0.52, 0),
+      P(ico(0.035, 0), 0, -1.05, 0),
     ]));
     rig.parts.tendril.push(g);
   }
@@ -1004,83 +1243,196 @@ function animPest(rig, a) {
 // fists it raises over its head, and eye lasers it sweeps across the arena.
 // ---------------------------------------------------------------------------
 
-const TIT_HIP = 4.0, TIT_L1 = 1.9, TIT_L2 = 1.9;
+// Proportions. The old rig hung a 3.8 m leg chain off a 2.85 m hip, and the leg
+// IK only runs at `lod === 0` — so any titan the LOD system skipped stood on
+// dead-straight legs with 1.25 m of shin and both feet buried under the world.
+// In the shot that exists to judge it, the body stopped 32 px above its own
+// contact shadow with nothing bridging the gap: a floating slab.
+//
+// The chain is now 2.72 m against a 2.65 m hip, so the REST pose — legs
+// straight, no animator — already plants the ankles on the ground plane, and
+// the IK only ever bends from there. Short thick legs under an enormous upper
+// body is also the correct read: a colossus is not a man scaled up, it is
+// bottom-heavy, and the old 1.9 + 1.9 spindles were what made this thing look
+// like a monolith on stilts.
+const TIT_HIP = 3.6, TIT_L1 = 1.40, TIT_L2 = 1.32;
+const TIT_HIP_DROP = 0.95;   // hip joint below the spine origin
 
 function buildTitan() {
   const rig = newRig('titan');
-  rig.centerY = 4.0;
+  rig.centerY = 3.6;
   rig.height = 7.6;
-  rig.auraR = 4.6;
+  rig.auraR = 4.4;
+  rig.shadowR = 2.6;
 
   const spine = grp(rig.pivot, 0, TIT_HIP, 0);
   rig.parts.spine = spine;
+
+  // The body is a STACK of differently-proportioned masses, never one box. A
+  // 3.2 x 2.3 slab presents one flat quad to the camera, and one quad takes one
+  // value no matter how good the lighting is — which is precisely how eight
+  // metres of stone photographed as a sheet of mauve cardboard. Hex prisms and
+  // icosahedral boulders put six-to-twenty differently-angled facets where the
+  // slab had one face, and the hemispheric albedo term then separates them.
   add(rig, spine, 'body', merged('tit.torso', [
-    P(box(3.2, 2.3, 1.9), 0, 0.65, 0),
-    P(box(2.2, 1.05, 1.6), 0, -0.75, 0),
-    P(box(1.25, 1.3, 1.5), 1.95, 1.3, 0, 0, 0, -0.2),
-    P(box(1.25, 1.3, 1.5), -1.95, 1.3, 0, 0, 0, 0.2),
-    P(box(2.6, 0.4, 0.5), 0, 1.75, -0.75),
-    P(cone(0.3, 1.3), 0.85, 2.1, -0.7, -0.35),
-    P(cone(0.3, 1.3), -0.85, 2.1, -0.7, -0.35),
-    P(cone(0.24, 1.0), 0, 2.2, -0.9, -0.5),
-  ]));
-  add(rig, spine, 'dark', merged('tit.plates', [
-    P(box(2.4, 0.35, 0.4), 0, -0.1, 0.95),
-    P(box(1.8, 0.3, 0.4), 0, 1.55, 0.9),
-  ]));
-  rig.parts.core = add(rig, spine, 'accent', ico(0.55, 1), 0, 0.6, 1.02);
-  add(rig, spine, 'accent', merged('tit.veins', [
-    P(box(0.12, 1.1, 0.1), 0.7, 1.3, 0.98, 0, 0, -0.3),
-    P(box(0.12, 1.0, 0.1), -0.62, -0.05, 0.98, 0, 0, 0.35),
-    P(box(0.12, 0.8, 0.1), 0.2, -0.4, 0.98, 0, 0, 0.15),
+    // Pelvic girdle — wide, heavy, and the thing the legs actually hang off.
+    // Its top face is at -0.525 and the ribcage's underside at +0.07, which
+    // leaves a deliberate 0.6 m gap: that gap is the waist, and the waist is
+    // where the core lives.
+    P(cyl(1.62, 1.42, 1.25, 6), 0, -1.15, 0, 0, Math.PI / 6, 0, 1.12, 1, 0.92),
+    // Ribcage: a tapered hex barrel, narrow at the waist and flaring up to the
+    // deck. The taper is the whole reason the torso reads as a wedge and not a
+    // rectangle when it is keyed to pure black.
+    P(cyl(2.05, 1.30, 1.90, 6), 0, 1.02, 0, 0, Math.PI / 6, 0, 1.06, 1, 0.86),
+    // Shoulder deck. Narrower than the arms hang, deliberately: if the deck is
+    // the widest thing on the rig then the arms live inside the torso outline
+    // and the whole colossus keys to one undifferentiated block.
+    P(box(3.9, 0.8, 2.05), 0, 2.28, -0.05),
+    // Shoulder crags — asymmetric on purpose. Matched pauldrons read as a
+    // machine; a colossus is a rock formation, and the left/right mismatch is
+    // what stops the top of the silhouette being a straight line.
+    P(ico(1.05, 0), 1.92, 2.42, -0.1, 0.3, 0.7, 0.2, 1, 0.85, 1),
+    P(ico(0.88, 0), -2.02, 2.28, 0.05, -0.2, 1.4, -0.3, 1, 0.9, 1.1),
+    P(ico(0.58, 0), 1.28, 2.92, -0.5, 0.5, 0.2, 0),
+    // Back ridge + spines, irregularly spaced and pitched.
+    P(box(2.5, 0.5, 0.6), 0, 2.05, -1.05),
+    P(cone(0.36, 1.75), 0.72, 2.75, -0.95, -0.42),
+    P(cone(0.30, 1.35), -0.95, 2.60, -0.90, -0.30, 0, 0.2),
+    P(cone(0.26, 1.15), -0.05, 2.90, -1.20, -0.55),
   ]));
 
-  const head = grp(spine, 0, 1.95, 0.3);
+  // Recesses, joints and the underside the plates hang off. `dark` is matte and
+  // non-metallic against a smooth semi-metallic `body`, so the panel breaks
+  // separate on specular response as well as on value.
+  add(rig, spine, 'dark', merged('tit.plates', [
+    // Constricted waist spine, bridging the gap. The chest and the hips are
+    // both ~4 m wide; cinching the middle to 1.9 is what makes the mass above
+    // read as mass, and it is the collar the core is clamped in.
+    P(cyl(0.90, 0.98, 1.05, 6), 0, -0.24, 0, 0, Math.PI / 6, 0),
+    // Panel breaks. Every one of these had to be pushed out past the hex
+    // prism's flat-face distance (0.866 * r * depth-scale) or it renders inside
+    // the mass it is supposed to be sitting on and does nothing at all.
+    P(box(3.5, 0.3, 0.35), 0, 1.90, 1.42),
+    P(box(2.7, 0.28, 0.32), 0, -1.30, 1.15),
+    P(box(0.55, 1.5, 0.5), 1.62, 2.05, 1.05, 0, 0, -0.18),
+    P(box(0.55, 1.5, 0.5), -1.62, 2.05, 1.05, 0, 0, 0.18),
+  ]));
+
+  // THE CORE. It used to be a 0.55 ico pinned to the chest at +Z 1.02, i.e. one
+  // hemisphere of it, on the front only — and the boss has been photographed
+  // side-on and back-on for three rounds, so the single feature that was
+  // supposed to anchor the eye had never appeared in a frame. It now sits IN
+  // the waist gap, proud of the 0.95 collar on every side: chest above, hips
+  // below, glowing furnace clamped between them. There is no camera angle from
+  // which it is occluded.
+  // A 2.2 m furnace in a 0.6 m gap: chest above, hips below, and roughly a
+  // third of the sphere exposed all the way round. Nothing occludes it from any
+  // bearing, which is the whole point — it is the eye anchor and the readable
+  // health state, and for three rounds it was never once in frame.
+  rig.parts.core = add(rig, spine, 'accent', ico(1.00, 1), 0, -0.23, 0);
+  // Cracks radiating off the core: front, back and both flanks, so the heat
+  // reaches the outline from every angle too. Each one is placed just proud of
+  // its host prism's face, not at a plausible-looking depth.
+  add(rig, spine, 'accent', merged('tit.veins', [
+    P(box(0.17, 0.95, 0.16), 0.60, 1.10, 1.30, 0, 0, -0.28),
+    P(box(0.15, 0.80, 0.15), -0.52, 1.28, 1.30, 0, 0, 0.32),
+    P(box(0.17, 0.95, 0.16), 0.28, 1.10, -1.30, 0, 0, 0.22),
+    P(box(0.15, 0.85, 0.15), -0.66, 1.20, -1.30, 0, 0, -0.26),
+    P(box(0.15, 1.05, 0.14), 1.62, 0.80, 0.20, 0, 0, -0.30),
+    P(box(0.15, 1.05, 0.14), -1.62, 0.80, 0.20, 0, 0, 0.30),
+    P(box(0.16, 0.65, 0.15), 0.35, -0.95, 1.25, 0, 0, 0.20),
+    P(box(0.16, 0.65, 0.15), -0.40, -0.95, -1.25, 0, 0, -0.20),
+  ]));
+
+  // Head: brow-heavy, sunk between the shoulder crags so the outline has a
+  // notch on each side of it. A boss whose head is a lump on top of a rectangle
+  // has no head.
+  const head = grp(spine, 0, 2.62, 0.42);
   rig.parts.head = head;
+  crumbles(rig, head);
   add(rig, head, 'body', merged('tit.head', [
-    P(box(1.05, 0.9, 1.0), 0, 0, 0),
-    P(box(1.2, 0.26, 1.1), 0, 0.52, 0),
-    P(box(1.15, 0.2, 0.3), 0, 0.16, 0.42),
+    P(cyl(0.62, 0.78, 0.95, 6), 0, 0, 0, 0, Math.PI / 6, 0, 1.15, 1, 1.0),
+    // Overhanging brow — the eyes read as *set back under* something.
+    P(box(1.42, 0.42, 1.15), 0, 0.55, 0.12, -0.16),
+    P(cone(0.2, 0.62), 0.6, 0.82, -0.1, -0.25, 0, 0.35),
+    P(cone(0.2, 0.62), -0.6, 0.82, -0.1, -0.25, 0, -0.35),
+  ]));
+  add(rig, head, 'dark', merged('tit.jaw', [
+    P(box(1.05, 0.42, 0.9), 0, -0.48, 0.1),
+  ]));
+  // Furnace mouth. The head gets its own warm source so it holds the eye even
+  // when the fists are up and the core is behind an arm.
+  add(rig, head, 'accent', merged('tit.maw', [
+    P(box(0.75, 0.16, 0.15), 0, -0.34, 0.58),
+    P(box(0.12, 0.22, 0.15), 0.26, -0.46, 0.56),
+    P(box(0.12, 0.22, 0.15), -0.26, -0.46, 0.56),
   ]));
   rig.parts.eyes = [];
   rig.parts.beam = [];
   for (let i = 0; i < 2; i++) {
     const s = i === 0 ? 1 : -1;
-    const g = grp(head, 0.29 * s, 0.0, 0.5);
-    rig.parts.eyes.push(add(rig, g, 'eye', ico(0.2, 1), 0, 0, 0));
+    const g = grp(head, 0.34 * s, 0.08, 0.5);
+    // Wide lenses rather than balls — a boss face has to read as a face at
+    // 30 m, and two round dots at that size are two more white bloom blobs.
+    rig.parts.eyes.push(add(rig, g, 'eye',
+      merged('tit.eye', [P(ico(0.2, 1), 0, 0, 0, 0, 0, 0, 1.9, 0.6, 1)]), 0, 0, 0));
     rig.parts.beam.push(beam(rig, g, 0, 0.06));
   }
 
-  const upper = [P(cyl(0.58, 0.5, 1.7, 7), 0, -0.85, 0), P(box(0.7, 0.5, 0.9), 0, -0.1, 0)];
+  // Arms hang to knee height and end in fists you can actually identify. The
+  // old hand was a 1.1 cube on the end of a 3.3 m arm — at boss distance that
+  // is four pixels of nothing, on a rig whose own comment sells "two fists it
+  // raises over its head".
+  const upper = [
+    P(cyl(0.78, 0.64, 1.55, 7), 0, -0.78, 0),
+    P(ico(0.86, 0), 0, 0.12, 0, 0.2, 0.6, 0, 1, 0.9, 1),
+  ];
   const fore = [
-    P(cyl(0.5, 0.64, 1.6, 7), 0, -0.8, 0),
-    P(box(1.1, 1.0, 1.05), 0, -1.8, 0.05),
-    P(cone(0.2, 0.5), 0.42, -2.2, 0.4, 1.2),
-    P(cone(0.2, 0.5), -0.42, -2.2, 0.4, 1.2),
+    P(cyl(0.62, 0.82, 1.45, 7), 0, -0.72, 0),
+    // Fist: a blocky mass with three knuckle wedges over the top of it, so the
+    // hand has a direction and the raised-fist pose reads as a threat.
+    P(box(1.55, 1.35, 1.5), 0, -2.05, 0.05),
+    P(box(1.62, 0.34, 0.42), 0, -1.55, 0.52, -0.2),
+    P(cone(0.3, 0.7), 0.5, -1.35, 0.45, -0.5),
+    P(cone(0.3, 0.7), -0.02, -1.28, 0.5, -0.5),
+    P(cone(0.3, 0.7), -0.54, -1.35, 0.45, -0.5),
   ];
   rig.parts.arm = [];
   rig.parts.elbow = [];
   for (let i = 0; i < 2; i++) {
     const s = i === 0 ? 1 : -1;
-    const sh = grp(spine, 2.05 * s, 1.3, 0);
+    const sh = grp(spine, 2.62 * s, 2.05, 0);
     add(rig, sh, 'body', merged('tit.upper', upper));
-    const el = grp(sh, 0, -1.7, 0);
+    const el = grp(sh, 0, -1.55, 0);
     add(rig, el, 'body', merged('tit.fore', fore));
+    // Knuckle heat, so a raised fist is legible against the sky.
+    add(rig, el, 'accent', merged('tit.knuckle', [
+      P(box(1.25, 0.14, 0.16), 0, -1.42, 0.6),
+    ]));
     crumbles(rig, el);
     rig.parts.arm.push(sh);
     rig.parts.elbow.push(el);
   }
 
+  // Legs: short, thick, splayed. Base wider than the head is most of what makes
+  // a thing read as a colossus rather than a standing stone.
   rig.parts.hip = [];
   rig.parts.knee = [];
   for (let i = 0; i < 2; i++) {
     const s = i === 0 ? 1 : -1;
-    const hip = grp(spine, 0.92 * s, -1.15, 0);
-    add(rig, hip, 'dark', merged('tit.thigh', [P(cyl(0.66, 0.56, TIT_L1, 7), 0, -TIT_L1 * 0.5, 0)]));
+    const hip = grp(spine, 1.25 * s, -TIT_HIP_DROP, 0);
+    add(rig, hip, 'dark', merged('tit.thigh', [
+      P(cyl(0.98, 0.82, TIT_L1, 7), 0, -TIT_L1 * 0.5, 0),
+    ]));
     const knee = grp(hip, 0, -TIT_L1, 0);
     add(rig, knee, 'dark', merged('tit.shin', [
-      P(cyl(0.56, 0.68, TIT_L2, 7), 0, -TIT_L2 * 0.5, 0),
-      P(box(1.15, 0.5, 1.6), 0, -TIT_L2 - 0.05, 0.2),
+      P(cyl(0.80, 0.98, TIT_L2, 7), 0, -TIT_L2 * 0.5, 0),
+      // Foot sits ON the ankle, not a metre below it.
+      P(box(1.7, 0.5, 2.2), 0, -TIT_L2 + 0.2, 0.3),
+      P(box(1.5, 0.3, 0.5), 0, -TIT_L2 + 0.12, 1.35),
+    ]));
+    add(rig, knee, 'body', merged('tit.knee', [
+      P(ico(0.62, 0), 0, -0.05, 0.28, 0.2, 0.4, 0),
     ]));
     rig.parts.hip.push(hip);
     rig.parts.knee.push(knee);
@@ -1108,8 +1460,10 @@ function animTitan(rig, a) {
   p.spine.rotation.z = Math.sin(a.stride) * 0.1 * sp + w * stomp * 0.22 - rel * stomp * 0.2;
   p.spine.rotation.y = Math.sin(a.stride) * 0.06 * sp;
 
-  // The core is the health-bar you can see across the arena.
-  p.core.scale.setScalar(1 + rage * 0.3 + w * 0.55 + Math.sin(a.t * (2.4 + rage * 3)) * (0.06 + rage * 0.06));
+  // The core is the health-bar you can see across the arena. Smaller swing than
+  // before: it is a 1.02 furnace clamped in a 0.95 waist collar now, not a 0.55
+  // badge stuck on the chest, so it does not need to double in size to be seen.
+  p.core.scale.setScalar(1 + rage * 0.18 + w * 0.35 + Math.sin(a.t * (2.4 + rage * 3)) * (0.05 + rage * 0.05));
 
   p.head.rotation.y = a.lookY * 0.6 + a.sweep;
   p.head.rotation.x = a.pitch * 0.6 - w * barrage * 0.25 + rel * slam * 0.4;
@@ -1129,29 +1483,34 @@ function animTitan(rig, a) {
     if (slam) {
       // Both fists overhead — the single most readable pose in the fight.
       p.arm[i].rotation.x = -w * 2.6 + rel * 3.1;
-      p.arm[i].rotation.z = s * (0.12 + w * 0.35 - rel * 0.3);
+      p.arm[i].rotation.z = s * (0.20 + w * 0.35 - rel * 0.3);
       p.elbow[i].rotation.x = -w * 0.9 + rel * 0.7;
     } else if (barrage) {
       p.arm[i].rotation.x = -w * 0.5;
-      p.arm[i].rotation.z = s * (0.2 + w * 1.0);
+      p.arm[i].rotation.z = s * (0.28 + w * 1.0);
       p.elbow[i].rotation.x = -0.3 - w * 0.4;
     } else {
       p.arm[i].rotation.x = Math.sin(a.stride + i * Math.PI) * 0.3 * sp - w * stomp * 0.4;
-      p.arm[i].rotation.z = s * (0.14 + w * 0.3);
+      // Splayed enough that the forearm clears the ribcage by ~0.2 m: an arm
+      // tucked inside the torso outline contributes nothing to the silhouette
+      // no matter how well it is modelled.
+      p.arm[i].rotation.z = s * (0.26 + w * 0.3);
       p.elbow[i].rotation.x = -0.25 - Math.abs(Math.sin(a.stride + i * Math.PI)) * 0.2 * sp;
     }
   }
 
   if (a.lod > 0) return common(rig, a);
 
-  const stride = 0.95 * sp + 0.08;
+  // Shorter stride and lower lift to match the shorter chain — the old numbers
+  // were sized for 3.8 m legs and would clamp against the IK's reach every step.
+  const stride = 0.62 * sp + 0.06;
   for (let i = 0; i < 2; i++) {
     const ph = a.stride + i * Math.PI;
     // The stomp lifts the right leg to the chest, then drives it down.
     const lift = stomp && i === 0 ? w * 1.5 - rel * 1.6 : 0;
     solveLeg(p.hip[i], p.knee[i], TIT_L1, TIT_L2,
-      stepZ(ph, stride) * sp + lift * 0.5,
-      -(TIT_HIP - 1.15) + stepY(ph, 0.6) * sp + Math.max(0, lift) * 1.7 + (TIT_HIP - hipY), 1);
+      stepZ(ph, stride) * sp + lift * 0.4,
+      -(TIT_HIP - TIT_HIP_DROP) + stepY(ph, 0.4) * sp + Math.max(0, lift) * 1.1 + (TIT_HIP - hipY), 1);
   }
   common(rig, a);
 }
@@ -1263,6 +1622,9 @@ export function makeAnim() {
     beamOn: false, beamLen: 0,
     fallX: 1, fallZ: 0,
     lod: 0,
+    // Terrain height under the unit, for the contact shadow. Null means "not
+    // sampled" — see updateShadow.
+    ground: null,
   };
 }
 

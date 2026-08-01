@@ -21,6 +21,13 @@ export const QUALITY = { LOW: 0, MEDIUM: 1, HIGH: 2, ULTRA: 3 };
  */
 const BLOOM = { strength: 0.34, radius: 0.40, threshold: 1.25, clamp: 8.0 };
 
+/**
+ * Resting vignette, matching `GradeShader`'s own default. Kept as a named
+ * constant because `update()` re-pushes it every frame on top of the hit boost,
+ * so a literal here silently overrode whatever the shader declared.
+ */
+const VIGNETTE_BASE = 0.16;
+
 /** Ceiling on drawing-buffer pixels. See `_applyPixelRatio`. */
 const PIXEL_BUDGET = 5.0e6;
 
@@ -101,7 +108,13 @@ export class RenderPipeline {
     // WebGLRenderer only applies tonemapping when drawing straight to the
     // screen — so scene passes into the composer stay linear HDR.
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
+    // ACES' toe is very flat at the bottom, so the exposure is the only control
+    // that moves the shadow side *before* the grade sees it — a lift applied
+    // downstream in LDR can only add a pedestal, it cannot recover modelling
+    // that tonemapped to the same value. 1.05 -> 1.10 is under a tenth of a
+    // stop: bloom is unaffected (it runs pre-tonemap) and the clipped-white
+    // fraction was 0.01-0.4%, so there is headroom at the top for it.
+    renderer.toneMappingExposure = 1.10;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     this.composer = null;
@@ -385,7 +398,7 @@ export class RenderPipeline {
       u.uTime.value = this.shakeTime;
       u.uShake.value = this.shake;
       u.uAberration.value = 0.0016 + Math.min(this.aberration + this.shake * 0.004, 0.004);
-      u.uVignette.value = 0.42 + this.vignetteBoost;
+      u.uVignette.value = VIGNETTE_BASE + this.vignetteBoost;
     }
   }
 

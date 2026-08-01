@@ -12,6 +12,10 @@ export const SkyShader = {
   uniforms: {
     uSunDir: { value: new THREE.Vector3(0.532, 0.309, 0.788).normalize() },
     uZenith: { value: new THREE.Color(0x2f7fb2) },
+    // Middle stop of the vertical ramp. Overwritten per biome by
+    // `Environment._deriveSkyMid` — the value here only has to be sane for the
+    // one frame before the first biome is applied.
+    uMid: { value: new THREE.Color(0x6a8fa8) },
     uHorizon: { value: new THREE.Color(0xf2a44f) },
     uHaze: { value: new THREE.Color(0xffd08a) },
     uGround: { value: new THREE.Color(0x39344a) },
@@ -29,7 +33,7 @@ export const SkyShader = {
   `,
   fragmentShader: /* glsl */ `
     precision highp float;
-    uniform vec3  uSunDir, uZenith, uHorizon, uHaze, uGround, uSunColor, uCloud;
+    uniform vec3  uSunDir, uZenith, uMid, uHorizon, uHaze, uGround, uSunColor, uCloud;
     uniform float uTime, uCloudAmount;
     varying vec3 vDir;
 
@@ -64,17 +68,35 @@ export const SkyShader = {
       float hh = clamp(h, 0.0, 1.0);
 
       // --- base gradient ---------------------------------------------------
-      // Every gameplay camera is pitched down, so the only slice of this dome
-      // that ever rasterises is roughly 0-25 degrees of elevation. The curve is
-      // compressed (0.30) so the blue has already arrived by the top of that
-      // slice instead of only showing up near the zenith nobody sees.
-      vec3 col = mix(uHorizon, uZenith, pow(hh, 0.30));
-
-      // Hot haze hugging the horizon line. This is what carries the *gradient*
-      // inside the visible band: amber at h=0 decaying to nothing by ~10deg,
-      // against blue arriving from above. Without it the band is one flat tan.
+      // Three *colours*, not one cross-fade with three named endpoints. The
+      // previous pass still ended in a single mix(warm, uZenith, ...) and only
+      // moved its window, which changes nothing: a straight linear cross of an
+      // 0.87-linear amber against an 0.03-linear blue is red-dominant until the
+      // blue's weight is past ~0.8, so every framing that only reaches a
+      // half-mix measured as desaturated red-mauve. The sky band measured 0.00%
+      // in the 180-240 degree hue bucket twice running.
+      //
+      // The real constraint is how little of the dome is ever on screen. The
+      // establishing camera sits pitched down with a ridge line high in frame,
+      // so the *visible* sky is a band of roughly 13-21 degrees of elevation —
+      // hh 0.23 to 0.36. Anything that has not resolved by hh 0.24 is not in
+      // the picture. So the warm band is resolved first, the cool band is fully
+      // reached inside the bottom of that slice, and the zenith takes over
+      // across it, which puts the colour event where a frame can see it while
+      // still leaving a warm strip hugging the horizon for the far terrain to
+      // sit against.
       float haze = exp(-hh * 9.0);
-      col = mix(col, uHaze, haze * 0.62);
+      vec3 warm = mix(uHorizon, uHaze, haze * 0.62);
+
+      // The zenith weight is capped short of 1.0 on purpose. uZenith is a
+      // saturated blue with almost no red in it (0.027 linear), so resolving to
+      // it *exactly* drove 2.1% of the frame's red channel to hard zero once
+      // the grade's saturation ran, and left the top of frame darker than the
+      // terrain under it. Stopping at 0.62 keeps a trace of the warm band in
+      // the blue, which is both what an evening sky does and what stops the
+      // channel clipping.
+      vec3 col = mix(warm, uMid, smoothstep(0.025, 0.150, hh));
+      col = mix(col, uZenith, 0.62 * smoothstep(0.120, 0.320, hh));
 
       col = mix(uGround, col, smoothstep(-0.18, 0.012, h));
 
@@ -92,7 +114,12 @@ export const SkyShader = {
       // far terrain from the sky, plus a stronger lobe toward the sun azimuth.
       vec2 fd = normalize(vec2(d.x, d.z) + 1e-5);
       vec2 fs = normalize(vec2(uSunDir.x, uSunDir.z) + 1e-5);
-      float band = exp(-abs(h) * 7.0);
+      // Tightened from 7.0: at 7.0 this term still carried 19% of its strength
+      // at 14 degrees of elevation, i.e. across the whole visible sky band, and
+      // warm additive light spread over the band is precisely what kept the
+      // zenith blue from ever measuring as blue. It now hugs the horizon line
+      // it exists for.
+      float band = exp(-abs(h) * 11.0);
       col += uSunColor * band * (0.14 + 0.55 * pow(max(dot(fd, fs), 0.0), 2.0));
 
       // --- drifting cloud bands ---
@@ -107,8 +134,16 @@ export const SkyShader = {
       // above the top of every in-game frame, which is why no cloud ever showed.
       cloud *= smoothstep(0.006, 0.055, h) * (1.0 - smoothstep(0.55, 0.95, h));
 
+      // The deck needs internal value contrast or it dissolves into the sky it
+      // is mixed over — at 0.70 the cloud colour sat within a few percent of the
+      // band behind it, which is why a 0.74 cloud amount produced one visible
+      // wisp. Wisps take the full body value and sit *above* the sky; the dense
+      // cores fall toward the cool zenith so the deck has a shaded underside;
+      // the sun-facing side still burns out warm.
+      float dens = smoothstep(0.44, 0.86, n);
+      vec3 cloudCol = mix(uCloud * 1.05, uZenith * 0.6, dens * 0.65);
       float lit = pow(max(dot(d, uSunDir), 0.0), 3.0);
-      vec3 cloudCol = mix(uCloud * 0.70, uSunColor * 1.55, lit);
+      cloudCol = mix(cloudCol, uSunColor * 1.55, lit);
       col = mix(col, cloudCol, cloud);
 
       gl_FragColor = vec4(col, 1.0);

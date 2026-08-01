@@ -53,8 +53,78 @@ const SHADOW_TIERS = [
   { map: 1024, ext: 55, vsm: false, radius: 1.0, blur: 4 },  // LOW
   { map: 2048, ext: 70, vsm: true, radius: 1.4, blur: 6 },  // MEDIUM
   { map: 3072, ext: 80, vsm: true, radius: 1.6, blur: 8 },  // HIGH
-  { map: 4096, ext: 80, vsm: true, radius: 1.6, blur: 8 },  // ULTRA
+  // ULTRA buys reach rather than density: the floating islands sit 16-40m up,
+  // so at an 18deg sun their shadows land 50-120m from their own footprint and
+  // fell outside an 80 box in almost every case — the establishing shot had no
+  // cast shadow in it at all. 110 into 4096 is 0.054 u/texel, still sharper
+  // than the 0.115 this started at.
+  { map: 4096, ext: 110, vsm: true, radius: 1.6, blur: 8 },  // ULTRA
 ];
+
+/**
+ * Key / fill balance.
+ *
+ * The previous version of this was a pure *floor* — `hemiMin 0.85, envMin 0.78`
+ * — added to stop the shadow side clipping to black. It stopped the clipping,
+ * and it also flattened the key: measured lit:shadow across the establishing
+ * shot fell to 1.4-1.9:1, with two hero surfaces reading brighter on their
+ * shadow side than on their lit side, because at that fill the violet rim was
+ * out-lighting the sun.
+ *
+ * The crush was never a scene-light problem in the first place. It is fixed in
+ * display space by `GradeShader`'s toe, which lifts only the bottom of the
+ * range and leaves the terminator alone — so the fill is free to go back down
+ * to where a key can carve into it. This is a *scale* on what the biome asks
+ * for rather than a floor over it, so the ratio between the four lights is the
+ * same in every biome and the darkest biome no longer gets silently flattened
+ * the most.
+ *
+ * `env` is deliberately cut far less than `hemi` and `rim`: the IBL is what
+ * gives the shadow side its form and is the only thing a metalness-1.0 surface
+ * has to reflect, so killing it trades one flat look for another.
+ *
+ * `groundBoost` is unchanged: the hemisphere's ground colour is the only warm
+ * bounce in the scene and every biome authors it nearly black in linear, so the
+ * bounce never read as bounce. Boosting the colour rather than the intensity
+ * keeps the sky half of the hemisphere where the biome put it.
+ */
+const FILL = {
+  hemiScale: 0.32, hemiMin: 0.12,
+  envScale: 0.82, envMin: 0.34,
+  rimScale: 0.29, rimMin: 0.22,
+  groundBoost: 1.45,
+};
+
+/**
+ * Gain on the biome's own sun intensity.
+ *
+ * Held as a multiplier, not baked into the biomes, so the four sun intensities
+ * stay comparable to each other and to their authored colours. 2.5x against the
+ * fill above takes the measured display-space lit:shadow separation from 1.86
+ * to 2.6 overall and from 2.4 to 4.2 at the ninetieth percentile of key-lit
+ * surface, and takes the luminance a cast shadow removes from 1.6x to 2.0x —
+ * which is the difference between a shadow that can be found by differencing
+ * two renders and one that is visible in the frame.
+ */
+const KEY_GAIN = 2.5;
+
+/**
+ * Fog is derived from the biome's own sky rather than taken verbatim.
+ *
+ * A fixed cool fog against a warm sunset sky put 139deg of hue between the far
+ * massif and the band of sky directly above it, so the massif read as pale blue
+ * paper pasted onto a pink backdrop instead of as distance. Aerial perspective
+ * converges distant geometry toward *the sky behind it*, so the declared fog
+ * colour is pulled partway onto the sky's own horizon band and trimmed in value
+ * so the massif sits under the sky rather than above it. The blend is partial,
+ * not total: the fog keeps enough of its authored hue for the near/mid/far
+ * separation to still be a cooling.
+ */
+const FOG = { skyBlend: 0.45, hazeBlend: 0.35, value: 0.80, density: 0.85 };
+
+const _c1 = new THREE.Color();
+const _v1 = new THREE.Vector3();
+const _v2 = new THREE.Vector3();
 
 const DUST_COUNT = 1400;
 const DUST_BOX = 90; // motes wrap inside this cube around the camera
@@ -74,7 +144,8 @@ export class Environment {
     // of the level carried under 10% of its own colour and every silhouette out
     // there dissolved. 0.0036 lands 220u near 58%: still a strong aerial layer,
     // but the far terrain keeps enough value to separate from the sky.
-    scene.fog = new THREE.FogExp2(PALETTE.fog, 0.0036);
+    const b0 = BIOMES[0];
+    scene.fog = new THREE.FogExp2(fogColor(b0), b0.fog.density * FOG.density);
     ctx.environment = this; // convenience handle; not part of the ctx contract
   }
 
@@ -170,29 +241,36 @@ export class Environment {
     set('uGround', S.ground);
     set('uSunColor', S.sun);
     set('uCloud', S.cloud);
+    this._deriveSkyMid();
     this.skyUniforms.uCloudAmount.value = S.cloudAmount;
 
     // --- fog ---
     if (scene.fog) {
-      scene.fog.color.set(biome.fog.color);
-      scene.fog.density = biome.fog.density;
+      scene.fog.color.copy(fogColor(biome));
+      scene.fog.density = biome.fog.density * FOG.density;
     }
 
     // --- lights ---
     this.key.color.set(biome.sun.color);
-    this.key.intensity = biome.sun.intensity;
+    this.key.intensity = biome.sun.intensity * KEY_GAIN;
     const L = biome.light;
     this.hemi.color.set(L.hemiSky);
-    this.hemi.groundColor.set(L.hemiGround);
-    this.hemi.intensity = L.hemiIntensity;
+    this.hemi.groundColor.set(L.hemiGround).multiplyScalar(FILL.groundBoost);
+    this.hemi.intensity = Math.max(L.hemiIntensity * FILL.hemiScale, FILL.hemiMin);
+    // The rim keeps its colour untouched: it is the violet back light that makes
+    // a shadow a hue change rather than a darker version of the lit colour, and
+    // the warm-key / cool-shadow split is the thing this build gets right. Only
+    // its *intensity* comes down, because at 1.45 against a 4.2 key it was
+    // winning on any surface angled away from the sun — which is why the
+    // establishing shot had props measuring brighter on their shadow side.
     this.rim.color.set(L.rim);
-    this.rim.intensity = L.rimIntensity;
+    this.rim.intensity = Math.max(L.rimIntensity * FILL.rimScale, FILL.rimMin);
     // Back light stays opposite the key wherever the key has moved to.
     this.rim.position.set(this.sunDir.x * -120, 34, this.sunDir.z * -120);
     // The IBL probe is baked once at boot and deliberately not re-rendered per
     // stage — a PMREM pass mid-run is both a stall and a shader-compile risk.
     // Scaling its contribution instead is free and carries most of the read.
-    scene.environmentIntensity = L.envIntensity;
+    scene.environmentIntensity = Math.max(L.envIntensity * FILL.envScale, FILL.envMin);
 
     // --- dust ---
     this.dustMaterial.color.set(biome.dust.color);
@@ -208,6 +286,7 @@ export class Environment {
     }
     uniforms.uSunDir.value.copy(SUN_DIR);
     this.skyUniforms = uniforms;
+    this._deriveSkyMid();
 
     const mat = new THREE.ShaderMaterial({
       uniforms,
@@ -246,18 +325,39 @@ export class Environment {
       const rt = pmrem.fromScene(probeScene, 0.05, 1, 2000);
       ctx.scene.environment = rt.texture;
       // IBL at 0.85 plus a 0.75 hemisphere was filling every crevice back in,
-      // which is what left the frame with no occlusion and no shadow contrast.
-      ctx.scene.environmentIntensity = 0.55;
+      // which is what left the frame with no occlusion and no shadow contrast —
+      // but 0.55 went past "carve into" and into "nothing to carve". `FILL`
+      // holds the floor; GTAO is what puts the occlusion back.
+      ctx.scene.environmentIntensity = Math.max(0.55 * FILL.envScale, FILL.envMin);
       this.envRT = rt;
       probeScene.remove(probe);
       pmrem.dispose();
     }
   }
 
+  /**
+   * The sky gradient's middle stop, derived rather than authored.
+   *
+   * A two-colour ramp from a saturated amber to a saturated blue crosses
+   * through neutral, and the visible slice of the dome in every capture is only
+   * ~14-20 degrees of elevation — so the mix never got far enough past the
+   * middle for the blue to appear and the whole sky measured as red-mauve. A
+   * third stop lets the warm band resolve, then the cool band, then the zenith,
+   * inside that slice.
+   *
+   * It is the zenith carrying a little of the horizon's haze rather than a
+   * separate authored colour, so every biome gets a mid that already belongs to
+   * its own sky and `Materials.js` needs no new field.
+   */
+  _deriveSkyMid() {
+    const u = this.skyUniforms;
+    u.uMid.value.copy(u.uZenith.value).lerp(u.uHaze.value, 0.20);
+  }
+
   _buildLights(scene) {
     const L = PALETTE.light;
 
-    const key = new THREE.DirectionalLight(L.key, 4.2);
+    const key = new THREE.DirectionalLight(L.key, 4.2 * KEY_GAIN);
     key.position.copy(SUN_DIR).multiplyScalar(SUN_DISTANCE);
     key.target.position.set(0, 0, 0);
     key.castShadow = true;
@@ -265,16 +365,21 @@ export class Environment {
     sh.camera.near = 1;
     sh.camera.far = SUN_DISTANCE + 260;
     // VSM: bias is handled by the variance itself; normalBias is what kills
-    // the peter-panning on the big faceted cliff walls.
+    // the peter-panning on the big faceted cliff walls. 0.25 is nearly five
+    // texels at the ULTRA density, which is enough to walk a dead tree's or a
+    // boulder's shadow off its own base — the props that most need a contact
+    // shadow are exactly the ones thin enough for that offset to erase.
     sh.bias = 0;
-    sh.normalBias = 0.25;
+    sh.normalBias = 0.10;
     scene.add(key);
     scene.add(key.target);
     this.key = key;
 
-    // Weak on purpose. A 0.75 hemisphere plus IBL was re-lighting every shadow
-    // to the same value as the key side; the key needs darkness to carve into.
-    const hemi = new THREE.HemisphereLight(L.hemiSky, L.hemiGround, 0.50);
+    // The key still needs darkness to carve into, but at 0.50 with a nearly
+    // black ground colour there was nothing left below the terminator at all.
+    // See `FILL`.
+    const hemi = new THREE.HemisphereLight(L.hemiSky, L.hemiGround, 0.50 * FILL.hemiScale);
+    hemi.groundColor.multiplyScalar(FILL.groundBoost);
     hemi.position.set(0, 60, 0);
     scene.add(hemi);
     this.hemi = hemi;
@@ -282,7 +387,7 @@ export class Environment {
     // Cool back light, opposite the key and slightly below it, so ridges and
     // props get a violet edge instead of dissolving into the fog. It is also
     // the only light on the shadow side, so it doubles as the bounce colour.
-    const rim = new THREE.DirectionalLight(L.rim, 1.45);
+    const rim = new THREE.DirectionalLight(L.rim, 1.45 * FILL.rimScale);
     rim.position.set(SUN_DIR.x * -120, 34, SUN_DIR.z * -120);
     rim.castShadow = false;
     scene.add(rim);
@@ -350,7 +455,21 @@ export class Environment {
 
     // Slide the (small) shadow frustum along with the action. Snapped to a
     // whole shadow texel so the map does not shimmer as the centre moves.
-    const focus = ctx.player?.position ?? cam.position;
+    //
+    // Centred on what the *camera* is looking at, not on the player. Every
+    // capture camera and the vista camera in particular sits tens of metres off
+    // the player looking away from them, so a player-centred box left most of
+    // what the frame showed outside the shadow frustum entirely — which is why
+    // the establishing shot contained no cast shadow despite a raking sun. The
+    // player stays comfortably inside the box at 0.55 of the half-extent.
+    const focus = _v2.copy(ctx.player?.position ?? cam.position);
+    _v1.set(0, 0, -1).applyQuaternion(cam.quaternion);
+    _v1.y = 0;
+    const fl = _v1.length();
+    if (fl > 1e-4) {
+      _v1.multiplyScalar(1 / fl);
+      focus.copy(cam.position).addScaledVector(_v1, this._shadowTier.ext * 0.55);
+    }
     const snap = this.shadowSnap;
     const fx = Math.round(focus.x / snap) * snap;
     const fz = Math.round(focus.z / snap) * snap;
@@ -391,6 +510,20 @@ export class Environment {
     this.dustMaterial?.dispose();
     this.dustSprite?.dispose();
   }
+}
+
+/**
+ * The fog colour for a biome: its declared fog pulled partway onto its own sky.
+ * See `FOG`. Mixing happens in the renderer's linear working space, which is
+ * where the sky shader mixes the same colours, so the two agree.
+ */
+function fogColor(biome, out = new THREE.Color()) {
+  const S = biome.sky;
+  // The band the far terrain actually sits against: horizon amber carrying some
+  // of the hot haze that hugs the horizon line.
+  out.set(S.horizon).lerp(_c1.set(S.haze), FOG.hazeBlend);
+  out.lerp(_c1.set(biome.fog.color), 1 - FOG.skyBlend);
+  return out.multiplyScalar(FOG.value);
 }
 
 function wrapTo(v, h) {

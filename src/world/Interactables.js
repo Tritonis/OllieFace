@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { ITEM_BY_ID, TIERS } from '../data/items.js';
 
 /**
@@ -37,6 +38,89 @@ const TIER_BIAS = {
 
 let nextId = 1;
 
+// ------------------------------------------------------- shared prop resources
+//
+// A stage carries 6-20 chests plus shrines and terminals, and every one of them
+// used to allocate its own boxes and its own materials. That put the whole
+// interactable set on the geometry budget for no reason and made detailing them
+// expensive. Everything that is not *animated per instance* now comes out of
+// these two caches, which is what buys the extra parts below: a chest is nine
+// primitives instead of two and still costs one geometry and two materials for
+// the entire stage.
+//
+// Anything cached is stamped `userData.shared` and Interactable.dispose() steps
+// over it — a stage teardown must not free a buffer the next stage's chests are
+// still pointing at.
+
+const _geoCache = new Map();
+const _matCache = new Map();
+
+function sharedGeo(key, build) {
+  let g = _geoCache.get(key);
+  if (!g) { g = build(); g.userData.shared = true; _geoCache.set(key, g); }
+  return g;
+}
+
+function sharedMat(key, build) {
+  let m = _matCache.get(key);
+  if (!m) { m = build(); m.userData.shared = true; _matCache.set(key, m); }
+  return m;
+}
+
+/**
+ * The interactable material ladder, deliberately parallel to the world's
+ * (Materials.js): cast iron is a real metal with a real specular, the stone
+ * plinths are matte, and only the tinted parts glow. A chest that is one flat
+ * roughness-0.7 grey box is the "uniform matte plastic" failure in miniature.
+ *
+ * Two rules the round-2 version broke, both of which produced black cutouts:
+ *
+ *  1. **Metalness never reaches 1.** At a true 1.0 the diffuse term is
+ *     identically zero and the whole surface is the IBL — and an interactable
+ *     is usually standing in a hollow, where the IBL is the dark ground half of
+ *     the sky dome. IRON_DARK at 0.8/0x14181f measured RGB(62,38,35) on its lit
+ *     arc with no pixel above L 169 anywhere on it. The ceiling is now 0.45-0.62
+ *     depending on the rung, which keeps a real dielectric floor for the key and the hemisphere to
+ *     model, and the envMap lift pays the reflective read back where there is
+ *     sky to reflect.
+ *  2. **Base colours are not near-black.** 0x232830 under a 0.92 metalness is
+ *     0.08 diffuse of a 0.02-linear albedo: nothing. Cast iron reads dark
+ *     because it is *rough and cool*, not because its albedo is 14/255.
+ *
+ * Roughness sits low across the whole ladder on purpose. GGX's peak scales as
+ * roughness^-4, so 0.38 -> 0.24 is a ~6x brighter highlight — which is the
+ * difference between a specular that survives the tone curve above L 200 and
+ * one that lands at 180 and reads as "slightly lighter grey".
+ */
+const IRON = () => sharedMat('iron', () => new THREE.MeshStandardMaterial({
+  color: 0x4c545f, roughness: 0.24, metalness: 0.62, envMapIntensity: 2.6, flatShading: true,
+}));
+const IRON_DARK = () => sharedMat('ironDark', () => new THREE.MeshStandardMaterial({
+  color: 0x454d5a, roughness: 0.30, metalness: 0.45, envMapIntensity: 3.0, flatShading: true,
+}));
+// Polished, and deliberately *smooth*-shaded — the one material in the ladder
+// that is not flat. It is only ever put on surfaces of revolution (basin rims,
+// shrine collars), where an interpolated normal field sweeps every elevation and
+// therefore contains the exact half vector for any sun/camera pair. That makes a
+// highlight a property of the material rather than a coincidence of the mesh: at
+// roughness 0.20 the GGX peak is ~136, so the ring clips white where it crosses
+// the half vector and falls away within a few degrees either side.
+const IRON_POLISH = () => sharedMat('ironPolish', () => new THREE.MeshStandardMaterial({
+  color: 0x5f6774, roughness: 0.20, metalness: 0.60, envMapIntensity: 3.0,
+}));
+const STONE = () => sharedMat('stone', () => new THREE.MeshStandardMaterial({
+  color: 0x646875, roughness: 0.88, metalness: 0.0, envMapIntensity: 0.9, flatShading: true,
+}));
+const trimMat = (hex) => sharedMat(`trim${hex}`, () => new THREE.MeshStandardMaterial({
+  color: hex, roughness: 0.18, metalness: 0.62, envMapIntensity: 2.4,
+  emissive: hex, emissiveIntensity: 0.22, flatShading: true,
+}));
+const glowMat = (hex) => sharedMat(`glow${hex}`, () => new THREE.MeshStandardMaterial({
+  color: 0x05070a, emissive: hex, emissiveIntensity: 2.4, roughness: 0.5,
+}));
+
+const box = (w, h, d, x, y, z) => new THREE.BoxGeometry(w, h, d).translate(x, y, z);
+
 // ---------------------------------------------------------------- base class
 
 class Interactable {
@@ -66,14 +150,67 @@ class Interactable {
   update(dt) {}
   dispose() {
     this.group.traverse((o) => {
-      o.geometry?.dispose?.();
-      if (Array.isArray(o.material)) o.material.forEach((m) => m.dispose());
-      else o.material?.dispose?.();
+      if (o.geometry && !o.geometry.userData.shared) o.geometry.dispose();
+      const m = o.material;
+      if (!m) return;
+      for (const mm of (Array.isArray(m) ? m : [m])) if (!mm.userData.shared) mm.dispose();
     });
   }
 }
 
 // -------------------------------------------------------------------- chests
+
+/**
+ * Body: a stone-set plinth, the iron carcass, four corner posts, two banding
+ * straps and a lock plate. The parts exist for silhouette, not for detail — a
+ * plain box has one outline and reads as a crate at any distance, whereas the
+ * proud posts and straps break the top edge and give the key something to catch
+ * on. All of it is one merged buffer per chest size.
+ */
+function chestBodyGeo(s) {
+  const parts = [
+    box(1.52 * s, 0.15 * s, 1.12 * s, 0, 0.075 * s, 0),              // plinth
+    box(1.36 * s, 0.72 * s, 0.98 * s, 0, 0.51 * s, 0),               // carcass
+    box(1.42 * s, 0.09 * s, 1.03 * s, 0, 0.30 * s, 0),               // lower strap
+    box(1.42 * s, 0.09 * s, 1.03 * s, 0, 0.70 * s, 0),               // upper strap
+    box(0.26 * s, 0.30 * s, 0.10 * s, 0, 0.60 * s, 0.52 * s),        // lock plate
+  ];
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) {
+      parts.push(box(0.14 * s, 0.80 * s, 0.14 * s, sx * 0.66 * s, 0.50 * s, sz * 0.47 * s));
+      // Proud cap on each post. A flat-topped post ends the silhouette on the
+      // same line as the carcass; a wider cap notches it, and its top face is a
+      // small horizontal plane the key hits close to head-on — the brightest
+      // thing on the chest and the reason the corners read at distance.
+      parts.push(box(0.21 * s, 0.07 * s, 0.21 * s, sx * 0.66 * s, 0.925 * s, sz * 0.47 * s));
+    }
+  }
+  // Hasp: two arms flanking the lock plate, so the front face has depth.
+  for (const sx of [-1, 1]) {
+    parts.push(box(0.07 * s, 0.42 * s, 0.07 * s, sx * 0.22 * s, 0.60 * s, 0.51 * s));
+  }
+  const g = mergeGeometries(parts, false);
+  for (const p of parts) p.dispose();
+  return g;
+}
+
+/** A barrel top, hinged at the back. Local origin sits on the body's top edge. */
+function chestLidGeo(s) {
+  // 16 segments, not 9. The lid is the chest's glossy rung (trimMat, roughness
+  // 0.18) and the only curved surface on it, so it is where the one specular
+  // highlight per chest has to come from; at 9 segments the barrel is a coarse
+  // prism and the highlight either misses entirely or covers a whole facet.
+  const dome = new THREE.CylinderGeometry(0.50 * s, 0.50 * s, 1.40 * s, 16, 1, false, 0, Math.PI);
+  dome.rotateZ(Math.PI / 2);   // half-barrel opening downward, axis along X
+  const parts = [
+    dome,
+    box(1.44 * s, 0.10 * s, 1.06 * s, 0, -0.04 * s, 0),              // rim under the barrel
+    box(0.20 * s, 0.16 * s, 1.08 * s, 0, 0.34 * s, 0),               // spine band
+  ];
+  const g = mergeGeometries(parts, false);
+  for (const p of parts) p.dispose();
+  return g;
+}
 
 class Chest extends Interactable {
   constructor(ctx, position, size, cost) {
@@ -85,24 +222,27 @@ class Chest extends Interactable {
 
     const tint = size === 'legendary' ? 0xf0453f : size === 'large' ? 0x49d67a : 0xc0c8d4;
     const scale = size === 'small' ? 1 : size === 'large' ? 1.35 : 1.5;
-    const body = new THREE.Mesh(
-      new THREE.BoxGeometry(1.4 * scale, 0.9 * scale, 1.0 * scale),
-      new THREE.MeshStandardMaterial({ color: 0x2a2f38, roughness: 0.7, metalness: 0.3 })
-    );
-    body.position.y = 0.45 * scale;
-    body.castShadow = true;
 
-    this.lid = new THREE.Mesh(
-      new THREE.BoxGeometry(1.45 * scale, 0.35 * scale, 1.05 * scale),
-      new THREE.MeshStandardMaterial({ color: tint, roughness: 0.4, metalness: 0.5, emissive: tint, emissiveIntensity: 0.25 })
+    const body = new THREE.Mesh(sharedGeo(`chestBody${size}`, () => chestBodyGeo(scale)), IRON());
+    body.castShadow = true;
+    body.receiveShadow = true;
+
+    // The item light lives inside the carcass and is only revealed as the lid
+    // swings, so opening a chest is a light event and not just an animation.
+    this.glow = new THREE.Mesh(
+      sharedGeo(`chestGlow${size}`, () => box(1.10 * scale, 0.06 * scale, 0.78 * scale, 0, 0.83 * scale, 0)),
+      glowMat(tint)
     );
+
+    this.lid = new THREE.Mesh(sharedGeo(`chestLid${size}`, () => chestLidGeo(scale)), trimMat(tint));
+    this.lid.castShadow = true;
     // Pivot at the back edge so the lid hinges instead of floating.
     this.lidPivot = new THREE.Group();
-    this.lidPivot.position.set(0, 0.9 * scale, -0.5 * scale);
-    this.lid.position.set(0, 0.17 * scale, 0.5 * scale);
+    this.lidPivot.position.set(0, 0.87 * scale, -0.49 * scale);
+    this.lid.position.set(0, 0.04 * scale, 0.49 * scale);
     this.lidPivot.add(this.lid);
 
-    this.group.add(body, this.lidPivot);
+    this.group.add(body, this.glow, this.lidPivot);
     this.radius = 2.2 * scale;
     this._scale = scale;
   }
@@ -142,17 +282,40 @@ class MultishopTerminal extends Interactable {
 
     const def = ITEM_BY_ID.get(this.itemId);
     const tint = TIERS[def?.tier || 'common'].colour;
-    const post = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.18, 0.24, 1.4, 8),
-      new THREE.MeshStandardMaterial({ color: 0x2b313b, roughness: 0.6 })
-    );
-    post.position.y = 0.7;
+    // Foot, post, and a bezel that surrounds the display on three sides with a
+    // hood over it. The hood matters more than it sounds: it puts the emissive
+    // panel in its own small shadow, so the screen reads as lit-from-within
+    // instead of as a coloured sticker on a box.
+    const frame = new THREE.Mesh(sharedGeo('shopFrame', () => {
+      const parts = [
+        new THREE.CylinderGeometry(0.46, 0.58, 0.14, 8).translate(0, 0.07, 0),
+        new THREE.CylinderGeometry(0.16, 0.22, 1.34, 8).translate(0, 0.81, 0),
+        box(1.14, 0.14, 0.30, 0, 1.20, 0.02),        // shelf under the display
+        box(0.14, 1.08, 0.26, -0.50, 1.72, 0.0),     // left bezel
+        box(0.14, 1.08, 0.26, 0.50, 1.72, 0.0),      // right bezel
+        box(1.14, 0.16, 0.42, 0, 2.20, 0.09),        // hood
+        box(1.02, 0.94, 0.08, 0, 1.72, -0.10),       // backing plate
+        // Lip along the hood's leading edge. A 6mm proud strip is the only
+        // horizontal specular line on the terminal, and it is what stops the
+        // hood reading as a shadow the frame happens to end in.
+        box(1.20, 0.05, 0.07, 0, 2.10, 0.30),
+      ];
+      const g = mergeGeometries(parts, false);
+      for (const p of parts) p.dispose();
+      return g;
+    }), IRON());
+    frame.castShadow = true;
+    frame.receiveShadow = true;
+
     this.screen = new THREE.Mesh(
-      new THREE.BoxGeometry(0.9, 0.9, 0.14),
-      new THREE.MeshStandardMaterial({ color: 0x11151c, emissive: tint, emissiveIntensity: 0.7, roughness: 0.3 })
+      sharedGeo('shopScreen', () => new THREE.BoxGeometry(0.86, 0.88, 0.10)),
+      new THREE.MeshStandardMaterial({
+        color: 0x0d1118, emissive: tint, emissiveIntensity: 0.9,
+        roughness: 0.16, metalness: 0.0, envMapIntensity: 1.2,
+      })
     );
-    this.screen.position.y = 1.7;
-    this.group.add(post, this.screen);
+    this.screen.position.set(0, 1.72, 0.02);
+    this.group.add(frame, this.screen);
     this.group.rotation.y = (index / 3) * Math.PI * 2;
   }
 
@@ -176,6 +339,140 @@ class MultishopTerminal extends Interactable {
 }
 
 // ------------------------------------------------------------------- shrines
+//
+// Both shrines are built as a stone substructure plus one animated emissive
+// piece. Splitting them that way is what lets the base be genuinely matte rock
+// while the offering above it is the only glossy thing in the silhouette —
+// which is the roughness contrast the rest of the stage is being tuned for,
+// applied at prop scale.
+
+/** Stepped stone plinth: cap, drum, foot. */
+function plinthGeo(r, sides) {
+  const parts = [
+    new THREE.CylinderGeometry(r * 1.20, r * 1.32, 0.16, sides).translate(0, 0.08, 0),
+    new THREE.CylinderGeometry(r * 0.96, r * 1.08, 0.32, sides).translate(0, 0.32, 0),
+    new THREE.CylinderGeometry(r * 1.08, r * 0.98, 0.14, sides).translate(0, 0.55, 0),
+  ];
+  const g = mergeGeometries(parts, false);
+  for (const p of parts) p.dispose();
+  return g;
+}
+
+/** Broken columns leaning in around the plinth rim — the "ruined site" read. */
+function shrineColumnsGeo(r, count, seedPhase) {
+  const parts = [];
+  for (let i = 0; i < count; i++) {
+    const a = (i / count) * Math.PI * 2 + seedPhase;
+    const h = 0.75 + ((i * 7) % 5) * 0.16;
+    const c = new THREE.CylinderGeometry(0.10, 0.15, h, 5).translate(0, h * 0.5, 0);
+    const m = new THREE.Matrix4()
+      .makeRotationZ(-0.16)
+      .premultiply(new THREE.Matrix4().makeRotationY(-a))
+      .setPosition(Math.cos(a) * r, 0.55, Math.sin(a) * r);
+    parts.push(c.applyMatrix4(m));
+  }
+  const g = mergeGeometries(parts, false);
+  for (const p of parts) p.dispose();
+  return g;
+}
+
+/** A shard cluster rather than a single octahedron: three facets, one peak. */
+function shardClusterGeo() {
+  const parts = [];
+  const spec = [[0, 0, 1.0, 0], [0.26, 0.10, 0.62, 0.5], [-0.20, -0.16, 0.5, 2.1]];
+  for (const [x, z, s, tilt] of spec) {
+    const o = new THREE.OctahedronGeometry(0.5, 0);
+    o.scale(0.55 * s, 1.35 * s, 0.55 * s);
+    const m = new THREE.Matrix4().makeRotationZ(tilt * 0.16)
+      .premultiply(new THREE.Matrix4().makeRotationY(tilt))
+      .setPosition(x, 0, z);
+    parts.push(o.applyMatrix4(m));
+  }
+  const g = mergeGeometries(parts, false);
+  for (const p of parts) p.dispose();
+  return g;
+}
+
+/**
+ * The blood spike.
+ *
+ * The thing this replaces was `ConeGeometry(0.34, 1.5, 6)` under an emissive
+ * that carried ~88% of every pixel, and it measured as a flat vector triangle:
+ * left-half mean R 205.2 against right-half 205.1 — a 0.05% shading gradient
+ * across a cone — with 61.7% of its pixels at G exactly 0. Three things were
+ * wrong and all three are geometry-or-material, not grade:
+ *
+ *  - **Nothing to shade.** A normal-independent emissive constant is the same
+ *    value on every facet by definition, so `flatShading` had nothing to do.
+ *    The emissive is now 0.10 rather than 0.5 and the *lit* term carries the
+ *    read, which is what puts a Lambert ramp back across the form.
+ *  - **Nothing to shade it on.** Six facets on a smooth taper is one silhouette
+ *    and two visible planes. This is a socket, a tapered octagonal shaft, a
+ *    flared shoulder that undercuts, a twelve-sided blade and three barbs — so
+ *    there are hard plane breaks at three heights, an edge at the shoulder for
+ *    the key to catch, and a silhouette that is not a triangle.
+ *  - **No material response.** The blade is dry, faceted, roughness 0.42; the
+ *    sheath over its lower half and the pool in the basin are the same substance
+ *    *wet*, smooth-shaded at roughness 0.05. Smooth shading is deliberate on the
+ *    sheath: a continuous normal field means some band of it always satisfies
+ *    the half-vector, so the specular break exists from any bearing rather than
+ *    only when a facet happens to line up.
+ *
+ * Albedo green is 0x43 rather than 0x1f for a measured reason: the grade applies
+ * saturation after its toe and clamps to zero, so a channel that starts under
+ * ~0.02 linear is driven to hard 0 and the shrine channel-clips. 0x43 lands the
+ * green around 36/255 after the lit term, which is clear of the clamp.
+ */
+function bloodSpikeGeo() {
+  const parts = [
+    new THREE.CylinderGeometry(0.30, 0.44, 0.20, 10).translate(0, 0.10, 0),   // socket
+    new THREE.CylinderGeometry(0.215, 0.30, 0.60, 8).translate(0, 0.50, 0),   // shaft
+    new THREE.CylinderGeometry(0.28, 0.215, 0.11, 8).translate(0, 0.855, 0),  // shoulder
+    new THREE.ConeGeometry(0.24, 1.02, 12).translate(0, 1.42, 0),             // blade
+  ];
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2 + 0.55;
+    parts.push(new THREE.ConeGeometry(0.075, 0.44, 5)
+      .rotateZ(-1.0).rotateY(-a)
+      .translate(Math.cos(a) * 0.235, 0.96, Math.sin(a) * 0.235));
+  }
+  const g = mergeGeometries(parts, false);
+  for (const p of parts) p.dispose();
+  return g;
+}
+
+/**
+ * The wet half: a sheath run down the shaft, a drip collar under the blade, and
+ * the pool in the basin.
+ *
+ * The profiles are *convex and smooth-shaded*, and that is the whole engineering
+ * of the highlight. A straight cone of revolution has exactly one normal
+ * elevation, so unless the half vector happens to sit at that elevation nothing
+ * on it is anywhere near the specular peak — at roughness 0.05 the lobe is about
+ * three degrees wide, so "nearly aligned" is the same as "black". That is the
+ * shape of the round-2 failure: a low roughness on simple geometry produces no
+ * highlight at all rather than a bright one.
+ *
+ * A bulged lathe sweeps its normal elevation continuously across the profile and
+ * the collar is a torus, which sweeps the full 360 degrees; between them there is
+ * a point at the exact half vector for *any* sun and camera, so the highlight is
+ * guaranteed rather than lucky, and at roughness 0.05 it is a hard bright break
+ * a few pixels wide — which is what wet reads as.
+ */
+function bloodSlickGeo() {
+  const profile = [
+    [0.235, 0.18], [0.292, 0.30], [0.322, 0.44],
+    [0.312, 0.58], [0.268, 0.71], [0.238, 0.80],
+  ].map(([r, y]) => new THREE.Vector2(r, y));
+  const parts = [
+    new THREE.LatheGeometry(profile, 16),
+    new THREE.TorusGeometry(0.252, 0.058, 10, 24).rotateX(Math.PI / 2).translate(0, 0.90, 0),
+    new THREE.CircleGeometry(0.50, 16).rotateX(-Math.PI / 2).translate(0, -0.115, 0),
+  ];
+  const g = mergeGeometries(parts, false);
+  for (const p of parts) p.dispose();
+  return g;
+}
 
 class ShrineOfChance extends Interactable {
   constructor(ctx, position, cost) {
@@ -186,17 +483,30 @@ class ShrineOfChance extends Interactable {
     this.spin = 0;
     this.typeId = TYPE_ID.shrineChance;
 
-    const base = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.1, 1.3, 0.4, 10),
-      new THREE.MeshStandardMaterial({ color: 0x3a3f4a, roughness: 0.8 })
+    const base = new THREE.Mesh(sharedGeo('shrineBase', () => plinthGeo(1.1, 10)), STONE());
+    const cols = new THREE.Mesh(sharedGeo('shrineCols', () => shrineColumnsGeo(1.02, 5, 0.4)), STONE());
+    // One iron collar between the stone and the offering: a hard specular band
+    // that separates the two matte-vs-glossy halves of the silhouette.
+    const collar = new THREE.Mesh(
+      sharedGeo('shrineCollar', () => new THREE.TorusGeometry(0.62, 0.08, 12, 30).rotateX(Math.PI / 2).translate(0, 0.70, 0)),
+      IRON_POLISH()
     );
-    base.position.y = 0.2;
+    base.castShadow = cols.castShadow = collar.castShadow = true;
+    base.receiveShadow = true;
+
     this.crystal = new THREE.Mesh(
-      new THREE.OctahedronGeometry(0.55, 0),
-      new THREE.MeshStandardMaterial({ color: 0xffd23f, emissive: 0xffa000, emissiveIntensity: 0.8, roughness: 0.2 })
+      sharedGeo('shard', shardClusterGeo),
+      new THREE.MeshStandardMaterial({
+        // Same correction as the blood spike, one rung down: the emissive was
+        // carrying most of the pixel value and flattening the shards. 0.45 lets
+        // the lit term model the facets while the offering still glows.
+        color: 0xffd23f, emissive: 0xffa000, emissiveIntensity: 0.45,
+        roughness: 0.09, metalness: 0.0, envMapIntensity: 2.6, flatShading: true,
+      })
     );
     this.crystal.position.y = 1.5;
-    this.group.add(base, this.crystal);
+    this.crystal.castShadow = true;
+    this.group.add(base, cols, collar, this.crystal);
   }
 
   available() { return this.enabled && this.uses < this.maxUses; }
@@ -238,17 +548,61 @@ class ShrineOfBlood extends Interactable {
     this.stageIndex = stageIndex;
     this.typeId = TYPE_ID.shrineBlood;
 
-    const base = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.0, 1.25, 0.4, 8),
-      new THREE.MeshStandardMaterial({ color: 0x3a2a2e, roughness: 0.85 })
+    const base = new THREE.Mesh(sharedGeo('bloodBase', () => plinthGeo(1.0, 8)), STONE());
+    // An open basin the spike stands in, with four buttresses. The basin is the
+    // read that tells you this shrine takes something rather than gives it.
+    const basin = new THREE.Mesh(sharedGeo('bloodBasin', () => {
+      const parts = [
+        new THREE.CylinderGeometry(0.78, 0.52, 0.42, 8, 1, true).translate(0, 0.90, 0),
+        new THREE.CylinderGeometry(0.53, 0.53, 0.05, 8).translate(0, 0.71, 0),
+      ];
+      for (let i = 0; i < 4; i++) {
+        const a = (i / 4) * Math.PI * 2 + 0.4;
+        parts.push(box(0.10, 0.44, 0.22, 0, 0, 0)
+          .rotateY(-a).translate(Math.cos(a) * 0.66, 0.90, Math.sin(a) * 0.66));
+      }
+      const g = mergeGeometries(parts, false);
+      for (const p of parts) p.dispose();
+      return g;
+    }), IRON_DARK());
+    // The rim is split out of the merged basin and given the polished, smooth
+    // rung. Merged into the flat-shaded drum it was four radial segments of
+    // near-black metal at metalness 0.8, which measured RGB(62,38,35) with no
+    // pixel above L 169 anywhere on it; as its own smooth torus it is the piece
+    // of the shrine that carries the specular.
+    const rim = new THREE.Mesh(
+      sharedGeo('bloodRim', () => new THREE.TorusGeometry(0.78, 0.075, 12, 32)
+        .rotateX(Math.PI / 2).translate(0, 1.11, 0)),
+      IRON_POLISH()
     );
-    base.position.y = 0.2;
+    base.castShadow = basin.castShadow = rim.castShadow = true;
+    base.receiveShadow = true;
+
+    // Per-instance materials, not shared ones: `interact()` dims the emissive
+    // when the shrine is spent, and a shared material would dim every shrine a
+    // client has ever built.
     this.spike = new THREE.Mesh(
-      new THREE.ConeGeometry(0.4, 1.6, 6),
-      new THREE.MeshStandardMaterial({ color: 0x8a1f2c, emissive: 0xd0203a, emissiveIntensity: 0.5, roughness: 0.4 })
+      sharedGeo('bloodSpike', bloodSpikeGeo),
+      new THREE.MeshStandardMaterial({
+        color: 0xb8434a, emissive: 0xd02f3e, emissiveIntensity: 0.10,
+        roughness: 0.42, metalness: 0.0, envMapIntensity: 1.5, flatShading: true,
+      })
     );
-    this.spike.position.y = 1.2;
-    this.group.add(base, this.spike);
+    this.slick = new THREE.Mesh(
+      sharedGeo('bloodSlick', bloodSlickGeo),
+      new THREE.MeshStandardMaterial({
+        color: 0x8a3a3f, emissive: 0x7a2028, emissiveIntensity: 0.07,
+        roughness: 0.05, metalness: 0.10, envMapIntensity: 3.4,
+        side: THREE.DoubleSide,
+      })
+    );
+    this.spike.castShadow = true;
+    // Both halves turn together, so the specular break travels round the form
+    // rather than sitting still on one facet.
+    this.spin = new THREE.Group();
+    this.spin.position.y = 0.86;
+    this.spin.add(this.spike, this.slick);
+    this.group.add(base, basin, rim, this.spin);
   }
 
   available() { return this.enabled && this.uses < this.maxUses; }
@@ -270,11 +624,14 @@ class ShrineOfBlood extends Interactable {
     this.ctx.items?.addGold(payout);
     this.ctx.vfx?.burst?.(this.position, 0xd0203a);
     this.ctx.audio?.play?.('shrineBlood', this.position);
-    if (this.uses >= this.maxUses) this.spike.material.emissiveIntensity = 0.05;
+    if (this.uses >= this.maxUses) {
+      this.spike.material.emissiveIntensity = 0.02;
+      this.slick.material.emissiveIntensity = 0.0;
+    }
     return true;
   }
 
-  update(dt) { this.spike.rotation.y += dt * 0.6; }
+  update(dt) { this.spin.rotation.y += dt * 0.6; }
 }
 
 // ---------------------------------------------------------------- teleporter

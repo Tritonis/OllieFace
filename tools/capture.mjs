@@ -10,7 +10,7 @@
  */
 import { chromium } from 'playwright';
 import { createServer } from 'vite';
-import { mkdir, writeFile, rm, readdir } from 'node:fs/promises';
+import { mkdir, writeFile, rm, readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 // Walk argv token by token. An earlier version joined and split on '--', which
@@ -37,6 +37,12 @@ const SHOT_TIMEOUT = Number(args.shotTimeout ?? (SOFTWARE ? 180000 : 30000));
 
 // Each scenario is driven entirely inside the page so it stays deterministic:
 // no wall-clock waits that could land mid-animation on a slow machine.
+//
+// The scenario functions in src/core/Harness.js are async: each owns its settle,
+// composes its own frame, and stops the engine loop before resolving. Adding a
+// `settle()` here on top of that is what put the shutter 0.63 s past the
+// explosion it existed to photograph — the wait belongs next to the effect that
+// knows how long it lives, not next to the screenshot call.
 const SCENARIOS = [
   {
     name: '01-title',
@@ -46,58 +52,43 @@ const SCENARIOS = [
   {
     name: '02-vista',
     doc: 'Wide establishing shot of the stage. Judges terrain, lighting, fog, sky.',
-    setup: async (page) => {
-      await page.evaluate(() => globalThis.__HARNESS__?.vista?.());
-      await settle(page, 90);
-    },
+    setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.vista?.()),
   },
   {
     name: '03-thirdperson',
     doc: 'Default gameplay framing, player idle. Judges character read and camera.',
-    setup: async (page) => {
-      await page.evaluate(() => globalThis.__HARNESS__?.gameplay?.());
-      await settle(page, 90);
-    },
+    setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.gameplay?.()),
   },
   {
     name: '04-combat',
     doc: 'Mid-fight with a horde, firing. Judges VFX layering, enemy legibility, HUD under load.',
-    setup: async (page) => {
-      await page.evaluate(() => globalThis.__HARNESS__?.combat?.({ enemies: 24 }));
-      await settle(page, 150);
-    },
+    setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.combat?.({ enemies: 24 })),
   },
   {
     name: '05-boss',
     doc: 'Teleporter event with the boss active. Judges scale, boss silhouette, boss HUD.',
-    setup: async (page) => {
-      await page.evaluate(() => globalThis.__HARNESS__?.boss?.());
-      await settle(page, 150);
-    },
-  },
-  {
-    name: '06-loaded-hud',
-    doc: 'Late-run HUD with a full inventory and high difficulty. Judges UI density and hierarchy.',
-    setup: async (page) => {
-      await page.evaluate(() => globalThis.__HARNESS__?.lateRun?.());
-      await settle(page, 90);
-    },
+    setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.boss?.()),
   },
   {
     name: '07-interactables',
     doc: 'Chest / shrine / item pickup close-up. Judges prop modelling and pickup VFX.',
-    setup: async (page) => {
-      await page.evaluate(() => globalThis.__HARNESS__?.interactables?.());
-      await settle(page, 90);
-    },
+    setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.interactables?.()),
   },
   {
     name: '08-explosion',
     doc: 'Peak VFX moment: explosion + damage numbers + shake. Judges impact feedback.',
-    setup: async (page) => {
-      await page.evaluate(() => globalThis.__HARNESS__?.explosion?.());
-      await settle(page, 12);
-    },
+    setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.explosion?.()),
+  },
+  // Runs last on purpose, despite the file name. `lateRun` gives the player
+  // every item in the game, 4200 gold and 22 minutes on the difficulty clock,
+  // and nothing takes them away again — with this in its numbered position, the
+  // two shots after it carried a full inventory panel over the top-left quarter
+  // of frame and a HARD x3.2 meter, which is neither what they document nor a
+  // state the player could be in there.
+  {
+    name: '06-loaded-hud',
+    doc: 'Late-run HUD with a full inventory and high difficulty. Judges UI density and hierarchy.',
+    setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.lateRun?.()),
   },
 ];
 
@@ -173,11 +164,26 @@ const errors = [];
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 page.on('pageerror', (e) => errors.push(`${e.message}\n${e.stack ?? ''}`));
 
-// Clear only what we generate. An earlier version wiped the whole directory
-// and destroyed a review report that lived alongside the images.
+// Clear only what we are about to regenerate. An earlier version wiped the
+// whole directory and destroyed a review report that lived alongside the
+// images; the version after that respected non-PNGs but still deleted all eight
+// shots on an `--only combat` run, so a targeted re-shoot silently threw away
+// the seven frames the reviewers were mid-way through judging.
+const WANTED = new Set(
+  SCENARIOS.filter((s) => !ONLY || ONLY.some((o) => s.name.includes(o))).map((s) => `${s.name}.png`)
+);
 await mkdir(OUT, { recursive: true });
+// Entries for shots this run is not taking are carried forward, so the manifest
+// keeps describing every PNG that is actually on disk. A manifest that lists
+// three shots next to a directory of eight is how a reviewer ends up judging a
+// stale frame against fresh telemetry.
+const carried = ONLY
+  ? await readFile(path.join(OUT, 'manifest.json'), 'utf8')
+      .then((t) => JSON.parse(t).shots?.filter((s) => !WANTED.has(`${s.name}.png`)) ?? [])
+      .catch(() => [])
+  : [];
 for (const f of await readdir(OUT).catch(() => [])) {
-  if (f.endsWith('.png') || f === 'manifest.json') await rm(path.join(OUT, f), { force: true });
+  if (WANTED.has(f) || f === 'manifest.json') await rm(path.join(OUT, f), { force: true });
 }
 
 log('navigating...');
@@ -190,7 +196,7 @@ const ready = await page
   .then(() => true)
   .catch(() => false);
 
-const manifest = { seed: SEED, ready, shots: [], errors: [] };
+const manifest = { seed: SEED, ready, shots: [], errors: [], partial: !!ONLY };
 
 if (!ready) {
   manifest.errors = errors;
@@ -216,6 +222,8 @@ if (!ready) {
       manifest.shots.push({ name: s.name, doc: s.doc, error: String(e) });
     }
   }
+  // Fold the untouched shots back in and restore capture order.
+  manifest.shots = [...manifest.shots, ...carried].sort((a, b) => a.name.localeCompare(b.name));
   manifest.errors = errors;
 
   // render.calls/triangles read here would only reflect the composer's final

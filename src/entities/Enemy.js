@@ -14,7 +14,7 @@ import {
   arrive, seek, separate, avoidObstacles, moveGrounded, moveFlying,
   groundAt, orbitPoint, turnToward, angleDelta, approachArc,
 } from '../ai/Steering.js';
-import { acquireRig, releaseRig, configureShadows, makeAnim } from './EnemyMeshes.js';
+import { acquireRig, releaseRig, configureShadows, makeAnim, BEAM_MAX_LEN } from './EnemyMeshes.js';
 import { ELITE_STATS } from '../data/enemies.js';
 import { ESTATE } from '../net/Protocol.js';
 import { clamp, damp, lerp } from '../core/MathUtil.js';
@@ -94,6 +94,7 @@ export class Enemy {
 
     // --- runtime ---
     this.def = null;
+    this.name = '';
     this.velocity = new THREE.Vector3();
     this.grounded = false;
     this.yaw = 0;
@@ -164,6 +165,9 @@ export class Enemy {
 
     this.id = NEXT_ID++;
     this.def = def;
+    // Display name, for the boss bar and any other UI that names a unit. The
+    // HUD has no route to the spawn card, so the entity has to carry it.
+    this.name = def.name || '';
     // What a client resolves back into a rig; see ENEMY_BY_TYPE.
     this.typeId = def.typeId || 0;
     this.alive = true;
@@ -706,7 +710,7 @@ export class Enemy {
     let len = a.range;
     const hit = ctx.stage && ctx.stage.raycast ? ctx.stage.raycast(origin, dir, a.range) : null;
     if (hit) len = hit.distance;
-    this.anim.beamLen = len;
+    this.anim.beamLen = Math.min(len, BEAM_MAX_LEN);
 
     const p = ctx.player;
     if (p) {
@@ -791,6 +795,10 @@ export class Enemy {
 
     rig.root.position.copy(this.position);
     rig.root.rotation.y = this.yaw;
+    // Terrain height under the unit, for the rig's contact shadow. One
+    // heightfield sample per unit per frame; flyers need it most, since their
+    // blob is the only thing that says how high they are hovering.
+    a.ground = groundAt(ctx, this.position.x, this.position.z);
 
     // Spawn pop: scale in from nothing so units don't blink into existence.
     if (this.fsm.state === S.SPAWN) {
@@ -918,7 +926,10 @@ const STATES = {
       // is the entire "get out of the way" signal.
       if (a && (a.kind === 'beam' || a.kind === 'barrage')) {
         e.anim.beamOn = true;
-        e.anim.beamLen = Math.min(a.range, Math.max(4, e.distToPlayer));
+        // Drawn length only. The hitscan still runs to `a.range` (55 m for the
+        // titan); the quad stops at BEAM_MAX_LEN so a distant shooter fires a
+        // bolt out of its own muzzle instead of ruling a wire across the frame.
+        e.anim.beamLen = Math.min(a.range, Math.max(4, e.distToPlayer), BEAM_MAX_LEN);
       }
     },
     update(e, ctx, h, fsm) {
@@ -927,7 +938,7 @@ const STATES = {
       const dur = a.windup * e.timeScale;
       e.anim.windup = clamp(fsm.t / dur, 0, 1);
       if (a.kind === 'beam' || a.kind === 'barrage') {
-        e.anim.beamLen = lerp(e.anim.beamLen, Math.min(a.range, Math.max(4, e.distToPlayer)), 0.2);
+        e.anim.beamLen = lerp(e.anim.beamLen, Math.min(a.range, Math.max(4, e.distToPlayer), BEAM_MAX_LEN), 0.2);
       }
       if (fsm.t >= dur) fsm.set(S.ATTACK, ctx);
     },

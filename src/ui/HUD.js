@@ -40,6 +40,18 @@ const DIFFICULTY = [
 const NOTCHES = 10;
 const DIR_SLOTS = 6;
 
+// Cooldowns shorter than this get no darkening sweep — see `updateAbilities`.
+const SWEEP_MIN_CD = 0.75;
+// ...and below this much remaining, neither the sweep nor the numeral shows.
+// The two share one threshold so a swept slot can never lack its readout.
+const TIMER_MIN = 0.2;
+// A slot is 5.2em wide. Past five pips the row stops being countable, so the
+// remainder becomes a "+N" rather than spilling across the neighbouring slots.
+const PIP_CAP = 5;
+// Tiles per inventory row. 12 * (2.6em tile + 0.28em gap) fits the 460px cap
+// `.inventory` sets; see `onItemPickup` for why the rows are explicit.
+const INV_ROW = 12;
+
 export class HUD {
   init(ctx) {
     this.ctx = ctx;
@@ -129,7 +141,13 @@ export class HUD {
 
     on('teleporterCharging', ({ progress }) => {
       this.tpProgress = clamp(progress ?? 0, 0, 1);
-      this.setObjective(`Charging teleporter: ${Math.round(this.tpProgress * 100)}%`);
+      // The teleporter is only ever charging because the player found it and
+      // stood in it. Keeping the range readout live past that point leaves a
+      // stale "55M" under a boss bar.
+      this.tpFound = true;
+      // The radial already reads the charge; while a boss is up the objective
+      // belongs to the boss.
+      if (!this.boss) this.setObjective(`Charging teleporter: ${Math.round(this.tpProgress * 100)}%`);
     });
     on('teleporterComplete', () => {
       this.tpProgress = -1;
@@ -182,7 +200,19 @@ export class HUD {
       el.dataset.id = id;
       el.dataset.tier = tier;
       el.innerHTML = `<img src="${itemArt(id, tier)}" alt="" draggable="false" /><b class="item-stack"></b>`;
-      group.appendChild(el);
+      // Explicit rows, not `flex-wrap`. The tier rule is meant to shrink-wrap
+      // its icons, but `width: max-content` on a wrapping flex container
+      // resolves to the *unwrapped* width of all the children and then clamps
+      // to `max-width`, so any tier that wrapped drew its rule to the full
+      // container width and overhung its last tile by ~40px. A column of
+      // non-wrapping rows makes `max-content` the true content width.
+      let row = group.lastElementChild;
+      if (!row || row.childElementCount >= INV_ROW) {
+        row = document.createElement('div');
+        row.className = 'inv-row';
+        group.appendChild(row);
+      }
+      row.appendChild(el);
       entry = { el, badge: el.querySelector('.item-stack'), count: 0, tier };
       this.inv.set(id, entry);
       group.classList.add('has-items');
@@ -195,7 +225,7 @@ export class HUD {
     this.pulse(entry.el, 'is-pop');
 
     const name = def?.name || prettify(id);
-    this.toast(name, tier);
+    this.toast(name, tier, id);
     this.menus.showPickup({
       id,
       tier,
@@ -204,18 +234,39 @@ export class HUD {
     });
   }
 
+  /**
+   * A boss bar has to name the thing that is killing you — "BOSS" is a template
+   * that was never filled in. The spawn card carries the real name, and `Enemy`
+   * keeps the card on `def`, so `def.name` is the reliable read; `name` and
+   * `displayName` are honoured first for when the entity carries its own.
+   */
   setBoss(enemy) {
     if (!enemy) return;
     this.boss = enemy;
-    this.refs.bossName.textContent = (enemy.displayName || enemy.name || 'Boss').toUpperCase();
-    this.refs.bossSub.textContent = enemy.isElite ? 'Elite' : 'Teleporter Boss';
+    const name = enemy.displayName || enemy.name || enemy.def?.name || 'Boss';
+    this.refs.bossName.textContent = String(name).toUpperCase();
+    // The sub-line said "Teleporter Boss" while the objective banner directly
+    // beneath it said "find the teleporter". It now carries the affix, which is
+    // the thing the player actually has to plan around.
+    this.refs.bossSub.textContent = enemy.isElite
+      ? `${prettify(enemy.affix || 'Elite')} — Teleporter Boss`
+      : 'Teleporter Boss';
     this.refs.bossBar.classList.add('is-on');
     this.c.bossHp = -1;
+    // Two competing instructions in one glance region is worse than none: while
+    // a boss is up, the objective *is* the boss.
+    this.setObjective('Defeat the teleporter boss');
   }
 
   clearBoss() {
+    const had = !!this.boss;
     this.boss = null;
     this.refs.bossBar.classList.remove('is-on');
+    if (had) {
+      this.setObjective(this.tpProgress >= 0
+        ? `Charging teleporter: ${Math.round(this.tpProgress * 100)}%`
+        : this.tpFound ? 'Proceed to the next stage' : 'Find and activate the teleporter');
+    }
   }
 
   setObjective(text) {
@@ -253,6 +304,7 @@ export class HUD {
       time: formatTime(this.ctx.time ?? 0),
       stage: String(this.stageIndex),
       stageName: this.stageName,
+      level: Math.max(1, Math.floor(this.ctx.player?.level ?? 1)),
       kills: this.stats.kills,
       damage: Math.round(this.stats.damage).toLocaleString(),
       itemCount: items.reduce((a, b) => a + b.count, 0),
@@ -261,17 +313,41 @@ export class HUD {
     });
   }
 
-  /** Public hook so other systems can push a line into the log. */
-  toast(text, tier = 'common') {
+  /**
+   * Public hook so other systems can push a line into the log.
+   *
+   * `id` is optional; when it names an item the row leads with the same emblem
+   * the inventory strip draws, so the player never has to learn two unrelated
+   * representations of one object.
+   */
+  toast(text, tier = 'common', id = null) {
     const el = document.createElement('div');
     el.className = `toast t-${tier}`;
-    el.innerHTML = `<i class="toast-mark"></i><span>${escapeHtml(text)}</span>`;
+    const mark = id
+      ? `<img class="toast-icon" src="${itemArt(id, tier)}" alt="" draggable="false" />`
+      : '<i class="toast-mark"></i>';
+    el.innerHTML = `${mark}<span>${escapeHtml(text)}</span>`;
     this.refs.log.appendChild(el);
     requestAnimationFrame(() => el.classList.add('is-in'));
     this.toasts.push({ el, t: 5 });
     while (this.toasts.length > 6) {
       const dead = this.toasts.shift();
       dead.el.remove();
+    }
+    this.restackToasts();
+  }
+
+  /**
+   * Six pickups at full opacity is six equally loud claims on the eye. Fade by
+   * age so the newest line is the one that reads — `--age` rather than an
+   * inline opacity, because the entry transition owns `opacity`.
+   */
+  restackToasts() {
+    const n = this.toasts.length;
+    for (let i = 0; i < n; i++) {
+      const age = n - 1 - i;                       // 0 = newest
+      const v = Math.max(0.34, 1 - age * 0.15);
+      this.toasts[i].el.style.setProperty('--age', v.toFixed(2));
     }
   }
 
@@ -384,11 +460,17 @@ export class HUD {
     }
   }
 
+  /**
+   * Level and XP are run state owned by Progression and surfaced on Player as
+   * `level` / `xp` / `xpToNext` (see Player's getters). Reading them off the
+   * player keeps this one read for both roles: the host advances them, and a
+   * client's copy is set from the replicated `levelUp` event.
+   */
   updateExperience(ctx) {
     const p = ctx.player;
     const level = Math.max(1, Math.floor(p?.level ?? 1));
-    const xp = Math.max(0, p?.xp ?? p?.experience ?? 0);
-    const next = Math.max(1, p?.xpToNext ?? p?.xpNext ?? p?.experienceToNext ?? 100);
+    const xp = Math.max(0, p?.xp ?? 0);
+    const next = Math.max(1, p?.xpToNext ?? 1);
     const frac = clamp(xp / next, 0, 1);
 
     this.set('xp', round3(frac), (v) => {
@@ -464,14 +546,25 @@ export class HUD {
       const a = readAbility(raw);
       const ref = this.refs.slots[i];
 
-      const p = a.cd > 0 ? clamp(a.rem / a.cd, 0, 1) : 0;
+      // A sub-second cooldown gets no sweep at all. The primary's is ~0.2s, so
+      // sweeping it meant the slot the player looks at most spent its life
+      // under a near-opaque black panel with no numeral to compensate — it read
+      // as broken rather than as firing. RoR2 never blacks out the primary.
+      //
+      // The invariant: **a darkened slot always carries a readout.** The sweep
+      // used to be gated on the *total* cooldown and the numeral on the
+      // *remaining* time, so any ability whose cooldown fell between 0.75s and
+      // ~1.3s — exactly what a loaded run's stacked cooldown items produce —
+      // was swept for its whole cooldown and never printed a number once. One
+      // quantity now drives both, and under a second it prints a decimal.
+      const sweeping = a.cd >= SWEEP_MIN_CD && a.rem > TIMER_MIN;
+      const p = sweeping ? clamp(a.rem / a.cd, 0, 1) : 0;
       this.set(`cd${i}`, round3(p), (v) => {
         ref.sweep.style.transform = `scaleY(${v})`;
         ref.el.classList.toggle('is-cooling', v > 0.001);
       });
-      // The sweep already reads a sub-second cooldown; printing "0.1" over the
-      // icon only costs the player the ability to identify the slot.
-      this.set(`cdt${i}`, a.rem >= 1 ? String(Math.ceil(a.rem)) : '', (v) => {
+      const timer = !sweeping ? '' : a.rem >= 1 ? String(Math.ceil(a.rem)) : a.rem.toFixed(1);
+      this.set(`cdt${i}`, timer, (v) => {
         ref.timer.textContent = v;
       });
 
@@ -546,7 +639,11 @@ export class HUD {
    * this is a DOM write on every frame the player is moving.
    */
   updateObjectivePing(ctx) {
-    const pos = this.tpFound ? null : ctx.progression?.teleporterPosition;
+    // A live boss also ends the range readout. `tpFound` only latches on the
+    // charging/complete events, so a boss that came up any other way left a
+    // stale "55m" printed after "DEFEAT THE TELEPORTER BOSS" — a distance to a
+    // teleporter the player is already standing in.
+    const pos = this.tpFound || this.boss ? null : ctx.progression?.teleporterPosition;
     const origin = ctx.player?.position;
     if (!pos || !origin) {
       this.setPing('tpPing', this.refs.tpPing, 0, 0);
@@ -616,12 +713,14 @@ export class HUD {
   }
 
   updateToasts(dt) {
+    let dead = false;
     for (let i = this.toasts.length - 1; i >= 0; i--) {
       const t = this.toasts[i];
       t.t -= dt;
       if (t.t <= 0.6 && !t.fading) { t.fading = true; t.el.classList.add('is-out'); }
-      if (t.t <= 0) { t.el.remove(); this.toasts.splice(i, 1); }
+      if (t.t <= 0) { t.el.remove(); this.toasts.splice(i, 1); dead = true; }
     }
+    if (dead) this.restackToasts();
   }
 }
 
@@ -663,12 +762,18 @@ function shortName(name) {
 }
 
 function renderPips(host, charges, max) {
-  if (max <= 1) { host.innerHTML = ''; return; }
-  if (host.childElementCount !== max) {
-    host.innerHTML = Array.from({ length: max }, () => '<i></i>').join('');
+  if (max <= 1) { host.innerHTML = ''; host.dataset.k = ''; return; }
+  const shown = Math.min(max, PIP_CAP);
+  const extra = max - shown;
+  const key = `${shown}+${extra}`;
+  if (host.dataset.k !== key) {
+    host.dataset.k = key;
+    host.innerHTML = Array.from({ length: shown }, () => '<i></i>').join('')
+      + (extra > 0 ? `<b class="pip-more">+${extra}</b>` : '');
   }
-  const pips = host.children;
-  for (let i = 0; i < pips.length; i++) pips[i].classList.toggle('is-on', i < charges);
+  const pips = host.querySelectorAll('i');
+  const lit = Math.min(charges, shown);
+  for (let i = 0; i < pips.length; i++) pips[i].classList.toggle('is-on', i < lit);
 }
 
 function formatTime(sec) {

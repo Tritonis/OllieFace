@@ -36,6 +36,13 @@ const BASE = {
   jumpCount: 1,
 };
 
+// Survivor level scaling, matching the ramp the Director gives monsters
+// (Director.js:10-11) so a level of parity really is parity. The level itself
+// is run state and lives on Progression — see `_levelBase`.
+const LEVEL_HEALTH = 0.30;
+const LEVEL_DAMAGE = 0.20;
+const LEVEL_REGEN = 0.20;
+
 const RADIUS = 0.45;
 const HEIGHT = 1.8;
 const EYE = 1.6;
@@ -103,6 +110,9 @@ export class Player {
     this.velocity = new THREE.Vector3();
 
     this.stats = { ...BASE };
+    // Scratch base block, rebuilt only when the survivor level changes.
+    this._lvlBase = { ...BASE };
+    this._lvlN = -1;
     this.maxHealth = BASE.maxHealth;
     this.health = BASE.maxHealth;
     // `shield` is the decaying barrier Items grants and ticks down; Player only
@@ -270,7 +280,7 @@ export class Player {
     const replay = c.tick > 0 && c.tick <= this._lastCmdTick;
     this._replaying = replay;
 
-    this.stats = ctx.items?.stats?.(BASE) || { ...BASE };
+    this.stats = ctx.items?.stats?.(this._levelBase()) || { ...BASE };
     this.maxHealth = this.stats.maxHealth;
     this.maxShield = this.maxHealth * 0.5;
     if (this.health > this.maxHealth) this.health = this.maxHealth;
@@ -485,6 +495,39 @@ export class Player {
       this._fallSpeed = Math.min(this._fallSpeed || 0, this.velocity.y);
     }
     this.wasGrounded = this.grounded;
+  }
+
+  // ------------------------------------------------------------------- level
+
+  /**
+   * The survivor level lives on Progression, not here: it is shared run state,
+   * and a co-op host simulates one Player per connected client. All of them
+   * have to read the same number or the host's copy of a remote pawn and that
+   * client's own prediction of it would run different stats.
+   *
+   * These three are the HUD's read contract (`HUD.updateExperience`).
+   */
+  get level() { return this.ctx?.progression?.level ?? 1; }
+  get xp() { return this.ctx?.progression?.xp ?? 0; }
+  get xpToNext() { return this.ctx?.progression?.xpToNext ?? 1; }
+
+  /** BASE raised by the current level. Rebuilt only when the level changes. */
+  _levelBase() {
+    const n = Math.max(0, this.level - 1);
+    const b = this._lvlBase;
+    if (n === this._lvlN) return b;
+    const prevMax = b.maxHealth;
+    this._lvlN = n;
+    b.maxHealth = BASE.maxHealth * (1 + LEVEL_HEALTH * n);
+    b.damage = BASE.damage * (1 + LEVEL_DAMAGE * n);
+    b.healthRegen = BASE.healthRegen * (1 + LEVEL_REGEN * n);
+    // Grant the health the level adds instead of only widening the bar —
+    // otherwise every level-up would visibly *drop* your health fraction.
+    // Health is replicated, so only the host books it.
+    if (b.maxHealth > prevMax && this.alive && this.ctx.authority) {
+      this.health += b.maxHealth - prevMax;
+    }
+    return b;
   }
 
   _regen(ctx, h) {

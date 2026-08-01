@@ -8,8 +8,11 @@ import * as THREE from 'three';
  * costs exactly one matrix write at placement and nothing thereafter.
  *
  * These are oriented quads snapped to the surface normal rather than true
- * box-projected decals. On stylised terrain the difference is invisible and it
- * saves a per-decal geometry clip.
+ * box-projected decals, which saves a per-decal geometry clip. A single quad
+ * only lies flat if the surface under its whole footprint is flat, so anything
+ * big enough to span a facet break is placed against an averaged normal probed
+ * from a cross of raycasts and shrunk — or refused — where the surface folds.
+ * See `_probeNormal`.
  */
 
 const ATLAS_COLS = 4;
@@ -73,6 +76,21 @@ const _roll = new THREE.Quaternion();
 const _m = new THREE.Matrix4();
 const _color = new THREE.Color();
 const _dir = new THREE.Vector3();
+const _probeN = new THREE.Vector3();
+const _probeAlt = new THREE.Vector3();
+const _probeO = new THREE.Vector3();
+const _axisA = new THREE.Vector3();
+const _axisB = new THREE.Vector3();
+const _sum = new THREE.Vector3();
+const _fitOpts = { size: 0, life: undefined, color: undefined };
+
+// Footprints below this never span a facet break, so they skip the probe and
+// its four extra raycasts. Bullet holes (0.22) and cracks (0.5) mostly do.
+const PROBE_MIN_SIZE = 0.55;
+// cos(25 degrees) — past this the footprint starts shrinking toward the facet.
+const CURVATURE_LIMIT = 0.906;
+// cos(45 degrees) — past this the placement is refused outright.
+const REJECT_LIMIT = 0.707;
 
 export class Decals {
   constructor({ capacity = 192 } = {}) {
@@ -134,7 +152,7 @@ export class Decals {
    */
   place(point, normal, kind = DECAL.BULLET, opts = {}) {
     if (!this.mesh) return;
-    const rng = this.ctx.rng;
+    const rng = this.ctx.fxRng ?? this.ctx.rng;
     const i = this.head;
     this.head = (this.head + 1) % this.capacity;
 
@@ -173,9 +191,70 @@ export class Decals {
     if (!stage?.raycast) return;
     _dir.copy(dir);
     if (_dir.lengthSq() < 1e-8) _dir.set(0, -1, 0); else _dir.normalize();
-    const hit = stage.raycast(origin, _dir, opts.maxDist ?? 6);
+    const maxDist = opts.maxDist ?? 6;
+    const hit = stage.raycast(origin, _dir, maxDist);
     if (!hit) return;
+
+    const size = opts.size ?? kind.size;
+    // A decal is a single oriented quad. On a flat facet that is invisible; on a
+    // facet break inside its own footprint half the quad floats off the surface
+    // and the splat reads as a sticker pasted over the render. Probe a small
+    // cross around the hit, orient to the averaged normal, shrink on curvature
+    // and refuse the placement outright where the surface folds too hard.
+    //
+    // Only worth four extra raycasts when the footprint can actually span a
+    // facet: bullet holes and small cracks skip the probe entirely.
+    if (size >= PROBE_MIN_SIZE) {
+      const fit = this._probeNormal(stage, origin, hit, size, maxDist);
+      if (!fit) return;
+      _fitOpts.size = size * fit;
+      _fitOpts.life = opts.life;
+      _fitOpts.color = opts.color;
+      this.place(hit.point, _probeN, kind, _fitOpts);
+      return;
+    }
     this.place(hit.point, hit.normal, kind, opts);
+  }
+
+  /**
+   * Averages the surface normal over a cross of radius `size * 0.5` around the
+   * hit. Returns a footprint scale in (0, 1], or null if the surface is too
+   * broken up under the decal to fake with one quad.
+   */
+  _probeNormal(stage, origin, hit, size, maxDist) {
+    _probeN.copy(hit.normal);
+    if (_probeN.lengthSq() < 1e-8) _probeN.set(0, 1, 0); else _probeN.normalize();
+
+    // Two axes spanning the surface plane at the hit.
+    _axisA.set(0, 1, 0);
+    if (Math.abs(_probeN.y) > 0.9) _axisA.set(1, 0, 0);
+    _axisB.crossVectors(_probeN, _axisA).normalize();
+    _axisA.crossVectors(_probeN, _axisB).normalize();
+
+    const step = size * 0.5;
+    let worst = 1;                      // smallest dot against the centre normal
+    _sum.copy(_probeN);
+    for (let i = 0; i < 4; i++) {
+      const ax = i < 2 ? _axisA : _axisB;
+      const sgn = i % 2 ? -1 : 1;
+      _probeO.copy(origin).addScaledVector(ax, step * sgn);
+      const h = stage.raycast(_probeO, _dir, maxDist + step);
+      if (!h?.normal) continue;
+      _probeAlt.copy(h.normal).normalize();
+      worst = Math.min(worst, _probeAlt.dot(_probeN));
+      _sum.add(_probeAlt);
+    }
+
+    // Past 45 degrees no single quad can lie on this and the artefact is worse
+    // than the missing decal.
+    if (worst < REJECT_LIMIT) return null;
+    if (_sum.lengthSq() > 1e-8) _probeN.copy(_sum).normalize();
+    // Between 25 and 45 degrees, shrink the footprint below the facet scale
+    // rather than dropping the decal — losing every splat on faceted rock would
+    // cost more readability than it buys.
+    if (worst >= CURVATURE_LIMIT) return 1;
+    const k = (worst - REJECT_LIMIT) / (CURVATURE_LIMIT - REJECT_LIMIT);
+    return 0.5 + k * 0.5;
   }
 
   update(ctx, dt) {

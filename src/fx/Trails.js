@@ -35,11 +35,15 @@ uniform float uCore;
 varying vec2 vParam;
 varying float vAlpha;
 void main() {
-  float edge = 1.0 - abs(vParam.y);
+  // vParam.x is 0 at the tail and 1 at the head. Ignoring it gave a ribbon of
+  // constant width and constant core brightness end to end, which reads as an
+  // anamorphic lens streak rather than as motion — there is no cue for where
+  // the projectile is or which way it is going. Weight both by it: the visible
+  // band narrows toward the tail and the hot inner line only exists at the head.
+  float headw = mix(0.25, 1.0, vParam.x);
+  float edge = max(1.0 - abs(vParam.y) / headw, 0.0);
   float soft = smoothstep(0.0, 0.55, edge);
-  // A tight power curve on top of the soft body gives the bright inner line
-  // that makes a trail read as energy instead of as a smear.
-  float core = pow(edge, 8.0) * uCore;
+  float core = pow(edge, 8.0) * uCore * vParam.x;
   vec3 col = uColor * soft + uCoreColor * core;
   float a = vAlpha * uOpacity * (soft + core * 0.5);
   if (a < 0.004) discard;

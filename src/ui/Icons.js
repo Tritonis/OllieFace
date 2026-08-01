@@ -8,7 +8,7 @@
 // tier-coloured silhouette, one accent highlight. No gradients inside the
 // glyph itself so it stays legible down to 32px.
 
-import { ITEM_BY_ID, itemIcon as itemArtCanvas } from '../data/items.js';
+import { ITEM_BY_ID, drawGlyph } from '../data/items.js';
 
 const SIZE = 64;
 
@@ -52,7 +52,7 @@ function cached(key, draw) {
   return url;
 }
 
-export function clearIconCache() { cache.clear(); artCache.clear(); }
+export function clearIconCache() { cache.clear(); }
 
 // ---------------------------------------------------------------- primitives
 
@@ -168,8 +168,28 @@ export function tierFrame(tier) {
   return cached(`frame:${tier}`, (g, s) => drawPlate(g, s, t));
 }
 
+const PLATE_CUT = 0.22;
+
+/** The tier stroke plus the machined corner ticks, drawn over whatever is
+ *  already inside the plate. Shared by `drawPlate` and `itemArt`. */
+function plateEdge(g, s, t) {
+  const cut = s * PLATE_CUT;
+  g.lineWidth = s * 0.045;
+  g.strokeStyle = t.color;
+  platePath(g, s, 2, cut);
+  g.stroke();
+
+  // corner ticks — the small machined detail that sells the sci-fi read
+  g.strokeStyle = hexA(t.color, 0.55);
+  g.lineWidth = s * 0.03;
+  g.beginPath();
+  g.moveTo(s * 0.08, s * 0.32); g.lineTo(s * 0.08, s * 0.2);
+  g.moveTo(s * 0.92, s * 0.68); g.lineTo(s * 0.92, s * 0.8);
+  g.stroke();
+}
+
 function drawPlate(g, s, t) {
-  const cut = s * 0.22;
+  const cut = s * PLATE_CUT;
   platePath(g, s, 2, cut);
   const grad = g.createLinearGradient(0, 0, 0, s);
   grad.addColorStop(0, mix(t.plate, '#000000', 0.15));
@@ -184,18 +204,7 @@ function drawPlate(g, s, t) {
   g.fillStyle = glow;
   g.fill();
 
-  g.lineWidth = s * 0.045;
-  g.strokeStyle = t.color;
-  platePath(g, s, 2, cut);
-  g.stroke();
-
-  // corner ticks — the small machined detail that sells the sci-fi read
-  g.strokeStyle = hexA(t.color, 0.55);
-  g.lineWidth = s * 0.03;
-  g.beginPath();
-  g.moveTo(s * 0.08, s * 0.32); g.lineTo(s * 0.08, s * 0.2);
-  g.moveTo(s * 0.92, s * 0.68); g.lineTo(s * 0.92, s * 0.8);
-  g.stroke();
+  plateEdge(g, s, t);
 }
 
 /** Item icon: tier plate + a deterministic glyph chosen from the id. */
@@ -279,21 +288,68 @@ export function unknownIcon(tier = 'common') {
   return itemIcon('unknown', tier);
 }
 
-const artCache = new Map();
-
 /**
- * The game's own item art (`src/data/items.js`), cached as a data URL so the
- * inventory row, the tooltip and the pickup banner all show the same emblem
- * the rest of the game draws. Ids with no definition fall back to the generic
- * tier plate above.
+ * The game's own item art (`src/data/items.js`), re-plated into the HUD's
+ * angular language and re-coloured by tier.
+ *
+ * Two things had to change about the way `items.js` presents its own icons:
+ *
+ * 1. **Shape.** `items.js` draws its plate and its border as rounded rects, and
+ *    the inventory was the only rounded thing in an interface otherwise built
+ *    entirely from chamfers, shears and notched octagons. So the glyph is drawn
+ *    here directly, onto this file's chamfered plate — the glyph is what
+ *    carries item identity, and nothing else from the source icon is wanted.
+ *    (An earlier version blitted the source canvas at 1.3x and clipped the
+ *    rounded shapes off the edge, which also scaled the glyph and cropped the
+ *    wide ones — burst, snowflake, bars — flush into the tile border.)
+ * 2. **Colour.** The source fills each glyph from a hash of its id, which made
+ *    a row of same-tier items read as eleven unrelated hues with the tier
+ *    carried only by a 2px border. A `color` composite keeps the glyph's
+ *    luminosity — its shading, its white outline — and takes hue and saturation
+ *    from the tier. Shape carries identity, colour carries tier.
+ *
+ * The glyph is centred high and sized to leave the bottom-right of the tile
+ * free, because that is where the stack count lives (`.item-stack`); at a
+ * legible count size the two used to overlap.
+ *
+ * Ids with no definition fall back to the generic tier plate above.
  */
+const ART_CENTRE_Y = 0.41;
+const ART_RADIUS = 0.30;
+
 export function itemArt(id, tier = 'common') {
-  if (!ITEM_BY_ID.has(id)) return itemIcon(id, tier);
-  const hit = artCache.get(id);
-  if (hit) return hit;
-  const url = itemArtCanvas(id, SIZE).toDataURL();
-  artCache.set(id, url);
-  return url;
+  const item = ITEM_BY_ID.get(id);
+  if (!item) return itemIcon(id, tier);
+  const t = tierMeta(tier);
+  return cached(`art:${id}:${tier}`, (g, s) => {
+    g.save();
+    platePath(g, s, 2, s * PLATE_CUT);
+    g.clip();
+    // Opaque backdrop first: `color` composites onto whatever is under them,
+    // and any transparent pixel inside the clip would take the flat tier fill.
+    const grad = g.createRadialGradient(s / 2, s * ART_CENTRE_Y, 0, s / 2, s * ART_CENTRE_Y, s * 0.62);
+    grad.addColorStop(0, mix(t.plate, '#ffffff', 0.06));
+    grad.addColorStop(1, '#05070a');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, s, s);
+
+    g.save();
+    g.translate(s / 2, s * ART_CENTRE_Y);
+    g.strokeStyle = '#ffffff';
+    g.lineWidth = Math.max(1.5, s * 0.045);
+    g.lineJoin = 'round';
+    g.lineCap = 'round';
+    drawGlyph(g, item.glyph, s * ART_RADIUS, 0);
+    g.restore();
+
+    g.globalCompositeOperation = 'color';
+    g.fillStyle = t.color;
+    g.fillRect(0, 0, s, s);
+    g.globalCompositeOperation = 'source-over';
+    g.restore();
+
+    plateEdge(g, s, t);
+  });
 }
 
 // -------------------------------------------------------------- colour math
