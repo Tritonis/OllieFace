@@ -45,6 +45,20 @@ Every system is a class with `init(ctx)` plus any of `fixedUpdate(ctx, h)`,
 | `bossSpawn` / `bossDead` | `{ enemy }` | Director |
 | `playerDead` | `{}` | Combat |
 
+## Settings
+
+`ctx.settings` is owned by `src/ui/Menus.js`, persisted to localStorage, and is
+the one hook systems read player preferences from. Each system pulls its own
+value rather than being pushed to:
+
+| key | read by | meaning |
+|---|---|---|
+| `quality` | RenderPipeline | preset index, 0-3 |
+| `fov`, `sensitivity` | main / CameraRig | |
+| `master`, `sfx`, `music` | Audio | 0-1 |
+| `shake` | RenderPipeline | screen-shake scale |
+| `spawnRate` | Director | enemy pacing, 0-3 (1 = tuned curve). Scales credit rate and population cap together; `HARD_POP_CAP` still wins. Host-only in co-op |
+
 ## Stat pipeline
 
 `ctx.items.stats(base)` returns the modified stat block. Never read item counts

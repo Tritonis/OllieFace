@@ -15,6 +15,7 @@ const DEFAULTS = {
   sfx: 0.9,
   music: 0.6,
   shake: 1.0,
+  spawnRate: 1.0,
 };
 
 const QUALITY_NAMES = ['Low', 'Medium', 'High', 'Ultra'];
@@ -26,6 +27,11 @@ const SLIDERS = [
   { key: 'sfx', label: 'SFX volume', min: 0, max: 1, step: 0.01, fmt: pct },
   { key: 'music', label: 'Music volume', min: 0, max: 1, step: 0.01, fmt: pct },
   { key: 'shake', label: 'Screen shake', min: 0, max: 2, step: 0.05, fmt: pct },
+  // Gameplay pacing rather than presentation, but it lives here because this is
+  // the screen players look in for knobs. The Director reads it straight off
+  // `ctx.settings`; 0% means no ambient spawns at all (the teleporter boss
+  // still arrives, or the run could not be finished).
+  { key: 'spawnRate', label: 'Enemy spawn rate', min: 0, max: 3, step: 0.05, fmt: pct },
 ];
 
 function pct(v) { return `${Math.round(v * 100)}%`; }

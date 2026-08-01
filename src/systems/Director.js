@@ -31,6 +31,9 @@ const DIFFICULTY_SCALE = 2.0;   // Rainstorm
 const CREDIT_BASE = 0.95;
 const CREDIT_SEED = 10;         // opening bank, so first contact lands in the first ~15s
 const HARD_POP_CAP = 64;
+// Ceiling on the player's spawn-rate setting. 3x the tuned curve is already
+// well past what the pop cap will let onto the stage at most difficulties.
+const SPAWN_RATE_MAX = 3;
 const MIN_SPAWN_DIST = 34;      // far enough that the run-in is audible and visible
 const MAX_SPAWN_DIST = 90;
 const FAR_SPAWN_DIST = 52;      // beyond this, an on-screen spawn reads as "distant", not "popped in"
@@ -132,6 +135,25 @@ export class Director {
 
   get playerFactor() { return 0.7 + 0.3 * this.playerCount; }
 
+  /**
+   * Player-facing pacing knob (Settings → Enemy spawn rate). 1 is the tuned
+   * curve; 0 stops ambient spawning entirely.
+   *
+   * It scales the credit *rate* and the population cap together. Scaling income
+   * alone does almost nothing at the top end — the bank just fills against an
+   * unchanged cap and then dumps the moment something dies — and scaling the cap
+   * alone does nothing at the bottom, because credits still arrive at the same
+   * speed. The hard cap still applies over the top of it, so no setting here can
+   * put more than HARD_POP_CAP units on screen.
+   *
+   * Read on the host only: `fixedUpdate` early-returns without authority, so in
+   * co-op the host's setting is the one that counts for everybody.
+   */
+  get spawnRateMult() {
+    const v = this.ctx?.settings?.spawnRate;
+    return Number.isFinite(v) ? clamp(v, 0, SPAWN_RATE_MAX) : 1;
+  }
+
   updateDifficulty(ctx) {
     const pf = this.playerFactor;
     const timeFactor = (ctx.time / 60) * 0.0506 * Math.pow(this.playerCount, 0.2) * DIFFICULTY_SCALE;
@@ -151,7 +173,7 @@ export class Director {
   }
 
   get populationCap() {
-    const base = 12 + this.difficultyCoefficient * 6;
+    const base = (12 + this.difficultyCoefficient * 6) * this.spawnRateMult;
     return Math.min(HARD_POP_CAP, Math.round(base * (this.eventActive ? 1.5 : 1)));
   }
 
@@ -213,7 +235,8 @@ export class Director {
     if (!this.enabled || !ctx.player) return;
 
     this.creditRate = CREDIT_BASE * this.difficultyCoefficient
-      * (1 + 0.4 * (this.playerCount - 1)) * (this.eventActive ? 2.4 : 1);
+      * (1 + 0.4 * (this.playerCount - 1)) * (this.eventActive ? 2.4 : 1)
+      * this.spawnRateMult;
     this.credits += this.creditRate * h;
 
     this.rerollT -= h;
