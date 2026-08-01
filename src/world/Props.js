@@ -676,11 +676,20 @@ export class Props {
       // points at the arch, so the accent leads the eye to the landmark instead
       // of competing with it. The angular spread opens with distance from the
       // arch so it reads as a fan converging on the landmark rather than a row.
+      //
+      // The vein's placement is right and stays. Its *census* was not: 48
+      // instances ramping to the biome ceiling put a wall of teal across the
+      // midground of the establishing shot and, at the near end where the ramp
+      // peaks and the camera is closest, produced one 48,027 px spike that
+      // covered 3.3% of the prop frame and out-valued the chest it stood beside.
+      // 26 instances, and the ramp tops out below the biome ceiling with a
+      // tighter jitter, so no single near-end instance can grow past ~3.6 u
+      // against the ~6.9 u the old ramp allowed.
       const inward = Math.atan2(-z, -x);
       const cg = crystalGeo(rng, n3);
       const reef = [];
-      for (let i = 0; i < 48; i++) {
-        const t = i / 47;                              // 0 at the arch, 1 nearest camera
+      for (let i = 0; i < 26; i++) {
+        const t = i / 25;                              // 0 at the arch, 1 nearest camera
         const r = 4.0 + t * 24 + rng.range(-2.2, 2.2);
         const a = inward + rng.range(-1, 1) * (0.34 + t * 0.52);
         const px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r;
@@ -689,14 +698,17 @@ export class Props {
         // out at the biome's own crystalScale ceiling. Both are limiters: an
         // accent that fills a third of the frame has stopped being an accent,
         // and a spawn point can land anywhere in the inner 35m.
-        const cs = lerp(P.crystalScale[0] * 1.1, P.crystalScale[1], t) *
-                   rng.range(0.7, 1.12);
+        const cs = lerp(P.crystalScale[0] * 1.1, P.crystalScale[1] * 0.85, t) *
+                   rng.range(0.72, 1.0);
         _v.set(px, py - cs * 0.16, pz);
         _q.setFromEuler(_e.set(rng.range(-0.22, 0.22), rng.range(0, 6.283), rng.range(-0.22, 0.22)));
         _s.setScalar(cs);
         reef.push(_m.compose(_v, _q, _s).clone());
-        // The big ones are chest-high walls at this scale, so they collide.
-        if (cs > 3.4) this._collider(px, pz, cs * 0.24, py - 1, py + cs * 1.8);
+        // The big ones are chest-high walls at this scale, so they collide. The
+        // threshold tracks the biome ceiling rather than being absolute: at a
+        // fixed 3.4 the smaller ramp would have left every spire walk-through,
+        // so the collision would have stopped matching the visible geometry.
+        if (cs > P.crystalScale[1] * 0.62) this._collider(px, pz, cs * 0.24, py - 1, py + cs * 1.8);
       }
       this._addInstanced(cg, M.crystal, reef);
     }
@@ -715,13 +727,16 @@ export class Props {
       // deliberate focal point rather than as three stray teal specks.
       const cg = crystalGeo(rng, n3);
       const list = [];
-      for (let i = 0; i < 16; i++) {
+      // Ten, not sixteen, and at two thirds the scale: this spill sits in the
+      // same frame as the hero vein in every wide framing, and the two of them
+      // together were what turned a midground accent into a continuous hedge.
+      for (let i = 0; i < 10; i++) {
         const a = rng.range(0, 6.283), r = rng.range(3.0, 10);
         const px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r;
         _v.set(px, T.sampleHeight(px, pz) - 0.3, pz);
         _q.setFromEuler(_e.set(rng.range(-0.2, 0.2), rng.range(0, 6.283), rng.range(-0.2, 0.2)));
         // Biggest nearest the slab so the cluster has a peak against it.
-        _s.setScalar(rng.range(2.2, 5.0) * (1 - (r - 3) / 18));
+        _s.setScalar(rng.range(1.5, 3.3) * (1 - (r - 3) / 18));
         list.push(_m.compose(_v, _q, _s).clone());
       }
       this._addInstanced(cg, M.crystal, list);

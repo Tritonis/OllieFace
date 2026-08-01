@@ -332,6 +332,16 @@ void main() {
 // any alpha. Visibility on near-black ground comes from HUE, not value: red is
 // attenuated hardest and blue least, so deeper contact goes cool rather than
 // grey, and the floor's own texture survives instead of being flattened.
+//
+// STRENGTH — kept in lockstep with CharacterMesh.BLOB_FRAG, see the long note
+// there. Short version: the multiply lands in the linear HDR buffer, so the
+// dip you see is the linear one raised to ~1/2.2. The old constants gave a
+// linear 0.48 = a 29% sRGB dip, which measured 24-27% in the shipped frames and
+// was not readable as contact under anything. These give linear 0.27 = a ~45%
+// sRGB dip (luma 60 ground -> ~33 under the disc), tuned against the current
+// grade. `a` is clamped under 1 because the per-rig fade carries the rig's
+// scale, and a boss at scale > 1.2 would otherwise push `a * (1 - SHADE)` past
+// 1 and clamp its disc to flat black.
 const SHADOW_FRAG = /* glsl */`
 varying vec2 vBlobUv;
 varying float vFade;
@@ -341,11 +351,14 @@ void main() {
   float core = smoothstep(1.00, 0.14, r);
   float ring = smoothstep(0.48, 0.80, r) * smoothstep(1.02, 0.82, r);
   // A ground disc seen near edge-on projects to an all-annulus sliver a few
-  // pixels tall, which reads as a rendering glitch and not as contact. Below
-  // ~3 degrees of camera elevation it is simply not drawn.
-  float a = (core * 0.62 + ring * 0.16) * vFade * smoothstep(0.05, 0.22, vGraze);
+  // pixels tall, which reads as a rendering glitch and not as contact. The knee
+  // only has to cover the genuinely edge-on case now (under ~1.7 deg): the
+  // artefact it was written to kill was a *bright* bar, and this shader cannot
+  // produce one at any alpha.
+  float a = (core * 0.86 + ring * 0.18) * vFade * smoothstep(0.03, 0.14, vGraze);
+  a = min(a, 0.92);
   if (a <= 0.004) discard;
-  gl_FragColor = vec4(vec3(0.06, 0.09, 0.16) * a, a);
+  gl_FragColor = vec4(vec3(0.03, 0.05, 0.11) * a, a);
 }`;
 
 let SHADOW = null;
@@ -433,7 +446,13 @@ function updateShadow(rig, a) {
   const k = 1 - clamp(lift / 3.2, 0, 1);
   const fade = 0.85 * k * k * (1 - a.death) * scale;
   const r = rig.shadowR * scale * (1 + lift * 0.2);
-  setShadow(slot, p.x, gy + 0.04, p.z, r, fade);
+  // The decal is a flat plane on faceted ground, so the bigger the disc the more
+  // of it the terrain's own relief buries by depth test — which is why the boss,
+  // whose disc is the widest in the game, was the one unit with no measurable
+  // dip under it at all. Lifting it in proportion to its radius clears ordinary
+  // facet relief; at the boss's 3 m it is 0.15 m, which is ~2 px of gap at the
+  // standoff the boss shot uses.
+  setShadow(slot, p.x, gy + 0.04 + r * 0.05, p.z, r, fade);
 }
 
 // ---------------------------------------------------------------------------

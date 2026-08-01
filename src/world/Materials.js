@@ -44,8 +44,14 @@ export const PALETTE = {
     sand: 0xead093,     //  42°
   },
   accent: {
-    crystal: 0x39d6d2,
-    crystalGlow: 0x1fa9b4,
+    // Value, not hue. Measured at luma 224 in a mean-luma-62 combat frame the
+    // accent was the brightest non-VFX object on screen — brighter than the
+    // golems that wear the same teal as their species colour, and brighter than
+    // the subject of the prop shot. Scenery may not out-value the things the
+    // player has to read. Same hue (178 / 185 deg), ~0.8x the albedo and a
+    // dimmer glow; see `crystal`'s emissiveIntensity for the other half.
+    crystal: 0x2fb3af,
+    crystalGlow: 0x17828c,
     metal: 0x8d9199,    // cool metal so it catches the blue sky as specular
     wood: 0x33272f,
     wet: 0x43555f,
@@ -400,7 +406,12 @@ function buildMaterials(sets) {
   const crystal = new THREE.MeshPhysicalMaterial({
     color: P.accent.crystal,
     emissive: P.accent.crystalGlow,
-    emissiveIntensity: 1.9,
+    // 1.9 put the crystal above the bloom threshold, so every spike carried a
+    // halo and the accent's *effective* screen area was well beyond its
+    // geometry. At 0.85 it still self-lights against the ochre — it is the one
+    // emissive surface in the stage — but it sits under the bloom knee and under
+    // the lit facets of the monsters that share its hue.
+    emissiveIntensity: 0.85,
     roughness: 0.08,
     metalness: 0.0,
     clearcoat: 1.0,
@@ -410,7 +421,7 @@ function buildMaterials(sets) {
     // reading as the same glossy plastic as everything else at a bright angle.
     iridescence: 0.4,
     iridescenceIOR: 1.7,
-    envMapIntensity: 2.2,
+    envMapIntensity: 1.2,
     transparent: true,
     opacity: 0.88,
     flatShading: true,
@@ -471,14 +482,20 @@ const PROPS_DEFAULT = {
   arches: 16, archScale: [2.2, 4.6],
   trees: 110, treeScale: [0.8, 1.9],
   // The palette declares exactly one accent, and an accent that covers 0.1% of
-  // the frame is not an accent. Doubling the cluster *count* last pass moved the
-  // measured teal coverage by 0.008% because count was never the problem —
-  // placement was: a uniformly-bearing-sampled cluster has a ~1-in-4 chance of
-  // being inside any given 89-degree horizontal field, so twelve of them put
-  // three in frame at 1.2-4.2u, which is a handful of specks at 60m. The count
-  // stays; the scale goes up by ~40% and Props.js now biases the bearing onto
-  // the hero-arch sight line, which is the axis every wide framing looks down.
-  crystalClusters: 12, crystalPer: [8, 12], crystalScale: [2.4, 6.2],
+  // the frame is not an accent. Placement, not count, was the lever that fixed
+  // that: a uniformly-bearing-sampled cluster has a ~1-in-4 chance of being
+  // inside any given 89-degree horizontal field, so Props.js biases half of them
+  // onto the hero-arch sight line, which is the axis every wide framing looks
+  // down. That part landed and stays.
+  //
+  // The scale that went with it overshot badly: [2.4, 6.2] at twelve clusters
+  // measured 2.5% of the establishing frame and 4.4% of the prop frame against a
+  // 0.6% target, with a single 48,027 px spike (3.3% of frame) out-valuing the
+  // subject it stood next to. Coverage goes as scale SQUARED, so the ceiling is
+  // the term that matters and the count is the blunt one. [1.9, 4.2] at eight
+  // clusters is ~0.30x the projected area; the largest single instance drops to
+  // ~0.45x its area, which is what stops one crystal reading as the subject.
+  crystalClusters: 8, crystalPer: [6, 10], crystalScale: [1.9, 4.2],
   islands: 15, islandScale: [3.5, 9.5], islandLow: [6, 11], islandHigh: [16, 40],
   monolithHeight: 27, archHeroScale: 17,
 };

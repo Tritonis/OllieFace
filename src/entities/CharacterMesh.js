@@ -172,6 +172,21 @@ function boxMesh(w, h, d, material) {
 // and blue least, so deepening contact goes cool instead of grey, and the
 // ground's own texture survives instead of being flattened by a constant.
 //
+// STRENGTH. The multiply lands in the linear HDR buffer, *before* the tonemap
+// and the grade, so the display-referred dip is the linear one raised to ~1/2.2.
+// At `core 0.62` / `SHADE (0.06,0.09,0.16)` the linear factor is 0.48, which is
+// a 29% dip in sRGB — measured at 24% under the survivor, i.e. below the noise
+// of the terrain's own faceting and unreadable as contact. The numbers below
+// put the linear factor at 0.27, which is a ~45% sRGB dip: luma 60 ground goes
+// to ~33 under the disc. That is tuned against the grade that ships now
+// (sub-luma-24 ~1-3%, lit:shadow ~4.8:1) and must be re-checked if the ground
+// exposure moves again — this cue has been re-tuned three times for exactly
+// that reason.
+//
+// `a` is clamped below 1 so that the >= 0 side of the proof holds too: with a
+// per-rig fade that carries the rig's scale, a big boss could otherwise drive
+// `a * (1 - SHADE)` past 1 and clamp the disc to flat black.
+//
 // Deliberately duplicated from the monsters' instanced version in
 // EnemyMeshes.js rather than shared — that module imports this one, and a
 // cycle between the two entity modules is not worth six lines of GLSL.
@@ -185,9 +200,14 @@ void main() {
   float ring = smoothstep(0.48, 0.80, r) * smoothstep(1.02, 0.82, r);
   // A ground disc seen edge-on projects to a bar a few pixels tall — all
   // annulus, no disc — which reads as a rendering glitch rather than contact.
-  float a = (core * 0.62 + ring * 0.16) * uFade * smoothstep(0.05, 0.22, vGraze);
+  // The knee sits lower than it did: the artefact it was written to kill was a
+  // *bright* ring that this shader can no longer produce, so it only has to
+  // cover the genuinely edge-on case (under ~1.7 deg) rather than tax every
+  // low third-person camera in the game.
+  float a = (core * 0.86 + ring * 0.18) * uFade * smoothstep(0.03, 0.14, vGraze);
+  a = min(a, 0.92);
   if (a <= 0.004) discard;
-  gl_FragColor = vec4(vec3(0.06, 0.09, 0.16) * a, a);
+  gl_FragColor = vec4(vec3(0.03, 0.05, 0.11) * a, a);
 }`;
 
 const BLOB_VERT = /* glsl */`
@@ -558,9 +578,11 @@ export class CharacterMesh {
     // Tight to the stance. At 1.15 the disc projected ~100 px against a 37 px
     // foot span and ran off the lip of whatever rock the survivor was standing
     // on, so the terrain clipped its uphill half and the remainder read as an
-    // offset smear. A footprint that stays under the boots cannot do that.
-    blob.scale.setScalar(0.8);
-    blob.position.y = 0.04;
+    // offset smear. 1.0 is the compromise: ~60 px under a 110 px survivor, wide
+    // enough to read as a footprint now that the alpha carries, still inside the
+    // stance so a sloped facet cannot eat half of it.
+    blob.scale.setScalar(1.0);
+    blob.position.y = 0.05;
     blob.renderOrder = -1;
     blob.castShadow = false;
     blob.receiveShadow = false;
@@ -777,7 +799,7 @@ export class CharacterMesh {
     const grounded01 = (1 - air) * (1 - air);
     this.blobMat.uniforms.uFade.value = 0.9 * grounded01;
     this.blob.visible = grounded01 > 0.02;
-    this.blob.scale.setScalar(0.8 + air * 0.25);
+    this.blob.scale.setScalar(1.0 + air * 0.3);
 
     // Visor pulses hot on fire — cheap but it sells the shot from behind.
     this.mats.visor.emissiveIntensity = 2.4 + clamp(-recoil, 0, 1) * 3.5;

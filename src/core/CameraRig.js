@@ -15,6 +15,16 @@ import { clamp, lerp } from './MathUtil.js';
  *    trails slightly under acceleration, and the look-at target is smoothed on
  *    a longer one so the framing settles after the position does.
  *  - Occlusion pulls in instantly (never clip) and eases back out.
+ *
+ * Framing notes:
+ *  - A long lens on a long boom, not a wide lens on a short one. Same subject
+ *    size, far less wide-angle stretch, and real separation between the ground
+ *    in the near frame, the survivor, and the fogged ridge behind him.
+ *  - The shoulder offset is the *only* thing that moves the subject off centre.
+ *    Biasing `lookAt` would do it too, but screen centre is the aim ray, so any
+ *    such bias would silently decouple the crosshair from where shots go.
+ *  - Look-ahead only ever translates the pivot. Nothing here rotates the camera
+ *    on the player's behalf.
  */
 
 // Exponential smoothing expressed as a time constant, which is easier to tune
@@ -24,12 +34,35 @@ const smooth = (a, b, tau, dt) => b + (a - b) * Math.exp(-dt / Math.max(tau, 1e-
 const PITCH_MIN = -1.15;
 const PITCH_MAX = 1.05;
 
-const FOV_BASE = 70;
-const FOV_SPRINT = 8;
+// Composition. The old rig ran a 70° vertical lens on a 5.4 m boom, which is
+// ~106° horizontal at 16:9 — a wide-angle that flattens the stage into one
+// depth and drops the survivor into the dead centre of the frame.
+//
+// 58° vertical is ~89° horizontal. Pairing it with a longer boom keeps the
+// survivor at very nearly the same on-screen size (5.4/tan35° vs 7.1/tan29°
+// differ by ~2 %) and the same ground coverage at the player's own distance,
+// so nothing about threat legibility changes — but the longer lens compresses
+// the stage, so near rock, the survivor, and the far ridge stop sharing one
+// apparent depth and the fog gradient has room to read across them.
+const FOV_BASE = 58;
+const FOV_SPRINT = 7;
 
-const DIST = 5.4;
-const SHOULDER = 0.65;      // right-shoulder offset, keeps the crosshair clear
-const PIVOT_HEIGHT = 1.55;
+// `ctx.settings.fov` is the player's dial, defaulting to this. It is remapped
+// around FOV_BASE rather than used raw, so the preference still ranges over
+// roughly the same span it always did (60→50, 70→58, 110→90).
+const FOV_SETTING_DEFAULT = 70;
+const FOV_SETTING_SCALE = 0.8;
+const FOV_MIN = 46;
+const FOV_MAX = 96;
+
+const SENSITIVITY_BASE = 0.0022;   // scaled by `ctx.settings.sensitivity`
+
+const DIST = 7.1;
+const DIST_SPEED = 0.9;     // boom extension at full speed — leads the run
+const SHOULDER = 1.15;      // right-shoulder offset, keeps the crosshair clear
+const LEAD_STRAFE = 0.055;  // lateral look-ahead per m/s of strafe
+const LEAD_MAX = 0.5;
+const PIVOT_HEIGHT = 1.68;  // aims at the head, so the body hangs below centre
 const CAM_RADIUS = 0.34;    // approximated sphere-cast radius
 
 const POS_TAU = 0.055;      // camera position follow — short, stays responsive
@@ -41,9 +74,12 @@ export class CameraRig {
     ctx.cameraRig = this;
     this.ctx = ctx;
 
-    this.sensitivity = 0.0022;
+    this.sensitivity = SENSITIVITY_BASE;
     this.yaw = 0;
-    this.pitch = -0.12;
+    // Start looking slightly down the boom: a shallow declination puts a band
+    // of near ground in the bottom of the frame as foreground, with the ridge
+    // line and fog still above the survivor's head.
+    this.pitch = -0.17;
     // Cleared by the screenshot harness (and cinematics) to hand the camera
     // over. Without it, anything that positions the camera externally is
     // silently overwritten here every frame.
@@ -91,6 +127,10 @@ export class CameraRig {
     if (!player || !this.enabled) return;
 
     // --- look ---------------------------------------------------------------
+    // Pulled per-frame rather than pushed, per CONTRACTS.md: the settings object
+    // is replaced wholesale by Menus.apply().
+    const settings = ctx.settings;
+    this.sensitivity = SENSITIVITY_BASE * clamp(settings?.sensitivity ?? 1, 0.05, 8);
     if (input && input.locked && input.enabled !== false) {
       this.yaw -= input.mouse.dx * this.sensitivity;
       this.pitch -= input.mouse.dy * this.sensitivity;
@@ -110,10 +150,20 @@ export class CameraRig {
     this.dip += this.dipVel * Math.min(dt, 1 / 60);
     this.dip = clamp(this.dip, -0.6, 0.2);
 
+    // Look-ahead is a *translation* of the boom pivot, never a rotation: it
+    // shifts the framing toward where the survivor is travelling without ever
+    // moving the aim axis, so it cannot fight mouse input or swim under it.
+    // Only the lateral component leads — a forward lead would push the camera
+    // in toward the player's back instead of opening the space ahead. Forward
+    // speed is handled by the boom extension below.
+    const v = player.velocity;
+    const strafe = v ? (v.x * this._right.x + v.z * this._right.z) : 0;
+    const lead = clamp(strafe * LEAD_STRAFE, -LEAD_MAX, LEAD_MAX);
+
     const crouch = player.dashT > 0 ? player.dashT * 0.35 : 0;
     this._tmp.copy(player.position);
     this._tmp.y += PIVOT_HEIGHT + this.dip - crouch;
-    this._tmp.addScaledVector(this._right, SHOULDER);
+    this._tmp.addScaledVector(this._right, SHOULDER + lead);
 
     if (!this._initialised) {
       this.pivot.copy(this._tmp);
@@ -131,8 +181,15 @@ export class CameraRig {
     // --- occlusion ----------------------------------------------------------
     // Sphere-cast approximation: a 5-ray fan offset around the boom axis. The
     // shortest unobstructed length wins.
-    this._desired.copy(this.pivot).addScaledVector(this._dir, -DIST);
-    let allowed = DIST;
+    // Boom length leads forward motion: at speed the camera falls back so the
+    // ground ahead of the survivor opens up. Smoothed by the same snap-in /
+    // ease-out the occlusion path uses, so it never lurches.
+    const sprintT = player.sprintBlend || 0;
+    const speedT = clamp((player.horizontalSpeed || 0) / 14, 0, 1);
+    const boom = DIST + speedT * DIST_SPEED;
+
+    this._desired.copy(this.pivot).addScaledVector(this._dir, -boom);
+    let allowed = boom;
     if (ctx.stage?.raycastDistance) {
       const back = this._tmp.copy(this._dir).negate();
       for (let i = 0; i < 5; i++) {
@@ -142,7 +199,7 @@ export class CameraRig {
           this._origin.addScaledVector(this._right, Math.cos(a) * CAM_RADIUS);
           this._origin.y += Math.sin(a) * CAM_RADIUS;
         }
-        const d = ctx.stage.raycastDistance(this._origin, back, DIST + CAM_RADIUS);
+        const d = ctx.stage.raycastDistance(this._origin, back, boom + CAM_RADIUS);
         if (d >= 0) allowed = Math.min(allowed, Math.max(0.7, d - CAM_RADIUS));
       }
     }
@@ -156,21 +213,26 @@ export class CameraRig {
     this.camPos.copy(this.pivot).addScaledVector(this._dir, -this.distance);
 
     // --- fov ----------------------------------------------------------------
-    const sprintT = player.sprintBlend || 0;
-    const speedT = clamp((player.horizontalSpeed || 0) / 14, 0, 1);
     this.fovPunchVel += (-140 * this.fovPunch - 17 * this.fovPunchVel) * Math.min(dt, 1 / 60);
     this.fovPunch += this.fovPunchVel * Math.min(dt, 1 / 60);
     this.fovPunch = clamp(this.fovPunch, -8, 12);
 
-    const targetFov = FOV_BASE + sprintT * FOV_SPRINT + speedT * 2.5;
+    // The player's dial, remapped around the new base. Menus.apply() also pokes
+    // `camera.fov` directly, but that only survives while this rig is detached
+    // (menus, cinematics, the screenshot harness) — in gameplay the setting has
+    // to arrive here or it does nothing at all.
+    const baseFov = clamp(
+      FOV_BASE + ((settings?.fov ?? FOV_SETTING_DEFAULT) - FOV_SETTING_DEFAULT) * FOV_SETTING_SCALE,
+      FOV_MIN, FOV_MAX,
+    );
+    const targetFov = baseFov + sprintT * FOV_SPRINT + speedT * 2.5;
     this.fov = smooth(this.fov, targetFov, 0.12, dt) + 0;
     ctx.camera.fov = this.fov + this.fovPunch;
     ctx.camera.updateProjectionMatrix();
 
     // --- roll ---------------------------------------------------------------
-    // Signed strafe velocity in camera space -> a couple of degrees of bank.
-    const v = player.velocity;
-    const strafe = v ? (v.x * this._right.x + v.z * this._right.z) : 0;
+    // Signed strafe velocity in camera space (computed with the look-ahead,
+    // above) -> a couple of degrees of bank.
     const targetRoll = clamp(-strafe / 10, -1, 1) * 0.045 + player.dashRoll * 0.10;
     this.roll = smooth(this.roll, targetRoll, 0.13, dt);
 
