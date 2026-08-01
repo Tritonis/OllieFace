@@ -709,7 +709,7 @@ export function markIcon(key, color = '#dfe9f7') {
   return cached(`mark:${key}:${color}`, (g, s) => {
     g.fillStyle = color;
     g.strokeStyle = '#ffffff';
-    g.lineWidth = Math.max(1.5, s * 0.05);
+    g.lineWidth = Math.max(1.5, s * 0.042);
     g.lineJoin = 'round';
     g.lineCap = 'round';
     draw(g, s);

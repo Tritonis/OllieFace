@@ -1264,7 +1264,7 @@ export function installHarness(ctx) {
       // Then turn him toward ground the lens can see. This is the fix for the
       // empty battlefield: see `faceOpenGround`.
       const openness = await faceOpenGround();
-      /* SABOTAGE */ if (!globalThis.__SABOTAGE__) spawnRing(enemies, SPAWN_CARDS, 13, 6);
+      spawnRing(enemies, SPAWN_CARDS, 13, 6);
       // Hold the trigger so the frame contains muzzle flash and tracers.
       if (ctx.input) ctx.input.mouse.left = true;
       await frames(settleFrames);

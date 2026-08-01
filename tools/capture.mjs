@@ -284,7 +284,6 @@ for (const f of await readdir(OUT).catch(() => [])) {
 }
 
 log('navigating...');
-if (process.env.SABOTAGE) await page.addInitScript(() => { globalThis.__SABOTAGE__ = 1; });
 await page.goto(`http://127.0.0.1:${PORT}/?seed=${SEED}&quality=3&harness=1`, { waitUntil: 'load' });
 log('loaded; waiting for stage...');
 

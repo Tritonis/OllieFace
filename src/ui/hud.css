@@ -2040,7 +2040,14 @@ body.menu-open { cursor: default; }
 }
 .art {
   position: relative;
-  display: block;
+  /* Flex column, not block. The card is a <button>, and a button's content box
+     is *vertically centred* by the UA — so a card with a two-line description
+     pushed its whole stack down against a sibling with four, which is what put
+     four titles in one grid row onto three baselines spanning 15px. Measured
+     before/after: 370/377/377/385 -> all four at 370. */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
   padding: 0.8em 0.9em 0.9em;
   font: inherit;
   text-align: left;
@@ -2057,7 +2064,7 @@ body.menu-open { cursor: default; }
    mark was a Unicode codepoint and `.art-mark` inherited each fallback font's
    metrics. A box the glyph cannot influence is half the fix; the other half is
    that the glyph is now a drawn vector (`ui/Icons.js`) rather than a codepoint. */
-.art-mark { width: 26px; height: 26px; line-height: 0; opacity: 0.5; }
+.art-mark { width: 30px; height: 30px; line-height: 0; opacity: 0.62; }
 .art-name { margin-top: 0.35em; font-size: 0.95em; font-weight: 700; letter-spacing: 0.18em; }
 .art-desc {
   margin-top: 0.28em;
