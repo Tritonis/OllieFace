@@ -86,10 +86,23 @@ All four fix agents were **killed mid-edit** by the usage limit. None wrote its
 
 **Caveats — do not read this as "done":**
 
-- **No root cause is documented.** Whether the invisible-enemy problem was harness
-  framing or a real rendering bug is *unrecorded*, because the agent died before
-  writing its report. If enemies can be invisible in real gameplay, that is still
-  unproven either way. Re-investigate before shipping.
+- ~~No root cause is documented.~~ **RESOLVED** — see `DIAG-invisible-enemies.md`.
+  Verdict **(A): harness framing, no rendering bug.** 22 of 24 enemies were
+  LOS-blocked by terrain 4–12 m in front of a lens 14–40 m away; the survivor stood
+  on a plateau edge (16.04 m) while `spawnRing` dropped the ring down the cliff
+  (−8.93 m). (B) was ruled out affirmatively by 190 isolated draw measurements
+  across recycled rigs, affix re-dressing and 6 spawn/kill/respawn cycles: zero
+  zero-pixel live enemies. The critic's "tracer terminates on an undrawn entity"
+  was a **wrong inference** — the trail is depth-tested and ends on the near slope.
+
+- **NEW, HIGH PRIORITY — a trap, not just a defect.** `VFX.deathDissolve` never
+  fires for monsters (`resolveObject`, `VFX.js:1424`, does not know about
+  `Enemy.rig.root`; measured `_dissolving.length === 0` after a real kill), so
+  monsters just vanish. **Do not apply the obvious one-line fix.** `VFX.js:1269`
+  sets `d.mesh.visible = false` on a rig `Director.clear()` may already have
+  recycled onto a *live* enemy — that would create genuine invisible-but-alive
+  enemies in gameplay. Add a visibility sibling/generation guard first, mirroring
+  the material guard at `DissolveShader.js:200-204`, then wire `resolveObject`.
 - The boss still does not read at 3× enemy scale, and trunks still partly occlude
   it in `05-boss`. The critic's measured 1.52× finding likely still stands.
 - Foreground values are still crushed in places.
