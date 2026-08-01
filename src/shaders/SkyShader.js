@@ -37,6 +37,19 @@ export const SkyShader = {
     // `uCeilingAmount` is 0 in the three open biomes, so nothing changes there.
     uCeiling: { value: new THREE.Color(0x000000) },
     uCeilingAmount: { value: 0 },
+    // Ground bounce. Derived per biome by `Environment._deriveSkyMid` from the
+    // biome's own ground and horizon colours, never authored.
+    //
+    // The lower hemisphere used to be one flat `uGround`, and the lower
+    // hemisphere is exactly what the PMREM hands to any surface tilted below
+    // level — every cliff underside, every prop's shadow side, every downward
+    // facet of a boulder. A constant there means those surfaces return the same
+    // colour at roughness 0.05 as at 0.95, which is the whole reason four
+    // rounds of roughness tuning could not reach the pixels. This is the warm
+    // band the ground throws back just under the horizon line; it falls off to
+    // `uGround` at the nadir, so the reflection now has a gradient *and* an
+    // edge to resolve or blur.
+    uBounce: { value: new THREE.Color(0x6b4a3a) },
   },
   vertexShader: /* glsl */ `
     varying vec3 vDir;
@@ -47,7 +60,7 @@ export const SkyShader = {
   `,
   fragmentShader: /* glsl */ `
     precision highp float;
-    uniform vec3  uSunDir, uZenith, uMid, uHorizon, uHaze, uGround, uSunColor, uCloud, uCeiling;
+    uniform vec3  uSunDir, uZenith, uMid, uHorizon, uHaze, uGround, uSunColor, uCloud, uCeiling, uBounce;
     uniform float uTime, uCloudAmount, uHazePow, uCeilingAmount;
     varying vec3 vDir;
 
@@ -112,7 +125,20 @@ export const SkyShader = {
       vec3 col = mix(warm, uMid, smoothstep(0.025, 0.150, hh));
       col = mix(col, uZenith, 0.62 * smoothstep(0.120, 0.320, hh));
 
-      col = mix(uGround, col, smoothstep(-0.18, 0.012, h));
+      // --- ground half ------------------------------------------------------
+      // Not one flat colour. A lit plain seen from above is brightest and
+      // warmest where it runs away to the horizon and falls off toward the
+      // nadir, and it carries a sun-side lobe like the sky does. This is the
+      // half of the dome every downward-facing facet reflects.
+      float below = clamp(-h, 0.0, 1.0);
+      vec3 gcol = mix(uBounce, uGround, smoothstep(0.02, 0.55, below));
+      vec2 gd = normalize(vec2(d.x, d.z) + 1e-5);
+      vec2 gs = normalize(vec2(uSunDir.x, uSunDir.z) + 1e-5);
+      gcol *= 1.0 + 0.55 * pow(max(dot(gd, gs), 0.0), 2.0) * (1.0 - smoothstep(0.05, 0.5, below));
+      // The horizon line itself stays a hard-ish edge — 0.012 of elevation is
+      // under a degree. A smooth material resolves that edge; a rough one
+      // smears it across a whole lobe. That difference *is* the roughness read.
+      col = mix(gcol, col, smoothstep(-0.035, 0.008, h));
 
       // --- vault ceiling ---------------------------------------------------
       // Applied to the *gradient* and before the sun, so the roof replaces the

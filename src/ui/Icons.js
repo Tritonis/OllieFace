@@ -553,6 +553,171 @@ export function itemArt(id, tier = 'common') {
   });
 }
 
+// --------------------------------------------------------------- rule marks
+//
+// Artifacts and difficulties used to carry a raw Unicode codepoint each —
+// `⌘ † ⁂ ◈ ❖ ♛ ⟁ ☂ ☁ ⛈`, from six different Unicode blocks, none of them
+// present in the `--font` stack. Every one fell through to the OS symbol font,
+// so the artifact grid was drawn by Segoe UI Symbol in a game whose 95 item
+// glyphs are authored vectors; the three weather codepoints are additionally
+// emoji-presentation and rendered in *colour* on Windows. Worse, `.art-mark`
+// inherited each fallback font's metrics, which pushed four sibling card titles
+// in one grid row onto three baselines spanning 15px.
+//
+// These are the same drawings, authored here, in the same language as every
+// other icon in the build: a filled accent silhouette under a white stroke,
+// centred, sized to a fixed box. No text glyph is used as an icon anywhere.
+
+/** Shared cloud shoulder — the three difficulty marks are one family. */
+function cloud(g, s) {
+  const y = s * 0.42;
+  g.beginPath();
+  g.moveTo(s * 0.18, y + s * 0.1);
+  g.bezierCurveTo(s * 0.06, y + s * 0.1, s * 0.08, y - s * 0.12, s * 0.22, y - s * 0.1);
+  g.bezierCurveTo(s * 0.26, y - s * 0.3, s * 0.58, y - s * 0.34, s * 0.62, y - s * 0.12);
+  g.bezierCurveTo(s * 0.8, y - s * 0.18, s * 0.88, y + s * 0.1, s * 0.72, y + s * 0.1);
+  g.closePath();
+  g.fill(); g.stroke();
+}
+
+/** Vertical rain stroke, used by drizzle/rainstorm/monsoon at three densities. */
+function rain(g, s, x, y0, y1) {
+  g.beginPath(); g.moveTo(s * x, s * y0); g.lineTo(s * (x - 0.03), s * y1); g.stroke();
+}
+
+const MARKS = {
+  // Edict — a decree between two brackets, with the pick already made.
+  command: (g, s) => {
+    g.beginPath();
+    g.moveTo(s * 0.3, s * 0.16); g.lineTo(s * 0.16, s * 0.16);
+    g.lineTo(s * 0.16, s * 0.84); g.lineTo(s * 0.3, s * 0.84);
+    g.moveTo(s * 0.7, s * 0.16); g.lineTo(s * 0.84, s * 0.16);
+    g.lineTo(s * 0.84, s * 0.84); g.lineTo(s * 0.7, s * 0.84);
+    g.stroke();
+    poly(g, [[s * 0.32, s * 0.34], [s * 0.68, s * 0.34], [s * 0.5, s * 0.7]]);
+    g.fill(); g.stroke();
+  },
+  // Tithe — an offering bowl, and the drop that has to fall into it.
+  sacrifice: (g, s) => {
+    g.beginPath();
+    g.moveTo(s * 0.5, s * 0.12);
+    g.quadraticCurveTo(s * 0.66, s * 0.3, s * 0.5, s * 0.42);
+    g.quadraticCurveTo(s * 0.34, s * 0.3, s * 0.5, s * 0.12);
+    g.fill(); g.stroke();
+    g.beginPath();
+    g.moveTo(s * 0.16, s * 0.54); g.lineTo(s * 0.84, s * 0.54);
+    g.quadraticCurveTo(s * 0.78, s * 0.86, s * 0.5, s * 0.86);
+    g.quadraticCurveTo(s * 0.22, s * 0.86, s * 0.16, s * 0.54);
+    g.closePath(); g.fill(); g.stroke();
+  },
+  // Spate — a wedge of arrivals, not one of them.
+  swarms: (g, s) => {
+    const tri = (x, y, k) => {
+      poly(g, [[s * x, s * (y - 0.11 * k)], [s * (x + 0.1 * k), s * (y + 0.08 * k)],
+               [s * (x - 0.1 * k), s * (y + 0.08 * k)]]);
+      g.fill(); g.stroke();
+    };
+    tri(0.5, 0.24, 1.05);
+    tri(0.28, 0.5, 1.05); tri(0.72, 0.5, 1.05);
+    tri(0.39, 0.76, 1.05); tri(0.61, 0.76, 1.05);
+  },
+  // Filament — drawn out thin, and already cracking.
+  glass: (g, s) => {
+    poly(g, [[s * 0.5, s * 0.1], [s * 0.64, s * 0.5], [s * 0.5, s * 0.9], [s * 0.36, s * 0.5]]);
+    g.fill(); g.stroke();
+    g.save();
+    g.strokeStyle = '#06080b';
+    g.lineWidth = Math.max(1.5, s * 0.05);
+    g.beginPath();
+    g.moveTo(s * 0.44, s * 0.28); g.lineTo(s * 0.56, s * 0.44);
+    g.lineTo(s * 0.44, s * 0.58); g.lineTo(s * 0.56, s * 0.74);
+    g.stroke();
+    g.restore();
+  },
+  // Caprice — a die mid-roll. The label was never load-bearing.
+  caprice: (g, s) => {
+    poly(g, [[s * 0.5, s * 0.12], [s * 0.86, s * 0.32], [s * 0.86, s * 0.68],
+             [s * 0.5, s * 0.88], [s * 0.14, s * 0.68], [s * 0.14, s * 0.32]]);
+    g.fill(); g.stroke();
+    g.beginPath();
+    g.moveTo(s * 0.14, s * 0.32); g.lineTo(s * 0.5, s * 0.52); g.lineTo(s * 0.86, s * 0.32);
+    g.moveTo(s * 0.5, s * 0.52); g.lineTo(s * 0.5, s * 0.88);
+    g.stroke();
+    g.save();
+    g.fillStyle = '#06080b';
+    for (const [x, y] of [[0.31, 0.66], [0.69, 0.66], [0.5, 0.34]]) {
+      g.beginPath(); g.arc(s * x, s * y, s * 0.055, 0, 7); g.fill();
+    }
+    g.restore();
+  },
+  // Regalia — a field of crowns, and not one of them yours.
+  honour: (g, s) => {
+    poly(g, [[s * 0.14, s * 0.66], [s * 0.14, s * 0.22], [s * 0.32, s * 0.44],
+             [s * 0.5, s * 0.16], [s * 0.68, s * 0.44], [s * 0.86, s * 0.22],
+             [s * 0.86, s * 0.66]]);
+    g.fill(); g.stroke();
+    g.beginPath();
+    g.moveTo(s * 0.14, s * 0.72); g.lineTo(s * 0.86, s * 0.72);
+    g.lineTo(s * 0.86, s * 0.84); g.lineTo(s * 0.14, s * 0.84);
+    g.closePath(); g.fill(); g.stroke();
+  },
+  // Mimicry — what you picked up, learned and handed back.
+  evolution: (g, s) => {
+    g.beginPath();
+    g.moveTo(s * 0.5, s * 0.86); g.lineTo(s * 0.5, s * 0.56);
+    g.moveTo(s * 0.5, s * 0.56); g.lineTo(s * 0.24, s * 0.36);
+    g.moveTo(s * 0.5, s * 0.56); g.lineTo(s * 0.76, s * 0.36);
+    g.stroke();
+    for (const x of [0.24, 0.76]) {
+      const d = x < 0.5 ? 1 : -1;
+      poly(g, [[s * x, s * 0.14], [s * (x + 0.14 * d), s * 0.34], [s * (x - 0.02 * d), s * 0.38]]);
+      g.fill(); g.stroke();
+    }
+  },
+  // ---- difficulties: one cloud, three weathers -------------------------
+  drizzle: (g, s) => {
+    cloud(g, s);
+    rain(g, s, 0.5, 0.62, 0.8);
+  },
+  rainstorm: (g, s) => {
+    cloud(g, s);
+    rain(g, s, 0.3, 0.6, 0.82);
+    rain(g, s, 0.5, 0.64, 0.88);
+    rain(g, s, 0.7, 0.6, 0.82);
+  },
+  monsoon: (g, s) => {
+    cloud(g, s);
+    rain(g, s, 0.24, 0.6, 0.84);
+    rain(g, s, 0.78, 0.6, 0.84);
+    poly(g, [[s * 0.56, s * 0.54], [s * 0.38, s * 0.76], [s * 0.5, s * 0.76],
+             [s * 0.44, s * 0.94], [s * 0.64, s * 0.7], [s * 0.52, s * 0.7]]);
+    g.fill(); g.stroke();
+  },
+};
+
+/**
+ * A rule mark — one artifact or one difficulty — as a transparent data-URL.
+ *
+ * Transparent because the card supplies its own plate and its own accent
+ * keyline; a second plate inside it would read as a tile pasted on a card.
+ * Returns `null` for an unknown key so a caller can fall back rather than draw
+ * an empty box.
+ */
+export function markIcon(key, color = '#dfe9f7') {
+  const draw = MARKS[key];
+  if (!draw) return null;
+  return cached(`mark:${key}:${color}`, (g, s) => {
+    g.fillStyle = color;
+    g.strokeStyle = '#ffffff';
+    g.lineWidth = Math.max(1.5, s * 0.05);
+    g.lineJoin = 'round';
+    g.lineCap = 'round';
+    draw(g, s);
+  });
+}
+
+export function hasMark(key) { return !!MARKS[key]; }
+
 // -------------------------------------------------------------- colour math
 
 function parseHex(hex) {

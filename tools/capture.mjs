@@ -47,7 +47,7 @@ const SCENARIOS = [
   {
     name: '01-title',
     doc: 'First frame the player sees. Menu framing and background composition.',
-    setup: async (page) => { await settle(page, 90); },
+    setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.title?.()),
   },
   // Second, and it has to be: `Artifacts.setActive` is pre-run only and latches
   // on the first `stageStart`, which `Progression` raises from `fixedUpdate` —
@@ -58,6 +58,16 @@ const SCENARIOS = [
     name: '17-artifacts',
     doc: 'Pre-run artifact grid: earned artifacts enabled, unearned ones showing the challenge that opens them. Judges the card grid and the active/locked state pair.',
     setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.artifacts?.()),
+  },
+  // Third, and pre-run for the same reason `17-artifacts` is: the difficulty
+  // knob feeds the director's credit rate, so it is chosen here and put back
+  // after the shutter. It had no scenario at all until now, which is why an
+  // emoji-presentation icon set survived every round of review — a surface no
+  // shot looks at is a surface nothing can report on.
+  {
+    name: '18-difficulty',
+    doc: 'Pre-run difficulty ladder with a rung selected. Judges the option-list treatment, the icon set and the selected/unselected state pair.',
+    setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.difficulty?.()),
   },
   {
     name: '02-vista',
@@ -210,8 +220,12 @@ log('starting vite...');
 // screen — producing a plausible-looking wrong screenshot with `ready: true`
 // and zero errors in the manifest. Silent wrong output is the worst failure a
 // harness can have.
+// Port is an argument because several agents run captures at once and a
+// hardcoded one makes the second run die on EADDRINUSE — or, worse, quietly
+// attach to the first run's server.
+const PORT = Number(args.port ?? 5199);
 const server = await createServer({
-  server: { port: 5199, hmr: false, watch: null },
+  server: { port: PORT, strictPort: true, hmr: false, watch: null },
   logLevel: 'error',
 });
 await server.listen();
@@ -270,7 +284,8 @@ for (const f of await readdir(OUT).catch(() => [])) {
 }
 
 log('navigating...');
-await page.goto(`http://127.0.0.1:5199/?seed=${SEED}&quality=3&harness=1`, { waitUntil: 'load' });
+if (process.env.SABOTAGE) await page.addInitScript(() => { globalThis.__SABOTAGE__ = 1; });
+await page.goto(`http://127.0.0.1:${PORT}/?seed=${SEED}&quality=3&harness=1`, { waitUntil: 'load' });
 log('loaded; waiting for stage...');
 
 // The game signals readiness itself; a fixed sleep would race stage generation.
@@ -300,7 +315,18 @@ if (!ready) {
         const c = globalThis.__GAME__?.ctx;
         return { frameErrors: c?.frameErrors ?? 0, lastFrameError: c?.lastFrameError ?? null, time: c?.time ?? 0 };
       });
-      manifest.shots.push({ name: s.name, doc: s.doc, file, engine, newErrors: errors.slice(before) });
+      // What the scenario declared its frame had to contain, measured against
+      // the rendered pixels. A shot whose subject is absent is a failure here
+      // even when nothing threw and the image looks plausible — which is
+      // precisely the state `04-combat` and `05-boss` shipped in, with
+      // `errorCount: 0` cited by five agents as proof of verification.
+      const subject = await page.evaluate(
+        (name) => globalThis.__GAME__?.ctx?.harness?.subjects?.[name] ?? null, s.name);
+      manifest.shots.push({
+        name: s.name, doc: s.doc, file, engine,
+        subject: subject ?? { ok: false, checks: [], note: 'scenario declared no subject' },
+        newErrors: errors.slice(before),
+      });
     } catch (e) {
       manifest.shots.push({ name: s.name, doc: s.doc, error: String(e) });
     }
@@ -308,6 +334,17 @@ if (!ready) {
   // Fold the untouched shots back in and restore capture order.
   manifest.shots = [...manifest.shots, ...carried].sort((a, b) => a.name.localeCompare(b.name));
   manifest.errors = errors;
+  // Hoisted to the top of the file so it cannot be missed by a reader who only
+  // skims. `ready: true` with an empty error list was never a statement that
+  // the shots contain their subjects; now there is one that is.
+  manifest.subjectFailures = manifest.shots
+    .filter((s) => s.subject && !s.subject.ok)
+    .map((s) => ({
+      name: s.name,
+      failed: (s.subject.checks ?? []).filter((c) => !c.ok).map((c) => c.subject),
+      detail: (s.subject.checks ?? []).filter((c) => !c.ok),
+    }));
+  manifest.subjectsOk = manifest.subjectFailures.length === 0;
 
   // render.calls/triangles read here would only reflect the composer's final
   // fullscreen quad, so report the stable counters instead.
@@ -330,6 +367,20 @@ await writeFile(path.join(OUT, 'manifest.json'), JSON.stringify(manifest, null, 
 await browser.close();
 await server.close();
 
-console.log(JSON.stringify({ ready, shots: manifest.shots.map((s) => s.name), errorCount: errors.length, perf: manifest.perf }, null, 2));
+const failures = manifest.subjectFailures ?? [];
+console.log(JSON.stringify({
+  ready,
+  shots: manifest.shots.map((s) => s.name),
+  errorCount: errors.length,
+  subjectsOk: manifest.subjectsOk ?? null,
+  subjectFailures: failures.map((f) => `${f.name}: ${f.failed.join(', ')}`),
+  perf: manifest.perf,
+}, null, 2));
 if (errors.length) console.log('\nFIRST ERRORS:\n' + errors.slice(0, 8).join('\n---\n'));
-process.exit(ready ? 0 : 1);
+if (failures.length) {
+  console.log('\nSUBJECT FAILURES:\n' + JSON.stringify(failures, null, 2));
+}
+// Non-zero on a missing subject as well as on a failed boot. A capture that
+// produced twenty plausible-looking images without their subjects is not a
+// successful run, and the exit code is the one signal a caller cannot ignore.
+process.exit(ready && !failures.length ? 0 : 1);

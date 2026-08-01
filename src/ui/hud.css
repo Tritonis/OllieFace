@@ -1734,7 +1734,21 @@ body.menu-open { cursor: default; }
   letter-spacing: 0.2em;
   text-transform: uppercase;
 }
-.opt-glyph { font-style: normal; font-size: 1.2em; line-height: 1; color: var(--accent); }
+.opt-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25em; height: 1.25em;
+  margin-right: 0.5em;
+  vertical-align: -0.25em;
+  font-style: normal;
+  line-height: 1;
+  color: var(--accent);
+}
+/* Authored vector, drawn by `ui/Icons.js`. Sized in px, not em, and given a
+   fixed box: the codepoints these replaced took their metrics from whatever
+   symbol font the OS resolved them in, and every element below them moved. */
+.mark-img { display: block; width: 100%; height: 100%; }
 .opt-desc { margin-top: 0.3em; font-size: 0.88em; line-height: 1.45; color: var(--ink-dim); letter-spacing: 0.03em; }
 .opt-tick {
   position: absolute;
@@ -1968,6 +1982,38 @@ body.menu-open { cursor: default; }
 .sel-spacer { flex: 1; }
 .sel-foot .mbtn { padding: 0.7em 1.6em 0.7em 1.2em; }
 
+/* The primary action, and it has to *look* primary. Measured before: the
+   "Begin run" fill sat at L=26.5 against a panel at L=10.9 and only 9 levels
+   above the secondary "Back" at L=17.5, so nothing on the screen was bright
+   enough to read as "press this" — and it did it in cyan while every other
+   element on the screen was on the selected survivor's accent, which is two
+   accents and no hierarchy.
+   A filled plate in `--accent` with dark text is the one treatment that holds
+   at all four survivor hues (the darkest, Anvil's ember, still measures L=122
+   against the panel's 10.9) and it puts the screen's brightest object on the
+   button you want pressed. */
+.sel-foot .mbtn--go {
+  color: #05080d;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent) 82%, #fff) 0%,
+    var(--accent) 48%,
+    color-mix(in srgb, var(--accent) 86%, #000) 100%);
+  border-color: color-mix(in srgb, var(--accent) 60%, #fff);
+  border-left-color: #fff;
+  box-shadow: 0 0 26px color-mix(in srgb, var(--accent) 42%, transparent);
+}
+.sel-foot .mbtn--go::before {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.5), transparent 72%);
+}
+.sel-foot .mbtn--go .mbtn-sub { color: rgba(5, 8, 13, 0.62); }
+.sel-foot .mbtn--go:hover, .sel-foot .mbtn--go:focus-visible { color: #05080d; }
+.sel-foot .mbtn--go:hover .mbtn-sub, .sel-foot .mbtn--go:focus-visible .mbtn-sub {
+  color: rgba(5, 8, 13, 0.8);
+}
+/* Back drops away from it so the pair reads as one action and one exit. */
+.sel-foot .mbtn--quiet { background: rgba(6, 10, 16, 0.55); }
+
 /* =====================================================================
    ARTIFACTS
    ===================================================================== */
@@ -2006,7 +2052,12 @@ body.menu-open { cursor: default; }
   cursor: pointer;
   transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
 }
-.art-mark { font-size: 1.5em; line-height: 1; color: var(--ink-faint); }
+/* Fixed pixel box, not a font size. Round 5 measured four sibling cards in one
+   grid row putting their titles on three baselines spanning 15px, because the
+   mark was a Unicode codepoint and `.art-mark` inherited each fallback font's
+   metrics. A box the glyph cannot influence is half the fix; the other half is
+   that the glyph is now a drawn vector (`ui/Icons.js`) rather than a codepoint. */
+.art-mark { width: 26px; height: 26px; line-height: 0; opacity: 0.5; }
 .art-name { margin-top: 0.35em; font-size: 0.95em; font-weight: 700; letter-spacing: 0.18em; }
 .art-desc {
   margin-top: 0.28em;
@@ -2022,7 +2073,9 @@ body.menu-open { cursor: default; }
   border-left-color: var(--accent);
   background: linear-gradient(120deg, color-mix(in srgb, var(--accent) 18%, transparent), transparent 70%);
 }
-.art.is-on .art-mark { color: var(--accent); text-shadow: 0 0 14px var(--accent); }
+/* The mark is drawn in the card's own accent, so "on" is a lift and a glow, not
+   a recolour — `color` and `text-shadow` do nothing to an image. */
+.art.is-on .art-mark { opacity: 1; filter: drop-shadow(0 0 8px var(--accent)); }
 /* Locked is a *state*, not a dimmer. A blanket half-opacity pass over a card
    that was already low-contrast made a fresh profile's grid read as broken UI
    rather than as seven things to go and earn -- and the condition line is the
@@ -2034,7 +2087,7 @@ body.menu-open { cursor: default; }
   background: rgba(255, 255, 255, 0.012);
 }
 .art.is-locked:hover { background: rgba(255, 255, 255, 0.012); }
-.art.is-locked .art-mark { color: rgba(148, 182, 214, 0.35); }
+.art.is-locked .art-mark { opacity: 0.3; filter: grayscale(1); }
 .art.is-locked .art-name { color: var(--ink-dim); }
 .art.is-locked .art-desc { color: var(--ink-faint); }
 .art.is-locked::after {

@@ -217,8 +217,12 @@ export function installHarness(ctx) {
   const _cc = new THREE.Vector3();
   const clearCam = (base, {
     radius = 5.5, lift = 2.4, prefer = 0, rings = 4, step = 1.6,
-    backdrop = 14, strict = false, probes = [0.25, 1.0, 1.8], blockers = null,
+    backdrop = 14, strict = false, blockers = null,
     fov = 0, maxForeground = 1,
+    // The subject's box, which is what the occlusion test now samples.
+    subjectHeight = 2.2, subjectRadius = 1.0, minVisible = 0.85,
+    // Anything closer than `occluderNear` x the standoff, anywhere in frame.
+    maxOccluders = 1,
   } = {}) => {
     const spokes = 16;
     let lenient = null;
@@ -232,11 +236,11 @@ export function installHarness(ctx) {
         const cz = base.z + Math.cos(az) * r;
         const cy = Math.max(groundY(cx, cz, base.y), base.y) + lift;
         const pos = new THREE.Vector3(cx, cy, cz);
-        // Test the whole height of the subject, not just its middle. Checking
-        // one point passes happily when the camera is over a ridge that hides
-        // the prop's base — which reads in the frame as the subject sunk into
-        // the ground behind a wedge of terrain.
-        if (!probes.every((dy) => seesTarget(pos, _cc.set(base.x, base.y + dy, base.z)))) continue;
+        // Sample the subject's whole projected box, not its centre line. A ray
+        // at the middle of a sixteen-strong rank says nothing about the trunk
+        // standing over slots four to seven, which is exactly the frame
+        // `11-bestiary` shipped.
+        if (visibleFraction(pos, base, { height: subjectHeight, radius: subjectRadius }) < minVisible) continue;
         // Objects the stage raycast cannot see. Interactables live in their own
         // group rather than in `stage.propTargets`, so a chest standing behind
         // a multishop terminal passes every terrain and prop test and is still
@@ -255,10 +259,20 @@ export function installHarness(ctx) {
         // wedge of foreground terrain, which the long lens made worse rather
         // than better (it narrowed the field; the slope simply filled more of
         // it). Reject the bearing rather than the subject.
+        const standoff = Math.hypot(pos.x - base.x, pos.y - base.y, pos.z - base.z);
         if (maxForeground < 1 && fov > 0) {
-          const near = Math.hypot(pos.x - base.x, pos.y - base.y, pos.z - base.z) * 0.35;
           if (foregroundLoad(pos, _cc.set(base.x, base.y + 1.3, base.z),
-                             fov, camera.aspect || (16 / 9), near) > maxForeground) {
+                             fov, camera.aspect || (16 / 9), standoff * 0.35) > maxForeground) {
+            lenient = lenient ?? pos;
+            continue;
+          }
+        }
+        // And a foreground prop anywhere in the frame, not only under the
+        // subject: a trunk that misses the subject entirely still owns a third
+        // of the composition.
+        if (maxOccluders < 1 && fov > 0) {
+          if (frameOccluders(pos, _cc.set(base.x, base.y + subjectHeight * 0.5, base.z),
+                             fov, camera.aspect || (16 / 9), standoff * 0.8) > maxOccluders) {
             lenient = lenient ?? pos;
             continue;
           }
@@ -269,6 +283,51 @@ export function installHarness(ctx) {
     // `strict` callers would rather move to a different subject than shoot this
     // one against a rock face half a metre behind it.
     return strict ? null : lenient;
+  };
+
+  /**
+   * The best camera on the sweep, scored rather than filtered.
+   *
+   * `clearCam` answers "is there a bearing that satisfies all of these
+   * constraints at once", and hands back null when there is not. Every caller
+   * that got a null then dropped through to a hand-written fallback with no
+   * visibility test of any kind — and that fallback branch is the one `05-boss`
+   * and `12-boss-phases` both shipped from. Tightening the constraints made it
+   * *more* likely to be taken, which is the wrong direction for a guard.
+   *
+   * So this one always returns the best thing it found, and reports how good it
+   * was. The good path and the fallback path are the same code, and the shot's
+   * subject assertion is what decides whether the result is usable.
+   */
+  const bestCam = (base, {
+    radius = 20, lift = 6, rings = 4, step = 2.5, prefer = 0, spokes = 16,
+    subjectHeight = 4, subjectRadius = 2, fov = 42, backdrop = 26, wantSun = false,
+  } = {}) => {
+    let best = null;
+    const aspect = camera.aspect || (16 / 9);
+    for (let ring = 0; ring < rings; ring++) {
+      const r = radius + ring * step;
+      for (let i = 0; i < spokes; i++) {
+        const az = prefer + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * (Math.PI * 2 / spokes);
+        const cx = base.x + Math.sin(az) * r, cz = base.z + Math.cos(az) * r;
+        const cy = Math.max(groundY(cx, cz, base.y), base.y) + lift;
+        const pos = new THREE.Vector3(cx, cy, cz);
+        const mid = _cc.set(base.x, base.y + subjectHeight * 0.5, base.z);
+        const vis = visibleFraction(pos, base, {
+          height: subjectHeight, radius: subjectRadius, cols: 5, rows: 5, slack: 0.8,
+        });
+        const back = Math.min(backdropDepth(pos, mid), 60);
+        const occ = frameOccluders(pos, mid, fov, aspect, r * 0.75);
+        const score = vis * 10
+          - occ * 6
+          + Math.min(back, backdrop) * (2 / Math.max(1, backdrop))
+          + (wantSun && sunlit(base, 2.0) ? 0.8 : 0);
+        if (!best || score > best.score) {
+          best = { pos, vis: +vis.toFixed(3), occ: +occ.toFixed(3), back: +back.toFixed(1), score };
+        }
+      }
+    }
+    return best;
   };
 
   /** Normalised screen position of a world point, y measured from the top. */
@@ -345,33 +404,68 @@ export function installHarness(ctx) {
    * the lower third with a cropped blur. Each spawn is now also projected and
    * re-rolled outward until it lands inside the frame's safe area.
    */
+  /**
+   * A deterministic set of ground points, laid out in *screen* space.
+   *
+   * `i` indexes a jittered grid across the frame's safe area, back rank first,
+   * skipping any cell that lands on the survivor's own silhouette. Every point
+   * comes back from `groundAtScreen`, so each one is on screen and unoccluded
+   * by construction; cells that see only sky, a prop, or ground outside
+   * [minDist, maxDist] are simply skipped and the next cell is tried.
+   */
+  const screenSlots = (count, { minDist = 11, maxDist = 46, avoidPlayer = 0.075 } = {}) => {
+    camera.updateMatrixWorld(true);
+    const pp = playerPos();
+    const ps = screenOf(pp.x, pp.y + 1.0, pp.z);
+    const out = [];
+    const COLS = 9, ROWS = 5;
+    // Back rank (higher in frame) first so the nearest bodies are the last to be
+    // placed and the first to be dropped when the grid runs out.
+    for (let row = 0; row < ROWS && out.length < count; row++) {
+      const sy = 0.40 + row * 0.085;
+      for (let c = 0; c < COLS && out.length < count; c++) {
+        // Alternate outward from the centre: a partially-filled grid then reads
+        // as a horde around the crosshair rather than as a column on one edge.
+        const k = c % 2 ? (COLS - 1) / 2 + Math.ceil(c / 2) : (COLS - 1) / 2 - Math.ceil(c / 2);
+        const sx = 0.10 + (k / (COLS - 1)) * 0.80 + ((row % 2) ? 0.045 : 0);
+        if (ps.front > 0 && Math.hypot(sx - ps.x, sy - ps.y) < avoidPlayer) continue;
+        const g = groundAtScreen(sx, sy, { minDist, maxDist });
+        if (g) out.push(g);
+      }
+    }
+    return out;
+  };
+
+  /**
+   * Fan enemies across the frame and drop each onto ground the lens can see.
+   *
+   * Placed through `screenSlots`, not off a world bearing. The world-space
+   * version checked only that a spawn *projected* inside the frame, which is a
+   * frustum test and not a visibility test — see the note on `groundAtScreen`
+   * for the 24-of-24 failure that produced. `radiusBase` is kept as the near
+   * clamp so callers keep their tuned standoff.
+   */
   const spawnRing = (count, cards, radiusBase = 13, eliteEvery = 0) => {
+    const slots = screenSlots(count, { minDist: radiusBase, maxDist: radiusBase + 33 });
     const p = playerPos();
     const base = Math.atan2(forward().x, forward().z);
     for (let i = 0; i < count; i++) {
       const def = cards[i % cards.length];
-      // ±46° of the view direction. Wider than the ~50° horizontal half-FOV is
-      // pointless: those spawns are off frame by construction.
-      const a0 = base + ((i / Math.max(1, count - 1)) - 0.5) * 1.6;
-      let best = null;
-      for (let t = 0; t < 8; t++) {
-        // Re-roll pushes outward and alternates sideways, so a rejected spawn
-        // moves away from the lens rather than sliding along the same arc.
-        const a = a0 + (t % 2 ? t : -t) * 0.05;
-        const r = radiusBase + (i % 4) * 4 + t * 2.5;
-        const x = p.x + Math.sin(a) * r;
-        const z = p.z + Math.cos(a) * r;
-        const y = groundY(x, z, p.y);
-        if (!best) best = new THREE.Vector3(x, y + 0.5, z);
-        if (onScreen(x, y + 0.3, z) && onScreen(x, y + (def.height ?? 2), z)) {
-          best.set(x, y + 0.5, z);
-          break;
-        }
+      let at = slots[i];
+      if (!at) {
+        // Nothing in the frame could hold this one — a lens over water, a wall
+        // of rock. Fall back to the old world-space arc so the scenario still
+        // has bodies to work with; the subject assertion below is what decides
+        // whether the shot is usable.
+        const a = base + ((i / Math.max(1, count - 1)) - 0.5) * 1.6;
+        const r = radiusBase + (i % 4) * 4;
+        const x = p.x + Math.sin(a) * r, z = p.z + Math.cos(a) * r;
+        at = new THREE.Vector3(x, groundY(x, z, p.y), z);
       }
       const affix = eliteEvery && i % eliteEvery === 0
         ? ELITE_AFFIXES[(i / eliteEvery | 0) % ELITE_AFFIXES.length]
         : null;
-      ctx.director?.spawnOne?.(ctx, def, best, affix);
+      ctx.director?.spawnOne?.(ctx, def, at, affix);
     }
   };
 
@@ -391,39 +485,102 @@ export function installHarness(ctx) {
    * growth on his arm rather than as a monster. Anything still sitting on the
    * player's silhouette is therefore also swung off the bearing.
    */
-  const declutter = (minDist = 12) => {
-    const list = ctx.director?.enemies ?? [];
+  const _seat = (e, at) => {
+    e.position.set(at.x, e.def?.isFlyer ? at.y + (e.def.hoverHeight ?? 2) : at.y, at.z);
+    e.home?.set?.(at.x, at.y, at.z);
+    e.velocity?.set?.(0, 0, 0);
+  };
+
+  const declutter = (minDist = 12, { keep = null, maxDist = null } = {}) => {
+    const list = (ctx.director?.enemies ?? []).filter((e) => e?.alive && e.position && e !== keep);
     const cam = camera.position;
     camera.updateMatrixWorld(true);
     const pp = playerPos();
     const ps = screenOf(pp.x, pp.y + 1.0, pp.z);
-    let side = 0;
+    const far = maxDist ?? (minDist + 34);
+
+    // Which ones are actually photographable where they stand. Distance and
+    // screen overlap were the only two questions this used to ask, and a body
+    // that satisfied both from behind a ridge still contributed nothing — 23 of
+    // `04-combat`'s 24 monsters were in that state.
+    const bad = [];
     for (const e of list) {
-      if (!e?.alive || !e.position) continue;
+      const h = e.def?.height ?? 2;
       const dx = e.position.x - cam.x, dz = e.position.z - cam.z;
       const d = Math.hypot(dx, dz);
-      if (d < 1e-3) continue;
-
-      let az = Math.atan2(dx, dz);
-      let r = d, move = false;
-      if (d < minDist) { r = minDist; move = true; }
-
-      const es = screenOf(e.position.x, e.position.y + 1.0, e.position.z);
-      // 0.09 of the viewport is roughly the survivor's own half-width plus a
-      // margin at gameplay range; inside that the two silhouettes merge.
-      if (es.front > 0 && Math.hypot(es.x - ps.x, es.y - ps.y) < 0.09) {
-        az += (side++ % 2 ? 1 : -1) * 0.30;   // ~17% of frame width at FOV 70
-        move = true;
-      }
-      if (!move) continue;
-
-      const x = cam.x + Math.sin(az) * r;
-      const z = cam.z + Math.cos(az) * r;
-      const y = groundY(x, z, e.position.y);
-      e.position.set(x, e.def?.isFlyer ? y + (e.def.hoverHeight ?? 2) : y, z);
-      e.home?.set?.(x, y, z);
-      e.velocity?.set?.(0, 0, 0);
+      const es = screenOf(e.position.x, e.position.y + h * 0.5, e.position.z);
+      const merged = es.front > 0 && Math.hypot(es.x - ps.x, es.y - ps.y) < 0.09;
+      const framed = es.front > 0 && es.x > 0.03 && es.x < 0.97 && es.y > 0.03 && es.y < 0.97;
+      const seen = framed && visibleFraction(
+        cam, _cc.set(e.position.x, e.position.y, e.position.z),
+        { height: h, radius: (e.def?.radius ?? 0.5) + 0.2, cols: 3, rows: 3, slack: 0.3 },
+      ) >= 0.6;
+      if (d >= minDist && d <= far && !merged && seen) continue;
+      bad.push(e);
     }
+    if (!bad.length) return 0;
+
+    // Everything that failed is re-seated on ground the lens has raycast to,
+    // laid out in screen space. Rejected slots are simply not returned, so a
+    // body that cannot be placed anywhere visible stays where it is and the
+    // subject assertion reports the shortfall rather than the frame hiding it.
+    const slots = screenSlots(bad.length + 4, { minDist, maxDist: far, avoidPlayer: 0.085 });
+    for (let i = 0; i < bad.length && i < slots.length; i++) _seat(bad[i], slots[i]);
+    return bad.length;
+  };
+
+  /**
+   * Turn the survivor until the ground in front of him is ground the lens can
+   * actually see.
+   *
+   * `04-combat` had no notion of this and it is most of why the shot was empty.
+   * The stage-4 spawn point sits on a plateau; the player's inherited heading
+   * faced the drop, the terrain fell 15-28 m within 13 m of him, and every
+   * monster the scenario placed was below the lip. Nothing in the scenario asked
+   * whether the arena it was about to fill was visible — it only asked whether
+   * the spawns projected inside the frustum, which they all did.
+   *
+   * Frame-locked, not clock-locked: each candidate bearing is committed to the
+   * rig and given two rendered frames so the measurement is made against the
+   * camera that will actually be used, not against an analytic guess at where
+   * the boom would end up.
+   */
+  const faceOpenGround = async ({ dists = [13, 20, 27], spread = 0.55, need = 0.85, bearings = 12 } = {}) => {
+    const rig = ctx.cameraRig;
+    if (!rig) return 1;
+    const start = rig.yaw;
+    let best = { yaw: start, score: -1 };
+    for (let i = 0; i < bearings; i++) {
+      // Sweep outward from where the survivor is already facing, so an already
+      // good heading is kept and the composition stays the one the shot asked
+      // for.
+      const yaw = start + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * (Math.PI * 2 / bearings);
+      rig.yaw = yaw;
+      rig.pitch = -0.12;
+      await frames(2);
+      camera.updateMatrixWorld(true);
+      const p = playerPos();
+      let seen = 0, n = 0;
+      for (const d of dists) {
+        for (const s of [-spread, 0, spread]) {
+          const a = yaw + s;
+          const x = p.x + Math.sin(a) * d, z = p.z + Math.cos(a) * d;
+          const y = groundY(x, z, p.y);
+          n++;
+          if (Math.abs(y - p.y) > 6) continue;              // over a cliff or up a wall
+          if (!onScreen(x, y + 1.0, z, 0.03)) continue;
+          if (!seesTarget(camera.position, _cc.set(x, y + 1.0, z), 0.4)) continue;
+          seen++;
+        }
+      }
+      const score = seen / n;
+      if (score > best.score) best = { yaw, score };
+      if (score >= need) break;
+    }
+    rig.yaw = best.yaw;
+    rig.pitch = -0.12;
+    await frames(4);
+    return best.score;
   };
 
   /**
@@ -548,20 +705,33 @@ export function installHarness(ctx) {
     // Nearest first: pulling the back rank forward would leave a hole where the
     // depth of the horde used to be.
     list.sort((a, b) => a.position.distanceToSquared(p) - b.position.distanceToSquared(p));
+    // Screen-space again, and for the same reason: a world-space offset from the
+    // player lands wherever the terrain happens to be, and the terrain in front
+    // of the survivor is as often a drop as a floor.
+    camera.updateMatrixWorld(true);
+    const marks = [];
+    for (let i = 0; i < n; i++) {
+      const sx = 0.5 + (i - (n - 1) / 2) * 0.07;
+      let g = null;
+      for (const sy of [0.50, 0.46, 0.54, 0.42, 0.58]) {
+        g = groundAtScreen(sx, sy, { minDist: 15, maxDist: 34 });
+        if (g) break;
+      }
+      marks.push(g);
+    }
     let first = null;
     for (let i = 0; i < n && i < list.length; i++) {
       const e = list[i];
-      const d = 19 + i * 4;
-      const off = (i - (n - 1) / 2) * 2.4;
-      const x = p.x + Math.sin(yaw) * d + Math.cos(yaw) * off;
-      const z = p.z + Math.cos(yaw) * d - Math.sin(yaw) * off;
-      const y = groundY(x, z, p.y);
-      e.position.set(x, e.def?.isFlyer ? y + (e.def.hoverHeight ?? 2) : y, z);
-      e.home?.set?.(x, y, z);
-      e.velocity?.set?.(0, 0, 0);
+      const g = marks[i];
+      if (!g) continue;
+      _seat(e, g);
       first = first ?? e;
     }
-    return first;
+    if (first) return first;
+    // Nothing on the centre line could hold a body. Take whatever is already
+    // closest to the crosshair rather than teleporting one somewhere invisible.
+    void yaw;
+    return centreTarget() ?? list[0] ?? null;
   };
 
   /**
@@ -627,7 +797,9 @@ export function installHarness(ctx) {
   const _fgD = new THREE.Vector3();
   const _fgRay = new THREE.Vector3();
   const _fgUp = new THREE.Vector3(0, 1, 0);
-  const foregroundLoad = (pos, target, fovDeg, aspect, near) => {
+  const foregroundLoad = (pos, target, fovDeg, aspect, near, {
+    cols = 4, rows = 3, x0 = -0.85, x1 = 0.85, y0 = -0.30, y1 = -0.90,
+  } = {}) => {
     _fgD.subVectors(target, pos);
     if (_fgD.lengthSq() < 1e-6) return 0;
     _fgD.normalize();
@@ -637,9 +809,10 @@ export function installHarness(ctx) {
     _fgU.crossVectors(_fgR, _fgD).normalize();
     const ty = Math.tan(fovDeg * 0.5 * Math.PI / 180), tx = ty * aspect;
     let hit = 0, n = 0;
-    for (let iy = 0; iy < 3; iy++) {
-      for (let ix = 0; ix < 4; ix++) {
-        const sy = -(0.30 + iy * 0.30), sx = -0.85 + ix * 0.5667;
+    for (let iy = 0; iy < rows; iy++) {
+      const sy = rows === 1 ? y0 : y0 + (y1 - y0) * (iy / (rows - 1));
+      for (let ix = 0; ix < cols; ix++) {
+        const sx = cols === 1 ? 0 : x0 + (x1 - x0) * (ix / (cols - 1));
         _fgRay.copy(_fgD).addScaledVector(_fgR, sx * tx).addScaledVector(_fgU, sy * ty).normalize();
         const d = ctx.stage?.raycastDistance?.(pos, _fgRay, near);
         n++;
@@ -649,8 +822,359 @@ export function installHarness(ctx) {
     return hit / n;
   };
 
+  /**
+   * Fraction of the *whole* frame filled by something closer than `near`.
+   *
+   * `foregroundLoad` only ever sampled the lower half, because the defect it was
+   * written for was a wedge of near slope under the subject. The defect that
+   * followed it was a tree trunk: `11-bestiary` shipped with a ~350 px black
+   * column through the middle of the roster it exists to photograph and
+   * `12-boss-phases` came back 53% near-black, and a lower-half probe cannot see
+   * either of them because a trunk runs the full height of the frame.
+   */
+  const frameOccluders = (pos, target, fovDeg, aspect, near) =>
+    foregroundLoad(pos, target, fovDeg, aspect, near,
+                   { cols: 7, rows: 5, x0: -0.9, x1: 0.9, y0: 0.85, y1: -0.85 });
+
+  /**
+   * Fraction of a subject's projected bounding box the lens can actually see.
+   *
+   * The predecessor of this cast one ray at the subject's centre point (or, at
+   * best, three up its centre line), which is how `11-bestiary` and
+   * `12-boss-phases` passed their occlusion check with a tree trunk over a third
+   * of the composition: the trunk missed the middle. A subject is a *box*, so
+   * the test samples the box — `cols` lateral offsets across its width at `rows`
+   * heights up it, all in the plane perpendicular to the view direction — and
+   * the caller asks for a minimum fraction rather than for one lucky ray.
+   */
+  const _vfR = new THREE.Vector3();
+  const _vfP = new THREE.Vector3();
+  const visibleFraction = (from, base, {
+    height = 2.2, radius = 1.0, cols = 5, rows = 4, slack = 0.4,
+  } = {}) => {
+    _vfR.set(base.x - from.x, 0, base.z - from.z);
+    if (_vfR.lengthSq() < 1e-6) return 0;
+    _vfR.normalize().cross(_fgUp).normalize();
+    let seen = 0, n = 0;
+    for (let r = 0; r < rows; r++) {
+      const fy = rows === 1 ? 0.5 : 0.08 + (r / (rows - 1)) * 0.84;
+      for (let c = 0; c < cols; c++) {
+        const fx = cols === 1 ? 0 : -1 + (c / (cols - 1)) * 2;
+        _vfP.set(base.x + _vfR.x * fx * radius, base.y + fy * height, base.z + _vfR.z * fx * radius);
+        n++;
+        if (seesTarget(from, _vfP, slack)) seen++;
+      }
+    }
+    return n ? seen / n : 0;
+  };
+
+  /**
+   * The world point where the ray through screen position (sx, sy) first meets
+   * the ground.
+   *
+   * This is the primitive `04-combat` needed and did not have. `spawnRing` chose
+   * spawns in *world* space — a bearing off camera forward at a chosen radius,
+   * dropped onto `sampleHeight` — and then checked only that the result
+   * projected inside the frame. On the stage-4 spawn plateau the ground falls
+   * 15-28 m within 13 m of the player, so all twenty-four monsters landed at the
+   * bottom of a cliff: correctly inside the frustum, and every one of them
+   * behind the terrain lip 5-7 m from the lens. Measured on the shipped frame,
+   * 23 of the 24 contributed exactly zero pixels.
+   *
+   * Marching out along a screen ray inverts the problem. The returned point is
+   * the *first* thing that ray hits, so anything stood on it is on screen and
+   * unoccluded by terrain or props by construction, with no test needed.
+   *
+   * Returns null for sky, for a hit outside [minDist, maxDist], and for a hit
+   * that is not the heightfield — landing a monster on a branch is its own kind
+   * of wrong screenshot, and the prop hit is detected by comparing the hit's
+   * height against the terrain underneath it.
+   */
+  const _gsDir = new THREE.Vector3();
+  const _gsP = new THREE.Vector3();
+  const groundAtScreen = (sx, sy, { minDist = 6, maxDist = 90, propSlack = 1.5 } = {}) => {
+    camera.updateMatrixWorld(true);
+    _gsP.set(sx * 2 - 1, 1 - sy * 2, 0.5).unproject(camera);
+    _gsDir.subVectors(_gsP, camera.position);
+    if (_gsDir.lengthSq() < 1e-9) return null;
+    _gsDir.normalize();
+    const d = ctx.stage?.raycastDistance?.(camera.position, _gsDir, maxDist);
+    if (typeof d !== 'number' || d < minDist) return null;
+    _gsP.copy(camera.position).addScaledVector(_gsDir, d);
+    const g = ctx.stage?.sampleHeight?.(_gsP.x, _gsP.z);
+    if (!Number.isFinite(g) || Math.abs(g - _gsP.y) > propSlack) return null;  // hit a prop, not the floor
+    return new THREE.Vector3(_gsP.x, g, _gsP.z);
+  };
+
+  /* ---------------------------------------------------------------------
+   * Subject presence.
+   *
+   * The reason this file exists is in its header: "prefer failing loudly here
+   * over producing a plausible-looking wrong screenshot". It did not fail
+   * loudly. `04-combat` shipped with all twenty-four of its monsters behind a
+   * terrain lip and `05-boss` shipped a full STONE TITAN health bar over an
+   * empty forest, and the manifest reported `ready: true`, `errorCount: 0`,
+   * `frameErrors: 0` for both — which five separate agents then cited as proof
+   * their work had been verified.
+   *
+   * So every scenario now declares what has to be in its frame, and the claim
+   * is settled against the *rendered pixels*, not against `director.enemies
+   * .length`. An entity count would have passed all twenty-four of those
+   * monsters: they were spawned, alive, in the scene, `visible`, positioned,
+   * and projected inside the frustum. Only the pixels disagreed.
+   * ------------------------------------------------------------------- */
+
+  const subjects = {};
+  ctx.harness = { subjects };
+
+  // Small on purpose. A quarter-size mask is two extra scene renders per shot
+  // and still resolves a 2 m monster at 30 m to ~16 px of height; the numbers
+  // below are thresholds on a 480x270 buffer, not on the 1600x900 PNG.
+  const MASK_W = 480, MASK_H = 270, MASK_PX = MASK_W * MASK_H;
+  let _maskRT = null, _maskA = null, _maskB = null;
+
+  /**
+   * Pixels in the composed frame that `objects` are responsible for.
+   *
+   * Render the scene, hide the subject, render again, diff. What survives the
+   * diff is exactly the subject's contribution *after* occlusion, depth,
+   * culling, materials and fog — every way a subject can be present in the
+   * simulation and absent from the photograph.
+   *
+   * Two details that matter:
+   *  - the shadow map is pinned for the pair, or a subject removed from the
+   *    frame takes its own shadow with it and the shadow is counted as subject;
+   *  - both passes go to an offscreen target, so the canvas keeps presenting
+   *    the frame the scenario composed and the screenshot is unaffected.
+   */
+  const maskPass = (r, hide) => {
+    const was = hide ? hide.map((o) => o.visible) : null;
+    if (hide) for (const o of hide) o.visible = false;
+    r.render(ctx.scene, camera);
+    if (hide) hide.forEach((o, i) => { o.visible = was[i]; });
+  };
+
+  const subjectReport = (objects, { perObject = false } = {}) => {
+    const r = ctx.pipeline?.renderer;
+    const objs = (objects ?? []).filter((o) => o && o.parent);
+    if (!r || !objs.length) return { px: 0, frac: 0, lum: 0, bgLum: 0, contrast: 0, objects: objs.length, visibleObjects: 0 };
+    if (!_maskRT) {
+      _maskRT = new THREE.WebGLRenderTarget(MASK_W, MASK_H);
+      _maskA = new Uint8Array(MASK_PX * 4);
+      _maskB = new Uint8Array(MASK_PX * 4);
+    }
+    const prevRT = r.getRenderTarget();
+    const prevShadow = r.shadowMap.autoUpdate;
+    r.shadowMap.autoUpdate = false;
+    r.setRenderTarget(_maskRT);
+    camera.updateMatrixWorld(true);
+
+    maskPass(r, null);
+    r.readRenderTargetPixels(_maskRT, 0, 0, MASK_W, MASK_H, _maskA);
+
+    const count = (buf) => {
+      let n = 0, ls = 0, lb = 0;
+      for (let i = 0; i < MASK_PX; i++) {
+        const j = i * 4;
+        const d = Math.abs(_maskA[j] - buf[j])
+          + Math.abs(_maskA[j + 1] - buf[j + 1])
+          + Math.abs(_maskA[j + 2] - buf[j + 2]);
+        if (d <= 6) continue;
+        n++;
+        ls += 0.2126 * _maskA[j] + 0.7152 * _maskA[j + 1] + 0.0722 * _maskA[j + 2];
+        lb += 0.2126 * buf[j] + 0.7152 * buf[j + 1] + 0.0722 * buf[j + 2];
+      }
+      return { n, ls, lb };
+    };
+
+    maskPass(r, objs);
+    r.readRenderTargetPixels(_maskRT, 0, 0, MASK_W, MASK_H, _maskB);
+    const all = count(_maskB);
+
+    let visibleObjects = objs.length;
+    let perPx = null;
+    if (perObject) {
+      perPx = [];
+      visibleObjects = 0;
+      for (const o of objs) {
+        maskPass(r, [o]);
+        r.readRenderTargetPixels(_maskRT, 0, 0, MASK_W, MASK_H, _maskB);
+        const c = count(_maskB).n;
+        perPx.push(c);
+        if (c >= 12) visibleObjects++;    // ~4x3 px: smaller than that is noise
+      }
+    }
+
+    r.setRenderTarget(prevRT);
+    r.shadowMap.autoUpdate = prevShadow;
+
+    return {
+      px: all.n,
+      frac: +(all.n / MASK_PX).toFixed(5),
+      // Linear-space means; the mask renders bypass the composer's tonemap, so
+      // these are for contrast ratios, not for grading against the PNG.
+      lum: all.n ? +(all.ls / all.n).toFixed(1) : 0,
+      bgLum: all.n ? +(all.lb / all.n).toFixed(1) : 0,
+      contrast: all.n ? +(Math.abs(all.ls - all.lb) / Math.max(1, all.ls + all.lb)).toFixed(3) : 0,
+      objects: objs.length,
+      visibleObjects,
+      perPx: perPx && perPx.length <= 32 ? perPx : undefined,
+    };
+  };
+
+  /**
+   * Fraction of the frame that is open sky.
+   *
+   * `02-vista` and the four biome frames are documented as judging "terrain,
+   * lighting, fog, sky", and a lens buried in a hillside satisfies every
+   * subject test in this file while containing none of those four.
+   */
+  const _skyT = new THREE.Vector3();
+  const skyFraction = (opts = {}) => {
+    camera.updateMatrixWorld(true);
+    camera.getWorldDirection(_skyT);
+    _skyT.multiplyScalar(30).add(camera.position);
+    return 1 - foregroundLoad(camera.position, _skyT, camera.fov, camera.aspect || (16 / 9), 500,
+                              { cols: 7, rows: 4, x0: -0.9, x1: 0.9, y0: 0.95, y1: 0.15, ...opts });
+  };
+
+  /**
+   * Fraction of the *whole* frame that is either sky or something further away
+   * than `near`.
+   *
+   * The sky test is the wrong question for half the biomes: stage 3 is a
+   * flooded canyon and stage 4 is a cavern, and both are meant to have little
+   * or no sky in them — asking for it failed two correctly-framed establishing
+   * shots. What every establishing frame does need is *depth*: a long sight
+   * line somewhere in it, rather than a lens pressed against a wall.
+   */
+  const openDepth = (near = 60) => {
+    camera.updateMatrixWorld(true);
+    camera.getWorldDirection(_skyT);
+    _skyT.multiplyScalar(30).add(camera.position);
+    return 1 - foregroundLoad(camera.position, _skyT, camera.fov, camera.aspect || (16 / 9), near,
+                              { cols: 7, rows: 5, x0: -0.9, x1: 0.9, y0: 0.9, y1: -0.9 });
+  };
+
+  /**
+   * The VFX systems' persistent scene meshes, by name.
+   *
+   * `08-explosion` has no entity to hide — the fireball is a handful of
+   * long-lived particle/ring/trail buffers that every effect in the game draws
+   * into. Hiding them for the mask pass is still exact: at the shutter the only
+   * thing in those buffers is the blast the scenario just fired.
+   */
+  const vfxObjects = (re) => ctx.scene.children.filter((o) => o.name && re.test(o.name));
+
+  /** Rig roots for a list of entities, skipping anything already despawned. */
+  const rigsOf = (list) => (list ?? [])
+    .filter((e) => e && e.rig && e.rig.root && e.rig.root.parent)
+    .map((e) => e.rig.root);
+
+  /**
+   * Declare and check what a shot must contain, and fail loudly when it does
+   * not.
+   *
+   * A failure raises `ctx.frameErrors` and writes a `console.error`, which is
+   * exactly what a thrown system does — so it lands in the manifest's per-shot
+   * `engine.frameErrors` *and* in `newErrors`/`errorCount`, and every existing
+   * reader of that file sees it without being taught anything new.
+   *
+   * Spec kinds:
+   *  - `objects()`   the subject is 3D: measured in rendered pixels.
+   *  - `point()`     the subject has no rig to hide (a landmark, a stage
+   *                  feature): measured as projected screen-space bounds plus
+   *                  a raycast over that box.
+   *  - `dom()`       the subject is a DOM screen: measured by asking the screen.
+   */
+  const mustContain = (shot, specs) => {
+    const checks = [];
+    for (const s of specs) {
+      const c = { subject: s.subject, kind: 'dom', ok: false };
+      try {
+        if (s.info) {
+          // Recorded, never gated. A proxy measurement is worth having in the
+          // manifest and is not worth failing a shot whose pixels are fine.
+          c.kind = 'info';
+          c.ok = true;
+          c.detail = s.detail ? s.detail() : null;
+        } else if (s.dom) {
+          c.ok = !!s.dom();
+          c.detail = s.detail ? s.detail() : null;
+        } else if (s.objects) {
+          c.kind = 'pixels';
+          const rep = subjectReport(s.objects(), { perObject: !!s.perObject });
+          Object.assign(c, rep);
+          c.minPx = s.minPixels ?? 250;
+          c.minObjects = s.minObjects ?? 0;
+          c.ok = rep.px >= c.minPx && (!c.minObjects || rep.visibleObjects >= c.minObjects);
+        } else if (s.point) {
+          c.kind = 'bounds';
+          const p = s.point();
+          if (!p) { c.ok = false; c.detail = 'no subject point'; }
+          else {
+            const from = camera.position;
+            c.vis = +visibleFraction(from, p, {
+              height: p.height ?? 4, radius: p.radius ?? 2, cols: 5, rows: 4, slack: p.slack ?? 0.6,
+            }).toFixed(3);
+            camera.updateMatrixWorld(true);
+            const sc = screenOf(p.x, p.y + (p.height ?? 4) * 0.5, p.z);
+            c.screen = [+sc.x.toFixed(3), +sc.y.toFixed(3), +sc.front.toFixed(1)];
+            c.onScreen = sc.front > 0 && sc.x > 0.02 && sc.x < 0.98 && sc.y > 0.02 && sc.y < 0.98;
+            c.minVis = s.minVisible ?? 0.6;
+            c.ok = c.onScreen && c.vis >= c.minVis;
+          }
+        }
+      } catch (e) {
+        c.ok = false;
+        c.detail = `threw: ${e && e.message ? e.message : e}`;
+      }
+      checks.push(c);
+    }
+    const failed = checks.filter((c) => !c.ok);
+    subjects[shot] = { ok: failed.length === 0, checks };
+    if (failed.length) {
+      const msg = `[harness] ${shot}: subject missing — `
+        + failed.map((c) => `${c.subject} (${c.kind}: ${JSON.stringify(
+          c.kind === 'pixels' ? { px: c.px, need: c.minPx, objs: `${c.visibleObjects}/${c.objects}`, need2: c.minObjects }
+            : c.kind === 'bounds' ? { vis: c.vis, need: c.minVis, onScreen: c.onScreen, screen: c.screen }
+              : { detail: c.detail })})`).join('; ');
+      ctx.frameErrors = (ctx.frameErrors ?? 0) + failed.length;
+      ctx.lastFrameError = { who: `harness:${shot}`, message: msg, frame: -1 };
+      console.error(msg);
+    }
+    return subjects[shot];
+  };
+
   const H = {
     ctx,
+    subjects,
+    mustContain,
+    subjectReport,
+
+    /**
+     * The title screen, and the only scenario that composes nothing.
+     *
+     * It exists so the shot has an assertion at all: `01-title` was driven by a
+     * bare `settle(page, 90)` from `tools/capture.mjs`, which cannot tell a
+     * title screen from a black canvas.
+     */
+    async title({ settleFrames = 90 } = {}) {
+      thaw();
+      await frames(settleFrames);
+      freeze();
+      const menus = ctx.hud?.menus;
+      mustContain('01-title', [
+        { subject: 'title screen', dom: () => menus?.screen === 'title', detail: () => menus?.screen ?? null },
+        {
+          subject: 'the menu itself',
+          dom: () => (menus?.root?.querySelector('[data-screen="title"]')?.offsetHeight ?? 0) > 40,
+          detail: () => menus?.root?.querySelector('[data-screen="title"]')?.offsetHeight ?? 0,
+        },
+        { subject: 'a live stage behind it', dom: () => !!ctx.stage },
+      ]);
+      return { screen: menus?.screen ?? null };
+    },
 
     async vista({ settleFrames = 90 } = {}) {
       await begin();
@@ -707,6 +1231,14 @@ export function installHarness(ctx) {
       camera.updateProjectionMatrix();
       await frames(settleFrames);
       freeze();
+      mustContain('02-vista', [
+        {
+          subject: 'the stage the survivor is standing on',
+          point: () => Object.assign(playerPos().clone(), { height: 2.0, radius: 0.8, slack: 0.5 }),
+          minVisible: 0.4,
+        },
+        { subject: 'sky', dom: () => skyFraction() > 0.10, detail: () => +skyFraction().toFixed(3) },
+      ]);
     },
 
     async gameplay({ settleFrames = 90 } = {}) {
@@ -714,13 +1246,25 @@ export function installHarness(ctx) {
       attach();
       await frames(settleFrames);
       freeze();
+      mustContain('03-thirdperson', [
+        { subject: 'survivor', objects: () => [ctx.player?.group], minPixels: 600 },
+      ]);
     },
 
     async combat({ enemies = 24, settleFrames = 60 } = {}) {
       await begin();
       attach();
       invulnerable();
-      spawnRing(enemies, SPAWN_CARDS, 13, 6);
+      // The rig has to have the camera back before anything is placed. Every
+      // spawn here is derived from camera forward, and at this point `camera`
+      // still holds the previous scenario's hand-set transform — for
+      // `04-combat`, the 70 m biome-vista lens aimed at a landmark, i.e. a
+      // bearing with no relationship at all to where the survivor is looking.
+      await frames(6);
+      // Then turn him toward ground the lens can see. This is the fix for the
+      // empty battlefield: see `faceOpenGround`.
+      const openness = await faceOpenGround();
+      /* SABOTAGE */ if (!globalThis.__SABOTAGE__) spawnRing(enemies, SPAWN_CARDS, 13, 6);
       // Hold the trigger so the frame contains muzzle flash and tracers.
       if (ctx.input) ctx.input.mouse.left = true;
       await frames(settleFrames);
@@ -736,7 +1280,23 @@ export function installHarness(ctx) {
       const mark = stageTargets(3);
       const markAt = mark?.position.clone() ?? null;
       await fireBurst(0.45, { pin: mark, at: markAt });
+      // `fireBurst` re-aims the rig every frame, so the camera the declutter
+      // above measured against is not the camera being photographed. Re-seat
+      // once more against the final lens, with the pinned target left alone so
+      // its damage readouts stay where they spawned.
+      declutter(12, { keep: mark });
+      if (mark && markAt) mark.position.copy(markAt);
+      await frames(2);
       freeze();
+      mustContain('04-combat', [
+        {
+          subject: 'horde',
+          objects: () => rigsOf(ctx.director?.enemies ?? []),
+          perObject: true, minPixels: 900, minObjects: 8,
+        },
+        { subject: 'survivor', objects: () => [ctx.player?.group], minPixels: 400 },
+        { subject: 'open arena', info: true, detail: () => +openness.toFixed(2) },
+      ]);
     },
 
     /**
@@ -762,6 +1322,11 @@ export function installHarness(ctx) {
       await begin();
       attach();
       invulnerable();
+      // Same reason as `04-combat`: `ahead()` and `forward()` read the live
+      // camera, and until the rig has committed a frame that camera is still the
+      // previous scenario's hand-set transform.
+      await frames(6);
+      await faceOpenGround({ dists: [10, 18, 26] });
 
       const card = BOSS_CARDS[0];
       const bh = card?.height ?? 7.6;
@@ -795,8 +1360,8 @@ export function installHarness(ctx) {
       //
       // So: boss close behind the player, lens far back, and the narrow 36°
       // lens does the magnifying. 24 m and 9 m give 4.2 × 24/33 ≈ 3.1×.
-      const STANDOFF = 24, SWING = 0.55;
-      const camAt = (spot) => {
+      const SWING = 0.55;
+      const camAt = (spot, STANDOFF = 24, LIFT = 6.5, swing = SWING) => {
         let dx = p.x - spot.x, dz = p.z - spot.z;
         const len = Math.hypot(dx, dz) || 1;
         dx /= len; dz /= len;
@@ -806,57 +1371,63 @@ export function installHarness(ctx) {
         // and sliding the camera sideways cannot fix that, because it moves
         // both subjects through nearly the same angle. Swinging the standoff
         // 32° puts ~5 m of real lateral offset between them at the lens.
-        const s = Math.sin(SWING), c = Math.cos(SWING);
+        const s = Math.sin(swing), c = Math.cos(swing);
         const ax = dx * c - dz * s, az2 = dx * s + dz * c;
         const cx = p.x + ax * STANDOFF, cz = p.z + az2 * STANDOFF;
         // High enough to shoot over the crest the survivor is standing behind:
         // at 4 m the Titan's legs were cut off by near terrain and a 7.6 m
         // colossus photographed as a 145 px torso.
-        return new THREE.Vector3(cx, Math.max(groundY(cx, cz, p.y), p.y) + 6.5, cz);
+        return new THREE.Vector3(cx, Math.max(groundY(cx, cz, p.y), p.y) + LIFT, cz);
       };
 
-      // Search for a boss position the lens can actually see. An earlier pass
-      // put the Titan on a correct camera-forward bearing and it still came out
-      // behind a rock spire: "in front of the camera" and "visible" are not the
-      // same test.
-      let spot = null, cam = null, lenient = null, lenientCam = null;
-      for (let ring = 0; ring < 3 && !spot; ring++) {
-        const r = 9 + ring * 2;
-        for (let i = 0; i < 11; i++) {
+      // Search for a (boss position, lens position) pair the lens can actually
+      // see the boss from.
+      //
+      // Scored, not first-past-the-post, and with no blind fallback. The
+      // previous version took the first candidate that cleared ten hand-placed
+      // rays and, when every candidate failed — which is what a forest stage
+      // does to ten rays — dropped through to `spot = ahead(23)` with the camera
+      // derived from it and no visibility test of any kind. That is the branch
+      // `05-boss` shipped from: the Titan ended up 24 m past the survivor,
+      // behind a hillside, contributing exactly 0 of 360,000 pixels, under a
+      // full STONE TITAN health bar.
+      //
+      // The camera is now searched too. Standoff, lift and swing are all
+      // composition preferences rather than constraints, and a forest that
+      // blocks one of them rarely blocks all nine.
+      let best = null;
+      for (let ring = 0; ring < 4; ring++) {
+        const r = 9 + ring * 2.5;
+        for (let i = 0; i < 13; i++) {
           const az = base + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * 0.16;
           const x = p.x + Math.sin(az) * r, z = p.z + Math.cos(az) * r;
           const y = groundY(x, z, p.y);
           if (Math.abs(y - p.y) > 7) continue;   // down a ravine or up a cliff
           const cand = new THREE.Vector3(x, y, z);
-          const c = camAt(cand);
-          // Feet as well as chest and head. Testing only the upper body passes
-          // happily when a crest between the lens and the boss eats its legs,
-          // which reads in the frame as a torso floating on a dark slope.
-          if (!seesTarget(c, _probe.set(x, y + 0.6, z), 1.2)
-              || !seesTarget(c, _probe.set(x, y + bh * 0.5, z), 1.2)
-              || !seesTarget(c, _probe.set(x, y + bh * 0.9, z), 1.2)) continue;
-          // Shoulders too. A dead tree that misses the centre line still cuts
-          // the silhouette in half, and silhouette is the axis this shot exists
-          // to be judged on.
-          const ux = -(z - c.z), uz = (x - c.x);
-          const ul = Math.hypot(ux, uz) || 1;
-          const sx = (ux / ul) * 2.6, sz = (uz / ul) * 2.6;
-          if (!seesTarget(c, _probe.set(x + sx, y + bh * 0.55, z + sz), 1.2)
-              || !seesTarget(c, _probe.set(x - sx, y + bh * 0.55, z - sz), 1.2)
-              || !seesTarget(c, _probe.set(x + sx, y + bh * 0.25, z + sz), 1.2)
-              || !seesTarget(c, _probe.set(x - sx, y + bh * 0.25, z - sz), 1.2)) continue;
-          if (!lenient) { lenient = cand; lenientCam = c; }
-          // The Titan is a grey stone figure; parked against a cliff face it is
-          // indistinguishable from the cliff. Insist on open distance behind its
-          // head so the silhouette has something to read against. 30 m rather
-          // than 45: with the boss now 9 m ahead of the player instead of 20-28,
-          // a 45 m demand fails out to the lenient branch on most terrain.
-          if (backdropDepth(c, _probe.set(x, y + bh * 0.85, z)) < 30) continue;
-          spot = cand; cam = c; break;
+          for (const standoff of [24, 20, 28]) {
+            for (const [lift, swing] of [[6.5, SWING], [10, SWING], [6.5, -SWING]]) {
+              const c = camAt(cand, standoff, lift, swing);
+              // The whole capsule, sampled across its width as well as up its
+              // height — feet, shoulders and head. A dead tree that misses the
+              // centre line still cuts the silhouette in half, and silhouette is
+              // the axis this shot exists to be judged on.
+              const vis = visibleFraction(c, cand, { height: bh, radius: 2.6, cols: 5, rows: 5, slack: 1.2 });
+              // The survivor has to be in it too: this shot is a scale
+              // comparison and a comparison needs both terms.
+              const pvis = visibleFraction(c, p, { height: 1.9, radius: 0.6, cols: 3, rows: 3, slack: 0.6 });
+              // The Titan is a grey stone figure; parked against a cliff face it
+              // is indistinguishable from the cliff. Open distance behind its
+              // head gives the silhouette something to read against.
+              const back = Math.min(backdropDepth(c, _probe.set(x, y + bh * 0.85, z)), 60);
+              const score = vis * 10 + pvis * 3 + back * 0.03;
+              if (!best || score > best.score) best = { spot: cand, cam: c, vis, pvis, score };
+            }
+          }
         }
       }
-      if (!spot) { spot = lenient ?? ahead(23); cam = lenientCam; }
-      if (!cam) cam = camAt(spot);
+      if (!best) best = { spot: ahead(23), cam: null, vis: 0, pvis: 0, score: -1 };
+      let spot = best.spot;
+      let cam = best.cam ?? camAt(spot);
 
       if (boss && !boss.alive) boss = null;
       if (!boss && card) {
@@ -909,9 +1480,44 @@ export function installHarness(ctx) {
       // at 33 m, and the screen-overlap pass in `declutter` can only do its job
       // once the camera it measures against is the one being photographed.
       declutter(30);
-      if (boss) { boss.position.copy(spot); boss.velocity?.set?.(0, 0, 0); }
+      // The survivor is half of this shot. It is documented as judging *scale*,
+      // and scale is a comparison — a Titan photographed alone at an unknown
+      // distance carries no scale information at all. The first run under the
+      // new assertion measured him at 0 px: the framing search had put a crest
+      // between the final lens and where he happened to be standing.
+      //
+      // So if he is not in it, he is moved into it, on ground the lens has
+      // raycast to, beside the boss's feet and a little nearer the camera.
+      if (ctx.player) {
+        camera.updateMatrixWorld(true);
+        const bsn = screenOf(spot.x, spot.y + bh * 0.15, spot.z);
+        if (visibleFraction(camera.position, playerPos(), { height: 1.9, radius: 0.6, cols: 3, rows: 3, slack: 0.5 }) < 0.4) {
+          for (const [dx, dy] of [[0.19, 0.09], [-0.19, 0.09], [0.24, 0.14], [-0.24, 0.14], [0.19, 0.02]]) {
+            const g = groundAtScreen(bsn.x + dx, bsn.y + dy, { minDist: 10, maxDist: 60 });
+            if (!g) continue;
+            ctx.player.position.copy(g);
+            ctx.player.velocity?.set?.(0, 0, 0);
+            if (ctx.player.group) ctx.player.group.position.copy(g);
+            break;
+          }
+        }
+      }
+      if (boss) {
+        boss.position.copy(spot);
+        boss.velocity?.set?.(0, 0, 0);
+        if (boss.rig?.root) boss.rig.root.position.copy(spot);
+      }
       await frames(3);
       freeze();
+      mustContain('05-boss', [
+        { subject: 'the Stone Titan', objects: () => rigsOf([boss]), minPixels: 2000 },
+        { subject: 'survivor (for scale)', objects: () => [ctx.player?.group], minPixels: 150 },
+        {
+          subject: 'boss health bar',
+          dom: () => !!ctx.director?.boss?.alive && ctx.director.boss === boss,
+          detail: () => ({ vis: +best.vis.toFixed(2), pvis: +best.pvis.toFixed(2) }),
+        },
+      ]);
     },
 
     async lateRun({ settleFrames = 60 } = {}) {
@@ -929,11 +1535,26 @@ export function installHarness(ctx) {
       // real API so the bar, the level tag and the survivor's health all agree,
       // and land mid-level rather than on a boundary so the bar reads as live.
       seedLevel(20, 0.42);
+      await frames(6);
+      await faceOpenGround();
       spawnRing(10, SPAWN_CARDS, 14, 3);
       await frames(settleFrames);
       declutter(12);
       await frames(3);
       freeze();
+      mustContain('06-loaded-hud', [
+        { subject: 'survivor', objects: () => [ctx.player?.group], minPixels: 400 },
+        {
+          subject: 'monsters under load',
+          objects: () => rigsOf(ctx.director?.enemies ?? []),
+          perObject: true, minPixels: 300, minObjects: 3,
+        },
+        {
+          subject: 'a full inventory strip',
+          dom: () => (ctx.hud?.inv?.size ?? 0) > 20,
+          detail: () => ctx.hud?.inv?.size ?? 0,
+        },
+      ]);
     },
 
     /**
@@ -968,7 +1589,7 @@ export function installHarness(ctx) {
       // Cross-light: 70° off the sun bearing puts the key across the prop's
       // form instead of flattening it head-on or silhouetting it.
       const prefer = sunAzimuth() + 1.22;
-      let t = null, cam = null;
+      let t = null, cam = null, subject = null;
       // Three passes over the same ranking, each dropping one requirement.
       // Rejecting a subject outright is cheap — the stage carries twenty-odd
       // interactables — and a walled-in one is what produced two rounds of
@@ -988,14 +1609,17 @@ export function installHarness(ctx) {
           const c = clearCam(o.position, {
             radius: 5.8, lift: 3.0, step: 1.3, rings: 5, prefer, backdrop, strict: true, blockers,
             fov: 32, maxForeground,
+            subjectHeight: 2.2, subjectRadius: 1.1, minVisible: 0.85,
+            maxOccluders: maxForeground < 1 ? 0.12 : 1,
           });
           if (!c) continue;
-          t = o.position; cam = c; break;
+          t = o.position; cam = c; subject = o; break;
         }
         if (cam) break;
       }
       if (!cam) {
-        t = ranked[0]?.o.position ?? ahead(6, 0);
+        subject = ranked[0]?.o ?? null;
+        t = subject?.position ?? ahead(6, 0);
         cam = _probe.set(t.x + 4.5, t.y + 2.6, t.z + 4.5).clone();
       }
 
@@ -1012,6 +1636,9 @@ export function installHarness(ctx) {
       camera.updateProjectionMatrix();
       await frames(settleFrames);
       freeze();
+      mustContain('07-interactables', [
+        { subject: 'the interactable', objects: () => [subject?.group], minPixels: 2000 },
+      ]);
     },
 
     /**
@@ -1037,6 +1664,8 @@ export function installHarness(ctx) {
       await begin();
       attach();
       invulnerable();
+      await frames(6);
+      await faceOpenGround();
       spawnRing(12, SPAWN_CARDS, 13);
       if (ctx.input) ctx.input.mouse.left = true;
       await frames(settleFrames);
@@ -1051,10 +1680,22 @@ export function installHarness(ctx) {
       // the horizon. Pulled in to 12 m the same blast is a foreground event, and
       // 4.5 m of clearance keeps the whole sphere above the terrain the shot is
       // standing on.
+      //
+      // Sited in screen space, like everything else this file places. `ahead(d,
+      // 4.5)` is a world offset off camera forward with a single centre-ray
+      // check, and it put the fireball behind the ridge the survivor was
+      // standing on: the shot came back with a shake, one damage number and no
+      // blast in it at all, measured at 540 mask pixels.
       let at = null;
-      for (const d of [12, 14, 10, 16, 18]) {
-        const c = ahead(d, 4.5);
-        if (seesTarget(camera.position, c, 0.2)) { at = c; break; }
+      for (const [sx, sy] of [[0.50, 0.56], [0.44, 0.56], [0.57, 0.56], [0.50, 0.49], [0.50, 0.63]]) {
+        const g = groundAtScreen(sx, sy, { minDist: 9, maxDist: 26 });
+        if (!g) continue;
+        const c = new THREE.Vector3(g.x, g.y + 4.5, g.z);
+        // The ground point is visible by construction; the point 4.5 m above it
+        // is where the fireball's centre goes, and that has to be checked too.
+        if (!seesTarget(camera.position, c, 0.2)) continue;
+        if (!onScreen(c.x, c.y, c.z, 0.10)) continue;
+        at = c; break;
       }
       at = at ?? ahead(12, 4.5);
 
@@ -1062,13 +1703,20 @@ export function installHarness(ctx) {
       // light source, not impact feedback — the shot is documented as
       // "explosion + damage numbers + shake" and the numbers only exist if
       // something is standing in it.
+      // Ringed in *screen* space around the blast. The world-space ring dropped
+      // each victim on `sampleHeight` with no visibility test — the same
+      // construction that put all twenty-four of `04-combat`'s monsters at the
+      // bottom of a cliff.
+      camera.updateMatrixWorld(true);
+      const bs = screenOf(at.x, at.y, at.z);
       const victims = (ctx.director?.enemies ?? []).filter((e) => e.alive).slice(0, 7);
       victims.forEach((e, i) => {
         const a = (i / Math.max(1, victims.length)) * Math.PI * 2;
+        const g = groundAtScreen(bs.x + Math.cos(a) * 0.105, bs.y + Math.sin(a) * 0.05,
+                                 { minDist: 7, maxDist: 40 });
+        if (g) { _seat(e, g); return; }
         const x = at.x + Math.cos(a) * 5.5, z = at.z + Math.sin(a) * 5.5;
-        const y = groundY(x, z, at.y);
-        e.position.set(x, e.def?.isFlyer ? y + (e.def.hoverHeight ?? 2) : y, z);
-        e.velocity?.set?.(0, 0, 0);
+        _seat(e, _cc.set(x, groundY(x, z, at.y), z));
       });
       await frames(2);
 
@@ -1077,6 +1725,15 @@ export function installHarness(ctx) {
       ctx.pipeline?.addShake?.(0.5);
       await waitSim(blastSeconds);
       freeze();
+      mustContain('08-explosion', [
+        { subject: 'the blast', objects: () => vfxObjects(/^vfx\.(particles|rings|trails|beams)$/), minPixels: 1200 },
+        {
+          subject: 'monsters standing in it',
+          objects: () => rigsOf(victims),
+          perObject: true, minPixels: 200, minObjects: 2,
+        },
+        { subject: 'damage numbers', objects: () => vfxObjects(/^vfx\.damageNumbers$/), minPixels: 60 },
+      ]);
     },
 
     /**
@@ -1122,23 +1779,58 @@ export function installHarness(ctx) {
       seedLevel(24, 0.6);
       ctx.items?.setEquipment?.(equipment);
 
+      await frames(6);
+      await faceOpenGround();
       spawnRing(12, SPAWN_CARDS, 13, 4);
       if (ctx.input) ctx.input.mouse.left = true;
       await frames(settleFrames);
+      // Let the trigger go before counting bodies. A survivor holding one of
+      // every item in the game clears twelve monsters inside the settle — the
+      // first run under the subject assertion found *zero* alive at the shutter,
+      // so the nova went off over empty ground and the shot documented a light
+      // source instead of an effect.
+      if (ctx.input) ctx.input.mouse.left = false;
+      declutter(11);
+
+      // Then spawn a fresh pack and hold it alive.
+      //
+      // Releasing the trigger was not enough and neither was topping the crowd
+      // up: with one of every item in the game the on-kill procs chain straight
+      // through a replacement pack inside half a second, and the second run
+      // still measured zero alive at the shutter. So the pack is pinned at full
+      // health across the settle. It still takes the nova — the damage numbers
+      // this frame needs are the *nova's* — it just stops dying to the inventory
+      // before the nova arrives.
+      spawnRing(8, SPAWN_CARDS, 12);
+      const victims = (ctx.director?.enemies ?? []).slice(-8);
+      const hold = () => {
+        for (const e of victims) {
+          if (!e.alive) continue;
+          e.health = e.maxHealth;
+          e.shield = e.maxShield;
+        }
+      };
+      // Past the 0.45 s spawn pop in simulation time, so none is caught at 0.2
+      // scale, topping the pack up on every frame inside it.
+      const tHold = ctx.time ?? 0;
+      for (let i = 0; i < 300 && (ctx.time ?? 0) - tHold < 0.55; i++) { hold(); await frames(1); }
+      hold();
       declutter(11);
 
       // Put bodies where the nova will be, then fire it. `useEquipment` is the
       // real API — driving the effect function directly would photograph a
       // frame the player can never produce, which is the failure mode this
       // whole file exists to prevent.
-      const victims = (ctx.director?.enemies ?? []).filter((e) => e.alive).slice(0, 8);
       const p = playerPos();
+      camera.updateMatrixWorld(true);
+      const ps = screenOf(p.x, p.y + 1.0, p.z);
       victims.forEach((e, i) => {
         const a = (i / Math.max(1, victims.length)) * Math.PI * 2;
+        const g = groundAtScreen(ps.x + Math.cos(a) * 0.16, ps.y + Math.sin(a) * 0.07,
+                                 { minDist: 6, maxDist: 30 });
+        if (g) { _seat(e, g); return; }
         const x = p.x + Math.cos(a) * 9, z = p.z + Math.sin(a) * 9;
-        const y = groundY(x, z, p.y);
-        e.position.set(x, e.def?.isFlyer ? y + (e.def.hoverHeight ?? 2) : y, z);
-        e.velocity?.set?.(0, 0, 0);
+        _seat(e, _cc.set(x, groundY(x, z, p.y), z));
       });
       await frames(2);
 
@@ -1146,6 +1838,20 @@ export function installHarness(ctx) {
       if (!fired) console.warn('[harness] 10-inventory: equipment refused to fire');
       await waitSim(blastSeconds);
       freeze();
+      mustContain('10-inventory', [
+        {
+          subject: 'every tier in the inventory strip',
+          dom: () => (ctx.hud?.inv?.size ?? 0) >= ITEMS.length - 2,
+          detail: () => ({ shown: ctx.hud?.inv?.size ?? 0, items: ITEMS.length }),
+        },
+        { subject: 'the equipment effect', dom: () => !!fired },
+        { subject: 'the equipment blast', objects: () => vfxObjects(/^vfx\.(particles|rings|trails|beams)$/), minPixels: 800 },
+        {
+          subject: 'monsters standing in it',
+          objects: () => rigsOf(victims),
+          perObject: true, minPixels: 200, minObjects: 2,
+        },
+      ]);
     },
 
     /**
@@ -1316,6 +2022,16 @@ export function installHarness(ctx) {
 
       await frames(6);
       freeze();
+      // Checked *before* the rigs are taken out of the world, or the mask pass
+      // would be hiding objects that are already gone and every survivor would
+      // measure zero.
+      mustContain('09-survivors', [
+        {
+          subject: 'the four survivors',
+          objects: () => rigs.map((m) => m.group),
+          perObject: true, minPixels: 4000, minObjects: SURVIVORS.length,
+        },
+      ]);
       // See note 3 above: the loop is stopped, so nothing will render again and
       // the presented frame still contains all four.
       for (const mesh of rigs) ctx.scene.remove(mesh.group);
@@ -1483,6 +2199,19 @@ export function installHarness(ctx) {
       camera.updateProjectionMatrix();
       await frames(settleFrames);
       freeze();
+      // The landmark has no rig to hide, so this is the projected-bounds form of
+      // the check: a box the size of the landform, sampled by raycast.
+      mustContain(`13-biomes-${index + 1}`, [
+        {
+          subject: `biome ${index + 1} landmark`,
+          point: () => Object.assign(t.clone(), { height: 16, radius: 9, slack: 1.5 }),
+          minVisible: 0.5,
+        },
+        // Depth, not sky: two of the four biomes are a canyon and a cavern and
+        // are supposed to have very little sky in them.
+        { subject: 'open depth', dom: () => openDepth() > 0.12, detail: () => +openDepth().toFixed(3) },
+        { subject: 'sky', info: true, detail: () => +skyFraction().toFixed(3) },
+      ]);
 
       // Put the world back on stage 1 *after* the shutter, so these four can sit
       // early in the run order and get a clean HUD instead of inheriting
@@ -1532,10 +2261,16 @@ export function installHarness(ctx) {
 
       let best = null;
       for (const c of centres) {
-        const cam = clearCam(c, {
-          radius: 25, lift: 6, rings: 3, step: 2.5, backdrop: 16,
-          probes: [0.4, 2.0, 4.0], fov: 40, maxForeground: 0.34,
+        // The subject is a 24 m rank, not a point. Scoring it as a box wide
+        // enough to cover both ranks is what makes the trunk visible to the
+        // search: the shipped `11-bestiary` had a ~350 px black column through
+        // the middle of the roster and passed, because the three rays it cast
+        // all went up the rank's centre line and the trunk stood beside it.
+        const camPick = bestCam(c, {
+          radius: 25, lift: 6, rings: 3, step: 2.5, spokes: 16,
+          subjectHeight: 5.0, subjectRadius: halfW + 1.5, fov: 40, backdrop: 16,
         });
+        const cam = camPick?.pos;
         if (!cam) continue;
         // Rank axis: perpendicular to the view, in the ground plane.
         let dx = c.x - cam.x, dz = c.z - cam.z;
@@ -1551,18 +2286,21 @@ export function installHarness(ctx) {
             const x = c.x + ax * off + dx * fz, z = c.z + az * off + dz * fz;
             const y = groundY(x, z, c.y);
             lo = Math.min(lo, y); hi = Math.max(hi, y);
-            if (seesTarget(cam, _probe.set(x, y + 1.0, z), 0.4)) seen++;
+            // Every slot, over the height of the unit that stands in it — a slot
+            // whose feet are visible under a canopy is not a visible monster.
+            if (visibleFraction(cam, _cc.set(x, y, z), { height: 2.4, radius: 0.9, cols: 3, rows: 3, slack: 0.4 }) >= 0.9) seen++;
           }
         }
-        // Visibility is weighted far above flatness: a rank on a gentle slope is
-        // still gradable, a rank behind a stand of trees is not.
-        const score = -(hi - lo) * 2 + seen * 3;
-        if (!best || score > best.score) best = { c, cam, dx, dz, ax, az, spread: hi - lo, score };
+        // Every slot has to be clear, not most of them. A rank on a gentle slope
+        // is still gradable; a rank with four of its sixteen behind a trunk is
+        // a shot of twelve monsters captioned as sixteen.
+        const score = seen * 100 - (hi - lo) * 2 - camPick.occ * 40;
+        if (!best || score > best.score) best = { c, cam, dx, dz, ax, az, spread: hi - lo, score, seen };
         if (hi - lo < 1.8 && seen === perRow * 2) break;
       }
       if (!best) {
         const c = ahead(26);
-        best = { c, cam: null, dx: forward().x, dz: forward().z, ax: -forward().z, az: forward().x, spread: 0 };
+        best = { c, cam: null, dx: forward().x, dz: forward().z, ax: -forward().z, az: forward().x, spread: 0, seen: 0 };
       }
 
       const { c, ax, az, dx, dz } = best;
@@ -1570,7 +2308,11 @@ export function installHarness(ctx) {
       for (let i = 0; i < cards.length; i++) {
         const row = i >= perRow ? 1 : 0;          // taller half goes to the back
         const idx = row ? i - perRow : i;
-        const off = idx * spacing - halfW;
+        // Back rank staggered half a slot across. Aligned, slot 8 stands exactly
+        // behind slot 0 and photographs as nothing at all — measured at 0 of the
+        // 8231 pixels the rank contributed, which is a roster shot missing one
+        // of the sixteen species it exists to compare.
+        const off = idx * spacing - halfW + (row ? spacing * 0.5 : 0);
         const fz = row ? 5.5 : -4.0;
         const x = c.x + ax * off + dx * fz, z = c.z + az * off + dz * fz;
         const y = groundY(x, z, c.y);
@@ -1608,6 +2350,13 @@ export function installHarness(ctx) {
       pin();
       await frames(1);
       freeze();
+      mustContain('11-bestiary', [
+        {
+          subject: 'the whole spawn roster',
+          objects: () => rigsOf(placed.map((s) => s.e)),
+          perObject: true, minPixels: 3500, minObjects: cards.length,
+        },
+      ]);
     },
 
     /**
@@ -1635,31 +2384,45 @@ export function installHarness(ctx) {
 
       // Find somewhere the boss can stand that the lens can actually see all
       // of — feet, chest and head.
-      let spot = null, cam = null, lenient = null, lenientCam = null;
+      await frames(6);
+      // Where the boss stands and where it is shot from, both scored.
+      //
+      // The predecessor filtered on a stack of hard constraints and, when none
+      // of the candidates cleared them, fell through to `ahead(24)` with a null
+      // camera — meaning the camera was never moved at all and the "late-phase
+      // boss" shot was taken on the gameplay lens with a 5.2 m survivor filling
+      // the frame and the Vizier 24 m away behind a trunk at 810 px. A search
+      // that gets *stricter* and therefore fails to a worse branch is not a
+      // guard; `bestCam` removes the branch.
       const stands = [];
       for (const d of [24, 28, 20, 32, 17, 36]) stands.push(ahead(d));
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 14; i++) {
         const q = ctx.stage?.randomWalkablePoint?.(ctx.rng, { minDistFrom: playerPos(), minDist: 18 });
         if (q) stands.push(q.clone());
       }
+      let pick = null;
       for (const cand of stands) {
-        const c = clearCam(cand, {
-          radius: 22, lift: 7, rings: 4, step: 2.5, backdrop: 26,
-          prefer: sunAzimuth() + 2.2,
-          probes: [0.6, bh * 0.5, bh * 0.95], fov: 42, maxForeground: 0.22, strict: true,
+        const c = bestCam(cand, {
+          radius: 21, lift: 7, rings: 4, step: 2.5, prefer: sunAzimuth() + 2.2,
+          // Its whole silhouette, across the shoulders as well as up the spine —
+          // and `frameOccluders` inside `bestCam` costs a bearing its score for
+          // a trunk anywhere in frame, not only one over the centre line.
+          subjectHeight: bh, subjectRadius: 2.6, fov: 42, backdrop: 26, wantSun: true,
         });
         if (!c) continue;
-        if (!lenient) { lenient = cand; lenientCam = c; }
-        // A boss standing in a ravine is lit by nothing and shot against its own
-        // shadow; the ground telegraph this frame exists to show is then a dim
-        // ring on a dim floor. Insist on a stand the key light actually reaches.
-        if (!sunlit(cand, 2.0)) continue;
-        spot = cand; cam = c; break;
+        if (!pick || c.score > pick.c.score) pick = { cand, c };
+        if (c.vis >= 0.95 && c.occ <= 0.05) break;
       }
-      if (!spot) { spot = lenient ?? ahead(24); cam = lenientCam; }
+      const spot = pick?.cand ?? ahead(24);
+      const cam = pick?.c.pos ?? bestCam(spot, { radius: 21, lift: 7, subjectHeight: bh, subjectRadius: 2.6 })?.pos ?? null;
 
       const e = ctx.director?.spawnOne?.(ctx, card, spot, null) ?? null;
-      if (!e) { await frames(settleFrames); freeze(); return; }
+      if (!e) {
+        await frames(settleFrames);
+        freeze();
+        mustContain('12-boss-phases', [{ subject: `${card.id} boss`, objects: () => [], minPixels: 1 }]);
+        return;
+      }
       e.isBoss = true;
       if (ctx.director) ctx.director.boss = e;
       ctx.events?.emit?.('bossSpawn', { enemy: e });
@@ -1718,6 +2481,12 @@ export function installHarness(ctx) {
       pin();
       await frames(1);
       freeze();
+      mustContain('12-boss-phases', [
+        { subject: `${card.id} boss`, objects: () => rigsOf([e]), minPixels: 2000 },
+        { subject: 'late phase', dom: () => e.phase >= 1 + (e.phaseAt?.length ?? 0), detail: () => e.phase },
+        { subject: 'mid wind-up', dom: () => e.anim.windup > 0.4, detail: () => +e.anim.windup.toFixed(2) },
+        { subject: 'framing', info: true, detail: () => pick?.c ?? null },
+      ]);
     },
 
     /* ---------------------------------------------------------------------
@@ -1760,6 +2529,16 @@ export function installHarness(ctx) {
       pinPreview(menus.preview, 0.62);
       await frames(2);
       freeze();
+      mustContain('14-survivor-select', [
+        { subject: 'select screen', dom: () => menus.screen === 'select' },
+        {
+          subject: 'the roster',
+          dom: () => menus.root.querySelectorAll('[data-survivor]').length >= 4,
+          detail: () => menus.root.querySelectorAll('[data-survivor]').length,
+        },
+        { subject: 'the 3D portrait', dom: () => !!menus.preview?.subject && !!menus.preview?.renderer },
+        { subject: `${survivor} selected`, dom: () => menus.survivorId === survivor, detail: () => menus.survivorId },
+      ]);
       return { survivor: menus.survivorId, screen: menus.screen };
     },
 
@@ -1789,7 +2568,62 @@ export function installHarness(ctx) {
       pinPreview(book.preview, 0.62);
       await frames(2);
       freeze();
+      mustContain('15-logbook', [
+        { subject: 'logbook screen', dom: () => menus.screen === 'logbook' },
+        { subject: `${tab} index`, dom: () => book.tab === tab && book.entries.length >= 8, detail: () => book.entries.length },
+        { subject: 'a selected entry', dom: () => !!book.selected, detail: () => book.selected },
+        { subject: 'the 3D model viewer', dom: () => !!book.preview?.subject && !!book.preview?.renderer },
+      ]);
       return { tab: book.tab, entry: book.selected, recorded: book.entries.length };
+    },
+
+    /**
+     * Difficulty select.
+     *
+     * Added because it did not exist. The screen has shipped unphotographed for
+     * every round of review so far, which is the same defect as a shot that does
+     * not contain its subject, one step earlier: nothing in the harness had ever
+     * looked at it, so nothing could report on it. It was carrying emoji-
+     * presentation codepoints (U+2602/U+2601/U+26C8) that Windows renders in
+     * full colour against a monochrome UI, and no capture could have caught it.
+     *
+     * Scheduled next to `17-artifacts` and for the same reason — both are
+     * pre-run screens — and it puts the difficulty back where it found it after
+     * the shutter, so no later scenario inherits a changed spawn curve.
+     */
+    async difficulty({ settleFrames = 30, pick = null } = {}) {
+      thaw();
+      const menus = ctx.hud?.menus;
+      if (!menus) throw new Error('[harness] 18-difficulty: no menus');
+      const before = menus.currentDifficulty?.()?.id ?? menus.difficultyId ?? null;
+      menus.open('title');
+      menus.act('play');
+      menus.act('difficulty');
+      const list = menus.difficultyList();
+      // The hardest rung rather than the default: the shot has to carry the
+      // selected state *and* the unselected ones, and a selection at the end of
+      // the ladder puts every other card in the frame beside it.
+      const id = pick ?? list[list.length - 1]?.id ?? null;
+      if (id) menus.setDifficulty(id);
+      await frames(settleFrames);
+      freeze();
+      mustContain('18-difficulty', [
+        { subject: 'difficulty screen', dom: () => menus.screen === 'difficulty' },
+        {
+          subject: 'the ladder',
+          dom: () => menus.root.querySelectorAll('[data-difficulty]').length >= 3,
+          detail: () => menus.root.querySelectorAll('[data-difficulty]').length,
+        },
+        {
+          subject: 'a selected rung',
+          dom: () => !!menus.root.querySelector('[data-difficulty].is-on'),
+          detail: () => menus.difficultyId,
+        },
+      ]);
+      // Put it back after the shutter, the same trick `17-artifacts` uses: this
+      // knob feeds the director's credit rate and every gameplay shot after it.
+      if (before) menus.setDifficulty(before);
+      return { screen: menus.screen, difficulty: id, options: list.length };
     },
 
     /**
@@ -1829,6 +2663,20 @@ export function installHarness(ctx) {
       for (let i = 0; i < 2 && i < cards.length; i++) menus.toggleArtifact(cards[i].id);
       await frames(settleFrames);
       freeze();
+      mustContain('17-artifacts', [
+        { subject: 'artifact screen', dom: () => menus.screen === 'artifacts' },
+        {
+          subject: 'the card grid',
+          dom: () => menus.root.querySelectorAll('[data-artifact]').length >= 5,
+          detail: () => menus.root.querySelectorAll('[data-artifact]').length,
+        },
+        {
+          subject: 'active and locked states both present',
+          dom: () => menus.activeArtifacts().length >= 1
+            && menus.activeArtifacts().length < menus.artifactList().length,
+          detail: () => ({ active: menus.activeArtifacts().length, total: menus.artifactList().length }),
+        },
+      ]);
       const active = menus.activeArtifacts();
       // Cleared *after* the freeze, the same trick `09-survivors` uses to take
       // its rigs out of the world without taking them out of the photograph.
@@ -1906,6 +2754,11 @@ export function installHarness(ctx) {
       await frames(settleFrames);
       freeze();
       const record = ctx.profile?.runHistory?.()[0] ?? null;
+      mustContain('16-run-summary', [
+        { subject: 'the summary screen', dom: () => ctx.hud?.menus?.screen === 'death', detail: () => ctx.hud?.menus?.screen },
+        { subject: 'a committed run record', dom: () => !!record, detail: () => record && { time: record.time, stage: record.stage } },
+        { subject: 'the run\'s item haul', dom: () => (ctx.hud?.inv?.size ?? 0) >= 10, detail: () => ctx.hud?.inv?.size ?? 0 },
+      ]);
       return { screen: ctx.hud?.menus?.screen ?? null, record };
     },
 

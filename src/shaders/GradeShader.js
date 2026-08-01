@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { distortUniforms, DISTORT_DECL, DISTORT_APPLY } from './DistortShader.js';
 
 /**
  * Final-look pass: screen shake offset, chromatic aberration, filmic grade,
@@ -35,9 +36,19 @@ export const GradeShader = {
     // instead. This is the cheaper place to pay for it — the toe only touches
     // the bottom of the range, so it costs nothing at the terminator, whereas
     // the ambient floor it replaces was flattening the whole frame.
-    uToe: { value: new THREE.Vector3(0.070, 0.075, 0.150) },
-    uToeRange: { value: 0.38 },
+    // Raised again for the establishing shot's unlit third: 34% of that frame
+    // was one connected sub-L40 region carrying six distinct luma values, i.e.
+    // a hole rather than a shadow. The toe is the right place to pay for it —
+    // the same lift bought with ambient light costs the terminator, and the
+    // terminator ratios (2.9-4.4:1 on the same-surface probes) are what the
+    // last two rounds finally got right.
+    uToe: { value: new THREE.Vector3(0.108, 0.113, 0.198) },
+    uToeRange: { value: 0.40 },
     uGrain: { value: 0.010 },
+    // Blast distortion rides this pass rather than owning one: see DistortShader.
+    // A pass of its own measured ~5ms of a 26ms frame purely for its own
+    // fullscreen tap, and this shader already takes that tap.
+    ...distortUniforms(),
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -54,7 +65,7 @@ export const GradeShader = {
     uniform float uToeRange;
     uniform vec3  uLift, uGain, uToe;
     varying vec2 vUv;
-
+${DISTORT_DECL}
     float hash(vec2 p) {
       p = fract(p * vec2(443.897, 441.423));
       p += dot(p, p + 19.19);
@@ -72,6 +83,11 @@ export const GradeShader = {
           cos(uTime * 41.0) * 0.5 + cos(uTime * 26.7) * 0.5
         ) * s * 0.018;
       }
+
+      // --- blast shockwave displacement -----------------------------------
+      // Before the aberration, so the fringe follows the bent geometry instead
+      // of separating a straight edge that is no longer there.
+${DISTORT_APPLY}
 
       // --- chromatic aberration, scaled by distance from centre ---
       vec2 c = uv - 0.5;

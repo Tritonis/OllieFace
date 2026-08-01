@@ -83,15 +83,26 @@ const SHADOW_TIERS = [
  * gives the shadow side its form and is the only thing a metalness-1.0 surface
  * has to reflect, so killing it trades one flat look for another.
  *
+ * `envMin` and `rimMin` came up (0.34 -> 0.52, 0.22 -> 0.30) once the sky's
+ * lower hemisphere stopped being a constant. Before that a floor on the IBL was
+ * a floor on one flat colour, so raising it only made the shadow side a lighter
+ * shade of the same nothing — which is why previous passes kept pushing it back
+ * down. With a ground-bounce gradient and a horizon edge in the probe (see
+ * SkyShader's `uBounce`), the same energy arrives *oriented*: a face tipped
+ * toward the horizon returns the warm band and one tipped at the nadir returns
+ * the dark ground, so the floor now buys form instead of fog. The establishing
+ * shot's unlit third was 34% of frame in one connected sub-L40 blob at six
+ * distinct luma values, which is the failure this is aimed at.
+ *
  * `groundBoost` is unchanged: the hemisphere's ground colour is the only warm
  * bounce in the scene and every biome authors it nearly black in linear, so the
  * bounce never read as bounce. Boosting the colour rather than the intensity
  * keeps the sky half of the hemisphere where the biome put it.
  */
 const FILL = {
-  hemiScale: 0.32, hemiMin: 0.12,
-  envScale: 0.82, envMin: 0.34,
-  rimScale: 0.29, rimMin: 0.22,
+  hemiScale: 0.40, hemiMin: 0.12,
+  envScale: 0.82, envMin: 0.52,
+  rimScale: 0.29, rimMin: 0.30,
   groundBoost: 1.45,
 };
 
@@ -250,6 +261,10 @@ export class Environment {
     this.skyUniforms.uHazePow.value = S.hazePow ?? 9.0;
     this.skyUniforms.uCeilingAmount.value = S.ceilingAmount ?? 0;
 
+    // The reflected world has to move with the sky, or the roughness ladder is
+    // reflecting the wrong place. Once per stage build. See `_bakeEnvironment`.
+    this._bakeEnvironment();
+
     // --- fog ---
     if (scene.fog) {
       scene.fog.color.copy(fogColor(biome));
@@ -287,7 +302,7 @@ export class Environment {
     const uniforms = THREE.UniformsUtils.clone(SkyShader.uniforms);
     // Colour uniforms on a ShaderMaterial are uploaded verbatim, and the whole
     // pipeline works in linear space, so convert once here.
-    for (const k of ['uZenith', 'uHorizon', 'uHaze', 'uGround', 'uSunColor', 'uCloud', 'uCeiling']) {
+    for (const k of ['uZenith', 'uHorizon', 'uHaze', 'uGround', 'uSunColor', 'uCloud', 'uCeiling', 'uBounce']) {
       uniforms[k].value.convertSRGBToLinear();
     }
     uniforms.uSunDir.value.copy(SUN_DIR);
@@ -321,24 +336,43 @@ export class Environment {
     // and the stylized materials lose all their form.
     const renderer = ctx.pipeline?.renderer;
     if (renderer) {
-      const pmrem = new THREE.PMREMGenerator(renderer);
-      pmrem.compileEquirectangularShader();
-      const probeScene = new THREE.Scene();
+      this._pmrem = new THREE.PMREMGenerator(renderer);
+      this._pmrem.compileEquirectangularShader();
+      this._probeScene = new THREE.Scene();
       const probe = new THREE.Mesh(geo, mat);
       probe.frustumCulled = false;
-      probeScene.add(probe);
-      // near/far must bracket the 900u dome or the cube camera clips it away.
-      const rt = pmrem.fromScene(probeScene, 0.05, 1, 2000);
-      ctx.scene.environment = rt.texture;
+      this._probeScene.add(probe);
+      this._bakeEnvironment();
       // IBL at 0.85 plus a 0.75 hemisphere was filling every crevice back in,
       // which is what left the frame with no occlusion and no shadow contrast —
       // but 0.55 went past "carve into" and into "nothing to carve". `FILL`
       // holds the floor; GTAO is what puts the occlusion back.
       ctx.scene.environmentIntensity = Math.max(0.55 * FILL.envScale, FILL.envMin);
-      this.envRT = rt;
-      probeScene.remove(probe);
-      pmrem.dispose();
     }
+  }
+
+  /**
+   * Re-render the PMREM probe from the sky as it is currently tuned.
+   *
+   * This used to happen exactly once, at boot, from the *default* uniforms — so
+   * every biome's smooth materials reflected biome 0's evening sky, and the
+   * cavern reflected open daylight it cannot see. Worse, the four stages'
+   * differing skies were the one part of the roughness ladder that could have
+   * made a low-roughness rung look different from stage to stage, and it was
+   * being thrown away.
+   *
+   * It is a per-*stage-build* cost, not a per-frame one: six 256px faces plus
+   * the roughness chain, called from `applyBiome`, which Stage.build() already
+   * calls once per transition alongside a full terrain rebuild.
+   */
+  _bakeEnvironment() {
+    if (!this._pmrem) return;
+    const prev = this.envRT;
+    // near/far must bracket the 900u dome or the cube camera clips it away.
+    const rt = this._pmrem.fromScene(this._probeScene, 0.05, 1, 2000);
+    this.ctx.scene.environment = rt.texture;
+    this.envRT = rt;
+    prev?.dispose();
   }
 
   /**
@@ -358,6 +392,11 @@ export class Environment {
   _deriveSkyMid() {
     const u = this.skyUniforms;
     u.uMid.value.copy(u.uZenith.value).lerp(u.uHaze.value, 0.20);
+    // Ground bounce: the biome's own ground colour carrying a third of its own
+    // horizon band. Derived rather than authored for the same reason `uMid` is
+    // — a biome that changes its horizon gets a bounce that still belongs to
+    // it, and `Materials.js` needs no new field. See SkyShader's `uBounce`.
+    u.uBounce.value.copy(u.uGround.value).lerp(u.uHorizon.value, 0.34);
   }
 
   _buildLights(scene) {
@@ -512,6 +551,7 @@ export class Environment {
     this.sky?.geometry.dispose();
     this.skyMaterial?.dispose();
     this.envRT?.dispose();
+    this._pmrem?.dispose();
     this.dust?.geometry.dispose();
     this.dustMaterial?.dispose();
     this.dustSprite?.dispose();

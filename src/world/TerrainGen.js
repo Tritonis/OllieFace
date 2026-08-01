@@ -75,6 +75,11 @@ function terrace(h, step, blend) {
 export const STAGE_HALF = 110;          // 220 x 220 world units
 const SEGMENTS = 160;                    // 1.375u facets — big enough to read as low-poly
 const STEP = (STAGE_HALF * 2) / SEGMENTS;
+// World units per texture tile, inverted. The stone set carries eight noise
+// cycles across a tile, so 14u puts its coarsest mottle at ~1.7u — a facet and
+// a bit, i.e. visible as surface rather than as facet colour — and its finest
+// octave at ~0.11u, which mips away before it can alias at vista range.
+const TEX_SCALE = 1 / 14;
 
 /**
  * Sub-seed stream. Stage generation must be a pure function of (seed, index) —
@@ -477,7 +482,13 @@ export class Terrain {
     const triCount = N * N * 2;
     const pos = new Float32Array(triCount * 9);
     const col = new Float32Array(triCount * 9);
-    let pi = 0, ci = 0;
+    // The terrain mesh shipped with no `uv` attribute at all, which meant the
+    // material's albedo/roughness/normal maps sampled texel (0,0) on every
+    // fragment: one constant value across the single largest surface in every
+    // frame. That is why the terrain measured flatter than the film grain while
+    // props built from THREE primitives (which carry their own UVs) did not.
+    const uvs = new Float32Array(triCount * 6);
+    let pi = 0, ci = 0, ui = 0;
 
     const P = this.biome.terrain;
     const cRock = new THREE.Color(P.rock);
@@ -500,6 +511,33 @@ export class Terrain {
       pos[pi++] = ax; pos[pi++] = ay; pos[pi++] = az;
       pos[pi++] = bx; pos[pi++] = by; pos[pi++] = bz;
       pos[pi++] = cx; pos[pi++] = cy; pos[pi++] = cz;
+
+      // Per-face planar projection onto whichever world axis the facet faces
+      // most directly. A single XZ projection would smear the texture into
+      // infinite vertical streaks on exactly the surfaces that most need it —
+      // mesa skirts and canyon walls — and full triplanar needs a shader fork,
+      // which the biome design forbids. Since every facet is flat-shaded, one
+      // projection per triangle is exact within the triangle; the axis change
+      // between neighbours falls on an edge the faceting already breaks.
+      const ex1 = bx - ax, ey1 = by - ay, ez1 = bz - az;
+      const ex2 = cx - ax, ey2 = cy - ay, ez2 = cz - az;
+      const fnx = ey1 * ez2 - ez1 * ey2;
+      const fny = ez1 * ex2 - ex1 * ez2;
+      const fnz = ex1 * ey2 - ey1 * ex2;
+      const ax_ = Math.abs(fnx), ay_ = Math.abs(fny), az_ = Math.abs(fnz);
+      if (ay_ >= ax_ && ay_ >= az_) {
+        uvs[ui++] = ax * TEX_SCALE; uvs[ui++] = az * TEX_SCALE;
+        uvs[ui++] = bx * TEX_SCALE; uvs[ui++] = bz * TEX_SCALE;
+        uvs[ui++] = cx * TEX_SCALE; uvs[ui++] = cz * TEX_SCALE;
+      } else if (ax_ >= az_) {
+        uvs[ui++] = az * TEX_SCALE; uvs[ui++] = ay * TEX_SCALE;
+        uvs[ui++] = bz * TEX_SCALE; uvs[ui++] = by * TEX_SCALE;
+        uvs[ui++] = cz * TEX_SCALE; uvs[ui++] = cy * TEX_SCALE;
+      } else {
+        uvs[ui++] = ax * TEX_SCALE; uvs[ui++] = ay * TEX_SCALE;
+        uvs[ui++] = bx * TEX_SCALE; uvs[ui++] = by * TEX_SCALE;
+        uvs[ui++] = cx * TEX_SCALE; uvs[ui++] = cy * TEX_SCALE;
+      }
 
       // Flat per-face colour: the facet is the art, so it gets one flat value.
       const mx = (ax + bx + cx) / 3, my = (ay + by + cy) / 3, mz = (az + bz + cz) / 3;
@@ -548,6 +586,7 @@ export class Terrain {
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    geo.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
     // Non-indexed: computeVertexNormals then yields true per-face normals, which
     // is the faceted shading the whole look depends on.
     geo.computeVertexNormals();

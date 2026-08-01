@@ -1203,9 +1203,34 @@ export function drawGlyph(g, glyph, r, hue) {
     case 'ring':
       g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.stroke();
       g.beginPath(); g.arc(0, 0, r * 0.45, 0, Math.PI * 2); g.fill(); break;
-    case 'triangle': poly(g, 3, r, -Math.PI / 2); g.fill(); g.stroke(); break;
-    case 'diamond': poly(g, 4, r, -Math.PI / 2); g.fill(); g.stroke(); break;
-    case 'hex': poly(g, 6, r, 0); g.fill(); g.stroke(); break;
+    // Predatory Instincts — a fang, not a plain triangle. The dark inner wedge
+    // is what separates it from `arrow`, `flint` and `flame` at 20px: three
+    // solid convex blobs of the same area differ by less than a tenth of their
+    // mask, which is round 4's D3 floor failing.
+    case 'triangle':
+      poly(g, 3, r, -Math.PI / 2); g.fill(); g.stroke();
+      g.save(); g.fillStyle = '#0d0f14';
+      poly(g, 3, r * 0.42, Math.PI / 2); g.fill(); g.restore(); break;
+    // Sticky Bomb — a charge with a lit fuse and a seam, not a bare rhombus.
+    case 'diamond':
+      poly(g, 4, r * 0.92, -Math.PI / 2); g.fill(); g.stroke();
+      g.save(); g.strokeStyle = '#0d0f14'; g.lineWidth = Math.max(1.5, r * 0.2);
+      g.beginPath(); g.moveTo(-r * 0.5, r * 0.1); g.lineTo(r * 0.5, r * 0.1); g.stroke();
+      g.restore();
+      g.beginPath();
+      g.moveTo(r * 0.16, -r * 0.76);
+      g.quadraticCurveTo(r * 0.86, -r * 0.9, r * 0.72, -r * 1.24);
+      g.stroke();
+      g.beginPath(); g.arc(r * 0.72, -r * 1.24, r * 0.2, 0, Math.PI * 2); g.fill(); g.stroke();
+      break;
+    // Tougher Times — a hollow shell that took the hit. Hollowing it is the
+    // only thing that separates it from `shield`, `saltcube`, `pouch` and
+    // `diamond`, all of which are convex commons of the same optical area.
+    case 'hex':
+      poly(g, 6, r, 0); g.fill(); g.stroke();
+      g.save(); g.fillStyle = '#0d0f14'; poly(g, 6, r * 0.58, 0); g.fill(); g.restore();
+      poly(g, 6, r * 0.58, 0); g.stroke();
+      poly(g, 6, r * 0.24, Math.PI / 6); g.fill(); g.stroke(); break;
     case 'star': poly(g, 5, r, -Math.PI / 2, 0.45); g.fill(); g.stroke(); break;
     // A table-cut brooch, not a soft hexagon — `shield` is the other broad
     // six-ish blob in the common tier.
@@ -1214,13 +1239,24 @@ export function drawGlyph(g, glyph, r, hue) {
       g.moveTo(-r * 0.5, -r * 0.62); g.lineTo(r * 0.5, -r * 0.62);
       g.lineTo(r, -r * 0.1); g.lineTo(0, r); g.lineTo(-r, -r * 0.1);
       g.closePath(); g.fill(); g.stroke();
+      // Facets in the *plate* colour, not white. A white facet line has the same
+      // luminosity as the white outline, so it added no mask difference at all
+      // and the brooch measured 5.8% from a bare `diamond`.
+      g.save(); g.strokeStyle = '#0d0f14'; g.lineWidth = Math.max(1.5, r * 0.16);
       g.beginPath();
-      g.moveTo(-r, -r * 0.1); g.lineTo(r, -r * 0.1);
-      g.moveTo(-r * 0.5, -r * 0.62); g.lineTo(-r * 0.16, -r * 0.1);
-      g.moveTo(r * 0.5, -r * 0.62); g.lineTo(r * 0.16, -r * 0.1);
-      g.stroke(); break;
+      g.moveTo(-r * 0.86, -r * 0.1); g.lineTo(r * 0.86, -r * 0.1);
+      g.moveTo(-r * 0.5, -r * 0.56); g.lineTo(-r * 0.16, -r * 0.1);
+      g.moveTo(r * 0.5, -r * 0.56); g.lineTo(r * 0.16, -r * 0.1);
+      g.moveTo(-r * 0.5, -r * 0.1); g.lineTo(0, r * 0.86);
+      g.moveTo(r * 0.5, -r * 0.1); g.lineTo(0, r * 0.86);
+      g.stroke(); g.restore(); break;
+    // Titanic Knurl — a standing stone with strata cut into it, so it is not a
+    // bare filled rectangle beside `polyp` in the boss tier.
     case 'monolith':
-      g.fillRect(-r * 0.45, -r, r * 0.9, r * 2); g.strokeRect(-r * 0.45, -r, r * 0.9, r * 2); break;
+      g.fillRect(-r * 0.45, -r, r * 0.9, r * 2); g.strokeRect(-r * 0.45, -r, r * 0.9, r * 2);
+      g.save(); g.fillStyle = '#0d0f14';
+      for (let i = -1; i <= 1; i++) g.fillRect(-r * 0.45, i * r * 0.56 - r * 0.1, r * 0.9, r * 0.2);
+      g.restore(); break;
     case 'plus':
       g.fillRect(-r * 0.28, -r, r * 0.56, r * 2);
       g.fillRect(-r, -r * 0.28, r * 2, r * 0.56); break;
@@ -1251,7 +1287,20 @@ export function drawGlyph(g, glyph, r, hue) {
       g.beginPath(); g.moveTo(r * 0.25, -r); g.lineTo(-r * 0.6, r * 0.1); g.lineTo(0, r * 0.1);
       g.lineTo(-r * 0.25, r); g.lineTo(r * 0.6, -r * 0.1); g.lineTo(0, -r * 0.1);
       g.closePath(); g.fill(); g.stroke(); break;
-    case 'drop': case 'polyp':
+    // Bison Steak: a cut of meat, so it carries marbling. As a bare teardrop it
+    // measured 5.2% from `plug` — the tightest same-tier pair in the set.
+    case 'drop':
+      g.beginPath(); g.moveTo(0, -r); g.quadraticCurveTo(r, 0, 0, r); g.quadraticCurveTo(-r, 0, 0, -r);
+      g.fill(); g.stroke();
+      g.save(); g.strokeStyle = '#0d0f14'; g.lineWidth = Math.max(1.5, r * 0.15);
+      for (let i = -1; i <= 1; i++) {
+        g.beginPath();
+        g.moveTo(-r * 0.42, i * r * 0.38 + r * 0.12);
+        g.quadraticCurveTo(0, i * r * 0.38 - r * 0.14, r * 0.42, i * r * 0.38 + r * 0.12);
+        g.stroke();
+      }
+      g.restore(); break;
+    case 'polyp':
       g.beginPath(); g.moveTo(0, -r); g.quadraticCurveTo(r, 0, 0, r); g.quadraticCurveTo(-r, 0, 0, -r);
       g.fill(); g.stroke(); break;
     // Three licks off a common base. The old single lobe was a teardrop with a
@@ -1266,6 +1315,14 @@ export function drawGlyph(g, glyph, r, hue) {
       g.lineTo(-r * 0.62, r * 0.9);
       g.quadraticCurveTo(-r * 0.92, -r * 0.15, 0, -r);
       g.closePath(); g.fill(); g.stroke();
+      // Dark inner lick — a flame has a cool core, and without it the outline
+      // is a convex blob indistinguishable from `triangle` or `flint`.
+      g.save(); g.fillStyle = '#0d0f14';
+      g.beginPath(); g.moveTo(0, -r * 0.3);
+      g.quadraticCurveTo(r * 0.42, r * 0.1, r * 0.2, r * 0.6);
+      g.lineTo(-r * 0.2, r * 0.6);
+      g.quadraticCurveTo(-r * 0.42, r * 0.1, 0, -r * 0.3);
+      g.closePath(); g.fill(); g.restore();
       if (glyph === 'flamering') { g.beginPath(); g.arc(0, 0, r * 1.15, 0, Math.PI * 2); g.stroke(); }
       break;
     case 'rocket':
@@ -1334,7 +1391,15 @@ export function drawGlyph(g, glyph, r, hue) {
     case 'feather':
       g.beginPath(); g.moveTo(0, r); g.quadraticCurveTo(r * 0.9, 0, 0, -r);
       g.quadraticCurveTo(-r * 0.3, 0, 0, r); g.fill(); g.stroke();
-      g.beginPath(); g.moveTo(0, r); g.lineTo(0, -r); g.stroke(); break;
+      // Barbs cut in the plate colour. The white rachis alone left the vane a
+      // solid lobe, which measured 7.8% from `blade` in the same tier.
+      g.save(); g.strokeStyle = '#0d0f14'; g.lineWidth = Math.max(1.5, r * 0.14);
+      g.beginPath(); g.moveTo(0, r); g.lineTo(0, -r); g.stroke();
+      for (let i = 0; i < 4; i++) {
+        const y = -r * 0.62 + i * r * 0.4;
+        g.beginPath(); g.moveTo(0, y); g.lineTo(r * 0.62, y + r * 0.3); g.stroke();
+      }
+      g.restore(); break;
     case 'plume':
       for (let i = -1; i <= 1; i++) {
         g.save(); g.translate(0, r * 0.78); g.rotate(i * 0.62);
@@ -1342,14 +1407,47 @@ export function drawGlyph(g, glyph, r, hue) {
         g.quadraticCurveTo(-r * 0.4, -r * 0.85, 0, 0); g.fill(); g.stroke(); g.restore();
       }
       break;
-    case 'shield': case 'pauldron':
+    // Round 4's N11: `shield` and `hex` were two bare grey polygons in the same
+    // tier. The specified fix was a band or rivet row across the shield; this is
+    // it — a dark strap and three bright rivets, so the plate reads as bolted
+    // armour and not as a sixth polygon.
+    case 'shield':
       g.beginPath(); g.moveTo(0, -r); g.lineTo(r * 0.8, -r * 0.5); g.lineTo(r * 0.6, r * 0.6);
       g.lineTo(0, r); g.lineTo(-r * 0.6, r * 0.6); g.lineTo(-r * 0.8, -r * 0.5);
-      g.closePath(); g.fill(); g.stroke(); break;
+      g.closePath(); g.fill(); g.stroke();
+      g.save(); g.fillStyle = '#0d0f14';
+      g.fillRect(-r * 0.75, -r * 0.12, r * 1.5, r * 0.3);
+      g.restore();
+      for (const x of [-r * 0.44, 0, r * 0.44]) {
+        g.beginPath(); g.arc(x, -r * 0.44, r * 0.13, 0, Math.PI * 2); g.fill(); g.stroke();
+      }
+      break;
+    // Berzerker's Pauldron — the same silhouette with the spikes it is named
+    // for, so it is not a third rectangle beside `cell` and `overcharge`.
+    case 'pauldron':
+      g.beginPath(); g.moveTo(0, -r * 0.9); g.lineTo(r * 0.8, -r * 0.45); g.lineTo(r * 0.6, r * 0.55);
+      g.lineTo(0, r * 0.95); g.lineTo(-r * 0.6, r * 0.55); g.lineTo(-r * 0.8, -r * 0.45);
+      g.closePath(); g.fill(); g.stroke();
+      for (const [x, y, dx, dy] of [[-r * 0.7, -r * 0.6, -r * 0.5, -r * 0.5],
+                                    [0, -r * 0.9, 0, -r * 0.72],
+                                    [r * 0.7, -r * 0.6, r * 0.5, -r * 0.5]]) {
+        g.beginPath();
+        g.moveTo(x - r * 0.16, y + r * 0.14); g.lineTo(x + dx, y + dy);
+        g.lineTo(x + r * 0.16, y + r * 0.14);
+        g.closePath(); g.fill(); g.stroke();
+      }
+      g.save(); g.strokeStyle = '#0d0f14'; g.lineWidth = Math.max(1.5, r * 0.18);
+      g.beginPath(); g.arc(0, r * 0.05, r * 0.34, 0, Math.PI * 2); g.stroke(); g.restore();
+      break;
     case 'cell':
       g.fillRect(-r * 0.55, -r * 0.8, r * 1.1, r * 1.6);
       g.strokeRect(-r * 0.55, -r * 0.8, r * 1.1, r * 1.6);
-      g.fillRect(-r * 0.2, -r, r * 0.4, r * 0.25); break;
+      g.fillRect(-r * 0.2, -r, r * 0.4, r * 0.25);
+      // Charge bands. Three uncommon items are upright boxes; the ones that
+      // stayed plain measured 6.8–8.8% from each other.
+      g.save(); g.fillStyle = '#0d0f14';
+      for (let i = 0; i < 3; i++) g.fillRect(-r * 0.55, -r * 0.5 + i * r * 0.44, r * 1.1, r * 0.16);
+      g.restore(); break;
     case 'alien':
       g.beginPath(); g.ellipse(0, 0, r * 0.75, r, 0, 0, Math.PI * 2); g.fill(); g.stroke();
       g.fillStyle = '#0d0f14';
@@ -1379,7 +1477,14 @@ export function drawGlyph(g, glyph, r, hue) {
       g.moveTo(-r * 0.9, r * 0.35); g.lineTo(-r * 0.25, -r * 0.95);
       g.lineTo(r * 0.55, -r * 0.5); g.lineTo(r * 0.9, r * 0.55); g.lineTo(-r * 0.2, r * 0.9);
       g.closePath(); g.fill(); g.stroke();
-      g.beginPath(); g.moveTo(-r * 0.25, -r * 0.95); g.lineTo(0, r * 0.2); g.stroke(); break;
+      // Conchoidal flake scars, in the plate colour — a white line here has the
+      // outline's luminosity and left the shard a solid blob against `triangle`,
+      // `diamond` and `shield`.
+      g.save(); g.strokeStyle = '#0d0f14'; g.lineWidth = Math.max(1.5, r * 0.16);
+      g.beginPath(); g.moveTo(-r * 0.25, -r * 0.9); g.lineTo(-r * 0.05, r * 0.5);
+      g.moveTo(-r * 0.55, -r * 0.2); g.lineTo(r * 0.5, -r * 0.1);
+      g.moveTo(r * 0.2, r * 0.72); g.lineTo(r * 0.45, r * 0.05);
+      g.stroke(); g.restore(); break;
     // Basket weave: two interlocking bands. Reads as cloth, not as a grid.
     case 'weave':
       for (let i = -1; i <= 1; i++) {
@@ -1473,10 +1578,20 @@ export function drawGlyph(g, glyph, r, hue) {
       g.moveTo(0, -r); g.lineTo(r * 0.92, -r * 0.48); g.lineTo(r * 0.92, r * 0.5);
       g.lineTo(0, r); g.lineTo(-r * 0.92, r * 0.5); g.lineTo(-r * 0.92, -r * 0.48);
       g.closePath(); g.fill(); g.stroke();
+      // Cube edges in the plate colour and one shaded face. In white they had
+      // the luminosity of the outline, so the cube's mask was a filled hexagon
+      // and it measured 6.3% from `hex`.
+      g.save();
+      g.fillStyle = '#0d0f14';
+      g.beginPath();
+      g.moveTo(0, r * 0.03); g.lineTo(r * 0.92, -r * 0.48);
+      g.lineTo(r * 0.92, r * 0.5); g.lineTo(0, r);
+      g.closePath(); g.fill();
+      g.strokeStyle = '#0d0f14'; g.lineWidth = Math.max(1.5, r * 0.16);
       g.beginPath();
       g.moveTo(-r * 0.92, -r * 0.48); g.lineTo(0, r * 0.03); g.lineTo(r * 0.92, -r * 0.48);
       g.moveTo(0, r * 0.03); g.lineTo(0, r);
-      g.stroke(); break;
+      g.stroke(); g.restore(); break;
     // Boot sole: an outline with a tread pattern punched through it.
     case 'sole':
       g.beginPath();
@@ -1549,6 +1664,11 @@ export function drawGlyph(g, glyph, r, hue) {
         g.lineTo(i * r * 0.4 + r * 0.16, r * 0.05);
         g.closePath(); g.fill(); g.stroke();
       }
+      // Bolt line through the base plate, in the plate colour — without it the
+      // plate is a solid bar and the glyph sat at the same-tier floor.
+      g.save(); g.fillStyle = '#0d0f14';
+      g.fillRect(-r * 0.9, r * 0.34, r * 1.8, r * 0.2);
+      g.restore();
       break;
     // Updraft vent: a louvred grille with an arrow rising out of it.
     case 'updraft':
@@ -1582,7 +1702,13 @@ export function drawGlyph(g, glyph, r, hue) {
       g.beginPath();
       g.moveTo(-r * 0.34, -r * 0.82); g.lineTo(-r * 0.05, -r * 1.02);
       g.lineTo(r * 0.08, -r * 0.86); g.lineTo(r * 0.34, -r * 1.06);
-      g.stroke(); break;
+      g.stroke();
+      // The overcharge itself, cut through the cell in the plate colour.
+      g.save(); g.fillStyle = '#0d0f14';
+      g.beginPath();
+      g.moveTo(r * 0.22, -r * 0.42); g.lineTo(-r * 0.3, r * 0.16); g.lineTo(r * 0.02, r * 0.16);
+      g.lineTo(-r * 0.16, r * 0.78); g.lineTo(r * 0.36, r * 0.1); g.lineTo(r * 0.04, r * 0.1);
+      g.closePath(); g.fill(); g.restore(); break;
     // Frost lattice: a rectilinear crystal grid — never the radial `snowflake`.
     case 'lattice':
       for (let i = -1; i <= 1; i++) {

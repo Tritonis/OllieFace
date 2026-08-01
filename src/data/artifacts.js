@@ -8,7 +8,12 @@
  *   id,          // stable string; persisted and packed onto the wire, never rename
  *   name,        // player-facing title
  *   description, // what it does, in the player's words
- *   icon,        // a text glyph — render it directly, there is no image asset
+ *   mark,        // key into `ui/Icons.js`'s MARKS — an authored vector, never
+ *                // a text codepoint. This field used to hold a raw Unicode
+ *                // dingbat, which had no glyph in the UI's font stack and so
+ *                // rendered from whatever symbol font the OS supplied — at a
+ *                // fallback font's metrics, which knocked the card grid's
+ *                // titles onto three different baselines.
  *   unlock,      // challenge id from `data/challenges.js`, or null for always-on
  *   color,       // accent for the select grid
  *   flavour,     // one line of colour for the tooltip
@@ -49,7 +54,7 @@ export const ARTIFACTS = [
       + 'instead of a roll — by default, whatever you already hold most of in '
       + 'that tier.',
     flavour: 'The chest does not decide. You do.',
-    icon: '⌘',
+    mark: 'command',
     color: '#7fd4ff',
     unlock: 'hoarder',
   },
@@ -59,7 +64,7 @@ export const ARTIFACTS = [
     description: 'Chests and terminals are gone from every stage. Monsters carry '
       + 'the loot instead, and drop it when they fall.',
     flavour: 'Nothing is bought. Everything is taken.',
-    icon: '†',
+    mark: 'sacrifice',
     color: '#e9e46b',
     unlock: 'richBeyondReason',
   },
@@ -69,7 +74,7 @@ export const ARTIFACTS = [
     description: 'Twice as many monsters arrive, with half the health each. The '
       + 'population ceiling doubles with them.',
     flavour: 'One at a time was never the arrangement.',
-    icon: '⁂',
+    mark: 'swarms',
     color: '#ff7a45',
     unlock: 'thousandCuts',
   },
@@ -79,7 +84,7 @@ export const ARTIFACTS = [
     description: 'You deal five times damage and keep a tenth of your health. '
       + 'Everything dies in one hit, including you.',
     flavour: 'Drawn out thin enough, anything cuts.',
-    icon: '◈',
+    mark: 'glass',
     color: '#ff4634',
     unlock: 'oneShot',
   },
@@ -89,7 +94,7 @@ export const ARTIFACTS = [
     description: 'Every drop forgets what it came out of. A wooden chest can pay '
       + 'a legendary; a legendary can pay a lunar.',
     flavour: 'The label was never load-bearing.',
-    icon: '❖',
+    mark: 'caprice',
     color: '#b44dff',
     unlock: 'theLongHaul',
   },
@@ -100,7 +105,7 @@ export const ARTIFACTS = [
       + 'director far less and arrive at half health, but nothing is ever plain '
       + 'again.',
     flavour: 'A field of crowns, and not one of them yours.',
-    icon: '♛',
+    mark: 'honour',
     color: '#ffb44f',
     unlock: 'eliteHunter',
   },
@@ -110,7 +115,7 @@ export const ARTIFACTS = [
     description: 'Monsters learn from your inventory. Every item you hold makes '
       + 'the whole bestiary tougher and hit harder, for the rest of the run.',
     flavour: 'They have been watching what you pick up.',
-    icon: '⟁',
+    mark: 'evolution',
     color: '#8ef08a',
     unlock: 'bossSlayer',
   },
@@ -169,7 +174,7 @@ export const DIFFICULTIES = [
     coeff: 0.5,
     description: 'A forgiving run. The clock climbs at half speed, monsters hit '
       + 'softer, gold is plentiful and you mend quickly.',
-    icon: '☂',
+    mark: 'drizzle',
     color: '#7fd4ff',
     enemyHealth: 0.8,
     enemyDamage: 0.6,
@@ -182,7 +187,7 @@ export const DIFFICULTIES = [
     index: 1,
     coeff: 1.0,
     description: 'The intended run. Every number in the game is the tuned one.',
-    icon: '☁',
+    mark: 'rainstorm',
     color: '#8ef08a',
     enemyHealth: 1,
     enemyDamage: 1,
@@ -196,7 +201,7 @@ export const DIFFICULTIES = [
     coeff: 1.5,
     description: 'A punishing run. The clock climbs half again as fast, monsters '
       + 'are tougher and hit far harder, and you heal at half rate.',
-    icon: '⛈',
+    mark: 'monsoon',
     color: '#ff4634',
     enemyHealth: 1.2,
     enemyDamage: 1.4,

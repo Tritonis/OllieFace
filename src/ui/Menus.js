@@ -5,7 +5,7 @@
 // class exposes plain methods rather than the system lifecycle.
 
 import * as THREE from 'three';
-import { itemArt, tierMeta, abilityArt, hexOf } from './Icons.js';
+import { itemArt, tierMeta, abilityArt, hexOf, markIcon } from './Icons.js';
 import { SURVIVORS, getSurvivor, loadoutOf } from '../data/survivors.js';
 import { Logbook, ModelPreview, disposeTree } from './Logbook.js';
 
@@ -54,15 +54,26 @@ const FALLBACK_DIFFICULTIES = [
   { id: 'monsoon', name: 'Monsoon', description: 'More of everything, sooner. Mistakes stop being survivable.', spawnRate: 1.6 },
 ];
 
-/** The five stats the select screen bars, and the roster-relative scale each
- *  is drawn against. Absolute numbers mean nothing to a new player; the length
- *  of the bar next to the other three survivors' is the whole point. */
+/**
+ * The five stats the select screen bars, each with an explicit design range it
+ * is drawn against.
+ *
+ * These were roster-relative — `value / max(across the roster)` — which pegs
+ * whichever survivor tops a stat at a full bar by construction. Kestrel tops
+ * three of the five, so three of the five bars rendered at exactly 184/184 px
+ * and a sniper appeared to have maximum damage AND maximum speed AND maximum
+ * crit. A bar that is always full for someone carries no information at all,
+ * and the compression is just as bad at the other end: base speed spans
+ * 6.3-7.4, so against a roster max every survivor drew a bar within 12% of
+ * every other. A fixed range wide enough to hold future survivors gives each
+ * one a distinct profile and guarantees no bar ever tops out.
+ */
 const STAT_BARS = [
-  { key: 'maxHealth', label: 'Health' },
-  { key: 'damage', label: 'Damage' },
-  { key: 'moveSpeed', label: 'Speed' },
-  { key: 'armor', label: 'Armor', floor: 12 },
-  { key: 'critChance', label: 'Crit', fmt: (v) => `${Math.round(v * 100)}%` },
+  { key: 'maxHealth', label: 'Health', range: [50, 220] },
+  { key: 'damage', label: 'Damage', range: [6, 24] },
+  { key: 'moveSpeed', label: 'Speed', range: [5.2, 8.8] },
+  { key: 'armor', label: 'Armor', range: [0, 22] },
+  { key: 'critChance', label: 'Crit', range: [0, 0.14], fmt: (v) => `${Math.round(v * 100)}%` },
 ];
 
 function pct(v) { return `${Math.round(v * 100)}%`; }
@@ -422,13 +433,6 @@ export class Menus {
       const b = e.target.closest('[data-survivor]');
       if (b) this.pickSurvivor(b.dataset.survivor);
     });
-    // Roster-relative scale, computed once — a bar is only informative next to
-    // the other three.
-    this.statMax = {};
-    for (const s of STAT_BARS) {
-      this.statMax[s.key] = Math.max(s.floor ?? 0,
-        ...SURVIVORS.map((c) => c.baseStats[s.key] ?? 0));
-    }
     this.renderSelect();
   }
 
@@ -479,7 +483,11 @@ export class Menus {
 
     q('[data-sel-stats]').innerHTML = STAT_BARS.map((s) => {
       const v = card.baseStats[s.key] ?? 0;
-      const frac = Math.max(0, Math.min(1, v / (this.statMax[s.key] || 1)));
+      const [lo, hi] = s.range;
+      // Floored at 0.03 rather than 0: a genuinely zero stat still has to draw
+      // a stub, or an empty track reads as a bar that failed to render instead
+      // of as a survivor with no armour.
+      const frac = Math.max(0.03, Math.min(0.96, (v - lo) / (hi - lo)));
       const text = s.fmt ? s.fmt(v) : String(round1(v));
       return `<div class="sbar">
           <div class="sbar-k">${s.label}</div>
@@ -581,7 +589,7 @@ export class Menus {
     host.innerHTML = this.difficultyList().map((d) => `
       <button class="opt${d.id === cur?.id ? ' is-on' : ''}" data-nav data-difficulty="${escapeHtml(d.id)}"
               style="--accent:${escapeHtml(d.color || '#5fd9f7')}">
-        <div class="opt-name"><i class="opt-glyph">${escapeHtml(d.icon || '◆')}</i>${escapeHtml(d.name)}</div>
+        <div class="opt-name"><i class="opt-glyph">${markImg(d.mark, d.color || '#5fd9f7')}</i>${escapeHtml(d.name)}</div>
         <div class="opt-desc">${escapeHtml(d.description || '')}</div>
         <i class="opt-tick"></i>
       </button>`).join('');
@@ -663,7 +671,7 @@ export class Menus {
       return `<button class="art${active.has(a.id) ? ' is-on' : ''}${locked ? ' is-locked' : ''}"
                 data-nav data-artifact="${escapeHtml(a.id)}"
                 style="--accent:${escapeHtml(a.color || '#ffd44f')}">
-          <div class="art-mark">${escapeHtml(String(a.icon ?? '◆')).slice(0, 2)}</div>
+          <div class="art-mark">${markImg(a.mark, a.color || '#ffd44f')}</div>
           <div class="art-name">${escapeHtml(a.name || a.id)}</div>
           <div class="art-desc">${escapeHtml(locked
             ? (hint ? `Locked — ${hint.name}: ${hint.description}` : 'Locked')
@@ -1198,6 +1206,23 @@ const round1 = (v) => Math.round(v * 10) / 10;
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+/**
+ * An artifact or difficulty mark, as an authored vector.
+ *
+ * These used to be raw Unicode codepoints — `⌘ † ⁂ ◈ ❖ ♛ ⟁ ☂ ☁ ⛈`, six Unicode
+ * blocks, none present in the UI's font stack — so the artifact grid rendered
+ * from the OS symbol font at that font's metrics, which pushed four sibling card
+ * titles in one grid row onto three baselines spanning 15px, and the three
+ * weather codepoints came back in full emoji colour on Windows. An `<img>` of a
+ * fixed pixel box cannot do either: no fallback font, and the title's offset no
+ * longer depends on the glyph.
+ */
+function markImg(key, color) {
+  const url = markIcon(key, color);
+  if (!url) return '';
+  return `<img class="mark-img" src="${url}" alt="" aria-hidden="true">`;
 }
 
 /**

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { ITEM_BY_ID, TIERS } from '../data/items.js';
+import { getTextureSets, withRepeat } from './Materials.js';
 
 /**
  * Every world object the player can walk up to and press E on, plus the item
@@ -92,11 +93,31 @@ function sharedMat(key, build) {
  * difference between a specular that survives the tone curve above L 200 and
  * one that lands at 180 and reads as "slightly lighter grey".
  */
+/**
+ * The maps are the half of this that was missing. Every rung below was authored
+ * with a roughness and a metalness and *no texture at all*, so a chest body
+ * measured eight distinct luma values across two thousand pixels — flatter than
+ * the film grain, and flatter than the terrain it stands on. Roughness is a
+ * property of a surface, and a surface with one normal and one roughness value
+ * over its whole area has nothing for a key light to find. These pull from the
+ * world's own texture sets so an interactable is made of the same substances the
+ * stage is.
+ *
+ * Repeats are in the 1.2-2.6 band because interactable parts are 0.1-1.5u: the
+ * tile has to be small enough that a single strap carries several cycles of
+ * grain rather than one flat sample of it.
+ */
+const SET = (name, repeat) => withRepeat(getTextureSets()[name], repeat);
+
 const IRON = () => sharedMat('iron', () => new THREE.MeshStandardMaterial({
+  ...SET('metal', 1.8),
   color: 0x4c545f, roughness: 0.24, metalness: 0.62, envMapIntensity: 2.6, flatShading: true,
+  normalScale: new THREE.Vector2(1.35, 1.35),
 }));
 const IRON_DARK = () => sharedMat('ironDark', () => new THREE.MeshStandardMaterial({
+  ...SET('metal', 1.8),
   color: 0x454d5a, roughness: 0.30, metalness: 0.45, envMapIntensity: 3.0, flatShading: true,
+  normalScale: new THREE.Vector2(1.35, 1.35),
 }));
 // Polished, and deliberately *smooth*-shaded — the one material in the ladder
 // that is not flat. It is only ever put on surfaces of revolution (basin rims,
@@ -106,14 +127,32 @@ const IRON_DARK = () => sharedMat('ironDark', () => new THREE.MeshStandardMateri
 // roughness 0.20 the GGX peak is ~136, so the ring clips white where it crosses
 // the half vector and falls away within a few degrees either side.
 const IRON_POLISH = () => sharedMat('ironPolish', () => new THREE.MeshStandardMaterial({
+  ...SET('metal', 2.6),
   color: 0x5f6774, roughness: 0.20, metalness: 0.60, envMapIntensity: 3.0,
+  normalScale: new THREE.Vector2(0.9, 0.9),
 }));
 const STONE = () => sharedMat('stone', () => new THREE.MeshStandardMaterial({
+  ...SET('stone', 1.2),
   color: 0x646875, roughness: 0.88, metalness: 0.0, envMapIntensity: 0.9, flatShading: true,
+  normalScale: new THREE.Vector2(1.3, 1.3),
+}));
+/**
+ * The warm band. A chest that is one value plus a lid is a slab; the acceptance
+ * criterion is three luma plateaus, and this is the top one — brass over cast
+ * iron over stone, on the straps, the post caps and the lock. It is the only
+ * warm rung in the interactable ladder, so the key's own hue lands on it
+ * instead of on a cool grey that neutralises the specular to white.
+ */
+const BRASS = () => sharedMat('brass', () => new THREE.MeshStandardMaterial({
+  ...SET('metal', 2.4),
+  color: 0xa8794a, roughness: 0.22, metalness: 0.72, envMapIntensity: 2.8, flatShading: true,
+  normalScale: new THREE.Vector2(1.0, 1.0),
 }));
 const trimMat = (hex) => sharedMat(`trim${hex}`, () => new THREE.MeshStandardMaterial({
+  ...SET('metal', 2.2),
   color: hex, roughness: 0.18, metalness: 0.62, envMapIntensity: 2.4,
   emissive: hex, emissiveIntensity: 0.22, flatShading: true,
+  normalScale: new THREE.Vector2(1.1, 1.1),
 }));
 const glowMat = (hex) => sharedMat(`glow${hex}`, () => new THREE.MeshStandardMaterial({
   color: 0x05070a, emissive: hex, emissiveIntensity: 2.4, roughness: 0.5,
@@ -168,29 +207,47 @@ class Interactable {
  * on. All of it is one merged buffer per chest size.
  */
 function chestBodyGeo(s) {
-  const parts = [
+  // Two groups, two materials: cast-iron carcass under a brass band set. The
+  // parts were always there; what they lacked was a *value* difference, so the
+  // whole body measured as one plateau and the straps read as shadow lines
+  // rather than as metal laid over metal.
+  const carcass = [
     box(1.52 * s, 0.15 * s, 1.12 * s, 0, 0.075 * s, 0),              // plinth
     box(1.36 * s, 0.72 * s, 0.98 * s, 0, 0.51 * s, 0),               // carcass
+  ];
+  const band = [
     box(1.42 * s, 0.09 * s, 1.03 * s, 0, 0.30 * s, 0),               // lower strap
     box(1.42 * s, 0.09 * s, 1.03 * s, 0, 0.70 * s, 0),               // upper strap
     box(0.26 * s, 0.30 * s, 0.10 * s, 0, 0.60 * s, 0.52 * s),        // lock plate
   ];
   for (const sx of [-1, 1]) {
     for (const sz of [-1, 1]) {
-      parts.push(box(0.14 * s, 0.80 * s, 0.14 * s, sx * 0.66 * s, 0.50 * s, sz * 0.47 * s));
+      carcass.push(box(0.14 * s, 0.80 * s, 0.14 * s, sx * 0.66 * s, 0.50 * s, sz * 0.47 * s));
       // Proud cap on each post. A flat-topped post ends the silhouette on the
       // same line as the carcass; a wider cap notches it, and its top face is a
       // small horizontal plane the key hits close to head-on — the brightest
       // thing on the chest and the reason the corners read at distance.
-      parts.push(box(0.21 * s, 0.07 * s, 0.21 * s, sx * 0.66 * s, 0.925 * s, sz * 0.47 * s));
+      band.push(box(0.21 * s, 0.07 * s, 0.21 * s, sx * 0.66 * s, 0.925 * s, sz * 0.47 * s));
     }
   }
   // Hasp: two arms flanking the lock plate, so the front face has depth.
   for (const sx of [-1, 1]) {
-    parts.push(box(0.07 * s, 0.42 * s, 0.07 * s, sx * 0.22 * s, 0.60 * s, 0.51 * s));
+    band.push(box(0.07 * s, 0.42 * s, 0.07 * s, sx * 0.22 * s, 0.60 * s, 0.51 * s));
   }
-  const g = mergeGeometries(parts, false);
-  for (const p of parts) p.dispose();
+  return twoGroup(carcass, band);
+}
+
+/**
+ * Merge two part lists into one buffer carrying one draw group each, so a
+ * multi-material object still costs a single geometry and a single mesh.
+ */
+function twoGroup(a, b) {
+  const ga = mergeGeometries(a, false);
+  const gb = mergeGeometries(b, false);
+  const g = mergeGeometries([ga, gb], true);
+  for (const p of a) p.dispose();
+  for (const p of b) p.dispose();
+  ga.dispose(); gb.dispose();
   return g;
 }
 
@@ -202,14 +259,15 @@ function chestLidGeo(s) {
   // prism and the highlight either misses entirely or covers a whole facet.
   const dome = new THREE.CylinderGeometry(0.50 * s, 0.50 * s, 1.40 * s, 16, 1, false, 0, Math.PI);
   dome.rotateZ(Math.PI / 2);   // half-barrel opening downward, axis along X
-  const parts = [
-    dome,
-    box(1.44 * s, 0.10 * s, 1.06 * s, 0, -0.04 * s, 0),              // rim under the barrel
-    box(0.20 * s, 0.16 * s, 1.08 * s, 0, 0.34 * s, 0),               // spine band
-  ];
-  const g = mergeGeometries(parts, false);
-  for (const p of parts) p.dispose();
-  return g;
+  // The barrel is the lid's own value, not the tier colour: at the tier tint it
+  // was a 25,000px near-white mass and the brightest object in the frame, which
+  // out-valued the subject it is supposed to sit under. The tier now lives on
+  // the spine band and the interior glow, where it is an accent rather than the
+  // whole silhouette.
+  return twoGroup(
+    [dome, box(1.44 * s, 0.10 * s, 1.06 * s, 0, -0.04 * s, 0)],      // rim under the barrel
+    [box(0.20 * s, 0.16 * s, 1.08 * s, 0, 0.34 * s, 0)],             // spine band
+  );
 }
 
 class Chest extends Interactable {
@@ -223,7 +281,8 @@ class Chest extends Interactable {
     const tint = size === 'legendary' ? 0xf0453f : size === 'large' ? 0x49d67a : 0xc0c8d4;
     const scale = size === 'small' ? 1 : size === 'large' ? 1.35 : 1.5;
 
-    const body = new THREE.Mesh(sharedGeo(`chestBody${size}`, () => chestBodyGeo(scale)), IRON());
+    const body = new THREE.Mesh(sharedGeo(`chestBody${size}`, () => chestBodyGeo(scale)),
+      [IRON(), BRASS()]);
     body.castShadow = true;
     body.receiveShadow = true;
 
@@ -234,7 +293,8 @@ class Chest extends Interactable {
       glowMat(tint)
     );
 
-    this.lid = new THREE.Mesh(sharedGeo(`chestLid${size}`, () => chestLidGeo(scale)), trimMat(tint));
+    this.lid = new THREE.Mesh(sharedGeo(`chestLid${size}`, () => chestLidGeo(scale)),
+      [IRON_POLISH(), trimMat(tint)]);
     this.lid.castShadow = true;
     // Pivot at the back edge so the lid hinges instead of floating.
     this.lidPivot = new THREE.Group();
@@ -636,6 +696,19 @@ class ShrineOfBlood extends Interactable {
 
 // ---------------------------------------------------------------- teleporter
 
+/**
+ * The beacon shaft takes the *biome's* accent, not one fixed cyan.
+ *
+ * The plinth, charge ring and collar stay teal everywhere — that is the thing
+ * the player presses E on and it has to be the same object on every stage — but
+ * the 70m column is atmosphere, and a column sitting 150-180 degrees from the
+ * dominant hue of the place it stands in is the single loudest cohesion break
+ * in the build. Falls back to the fixed teal for a stage with no biome.
+ */
+function beaconTint(ctx) {
+  return ctx.stage?.biome?.mats?.crystal ?? 0x2ad0ff;
+}
+
 class Teleporter extends Interactable {
   constructor(ctx, position) {
     super(ctx, position);
@@ -677,10 +750,21 @@ class Teleporter extends Interactable {
     // change numPointLights and fork *every* program in the scene; these reuse
     // the permutation the pillar and the charge ring already compiled. Bloom
     // does the glow work for free because the emissive runs well above 1.
+    //
+    // It is a *spire*, not a bar. At a constant 0.55-0.9 radius and emissive
+    // 2.4 the column measured up to 3.45x the frame mean, 530px tall, touching
+    // 67-84% of every world frame's rows, and in the establishing shot it ran
+    // straight down through the hero arch — one hard-edged element identical
+    // across four biomes that are otherwise successfully distinct, which reads
+    // as HUD chrome standing in the world. Tapering to 0.05 at the top means
+    // the upper two thirds of the column is sub-pixel-to-a-few-pixels wide, so
+    // it still says "the objective is over there" from anywhere on the stage
+    // without owning a vertical third of the composition; the emissive comes
+    // down to sit under the bloom knee at rest.
     this.beacon = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.55, 0.9, BEACON_HEIGHT, 8, 1, true),
+      new THREE.CylinderGeometry(0.05, 0.86, BEACON_HEIGHT, 8, 1, true),
       new THREE.MeshStandardMaterial({
-        color: 0x0a2b3a, emissive: 0x2ad0ff, emissiveIntensity: 2.4, roughness: 0.4,
+        color: 0x0a2b3a, emissive: beaconTint(ctx), emissiveIntensity: 1.15, roughness: 0.4,
       })
     );
     this.beacon.position.y = BEACON_HEIGHT * 0.5 + 2.0;
@@ -727,7 +811,7 @@ class Teleporter extends Interactable {
     const k = this.state === 'complete' ? 0.25
       : active ? 1.15
       : 0.7 + breathe * 0.6;
-    this.beacon.material.emissiveIntensity = 2.4 * k;
+    this.beacon.material.emissiveIntensity = 1.15 * k;
     this.collar.material.emissiveIntensity = 1.6 * k;
   }
 }

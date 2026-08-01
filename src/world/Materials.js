@@ -139,13 +139,21 @@ function dataTexture(data, srgb) {
  *                only. It survives mip-down as a roughness *average* shift,
  *                which is what keeps a distant surface from going perfectly
  *                smooth-matte.
+ *  - `grit`      the same high-frequency field folded into *albedo and the
+ *                normal*. This is what the high-pass residual measure actually
+ *                sees: an fbm's fifth octave carries ~3% of the field's range,
+ *                so a surface whose only fine structure is the fbm tail
+ *                measures flat no matter how wide its coarse mottle is. Grit
+ *                puts a deliberate amplitude back at the scale a 9x9 box blur
+ *                cannot remove.
  */
 function makeTextureSet({ seed, period = 8, octaves = 5, normalStrength = 3.0,
                           rough = [0.58, 0.98], albedo = [0.66, 1.0], warpAmt = 0,
-                          stretch = 1, wetT = 0, metalMask = null, detail = 0 }) {
+                          stretch = 1, wetT = 0, metalMask = null, detail = 0,
+                          grit = 0 }) {
   const N = TEX_SIZE;
   const h = new Float32Array(N * N);
-  const d2 = detail > 0 ? new Float32Array(N * N) : null;
+  const d2 = (detail > 0 || grit > 0) ? new Float32Array(N * N) : null;
   for (let y = 0; y < N; y++) {
     for (let x = 0; x < N; x++) {
       let u = (x / N) * period * stretch, v = (y / N) * period;
@@ -160,6 +168,14 @@ function makeTextureSet({ seed, period = 8, octaves = 5, normalStrength = 3.0,
     }
   }
 
+  // Coarse form plus grit, as one field. The normal map is a central difference
+  // over it, so the grit becomes real relief rather than an albedo print.
+  let hg = h;
+  if (grit > 0) {
+    hg = new Float32Array(N * N);
+    for (let i = 0; i < N * N; i++) hg[i] = h[i] + (d2[i] - 0.5) * grit;
+  }
+
   const alb = new Uint8ClampedArray(N * N * 4);
   const rgh = new Uint8ClampedArray(N * N * 4);
   const nrm = new Uint8ClampedArray(N * N * 4);
@@ -169,8 +185,11 @@ function makeTextureSet({ seed, period = 8, octaves = 5, normalStrength = 3.0,
     for (let x = 0; x < N; x++) {
       const i = y * N + x, o = i * 4;
       const n = h[i];
-
-      const a = (albedo[0] + (albedo[1] - albedo[0]) * n) * 255;
+      // Albedo and the normal ride the gritted field; roughness and the
+      // metalness mask stay on the coarse one, so where a surface is wet or
+      // where its plate has survived is still decided by the landform-scale
+      // noise rather than by the speckle laid over it.
+      const a = (albedo[0] + (albedo[1] - albedo[0]) * hg[i]) * 255;
       alb[o] = a; alb[o + 1] = a; alb[o + 2] = a; alb[o + 3] = 255;
 
       // Roughness inverted against albedo: crevices hold grit and read rougher.
@@ -191,8 +210,8 @@ function makeTextureSet({ seed, period = 8, octaves = 5, normalStrength = 3.0,
         met[o] = m; met[o + 1] = m; met[o + 2] = m; met[o + 3] = 255;
       }
 
-      const l = h[y * N + wrap(x - 1, N)], rr = h[y * N + wrap(x + 1, N)];
-      const d = h[wrap(y - 1, N) * N + x], up = h[wrap(y + 1, N) * N + x];
+      const l = hg[y * N + wrap(x - 1, N)], rr = hg[y * N + wrap(x + 1, N)];
+      const d = hg[wrap(y - 1, N) * N + x], up = hg[wrap(y + 1, N) * N + x];
       let nx = (l - rr) * normalStrength;
       let ny = (d - up) * normalStrength;
       const len = Math.hypot(nx, ny, 1);
@@ -219,7 +238,7 @@ function smooth01(t) {
 
 // Textures are shared across materials, but repeat is per-material, so each
 // consumer gets a clone (clones share the same GPU upload).
-function withRepeat(set, repeat) {
+export function withRepeat(set, repeat) {
   const out = {};
   for (const k of Object.keys(set)) {
     const t = set[k].clone();
@@ -233,6 +252,14 @@ function withRepeat(set, repeat) {
 let _sets = null;
 let _mats = null;
 
+/**
+ * `grit` is the per-class fine-detail budget, and it is deliberately *not* the
+ * same number everywhere: it is the second axis (with roughness) that separates
+ * one substance from another. Weathered stone is pitted, silt and sand are
+ * smooth at close range, corroded plate is pocked hardest of all, and organic
+ * matter clumps rather than speckles. A single global grit would put the same
+ * surface finish back on everything, which is the defect this is fixing.
+ */
 function buildSets() {
   return {
     // Coarse, warped, high-contrast — reads as weathered sedimentary stone.
@@ -242,28 +269,30 @@ function buildSets() {
     // that lets a raking key put a highlight on stone at all.
     stone: makeTextureSet({ seed: 11, period: 8, octaves: 5, normalStrength: 3.4,
                             rough: [0.24, 1.0], albedo: [0.60, 1.0], warpAmt: 0.9,
-                            detail: 0.11 }),
+                            detail: 0.11, grit: 0.34 }),
     // Fine and busy — foliage clumping. Organic stays flat-matte on purpose:
     // it is the low end of the roughness ladder that stone and metal read
     // against.
     organic: makeTextureSet({ seed: 29, period: 12, octaves: 5, normalStrength: 2.2,
                               rough: [0.82, 1.0], albedo: [0.55, 1.0], warpAmt: 0.4,
-                              detail: 0.06 }),
+                              detail: 0.06, grit: 0.18 }),
     // Smooth low-frequency dunes.
     grain: makeTextureSet({ seed: 47, period: 6, octaves: 4, normalStrength: 1.3,
-                            rough: [0.86, 1.0], albedo: [0.82, 1.0], detail: 0.05 }),
+                            rough: [0.86, 1.0], albedo: [0.82, 1.0], detail: 0.05,
+                            grit: 0.12 }),
     // Streaky corrosion for the ruin metal. `stretch` gives it the directional
     // run-off metal weathers with, and the metalness mask means the surviving
     // plate is a mirror while the rust between it is not.
     metal: makeTextureSet({ seed: 63, period: 10, octaves: 5, normalStrength: 1.8,
                             rough: [0.14, 0.88], albedo: [0.42, 1.0], warpAmt: 1.6,
-                            stretch: 3.2, metalMask: [0.16, 0.82], detail: 0.09 }),
+                            stretch: 3.2, metalMask: [0.16, 0.82], detail: 0.09,
+                            grit: 0.40 }),
     // Damp stone: bimodal roughness. Above the waterline it behaves like rock;
     // below it the crevices go glossy, which is what a wet surface actually
     // does and what makes it separate from dry rock under the same key.
     wet: makeTextureSet({ seed: 91, period: 7, octaves: 5, normalStrength: 2.6,
                           rough: [0.30, 1.0], albedo: [0.55, 1.0], warpAmt: 0.7,
-                          wetT: 0.46, detail: 0.07 }),
+                          wetT: 0.46, detail: 0.07, grit: 0.26 }),
   };
 }
 
@@ -299,11 +328,12 @@ function buildSets() {
 function buildMaterials(sets) {
   const P = PALETTE;
 
-  // repeat 26 across a 220u stage put one noise cycle below a pixel at vista
-  // range, so every surface averaged out to flat matte. 11 keeps the cycle
-  // several pixels wide in the midground where the form actually reads.
+  // Repeat 1: the terrain's UVs are baked in world units by TerrainGen
+  // (`TEX_SCALE`), because the mesh is a per-face planar projection rather than
+  // a parameterised surface — the tile size has to be a world-space constant or
+  // a mesa skirt and the basin floor get different grain.
   const terrain = new THREE.MeshStandardMaterial({
-    ...withRepeat(sets.stone, 11),
+    ...withRepeat(sets.stone, 1),
     vertexColors: true,
     color: 0xffffff,
     roughness: 0.82,
@@ -437,6 +467,19 @@ export function getMaterials() {
     _mats = buildMaterials(_sets);
   }
   return _mats;
+}
+
+/**
+ * The raw texture sets, for consumers that build their own material ladder.
+ *
+ * `Interactables.js` is the one that matters: a chest standing on world terrain
+ * that carries stone grain, made of a material that carries none, is the
+ * "assets from visibly different styles" failure at arm's length. It gets the
+ * same five substances the world uses rather than a parallel set of its own.
+ */
+export function getTextureSets() {
+  if (!_sets) getMaterials();
+  return _sets;
 }
 
 // ---------------------------------------------------------------------------

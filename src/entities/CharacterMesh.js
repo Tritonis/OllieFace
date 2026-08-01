@@ -41,10 +41,20 @@ class Spring {
   set(v) { this.value = v; this.vel = 0; }
 }
 
+// The dark half of the value break is a *dark colour*, not a hole. Measured on
+// `03-thirdperson`, the old shell (coat 0x22303f, cloth 0x121a24) rendered at
+// luminance 20-64 against terrain measuring 12-63 — the character sat exactly
+// inside the range of the cliff behind it and a border flood merged the two.
+// The shell is lifted here far enough to clear the ground it stands on in every
+// biome while staying unambiguously the dark half of the model.
 const COL = {
-  coat: 0x22303f,      // navy shell — the dark half of the value break
-  coatDark: 0x121a24,  // cloth / underlayer, near-black
-  plate: 0xcbcec9,     // light armour — the light half. Carries the read.
+  coat: 0x38536d,      // steel navy shell — the dark half of the value break
+  coatDark: 0x23303f,  // cloth / underlayer, the deepest value on the rig
+  // Cool steel, deliberately pushed away from Anvil's warm bone: the two rigs
+  // used to average (124,94,98) and (129,99,84) on their plates, i.e. the same
+  // warm mid-grey, so they did not separate on value OR hue with the trim out
+  // of frame.
+  plate: 0xd9dfe8,     // light armour — the light half. Carries the read.
   plateMid: 0x76808a,  // secondary plate, sits between the two
   // The cape is the largest surface the gameplay camera sees, so it must be the
   // MID value, not the light one — the helmet owns the light end. Pale cloth
@@ -80,18 +90,22 @@ const PALETTES = {
   // Anvil: rust and bone, hot ember accent. Warm, heavy, low-chroma shell so
   // the ember gauntlet is the only saturated thing on the model.
   anvil: {
-    coat: 0x3a2f2a,
-    coatDark: 0x1a1512,
-    plate: 0xd6c8a8,
-    plateMid: 0x8d8171,
-    cloak: 0x6b5a4c,
+    coat: 0x573a28,
+    coatDark: 0x2e2118,
+    // Bone stopped down to a *bronzed* bone. Ranger's plate is 0xd9dfe8
+    // (luma 222), this is luma 165 — the pair now separate by ~57 levels of
+    // albedo before a single accent pixel is involved, which is what makes the
+    // two readable side by side in a value-only crop.
+    plate: 0xb8a179,
+    plateMid: 0x7b6750,
+    cloak: 0x5e4a38,
     accent: 0xff5a2a,
     skinDark: 0x2f2a2b,
-    metal: 0x9a8f80,
+    metal: 0x8a7c6a,
     gunmetal: 0x4a3f38,
     visor: 0xff8a3c,
     cell: 0xffae3c,
-    coatLift: 0x2e211a,
+    coatLift: 0x3a2a1e,
     cloakLift: 0x3a2c22,
     cellBase: 0x1a1006,
     visorBase: 0x180c04,
@@ -101,8 +115,8 @@ const PALETTES = {
   // Kestrel: indigo and porcelain, violet accent. The coldest and highest-key
   // of the four — a pale hood on a near-black body is the whole read.
   kestrel: {
-    coat: 0x2b2740,
-    coatDark: 0x14121f,
+    coat: 0x413c62,
+    coatDark: 0x272338,
     plate: 0xd2d6e4,
     plateMid: 0x7c8296,
     cloak: 0x5a5570,
@@ -112,7 +126,7 @@ const PALETTES = {
     gunmetal: 0x33384a,
     visor: 0xe0c0ff,
     cell: 0xd6b4ff,
-    coatLift: 0x211d33,
+    coatLift: 0x2a2540,
     cloakLift: 0x2c2840,
     cellBase: 0x120e1c,
     visorBase: 0x0e0a16,
@@ -123,8 +137,8 @@ const PALETTES = {
   // Placeables.js on purpose — a field of turrets should read as this
   // survivor's work from across the arena.
   rook: {
-    coat: 0x2c3a2e,
-    coatDark: 0x141a15,
+    coat: 0x455a48,
+    coatDark: 0x273327,
     plate: 0xc8c9b4,
     plateMid: 0x7d8672,
     cloak: 0x5c6b52,
@@ -134,11 +148,18 @@ const PALETTES = {
     gunmetal: 0x3b4740,
     visor: 0x9dff5a,
     cell: 0xbfff7a,
-    coatLift: 0x1d2a1e,
+    coatLift: 0x28351f,
     cloakLift: 0x2a3526,
     cellBase: 0x0d1a0a,
     visorBase: 0x0a1408,
     rim: 0xcdeaa8,
+    // Rook's green ran at the roster's full emissive gain over a wrap-around
+    // visor band and a chest gauge, and the whole upper body bloomed into one
+    // value: 3.42% of its silhouette measured above L=200 against Kestrel's
+    // 0.75%, which is what turned it into a formless amoeba under threshold.
+    // The lamps are small now (see `buildRook`) and they run at half gain, so
+    // the plate values under them can read again.
+    cellGain: 0.5,
   },
 };
 
@@ -155,6 +176,38 @@ const CLOTH_GAIN = {
   anvil: { coat: 0.45, cape: 0.3 },
   kestrel: { coat: 1.25, cape: 1.35 },
   rook: { coat: 0.35, cape: 0.12 },
+};
+
+/**
+ * Per-rig REST POSE. The angles the animator settles on when the survivor is
+ * standing still — which is the pose every roster shot, portrait and idle frame
+ * in the game is taken in.
+ *
+ * This exists because the shared rest pose was actively destroying the
+ * silhouettes it was supposed to show off. `armL.rotation.z = +0.16` swings a
+ * down-hanging left arm toward +X, i.e. *into* the torso, and the right arm's
+ * -0.16 does the same from the other side; `hipL.rotation.z = +0.04` converges
+ * the legs. So every rig on the roster stood with both arms welded flat to the
+ * body and both legs fused into one column, and a threshold of the result had
+ * literally zero pixels of background inside the outline. The signs below are
+ * therefore inverted from the originals — these are abduction magnitudes, and
+ * the animator negates per side.
+ *
+ *  armZ    shoulder abduction of the free arm, radians. Has to clear the
+ *          torso's own half-width by enough that the gap survives being
+ *          resampled to gameplay size: ~4-6 px per side at 60 px of body.
+ *  gunZ    the same, for the weapon arm, which is otherwise pinned by the
+ *          aim override no matter what the rest pose says.
+ *  stance  hip splay. The inner-leg gap has to be open below the coat hem or
+ *          the character has one leg.
+ *  lean    base spine pitch: Anvil is hunched over the gauntlet, Kestrel is
+ *          bolt upright behind the scope.
+ */
+const POSE = {
+  ranger: { armZ: 0.40, gunZ: 0.26, gunY: -0.12, elbow: -0.30, stance: 0.105, lean: 0.02 },
+  anvil: { armZ: 0.58, gunZ: 0.46, gunY: -0.26, elbow: -0.46, stance: 0.115, lean: 0.17 },
+  kestrel: { armZ: 0.16, gunZ: 0.02, gunY: -0.06, elbow: -0.55, stance: 0.075, lean: -0.05 },
+  rook: { armZ: 0.32, gunZ: 0.30, gunY: -0.18, elbow: -0.38, stance: 0.20, lean: 0.06 },
 };
 
 /**
@@ -333,18 +386,44 @@ export function makeCharacterMats(COL = PALETTES.ranger) {
     // The dark half of the value break still has to be *readable* dark, not a
     // hole in the frame: a sliver of self-emissive keeps the navy shell off the
     // crushed-black floor when the survivor walks into terrain shadow.
-    coat: mat(COL.coat, { rough: 0.78, rimStrength: 0.85, emissive: COL.coat, emissiveIntensity: 0.16 }),
+    //
+    // RIM AND HEMI ON THE DARK SHELL. Measured on `03-thirdperson`, the coat
+    // ran at luminance 20-64 against terrain at 12-63 — the survivor was
+    // *darker* than the cliff behind it and the two ranges overlapped
+    // completely. The stage key cannot be relied on to fix that (it changes per
+    // biome and the character can always stand in its shadow), so the
+    // separation is bought from the two view-space terms this material owns
+    // instead: a wider, stronger fresnel band (power 2.6 -> 2.2 so it reaches
+    // further in off the outline) and a much harder hemispheric tilt, which
+    // lifts every up-facing facet toward the sky and drops every down-facing
+    // one. That is a value *structure* on the body rather than a flat brighten,
+    // so nothing clips and the fix travels to all four biomes.
+    coat: mat(COL.coat, {
+      rough: 0.78, rimStrength: 1.6, rimPower: 2.0, hemiStrength: 0.40,
+      emissive: COL.coat, emissiveIntensity: 0.30,
+    }),
     // `coatLift` / `cloakLift` / `cellBase` / `visorBase` are the near-blacks
     // the Ranger hard-coded. They are palette *hues*, not neutral darks — a
     // blue lift under Anvil's rust cloak reads as a different material — so
     // each palette may override them and the Ranger's originals are the
     // defaults, which is what keeps that rig byte-identical.
-    coatDark: mat(COL.coatDark, { rough: 0.85, rimStrength: 0.95, emissive: COL.coatLift ?? 0x1d2a38, emissiveIntensity: 0.2 }),
-    // Cloth is the only double-sided material — the open-ended coat and cape
-    // shells need it and nothing else does.
-    cloth: mat(COL.coatDark, { rough: 0.9, rimStrength: 1.0, side: THREE.DoubleSide }),
+    coatDark: mat(COL.coatDark, {
+      rough: 0.85, rimStrength: 1.75, rimPower: 2.0, hemiStrength: 0.40,
+      emissive: COL.coatLift ?? 0x243444, emissiveIntensity: 0.34,
+    }),
+    // Cloth is the near-black underlayer: tails, wraps, anything that should
+    // read as the deepest value on the rig.
+    cloth: mat(COL.coatDark, { rough: 0.9, rimStrength: 1.8, rimPower: 2.0, hemiStrength: 0.40, side: THREE.DoubleSide }),
+    // `shell` is `coat` for open-ended geometry. A jacket built out of `cloth`
+    // put the rig's *darkest* value on its largest surface, which is most of
+    // how the survivor ended up sitting inside the terrain's value range.
+    shell: mat(COL.coat, {
+      rough: 0.82, rimStrength: 1.6, rimPower: 2.0, hemiStrength: 0.40,
+      emissive: COL.coat, emissiveIntensity: 0.30, side: THREE.DoubleSide,
+    }),
     cloak: mat(COL.cloak, {
-      rough: 0.88, rimStrength: 0.55, emissive: COL.cloakLift ?? 0x2a3540, emissiveIntensity: 0.22,
+      rough: 0.88, rimStrength: 0.9, rimPower: 2.3, hemiStrength: 0.30,
+      emissive: COL.cloakLift ?? 0x2a3540, emissiveIntensity: 0.22,
       side: THREE.DoubleSide,
     }),
     // Light armour. A touch of self-emissive keeps the plates off pure black
@@ -352,17 +431,23 @@ export function makeCharacterMats(COL = PALETTES.ranger) {
     // Low rim on the light plate: it is already the bright value, and a
     // strong fresnel on top just tints it toward the rim hue.
     plate: mat(COL.plate, {
-      rough: 0.42, metal: 0.28, emissive: COL.plate, emissiveIntensity: 0.09, rimStrength: 0.18,
+      rough: 0.42, metal: 0.28, emissive: COL.plate, emissiveIntensity: 0.17, rimStrength: 0.40, hemiStrength: 0.30,
     }),
-    plateMid: mat(COL.plateMid, { rough: 0.5, metal: 0.3, rimStrength: 0.5 }),
+    plateMid: mat(COL.plateMid, { rough: 0.5, metal: 0.3, rimStrength: 0.85, hemiStrength: 0.30 }),
     accent: mat(COL.accent, {
       rough: 0.55, emissive: COL.accent, emissiveIntensity: 0.9, rimColor: 0xffc08a, rimStrength: 0.5,
     }),
-    cell: mat(COL.cellBase ?? 0x0a1a20, { rough: 0.3, emissive: COL.cell, emissiveIntensity: 1.6, rimStrength: 0.3 }),
-    body: mat(COL.skinDark, { rough: 0.6, metal: 0.2, rimStrength: 0.8 }),
+    // `cellGain` lets a palette stop its own emissive down without touching the
+    // other three: one survivor's accent hue can bloom at a gain the rest read
+    // fine at, and the fix belongs next to the colour that misbehaves.
+    cell: mat(COL.cellBase ?? 0x0a1a20, {
+      rough: 0.3, emissive: COL.cell, emissiveIntensity: 1.6 * (COL.cellGain ?? 1), rimStrength: 0.3,
+    }),
+    body: mat(COL.skinDark, { rough: 0.6, metal: 0.2, rimStrength: 1.55, rimPower: 2.0, hemiStrength: 0.36 }),
     metal: mat(COL.metal, { rough: 0.4, metal: 0.7, rimStrength: 0.45 }),
     gun: mat(COL.gunmetal, {
-      rough: 0.42, metal: 0.45, emissive: 0x141b24, emissiveIntensity: 0.5, rimStrength: 0.7,
+      rough: 0.42, metal: 0.45, emissive: 0x141b24, emissiveIntensity: 0.5,
+      rimStrength: 1.05, rimPower: 2.3, hemiStrength: 0.30,
     }),
     visor: mat(COL.visorBase ?? 0x061418, { rough: 0.2, metal: 0.1, emissive: COL.visor, emissiveIntensity: 2.4 }),
   };
@@ -389,10 +474,11 @@ export class CharacterMesh {
     this.key = PALETTES[meshKey] ? meshKey : 'ranger';
     this.mats = makeCharacterMats(PALETTES[this.key]);
     this.cloth = CLOTH_GAIN[this.key] || CLOTH_GAIN.ranger;
+    this.pose = POSE[this.key] || POSE.ranger;
     // Per-rig presentation constants the animator reads. The body kits override
     // them; these are the Ranger's, so that rig comes out unchanged.
     this.blobScale = 1.0;
-    this.visorBase = 2.4;
+    this.visorBase = 1.9;
     this.build();
     this.initState();
   }
@@ -428,9 +514,11 @@ export class CharacterMesh {
     const rig = pivot(root, 0, 0, 0);
     this.rig = rig;
 
-    const pelvis = pivot(rig, 0, 0.92, 0);
+    // Raised, and the legs lengthened to match: this is the tall rig, and the
+    // extra 6 cm all goes into leg the shortened jacket now leaves on show.
+    const pelvis = pivot(rig, 0, 0.98, 0);
     this.pelvis = pelvis;
-    const hipBlock = boxMesh(0.34, 0.22, 0.24, M.coatDark);
+    const hipBlock = boxMesh(0.36, 0.22, 0.24, M.coatDark);
     hipBlock.position.y = -0.04;
     pelvis.add(hipBlock);
 
@@ -453,8 +541,13 @@ export class CharacterMesh {
     // is one continuous bar from the torso out into both deltoids. A yoke that
     // stops short of the shoulder pivots leaves the arms as separate objects
     // sharing a row.
-    const yoke = boxMesh(0.44, 0.09, 0.26, M.plate);
-    yoke.position.set(0, 0.20, 0);
+    //
+    // Dropped from 0.20 to 0.12 along with the shoulder pivots below. The
+    // shoulder line has to sit low enough that the helmet's underside clears it
+    // — that clearance IS the head/neck notch, and without one this rig and
+    // Anvil thresholded to the same headless lump.
+    const yoke = boxMesh(0.42, 0.085, 0.25, M.plate);
+    yoke.position.set(0, 0.12, 0);
     chest.add(yoke);
 
     const plate = boxMesh(0.29, 0.21, 0.10, M.plate);
@@ -476,7 +569,7 @@ export class CharacterMesh {
     // short (0.38 rather than 0.52) and narrow at the hem (0.24 rather than
     // 0.33) so it stops at the ribs instead of swallowing the arms and merging
     // with the coat into one continuous cone.
-    const capePivot = pivot(chest, -0.02, 0.19, -0.02);
+    const capePivot = pivot(chest, -0.02, 0.12, -0.02);
     this.cape = capePivot;
 
     const yokeGeo = new THREE.CylinderGeometry(0.205, 0.245, 0.14, 5, 1, true, Math.PI * 0.66, Math.PI * 0.84);
@@ -513,7 +606,12 @@ export class CharacterMesh {
     // light receiver plate is what actually draws the line across the back.
     const sling = new THREE.Group();
     sling.position.set(-0.03, -0.17, -0.255);
-    sling.rotation.set(0.14, 0, -0.92);
+    // Canted more upright than it was (53 deg -> 41 deg) so the stock clears the
+    // shoulder line on the left instead of stopping level with it. That spike
+    // out of the top-left of the outline is this rig's asymmetric signature —
+    // the one element that says which way round the character is standing at a
+    // size where nothing else resolves.
+    sling.rotation.set(0.14, 0, -0.72);
     capePivot.add(sling);
     const slingBody = boxMesh(0.09, 0.46, 0.13, M.gun);
     sling.add(slingBody);
@@ -536,63 +634,85 @@ export class CharacterMesh {
     slingCell.position.set(0, -0.06, 0.075);
     sling.add(slingCell);
 
-    // Coat: open-ended taper hung from the pelvis. The accent hem draws a
-    // bright line across the bottom of the dark mass.
-    const coatGeo = new THREE.CylinderGeometry(0.24, 0.30, 0.58, 7, 1, true);
-    coatGeo.translate(0, -0.29, 0);
-    const coat = new THREE.Mesh(coatGeo, M.cloth);
+    // Coat: a hip-length combat jacket, not a robe. It was 0.58 long flaring
+    // out to a 0.30 hem — the widest point on the whole character and a
+    // continuous skirt from the ribs to below the knee, which is why the rig
+    // read as an acolyte rather than as line infantry and why its legs fused
+    // into one column under threshold. At 0.34 long and barely flared it stops
+    // above the knee, so a third of this survivor's height is two separate
+    // legs with daylight between them. `M.coat` rather than `M.cloth`: the
+    // jacket is the largest surface the gameplay camera sees and it was
+    // carrying the near-black underlayer colour into the middle of the frame.
+    const coatGeo = new THREE.CylinderGeometry(0.235, 0.245, 0.34, 7, 1, true);
+    coatGeo.translate(0, -0.17, 0);
+    const coat = new THREE.Mesh(coatGeo, M.shell);
     coat.castShadow = true;
-    const coatPivot = pivot(pelvis, 0, 0.16, 0);
+    const coatPivot = pivot(pelvis, 0, 0.14, 0);
     coatPivot.add(coat);
-    const hemGeo = new THREE.CylinderGeometry(0.305, 0.31, 0.05, 7, 1, true);
-    hemGeo.translate(0, -0.56, 0);
+    const hemGeo = new THREE.CylinderGeometry(0.25, 0.255, 0.05, 7, 1, true);
+    hemGeo.translate(0, -0.325, 0);
     const hem = new THREE.Mesh(hemGeo, M.accent);
     coatPivot.add(hem);
     this.coat = coatPivot;
 
     // Head — light crown, dark jaw, hot visor. The top of the silhouette is
     // the brightest thing on the model.
-    const neck = pivot(chest, 0, 0.28, 0);
+    const neck = pivot(chest, 0, 0.24, 0);
     this.neck = neck;
-    // Bigger and lifted clear of the shoulder line: at 0.32 wide sitting level
-    // with a 0.66-wide cape there was no head/neck notch in the outline at all.
-    const helmet = new THREE.Mesh(new THREE.IcosahedronGeometry(0.19, 0), M.plate);
-    helmet.scale.set(1, 1.05, 1.08);
-    helmet.rotation.y = 0.4;
-    helmet.position.y = 0.16;
+    // A TALL NARROW BOX, and the primitive is the point. Anvil's head is a wide
+    // flat wedge and Rook's is a small dome; when the three were all rounded
+    // lumps of similar size the only thing separating them in black was overall
+    // width. This one is 0.185 wide by 0.30 tall — the tallest, narrowest head
+    // on the roster — and its underside sits 0.13 above the shoulder plane
+    // (yoke 0.12 + pad 0.09 = 0.21; helm base 0.24 + 0.20 - 0.15 = 0.29), so
+    // the outline has a real neck notch instead of a lump on a brick.
+    const helmet = boxMesh(0.185, 0.30, 0.215, M.plate);
+    helmet.position.y = 0.20;
     helmet.castShadow = true;
     neck.add(helmet);
-    const jaw = boxMesh(0.17, 0.09, 0.18, M.coatDark);
-    jaw.position.set(0, 0.02, 0.02);
+    // The thin column under it. Without a drawn neck the helm floats.
+    const throat = boxMesh(0.10, 0.12, 0.11, M.coatDark);
+    throat.position.set(0, 0.03, 0);
+    neck.add(throat);
+    const jaw = boxMesh(0.155, 0.07, 0.09, M.coatDark);
+    jaw.position.set(0, 0.09, 0.09);
     neck.add(jaw);
-    // Dark nape guard: without it the pale helm reads as one round blob from
+    // Dark nape guard: without it the pale helm reads as one flat slab from
     // the gameplay camera, which sits directly behind the head.
-    const nape = boxMesh(0.19, 0.115, 0.07, M.coat);
-    nape.position.set(0, 0.06, -0.12);
+    const nape = boxMesh(0.175, 0.13, 0.06, M.coat);
+    nape.position.set(0, 0.14, -0.13);
     neck.add(nape);
     // The visor is on the face and the camera is behind the head, so the head
     // would otherwise never own the brightest pixel on the model. This strip is
     // the visor's read from the only angle the player has.
-    const napeLamp = boxMesh(0.11, 0.028, 0.02, M.cell);
-    napeLamp.position.set(0, 0.085, -0.155);
+    const napeLamp = boxMesh(0.10, 0.026, 0.02, M.cell);
+    napeLamp.position.set(0, 0.18, -0.165);
     neck.add(napeLamp);
-    const visor = boxMesh(0.20, 0.075, 0.09, M.visor);
-    visor.position.set(0, 0.11, 0.11);
+    // A slit in a dark face, not a lamp bolted to the front of the helm. At
+    // 0.19 x 0.07 standing 0.04 proud of the shell at emissive 2.4 the visor
+    // was the single brightest object on the roster and the helmet read as a
+    // light fitting; the face panel behind it gives the glow something to be
+    // recessed into.
+    const face = boxMesh(0.155, 0.15, 0.03, M.coatDark);
+    face.position.set(0, 0.20, 0.10);
+    neck.add(face);
+    const visor = boxMesh(0.125, 0.045, 0.03, M.visor);
+    visor.position.set(0, 0.21, 0.105);
     neck.add(visor);
     this.visor = visor;
     // Crest runs front-to-back over the crown so the accent is visible from
     // behind too, which is where the camera actually is.
-    const crest = boxMesh(0.035, 0.09, 0.30, M.accent);
-    crest.position.set(0, 0.30, -0.04);
+    const crest = boxMesh(0.035, 0.085, 0.28, M.accent);
+    crest.position.set(0, 0.38, -0.03);
     crest.rotation.x = -0.12;
     neck.add(crest);
     // Off-centre antenna: a single asymmetric spike out of the head profile.
-    const antenna = boxMesh(0.022, 0.30, 0.022, M.metal);
-    antenna.position.set(-0.115, 0.33, -0.05);
-    antenna.rotation.set(-0.28, 0, 0.34);
+    const antenna = boxMesh(0.022, 0.32, 0.022, M.metal);
+    antenna.position.set(-0.105, 0.44, -0.05);
+    antenna.rotation.set(-0.28, 0, 0.30);
     neck.add(antenna);
     const beacon = boxMesh(0.04, 0.04, 0.04, M.cell);
-    beacon.position.set(-0.16, 0.47, -0.09);
+    beacon.position.set(-0.155, 0.59, -0.09);
     neck.add(beacon);
 
     // Arms
@@ -609,8 +729,12 @@ export class CharacterMesh {
       // shoulder, and still 0.075 clear of the cape at the outside. The arm now
       // separates from the body by VALUE (dark limb under a light yoke), which
       // is what it should have been doing all along.
-      const shoulder = pivot(chest, 0.215 * side, 0.20, 0);
-      const pad = new THREE.Mesh(new THREE.IcosahedronGeometry(0.115, 0), M.coat);
+      // Dropped to 0.12 and slimmed to a 0.09 pad. The shoulder line is now the
+      // narrowest and lowest on the roster, which is what leaves room for the
+      // tall helm above it and for the arms — abducted 0.40 rad by POSE.ranger
+      // — to open ~0.07 of daylight either side of the ribs.
+      const shoulder = pivot(chest, 0.205 * side, 0.12, 0);
+      const pad = new THREE.Mesh(new THREE.IcosahedronGeometry(0.09, 0), M.coat);
       pad.scale.set(1.15, 0.9, 1.0);
       pad.castShadow = true;
       shoulder.add(pad);
@@ -618,13 +742,13 @@ export class CharacterMesh {
         // One pauldron plane, not two. The second plate was a 0.19 slab sitting
         // 0.06 below the first at a different angle, and at gameplay distance
         // the pair read as noise rather than as layered armour.
-        const p1 = boxMesh(0.23, 0.11, 0.25, M.plate);
-        p1.position.set(-0.04, 0.045, 0);
+        const p1 = boxMesh(0.20, 0.095, 0.22, M.plate);
+        p1.position.set(-0.035, 0.04, 0);
         p1.rotation.z = 0.32;
         shoulder.add(p1);
       } else {
-        const cap = boxMesh(0.16, 0.075, 0.17, M.plateMid);
-        cap.position.set(0.015, 0.055, 0);
+        const cap = boxMesh(0.145, 0.07, 0.155, M.plateMid);
+        cap.position.set(0.015, 0.05, 0);
         shoulder.add(cap);
       }
       // Fat at the deltoid, thin at the elbow: the taper is what reads as an
@@ -681,13 +805,16 @@ export class CharacterMesh {
     this.legs = {};
     for (const side of [-1, 1]) {
       const key = side < 0 ? 'L' : 'R';
-      const hip = pivot(pelvis, 0.115 * side, -0.10, 0);
-      const thigh = limb(0.42, 0.085, 0.068, M.coatDark);
+      const hip = pivot(pelvis, 0.135 * side, -0.10, 0);
+      // Shell rather than underlayer. The thighs are ~9% of the survivor's
+      // pixels in the gameplay frame and they were the deepest value on it,
+      // which is what pulled the whole body mean down into the terrain's range.
+      const thigh = limb(0.46, 0.085, 0.068, M.coat);
       hip.add(thigh);
-      const knee = pivot(hip, 0, -0.42, 0);
-      const shin = limb(0.40, 0.075, 0.055, M.plate);
+      const knee = pivot(hip, 0, -0.46, 0);
+      const shin = limb(0.42, 0.075, 0.055, M.plate);
       knee.add(shin);
-      const ankle = pivot(knee, 0, -0.40, 0);
+      const ankle = pivot(knee, 0, -0.42, 0);
       const boot = boxMesh(0.12, 0.10, 0.26, M.coatDark);
       boot.position.set(0, -0.03, 0.04);
       ankle.add(boot);
@@ -740,8 +867,8 @@ export class CharacterMesh {
     // Barrel torso, hunched forward. Wider at the shoulders than at the waist
     // — an inverted taper is the classic heavy read and the opposite of the
     // Ranger's.
-    const torso = limb(0.40, 0.34, 0.24, M.coat, 6);
-    torso.position.y = 0.22;
+    const torso = limb(0.54, 0.36, 0.24, M.coat, 6);
+    torso.position.y = 0.36;
     torso.scale.z = 0.78;
     chest.add(torso);
 
@@ -779,11 +906,11 @@ export class CharacterMesh {
     for (const side of [-1, 1]) {
       const stack = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.075, 0.34, 5), M.metal);
       stack.castShadow = true;
-      stack.position.set(0.16 * side, 0.10, -0.24);
+      stack.position.set(0.16 * side, 0.22, -0.24);
       stack.rotation.set(-0.42, 0, 0.16 * side);
       capePivot.add(stack);
       const cap = boxMesh(0.09, 0.05, 0.09, M.accent);
-      cap.position.set(0.20 * side, 0.25, -0.32);
+      cap.position.set(0.20 * side, 0.37, -0.32);
       capePivot.add(cap);
     }
 
@@ -792,21 +919,27 @@ export class CharacterMesh {
     this.coat = coatPivot;
     for (let i = 0; i < 4; i++) {
       const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
-      const tass = boxMesh(0.19, 0.28, 0.09, i % 2 ? M.plateMid : M.coatDark);
-      tass.position.set(Math.sin(a) * 0.21, -0.20, Math.cos(a) * 0.19);
+      const tass = boxMesh(0.19, 0.24, 0.09, i % 2 ? M.plateMid : M.coatDark);
+      tass.position.set(Math.sin(a) * 0.22, -0.18, Math.cos(a) * 0.19);
       tass.rotation.y = a;
       tass.rotation.x = -Math.cos(a) * 0.16;
       coatPivot.add(tass);
     }
-    const hem = boxMesh(0.34, 0.05, 0.30, M.accent);
-    hem.position.y = -0.34;
-    coatPivot.add(hem);
+    // Two hem bars rather than one. A single 0.34-wide plate across the bottom
+    // of the tassets welded the crotch shut and took the inner-leg gap with it,
+    // which is half of why this rig and the Ranger thresholded to the same
+    // fused column.
+    for (const side of [-1, 1]) {
+      const hem = boxMesh(0.15, 0.05, 0.28, M.accent);
+      hem.position.set(0.16 * side, -0.30, 0);
+      coatPivot.add(hem);
+    }
 
     // Head: no neck. A wide low cowl with a horizontal amber bar, sunk far
     // enough between the shoulders that the outline has no head/neck notch at
     // all — which is the *opposite* of the note on the Ranger's helmet, and is
     // deliberate: absence of a neck is this character's read.
-    const neck = pivot(chest, 0, 0.24, 0);
+    const neck = pivot(chest, 0, 0.20, 0);
     this.neck = neck;
     const cowl = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.23, 0.20, 6), M.plate);
     cowl.castShadow = true;
@@ -823,8 +956,8 @@ export class CharacterMesh {
     // Two short horns raked backwards. They break the flat top without ever
     // making the head *tall*, which would cost the squat read.
     for (const side of [-1, 1]) {
-      const horn = boxMesh(0.05, 0.20, 0.05, M.metal);
-      horn.position.set(0.15 * side, 0.20, -0.05);
+      const horn = boxMesh(0.05, 0.17, 0.05, M.metal);
+      horn.position.set(0.15 * side, 0.19, -0.05);
       horn.rotation.set(-0.55, 0, 0.35 * side);
       neck.add(horn);
     }
@@ -836,7 +969,13 @@ export class CharacterMesh {
     this.arms = {};
     for (const side of [-1, 1]) {
       const key = side < 0 ? 'L' : 'R';
-      const shoulder = pivot(chest, 0.28 * side, 0.22, 0);
+      // Raised from 0.22 to 0.33, which puts both pauldrons ABOVE the cowl.
+      // That is the read: the widest band of this silhouette is its topmost
+      // band, and the head is a notch cut down into it — the exact inverse of
+      // the Ranger's narrow shoulders under a tall helm. Two rigs cannot
+      // threshold to the same shape when one is a triangle standing on its
+      // point and the other on its base.
+      const shoulder = pivot(chest, 0.30 * side, 0.33, 0);
       const pad = new THREE.Mesh(new THREE.IcosahedronGeometry(0.17, 0), M.coat);
       pad.scale.set(1.2, 0.95, 1.05);
       pad.castShadow = true;
@@ -845,18 +984,23 @@ export class CharacterMesh {
       if (side < 0) {
         // Left: a single huge slab pauldron canted outward. It is the widest
         // point of the whole character.
-        const slab = boxMesh(0.34, 0.15, 0.34, M.plate);
-        slab.position.set(-0.09, 0.09, 0);
-        slab.rotation.z = 0.42;
+        const slab = boxMesh(0.40, 0.17, 0.38, M.plate);
+        slab.position.set(-0.12, 0.12, 0);
+        slab.rotation.z = 0.52;
         shoulder.add(slab);
-        const lip = boxMesh(0.34, 0.05, 0.10, M.accent);
-        lip.position.set(-0.13, 0.01, 0.13);
-        lip.rotation.z = 0.42;
+        const lip = boxMesh(0.38, 0.055, 0.11, M.accent);
+        lip.position.set(-0.16, 0.02, 0.15);
+        lip.rotation.z = 0.52;
         shoulder.add(lip);
       } else {
-        const cap = boxMesh(0.22, 0.10, 0.24, M.plateMid);
-        cap.position.set(0.03, 0.09, 0);
+        const cap = boxMesh(0.26, 0.12, 0.28, M.plateMid);
+        cap.position.set(0.05, 0.11, 0);
+        cap.rotation.z = -0.30;
         shoulder.add(cap);
+        const rivet = boxMesh(0.24, 0.05, 0.10, M.accent);
+        rivet.position.set(0.07, 0.04, 0.15);
+        rivet.rotation.z = -0.30;
+        shoulder.add(rivet);
       }
 
       const upper = limb(0.28, 0.135, 0.10, M.body);
@@ -904,7 +1048,10 @@ export class CharacterMesh {
     this.legs = {};
     for (const side of [-1, 1]) {
       const key = side < 0 ? 'L' : 'R';
-      const hip = pivot(pelvis, 0.155 * side, -0.08, 0);
+      // Narrower than Rook's on purpose. Anvil is a triangle standing on its
+      // point: the mass belongs at the pauldrons and the feet have to be the
+      // narrow end for that to read.
+      const hip = pivot(pelvis, 0.145 * side, -0.08, 0);
       const thigh = limb(0.36, 0.135, 0.11, M.coatDark);
       hip.add(thigh);
       const knee = pivot(hip, 0, -0.36, 0);
@@ -1145,35 +1292,40 @@ export class CharacterMesh {
   /* ---------------------------------------------------------------------- */
   /* ROOK — the engineer.                                                    */
   /*                                                                         */
-  /* Read: A BOX WITH TWO DIAGONAL SPIKES. ~1.6 m, wide but not heavy, and    */
-  /* squarer than anything else here — every mass is a rectangle where Anvil */
-  /* is a barrel and Kestrel is a needle. The gear rack on the back throws    */
-  /* two exhaust stacks and a folded crane arm out past the shoulder line at  */
-  /* angles nothing else on the roster has, and the head is a small dome with */
-  /* no crest, so the outline reads as equipment carrying a person.           */
+  /* Read: BOTTOM-HEAVY. A wide planted base under narrow shoulders and a     */
+  /* small dome, with one thin mast out of the rack — the inverse of Anvil's  */
+  /* top-heavy triangle, which is the pair that used to threshold at 0.80 IoU */
+  /* to each other. Widest band is the boots, not the shoulders; the width    */
+  /* profile therefore *grows* downward where every other rig on the roster   */
+  /* shrinks, and that curve is what tells the two apart in pure black even   */
+  /* though both are short and both are square.                               */
   /* ---------------------------------------------------------------------- */
 
   buildRook() {
     const M = this.mats;
     const root = new THREE.Group();
     this.group = root;
-    this.blobScale = 1.15;
-    this.visorBase = 2.2;
+    this.blobScale = 1.25;
+    // Stopped down with `cellGain`: the old 2.2 over a wrap-around visor band
+    // put 3.4% of this rig above L=200 and flattened the whole head and chest
+    // into one bright value.
+    this.visorBase = 1.35;
 
     const rig = pivot(root, 0, 0, 0);
     this.rig = rig;
 
-    const pelvis = pivot(rig, 0, 0.78, 0);
+    const pelvis = pivot(rig, 0, 0.74, 0);
     this.pelvis = pelvis;
-    const hipBlock = boxMesh(0.38, 0.22, 0.26, M.coatDark);
+    // Wide hip block — this is where the mass lives on this rig.
+    const hipBlock = boxMesh(0.46, 0.24, 0.30, M.coatDark);
     hipBlock.position.y = -0.04;
     pelvis.add(hipBlock);
     // Tool belt: four small pouches around the waist. Cheap, and it is the
     // detail that says "carries things" at close range.
     for (let i = 0; i < 4; i++) {
       const a = (i / 4) * Math.PI * 2 + 0.7;
-      const pouch = boxMesh(0.11, 0.13, 0.09, i % 2 ? M.plateMid : M.coat);
-      pouch.position.set(Math.sin(a) * 0.20, -0.06, Math.cos(a) * 0.16);
+      const pouch = boxMesh(0.12, 0.15, 0.10, i % 2 ? M.plateMid : M.coat);
+      pouch.position.set(Math.sin(a) * 0.24, -0.06, Math.cos(a) * 0.18);
       pouch.rotation.y = a;
       pelvis.add(pouch);
     }
@@ -1186,70 +1338,94 @@ export class CharacterMesh {
     // A rectangular torso — literally a box, where every other rig uses a
     // tapered cylinder. Flat-sided masses catch the key light in flat planes,
     // which is what makes this one read as hardware.
-    const torso = boxMesh(0.46, 0.40, 0.28, M.coat);
+    // Narrowed from 0.46 to 0.36: the shoulders have to be the *narrow* end of
+    // this rig for the base to read as the wide one.
+    const torso = boxMesh(0.36, 0.40, 0.26, M.coat);
     torso.position.y = 0.16;
     chest.add(torso);
-    const apron = boxMesh(0.42, 0.24, 0.09, M.plate);
-    apron.position.set(0, 0.10, 0.17);
+    const apron = boxMesh(0.33, 0.24, 0.09, M.plate);
+    apron.position.set(0, 0.10, 0.16);
     chest.add(apron);
-    const gauge = boxMesh(0.10, 0.10, 0.04, M.cell);
-    gauge.position.set(-0.13, 0.22, 0.22);
+    // Was a 0.10 square panel of full-gain emissive; now a small lamp at half
+    // gain, which is the difference between a light on a chest and a chest that
+    // is a light.
+    const gauge = boxMesh(0.055, 0.055, 0.03, M.cell);
+    gauge.position.set(-0.11, 0.22, 0.21);
     chest.add(gauge);
-    const hazard = boxMesh(0.30, 0.05, 0.03, M.accent);
-    hazard.position.set(0.03, 0.02, 0.225);
+    const hazard = boxMesh(0.24, 0.05, 0.03, M.accent);
+    hazard.position.set(0.02, 0.02, 0.215);
     chest.add(hazard);
 
     // The rack. This is the character.
     const capePivot = pivot(chest, 0, 0.18, -0.02);
     this.cape = capePivot;
-    const pack = boxMesh(0.44, 0.42, 0.24, M.coatDark);
-    pack.position.set(0, -0.12, -0.24);
+    const pack = boxMesh(0.34, 0.34, 0.22, M.coatDark);
+    pack.position.set(0, -0.12, -0.23);
     capePivot.add(pack);
-    const packFace = boxMesh(0.34, 0.16, 0.06, M.plateMid);
-    packFace.position.set(0, -0.02, -0.37);
+    const packFace = boxMesh(0.26, 0.14, 0.06, M.plateMid);
+    packFace.position.set(0, -0.04, -0.35);
     capePivot.add(packFace);
-    const packCell = boxMesh(0.26, 0.06, 0.04, M.cell);
+    const packCell = boxMesh(0.16, 0.045, 0.04, M.cell);
     packCell.position.set(0, -0.20, -0.375);
     capePivot.add(packCell);
-    // Two stacks raked out and back at opposing angles — the diagonals that
-    // stop the pack from being a plain slab in the outline.
-    for (const side of [-1, 1]) {
-      const stack = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.07, 0.46, 5), M.metal);
-      stack.castShadow = true;
-      stack.position.set(0.19 * side, 0.10, -0.26);
-      stack.rotation.set(-0.30, 0, 0.34 * side);
-      capePivot.add(stack);
-      const cowl = boxMesh(0.10, 0.08, 0.10, M.accent);
-      cowl.position.set(0.29 * side, 0.32, -0.32);
-      capePivot.add(cowl);
-    }
+    // ONE tall mast, off-centre, plus one short stack on the other side. The
+    // symmetric pair of raked stacks that used to be here read as a second set
+    // of shoulders; a single thin vertical out of the top of the rack is a
+    // shape nothing else on the roster has, and its off-centre placement is
+    // what makes the crown of this silhouette asymmetric.
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.045, 0.38, 5), M.metal);
+    mast.castShadow = true;
+    mast.position.set(-0.15, 0.22, -0.24);
+    mast.rotation.set(-0.10, 0, 0.10);
+    capePivot.add(mast);
+    const mastLamp = boxMesh(0.055, 0.055, 0.055, M.cell);
+    mastLamp.position.set(-0.18, 0.43, -0.21);
+    capePivot.add(mastLamp);
+    const stack = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.075, 0.24, 5), M.metal);
+    stack.castShadow = true;
+    stack.position.set(0.17, 0.10, -0.26);
+    stack.rotation.set(-0.24, 0, -0.30);
+    capePivot.add(stack);
+    const cowl = boxMesh(0.10, 0.07, 0.10, M.accent);
+    cowl.position.set(0.23, 0.21, -0.29);
+    capePivot.add(cowl);
     // Folded crane arm over the right shoulder: two segments at a hard angle,
-    // reaching forward past the head. It is the asymmetry.
+    // reaching forward past the head. It is the asymmetry. Dropped 0.14 so it
+    // folds at shoulder height instead of over the crown — the top band of this
+    // silhouette has to be narrow (a small dome and one thin mast) for the base
+    // to read as the wide end, and a claw up there made the crown as broad as
+    // Anvil's pauldrons.
     const craneA = boxMesh(0.075, 0.34, 0.075, M.gun);
-    craneA.position.set(0.20, 0.16, -0.16);
+    craneA.position.set(0.20, 0.02, -0.16);
     craneA.rotation.set(0.5, 0, -0.18);
     craneA.castShadow = true;
     capePivot.add(craneA);
     const craneB = boxMesh(0.065, 0.30, 0.065, M.plateMid);
-    craneB.position.set(0.23, 0.36, 0.05);
+    craneB.position.set(0.23, 0.22, 0.05);
     craneB.rotation.set(1.25, 0, -0.18);
     craneB.castShadow = true;
     capePivot.add(craneB);
     const claw = boxMesh(0.09, 0.08, 0.14, M.accent);
-    claw.position.set(0.25, 0.42, 0.22);
+    claw.position.set(0.25, 0.28, 0.22);
     capePivot.add(claw);
 
-    // Short work apron at the hips.
+    // Short, wide work apron at the hips. It flares hard and stops high — the
+    // flare is what makes the lower half of this rig the wide half, and
+    // stopping at 0.22 is what leaves the legs visible below it. The hem is
+    // two side bars for the same reason Anvil's is: a full-width plate closes
+    // the inner-leg gap this rig is being graded on.
     const coatPivot = pivot(pelvis, 0, 0.02, 0);
     this.coat = coatPivot;
-    const skirtGeo = new THREE.CylinderGeometry(0.23, 0.28, 0.32, 6, 1, true);
-    skirtGeo.translate(0, -0.20, 0);
-    const skirt = new THREE.Mesh(skirtGeo, M.cloth);
+    const skirtGeo = new THREE.CylinderGeometry(0.26, 0.39, 0.24, 6, 1, true);
+    skirtGeo.translate(0, -0.16, 0);
+    const skirt = new THREE.Mesh(skirtGeo, M.shell);
     skirt.castShadow = true;
     coatPivot.add(skirt);
-    const skirtHem = boxMesh(0.36, 0.05, 0.30, M.plateMid);
-    skirtHem.position.y = -0.35;
-    coatPivot.add(skirtHem);
+    for (const side of [-1, 1]) {
+      const skirtHem = boxMesh(0.19, 0.06, 0.32, M.plateMid);
+      skirtHem.position.set(0.24 * side, -0.28, 0);
+      coatPivot.add(skirtHem);
+    }
 
     // Head: a small dome, no crest, one wide green band. Small on purpose —
     // it is what makes the rack read as bigger than the person wearing it.
@@ -1260,34 +1436,35 @@ export class CharacterMesh {
     dome.position.y = 0.10;
     dome.castShadow = true;
     neck.add(dome);
-    const collar = boxMesh(0.26, 0.09, 0.22, M.coatDark);
+    const collar = boxMesh(0.24, 0.09, 0.20, M.coatDark);
     collar.position.set(0, -0.02, 0);
     neck.add(collar);
-    // The band wraps: it is visible from behind, which is where the camera is.
-    const visor = boxMesh(0.24, 0.06, 0.24, M.visor);
-    visor.position.set(0, 0.09, 0.02);
+    // A face strip and a rear pip, not a band around the whole skull. The wrap
+    // version was 0.24 x 0.24 of emissive on a 0.155 head — the head *was* the
+    // lamp, and the dome's own value never had a chance to read.
+    const visor = boxMesh(0.14, 0.045, 0.05, M.visor);
+    visor.position.set(0, 0.09, 0.11);
     neck.add(visor);
     this.visor = visor;
-    const lamp = boxMesh(0.09, 0.07, 0.06, M.cell);
-    lamp.position.set(-0.13, 0.17, 0.05);
+    const tail = boxMesh(0.06, 0.03, 0.03, M.cell);
+    tail.position.set(0, 0.12, -0.13);
+    neck.add(tail);
+    const lamp = boxMesh(0.06, 0.05, 0.05, M.cell);
+    lamp.position.set(-0.13, 0.15, 0.04);
     lamp.rotation.z = 0.4;
     neck.add(lamp);
-    const antenna = boxMesh(0.02, 0.26, 0.02, M.metal);
-    antenna.position.set(0.11, 0.26, -0.06);
-    antenna.rotation.set(-0.2, 0, -0.26);
-    neck.add(antenna);
 
     // Arms: short, thick, wrapped in tool bracers.
     this.arms = {};
     for (const side of [-1, 1]) {
       const key = side < 0 ? 'L' : 'R';
-      const shoulder = pivot(chest, 0.245 * side, 0.24, 0);
-      const pad = boxMesh(0.17, 0.15, 0.22, M.coat);
+      const shoulder = pivot(chest, 0.20 * side, 0.24, 0);
+      const pad = boxMesh(0.15, 0.14, 0.20, M.coat);
       pad.position.set(0.01 * side, 0.01, 0);
       pad.castShadow = true;
       shoulder.add(pad);
-      const cap = boxMesh(0.19, 0.06, 0.24, side < 0 ? M.plate : M.plateMid);
-      cap.position.set(0, 0.08, 0);
+      const cap = boxMesh(0.17, 0.055, 0.22, side < 0 ? M.plate : M.plateMid);
+      cap.position.set(0, 0.075, 0);
       shoulder.add(cap);
 
       const upper = limb(0.24, 0.10, 0.075, M.body);
@@ -1348,21 +1525,24 @@ export class CharacterMesh {
     this.legs = {};
     for (const side of [-1, 1]) {
       const key = side < 0 ? 'L' : 'R';
-      const hip = pivot(pelvis, 0.13 * side, -0.08, 0);
-      const thigh = limb(0.34, 0.11, 0.09, M.coatDark);
+      // Planted wide: hips at 0.165 splayed a further 0.165 rad by POSE.rook
+      // put the boots out past everything above them, which is the whole
+      // bottom-heavy read.
+      const hip = pivot(pelvis, 0.185 * side, -0.08, 0);
+      const thigh = limb(0.32, 0.115, 0.095, M.coatDark);
       hip.add(thigh);
-      const knee = pivot(hip, 0, -0.34, 0);
-      const shin = limb(0.32, 0.10, 0.085, M.plate);
+      const knee = pivot(hip, 0, -0.32, 0);
+      const shin = limb(0.30, 0.105, 0.09, M.plate);
       knee.add(shin);
-      const pad = boxMesh(0.15, 0.10, 0.11, M.plateMid);
+      const pad = boxMesh(0.16, 0.11, 0.12, M.plateMid);
       pad.position.set(0, -0.05, 0.05);
       knee.add(pad);
-      const ankle = pivot(knee, 0, -0.32, 0);
-      const boot = boxMesh(0.18, 0.14, 0.30, M.coatDark);
-      boot.position.set(0, -0.05, 0.04);
+      const ankle = pivot(knee, 0, -0.30, 0);
+      const boot = boxMesh(0.25, 0.15, 0.32, M.coatDark);
+      boot.position.set(0, -0.055, 0.04);
       ankle.add(boot);
-      const toe = boxMesh(0.17, 0.05, 0.08, M.accent);
-      toe.position.set(0, -0.09, 0.17);
+      const toe = boxMesh(0.24, 0.05, 0.09, M.accent);
+      toe.position.set(0, -0.10, 0.18);
       ankle.add(toe);
       this.legs[key] = { hip, knee, ankle };
     }
@@ -1519,8 +1699,15 @@ export class CharacterMesh {
     // contact half of the cycle, then toes off.
     legs.L.ankle.rotation.x = (-swing * 0.35 + Math.max(0, swing) * 0.30) * amp;
     legs.R.ankle.rotation.x = (-swing2 * 0.35 + Math.max(0, swing2) * 0.30) * amp;
-    legs.L.hip.rotation.z = 0.04 + swing * 0.05 * amp;
-    legs.R.hip.rotation.z = -0.04 - swing2 * 0.05 * amp;
+    // Stance. Negative on the left / positive on the right splays the legs
+    // apart; the old +0.04/-0.04 pair did the exact opposite and closed the
+    // inner-leg gap. The ankle counter-rotates by the same angle so a wide
+    // stance still plants both soles flat on the ground.
+    const P = this.pose;
+    legs.L.hip.rotation.z = -P.stance + swing * 0.05 * amp;
+    legs.R.hip.rotation.z = P.stance - swing2 * 0.05 * amp;
+    legs.L.ankle.rotation.z = P.stance;
+    legs.R.ankle.rotation.z = -P.stance;
 
     // Hip counter-rotation + chest counter-counter-rotation.
     this.pelvis.rotation.y = -swing * 0.20 * amp;
@@ -1560,7 +1747,7 @@ export class CharacterMesh {
     // --- torso: lean, sprint crouch, dash tilt -----------------------------
     const lean = this.sLean.value;
     const sprint = this.sSprint.value;
-    this.spine.rotation.x = ground * (lean * 0.16 + sprint * 0.14 * S) + dash * 0.30 + air * 0.05;
+    this.spine.rotation.x = P.lean + ground * (lean * 0.16 + sprint * 0.14 * S) + dash * 0.30 + air * 0.05;
     this.spine.rotation.z = -this.sStrafe.value * 0.10;
 
     // --- 5. upper-body aim override ----------------------------------------
@@ -1579,15 +1766,15 @@ export class CharacterMesh {
     const swingArm = -swing * 0.62 * amp;
     armL.shoulder.rotation.x = swingArm * -1;
     armR.shoulder.rotation.x = swingArm;
-    armL.shoulder.rotation.z = 0.16 + amp * 0.05;
-    armR.shoulder.rotation.z = -0.16 - amp * 0.05;
-    armL.elbow.rotation.x = -0.35 - amp * 0.45;
-    armR.elbow.rotation.x = -0.35 - amp * 0.45;
+    armL.shoulder.rotation.z = -P.armZ - amp * 0.05;
+    armR.shoulder.rotation.z = P.armZ + amp * 0.05;
+    armL.elbow.rotation.x = P.elbow - amp * 0.45;
+    armR.elbow.rotation.x = P.elbow - amp * 0.45;
 
     if (air > 0.001) {
       const fall = clamp(-rise, 0, 1);
       armL.shoulder.rotation.x = lerp(armL.shoulder.rotation.x, -0.9 - fall * 0.5, air * 0.8);
-      armL.shoulder.rotation.z = lerp(armL.shoulder.rotation.z, 0.45 + fall * 0.35, air);
+      armL.shoulder.rotation.z = lerp(armL.shoulder.rotation.z, -0.45 - fall * 0.35, air);
       armL.elbow.rotation.x = lerp(armL.elbow.rotation.x, -1.3 + fall * 0.6, air);
     }
 
@@ -1598,8 +1785,12 @@ export class CharacterMesh {
     const resPitch = -ap - this.chest.rotation.x;
     const aimWeight = 1 - dash * 0.75;
     armR.shoulder.rotation.x = lerp(armR.shoulder.rotation.x, -Math.PI / 2 + resPitch + recoil * 0.55, aimWeight);
-    armR.shoulder.rotation.y = lerp(armR.shoulder.rotation.y, resYaw * 0.9 - 0.12, aimWeight);
-    armR.shoulder.rotation.z = lerp(armR.shoulder.rotation.z, 0.06, aimWeight);
+    armR.shoulder.rotation.y = lerp(armR.shoulder.rotation.y, resYaw * 0.9 + P.gunY, aimWeight);
+    // Held out from the ribs rather than against them. The weapon arm is the
+    // one the aim override owns outright, so if the daylight either side of the
+    // torso is going to survive it has to be put back here — a flat 0.06 tucked
+    // the gun arm into the coat on every rig regardless of what it was holding.
+    armR.shoulder.rotation.z = lerp(armR.shoulder.rotation.z, P.gunZ, aimWeight);
     armR.elbow.rotation.x = lerp(armR.elbow.rotation.x, -0.20 + recoil * 0.35, aimWeight);
     // Support hand drifts toward the weapon while firing.
     const support = clamp(-recoil * 2.5, 0, 1);
