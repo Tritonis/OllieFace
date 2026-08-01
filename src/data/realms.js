@@ -74,16 +74,28 @@ export const REALMS = [
     objective: 'Spend what you have, then take the portal',
     toast: 'The Hollow Market',
     air: air({
-      // A vaulted interior lit by its own lanterns: violet dark above, amber
-      // pooled light below. The one place in the game with no sun in it.
-      zenith: 0x160f26, horizon: 0x3a2338, haze: 0x6b3f44, ground: 0x0d0a14,
-      sun: 0xffbe7a, cloud: 0x2a1f38, cloudAmount: 0.9, hazePow: 5.0,
-      ceiling: 0x1a1224, ceilingAmount: 0.85,
-      fogColor: 0x2a1c30, fogDensity: 0.016,
-      sunEl: 62, sunAz: 210, sunColor: 0xffc98e, sunIntensity: 2.2,
-      hemiSky: 0x5a3f78, hemiGround: 0x2a1a12, hemiIntensity: 0.85,
-      rim: 0xff9a5a, rimIntensity: 1.9, envIntensity: 0.45,
-      dustColor: 0xffd8a0, dustOpacity: 0.55,
+      // **Safe is a light level, not a caption.**
+      //
+      // The first pass dressed this room amber-on-amber and it measured 52.5
+      // mean luma against the Crucible's 52.4 — the hub and the kill-pit were
+      // photometrically the same place, and the only thing saying "safe" was a
+      // HUD string. Safety in a shooter reads as *high key, low contrast, cool
+      // fill, warm pools*: a bright hall you can see the whole of, with nothing
+      // in shadow that could be holding something.
+      //
+      // So: a pale limestone vault under a cool ivory-teal fill, roughly twice
+      // the light level of anywhere else in the run, and the lanterns are the
+      // only warm thing in it. Amber against cool reads as hearth; amber
+      // against amber reads as fire.
+      zenith: 0x2e4650, horizon: 0x55707a, haze: 0x7d989c, ground: 0x223036,
+      sun: 0xdcecf0, cloud: 0x47606a, cloudAmount: 0.55, hazePow: 4.0,
+      ceiling: 0x46606a, ceilingAmount: 0.92,
+      fogColor: 0x3d545c, fogDensity: 0.011,
+      sunEl: 74, sunAz: 210, sunColor: 0xe8f6fa, sunIntensity: 3.2,
+      hemiSky: 0x86a8b6, hemiGround: 0x4a575c, hemiIntensity: 1.55,
+      // The one warm channel, and it comes from behind: lantern bounce.
+      rim: 0xffb070, rimIntensity: 1.2, envIntensity: 1.3,
+      dustColor: 0xffd8a0, dustOpacity: 0.28,
     }),
   },
 
@@ -104,14 +116,25 @@ export const REALMS = [
     objective: 'Survive the trial',
     toast: 'The Crucible',
     air: air({
-      zenith: 0x2a0f10, horizon: 0x8c3a16, haze: 0xd4661e, ground: 0x160808,
-      sun: 0xffb060, cloud: 0x3a1810, cloudAmount: 0.95, hazePow: 6.0,
-      ceiling: 0x200c0c, ceilingAmount: 0.7,
-      fogColor: 0x4a1c14, fogDensity: 0.013,
-      sunEl: 68, sunAz: 300, sunColor: 0xffa050, sunIntensity: 3.4,
-      hemiSky: 0x7a3020, hemiGround: 0x3a1408, hemiIntensity: 0.7,
-      rim: 0xff5a20, rimIntensity: 2.2, envIntensity: 0.5,
-      dustColor: 0xffb070, dustOpacity: 0.7,
+      // **Cold iron with the fire underneath it.**
+      //
+      // The first pass lit the whole pit orange, which put it 8.6 dE from an
+      // ordinary biome and 11 dE from the safe hub. The heat is now confined to
+      // the floor seam and the braziers: everything the light *touches* is cold
+      // blue-grey steel, so the only chroma in frame comes from below and the
+      // room reads as a furnace you are standing on top of rather than one you
+      // are inside. Half the hub's light level, and a third of its p90 — the
+      // pit is the darkest walled room in the game.
+      zenith: 0x070a10, horizon: 0x1b2634, haze: 0x2e4258, ground: 0x04060a,
+      sun: 0xb8cee0, cloud: 0x121a26, cloudAmount: 0.9, hazePow: 6.0,
+      ceiling: 0x0b1018, ceilingAmount: 0.88,
+      fogColor: 0x101823, fogDensity: 0.022,
+      sunEl: 74, sunAz: 300, sunColor: 0x9fbcd6, sunIntensity: 1.5,
+      hemiSky: 0x2c3e52, hemiGround: 0x0d1016, hemiIntensity: 0.55,
+      // The pit's own glow, bounced back up the walls. Kept low so it tints
+      // rather than repaints.
+      rim: 0xff5218, rimIntensity: 0.9, envIntensity: 0.30,
+      dustColor: 0xff8a3a, dustOpacity: 0.34,
     }),
   },
 
@@ -126,14 +149,23 @@ export const REALMS = [
     objective: 'Break the Vault Warden',
     toast: 'The Gilded Vault',
     air: air({
-      zenith: 0x1a1608, horizon: 0xa8791e, haze: 0xffd07a, ground: 0x120e06,
-      sun: 0xfff0c0, cloud: 0x2e2410, cloudAmount: 0.8, hazePow: 7.0,
-      ceiling: 0x181206, ceilingAmount: 0.6,
-      fogColor: 0x3a2e12, fogDensity: 0.011,
-      sunEl: 64, sunAz: 60, sunColor: 0xffe4a8, sunIntensity: 3.8,
-      hemiSky: 0x6a5420, hemiGround: 0x2a1e08, hemiIntensity: 0.75,
-      rim: 0xffc850, rimIntensity: 1.6, envIntensity: 0.9,
-      dustColor: 0xffe0a0, dustOpacity: 0.62,
+      // **Gold, and nothing else, on true black.**
+      //
+      // The first pass washed the whole room amber, so the gold had nothing to
+      // read against and the frame sat 10.4 dE from an ordinary biome. The
+      // walls now go to near-black and the ambient carries almost no light at
+      // all: every lit thing in frame is either metal or the prize, and the
+      // key is a single hard downlight over the dais. It is also pushed off
+      // amber towards true yellow-gold (b* up, a* down), which is the axis the
+      // base game's warm biomes do not own.
+      zenith: 0x070604, horizon: 0x241a06, haze: 0x4e3806, ground: 0x030202,
+      sun: 0xffeaa0, cloud: 0x141005, cloudAmount: 0.85, hazePow: 7.5,
+      ceiling: 0x090704, ceilingAmount: 0.92,
+      fogColor: 0x0e0b04, fogDensity: 0.019,
+      sunEl: 70, sunAz: 60, sunColor: 0xffe08a, sunIntensity: 2.6,
+      hemiSky: 0x3c3110, hemiGround: 0x090704, hemiIntensity: 0.30,
+      rim: 0xffc63c, rimIntensity: 0.8, envIntensity: 1.7,
+      dustColor: 0xffd257, dustOpacity: 0.44,
     }),
   },
 
@@ -154,9 +186,19 @@ export const REALMS = [
       sun: 0xd9b0ff, cloud: 0x18102a, cloudAmount: 0.55, hazePow: 4.0,
       ceiling: 0x0c0820, ceilingAmount: 0.4,
       fogColor: 0x1a1030, fogDensity: 0.0075,
-      sunEl: 12, sunAz: 145, sunColor: 0xc9a8ff, sunIntensity: 2.6,
-      hemiSky: 0x4a2f8a, hemiGround: 0x140a24, hemiIntensity: 0.8,
-      rim: 0xff4ad0, rimIntensity: 2.4, envIntensity: 0.55,
+      // The rim came down hard (2.4 -> 1.0) and the key went up. At 2.4 the
+      // magenta back light was winning the fresnel term on every rounded
+      // surface in frame, which is why the Herald photographed as one flat pink
+      // mass with no shading between shell, mantle and crown: it had no shadow
+      // side left to have. A stronger raking key and a quieter rim gives the
+      // boss a lit half and a dark half.
+      // Azimuth moved 145 -> 35 as well. At 145 the sun sat in front of the
+      // finale's own camera line and put a blown disc in the right third of
+      // `25`; from 35 it rakes in over the camera's shoulder, which is where a
+      // key belongs when the subject is a single object in a lot of sky.
+      sunEl: 22, sunAz: 35, sunColor: 0xd8c0ff, sunIntensity: 4.2,
+      hemiSky: 0x3f2878, hemiGround: 0x100818, hemiIntensity: 0.55,
+      rim: 0xff4ad0, rimIntensity: 1.0, envIntensity: 0.55,
       dustColor: 0xd0a8ff, dustOpacity: 0.85,
     }),
   },

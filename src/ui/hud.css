@@ -1400,28 +1400,110 @@ body.menu-open { cursor: default; }
 }
 
 /* Death */
-.screen--death { gap: 1.6em; }
+/* --- the three outcomes -----------------------------------------------------
+ *
+ * A run can now end three ways and until this block they ended identically: the
+ * victory headline measured (249.3, 57.8, 39.5) against the death screen's
+ * (249.5, 58.0, 39.4) — the same alarm red to within half a level of one
+ * channel, with the same type, the same hairline rule, the same panel and the
+ * same `RESTART RUN`. The words changed and nothing else did.
+ *
+ * `--end` is the outcome's key colour and everything on the screen is driven
+ * from it, so the three are separated on the one channel a player reads first.
+ * They are also separated on *treatment*, not only on hue: the death headline
+ * stays flat and hard, the victory headline is struck in the Herald's violet
+ * with a lift and a wide glow, and the obliteration headline is a cold void
+ * white-cyan that is deliberately quieter than either — the run was not won,
+ * it was ended.
+ */
+.screen--death {
+  gap: 1.6em;
+  --end: var(--alert);
+  --end-glow: rgba(255, 59, 40, 0.35);
+  --end-weight: 700;
+  --end-track: 0.22em;
+}
+.screen--death[data-ending="victory"] {
+  --end: #c864d4;
+  --end-glow: rgba(200, 100, 212, 0.55);
+  --end-track: 0.30em;
+}
+.screen--death[data-ending="obliterated"] {
+  --end: #7fe6df;
+  --end-glow: rgba(127, 230, 223, 0.42);
+  --end-weight: 300;
+  --end-track: 0.40em;
+}
 .death-mark { text-align: center; }
 .death-word {
   margin: 0;
   font-size: clamp(2.6rem, 8vw, 6.5rem);
-  font-weight: 700;
-  letter-spacing: 0.22em;
-  text-indent: 0.22em;
-  color: var(--alert);
-  text-shadow: 0 0 70px rgba(255, 59, 40, 0.35), 0 6px 26px rgba(0, 0, 0, 0.9);
+  font-weight: var(--end-weight);
+  letter-spacing: var(--end-track);
+  text-indent: var(--end-track);
+  color: var(--end);
+  text-shadow: 0 0 70px var(--end-glow), 0 6px 26px rgba(0, 0, 0, 0.9);
+}
+/* A won run gets a second rule above the headline as well as below it, so the
+   headline sits inside a frame the death screen never draws. */
+.screen--death[data-ending="victory"] .death-word,
+.screen--death[data-ending="obliterated"] .death-word {
+  padding-top: 0.28em;
+  border-top: 1px solid color-mix(in srgb, var(--end) 45%, transparent);
 }
 .death-rule {
   height: 2px;
   width: min(40vw, 32em);
   margin: 0.8em auto 0;
-  background: linear-gradient(90deg, transparent, var(--alert), transparent);
+  background: linear-gradient(90deg, transparent, var(--end), transparent);
+}
+.screen--death[data-ending="obliterated"] .death-rule {
+  height: 1px;
+  width: min(22vw, 18em);
 }
 .death-sub {
   margin-top: 0.9em;
   font-size: 1em;
   letter-spacing: 0.34em;
   color: var(--ink-dim);
+}
+.screen--death[data-ending="victory"] .death-sub,
+.screen--death[data-ending="obliterated"] .death-sub {
+  color: color-mix(in srgb, var(--end) 70%, #cfe3ef);
+}
+
+/* The seal. Victory-only by construction: it is `hidden` for a death. */
+.ending-seal {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7em;
+  margin-bottom: 1.1em;
+  padding: 0.34em 1.1em 0.34em 0.8em;
+  border: 1px solid color-mix(in srgb, var(--end) 55%, transparent);
+  background: color-mix(in srgb, var(--end) 10%, rgba(6, 11, 18, 0.85));
+  clip-path: polygon(0.9em 0, 100% 0, calc(100% - 0.9em) 100%, 0 100%);
+}
+.ending-seal[hidden] { display: none; }
+.ending-seal-mark {
+  width: 0.62em;
+  height: 0.62em;
+  background: var(--end);
+  transform: rotate(45deg);
+  box-shadow: 0 0 12px var(--end-glow);
+}
+.ending-seal-text {
+  font-size: 0.78em;
+  letter-spacing: 0.30em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--end) 80%, #ffffff);
+}
+
+/* The panel picks the outcome up too, so the separation survives a player who
+   is looking at the stats rather than at the headline. */
+.screen--death[data-ending="victory"] .panel--wide,
+.screen--death[data-ending="obliterated"] .panel--wide {
+  border-top: 2px solid color-mix(in srgb, var(--end) 65%, transparent);
+  box-shadow: 0 0 60px -18px var(--end-glow);
 }
 .stat-grid {
   display: grid;

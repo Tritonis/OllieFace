@@ -107,6 +107,8 @@ const _h2 = new THREE.Vector3();
 const _box = new THREE.Box3();
 const _tmpColor = new THREE.Color();
 const _ringSize = new THREE.Vector2(1, 1);
+const _ax1 = new THREE.Vector3();
+const _ax2 = new THREE.Vector3();
 const _proj = new THREE.Vector3();
 const UP = new THREE.Vector3(0, 1, 0);
 
@@ -443,9 +445,26 @@ export class VFX {
     // falloff power does the shaping so the extra life is a decaying hot centre
     // rather than a disc that hangs around: alpha is `(1-u)^1.7`, so this is at
     // 0.81 of peak at 0.05s and 0.31 at the shutter.
+    //
+    // Round-5 r4 added the alpha ceilings on this and the next two emitters.
+    // Additive layers do not clamp against each other — the per-sprite ceiling
+    // in `ParticleShader` is per *sprite* — so what actually lands on screen is
+    // the sum of everything overlapping, and at the blast centre that sum was
+    // several times the display's clip point. Measured on
+    // `reviews/round5/shots-vfxr4-base/08-explosion.png`: the core `r < 40 px`
+    // read RGB 255.0/253.9/237.9 with the R channel clipped on **100%** of its
+    // pixels, the whole `r < 120 px` disc at mean L 229.2 / 72.3% over L 220,
+    // and the largest luminance step anywhere in the falloff 6.6 L. A blast
+    // with no value range in it cannot be shaped, cannot show a shockwave and
+    // cannot be silhouetted against smoke — it is a light source, not a body of
+    // burning gas, which is exactly how the round-3 critique read it.
+    //
+    // These ceilings exist to leave the sum *under* clip so the falloff is
+    // carried by the profile rather than by the tonemapper.
     e.life = 0.42; e.lifeVar = 0;
     e.size0 = r * 0.7; e.size1 = r * 1.5;
     e.color0.set(0xffdc96); e.color1.set(0xffb44a);
+    e.alpha0 = 0.6;
     e.frame = FRAME.CORE; e.drag = 8; e.alphaPow = 1.7; e.fadeIn = 0.001; e.soft = 0.8;
     this.particles.emit(e);
 
@@ -458,6 +477,10 @@ export class VFX {
     e.life = 0.28; e.lifeVar = 0;
     e.size0 = r * 0.3; e.size1 = r * 0.75;
     e.color0.set(0xfff4d8); e.color1.set(0xffd07a);
+    // Deliberately the highest ceiling of the three, and on the smallest quad:
+    // the peak of the radial profile has to be here, in the middle, or the
+    // blast has a plateau instead of a centre.
+    e.alpha0 = 0.7;
     e.frame = FRAME.CORE; e.drag = 9; e.alphaPow = 1.35; e.fadeIn = 0.001; e.soft = 0.6;
     this.particles.emit(e);
 
@@ -468,6 +491,7 @@ export class VFX {
     e.life = 0.26; e.lifeVar = 0;
     e.size0 = r * 1.15; e.size1 = r * 1.9;
     e.color0.set(0xffc87a); e.color1.set(colour);
+    e.alpha0 = 0.4;
     e.frame = FRAME.FLARE; e.spin = 2.5; e.drag = 7; e.alphaPow = 1.6; e.soft = 1.5;
     this.particles.emit(e);
 
@@ -477,20 +501,37 @@ export class VFX {
     // so the blast has a *body* — a ring of discrete blobs — from 0.04 s on
     // rather than a solid core that only breaks up once the embers appear.
     e = this._ep();
-    e.count = 30; e.position.copy(pos); e.shell = r * 0.22;
+    //
+    // The count and the per-blob ceiling are a pair: 30 blobs at 0.95 is ~25 of
+    // them overlapping the centre, and 25 additive sprites at any ceiling is a
+    // clipped disc whatever the ceiling is. 24 at 0.34 keeps the ring of
+    // discrete blobs — which is the layer's whole purpose — and leaves the sum
+    // at the centre with somewhere to go.
+    e.count = 24; e.position.copy(pos); e.shell = r * 0.22;
     e.dir.set(0, 1, 0); e.spread = Math.PI;
     e.speed = 30 * s; e.speedVar = 0.75;
     e.life = 0.45; e.lifeVar = 0.4;
     e.size0 = r * 0.6; e.size1 = r * 1.05;
     e.color0.set(0xffe6a0); e.color1.set(colour);
-    e.alpha0 = 0.95; e.frame = FRAME.SMOKE; e.spin = 2.2;
+    e.alpha0 = 0.34; e.frame = FRAME.SMOKE; e.spin = 2.2;
     e.drag = 7; e.gravity = -3; e.turbulence = 0.5; e.fadeIn = 0.006; e.soft = 1.2;
     this.particles.emit(e);
 
-    // 3. Shockwave ring, ground-plane aligned. Both tinted: a white ring on a
-    // white core is invisible, and the inner-edge boost in RingFrag clips it.
-    this.rings.spawn(pos, UP, colour, r * 0.35, r * 2.6, 0.45, 0.95);
-    this.rings.spawn(pos, UP, 0xffd2a0, r * 0.2, r * 1.5, 0.28, 0.7);
+    // 3. Shockwave ring. Both tinted: a white ring on a white core is invisible,
+    // and the inner-edge boost in RingFrag clips it.
+    //
+    // The axis is chosen per blast rather than pinned to UP. `RingFrag` fades a
+    // ring out as its plane goes edge-on (below |dot(viewRay, axis)| = 0.28),
+    // because a ground-plane ring seen from its own height projects to a laser
+    // across the whole frame. That fade is correct and it is also why
+    // `08-explosion` — an airburst ~40 m out, near the camera's own height —
+    // photographed with **no ring at all** for three rounds running. An airburst
+    // has no ground plane to align to; `_ringAxis` tilts the normal toward the
+    // camera by exactly enough to clear the fade, and returns UP untouched for
+    // every blast that does sit on the ground.
+    const axis = this._ringAxis(pos);
+    this.rings.spawn(pos, axis, colour, r * 0.35, r * 2.6, 0.45, 0.95);
+    this.rings.spawn(pos, axis, 0xffd2a0, r * 0.2, r * 1.5, 0.28, 0.7);
 
     // 4. Debris chunks, gravity-bound and spinning.
     e = this._ep();
@@ -535,14 +576,35 @@ export class VFX {
     // was still at zero alpha a quarter of a second in — the blast had no dark
     // mass to silhouette the fireball against for its entire hot phase.
     // 0.028 puts the column up inside 60 ms, which is where RoR2 has it.
-    e.count = 22; e.position.copy(pos); e.shell = r * 0.3;
+    e.count = 26; e.position.copy(pos); e.shell = r * 0.3;
     e.dir.set(0, 1, 0); e.spread = 1.5;
     e.speed = 6 * s; e.speedVar = 0.8;
     e.life = 2.2; e.lifeVar = 0.45;
     e.size0 = r * 0.5; e.size1 = r * 1.5;
     e.color0.set(0x54504c); e.color1.set(0x1e1c1e);
-    e.alpha0 = 0.62; e.frame = FRAME.SMOKE; e.spin = 1.1;
+    e.alpha0 = 0.82; e.frame = FRAME.SMOKE; e.spin = 1.1;
     e.drag = 2.2; e.gravity = -1.6; e.turbulence = 0.45; e.fadeIn = 0.028;
+    this.particles.emit(e);
+
+    // 7. Dust skirt — the *opacity* layer, and the one this effect never had.
+    // Everything above except the smoke column is additive, so for three rounds
+    // the blast had luminance and no silhouette: at 3x there was no ring, no
+    // smoke and no dust plume, only a gaussian. This is a fast outward torus of
+    // opaque dust thrown along the shockwave, so the fireball has something dark
+    // to be read *against* at its own radius rather than only at its column.
+    // Soft-particle depth fade at 1.6 m keeps it from cutting into the ground it
+    // is skidding across.
+    e = this._ep();
+    e.layer = 'alpha';
+    e.count = 18; e.position.copy(pos); e.shell = r * 0.35;
+    e.dir.set(0, 0.22, 0); e.spread = 1.5;
+    e.speed = 14 * s; e.speedVar = 0.55;
+    e.life = 1.1; e.lifeVar = 0.4;
+    e.size0 = r * 0.28; e.size1 = r * 1.1;
+    e.color0.set(0x6a6158); e.color1.set(0x24211f);
+    e.alpha0 = 0.55; e.frame = FRAME.DUST; e.spin = 1.6;
+    e.drag = 4.5; e.gravity = -0.6; e.turbulence = 0.5; e.fadeIn = 0.02;
+    e.soft = 1.6;
     this.particles.emit(e);
 
     this.decals.project(pos, DOWN, DECAL.SCORCH, { size: r * 0.8, maxDist: r + 3 });
@@ -569,7 +631,11 @@ export class VFX {
     // The caps sit above `08-explosion`'s r = 6 (intensity 30, range 25.2), so
     // the shot the layer was tuned on is untouched and only the nuke is pulled
     // back to a blast that lights its own neighbourhood.
-    this.lights.flick(pos, colour, 20 * Math.min(s, 1.6), Math.min(r * 4.2, 26), 0.42);
+    // Round-5 r4 pulls the ceilings down onto `08-explosion`'s own numbers
+    // exactly — r = 6 gives intensity 30 over 25.2 m — rather than leaving 7%
+    // of headroom above them for nothing. Every blast at or below r = 6 is
+    // untouched by construction; only the nuke moves.
+    this.lights.flick(pos, colour, Math.min(20 * s, 30), Math.min(r * 4.2, 25.2), 0.42);
     // Screen-space distortion: the shell of bent air riding the shockwave.
     this.shockwave(pos, r * 2.6, 0.45, clamp(0.006 + r * 0.0018, 0.006, 0.026));
     this._shakeAt(pos, clamp(0.05 + r * 0.018, 0.05, 0.3));
@@ -1443,6 +1509,32 @@ export class VFX {
   }
 
   /** Reset the shared emit-options scratch to defaults. Never allocates. */
+  /**
+   * Pick the plane a shockwave ring should expand in.
+   *
+   * Ground-plane (UP) whenever the camera can actually see that plane. When it
+   * cannot — an airburst at the camera's own height, where `RingFrag`'s
+   * edge-on fade correctly reduces a ground ring to nothing — the normal is
+   * tilted toward the viewer until it clears that fade. Returns UP unchanged in
+   * the common case, so no ground blast's read changes.
+   */
+  _ringAxis(pos) {
+    const cam = this.ctx?.camera;
+    if (!cam) return UP;
+    _ax1.subVectors(pos, cam.position);
+    const d = _ax1.length();
+    if (d < 1e-3) return UP;
+    _ax1.divideScalar(d);
+    // 0.28 is RingFrag's own knee; 0.34 leaves a margin so a ring near the
+    // boundary is not spawned at a fraction of its alpha.
+    if (Math.abs(_ax1.y) >= 0.34) return UP;
+    // The smallest tilt that clears the knee is the right one: alpha is
+    // saturated the moment the fade is cleared, so any extra tilt only opens the
+    // ellipse wider and buys screen coverage the composition does not want.
+    // 0.40 lands the facing term at ~0.37 against the 0.28 knee.
+    return _ax2.set(0, 1, 0).addScaledVector(_ax1, -0.40).normalize();
+  }
+
   _ep() {
     const e = this._e;
     e.layer = 'add';
@@ -1692,11 +1784,12 @@ varying float vK;
 varying float vThick;
 varying float vFacing;
 varying float vViewZ;
+varying float vLens;
 void main() {
   float age = uTime - aTime.x;
   if (age < 0.0 || age >= aTime.y || aTime.y <= 0.0) {
     vUv = vec2(0.0); vColor = vec4(0.0); vK = 0.0; vThick = 0.0;
-    vFacing = 0.0; vViewZ = 0.0;
+    vFacing = 0.0; vViewZ = 0.0; vLens = 0.0;
     gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
     return;
   }
@@ -1723,6 +1816,15 @@ void main() {
   vec4 wv = viewMatrix * vec4(p, 1.0);
   vViewZ = wv.z;
   vFacing = abs(dot(normalize(p - cameraPosition), n));
+  // Lens fade, the counterpart of the one in ParticleShader and added for the
+  // same measurement. 'overload-cell' is explosion(at, 12) on the player's own
+  // position, so its rings are ~31 m across six metres from the lens: they claim
+  // several screen-heights each and are additive, and the rings are the one
+  // blast layer the particle lens fade cannot reach. '08-explosion' spawns a
+  // ~15.6 m ring at ~40 m, i.e. a subtense of 0.39, well under the knee and
+  // untouched.
+  float sub = r / max(-(viewMatrix * vec4(aOrigin, 1.0)).z, 0.05);
+  vLens = mix(1.0, 0.12, smoothstep(0.9, 2.2, sub));
   gl_Position = projectionMatrix * wv;
 }
 `;
@@ -1740,6 +1842,7 @@ varying float vK;
 varying float vThick;
 varying float vFacing;
 varying float vViewZ;
+varying float vLens;
 
 float ringViewZ(float d, float n, float f) {
   return (n * f) / ((f - n) * d - f);
@@ -1763,6 +1866,7 @@ void main() {
 
   // Edge-on fade. Full strength once the plane is ~16 degrees off the view ray.
   a *= clamp(vFacing / 0.28, 0.0, 1.0);
+  a *= vLens;
 
   // Soft-particle depth fade, off the same half-res prepass the particle layer
   // uses. Without it the ring is hard-cut by every pillar and ridge it crosses,

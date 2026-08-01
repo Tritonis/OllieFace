@@ -214,12 +214,16 @@ export function installRealmHarness(ctx) {
     async realmBazaar({ settleFrames = 60 } = {}) {
       await begin();
       await enterRealm('bazaar');
-      placePlayer(0.62, 15, 3.8);
+      placePlayer(0.62, 12.5, 3.8);
       // On the *stalls' own side* of the room, so they are the near third of
       // the frame rather than thirty metres across it, with the obelisk on the
       // centre line and the arcade and its lanterns behind that. The first pass
       // put the lens at the opposite azimuth and measured 86 px per stall.
-      arenaCam(0.62, 25, 8.0, 3.4);
+      // Closer and lower than the first pass. Per-object the stalls measured
+      // 283/527/987 px against a 300 px floor — the frame was correct and the
+      // near-far spread across a 30 m room was doing the damage. Four metres in
+      // and a metre and a half down puts the smallest one comfortably over.
+      arenaCam(0.62, 20.5, 6.4, 3.0);
       await wait(settleFrames);
       freeze();
       const stalls = ctx.realms.props.filter((p) => p.kind === 'stall');
@@ -254,6 +258,33 @@ export function installRealmHarness(ctx) {
       c.ctxHud('Wave ' + c.wave + ' of ' + c.def.waves);
       for (let i = 0; i < 300 && c.live.length < 5; i++) { keepAlive(); await frames(1); }
       placePlayer(0, 7);
+      // Stand the wave up in front of the lens.
+      //
+      // The wave is placed by `randomWalkablePoint` across a 25 m room, and the
+      // shot came back with `perPx: [141, 0, 299]` — one member of the wave at
+      // literally zero pixels behind a cover block, and the whole "live wave"
+      // at 0.34% of frame. This is the same set of monsters, spawned by the
+      // same controller on the same budget; only where they are standing when
+      // the shutter opens is staged, which is what a screenshot scenario is for.
+      {
+        const o = ctx.stage.origin;
+        // The lens is at +17 on X aimed at the middle and the survivor is at
+        // +7, so "in front of the survivor, still this side of the middle" is
+        // x in +1..+5 with a spread across Z.
+        const live = c.live.filter((e) => e && e.alive);
+        for (let i = 0; i < live.length; i++) {
+          // Z offsets deliberately skip zero: the survivor stands on the camera
+          // axis at +7, and the first staging put one wave member directly
+          // behind it at 6 px.
+          // Z offsets deliberately skip zero and X is kept inside 8-12 m of the
+          // lens: the wave contains mites at half a metre tall, and one of them
+          // at 15 m measured 84 px.
+          const lane = (i % 2 ? 1 : -1) * (5.0 + Math.floor(i / 2) * 3.6);
+          live[i].position.set(o.x + 9.0 - Math.min(i, 3) * 2.0, 0, o.z + lane);
+          live[i].velocity?.set(0, 0, 0);
+        }
+        await frames(2);
+      }
       // Behind the survivor, looking into the arena: the wave steers at the
       // player, so this is the one framing that puts monsters at 5-15 m rather
       // than scattered across a 25 m room.
@@ -283,7 +314,7 @@ export function installRealmHarness(ctx) {
       await wait(40);
       const o2 = ctx.stage.origin;
       placePlayer(-Math.PI / 2, 19);
-      look(o2.x + 3.5, 5.0, o2.z - 25, o2.x, 3.4, o2.z);
+      look(o2.x + 3.5, 4.4, o2.z - 20.5, o2.x, 3.2, o2.z);
       await wait(settleFrames);
       freeze();
       mustContain('24-realm-vault', [
@@ -307,7 +338,12 @@ export function installRealmHarness(ctx) {
       const bp = b.position;
       placePlayer(Math.atan2(bp.z + 11 - ctx.stage.origin.z, bp.x + 2 - ctx.stage.origin.x),
                   Math.hypot(bp.x + 2 - ctx.stage.origin.x, bp.z + 11 - ctx.stage.origin.z));
-      look(bp.x + 5.5, 3.4, bp.z + 20, bp.x, bp.y + 2.6, bp.z);
+      // Higher and aimed lower than the first pass. The shot exists to show the
+      // full 34 m arena and it showed a sliver of it at the bottom edge with
+      // roughly 60% of the frame empty violet gradient. Lifting the lens to 8 m
+      // and dropping the aim to the boss's waist brings the disc, its rim and
+      // the void beyond it into the lower two thirds without losing the Herald.
+      look(bp.x + 5.5, 8.0, bp.z + 21.5, bp.x, bp.y - 1.4, bp.z);
       await wait(settleFrames);
       freeze();
       mustContain('25-finale-phase1', [

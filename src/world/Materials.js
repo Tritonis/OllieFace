@@ -355,14 +355,27 @@ const DETAIL = {
 };
 
 const DETAIL_PARS = /* glsl */`
+#define DET_KILL 0.0
 varying vec3 vDetW;
 varying vec3 vDetN;
 uniform vec4 uDetA;   // x 1/fine  y fineAmp  z 1/coarse  w coarseAmp
 uniform vec4 uDetB;   // x aniso   y ridge    z cavity    w roughMod
 uniform vec4 uDetC;   // x jointAmp y jointPeriod z jointAspect w jointWidth
 uniform vec4 uDetD;   // x uvNear  y uvFade0   z uvFade1   w fineFade
+uniform vec4 uDetE;   // x fine m  y coarse m  z jointRow m w -
 
 uniform sampler2D uDetNoise;
+
+// Screen-space resolution gate. fw is the world extent of one pixel in metres,
+// so featM / fw is how many pixels one feature of that class spans. A feature
+// narrower than about two pixels cannot be shaded, only sampled: it turns into
+// isolated bright specks that crawl in motion, which is exactly what round 3
+// measured (frame-wide isolated-bright fraction up 1.4-5.3x, *worst on the most
+// distant surfaces*, because nothing but the fine octave had a distance term at
+// all). Full strength above ~5 px per feature, gone below ~1.7 px.
+float detRes(float featM, float fw) {
+  return 1.0 - smoothstep(0.20, 0.60, fw / max(featM, 1e-4));
+}
 // Value-and-gradient fbm, baked. Evaluating this analytically cost 24 hashes a
 // pixel and measured 7.8 ms of a 20.6 ms frame; the same field read from a
 // tileable RGB texture — value in R, the two gradient components in GB — costs
@@ -393,14 +406,14 @@ vec3 detJoint(vec2 p, float per, float aspect, float wid) {
   return vec3(jy, 0.0, gy);
 }
 
-void detField(vec3 wp, vec3 wn, float dist, out vec3 gradW, out float hOut) {
+void detField(vec3 wp, vec3 wn, float dist, float fw, out vec3 gradW, out float hOut) {
   gradW = vec3(0.0); hOut = 0.0;
   vec3 bw = abs(wn); bw *= bw; bw *= bw;              // ^4: hard triplanar blend
   bw /= max(bw.x + bw.y + bw.z, 1e-4);
   // Anisotropy stretches the field along each plane's second axis, which is the
   // world vertical on the two side planes and world Z on the ground plane.
   vec2 an = vec2(1.0, 1.0 / max(uDetB.x, 0.001));
-  float fineK = 1.0 - smoothstep(uDetD.w * 0.45, uDetD.w, dist);
+  float fineK = (1.0 - smoothstep(uDetD.w * 0.45, uDetD.w, dist)) * detRes(uDetE.x, fw);
 
   vec2 cX = vec2(wp.z, wp.y), cY = vec2(wp.x, wp.z), cZ = vec2(wp.x, wp.y);
 
@@ -423,16 +436,25 @@ void detField(vec3 wp, vec3 wn, float dist, out vec3 gradW, out float hOut) {
   // value and the gradient are folded with the same factor so the surface stays
   // a real height field.
   {
-    float k = uDetA.w, r = uDetB.y;
+    float k = uDetA.w * detRes(uDetE.y, fw), r = uDetB.y;
     vec3 mX = detNoise(cX * uDetA.z);
     vec3 mY = detNoise(cY * uDetA.z);
     vec3 mZ = detNoise(cZ * uDetA.z);
+    // The crease apex is a *soft* sign, not sign(). A hard sign flip on a value
+    // that mip filtering pushes toward its own mean is a per-pixel coin toss on
+    // exactly the distant surfaces where the mip is coarsest -- it was measured
+    // as the 5.3x isolated-bright rise on b1's far mountain. The band widens
+    // with the filter footprint, so the crease stays sharp where it is resolved.
+    float rb = clamp(fw / max(uDetE.y, 1e-4) * 2.0, 0.10, 1.0);
+    float sX = clamp((2.0 * mX.x - 1.0) / rb, -1.0, 1.0);
+    float sY = clamp((2.0 * mY.x - 1.0) / rb, -1.0, 1.0);
+    float sZ = clamp((2.0 * mZ.x - 1.0) / rb, -1.0, 1.0);
     float vX = mix(mX.x, 1.0 - abs(2.0 * mX.x - 1.0), r);
     float vY = mix(mY.x, 1.0 - abs(2.0 * mY.x - 1.0), r);
     float vZ = mix(mZ.x, 1.0 - abs(2.0 * mZ.x - 1.0), r);
-    vec2 gX = mX.yz * mix(1.0, -sign(2.0 * mX.x - 1.0) * 2.0, r);
-    vec2 gY = mY.yz * mix(1.0, -sign(2.0 * mY.x - 1.0) * 2.0, r);
-    vec2 gZ = mZ.yz * mix(1.0, -sign(2.0 * mZ.x - 1.0) * 2.0, r);
+    vec2 gX = mX.yz * mix(1.0, -sX * 2.0, r);
+    vec2 gY = mY.yz * mix(1.0, -sY * 2.0, r);
+    vec2 gZ = mZ.yz * mix(1.0, -sZ * 2.0, r);
     hOut += k * (bw.x * (vX - 0.5) + bw.y * (vY - 0.5) + bw.z * (vZ - 0.5));
     gradW += k * bw.x * vec3(0.0, gX.y, gX.x);
     gradW += k * bw.y * vec3(gY.x, 0.0, gY.y);
@@ -444,15 +466,24 @@ void detField(vec3 wp, vec3 wn, float dist, out vec3 gradW, out float hOut) {
   // pure arithmetic, most materials have no joints at all, and the branch is
   // uniform across a draw call.
   if (uDetC.x > 0.0) {
-    float per = uDetC.y, asp = uDetC.z, wid = uDetC.w, k = uDetC.x * 0.7;
+    float per = uDetC.y, asp = uDetC.z, k = uDetC.x * 0.7;
+    // The groove is analytic, so nothing filters it: once it falls under a pixel
+    // its walls become a one-pixel step and it aliases unconditionally. Widening
+    // it to the filter footprint and scaling the *slope* by how much it had to
+    // be widened is the standard prefilter -- a sub-pixel groove degrades into a
+    // shallow tint that still darkens the cavity, instead of into an edge. The
+    // course itself retires once its rows are under about two pixels.
+    float wid = clamp(fw * 1.6, uDetC.w, min(per, per * asp) * 0.45);
+    float gk = (uDetC.w / wid) * detRes(uDetE.z, fw);
     vec3 jX = detJoint(cX, per, asp, wid);
     vec3 jY = detJoint(cY, per, asp, wid);
     vec3 jZ = detJoint(cZ, per, asp, wid);
     hOut -= k * (bw.x * jX.x + bw.y * jY.x + bw.z * jZ.x);
-    gradW -= uDetC.x * bw.x * vec3(0.0, jX.z, jX.y);
-    gradW -= uDetC.x * bw.y * vec3(jY.y, 0.0, jY.z);
-    gradW -= uDetC.x * bw.z * vec3(jZ.y, jZ.z, 0.0);
+    gradW -= uDetC.x * gk * bw.x * vec3(0.0, jX.z, jX.y);
+    gradW -= uDetC.x * gk * bw.y * vec3(jY.y, 0.0, jY.z);
+    gradW -= uDetC.x * gk * bw.z * vec3(jZ.y, jZ.z, 0.0);
   }
+  gradW *= DET_KILL; hOut *= DET_KILL;
 }
 `;
 
@@ -506,6 +537,10 @@ export function attachDetail(material, kind) {
     uDetB: { value: new THREE.Vector4(d.aniso, d.ridge, d.cavity, d.rough) },
     uDetC: { value: new THREE.Vector4(d.joint[0], d.joint[1], d.joint[2], d.joint[3]) },
     uDetD: { value: new THREE.Vector4(d.uv, d.uvFade[0], d.uvFade[1], d.fineFade) },
+    // Feature sizes in metres, for the screen-space resolution gate. These are
+    // the same numbers as uDetA/uDetC, un-reciprocated, so the shader does not
+    // have to know DET_CELLS.
+    uDetE: { value: new THREE.Vector4(d.fine, d.coarse, d.joint[1] * d.joint[2], 0) },
   };
   material.userData.det = u;
   material.userData.detKind = kind;
@@ -526,8 +561,13 @@ export function attachDetail(material, kind) {
       .replace('#include <common>', '#include <common>\n' + DETAIL_PARS)
       .replace('#include <roughnessmap_fragment>', /* glsl */`
         float detDist = length( vViewPosition );
+        // World metres covered by one pixel, taken on the world position varying
+        // rather than on any texture coordinate: it is the one quantity that
+        // knows about distance *and* about grazing foreshortening at once, and
+        // every octave of this pass needs it to know when to retire.
+        float detFW = max( length( dFdx( vDetW ) ), length( dFdy( vDetW ) ) );
         vec3 detGradW; float detH;
-        detField( vDetW, normalize( vDetN ), detDist, detGradW, detH );
+        detField( vDetW, normalize( vDetN ), detDist, detFW, detGradW, detH );
         float detCav = 1.0 - uDetB.z * clamp( -detH * 2.4, 0.0, 1.0 );
         #include <roughnessmap_fragment>
         roughnessFactor = clamp( roughnessFactor + uDetB.w * detH * 2.0, 0.03, 1.0 );`)
@@ -548,6 +588,25 @@ export function attachDetail(material, kind) {
           vec3 wnD = normalize( vDetN );
           vec3 pW = detGradW - wnD * dot( detGradW, wnD );
           normal = normalize( normal - mat3( viewMatrix ) * pW );
+
+          // Horizon limit. A height field seen at grazing incidence cannot show
+          // a slope steeper than the grazing angle -- anything steeper is hidden
+          // behind the crest in front of it. Nothing enforced that, so under a
+          // low raking key the field flipped the sign of N.L per pixel and the
+          // surface stopped being a material: 07-interactables' background was
+          // near-binary lit/unlit fragments at 4-8 px with no midtone, blowing
+          // 2.46% of the frame past L215 while the hero prop sat at L36. The
+          // clamp is on the *final* normal, so it bounds the UV map's
+          // contribution as well as this pass's.
+          float detNV = clamp( dot( normalize( vViewPosition ), nonPerturbedNormal ), 0.0, 1.0 );
+          float detSlope = mix( 0.30, 4.0, smoothstep( 0.05, 0.50, detNV ) );
+          vec3 detT = normal - nonPerturbedNormal * dot( normal, nonPerturbedNormal );
+          float detTL = length( detT );
+          float detTMax = detSlope * inversesqrt( 1.0 + detSlope * detSlope );
+          if ( detTL > detTMax ) {
+            normal = normalize( nonPerturbedNormal * sqrt( max( 1.0 - detTMax * detTMax, 0.0 ) )
+                                + detT * ( detTMax / detTL ) );
+          }
         }`)
       .replace('#include <aomap_fragment>', /* glsl */`
         #include <aomap_fragment>

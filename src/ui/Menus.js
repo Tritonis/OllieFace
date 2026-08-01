@@ -296,9 +296,23 @@ export class Menus {
         </div>
       </section>
 
-      <section class="screen screen--death" data-screen="death">
+      <!-- One screen, three outcomes. The data-ending attribute is the only
+           switch: death, victory, obliterated. It is set in showDeath and every
+           difference
+           between the three — headline colour, rule, seal, glow, panel edge,
+           button verb — hangs off it in CSS, because the critique's finding was
+           that a victory was being announced in the death screen's exact red
+           (249.3, 57.8, 39.5 against 249.5, 58.0, 39.4) with the same type, the
+           same rule, the same panel and the same two buttons. -->
+      <section class="screen screen--death" data-screen="death" data-ending="death">
         <div class="death-mark">
-          <h2 class="death-word">You Died</h2>
+          <!-- Victory-only, and the death screen has no equivalent: a struck
+               seal above the headline naming what ended the run. -->
+          <div class="ending-seal" data-ending-seal>
+            <span class="ending-seal-mark"></span>
+            <span class="ending-seal-text" data-ending-seal-text></span>
+          </div>
+          <h2 class="death-word" data-death-word>You Died</h2>
           <div class="death-rule"></div>
           <div class="death-sub" data-death-sub></div>
         </div>
@@ -309,13 +323,13 @@ export class Menus {
           <div class="run-id" data-run-id></div>
           <div class="stat-grid" data-stats></div>
           <div class="stat-items">
-            <div class="stat-items-label">Items Collected</div>
+            <div class="stat-items-label" data-items-label>Items Collected</div>
             <div class="stat-items-row" data-death-items></div>
           </div>
           <div class="run-unlocks" data-run-unlocks></div>
           <nav class="menu-list menu-list--row">
             <button class="mbtn" data-nav data-act="logbook"><span>Logbook</span></button>
-            <button class="mbtn mbtn--go" data-nav data-act="restart"><span>Restart run</span></button>
+            <button class="mbtn mbtn--go" data-nav data-act="restart"><span data-restart-label>Restart run</span></button>
           </nav>
         </div>
       </section>
@@ -963,8 +977,35 @@ export class Menus {
    * reaches us.
    */
   showDeath(stats) {
+    // --- which of the three outcomes is this? -------------------------------
+    //
+    // `Progression.finishRun` sets `progression.ending` *before* it calls the
+    // HUD, and leaves it null for an ordinary death, so the screen can read the
+    // outcome rather than be told it afterwards by two text writes. Everything
+    // below branches on `id` exactly once.
+    const ending = this.ctx.progression?.ending ?? null;
+    const id = ending?.id && ending.id !== 'death' ? ending.id : 'death';
+    const won = id !== 'death';
+    const screen = this.screens.death;
+    if (screen) screen.dataset.ending = id;
+
+    const word = this.root.querySelector('[data-death-word]');
+    if (word) word.textContent = ending?.title ?? 'You Died';
+
+    const seal = this.root.querySelector('[data-ending-seal]');
+    const sealText = this.root.querySelector('[data-ending-seal-text]');
+    if (sealText) {
+      sealText.textContent = id === 'victory' ? 'The run is finished'
+        : id === 'obliterated' ? 'Ended on your terms' : '';
+    }
+    if (seal) seal.hidden = !won;
+
+    const restart = this.root.querySelector('[data-restart-label]');
+    if (restart) restart.textContent = won ? 'New run' : 'Restart run';
+
     const sub = this.root.querySelector('[data-death-sub]');
-    sub.textContent = stats.stageName ? `Stage ${stats.stage} — ${stats.stageName}` : '';
+    sub.textContent = ending?.line
+      || (stats.stageName ? `Stage ${stats.stage} — ${stats.stageName}` : '');
 
     const card = getSurvivor(this.ctx.player?.survivorId ?? this.survivorId);
     const diff = this.currentDifficulty();
@@ -984,17 +1025,27 @@ export class Menus {
       </div>`;
 
     const host = this.root.querySelector('[data-stats]');
+    // `Items collected` used to sit here as a tile reading `0` *and* again
+    // immediately below as a list reading `NONE` — the same label printed twice
+    // on one panel. The count now lives on the list's own label, which is the
+    // only place it is not a duplicate.
+    //
+    // A finished run gets a stat the death screen can never show, because a run
+    // that ends on purpose has reached somewhere a death never does.
     const rows = [
       ['Time survived', stats.time],
       ['Stages cleared', stats.stage],
       ['Level reached', stats.level ?? 1],
       ['Enemies killed', stats.kills],
       ['Damage dealt', stats.damage],
-      ['Items collected', stats.itemCount],
+      won ? ['Time to the Fracture', stats.time] : ['Items collected', stats.itemCount],
     ];
     host.innerHTML = rows
       .map(([k, v]) => `<div class="stat"><div class="stat-k">${k}</div><div class="stat-v">${v}</div></div>`)
       .join('');
+
+    const itemsLabel = this.root.querySelector('[data-items-label]');
+    if (itemsLabel) itemsLabel.textContent = `Items Collected — ${stats.itemCount ?? 0}`;
 
     const grid = this.root.querySelector('[data-death-items]');
     grid.innerHTML = stats.items?.length

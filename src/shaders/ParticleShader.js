@@ -52,6 +52,7 @@ uniform vec3  uGravity;
 
 varying vec4 vColor;
 varying vec2 vUv;
+varying vec2 vQuad;
 varying float vSoft;
 varying float vViewZ;
 
@@ -64,6 +65,7 @@ void main() {
   if (t < 0.0 || t >= life || life <= 0.0) {
     vColor = vec4(0.0);
     vUv = vec2(0.0);
+    vQuad = vec2(0.0);
     vSoft = 0.0;
     vViewZ = 0.0;
     gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
@@ -116,11 +118,18 @@ void main() {
   // stage and camera in '06-loaded-hud'. Terrain, water, trees and sky all went
   // milky together, which is the axis-3 and axis-9 regression on that shot.
   //
-  // It fades to 0.18, not to nothing: standing inside a nova should still be
+  // It fades to a floor, not to nothing: standing inside a nova should still be
   // bright, and the shot's own subject assertion needs the blast to be there.
-  // '08-explosion' sits at ~0.23 and is not touched at all.
+  // '08-explosion' sits at ~0.23, below the knee, and is not touched at all.
+  //
+  // Round-5 r4: the floor was 0.18 and '10-inventory' still shipped a 3D
+  // viewport at mean L 132.4 against a 63.4 control on the same stage and
+  // camera (reviews/round5/shots-vfxr4-base). A quad that fades to 0.18 is
+  // still a screen-filling wash when six of them overlap; 0.05 is a nova you
+  // are standing inside rather than a nova that has replaced the frame. The
+  // knee is unchanged so nothing below ~0.30 subtense moves.
   float subtense = (size * 0.5) / max(-mv.z, 0.05);
-  c.a *= mix(1.0, 0.18, smoothstep(0.30, 0.85, subtense));
+  c.a *= mix(1.0, 0.05, smoothstep(0.30, 0.85, subtense));
 
   vColor = c;
 
@@ -163,6 +172,10 @@ void main() {
   mv.xy += corner;
   vViewZ = mv.z;
   vSoft = aMisc.w;
+  // The quad's own uv, kept separate from the atlas uv so the fragment stage can
+  // guarantee the alpha reaches zero at the polygon boundary. See vQuad in the
+  // fragment shader.
+  vQuad = uv;
 
   // --- atlas frame ---
   // The atlas uploads with flipY = false, so texture t = 0 is the canvas's TOP
@@ -192,6 +205,7 @@ uniform float uMaxIntensity;
 
 varying vec4 vColor;
 varying vec2 vUv;
+varying vec2 vQuad;
 varying float vSoft;
 varying float vViewZ;
 
@@ -205,10 +219,32 @@ void main() {
   c.rgb *= uIntensity;
   // Ceiling on a *single* sprite. Additive blending plus bloom means anything
   // that reaches white on its own stays white for its whole visible life, which
-  // is how five different effects all measured 255,255,245. Capping here keeps
-  // one sprite hot-but-tinted and lets only overlapping sprites clip to white —
-  // that is what reads as heat rather than as a blank disc.
-  c.rgb = min(c.rgb, vec3(uMaxIntensity));
+  // is how five different effects all measured 255,255,245.
+  //
+  // Scaled, not clamped per channel. min(c.rgb, k) is a per-channel clip, so
+  // any colour whose channels *all* exceed the ceiling comes out as a flat
+  // neutral k,k,k — it is a whitener, and the tint it exists to protect is the
+  // first thing it destroys. Round-5 r4 measured the consequence on
+  // '08-explosion': the blast core read 255.0/253.9/237.9 with R clipped on
+  // 100% of its pixels and the largest luminance step anywhere in the falloff
+  // at 6.6 L, i.e. a hueless plateau with no gradient to shape. Dividing by the
+  // largest channel instead holds the same peak radiance and keeps the ratio
+  // between channels, so the sprite stays hot *and* orange, and the falloff
+  // inside the sprite survives the ceiling instead of being flattened by it.
+  float mx = max(c.r, max(c.g, c.b));
+  c.rgb *= uMaxIntensity / max(mx, uMaxIntensity);
+
+  // --- quad-boundary fade ---
+  // The alpha edge must never be the polygon edge. Several atlas tiles carry a
+  // non-zero value out to their own border, and a sprite scaled up near the
+  // lens shows that border as a straight line: round-5 r4 measured two hard
+  // diagonal single-pixel steps of +54.3 L and -28.6 L across the water in
+  // '10-inventory', which is the rubric's axis-6 four-marker ("hard-clipped
+  // particle edges") drawn by a spinning billboard's own outline. This costs a
+  // length() and guarantees the sprite is transparent by the time it reaches
+  // its own corner, whatever the atlas does.
+  float rq = length(vQuad - 0.5) * 2.0;
+  c.a *= 1.0 - smoothstep(0.74, 1.0, rq);
 
   if (uSoftEnabled > 0.5 && vSoft > 0.0) {
     vec2 suv = gl_FragCoord.xy / uResolution;

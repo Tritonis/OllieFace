@@ -145,39 +145,60 @@ function inlayRings(stage, radii, mat) {
 }
 
 // ---------------------------------------------------------------------------
-// THE HOLLOW MARKET — a vaulted undercroft lit only by its own lanterns
+// THE HOLLOW MARKET — the bright room
 // ---------------------------------------------------------------------------
 //
-// The read is *shelter*: a low warm ceiling, a ring of arcade columns, and
-// pooled amber light on dark polished stone. It is the only place in the game
-// with no sun in it, and the only one where the brightest things in frame are
-// stationary and safe.
+// The read is *safe*, and safe has to be carried by the light rather than by
+// the HUD line. The first pass was a dark amber undercroft that measured 52.5
+// mean luma against the Crucible's 52.4 — the hub and the kill-pit were the
+// same photograph. This is now the brightest interior in the game by a wide
+// margin: pale limestone under a cool ivory fill, near-nothing in shadow, and
+// the lanterns supplying the only warm channel in the room.
+//
+// Three concrete rules the geometry below follows, all from the critique:
+//
+//  - **The columns must step off the wall by ≥2.5:1 in value.** Pale ivory
+//    columns in front of a mid-grey wall plane, not one stone for both.
+//  - **Every column needs contact.** A dark plinth skirt and a shadow collar
+//    at the base, because an unsupported column reads as a painted backdrop.
+//  - **A lantern is a fixture, not a billboard.** Bracket, chain, housing
+//    cage, then the flame — the same four parts on all twenty of them.
 
 function buildBazaar(stage) {
   const R = stage.floorRadius;
-  const stone = rung('stone', 3.2, { color: 0x3c3746, roughness: 0.72, metalness: 0.04, envMapIntensity: 1.1 });
-  // Polished, but not a mirror: at roughness 0.28 with a low sun this floor
-  // rendered a blown specular streak across a third of the frame.
-  const polish = rung('stone', 4.0, { color: 0x322e3d, roughness: 0.46, metalness: 0.06, envMapIntensity: 0.9 });
-  const brass = rung('metal', 2.6, { color: 0xa8794a, roughness: 0.22, metalness: 0.74, envMapIntensity: 2.6 });
-  const lamp = glow(0xffb060, 3.0);
+  // Three stone rungs instead of one, and they are two full stops apart. The
+  // wall is the darkest, the columns are the brightest, the floor sits between.
+  const wallStone = rung('stone', 3.2, { color: 0x3f5058, roughness: 0.88, metalness: 0.03, envMapIntensity: 0.7 });
+  const paleStone = rung('stone', 2.4, { color: 0xb9c6c8, roughness: 0.76, metalness: 0.02, envMapIntensity: 1.0 });
+  // Cool polished flagstone. Light enough to bounce, matte enough not to mirror
+  // the ceiling back at the camera.
+  const polish = rung('stone', 4.0, { color: 0x64777d, roughness: 0.62, metalness: 0.05, envMapIntensity: 0.8 });
+  // Contact/plinth rung: the dark value that puts the columns on the ground.
+  const plinth = rung('stone', 2.0, { color: 0x2e393e, roughness: 0.9, metalness: 0.02, envMapIntensity: 0.4 });
+  const brass = rung('metal', 2.6, { color: 0xb98a4a, roughness: 0.26, metalness: 0.78, envMapIntensity: 2.2 });
+  const iron = rung('metal', 2.0, { color: 0x39424a, roughness: 0.55, metalness: 0.6, envMapIntensity: 1.0 });
+  const lamp = glow(0xffc07a, 2.6);
 
   floorDisc(stage, polish);
   inlayRings(stage, [R * 0.34, R * 0.62, R * 0.86], brass);
-  roomWall(stage, R, 15, stone, brass, 12);
-  roomCeiling(stage, R, 15, stone, 8);
+  roomWall(stage, R, 15, wallStone, brass, 12);
+  roomCeiling(stage, R, 15, paleStone, 8);
 
   // Arcade: ten column/arch bays. The arch lintels are what make it a market
   // hall rather than a silo — a straight column ring reads as fence posts.
   const cols = [];
   const caps = [];
+  const bases = [];
   const N = 10, ringR = R - 3.6;
   for (let i = 0; i < N; i++) {
     const a = (i / N) * Math.PI * 2;
     const x = Math.cos(a) * ringR, z = Math.sin(a) * ringR;
     cols.push({ g: new THREE.CylinderGeometry(0.72, 0.94, 7.2, 8), x, y: 3.6, z });
     caps.push({ g: box(2.0, 0.5, 2.0), x, y: 7.45, z, ry: -a });
-    caps.push({ g: box(2.4, 0.34, 2.4), x, y: 0.17, z, ry: -a });
+    // Contact: a dark plinth block, then a wider skirt disc under it. Without
+    // this the columns floated — there was no AO at a single junction.
+    bases.push({ g: box(2.4, 0.5, 2.4), x, y: 0.25, z, ry: -a });
+    bases.push({ g: new THREE.CylinderGeometry(2.05, 2.35, 0.14, 16), x, y: 0.06, z });
     // Lintel to the next bay, chorded across the ring.
     const a2 = ((i + 1) / N) * Math.PI * 2;
     const mx = (Math.cos(a) + Math.cos(a2)) * 0.5 * ringR;
@@ -187,7 +208,7 @@ function buildBazaar(stage) {
                 ry: -Math.atan2(Math.sin(a2) - Math.sin(a), Math.cos(a2) - Math.cos(a)) });
     stage.addCollider(stage.origin.x + x, stage.origin.z + z, 1.0, -2, 8);
   }
-  const colMesh = new THREE.Mesh(mergeParts(cols), stone);
+  const colMesh = new THREE.Mesh(mergeParts(cols), paleStone);
   colMesh.position.copy(stage.origin);
   colMesh.castShadow = true; colMesh.receiveShadow = true;
   stage.addMesh(colMesh);
@@ -195,38 +216,81 @@ function buildBazaar(stage) {
   capMesh.position.copy(stage.origin);
   capMesh.castShadow = true;
   stage.addMesh(capMesh);
+  const baseMesh = new THREE.Mesh(mergeParts(bases), plinth);
+  baseMesh.position.copy(stage.origin);
+  baseMesh.castShadow = true; baseMesh.receiveShadow = true;
+  stage.addMesh(baseMesh);
 
-  // Lanterns hung between the bays, at head height and above it, so the light
-  // in the room has two layers and the floor has something to pool under.
+  // Lanterns hung between the bays. Each is four parts, because the critique's
+  // complaint was exact: flat diamond billboards with no chain, bracket or
+  // housing, some haloed and some not. Bracket and chain are iron, the cage is
+  // brass, and only the flame inside is emissive — so every lantern in frame
+  // reads the same way whatever the bloom does to it.
   const lanterns = [];
+  const irons = [];
+  const cages = [];
   for (let i = 0; i < N; i++) {
     const a = ((i + 0.5) / N) * Math.PI * 2;
-    const x = Math.cos(a) * (ringR - 1.4), z = Math.sin(a) * (ringR - 1.4);
-    lanterns.push({ g: new THREE.OctahedronGeometry(0.42, 0), x, y: 5.2, z });
-    lanterns.push({ g: new THREE.OctahedronGeometry(0.28, 0), x: x * 0.62, y: 6.4, z: z * 0.62 });
+    const put = (rad, y, s) => {
+      const x = Math.cos(a) * rad, z = Math.sin(a) * rad;
+      // bracket off the lintel, chain down to the housing
+      irons.push({ g: box(0.9 * s, 0.12, 0.12), x: x + Math.cos(a) * 0.35 * s, y: y + 1.5 * s, z: z + Math.sin(a) * 0.35 * s, ry: -a });
+      irons.push({ g: new THREE.CylinderGeometry(0.035, 0.035, 1.35 * s, 4), x, y: y + 0.82 * s, z });
+      // housing: a cage of four uprights and a lid, brass
+      cages.push({ g: new THREE.CylinderGeometry(0.34 * s, 0.40 * s, 0.10, 6), x, y: y + 0.44 * s, z });
+      cages.push({ g: new THREE.CylinderGeometry(0.40 * s, 0.30 * s, 0.10, 6), x, y: y - 0.46 * s, z });
+      for (let k = 0; k < 4; k++) {
+        const ka = a + k * Math.PI * 0.5;
+        cages.push({ g: box(0.05, 0.94 * s, 0.05), x: x + Math.cos(ka) * 0.3 * s, y, z: z + Math.sin(ka) * 0.3 * s });
+      }
+      lanterns.push({ g: new THREE.OctahedronGeometry(0.30 * s, 0), x, y, z });
+    };
+    put(ringR - 1.4, 5.2, 1.0);
+    put((ringR - 1.4) * 0.62, 6.4, 0.72);
   }
   const lampMesh = new THREE.Mesh(mergeParts(lanterns), lamp);
   lampMesh.position.copy(stage.origin);
   stage.addMesh(lampMesh, { solid: false });
+  const ironMesh = new THREE.Mesh(mergeParts(irons), iron);
+  ironMesh.position.copy(stage.origin);
+  ironMesh.castShadow = true;
+  stage.addMesh(ironMesh, { solid: false });
+  const cageMesh = new THREE.Mesh(mergeParts(cages), brass);
+  cageMesh.position.copy(stage.origin);
+  cageMesh.castShadow = true;
+  stage.addMesh(cageMesh, { solid: false });
 
-  // Two real lights, and only two: this is an interior, and the sky's key does
-  // almost nothing in here. A pair of warm points is what makes the amber pool
-  // on the floor an actual light rather than an emissive texture.
-  const l1 = new THREE.PointLight(0xffb066, 34, 46, 1.8);
-  l1.position.set(stage.origin.x, 7.5, stage.origin.z);
-  stage.addMesh(l1, { solid: false });
-  const l2 = new THREE.PointLight(0xff8a4a, 18, 34, 2.0);
-  l2.position.set(stage.origin.x - 10, 4.0, stage.origin.z + 8);
-  stage.addMesh(l2, { solid: false });
+  // The light. A soft cool overhead fill is what lifts the room to twice the
+  // pit's level and puts nothing in deep shadow; four warm lantern points are
+  // the accent, and they are the *only* warm light in the arena. Split like
+  // this the room is unmistakably lit rather than unmistakably bright.
+  // One soft source, high in the vault and well clear of the dais. A second
+  // low centre fill was tried and it put a blown white pool on the dais that
+  // was the brightest thing in frame — a fill light you can see the shape of is
+  // a key, and this room already has one.
+  const fill = new THREE.PointLight(0xd8ecf2, 52, 74, 1.30);
+  fill.position.set(stage.origin.x, 13.5, stage.origin.z);
+  stage.addMesh(fill, { solid: false });
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + 0.55;
+    const l = new THREE.PointLight(0xffb066, 22, 26, 1.9);
+    l.position.set(stage.origin.x + Math.cos(a) * (ringR - 2.2), 5.2, stage.origin.z + Math.sin(a) * (ringR - 2.2));
+    stage.addMesh(l, { solid: false });
+  }
 
-  // Central dais the obelisk stands on.
+  // Central dais the obelisk stands on. Pale on top, dark at the contact.
   const dais = new THREE.Mesh(mergeParts([
     { g: new THREE.CylinderGeometry(5.2, 5.8, 0.34, 24), y: 0.17 },
     { g: new THREE.CylinderGeometry(4.4, 4.9, 0.30, 24), y: 0.48 },
-  ]), stone);
+  ]), paleStone);
   dais.position.copy(stage.origin);
   dais.receiveShadow = true;
   stage.addMesh(dais);
+  const daisFoot = new THREE.Mesh(
+    new THREE.CylinderGeometry(6.1, 6.5, 0.12, 32), plinth);
+  daisFoot.position.set(stage.origin.x, 0.05, stage.origin.z);
+  daisFoot.receiveShadow = true;
+  stage.addMesh(daisFoot, { solid: false });
   stage.daisY = 0.63;
 }
 
@@ -241,11 +305,19 @@ function buildBazaar(stage) {
 
 function buildCrucible(stage) {
   const R = stage.floorRadius;
-  const iron = rung('metal', 3.0, { color: 0x4a4e58, roughness: 0.40, metalness: 0.52, envMapIntensity: 1.4 });
+  // Cold blue-steel, all three rungs. Nothing in this room is warm except the
+  // seam and the fire: the critique's measurement was that the pit and the safe
+  // hub sat 11 dE apart on one amber key, so the heat is now strictly confined
+  // to emissives and everything the light lands on is a blue-grey.
+  const iron = rung('metal', 3.0, { color: 0x3c4553, roughness: 0.44, metalness: 0.58, envMapIntensity: 1.0 });
+  // Lighter caps on the cover blocks. The critique: the blocks' drop shadows
+  // were the same value as the blocks, so they read as holes in the floor. A
+  // lit top plate two stops above the body is what makes them objects.
+  const steel = rung('metal', 2.2, { color: 0x707d8c, roughness: 0.36, metalness: 0.62, envMapIntensity: 1.5 });
   // The floor is a grate, not a mirror. It measured as the brightest object in
   // the first capture — a sun streak on wet-looking metal — which is the wrong
   // thing for a room whose whole point is that the light comes from below.
-  const dark = rung('metal', 2.4, { color: 0x33363d, roughness: 0.78, metalness: 0.20, envMapIntensity: 0.6 });
+  const dark = rung('metal', 2.4, { color: 0x1e242e, roughness: 0.82, metalness: 0.22, envMapIntensity: 0.45 });
   const seam = glow(0xff5a18, 1.5);
 
   floorDisc(stage, dark);
@@ -270,20 +342,29 @@ function buildCrucible(stage) {
   // Four cover blocks on a square, deliberately not symmetrical with the wall
   // ribs: the arena has to have a shape you can learn inside five waves.
   const blocks = [];
+  const caps = [];
   for (let i = 0; i < 4; i++) {
     const a = (i / 4) * Math.PI * 2 + 0.6;
     const x = Math.cos(a) * R * 0.5, z = Math.sin(a) * R * 0.5;
     blocks.push({ g: box(3.0, 2.2, 3.0), x, y: 1.1, z, ry: -a });
-    blocks.push({ g: box(3.6, 0.3, 3.6), x, y: 2.35, z, ry: -a });
+    caps.push({ g: box(3.6, 0.3, 3.6), x, y: 2.35, z, ry: -a });
+    // A skirt at the base, one value below the block, so the block's own
+    // shadow is not the only thing touching the floor under it.
+    blocks.push({ g: box(3.9, 0.16, 3.9), x, y: 0.08, z, ry: -a });
     stage.addCollider(stage.origin.x + x, stage.origin.z + z, 2.0, -2, 2.5);
   }
   const blockMesh = new THREE.Mesh(mergeParts(blocks), iron);
   blockMesh.position.copy(stage.origin);
   blockMesh.castShadow = true; blockMesh.receiveShadow = true;
   stage.addMesh(blockMesh);
+  const capMesh = new THREE.Mesh(mergeParts(caps), steel);
+  capMesh.position.copy(stage.origin);
+  capMesh.castShadow = true; capMesh.receiveShadow = true;
+  stage.addMesh(capMesh);
 
-  // Braziers on the rim: the arena's key light, and the reason the wall has a
-  // lit side and a dark side rather than one even value all the way round.
+  // Braziers on the rim. Their light is deliberately short-range now: at 16/30
+  // they were repainting the walls orange and taking the whole room with them.
+  // They pool at the rim and leave the middle of the pit cold.
   const bowls = [];
   for (let i = 0; i < 6; i++) {
     const a = (i / 6) * Math.PI * 2 + 0.3;
@@ -291,7 +372,7 @@ function buildCrucible(stage) {
     bowls.push({ g: new THREE.CylinderGeometry(1.0, 0.4, 1.2, 8), x, y: 2.6, z });
     bowls.push({ g: new THREE.CylinderGeometry(0.22, 0.34, 2.2, 6), x, y: 1.1, z });
     if (i % 3 === 0) {
-      const l = new THREE.PointLight(0xff6a20, 16, 30, 2.0);
+      const l = new THREE.PointLight(0xff6a20, 9, 15, 2.2);
       l.position.set(stage.origin.x + x, 4.2, stage.origin.z + z);
       stage.addMesh(l, { solid: false });
     }
@@ -304,11 +385,18 @@ function buildCrucible(stage) {
   const fires = [];
   for (let i = 0; i < 6; i++) {
     const a = (i / 6) * Math.PI * 2 + 0.3;
-    fires.push({ g: new THREE.IcosahedronGeometry(0.85, 0), x: Math.cos(a) * (R - 2.2), y: 3.4, z: Math.sin(a) * (R - 2.2) });
+    fires.push({ g: new THREE.IcosahedronGeometry(0.62, 0), x: Math.cos(a) * (R - 2.2), y: 3.3, z: Math.sin(a) * (R - 2.2) });
   }
-  const fireMesh = new THREE.Mesh(mergeParts(fires), glow(0xff7a20, 3.4));
+  const fireMesh = new THREE.Mesh(mergeParts(fires), glow(0xff7a20, 2.6));
   fireMesh.position.copy(stage.origin);
   stage.addMesh(fireMesh, { solid: false });
+
+  // The cold key: one hard white-blue downlight in the roof cone. It is what
+  // gives the steel a top plane and the blocks a lit face, and it is what stops
+  // "the light comes from below" turning into "the room is orange".
+  const key = new THREE.PointLight(0xa8c8e8, 34, 46, 1.7);
+  key.position.set(stage.origin.x, 11.5, stage.origin.z);
+  stage.addMesh(key, { solid: false });
 }
 
 // ---------------------------------------------------------------------------
@@ -321,9 +409,19 @@ function buildCrucible(stage) {
 
 function buildVault(stage) {
   const R = stage.floorRadius;
-  const marble = rung('stone', 3.4, { color: 0x2b2428, roughness: 0.44, metalness: 0.08, envMapIntensity: 1.1 });
-  const wall = rung('stone', 2.6, { color: 0x332b26, roughness: 0.74, metalness: 0.05, envMapIntensity: 1.0 });
-  const gold = rung('metal', 2.8, { color: 0xc99a34, roughness: 0.17, metalness: 0.86, envMapIntensity: 3.0 });
+  // True black, both stone rungs. The critique: "the only committed grade among
+  // the three realms — push the walls to true black so the gold has something
+  // to read against." At 0x332b26 the wall was a warm brown that put the whole
+  // frame 10.4 dE from an ordinary biome; at 0x0d0b0a it is a value floor and
+  // the only chroma left in the room is metal.
+  // Rougher than the first pass: with a hard downlight overhead, a 0.40 marble
+  // put a blown specular pool on the dais that outshone the chest standing on
+  // it. A treasury floor is polished stone, not a mirror.
+  const marble = rung('stone', 3.4, { color: 0x141116, roughness: 0.66, metalness: 0.06, envMapIntensity: 0.7 });
+  const wall = rung('stone', 2.6, { color: 0x0d0b0a, roughness: 0.80, metalness: 0.04, envMapIntensity: 0.55 });
+  // Pushed off amber towards true gold: less red, more yellow, so the vault
+  // owns a hue band (~45 degrees) that no ordinary biome sits in.
+  const gold = rung('metal', 2.8, { color: 0xe0ad2e, roughness: 0.15, metalness: 0.90, envMapIntensity: 3.4 });
 
   floorDisc(stage, marble);
   inlayRings(stage, [R * 0.28, R * 0.55, R * 0.82], gold);
@@ -372,9 +470,21 @@ function buildVault(stage) {
   stage.addMesh(dais);
   stage.daisY = 0.78;
 
-  const key = new THREE.PointLight(0xffd280, 40, 44, 1.7);
-  key.position.set(stage.origin.x, 8.5, stage.origin.z);
+  // One hard downlight over the dais and nothing else. A treasury lit evenly is
+  // a warehouse; the prize has to be the brightest thing in the room by a long
+  // way and the walls have to fall off into black behind it.
+  //
+  // Tuned by measurement, not by eye: at 62/decay 2.1 the chest came back at
+  // luminance 21.4 against a background of 19.8 — 3.7% contrast, which is a
+  // prize you cannot find. This is the light that puts it back on top.
+  const key = new THREE.PointLight(0xffd070, 210, 34, 1.85);
+  key.position.set(stage.origin.x, 9.5, stage.origin.z);
   stage.addMesh(key, { solid: false });
+  // A second, tight and low, throwing the chest's own front face. Short range
+  // on purpose: the pillars and the wall must stay in the dark.
+  const face = new THREE.PointLight(0xffe0a0, 46, 16, 1.9);
+  face.position.set(stage.origin.x, 3.2, stage.origin.z - 7.5);
+  stage.addMesh(face, { solid: false });
 }
 
 // ---------------------------------------------------------------------------
@@ -399,25 +509,52 @@ function buildFracture(stage) {
 
   // The floor's under-structure, so the disc reads as a slab with thickness
   // rather than as a decal. It is scaled with the floor by `onFloorRadius`.
-  const under = new THREE.Mesh(new THREE.CylinderGeometry(1, 0.72, 3.4, 64, 1, true), edge);
+  //
+  // Much deeper than the first pass (3.4 m -> 14 m) and it tapers hard: the
+  // critique was that with a clean machined rim and no void visible in frame,
+  // a player could not tell the floor had moved. A long dark taper falling away
+  // under the lip is the *persistent* void read — it is there in every frame at
+  // every radius, not only during the two seconds of the collapse.
+  const under = new THREE.Mesh(new THREE.CylinderGeometry(1, 0.18, 14, 64, 1, true), edge);
   under.material.side = THREE.DoubleSide;
-  under.position.set(stage.origin.x, -1.7, stage.origin.z);
+  under.position.set(stage.origin.x, -7, stage.origin.z);
   stage.addMesh(under, { solid: false });
 
-  // A rim band, likewise scaled: it is the line that says exactly where the
-  // ground ends, and in phase 2 it is what visibly moves inward.
+  // The rim. **Serrated, not machined.** The first pass was a smooth torus and
+  // photographed as "a clean, unbroken, machined magenta tube" — a collapse
+  // that leaves the rim looking lathed is not a collapse. This is 96 tapered
+  // teeth of broken slab at alternating lengths and tilts, with the emissive
+  // band threaded behind them, so the edge is a fracture line at any radius.
+  const teeth = [];
+  for (let i = 0; i < 96; i++) {
+    const a = (i / 96) * Math.PI * 2;
+    // Deterministic jitter — no RNG in a realm builder, ever.
+    const j = Math.sin(i * 12.9898) * 43758.5453;
+    const f = j - Math.floor(j);
+    const len = 0.030 + f * 0.055;
+    const drop = -0.02 - f * 0.10;
+    teeth.push({ g: new THREE.ConeGeometry(0.020 + f * 0.012, len, 4),
+                 x: Math.cos(a) * (1 - len * 0.35), y: drop, z: Math.sin(a) * (1 - len * 0.35),
+                 rz: Math.PI * 0.5, ry: -a, rx: (f - 0.5) * 0.5 });
+  }
+  const rimTeeth = new THREE.Mesh(mergeParts(teeth), edge);
+  rimTeeth.position.set(stage.origin.x, 0.02, stage.origin.z);
+  rimTeeth.castShadow = true;
+  stage.addMesh(rimTeeth, { solid: false });
+
   const rim = new THREE.Mesh((() => {
-    const g = new THREE.TorusGeometry(1, 0.014, 6, 96);
+    const g = new THREE.TorusGeometry(0.985, 0.016, 6, 96);
     g.rotateX(Math.PI / 2);
     return g;
   })(), rift);
   rim.position.set(stage.origin.x, 0.12, stage.origin.z);
   stage.addMesh(rim, { solid: false });
 
-  // Scaling hook — RealmStage owns `floorRadius`, and these two follow it.
+  // Scaling hook — RealmStage owns `floorRadius`, and these follow it.
   stage.onFloorRadius = (r) => {
     under.scale.set(r, 1, r);
     rim.scale.set(r, 1, r);
+    rimTeeth.scale.set(r, 1, r);
     veinMesh.scale.set(r, 1, r);
   };
 
@@ -500,6 +637,84 @@ export function raiseIslands(stage, { count = 3, radius = 4.6, dist = 24, height
   m.receiveShadow = true;
   stage.addMesh(m);
   return m;
+}
+
+/**
+ * The collapse, drawn.
+ *
+ * The critique of phase 2 was that the rule change of the whole fight was
+ * communicated by a line of yellow HUD text: the rim was clean, there was no
+ * fracture, no falling slab, no debris and no dust. This is that evidence —
+ * a ring of slabs torn off between the old radius and the new one, which tip
+ * outward, fall, and take a settling dust plane down with them.
+ *
+ * Returned as `{ update(dt) -> boolean, dispose() }` so the finale controller
+ * owns its lifetime and the arena owns its look. Nothing here touches gameplay
+ * RNG: the scatter is a hash of the slab index.
+ */
+export function spawnCollapseDebris(stage, fromR, toR, life = 3.4) {
+  const N = 26;
+  const slabs = [];
+  const mat = rung('stone', 2.4, { color: 0x3a2c58, roughness: 0.7, metalness: 0.08, envMapIntensity: 1.4 });
+  const dustMat = new THREE.MeshBasicMaterial({
+    color: 0xc890ff, transparent: true, opacity: 0.30, depthWrite: false,
+    side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false,
+  });
+  const group = new THREE.Group();
+  group.position.copy(stage.origin);
+  stage.root.add(group);
+
+  for (let i = 0; i < N; i++) {
+    const a = (i / N) * Math.PI * 2;
+    const j = Math.sin(i * 78.233) * 43758.5453;
+    const f = j - Math.floor(j);
+    const r = toR + (fromR - toR) * (0.25 + f * 0.7);
+    const w = (fromR - toR) * (0.28 + f * 0.34);
+    const m = new THREE.Mesh(box(w, 0.55 + f * 0.5, 2.2 + f * 3.4), mat);
+    m.position.set(Math.cos(a) * r, -0.2, Math.sin(a) * r);
+    m.rotation.y = -a;
+    m.castShadow = true;
+    m.userData.spin = (f - 0.5) * 2.4;
+    m.userData.out = 0.7 + f * 1.6;
+    m.userData.vy = -1.2 - f * 2.0;
+    m.userData.dir = new THREE.Vector3(Math.cos(a), 0, Math.sin(a));
+    group.add(m);
+    slabs.push(m);
+  }
+
+  // The dust plane: one disc at the lip that fades and sinks. It is what makes
+  // the collapse leave a mark on the *air* rather than only on the geometry.
+  const dg = new THREE.CircleGeometry(fromR * 1.02, 48);
+  dg.rotateX(-Math.PI / 2);
+  const dust = new THREE.Mesh(dg, dustMat);
+  dust.position.y = -0.4;
+  group.add(dust);
+
+  let t = 0;
+  return {
+    update(dt) {
+      t += dt;
+      const k = t / life;
+      for (const m of slabs) {
+        m.position.addScaledVector(m.userData.dir, m.userData.out * dt);
+        m.userData.vy -= 16 * dt;
+        m.position.y += m.userData.vy * dt;
+        m.rotation.z += m.userData.spin * dt;
+        m.rotation.x += m.userData.spin * 0.6 * dt;
+      }
+      dust.position.y = -0.4 - t * 2.2;
+      dust.scale.setScalar(1 + t * 0.10);
+      dustMat.opacity = Math.max(0, 0.30 * (1 - k * 1.25));
+      return t < life;
+    },
+    dispose() {
+      stage.root.remove(group);
+      for (const m of slabs) m.geometry.dispose();
+      dg.dispose();
+      mat.dispose();
+      dustMat.dispose();
+    },
+  };
 }
 
 const BUILDERS = {

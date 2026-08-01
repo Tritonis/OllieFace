@@ -150,7 +150,32 @@ export function installHarness(ctx) {
    * still waiting on frames resolves normally instead of hanging.
    */
   const freeze = () => engine()?.stop?.();
-  const thaw = () => { const e = engine(); if (e && !e.running) e.start(); };
+
+  /* Undo queued for *after* the shutter, not for after the assertion.
+   *
+   * A scenario that changes global state for its own shot has to put it back,
+   * and the obvious place to do that — the line after `mustContain` — is inside
+   * the frame that is about to be photographed. `capture.mjs` screenshots when
+   * the scenario's promise resolves, so anything the scenario does after
+   * asserting is in the PNG and not in the manifest. `18-difficulty` restored
+   * the previous rung there and shipped an assertion reading `monsoon` over a
+   * photograph of `rainstorm`: the check passed, the shot was wrong. It is the
+   * same shape as the biome caption that stamped `STAGE 4` on a stage-1 world,
+   * and it takes the same answer — defer the undo into the next scenario.
+   *
+   * Drained from `thaw()`, which is the first thing every scenario does (either
+   * directly or through `begin()` -> `dismiss()`), and which nothing calls again
+   * later in a scenario, so a restore can never run early.
+   */
+  const pendingRestores = [];
+  const restoreAfterShutter = (fn) => { pendingRestores.push(fn); };
+  const thaw = () => {
+    while (pendingRestores.length) {
+      try { pendingRestores.shift()(); } catch (e) { console.error(`[harness] restore failed: ${e?.message ?? e}`); }
+    }
+    const e = engine();
+    if (e && !e.running) e.start();
+  };
 
   /* --- the capture clock ------------------------------------------------
    *
@@ -658,7 +683,13 @@ export function installHarness(ctx) {
    * camera that will actually be used, not against an analytic guess at where
    * the boom would end up.
    */
-  const faceOpenGround = async ({ dists = [13, 20, 27], spread = 0.55, need = 0.85, bearings = 12 } = {}) => {
+  /* The bearing search's own acceptance bar — the score at which it stops
+   * looking — and the visibility floor every `point()` subject is held to.
+   * Named because they are now gates as well as search targets. */
+  const OPEN_GROUND_NEED = 0.85;
+  const MIN_VISIBLE = 0.6;
+
+  const faceOpenGround = async ({ dists = [13, 20, 27], spread = 0.55, need = OPEN_GROUND_NEED, bearings = 12 } = {}) => {
     const rig = ctx.cameraRig;
     if (!rig) return 1;
     const start = rig.yaw;
@@ -1197,9 +1228,17 @@ export function installHarness(ctx) {
     if (hide) hide.forEach((o, i) => { o.visible = was[i]; });
   };
 
-  const subjectReport = (objects, { perObject = false } = {}) => {
+  const subjectReport = (objects, { perObject = false, aggregate = false } = {}) => {
     const r = ctx.pipeline?.renderer;
     const objs = (objects ?? []).filter((o) => o && o.parent);
+    // A subject made of more than one object is measured per object whether or
+    // not it remembered to ask. Forgetting the flag was itself a way to hide a
+    // missing object inside a sum, and the flag costs one extra mask render per
+    // object — cheaper than the class of bug it was concealing. The only
+    // exception is a subject that has declared itself aggregate (see
+    // `minCarriedPx`), where the individual meshes are shared VFX buffers and
+    // not things a viewer can name.
+    if (!aggregate && objs.length > 1) perObject = true;
     if (!r || !objs.length) {
       return {
         px: 0, frac: 0, lum: 0, bgLum: 0, contrast: 0,
@@ -1286,17 +1325,29 @@ export function installHarness(ctx) {
     r.readRenderTargetPixels(_maskRT, 0, 0, MASK_W, MASK_H, _maskB);
     const all = count(_maskB, true);
 
+    /* Per object, and with the same statistics as the union.
+     *
+     * The union numbers above cannot answer the question the gate has to ask.
+     * `23-realm-crucible` certified a three-monster wave at `perPx: [141, 0,
+     * 299]` — one member of the wave contributing *literally nothing* to the
+     * photograph — because 440 px of sum cleared a 420 px floor and the median
+     * separation was taken over the two monsters that did render. An absent
+     * object inside a subject is the same defect as an absent subject inside a
+     * shot, one level down, and it needs the same answer: measure each one.
+     */
     let visibleObjects = objs.length;
-    let perPx = null;
+    let perPx = null, perSep = null;
     if (perObject) {
       perPx = [];
+      perSep = [];
       visibleObjects = 0;
       for (const o of objs) {
         maskPass(r, [o]);
         r.readRenderTargetPixels(_maskRT, 0, 0, MASK_W, MASK_H, _maskB);
-        const c = count(_maskB).n;
-        perPx.push(c);
-        if (c >= 12) visibleObjects++;    // ~4x3 px: smaller than that is noise
+        const c = count(_maskB, true);
+        perPx.push(c.n);
+        perSep.push(c.n ? c.sepP50 : 0);
+        if (c.n >= 12) visibleObjects++;  // ~4x3 px: smaller than that is noise
       }
     }
 
@@ -1317,7 +1368,10 @@ export function installHarness(ctx) {
       sep: all.sep, sepP25: all.sepP25, sepP50: all.sepP50, legible: all.legible,
       objects: objs.length,
       visibleObjects,
-      perPx: perPx && perPx.length <= 32 ? perPx : undefined,
+      // Published, not just gated on. A reviewer reading the manifest has to be
+      // able to see the zero for himself.
+      perPx: perPx && perPx.length <= 64 ? perPx : undefined,
+      perSep: perSep && perSep.length <= 64 ? perSep : undefined,
     };
   };
 
@@ -1380,7 +1434,9 @@ export function installHarness(ctx) {
    * reader of that file sees it without being taught anything new.
    *
    * Spec kinds:
-   *  - `objects()`   the subject is 3D: measured in rendered pixels.
+   *  - `objects()`   the subject is 3D: measured in rendered pixels, and — when
+   *                  it names more than one object — measured once per object,
+   *                  because a sum can be carried entirely by one of them.
    *  - `point()`     the subject has no rig to hide (a landmark, a stage
    *                  feature): measured as projected screen-space bounds plus
    *                  a raycast over that box.
@@ -1421,7 +1477,9 @@ export function installHarness(ctx) {
           c.detail = s.detail ? s.detail() : null;
         } else if (s.objects) {
           c.kind = 'pixels';
-          const rep = subjectReport(s.objects(), { perObject: !!s.perObject });
+          const rep = subjectReport(s.objects(), {
+            perObject: !!s.perObject, aggregate: !!s.minCarriedPx,
+          });
           Object.assign(c, rep);
           c.minPx = s.minPixels ?? 250;
           c.minObjects = s.minObjects ?? 0;
@@ -1450,11 +1508,65 @@ export function installHarness(ctx) {
              */
             c.minCarried = s.minCarriedPx;
             c.legibleOk = c.carriedPx >= c.minCarried;
+            c.aggregate = s.aggregateWhy
+              ?? 'VFX buffers: the meshes are shared particle/ring/trail pools, not nameable objects';
           } else {
             c.minSep = s.minSeparation ?? MIN_SEPARATION;
             c.legibleOk = rep.sepP50 >= c.minSep;
           }
-          c.ok = c.present && c.legibleOk;
+          /* Per object, because an aggregate hides an absence.
+           *
+           * `sepP50` is a median over the *union* mask and `minPixels` is tested
+           * against the *sum*, so a subject can certify while one of the objects
+           * it declares is not in the photograph at all — `23-realm-crucible`
+           * shipped `perPx: [141, 0, 299]` against `minPixels: 420` and wrote
+           * `ok: true`. This is the same class of defect as the `errorCount: 0`
+           * that once hid two subjectless shots, one level down.
+           *
+           * The floor is derived from what the subject already claims rather
+           * than from taste: a subject asking for P pixels across N objects is
+           * claiming each of them contributes, and the weakest claim consistent
+           * with that total is the even share P/N. The per-object floors
+           * therefore sum to exactly `minPixels`, which makes this check
+           * strictly stronger than the aggregate it sits beside and never
+           * weaker — no shot can pass under it that failed before.
+           *
+           * `crowd` is the one opt-out and it is not aggregate treatment: a
+           * director horde is a population, not a cast list, and a monster
+           * behind a terrain lip at 30 m is the scene working. A crowd names how
+           * many of its members must individually stand up (`crowd`) and why
+           * (`crowdWhy`); those N are then gated one at a time against P/N, and
+           * the remainder are published but not required. A subject that says
+           * nothing is gated on every object it declares.
+           */
+          if (rep.perPx && !s.minCarriedPx) {
+            const n = rep.perPx.length;
+            const need = s.crowd ? Math.min(s.crowd, n) : n;
+            if (s.crowd) c.crowd = { need, why: s.crowdWhy ?? 'undocumented' };
+            c.minPerPx = Math.max(1, Math.round(c.minPx / need));
+            const rank = rep.perPx.map((_, i) => i)
+              .sort((a, b) => rep.perPx[b] - rep.perPx[a]).slice(0, need);
+            const gated = new Set(rank);
+            /* An object that renders nothing is not a member of the subject,
+             * and `crowd` does not license it. A declared object below the
+             * noise floor fails the shot outright, gated or not: this is where
+             * `04-combat` was hiding six zeros in twenty-four, one of them the
+             * `glacial` elite whose whole affix claim was then measured on a
+             * subject that contributes no pixels at all. A scenario that cannot
+             * photograph a member of its subject must stop declaring it, not
+             * average it away.
+             */
+            c.absentObjects = rep.perPx
+              .map((px, i) => (px < 12 ? { i, px, sepP50: rep.perSep[i] } : null)).filter(Boolean);
+            c.objectFailures = rank
+              .filter((i) => rep.perPx[i] < c.minPerPx || rep.perSep[i] < c.minSep)
+              .map((i) => ({ i, px: rep.perPx[i], sepP50: rep.perSep[i] }))
+              .concat(c.absentObjects.filter((o) => !gated.has(o.i)));
+            c.perObjectOk = c.objectFailures.length === 0;
+          } else {
+            c.perObjectOk = true;
+          }
+          c.ok = c.present && c.legibleOk && c.perObjectOk;
         } else if (s.point) {
           c.kind = 'bounds';
           const p = s.point();
@@ -1468,7 +1580,7 @@ export function installHarness(ctx) {
             const sc = screenOf(p.x, p.y + (p.height ?? 4) * 0.5, p.z);
             c.screen = [+sc.x.toFixed(3), +sc.y.toFixed(3), +sc.front.toFixed(1)];
             c.onScreen = sc.front > 0 && sc.x > 0.02 && sc.x < 0.98 && sc.y > 0.02 && sc.y < 0.98;
-            c.minVis = s.minVisible ?? 0.6;
+            c.minVis = s.minVisible ?? MIN_VISIBLE;
             c.ok = c.onScreen && c.vis >= c.minVis;
           }
         }
@@ -1484,10 +1596,12 @@ export function installHarness(ctx) {
       const msg = `[harness] ${shot}: subject missing or illegible — `
         + failed.map((c) => `${c.subject} (${c.kind}: ${JSON.stringify(
           c.kind === 'pixels' ? {
-            why: c.present ? 'illegible' : 'absent',
+            why: !c.present ? 'absent' : c.legibleOk ? 'object absent or illegible' : 'illegible',
             px: c.px, need: c.minPx, objs: `${c.visibleObjects}/${c.objects}`, need2: c.minObjects,
             sepP50: c.sepP50, needSep: c.minSep,
             carriedPx: c.carriedPx, needCarried: c.minCarried,
+            perPx: c.perPx, perSep: c.perSep,
+            needPerPx: c.minPerPx, badObjects: c.objectFailures,
             lum: c.lum, bgLum: c.bgLum,
           }
             : c.kind === 'bounds' ? { vis: c.vis, need: c.minVis, onScreen: c.onScreen, screen: c.screen }
@@ -1659,6 +1773,11 @@ export function installHarness(ctx) {
           subject: 'horde',
           objects: () => rigsOf(ctx.director?.enemies ?? []),
           perObject: true, minPixels: 900, minObjects: 8,
+          // A live director population, not a cast list. Members behind a
+          // terrain lip or at the far edge of a 30 m arena are the scene
+          // working; what has to be true is that eight of them are individually
+          // in the photograph and individually stand off it.
+          crowd: 8, crowdWhy: 'director horde: an unbounded population, not a fixed cast',
         },
         // The survivor has to be findable in his own combat frame, which is
         // two claims and not one: enough of him drawn, and enough of him
@@ -1666,8 +1785,27 @@ export function installHarness(ctx) {
         // the dimmest object in this frame at `contrast: 0.053` while the
         // manifest wrote `ok: true`, because `minPx` was the only gate.
         { subject: 'survivor', objects: () => [ctx.player?.group], minPixels: 400 },
-        { subject: 'open arena', info: true, detail: () => +openness.toFixed(2) },
-        { subject: 'survivor unoccluded by the final lens', info: true, detail: () => pvis },
+        /* These two were `info: true` — recorded, never able to fail — and they
+         * were carrying failure-grade numbers while the shot certified:
+         * `openness 0.44` against `faceOpenGround`'s own acceptance bar of
+         * 0.85, and the survivor 42% occluded at `vis 0.583` against the 0.6
+         * floor this file already gates every `point()` subject on. A check
+         * that cannot fail should not be sitting in the same list as ones that
+         * can; if the number is worth measuring it is worth a floor, and both
+         * floors here are numbers already written in this file rather than new
+         * taste. Gated now, and both currently fail — which is the finding, not
+         * a reason to move the bar.
+         */
+        {
+          subject: 'open arena',
+          dom: () => openness >= OPEN_GROUND_NEED,
+          detail: () => ({ openness: +openness.toFixed(2), need: OPEN_GROUND_NEED }),
+        },
+        {
+          subject: 'survivor unoccluded by the final lens',
+          dom: () => (pvis?.vis ?? 0) >= MIN_VISIBLE,
+          detail: () => ({ ...pvis, need: MIN_VISIBLE }),
+        },
       ]);
     },
 
@@ -1920,6 +2058,7 @@ export function installHarness(ctx) {
           subject: 'monsters under load',
           objects: () => rigsOf(ctx.director?.enemies ?? []),
           perObject: true, minPixels: 300, minObjects: 3,
+          crowd: 3, crowdWhy: 'director horde: an unbounded population, not a fixed cast',
         },
         {
           subject: 'a full inventory strip',
@@ -2234,6 +2373,11 @@ export function installHarness(ctx) {
           subject: 'monsters standing in it',
           objects: () => rigsOf(victims),
           perObject: true, minPixels: 200, minObjects: 2,
+          // Monsters thrown by a blast: some leave the frame, some end up
+          // behind the fireball. Two have to be individually visible standing
+          // in it; requiring all of them would be requiring the blast not to
+          // move them.
+          crowd: 2, crowdWhy: 'blast victims: knockback removes members from frame by design',
         },
         { subject: 'damage numbers', objects: () => vfxObjects(/^vfx\.damageNumbers$/), minPixels: 60 },
         // Composition, recorded on every run so a regression to "blast in empty
@@ -2246,7 +2390,7 @@ export function installHarness(ctx) {
             distM: +atDist.toFixed(1), pass: atPass,
           }),
         },
-        { subject: 'shutter (effect seconds)', info: true, detail: () => shutter },
+        { subject: 'shutter (effect seconds)', dom: () => shutter?.exact === true, detail: () => shutter },
       ]);
     },
 
@@ -2375,8 +2519,13 @@ export function installHarness(ctx) {
           subject: 'monsters standing in it',
           objects: () => rigsOf(victims),
           perObject: true, minPixels: 200, minObjects: 2,
+          // Monsters thrown by a blast: some leave the frame, some end up
+          // behind the fireball. Two have to be individually visible standing
+          // in it; requiring all of them would be requiring the blast not to
+          // move them.
+          crowd: 2, crowdWhy: 'blast victims: knockback removes members from frame by design',
         },
-        { subject: 'shutter (effect seconds)', info: true, detail: () => shutter },
+        { subject: 'shutter (effect seconds)', dom: () => shutter?.exact === true, detail: () => shutter },
       ]);
     },
 
@@ -3214,9 +3363,12 @@ export function installHarness(ctx) {
           detail: () => menus.difficultyId,
         },
       ]);
-      // Put it back after the shutter, the same trick `17-artifacts` uses: this
-      // knob feeds the director's credit rate and every gameplay shot after it.
-      if (before) menus.setDifficulty(before);
+      // Put it back after the shutter — literally after it, not after the
+      // assertion. `menus.setDifficulty` repaints the card grid, and this line
+      // used to run inline: the manifest asserted `monsoon` and the PNG showed
+      // `rainstorm` selected, because the screenshot is taken when this function
+      // returns. Deferred to the next scenario's `thaw()`.
+      if (before) restoreAfterShutter(() => menus.setDifficulty(before));
       return { screen: menus.screen, difficulty: id, options: list.length };
     },
 
@@ -3272,11 +3424,13 @@ export function installHarness(ctx) {
         },
       ]);
       const active = menus.activeArtifacts();
-      // Cleared *after* the freeze, the same trick `09-survivors` uses to take
-      // its rigs out of the world without taking them out of the photograph.
       // Left on, the Tithe would delete every chest in the stage and
-      // `07-interactables` would photograph a prop shot with no props.
-      ctx.artifacts?.setActive?.([]);
+      // `07-interactables` would photograph a prop shot with no props. But
+      // `setActive` emits `artifactsChanged`, which the artifact grid this shot
+      // is photographing listens to — freezing the engine protects the canvas,
+      // not the DOM. Deferred past the shutter for the same reason
+      // `18-difficulty`'s restore is.
+      restoreAfterShutter(() => ctx.artifacts?.setActive?.([]));
       return { screen: menus.screen, active };
     },
 
