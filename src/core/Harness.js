@@ -73,6 +73,15 @@ export function installHarness(ctx) {
   let stageStarted = false;
   ctx.events?.on?.('stageStart', () => { stageStarted = true; });
 
+  // The biome series rebuilds the world four times and puts it back on stage 1
+  // *after* its last shutter, deliberately without relabelling — emitting there
+  // would stamp "Stage 1" over the frame of biome 4 that is already on the
+  // canvas waiting to be photographed. The cost was that every shot after it
+  // carried the *previous* label: `04-combat` shipped a stage-1 world captioned
+  // `STAGE 4 — RALLYPOINT FERROUS`. So the relabel is deferred to the next
+  // scenario's `begin()`, which runs before anything is composed.
+  let pendingRelabel = null;
+
   /** Dismiss the menu, wait for the stage to exist, and empty the arena. */
   const begin = async () => {
     dismiss();
@@ -88,6 +97,16 @@ export function installHarness(ctx) {
     if (ctx.cameraRig) ctx.cameraRig.pitch = -0.12;
     if (ctx.input) ctx.input.mouse.left = false;
     for (let i = 0; i < 180 && !stageStarted; i++) await frames(1);
+    if (pendingRelabel != null) {
+      const n = pendingRelabel;
+      pendingRelabel = null;
+      ctx.events?.emit?.('stageStart', { index: n, name: ctx.stage?.stageName ?? '' });
+      const toasts = ctx.hud?.toasts;
+      if (toasts) {
+        while (toasts.length > 1) toasts.shift().el?.remove();
+        ctx.hud.restackToasts?.();
+      }
+    }
     // Every scenario shares one page, so without this each one inherits the
     // previous one's horde. `05-boss` was photographing twenty-four leftover
     // golems from `04-combat` standing in front of the Titan, which is how a
@@ -949,8 +968,46 @@ export function installHarness(ctx) {
   const waitFx = async (s) => {
     const dt = frameDt();
     const n = Math.max(1, Math.round(s / dt));
-    await frames(n);
-    return { age: +(n * dt).toFixed(4), frames: n, exact: _pinnedDt > 0 };
+    const t0 = ctx.time ?? 0;
+    /* Hitstop is held off for the duration of the shutter window, and this is
+     * the one place in the file that reaches into a gameplay value to get a
+     * shot.
+     *
+     * The justification is that hitstop is a *feel* mechanic that a still frame
+     * cannot show and can only be damaged by. It scales the fixed step to 0.15
+     * for up to 0.12 s of banked credit, which does three measurable things to
+     * a photograph of a blast, all of them wrong:
+     *
+     *  1. it re-opens the gap between simulation and presentation time that
+     *     `waitFx` exists to close, so the sim-timed parts of the effect
+     *     (spawn pops, scheduled detonations) land at a different frame of the
+     *     window depending on how many monsters the blast happened to kill;
+     *  2. it stretches `Enemy`'s 0.075 s hit-flash — which is *simulation*
+     *     time, `Enemy.js:441` decrements it in `fixedUpdate` — to as much as
+     *     0.5 s of wall time, so every monster in the blast photographs as a
+     *     flat white cutout with no silhouette. Measured directly: at a 0.14 s
+     *     effect age with hitstop live, all seven victims photograph as flat
+     *     white cutouts;
+     *  3. and it is the residual that kept `10-inventory`'s blast measurement
+     *     swinging between runs after the clock was pinned.
+     *
+     * Everything else about the frame is untouched: the same damage, the same
+     * kills, the same particles, at the same ages. Only the rate at which
+     * gameplay time is allowed to run during the ~7-12 frames of the shutter.
+     */
+    for (let i = 0; i < n; i++) {
+      ctx.hitstop = 0;
+      await frames(1);
+    }
+    ctx.hitstop = 0;
+    return {
+      age: +(n * dt).toFixed(4),
+      frames: n,
+      exact: _pinnedDt > 0,
+      // Published so the two clocks can be seen agreeing. If these ever drift
+      // apart again, something is scaling the fixed step.
+      sim: +((ctx.time ?? 0) - t0).toFixed(4),
+    };
   };
 
   /** Does the sun actually reach this point, or is the subject sitting in a pit? */
@@ -1973,15 +2030,28 @@ export function installHarness(ctx) {
      * clock), and the measured age is written into the manifest as
      * `shutter (effect seconds)` so it can never silently drift again.
      *
-     * **Why 0.20 and not the 0.11 this comment used to claim.** The VFX
-     * constants were retuned in round 5 against the real shutter — core life
-     * 0.20 → 0.42 s, pip 0.16 → 0.28 s (`systems/VFX.js`) — and the round-2
-     * critic verified a live core at 0.207 s in the shipped pixels. Moving the
-     * shutter back to 0.11 now would invalidate that work rather than validate
-     * it. The number stays where the effect was authored for; what changes is
-     * that it is honest, deliberate and identical on every machine.
+     * **Why 0.12.** Measured, by photographing the same blast at five ages and
+     * counting the pixels that carry their own edge (the light wash excluded —
+     * see `minCarriedPx`):
+     *
+     * | effect age | carrying px | what is in the frame |
+     * |---|---|---|
+     * | 0.05 | 4,925 | core still a flashbulb |
+     * | 0.09 | 4,925 | hot core, debris streaks starting |
+     * | **0.12** | **10,726** | hot core, full debris fan, ring on the terrain |
+     * | 0.16 | 8,227 | core falling off |
+     * | 0.20 | 6,212 | warm haze; the round-2 critic's "large soft warm haze, |
+     * |      |       | not a hot core with a defined edge" |
+     * | 0.28 | 423 | over — the guard fires, `why: absent` |
+     *
+     * The round-5 VFX retune (core life 0.20 → 0.42 s, pip 0.16 → 0.28 s) was
+     * made against the *accidental* 0.207 s shutter this file used to have. It
+     * is not invalidated by moving earlier — a longer-lived core is more alive
+     * at 0.12 s than at 0.20 s, and the measurement above is of the retuned
+     * build. What it does invalidate is treating 0.207 as a target: it was
+     * never chosen, and it sits past the peak of the effect it photographs.
      */
-    async explosion({ blastSeconds = 0.20, settleFrames = 60 } = {}) {
+    async explosion({ blastSeconds = 0.12, settleFrames = 60 } = {}) {
       await begin();
       attach();
       invulnerable();
@@ -1995,6 +2065,21 @@ export function installHarness(ctx) {
       seedLevel(11, 0.55);
       ctx.items?.addGold?.(1840);
       await frames(6);
+      // Turn away from the sun before choosing the arena.
+      //
+      // The blast is additive: it reads against what is behind it, and what was
+      // behind it was an 18° sunset disc. Measured on the frame that shipped
+      // before this line existed — blast sited 16 m out, straight down the sun
+      // bearing — the fireball's core came back at 1,816 mask pixels against a
+      // sky already at L 200, and read as a lens flare. Starting the
+      // open-ground sweep 180° off the sun costs nothing (the sweep still
+      // rejects any bearing whose ground the lens cannot see) and gives the
+      // effect a dark backdrop to be an explosion against.
+      if (ctx.cameraRig) {
+        ctx.cameraRig.yaw = sunAzimuth() + Math.PI;
+        ctx.cameraRig.pitch = -0.12;
+        await frames(3);
+      }
       await faceOpenGround();
       spawnRing(12, SPAWN_CARDS, 13);
       if (ctx.input) ctx.input.mouse.left = true;
@@ -2051,44 +2136,61 @@ export function installHarness(ctx) {
       // 200 px smudge under a mountain. The shot is documented as the peak VFX
       // moment: the blast has to be a *foreground* event, so the ground point
       // is restricted to 10-18 m and the score pulls toward 13.
-      let at = null, atScore = -Infinity, atDist = 0;
-      for (const sy of [0.66, 0.72, 0.60, 0.78]) {
-        for (const sx of [0.56, 0.50, 0.62, 0.68, 0.44, 0.36]) {
-          const g = groundAtScreen(sx, sy, { minDist: 10, maxDist: 18 });
-          if (!g) continue;
-          const dist = Math.hypot(g.x - camera.position.x, g.z - camera.position.z);
-          for (const lift of [3.0, 3.6, 2.4, 4.4]) {
-            const c = new THREE.Vector3(g.x, g.y + lift, g.z);
-            if (!seesTarget(camera.position, c, 0.2)) continue;
-            const cs = screenOf(c.x, c.y, c.z);
-            if (cs.front <= 0 || cs.y < 0.34 || cs.y > 0.66) continue;
-            if (!onScreen(c.x, c.y, c.z, 0.12)) continue;
-            // Screen distance from the survivor's own silhouette. 0.22 of frame
-            // is about one survivor-width plus the fireball's near radius at
-            // this standoff — below that the core is behind him.
-            const clear = ps0.front > 0 ? Math.hypot(cs.x - ps0.x, cs.y - ps0.y) : 1;
-            if (clear < 0.22) continue;
-            // Five points on the fireball, not one at its centre.
-            let seen = 0;
-            for (const [dx, dy] of [[0, 0.8], [0, -0.7], [1, 0], [-1, 0], [0.7, 0.5]]) {
-              const px = c.x + camRight.x * dx * BLAST_R * 0.8;
-              const pz = c.z + camRight.z * dx * BLAST_R * 0.8;
-              const py = c.y + dy * BLAST_R * 0.8;
-              if (seesTarget(camera.position, _cc.set(px, py, pz), 0.2)) seen++;
+      //
+      // Three passes, each dropping one requirement, the same shape
+      // `07-interactables` needed after two rounds of shipping shots that did
+      // not contain their subject. A single strict pass is not a guard: on the
+      // stage this scenario actually runs on it found nothing at all and fell
+      // through to a blind `ahead(12, 3.4)`, which put the blast 40 m out
+      // beside the sun and contributed 293 px. `pass` and `distM` are published
+      // so a fallback can never again look like a search result.
+      let at = null, atScore = -Infinity, atDist = 0, atPass = -1;
+      const PASSES = [
+        { near: 9, far: 15, clear: 0.22, seen: 4, top: 0.34, bot: 0.66 },
+        { near: 9, far: 24, clear: 0.15, seen: 3, top: 0.30, bot: 0.70 },
+        { near: 8, far: 30, clear: 0.10, seen: 2, top: 0.22, bot: 0.78 },
+      ];
+      for (let pi = 0; pi < PASSES.length && !at; pi++) {
+        const P = PASSES[pi];
+        for (const sy of [0.66, 0.72, 0.60, 0.78, 0.54]) {
+          for (const sx of [0.56, 0.50, 0.62, 0.68, 0.44, 0.36]) {
+            const g = groundAtScreen(sx, sy, { minDist: P.near, maxDist: P.far });
+            if (!g) continue;
+            const dist = Math.hypot(g.x - camera.position.x, g.z - camera.position.z);
+            for (const lift of [3.0, 3.6, 2.4, 4.4]) {
+              const c = new THREE.Vector3(g.x, g.y + lift, g.z);
+              if (!seesTarget(camera.position, c, 0.2)) continue;
+              const cs = screenOf(c.x, c.y, c.z);
+              if (cs.front <= 0 || cs.y < P.top || cs.y > P.bot) continue;
+              if (!onScreen(c.x, c.y, c.z, 0.10)) continue;
+              // Screen distance from the survivor's own silhouette. 0.22 of
+              // frame is about one survivor-width plus the fireball's near
+              // radius at this standoff — below that the core is behind him.
+              const clear = ps0.front > 0 ? Math.hypot(cs.x - ps0.x, cs.y - ps0.y) : 1;
+              if (clear < P.clear) continue;
+              // Five points on the fireball, not one at its centre.
+              let seen = 0;
+              for (const [dx, dy] of [[0, 0.8], [0, -0.7], [1, 0], [-1, 0], [0.7, 0.5]]) {
+                const px = c.x + camRight.x * dx * BLAST_R * 0.8;
+                const pz = c.z + camRight.z * dx * BLAST_R * 0.8;
+                const py = c.y + dy * BLAST_R * 0.8;
+                if (seesTarget(camera.position, _cc.set(px, py, pz), 0.2)) seen++;
+              }
+              if (seen < P.seen) continue;
+              // Prefer the centre near 0.50 of frame height, the sphere fully
+              // clear over merely mostly clear, and 13 m over the extremes of
+              // the allowed depth band.
+              const score = seen * 4
+                - Math.abs(cs.y - 0.50) * 12
+                - Math.abs(cs.x - 0.52) * 4
+                - Math.abs(dist - 11) * 1.2
+                + Math.min(clear, 0.34) * 14;
+              if (score > atScore) { atScore = score; at = c; atDist = dist; atPass = pi; }
             }
-            if (seen < 4) continue;
-            // Prefer the centre near 0.50 of frame height, the sphere fully
-            // clear over merely mostly clear, and 13 m over the extremes of the
-            // allowed depth band.
-            const score = seen * 4
-              - Math.abs(cs.y - 0.50) * 12
-              - Math.abs(cs.x - 0.52) * 4
-              - Math.abs(dist - 13) * 0.8
-              + Math.min(clear, 0.34) * 14;
-            if (score > atScore) { atScore = score; at = c; atDist = dist; }
           }
         }
       }
+      if (!at) console.error('[harness] 08-explosion: no sited blast on any pass; using the blind fallback');
       at = at ?? ahead(12, 3.4);
 
       // Put monsters inside the blast. An explosion over empty ground is a
@@ -2139,7 +2241,10 @@ export function installHarness(ctx) {
         {
           subject: 'blast framed in the middle band',
           dom: () => blastScreen.y > 0.34 && blastScreen.y < 0.66,
-          detail: () => ({ x: +blastScreen.x.toFixed(3), y: +blastScreen.y.toFixed(3), distM: +atDist.toFixed(1) }),
+          detail: () => ({
+            x: +blastScreen.x.toFixed(3), y: +blastScreen.y.toFixed(3),
+            distM: +atDist.toFixed(1), pass: atPass,
+          }),
         },
         { subject: 'shutter (effect seconds)', info: true, detail: () => shutter },
       ]);
@@ -2707,7 +2812,7 @@ export function installHarness(ctx) {
       // `lateRun`'s inventory panel over a quarter of every frame. The loop is
       // already stopped, so nothing is drawn between here and the screenshot —
       // the canvas keeps presenting the frame composed above.
-      if (restore) goTo(0, false);
+      if (restore) { goTo(0, false); pendingRelabel = 0; }
     },
 
     /**

@@ -398,6 +398,17 @@ export class Progression {
     // also fire the death VFX, the death sound and every `playerDead` listener
     // in the build.
     this.ctx.hud?.onDeath?.();
+    // …and then say what actually happened. The summary's headline is authored
+    // markup that reads "You Died", which is correct for the only ending the
+    // game had until now and wrong for both of the ones it has gained. Two
+    // guarded text writes rather than a new screen: everything else on that
+    // panel — the run identity, the stat grid, the item haul, the unlock
+    // ribbons — is already exactly what a finished run wants to show.
+    const root = this.ctx.hud?.menus?.root;
+    const word = root?.querySelector('.screen--death .death-word');
+    const sub = root?.querySelector('.screen--death [data-death-sub]');
+    if (word && this.ending) word.textContent = this.ending.title;
+    if (sub && this.ending?.line) sub.textContent = this.ending.line;
   }
 
   _endRun(won) {

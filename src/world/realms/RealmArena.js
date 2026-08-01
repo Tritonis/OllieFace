@@ -107,6 +107,29 @@ function roomWall(stage, radius, height, wallMat, trimMat, ribs = 16) {
   return rib;
 }
 
+/**
+ * A roof.
+ *
+ * The first capture of all three walled realms came back as an *open-air*
+ * amphitheatre under the world's sunset sky, with a blown sun disc reflected
+ * off the floor — the arena geometry was right and the room still read as a
+ * field, because you could see the sky from inside it. A cone roof is the fix
+ * and it is also the cheapest possible one: one open-ended cone, back faces,
+ * no shadow casting (the key light is still allowed through, so the room keeps
+ * a direction; what is blocked is the *view* of the sky and the horizon).
+ */
+function roomCeiling(stage, radius, height, mat, rise = 7) {
+  const g = new THREE.ConeGeometry(radius * 1.02, rise, 40, 1, true);
+  const m = new THREE.Mesh(g, mat);
+  m.material.side = THREE.BackSide;
+  m.position.set(stage.origin.x, height + rise * 0.5 - 1.2, stage.origin.z);
+  m.receiveShadow = true;
+  stage.addMesh(m, { solid: false });
+  // Boss and lens both live under it, so it must never be something the camera
+  // boom can catch on or a ray can stop against.
+  return m;
+}
+
 /** A ring of inlay bands on the floor. Pure composition: it gives the eye radii. */
 function inlayRings(stage, radii, mat) {
   const parts = [];
@@ -133,13 +156,16 @@ function inlayRings(stage, radii, mat) {
 function buildBazaar(stage) {
   const R = stage.floorRadius;
   const stone = rung('stone', 3.2, { color: 0x3c3746, roughness: 0.72, metalness: 0.04, envMapIntensity: 1.1 });
-  const polish = rung('stone', 4.0, { color: 0x2a2733, roughness: 0.28, metalness: 0.08, envMapIntensity: 2.0 });
+  // Polished, but not a mirror: at roughness 0.28 with a low sun this floor
+  // rendered a blown specular streak across a third of the frame.
+  const polish = rung('stone', 4.0, { color: 0x322e3d, roughness: 0.46, metalness: 0.06, envMapIntensity: 0.9 });
   const brass = rung('metal', 2.6, { color: 0xa8794a, roughness: 0.22, metalness: 0.74, envMapIntensity: 2.6 });
   const lamp = glow(0xffb060, 3.0);
 
   floorDisc(stage, polish);
   inlayRings(stage, [R * 0.34, R * 0.62, R * 0.86], brass);
   roomWall(stage, R, 15, stone, brass, 12);
+  roomCeiling(stage, R, 15, stone, 8);
 
   // Arcade: ten column/arch bays. The arch lintels are what make it a market
   // hall rather than a silo — a straight column ring reads as fence posts.
@@ -215,9 +241,12 @@ function buildBazaar(stage) {
 
 function buildCrucible(stage) {
   const R = stage.floorRadius;
-  const iron = rung('metal', 3.0, { color: 0x4a4e58, roughness: 0.34, metalness: 0.58, envMapIntensity: 2.2 });
-  const dark = rung('metal', 2.4, { color: 0x2e3138, roughness: 0.62, metalness: 0.35, envMapIntensity: 1.2 });
-  const seam = glow(0xff5a18, 2.6);
+  const iron = rung('metal', 3.0, { color: 0x4a4e58, roughness: 0.40, metalness: 0.52, envMapIntensity: 1.4 });
+  // The floor is a grate, not a mirror. It measured as the brightest object in
+  // the first capture — a sun streak on wet-looking metal — which is the wrong
+  // thing for a room whose whole point is that the light comes from below.
+  const dark = rung('metal', 2.4, { color: 0x33363d, roughness: 0.78, metalness: 0.20, envMapIntensity: 0.6 });
+  const seam = glow(0xff5a18, 1.5);
 
   floorDisc(stage, dark);
   // Radial seams glowing up through the grate. They are also the only thing in
@@ -225,8 +254,10 @@ function buildCrucible(stage) {
   const seams = [];
   for (let i = 0; i < 12; i++) {
     const a = (i / 12) * Math.PI * 2;
-    seams.push({ g: box(R * 0.94, 0.06, 0.30), x: Math.cos(a) * R * 0.47, y: 0.05,
-                 z: Math.sin(a) * R * 0.47, ry: -a });
+    // A band, not a spoke all the way to the middle. Full-radius bars converge
+    // on the centre of the frame and owned the first capture of this arena.
+    seams.push({ g: box(R * 0.44, 0.06, 0.14), x: Math.cos(a) * R * 0.70, y: 0.05,
+                 z: Math.sin(a) * R * 0.70, ry: -a });
   }
   seams.push({ g: (() => { const g = new THREE.TorusGeometry(R * 0.55, 0.14, 5, 56); g.rotateX(Math.PI / 2); return g; })(), y: 0.05 });
   const seamMesh = new THREE.Mesh(mergeParts(seams), seam);
@@ -234,6 +265,7 @@ function buildCrucible(stage) {
   stage.addMesh(seamMesh, { solid: false });
 
   roomWall(stage, R, 13, iron, iron, 18);
+  roomCeiling(stage, R, 13, iron, 7);
 
   // Four cover blocks on a square, deliberately not symmetrical with the wall
   // ribs: the arena has to have a shape you can learn inside five waves.
@@ -289,13 +321,14 @@ function buildCrucible(stage) {
 
 function buildVault(stage) {
   const R = stage.floorRadius;
-  const marble = rung('stone', 3.4, { color: 0x241f22, roughness: 0.26, metalness: 0.10, envMapIntensity: 2.4 });
+  const marble = rung('stone', 3.4, { color: 0x2b2428, roughness: 0.44, metalness: 0.08, envMapIntensity: 1.1 });
   const wall = rung('stone', 2.6, { color: 0x332b26, roughness: 0.74, metalness: 0.05, envMapIntensity: 1.0 });
   const gold = rung('metal', 2.8, { color: 0xc99a34, roughness: 0.17, metalness: 0.86, envMapIntensity: 3.0 });
 
   floorDisc(stage, marble);
   inlayRings(stage, [R * 0.28, R * 0.55, R * 0.82], gold);
   roomWall(stage, R, 12, wall, gold, 14);
+  roomCeiling(stage, R, 12, wall, 7);
 
   // Eight gilded pillars, thick and close: a treasury is a *heavy* room.
   const pil = [];
@@ -355,9 +388,12 @@ function buildVault(stage) {
 
 function buildFracture(stage) {
   const R = stage.floorRadius;
-  const slab = rung('stone', 3.0, { color: 0x33284a, roughness: 0.66, metalness: 0.08, envMapIntensity: 1.5 });
-  const edge = rung('stone', 2.2, { color: 0x1d1730, roughness: 0.46, metalness: 0.16, envMapIntensity: 2.2 });
-  const rift = glow(0xd050ff, 2.8);
+  // Lifted off near-black: the first capture had the arena reading as a hole in
+  // the frame with only its rim visible, so the one surface the whole fight
+  // happens on carried no value of its own at all.
+  const slab = rung('stone', 3.0, { color: 0x4a3c6e, roughness: 0.68, metalness: 0.08, envMapIntensity: 1.3 });
+  const edge = rung('stone', 2.2, { color: 0x241d3a, roughness: 0.50, metalness: 0.14, envMapIntensity: 1.8 });
+  const rift = glow(0xd050ff, 1.3);
 
   floorDisc(stage, slab, 96);
 
@@ -371,7 +407,7 @@ function buildFracture(stage) {
   // A rim band, likewise scaled: it is the line that says exactly where the
   // ground ends, and in phase 2 it is what visibly moves inward.
   const rim = new THREE.Mesh((() => {
-    const g = new THREE.TorusGeometry(1, 0.022, 6, 96);
+    const g = new THREE.TorusGeometry(1, 0.014, 6, 96);
     g.rotateX(Math.PI / 2);
     return g;
   })(), rift);
@@ -382,20 +418,28 @@ function buildFracture(stage) {
   stage.onFloorRadius = (r) => {
     under.scale.set(r, 1, r);
     rim.scale.set(r, 1, r);
+    veinMesh.scale.set(r, 1, r);
   };
-  stage.onFloorRadius(R);
 
   // Rift veins across the floor. Radial, so they point at the middle from
   // anywhere — a readability aid disguised as decoration.
+  //
+  // Built at *unit* scale and scaled with the floor, because the first pass
+  // baked them at the phase-1 radius and after the collapse nine bright bars
+  // were left hanging out over the void, which read as the floor still being
+  // there. They are also much thinner than the first pass: at 0.22 m and
+  // emissive 2.8 they were the loudest thing in the frame.
   const veins = [];
   for (let i = 0; i < 9; i++) {
     const a = (i / 9) * Math.PI * 2 + 0.2;
-    const len = R * (0.5 + (i % 3) * 0.16);
-    veins.push({ g: box(len, 0.05, 0.22), x: Math.cos(a) * len * 0.5, y: 0.04, z: Math.sin(a) * len * 0.5, ry: -a });
+    const len = 0.5 + (i % 3) * 0.16;
+    veins.push({ g: box(len, 0.05, 0.006), x: Math.cos(a) * len * 0.5, y: 0, z: Math.sin(a) * len * 0.5, ry: -a });
   }
   const veinMesh = new THREE.Mesh(mergeParts(veins), rift);
-  veinMesh.position.copy(stage.origin);
+  veinMesh.position.set(stage.origin.x, 0.04, stage.origin.z);
   stage.addMesh(veinMesh, { solid: false });
+  // Only now that every follower exists: the hook closes over veinMesh.
+  stage.onFloorRadius(R);
 
   // Monoliths at the far edge. They sit beyond the wall radius so they can
   // never be reached; their job is to give the void a horizon and the frame a

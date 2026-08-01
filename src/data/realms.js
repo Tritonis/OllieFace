@@ -39,6 +39,12 @@ const DEG = Math.PI / 180;
  * halves are absent on purpose — a realm builds its own geometry and never goes
  * through TerrainGen.
  */
+// Realm suns sit high (60-70 deg) rather than at the stages' raking 15-40.
+// A walled room with a low sun is a room with a mirror streak across its floor
+// and a sun disc sitting in the doorway, which is exactly what the first
+// capture of all three of them showed. High is also what an interior wants:
+// the key reads as a light in the ceiling and the arena's own emissives get to
+// carry the colour.
 function air({ zenith, horizon, haze, ground, sun, cloud, cloudAmount = 0.2, hazePow = 8,
                ceiling = 0x000000, ceilingAmount = 0, fogColor, fogDensity,
                sunEl, sunAz, sunColor, sunIntensity, hemiSky, hemiGround, hemiIntensity,
@@ -74,7 +80,7 @@ export const REALMS = [
       sun: 0xffbe7a, cloud: 0x2a1f38, cloudAmount: 0.9, hazePow: 5.0,
       ceiling: 0x1a1224, ceilingAmount: 0.85,
       fogColor: 0x2a1c30, fogDensity: 0.016,
-      sunEl: 8, sunAz: 210, sunColor: 0xffc98e, sunIntensity: 2.2,
+      sunEl: 62, sunAz: 210, sunColor: 0xffc98e, sunIntensity: 2.2,
       hemiSky: 0x5a3f78, hemiGround: 0x2a1a12, hemiIntensity: 0.85,
       rim: 0xff9a5a, rimIntensity: 1.9, envIntensity: 0.45,
       dustColor: 0xffd8a0, dustOpacity: 0.55,
@@ -102,7 +108,7 @@ export const REALMS = [
       sun: 0xffb060, cloud: 0x3a1810, cloudAmount: 0.95, hazePow: 6.0,
       ceiling: 0x200c0c, ceilingAmount: 0.7,
       fogColor: 0x4a1c14, fogDensity: 0.013,
-      sunEl: 26, sunAz: 300, sunColor: 0xffa050, sunIntensity: 3.4,
+      sunEl: 68, sunAz: 300, sunColor: 0xffa050, sunIntensity: 3.4,
       hemiSky: 0x7a3020, hemiGround: 0x3a1408, hemiIntensity: 0.7,
       rim: 0xff5a20, rimIntensity: 2.2, envIntensity: 0.5,
       dustColor: 0xffb070, dustOpacity: 0.7,
@@ -124,7 +130,7 @@ export const REALMS = [
       sun: 0xfff0c0, cloud: 0x2e2410, cloudAmount: 0.8, hazePow: 7.0,
       ceiling: 0x181206, ceilingAmount: 0.6,
       fogColor: 0x3a2e12, fogDensity: 0.011,
-      sunEl: 34, sunAz: 60, sunColor: 0xffe4a8, sunIntensity: 3.8,
+      sunEl: 64, sunAz: 60, sunColor: 0xffe4a8, sunIntensity: 3.8,
       hemiSky: 0x6a5420, hemiGround: 0x2a1e08, hemiIntensity: 0.75,
       rim: 0xffc850, rimIntensity: 1.6, envIntensity: 0.9,
       dustColor: 0xffe0a0, dustOpacity: 0.62,

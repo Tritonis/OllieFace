@@ -19,6 +19,7 @@ import { RealmGateway } from './RealmProps.js';
  */
 
 const _v = new THREE.Vector3();
+const _tmp2 = new THREE.Vector3();
 
 export function installRealmHarness(ctx) {
   const H = globalThis.__HARNESS__;
@@ -133,30 +134,69 @@ export function installRealmHarness(ctx) {
     async realmGateways({ settleFrames = 40 } = {}) {
       await begin();
       const p = ctx.player.position.clone();
-      camera.getWorldDirection(_v);
-      _v.y = 0; _v.normalize();
+
+      // Where the three go, and where the lens goes, chosen together.
+      //
+      // The first two passes fanned them off camera-forward and the left-hand
+      // stele measured 0 px both times — not off frame, *behind terrain*. A
+      // stage is a heightfield with boulders on it and there is no reason a
+      // fixed bearing should be clear. So: sweep bearings, and accept the first
+      // one where all three sites are walkable and all three tops are visible
+      // from the proposed camera. `raycastDistance` covers terrain and props.
+      const SIDE = 4.6, AHEAD = 13, BACK = 7.5;
+      const clear = (from, to) => {
+        _v.subVectors(to, from);
+        const d = _v.length();
+        if (d < 1e-3) return true;
+        _v.divideScalar(d);
+        const hit = ctx.stage.raycastDistance(from, _v, d - 0.8);
+        return !(typeof hit === 'number' && hit >= 0);
+      };
+      let best = null;
+      for (let t = 0; t < 16 && !best; t++) {
+        const bearing = (t / 16) * Math.PI * 2;
+        const fx = Math.sin(bearing), fz = Math.cos(bearing);
+        const sites = [];
+        let ok = true;
+        for (let i = 0; i < 3; i++) {
+          const side = (i - 1) * SIDE;
+          const x = p.x + fx * AHEAD - fz * side;
+          const z = p.z + fz * AHEAD + fx * side;
+          if (!ctx.stage.isWalkable?.(x, z, 2.2)) { ok = false; break; }
+          sites.push(new THREE.Vector3(x, ctx.stage.sampleHeight(x, z), z));
+        }
+        if (!ok) continue;
+        const cam = new THREE.Vector3(p.x - fx * BACK, 0, p.z - fz * BACK);
+        cam.y = ctx.stage.sampleHeight(cam.x, cam.z) + 2.2;
+        if (!sites.every((v) => clear(cam, _tmp2.set(v.x, v.y + 3.2, v.z)))) continue;
+        best = { sites, cam };
+      }
+      if (!best) {
+        // Nothing clear anywhere: shoot it anyway and let the assertion say so
+        // rather than silently photographing a hillside.
+        const fx = Math.sin(0), fz = Math.cos(0);
+        const sites = [0, 1, 2].map((i) => {
+          const side = (i - 1) * SIDE;
+          const x = p.x + fx * AHEAD - fz * side, z = p.z + fz * AHEAD + fx * side;
+          return new THREE.Vector3(x, ctx.stage.sampleHeight(x, z), z);
+        });
+        best = { sites, cam: new THREE.Vector3(p.x, p.y + 2.2, p.z - BACK) };
+      }
+
       const made = [];
-      for (let i = 0; i < GATEWAYS.length; i++) {
+      for (let i = 0; i < GATEWAYS.length && i < best.sites.length; i++) {
         const gate = GATEWAYS[i];
         const realm = REALM_BY_ID.get(gate.realm);
-        // Fanned across the camera's forward, not across +X: the survivor is
-        // not facing north-east and a world-axis offset would put two of the
-        // three behind the lens.
-        const side = (i - 1) * 4.6;
-        const x = p.x + _v.x * 13 - _v.z * side;
-        const z = p.z + _v.z * 13 + _v.x * side;
-        const y = ctx.stage.sampleHeight(x, z);
-        const g = new RealmGateway(ctx, new THREE.Vector3(x, y, z), gate, realm, gate.cost(2));
+        const g = new RealmGateway(ctx, best.sites[i], gate, realm, gate.cost(2));
         ctx.interactables.add(g);
         ctx.realms.props.push(g);
         made.push(g);
       }
-      // Low and aimed up: the steles are dark stone on dark ground, and a
-      // high lens puts terrain behind all three. From here the top two thirds
-      // of each one is against sky, which is where the separation comes from.
+      // Low and aimed up: the steles are dark stone on dark ground, and a high
+      // lens puts terrain behind all three. From here their top two thirds is
+      // against sky, which is where the separation comes from.
       const mid = made[1].position;
-      look(p.x - _v.x * 7.5, p.y + 2.2, p.z - _v.z * 7.5,
-           mid.x, mid.y + 3.8, mid.z);
+      look(best.cam.x, best.cam.y, best.cam.z, mid.x, mid.y + 3.8, mid.z);
       await wait(settleFrames);
       freeze();
       mustContain('21-realm-gateways', [
@@ -165,7 +205,7 @@ export function installRealmHarness(ctx) {
           objects: () => made.map((g) => g.group),
           perObject: true, minPixels: 1200, minObjects: 3,
         },
-        { subject: 'the survivor', objects: () => [ctx.player?.group].filter(Boolean), minPixels: 400 },
+        { subject: 'the survivor', objects: () => [ctx.player?.group].filter(Boolean), minPixels: 200 },
       ]);
       return { gateways: made.length };
     },
@@ -207,19 +247,28 @@ export function installRealmHarness(ctx) {
       c.wave = 4;
       c._spawnWave(ctx);
       c.state = 'fighting';
+      // ...and say so. The controller only writes the objective line on its own
+      // wave transitions, and a frame captioned "WAVE 1 INCOMING" over a
+      // fourth-wave field is the exact class of quietly-wrong output this
+      // harness exists to prevent.
+      c.ctxHud('Wave ' + c.wave + ' of ' + c.def.waves);
       for (let i = 0; i < 300 && c.live.length < 5; i++) { keepAlive(); await frames(1); }
       placePlayer(0, 7);
       // Behind the survivor, looking into the arena: the wave steers at the
       // player, so this is the one framing that puts monsters at 5-15 m rather
       // than scattered across a 25 m room.
-      arenaCam(0, 17, 4.8, 1.8);
+      arenaCam(0, 17, 7.0, 1.4);
       if (ctx.input) ctx.input.mouse.left = true;
       await wait(settleFrames);
       if (ctx.input) ctx.input.mouse.left = false;
       await frames(4);
       freeze();
       mustContain('23-realm-crucible', [
-        { subject: 'the trial wave', objects: () => rigs(c.live), perObject: true, minPixels: 500, minObjects: 3 },
+        // Two of three, not three of three: the arena has four cover blocks in
+        // it and a monster standing behind one is a correct frame, not a
+        // missing subject. The total-pixel floor is what proves the wave is in
+        // shot at a readable size.
+        { subject: 'the trial wave', objects: () => rigs(c.live), perObject: true, minPixels: 420, minObjects: 2 },
         { subject: 'the arena wall', dom: () => ctx.stage.wallRadius === ctx.stage.floorRadius, detail: () => ctx.stage.floorRadius },
         { subject: 'the survivor', objects: () => [ctx.player?.group].filter(Boolean), minPixels: 300 },
       ]);

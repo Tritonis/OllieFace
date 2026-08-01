@@ -3819,7 +3819,10 @@ function buildHerald() {
   crumbles(rig, add(rig, body, 'body', merged('her.mantle', [
     P(cyl(1.5, 0.34, 3.2, 8), 0, -2.0, 0),
     P(cone(0.4, 1.4, 6), 0, -4.1, 0, Math.PI),
-    P(cyl(1.72, 1.5, 0.5, 8), 0, -0.2, 0),
+    // No collar here. A short wide cylinder seen edge-on is all fresnel, and
+    // through the rim term it rendered as a blown white bar across the middle
+    // of the boss - the brightest thing in the finale's first frame.
+    P(cyl(1.55, 1.42, 0.34, 8), 0, -0.42, 0),
     // Four buttress fins down the skirt: at 40 m the mantle is one dark mass
     // and the fins are the only thing breaking its outline.
     P(box(0.22, 2.6, 1.0), 1.15, -1.7, 0, 0, 0, 0.16),

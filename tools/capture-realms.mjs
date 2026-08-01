@@ -101,7 +101,7 @@ const OFFSCREEN = process.env.CAPTURE_VISIBLE
   ? []
   : ['--window-position=-2400,-2400', `--window-size=${W},${H}`];
 
-const PORT = Number(args.port ?? 5201);
+const PORT = Number(args.port ?? 5207);
 log('starting vite...');
 const server = await createServer({
   server: { port: PORT, strictPort: true, hmr: false, watch: null },

@@ -316,7 +316,7 @@ const DETAIL = {
   // raw rock has none, which is how RoR2's aqueduct separates masonry from the
   // cliff it is bolted to at a glance.
   cliff:     { fine: 0.22, fineAmp: 0.70, coarse: 1.8, coarseAmp: 0.45, ridge: 0.0,
-               cavity: 0.60, rough: 0.16, joint: [0.55, 1.70, 0.45, 0.170],
+               cavity: 0.60, rough: 0.09, joint: [0.55, 1.70, 0.45, 0.170],
                uv: 0.90, uvFade: [34, 100], fineFade: 55 },
   // Organic clumps: mid-scale, soft, no directional bias, deepest cavity of any
   // class because foliage is mostly self-shadow.
@@ -362,23 +362,18 @@ uniform vec4 uDetB;   // x aniso   y ridge    z cavity    w roughMod
 uniform vec4 uDetC;   // x jointAmp y jointPeriod z jointAspect w jointWidth
 uniform vec4 uDetD;   // x uvNear  y uvFade0   z uvFade1   w fineFade
 
-float detHash(vec2 p) {
-  vec3 q = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973));
-  q += dot(q, q.yzx + 33.33);
-  return fract((q.x + q.y) * q.z);
-}
-// value noise with its analytic gradient — (value, dV/du, dV/dv). Analytic
-// because a screen-space derivative here would put the detail straight back on
-// the screen, which is the defect this exists to remove.
+uniform sampler2D uDetNoise;
+// Value-and-gradient fbm, baked. Evaluating this analytically cost 24 hashes a
+// pixel and measured 7.8 ms of a 20.6 ms frame; the same field read from a
+// tileable RGB texture — value in R, the two gradient components in GB — costs
+// three fetches and measures under 2 ms. Baking also buys correct mip filtering
+// for free, which matters more here than the arithmetic did: an unfiltered
+// world-space field is exactly the sub-pixel aliasing this pass exists to end.
+// The gradient must be *stored*, not taken with dFdx, because a screen-space
+// derivative would put the detail straight back on the screen.
 vec3 detNoise(vec2 p) {
-  vec2 i = floor(p), f = fract(p);
-  vec2 u = f * f * (3.0 - 2.0 * f), du = 6.0 * f * (1.0 - f);
-  float a = detHash(i), b = detHash(i + vec2(1.0, 0.0));
-  float c = detHash(i + vec2(0.0, 1.0)), d = detHash(i + vec2(1.0, 1.0));
-  float k1 = b - a, k2 = c - a, k3 = a - b - c + d;
-  return vec3(a + k1 * u.x + k2 * u.y + k3 * u.x * u.y,
-              du.x * (k1 + k3 * u.y),
-              du.y * (k2 + k3 * u.x));
+  vec3 t = texture2D(uDetNoise, p).rgb;
+  return vec3(t.r, (t.g - 0.5) * 8.0, (t.b - 0.5) * 8.0);
 }
 // Running-bond mortar course. Straight, world-periodic, and the one feature in
 // the build that says "someone cut this" rather than "this eroded".
@@ -409,7 +404,11 @@ void detField(vec3 wp, vec3 wn, float dist, out vec3 gradW, out float hOut) {
 
   vec2 cX = vec2(wp.z, wp.y), cY = vec2(wp.x, wp.z), cZ = vec2(wp.x, wp.y);
 
-  if (fineK > 0.004 && uDetA.y > 0.0) {
+  // The noise fetches are deliberately *not* inside a per-plane branch: a
+  // texture read in non-uniform control flow has undefined derivatives, and the
+  // derivative is what selects the mip that keeps this field from aliasing.
+  // Three fetches unconditionally is both cheaper and correct.
+  {
     float k = uDetA.y * fineK;
     vec3 nX = detNoise(cX * uDetA.x * an);
     vec3 nY = detNoise(cY * uDetA.x * an);
@@ -420,35 +419,39 @@ void detField(vec3 wp, vec3 wn, float dist, out vec3 gradW, out float hOut) {
     gradW += k * bw.z * vec3(nZ.y, nZ.z * an.y, 0.0);
   }
 
-  if (uDetA.w > 0.0) {
+  // Ridging: creased relief for natural stone, billowy for everything else. The
+  // value and the gradient are folded with the same factor so the surface stays
+  // a real height field.
+  {
+    float k = uDetA.w, r = uDetB.y;
     vec3 mX = detNoise(cX * uDetA.z);
     vec3 mY = detNoise(cY * uDetA.z);
     vec3 mZ = detNoise(cZ * uDetA.z);
-    // Ridging: creased relief for natural stone, billowy for everything else.
-    // The value and the gradient are folded with the same factor so the surface
-    // stays a real height field.
-    float r = uDetB.y;
-    vec3 sX = vec3(mix(mX.x, 1.0 - abs(2.0 * mX.x - 1.0), r), mX.yz * mix(1.0, -sign(2.0 * mX.x - 1.0) * 2.0, r));
-    vec3 sY = vec3(mix(mY.x, 1.0 - abs(2.0 * mY.x - 1.0), r), mY.yz * mix(1.0, -sign(2.0 * mY.x - 1.0) * 2.0, r));
-    vec3 sZ = vec3(mix(mZ.x, 1.0 - abs(2.0 * mZ.x - 1.0), r), mZ.yz * mix(1.0, -sign(2.0 * mZ.x - 1.0) * 2.0, r));
-    float k = uDetA.w;
-    hOut += k * (bw.x * (sX.x - 0.5) + bw.y * (sY.x - 0.5) + bw.z * (sZ.x - 0.5));
-    gradW += k * bw.x * vec3(0.0, sX.z, sX.y);
-    gradW += k * bw.y * vec3(sY.y, 0.0, sY.z);
-    gradW += k * bw.z * vec3(sZ.y, sZ.z, 0.0);
+    float vX = mix(mX.x, 1.0 - abs(2.0 * mX.x - 1.0), r);
+    float vY = mix(mY.x, 1.0 - abs(2.0 * mY.x - 1.0), r);
+    float vZ = mix(mZ.x, 1.0 - abs(2.0 * mZ.x - 1.0), r);
+    vec2 gX = mX.yz * mix(1.0, -sign(2.0 * mX.x - 1.0) * 2.0, r);
+    vec2 gY = mY.yz * mix(1.0, -sign(2.0 * mY.x - 1.0) * 2.0, r);
+    vec2 gZ = mZ.yz * mix(1.0, -sign(2.0 * mZ.x - 1.0) * 2.0, r);
+    hOut += k * (bw.x * (vX - 0.5) + bw.y * (vY - 0.5) + bw.z * (vZ - 0.5));
+    gradW += k * bw.x * vec3(0.0, gX.y, gX.x);
+    gradW += k * bw.y * vec3(gY.x, 0.0, gY.y);
+    gradW += k * bw.z * vec3(gZ.x, gZ.y, 0.0);
   }
 
+  // Joints are grooves: they cut *into* the surface, so they subtract height and
+  // are the strongest cavity term the material has. This one *is* gated — it is
+  // pure arithmetic, most materials have no joints at all, and the branch is
+  // uniform across a draw call.
   if (uDetC.x > 0.0) {
-    float per = uDetC.y, asp = uDetC.z, wid = uDetC.w, k = uDetC.x;
+    float per = uDetC.y, asp = uDetC.z, wid = uDetC.w, k = uDetC.x * 0.7;
     vec3 jX = detJoint(cX, per, asp, wid);
     vec3 jY = detJoint(cY, per, asp, wid);
     vec3 jZ = detJoint(cZ, per, asp, wid);
-    // Joints are grooves: they cut *into* the surface, so they subtract height
-    // and are the strongest cavity term the material has.
-    hOut -= k * (bw.x * jX.x + bw.y * jY.x + bw.z * jZ.x) * 0.7;
-    gradW -= k * bw.x * vec3(0.0, jX.z, jX.y);
-    gradW -= k * bw.y * vec3(jY.y, 0.0, jY.z);
-    gradW -= k * bw.z * vec3(jZ.y, jZ.z, 0.0);
+    hOut -= k * (bw.x * jX.x + bw.y * jY.x + bw.z * jZ.x);
+    gradW -= uDetC.x * bw.x * vec3(0.0, jX.z, jX.y);
+    gradW -= uDetC.x * bw.y * vec3(jY.y, 0.0, jY.z);
+    gradW -= uDetC.x * bw.z * vec3(jZ.y, jZ.z, 0.0);
   }
 }
 `;
@@ -459,10 +462,47 @@ void detField(vec3 wp, vec3 wn, float dist, out vec3 gradW, out float hOut) {
  * `kind` names a row of `DETAIL`. The uniforms live on `material.userData.det`
  * so a biome retune can move them without recompiling anything.
  */
+// Cells of noise across one tile of the baked texture. The world period of a
+// sample is `fine * DET_CELLS` metres, so `fine` stays a plain feature size.
+const DET_CELLS = 4;
+let _detNoiseTex = null;
+
+function detailNoiseTexture() {
+  if (_detNoiseTex) return _detNoiseTex;
+  const N = 256, P = DET_CELLS;
+  const h = new Float32Array(N * N);
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      // Two octaves, wrapped on the tile so the world-space field is seamless.
+      h[y * N + x] = fbm2((x / N) * P, (y / N) * P, P, 4201, 3);
+    }
+  }
+  const data = new Uint8ClampedArray(N * N * 4);
+  // Gradient in *cell* units, so amplitudes in DETAIL read as surface slopes
+  // independently of the texture's resolution.
+  const s = N / P / 2;
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      const i = y * N + x, o = i * 4;
+      const gx = (h[y * N + wrap(x + 1, N)] - h[y * N + wrap(x - 1, N)]) * s;
+      const gy = (h[wrap(y + 1, N) * N + x] - h[wrap(y - 1, N) * N + x]) * s;
+      data[o] = h[i] * 255;
+      data[o + 1] = (gx / 8 + 0.5) * 255;
+      data[o + 2] = (gy / 8 + 0.5) * 255;
+      data[o + 3] = 255;
+    }
+  }
+  _detNoiseTex = dataTexture(data, false);
+  _detNoiseTex.anisotropy = 8;
+  return _detNoiseTex;
+}
+
 export function attachDetail(material, kind) {
   const d = { ...DETAIL_BASE, ...(DETAIL[kind] || {}) };
   const u = {
-    uDetA: { value: new THREE.Vector4(1 / d.fine, d.fineAmp, 1 / d.coarse, d.coarseAmp) },
+    uDetNoise: { value: detailNoiseTexture() },
+    uDetA: { value: new THREE.Vector4(1 / (d.fine * DET_CELLS), d.fineAmp,
+                                      1 / (d.coarse * DET_CELLS), d.coarseAmp) },
     uDetB: { value: new THREE.Vector4(d.aniso, d.ridge, d.cavity, d.rough) },
     uDetC: { value: new THREE.Vector4(d.joint[0], d.joint[1], d.joint[2], d.joint[3]) },
     uDetD: { value: new THREE.Vector4(d.uv, d.uvFade[0], d.uvFade[1], d.fineFade) },
@@ -523,10 +563,16 @@ export function attachDetail(material, kind) {
         {
           vec3 upV = vec3( viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1] );
           float skyD = dot( normal - nonPerturbedNormal, upV );
-          reflectedLight.indirectDiffuse *= clamp( 1.0 + uDetB.z * 2.2 * skyD, 0.30, 1.95 );
-        }
-        reflectedLight.indirectDiffuse *= detCav;
-        reflectedLight.indirectSpecular *= mix( 1.0, detCav, 0.55 );`);
+          // The two indirect terms are floored *together* at 0.45. Multiplied
+          // independently they bottomed out near 0.04x, which does not read as a
+          // crevice, it reads as a hole: on a cool ambient the surviving pixels
+          // went deep and saturated and pulled the biome's hue histogram toward
+          // its shade colour, which is the one thing this round is not allowed
+          // to cost. A 2.2:1 indirect range is enough to carry the break.
+          float ind = clamp( ( 1.0 + uDetB.z * 1.3 * skyD ) * detCav, 0.45, 1.85 );
+          reflectedLight.indirectDiffuse *= ind;
+          reflectedLight.indirectSpecular *= mix( 1.0, ind, 0.55 );
+        }`);
   };
   // One extra program, not one per material: every consumer of this pass shares
   // the same source and differs only in uniform values.

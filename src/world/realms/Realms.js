@@ -442,7 +442,10 @@ class TrialController {
 
   enter(ctx, stage) {
     if (!ctx.authority) return;
-    this.plinth = this.realms.addProp(new TrialPlinth(ctx, stage.origin.clone()));
+    // Off the middle: dead centre it stands between the lens and every monster
+    // in the room, which is what the first capture of this arena showed.
+    this.plinth = this.realms.addProp(new TrialPlinth(
+      ctx, stage.origin.clone().add(new THREE.Vector3(-9, 0, -9))));
     this.realms.spawnExit('Leave the Crucible', 0xff8a3c, new THREE.Vector3(0, 0, stage.floorRadius - 3.5));
   }
 

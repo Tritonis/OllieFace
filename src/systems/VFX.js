@@ -1882,8 +1882,8 @@ class RingPool {
 // the crosshair. A damage readout is feedback, not a headline. Both classes are
 // pulled ~30% and the minimum-pixel floor with them, which is what actually
 // sets the size at combat range.
-const NUM_SCALE = 0.27;
-const CRIT_SCALE = 0.44;
+const NUM_SCALE = 0.30;
+const CRIT_SCALE = 0.49;
 // Half-extents, in NDC, of the rect the reticle owns. Nothing this layer draws
 // is allowed to settle inside it; see the deflection in NumberVert.
 const NUM_RETICLE_X = 0.115;
@@ -1902,7 +1902,7 @@ const NUM_RUN_WINDOW = 0.42;
 // then measured at a 27 px cap in `10-inventory`, above every other numeral in
 // the product. 26 keeps ~13 px of ink inside a ~21 px mark, which still clears
 // the halo's own 3 px plate and no longer outranks the clock.
-const NUM_MIN_PX = 26;
+const NUM_MIN_PX = 30;
 // Glyph atlas geometry, shared by the drawer and the halo dilation in NumberFrag.
 const NUM_TILE = 128;
 const NUM_COLS = 4;
@@ -1910,7 +1910,13 @@ const NUM_FONT_PX = 88;
 const NUM_STROKE_PX = 20;
 // Halo radius in atlas texels. Must stay inside the tile's padding
 // (tile/2 - (font*0.9 + stroke)/2 ≈ 14 texels) or a tap reads the next glyph.
-const NUM_HALO_PX = 9;
+// Raised with the size reduction above and for the same reason: the halo is the
+// plate that carries the readout's separation from whatever is behind it, and
+// it is specified in *atlas* texels, so shrinking the glyph shrank the plate in
+// screen pixels too. The first attempt at the size cut failed the harness's own
+// legibility assertion on `08-explosion` (median separation 0.15 against a 0.25
+// bar) for exactly that reason.
+const NUM_HALO_PX = 12;
 // Beyond this the readout is chip damage on something the player is not
 // fighting; spending instances on it only adds noise.
 const NUM_MAX_DIST = 45;
