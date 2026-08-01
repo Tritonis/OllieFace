@@ -444,9 +444,16 @@ export function getMaterials() {
 //
 // A biome is a *retune* of the library above, never an addition to it. Every
 // biome drives the same nine materials, the same sky shader and the same three
-// lights; all it changes are uniforms — colours, fog density, sun angle, and
-// the numbers TerrainGen and Props read. Nothing here can fork a shader
-// program, which is the whole reason stage transitions are free.
+// lights; all it changes are uniforms — colours, roughness, fog density, sun
+// angle, and the numbers TerrainGen and Props read. Nothing here can fork a
+// shader program, which is the whole reason stage transitions are free.
+//
+// What a biome is *not* is a recolour. Each one names a `profile` that
+// TerrainGen dispatches a whole landform pass on (mesas, carved channels,
+// industrial pads, cavern spires), a prop kit that Props builds a different set
+// of geometry for, and a `matTune` block that moves it to a different rung of
+// the roughness ladder. Three stages should be identifiable from a silhouette
+// with the palette stripped out.
 //
 // `terrain.shape` is the analytic heightfield's parameter block. `sandAmt` and
 // `mossAmt` scale the two vertex-colour bands, which are computed against the
@@ -456,233 +463,360 @@ export function getMaterials() {
 
 const DEG = Math.PI / 180;
 
-// The reference stage: identical to the pre-biome world, so stage 1 of a run
-// still looks exactly like the art direction the palette above describes.
-const SHAPE_DEFAULT = {
+/**
+ * Shape defaults.
+ *
+ * This block exists so a new heightfield field has exactly one place to land,
+ * not because the four biomes want anything like the same landform — every one
+ * of them overrides most of it. `profile` is the switch TerrainGen dispatches
+ * its per-biome landform pass on, and it is the field that stops the stages
+ * being one noise stack recoloured.
+ */
+const SHAPE_BASE = {
+  profile: 'default',
   warp: 34, warpFreq: 0.0072,
   baseFreq: 0.0068, baseAmp: 26,
   ridgeFreq: 0.0105, ridgeAmp: 11,
-  // The grit octave. Halved in amplitude and its wavelength roughly doubled
-  // (0.075 -> 0.038 is 13m -> 26m at the base octave) so that at the 10-20m a
-  // prop close-up spans it sits *below* the 1.375m triangle rather than above
-  // it. At 1.9/0.075 every facet in the background of a prop shot was its own
-  // spike and the slope behind the subject read as a field of random shards
-  // instead of as landform. See TerrainGen.heightAt: the octave is also now
-  // applied after terracing, which is what stops it flipping facets across a
-  // 3m riser.
+  // The grit octave, applied after terracing — see TerrainGen.heightAt.
   detailFreq: 0.038, detailAmp: 0.95,
   basinRadius: 0.5, basinFlatten: 0.28, basinDrop: -3.0, basinStrength: 0.82,
   terraceStep: 3.0, terraceBlend: 0.24, terraceStrength: 0.85, terraceBias: 0.45,
   wallStart: 0.82, wallBase: 46, wallVar: 22,
+  // Sedimentary value banding on steep ground. 0 disables it; see _faceColor.
+  strataAmt: 0, strataStep: 4.0,
 };
 
-const PROPS_DEFAULT = {
-  boulders: 260, boulderScale: [0.45, 2.4],
-  pillars: 74, pillarHeight: [2.2, 7.5],
-  arches: 16, archScale: [2.2, 4.6],
-  trees: 110, treeScale: [0.8, 1.9],
-  // The palette declares exactly one accent, and an accent that covers 0.1% of
-  // the frame is not an accent. Placement, not count, was the lever that fixed
-  // that: a uniformly-bearing-sampled cluster has a ~1-in-4 chance of being
-  // inside any given 89-degree horizontal field, so Props.js biases half of them
-  // onto the hero-arch sight line, which is the axis every wide framing looks
-  // down. That part landed and stays.
-  //
-  // The scale that went with it overshot badly: [2.4, 6.2] at twelve clusters
-  // measured 2.5% of the establishing frame and 4.4% of the prop frame against a
-  // 0.6% target, with a single 48,027 px spike (3.3% of frame) out-valuing the
-  // subject it stood next to. Coverage goes as scale SQUARED, so the ceiling is
-  // the term that matters and the count is the blunt one. [1.9, 4.2] at eight
-  // clusters is ~0.30x the projected area; the largest single instance drops to
-  // ~0.45x its area, which is what stops one crystal reading as the subject.
-  crystalClusters: 8, crystalPer: [6, 10], crystalScale: [1.9, 4.2],
-  islands: 15, islandScale: [3.5, 9.5], islandLow: [6, 11], islandHigh: [16, 40],
-  monolithHeight: 27, archHeroScale: 17,
+/**
+ * The roughness ladder, per biome.
+ *
+ * `buildMaterials` sets the reference rungs; this is the per-biome offset from
+ * them, and it is the fix for the axis-5 defect that has stood for four rounds
+ * ("uniform matte plastic on every surface"). Two stages may not put the same
+ * substance on the ground: a dry prairie's terrain returns almost no specular
+ * and its rock is wind-polished only on the caps, whereas a flooded canyon's
+ * every surface is damp and its cliff faces carry a broad sheen, and a
+ * fabrication yard's hero material is bare plate at metalness 0.86.
+ *
+ * Only uniform-level fields are listed. `flatShading`, the maps and the
+ * material identities are set once in `buildMaterials` and never touched here,
+ * so moving between biomes invalidates no program.
+ */
+const MAT_TUNE_BASE = {
+  terrain:   { roughness: 0.82, metalness: 0.02, env: 1.05, normal: 1.05 },
+  rock:      { roughness: 0.70, metalness: 0.04, env: 1.35, normal: 1.25 },
+  cliff:     { roughness: 0.66, metalness: 0.03, env: 1.25, normal: 1.45 },
+  moss:      { roughness: 0.98, metalness: 0.00, env: 0.45, normal: 0.80 },
+  wetStone:  { roughness: 0.12, metalness: 0.16, env: 2.40, normal: 1.25 },
+  metalRuin: { roughness: 0.20, metalness: 0.78, env: 2.80, normal: 1.15 },
+  sand:      { roughness: 0.94, metalness: 0.00, env: 0.60, normal: 0.55 },
+  wood:      { roughness: 0.98, metalness: 0.00, env: 0.40, normal: 1.30 },
+  crystal:   { roughness: 0.08, metalness: 0.00, env: 1.20, emissive: 0.85 },
 };
+
+const MAT_KEYS = Object.keys(MAT_TUNE_BASE);
 
 export const BIOMES = [
   {
+    // ---- CINDERGRASS FLATS ------------------------------------------------
+    // Rolling dry grassland under a low raking sun, punctuated by hard-capped
+    // sandstone mesas. The read is *distance*: the ground is calm, the sight
+    // lines are long, and every vertical in the frame is either a mesa or a
+    // landmark standing on one. Nothing here is enclosed.
     id: 'ochre',
-    names: ['Ochre Hollow', 'Cindergrass Flats', 'Emberfall Basin'],
-    sky: { ...PALETTE.sky, cloudAmount: 0.74 },
-    fog: { color: PALETTE.fog, density: 0.0036 },
-    sun: { elevation: 18 * DEG, azimuth: 34 * DEG, color: PALETTE.light.key, intensity: 4.2 },
+    kit: 'plains',
+    names: ['Cindergrass Flats', 'Ochre Hollow', 'Emberfall Basin'],
+    sky: { ...PALETTE.sky, cloudAmount: 0.62, hazePow: 9.0, ceiling: 0x000000, ceilingAmount: 0 },
+    fog: { color: PALETTE.fog, density: 0.0031 },
+    // 15 deg: the lowest a sun can sit and still clear a mesa rim, which is
+    // what throws the 200m mesa shadows across the flats.
+    sun: { elevation: 15 * DEG, azimuth: 34 * DEG, color: PALETTE.light.key, intensity: 4.4 },
     light: {
       hemiSky: PALETTE.light.hemiSky, hemiGround: PALETTE.light.hemiGround, hemiIntensity: 0.50,
-      rim: PALETTE.light.rim, rimIntensity: 1.45, envIntensity: 0.55,
+      rim: PALETTE.light.rim, rimIntensity: 1.45, envIntensity: 0.58,
     },
-    dust: { color: 0xffe6b8, opacity: 0.55 },
-    terrain: { ...PALETTE.terrain, sandAmt: 0.9, mossAmt: 1.0, shape: SHAPE_DEFAULT },
+    dust: { color: 0xffe6b8, opacity: 0.50 },
+    terrain: {
+      rock: 0xb58248, cliff: 0x6c5a4c, moss: 0x7d8f3f, sand: 0xead093,
+      sandAmt: 0.9, mossAmt: 1.05,
+      shape: {
+        ...SHAPE_BASE,
+        profile: 'mesa',
+        warp: 40, warpFreq: 0.0058,
+        baseFreq: 0.0052, baseAmp: 13,
+        ridgeFreq: 0.0090, ridgeAmp: 3.5,
+        detailFreq: 0.032, detailAmp: 0.70,
+        basinRadius: 0.66, basinFlatten: 0.42, basinDrop: -1.5, basinStrength: 0.70,
+        // Almost no terracing on the open ground. The hard horizontals in this
+        // biome belong to the mesa caps, and a shelved prairie is neither a
+        // prairie nor a mesa.
+        terraceStep: 2.6, terraceBlend: 0.50, terraceStrength: 0.20, terraceBias: 0.05,
+        wallStart: 0.86, wallBase: 34, wallVar: 18,
+        // Each mesa is a flat cap over a sheer skirt with one long walkable
+        // approach ramp — see TerrainGen._mesas.
+        mesaCount: 8, mesaRadius: [15, 31], mesaHeight: [12, 25],
+        mesaRing: [0.26, 0.78], mesaSheer: 0.13, mesaRamp: 0.84,
+        strataAmt: 0.22, strataStep: 8.5,
+      },
+    },
     mats: {
-      rock: PALETTE.terrain.rock, cliff: PALETTE.terrain.cliff, moss: PALETTE.terrain.moss,
-      sand: PALETTE.terrain.sand, wood: PALETTE.accent.wood, wetStone: PALETTE.accent.wet,
+      rock: PALETTE.terrain.rock, cliff: 0x6c5a4c, moss: 0x7d8f3f,
+      sand: PALETTE.terrain.sand, wood: 0x4a3a2c, wetStone: PALETTE.accent.wet,
       metal: PALETTE.accent.metal, crystal: PALETTE.accent.crystal,
       crystalGlow: PALETTE.accent.crystalGlow,
     },
-    props: PROPS_DEFAULT,
+    matTune: {
+      // Dry. The prairie floor is the matte end of the whole game's ladder and
+      // the mesa caps are the only wind-polished thing in frame, which is what
+      // makes a cap edge catch the low sun while the grass beside it does not.
+      terrain: { roughness: 0.90, metalness: 0.01, env: 0.85, normal: 1.0 },
+      cliff:   { roughness: 0.58, metalness: 0.03, env: 1.45, normal: 1.55 },
+      moss:    { roughness: 0.99, metalness: 0.0, env: 0.30, normal: 0.70 },
+      wood:    { roughness: 0.95, metalness: 0.0, env: 0.35, normal: 1.35 },
+      crystal: { roughness: 0.08, metalness: 0.0, env: 1.1, emissive: 0.55 },
+    },
+    props: {
+      boulders: 220, boulderScale: [0.45, 2.3],
+      slabs: 90, slabScale: [1.1, 3.4],
+      trees: 120, treeScale: [1.4, 3.2],
+      grass: 900, grassScale: [0.7, 1.6],
+      stones: 46, stoneScale: [1.6, 4.2],
+      islands: 9, islandScale: [3.5, 8.5], islandLow: [7, 11], islandHigh: [22, 44],
+      crystalClusters: 3, crystalPer: [4, 7], crystalScale: [1.2, 2.8],
+      archHeroScale: 17, monolithHeight: 24,
+    },
   },
 
   {
-    // Wet, overcast, gently rolling. High sun and a dense pale mist collapse
-    // the value range, so form has to come from silhouette — hence the tree
-    // count and the melted terraces.
+    // ---- THE DROWNED AQUEDUCT ---------------------------------------------
+    // An eroded plateau cut to the bone by a network of flooded channels. The
+    // read is *verticality and water*: near-sheer walls dropping 16m to a still
+    // green surface, banks that are scree in some reaches and cliff in others,
+    // and a Roman-scale arcade striding across the biggest of them. Sight lines
+    // are short and turn corners; the sky is a strip between two walls.
     id: 'verdant',
-    names: ['Verdant Shelf', 'Mistbound Terraces', 'Greenspire Rise'],
+    kit: 'canyon',
+    names: ['Drowned Aqueduct', 'Mistbound Cistern', 'Greenspire Cut'],
     sky: {
-      zenith: 0x5d87a0, horizon: 0xd8dcb0, haze: 0xeef0cf, ground: 0x2e3a33,
-      sun: 0xf4f6dc, cloud: 0xc7d2cf, cloudAmount: 0.92,
+      zenith: 0x4d7b96, horizon: 0xd8dcb0, haze: 0xeef0cf, ground: 0x2a3a34,
+      sun: 0xf4f6dc, cloud: 0xc7d2cf, cloudAmount: 0.86, hazePow: 13.0,
+      ceiling: 0x000000, ceilingAmount: 0,
     },
-    // Fog at 0.0058 and a 46-deg sun flattened the whole stage to one olive
-    // value: no modelling, no depth, and the green never read. Pulled back to
-    // 0.0044, raked to 38 deg, and the cliff moved to a cool slate so the
-    // warm/cool split the art direction depends on survives the overcast.
-    fog: { color: 0xb8c9bd, density: 0.0044 },
-    sun: { elevation: 38 * DEG, azimuth: 118 * DEG, color: 0xf6f4dc, intensity: 3.9 },
+    fog: { color: 0xa8c2b6, density: 0.0046 },
+    // Low and raked nearly along the main channel axis, so the arcade throws
+    // its arch shadows down the water and one wall of every cut is in shade.
+    sun: { elevation: 19 * DEG, azimuth: 118 * DEG, color: 0xf6f4dc, intensity: 4.1 },
     light: {
-      hemiSky: 0xa8c8d8, hemiGround: 0x50603a, hemiIntensity: 0.62,
-      rim: 0x86c0a0, rimIntensity: 1.1, envIntensity: 0.68,
+      hemiSky: 0xa8c8d8, hemiGround: 0x3e5a44, hemiIntensity: 0.66,
+      rim: 0x86c0a0, rimIntensity: 1.2, envIntensity: 0.70,
     },
-    dust: { color: 0xd8f0d0, opacity: 0.34 },
+    dust: { color: 0xd8f0d0, opacity: 0.38 },
     terrain: {
-      rock: 0x84915f, cliff: 0x3f5158, moss: 0x568437, sand: 0xc4cb96,
-      sandAmt: 0.45, mossAmt: 1.35,
+      rock: 0x84915f, cliff: 0x4a5a52, moss: 0x4f7d33, sand: 0xc4cb96,
+      sandAmt: 0.35, mossAmt: 1.45,
       shape: {
-        ...SHAPE_DEFAULT,
-        warp: 46, warpFreq: 0.0060,
-        baseAmp: 19, baseFreq: 0.0058,
-        ridgeAmp: 5, ridgeFreq: 0.0090,
-        detailAmp: 1.2,
-        basinRadius: 0.58, basinFlatten: 0.34, basinDrop: -2.2, basinStrength: 0.74,
-        terraceStep: 2.2, terraceBlend: 0.55, terraceStrength: 0.55, terraceBias: 0.30,
-        wallStart: 0.80, wallBase: 40, wallVar: 16,
+        ...SHAPE_BASE,
+        profile: 'canyon',
+        warp: 26, warpFreq: 0.0068,
+        baseFreq: 0.0060, baseAmp: 15,
+        ridgeFreq: 0.0110, ridgeAmp: 5,
+        detailFreq: 0.040, detailAmp: 0.90,
+        // The basin *rises* here rather than dropping: the play surface is the
+        // plateau top, and the drama is what has been cut out of it.
+        basinRadius: 0.60, basinFlatten: 0.30, basinDrop: 2.0, basinStrength: 0.72,
+        terraceStep: 2.0, terraceBlend: 0.14, terraceStrength: 0.80, terraceBias: 0.55,
+        wallStart: 0.84, wallBase: 44, wallVar: 14,
+        // Channels are the level set of a smooth field, which gives a winding
+        // branching network rather than the blobs a threshold gives.
+        channelFreq: 0.0115, channelBias: 0.02, channelWidth: 0.045,
+        bankNarrow: 0.010, bankWide: 0.115,
+        channelFloor: -15, waterLevel: -13.4,
+        strataAmt: 0.24, strataStep: 7.5,
       },
     },
     mats: {
-      rock: 0x7e8b60, cliff: 0x3f5158, moss: 0x568437, sand: 0xc4cb96,
-      wood: 0x2a3326, wetStone: 0x466055, metal: 0x8a9490,
+      rock: 0x7e8b60, cliff: 0x4a5a52, moss: 0x4f7d33, sand: 0xc4cb96,
+      wood: 0x2a3326, wetStone: 0x3f6a5e, metal: 0x7d9484,
       crystal: 0x8ef0b4, crystalGlow: 0x2fae72,
     },
+    matTune: {
+      // Everything is damp. The whole ladder shifts down a rung and the
+      // wetStone rung — which is the water surface as well as the streaked
+      // channel walls — goes to a near-mirror.
+      terrain:   { roughness: 0.70, metalness: 0.03, env: 1.25, normal: 1.15 },
+      rock:      { roughness: 0.58, metalness: 0.05, env: 1.50, normal: 1.30 },
+      // 0.56, not the 0.46 this started at. The canyon's bounding massif is the
+      // largest continuous steep surface in the game, and at 0.46 with a 1.75
+      // IBL lift it returned so much of the sky that a 90m rock wall read as
+      // brushed aluminium — damp stone, not polished metal.
+      cliff:     { roughness: 0.62, metalness: 0.04, env: 1.30, normal: 1.45 },
+      moss:      { roughness: 0.94, metalness: 0.0, env: 0.62, normal: 0.95 },
+      wetStone:  { roughness: 0.045, metalness: 0.10, env: 3.4, normal: 0.55 },
+      metalRuin: { roughness: 0.34, metalness: 0.56, env: 2.2, normal: 1.25 },
+      crystal:   { roughness: 0.08, metalness: 0.0, env: 1.3, emissive: 0.60 },
+    },
     props: {
-      ...PROPS_DEFAULT,
-      boulders: 210, boulderScale: [0.4, 1.9],
-      pillars: 34, pillarHeight: [1.8, 5.0],
-      arches: 10,
-      trees: 190, treeScale: [1.0, 2.6],
-      crystalClusters: 3, crystalPer: [4, 7], crystalScale: [0.7, 2.2],
-      islands: 11, islandScale: [4.0, 8.5], islandLow: [5, 9], islandHigh: [14, 30],
-      monolithHeight: 21, archHeroScale: 14,
+      boulders: 150, boulderScale: [0.4, 2.0],
+      columns: 70, columnScale: [1.6, 4.4],
+      drums: 60, drumScale: [0.7, 1.6],
+      reeds: 320, reedScale: [0.8, 1.9],
+      ferns: 260, fernScale: [0.7, 1.7],
+      slicks: 90, slickScale: [1.2, 3.2],
+      arcades: 7, arcadeScale: [2.4, 4.2],
+      crystalClusters: 2, crystalPer: [4, 6], crystalScale: [0.8, 2.0],
+      archHeroScale: 15, monolithHeight: 20,
     },
   },
 
   {
-    // Clear thin air, low magenta sun, hard shelves and real verticality. Fog
-    // is deliberately the lightest of the four so the massif reads as distance
-    // rather than as a wall, and the crystal accent is promoted to the motif.
+    // ---- THE PALE VAULT ---------------------------------------------------
+    // A cavern. The wall starts at 0.64 of the radius rather than 0.82 and
+    // climbs to 62m, so from anywhere on the floor the stage is a *room*: rock
+    // closes the upper third of every frame and the sky is a shaft rather than
+    // a dome. The floor is a forest of terrain stalagmites with crystal light
+    // between them; the key is a single high shaft through the roof.
     id: 'amethyst',
-    names: ['Amethyst Waste', 'Glasswind Expanse', 'Pale Shatterfield'],
+    kit: 'cavern',
+    names: ['Pale Vault', 'Amethyst Deep', 'Glasswind Hollow'],
     sky: {
-      zenith: 0x3a3070, horizon: 0xe07ab0, haze: 0xffc8e8, ground: 0x241c33,
-      sun: 0xffd9f0, cloud: 0x9a8ec4, cloudAmount: 0.38,
+      zenith: 0x241d3c, horizon: 0x6e4a7a, haze: 0xc07ab0, ground: 0x181125,
+      sun: 0xffd9f0, cloud: 0x4a3a66, cloudAmount: 0.20, hazePow: 6.0,
+      // The vault. This is the one biome whose upper dome is rock, not air:
+      // the ceiling term takes over above ~25 deg of elevation and kills the
+      // sun's broad scatter lobe with it.
+      ceiling: 0x2b2036, ceilingAmount: 0.88,
     },
-    // An 11-deg sun over a 0.42 hemisphere and 0.50 IBL put the entire stage in
-    // its own shadow — the terrain rendered as near-black under a bright
-    // magenta sky, which is unreadable rather than moody. The sun is up at
-    // 24 deg, the fill is roughly doubled and the palette is a full value step
-    // lighter; the low-key drama now comes from the hue, not from underexposure.
-    fog: { color: 0xb9a8cf, density: 0.0032 },
-    sun: { elevation: 24 * DEG, azimuth: -62 * DEG, color: 0xffd0e6, intensity: 4.4 },
+    // The sky blend is pulled right down here. Aerial perspective converges
+    // distant geometry toward the sky behind it — but the "sky" behind the far
+    // wall of a cavern is the vault, not a horizon band, so the usual 0.45
+    // blend onto the sky's amber would paint daylight onto the back of a cave.
+    fog: { color: 0x6d5c86, density: 0.0058, skyBlend: 0.12 },
+    // A shaft down through the roof rather than a sunset — but still low enough
+    // to rake: at 52 deg the spires cast almost nothing.
+    sun: { elevation: 40 * DEG, azimuth: -62 * DEG, color: 0xffd0e6, intensity: 4.8 },
     light: {
-      hemiSky: 0x9f90e8, hemiGround: 0x6a4a70, hemiIntensity: 0.85,
-      rim: 0x59e2ff, rimIntensity: 1.5, envIntensity: 0.85,
+      hemiSky: 0x6a5aa8, hemiGround: 0x4a3050, hemiIntensity: 0.72,
+      rim: 0x59e2ff, rimIntensity: 1.7, envIntensity: 0.62,
     },
-    dust: { color: 0xf0c8ff, opacity: 0.62 },
+    dust: { color: 0xf0c8ff, opacity: 0.70 },
     terrain: {
-      rock: 0xb69ccc, cliff: 0x574370, moss: 0x9a7ac4, sand: 0xecd8f0,
-      sandAmt: 0.8, mossAmt: 0.65,
+      rock: 0x8f7aa8, cliff: 0x453456, moss: 0x6f57a0, sand: 0xd8c6e4,
+      sandAmt: 0.55, mossAmt: 0.75,
       shape: {
-        ...SHAPE_DEFAULT,
-        warp: 22, warpFreq: 0.0085,
-        // The verticality that makes this biome read belongs in the silhouette
-        // — the terraces, the spires and the island field — not in the arena
-        // floor. At baseAmp 33 / ridgeAmp 14 / terraceStep 4.2 only 40% of the
-        // arena was walkable against the reference biome's 66%, and a 4.2m
-        // riser is four times the capsule's step-up: the stage looked dramatic
-        // and was unplayable. These numbers keep the hard shelf read while
-        // landing the walkable fraction back alongside the reference.
-        baseAmp: 27, baseFreq: 0.0074,
-        ridgeAmp: 12, ridgeFreq: 0.0125,
-        detailAmp: 0.8,
-        basinRadius: 0.54, basinFlatten: 0.26, basinDrop: -4.0, basinStrength: 0.90,
-        terraceStep: 3.4, terraceBlend: 0.16, terraceStrength: 0.90, terraceBias: 0.62,
-        // Verticality on this biome belongs *inside* the arena (baseAmp/ridge),
-        // not in the bounding massif: at 56+26 the ridgeline reached y=105 and
-        // ate the entire sky dome, which is the exact failure the reference
-        // biome's wall was shortened to fix.
-        wallStart: 0.84, wallBase: 38, wallVar: 16,
+        ...SHAPE_BASE,
+        profile: 'cavern',
+        warp: 20, warpFreq: 0.0090,
+        baseFreq: 0.0080, baseAmp: 10,
+        ridgeFreq: 0.0130, ridgeAmp: 4,
+        detailFreq: 0.044, detailAmp: 0.80,
+        basinRadius: 0.70, basinFlatten: 0.18, basinDrop: -6.0, basinStrength: 0.94,
+        terraceStep: 2.0, terraceBlend: 0.30, terraceStrength: 0.32, terraceBias: 0.18,
+        // The vault closes in. This is the identity of the biome and it is the
+        // one place the "the massif must not eat the sky" rule is deliberately
+        // inverted — being roofed is the point.
+        wallStart: 0.64, wallBase: 62, wallVar: 26,
+        spireCount: 22, spireRadius: [6, 18], spireHeight: [15, 48],
+        spirePower: [1.7, 2.9], spireRing: [0.14, 0.74],
+        strataAmt: 0.09, strataStep: 9.0,
       },
     },
     mats: {
-      rock: 0xa98fc0, cliff: 0x4e3d66, moss: 0x9a7ac4, sand: 0xecd8f0,
-      wood: 0x2b2030, wetStone: 0x6a5885, metal: 0x9a90a8,
+      rock: 0x8f7aa8, cliff: 0x453456, moss: 0x6f57a0, sand: 0xd8c6e4,
+      wood: 0x33253d, wetStone: 0x5a4880, metal: 0x9a90a8,
       crystal: 0xff6fd0, crystalGlow: 0xc02898,
     },
+    matTune: {
+      // Mineral. The rock is dry and dusty, the pools are glass, and the
+      // crystal is the only emissive in the game turned up past 1 — in this
+      // biome it is a light source rather than an accent.
+      terrain:  { roughness: 0.86, metalness: 0.02, env: 1.15, normal: 1.15 },
+      rock:     { roughness: 0.64, metalness: 0.05, env: 1.55, normal: 1.35 },
+      cliff:    { roughness: 0.54, metalness: 0.04, env: 1.60, normal: 1.60 },
+      // The "moss" rung is glowing lichen here, so it leaves the matte end.
+      moss:     { roughness: 0.72, metalness: 0.0, env: 1.30, normal: 0.90 },
+      wetStone: { roughness: 0.05, metalness: 0.12, env: 3.1, normal: 0.50 },
+      sand:     { roughness: 0.88, metalness: 0.0, env: 0.85, normal: 0.65 },
+      crystal:  { roughness: 0.05, metalness: 0.0, env: 1.6, emissive: 1.35 },
+    },
     props: {
-      ...PROPS_DEFAULT,
-      boulders: 230, boulderScale: [0.4, 2.0],
-      pillars: 118, pillarHeight: [3.0, 10.5],
-      arches: 20,
-      trees: 26, treeScale: [0.7, 1.4],
-      crystalClusters: 13, crystalPer: [8, 13], crystalScale: [1.6, 4.8],
-      islands: 22, islandScale: [3.0, 8.0], islandLow: [7, 12], islandHigh: [20, 52],
-      monolithHeight: 33, archHeroScale: 19,
+      boulders: 190, boulderScale: [0.4, 2.2],
+      stalagmites: 210, stalagmiteScale: [1.2, 5.0],
+      fungi: 130, fungusScale: [0.9, 2.6],
+      pools: 60, poolScale: [1.6, 5.0],
+      islands: 20, islandScale: [3.0, 8.0], islandLow: [8, 13], islandHigh: [24, 52],
+      crystalClusters: 11, crystalPer: [7, 12], crystalScale: [1.6, 4.4],
+      archHeroScale: 16, monolithHeight: 28,
     },
   },
 
   {
-    // Low, silted and rusted. The flattest shape of the four, with the heaviest
-    // haze and the dimmest key — the read comes from the metal ruin family and
-    // the arches, which is why their counts go up as the verticality goes down.
+    // ---- RALLYPOINT FERROUS -----------------------------------------------
+    // A military fabrication site silted into a rust flat. The read is *made*:
+    // one module height across the whole terrain, razor risers, rectangular
+    // pads snapped to that module with a single vehicle ramp each, and a prop
+    // kit of nothing but girders, containers, pylons and blast barriers. It is
+    // the only biome with no organic silhouette in it at all.
     id: 'ferrous',
-    names: ['Rustmire Sink', 'Ironsilt Reach', 'The Sunken Ferrous'],
+    kit: 'works',
+    names: ['Rallypoint Ferrous', 'Ironsilt Reach', 'The Sunken Yard'],
     sky: {
       zenith: 0x27455c, horizon: 0xb06a4a, haze: 0xd99a6a, ground: 0x1e2226,
-      sun: 0xffcfa0, cloud: 0x7d8894, cloudAmount: 0.88,
+      sun: 0xffcfa0, cloud: 0x7d8894, cloudAmount: 0.92, hazePow: 8.0,
+      ceiling: 0x000000, ceilingAmount: 0,
     },
-    fog: { color: 0x8c9aa4, density: 0.0062 },
-    sun: { elevation: 8 * DEG, azimuth: 152 * DEG, color: 0xffbf8c, intensity: 3.2 },
+    fog: { color: 0x8c9aa4, density: 0.0058 },
+    sun: { elevation: 9 * DEG, azimuth: 152 * DEG, color: 0xffbf8c, intensity: 3.6 },
     light: {
       hemiSky: 0x5f7f9a, hemiGround: 0x3a2e28, hemiIntensity: 0.58,
-      rim: 0x6fa8c8, rimIntensity: 1.2, envIntensity: 0.45,
+      rim: 0x6fa8c8, rimIntensity: 1.25, envIntensity: 0.50,
     },
-    dust: { color: 0xc8c0b0, opacity: 0.46 },
+    dust: { color: 0xc8c0b0, opacity: 0.52 },
     terrain: {
-      rock: 0x8a6a4c, cliff: 0x3f4348, moss: 0x59684a, sand: 0xa8a08c,
-      sandAmt: 1.1, mossAmt: 0.55,
+      rock: 0x8a6a4c, cliff: 0x4b4a48, moss: 0x59684a, sand: 0xa8a08c,
+      sandAmt: 1.1, mossAmt: 0.35,
       shape: {
-        ...SHAPE_DEFAULT,
-        warp: 38, warpFreq: 0.0050,
-        baseAmp: 15, baseFreq: 0.0090,
-        ridgeAmp: 11, ridgeFreq: 0.0085,
-        detailAmp: 0.6,
-        basinRadius: 0.62, basinFlatten: 0.30, basinDrop: -5.0, basinStrength: 0.90,
-        terraceStep: 1.6, terraceBlend: 0.34, terraceStrength: 0.62, terraceBias: 0.55,
-        wallStart: 0.80, wallBase: 42, wallVar: 14,
+        ...SHAPE_BASE,
+        profile: 'works',
+        warp: 30, warpFreq: 0.0052,
+        baseFreq: 0.0078, baseAmp: 17,
+        ridgeFreq: 0.0095, ridgeAmp: 6,
+        detailFreq: 0.036, detailAmp: 0.50,
+        basinRadius: 0.58, basinFlatten: 0.34, basinDrop: -3.5, basinStrength: 0.86,
+        // One module height over the whole site with the mask wide open, so
+        // the shelving reads as a *grid* rather than as a band of geology.
+        terraceStep: 2.4, terraceBlend: 0.09, terraceStrength: 0.95, terraceBias: 0.85,
+        wallStart: 0.82, wallBase: 40, wallVar: 12,
+        padCount: 13, padSize: [10, 28], padLift: [3.0, 14],
+        padGrid: 2.4, padChamfer: 1.5, padRamp: 13, padRing: [0.12, 0.74],
+        strataAmt: 0.11, strataStep: 6.0,
       },
     },
     mats: {
-      rock: 0x7d6550, cliff: 0x3e4349, moss: 0x59684a, sand: 0xa8a08c,
-      wood: 0x2a2422, wetStone: 0x3d4c54, metal: 0xa8562e,
+      rock: 0x7d6550, cliff: 0x4b4a48, moss: 0x59684a, sand: 0xa8a08c,
+      wood: 0x2a2422, wetStone: 0x2e3338, metal: 0xa8562e,
       crystal: 0x4fd8c0, crystalGlow: 0x1f9aa8,
     },
+    matTune: {
+      // The hero material is bare plate. Everything mineral is silt-dulled so
+      // the metal has something to be metal *against*, and the wetStone rung is
+      // an oil slick rather than water: near-black albedo, mirror roughness.
+      terrain:   { roughness: 0.93, metalness: 0.02, env: 0.75, normal: 0.95 },
+      rock:      { roughness: 0.80, metalness: 0.04, env: 0.95, normal: 1.15 },
+      cliff:     { roughness: 0.74, metalness: 0.04, env: 1.05, normal: 1.35 },
+      moss:      { roughness: 0.99, metalness: 0.0, env: 0.30, normal: 0.70 },
+      wetStone:  { roughness: 0.07, metalness: 0.30, env: 3.6, normal: 0.40 },
+      metalRuin: { roughness: 0.15, metalness: 0.86, env: 3.4, normal: 1.30 },
+      sand:      { roughness: 0.97, metalness: 0.0, env: 0.45, normal: 0.50 },
+      crystal:   { roughness: 0.10, metalness: 0.0, env: 1.0, emissive: 0.45 },
+    },
     props: {
-      ...PROPS_DEFAULT,
-      boulders: 285, boulderScale: [0.5, 2.6],
-      pillars: 48, pillarHeight: [1.8, 4.8],
-      arches: 30, archScale: [2.6, 5.6],
-      trees: 62, treeScale: [0.7, 1.5],
-      crystalClusters: 2, crystalPer: [4, 6], crystalScale: [0.7, 2.0],
-      islands: 8, islandScale: [4.5, 10.0], islandLow: [5, 8], islandHigh: [12, 24],
-      monolithHeight: 24, archHeroScale: 20,
+      boulders: 130, boulderScale: [0.5, 2.4],
+      girders: 150, girderScale: [1.4, 4.6],
+      containers: 90, containerScale: [1.0, 1.9],
+      pylons: 34, pylonScale: [3.5, 9.0],
+      barriers: 120, barrierScale: [0.9, 1.6],
+      pipes: 70, pipeScale: [1.6, 4.5],
+      crystalClusters: 2, crystalPer: [4, 6], crystalScale: [0.8, 2.0],
+      archHeroScale: 18, monolithHeight: 26,
     },
   },
 ];
@@ -703,11 +837,16 @@ export function stageNameFor(stageIndex) {
 }
 
 /**
- * Retint the shared material library for a biome.
+ * Re-dress the shared material library for a biome.
  *
- * Only uniform-level properties are touched — colour and emissive. The maps,
- * the flags and the material *identity* are untouched, so no program is
- * invalidated and every biome renders through exactly the same shader set.
+ * Only uniform-level properties are touched — colour, emissive, roughness,
+ * metalness, envMapIntensity and normalScale. The maps, the flags and the
+ * material *identity* are untouched, so no program is invalidated and every
+ * biome renders through exactly the same shader set.
+ *
+ * The roughness half of this is the fix for the axis-5 defect: retinting nine
+ * materials and leaving their surface response identical is precisely what made
+ * four different places read as one place with four palettes. See MAT_TUNE_BASE.
  */
 export function applyBiomeMaterials(biome) {
   const M = getMaterials();
@@ -721,6 +860,17 @@ export function applyBiomeMaterials(biome) {
   M.metalRuin.color.set(c.metal);
   M.crystal.color.set(c.crystal);
   M.crystal.emissive.set(c.crystalGlow);
+
+  const tune = biome.matTune || {};
+  for (const k of MAT_KEYS) {
+    const t = { ...MAT_TUNE_BASE[k], ...(tune[k] || {}) };
+    const m = M[k];
+    m.roughness = t.roughness;
+    m.metalness = t.metalness;
+    m.envMapIntensity = t.env;
+    if (t.normal !== undefined) m.normalScale?.set(t.normal, t.normal);
+    if (t.emissive !== undefined) m.emissiveIntensity = t.emissive;
+  }
   return M;
 }
 

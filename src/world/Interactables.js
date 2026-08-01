@@ -894,6 +894,40 @@ export class Interactables {
   }
 
   /**
+   * A walkable point in the annulus `[r0, r1]` around a landmark, or null.
+   *
+   * Everything on the stage used to be sited by `randomWalkablePoint` over the
+   * whole basin, which is uniform by construction: a player who has found one
+   * chest has learned nothing about where the next one is, and a wide framing
+   * gets an even sprinkle of props with no reason for any of them to be where
+   * it is. Siting the interactables in rings around the kit's 2-3 landmarks
+   * makes the landmarks worth walking to, gives every chest a backdrop, and
+   * gives the composition a subject and a foreground in the same frame.
+   *
+   * All of it draws from `ctx.rng`, so a co-op client that regenerates the
+   * stage and replays the same stream lands on the same chests.
+   */
+  _nearLandmark(lm, r0, r1) {
+    const st = this.ctx.stage, rng = this.ctx.rng;
+    if (!lm || !st?.isWalkable) return null;
+    for (let i = 0; i < 40; i++) {
+      const a = rng.range(0, Math.PI * 2);
+      // sqrt keeps the ring area-uniform rather than crowding the inner edge.
+      const rad = Math.sqrt(r0 * r0 + rng.next() * (r1 * r1 - r0 * r0));
+      const x = lm.x + Math.cos(a) * rad, z = lm.z + Math.sin(a) * rad;
+      if (Math.abs(x) > st.bound || Math.abs(z) > st.bound) continue;
+      if (!st.isWalkable(x, z, 1.6)) continue;
+      return new THREE.Vector3(x, st.sampleHeight(x, z), z);
+    }
+    return null;
+  }
+
+  /** Ring placement if the stage has landmarks, uniform scatter if it doesn't. */
+  _sited(lm, r0, r1, fallbackFrom) {
+    return this._nearLandmark(lm, r0, r1) || this._point(fallbackFrom);
+  }
+
+  /**
    * Fills a freshly built stage. Count and price both scale with stage index:
    * later stages have more to buy and charge more for it, which is what keeps
    * gold pressure constant while the player's income explodes.
@@ -903,18 +937,36 @@ export class Interactables {
     const ctx = this.ctx;
     const scale = Math.pow(1.25, stageIndex);
     const spawn = ctx.player?.position || new THREE.Vector3();
+    const marks = ctx.stage?.landmarks ?? [];
+    // Round-robin rather than random, so all 2-3 landmarks get loot and the
+    // player is never rewarded for visiting only the nearest one.
+    const mark = (i) => (marks.length ? marks[i % marks.length] : null);
 
     const chestCount = 6 + stageIndex * 2;
     for (let i = 0; i < chestCount; i++) {
       const roll = ctx.rng.next();
       const size = roll > 0.94 ? 'legendary' : roll > 0.75 ? 'large' : 'small';
       const base = size === 'legendary' ? 400 : size === 'large' ? 125 : 25;
-      this.add(new Chest(ctx, this._point(spawn), size, Math.round(base * scale)));
+      const m = mark(i);
+      // The better the chest, the tighter it sits to the structure — a
+      // legendary tucked against the landmark's own footing is a reward for
+      // having gone there, where one out at 30m is just a chest in a field.
+      const near = size === 'small' ? 1.0 : 0.45;
+      const pos = this._sited(m, (m?.r ?? 0) + 4, (m?.r ?? 0) + 6 + 22 * near, spawn);
+      this.add(new Chest(ctx, pos, size, Math.round(base * scale)));
     }
 
     const shopCount = 1 + Math.floor(stageIndex / 2);
     for (let s = 0; s < shopCount; s++) {
-      const centre = this._point(spawn);
+      // Terminals go *between* two landmarks rather than at either, so the
+      // walk between the stage's two anchors has a reason to be taken.
+      const a = mark(s), b = mark(s + 1);
+      let centre = null;
+      if (a && b && a !== b) {
+        const mid = { x: (a.x + b.x) * 0.5, z: (a.z + b.z) * 0.5, r: 0 };
+        centre = this._nearLandmark(mid, 0, 14);
+      }
+      centre = centre || this._sited(a, (a?.r ?? 0) + 6, (a?.r ?? 0) + 20, spawn);
       const group = [];
       for (let i = 0; i < 3; i++) {
         const offset = new THREE.Vector3(Math.cos((i / 3) * Math.PI * 2) * 2.4, 0, Math.sin((i / 3) * Math.PI * 2) * 2.4);
@@ -924,12 +976,47 @@ export class Interactables {
       }
     }
 
-    if (ctx.rng.next() < 0.7) this.add(new ShrineOfChance(ctx, this._point(spawn), Math.round(35 * scale)));
-    if (ctx.rng.next() < 0.5) this.add(new ShrineOfBlood(ctx, this._point(spawn), stageIndex));
+    // Shrines get the landmarks the chests do not lead with, and sit close in —
+    // a shrine is a destination and reads best with mass directly behind it.
+    if (ctx.rng.next() < 0.7) {
+      this.add(new ShrineOfChance(ctx, this._sited(mark(1), (mark(1)?.r ?? 0) + 3.5, (mark(1)?.r ?? 0) + 11, spawn),
+        Math.round(35 * scale)));
+    }
+    if (ctx.rng.next() < 0.5) {
+      this.add(new ShrineOfBlood(ctx, this._sited(mark(2), (mark(2)?.r ?? 0) + 3.5, (mark(2)?.r ?? 0) + 11, spawn),
+        stageIndex));
+    }
 
-    this.teleporter = new Teleporter(ctx, this._point(spawn));
+    this.teleporter = new Teleporter(ctx, this._teleporterSite(marks, spawn));
     this.add(this.teleporter);
     return this.teleporter;
+  }
+
+  /**
+   * Where the teleporter goes.
+   *
+   * The one thing on the stage that has to be *findable* and that the player
+   * will fight a boss on top of, so it wants open ground — but open ground with
+   * the primary landmark standing behind it, because the teleporter event is
+   * the run's set piece and a set piece needs a backdrop. Sited on the line
+   * from the first landmark toward the basin centre, which is the sight line
+   * every wide framing already looks down.
+   */
+  _teleporterSite(marks, spawn) {
+    const st = this.ctx.stage;
+    const lm = marks[0];
+    if (lm && st?.isWalkable) {
+      const a = Math.atan2(-lm.z, -lm.x);   // inward, toward the basin centre
+      for (let i = 0; i < 26; i++) {
+        const d = lm.r + 12 + i * 1.6;
+        const th = a + this.ctx.rng.range(-0.5, 0.5);
+        const x = lm.x + Math.cos(th) * d, z = lm.z + Math.sin(th) * d;
+        if (Math.abs(x) > st.bound || Math.abs(z) > st.bound) continue;
+        if (!st.isWalkable(x, z, 3.4)) continue;
+        return new THREE.Vector3(x, st.sampleHeight(x, z), z);
+      }
+    }
+    return this._point(spawn);
   }
 
   spawnPortal(position, onEnter) {

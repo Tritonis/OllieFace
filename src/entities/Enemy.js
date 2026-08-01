@@ -12,7 +12,7 @@ import * as THREE from 'three';
 import { S, StateMachine } from '../ai/StateMachine.js';
 import {
   arrive, seek, separate, avoidObstacles, moveGrounded, moveFlying,
-  groundAt, orbitPoint, turnToward, angleDelta, approachArc,
+  groundAt, orbitPoint, turnToward, angleDelta, approachArc, keepRange, pursue,
 } from '../ai/Steering.js';
 import { acquireRig, releaseRig, configureShadows, makeAnim, BEAM_MAX_LEN } from './EnemyMeshes.js';
 import { ELITE_STATS } from '../data/enemies.js';
@@ -104,23 +104,40 @@ export class Enemy {
     this.affix = null;
     this.elite = null;
     this.isElite = false;
-    this.armor = 0;
+    this.baseArmor = 0;
     this.dying = false;
     this.shield = 0;
     this.maxShield = 0;
     this.shieldTimer = 0;
     this.isBoss = false;
     this.phase = 1;
+    this.phaseAt = null;
     this.registered = false;
     this.despawned = true;
     this.diving = false;
     this._ctx = null;
 
+    // Movement personality — see `behavior` in data/enemies.js.
+    this.behavior = 'melee';
+    // Committed-dash bookkeeping. `chargeHit` is a one-shot latch so a 1.3 s
+    // dash through the player deals its damage exactly once.
+    this.charging = false;
+    this.chargeHit = false;
+    this.chargeT = 0;
+    // Underground: no rig, no hitbox, and closing faster than it walks.
+    this.submerged = false;
+    this.invuln = false;
+    this.moundT = 0;
+    // The ally a support unit is currently tending.
+    this.ally = null;
+
     this.fsm = new StateMachine(this, STATES);
     this.anim = makeAnim();
     this.rig = null;
 
-    this.cd = new Float32Array(4);
+    // One slot per attack. Six covers the widest boss table with room to grow;
+    // a card with more attacks than this would silently share cooldowns.
+    this.cd = new Float32Array(6);
     this.gcd = 0;
     this.atk = null;
     this.atkIndex = 0;
@@ -177,6 +194,18 @@ export class Enemy {
     this.height = def.height;
     this.isBoss = !!def.isBoss;
     this.phase = 1;
+    // Health fractions at which the fight changes shape. `phase2At` is the
+    // one-break shorthand the original two bosses were written against.
+    this.phaseAt = def.phaseAt || (def.phase2At ? [def.phase2At] : null);
+    this.baseArmor = def.armor || 0;
+    this.behavior = def.behavior || defaultBehavior(def);
+    this.charging = false;
+    this.chargeHit = false;
+    this.chargeT = 0;
+    this.submerged = false;
+    this.invuln = false;
+    this.moundT = 0;
+    this.ally = null;
     this.level = opts.level || 1;
     this.affix = opts.affix || null;
     this.isElite = !!this.affix;   // read by Combat's kill payload and the HUD
@@ -187,6 +216,7 @@ export class Enemy {
     this.maxShield = em && em.shield ? this.maxHealth * em.shield : 0;
     this.shield = this.maxShield;
     this.shieldTimer = 0;
+    this._wardPopped = false;
     this.damage = def.baseDamage * (opts.damageMult || 1) * (em ? em.damage : 1);
     this.moveSpeed = def.moveSpeed * (em ? em.speed : 1);
 
@@ -211,7 +241,11 @@ export class Enemy {
     // on the run-in, how hard, and how long it holds at the edge of reach
     // before the first commit. Two beetles out of the same pack therefore take
     // two different paths to the same player.
-    this.melee = def.attacks[0].kind === 'melee';
+    //
+    // `melee` is the *prowl* flag, not "has a melee attack": a swarmer has one
+    // and never prowls, because the whole point of a swarmer is that it does
+    // not wait its turn.
+    this.melee = this.behavior === 'melee';
     this.arcCurve = this.melee ? ctx.rng.range(0.45, 0.95) : 0;
     this.commitT = this.melee ? ctx.rng.range(0.35, 1.3) : 0;
     this.stallT = 0;
@@ -227,7 +261,7 @@ export class Enemy {
     a.hurt = 0; a.death = 0; a.phase = 1; a.sweep = 0;
     a.pitch = 0; a.lookY = 0; a.lean = 0;
     a.beamOn = false; a.beamLen = 0; a.lod = 0;
-    a.fallX = 1; a.fallZ = 0;
+    a.fallX = 1; a.fallZ = 0; a.charge = 0;
 
     this.rig = acquireRig(def.meshFactory);
     configureShadows(this.rig);
@@ -262,13 +296,49 @@ export class Enemy {
   // -------------------------------------------------------------------------
 
   /**
+   * Directional armour, read by `Combat.armorOf` at the instant of the hit.
+   *
+   * Expressing the shield as armour rather than as a subtraction inside
+   * `takeDamage` is deliberate: it runs through RoR2's own diminishing curve,
+   * it composes with the slow debuff's armour break, and — the reason it
+   * matters — the damage number the player sees is the number that actually
+   * landed. A warden shot in the face has to *read* as a warden shot in the
+   * face, or nobody learns to walk around it.
+   */
+  get armor() {
+    const def = this.def;
+    let a = this.baseArmor;
+    if (!def) return a;
+    // The tower shield only exists in the phase that is holding it up.
+    const gated = def.frontArmorPhase ? this.phase <= def.frontArmorPhase : true;
+    if (def.frontArmor && gated && this._ctx?.player && this.facingPlayer(def.frontArc || 1.0)) {
+      a += fracToArmor(def.frontArmor);
+    }
+    // A warded elite's barrier is armour while the barrier is still up, which
+    // is what makes "break the shield first" the readable instruction.
+    const em = this.elite;
+    if (em && em.wardArmor && this.shield > 0) a += fracToArmor(em.wardArmor);
+    return a;
+  }
+
+  /** Is the player inside `arc` radians of this unit's facing? */
+  facingPlayer(arc) {
+    const p = this._ctx?.player;
+    if (!p) return false;
+    const dx = p.position.x - this.position.x, dz = p.position.z - this.position.z;
+    const d = Math.hypot(dx, dz);
+    if (d < 1e-3) return true;
+    return (dx / d) * Math.sin(this.yaw) + (dz / d) * Math.cos(this.yaw) > Math.cos(arc);
+  }
+
+  /**
    * Combat.applyDamage has already handled armour, crit and the shield pool
    * before this runs, and it will call `onDeath()` itself once health hits
    * zero — so this only books the damage and the reaction. The self-kill at the
    * bottom is the fallback for when Combat isn't registered.
    */
   takeDamage(amount, info) {
-    if (!this.alive) return 0;
+    if (!this.alive || this.invuln) return 0;
     this.shieldTimer = 7;
     this.health -= amount;
     this.flashT = FLASH_TIME;
@@ -280,14 +350,39 @@ export class Enemy {
       const st = this.fsm.state;
       if (heavy && !this.isBoss && st !== S.DIE && st !== S.ATTACK) this.fsm.set(S.STAGGER, this._ctx);
     }
-    if (this.isBoss && this.phase === 1 && this.health <= this.maxHealth * (this.def.phase2At || 0.5)) {
-      this.phase = 2;
-      this.anim.phase = 2;
+    // Phase breaks. Each one is announced with its own blast and shake — a
+    // boss that changed its attack table silently would just feel like the
+    // fight got unfair, rather than like it escalated.
+    const gates = this.phaseAt;
+    while (gates && this.phase <= gates.length && this.health <= this.maxHealth * gates[this.phase - 1]) {
+      this.phase++;
+      this.anim.phase = this.phase;
+      // Every phase break clears the attack table's cooldowns, so the new
+      // phase opens with the attack it unlocked instead of an idle beat.
+      this.cd.fill(0);
+      this.gcd = 0.5;
       if (this._ctx) {
-        fx(this._ctx, 'explosion', this.position, 8, 0xffa514);
+        const c = this.def.attacks[this.def.attacks.length - 1].color || 0xffa514;
+        fx(this._ctx, 'explosion', this.position, 6 + this.radius * 2, c);
+        this._ctx.director?.spawnWave?.(this.position, 8 + this.radius * 3, 34, 0, null, c);
+        sfx(this._ctx, 'explosion', this.position, 1);
         this._ctx.pipeline?.addShake?.(0.35);
       }
     }
+
+    // A warded barrier that just broke pays for itself on the way out.
+    const emw = this.elite;
+    if (emw && emw.reflect && this.shield <= 0 && !this._wardPopped) {
+      this._wardPopped = true;
+      if (this._ctx) {
+        spawnBlast(this._ctx, this, emw.novaRadius, this.damage * emw.novaDamage, 0xc9a8ff, null);
+      }
+    }
+    // Reflect is NOT here, deliberately. Combat drains the shield pool before it
+    // ever calls this, so while the barrier is up `takeDamage` is not reached at
+    // all — a reflect hung off it fired only once the barrier was already gone,
+    // which is precisely backwards. It lives on the `damage` event instead; see
+    // Director's handler.
     // Only self-kill when nothing else owns the kill path; otherwise Combat
     // emits `kill` and calls onDeath() for us.
     if (this.health <= 0) {
@@ -380,6 +475,22 @@ export class Enemy {
       }
     }
 
+    // Withering: the tier-2 healing lock. Line of sight matters — breaking
+    // contact is the counterplay, and without the LOS test the debuff would be
+    // a flat "no healing on this stage" with nothing to do about it.
+    if (em && em.denyRadius && this.alive && !this.submerged) {
+      this.auraT -= h;
+      if (this.auraT <= 0) {
+        this.auraT = 0.4;
+        if (this.distToPlayer < em.denyRadius && this.hasLOS) {
+          ctx.director?.denyHealing?.(em.denyTime);
+          if (this.distToPlayer < em.auraRadius) {
+            hurtPlayer(ctx, this, this.damage * em.thornDps, 'wither');
+          }
+        }
+      }
+    }
+
     this.fsm.update(ctx, h);
     this.applyMovement(ctx, h);
   }
@@ -443,6 +554,36 @@ export class Enemy {
       return d.set(0, 0, 0);
     }
 
+    if (st === S.CHARGE) {
+      // A charge is a *committed* line. The unit gets a token amount of
+      // steering — enough that it doesn't dash into a boulder every time —
+      // and nowhere near enough to track a player who sidestepped it. That gap
+      // is the entire counterplay.
+      const a = this.atk;
+      const s = (a && a.chargeSpeed) || 20;
+      return d.set(Math.sin(this.yaw) * s, 0, Math.cos(this.yaw) * s);
+    }
+
+    if (st === S.SUBMERGED) {
+      // Underground it is faster than it is on the surface and it steers
+      // perfectly, because nothing down there can be dodged — the dodge is the
+      // one you make when it comes up.
+      return seek(d, this, this.target, def.burrowSpeed || speed * 2);
+    }
+
+    if (st === S.TEND) {
+      // Support units hold station on the ally they are mending and back away
+      // from the player while they do it.
+      const ally = this.ally;
+      if (!ally || !ally.alive) return d.set(0, 0, 0);
+      arrive(d, this, ally.position, speed, 3, Math.max(3, def.attackRange * 0.4));
+      if (this.distToPlayer < (def.preferredRange || 20) * 0.5) {
+        seek(this._tmp, this, this.target, speed * 0.9);
+        d.x -= this._tmp.x; d.z -= this._tmp.z;
+      }
+      return d;
+    }
+
     if (st === S.REPOSITION) {
       const want = def.preferredRange || def.attackRange * 0.6;
       orbitPoint(this._orbit, this, this.target, want, this.orbitSign, 0.75);
@@ -463,20 +604,54 @@ export class Enemy {
       return arrive(d, this, this._tmp, speed * 0.35, 4, 1);
     }
 
-    // CHASE
-    if (this.melee) {
-      return approachArc(d, this, this.target, speed,
-        Math.max(0.6, def.attackRange * 0.55), this.orbitSign, this.arcCurve, 2.5);
+    // CHASE — one branch per movement personality. This is where two units
+    // that share an attack stop feeling like the same monster.
+    switch (this.behavior) {
+      case 'stationary':
+        return d.set(0, 0, 0);
+
+      case 'swarm':
+        // Straight in, leading the player slightly, with none of the arc or
+        // patience a prowler gets. A swarm is supposed to arrive all at once.
+        return pursue(d, this, this.target, ctx.player?.velocity, speed, 0.25);
+
+      case 'charger': {
+        // Closes to charge range and then holds — the dash is what it wants to
+        // be doing, so walking into contact would waste the whole unit.
+        const want = def.preferredRange || 12;
+        if (this.distToPlayer > want) return seek(d, this, this.target, speed);
+        return keepRange(d, this, this.target, speed * 0.8, want, 3.5, this.orbitSign);
+      }
+
+      case 'kiter':
+        return keepRange(d, this, this.target, speed,
+          def.preferredRange || def.attackRange * 0.6, 3, this.orbitSign);
+
+      case 'support': {
+        // Never chases the player; drifts toward the pack and stays behind it.
+        const ally = this.ally;
+        if (ally && ally.alive) return arrive(d, this, ally.position, speed, 4, 6);
+        return keepRange(d, this, this.target, speed, def.preferredRange || 24, 5, this.orbitSign);
+      }
+
+      case 'diver':
+        return arrive(d, this, this.target, speed, 2.5, Math.max(0.6, def.attackRange * 0.55));
+
+      case 'melee':
+        return approachArc(d, this, this.target, speed,
+          Math.max(0.6, def.attackRange * 0.55), this.orbitSign, this.arcCurve, 2.5);
+
+      default: {
+        // 'ranged' — close to preferred range, then hold and shoot.
+        const stand = def.preferredRange || def.attackRange * 0.6;
+        arrive(d, this, this.target, speed, 6, stand);
+        if (this.distToPlayer < stand * 0.65) {
+          seek(this._tmp, this, this.target, speed * 0.8);
+          d.set(-this._tmp.x, 0, -this._tmp.z);
+        }
+        return d;
+      }
     }
-    const melee = def.attacks[0].kind === 'dive';
-    const stand = melee ? Math.max(0.6, def.attackRange * 0.55) : (def.preferredRange || def.attackRange * 0.6);
-    arrive(d, this, this.target, speed, melee ? 2.5 : 6, stand);
-    if (!melee && this.distToPlayer < stand * 0.65) {
-      // Too close for a ranged unit — back off while still facing the player.
-      seek(this._tmp, this, this.target, speed * 0.8);
-      d.set(-this._tmp.x, 0, -this._tmp.z);
-    }
-    return d;
   }
 
   applyMovement(ctx, h) {
@@ -484,6 +659,32 @@ export class Enemy {
     const d = this.steer(ctx, h);
     const st = this.fsm.state;
     const dying = st === S.DIE;
+
+    // A dash and a burrow both own their own integration: neither wants
+    // separation (a charge that gets nudged off its line stops being readable),
+    // and the burrow is under the terrain the capsule solver would push it out
+    // of. Both are also above the normal speed clamp by definition.
+    if (st === S.CHARGE) {
+      const a = this.atk;
+      this.velocity.x = d.x; this.velocity.z = d.z;
+      moveGrounded(this, ctx, d, h, 200);
+      this.yaw = turnToward(this.yaw, this.yaw, 0, h);
+      if (a) this.chargeContact(ctx, a, h);
+      return;
+    }
+    if (st === S.SUBMERGED) {
+      const s = def.burrowSpeed || this.moveSpeed * 2;
+      const len = Math.hypot(d.x, d.z) || 1;
+      this.position.x += (d.x / len) * s * h;
+      this.position.z += (d.z / len) * s * h;
+      // Ride a fixed depth under the heightfield so the spoil mound tracks the
+      // surface exactly, whatever the terrain does above it.
+      this.position.y = groundAt(ctx, this.position.x, this.position.z) - this.height - 0.6;
+      this.velocity.set(0, 0, 0);
+      this.yaw = turnToward(this.yaw,
+        Math.atan2(this.target.x - this.position.x, this.target.z - this.position.z), 8, h);
+      return;
+    }
 
     if (!dying) {
       const dList = ctx.director ? ctx.director.enemies : null;
@@ -593,7 +794,13 @@ export class Enemy {
     for (let i = 0; i < def.attacks.length; i++) {
       const a = def.attacks[i];
       if (this.cd[i] > 0) continue;
-      if (this.distToPlayer > a.range) continue;
+      // Phase-gated attacks are the whole reason a boss fight changes shape.
+      if (a.phase && this.phase < a.phase) continue;
+      if (a.kind === 'mend') {
+        // A heal with nothing to heal is a wasted channel and reads as the unit
+        // being broken. It only offers itself when a neighbour is actually hurt.
+        if (!this.findAlly(ctx, a.range, true)) continue;
+      } else if (this.distToPlayer > a.range) continue;
       if (a.minRange && this.distToPlayer < a.minRange) continue;
       const w = (a.weight || 1) * (0.5 + ctx.rng.next());
       if (w > bestW) { bestW = w; best = i; }
@@ -670,8 +877,149 @@ export class Enemy {
         this.anim.beamOn = true;
         break;
       }
+      case 'nova': {
+        // Radial, self-centred, undodgeable by aim — only by distance. The
+        // telegraph ring went up during the windup, so the player has already
+        // been told how far "away" is.
+        spawnBlast(ctx, this, a.blast, this.damage * a.damage, a.color, a.status || null);
+        ctx.director?.spawnWave?.(this.position, a.blast, a.waveSpeed || 24, 0, null, a.color);
+        sfx(ctx, 'explosion', this.position, a.blast * 0.5);
+        ctx.pipeline?.addShake?.(clamp(a.blast * 0.025, 0.1, 0.5));
+        break;
+      }
+      case 'summon': {
+        this.summonAdds(ctx, a);
+        break;
+      }
+      case 'burrow': {
+        // The eruption itself. The unit is already back on the surface (see
+        // the SUBMERGED state) — this is the ground going up around it.
+        this.eruptAt(ctx, a);
+        break;
+      }
+      case 'mend': {
+        this.mendAllies(ctx, a);
+        break;
+      }
+      case 'pull': {
+        // Nothing happens on the strike frame; the suction lives for the whole
+        // active window and is applied per step in the ATTACK state.
+        sfx(ctx, 'zap', this.position);
+        break;
+      }
       default: break;
     }
+  }
+
+  // -------------------------------------------------------------------------
+  // attack implementations that need more than one line
+  // -------------------------------------------------------------------------
+
+  /** Contact test for a committed dash. Latched, so one dash lands one hit. */
+  chargeContact(ctx, a, h) {
+    const p = ctx.player;
+    if (!p || this.chargeHit) return;
+    const r = (a.hitRadius || 1.2) + this.radius + (p.radius || 0.45);
+    if (dist2D(this.position, p.position) > r) return;
+    this.chargeHit = true;
+    hurtPlayer(ctx, this, this.damage * a.damage, 'charge');
+    if (a.knock && p.velocity) {
+      // Shoved along the dash line, not away from a point: being run over
+      // should move you the way the thing that hit you was going.
+      p.velocity.x += Math.sin(this.yaw) * a.knock;
+      p.velocity.z += Math.cos(this.yaw) * a.knock;
+      p.velocity.y += a.knock * 0.35;
+    }
+    fx(ctx, 'explosion', p.position, 2.2, a.color);
+    ctx.pipeline?.addShake?.(0.3);
+    sfx(ctx, 'explosion', this.position, 0.6);
+  }
+
+  /** Surfacing blast: the ground goes up, then the unit comes with it. */
+  eruptAt(ctx, a) {
+    this.submerged = false;
+    this.invuln = false;
+    if (this.rig) this.rig.root.visible = true;
+    this.position.y = groundAt(ctx, this.position.x, this.position.z);
+    this.velocity.set(0, 9, 0);
+    spawnBlast(ctx, this, a.blast, this.damage * a.damage, a.color, a.status || null);
+    ctx.director?.spawnWave?.(this.position, a.blast, a.waveSpeed || 20, 0, null, a.color);
+    sfx(ctx, 'explosion', this.position, a.blast * 0.6);
+    ctx.pipeline?.addShake?.(0.4);
+  }
+
+  /** Hatch a brood. Host-only, and it respects the director's population cap. */
+  summonAdds(ctx, a) {
+    const dr = ctx.director;
+    if (!dr || !dr.summon) return;
+    const n = a.count || 3;
+    for (let i = 0; i < n; i++) {
+      const ang = ctx.rng.range(0, Math.PI * 2);
+      const rad = ctx.rng.range(this.radius + 0.8, this.radius + (a.spread || 3));
+      _v2.set(this.position.x + Math.cos(ang) * rad, this.position.y, this.position.z + Math.sin(ang) * rad);
+      if (!dr.summon(ctx, a.summon, _v2, this)) break;   // cap reached
+      fx(ctx, 'explosion', _v2, 1.4, a.color);
+    }
+    sfx(ctx, 'explosion', this.position, 0.7);
+  }
+
+  /** Top the pack back up. The reason a support unit is the first thing to shoot. */
+  mendAllies(ctx, a) {
+    const list = ctx.director ? ctx.director.enemies : null;
+    if (!list) return;
+    let n = 0;
+    for (let i = 0; i < list.length && n < (a.targets || 3); i++) {
+      const o = list[i];
+      if (o === this || !o.alive || o.dying) continue;
+      if (dist2D(this.position, o.position) > a.range) continue;
+      if (o.health >= o.maxHealth && o.shield >= o.maxShield) continue;
+      o.health = Math.min(o.maxHealth, o.health + o.maxHealth * (a.healFrac || 0.12));
+      // A grafted barrier, not just health: it stacks on units that already
+      // have one and it is what makes an un-answered acolyte feel like a wall.
+      o.maxShield = Math.max(o.maxShield, o.maxHealth * (a.shieldFrac || 0.2));
+      o.shield = o.maxShield;
+      fx(ctx, 'explosion', o.position, 1.2, a.color);
+      n++;
+    }
+    sfx(ctx, 'heal', this.position);
+  }
+
+  /** Per-step suction while a `pull` attack is live. */
+  pullPlayer(ctx, a, h) {
+    const p = ctx.player;
+    if (!p || !p.velocity) return;
+    _v2.set(this.position.x - p.position.x, 0, this.position.z - p.position.z);
+    const d = _v2.length();
+    if (d < 1e-3 || d > a.range) return;
+    // Falls off with distance, and never quite wins against a player running
+    // flat out — it steals ground, it does not take control away.
+    const k = (a.pull || 20) * (1 - clamp(d / a.range, 0, 1)) * h;
+    p.velocity.x += (_v2.x / d) * k;
+    p.velocity.z += (_v2.z / d) * k;
+    if (d < (a.blast || 6)) {
+      this.tickT -= h;
+      if (this.tickT <= 0) {
+        this.tickT = 0.4;
+        hurtPlayer(ctx, this, this.damage * a.damage, 'pull');
+      }
+    }
+  }
+
+  /** Nearest living ally, optionally only ones that would benefit from a mend. */
+  findAlly(ctx, range, hurtOnly) {
+    const list = ctx.director ? ctx.director.enemies : null;
+    if (!list) return null;
+    let best = null;
+    let bestD = range * range;
+    for (let i = 0; i < list.length; i++) {
+      const o = list[i];
+      if (o === this || !o.alive || o.dying || o.behavior === 'support') continue;
+      if (hurtOnly && o.health >= o.maxHealth) continue;
+      const dx = o.position.x - this.position.x, dz = o.position.z - this.position.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 < bestD) { bestD = d2; best = o; }
+    }
+    return best;
   }
 
   launchProjectile(ctx, a) {
@@ -680,13 +1028,48 @@ export class Enemy {
     _v1.set(this.position.x, this.position.y + (a.muzzleY || this.height * 0.7), this.position.z);
     _v1.x += Math.sin(this.yaw) * (a.muzzleZ || 0.5);
     _v1.z += Math.cos(this.yaw) * (a.muzzleZ || 0.5);
+
+    // Artillery walks its shells around the player rather than landing them all
+    // on the same square metre. That is what makes the ground itself dangerous
+    // instead of just the player's exact position.
     _v2.copy(this.target);
     _v2.y += 1.0;
+    if (a.scatter) {
+      const ang = ctx.rng.range(0, Math.PI * 2);
+      const rad = ctx.rng.range(0, a.scatter);
+      _v2.x += Math.cos(ang) * rad;
+      _v2.z += Math.sin(ang) * rad;
+      _v2.y = groundAt(ctx, _v2.x, _v2.z) + 1.0;
+    }
+
     // Lead the shot a little at range so slow projectiles aren't free to dodge.
     const flight = _v2.distanceTo(_v1) / a.speed;
     if (a.gravity) _v2.y += 0.5 * a.gravity * flight * flight;
+
+    // The ground ring goes down the instant the shell leaves the barrel and
+    // lives exactly as long as the shell's flight, so "get off that circle" is
+    // a real instruction with a real deadline.
+    if (a.telegraph) {
+      _v3.set(this.target.x + (_v2.x - this.target.x), 0, this.target.z + (_v2.z - this.target.z));
+      ctx.director?.spawnTelegraph?.(_v3.x, _v3.z, a.telegraph, flight, a.color);
+    }
+
     _v2.sub(_v1).normalize().multiplyScalar(a.speed);
-    pr.fire(this, a, _v1, _v2);
+    const n = a.volley || 1;
+    if (n === 1) {
+      pr.fire(this, a, _v1, _v2);
+    } else {
+      // A cone, not a stack: each round is rotated off the aim line so the
+      // spread has a readable shape and the gaps between rounds are dodgeable.
+      const spread = a.volleySpread || 0.3;
+      for (let i = 0; i < n; i++) {
+        const t = n === 1 ? 0 : (i / (n - 1) - 0.5) * 2;
+        const ang = t * spread;
+        const c = Math.cos(ang), s = Math.sin(ang);
+        _v3.set(_v2.x * c - _v2.z * s, _v2.y, _v2.x * s + _v2.z * c);
+        pr.fire(this, a, _v1, _v3);
+      }
+    }
     _v3.copy(_v2).normalize();
     fx(ctx, 'muzzleFlash', _v1, _v3, 0.7);
     sfx(ctx, 'shoot', _v1, 0.8);
@@ -850,6 +1233,30 @@ function dist2D(a, b) {
   return Math.hypot(dx, dz);
 }
 
+/**
+ * Movement personality for a card that doesn't name one.
+ *
+ * Kept as a fallback rather than a requirement so the original five cards read
+ * exactly as they did before `behavior` existed.
+ */
+function defaultBehavior(def) {
+  const k = def.attacks[0].kind;
+  if (k === 'melee') return 'melee';
+  if (k === 'dive') return 'diver';
+  return 'ranged';
+}
+
+/**
+ * Convert a "cut damage by this fraction" number into RoR2 armour.
+ *
+ * The armour curve is `100 / (100 + armor)`, so a 0.82 reduction is 455 armour.
+ * Designers think in fractions; the combat maths wants armour.
+ */
+function fracToArmor(f) {
+  const c = clamp(f, 0, 0.95);
+  return 100 * c / (1 - c);
+}
+
 // ---------------------------------------------------------------------------
 // the shared state table — one object, referenced by every enemy alive
 // ---------------------------------------------------------------------------
@@ -870,6 +1277,12 @@ const STATES = {
   [S.CHASE]: {
     update(e, ctx, h, fsm) {
       if (!ctx.player) { fsm.set(S.IDLE, ctx); return; }
+      // Support units live in their own loop: find someone to mend, go stand
+      // near them, and only look at the player to decide how far to run away.
+      if (e.behavior === 'support' && fsm.t > 0.4) {
+        e.ally = e.findAlly(ctx, e.def.attackRange * 1.6, false);
+        if (e.ally) { fsm.set(S.TEND, ctx); return; }
+      }
       // Melee units don't get to walk straight from spawn into contact: once
       // inside the engage band they prowl until their commit timer runs out.
       if (e.melee && e.commitT > 0 && e.distToPlayer < e.engageRadius) {
@@ -917,11 +1330,28 @@ const STATES = {
     },
   },
 
+  [S.TEND]: {
+    update(e, ctx, h, fsm) {
+      const i = e.pickAttack(ctx);
+      if (i >= 0) { e.beginAttack(ctx, i); return; }
+      const ally = e.ally;
+      if (!ally || !ally.alive || fsm.t > 4) fsm.set(S.CHASE, ctx);
+    },
+  },
+
   [S.WINDUP]: {
     enter(e, ctx) {
       e.anim.windup = 0;
       e.anim.swing = 0;
       const a = e.atk;
+      // Ground telegraph for anything that is about to make a hole in the
+      // floor. The ring is placed and sized where the damage will be and lives
+      // exactly as long as the wind-up, so the wind-up *is* the warning rather
+      // than being a pose the player has to have learned.
+      if (a && a.blast && (a.kind === 'nova' || a.kind === 'slam' || a.kind === 'stomp' || a.kind === 'pull')) {
+        ctx.director?.spawnTelegraph?.(e.position.x, e.position.z, a.blast,
+          a.windup * e.timeScale, a.color);
+      }
       // Beams show their targeting line for the whole windup: that thin line
       // is the entire "get out of the way" signal.
       if (a && (a.kind === 'beam' || a.kind === 'barrage')) {
@@ -940,9 +1370,96 @@ const STATES = {
       if (a.kind === 'beam' || a.kind === 'barrage') {
         e.anim.beamLen = lerp(e.anim.beamLen, Math.min(a.range, Math.max(4, e.distToPlayer), BEAM_MAX_LEN), 0.2);
       }
-      if (fsm.t >= dur) fsm.set(S.ATTACK, ctx);
+      // A dash and a burrow both leave the wind-up into a state of their own —
+      // they have real travel between the tell and the hit, which is exactly
+      // the window the player is being given.
+      if (fsm.t >= dur) {
+        if (a.kind === 'charge') fsm.set(S.CHARGE, ctx);
+        else if (a.kind === 'burrow') fsm.set(S.SUBMERGED, ctx);
+        else fsm.set(S.ATTACK, ctx);
+      }
     },
     exit(e) { e.anim.windup = 0; },
+  },
+
+  [S.CHARGE]: {
+    enter(e, ctx) {
+      const a = e.atk;
+      e.charging = true;
+      e.chargeHit = false;
+      e.anim.swing = 0.001;
+      e.anim.charge = 1;
+      const s = (a && a.chargeSpeed) || 20;
+      e.velocity.set(Math.sin(e.yaw) * s, e.velocity.y, Math.cos(e.yaw) * s);
+      // A blink dash removes the unit for the length of the dash: the rift
+      // shell collapsing is the tell, and the arrival is supposed to be the
+      // first time you see it again.
+      if (a && a.blink && e.rig) {
+        e.rig.root.visible = false;
+        fx(ctx, 'explosion', e.position, 2.0, a.color);
+      }
+      sfx(ctx, 'shoot', e.position, 0.6);
+    },
+    update(e, ctx, h, fsm) {
+      const a = e.atk;
+      if (!a) { fsm.set(S.CHASE, ctx); return; }
+      const dur = a.active * e.timeScale;
+      e.anim.swing = clamp(fsm.t / (dur + a.recover * e.timeScale), 0.001, 1);
+      // Stopped dead against terrain: the dash is spent, and following through
+      // with the animation while pinned against a rock reads as broken.
+      const speed2 = e.velocity.x * e.velocity.x + e.velocity.z * e.velocity.z;
+      const stalled = fsm.t > 0.15 && speed2 < 4;
+      if (fsm.t >= dur || stalled || (e.chargeHit && a.blink)) fsm.set(S.RECOVER, ctx);
+    },
+    exit(e, ctx) {
+      e.charging = false;
+      e.anim.charge = 0;
+      const a = e.atk;
+      if (a && a.blink && e.rig) {
+        e.rig.root.visible = true;
+        fx(ctx, 'explosion', e.position, 2.4, a.color);
+      }
+      // Bleed the dash off rather than stopping on a dime — the overshoot is
+      // the follow-through, and it is also the window to punish the miss.
+      e.velocity.x *= 0.35;
+      e.velocity.z *= 0.35;
+    },
+  },
+
+  [S.SUBMERGED]: {
+    enter(e, ctx) {
+      e.submerged = true;
+      e.invuln = true;
+      e.moundT = 0;
+      if (e.rig) e.rig.root.visible = false;
+      fx(ctx, 'explosion', e.position, 2.6, e.atk?.color || 0xd8a860);
+      sfx(ctx, 'explosion', e.position, 0.4);
+    },
+    update(e, ctx, h, fsm) {
+      const a = e.atk;
+      if (!a) { fsm.set(S.CHASE, ctx); return; }
+      const dur = (a.submerge || 2.0) * e.timeScale;
+      // Spoil mound: a small ring dragged along behind it, which is the only
+      // thing the player can read while it is under. Without this the unit is
+      // an invisible timer, which is not a mechanic, it is a coin flip.
+      e.moundT -= h;
+      if (e.moundT <= 0) {
+        e.moundT = 0.1;
+        ctx.director?.spawnTelegraph?.(e.position.x, e.position.z, e.radius * 1.6, 0.45, a.color);
+      }
+      const close = e.distToPlayer < 2.5;
+      if (fsm.t >= dur || close) {
+        // Surfacing ring, sized to the blast, so the last beat before the hit
+        // is spent looking at exactly how far "clear" is.
+        ctx.director?.spawnTelegraph?.(e.position.x, e.position.z, a.blast, 0.32, a.color);
+        fsm.set(S.ATTACK, ctx);
+      }
+    },
+    exit(e) {
+      e.submerged = false;
+      e.invuln = false;
+      if (e.rig) e.rig.root.visible = true;
+    },
   },
 
   [S.ATTACK]: {
@@ -984,6 +1501,12 @@ const STATES = {
           e.tickT = a.tick;
           e.fireBeam(ctx, a, a.beamRadius, e.damage * a.damage);
         }
+      } else if (a.kind === 'pull') {
+        // The suction is the attack. It runs every step of the active window
+        // and the damage only starts once you have actually been dragged in.
+        e.pullPlayer(ctx, a, h);
+        e.anim.beamOn = true;
+        e.anim.beamLen = Math.min(a.range, Math.max(4, e.distToPlayer));
       } else if (a.kind === 'dive') {
         const p = ctx.player;
         const near = p ? e.position.distanceTo(p.position) : 99;
@@ -1035,7 +1558,20 @@ const STATES = {
       e.anim.beamOn = false;
       e.anim.windup = 0;
       e.anim.swing = 0;
+      e.anim.charge = 0;
       e.diving = false;
+      // A unit killed mid-blink or mid-burrow must not die invisible or
+      // underground — both states hide the rig, and a corpse the player cannot
+      // see is a kill the player does not get credit for having made.
+      e.charging = false;
+      e.submerged = false;
+      e.invuln = false;
+      if (e.rig) {
+        e.rig.root.visible = true;
+        if (e.position.y < groundAt(ctx, e.position.x, e.position.z)) {
+          e.position.y = groundAt(ctx, e.position.x, e.position.z);
+        }
+      }
     },
     update() { /* the Director reaps once `finished` goes true */ },
   },

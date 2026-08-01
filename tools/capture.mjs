@@ -59,6 +59,33 @@ const SCENARIOS = [
     doc: 'Default gameplay framing, player idle. Judges character read and camera.',
     setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.gameplay?.()),
   },
+  // Early on purpose: the roster shot wants a clean HUD behind it, and every
+  // scenario from `06-loaded-hud` onward hands the player 37 items and a full
+  // inventory panel over the top-left quarter of frame. The scenario removes
+  // its four display rigs from the scene *after* stopping the render loop, so
+  // nothing later inherits them.
+  {
+    name: '09-survivors',
+    doc: 'The full roster side by side. Judges silhouette read and how distinguishable the four survivors are from one another.',
+    setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.survivors?.()),
+  },
+  // Biome identity: one establishing frame per stage type, each framed on that
+  // kit's primary landmark. A single `02-vista` photographs one biome and says
+  // nothing about whether the other three are different places, which is the
+  // only question these four exist to answer.
+  //
+  // Early, for the same reason `09-survivors` is: every scenario from
+  // `06-loaded-hud` onward leaves a full inventory panel over the top-left
+  // quarter of frame, and a landscape shot with a quarter of the landscape
+  // behind an item grid grades nothing. Each of these rebuilds the stage, and
+  // the last one puts it back on stage 1 *after* its own shutter, so nothing
+  // downstream is shot against the wrong world.
+  ...[0, 1, 2, 3].map((i) => ({
+    name: `13-biomes-${i + 1}`,
+    doc: `Establishing shot of biome ${i + 1} of 4, framed on its primary landmark. Judges whether the four stages read as genuinely different places rather than as one generator recoloured.`,
+    setup: (page) => page.evaluate(
+      ([n, last]) => globalThis.__HARNESS__?.biomeVista?.({ index: n, restore: last }), [i, i === 3]),
+  })),
   {
     name: '04-combat',
     doc: 'Mid-fight with a horde, firing. Judges VFX layering, enemy legibility, HUD under load.',
@@ -79,6 +106,20 @@ const SCENARIOS = [
     doc: 'Peak VFX moment: explosion + damage numbers + shake. Judges impact feedback.',
     setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.explosion?.()),
   },
+  // Bestiary and boss telegraph go before `lateRun` for the same reason
+  // everything below it goes after: these are monster shots, and a full
+  // inventory panel over the corner of a silhouette line-up is not a state
+  // that documents anything.
+  {
+    name: '11-bestiary',
+    doc: 'The whole spawn roster in one rank, small to large, with two tier-2 elites. Judges silhouette variety and scale spread.',
+    setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.bestiary?.()),
+  },
+  {
+    name: '12-boss-phases',
+    doc: 'A late-phase boss frozen at 85% of a wind-up. Judges boss silhouette at scale and telegraph legibility.',
+    setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.bossPhases?.()),
+  },
   // Runs last on purpose, despite the file name. `lateRun` gives the player
   // every item in the game, 4200 gold and 22 minutes on the difficulty clock,
   // and nothing takes them away again — with this in its numbered position, the
@@ -89,6 +130,13 @@ const SCENARIOS = [
     name: '06-loaded-hud',
     doc: 'Late-run HUD with a full inventory and high difficulty. Judges UI density and hierarchy.',
     setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.lateRun?.()),
+  },
+  // Also after `lateRun`, and for the same reason: it loads the player with
+  // every item in the game and never unloads them.
+  {
+    name: '10-inventory',
+    doc: 'Dense late-run inventory across every tier, with an equipment nuke firing. Judges item icon craft, tier legibility and equipment effect quality.',
+    setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.inventory?.()),
   },
 ];
 

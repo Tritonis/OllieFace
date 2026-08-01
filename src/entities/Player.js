@@ -2,7 +2,9 @@ import * as THREE from 'three';
 import { clamp, damp } from '../core/MathUtil.js';
 import { CharacterMesh } from './CharacterMesh.js';
 import { ProjectilePool } from './Projectile.js';
-import { ABILITIES, SLOT_ORDER, effectiveCooldown } from '../data/abilities.js';
+import { PlaceablePool } from './Placeables.js';
+import { SLOT_ORDER, effectiveCooldown } from '../data/abilities.js';
+import { getSurvivor, loadoutOf, DEFAULT_SURVIVOR } from '../data/survivors.js';
 import { BTN, ESTATE } from '../net/Protocol.js';
 
 /**
@@ -20,21 +22,23 @@ import { BTN, ESTATE } from '../net/Protocol.js';
  * than where it originally predicted — permanent jitter.
  *
  * Every number that an item could plausibly modify is read out of
- * `ctx.items.stats(BASE)` each step — nothing downstream reads BASE directly.
+ * `ctx.items.stats(base)` each step — nothing downstream reads the base block
+ * directly.
+ *
+ * ## Survivors
+ *
+ * The loadout is data. `data/survivors.js` supplies the base stat block, the
+ * four ability ids and the mesh key; this class contains no per-survivor
+ * branch, and adding a fifth survivor touches no code in here at all.
+ *
+ * Which survivor a run boots with is decided, in order:
+ *   1. `new Player({ survivor: 'kestrel' })`  — explicit, used by tools
+ *   2. `ctx.survivorId`                        — set by the UI before boot
+ *   3. `DEFAULT_SURVIVOR`                      — the Ranger
+ *
+ * so the zero-configuration path (`engine.add(new Player())`, no UI anywhere)
+ * still boots exactly the character it always did.
  */
-
-const BASE = {
-  maxHealth: 110,
-  healthRegen: 1.0,
-  moveSpeed: 7,
-  attackSpeed: 1,
-  damage: 12,
-  critChance: 0.01, // fraction, not percent — Items clamps this to 1
-  critMult: 2,
-  armor: 0,
-  cooldownMult: 1,
-  jumpCount: 1,
-};
 
 // Survivor level scaling, matching the ramp the Director gives monsters
 // (Director.js:10-11) so a level of parity really is parity. The level itself
@@ -69,6 +73,9 @@ const SPRINT_MULT = 1.45;
 const COYOTE = 0.12;
 const JUMP_BUFFER = 0.15;
 
+// Defaults for `beginDash`. A survivor's utility skill may override any of the
+// three per cast — Anvil's Breach Charge is longer, faster and aim-directed —
+// and the live values are mirrored onto the pawn so they survive a snapshot.
 const DASH_SPEED = 22;
 const DASH_TIME = 0.24;
 const DASH_IFRAMES = 0.32;
@@ -91,8 +98,11 @@ export class Player {
    * that nothing steps it from the engine: NetHost feeds it `applyCommand`
    * straight off the wire.
    */
-  constructor({ local = true } = {}) {
+  constructor({ local = true, survivor = null } = {}) {
     this.local = local;
+    // Held rather than resolved: `ctx` does not exist yet, and `ctx.survivorId`
+    // is what a survivor-select screen will have written by the time init runs.
+    this.requestedSurvivor = survivor;
   }
 
   init(ctx) {
@@ -109,16 +119,22 @@ export class Player {
     this.position = new THREE.Vector3(0, 2, 0);
     this.velocity = new THREE.Vector3();
 
-    this.stats = { ...BASE };
-    // Scratch base block, rebuilt only when the survivor level changes.
-    this._lvlBase = { ...BASE };
-    this._lvlN = -1;
-    this.maxHealth = BASE.maxHealth;
-    this.health = BASE.maxHealth;
+    // Timed stat buffs (Anvil's Bulwark and anything like it). Folded into the
+    // *base* block rather than onto the result of `ctx.items.stats()`, because
+    // that result is a shared cache Items hands back by reference — writing to
+    // it would compound the buff every frame and never expire.
+    this._buffs = [];
+    this._buffTotal = { armor: 0, damageMult: 1 };
+    this._buffBase = {};
+
+    // Survivor card + everything derived from it: base stats, the four slots,
+    // and the rig. Everything below this line is survivor-agnostic.
+    this._applyCard(getSurvivor(this.requestedSurvivor ?? ctx.survivorId ?? DEFAULT_SURVIVOR));
+
+    this.stats = { ...this.base };
     // `shield` is the decaying barrier Items grants and ticks down; Player only
     // reports the cap so the HUD has something to draw against.
     this.shield = 0;
-    this.maxShield = BASE.maxHealth * 0.5;
     this.sinceDamage = 99;
     // Read by Combat.applyDamage: a mercy window so one blast can't multi-hit.
     this.iframeDuration = 0.1;
@@ -141,6 +157,8 @@ export class Player {
     this.dashT = 0;
     this.dashRoll = 0;
     this.dashDirection = new THREE.Vector3(0, 0, 1);
+    this.dashSpeed = DASH_SPEED;
+    this.dashMaxTime = DASH_TIME;
     this.iframes = 0;
 
     this.recoilPending = 0;
@@ -162,29 +180,20 @@ export class Player {
     this.interactPressed = false;
     this._renderOffset = new THREE.Vector3();
 
-    // --- loadout ---
-    // Field names here are the HUD's read contract: `cooldown` is the full
-    // duration, `cd` the remainder, plus charges/maxCharges/name.
-    this.slots = SLOT_ORDER.map((slot) => {
-      const a = ABILITIES[slot];
-      return {
-        slot, ability: a, name: a.name, description: a.description, key: a.key,
-        charges: a.charges, maxCharges: a.charges,
-        cd: 0, cdMax: a.cooldown, cooldown: a.cooldown,
-      };
-    });
-    this.abilities = this.slots;
-    this.slotBySlot = {};
-    for (const s of this.slots) this.slotBySlot[s.slot] = s;
-
     // Fixed-size deferred-call ring: multi-shot abilities need sub-step timing
     // without allocating a closure array every trigger.
     this._sched = new Array(MAX_SCHEDULED);
     for (let i = 0; i < MAX_SCHEDULED; i++) this._sched[i] = { t: 0, fn: null };
 
     this.projectiles = new ProjectilePool(ctx);
+    // Deployed constructs (Rook's mines, wards and sentries). Same ownership
+    // model as the projectile pool: stepped from here, not a system.
+    this.placeables = new PlaceablePool(ctx);
+    // Nothing a survivor left on the ground survives a stage transition — the
+    // stage it was standing on no longer exists.
+    ctx.events?.on?.('stageStart', () => this.placeables.clear());
 
-    this.mesh = new CharacterMesh();
+    this.mesh = new CharacterMesh(this.survivor.meshKey);
     // `mesh` is the rig wrapper, not a scene node. Anything generic that wants
     // the player's Object3D (VFX hit flashes, death dissolve) reads `group`.
     this.group = this.mesh.group;
@@ -203,14 +212,92 @@ export class Player {
     this._fireRay = { origin: new THREE.Vector3(), dir: new THREE.Vector3(0, 0, 1) };
     this._meshState = {
       velocity: this.velocity, grounded: false, aimYaw: 0, aimPitch: 0,
-      dashT: 0, sprint: false, moveSpeed: BASE.moveSpeed,
+      dashT: 0, sprint: false, moveSpeed: this.base.moveSpeed,
     };
+
+    // The survivor-select API. `ctx.player` is the one pawn the camera, HUD and
+    // input follow, so only it publishes the hook — a co-op host simulating
+    // three remote pawns must not have them fighting over it.
+    if (this.local) {
+      ctx.survivorId = this.survivor.id;
+      ctx.setSurvivor = (id) => this.setSurvivor(id);
+    }
 
     ctx.combat?.register?.(this);
 
     // Drop onto the stage if it can tell us where the floor is.
     const y = ctx.stage?.sampleHeight?.(0, 0);
     if (typeof y === 'number' && isFinite(y)) this.position.set(0, y + 0.2, 0);
+  }
+
+  // --------------------------------------------------------------- survivor
+
+  /**
+   * Adopt a survivor card: stats, loadout and everything derived from them.
+   *
+   * Deliberately does *not* touch the rig — `init` builds it once and
+   * `setSurvivor` rebuilds it — so this stays the one place the numbers come
+   * from and can be called before the scene exists.
+   */
+  _applyCard(card) {
+    this.survivor = card;
+    this.survivorId = card.id;
+    // Copied, never referenced: `_levelBase` writes into its block every time
+    // the level changes, and the card is shared module data.
+    this.base = { ...card.baseStats };
+    this._lvlBase = { ...card.baseStats };
+    this._lvlN = -1;
+    this.maxHealth = this.base.maxHealth;
+    this.health = this.base.maxHealth;
+    this.maxShield = this.base.maxHealth * 0.5;
+    this.dashTrailColour = card.trailColor ?? card.accentColor;
+
+    // Field names here are the HUD's read contract: `cooldown` is the full
+    // duration, `cd` the remainder, plus charges/maxCharges/name.
+    this.slots = loadoutOf(card).map((a) => ({
+      slot: a.slot, ability: a, name: a.name, description: a.description, key: a.key,
+      charges: a.charges, maxCharges: a.charges,
+      cd: 0, cdMax: a.cooldown, cooldown: a.cooldown,
+    }));
+    this.abilities = this.slots;
+    this.slotBySlot = {};
+    for (const s of this.slots) this.slotBySlot[s.slot] = s;
+  }
+
+  /**
+   * Swap survivor at runtime. This is the whole API a survivor-select screen
+   * needs: `ctx.setSurvivor('kestrel')`.
+   *
+   * Intended for the lobby, not for mid-fight — it discards deployables, resets
+   * cooldowns and refills health, all of which are the right thing between runs
+   * and cheating during one. Callers gate on being in a menu; enforcing it here
+   * would make the harness unable to photograph the roster.
+   */
+  setSurvivor(id) {
+    const ctx = this.ctx;
+    const card = getSurvivor(id);
+    if (!ctx || card === this.survivor) return card;
+
+    this._applyCard(card);
+    this._buffs.length = 0;
+    this.placeables.clear();
+    this.projectiles.clear();
+
+    // Rebuild the rig. The old one is dropped rather than disposed: a swap
+    // happens between runs, at most a handful of times a session, and disposing
+    // geometry that `VFX.hitFlash` may still be holding a clone of is a far
+    // worse failure than a few kilobytes of retained buffers.
+    ctx.scene.remove(this.group);
+    this.mesh = new CharacterMesh(card.meshKey);
+    this.group = this.mesh.group;
+    this.group.position.copy(this.position);
+    ctx.scene.add(this.group);
+
+    if (this.local) ctx.survivorId = card.id;
+    // Additive to the event table in CONTRACTS.md: the HUD needs to rebuild its
+    // skill icons and the menu needs to re-render the card.
+    ctx.events?.emit?.('survivorChanged', { survivor: card, player: this });
+    return card;
   }
 
   // ---------------------------------------------------------------- gameplay
@@ -280,7 +367,7 @@ export class Player {
     const replay = c.tick > 0 && c.tick <= this._lastCmdTick;
     this._replaying = replay;
 
-    this.stats = ctx.items?.stats?.(this._levelBase()) || { ...BASE };
+    this.stats = ctx.items?.stats?.(this._effectiveBase()) || { ...this._effectiveBase() };
     this.maxHealth = this.stats.maxHealth;
     this.maxShield = this.maxHealth * 0.5;
     if (this.health > this.maxHealth) this.health = this.maxHealth;
@@ -307,7 +394,10 @@ export class Player {
     this._regen(ctx, dt);
 
     this.horizontalSpeed = Math.hypot(this.velocity.x, this.velocity.z);
-    if (!replay) this.projectiles.fixedUpdate(ctx, dt);
+    if (!replay) {
+      this.projectiles.fixedUpdate(ctx, dt);
+      this.placeables.fixedUpdate(ctx, dt);
+    }
 
     this._commit(c, buttons, pressed);
   }
@@ -340,7 +430,7 @@ export class Player {
         if (s > 1e-4) { this.velocity.x *= keep / s; this.velocity.z *= keep / s; }
       }
     }
-    this.dashT = this.dashTime > 0 ? clamp(this.dashTime / DASH_TIME, 0, 1) : 0;
+    this.dashT = this.dashTime > 0 ? clamp(this.dashTime / this.dashMaxTime, 0, 1) : 0;
   }
 
   /** Aim basis, rebuilt from the command's angles rather than the live rig. */
@@ -379,8 +469,8 @@ export class Player {
     // Dash overrides horizontal control entirely — committing to the dash is
     // what makes the i-frames a real decision.
     if (this.dashTime > 0) {
-      this.velocity.x = this.dashDirection.x * DASH_SPEED;
-      this.velocity.z = this.dashDirection.z * DASH_SPEED;
+      this.velocity.x = this.dashDirection.x * this.dashSpeed;
+      this.velocity.z = this.dashDirection.z * this.dashSpeed;
       if (this.velocity.y < 0) this.velocity.y *= 0.35; // brief float, no slam
       this.dashRoll = damp(this.dashRoll, this._dashLateral(), 0.99, h);
     } else {
@@ -511,16 +601,79 @@ export class Player {
   get xp() { return this.ctx?.progression?.xp ?? 0; }
   get xpToNext() { return this.ctx?.progression?.xpToNext ?? 1; }
 
-  /** BASE raised by the current level. Rebuilt only when the level changes. */
+  /**
+   * The base block the stat pipeline is actually handed: level scaling, then
+   * any live timed buffs.
+   *
+   * With no buffs running this returns `_levelBase()`'s block untouched — the
+   * same object, field for field — so `Items.stats` keeps its cache hot and the
+   * common path costs exactly what it did before buffs existed.
+   */
+  _effectiveBase() {
+    const b = this._levelBase();
+    const buff = this._buffTotals();
+    if (!buff) return b;
+    const o = this._buffBase;
+    for (const k in b) o[k] = b[k];
+    o.armor = b.armor + buff.armor;
+    o.damage = b.damage * buff.damageMult;
+    return o;
+  }
+
+  /**
+   * Sum the live buffs and drop the expired ones, in one pass, without
+   * allocating. Returns null when there is nothing to apply.
+   */
+  _buffTotals() {
+    const list = this._buffs;
+    if (!list.length) return null;
+    const now = this.ctx.time;
+    let armor = 0, damageMult = 1, live = 0;
+    for (let i = 0; i < list.length; i++) {
+      const b = list[i];
+      if (b.until <= now) continue;
+      list[live++] = b;
+      armor += b.armor;
+      damageMult *= b.damageMult;
+    }
+    list.length = live;
+    if (!live) return null;
+    this._buffTotal.armor = armor;
+    this._buffTotal.damageMult = damageMult;
+    return this._buffTotal;
+  }
+
+  /**
+   * Grant a timed stat buff. Expiry is an absolute gameplay time rather than a
+   * countdown so a client replaying a window of commands cannot tick it down
+   * once per replay.
+   */
+  grantBuff({ armor = 0, damageMult = 1 } = {}, duration = 1) {
+    this._buffs.push({ armor, damageMult, until: this.ctx.time + duration });
+  }
+
+  /** Decaying overshield, capped the same way `Items.addBarrier` caps it. */
+  grantBarrier(amount) {
+    const cap = (this.stats?.maxHealth || this.maxHealth || 100) * 0.5;
+    this.shield = Math.min(cap, (this.shield || 0) + amount);
+  }
+
+  /** Open the mercy window. Both gates, for the same reason `beginDash` sets both. */
+  grantIFrames(seconds) {
+    this.iframes = Math.max(this.iframes, seconds);
+    this._iframeUntil = Math.max(this._iframeUntil, this.ctx.time + seconds);
+  }
+
+  /** The base block raised by the current level. Rebuilt only when it changes. */
   _levelBase() {
     const n = Math.max(0, this.level - 1);
     const b = this._lvlBase;
     if (n === this._lvlN) return b;
     const prevMax = b.maxHealth;
     this._lvlN = n;
-    b.maxHealth = BASE.maxHealth * (1 + LEVEL_HEALTH * n);
-    b.damage = BASE.damage * (1 + LEVEL_DAMAGE * n);
-    b.healthRegen = BASE.healthRegen * (1 + LEVEL_REGEN * n);
+    b.maxHealth = this.base.maxHealth * (1 + LEVEL_HEALTH * n);
+    b.damage = this.base.damage * (1 + LEVEL_DAMAGE * n);
+    b.healthRegen = this.base.healthRegen * (1 + LEVEL_REGEN * n);
     // Grant the health the level adds instead of only widening the bar —
     // otherwise every level-up would visibly *drop* your health fraction.
     // Health is replicated, so only the host books it.
@@ -578,7 +731,9 @@ export class Player {
     // effect is not: a replayed volley would spawn a second set of projectiles.
     // The dash is the exception — its effect *is* movement, so replay needs it.
     if (this._replaying) {
-      if (slot === 'utility') this.beginDash();
+      // Replay re-runs only the part of the cast the simulation depends on.
+      // See the `replayFire` note at the top of data/abilities.js.
+      s.ability.replayFire?.(ctx, this);
     } else {
       s.ability.fire(ctx, this);
     }
@@ -627,28 +782,54 @@ export class Player {
     }
   }
 
-  beginDash() {
+  /**
+   * @param {object} [o] { direction, speed, time, iframes } — a survivor's
+   *   utility skill overriding the defaults. Omit it entirely and this is the
+   *   Ranger's roll, unchanged.
+   */
+  beginDash(o = null) {
     // Dash the way you're holding, not the way you're looking — a backwards
-    // disengage has to be possible.
-    if (this.moving) this.dashDirection.copy(this._wish);
+    // disengage has to be possible. An explicit `direction` overrides that:
+    // a gap-closer has to go at the thing being aimed at.
+    if (o?.direction) this.dashDirection.copy(o.direction);
+    else if (this.moving) this.dashDirection.copy(this._wish);
     else this.dashDirection.set(this._fwd.x, 0, this._fwd.z);
     this.dashDirection.y = 0;
     if (this.dashDirection.lengthSq() < 1e-6) this.dashDirection.set(0, 0, 1);
     this.dashDirection.normalize();
-    this.dashTime = DASH_TIME;
+    this.dashSpeed = o?.speed ?? DASH_SPEED;
+    this.dashMaxTime = o?.time ?? DASH_TIME;
+    const iframes = o?.iframes ?? DASH_IFRAMES;
+    this.dashTime = this.dashMaxTime;
     this.dashT = 1;
     if (!this._replaying) {
       this._dashTrail = this.ctx.vfx?.trails?.spawn({
         position: this.center(this._center),
-        color: 0x8fd8ff, coreColor: 0xffffff, width: 0.5, life: 0.3, minDist: 0.15,
+        color: this.dashTrailColour, coreColor: 0xffffff, width: 0.5, life: 0.3, minDist: 0.15,
       }) || null;
     }
-    this.iframes = Math.max(this.iframes, DASH_IFRAMES);
+    this.iframes = Math.max(this.iframes, iframes);
     // Combat gates on this itself, so the dash is invulnerable even to damage
     // paths that never reach our takeDamage.
-    this._iframeUntil = Math.max(this._iframeUntil, this.ctx.time + DASH_IFRAMES);
+    this._iframeUntil = Math.max(this._iframeUntil, this.ctx.time + iframes);
     this.jumpBuffer = 0;
   }
+
+  /** Aim direction flattened to the ground plane. */
+  aimForward(out) {
+    out.set(this._camDir.x, 0, this._camDir.z);
+    if (out.lengthSq() < 1e-6) out.set(this._fwd.x, 0, this._fwd.z);
+    return out.normalize();
+  }
+
+  /**
+   * The movement direction this step is being asked for, as a unit vector.
+   *
+   * Abilities run before `_move`, so this is last step's input — which is the
+   * same window `beginDash` has always read, and is what makes "dash the way
+   * you're holding" work at all.
+   */
+  wishDirection() { return this._wish; }
 
   _dashLateral() {
     return clamp(this.dashDirection.x * this._right.x + this.dashDirection.z * this._right.z, -1, 1);
@@ -724,6 +905,11 @@ export class Player {
       // change where the very next command takes you.
       grounded: this.grounded,
       dashTime: this.dashTime,
+      // The dash *shape*, not just its remaining time: a survivor whose utility
+      // is a 30 m/s charge rewinds to a completely different position than one
+      // whose is a 22 m/s roll, and only the pawn knows which is in flight.
+      dashSpeed: this.dashSpeed,
+      dashMaxTime: this.dashMaxTime,
       coyote: this.coyote,
       jumpBuffer: this.jumpBuffer,
       jumpsUsed: this.jumpsUsed,
@@ -748,6 +934,8 @@ export class Player {
     if (s.health !== undefined) this.health = s.health;
     if (s.grounded !== undefined) this.grounded = !!s.grounded;
     if (s.dashTime !== undefined) this.dashTime = s.dashTime;
+    if (s.dashSpeed !== undefined) this.dashSpeed = s.dashSpeed;
+    if (s.dashMaxTime !== undefined) this.dashMaxTime = s.dashMaxTime;
     if (s.coyote !== undefined) this.coyote = s.coyote;
     if (s.jumpBuffer !== undefined) this.jumpBuffer = s.jumpBuffer;
     if (s.jumpsUsed !== undefined) this.jumpsUsed = s.jumpsUsed;
@@ -809,6 +997,8 @@ export class Player {
     this.alive = false;
     this.velocity.set(0, 0, 0);
     this.projectiles.clear();
+    this.placeables.clear();
+    this._buffs.length = 0;
   }
 
   // ------------------------------------------------------------ presentation
@@ -836,5 +1026,6 @@ export class Player {
     }
 
     this.projectiles.update(ctx, dt);
+    this.placeables.update(ctx, dt);
   }
 }

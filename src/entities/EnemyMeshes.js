@@ -105,13 +105,51 @@ const PALETTE = {
   // orange core as the only warm thing on the model, and gives the plates room
   // to be lighter than the joints instead of everything landing on one value.
   titan:    { body: 0x424a58, dark: 0x1c2029, accent: 0xffa514, eye: 0xffb020 },
+
+  // The expanded roster. Each species owns a hue no neighbour in its tier uses,
+  // because at combat range colour is the second identifier after silhouette —
+  // and two units that share both are the same monster as far as the player's
+  // reflexes are concerned.
+  mite:     { body: 0x8c7a3e, dark: 0x2e2712, accent: 0xd8e04a, eye: 0xe8ff3a },
+  spitling: { body: 0x5d7a34, dark: 0x1e2a12, accent: 0x9be035, eye: 0xc4ff4a },
+  harrier:  { body: 0x7a4326, dark: 0x2a160c, accent: 0xffb648, eye: 0xffd166 },
+  charger:  { body: 0x6b5240, dark: 0x261c14, accent: 0xffd166, eye: 0xffc04a },
+  burrower: { body: 0x7d6a4c, dark: 0x2a2318, accent: 0xd8a860, eye: 0xffcc7a },
+  brood:    { body: 0x4a5c3a, dark: 0x18200f, accent: 0x8ee06a, eye: 0xb4ff8a },
+  warden:   { body: 0x4c5b6e, dark: 0x1a2029, accent: 0x7fd4ff, eye: 0x9fe8ff },
+  stalker:  { body: 0x3a2c4e, dark: 0x150f20, accent: 0xb98cff, eye: 0xd0b0ff },
+  acolyte:  { body: 0x2f4a44, dark: 0x101c1a, accent: 0x74ffc8, eye: 0x9affd8 },
+  mortar:   { body: 0x5a4a44, dark: 0x1e1814, accent: 0xff8a3c, eye: 0xffa860 },
+  hulk:     { body: 0x4e3a34, dark: 0x1c1210, accent: 0xff5a12, eye: 0xff7a2a },
+
+  wyrm:        { body: 0x9a8f74, dark: 0x332e22, accent: 0xe8d6a8, eye: 0xfff0c0 },
+  thunderhead: { body: 0x3a4458, dark: 0x141a26, accent: 0x9fd0ff, eye: 0xc9b5ff },
+  matron:      { body: 0x6a3a2e, dark: 0x241010, accent: 0xff6a12, eye: 0xff9a3c },
+  vizier:      { body: 0x54606e, dark: 0x1a2028, accent: 0x9fe8ff, eye: 0xbfe4ff },
+  maw:         { body: 0x4a5e2e, dark: 0x18220e, accent: 0x9be035, eye: 0xd8ff7a },
 };
 
-/** RoR2's tier-1 elite affixes. Each one repaints the whole silhouette. */
+/**
+ * Elite affixes. Each one repaints the whole silhouette.
+ *
+ * `tier` 2 affixes are gated behind run progress by the director, and they are
+ * deliberately the two loudest entries in this table: the entire point of a
+ * tier-2 elite is that you identify it across the arena and change plan before
+ * it reaches you. Each carries its own aura *signature* — bit count, bit shape,
+ * orbit style and whether it wears a barrier shell — not just a different tint,
+ * because at a distance a tint is the first thing tone mapping takes away.
+ */
 export const ELITE = {
-  blazing:     { tint: 0xff3a08, aura: 0xff6a10, glow: 2.6, name: 'Blazing' },
-  overloading: { tint: 0x2f5cff, aura: 0x74a6ff, glow: 2.8, name: 'Overloading' },
-  glacial:     { tint: 0xa8e6ff, aura: 0x8fe4ff, glow: 2.2, name: 'Glacial' },
+  blazing:     { tint: 0xff3a08, aura: 0xff6a10, glow: 2.6, name: 'Blazing', bits: 5, shape: 'ico', bitScale: 0.11 },
+  overloading: { tint: 0x2f5cff, aura: 0x74a6ff, glow: 2.8, name: 'Overloading', bits: 5, shape: 'ico', bitScale: 0.11 },
+  glacial:     { tint: 0xa8e6ff, aura: 0x8fe4ff, glow: 2.2, name: 'Glacial', bits: 6, shape: 'shard', bitScale: 0.16 },
+  // A cloud of thorns on a sick green body. Nine bits in a slow vertical helix
+  // rather than five on a ring: the read is "infected", and infection spreads
+  // rather than orbiting.
+  withering:   { tint: 0x2fbf6a, aura: 0x86ffb4, glow: 2.4, name: 'Withering', tier: 2, bits: 9, shape: 'spike', bitScale: 0.14, helix: 1 },
+  // No bits at all — a hard faceted barrier shell instead, which is the one
+  // silhouette change in the table that alters the unit's actual outline.
+  warded:      { tint: 0x6a4ad0, aura: 0xc9a8ff, glow: 3.0, name: 'Warded', tier: 2, bits: 0, ward: 1 },
 };
 
 const _c1 = new THREE.Color();
@@ -523,6 +561,36 @@ function crumbles(rig, obj) {
   return obj;
 }
 
+/**
+ * A warded elite's barrier.
+ *
+ * Front-facing rather than back-facing (the aura shell is BackSide, so it only
+ * ever tints the body from behind) and low-opacity additive, so it reads as a
+ * faceted pane of light *in front of* the monster. That is the whole job: the
+ * player has to see that there is something between them and the target.
+ */
+const WARD = new Map();
+function wardMat(kind) {
+  let m = WARD.get(kind);
+  if (m) return m;
+  const c = ELITE.warded.aura;
+  m = kind === 'edge'
+    ? new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })
+    : new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.FrontSide, fog: false });
+  WARD.set(kind, m);
+  return m;
+}
+
+// Max bits any affix asks for. Built once per rig and hidden down to the count
+// the current affix wants, so switching affix never allocates.
+const AURA_BITS = 9;
+
+function bitGeo(shape, r) {
+  if (shape === 'spike') return cone(r * 0.55, r * 2.6, 4);
+  if (shape === 'shard') return cone(r * 0.7, r * 2.0, 3);
+  return ico(r, 0);
+}
+
 function makeAura(rig, radius) {
   const a = new THREE.Mesh(ico(1, 2), auraMat('blazing'));
   a.scale.setScalar(radius);
@@ -535,14 +603,27 @@ function makeAura(rig, radius) {
   const bits = new THREE.Group();
   bits.position.y = rig.centerY;
   bits.visible = false;
-  for (let i = 0; i < 5; i++) {
-    const b = new THREE.Mesh(ico(radius * 0.11, 0), bitMat('blazing'));
-    const ang = (i / 5) * Math.PI * 2;
+  for (let i = 0; i < AURA_BITS; i++) {
+    const b = new THREE.Mesh(bitGeo('ico', radius * 0.11), bitMat('blazing'));
+    const ang = (i / AURA_BITS) * Math.PI * 2;
     b.position.set(Math.cos(ang) * radius, 0, Math.sin(ang) * radius);
     bits.add(b);
   }
   rig.pivot.add(bits);
   rig.auraBits = bits;
+
+  // The barrier: a faceted shell plus its own wireframe edge pass, so it holds
+  // an outline even where the additive fill washes out against a bright sky.
+  const ward = new THREE.Group();
+  const shell = new THREE.Mesh(ico(1, 1), wardMat('fill'));
+  const edge = new THREE.Mesh(ico(1.005, 1), wardMat('edge'));
+  ward.add(shell, edge);
+  ward.scale.setScalar(radius * 1.05);
+  ward.position.y = rig.centerY;
+  ward.visible = false;
+  ward.frustumCulled = false;
+  rig.pivot.add(ward);
+  rig.ward = ward;
 }
 
 function applyMats(rig, m) {
@@ -557,13 +638,28 @@ function setAffix(affix) {
   this.mats = matsFor(this.id, this.affix);
   if (!this.flashing) applyMats(this, this.mats);
   if (this.aura) {
-    const on = !!this.affix;
+    const e = this.affix ? ELITE[this.affix] : null;
+    const on = !!e;
     this.aura.visible = on;
-    this.auraBits.visible = on;
+    this.auraBits.visible = on && (e.bits || 0) > 0;
+    if (this.ward) this.ward.visible = on && !!e.ward;
     if (on) {
       this.aura.material = auraMat(this.affix);
       const bm = bitMat(this.affix);
-      for (const b of this.auraBits.children) b.material = bm;
+      const n = e.bits || 0;
+      const shape = e.shape || 'ico';
+      const r = this.auraR * (e.bitScale || 0.11);
+      for (let i = 0; i < this.auraBits.children.length; i++) {
+        const b = this.auraBits.children[i];
+        b.visible = i < n;
+        if (!b.visible) continue;
+        b.material = bm;
+        // Geometries are cached by shape+radius, so re-dressing a pooled rig
+        // for a different affix costs a property write and nothing else.
+        b.geometry = bitGeo(shape, r);
+        const ang = (i / Math.max(1, n)) * Math.PI * 2;
+        b.position.set(Math.cos(ang) * this.auraR, 0, Math.sin(ang) * this.auraR);
+      }
     }
   }
 }
@@ -667,16 +763,39 @@ function common(rig, a) {
   }
 
   if (rig.aura && rig.aura.visible) {
+    const e = ELITE[rig.affix] || ELITE.blazing;
     const pulse = 1 + Math.sin(a.t * 5.5) * 0.05 + a.windup * 0.12;
     rig.aura.scale.setScalar(rig.auraR * pulse);
     rig.aura.material.opacity = (0.16 + a.windup * 0.14) * (1 - a.death);
     const bits = rig.auraBits;
-    bits.rotation.y = a.t * 1.4;
-    for (let i = 0; i < bits.children.length; i++) {
-      const b = bits.children[i];
-      b.position.y = Math.sin(a.t * 3 + i * 1.7) * rig.auraR * 0.5;
-      b.scale.setScalar(0.7 + Math.sin(a.t * 6 + i) * 0.3);
+    if (bits.visible) {
+      bits.rotation.y = a.t * (e.helix ? 0.9 : 1.4);
+      for (let i = 0; i < bits.children.length; i++) {
+        const b = bits.children[i];
+        if (!b.visible) continue;
+        if (e.helix) {
+          // Thorns climb a slow helix and point outward — a rising column of
+          // spines rather than a ring of sparks, which is what separates a
+          // withering elite from a blazing one at fifty metres.
+          const k = ((a.t * 0.22 + i / bits.children.length) % 1);
+          b.position.y = (k - 0.5) * rig.auraR * 2.1;
+          b.rotation.z = -Math.PI * 0.5;
+          b.rotation.y = k * Math.PI * 2;
+          b.scale.setScalar(0.6 + Math.sin(k * Math.PI) * 0.7);
+        } else {
+          b.position.y = Math.sin(a.t * 3 + i * 1.7) * rig.auraR * 0.5;
+          b.rotation.x = a.t * 2 + i;
+          b.scale.setScalar(0.7 + Math.sin(a.t * 6 + i) * 0.3);
+        }
+      }
     }
+  }
+  if (rig.ward && rig.ward.visible) {
+    // Slow tumble, and it swells on the wind-up so the barrier is loudest at
+    // exactly the moment the unit is about to be dangerous.
+    rig.ward.rotation.y = a.t * 0.55;
+    rig.ward.rotation.x = Math.sin(a.t * 0.4) * 0.3;
+    rig.ward.scale.setScalar(rig.auraR * (1.05 + Math.sin(a.t * 3.1) * 0.03 + a.windup * 0.1) * (1 - a.death * 0.6));
   }
 }
 
@@ -1535,6 +1654,1972 @@ function animTitan(rig, a) {
 }
 
 // ---------------------------------------------------------------------------
+// MITE — knee-high chaff. Half a metre tall with a tail spike held vertical:
+// the roster's smallest silhouette, and the only one whose read is "there are
+// nine of these" rather than "there is one of these".
+// ---------------------------------------------------------------------------
+
+function buildMite() {
+  const rig = newRig('mite');
+  rig.centerY = 0.26;
+  rig.height = 0.5;
+  rig.auraR = 0.5;
+  rig.shadowR = 0.34;
+
+  const body = grp(rig.pivot, 0, 0.24, 0);
+  rig.parts.body = body;
+
+  // A grain of rice with armour. The two rear scutes flare wider than the
+  // shoulders so even at four pixels the shape has a taper.
+  add(rig, body, 'body', merged('mite.shell', [
+    P(hemi(0.22, 8, 4), 0, -0.01, 0, 0, 0, 0, 1.15, 0.9, 1.6),
+    P(box(0.26, 0.07, 0.2), 0, 0.09, -0.14, 0.3),
+    P(box(0.2, 0.06, 0.16), 0.12, 0.05, -0.2, 0, 0, -0.5),
+    P(box(0.2, 0.06, 0.16), -0.12, 0.05, -0.2, 0, 0, 0.5),
+  ]));
+  add(rig, body, 'dark', merged('mite.belly', [P(box(0.3, 0.08, 0.44), 0, -0.09, -0.02)]));
+
+  const head = grp(body, 0, -0.02, 0.24);
+  rig.parts.head = head;
+  add(rig, head, 'dark', merged('mite.head', [
+    P(box(0.16, 0.12, 0.16), 0, 0, 0.02),
+    P(cone(0.035, 0.16, 4), 0.06, 0.02, 0.12, -1.2),
+    P(cone(0.035, 0.16, 4), -0.06, 0.02, 0.12, -1.2),
+  ]));
+  add(rig, head, 'eye', merged('mite.eyes', [
+    P(ico(0.03, 0), 0.06, 0.05, 0.06),
+    P(ico(0.03, 0), -0.06, 0.05, 0.06),
+  ]));
+
+  // Tail spike, carried up. It is the whole reason a mite is not just a small
+  // beetle as a black shape: a vertical line off a horizontal body.
+  const tail = grp(body, 0, 0.04, -0.22);
+  rig.parts.tail = tail;
+  add(rig, tail, 'body', merged('mite.tail', [
+    P(cyl(0.05, 0.03, 0.22, 5), 0, 0.1, -0.04, 0.5),
+    P(cone(0.045, 0.2, 5), 0, 0.26, -0.12, 0.2),
+  ]));
+  add(rig, tail, 'accent', merged('mite.sting', [P(ico(0.035, 0), 0, 0.36, -0.15)]));
+
+  const legR = [
+    P(cyl(0.024, 0.018, 0.19, 4), 0.07, -0.05, 0, 0, 0, -1.0),
+    P(cyl(0.02, 0.012, 0.2, 4), 0.15, -0.16, 0, 0, 0, -0.2),
+  ];
+  merged('mite.legR', legR);
+  merged('mite.legL', mirror(legR));
+  rig.parts.leg = [];
+  const zs = [0.14, -0.12];
+  for (let i = 0; i < 4; i++) {
+    const right = i < 2;
+    const hip = grp(body, 0.13 * (right ? 1 : -1), -0.05, zs[i % 2]);
+    add(rig, hip, 'dark', merged(right ? 'mite.legR' : 'mite.legL', right ? legR : mirror(legR)));
+    rig.parts.leg.push(hip);
+  }
+
+  makeAura(rig, rig.auraR);
+  rig.animate = animMite;
+  return rig;
+}
+
+const MITE_PHASE = [0, Math.PI, Math.PI, 0];
+
+function animMite(rig, a) {
+  const p = rig.parts;
+  const sp = a.speed;
+  const w = anticipate(a.windup);
+  const hit = a.swing > 0 ? strike(a.swing) : 0;
+
+  // Everything about a mite is twitchy: a fast scurry bob and a tail that
+  // snaps forward with the bite.
+  p.body.position.y = 0.24 + Math.sin(a.stride * 2) * 0.03 * sp + w * 0.06;
+  p.body.position.z = hit * 0.24 - w * 0.06;
+  p.body.rotation.x = -w * 0.5 + hit * 0.55 - 0.08 * sp;
+  p.body.rotation.z = Math.sin(a.stride) * 0.14 * sp;
+
+  p.head.rotation.x = w * 0.35 - hit * 0.4;
+  p.head.rotation.y = a.lookY * 0.6;
+  p.tail.rotation.x = -0.3 - w * 0.8 + hit * 1.5 + Math.sin(a.t * 6) * 0.12;
+  p.tail.rotation.z = Math.sin(a.t * 4.3) * 0.18;
+
+  if (a.lod > 0) return common(rig, a);
+
+  for (let i = 0; i < 4; i++) {
+    const ph = a.stride * 2.1 + MITE_PHASE[i];
+    const leg = p.leg[i];
+    leg.rotation.x = Math.cos(ph) * (0.2 + 0.6 * sp);
+    leg.rotation.z = -Math.max(0, -Math.sin(ph)) * 0.5 * sp * (i < 2 ? 1 : -1);
+  }
+  common(rig, a);
+}
+
+// ---------------------------------------------------------------------------
+// SPITLING — a pressurised bile sac on three stubby legs with a stubby mortar
+// snout. Squat and top-heavy: the sac is more than half the silhouette and it
+// visibly INFLATES before the shot, which is the entire tell.
+// ---------------------------------------------------------------------------
+
+function buildSpitling() {
+  const rig = newRig('spitling');
+  rig.centerY = 0.55;
+  rig.height = 1.0;
+  rig.auraR = 0.9;
+  rig.shadowR = 0.6;
+
+  const body = grp(rig.pivot, 0, 0.52, 0);
+  rig.parts.body = body;
+
+  add(rig, body, 'dark', merged('spit.hull', [
+    P(hemi(0.4, 10, 5), 0, -0.12, 0, 0, 0, 0, 1.2, 0.7, 1.15),
+    P(cyl(0.44, 0.5, 0.16, 8), 0, -0.16, 0),
+    // Vent ribs around the waist — the pressure vessel reads as a pressure
+    // vessel because it is visibly banded.
+    P(ring(0.44, 0.05, 4, 14), 0, 0.02, 0, Math.PI * 0.5),
+  ]));
+  // The sac. `accent` so it self-illuminates and the swell is legible at range.
+  rig.parts.sac = add(rig, body, 'accent', ico(0.34, 1), 0, 0.2, -0.06);
+  add(rig, body, 'body', merged('spit.plates', [
+    P(box(0.16, 0.3, 0.34), 0.34, 0.1, -0.04, 0, 0, -0.5),
+    P(box(0.16, 0.3, 0.34), -0.34, 0.1, -0.04, 0, 0, 0.5),
+    P(box(0.3, 0.24, 0.16), 0, 0.16, -0.36, 0.4),
+  ]));
+
+  // Snout: a short upward-angled barrel, so the arc of the lob is implied by
+  // the geometry before anything is fired.
+  const snout = grp(body, 0, -0.02, 0.32);
+  rig.parts.snout = snout;
+  add(rig, snout, 'dark', merged('spit.snout', [
+    P(cyl(0.13, 0.17, 0.36, 7), 0, 0.06, 0.14, -1.25),
+    P(ring(0.14, 0.035, 4, 12), 0, 0.19, 0.28, -1.25),
+  ]));
+  rig.parts.muzzle = add(rig, snout, 'accent', ico(0.09, 0), 0, 0.2, 0.3);
+  add(rig, body, 'eye', merged('spit.eyes', [
+    P(ico(0.05, 0), 0.16, 0.06, 0.3),
+    P(ico(0.05, 0), -0.16, 0.06, 0.3),
+    P(ico(0.035, 0), 0, 0.14, 0.34),
+  ]));
+
+  const legR = [
+    P(cyl(0.06, 0.05, 0.28, 5), 0.1, -0.14, 0, 0, 0, -0.6),
+    P(cyl(0.05, 0.03, 0.3, 5), 0.24, -0.36, 0, 0, 0, 0.2),
+    P(box(0.14, 0.05, 0.2), 0.22, -0.5, 0.04),
+  ];
+  merged('spit.legR', legR);
+  merged('spit.legL', mirror(legR));
+  rig.parts.leg = [];
+  const spots = [[1, 0.18], [-1, 0.18], [0, -0.32]];
+  for (let i = 0; i < 3; i++) {
+    const [sx, z] = spots[i];
+    const hip = grp(body, 0.2 * sx, -0.16, z);
+    hip.rotation.y = sx === 0 ? Math.PI : 0;
+    add(rig, hip, 'dark', merged(sx >= 0 ? 'spit.legR' : 'spit.legL', sx >= 0 ? legR : mirror(legR)));
+    rig.parts.leg.push(hip);
+  }
+
+  makeAura(rig, rig.auraR);
+  rig.animate = animSpitling;
+  return rig;
+}
+
+function animSpitling(rig, a) {
+  const p = rig.parts;
+  const sp = a.speed;
+  const w = anticipate(a.windup);
+  const fired = a.swing > 0 ? 1 - a.swing : 0;
+
+  // Squats and swells to load, then kicks back off its own recoil.
+  p.body.position.y = 0.52 - w * 0.12 + fired * 0.1 + Math.sin(a.stride * 2) * 0.04 * sp;
+  p.body.position.z = -fired * 0.18;
+  p.body.rotation.x = w * 0.22 - fired * 0.45;
+  p.body.rotation.z = Math.sin(a.stride) * 0.1 * sp;
+
+  p.sac.scale.setScalar(1 + w * 0.8 - fired * 0.45 + Math.sin(a.t * (3 + w * 20)) * (0.03 + w * 0.06));
+  p.snout.rotation.x = -w * 0.3 + fired * 0.6 + a.pitch * 0.3;
+  p.muzzle.visible = w > 0.02 || fired > 0.02;
+  if (p.muzzle.visible) p.muzzle.scale.setScalar(0.4 + w * 1.4 + fired * 1.6);
+
+  if (a.lod > 0) return common(rig, a);
+
+  for (let i = 0; i < 3; i++) {
+    const ph = a.stride * 1.6 + i * 2.09;
+    const leg = p.leg[i];
+    leg.rotation.x = Math.cos(ph) * (0.16 + 0.4 * sp) + w * 0.3;
+    leg.rotation.z = -Math.max(0, -Math.sin(ph)) * 0.34 * sp;
+  }
+  common(rig, a);
+}
+
+// ---------------------------------------------------------------------------
+// HARRIER — a swept delta with a beak and twin thrusters. The other flyers are
+// a vertical spire (wisp) and a flat parasol (pest); this one is an arrowhead
+// and it is the only flyer that reads as *pointing somewhere*.
+// ---------------------------------------------------------------------------
+
+function buildHarrier() {
+  const rig = newRig('harrier');
+  rig.centerY = 0;
+  rig.height = 1.3;
+  rig.auraR = 1.3;
+  rig.shadowR = 0.8;
+  rig.flyer = true;
+
+  const body = grp(rig.pivot, 0, 0, 0);
+  rig.parts.body = body;
+
+  add(rig, body, 'body', merged('har.fuselage', [
+    P(cyl(0.13, 0.3, 1.5, 6), 0, 0, 0.1, Math.PI * 0.5),
+    P(box(0.34, 0.3, 0.5), 0, 0.06, -0.42),
+    // Dorsal fin — the vertical the pest and wisp do not have.
+    P(cone(0.16, 0.72, 4), 0, 0.42, -0.5, -0.35, 0, 0, 0.28, 1, 1),
+  ]));
+  add(rig, body, 'dark', merged('har.keel', [
+    P(box(0.24, 0.14, 0.9), 0, -0.18, 0.02),
+    P(cone(0.12, 0.4, 5), 0, -0.1, 0.78, Math.PI * 0.5),
+  ]));
+
+  // Wings on their own pivots: they sweep back on the strafing run, which is
+  // the tell, and they beat slowly the rest of the time.
+  rig.parts.wing = [];
+  const wingR = [
+    P(box(1.05, 0.07, 0.44), 0.55, 0, -0.06, 0, 0.22, 0.06),
+    P(cone(0.1, 0.5, 4), 1.05, 0, -0.2, 0, 1.9, 0.1, 0.5, 1, 1),
+    P(box(0.36, 0.05, 0.2), 0.72, -0.04, -0.3, 0, 0.5, 0),
+  ];
+  merged('har.wingR', wingR);
+  merged('har.wingL', mirror(wingR));
+  for (let i = 0; i < 2; i++) {
+    const right = i === 0;
+    const g = grp(body, 0.16 * (right ? 1 : -1), 0.06, -0.04);
+    add(rig, g, 'body', merged(right ? 'har.wingR' : 'har.wingL', right ? wingR : mirror(wingR)));
+    add(rig, g, 'accent', merged(right ? 'har.emitR' : 'har.emitL',
+      right ? [P(box(0.5, 0.04, 0.06), 0.62, 0.05, -0.02)] : mirror([P(box(0.5, 0.04, 0.06), 0.62, 0.05, -0.02)])));
+    rig.parts.wing.push(g);
+  }
+
+  // Thrusters: two hot points at the tail, which is what makes a fast flyer
+  // legible when it is going *away* from you.
+  add(rig, body, 'accent', merged('har.thrust', [
+    P(ico(0.09, 0), 0.15, 0.04, -0.68),
+    P(ico(0.09, 0), -0.15, 0.04, -0.68),
+  ]));
+
+  const head = grp(body, 0, -0.02, 0.66);
+  rig.parts.head = head;
+  crumbles(rig, head);
+  add(rig, head, 'dark', merged('har.beak', [
+    P(cone(0.11, 0.44, 5), 0, 0, 0.18, Math.PI * 0.5),
+    P(box(0.24, 0.1, 0.18), 0, 0.08, -0.04),
+  ]));
+  add(rig, head, 'eye', merged('har.eyes', [
+    P(box(0.09, 0.05, 0.05), 0.1, 0.06, 0.02, 0, 0, -0.3),
+    P(box(0.09, 0.05, 0.05), -0.1, 0.06, 0.02, 0, 0, 0.3),
+  ]));
+  rig.parts.beam = beam(rig, head, 0, 0.3);
+
+  makeAura(rig, rig.auraR);
+  rig.animate = animHarrier;
+  return rig;
+}
+
+function animHarrier(rig, a) {
+  const p = rig.parts;
+  const w = anticipate(a.windup);
+  const fire = a.swing > 0 && a.beamOn ? 1 : 0;
+
+  // Banks into its own turn and pitches nose-down onto the strafing line.
+  p.body.rotation.x = a.pitch * 0.5 + a.speed * 0.22 + w * 0.2 - fire * 0.12;
+  p.body.rotation.z = a.lean * 1.6 + Math.sin(a.t * 1.4) * 0.08 - a.lookY * 0.5;
+  p.body.position.y = Math.sin(a.t * 2.1) * 0.08;
+
+  for (let i = 0; i < 2; i++) {
+    const s = i === 0 ? 1 : -1;
+    // Beat while loitering, locked back while attacking.
+    const beat = Math.sin(a.t * 3.4 + i * 0.2) * 0.22 * (1 - w);
+    p.wing[i].rotation.z = s * (beat - w * 0.5 - fire * 0.6);
+    p.wing[i].rotation.y = s * (w * 0.45 + fire * 0.5);
+  }
+  p.head.rotation.x = -a.pitch * 0.3;
+  p.head.rotation.y = a.lookY * 0.45 + a.sweep * 0.5;
+  setBeam(p.beam, a.beamLen, 0.05 + w * 0.05 + fire * 0.34, a.beamOn);
+  common(rig, a);
+}
+
+// ---------------------------------------------------------------------------
+// CHARGER — a quadruped battering ram. Massive shielded head carried LOW with
+// the haunches high, so the silhouette is a wedge pointed at the player, and
+// the pose already says which way it is about to go.
+// ---------------------------------------------------------------------------
+
+function buildCharger() {
+  const rig = newRig('charger');
+  rig.centerY = 1.0;
+  rig.height = 1.6;
+  rig.auraR = 1.5;
+  rig.shadowR = 1.0;
+
+  const body = grp(rig.pivot, 0, 1.0, 0);
+  rig.parts.body = body;
+
+  add(rig, body, 'body', merged('chg.torso', [
+    // Haunches: the tallest point of the animal is its hips, which is the
+    // opposite of every other quadruped in the roster.
+    P(cyl(0.55, 0.44, 0.9, 6), 0, 0.06, -0.5, 0, Math.PI / 6, Math.PI * 0.5),
+    P(cyl(0.4, 0.5, 0.85, 6), 0, -0.06, 0.35, 0, Math.PI / 6, Math.PI * 0.5),
+    P(box(0.5, 0.3, 0.5), 0, 0.34, -0.62, -0.25),
+    // Spine ridge — irregular, so the top line is not a straight edge.
+    P(cone(0.13, 0.44, 4), 0, 0.5, -0.3, -0.2),
+    P(cone(0.11, 0.36, 4), 0, 0.46, 0.02, -0.1),
+    P(cone(0.09, 0.28, 4), 0, 0.4, 0.28, 0.05),
+  ]));
+  add(rig, body, 'dark', merged('chg.belly', [
+    P(box(0.66, 0.24, 1.5), 0, -0.34, -0.06),
+  ]));
+
+  const neck = grp(body, 0, -0.1, 0.7);
+  rig.parts.neck = neck;
+  add(rig, neck, 'dark', merged('chg.neck', [P(cyl(0.3, 0.34, 0.44, 6), 0, -0.06, 0.18, -1.3)]));
+
+  const head = grp(neck, 0, -0.16, 0.4);
+  rig.parts.head = head;
+  crumbles(rig, head);
+  // The ram plate. One big angled slab plus a pair of forward horns: this is
+  // the part that is going to hit you and it is modelled to look like it.
+  add(rig, head, 'body', merged('chg.head', [
+    P(box(0.62, 0.5, 0.44), 0, 0, 0.06),
+    P(box(0.78, 0.16, 0.5), 0, 0.24, 0.14, -0.3),
+    P(cone(0.14, 0.62, 5), 0.3, 0.16, 0.3, -1.35, 0, 0.25),
+    P(cone(0.14, 0.62, 5), -0.3, 0.16, 0.3, -1.35, 0, -0.25),
+    P(cone(0.1, 0.34, 5), 0, 0.34, 0.02, -0.6),
+  ]));
+  add(rig, head, 'accent', merged('chg.brand', [
+    P(box(0.42, 0.06, 0.07), 0, 0.16, 0.3),
+    P(box(0.06, 0.18, 0.07), 0, 0.06, 0.3),
+  ]));
+  add(rig, head, 'eye', merged('chg.eyes', [
+    P(ico(0.055, 0), 0.24, 0.02, 0.18),
+    P(ico(0.055, 0), -0.24, 0.02, 0.18),
+  ]));
+
+  const legR = [
+    P(cyl(0.14, 0.11, 0.5, 5), 0, -0.25, 0),
+    P(cyl(0.1, 0.09, 0.44, 5), 0, -0.68, 0.06, -0.25),
+    P(box(0.24, 0.12, 0.3), 0, -0.9, 0.12),
+  ];
+  merged('chg.legR', legR);
+  merged('chg.legL', mirror(legR));
+  rig.parts.leg = [];
+  const zs = [0.62, -0.6];
+  for (let i = 0; i < 4; i++) {
+    const right = i < 2;
+    const hip = grp(body, 0.34 * (right ? 1 : -1), -0.16, zs[i % 2]);
+    add(rig, hip, 'dark', merged(right ? 'chg.legR' : 'chg.legL', right ? legR : mirror(legR)));
+    rig.parts.leg.push(hip);
+  }
+
+  makeAura(rig, rig.auraR);
+  rig.animate = animCharger;
+  return rig;
+}
+
+const CHG_PHASE = [0, Math.PI, Math.PI, 0];
+
+function animCharger(rig, a) {
+  const p = rig.parts;
+  const sp = a.speed;
+  const w = anticipate(a.windup);
+  const ch = a.charge;
+  const hit = a.swing > 0 && !ch ? strike(a.swing) : 0;
+
+  // Wind-up is a plant: head goes down, hindquarters go UP, and the whole
+  // animal coils backward before it goes anywhere.
+  p.body.position.y = 1.0 - w * 0.14 + Math.sin(a.stride * 2) * 0.06 * sp;
+  p.body.position.z = -w * 0.3 + ch * 0.2;
+  p.body.rotation.x = w * 0.3 + ch * 0.18 - 0.04 * sp + hit * 0.3;
+  p.body.rotation.z = Math.sin(a.stride) * 0.09 * sp;
+
+  p.neck.rotation.x = 0.1 + w * 0.55 + ch * 0.35 - hit * 0.5;
+  p.neck.rotation.y = a.lookY * 0.35 * (1 - ch);
+  p.head.rotation.x = -0.1 + w * 0.35 + ch * 0.25 - hit * 0.7;
+  p.head.rotation.y = a.lookY * 0.3 * (1 - ch);
+
+  if (a.lod > 0) return common(rig, a);
+
+  // Legs cycle off `stride`, which the Enemy already drives from real speed —
+  // so the gallop during a 26 m/s dash comes out of the same code as the walk.
+  for (let i = 0; i < 4; i++) {
+    const ph = a.stride * 1.15 + CHG_PHASE[i];
+    const leg = p.leg[i];
+    // Front pair paws the ground during the wind-up.
+    const paw = i < 2 ? w * Math.sin(a.t * 11) * 0.45 : 0;
+    leg.rotation.x = Math.cos(ph) * (0.12 + 0.7 * sp) + paw;
+    leg.rotation.z = -Math.max(0, -Math.sin(ph)) * 0.3 * sp * (i < 2 ? 1 : -1);
+  }
+  common(rig, a);
+}
+
+// ---------------------------------------------------------------------------
+// BURROWER — a digging animal: two enormous fossorial claws carried in front
+// of a segmented body that tapers to nothing. Blind, so no eyes at all — the
+// sensory band is a ring of accent pits around the snout, and the absence of
+// eyes is itself the identifier.
+// ---------------------------------------------------------------------------
+
+function buildBurrower() {
+  const rig = newRig('burrower');
+  rig.centerY = 0.7;
+  rig.height = 1.4;
+  rig.auraR = 1.25;
+  rig.shadowR = 0.85;
+
+  const body = grp(rig.pivot, 0, 0.66, 0);
+  rig.parts.body = body;
+
+  // Three tapering segments, front to back. The body is a wedge driven point
+  // first, which is what makes it read as a thing that lives underground.
+  add(rig, body, 'body', merged('bur.hull', [
+    P(cyl(0.44, 0.5, 0.6, 7), 0, 0, 0.34, Math.PI * 0.5),
+    P(cyl(0.36, 0.44, 0.5, 7), 0, -0.02, -0.18, Math.PI * 0.5),
+    P(cyl(0.22, 0.34, 0.5, 7), 0, -0.06, -0.6, Math.PI * 0.5),
+    P(cone(0.2, 0.4, 6), 0, -0.08, -0.98, -Math.PI * 0.5),
+    // Segment collars, so the taper has joints instead of being a smooth cone.
+    P(ring(0.46, 0.06, 4, 12), 0, 0, 0.06, Math.PI * 0.5),
+    P(ring(0.36, 0.05, 4, 12), 0, -0.04, -0.42, Math.PI * 0.5),
+  ]));
+  add(rig, body, 'dark', merged('bur.plate', [
+    P(box(0.7, 0.16, 0.9), 0, 0.3, 0.1, -0.12),
+    P(box(0.5, 0.12, 0.6), 0, 0.26, -0.5, -0.05),
+  ]));
+
+  const head = grp(body, 0, -0.02, 0.6);
+  rig.parts.head = head;
+  crumbles(rig, head);
+  add(rig, head, 'dark', merged('bur.snout', [
+    P(cone(0.3, 0.55, 7), 0, 0, 0.2, Math.PI * 0.5),
+    P(box(0.5, 0.2, 0.24), 0, 0.12, -0.02, -0.2),
+  ]));
+  // Sensory pits, not eyes.
+  add(rig, head, 'accent', merged('bur.pits', [
+    P(ico(0.04, 0), 0.18, 0.06, 0.16),
+    P(ico(0.04, 0), -0.18, 0.06, 0.16),
+    P(ico(0.035, 0), 0.1, -0.1, 0.24),
+    P(ico(0.035, 0), -0.1, -0.1, 0.24),
+    P(ico(0.03, 0), 0, 0.16, 0.12),
+  ]));
+
+  // The claws. Comically oversized on purpose — they are two thirds of the
+  // frontal silhouette and they are what the eruption animation swings.
+  const clawR = [
+    P(cyl(0.13, 0.1, 0.4, 5), 0, -0.16, 0.06, -0.5),
+    P(box(0.34, 0.42, 0.16), 0.06, -0.46, 0.3, -0.35),
+    P(cone(0.06, 0.42, 4), 0.02, -0.62, 0.52, -0.9),
+    P(cone(0.06, 0.4, 4), 0.16, -0.6, 0.48, -0.9, 0, -0.2),
+    P(cone(0.055, 0.36, 4), -0.08, -0.6, 0.5, -0.9, 0, 0.2),
+  ];
+  merged('bur.clawR', clawR);
+  merged('bur.clawL', mirror(clawR));
+  rig.parts.claw = [];
+  for (let i = 0; i < 2; i++) {
+    const right = i === 0;
+    const g = grp(body, 0.42 * (right ? 1 : -1), 0.06, 0.4);
+    add(rig, g, 'body', merged(right ? 'bur.clawR' : 'bur.clawL', right ? clawR : mirror(clawR)));
+    crumbles(rig, g);
+    rig.parts.claw.push(g);
+  }
+
+  const legR = [P(cyl(0.07, 0.05, 0.34, 5), 0.08, -0.16, 0, 0, 0, -0.9)];
+  merged('bur.legR', legR);
+  merged('bur.legL', mirror(legR));
+  rig.parts.leg = [];
+  const zs = [0.1, -0.4];
+  for (let i = 0; i < 4; i++) {
+    const right = i < 2;
+    const hip = grp(body, 0.3 * (right ? 1 : -1), -0.3, zs[i % 2]);
+    add(rig, hip, 'dark', merged(right ? 'bur.legR' : 'bur.legL', right ? legR : mirror(legR)));
+    rig.parts.leg.push(hip);
+  }
+
+  makeAura(rig, rig.auraR);
+  rig.animate = animBurrower;
+  return rig;
+}
+
+function animBurrower(rig, a) {
+  const p = rig.parts;
+  const sp = a.speed;
+  const w = anticipate(a.windup);
+  const hit = a.swing > 0 ? strike(a.swing) : 0;
+  const digging = a.attack === 'erupt' || a.attack === 'surface';
+
+  // Dig tell: it hunches and its claws come up over the snout. Erupt: the
+  // whole body throws itself up and the claws fly apart.
+  p.body.position.y = 0.66 - w * (digging ? 0.3 : 0.1) + hit * 0.5 + Math.sin(a.stride * 2) * 0.04 * sp;
+  p.body.rotation.x = w * 0.45 - hit * 0.75 - 0.06 * sp;
+  p.body.rotation.z = Math.sin(a.stride) * 0.08 * sp;
+
+  p.head.rotation.x = -w * 0.3 + hit * 0.4;
+  p.head.rotation.y = a.lookY * 0.4;
+
+  for (let i = 0; i < 2; i++) {
+    const s = i === 0 ? 1 : -1;
+    const c = p.claw[i];
+    c.rotation.x = -0.2 - w * 1.2 + hit * 1.6 + Math.sin(a.stride + i * Math.PI) * 0.25 * sp;
+    c.rotation.z = s * (0.2 + w * 0.5 - hit * 0.9);
+    c.rotation.y = s * (w * 0.4 - hit * 0.6);
+  }
+
+  if (a.lod > 0) return common(rig, a);
+
+  for (let i = 0; i < 4; i++) {
+    const ph = a.stride * 1.5 + (i % 2 ? Math.PI : 0) + (i < 2 ? 0 : Math.PI * 0.5);
+    p.leg[i].rotation.x = Math.cos(ph) * (0.2 + 0.5 * sp);
+  }
+  common(rig, a);
+}
+
+// ---------------------------------------------------------------------------
+// BROOD SAC — a stationary egg cluster on a splayed root. It never walks, so
+// the whole silhouette budget goes into being unmistakably *organic and wrong*
+// against a roster of armoured animals: a bulb on a stalk with a crown that
+// splits open to hatch.
+// ---------------------------------------------------------------------------
+
+function buildBrood() {
+  const rig = newRig('brood');
+  rig.centerY = 1.2;
+  rig.height = 2.4;
+  rig.auraR = 1.8;
+  rig.shadowR = 1.15;
+
+  const base = grp(rig.pivot, 0, 0, 0);
+  rig.parts.base = base;
+  // Roots: six splayed buttresses. They are what stop it reading as a barrel
+  // sitting on the floor, and they are wide enough to sell "cannot be moved".
+  const roots = [];
+  for (let i = 0; i < 6; i++) {
+    const ang = (i / 6) * Math.PI * 2;
+    roots.push(P(cyl(0.12, 0.06, 0.9, 5), Math.cos(ang) * 0.42, 0.24, Math.sin(ang) * 0.42, 0.75, -ang, 0));
+  }
+  roots.push(P(hemi(0.5, 10, 4), 0, 0.02, 0, 0, 0, 0, 1.2, 0.7, 1.2));
+  add(rig, base, 'dark', merged('brd.roots', roots));
+
+  const stalk = grp(base, 0, 0.4, 0);
+  rig.parts.stalk = stalk;
+  add(rig, stalk, 'dark', merged('brd.stalk', [
+    P(cyl(0.3, 0.42, 0.75, 7), 0, 0.36, 0),
+    P(ring(0.32, 0.06, 4, 12), 0, 0.5, 0, Math.PI * 0.5),
+  ]));
+
+  const sac = grp(stalk, 0, 0.86, 0);
+  rig.parts.sac = sac;
+  // The bulb: a fat ovoid with four heavy rind plates over it, so the gaps
+  // between the plates are where the light gets out.
+  add(rig, sac, 'body', merged('brd.rind', [
+    P(sph(0.62, 12, 8), 0, 0.1, 0, 0, 0, 0, 1, 1.15, 1),
+    P(box(0.34, 0.9, 0.3), 0.42, 0.12, 0, 0, 0, -0.28),
+    P(box(0.34, 0.9, 0.3), -0.42, 0.12, 0, 0, 0, 0.28),
+    P(box(0.3, 0.86, 0.34), 0, 0.12, 0.44, 0.28),
+    P(box(0.3, 0.86, 0.34), 0, 0.12, -0.44, -0.28),
+  ]));
+  rig.parts.core = add(rig, sac, 'accent', ico(0.4, 1), 0, 0.1, 0);
+  add(rig, sac, 'eye', merged('brd.pores', [
+    P(ico(0.07, 0), 0.3, 0.5, 0.3),
+    P(ico(0.06, 0), -0.34, 0.42, 0.2),
+    P(ico(0.06, 0), 0.1, 0.46, -0.42),
+    P(ico(0.05, 0), -0.16, 0.62, 0.14),
+  ]));
+
+  // Crown petals — they peel back to hatch, which is the whole tell.
+  rig.parts.petal = [];
+  for (let i = 0; i < 4; i++) {
+    const ang = (i / 4) * Math.PI * 2;
+    const g = grp(sac, Math.cos(ang) * 0.2, 0.62, Math.sin(ang) * 0.2);
+    g.rotation.y = -ang;
+    add(rig, g, 'body', merged('brd.petal', [
+      P(box(0.3, 0.5, 0.14), 0, 0.22, 0.06, -0.2),
+      P(cone(0.1, 0.32, 4), 0, 0.5, 0.1, -0.3),
+    ]));
+    crumbles(rig, g);
+    rig.parts.petal.push(g);
+  }
+
+  makeAura(rig, rig.auraR);
+  rig.animate = animBrood;
+  return rig;
+}
+
+function animBrood(rig, a) {
+  const p = rig.parts;
+  const w = anticipate(a.windup);
+  const burst = a.swing > 0 ? strike(a.swing) : 0;
+  const hatching = a.attack === 'hatch';
+
+  // A slow peristaltic breath at rest; a hard contraction on the hatch.
+  const breath = Math.sin(a.t * 1.3) * 0.05;
+  p.sac.scale.set(1 + breath + w * 0.2 - burst * 0.3, 1 - breath * 0.6 - w * 0.1 + burst * 0.35, 1 + breath + w * 0.2 - burst * 0.3);
+  p.sac.rotation.y = a.t * 0.15;
+  p.stalk.rotation.x = Math.sin(a.t * 0.8) * 0.05 + w * 0.12;
+  p.stalk.rotation.z = Math.cos(a.t * 0.7) * 0.05;
+
+  p.core.scale.setScalar(1 + w * 0.75 + burst * 0.9 + Math.sin(a.t * (2.6 + w * 18)) * (0.05 + w * 0.1));
+
+  for (let i = 0; i < 4; i++) {
+    const g = p.petal[i];
+    // Petals only open for the hatch, and they open in sequence.
+    const open = hatching ? Math.max(w, burst) : w * 0.3;
+    g.rotation.x = -open * (1.1 + i * 0.06) - Math.sin(a.t * 1.1 + i) * 0.04;
+    g.scale.setScalar(1 + open * 0.15);
+  }
+  common(rig, a);
+}
+
+// ---------------------------------------------------------------------------
+// AEGIS WARDEN — a bipedal wall. The tower shield is deliberately the widest
+// single plane in the whole roster and it hangs off ONE side, so the unit is
+// asymmetric from every bearing: you can tell at a glance which side of it is
+// safe to shoot, which is the entire mechanic.
+// ---------------------------------------------------------------------------
+
+const WAR_HIP = 1.35, WAR_L1 = 0.62, WAR_L2 = 0.6;
+
+function buildWarden() {
+  const rig = newRig('warden');
+  rig.centerY = 1.4;
+  rig.height = 2.5;
+  rig.auraR = 1.7;
+  rig.shadowR = 0.95;
+
+  const spine = grp(rig.pivot, 0, WAR_HIP, 0);
+  rig.parts.spine = spine;
+  add(rig, spine, 'body', merged('war.torso', [
+    P(cyl(0.5, 0.38, 0.85, 6), 0, 0.3, 0, 0, Math.PI / 6, 0, 1.1, 1, 0.8),
+    P(box(1.0, 0.24, 0.5), 0, 0.7, -0.02),
+    P(box(0.46, 0.3, 0.42), 0, -0.2, 0),
+    P(box(0.28, 0.5, 0.24), 0.42, 0.42, -0.16, 0, 0, -0.3),
+    P(box(0.28, 0.5, 0.24), -0.42, 0.42, -0.16, 0, 0, 0.3),
+  ]));
+  add(rig, spine, 'dark', merged('war.skirt', [
+    P(cyl(0.44, 0.56, 0.44, 7), 0, -0.42, 0),
+    P(box(0.7, 0.1, 0.16), 0, -0.6, 0.3, -0.3),
+  ]));
+  add(rig, spine, 'accent', merged('war.sigil', [
+    P(box(0.1, 0.34, 0.06), 0, 0.3, 0.3),
+    P(box(0.3, 0.08, 0.06), 0, 0.36, 0.3),
+  ]));
+
+  const head = grp(spine, 0, 0.86, 0.04);
+  rig.parts.head = head;
+  crumbles(rig, head);
+  add(rig, head, 'body', merged('war.helm', [
+    P(cyl(0.24, 0.3, 0.38, 6), 0, 0.02, 0, 0, Math.PI / 6, 0),
+    P(box(0.44, 0.12, 0.34), 0, 0.16, 0.04, -0.2),
+    P(cone(0.08, 0.34, 4), 0, 0.34, -0.02, -0.15),
+  ]));
+  // A visor slit, not eyes. It is the only warm thing above the shield line.
+  add(rig, head, 'eye', merged('war.visor', [P(box(0.3, 0.045, 0.05), 0, 0.0, 0.24)]));
+
+  // THE SHIELD. Slab, boss, and a rim that overhangs the arm on all four sides.
+  const shieldArm = grp(spine, 0.62, 0.44, 0.1);
+  rig.parts.shield = shieldArm;
+  add(rig, shieldArm, 'dark', merged('war.shieldArm', [P(cyl(0.14, 0.12, 0.6, 5), 0, -0.28, 0)]));
+  add(rig, shieldArm, 'body', merged('war.shield', [
+    P(box(0.16, 1.9, 1.15), 0.28, -0.35, 0.12),
+    P(box(0.1, 2.05, 0.24), 0.34, -0.35, 0.12),
+    P(box(0.1, 0.3, 1.25), 0.34, 0.5, 0.12),
+    P(box(0.1, 0.3, 1.25), 0.34, -1.2, 0.12),
+    P(ico(0.24, 0), 0.4, -0.3, 0.14, 0, 0, 0, 0.6, 1, 1),
+  ]));
+  add(rig, shieldArm, 'accent', merged('war.shieldGlow', [
+    P(box(0.05, 1.2, 0.07), 0.42, -0.32, 0.12),
+    P(box(0.05, 0.08, 0.8), 0.42, -0.32, 0.12),
+  ]));
+  crumbles(rig, shieldArm);
+
+  // Mace arm — short, heavy, and on the opposite side so the two halves of the
+  // body never read as a mirror.
+  const maceArm = grp(spine, -0.6, 0.5, 0);
+  rig.parts.mace = maceArm;
+  add(rig, maceArm, 'dark', merged('war.maceArm', [
+    P(cyl(0.15, 0.12, 0.62, 5), 0, -0.3, 0),
+    P(cyl(0.12, 0.1, 0.5, 5), 0, -0.82, 0.06, -0.3),
+  ]));
+  add(rig, maceArm, 'body', merged('war.maceHead', [
+    P(ico(0.28, 0), 0, -1.14, 0.1),
+    P(cone(0.08, 0.24, 4), 0, -1.14, 0.36, Math.PI * 0.5),
+    P(cone(0.08, 0.24, 4), 0.24, -1.14, 0.1, 0, 0, -Math.PI * 0.5),
+    P(cone(0.08, 0.24, 4), -0.24, -1.14, 0.1, 0, 0, Math.PI * 0.5),
+  ]));
+  crumbles(rig, maceArm);
+
+  rig.parts.hip = [];
+  rig.parts.knee = [];
+  for (let i = 0; i < 2; i++) {
+    const s = i === 0 ? 1 : -1;
+    const hip = grp(spine, 0.26 * s, -0.5, 0);
+    add(rig, hip, 'dark', merged('war.thigh', [P(cyl(0.19, 0.15, WAR_L1, 6), 0, -WAR_L1 * 0.5, 0)]));
+    const knee = grp(hip, 0, -WAR_L1, 0);
+    add(rig, knee, 'dark', merged('war.shin', [
+      P(cyl(0.15, 0.2, WAR_L2, 6), 0, -WAR_L2 * 0.5, 0),
+      P(box(0.32, 0.16, 0.5), 0, -WAR_L2 - 0.02, 0.1),
+    ]));
+    rig.parts.hip.push(hip);
+    rig.parts.knee.push(knee);
+  }
+
+  makeAura(rig, rig.auraR);
+  rig.animate = animWarden;
+  return rig;
+}
+
+function animWarden(rig, a) {
+  const p = rig.parts;
+  const sp = a.speed;
+  const w = anticipate(a.windup);
+  const hit = a.swing > 0 ? strike(a.swing) : 0;
+  const quake = a.attack === 'quake' ? 1 : 0;
+
+  p.spine.position.y = WAR_HIP + Math.sin(a.stride * 2) * 0.05 * sp - w * (0.1 + quake * 0.2);
+  p.spine.rotation.x = -w * (0.12 + quake * 0.25) + hit * (0.3 + quake * 0.3);
+  p.spine.rotation.z = Math.sin(a.stride) * 0.08 * sp;
+  // Turns its shielded shoulder toward the player as it walks — the pose that
+  // teaches the player to go around.
+  p.spine.rotation.y = 0.32 + a.lookY * 0.15 - hit * 0.5;
+
+  p.head.rotation.y = a.lookY * 0.5 - 0.2;
+  p.head.rotation.x = a.pitch * 0.5;
+
+  // Shield stays planted and rises into a brace on the wind-up; on a quake it
+  // is what comes down.
+  p.shield.rotation.x = -0.1 - w * (quake ? 1.3 : 0.35) + hit * (quake ? 1.8 : 0.4);
+  p.shield.rotation.z = -0.12 - w * 0.2;
+  p.mace.rotation.x = -0.2 - w * (quake ? 0.4 : 1.5) + hit * (quake ? 0.6 : 2.2)
+    + Math.sin(a.stride + Math.PI) * 0.25 * sp;
+  p.mace.rotation.z = -0.12 - w * 0.3;
+
+  if (a.lod > 0) return common(rig, a);
+
+  const stride = 0.3 * sp + 0.04;
+  for (let i = 0; i < 2; i++) {
+    const ph = a.stride + i * Math.PI;
+    solveLeg(p.hip[i], p.knee[i], WAR_L1, WAR_L2,
+      stepZ(ph, stride) * sp, -(WAR_HIP - 0.5) + stepY(ph, 0.22) * sp, 1);
+  }
+  common(rig, a);
+}
+
+// ---------------------------------------------------------------------------
+// RIFT STALKER — tall, thin and wrong. Elongated blade arms that hang below
+// the knees and a halo of rift shards that collapses into the body when it
+// blinks. The only humanoid in the roster with no mass at all: the silhouette
+// is four lines and a cluster of floating chips.
+// ---------------------------------------------------------------------------
+
+const STK_HIP = 1.25, STK_L1 = 0.58, STK_L2 = 0.62;
+
+function buildStalker() {
+  const rig = newRig('stalker');
+  rig.centerY = 1.2;
+  rig.height = 1.9;
+  rig.auraR = 1.4;
+  rig.shadowR = 0.62;
+
+  const spine = grp(rig.pivot, 0, STK_HIP, 0);
+  rig.parts.spine = spine;
+  add(rig, spine, 'body', merged('stk.torso', [
+    P(cyl(0.2, 0.13, 0.7, 5), 0, 0.28, 0),
+    P(box(0.56, 0.14, 0.2), 0, 0.56, -0.02),
+    P(box(0.2, 0.3, 0.18), 0, -0.1, 0.02),
+    // Blade fins off the spine, swept back — the only wide feature it has.
+    P(cone(0.1, 0.6, 3), 0.18, 0.42, -0.2, -0.9, 0, 0.3, 0.4, 1, 1),
+    P(cone(0.1, 0.6, 3), -0.18, 0.42, -0.2, -0.9, 0, -0.3, 0.4, 1, 1),
+  ]));
+  add(rig, spine, 'accent', merged('stk.spineGlow', [
+    P(box(0.05, 0.55, 0.05), 0, 0.3, -0.11),
+  ]));
+
+  const head = grp(spine, 0, 0.68, 0.02);
+  rig.parts.head = head;
+  crumbles(rig, head);
+  add(rig, head, 'dark', merged('stk.head', [
+    P(cone(0.15, 0.44, 5), 0, 0.06, 0.02, 0.25),
+    P(box(0.22, 0.1, 0.24), 0, -0.02, 0.06),
+  ]));
+  add(rig, head, 'eye', merged('stk.eyes', [
+    P(box(0.04, 0.13, 0.05), 0.07, 0.0, 0.13, 0, 0, 0.22),
+    P(box(0.04, 0.13, 0.05), -0.07, 0.0, 0.13, 0, 0, -0.22),
+  ]));
+
+  // Blade arms: upper, forearm, and a blade longer than the forearm.
+  const armR = [P(cyl(0.08, 0.06, 0.55, 5), 0, -0.28, 0)];
+  const bladeR = [
+    P(cyl(0.06, 0.045, 0.5, 5), 0, -0.25, 0),
+    P(box(0.07, 0.9, 0.2), 0.01, -0.9, 0.06, 0.12),
+    P(cone(0.06, 0.34, 3), 0.01, -1.42, 0.1, Math.PI),
+  ];
+  merged('stk.armR', armR); merged('stk.armL', mirror(armR));
+  merged('stk.bladeR', bladeR); merged('stk.bladeL', mirror(bladeR));
+  rig.parts.arm = [];
+  rig.parts.blade = [];
+  for (let i = 0; i < 2; i++) {
+    const right = i === 0;
+    const s = right ? 1 : -1;
+    const sh = grp(spine, 0.28 * s, 0.5, 0);
+    add(rig, sh, 'dark', merged(right ? 'stk.armR' : 'stk.armL', right ? armR : mirror(armR)));
+    const el = grp(sh, 0, -0.55, 0);
+    add(rig, el, 'body', merged(right ? 'stk.bladeR' : 'stk.bladeL', right ? bladeR : mirror(bladeR)));
+    add(rig, el, 'accent', merged(right ? 'stk.edgeR' : 'stk.edgeL',
+      right ? [P(box(0.03, 0.8, 0.05), 0.04, -0.9, 0.14)] : mirror([P(box(0.03, 0.8, 0.05), 0.04, -0.9, 0.14)])));
+    crumbles(rig, el);
+    rig.parts.arm.push(sh);
+    rig.parts.blade.push(el);
+  }
+
+  // Rift halo: five shards behind the shoulders. They spin up before a blink
+  // and snap inward when it goes, which is the read the player is given.
+  const halo = grp(spine, 0, 0.5, -0.3);
+  rig.parts.halo = halo;
+  for (let i = 0; i < 5; i++) {
+    const ang = (i / 5) * Math.PI * 2;
+    const m = new THREE.Mesh(merged('stk.shard', [P(cone(0.08, 0.4, 3), 0, 0, 0)]), rig.mats.accent);
+    m.position.set(Math.cos(ang) * 0.5, Math.sin(ang) * 0.5, 0);
+    m.rotation.z = -ang;
+    rig.accent.push(m);
+    halo.add(m);
+  }
+
+  rig.parts.hip = [];
+  rig.parts.knee = [];
+  for (let i = 0; i < 2; i++) {
+    const s = i === 0 ? 1 : -1;
+    const hip = grp(spine, 0.16 * s, -0.36, 0);
+    add(rig, hip, 'dark', merged('stk.thigh', [P(cyl(0.1, 0.075, STK_L1, 5), 0, -STK_L1 * 0.5, 0)]));
+    const knee = grp(hip, 0, -STK_L1, 0);
+    add(rig, knee, 'dark', merged('stk.shin', [
+      P(cyl(0.07, 0.05, STK_L2, 5), 0, -STK_L2 * 0.5, 0),
+      P(cone(0.06, 0.3, 4), 0, -STK_L2 - 0.06, 0.08, Math.PI * 0.6),
+    ]));
+    rig.parts.hip.push(hip);
+    rig.parts.knee.push(knee);
+  }
+
+  makeAura(rig, rig.auraR);
+  rig.animate = animStalker;
+  return rig;
+}
+
+function animStalker(rig, a) {
+  const p = rig.parts;
+  const sp = a.speed;
+  const w = anticipate(a.windup);
+  const ch = a.charge;
+  const hit = a.swing > 0 && !ch ? strike(a.swing) : 0;
+
+  p.spine.position.y = STK_HIP + Math.sin(a.stride * 2) * 0.05 * sp - w * 0.16 + ch * 0.1;
+  p.spine.rotation.x = -0.08 - w * 0.3 + ch * 0.5 + hit * 0.45;
+  p.spine.rotation.z = Math.sin(a.stride) * 0.06 * sp + a.lean * 0.4;
+  p.spine.rotation.y = a.lookY * 0.2;
+
+  p.head.rotation.y = a.lookY * 0.55;
+  p.head.rotation.x = a.pitch * 0.5 - w * 0.2;
+
+  for (let i = 0; i < 2; i++) {
+    const s = i === 0 ? 1 : -1;
+    // Arms cross over the chest to load a blink, then throw wide on arrival.
+    p.arm[i].rotation.x = -0.2 - w * 1.5 + hit * 1.8 + ch * 0.6 + Math.sin(a.stride + i * Math.PI) * 0.3 * sp;
+    p.arm[i].rotation.z = s * (0.18 + w * 0.9 - hit * 0.8 - ch * 0.4);
+    p.blade[i].rotation.x = -0.15 - w * 0.6 + hit * 1.1;
+    p.blade[i].rotation.z = s * (w * 0.5 - hit * 0.5);
+  }
+
+  // The halo: spins up on the wind-up, collapses to a point during the blink.
+  const collapse = ch;
+  p.halo.rotation.z = a.t * (0.8 + w * 9 + ch * 20);
+  p.halo.scale.setScalar(Math.max(0.05, 1 + w * 0.35 - collapse * 0.95));
+  for (let i = 0; i < p.halo.children.length; i++) {
+    p.halo.children[i].scale.setScalar(0.7 + Math.sin(a.t * 5 + i * 1.3) * 0.25 + w * 0.5);
+  }
+
+  if (a.lod > 0) return common(rig, a);
+
+  const stride = 0.36 * sp + 0.05;
+  for (let i = 0; i < 2; i++) {
+    const ph = a.stride + i * Math.PI;
+    solveLeg(p.hip[i], p.knee[i], STK_L1, STK_L2,
+      stepZ(ph, stride) * sp, -(STK_HIP - 0.36) + stepY(ph, 0.3) * sp, -1);
+  }
+  common(rig, a);
+}
+
+// ---------------------------------------------------------------------------
+// GRAVE ACOLYTE — a hooded cone with no legs at all. Its whole read is
+// "different species, do not treat this like the others": a smooth robe
+// silhouette in a roster of limbs and plates, with a halo of glyph plates that
+// only lights when it is actually channelling.
+// ---------------------------------------------------------------------------
+
+function buildAcolyte() {
+  const rig = newRig('acolyte');
+  rig.centerY = 1.1;
+  rig.height = 2.0;
+  rig.auraR = 1.5;
+  rig.shadowR = 0.7;
+
+  const robe = grp(rig.pivot, 0, 0, 0);
+  rig.parts.robe = robe;
+  // Cone skirt with panel breaks, so the silhouette has a hem rather than
+  // being a smooth party hat.
+  add(rig, robe, 'dark', merged('aco.robe', [
+    P(cone(0.62, 1.5, 8), 0, 0.72, 0),
+    P(cone(0.66, 0.36, 8), 0, 0.2, 0),
+    P(box(0.14, 1.3, 0.14), 0.42, 0.62, 0.3, 0, 0, -0.16),
+    P(box(0.14, 1.3, 0.14), -0.42, 0.62, 0.3, 0, 0, 0.16),
+    P(box(0.14, 1.2, 0.14), 0, 0.6, -0.48),
+  ]));
+  add(rig, robe, 'body', merged('aco.mantle', [
+    P(cyl(0.4, 0.5, 0.34, 7), 0, 1.42, 0),
+    P(box(0.9, 0.16, 0.44), 0, 1.5, -0.06, 0.2),
+    P(box(0.24, 0.5, 0.2), 0.4, 1.3, 0.1, 0, 0, -0.4),
+    P(box(0.24, 0.5, 0.2), -0.4, 1.3, 0.1, 0, 0, 0.4),
+  ]));
+
+  const hood = grp(robe, 0, 1.6, 0);
+  rig.parts.hood = hood;
+  crumbles(rig, hood);
+  add(rig, hood, 'body', merged('aco.hood', [
+    P(cone(0.3, 0.62, 6), 0, 0.16, -0.04, 0.12),
+    P(box(0.42, 0.3, 0.2), 0, 0.02, 0.16, -0.2),
+  ]));
+  // A void under the hood with two lights in it — no face, which is a much
+  // stronger read at range than any amount of modelled face would be.
+  add(rig, hood, 'eye', merged('aco.eyes', [
+    P(ico(0.05, 0), 0.08, 0.0, 0.2),
+    P(ico(0.05, 0), -0.08, 0.0, 0.2),
+  ]));
+
+  // Channel focus: a ring held in front of the chest that opens into a glyph
+  // wheel while mending.
+  const focus = grp(robe, 0, 1.18, 0.42);
+  rig.parts.focus = focus;
+  add(rig, focus, 'accent', merged('aco.ring', [P(ring(0.26, 0.05, 4, 16), 0, 0, 0)]));
+  rig.parts.glyph = [];
+  for (let i = 0; i < 6; i++) {
+    const ang = (i / 6) * Math.PI * 2;
+    const m = new THREE.Mesh(merged('aco.glyph', [P(box(0.12, 0.12, 0.03), 0, 0, 0)]), rig.mats.accent);
+    m.position.set(Math.cos(ang) * 0.4, Math.sin(ang) * 0.4, 0);
+    m.rotation.z = -ang;
+    m.visible = false;
+    rig.accent.push(m);
+    focus.add(m);
+    rig.parts.glyph.push(m);
+  }
+
+  makeAura(rig, rig.auraR);
+  rig.animate = animAcolyte;
+  return rig;
+}
+
+function animAcolyte(rig, a) {
+  const p = rig.parts;
+  const sp = a.speed;
+  const w = anticipate(a.windup);
+  const chan = a.swing > 0 ? 1 - Math.abs(a.swing - 0.5) * 2 : 0;
+
+  // Glides rather than walks: the robe sways off the movement and the whole
+  // body rides a slow hover bob.
+  p.robe.position.y = Math.sin(a.t * 1.4) * 0.06 + w * 0.14;
+  p.robe.rotation.x = -a.speed * 0.12 - w * 0.1;
+  p.robe.rotation.z = Math.sin(a.t * 1.1) * 0.05 + a.lean * 0.5;
+  p.robe.rotation.y = Math.sin(a.t * 0.6) * 0.1 + a.lookY * 0.25;
+
+  p.hood.rotation.x = 0.06 + a.pitch * 0.4 - w * 0.25;
+  p.hood.rotation.y = a.lookY * 0.4;
+
+  const open = Math.max(w, chan);
+  p.focus.rotation.z = a.t * (0.6 + open * 5);
+  p.focus.scale.setScalar(0.7 + open * 0.9);
+  p.focus.position.y = 1.18 + Math.sin(a.t * 2.2) * 0.04 + open * 0.2;
+  for (let i = 0; i < p.glyph.length; i++) {
+    const g = p.glyph[i];
+    g.visible = open > 0.05;
+    if (!g.visible) continue;
+    g.scale.setScalar(0.4 + open * 1.0 + Math.sin(a.t * 7 + i) * 0.12);
+  }
+  // No legs to solve — the acolyte is the one rig with no per-frame IK at all,
+  // which is also why it is cheap enough to be a common tier-2 card.
+  common(rig, a);
+}
+
+// ---------------------------------------------------------------------------
+// SIEGE BOMBARD — a squat quadruped carrying a mortar tube taller than it is.
+// The barrel ELEVATES through the wind-up, so from any angle you can see the
+// gun coming up before the shell exists.
+// ---------------------------------------------------------------------------
+
+function buildMortar() {
+  const rig = newRig('mortar');
+  rig.centerY = 1.4;
+  rig.height = 2.8;
+  rig.auraR = 2.0;
+  rig.shadowR = 1.15;
+
+  const body = grp(rig.pivot, 0, 1.15, 0);
+  rig.parts.body = body;
+  add(rig, body, 'body', merged('mor.hull', [
+    P(cyl(0.72, 0.62, 1.3, 6), 0, 0, 0, 0, Math.PI / 6, Math.PI * 0.5, 1, 1, 0.85),
+    P(box(1.3, 0.3, 0.9), 0, 0.44, -0.1),
+    P(box(0.4, 0.5, 0.5), 0.62, 0.2, -0.2, 0, 0, -0.3),
+    P(box(0.4, 0.5, 0.5), -0.62, 0.2, -0.2, 0, 0, 0.3),
+  ]));
+  add(rig, body, 'dark', merged('mor.belly', [
+    P(box(1.0, 0.3, 1.4), 0, -0.44, 0),
+    P(ring(0.66, 0.08, 4, 12), 0, 0.04, 0.5, Math.PI * 0.5),
+  ]));
+
+  // The tube, on a trunnion. Long, banded, and it dominates the silhouette.
+  const trunnion = grp(body, 0, 0.5, -0.1);
+  rig.parts.trunnion = trunnion;
+  add(rig, trunnion, 'dark', merged('mor.tube', [
+    P(cyl(0.26, 0.34, 1.7, 8), 0, 0.85, 0),
+    P(ring(0.3, 0.06, 4, 12), 0, 0.5, 0, Math.PI * 0.5),
+    P(ring(0.28, 0.06, 4, 12), 0, 1.1, 0, Math.PI * 0.5),
+    P(cyl(0.4, 0.34, 0.22, 8), 0, 0.08, 0),
+  ]));
+  rig.parts.muzzle = add(rig, trunnion, 'accent', ico(0.2, 1), 0, 1.7, 0);
+  add(rig, trunnion, 'accent', merged('mor.heat', [
+    P(box(0.06, 0.7, 0.07), 0.26, 0.8, 0),
+    P(box(0.06, 0.7, 0.07), -0.26, 0.8, 0),
+  ]));
+
+  const head = grp(body, 0, -0.06, 0.72);
+  rig.parts.head = head;
+  crumbles(rig, head);
+  add(rig, head, 'dark', merged('mor.head', [
+    P(box(0.56, 0.4, 0.44), 0, 0, 0.06),
+    P(box(0.7, 0.12, 0.3), 0, 0.2, 0.1, -0.25),
+    P(cone(0.09, 0.3, 4), 0.26, 0.24, 0.02, -0.7),
+    P(cone(0.09, 0.3, 4), -0.26, 0.24, 0.02, -0.7),
+  ]));
+  add(rig, head, 'eye', merged('mor.eyes', [
+    P(box(0.1, 0.05, 0.05), 0.16, 0.02, 0.26, 0, 0, -0.25),
+    P(box(0.1, 0.05, 0.05), -0.16, 0.02, 0.26, 0, 0, 0.25),
+  ]));
+
+  const legR = [
+    P(cyl(0.16, 0.13, 0.5, 5), 0.06, -0.24, 0, 0, 0, -0.4),
+    P(cyl(0.12, 0.1, 0.44, 5), 0.22, -0.66, 0, 0, 0, 0.25),
+    P(box(0.34, 0.14, 0.42), 0.16, -0.88, 0.04),
+  ];
+  merged('mor.legR', legR);
+  merged('mor.legL', mirror(legR));
+  rig.parts.leg = [];
+  const zs = [0.5, -0.5];
+  for (let i = 0; i < 4; i++) {
+    const right = i < 2;
+    const hip = grp(body, 0.6 * (right ? 1 : -1), -0.3, zs[i % 2]);
+    add(rig, hip, 'dark', merged(right ? 'mor.legR' : 'mor.legL', right ? legR : mirror(legR)));
+    rig.parts.leg.push(hip);
+  }
+
+  makeAura(rig, rig.auraR);
+  rig.animate = animMortar;
+  return rig;
+}
+
+function animMortar(rig, a) {
+  const p = rig.parts;
+  const sp = a.speed;
+  const w = anticipate(a.windup);
+  const fired = a.swing > 0 ? 1 - a.swing : 0;
+
+  // Braces down on its legs to fire; the recoil rocks the whole chassis back.
+  p.body.position.y = 1.15 - w * 0.16 + Math.sin(a.stride * 2) * 0.05 * sp + fired * 0.1;
+  p.body.rotation.x = w * 0.1 - fired * 0.3;
+  p.body.rotation.z = Math.sin(a.stride) * 0.07 * sp;
+
+  // Elevation is the tell: the tube swings from stowed to near-vertical.
+  p.trunnion.rotation.x = 0.55 - w * 0.62 + fired * 0.2;
+  p.trunnion.rotation.z = Math.sin(a.t * 0.7) * 0.03;
+  p.muzzle.visible = w > 0.02 || fired > 0.02;
+  if (p.muzzle.visible) p.muzzle.scale.setScalar(0.3 + w * 1.1 + fired * 2.2);
+
+  p.head.rotation.y = a.lookY * 0.5;
+  p.head.rotation.x = a.pitch * 0.4 + w * 0.2;
+
+  if (a.lod > 0) return common(rig, a);
+
+  for (let i = 0; i < 4; i++) {
+    const ph = a.stride + (i % 2 ? Math.PI : 0) + (i < 2 ? 0 : Math.PI * 0.5);
+    p.leg[i].rotation.x = Math.cos(ph) * (0.12 + 0.35 * sp) + w * 0.25;
+    p.leg[i].rotation.z = (i < 2 ? 1 : -1) * w * 0.12;
+  }
+  common(rig, a);
+}
+
+// ---------------------------------------------------------------------------
+// SLAG HULK — a hunched, asymmetric brute: one enormous molten forelimb it
+// walks on and one small one, with a vent stack down its back. Deliberately
+// lopsided, so it never reads as "a bigger golem".
+// ---------------------------------------------------------------------------
+
+const HLK_HIP = 2.15, HLK_L1 = 0.95, HLK_L2 = 0.95;
+
+function buildHulk() {
+  const rig = newRig('hulk');
+  rig.centerY = 2.1;
+  rig.height = 4.2;
+  rig.auraR = 2.7;
+  rig.shadowR = 1.55;
+
+  const spine = grp(rig.pivot, 0, HLK_HIP, 0);
+  rig.parts.spine = spine;
+  add(rig, spine, 'body', merged('hlk.torso', [
+    // Hunched: the shoulder mass sits FORWARD of the hips and above them.
+    P(cyl(1.05, 0.85, 1.25, 6), 0, 0.55, 0.25, 0.25, Math.PI / 6, 0, 1.1, 1, 0.9),
+    P(cyl(0.8, 0.95, 0.8, 6), 0, -0.35, -0.05, 0, Math.PI / 6, 0),
+    P(box(1.9, 0.5, 1.0), 0, 1.05, 0.2, 0.15),
+    // Vent stack — six chimneys of different heights down the spine.
+    P(cyl(0.16, 0.2, 0.62, 5), 0.42, 1.35, -0.45),
+    P(cyl(0.14, 0.18, 0.5, 5), -0.3, 1.3, -0.5),
+    P(cyl(0.12, 0.16, 0.72, 5), 0.08, 1.42, -0.62),
+    P(cyl(0.11, 0.15, 0.42, 5), -0.62, 1.2, -0.4),
+  ]));
+  add(rig, spine, 'dark', merged('hlk.hide', [
+    P(box(1.5, 0.36, 0.4), 0, 0.1, 0.85, -0.2),
+    P(box(1.2, 0.3, 0.3), 0, -0.6, 0.6),
+  ]));
+  // Molten seams. The hulk's heat is on its BACK and its big arm, not its
+  // chest, so it stays identifiable while it is walking away from you.
+  rig.parts.core = add(rig, spine, 'accent', ico(0.42, 1), 0, 0.15, 0.72);
+  add(rig, spine, 'accent', merged('hlk.vents', [
+    P(ico(0.13, 0), 0.42, 1.66, -0.45),
+    P(ico(0.11, 0), -0.3, 1.55, -0.5),
+    P(ico(0.1, 0), 0.08, 1.78, -0.62),
+    P(box(0.1, 0.9, 0.1), 0.7, 0.5, 0.3, 0, 0, -0.3),
+    P(box(0.1, 0.7, 0.1), -0.7, 0.4, 0.3, 0, 0, 0.3),
+  ]));
+
+  const head = grp(spine, 0, 1.15, 0.62);
+  rig.parts.head = head;
+  crumbles(rig, head);
+  add(rig, head, 'body', merged('hlk.head', [
+    P(cyl(0.34, 0.44, 0.5, 6), 0, 0, 0, 0.3, Math.PI / 6, 0),
+    P(box(0.85, 0.22, 0.55), 0, 0.2, 0.08, -0.3),
+    P(cone(0.13, 0.5, 4), 0.32, 0.3, -0.1, -0.4, 0, 0.3),
+    P(cone(0.13, 0.5, 4), -0.32, 0.3, -0.1, -0.4, 0, -0.3),
+  ]));
+  add(rig, head, 'accent', merged('hlk.maw', [
+    P(box(0.5, 0.1, 0.12), 0, -0.2, 0.3),
+    P(box(0.1, 0.16, 0.12), 0.16, -0.26, 0.28),
+    P(box(0.1, 0.16, 0.12), -0.16, -0.26, 0.28),
+  ]));
+  add(rig, head, 'eye', merged('hlk.eyes', [
+    P(ico(0.09, 0), 0.19, 0.02, 0.24),
+    P(ico(0.09, 0), -0.19, 0.02, 0.24),
+    P(ico(0.06, 0), 0, 0.1, 0.28),
+  ]));
+
+  // The big arm — thick enough to knuckle-walk on, and it is where the spray
+  // comes from, so the muzzle is part of the hand.
+  const bigSh = grp(spine, 1.15, 0.85, 0.2);
+  rig.parts.bigArm = bigSh;
+  add(rig, bigSh, 'body', merged('hlk.bigUpper', [
+    P(cyl(0.42, 0.36, 1.0, 6), 0, -0.5, 0),
+    P(ico(0.5, 0), 0, 0.06, 0, 0.2, 0.5, 0),
+  ]));
+  const bigEl = grp(bigSh, 0, -1.0, 0);
+  rig.parts.bigElbow = bigEl;
+  add(rig, bigEl, 'body', merged('hlk.bigFore', [
+    P(cyl(0.36, 0.52, 0.95, 6), 0, -0.46, 0),
+    P(box(0.95, 0.7, 0.9), 0, -1.15, 0.06),
+    P(cone(0.2, 0.5, 4), 0.3, -1.45, 0.3, -0.6),
+    P(cone(0.2, 0.5, 4), -0.3, -1.45, 0.3, -0.6),
+  ]));
+  add(rig, bigEl, 'accent', merged('hlk.bigVent', [
+    P(box(0.7, 0.1, 0.12), 0, -0.9, 0.42),
+    P(ico(0.18, 0), 0, -1.2, 0.44),
+  ]));
+  crumbles(rig, bigEl);
+
+  // Small arm — half the length, tucked. The asymmetry is the point.
+  const smSh = grp(spine, -0.95, 0.9, 0.3);
+  rig.parts.smallArm = smSh;
+  add(rig, smSh, 'dark', merged('hlk.smallArm', [
+    P(cyl(0.2, 0.15, 0.6, 5), 0, -0.3, 0),
+    P(cyl(0.15, 0.13, 0.5, 5), 0, -0.78, 0.14, -0.5),
+    P(box(0.3, 0.26, 0.34), 0, -1.02, 0.32),
+  ]));
+  crumbles(rig, smSh);
+
+  rig.parts.hip = [];
+  rig.parts.knee = [];
+  for (let i = 0; i < 2; i++) {
+    const s = i === 0 ? 1 : -1;
+    const hip = grp(spine, 0.6 * s, -0.85, -0.1);
+    add(rig, hip, 'dark', merged('hlk.thigh', [P(cyl(0.44, 0.36, HLK_L1, 6), 0, -HLK_L1 * 0.5, 0)]));
+    const knee = grp(hip, 0, -HLK_L1, 0);
+    add(rig, knee, 'dark', merged('hlk.shin', [
+      P(cyl(0.34, 0.44, HLK_L2, 6), 0, -HLK_L2 * 0.5, 0),
+      P(box(0.8, 0.3, 1.1), 0, -HLK_L2 + 0.06, 0.2),
+      P(cone(0.1, 0.3, 4), 0.22, -HLK_L2 + 0.02, 0.72, Math.PI * 0.5),
+      P(cone(0.1, 0.3, 4), -0.22, -HLK_L2 + 0.02, 0.72, Math.PI * 0.5),
+    ]));
+    rig.parts.hip.push(hip);
+    rig.parts.knee.push(knee);
+  }
+
+  makeAura(rig, rig.auraR);
+  rig.animate = animHulk;
+  return rig;
+}
+
+function animHulk(rig, a) {
+  const p = rig.parts;
+  const sp = a.speed;
+  const w = anticipate(a.windup);
+  const rel = a.swing > 0 ? strike(a.swing) : 0;
+  const crush = a.attack === 'crush' ? 1 : 0;
+  const spray = a.attack === 'spray' ? 1 : 0;
+  const vent = a.attack === 'vent' ? 1 : 0;
+
+  p.spine.position.y = HLK_HIP - w * (crush * 0.4 + vent * 0.25) - rel * crush * 0.6
+    + Math.sin(a.stride * 2) * 0.1 * sp;
+  p.spine.rotation.x = 0.12 - w * (crush * 0.3 + spray * 0.15) + rel * (crush * 0.5 + vent * 0.3);
+  p.spine.rotation.z = Math.sin(a.stride) * 0.13 * sp;
+  p.spine.rotation.y = Math.sin(a.stride) * 0.07 * sp - w * spray * 0.25;
+
+  p.core.scale.setScalar(1 + w * 0.5 + rel * 0.7 + Math.sin(a.t * 2.8) * 0.06);
+  p.head.rotation.y = a.lookY * 0.6;
+  p.head.rotation.x = a.pitch * 0.5 - w * 0.15 + rel * crush * 0.4;
+
+  // Big arm: overhead for the crush, levelled and pointed for the spray.
+  if (crush) {
+    p.bigArm.rotation.x = -w * 2.4 + rel * 3.0;
+    p.bigArm.rotation.z = 0.15 + w * 0.3 - rel * 0.25;
+    p.bigElbow.rotation.x = -w * 0.8 + rel * 0.6;
+  } else if (spray) {
+    p.bigArm.rotation.x = -1.05 - w * 0.35;
+    p.bigArm.rotation.z = 0.5 + w * 0.2;
+    p.bigElbow.rotation.x = 0.5 + w * 0.3 - rel * 0.5;
+  } else {
+    // Knuckle-walks on it: the big arm swings low and plants.
+    p.bigArm.rotation.x = Math.sin(a.stride) * 0.4 * sp - 0.1;
+    p.bigArm.rotation.z = 0.2;
+    p.bigElbow.rotation.x = -0.15 - Math.abs(Math.sin(a.stride)) * 0.2 * sp;
+  }
+  p.smallArm.rotation.x = -0.5 - w * 0.6 + rel * 0.5 + Math.sin(a.stride + Math.PI) * 0.3 * sp;
+  p.smallArm.rotation.z = -0.3 - w * 0.2;
+
+  if (a.lod > 0) return common(rig, a);
+
+  const stride = 0.5 * sp + 0.05;
+  for (let i = 0; i < 2; i++) {
+    const ph = a.stride + i * Math.PI;
+    solveLeg(p.hip[i], p.knee[i], HLK_L1, HLK_L2,
+      stepZ(ph, stride) * sp, -(HLK_HIP - 0.85) + stepY(ph, 0.34) * sp, 1);
+  }
+  common(rig, a);
+}
+
+// ---------------------------------------------------------------------------
+// OSSUARY WYRM — a boss that is a CURVE. Seven tapering segments arching out
+// of the ground into a splayed four-part jaw, with the tail end never leaving
+// the dirt. Nothing else in the game is a line rather than a mass, which is
+// what makes it identifiable at boss distance from any bearing.
+// ---------------------------------------------------------------------------
+
+const WYRM_SEGS = 7;
+
+function buildWyrm() {
+  const rig = newRig('wyrm');
+  rig.centerY = 2.6;
+  rig.height = 5.4;
+  rig.auraR = 3.4;
+  rig.shadowR = 2.1;
+
+  // Spoil ring: the ground it came up through, so the body has something to
+  // emerge FROM instead of ending in mid-air at the terrain line.
+  add(rig, rig.pivot, 'dark', merged('wym.spoil', [
+    P(cyl(2.3, 2.9, 0.5, 9), 0, 0.1, 0),
+    P(ico(0.7, 0), 1.9, 0.3, 0.8, 0.3, 0.4, 0.2),
+    P(ico(0.6, 0), -1.6, 0.25, -1.4, 0.1, 1.2, 0.4),
+    P(ico(0.5, 0), 0.4, 0.28, -2.2, 0.5, 0.2, 0),
+    P(ico(0.55, 0), -2.1, 0.22, 0.9, 0.2, 0.8, 0.3),
+  ]));
+
+  // The chain. Each segment is a ribbed barrel that is both narrower and
+  // shorter than the one below it, and each is pre-rotated so the REST pose is
+  // already an arch — the animator only adds the undulation.
+  let node = grp(rig.pivot, 0, 0.35, 0);
+  rig.parts.seg = [];
+  for (let i = 0; i < WYRM_SEGS; i++) {
+    const t = i / (WYRM_SEGS - 1);
+    const r = lerp(1.35, 0.62, t);
+    const len = lerp(0.95, 0.62, t);
+    const key = `wym.seg${i}`;
+    add(rig, node, 'body', merged(key, [
+      P(cyl(r * 0.88, r, len, 8), 0, len * 0.5, 0),
+      // Rib collar between segments, so the body reads as vertebrae.
+      P(ring(r * 0.95, r * 0.16, 4, 12), 0, len * 0.92, 0, Math.PI * 0.5),
+      // Dorsal blades, alternating side to side down the spine.
+      P(cone(r * 0.3, r * 1.15, 4), 0, len * 0.55, -r * 0.8,
+        -0.5, i % 2 ? 0.4 : -0.4, 0, 0.35, 1, 1),
+    ]));
+    if (i % 2 === 0) {
+      add(rig, node, 'accent', merged(`wym.vein${i}`, [
+        P(box(r * 0.2, len * 0.7, r * 0.12), r * 0.72, len * 0.5, 0, 0, 0, -0.2),
+        P(box(r * 0.2, len * 0.7, r * 0.12), -r * 0.72, len * 0.5, 0, 0, 0, 0.2),
+      ]));
+    }
+    const next = grp(node, 0, len * 0.98, 0);
+    // Pre-bend: the arch. Front-loaded so the base leaves the ground steeply
+    // and the head ends up levelled at the player rather than pointing at the
+    // sky.
+    next.rotation.x = lerp(0.30, 0.14, t);
+    crumbles(rig, node);
+    rig.parts.seg.push(node);
+    node = next;
+  }
+
+  // Head: a splayed four-part jaw around a lit gullet. No eyes — it is blind
+  // like the burrower, and the family resemblance is deliberate.
+  const head = node;
+  rig.parts.head = head;
+  add(rig, head, 'body', merged('wym.skull', [
+    P(cyl(0.66, 0.58, 0.7, 8), 0, 0.3, 0),
+    P(ring(0.7, 0.14, 4, 14), 0, 0.1, 0, Math.PI * 0.5),
+    P(ico(0.45, 0), 0, 0.66, -0.28, 0.4, 0, 0),
+  ]));
+  rig.parts.gullet = add(rig, head, 'accent', ico(0.42, 1), 0, 0.5, 0);
+
+  rig.parts.jaw = [];
+  for (let i = 0; i < 4; i++) {
+    const ang = (i / 4) * Math.PI * 2 + Math.PI * 0.25;
+    const g = grp(head, Math.cos(ang) * 0.5, 0.62, Math.sin(ang) * 0.5);
+    g.rotation.y = -ang;
+    add(rig, g, 'dark', merged('wym.jaw', [
+      P(box(0.42, 0.95, 0.3), 0, 0.42, 0.04, 0.1),
+      P(cone(0.16, 0.7, 4), 0, 0.95, 0.06, 0.14),
+      // Inward-facing tooth row.
+      P(cone(0.07, 0.26, 3), 0.1, 0.5, -0.16, -1.4),
+      P(cone(0.07, 0.26, 3), -0.1, 0.72, -0.16, -1.4),
+      P(cone(0.06, 0.22, 3), 0.02, 0.28, -0.16, -1.4),
+    ]));
+    crumbles(rig, g);
+    rig.parts.jaw.push(g);
+  }
+
+  makeAura(rig, rig.auraR);
+  rig.animate = animWyrm;
+  return rig;
+}
+
+function animWyrm(rig, a) {
+  const p = rig.parts;
+  const w = anticipate(a.windup);
+  const rel = a.swing > 0 ? strike(a.swing) : 0;
+  const rage = a.phase > 1 ? 1 : 0;
+
+  // The body is one travelling wave. Rearing back on the wind-up steepens the
+  // whole arch; the strike straightens it into a lunge.
+  for (let i = 0; i < p.seg.length; i++) {
+    const seg = p.seg[i];
+    const t = i / (p.seg.length - 1);
+    const wave = Math.sin(a.t * (1.5 + rage * 0.6) - i * 0.7) * (0.05 + 0.04 * t);
+    seg.rotation.z = wave + Math.sin(a.t * 0.8 - i * 0.4) * 0.03;
+    seg.rotation.x = (i === 0 ? 0 : 0) + wave * 0.3 - w * 0.11 * (1 - t) + rel * 0.16 * (1 - t * 0.5);
+    seg.rotation.y = Math.sin(a.t * 1.1 - i * 0.55) * 0.06 + a.lookY * 0.14;
+  }
+
+  p.head.rotation.x = -w * 0.5 + rel * 0.9 + a.pitch * 0.35;
+  p.head.rotation.y = a.lookY * 0.3;
+  p.gullet.scale.setScalar(1 + w * 0.9 + rel * 0.6 + rage * 0.2 + Math.sin(a.t * (3 + rage * 4)) * 0.07);
+
+  for (let i = 0; i < 4; i++) {
+    // The jaw splays wide through the wind-up and snaps shut on the strike —
+    // a four-way iris opening is a tell you can read from behind the boss.
+    const open = w * 1.1 - rel * 1.35;
+    p.jaw[i].rotation.x = -0.12 - open;
+    p.jaw[i].rotation.z = Math.sin(a.t * 2.2 + i * 1.6) * 0.05;
+    p.jaw[i].position.y = 0.62 + open * 0.12;
+  }
+  common(rig, a);
+}
+
+// ---------------------------------------------------------------------------
+// THUNDERHEAD — a flying boss made of nothing but rings. Three counter-rotating
+// plate rings around a storm core, with conductor spines hanging under it. The
+// only silhouette in the game built out of circles, and the ring tilt reads at
+// any distance because it is 6 m across.
+// ---------------------------------------------------------------------------
+
+function buildThunderhead() {
+  const rig = newRig('thunderhead');
+  rig.centerY = 0;
+  rig.height = 5.0;
+  rig.auraR = 3.2;
+  rig.shadowR = 2.0;
+  rig.flyer = true;
+
+  rig.parts.core = add(rig, rig.pivot, 'accent', ico(1.05, 2), 0, 0, 0);
+  // Core cage: a dark shell in pieces so the light escapes between them rather
+  // than the core being a bare glowing ball.
+  add(rig, rig.pivot, 'dark', merged('thd.cage', [
+    P(box(0.34, 1.9, 0.34), 0.95, 0, 0, 0, 0, -0.25),
+    P(box(0.34, 1.9, 0.34), -0.95, 0, 0, 0, 0, 0.25),
+    P(box(0.34, 1.9, 0.34), 0, 0, 0.95, 0.25),
+    P(box(0.34, 1.9, 0.34), 0, 0, -0.95, -0.25),
+    P(hemi(1.15, 10, 5), 0, 0.5, 0, 0, 0, 0, 1, 0.7, 1),
+    P(hemi(1.15, 10, 5), 0, -0.5, 0, Math.PI, 0, 0, 1, 0.7, 1),
+  ]));
+
+  // Three rings. Different radii, different tilts, counter-rotating: that is
+  // the whole identity, and the plate teeth on each keep them from reading as
+  // smooth hoops.
+  rig.parts.ring = [];
+  const ringSpec = [[2.4, 0.0, 10], [1.95, 0.7, 8], [2.85, -0.5, 12]];
+  for (let i = 0; i < 3; i++) {
+    const [rad, tilt, teeth] = ringSpec[i];
+    const g = grp(rig.pivot, 0, 0, 0);
+    g.rotation.z = tilt;
+    const pieces = [P(ring(rad, 0.12, 4, 20), 0, 0, 0, Math.PI * 0.5)];
+    for (let k = 0; k < teeth; k++) {
+      const ang = (k / teeth) * Math.PI * 2;
+      pieces.push(P(box(0.34, 0.16, 0.5), Math.cos(ang) * rad, 0, Math.sin(ang) * rad, 0, -ang, 0));
+      if (k % 3 === 0) {
+        pieces.push(P(cone(0.14, 0.5, 4), Math.cos(ang) * (rad + 0.3), 0, Math.sin(ang) * (rad + 0.3),
+          0, -ang, -Math.PI * 0.5));
+      }
+    }
+    add(rig, g, 'body', merged(`thd.ring${i}`, pieces));
+    add(rig, g, 'accent', merged(`thd.ringGlow${i}`, [
+      P(ring(rad * 0.96, 0.04, 3, 20), 0, 0, 0, Math.PI * 0.5),
+    ]));
+    crumbles(rig, g);
+    rig.parts.ring.push(g);
+  }
+
+  // Conductor spines under the core — where the ground beam comes from, and
+  // the only downward feature, so the boss has an underside.
+  rig.parts.spine = [];
+  for (let i = 0; i < 5; i++) {
+    const ang = (i / 5) * Math.PI * 2;
+    const g = grp(rig.pivot, Math.cos(ang) * 0.7, -0.9, Math.sin(ang) * 0.7);
+    add(rig, g, 'dark', merged('thd.spine', [
+      P(cyl(0.16, 0.07, 1.5, 5), 0, -0.75, 0),
+      P(ico(0.13, 0), 0, -1.55, 0),
+    ]));
+    rig.parts.spine.push(g);
+  }
+  add(rig, rig.pivot, 'eye', merged('thd.nodes', [
+    P(ico(0.16, 0), 0, -1.55, 0),
+    P(ico(0.12, 0), 0.5, 0.9, 0.5),
+    P(ico(0.12, 0), -0.5, 0.9, -0.5),
+  ]));
+
+  const head = grp(rig.pivot, 0, -0.2, 0);
+  rig.parts.head = head;
+  rig.parts.beam = beam(rig, head, 0, 0.9);
+
+  makeAura(rig, rig.auraR);
+  rig.animate = animThunderhead;
+  return rig;
+}
+
+function animThunderhead(rig, a) {
+  const p = rig.parts;
+  const w = anticipate(a.windup);
+  const fire = a.swing > 0 ? 1 - a.swing : 0;
+  const rage = a.phase > 1 ? 1 : 0;
+
+  // Rings spin up hard through the wind-up and settle after the discharge —
+  // the machine winding is the tell, and it is visible from every angle.
+  const spin = 0.35 + w * 4.5 + rage * 0.5 + fire * 2.0;
+  p.ring[0].rotation.y = a.t * spin;
+  p.ring[1].rotation.y = -a.t * spin * 1.35;
+  p.ring[2].rotation.y = a.t * spin * 0.7;
+  p.ring[1].rotation.z = 0.7 + Math.sin(a.t * 0.6) * 0.12 - w * 0.3;
+  p.ring[2].rotation.z = -0.5 - Math.sin(a.t * 0.45) * 0.1 + w * 0.25;
+  for (let i = 0; i < 3; i++) p.ring[i].scale.setScalar(1 + w * 0.06 - fire * 0.1);
+
+  p.core.scale.setScalar(1 + rage * 0.15 + w * 0.7 + fire * 0.9 + Math.sin(a.t * (4 + rage * 5)) * 0.05);
+  p.core.rotation.y = a.t * 1.1;
+  p.core.rotation.x = a.t * 0.7;
+
+  for (let i = 0; i < p.spine.length; i++) {
+    const g = p.spine[i];
+    // Spines swing inward and point down as the ground sweep charges.
+    g.rotation.x = Math.sin(a.t * 1.6 - i * 0.8) * 0.12 + w * 0.25;
+    g.rotation.z = Math.cos(a.t * 1.4 - i * 0.8) * 0.12;
+    g.scale.y = 1 + w * 0.3;
+  }
+
+  p.head.rotation.y = a.lookY * 0.4 + a.sweep;
+  p.head.rotation.x = clamp(a.pitch, -1.2, 0.4) - 0.35;
+  setBeam(p.beam, a.beamLen, a.beamOn ? (a.windup > 0 ? 0.1 + w * 0.2 : 0.8 + Math.sin(a.t * 36) * 0.12) : 0, a.beamOn);
+  common(rig, a);
+}
+
+// ---------------------------------------------------------------------------
+// PYRE MATRON — brood-mother. Four legs ARCHED OVER the body so the outline is
+// a cage of angles with a low thorax slung under it, plus an abdomen full of
+// lit eggs that is bigger than the rest of her put together.
+// ---------------------------------------------------------------------------
+
+function buildMatron() {
+  const rig = newRig('matron');
+  rig.centerY = 2.2;
+  rig.height = 5.8;
+  rig.auraR = 3.6;
+  rig.shadowR = 2.3;
+
+  const body = grp(rig.pivot, 0, 2.0, 0);
+  rig.parts.body = body;
+
+  add(rig, body, 'body', merged('mat.thorax', [
+    P(hemi(1.15, 12, 6), 0, -0.1, 0.35, 0, 0, 0, 1.35, 0.85, 1.5),
+    P(cyl(0.95, 1.15, 0.7, 7), 0, -0.15, -0.5, 0, Math.PI / 6, Math.PI * 0.5),
+    P(box(0.4, 0.5, 1.1), 0, 0.55, 0.1, -0.25),
+    P(cone(0.28, 0.9, 4), 0.62, 0.5, -0.2, -0.5, 0.3, 0.2, 0.5, 1, 1),
+    P(cone(0.28, 0.9, 4), -0.62, 0.5, -0.2, -0.5, -0.3, -0.2, 0.5, 1, 1),
+  ]));
+
+  // Abdomen: the mass. Hangs behind and below, with rind plates and lit egg
+  // clusters showing between them.
+  const abdomen = grp(body, 0, -0.1, -1.5);
+  rig.parts.abdomen = abdomen;
+  add(rig, abdomen, 'body', merged('mat.abdomen', [
+    P(sph(1.35, 12, 9), 0, 0, -0.6, 0, 0, 0, 1, 0.95, 1.25),
+    P(box(0.7, 1.5, 1.9), 0.85, 0.1, -0.6, 0, 0, -0.3),
+    P(box(0.7, 1.5, 1.9), -0.85, 0.1, -0.6, 0, 0, 0.3),
+    P(cone(0.5, 1.1, 5), 0, -0.2, -2.0, -Math.PI * 0.5),
+  ]));
+  add(rig, abdomen, 'accent', merged('mat.eggs', [
+    P(ico(0.3, 1), 0.55, 0.5, -0.35),
+    P(ico(0.26, 1), -0.5, 0.6, -0.7),
+    P(ico(0.28, 1), 0.15, 0.75, -1.1),
+    P(ico(0.22, 1), -0.2, 0.35, -1.55),
+    P(ico(0.24, 1), 0.62, 0.15, -1.2),
+  ]));
+  crumbles(rig, abdomen);
+
+  const head = grp(body, 0, 0.1, 1.15);
+  rig.parts.head = head;
+  crumbles(rig, head);
+  add(rig, head, 'dark', merged('mat.head', [
+    P(cyl(0.5, 0.62, 0.7, 7), 0, 0, 0.1, Math.PI * 0.5),
+    P(box(1.0, 0.28, 0.5), 0, 0.3, -0.05, -0.25),
+  ]));
+  // Six eyes in two rows — the arachnid read, and it survives being three
+  // pixels tall because the cluster is a shape.
+  add(rig, head, 'eye', merged('mat.eyes', [
+    P(ico(0.13, 0), 0.24, 0.16, 0.42),
+    P(ico(0.13, 0), -0.24, 0.16, 0.42),
+    P(ico(0.09, 0), 0.42, 0.02, 0.34),
+    P(ico(0.09, 0), -0.42, 0.02, 0.34),
+    P(ico(0.07, 0), 0.14, -0.06, 0.5),
+    P(ico(0.07, 0), -0.14, -0.06, 0.5),
+  ]));
+  // The pyre spout, between the mandibles.
+  rig.parts.spout = add(rig, head, 'accent', ico(0.26, 1), 0, -0.2, 0.55);
+  rig.parts.mand = [];
+  for (let i = 0; i < 2; i++) {
+    const s = i === 0 ? 1 : -1;
+    const g = grp(head, 0.3 * s, -0.28, 0.4);
+    add(rig, g, 'dark', merged(i === 0 ? 'mat.mandR' : 'mat.mandL',
+      i === 0
+        ? [P(cyl(0.14, 0.05, 0.8, 5), 0.04, -0.1, 0.3, 1.25, 0, 0.3)]
+        : mirror([P(cyl(0.14, 0.05, 0.8, 5), 0.04, -0.1, 0.3, 1.25, 0, 0.3)])));
+    rig.parts.mand.push(g);
+  }
+
+  // Legs: coxa arcs UP and out, femur comes back DOWN. That inversion is what
+  // puts the knees above the body and gives the boss its cage outline.
+  rig.parts.coxa = [];
+  rig.parts.femur = [];
+  const zs = [0.9, 0.2, -0.5, -1.2];
+  for (let i = 0; i < 8; i++) {
+    const right = i < 4;
+    const s = right ? 1 : -1;
+    const cx = grp(body, 0.9 * s, 0.1, zs[i % 4]);
+    add(rig, cx, 'dark', merged(right ? 'mat.coxaR' : 'mat.coxaL',
+      right
+        ? [P(cyl(0.24, 0.18, 1.5, 5), 0.5, 0.6, 0, 0, 0, -0.72)]
+        : mirror([P(cyl(0.24, 0.18, 1.5, 5), 0.5, 0.6, 0, 0, 0, -0.72)])));
+    const fm = grp(cx, 1.0 * s, 1.2, 0);
+    add(rig, fm, 'dark', merged(right ? 'mat.femR' : 'mat.femL',
+      right
+        ? [
+            P(cyl(0.18, 0.1, 1.9, 5), 0.42, -0.9, 0, 0, 0, 0.42),
+            P(cone(0.09, 0.5, 4), 0.8, -1.85, 0.06, Math.PI * 0.92),
+          ]
+        : mirror([
+            P(cyl(0.18, 0.1, 1.9, 5), 0.42, -0.9, 0, 0, 0, 0.42),
+            P(cone(0.09, 0.5, 4), 0.8, -1.85, 0.06, Math.PI * 0.92),
+          ])));
+    rig.parts.coxa.push(cx);
+    rig.parts.femur.push(fm);
+  }
+
+  makeAura(rig, rig.auraR);
+  rig.animate = animMatron;
+  return rig;
+}
+
+const MAT_PHASE = [0, Math.PI, 0, Math.PI, Math.PI, 0, Math.PI, 0];
+
+function animMatron(rig, a) {
+  const p = rig.parts;
+  const sp = a.speed;
+  const w = anticipate(a.windup);
+  const rel = a.swing > 0 ? strike(a.swing) : 0;
+  const fire = a.attack === 'pyre' ? 1 : 0;
+  const hatch = a.attack === 'brood' ? 1 : 0;
+  const rage = a.phase > 1 ? 1 : 0;
+
+  // Rears up to fire (the spout has to clear her own legs) and hunches down
+  // over the abdomen to hatch.
+  p.body.position.y = 2.0 + w * (fire * 0.5 - hatch * 0.35) + Math.sin(a.stride * 2) * 0.09 * sp;
+  p.body.rotation.x = -w * fire * 0.34 + w * hatch * 0.3 + rel * fire * 0.4;
+  p.body.rotation.z = Math.sin(a.stride) * 0.07 * sp;
+  p.body.rotation.y = Math.sin(a.stride * 0.5) * 0.05 * sp;
+
+  // Abdomen pumps hard while hatching; eggs light up with the phase.
+  const pump = hatch ? (w + rel) : 0;
+  p.abdomen.scale.set(1 + pump * 0.2 + rage * 0.06, 1 - pump * 0.14, 1 + pump * 0.2 + rage * 0.06);
+  p.abdomen.rotation.x = 0.1 + Math.sin(a.t * 1.2) * 0.05 + w * hatch * 0.4 - rel * hatch * 0.3;
+
+  p.head.rotation.x = a.pitch * 0.4 - w * fire * 0.5 + rel * fire * 0.7;
+  p.head.rotation.y = a.lookY * 0.45;
+  p.spout.scale.setScalar(0.5 + w * fire * 2.2 + rel * fire * 2.6 + Math.sin(a.t * 5) * 0.06);
+  for (let i = 0; i < 2; i++) {
+    const s = i === 0 ? 1 : -1;
+    p.mand[i].rotation.y = -s * (0.2 + w * 0.7 - rel * 0.6);
+    p.mand[i].rotation.x = Math.sin(a.t * 3 + i) * 0.06 - w * 0.2;
+  }
+
+  if (a.lod > 0) return common(rig, a);
+
+  for (let i = 0; i < 8; i++) {
+    const ph = a.stride * 1.1 + MAT_PHASE[i];
+    const s = i < 4 ? 1 : -1;
+    // The cage flexes: coxae lift on the wind-up so she visibly braces.
+    p.coxa[i].rotation.z = -s * (Math.max(0, -Math.sin(ph)) * 0.28 * sp + w * 0.16);
+    p.coxa[i].rotation.x = Math.cos(ph) * (0.1 + 0.24 * sp);
+    p.femur[i].rotation.x = -Math.cos(ph) * (0.14 + 0.3 * sp);
+    p.femur[i].rotation.z = s * w * 0.12;
+  }
+  common(rig, a);
+}
+
+// ---------------------------------------------------------------------------
+// IRON VIZIER — the armoured one. A tower shield taller than a Lemurian on one
+// side and a bladed haft on the other, under a crowned helm. Phase 1 fights
+// from behind the shield; the phase break drops it, and the pose change is the
+// most legible thing in the fight.
+// ---------------------------------------------------------------------------
+
+const VIZ_HIP = 3.4, VIZ_L1 = 1.3, VIZ_L2 = 1.25;
+
+function buildVizier() {
+  const rig = newRig('vizier');
+  rig.centerY = 3.2;
+  rig.height = 6.4;
+  rig.auraR = 3.8;
+  rig.shadowR = 2.1;
+
+  const spine = grp(rig.pivot, 0, VIZ_HIP, 0);
+  rig.parts.spine = spine;
+
+  add(rig, spine, 'body', merged('viz.torso', [
+    P(cyl(1.25, 0.9, 1.9, 6), 0, 0.75, 0, 0, Math.PI / 6, 0, 1.08, 1, 0.78),
+    P(cyl(1.0, 1.2, 0.9, 6), 0, -0.7, 0, 0, Math.PI / 6, 0),
+    // Gorget deck, canted forward.
+    P(box(2.5, 0.5, 1.2), 0, 1.75, 0.1, 0.12),
+    P(box(0.9, 1.1, 0.7), 1.15, 1.5, 0.0, 0, 0, -0.35),
+    P(box(0.9, 1.1, 0.7), -1.15, 1.5, 0.0, 0, 0, 0.35),
+    // Back banner mast — asymmetric, and the tallest thing on the rig.
+    P(cyl(0.14, 0.11, 2.6, 5), -0.5, 2.2, -0.75, 0.22),
+    P(box(0.9, 1.4, 0.08), -0.5, 2.6, -1.15, 0.22),
+  ]));
+  add(rig, spine, 'dark', merged('viz.fauld', [
+    P(box(1.9, 0.9, 0.5), 0, -1.35, 0.55, 0.2),
+    P(box(0.8, 1.1, 0.4), 0.95, -1.4, 0.35, 0, 0, -0.25),
+    P(box(0.8, 1.1, 0.4), -0.95, -1.4, 0.35, 0, 0, 0.25),
+    P(box(1.7, 0.7, 0.4), 0, -1.3, -0.6, -0.2),
+  ]));
+  rig.parts.core = add(rig, spine, 'accent', ico(0.55, 1), 0, 0.5, 0.78);
+  add(rig, spine, 'accent', merged('viz.filigree', [
+    P(box(0.12, 1.5, 0.08), 0.5, 0.9, 0.75, 0, 0, -0.2),
+    P(box(0.12, 1.5, 0.08), -0.5, 0.9, 0.75, 0, 0, 0.2),
+    P(box(1.6, 0.1, 0.08), 0, 1.62, 0.66),
+  ]));
+
+  const head = grp(spine, 0, 2.1, 0.12);
+  rig.parts.head = head;
+  crumbles(rig, head);
+  add(rig, head, 'body', merged('viz.helm', [
+    P(cyl(0.46, 0.56, 0.85, 6), 0, 0.05, 0, 0, Math.PI / 6, 0),
+    P(box(1.0, 0.28, 0.7), 0, 0.42, 0.06, -0.22),
+    // Crown points, uneven heights.
+    P(cone(0.14, 0.8, 4), 0, 0.85, -0.05, -0.1),
+    P(cone(0.12, 0.6, 4), 0.34, 0.75, -0.08, -0.15, 0, 0.3),
+    P(cone(0.12, 0.68, 4), -0.34, 0.78, -0.08, -0.15, 0, -0.3),
+  ]));
+  add(rig, head, 'eye', merged('viz.visor', [
+    P(box(0.62, 0.07, 0.07), 0, -0.02, 0.42),
+    P(box(0.08, 0.2, 0.07), 0.2, -0.12, 0.4),
+    P(box(0.08, 0.2, 0.07), -0.2, -0.12, 0.4),
+  ]));
+  rig.parts.beam = [];
+  for (let i = 0; i < 2; i++) {
+    const g = grp(head, 0.2 * (i === 0 ? 1 : -1), -0.02, 0.44);
+    rig.parts.beam.push(beam(rig, g, 0, 0.05));
+  }
+
+  // Tower shield.
+  const shield = grp(spine, 1.55, 1.3, 0.25);
+  rig.parts.shield = shield;
+  add(rig, shield, 'dark', merged('viz.shieldArm', [P(cyl(0.3, 0.26, 1.3, 5), 0, -0.65, 0)]));
+  add(rig, shield, 'body', merged('viz.shield', [
+    P(box(0.3, 3.6, 2.0), 0.62, -0.9, 0.1),
+    P(box(0.18, 3.85, 0.4), 0.74, -0.9, 0.1),
+    P(box(0.18, 0.5, 2.2), 0.74, 0.85, 0.1),
+    P(cone(0.5, 1.0, 4), 0.68, -2.95, 0.1, Math.PI, 0, 0, 1, 1, 2.0),
+    P(ico(0.45, 0), 0.82, -0.9, 0.12, 0, 0, 0, 0.7, 1.2, 1.2),
+  ]));
+  add(rig, shield, 'accent', merged('viz.shieldGlow', [
+    P(box(0.08, 2.6, 0.12), 0.84, -0.9, 0.12),
+    P(box(0.08, 0.12, 1.5), 0.84, -0.9, 0.12),
+  ]));
+  crumbles(rig, shield);
+
+  // Haft: a long pole weapon held low and angled back, so it extends the
+  // silhouette past the shoulder on the unshielded side.
+  const haft = grp(spine, -1.5, 1.35, 0.2);
+  rig.parts.haft = haft;
+  add(rig, haft, 'dark', merged('viz.haft', [
+    P(cyl(0.16, 0.14, 3.6, 5), 0, -1.2, 0, 0.35),
+  ]));
+  add(rig, haft, 'body', merged('viz.blade', [
+    P(box(0.14, 1.5, 0.6), 0, 0.55, -0.5, 0.35),
+    P(cone(0.3, 1.1, 4), 0, 1.3, -0.75, 0.35, 0, 0, 0.5, 1, 1),
+  ]));
+  add(rig, haft, 'accent', merged('viz.edge', [P(box(0.06, 1.3, 0.1), 0.02, 0.55, -0.72, 0.35)]));
+  crumbles(rig, haft);
+
+  rig.parts.hip = [];
+  rig.parts.knee = [];
+  for (let i = 0; i < 2; i++) {
+    const s = i === 0 ? 1 : -1;
+    const hip = grp(spine, 0.7 * s, -1.2, 0);
+    add(rig, hip, 'dark', merged('viz.thigh', [
+      P(cyl(0.5, 0.4, VIZ_L1, 6), 0, -VIZ_L1 * 0.5, 0),
+      P(box(0.6, 0.7, 0.5), 0.02, -0.3, 0.18),
+    ]));
+    const knee = grp(hip, 0, -VIZ_L1, 0);
+    add(rig, knee, 'dark', merged('viz.shin', [
+      P(cyl(0.38, 0.5, VIZ_L2, 6), 0, -VIZ_L2 * 0.5, 0),
+      P(box(0.9, 0.34, 1.35), 0, -VIZ_L2 + 0.12, 0.25),
+      P(box(0.7, 0.22, 0.35), 0, -VIZ_L2 + 0.06, 0.9),
+    ]));
+    add(rig, knee, 'body', merged('viz.knee', [P(ico(0.36, 0), 0, -0.04, 0.22, 0.2, 0.4, 0)]));
+    rig.parts.hip.push(hip);
+    rig.parts.knee.push(knee);
+  }
+
+  makeAura(rig, rig.auraR);
+  rig.animate = animVizier;
+  return rig;
+}
+
+function animVizier(rig, a) {
+  const p = rig.parts;
+  const sp = a.speed;
+  const w = anticipate(a.windup);
+  const rel = a.swing > 0 ? strike(a.swing) : 0;
+  const ch = a.charge;
+  const sunder = a.attack === 'sunder' ? 1 : 0;
+  const edict = a.attack === 'edict' ? 1 : 0;
+  // Phase 1 fights from behind the shield. Every later phase has dropped it.
+  const guard = a.phase > 1 ? 0 : 1;
+
+  p.spine.position.y = VIZ_HIP - w * (sunder * 0.4 + ch * 0.2) - rel * sunder * 0.5
+    + Math.sin(a.stride * 2) * 0.12 * sp;
+  p.spine.position.z = ch * 0.35;
+  p.spine.rotation.x = -w * (sunder * 0.25 + edict * 0.12) + rel * sunder * 0.45 + ch * 0.3;
+  p.spine.rotation.z = Math.sin(a.stride) * 0.09 * sp;
+  // Shoulder turned into the guard while the shield is up, squared off once
+  // it drops — you can read the phase from the stance alone.
+  p.spine.rotation.y = guard * (0.34 - ch * 0.5) + a.lookY * 0.12;
+
+  p.head.rotation.y = a.lookY * 0.55 + a.sweep;
+  p.head.rotation.x = a.pitch * 0.5 - w * edict * 0.2;
+  // Modest swing: it is a 0.55 m emissive sphere on a 6.4 m boss and at 1.65x
+  // it bloomed into a featureless white disc over the chest.
+  p.core.scale.setScalar(1 + (1 - guard) * 0.14 + w * 0.18 + rel * 0.16 + Math.sin(a.t * 2.6) * 0.04);
+
+  // Shield: braced high in phase 1, hanging dead at its side afterwards.
+  p.shield.rotation.x = guard ? (-0.15 - w * (ch ? 0.5 : 0.25) + rel * 0.3) : 0.9;
+  p.shield.rotation.z = guard ? (-0.1 - w * 0.15 - ch * 0.25) : -0.55;
+  p.shield.position.y = 1.3 - (1 - guard) * 0.5;
+
+  // Haft: swings on the sunder, levels into a two-handed guard for the edict.
+  p.haft.rotation.x = edict ? (-0.9 - w * 0.5 + rel * 0.4)
+    : (-0.15 - w * (sunder * 1.9) + rel * sunder * 2.6 + Math.sin(a.stride + Math.PI) * 0.2 * sp);
+  p.haft.rotation.z = 0.1 + w * (edict ? 0.5 : 0.25) - rel * 0.3 + (1 - guard) * 0.2;
+  p.haft.rotation.y = edict ? (0.5 + w * 0.4) : 0;
+
+  for (let i = 0; i < 2; i++) {
+    setBeam(p.beam[i], a.beamLen,
+      a.beamOn ? 0.22 * (a.windup > 0 ? 0.3 + w * 0.6 : 1.5 + Math.sin(a.t * 38) * 0.2) : 0, a.beamOn);
+  }
+
+  if (a.lod > 0) return common(rig, a);
+
+  const stride = 0.6 * sp + 0.06;
+  for (let i = 0; i < 2; i++) {
+    const ph = a.stride + i * Math.PI;
+    solveLeg(p.hip[i], p.knee[i], VIZ_L1, VIZ_L2,
+      stepZ(ph, stride) * sp, -(VIZ_HIP - 1.2) + stepY(ph, 0.36) * sp, 1);
+  }
+  common(rig, a);
+}
+
+// ---------------------------------------------------------------------------
+// VERDANT MAW — a boss that is a hole in the ground. Six petal plates around a
+// toothed throat, ringed by tendrils, rooted into a crater. It never moves, so
+// every bit of its budget went into being enormous and WIDE: the only boss
+// whose silhouette is horizontal.
+// ---------------------------------------------------------------------------
+
+function buildMaw() {
+  const rig = newRig('maw');
+  rig.centerY = 1.6;
+  rig.height = 5.2;
+  rig.auraR = 3.8;
+  rig.shadowR = 3.0;
+
+  // Crater rim: eight buttress roots of uneven size lifting the mouth clear of
+  // the ground so it has a lip rather than being a decal.
+  const rim = grp(rig.pivot, 0, 0, 0);
+  rig.parts.rim = rim;
+  const roots = [P(cyl(2.5, 3.1, 1.0, 10), 0, 0.42, 0)];
+  for (let i = 0; i < 8; i++) {
+    const ang = (i / 8) * Math.PI * 2;
+    const r = 2.6 + (i % 3) * 0.35;
+    const h = 1.1 + (i % 4) * 0.4;
+    roots.push(P(cyl(0.34, 0.62, h, 5), Math.cos(ang) * r, h * 0.4, Math.sin(ang) * r, 0.34, -ang, 0));
+    roots.push(P(ico(0.5 + (i % 3) * 0.14, 0), Math.cos(ang) * (r + 0.6), 0.3, Math.sin(ang) * (r + 0.6),
+      i * 0.4, ang, 0.2));
+  }
+  add(rig, rim, 'dark', merged('maw.rim', roots));
+
+  // The throat: nested tooth rings going down into the lit gullet.
+  const throat = grp(rig.pivot, 0, 0.7, 0);
+  rig.parts.throat = throat;
+  add(rig, throat, 'dark', merged('maw.throat', [
+    P(cyl(1.7, 0.85, 1.5, 10), 0, -0.55, 0),
+    P(ring(1.75, 0.2, 4, 16), 0, 0.15, 0, Math.PI * 0.5),
+    P(ring(1.25, 0.16, 4, 14), 0, -0.55, 0, Math.PI * 0.5),
+  ]));
+  rig.parts.gullet = add(rig, throat, 'accent', ico(0.95, 1), 0, -0.7, 0);
+  const teeth = [];
+  for (let i = 0; i < 12; i++) {
+    const ang = (i / 12) * Math.PI * 2;
+    teeth.push(P(cone(0.16, 0.7, 4), Math.cos(ang) * 1.55, 0.15, Math.sin(ang) * 1.55, 0.5, -ang, 0));
+    if (i % 2 === 0) {
+      teeth.push(P(cone(0.12, 0.5, 4), Math.cos(ang + 0.26) * 1.15, -0.4, Math.sin(ang + 0.26) * 1.15, 0.7, -ang, 0));
+    }
+  }
+  add(rig, throat, 'body', merged('maw.teeth', teeth));
+
+  // Petals. They are the silhouette: six wide plates that open outward as the
+  // fight escalates, so the boss visibly gets *bigger* every phase.
+  rig.parts.petal = [];
+  for (let i = 0; i < 6; i++) {
+    const ang = (i / 6) * Math.PI * 2;
+    const g = grp(rig.pivot, Math.cos(ang) * 1.5, 0.85, Math.sin(ang) * 1.5);
+    g.rotation.y = -ang + Math.PI * 0.5;
+    const long = i % 2 === 0;
+    add(rig, g, 'body', merged(long ? 'maw.petalA' : 'maw.petalB', [
+      P(box(1.5, 0.34, long ? 2.9 : 2.3), 0, long ? 1.35 : 1.05, 0, -0.28),
+      P(cone(0.55, long ? 1.5 : 1.1, 4), 0, long ? 2.8 : 2.2, -0.6, -0.28, 0, 0, 1, 1, 0.5),
+      P(box(0.28, 0.5, long ? 2.6 : 2.0), 0.66, long ? 1.3 : 1.0, 0, -0.28, 0, -0.2),
+      P(box(0.28, 0.5, long ? 2.6 : 2.0), -0.66, long ? 1.3 : 1.0, 0, -0.28, 0, 0.2),
+    ]));
+    add(rig, g, 'accent', merged(long ? 'maw.veinA' : 'maw.veinB', [
+      P(box(0.12, 0.1, long ? 2.4 : 1.9), 0, long ? 1.5 : 1.2, 0.14, -0.28),
+    ]));
+    crumbles(rig, g);
+    rig.parts.petal.push(g);
+  }
+
+  // Tendrils around the rim — the only fast-moving part, so the boss still has
+  // life in it while the petals hold still.
+  rig.parts.tendril = [];
+  for (let i = 0; i < 8; i++) {
+    const ang = (i / 8) * Math.PI * 2 + 0.4;
+    const g = grp(rig.pivot, Math.cos(ang) * 2.3, 0.9, Math.sin(ang) * 2.3);
+    g.rotation.y = -ang;
+    add(rig, g, 'dark', merged('maw.tendril', [
+      P(cyl(0.2, 0.13, 1.2, 5), 0, 0.6, 0, -0.2),
+      P(cyl(0.13, 0.06, 1.1, 5), 0, 1.7, 0.35, -0.55),
+      P(ico(0.12, 0), 0, 2.2, 0.85),
+    ]));
+    rig.parts.tendril.push(g);
+  }
+  add(rig, rig.pivot, 'eye', merged('maw.ocelli', [
+    P(ico(0.16, 0), 1.1, 1.5, 1.9),
+    P(ico(0.16, 0), -1.1, 1.5, 1.9),
+    P(ico(0.12, 0), 1.9, 1.3, -1.3),
+    P(ico(0.12, 0), -1.9, 1.3, -1.3),
+  ]));
+
+  const head = grp(rig.pivot, 0, 1.2, 0);
+  rig.parts.head = head;
+  rig.parts.beam = beam(rig, head, 0, 0.5);
+
+  makeAura(rig, rig.auraR);
+  rig.animate = animMaw;
+  return rig;
+}
+
+function animMaw(rig, a) {
+  const p = rig.parts;
+  const w = anticipate(a.windup);
+  const rel = a.swing > 0 ? strike(a.swing) : 0;
+  // Each phase leaves the flower further open. The boss is literally bigger in
+  // phase 3 than in phase 1, which is the read a stationary fight needs.
+  const bloom = clamp((a.phase - 1) * 0.4, 0, 0.8);
+  const drawing = a.attack === 'draw' ? 1 : 0;
+
+  const breath = Math.sin(a.t * 0.9) * 0.05;
+  p.throat.rotation.y = a.t * 0.12;
+  p.throat.scale.set(1 + breath - w * 0.08, 1 + w * 0.12 + rel * 0.1, 1 + breath - w * 0.08);
+  p.gullet.scale.setScalar(1 + bloom * 0.3 + w * 0.8 + rel * 0.9 + Math.sin(a.t * (2.2 + bloom * 4)) * 0.07);
+
+  for (let i = 0; i < 6; i++) {
+    const g = p.petal[i];
+    // Clamps shut on the wind-up and flings open on the release: a six-petal
+    // iris is a tell that reads from directly overhead as well as side on.
+    const open = bloom + w * -0.35 + rel * 0.9 + drawing * w * 0.5;
+    g.rotation.x = -0.15 - open + Math.sin(a.t * 0.7 + i) * 0.03;
+    g.rotation.z = Math.sin(a.t * 0.55 + i * 1.1) * 0.04;
+  }
+
+  for (let i = 0; i < 8; i++) {
+    const g = p.tendril[i];
+    const lag = a.t * (1.6 + bloom * 1.5) - i * 0.6;
+    g.rotation.x = Math.sin(lag) * 0.3 - w * 0.5 + rel * 0.7;
+    g.rotation.z = Math.cos(lag * 0.8) * 0.28;
+    g.rotation.y = -Math.sin(lag * 0.5) * 0.2;
+    g.scale.y = 1 + w * 0.25 + drawing * 0.3;
+  }
+
+  p.head.rotation.y = a.lookY * 0.5;
+  setBeam(p.beam, a.beamLen, a.beamOn ? 0.9 + Math.sin(a.t * 20) * 0.15 : 0, a.beamOn);
+  common(rig, a);
+}
+
+// ---------------------------------------------------------------------------
 // shared VFX primitives owned by the enemy stack (projectiles / shockwaves)
 // ---------------------------------------------------------------------------
 
@@ -1568,9 +3653,27 @@ export function makeShockwave(color) {
   return m;
 }
 
-/** Flat decal ring that marks where an AoE is about to land. */
+/**
+ * Flat decal ring that marks where an AoE is about to land.
+ *
+ * Unlike projectiles and shockwaves this gets its OWN material instance rather
+ * than the shared `projMat`: a telegraph's opacity is its countdown, and six
+ * shells in the air at different times have to be able to be at six different
+ * points of that countdown. Sharing the material made them all read the fill
+ * level of whichever one updated last. They are pooled by the Director, so the
+ * instance count is bounded by concurrent rings, not by shots fired.
+ */
 export function makeTelegraph(color) {
-  const m = new THREE.Mesh(ring(1, 0.05, 3, 40), projMat(color));
+  const mat = new THREE.MeshBasicMaterial({
+    color, blending: THREE.AdditiveBlending, depthWrite: false,
+    transparent: true, opacity: 0.85, fog: false, side: THREE.DoubleSide,
+  });
+  // Thin tube on purpose. The mesh is scaled uniformly by the telegraph's
+  // radius, so the tube thickness scales with it: at 0.05 a boss nova's 17 m
+  // ring came out as a 0.85 m band of additive light that bloomed into a white
+  // bar across the whole frame. 0.028 keeps a 3 m ring visible and an 18 m one
+  // a line rather than a wall.
+  const m = new THREE.Mesh(ring(1, 0.028, 3, 40), mat);
   m.rotation.x = -Math.PI * 0.5;
   m.frustumCulled = false;
   return m;
@@ -1587,6 +3690,23 @@ const BUILDERS = {
   golem: buildGolem,
   pest: buildPest,
   titan: buildTitan,
+  // Round 5 roster.
+  mite: buildMite,
+  spitling: buildSpitling,
+  harrier: buildHarrier,
+  charger: buildCharger,
+  burrower: buildBurrower,
+  brood: buildBrood,
+  warden: buildWarden,
+  stalker: buildStalker,
+  acolyte: buildAcolyte,
+  mortar: buildMortar,
+  hulk: buildHulk,
+  wyrm: buildWyrm,
+  thunderhead: buildThunderhead,
+  matron: buildMatron,
+  vizier: buildVizier,
+  maw: buildMaw,
 };
 
 /** Every rig the game can build. Drives the boot-time shader prewarm. */
@@ -1635,7 +3755,7 @@ export function makeAnim() {
   return {
     t: 0, state: '', stateT: 0,
     speed: 0, stride: 0,
-    windup: 0, swing: 0, attack: '',
+    windup: 0, swing: 0, attack: '', charge: 0,
     hurt: 0, death: 0, phase: 1,
     pitch: 0, lookY: 0, lean: 0, sweep: 0,
     beamOn: false, beamLen: 0,

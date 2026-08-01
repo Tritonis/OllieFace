@@ -54,6 +54,12 @@ export class Engine {
       // Set to >0 to freeze gameplay for impact frames; presentation keeps running.
       hitstop: 0,
       paused: false,
+      // Which survivor the next `Player.init` will boot. The UI writes this
+      // before the run starts; `Player` publishes `ctx.setSurvivor(id)` for
+      // changing it afterwards. A literal rather than an import from
+      // `data/survivors.js` — the Engine owns no game content, and Player
+      // resolves an unknown id back to the default anyway.
+      survivorId: 'ranger',
       // Filled in by the systems that own them.
       player: null,
       stage: null,

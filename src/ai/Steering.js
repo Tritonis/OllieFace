@@ -66,6 +66,47 @@ export function approachArc(out, agent, target, maxSpeed, standoff, sign, curve,
   return out.set((ux * c - uz * s) * speed, 0, (ux * s + uz * c) * speed);
 }
 
+/**
+ * Hold a standoff band around the target.
+ *
+ * Inside `want - band` it backs straight out, outside `want + band` it closes,
+ * and in between it strafes — so a kiter never stands still and never lets you
+ * walk it down. `arrive` alone cannot express this: it has one stop radius and
+ * no opinion about being *too close*, which is why the mortar used to let a
+ * player jog into its minimum range and stay there.
+ */
+export function keepRange(out, agent, target, maxSpeed, want, band, sign) {
+  _v.set(target.x - agent.position.x, 0, target.z - agent.position.z);
+  const d = _v.length();
+  if (d < 1e-4) return out.set(maxSpeed, 0, 0);
+  const ux = _v.x / d, uz = _v.z / d;
+  if (d < want - band) {
+    // Back off along the sight line, but keep some tangential drift so a
+    // retreating unit arcs rather than reversing in a straight line into a wall.
+    const urgency = clamp((want - band - d) / Math.max(1e-3, want * 0.5), 0.35, 1);
+    return out.set((-ux - uz * sign * 0.6) * maxSpeed * urgency, 0,
+      (-uz + ux * sign * 0.6) * maxSpeed * urgency);
+  }
+  if (d > want + band) {
+    const t = clamp((d - want - band) / 6, 0.4, 1);
+    return out.set(ux * maxSpeed * t, 0, uz * maxSpeed * t);
+  }
+  return out.set(-uz * sign * maxSpeed * 0.7, 0, ux * sign * maxSpeed * 0.7);
+}
+
+/**
+ * Seek where the target is *going*, not where it is.
+ *
+ * Lead time is capped so a fast unit chasing a fast player doesn't aim at a
+ * point on the far side of the arena; `lead` is seconds of prediction.
+ */
+export function pursue(out, agent, target, targetVel, maxSpeed, lead = 0.35) {
+  const dx = target.x - agent.position.x, dz = target.z - agent.position.z;
+  const t = targetVel ? Math.min(lead, Math.hypot(dx, dz) / Math.max(1, maxSpeed)) : 0;
+  _w.set(target.x + (targetVel ? targetVel.x * t : 0), 0, target.z + (targetVel ? targetVel.z * t : 0));
+  return seek(out, agent, _w, maxSpeed);
+}
+
 /** Away from the target — used to back off when a melee unit is inside range. */
 export function flee(out, agent, target, maxSpeed) {
   seek(out, agent, target, maxSpeed);

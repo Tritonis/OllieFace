@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Interactables } from '../world/Interactables.js';
 import { ITEMS_BY_TIER } from '../data/items.js';
 import { BIOMES, stageNameFor } from '../world/Materials.js';
+import { Profile } from './Profile.js';
 
 /**
  * Progression drives the run: which stage we're on, how hard the game is
@@ -10,6 +11,12 @@ import { BIOMES, stageNameFor } from '../world/Materials.js';
  * It owns Interactables rather than main.js registering them, because the
  * interactables' lifetime is exactly one stage and this is the system that
  * knows when a stage ends.
+ *
+ * For the same reason it owns `Profile`: the profile's only lifecycle is "a run
+ * started" / "a run ended", and this is the system that knows both. The profile
+ * costs no frame time (every counter is an event handler, every write is on a
+ * debounce timer), so giving it a slot in the engine's update loop would
+ * advertise a cost it does not have.
  */
 
 // How many stages you can play before a name repeats: four biomes, each with
@@ -74,6 +81,10 @@ export class Progression {
     this.teleporterPosition = null;
 
     this.interactables = new Interactables();
+    // Meta-progression. Per-client and local in co-op — never synced, and
+    // deliberately not gated on `ctx.authority`, or only the host would ever
+    // earn an unlock. See Profile.js for the witness rules that replace it.
+    this.profile = new Profile();
     this.stats = {
       time: 0, kills: 0, elites: 0, bosses: 0,
       damageDealt: 0, damageTaken: 0, highestHit: 0,
@@ -87,6 +98,10 @@ export class Progression {
   init(ctx) {
     this.ctx = ctx;
     this.interactables.init(ctx);
+    // Before our own listeners: the profile's `playerDead` handler records the
+    // outcome, and `_endRun` (registered below) is what commits it. Registering
+    // in this order means the commit already sees the flag.
+    this.profile.init(ctx);
     ctx.progression = this;
 
     ctx.events.on('bossSpawn', () => { this.bossAlive = true; });
@@ -348,10 +363,13 @@ export class Progression {
   _endRun(won) {
     if (this._ended) return;
     this._ended = true;
-    this.ctx.events.emit('runEnd', {
-      won,
-      stats: this.runStats(),
-    });
+    const stats = this.runStats();
+    // Commit to the persistent profile *before* the event, so anything that
+    // renders off `runEnd` (the death screen, and B3's unlock toast) already
+    // sees the committed record, the updated lifetime totals and any unlock the
+    // final challenge pass just granted. `runEnd`'s payload is unchanged.
+    this.profile.commitRun(won, stats);
+    this.ctx.events.emit('runEnd', { won, stats });
   }
 
   /** Snapshot for the death screen. */

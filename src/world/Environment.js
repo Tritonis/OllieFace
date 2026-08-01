@@ -241,8 +241,14 @@ export class Environment {
     set('uGround', S.ground);
     set('uSunColor', S.sun);
     set('uCloud', S.cloud);
+    set('uCeiling', S.ceiling ?? 0x000000);
     this._deriveSkyMid();
     this.skyUniforms.uCloudAmount.value = S.cloudAmount;
+    // The two per-biome atmosphere shape controls. `hazePow` is how tightly the
+    // hot band hugs the horizon; `ceilingAmount` turns the upper dome to rock
+    // and is non-zero for exactly one biome. See SkyShader.
+    this.skyUniforms.uHazePow.value = S.hazePow ?? 9.0;
+    this.skyUniforms.uCeilingAmount.value = S.ceilingAmount ?? 0;
 
     // --- fog ---
     if (scene.fog) {
@@ -281,7 +287,7 @@ export class Environment {
     const uniforms = THREE.UniformsUtils.clone(SkyShader.uniforms);
     // Colour uniforms on a ShaderMaterial are uploaded verbatim, and the whole
     // pipeline works in linear space, so convert once here.
-    for (const k of ['uZenith', 'uHorizon', 'uHaze', 'uGround', 'uSunColor', 'uCloud']) {
+    for (const k of ['uZenith', 'uHorizon', 'uHaze', 'uGround', 'uSunColor', 'uCloud', 'uCeiling']) {
       uniforms[k].value.convertSRGBToLinear();
     }
     uniforms.uSunDir.value.copy(SUN_DIR);
@@ -522,7 +528,9 @@ function fogColor(biome, out = new THREE.Color()) {
   // The band the far terrain actually sits against: horizon amber carrying some
   // of the hot haze that hugs the horizon line.
   out.set(S.horizon).lerp(_c1.set(S.haze), FOG.hazeBlend);
-  out.lerp(_c1.set(biome.fog.color), 1 - FOG.skyBlend);
+  // The blend is per biome where the biome asks for it: a roofed stage has no
+  // horizon band for its distance to converge toward, so it keeps its own hue.
+  out.lerp(_c1.set(biome.fog.color), 1 - (biome.fog.skyBlend ?? FOG.skyBlend));
   return out.multiplyScalar(FOG.value);
 }
 

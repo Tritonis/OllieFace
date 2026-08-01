@@ -23,6 +23,20 @@ export const SkyShader = {
     uCloud: { value: new THREE.Color(0xb9bed8) },
     uTime: { value: 0 },
     uCloudAmount: { value: 0.74 },
+    // How tightly the hot band hugs the horizon line. Low values give the wide
+    // soft glow of a dusty open plain; high values give the hard, narrow strip
+    // a humid overcast canyon has. Per biome — it is one of the two things
+    // (with the fog gradient) that make a sky belong to a place rather than to
+    // a time of day.
+    uHazePow: { value: 9.0 },
+    // The vault. One biome is underground, and a cavern whose upper dome is a
+    // sky gradient is not a cavern. Above ~6 degrees of elevation the dome
+    // becomes rock, the broad atmospheric scatter goes away with the
+    // atmosphere, and the sun survives only as the disc and its tight halo —
+    // which reads as the shaft of daylight the key light already represents.
+    // `uCeilingAmount` is 0 in the three open biomes, so nothing changes there.
+    uCeiling: { value: new THREE.Color(0x000000) },
+    uCeilingAmount: { value: 0 },
   },
   vertexShader: /* glsl */ `
     varying vec3 vDir;
@@ -33,8 +47,8 @@ export const SkyShader = {
   `,
   fragmentShader: /* glsl */ `
     precision highp float;
-    uniform vec3  uSunDir, uZenith, uMid, uHorizon, uHaze, uGround, uSunColor, uCloud;
-    uniform float uTime, uCloudAmount;
+    uniform vec3  uSunDir, uZenith, uMid, uHorizon, uHaze, uGround, uSunColor, uCloud, uCeiling;
+    uniform float uTime, uCloudAmount, uHazePow, uCeilingAmount;
     varying vec3 vDir;
 
     float hash(vec2 p) {
@@ -85,7 +99,7 @@ export const SkyShader = {
       // across it, which puts the colour event where a frame can see it while
       // still leaving a warm strip hugging the horizon for the far terrain to
       // sit against.
-      float haze = exp(-hh * 9.0);
+      float haze = exp(-hh * uHazePow);
       vec3 warm = mix(uHorizon, uHaze, haze * 0.62);
 
       // The zenith weight is capped short of 1.0 on purpose. uZenith is a
@@ -100,12 +114,24 @@ export const SkyShader = {
 
       col = mix(uGround, col, smoothstep(-0.18, 0.012, h));
 
+      // --- vault ceiling ---------------------------------------------------
+      // Applied to the *gradient* and before the sun, so the roof replaces the
+      // sky but the disc still burns through it. The transition starts almost
+      // at the horizon: a cavern with a band of open sky all the way round its
+      // rim is a bowl, not a room.
+      float roof = uCeilingAmount * smoothstep(0.03, 0.30, hh);
+      col = mix(col, uCeiling, roof);
+
       // --- sun disc + three-lobe glow (tight core, halo, broad scatter) -----
       float sd = dot(d, uSunDir);
       float disc = smoothstep(0.9976, 0.9990, sd);
+      // The two wide lobes are atmospheric scatter. Under a roof there is no
+      // atmosphere between the viewer and the source, so they go with it and
+      // the sun collapses to a hard-edged hole in the rock.
+      float wide = 1.0 - uCeilingAmount;
       float glow = pow(max(sd, 0.0), 300.0) * 1.6
-                 + pow(max(sd, 0.0), 14.0) * 0.50
-                 + pow(max(sd, 0.0), 3.0) * 0.13;
+                 + (pow(max(sd, 0.0), 14.0) * 0.50
+                 +  pow(max(sd, 0.0), 3.0) * 0.13) * wide;
       col += uSunColor * (disc * 15.0 + glow);
 
       // --- horizon glow ----------------------------------------------------
@@ -120,7 +146,7 @@ export const SkyShader = {
       // zenith blue from ever measuring as blue. It now hugs the horizon line
       // it exists for.
       float band = exp(-abs(h) * 11.0);
-      col += uSunColor * band * (0.14 + 0.55 * pow(max(dot(fd, fs), 0.0), 2.0));
+      col += uSunColor * band * (0.14 + 0.55 * pow(max(dot(fd, fs), 0.0), 2.0)) * mix(1.0, 0.25, uCeilingAmount);
 
       // --- drifting cloud bands ---
       // Project onto a plane above the viewer; the 1/y term stretches the noise
@@ -132,7 +158,7 @@ export const SkyShader = {
       float cloud = smoothstep(0.44, 0.72, n) * uCloudAmount;
       // Reach much closer to the horizon than before — 0.16 started the deck
       // above the top of every in-game frame, which is why no cloud ever showed.
-      cloud *= smoothstep(0.006, 0.055, h) * (1.0 - smoothstep(0.55, 0.95, h));
+      cloud *= smoothstep(0.006, 0.055, h) * (1.0 - smoothstep(0.55, 0.95, h)) * (1.0 - roof);
 
       // The deck needs internal value contrast or it dissolves into the sky it
       // is mixed over — at 0.70 the cloud colour sat within a few percent of the

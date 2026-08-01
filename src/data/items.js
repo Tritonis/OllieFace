@@ -17,11 +17,24 @@
  * folds in the hit's proc coefficient and any luck (Clover) the player has.
  */
 
+/**
+ * Tier table. `weight` is the *default* pull weight for a generic roll; the
+ * concrete drop tables live in `systems/Items.js` (DROP_TABLES) because which
+ * pool a chest reaches into is a systems decision, not a data one.
+ *
+ * Boss, lunar and equipment all sit at weight 0 on purpose: none of them is
+ * ever reachable from an ordinary chest. Boss items come off a dead boss,
+ * lunar off the lunar pool, equipment off equipment barrels — each names its
+ * pool explicitly, which is what stops a white chest from occasionally handing
+ * out a Lunar drawback the player never opted into.
+ */
 export const TIERS = {
   common: { name: 'Common', colour: 0xd8dde6, css: '#d8dde6', weight: 80 },
   uncommon: { name: 'Uncommon', colour: 0x49d67a, css: '#49d67a', weight: 20 },
   legendary: { name: 'Legendary', colour: 0xf0453f, css: '#f0453f', weight: 1 },
   boss: { name: 'Boss', colour: 0xffd23f, css: '#ffd23f', weight: 0 },
+  lunar: { name: 'Lunar', colour: 0x5fd9f7, css: '#5fd9f7', weight: 0 },
+  equipment: { name: 'Equipment', colour: 0xff9a3c, css: '#ff9a3c', weight: 0 },
 };
 
 /** Chance stacking. k is the first-stack value; the curve never reaches 1. */
@@ -35,7 +48,11 @@ const pct = (v) => `${Math.round(v * 1000) / 10}%`;
 
 // Small shared effect helpers. They all guard cross-system calls and always
 // pass procDepth through so item damage can keep the chain alive but bounded.
-function chainLightning(api, origin, damage, bounces) {
+// Exported because `data/equipment.js` builds its actives out of exactly the
+// same primitives — an equipment nuke that reached for its own copy of these
+// would be the second place proc depth is accounted for, and one of the two
+// would eventually be wrong.
+export function chainLightning(api, origin, damage, bounces) {
   const { combat, player, ctx } = api;
   let from = origin.position || origin;
   let last = origin.entity || origin;
@@ -53,7 +70,7 @@ function chainLightning(api, origin, damage, bounces) {
   }
 }
 
-function seekingStrike(api, from, damage, count, colour, type) {
+export function seekingStrike(api, from, damage, count, colour, type) {
   const { combat, player, ctx } = api;
   const seen = [];
   for (let i = 0; i < count; i++) {
@@ -66,6 +83,48 @@ function seekingStrike(api, from, damage, count, colour, type) {
       procCoefficient: 1, procDepth: api.procDepth,
     });
   }
+}
+
+/**
+ * Everything hostile inside `radius`, copied out of Combat's shared overlap
+ * buffer.
+ *
+ * The copy is the whole point: `_overlap` is one reusable array and any
+ * `applyDamage` inside the loop can trigger a proc that overlaps again and
+ * clobbers it mid-iteration. Half the AoE items in the file were open-coding
+ * this three-line dance; the ones written later are the ones most likely to
+ * have got it wrong.
+ */
+export function nearbyHostiles(api, point, radius) {
+  const n = api.combat.sphereOverlap(point, radius, 'player');
+  const out = [];
+  for (let i = 0; i < n; i++) out.push(api.combat.overlapAt(i));
+  return out;
+}
+
+/**
+ * Self-inflicted cost for the Lunar tier, with a floor.
+ *
+ * The floor is the difference between a trade and a bug. Brittle Edge bills a
+ * fraction of health per critical strike, and at a late-run crit rate that is
+ * several bills a second — uncapped, it walks the survivor down to 1 HP and
+ * parks him there, so the "drawback" stops being a decision and becomes a
+ * permanent state the player cannot act on. Refusing to bill below 30% of
+ * maximum keeps the cost sharp while the bar is full (where it is a real risk)
+ * and silent once it is low (where it would just be a stuck HUD).
+ *
+ * Never lethal, ever. Losing a run to your own item, with no enemy involved and
+ * no way to react, is not a trade — it is the item playing the game for you.
+ */
+const SELF_COST_FLOOR = 0.30;
+function payHealth(api, amount) {
+  const p = api.player;
+  if (!p?.alive || amount <= 0) return 0;
+  const floor = (p.stats?.maxHealth || 100) * SELF_COST_FLOOR;
+  const cost = Math.min(amount, Math.max(0, p.health - floor));
+  if (cost <= 0) return 0;
+  p.health -= cost;
+  return cost;
 }
 
 export const ITEMS = [
@@ -202,6 +261,138 @@ export const ITEMS = [
     },
   },
 
+  {
+    id: 'flint-shard', name: 'Flint Shard', tier: 'common', glyph: 'flint',
+    flavour: 'Chipped to an edge that predates the colony by ten thousand years.',
+    description: (n) => `+${linear(2, n)} base damage.`,
+    stat: (n, s) => { s.damage += linear(2, n); },
+  },
+  {
+    id: 'kevlar-weave', name: 'Kevlar Weave', tier: 'common', glyph: 'weave',
+    flavour: 'Stops most things. "Most" is doing a lot of work in that sentence.',
+    description: (n) => `+${linear(6, n)} armor.`,
+    stat: (n, s) => { s.armor += linear(6, n); },
+  },
+  {
+    id: 'rebreather', name: 'Salvaged Rebreather', tier: 'common', glyph: 'lung',
+    flavour: 'Someone else stopped needing it.',
+    description: (n) => `+${linear(0.7, n)} health regeneration per second.`,
+    stat: (n, s) => { s.healthRegen += linear(0.7, n); },
+  },
+  {
+    id: 'runners-chalk', name: "Runner's Chalk", tier: 'common', glyph: 'chalk',
+    flavour: 'Grip is a stat.',
+    description: (n) => `+${pct(linear(0.05, n))} attack speed and +${pct(linear(0.05, n))} movement speed.`,
+    stat: (n, s) => {
+      s.attackSpeed += linear(0.05, n);
+      s.moveSpeed *= 1 + linear(0.05, n);
+    },
+  },
+  {
+    id: 'spurs', name: 'Bloodied Spurs', tier: 'common', glyph: 'spur',
+    flavour: 'Keep moving. Whatever it was is still behind you.',
+    description: (n) => `Killing an enemy grants +${pct(0.2)} movement speed for ${linear(3, n)}s.`,
+    hooks: {
+      onKill: (e, api) => { api.items.addBuff('quickfoot', linear(3, api.count), 1, 0.2); },
+    },
+  },
+  {
+    id: 'warm-coals', name: 'Warm Coals', tier: 'common', glyph: 'coal',
+    flavour: 'Still glowing. It has been three years.',
+    description: (n) => `${pct(hyperbolic(0.08, n))} chance on hit to ignite for 100% damage over 3s.`,
+    hooks: {
+      onHit: (e, api) => {
+        if (!api.roll(hyperbolic(0.08, api.count))) return;
+        api.combat.applyStatus(e.target, 'burn', api.player, 1);
+      },
+    },
+  },
+  {
+    id: 'copper-wire', name: 'Coil of Copper Wire', tier: 'common', glyph: 'wire',
+    flavour: 'The cheap version of a very expensive idea.',
+    description: (n) => `${pct(hyperbolic(0.05, n))} chance on hit to arc to 1 nearby enemy for ${pct(linear(0.6, n))} damage.`,
+    hooks: {
+      onHit: (e, api) => {
+        if (!api.roll(hyperbolic(0.05, api.count))) return;
+        chainLightning(api, e, api.items.baseDamage() * linear(0.6, api.count), 1);
+      },
+    },
+  },
+  {
+    id: 'glass-marble', name: 'Cracked Marble', tier: 'common', glyph: 'marble',
+    flavour: 'It magnifies. Mostly it magnifies the part that hurts.',
+    description: (n) => `Critical strikes deal +${pct(linear(0.25, n))} damage.`,
+    stat: (n, s) => { s.critMult += linear(0.25, n); },
+  },
+  {
+    id: 'ammo-pouch', name: 'Hollowpoint Pouch', tier: 'common', glyph: 'pouch',
+    flavour: 'Finishing is a separate skill from starting.',
+    description: (n) => `Deal +${pct(linear(0.35, n))} damage to enemies below 25% health.`,
+    hooks: {
+      // The bookend to Crowbar: one pays for opening a fight, this pays for
+      // closing it, so a common-heavy inventory covers the whole health bar
+      // instead of stacking one end of it twice.
+      outgoing: (amount, target, info, api) => {
+        const max = target.maxHealth || 1;
+        return target.health / max < 0.25 ? amount * (1 + linear(0.35, api.count)) : amount;
+      },
+    },
+  },
+  {
+    id: 'field-dressing', name: 'Field Dressing', tier: 'common', glyph: 'dressing',
+    flavour: 'Wrap it. Keep walking.',
+    description: (n) => `After 5s without taking damage, gain a ${linear(12, n)} point barrier every second.`,
+    hooks: {
+      onInterval: (e, api) => {
+        if (api.items.timeSinceHurt() < 5) return;
+        if (!api.items.cooldownReady('field-dressing', 1)) return;
+        api.items.addBarrier(linear(12, api.count));
+      },
+    },
+  },
+  {
+    id: 'salt-lick', name: 'Mineral Lick', tier: 'common', glyph: 'saltcube',
+    flavour: 'Livestock supplement. The label says nothing about people.',
+    description: (n) => `Regenerate ${linear(2.5, n)} health per second while below half health.`,
+    hooks: {
+      onInterval: (e, api) => {
+        const p = api.player;
+        if (!p?.alive || p.health > (p.stats?.maxHealth || 100) * 0.5) return;
+        api.combat.heal(p, linear(2.5, api.count) * e.dt);
+      },
+    },
+  },
+  {
+    id: 'rubber-soles', name: 'Rubber Soles', tier: 'common', glyph: 'sole',
+    flavour: 'Air is the safest place to be.',
+    description: (n) => `Jumping grants a ${linear(10, n)} point barrier.`,
+    hooks: {
+      onJump: (e, api) => { api.items.addBarrier(linear(10, api.count)); },
+    },
+  },
+  {
+    id: 'bandolier', name: 'Scrap Bandolier', tier: 'common', glyph: 'bandolier',
+    flavour: 'Reload is a state of mind.',
+    description: (n) => `${pct(hyperbolic(0.10, n))} chance on kill to slash skill cooldowns by 60% for 3s.`,
+    hooks: {
+      onKill: (e, api) => {
+        if (!api.roll(hyperbolic(0.10, api.count))) return;
+        api.items.addBuff('quickhands', 3, 1, 0.4);
+      },
+    },
+  },
+  {
+    id: 'spark-plug', name: 'Spark Plug', tier: 'common', glyph: 'plug',
+    flavour: 'Removed from something that has not run since the crash.',
+    description: (n) => `${pct(hyperbolic(0.12, n))} chance on kill to zap a nearby enemy for ${pct(linear(1.1, n))} damage.`,
+    hooks: {
+      onKill: (e, api) => {
+        if (!api.roll(hyperbolic(0.12, api.count))) return;
+        seekingStrike(api, e.position, api.items.baseDamage() * linear(1.1, api.count), 1, 0xb9e4ff, 'spark');
+      },
+    },
+  },
+
   // ---------------------------------------------------------------- UNCOMMON
   {
     id: 'ukulele', name: 'Ukulele', tier: 'uncommon', glyph: 'bolt',
@@ -328,10 +519,14 @@ export const ITEMS = [
   {
     id: 'fuel-cell', name: 'Fuel Cell', tier: 'uncommon', glyph: 'cell',
     flavour: 'Charged, sealed, and ready to be abused.',
-    description: (n) => `+${linear(1, n)} equipment charge and ${pct(1 - hyperbolicMult(0.15, n))} cooldown reduction.`,
+    description: (n) => `+${linear(1, n)} equipment charge and ${pct(1 - hyperbolicMult(0.15, n))} equipment cooldown reduction.`,
+    // The one item that pays into the equipment slot's own two dials. It writes
+    // `equipCharges`, not `extraCharges`: the latter is the survivor's skill
+    // charges, and letting one item silently buy both was the difference
+    // between "Fuel Cell is good with equipment" and "Fuel Cell is mandatory".
     stat: (n, s) => {
-      s.extraCharges += linear(1, n);
-      s.cooldownMult *= hyperbolicMult(0.15, n);
+      s.equipCharges += linear(1, n);
+      s.equipCooldownMult *= hyperbolicMult(0.15, n);
     },
   },
   {
@@ -342,6 +537,161 @@ export const ITEMS = [
       onKill: (e, api) => {
         if (!api.items.tallyKillWindow(3, 1.0)) return;
         api.items.addBuff('berzerk', linear(6, api.count), 1, 0.3);
+      },
+    },
+  },
+
+  {
+    id: 'razor-wire', name: 'Razor Wire', tier: 'uncommon', glyph: 'razor',
+    flavour: 'Strung at ankle height by someone who never came back for it.',
+    description: (n) => `Being hurt lashes all enemies within ${6 + linear(2, n)}m for ${pct(linear(1.6, n))} damage.`,
+    hooks: {
+      onDamaged: (e, api) => {
+        if (!api.items.cooldownReady('razor-wire', 0.5)) return;
+        const radius = 6 + linear(2, api.count);
+        for (const t of nearbyHostiles(api, api.player.position, radius)) {
+          api.combat.applyDamage(t, api.items.baseDamage() * linear(1.6, api.count), {
+            source: api.player, position: t.position, type: 'razor',
+            procCoefficient: 0.2, procDepth: api.procDepth,
+          });
+        }
+        api.ctx.vfx?.ring?.(api.player.position, radius, 0xff8fa0);
+      },
+    },
+  },
+  {
+    id: 'squall-charm', name: 'Squall Charm', tier: 'uncommon', glyph: 'squall',
+    flavour: 'The weather owes you a favour.',
+    description: (n) => `${pct(hyperbolic(0.12, n))} chance on hit to cut a wind arc for ${pct(linear(1.8, n))} damage to 4 enemies.`,
+    hooks: {
+      onHit: (e, api) => {
+        if (!api.roll(hyperbolic(0.12, api.count))) return;
+        seekingStrike(api, e.position, api.items.baseDamage() * linear(1.8, api.count), 4, 0xd6f4ff, 'wind');
+      },
+    },
+  },
+  {
+    id: 'ration-pack', name: 'Sealed Ration Pack', tier: 'uncommon', glyph: 'ration',
+    flavour: 'Expiry: illegible. Contents: enthusiastic.',
+    description: (n) => `Killing an enemy heals ${linear(20, n)} health over 4s.`,
+    hooks: {
+      onKill: (e, api) => { api.items.addBuff('mending', 4, 8, linear(5, api.count)); },
+      onInterval: (e, api) => {
+        const b = api.items.buffStacks('mending');
+        if (b <= 0) return;
+        api.combat.heal(api.player, b * api.items.buffMagnitude('mending') * e.dt);
+      },
+    },
+  },
+  {
+    id: 'iron-thorns', name: 'Iron Thornplate', tier: 'uncommon', glyph: 'thorns',
+    flavour: 'Defence that argues back.',
+    description: (n) => `+${linear(14, n)} armor. Reflect ${pct(linear(0.5, n))} of damage taken back at the attacker.`,
+    stat: (n, s) => { s.armor += linear(14, n); },
+    hooks: {
+      onDamaged: (e, api) => {
+        const src = e.source;
+        if (!src?.alive || src.isPlayer) return;
+        api.combat.applyDamage(src, e.amount * linear(0.5, api.count), {
+          source: api.player, position: src.position, type: 'thorns',
+          procCoefficient: 0, procDepth: api.procDepth,
+        });
+      },
+    },
+  },
+  {
+    id: 'updraft-vents', name: 'Updraft Vents', tier: 'uncommon', glyph: 'updraft',
+    flavour: 'Down is optional.',
+    description: (n) => `+${linear(1, n)} jump count and each jump launches you forward ${linear(5, n)} m/s.`,
+    stat: (n, s) => { s.jumpCount += linear(1, n); },
+    hooks: {
+      onJump: (e, api) => { api.items.applyImpulse(linear(5, api.count)); },
+    },
+  },
+  {
+    id: 'hunters-tag', name: "Hunter's Tag", tier: 'uncommon', glyph: 'tag',
+    flavour: 'Marked. Filed. Collected.',
+    description: (n) => `Your first hit marks an enemy for 8s; marked enemies take +${pct(linear(0.18, n))} damage.`,
+    hooks: {
+      // The mark itself is bookkeeping, not a status: Combat's status table is
+      // for things that tick, and a pure damage multiplier that ticks nothing
+      // would pay a full status slot plus its VFX for a number.
+      onHit: (e, api) => { api.items.mark(e.target, 8); },
+      outgoing: (amount, target, info, api) =>
+        (api.items.isMarked(target) ? amount * (1 + linear(0.18, api.count)) : amount),
+    },
+  },
+  {
+    id: 'overcharge-cell', name: 'Overcharge Cell', tier: 'uncommon', glyph: 'overcharge',
+    flavour: 'Rated for one discharge. It has had nine.',
+    description: (n) => `Killing an enemy has a ${pct(hyperbolic(0.20, n))} chance to burst chain lightning through ${3 + linear(1, n)} targets for ${pct(linear(1.4, n))} damage.`,
+    hooks: {
+      onKill: (e, api) => {
+        if (!api.roll(hyperbolic(0.20, api.count))) return;
+        chainLightning(api, e, api.items.baseDamage() * linear(1.4, api.count), 3 + linear(1, api.count));
+        api.ctx.audio?.play?.('zap', e.position);
+      },
+    },
+  },
+  {
+    id: 'frost-lattice', name: 'Frost Lattice', tier: 'uncommon', glyph: 'lattice',
+    flavour: 'It grows back overnight, whatever you do to it.',
+    description: (n) => `${pct(hyperbolic(0.15, n))} chance on hit to chill an enemy, and every 4th chill freezes.`,
+    hooks: {
+      onHit: (e, api) => {
+        if (!api.roll(hyperbolic(0.15, api.count))) return;
+        const deep = api.items.tally('frost-lattice', 4);
+        api.combat.applyStatus(e.target, deep ? 'freeze' : 'slow', api.player, 1);
+      },
+    },
+  },
+  {
+    id: 'scrap-magnet', name: 'Scrap Magnet', tier: 'uncommon', glyph: 'magnet',
+    flavour: 'Everything valuable is ferrous, eventually.',
+    description: (n) => `Killing an enemy pays +${pct(linear(0.30, n))} extra gold.`,
+    hooks: {
+      onKill: (e, api) => {
+        api.items.addGold(api.items.killReward(e.victim) * linear(0.30, api.count));
+      },
+    },
+  },
+  {
+    id: 'battle-hymn', name: 'Battle Hymn', tier: 'uncommon', glyph: 'hymn',
+    flavour: 'Sung once, badly, by a survivor who did not survive.',
+    description: (n) => `Being hurt grants +${pct(linear(0.15, n))} attack speed for 5s, up to 3 stacks.`,
+    hooks: {
+      onDamaged: (e, api) => { api.items.addBuff('frenzy', 5, 3, linear(0.15, api.count)); },
+    },
+  },
+  {
+    id: 'carrion-flies', name: 'Carrion Flies', tier: 'uncommon', glyph: 'flies',
+    flavour: 'They were here before you and they will stay after.',
+    description: (n) => `A swarm orbits you, dealing ${pct(linear(0.5, n))} damage per second within 7m.`,
+    hooks: {
+      onInterval: (e, api) => {
+        const targets = nearbyHostiles(api, api.player.position, 7);
+        if (!targets.length) return;
+        for (const t of targets) {
+          api.combat.applyDamage(t, api.items.baseDamage() * linear(0.5, api.count) * e.dt, {
+            source: api.player, position: t.position, type: 'swarm',
+            procCoefficient: 0, procDepth: api.procDepth,
+          });
+        }
+      },
+    },
+  },
+  {
+    id: 'rebar-launcher', name: 'Rebar Launcher', tier: 'uncommon', glyph: 'rebar',
+    flavour: 'Construction surplus, repurposed enthusiastically.',
+    description: (n) => `${pct(hyperbolic(0.08, n))} chance on hit to nail one enemy for ${pct(linear(5, n))} damage.`,
+    hooks: {
+      onHit: (e, api) => {
+        if (!api.roll(hyperbolic(0.08, api.count))) return;
+        api.ctx.vfx?.beam?.(api.player.position, e.position, 0xd8b06a);
+        api.combat.applyDamage(e.target, api.items.baseDamage() * linear(5, api.count), {
+          source: api.player, position: e.position, type: 'rebar',
+          procCoefficient: 0.4, procDepth: api.procDepth,
+        });
       },
     },
   },
@@ -421,6 +771,135 @@ export const ITEMS = [
     },
   },
 
+  {
+    id: 'star-chart', name: 'Star Chart', tier: 'legendary', glyph: 'chart',
+    flavour: 'Someone plotted every coincidence and found a pattern.',
+    description: (n) => `All of your chance-on-hit effects trigger ${pct(linear(0.30, n))} more often.`,
+    // Lives on the stat block rather than in each item because `Items.roll` is
+    // the single random gate every chance item goes through — putting the bonus
+    // anywhere else would mean 30-odd items each remembering to apply it.
+    stat: (n, s) => { s.procBonus += linear(0.30, n); },
+  },
+  {
+    id: 'resonance-coil', name: 'Resonance Coil', tier: 'legendary', glyph: 'resonance',
+    flavour: 'Every ninth strike is the one the metal remembers.',
+    description: (n) => `Every 8th hit detonates a resonant pulse for ${pct(linear(6, n))} damage in a 7m radius.`,
+    hooks: {
+      onHit: (e, api) => {
+        if (!api.items.tally('resonance-coil', 8)) return;
+        api.combat.explode(e.position, 7, api.items.baseDamage() * linear(6, api.count), api.player, {
+          team: 'player', proc: 0.5, procDepth: api.procDepth, type: 'resonance',
+        });
+      },
+    },
+  },
+  {
+    id: 'chronal-governor', name: 'Chronal Governor', tier: 'legendary', glyph: 'chronal',
+    flavour: 'It does not make you faster. It makes the wait shorter.',
+    description: (n) => `Each kill grants a stacking ${pct(0.05)} cooldown reduction for 8s, up to ${linear(4, n) + 4} stacks.`,
+    hooks: {
+      onKill: (e, api) => { api.items.addBuff('overclock', 8, 4 + linear(4, api.count), 0.05); },
+    },
+  },
+  {
+    id: 'siege-battery', name: 'Siege Battery', tier: 'legendary', glyph: 'battery',
+    flavour: 'Charge is patience with a voltage.',
+    description: (n) => `Every second without taking damage banks +${pct(linear(0.06, n))} damage, up to 10 charges. Losing health spends them all.`,
+    hooks: {
+      onDamaged: (e, api) => { api.items.clearBuff('siege'); },
+      onInterval: (e, api) => {
+        if (api.items.timeSinceHurt() < 1) return;
+        if (!api.items.cooldownReady('siege-battery', 1)) return;
+        api.items.addBuff('siege', 999, 10, linear(0.06, api.count));
+      },
+      outgoing: (amount, target, info, api) =>
+        amount * (1 + api.items.buffStacks('siege') * api.items.buffMagnitude('siege')),
+    },
+  },
+  {
+    id: 'vultures-mantle', name: "Vulture's Mantle", tier: 'legendary', glyph: 'mantle',
+    flavour: 'It only fits once you have earned it, and it never comes off.',
+    description: (n) => `Killing an elite grants +${pct(0.4)} movement speed and a ${linear(80, n)} point barrier for ${linear(8, n)}s.`,
+    hooks: {
+      onKill: (e, api) => {
+        if (!e.victim?.isElite && !e.victim?.isBoss) return;
+        api.items.addBuff('berzerk', linear(8, api.count), 1, 0.4);
+        api.items.addBarrier(linear(80, api.count));
+        api.ctx.vfx?.burst?.(api.player.position, 0xffc46a);
+      },
+    },
+  },
+  {
+    id: 'prism-splinter', name: 'Prism Splinter', tier: 'legendary', glyph: 'prism',
+    flavour: 'One shot went in. Nobody agrees how many came out.',
+    description: (n) => `Critical strikes split into ${2 + linear(2, n)} shards dealing ${pct(linear(1.1, n))} damage each.`,
+    hooks: {
+      onHit: (e, api) => {
+        if (!e.crit) return;
+        seekingStrike(api, e.position, api.items.baseDamage() * linear(1.1, api.count),
+          2 + linear(2, api.count), 0xb98cff, 'prism');
+      },
+    },
+  },
+  {
+    id: 'gravity-well', name: 'Collapsing Well', tier: 'legendary', glyph: 'wellhole',
+    flavour: 'It is not a hole. It is an opinion about where things belong.',
+    description: (n) => `${pct(hyperbolic(0.06, n))} chance on hit to collapse a 12m sphere, dragging enemies in and dealing ${pct(linear(3, n))} damage.`,
+    hooks: {
+      onHit: (e, api) => {
+        if (!api.roll(hyperbolic(0.06, api.count))) return;
+        const at = e.position;
+        // Moving a monster is game state, so this half is host-only even though
+        // the ring and the blast it rides with are not.
+        if (api.ctx.authority) {
+          for (const t of nearbyHostiles(api, at, 12)) {
+            if (t.isBoss) continue;             // bosses are not furniture
+            t.position.lerp(at, 0.55);
+            t.velocity?.set?.(0, 0, 0);
+            api.combat.applyStatus(t, 'slow', api.player, 1);
+          }
+        }
+        api.ctx.vfx?.ring?.(at, 12, 0x9b5cff);
+        api.combat.explode(at, 12, api.items.baseDamage() * linear(3, api.count), api.player, {
+          team: 'player', proc: 0.4, procDepth: api.procDepth, type: 'gravity', falloff: false,
+        });
+      },
+    },
+  },
+  {
+    id: 'warlock-ember', name: 'Warlock Ember', tier: 'legendary', glyph: 'ember',
+    flavour: 'Fire that has learned to look for the next one.',
+    description: (n) => `Enemies killed while burning spread the fire to ${linear(3, n) + 2} enemies for ${pct(linear(2, n))} damage.`,
+    hooks: {
+      onKill: (e, api) => {
+        if (!api.combat.hasStatus(e.victim, 'burn')) return;
+        const targets = nearbyHostiles(api, e.position, 14).slice(0, 2 + linear(3, api.count));
+        for (const t of targets) {
+          api.ctx.vfx?.beam?.(e.position, t.position, 0xff7a2a);
+          api.combat.applyStatus(t, 'burn', api.player, 1);
+          api.combat.applyDamage(t, api.items.baseDamage() * linear(2, api.count), {
+            source: api.player, position: t.position, type: 'fire',
+            procCoefficient: 0.2, procDepth: api.procDepth,
+          });
+        }
+      },
+    },
+  },
+  {
+    id: 'kinetic-recycler', name: 'Kinetic Recycler', tier: 'legendary', glyph: 'recycler',
+    flavour: 'Nothing is wasted. Especially not the parts that hurt.',
+    description: (n) => `Blocking or absorbing a hit refunds a ${linear(60, n)} point barrier and detonates for ${pct(linear(4, n))} damage.`,
+    hooks: {
+      onDamaged: (e, api) => {
+        if (!api.items.cooldownReady('kinetic-recycler', 2)) return;
+        api.items.addBarrier(linear(60, api.count));
+        api.combat.explode(api.player.position, 9, api.items.baseDamage() * linear(4, api.count), api.player, {
+          team: 'player', proc: 0.3, procDepth: api.procDepth, type: 'kinetic',
+        });
+      },
+    },
+  },
+
   // -------------------------------------------------------------------- BOSS
   {
     id: 'titanic-knurl', name: 'Titanic Knurl', tier: 'boss', glyph: 'monolith',
@@ -447,6 +926,149 @@ export const ITEMS = [
       onInterval: (e, api) => {
         if (!api.items.cooldownReady('gland', 10)) return;
         seekingStrike(api, api.player.position, api.items.baseDamage() * 2, linear(3, api.count), 0xd9b8ff, 'swarm');
+      },
+    },
+  },
+  {
+    id: 'sunken-vertebra', name: 'Sunken Vertebra', tier: 'boss', glyph: 'vertebra',
+    flavour: 'Part of a spine that held up something the size of a hill.',
+    description: (n) => `+${linear(20, n)} armor, and being hurt grants a ${linear(30, n)} point barrier.`,
+    stat: (n, s) => { s.armor += linear(20, n); },
+    hooks: {
+      onDamaged: (e, api) => {
+        if (!api.items.cooldownReady('sunken-vertebra', 1)) return;
+        api.items.addBarrier(linear(30, api.count));
+      },
+    },
+  },
+  {
+    id: 'molten-core', name: 'Molten Core', tier: 'boss', glyph: 'moltencore',
+    flavour: 'It has not cooled since the mountain opened.',
+    description: (n) => `Every 6s, erupt for ${pct(linear(4, n))} damage in a 10m radius and ignite everything caught.`,
+    hooks: {
+      onInterval: (e, api) => {
+        if (!api.items.cooldownReady('molten-core', 6)) return;
+        api.combat.explode(api.player.position, 10, api.items.baseDamage() * linear(4, api.count), api.player, {
+          team: 'player', proc: 0.3, procDepth: api.procDepth, type: 'fire', status: 'burn',
+        });
+      },
+    },
+  },
+  {
+    id: 'carapace-plate', name: 'Carapace Plate', tier: 'boss', glyph: 'carapace',
+    flavour: 'Peeled off something that resented losing it.',
+    description: (n) => `Reduce all incoming damage by ${linear(9, n)} and gain +${linear(60, n)} maximum health.`,
+    stat: (n, s) => {
+      s.flatReduction += linear(9, n);
+      s.maxHealth += linear(60, n);
+    },
+  },
+  {
+    id: 'spore-sac', name: 'Spore Sac', tier: 'boss', glyph: 'sporesac',
+    flavour: 'It bursts. Then everything nearby has a very bad week.',
+    description: (n) => `Killing an enemy leaves a spore cloud dealing ${pct(linear(1.2, n))} damage per second for 5s.`,
+    hooks: {
+      onKill: (e, api) => { api.items.addCloud(e.position, 6, 5, linear(1.2, api.count)); },
+    },
+  },
+
+  // ------------------------------------------------------------------- LUNAR
+  //
+  // Every card here is a *trade*, not an upgrade. That is the entire identity of
+  // the tier: a Lunar item with a downside the player can ignore is a green item
+  // wearing a blue frame, and the moment one of these stops being a real
+  // decision the tier stops being interesting. Each drawback below is expressed
+  // in something the player already reads on the HUD — health, regeneration,
+  // armor, block — so the cost is legible the instant it lands rather than
+  // hiding in a spreadsheet.
+  //
+  // Note that the drawbacks are implemented purely through the stat block and
+  // the hook bus, which is deliberate: nothing in Combat or Player needed a
+  // special case for the tier, so "Lunar" is a data label the rest of the game
+  // never has to know about.
+  {
+    id: 'shattered-covenant', name: 'Shattered Covenant', tier: 'lunar', glyph: 'covenant',
+    flavour: 'It offered a bargain. It did not offer to explain it.',
+    description: (n) => `+${pct(linear(0.8, n))} damage. Your maximum health is reduced to ${pct(hyperbolicMult(0.55, n))}.`,
+    // Both halves go through the *Mult accumulators rather than touching
+    // `damage`/`maxHealth` directly. Those two fields are additively built up by
+    // a dozen other items, and a multiplier applied mid-iteration would scale
+    // whichever of them happened to be inserted into the inventory Map first —
+    // i.e. the outcome would depend on the order chests were opened in.
+    stat: (n, s) => {
+      s.damageMult *= 1 + linear(0.8, n);
+      s.healthMult *= hyperbolicMult(0.55, n);
+    },
+  },
+  {
+    id: 'hollow-vow', name: 'Hollow Vow', tier: 'lunar', glyph: 'vow',
+    flavour: 'Swear off the shield and the hand moves quicker.',
+    description: (n) => `+${pct(linear(1.0, n))} attack speed. You can no longer block or reduce flat damage.`,
+    // `noDefensive` is consumed at the end of the stat build, after every other
+    // item has contributed — otherwise the outcome would depend on inventory
+    // iteration order, i.e. on the order chests happened to be opened in.
+    stat: (n, s) => {
+      s.attackSpeed += linear(1.0, n);
+      s.noDefensive = true;
+    },
+  },
+  {
+    id: 'mercury-anklet', name: 'Mercury Anklet', tier: 'lunar', glyph: 'anklet',
+    flavour: 'Quicksilver in the joint. It runs. You follow.',
+    description: (n) => `+${pct(linear(0.5, n))} movement speed and +${linear(1, n)} jump. You take ${pct(2 - 100 / (100 + linear(35, n)))} more damage.`,
+    stat: (n, s) => {
+      s.moveSpeed *= 1 + linear(0.5, n);
+      s.jumpCount += linear(1, n);
+      // Negative armor is already an amplifier in Combat's mitigation curve and
+      // is asymptotic, so no stack count can make the player take infinite
+      // damage — which is what a naive multiplier would eventually do.
+      s.armor -= linear(35, n);
+    },
+  },
+  {
+    id: 'tithe-of-ash', name: 'Tithe of Ash', tier: 'lunar', glyph: 'tithe',
+    flavour: 'Pay in what you were going to lose anyway.',
+    description: (n) => `Kills pay +${pct(linear(2, n))} gold. All of your damage is reduced by ${pct(1 - hyperbolicMult(0.45, n))}.`,
+    stat: (n, s) => { s.damageMult *= hyperbolicMult(0.45, n); },
+    hooks: {
+      onKill: (e, api) => { api.items.addGold(api.items.killReward(e.victim) * linear(2, api.count)); },
+    },
+  },
+  {
+    id: 'corpse-bloom', name: 'Corpse Bloom', tier: 'lunar', glyph: 'bloom',
+    flavour: 'It only flowers where something stopped.',
+    description: (n) => `Killing an enemy heals ${pct(linear(0.08, n))} of maximum health. You no longer regenerate health passively.`,
+    stat: (n, s) => { s.healthRegen = 0; },
+    hooks: {
+      onKill: (e, api) => {
+        const p = api.player;
+        api.combat.heal(p, (p.stats?.maxHealth || 100) * linear(0.08, api.count));
+      },
+    },
+  },
+  {
+    id: 'brittle-edge', name: 'Brittle Edge', tier: 'lunar', glyph: 'brittle',
+    flavour: 'It cuts both ways, and it is honest about which way is which.',
+    description: (n) => `+${pct(hyperbolic(0.45, n))} critical strike chance. Every critical strike costs ${pct(linear(0.03, n))} of your current health, down to 30%.`,
+    stat: (n, s) => { s.critChance = 1 - (1 - s.critChance) * (1 - hyperbolic(0.45, n)); },
+    hooks: {
+      onHit: (e, api) => {
+        if (!e.crit) return;
+        payHealth(api, api.player.health * linear(0.03, api.count));
+      },
+    },
+  },
+  {
+    id: 'gale-reliquary', name: 'Gale Reliquary', tier: 'lunar', glyph: 'reliquary',
+    flavour: 'The saint inside is very fast and very tired.',
+    description: (n) => `Reduce skill cooldowns by ${pct(1 - hyperbolicMult(0.85, n))}. Every skill use costs ${pct(linear(0.04, n))} of your maximum health, down to 30%.`,
+    stat: (n, s) => { s.cooldownMult *= hyperbolicMult(0.85, n); },
+    hooks: {
+      // Fired off the `abilityUsed` bus event rather than a bespoke hook —
+      // Player already announces every cast, and inventing a second channel for
+      // the same fact is how two systems end up disagreeing about it.
+      onAbility: (e, api) => {
+        payHealth(api, (api.player.stats?.maxHealth || 100) * linear(0.04, api.count));
       },
     },
   },
@@ -739,6 +1361,604 @@ export function drawGlyph(g, glyph, r, hue) {
         g.beginPath(); g.arc(i * r * 0.3, -r, r * 0.22, 0, Math.PI * 2); g.fill();
       }
       break;
+    // ------------------------------------------------ round 5 content glyphs
+    //
+    // The constraint every one of these is drawn against: inside a tier the
+    // plate colour is identical, so *shape alone* has to name the item at the
+    // 33px the inventory strip actually renders. That rules out detail — a
+    // glyph is one silhouette plus at most one interior cut, and any two glyphs
+    // in the same tier have to differ in outline, not in ornament. Where a new
+    // item is thematically close to an old one (Warm Coals next to Gasoline,
+    // Frost Lattice next to Runald's Band) the new glyph deliberately takes a
+    // different primitive family rather than a variation on the same one.
+
+    // --- common ---
+    // A struck flake: one long fracture edge, one blunt back.
+    case 'flint':
+      g.beginPath();
+      g.moveTo(-r * 0.9, r * 0.35); g.lineTo(-r * 0.25, -r * 0.95);
+      g.lineTo(r * 0.55, -r * 0.5); g.lineTo(r * 0.9, r * 0.55); g.lineTo(-r * 0.2, r * 0.9);
+      g.closePath(); g.fill(); g.stroke();
+      g.beginPath(); g.moveTo(-r * 0.25, -r * 0.95); g.lineTo(0, r * 0.2); g.stroke(); break;
+    // Basket weave: two interlocking bands. Reads as cloth, not as a grid.
+    case 'weave':
+      for (let i = -1; i <= 1; i++) {
+        g.fillRect(i * r * 0.62 - r * 0.2, -r, r * 0.4, r * 2);
+        g.strokeRect(i * r * 0.62 - r * 0.2, -r, r * 0.4, r * 2);
+      }
+      g.save(); g.strokeStyle = '#0d0f14'; g.lineWidth = Math.max(1, r * 0.16);
+      for (let i = -1; i <= 1; i++) {
+        g.beginPath(); g.moveTo(-r, i * r * 0.62); g.lineTo(r, i * r * 0.62); g.stroke();
+      }
+      g.restore(); break;
+    // Rebreather: mask bowl plus a hose curling off it.
+    case 'lung':
+      g.beginPath(); g.ellipse(-r * 0.15, -r * 0.15, r * 0.72, r * 0.6, 0, 0, Math.PI * 2);
+      g.fill(); g.stroke();
+      g.beginPath();
+      g.moveTo(r * 0.4, r * 0.2);
+      g.quadraticCurveTo(r * 1.0, r * 0.45, r * 0.5, r * 0.95);
+      g.stroke();
+      g.beginPath(); g.arc(r * 0.5, r * 0.95, r * 0.2, 0, Math.PI * 2); g.fill(); g.stroke(); break;
+    // Chalk block with a scuffed trail — two marks, not a shape.
+    case 'chalk':
+      g.beginPath();
+      g.moveTo(-r * 0.55, -r * 0.85); g.lineTo(r * 0.2, -r * 0.85);
+      g.lineTo(r * 0.2, r * 0.1); g.lineTo(-r * 0.55, r * 0.1);
+      g.closePath(); g.fill(); g.stroke();
+      for (let i = 0; i < 3; i++) {
+        g.beginPath(); g.moveTo(-r * 0.5 + i * r * 0.3, r * 0.4);
+        g.lineTo(-r * 0.2 + i * r * 0.3, r * 0.95); g.stroke();
+      }
+      break;
+    // Rowel spur: a star wheel on a curved heel band.
+    case 'spur':
+      g.beginPath(); g.arc(-r * 0.2, 0, r * 0.75, Math.PI * 0.4, Math.PI * 1.6); g.stroke();
+      g.save(); g.translate(r * 0.45, 0);
+      poly(g, 6, r * 0.5, 0, 0.42); g.fill(); g.stroke(); g.restore(); break;
+    // Banked coals: three lumps under a heat shimmer, never a flame lobe.
+    case 'coal':
+      for (const [x, y, rr] of [[-r * 0.5, r * 0.4, r * 0.42], [r * 0.45, r * 0.45, r * 0.36], [0, r * 0.15, r * 0.5]]) {
+        g.beginPath(); g.arc(x, y, rr, 0, Math.PI * 2); g.fill(); g.stroke();
+      }
+      for (let i = -1; i <= 1; i++) {
+        g.beginPath(); g.moveTo(i * r * 0.5, -r * 0.35);
+        g.quadraticCurveTo(i * r * 0.5 + r * 0.28, -r * 0.7, i * r * 0.5, -r * 1.0); g.stroke();
+      }
+      break;
+    // A coil of wire seen from the side: a flat helix, not a spiral disc.
+    case 'wire':
+      g.beginPath();
+      for (let i = 0; i <= 48; i++) {
+        const t = i / 48;
+        const x = -r + t * r * 2;
+        const y = Math.sin(t * Math.PI * 5) * r * 0.65;
+        i === 0 ? g.moveTo(x, y) : g.lineTo(x, y);
+      }
+      g.stroke(); break;
+    // Marble: a sphere with the internal twist and a crack across it.
+    case 'marble':
+      g.beginPath(); g.arc(0, 0, r * 0.88, 0, Math.PI * 2); g.fill(); g.stroke();
+      g.save(); g.strokeStyle = '#0d0f14'; g.lineWidth = Math.max(1, r * 0.16);
+      g.beginPath(); g.moveTo(-r * 0.7, -r * 0.35);
+      g.quadraticCurveTo(0, r * 0.3, r * 0.7, -r * 0.35); g.stroke();
+      g.beginPath(); g.moveTo(-r * 0.2, -r * 0.85); g.lineTo(r * 0.15, r * 0.85); g.stroke();
+      g.restore(); break;
+    // Ammo pouch: a flap-topped satchel with two rounds standing proud.
+    case 'pouch':
+      g.beginPath();
+      g.moveTo(-r * 0.8, -r * 0.15); g.lineTo(r * 0.8, -r * 0.15);
+      g.lineTo(r * 0.62, r * 0.92); g.lineTo(-r * 0.62, r * 0.92);
+      g.closePath(); g.fill(); g.stroke();
+      g.fillRect(-r * 0.88, -r * 0.42, r * 1.76, r * 0.3);
+      g.strokeRect(-r * 0.88, -r * 0.42, r * 1.76, r * 0.3);
+      for (const x of [-r * 0.4, r * 0.4]) {
+        g.beginPath(); g.moveTo(x - r * 0.16, -r * 0.42); g.lineTo(x - r * 0.16, -r * 0.9);
+        g.lineTo(x, -r * 1.1); g.lineTo(x + r * 0.16, -r * 0.9); g.lineTo(x + r * 0.16, -r * 0.42);
+        g.closePath(); g.fill(); g.stroke();
+      }
+      break;
+    // Rolled bandage: a spiral end on a wrapped band.
+    case 'dressing':
+      g.beginPath();
+      g.moveTo(-r * 0.95, -r * 0.5); g.lineTo(r * 0.3, -r * 0.5);
+      g.lineTo(r * 0.3, r * 0.5); g.lineTo(-r * 0.95, r * 0.5);
+      g.closePath(); g.fill(); g.stroke();
+      g.beginPath(); g.arc(r * 0.3, 0, r * 0.5, -Math.PI / 2, Math.PI / 2); g.fill(); g.stroke();
+      g.save(); g.strokeStyle = '#0d0f14'; g.lineWidth = Math.max(1, r * 0.14);
+      g.beginPath(); g.arc(r * 0.3, 0, r * 0.24, 0, Math.PI * 2); g.stroke(); g.restore(); break;
+    // Salt block: a cube in isometric, so it cannot be read as `hex`.
+    case 'saltcube':
+      g.beginPath();
+      g.moveTo(0, -r); g.lineTo(r * 0.92, -r * 0.48); g.lineTo(r * 0.92, r * 0.5);
+      g.lineTo(0, r); g.lineTo(-r * 0.92, r * 0.5); g.lineTo(-r * 0.92, -r * 0.48);
+      g.closePath(); g.fill(); g.stroke();
+      g.beginPath();
+      g.moveTo(-r * 0.92, -r * 0.48); g.lineTo(0, r * 0.03); g.lineTo(r * 0.92, -r * 0.48);
+      g.moveTo(0, r * 0.03); g.lineTo(0, r);
+      g.stroke(); break;
+    // Boot sole: an outline with a tread pattern punched through it.
+    case 'sole':
+      g.beginPath();
+      g.moveTo(-r * 0.42, -r); g.quadraticCurveTo(r * 0.62, -r * 0.75, r * 0.4, r * 0.05);
+      g.quadraticCurveTo(r * 0.62, r * 0.85, -r * 0.1, r);
+      g.quadraticCurveTo(-r * 0.72, r * 0.8, -r * 0.42, -r);
+      g.closePath(); g.fill(); g.stroke();
+      g.save(); g.strokeStyle = '#0d0f14'; g.lineWidth = Math.max(1, r * 0.14);
+      for (let i = 0; i < 4; i++) {
+        g.beginPath(); g.moveTo(-r * 0.42, -r * 0.6 + i * r * 0.44);
+        g.lineTo(r * 0.42, -r * 0.72 + i * r * 0.44); g.stroke();
+      }
+      g.restore(); break;
+    // Bandolier: a diagonal strap carrying loops.
+    case 'bandolier':
+      g.save(); g.rotate(-0.72);
+      g.fillRect(-r * 0.26, -r * 1.15, r * 0.52, r * 2.3);
+      g.strokeRect(-r * 0.26, -r * 1.15, r * 0.52, r * 2.3);
+      g.save(); g.fillStyle = '#0d0f14';
+      for (let i = -2; i <= 2; i++) g.fillRect(-r * 0.2, i * r * 0.44 - r * 0.11, r * 0.4, r * 0.22);
+      g.restore(); g.restore(); break;
+    // Spark plug: hex body, threaded nose, one electrode hook.
+    case 'plug':
+      g.fillRect(-r * 0.3, -r, r * 0.6, r * 0.7);
+      g.strokeRect(-r * 0.3, -r, r * 0.6, r * 0.7);
+      poly(g, 6, r * 0.55, Math.PI / 6); g.fill(); g.stroke();
+      g.fillRect(-r * 0.22, r * 0.45, r * 0.44, r * 0.5);
+      g.strokeRect(-r * 0.22, r * 0.45, r * 0.44, r * 0.5);
+      g.beginPath(); g.moveTo(r * 0.4, r * 0.5); g.lineTo(r * 0.4, r * 0.95); g.lineTo(0, r * 0.95);
+      g.stroke(); break;
+
+    // --- uncommon ---
+    // Barbed wire: a strand with two X barbs.
+    case 'razor':
+      g.beginPath(); g.moveTo(-r, -r * 0.3); g.lineTo(r, r * 0.3); g.stroke();
+      g.beginPath(); g.moveTo(-r, r * 0.3); g.lineTo(r, -r * 0.3); g.stroke();
+      for (const x of [-r * 0.45, r * 0.45]) {
+        g.beginPath();
+        g.moveTo(x - r * 0.3, -r * 0.65); g.lineTo(x + r * 0.3, r * 0.65);
+        g.moveTo(x + r * 0.3, -r * 0.65); g.lineTo(x - r * 0.3, r * 0.65);
+        g.stroke();
+      }
+      break;
+    // Three sweeping wind arcs, open on the right.
+    case 'squall':
+      for (let i = -1; i <= 1; i++) {
+        g.beginPath();
+        g.arc(r * 0.15, i * r * 0.58, r * 0.72 - Math.abs(i) * r * 0.16,
+          Math.PI * 0.15, Math.PI * 1.55);
+        g.stroke();
+      }
+      break;
+    // Ration tin: a can with a peel ring.
+    case 'ration':
+      g.beginPath(); g.ellipse(0, -r * 0.55, r * 0.85, r * 0.28, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+      g.fillRect(-r * 0.85, -r * 0.55, r * 1.7, r * 1.2);
+      g.strokeRect(-r * 0.85, -r * 0.55, r * 1.7, r * 1.2);
+      g.beginPath(); g.ellipse(0, r * 0.65, r * 0.85, r * 0.28, 0, 0, Math.PI); g.stroke();
+      g.save(); g.strokeStyle = '#0d0f14'; g.lineWidth = Math.max(1, r * 0.14);
+      g.beginPath(); g.ellipse(0, -r * 0.55, r * 0.3, r * 0.12, 0, 0, Math.PI * 2); g.stroke();
+      g.restore(); break;
+    // Thornplate: a plate with spikes standing off its top edge.
+    case 'thorns':
+      g.fillRect(-r * 0.9, r * 0.05, r * 1.8, r * 0.8);
+      g.strokeRect(-r * 0.9, r * 0.05, r * 1.8, r * 0.8);
+      for (let i = -2; i <= 2; i++) {
+        g.beginPath();
+        g.moveTo(i * r * 0.4 - r * 0.16, r * 0.05);
+        g.lineTo(i * r * 0.4, -r * 0.95 + Math.abs(i) * r * 0.2);
+        g.lineTo(i * r * 0.4 + r * 0.16, r * 0.05);
+        g.closePath(); g.fill(); g.stroke();
+      }
+      break;
+    // Updraft vent: a louvred grille with an arrow rising out of it.
+    case 'updraft':
+      for (let i = 0; i < 3; i++) {
+        g.fillRect(-r * 0.85, r * 0.25 + i * r * 0.3, r * 1.7, r * 0.16);
+        g.strokeRect(-r * 0.85, r * 0.25 + i * r * 0.3, r * 1.7, r * 0.16);
+      }
+      g.beginPath();
+      g.moveTo(0, -r); g.lineTo(r * 0.5, -r * 0.3); g.lineTo(r * 0.18, -r * 0.3);
+      g.lineTo(r * 0.18, r * 0.1); g.lineTo(-r * 0.18, r * 0.1); g.lineTo(-r * 0.18, -r * 0.3);
+      g.lineTo(-r * 0.5, -r * 0.3);
+      g.closePath(); g.fill(); g.stroke(); break;
+    // Hunter's tag: a punched label on a wire, with a reticle notch.
+    case 'tag':
+      g.beginPath();
+      g.moveTo(-r * 0.85, -r * 0.3); g.lineTo(r * 0.3, -r * 0.85);
+      g.lineTo(r * 0.9, r * 0.35); g.lineTo(-r * 0.25, r * 0.9);
+      g.closePath(); g.fill(); g.stroke();
+      g.save(); g.strokeStyle = '#0d0f14'; g.lineWidth = Math.max(1, r * 0.16);
+      g.beginPath(); g.arc(-r * 0.4, -r * 0.24, r * 0.2, 0, Math.PI * 2); g.stroke();
+      g.restore();
+      g.beginPath(); g.moveTo(-r * 0.4, -r * 0.24); g.lineTo(-r * 1.1, -r * 0.85); g.stroke(); break;
+    // Overcharge cell: a battery whose terminals are throwing an arc across.
+    case 'overcharge':
+      g.fillRect(-r * 0.62, -r * 0.55, r * 1.24, r * 1.45);
+      g.strokeRect(-r * 0.62, -r * 0.55, r * 1.24, r * 1.45);
+      for (const x of [-r * 0.34, r * 0.34]) {
+        g.fillRect(x - r * 0.12, -r * 0.8, r * 0.24, r * 0.28);
+        g.strokeRect(x - r * 0.12, -r * 0.8, r * 0.24, r * 0.28);
+      }
+      g.beginPath();
+      g.moveTo(-r * 0.34, -r * 0.82); g.lineTo(-r * 0.05, -r * 1.02);
+      g.lineTo(r * 0.08, -r * 0.86); g.lineTo(r * 0.34, -r * 1.06);
+      g.stroke(); break;
+    // Frost lattice: a rectilinear crystal grid — never the radial `snowflake`.
+    case 'lattice':
+      for (let i = -1; i <= 1; i++) {
+        g.beginPath(); g.moveTo(i * r * 0.55, -r); g.lineTo(i * r * 0.55, r); g.stroke();
+        g.beginPath(); g.moveTo(-r, i * r * 0.55); g.lineTo(r, i * r * 0.55); g.stroke();
+      }
+      // Nodes on three of the four crossings, not all four: an asymmetric set
+      // reads as a growing crystal, a symmetric one reads as a window frame.
+      for (const [x, y] of [[-r * 0.55, -r * 0.55], [r * 0.55, r * 0.55], [r * 0.55, -r * 0.55]]) {
+        g.save(); g.translate(x, y); poly(g, 4, r * 0.22, Math.PI / 4); g.fill(); g.stroke(); g.restore();
+      }
+      break;
+    // Horseshoe magnet, poles down. The one glyph in the tier with a gap in it.
+    case 'magnet':
+      g.lineWidth = Math.max(2, r * 0.42);
+      g.beginPath(); g.arc(0, r * 0.1, r * 0.62, Math.PI, 0); g.stroke();
+      g.lineWidth = Math.max(1.5, r * 0.16);
+      for (const x of [-r * 0.62, r * 0.62]) {
+        g.beginPath(); g.moveTo(x, r * 0.1); g.lineTo(x, r * 0.85); g.stroke();
+        g.beginPath(); g.arc(x, r * 0.9, r * 0.2, 0, Math.PI * 2); g.fill(); g.stroke();
+      }
+      break;
+    // Battle hymn: a horn with three sound bars leaving the bell.
+    case 'hymn':
+      g.beginPath();
+      g.moveTo(-r * 0.9, -r * 0.15); g.lineTo(-r * 0.2, -r * 0.15);
+      g.lineTo(r * 0.35, -r * 0.85); g.lineTo(r * 0.35, r * 0.55);
+      g.lineTo(-r * 0.2, -r * 0.15 + r * 0.5); g.lineTo(-r * 0.9, r * 0.35);
+      g.closePath(); g.fill(); g.stroke();
+      for (let i = 1; i <= 3; i++) {
+        g.beginPath(); g.arc(r * 0.35, -r * 0.15, r * 0.24 * i + r * 0.3,
+          -Math.PI * 0.42, Math.PI * 0.42); g.stroke();
+      }
+      break;
+    // Fly swarm: three winged bodies at different scales.
+    case 'flies':
+      for (const [x, y, s] of [[-r * 0.45, -r * 0.35, 1], [r * 0.5, r * 0.1, 0.75], [-r * 0.1, r * 0.62, 0.6]]) {
+        g.save(); g.translate(x, y); g.scale(s, s);
+        g.beginPath(); g.ellipse(0, 0, r * 0.2, r * 0.32, 0.3, 0, Math.PI * 2); g.fill(); g.stroke();
+        g.beginPath(); g.ellipse(-r * 0.34, -r * 0.2, r * 0.3, r * 0.13, -0.5, 0, Math.PI * 2); g.fill();
+        g.beginPath(); g.ellipse(r * 0.34, -r * 0.2, r * 0.3, r * 0.13, 0.5, 0, Math.PI * 2); g.fill();
+        g.restore();
+      }
+      break;
+    // Rebar: a ribbed rod on the diagonal with a chisel point.
+    case 'rebar':
+      g.save(); g.rotate(-0.72);
+      g.beginPath();
+      g.moveTo(-r * 0.2, r * 1.05); g.lineTo(r * 0.2, r * 1.05);
+      g.lineTo(r * 0.2, -r * 0.75); g.lineTo(0, -r * 1.15); g.lineTo(-r * 0.2, -r * 0.75);
+      g.closePath(); g.fill(); g.stroke();
+      g.save(); g.strokeStyle = '#0d0f14'; g.lineWidth = Math.max(1, r * 0.14);
+      for (let i = -2; i <= 2; i++) {
+        g.beginPath(); g.moveTo(-r * 0.2, i * r * 0.38); g.lineTo(r * 0.2, i * r * 0.38 - r * 0.16); g.stroke();
+      }
+      g.restore(); g.restore(); break;
+
+    // --- legendary ---
+    // Star chart: plotted nodes joined into a constellation.
+    case 'chart':
+      {
+        const pts = [[-r * 0.75, -r * 0.5], [-r * 0.1, -r * 0.85], [r * 0.55, -r * 0.3],
+          [r * 0.3, r * 0.55], [-r * 0.5, r * 0.7]];
+        g.beginPath();
+        pts.forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])));
+        g.stroke();
+        for (const [x, y] of pts) { g.beginPath(); g.arc(x, y, r * 0.16, 0, Math.PI * 2); g.fill(); g.stroke(); }
+      }
+      break;
+    // Resonance coil: concentric rings with a struck core — a pulse, not a nova.
+    case 'resonance':
+      for (let i = 1; i <= 3; i++) {
+        g.beginPath(); g.arc(0, 0, r * (0.34 + i * 0.24), Math.PI * 0.1, Math.PI * 1.5); g.stroke();
+      }
+      g.beginPath(); g.arc(0, 0, r * 0.3, 0, Math.PI * 2); g.fill(); g.stroke(); break;
+    // Chronal governor: an escapement — a gear sector with one hand.
+    case 'chronal':
+      poly(g, 12, r * 0.9, 0, 0.78); g.fill(); g.stroke();
+      g.save(); g.fillStyle = '#0d0f14';
+      g.beginPath(); g.arc(0, 0, r * 0.5, 0, Math.PI * 2); g.fill(); g.restore();
+      g.beginPath(); g.moveTo(0, 0); g.lineTo(0, -r * 0.45);
+      g.moveTo(0, 0); g.lineTo(r * 0.34, r * 0.14); g.stroke(); break;
+    // Siege battery: a charge stack — bars filling from the bottom.
+    case 'battery':
+      g.strokeRect(-r * 0.6, -r * 0.85, r * 1.2, r * 1.7);
+      g.fillRect(-r * 0.22, -r * 1.08, r * 0.44, r * 0.24);
+      for (let i = 0; i < 3; i++) {
+        g.fillRect(-r * 0.44, r * 0.55 - i * r * 0.44, r * 0.88, r * 0.28);
+      }
+      break;
+    // Vulture's mantle: a hooded collar with two folded wing lines.
+    case 'mantle':
+      g.beginPath();
+      g.moveTo(0, -r); g.quadraticCurveTo(r * 1.05, -r * 0.5, r * 0.85, r * 0.85);
+      g.lineTo(r * 0.25, r * 0.3); g.lineTo(-r * 0.25, r * 0.3); g.lineTo(-r * 0.85, r * 0.85);
+      g.quadraticCurveTo(-r * 1.05, -r * 0.5, 0, -r);
+      g.closePath(); g.fill(); g.stroke();
+      g.save(); g.strokeStyle = '#0d0f14'; g.lineWidth = Math.max(1, r * 0.14);
+      g.beginPath(); g.moveTo(-r * 0.45, -r * 0.35); g.lineTo(-r * 0.6, r * 0.55);
+      g.moveTo(r * 0.45, -r * 0.35); g.lineTo(r * 0.6, r * 0.55); g.stroke();
+      g.restore(); break;
+    // Prism splinter: an incoming line refracting into three.
+    case 'prism':
+      poly(g, 3, r * 0.75, -Math.PI / 2); g.fill(); g.stroke();
+      g.beginPath(); g.moveTo(-r * 1.05, r * 0.1); g.lineTo(-r * 0.3, r * 0.1); g.stroke();
+      for (let i = -1; i <= 1; i++) {
+        g.beginPath(); g.moveTo(r * 0.3, r * 0.1); g.lineTo(r * 1.1, r * 0.1 + i * r * 0.5); g.stroke();
+      }
+      break;
+    // Collapsing well: an event horizon with infalling streaks.
+    case 'wellhole':
+      g.beginPath(); g.arc(0, 0, r * 0.42, 0, Math.PI * 2); g.fill();
+      g.beginPath(); g.arc(0, 0, r * 0.62, 0, Math.PI * 2); g.stroke();
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2 + 0.3;
+        g.beginPath();
+        g.moveTo(Math.cos(a) * r * 1.15, Math.sin(a) * r * 1.15);
+        g.quadraticCurveTo(Math.cos(a + 0.5) * r * 0.9, Math.sin(a + 0.5) * r * 0.9,
+          Math.cos(a + 0.9) * r * 0.68, Math.sin(a + 0.9) * r * 0.68);
+        g.stroke();
+      }
+      break;
+    // Warlock ember: a floating mote trailing two sparks that leave it.
+    case 'ember':
+      g.beginPath(); poly(g, 4, r * 0.5, Math.PI / 4, 0.4); g.fill(); g.stroke();
+      for (const [dx, dy] of [[r * 0.85, -r * 0.6], [-r * 0.8, -r * 0.35], [r * 0.4, r * 0.9]]) {
+        g.beginPath(); g.moveTo(dx * 0.35, dy * 0.35); g.lineTo(dx, dy); g.stroke();
+        g.beginPath(); g.arc(dx, dy, r * 0.17, 0, Math.PI * 2); g.fill(); g.stroke();
+      }
+      break;
+    // Kinetic recycler: two arrows chasing each other round a square.
+    case 'recycler':
+      for (let k = 0; k < 2; k++) {
+        g.save(); g.rotate(k * Math.PI);
+        g.beginPath(); g.arc(0, 0, r * 0.7, Math.PI * 0.1, Math.PI * 0.85); g.stroke();
+        g.save();
+        g.translate(Math.cos(Math.PI * 0.85) * r * 0.7, Math.sin(Math.PI * 0.85) * r * 0.7);
+        g.rotate(Math.PI * 0.35);
+        poly(g, 3, r * 0.3, -Math.PI / 2); g.fill(); g.stroke();
+        g.restore(); g.restore();
+      }
+      break;
+
+    // --- boss ---
+    // Vertebra: a centrum with two transverse processes and a neural spine.
+    case 'vertebra':
+      g.beginPath(); g.ellipse(0, r * 0.3, r * 0.55, r * 0.42, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+      for (const sx of [-1, 1]) {
+        g.beginPath();
+        g.moveTo(sx * r * 0.4, r * 0.15); g.lineTo(sx * r * 1.05, -r * 0.15);
+        g.lineTo(sx * r * 0.95, r * 0.3); g.lineTo(sx * r * 0.35, r * 0.5);
+        g.closePath(); g.fill(); g.stroke();
+      }
+      g.beginPath();
+      g.moveTo(-r * 0.24, -r * 0.05); g.lineTo(0, -r * 1.05); g.lineTo(r * 0.24, -r * 0.05);
+      g.closePath(); g.fill(); g.stroke(); break;
+    // Molten core: a cracked shell with the heat showing through the fissures.
+    case 'moltencore':
+      g.beginPath(); g.arc(0, 0, r * 0.95, 0, Math.PI * 2); g.fill(); g.stroke();
+      g.save(); g.strokeStyle = '#0d0f14'; g.lineWidth = Math.max(1.5, r * 0.2);
+      g.beginPath();
+      g.moveTo(-r * 0.95, -r * 0.2); g.lineTo(-r * 0.2, -r * 0.05); g.lineTo(-r * 0.35, r * 0.9);
+      g.moveTo(-r * 0.2, -r * 0.05); g.lineTo(r * 0.5, -r * 0.75);
+      g.moveTo(-r * 0.2, -r * 0.05); g.lineTo(r * 0.85, r * 0.5);
+      g.stroke(); g.restore(); break;
+    // Carapace plate: an overlapping chitin scale with a ridged keel.
+    case 'carapace':
+      g.beginPath();
+      g.moveTo(0, -r); g.quadraticCurveTo(r * 1.0, -r * 0.5, r * 0.78, r * 0.9);
+      g.quadraticCurveTo(0, r * 0.55, -r * 0.78, r * 0.9);
+      g.quadraticCurveTo(-r * 1.0, -r * 0.5, 0, -r);
+      g.closePath(); g.fill(); g.stroke();
+      g.save(); g.strokeStyle = '#0d0f14'; g.lineWidth = Math.max(1, r * 0.15);
+      for (let i = 1; i <= 3; i++) {
+        g.beginPath();
+        g.moveTo(-r * (0.9 - i * 0.12), -r * 0.5 + i * r * 0.36);
+        g.quadraticCurveTo(0, -r * 0.85 + i * r * 0.36, r * (0.9 - i * 0.12), -r * 0.5 + i * r * 0.36);
+        g.stroke();
+      }
+      g.restore(); break;
+    // Spore sac: a bulging pod venting three puffs.
+    case 'sporesac':
+      g.beginPath();
+      g.moveTo(0, r); g.quadraticCurveTo(r * 0.95, r * 0.35, r * 0.5, -r * 0.4);
+      g.quadraticCurveTo(0, -r * 0.75, -r * 0.5, -r * 0.4);
+      g.quadraticCurveTo(-r * 0.95, r * 0.35, 0, r);
+      g.closePath(); g.fill(); g.stroke();
+      for (const [x, y, rr] of [[0, -r * 0.95, r * 0.2], [-r * 0.62, -r * 0.72, r * 0.14], [r * 0.6, -r * 0.68, r * 0.16]]) {
+        g.beginPath(); g.arc(x, y, rr, 0, Math.PI * 2); g.fill(); g.stroke();
+      }
+      break;
+
+    // --- lunar ---
+    // Lunar glyphs are all *broken* or *paired* forms on purpose: the tier's
+    // whole read is "this costs you something", and a split silhouette says that
+    // before the tooltip does.
+    case 'covenant':
+      g.beginPath();
+      g.moveTo(-r * 0.1, -r); g.lineTo(-r * 0.85, -r * 0.1); g.lineTo(-r * 0.3, r * 0.15);
+      g.lineTo(-r * 0.7, r); g.lineTo(0, r * 0.25);
+      g.closePath(); g.fill(); g.stroke();
+      g.beginPath();
+      g.moveTo(r * 0.2, -r * 0.95); g.lineTo(r * 0.9, -r * 0.05); g.lineTo(r * 0.35, r * 0.2);
+      g.lineTo(r * 0.8, r * 0.98); g.lineTo(r * 0.12, r * 0.28);
+      g.closePath(); g.fill(); g.stroke(); break;
+    // Hollow Vow: an open ring with a sealed lower lip — a shield with no face.
+    case 'vow':
+      g.beginPath(); g.arc(0, 0, r * 0.82, Math.PI * 0.18, Math.PI * 0.82, true); g.stroke();
+      g.beginPath();
+      g.moveTo(-r * 0.78, r * 0.25); g.lineTo(r * 0.78, r * 0.25);
+      g.lineTo(0, r * 1.05);
+      g.closePath(); g.fill(); g.stroke();
+      g.beginPath(); g.moveTo(-r * 0.5, -r * 0.75); g.lineTo(r * 0.5, -r * 0.2); g.stroke(); break;
+    // Mercury Anklet: a cuff with a bead of liquid metal running out of it.
+    case 'anklet':
+      g.lineWidth = Math.max(2, r * 0.3);
+      g.beginPath(); g.arc(0, -r * 0.2, r * 0.68, Math.PI * 0.2, Math.PI * 0.8, true); g.stroke();
+      g.lineWidth = Math.max(1.5, r * 0.16);
+      g.beginPath(); g.arc(-r * 0.2, r * 0.62, r * 0.3, 0, Math.PI * 2); g.fill(); g.stroke();
+      g.beginPath(); g.arc(r * 0.55, r * 0.85, r * 0.16, 0, Math.PI * 2); g.fill(); g.stroke(); break;
+    // Tithe of Ash: a coin dissolving into ash from one edge.
+    case 'tithe':
+      g.beginPath(); g.arc(0, 0, r * 0.8, Math.PI * 0.6, Math.PI * 2.4); g.fill(); g.stroke();
+      for (let i = 0; i < 5; i++) {
+        const a = Math.PI * 0.62 + i * 0.34;
+        const d = r * (1.0 + i * 0.06);
+        g.save(); g.translate(Math.cos(a) * d, Math.sin(a) * d); g.rotate(a);
+        poly(g, 4, r * (0.2 - i * 0.025), 0); g.fill(); g.restore();
+      }
+      break;
+    // Corpse Bloom: a flower opening out of a rib.
+    case 'bloom':
+      for (let i = 0; i < 5; i++) {
+        g.save(); g.rotate((i / 5) * Math.PI * 2);
+        g.beginPath(); g.moveTo(0, -r * 0.2);
+        g.quadraticCurveTo(r * 0.42, -r * 0.75, 0, -r * 1.0);
+        g.quadraticCurveTo(-r * 0.42, -r * 0.75, 0, -r * 0.2);
+        g.fill(); g.stroke(); g.restore();
+      }
+      g.save(); g.fillStyle = '#0d0f14';
+      g.beginPath(); g.arc(0, 0, r * 0.26, 0, Math.PI * 2); g.fill(); g.restore(); break;
+    // Brittle Edge: a blade snapped mid-length, the tip drifting free.
+    case 'brittle':
+      g.beginPath();
+      g.moveTo(-r * 0.35, r); g.lineTo(-r * 0.05, r * 0.95);
+      g.lineTo(r * 0.2, -r * 0.05); g.lineTo(-r * 0.3, r * 0.1);
+      g.closePath(); g.fill(); g.stroke();
+      g.save(); g.translate(r * 0.32, -r * 0.32); g.rotate(0.42);
+      g.beginPath();
+      g.moveTo(-r * 0.28, r * 0.3); g.lineTo(r * 0.05, r * 0.2);
+      g.lineTo(r * 0.3, -r * 0.7); g.lineTo(-r * 0.18, -r * 0.45);
+      g.closePath(); g.fill(); g.stroke(); g.restore(); break;
+    // Gale Reliquary: a sealed casket with wind streaming past it.
+    case 'reliquary':
+      g.beginPath();
+      g.moveTo(-r * 0.45, -r * 0.65); g.lineTo(r * 0.45, -r * 0.65);
+      g.lineTo(r * 0.6, r * 0.85); g.lineTo(-r * 0.6, r * 0.85);
+      g.closePath(); g.fill(); g.stroke();
+      g.beginPath(); g.moveTo(-r * 0.45, -r * 0.65); g.lineTo(0, -r * 1.05);
+      g.lineTo(r * 0.45, -r * 0.65); g.stroke();
+      for (let i = -1; i <= 1; i++) {
+        g.beginPath(); g.moveTo(-r * 1.15, i * r * 0.42 + r * 0.05);
+        g.lineTo(-r * 0.7, i * r * 0.42 + r * 0.05); g.stroke();
+      }
+      break;
+
+    // --- equipment ---
+    // Equipment glyphs are the only ones that never share a family with an item
+    // glyph: the Q slot is a different kind of object and has to read as one
+    // even before its orange plate is noticed.
+    case 'blink':
+      g.beginPath();
+      g.moveTo(-r * 0.95, -r * 0.15); g.lineTo(-r * 0.2, -r * 0.15); g.lineTo(-r * 0.45, -r * 0.8);
+      g.lineTo(r * 0.4, r * 0.1); g.lineTo(-r * 0.15, r * 0.1); g.lineTo(r * 0.2, r * 0.9);
+      g.closePath(); g.fill(); g.stroke();
+      g.beginPath(); g.arc(r * 0.72, -r * 0.62, r * 0.2, 0, Math.PI * 2); g.fill(); break;
+    case 'flare':
+      g.beginPath(); g.arc(0, 0, r * 0.42, 0, Math.PI * 2); g.fill(); g.stroke();
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2;
+        g.beginPath();
+        g.moveTo(Math.cos(a) * r * 0.6, Math.sin(a) * r * 0.6);
+        g.lineTo(Math.cos(a) * r * 1.1, Math.sin(a) * r * 1.1); g.stroke();
+      }
+      g.save(); g.fillStyle = '#0d0f14';
+      g.fillRect(-r * 0.06, -r * 0.26, r * 0.12, r * 0.52);
+      g.fillRect(-r * 0.26, -r * 0.06, r * 0.52, r * 0.12); g.restore(); break;
+    case 'lance':
+      g.beginPath();
+      g.moveTo(0, -r * 1.05); g.lineTo(r * 0.3, -r * 0.2); g.lineTo(r * 0.16, r * 0.85);
+      g.lineTo(-r * 0.16, r * 0.85); g.lineTo(-r * 0.3, -r * 0.2);
+      g.closePath(); g.fill(); g.stroke();
+      for (const sx of [-1, 1]) {
+        g.beginPath(); g.moveTo(sx * r * 0.42, -r * 0.35); g.lineTo(sx * r * 0.95, r * 0.55); g.stroke();
+      }
+      break;
+    case 'snare':
+      g.beginPath(); g.arc(0, 0, r * 0.3, 0, Math.PI * 2); g.fill(); g.stroke();
+      for (let i = 0; i < 4; i++) {
+        const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+        g.save(); g.rotate(a); g.translate(0, -r * 0.95);
+        poly(g, 3, r * 0.3, Math.PI / 2); g.fill(); g.stroke(); g.restore();
+      }
+      g.beginPath(); g.arc(0, 0, r * 0.66, 0, Math.PI * 2); g.stroke(); break;
+    case 'drone':
+      g.beginPath();
+      g.moveTo(0, -r * 0.55); g.lineTo(r * 0.55, 0); g.lineTo(0, r * 0.55); g.lineTo(-r * 0.55, 0);
+      g.closePath(); g.fill(); g.stroke();
+      for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+        g.beginPath(); g.moveTo(sx * r * 0.3, sy * r * 0.3); g.lineTo(sx * r * 0.85, sy * r * 0.85); g.stroke();
+        g.beginPath(); g.ellipse(sx * r * 0.95, sy * r * 0.95, r * 0.26, r * 0.1, 0, 0, Math.PI * 2); g.fill();
+      }
+      break;
+    case 'overload':
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2;
+        const rr = i % 2 ? r * 1.15 : r * 0.8;
+        g.beginPath(); g.moveTo(Math.cos(a) * r * 0.42, Math.sin(a) * r * 0.42);
+        g.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); g.stroke();
+      }
+      poly(g, 6, r * 0.42, Math.PI / 6); g.fill(); g.stroke(); break;
+    case 'canister':
+      g.beginPath(); g.ellipse(0, -r * 0.62, r * 0.5, r * 0.2, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+      g.fillRect(-r * 0.5, -r * 0.62, r * 1.0, r * 1.3);
+      g.strokeRect(-r * 0.5, -r * 0.62, r * 1.0, r * 1.3);
+      g.beginPath(); g.ellipse(0, r * 0.68, r * 0.5, r * 0.2, 0, 0, Math.PI); g.stroke();
+      g.fillRect(-r * 0.16, -r * 0.95, r * 0.32, r * 0.34);
+      for (let i = -1; i <= 1; i++) {
+        g.beginPath(); g.moveTo(i * r * 0.3, -r * 0.2); g.lineTo(i * r * 0.3, r * 0.35); g.stroke();
+      }
+      break;
+    case 'stim':
+      g.save(); g.rotate(-0.68);
+      g.fillRect(-r * 0.24, -r * 0.75, r * 0.48, r * 1.2);
+      g.strokeRect(-r * 0.24, -r * 0.75, r * 0.48, r * 1.2);
+      g.fillRect(-r * 0.42, -r * 0.95, r * 0.84, r * 0.22);
+      g.beginPath(); g.moveTo(-r * 0.1, r * 0.45); g.lineTo(r * 0.1, r * 0.45);
+      g.lineTo(0, r * 1.15); g.closePath(); g.fill(); g.stroke();
+      g.restore(); break;
+    case 'veil':
+      g.beginPath();
+      g.moveTo(0, -r); g.quadraticCurveTo(r * 0.95, -r * 0.45, r * 0.7, r * 0.9);
+      g.quadraticCurveTo(0, r * 0.55, -r * 0.7, r * 0.9);
+      g.quadraticCurveTo(-r * 0.95, -r * 0.45, 0, -r);
+      g.closePath(); g.stroke();
+      g.save(); g.globalAlpha = 0.5; g.fill(); g.restore();
+      for (let i = -1; i <= 1; i++) {
+        g.beginPath(); g.moveTo(-r * 0.7, i * r * 0.44); g.lineTo(r * 0.7, i * r * 0.44 - r * 0.18); g.stroke();
+      }
+      break;
+    case 'lantern':
+      g.beginPath(); g.arc(0, -r * 0.85, r * 0.28, Math.PI, 0); g.stroke();
+      g.beginPath();
+      g.moveTo(-r * 0.55, -r * 0.5); g.lineTo(r * 0.55, -r * 0.5);
+      g.lineTo(r * 0.72, r * 0.9); g.lineTo(-r * 0.72, r * 0.9);
+      g.closePath(); g.fill(); g.stroke();
+      g.save(); g.fillStyle = '#0d0f14';
+      g.beginPath(); g.ellipse(0, r * 0.2, r * 0.3, r * 0.42, 0, 0, Math.PI * 2); g.fill(); g.restore(); break;
+    case 'meteor':
+      g.beginPath();
+      g.moveTo(r * 0.15, r * 0.15); g.lineTo(r * 1.1, -r * 0.8);
+      g.lineTo(r * 0.55, -r * 0.95); g.lineTo(-r * 0.1, -r * 0.1);
+      g.closePath(); g.fill();
+      g.beginPath(); g.arc(-r * 0.35, r * 0.35, r * 0.5, 0, Math.PI * 2); g.fill(); g.stroke();
+      g.save(); g.fillStyle = '#0d0f14';
+      g.beginPath(); g.arc(-r * 0.5, r * 0.2, r * 0.14, 0, Math.PI * 2); g.fill();
+      g.beginPath(); g.arc(-r * 0.15, r * 0.55, r * 0.1, 0, Math.PI * 2); g.fill(); g.restore(); break;
+    case 'crown':
+      g.beginPath();
+      g.moveTo(-r * 0.95, r * 0.55); g.lineTo(-r * 0.8, -r * 0.6);
+      g.lineTo(-r * 0.35, r * 0.02); g.lineTo(0, -r * 0.95);
+      g.lineTo(r * 0.35, r * 0.02); g.lineTo(r * 0.8, -r * 0.6); g.lineTo(r * 0.95, r * 0.55);
+      g.closePath(); g.fill(); g.stroke();
+      g.fillRect(-r * 0.95, r * 0.58, r * 1.9, r * 0.3);
+      g.strokeRect(-r * 0.95, r * 0.58, r * 1.9, r * 0.3); break;
+
     default: poly(g, 4, r, 0); g.fill(); g.stroke();
   }
 }

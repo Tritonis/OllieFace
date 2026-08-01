@@ -120,6 +120,7 @@ export class Stage {
 
     this.stageIndex = 0;
     this.biome = null;
+    this.landmarks = [];
     this.stageName = '';
     this.terrain = null;
     this.props = null;
@@ -167,6 +168,10 @@ export class Stage {
       new RNG(stageSeed(ctx.seed, stageIndex, SALT_PROPS)), this.terrain, biome, stageIndex);
     this.propsGroup = this.props.build();
     ctx.scene.add(this.propsGroup);
+    // The kit's 2-3 hand-authored structures, as `{ kind, x, y, z, r }`. Read
+    // by Interactables so chests and the teleporter are sited against something
+    // the player can navigate by rather than sprinkled over the basin.
+    this.landmarks = this.props.landmarks;
 
     this.grid = new ColliderGrid(STAGE_HALF, CELL);
     this.platforms = [];
@@ -231,6 +236,7 @@ export class Stage {
     this.propsGroup = null;
     this.propTargets = [];
     this.platforms = [];
+    this.landmarks = [];
     this.grid = null;
   }
 

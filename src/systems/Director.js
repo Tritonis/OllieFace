@@ -22,9 +22,9 @@
 import * as THREE from 'three';
 import { Enemy } from '../entities/Enemy.js';
 import {
-  SPAWN_CARDS, BOSS_CARDS, TIER_UNLOCK, ELITE_AFFIXES, ELITE_STATS,
+  SPAWN_CARDS, BOSS_CARDS, ENEMY_BY_ID, TIER_UNLOCK, ELITE_STATS, eliteAffixesFor,
 } from '../data/enemies.js';
-import { prewarm, makeProjectile, makeShockwave } from '../entities/EnemyMeshes.js';
+import { prewarm, makeProjectile, makeShockwave, makeTelegraph } from '../entities/EnemyMeshes.js';
 import { clamp, lerp } from '../core/MathUtil.js';
 
 const DIFFICULTY_SCALE = 2.0;   // Rainstorm
@@ -90,6 +90,19 @@ export class Director {
     this.projectiles = new Projectiles();
     this.waves = new Waves();
     this.trails = new Trails();
+    this.telegraphs = new Telegraphs();
+
+    // Withering elites nullify healing while they have you. The lock lives here
+    // rather than in Combat because the director is the one system that already
+    // knows what is on the field — see `denyHealing`.
+    this.healDenyUntil = -1;
+    this._healCap = null;
+    // Bosses are drawn without replacement so a run does not show the same one
+    // three stages running.
+    this._bossBag = [];
+    // Reused damage-info for the warded reflect, so a barrier under sustained
+    // fire allocates nothing.
+    this._reflect = { source: null, position: null, procCoefficient: 0, type: 'reflect' };
 
     this._frustum = new THREE.Frustum();
     this._sphere = new THREE.Sphere(new THREE.Vector3(), 7);
@@ -102,8 +115,18 @@ export class Director {
     this.ctx = ctx;
 
     // Warm the mesh pools so the first contact doesn't hitch on geometry work.
+    // Weighted by how many of each the director can actually have standing at
+    // once, not by how interesting they are: warming one of every card would
+    // cost the boot frame far more than it saves, and the heavies arrive one at
+    // a time minutes later with plenty of frames to build in.
+    // Every spawn card gets at least a couple of rigs: geometry is cached
+    // globally so the second rig of a species is only an Object3D tree, and the
+    // alternative is paying for it on the frame the unit walks into the fight.
+    for (const c of SPAWN_CARDS) prewarm(c.meshFactory, c.tier === 1 ? 4 : 2);
+    prewarm('mite', 14);
     prewarm('beetle', 12);
     prewarm('lemurian', 8);
+    prewarm('spitling', 6);
     prewarm('wisp', 5);
     prewarm('pest', 5);
     prewarm('golem', 3);
@@ -111,6 +134,7 @@ export class Director {
     this.projectiles.init(ctx);
     this.waves.init(ctx);
     this.trails.init(ctx);
+    this.telegraphs.init(ctx);
 
     ctx.events.on('teleporterCharging', () => {
       if (!this.eventActive) this.beginTeleporterEvent(ctx);
@@ -124,6 +148,27 @@ export class Director {
       this.clear(ctx);
     });
     ctx.events.on('playerDead', () => { this.enabled = false; });
+
+    // Warded elites pay damage back out of their barrier.
+    //
+    // This has to hang off the `damage` event rather than off `Enemy.takeDamage`
+    // because Combat drains the shield pool first and only calls `takeDamage`
+    // with whatever is left over — so while the barrier is up (which is the
+    // entire window the reflect is supposed to exist in) `takeDamage` is never
+    // reached. The event carries the full post-armour figure, which is the
+    // number the player just saw on screen, so the reflect is proportional to
+    // the hit they actually landed.
+    ctx.events.on('damage', (e) => {
+      if (!ctx.authority || !e || !e.source?.isPlayer) return;
+      const t = e.target;
+      const em = t?.elite;
+      if (!em || !em.reflect || !t.alive || t.shield <= 0) return;
+      const p = ctx.player;
+      if (!p || !p.alive) return;
+      this._reflect.source = t;
+      this._reflect.position = t.position;
+      this.ctx.combat?.applyDamage?.(p, e.amount * em.reflect, this._reflect);
+    });
 
     this.updateDifficulty(ctx);
     this.card = SPAWN_CARDS[0];
@@ -231,6 +276,7 @@ export class Director {
 
     this.projectiles.fixedUpdate(ctx, h);
     this.waves.fixedUpdate(ctx, h);
+    this.enforceHealDenial(ctx);
 
     if (!this.enabled || !ctx.player) return;
 
@@ -258,6 +304,41 @@ export class Director {
     this.projectiles.update(ctx, dt);
     this.waves.update(ctx, dt);
     this.trails.update(ctx, dt);
+    this.telegraphs.update(ctx, dt);
+  }
+
+  // -------------------------------------------------------------------------
+  // healing denial (Withering elites)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Lock the player's healing for `seconds`. Called by any withering elite that
+   * currently has line of sight, so overlapping elites just keep it topped up.
+   */
+  denyHealing(seconds) {
+    const t = (this.ctx?.time ?? 0) + (seconds || 2);
+    if (t > this.healDenyUntil) this.healDenyUntil = t;
+  }
+
+  /** Read by the HUD to show the debuff. Cosmetic — safe on clients too. */
+  get healingDenied() { return (this.ctx?.time ?? 0) < this.healDenyUntil; }
+
+  /**
+   * Enforce the lock.
+   *
+   * Combat.heal is the single heal path and it has no notion of a debuff, so
+   * rather than reaching into it this holds a running ceiling on the player's
+   * health while the lock is up: damage lowers the ceiling, healing cannot
+   * raise it. Net effect is exactly RoR2's Malachite — every heal source in the
+   * game is nullified at once, including ones written after this code — and it
+   * costs one comparison per fixed step when no withering elite is alive.
+   */
+  enforceHealDenial(ctx) {
+    if (!this.healingDenied) { this._healCap = null; return; }
+    const p = ctx.player;
+    if (!p || !p.alive) { this._healCap = null; return; }
+    if (this._healCap == null || p.health < this._healCap) this._healCap = p.health;
+    else if (p.health > this._healCap) p.health = this._healCap;
   }
 
   // -------------------------------------------------------------------------
@@ -265,51 +346,127 @@ export class Director {
   // -------------------------------------------------------------------------
 
   /**
-   * Re-roll the wave's monster. Biased hard toward the most expensive card the
-   * bank can currently afford, with a small chance of something cheaper so
-   * waves aren't monotone.
+   * Re-roll the wave's monster.
+   *
+   * Biased toward expensive cards, but nowhere near as hard as it used to be.
+   * With five spawn cards, "70% of the time, buy the priciest thing you can
+   * afford" produced a readable escalation. With sixteen it produced a run
+   * where every wave past eighteen minutes was Slag Hulks and nothing else —
+   * measured at 53% of all rolls — because the top card wins every roll the
+   * moment the bank clears its price.
+   *
+   * So: the top-card shortcut is a minority case, the fallback is weighted by
+   * sqrt(cost) rather than cost (which halves the spread between a 4-credit
+   * mite and a 46-credit hulk), and every card carries a `selectionWeight`
+   * rarity so the units that are meant to be an event stay an event. Chaff
+   * therefore keeps arriving at minute twenty-five, which is exactly what RoR2
+   * does and what stops the late game being six identical heavies.
    */
   rollCard(ctx) {
     const d = this.difficultyCoefficient;
     let best = null;
-    const affordable = [];
+    const pool = [];
     for (const c of SPAWN_CARDS) {
       if (d < (TIER_UNLOCK[c.tier] || 0)) continue;
-      if (c.cost > this.credits) continue;
-      affordable.push(c);
-      if (!best || c.cost > best.cost) best = c;
+      if (this.countAlive(c) >= (c.maxAlive || 99)) continue;
+      pool.push(c);
+      if (c.cost <= this.credits && (!best || c.cost > best.cost)) best = c;
     }
-    if (!affordable.length) {
-      // Nothing affordable yet: keep saving toward the cheapest unlocked card.
-      let cheap = SPAWN_CARDS[0];
-      for (const c of SPAWN_CARDS) {
-        if (d < (TIER_UNLOCK[c.tier] || 0)) continue;
-        if (c.cost < cheap.cost) cheap = c;
-      }
-      return cheap;
+    if (!pool.length) return this.card || SPAWN_CARDS[0];
+    if (best && ctx.rng.next() < 0.3) return best;
+    // The pool is NOT filtered to what the bank can afford, and that is the
+    // whole point. `spendCredits` empties the bank on a 1-2.6 s timer, so a
+    // director that only ever considered affordable cards had a bank that never
+    // exceeded a few credits and could not reach a 34-credit bombard, let alone
+    // a 46-credit hulk — measured over a 45 s window at minute 22, the entire
+    // field was mites and beetles. Selecting something it cannot yet afford is
+    // how it saves: the spend is skipped and the bank grows until the card lands.
+    //
+    // `reach` keeps that from becoming a stall. A card at four times the bank is
+    // still reachable but a quarter as likely, so the director saves toward the
+    // heavies without ever parking on one for half a minute.
+    return ctx.rng.weighted(pool, (c) => {
+      const reach = clamp(this.credits / c.cost, 0, 1);
+      return (c.selectionWeight ?? 1) * Math.sqrt(c.cost) * (0.22 + 0.78 * reach);
+    });
+  }
+
+  /** How many of this card are currently standing. */
+  countAlive(card) {
+    let n = 0;
+    const list = this.enemies;
+    for (let i = 0; i < list.length; i++) {
+      if (list[i].alive && list[i].def === card) n++;
     }
-    if (ctx.rng.next() < 0.7) return best;
-    return ctx.rng.weighted(affordable, (c) => c.cost);
+    return n;
+  }
+
+  /**
+   * A random affordable card with room on the field, or null.
+   *
+   * A card the bank can cover right now, used as filler while it saves toward
+   * something expensive: a director that goes silent for fifteen seconds every
+   * time it selects a hulk reads as broken, however correct the saving is.
+   */
+  fillerCard(ctx, budget) {
+    const d = this.difficultyCoefficient;
+    const pool = [];
+    for (const c of SPAWN_CARDS) {
+      if (d < (TIER_UNLOCK[c.tier] || 0)) continue;
+      if (c.cost > budget) continue;
+      if (this.countAlive(c) >= (c.maxAlive || 99)) continue;
+      pool.push(c);
+    }
+    if (!pool.length) return null;
+    // Weighted, not cheapest. Always taking the cheapest option turned the
+    // filler into a second mite tap that ran on every single interval, which is
+    // the exact monoculture the saving behaviour exists to break.
+    return ctx.rng.weighted(pool, (c) => (c.selectionWeight ?? 1) * Math.sqrt(c.cost));
   }
 
   /** Buy and place one group. */
   spendCredits(ctx) {
-    const card = this.card;
+    let card = this.card;
     if (!card) return;
     const cap = this.populationCap;
     if (this.enemies.length >= cap) return;
+    // Per-card ceiling. Without it the cheapest card wins every spend until the
+    // population cap is full of it, and the other fifteen cards never appear no
+    // matter what the roll says.
+    let room = (card.maxAlive || 99) - this.countAlive(card);
+    if (room <= 0) { this.card = card = this.rollCard(ctx); room = (card.maxAlive || 99) - this.countAlive(card); }
 
-    // Elites cost 4-5x, so they arrive as small, expensive groups. If the bank
+    // Saving toward a card the bank cannot cover yet. Rather than spending
+    // nothing, put HALF the bank into the cheapest thing available and keep
+    // saving with the rest: the arena stays populated on the way up to the
+    // heavy, and the heavy still arrives.
+    let budget = this.credits;
+    if (card.cost > this.credits || room <= 0) {
+      // Only some of the intervals spent saving buy filler at all — otherwise
+      // the filler tap runs continuously and out-produces the card the director
+      // is actually saving for.
+      if (ctx.rng.next() > 0.45) return;
+      const filler = this.fillerCard(ctx, this.credits * 0.5);
+      if (!filler) return;
+      card = filler;
+      room = (card.maxAlive || 99) - this.countAlive(card);
+      if (room <= 0) return;
+      budget = this.credits * 0.5;
+    }
+
+    // Elites cost 4-7x, so they arrive as small, expensive groups. If the bank
     // can't cover one, quietly downgrade to a normal pack rather than stalling.
+    // The affix pool widens with the run: tier-2 affixes simply do not exist
+    // until the difficulty coefficient says the run has earned them.
     let eliteAffix = ctx.rng.next() < this.eliteChance && card.eliteEligible
-      ? ctx.rng.pick(ELITE_AFFIXES)
+      ? ctx.rng.pick(eliteAffixesFor(this.difficultyCoefficient))
       : null;
     let unit = card.cost * (eliteAffix ? ELITE_STATS[eliteAffix].cost : 1);
-    if (this.credits < unit) {
+    if (budget < unit) {
       if (!eliteAffix) return;
       eliteAffix = null;
       unit = card.cost;
-      if (this.credits < unit) return;
+      if (budget < unit) return;
     }
 
     // Partial packs are deliberate. Holding the bank until a whole pack was
@@ -318,8 +475,8 @@ export class Director {
     // a short interval gives a thin, continuous trickle in the opening minute,
     // and once the credit rate outgrows the card the same code buys whole packs
     // on its own, so the escalation shape is unchanged.
-    const affordable = Math.floor(this.credits / unit);
-    const want = Math.min(affordable, eliteAffix
+    const affordable = Math.floor(budget / unit);
+    const want = Math.min(affordable, room, eliteAffix
       ? ctx.rng.int(1, Math.max(1, Math.ceil(card.packMax * 0.5)))
       : ctx.rng.int(card.packMin, card.packMax));
     const anchor = this.findSpawnPoint(ctx);
@@ -351,6 +508,31 @@ export class Director {
     });
     this.enemies.push(e);
     return e;
+  }
+
+  /**
+   * Spawn one add on behalf of a monster (brood sacs, the matron's clutch).
+   *
+   * Summons are free — the summoner already paid for itself — but they are
+   * still counted against the population cap, so an un-answered brood sac
+   * crowds the field with mites instead of adding an unbounded second horde on
+   * top of the director's own budget. Returns false once the cap is reached,
+   * which is the caller's signal to stop hatching.
+   */
+  summon(ctx, id, at, source) {
+    if (!ctx.authority) return false;
+    const def = ENEMY_BY_ID.get(id);
+    if (!def || this.enemies.length >= this.populationCap) return false;
+    const e = this.spawnOne(ctx, def, at, null);
+    // Summons inherit their parent's affix nothing and their parent's level
+    // everything: a mite hatched at minute 25 has to be a minute-25 mite.
+    if (source) e.home.copy(source.position);
+    return true;
+  }
+
+  /** Ground ring that marks where something is about to land. */
+  spawnTelegraph(x, z, radius, life, color) {
+    this.telegraphs.spawn(x, z, radius, life, color);
   }
 
   /**
@@ -416,10 +598,30 @@ export class Director {
    * and the level scaling read, so it is accepted for the call signature and
    * not re-derived from here.
    */
+  /**
+   * Which boss this event gets.
+   *
+   * Drawn from a shuffled bag rather than indexed by stage: with six cards, a
+   * straight `stageIndex % length` means every run meets them in the same order
+   * and a five-stage run never sees the last one at all. The bag guarantees no
+   * repeat until every boss has been used, which is the property that actually
+   * matters — meeting the same boss twice in a row reads as a bug.
+   */
+  pickBossCard(ctx) {
+    if (!this._bossBag.length) {
+      this._bossBag = BOSS_CARDS.slice();
+      for (let i = this._bossBag.length - 1; i > 0; i--) {
+        const j = ctx.rng.int(0, i);
+        const t = this._bossBag[i]; this._bossBag[i] = this._bossBag[j]; this._bossBag[j] = t;
+      }
+    }
+    return this._bossBag.pop();
+  }
+
   spawnBoss(stageIndex = 0, difficulty = this.difficultyCoefficient, position = null) {
     const ctx = this.ctx;
     if (!ctx || !ctx.authority || this.boss) return null;
-    const card = BOSS_CARDS[stageIndex % BOSS_CARDS.length];
+    const card = this.pickBossCard(ctx);
     if (!card) return null;
 
     // Ring the teleporter rather than landing on it: the boss has to be walked
@@ -432,7 +634,7 @@ export class Director {
     if (typeof ground === 'number' && isFinite(ground)) at.y = ground;
 
     const affix = ctx.rng.next() < clamp(this.eliteChance * 1.5, 0, 0.6)
-      ? ctx.rng.pick(ELITE_AFFIXES) : null;
+      ? ctx.rng.pick(eliteAffixesFor(this.difficultyCoefficient)) : null;
     const boss = this.spawnOne(ctx, card, at, affix);
     boss.isBoss = true;
     this.boss = boss;
@@ -450,12 +652,13 @@ export class Director {
     // The event pays for itself: an instant bank so pressure lands immediately.
     this.credits += 40 * this.difficultyCoefficient;
 
-    const card = BOSS_CARDS[0];
-    if (!card || this.boss) return;
+    if (this.boss) return;
+    const card = this.pickBossCard(ctx);
+    if (!card) return;
     const at = this.findSpawnPoint(ctx) || this._scratch.set(
       (ctx.player?.position.x || 0) + 18, 0, (ctx.player?.position.z || 0) + 18);
     const affix = ctx.rng.next() < clamp(this.eliteChance * 1.5, 0, 0.6)
-      ? ctx.rng.pick(ELITE_AFFIXES) : null;
+      ? ctx.rng.pick(eliteAffixesFor(this.difficultyCoefficient)) : null;
     const boss = this.spawnOne(ctx, card, at, affix);
     boss.isBoss = true;
     this.boss = boss;
@@ -501,6 +704,10 @@ export class Director {
     this.projectiles.clear();
     this.waves.clear();
     this.trails.clear();
+    this.telegraphs.clear();
+    // Nothing withering is alive any more, so the heal lock goes with them.
+    this.healDenyUntil = -1;
+    this._healCap = null;
     this.boss = null;
   }
 
@@ -638,6 +845,9 @@ class Projectiles {
       const dy = p.pos.y - (player.position.y + 0.9);
       if (dx * dx + dy * dy + dz * dz < reach * reach && owner) {
         damagePlayer(ctx, player, dmg, owner, p.pos, 'projectile');
+        // Riders travel with the shell, not with the shooter — bile slows, a
+        // pyre burns, and the player learns which shell is which by colour.
+        if (d.status) ctx.combat?.applyStatus?.(player, d.status, owner, 1);
         ctx.pipeline?.addShake?.(0.05);
       }
     }
@@ -737,6 +947,71 @@ class Waves {
     w.source = null;
     this.list.splice(i, 1);
     this.pool.push(w);
+  }
+
+  clear() { for (let i = this.list.length - 1; i >= 0; i--) this.recycle(i); }
+}
+
+// ---------------------------------------------------------------------------
+// ground telegraphs — "this circle is about to be a hole"
+// ---------------------------------------------------------------------------
+//
+// Every attack that cannot be dodged by aim (mortar shells, novas, the
+// burrower's surfacing point) puts one of these down for exactly as long as the
+// player has to leave it. They are drawn on the ground rather than in the air
+// deliberately: the decision the ring is asking for is "where do I stand", and
+// that decision is made by looking at the floor.
+//
+// Pooled by colour the same way waves are, so a bombard walking six shells
+// across the arena allocates nothing.
+
+class Telegraphs {
+  constructor() { this.list = []; this.pool = []; this.meshPool = new Map(); }
+  init(ctx) { this.ctx = ctx; }
+
+  spawn(x, z, radius, life, color) {
+    if (radius <= 0 || life <= 0) return;
+    const ctx = this.ctx;
+    const t = this.pool.length ? this.pool.pop()
+      : { x: 0, z: 0, r: 0, life: 0, max: 0, mesh: null, color: 0 };
+    t.x = x; t.z = z; t.r = radius;
+    t.life = life; t.max = life;
+    t.color = color || 0xffa514;
+    let mp = this.meshPool.get(t.color);
+    if (!mp) { mp = []; this.meshPool.set(t.color, mp); }
+    t.mesh = mp.length ? mp.pop() : makeTelegraph(t.color);
+    const y = ctx.stage?.sampleHeight?.(x, z);
+    t.mesh.position.set(x, (Number.isFinite(y) ? y : 0) + 0.08, z);
+    t.mesh.scale.setScalar(radius);
+    t.mesh.material.opacity = 0.85;
+    ctx.scene.add(t.mesh);
+    this.list.push(t);
+  }
+
+  update(ctx, dt) {
+    for (let i = this.list.length - 1; i >= 0; i--) {
+      const t = this.list[i];
+      t.life -= dt;
+      if (t.life <= 0) { this.recycle(i); continue; }
+      // Fills in as the deadline approaches and pulses harder in the last
+      // third — the urgency has to be visible without reading a number.
+      const k = 1 - clamp(t.life / t.max, 0, 1);
+      const flash = k > 0.66 ? 0.5 + 0.5 * Math.sin(t.life * 42) : 0;
+      t.mesh.scale.setScalar(t.r * (0.55 + 0.45 * k));
+      // Ceiling well under 1: these are additive and they go through bloom, and
+      // a full-alpha ring at boss scale is a white bar, not a warning.
+      t.mesh.material.opacity = clamp(0.2 + k * 0.3 + flash * 0.16, 0, 0.62);
+    }
+  }
+
+  recycle(i) {
+    const t = this.list[i];
+    this.ctx.scene.remove(t.mesh);
+    const mp = this.meshPool.get(t.color);
+    if (mp) mp.push(t.mesh); else this.meshPool.set(t.color, [t.mesh]);
+    t.mesh = null;
+    this.list.splice(i, 1);
+    this.pool.push(t);
   }
 
   clear() { for (let i = this.list.length - 1; i >= 0; i--) this.recycle(i); }

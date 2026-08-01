@@ -16,6 +16,16 @@ export const S = {
   RECOVER: 'recover',
   STAGGER: 'stagger',
   DIE: 'die',
+  // Committed straight-line dash. Separate from ATTACK because the unit is
+  // steering itself (badly, on purpose) rather than standing still swinging.
+  CHARGE: 'charge',
+  // Under the terrain: untouchable, unshootable, and closing. The surfacing
+  // eruption is a normal WINDUP/ATTACK pair on the other side of it.
+  SUBMERGED: 'submerged',
+  // Support units park here while their heal channel runs; they hold position
+  // on an ally rather than on the player, which is what makes them read as
+  // something other than a shy shooter.
+  TEND: 'tend',
 };
 
 export class StateMachine {

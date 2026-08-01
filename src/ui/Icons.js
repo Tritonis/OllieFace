@@ -9,6 +9,21 @@
 // glyph itself so it stays legible down to 32px.
 
 import { ITEM_BY_ID, drawGlyph } from '../data/items.js';
+import { EQUIPMENT_BY_ID } from '../data/equipment.js';
+
+/**
+ * One lookup across both catalogues.
+ *
+ * Equipment is not an item — it never enters the inventory Map and `give`
+ * rejects its ids — but it is drawn by exactly the same machinery, and every
+ * UI surface that shows a card (inventory strip, pickup banner, death screen,
+ * tooltip, the Q slot) would otherwise need to know which of two tables to ask.
+ * Asking here instead is what stops an equipment ever rendering as the generic
+ * fallback plate, which is the one failure mode that reads as unfinished art.
+ */
+export function cardDef(id) {
+  return ITEM_BY_ID.get(id) ?? EQUIPMENT_BY_ID.get(id) ?? null;
+}
 
 const SIZE = 64;
 
@@ -283,6 +298,15 @@ export function abilityIcon(slot, color = '#dfe9f7') {
   });
 }
 
+/**
+ * The Q-slot card. Identical machinery to an item tile, but it always resolves
+ * to the equipment plate — the HUD slot has no tier to pass and should not have
+ * to know one.
+ */
+export function equipmentArt(id) {
+  return itemArt(id, 'equipment');
+}
+
 /** Fallback for an unknown item id — a neutral question plate. */
 export function unknownIcon(tier = 'common') {
   return itemIcon('unknown', tier);
@@ -318,10 +342,13 @@ const ART_CENTRE_Y = 0.41;
 const ART_RADIUS = 0.30;
 
 export function itemArt(id, tier = 'common') {
-  const item = ITEM_BY_ID.get(id);
+  const item = cardDef(id);
   if (!item) return itemIcon(id, tier);
-  const t = tierMeta(tier);
-  return cached(`art:${id}:${tier}`, (g, s) => {
+  // The card knows its own tier; trust it over the caller's guess so an
+  // equipment handed in without one still gets its orange plate.
+  const resolved = item.tier || tier;
+  const t = tierMeta(resolved);
+  return cached(`art:${id}:${resolved}`, (g, s) => {
     g.save();
     platePath(g, s, 2, s * PLATE_CUT);
     g.clip();

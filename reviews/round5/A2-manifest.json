@@ -1,0 +1,113 @@
+{
+  "seed": 1337,
+  "ready": true,
+  "shots": [
+    {
+      "name": "01-title",
+      "doc": "First frame the player sees. Menu framing and background composition.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\.tmp-verify-a2\\shots\\01-title.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 0
+      },
+      "newErrors": []
+    },
+    {
+      "name": "02-vista",
+      "doc": "Wide establishing shot of the stage. Judges terrain, lighting, fog, sky.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\.tmp-verify-a2\\shots\\02-vista.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 0.7833333333333341
+      },
+      "newErrors": []
+    },
+    {
+      "name": "03-thirdperson",
+      "doc": "Default gameplay framing, player idle. Judges character read and camera.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\.tmp-verify-a2\\shots\\03-thirdperson.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 1.4999999999999996
+      },
+      "newErrors": []
+    },
+    {
+      "name": "04-combat",
+      "doc": "Mid-fight with a horde, firing. Judges VFX layering, enemy legibility, HUD under load.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\.tmp-verify-a2\\shots\\04-combat.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 2.8999999999999946
+      },
+      "newErrors": []
+    },
+    {
+      "name": "05-boss",
+      "doc": "Teleporter event with the boss active. Judges scale, boss silhouette, boss HUD.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\.tmp-verify-a2\\shots\\05-boss.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 4.383333333333323
+      },
+      "newErrors": []
+    },
+    {
+      "name": "06-loaded-hud",
+      "doc": "Late-run HUD with a full inventory and high difficulty. Judges UI density and hierarchy.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\.tmp-verify-a2\\shots\\06-loaded-hud.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 1321.2333333333322
+      },
+      "newErrors": []
+    },
+    {
+      "name": "07-interactables",
+      "doc": "Chest / shrine / item pickup close-up. Judges prop modelling and pickup VFX.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\.tmp-verify-a2\\shots\\07-interactables.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 4.983333333333321
+      },
+      "newErrors": []
+    },
+    {
+      "name": "08-explosion",
+      "doc": "Peak VFX moment: explosion + damage numbers + shake. Judges impact feedback.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\.tmp-verify-a2\\shots\\08-explosion.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 5.6833333333333185
+      },
+      "newErrors": []
+    },
+    {
+      "name": "10-inventory",
+      "doc": "Dense late-run inventory across every tier, with an equipment nuke firing. Judges item icon craft, tier legibility and equipment effect quality.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\.tmp-verify-a2\\shots\\10-inventory.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 1561.766666666665
+      },
+      "newErrors": []
+    }
+  ],
+  "errors": [],
+  "partial": true,
+  "perf": {
+    "programs": 64,
+    "geometries": 159,
+    "textures": 47,
+    "sceneObjects": 550
+  }
+}

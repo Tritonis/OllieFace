@@ -93,6 +93,12 @@ function subSeeds(seed) {
   };
 }
 
+/** Unit-interval stream off the same xorshift, for the feature layout below. */
+function seedRand(seed) {
+  const s = subSeeds(seed);
+  return () => s() / 4294967296;
+}
+
 export class Terrain {
   /**
    * @param {number} seed   integer, derived from (ctx.seed, stageIndex)
@@ -116,6 +122,84 @@ export class Terrain {
     this.segments = SEGMENTS;
     this.grid = null;
     this.mesh = null;
+
+    // The biome's landform pass and its hand-laid features. `profile` is what
+    // makes a stage a *place* rather than the same noise stack in a different
+    // palette — see `_shape`.
+    this.profile = this.P.profile || 'default';
+    this.features = this._buildFeatures(seedRand(s()));
+    // Set while `build()` resolves each feature's own ground level, so the
+    // feature pass doesn't try to read a height it is itself producing.
+    this._noShape = false;
+    // Published for Props and Environment: the canyon's still water sits at a
+    // fixed world height, and both the water plane and the reed line need it.
+    this.waterLevel = this.profile === 'canyon' ? this.P.waterLevel : null;
+  }
+
+  /**
+   * Lay out the biome's hand-placed landform features.
+   *
+   * Deterministic from the terrain sub-seed and nothing else — this runs on
+   * every peer in co-op and must produce the same mesas, the same pads and the
+   * same spires. Each family is distributed around a ring rather than sampled
+   * uniformly over the disc, because uniform sampling reliably clumps two mesas
+   * into one lump and leaves a third of the horizon empty, which is the exact
+   * failure a landmark pass exists to prevent.
+   */
+  _buildFeatures(rand) {
+    const P = this.P, H = this.half, F = {};
+    const ring = (i, n, [r0, r1], jitter) => {
+      const a = (i / n) * Math.PI * 2 + (rand() - 0.5) * jitter;
+      const rad = lerp(r0, r1, rand()) * H;
+      return { x: Math.cos(a) * rad, z: Math.sin(a) * rad };
+    };
+
+    if (this.profile === 'mesa') {
+      F.mesas = [];
+      const n = P.mesaCount;
+      for (let i = 0; i < n; i++) {
+        const { x, z } = ring(i, n, P.mesaRing, 0.55);
+        F.mesas.push({
+          x, z, baseY: 0,
+          r: lerp(P.mesaRadius[0], P.mesaRadius[1], rand()),
+          h: lerp(P.mesaHeight[0], P.mesaHeight[1], rand()),
+          // Which way the walkable approach faces. A mesa with no ramp is a
+          // wall with a lawn on top: anything that spawns up there is stranded,
+          // and `randomWalkablePoint` will happily pick a flat cap.
+          ramp: rand() * Math.PI * 2,
+        });
+      }
+    } else if (this.profile === 'works') {
+      F.pads = [];
+      const n = P.padCount;
+      for (let i = 0; i < n; i++) {
+        const { x, z } = ring(i, n, P.padRing, 0.7);
+        const a = rand() * Math.PI * 2;
+        F.pads.push({
+          x, z, baseY: 0, y: 0,
+          hw: lerp(P.padSize[0], P.padSize[1], rand()) * 0.5,
+          hd: lerp(P.padSize[0], P.padSize[1], rand()) * 0.5,
+          lift: lerp(P.padLift[0], P.padLift[1], rand()),
+          cos: Math.cos(a), sin: Math.sin(a),
+          // Which of the four sides is the vehicle ramp. The other three stay
+          // at the chamfer width, which is what gives the site its hard edges.
+          rampSide: (rand() * 4) | 0,
+        });
+      }
+    } else if (this.profile === 'cavern') {
+      F.spires = [];
+      const n = P.spireCount;
+      for (let i = 0; i < n; i++) {
+        const { x, z } = ring(i, n, P.spireRing, 0.9);
+        F.spires.push({
+          x, z,
+          r: lerp(P.spireRadius[0], P.spireRadius[1], rand()),
+          h: lerp(P.spireHeight[0], P.spireHeight[1], rand()),
+          p: lerp(P.spirePower[0], P.spirePower[1], rand()),
+        });
+      }
+    }
+    return F;
   }
 
   fbm(noise, x, z, octaves, lacunarity = 2.03, gain = 0.5) {
@@ -206,6 +290,13 @@ export class Terrain {
     h += this.fbm(this.nDetail, wx * P.detailFreq, wz * P.detailFreq, 3) *
          P.detailAmp * (1 - basin * 0.55);
 
+    // The biome's own landform. Deliberately *after* the noise stack and the
+    // terracing and *before* the bounding wall: a mesa cap, a pad deck and a
+    // channel floor are all supposed to be flat, so anything that would ride on
+    // top of them has to have run already, while the massif still has to be
+    // able to bury a feature that wandered into the rim.
+    h = this._shape(x, z, wx, wz, h);
+
     // Bounding cliff walls. Squared falloff keeps the transition out of the
     // play area while still climbing fast enough to be unclimbable.
     //
@@ -220,10 +311,140 @@ export class Terrain {
     return h;
   }
 
+  /**
+   * The per-biome landform pass. This is the difference between four stages and
+   * one stage with four palettes: the silhouette of the ground itself has to
+   * differ, and no amount of prop or colour work substitutes for it.
+   */
+  _shape(x, z, wx, wz, h) {
+    if (this._noShape) return h;
+    switch (this.profile) {
+      case 'mesa':   return this._mesas(x, z, h);
+      case 'canyon': return this._channels(x, z, wx, wz, h);
+      case 'works':  return this._pads(x, z, h);
+      case 'cavern': return this._spires(x, z, h);
+      default:       return h;
+    }
+  }
+
+  /**
+   * Flat-capped sandstone mesas over a sheer skirt.
+   *
+   * The skirt width swings with azimuth on a quartic, so three sides of a mesa
+   * are an unclimbable 70-deg wall and one is a long graded approach. That is
+   * both the silhouette (a hard horizontal cap is the whole grassland-and-mesa
+   * read) and the playability: without the ramp a cap is flat ground that
+   * `isWalkable` accepts and nothing can reach, so enemies spawn stranded.
+   */
+  _mesas(x, z, h) {
+    const P = this.P;
+    const list = this.features.mesas;
+    for (let i = 0; i < list.length; i++) {
+      const m = list[i];
+      const dx = x - m.x, dz = z - m.z;
+      const d = Math.hypot(dx, dz);
+      if (d >= m.r) continue;
+      const ca = Math.cos(Math.atan2(dz, dx) - m.ramp);
+      // Cubed rather than to the fourth: the quartic gave a ramp only ~20 deg
+      // wide in azimuth, which is a 52-deg approach everywhere but dead centre
+      // — i.e. past the 50-deg walk limit, i.e. no ramp at all.
+      const w = m.r * (P.mesaSheer + P.mesaRamp * Math.pow(Math.max(0, ca), 3));
+      const t = smoothstep(clamp((m.r - d) / w, 0, 1));
+      h = lerp(h, m.baseY + m.h, t);
+    }
+    return h;
+  }
+
+  /**
+   * Flooded channels cut into a plateau.
+   *
+   * The network is the *level set* of a smooth field rather than a threshold of
+   * one. A threshold gives blobs; the set where a smooth field is near a chosen
+   * value is a family of winding, branching, non-intersecting curves, which is
+   * what an eroded drainage looks like from above.
+   *
+   * The bank width rides its own much lower octave, so some reaches are sheer
+   * 15m walls and others are graded scree. That is not decoration — a canyon
+   * whose every wall is vertical is a set of pits the player falls into and
+   * cannot leave, and the pathing has nowhere to route.
+   */
+  _channels(x, z, wx, wz, h) {
+    const P = this.P;
+    const v = this.fbm(this.nWall, wx * P.channelFreq, wz * P.channelFreq, 3) - P.channelBias;
+    const d = Math.abs(v);
+    const bank = lerp(P.bankNarrow, P.bankWide,
+      clamp(this.fbm(this.nMask, x * 0.0075 - 61, z * 0.0075 + 24, 2) * 1.9 + 0.5, 0, 1));
+    if (d >= P.channelWidth + bank) return h;
+    const t = 1 - smoothstep(clamp(invLerp(P.channelWidth, P.channelWidth + bank, d), 0, 1));
+    // Silted floor: shallow relief so the water reads as a surface over ground
+    // rather than as a painted plane, but nothing steep enough to wade around.
+    const floor = P.channelFloor + this.fbm(this.nDetail, x * 0.022, z * 0.022, 2) * 1.4;
+    return lerp(h, Math.min(h, floor), t);
+  }
+
+  /**
+   * Rectangular fabrication pads snapped to the site's module height.
+   *
+   * The rotation is per pad and the deck height is quantised to `padGrid`, the
+   * same step the global terracing uses — so a pad edge always lands on a
+   * terrace line and the whole site reads as one survey rather than as boxes
+   * dropped on a hillside. One side of each pad is a 13m ramp; the other three
+   * are 1.5m chamfers, i.e. walls.
+   */
+  _pads(x, z, h) {
+    const list = this.features.pads;
+    for (let i = 0; i < list.length; i++) {
+      const p = list[i];
+      const dx = x - p.x, dz = z - p.z;
+      const u = dx * p.cos + dz * p.sin;
+      const v = -dx * p.sin + dz * p.cos;
+      const au = Math.abs(u) - p.hw, av = Math.abs(v) - p.hd;
+      const sd = Math.max(au, av);            // negative inside the rectangle
+      if (sd >= 0) continue;
+      // Which edge this sample is nearest, in the pad's own frame.
+      const side = au >= av ? (u > 0 ? 0 : 2) : (v > 0 ? 1 : 3);
+      const w = side === p.rampSide ? this.P.padRamp : this.P.padChamfer;
+      h = lerp(h, p.y, smoothstep(clamp(-sd / w, 0, 1)));
+    }
+    return h;
+  }
+
+  /**
+   * Terrain stalagmites: concave-flanked shafts grown off the cavern floor.
+   *
+   * A power curve rather than a smoothstep on purpose — smoothstep gives a
+   * dome, and a dome reads as a hill. `p` between 1.7 and 2.9 gives the
+   * pinched, splayed-footed profile that reads as deposited rather than eroded,
+   * and leaves the ground between them flat and walkable.
+   */
+  _spires(x, z, h) {
+    const list = this.features.spires;
+    for (let i = 0; i < list.length; i++) {
+      const s = list[i];
+      const d = Math.hypot(x - s.x, z - s.z);
+      if (d >= s.r) continue;
+      h += s.h * Math.pow(1 - d / s.r, s.p);
+    }
+    return h;
+  }
+
   build() {
     const N = this.segments;
     const half = this.half;
     const step = this.step;
+
+    // Resolve each feature's own ground level before the grid is filled. The
+    // pass is suppressed for these probes, so a mesa cap is placed relative to
+    // the landform under it rather than to a height it is itself producing.
+    this._noShape = true;
+    for (const m of this.features.mesas ?? []) m.baseY = this.heightAt(m.x, m.z);
+    for (const p of this.features.pads ?? []) {
+      p.baseY = this.heightAt(p.x, p.z);
+      // Quantised to the site module, so every deck in the yard is on one of a
+      // handful of levels and their edges line up across the whole stage.
+      p.y = Math.round((p.baseY + p.lift) / this.P.padGrid) * this.P.padGrid;
+    }
+    this._noShape = false;
 
     const grid = new Float32Array((N + 1) * (N + 1));
     // The two vertex-colour bands are placed against the *measured* relief of
@@ -302,7 +523,10 @@ export class Terrain {
       }
     };
 
-    this._pal = { cRock, cCliff, cMoss, cSand, sandAmt: P.sandAmt, mossAmt: P.mossAmt };
+    this._pal = {
+      cRock, cCliff, cMoss, cSand, sandAmt: P.sandAmt, mossAmt: P.mossAmt,
+      strataAmt: this.P.strataAmt, strataStep: this.P.strataStep,
+    };
 
     for (let j = 0; j < N; j++) {
       for (let i = 0; i < N; i++) {
@@ -341,7 +565,7 @@ export class Terrain {
   }
 
   _faceColor(y, slope, x, z, curv, out) {
-    const { cRock, cCliff, cMoss, cSand, sandAmt, mossAmt } = this._pal;
+    const { cRock, cCliff, cMoss, cSand, sandAmt, mossAmt, strataAmt, strataStep } = this._pal;
     let r = cRock.r, g = cRock.g, b = cRock.b;
 
     // Height normalised against the measured play-area relief (see build()), so
@@ -391,7 +615,33 @@ export class Terrain {
     // noise term survives at a third of its old weight, purely to keep large
     // flat shelves off a single dead value.
     const ao = 1 - clamp(curv, 0, 1) * 0.20 + clamp(-curv, 0, 1) * 0.13;
-    const j = ao * (1 + this.nTint(x * 0.6, z * 0.6) * 0.026);
+    let j = ao * (1 + this.nTint(x * 0.6, z * 0.6) * 0.026);
+
+    // Sedimentary banding, keyed to *absolute world height* and weighted onto
+    // steep ground. A mesa skirt and a canyon wall are the two surfaces in this
+    // game with a hundred square metres of continuous vertical face, and
+    // without strata they are one flat value: rock that was displaced rather
+    // than laid down. One pseudo-random value step per layer means the same
+    // band runs at the same height across every wall on the stage, which is
+    // what reads as geology rather than as noise.
+    //
+    // Two constraints fight here and both are load-bearing. The step has to be
+    // *bigger than a facet's vertical extent* — a 1.375m facet on a 70-deg wall
+    // spans ~3.8m of height, so at a 2.6m step every triangle landed in its own
+    // layer and the massif rendered as fine vertical stripes, which is the
+    // round-3 "facet-scale confetti" defect back in the value channel. And the
+    // band edge still has to be *hard*, or there is no band. So: a long step,
+    // and the layer value held flat across 78% of it before a quick crossfade
+    // into the next one.
+    if (strataAmt > 0) {
+      const t = y / strataStep;
+      const l = Math.floor(t);
+      const h0 = ((Math.imul(l, 2654435761) ^ 0x9e37) >>> 0) / 4294967296;
+      const h1 = ((Math.imul(l + 1, 2654435761) ^ 0x9e37) >>> 0) / 4294967296;
+      const v = lerp(h0, h1, smoothstep(clamp((t - l - 0.78) / 0.22, 0, 1)));
+      j *= 1 + (v - 0.5) * strataAmt * (0.35 + 0.65 * clamp(slope * 1.6, 0, 1));
+    }
+
     out[0] = r * j; out[1] = g * j; out[2] = b * j;
   }
 

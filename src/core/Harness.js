@@ -664,8 +664,28 @@ export function installHarness(ctx) {
       // and on a rise it re-pitched the whole frame into the ground. Aiming
       // 4.5 m above the lens over the 57 m standoff is ~4.5° up, which puts the
       // true horizon below the vertical midpoint and the ridge line at ~0.34.
-      const cx = p.x - 46, cz = p.z + 34;
-      const camY = Math.max(groundY(cx, cz, p.y) + 6, p.y + 9);
+      //
+      // The offset is now a *preferred* bearing rather than a fixed one. It was
+      // chosen when every biome shared one gentle heightfield; against
+      // per-biome landforms — mesa skirts, canyon walls, cavern spires — a
+      // fixed world diagonal drops the lens hard against a vertical face, and
+      // this shot came back with half the frame filled by one flat unlit
+      // triangle of mesa. Sweep off the diagonal until the lens can see the
+      // subject, and keep the height clamped so it cannot climb the face it was
+      // supposed to be standing away from.
+      const R = Math.hypot(46, 34);
+      const base = Math.atan2(-46, 34);
+      let cx = p.x - 46, cz = p.z + 34;
+      let camY = Math.max(groundY(cx, cz, p.y) + 6, p.y + 9);
+      for (let i = 0; i < 12; i++) {
+        const az = base + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * 0.42;
+        const tx = p.x + Math.sin(az) * R, tz = p.z + Math.cos(az) * R;
+        const ty = Math.min(Math.max(groundY(tx, tz, p.y) + 6, p.y + 9), p.y + 22);
+        const pos = _probe.set(tx, ty, tz);
+        if (!seesTarget(pos, _cc.set(p.x, p.y + 2.0, p.z), 1.0)) continue;
+        cx = tx; cz = tz; camY = ty;
+        break;
+      }
       camera.position.set(cx, camY, cz);
       camera.lookAt(p.x, camY + 4.5, p.z);
       camera.fov = 58;
@@ -1041,6 +1061,647 @@ export function installHarness(ctx) {
       ctx.combat?.explode?.(at, 8, 300, null, {});
       ctx.pipeline?.addShake?.(0.5);
       await waitSim(blastSeconds);
+      freeze();
+    },
+
+    /**
+     * Dense late-run inventory plus a live equipment activation.
+     *
+     * This shot exists to be graded on two things the other nine cannot show:
+     * the *craft of the item icons* (axes 7 and 10 — 80-odd emblems that have
+     * to read as one authored set at 33px, inside a tier where the plate colour
+     * is identical for every card) and the *quality of an equipment effect*.
+     *
+     * So it is deliberately not `lateRun` with more items. Three differences:
+     *
+     *  1. **Every tier is represented, in bulk.** `lateRun` gives one of each
+     *     item; a strip with one white and one red in it does not test whether
+     *     twenty-eight whites are distinguishable from each other, which is the
+     *     actual risk with a procedurally drawn icon set.
+     *  2. **The equipment is fired on the shutter.** The activation is the last
+     *     thing that happens before the loop stops, budgeted in *simulation*
+     *     seconds like `08-explosion` — a nuke photographed 0.6s late is a
+     *     picture of smoke.
+     *  3. **There are monsters standing in it.** An equipment blast over empty
+     *     ground is a light source, not an effect; the damage numbers and the
+     *     bodies are what make it gradeable.
+     */
+    async inventory({ settleFrames = 60, blastSeconds = 0.12, equipment = 'overload-cell' } = {}) {
+      await begin();
+      attach();
+      invulnerable();
+      ctx.time = 26 * 60;
+
+      // Fill the strip. Counts are staggered rather than uniform so the stack
+      // badges vary — a wall of identical "x4" tells the critic nothing about
+      // how the badge behaves against a one-digit, two-digit and absent count.
+      for (let i = 0; i < ITEMS.length; i++) {
+        const def = ITEMS[i];
+        // Lunar stacks are kept to one. Two Shattered Covenants is a survivor
+        // at a third of his health, and the shot would be documenting a death
+        // scrim instead of an inventory.
+        const n = def.tier === 'lunar' ? 1 : 1 + ((i * 5) % 9);
+        ctx.items?.give?.(def.id, n);
+      }
+      ctx.items?.addGold?.(6400);
+      seedLevel(24, 0.6);
+      ctx.items?.setEquipment?.(equipment);
+
+      spawnRing(12, SPAWN_CARDS, 13, 4);
+      if (ctx.input) ctx.input.mouse.left = true;
+      await frames(settleFrames);
+      declutter(11);
+
+      // Put bodies where the nova will be, then fire it. `useEquipment` is the
+      // real API — driving the effect function directly would photograph a
+      // frame the player can never produce, which is the failure mode this
+      // whole file exists to prevent.
+      const victims = (ctx.director?.enemies ?? []).filter((e) => e.alive).slice(0, 8);
+      const p = playerPos();
+      victims.forEach((e, i) => {
+        const a = (i / Math.max(1, victims.length)) * Math.PI * 2;
+        const x = p.x + Math.cos(a) * 9, z = p.z + Math.sin(a) * 9;
+        const y = groundY(x, z, p.y);
+        e.position.set(x, e.def?.isFlyer ? y + (e.def.hoverHeight ?? 2) : y, z);
+        e.velocity?.set?.(0, 0, 0);
+      });
+      await frames(2);
+
+      const fired = ctx.items?.useEquipment?.();
+      if (!fired) console.warn('[harness] 10-inventory: equipment refused to fire');
+      await waitSim(blastSeconds);
+      freeze();
+    },
+
+    /**
+     * The whole roster, side by side, for judging silhouette read (axis 4).
+     *
+     * Built from four standalone `CharacterMesh` rigs rather than by swapping
+     * `ctx.player` four times: only one of them could ever be the player, and a
+     * shot containing one survivor and three empty patches of ground cannot be
+     * used to compare four silhouettes. The rigs are the *same class* the
+     * player uses, built from the same survivor cards, so what is photographed
+     * is exactly what is played.
+     *
+     * Three things this shot has to get right, all learned the same way every
+     * other note in this file was — by shipping the frame that got them wrong:
+     *
+     *  1. **The ground under the row must be flat.** A 2.3 m spacing across a
+     *     slope puts the four at four different heights, and "are these four
+     *     the same size?" is most of what axis 4 is being asked. The search
+     *     below scores flatness above everything else and sweeps bearings as
+     *     well as distances, because one bearing on rolling terrain is a
+     *     coin flip.
+     *  2. **The lens must be at the row's height, not at its own ground's.**
+     *     Clamping the camera to `groundY(camera) + 1.5` put it on a ridge
+     *     eight metres above the row and photographed the whole thing as a
+     *     top-down. The lift is measured off the *subjects* and only raised
+     *     enough to clear the terrain the lens is standing in.
+     *  3. **The rigs must not survive the shutter.** They are permanent scene
+     *     additions with no owner, so any later scenario would have four extra
+     *     characters standing in its background. `freeze()` stops the loop and
+     *     the canvas keeps presenting the frame it last drew — so removing them
+     *     *after* the freeze takes them out of the world without taking them
+     *     out of the photograph, which is what lets this run early, against a
+     *     clean HUD, instead of last against a full inventory panel.
+     */
+    async survivors({ settleFrames = 45 } = {}) {
+      await begin();
+      attach();
+      invulnerable();
+      await frames(settleFrames);
+
+      const [{ CharacterMesh }, { SURVIVORS }] = await Promise.all([
+        import('../entities/CharacterMesh.js'),
+        import('../data/survivors.js'),
+      ]);
+
+      const p = playerPos();
+      const SPACING = 2.35;
+      const span = SPACING * (SURVIVORS.length - 1);
+      // Standoff is derived before the search because the visibility and
+      // flatness tests have to run against the camera position that will
+      // actually be used, not a nominal one.
+      const standoff = span * 1.7 + 6;
+      const LIFT = 1.35;
+
+      const base = Math.atan2(forward().x, forward().z);
+      const cam = new THREE.Vector3();
+      let best = null;
+      let bestScore = -Infinity;
+      for (const d of [20, 24, 17, 28, 14, 32, 11]) {
+        for (let i = 0; i < 11; i++) {
+          // Alternate either side of the bearing the player is already facing,
+          // so the accepted spot is the closest one to the shot we asked for.
+          const az = base + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * 0.26;
+          const fx = Math.sin(az), fz = Math.cos(az);
+          const rx = -fz, rz = fx;
+          const bx = p.x + fx * d, bz = p.z + fz * d;
+          const by = groundY(bx, bz, p.y);
+          const camX = bx - fx * standoff, camZ = bz - fz * standoff;
+          // Only ever raised above the row's own plane far enough to clear the
+          // terrain the lens is standing in, and never by more than a metre.
+          const camY = Math.min(Math.max(groundY(camX, camZ, by) + 0.6, by + LIFT), by + LIFT + 1.0);
+          cam.set(camX, camY, camZ);
+
+          let lo = Infinity, hi = -Infinity, seen = true;
+          for (let k = 0; k < SURVIVORS.length && seen; k++) {
+            const off = (k - (SURVIVORS.length - 1) / 2) * SPACING;
+            const x = bx + rx * off, z = bz + rz * off;
+            const y = groundY(x, z, by);
+            lo = Math.min(lo, y); hi = Math.max(hi, y);
+            seen = seesTarget(cam, _probe.set(x, y + 0.3, z), 0.3)
+                && seesTarget(cam, _probe.set(x, y + 1.9, z), 0.3);
+          }
+          if (!seen) continue;
+
+          // Flatness dominates by an order of magnitude; open depth behind the
+          // row and real sunlight on it are the tie-breakers. Four dark
+          // silhouettes against a cliff face two metres behind them is the
+          // axis-2 "everything at one depth" failure with extra steps.
+          const at = _probe.set(bx, by + 1.2, bz);
+          const score = -(hi - lo) * 20
+            + Math.min(backdropDepth(cam, at), 45) * 0.06
+            + (sunlit(_cc.set(bx, by, bz)) ? 3 : 0);
+          if (score > bestScore) {
+            bestScore = score;
+            best = { x: bx, y: by, z: bz, fx, fz, rx, rz, camX, camY, camZ };
+          }
+        }
+      }
+      if (!best) {
+        const f0 = forward();
+        const bx = p.x + f0.x * 20, bz = p.z + f0.z * 20;
+        const by = groundY(bx, bz, p.y);
+        best = {
+          x: bx, y: by, z: bz, fx: f0.x, fz: f0.z, rx: -f0.z, rz: f0.x,
+          camX: bx - f0.x * standoff, camY: by + LIFT, camZ: bz - f0.z * standoff,
+        };
+      }
+
+      const rigs = [];
+      const spots = [];
+      SURVIVORS.forEach((card, i) => {
+        const off = (i - (SURVIVORS.length - 1) / 2) * SPACING;
+        const x = best.x + best.rx * off;
+        const z = best.z + best.rz * off;
+        const y = groundY(x, z, best.y);
+        const mesh = new CharacterMesh(card.meshKey);
+        mesh.group.position.set(x, y, z);
+        ctx.scene.add(mesh.group);
+        rigs.push(mesh);
+        spots.push([x, y, z]);
+      });
+
+      // Face the lens, turned a little off-axis. A dead-on front view flattens
+      // every shoulder mass on the rig, and how the volume sits on the shoulders
+      // is half of what axis 4 is grading.
+      const lookYaw = Math.atan2(-best.fx, -best.fz) + 0.24;
+      const state = {
+        velocity: new THREE.Vector3(0, 0, 0), grounded: true,
+        aimYaw: lookYaw, aimPitch: -0.04, dashT: 0, sprint: false, moveSpeed: 7, dead: false,
+      };
+      // 150 fixed steps is well past the settle time of the slowest spring on
+      // the rig (`sLean`, 8 rad/s), so every one of them is photographed in its
+      // real idle pose rather than in the raw build pose.
+      for (const mesh of rigs) {
+        mesh.bodyYaw = lookYaw;
+        for (let i = 0; i < 150; i++) mesh.update(1 / 60, state);
+      }
+
+      detach();
+      camera.position.set(best.camX, best.camY, best.camZ);
+      // Aim at chest height rather than at the centre of the row's bounding
+      // box: it puts the feet on the lower third and leaves the upper frame to
+      // the terrain, which is what four dark silhouettes are read against.
+      camera.lookAt(best.x, best.y + 0.95, best.z);
+      // Lens solved from the row rather than picked: the four have to *fill*
+      // the frame or this is a landscape photograph with some characters in it.
+      // At the 44 deg default and an 18 m standoff each survivor was 110 px of
+      // a 900 px frame — a third of the shot was foreground rock and another
+      // third was sky, and no silhouette judgement is possible at that size.
+      //
+      // Solve for the row occupying ~68% of frame width, then convert that
+      // horizontal half-angle to the vertical FOV three.js actually takes.
+      const halfW = (span * 0.5 + 1.3) / 0.68;
+      const hHalf = Math.atan(halfW / standoff);
+      const aspect = camera.aspect || (16 / 9);
+      camera.fov = Math.max(12, Math.min(50,
+        2 * Math.atan(Math.tan(hHalf) / aspect) * 180 / Math.PI));
+      camera.updateProjectionMatrix();
+
+      // Park the player behind the lens. He is a fifth survivor as far as the
+      // frame is concerned, and this shot compares four.
+      if (ctx.player) {
+        const bx = best.camX - best.fx * 9, bz = best.camZ - best.fz * 9;
+        ctx.player.position.set(bx, groundY(bx, bz, best.camY), bz);
+        ctx.player.velocity.set(0, 0, 0);
+      }
+      declutter(60);
+
+      await frames(6);
+      freeze();
+      // See note 3 above: the loop is stopped, so nothing will render again and
+      // the presented frame still contains all four.
+      for (const mesh of rigs) ctx.scene.remove(mesh.group);
+      return { survivors: SURVIVORS.map((s) => s.id), spots };
+    },
+
+    /**
+     * Smoke test, not a shot: fire every ability of every survivor and report
+     * what threw.
+     *
+     * Sixteen `fire()` bodies is sixteen chances to reference a method that no
+     * longer exists, and the Engine deliberately swallows a throwing system
+     * into `ctx.frameErrors` — so without this an ability can be completely
+     * dead in the build while every screenshot comes back clean.
+     */
+    async abilityAudit() {
+      await begin();
+      attach();
+      invulnerable();
+      const { SURVIVORS } = await import('../data/survivors.js');
+      const out = [];
+      const before = ctx.frameErrors ?? 0;
+      for (const card of SURVIVORS) {
+        ctx.setSurvivor?.(card.id);
+        await frames(4);
+        for (const slot of ctx.player.slots) {
+          try {
+            slot.ability.fire(ctx, ctx.player);
+            out.push({ survivor: card.id, slot: slot.slot, id: slot.ability.id, ok: true });
+          } catch (e) {
+            out.push({ survivor: card.id, slot: slot.slot, id: slot.ability.id, ok: false, error: String(e) });
+          }
+          // Long enough for every scheduled follow-up (the longest is Warden's
+          // airborne slam poll at 0.7 s) to have run inside the fixed step.
+          await waitSim(0.9);
+        }
+      }
+      ctx.setSurvivor?.('ranger');
+      await waitSim(0.5);
+      return {
+        results: out,
+        failed: out.filter((r) => !r.ok),
+        frameErrorsAdded: (ctx.frameErrors ?? 0) - before,
+        lastFrameError: ctx.lastFrameError ?? null,
+      };
+    },
+
+    /**
+     * Establishing shot of one specific biome.
+     *
+     * The four stages are supposed to be four *places*, and the only way that
+     * claim can be graded is a frame from each of them side by side — a single
+     * `02-vista` on stage 1 photographs one biome and says nothing about the
+     * other three. So this rebuilds the stage at `index`, re-seats the player
+     * and the interactables on it, and then frames the kit's primary landmark
+     * rather than an arbitrary bearing: a stage whose identity is carried by
+     * its landmarks has to be shot with one of them in the frame.
+     *
+     * Cross-lit at ~70 deg off the sun bearing so the landmark is raked rather
+     * than flatly front- or back-lit, sweeping bearings until the raycast says
+     * it is actually unoccluded — the same guard `interactables` needed after
+     * two rounds of shipping shots that did not contain their subject.
+     */
+    async biomeVista({ index = 0, settleFrames = 90, restore = false } = {}) {
+      await begin();
+      detach();
+
+      /** Generate stage `n`, re-seat the player and its props on it, relabel. */
+      const goTo = (n, label = true) => {
+        ctx.stage?.build?.(n);
+        const spawn = ctx.stage?.spawnPoint?.();
+        if (spawn && ctx.player) {
+          ctx.player.position.copy(spawn);
+          ctx.player.velocity?.set?.(0, 0, 0);
+        }
+        ctx.interactables?.populate?.(n);
+        ctx.director?.clear?.(ctx);
+        // The restore pass deliberately does not relabel. It runs after the
+        // shutter but the HUD is DOM, not canvas — it updates the moment it is
+        // told to, so emitting there would stamp "Stage 1" over the frame of
+        // biome 4 that is already sitting on the canvas waiting to be shot.
+        if (!label) return;
+        ctx.events?.emit?.('stageStart', { index: n, name: ctx.stage?.stageName ?? '' });
+        // One stage banner, not four. The HUD's toasts live five seconds and
+        // these four scenarios run ~3 s apart, so without this the last frame
+        // carries several biome names stacked in its corner — a shot that
+        // contradicts itself in a different way from the one the emit fixes.
+        const toasts = ctx.hud?.toasts;
+        if (toasts) {
+          while (toasts.length > 1) toasts.shift().el?.remove();
+          ctx.hud.restackToasts?.();
+        }
+      };
+
+      goTo(index);
+      // The HUD's stage banner is fed by `stageStart`, and Progression only
+      // emits it on a real transition — so without this every biome frame is
+      // labelled with stage 1's name and the shot contradicts itself.
+      // Environment publishes the biome's sky, fog and sun inside stage.build,
+      // but the shadow frustum and the dust field follow the camera, so give
+      // both a few frames before anything is measured against them.
+      await frames(6);
+
+      const lm = ctx.stage?.landmarks?.[0];
+      const t = lm
+        ? new THREE.Vector3(lm.x, lm.y, lm.z)
+        : (ctx.stage?.center?.clone() ?? playerPos().clone());
+      // 15m of lift, not 24. At 24 over a 70m standoff the lens is pitched ~19
+      // deg down, which photographs the stage as a map: the horizon leaves the
+      // frame, the sky goes with it, and the landform's silhouette — the thing
+      // these four shots exist to compare — is never seen against anything.
+      const R = 70, LIFT = 15;
+      const prefer = sunAzimuth() + 1.22;
+      // Radial, not per-axis. A square bound lets the corners of the stage
+      // through, and the corners are where the bounding massif is 60m tall: the
+      // sweep parked the lens on top of the wall at y 58 shooting down-sun, and
+      // photographed a blown-out white slope with no subject in it.
+      const bound = (ctx.stage?.half ?? 110) * 0.74;
+      const beacon = ctx.interactables?.teleporter?.position ?? null;
+      let cam = null, lenient = null;
+      // Restricted to +/-90 deg of the cross-lit bearing. Past that the lens is
+      // looking down the sun's own azimuth, which is not a lighting choice, it
+      // is a lens flare with a stage behind it.
+      for (let i = 0; i < 9 && !cam; i++) {
+        const az = prefer + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * 0.39;
+        const cx = t.x + Math.sin(az) * R, cz = t.z + Math.cos(az) * R;
+        if (Math.hypot(cx, cz) > bound) continue;
+        // Clamped as well as lifted: on rising ground the raw `ground + 15`
+        // pitches the whole frame into the dirt.
+        const cy = Math.min(Math.max(groundY(cx, cz, t.y), t.y) + LIFT, t.y + LIFT + 14);
+        const pos = new THREE.Vector3(cx, cy, cz);
+        // The landmark's base as well as its crown: seeing only the top of a
+        // structure over a ridge is the "subject sunk into the ground" read.
+        if (!seesTarget(pos, _cc.set(t.x, t.y + 2, t.z), 1.5)
+            || !seesTarget(pos, _cc.set(t.x, t.y + 12, t.z), 1.5)) continue;
+        lenient = lenient ?? pos;
+        // Reject any bearing that puts the teleporter beam near the frame's
+        // centre line. It is a 70m emissive column: on the composition axis it
+        // is not a light source in the shot, it is a white bar dividing the
+        // shot in two, and it cost three of the first four biome frames their
+        // whole midground.
+        if (beacon) {
+          const dl = Math.atan2(t.x - cx, t.z - cz);
+          const db = Math.atan2(beacon.x - cx, beacon.z - cz);
+          if (Math.abs(((db - dl + Math.PI * 3) % (Math.PI * 2)) - Math.PI) < 0.30) continue;
+        }
+        cam = pos;
+      }
+      if (!cam && !lenient) {
+        // Nothing on the arc could see the landmark. Fall back to a bearing
+        // that is at least inside the stage: the old world-diagonal fallback
+        // put the lens 121m from the origin, i.e. on top of the bounding wall.
+        const fx = t.x - Math.sin(prefer) * R, fz = t.z - Math.cos(prefer) * R;
+        const k = Math.min(1, bound / Math.max(1e-3, Math.hypot(fx, fz)));
+        lenient = new THREE.Vector3(fx * k, Math.max(groundY(fx * k, fz * k, t.y), t.y) + LIFT, fz * k);
+      }
+      cam = cam ?? lenient;
+
+      camera.position.copy(cam);
+      // Aimed above the landmark's foot, which puts the skyline around a third
+      // of the way down the frame and leaves the sky its own band — the same
+      // composition `vista` was tuned to.
+      camera.lookAt(t.x, t.y + 9, t.z);
+      camera.fov = 56;
+      camera.updateProjectionMatrix();
+      await frames(settleFrames);
+      freeze();
+
+      // Put the world back on stage 1 *after* the shutter, so these four can sit
+      // early in the run order and get a clean HUD instead of inheriting
+      // `lateRun`'s inventory panel over a quarter of every frame. The loop is
+      // already stopped, so nothing is drawn between here and the screenshot —
+      // the canvas keeps presenting the frame composed above.
+      if (restore) goTo(0, false);
+    },
+
+    /**
+     * The whole bestiary in two ranks, for silhouette grading.
+     *
+     * Three things this shot has to get right, all of which the first attempt
+     * got wrong and photographed a hillside for its trouble:
+     *
+     *  1. **The ground has to be flat.** A 24 m rank dropped on `sampleHeight`
+     *     across a slope buries its lower half and stacks its upper half, and
+     *     no camera can recover that. Candidate centres are scored on the
+     *     height spread measured along the rank axis and rejected outright past
+     *     2.5 m.
+     *  2. **The camera has to be chosen before the rank is laid out.** The rank
+     *     must be perpendicular to the view direction, so the vantage comes
+     *     first (via `clearCam`, which is the only thing here that actually
+     *     raycasts) and the axis is derived from it.
+     *  3. **Big at the back.** Sorted by height with the tall half on the far
+     *     rank, or the hulk stands in front of the mite and the shot documents
+     *     one of the sixteen.
+     */
+    async bestiary({ settleFrames = 40, spacing = 2.7 } = {}) {
+      await begin();
+      invulnerable();
+      detach();
+      if (ctx.director) ctx.director.enabled = false;
+
+      const cards = [...SPAWN_CARDS].sort((a, b) => a.height - b.height);
+      const perRow = Math.ceil(cards.length / 2);
+      const halfW = (perRow - 1) * 0.5 * spacing;
+      const p = playerPos();
+
+      // Candidate centres: straight ahead at a few ranges, plus walkable points
+      // the stage offers. Scored on how flat the rank would be.
+      const centres = [ahead(26), ahead(34), ahead(20)];
+      for (let i = 0; i < 24; i++) {
+        const q = ctx.stage?.randomWalkablePoint?.(ctx.rng, { minDistFrom: p, minDist: 16 });
+        if (q) centres.push(q.clone());
+      }
+
+      let best = null;
+      for (const c of centres) {
+        const cam = clearCam(c, {
+          radius: 25, lift: 6, rings: 3, step: 2.5, backdrop: 16,
+          probes: [0.4, 2.0, 4.0], fov: 40, maxForeground: 0.34,
+        });
+        if (!cam) continue;
+        // Rank axis: perpendicular to the view, in the ground plane.
+        let dx = c.x - cam.x, dz = c.z - cam.z;
+        const len = Math.hypot(dx, dz) || 1;
+        dx /= len; dz /= len;
+        const ax = -dz, az = dx;
+        // Flatness along both ranks, sampled at every slot.
+        let lo = Infinity, hi = -Infinity, seen = 0;
+        for (let row = 0; row < 2; row++) {
+          const fz = (row === 0 ? -1 : 1) * 4.5;
+          for (let i = 0; i < perRow; i++) {
+            const off = i * spacing - halfW;
+            const x = c.x + ax * off + dx * fz, z = c.z + az * off + dz * fz;
+            const y = groundY(x, z, c.y);
+            lo = Math.min(lo, y); hi = Math.max(hi, y);
+            if (seesTarget(cam, _probe.set(x, y + 1.0, z), 0.4)) seen++;
+          }
+        }
+        // Visibility is weighted far above flatness: a rank on a gentle slope is
+        // still gradable, a rank behind a stand of trees is not.
+        const score = -(hi - lo) * 2 + seen * 3;
+        if (!best || score > best.score) best = { c, cam, dx, dz, ax, az, spread: hi - lo, score };
+        if (hi - lo < 1.8 && seen === perRow * 2) break;
+      }
+      if (!best) {
+        const c = ahead(26);
+        best = { c, cam: null, dx: forward().x, dz: forward().z, ax: -forward().z, az: forward().x, spread: 0 };
+      }
+
+      const { c, ax, az, dx, dz } = best;
+      const placed = [];
+      for (let i = 0; i < cards.length; i++) {
+        const row = i >= perRow ? 1 : 0;          // taller half goes to the back
+        const idx = row ? i - perRow : i;
+        const off = idx * spacing - halfW;
+        const fz = row ? 5.5 : -4.0;
+        const x = c.x + ax * off + dx * fz, z = c.z + az * off + dz * fz;
+        const y = groundY(x, z, c.y);
+        // Two tier-2 elites, on cards big enough for the aura to read.
+        const affix = cards[i].id === 'golem' ? 'withering'
+          : (cards[i].id === 'warden' ? 'warded' : null);
+        const e = ctx.director?.spawnOne?.(ctx, cards[i], new THREE.Vector3(x, y, z), affix);
+        if (e) placed.push({ e, x, y, z });
+      }
+
+      const yaw = Math.atan2(-dx, -dz) + 0.45;
+      const pin = () => {
+        for (const s of placed) {
+          s.e.position.set(s.x, s.e.def?.isFlyer ? s.y + (s.e.def.hoverHeight ?? 2) : s.y, s.z);
+          s.e.velocity?.set?.(0, 0, 0);
+          s.e.yaw = yaw;                       // three-quarter view, not dead on
+          if (s.e.rig?.root) {
+            s.e.rig.root.position.copy(s.e.position);
+            s.e.rig.root.rotation.y = yaw;
+          }
+        }
+      };
+      // Let the 0.45 s spawn pop finish so nothing is caught mid-scale.
+      for (let i = 0; i < settleFrames; i++) { pin(); await frames(1); }
+      pin();
+
+      const tallest = cards[cards.length - 1].height;
+      const cam = best.cam ?? new THREE.Vector3(c.x - dx * 30, groundY(c.x - dx * 30, c.z - dz * 30, c.y) + 7, c.z - dz * 30);
+      camera.position.copy(cam);
+      camera.fov = 40;
+      camera.updateProjectionMatrix();
+      camera.lookAt(c.x, groundY(c.x, c.z, c.y) + tallest * 0.4, c.z);
+      camera.updateMatrixWorld(true);
+      await frames(2);
+      pin();
+      await frames(1);
+      freeze();
+    },
+
+    /**
+     * A boss caught mid-telegraph, in its last phase.
+     *
+     * Frozen deliberately at ~85% of the wind-up: that is the frame the whole
+     * "telegraphed attacks with real wind-up VFX" claim lives or dies on — the
+     * ground ring is at its brightest, the charge geometry is at full scale and
+     * the pose is at maximum anticipation, one beat before anything can hurt
+     * you. Shooting the *release* instead would just be another explosion shot.
+     *
+     * The standoff is searched rather than assumed, for the same reason
+     * `05-boss` searches its own: "in front of the camera" and "visible" are
+     * different tests, and the first version of this shot photographed the
+     * inside of a cliff with a full boss health bar over it.
+     */
+    async bossPhases({ boss = 'vizier', settleFrames = 30 } = {}) {
+      await begin();
+      attach();
+      invulnerable();
+      if (ctx.director) ctx.director.enabled = false;
+
+      const card = BOSS_CARDS.find((c) => c.id === boss) ?? BOSS_CARDS[0];
+      const bh = card.height;
+
+      // Find somewhere the boss can stand that the lens can actually see all
+      // of — feet, chest and head.
+      let spot = null, cam = null, lenient = null, lenientCam = null;
+      const stands = [];
+      for (const d of [24, 28, 20, 32, 17, 36]) stands.push(ahead(d));
+      for (let i = 0; i < 10; i++) {
+        const q = ctx.stage?.randomWalkablePoint?.(ctx.rng, { minDistFrom: playerPos(), minDist: 18 });
+        if (q) stands.push(q.clone());
+      }
+      for (const cand of stands) {
+        const c = clearCam(cand, {
+          radius: 22, lift: 7, rings: 4, step: 2.5, backdrop: 26,
+          prefer: sunAzimuth() + 2.2,
+          probes: [0.6, bh * 0.5, bh * 0.95], fov: 42, maxForeground: 0.22, strict: true,
+        });
+        if (!c) continue;
+        if (!lenient) { lenient = cand; lenientCam = c; }
+        // A boss standing in a ravine is lit by nothing and shot against its own
+        // shadow; the ground telegraph this frame exists to show is then a dim
+        // ring on a dim floor. Insist on a stand the key light actually reaches.
+        if (!sunlit(cand, 2.0)) continue;
+        spot = cand; cam = c; break;
+      }
+      if (!spot) { spot = lenient ?? ahead(24); cam = lenientCam; }
+
+      const e = ctx.director?.spawnOne?.(ctx, card, spot, null) ?? null;
+      if (!e) { await frames(settleFrames); freeze(); return; }
+      e.isBoss = true;
+      if (ctx.director) ctx.director.boss = e;
+      ctx.events?.emit?.('bossSpawn', { enemy: e });
+
+      // Drive it into its last phase through the real damage path, so the phase
+      // gates, the cooldown reset and the phase-break blast all happen exactly
+      // as they do in a fight.
+      // `ignoreArmor` is not optional here: the Vizier's phase-1 tower shield is
+      // 85% frontal damage reduction expressed as armour, so a single unmodified
+      // hit for 80% of its health took 11% off it and left the boss in phase 1
+      // with a full bar and its shield still up — a shot captioned "late phase"
+      // that documented the opening one. Stepped rather than one-shot so every
+      // gate fires its own phase-break blast, the way a real fight does.
+      const gates = e.phaseAt || [];
+      for (let i = 0; i < gates.length; i++) {
+        const want = e.maxHealth * (gates[i] - 0.03);
+        if (e.health > want) {
+          ctx.combat?.applyDamage?.(e, e.health - want, { source: ctx.player, ignoreArmor: true, crit: false });
+        }
+        await frames(2);
+      }
+
+      const p = playerPos();
+      const pin = () => {
+        e.position.copy(spot);
+        e.velocity.set(0, 0, 0);
+        if (cam) e.yaw = Math.atan2(cam.x - spot.x, cam.z - spot.z) + 0.42;
+        if (e.rig?.root) { e.rig.root.position.copy(spot); e.rig.root.rotation.y = e.yaw; }
+      };
+      for (let i = 0; i < settleFrames; i++) { pin(); await frames(1); }
+
+      // Pick the highest-phase attack it owns — that is the one the phase break
+      // unlocked, and the one worth photographing.
+      let idx = 0;
+      for (let i = 0; i < card.attacks.length; i++) {
+        if ((card.attacks[i].phase || 1) >= (card.attacks[idx].phase || 1)) idx = i;
+      }
+      e.gcd = 0;
+      e.cd.fill(0);
+      e.beginAttack(ctx, idx);
+
+      // Hold at 85% of the wind-up. Frame-locked, not clock-locked: the loop
+      // free-runs and a wall-clock wait lands somewhere different per machine.
+      for (let i = 0; i < 600 && e.anim.windup < 0.85 && e.fsm.state === 'windup'; i++) {
+        pin();
+        await frames(1);
+      }
+      pin();
+
+      detach();
+      if (cam) camera.position.copy(cam);
+      camera.fov = 42;
+      camera.updateProjectionMatrix();
+      aimBetween(spot, bh, p);
+      await frames(2);
+      pin();
+      await frames(1);
       freeze();
     },
 
