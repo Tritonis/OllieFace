@@ -66,6 +66,39 @@ All four critics returned **FAIL**. Reports in `reviews/round5/critic-r1-*.md`.
    harness, enemies can be invisible in a real game. **Unresolved — check this
    first.**
 
+## UPDATE — after the session limit hit
+
+All four fix agents were **killed mid-edit** by the usage limit. None wrote its
+`FIX-*.md` report. Partial work recovered and committed; build green.
+
+**The critical bug is fixed and I verified it by eye, not by manifest:**
+
+- `tools/capture.mjs` now emits a `subjectFailures` key (currently `[]`).
+- `Harness.js` now has `visibleFraction()`, which samples the subject's whole
+  projected box instead of one centre ray, plus foreground-occluder rejection.
+- **`04-combat.png` now contains a full enemy field** (mechs, flyers, a red heavy,
+  teal and tan types) — previously zero enemies.
+- **`05-boss.png` now contains the Stone Titan**, in frame centre taking 113
+  damage — previously a boss health bar over empty forest.
+- Lighting/materials also leapt: sunset sky with real gradient, warm/cool contrast,
+  genuine fog depth separation. Shader programs 63 → 68, consistent with the PMREM
+  work landing.
+
+**Caveats — do not read this as "done":**
+
+- **No root cause is documented.** Whether the invisible-enemy problem was harness
+  framing or a real rendering bug is *unrecorded*, because the agent died before
+  writing its report. If enemies can be invisible in real gameplay, that is still
+  unproven either way. Re-investigate before shipping.
+- The boss still does not read at 3× enemy scale, and trunks still partly occlude
+  it in `05-boss`. The critic's measured 1.52× finding likely still stands.
+- Foreground values are still crushed in places.
+- The stages/character/UI fixes are all **partial** — mid-edit snapshots.
+- One correction the UI agent found before dying, worth keeping: the artifact-card
+  title stagger is **not** the font-fallback cause the critic diagnosed — the card
+  is a `<button>`, whose content Chrome centres vertically. Fix the element, not
+  the font.
+
 ## In flight when the session ended (state unknown)
 
 Five agents were running. Their partial work is in `5618f22`. **Assume none
