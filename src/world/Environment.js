@@ -98,6 +98,17 @@ const SHADOW_TIERS = [
  * bounce in the scene and every biome authors it nearly black in linear, so the
  * bounce never read as bounce. Boosting the colour rather than the intensity
  * keeps the sky half of the hemisphere where the biome put it.
+ *
+ * All four were re-tested against the establishing shot's dead third and left
+ * where they are, which is a result worth recording so nobody spends the round
+ * on them again. `env` 0.82/0.52 -> 0.92/0.74 together with `rimMin` 0.30 ->
+ * 0.42 moved that shot's largest connected sub-L40 region 28.8% -> 27.8% of
+ * frame, i.e. nothing: the blob is a sheer face turned away from the key *and*
+ * from the horizon band, so it sees mostly nadir whatever the floor is set to.
+ * `hemi` 0.40 -> 0.58 did move it, and paid for it by taking 13-biomes-2's
+ * column terminator from 2.16:1 to 1.07:1 and its ground to 1.00:1 — the exact
+ * failure the paragraph above records, reproduced. The lever that actually
+ * works on that frame is `GradeShader`'s toe; the reasoning is over there.
  */
 const FILL = {
   hemiScale: 0.40, hemiMin: 0.12,
@@ -130,6 +141,15 @@ const KEY_GAIN = 2.5;
  * so the massif sits under the sky rather than above it. The blend is partial,
  * not total: the fog keeps enough of its authored hue for the near/mid/far
  * separation to still be a cooling.
+ *
+ * `density` was pushed to 1.05 and to 1.25 to try to buy the establishing shot's
+ * near->mid value step — measured 5 luma against a 12-luma criterion — and put
+ * back at 0.85. It does separate the planes, and it costs 13-biomes-4 the one
+ * thing that shot has: its top-decile world luma fell 134 -> 111 and its
+ * top-to-bottom decile ratio 3.20 -> 2.44, because heavy haze over an already
+ * dark industrial biome eats the highlights before it eats the shadows. The
+ * near->mid step on that shot is a camera problem rather than a fog one — both
+ * probes sit on the same shaded plane.
  */
 const FOG = { skyBlend: 0.45, hazeBlend: 0.35, value: 0.80, density: 0.85 };
 

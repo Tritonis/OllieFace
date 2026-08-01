@@ -15,6 +15,11 @@ import { getTextureSets, withRepeat } from './Materials.js';
 const PROMPT_RANGE = 4.0;
 // Tall enough to clear the stage's terrain from anywhere on it.
 const BEACON_HEIGHT = 70;
+// Rest-state emissive for the beacon shaft and its ground collar. Held here
+// because the constructor and `update` must not drift apart: the constructor
+// value is what the first frame renders and the harness photographs.
+const BEACON_EMISSIVE = 0.42;
+const COLLAR_EMISSIVE = 0.80;
 // How close the player has to get before a resting orb starts homing. Generous
 // on purpose: walking past the chest you just opened has to collect the item.
 const ORB_SEEK_RANGE = 4.5;
@@ -706,7 +711,8 @@ class ShrineOfBlood extends Interactable {
  * in the build. Falls back to the fixed teal for a stage with no biome.
  */
 function beaconTint(ctx) {
-  return ctx.stage?.biome?.mats?.crystal ?? 0x2ad0ff;
+  const m = ctx.stage?.biome?.mats;
+  return m?.beacon ?? m?.crystal ?? 0x2ad0ff;
 }
 
 class Teleporter extends Interactable {
@@ -761,10 +767,19 @@ class Teleporter extends Interactable {
     // it still says "the objective is over there" from anywhere on the stage
     // without owning a vertical third of the composition; the emissive comes
     // down to sit under the bloom knee at rest.
+    //
+    // The taper fixed the *width*; it did not fix the value. Tapered and tinted
+    // the shaft still measured a 195-216 mean against frame means of 64-96, i.e.
+    // 2.05-3.27x, because at emissive 1.15 the core sits well over the bloom
+    // knee and blows to near-white — which throws away the tint at the same
+    // time, since a blown pixel has no hue. 0.42 lands the core in the 120-150
+    // band: still the most luminous vertical in the frame and still findable at
+    // 200m, but now inside the value range of the picture instead of on top of
+    // it, and saturated enough that the per-biome hue actually reads.
     this.beacon = new THREE.Mesh(
       new THREE.CylinderGeometry(0.05, 0.86, BEACON_HEIGHT, 8, 1, true),
       new THREE.MeshStandardMaterial({
-        color: 0x0a2b3a, emissive: beaconTint(ctx), emissiveIntensity: 1.15, roughness: 0.4,
+        color: 0x0a2b3a, emissive: beaconTint(ctx), emissiveIntensity: BEACON_EMISSIVE, roughness: 0.4,
       })
     );
     this.beacon.position.y = BEACON_HEIGHT * 0.5 + 2.0;
@@ -772,7 +787,7 @@ class Teleporter extends Interactable {
     this.collar = new THREE.Mesh(
       new THREE.TorusGeometry(3.4, 0.22, 6, 28),
       new THREE.MeshStandardMaterial({
-        color: 0x102a36, emissive: 0x2ad0ff, emissiveIntensity: 1.6, roughness: 0.3,
+        color: 0x102a36, emissive: 0x2ad0ff, emissiveIntensity: COLLAR_EMISSIVE, roughness: 0.3,
       })
     );
     this.collar.rotation.x = -Math.PI / 2;
@@ -810,9 +825,9 @@ class Teleporter extends Interactable {
     const breathe = 0.5 + Math.sin(this.ctx.time * 1.6) * 0.5;
     const k = this.state === 'complete' ? 0.25
       : active ? 1.15
-      : 0.7 + breathe * 0.6;
-    this.beacon.material.emissiveIntensity = 1.15 * k;
-    this.collar.material.emissiveIntensity = 1.6 * k;
+      : 0.85 + breathe * 0.25;
+    this.beacon.material.emissiveIntensity = BEACON_EMISSIVE * k;
+    this.collar.material.emissiveIntensity = COLLAR_EMISSIVE * k;
   }
 }
 

@@ -42,6 +42,23 @@ export const GradeShader = {
     // the same lift bought with ambient light costs the terminator, and the
     // terminator ratios (2.9-4.4:1 on the same-surface probes) are what the
     // last two rounds finally got right.
+    // DO NOT raise this again to chase the establishing shot's dead third. It
+    // was tried three ways and every one of them is a worse trade than the
+    // defect it closes:
+    //   0.140/0.146/0.226 @ 0.40 takes that shot's largest connected sub-L40
+    //     region from 28.0% of frame to 0.1% — and takes the texture-free
+    //     single-surface fraction, which is axis 5's whole measurement and the
+    //     top-ranked defect in the build, from 65.7/52.9/62.4/56.8% up to
+    //     73.4/81.9/69.5/75.9% on the four biomes. The toe is a compression at
+    //     the bottom of the range, so it flattens shadow-side surface detail by
+    //     construction. Buying composition with material is the wrong direction.
+    //   0.200/0.208/0.300 @ 0.30 (steeper, narrower, meant to spare the mids)
+    //     pinned the bottom decile of every world band to L47 — one flat floor,
+    //     the milky failure — and cost more contrast, not less: 4.98 -> 3.18.
+    //   holding the toe and steepening uContrast to 1.10 to claw the separation
+    //     back does not work either; contrast runs first and pushes the same
+    //     pixels straight back under the toe (blob 0.1% -> 24.6%).
+    // The dead third is a camera problem. See reviews/round5/FIX-stages.md.
     uToe: { value: new THREE.Vector3(0.108, 0.113, 0.198) },
     uToeRange: { value: 0.40 },
     uGrain: { value: 0.010 },

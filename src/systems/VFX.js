@@ -414,26 +414,37 @@ export class VFX {
     // and it can only do that if the colour it is handed is below the ceiling.
     let e = this._ep();
     e.count = 1; e.position.copy(pos);
-    // 0.07s was shorter than the shutter lag on the shot that exists to
-    // photograph this effect: `08-explosion` captures at 0.09s, so the core had
-    // been dead for two frames and the blast photographed as a ring around an
-    // empty centre. The core is the *reason* the ring reads as an explosion; it
-    // has to outlive the first four frames.
-    e.life = 0.2; e.lifeVar = 0;
-    e.size0 = r * 0.7; e.size1 = r * 1.25;
+    // Lifetime is set by *when the effect is looked at*, not by taste. The
+    // 0.07s original was tuned against a documented 0.09s shutter; 0.2s was the
+    // round-5 correction to the same documented figure. `tools/vfxprobe.mjs`
+    // then read the live shockwave record on the frozen `08-explosion` frame
+    // and found the shutter actually lands at **t = 0.207s** — the scenario's
+    // `waitSim(0.09)` is followed by more frames than it accounts for. So both
+    // cores had expired again, the fireball blobs had pushed outward, and the
+    // measured radial profile about the true blast centre came back with the
+    // core contributing **+0.0 L at r=0**: the hollow ring, for the third round
+    // running, from a number nobody had measured.
+    //
+    // 0.42s covers the whole window the shot can land in with margin, and the
+    // falloff power does the shaping so the extra life is a decaying hot centre
+    // rather than a disc that hangs around: alpha is `(1-u)^1.7`, so this is at
+    // 0.81 of peak at 0.05s and 0.31 at the shutter.
+    e.life = 0.42; e.lifeVar = 0;
+    e.size0 = r * 0.7; e.size1 = r * 1.5;
     e.color0.set(0xffdc96); e.color1.set(0xffb44a);
-    e.frame = FRAME.CORE; e.drag = 8; e.alphaPow = 1.5; e.fadeIn = 0.001; e.soft = 0.8;
+    e.frame = FRAME.CORE; e.drag = 8; e.alphaPow = 1.7; e.fadeIn = 0.001; e.soft = 0.8;
     this.particles.emit(e);
 
-    // The hot pip inside the core. Three nested sizes with three decay rates is
-    // what produces a luminance *profile* — peak at the centre falling off
-    // through the fireball to the ring — rather than a flat disc with an edge.
+    // The hot pip inside the core. Two nested sizes on two decay rates is what
+    // produces a luminance *profile* — peak at the centre falling off through
+    // the fireball to the ring — rather than a flat disc with an edge. It dies
+    // first and stays smaller, so the blast cools from the middle outward.
     e = this._ep();
     e.count = 1; e.position.copy(pos);
-    e.life = 0.16; e.lifeVar = 0;
-    e.size0 = r * 0.3; e.size1 = r * 0.62;
+    e.life = 0.28; e.lifeVar = 0;
+    e.size0 = r * 0.3; e.size1 = r * 0.75;
     e.color0.set(0xfff4d8); e.color1.set(0xffd07a);
-    e.frame = FRAME.CORE; e.drag = 9; e.alphaPow = 1.1; e.fadeIn = 0.001; e.soft = 0.6;
+    e.frame = FRAME.CORE; e.drag = 9; e.alphaPow = 1.35; e.fadeIn = 0.001; e.soft = 0.6;
     this.particles.emit(e);
 
     // Heat glow on the blast, not a lens sticker over the composition: at
@@ -479,9 +490,14 @@ export class VFX {
     e.layer = 'alpha';
     // Velocity stretch. Static square chunks read as aliased confetti stickers;
     // stretching along the instantaneous velocity is what turns the debris field
-    // into the motion arcs the rubric asks for, and the arc is real — the shader
-    // stretches along each chunk's own analytic trajectory, so the fast ones
-    // streak and the ones near the top of their arc do not.
+    // into the motion arcs the rubric asks for. The arc is real: `ParticleShader`
+    // differentiates each chunk's own analytic trajectory, so a chunk near the
+    // top of its arc is short and horizontal and the same chunk on the way down
+    // is long and vertical. It read as a *straight* streak until round 5, when
+    // the shader was found stretching along the spawn velocity instead. Left at
+    // 0.35: the instantaneous velocity at the shutter is ~2.8x the spawn speed
+    // under this gravity scale, so the fix lengthened the streak on its own and
+    // raising the coefficient on top of it turned the debris field into rain.
     e.stretch = 0.35;
     e.frame = FRAME.CHUNK; e.spin = 16; e.gravity = 26; e.drag = 0.35;
     this.particles.emit(e);

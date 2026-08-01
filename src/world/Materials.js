@@ -606,6 +606,13 @@ export const BIOMES = [
       sand: PALETTE.terrain.sand, wood: 0x4a3a2c, wetStone: PALETTE.accent.wet,
       metal: PALETTE.accent.metal, crystal: PALETTE.accent.crystal,
       crystalGlow: PALETTE.accent.crystalGlow,
+      // The teleporter's 70m findability column. Authored per biome rather than
+      // taken from `crystal`, because `crystal` is teal in both warm biomes and
+      // a teal bar standing in a 15-degree amber prairie is the one element
+      // identical across four otherwise-distinct places — it read as HUD chrome
+      // planted in the world. Violet here belongs to this stage's own sky and
+      // still separates hard from its amber ground.
+      beacon: 0x9d8cff,
     },
     matTune: {
       // Dry. The prairie floor is the matte end of the whole game's ladder and
@@ -680,6 +687,7 @@ export const BIOMES = [
       rock: 0x7e8b60, cliff: 0x4a5a52, moss: 0x4f7d33, sand: 0xc4cb96,
       wood: 0x2a3326, wetStone: 0x3f6a5e, metal: 0x7d9484,
       crystal: 0x8ef0b4, crystalGlow: 0x2fae72,
+      beacon: 0x8ef0b4, // mint already belongs to this biome — see stage 1's note
     },
     matTune: {
       // Everything is damp. The whole ladder shifts down a rung and the
@@ -766,6 +774,7 @@ export const BIOMES = [
       rock: 0x8f7aa8, cliff: 0x453456, moss: 0x6f57a0, sand: 0xd8c6e4,
       wood: 0x33253d, wetStone: 0x5a4880, metal: 0x9a90a8,
       crystal: 0xff6fd0, crystalGlow: 0xc02898,
+      beacon: 0xff6fd0, // the cavern's own light source colour
     },
     matTune: {
       // Mineral. The rock is dry and dusty, the pools are glass, and the
@@ -837,6 +846,7 @@ export const BIOMES = [
       rock: 0x7d6550, cliff: 0x4b4a48, moss: 0x59684a, sand: 0xa8a08c,
       wood: 0x2a2422, wetStone: 0x2e3338, metal: 0xa8562e,
       crystal: 0x4fd8c0, crystalGlow: 0x1f9aa8,
+      beacon: 0xff9a4e, // hot-metal orange: the works' own accent, not stage 1's teal
     },
     matTune: {
       // The hero material is bare plate. Everything mineral is silt-dulled so

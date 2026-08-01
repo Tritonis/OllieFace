@@ -104,7 +104,21 @@ void main() {
 
   if (aParams.w > 0.0) {
     // Velocity-stretched: sparks and debris need to read as streaks, not dots.
-    vec3 vv = (modelViewMatrix * vec4(aVel, 0.0)).xyz;
+    //
+    // Along the *instantaneous* velocity, not the spawn velocity. Stretching
+    // along aVel gives every chunk a streak that points the same way and is
+    // the same length for its whole life, which is a static billboard with a
+    // long axis — it does not follow the arc, so a chunk at the top of its
+    // trajectory still reads as travelling at launch speed and a chunk falling
+    // back still points upward. Round 5 measured the debris field as "no motion
+    // streaking" for exactly this reason.
+    //
+    // The closed-form trajectory above is differentiable and its derivative is
+    // already in registers: d/dt [term*t + (aVel-term)*(1-e)/k] = term +
+    // (aVel-term)*e. So the correct streak costs one madd. Drag shortens it as
+    // the chunk slows, gravity swings it over as the arc turns, and the streak
+    // is a tangent to the path the particle is actually on.
+    vec3 vv = (modelViewMatrix * vec4(term + (aVel - term) * e, 0.0)).xyz;
     vec2 d = vv.xy;
     float dl = length(d);
     if (dl > 0.0001) {

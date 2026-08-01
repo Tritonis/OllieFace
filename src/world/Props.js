@@ -130,13 +130,24 @@ function pillarGeo(rng, noise3) {
 
 function archGeo(rng, noise3, uvScale = 0.5) {
   // Torus arc of PI in the XY plane is already a standing arch.
-  const span = new THREE.TorusGeometry(1, 0.17, 5, 16, Math.PI);
+  //
+  // The section is 0.30 rather than 0.17, and it carries a soffit rib set inside
+  // the intrados. A 0.17 tube is a ribbon: at hero scale its crown presented one
+  // near-continuous curved band to the sky, so the establishing shot's hero
+  // landmark measured 1.00:1 top-to-underside — lit identically on every face,
+  // which is the same as having no form. A thicker section gives the crown a
+  // genuine up-facing plane and a genuine down-facing one, and the rib puts a
+  // concave corner between them for GTAO to find. The underside is the face that
+  // has to go dark; nothing else on the arch will read as mass until it does.
+  const span = new THREE.TorusGeometry(1, 0.30, 5, 16, Math.PI);
   deform(span, noise3, 0.05, 3.0, rng.range(0, 40));
-  const legL = new THREE.CylinderGeometry(0.2, 0.26, 0.5, 6);
+  const soffit = new THREE.TorusGeometry(0.80, 0.11, 4, 14, Math.PI);
+  deform(soffit, noise3, 0.03, 3.6, rng.range(0, 40));
+  const legL = new THREE.CylinderGeometry(0.30, 0.38, 0.5, 6);
   legL.translate(-1, -0.25, 0);
-  const legR = new THREE.CylinderGeometry(0.2, 0.26, 0.5, 6);
+  const legR = new THREE.CylinderGeometry(0.30, 0.38, 0.5, 6);
   legR.translate(1, -0.25, 0);
-  const g = weld([span, legL, legR], uvScale);
+  const g = weld([span, soffit, legL, legR], uvScale);
   g.translate(0, 0.5, 0); // origin at ground level
   g.computeBoundingSphere();
   return g;
