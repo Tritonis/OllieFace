@@ -23,6 +23,11 @@ Every system is a class with `init(ctx)` plus any of `fixedUpdate(ctx, h)`,
 | `hud` | HUD | `src/ui/HUD.js` |
 | `pipeline` | main | `src/core/RenderPipeline.js` |
 | `input` | main | `src/core/Input.js` |
+| `coop` | Coop | `src/net/Coop.js` — the netcode/gameplay seam |
+| `lobby` | main | `src/net/Lobby.js` — host/join flow for the UI; not a system |
+| `authority` | Engine | `true` on host and single-player. Gate every state change on it |
+| `netRole` | Engine | `'single'` \| `'host'` \| `'client'` |
+| `fxRng` | Engine | cosmetic randomness — never `ctx.rng`, see NETCODE.md |
 
 ## Events (`ctx.events.emit(name, payload)`)
 

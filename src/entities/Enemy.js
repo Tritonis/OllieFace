@@ -16,6 +16,7 @@ import {
 } from '../ai/Steering.js';
 import { acquireRig, releaseRig, configureShadows, makeAnim } from './EnemyMeshes.js';
 import { ELITE_STATS } from '../data/enemies.js';
+import { ESTATE } from '../net/Protocol.js';
 import { clamp, damp, lerp } from '../core/MathUtil.js';
 
 let NEXT_ID = 1;
@@ -163,6 +164,8 @@ export class Enemy {
 
     this.id = NEXT_ID++;
     this.def = def;
+    // What a client resolves back into a rig; see ENEMY_BY_TYPE.
+    this.typeId = def.typeId || 0;
     this.alive = true;
     this.dying = false;
     this.despawned = false;
@@ -804,6 +807,18 @@ export class Enemy {
   }
 
   get finished() { return this.fsm.state === S.DIE && this.deathT >= DEATH_TIME; }
+
+  /**
+   * Snapshot lifecycle flag. Dying units must keep appearing in snapshots until
+   * they are reaped — NetHost drops anything that is neither alive nor flagged
+   * DEAD, and a unit that simply vanished from the feed would pop out of
+   * existence on every client instead of playing its death.
+   */
+  get netState() {
+    if (this.fsm.state === S.DIE || !this.alive) return ESTATE.DEAD;
+    if (this.fsm.state === S.SPAWN) return ESTATE.SPAWNING;
+    return ESTATE.ALIVE;
+  }
 }
 
 // ---------------------------------------------------------------------------

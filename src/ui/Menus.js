@@ -71,6 +71,7 @@ export class Menus {
         </div>
         <nav class="menu-list">
           <button class="mbtn mbtn--go" data-act="play"><span>Play</span></button>
+          <button class="mbtn" data-act="coop"><span>Co-op</span></button>
           <button class="mbtn" data-act="settings"><span>Settings</span></button>
           <button class="mbtn" data-act="quit"><span>Quit</span></button>
         </nav>
@@ -81,6 +82,7 @@ export class Menus {
           <header class="panel-head"><h2>Paused</h2><div class="panel-tag">Run suspended</div></header>
           <nav class="menu-list">
             <button class="mbtn mbtn--go" data-act="resume"><span>Resume</span></button>
+            <button class="mbtn" data-act="coop"><span>Co-op</span></button>
             <button class="mbtn" data-act="settings"><span>Settings</span></button>
             <button class="mbtn" data-act="quit"><span>Quit to title</span></button>
           </nav>
@@ -93,6 +95,67 @@ export class Menus {
           <div class="settings-grid" data-settings></div>
           <nav class="menu-list menu-list--row">
             <button class="mbtn" data-act="reset"><span>Defaults</span></button>
+            <button class="mbtn mbtn--go" data-act="back"><span>Back</span></button>
+          </nav>
+        </div>
+      </section>
+
+      <section class="screen screen--coop" data-screen="coop">
+        <div class="panel panel--wide">
+          <header class="panel-head">
+            <h2>Co-op</h2>
+            <div class="panel-tag" data-coop-role>Single player</div>
+          </header>
+
+          <div class="coop-status" data-coop-status>
+            Up to 4 players. One player hosts and runs the game; everyone else joins them.
+          </div>
+
+          <div class="coop-cols">
+            <div class="coop-col">
+              <h3 class="coop-h">Host a game</h3>
+              <p class="coop-hint">Create an invite code and send it to a friend. When they
+                send a reply code back, paste it below to connect them. No server needed.</p>
+              <nav class="menu-list menu-list--row">
+                <button class="mbtn mbtn--go" data-act="coop-invite"><span>Create invite</span></button>
+                <button class="mbtn" data-act="coop-copy"><span>Copy</span></button>
+              </nav>
+              <label class="coop-field">
+                <span>Invite code — send this to your friend</span>
+                <textarea data-coop-invite readonly placeholder="Press “Create invite”"></textarea>
+              </label>
+              <label class="coop-field">
+                <span>Their reply code — paste it here</span>
+                <textarea data-coop-answer placeholder="Paste the code they send back"></textarea>
+              </label>
+              <nav class="menu-list menu-list--row">
+                <button class="mbtn mbtn--go" data-act="coop-accept"><span>Connect them</span></button>
+              </nav>
+            </div>
+
+            <div class="coop-col">
+              <h3 class="coop-h">Join a game</h3>
+              <p class="coop-hint">Paste your friend's invite code, then send them the reply
+                code this produces. Joining ends your current run.</p>
+              <label class="coop-field">
+                <span>Their invite code — paste it here</span>
+                <textarea data-coop-offer placeholder="Paste the invite they sent you"></textarea>
+              </label>
+              <nav class="menu-list menu-list--row">
+                <button class="mbtn mbtn--go" data-act="coop-join"><span>Join</span></button>
+                <button class="mbtn" data-act="coop-copy-reply"><span>Copy reply</span></button>
+              </nav>
+              <label class="coop-field">
+                <span>Your reply code — send this back</span>
+                <textarea data-coop-reply readonly placeholder="Appears once you press “Join”"></textarea>
+              </label>
+            </div>
+          </div>
+
+          <div class="coop-players" data-coop-players></div>
+
+          <nav class="menu-list menu-list--row">
+            <button class="mbtn" data-act="coop-leave"><span>Leave co-op</span></button>
             <button class="mbtn mbtn--go" data-act="back"><span>Back</span></button>
           </nav>
         </div>
@@ -275,7 +338,131 @@ export class Menus {
       case 'restart':
         location.reload();
         break;
+      case 'coop':
+        this.returnTo = this.screen === 'coop' ? this.returnTo : this.screen;
+        this.openCoop();
+        break;
+      case 'coop-invite':
+      case 'coop-accept':
+      case 'coop-join':
+      case 'coop-copy':
+      case 'coop-copy-reply':
+      case 'coop-leave':
+        this.coopAction(action);
+        break;
     }
+  }
+
+  // -------------------------------------------------------------------- co-op
+
+  openCoop() {
+    const lobby = this.ctx.lobby;
+    // One subscription for the life of the lobby — `onStatus` is a single slot,
+    // so re-registering on every open would be harmless but pointless.
+    if (lobby && !this._coopBound) {
+      this._coopBound = true;
+      lobby.onStatus = (status, detail) => this.coopStatus(status, detail);
+    }
+    this.open('coop');
+    this.coopStatus(lobby?.status || 'idle');
+  }
+
+  /** All the co-op buttons. Every path here can fail, and every failure is
+   *  something the player has to be told about in words. */
+  async coopAction(action) {
+    const lobby = this.ctx.lobby;
+    if (!lobby) return this.coopSay('Networking is unavailable in this build.');
+    const field = (name) => this.root.querySelector(`[data-coop-${name}]`);
+
+    try {
+      switch (action) {
+        case 'coop-invite': {
+          this.coopSay('Gathering connection candidates…');
+          const invite = await lobby.createInvite();
+          field('invite').value = invite.blob;
+          field('invite').select?.();
+          this.coopSay('Invite ready. Send that code to your friend, then paste their reply below.');
+          break;
+        }
+        case 'coop-accept': {
+          const blob = field('answer').value.trim();
+          if (!blob) return this.coopSay('Paste the reply code your friend sent you first.');
+          await lobby.acceptAnswer(blob);
+          field('answer').value = '';
+          this.coopSay('Connecting them…');
+          break;
+        }
+        case 'coop-join': {
+          const blob = field('offer').value.trim();
+          if (!blob) return this.coopSay('Paste the invite code your friend sent you first.');
+          this.coopSay('Answering the invite…');
+          const reply = await lobby.joinManual(blob);
+          field('reply').value = reply;
+          field('reply').select?.();
+          this.coopSay('Send that reply code back to the host. The game starts when they accept it.');
+          break;
+        }
+        case 'coop-copy':
+          this.coopCopy(field('invite'));
+          break;
+        case 'coop-copy-reply':
+          this.coopCopy(field('reply'));
+          break;
+        case 'coop-leave':
+          lobby.leave();
+          for (const n of ['invite', 'answer', 'offer', 'reply']) field(n).value = '';
+          break;
+      }
+    } catch (err) {
+      this.coopSay(err?.message || 'That did not work.');
+    }
+  }
+
+  coopCopy(el) {
+    if (!el?.value) return this.coopSay('Nothing to copy yet.');
+    el.select();
+    navigator.clipboard?.writeText(el.value)
+      .then(() => this.coopSay('Copied to the clipboard.'))
+      // Clipboard access is refused outside a secure context, which a LAN test
+      // over plain http is. The text is selected either way, so say so.
+      .catch(() => this.coopSay('Could not reach the clipboard — the code is selected, copy it with Ctrl+C.'));
+  }
+
+  /** Lobby status callback: one line of plain language per state. */
+  coopStatus(status, detail) {
+    const lobby = this.ctx.lobby;
+    const role = this.root.querySelector('[data-coop-role]');
+    if (role) {
+      role.textContent = lobby?.mode === 'host' ? 'Hosting'
+        : lobby?.mode === 'client' ? 'Joined a game'
+        : 'Single player';
+    }
+
+    const said = {
+      hosting: 'Hosting. Create an invite for each friend you want to bring in.',
+      inviteReady: 'Invite ready. Send that code to your friend.',
+      peerConnecting: 'Reply accepted — connecting…',
+      peerJoined: `A player joined. ${detail?.count ?? '?'} in the game.`,
+      peerLeft: `A player left. ${detail?.count ?? '?'} in the game.`,
+      joining: 'Answering the invite…',
+      answerReady: 'Send your reply code back to the host.',
+      connected: 'Connected. Rebuilding the host\'s world…',
+      disconnected: 'Disconnected from the host.',
+      idle: 'Up to 4 players. One player hosts and runs the game; everyone else joins them.',
+    }[status];
+    if (said) this.coopSay(said);
+
+    const list = this.root.querySelector('[data-coop-players]');
+    if (!list) return;
+    const players = lobby?.players || [];
+    list.innerHTML = lobby && lobby.mode !== 'single'
+      ? players.map((p) => `<div class="coop-player${p.local ? ' is-you' : ''}">${p.name}</div>`).join('')
+      : '';
+  }
+
+  coopSay(text) {
+    const el = this.root.querySelector('[data-coop-status]');
+    if (el) el.textContent = text;
   }
 
   showDeath(stats) {
@@ -328,7 +515,7 @@ export class Menus {
     }
     if (ctx.input?.hit?.('Escape')) {
       if (!this.screen) this.open('pause');
-      else if (this.screen === 'settings') this.open(this.returnTo || 'title');
+      else if (this.screen === 'settings' || this.screen === 'coop') this.open(this.returnTo || 'title');
       else if (this.screen === 'pause') this.act('resume');
     }
   }

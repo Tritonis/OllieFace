@@ -86,6 +86,9 @@ export class Lobby {
     this.mode = 'client';
     const client = new NetClient();
     this.net = this.engine.add(client);
+    // Views must be registered before the first snapshot lands, or the entities
+    // in it are skipped once and never re-offered.
+    this.ctx.coop?.attachClient?.(client);
     this._set('joining');
 
     const answerBlob = await client.join(inviteBlob);

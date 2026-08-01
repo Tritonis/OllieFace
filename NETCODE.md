@@ -38,10 +38,33 @@ if (!ctx.authority) return;          // host decides; client learns via `itemPic
 const item = ctx.rng.weighted(table);
 ```
 
+## The seam
+
+`src/net/` knows nothing about the gameplay systems: NetHost asks for a pawn
+when someone joins, NetClient asks for a view when an entity appears, and
+neither knows what those are. `src/net/Coop.js` is the one module that imports
+both halves and answers all three questions. It is a normal engine system, added
+in `main.js`, and costs one no-op `update` in single-player.
+
+| hook | answered by | with |
+|---|---|---|
+| `ctx.spawnRemotePlayer(peerId)` | Coop | a `new Player({ local: false })` — same class, same simulation, but it never claims `ctx.player` and is stepped by NetHost off the wire rather than by the engine |
+| `ctx.despawnRemotePlayer(pawn)` | Coop | unregister from Combat, drop the rig |
+| `registerViewFactory(kind, …)` | `src/net/NetViews.js` | enemy / player / interactable views over the same pooled rigs the host uses, including the same distance LOD |
+| `netWelcome` | Coop | adopt the host's seed and stage via `Progression.syncStage` |
+
+`ctx.lobby` is the UI's entry point and is not a system — it owns no frame time.
+`src/ui/Menus.js` drives it from the co-op screen and renders `onStatus` as one
+line of plain language per state.
+
+Snapshots identify entity *type* through the one-byte `typeId`: enemies carry
+their index in `ENEMIES` (see `ENEMY_BY_TYPE`), interactables a `TYPE_ID` that
+encodes chest size, since a client that only learned "chest" would render every
+legendary as a small one.
+
 ## Integration checklist per system
 
-These are the edits still owed against the gameplay systems. Everything in
-`src/net/` is complete and independent of them.
+These are the rules the gameplay systems follow. All of them are in place.
 
 - **`Combat.applyDamage`** — early-return unless `ctx.authority`. Clients apply
   health purely from snapshot `healthFrac`. Damage numbers/hit sparks are

@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "shots": "node tools/capture.mjs"
+    "shots": "node tools/capture.mjs",
+    "dev:lan": "vite --host"
   },
   "keywords": [],
   "author": "",

@@ -13,6 +13,8 @@ import { Progression } from './systems/Progression.js';
 import { VFX } from './systems/VFX.js';
 import { Audio } from './systems/Audio.js';
 import { HUD } from './ui/HUD.js';
+import { Coop } from './net/Coop.js';
+import { Lobby } from './net/Lobby.js';
 import { maybeShowGpuNotice } from './ui/GpuNotice.js';
 
 const params = new URLSearchParams(location.search);
@@ -48,7 +50,15 @@ engine.add(new Progression());
 engine.add(new VFX());
 engine.add(new Audio());
 engine.add(new CameraRig());
+// Co-op glue before the UI: Menus reads `ctx.lobby` the moment someone opens
+// the co-op screen, and Coop must be able to answer NetHost's pawn request
+// from the first peer that connects.
+engine.add(new Coop());
 engine.add(new HUD());
+
+// The lobby is not a system — it owns no frame time and only exists so the UI
+// has something to drive. Single-player never touches it.
+ctx.lobby = new Lobby(engine, ctx);
 
 ctx.pipeline.build(ctx.scene, ctx.camera);
 

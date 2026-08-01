@@ -1323,9 +1323,77 @@ body.menu-open { cursor: default; }
   .hpblock { width: min(46vw, 30em); }
 }
 
+/* ------------------------------------------------------------------ co-op
+   Two columns — host on the left, join on the right — because the flow is a
+   trade of two codes and the player has to see both ends of it at once. */
+
+.coop-status {
+  padding: 0.7em 0.9em;
+  margin-bottom: 1.2em;
+  font-size: 0.92em;
+  line-height: 1.5;
+  color: var(--ink-dim);
+  background: rgba(255, 255, 255, 0.025);
+  border-left: 2px solid var(--line-hot);
+}
+
+.coop-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1.6em; }
+
+.coop-col { display: flex; flex-direction: column; gap: 0.7em; min-width: 0; }
+
+.coop-h {
+  margin: 0;
+  font-size: 0.92em;
+  font-weight: 600;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.coop-hint { margin: 0; font-size: 0.84em; line-height: 1.5; color: var(--ink-faint); }
+
+.coop-field { display: flex; flex-direction: column; gap: 0.35em; }
+.coop-field > span {
+  font-size: 0.76em;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* The blobs are long base64 SDP. Monospace and a fixed height so a filled
+   field never reflows the panel around it. */
+.coop-field textarea {
+  width: 100%;
+  height: 5.2em;
+  padding: 0.5em 0.6em;
+  font: 0.78em/1.35 ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  color: var(--ink);
+  background: rgba(4, 7, 12, 0.7);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  resize: none;
+  word-break: break-all;
+}
+.coop-field textarea:focus { outline: none; border-color: var(--line-hot); }
+.coop-field textarea::placeholder { color: var(--ink-faint); }
+.coop-field textarea[readonly] { color: var(--ink-dim); }
+
+.coop-players { display: flex; flex-wrap: wrap; gap: 0.5em; margin: 1.3em 0 0.2em; }
+.coop-player {
+  padding: 0.35em 0.9em;
+  font-size: 0.82em;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--line);
+}
+.coop-player.is-you { color: var(--ink); border-color: var(--line-hot); }
+
 @media (max-width: 900px) {
   .srow { grid-template-columns: 1fr; gap: 0.4em; }
   .menu-list { min-width: min(20em, 80vw); }
+  .coop-cols { grid-template-columns: 1fr; gap: 1.2em; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -3,7 +3,7 @@ import { clamp, damp } from '../core/MathUtil.js';
 import { CharacterMesh } from './CharacterMesh.js';
 import { ProjectilePool } from './Projectile.js';
 import { ABILITIES, SLOT_ORDER, effectiveCooldown } from '../data/abilities.js';
-import { BTN } from '../net/Protocol.js';
+import { BTN, ESTATE } from '../net/Protocol.js';
 
 /**
  * The survivor: kinematic capsule + loadout + the damageable entity.
@@ -77,8 +77,19 @@ const IDLE_CMD = { tick: 0, moveX: 0, moveZ: 0, buttons: 0, yaw: 0, pitch: 0 };
 let NEXT_ID = 1;
 
 export class Player {
+  /**
+   * `local: false` builds a pawn for a remote co-op player. It is the same
+   * class doing the same simulation — the only differences are that it never
+   * claims `ctx.player` (the camera, HUD and input all follow that one) and
+   * that nothing steps it from the engine: NetHost feeds it `applyCommand`
+   * straight off the wire.
+   */
+  constructor({ local = true } = {}) {
+    this.local = local;
+  }
+
   init(ctx) {
-    ctx.player = this;
+    if (this.local) ctx.player = this;
     this.ctx = ctx;
 
     // --- entity contract ---
@@ -713,6 +724,11 @@ export class Player {
   /** Visual-only nudge that hides small corrections. Never touches `position`. */
   setRenderOffset(x, y, z) {
     this._renderOffset.set(x, y, z);
+  }
+
+  /** Snapshot lifecycle flag — see the matching getter on Enemy. */
+  get netState() {
+    return this.alive ? ESTATE.ALIVE : ESTATE.DEAD;
   }
 
   // ------------------------------------------------------------------ damage

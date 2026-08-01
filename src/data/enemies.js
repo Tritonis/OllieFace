@@ -195,6 +195,13 @@ export const ENEMIES = [
 
 export const ENEMY_BY_ID = new Map(ENEMIES.map((e) => [e.id, e]));
 
+// Snapshots carry a one-byte `typeId` instead of the string id — it is what a
+// client resolves back into a mesh factory and a max-health scale. 0 is left
+// free as "unknown", so the table is 1-based.
+ENEMIES.forEach((e, i) => { e.typeId = i + 1; });
+
+export const ENEMY_BY_TYPE = new Map(ENEMIES.map((e) => [e.typeId, e]));
+
 /** Everything the director may buy with credits during normal play. */
 export const SPAWN_CARDS = ENEMIES.filter((e) => !e.isBoss);
 

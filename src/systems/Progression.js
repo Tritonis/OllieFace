@@ -17,6 +17,11 @@ import { BIOMES, stageNameFor } from '../world/Materials.js';
 // Materials.js so a stage's name and its look can never drift apart.
 const NAME_CYCLE = BIOMES.length * BIOMES[0].names.length;
 
+/** The displayed stage name, loop suffix included. */
+function fullStageName(index) {
+  return stageNameFor(index) + (index >= NAME_CYCLE ? ` (Loop ${Math.floor(index / NAME_CYCLE) + 1})` : '');
+}
+
 const CHARGE_TIME = 90;      // seconds of standing in the ring to fill it
 const LOOT_WINDOW = 8;       // beat between "boss dead" and the portal opening
 const CHARGE_EMIT_STEP = 0.01;
@@ -135,8 +140,7 @@ export class Progression {
   _applyStage(index, first = false) {
     const ctx = this.ctx;
     this.stageIndex = index;
-    this.stageName = stageNameFor(index) +
-      (index >= NAME_CYCLE ? ` (Loop ${Math.floor(index / NAME_CYCLE) + 1})` : '');
+    this.stageName = fullStageName(index);
     this.state = 'idle';
     this.charge = 0;
     this._lastEmitted = -1;
@@ -173,6 +177,21 @@ export class Progression {
   advanceStage() {
     this.stats.stagesCleared++;
     this._beginStage(this.stageIndex + 1);
+  }
+
+  /**
+   * Adopt the host's stage on joining a co-op game.
+   *
+   * Deliberately routed through the same `stageStart` event a mid-run stage
+   * transition uses, rather than rebuilding directly: that event is also what
+   * tells the Director to drop the enemies this client was simulating a moment
+   * ago as a single-player host, and what resets the HUD. Marking the run as
+   * started stops `fixedUpdate` from ever building stage 0 locally if authority
+   * is later handed back.
+   */
+  syncStage(index) {
+    this._started = true;
+    this.ctx.events.emit('stageStart', { index, name: fullStageName(index) });
   }
 
   // -------------------------------------------------------------- teleporter

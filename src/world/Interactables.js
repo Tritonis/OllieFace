@@ -19,9 +19,15 @@ const ORB_SEEK_RANGE = 4.5;
 
 // Snapshot discriminator so a client can build the right view for a replicated
 // interactable. Values are wire constants — append, never renumber.
+// Chests carry their size in the type id rather than a separate field: the size
+// changes the mesh, and a client that only learned "chest" would render every
+// legendary as a small one.
 const TYPE_ID = {
   chest: 1, multishop: 2, shrineChance: 3, shrineBlood: 4, teleporter: 5, portal: 6,
+  chestLarge: 7, chestLegendary: 8,
 };
+
+const CHEST_TYPE = { small: TYPE_ID.chest, large: TYPE_ID.chestLarge, legendary: TYPE_ID.chestLegendary };
 
 const TIER_BIAS = {
   small: { common: 80, uncommon: 20, legendary: 1 },
@@ -75,7 +81,7 @@ class Chest extends Interactable {
     this.size = size;
     this.cost = cost;
     this.openT = -1;
-    this.typeId = TYPE_ID.chest;
+    this.typeId = CHEST_TYPE[size] || TYPE_ID.chest;
 
     const tint = size === 'legendary' ? 0xf0453f : size === 'large' ? 0x49d67a : 0xc0c8d4;
     const scale = size === 'small' ? 1 : size === 'large' ? 1.35 : 1.5;
@@ -655,4 +661,43 @@ export class Interactables {
     for (let i = 0; i < this.list.length; i++) this.list[i].update(dt);
     for (let i = 0; i < this.orbs.length; i++) this.orbs[i].update(dt);
   }
+}
+
+// ---------------------------------------------------------------- client views
+
+/**
+ * Rebuild one replicated prop client-side.
+ *
+ * A client's stage is regenerated from the host's seed but its *contents* are
+ * not re-rolled (`Progression` clears them on `stageStart`), so every chest and
+ * shrine a client sees arrives through here. The object is a real Interactable
+ * — it renders and prompts exactly as the host's does — but it never resolves
+ * an interaction: `Interactables.requestInteract` is gated on `ctx.authority`,
+ * so pressing E only sets the INTERACT command bit and the host decides.
+ *
+ * Costs read 0 because a client is never told them. That is a visible gap in
+ * the prompt text, not a gameplay one.
+ */
+const VIEW_BUILDERS = {
+  [TYPE_ID.chest]: (ctx, p) => new Chest(ctx, p, 'small', 0),
+  [TYPE_ID.chestLarge]: (ctx, p) => new Chest(ctx, p, 'large', 0),
+  [TYPE_ID.chestLegendary]: (ctx, p) => new Chest(ctx, p, 'legendary', 0),
+  [TYPE_ID.multishop]: (ctx, p) => new MultishopTerminal(ctx, p, 0, [], 0),
+  [TYPE_ID.shrineChance]: (ctx, p) => new ShrineOfChance(ctx, p, 0),
+  [TYPE_ID.shrineBlood]: (ctx, p) => new ShrineOfBlood(ctx, p, 0),
+  [TYPE_ID.teleporter]: (ctx, p) => new Teleporter(ctx, p),
+  [TYPE_ID.portal]: (ctx, p) => new Portal(ctx, p, null),
+};
+
+export function createInteractableView(ctx, typeId, position) {
+  const build = VIEW_BUILDERS[typeId];
+  if (!build) return null;
+  const obj = build(ctx, position);
+  // The teleporter is the run's objective marker; Progression reads it off the
+  // manager on both roles, so a client's replicated one has to land there too.
+  if (typeId === TYPE_ID.teleporter && ctx.interactables) {
+    ctx.interactables.teleporter = obj;
+    if (ctx.progression) ctx.progression.teleporterPosition = obj.position.clone();
+  }
+  return obj;
 }

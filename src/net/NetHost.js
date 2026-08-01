@@ -80,7 +80,11 @@ export class NetHost {
     w.u16(peer.id);
     w.u32(this.ctx.seed >>> 0);
     w.u16(this.ctx.progression?.stageIndex ?? 0);
-    w.u16(pawn?.netId ?? 0);
+    // Assign the net id now rather than letting the first snapshot do it
+    // lazily: WELCOME is what tells the client which entity is *itself*, and a
+    // 0 here makes it build an interpolated view of its own player and then
+    // fight its own prediction for the rest of the session.
+    w.u16(pawn ? this._netId(pawn) : 0);
     w.f32(this.ctx.time);
     peer.sendEvent(w.bytes());
 
