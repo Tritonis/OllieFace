@@ -2573,3 +2573,120 @@ body.menu-open { cursor: default; }
   .book-list { max-height: 14em; border-right: none; border-bottom: 1px solid rgba(148, 182, 214, 0.18); }
   .run-id { grid-template-columns: 1fr; }
 }
+
+/* ===========================================================================
+   Meta progression — logbook records/career, and the post-run readout.
+
+   Appended as one block rather than interleaved with the logbook rules above
+   because this file is shared and volatile this round; an append is the edit
+   that cannot conflict with someone else's insertion. Every rule below reuses
+   an existing token (--ink-faint, --skew, the tier palette) and every new
+   element sits inside a container the sheet already styles, so nothing here
+   introduces a second visual language.
+   =========================================================================== */
+
+/* Section heading inside the logbook's index rail. Not a row: it is not
+   focusable and carries no mark, so it can never be mistaken for an entry. */
+.book-group {
+  padding: 1em 1.1em 0.35em;
+  font-size: 0.68em;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.book-group:first-child { padding-top: 0.6em; }
+
+/* One line of the player's own record under a catalogue entry. Sits at the
+   weight of a caption on purpose — it is annotation on the card above it, not
+   a competing statement. */
+.book-note {
+  margin-top: 0.8em;
+  font-size: 0.78em;
+  letter-spacing: 0.14em;
+  color: var(--ink-dim);
+  text-transform: none;
+}
+
+.book-section {
+  margin: 1.4em 0 0;
+  font-size: 0.7em;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* The career grids carry twelve cells of long labels; the 7em minimum the
+   monster stat block uses puts "Teleporters charged" onto three lines. */
+.book-stats--wide { grid-template-columns: repeat(auto-fit, minmax(9.5em, 1fr)); }
+.book-stats--wide .book-stat-v { font-size: 1.05em; }
+
+.book-haul { display: flex; flex-wrap: wrap; gap: 0.28em; margin-top: 0.7em; }
+
+/* ---- post-run readout ---------------------------------------------------- */
+
+/* Personal bests: label, the new number, and the number it replaced. The third
+   column is what makes the row a record rather than a statistic. */
+.run-bests { display: flex; flex-direction: column; gap: 0.2em; margin-bottom: 0.9em; }
+.run-best {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: baseline;
+  gap: 0.8em;
+  padding: 0.22em 0.7em;
+  background: rgba(148, 182, 214, 0.07);
+  clip-path: polygon(0.4em 0, 100% 0, calc(100% - 0.4em) 100%, 0 100%);
+}
+.run-best-k { font-size: 0.78em; letter-spacing: 0.18em; color: var(--ink-dim); }
+.run-best-v {
+  font-size: 0.95em;
+  font-weight: 700;
+  color: var(--t-legendary);
+  font-variant-numeric: tabular-nums;
+}
+.run-best-was {
+  font-size: 0.72em;
+  letter-spacing: 0.14em;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Challenges this run advanced. The bar is the logbook's own .book-prog, so a
+   player who has seen one has seen both. */
+.run-prog-list { display: flex; flex-direction: column; gap: 0.35em; margin-bottom: 0.8em; }
+.run-prog {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 9em auto;
+  align-items: center;
+  gap: 0.8em;
+}
+.run-prog-k {
+  font-size: 0.78em;
+  letter-spacing: 0.16em;
+  color: var(--ink-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* The shared bar assumes it is the last thing in a detail column and reserves a
+   line above itself; inside this row it is a cell. */
+.run-prog .book-prog { margin-top: 0; height: 0.55em; }
+.run-prog-v {
+  font-size: 0.75em;
+  letter-spacing: 0.1em;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.run-career {
+  margin-bottom: 0.8em;
+  font-size: 0.74em;
+  letter-spacing: 0.18em;
+  color: var(--ink-faint);
+  text-transform: none;
+}
+
+@media (max-width: 900px) {
+  .run-prog { grid-template-columns: minmax(0, 1fr) auto; }
+  .run-prog .book-prog { grid-column: 1 / -1; }
+}

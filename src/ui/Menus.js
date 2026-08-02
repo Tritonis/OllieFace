@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { itemArt, tierMeta, abilityArt, hexOf, markIcon, TIER_ORDER } from './Icons.js';
 import { ITEMS_BY_TIER } from '../data/items.js';
 import { SURVIVORS, getSurvivor, loadoutOf } from '../data/survivors.js';
-import { Logbook, ModelPreview, disposeTree } from './Logbook.js';
+import { Logbook, ModelPreview, disposeTree, renderRunReport } from './Logbook.js';
 import { describeNet } from '../net/NetConfig.js';
 
 const STORE_KEY = 'petrichor.settings';
@@ -1326,20 +1326,22 @@ export class Menus {
       }).join('')
       : '<div class="ditem-empty">None</div>';
 
-    // Unlocks are drained rather than read, so the same one is never announced
-    // on two consecutive death screens.
-    const earned = [
-      ...this.newChallenges,
-      ...(this.ctx.profile?.drainPendingUnlocks?.() ?? [])
-        .map((u) => ({ kind: 'unlock', name: byId.get(u.id) || `${u.type}: ${u.id}` })),
-    ];
-    const un = this.root.querySelector('[data-run-unlocks]');
-    un.innerHTML = earned.length
-      ? `<div class="stat-items-label">Earned this run</div>
-         <div class="run-unlock-row">${earned
-           .map((e) => `<span class="run-unlock ${e.kind}">${escapeHtml(e.name)}</span>`).join('')}</div>`
-      : '';
+    // The progression readout. `Progression._endRun` commits the run to the
+    // profile *before* it emits `runEnd`, so the report is already built by the
+    // time this screen is raised — see `Profile._buildReport`.
+    //
+    // The report supersedes the old two-source chip row (this screen's own
+    // `newChallenges` plus `drainPendingUnlocks`), which could only ever say
+    // "earned": it had no before-state to diff against and so could not report a
+    // beaten record or a challenge that merely got closer. Both old sources are
+    // still drained here so nothing accumulates across runs, and the chip row is
+    // rebuilt from the report's own `completed`/`unlocks` arrays, which are
+    // run-scoped by construction.
+    const report = this.ctx.profile?.report?.() ?? null;
+    this.ctx.profile?.drainPendingUnlocks?.();
     this.newChallenges.length = 0;
+    const un = this.root.querySelector('[data-run-unlocks]');
+    un.innerHTML = renderRunReport(report);
 
     this.open('death');
   }

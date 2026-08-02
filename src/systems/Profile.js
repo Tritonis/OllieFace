@@ -1,4 +1,11 @@
-import { CHALLENGES, CHALLENGE_BY_ID, UNLOCK_TYPES, bindingStamp } from '../data/challenges.js';
+import {
+  CHALLENGES, CHALLENGE_BY_ID, UNLOCK_TYPES, bindingStamp, goalOf,
+} from '../data/challenges.js';
+// Imported for its module-evaluation side effect as much as for its API: this
+// is what discovers the reward bindings off the content cards and generates the
+// per-survivor mastery challenges, and it has to have run before the first gate
+// question. See the header of that file for why it is not an `init` hook.
+import { catalogueSizes, unlockName } from './UnlockRegistry.js';
 
 /**
  * The persistent player profile — everything that outlives a run.
@@ -9,14 +16,29 @@ import { CHALLENGES, CHALLENGE_BY_ID, UNLOCK_TYPES, bindingStamp } from '../data
  * owner is what makes schema migration tractable: there is exactly one reader,
  * one writer, and one version number.
  *
- * Four things live in here:
+ * Six things live in here:
  *
  *  - **unlocks** — which survivors / items / equipment / artifacts the player
  *    has earned. Note the default is *unlocked*: see `isUnlocked`.
  *  - **challenge progress** — counters that survive across runs, advanced from
  *    the event bus rather than polled.
+ *  - **encounters** — every id the player has ever met, with a first-seen stamp
+ *    and a running count. The logbook reads both: "seen" gates the entry, the
+ *    count is the line that makes the bestiary feel like *your* bestiary.
+ *  - **per-survivor career** — runs, wins and bests, one row per survivor. This
+ *    is what the generated mastery challenges track and what the survivor select
+ *    screen could show; it is keyed by survivor id and needs no roster import.
  *  - **run history** — the last `MAX_RUNS` runs, for the logbook's run list.
  *  - **lifetime stats** — the aggregate roll-up, plus the personal bests.
+ *
+ * ## The run report
+ *
+ * `commitRun` returns, and stores, a *report*: what this run changed. Unlocks
+ * earned, challenges completed, challenges advanced, personal bests beaten, new
+ * content met. It exists because the post-run screen is the only moment where a
+ * player decides whether to press restart, and "you died on stage 4" is not a
+ * reason to. It is computed by diffing against snapshots taken at `beginRun`,
+ * which is the only point where the before-state is still available.
  *
  * ## Why it is not registered in main.js
  *
@@ -44,11 +66,19 @@ import { CHALLENGES, CHALLENGE_BY_ID, UNLOCK_TYPES, bindingStamp } from '../data
 
 // Bump this whenever the persisted shape changes, and add the matching entry to
 // MIGRATIONS below. Never reuse a number.
-export const PROFILE_VERSION = 1;
+export const PROFILE_VERSION = 2;
 
-// Versioned in the key as well as in the payload. If a future shape is ever so
-// different that migration is not worth writing, the key changes and the old
-// blob is simply left on disk rather than mangled.
+/**
+ * One key, one JSON blob, forever.
+ *
+ * Deliberately *not* re-keyed for v2. The key carries `v1` because that is the
+ * generation of the storage contract, not the generation of the shape inside
+ * it: `docs/STEAM.md` wants the whole profile in a single blob a native build
+ * can lift wholesale, and a key that moves with every schema bump means a port
+ * has to know the history of the key as well as the history of the shape. The
+ * key changes only if a shape is ever so alien that migration is not worth
+ * writing, and then the old blob is left on disk rather than mangled.
+ */
 const STORE_KEY = 'petrichor.profile.v1';
 
 // Run history is what the logbook's "recent runs" list reads. 25 is about two
@@ -68,6 +98,11 @@ const WRITE_DEBOUNCE_MS = 1500;
 // for a toast on.
 const EVAL_DEBOUNCE_MS = 250;
 
+// The window the `massacre` challenge measures its burst over. Ten seconds is
+// about one teleporter-boss add wave, which is the fight the challenge is
+// describing.
+const BURST_WINDOW_MS = 10000;
+
 /** A profile with nothing in it. Also the shape every migration must produce. */
 function freshProfile() {
   const now = Date.now();
@@ -78,11 +113,18 @@ function freshProfile() {
     // id -> epoch ms of the unlock, per type. A map rather than an array so
     // repeated unlocks are idempotent and the logbook can show *when*.
     unlocks: emptyByType(),
-    // id -> { progress, done, doneAt }
+    // id -> { progress, done, doneAt, goal }. `goal` is stored because it can be
+    // a function of the catalogue size (see challenges.js "Dynamic goals") and
+    // the logbook has to draw a bar before the first evaluation of a session.
     challenges: {},
-    // Logbook "have I ever seen this" set, per kind. Populated from play, so it
-    // needs no id list of its own and cannot drift from the content data.
-    discovered: { item: {}, equipment: {}, enemy: {}, boss: {}, survivor: {} },
+    // Logbook "have I ever met this" record, per kind: id -> { at, count }.
+    // Populated from play, so it needs no id list of its own and cannot drift
+    // from the content data.
+    encounters: emptyByKind(),
+    // Per-survivor career: id -> { runs, wins, deaths, kills, time, bestStage,
+    // bestTime }. Keyed by id and never enumerated against a roster, so a
+    // survivor added or removed by another agent costs nothing here.
+    survivors: {},
     // Newest first.
     runs: [],
     stats: {
@@ -94,13 +136,23 @@ function freshProfile() {
       // player actually quotes and recomputing them from a 25-run window would
       // silently forget anything older.
       bestStage: 0, bestTime: 0, bestKills: 0, highestHit: 0,
+      bestLevel: 0, bestGold: 0, bestItems: 0,
     },
   };
 }
 
+/** The kinds the encounter log files things under. */
+export const ENCOUNTER_KINDS = ['item', 'equipment', 'enemy', 'boss', 'survivor'];
+
 function emptyByType() {
   const out = {};
   for (const t of UNLOCK_TYPES) out[t] = {};
+  return out;
+}
+
+function emptyByKind() {
+  const out = {};
+  for (const k of ENCOUNTER_KINDS) out[k] = {};
   return out;
 }
 
@@ -119,6 +171,61 @@ function emptyByType() {
  */
 const MIGRATIONS = {
   0: (p) => ({ ...p, version: 1 }),
+
+  /**
+   * v1 -> v2. Two real data moves, neither of which `_coerce` could do alone.
+   *
+   * **`discovered` -> `encounters`.** v1 stored `kind -> id -> timestamp`; v2
+   * stores `kind -> id -> { at, count }`, because "you have killed 412 Golems"
+   * is the line that makes a bestiary read as a record of *your* play rather
+   * than as a catalogue with some rows greyed out. Every first-seen stamp is
+   * carried across verbatim; the count starts at zero and is honest about it —
+   * inventing a count from a timestamp would be fabricating play history, and
+   * the logbook simply omits the line until a kill lands.
+   *
+   * **`survivors` reconstructed from `runs`.** The per-survivor career table is
+   * new, and the generated mastery challenges read it. A returning player whose
+   * table started empty would see every mastery challenge at zero despite
+   * twenty-five recorded runs, which reads as lost progress. The last MAX_RUNS
+   * runs are the only history that exists, so that is what it is rebuilt from —
+   * an undercount for a very long-lived profile, but an undercount that only
+   * ever moves the number toward the truth as the player keeps playing.
+   */
+  1: (p) => {
+    const encounters = {};
+    for (const kind of ENCOUNTER_KINDS) {
+      encounters[kind] = {};
+      const src = isObj(p.discovered) ? p.discovered[kind] : null;
+      if (!isObj(src)) continue;
+      for (const id of Object.keys(src)) {
+        encounters[kind][id] = { at: num(src[id], 0), count: 0 };
+      }
+    }
+
+    const survivors = isObj(p.survivors) ? { ...p.survivors } : {};
+    if (Array.isArray(p.runs)) {
+      for (const r of p.runs) {
+        if (!isObj(r) || typeof r.survivorId !== 'string' || !r.survivorId) continue;
+        const row = survivors[r.survivorId] || (survivors[r.survivorId] = {
+          runs: 0, wins: 0, deaths: 0, kills: 0, time: 0, bestStage: 0, bestTime: 0,
+        });
+        row.runs++;
+        if (r.outcome === 'victory') row.wins++; else row.deaths++;
+        row.kills += num(r.kills, 0);
+        row.time += num(r.time, 0);
+        row.bestStage = Math.max(row.bestStage, num(r.stage, 0));
+        row.bestTime = Math.max(row.bestTime, num(r.time, 0));
+      }
+    }
+
+    // `discovered` is dropped rather than kept alongside: `_coerce` builds from
+    // the fresh defaults, so a field the current shape does not name is gone
+    // after the next write, and keeping a dead copy would double the part of
+    // the blob that grows with the catalogue.
+    const out = { ...p, version: 2, encounters, survivors };
+    delete out.discovered;
+    return out;
+  },
 };
 
 export class Profile {
@@ -128,6 +235,18 @@ export class Profile {
     // this; nothing else should. Kept off `data` on purpose — it is session
     // state, not profile state, and persisting it would re-toast on reload.
     this._pendingUnlocks = [];
+    // Unlocks and completions attributable to the run in flight. Reset at
+    // `beginRun`, read once by `commitRun` to build the report.
+    this._earnedThisRun = [];
+    this._completedThisRun = [];
+    // Progress and personal bests as they stood when the run started; the run
+    // report is the diff against these.
+    this._beforeChallenges = {};
+    this._beforeStats = {};
+    /** The last committed run's report. Read by the summary screen. */
+    this.lastReport = null;
+    this._facts = null;
+    this._factsAt = 0;
     this._writeTimer = null;
     this._evalTimer = null;
     this._dirty = false;
@@ -155,6 +274,14 @@ export class Profile {
     on('kill', (e) => this._onKill(e));
     on('damage', (e) => this._onDamage(e));
     on('itemPickup', (e) => this._onItemPickup(e));
+    // Equipment is a slot, not a stack, so it has no `itemPickup` of its own and
+    // was the one catalogue the logbook could never mark as met. `equipmentChanged`
+    // is this client's own slot changing (`Items.setEquipment`), the same
+    // replication story `itemPickup` has, so there is no witness filter here
+    // either. `previous` is ignored: putting one down is not meeting it.
+    on('equipmentChanged', (e) => {
+      if (typeof e?.id === 'string' && e.id) this.discover('equipment', e.id, 1);
+    });
     on('goldChanged', (e) => this._onGold(e));
     on('bossDead', (e) => this._onBossDead(e));
     on('teleporterComplete', () => this._onTeleporterComplete());
@@ -277,15 +404,42 @@ export class Profile {
           progress: Math.max(0, num(c.progress, 0)),
           done: !!c.done,
           doneAt: num(c.doneAt, 0),
+          // Zero means "never resolved"; `challengeState` re-resolves in that
+          // case rather than drawing a bar against a goal of nothing.
+          goal: Math.max(0, num(c.goal, 0)),
         };
       }
     }
 
-    if (isObj(p.discovered)) {
-      for (const kind of Object.keys(out.discovered)) {
-        const src = p.discovered[kind];
+    if (isObj(p.encounters)) {
+      for (const kind of ENCOUNTER_KINDS) {
+        const src = p.encounters[kind];
         if (!isObj(src)) continue;
-        for (const id of Object.keys(src)) out.discovered[kind][id] = num(src[id], 0);
+        for (const id of Object.keys(src)) {
+          const e = src[id];
+          // Tolerates the v1 shape (a bare timestamp) as well as the v2 one, so
+          // a blob that reached here without the migration — a hand-edited
+          // store, or a version field somebody deleted — still loads.
+          out.encounters[kind][id] = isObj(e)
+            ? { at: num(e.at, 0), count: Math.max(0, num(e.count, 0)) }
+            : { at: num(e, 0), count: 0 };
+        }
+      }
+    }
+
+    if (isObj(p.survivors)) {
+      for (const id of Object.keys(p.survivors)) {
+        const s = p.survivors[id];
+        if (!isObj(s)) continue;
+        out.survivors[id] = {
+          runs: Math.max(0, num(s.runs, 0)),
+          wins: Math.max(0, num(s.wins, 0)),
+          deaths: Math.max(0, num(s.deaths, 0)),
+          kills: Math.max(0, num(s.kills, 0)),
+          time: Math.max(0, num(s.time, 0)),
+          bestStage: Math.max(0, num(s.bestStage, 0)),
+          bestTime: Math.max(0, num(s.bestTime, 0)),
+        };
       }
     }
 
@@ -392,8 +546,13 @@ export class Profile {
     this.data.unlocks[type][id] = Date.now();
     this._touch();
     if (!silent) {
-      const entry = { type, id, challenge };
+      const entry = { type, id, challenge, name: unlockName(type, id) };
       this._pendingUnlocks.push(entry);
+      // The run report wants "earned during *this run*", which is a shorter
+      // window than the session `_pendingUnlocks` covers — a player who opened
+      // the logbook and closed it has drained nothing, and a run that unlocked
+      // nothing must not inherit the previous run's ribbon.
+      this._earnedThisRun.push(entry);
       this.ctx?.events?.emit?.('unlockEarned', entry);
     }
     return true;
@@ -410,21 +569,29 @@ export class Profile {
     const def = CHALLENGE_BY_ID[id];
     if (!def) return null;
     const st = this.data.challenges[id];
-    const progress = Math.min(def.goal, st?.progress ?? 0);
+    // A challenge completed against an older, smaller catalogue keeps the goal
+    // it was completed against — re-resolving it would redraw a finished bar as
+    // unfinished the day someone adds the twenty-third monster.
+    const goal = st?.goal > 0 ? st.goal : goalOf(def, this.facts());
+    const progress = Math.min(goal, st?.progress ?? 0);
     const done = !!st?.done;
     const masked = def.hidden && !done;
+    const reward = def.unlocks
+      ? { ...def.unlocks, name: unlockName(def.unlocks.type, def.unlocks.id) }
+      : null;
     return {
       id: def.id,
       name: masked ? '???' : def.name,
       description: masked ? 'Hidden challenge.' : def.description,
+      category: def.category || 'career',
       hidden: !!def.hidden,
       masked,
       progress,
-      goal: def.goal,
-      fraction: def.goal > 0 ? progress / def.goal : 0,
+      goal,
+      fraction: goal > 0 ? progress / goal : 0,
       done,
       doneAt: st?.doneAt ?? 0,
-      unlocks: def.unlocks || null,
+      unlocks: reward,
     };
   }
 
@@ -433,16 +600,77 @@ export class Profile {
     return CHALLENGES.map((c) => this.challengeState(c.id));
   }
 
-  /** Has the player ever seen this piece of content? Drives logbook greying. */
-  isDiscovered(kind, id) { return !!this.data.discovered[kind]?.[id]; }
+  /**
+   * The derived career view handed to every `track` as its third argument, and
+   * to `goalOf` for the catalogue-sized goals.
+   *
+   * Memoised for one animation frame's worth of calls. `_evaluate` runs up to
+   * four times a second in a fight and `challengeState` is called once per row
+   * when the logbook opens; recomputing the distinct counts on each of those is
+   * a handful of `Object.keys` over maps whose size is the content catalogue,
+   * which is cheap but not free, and none of the inputs can change between two
+   * calls in the same tick.
+   */
+  facts() {
+    const now = Date.now();
+    if (this._facts && now - this._factsAt < 100) return this._facts;
+    const distinct = {};
+    for (const kind of ENCOUNTER_KINDS) distinct[kind] = Object.keys(this.data.encounters[kind] || {}).length;
 
-  discover(kind, id) {
+    let survivorsPlayed = 0;
+    for (const id of Object.keys(this.data.survivors)) {
+      if (this.data.survivors[id].runs > 0) survivorsPlayed++;
+    }
+
+    this._facts = {
+      distinct,
+      // Sizes come from the registry rather than from anything persisted: they
+      // are a property of the *build*, and a stale copy in the save file would
+      // let a "collect every item" challenge complete against last week's
+      // catalogue.
+      catalogue: catalogueSizes(),
+      survivorRuns: this.data.survivors,
+      survivorsPlayed,
+    };
+    this._factsAt = now;
+    return this._facts;
+  }
+
+  /** Has the player ever seen this piece of content? Drives logbook greying. */
+  isDiscovered(kind, id) { return !!this.data.encounters[kind]?.[id]; }
+
+  /**
+   * How many of this thing the player has met, and when they first did.
+   * Null for something never encountered, so the UI can tell "zero" from
+   * "no record" without a second call.
+   */
+  encounter(kind, id) {
+    const e = this.data.encounters[kind]?.[id];
+    return e ? { at: e.at, count: e.count } : null;
+  }
+
+  /**
+   * Record an encounter. Returns true only the first time — the run report's
+   * "new this run" counts key off that, and everything else wants the count.
+   *
+   * `n` is the number to add to the tally, which is 1 for a kill and 1 per
+   * stack for an item pickup. It is separate from the first-seen stamp on
+   * purpose: an item picked up in a stack of three is one discovery and three
+   * pickups, and collapsing those loses the more interesting of the two.
+   */
+  discover(kind, id, n = 1) {
     if (!id) return false;
-    const m = this.data.discovered[kind];
-    if (!m || m[id]) return false;
-    m[id] = Date.now();
+    const m = this.data.encounters[kind];
+    if (!m) return false;
+    const first = !m[id];
+    if (first) m[id] = { at: Date.now(), count: 0 };
+    m[id].count += Math.max(0, n);
+    // Invalidate the derived view: a first sighting moves a distinct count, and
+    // a survey challenge evaluated against the memo would miss the tick it
+    // completed on.
+    if (first) { this._facts = null; if (this.run) this.run.discoveries[kind] = (this.run.discoveries[kind] || 0) + 1; }
     this._touch();
-    return true;
+    return first;
   }
 
   /** Newest first. A defensive copy — the UI must not be able to edit history. */
@@ -450,6 +678,16 @@ export class Profile {
 
   /** Lifetime aggregate stats. Copy, same reason. */
   lifetime() { return { ...this.data.stats }; }
+
+  /**
+   * One survivor's career row, or a zeroed one for a survivor never played.
+   * Never null, so the logbook can render the line unconditionally — a roster
+   * entry with no row is a survivor at zero, not a survivor with no record.
+   */
+  survivorCareer(id) {
+    const r = this.data.survivors[id];
+    return r ? { ...r } : { runs: 0, wins: 0, deaths: 0, kills: 0, time: 0, bestStage: 0, bestTime: 0 };
+  }
 
   /**
    * Drain the unlocks earned since the last call. B3's notification toast owns
@@ -468,8 +706,47 @@ export class Profile {
   reset() {
     this.data = freshProfile();
     this._pendingUnlocks = [];
+    this._earnedThisRun = [];
+    this._completedThisRun = [];
+    this._beforeChallenges = {};
+    this._beforeStats = {};
+    this.lastReport = null;
+    // The derived view is a cache of data that no longer exists.
+    this._facts = null;
     this._dirty = true;
     this.flush();
+  }
+
+  /**
+   * The whole profile as one JSON-safe object.
+   *
+   * `docs/STEAM.md` wants a native build to be able to lift the save wholesale
+   * rather than reconstruct it from a set of keys, and a browser build to be
+   * able to hand a player their own data. This is that seam: the same bytes
+   * `flush` writes, and the same shape `_load` accepts back.
+   */
+  exportProfile() { return JSON.parse(JSON.stringify(this.data)); }
+
+  /**
+   * Replace the profile from an exported blob, running it through the same
+   * migration and coercion path a stored one takes. Returns false — and changes
+   * nothing — if the blob is unusable, because a failed import that wiped the
+   * player's actual profile would be the worst bug in the file.
+   */
+  importProfile(blob) {
+    if (!isObj(blob)) return false;
+    let next;
+    try {
+      next = this._coerce(this._migrate(blob));
+    } catch (e) {
+      console.warn('[profile] import rejected:', e);
+      return false;
+    }
+    this.data = next;
+    this._facts = null;
+    this._dirty = true;
+    this.flush();
+    return true;
   }
 
   // --------------------------------------------------------- run lifecycle
@@ -496,9 +773,28 @@ export class Profile {
       // Reset at every stage boundary; `flawlessStages` is the counter a
       // "clear a stage untouched" challenge reads.
       damageTakenThisStage: 0, flawlessStages: 0,
+      // Best kills inside any ten-second window this run, and the sliding
+      // window it is measured from. The window is a wall-clock one rather than
+      // a `ctx.time` one because it must not stop counting while the game is
+      // paused *or* keep counting through a menu — `Date.now()` on a kill event
+      // is only advanced by kills, so a paused game simply produces no samples.
+      bestKillBurst: 0, killTimes: [],
+      // kind -> how many *first* sightings happened during this run.
+      discoveries: {},
       died: false,
     };
-    if (this.run.survivorId) this.discover('survivor', this.run.survivorId);
+    // Snapshot the before-state the report is a diff against. Taken here rather
+    // than at `commitRun` for the obvious reason: by then the after-state has
+    // already overwritten it.
+    this._earnedThisRun = [];
+    this._completedThisRun = [];
+    this._beforeStats = { ...this.data.stats };
+    this._beforeChallenges = {};
+    for (const id of Object.keys(this.data.challenges)) {
+      const st = this.data.challenges[id];
+      this._beforeChallenges[id] = { progress: st.progress, done: st.done };
+    }
+    if (this.run.survivorId) this.discover('survivor', this.run.survivorId, 0);
     this._lastGold = 0;
   }
 
@@ -544,16 +840,121 @@ export class Profile {
     s.bestStage = Math.max(s.bestStage, record.stage);
     s.bestTime = Math.max(s.bestTime, record.time);
     s.bestKills = Math.max(s.bestKills, record.kills);
+    s.bestLevel = Math.max(s.bestLevel, record.level);
+    s.bestGold = Math.max(s.bestGold, record.gold);
+    s.bestItems = Math.max(s.bestItems, record.items);
+
+    // Per-survivor career. Written before the challenge pass, because the
+    // generated mastery challenges read exactly this table and the run that
+    // reaches stage 5 must be the run that completes its own mastery — not the
+    // one after it.
+    if (record.survivorId) {
+      const row = this.data.survivors[record.survivorId] || (this.data.survivors[record.survivorId] = {
+        runs: 0, wins: 0, deaths: 0, kills: 0, time: 0, bestStage: 0, bestTime: 0,
+      });
+      row.runs++;
+      if (won) row.wins++; else row.deaths++;
+      row.kills += record.kills;
+      row.time += record.time;
+      row.bestStage = Math.max(row.bestStage, record.stage);
+      row.bestTime = Math.max(row.bestTime, record.time);
+      // The survivor's encounter count is "runs played as them", which is what
+      // the logbook's roster line wants to say.
+      this.discover('survivor', record.survivorId, 1);
+      // A new row moves `survivorsPlayed`, which `wholeRoster` tracks.
+      this._facts = null;
+    }
 
     // Final evaluation before the run counters are gone: a challenge phrased
     // "…in a single run" can only be true at this instant.
-    this._evaluate(run);
+    this._facts = null;
+    this._evaluate(run, true);
+    this.lastReport = this._buildReport(record, run);
     this._touch();
     // The death screen is up and the player is about to alt-tab; do not sit on
     // the debounce with a whole run's progress unwritten.
     this.flush();
     return record;
   }
+
+  /**
+   * What this run changed, in the order a player cares about it.
+   *
+   * The whole file exists so that this method can be honest. Everything here is
+   * a diff against a snapshot taken at `beginRun` — nothing is inferred, and a
+   * run that changed nothing produces a report whose arrays are all empty,
+   * which is the signal the summary screen uses to show nothing rather than to
+   * show an empty heading.
+   */
+  _buildReport(record, run) {
+    const before = this._beforeChallenges;
+    const advanced = [];
+    for (const id of Object.keys(this.data.challenges)) {
+      const st = this.data.challenges[id];
+      // Completions are reported separately and would otherwise appear twice.
+      if (st.done) continue;
+      const was = before[id]?.progress ?? 0;
+      if (st.progress <= was) continue;
+      const def = CHALLENGE_BY_ID[id];
+      if (!def || (def.hidden && !st.done)) continue;
+      advanced.push({
+        id, name: def.name, from: was, to: st.progress, goal: st.goal || goalOf(def, this.facts()),
+      });
+    }
+    // Closest to done first: the row a player is one run away from is the row
+    // that makes them press restart, and it is not usually the row that moved
+    // the most.
+    advanced.sort((a, b) => (b.to / b.goal) - (a.to / a.goal));
+
+    // Personal bests, phrased as "you beat your own number" rather than as the
+    // number itself. A best that was already held is not news and is omitted;
+    // the *first* run of a profile beats every best trivially, so a zero
+    // previous value is reported as a first rather than as a record.
+    const bs = this._beforeStats;
+    const s = this.data.stats;
+    const records = [];
+    const best = (key, label, value, format) => {
+      if (!(value > (bs[key] ?? 0))) return;
+      records.push({ key, label, value, previous: bs[key] ?? 0, format: format || 'number' });
+    };
+    best('bestStage', 'Deepest stage', s.bestStage);
+    best('bestTime', 'Longest run', s.bestTime, 'time');
+    best('bestKills', 'Most kills', s.bestKills);
+    best('highestHit', 'Biggest hit', Math.round(s.highestHit));
+    best('bestItems', 'Largest haul', s.bestItems);
+    best('bestGold', 'Richest run', s.bestGold);
+
+    const discoveries = [];
+    for (const kind of ENCOUNTER_KINDS) {
+      const n = run.discoveries[kind] || 0;
+      if (n > 0) discoveries.push({ kind, count: n });
+    }
+
+    return {
+      at: record.at,
+      runNumber: s.runs,
+      outcome: record.outcome,
+      unlocks: this._earnedThisRun.slice(),
+      completed: this._completedThisRun.slice(),
+      // Both lists are capped, and the caps are here rather than in the
+      // renderer because they are a statement about *attention*, not about
+      // layout: three near-misses is a shortlist a player reads, and eight is a
+      // table they skip. The measured consequence of not capping was concrete —
+      // a first run beats all six bests at once and advances a dozen
+      // challenges, and the resulting readout pushed the summary panel's own
+      // buttons off the bottom of a 1600x900 frame.
+      advanced: advanced.slice(0, 3),
+      records: records.slice(0, 4),
+      discoveries,
+      // The career line: what this run did to the totals. Cheap to compute here
+      // and impossible to compute later, once the summary is the only thing
+      // holding a reference to the run.
+      lifetime: { runs: s.runs, wins: s.wins, kills: s.kills, timePlayed: s.timePlayed },
+    };
+  }
+
+  /** The last committed run's report, or null before the first run ends. */
+  report() { return this.lastReport; }
 
   // ---------------------------------------------------------- event handlers
 
@@ -616,6 +1017,19 @@ export class Profile {
     run.kills++;
     this.data.stats.kills++;
     if (e.isElite) { run.elites++; this.data.stats.elites++; }
+
+    // Sliding ten-second window. An array of timestamps rather than a counter
+    // with a reset, because a tumbling window silently undercounts every burst
+    // that straddles a boundary — and a boss room clear is exactly the kind of
+    // ten seconds that lands wherever it likes. The array is bounded by how
+    // many things can die in ten seconds, so the shift loop is a handful of
+    // elements even in a horde.
+    const now = Date.now();
+    const times = run.killTimes;
+    times.push(now);
+    while (times.length && now - times[0] > BURST_WINDOW_MS) times.shift();
+    if (times.length > run.bestKillBurst) run.bestKillBurst = times.length;
+
     this._scheduleEval();
   }
 
@@ -649,7 +1063,7 @@ export class Profile {
     // `itemPickup` is replicated as *this* client's inventory change (see
     // NETCODE.md), so there is no witness filter to apply here.
     const count = Math.max(1, num(e?.count, 1));
-    if (typeof e?.id === 'string') this.discover('item', e.id);
+    if (typeof e?.id === 'string') this.discover('item', e.id, count);
     if (!run) return;
     run.items += count;
     this.data.stats.items += count;
@@ -716,6 +1130,7 @@ export class Profile {
   _evaluate(runStats, force = false) {
     const stats = this.data.stats;
     const store = this.data.challenges;
+    const facts = this.facts();
     let changed = false;
 
     for (const def of CHALLENGES) {
@@ -723,26 +1138,37 @@ export class Profile {
       if (st?.done) continue;
       let progress = 0;
       try {
-        progress = num(def.track(stats, runStats), 0);
+        progress = num(def.track(stats, runStats, facts), 0);
       } catch (e) {
         // A broken predicate must cost that challenge, not the profile. This is
         // the same posture Engine takes with a throwing system.
         console.warn(`[profile] challenge "${def.id}" threw while tracking:`, e);
         continue;
       }
-      if (!st) { st = store[def.id] = { progress: 0, done: false, doneAt: 0 }; }
+      if (!st) { st = store[def.id] = { progress: 0, done: false, doneAt: 0, goal: 0 }; }
+      // Re-resolved on every pass while incomplete: a catalogue-sized goal grows
+      // when content is added, and a bar drawn against last session's smaller
+      // catalogue would sit at 100% without completing.
+      const goal = goalOf(def, facts);
+      if (st.goal !== goal) { st.goal = goal; changed = true; }
       if (progress <= st.progress && !force) continue;
-      if (progress > st.progress) { st.progress = progress; changed = true; }
+      // Per-challenge, not the loop-wide `changed`: the first evaluation of a
+      // session resolves every dynamic goal and so sets `changed` on the first
+      // row, which would then announce "progress" on every later row in the
+      // list whether or not any of them had moved.
+      let advanced = false;
+      if (progress > st.progress) { st.progress = progress; changed = advanced = true; }
 
-      if (st.progress >= def.goal) {
+      if (st.progress >= goal) {
         st.done = true;
         st.doneAt = Date.now();
         changed = true;
+        this._completedThisRun.push({ id: def.id, name: def.name });
         this.ctx?.events?.emit?.('challengeComplete', { id: def.id, name: def.name });
         if (def.unlocks) this.unlock(def.unlocks.type, def.unlocks.id, { challenge: def.id });
-      } else if (changed) {
+      } else if (advanced) {
         this.ctx?.events?.emit?.('challengeProgress', {
-          id: def.id, progress: st.progress, goal: def.goal,
+          id: def.id, progress: st.progress, goal,
         });
       }
     }
