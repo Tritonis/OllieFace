@@ -75,7 +75,7 @@ export const ENEMIES = [
     id: 'beetle',
     maxAlive: 10,
     selectionWeight: 1.0,
-    name: 'Beetle',
+    name: 'Plated Scarab',
     tier: 1,
     cost: 6,
     baseHealth: 90,
@@ -93,7 +93,7 @@ export const ENEMIES = [
     packMax: 6,
     meshFactory: 'beetle',
     attacks: [
-      // The beetle is the first thing anyone meets, so its tell is the longest
+      // The scarab is the first thing anyone meets, so its tell is the longest
       // relative to its reach: it rears back for two thirds of a second before
       // anything can hurt you.
       { id: 'headbutt', kind: 'melee', range: 2.4, windup: 0.66, active: 0.14, recover: 0.46, cooldown: 1.6, damage: 1, arc: 1.1, lunge: 8 },
@@ -136,7 +136,7 @@ export const ENEMIES = [
     id: 'lemurian',
     maxAlive: 6,
     selectionWeight: 0.9,
-    name: 'Lemurian',
+    name: 'Emberjaw Skink',
     tier: 1,
     cost: 11,
     baseHealth: 150,
@@ -166,7 +166,7 @@ export const ENEMIES = [
     id: 'wisp',
     maxAlive: 5,
     selectionWeight: 0.8,
-    name: 'Wisp',
+    name: 'Guttering Mote',
     tier: 1,
     cost: 13,
     baseHealth: 110,
@@ -197,7 +197,7 @@ export const ENEMIES = [
     id: 'pest',
     maxAlive: 5,
     selectionWeight: 0.7,
-    name: 'Blind Pest',
+    name: 'Blind Shrike',
     tier: 1,
     cost: 16,
     baseHealth: 100,
@@ -460,7 +460,7 @@ export const ENEMIES = [
     id: 'golem',
     maxAlive: 4,
     selectionWeight: 0.7,
-    name: 'Stone Golem',
+    name: 'Basalt Sentinel',
     tier: 2,
     cost: 32,
     baseHealth: 520,
@@ -563,7 +563,7 @@ export const ENEMIES = [
   // -------------------------------------------------------------------------
   {
     id: 'titan',
-    name: 'Stone Titan',
+    name: 'Basalt Colossus',
     tier: 4,
     cost: 420,
     baseHealth: 3200,

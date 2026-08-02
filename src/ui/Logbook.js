@@ -27,7 +27,7 @@ import { itemArt, abilityArt, tierMeta, hexOf, cardDef } from './Icons.js';
 
 // ---------------------------------------------------------------- 3D preview
 
-/** Fraction of the panel the subject fills. Above ~1.25 a Titan's horns clip. */
+/** Fraction of the panel the subject fills. Above ~1.25 a Colossus's horns clip. */
 const FILL = 1.15;
 
 /**
@@ -111,7 +111,7 @@ export class ModelPreview {
   /**
    * Solve the camera distance from the subject's own bounds.
    *
-   * Both terms matter. Height alone frames a survivor; a Titan is four times
+   * Both terms matter. Height alone frames a survivor; a Colossus is four times
    * wider than it is tall relative to the viewport, and dividing the width term
    * by the aspect is what stops it hanging out of both sides of a portrait
    * panel. The first version of this multiplied where it should have divided
@@ -218,8 +218,8 @@ export class ModelPreview {
  *
  * `Box3.setFromObject` measures every child regardless of `visible`, and an
  * enemy rig carries its telegraph decals, beam segments and shockwave discs
- * parked in the tree with `visible = false`. Measuring those framed the Stone
- * Golem at a little over half the panel it was supposed to fill, because the
+ * parked in the tree with `visible = false`. Measuring those framed the Basalt
+ * Sentinel at a little over half the panel it was supposed to fill, because the
  * box it was solved against was mostly the reach of an attack it was not
  * making.
  */

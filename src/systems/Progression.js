@@ -179,8 +179,8 @@ export class Progression {
     // makes looting slowly a real cost.
     this.difficulty = (1 + 0.4 * (ctx.time / 60)) * Math.pow(1.15, this.stageIndex);
     // `ctx.difficulty` used to mirror this number. It is now the difficulty
-    // *selection* API owned by `systems/Artifacts.js` (Drizzle/Rainstorm/
-    // Monsoon), and this value keeps the one name it was ever read under —
+    // *selection* API owned by `systems/Artifacts.js` (Overcast/Downpour/
+    // Deluge), and this value keeps the one name it was ever read under —
     // `progression.difficulty`, which `_tickTeleporter` and `runStats` already
     // use. Its single external reader (`Items.killReward`, as a fallback behind
     // the director's coefficient) now reads the director directly.
@@ -349,7 +349,7 @@ export class Progression {
         const at = tp.position.clone().add(this._tmp.set(4, 0, 0));
         this.interactables.spawnPortal(at, () => this.advanceStage());
         // And whatever else this stage has earned beside it: a way into the
-        // market if a Newt Altar was paid for, and — from FINALE_STAGE on — the
+        // market if a Tithe Altar was paid for, and — from FINALE_STAGE on — the
         // rift that ends the run. The ordinary portal is always there, so
         // reaching the finale never takes the loop away.
         ctx.realms?.openPortals?.(at, this.stageIndex);

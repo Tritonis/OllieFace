@@ -151,25 +151,25 @@ export const CAPRICE_TIERS = [
  * `coeff` multiplies the Director's existing time term — it does **not** replace
  * the curve. That is the same lever RoR2 pulls: the per-player and per-stage
  * factors are untouched, so the run still ramps for the same reasons, just
- * faster or slower on the clock. Rainstorm is 1.0 by definition, which is why
+ * faster or slower on the clock. Downpour is 1.0 by definition, which is why
  * `Director.DIFFICULTY_SCALE` is still the tuned constant it always was and
- * every existing pacing measurement remains the Rainstorm measurement.
+ * every existing pacing measurement remains the Downpour measurement.
  *
  * The other four numbers are the quality-of-life half. RoR2's easy mode is not
  * only a slower clock — monsters hit softer and you recover faster, which is
- * what makes it a different *game* rather than the same game later. Monsoon
+ * what makes it a different *game* rather than the same game later. Deluge
  * takes the same three away.
  *
  * | | coeff | enemy hp | enemy dmg | gold | your regen |
  * |---|---|---|---|---|---|
- * | Drizzle | 0.5 | 0.80 | 0.60 | 1.20 | 2.0 |
- * | Rainstorm | 1.0 | 1.00 | 1.00 | 1.00 | 1.0 |
- * | Monsoon | 1.5 | 1.20 | 1.40 | 0.90 | 0.5 |
+ * | Overcast | 0.5 | 0.80 | 0.60 | 1.20 | 2.0 |
+ * | Downpour | 1.0 | 1.00 | 1.00 | 1.00 | 1.0 |
+ * | Deluge | 1.5 | 1.20 | 1.40 | 0.90 | 0.5 |
  */
 export const DIFFICULTIES = [
   {
     id: 'drizzle',
-    name: 'Drizzle',
+    name: 'Overcast',
     index: 0,
     coeff: 0.5,
     description: 'A forgiving run. The clock climbs at half speed, monsters hit '
@@ -183,7 +183,7 @@ export const DIFFICULTIES = [
   },
   {
     id: 'rainstorm',
-    name: 'Rainstorm',
+    name: 'Downpour',
     index: 1,
     coeff: 1.0,
     description: 'The intended run. Every number in the game is the tuned one.',
@@ -196,7 +196,7 @@ export const DIFFICULTIES = [
   },
   {
     id: 'monsoon',
-    name: 'Monsoon',
+    name: 'Deluge',
     index: 2,
     coeff: 1.5,
     description: 'A punishing run. The clock climbs half again as fast, monsters '

@@ -43,7 +43,7 @@ const SHOT_TIMEOUT = Number(args.shotTimeout ?? (SOFTWARE ? 180000 : 45000));
 const SCENARIOS = [
   {
     name: '21-realm-gateways',
-    doc: 'The three realm entrances standing in an ordinary stage: Newt Altar, Trial Obelisk, Gilded Beacon. Judges whether an optional doorway reads as findable without reading as a HUD marker.',
+    doc: 'The three realm entrances standing in an ordinary stage: Tithe Altar, Trial Obelisk, Gilded Beacon. Judges whether an optional doorway reads as findable without reading as a HUD marker.',
     setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.realmGateways?.()),
   },
   {

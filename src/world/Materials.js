@@ -1271,7 +1271,7 @@ export const BIOMES = [
   },
 
   {
-    // ---- RALLYPOINT FERROUS -----------------------------------------------
+    // ---- FERROUS MUSTER ---------------------------------------------------
     // A military fabrication site silted into a rust flat. The read is *made*:
     // one module height across the whole terrain, razor risers, rectangular
     // pads snapped to that module with a single vehicle ramp each, and a prop
@@ -1279,7 +1279,7 @@ export const BIOMES = [
     // the only biome with no organic silhouette in it at all.
     id: 'ferrous',
     kit: 'works',
-    names: ['Rallypoint Ferrous', 'Ironsilt Reach', 'The Sunken Yard'],
+    names: ['Ferrous Muster', 'Ironsilt Reach', 'The Sunken Yard'],
     sky: {
       zenith: 0x27455c, horizon: 0xb06a4a, haze: 0xd99a6a, ground: 0x1e2226,
       sun: 0xffcfa0, cloud: 0x7d8894, cloudAmount: 0.92, hazePow: 8.0,

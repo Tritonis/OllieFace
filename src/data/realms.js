@@ -219,7 +219,7 @@ export const GATEWAYS = [
   {
     realm: 'bazaar',
     id: 'altar',
-    name: 'Newt Altar',
+    name: 'Tithe Altar',
     // Armed rather than entered: pressing E here opens a second portal beside
     // the teleporter's when the stage is cleared. That gap between paying and
     // travelling is what makes it a decision made *early* in the stage.

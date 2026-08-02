@@ -289,25 +289,25 @@ export const ITEMS = [
 
   // ------------------------------------------------------------------ COMMON
   {
-    id: 'syringe', name: "Soldier's Syringe", tier: 'common', glyph: 'bars',
+    id: 'syringe', name: 'Adrenal Syringe', tier: 'common', glyph: 'bars',
     flavour: 'Property of Dr. E. Fenwick. Do not remove from the medbay.',
     description: (n) => `+${pct(linear(0.15, n))} attack speed.`,
     stat: (n, s) => { s.attackSpeed += linear(0.15, n); },
   },
   {
-    id: 'hoof', name: "Paul's Goat Hoof", tier: 'common', glyph: 'arrow',
+    id: 'hoof', name: 'Cloven Hoof', tier: 'common', glyph: 'arrow',
     flavour: 'It still smells of the pasture.',
     description: (n) => `+${pct(linear(0.14, n))} movement speed.`,
     stat: (n, s) => { s.moveSpeed *= 1 + linear(0.14, n); },
   },
   {
-    id: 'steak', name: 'Bison Steak', tier: 'common', glyph: 'drop',
-    flavour: 'Rare. Very rare.',
+    id: 'steak', name: 'Cured Haunch', tier: 'common', glyph: 'drop',
+    flavour: 'Salted three winters ago. It has outlasted the man who salted it.',
     description: (n) => `+${linear(25, n)} maximum health.`,
     stat: (n, s) => { s.maxHealth += linear(25, n); },
   },
   {
-    id: 'roll-of-pennies', name: 'Roll of Pennies', tier: 'common', glyph: 'circle',
+    id: 'roll-of-pennies', name: 'Bruised Coinpurse', tier: 'common', glyph: 'circle',
     flavour: 'Found under the vending machine. Still counts.',
     description: (n) => `Gain ${linear(2, n)} gold whenever you are hurt.`,
     hooks: {
@@ -315,19 +315,19 @@ export const ITEMS = [
     },
   },
   {
-    id: 'tougher-times', name: 'Tougher Times', tier: 'common', glyph: 'hex',
+    id: 'tougher-times', name: 'Dented Buckler', tier: 'common', glyph: 'hex',
     flavour: 'Bounce, dodge, weave. Repeat.',
     description: (n) => `${pct(hyperbolic(0.15, n))} chance to block incoming damage.`,
     stat: (n, s) => { s.blockChance = 1 - (1 - (s.blockChance || 0)) * (1 - hyperbolic(0.15, n)); },
   },
   {
-    id: 'armor-plate', name: 'Repulsion Armor Plate', tier: 'common', glyph: 'shield',
+    id: 'armor-plate', name: 'Trauma Plate', tier: 'common', glyph: 'shield',
     flavour: 'Rated for small-arms fire. Mostly.',
     description: (n) => `Reduce all incoming damage by ${linear(5, n)}.`,
     stat: (n, s) => { s.flatReduction += linear(5, n); },
   },
   {
-    id: 'crowbar', name: 'Crowbar', tier: 'common', glyph: 'cross',
+    id: 'crowbar', name: 'Pry Bar', tier: 'common', glyph: 'cross',
     flavour: 'It opens things. Some of them are people.',
     description: (n) => `Deal +${pct(linear(0.75, n))} damage to enemies above 90% health.`,
     hooks: {
@@ -338,7 +338,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'predatory', name: 'Predatory Instincts', tier: 'common', glyph: 'triangle',
+    id: 'predatory', name: 'Bloodscent', tier: 'common', glyph: 'triangle',
     flavour: 'Blood in the water.',
     description: (n) => `Critical strikes grant +${pct(linear(0.12, n))} attack speed for 3s, up to 3 stacks.`,
     hooks: {
@@ -349,13 +349,13 @@ export const ITEMS = [
     },
   },
   {
-    id: 'glasses', name: "Lens-Maker's Glasses", tier: 'common', glyph: 'ring',
+    id: 'glasses', name: "Gunsmith's Loupe", tier: 'common', glyph: 'ring',
     flavour: 'Perfect vision is a weapon.',
     description: (n) => `+${pct(hyperbolic(0.10, n))} critical strike chance.`,
     stat: (n, s) => { s.critChance = 1 - (1 - s.critChance) * (1 - hyperbolic(0.10, n)); },
   },
   {
-    id: 'sticky-bomb', name: 'Sticky Bomb', tier: 'common', glyph: 'diamond',
+    id: 'sticky-bomb', name: 'Tar Charge', tier: 'common', glyph: 'diamond',
     flavour: 'Warning: adhesive is permanent.',
     description: (n) => `${pct(hyperbolic(0.05, n))} chance on hit to attach a bomb for 180% damage.`,
     hooks: {
@@ -368,7 +368,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'gasoline', name: 'Gasoline', tier: 'common', glyph: 'flame',
+    id: 'gasoline', name: 'Leaking Jerrycan', tier: 'common', glyph: 'flame',
     flavour: 'Burn it all down.',
     description: (n) => `Killing an enemy ignites all enemies within ${linear(2, n) + 6}m for 75% damage.`,
     hooks: {
@@ -389,7 +389,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'monster-tooth', name: 'Monster Tooth', tier: 'common', glyph: 'star',
+    id: 'monster-tooth', name: 'Marrow Tooth', tier: 'common', glyph: 'star',
     flavour: 'Still warm.',
     description: (n) => `Killing an enemy heals you for ${linear(8, n)} plus ${pct(linear(0.02, n))} of max health.`,
     hooks: {
@@ -400,7 +400,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'topaz-brooch', name: 'Topaz Brooch', tier: 'common', glyph: 'gem',
+    id: 'topaz-brooch', name: 'Amber Clasp', tier: 'common', glyph: 'gem',
     flavour: 'A gift from someone who is now dead.',
     description: (n) => `Killing an enemy grants a temporary ${linear(15, n)} point barrier.`,
     hooks: {
@@ -408,7 +408,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'medkit', name: 'Medkit', tier: 'common', glyph: 'plus',
+    id: 'medkit', name: 'Stitch Kit', tier: 'common', glyph: 'plus',
     flavour: 'Standard issue. Rarely enough.',
     description: (n) => `After being hurt, heal for ${linear(10, n)} plus ${pct(linear(0.03, n))} of max health.`,
     hooks: {
@@ -488,7 +488,7 @@ export const ITEMS = [
     flavour: 'Finishing is a separate skill from starting.',
     description: (n) => `Deal +${pct(linear(0.35, n))} damage to enemies below 25% health.`,
     hooks: {
-      // The bookend to Crowbar: one pays for opening a fight, this pays for
+      // The bookend to Pry Bar: one pays for opening a fight, this pays for
       // closing it, so a common-heavy inventory covers the whole health bar
       // instead of stacking one end of it twice.
       outgoing: (amount, target, info, api) => {
@@ -554,7 +554,7 @@ export const ITEMS = [
 
   // ---------------------------------------------------------------- UNCOMMON
   {
-    id: 'ukulele', name: 'Ukulele', tier: 'uncommon', glyph: 'bolt',
+    id: 'ukulele', name: 'Cracked Zither', tier: 'uncommon', glyph: 'bolt',
     flavour: 'It only knows one chord and the chord is lightning.',
     description: (n) => `${pct(hyperbolic(0.25, n))} chance on hit to fire chain lightning for 80% damage, bouncing to ${2 + linear(2, n)} targets.`,
     hooks: {
@@ -565,7 +565,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'atg', name: 'AtG Missile Mk. 1', tier: 'uncommon', glyph: 'rocket',
+    id: 'atg', name: 'Missile Rack Mk. I', tier: 'uncommon', glyph: 'rocket',
     flavour: 'Fire and forget. Mostly forget.',
     description: (n) => `${pct(hyperbolic(0.10, n))} chance on hit to fire a missile for ${pct(linear(3, n))} damage.`,
     hooks: {
@@ -579,8 +579,8 @@ export const ITEMS = [
     },
   },
   {
-    id: 'tri-tip', name: 'Tri-Tip Dagger', tier: 'uncommon', glyph: 'blade',
-    flavour: 'Three edges, three reasons.',
+    id: 'tri-tip', name: 'Gutting Shiv', tier: 'uncommon', glyph: 'blade',
+    flavour: 'One edge, and it never lets the wound close.',
     description: (n) => `${pct(hyperbolic(0.15, n))} chance on hit to cause bleeding for 240% damage over 3s.`,
     hooks: {
       onHit: (e, api) => {
@@ -590,7 +590,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'stun-grenade', name: 'Stun Grenade', tier: 'uncommon', glyph: 'burst',
+    id: 'stun-grenade', name: 'Concussion Charge', tier: 'uncommon', glyph: 'burst',
     flavour: 'Loud. Bright. Effective.',
     description: (n) => `${pct(hyperbolic(0.05, n))} chance on hit to stun enemies for 2s.`,
     hooks: {
@@ -601,7 +601,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'shatterspleen', name: 'Runald\'s Band', tier: 'uncommon', glyph: 'snowflake',
+    id: 'shatterspleen', name: 'Hoarfrost Band', tier: 'uncommon', glyph: 'snowflake',
     flavour: 'Cold enough to stop a heart mid-beat.',
     description: (n) => `Hits that deal over 400% damage freeze and blast for ${pct(linear(2.5, n))} damage.`,
     hooks: {
@@ -616,7 +616,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'infusion', name: 'Infusion', tier: 'uncommon', glyph: 'spiral',
+    id: 'infusion', name: 'Feeding Vial', tier: 'uncommon', glyph: 'spiral',
     flavour: 'Every kill makes you a little more permanent.',
     description: (n) => `Killing an enemy permanently grants +1 max health, up to +${linear(100, n)}.`,
     hooks: {
@@ -624,15 +624,15 @@ export const ITEMS = [
     },
   },
   {
-    id: 'harvesters-scythe', name: "Harvester's Scythe", tier: 'uncommon', glyph: 'scythe',
-    flavour: 'Reap what the Providence sowed.',
+    id: 'harvesters-scythe', name: 'Reaping Hook', tier: 'uncommon', glyph: 'scythe',
+    flavour: 'It takes its cut on the way past.',
     description: (n) => `Critical strikes heal you for ${linear(8, n)}.`,
     hooks: {
       onHit: (e, api) => { if (e.crit) api.combat.heal(api.player, linear(8, api.count)); },
     },
   },
   {
-    id: 'leeching-seed', name: 'Leeching Seed', tier: 'uncommon', glyph: 'leaf',
+    id: 'leeching-seed', name: 'Thirsting Burr', tier: 'uncommon', glyph: 'leaf',
     flavour: 'It drinks and it grows.',
     description: (n) => `Dealing damage heals you for ${linear(1, n)}.`,
     hooks: {
@@ -640,7 +640,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'afterburner', name: 'Hardlight Afterburner', tier: 'uncommon', glyph: 'wing',
+    id: 'afterburner', name: 'Bailout Thrusters', tier: 'uncommon', glyph: 'wing',
     flavour: 'Two more chances to be somewhere else.',
     description: (n) => `+${linear(2, n)} utility charges and ${pct(1 - hyperbolicMult(0.15, n))} utility cooldown reduction.`,
     stat: (n, s) => {
@@ -649,7 +649,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'wax-quail', name: 'Wax Quail', tier: 'uncommon', glyph: 'feather',
+    id: 'wax-quail', name: 'Waxed Wing', tier: 'uncommon', glyph: 'feather',
     flavour: 'Up is a direction. Forward is a lifestyle.',
     description: (n) => `Jumping while sprinting boosts you forward by ${linear(10, n)} m/s.`,
     stat: (n, s) => { s.jumpCount += 0; },
@@ -658,13 +658,13 @@ export const ITEMS = [
     },
   },
   {
-    id: 'hopoo-feather', name: 'Hopoo Feather', tier: 'uncommon', glyph: 'plume',
+    id: 'hopoo-feather', name: 'Hollow Plume', tier: 'uncommon', glyph: 'plume',
     flavour: 'Weightless, mostly.',
     description: (n) => `+${linear(1, n)} maximum jump count.`,
     stat: (n, s) => { s.jumpCount += linear(1, n); },
   },
   {
-    id: 'will-o-wisp', name: "Will-o'-the-Wisp", tier: 'uncommon', glyph: 'flamering',
+    id: 'will-o-wisp', name: 'Corpse Flare', tier: 'uncommon', glyph: 'flamering',
     flavour: 'Follow the light. It is on fire.',
     description: (n) => `Killing an enemy detonates a ${pct(linear(3, n))} damage flame pillar.`,
     hooks: {
@@ -676,20 +676,20 @@ export const ITEMS = [
     },
   },
   {
-    id: 'fuel-cell', name: 'Fuel Cell', tier: 'uncommon', glyph: 'cell',
+    id: 'fuel-cell', name: 'Dry Cell', tier: 'uncommon', glyph: 'cell',
     flavour: 'Charged, sealed, and ready to be abused.',
     description: (n) => `+${linear(1, n)} equipment charge and ${pct(1 - hyperbolicMult(0.15, n))} equipment cooldown reduction.`,
     // The one item that pays into the equipment slot's own two dials. It writes
     // `equipCharges`, not `extraCharges`: the latter is the survivor's skill
     // charges, and letting one item silently buy both was the difference
-    // between "Fuel Cell is good with equipment" and "Fuel Cell is mandatory".
+    // between "Dry Cell is good with equipment" and "Dry Cell is mandatory".
     stat: (n, s) => {
       s.equipCharges += linear(1, n);
       s.equipCooldownMult *= hyperbolicMult(0.15, n);
     },
   },
   {
-    id: 'berzerkers-pauldron', name: "Berzerker's Pauldron", tier: 'uncommon', glyph: 'pauldron',
+    id: 'berzerkers-pauldron', name: 'Red-Mist Pauldron', tier: 'uncommon', glyph: 'pauldron',
     flavour: 'Three at once and the world goes red.',
     description: (n) => `Killing 3 enemies within 1s sends you into frenzy: +${pct(0.3)} attack and move speed for ${linear(6, n)}s.`,
     hooks: {
@@ -701,7 +701,7 @@ export const ITEMS = [
   },
 
   {
-    id: 'razor-wire', name: 'Razor Wire', tier: 'uncommon', glyph: 'razor',
+    id: 'razor-wire', name: 'Barb Snare', tier: 'uncommon', glyph: 'razor',
     flavour: 'Strung at ankle height by someone who never came back for it.',
     description: (n) => `Being hurt lashes all enemies within ${6 + linear(2, n)}m for ${pct(linear(1.6, n))} damage.`,
     hooks: {
@@ -857,7 +857,7 @@ export const ITEMS = [
 
   // --------------------------------------------------------------- LEGENDARY
   {
-    id: 'behemoth', name: 'Brilliant Behemoth', tier: 'legendary', glyph: 'nova',
+    id: 'behemoth', name: 'Shrapnel Heart', tier: 'legendary', glyph: 'nova',
     flavour: 'Everything you touch detonates. Including the things you did not mean to touch.',
     description: (n) => `ALL of your attacks explode in a ${linear(1.5, n) + 2.5}m radius for an extra 60% damage.`,
     hooks: {
@@ -873,19 +873,19 @@ export const ITEMS = [
     },
   },
   {
-    id: 'clover', name: '57 Leaf Clover', tier: 'legendary', glyph: 'clover',
+    id: 'clover', name: 'Pressed Clover', tier: 'legendary', glyph: 'clover',
     flavour: 'Luck is a statistic you can purchase.',
     description: (n) => `All random effects are rolled +${linear(1, n)} extra times for a favourable outcome.`,
     stat: (n, s) => { s.luck += linear(1, n); },
   },
   {
-    id: 'alien-head', name: 'Alien Head', tier: 'legendary', glyph: 'alien',
+    id: 'alien-head', name: 'Cortex Jar', tier: 'legendary', glyph: 'alien',
     flavour: 'It is still thinking.',
     description: (n) => `Reduce skill cooldowns by ${pct(1 - hyperbolicMult(0.25, n))}.`,
     stat: (n, s) => { s.cooldownMult *= hyperbolicMult(0.25, n); },
   },
   {
-    id: 'frost-relic', name: 'Frost Relic', tier: 'legendary', glyph: 'shard',
+    id: 'frost-relic', name: 'Killing Frost', tier: 'legendary', glyph: 'shard',
     flavour: 'The cold follows you now.',
     description: (n) => `Killing an enemy surrounds you with an icy storm dealing ${pct(linear(1.2, n))} damage per second, growing with each kill.`,
     hooks: {
@@ -909,7 +909,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'ceremonial-dagger', name: 'Ceremonial Dagger', tier: 'legendary', glyph: 'daggers',
+    id: 'ceremonial-dagger', name: "Mourner's Dagger", tier: 'legendary', glyph: 'daggers',
     flavour: 'The dead keep fighting for you.',
     description: (n) => `Killing an enemy releases ${linear(1, n) + 2} seeking daggers dealing ${pct(linear(1.5, n))} damage.`,
     hooks: {
@@ -919,7 +919,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'brainstalks', name: 'Brainstalks', tier: 'legendary', glyph: 'stalk',
+    id: 'brainstalks', name: 'Whisper Stalks', tier: 'legendary', glyph: 'stalk',
     flavour: 'It whispers cooldown numbers at you.',
     description: (n) => `Killing an elite removes all skill cooldowns for ${linear(4, n)}s.`,
     hooks: {
@@ -1061,7 +1061,7 @@ export const ITEMS = [
 
   // -------------------------------------------------------------------- BOSS
   {
-    id: 'titanic-knurl', name: 'Titanic Knurl', tier: 'boss', glyph: 'monolith',
+    id: 'titanic-knurl', name: 'Monolith Knuckle', tier: 'boss', glyph: 'monolith',
     flavour: 'A shard of something that used to walk.',
     description: (n) => `+${linear(40, n)} maximum health and +${linear(1.6, n)} health regeneration.`,
     stat: (n, s) => {
@@ -1070,7 +1070,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'planula', name: 'Planula', tier: 'boss', glyph: 'polyp',
+    id: 'planula', name: 'Grafted Polyp', tier: 'boss', glyph: 'polyp',
     flavour: 'It feeds on the pain of its host. Symbiotically.',
     description: (n) => `Heal for ${linear(15, n)} whenever you are hit.`,
     hooks: {
@@ -1078,7 +1078,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'queens-gland', name: "Queen's Gland", tier: 'boss', glyph: 'hive',
+    id: 'queens-gland', name: 'Hive Gland', tier: 'boss', glyph: 'hive',
     flavour: 'Something in here is still gestating.',
     description: (n) => `Every 10s, release a swarm striking ${linear(3, n)} enemies for ${pct(2)} damage.`,
     hooks: {
@@ -1194,7 +1194,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'corpse-bloom', name: 'Corpse Bloom', tier: 'lunar', glyph: 'bloom',
+    id: 'corpse-bloom', name: 'Charnel Bloom', tier: 'lunar', glyph: 'bloom',
     flavour: 'It only flowers where something stopped.',
     description: (n) => `Killing an enemy heals ${pct(linear(0.08, n))} of maximum health. You no longer regenerate health passively.`,
     // A flag rather than `s.healthRegen = 0`, for the same reason `noDefensive`
@@ -1372,7 +1372,7 @@ function poly(g, sides, r, rot = 0, inner = 0) {
 export function drawGlyph(g, glyph, r, hue) {
   g.fillStyle = `hsl(${hue} 70% 62%)`;
   switch (glyph) {
-    // Roll of Pennies — a stack of coins. A plain disc was a hexagon with the
+    // Bruised Coinpurse — a stack of coins. A plain disc was a hexagon with the
     // corners knocked off next to `hex`, and the tier recolour means the two
     // no longer differ in anything but shape.
     case 'circle':
@@ -1391,7 +1391,7 @@ export function drawGlyph(g, glyph, r, hue) {
     case 'ring':
       g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.stroke();
       g.beginPath(); g.arc(0, 0, r * 0.45, 0, Math.PI * 2); g.fill(); break;
-    // Predatory Instincts — a fang, not a plain triangle. The dark inner wedge
+    // Bloodscent — a fang, not a plain triangle. The dark inner wedge
     // is what separates it from `arrow`, `flint` and `flame` at 20px: three
     // solid convex blobs of the same area differ by less than a tenth of their
     // mask, which is round 4's D3 floor failing.
@@ -1399,7 +1399,7 @@ export function drawGlyph(g, glyph, r, hue) {
       poly(g, 3, r, -Math.PI / 2); g.fill(); g.stroke();
       g.save(); g.fillStyle = '#0d0f14';
       poly(g, 3, r * 0.42, Math.PI / 2); g.fill(); g.restore(); break;
-    // Sticky Bomb — a charge with a lit fuse and a seam, not a bare rhombus.
+    // Tar Charge — a charge with a lit fuse and a seam, not a bare rhombus.
     case 'diamond':
       poly(g, 4, r * 0.92, -Math.PI / 2); g.fill(); g.stroke();
       g.save(); g.strokeStyle = '#0d0f14'; g.lineWidth = Math.max(1.5, r * 0.2);
@@ -1411,7 +1411,7 @@ export function drawGlyph(g, glyph, r, hue) {
       g.stroke();
       g.beginPath(); g.arc(r * 0.72, -r * 1.24, r * 0.2, 0, Math.PI * 2); g.fill(); g.stroke();
       break;
-    // Tougher Times — a hollow shell that took the hit. Hollowing it is the
+    // Dented Buckler — a hollow shell that took the hit. Hollowing it is the
     // only thing that separates it from `shield`, `saltcube`, `pouch` and
     // `diamond`, all of which are convex commons of the same optical area.
     case 'hex':
@@ -1438,7 +1438,7 @@ export function drawGlyph(g, glyph, r, hue) {
       g.moveTo(-r * 0.5, -r * 0.1); g.lineTo(0, r * 0.86);
       g.moveTo(r * 0.5, -r * 0.1); g.lineTo(0, r * 0.86);
       g.stroke(); g.restore(); break;
-    // Titanic Knurl — a standing stone with strata cut into it, so it is not a
+    // Monolith Knuckle — a standing stone with strata cut into it, so it is not a
     // bare filled rectangle beside `polyp` in the boss tier.
     case 'monolith':
       g.fillRect(-r * 0.45, -r, r * 0.9, r * 2); g.strokeRect(-r * 0.45, -r, r * 0.9, r * 2);
@@ -1475,7 +1475,7 @@ export function drawGlyph(g, glyph, r, hue) {
       g.beginPath(); g.moveTo(r * 0.25, -r); g.lineTo(-r * 0.6, r * 0.1); g.lineTo(0, r * 0.1);
       g.lineTo(-r * 0.25, r); g.lineTo(r * 0.6, -r * 0.1); g.lineTo(0, -r * 0.1);
       g.closePath(); g.fill(); g.stroke(); break;
-    // Bison Steak: a cut of meat, so it carries marbling. As a bare teardrop it
+    // Cured Haunch: a cut of meat, so it carries marbling. As a bare teardrop it
     // measured 5.2% from `plug` — the tightest same-tier pair in the set.
     case 'drop':
       g.beginPath(); g.moveTo(0, -r); g.quadraticCurveTo(r, 0, 0, r); g.quadraticCurveTo(-r, 0, 0, -r);
@@ -1564,7 +1564,7 @@ export function drawGlyph(g, glyph, r, hue) {
       }
       break;
     // Three items used to share one upright quill. Uncommon is a single hue,
-    // so the shapes have to carry Afterburner / Wax Quail / Hopoo Feather on
+    // so the shapes have to carry Bailout Thrusters / Waxed Wing / Hollow Plume on
     // their own: a swept wing, one quill, a three-quill plume.
     case 'wing':
       g.beginPath();
@@ -1610,7 +1610,7 @@ export function drawGlyph(g, glyph, r, hue) {
         g.beginPath(); g.arc(x, -r * 0.44, r * 0.13, 0, Math.PI * 2); g.fill(); g.stroke();
       }
       break;
-    // Berzerker's Pauldron — the same silhouette with the spikes it is named
+    // Red-Mist Pauldron — the same silhouette with the spikes it is named
     // for, so it is not a third rectangle beside `cell` and `overcharge`.
     case 'pauldron':
       g.beginPath(); g.moveTo(0, -r * 0.9); g.lineTo(r * 0.8, -r * 0.45); g.lineTo(r * 0.6, r * 0.55);
@@ -1654,8 +1654,8 @@ export function drawGlyph(g, glyph, r, hue) {
     // 33px the inventory strip actually renders. That rules out detail — a
     // glyph is one silhouette plus at most one interior cut, and any two glyphs
     // in the same tier have to differ in outline, not in ornament. Where a new
-    // item is thematically close to an old one (Warm Coals next to Gasoline,
-    // Frost Lattice next to Runald's Band) the new glyph deliberately takes a
+    // item is thematically close to an old one (Warm Coals next to Leaking Jerrycan,
+    // Frost Lattice next to Hoarfrost Band) the new glyph deliberately takes a
     // different primitive family rather than a variation on the same one.
 
     // --- common ---
@@ -2127,7 +2127,7 @@ export function drawGlyph(g, glyph, r, hue) {
         poly(g, 4, r * (0.2 - i * 0.025), 0); g.fill(); g.restore();
       }
       break;
-    // Corpse Bloom: a flower opening out of a rib.
+    // Charnel Bloom: a flower opening out of a rib.
     case 'bloom':
       for (let i = 0; i < 5; i++) {
         g.save(); g.rotate((i / 5) * Math.PI * 2);
@@ -2281,7 +2281,7 @@ export function drawGlyph(g, glyph, r, hue) {
     // which means they need chunkier masses and fewer hairlines than the rest of
     // the set to survive the 33px inventory strip.
 
-    // Spasm Gland (Soldier's Syringe): the three bars, seizing.
+    // Spasm Gland (Adrenal Syringe): the three bars, seizing.
     case 'spasmgland':
       for (let i = 0; i < 3; i++) {
         const x = (i - 1) * r * 0.62;
@@ -2294,7 +2294,7 @@ export function drawGlyph(g, glyph, r, hue) {
       }
       g.beginPath(); g.moveTo(-r * 1.0, r * 0.1); g.lineTo(r * 1.0, -r * 0.25); g.stroke();
       break;
-    // Bloat Cyst (Bison Steak): the drop, swollen and split.
+    // Bloat Cyst (Cured Haunch): the drop, swollen and split.
     case 'bloatcyst':
       g.beginPath();
       g.moveTo(0, -r * 1.0);
@@ -2307,7 +2307,7 @@ export function drawGlyph(g, glyph, r, hue) {
       g.lineTo(-r * 0.2, r * 0.34); g.lineTo(r * 0.05, r * 0.82);
       g.stroke(); g.restore();
       break;
-    // Clouded Eye (Lens-Maker's Glasses): the ring, filmed over.
+    // Clouded Eye (Gunsmith's Loupe): the ring, filmed over.
     case 'cloudedeye':
       g.lineWidth = Math.max(2, r * 0.26);
       g.beginPath(); g.arc(0, 0, r * 0.82, 0, Math.PI * 2); g.stroke();
@@ -2319,7 +2319,7 @@ export function drawGlyph(g, glyph, r, hue) {
       }
       g.restore();
       break;
-    // Slag Ingot (Repulsion Armor Plate): the shield, poured and set.
+    // Slag Ingot (Trauma Plate): the shield, poured and set.
     case 'slagingot':
       g.beginPath();
       g.moveTo(-r * 0.72, -r * 0.62); g.lineTo(r * 0.72, -r * 0.62);
@@ -2329,7 +2329,7 @@ export function drawGlyph(g, glyph, r, hue) {
         g.beginPath(); g.arc(r * x, r * 0.72, r * 0.2, 0, Math.PI * 2); g.fill(); g.stroke();
       }
       break;
-    // Arc Rot (Ukulele): the bolt, coming apart down its own length.
+    // Arc Rot (Cracked Zither): the bolt, coming apart down its own length.
     case 'arcrot':
       g.beginPath();
       g.moveTo(r * 0.28, -r * 1.05); g.lineTo(-r * 0.62, r * 0.05);
@@ -2340,7 +2340,7 @@ export function drawGlyph(g, glyph, r, hue) {
         g.beginPath(); g.arc(x, y, rr, 0, Math.PI * 2); g.fill(); g.stroke();
       }
       break;
-    // Bile Shell (AtG Missile): the rocket, with its nose gone soft.
+    // Bile Shell (Missile Rack): the rocket, with its nose gone soft.
     case 'bileshell':
       g.beginPath();
       g.moveTo(0, -r * 1.05);
@@ -2355,7 +2355,7 @@ export function drawGlyph(g, glyph, r, hue) {
       }
       g.beginPath(); g.arc(0, r * 0.86, r * 0.24, 0, Math.PI * 2); g.fill(); g.stroke();
       break;
-    // Gristle Sickle (Harvester's Scythe): the blade, notched to the bone.
+    // Gristle Sickle (Reaping Hook): the blade, notched to the bone.
     case 'gristlesickle':
       g.beginPath();
       g.moveTo(-r * 0.85, r * 0.95);
@@ -2368,7 +2368,7 @@ export function drawGlyph(g, glyph, r, hue) {
       }
       g.restore();
       break;
-    // Rupture Gall (Brilliant Behemoth): the nova, going off inside a growth.
+    // Rupture Gall (Shrapnel Heart): the nova, going off inside a growth.
     case 'rupturegall':
       for (let i = 0; i < 8; i++) {
         const a = (i / 8) * Math.PI * 2 + 0.2;
@@ -2385,7 +2385,7 @@ export function drawGlyph(g, glyph, r, hue) {
       g.save(); g.fillStyle = '#0d0f14';
       g.beginPath(); g.arc(0, 0, r * 0.22, 0, Math.PI * 2); g.fill(); g.restore();
       break;
-    // Loaded Knucklebone (57 Leaf Clover): a die cut from a joint, weighted.
+    // Loaded Knucklebone (Pressed Clover): a die cut from a joint, weighted.
     case 'knucklebone':
       g.beginPath();
       g.moveTo(-r * 0.78, -r * 0.6);

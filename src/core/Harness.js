@@ -78,7 +78,7 @@ export function installHarness(ctx) {
   // would stamp "Stage 1" over the frame of biome 4 that is already on the
   // canvas waiting to be photographed. The cost was that every shot after it
   // carried the *previous* label: `04-combat` shipped a stage-1 world captioned
-  // `STAGE 4 — RALLYPOINT FERROUS`. So the relabel is deferred to the next
+  // `STAGE 4 — FERROUS MUSTER`. So the relabel is deferred to the next
   // scenario's `begin()`, which runs before anything is composed.
   let pendingRelabel = null;
 
@@ -158,8 +158,8 @@ export function installHarness(ctx) {
    * the frame that is about to be photographed. `capture.mjs` screenshots when
    * the scenario's promise resolves, so anything the scenario does after
    * asserting is in the PNG and not in the manifest. `18-difficulty` restored
-   * the previous rung there and shipped an assertion reading `monsoon` over a
-   * photograph of `rainstorm`: the check passed, the shot was wrong. It is the
+   * the previous rung there and shipped an assertion reading `deluge` over a
+   * photograph of `downpour`: the check passed, the shot was wrong. It is the
    * same shape as the biome caption that stamped `STAGE 4` on a stage-1 world,
    * and it takes the same answer — defer the undo into the next scenario.
    *
@@ -2436,7 +2436,7 @@ export function installHarness(ctx) {
       await frames(3);
       freeze();
       mustContain('05-boss', [
-        { subject: 'the Stone Titan', objects: () => rigsOf([boss]), minPixels: 2000 },
+        { subject: 'the Basalt Colossus', objects: () => rigsOf([boss]), minPixels: 2000 },
         { subject: 'survivor (for scale)', objects: () => [ctx.player?.group], minPixels: 150 },
         {
           subject: 'boss health bar',
@@ -4100,7 +4100,7 @@ export function installHarness(ctx) {
       // First: one ordinary hit. A loaded inventory carries near-total block
       // chance and hundreds of armour, and it was simply negated — the shot
       // came back as gameplay with a full health bar. `isDot` skips both the
-      // i-frame gate and the Tougher Times roll and `ignoreArmor` skips the
+      // i-frame gate and the Dented Buckler roll and `ignoreArmor` skips the
       // curve, which fixes that.
       //
       // Second: it still would not die when this ran after `10-inventory`.

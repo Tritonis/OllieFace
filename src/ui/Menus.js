@@ -50,9 +50,9 @@ const SLIDERS = [
  * lands, `ctx.difficulty.list()` wins and this table stops being consulted.
  */
 const FALLBACK_DIFFICULTIES = [
-  { id: 'drizzle', name: 'Drizzle', description: 'Fewer monsters, a gentler clock. For learning a survivor.', spawnRate: 0.65 },
-  { id: 'rainstorm', name: 'Rainstorm', description: 'The tuned curve. This is the game as it is balanced.', spawnRate: 1.0 },
-  { id: 'monsoon', name: 'Monsoon', description: 'More of everything, sooner. Mistakes stop being survivable.', spawnRate: 1.6 },
+  { id: 'drizzle', name: 'Overcast', description: 'Fewer monsters, a gentler clock. For learning a survivor.', spawnRate: 0.65 },
+  { id: 'rainstorm', name: 'Downpour', description: 'The tuned curve. This is the game as it is balanced.', spawnRate: 1.0 },
+  { id: 'monsoon', name: 'Deluge', description: 'More of everything, sooner. Mistakes stop being survivable.', spawnRate: 1.6 },
 ];
 
 /**
@@ -1184,27 +1184,27 @@ export class Menus {
       </div>`;
 
     const host = this.root.querySelector('[data-stats]');
-    // `Items collected` used to sit here as a tile reading `0` *and* again
-    // immediately below as a list reading `NONE` — the same label printed twice
-    // on one panel. The count now lives on the list's own label, which is the
-    // only place it is not a duplicate.
-    //
-    // A finished run gets a stat the death screen can never show, because a run
-    // that ends on purpose has reached somewhere a death never does.
+    // Six tiles, one number each, and every number appears exactly once on the
+    // panel. The won branch used to read `['Time to the Fracture', stats.time]`,
+    // which was `Time survived` printed a second time under a second name — and
+    // under a name naming a place the *losing* screen's player never reached, on
+    // the one screen where the two could be compared side by side. There is no
+    // separate fracture clock to show, so the sixth tile is the item count on
+    // both outcomes and the list below carries its plain heading again.
     const rows = [
       ['Time survived', stats.time],
       ['Stages cleared', stats.stage],
       ['Level reached', stats.level ?? 1],
       ['Enemies killed', stats.kills],
       ['Damage dealt', stats.damage],
-      won ? ['Time to the Fracture', stats.time] : ['Items collected', stats.itemCount],
+      ['Items collected', stats.itemCount ?? 0],
     ];
     host.innerHTML = rows
       .map(([k, v]) => `<div class="stat"><div class="stat-k">${k}</div><div class="stat-v">${v}</div></div>`)
       .join('');
 
     const itemsLabel = this.root.querySelector('[data-items-label]');
-    if (itemsLabel) itemsLabel.textContent = `Items Collected — ${stats.itemCount ?? 0}`;
+    if (itemsLabel) itemsLabel.textContent = 'Items Collected';
 
     const grid = this.root.querySelector('[data-death-items]');
     grid.innerHTML = stats.items?.length

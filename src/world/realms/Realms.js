@@ -45,7 +45,7 @@ const _v = new THREE.Vector3();
 export class Realms {
   constructor() {
     this.active = null;         // { def, stage, controller }
-    this.armedRealm = null;     // realm id armed by a Newt Altar this stage
+    this.armedRealm = null;     // realm id armed by a Tithe Altar this stage
     this.used = new Set();      // once-per-run gateways already taken
     this.gateways = [];
     this.props = [];            // realm interactables we pushed into Interactables
@@ -119,7 +119,7 @@ export class Realms {
     }
   }
 
-  /** A Newt Altar was paid for: open a way at the end of the stage. */
+  /** A Tithe Altar was paid for: open a way at the end of the stage. */
   armRealm(id) {
     if (!this.ctx.authority) return;
     this.armedRealm = id;

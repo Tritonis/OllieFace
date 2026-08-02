@@ -58,7 +58,7 @@ import { EQUIPMENT, EQUIPMENT_BY_ID } from '../data/equipment.js';
 const TIER_WEIGHTS = { common: 80, uncommon: 20, legendary: 1 };
 
 export const DROP_TABLES = {
-  // Small chest / shrine of chance: the default ladder.
+  // Small chest / wager shrine: the default ladder.
   small: { common: 80, uncommon: 20, legendary: 1 },
   // Large chest: no whites at all, and a legendary is eight times likelier.
   large: { common: 0, uncommon: 80, legendary: 8 },
@@ -144,7 +144,7 @@ export class Items {
 
     // --- equipment slot ---------------------------------------------------
     // One held equipment, N charges, one shared recharge timer. Charges refill
-    // one at a time rather than all together, so Fuel Cell reads as "another
+    // one at a time rather than all together, so Dry Cell reads as "another
     // press banked" instead of "the whole bank comes back at once".
     this.equipmentId = null;
     this.equipCharges = 0;
@@ -454,7 +454,7 @@ export class Items {
     // Star Chart. Folded into `roll()` rather than into each chance item, since
     // `roll` is the one gate all of them pass through.
     s.procBonus = 0;
-    // Equipment recharge scale — Fuel Cell and friends write here as well as to
+    // Equipment recharge scale — Dry Cell and friends write here as well as to
     // `cooldownMult`, so skill cooldowns and equipment cooldowns can be tuned
     // apart from each other.
     s.equipCooldownMult = 1;
@@ -466,7 +466,7 @@ export class Items {
     // the order the inventory Map happens to iterate in.
     s.noDefensive = false;
     // Blight drawback flag, same shape as `noDefensive`: Gristle Sickle and
-    // Corpse Bloom trade passive regeneration away. Zeroing `healthRegen` inside
+    // Charnel Bloom trade passive regeneration away. Zeroing `healthRegen` inside
     // the loop would keep whatever an item inserted later into the Map added.
     s.noRegen = false;
     // Multiplicative accumulators, for the same order-independence reason. Item
@@ -651,7 +651,7 @@ export class Items {
     return true;
   }
 
-  /** Berzerker-style windowed kill counting. True once the threshold is met. */
+  /** Frenzy-style windowed kill counting. True once the threshold is met. */
   tallyKillWindow(threshold, window) {
     const now = this.ctx.time;
     this._killWindow.push(now);
@@ -674,7 +674,7 @@ export class Items {
    *   { id, def, ready, charges, maxCharges, cooldown, cooldownMax }
    *
    * `cooldown` counts *down* to the next charge; `cooldownMax` is the full
-   * recharge for one charge, already scaled by Fuel Cell. Draw the sweep from
+   * recharge for one charge, already scaled by Dry Cell. Draw the sweep from
    * `equipmentFraction()` rather than dividing these yourself — it handles the
    * banked-charge case, where there is no meaningful fraction at all.
    */
@@ -970,7 +970,7 @@ export class Items {
    * Recharge one equipment charge at a time.
    *
    * Sequential rather than parallel on purpose: with three charges banked and a
-   * parallel timer, Fuel Cell would refill the whole bank in one cooldown and
+   * parallel timer, Dry Cell would refill the whole bank in one cooldown and
    * the slot would stop being a resource at all.
    */
   _tickEquipment(h) {
