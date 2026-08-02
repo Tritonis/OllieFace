@@ -96,6 +96,9 @@ export class HUD {
     this.stageIndex = 1;
     this.stats = { kills: 0, damage: 0 };
     this.hoverId = null;
+    // Screen rect of the inventory strip, read by VFX's numeral clip.
+    this.stripRect = null;
+    this._stripHold = 60;
     this.tmp = new THREE.Vector3();
     this.tmpF = new THREE.Vector3();
 
@@ -213,6 +216,8 @@ export class HUD {
 
     // Hover tooltips only exist while the cursor is free — while pointer-locked
     // the HUD must not intercept anything.
+    addEventListener('resize', () => this.markStripDirty());
+
     const inv = this.refs.inventory;
     inv.addEventListener('mouseover', (e) => {
       const el = e.target.closest('.item');
@@ -262,6 +267,7 @@ export class HUD {
       requestAnimationFrame(() => el.classList.add('is-in'));
     }
 
+    this.markStripDirty();
     entry.count = total;
     entry.badge.textContent = total > 1 ? `x${total}` : '';
     entry.badge.classList.toggle('is-on', total > 1);
@@ -413,7 +419,7 @@ export class HUD {
 
     const hidden = FULL_SCREENS.has(this.menus.screen);
     this.set('hidden', hidden, (v) => this.root.classList.toggle('is-hidden', v));
-    if (hidden) return;
+    if (hidden) { this.stripRect = null; return; }
 
     this.updateHealth(ctx, dt);
     this.updateExperience(ctx);
@@ -426,12 +432,42 @@ export class HUD {
     this.updateObjectivePing(ctx);
     this.updateDirections(ctx, dt);
     this.updateToasts(dt);
+    this.updateStripRect();
 
     if (this.hoverId) {
       const el = this.inv.get(this.hoverId)?.el;
       if (el) this.tooltip.place(el);
     }
   }
+
+  /**
+   * Publish the inventory strip's screen rect for the damage-numeral clip.
+   *
+   * The strip is an opaque DOM block over the 3D, composited after the scene,
+   * so a world-space readout arcing behind it shipped as a band of digit-tops
+   * peeking between two tier rows — photographed by the round-3 and round-4
+   * critiques on `10-inventory`. `VFX.DamageNumbers` clips its layer out of
+   * this rect rather than losing another round to z-order.
+   *
+   * Measured rather than assumed: the strip is `width: max-content` over a
+   * variable haul, and the tiles animate in over ~0.34 s. So it is re-read for
+   * a second after anything changes it, and not at all in between — a
+   * `getBoundingClientRect` every frame would force a layout flush per frame
+   * for a value that is constant almost all of the time.
+   */
+  updateStripRect() {
+    if (this._stripHold > 0) this._stripHold--;
+    else if (this.stripRect) return;
+    const el = this.refs.inventory;
+    if (!el) { this.stripRect = null; return; }
+    const r = el.getBoundingClientRect();
+    this.stripRect = r.width > 0 && r.height > 0
+      ? { x: r.left, y: r.top, w: r.width, h: r.height }
+      : null;
+  }
+
+  /** Re-measure the strip for the next second. */
+  markStripDirty() { this._stripHold = 60; }
 
   lateUpdate(ctx, dt) {
     // Runs after CameraRig, so the title orbit is what actually ships to the

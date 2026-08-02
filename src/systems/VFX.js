@@ -4,7 +4,7 @@ import { Trails } from '../fx/Trails.js';
 import { Decals, DECAL } from '../fx/Decals.js';
 import { makeDissolvable } from '../shaders/DissolveShader.js';
 import { MAX_BLASTS } from '../shaders/DistortShader.js';
-import { clamp, lerp } from '../core/MathUtil.js';
+import { clamp, lerp, RNG } from '../core/MathUtil.js';
 
 /**
  * The impact layer.
@@ -718,9 +718,13 @@ export class VFX {
     });
   }
 
-  /** World-space arcing damage readout. Crits are bigger, hotter and shake. */
-  damageNumber(pos, amount, crit = false) {
-    this.numbers.spawn(pos, amount, crit);
+  /**
+   * World-space arcing damage readout. Crits are bigger, hotter and shake.
+   * `target` is the merge key: repeat hits on one enemy accumulate into a
+   * single readout rather than stacking a run each.
+   */
+  damageNumber(pos, amount, crit = false, colour, target) {
+    this.numbers.spawn(pos, amount, crit, colour, target);
   }
 
   levelUp(pos) {
@@ -1151,7 +1155,7 @@ export class VFX {
     this.hitSpark(_h1, p.crit ? 0xffd24a : 0xffe9b0, p.crit ? 1.35 : 1);
     this.bloodHit(_h1, _h2, 0x9c0d18);
     this.hitFlash(target, p.crit ? 0xffe0a0 : 0xffffff, p.crit ? 0.09 : 0.06);
-    this.damageNumber(_h1, p.amount, p.crit);
+    this.damageNumber(_h1, p.amount, p.crit, undefined, target);
 
     const shake = clamp((p.crit ? 0.026 : 0.011) + rel * 0.05, 0.008, 0.075);
     this._shakeAt(_h1, shake);
@@ -2059,12 +2063,44 @@ const CRIT_SCALE = 0.49;
 // is allowed to settle inside it; see the deflection in NumberVert.
 const NUM_RETICLE_X = 0.115;
 const NUM_RETICLE_Y = 0.085;
-// No more than this many readouts may start inside NUM_RUN_WINDOW seconds. A
-// salvo into a horde spawned one run per hit and stacked five overlapping
-// six-digit numbers across the middle of the frame; the sixth tells the player
-// nothing the first five did not.
-const NUM_MAX_RUNS = 5;
-const NUM_RUN_WINDOW = 0.42;
+// No more than this many readouts may be *live* at once, crits included.
+//
+// Round-6 round-4 critique, on `reviews/round6/FINAL/10-inventory.png`: seven
+// concurrent runs totalling 18,483 px of numeral against 2,401 px of monster —
+// the readout layer covering 7.7x the screen area of every living creature in
+// the frame. Every one of those seven runs ends in `!`, and crits used to
+// bypass this gate outright, so the gate had never once fired on the shot it
+// was written for. It is now a hard budget over *all* runs; a crit does not get
+// a free pass, it gets *priority* — it may retire the oldest non-crit run to
+// take its slot, and is dropped like anything else if the frame is already full
+// of crits.
+const NUM_MAX_RUNS = 4;
+// Two hits on the same target inside this window become one accumulating
+// readout rather than two runs. `24012` printed three times in the shipped
+// frame; a second number for the same enemy tells the player nothing the first
+// did not, and the sum is the figure they actually want.
+const NUM_MERGE_WINDOW = 0.6;
+// A run this old may be displaced by an incoming crit. Long enough that a
+// readout is always on screen for a beat before anything can take its slot;
+// short enough that a burst of ordinary fire cannot wedge the budget shut
+// against the equipment nova that lands a second later. It did: at a life
+// fraction of 0.45 the four slots were still held by the settle's gunfire when
+// `10-inventory`'s nova went off, every one of the nova's own eight hits was
+// refused, and the shot photographed no damage numbers at all.
+const NUM_MIN_SHOW = 0.22;
+// Spatial reservation, in CSS pixels, between two live runs' projected boxes.
+// The shipped frame's two `1048!` runs abutted with a 14 px gap and read as the
+// single ten-character string `1048!1048!`; a third overlapped them outright.
+// A new run whose box lands inside this margin of a live one is lifted (below),
+// and dropped if no lift clears it.
+const NUM_SEP_PX = 30;
+// World-space lifts tried, in order, when a spawn's box collides. Numerals rise
+// anyway, so up is with the motion — the same reasoning as the reticle
+// deflection in NumberVert.
+const NUM_LIFTS = [0, 1.0, 2.0];
+// Projected-box scratch for the reservation test; allocation-free at spawn.
+const _numBoxA = { cx: 0, cy: 0, hx: 0, hy: 0 };
+const _numBoxB = { cx: 0, cy: 0, hx: 0, hy: 0 };
 // Minimum on-screen height of a normal glyph, in CSS pixels. Below roughly this
 // no digit is recoverable at any zoom — the pre-fix build produced 8 px smears.
 // 18 produced a ~10 px ink height at the floor (the tile is mostly padding), so
@@ -2087,7 +2123,13 @@ const NUM_STROKE_PX = 20;
 // screen pixels too. The first attempt at the size cut failed the harness's own
 // legibility assertion on `08-explosion` (median separation 0.15 against a 0.25
 // bar) for exactly that reason.
-const NUM_HALO_PX = 12;
+// Round 6: raised again, with the crit floor cut from 49 px to 39 px above.
+// The halo is specified in *atlas* texels, so it shrinks in screen pixels
+// whenever the glyph does, and `08-explosion`'s harness legibility assertion
+// (`sepP50 >= 0.25`) sits close enough to the bar that the size cut alone put
+// it at 0.23. 13 is still inside the tile's ~14.4 texel padding, so no tap can
+// reach the next glyph.
+const NUM_HALO_PX = 13;
 // Beyond this the readout is chip damage on something the player is not
 // fighting; spending instances on it only adds noise.
 const NUM_MAX_DIST = 45;
@@ -2104,6 +2146,7 @@ uniform float uMinPx;
 uniform float uPxToWorld;   // 2 * tan(fov/2) / viewportHeight
 varying vec2 vUv;
 varying vec4 vColor;
+varying vec2 vNdc;
 void main() {
   float age = uTime - aTime.x;
   if (age < 0.0 || age >= aTime.y || aTime.y <= 0.0) {
@@ -2125,7 +2168,13 @@ void main() {
   // a minimum number of screen pixels, scaled by the readout's own size class
   // so a crit keeps its weight advantage at every range.
   float dist = max(-mv.z, 0.001);
-  float minPx = uMinPx * (aGlyph.w / ${NUM_SCALE.toFixed(3)});
+  // The floor used to scale 1:1 with the size class, which put a crit's minimum
+  // at 30 * (0.49/0.30) = 49 px of glyph height — the largest type in the game
+  // by a wide margin, and the single biggest contributor to the 18,483 px
+  // numeral footprint the round-4 critique measured. A crit keeps a visible
+  // weight advantage at half that gain: 30 * mix(1, 1.633, 0.5) = 39 px, which
+  // is still above every other numeral on screen and cuts crit ink area by ~35%.
+  float minPx = uMinPx * mix(1.0, aGlyph.w / ${NUM_SCALE.toFixed(3)}, 0.5);
   float minWorld = dist * minPx * uPxToWorld;
   float scale = max(aGlyph.w, minWorld) * pop;
 
@@ -2165,6 +2214,11 @@ void main() {
   // inside the first 60 ms photographed the readout at 40% alpha.
   vColor.a *= smoothstep(0.0, 0.02, k) * (1.0 - smoothstep(0.55, 1.0, k));
   gl_Position = projectionMatrix * mv;
+  // Carried to the fragment stage for the HUD clip. NDC rather than
+  // gl_FragCoord because this pass draws into a render target whose size the
+  // adaptive scaler is free to change; NDC is the one space that is the same
+  // in the offscreen buffer and on the composited frame.
+  vNdc = gl_Position.xy / max(gl_Position.w, 1e-6);
 }
 `;
 
@@ -2185,8 +2239,11 @@ const NumberFrag = /* glsl */ `
 precision highp float;
 uniform sampler2D uMap;
 uniform float uHaloUv;
+uniform vec4 uHudRect;   // NDC centre.xy, half-extent.xy of the inventory strip
+uniform float uHudOn;
 varying vec2 vUv;
 varying vec4 vColor;
+varying vec2 vNdc;
 
 void main() {
   vec4 t = texture2D(uMap, vUv);
@@ -2207,8 +2264,29 @@ void main() {
   // Coverage: the halo never dilutes the keyline, and the keyline is at the
   // glyph's own opacity rather than at the *fill's*, so it does not dissolve
   // into a bright background as the readout fades.
-  float cover = max(t.a, h * 0.82);
+  // The plate is what carries the readout's separation from its background,
+  // and the background it has to survive is this build's own blast. Measured on
+  // reviews/round6/uifix2/08-explosion.png, a numeral landing on the fireball
+  // read lum 63.1 against bgLum 64.2 — a one-point separation, and the
+  // harness's own legibility floor (sepP50 >= 0.25) caught it at 0.23. Raising
+  // the plate's opacity darkens the mark against a bright background without
+  // touching the glyph itself, which stays at full ink.
+  float cover = max(t.a, h * 0.92);
   float a = cover * vColor.a;
+
+  // --- inventory-strip clip ---
+  // The strip is an opaque DOM block composited *after* this pass, so a readout
+  // that arcs behind it used to ship as a band of digit-tops peeking out
+  // between two tier rows — legible enough to notice, not enough to read. The
+  // round-3 and round-4 critiques both photographed the same band. Clipping the
+  // layer out of the strip's rect, with a soft edge so nothing snaps off, is
+  // what the critique asked for in place of the z-order it kept losing.
+  if (uHudOn > 0.5) {
+    vec2 c = abs(vNdc - uHudRect.xy) / max(uHudRect.zw, vec2(1e-4));
+    float m = max(c.x, c.y);
+    a *= smoothstep(0.88, 1.0, m);
+  }
+
   if (a < 0.01) discard;
 
   // The atlas stores the fill mask in .r and the whole silhouette in .a, so one
@@ -2232,9 +2310,13 @@ class DamageNumbers {
     this.head = 0;
     this.time = 0;
     this._buf = new Array(8);
-    // Ring of recent non-crit run start times, for the concurrency gate.
-    this._runT = new Float32Array(NUM_MAX_RUNS + 1).fill(-1e9);
-    this._runCursor = 0;
+    // Live runs, newest last. A run is one readout: its slots in the instance
+    // buffers, the trajectory needed to re-project it, and the identity the
+    // merge rule keys on. Bounded by NUM_MAX_RUNS, so every scan below is over
+    // at most four entries.
+    this._runs = [];
+    this._scratch = { pos: new THREE.Vector3() };
+    this._rng = new RNG(((ctx.seed ?? 0) ^ 0x5bf03635) >>> 0);
 
     const map = makeGlyphAtlas();
     const quad = new THREE.PlaneGeometry(1, 1);
@@ -2263,6 +2345,8 @@ class DamageNumbers {
         uHaloUv: { value: NUM_HALO_PX / (NUM_TILE * NUM_COLS) },
         uMinPx: { value: NUM_MIN_PX },
         uPxToWorld: { value: 0 },
+        uHudRect: { value: new THREE.Vector4(0, 0, 0, 0) },
+        uHudOn: { value: 0 },
       },
       vertexShader: NumberVert,
       fragmentShader: NumberFrag,
@@ -2285,24 +2369,49 @@ class DamageNumbers {
     this.resize();
   }
 
-  spawn(pos, amount, crit, colour) {
+  spawn(pos, amount, crit, colour, target) {
     // Cull far readouts outright: at 45 m even a floored glyph is competing
     // with the horde for attention and telling the player nothing.
     if (this.ctx.camera?.position.distanceToSquared(pos) > NUM_MAX_DIST * NUM_MAX_DIST) return;
-    // Concurrency gate. Crits bypass it — the whole point of a crit readout is
-    // that it is the one worth reading — but everything else queues behind a
-    // fixed budget so a salvo into a horde cannot paper the frame.
-    if (!crit) {
-      const cut = this.time - NUM_RUN_WINDOW;
-      let live = 0;
-      for (let i = 0; i < this._runT.length; i++) if (this._runT[i] > cut) live++;
-      if (live >= NUM_MAX_RUNS) return;
-      this._runT[this._runCursor] = this.time;
-      this._runCursor = (this._runCursor + 1) % this._runT.length;
+
+    this._reap();
+
+    let value = Math.max(1, Math.round(amount));
+
+    // 1. Merge. One target, one readout: a second hit inside the window
+    //    accumulates into the live run instead of starting a competing one.
+    if (target != null) {
+      for (let i = this._runs.length - 1; i >= 0; i--) {
+        const r = this._runs[i];
+        if (r.target !== target || this.time - r.t > NUM_MERGE_WINDOW) continue;
+        value += r.value;
+        crit = crit || r.crit;
+        this._retire(i);
+        break;
+      }
     }
 
-    const n = Math.max(1, Math.round(amount));
+    // 2. Budget, crits included. A crit does not get a free pass, it gets
+    //    priority: it may retire the oldest live non-crit, and failing that a
+    //    run already past half its life — a readout that is fading out is worth
+    //    less than the hit that just landed, and a build that crits on every
+    //    shot would otherwise wedge the budget shut and show nothing at all.
+    //    (It does exactly that: every readout in `10-inventory` is a crit.)
+    //    An ordinary hit never evicts; it waits or it is dropped.
+    if (this._runs.length >= NUM_MAX_RUNS) {
+      let victim = -1;
+      if (crit) {
+        for (let i = 0; i < this._runs.length; i++) {          // oldest-first
+          if (!this._runs[i].crit) { victim = i; break; }
+        }
+        if (victim < 0 && this.time - this._runs[0].t > NUM_MIN_SHOW) victim = 0;
+      }
+      if (victim < 0) return;
+      this._retire(victim);
+    }
+
     const chars = this._buf;
+    const n = value;
     let len = 0;
     let v = n;
     // Digits back-to-front into the scratch buffer; no string allocation.
@@ -2314,7 +2423,18 @@ class DamageNumbers {
     }
     if (crit) chars[len++] = 10; // '!'
 
-    const rng = this.ctx.fxRng ?? this.ctx.rng;
+    // Private stream, deliberately not the shared cosmetic one.
+    //
+    // Every accept/reject decision above changes how many draws this layer
+    // takes, and ctx.fxRng is shared with the whole particle system — so gating
+    // the numerals was silently re-jittering every particle in the frame. It
+    // showed up as 10-inventory's equipment blast measuring 21,486 px in the
+    // control arm (reviews/round6/uictrl) and 56,735 px with a numeral-only
+    // change on top (reviews/round6/uifix4), which then dropped that shot's
+    // monster-legibility check below its bar. This is the shared-stream
+    // displacement the project has now been bitten by three times (archGeo, the
+    // shrine roll, this). Seeded off the run seed, so it stays reproducible.
+    const rng = this._rng;
     const half = len * 0.5 - 0.5;
     const scale = crit ? CRIT_SCALE : NUM_SCALE;
     _tmpColor.set(colour ?? (crit ? 0xffc23a : 0xfff2d8));
@@ -2324,11 +2444,29 @@ class DamageNumbers {
     const vz = (rng.next() * 2 - 1) * 1.1;
     const life = crit ? 1.25 : 1.0;
 
+    // 3. Spatial reservation. Project the run's own box and every live run's
+    //    box *as it stands now* — same ballistic curve the vertex shader
+    //    integrates — and lift out of any collision. This is the reticle
+    //    exclusion's machinery applied run-to-run, which is what round 3 asked
+    //    for and round 4 found still missing.
+    const oy0 = pos.y + 0.6;
+    let oy = oy0;
+    let placed = false;
+    for (let a = 0; a < NUM_LIFTS.length; a++) {
+      oy = oy0 + NUM_LIFTS[a];
+      if (!this._collides(pos.x, oy, pos.z, len, scale)) { placed = true; break; }
+    }
+    // Still colliding at the top of the ladder: the frame already carries a
+    // readable readout in that space, and a fourth overlapping number is the
+    // defect, not the feedback.
+    if (!placed) return;
+
+    const start = this.head;
     for (let i = 0; i < len; i++) {
       const idx = this.head;
       this.head = (this.head + 1) % this.capacity;
       const o = this.aOrigin.array, vv = this.aVel.array;
-      o[idx * 3] = pos.x; o[idx * 3 + 1] = pos.y + 0.6; o[idx * 3 + 2] = pos.z;
+      o[idx * 3] = pos.x; o[idx * 3 + 1] = oy; o[idx * 3 + 2] = pos.z;
       vv[idx * 3] = vx; vv[idx * 3 + 1] = vy; vv[idx * 3 + 2] = vz;
       this.aTime.array[idx * 2] = this.time;
       this.aTime.array[idx * 2 + 1] = life;
@@ -2341,7 +2479,75 @@ class DamageNumbers {
       c[idx * 4] = _tmpColor.r; c[idx * 4 + 1] = _tmpColor.g;
       c[idx * 4 + 2] = _tmpColor.b; c[idx * 4 + 3] = 1;
     }
+
+    this._runs.push({
+      t: this.time, life, crit: !!crit, target: target ?? null, value,
+      ox: pos.x, oy, oz: pos.z, vx, vy, vz,
+      len, scale, start,
+    });
     this.dirty = true;
+  }
+
+  /** Drop expired runs. `_runs` stays oldest-first, so this is a prefix cut. */
+  _reap() {
+    let i = 0;
+    while (i < this._runs.length && this.time - this._runs[i].t >= this._runs[i].life) i++;
+    if (i) this._runs.splice(0, i);
+  }
+
+  /** Blank a live run's instances and forget it. */
+  _retire(i) {
+    const r = this._runs[i];
+    for (let k = 0; k < r.len; k++) {
+      this.aTime.array[((r.start + k) % this.capacity) * 2 + 1] = 0;
+    }
+    this._runs.splice(i, 1);
+    this.dirty = true;
+  }
+
+  /**
+   * Project a readout's box to NDC. `out` receives centre and half-extents;
+   * returns false if the box is behind the camera. Mirrors NumberVert's sizing
+   * exactly (min-pixel floor included) so the CPU and GPU agree on where a
+   * numeral actually lands.
+   */
+  _box(wx, wy, wz, len, scale, out) {
+    const cam = this.ctx.camera;
+    if (!cam) return false;
+    const s = this._scratch.pos.set(wx, wy, wz).applyMatrix4(cam.matrixWorldInverse);
+    const dist = -s.z;
+    if (dist < 0.05) return false;
+    const p00 = cam.projectionMatrix.elements[0];
+    const p11 = cam.projectionMatrix.elements[5];
+    const minPx = NUM_MIN_PX * (1 + (scale / NUM_SCALE - 1) * 0.5);
+    const h = Math.max(scale, dist * minPx * this.mat.uniforms.uPxToWorld.value);
+    out.cx = (p00 * s.x) / dist;
+    out.cy = (p11 * s.y) / dist;
+    out.hx = (((len - 1) * 0.62 + 1) * h * 0.5 * p00) / dist;
+    out.hy = (h * 0.5 * p11) / dist;
+    return true;
+  }
+
+  /** Does a run spawned here overlap any live run, within NUM_SEP_PX? */
+  _collides(wx, wy, wz, len, scale) {
+    if (!this._runs.length) return false;
+    const a = _numBoxA;
+    if (!this._box(wx, wy, wz, len, scale, a)) return false;
+    const padX = (NUM_SEP_PX * 2) / Math.max(1, innerWidth);
+    const padY = (NUM_SEP_PX * 2) / Math.max(1, innerHeight);
+    const b = _numBoxB;
+    for (let i = 0; i < this._runs.length; i++) {
+      const r = this._runs[i];
+      const age = this.time - r.t;
+      // Where that run has arced to by now — NumberVert's own integration.
+      const bx = r.ox + r.vx * age;
+      const by = r.oy + r.vy * age - 2.25 * age * age;
+      const bz = r.oz + r.vz * age;
+      if (!this._box(bx, by, bz, r.len, r.scale, b)) continue;
+      if (Math.abs(a.cx - b.cx) < a.hx + b.hx + padX
+        && Math.abs(a.cy - b.cy) < a.hy + b.hy + padY) return true;
+    }
+    return false;
   }
 
   update(ctx, dt) {
@@ -2350,10 +2556,29 @@ class DamageNumbers {
     // FOV changes from settings without a resize event, so re-derive on the two
     // inputs rather than only on resize. Both are cached; this is two compares.
     if (ctx.camera && (ctx.camera.fov !== this._fov || innerHeight !== this._vh)) this.resize();
+    this._reap();
+    this._syncHudRect(ctx);
     if (!this.dirty) return;
     this.dirty = false;
     this.aOrigin.needsUpdate = this.aVel.needsUpdate = this.aTime.needsUpdate = true;
     this.aGlyph.needsUpdate = this.aColor.needsUpdate = true;
+  }
+
+  /**
+   * The inventory strip's rect, in NDC, for the fragment clip. HUD measures it
+   * from the live DOM (it is `width: max-content`, so it is whatever the run's
+   * haul makes it) and publishes it; nothing here assumes a layout.
+   */
+  _syncHudRect(ctx) {
+    const r = ctx.hud?.stripRect ?? null;
+    const u = this.mat.uniforms;
+    if (!r || r.w <= 0 || r.h <= 0) { u.uHudOn.value = 0; return; }
+    const w = Math.max(1, innerWidth), h = Math.max(1, innerHeight);
+    const x0 = (r.x / w) * 2 - 1, x1 = ((r.x + r.w) / w) * 2 - 1;
+    const y0 = 1 - (r.y / h) * 2, y1 = 1 - ((r.y + r.h) / h) * 2;
+    u.uHudRect.value.set((x0 + x1) * 0.5, (y0 + y1) * 0.5,
+      Math.abs(x1 - x0) * 0.5, Math.abs(y1 - y0) * 0.5);
+    u.uHudOn.value = 1;
   }
 
   /**
