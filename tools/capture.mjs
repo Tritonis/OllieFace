@@ -399,21 +399,28 @@ if (!ready) {
 
   // Hoisted for the same reason `subjectFailures` is hoisted, and it is the
   // more important of the two: a failure is already loud, and this is the
-  // quiet one. A `crowd: N` subject signs a contract for N individually
-  // legible members out of an unbounded population, so it can pass while
-  // carrying an object that rendered zero pixels — legitimately, per its own
-  // `crowdWhy`. That is exactly the shape of thing this project has shipped by
-  // accident five times (`perPx: [141, 0, 299]` certified against a sum), so
-  // the one case where it is *allowed* has to be visible at the top of the
-  // file, with the reason attached, rather than buried in a green check.
-  // `subjectsOk: true` with a non-empty list here is a manifest asking to be
-  // read, not a clean bill of health.
+  // quiet one. Two kinds of check may pass while carrying an object that
+  // rendered zero pixels, and both are legitimate on their face:
+  //
+  //  - a `crowd: N` subject, which signs a contract for N individually legible
+  //    members out of an unbounded population, per its own `crowdWhy`;
+  //  - a `minCarriedPx` aggregate, whose objects are shared particle/ring/trail
+  //    buffers rather than nameable things, per its own `aggregateWhy`.
+  //
+  // That is exactly the shape of thing this project has shipped by accident six
+  // times (`perPx: [141, 0, 299]` certified against a sum), so the cases where
+  // it is *allowed* have to be visible at the top of the file, with the reason
+  // attached, rather than buried in a green check. `subjectsOk: true` with a
+  // non-empty list here is a manifest asking to be read, not a clean bill of
+  // health.
   manifest.toleratedAbsences = manifest.shots.flatMap((s) => (s.subject?.checks ?? [])
-    .filter((c) => c.crowd?.carriesAbsence)
+    .filter((c) => c.carriesAbsence)
     .map((c) => ({
       name: s.name, subject: c.subject, checkOk: c.ok,
-      crowd: c.crowd.need, of: c.perPx?.length ?? null, why: c.crowd.why,
-      absent: c.crowd.absentBeyondCrowd,
+      gate: c.crowd ? `crowd ${c.crowd.need}/${c.perPx?.length ?? '?'} individually gated`
+        : 'aggregate: carriedPx only, no per-object gate',
+      why: c.crowd?.why ?? c.aggregate ?? null,
+      perPx: c.perPx, absent: c.ungatedAbsences,
     })));
 
   // The one place a settle can silently become wall-clock-dependent is the
@@ -455,8 +462,8 @@ console.log(JSON.stringify({
   subjectsOk: manifest.subjectsOk ?? null,
   subjectFailures: failures.map((f) => `${f.name}: ${f.failed.join(', ')}`),
   toleratedAbsences: (manifest.toleratedAbsences ?? []).map(
-    (t) => `${t.name}: ${t.subject} passed on ${t.crowd}/${t.of} with `
-      + `${t.absent.length} absent — ${t.absent.map((o) => `#${o.i}@${o.px}px`).join(' ')}`),
+    (t) => `${t.name}: ${t.subject} [${t.gate}] carries ${t.absent.length} absent `
+      + `— ${t.absent.map((o) => `#${o.i}@${o.px}px`).join(' ')}`),
   perf: manifest.perf,
 }, null, 2));
 if (errors.length) console.log('\nFIRST ERRORS:\n' + errors.slice(0, 8).join('\n---\n'));

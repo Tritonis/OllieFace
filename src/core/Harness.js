@@ -2285,10 +2285,58 @@ export function installHarness(ctx) {
               c.crowd.absentBeyondCrowd = c.absentObjects.filter((o) => !gated.has(o.i));
               c.crowd.carriesAbsence = c.crowd.absentBeyondCrowd.length > 0;
             }
+            // The absences this check declined to read, in one field with one
+            // name, so a reader and `tools/capture.mjs` find them the same way
+            // whatever kind of subject produced them. Empty for a fixed cast by
+            // construction: everything it declares is gated.
+            c.ungatedAbsences = c.crowd ? c.crowd.absentBeyondCrowd : [];
             c.perObjectOk = c.objectFailures.length === 0;
           } else {
+            /* The aggregate opt-out published nothing at all, and that is the
+             * sixth instance of this round's defect class.
+             *
+             * `minCarriedPx` subjects are gated on `carriedPx` alone — the
+             * meshes are shared particle/ring/trail pools, so "object 2" is a
+             * buffer and not a nameable thing, and an explosion that legitimately
+             * never used its beams pool should not fail for it. That rationale is
+             * defensible. What was not defensible is that the per-object block
+             * was skipped *entirely*, so `absentObjects` came out `undefined`:
+             * not ungated, but uncomputed and unpublished. A subject certifying
+             * on a sum while carrying a zero **in silence** is exactly the shape
+             * of `23-realm-crucible`'s `perPx: [141, 0, 299]`, sitting inside the
+             * one subject that opted out of the gate built to catch it.
+             *
+             * So the absence list is computed and published here too, and named
+             * in `notGated`, warned about, and hoisted to
+             * `manifest.toleratedAbsences`. **No verdict moves**: nothing below
+             * reads it, `perObjectOk` is still unconditionally true, and
+             * `carriedPx >= minCarried` remains the whole gate. Publish, don't
+             * just gate — including where the decision not to gate was correct.
+             *
+             * **What it was carrying when this was made visible**, so the next
+             * reader can judge it with evidence instead of rediscovering it:
+             * `reviews/round6/reconcile/manifest.json`, `08-explosion` -> `the
+             * blast`, `ok: true`, `px: 22332`, `carriedPx: 12372`, and
+             * `perPx: [22330, 0, 23, 0]`. Two of the four pools render nothing
+             * and a third renders 23 px. The open question that number exists to
+             * settle: are those the beams and trails pools this explosion
+             * legitimately never used, or two emitters that silently stopped
+             * emitting? Whoever answers it should say so here. Until then the
+             * shot passes on 22,332 px of fireball, which is a real fireball —
+             * this is a publication fix, not a verdict.
+             */
+            const ABSENT_PX = 12;
+            if (rep.perPx) {
+              c.absentObjects = rep.perPx
+                .map((px, i) => (px < ABSENT_PX
+                  ? { i, px, sepP50: rep.perSep?.[i] ?? null } : null)).filter(Boolean);
+              c.ungatedAbsences = c.absentObjects;
+            }
             c.perObjectOk = true;
           }
+          // One flag for both kinds of tolerated absence, read by the warn below
+          // and by `tools/capture.mjs`'s hoist.
+          c.carriesAbsence = (c.ungatedAbsences?.length ?? 0) > 0;
           /* Which of the numbers beside it actually decided `ok`.
            *
            * This check publishes seven statistics and reads three of them. The
@@ -2347,9 +2395,12 @@ export function installHarness(ctx) {
               : []);
           c.notGated = ['contrast', 'sep', 'sepP25']
             .concat(s.minCarriedPx ? [] : ['legible'])
-            // Named on every crowd, not only when it is carrying one, so that a
-            // reader learns the rule from a green check as well as a red one.
-            .concat(c.crowd ? ['crowd.absentBeyondCrowd'] : []);
+            // Named on every crowd and every aggregate, not only when one is
+            // carrying an absence, so that a reader learns the rule from a green
+            // check as well as a red one. On an aggregate `perPx` itself is
+            // ungated, and saying so is the point: this check reads a sum.
+            .concat(c.crowd ? ['crowd.absentBeyondCrowd'] : [])
+            .concat(s.minCarriedPx && rep.perPx ? ['perPx', 'perSep', 'absentObjects'] : []);
           c.ok = c.present && c.legibleOk && c.perObjectOk;
         } else if (s.point) {
           c.kind = 'bounds';
@@ -2376,16 +2427,20 @@ export function installHarness(ctx) {
     }
     const failed = checks.filter((c) => !c.ok);
     subjects[shot] = { ok: failed.length === 0, checks };
-    // Published, not gated, and said out loud. A `crowd` check can go green
-    // while one of the objects it declares rendered nothing, which is the one
-    // shape of zero this gate deliberately does not fail on — so it must not be
-    // the one shape of zero a reader has to go looking for. `manifest.
-    // toleratedAbsences` carries the same list beside `subjectFailures`.
-    const tolerated = checks.filter((c) => c.crowd?.carriesAbsence);
+    // Published, not gated, and said out loud. Two checks can go green while an
+    // object they declare rendered nothing — a `crowd` beyond its N, and an
+    // aggregate gated on a sum — and those are the only two shapes of zero this
+    // gate deliberately does not fail on. Precisely because they are tolerated,
+    // they must not be the shapes a reader has to go looking for.
+    // `manifest.toleratedAbsences` carries the same list beside
+    // `subjectFailures`.
+    const tolerated = checks.filter((c) => c.carriesAbsence);
     if (tolerated.length) {
-      console.warn(`[harness] ${shot}: crowd tolerated absences (published, not gated) — `
-        + tolerated.map((c) => `${c.subject} [${c.crowd.why}] ${c.crowd.need}/${c.perPx.length} gated, `
-          + `absent beyond: ${JSON.stringify(c.crowd.absentBeyondCrowd)}`).join('; '));
+      console.warn(`[harness] ${shot}: tolerated absences (published, not gated) — `
+        + tolerated.map((c) => `${c.subject} [${c.crowd
+          ? `crowd ${c.crowd.need}/${c.perPx.length}: ${c.crowd.why}`
+          : `aggregate on carriedPx: ${c.aggregate}`}] `
+          + `absent: ${JSON.stringify(c.ungatedAbsences)}`).join('; '));
     }
     if (failed.length) {
       const msg = `[harness] ${shot}: subject missing or illegible — `
