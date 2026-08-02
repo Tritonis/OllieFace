@@ -243,8 +243,25 @@ void main() {
   // particle edges") drawn by a spinning billboard's own outline. This costs a
   // length() and guarantees the sprite is transparent by the time it reaches
   // its own corner, whatever the atlas does.
+  //
+  // The ramp is 0.90 -> 1.00, not 0.74 -> 1.00, and the endpoint is what carries
+  // the guarantee. rq is 1.0 at the middle of each quad edge and 1.414 at the
+  // corners, so *every* point on the polygon boundary is at rq >= 1.0: a fade
+  // that reaches zero at 1.0 is already a complete guarantee, and every unit of
+  // ramp below that is spent eating the atlas rather than the outline.
+  //
+  // 0.74 spent a lot of it. shockRing -- the one frame in the atlas with a
+  // genuinely sharp edge -- puts its bright band at 0.93 of the tile radius,
+  // where a 0.74 ramp leaves 18% of the alpha. The sharp ring was, in effect,
+  // switched off, which is why an explosion rim drawn with it read as a broad
+  // glow: measured on reviews/round6/vfx-mine/08-explosion.png, adding the rim
+  // emitter under the 0.74 ramp *lowered* the largest radial luminance step
+  // about the blast centre to 7.4 L from reviews/round6/base/08-explosion.png
+  // 8.1 L -- it contributed luminance and no edge. softRing at 0.78 and the
+  // gaussian frames are unaffected either way; this only gives back the band
+  // between 0.74 and 0.90, which is exactly where sharp-edged frames live.
   float rq = length(vQuad - 0.5) * 2.0;
-  c.a *= 1.0 - smoothstep(0.74, 1.0, rq);
+  c.a *= 1.0 - smoothstep(0.90, 1.00, rq);
 
   if (uSoftEnabled > 0.5 && vSoft > 0.0) {
     vec2 suv = gl_FragCoord.xy / uResolution;

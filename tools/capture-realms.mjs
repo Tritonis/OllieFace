@@ -129,7 +129,13 @@ for (const f of await readdir(OUT).catch(() => [])) {
 }
 
 log('navigating...');
-await page.goto(`http://127.0.0.1:${PORT}/?seed=${SEED}&quality=3&harness=1`, { waitUntil: 'load' });
+// `pinclock` is read by `installHarness`, which runs before the engine's first
+// frame. Without it, every frame between page load and stage-ready is timed by
+// the wall clock — a variable number of them, advancing the sim by a variable
+// amount. This param was missing here for the tool's whole life while the
+// `pinClock()` call below claimed to pin "exactly as capture.mjs does".
+await page.goto(`http://127.0.0.1:${PORT}/?seed=${SEED}&quality=3&harness=1&pinclock=1`,
+                { waitUntil: 'load' });
 
 const ready = await page
   .waitForFunction(() => globalThis.__GAME__?.ctx?.stage != null && globalThis.__HARNESS__?.realmBazaar != null,
@@ -137,15 +143,22 @@ const ready = await page
   .then(() => true)
   .catch(() => false);
 
-const manifest = { seed: SEED, ready, shots: [], errors: [] };
+const manifest = { seed: SEED, ready, clockPinned: false, shots: [], errors: [] };
 
 if (!ready) {
   manifest.errors = errors;
   await page.screenshot({ path: path.join(OUT, '00-FAILED-TO-BOOT.png') });
 } else {
-  // Pin the clock exactly as capture.mjs does, so a slow frame cannot change
-  // how far a collapse animation or a wave has progressed at the shutter.
-  await page.evaluate(() => globalThis.__HARNESS__?.pinClock?.());
+  // Pin the frame delta before any scenario runs, matching `tools/capture.mjs`.
+  //
+  // Record the result rather than assuming it. This tool reported no pinning
+  // state at all until 2026-08-01, so `pinClock` silently doing nothing looked
+  // identical to it working — the same shape as the two harness bugs round 5
+  // opened with: an aggregate hiding an absence. A `clockPinned: false` in the
+  // manifest is now the visible zero that was missing.
+  const pinned = await page.evaluate(() => globalThis.__HARNESS__?.pinClock?.(1 / 60) ?? false);
+  manifest.clockPinned = pinned;
+  if (!pinned) console.log('WARNING: realms capture clock not pinned — shots may vary run to run');
   for (const s of SCENARIOS) {
     if (ONLY && !s.hidden && !ONLY.some((o) => s.name.includes(o))) continue;
     const before = errors.length;

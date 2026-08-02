@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { ITEM_BY_ID, TIERS } from '../data/items.js';
+import { eliteAffixesFor } from '../data/enemies.js';
+import { RNG } from '../core/MathUtil.js';
 import { getTextureSets, withRepeat, attachDetail } from './Materials.js';
 
 /**
@@ -30,8 +32,13 @@ const ORB_SEEK_RANGE = 4.5;
 // changes the mesh, and a client that only learned "chest" would render every
 // legendary as a small one.
 const TYPE_ID = {
-  chest: 1, multishop: 2, shrineChance: 3, shrineBlood: 4, teleporter: 5, portal: 6,
-  chestLarge: 7, chestLegendary: 8,
+  chest: 1, auricCairn: 3, ichorFont: 4, teleporter: 5, portal: 6,
+  multishop: 2, chestLarge: 7, chestLegendary: 8,
+  // Shrines added in round 6. `auricCairn` and `ichorFont` keep wire values 3
+  // and 4 — those two were `shrineChance` / `shrineBlood` and only the *key*
+  // was renamed, because the value is a wire constant and the rule above is
+  // append, never renumber.
+  hollowChime: 9, gildedSnare: 10, fallowVault: 11, marrowKiln: 12,
 };
 
 const CHEST_TYPE = { small: TYPE_ID.chest, large: TYPE_ID.chestLarge, legendary: TYPE_ID.chestLegendary };
@@ -539,14 +546,21 @@ function bloodSlickGeo() {
   return g;
 }
 
-class ShrineOfChance extends Interactable {
+/**
+ * The Auric Cairn — pay gold, one roll in four pays an item.
+ *
+ * Renamed from "Shrine of Chance", which is a Risk of Rain 2 proper noun
+ * lifted verbatim. The mechanic is genre furniture and stays; the name is not
+ * ours to use. `TYPE_ID.auricCairn` is still wire value 3.
+ */
+class AuricCairn extends Interactable {
   constructor(ctx, position, cost) {
     super(ctx, position);
     this.cost = cost;
     this.uses = 0;
     this.maxUses = 3;
     this.spin = 0;
-    this.typeId = TYPE_ID.shrineChance;
+    this.typeId = TYPE_ID.auricCairn;
 
     const base = new THREE.Mesh(sharedGeo('shrineBase', () => plinthGeo(1.1, 10)), STONE());
     const cols = new THREE.Mesh(sharedGeo('shrineCols', () => shrineColumnsGeo(1.02, 5, 0.4)), STONE());
@@ -575,7 +589,7 @@ class ShrineOfChance extends Interactable {
   }
 
   available() { return this.enabled && this.uses < this.maxUses; }
-  prompt() { return `Shrine of Chance ($${this.cost})`; }
+  prompt() { return `Auric Cairn ($${this.cost})`; }
 
   interact() {
     if (!this.ctx.items?.spendGold(this.cost)) return false;
@@ -605,13 +619,19 @@ class ShrineOfChance extends Interactable {
   }
 }
 
-class ShrineOfBlood extends Interactable {
+/**
+ * The Ichor Font — pay 40% of your health, take gold.
+ *
+ * Renamed from "Shrine of Blood" for the same reason as the Cairn above: it is
+ * on the branding ledger's do-not-ship list. Wire value 4 is unchanged.
+ */
+class IchorFont extends Interactable {
   constructor(ctx, position, stageIndex) {
     super(ctx, position);
     this.uses = 0;
     this.maxUses = 2;
     this.stageIndex = stageIndex;
-    this.typeId = TYPE_ID.shrineBlood;
+    this.typeId = TYPE_ID.ichorFont;
 
     const base = new THREE.Mesh(sharedGeo('bloodBase', () => plinthGeo(1.0, 8)), STONE());
     // An open basin the spike stands in, with four buttresses. The basin is the
@@ -671,7 +691,7 @@ class ShrineOfBlood extends Interactable {
   }
 
   available() { return this.enabled && this.uses < this.maxUses; }
-  prompt() { return 'Shrine of Blood (pay 40% health)'; }
+  prompt() { return 'Ichor Font (pay 40% health)'; }
 
   interact() {
     const p = this.ctx.player;
@@ -697,6 +717,554 @@ class ShrineOfBlood extends Interactable {
   }
 
   update(dt) { this.spin.rotation.y += dt * 0.6; }
+}
+
+// ------------------------------------------------------------- more shrines
+//
+// ## What the four below are for
+//
+// The stage shipped with two shrines and both were a purchase: the Cairn buys a
+// lottery ticket with gold, the Font buys gold with health. Adding a third
+// purchase would be a reskin, so each of these commits a *different* resource
+// on a *different* timeline, and none of them is a coin flip:
+//
+// | shrine | you spend | you get | when the risk lands |
+// |---|---|---|---|
+// | Hollow Chime | nothing | 2 guaranteed drops | up front — the fight comes first |
+// | Gilded Snare | nothing | 1 good drop, now | later — an elite follows you all stage |
+// | Fallow Vault | your whole purse | 2.2x of it | next stage, and only if you reach it |
+// | Marrow Kiln  | one item, permanently | a large purse | never — it is certain, and irreversible |
+//
+// The Chime and the Snare are deliberately the same trade in opposite order,
+// because "clear it and collect" and "collect and then live with it" are two
+// different decisions even though the ledger balances the same.
+//
+// ## Reading them at 60 metres
+//
+// A shrine you cannot identify before walking to it has failed, so silhouette
+// carries the identification and hue only confirms it. Every one of the six is
+// a different *shape class*: the Cairn is a spike cluster, the Font is a spike
+// in an open basin, the Chime is the only one with a hole in its outline, the
+// Kiln is the only solid unbroken mass, the Snare is the only sphere, and the
+// Vault is the only one under waist height. Rendered flat black they are still
+// six different objects — which is the test axis 4 keeps failing elsewhere.
+
+/** How far off the shrine an ambush lands, and how much of the field it takes. */
+const CHIME_RING = 8.5;
+
+/**
+ * A walkable-ish point on a ring around `origin`. Draws from `ctx.rng`, so
+ * every caller must already be on a host-only path — all of them are, because
+ * `Interactables.requestInteract` gates on `ctx.authority`.
+ */
+function ringPoint(ctx, origin, i, n, r) {
+  const a = (i / n) * Math.PI * 2 + ctx.rng.range(-0.35, 0.35);
+  const x = origin.x + Math.cos(a) * r;
+  const z = origin.z + Math.sin(a) * r;
+  return new THREE.Vector3(x, ctx.stage?.sampleHeight?.(x, z) ?? origin.y, z);
+}
+
+/**
+ * Put `count` monsters on the field around `origin` and hand back handles to
+ * them. Host only.
+ *
+ * `Enemy` instances are pooled and recycled, so a bare reference is not an
+ * identity — a corpse can come back as something else and start reading
+ * `alive` again. `Enemy.id` is stamped fresh from a monotonic counter on every
+ * `spawn`, so the pair is the identity and `(!e.alive || e.id !== id)` is the
+ * only honest way to ask "is the thing I summoned finished".
+ */
+function summonRing(ctx, origin, count, r, affix = null, colour = 0x9fd4ff) {
+  const dir = ctx.director;
+  if (!dir?.fillerCard || !dir.spawnOne) return [];
+  const out = [];
+  for (let i = 0; i < count; i++) {
+    if (dir.enemies.length >= dir.populationCap) break;
+    // `fillerCard` is the director's own "something legal at this difficulty
+    // with room on the field" selector. Reusing it means a shrine ambush can
+    // never contain a monster the stage would not otherwise have produced.
+    const card = dir.fillerCard(ctx, 1e9);
+    if (!card) break;
+    const at = ringPoint(ctx, origin, i, count, r);
+    dir.spawnTelegraph?.(at.x, at.z, 2.0, 1.1, colour);
+    const e = dir.spawnOne(ctx, card, at, affix);
+    if (e) out.push({ e, id: e.id });
+  }
+  return out;
+}
+
+/** Have all the handles from `summonRing` finished? */
+function ringCleared(list) {
+  for (let i = 0; i < list.length; i++) {
+    const h = list[i];
+    if (h.e.alive && h.e.id === h.id) return false;
+  }
+  return true;
+}
+
+/**
+ * The Hollow Chime — an arch, a lintel, and a cracked bell hanging in the gap.
+ *
+ * The only shrine whose silhouette has a hole in it, which is what makes it
+ * identifiable at range against a ridge: every other prop on the stage is a
+ * solid mass and this one frames sky.
+ */
+function chimeArchGeo() {
+  const parts = [
+    box(2.52, 0.22, 0.28, 0, 3.02, 0),        // lintel
+    box(0.18, 0.28, 0.18, 0, 2.82, 0),        // hanger block
+  ];
+  for (const sx of [-1, 1]) {
+    parts.push(new THREE.CylinderGeometry(0.13, 0.21, 2.94, 6).translate(sx * 1.06, 1.47, 0));
+    // Corner brace. Without it the arch is two posts and a stick; the diagonal
+    // is what makes the top corners read as joinery rather than as a gap.
+    parts.push(box(0.10, 0.78, 0.10, 0, 0, 0)
+      .rotateZ(sx * 0.78).translate(sx * 0.72, 2.60, 0));
+    // Splayed foot, so the uprights sit *on* the plinth instead of ending at it.
+    parts.push(new THREE.CylinderGeometry(0.24, 0.34, 0.20, 6).translate(sx * 1.06, 0.10, 0));
+  }
+  const g = mergeGeometries(parts, false);
+  for (const p of parts) p.dispose();
+  return g;
+}
+
+/**
+ * The bell. A lathe, and smooth-shaded for exactly the reason `bloodSlickGeo`
+ * is: a surface of revolution whose profile sweeps its normal elevation
+ * continuously contains the half vector for any sun/camera pair, so the
+ * highlight is a property of the material rather than a coincidence of which
+ * facet happens to line up. On a hanging object that also swings, that is the
+ * difference between a bell and a grey cone.
+ */
+function chimeBellGeo() {
+  const profile = [
+    [0.05, 1.04], [0.15, 0.99], [0.24, 0.88], [0.33, 0.71],
+    [0.44, 0.48], [0.57, 0.23], [0.67, 0.05], [0.70, 0.0],
+  ].map(([r, y]) => new THREE.Vector2(r, y));
+  const parts = [
+    new THREE.LatheGeometry(profile, 20),
+    // Lip ring: the one hard bright break on an otherwise continuous form.
+    new THREE.TorusGeometry(0.695, 0.055, 8, 28).rotateX(Math.PI / 2),
+  ];
+  const g = mergeGeometries(parts, false);
+  for (const p of parts) p.dispose();
+  return g;
+}
+
+class HollowChime extends Interactable {
+  constructor(ctx, position, stageIndex) {
+    super(ctx, position);
+    this.stageIndex = stageIndex || 0;
+    this.uses = 0;
+    this.maxUses = 2;
+    this.state = 'ready';        // ready -> ringing -> ready | spent
+    this.pending = [];
+    this.swing = 0;
+    this.radius = 2.6;
+    this.typeId = TYPE_ID.hollowChime;
+
+    const base = new THREE.Mesh(sharedGeo('chimeBase', () => plinthGeo(1.15, 8)), STONE());
+    const arch = new THREE.Mesh(sharedGeo('chimeArch', chimeArchGeo), IRON_DARK());
+    base.castShadow = arch.castShadow = true;
+    base.receiveShadow = true;
+
+    // Per-instance material: `interact` dims it when the shrine is spent, and a
+    // shared one would dim every chime a client has ever built.
+    this.bell = new THREE.Mesh(sharedGeo('chimeBell', chimeBellGeo),
+      new THREE.MeshStandardMaterial({
+        color: 0x6d7f92, emissive: 0x9fd4ff, emissiveIntensity: 0.30,
+        roughness: 0.18, metalness: 0.55, envMapIntensity: 3.0,
+      }));
+    this.bell.castShadow = true;
+    // Pivot at the hanger, not at the bell's own origin, so it swings from the
+    // lintel rather than spinning about its waist.
+    this.pivot = new THREE.Group();
+    this.pivot.position.y = 2.82;
+    this.bell.position.y = -1.04;
+    this.pivot.add(this.bell);
+    this.group.add(base, arch, this.pivot);
+  }
+
+  available() { return this.enabled && this.state === 'ready' && this.uses < this.maxUses; }
+  prompt() {
+    return this.state === 'ringing'
+      ? 'Hollow Chime — answer it'
+      : `Hollow Chime (free — ${this.maxUses - this.uses} left)`;
+  }
+
+  interact() {
+    const ctx = this.ctx;
+    const count = 4 + Math.min(5, this.stageIndex) + this.uses * 2;
+    const summoned = summonRing(ctx, this.position, count, CHIME_RING, null, 0x9fd4ff);
+    // No monsters means no fight, and a shrine that consumes a use and pays
+    // nothing is indistinguishable from a broken one. Refuse instead.
+    if (!summoned.length) return false;
+    this.uses++;
+    this.pending = summoned;
+    this.state = 'ringing';
+    this.swing = 1.0;
+    this.bell.material.emissiveIntensity = 1.5;
+    ctx.vfx?.ring?.(this.position, CHIME_RING, 0x9fd4ff);
+    ctx.audio?.play?.('shrineBlood', this.position);
+    return true;
+  }
+
+  update(dt) {
+    // The swing decays whatever the state, so the strike reads even on a client
+    // that will never resolve the fight.
+    this.swing *= Math.pow(0.28, dt);
+    this.pivot.rotation.z = Math.sin(this.ctx.time * 7.5) * 0.30 * this.swing;
+
+    if (this.state !== 'ringing') return;
+    // Cosmetic on both roles; the payout below is host-only.
+    this.bell.material.emissiveIntensity = 0.9 + Math.sin(this.ctx.time * 3.4) * 0.5;
+    if (!this.ctx.authority) return;
+    if (!ringCleared(this.pending)) return;
+
+    this.pending.length = 0;
+    // Two drops, off the large-chest ladder, and *not* a roll for whether you
+    // get them. The whole trade is that the randomness moved out of the payout
+    // and into the fight.
+    for (let i = 0; i < 2; i++) {
+      const id = this.ctx.items?.rollItem?.(null, TIER_BIAS.large);
+      if (id) this.ctx.interactables.spawnOrb(this.position, id, 1.8 + i * 0.5);
+    }
+    this.state = this.uses >= this.maxUses ? 'spent' : 'ready';
+    this.bell.material.emissiveIntensity = this.state === 'spent' ? 0.04 : 0.30;
+    this.swing = 0.8;
+    this.ctx.vfx?.burst?.(this.position, 0x9fd4ff);
+    this.ctx.audio?.play?.('shrineWin', this.position);
+  }
+}
+
+/**
+ * The Gilded Snare — a cage of thorn ribs closed over a suspended offering.
+ *
+ * The only sphere on the stage. It is also the only shrine that shows you the
+ * reward before you take it: the orb is visible through the ribs from any
+ * bearing, which is what makes the trade legible without a tooltip.
+ */
+function snareCageGeo() {
+  const parts = [];
+  const RIBS = 8;
+  for (let i = 0; i < RIBS; i++) {
+    const a = (i / RIBS) * Math.PI * 2;
+    // Two segments per rib. One straight cone is a spike; two at different
+    // leans is a curve, and the kink is where the key catches.
+    // Positive Z rotation tips the part's +Y toward -X, and `rotateY(-a)` below
+    // puts local +X radially outward — so a positive lean is the cage closing
+    // over the offering rather than splaying away from it.
+    const lower = new THREE.CylinderGeometry(0.055, 0.10, 1.05, 4)
+      .translate(0, 0.52, 0).rotateZ(0.20);
+    const upper = new THREE.CylinderGeometry(0.02, 0.055, 0.85, 4)
+      .translate(0, 1.45, 0).rotateZ(0.62);
+    for (const seg of [lower, upper]) {
+      parts.push(seg.rotateY(-a).translate(Math.cos(a) * 0.78, 0, Math.sin(a) * 0.78));
+    }
+    // Barb halfway up each rib, pointing out. Turns the outline from a smooth
+    // dome into something visibly hostile at 40m.
+    parts.push(new THREE.ConeGeometry(0.055, 0.30, 4)
+      .rotateZ(-2.1).rotateY(-a)
+      .translate(Math.cos(a) * 1.02, 0.72, Math.sin(a) * 1.02));
+  }
+  const g = mergeGeometries(parts, false);
+  for (const p of parts) p.dispose();
+  return g;
+}
+
+class GildedSnare extends Interactable {
+  constructor(ctx, position, stageIndex) {
+    super(ctx, position);
+    this.stageIndex = stageIndex || 0;
+    this.uses = 0;
+    this.maxUses = 2;
+    this.spin = 0;
+    this.radius = 2.3;
+    this.typeId = TYPE_ID.gildedSnare;
+
+    const base = new THREE.Mesh(sharedGeo('snareBase', () => plinthGeo(1.05, 12)), STONE());
+    const cage = new THREE.Mesh(sharedGeo('snareCage', snareCageGeo), IRON());
+    // Brass collar where the ribs meet the stone — the one warm rung, and the
+    // band that separates the matte base from the glossy cage.
+    const collar = new THREE.Mesh(
+      sharedGeo('snareCollar', () => new THREE.TorusGeometry(0.80, 0.09, 10, 28)
+        .rotateX(Math.PI / 2).translate(0, 0.66, 0)),
+      BRASS()
+    );
+    base.castShadow = cage.castShadow = collar.castShadow = true;
+    base.receiveShadow = true;
+    cage.position.y = 0.62;
+
+    this.orb = new THREE.Mesh(
+      sharedGeo('snareOrb', () => new THREE.IcosahedronGeometry(0.42, 0)),
+      new THREE.MeshStandardMaterial({
+        color: 0xffb0d8, emissive: 0xff3fa0, emissiveIntensity: 0.75,
+        roughness: 0.12, metalness: 0.0, envMapIntensity: 2.4, flatShading: true,
+      })
+    );
+    this.orb.position.y = 1.32;
+    this.group.add(base, cage, collar, this.orb);
+  }
+
+  available() { return this.enabled && this.uses < this.maxUses; }
+  prompt() { return 'Gilded Snare (take it — something answers)'; }
+
+  interact() {
+    const ctx = this.ctx;
+    // The item is unconditional and it lands first. That ordering is the shrine:
+    // the player is holding the reward before the cost arrives, which is a
+    // different decision from earning it and a different one from gambling for
+    // it, even though all three can pay the same item.
+    const id = ctx.items?.rollItem?.(null, { common: 0, uncommon: 46, legendary: 16 });
+    if (!id) return false;
+    this.uses++;
+    ctx.interactables.spawnOrb(this.position, id, 2.2);
+
+    // …and now the hunter. An elite, legal at the current difficulty, placed
+    // close and pointed at the player rather than at the shrine — it follows
+    // you off the site, which is what stops the Snare from being solved by
+    // walking away.
+    const affixes = eliteAffixesFor(ctx.director?.difficultyCoefficient ?? 1);
+    const affix = affixes.length ? ctx.rng.pick(affixes) : null;
+    const hunters = summonRing(ctx, this.position, this.uses, 5.5, affix, 0xff3fa0);
+    const home = ctx.player?.position;
+    if (home) for (const h of hunters) h.e.home?.copy?.(home);
+
+    if (this.uses >= this.maxUses) this.orb.material.emissiveIntensity = 0.05;
+    ctx.vfx?.burst?.(this.position, 0xff3fa0);
+    ctx.audio?.play?.('shrineWin', this.position);
+    return true;
+  }
+
+  update(dt) {
+    this.spin += dt * (this.available() ? 1.1 : 0.15);
+    this.orb.rotation.y = this.spin;
+    this.orb.rotation.x = this.spin * 0.6;
+    this.orb.position.y = 1.32 + Math.sin(this.spin * 1.8) * 0.09;
+  }
+}
+
+/**
+ * The Fallow Vault — a sunken coffer with a coin slot and nothing above it.
+ *
+ * Commit the whole purse; it comes back at 2.2x when the next stage begins.
+ * The cost is not the gold, which you get back with interest — it is that this
+ * stage's chests go unopened, and that a run which ends here ends with the
+ * money still in the ground.
+ *
+ * It is the only shrine under waist height and the only one with no lit
+ * offering standing on it, so what identifies it at range is a *gap*: four
+ * short marker posts around a low mass. Ground furniture, not an altar.
+ */
+const VAULT_MIN = 45;
+// Beats the 1.25x-per-stage price inflation, because it has to: the player is
+// giving up a whole stage of purchases and a whole stage of item compounding,
+// and a return that only kept pace with prices would be a strictly worse
+// version of doing nothing.
+const VAULT_YIELD = 2.2;
+
+function vaultGeo() {
+  const shell = [
+    new THREE.CylinderGeometry(1.22, 1.30, 0.82, 8).translate(0, 0.32, 0),   // drum, part-sunk
+    new THREE.CylinderGeometry(1.06, 1.22, 0.16, 8).translate(0, 0.80, 0),   // shoulder
+  ];
+  const trim = [
+    new THREE.CylinderGeometry(0.96, 0.96, 0.10, 8).translate(0, 0.92, 0),   // lid
+    new THREE.TorusGeometry(1.10, 0.09, 8, 24).rotateX(Math.PI / 2).translate(0, 0.84, 0),
+  ];
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + 0.78;
+    // Marker post. The vault itself is 1.0m tall and would disappear into the
+    // terrain at any distance; the posts are what put a readable vertical tick
+    // on the horizon without pretending to be an altar.
+    shell.push(new THREE.CylinderGeometry(0.09, 0.13, 1.15, 5)
+      .translate(Math.cos(a) * 2.05, 0.57, Math.sin(a) * 2.05));
+    trim.push(box(0.24, 0.09, 0.24, Math.cos(a) * 2.05, 1.18, Math.sin(a) * 2.05));
+    // Buttress foot against the drum.
+    shell.push(box(0.16, 0.52, 0.30, 0, 0, 0)
+      .rotateY(-a).translate(Math.cos(a) * 1.16, 0.26, Math.sin(a) * 1.16));
+  }
+  return twoGroup(shell, trim);
+}
+
+class FallowVault extends Interactable {
+  constructor(ctx, position, stageIndex) {
+    super(ctx, position);
+    this.stageIndex = stageIndex || 0;
+    this.used = false;
+    this.radius = 2.6;
+    this.typeId = TYPE_ID.fallowVault;
+
+    const body = new THREE.Mesh(sharedGeo('vaultBody', vaultGeo), [IRON_DARK(), BRASS()]);
+    body.castShadow = true;
+    body.receiveShadow = true;
+
+    // The slot. A thin bright line across an otherwise closed lid is the whole
+    // of this prop's emissive budget, and it is the only part of the shrine
+    // that says "put something in".
+    // Per-instance, not `glowMat` — that cache is shared across every prop on
+    // the stage, and `interact` dims this one when the vault is sealed. The
+    // same trap `IchorFont` calls out: a shared material would seal every
+    // vault a client has ever built.
+    this.slot = new THREE.Mesh(
+      sharedGeo('vaultSlot', () => box(0.72, 0.03, 0.14, 0, 0.975, 0)),
+      new THREE.MeshStandardMaterial({
+        color: 0x0a0806, emissive: 0xb98a2e, emissiveIntensity: 1.6, roughness: 0.5,
+      })
+    );
+    this.group.add(body, this.slot);
+  }
+
+  /** What the vault would take right now. Cheap and pure — the prompt uses it. */
+  _stake() { return Math.max(0, Math.round(this.ctx.items?.gold ?? 0)); }
+
+  available() { return this.enabled && !this.used; }
+  prompt() {
+    const s = this._stake();
+    return s >= VAULT_MIN
+      ? `Fallow Vault (commit $${s} — returns $${Math.round(s * VAULT_YIELD)} next stage)`
+      : `Fallow Vault (needs $${VAULT_MIN})`;
+  }
+
+  interact() {
+    const stake = this._stake();
+    if (stake < VAULT_MIN) return false;
+    if (!this.ctx.items?.spendGold(stake)) return false;
+    // Progression owns the carry: interactables die with the stage and this
+    // payout has to outlive one.
+    this.ctx.progression?.commitToVault?.(Math.round(stake * VAULT_YIELD));
+    this.used = true;
+    this.slot.material.emissiveIntensity = 0.15;
+    this.ctx.vfx?.burst?.(this.position, 0xb98a2e);
+    this.ctx.audio?.play?.('purchase', this.position);
+    return true;
+  }
+
+  update(dt) {
+    if (this.used) return;
+    // A slow breathe, not a pulse. The vault is the calmest object in the set
+    // and it should read as patient rather than as urgent.
+    this.slot.material.emissiveIntensity = 1.6 + Math.sin(this.ctx.time * 1.1) * 0.6;
+  }
+}
+
+/** Gold a burned item is worth, by tier, before the stage multiplier. */
+const KILN_VALUE = { common: 60, uncommon: 165, legendary: 430, boss: 300, lunar: 200 };
+const KILN_TIER_ORDER = ['common', 'uncommon', 'legendary', 'lunar', 'boss'];
+
+/**
+ * The Marrow Kiln — a stout chimney with a stoked mouth.
+ *
+ * Burn one item you hold, permanently, for a large purse. The only shrine with
+ * no randomness anywhere in it: you are told exactly which item goes in and
+ * exactly what comes out, and neither number moves.
+ *
+ * It always takes the *lowest tier you hold most of*, so the prompt can name
+ * the item honestly before you press E. A shrine that consumes something the
+ * player did not expect to lose is not a risk, it is a bug they cannot see.
+ *
+ * The only solid unbroken mass in the shrine set — no gap, no spikes, no
+ * suspended part. Against the Chime's arch two hundred metres away that reads
+ * instantly.
+ */
+function kilnGeo() {
+  const shell = [
+    new THREE.CylinderGeometry(0.78, 0.92, 0.34, 6).translate(0, 0.17, 0),   // footing
+    new THREE.CylinderGeometry(0.50, 0.78, 1.72, 6).translate(0, 1.20, 0),   // stack
+    new THREE.CylinderGeometry(0.70, 0.46, 0.42, 6).translate(0, 2.27, 0),   // ash cowl, flaring up
+  ];
+  const trim = [
+    new THREE.TorusGeometry(0.70, 0.075, 8, 20).rotateX(Math.PI / 2).translate(0, 0.72, 0),
+    new THREE.TorusGeometry(0.56, 0.065, 8, 20).rotateX(Math.PI / 2).translate(0, 1.68, 0),
+    box(0.86, 0.11, 0.14, 0, 1.02, 0.62),                                     // mouth lintel
+  ];
+  for (const sx of [-1, 1]) {
+    trim.push(box(0.12, 0.60, 0.13, sx * 0.37, 0.68, 0.60));                  // mouth jambs
+  }
+  return twoGroup(shell, trim);
+}
+
+class MarrowKiln extends Interactable {
+  constructor(ctx, position, stageIndex) {
+    super(ctx, position);
+    this.stageIndex = stageIndex || 0;
+    this.uses = 0;
+    this.maxUses = 3;
+    this.radius = 2.2;
+    this.typeId = TYPE_ID.marrowKiln;
+
+    const base = new THREE.Mesh(sharedGeo('kilnBase', () => plinthGeo(1.0, 6)), STONE());
+    const body = new THREE.Mesh(sharedGeo('kilnBody', kilnGeo), [IRON_DARK(), BRASS()]);
+    base.castShadow = body.castShadow = true;
+    base.receiveShadow = true;
+    body.position.y = 0.6;
+
+    // The mouth: a recessed dark plate with the fire in front of it, so the
+    // ember has something to sit against instead of floating on the shell.
+    const throat = new THREE.Mesh(
+      sharedGeo('kilnThroat', () => box(0.66, 0.56, 0.10, 0, 1.28, 0.52)),
+      IRON_DARK()
+    );
+    // Per-instance for the same reason the vault's slot is.
+    this.fire = new THREE.Mesh(
+      sharedGeo('kilnFire', () => box(0.56, 0.46, 0.06, 0, 1.28, 0.58)),
+      new THREE.MeshStandardMaterial({
+        color: 0x120603, emissive: 0xff5a12, emissiveIntensity: 2.2, roughness: 0.5,
+      })
+    );
+    this.group.add(base, body, throat, this.fire);
+  }
+
+  /**
+   * The stack the kiln would take. Lowest tier first, then largest stack, then
+   * id — a total order, so the prompt and the burn can never disagree and two
+   * peers looking at the same inventory name the same item.
+   */
+  _fuel() {
+    const inv = this.ctx.items?.inventory?.() || [];
+    let best = null;
+    for (const e of inv) {
+      const rank = KILN_TIER_ORDER.indexOf(e.def.tier);
+      if (rank < 0) continue;
+      if (!best) { best = { ...e, rank }; continue; }
+      if (rank < best.rank) { best = { ...e, rank }; continue; }
+      if (rank > best.rank) continue;
+      if (e.count > best.count || (e.count === best.count && e.id < best.id)) best = { ...e, rank };
+    }
+    return best;
+  }
+
+  _payout(def) {
+    return Math.round((KILN_VALUE[def.tier] ?? 60) * Math.pow(1.25, this.stageIndex));
+  }
+
+  available() { return this.enabled && this.uses < this.maxUses; }
+  prompt() {
+    const f = this._fuel();
+    return f
+      ? `Marrow Kiln (burn 1x ${f.def.name} for $${this._payout(f.def)})`
+      : 'Marrow Kiln (nothing to burn)';
+  }
+
+  interact() {
+    const f = this._fuel();
+    if (!f) return false;
+    this.uses++;
+    this.ctx.items.take(f.id, 1);
+    this.ctx.items.addGold(this._payout(f.def));
+    this.ctx.vfx?.burst?.(this.position, 0xff5a12);
+    this.ctx.audio?.play?.('shrineBlood', this.position);
+    if (this.uses >= this.maxUses) this.fire.material.emissiveIntensity = 0.08;
+    return true;
+  }
+
+  update(dt) {
+    if (this.uses >= this.maxUses) return;
+    // Two beats at incommensurable rates, so the fire never visibly loops.
+    const t = this.ctx.time;
+    this.fire.material.emissiveIntensity =
+      2.2 + Math.sin(t * 5.1) * 0.45 + Math.sin(t * 11.7) * 0.22;
+  }
 }
 
 // ---------------------------------------------------------------- teleporter
@@ -1081,20 +1649,84 @@ export class Interactables {
       }
     }
 
-    // Shrines get the landmarks the chests do not lead with, and sit close in —
-    // a shrine is a destination and reads best with mass directly behind it.
-    if (ctx.rng.next() < 0.7) {
-      this.add(new ShrineOfChance(ctx, this._sited(mark(1), (mark(1)?.r ?? 0) + 3.5, (mark(1)?.r ?? 0) + 11, spawn),
-        Math.round(35 * scale)));
-    }
-    if (ctx.rng.next() < 0.5) {
-      this.add(new ShrineOfBlood(ctx, this._sited(mark(2), (mark(2)?.r ?? 0) + 3.5, (mark(2)?.r ?? 0) + 11, spawn),
-        stageIndex));
-    }
+    this._populateShrines(stageIndex, scale, mark, spawn);
 
     this.teleporter = new Teleporter(ctx, this._teleporterSite(marks, spawn));
     this.add(this.teleporter);
     return this.teleporter;
+  }
+
+  /**
+   * Shrine placement.
+   *
+   * Shrines get the landmarks the chests do not lead with, and sit close in — a
+   * shrine is a destination and reads best with mass directly behind it.
+   *
+   * ## Which shrines, and why the choice is off the shared stream
+   *
+   * **Never twice.** Six types drawn independently would routinely give a stage
+   * two Cairns and nothing else, and a stage whose only shrine is the one you
+   * have already decided about is a stage with no shrine on it. Drawn without
+   * replacement instead. **Never more than three**, however deep the run goes:
+   * a field of six altars is a menu, not a place.
+   *
+   * The *type* choice draws from `_shrineRng`, a private stream seeded from
+   * `(ctx.seed, stageIndex)`, and not from `ctx.rng`. That is the load-bearing
+   * decision in this method and it is not a stylistic one.
+   *
+   * `ctx.rng` is one shared sequence: every draw taken here displaces every
+   * draw taken after it, on this stage and every later one. The first version
+   * of this method took one draw per shrine off `ctx.rng` — two draws where the
+   * old two-shrine code took two — and it still moved the director's spawn
+   * points far enough to break **three** harness shots that had nothing to do
+   * with shrines (`05-boss`, `06-loaded-hud`, `10-inventory`), measured against
+   * `iso-base/manifest.json`. The gate draws below are deliberately the same
+   * two `ctx.rng.next()` calls, in the same order, at the same thresholds the
+   * two-shrine version used, and `_sited` is called exactly where it was, so
+   * for stages 0-2 this method's consumption of the shared stream is
+   * byte-identical to the code it replaces. Only the third shrine, from stage 3
+   * on, adds a draw.
+   *
+   * Nothing is lost by taking the type off a private stream: `populate` runs on
+   * the host only (a client's props are replicated, never regenerated — see
+   * `Progression`'s `stageStart` handler), so this sequence has never been part
+   * of anything two peers had to agree on.
+   *
+   * ## The gates
+   *
+   * These are what make each draw honest rather than decorative. The Kiln has
+   * nothing to burn on the opening stage and the Vault has nothing to hold, so
+   * neither is in the bag until there is a run to spend. The Snare leaves an
+   * elite alive behind you, which is a different proposition in the first
+   * ninety seconds of a run than at minute twenty.
+   */
+  _populateShrines(stageIndex, scale, mark, spawn) {
+    const ctx = this.ctx;
+    const rng = new RNG(((ctx.seed >>> 0) ^ (0x9e3779b9 * (stageIndex + 1))) >>> 0 || 1);
+    const bag = [
+      { w: 30, build: (p) => new AuricCairn(ctx, p, Math.round(35 * scale)) },
+      { w: 26, build: (p) => new IchorFont(ctx, p, stageIndex) },
+      { w: 24, build: (p) => new HollowChime(ctx, p, stageIndex) },
+      { w: stageIndex >= 1 ? 20 : 0, build: (p) => new GildedSnare(ctx, p, stageIndex) },
+      { w: stageIndex >= 1 ? 18 : 0, build: (p) => new MarrowKiln(ctx, p, stageIndex) },
+      { w: stageIndex >= 1 ? 16 : 0, build: (p) => new FallowVault(ctx, p, stageIndex) },
+    ].filter((e) => e.w > 0);
+
+    // The two inherited gates, unchanged: a stage carries a shrine 70% of the
+    // time and a second one half the time. The third is new and only exists
+    // deep enough into a run that two decisions have stopped being enough.
+    const gates = [0.7, 0.5];
+    if (stageIndex >= 3) gates.push(0.55);
+
+    for (let n = 0; n < gates.length; n++) {
+      if (!bag.length) break;
+      if (ctx.rng.next() >= gates[n]) continue;
+      const picked = bag.splice(bag.indexOf(rng.weighted(bag, (e) => e.w)), 1)[0];
+      // Landmark 1 upward: landmark 0 is the teleporter's backdrop, and a
+      // shrine parked in front of the run's set piece competes with it.
+      const m = mark(1 + n);
+      this.add(picked.build(this._sited(m, (m?.r ?? 0) + 3.5, (m?.r ?? 0) + 11, spawn)));
+    }
   }
 
   /**
@@ -1232,8 +1864,12 @@ const VIEW_BUILDERS = {
   [TYPE_ID.chestLarge]: (ctx, p) => new Chest(ctx, p, 'large', 0),
   [TYPE_ID.chestLegendary]: (ctx, p) => new Chest(ctx, p, 'legendary', 0),
   [TYPE_ID.multishop]: (ctx, p) => new MultishopTerminal(ctx, p, 0, [], 0),
-  [TYPE_ID.shrineChance]: (ctx, p) => new ShrineOfChance(ctx, p, 0),
-  [TYPE_ID.shrineBlood]: (ctx, p) => new ShrineOfBlood(ctx, p, 0),
+  [TYPE_ID.auricCairn]: (ctx, p) => new AuricCairn(ctx, p, 0),
+  [TYPE_ID.ichorFont]: (ctx, p) => new IchorFont(ctx, p, 0),
+  [TYPE_ID.hollowChime]: (ctx, p) => new HollowChime(ctx, p, 0),
+  [TYPE_ID.gildedSnare]: (ctx, p) => new GildedSnare(ctx, p, 0),
+  [TYPE_ID.fallowVault]: (ctx, p) => new FallowVault(ctx, p, 0),
+  [TYPE_ID.marrowKiln]: (ctx, p) => new MarrowKiln(ctx, p, 0),
   [TYPE_ID.teleporter]: (ctx, p) => new Teleporter(ctx, p),
   [TYPE_ID.portal]: (ctx, p) => new Portal(ctx, p, null),
 };

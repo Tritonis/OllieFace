@@ -1,0 +1,1946 @@
+{
+  "seed": 1337,
+  "ready": true,
+  "clockPinned": true,
+  "ms": {
+    "boot": 14127,
+    "bootTimeout": 60000
+  },
+  "shots": [
+    {
+      "name": "01-title",
+      "doc": "First frame the player sees. Menu framing and background composition.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\ctrl\\01-title.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 0
+      },
+      "ms": {
+        "setup": 2901,
+        "screenshot": 1582,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "title screen",
+            "kind": "dom",
+            "ok": true,
+            "detail": "title"
+          },
+          {
+            "subject": "the menu itself",
+            "kind": "dom",
+            "ok": true,
+            "detail": 900
+          },
+          {
+            "subject": "a live stage behind it",
+            "kind": "dom",
+            "ok": true,
+            "detail": null
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "02-vista",
+      "doc": "Wide establishing shot of the stage. Judges terrain, lighting, fog, sky.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\ctrl\\02-vista.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 1.5166666666666662
+      },
+      "ms": {
+        "setup": 5009,
+        "screenshot": 1326,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "the stage the survivor is standing on",
+            "kind": "bounds",
+            "ok": true,
+            "vis": 0.7,
+            "screen": [
+              0.5,
+              0.699,
+              56.4
+            ],
+            "onScreen": true,
+            "minVis": 0.4
+          },
+          {
+            "subject": "sky",
+            "kind": "dom",
+            "ok": true,
+            "detail": 0.571
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "03-thirdperson",
+      "doc": "Default gameplay framing, player idle. Judges character read and camera.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\ctrl\\03-thirdperson.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 3.016666666666661
+      },
+      "ms": {
+        "setup": 2361,
+        "screenshot": 1184,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "survivor",
+            "kind": "pixels",
+            "ok": true,
+            "px": 927,
+            "frac": 0.00715,
+            "lum": 41.5,
+            "bgLum": 5.4,
+            "contrast": 0.77,
+            "sep": 0.492,
+            "sepP25": 0.19,
+            "sepP50": 0.51,
+            "legible": 0.804,
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 600,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 745,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "04-combat",
+      "doc": "Mid-fight with a horde, firing. Judges VFX layering, enemy legibility, HUD under load.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\ctrl\\04-combat.png",
+      "engine": {
+        "frameErrors": 1,
+        "lastFrameError": {
+          "who": "harness:04-combat",
+          "message": "[harness] 04-combat: subject missing or illegible — horde (pixels: {\"why\":\"object absent or illegible\",\"px\":15158,\"need\":900,\"objs\":\"23/24\",\"need2\":8,\"sepP50\":0.41,\"needSep\":0.25,\"carriedPx\":11975,\"perPx\":[93,37,679,43,633,518,1954,926,44,150,834,151,14,1336,2271,3371,7,348,81,549,166,264,408,281],\"perSep\":[0.59,0.61,0.39,0.63,0.47,0.25,0.43,0.55,0.57,0.75,0.43,0.23,0.63,0.53,0.37,0.37,0.71,0.69,0.77,0.03,0.29,0.43,0.23,0.67],\"needPerPx\":113,\"badObjects\":[{\"i\":16,\"px\":7,\"sepP50\":0.71}],\"lum\":76,\"bgLum\":43.8})",
+          "frame": -1
+        },
+        "time": 15.150000000000333
+      },
+      "ms": {
+        "setup": 7024,
+        "screenshot": 1128,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": false,
+        "checks": [
+          {
+            "subject": "horde",
+            "kind": "pixels",
+            "ok": false,
+            "px": 15158,
+            "frac": 0.11696,
+            "lum": 76,
+            "bgLum": 43.8,
+            "contrast": 0.269,
+            "sep": 0.412,
+            "sepP25": 0.17,
+            "sepP50": 0.41,
+            "legible": 0.79,
+            "objects": 24,
+            "visibleObjects": 23,
+            "perPx": [
+              93,
+              37,
+              679,
+              43,
+              633,
+              518,
+              1954,
+              926,
+              44,
+              150,
+              834,
+              151,
+              14,
+              1336,
+              2271,
+              3371,
+              7,
+              348,
+              81,
+              549,
+              166,
+              264,
+              408,
+              281
+            ],
+            "perSep": [
+              0.59,
+              0.61,
+              0.39,
+              0.63,
+              0.47,
+              0.25,
+              0.43,
+              0.55,
+              0.57,
+              0.75,
+              0.43,
+              0.23,
+              0.63,
+              0.53,
+              0.37,
+              0.37,
+              0.71,
+              0.69,
+              0.77,
+              0.03,
+              0.29,
+              0.43,
+              0.23,
+              0.67
+            ],
+            "minPx": 900,
+            "minObjects": 8,
+            "present": true,
+            "carriedPx": 11975,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "crowd": {
+              "need": 8,
+              "why": "director horde: an unbounded population, not a fixed cast"
+            },
+            "minPerPx": 113,
+            "absentObjects": [
+              {
+                "i": 16,
+                "px": 7,
+                "sepP50": 0.71
+              }
+            ],
+            "objectFailures": [
+              {
+                "i": 16,
+                "px": 7,
+                "sepP50": 0.71
+              }
+            ],
+            "perObjectOk": false
+          },
+          {
+            "subject": "survivor",
+            "kind": "pixels",
+            "ok": true,
+            "px": 845,
+            "frac": 0.00652,
+            "lum": 50.5,
+            "bgLum": 30.4,
+            "contrast": 0.249,
+            "sep": 0.501,
+            "sepP25": 0.21,
+            "sepP50": 0.51,
+            "legible": 0.843,
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 400,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 712,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true
+          },
+          {
+            "subject": "open arena",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "openness": 0.89,
+              "need": 0.85,
+              "arena": {
+                "openness": 0.8888888888888888,
+                "moved": true,
+                "dist": 34,
+                "flatness": 0.531,
+                "tried": 6
+              }
+            }
+          },
+          {
+            "subject": "no monster hidden by its own attack",
+            "kind": "dom",
+            "ok": true,
+            "detail": []
+          },
+          {
+            "subject": "survivor unoccluded by the final lens",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "vis": 1,
+              "boom": 7.1,
+              "need": 0.6
+            }
+          }
+        ]
+      },
+      "newErrors": [
+        "[harness] 04-combat: subject missing or illegible — horde (pixels: {\"why\":\"object absent or illegible\",\"px\":15158,\"need\":900,\"objs\":\"23/24\",\"need2\":8,\"sepP50\":0.41,\"needSep\":0.25,\"carriedPx\":11975,\"perPx\":[93,37,679,43,633,518,1954,926,44,150,834,151,14,1336,2271,3371,7,348,81,549,166,264,408,281],\"perSep\":[0.59,0.61,0.39,0.63,0.47,0.25,0.43,0.55,0.57,0.75,0.43,0.23,0.63,0.53,0.37,0.37,0.71,0.69,0.77,0.03,0.29,0.43,0.23,0.67],\"needPerPx\":113,\"badObjects\":[{\"i\":16,\"px\":7,\"sepP50\":0.71}],\"lum\":76,\"bgLum\":43.8})"
+      ]
+    },
+    {
+      "name": "05-boss",
+      "doc": "Teleporter event with the boss active. Judges scale, boss silhouette, boss HUD.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\ctrl\\05-boss.png",
+      "engine": {
+        "frameErrors": 1,
+        "lastFrameError": {
+          "who": "harness:04-combat",
+          "message": "[harness] 04-combat: subject missing or illegible — horde (pixels: {\"why\":\"object absent or illegible\",\"px\":15158,\"need\":900,\"objs\":\"23/24\",\"need2\":8,\"sepP50\":0.41,\"needSep\":0.25,\"carriedPx\":11975,\"perPx\":[93,37,679,43,633,518,1954,926,44,150,834,151,14,1336,2271,3371,7,348,81,549,166,264,408,281],\"perSep\":[0.59,0.61,0.39,0.63,0.47,0.25,0.43,0.55,0.57,0.75,0.43,0.23,0.63,0.53,0.37,0.37,0.71,0.69,0.77,0.03,0.29,0.43,0.23,0.67],\"needPerPx\":113,\"badObjects\":[{\"i\":16,\"px\":7,\"sepP50\":0.71}],\"lum\":76,\"bgLum\":43.8})",
+          "frame": -1
+        },
+        "time": 17.56666666666695
+      },
+      "ms": {
+        "setup": 9119,
+        "screenshot": 800,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "the Stone Titan",
+            "kind": "pixels",
+            "ok": true,
+            "px": 6951,
+            "frac": 0.05363,
+            "lum": 65.5,
+            "bgLum": 26.5,
+            "contrast": 0.423,
+            "sep": 0.459,
+            "sepP25": 0.23,
+            "sepP50": 0.51,
+            "legible": 0.804,
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 2000,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 5589,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true
+          },
+          {
+            "subject": "survivor (for scale)",
+            "kind": "pixels",
+            "ok": true,
+            "px": 245,
+            "frac": 0.00189,
+            "lum": 46.3,
+            "bgLum": 3.6,
+            "contrast": 0.856,
+            "sep": 0.628,
+            "sepP25": 0.45,
+            "sepP50": 0.71,
+            "legible": 0.996,
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 150,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 244,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true
+          },
+          {
+            "subject": "boss health bar",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "vis": 1,
+              "pvis": 1
+            }
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "06-loaded-hud",
+      "doc": "Late-run HUD with a full inventory and high difficulty. Judges UI density and hierarchy.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\ctrl\\06-loaded-hud.png",
+      "engine": {
+        "frameErrors": 4,
+        "lastFrameError": {
+          "who": "harness:06-loaded-hud",
+          "message": "[harness] 06-loaded-hud: subject missing or illegible — monsters under load (pixels: {\"why\":\"object absent or illegible\",\"px\":926,\"need\":300,\"objs\":\"9/10\",\"need2\":3,\"sepP50\":0.43,\"needSep\":0.25,\"carriedPx\":845,\"perPx\":[6,25,25,224,62,30,177,79,129,169],\"perSep\":[0.41,0.43,0.49,0.51,0.53,0.29,0.33,0.59,0.23,0.57],\"needPerPx\":100,\"badObjects\":[{\"i\":0,\"px\":6,\"sepP50\":0.41}],\"lum\":79.3,\"bgLum\":38.6})",
+          "frame": -1
+        },
+        "time": 1321.1666666666656
+      },
+      "ms": {
+        "setup": 2606,
+        "screenshot": 985,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": false,
+        "checks": [
+          {
+            "subject": "survivor",
+            "kind": "pixels",
+            "ok": true,
+            "px": 795,
+            "frac": 0.00613,
+            "lum": 49.5,
+            "bgLum": 3.6,
+            "contrast": 0.863,
+            "sep": 0.59,
+            "sepP25": 0.31,
+            "sepP50": 0.75,
+            "legible": 0.926,
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 400,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 736,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true
+          },
+          {
+            "subject": "monsters under load",
+            "kind": "pixels",
+            "ok": false,
+            "px": 926,
+            "frac": 0.00715,
+            "lum": 79.3,
+            "bgLum": 38.6,
+            "contrast": 0.345,
+            "sep": 0.448,
+            "sepP25": 0.29,
+            "sepP50": 0.43,
+            "legible": 0.913,
+            "objects": 10,
+            "visibleObjects": 9,
+            "perPx": [
+              6,
+              25,
+              25,
+              224,
+              62,
+              30,
+              177,
+              79,
+              129,
+              169
+            ],
+            "perSep": [
+              0.41,
+              0.43,
+              0.49,
+              0.51,
+              0.53,
+              0.29,
+              0.33,
+              0.59,
+              0.23,
+              0.57
+            ],
+            "minPx": 300,
+            "minObjects": 3,
+            "present": true,
+            "carriedPx": 845,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "crowd": {
+              "need": 3,
+              "why": "director horde: an unbounded population, not a fixed cast"
+            },
+            "minPerPx": 100,
+            "absentObjects": [
+              {
+                "i": 0,
+                "px": 6,
+                "sepP50": 0.41
+              }
+            ],
+            "objectFailures": [
+              {
+                "i": 0,
+                "px": 6,
+                "sepP50": 0.41
+              }
+            ],
+            "perObjectOk": false
+          },
+          {
+            "subject": "a full inventory strip",
+            "kind": "dom",
+            "ok": true,
+            "detail": 83
+          }
+        ]
+      },
+      "newErrors": [
+        "[harness] 06-loaded-hud: subject missing or illegible — monsters under load (pixels: {\"why\":\"object absent or illegible\",\"px\":926,\"need\":300,\"objs\":\"9/10\",\"need2\":3,\"sepP50\":0.43,\"needSep\":0.25,\"carriedPx\":845,\"perPx\":[6,25,25,224,62,30,177,79,129,169],\"perSep\":[0.41,0.43,0.49,0.51,0.53,0.29,0.33,0.59,0.23,0.57],\"needPerPx\":100,\"badObjects\":[{\"i\":0,\"px\":6,\"sepP50\":0.41}],\"lum\":79.3,\"bgLum\":38.6})"
+      ]
+    },
+    {
+      "name": "07-interactables",
+      "doc": "Chest / shrine / item pickup close-up. Judges prop modelling and pickup VFX.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\ctrl\\07-interactables.png",
+      "engine": {
+        "frameErrors": 1,
+        "lastFrameError": {
+          "who": "harness:04-combat",
+          "message": "[harness] 04-combat: subject missing or illegible — horde (pixels: {\"why\":\"object absent or illegible\",\"px\":15158,\"need\":900,\"objs\":\"23/24\",\"need2\":8,\"sepP50\":0.41,\"needSep\":0.25,\"carriedPx\":11975,\"perPx\":[93,37,679,43,633,518,1954,926,44,150,834,151,14,1336,2271,3371,7,348,81,549,166,264,408,281],\"perSep\":[0.59,0.61,0.39,0.63,0.47,0.25,0.43,0.55,0.57,0.75,0.43,0.23,0.63,0.53,0.37,0.37,0.71,0.69,0.77,0.03,0.29,0.43,0.23,0.67],\"needPerPx\":113,\"badObjects\":[{\"i\":16,\"px\":7,\"sepP50\":0.71}],\"lum\":76,\"bgLum\":43.8})",
+          "frame": -1
+        },
+        "time": 19.066666666666865
+      },
+      "ms": {
+        "setup": 1393,
+        "screenshot": 1030,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "the interactable",
+            "kind": "pixels",
+            "ok": true,
+            "px": 6440,
+            "frac": 0.04969,
+            "lum": 9.7,
+            "bgLum": 6.2,
+            "contrast": 0.218,
+            "sep": 0.432,
+            "sepP25": 0.23,
+            "sepP50": 0.41,
+            "legible": 0.956,
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 2000,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 6157,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "08-explosion",
+      "doc": "Peak VFX moment: explosion + damage numbers + shake. Judges impact feedback.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\ctrl\\08-explosion.png",
+      "engine": {
+        "frameErrors": 2,
+        "lastFrameError": {
+          "who": "harness:08-explosion",
+          "message": "[harness] 08-explosion: subject missing or illegible — the blast (pixels: {\"why\":\"absent\",\"px\":485,\"need\":1200,\"objs\":\"4/4\",\"need2\":0,\"sepP50\":0.13,\"carriedPx\":196,\"needCarried\":1200,\"lum\":31.2,\"bgLum\":18.7})",
+          "frame": -1
+        },
+        "time": 759.4666666666653
+      },
+      "ms": {
+        "setup": 1700,
+        "screenshot": 833,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": false,
+        "checks": [
+          {
+            "subject": "the blast",
+            "kind": "pixels",
+            "ok": false,
+            "px": 485,
+            "frac": 0.00374,
+            "lum": 31.2,
+            "bgLum": 18.7,
+            "contrast": 0.25,
+            "sep": 0.221,
+            "sepP25": 0.07,
+            "sepP50": 0.13,
+            "legible": 0.404,
+            "objects": 4,
+            "visibleObjects": 4,
+            "minPx": 1200,
+            "minObjects": 0,
+            "present": false,
+            "carriedPx": 196,
+            "minCarried": 1200,
+            "legibleOk": false,
+            "aggregate": "VFX buffers: the meshes are shared particle/ring/trail pools, not nameable objects",
+            "perObjectOk": true
+          },
+          {
+            "subject": "monsters standing in it",
+            "kind": "pixels",
+            "ok": true,
+            "px": 2286,
+            "frac": 0.01764,
+            "lum": 64.4,
+            "bgLum": 16.1,
+            "contrast": 0.6,
+            "sep": 0.596,
+            "sepP25": 0.41,
+            "sepP50": 0.69,
+            "legible": 0.943,
+            "objects": 7,
+            "visibleObjects": 7,
+            "perPx": [
+              128,
+              124,
+              51,
+              1214,
+              309,
+              181,
+              279
+            ],
+            "perSep": [
+              0.83,
+              0.67,
+              0.53,
+              0.77,
+              0.33,
+              0.61,
+              0.29
+            ],
+            "minPx": 200,
+            "minObjects": 2,
+            "present": true,
+            "carriedPx": 2156,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "crowd": {
+              "need": 2,
+              "why": "blast victims: knockback removes members from frame by design"
+            },
+            "minPerPx": 100,
+            "absentObjects": [],
+            "objectFailures": [],
+            "perObjectOk": true
+          },
+          {
+            "subject": "damage numbers",
+            "kind": "pixels",
+            "ok": true,
+            "px": 102,
+            "frac": 0.00079,
+            "lum": 58,
+            "bgLum": 23,
+            "contrast": 0.433,
+            "sep": 0.453,
+            "sepP25": 0.19,
+            "sepP50": 0.41,
+            "legible": 0.804,
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 60,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 82,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true
+          },
+          {
+            "subject": "blast framed in the middle band",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "x": 0.622,
+              "y": 0.406,
+              "distM": 11.2,
+              "pass": 0
+            }
+          },
+          {
+            "subject": "shutter (effect seconds)",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "age": 0.1167,
+              "frames": 7,
+              "exact": true,
+              "sim": 0.1167
+            }
+          }
+        ]
+      },
+      "newErrors": [
+        "[harness] 08-explosion: subject missing or illegible — the blast (pixels: {\"why\":\"absent\",\"px\":485,\"need\":1200,\"objs\":\"4/4\",\"need2\":0,\"sepP50\":0.13,\"carriedPx\":196,\"needCarried\":1200,\"lum\":31.2,\"bgLum\":18.7})"
+      ]
+    },
+    {
+      "name": "09-survivors",
+      "doc": "The full roster side by side. Judges silhouette read and how distinguishable the four survivors are from one another.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\ctrl\\09-survivors.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 3.866666666666658
+      },
+      "ms": {
+        "setup": 1280,
+        "screenshot": 829,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "the four survivors",
+            "kind": "pixels",
+            "ok": true,
+            "px": 5678,
+            "frac": 0.04381,
+            "lum": 45.4,
+            "bgLum": 8.9,
+            "contrast": 0.671,
+            "sep": 0.451,
+            "sepP25": 0.21,
+            "sepP50": 0.41,
+            "legible": 0.829,
+            "objects": 4,
+            "visibleObjects": 4,
+            "perPx": [
+              1236,
+              1690,
+              1397,
+              1355
+            ],
+            "perSep": [
+              0.39,
+              0.39,
+              0.45,
+              0.51
+            ],
+            "minPx": 4000,
+            "minObjects": 4,
+            "present": true,
+            "carriedPx": 4707,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "minPerPx": 1000,
+            "absentObjects": [],
+            "objectFailures": [],
+            "perObjectOk": true
+          },
+          {
+            "subject": "all four on one footline",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "spreadPx": 0,
+              "footY": [
+                576,
+                576,
+                576,
+                576
+              ]
+            }
+          },
+          {
+            "subject": "no survivor occluded, ankles included",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "perSurvivor": [
+                1,
+                1,
+                1,
+                1
+              ],
+              "groundSpreadM": 0
+            }
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "10-inventory",
+      "doc": "Dense late-run inventory across every tier, with an equipment nuke firing. Judges item icon craft, tier legibility and equipment effect quality.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\ctrl\\10-inventory.png",
+      "engine": {
+        "frameErrors": 6,
+        "lastFrameError": {
+          "who": "harness:10-inventory",
+          "message": "[harness] 10-inventory: subject missing or illegible — every tier in the inventory strip (dom: {\"detail\":{\"shown\":83,\"items\":92}}); monsters standing in it (pixels: {\"why\":\"object absent or illegible\",\"px\":1934,\"need\":200,\"objs\":\"8/8\",\"need2\":2,\"sepP50\":0.27,\"needSep\":0.25,\"carriedPx\":1348,\"perPx\":[71,186,92,292,205,293,152,643],\"perSep\":[0.57,0.41,0.37,0.27,0.15,0.23,0.29,0.35],\"needPerPx\":100,\"badObjects\":[{\"i\":5,\"px\":293,\"sepP50\":0.23}],\"lum\":54.8,\"bgLum\":36.7})",
+          "frame": -1
+        },
+        "time": 1561.8499999999983
+      },
+      "ms": {
+        "setup": 3915,
+        "screenshot": 861,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": false,
+        "checks": [
+          {
+            "subject": "every tier in the inventory strip",
+            "kind": "dom",
+            "ok": false,
+            "detail": {
+              "shown": 83,
+              "items": 92
+            }
+          },
+          {
+            "subject": "the equipment effect",
+            "kind": "dom",
+            "ok": true,
+            "detail": null
+          },
+          {
+            "subject": "the equipment blast",
+            "kind": "pixels",
+            "ok": true,
+            "px": 7879,
+            "frac": 0.06079,
+            "lum": 51.6,
+            "bgLum": 25.5,
+            "contrast": 0.339,
+            "sep": 0.329,
+            "sepP25": 0.11,
+            "sepP50": 0.27,
+            "legible": 0.673,
+            "objects": 4,
+            "visibleObjects": 4,
+            "minPx": 800,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 5303,
+            "minCarried": 800,
+            "legibleOk": true,
+            "aggregate": "VFX buffers: the meshes are shared particle/ring/trail pools, not nameable objects",
+            "perObjectOk": true
+          },
+          {
+            "subject": "monsters standing in it",
+            "kind": "pixels",
+            "ok": false,
+            "px": 1934,
+            "frac": 0.01492,
+            "lum": 54.8,
+            "bgLum": 36.7,
+            "contrast": 0.199,
+            "sep": 0.332,
+            "sepP25": 0.11,
+            "sepP50": 0.27,
+            "legible": 0.697,
+            "objects": 8,
+            "visibleObjects": 8,
+            "perPx": [
+              71,
+              186,
+              92,
+              292,
+              205,
+              293,
+              152,
+              643
+            ],
+            "perSep": [
+              0.57,
+              0.41,
+              0.37,
+              0.27,
+              0.15,
+              0.23,
+              0.29,
+              0.35
+            ],
+            "minPx": 200,
+            "minObjects": 2,
+            "present": true,
+            "carriedPx": 1348,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "crowd": {
+              "need": 2,
+              "why": "blast victims: knockback removes members from frame by design"
+            },
+            "minPerPx": 100,
+            "absentObjects": [],
+            "objectFailures": [
+              {
+                "i": 5,
+                "px": 293,
+                "sepP50": 0.23
+              }
+            ],
+            "perObjectOk": false
+          },
+          {
+            "subject": "shutter (effect seconds)",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "age": 0.1167,
+              "frames": 7,
+              "exact": true,
+              "sim": 0.1167
+            }
+          }
+        ]
+      },
+      "newErrors": [
+        "[harness] 10-inventory: subject missing or illegible — every tier in the inventory strip (dom: {\"detail\":{\"shown\":83,\"items\":92}}); monsters standing in it (pixels: {\"why\":\"object absent or illegible\",\"px\":1934,\"need\":200,\"objs\":\"8/8\",\"need2\":2,\"sepP50\":0.27,\"needSep\":0.25,\"carriedPx\":1348,\"perPx\":[71,186,92,292,205,293,152,643],\"perSep\":[0.57,0.41,0.37,0.27,0.15,0.23,0.29,0.35],\"needPerPx\":100,\"badObjects\":[{\"i\":5,\"px\":293,\"sepP50\":0.23}],\"lum\":54.8,\"bgLum\":36.7})"
+      ]
+    },
+    {
+      "name": "11-bestiary",
+      "doc": "The whole spawn roster in one rank, small to large, with two tier-2 elites. Judges silhouette variety and scale spread.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\ctrl\\11-bestiary.png",
+      "engine": {
+        "frameErrors": 3,
+        "lastFrameError": {
+          "who": "harness:11-bestiary",
+          "message": "[harness] 11-bestiary: subject missing or illegible — the whole spawn roster (pixels: {\"why\":\"object absent or illegible\",\"px\":6539,\"need\":3500,\"objs\":\"16/16\",\"need2\":16,\"sepP50\":0.33,\"needSep\":0.25,\"carriedPx\":4996,\"perPx\":[48,238,177,211,241,280,314,632,136,144,221,313,965,475,982,1190],\"perSep\":[0.17,0.39,0.45,0.33,0.31,0.43,0.27,0.37,0.49,0.25,0.43,0.35,0.23,0.23,0.51,0.15],\"needPerPx\":219,\"badObjects\":[{\"i\":15,\"px\":1190,\"sepP50\":0.15},{\"i\":12,\"px\":965,\"sepP50\":0.23},{\"i\":13,\"px\":475,\"sepP50\":0.23},{\"i\":3,\"px\":211,\"sepP50\":0.33},{\"i\":2,\"px\":177,\"sepP50\":0.45},{\"i\":9,\"px\":144,\"sepP50\":0.25},{\"i\":8,\"px\":136,\"sepP50\":0.49},{\"i\":0,\"px\":48,\"sepP50\":0.17}],\"lum\":45.8,\"bgLum\":19.3})",
+          "frame": -1
+        },
+        "time": 760.1833333333313
+      },
+      "ms": {
+        "setup": 21936,
+        "screenshot": 705,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": false,
+        "checks": [
+          {
+            "subject": "the whole spawn roster",
+            "kind": "pixels",
+            "ok": false,
+            "px": 6539,
+            "frac": 0.05046,
+            "lum": 45.8,
+            "bgLum": 19.3,
+            "contrast": 0.407,
+            "sep": 0.376,
+            "sepP25": 0.15,
+            "sepP50": 0.33,
+            "legible": 0.764,
+            "objects": 16,
+            "visibleObjects": 16,
+            "perPx": [
+              48,
+              238,
+              177,
+              211,
+              241,
+              280,
+              314,
+              632,
+              136,
+              144,
+              221,
+              313,
+              965,
+              475,
+              982,
+              1190
+            ],
+            "perSep": [
+              0.17,
+              0.39,
+              0.45,
+              0.33,
+              0.31,
+              0.43,
+              0.27,
+              0.37,
+              0.49,
+              0.25,
+              0.43,
+              0.35,
+              0.23,
+              0.23,
+              0.51,
+              0.15
+            ],
+            "minPx": 3500,
+            "minObjects": 16,
+            "present": true,
+            "carriedPx": 4996,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "minPerPx": 219,
+            "absentObjects": [],
+            "objectFailures": [
+              {
+                "i": 15,
+                "px": 1190,
+                "sepP50": 0.15
+              },
+              {
+                "i": 12,
+                "px": 965,
+                "sepP50": 0.23
+              },
+              {
+                "i": 13,
+                "px": 475,
+                "sepP50": 0.23
+              },
+              {
+                "i": 3,
+                "px": 211,
+                "sepP50": 0.33
+              },
+              {
+                "i": 2,
+                "px": 177,
+                "sepP50": 0.45
+              },
+              {
+                "i": 9,
+                "px": 144,
+                "sepP50": 0.25
+              },
+              {
+                "i": 8,
+                "px": 136,
+                "sepP50": 0.49
+              },
+              {
+                "i": 0,
+                "px": 48,
+                "sepP50": 0.17
+              }
+            ],
+            "perObjectOk": false
+          }
+        ]
+      },
+      "newErrors": [
+        "[harness] 11-bestiary: subject missing or illegible — the whole spawn roster (pixels: {\"why\":\"object absent or illegible\",\"px\":6539,\"need\":3500,\"objs\":\"16/16\",\"need2\":16,\"sepP50\":0.33,\"needSep\":0.25,\"carriedPx\":4996,\"perPx\":[48,238,177,211,241,280,314,632,136,144,221,313,965,475,982,1190],\"perSep\":[0.17,0.39,0.45,0.33,0.31,0.43,0.27,0.37,0.49,0.25,0.43,0.35,0.23,0.23,0.51,0.15],\"needPerPx\":219,\"badObjects\":[{\"i\":15,\"px\":1190,\"sepP50\":0.15},{\"i\":12,\"px\":965,\"sepP50\":0.23},{\"i\":13,\"px\":475,\"sepP50\":0.23},{\"i\":3,\"px\":211,\"sepP50\":0.33},{\"i\":2,\"px\":177,\"sepP50\":0.45},{\"i\":9,\"px\":144,\"sepP50\":0.25},{\"i\":8,\"px\":136,\"sepP50\":0.49},{\"i\":0,\"px\":48,\"sepP50\":0.17}],\"lum\":45.8,\"bgLum\":19.3})"
+      ]
+    },
+    {
+      "name": "12-boss-phases",
+      "doc": "A late-phase boss frozen at 85% of a wind-up. Judges boss silhouette at scale and telegraph legibility.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\ctrl\\12-boss-phases.png",
+      "engine": {
+        "frameErrors": 3,
+        "lastFrameError": {
+          "who": "harness:11-bestiary",
+          "message": "[harness] 11-bestiary: subject missing or illegible — the whole spawn roster (pixels: {\"why\":\"object absent or illegible\",\"px\":6539,\"need\":3500,\"objs\":\"16/16\",\"need2\":16,\"sepP50\":0.33,\"needSep\":0.25,\"carriedPx\":4996,\"perPx\":[48,238,177,211,241,280,314,632,136,144,221,313,965,475,982,1190],\"perSep\":[0.17,0.39,0.45,0.33,0.31,0.43,0.27,0.37,0.49,0.25,0.43,0.35,0.23,0.23,0.51,0.15],\"needPerPx\":219,\"badObjects\":[{\"i\":15,\"px\":1190,\"sepP50\":0.15},{\"i\":12,\"px\":965,\"sepP50\":0.23},{\"i\":13,\"px\":475,\"sepP50\":0.23},{\"i\":3,\"px\":211,\"sepP50\":0.33},{\"i\":2,\"px\":177,\"sepP50\":0.45},{\"i\":9,\"px\":144,\"sepP50\":0.25},{\"i\":8,\"px\":136,\"sepP50\":0.49},{\"i\":0,\"px\":48,\"sepP50\":0.17}],\"lum\":45.8,\"bgLum\":19.3})",
+          "frame": -1
+        },
+        "time": 761.9333333333298
+      },
+      "ms": {
+        "setup": 3455,
+        "screenshot": 758,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "vizier boss",
+            "kind": "pixels",
+            "ok": true,
+            "px": 2778,
+            "frac": 0.02144,
+            "lum": 54,
+            "bgLum": 16.8,
+            "contrast": 0.526,
+            "sep": 0.476,
+            "sepP25": 0.37,
+            "sepP50": 0.39,
+            "legible": 0.944,
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 2000,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 2622,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true
+          },
+          {
+            "subject": "late phase",
+            "kind": "dom",
+            "ok": true,
+            "detail": 3
+          },
+          {
+            "subject": "mid wind-up",
+            "kind": "dom",
+            "ok": true,
+            "detail": 0.89
+          },
+          {
+            "subject": "framing",
+            "kind": "info",
+            "ok": true,
+            "detail": {
+              "pos": {
+                "x": -9.718424676794982,
+                "y": 26.475465774536133,
+                "z": -6.5400849872201405
+              },
+              "vis": 1,
+              "occ": 0,
+              "back": 60,
+              "score": 12.8
+            }
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "13-biomes-1",
+      "doc": "Establishing shot of biome 1 of 4, framed on its primary landmark. Judges whether the four stages read as genuinely different places rather than as one generator recoloured.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\ctrl\\13-biomes-1.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 6.133333333333317
+      },
+      "ms": {
+        "setup": 1618,
+        "screenshot": 1351,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "biome 1 landmark",
+            "kind": "bounds",
+            "ok": true,
+            "vis": 0.6,
+            "screen": [
+              0.5,
+              0.513,
+              70.3
+            ],
+            "onScreen": true,
+            "minVis": 0.5
+          },
+          {
+            "subject": "open depth",
+            "kind": "dom",
+            "ok": true,
+            "detail": 0.829
+          },
+          {
+            "subject": "sky",
+            "kind": "info",
+            "ok": true,
+            "detail": 0.929
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "13-biomes-2",
+      "doc": "Establishing shot of biome 2 of 4, framed on its primary landmark. Judges whether the four stages read as genuinely different places rather than as one generator recoloured.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\ctrl\\13-biomes-2.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 7.733333333333311
+      },
+      "ms": {
+        "setup": 1575,
+        "screenshot": 1732,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "biome 2 landmark",
+            "kind": "bounds",
+            "ok": true,
+            "vis": 0.95,
+            "screen": [
+              0.5,
+              0.513,
+              70.3
+            ],
+            "onScreen": true,
+            "minVis": 0.5
+          },
+          {
+            "subject": "open depth",
+            "kind": "dom",
+            "ok": true,
+            "detail": 0.457
+          },
+          {
+            "subject": "sky",
+            "kind": "info",
+            "ok": true,
+            "detail": 0.143
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "13-biomes-3",
+      "doc": "Establishing shot of biome 3 of 4, framed on its primary landmark. Judges whether the four stages read as genuinely different places rather than as one generator recoloured.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\ctrl\\13-biomes-3.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 9.333333333333377
+      },
+      "ms": {
+        "setup": 1943,
+        "screenshot": 2045,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "biome 3 landmark",
+            "kind": "bounds",
+            "ok": true,
+            "vis": 0.7,
+            "screen": [
+              0.5,
+              0.527,
+              33.5
+            ],
+            "onScreen": true,
+            "minVis": 0.5
+          },
+          {
+            "subject": "open depth",
+            "kind": "dom",
+            "ok": true,
+            "detail": 0.457
+          },
+          {
+            "subject": "sky",
+            "kind": "info",
+            "ok": true,
+            "detail": 0
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "13-biomes-4",
+      "doc": "Establishing shot of biome 4 of 4, framed on its primary landmark. Judges whether the four stages read as genuinely different places rather than as one generator recoloured.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\ctrl\\13-biomes-4.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 10.933333333333456
+      },
+      "ms": {
+        "setup": 2473,
+        "screenshot": 1426,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "biome 4 landmark",
+            "kind": "bounds",
+            "ok": true,
+            "vis": 0.95,
+            "screen": [
+              0.5,
+              0.513,
+              70.3
+            ],
+            "onScreen": true,
+            "minVis": 0.5
+          },
+          {
+            "subject": "open depth",
+            "kind": "dom",
+            "ok": true,
+            "detail": 0.8
+          },
+          {
+            "subject": "sky",
+            "kind": "info",
+            "ok": true,
+            "detail": 0.536
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "14-survivor-select",
+      "doc": "Survivor select: the four-strong roster, a rotating 3D portrait, the selected survivor's four abilities and roster-relative stat bars. Judges menu hierarchy, typography and whether the new content is legible before a run starts.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\ctrl\\14-survivor-select.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 4.19999999999999
+      },
+      "ms": {
+        "setup": 2087,
+        "screenshot": 724,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "select screen",
+            "kind": "dom",
+            "ok": true,
+            "detail": null
+          },
+          {
+            "subject": "the roster",
+            "kind": "dom",
+            "ok": true,
+            "detail": 4
+          },
+          {
+            "subject": "the 3D portrait",
+            "kind": "dom",
+            "ok": true,
+            "detail": null
+          },
+          {
+            "subject": "kestrel selected",
+            "kind": "dom",
+            "ok": true,
+            "detail": "kestrel"
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "15-logbook",
+      "doc": "Logbook, survivors tab, with the 3D model viewer live. Judges the index/detail split, unlock and discovery states, and whether the browsing UI reads as the same product as the HUD.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\ctrl\\15-logbook.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 4.533333333333323
+      },
+      "ms": {
+        "setup": 1627,
+        "screenshot": 539,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "logbook screen",
+            "kind": "dom",
+            "ok": true,
+            "detail": null
+          },
+          {
+            "subject": "enemies index",
+            "kind": "dom",
+            "ok": true,
+            "detail": 16
+          },
+          {
+            "subject": "a selected entry",
+            "kind": "dom",
+            "ok": true,
+            "detail": "golem"
+          },
+          {
+            "subject": "the 3D model viewer",
+            "kind": "dom",
+            "ok": true,
+            "detail": null
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "16-run-summary",
+      "doc": "Run-end summary after a real death: survivor, difficulty, artifacts, time, stages, kills, damage, the run's item haul and anything earned. Judges whether the run reads back as a story rather than a number dump.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\ctrl\\16-run-summary.png",
+      "engine": {
+        "frameErrors": 6,
+        "lastFrameError": {
+          "who": "harness:10-inventory",
+          "message": "[harness] 10-inventory: subject missing or illegible — every tier in the inventory strip (dom: {\"detail\":{\"shown\":83,\"items\":92}}); monsters standing in it (pixels: {\"why\":\"object absent or illegible\",\"px\":1934,\"need\":200,\"objs\":\"8/8\",\"need2\":2,\"sepP50\":0.27,\"needSep\":0.25,\"carriedPx\":1348,\"perPx\":[71,186,92,292,205,293,152,643],\"perSep\":[0.57,0.41,0.37,0.27,0.15,0.23,0.29,0.35],\"needPerPx\":100,\"badObjects\":[{\"i\":5,\"px\":293,\"sepP50\":0.23}],\"lum\":54.8,\"bgLum\":36.7})",
+          "frame": -1
+        },
+        "time": 1064.299999999998
+      },
+      "ms": {
+        "setup": 4246,
+        "screenshot": 806,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "the summary screen",
+            "kind": "dom",
+            "ok": true,
+            "detail": "death"
+          },
+          {
+            "subject": "a committed run record",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "time": 1064.299999999998,
+              "stage": 1
+            }
+          },
+          {
+            "subject": "the run's item haul",
+            "kind": "dom",
+            "ok": true,
+            "detail": 83
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "17-artifacts",
+      "doc": "Pre-run artifact grid: earned artifacts enabled, unearned ones showing the challenge that opens them. Judges the card grid and the active/locked state pair.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\ctrl\\17-artifacts.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 0
+      },
+      "ms": {
+        "setup": 552,
+        "screenshot": 875,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "artifact screen",
+            "kind": "dom",
+            "ok": true,
+            "detail": null
+          },
+          {
+            "subject": "the card grid",
+            "kind": "dom",
+            "ok": true,
+            "detail": 7
+          },
+          {
+            "subject": "active and locked states both present",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "active": 2,
+              "total": 7
+            }
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "18-difficulty",
+      "doc": "Pre-run difficulty ladder with a rung selected. Judges the option-list treatment, the icon set and the selected/unselected state pair.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\ctrl\\18-difficulty.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 0
+      },
+      "ms": {
+        "setup": 398,
+        "screenshot": 970,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "difficulty screen",
+            "kind": "dom",
+            "ok": true,
+            "detail": null
+          },
+          {
+            "subject": "the ladder",
+            "kind": "dom",
+            "ok": true,
+            "detail": 3
+          },
+          {
+            "subject": "a selected rung",
+            "kind": "dom",
+            "ok": true,
+            "detail": "monsoon"
+          }
+        ]
+      },
+      "newErrors": []
+    }
+  ],
+  "errors": [
+    "[harness] 04-combat: subject missing or illegible — horde (pixels: {\"why\":\"object absent or illegible\",\"px\":15158,\"need\":900,\"objs\":\"23/24\",\"need2\":8,\"sepP50\":0.41,\"needSep\":0.25,\"carriedPx\":11975,\"perPx\":[93,37,679,43,633,518,1954,926,44,150,834,151,14,1336,2271,3371,7,348,81,549,166,264,408,281],\"perSep\":[0.59,0.61,0.39,0.63,0.47,0.25,0.43,0.55,0.57,0.75,0.43,0.23,0.63,0.53,0.37,0.37,0.71,0.69,0.77,0.03,0.29,0.43,0.23,0.67],\"needPerPx\":113,\"badObjects\":[{\"i\":16,\"px\":7,\"sepP50\":0.71}],\"lum\":76,\"bgLum\":43.8})",
+    "[harness] 08-explosion: subject missing or illegible — the blast (pixels: {\"why\":\"absent\",\"px\":485,\"need\":1200,\"objs\":\"4/4\",\"need2\":0,\"sepP50\":0.13,\"carriedPx\":196,\"needCarried\":1200,\"lum\":31.2,\"bgLum\":18.7})",
+    "[harness] 11-bestiary: subject missing or illegible — the whole spawn roster (pixels: {\"why\":\"object absent or illegible\",\"px\":6539,\"need\":3500,\"objs\":\"16/16\",\"need2\":16,\"sepP50\":0.33,\"needSep\":0.25,\"carriedPx\":4996,\"perPx\":[48,238,177,211,241,280,314,632,136,144,221,313,965,475,982,1190],\"perSep\":[0.17,0.39,0.45,0.33,0.31,0.43,0.27,0.37,0.49,0.25,0.43,0.35,0.23,0.23,0.51,0.15],\"needPerPx\":219,\"badObjects\":[{\"i\":15,\"px\":1190,\"sepP50\":0.15},{\"i\":12,\"px\":965,\"sepP50\":0.23},{\"i\":13,\"px\":475,\"sepP50\":0.23},{\"i\":3,\"px\":211,\"sepP50\":0.33},{\"i\":2,\"px\":177,\"sepP50\":0.45},{\"i\":9,\"px\":144,\"sepP50\":0.25},{\"i\":8,\"px\":136,\"sepP50\":0.49},{\"i\":0,\"px\":48,\"sepP50\":0.17}],\"lum\":45.8,\"bgLum\":19.3})",
+    "[harness] 06-loaded-hud: subject missing or illegible — monsters under load (pixels: {\"why\":\"object absent or illegible\",\"px\":926,\"need\":300,\"objs\":\"9/10\",\"need2\":3,\"sepP50\":0.43,\"needSep\":0.25,\"carriedPx\":845,\"perPx\":[6,25,25,224,62,30,177,79,129,169],\"perSep\":[0.41,0.43,0.49,0.51,0.53,0.29,0.33,0.59,0.23,0.57],\"needPerPx\":100,\"badObjects\":[{\"i\":0,\"px\":6,\"sepP50\":0.41}],\"lum\":79.3,\"bgLum\":38.6})",
+    "[harness] 10-inventory: subject missing or illegible — every tier in the inventory strip (dom: {\"detail\":{\"shown\":83,\"items\":92}}); monsters standing in it (pixels: {\"why\":\"object absent or illegible\",\"px\":1934,\"need\":200,\"objs\":\"8/8\",\"need2\":2,\"sepP50\":0.27,\"needSep\":0.25,\"carriedPx\":1348,\"perPx\":[71,186,92,292,205,293,152,643],\"perSep\":[0.57,0.41,0.37,0.27,0.15,0.23,0.29,0.35],\"needPerPx\":100,\"badObjects\":[{\"i\":5,\"px\":293,\"sepP50\":0.23}],\"lum\":54.8,\"bgLum\":36.7})"
+  ],
+  "partial": false,
+  "subjectFailures": [
+    {
+      "name": "04-combat",
+      "failed": [
+        "horde"
+      ],
+      "detail": [
+        {
+          "subject": "horde",
+          "kind": "pixels",
+          "ok": false,
+          "px": 15158,
+          "frac": 0.11696,
+          "lum": 76,
+          "bgLum": 43.8,
+          "contrast": 0.269,
+          "sep": 0.412,
+          "sepP25": 0.17,
+          "sepP50": 0.41,
+          "legible": 0.79,
+          "objects": 24,
+          "visibleObjects": 23,
+          "perPx": [
+            93,
+            37,
+            679,
+            43,
+            633,
+            518,
+            1954,
+            926,
+            44,
+            150,
+            834,
+            151,
+            14,
+            1336,
+            2271,
+            3371,
+            7,
+            348,
+            81,
+            549,
+            166,
+            264,
+            408,
+            281
+          ],
+          "perSep": [
+            0.59,
+            0.61,
+            0.39,
+            0.63,
+            0.47,
+            0.25,
+            0.43,
+            0.55,
+            0.57,
+            0.75,
+            0.43,
+            0.23,
+            0.63,
+            0.53,
+            0.37,
+            0.37,
+            0.71,
+            0.69,
+            0.77,
+            0.03,
+            0.29,
+            0.43,
+            0.23,
+            0.67
+          ],
+          "minPx": 900,
+          "minObjects": 8,
+          "present": true,
+          "carriedPx": 11975,
+          "minSep": 0.25,
+          "legibleOk": true,
+          "crowd": {
+            "need": 8,
+            "why": "director horde: an unbounded population, not a fixed cast"
+          },
+          "minPerPx": 113,
+          "absentObjects": [
+            {
+              "i": 16,
+              "px": 7,
+              "sepP50": 0.71
+            }
+          ],
+          "objectFailures": [
+            {
+              "i": 16,
+              "px": 7,
+              "sepP50": 0.71
+            }
+          ],
+          "perObjectOk": false
+        }
+      ]
+    },
+    {
+      "name": "06-loaded-hud",
+      "failed": [
+        "monsters under load"
+      ],
+      "detail": [
+        {
+          "subject": "monsters under load",
+          "kind": "pixels",
+          "ok": false,
+          "px": 926,
+          "frac": 0.00715,
+          "lum": 79.3,
+          "bgLum": 38.6,
+          "contrast": 0.345,
+          "sep": 0.448,
+          "sepP25": 0.29,
+          "sepP50": 0.43,
+          "legible": 0.913,
+          "objects": 10,
+          "visibleObjects": 9,
+          "perPx": [
+            6,
+            25,
+            25,
+            224,
+            62,
+            30,
+            177,
+            79,
+            129,
+            169
+          ],
+          "perSep": [
+            0.41,
+            0.43,
+            0.49,
+            0.51,
+            0.53,
+            0.29,
+            0.33,
+            0.59,
+            0.23,
+            0.57
+          ],
+          "minPx": 300,
+          "minObjects": 3,
+          "present": true,
+          "carriedPx": 845,
+          "minSep": 0.25,
+          "legibleOk": true,
+          "crowd": {
+            "need": 3,
+            "why": "director horde: an unbounded population, not a fixed cast"
+          },
+          "minPerPx": 100,
+          "absentObjects": [
+            {
+              "i": 0,
+              "px": 6,
+              "sepP50": 0.41
+            }
+          ],
+          "objectFailures": [
+            {
+              "i": 0,
+              "px": 6,
+              "sepP50": 0.41
+            }
+          ],
+          "perObjectOk": false
+        }
+      ]
+    },
+    {
+      "name": "08-explosion",
+      "failed": [
+        "the blast"
+      ],
+      "detail": [
+        {
+          "subject": "the blast",
+          "kind": "pixels",
+          "ok": false,
+          "px": 485,
+          "frac": 0.00374,
+          "lum": 31.2,
+          "bgLum": 18.7,
+          "contrast": 0.25,
+          "sep": 0.221,
+          "sepP25": 0.07,
+          "sepP50": 0.13,
+          "legible": 0.404,
+          "objects": 4,
+          "visibleObjects": 4,
+          "minPx": 1200,
+          "minObjects": 0,
+          "present": false,
+          "carriedPx": 196,
+          "minCarried": 1200,
+          "legibleOk": false,
+          "aggregate": "VFX buffers: the meshes are shared particle/ring/trail pools, not nameable objects",
+          "perObjectOk": true
+        }
+      ]
+    },
+    {
+      "name": "10-inventory",
+      "failed": [
+        "every tier in the inventory strip",
+        "monsters standing in it"
+      ],
+      "detail": [
+        {
+          "subject": "every tier in the inventory strip",
+          "kind": "dom",
+          "ok": false,
+          "detail": {
+            "shown": 83,
+            "items": 92
+          }
+        },
+        {
+          "subject": "monsters standing in it",
+          "kind": "pixels",
+          "ok": false,
+          "px": 1934,
+          "frac": 0.01492,
+          "lum": 54.8,
+          "bgLum": 36.7,
+          "contrast": 0.199,
+          "sep": 0.332,
+          "sepP25": 0.11,
+          "sepP50": 0.27,
+          "legible": 0.697,
+          "objects": 8,
+          "visibleObjects": 8,
+          "perPx": [
+            71,
+            186,
+            92,
+            292,
+            205,
+            293,
+            152,
+            643
+          ],
+          "perSep": [
+            0.57,
+            0.41,
+            0.37,
+            0.27,
+            0.15,
+            0.23,
+            0.29,
+            0.35
+          ],
+          "minPx": 200,
+          "minObjects": 2,
+          "present": true,
+          "carriedPx": 1348,
+          "minSep": 0.25,
+          "legibleOk": true,
+          "crowd": {
+            "need": 2,
+            "why": "blast victims: knockback removes members from frame by design"
+          },
+          "minPerPx": 100,
+          "absentObjects": [],
+          "objectFailures": [
+            {
+              "i": 5,
+              "px": 293,
+              "sepP50": 0.23
+            }
+          ],
+          "perObjectOk": false
+        }
+      ]
+    },
+    {
+      "name": "11-bestiary",
+      "failed": [
+        "the whole spawn roster"
+      ],
+      "detail": [
+        {
+          "subject": "the whole spawn roster",
+          "kind": "pixels",
+          "ok": false,
+          "px": 6539,
+          "frac": 0.05046,
+          "lum": 45.8,
+          "bgLum": 19.3,
+          "contrast": 0.407,
+          "sep": 0.376,
+          "sepP25": 0.15,
+          "sepP50": 0.33,
+          "legible": 0.764,
+          "objects": 16,
+          "visibleObjects": 16,
+          "perPx": [
+            48,
+            238,
+            177,
+            211,
+            241,
+            280,
+            314,
+            632,
+            136,
+            144,
+            221,
+            313,
+            965,
+            475,
+            982,
+            1190
+          ],
+          "perSep": [
+            0.17,
+            0.39,
+            0.45,
+            0.33,
+            0.31,
+            0.43,
+            0.27,
+            0.37,
+            0.49,
+            0.25,
+            0.43,
+            0.35,
+            0.23,
+            0.23,
+            0.51,
+            0.15
+          ],
+          "minPx": 3500,
+          "minObjects": 16,
+          "present": true,
+          "carriedPx": 4996,
+          "minSep": 0.25,
+          "legibleOk": true,
+          "minPerPx": 219,
+          "absentObjects": [],
+          "objectFailures": [
+            {
+              "i": 15,
+              "px": 1190,
+              "sepP50": 0.15
+            },
+            {
+              "i": 12,
+              "px": 965,
+              "sepP50": 0.23
+            },
+            {
+              "i": 13,
+              "px": 475,
+              "sepP50": 0.23
+            },
+            {
+              "i": 3,
+              "px": 211,
+              "sepP50": 0.33
+            },
+            {
+              "i": 2,
+              "px": 177,
+              "sepP50": 0.45
+            },
+            {
+              "i": 9,
+              "px": 144,
+              "sepP50": 0.25
+            },
+            {
+              "i": 8,
+              "px": 136,
+              "sepP50": 0.49
+            },
+            {
+              "i": 0,
+              "px": 48,
+              "sepP50": 0.17
+            }
+          ],
+          "perObjectOk": false
+        }
+      ]
+    }
+  ],
+  "subjectsOk": false,
+  "determinism": {
+    "clockPinned": true,
+    "frameDt": 0.016666666666666666,
+    "frameTimeouts": 0
+  },
+  "perf": {
+    "programs": 66,
+    "geometries": 608,
+    "textures": 53,
+    "sceneObjects": 338
+  }
+}

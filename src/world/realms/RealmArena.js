@@ -428,6 +428,63 @@ function buildVault(stage) {
   roomWall(stage, R, 12, wall, gold, 14);
   roomCeiling(stage, R, 12, wall, 7);
 
+  /* Gilding on the wall itself, and the reason it has to be emitted.
+   *
+   * "True black walls so the gold has something to read against" was the right
+   * call and it did not survive contact with the grade. `GradeShader` carries a
+   * deliberate cool-shadow pedestal — `uLift = (0.016, 0.020, 0.048)`, applied
+   * as `col*uGain + uLift*(1-col)` — so a surface with no light of its own does
+   * not render black, it renders *the lift*. The round-6 baseline measured this
+   * room's upper half at RGB 37,33,57, hue 248: forty-five per cent of the
+   * frame was the shader's blue pedestal, which is how a gold treasury ended up
+   * 9.7 dE76 from ordinary biome 4 — closer than any two of the four biomes are
+   * to each other (13.7 at the tightest).
+   *
+   * A black wall therefore cannot be left unlit; it can only be black *next to*
+   * something. So the wall keeps its 0x0d0b0a stone and gets its own light in
+   * two forms: emitted gilding, which costs no light budget and cannot be
+   * dimmed by the room's near-zero ambient, and three grazing wall-washes that
+   * give the stone between the gilding a warm falloff instead of a blue floor.
+   */
+  const gilt = glow(0xffc41a, 3.4);
+  const band = [];
+  for (let i = 0; i < 14; i++) {
+    const a = (i / 14) * Math.PI * 2;
+    // A gilt fillet down the face of every buttress: the vertical rhythm the
+    // ribs already give the room, now the brightest thing on the wall.
+    band.push({ g: box(0.34, 9.4, 0.16), x: Math.cos(a) * (R - 1.28), y: 4.0,
+                z: Math.sin(a) * (R - 1.28), ry: -a });
+  }
+  const giltMesh = new THREE.Mesh(mergeParts(band), gilt);
+  giltMesh.position.copy(stage.origin);
+  stage.addMesh(giltMesh, { solid: false });
+
+  // The frieze: one unbroken line of gold at eye height, all the way round. It
+  // is what makes the wall a *wall of the vault* from any bearing rather than
+  // only where a fillet happens to be.
+  const frieze = new THREE.Mesh(new THREE.TorusGeometry(R - 0.62, 0.17, 6, 64), gilt);
+  frieze.rotation.x = Math.PI / 2;
+  frieze.position.set(stage.origin.x, 4.6, stage.origin.z);
+  stage.addMesh(frieze, { solid: false });
+
+  /* Lighting the wall was tried and measured and is wrong, and the measurement
+   * is worth keeping because it is counter-intuitive.
+   *
+   * Three grazing wall-washes plus a wash under the roof took the frame from
+   * L 21.5 / b* −2.4 to L 25.8 / b* +3.9 — a warmer room, and **closer** to
+   * ordinary biome 4 (dE76 9.7 -> 6.4), because biome 4 is itself a mid-dark
+   * warm frame at L 28.7 / a* 14.2 / b* 1.3. Every lumen added to this room
+   * walked it into the biome it was supposed to be furthest from. Files:
+   * `reviews/round6/base/realms/24-realm-vault.png` (9.7),
+   * `reviews/round6/realms-w2/24-realm-vault.png` (6.4).
+   *
+   * So the room goes the other way, which is also what it was authored to be:
+   * the gilding is the only thing that emits, it is emitted at a *saturated*
+   * gold rather than a pale one so it buys chroma instead of luminance, and the
+   * key's reach is pulled in so the far wall genuinely falls off. Dark and
+   * chromatic is a place the four biomes do not have.
+   */
+
   // Eight gilded pillars, thick and close: a treasury is a *heavy* room.
   const pil = [];
   for (let i = 0; i < 8; i++) {
@@ -477,7 +534,7 @@ function buildVault(stage) {
   // Tuned by measurement, not by eye: at 62/decay 2.1 the chest came back at
   // luminance 21.4 against a background of 19.8 — 3.7% contrast, which is a
   // prize you cannot find. This is the light that puts it back on top.
-  const key = new THREE.PointLight(0xffd070, 210, 34, 1.85);
+  const key = new THREE.PointLight(0xffd070, 210, 27, 1.85);
   key.position.set(stage.origin.x, 9.5, stage.origin.z);
   stage.addMesh(key, { solid: false });
   // A second, tight and low, throwing the chest's own front face. Short range

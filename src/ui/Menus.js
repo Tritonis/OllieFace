@@ -5,7 +5,8 @@
 // class exposes plain methods rather than the system lifecycle.
 
 import * as THREE from 'three';
-import { itemArt, tierMeta, abilityArt, hexOf, markIcon } from './Icons.js';
+import { itemArt, tierMeta, abilityArt, hexOf, markIcon, TIER_ORDER } from './Icons.js';
+import { ITEMS_BY_TIER } from '../data/items.js';
 import { SURVIVORS, getSurvivor, loadoutOf } from '../data/survivors.js';
 import { Logbook, ModelPreview, disposeTree } from './Logbook.js';
 
@@ -104,6 +105,7 @@ export class Menus {
     this.difficultyId = null;
     this.artifactIds = new Set();
 
+    this.edictTier = 'common';   // which tier the Edict screen is showing
     this.preview = null;         // survivor-select 3D portrait
     this.navIndex = 0;
     this.navRepeat = 0;
@@ -206,7 +208,40 @@ export class Menus {
           <div class="art-grid" data-art-grid></div>
           <nav class="menu-list menu-list--row">
             <button class="mbtn" data-nav data-act="art-clear"><span>Clear all</span></button>
+            <button class="mbtn" data-nav data-act="edict" data-edict-entry hidden disabled><span>The Edict</span><em class="mbtn-sub">choose your drops</em></button>
             <button class="mbtn mbtn--go" data-nav data-act="back"><span>Back</span></button>
+          </nav>
+        </div>
+      </section>
+
+      <!-- ============================================================ EDICT
+           Artifact of the Edict's picker. The player files a standing order —
+           one item per tier — and every drop funnel in the game resolves to it
+           instantly. See Artifacts.commandPick for why it is a standing order
+           and not a modal on each chest.
+
+           Structurally the logbook's shape, not a new one: a vertical rail of
+           tiers on the left, a dense grid on the right, one header rule across
+           the top. That is deliberate — this is the fourth panel in the build
+           that has to present "a list of categories, then a lot of small
+           tiles", and it must read as the same product as the other three. -->
+      <section class="screen screen--edict" data-screen="edict">
+        <div class="panel panel--rules panel--edict">
+          <header class="panel-head">
+            <h2>The Edict</h2>
+            <div class="panel-tag" data-edict-tag></div>
+          </header>
+          <div class="art-note" data-edict-note></div>
+          <div class="edict-body">
+            <nav class="edict-rail" data-edict-rail></nav>
+            <div class="edict-pane">
+              <div class="edict-standing" data-edict-standing></div>
+              <div class="edict-grid" data-edict-grid></div>
+            </div>
+          </div>
+          <nav class="menu-list menu-list--row">
+            <button class="mbtn" data-nav data-act="edict-clear"><span>Revoke all</span></button>
+            <button class="mbtn mbtn--go" data-nav data-act="edict-back"><span>Back</span></button>
           </nav>
         </div>
       </section>
@@ -216,6 +251,7 @@ export class Menus {
           <header class="panel-head"><h2>Paused</h2><div class="panel-tag">Run suspended</div></header>
           <nav class="menu-list">
             <button class="mbtn mbtn--go" data-nav data-act="resume"><span>Resume</span></button>
+            <button class="mbtn" data-nav data-act="edict" data-edict-entry hidden disabled><span>The Edict</span><em class="mbtn-sub">standing order — C</em></button>
             <button class="mbtn" data-nav data-act="logbook"><span>Logbook</span></button>
             <button class="mbtn" data-nav data-act="coop"><span>Co-op</span></button>
             <button class="mbtn" data-nav data-act="settings"><span>Settings</span></button>
@@ -343,6 +379,8 @@ export class Menus {
         </div>
       </div>`;
 
+    injectEdictStyles();
+
     // The logbook builds its own screen into the overlay, so it is never in the
     // markup above and cannot be edited into an inconsistent state from here.
     this.logbook = new Logbook(this.ctx, this.root);
@@ -370,7 +408,11 @@ export class Menus {
       const diff = e.target.closest('[data-difficulty]');
       if (diff) { this.setDifficulty(diff.dataset.difficulty); return; }
       const art = e.target.closest('[data-artifact]');
-      if (art) this.toggleArtifact(art.dataset.artifact);
+      if (art) { this.toggleArtifact(art.dataset.artifact); return; }
+      const tierTab = e.target.closest('[data-edict-tier]');
+      if (tierTab) { this.edictTier = tierTab.dataset.edictTier; this.renderEdict(); return; }
+      const order = e.target.closest('[data-edict-item]');
+      if (order) this.fileEdict(order.dataset.edictItem);
     });
     // Hovering a control makes it the focus target, so the keyboard ring and
     // the mouse never disagree about what "confirm" would press.
@@ -659,6 +701,10 @@ export class Menus {
     const list = this.artifactList();
     const active = new Set(this.activeArtifacts());
     src.textContent = `${active.size} active`;
+    // Toggling Command on is what makes the Edict reachable, and this is the
+    // screen it gets toggled on. Without this the button only appears after
+    // leaving and re-entering, which reads as the build having forgotten.
+    this.syncEdictEntries();
 
     if (!list.length) {
       // Honest empty state. A grid of invented cards that toggle nothing would
@@ -692,6 +738,103 @@ export class Menus {
             : (a.description || ''))}</div>
         </button>`;
     }).join('');
+  }
+
+  // ------------------------------------------------------------------- edict
+
+  /** Is Command running? The Edict has no meaning without it. */
+  commandActive() { return !!this.ctx.artifacts?.has?.('command'); }
+
+  /** Tiers Command can actually resolve a drop into, in ladder order. */
+  edictTiers() { return TIER_ORDER.filter((t) => ITEMS_BY_TIER[t]?.length); }
+
+  /**
+   * File or revoke one order.
+   *
+   * Clicking the item already ordered revokes it, so the same tile is both the
+   * on and the off switch — there is no separate clear-this-tier control to
+   * find, and the toggle matches how `.art` cards already behave one screen
+   * over.
+   */
+  fileEdict(id) {
+    const art = this.ctx.artifacts;
+    if (!art?.setEdict) return;
+    const tier = this.edictTier;
+    art.setEdict(tier, art.edictFor(tier) === id ? null : id);
+    this.renderEdict();
+  }
+
+  renderEdict() {
+    const art = this.ctx.artifacts;
+    const grid = this.root.querySelector('[data-edict-grid]');
+    if (!grid) return;
+    const rail = this.root.querySelector('[data-edict-rail]');
+    const tiers = this.edictTiers();
+    if (!tiers.includes(this.edictTier)) this.edictTier = tiers[0];
+    const orders = art?.edictAll?.() ?? {};
+    const filed = tiers.filter((t) => orders[t]).length;
+
+    this.root.querySelector('[data-edict-tag]').textContent =
+      `${filed} of ${tiers.length} tiers ordered`;
+
+    // Three things can make this screen a lie, and each gets said in words
+    // rather than left for the player to infer from drops that ignore them.
+    const note = this.root.querySelector('[data-edict-note]');
+    const isClient = this.ctx.netRole === 'client';
+    note.textContent = !this.commandActive()
+      ? 'The Edict is inert — Artifact of the Edict is not active for this run. Orders filed here keep, and take effect the next time you run it.'
+      : isClient
+        ? 'You are a guest. The host\'s edict decides what the whole party finds; yours is kept but not consulted this session.'
+        : '';
+    note.classList.toggle('is-on', !!note.textContent);
+
+    rail.innerHTML = tiers.map((t) => {
+      const meta = tierMeta(t);
+      const id = orders[t];
+      return `<button class="etab${t === this.edictTier ? ' is-on' : ''}" data-nav data-edict-tier="${escapeHtml(t)}"
+                style="--accent:${escapeHtml(meta.color)}">
+          <i class="etab-rule"></i>
+          <span class="etab-name">${escapeHtml(meta.label)}</span>
+          <em class="etab-sub">${ITEMS_BY_TIER[t].length} items</em>
+          ${id ? `<img class="etab-seal" src="${itemArt(id, t)}" alt="" />` : '<b class="etab-open">—</b>'}
+        </button>`;
+    }).join('');
+
+    const tier = this.edictTier;
+    const meta = tierMeta(tier);
+    const orderedId = orders[tier] || null;
+    const orderedDef = orderedId ? ITEMS_BY_TIER[tier].find((i) => i.id === orderedId) : null;
+    // The standing line is the screen's one piece of large type. It answers the
+    // only question the player brought here — "what do I get out of a <tier>
+    // drop right now" — and it answers it for the un-ordered case too, naming
+    // the fallback policy instead of leaving a blank.
+    this.root.querySelector('[data-edict-standing]').innerHTML = `
+      <div class="estand" style="--accent:${escapeHtml(meta.color)}">
+        <div class="estand-k">Every ${escapeHtml(meta.label.toLowerCase())} drop resolves to</div>
+        <div class="estand-v">${orderedDef
+          ? escapeHtml(orderedDef.name)
+          : '<em>whatever you hold most of</em>'}</div>
+      </div>`;
+
+    grid.innerHTML = ITEMS_BY_TIER[tier].map((def) => {
+      const held = this.ctx.items?.count?.(def.id) ?? 0;
+      return `<button class="eitem${def.id === orderedId ? ' is-on' : ''}" data-nav
+                data-edict-item="${escapeHtml(def.id)}" style="--accent:${escapeHtml(meta.color)}">
+          <img class="eitem-icon" src="${itemArt(def.id, tier)}" alt="" draggable="false" />
+          <span class="eitem-name">${escapeHtml(def.name)}</span>
+          <em class="eitem-desc">${escapeHtml(describeItem(def, held))}</em>
+          ${held ? `<b class="eitem-held">x${held}</b>` : ''}
+        </button>`;
+    }).join('');
+  }
+
+  /** Show or hide every route into the Edict, per the live artifact set. */
+  syncEdictEntries() {
+    const on = this.commandActive();
+    for (const el of this.root.querySelectorAll('[data-edict-entry]')) {
+      el.hidden = !on;
+      el.disabled = !on;
+    }
   }
 
   // ------------------------------------------------------------------ apply
@@ -760,9 +903,11 @@ export class Menus {
     if (prev === 'select' && name !== 'select') this.unmountPreview();
     if (prev === 'logbook' && name !== 'logbook') this.logbook.onClose();
 
+    this.syncEdictEntries();
     if (name === 'select') { this.renderSelect(); this.mountPreview(); }
     if (name === 'difficulty') this.renderDifficulty();
     if (name === 'artifacts') this.renderArtifacts();
+    if (name === 'edict') this.renderEdict();
     if (name === 'logbook') this.logbook.onOpen();
 
     this.navIndex = 0;
@@ -801,6 +946,20 @@ export class Menus {
       case 'difficulty':
       case 'artifacts':
         this.push(action);
+        break;
+      case 'edict':
+        this.push('edict');
+        break;
+      case 'edict-back':
+        // Reached either from the pause/artifacts stack or straight off a
+        // keypress in the world. Only the first has somewhere to go back to;
+        // the second has to hand the player back to the run.
+        if (this.stack.length) this.back();
+        else this.act('resume');
+        break;
+      case 'edict-clear':
+        this.ctx.artifacts?.clearEdict?.();
+        this.renderEdict();
         break;
       case 'art-clear':
         this.artifactIds = new Set();
@@ -1169,6 +1328,9 @@ export class Menus {
       case 'title':
       case 'death':
         break;
+      case 'edict':
+        this.act('edict-back');
+        break;
       default:
         this.back();
     }
@@ -1221,6 +1383,15 @@ export class Menus {
       this.bannerTimer -= dt;
       if (this.bannerTimer <= 0) this.banner.classList.remove('is-on');
     }
+    // C opens the Edict straight from the world. Command's whole interface is
+    // this screen, and three clicks through a pause menu to re-aim a drop you
+    // are about to earn is the difference between an artifact that gets used
+    // and one that gets set once and forgotten. Only bound while the artifact
+    // is running, so the key is free in every other run.
+    if (!this.screen && ctx.player?.alive !== false && this.commandActive()
+        && ctx.input?.hit?.('KeyC')) {
+      this.open('edict');
+    }
     this.navigate(ctx);
     // Only the open screen's viewer is stepped; the other is disposed, not idle.
     if (this.screen === 'select') this.preview?.update?.(dt);
@@ -1245,6 +1416,209 @@ export class Menus {
   }
 }
 
+/**
+ * The Edict screen's stylesheet.
+ *
+ * It lives here rather than in `ui/hud.css` for one reason: this screen landed
+ * in a wave where `hud.css` is not this agent's file to edit, and a screen that
+ * ships without its own rules renders as unstyled UA boxes. Every value below
+ * is drawn from the tokens `hud.css` already declares on `:root` — `--u`,
+ * `--ink`, `--line`, `--panel-hard`, the tier colours — so there is exactly one
+ * type ramp and one palette in the product, and folding this block into
+ * `hud.css` verbatim is a cut-and-paste with no rewriting.
+ *
+ * Idempotent, so a second `Menus` (the harness builds one per scenario) does
+ * not accumulate stylesheets.
+ */
+const EDICT_STYLE_ID = 'petrichor-edict-style';
+function injectEdictStyles() {
+  if (document.getElementById(EDICT_STYLE_ID)) return;
+  const el = document.createElement('style');
+  el.id = EDICT_STYLE_ID;
+  el.textContent = `
+/* The Edict sits over live gameplay, so it takes the heavy pause-screen scrim
+   rather than the title's directional wash: the panel is dense and the frame
+   behind it is a fight. */
+/* Two classes deep on purpose: this sheet is appended at runtime and may land
+   either side of hud.css in the cascade, so it must not tie with
+   .panel--rules on specificity. */
+.panel.panel--edict { width: min(80em, 95vw); }
+
+.edict-body {
+  display: grid;
+  grid-template-columns: minmax(11em, 15em) 1fr;
+  gap: 1.1em;
+  margin-bottom: 1.3em;
+  min-height: 0;
+}
+
+/* ---- tier rail: the survivor roster's vertical-tab language, one rung down */
+.edict-rail { display: flex; flex-direction: column; gap: 0.3em; }
+.etab {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 0 0.6em;
+  padding: 0.55em 0.7em 0.55em 0.9em;
+  font: inherit;
+  text-align: left;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  background: rgba(255, 255, 255, 0.022);
+  border: 0;
+  border-left: 3px solid rgba(148, 182, 214, 0.22);
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+.etab-rule { display: none; }
+.etab-name { grid-column: 1; font-size: 0.95em; font-weight: 700; letter-spacing: 0.2em; }
+.etab-sub {
+  grid-column: 1;
+  font-size: 0.68em;
+  font-style: normal;
+  letter-spacing: 0.22em;
+  color: var(--ink-faint);
+}
+/* The filed order's own icon, on the tab. The rail then answers "which tiers
+   have I decided?" without opening any of them — which is the question the
+   player has on the way in. */
+.etab-seal {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  width: 1.9em;
+  height: 1.9em;
+  display: block;
+}
+.etab-open {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  width: 1.9em;
+  text-align: center;
+  font-size: 1.1em;
+  font-weight: 400;
+  color: var(--ink-faint);
+}
+.etab:hover, .etab.is-focus { color: var(--ink); background: rgba(255, 255, 255, 0.05); }
+.etab.is-focus { border-left-color: var(--t-lunar); }
+.etab.is-on {
+  color: #fff;
+  border-left-color: var(--accent);
+  background: linear-gradient(100deg, color-mix(in srgb, var(--accent) 20%, transparent), transparent 76%);
+}
+
+/* ---- right pane */
+.edict-pane { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+
+/* The one piece of large type on the screen, and the only sentence. */
+.estand {
+  padding: 0.7em 1em 0.8em;
+  margin-bottom: 0.7em;
+  background: rgba(6, 11, 18, 0.9);
+  border-left: 3px solid var(--accent);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 0.9em), calc(100% - 0.9em) 100%, 0 100%);
+}
+.estand-k { font-size: 0.74em; letter-spacing: 0.24em; color: var(--ink-faint); margin-bottom: 0.35em; }
+.estand-v {
+  font-size: 1.7em;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  line-height: 1.05;
+  color: var(--accent);
+}
+.estand-v em { font-style: normal; font-weight: 600; letter-spacing: 0.16em; color: var(--ink-dim); }
+
+.edict-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15em, 1fr));
+  gap: 0.35em;
+  overflow-y: auto;
+  max-height: min(46vh, 30em);
+  padding-right: 0.5em;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 182, 214, 0.5) rgba(255, 255, 255, 0.05);
+}
+/* Explicit, because the one browser default left in this product — the
+   logbook's bare UA thumb on an invisible track — has been a ranked defect in
+   three consecutive critiques. */
+.edict-grid::-webkit-scrollbar { width: 10px; }
+.edict-grid::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); }
+.edict-grid::-webkit-scrollbar-thumb {
+  background: rgba(148, 182, 214, 0.5);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.edict-grid::-webkit-scrollbar-thumb:hover { background: var(--line-hot); background-clip: content-box; }
+
+.eitem {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  align-items: start;
+  gap: 0.1em 0.6em;
+  padding: 0.5em 0.6em 0.55em;
+  font: inherit;
+  text-align: left;
+  color: var(--ink-dim);
+  background: rgba(255, 255, 255, 0.022);
+  border: 1px solid transparent;
+  border-left: 3px solid rgba(148, 182, 214, 0.2);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 0.7em), calc(100% - 0.7em) 100%, 0 100%);
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+/* Fixed pixel box for the same reason .art-mark has one: nothing about the
+   glyph may be allowed to move the title's baseline. */
+.eitem-icon { grid-row: 1 / span 2; width: 34px; height: 34px; display: block; opacity: 0.85; }
+.eitem-name { font-size: 0.86em; font-weight: 700; letter-spacing: 0.14em; }
+.eitem-desc {
+  font-size: 0.74em;
+  font-style: normal;
+  line-height: 1.4;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  color: var(--ink-faint);
+}
+.eitem-held {
+  position: absolute;
+  right: 0.5em; top: 0.45em;
+  padding: 0.05em 0.4em;
+  font-size: 0.62em;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #05070a;
+  background: var(--ink-faint);
+}
+.eitem:hover { color: var(--ink); background: rgba(255, 255, 255, 0.05); }
+.eitem.is-focus { border-left-color: var(--t-lunar); color: var(--ink); }
+.eitem.is-on {
+  color: #fff;
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  border-left-color: var(--accent);
+  background: linear-gradient(115deg, color-mix(in srgb, var(--accent) 22%, transparent), transparent 72%);
+}
+.eitem.is-on .eitem-icon { opacity: 1; filter: drop-shadow(0 0 7px var(--accent)); }
+.eitem.is-on .eitem-held { color: #05070a; background: var(--accent); }
+/* The corner chip idiom the artifact grid already uses for LOCKED, inverted:
+   there it marks what you cannot have, here what you have claimed. */
+.eitem.is-on::after {
+  content: 'ORDERED';
+  position: absolute;
+  right: 0; bottom: 0;
+  padding: 0.05em 0.45em 0.05em 0.7em;
+  font-size: 0.6em;
+  letter-spacing: 0.2em;
+  color: #05070a;
+  background: var(--accent);
+  clip-path: polygon(0.7em 0, 100% 0, 100% 100%, 0 100%);
+}
+.eitem.is-on .eitem-held { display: none; }
+`;
+  document.head.appendChild(el);
+}
+
 function setAudio(audio, methods, prop, value) {
   for (const m of methods) {
     if (typeof audio[m] === 'function') { audio[m](value); return; }
@@ -1254,6 +1628,22 @@ function setAudio(audio, methods, prop, value) {
 }
 
 const round1 = (v) => Math.round(v * 10) / 10;
+
+/**
+ * An item card's effect line at the stack the player actually holds.
+ *
+ * `description` is a function of the stack count for most items and a plain
+ * string for a few, and it is authored to be read at a real count — so the
+ * Edict shows it at `held` where the player owns some and at one where they do
+ * not, which is the number that answers "what would taking this be worth".
+ */
+function describeItem(def, held) {
+  const d = def?.description;
+  if (typeof d === 'function') {
+    try { return d(Math.max(1, held)); } catch { return ''; }
+  }
+  return d || '';
+}
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));

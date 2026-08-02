@@ -1,0 +1,226 @@
+{
+  "seed": 1337,
+  "ready": true,
+  "clockPinned": true,
+  "ms": {
+    "boot": 15002,
+    "bootTimeout": 60000
+  },
+  "shots": [
+    {
+      "name": "10-inventory",
+      "doc": "Dense late-run inventory across every tier, with an equipment nuke firing. Judges item icon craft, tier legibility and equipment effect quality.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\items-control\\10-inventory.png",
+      "engine": {
+        "frameErrors": 1,
+        "lastFrameError": {
+          "who": "harness:10-inventory",
+          "message": "[harness] 10-inventory: subject missing or illegible — monsters standing in it (pixels: {\"why\":\"object absent or illegible\",\"px\":1932,\"need\":200,\"objs\":\"8/8\",\"need2\":2,\"sepP50\":0.31,\"needSep\":0.25,\"carriedPx\":1381,\"perPx\":[61,861,87,346,114,81,47,335],\"perSep\":[0.75,0.47,0.05,0.17,0.45,0.15,0.21,0.19],\"needPerPx\":100,\"badObjects\":[{\"i\":3,\"px\":346,\"sepP50\":0.17}],\"lum\":85.4,\"bgLum\":42.1})",
+          "frame": -1
+        },
+        "time": 1562.1333333333314
+      },
+      "ms": {
+        "setup": 7480,
+        "screenshot": 978,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": false,
+        "checks": [
+          {
+            "subject": "every tier in the inventory strip",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "shown": 92,
+              "items": 92
+            }
+          },
+          {
+            "subject": "the equipment effect",
+            "kind": "dom",
+            "ok": true,
+            "detail": null
+          },
+          {
+            "subject": "the equipment blast",
+            "kind": "pixels",
+            "ok": true,
+            "px": 35366,
+            "frac": 0.27289,
+            "lum": 53.7,
+            "bgLum": 14,
+            "contrast": 0.587,
+            "sep": 0.498,
+            "sepP25": 0.23,
+            "sepP50": 0.55,
+            "legible": 0.84,
+            "objects": 4,
+            "visibleObjects": 4,
+            "minPx": 800,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 29707,
+            "minCarried": 800,
+            "legibleOk": true,
+            "aggregate": "VFX buffers: the meshes are shared particle/ring/trail pools, not nameable objects",
+            "perObjectOk": true
+          },
+          {
+            "subject": "monsters standing in it",
+            "kind": "pixels",
+            "ok": false,
+            "px": 1932,
+            "frac": 0.01491,
+            "lum": 85.4,
+            "bgLum": 42.1,
+            "contrast": 0.34,
+            "sep": 0.36,
+            "sepP25": 0.13,
+            "sepP50": 0.31,
+            "legible": 0.715,
+            "objects": 8,
+            "visibleObjects": 8,
+            "perPx": [
+              61,
+              861,
+              87,
+              346,
+              114,
+              81,
+              47,
+              335
+            ],
+            "perSep": [
+              0.75,
+              0.47,
+              0.05,
+              0.17,
+              0.45,
+              0.15,
+              0.21,
+              0.19
+            ],
+            "minPx": 200,
+            "minObjects": 2,
+            "present": true,
+            "carriedPx": 1381,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "crowd": {
+              "need": 2,
+              "why": "blast victims: knockback removes members from frame by design"
+            },
+            "minPerPx": 100,
+            "absentObjects": [],
+            "objectFailures": [
+              {
+                "i": 3,
+                "px": 346,
+                "sepP50": 0.17
+              }
+            ],
+            "perObjectOk": false
+          },
+          {
+            "subject": "shutter (effect seconds)",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "age": 0.1167,
+              "frames": 7,
+              "exact": true,
+              "sim": 0.1167
+            }
+          }
+        ]
+      },
+      "newErrors": [
+        "[harness] 10-inventory: subject missing or illegible — monsters standing in it (pixels: {\"why\":\"object absent or illegible\",\"px\":1932,\"need\":200,\"objs\":\"8/8\",\"need2\":2,\"sepP50\":0.31,\"needSep\":0.25,\"carriedPx\":1381,\"perPx\":[61,861,87,346,114,81,47,335],\"perSep\":[0.75,0.47,0.05,0.17,0.45,0.15,0.21,0.19],\"needPerPx\":100,\"badObjects\":[{\"i\":3,\"px\":346,\"sepP50\":0.17}],\"lum\":85.4,\"bgLum\":42.1})"
+      ]
+    }
+  ],
+  "errors": [
+    "[harness] 10-inventory: subject missing or illegible — monsters standing in it (pixels: {\"why\":\"object absent or illegible\",\"px\":1932,\"need\":200,\"objs\":\"8/8\",\"need2\":2,\"sepP50\":0.31,\"needSep\":0.25,\"carriedPx\":1381,\"perPx\":[61,861,87,346,114,81,47,335],\"perSep\":[0.75,0.47,0.05,0.17,0.45,0.15,0.21,0.19],\"needPerPx\":100,\"badObjects\":[{\"i\":3,\"px\":346,\"sepP50\":0.17}],\"lum\":85.4,\"bgLum\":42.1})"
+  ],
+  "partial": true,
+  "subjectFailures": [
+    {
+      "name": "10-inventory",
+      "failed": [
+        "monsters standing in it"
+      ],
+      "detail": [
+        {
+          "subject": "monsters standing in it",
+          "kind": "pixels",
+          "ok": false,
+          "px": 1932,
+          "frac": 0.01491,
+          "lum": 85.4,
+          "bgLum": 42.1,
+          "contrast": 0.34,
+          "sep": 0.36,
+          "sepP25": 0.13,
+          "sepP50": 0.31,
+          "legible": 0.715,
+          "objects": 8,
+          "visibleObjects": 8,
+          "perPx": [
+            61,
+            861,
+            87,
+            346,
+            114,
+            81,
+            47,
+            335
+          ],
+          "perSep": [
+            0.75,
+            0.47,
+            0.05,
+            0.17,
+            0.45,
+            0.15,
+            0.21,
+            0.19
+          ],
+          "minPx": 200,
+          "minObjects": 2,
+          "present": true,
+          "carriedPx": 1381,
+          "minSep": 0.25,
+          "legibleOk": true,
+          "crowd": {
+            "need": 2,
+            "why": "blast victims: knockback removes members from frame by design"
+          },
+          "minPerPx": 100,
+          "absentObjects": [],
+          "objectFailures": [
+            {
+              "i": 3,
+              "px": 346,
+              "sepP50": 0.17
+            }
+          ],
+          "perObjectOk": false
+        }
+      ]
+    }
+  ],
+  "subjectsOk": false,
+  "determinism": {
+    "clockPinned": true,
+    "frameDt": 0.016666666666666666,
+    "frameTimeouts": 0
+  },
+  "perf": {
+    "programs": 62,
+    "geometries": 370,
+    "textures": 53,
+    "sceneObjects": 1125
+  }
+}

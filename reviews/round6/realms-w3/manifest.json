@@ -1,0 +1,110 @@
+{
+  "seed": 1337,
+  "ready": true,
+  "shots": [
+    {
+      "name": "24-realm-vault",
+      "doc": "The Gilded Vault: the sealed prize on its dais with the Vault Warden between the player and it. Judges the single-elite encounter framing and the gold/black material key.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\realms-w3\\24-realm-vault.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 1.6333333333333324
+      },
+      "result": {
+        "sealed": true,
+        "guard": true
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "the vault chest",
+            "kind": "pixels",
+            "ok": true,
+            "px": 1846,
+            "frac": 0.01424,
+            "lum": 34.9,
+            "bgLum": 31.6,
+            "contrast": 0.05,
+            "sep": 0.495,
+            "sepP25": 0.25,
+            "sepP50": 0.49,
+            "legible": 0.937,
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 1400,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 1730,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true
+          },
+          {
+            "subject": "the vault warden",
+            "kind": "pixels",
+            "ok": true,
+            "px": 2680,
+            "frac": 0.02068,
+            "lum": 67.7,
+            "bgLum": 15.5,
+            "contrast": 0.627,
+            "sep": 0.602,
+            "sepP25": 0.47,
+            "sepP50": 0.63,
+            "legible": 0.956,
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 700,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 2562,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true
+          },
+          {
+            "subject": "the chest is sealed",
+            "kind": "dom",
+            "ok": true,
+            "detail": null
+          },
+          {
+            "subject": "the survivor",
+            "kind": "pixels",
+            "ok": true,
+            "px": 544,
+            "frac": 0.0042,
+            "lum": 44.8,
+            "bgLum": 12.4,
+            "contrast": 0.565,
+            "sep": 0.427,
+            "sepP25": 0.17,
+            "sepP50": 0.39,
+            "legible": 0.798,
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 250,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 434,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true
+          }
+        ]
+      },
+      "newErrors": []
+    }
+  ],
+  "errors": [],
+  "subjectFailures": [],
+  "subjectsOk": true,
+  "perf": {
+    "programs": 77,
+    "geometries": 367,
+    "textures": 53,
+    "sceneObjects": 338
+  }
+}

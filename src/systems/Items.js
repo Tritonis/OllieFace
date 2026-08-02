@@ -1,4 +1,4 @@
-import { ITEMS, ITEM_BY_ID, ITEMS_BY_TIER, TIERS, hyperbolic } from '../data/items.js';
+import { ITEMS, ITEM_BY_ID, ITEMS_BY_TIER, TIERS, BLIGHT_BY_BASE, hyperbolic } from '../data/items.js';
 import { EQUIPMENT, EQUIPMENT_BY_ID } from '../data/equipment.js';
 
 /**
@@ -69,7 +69,36 @@ export const DROP_TABLES = {
   // Lunar pool. Reached only by something that explicitly asks for it, because
   // every card in it carries a drawback the player has to opt into.
   lunar: { lunar: 1 },
+  // The corruption pool on its own, for anything that wants to hand one out
+  // deliberately rather than wait for the share below to land.
+  blight: { blight: 1 },
 };
+
+/**
+ * Blight's cut of every ordinary drop.
+ *
+ * Expressed as a *share of the finished roll* rather than as a weight in
+ * `TIER_WEIGHTS`, and that is the whole design of this line. The world's chest
+ * tables arrive here as bias objects that **multiply** the ladder
+ * (`{common: 80, uncommon: 20, legendary: 1}` against 80/20/1 is really
+ * 6400/400/1), so any fixed weight would mean one number for a small chest and
+ * a completely different one for the legendary chest whose table totals 1 —
+ * where a weight tuned for the first would make blight the *only* thing the
+ * second ever paid. A share is scale-free: whatever the table sums to, blight
+ * takes 4% of the result and the ordinary tiers keep their relative shape.
+ *
+ * 4% of drops, against roughly 40-60 rolled drops in a full run, is two or three
+ * corrupted cards a run — often enough that the tier is part of the game and
+ * rare enough that meeting one is still an event. It is applied in `rollTier`,
+ * inside the single `rng.weighted` draw that was already happening, so adding
+ * the tier consumes **no extra numbers from the gameplay stream** and every
+ * later roll in the run lands on the same draw it did before.
+ */
+const BLIGHT_SHARE = 0.04;
+// The tiers whose presence in a table means the table is an ordinary world drop
+// and may therefore pay a corruption instead. A boss or lunar pool names its one
+// tier and gets nothing added: a teleporter boss must always pay a boss item.
+const ORDINARY_TIERS = ['common', 'uncommon', 'legendary'];
 
 /**
  * Kill gold. The economy is deliberately *closed* against the director: a
@@ -181,7 +210,11 @@ export class Items {
     // block would sit at zero items for the entire run.
     ctx.events.on('itemPickup', (e) => {
       if (ctx.authority || !e || !ITEM_BY_ID.has(e.id)) return;
-      this.counts.set(e.id, e.count);
+      // A count of zero is a real message on this channel — it is how the host
+      // reports a stack the corruption tier (or the refinery) took away — and
+      // storing it would leave a zero-count entry that `inventory()` and the
+      // stat loop would then have to defend against.
+      if (e.count > 0) this.counts.set(e.id, e.count); else this.counts.delete(e.id);
       this._dirty = true;
       this._rebuildHooks();
       ctx.audio?.play?.('pickup');
@@ -216,13 +249,82 @@ export class Items {
     // Host only. Clients receive the result as `itemPickup` and apply it above.
     if (!this.ctx.authority) return this.count(id);
     if (!ITEM_BY_ID.has(id)) return 0;
-    const next = (this.counts.get(id) || 0) + count;
-    this.counts.set(id, next);
+
+    // Corruption intercepts the pickup *before* the stack lands when the player
+    // is already holding the blight card that eats this id. Routing it straight
+    // through means the ordinary item never enters the inventory, never emits a
+    // pickup for a stack that is about to be deleted, and never leaves a tile in
+    // the HUD strip for an item the player does not own — see `_settleBlight`.
+    const waiting = BLIGHT_BY_BASE.get(id);
+    if (waiting && this.count(waiting.id) > 0) {
+      const total = this._set(waiting.id, this.count(waiting.id) + count);
+      this.ctx.audio?.play?.('pickup');
+      return total;
+    }
+
+    const next = this._set(id, (this.counts.get(id) || 0) + count);
+    this.ctx.audio?.play?.('pickup');
+    // The other direction: a blight card arriving on top of an inventory that
+    // already holds its base.
+    return this._settleBlight(id) ?? next;
+  }
+
+  /**
+   * Write one absolute stack count and announce it. The single mutation point
+   * for the inventory — `give`, `take` and the corruption transform all go
+   * through it, so the invariants (no zero-count entries left in the Map, hooks
+   * rebuilt, stat cache dirtied, an absolute `itemPickup` on the wire) are
+   * stated once instead of three times.
+   */
+  _set(id, count) {
+    const next = Math.max(0, count | 0);
+    if (next === 0) this.counts.delete(id); else this.counts.set(id, next);
     this._dirty = true;
     this._rebuildHooks();
     this.ctx.events.emit('itemPickup', { id, count: next });
-    this.ctx.audio?.play?.('pickup');
     return next;
+  }
+
+  /**
+   * The corruption transform: every copy of `def.corrupts` the player holds
+   * becomes another copy of the blight card `id`.
+   *
+   * Returns the blight card's new total, or `null` if `id` is not a blight card
+   * (so `give` can fall back to its own count).
+   *
+   * ## Idempotent and order-independent, by construction
+   *
+   * There is only one direction of work here — *pull the base's stacks in* — and
+   * it is guarded by the base's own count. A second copy of the same blight card
+   * finds the base already at zero and does nothing beyond adding its stack; a
+   * base picked up *after* the blight card never reaches this function at all,
+   * because `give` intercepts it above and routes it into the blight card
+   * directly. So the two orders converge on the same inventory, and running the
+   * transform any number of times changes nothing after the first.
+   *
+   * ## The HUD limitation this is written around
+   *
+   * `ui/HUD.js`'s item strip is append-only: `onItemPickup` creates a tile the
+   * first time it sees an id and there is no path that ever retires one, so an
+   * id driven to zero keeps its tile with a blank stack badge. That is not new
+   * here — `take()` has the same effect and the Hollow Market's refinery already
+   * calls it — but corruption makes it routine, and the fix belongs in `HUD.js`
+   * (retire the tile in `onItemPickup` when `total <= 0`), which this round's
+   * file ownership does not include. Until it lands, a base item consumed *out
+   * of* the inventory leaves a stale empty tile; a base item corrupted *on
+   * arrival* (the branch in `give`) does not, which is why that branch exists
+   * rather than letting both directions fall through to here.
+   */
+  _settleBlight(id) {
+    const def = ITEM_BY_ID.get(id);
+    if (def?.tier !== 'blight' || !def.corrupts) return null;
+    const held = this.count(def.corrupts);
+    if (held <= 0) return this.count(id);
+    // Absolute writes in both directions: `itemPickup` carries a total, not a
+    // delta, so a client that drops or duplicates one of these self-corrects on
+    // the next one instead of drifting a stack apart from the host forever.
+    this._set(def.corrupts, 0);
+    return this._set(id, this.count(id) + held);
   }
 
   /**
@@ -239,12 +341,7 @@ export class Items {
     if (!this.ctx.authority) return this.count(id);
     const have = this.counts.get(id) || 0;
     if (have <= 0) return 0;
-    const next = Math.max(0, have - count);
-    if (next === 0) this.counts.delete(id); else this.counts.set(id, next);
-    this._dirty = true;
-    this._rebuildHooks();
-    this.ctx.events.emit('itemPickup', { id, count: next });
-    return next;
+    return this._set(id, have - count);
   }
 
   count(id) { return this.counts.get(id) || 0; }
@@ -254,7 +351,7 @@ export class Items {
     const out = [];
     for (const [id, count] of this.counts) {
       const def = ITEM_BY_ID.get(id);
-      if (def) out.push({ id, count, def });
+      if (def && count > 0) out.push({ id, count, def });
     }
     out.sort((a, b) => TIER_ORDER[a.def.tier] - TIER_ORDER[b.def.tier] || a.def.name.localeCompare(b.def.name));
     return out;
@@ -368,10 +465,19 @@ export class Items {
     // Applied *after* every item has contributed, or the result would depend on
     // the order the inventory Map happens to iterate in.
     s.noDefensive = false;
+    // Blight drawback flag, same shape as `noDefensive`: Gristle Sickle and
+    // Corpse Bloom trade passive regeneration away. Zeroing `healthRegen` inside
+    // the loop would keep whatever an item inserted later into the Map added.
+    s.noRegen = false;
     // Multiplicative accumulators, for the same order-independence reason. Item
     // `stat` functions add into `damage`/`maxHealth` and multiply into these.
     s.damageMult = 1;
     s.healthMult = 1;
+    // Scales the *bonus* half of the crit multiplier (Clouded Eye). Kept apart
+    // from `critMult` itself so a crit can never be reduced below a normal hit
+    // however many stacks are held, and so the reduction does not depend on
+    // which items happened to contribute crit damage before it.
+    s.critEdge = 1;
 
     s.maxHealth += this.permanentHealth;
 
@@ -382,6 +488,7 @@ export class Items {
 
     s.damage *= s.damageMult;
     s.maxHealth *= s.healthMult;
+    if (s.critEdge !== 1) s.critMult = 1 + (s.critMult - 1) * s.critEdge;
 
     // The run's own rules go on last, over the top of every item: Glass is a
     // multiplier on the finished number, and the difficulty's regen scale is
@@ -413,6 +520,7 @@ export class Items {
     if (this.buffs.has('nocooldown')) s.cooldownMult = 0;
 
     if (s.noDefensive) { s.blockChance = 0; s.flatReduction = 0; }
+    if (s.noRegen) s.healthRegen = 0;
 
     s.critChance = Math.min(s.critChance, 1);
     s.blockChance = Math.min(s.blockChance, 0.95);
@@ -777,6 +885,17 @@ export class Items {
       }
     }
     if (!entries.length) return 'common';
+
+    // Corruption's share, folded into the same draw. Computed off the table's
+    // own total so it is 4% whatever scale the caller's weights are on, and
+    // offered only to tables that can pay an ordinary tier — a boss or lunar
+    // pool names one tier and keeps it.
+    if (entries.some((e) => ORDINARY_TIERS.includes(e.tier)) && ITEMS_BY_TIER.blight?.length) {
+      let total = 0;
+      for (const e of entries) total += e.weight;
+      // share = w / (total + w)  =>  w = total * share / (1 - share)
+      entries.push({ tier: 'blight', weight: total * BLIGHT_SHARE / (1 - BLIGHT_SHARE) });
+    }
     return this.ctx.rng.weighted(entries).tier;
   }
 
@@ -791,7 +910,10 @@ export class Items {
     // Caprice replaces the *tier* first, so a small chest can pay a legendary.
     // It composes with Command rather than competing with it: Caprice decides
     // which shelf the drop comes off, Command decides what is taken from it.
-    if (art?.has('caprice')) t = art.capriceTier();
+    // A corruption that has already been rolled survives Caprice. Letting
+    // Caprice overwrite it would mean the artifact silently deletes the whole
+    // tier from the run, which is not what "the shelf is re-rolled" promises.
+    if (art?.has('caprice') && t !== 'blight') t = art.capriceTier();
     const pool = ITEMS_BY_TIER[t] || ITEMS_BY_TIER.common;
     if (!pool.length) return null;
     // Command: this is the single funnel every random item id in the game comes
@@ -949,7 +1071,11 @@ export class Items {
 // Inventory sort order. Lunar sits after Boss because it is the tier the player
 // chose to take a downside for, and it should read last rather than be buried
 // among the whites.
-const TIER_ORDER = { common: 0, uncommon: 1, legendary: 2, boss: 3, lunar: 4, equipment: 5 };
+// Blight sits after Lunar for the same reason Lunar sits after Boss: it is the
+// tier the player took a risk on, and it reads as an answer to the run rather
+// than as part of the ladder. It must also be the last *item* tier, because the
+// cards above it in the strip are the ones it ate out of.
+const TIER_ORDER = { common: 0, uncommon: 1, legendary: 2, boss: 3, lunar: 4, blight: 5, equipment: 6 };
 const BASE_KEYS = ['maxHealth', 'healthRegen', 'moveSpeed', 'attackSpeed', 'damage',
   'critChance', 'critMult', 'armor', 'cooldownMult', 'jumpCount'];
 

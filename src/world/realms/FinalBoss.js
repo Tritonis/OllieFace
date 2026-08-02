@@ -306,7 +306,23 @@ export class FinaleController {
     ctx.pipeline?.addShake?.(0.5);
   }
 
-  /** One anchor's drawn half: a crown of boss-coloured shards and a tether. */
+  /**
+   * One anchor's drawn half: a crown of boss-coloured shards, a shell, and a
+   * tether.
+   *
+   * **The crown hangs off the anchor's own rig, not off the stage.** Two things
+   * follow from that, and both are the point. The subject the harness measures
+   * for `26-finale-phase2` is `anchor.rig.root`, so art parented to the stage is
+   * art that is not part of the anchor as far as any measurement — or any
+   * player's eye — is concerned: the round-6 baseline photographed the three
+   * anchors at hue 258.5 / 279.8 / 255.0 against a floor at 251.6, i.e. two of
+   * the three still colour-matched the ground rather than the Herald at 277,
+   * because the only Herald-coloured thing near them was a separate group. And
+   * the third measured 284 px at `sepP50` 0.13 — a dark polyhedron on a dark
+   * floor, below the per-object gate. Parenting also deletes the per-frame
+   * position copy and makes the crown inherit the spawn-scale ramp, so an
+   * anchor that is still rising does not wear a full-size crown.
+   */
   _buildWardArt(stage, anchor) {
     const hot = new THREE.MeshStandardMaterial({
       color: 0x1c0e30, emissive: HERALD_HUE, emissiveIntensity: 2.4,
@@ -317,15 +333,29 @@ export class FinaleController {
     // wears, at a quarter of the scale. Same silhouette family, same emissive.
     for (let i = 0; i < 5; i++) {
       const a = (i / 5) * Math.PI * 2 + 0.4;
-      const m = new THREE.Mesh(new THREE.ConeGeometry(0.24, 1.9 + (i % 2) * 0.7, 4), hot);
-      m.position.set(Math.cos(a) * 1.0, 1.5, Math.sin(a) * 1.0);
+      const m = new THREE.Mesh(new THREE.ConeGeometry(0.32, 2.6 + (i % 2) * 0.9, 4), hot);
+      m.position.set(Math.cos(a) * 1.35, 1.7, Math.sin(a) * 1.35);
       m.rotation.set(Math.sin(a) * 0.34, -a, -Math.cos(a) * 0.34);
       g.add(m);
     }
-    const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.85, 0), hot);
-    core.position.y = 2.4;
+    const core = new THREE.Mesh(new THREE.OctahedronGeometry(1.15, 0), hot);
+    core.position.y = 2.9;
     g.add(core);
-    stage.root.add(g);
+
+    // The shell. The anchor's body is an ordinary `warded` elite and wears that
+    // affix's tint (0x6a4ad0, hue 256) — which is the ground's hue, not the
+    // boss's. This is a faceted additive cage at the Herald's own hue drawn
+    // over that body, so the pixels the anchor occupies carry the boss's colour
+    // instead of the floor's without repainting the shared elite materials that
+    // every other warded monster in the game draws with.
+    const shellMat = new THREE.MeshBasicMaterial({
+      color: HERALD_HOT, wireframe: true, transparent: true, opacity: 0.7,
+      blending: THREE.AdditiveBlending, depthWrite: false, fog: false,
+    });
+    const shell = new THREE.Mesh(new THREE.IcosahedronGeometry(2.0, 0), shellMat);
+    shell.position.y = 1.6;
+    g.add(shell);
+    (anchor.rig?.root ?? stage.root).add(g);
 
     // The tether. A unit-length cylinder along +Y, re-aimed and re-scaled every
     // step, additive so it reads as light rather than as a pipe.
@@ -339,7 +369,7 @@ export class FinaleController {
     beam.frustumCulled = false;
     stage.root.add(beam);
 
-    return { anchor, group: g, core, beam, mats: [hot, beamMat] };
+    return { anchor, group: g, core, shell, beam, mats: [hot, beamMat, shellMat] };
   }
 
   /** Follow the anchors, re-aim the tethers, drop the art when one dies. */
@@ -348,9 +378,10 @@ export class FinaleController {
     for (let i = this.wardArt.length - 1; i >= 0; i--) {
       const w = this.wardArt[i];
       if (!w.anchor.alive || !this.warded) { this._disposeWardArt(w); this.wardArt.splice(i, 1); continue; }
-      w.group.position.copy(w.anchor.position);
+      // The group rides the rig, so only the spin and the bob are driven here.
       w.group.rotation.y = this._t * 0.9;
-      w.core.position.y = 2.4 + Math.sin(this._t * 2.2 + i) * 0.18;
+      w.core.position.y = 2.9 + Math.sin(this._t * 2.2 + i) * 0.18;
+      w.shell.rotation.set(this._t * 0.25, -this._t * 0.4, 0);
       if (!boss || !boss.alive) { w.beam.visible = false; continue; }
       w.beam.visible = true;
       _v.copy(w.anchor.position); _v.y += 2.6;

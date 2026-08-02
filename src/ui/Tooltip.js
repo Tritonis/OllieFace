@@ -46,8 +46,16 @@ export class Tooltip {
       const meta = tierMeta(def?.tier || tier);
       const name = def?.name || prettify(id);
 
+      // The corruption tier reads inverted everywhere it is drawn: its tile is a
+      // dark glyph punched out of a solid field (`Icons.drawInverted`), and the
+      // card that opens off that tile says the same thing in the same way — the
+      // name sits *in* the tier colour instead of being written in it. One rule,
+      // no extra row, and it lands on the element the eye goes to first.
+      const inverted = (def?.tier || tier) === 'blight';
       this.refs.name.textContent = name;
-      this.refs.name.style.color = meta.color;
+      this.refs.name.style.color = inverted ? '#0b0409' : meta.color;
+      this.refs.name.style.background = inverted ? meta.color : '';
+      this.refs.name.style.padding = inverted ? '0.1em 0.42em' : '';
       this.refs.tier.textContent = meta.label;
       this.refs.tier.style.color = meta.color;
       this.refs.body.innerHTML = describe(def, count);
@@ -81,11 +89,20 @@ export function prettify(id) {
   return String(id).replace(/[_-]+/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2');
 }
 
-/** `description` is a function of the stack count — see src/data/items.js. */
+/**
+ * `description` is a function of the stack count — see src/data/items.js.
+ *
+ * A count of zero is a real state on this path rather than a bad argument: the
+ * corruption tier drives a base item's stack to zero and the inventory
+ * announces that on the same `itemPickup` channel a pickup uses, so the pickup
+ * banner would otherwise describe an item the player has just stopped owning
+ * as though they had gained it. Naming what happened is both more honest and
+ * the only feedback the transform gets — the tiles themselves cannot say it.
+ */
 export function describeItem(def, count) {
-  const n = Math.max(1, count | 0);
   if (typeof def?.description !== 'function') return '';
-  try { return String(def.description(n)); } catch { return ''; }
+  if ((count | 0) <= 0) return 'Consumed by a corruption in your inventory.';
+  try { return String(def.description(count | 0)); } catch { return ''; }
 }
 
 /** Same copy, with the numbers picked out in the accent the way RoR2 does. */

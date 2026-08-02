@@ -1,0 +1,829 @@
+{
+  "seed": 1337,
+  "ready": true,
+  "shots": [
+    {
+      "name": "21-realm-gateways",
+      "doc": "The three realm entrances standing in an ordinary stage: Newt Altar, Trial Obelisk, Gilded Beacon. Judges whether an optional doorway reads as findable without reading as a HUD marker.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\realms-rep\\21-realm-gateways.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 0.6833333333333338
+      },
+      "result": {
+        "gateways": 3
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "all three realm gateways",
+            "kind": "pixels",
+            "ok": true,
+            "px": 2922,
+            "frac": 0.02255,
+            "lum": 23.8,
+            "bgLum": 6.6,
+            "contrast": 0.568,
+            "sep": 0.327,
+            "sepP25": 0.19,
+            "sepP50": 0.29,
+            "legible": 0.842,
+            "objects": 3,
+            "visibleObjects": 3,
+            "perPx": [
+              770,
+              879,
+              1273
+            ],
+            "perSep": [
+              0.29,
+              0.29,
+              0.31
+            ],
+            "minPx": 1200,
+            "minObjects": 3,
+            "present": true,
+            "carriedPx": 2460,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "minPerPx": 400,
+            "absentObjects": [],
+            "objectFailures": [],
+            "perObjectOk": true
+          },
+          {
+            "subject": "the survivor",
+            "kind": "pixels",
+            "ok": true,
+            "px": 298,
+            "frac": 0.0023,
+            "lum": 49.1,
+            "bgLum": 6.4,
+            "contrast": 0.768,
+            "sep": 0.532,
+            "sepP25": 0.21,
+            "sepP50": 0.67,
+            "legible": 0.805,
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 200,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 240,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "22-realm-bazaar",
+      "doc": "The Hollow Market: a lantern-lit hub with three deterministic stalls, the refinery and the Obelisk of Departure. Judges whether a no-combat room reads as a different pace and a different place.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\realms-rep\\22-realm-bazaar.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 1.8833333333333315
+      },
+      "result": {
+        "stalls": 3,
+        "obelisk": true
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "the market stalls",
+            "kind": "pixels",
+            "ok": true,
+            "px": 3970,
+            "frac": 0.03063,
+            "lum": 28.3,
+            "bgLum": 67.5,
+            "contrast": 0.409,
+            "sep": 0.55,
+            "sepP25": 0.29,
+            "sepP50": 0.63,
+            "legible": 0.816,
+            "objects": 3,
+            "visibleObjects": 3,
+            "perPx": [
+              457,
+              1350,
+              2163
+            ],
+            "perSep": [
+              0.79,
+              0.51,
+              0.55
+            ],
+            "minPx": 900,
+            "minObjects": 2,
+            "present": true,
+            "carriedPx": 3240,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "minPerPx": 300,
+            "absentObjects": [],
+            "objectFailures": [],
+            "perObjectOk": true
+          },
+          {
+            "subject": "the Obelisk of Departure",
+            "kind": "pixels",
+            "ok": true,
+            "px": 1797,
+            "frac": 0.01387,
+            "lum": 23.8,
+            "bgLum": 80.1,
+            "contrast": 0.541,
+            "sep": 0.489,
+            "sepP25": 0.27,
+            "sepP50": 0.49,
+            "legible": 0.832,
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 700,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 1495,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true
+          },
+          {
+            "subject": "no monsters in the hub",
+            "kind": "dom",
+            "ok": true,
+            "detail": 0
+          },
+          {
+            "subject": "the survivor",
+            "kind": "pixels",
+            "ok": true,
+            "px": 683,
+            "frac": 0.00527,
+            "lum": 76.5,
+            "bgLum": 93.1,
+            "contrast": 0.098,
+            "sep": 0.329,
+            "sepP25": 0.15,
+            "sepP50": 0.29,
+            "legible": 0.753,
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 250,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 514,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "23-realm-crucible",
+      "doc": "The Crucible mid-wave: a walled iron pit with the survivor firing into a spawned wave. Judges confinement, under-lighting and readability under load in a room with no terrain to hide behind.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\realms-rep\\23-realm-crucible.png",
+      "engine": {
+        "frameErrors": 1,
+        "lastFrameError": {
+          "who": "harness:23-realm-crucible",
+          "message": "[harness] 23-realm-crucible: subject missing or illegible — the trial wave (pixels: {\"why\":\"object absent or illegible\",\"px\":3326,\"need\":420,\"objs\":\"3/3\",\"need2\":2,\"sepP50\":0.71,\"needSep\":0.25,\"carriedPx\":3326,\"perPx\":[2184,116,1026],\"perSep\":[0.67,0.69,0.83],\"needPerPx\":140,\"badObjects\":[{\"i\":1,\"px\":116,\"sepP50\":0.69}],\"lum\":41.2,\"bgLum\":2.2})",
+          "frame": -1
+        },
+        "time": 7.599999999999978
+      },
+      "result": {
+        "wave": 4,
+        "live": 3
+      },
+      "subject": {
+        "ok": false,
+        "checks": [
+          {
+            "subject": "the trial wave",
+            "kind": "pixels",
+            "ok": false,
+            "px": 3326,
+            "frac": 0.02566,
+            "lum": 41.2,
+            "bgLum": 2.2,
+            "contrast": 0.899,
+            "sep": 0.718,
+            "sepP25": 0.65,
+            "sepP50": 0.71,
+            "legible": 1,
+            "objects": 3,
+            "visibleObjects": 3,
+            "perPx": [
+              2184,
+              116,
+              1026
+            ],
+            "perSep": [
+              0.67,
+              0.69,
+              0.83
+            ],
+            "minPx": 420,
+            "minObjects": 2,
+            "present": true,
+            "carriedPx": 3326,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "minPerPx": 140,
+            "absentObjects": [],
+            "objectFailures": [
+              {
+                "i": 1,
+                "px": 116,
+                "sepP50": 0.69
+              }
+            ],
+            "perObjectOk": false
+          },
+          {
+            "subject": "the arena wall",
+            "kind": "dom",
+            "ok": true,
+            "detail": 25
+          },
+          {
+            "subject": "the survivor",
+            "kind": "pixels",
+            "ok": true,
+            "px": 347,
+            "frac": 0.00268,
+            "lum": 42.8,
+            "bgLum": 4.4,
+            "contrast": 0.814,
+            "sep": 0.551,
+            "sepP25": 0.31,
+            "sepP50": 0.61,
+            "legible": 0.925,
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 300,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 321,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true
+          }
+        ]
+      },
+      "newErrors": [
+        "[harness] 23-realm-crucible: subject missing or illegible — the trial wave (pixels: {\"why\":\"object absent or illegible\",\"px\":3326,\"need\":420,\"objs\":\"3/3\",\"need2\":2,\"sepP50\":0.71,\"needSep\":0.25,\"carriedPx\":3326,\"perPx\":[2184,116,1026],\"perSep\":[0.67,0.69,0.83],\"needPerPx\":140,\"badObjects\":[{\"i\":1,\"px\":116,\"sepP50\":0.69}],\"lum\":41.2,\"bgLum\":2.2})"
+      ]
+    },
+    {
+      "name": "24-realm-vault",
+      "doc": "The Gilded Vault: the sealed prize on its dais with the Vault Warden between the player and it. Judges the single-elite encounter framing and the gold/black material key.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\realms-rep\\24-realm-vault.png",
+      "engine": {
+        "frameErrors": 1,
+        "lastFrameError": {
+          "who": "harness:23-realm-crucible",
+          "message": "[harness] 23-realm-crucible: subject missing or illegible — the trial wave (pixels: {\"why\":\"object absent or illegible\",\"px\":3326,\"need\":420,\"objs\":\"3/3\",\"need2\":2,\"sepP50\":0.71,\"needSep\":0.25,\"carriedPx\":3326,\"perPx\":[2184,116,1026],\"perSep\":[0.67,0.69,0.83],\"needPerPx\":140,\"badObjects\":[{\"i\":1,\"px\":116,\"sepP50\":0.69}],\"lum\":41.2,\"bgLum\":2.2})",
+          "frame": -1
+        },
+        "time": 9.216666666666704
+      },
+      "result": {
+        "sealed": true,
+        "guard": true
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "the vault chest",
+            "kind": "pixels",
+            "ok": true,
+            "px": 1851,
+            "frac": 0.01428,
+            "lum": 34.8,
+            "bgLum": 31.4,
+            "contrast": 0.052,
+            "sep": 0.511,
+            "sepP25": 0.27,
+            "sepP50": 0.51,
+            "legible": 0.94,
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 1400,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 1740,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true
+          },
+          {
+            "subject": "the vault warden",
+            "kind": "pixels",
+            "ok": true,
+            "px": 3004,
+            "frac": 0.02318,
+            "lum": 61.1,
+            "bgLum": 14.3,
+            "contrast": 0.62,
+            "sep": 0.582,
+            "sepP25": 0.43,
+            "sepP50": 0.57,
+            "legible": 0.975,
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 700,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 2929,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true
+          },
+          {
+            "subject": "the chest is sealed",
+            "kind": "dom",
+            "ok": true,
+            "detail": null
+          },
+          {
+            "subject": "the survivor",
+            "kind": "pixels",
+            "ok": true,
+            "px": 542,
+            "frac": 0.00418,
+            "lum": 44,
+            "bgLum": 12.4,
+            "contrast": 0.559,
+            "sep": 0.423,
+            "sepP25": 0.17,
+            "sepP50": 0.39,
+            "legible": 0.795,
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 250,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 431,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "29-ending-obliterate",
+      "doc": "The alternative ending: both presses on the Obelisk of Departure, the run committed as a deliberate end, and the existing run-summary screen. Judges that a second ending exists and routes.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\realms-rep\\29-ending-obliterate.png",
+      "engine": {
+        "frameErrors": 1,
+        "lastFrameError": {
+          "who": "harness:23-realm-crucible",
+          "message": "[harness] 23-realm-crucible: subject missing or illegible — the trial wave (pixels: {\"why\":\"object absent or illegible\",\"px\":3326,\"need\":420,\"objs\":\"3/3\",\"need2\":2,\"sepP50\":0.71,\"needSep\":0.25,\"carriedPx\":3326,\"perPx\":[2184,116,1026],\"perSep\":[0.67,0.69,0.83],\"needPerPx\":140,\"badObjects\":[{\"i\":1,\"px\":116,\"sepP50\":0.69}],\"lum\":41.2,\"bgLum\":2.2})",
+          "frame": -1
+        },
+        "time": 9.516666666666719
+      },
+      "result": {
+        "record": {
+          "at": 1785626764922,
+          "survivorId": "ranger",
+          "difficultyId": "rainstorm",
+          "difficulty": 1.2229611111111114,
+          "stage": 2,
+          "stageName": "Drowned Aqueduct",
+          "time": 9.516666666666719,
+          "kills": 0,
+          "elites": 0,
+          "bosses": 0,
+          "damageDealt": 0,
+          "damageTaken": 0,
+          "highestHit": 0,
+          "items": 0,
+          "gold": 0,
+          "level": 1,
+          "outcome": "victory",
+          "inventory": []
+        },
+        "ending": "obliterated"
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "the run-summary screen",
+            "kind": "dom",
+            "ok": true,
+            "detail": "death"
+          },
+          {
+            "subject": "an obliterated record in the profile",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "outcome": "victory",
+              "stage": 2
+            }
+          },
+          {
+            "subject": "the ending is named",
+            "kind": "dom",
+            "ok": true,
+            "detail": "obliterated"
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "25-finale-phase1",
+      "doc": "The Herald of the Rift on the full Fracture arena. Judges the final boss silhouette at 6.8 m against a void backdrop and whether it reads as distinct from the six teleporter bosses.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\realms-rep\\25-finale-phase1.png",
+      "engine": {
+        "frameErrors": 1,
+        "lastFrameError": {
+          "who": "harness:23-realm-crucible",
+          "message": "[harness] 23-realm-crucible: subject missing or illegible — the trial wave (pixels: {\"why\":\"object absent or illegible\",\"px\":3326,\"need\":420,\"objs\":\"3/3\",\"need2\":2,\"sepP50\":0.71,\"needSep\":0.25,\"carriedPx\":3326,\"perPx\":[2184,116,1026],\"perSep\":[0.67,0.69,0.83],\"needPerPx\":140,\"badObjects\":[{\"i\":1,\"px\":116,\"sepP50\":0.69}],\"lum\":41.2,\"bgLum\":2.2})",
+          "frame": -1
+        },
+        "time": 11.450000000000149
+      },
+      "result": {
+        "phase": 1,
+        "floor": 34
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "the Herald",
+            "kind": "pixels",
+            "ok": true,
+            "px": 2837,
+            "frac": 0.02189,
+            "lum": 65.5,
+            "bgLum": 18.1,
+            "contrast": 0.568,
+            "sep": 0.561,
+            "sepP25": 0.43,
+            "sepP50": 0.61,
+            "legible": 0.876,
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 2000,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 2485,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true
+          },
+          {
+            "subject": "phase 1 arena",
+            "kind": "dom",
+            "ok": true,
+            "detail": 34
+          },
+          {
+            "subject": "the boss bar",
+            "kind": "dom",
+            "ok": true,
+            "detail": "Herald of the Rift"
+          },
+          {
+            "subject": "the survivor",
+            "kind": "pixels",
+            "ok": true,
+            "px": 437,
+            "frac": 0.00337,
+            "lum": 88.2,
+            "bgLum": 10.4,
+            "contrast": 0.79,
+            "sep": 0.564,
+            "sepP25": 0.25,
+            "sepP50": 0.67,
+            "legible": 0.812,
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 220,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 355,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "26-finale-phase2",
+      "doc": "Phase 2: the rim has collapsed from 34 m to 22 m and three warded Rift Anchors hold the Herald immune. Judges whether the arena change is legible as a rule change rather than as scenery.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\realms-rep\\26-finale-phase2.png",
+      "engine": {
+        "frameErrors": 1,
+        "lastFrameError": {
+          "who": "harness:23-realm-crucible",
+          "message": "[harness] 23-realm-crucible: subject missing or illegible — the trial wave (pixels: {\"why\":\"object absent or illegible\",\"px\":3326,\"need\":420,\"objs\":\"3/3\",\"need2\":2,\"sepP50\":0.71,\"needSep\":0.25,\"carriedPx\":3326,\"perPx\":[2184,116,1026],\"perSep\":[0.67,0.69,0.83],\"needPerPx\":140,\"badObjects\":[{\"i\":1,\"px\":116,\"sepP50\":0.69}],\"lum\":41.2,\"bgLum\":2.2})",
+          "frame": -1
+        },
+        "time": 15.800000000000365
+      },
+      "result": {
+        "phase": 2,
+        "floor": 22,
+        "anchors": 3
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "the rift anchors",
+            "kind": "pixels",
+            "ok": true,
+            "px": 4463,
+            "frac": 0.03444,
+            "lum": 80.2,
+            "bgLum": 7.2,
+            "contrast": 0.836,
+            "sep": 0.584,
+            "sepP25": 0.25,
+            "sepP50": 0.77,
+            "legible": 0.974,
+            "objects": 3,
+            "visibleObjects": 3,
+            "perPx": [
+              3370,
+              698,
+              395
+            ],
+            "perSep": [
+              0.77,
+              0.83,
+              0.57
+            ],
+            "minPx": 600,
+            "minObjects": 2,
+            "present": true,
+            "carriedPx": 4347,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "minPerPx": 200,
+            "absentObjects": [],
+            "objectFailures": [],
+            "perObjectOk": true
+          },
+          {
+            "subject": "the collapsed floor",
+            "kind": "dom",
+            "ok": true,
+            "detail": 22
+          },
+          {
+            "subject": "the Herald is warded",
+            "kind": "dom",
+            "ok": true,
+            "detail": 1000000
+          },
+          {
+            "subject": "the Herald",
+            "kind": "pixels",
+            "ok": true,
+            "px": 900,
+            "frac": 0.00694,
+            "lum": 65.3,
+            "bgLum": 17.1,
+            "contrast": 0.584,
+            "sep": 0.595,
+            "sepP25": 0.41,
+            "sepP50": 0.63,
+            "legible": 0.944,
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 600,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 850,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "27-finale-phase3",
+      "doc": "Phase 3: floor reduced to a 14 m core plus three islands, healing suppressed. Judges the final shape of the arena and whether the remaining ground reads at a glance.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\realms-rep\\27-finale-phase3.png",
+      "engine": {
+        "frameErrors": 1,
+        "lastFrameError": {
+          "who": "harness:23-realm-crucible",
+          "message": "[harness] 23-realm-crucible: subject missing or illegible — the trial wave (pixels: {\"why\":\"object absent or illegible\",\"px\":3326,\"need\":420,\"objs\":\"3/3\",\"need2\":2,\"sepP50\":0.71,\"needSep\":0.25,\"carriedPx\":3326,\"perPx\":[2184,116,1026],\"perSep\":[0.67,0.69,0.83],\"needPerPx\":140,\"badObjects\":[{\"i\":1,\"px\":116,\"sepP50\":0.69}],\"lum\":41.2,\"bgLum\":2.2})",
+          "frame": -1
+        },
+        "time": 20.966666666666757
+      },
+      "result": {
+        "phase": 3,
+        "floor": 14,
+        "platforms": 3
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "the Herald",
+            "kind": "pixels",
+            "ok": true,
+            "px": 1204,
+            "frac": 0.00929,
+            "lum": 30.1,
+            "bgLum": 10.6,
+            "contrast": 0.48,
+            "sep": 0.497,
+            "sepP25": 0.33,
+            "sepP50": 0.57,
+            "legible": 0.86,
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 600,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 1035,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true
+          },
+          {
+            "subject": "the reduced floor",
+            "kind": "dom",
+            "ok": true,
+            "detail": 14
+          },
+          {
+            "subject": "the three islands",
+            "kind": "dom",
+            "ok": true,
+            "detail": 3
+          },
+          {
+            "subject": "the ward is broken",
+            "kind": "dom",
+            "ok": true,
+            "detail": null
+          },
+          {
+            "subject": "healing suppressed",
+            "kind": "dom",
+            "ok": true,
+            "detail": null
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "28-finale-victory",
+      "doc": "The victory ending: the Herald dead, the outro run, a victory record committed to the profile and the run-summary screen up. Judges that the run has a real destination.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\realms-rep\\28-finale-victory.png",
+      "engine": {
+        "frameErrors": 1,
+        "lastFrameError": {
+          "who": "harness:23-realm-crucible",
+          "message": "[harness] 23-realm-crucible: subject missing or illegible — the trial wave (pixels: {\"why\":\"object absent or illegible\",\"px\":3326,\"need\":420,\"objs\":\"3/3\",\"need2\":2,\"sepP50\":0.71,\"needSep\":0.25,\"carriedPx\":3326,\"perPx\":[2184,116,1026],\"perSep\":[0.67,0.69,0.83],\"needPerPx\":140,\"badObjects\":[{\"i\":1,\"px\":116,\"sepP50\":0.69}],\"lum\":41.2,\"bgLum\":2.2})",
+          "frame": -1
+        },
+        "time": 26.983333333333082
+      },
+      "result": {
+        "record": {
+          "at": 1785626778345,
+          "survivorId": "ranger",
+          "difficultyId": "rainstorm",
+          "difficulty": 1.560403055555553,
+          "stage": 3,
+          "stageName": "Pale Vault",
+          "time": 26.983333333333082,
+          "kills": 4,
+          "elites": 3,
+          "bosses": 1,
+          "damageDealt": 7020,
+          "damageTaken": 0,
+          "highestHit": 7020,
+          "items": 0,
+          "gold": 4,
+          "level": 7,
+          "outcome": "victory",
+          "inventory": []
+        },
+        "ending": "victory"
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "the run-summary screen",
+            "kind": "dom",
+            "ok": true,
+            "detail": "death"
+          },
+          {
+            "subject": "a victory record in the profile",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "outcome": "victory",
+              "stage": 3,
+              "time": 27
+            }
+          },
+          {
+            "subject": "the ending is named",
+            "kind": "dom",
+            "ok": true,
+            "detail": "victory"
+          }
+        ]
+      },
+      "newErrors": []
+    }
+  ],
+  "errors": [
+    "[harness] 23-realm-crucible: subject missing or illegible — the trial wave (pixels: {\"why\":\"object absent or illegible\",\"px\":3326,\"need\":420,\"objs\":\"3/3\",\"need2\":2,\"sepP50\":0.71,\"needSep\":0.25,\"carriedPx\":3326,\"perPx\":[2184,116,1026],\"perSep\":[0.67,0.69,0.83],\"needPerPx\":140,\"badObjects\":[{\"i\":1,\"px\":116,\"sepP50\":0.69}],\"lum\":41.2,\"bgLum\":2.2})"
+  ],
+  "subjectFailures": [
+    {
+      "name": "23-realm-crucible",
+      "failed": [
+        "the trial wave"
+      ],
+      "detail": [
+        {
+          "subject": "the trial wave",
+          "kind": "pixels",
+          "ok": false,
+          "px": 3326,
+          "frac": 0.02566,
+          "lum": 41.2,
+          "bgLum": 2.2,
+          "contrast": 0.899,
+          "sep": 0.718,
+          "sepP25": 0.65,
+          "sepP50": 0.71,
+          "legible": 1,
+          "objects": 3,
+          "visibleObjects": 3,
+          "perPx": [
+            2184,
+            116,
+            1026
+          ],
+          "perSep": [
+            0.67,
+            0.69,
+            0.83
+          ],
+          "minPx": 420,
+          "minObjects": 2,
+          "present": true,
+          "carriedPx": 3326,
+          "minSep": 0.25,
+          "legibleOk": true,
+          "minPerPx": 140,
+          "absentObjects": [],
+          "objectFailures": [
+            {
+              "i": 1,
+              "px": 116,
+              "sepP50": 0.69
+            }
+          ],
+          "perObjectOk": false
+        }
+      ]
+    }
+  ],
+  "subjectsOk": false,
+  "perf": {
+    "programs": 95,
+    "geometries": 375,
+    "textures": 53,
+    "sceneObjects": 390
+  }
+}

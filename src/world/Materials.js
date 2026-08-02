@@ -355,14 +355,13 @@ const DETAIL = {
 };
 
 const DETAIL_PARS = /* glsl */`
-#define DET_KILL 0.0
 varying vec3 vDetW;
 varying vec3 vDetN;
 uniform vec4 uDetA;   // x 1/fine  y fineAmp  z 1/coarse  w coarseAmp
 uniform vec4 uDetB;   // x aniso   y ridge    z cavity    w roughMod
 uniform vec4 uDetC;   // x jointAmp y jointPeriod z jointAspect w jointWidth
 uniform vec4 uDetD;   // x uvNear  y uvFade0   z uvFade1   w fineFade
-uniform vec4 uDetE;   // x fine m  y coarse m  z jointRow m w -
+uniform vec4 uDetE;   // x fine m  y coarse m  z jointRow m  w field grad rms
 
 uniform sampler2D uDetNoise;
 
@@ -406,14 +405,30 @@ vec3 detJoint(vec2 p, float per, float aspect, float wid) {
   return vec3(jy, 0.0, gy);
 }
 
-void detField(vec3 wp, vec3 wn, float dist, float fw, out vec3 gradW, out float hOut) {
-  gradW = vec3(0.0); hOut = 0.0;
+// Slope variance an octave hides inside one pixel. res is what detRes() left of
+// it, so 1 - res*res is the energy fraction the resolution gate and the mip
+// chain between them took out of the normal. That energy did not stop existing:
+// it is sub-pixel roughness, and handing it to the specular lobe is the only way
+// the lobe can integrate it instead of sampling it.
+float detHidden(float amp, float res) {
+  float a = amp * uDetE.w;
+  return a * a * (1.0 - res * res);
+}
+
+void detField(vec3 wp, vec3 wn, float dist, float fw,
+              out vec3 gradW, out float hOut, out float varOut) {
+  gradW = vec3(0.0); hOut = 0.0; varOut = 0.0;
   vec3 bw = abs(wn); bw *= bw; bw *= bw;              // ^4: hard triplanar blend
   bw /= max(bw.x + bw.y + bw.z, 1e-4);
   // Anisotropy stretches the field along each plane's second axis, which is the
   // world vertical on the two side planes and world Z on the ground plane.
   vec2 an = vec2(1.0, 1.0 / max(uDetB.x, 0.001));
-  float fineK = (1.0 - smoothstep(uDetD.w * 0.45, uDetD.w, dist)) * detRes(uDetE.x, fw);
+  float fineRes = detRes(uDetE.x, fw), coarseRes = detRes(uDetE.y, fw);
+  float fineDist = 1.0 - smoothstep(uDetD.w * 0.45, uDetD.w, dist);
+  float fineK = fineDist * fineRes;
+  varOut += detHidden(uDetA.y * fineDist, fineRes);
+  // Ridging doubles the gradient at the crease, so it doubles what is hidden.
+  varOut += detHidden(uDetA.w * mix(1.0, 2.0, uDetB.y), coarseRes);
 
   vec2 cX = vec2(wp.z, wp.y), cY = vec2(wp.x, wp.z), cZ = vec2(wp.x, wp.y);
 
@@ -436,7 +451,7 @@ void detField(vec3 wp, vec3 wn, float dist, float fw, out vec3 gradW, out float 
   // value and the gradient are folded with the same factor so the surface stays
   // a real height field.
   {
-    float k = uDetA.w * detRes(uDetE.y, fw), r = uDetB.y;
+    float k = uDetA.w * coarseRes, r = uDetB.y;
     vec3 mX = detNoise(cX * uDetA.z);
     vec3 mY = detNoise(cY * uDetA.z);
     vec3 mZ = detNoise(cZ * uDetA.z);
@@ -474,7 +489,13 @@ void detField(vec3 wp, vec3 wn, float dist, float fw, out vec3 gradW, out float 
     // shallow tint that still darkens the cavity, instead of into an edge. The
     // course itself retires once its rows are under about two pixels.
     float wid = clamp(fw * 1.6, uDetC.w, min(per, per * asp) * 0.45);
-    float gk = (uDetC.w / wid) * detRes(uDetE.z, fw);
+    float jRes = detRes(uDetE.z, fw);
+    float gk = (uDetC.w / wid) * jRes;
+    // A groove wall runs at slope 6/wid at its steepest, and gk is what survives
+    // of it, so the same hidden-energy accounting applies here without uDetE.w:
+    // this octave's slope is analytic, not sampled from the baked field.
+    float jSlope = uDetC.x * 1.5 * (uDetC.w / max(wid, 1e-4));
+    varOut += jSlope * jSlope * (1.0 - jRes * jRes);
     vec3 jX = detJoint(cX, per, asp, wid);
     vec3 jY = detJoint(cY, per, asp, wid);
     vec3 jZ = detJoint(cZ, per, asp, wid);
@@ -483,7 +504,6 @@ void detField(vec3 wp, vec3 wn, float dist, float fw, out vec3 gradW, out float 
     gradW -= uDetC.x * gk * bw.y * vec3(jY.y, 0.0, jY.z);
     gradW -= uDetC.x * gk * bw.z * vec3(jZ.y, jZ.z, 0.0);
   }
-  gradW *= DET_KILL; hOut *= DET_KILL;
 }
 `;
 
@@ -497,6 +517,11 @@ void detField(vec3 wp, vec3 wn, float dist, float fw, out vec3 gradW, out float 
 // sample is `fine * DET_CELLS` metres, so `fine` stays a plain feature size.
 const DET_CELLS = 4;
 let _detNoiseTex = null;
+// RMS of one stored gradient channel, as the shader decodes it. The specular-AA
+// term needs to know how much slope an octave carries at unit amplitude, and
+// that is a property of this baked field, not something the shader can measure
+// once mip filtering has already taken the answer away.
+let _detGradRms = 0;
 
 function detailNoiseTexture() {
   if (_detNoiseTex) return _detNoiseTex;
@@ -523,6 +548,14 @@ function detailNoiseTexture() {
       data[o + 3] = 255;
     }
   }
+  // Measured on the bytes that actually ship, decoded exactly as detNoise()
+  // decodes them, so quantisation and the +-4 clip are inside the number.
+  let acc = 0;
+  for (let i = 0; i < N * N; i++) {
+    const gx = (data[i * 4 + 1] / 255 - 0.5) * 8, gy = (data[i * 4 + 2] / 255 - 0.5) * 8;
+    acc += gx * gx + gy * gy;
+  }
+  _detGradRms = Math.sqrt(acc / (2 * N * N));
   _detNoiseTex = dataTexture(data, false);
   _detNoiseTex.anisotropy = 8;
   return _detNoiseTex;
@@ -540,7 +573,7 @@ export function attachDetail(material, kind) {
     // Feature sizes in metres, for the screen-space resolution gate. These are
     // the same numbers as uDetA/uDetC, un-reciprocated, so the shader does not
     // have to know DET_CELLS.
-    uDetE: { value: new THREE.Vector4(d.fine, d.coarse, d.joint[1] * d.joint[2], 0) },
+    uDetE: { value: new THREE.Vector4(d.fine, d.coarse, d.joint[1] * d.joint[2], _detGradRms) },
   };
   material.userData.det = u;
   material.userData.detKind = kind;
@@ -566,8 +599,8 @@ export function attachDetail(material, kind) {
         // knows about distance *and* about grazing foreshortening at once, and
         // every octave of this pass needs it to know when to retire.
         float detFW = max( length( dFdx( vDetW ) ), length( dFdy( vDetW ) ) );
-        vec3 detGradW; float detH;
-        detField( vDetW, normalize( vDetN ), detDist, detFW, detGradW, detH );
+        vec3 detGradW; float detH; float detVarW;
+        detField( vDetW, normalize( vDetN ), detDist, detFW, detGradW, detH, detVarW );
         float detCav = 1.0 - uDetB.z * clamp( -detH * 2.4, 0.0, 1.0 );
         #include <roughnessmap_fragment>
         roughnessFactor = clamp( roughnessFactor + uDetB.w * detH * 2.0, 0.03, 1.0 );`)
@@ -607,6 +640,39 @@ export function attachDetail(material, kind) {
             normal = normalize( nonPerturbedNormal * sqrt( max( 1.0 - detTMax * detTMax, 0.0 ) )
                                 + detT * ( detTMax / detTL ) );
           }
+
+          // Specular antialiasing, and it is the whole fix for the salt this
+          // pass was measured to add. Bisected on 13-biomes-1's far mountain
+          // (2.000% isolated-bright with the pass on, 0.400% with it off):
+          // killing the height output changed nothing (0.424%), killing the
+          // sky-visibility weight changed nothing (2.047%), and killing either
+          // octave's amplitude left most of it standing (1.388% / 1.647%) --
+          // but forcing roughnessFactor to 1.0 with every octave still
+          // perturbing the normal took it to 0.094%. Every speck was a specular
+          // highlight on a facet narrower than a pixel. That is why gating the
+          // field's amplitude barely moved the number: amplitude is not what the
+          // specular lobe resolves, sub-pixel normal *variance* is, and variance
+          // has to become roughness or the BRDF renders it as a glint. three.js
+          // does exactly this already (lights_physical_fragment's
+          // geometryRoughness) but only from nonPerturbedNormal, so it is blind
+          // to the normal this pass just wrote.
+          //
+          // Two variance sources, because neither alone is enough. detVarS is
+          // the standard screen-space construction and it also covers the UV
+          // normal map and the geometry; but a 2x2 quad derivative cannot see
+          // content at the Nyquist limit -- a field that alternates every pixel
+          // differences to nearly zero -- and Nyquist is exactly where this pass
+          // aliases. On its own it took the far mountain only to 1.412%, and
+          // raising its clamp from 0.18 to 0.60 bought a further 0.07 pp, which
+          // is what a saturated measurement looks like, not a tight clamp.
+          // detVarW is the world-space half: the field knows its own feature
+          // sizes and its own slope statistics, so it can report what the pixel
+          // footprint hid without having to resolve it on screen first. Both are
+          // capped so a material that *is* resolved stays as sharp as it was.
+          vec3 detDNx = dFdx( normal ), detDNy = dFdy( normal );
+          float detVarS = 0.5 * ( dot( detDNx, detDNx ) + dot( detDNy, detDNy ) );
+          float detAlpha = min( 2.0 * detVarS, 0.45 ) + min( detVarW, 0.60 );
+          roughnessFactor = sqrt( min( 1.0, roughnessFactor * roughnessFactor + detAlpha ) );
         }`)
       .replace('#include <aomap_fragment>', /* glsl */`
         #include <aomap_fragment>

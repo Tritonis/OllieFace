@@ -263,18 +263,6 @@ const WANTED = new Set(
   SCENARIOS.filter((s) => !ONLY || ONLY.some((o) => s.name.includes(o))).map((s) => `${s.name}.png`)
 );
 await mkdir(OUT, { recursive: true });
-// Entries for shots this run is not taking are carried forward, so the manifest
-// keeps describing every PNG that is actually on disk. A manifest that lists
-// three shots next to a directory of eight is how a reviewer ends up judging a
-// stale frame against fresh telemetry.
-const carried = ONLY
-  ? await readFile(path.join(OUT, 'manifest.json'), 'utf8')
-      .then((t) => JSON.parse(t).shots?.filter((s) => !WANTED.has(`${s.name}.png`)) ?? [])
-      .catch(() => [])
-  : [];
-for (const f of await readdir(OUT).catch(() => [])) {
-  if (WANTED.has(f) || f === 'manifest.json') await rm(path.join(OUT, f), { force: true });
-}
 
 log('navigating...');
 const tBoot = Date.now();
@@ -293,6 +281,40 @@ const ready = await page
   .then(() => true)
   .catch(() => false);
 const bootMs = Date.now() - tBoot;
+
+/* Delete on *having captured*, not on intending to.
+ *
+ * The clear used to run before this line — before the navigate, and before
+ * anything knew whether the app boots. Six agents share this tree, so at any
+ * moment one of them may be mid-write and the module graph momentarily
+ * unparseable; a capture started in that window deleted a completed capture and
+ * replaced it with nothing. Two finished captures were lost that way, and the
+ * directory left behind asserted "this is the capture" when what had happened
+ * was "the capture did not happen" — the same shape as an aggregate hiding an
+ * absence, one level up from the subject gates.
+ *
+ * So a failed boot now touches nothing it did not create: the previous PNGs and
+ * the previous `manifest.json` are still there, and the failure announces itself
+ * as `00-FAILED-TO-BOOT.png` plus `manifest.FAILED.json` beside them. A reader
+ * can tell the two states apart on disk, which is the property that was missing.
+ *
+ * `carried` is read here for the same reason: on an `--only` run it merges the
+ * untouched shots forward out of the manifest that is about to be overwritten,
+ * and reading it after the boot check keeps it paired with the delete.
+ */
+const carried = ready && ONLY
+  ? await readFile(path.join(OUT, 'manifest.json'), 'utf8')
+      .then((t) => JSON.parse(t).shots?.filter((s) => !WANTED.has(`${s.name}.png`)) ?? [])
+      .catch(() => [])
+  : [];
+if (ready) {
+  for (const f of await readdir(OUT).catch(() => [])) {
+    if (WANTED.has(f) || f === 'manifest.json' || f === 'manifest.FAILED.json'
+        || f === '00-FAILED-TO-BOOT.png') {
+      await rm(path.join(OUT, f), { force: true });
+    }
+  }
+}
 
 // Pin the frame delta before any scenario runs.
 //
@@ -397,7 +419,10 @@ if (!ready) {
   });
 }
 
-await writeFile(path.join(OUT, 'manifest.json'), JSON.stringify(manifest, null, 2));
+// A failed boot writes its own file rather than overwriting the record of
+// whatever capture is already on disk. See the note by the clear above.
+await writeFile(path.join(OUT, ready ? 'manifest.json' : 'manifest.FAILED.json'),
+                JSON.stringify(manifest, null, 2));
 await browser.close();
 await server.close();
 

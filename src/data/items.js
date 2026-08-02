@@ -34,6 +34,11 @@ export const TIERS = {
   legendary: { name: 'Legendary', colour: 0xf0453f, css: '#f0453f', weight: 1 },
   boss: { name: 'Boss', colour: 0xffd23f, css: '#ffd23f', weight: 0 },
   lunar: { name: 'Lunar', colour: 0x5fd9f7, css: '#5fd9f7', weight: 0 },
+  // Blight sits at weight 0 for the same reason boss and lunar do: it is never
+  // reached by multiplying the generic ladder. `Items.rollTier` adds it as an
+  // explicit share of whatever table it was handed, so one constant sets the
+  // rate for every chest in the game at once — see BLIGHT_SHARE there.
+  blight: { name: 'Blight', colour: 0xd8479b, css: '#d8479b', weight: 0 },
   equipment: { name: 'Equipment', colour: 0xff9a3c, css: '#ff9a3c', weight: 0 },
 };
 
@@ -127,7 +132,161 @@ function payHealth(api, amount) {
   return cost;
 }
 
+/**
+ * The display name of the item a Blight card eats, looked up at call time.
+ *
+ * Written as a lookup rather than a literal because the branding pass in
+ * `reviews/round6/BRANDING-LEDGER.md` is going to rewrite ~40 `name:` fields
+ * and a corrupted item whose description quotes a stale name is a lie the
+ * rename has no way to find.
+ */
+const consumes = (id) => ITEM_BY_ID.get(id)?.name || id;
+
 export const ITEMS = [
+  // ------------------------------------------------------------------ BLIGHT
+  //
+  // The corruption tier. A Blight card does not add to the build — it *rewrites*
+  // part of it: on pickup it converts every copy of one named ordinary item into
+  // another copy of itself, and any later copy of that item converts on arrival.
+  // The transform lives in `Items._settleBlight`; the pairing is the `corrupts`
+  // field below and nothing else keys off it.
+  //
+  // Two rules the whole tier is built on:
+  //
+  //  1. **No card here is strictly better than the one it eats.** Every one pays
+  //     for its upside on an axis the HUD already shows. A corrupted item that
+  //     only upgrades would make the tier a free jackpot rather than a bet, and
+  //     the bet is the only reason to hand the player an item that deletes part
+  //     of the inventory they earned.
+  //  2. **Every cost is order-independent.** Costs go through the multiplicative
+  //     accumulators (`healthMult`, `damageMult`, `critEdge`) or through fields
+  //     that are already multiplicative for every item (`moveSpeed`), or through
+  //     a flag consumed after the whole inventory has contributed (`noRegen`).
+  //     A cost applied directly to `attackSpeed` or `damage` mid-iteration would
+  //     scale whichever items happened to be inserted into the Map first, i.e.
+  //     the survivor's stats would depend on the order chests were opened in.
+  //
+  // The section is declared **before** COMMON rather than in rarity order, which
+  // is deliberate and worth stating: anything that replays this catalogue in
+  // order and gives one of everything (`Harness.js`'s `10-inventory` is the live
+  // example) then introduces each corrupting card before the card it corrupts,
+  // so the replay ends in the state a real run would reach and not in one with a
+  // pile of items that were converted the moment after they landed. See the note
+  // on the HUD's append-only item strip in `Items._settleBlight`.
+  {
+    id: 'spasm-gland', name: 'Spasm Gland', tier: 'blight', glyph: 'spasmgland',
+    corrupts: 'syringe',
+    flavour: 'It fires whether or not you asked. The asking was always the slow part.',
+    description: (n) => `+${pct(linear(0.26, n))} attack speed. Your maximum health is reduced to ${pct(hyperbolicMult(0.15, n))}. Consumes every ${consumes('syringe')} you hold.`,
+    stat: (n, s) => {
+      s.attackSpeed += linear(0.26, n);
+      s.healthMult *= hyperbolicMult(0.15, n);
+    },
+  },
+  {
+    id: 'bloat-cyst', name: 'Bloat Cyst', tier: 'blight', glyph: 'bloatcyst',
+    corrupts: 'steak',
+    flavour: 'More of you to hit, and less of you willing to stop it.',
+    description: (n) => `+${linear(55, n)} maximum health. -${linear(9, n)} armor. Consumes every ${consumes('steak')} you hold.`,
+    stat: (n, s) => {
+      s.maxHealth += linear(55, n);
+      // Negative armor is asymptotic in Combat's mitigation curve, so no stack
+      // count turns this into infinite incoming damage the way a multiplier
+      // eventually would.
+      s.armor -= linear(9, n);
+    },
+  },
+  {
+    id: 'clouded-eye', name: 'Clouded Eye', tier: 'blight', glyph: 'cloudedeye',
+    corrupts: 'glasses',
+    flavour: 'You see the weak point in everything now. You just cannot see it well.',
+    description: (n) => `+${pct(hyperbolic(0.20, n))} critical strike chance. Critical strikes deal ${pct(1 - hyperbolicMult(0.30, n))} less bonus damage. Consumes every ${consumes('glasses')} you hold.`,
+    stat: (n, s) => {
+      s.critChance = 1 - (1 - s.critChance) * (1 - hyperbolic(0.20, n));
+      // `critEdge` scales the *bonus* half of the multiplier and is applied once
+      // the inventory has finished, so a crit can never land below a normal hit
+      // and the result never depends on pickup order.
+      s.critEdge *= hyperbolicMult(0.30, n);
+    },
+  },
+  {
+    id: 'slag-ingot', name: 'Slag Ingot', tier: 'blight', glyph: 'slagingot',
+    corrupts: 'armor-plate',
+    flavour: 'Poured straight onto the plate carrier while it was still on him.',
+    description: (n) => `Reduce all incoming damage by ${linear(13, n)}. Your movement speed is reduced to ${pct(hyperbolicMult(0.20, n))}. Consumes every ${consumes('armor-plate')} you hold.`,
+    stat: (n, s) => {
+      s.flatReduction += linear(13, n);
+      s.moveSpeed *= hyperbolicMult(0.20, n);
+    },
+  },
+  {
+    id: 'arc-rot', name: 'Arc Rot', tier: 'blight', glyph: 'arcrot',
+    corrupts: 'ukulele',
+    flavour: 'The current has to come from somewhere, and you are the nearest wet thing.',
+    description: (n) => `${pct(hyperbolic(0.40, n))} chance on hit to arc for 110% damage across ${3 + linear(2, n)} targets. Every arc costs 1.5% of your current health, down to 30%. Consumes every ${consumes('ukulele')} you hold.`,
+    hooks: {
+      onHit: (e, api) => {
+        if (!api.roll(hyperbolic(0.40, api.count))) return;
+        chainLightning(api, e, api.items.baseDamage() * 1.1, 3 + linear(2, api.count));
+        // Charged per *proc*, not per stack: stacking already buys more procs, so
+        // a per-stack bill would make the cost quadratic in the count.
+        payHealth(api, api.player.health * 0.015);
+      },
+    },
+  },
+  {
+    id: 'bile-shell', name: 'Bile Shell', tier: 'blight', glyph: 'bileshell',
+    corrupts: 'atg',
+    flavour: 'It was a warhead before something digested it.',
+    description: (n) => `${pct(hyperbolic(0.22, n))} chance on hit to fire a shell for ${pct(linear(4.5, n))} damage. All of your damage is reduced to ${pct(hyperbolicMult(0.20, n))}. Consumes every ${consumes('atg')} you hold.`,
+    stat: (n, s) => { s.damageMult *= hyperbolicMult(0.20, n); },
+    hooks: {
+      onHit: (e, api) => {
+        if (!api.roll(hyperbolic(0.22, api.count))) return;
+        api.ctx.vfx?.missile?.(api.player.position, e.position);
+        api.combat.explode(e.position, 5, api.items.baseDamage() * linear(4.5, api.count), api.player, {
+          team: 'player', proc: 0.6, procDepth: api.procDepth, type: 'missile',
+        });
+      },
+    },
+  },
+  {
+    id: 'gristle-sickle', name: 'Gristle Sickle', tier: 'blight', glyph: 'gristlesickle',
+    corrupts: 'harvesters-scythe',
+    flavour: 'It will keep you alive exactly as long as you keep finding throats.',
+    description: (n) => `Critical strikes heal you for ${linear(24, n)}. You no longer regenerate health passively. Consumes every ${consumes('harvesters-scythe')} you hold.`,
+    stat: (n, s) => { s.noRegen = true; },
+    hooks: {
+      onHit: (e, api) => { if (e.crit) api.combat.heal(api.player, linear(24, api.count)); },
+    },
+  },
+  {
+    id: 'rupture-gall', name: 'Rupture Gall', tier: 'blight', glyph: 'rupturegall',
+    corrupts: 'behemoth',
+    flavour: 'A tumour that learned what a shaped charge is.',
+    description: (n) => `ALL of your attacks explode in a ${2.5 + linear(1, n)}m radius for an extra 105% damage. Your maximum health is reduced to ${pct(hyperbolicMult(0.35, n))}. Consumes every ${consumes('behemoth')} you hold.`,
+    stat: (n, s) => { s.healthMult *= hyperbolicMult(0.35, n); },
+    hooks: {
+      onHit: (e, api) => {
+        if (e.type === 'gall') return; // never detonate our own detonation
+        if (api.procDepth > api.combat.MAX_PROC_DEPTH - 1) return;
+        api.combat.explode(e.position, 2.5 + linear(1, api.count), e.amount * 1.05, api.player, {
+          team: 'player', proc: 0, procDepth: api.procDepth, type: 'gall', falloff: false,
+        });
+      },
+    },
+  },
+  {
+    id: 'loaded-knucklebone', name: 'Loaded Knucklebone', tier: 'blight', glyph: 'knucklebone',
+    corrupts: 'clover',
+    flavour: 'Weighted on one face. Someone had to be hollowed out to do it.',
+    description: (n) => `All random effects are rolled +${linear(2, n)} extra times for a favourable outcome. You take ${pct(2 - 100 / (100 + linear(40, n)))} more damage. Consumes every ${consumes('clover')} you hold.`,
+    stat: (n, s) => {
+      s.luck += linear(2, n);
+      s.armor -= linear(40, n);
+    },
+  },
+
   // ------------------------------------------------------------------ COMMON
   {
     id: 'syringe', name: "Soldier's Syringe", tier: 'common', glyph: 'bars',
@@ -1038,7 +1197,11 @@ export const ITEMS = [
     id: 'corpse-bloom', name: 'Corpse Bloom', tier: 'lunar', glyph: 'bloom',
     flavour: 'It only flowers where something stopped.',
     description: (n) => `Killing an enemy heals ${pct(linear(0.08, n))} of maximum health. You no longer regenerate health passively.`,
-    stat: (n, s) => { s.healthRegen = 0; },
+    // A flag rather than `s.healthRegen = 0`, for the same reason `noDefensive`
+    // is one: zeroing the field mid-iteration keeps whatever regeneration an
+    // item inserted later in the Map adds, so the survivor's regen depended on
+    // which order the two were picked up in.
+    stat: (n, s) => { s.noRegen = true; },
     hooks: {
       onKill: (e, api) => {
         const p = api.player;
@@ -1079,6 +1242,31 @@ export const ITEMS_BY_TIER = ITEMS.reduce((acc, i) => {
   (acc[i.tier] ||= []).push(i);
   return acc;
 }, {});
+
+/**
+ * The corruption index, both directions.
+ *
+ * `BLIGHT_BY_BASE` is the read the pickup path actually needs — "is anything I
+ * am holding waiting to eat this id" — and it is a Map rather than a scan
+ * because `give` is on the pickup hot path. Building it here also makes the
+ * one-blight-card-per-base rule structural: a second card naming an already
+ * corrupted base would silently overwrite the first in this Map, so the
+ * constructor throws instead of shipping a pairing that only works half the
+ * time. `reviews/round6/C2-corruption.test.mjs` asserts the same thing, but a
+ * data file that can express an impossible state is worth closing at the source.
+ */
+export const BLIGHT_ITEMS = ITEMS.filter((i) => i.tier === 'blight');
+export const BLIGHT_BY_BASE = (() => {
+  const m = new Map();
+  for (const i of BLIGHT_ITEMS) {
+    if (!i.corrupts) throw new Error(`[items] blight card "${i.id}" names no base item`);
+    if (!ITEM_BY_ID.has(i.corrupts)) throw new Error(`[items] blight card "${i.id}" corrupts unknown item "${i.corrupts}"`);
+    if (ITEM_BY_ID.get(i.corrupts).tier === 'blight') throw new Error(`[items] blight card "${i.id}" corrupts another blight card`);
+    if (m.has(i.corrupts)) throw new Error(`[items] "${i.corrupts}" is corrupted by both "${m.get(i.corrupts).id}" and "${i.id}"`);
+    m.set(i.corrupts, i);
+  }
+  return m;
+})();
 
 // ---------------------------------------------------------------------- icons
 
@@ -2084,6 +2272,134 @@ export function drawGlyph(g, glyph, r, hue) {
       g.closePath(); g.fill(); g.stroke();
       g.fillRect(-r * 0.95, r * 0.58, r * 1.9, r * 0.3);
       g.strokeRect(-r * 0.95, r * 0.58, r * 1.9, r * 0.3); break;
+
+    // --- blight ---
+    // Every glyph here is a *deformed echo* of the glyph it eats: the same
+    // count of the same primitive, slumped, split or overgrown. The tile art
+    // inverts figure and ground for this tier (`ui/Icons.js`), so these read as
+    // dark holes in a solid plate rather than as bright emblems on a dark one —
+    // which means they need chunkier masses and fewer hairlines than the rest of
+    // the set to survive the 33px inventory strip.
+
+    // Spasm Gland (Soldier's Syringe): the three bars, seizing.
+    case 'spasmgland':
+      for (let i = 0; i < 3; i++) {
+        const x = (i - 1) * r * 0.62;
+        const h = r * (i === 1 ? 1.0 : 0.72);
+        const skew = (i - 1) * r * 0.22;
+        g.beginPath();
+        g.moveTo(x - r * 0.2, r * 0.9); g.lineTo(x - r * 0.2 + skew, -h);
+        g.lineTo(x + r * 0.2 + skew, -h); g.lineTo(x + r * 0.2, r * 0.9);
+        g.closePath(); g.fill(); g.stroke();
+      }
+      g.beginPath(); g.moveTo(-r * 1.0, r * 0.1); g.lineTo(r * 1.0, -r * 0.25); g.stroke();
+      break;
+    // Bloat Cyst (Bison Steak): the drop, swollen and split.
+    case 'bloatcyst':
+      g.beginPath();
+      g.moveTo(0, -r * 1.0);
+      g.bezierCurveTo(r * 1.1, -r * 0.6, r * 1.05, r * 0.75, 0, r * 1.0);
+      g.bezierCurveTo(-r * 1.05, r * 0.75, -r * 1.1, -r * 0.6, 0, -r * 1.0);
+      g.closePath(); g.fill(); g.stroke();
+      g.save(); g.strokeStyle = '#0d0f14'; g.lineWidth = Math.max(1.5, r * 0.18);
+      g.beginPath();
+      g.moveTo(-r * 0.15, -r * 0.72); g.lineTo(r * 0.12, -r * 0.1);
+      g.lineTo(-r * 0.2, r * 0.34); g.lineTo(r * 0.05, r * 0.82);
+      g.stroke(); g.restore();
+      break;
+    // Clouded Eye (Lens-Maker's Glasses): the ring, filmed over.
+    case 'cloudedeye':
+      g.lineWidth = Math.max(2, r * 0.26);
+      g.beginPath(); g.arc(0, 0, r * 0.82, 0, Math.PI * 2); g.stroke();
+      g.lineWidth = Math.max(1.5, r * 0.16);
+      g.beginPath(); g.arc(0, 0, r * 0.46, 0, Math.PI * 2); g.fill(); g.stroke();
+      g.save(); g.strokeStyle = '#0d0f14'; g.lineWidth = Math.max(1, r * 0.14);
+      for (let i = -1; i <= 1; i++) {
+        g.beginPath(); g.moveTo(-r * 0.42, i * r * 0.24); g.lineTo(r * 0.42, i * r * 0.24 - r * 0.1); g.stroke();
+      }
+      g.restore();
+      break;
+    // Slag Ingot (Repulsion Armor Plate): the shield, poured and set.
+    case 'slagingot':
+      g.beginPath();
+      g.moveTo(-r * 0.72, -r * 0.62); g.lineTo(r * 0.72, -r * 0.62);
+      g.lineTo(r * 1.0, r * 0.42); g.lineTo(-r * 1.0, r * 0.42);
+      g.closePath(); g.fill(); g.stroke();
+      for (const x of [-0.55, 0.0, 0.6]) {
+        g.beginPath(); g.arc(r * x, r * 0.72, r * 0.2, 0, Math.PI * 2); g.fill(); g.stroke();
+      }
+      break;
+    // Arc Rot (Ukulele): the bolt, coming apart down its own length.
+    case 'arcrot':
+      g.beginPath();
+      g.moveTo(r * 0.28, -r * 1.05); g.lineTo(-r * 0.62, r * 0.05);
+      g.lineTo(-r * 0.05, r * 0.05); g.lineTo(-r * 0.3, r * 0.55);
+      g.lineTo(r * 0.5, -r * 0.35); g.lineTo(-r * 0.02, -r * 0.35);
+      g.closePath(); g.fill(); g.stroke();
+      for (const [x, y, rr] of [[r * 0.55, r * 0.62, r * 0.22], [r * 0.9, r * 0.2, r * 0.15], [r * 0.2, r * 0.98, r * 0.13]]) {
+        g.beginPath(); g.arc(x, y, rr, 0, Math.PI * 2); g.fill(); g.stroke();
+      }
+      break;
+    // Bile Shell (AtG Missile): the rocket, with its nose gone soft.
+    case 'bileshell':
+      g.beginPath();
+      g.moveTo(0, -r * 1.05);
+      g.quadraticCurveTo(r * 0.62, -r * 0.5, r * 0.44, r * 0.5);
+      g.lineTo(-r * 0.44, r * 0.5);
+      g.quadraticCurveTo(-r * 0.62, -r * 0.5, 0, -r * 1.05);
+      g.closePath(); g.fill(); g.stroke();
+      for (const sx of [-1, 1]) {
+        g.beginPath();
+        g.moveTo(sx * r * 0.44, r * 0.1); g.lineTo(sx * r * 0.95, r * 0.72);
+        g.lineTo(sx * r * 0.44, r * 0.5); g.closePath(); g.fill(); g.stroke();
+      }
+      g.beginPath(); g.arc(0, r * 0.86, r * 0.24, 0, Math.PI * 2); g.fill(); g.stroke();
+      break;
+    // Gristle Sickle (Harvester's Scythe): the blade, notched to the bone.
+    case 'gristlesickle':
+      g.beginPath();
+      g.moveTo(-r * 0.85, r * 0.95);
+      g.bezierCurveTo(-r * 1.0, -r * 0.35, r * 0.05, -r * 1.05, r * 0.92, -r * 0.72);
+      g.bezierCurveTo(r * 0.2, -r * 0.42, -r * 0.3, r * 0.15, -r * 0.42, r * 0.95);
+      g.closePath(); g.fill(); g.stroke();
+      g.save(); g.fillStyle = '#0d0f14';
+      for (const [x, y] of [[-0.62, 0.12], [-0.2, -0.42], [0.35, -0.72]]) {
+        g.beginPath(); g.arc(r * x, r * y, r * 0.13, 0, Math.PI * 2); g.fill();
+      }
+      g.restore();
+      break;
+    // Rupture Gall (Brilliant Behemoth): the nova, going off inside a growth.
+    case 'rupturegall':
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2 + 0.2;
+        g.beginPath();
+        g.moveTo(Math.cos(a) * r * 0.5, Math.sin(a) * r * 0.5);
+        g.lineTo(Math.cos(a) * r * (i % 2 ? 1.05 : 0.78), Math.sin(a) * r * (i % 2 ? 1.05 : 0.78));
+        g.stroke();
+      }
+      g.beginPath();
+      g.moveTo(0, -r * 0.68);
+      g.bezierCurveTo(r * 0.78, -r * 0.5, r * 0.6, r * 0.62, 0, r * 0.66);
+      g.bezierCurveTo(-r * 0.6, r * 0.62, -r * 0.78, -r * 0.5, 0, -r * 0.68);
+      g.closePath(); g.fill(); g.stroke();
+      g.save(); g.fillStyle = '#0d0f14';
+      g.beginPath(); g.arc(0, 0, r * 0.22, 0, Math.PI * 2); g.fill(); g.restore();
+      break;
+    // Loaded Knucklebone (57 Leaf Clover): a die cut from a joint, weighted.
+    case 'knucklebone':
+      g.beginPath();
+      g.moveTo(-r * 0.78, -r * 0.6);
+      g.quadraticCurveTo(-r * 1.0, 0, -r * 0.72, r * 0.72);
+      g.lineTo(r * 0.72, r * 0.72);
+      g.quadraticCurveTo(r * 1.0, 0, r * 0.78, -r * 0.6);
+      g.quadraticCurveTo(0, -r * 1.02, -r * 0.78, -r * 0.6);
+      g.closePath(); g.fill(); g.stroke();
+      g.save(); g.fillStyle = '#0d0f14';
+      for (const [x, y] of [[-0.36, -0.24], [0.36, -0.24], [0, 0.08], [-0.36, 0.4], [0.36, 0.4]]) {
+        g.beginPath(); g.arc(r * x, r * y, r * 0.13, 0, Math.PI * 2); g.fill();
+      }
+      g.restore();
+      break;
 
     default: poly(g, 4, r, 0); g.fill(); g.stroke();
   }

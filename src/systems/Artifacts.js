@@ -95,8 +95,14 @@ export class Artifacts {
     // True from the first `stageStart`. Selection is pre-run only.
     this.live = false;
 
-    // Installed by the UI to make Command a real picker. Signature:
-    // `(tier, ids) -> id`. Without one, `_defaultPick` runs — see below.
+    // The Edict: the player's standing order, `tier -> item id`. This is what
+    // `commandPick` consults first and it is the whole of Command's UI state.
+    // See `commandPick` for why a standing order rather than a per-drop modal.
+    this.edict = new Map();
+
+    // Lower-priority extension point, kept from before the Edict landed:
+    // `(tier, ids) -> id`. Consulted only for tiers the player has filed no
+    // order against. Without one, `_defaultPick` runs — see below.
     this._chooser = null;
 
     // Reused output objects. `monsterScale` is called once per spawned unit and
@@ -278,24 +284,92 @@ export class Artifacts {
     return this.ctx.rng.weighted(CAPRICE_TIERS).tier;
   }
 
+  // ------------------------------------------------------------------ edict
+  //
+  // Command's screen. `ui/Menus.js` writes here and nothing else does.
+
+  /** The item id ordered for this tier, or null. */
+  edictFor(tier) { return this.edict.get(tier) || null; }
+
+  /** Every filed order, as a plain `{ tier: id }`. A copy. */
+  edictAll() { return Object.fromEntries(this.edict); }
+
+  /**
+   * File or clear one tier's standing order. `id` null clears it.
+   *
+   * Deliberately **not** gated on `this.live`. `setActive` is pre-run only
+   * because an artifact set that changes mid-run makes the run unreadable; an
+   * edict is not a rule, it is an instruction to a rule that is already
+   * running, and the whole point of Command is that you re-aim it as the run
+   * teaches you what you need.
+   *
+   * Also deliberately **not** gated on `ctx.authority`. Writing here changes no
+   * game state and consumes no RNG — it is one `Map.set`. The gate that matters
+   * is on the *read* side: `commandPick` is reached only through
+   * `Items.rollItem`, which early-returns unless `ctx.authority`, so a client's
+   * edict is never consulted and cannot move the shared stream. See the co-op
+   * note in `commandPick`.
+   */
+  setEdict(tier, id) {
+    if (!tier) return;
+    if (id) this.edict.set(tier, id);
+    else this.edict.delete(tier);
+    this._save();
+    this.ctx?.events?.emit('edictChanged', { tier, id: id || null });
+  }
+
+  /** Drop every order. */
+  clearEdict() {
+    if (!this.edict.size) return;
+    this.edict.clear();
+    this._save();
+    this.ctx?.events?.emit('edictChanged', { tier: null, id: null });
+  }
+
   /**
    * Command's pick. `pool` is the tier's item list, exactly as `Items.rollItem`
    * already had it; the return is one id from it.
    *
-   * ### Why there is a default, and why it is not random
+   * ### Why a standing order and not a modal on every drop
    *
-   * Command is a *choice*, and a choice needs a screen. The screen belongs to
-   * whoever owns `ui/`, so this ships with the mechanism and a policy: pick the
-   * item you already hold most of in that tier, falling back to the first card
-   * in the tier. That is not a placeholder — it is what a Command player does
-   * with the picker anyway, it makes the artifact's effect obvious and provable
-   * without a single click, and it is deterministic, which is the property that
-   * distinguishes it from having no artifact at all.
+   * `Items.rollItem` is synchronous and is the single funnel every item id in
+   * the game comes out of — chests, terminals, shrines, monster corpses under
+   * Tithe, boss drops, realm props. A picker that resolves asynchronously
+   * cannot answer it, so a per-drop modal would mean either blocking the
+   * simulation inside a roll or teaching six call sites to defer, and the
+   * deferred ones (a corpse that pays an item under Tithe) have no natural
+   * screen to raise anyway. The Edict answers all of them at once: the player
+   * says what they want from each tier, in advance, and every funnel resolves
+   * to it instantly and identically.
    *
-   * `setCommandChooser` replaces it with a real picker without touching this.
+   * ### Co-op
+   *
+   * This runs on the host only — `Items.rollItem` returns null off-authority
+   * before it can reach here — so a client that opens the Edict screen, scrolls
+   * it, and files a dozen orders performs zero gameplay work and draws nothing
+   * from `ctx.rng`. Its items keep arriving through `itemPickup` exactly as
+   * they did. The consequence, stated plainly because there is no channel to
+   * fix it with (`Protocol.js` carries seven button bits client->host and
+   * nothing else): **a client's edict has no effect; the host's edict decides
+   * for the whole party.** `Menus` says so on the screen rather than letting a
+   * client believe otherwise.
+   *
+   * ### Order of consultation, and why there is still a default
+   *
+   * Edict, then `_chooser`, then the policy: pick the item you already hold
+   * most of in that tier, falling back to the first card. The default is not a
+   * placeholder — it is what a Command player does with the picker anyway, it
+   * makes the artifact's effect obvious without a single click, and it is
+   * deterministic, which is the property that distinguishes it from having no
+   * artifact at all.
    */
   commandPick(tier, pool) {
     if (!pool || !pool.length) return null;
+    const ordered = this.edict.get(tier);
+    // Validated against the pool rather than trusted: the order is restored
+    // from localStorage and an item removed from the build between sessions
+    // must degrade to the policy, not to a null drop.
+    if (ordered && pool.some((p) => p.id === ordered)) return ordered;
     if (this._chooser) {
       const picked = this._chooser(tier, pool.map((p) => p.id));
       if (picked && pool.some((p) => p.id === picked)) return picked;
@@ -403,6 +477,16 @@ export class Artifacts {
         if (typeof id === 'string' && ARTIFACT_BY_ID.has(id) && this.isUnlocked(id)) this.set.add(id);
       }
     }
+    // The edict has to survive a reload for the same reason the artifact set
+    // does: "start a run" is a page load here, so an order filed on the select
+    // screen would otherwise be gone by the time the run it was filed for
+    // begins. Ids are not validated against the item table at load — this file
+    // does not import one — `commandPick` validates against the live pool.
+    if (data.edict && typeof data.edict === 'object') {
+      for (const [tier, id] of Object.entries(data.edict)) {
+        if (typeof id === 'string' && id) this.edict.set(tier, id);
+      }
+    }
   }
 
   _save() {
@@ -410,6 +494,7 @@ export class Artifacts {
       globalThis.localStorage?.setItem(STORE_KEY, JSON.stringify({
         artifacts: this.active(),
         difficulty: this.difficultyId,
+        edict: this.edictAll(),
       }));
     } catch { /* see _load */ }
   }

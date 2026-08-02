@@ -1,0 +1,14 @@
+{
+  "seed": 1337,
+  "ready": false,
+  "clockPinned": false,
+  "ms": {
+    "boot": 60956,
+    "bootTimeout": 60000
+  },
+  "shots": [],
+  "errors": [
+    "Unexpected identifier 'min'\n"
+  ],
+  "partial": false
+}

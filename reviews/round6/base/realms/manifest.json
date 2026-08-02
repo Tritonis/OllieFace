@@ -1,0 +1,922 @@
+{
+  "seed": 1337,
+  "ready": true,
+  "shots": [
+    {
+      "name": "21-realm-gateways",
+      "doc": "The three realm entrances standing in an ordinary stage: Newt Altar, Trial Obelisk, Gilded Beacon. Judges whether an optional doorway reads as findable without reading as a HUD marker.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\shots\\realms\\21-realm-gateways.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 0.6833333333333338
+      },
+      "result": {
+        "gateways": 3
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "all three realm gateways",
+            "kind": "pixels",
+            "ok": true,
+            "px": 2854,
+            "frac": 0.02202,
+            "lum": 24.3,
+            "bgLum": 6.3,
+            "contrast": 0.588,
+            "sep": 0.34,
+            "sepP25": 0.19,
+            "sepP50": 0.31,
+            "legible": 0.856,
+            "objects": 3,
+            "visibleObjects": 3,
+            "perPx": [
+              746,
+              856,
+              1252
+            ],
+            "perSep": [
+              0.31,
+              0.29,
+              0.33
+            ],
+            "minPx": 1200,
+            "minObjects": 3,
+            "present": true,
+            "carriedPx": 2443,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "minPerPx": 400,
+            "absentObjects": [],
+            "objectFailures": [],
+            "perObjectOk": true
+          },
+          {
+            "subject": "the survivor",
+            "kind": "pixels",
+            "ok": true,
+            "px": 291,
+            "frac": 0.00225,
+            "lum": 50.1,
+            "bgLum": 5.8,
+            "contrast": 0.791,
+            "sep": 0.559,
+            "sepP25": 0.25,
+            "sepP50": 0.71,
+            "legible": 0.849,
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 200,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 247,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "22-realm-bazaar",
+      "doc": "The Hollow Market: a lantern-lit hub with three deterministic stalls, the refinery and the Obelisk of Departure. Judges whether a no-combat room reads as a different pace and a different place.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\shots\\realms\\22-realm-bazaar.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 1.8833333333333315
+      },
+      "result": {
+        "stalls": 3,
+        "obelisk": true
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "the market stalls",
+            "kind": "pixels",
+            "ok": true,
+            "px": 3970,
+            "frac": 0.03063,
+            "lum": 27.2,
+            "bgLum": 66.4,
+            "contrast": 0.418,
+            "sep": 0.559,
+            "sepP25": 0.31,
+            "sepP50": 0.65,
+            "legible": 0.839,
+            "objects": 3,
+            "visibleObjects": 3,
+            "perPx": [
+              457,
+              1350,
+              2163
+            ],
+            "perSep": [
+              0.81,
+              0.57,
+              0.55
+            ],
+            "minPx": 900,
+            "minObjects": 2,
+            "present": true,
+            "carriedPx": 3331,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "minPerPx": 300,
+            "absentObjects": [],
+            "objectFailures": [],
+            "perObjectOk": true
+          },
+          {
+            "subject": "the Obelisk of Departure",
+            "kind": "pixels",
+            "ok": true,
+            "px": 1797,
+            "frac": 0.01387,
+            "lum": 23.8,
+            "bgLum": 80.1,
+            "contrast": 0.541,
+            "sep": 0.489,
+            "sepP25": 0.27,
+            "sepP50": 0.49,
+            "legible": 0.832,
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 700,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 1495,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true
+          },
+          {
+            "subject": "no monsters in the hub",
+            "kind": "dom",
+            "ok": true,
+            "detail": 0
+          },
+          {
+            "subject": "the survivor",
+            "kind": "pixels",
+            "ok": true,
+            "px": 679,
+            "frac": 0.00524,
+            "lum": 76,
+            "bgLum": 93.1,
+            "contrast": 0.101,
+            "sep": 0.331,
+            "sepP25": 0.15,
+            "sepP50": 0.29,
+            "legible": 0.754,
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 250,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 512,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "23-realm-crucible",
+      "doc": "The Crucible mid-wave: a walled iron pit with the survivor firing into a spawned wave. Judges confinement, under-lighting and readability under load in a room with no terrain to hide behind.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\shots\\realms\\23-realm-crucible.png",
+      "engine": {
+        "frameErrors": 1,
+        "lastFrameError": {
+          "who": "harness:23-realm-crucible",
+          "message": "[harness] 23-realm-crucible: subject missing or illegible — the trial wave (pixels: {\"why\":\"object absent or illegible\",\"px\":1601,\"need\":420,\"objs\":\"3/3\",\"need2\":2,\"sepP50\":0.71,\"needSep\":0.25,\"carriedPx\":1601,\"perPx\":[995,84,522],\"perSep\":[0.61,0.75,0.83],\"needPerPx\":140,\"badObjects\":[{\"i\":1,\"px\":84,\"sepP50\":0.75}],\"lum\":42.6,\"bgLum\":2.4})",
+          "frame": -1
+        },
+        "time": 7.599999999999978
+      },
+      "result": {
+        "wave": 4,
+        "live": 3
+      },
+      "subject": {
+        "ok": false,
+        "checks": [
+          {
+            "subject": "the trial wave",
+            "kind": "pixels",
+            "ok": false,
+            "px": 1601,
+            "frac": 0.01235,
+            "lum": 42.6,
+            "bgLum": 2.4,
+            "contrast": 0.894,
+            "sep": 0.703,
+            "sepP25": 0.57,
+            "sepP50": 0.71,
+            "legible": 1,
+            "objects": 3,
+            "visibleObjects": 3,
+            "perPx": [
+              995,
+              84,
+              522
+            ],
+            "perSep": [
+              0.61,
+              0.75,
+              0.83
+            ],
+            "minPx": 420,
+            "minObjects": 2,
+            "present": true,
+            "carriedPx": 1601,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "minPerPx": 140,
+            "absentObjects": [],
+            "objectFailures": [
+              {
+                "i": 1,
+                "px": 84,
+                "sepP50": 0.75
+              }
+            ],
+            "perObjectOk": false
+          },
+          {
+            "subject": "the arena wall",
+            "kind": "dom",
+            "ok": true,
+            "detail": 25
+          },
+          {
+            "subject": "the survivor",
+            "kind": "pixels",
+            "ok": true,
+            "px": 347,
+            "frac": 0.00268,
+            "lum": 42.9,
+            "bgLum": 4.4,
+            "contrast": 0.814,
+            "sep": 0.55,
+            "sepP25": 0.31,
+            "sepP50": 0.61,
+            "legible": 0.922,
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 300,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 320,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true
+          }
+        ]
+      },
+      "newErrors": [
+        "[harness] 23-realm-crucible: subject missing or illegible — the trial wave (pixels: {\"why\":\"object absent or illegible\",\"px\":1601,\"need\":420,\"objs\":\"3/3\",\"need2\":2,\"sepP50\":0.71,\"needSep\":0.25,\"carriedPx\":1601,\"perPx\":[995,84,522],\"perSep\":[0.61,0.75,0.83],\"needPerPx\":140,\"badObjects\":[{\"i\":1,\"px\":84,\"sepP50\":0.75}],\"lum\":42.6,\"bgLum\":2.4})"
+      ]
+    },
+    {
+      "name": "24-realm-vault",
+      "doc": "The Gilded Vault: the sealed prize on its dais with the Vault Warden between the player and it. Judges the single-elite encounter framing and the gold/black material key.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\shots\\realms\\24-realm-vault.png",
+      "engine": {
+        "frameErrors": 2,
+        "lastFrameError": {
+          "who": "harness:24-realm-vault",
+          "message": "[harness] 24-realm-vault: subject missing or illegible — the survivor (pixels: {\"why\":\"absent\",\"px\":0,\"need\":250,\"objs\":\"1/1\",\"need2\":0,\"sepP50\":0,\"needSep\":0.25,\"carriedPx\":0,\"lum\":0,\"bgLum\":0})",
+          "frame": -1
+        },
+        "time": 9.216666666666704
+      },
+      "result": {
+        "sealed": true,
+        "guard": true
+      },
+      "subject": {
+        "ok": false,
+        "checks": [
+          {
+            "subject": "the vault chest",
+            "kind": "pixels",
+            "ok": true,
+            "px": 1852,
+            "frac": 0.01429,
+            "lum": 34.8,
+            "bgLum": 17.1,
+            "contrast": 0.341,
+            "sep": 0.522,
+            "sepP25": 0.25,
+            "sepP50": 0.53,
+            "legible": 0.938,
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 1400,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 1737,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true
+          },
+          {
+            "subject": "the vault warden",
+            "kind": "pixels",
+            "ok": true,
+            "px": 2200,
+            "frac": 0.01698,
+            "lum": 50.3,
+            "bgLum": 9.2,
+            "contrast": 0.689,
+            "sep": 0.588,
+            "sepP25": 0.41,
+            "sepP50": 0.69,
+            "legible": 0.936,
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 700,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 2059,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true
+          },
+          {
+            "subject": "the chest is sealed",
+            "kind": "dom",
+            "ok": true,
+            "detail": null
+          },
+          {
+            "subject": "the survivor",
+            "kind": "pixels",
+            "ok": false,
+            "px": 0,
+            "frac": 0,
+            "lum": 0,
+            "bgLum": 0,
+            "contrast": 0,
+            "sep": 0,
+            "sepP25": 0,
+            "sepP50": 0,
+            "legible": 0,
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 250,
+            "minObjects": 0,
+            "present": false,
+            "carriedPx": 0,
+            "minSep": 0.25,
+            "legibleOk": false,
+            "perObjectOk": true
+          }
+        ]
+      },
+      "newErrors": [
+        "[harness] 24-realm-vault: subject missing or illegible — the survivor (pixels: {\"why\":\"absent\",\"px\":0,\"need\":250,\"objs\":\"1/1\",\"need2\":0,\"sepP50\":0,\"needSep\":0.25,\"carriedPx\":0,\"lum\":0,\"bgLum\":0})"
+      ]
+    },
+    {
+      "name": "29-ending-obliterate",
+      "doc": "The alternative ending: both presses on the Obelisk of Departure, the run committed as a deliberate end, and the existing run-summary screen. Judges that a second ending exists and routes.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\shots\\realms\\29-ending-obliterate.png",
+      "engine": {
+        "frameErrors": 2,
+        "lastFrameError": {
+          "who": "harness:24-realm-vault",
+          "message": "[harness] 24-realm-vault: subject missing or illegible — the survivor (pixels: {\"why\":\"absent\",\"px\":0,\"need\":250,\"objs\":\"1/1\",\"need2\":0,\"sepP50\":0,\"needSep\":0.25,\"carriedPx\":0,\"lum\":0,\"bgLum\":0})",
+          "frame": -1
+        },
+        "time": 9.516666666666719
+      },
+      "result": {
+        "record": {
+          "at": 1785617723075,
+          "survivorId": "ranger",
+          "difficultyId": "rainstorm",
+          "difficulty": 1.2229611111111114,
+          "stage": 2,
+          "stageName": "Drowned Aqueduct",
+          "time": 9.516666666666719,
+          "kills": 0,
+          "elites": 0,
+          "bosses": 0,
+          "damageDealt": 0,
+          "damageTaken": 0,
+          "highestHit": 0,
+          "items": 0,
+          "gold": 0,
+          "level": 1,
+          "outcome": "victory",
+          "inventory": []
+        },
+        "ending": "obliterated"
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "the run-summary screen",
+            "kind": "dom",
+            "ok": true,
+            "detail": "death"
+          },
+          {
+            "subject": "an obliterated record in the profile",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "outcome": "victory",
+              "stage": 2
+            }
+          },
+          {
+            "subject": "the ending is named",
+            "kind": "dom",
+            "ok": true,
+            "detail": "obliterated"
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "25-finale-phase1",
+      "doc": "The Herald of the Rift on the full Fracture arena. Judges the final boss silhouette at 6.8 m against a void backdrop and whether it reads as distinct from the six teleporter bosses.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\shots\\realms\\25-finale-phase1.png",
+      "engine": {
+        "frameErrors": 2,
+        "lastFrameError": {
+          "who": "harness:24-realm-vault",
+          "message": "[harness] 24-realm-vault: subject missing or illegible — the survivor (pixels: {\"why\":\"absent\",\"px\":0,\"need\":250,\"objs\":\"1/1\",\"need2\":0,\"sepP50\":0,\"needSep\":0.25,\"carriedPx\":0,\"lum\":0,\"bgLum\":0})",
+          "frame": -1
+        },
+        "time": 11.450000000000149
+      },
+      "result": {
+        "phase": 1,
+        "floor": 34
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "the Herald",
+            "kind": "pixels",
+            "ok": true,
+            "px": 2843,
+            "frac": 0.02194,
+            "lum": 65.6,
+            "bgLum": 12.8,
+            "contrast": 0.673,
+            "sep": 0.588,
+            "sepP25": 0.43,
+            "sepP50": 0.63,
+            "legible": 0.943,
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 2000,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 2681,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true
+          },
+          {
+            "subject": "phase 1 arena",
+            "kind": "dom",
+            "ok": true,
+            "detail": 34
+          },
+          {
+            "subject": "the boss bar",
+            "kind": "dom",
+            "ok": true,
+            "detail": "Herald of the Rift"
+          },
+          {
+            "subject": "the survivor",
+            "kind": "pixels",
+            "ok": true,
+            "px": 456,
+            "frac": 0.00352,
+            "lum": 90.6,
+            "bgLum": 8.3,
+            "contrast": 0.832,
+            "sep": 0.6,
+            "sepP25": 0.33,
+            "sepP50": 0.69,
+            "legible": 0.838,
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 220,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 382,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "26-finale-phase2",
+      "doc": "Phase 2: the rim has collapsed from 34 m to 22 m and three warded Rift Anchors hold the Herald immune. Judges whether the arena change is legible as a rule change rather than as scenery.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\shots\\realms\\26-finale-phase2.png",
+      "engine": {
+        "frameErrors": 3,
+        "lastFrameError": {
+          "who": "harness:26-finale-phase2",
+          "message": "[harness] 26-finale-phase2: subject missing or illegible — the rift anchors (pixels: {\"why\":\"object absent or illegible\",\"px\":2770,\"need\":600,\"objs\":\"3/3\",\"need2\":2,\"sepP50\":0.31,\"needSep\":0.25,\"carriedPx\":2612,\"perPx\":[2020,466,284],\"perSep\":[0.31,0.31,0.13],\"needPerPx\":200,\"badObjects\":[{\"i\":2,\"px\":284,\"sepP50\":0.13}],\"lum\":55.6,\"bgLum\":8.8})",
+          "frame": -1
+        },
+        "time": 15.733333333333695
+      },
+      "result": {
+        "phase": 2,
+        "floor": 22,
+        "anchors": 3
+      },
+      "subject": {
+        "ok": false,
+        "checks": [
+          {
+            "subject": "the rift anchors",
+            "kind": "pixels",
+            "ok": false,
+            "px": 2770,
+            "frac": 0.02137,
+            "lum": 55.6,
+            "bgLum": 8.8,
+            "contrast": 0.727,
+            "sep": 0.39,
+            "sepP25": 0.23,
+            "sepP50": 0.31,
+            "legible": 0.943,
+            "objects": 3,
+            "visibleObjects": 3,
+            "perPx": [
+              2020,
+              466,
+              284
+            ],
+            "perSep": [
+              0.31,
+              0.31,
+              0.13
+            ],
+            "minPx": 600,
+            "minObjects": 2,
+            "present": true,
+            "carriedPx": 2612,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "minPerPx": 200,
+            "absentObjects": [],
+            "objectFailures": [
+              {
+                "i": 2,
+                "px": 284,
+                "sepP50": 0.13
+              }
+            ],
+            "perObjectOk": false
+          },
+          {
+            "subject": "the collapsed floor",
+            "kind": "dom",
+            "ok": true,
+            "detail": 22
+          },
+          {
+            "subject": "the Herald is warded",
+            "kind": "dom",
+            "ok": true,
+            "detail": 1000000
+          },
+          {
+            "subject": "the Herald",
+            "kind": "pixels",
+            "ok": true,
+            "px": 1020,
+            "frac": 0.00787,
+            "lum": 77.8,
+            "bgLum": 16.4,
+            "contrast": 0.652,
+            "sep": 0.608,
+            "sepP25": 0.39,
+            "sepP50": 0.71,
+            "legible": 0.931,
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 600,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 950,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true
+          }
+        ]
+      },
+      "newErrors": [
+        "[harness] 26-finale-phase2: subject missing or illegible — the rift anchors (pixels: {\"why\":\"object absent or illegible\",\"px\":2770,\"need\":600,\"objs\":\"3/3\",\"need2\":2,\"sepP50\":0.31,\"needSep\":0.25,\"carriedPx\":2612,\"perPx\":[2020,466,284],\"perSep\":[0.31,0.31,0.13],\"needPerPx\":200,\"badObjects\":[{\"i\":2,\"px\":284,\"sepP50\":0.13}],\"lum\":55.6,\"bgLum\":8.8})"
+      ]
+    },
+    {
+      "name": "27-finale-phase3",
+      "doc": "Phase 3: floor reduced to a 14 m core plus three islands, healing suppressed. Judges the final shape of the arena and whether the remaining ground reads at a glance.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\shots\\realms\\27-finale-phase3.png",
+      "engine": {
+        "frameErrors": 3,
+        "lastFrameError": {
+          "who": "harness:26-finale-phase2",
+          "message": "[harness] 26-finale-phase2: subject missing or illegible — the rift anchors (pixels: {\"why\":\"object absent or illegible\",\"px\":2770,\"need\":600,\"objs\":\"3/3\",\"need2\":2,\"sepP50\":0.31,\"needSep\":0.25,\"carriedPx\":2612,\"perPx\":[2020,466,284],\"perSep\":[0.31,0.31,0.13],\"needPerPx\":200,\"badObjects\":[{\"i\":2,\"px\":284,\"sepP50\":0.13}],\"lum\":55.6,\"bgLum\":8.8})",
+          "frame": -1
+        },
+        "time": 20.966666666666757
+      },
+      "result": {
+        "phase": 3,
+        "floor": 14,
+        "platforms": 3
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "the Herald",
+            "kind": "pixels",
+            "ok": true,
+            "px": 1151,
+            "frac": 0.00888,
+            "lum": 27.5,
+            "bgLum": 10.1,
+            "contrast": 0.462,
+            "sep": 0.499,
+            "sepP25": 0.31,
+            "sepP50": 0.57,
+            "legible": 0.871,
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 600,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 1003,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true
+          },
+          {
+            "subject": "the reduced floor",
+            "kind": "dom",
+            "ok": true,
+            "detail": 14
+          },
+          {
+            "subject": "the three islands",
+            "kind": "dom",
+            "ok": true,
+            "detail": 3
+          },
+          {
+            "subject": "the ward is broken",
+            "kind": "dom",
+            "ok": true,
+            "detail": null
+          },
+          {
+            "subject": "healing suppressed",
+            "kind": "dom",
+            "ok": true,
+            "detail": null
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "28-finale-victory",
+      "doc": "The victory ending: the Herald dead, the outro run, a victory record committed to the profile and the run-summary screen up. Judges that the run has a real destination.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\shots\\realms\\28-finale-victory.png",
+      "engine": {
+        "frameErrors": 3,
+        "lastFrameError": {
+          "who": "harness:26-finale-phase2",
+          "message": "[harness] 26-finale-phase2: subject missing or illegible — the rift anchors (pixels: {\"why\":\"object absent or illegible\",\"px\":2770,\"need\":600,\"objs\":\"3/3\",\"need2\":2,\"sepP50\":0.31,\"needSep\":0.25,\"carriedPx\":2612,\"perPx\":[2020,466,284],\"perSep\":[0.31,0.31,0.13],\"needPerPx\":200,\"badObjects\":[{\"i\":2,\"px\":284,\"sepP50\":0.13}],\"lum\":55.6,\"bgLum\":8.8})",
+          "frame": -1
+        },
+        "time": 26.983333333333082
+      },
+      "result": {
+        "record": {
+          "at": 1785617744529,
+          "survivorId": "ranger",
+          "difficultyId": "rainstorm",
+          "difficulty": 1.560403055555553,
+          "stage": 3,
+          "stageName": "Pale Vault",
+          "time": 26.983333333333082,
+          "kills": 4,
+          "elites": 3,
+          "bosses": 1,
+          "damageDealt": 7020,
+          "damageTaken": 0,
+          "highestHit": 7020,
+          "items": 0,
+          "gold": 4,
+          "level": 7,
+          "outcome": "victory",
+          "inventory": []
+        },
+        "ending": "victory"
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "the run-summary screen",
+            "kind": "dom",
+            "ok": true,
+            "detail": "death"
+          },
+          {
+            "subject": "a victory record in the profile",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "outcome": "victory",
+              "stage": 3,
+              "time": 27
+            }
+          },
+          {
+            "subject": "the ending is named",
+            "kind": "dom",
+            "ok": true,
+            "detail": "victory"
+          }
+        ]
+      },
+      "newErrors": []
+    }
+  ],
+  "errors": [
+    "[harness] 23-realm-crucible: subject missing or illegible — the trial wave (pixels: {\"why\":\"object absent or illegible\",\"px\":1601,\"need\":420,\"objs\":\"3/3\",\"need2\":2,\"sepP50\":0.71,\"needSep\":0.25,\"carriedPx\":1601,\"perPx\":[995,84,522],\"perSep\":[0.61,0.75,0.83],\"needPerPx\":140,\"badObjects\":[{\"i\":1,\"px\":84,\"sepP50\":0.75}],\"lum\":42.6,\"bgLum\":2.4})",
+    "[harness] 24-realm-vault: subject missing or illegible — the survivor (pixels: {\"why\":\"absent\",\"px\":0,\"need\":250,\"objs\":\"1/1\",\"need2\":0,\"sepP50\":0,\"needSep\":0.25,\"carriedPx\":0,\"lum\":0,\"bgLum\":0})",
+    "[harness] 26-finale-phase2: subject missing or illegible — the rift anchors (pixels: {\"why\":\"object absent or illegible\",\"px\":2770,\"need\":600,\"objs\":\"3/3\",\"need2\":2,\"sepP50\":0.31,\"needSep\":0.25,\"carriedPx\":2612,\"perPx\":[2020,466,284],\"perSep\":[0.31,0.31,0.13],\"needPerPx\":200,\"badObjects\":[{\"i\":2,\"px\":284,\"sepP50\":0.13}],\"lum\":55.6,\"bgLum\":8.8})"
+  ],
+  "subjectFailures": [
+    {
+      "name": "23-realm-crucible",
+      "failed": [
+        "the trial wave"
+      ],
+      "detail": [
+        {
+          "subject": "the trial wave",
+          "kind": "pixels",
+          "ok": false,
+          "px": 1601,
+          "frac": 0.01235,
+          "lum": 42.6,
+          "bgLum": 2.4,
+          "contrast": 0.894,
+          "sep": 0.703,
+          "sepP25": 0.57,
+          "sepP50": 0.71,
+          "legible": 1,
+          "objects": 3,
+          "visibleObjects": 3,
+          "perPx": [
+            995,
+            84,
+            522
+          ],
+          "perSep": [
+            0.61,
+            0.75,
+            0.83
+          ],
+          "minPx": 420,
+          "minObjects": 2,
+          "present": true,
+          "carriedPx": 1601,
+          "minSep": 0.25,
+          "legibleOk": true,
+          "minPerPx": 140,
+          "absentObjects": [],
+          "objectFailures": [
+            {
+              "i": 1,
+              "px": 84,
+              "sepP50": 0.75
+            }
+          ],
+          "perObjectOk": false
+        }
+      ]
+    },
+    {
+      "name": "24-realm-vault",
+      "failed": [
+        "the survivor"
+      ],
+      "detail": [
+        {
+          "subject": "the survivor",
+          "kind": "pixels",
+          "ok": false,
+          "px": 0,
+          "frac": 0,
+          "lum": 0,
+          "bgLum": 0,
+          "contrast": 0,
+          "sep": 0,
+          "sepP25": 0,
+          "sepP50": 0,
+          "legible": 0,
+          "objects": 1,
+          "visibleObjects": 1,
+          "minPx": 250,
+          "minObjects": 0,
+          "present": false,
+          "carriedPx": 0,
+          "minSep": 0.25,
+          "legibleOk": false,
+          "perObjectOk": true
+        }
+      ]
+    },
+    {
+      "name": "26-finale-phase2",
+      "failed": [
+        "the rift anchors"
+      ],
+      "detail": [
+        {
+          "subject": "the rift anchors",
+          "kind": "pixels",
+          "ok": false,
+          "px": 2770,
+          "frac": 0.02137,
+          "lum": 55.6,
+          "bgLum": 8.8,
+          "contrast": 0.727,
+          "sep": 0.39,
+          "sepP25": 0.23,
+          "sepP50": 0.31,
+          "legible": 0.943,
+          "objects": 3,
+          "visibleObjects": 3,
+          "perPx": [
+            2020,
+            466,
+            284
+          ],
+          "perSep": [
+            0.31,
+            0.31,
+            0.13
+          ],
+          "minPx": 600,
+          "minObjects": 2,
+          "present": true,
+          "carriedPx": 2612,
+          "minSep": 0.25,
+          "legibleOk": true,
+          "minPerPx": 200,
+          "absentObjects": [],
+          "objectFailures": [
+            {
+              "i": 2,
+              "px": 284,
+              "sepP50": 0.13
+            }
+          ],
+          "perObjectOk": false
+        }
+      ]
+    }
+  ],
+  "subjectsOk": false,
+  "perf": {
+    "programs": 95,
+    "geometries": 374,
+    "textures": 53,
+    "sceneObjects": 392
+  }
+}

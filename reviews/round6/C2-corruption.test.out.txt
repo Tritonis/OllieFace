@@ -1,0 +1,110 @@
+
+[1] catalogue
+  PASS  9 corrupted items (8-10)
+  PASS  the tier exists in TIERS
+  PASS  blight carries no generic ladder weight  (0 vs 0)
+  PASS  every card lands in the blight pool  (9 vs 9)
+  PASS  one card per base — no base corrupted twice
+  PASS  every item id in the game is still unique
+  PASS  "spasm-gland" is stable kebab-case
+  PASS  "spasm-gland" has name/glyph/flavour/description
+  PASS  "spasm-gland" corrupts a real ordinary item ("syringe")
+  PASS  "spasm-gland" names the item it consumes in its own description
+  PASS  "spasm-gland" actually does something
+  PASS  "bloat-cyst" is stable kebab-case
+  PASS  "bloat-cyst" has name/glyph/flavour/description
+  PASS  "bloat-cyst" corrupts a real ordinary item ("steak")
+  PASS  "bloat-cyst" names the item it consumes in its own description
+  PASS  "bloat-cyst" actually does something
+  PASS  "clouded-eye" is stable kebab-case
+  PASS  "clouded-eye" has name/glyph/flavour/description
+  PASS  "clouded-eye" corrupts a real ordinary item ("glasses")
+  PASS  "clouded-eye" names the item it consumes in its own description
+  PASS  "clouded-eye" actually does something
+  PASS  "slag-ingot" is stable kebab-case
+  PASS  "slag-ingot" has name/glyph/flavour/description
+  PASS  "slag-ingot" corrupts a real ordinary item ("armor-plate")
+  PASS  "slag-ingot" names the item it consumes in its own description
+  PASS  "slag-ingot" actually does something
+  PASS  "arc-rot" is stable kebab-case
+  PASS  "arc-rot" has name/glyph/flavour/description
+  PASS  "arc-rot" corrupts a real ordinary item ("ukulele")
+  PASS  "arc-rot" names the item it consumes in its own description
+  PASS  "arc-rot" actually does something
+  PASS  "bile-shell" is stable kebab-case
+  PASS  "bile-shell" has name/glyph/flavour/description
+  PASS  "bile-shell" corrupts a real ordinary item ("atg")
+  PASS  "bile-shell" names the item it consumes in its own description
+  PASS  "bile-shell" actually does something
+  PASS  "gristle-sickle" is stable kebab-case
+  PASS  "gristle-sickle" has name/glyph/flavour/description
+  PASS  "gristle-sickle" corrupts a real ordinary item ("harvesters-scythe")
+  PASS  "gristle-sickle" names the item it consumes in its own description
+  PASS  "gristle-sickle" actually does something
+  PASS  "rupture-gall" is stable kebab-case
+  PASS  "rupture-gall" has name/glyph/flavour/description
+  PASS  "rupture-gall" corrupts a real ordinary item ("behemoth")
+  PASS  "rupture-gall" names the item it consumes in its own description
+  PASS  "rupture-gall" actually does something
+  PASS  "loaded-knucklebone" is stable kebab-case
+  PASS  "loaded-knucklebone" has name/glyph/flavour/description
+  PASS  "loaded-knucklebone" corrupts a real ordinary item ("clover")
+  PASS  "loaded-knucklebone" names the item it consumes in its own description
+  PASS  "loaded-knucklebone" actually does something
+  PASS  every card has its own glyph
+  PASS  no card reuses an existing item glyph
+  PASS  nothing in the tier says "void"
+  PASS  nothing in the tier says "needle tick"
+  PASS  nothing in the tier says "safer spaces"
+  PASS  nothing in the tier says "newly hatched zoea"
+  PASS  nothing in the tier says "weeping fungus"
+  PASS  nothing in the tier says "benthic bloom"
+  PASS  nothing in the tier says "lost seer's lenses"
+  PASS  nothing in the tier says "plasma shrimp"
+  PASS  nothing in the tier says "singularity band"
+  PASS  nothing in the tier says "tentabauble"
+  PASS  nothing in the tier says "polylute"
+  PASS  nothing in the tier says "voidsent flame"
+
+[2] balance — every card pays for itself
+  PASS  "spasm-gland" is worse than "syringe" on at least one axis
+  PASS  "bloat-cyst" is worse than "steak" on at least one axis
+  PASS  "clouded-eye" is worse than "glasses" on at least one axis
+  PASS  "slag-ingot" is worse than "armor-plate" on at least one axis
+  PASS  "arc-rot" is worse than "ukulele" on at least one axis
+  PASS  "bile-shell" is worse than "atg" on at least one axis
+  PASS  "gristle-sickle" is worse than "harvesters-scythe" on at least one axis
+  PASS  "rupture-gall" is worse than "behemoth" on at least one axis
+  PASS  "loaded-knucklebone" is worse than "clover" on at least one axis
+  PASS  every card states a drawback in its own description
+
+[3] transform — both directions land in the same place
+  PASS  base stacks up normally before any corruption is held  (3 vs 3)
+  PASS  base -> corruption on pickup  ([0,4] vs [0,4])
+  PASS  the consumed id is deleted, not left at zero
+  PASS  corruption -> base converts on arrival  ([0,4] vs [0,4])
+  PASS  a second corrupted copy just adds a stack  ([0,4] vs [0,4])
+  PASS  a later base pickup still converts  ([0,9] vs [0,9])
+  PASS  settling again is a no-op  ({"spasm-gland":9} vs {"spasm-gland":9})
+  PASS  200 random pickup orders of all 9 pairs reach one identical inventory
+  PASS  and that inventory holds only the corrupted cards
+  PASS  the resulting stat block is identical under both orders  ("{\"maxHealth\":83.33333333333334,\"healthRegen\":0,\"moveSpeed\":3.8888888888888893,\"attackSpeed\":2.04,\"damage\":6.666666666666667,\"critChance\":0.44999999999999996,\"critMult\":1.4545454545454546,\"armor\":-196,\"cooldownMult\":1,\"jumpCount\":1,\"blockChance\":0,\"flatReduction\":52,\"extraCharges\":0,\"luck\":8,\"procBonus\":0,\"equipCooldownMult\":1,\"equipCharges\":0,\"noDefensive\":false,\"noRegen\":true,\"damageMult\":0.5555555555555556,\"healthMult\":0.2604166666666667,\"critEdge\":0.45454545454545453}" vs "{\"maxHealth\":83.33333333333334,\"healthRegen\":0,\"moveSpeed\":3.8888888888888893,\"attackSpeed\":2.04,\"damage\":6.666666666666667,\"critChance\":0.44999999999999996,\"critMult\":1.4545454545454546,\"armor\":-196,\"cooldownMult\":1,\"jumpCount\":1,\"blockChance\":0,\"flatReduction\":52,\"extraCharges\":0,\"luck\":8,\"procBonus\":0,\"equipCooldownMult\":1,\"equipCharges\":0,\"noDefensive\":false,\"noRegen\":true,\"damageMult\":0.5555555555555556,\"healthMult\":0.2604166666666667,\"critEdge\":0.45454545454545453}")
+  PASS  client adopts the host total  (4 vs 4)
+  PASS  a zero from the host removes the entry rather than storing a 0
+  PASS  a client never transforms anything locally  (0 vs 0)
+
+[4] drop rates — measured, not asserted
+  PASS  small chest  (object bias): blight 3.98% (target 4.00%)
+  PASS  large chest  (object bias): blight 3.98% (target 4.00%)
+  PASS  red chest    (object bias): blight 3.98% (target 4.00%)
+  PASS  named "small": blight 3.98% (target 4.00%)
+  PASS  named "large": blight 3.98% (target 4.00%)
+  PASS  named "legendary": blight 3.98% (target 4.00%)
+  PASS  named "boss": blight 0.00% — single-source pools stay clean
+  PASS  named "lunar": blight 0.00% — single-source pools stay clean
+  PASS  DROP_TABLES.blight exists for a deliberate hand-out
+  PASS  rollTier still advances the RNG by exactly one draw  (1892583 vs 1892583)
+  PASS  rollItem returns real corrupted ids off a small chest (211 of 5000)
+
+OK — 99 passed, 0 failed
+

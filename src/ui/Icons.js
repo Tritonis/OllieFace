@@ -33,10 +33,17 @@ export const TIERS = {
   legendary: { label: 'Legendary', color: '#ff5b45', dim: '#8a2b20', plate: '#26120f' },
   boss:      { label: 'Boss',      color: '#ffd44f', dim: '#94742a', plate: '#241d0c' },
   lunar:     { label: 'Lunar',     color: '#5fd9f7', dim: '#2b7d92', plate: '#0e2029' },
+  // Blight is the one tier drawn inverted (see `itemArt`), so it is also the one
+  // tier whose `color` has to work as a *field* rather than as a stroke: a
+  // magenta at this luminance carries a dark glyph at 33px and is the only hue
+  // left that no other tier is using — the six above occupy white, green, red,
+  // yellow, cyan and orange, and a seventh plate that reads as "a slightly
+  // different green" would be worse than no colour at all.
+  blight:    { label: 'Blight',    color: '#e05aa8', dim: '#7d2a5f', plate: '#26101c' },
   equipment: { label: 'Equipment', color: '#ff9a3c', dim: '#94551c', plate: '#26160b' },
 };
 
-export const TIER_ORDER = ['common', 'uncommon', 'legendary', 'boss', 'lunar', 'equipment'];
+export const TIER_ORDER = ['common', 'uncommon', 'legendary', 'boss', 'lunar', 'blight', 'equipment'];
 
 export function tierMeta(tier) {
   return TIERS[tier] || TIERS.common;
@@ -523,6 +530,7 @@ export function itemArt(id, tier = 'common') {
   const resolved = item.tier || tier;
   const t = tierMeta(resolved);
   return cached(`art:${id}:${resolved}`, (g, s) => {
+    if (resolved === 'blight') { drawInverted(g, s, t, item); return; }
     g.save();
     platePath(g, s, 2, s * PLATE_CUT);
     g.clip();
@@ -551,6 +559,73 @@ export function itemArt(id, tier = 'common') {
 
     plateEdge(g, s, t);
   });
+}
+
+/**
+ * The corruption tile: the same plate, the same glyph, figure and ground
+ * exchanged.
+ *
+ * Every other tile in the build is a bright silhouette on a near-black plate,
+ * and the tier is carried by the hue of that silhouette plus a 3px keyline.
+ * A corrupted item has to be findable in a strip of eighty tiles *without*
+ * adding anything to the strip — `10-inventory` is the worst-scoring shot in the
+ * project and it is already dense — so this tier changes no elements at all and
+ * inverts the two it has: the plate takes the tier colour as a solid field and
+ * the glyph is punched out of it in the plate's own black. Nothing is added, no
+ * badge, no overlay, no second frame; the tiles read as holes in the row because
+ * they are the photographic negative of every tile beside them.
+ *
+ * Done with compositing rather than by re-colouring the glyph because
+ * `drawGlyph` picks its own fills and strokes: the glyph is drawn first onto an
+ * empty plate, `source-in` floods the pixels it *did* mark with black, and
+ * `destination-over` then paints the field in behind everything it did not.
+ * That works for all 90-odd glyphs without any of them knowing about the tier.
+ */
+function drawInverted(g, s, t, item) {
+  g.save();
+  platePath(g, s, 2, s * PLATE_CUT);
+  g.clip();
+
+  g.save();
+  g.translate(s / 2, s * ART_CENTRE_Y);
+  g.strokeStyle = '#ffffff';
+  g.lineWidth = Math.max(1.5, s * 0.055);
+  g.lineJoin = 'round';
+  g.lineCap = 'round';
+  drawGlyph(g, item.glyph, s * ART_RADIUS, 0);
+  g.restore();
+
+  // Everything the glyph marked becomes the plate's black...
+  g.globalCompositeOperation = 'source-in';
+  g.fillStyle = '#05070a';
+  g.fillRect(0, 0, s, s);
+
+  // ...and everything it did not becomes the tier field. Slightly hotter at the
+  // top so the tile still has the same lighting direction as its neighbours and
+  // does not read as a flat sticker among lit plates.
+  g.globalCompositeOperation = 'destination-over';
+  const grad = g.createLinearGradient(0, 0, 0, s);
+  grad.addColorStop(0, mix(t.color, '#ffffff', 0.10));
+  grad.addColorStop(1, mix(t.color, t.plate, 0.45));
+  g.fillStyle = grad;
+  g.fillRect(0, 0, s, s);
+
+  g.globalCompositeOperation = 'source-over';
+  g.restore();
+
+  // The keyline is the plate's black here rather than the tier colour, which
+  // would be invisible against a field of itself.
+  const cut = s * PLATE_CUT;
+  g.lineWidth = s * 0.045;
+  g.strokeStyle = '#05070a';
+  platePath(g, s, 2, cut);
+  g.stroke();
+  g.strokeStyle = hexA('#05070a', 0.55);
+  g.lineWidth = s * 0.03;
+  g.beginPath();
+  g.moveTo(s * 0.08, s * 0.32); g.lineTo(s * 0.08, s * 0.2);
+  g.moveTo(s * 0.92, s * 0.68); g.lineTo(s * 0.92, s * 0.8);
+  g.stroke();
 }
 
 // --------------------------------------------------------------- rule marks

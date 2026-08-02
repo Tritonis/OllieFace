@@ -533,6 +533,46 @@ export class VFX {
     this.rings.spawn(pos, axis, colour, r * 0.35, r * 2.6, 0.45, 0.95);
     this.rings.spawn(pos, axis, 0xffd2a0, r * 0.2, r * 1.5, 0.28, 0.7);
 
+    // 3b. Fireball rim — a camera-facing sharp ring at the fireball's own edge.
+    //
+    // The ground-plane rings above are world-space discs: whatever `_ringAxis`
+    // does they project to an *ellipse*, so they put an edge on two sides of the
+    // fireball and nothing on the other two, and a radial profile about the
+    // blast centre averages that away to almost nothing. Measured on
+    // `reviews/round6/base/08-explosion.png` about the blast centre (568, 306):
+    // the largest luminance step anywhere in the falloff is 8.1 L, in 4 px
+    // annuli — the round-3 critique's "there is no edge anywhere on this object"
+    // in a frame that had already had the clipping taken out of it. A blast can
+    // stop being a plateau (clipping fixed) and still be a pure gaussian.
+    //
+    // A billboard is concentric with the fireball in *screen* space by
+    // construction, on every side, from every camera. `FRAME.SHOCK` carries its
+    // alpha from 0.05 at 0.82 of the tile radius to 1.0 at 0.93 and back to 0 at
+    // 1.0, which is roughly a 6 px-wide bright rim at this blast's on-screen
+    // size — an edge the eye can find the fireball's boundary with.
+    //
+    // Sized so the rim lands on the fireball's own boundary rather than out with
+    // the shockwave: the bright band sits at 0.93 of the half-size, so a size of
+    // ~2.15 * r puts it at world radius r. It starts inside and expands through
+    // it, so across the shot's whole shutter window the rim is sweeping the
+    // fireball's surface. `alpha0` is deliberately low — the rim is landing on
+    // the falloff shoulder at ~L 185, not on the core, and its job is to add a
+    // step there, not luminance. Additive so it reads as burning gas, and
+    // `soft` fades it where it intersects terrain so it cannot draw a hard arc
+    // across the ground.
+    e = this._ep();
+    e.count = 1; e.position.copy(pos);
+    e.life = 0.4; e.lifeVar = 0;
+    e.size0 = r * 1.5; e.size1 = r * 3.0;
+    e.color0.set(0xffd9a0); e.color1.set(colour);
+    // 0.42, not 0.5: at 0.5 the rim's own contribution put the R channel back
+    // over clip on 0.84% of the core (`reviews/round6/vfx/08-explosion.png` at
+    // that value), and re-clipping the core to buy an edge would be trading one
+    // half of this defect for the other.
+    e.alpha0 = 0.42; e.frame = FRAME.SHOCK; e.alphaPow = 1.1;
+    e.fadeIn = 0.004; e.soft = 1.0;
+    this.particles.emit(e);
+
     // 4. Debris chunks, gravity-bound and spinning.
     e = this._ep();
     e.count = 20; e.position.copy(pos); e.shell = r * 0.25;

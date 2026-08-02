@@ -313,7 +313,14 @@ export function installRealmHarness(ctx) {
       const c = ctx.realms.active.controller;
       await wait(40);
       const o2 = ctx.stage.origin;
-      placePlayer(-Math.PI / 2, 19);
+      // The survivor was at radius 19 on the camera's own bearing, with the
+      // lens at 20.5 — a metre and a half behind it and above its head, which
+      // is why the round-6 baseline certified this frame with the survivor at
+      // *zero* pixels. There is no sense of scale in a treasury shot without a
+      // person in it: the chest is only "enormous" against something. Brought
+      // in to mid-room and swung a third of a radian off the camera line, so it
+      // stands between the lens and the dais without covering the chest.
+      placePlayer(-Math.PI / 2 + 0.33, 11, Math.PI / 2);
       look(o2.x + 3.5, 4.4, o2.z - 20.5, o2.x, 3.2, o2.z);
       await wait(settleFrames);
       freeze();

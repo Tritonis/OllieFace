@@ -545,30 +545,118 @@ export function installHarness(ctx) {
   /**
    * A deterministic set of ground points, laid out in *screen* space.
    *
-   * `i` indexes a jittered grid across the frame's safe area, back rank first,
-   * skipping any cell that lands on the survivor's own silhouette. Every point
-   * comes back from `groundAtScreen`, so each one is on screen and unoccluded
-   * by construction; cells that see only sky, a prop, or ground outside
-   * [minDist, maxDist] are simply skipped and the next cell is tried.
+   * Columns are a jittered fan across the frame's safe area, skipping any cell
+   * that lands on the survivor's own silhouette. Every point comes back from
+   * `groundAtScreen`, so each one is on screen and unoccluded by construction.
+   *
+   * Rows are **solved for a distance**, not read off a fixed screen height, and
+   * that is the whole of this function's history. The five rows used to sit at
+   * `sy = 0.40 + row * 0.085` — a band chosen against a camera standing well
+   * above its terrain. On the flat arena `04-combat` now shoots on, the lens is
+   * 1.8 m above the ground plane and the horizon lands at `sy ≈ 0.38`: row 0 saw
+   * only ground past 46 m, rows 2-4 saw ground inside 10 m, and *one* of the
+   * five rows fell inside a 13-46 m band. Nine slots for a twenty-four strong
+   * horde. Everything downstream then looked like its own bug — `spawnRing`
+   * dropped fifteen monsters onto its blind fallback arc, one of which came back
+   * at world y 2.4 against a survivor at 19.5 (measured,
+   * `reviews/round6/diag-combat7.json`, object 23 at 0 px), and `declutter` had
+   * nothing to re-seat with, so it left the hulk out at 32.4 m with sepP50 0.21
+   * after being asked for 30.
+   *
+   * So each column solves for the two screen heights that bracket the wanted
+   * depth band — `sy` at `maxDist` and `sy` at `minDist` — and its rows are
+   * spread evenly between them. The grid then covers the whole of the usable
+   * band and nothing else, at whatever camera height, and the supply is the
+   * grid's size rather than an accident of pitch. Targeting fixed *distances*
+   * instead was tried and is worse for the same reason the fixed heights were:
+   * from a low lens, 46 m and 15 m are four hundredths of frame height apart,
+   * so geometric depth targets pile four of the five rows into one band and the
+   * de-dup below throws them away — seventeen slots survived of a possible
+   * sixty-five.
    */
-  const screenSlots = (count, { minDist = 11, maxDist = 46, avoidPlayer = 0.075 } = {}) => {
+  const _slotRow = (sx, target, hardMax) => {
+    // Lower in frame is nearer, monotonically, for any lens looking downhill —
+    // so bisect. A ray that hits nothing (sky, or past the world) reads as
+    // "further than anything", which is the same branch as too far.
+    let lo = 0.30, hi = 0.97, got = null;
+    for (let i = 0; i < 13; i++) {
+      const sy = (lo + hi) * 0.5;
+      const g = groundAtScreen(sx, sy, { minDist: 1, maxDist: hardMax });
+      if (!g) { lo = sy; continue; }
+      const d = Math.hypot(g.x - camera.position.x, g.z - camera.position.z);
+      if (!got || Math.abs(d - target) < Math.abs(got.d - target)) got = { g, d, sy };
+      if (d > target) lo = sy; else hi = sy;
+    }
+    return got;
+  };
+
+  /* Screen distance with the frame's aspect divided out, so "0.05 apart" means
+   * the same number of metres whether two things are side by side or one above
+   * the other. Comparing raw (x, y) fractions on a 16:9 frame counts a vertical
+   * gap as nearly twice the horizontal one it actually is. */
+  const _aspect = () => camera.aspect || (16 / 9);
+  const screenGap = (ax, ay, bx, by) => Math.hypot(ax - bx, (ay - by) / _aspect());
+  /* Half the width a body of world radius `r` covers at distance `d`, as a
+   * fraction of frame width. The frame is `2 d tan(hHalf)` metres wide there. */
+  const screenHalf = (r, d) => {
+    const tanH = Math.tan(camera.fov * Math.PI / 360) * _aspect();
+    return (r + 0.3) / Math.max(1e-3, 2 * Math.max(1, d) * tanH);
+  };
+
+  const screenSlots = (count, { minDist = 11, maxDist = 46, avoidPlayer = 0.075, avoid = [] } = {}) => {
     camera.updateMatrixWorld(true);
     const pp = playerPos();
     const ps = screenOf(pp.x, pp.y + 1.0, pp.z);
     const out = [];
-    const COLS = 9, ROWS = 5;
-    // Back rank (higher in frame) first so the nearest bodies are the last to be
-    // placed and the first to be dropped when the grid runs out.
+    const used = [];
+    /* Thirteen columns, not nine, and the reason is the same low lens that made
+     * the rows need solving. On flat ground with the eye 1.8 m up, a rank at
+     * 46 m and a rank at 15 m are four hundredths of frame height apart — every
+     * row lands in the same narrow band under the horizon, and the de-dup below
+     * (correctly) throws the collisions away. Measured with the five solved rows
+     * and nine columns: fifteen slots survived for a twenty-four strong horde,
+     * and the nine monsters left over went to `spawnRing`'s blind arc.
+     *
+     * Depth cannot buy screen separation from a low lens; width can. The fan is
+     * widened rather than the de-dup relaxed, because relaxing it is just the
+     * crowding bug again with a different constant. */
+    const COLS = 13, ROWS = 4;
+    const hardMax = maxDist * 4 + 40;
+    // Per column, because the band's screen height depends on what the ground
+    // under that column does — a column looking up a rise reaches `maxDist`
+    // much lower in frame than one looking across the flat.
+    const band = [];
+    for (let c = 0; c < COLS; c++) {
+      const k = c % 2 ? (COLS - 1) / 2 + Math.ceil(c / 2) : (COLS - 1) / 2 - Math.ceil(c / 2);
+      const sx = 0.07 + (k / (COLS - 1)) * 0.86;
+      const far = _slotRow(sx, maxDist, hardMax);
+      const near = _slotRow(sx, minDist, hardMax);
+      if (far && near && near.sy > far.sy + 0.01) band.push({ sx, far: far.sy, near: near.sy });
+    }
+    // Back rank (further away, higher in frame) first so the nearest bodies are
+    // the last to be placed and the first to be dropped when the grid runs out.
     for (let row = 0; row < ROWS && out.length < count; row++) {
-      const sy = 0.40 + row * 0.085;
-      for (let c = 0; c < COLS && out.length < count; c++) {
-        // Alternate outward from the centre: a partially-filled grid then reads
-        // as a horde around the crosshair rather than as a column on one edge.
-        const k = c % 2 ? (COLS - 1) / 2 + Math.ceil(c / 2) : (COLS - 1) / 2 - Math.ceil(c / 2);
-        const sx = 0.10 + (k / (COLS - 1)) * 0.80 + ((row % 2) ? 0.045 : 0);
-        if (ps.front > 0 && Math.hypot(sx - ps.x, sy - ps.y) < avoidPlayer) continue;
+      const t = ROWS === 1 ? 0.5 : row / (ROWS - 1);
+      for (let ci = 0; ci < band.length && out.length < count; ci++) {
+        const col = band[ci];
+        const sx = col.sx + ((row % 2) ? 0.033 : 0);
+        const sy = col.far + (col.near - col.far) * t;
         const g = groundAtScreen(sx, sy, { minDist, maxDist });
-        if (g) out.push(g);
+        if (!g) continue;
+        const r = { g, sy, d: Math.hypot(g.x - camera.position.x, g.z - camera.position.z) };
+        if (ps.front > 0 && Math.hypot(sx - ps.x, r.sy - ps.y) < avoidPlayer) continue;
+        // Cells already spoken for by a body the caller is *not* moving. Without
+        // this the grid happily re-seats a monster on top of one that was left
+        // alone, and the mask pass then measures the one behind at a couple of
+        // pixels — see the crowding pass in `declutter`.
+        if (avoid.some((a) => screenGap(sx, r.sy, a.x, a.y) < a.r)) continue;
+        // Two rows whose requested distances the terrain cannot tell apart
+        // bisect to the same `sy`, and two bodies on one point is the crowding
+        // this grid exists to prevent. Emitted slots stand off each other by
+        // construction; the row is simply short when the ground cannot hold it.
+        if (used.some((u) => screenGap(sx, r.sy, u.x, u.y) < 0.05)) continue;
+        used.push({ x: sx, y: r.sy });
+        out.push(r.g);
       }
     }
     return out;
@@ -591,14 +679,33 @@ export function installHarness(ctx) {
       const def = cards[i % cards.length];
       let at = slots[i];
       if (!at) {
-        // Nothing in the frame could hold this one — a lens over water, a wall
-        // of rock. Fall back to the old world-space arc so the scenario still
-        // has bodies to work with; the subject assertion below is what decides
-        // whether the shot is usable.
+        /* Nothing in the frame could hold this one — a lens over water, a wall
+         * of rock, or simply more monsters than the grid has cells. Fall back to
+         * a world-space arc so the scenario still has bodies to work with; the
+         * subject assertion below is what decides whether the shot is usable.
+         *
+         * The arc used to be one `sampleHeight` call and nothing else, which is
+         * how `04-combat` shipped a charger standing at world y 2.4 with the
+         * survivor at 19.5 — seventeen metres down the slope off the edge of the
+         * arena, at screen y 1.07, contributing 0 px (measured,
+         * `reviews/round6/diag-combat8.json`, object 23). A fallback is allowed
+         * to be worse than the search; it is not allowed to be off a cliff. So
+         * the radius is walked in and out until the ground under it is ground the
+         * survivor is standing on the same shelf as, and the last resort is the
+         * survivor's own footing rather than wherever the first sample landed.
+         */
         const a = base + ((i / Math.max(1, count - 1)) - 0.5) * 1.6;
-        const r = radiusBase + (i % 4) * 4;
-        const x = p.x + Math.sin(a) * r, z = p.z + Math.cos(a) * r;
-        at = new THREE.Vector3(x, groundY(x, z, p.y), z);
+        const r0 = radiusBase + (i % 4) * 4;
+        for (const r of [r0, r0 - 3, r0 + 3, r0 - 6, r0 + 6, r0 - 9]) {
+          if (r < 4) continue;
+          const x = p.x + Math.sin(a) * r, z = p.z + Math.cos(a) * r;
+          const y = groundY(x, z, p.y);
+          if (Math.abs(y - p.y) > 3) continue;
+          if (ctx.stage?.isWalkable && !ctx.stage.isWalkable(x, z)) continue;
+          at = new THREE.Vector3(x, y, z);
+          break;
+        }
+        if (!at) at = new THREE.Vector3(p.x + Math.sin(a) * 6, p.y, p.z + Math.cos(a) * 6);
       }
       const affix = eliteEvery && i % eliteEvery === 0
         ? ELITE_AFFIXES[(i / eliteEvery | 0) % ELITE_AFFIXES.length]
@@ -629,23 +736,74 @@ export function installHarness(ctx) {
     e.velocity?.set?.(0, 0, 0);
   };
 
-  const declutter = (minDist = 12, { keep = null, maxDist = null } = {}) => {
-    const list = (ctx.director?.enemies ?? []).filter((e) => e?.alive && e.position && e !== keep);
+  /* Run to convergence, not once, and never move the same body twice.
+   *
+   * One pass re-seats everything that failed, but a pass can only fit as many
+   * bodies as the grid has cells left, so leftovers stay where they are. A
+   * second pass has the rest of the grid to use — but it must not reconsider the
+   * bodies the first pass just placed, or two passes fight over the same cells
+   * and the frame comes back worse than one pass left it (measured: five failing
+   * objects against one, on `04-combat`). So every body this has already seated
+   * is carried forward as an *obstacle*: excluded from the candidates, included
+   * in the crowding list. Each pass therefore strictly reduces the number of
+   * unplaced bodies, and terminates when a pass moves none. */
+  const declutter = (minDist = 12, opts = {}) => {
+    const seated = new Set();
+    let moved = 0;
+    for (let i = 0; i < (opts.passes ?? 2); i++) {
+      const n = _declutterPass(minDist, { ...opts, seated });
+      moved += n;
+      if (!n) break;
+    }
+    return moved;
+  };
+
+  const _declutterPass = (minDist = 12, { keep = null, maxDist = null, seated = null } = {}) => {
+    const list = (ctx.director?.enemies ?? [])
+      .filter((e) => e?.alive && e.position && e !== keep && !seated?.has(e));
     const cam = camera.position;
     camera.updateMatrixWorld(true);
     const pp = playerPos();
     const ps = screenOf(pp.x, pp.y + 1.0, pp.z);
     const far = maxDist ?? (minDist + 34);
 
+    /* `keep` is exempt from being *moved*, not from being *stood in front of*.
+     *
+     * It was filtered out of the list above and therefore out of everything
+     * below, so nothing knew it was there and the grid was free to re-seat a
+     * monster on the exact screen position of the one body the caller had pinned.
+     * `04-combat` pins its damage-number target and photographed it at 7 px of a
+     * required 113 for exactly this reason (measured,
+     * `reviews/round6/diag-combat11.json`, object 16). It seeds the crowding
+     * list instead: first, so it wins every pair it is in. */
+    const kept0 = [];
+    const asObstacle = (e) => {
+      if (!e?.position) return;
+      const kd = Math.hypot(e.position.x - cam.x, e.position.z - cam.z);
+      const ks = screenOf(e.position.x, e.position.y + (e.def?.height ?? 2) * 0.5, e.position.z);
+      if (ks.front > 0) kept0.push({ x: ks.x, y: ks.y, half: screenHalf(e.def?.radius ?? 0.5, kd) });
+    };
+    asObstacle(keep);
+    // Bodies an earlier pass already seated. Same treatment as `keep`, and for
+    // the same reason: this pass may not move them, so it has to see them.
+    if (seated) for (const e of seated) asObstacle(e);
+
     // Which ones are actually photographable where they stand. Distance and
     // screen overlap were the only two questions this used to ask, and a body
     // that satisfied both from behind a ridge still contributed nothing — 23 of
     // `04-combat`'s 24 monsters were in that state.
-    const bad = [];
-    for (const e of list) {
-      const h = e.def?.height ?? 2;
+    //
+    // Nearest first, because the third question below is about pairs and the
+    // near body is the one that wins the pixels.
+    const ranked = list.map((e) => {
       const dx = e.position.x - cam.x, dz = e.position.z - cam.z;
-      const d = Math.hypot(dx, dz);
+      return { e, d: Math.hypot(dx, dz) };
+    }).sort((a, b) => a.d - b.d);
+
+    const bad = [];
+    const kept = kept0;
+    for (const { e, d } of ranked) {
+      const h = e.def?.height ?? 2;
       const es = screenOf(e.position.x, e.position.y + h * 0.5, e.position.z);
       const merged = es.front > 0 && Math.hypot(es.x - ps.x, es.y - ps.y) < 0.09;
       const framed = es.front > 0 && es.x > 0.03 && es.x < 0.97 && es.y > 0.03 && es.y < 0.97;
@@ -653,18 +811,52 @@ export function installHarness(ctx) {
         cam, _cc.set(e.position.x, e.position.y, e.position.z),
         { height: h, radius: (e.def?.radius ?? 0.5) + 0.2, cols: 3, rows: 3, slack: 0.3 },
       ) >= 0.6;
-      if (d >= minDist && d <= far && !merged && seen) continue;
+      /* And the third question, which nothing was asking: is anything else
+       * already standing there.
+       *
+       * Terrain is not the only thing that can occlude a monster — the horde
+       * occludes itself, and the per-object mask measures *marginal*
+       * contribution, so a body directly behind another body renders the pixels
+       * of neither. Measured on `reviews/round6/harness/04-combat.png` after the
+       * arena fix landed: every one of the twenty-five was on flat ground, in
+       * frame, unoccluded by terrain and individually `visible`, and four of
+       * them still came back at 1, 2, 8 and 9 px — three of the four sitting
+       * within 0.02 of frame width of a larger monster in front of them.
+       *
+       * The bar is the pair's own projected width rather than a constant: two
+       * mites at 25 m need a tenth of the gap a hulk at 12 m does, and a
+       * constant big enough for the hulk empties the frame of everything else.
+       */
+      const half = screenHalf(e.def?.radius ?? 0.5, d);
+      const crowded = framed && kept.some(
+        (k) => screenGap(es.x, es.y, k.x, k.y) < (half + k.half) * 1.15);
+      if (d >= minDist && d <= far && !merged && seen && !crowded) {
+        kept.push({ x: es.x, y: es.y, half });
+        continue;
+      }
       bad.push(e);
     }
     if (!bad.length) return 0;
 
     // Everything that failed is re-seated on ground the lens has raycast to,
-    // laid out in screen space. Rejected slots are simply not returned, so a
-    // body that cannot be placed anywhere visible stays where it is and the
-    // subject assertion reports the shortfall rather than the frame hiding it.
-    const slots = screenSlots(bad.length + 4, { minDist, maxDist: far, avoidPlayer: 0.085 });
-    for (let i = 0; i < bad.length && i < slots.length; i++) _seat(bad[i], slots[i]);
-    return bad.length;
+    // laid out in screen space, and away from the bodies that were left where
+    // they stood. Rejected slots are simply not returned, so a body that cannot
+    // be placed anywhere visible stays where it is and the subject assertion
+    // reports the shortfall rather than the frame hiding it.
+    const slots = screenSlots(bad.length + 4, {
+      minDist, maxDist: far, avoidPlayer: 0.085,
+      avoid: kept.map((k) => ({ x: k.x, y: k.y, r: Math.max(0.05, k.half * 2.3) })),
+    });
+    let moved = 0;
+    for (let i = 0; i < bad.length && i < slots.length; i++) {
+      _seat(bad[i], slots[i]);
+      seated?.add(bad[i]);
+      moved++;
+    }
+    // What was *moved*, not what was found wanting. A pass that reported its
+    // whole bad list would keep the loop alive forever on bodies it has no slot
+    // for, and would report progress it did not make.
+    return moved;
   };
 
   /**
@@ -688,6 +880,111 @@ export function installHarness(ctx) {
    * Named because they are now gates as well as search targets. */
   const OPEN_GROUND_NEED = 0.85;
   const MIN_VISIBLE = 0.6;
+
+  /**
+   * Move the survivor onto ground that can hold an arena at all.
+   *
+   * `faceOpenGround` can only *turn*, and turning cannot fix the place. The
+   * stage-1 spawn point this capture lands on is the lip of a rocky knoll:
+   * measured on `reviews/round6/base/04-combat.png`, the best of twelve bearings
+   * scored 0.44 against the 0.85 the search itself asks for, the near half of
+   * the frame is one terrain wedge, and two of the twenty-four monsters
+   * `spawnRing` placed came back at world y 1.4 and y -8.2 against a survivor
+   * standing at y 16 — 15 and 24 metres down the slope, off the bottom of frame
+   * at screen y 1.88 and 1.82, contributing zero pixels each. Every one of the
+   * three separate failures that shot carries — the openness gate, the survivor
+   * at 0.583 visible behind the near wedge, and the zero-pixel members of the
+   * horde — is downstream of standing in the wrong place.
+   *
+   * So the survivor is walked to a patch of ground that can hold one, before any
+   * bearing is chosen. In two stages, because the quantity that is gated can
+   * only be measured against a committed camera:
+   *
+   *  1. `arenaFlatness` ranks candidate stand points off the heightfield alone
+   *     — height similarity over a disc, plus `Stage.isWalkable`, which is the
+   *     stage's own answer to "slope you can stand on, clear of prop volumes".
+   *     Cheap, so it can afford ninety-odd candidates. It is only a shortlist:
+   *     on the stage this runs on the best patch it can find scores 0.55 by its
+   *     own measure and 0.90 by the one that counts, so treating this number as
+   *     the answer would have thrown the right patch away.
+   *  2. the shortlist is *tried*: each is committed to the player, given real
+   *     frames, and scored by `faceOpenGround` itself — the same function, the
+   *     same 0.85 bar, the same camera that gets photographed. The winner is the
+   *     one the gate would score highest, not the one a proxy likes.
+   *
+   * Neither stage can soften the assertion: `openness` is still whatever
+   * `faceOpenGround` returned for the spot actually used, and the `open arena`
+   * check still fails the shot below 0.85. A stage with no arena on it fails
+   * exactly as loudly as before, having tried harder.
+   *
+   * Stage 1 is a pure heightfield query and draws no `ctx.rng`, so the
+   * scenarios after this one see the same random stream they did before.
+   */
+  const arenaFlatness = ({ probeRings = [9, 15, 21, 27], spokes = 16, flat = 2.5 } = {}) => {
+    const stage = ctx.stage;
+    if (!stage?.isWalkable) return null;
+    const p = playerPos();
+    return (x, z) => {
+      if (!stage.isWalkable(x, z)) return -1;
+      const y0 = groundY(x, z, p.y);
+      if (!Number.isFinite(y0)) return -1;
+      let ok = 0, n = 0;
+      for (const r of probeRings) {
+        for (let k = 0; k < spokes; k++) {
+          const a = (k / spokes) * Math.PI * 2;
+          const gx = x + Math.sin(a) * r, gz = z + Math.cos(a) * r;
+          n++;
+          // Within a couple of metres of the survivor's own footing, and not
+          // inside a boulder. Both together are what "no lip between him and
+          // the monster" means on a heightfield.
+          if (Math.abs(groundY(gx, gz, y0) - y0) > flat) continue;
+          if (!stage.isWalkable(gx, gz)) continue;
+          ok++;
+        }
+      }
+      return n ? ok / n : 0;
+    };
+  };
+
+  /**
+   * Members of the horde whose rig is hidden *right now*.
+   *
+   * Not a statistic — the list itself. `04-combat` photographed a Rift Stalker
+   * mid-blink (`Enemy.js:1397` sets `rig.root.visible = false` for the 0.35 s
+   * dash and `exit` puts it back), which is the game working and a monster
+   * absent from the photograph all the same: measured at 0 px on
+   * `reviews/round6/base/04-combat.png`, object 11 of 24.
+   *
+   * A zero *inside* this would be an empty array, which is the pass condition
+   * and the thing the caller waits for; the failure is a non-empty one. There
+   * is nothing to average and nothing to hide behind, and any member listed
+   * here also fails the per-object pixel gate on the same frame — so this
+   * cannot certify while concealing one.
+   */
+  const hiddenRigs = () => (ctx.director?.enemies ?? [])
+    .filter((e) => e?.alive && e.rig?.root?.parent && e.rig.root.visible === false)
+    .map((e) => e.def?.id ?? '?');
+
+  /**
+   * Hold the shutter until nothing in the horde is invisible.
+   *
+   * Deliberately a *wait*, not a repair. Forcing `rig.root.visible = true` from
+   * here would photograph the frame the scenario wanted and paper over any
+   * other way a rig can go invisible — which is exactly the live defect
+   * `reviews/round5/DIAG-invisible-enemies.md` §5 describes in `VFX.js`. Waiting
+   * cannot: every state that hides a rig on purpose has a timer on it, and an
+   * invisibility that has none runs the budget out and still fails the gate.
+   *
+   * The budget is set by the longest of those timers, not by taste. A Rift
+   * Stalker's blink dash is `active: 0.35` s (`enemies.js`), and a burrower is
+   * under for `submerge: 2.4` s — 144 frames of simulation at the pinned step,
+   * so 90 frames was short enough to time out on a burrower on a live run and
+   * fail the shot for it.
+   */
+  const awaitVisibleHorde = async (maxFrames = 240) => {
+    for (let i = 0; i < maxFrames && hiddenRigs().length; i++) await frames(1);
+    return hiddenRigs();
+  };
 
   const faceOpenGround = async ({ dists = [13, 20, 27], spread = 0.55, need = OPEN_GROUND_NEED, bearings = 12 } = {}) => {
     const rig = ctx.cameraRig;
@@ -725,6 +1022,70 @@ export function installHarness(ctx) {
     rig.pitch = -0.12;
     await frames(4);
     return best.score;
+  };
+
+  /**
+   * Stage 2 of the arena search: try the shortlist for real. See
+   * `arenaFlatness` above for why there are two stages.
+   *
+   * Returns the openness the chosen spot actually scored, which is the number
+   * the `open arena` assertion reads. Nothing here is allowed to invent one.
+   */
+  const placeForOpenArena = async ({
+    need = OPEN_GROUND_NEED, hops = [0, 14, 24, 34, 46, 60], bearings = 16, tries = 6,
+  } = {}) => {
+    const flat = arenaFlatness();
+    const start = playerPos().clone();
+    if (!flat || !ctx.player) return { openness: await faceOpenGround(), moved: false, tried: 0 };
+
+    const seat = (x, z) => {
+      const y = groundY(x, z, start.y);
+      ctx.player.position.set(x, y, z);
+      ctx.player.velocity?.set?.(0, 0, 0);
+      if (ctx.player.group) ctx.player.group.position.set(x, y, z);
+    };
+
+    // Shortlist. The survivor's own spot is always candidate zero, so an
+    // already-good spawn wins on the first try and nothing moves.
+    const cand = [{ x: start.x, z: start.z, f: flat(start.x, start.z), d: 0 }];
+    for (const r of hops) {
+      if (r === 0) continue;
+      for (let i = 0; i < bearings; i++) {
+        const a = (i / bearings) * Math.PI * 2;
+        const x = start.x + Math.sin(a) * r, z = start.z + Math.cos(a) * r;
+        const f = flat(x, z);
+        if (f >= 0) cand.push({ x, z, f, d: r });
+      }
+    }
+    // The basin centre is flat by construction — `Stage.randomWalkablePoint`'s
+    // own fallback says so — so it is always in the pool, or a stage whose every
+    // ring sample is a slope would have nowhere to go.
+    const cf = flat(0, 0);
+    if (cf >= 0) cand.push({ x: 0, z: 0, f: cf, d: Math.hypot(start.x, start.z) });
+    // Flattest first, distance as a tie-break only: 0.006 of a point per 10 m
+    // keeps the survivor near the stage's own spawn between equals and never
+    // outbids a genuinely better patch.
+    const shortlist = [cand[0]].concat(
+      cand.slice(1).sort((a, b) => (b.f - b.d * 0.0006) - (a.f - a.d * 0.0006)).slice(0, tries - 1));
+
+    let best = null;
+    for (const c of shortlist) {
+      seat(c.x, c.z);
+      await frames(3);
+      const score = await faceOpenGround({ need });
+      if (!best || score > best.score) best = { ...c, score, yaw: ctx.cameraRig?.yaw ?? 0 };
+      if (score >= need) break;
+    }
+    seat(best.x, best.z);
+    if (ctx.cameraRig) { ctx.cameraRig.yaw = best.yaw; ctx.cameraRig.pitch = -0.12; }
+    await frames(6);
+    return {
+      openness: best.score,
+      moved: best.d > 0,
+      dist: +best.d.toFixed(1),
+      flatness: +best.f.toFixed(3),
+      tried: shortlist.length,
+    };
   };
 
   /**
@@ -1739,9 +2100,43 @@ export function installHarness(ctx) {
       // `04-combat`, the 70 m biome-vista lens aimed at a landmark, i.e. a
       // bearing with no relationship at all to where the survivor is looking.
       await frames(6);
-      // Then turn him toward ground the lens can see. This is the fix for the
-      // empty battlefield: see `faceOpenGround`.
-      const openness = await faceOpenGround();
+      /* The cast is the twenty-four this scenario is about to place, and nobody
+       * else.
+       *
+       * `Director.fixedUpdate` keeps banking credits and spawning through every
+       * frame this scenario spends composing, and it spawns at `findSpawnPoint`
+       * — deliberately off camera. Measured in
+       * `reviews/round6/diag-combat4.json`: two of its reinforcements ended up
+       * inside the horde subject, a spitling 72 m from the lens at world y 3.8
+       * and a charger at y 2.4 against a survivor standing at y 19.5, both at
+       * the bottom of the slope off the arena, both contributing 0 px and both
+       * failing a gate they had no way of passing. They are not the scene
+       * working — they are another system's bodies inside this shot's declared
+       * subject, and the arena search below spends real frames, so there is a
+       * window for more of them the longer the search takes.
+       *
+       * Off before the search, not after it, and the arena is swept again once
+       * the survivor has finished moving. This makes the assertion strictly
+       * harder: all twenty-four are members that have to be photographed, with
+       * no unplaceable extras diluting the population `crowd: 8` draws from.
+       * `enabled` gates only credit accrual and spawning (`Director.js:290`);
+       * the horde keeps chasing, attacking and dying exactly as before.
+       */
+      if (ctx.director) {
+        ctx.director.enabled = false;
+        restoreAfterShutter(() => { ctx.director.enabled = true; });
+      }
+      // Then put him somewhere an arena fits, and turn him there. Turning is the
+      // second half of the fix and it shipped without the first: `faceOpenGround`
+      // sweeps twelve bearings on the knoll the stage spawns him on and the best
+      // of them scores 0.44. This is the fix for the empty battlefield — see
+      // `arenaFlatness` and `placeForOpenArena`.
+      const arena = await placeForOpenArena();
+      const openness = arena.openness;
+      // Anything the director banked before it was switched off, and anything
+      // left standing where the survivor used to be, goes now: the walk has
+      // moved him and those bodies are no longer in the arena being framed.
+      ctx.director?.clear?.(ctx);
       spawnRing(enemies, SPAWN_CARDS, 13, 6);
       // Hold the trigger so the frame contains muzzle flash and tracers.
       if (ctx.input) ctx.input.mouse.left = true;
@@ -1764,7 +2159,18 @@ export function installHarness(ctx) {
       // crowd against it, with the pinned target left alone so its damage
       // readouts stay where they spawned.
       const pvis = await clearSurvivorFromLens();
-      declutter(12, { keep: mark });
+      // Nothing in frame may be mid-blink when the shutter opens: a Rift
+      // Stalker's dash hides its own rig, and the horde gate measures rendered
+      // pixels. Waited out before the re-space, because these frames let the
+      // crowd charge back in and undo it.
+      const hidden = await awaitVisibleHorde();
+      // 30 m rather than the default 46. Past about 30 m on this stage the fog
+      // has taken enough of a monster that it stops standing off what is behind
+      // it: measured in `reviews/round6/diag-combat4.json`, the hulk — the
+      // largest card in the deck — came back at 32.6 m with sepP50 0.23 against
+      // the 0.25 floor, while every body inside 25 m cleared it. Pulling the
+      // back rank in is a framing change; the floor is untouched.
+      declutter(12, { keep: mark, maxDist: 30 });
       if (mark && markAt) mark.position.copy(markAt);
       await frames(2);
       freeze();
@@ -1799,7 +2205,17 @@ export function installHarness(ctx) {
         {
           subject: 'open arena',
           dom: () => openness >= OPEN_GROUND_NEED,
-          detail: () => ({ openness: +openness.toFixed(2), need: OPEN_GROUND_NEED }),
+          detail: () => ({ openness: +openness.toFixed(2), need: OPEN_GROUND_NEED, arena }),
+        },
+        /* The list, not a count. An empty `hidden` is the pass; a non-empty one
+         * names every monster whose rig was invisible when the shutter opened,
+         * and each of those also lands as a zero in `perPx` above — so this
+         * cannot report clear while one is missing, and cannot report a failure
+         * the pixel gate disagrees with. */
+        {
+          subject: 'no monster hidden by its own attack',
+          dom: () => hidden.length === 0,
+          detail: () => hidden,
         },
         {
           subject: 'survivor unoccluded by the final lens',
@@ -2046,6 +2462,33 @@ export function installHarness(ctx) {
       // and land mid-level rather than on a boundary so the bar reads as live.
       seedLevel(20, 0.42);
       await frames(6);
+      /* Known open regression. `placeForOpenArena()` was the proposed fix and it
+       * is REFUTED — do not try it again without reading this.
+       *
+       * This scenario inherits wherever the previous one left the survivor and
+       * only ever turns him on the spot, and its horde was already marginal:
+       * measured on `reviews/round6/base/manifest.json`, `monsters under load`
+       * passed with perPx [20, 35, 111, ...], its weakest member eight pixels
+       * above the noise floor the gate calls absent. The `screenSlots` rewrite
+       * above moved it the wrong side of that line —
+       * `reviews/round6/harness/manifest.json` has [6, 22, 27, ...] and object 0
+       * failing.
+       *
+       * The agent that found it proposed `await placeForOpenArena()` here, "the
+       * same fix `04-combat` needed", and correctly left it unapplied because
+       * `node_modules` had been destroyed and it could not measure. Applied and
+       * measured once the toolchain was restored: perPx came back
+       * [6, 22, 27, 251, 56, 72] — **byte-identical to the failing state**.
+       * `reviews/round6/merged/manifest.json` (with `faceOpenGround`) and
+       * `reviews/round6/merged2/manifest.json` (with `placeForOpenArena`) are
+       * the two on-disk captures; the call changes nothing here. Reverted, so
+       * the shipped code is the measured code.
+       *
+       * So the weak members are not mis-framed — they are small or occluded for
+       * some other reason, and the real cause is still open. Whoever takes this
+       * next: `spawnRing(10, ...)` and the `screenSlots` slot count above are
+       * the places to look, not the camera. See `reviews/round6/FIX-harness.md`.
+       */
       await faceOpenGround();
       spawnRing(10, SPAWN_CARDS, 14, 3);
       await frames(settleFrames);
@@ -2221,8 +2664,24 @@ export function installHarness(ctx) {
       }
       await faceOpenGround();
       spawnRing(12, SPAWN_CARDS, 13);
+      // Same reason as `04-combat`: the victim list is the first seven of
+      // `director.enemies`, and the director goes on spawning at `findSpawnPoint`
+      // — off camera, by design — through every frame this scenario spends
+      // composing. A reinforcement that lands in that slice is a declared victim
+      // standing nowhere near the blast.
+      if (ctx.director) {
+        ctx.director.enabled = false;
+        restoreAfterShutter(() => { ctx.director.enabled = true; });
+      }
       if (ctx.input) ctx.input.mouse.left = true;
       await frames(settleFrames);
+      // Nothing underground or mid-blink before the victims are placed: a
+      // burrower is under for 2.4 s and a stalker's dash hides its rig for
+      // 0.35 s, and either photographs as a victim that contributed no pixels to
+      // its own explosion. Waited out *here* rather than next to the shutter,
+      // because the wait costs frames and those frames would undo the ring
+      // the victims are about to be laid out on.
+      await awaitVisibleHorde();
       declutter(12);
 
       // Where the blast goes.
@@ -2343,9 +2802,23 @@ export function installHarness(ctx) {
       camera.updateMatrixWorld(true);
       const bs = screenOf(at.x, at.y, at.z);
       const victims = (ctx.director?.enemies ?? []).filter((e) => e.alive).slice(0, 7);
+      /* The ring is 0.16 of frame width, not 0.105, and that is a legibility fix
+       * rather than a placement one.
+       *
+       * A damage number spawns at the victim it belongs to. At 0.105 every one of
+       * the seven stood inside the fireball's own footprint, so every readout was
+       * drawn over the brightest thing in the frame: measured on
+       * `reviews/round6/base/08-explosion.png`, the numbers came back at 191 px
+       * with lum 54.8 against bgLum 40.8 and sepP50 0.23 — under the 0.25 floor,
+       * in the shot documented as judging impact feedback. Standing the victims
+       * a frame-width further out puts their readouts against terrain instead of
+       * against the core, and takes them out of the peak of the knockback
+       * impulse as well: 0.16 of frame at this standoff is ~4 m from the centre
+       * of an 8 m blast, so they are still standing in it.
+       */
       victims.forEach((e, i) => {
         const a = (i / Math.max(1, victims.length)) * Math.PI * 2;
-        const g = groundAtScreen(bs.x + Math.cos(a) * 0.105, bs.y + Math.sin(a) * 0.05,
+        const g = groundAtScreen(bs.x + Math.cos(a) * 0.16, bs.y + Math.sin(a) * 0.075,
                                  { minDist: 7, maxDist: 40 });
         if (g) { _seat(e, g); return; }
         const x = at.x + Math.cos(a) * 5.5, z = at.z + Math.sin(a) * 5.5;
@@ -2504,10 +2977,44 @@ export function installHarness(ctx) {
       const shutter = await waitFx(blastSeconds);
       freeze();
       mustContain('10-inventory', [
+        /* The strip is checked against the inventory the survivor *holds*, not
+         * against the catalogue, and it carries its own floor.
+         *
+         * `ITEMS.length` stopped being a reachable target when the corruption
+         * tier landed: a corrupted item consumes the ordinary item it pairs
+         * with, so nine of the catalogue's entries can never co-exist with their
+         * bases and the comparison is unsatisfiable by construction rather than
+         * failing on a defect. Measured across three on-disk manifests —
+         * `reviews/round6/base/manifest.json` `{shown: 83, items: 83}` (pass),
+         * `reviews/round6/items/manifest.json` `{shown: 83, items: 92}` (fail),
+         * and `reviews/round6/items-control/manifest.json`, which is the same
+         * build with the corruption settle stubbed out, `{shown: 92, items: 92}`
+         * (pass). The strip renders the same 83 tiles in all three; only the
+         * target moved. See `reviews/round6/C2-corruption-tier.md` §6.
+         *
+         * `held` alone would be self-referential: an empty inventory rendering
+         * an empty strip is `0 >= 0` and certifies, which is the
+         * aggregate-hiding-an-absence shape this round has already hit three
+         * times. So a zero inside this check is not reachable — the shot is
+         * documented as a *dense late-run* inventory, `lateRun` hands the player
+         * every item in the game, and the floor below says so in the assertion
+         * rather than in a comment. An empty strip fails on `>= 60`; a strip
+         * that has dropped tiles fails on `>= held`; and both numbers are
+         * published in `detail`, so a reader can see which of the two moved.
+         */
         {
           subject: 'every tier in the inventory strip',
-          dom: () => (ctx.hud?.inv?.size ?? 0) >= ITEMS.length - 2,
-          detail: () => ({ shown: ctx.hud?.inv?.size ?? 0, items: ITEMS.length }),
+          dom: () => {
+            const shown = ctx.hud?.inv?.size ?? 0;
+            const held = ctx.items?.inventory?.().length ?? 0;
+            return shown >= held && shown >= 60;
+          },
+          detail: () => ({
+            shown: ctx.hud?.inv?.size ?? 0,
+            held: ctx.items?.inventory?.().length ?? 0,
+            floor: 60,
+            catalogue: ITEMS.length,
+          }),
         },
         { subject: 'the equipment effect', dom: () => !!fired },
         {
@@ -2720,9 +3227,26 @@ export function installHarness(ctx) {
       // a 900 px frame — a third of the shot was foreground rock and another
       // third was sky, and no silhouette judgement is possible at that size.
       //
-      // Solve for the row occupying ~68% of frame width, then convert that
+      // Solve for the row occupying ~80% of frame width, then convert that
       // horizontal half-angle to the vertical FOV three.js actually takes.
-      const halfW = (span * 0.5 + 1.3) / 0.68;
+      //
+      // 0.68 was the first number that stopped the row reading as scenery, and
+      // it was still too small to clear the per-object floor this subject sets
+      // for itself: measured on `reviews/round6/base/09-survivors.png`, the four
+      // came back at perPx [897, 1199, 992, 986] against `minPixels: 4000` over
+      // four objects, i.e. a floor of 1000 each, and three of the four missed it
+      // — by 11%, 1% and 2%. A fill of 0.80 is 1.176x linear and 1.38x in area,
+      // which puts the weakest of them at ~1240 rather than at 1001; the point
+      // is to clear the floor by a quarter, not by a pixel.
+      //
+      // Nothing else in the frame is spent to buy it. At 0.80 the row's outer
+      // edges sit 10% of frame width in from each side, and vertically the
+      // solved FOV still leaves the 1.9 m figures occupying ~56% of frame
+      // height against a 6.8 m tall frame at this standoff — the footline and
+      // occlusion checks below both measured 0 px of spread and 1.00 visibility
+      // at 0.68 and are unaffected by a change of focal length on a row the
+      // search has already accepted as flat.
+      const halfW = (span * 0.5 + 1.3) / 0.80;
       const hHalf = Math.atan(halfW / standoff);
       const aspect = camera.aspect || (16 / 9);
       camera.fov = Math.max(12, Math.min(50,
@@ -2983,24 +3507,87 @@ export function installHarness(ctx) {
      *     rank, or the hulk stands in front of the mite and the shot documents
      *     one of the sixteen.
      */
-    async bestiary({ settleFrames = 40, spacing = 2.7 } = {}) {
+    async bestiary({ settleFrames = 40, spacing = 2.4, rows = 3, standoff = 16, rankGap = 6, fill = 0.86 } = {}) {
       await begin();
       invulnerable();
       detach();
       if (ctx.director) ctx.director.enabled = false;
 
+      /* Three ranks, not two, and the frame solved from the rank rather than
+       * left at a fixed 40°. Both are forced by the same arithmetic.
+       *
+       * The per-object floor this subject sets for itself is `minPixels / N` =
+       * 3500 / 16 = 219 px, and measured on `reviews/round6/base/11-bestiary.png`
+       * six of the sixteen missed it or missed the separation floor, the worst
+       * being the mite at 63 px. Uniform zoom cannot close that: the pixels a
+       * unit gets scale as `d_c / (d_c - fz) / halfExtent`, so the levers are the
+       * rank's *width* and how far in front of the camera's aim point the front
+       * rank stands — not focal length, which cancels against the rank having to
+       * fit the frame.
+       *
+       * Two ranks of eight at 2.7 m gives 27/23/12.3 = 0.095. Three ranks of six
+       * at 2.4 m, with the camera at 18 m and the ranks at -7/0/+7, gives
+       * 18/11/8.7 = 0.188 — 1.97x linear, 3.9x in area, which puts the mite at
+       * ~245 px against a floor of 219 instead of at 63. The tall half loses a
+       * little (the back rank moves from 32.5 m to 25 m but the frame tightens
+       * faster), and it has three to eight times the floor in hand.
+       *
+       * Rank depth is checked, not assumed: with the lens 5.5 m up at 18 m, the
+       * front rank's tallest member subtends less elevation than the middle
+       * rank's feet, so the near rank cannot stand in front of the far one — the
+       * failure mode "big at the back" was invented to prevent, one rank deeper.
+       */
       const cards = [...SPAWN_CARDS].sort((a, b) => a.height - b.height);
-      const perRow = Math.ceil(cards.length / 2);
+      const perRow = Math.ceil(cards.length / rows);
       const halfW = (perRow - 1) * 0.5 * spacing;
+      // Along the view direction, back rank last. Evenly spread so no two ranks
+      // share a depth and the stagger below has something to work against.
+      //
+      // 16 m and 6 m rather than 18 and 7. The block's pixel arithmetic is
+      // almost unchanged (16/10/8.7 = 0.184 against 18/11/8.7 = 0.188) and the
+      // back rank moves from 25 m to 22 m, which is where the remaining failures
+      // were: measured on `reviews/round6/diag-b2.json`, every one of the sixteen
+      // cleared the 219 px floor but the two furthest came back at sepP50 0.15
+      // and 0.23 against 0.25 — fog-washed against terrain that is fog-washed to
+      // the same value. Contrast against the backdrop is a function of range, so
+      // the answer is range.
+      const rankZ = [];
+      for (let r = 0; r < rows; r++) rankZ.push((r - (rows - 1) / 2) * rankGap);
       const p = playerPos();
 
       // Candidate centres: straight ahead at a few ranges, plus walkable points
       // the stage offers. Scored on how flat the rank would be.
-      const centres = [ahead(26), ahead(34), ahead(20)];
+      const centres = [ahead(20), ahead(26), ahead(16)];
+      // A deterministic ring of candidates as well as the stage's random ones.
+      // The pool used to be three bearings plus whatever twenty-four `ctx.rng`
+      // draws happened to land on, and the scenario that runs before this one now
+      // relocates the survivor — so the three `ahead` centres move with him and
+      // the random ones are the only breadth there is. These cost no `rng` draws,
+      // which matters: the scenarios after this one are seeded off the same
+      // stream and must not shift because this one looked harder for a floor.
+      for (const r of [18, 26, 34]) {
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2;
+          const x = p.x + Math.sin(a) * r, z = p.z + Math.cos(a) * r;
+          centres.push(new THREE.Vector3(x, groundY(x, z, p.y), z));
+        }
+      }
       for (let i = 0; i < 24; i++) {
         const q = ctx.stage?.randomWalkablePoint?.(ctx.rng, { minDistFrom: p, minDist: 16 });
         if (q) centres.push(q.clone());
       }
+
+      /* Level ground over the whole block, as a first-class term.
+       *
+       * With two ranks the block was 9.5 m deep and the height spread along the
+       * rank axis was enough to describe it. Three ranks make it 14 m deep and
+       * 12 m wide, and a centre that is flat across the rank but sits on a shelf
+       * front-to-back drops the far rank over the edge — measured on a run of
+       * this scenario where the four tallest cards all came back at 0 px while
+       * the near rank rendered, which is a roster shot of twelve captioned as
+       * sixteen. `arenaFlatness` is the same disc measure `04-combat` uses to
+       * choose where to stand, at the block's own radius. */
+      const flatAt = arenaFlatness({ probeRings: [6, 11, 16], spokes: 12, flat: 1.8 });
 
       let best = null;
       for (const c of centres) {
@@ -3010,8 +3597,13 @@ export function installHarness(ctx) {
         // the middle of the roster and passed, because the three rays it cast
         // all went up the rank's centre line and the trunk stood beside it.
         const camPick = bestCam(c, {
-          radius: 25, lift: 6, rings: 3, step: 2.5, spokes: 16,
-          subjectHeight: 5.0, subjectRadius: halfW + 1.5, fov: 40, backdrop: 16,
+          radius: standoff, lift: 5.5, rings: 3, step: 2.5, spokes: 16,
+          // 26 m of clear depth behind the rank rather than 16. Three of the six
+          // failures on the baseline frame were separation, not size — the
+          // roster standing against ground two metres behind it, at sepP50 0.11,
+          // 0.19 and 0.23 against a 0.25 floor — and depth behind the subject is
+          // the framing lever for that.
+          subjectHeight: 5.0, subjectRadius: halfW + 1.5, fov: 40, backdrop: 26,
         });
         const cam = camPick?.pos;
         if (!cam) continue;
@@ -3020,15 +3612,17 @@ export function installHarness(ctx) {
         const len = Math.hypot(dx, dz) || 1;
         dx /= len; dz /= len;
         const ax = -dz, az = dx;
-        // Flatness along both ranks, sampled at every slot.
-        let lo = Infinity, hi = -Infinity, seen = 0;
-        for (let row = 0; row < 2; row++) {
-          const fz = (row === 0 ? -1 : 1) * 4.5;
+        // Flatness along every rank, sampled at every slot.
+        let lo = Infinity, hi = -Infinity, seen = 0, slots = 0;
+        for (let row = 0; row < rows; row++) {
+          const fz = rankZ[row];
           for (let i = 0; i < perRow; i++) {
-            const off = i * spacing - halfW;
+            if (row * perRow + i >= cards.length) break;
+            const off = i * spacing - halfW + (row % 2 ? spacing * 0.5 : 0);
             const x = c.x + ax * off + dx * fz, z = c.z + az * off + dz * fz;
             const y = groundY(x, z, c.y);
             lo = Math.min(lo, y); hi = Math.max(hi, y);
+            slots++;
             // Every slot, over the height of the unit that stands in it — a slot
             // whose feet are visible under a canopy is not a visible monster.
             if (visibleFraction(cam, _cc.set(x, y, z), { height: 2.4, radius: 0.9, cols: 3, rows: 3, slack: 0.4 }) >= 0.9) seen++;
@@ -3037,9 +3631,13 @@ export function installHarness(ctx) {
         // Every slot has to be clear, not most of them. A rank on a gentle slope
         // is still gradable; a rank with four of its sixteen behind a trunk is
         // a shot of twelve monsters captioned as sixteen.
-        const score = seen * 100 - (hi - lo) * 2 - camPick.occ * 40;
-        if (!best || score > best.score) best = { c, cam, dx, dz, ax, az, spread: hi - lo, score, seen };
-        if (hi - lo < 1.8 && seen === perRow * 2) break;
+        const flat = flatAt ? flatAt(c.x, c.z) : 1;
+        if (flat < 0) continue;                 // inside a prop, or off the map
+        const score = seen * 100 + flat * 240 - (hi - lo) * 8 - camPick.occ * 40;
+        if (!best || score > best.score) {
+          best = { c, cam, dx, dz, ax, az, spread: hi - lo, score, seen, flat };
+        }
+        if (hi - lo < 1.8 && seen === slots && flat >= 0.9) break;
       }
       if (!best) {
         const c = ahead(26);
@@ -3049,14 +3647,14 @@ export function installHarness(ctx) {
       const { c, ax, az, dx, dz } = best;
       const placed = [];
       for (let i = 0; i < cards.length; i++) {
-        const row = i >= perRow ? 1 : 0;          // taller half goes to the back
-        const idx = row ? i - perRow : i;
-        // Back rank staggered half a slot across. Aligned, slot 8 stands exactly
-        // behind slot 0 and photographs as nothing at all — measured at 0 of the
-        // 8231 pixels the rank contributed, which is a roster shot missing one
-        // of the sixteen species it exists to compare.
-        const off = idx * spacing - halfW + (row ? spacing * 0.5 : 0);
-        const fz = row ? 5.5 : -4.0;
+        const row = Math.floor(i / perRow);       // taller cards go to the back
+        const idx = i - row * perRow;
+        // Alternate ranks staggered half a slot across. Aligned, a back slot
+        // stands exactly behind a front one and photographs as nothing at all —
+        // measured at 0 of the 8231 pixels the rank contributed, which is a
+        // roster shot missing one of the sixteen species it exists to compare.
+        const off = idx * spacing - halfW + (row % 2 ? spacing * 0.5 : 0);
+        const fz = rankZ[row];
         const x = c.x + ax * off + dx * fz, z = c.z + az * off + dz * fz;
         const y = groundY(x, z, c.y);
         // Two tier-2 elites, on cards big enough for the aura to read.
@@ -3083,11 +3681,42 @@ export function installHarness(ctx) {
       pin();
 
       const tallest = cards[cards.length - 1].height;
-      const cam = best.cam ?? new THREE.Vector3(c.x - dx * 30, groundY(c.x - dx * 30, c.z - dz * 30, c.y) + 7, c.z - dz * 30);
+      const cam = best.cam ?? new THREE.Vector3(
+        c.x - dx * standoff, groundY(c.x - dx * standoff, c.z - dz * standoff, c.y) + 5.5, c.z - dz * standoff);
       camera.position.copy(cam);
-      camera.fov = 40;
+
+      /* The lens is solved from the rank, not set to a constant.
+       *
+       * A fixed 40° spent 62% of frame width on the roster and the rest on
+       * foreground dirt and sky (measured off `reviews/round6/base/11-bestiary.png`
+       * — the sixteen span x 450-1450 of 1600), which is a third of the frame's
+       * area thrown away in the one shot whose whole job is comparing sixteen
+       * silhouettes. `fill` is the share of frame width the rank is asked to
+       * occupy; the horizontal half-angle that produces is then converted to the
+       * vertical FOV three.js actually takes.
+       *
+       * Then the *vertical* extent is checked rather than hoped for. The block is
+       * 14 m deep now, so its lowest point (the near rank's feet) and its highest
+       * (the far rank's crown) sit at very different elevations from a 5.5 m
+       * lens; the aim is put at the midpoint of those two angles and the FOV is
+       * widened if it cannot hold both. Solving width alone and aiming at
+       * `tallest * 0.4` would crop the front rank's feet the moment the ranks
+       * spread in depth.
+       */
+      const gy = groundY(c.x, c.z, c.y);
+      const dNear = Math.max(2, standoff + rankZ[0]);
+      const dFar = standoff + rankZ[rows - 1];
+      const aLow = Math.atan2(gy - cam.y, dNear);
+      const aHigh = Math.atan2(gy + tallest - cam.y, dFar);
+      const aMid = (aLow + aHigh) * 0.5;
+      const aspect = camera.aspect || (16 / 9);
+      const halfExtent = halfW + spacing * 0.5 + 1.5;
+      const hHalf = Math.atan(halfExtent / Math.max(1, standoff * fill));
+      const vNeed = Math.max(Math.abs(aLow - aMid), Math.abs(aHigh - aMid)) * 1.12;
+      const vHalf = Math.max(Math.atan(Math.tan(hHalf) / aspect), vNeed);
+      camera.fov = Math.max(14, Math.min(55, vHalf * 2 * 180 / Math.PI));
       camera.updateProjectionMatrix();
-      camera.lookAt(c.x, groundY(c.x, c.z, c.y) + tallest * 0.4, c.z);
+      camera.lookAt(c.x, cam.y + Math.tan(aMid) * standoff, c.z);
       camera.updateMatrixWorld(true);
       await frames(2);
       pin();

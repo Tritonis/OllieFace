@@ -91,6 +91,12 @@ export class Progression {
       items: 0, goldEarned: 0, stagesCleared: 0,
     };
 
+    // The Fallow Vault's stake, waiting to mature. Run state rather than stage
+    // state on purpose: the whole shrine is a bet that you will reach the next
+    // stage, so the one thing it must not do is live on the stage it was made
+    // on. Null when nothing is committed.
+    this.vault = null;
+
     // Set by `finishRun` when the run ends on purpose rather than on a corpse.
     this.ending = null;
 
@@ -189,9 +195,39 @@ export class Progression {
     this.interactables.update(ctx, dt);
   }
 
+  /**
+   * Take the Fallow Vault's stake. Called by the shrine, host-only by
+   * construction (`Interactables.requestInteract` gates on `ctx.authority`).
+   *
+   * Adds rather than replaces, so two vaults across two stages both pay. The
+   * shrine has already taken the gold; this only owes it back.
+   */
+  commitToVault(payout) {
+    if (!(payout > 0)) return;
+    this.vault = { payout: Math.round((this.vault?.payout || 0) + payout), dueStage: this.stageIndex + 1 };
+  }
+
+  /**
+   * Pay a matured vault. Host-only — `addGold` is game state and reaches
+   * clients as `goldChanged`, which NetHost already forwards.
+   *
+   * A run that ends before the next stage begins never reaches here, and that
+   * is the shrine's entire risk: the gold is in the ground, not in the purse.
+   */
+  _settleVault(index) {
+    const v = this.vault;
+    if (!v || index < v.dueStage) return;
+    this.vault = null;
+    this.ctx.items?.addGold?.(v.payout);
+    this.ctx.events.emit('vaultPaid', { amount: v.payout });
+  }
+
   /** Host-side stage entry: build it, fill it, announce it. */
   _beginStage(index, first = false) {
     this._applyStage(index, first);
+    // Before the stage is populated, so the purse the player arrives with is
+    // the one the chest prices are about to be measured against.
+    this._settleVault(index);
     const tp = this.interactables.populate(index);
     // Publish before `stageStart` so anything that reacts to the new stage
     // already has an objective to point at.
