@@ -3649,6 +3649,19 @@ export function installHarness(ctx) {
         {
           subject: 'the equipment blast',
           objects: () => vfxObjects(/^vfx\.(particles|rings|trails|beams)$/),
+          // `perObject` is on so the four pools are *measured*, not so they are
+          // gated: `minCarriedPx` still makes this an aggregate and
+          // `perObjectOk` stays unconditionally true. Without it `perPx` was
+          // never computed, so this check was silent for a different reason
+          // than its sibling in `08-explosion` — that one declined to gate a
+          // published zero, this one had no zero to publish.
+          //
+          // Sibling `08-explosion` -> `the blast` reads perPx [22330, 0, 23, 0]
+          // through the identical regex, so expect absences here too, and the
+          // same open question: beams/trails legitimately unused by this
+          // effect, or emitters that stopped emitting? Now it is answerable
+          // from the manifest instead of by rediscovery.
+          perObject: true,
           minPixels: 800, minCarriedPx: 800,
         },
         {
