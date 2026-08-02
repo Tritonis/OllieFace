@@ -9,6 +9,7 @@ import { itemArt, tierMeta, abilityArt, hexOf, markIcon, TIER_ORDER } from './Ic
 import { ITEMS_BY_TIER } from '../data/items.js';
 import { SURVIVORS, getSurvivor, loadoutOf } from '../data/survivors.js';
 import { Logbook, ModelPreview, disposeTree } from './Logbook.js';
+import { describeNet } from '../net/NetConfig.js';
 
 const STORE_KEY = 'petrichor.settings';
 
@@ -286,6 +287,19 @@ export class Menus {
 
           <div class="coop-status" data-coop-status>
             Up to 4 players. One player hosts and runs the game; everyone else joins them.
+          </div>
+
+          <div class="coop-room">
+            <h3 class="coop-h">Room code</h3>
+            <p class="coop-hint">The easy way, if a signalling server is configured. The host
+              creates a room and reads out the four letters; everyone else types them in.</p>
+            <nav class="menu-list menu-list--row">
+              <button class="mbtn mbtn--go" data-nav data-act="coop-room-host"><span>Create room</span></button>
+              <output class="coop-code" data-coop-code>----</output>
+              <input class="coop-input" data-coop-roomcode maxlength="6" placeholder="CODE" aria-label="Room code" />
+              <button class="mbtn mbtn--go" data-nav data-act="coop-room-join"><span>Join room</span></button>
+            </nav>
+            <p class="coop-hint coop-wiring" data-coop-wiring></p>
           </div>
 
           <div class="coop-cols">
@@ -1014,6 +1028,8 @@ export class Menus {
       case 'coop-copy':
       case 'coop-copy-reply':
       case 'coop-leave':
+      case 'coop-room-host':
+      case 'coop-room-join':
         this.coopAction(action);
         break;
     }
@@ -1049,6 +1065,33 @@ export class Menus {
     }
     this.push('coop');
     this.coopStatus(lobby?.status || 'idle');
+    this.coopWiring();
+  }
+
+  /**
+   * Say out loud what this build is actually wired to.
+   *
+   * Both ways a distributed game fails are invisible from the co-op screen
+   * otherwise: a build still pointed at a localhost relay (room codes cannot
+   * work for anyone but you) and a build with no TURN (direct connections work
+   * on friendly networks and silently never form on strict ones). Naming them
+   * here turns "it just doesn't connect" into something a tester can report.
+   */
+  coopWiring() {
+    const el = this.root.querySelector('[data-coop-wiring]');
+    if (!el) return;
+    const net = describeNet();
+    const bits = [];
+    bits.push(net.signalIsLocal
+      ? `Signalling: ${net.signal} — local only, room codes will not work for remote players.`
+      : `Signalling: ${net.signal}`);
+    bits.push(net.hasTurn
+      ? 'TURN relay: configured.'
+      : 'TURN relay: none — players behind strict NAT may fail to connect.');
+    if (net.relayOnly) bits.push('Forcing relay-only (TURN test mode).');
+    // HTML collapses runs of whitespace, so the separator has to be a glyph.
+    el.textContent = bits.join(' · ');
+    el.classList.toggle('is-warn', net.signalIsLocal || !net.hasTurn);
   }
 
   /** All the co-op buttons. Every path here can fail, and every failure is
@@ -1086,6 +1129,21 @@ export class Menus {
           this.coopSay('Send that reply code back to the host. The game starts when they accept it.');
           break;
         }
+        case 'coop-room-host': {
+          this.coopSay('Opening a room…');
+          const code = await lobby.hostViaRelay();
+          this.root.querySelector('[data-coop-code]').textContent = code;
+          this.coopSay(`Room ${code} is open. Give those letters to your friends — they join with them.`);
+          break;
+        }
+        case 'coop-room-join': {
+          const code = field('roomcode').value.trim().toUpperCase();
+          if (!code) return this.coopSay('Type the room code the host gave you first.');
+          this.coopSay(`Joining room ${code}…`);
+          await lobby.joinViaRelay(code);
+          this.coopSay('Connecting to the host…');
+          break;
+        }
         case 'coop-copy':
           this.coopCopy(field('invite'));
           break;
@@ -1094,7 +1152,8 @@ export class Menus {
           break;
         case 'coop-leave':
           lobby.leave();
-          for (const n of ['invite', 'answer', 'offer', 'reply']) field(n).value = '';
+          for (const n of ['invite', 'answer', 'offer', 'reply', 'roomcode']) field(n).value = '';
+          this.root.querySelector('[data-coop-code]').textContent = '----';
           break;
       }
     } catch (err) {

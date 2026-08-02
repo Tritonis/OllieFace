@@ -1665,6 +1665,52 @@ body.menu-open { cursor: default; }
   border-left: 2px solid var(--line-hot);
 }
 
+/* Room-code band. Sits above the two copy/paste columns because it is the path
+   almost everyone should use: the manual blobs below exist for the case where
+   no signalling server is deployed at all. */
+.coop-room {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6em;
+  padding: 0 0 1.2em;
+  margin-bottom: 1.2em;
+  border-bottom: 1px solid var(--line);
+}
+
+.coop-code {
+  align-self: center;
+  min-width: 5.2em;
+  padding: 0.5em 0.8em;
+  font: inherit;
+  font-size: 1.3em;
+  font-weight: 700;
+  letter-spacing: 0.34em;
+  text-align: center;
+  text-indent: 0.34em;   /* re-centre against the trailing letter-space */
+  color: var(--ink);
+  background: rgba(8, 13, 21, 0.82);
+  border: 1px solid var(--line);
+}
+
+.coop-input {
+  width: 6.4em;
+  padding: 0.72em 0.6em;
+  font: inherit;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-align: center;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: rgba(8, 13, 21, 0.82);
+  border: 1px solid var(--line);
+}
+.coop-input:focus { outline: none; border-color: var(--line-hot); }
+.coop-input::placeholder { color: var(--ink-faint); letter-spacing: 0.28em; }
+
+/* The wiring readout is deliberately quiet until it has bad news. */
+.coop-wiring { font-size: 0.78em; opacity: 0.75; }
+.coop-wiring.is-warn { color: #ffb44f; opacity: 1; }
+
 .coop-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1.6em; }
 
 .coop-col { display: flex; flex-direction: column; gap: 0.7em; min-width: 0; }

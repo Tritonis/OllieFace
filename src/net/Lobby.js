@@ -1,5 +1,25 @@
 import { NetHost } from './NetHost.js';
 import { NetClient } from './NetClient.js';
+import { signalUrl, signalIsLocal } from './NetConfig.js';
+
+/**
+ * A WebSocket failure gives no reason — the event carries nothing, by design,
+ * so a page cannot probe the network. The two causes that actually happen are
+ * worth naming, because both look identical from here and neither is obvious.
+ */
+function relayError(url) {
+  if (signalIsLocal()) {
+    return 'Could not reach the signalling server. This build is still pointed at '
+      + `${url} — that only works if the relay is running on this machine. `
+      + 'Build with VITE_SIGNAL_URL set, or add ?signal=wss://your-relay to the URL.';
+  }
+  let secureMismatch = false;
+  try { secureMismatch = location.protocol === 'https:' && url.startsWith('ws://'); } catch { /* non-browser */ }
+  if (secureMismatch) {
+    return `Could not reach ${url}. An https page cannot open an insecure ws:// socket; the relay needs to be wss://.`;
+  }
+  return `Could not reach the signalling server at ${url}. Check it is running and reachable.`;
+}
 
 /**
  * Headless lobby controller.
@@ -101,13 +121,19 @@ export class Lobby {
 
   // --- relay path ----------------------------------------------------------
 
-  /** Host through the WebSocket relay; resolves with the room code. */
-  hostViaRelay(url = 'ws://127.0.0.1:8787') {
+  /**
+   * Host through the WebSocket relay; resolves with the room code.
+   *
+   * The URL defaults to whatever the build was configured with rather than to
+   * localhost — see `NetConfig.js`. A deployed build pointed at nobody is the
+   * failure this signature used to guarantee.
+   */
+  hostViaRelay(url = signalUrl()) {
     this.startHost();
     return new Promise((resolve, reject) => {
       const ws = new WebSocket(url);
       this.ws = ws;
-      ws.onerror = () => reject(new Error('Could not reach the signalling server'));
+      ws.onerror = () => reject(new Error(relayError(url)));
       ws.onopen = () => ws.send(JSON.stringify({ type: 'host' }));
       ws.onmessage = async (e) => {
         const msg = JSON.parse(e.data);
@@ -126,12 +152,12 @@ export class Lobby {
   }
 
   /** Join through the relay with a room code. */
-  joinViaRelay(code, url = 'ws://127.0.0.1:8787') {
+  joinViaRelay(code, url = signalUrl()) {
     return new Promise((resolve, reject) => {
       const ws = new WebSocket(url);
       this.ws = ws;
-      ws.onerror = () => reject(new Error('Could not reach the signalling server'));
-      ws.onopen = () => ws.send(JSON.stringify({ type: 'join', code }));
+      ws.onerror = () => reject(new Error(relayError(url)));
+      ws.onopen = () => ws.send(JSON.stringify({ type: 'join', code: String(code || '').toUpperCase() }));
       ws.onmessage = async (e) => {
         const msg = JSON.parse(e.data);
         if (msg.type === 'error') return reject(new Error(msg.error));

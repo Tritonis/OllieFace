@@ -8,18 +8,19 @@
     "build": "vite build",
     "preview": "vite preview",
     "shots": "node tools/capture.mjs",
-    "dev:lan": "vite --host"
+    "dev:lan": "vite --host",
+    "signal": "node tools/signal-server.mjs"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "three": "^0.185.1"
+    "three": "^0.185.1",
+    "ws": "^8.21.1"
   },
   "devDependencies": {
     "playwright": "^1.62.1",
-    "vite": "^8.2.0",
-    "ws": "^8.21.1"
+    "vite": "^8.2.0"
   },
   "type": "module",
   "private": true

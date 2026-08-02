@@ -16,12 +16,10 @@
  * than an ongoing candidate exchange.
  */
 
-const ICE = {
-  iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:global.stun.twilio.com:3478' },
-  ],
-};
+// ICE config is resolved per connection rather than captured once at module
+// load, so a `?turn=` / `?ice=relay` override applies to the next invite without
+// a reload. See `NetConfig.js` for why TURN is not optional past a friendly LAN.
+import { rtcConfig } from './NetConfig.js';
 
 // Base64 of the JSON description. Deflate would roughly halve it, but SDP blobs
 // are already paste-able and CompressionStream isn't worth the fallback path.
@@ -100,7 +98,7 @@ export class HostTransport {
 
   async createInvite() {
     const id = this._nextId++;
-    const pc = new RTCPeerConnection(ICE);
+    const pc = new RTCPeerConnection(rtcConfig());
     const peer = new Peer(pc, id);
 
     // Host creates both channels so ordering/ids are deterministic; the client
@@ -173,7 +171,7 @@ export class ClientTransport {
     const msg = decode(inviteBlob.trim());
     if (msg.role !== 'offer') throw new Error('That is not a host invite code');
 
-    const pc = new RTCPeerConnection(ICE);
+    const pc = new RTCPeerConnection(rtcConfig());
     const peer = new Peer(pc, msg.id);
     this.peer = peer;
 

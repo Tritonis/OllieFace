@@ -9,17 +9,43 @@
  *
  * Deliberately stateless beyond a room map, and rooms are dropped as soon as
  * both sides disconnect.
+ *
+ * ## Deploying it
+ *
+ * `PORT` is read from the environment as well as `--port`, because every
+ * managed host (Render, Railway, Fly, Heroku, Cloud Run) assigns the port that
+ * way and ignores argv. It binds an HTTP server rather than letting `ws` open
+ * its own socket, so the same listener answers `GET /healthz` — most platforms
+ * will not route traffic to a service whose health check has nothing to answer,
+ * and a bare WebSocket server 404s every probe.
+ *
+ * TLS is intentionally not handled here. A browser page served over HTTPS may
+ * only open `wss://`, but every platform above terminates TLS at its own edge
+ * and forwards plain HTTP inward — so this stays plain and the URL players use
+ * is `wss://`. Running it directly on a bare VM is the one case where a TLS
+ * proxy (Caddy, nginx) has to be put in front of it by hand.
  */
 import { WebSocketServer } from 'ws';
+import { createServer } from 'node:http';
 
-const port = Number(process.argv.includes('--port')
+const argPort = process.argv.includes('--port')
   ? process.argv[process.argv.indexOf('--port') + 1]
-  : 8787);
+  : null;
+const port = Number(argPort ?? process.env.PORT ?? 8787);
 
 const rooms = new Map(); // code -> { host, clients:Set }
 
-const wss = new WebSocketServer({ port });
-console.log(`signalling on ws://0.0.0.0:${port}`);
+const http = createServer((req, res) => {
+  if (req.url === '/healthz' || req.url === '/') {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, rooms: rooms.size }));
+    return;
+  }
+  res.writeHead(404).end();
+});
+
+const wss = new WebSocketServer({ server: http });
+http.listen(port, () => console.log(`signalling on ws://0.0.0.0:${port} (health: /healthz)`));
 
 const send = (ws, msg) => { if (ws?.readyState === 1) ws.send(JSON.stringify(msg)); };
 
