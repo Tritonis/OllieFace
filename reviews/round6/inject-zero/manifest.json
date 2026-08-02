@@ -1,0 +1,725 @@
+{
+  "seed": 1337,
+  "ready": true,
+  "clockPinned": true,
+  "ms": {
+    "boot": 13465,
+    "bootTimeout": 60000
+  },
+  "shots": [
+    {
+      "name": "08-explosion",
+      "doc": "Peak VFX moment: explosion + damage numbers + shake. Judges impact feedback.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\inject-zero\\08-explosion.png",
+      "engine": {
+        "frameErrors": 2,
+        "lastFrameError": {
+          "who": "harness:08-explosion",
+          "message": "[harness] 08-explosion: subject missing or illegible — monsters standing in it (pixels: {\"why\":\"absent\",\"px\":17,\"need\":200,\"objs\":\"1/7\",\"need2\":2,\"sepP50\":0.85,\"needSep\":0.25,\"carriedPx\":17,\"perPx\":[17,0,0,0,0,0,0],\"perSep\":[0.85,0,0,0,0,0,0],\"needPerPx\":100,\"badObjects\":[{\"i\":0,\"px\":17,\"sepP50\":0.85},{\"i\":1,\"px\":0,\"sepP50\":0}],\"lum\":104.4,\"bgLum\":6.8})",
+          "frame": -1
+        },
+        "time": 759.3999999999987
+      },
+      "ms": {
+        "setup": 1691,
+        "screenshot": 730,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": false,
+        "checks": [
+          {
+            "subject": "the blast",
+            "kind": "pixels",
+            "ok": true,
+            "px": 44586,
+            "frac": 0.34403,
+            "lum": 27,
+            "bgLum": 16.4,
+            "contrast": 0.243,
+            "sep": 0.224,
+            "sepP25": 0.07,
+            "sepP50": 0.17,
+            "legible": 0.559,
+            "at": [
+              0.541,
+              0.258
+            ],
+            "box": [
+              0.041,
+              0.002,
+              0.999,
+              0.798
+            ],
+            "region": [
+              0.5620262448194375,
+              0.3921466408895773,
+              0.5231
+            ],
+            "objects": 4,
+            "visibleObjects": 2,
+            "perPx": [
+              21164,
+              0,
+              6,
+              26304
+            ],
+            "perSep": [
+              0.19,
+              0,
+              0.13,
+              0.07
+            ],
+            "minPx": 1200,
+            "minObjects": 0,
+            "present": true,
+            "detail": {
+              "pools": [
+                "vfx.particles",
+                "vfx.trails",
+                "vfx.beams",
+                "vfx.rings"
+              ],
+              "distM": 11.9
+            },
+            "carriedPx": 24924,
+            "minCarried": 1200,
+            "legibleOk": true,
+            "aggregate": "VFX buffers: the meshes are shared particle/ring/trail pools, not nameable objects",
+            "perObjectOk": true,
+            "gatedOn": [
+              "px >= minPx",
+              "carriedPx >= minCarried"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25"
+            ]
+          },
+          {
+            "subject": "monsters standing in it",
+            "kind": "pixels",
+            "ok": false,
+            "px": 17,
+            "frac": 0.00013,
+            "lum": 104.4,
+            "bgLum": 6.8,
+            "contrast": 0.878,
+            "sep": 0.759,
+            "sepP25": 0.65,
+            "sepP50": 0.85,
+            "legible": 1,
+            "at": [
+              0.722,
+              0.385
+            ],
+            "box": [
+              0.716,
+              0.38,
+              0.728,
+              0.391
+            ],
+            "objects": 7,
+            "visibleObjects": 1,
+            "perPx": [
+              17,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "perSep": [
+              0.85,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "minPx": 200,
+            "minObjects": 2,
+            "present": false,
+            "carriedPx": 17,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "crowd": {
+              "need": 2,
+              "why": "blast victims: knockback removes members from frame by design",
+              "absentBeyondCrowd": [
+                {
+                  "i": 2,
+                  "px": 0,
+                  "sepP50": 0
+                },
+                {
+                  "i": 3,
+                  "px": 0,
+                  "sepP50": 0
+                },
+                {
+                  "i": 4,
+                  "px": 0,
+                  "sepP50": 0
+                },
+                {
+                  "i": 5,
+                  "px": 0,
+                  "sepP50": 0
+                },
+                {
+                  "i": 6,
+                  "px": 0,
+                  "sepP50": 0
+                }
+              ],
+              "carriesAbsence": true
+            },
+            "minPerPx": 100,
+            "absentObjects": [
+              {
+                "i": 1,
+                "px": 0,
+                "sepP50": 0
+              },
+              {
+                "i": 2,
+                "px": 0,
+                "sepP50": 0
+              },
+              {
+                "i": 3,
+                "px": 0,
+                "sepP50": 0
+              },
+              {
+                "i": 4,
+                "px": 0,
+                "sepP50": 0
+              },
+              {
+                "i": 5,
+                "px": 0,
+                "sepP50": 0
+              },
+              {
+                "i": 6,
+                "px": 0,
+                "sepP50": 0
+              }
+            ],
+            "objectFailures": [
+              {
+                "i": 0,
+                "px": 17,
+                "sepP50": 0.85
+              },
+              {
+                "i": 1,
+                "px": 0,
+                "sepP50": 0
+              }
+            ],
+            "perObjectOk": false,
+            "gatedOn": [
+              "px >= minPx",
+              "visibleObjects >= minObjects",
+              "sepP50 >= minSep",
+              "perPx/perSep/absence over the 2 gated of 7"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "legible",
+              "crowd.absentBeyondCrowd"
+            ]
+          },
+          {
+            "subject": "damage numbers",
+            "kind": "pixels",
+            "ok": true,
+            "px": 365,
+            "frac": 0.00282,
+            "lum": 64.2,
+            "bgLum": 65.9,
+            "contrast": 0.013,
+            "sep": 0.301,
+            "sepP25": 0.13,
+            "sepP50": 0.25,
+            "legible": 0.674,
+            "at": [
+              0.544,
+              0.298
+            ],
+            "box": [
+              0.484,
+              0.146,
+              0.58,
+              0.48
+            ],
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 60,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 246,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true,
+            "gatedOn": [
+              "px >= minPx",
+              "sepP50 >= minSep"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "legible"
+            ]
+          },
+          {
+            "subject": "blast framed in the middle band",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "x": 0.562,
+              "y": 0.392,
+              "distM": 11.9,
+              "pass": 0
+            }
+          },
+          {
+            "subject": "shutter (effect seconds)",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "age": 0.1167,
+              "frames": 7,
+              "exact": true,
+              "sim": 0.1167
+            }
+          }
+        ]
+      },
+      "newErrors": [
+        "[harness] 08-explosion: subject missing or illegible — monsters standing in it (pixels: {\"why\":\"absent\",\"px\":17,\"need\":200,\"objs\":\"1/7\",\"need2\":2,\"sepP50\":0.85,\"needSep\":0.25,\"carriedPx\":17,\"perPx\":[17,0,0,0,0,0,0],\"perSep\":[0.85,0,0,0,0,0,0],\"needPerPx\":100,\"badObjects\":[{\"i\":0,\"px\":17,\"sepP50\":0.85},{\"i\":1,\"px\":0,\"sepP50\":0}],\"lum\":104.4,\"bgLum\":6.8})"
+      ]
+    },
+    {
+      "name": "09-survivors",
+      "doc": "The full roster side by side. Judges silhouette read and how distinguishable the four survivors are from one another.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\inject-zero\\09-survivors.png",
+      "engine": {
+        "frameErrors": 1,
+        "lastFrameError": {
+          "who": "harness:09-survivors",
+          "message": "[harness] 09-survivors: subject missing or illegible — the four survivors (pixels: {\"why\":\"absent\",\"px\":4262,\"need\":4000,\"objs\":\"3/4\",\"need2\":4,\"sepP50\":0.47,\"needSep\":0.25,\"carriedPx\":3635,\"perPx\":[1229,1683,0,1350],\"perSep\":[0.47,0.45,0,0.61],\"needPerPx\":1000,\"badObjects\":[{\"i\":2,\"px\":0,\"sepP50\":0}],\"lum\":51,\"bgLum\":8.8})",
+          "frame": -1
+        },
+        "time": 0.9166666666666679
+      },
+      "ms": {
+        "setup": 4383,
+        "screenshot": 783,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": false,
+        "checks": [
+          {
+            "subject": "the four survivors",
+            "kind": "pixels",
+            "ok": false,
+            "px": 4262,
+            "frac": 0.03289,
+            "lum": 51,
+            "bgLum": 8.8,
+            "contrast": 0.707,
+            "sep": 0.487,
+            "sepP25": 0.21,
+            "sepP50": 0.47,
+            "legible": 0.853,
+            "at": [
+              0.472,
+              0.496
+            ],
+            "box": [
+              0.17,
+              0.328,
+              0.847,
+              0.643
+            ],
+            "objects": 4,
+            "visibleObjects": 3,
+            "perPx": [
+              1229,
+              1683,
+              0,
+              1350
+            ],
+            "perSep": [
+              0.47,
+              0.45,
+              0,
+              0.61
+            ],
+            "minPx": 4000,
+            "minObjects": 4,
+            "present": false,
+            "carriedPx": 3635,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "minPerPx": 1000,
+            "absentObjects": [
+              {
+                "i": 2,
+                "px": 0,
+                "sepP50": 0
+              }
+            ],
+            "objectFailures": [
+              {
+                "i": 2,
+                "px": 0,
+                "sepP50": 0
+              }
+            ],
+            "perObjectOk": false,
+            "gatedOn": [
+              "px >= minPx",
+              "visibleObjects >= minObjects",
+              "sepP50 >= minSep",
+              "perPx/perSep/absence over every declared object"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "legible"
+            ]
+          },
+          {
+            "subject": "all four on one footline",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "spreadPx": 0,
+              "footY": [
+                576,
+                576,
+                576,
+                576
+              ]
+            }
+          },
+          {
+            "subject": "no survivor occluded, ankles included",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "perSurvivor": [
+                1,
+                1,
+                1,
+                1
+              ],
+              "groundSpreadM": 0
+            }
+          }
+        ]
+      },
+      "newErrors": [
+        "[harness] 09-survivors: subject missing or illegible — the four survivors (pixels: {\"why\":\"absent\",\"px\":4262,\"need\":4000,\"objs\":\"3/4\",\"need2\":4,\"sepP50\":0.47,\"needSep\":0.25,\"carriedPx\":3635,\"perPx\":[1229,1683,0,1350],\"perSep\":[0.47,0.45,0,0.61],\"needPerPx\":1000,\"badObjects\":[{\"i\":2,\"px\":0,\"sepP50\":0}],\"lum\":51,\"bgLum\":8.8})"
+      ]
+    }
+  ],
+  "errors": [
+    "[harness] 09-survivors: subject missing or illegible — the four survivors (pixels: {\"why\":\"absent\",\"px\":4262,\"need\":4000,\"objs\":\"3/4\",\"need2\":4,\"sepP50\":0.47,\"needSep\":0.25,\"carriedPx\":3635,\"perPx\":[1229,1683,0,1350],\"perSep\":[0.47,0.45,0,0.61],\"needPerPx\":1000,\"badObjects\":[{\"i\":2,\"px\":0,\"sepP50\":0}],\"lum\":51,\"bgLum\":8.8})",
+    "[harness] 08-explosion: subject missing or illegible — monsters standing in it (pixels: {\"why\":\"absent\",\"px\":17,\"need\":200,\"objs\":\"1/7\",\"need2\":2,\"sepP50\":0.85,\"needSep\":0.25,\"carriedPx\":17,\"perPx\":[17,0,0,0,0,0,0],\"perSep\":[0.85,0,0,0,0,0,0],\"needPerPx\":100,\"badObjects\":[{\"i\":0,\"px\":17,\"sepP50\":0.85},{\"i\":1,\"px\":0,\"sepP50\":0}],\"lum\":104.4,\"bgLum\":6.8})"
+  ],
+  "partial": true,
+  "subjectFailures": [
+    {
+      "name": "08-explosion",
+      "failed": [
+        "monsters standing in it"
+      ],
+      "detail": [
+        {
+          "subject": "monsters standing in it",
+          "kind": "pixels",
+          "ok": false,
+          "px": 17,
+          "frac": 0.00013,
+          "lum": 104.4,
+          "bgLum": 6.8,
+          "contrast": 0.878,
+          "sep": 0.759,
+          "sepP25": 0.65,
+          "sepP50": 0.85,
+          "legible": 1,
+          "at": [
+            0.722,
+            0.385
+          ],
+          "box": [
+            0.716,
+            0.38,
+            0.728,
+            0.391
+          ],
+          "objects": 7,
+          "visibleObjects": 1,
+          "perPx": [
+            17,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "perSep": [
+            0.85,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "minPx": 200,
+          "minObjects": 2,
+          "present": false,
+          "carriedPx": 17,
+          "minSep": 0.25,
+          "legibleOk": true,
+          "crowd": {
+            "need": 2,
+            "why": "blast victims: knockback removes members from frame by design",
+            "absentBeyondCrowd": [
+              {
+                "i": 2,
+                "px": 0,
+                "sepP50": 0
+              },
+              {
+                "i": 3,
+                "px": 0,
+                "sepP50": 0
+              },
+              {
+                "i": 4,
+                "px": 0,
+                "sepP50": 0
+              },
+              {
+                "i": 5,
+                "px": 0,
+                "sepP50": 0
+              },
+              {
+                "i": 6,
+                "px": 0,
+                "sepP50": 0
+              }
+            ],
+            "carriesAbsence": true
+          },
+          "minPerPx": 100,
+          "absentObjects": [
+            {
+              "i": 1,
+              "px": 0,
+              "sepP50": 0
+            },
+            {
+              "i": 2,
+              "px": 0,
+              "sepP50": 0
+            },
+            {
+              "i": 3,
+              "px": 0,
+              "sepP50": 0
+            },
+            {
+              "i": 4,
+              "px": 0,
+              "sepP50": 0
+            },
+            {
+              "i": 5,
+              "px": 0,
+              "sepP50": 0
+            },
+            {
+              "i": 6,
+              "px": 0,
+              "sepP50": 0
+            }
+          ],
+          "objectFailures": [
+            {
+              "i": 0,
+              "px": 17,
+              "sepP50": 0.85
+            },
+            {
+              "i": 1,
+              "px": 0,
+              "sepP50": 0
+            }
+          ],
+          "perObjectOk": false,
+          "gatedOn": [
+            "px >= minPx",
+            "visibleObjects >= minObjects",
+            "sepP50 >= minSep",
+            "perPx/perSep/absence over the 2 gated of 7"
+          ],
+          "notGated": [
+            "contrast",
+            "sep",
+            "sepP25",
+            "legible",
+            "crowd.absentBeyondCrowd"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "09-survivors",
+      "failed": [
+        "the four survivors"
+      ],
+      "detail": [
+        {
+          "subject": "the four survivors",
+          "kind": "pixels",
+          "ok": false,
+          "px": 4262,
+          "frac": 0.03289,
+          "lum": 51,
+          "bgLum": 8.8,
+          "contrast": 0.707,
+          "sep": 0.487,
+          "sepP25": 0.21,
+          "sepP50": 0.47,
+          "legible": 0.853,
+          "at": [
+            0.472,
+            0.496
+          ],
+          "box": [
+            0.17,
+            0.328,
+            0.847,
+            0.643
+          ],
+          "objects": 4,
+          "visibleObjects": 3,
+          "perPx": [
+            1229,
+            1683,
+            0,
+            1350
+          ],
+          "perSep": [
+            0.47,
+            0.45,
+            0,
+            0.61
+          ],
+          "minPx": 4000,
+          "minObjects": 4,
+          "present": false,
+          "carriedPx": 3635,
+          "minSep": 0.25,
+          "legibleOk": true,
+          "minPerPx": 1000,
+          "absentObjects": [
+            {
+              "i": 2,
+              "px": 0,
+              "sepP50": 0
+            }
+          ],
+          "objectFailures": [
+            {
+              "i": 2,
+              "px": 0,
+              "sepP50": 0
+            }
+          ],
+          "perObjectOk": false,
+          "gatedOn": [
+            "px >= minPx",
+            "visibleObjects >= minObjects",
+            "sepP50 >= minSep",
+            "perPx/perSep/absence over every declared object"
+          ],
+          "notGated": [
+            "contrast",
+            "sep",
+            "sepP25",
+            "legible"
+          ]
+        }
+      ]
+    }
+  ],
+  "subjectsOk": false,
+  "toleratedAbsences": [
+    {
+      "name": "08-explosion",
+      "subject": "monsters standing in it",
+      "checkOk": false,
+      "crowd": 2,
+      "of": 7,
+      "why": "blast victims: knockback removes members from frame by design",
+      "absent": [
+        {
+          "i": 2,
+          "px": 0,
+          "sepP50": 0
+        },
+        {
+          "i": 3,
+          "px": 0,
+          "sepP50": 0
+        },
+        {
+          "i": 4,
+          "px": 0,
+          "sepP50": 0
+        },
+        {
+          "i": 5,
+          "px": 0,
+          "sepP50": 0
+        },
+        {
+          "i": 6,
+          "px": 0,
+          "sepP50": 0
+        }
+      ]
+    }
+  ],
+  "determinism": {
+    "clockPinned": true,
+    "frameDt": 0.016666666666666666,
+    "frameTimeouts": 0
+  },
+  "perf": {
+    "programs": 71,
+    "geometries": 585,
+    "textures": 53,
+    "sceneObjects": 796
+  }
+}
