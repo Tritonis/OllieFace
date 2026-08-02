@@ -161,6 +161,42 @@ const PALETTES = {
     // the plate values under them can read again.
     cellGain: 0.5,
   },
+
+  // Cinder: soot and brass, white-hot accent. The one palette on the roster
+  // where the *light plate is the saturated one* — every other rig keeps a
+  // desaturated bright value (bone, porcelain, canvas) and hangs one saturated
+  // accent off it. Doing it the other way round is what stops a warm survivor
+  // beside Anvil reading as a recolour of him: Anvil is a warm shell carrying a
+  // cool-ish bone plate, this is a neutral near-black shell carrying a warm
+  // metal one, so the two disagree about which part of the body is coloured
+  // before they disagree about hue at all.
+  cinder: {
+    coat: 0x2a2a30,
+    coatDark: 0x151519,
+    plate: 0xc89a44,
+    plateMid: 0x7d6434,
+    cloak: 0x4a4a52,
+    // White-hot rather than orange. The burners are the hottest thing on the
+    // model and they sit directly on brass; an orange lamp on a brass plate is
+    // one value, and the whole point of the accent is to be the one thing the
+    // plate cannot be mistaken for.
+    accent: 0xfff0b0,
+    skinDark: 0x2b2926,
+    metal: 0x8d8b84,
+    gunmetal: 0x3a3833,
+    visor: 0xffc61a,
+    cell: 0xffd76a,
+    coatLift: 0x241f18,
+    cloakLift: 0x2a2620,
+    cellBase: 0x1a1206,
+    visorBase: 0x140d02,
+    rim: 0xffd9a0,
+    // Same problem Rook had, for the opposite reason: the burner bank is six
+    // lamps in a 0.4 m strip across the chest and shoulders, and at full gain
+    // they merged into one blown patch that took the brass plate's value with
+    // them. Two thirds keeps each lamp a discrete hot dot.
+    cellGain: 0.66,
+  },
 };
 
 /**
@@ -176,6 +212,11 @@ const CLOTH_GAIN = {
   anvil: { coat: 0.45, cape: 0.3 },
   kestrel: { coat: 1.25, cape: 1.35 },
   rook: { coat: 0.35, cape: 0.12 },
+  // Cinder wears no coat at all — the `coat` pivot carries a pair of hanging
+  // hose loops — and the `cape` pivot is a bolted tank harness. The hoses want
+  // to swing more than fabric does (they are heavy and they hang free), the
+  // tanks want to swing less than fabric does (they are strapped to a spine).
+  cinder: { coat: 1.4, cape: 0.18 },
 };
 
 /**
@@ -208,6 +249,12 @@ const POSE = {
   anvil: { armZ: 0.58, gunZ: 0.46, gunY: -0.26, elbow: -0.46, stance: 0.115, lean: 0.17 },
   kestrel: { armZ: 0.16, gunZ: 0.02, gunY: -0.06, elbow: -0.55, stance: 0.075, lean: -0.05 },
   rook: { armZ: 0.32, gunZ: 0.30, gunY: -0.18, elbow: -0.38, stance: 0.20, lean: 0.06 },
+  // Cinder is the inverse of Rook: the mass is at the top (twin tanks) and the
+  // stance is narrow, so the rig tapers *downward*. `stance` is therefore the
+  // tightest on the roster and `armZ` the second widest — the arms have to clear
+  // a torso that is already wearing a harness, or the whole upper body closes
+  // into one block and the tanks stop reading as separate objects.
+  cinder: { armZ: 0.52, gunZ: 0.38, gunY: -0.22, elbow: -0.44, stance: 0.065, lean: 0.20 },
 };
 
 /**
@@ -500,6 +547,7 @@ export class CharacterMesh {
     if (this.key === 'anvil') this.buildAnvil();
     else if (this.key === 'kestrel') this.buildKestrel();
     else if (this.key === 'rook') this.buildRook();
+    else if (this.key === 'cinder') this.buildCinder();
     else this.buildRanger();
     this._finish();
   }
@@ -1544,6 +1592,269 @@ export class CharacterMesh {
       const toe = boxMesh(0.24, 0.05, 0.09, M.accent);
       toe.position.set(0, -0.10, 0.18);
       ankle.add(toe);
+      this.legs[key] = { hip, knee, ankle };
+    }
+  }
+
+  /**
+   * CINDER — the ash foreman.
+   *
+   * The roster's silhouettes are separated by *where the volume sits*, and the
+   * four that already exist cover: even (Ranger), forward-hunched and
+   * shoulder-heavy (Anvil), thin and tall (Kestrel), bottom-heavy with a rack
+   * (Rook). The shape none of them makes is a hard **inverted triangle** — a
+   * wide, high mass tapering into a narrow stance — so that is what this rig is.
+   *
+   * Three decisions carry it, and every one of them is a decision *not* to reuse
+   * something the other four already own:
+   *
+   *  1. **Twin tanks worn high and wide.** They sit on the `cape` pivot, above
+   *     the shoulder line and outboard of it, which puts the widest part of the
+   *     rig at the very top. Rook's rack is the other back-mounted mass on the
+   *     roster and it deliberately hangs *low and central*; these are the only
+   *     two objects on the roster wider than the shoulders they are attached to.
+   *  2. **No coat, no cape, no skirt.** The three other non-Ranger rigs each
+   *     solve the hip region with cloth. This one leaves it bare and narrow so
+   *     the taper actually reaches the ground — a skirt here would restore the
+   *     wide base the whole shape exists to refuse. The `coat` pivot instead
+   *     carries two heavy hose loops, which read as swinging weight rather than
+   *     as fabric.
+   *  3. **A forward, low head with a full respirator.** Ranger and Anvil have
+   *     helmets, Kestrel a hood, Rook a small dome. A snouted mask thrust
+   *     forward of the chest is a fifth head shape, and pushing it forward is
+   *     what keeps a neck notch visible under tanks that would otherwise close
+   *     over it — the exact failure the POSE table's shoulder-line note records.
+   */
+  buildCinder() {
+    const M = this.mats;
+    const root = new THREE.Group();
+    this.group = root;
+    // Narrow stance, narrow footprint. Rook's 1.25 disc under this rig's 0.13
+    // hip splay would be a puddle the character stands in the middle of.
+    this.blobScale = 0.92;
+    // The mask lens is small (0.11 x 0.05) and sits under a brow, so it can
+    // afford to run hotter than Rook's wrap band without taking the head's
+    // value with it — this is the rig's one saturated face feature.
+    this.visorBase = 1.7;
+
+    const rig = pivot(root, 0, 0, 0);
+    this.rig = rig;
+
+    const pelvis = pivot(rig, 0, 0.92, 0);
+    this.pelvis = pelvis;
+    // Deliberately the narrowest hip block on the roster (Rook's is 0.46 wide).
+    // The taper is only a taper if the bottom is actually small.
+    const hipBlock = boxMesh(0.28, 0.20, 0.22, M.coatDark);
+    hipBlock.position.y = -0.04;
+    pelvis.add(hipBlock);
+    // A single canted fuel bottle on one hip. One object, off-centre: the rig is
+    // asymmetric at the top (see the pilot burner below) and repeating that at
+    // the waist on the *same* side would read as a lean, so it goes on the other.
+    const bottle = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.075, 0.22, 6), M.plateMid);
+    bottle.castShadow = true;
+    bottle.position.set(-0.19, -0.02, -0.02);
+    bottle.rotation.z = 0.34;
+    pelvis.add(bottle);
+
+    const spine = pivot(pelvis, 0, 0.09, 0);
+    this.spine = spine;
+    const chest = pivot(spine, 0, 0.19, 0);
+    this.chest = chest;
+
+    // Torso: a tapered barrel that is WIDER AT THE TOP. `limb` builds top-radius
+    // to bottom-radius, so 0.25 over 0.15 is the inverse of every other rig's
+    // torso in the file and is where the inverted triangle actually begins.
+    const torso = limb(0.38, 0.25, 0.15, M.coat, 6);
+    torso.position.y = 0.08;
+    torso.scale.z = 0.86;
+    chest.add(torso);
+
+    // The brass breastplate. This rig's light value is a saturated metal, so it
+    // is kept to one large flat panel rather than being scattered — a saturated
+    // plate broken into pieces stops being a value and becomes noise.
+    const breast = boxMesh(0.30, 0.24, 0.10, M.plate);
+    breast.position.set(0, 0.02, 0.15);
+    chest.add(breast);
+    const collarPlate = boxMesh(0.44, 0.075, 0.24, M.plateMid);
+    collarPlate.position.set(0, 0.20, 0.01);
+    chest.add(collarPlate);
+    // Burner bank: three small lamps in a row across the chest. Small and
+    // separated on purpose — see the `cellGain` note in the palette.
+    for (let i = -1; i <= 1; i++) {
+      const lamp = boxMesh(0.045, 0.045, 0.03, M.cell);
+      lamp.position.set(i * 0.09, -0.06, 0.205);
+      chest.add(lamp);
+    }
+
+    // --- the tanks -------------------------------------------------------
+    // Rides the `cape` pivot so the animator's cloth swing drives it (heavily
+    // damped by CLOTH_GAIN — these are strapped down, not hanging).
+    const harness = pivot(chest, 0, 0.20, -0.02);
+    this.cape = harness;
+    const yoke = boxMesh(0.50, 0.10, 0.14, M.coatDark);
+    yoke.position.set(0, 0.02, -0.10);
+    harness.add(yoke);
+    for (const side of [-1, 1]) {
+      // Outboard of the shoulder pivots (0.19) and above the shoulder line —
+      // this pair is the widest and highest thing on the rig, which is the
+      // entire silhouette claim.
+      const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.115, 0.46, 7), M.plate);
+      tank.castShadow = true;
+      tank.position.set(0.26 * side, 0.06, -0.19);
+      tank.rotation.set(0.16, 0, -0.13 * side);
+      harness.add(tank);
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.10, 0.07, 7), M.metal);
+      cap.castShadow = true;
+      cap.position.set(0.29 * side, 0.30, -0.22);
+      cap.rotation.z = -0.13 * side;
+      harness.add(cap);
+      // Dark strap across each tank: without it the two brass cylinders and the
+      // brass breastplate are one continuous light mass from the side.
+      const strap = boxMesh(0.24, 0.05, 0.20, M.coatDark);
+      strap.position.set(0.26 * side, 0.02, -0.19);
+      harness.add(strap);
+    }
+    // Pilot light on one cap only. The single asymmetry in the crown, and the
+    // cue that says which end of the harness is live.
+    const pilot = boxMesh(0.05, 0.06, 0.05, M.cell);
+    pilot.position.set(-0.29, 0.37, -0.22);
+    harness.add(pilot);
+    // Manifold bridging the two tanks, low and central, so the pair reads as one
+    // piece of equipment rather than as two objects that happen to be adjacent.
+    const manifold = boxMesh(0.40, 0.07, 0.09, M.gun);
+    manifold.position.set(0, -0.14, -0.20);
+    harness.add(manifold);
+
+    // --- hoses -----------------------------------------------------------
+    // The `coat` pivot. Two heavy loops off the manifold down to the hips: the
+    // one piece of this rig that is allowed to swing hard, and the reason the
+    // waist is not simply empty where every other survivor has fabric.
+    const hoses = pivot(pelvis, 0, 0.16, 0);
+    this.coat = hoses;
+    for (const side of [-1, 1]) {
+      const geo = new THREE.TorusGeometry(0.12, 0.032, 4, 8, Math.PI * 1.2);
+      const hose = new THREE.Mesh(geo, M.cloth);
+      hose.castShadow = true;
+      hose.position.set(0.16 * side, -0.02, -0.14);
+      hose.rotation.set(0.5, 0.35 * side, 0.3 * side);
+      hoses.add(hose);
+    }
+
+    // --- head ------------------------------------------------------------
+    const neck = pivot(chest, 0, 0.34, 0);
+    this.neck = neck;
+    // Pushed forward (+z) rather than sat on top: the tanks close over anything
+    // directly above the collar, and a head that vanishes into the crown is the
+    // headless-lump failure the Ranger's yoke comment records.
+    const skull = boxMesh(0.20, 0.18, 0.19, M.coatDark);
+    skull.position.set(0, 0.10, 0.035);
+    skull.castShadow = true;
+    neck.add(skull);
+    const brow = boxMesh(0.22, 0.05, 0.15, M.plateMid);
+    brow.position.set(0, 0.185, 0.05);
+    neck.add(brow);
+    // The snout. A short cone thrown forward of the face — the fifth head shape
+    // on the roster and the only one with anything sticking out of it.
+    const snout = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.085, 0.16, 6), M.metal);
+    snout.castShadow = true;
+    snout.rotation.x = Math.PI / 2;
+    snout.position.set(0, 0.055, 0.17);
+    neck.add(snout);
+    const filter = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.05, 6), M.plate);
+    filter.rotation.x = Math.PI / 2;
+    filter.position.set(0, 0.055, 0.245);
+    neck.add(filter);
+    const visor = boxMesh(0.11, 0.05, 0.04, M.visor);
+    visor.position.set(0, 0.135, 0.135);
+    neck.add(visor);
+    this.visor = visor;
+
+    // --- arms ------------------------------------------------------------
+    this.arms = {};
+    for (const side of [-1, 1]) {
+      const key = side < 0 ? 'L' : 'R';
+      const shoulder = pivot(chest, 0.19 * side, 0.22, 0);
+      // No pauldron. Anvil owns the big shoulder plate, and the tanks are
+      // already the wide thing up here — a pad as well would weld the whole
+      // upper body into one bar.
+      const guard = boxMesh(0.115, 0.10, 0.16, M.coatDark);
+      guard.position.set(0.01 * side, 0.02, 0);
+      guard.castShadow = true;
+      shoulder.add(guard);
+
+      const upper = limb(0.26, 0.075, 0.06, M.body);
+      shoulder.add(upper);
+      const elbow = pivot(shoulder, 0, -0.26, 0);
+      const fore = limb(0.24, 0.07, 0.055, M.coatDark);
+      elbow.add(fore);
+      // Long brass cuff down the forearm rather than a boxy bracer: it repeats
+      // the tanks' vertical cylinder at limb scale, which ties the two ends of
+      // the rig together without adding a new shape.
+      const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.055, 0.16, 6), M.plateMid);
+      cuff.castShadow = true;
+      cuff.position.y = -0.16;
+      elbow.add(cuff);
+      const hand = pivot(elbow, 0, -0.24, 0);
+      const fist = boxMesh(0.085, 0.09, 0.10, M.body);
+      hand.add(fist);
+      this.arms[key] = { shoulder, elbow, hand };
+    }
+
+    // --- the igniter -----------------------------------------------------
+    // A long thin wand, not a gun body. Ranger's carbine, Kestrel's rifle and
+    // Rook's drum-fed rivet gun are all breeched weapons with a receiver; this
+    // has none — it is a pipe with a flared bell and a pilot flame, so the
+    // weapon silhouette disagrees with the roster too.
+    const gun = new THREE.Group();
+    gun.position.set(0, -0.02, 0.03);
+    this.arms.R.hand.add(gun);
+    const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.038, 0.46, 6), M.gun);
+    pipe.rotation.x = Math.PI / 2;
+    pipe.position.set(0, 0.02, 0.20);
+    pipe.castShadow = true;
+    gun.add(pipe);
+    const bell = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.042, 0.13, 7, 1, true), M.plate);
+    bell.rotation.x = -Math.PI / 2;
+    bell.position.set(0, 0.02, 0.44);
+    bell.castShadow = true;
+    gun.add(bell);
+    const pilotRing = new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.016, 4, 10), M.cell);
+    pilotRing.position.set(0, 0.02, 0.40);
+    gun.add(pilotRing);
+    const feed = boxMesh(0.05, 0.06, 0.16, M.plateMid);
+    feed.position.set(0, -0.03, 0.06);
+    gun.add(feed);
+    const grip = boxMesh(0.06, 0.15, 0.08, M.coatDark);
+    grip.position.set(0, -0.10, -0.01);
+    grip.rotation.x = -0.2;
+    gun.add(grip);
+    this.gun = gun;
+    this.muzzle = new THREE.Object3D();
+    this.muzzle.position.set(0, 0.02, 0.52);
+    gun.add(this.muzzle);
+
+    // --- legs ------------------------------------------------------------
+    // Long, thin, close together, in low boots. Everything about them is the
+    // opposite of Rook's, because the taper has to survive all the way down.
+    this.legs = {};
+    for (const side of [-1, 1]) {
+      const key = side < 0 ? 'L' : 'R';
+      const hip = pivot(pelvis, 0.115 * side, -0.08, 0);
+      const thigh = limb(0.36, 0.095, 0.07, M.coatDark);
+      hip.add(thigh);
+      const knee = pivot(hip, 0, -0.36, 0);
+      const shin = limb(0.34, 0.075, 0.06, M.coat);
+      knee.add(shin);
+      // One brass shin guard per leg. The lower body needs a single bright mark
+      // or the whole bottom third of the rig sits in the terrain's value range —
+      // the failure the `coat` material's rim/hemi comment was written for.
+      const guard = boxMesh(0.10, 0.20, 0.07, M.plateMid);
+      guard.position.set(0, -0.16, 0.055);
+      knee.add(guard);
+      const ankle = pivot(knee, 0, -0.34, 0);
+      const boot = boxMesh(0.155, 0.11, 0.26, M.coatDark);
+      boot.position.set(0, -0.045, 0.03);
+      ankle.add(boot);
       this.legs[key] = { hip, knee, ankle };
     }
   }

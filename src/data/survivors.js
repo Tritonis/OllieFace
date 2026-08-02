@@ -20,6 +20,8 @@ import { ABILITIES, SLOT_ORDER } from './abilities.js';
  *   kestrel   90 hp / 17 dmg / 7.4 m/s   glass; every button is a windup
  *   rook     135 hp / 11 dmg / 6.3 m/s   weakest personally, strongest in a
  *                                        prepared position
+ *   cinder   125 hp / 13 dmg / 6.9 m/s   almost no damage on contact; all of it
+ *                                        arrives seconds later, as burn
  *
  * `unlock` is `null` for anything available from the first run. Anything else
  * is a challenge id for `systems/Profile.js` (agent B1) to evaluate — the field
@@ -169,6 +171,55 @@ export const SURVIVORS = [
       secondary: 'rookMines',
       utility: 'rookWard',
       special: 'rookTurret',
+    },
+  },
+
+  {
+    id: 'cinder',
+    name: 'CINDER',
+    subtitle: 'Ash Foreman',
+    lore:
+      'Ran the smelter on the third shift, which is the shift nobody checks. Walked out '
+      + 'of it with the ignition harness still strapped on and a working understanding of '
+      + 'what fire does when you stop asking it to stay in the furnace. Kills nothing '
+      + 'quickly. Has never needed to.',
+    meshKey: 'cinder',
+    accentColor: 0xff8a20,
+    // Warmer and paler than the accent, because the dash ribbon on this rig is
+    // vented gas rather than a coloured streak — the same reasoning as the
+    // Ranger's cold-cyan roll, applied to a survivor whose kit is already
+    // orange: the trail has to be the *hottest* thing, not another one of them.
+    trailColor: 0xffd76a,
+    unlock: null,
+    baseStats: {
+      // 125/13/6.9 — inside the Ranger's shadow on every axis rather than beside
+      // it, and that is the point. Cinder's output is not in this block: a full
+      // Stoke cone puts four seconds of burn on everything it touches, and the
+      // Special pays per burning body. Pricing her direct damage at Ranger
+      // levels would have made the deferred half free.
+      maxHealth: 125,
+      healthRegen: 1.2,
+      moveSpeed: 6.9,
+      attackSpeed: 1,
+      damage: 13,
+      // The one survivor crit items are actively *bad* on: nearly all of her
+      // damage arrives as burn ticks and explosions, and neither can crit. Left
+      // at the roster floor so that reads as a real build decision rather than
+      // as an oversight.
+      critChance: 0.01,
+      critMult: 2,
+      // A little armour, because an attrition survivor has to survive the ten
+      // seconds her damage takes to arrive. Half Anvil's — she is meant to be
+      // standing near the horde, not in it.
+      armor: 4,
+      cooldownMult: 1,
+      jumpCount: 1,
+    },
+    abilities: {
+      primary: 'cinderStoke',
+      secondary: 'cinderPyreFlask',
+      utility: 'cinderBackdraft',
+      special: 'cinderConflagration',
     },
   },
 ];

@@ -45,9 +45,20 @@ import { chainLightning, seekingStrike, nearbyHostiles } from './items.js';
 const _dir = new THREE.Vector3();
 const _to = new THREE.Vector3();
 const _sky = new THREE.Vector3();
+const _up = new THREE.Vector3(0, 1, 0);
 
 /** How long a duration-style equipment effect runs, in seconds. */
-const BUFF = { stim: 8, veil: 6, drone: 18, lantern: 12, crown: 10 };
+const BUFF = { stim: 8, veil: 6, drone: 18, lantern: 12, crown: 10, aegis: 8 };
+
+/**
+ * Recall Beacon's anchor lifetime, in seconds. Long enough to plant before a
+ * fight and use during it; far shorter than a stage, so an anchor can never
+ * outlive the terrain whose coordinates it holds.
+ */
+const RECALL_LIFE = 60;
+/** Aegis Emitter's footprint and the armour it is worth to stand in it. */
+const AEGIS_RADIUS = 10;
+const AEGIS_ARMOR = 30;
 
 export const EQUIPMENT = [
   {
@@ -276,6 +287,102 @@ export const EQUIPMENT = [
         a.ctx.vfx?.beam?.(a.player.position, target.position, 0x9fd8ff);
       });
       api.ctx.audio?.play?.('zap', api.player.position);
+      return true;
+    },
+  },
+  {
+    id: 'recall-beacon', name: 'Recall Beacon', tier: 'equipment', glyph: 'beacon',
+    flavour: 'Leave a mark on the world. The world will hold you to it.',
+    cooldown: 24,
+    description: () => `Press with no beacon planted to plant one, free. Press again within ${RECALL_LIFE}s to return to it and heal 25%.`,
+    /**
+     * The only two-state card in the tier, and the reason it is worth having.
+     * Every other equipment is a button that does a thing; this one is a
+     * *decision made in advance* — you plant on the safe ledge before you drop
+     * into the pit, and the value of the press is decided by where you were
+     * standing a minute ago rather than by where you are now.
+     *
+     * Planting deliberately returns `false`. `Items.useEquipment` treats that as
+     * a refusal and refunds the charge, so the plant costs nothing and only the
+     * recall pays the cooldown — which is the right price, because the plant is
+     * the part with no immediate effect and charging for it would make the card
+     * feel like it did nothing half the time it was pressed.
+     */
+    use: (api) => {
+      const p = api.player;
+      const ctx = api.ctx;
+      const now = ctx.time || 0;
+      const anchor = p._recallAnchor;
+
+      // No live anchor: plant one. The stamp bounds staleness — an anchor is a
+      // set of coordinates and nothing else, and a stage transition rebuilds the
+      // terrain under them, so an anchor that outlived the stage it was planted
+      // on would recall the survivor to a point that no longer means anything.
+      // A minute is long enough to cross an arena and far shorter than a stage.
+      if (!anchor || now - anchor.t > RECALL_LIFE) {
+        p._recallAnchor = { at: p.position.clone(), t: now };
+        ctx.vfx?.rings?.spawn?.(p.position, _up, 0x7ad8ff, 0.3, 2.6, 0.45, 0.9);
+        ctx.vfx?.burst?.(p.position, 0x7ad8ff);
+        ctx.audio?.play?.('ability', p.position, 1);
+        return false;
+      }
+
+      // Recall. The destination is re-sampled against the height field rather
+      // than trusted: the survivor may have planted mid-jump, and a stored Y
+      // that was 6 m of air is a fall the player did not ask for.
+      _to.copy(anchor.at);
+      const y = ctx.stage?.sampleHeight?.(_to.x, _to.z);
+      if (Number.isFinite(y)) _to.y = Math.max(_to.y, y + 0.1);
+
+      const from = p.position.clone();
+      ctx.vfx?.burst?.(from, 0x7ad8ff);
+      ctx.vfx?.beam?.(from, _to, 0x7ad8ff);
+      p.position.copy(_to);
+      p.velocity?.set?.(0, 0, 0);
+      p._recallAnchor = null;
+      api.combat.heal(p, (p.stats?.maxHealth || 100) * 0.25);
+      ctx.vfx?.burst?.(_to, 0x7ad8ff);
+      ctx.vfx?.healPop?.(_to, Math.round((p.stats?.maxHealth || 100) * 0.25));
+      ctx.audio?.play?.('ability', _to, 2);
+      return true;
+    },
+  },
+  {
+    id: 'aegis-emitter', name: 'Aegis Emitter', tier: 'equipment', glyph: 'aegis',
+    flavour: 'A ten-metre opinion about who is allowed to move quickly.',
+    cooldown: 38,
+    description: () => `Drop a ${AEGIS_RADIUS}m dome for ${BUFF.aegis}s. Enemies inside it are slowed; while you stand inside it you gain +${AEGIS_ARMOR} armor.`,
+    /**
+     * The tier's only *positional* card. Every other durable equipment here
+     * (drone, lantern, crown) follows the player, which means holding it changes
+     * nothing about where they choose to stand. This one is nailed to the ground
+     * at the moment of the press, so its whole value is the player agreeing to
+     * fight in one place for eight seconds — which is a real cost in a game
+     * whose entire defensive vocabulary is movement.
+     *
+     * Built out of `addEffect` rather than as an entity for the same reason
+     * Sentry Drone is: it has no collision, no health and no pathing, so an
+     * Enemy-shaped object for it would be a rig and a snapshot slot bought for
+     * an overlap query.
+     */
+    use: (api) => {
+      const at = api.player.position.clone();
+      api.items.addEffect('aegis-emitter', BUFF.aegis, 0.5, (a) => {
+        for (const t of nearbyHostiles(a, at, AEGIS_RADIUS)) {
+          a.combat.applyStatus(t, 'slow', a.player, 1);
+        }
+        // Re-granted every half second rather than once for the duration: the
+        // buff has to lapse the moment the survivor steps out of the dome, and
+        // a short buff refreshed while inside expires on its own with no
+        // enter/exit bookkeeping to get wrong.
+        if (a.player.position.distanceTo(at) <= AEGIS_RADIUS) {
+          a.player.grantBuff?.({ armor: AEGIS_ARMOR }, 0.7);
+        }
+        a.ctx.vfx?.ring?.(at, AEGIS_RADIUS, 0x8fd8ff);
+      });
+      api.ctx.vfx?.rings?.spawn?.(at, _up, 0x8fd8ff, 0.4, AEGIS_RADIUS, 0.6, 0.9);
+      api.ctx.vfx?.burst?.(at, 0xbfe8ff);
+      api.ctx.audio?.play?.('shieldBreak', at);
       return true;
     },
   },

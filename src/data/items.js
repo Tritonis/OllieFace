@@ -142,6 +142,43 @@ function payHealth(api, amount) {
  */
 const consumes = (id) => ITEM_BY_ID.get(id)?.name || id;
 
+/**
+ * When each monster was last hit by the player, for Chipped Whetstone.
+ *
+ * A WeakMap rather than `Items.mark`: the mark table is Hunter's Tag's, and two
+ * items writing one shared set of marks would mean picking up either of them
+ * silently powers the other. Weak keys also mean a horde that dies mid-stage is
+ * collected without anyone having to sweep this, which `Items._sweepMarks`
+ * exists to do for the table that *is* keyed strongly.
+ */
+const _lastStruck = new WeakMap();
+/** How long a target has to be left alone before it counts as fresh again. */
+const OPENING_WINDOW = 4;
+
+/**
+ * The statuses Afflictor's Index recognises — i.e. every entry in Combat's
+ * `STATUS_DEFS`. Listed rather than asking Combat for its table because the
+ * data layer must not reach into a system's internals, and a status that
+ * existed but was not worth the Index's bonus would want leaving out anyway.
+ */
+const AILMENTS = ['burn', 'bleed', 'slow', 'freeze', 'shock'];
+
+/**
+ * Gilded Reliquary's exchange rate, and the ceiling on it.
+ *
+ * 250 is a little under a tenth of the first stage's chest price, so the bar
+ * moves visibly on a couple of kills rather than being a number that only
+ * changes when a boss dies. Eight steps caps the card at 2000 gold held — about
+ * two large chests — which is the point at which "I am saving" stops being a
+ * plan and starts being a refusal to play the run.
+ */
+const GOLD_STEP = 250;
+const GOLD_CAP_STEPS = 8;
+function afflicted(combat, target) {
+  for (let i = 0; i < AILMENTS.length; i++) if (combat.hasStatus(target, AILMENTS[i])) return true;
+  return false;
+}
+
 export const ITEMS = [
   // ------------------------------------------------------------------ BLIGHT
   //
@@ -284,6 +321,46 @@ export const ITEMS = [
     stat: (n, s) => {
       s.luck += linear(2, n);
       s.armor -= linear(40, n);
+    },
+  },
+
+  {
+    id: 'gorge-tooth', name: 'Gorging Tooth', tier: 'blight', glyph: 'gorgetooth',
+    corrupts: 'monster-tooth',
+    flavour: 'It does not chew. It only ever swallows, and it is always the wrong size for you.',
+    description: (n) => `Killing an enemy heals ${pct(linear(0.07, n))} of maximum health. Your maximum health is reduced to ${pct(hyperbolicMult(0.22, n))}. Consumes every ${consumes('monster-tooth')} you hold.`,
+    // The base heals a flat amount plus a small fraction; this heals a *large*
+    // fraction of a bar it has also shrunk. The two halves fight each other on
+    // purpose: the smaller the pool, the larger a percentage heal refills and
+    // the fewer hits it survives. That makes the card excellent while the horde
+    // is dense and lethal the moment the kills stop, which is the trade the
+    // whole tier is supposed to be asking about.
+    stat: (n, s) => { s.healthMult *= hyperbolicMult(0.22, n); },
+    hooks: {
+      onKill: (e, api) => {
+        const p = api.player;
+        api.combat.heal(p, (p.stats?.maxHealth || 100) * linear(0.07, api.count));
+      },
+    },
+  },
+  {
+    id: 'splinter-bar', name: 'Splinter Bar', tier: 'blight', glyph: 'splinterbar',
+    corrupts: 'crowbar',
+    flavour: 'Superb at opening things. Useless once they are open, and it knows it.',
+    description: (n) => `Deal +${pct(linear(1.3, n))} damage to enemies above 90% health. You deal ${pct(1 - hyperbolicMult(0.5, n))} less damage to enemies below 25% health. Consumes every ${consumes('crowbar')} you hold.`,
+    // Both halves live in one `outgoing` and are therefore multiplicative and
+    // order-independent by construction, which is the rule the tier is written
+    // to. The cost is deliberately placed on the *other* end of the health bar
+    // rather than on a stat: it turns Splinter Bar into an explicit argument
+    // with Hollowpoint Pouch, so a common-heavy inventory has a reason to refuse
+    // a corruption it would otherwise take for free.
+    hooks: {
+      outgoing: (amount, target, info, api) => {
+        const frac = target.health / (target.maxHealth || 1);
+        if (frac > 0.9) return amount * (1 + linear(1.3, api.count));
+        if (frac < 0.25) return amount * hyperbolicMult(0.5, api.count);
+        return amount;
+      },
     },
   },
 
@@ -548,6 +625,67 @@ export const ITEMS = [
       onKill: (e, api) => {
         if (!api.roll(hyperbolic(0.12, api.count))) return;
         seekingStrike(api, e.position, api.items.baseDamage() * linear(1.1, api.count), 1, 0xb9e4ff, 'spark');
+      },
+    },
+  },
+
+  // --------------------------------------------------- round 7 commons
+  //
+  // The three below deliberately buy *positions* rather than numbers. The white
+  // tier already owns the flat stat ladder (Flint Shard, Kevlar Weave, Cured
+  // Haunch) and a fourth entry on it would be dead weight; what it was missing
+  // was cards that change where the player chooses to stand, which is the axis
+  // the whole survivor roster is separated on.
+  {
+    id: 'bipod', name: 'Folding Bipod', tier: 'common', glyph: 'bipod',
+    flavour: 'Two of the three legs you need. You are the third one, and you are not to move.',
+    description: (n) => `Deal +${pct(linear(0.40, n))} damage while standing still.`,
+    hooks: {
+      // Reads `player.moving`, which is the same flag the spread model in
+      // `data/abilities.js` uses — so the item makes the *existing* planted/
+      // mobile split pay out instead of inventing a second notion of standing
+      // still that could disagree with the one the guns already use.
+      outgoing: (amount, target, info, api) =>
+        (api.player?.moving ? amount : amount * (1 + linear(0.40, api.count))),
+    },
+  },
+  {
+    id: 'whetstone', name: 'Chipped Whetstone', tier: 'common', glyph: 'whetstone',
+    flavour: 'The first cut is the only one it was ever ground for.',
+    description: (n) => `Deal +${pct(linear(0.70, n))} damage to an enemy you have not hit in the last ${OPENING_WINDOW}s.`,
+    hooks: {
+      // The mirror of Hunter's Tag: the Tag pays for staying on one target,
+      // this pays for leaving it. Holding both is coherent rather than
+      // contradictory — you open on everything, then finish the one you marked.
+      //
+      // The stamp is written *before* the answer is computed, using the value
+      // read a line earlier: the bonus is a property of the previous hit's age,
+      // not of this one's, and stamping afterwards would make a burst of two
+      // rounds in the same tick both count as openers.
+      outgoing: (amount, target, info, api) => {
+        const now = api.ctx.time;
+        const last = _lastStruck.get(target);
+        _lastStruck.set(target, now);
+        return (last === undefined || now - last >= OPENING_WINDOW)
+          ? amount * (1 + linear(0.70, api.count)) : amount;
+      },
+    },
+  },
+  {
+    id: 'prey-instinct', name: 'Prey Instinct', tier: 'common', glyph: 'instinct',
+    flavour: 'Whatever it was taken from spent its whole life being chased, and won.',
+    description: (n) => `While below 40% health, gain +${pct(linear(0.18, n))} movement speed.`,
+    hooks: {
+      // Refreshed every step onto the existing `quickfoot` buff rather than
+      // being a conditional entry in the stat block. Conditional *stats* are the
+      // one shape `Items.stats` cannot express — the cache is keyed on the base
+      // block and would not rebuild when health crossed the threshold — whereas
+      // a short buff re-applied while the condition holds expires on its own the
+      // moment it stops, with no edge case to get wrong.
+      onInterval: (e, api) => {
+        const p = api.player;
+        if (!p?.alive || p.health > (p.stats?.maxHealth || 100) * 0.4) return;
+        api.items.addBuff('quickfoot', 0.5, 1, linear(0.18, api.count));
       },
     },
   },
@@ -855,6 +993,110 @@ export const ITEMS = [
     },
   },
 
+  // ------------------------------------------------- round 7 uncommons
+  //
+  // Green is the tier that decides what a build *is*, so every card here is a
+  // multiplier on something the rest of the inventory is already doing rather
+  // than a source of its own: one pays out the status effects the whites and
+  // greens apply, one pays out movement, one pays out skill casts, one pays out
+  // whatever the player is standing next to. Nothing below is worth much on an
+  // empty run, and all of it compounds on a full one.
+  {
+    id: 'affliction-index', name: "Afflictor's Index", tier: 'uncommon', glyph: 'index',
+    flavour: 'A field guide to everything that can be wrong with a body, cross-referenced.',
+    description: (n) => `Deal +${pct(linear(0.25, n))} damage to enemies suffering burn, bleed, slow, freeze or shock.`,
+    hooks: {
+      // The one card in the file that scales off *other items' statuses* rather
+      // than off a stat. Warm Coals, Gutting Shiv, Frost Lattice, Concussion
+      // Charge and Hoarfrost Band are all cheap and all previously terminal —
+      // they applied an ailment and the ailment did its own small damage. This
+      // gives the whole ailment half of the pool a second output, which is what
+      // turns "I keep picking up status commons" into a build.
+      outgoing: (amount, target, info, api) =>
+        (afflicted(api.combat, target) ? amount * (1 + linear(0.25, api.count)) : amount),
+    },
+  },
+  {
+    id: 'tether-harpoon', name: 'Grapnel Tether', tier: 'uncommon', glyph: 'harpoon',
+    flavour: 'Range is a negotiation and this is the only argument it accepts.',
+    description: (n) => `${pct(hyperbolic(0.10, n))} chance on hit to reel an enemy a third of the way to you and slow it.`,
+    hooks: {
+      onHit: (e, api) => {
+        if (!api.roll(hyperbolic(0.10, api.count))) return;
+        const t = e.target;
+        // Bosses are not furniture — the same rule Collapsing Well and Gravity
+        // Snare keep, and for the same reason: a boss whose position the player
+        // controls has no fight left in it.
+        if (!t?.alive || t.isBoss) return;
+        // Moving a monster is game state even though the beam that draws it is
+        // not, so the displacement re-checks authority while the VFX below does
+        // not. `onHit` only reaches here on the host today; the guard is what
+        // stops that being load-bearing.
+        if (api.ctx.authority) {
+          t.position.lerp(api.player.position, 0.34);
+          t.velocity?.set?.(0, 0, 0);
+          api.combat.applyStatus(t, 'slow', api.player, 1);
+        }
+        api.ctx.vfx?.beam?.(api.player.position, t.position, 0xd8c07a);
+      },
+    },
+  },
+  {
+    id: 'emberwake', name: 'Emberwake Cleats', tier: 'uncommon', glyph: 'emberwake',
+    flavour: 'The soles never cooled after the foundry. Neither did the man wearing them.',
+    description: (n) => `While moving, scorch the ground behind you: a 3m cinder patch every 0.6s dealing ${pct(linear(0.55, n))} damage per second for 4s.`,
+    hooks: {
+      // Kiting becomes damage. Every other AoE in the file is anchored to a kill
+      // or to a proc, so the player earns it by shooting; this one is earned by
+      // *retreating*, which is the pattern the genre otherwise never rewards.
+      // Bounded for free: `Items.addCloud` keeps at most MAX_CLOUDS alive and
+      // discards the oldest, so a full lap of the arena costs a fixed number of
+      // overlap queries rather than a growing one.
+      onInterval: (e, api) => {
+        if (!api.player?.moving) return;
+        if (!api.items.cooldownReady('emberwake', 0.6)) return;
+        api.items.addCloud(api.player.position, 3.2, 4, linear(0.55, api.count));
+      },
+    },
+  },
+  {
+    id: 'arc-capacitor', name: 'Arc Capacitor', tier: 'uncommon', glyph: 'capacitor',
+    flavour: 'It stores whatever you were about to do and gives it back louder.',
+    description: (n) => `Using a skill charges your next hit: it arcs for ${pct(linear(2.2, n))} damage through ${3 + linear(1, n)} enemies.`,
+    hooks: {
+      // Rewards *weaving* — cast, then shoot — which is a rhythm no other item
+      // asks for. The primary is excluded on purpose: a held M1 is a skill use
+      // sixty times a minute and would make the charge permanent, i.e. would
+      // turn a rhythm item into an unconditional chain lightning proc.
+      onAbility: (e, api) => {
+        if (!e.ability || e.ability.slot === 'primary') return;
+        api.items.addBuff('arccharge', 5, 1, 1);
+      },
+      onHit: (e, api) => {
+        if (api.items.buffStacks('arccharge') <= 0) return;
+        api.items.clearBuff('arccharge');
+        chainLightning(api, e, api.items.baseDamage() * linear(2.2, api.count), 3 + linear(1, api.count));
+      },
+    },
+  },
+  {
+    id: 'scrapfly-hive', name: 'Scrapfly Hive', tier: 'uncommon', glyph: 'scrapfly',
+    flavour: 'They eat metal, they nest in wounds, and they are extremely loyal about it.',
+    description: (n) => `Every 14s, release a scrapfly that strikes a nearby enemy for ${pct(linear(1.3, n))} damage once a second for 5s.`,
+    hooks: {
+      onInterval: (e, api) => {
+        if (!api.items.cooldownReady('scrapfly-hive', 14)) return;
+        // The stack count is captured *now*: `Items._tickEffects` runs its
+        // callbacks with `api.count = 1` (an effect is not an item stack), so a
+        // closure that read `a.count` would silently price every hive at one.
+        const stacks = api.count;
+        api.items.addEffect('scrapfly-hive', 5, 1.0, (a) => {
+          seekingStrike(a, a.player.position, a.items.baseDamage() * linear(1.3, stacks), 1, 0xc8d86a, 'scrapfly');
+        });
+      },
+    },
+  },
+
   // --------------------------------------------------------------- LEGENDARY
   {
     id: 'behemoth', name: 'Shrapnel Heart', tier: 'legendary', glyph: 'nova',
@@ -1059,6 +1301,81 @@ export const ITEMS = [
     },
   },
 
+  // ------------------------------------------------ round 7 legendaries
+  //
+  // Red is the tier where the run *changes*, so none of the three below is a
+  // multiplier the player can hold and forget. Each one attaches its payout to a
+  // resource the player was already managing — health, casts, gold — and makes
+  // managing it differently the correct play.
+  {
+    id: 'entropy-ledger', name: 'Entropy Ledger', tier: 'legendary', glyph: 'entropy',
+    flavour: 'It has been keeping score since before you arrived and it is nearly finished.',
+    description: (n) => `Deal up to +${pct(linear(0.80, n))} damage, scaling with the fraction of your health that is missing.`,
+    hooks: {
+      // The inverse of every defensive item in the file, which is exactly why it
+      // is worth a red slot: with Trauma Plate and Dented Buckler the correct
+      // play is to stay topped up, and with this one it is to hold a wound. The
+      // scale is capped at 80% missing rather than at 100% so the peak is
+      // reachable without standing on 1 HP — an item that pays best at the point
+      // of death is not a risk, it is a dare with no play in it.
+      outgoing: (amount, target, info, api) => {
+        const p = api.player;
+        const max = p?.stats?.maxHealth || 100;
+        const missing = Math.min(0.8, Math.max(0, 1 - (p?.health ?? max) / max)) / 0.8;
+        return amount * (1 + missing * linear(0.80, api.count));
+      },
+    },
+  },
+  {
+    id: 'temporal-echo', name: 'Temporal Echo', tier: 'legendary', glyph: 'echo',
+    flavour: 'The second one is the one that was always going to happen.',
+    description: (n) => `${pct(hyperbolic(0.35, n))} chance for your Secondary and Special skills to cast a second time, free, 0.9s later.`,
+    hooks: {
+      onAbility: (e, api) => {
+        const ability = e.ability;
+        if (!ability?.fire) return;
+        // Primary is excluded because it fires several times a second and an
+        // echo of it is just an attack-speed item with a delay. Utility is
+        // excluded because every utility on the roster *displaces the caster* —
+        // replaying a dash 0.9s after the fact would teleport the survivor out
+        // of wherever they dodged to, i.e. the item would be at its most
+        // dangerous exactly when it fired.
+        if (ability.slot !== 'secondary' && ability.slot !== 'special') return;
+        if (!api.roll(hyperbolic(0.35, api.count))) return;
+        const { ctx, player } = api;
+        player.schedule?.(0.9, () => {
+          if (!player.alive) return;
+          // The echo calls `fire` directly and therefore never emits
+          // `abilityUsed` — which is what stops an echo echoing itself. It also
+          // pays no cooldown and consumes no charge, which is the whole card.
+          try { ability.fire(ctx, player); } catch (err) {
+            console.error(`[items] temporal-echo replay of ${ability.id} threw:`, err);
+          }
+        });
+      },
+    },
+  },
+  {
+    // `glyph: 'gildedcup'` and not `'reliquary'`: Gale Reliquary already owns
+    // that case, and two items sharing a glyph is two identical tiles the moment
+    // the tier recolour makes them the same plate.
+    id: 'gilded-reliquary', name: 'Gilded Reliquary', tier: 'legendary', glyph: 'gildedcup',
+    flavour: 'Value is a physical property. It just needed someone willing to test that.',
+    description: (n) => `Deal +${pct(linear(0.05, n))} damage per ${GOLD_STEP} gold carried, up to +${pct(linear(0.05 * GOLD_CAP_STEPS, n))}. Spending gold spends the bonus.`,
+    hooks: {
+      // The only item in the game that argues with the shop. Every chest, drone
+      // and shrine in a stage is now a choice between the item behind it and the
+      // damage the gold itself is worth, and the cap is what keeps that a
+      // decision rather than a strategy: at eight steps a full purse is worth
+      // roughly one Shattered Covenant, so hoarding forever is strong and never
+      // strictly correct.
+      outgoing: (amount, target, info, api) => {
+        const steps = Math.min(GOLD_CAP_STEPS, (api.items.gold || 0) / GOLD_STEP);
+        return amount * (1 + steps * linear(0.05, api.count));
+      },
+    },
+  },
+
   // -------------------------------------------------------------------- BOSS
   {
     id: 'titanic-knurl', name: 'Monolith Knuckle', tier: 'boss', glyph: 'monolith',
@@ -1128,6 +1445,32 @@ export const ITEMS = [
     description: (n) => `Killing an enemy leaves a spore cloud dealing ${pct(linear(1.2, n))} damage per second for 5s.`,
     hooks: {
       onKill: (e, api) => { api.items.addCloud(e.position, 6, 5, linear(1.2, api.count)); },
+    },
+  },
+
+  {
+    id: 'tectonic-heart', name: 'Tectonic Heart', tier: 'boss', glyph: 'tectonic',
+    flavour: 'Still beating, on the geological schedule it was built to.',
+    description: (n) => `Every 3rd jump erupts a 9m quake for ${pct(linear(3.5, n))} damage and throws you forward.`,
+    hooks: {
+      // The boss tier is otherwise entirely passive — health, armour, a timer —
+      // and this is the one card in it the player has a button for. It rides
+      // `tally` rather than a chance so the third jump is a beat you can count
+      // and set up, which is the difference between an item that goes off and an
+      // item you play around. `tally` is host-only, so a client never advances
+      // the counter and the two machines cannot disagree about which jump it was.
+      onJump: (e, api) => {
+        if (!api.items.tally('tectonic-heart', 3)) return;
+        api.combat.explode(api.player.position, 9, api.items.baseDamage() * linear(3.5, api.count), api.player, {
+          team: 'player', proc: 0.4, procDepth: api.procDepth, type: 'quake',
+        });
+        // Composes with Waxed Wing and Updraft Vents rather than competing:
+        // `applyImpulse` takes the largest pending value, so stacking movement
+        // items does not stack into a launch nobody can steer.
+        api.items.applyImpulse(6);
+        api.ctx.vfx?.ring?.(api.player.position, 9, 0xffa514);
+        api.ctx.pipeline?.addShake?.(0.12);
+      },
     },
   },
 
@@ -1232,6 +1575,47 @@ export const ITEMS = [
       // the same fact is how two systems end up disagreeing about it.
       onAbility: (e, api) => {
         payHealth(api, (api.player.stats?.maxHealth || 100) * linear(0.04, api.count));
+      },
+    },
+  },
+  {
+    id: 'vow-of-momentum', name: 'Vow of Momentum', tier: 'lunar', glyph: 'momentum',
+    flavour: 'Swear never to plant your feet. It is listening, and it checks.',
+    description: (n) => `+${pct(linear(1.1, n))} damage while moving. Your damage is reduced to ${pct(hyperbolicMult(0.9, n))} while standing still.`,
+    hooks: {
+      // The tier's rule is that a Lunar has to be a decision, and the sharpest
+      // way to make one is to have the card argue with something the player may
+      // already own: this is Folding Bipod inverted, and a run holding both is
+      // holding two items that cancel. It is also the only drawback in the tier
+      // the player can *play around* moment to moment rather than eat — which is
+      // why it can afford a much larger upside than Shattered Covenant's.
+      //
+      // Both halves are one multiplicative `outgoing`, so there is no stat-block
+      // ordering question at all.
+      outgoing: (amount, target, info, api) =>
+        (api.player?.moving
+          ? amount * (1 + linear(1.1, api.count))
+          : amount * hyperbolicMult(0.9, api.count)),
+    },
+  },
+  {
+    id: 'ashen-pact', name: 'Ashen Pact', tier: 'lunar', glyph: 'ashenpact',
+    flavour: 'It agreed to burn everything you touch. You were not excluded from the list.',
+    description: (n) => `All of your hits ignite. You burn too: lose ${pct(linear(0.02, n))} of your current health every second, down to 30%.`,
+    hooks: {
+      // Unconditional ignite is a bigger card than it looks: it hands the whole
+      // burn half of the pool — Ash-adjacent commons, Warlock Ember, Afflictor's
+      // Index — a guaranteed trigger instead of a chance one. The cost is paid
+      // per *second held* rather than per hit, so it does not scale with attack
+      // speed and cannot be outrun by a fast primary; the only way to reduce it
+      // is to be worth less health, which is its own decision.
+      onHit: (e, api) => { api.combat.applyStatus(e.target, 'burn', api.player, 1); },
+      onInterval: (e, api) => {
+        if (!api.items.cooldownReady('ashen-pact', 1)) return;
+        // `payHealth` refuses to bill below 30% of maximum and is never lethal,
+        // which is the difference between a permanent tax and a run that ends
+        // with no enemy involved.
+        payHealth(api, api.player.health * linear(0.02, api.count));
       },
     },
   },
@@ -2399,6 +2783,304 @@ export function drawGlyph(g, glyph, r, hue) {
         g.beginPath(); g.arc(r * x, r * y, r * 0.13, 0, Math.PI * 2); g.fill();
       }
       g.restore();
+      break;
+
+    // ------------------------------------------------ round 7 content glyphs
+    //
+    // Same constraint as the round-5 set above: inside a tier every plate is the
+    // same colour, so the outline alone has to name the item at the 33 px the
+    // inventory strip actually renders. Each case below was picked for a
+    // primitive family its own tier does not already use — a splayed A-frame
+    // where the commons are all convex blobs, a book where the uncommons are all
+    // blades and coils, an hourglass where the legendaries are all radial
+    // bursts — rather than for how much the drawing resembles the object.
+
+    // --- common ---
+    // Folding Bipod: an A-frame on a rail. The only splayed open shape in a tier
+    // otherwise made entirely of filled convex lumps.
+    case 'bipod':
+      g.beginPath();
+      g.moveTo(0, -r * 0.95); g.lineTo(-r * 0.8, r * 0.9);
+      g.moveTo(0, -r * 0.95); g.lineTo(r * 0.8, r * 0.9);
+      g.stroke();
+      // Feet and the collar that holds the legs together — three separate marks,
+      // so the shape survives being reduced to a mask.
+      for (const x of [-r * 0.8, r * 0.8]) {
+        g.beginPath(); g.moveTo(x - r * 0.28, r * 0.9); g.lineTo(x + r * 0.28, r * 0.9); g.stroke();
+      }
+      g.beginPath(); g.moveTo(-r * 0.34, r * 0.05); g.lineTo(r * 0.34, r * 0.05); g.stroke();
+      g.beginPath(); g.arc(0, -r * 0.95, r * 0.2, 0, Math.PI * 2); g.fill(); g.stroke(); break;
+    // Chipped Whetstone: a long canted bar with a bite out of one edge. Reads
+    // against `flint` because it is a rectangle at an angle rather than a
+    // knapped polygon, and the notch is on the silhouette, not inside it.
+    case 'whetstone':
+      g.save(); g.rotate(-0.5);
+      g.beginPath();
+      g.moveTo(-r * 1.05, -r * 0.3);
+      g.lineTo(r * 0.15, -r * 0.3);
+      g.lineTo(r * 0.4, -r * 0.02);
+      g.lineTo(r * 1.0, -r * 0.02);
+      g.lineTo(r * 1.0, r * 0.3);
+      g.lineTo(-r * 1.05, r * 0.3);
+      g.closePath(); g.fill(); g.stroke();
+      g.save(); g.strokeStyle = '#0d0f14'; g.lineWidth = Math.max(1.5, r * 0.15);
+      g.beginPath(); g.moveTo(-r * 0.9, 0); g.lineTo(r * 0.1, 0); g.stroke();
+      g.restore(); g.restore(); break;
+    // Prey Instinct: three raked claw scores. No fill at all — the only glyph in
+    // the common tier that is pure line, which is what separates it from every
+    // filled lump around it before shape is even considered.
+    case 'instinct':
+      for (let i = -1; i <= 1; i++) {
+        g.beginPath();
+        g.moveTo(i * r * 0.46 - r * 0.3, -r * 0.95);
+        g.quadraticCurveTo(i * r * 0.46 + r * 0.1, 0, i * r * 0.46 + r * 0.34, r * 0.95);
+        g.stroke();
+      }
+      break;
+
+    // --- uncommon ---
+    // Afflictor's Index: a bound codex seen edge-on, with tabs. Rectangular and
+    // horizontal where the tier's other rectangles (`cell`, `overcharge`) stand
+    // upright.
+    case 'index':
+      g.beginPath();
+      g.moveTo(-r * 0.95, -r * 0.62); g.lineTo(r * 0.75, -r * 0.62);
+      g.lineTo(r * 0.95, r * 0.72); g.lineTo(-r * 0.75, r * 0.72);
+      g.closePath(); g.fill(); g.stroke();
+      g.save(); g.strokeStyle = '#0d0f14'; g.lineWidth = Math.max(1.5, r * 0.14);
+      g.beginPath(); g.moveTo(-r * 0.62, -r * 0.62); g.lineTo(-r * 0.42, r * 0.72); g.stroke();
+      for (let i = 0; i < 3; i++) {
+        const y = -r * 0.24 + i * r * 0.34;
+        g.beginPath(); g.moveTo(-r * 0.28, y); g.lineTo(r * 0.6, y); g.stroke();
+      }
+      g.restore(); break;
+    // Grapnel Tether: a barbed hook on a taut line. `razor` is the other line in
+    // the tier and it is a straight X — this one is a hooked curve with mass at
+    // one end, so the two do not share a mask.
+    case 'harpoon':
+      g.beginPath(); g.moveTo(-r, -r * 0.95); g.lineTo(r * 0.1, r * 0.1); g.stroke();
+      g.beginPath();
+      g.moveTo(r * 0.1, r * 0.1);
+      g.quadraticCurveTo(r * 1.05, r * 0.35, r * 0.5, r * 0.95);
+      g.stroke();
+      // Two barbs off the shank, on the same side, so the hook has a direction.
+      for (const [x, y] of [[r * 0.62, r * 0.42], [r * 0.34, r * 0.86]]) {
+        g.beginPath(); g.moveTo(x, y); g.lineTo(x - r * 0.45, y - r * 0.12); g.stroke();
+      }
+      g.beginPath(); g.arc(-r, -r * 0.95, r * 0.18, 0, Math.PI * 2); g.fill(); g.stroke(); break;
+    // Emberwake Cleats: a cleated tread plate with a trailing wake. `sole` is the
+    // other footwear glyph but it is a common, and this one is a wedge with a
+    // comet tail rather than an outlined footprint.
+    case 'emberwake':
+      g.beginPath();
+      g.moveTo(r * 0.1, -r * 0.95); g.lineTo(r * 0.9, -r * 0.2);
+      g.lineTo(r * 0.55, r * 0.55); g.lineTo(-r * 0.2, r * 0.3);
+      g.closePath(); g.fill(); g.stroke();
+      for (let i = 0; i < 3; i++) {
+        const t = i / 2;
+        g.beginPath();
+        g.moveTo(-r * 0.3 - t * r * 0.55, r * 0.1 + t * r * 0.3);
+        g.lineTo(-r * 0.75 - t * r * 0.35, r * 0.5 + t * r * 0.42);
+        g.stroke();
+      }
+      break;
+    // Arc Capacitor: two parallel plates with a discharge jumping the gap. The
+    // gap is the read — nothing else in the tier has a hole through its middle.
+    case 'capacitor':
+      g.fillRect(-r * 0.95, -r * 0.85, r * 0.42, r * 1.7);
+      g.strokeRect(-r * 0.95, -r * 0.85, r * 0.42, r * 1.7);
+      g.fillRect(r * 0.53, -r * 0.85, r * 0.42, r * 1.7);
+      g.strokeRect(r * 0.53, -r * 0.85, r * 0.42, r * 1.7);
+      g.beginPath();
+      g.moveTo(-r * 0.5, -r * 0.4); g.lineTo(r * 0.05, -r * 0.05);
+      g.lineTo(-r * 0.15, r * 0.1); g.lineTo(r * 0.5, r * 0.45);
+      g.stroke(); break;
+    // Scrapfly Hive: a chevron body with two swept wings. The only glyph in the
+    // tier built from a horizontal V, and `flies` — the nearest neighbour by
+    // theme — is a scatter of discs, so they share nothing.
+    case 'scrapfly':
+      g.beginPath();
+      g.moveTo(0, -r * 0.9); g.lineTo(r * 0.28, r * 0.2); g.lineTo(0, r * 0.95);
+      g.lineTo(-r * 0.28, r * 0.2); g.closePath(); g.fill(); g.stroke();
+      for (const s of [-1, 1]) {
+        g.beginPath();
+        g.moveTo(s * r * 0.2, -r * 0.5);
+        g.quadraticCurveTo(s * r * 1.1, -r * 0.62, s * r * 0.95, r * 0.2);
+        g.quadraticCurveTo(s * r * 0.6, -r * 0.05, s * r * 0.2, -r * 0.5);
+        g.closePath(); g.fill(); g.stroke();
+      }
+      break;
+
+    // --- legendary ---
+    // Entropy Ledger: an hourglass, mostly run out. The legendary tier is almost
+    // all radial (`nova`, `burst`, `prism`, `chart`); this is the one waisted
+    // vertical shape in it.
+    case 'entropy':
+      g.beginPath();
+      g.moveTo(-r * 0.8, -r * 0.95); g.lineTo(r * 0.8, -r * 0.95);
+      g.lineTo(r * 0.12, 0); g.lineTo(r * 0.8, r * 0.95);
+      g.lineTo(-r * 0.8, r * 0.95); g.lineTo(-r * 0.12, 0);
+      g.closePath(); g.fill(); g.stroke();
+      // The sand: dark in the drained upper bulb, so the interior cut is on the
+      // half that matters and the glyph is not symmetrical top to bottom.
+      g.save(); g.fillStyle = '#0d0f14';
+      g.beginPath();
+      g.moveTo(-r * 0.66, -r * 0.82); g.lineTo(r * 0.66, -r * 0.82);
+      g.lineTo(r * 0.1, -r * 0.1); g.lineTo(-r * 0.1, -r * 0.1);
+      g.closePath(); g.fill(); g.restore(); break;
+    // Temporal Echo: one arrowhead with two ghosts of itself trailing behind it,
+    // each smaller. The repetition is the whole idea, and repetition is a shape
+    // no other glyph in the file uses.
+    case 'echo':
+      for (let i = 0; i < 3; i++) {
+        const k = 1 - i * 0.3;
+        g.save();
+        g.translate(-i * r * 0.44, 0);
+        g.beginPath();
+        g.moveTo(r * 0.75 * k, 0);
+        g.lineTo(-r * 0.35 * k, -r * 0.8 * k);
+        g.lineTo(-r * 0.05 * k, 0);
+        g.lineTo(-r * 0.35 * k, r * 0.8 * k);
+        g.closePath();
+        if (i === 0) { g.fill(); g.stroke(); } else g.stroke();
+        g.restore();
+      }
+      break;
+    // Gilded Reliquary: a footed cup with coins stacked over its lip. `clover`
+    // and `alien` are the other rounded legendaries and both are lobed; this one
+    // is a stemmed silhouette with a flat base.
+    case 'gildedcup':
+      g.beginPath();
+      g.moveTo(-r * 0.7, -r * 0.35);
+      g.quadraticCurveTo(0, r * 0.6, r * 0.7, -r * 0.35);
+      g.closePath(); g.fill(); g.stroke();
+      g.beginPath();
+      g.moveTo(-r * 0.1, r * 0.2); g.lineTo(-r * 0.1, r * 0.72);
+      g.lineTo(-r * 0.6, r * 0.92); g.lineTo(r * 0.6, r * 0.92);
+      g.lineTo(r * 0.1, r * 0.72); g.lineTo(r * 0.1, r * 0.2);
+      g.closePath(); g.fill(); g.stroke();
+      for (let i = 0; i < 3; i++) {
+        g.beginPath();
+        g.ellipse((i - 1) * r * 0.42, -r * 0.62 - (i === 1 ? r * 0.24 : 0), r * 0.24, r * 0.11, 0, 0, Math.PI * 2);
+        g.fill(); g.stroke();
+      }
+      break;
+
+    // --- boss ---
+    // Tectonic Heart: a disc split by three fissures. The boss tier is a
+    // standing stone, a teardrop, a stalk cluster and three plates — none of
+    // them is a circle with cracks through it.
+    case 'tectonic':
+      g.beginPath(); g.arc(0, 0, r * 0.92, 0, Math.PI * 2); g.fill(); g.stroke();
+      g.save(); g.strokeStyle = '#0d0f14'; g.lineWidth = Math.max(2, r * 0.2);
+      for (let i = 0; i < 3; i++) {
+        const a = (i / 3) * Math.PI * 2 + 0.4;
+        g.beginPath();
+        g.moveTo(0, 0);
+        g.lineTo(Math.cos(a) * r * 0.5, Math.sin(a) * r * 0.5);
+        g.lineTo(Math.cos(a + 0.4) * r * 0.95, Math.sin(a + 0.4) * r * 0.95);
+        g.stroke();
+      }
+      g.restore();
+      g.beginPath(); g.arc(0, 0, r * 0.22, 0, Math.PI * 2); g.fill(); g.stroke(); break;
+
+    // --- lunar ---
+    // Vow of Momentum: three speed chevrons, stacked and offset. The lunar tier
+    // is otherwise a broken ring, a bound circle, a chain, a coin, a flower and a
+    // cracked blade; nothing in it is a run of repeated angles.
+    case 'momentum':
+      for (let i = -1; i <= 1; i++) {
+        g.beginPath();
+        g.moveTo(-r * 0.9 + i * r * 0.12, i * r * 0.6 - r * 0.34);
+        g.lineTo(r * 0.1 + i * r * 0.12, i * r * 0.6);
+        g.lineTo(-r * 0.9 + i * r * 0.12, i * r * 0.6 + r * 0.34);
+        g.stroke();
+        g.beginPath();
+        g.moveTo(r * 0.35 + i * r * 0.12, i * r * 0.6 - r * 0.34);
+        g.lineTo(r * 0.95 + i * r * 0.12, i * r * 0.6);
+        g.lineTo(r * 0.35 + i * r * 0.12, i * r * 0.6 + r * 0.34);
+        g.stroke();
+      }
+      break;
+    // Ashen Pact: a flame held inside a closed ring — the bargain and the thing
+    // it burns, one enclosing the other. `bloom` and `brittle` are the other
+    // lunar organics and neither is a containment shape.
+    case 'ashenpact':
+      g.beginPath(); g.arc(0, 0, r * 0.98, 0, Math.PI * 2); g.stroke();
+      g.beginPath(); g.arc(0, 0, r * 0.78, 0, Math.PI * 2); g.stroke();
+      g.beginPath();
+      g.moveTo(0, -r * 0.62);
+      g.quadraticCurveTo(r * 0.55, -r * 0.05, r * 0.3, r * 0.55);
+      g.lineTo(0, r * 0.2);
+      g.lineTo(-r * 0.3, r * 0.55);
+      g.quadraticCurveTo(-r * 0.55, -r * 0.05, 0, -r * 0.62);
+      g.closePath(); g.fill(); g.stroke(); break;
+
+    // --- blight ---
+    // Gorging Tooth: a molar with the roots still on it and a hollow bored
+    // through the crown. `gristlesickle` is the tier's other bone shape and it
+    // is a curve; this is a blunt block on two prongs.
+    case 'gorgetooth':
+      g.beginPath();
+      g.moveTo(-r * 0.72, -r * 0.85); g.lineTo(r * 0.72, -r * 0.85);
+      g.lineTo(r * 0.6, r * 0.05); g.lineTo(r * 0.34, r * 0.95);
+      g.lineTo(r * 0.06, r * 0.1); g.lineTo(-r * 0.34, r * 0.95);
+      g.lineTo(-r * 0.6, r * 0.05);
+      g.closePath(); g.fill(); g.stroke();
+      g.save(); g.fillStyle = '#0d0f14';
+      g.beginPath(); g.ellipse(0, -r * 0.42, r * 0.28, r * 0.2, 0, 0, Math.PI * 2); g.fill();
+      g.restore(); break;
+    // Splinter Bar: the Pry Bar's hooked head, snapped clean through the shaft.
+    // The break is the silhouette — two pieces with a gap, which no other glyph
+    // in the file has.
+    case 'splinterbar':
+      g.save(); g.rotate(-0.62);
+      g.beginPath();
+      g.moveTo(-r * 0.2, -r * 0.44);
+      g.lineTo(-r * 0.8, -r * 0.86);
+      g.lineTo(-r * 0.36, -r * 1.06);
+      g.lineTo(0, -r * 0.74);
+      g.lineTo(r * 0.36, -r * 1.06);
+      g.lineTo(r * 0.8, -r * 0.86);
+      g.lineTo(r * 0.2, -r * 0.44);
+      g.lineTo(r * 0.16, r * 0.1);
+      g.lineTo(-r * 0.02, r * 0.02);
+      g.lineTo(-r * 0.16, r * 0.16);
+      g.closePath(); g.fill(); g.stroke();
+      g.beginPath();
+      g.moveTo(-r * 0.16, r * 0.44);
+      g.lineTo(0, r * 0.32);
+      g.lineTo(r * 0.16, r * 0.46);
+      g.lineTo(r * 0.16, r * 1.1);
+      g.lineTo(-r * 0.16, r * 1.1);
+      g.closePath(); g.fill(); g.stroke();
+      g.restore(); break;
+
+    // --- equipment ---
+    // Recall Beacon: a planted stake throwing two return arcs. The equipment set
+    // is otherwise all held objects; this is the only one that is a thing left
+    // in the ground.
+    case 'beacon':
+      g.beginPath();
+      g.moveTo(-r * 0.16, -r * 0.4); g.lineTo(r * 0.16, -r * 0.4);
+      g.lineTo(r * 0.1, r * 0.95); g.lineTo(-r * 0.1, r * 0.95);
+      g.closePath(); g.fill(); g.stroke();
+      g.beginPath(); g.arc(0, -r * 0.66, r * 0.26, 0, Math.PI * 2); g.fill(); g.stroke();
+      for (let i = 1; i <= 2; i++) {
+        g.beginPath();
+        g.arc(0, -r * 0.66, r * (0.42 + i * 0.28), Math.PI * 1.15, Math.PI * 1.85);
+        g.stroke();
+      }
+      break;
+    // Aegis Emitter: a dome on a base plate. A half-disc, which nothing else in
+    // the set is — `snare` is a full ring and `veil` is a lens.
+    case 'aegis':
+      g.beginPath(); g.arc(0, r * 0.35, r * 0.92, Math.PI, 0); g.stroke();
+      g.beginPath(); g.arc(0, r * 0.35, r * 0.62, Math.PI, 0); g.stroke();
+      g.beginPath();
+      g.moveTo(-r * 0.5, r * 0.35); g.lineTo(r * 0.5, r * 0.35);
+      g.lineTo(r * 0.34, r * 0.9); g.lineTo(-r * 0.34, r * 0.9);
+      g.closePath(); g.fill(); g.stroke();
       break;
 
     default: poly(g, 4, r, 0); g.fill(); g.stroke();

@@ -1004,6 +1004,277 @@ export const ABILITIES = {
       ctx.audio?.impact?.(_origin, 'metal');
     },
   },
+  /* ======================================================================== */
+  /* CINDER — the ash foreman. The roster's first *attrition* survivor.        */
+  /*                                                                          */
+  /* Every other kit resolves a fight the moment it connects: the Ranger's     */
+  /* rounds, Anvil's swing, Kestrel's lance and Rook's turret all deal their   */
+  /* damage on contact. Cinder deals almost none. Her whole output is deferred */
+  /* into `burn` stacks and lingering ground, and her Special is the button    */
+  /* that calls it all in at once — so the loop is *apply, spread, detonate*   */
+  /* rather than aim-and-hit, and the skill it asks for is target management   */
+  /* across a horde instead of accuracy against one body.                      */
+  /*                                                                          */
+  /* That also makes her the survivor the status half of the item pool was     */
+  /* waiting for: Afflictor's Index, Warlock Ember, Leaking Jerrycan and Warm  */
+  /* Coals are all conditional on ailments this kit guarantees.                */
+  /* ======================================================================== */
+
+  cinderStoke: {
+    id: 'cinderStoke',
+    name: 'Stoke',
+    slot: 'primary',
+    key: 'M1',
+    cooldown: 0.30,
+    scalesWithAttackSpeed: true,
+    charges: 1,
+    holdToFire: true,
+    description: 'Wash a short cone of flame for 95% damage, igniting everything caught.',
+    fire(ctx, player) {
+      // Deliberately the weakest primary on the roster by direct damage — 95%
+      // against the Ranger's 2x110% — because it is the only one that applies a
+      // status on every single hit. Four seconds of burn at 25% of the damage
+      // stat per half-second tick is roughly another 200% per target, and it
+      // lands on *everything in the cone* rather than on one body.
+      const range = 7.0;
+      const half = 0.42;              // ~48°, much tighter than Anvil's sweep
+      const ray = player.fireRay();
+      // From the bell of the igniter, not the chest: this is a projected stream
+      // and it has to visibly leave the weapon.
+      _origin.copy(player.muzzlePosition());
+      _dir.copy(ray.dir);
+
+      const group = gatherCone(ctx, _origin, _dir, range, half);
+      damageGroup(ctx, player, group, player.stats.damage * 0.95, {
+        proc: 0.6, status: 'burn', type: 'fire',
+      });
+
+      // A cone of flame is drawn as a spray of short beams down the axis rather
+      // than as one arc: `arcSlash` draws a crescent, which is a *swing*, and
+      // this is a continuous emission. Six lances of decreasing width fanned
+      // inside the cone give it depth along the aim ray instead of across it.
+      _side.crossVectors(_dir, _up);
+      if (_side.lengthSq() < 1e-6) _side.set(1, 0, 0);
+      _side.normalize();
+      _tmp.crossVectors(_side, _dir).normalize();
+      for (let i = 0; i < 6; i++) {
+        const t = (i + 1) / 6;
+        const ang = (i - 2.5) * (half / 3);
+        _a.copy(_origin).addScaledVector(_dir, 0.4);
+        _b.copy(_origin)
+          .addScaledVector(_dir, Math.cos(ang) * range * (0.55 + t * 0.45))
+          .addScaledVector(_side, Math.sin(ang) * range * 0.8)
+          .addScaledVector(_tmp, (i % 2 ? 0.35 : -0.2));
+        _col.set(0xff8a20);
+        ctx.vfx?.beams?.spawn?.(_a, _b, _col, 0.05, 0.34, 0.18 + t * 0.06, 0.8, 1);
+      }
+      _a.copy(_origin).addScaledVector(_dir, 0.4);
+      _col.set(0xffd76a);
+      ctx.vfx?.beams?.spawn?.(_a, _b.copy(_origin).addScaledVector(_dir, range * 0.7), _col, 0.06, 0.14, 0.13, 2.6, 1);
+      ctx.vfx?.muzzleFlash?.(_origin, _dir, 0.55);
+      ctx.vfx?.lights?.flick?.(_a, 0xff8a20, 14, 9, 0.1);
+      for (let i = 0; i < group.length; i++) {
+        _a.copy(group[i].position).setY(group[i].position.y + (group[i].height || 1.8) * 0.5);
+        ctx.vfx?.hitSpark?.(_a, 0xffb040, 0.9);
+      }
+
+      player.mesh.addRecoil(0.22);
+      player.addAimPunch(0.3);
+      ctx.audio?.shoot?.(player.position, 0.6);
+    },
+  },
+
+  cinderPyreFlask: {
+    id: 'cinderPyreFlask',
+    name: 'Pyre Flask',
+    slot: 'secondary',
+    key: 'M2',
+    cooldown: 6.0,
+    charges: 2,
+    description: 'Lob a flask that bursts for 260% damage and leaves a 6m pyre burning for 8s.',
+    fire(ctx, player) {
+      const dmg = player.stats.damage * 2.6;
+      const ray = player.fireRay();
+      // Scalars: the impact resolves on a later fixed step, by which point every
+      // shared scratch vector in this module has moved on.
+      const dx = ray.dir.x, dy = ray.dir.y, dz = ray.dir.z;
+      _tmp.set(dx, dy, dz).addScaledVector(_up, 0.16).normalize();
+      _end.copy(_tmp).multiplyScalar(24);
+
+      // No `status` field here on purpose: `Projectile.spawn` does not carry one
+      // and silently drops unknown keys, so writing `status: 'burn'` would be a
+      // comment claiming an effect that never happens. The ignition comes from
+      // the pyre the flask leaves, which is the part of the ability that matters
+      // anyway.
+      player.projectiles.spawn({
+        position: player.muzzlePosition(),
+        velocity: _end,
+        kind: 'arc',
+        damage: dmg,
+        radius: 0.32,
+        splash: 6,
+        life: 4,
+        gravity: 14,
+        color: 0xff8a20,
+        owner: player,
+        proc: 0.8,
+      });
+
+      // The pyre. Sited with `groundAim` at *cast* time rather than being
+      // derived from the flask's flight: the projectile system owns its impact
+      // and hands out no callback, and re-deriving a landing point from the
+      // launch vector would disagree with the arc the moment the ground is not
+      // flat. Placing the zone where the player was pointing is also the more
+      // honest contract — the area is the ability, and it should land where it
+      // was aimed even when the flask clips a rock on the way.
+      //
+      // `Items.addCloud` is host-only and bounded to MAX_CLOUDS, so a survivor
+      // spamming both charges cannot grow the per-step overlap cost.
+      groundAim(ctx, player, 26, _a);
+      const px = _a.x, py = _a.y, pz = _a.z;
+      player.schedule(0.55, () => {
+        _origin.set(px, py, pz);
+        ctx.items?.addCloud?.(_origin, 6, 8, 0.9);
+        ctx.vfx?.ring?.(_origin, 6, 0xff7a2a);
+        ctx.vfx?.rings?.spawn?.(_origin, _up, 0xffd76a, 0.4, 6, 0.5, 0.85);
+        ctx.vfx?.lights?.flick?.(_origin, 0xff8a20, 22, 14, 0.28);
+        ctx.audio?.explosion?.(_origin, 6);
+      });
+
+      ctx.vfx?.muzzleFlash?.(player.muzzlePosition(), _tmp, 1.0);
+      player.mesh.addRecoil(0.8);
+      player.addAimPunch(1.0);
+      ctx.cameraRig?.punch(1.0);
+      ctx.audio?.shoot?.(player.position, 1.0);
+      ctx.audio?.ability?.(1);
+    },
+  },
+
+  cinderBackdraft: {
+    id: 'cinderBackdraft',
+    name: 'Backdraft',
+    slot: 'utility',
+    key: 'Q',
+    cooldown: 6.0,
+    charges: 1,
+    description: 'Vent the tanks: 200% damage in 6m, ignite everything, and be thrown clear.',
+    fire(ctx, player) {
+      this.replayFire(ctx, player);
+
+      // The roster's other three escapes buy distance and nothing else: the
+      // Ranger's roll trades i-frames for position, Anvil's charge trades
+      // position for damage in a *line*, Kestrel's vault trades position for
+      // height. This one is the only escape that damages what it is escaping
+      // from, in every direction, which is what an attrition kit needs — the
+      // pack that closed on you is now the pack that is on fire.
+      const at = _origin.copy(player.position).setY(player.position.y + 0.8);
+      ctx.combat?.explode?.(at, 6, player.stats.damage * 2.0, player, {
+        proc: 0.6, type: 'fire', status: 'burn',
+      });
+
+      // Six exhaust jets thrown outward and down, plus the two ground rings:
+      // the shape has to say "the pressure left through the sides", so the
+      // geometry radiates rather than pointing anywhere.
+      for (let i = 0; i < 6; i++) {
+        const ang = (i / 6) * Math.PI * 2 + 0.3;
+        _a.copy(at).add(_tmp.set(Math.sin(ang) * 0.35, 0.1, Math.cos(ang) * 0.35));
+        _b.copy(at).add(_tmp.set(Math.sin(ang) * 3.4, -0.7, Math.cos(ang) * 3.4));
+        _col.set(0xff8a20);
+        ctx.vfx?.beams?.spawn?.(_a, _b, _col, 0.16, 0.42, 0.26, 0.9, 1);
+        ctx.vfx?.beams?.spawn?.(_a, _b, WHITE, 0.05, 0.12, 0.18, 2.4, 1);
+      }
+      ctx.vfx?.rings?.spawn?.(player.position, _up, 0xffd76a, 0.3, 4.0, 0.4, 0.9);
+      ctx.vfx?.rings?.spawn?.(player.position, _up, 0xff5a12, 2.0, 6.4, 0.6, 0.45);
+      ctx.vfx?.impact?.(player.position, _up, 'dirt');
+      ctx.vfx?.lights?.flick?.(at, 0xff8a20, 26, 15, 0.2);
+      ctx.cameraRig?.punch(-2.0);
+      ctx.pipeline?.addShake?.(0.07);
+      ctx.hitstop = Math.max(ctx.hitstop || 0, 0.04);
+      ctx.audio?.explosion?.(player.position, 6);
+      ctx.audio?.ability?.(2);
+    },
+    /**
+     * The movement half, and it is a *velocity* change rather than a dash for
+     * the same reason Kestrel's Vault is: the survivor is being blown off her
+     * feet, so it has to compose with gravity and air control instead of
+     * overriding them. Backwards from the aim by default — this is a
+     * disengage — but a held direction wins, so it can also be used to cross a
+     * gap forwards at the cost of eating your own blast radius on the way out.
+     */
+    replayFire(ctx, player) {
+      player.aimForward(_tmp);
+      if (player.moving) _tmp.copy(player.wishDirection()).multiplyScalar(-1);
+      player.velocity.x = -_tmp.x * 15;
+      player.velocity.z = -_tmp.z * 15;
+      player.velocity.y = 9.5;
+      player.grounded = false;
+      player.jumpsUsed = 0;
+      player.jumpBuffer = 0;
+      // Shorter than the Ranger's roll: this is not a dodge, and giving it real
+      // invulnerability would make the highest-damage escape on the roster also
+      // the safest one.
+      player.grantIFrames(0.12);
+    },
+  },
+
+  cinderConflagration: {
+    id: 'cinderConflagration',
+    name: 'Conflagration',
+    slot: 'special',
+    key: 'R',
+    cooldown: 13.0,
+    charges: 1,
+    description: 'Detonate every burning enemy within 34m for 600% damage each.',
+    fire(ctx, player) {
+      const CHARGE = 0.4;
+      chargeTell(ctx, player, CHARGE, 0xff8a20, 6);
+      ctx.audio?.ability?.(3);
+
+      player.schedule(CHARGE, () => {
+        const c = ctx.combat;
+        // Snapshotted before anything is damaged: each detonation below is an
+        // `explode`, which can proc items that overlap again and rewrite
+        // Combat's shared buffer under the loop. The same trap `nearbyHostiles`
+        // and `damageGroup` are written around.
+        _group.length = 0;
+        if (c?.sphereOverlap) {
+          const n = c.sphereOverlap(player.position, 34, 'player');
+          for (let i = 0; i < n; i++) _group.push(c.overlapAt(i));
+        }
+
+        // The payoff, and the reason the primary is allowed to be weak: this
+        // pays *per burning body*, so its value is entirely a function of how
+        // well the last ten seconds were spent spreading the fire. Against one
+        // target it is a mediocre 600%; against a horde the Stoke cone has been
+        // washed over it is the biggest single number on the roster.
+        let lit = 0;
+        for (let i = 0; i < _group.length; i++) {
+          const e = _group[i];
+          if (!e?.alive || !c.hasStatus(e, 'burn')) continue;
+          lit++;
+          _a.copy(e.position).setY(e.position.y + (e.height || 1.8) * 0.4);
+          c.explode(_a, 5.5, player.stats.damage * 6.0, player, {
+            proc: 0.5, type: 'fire', status: 'burn', falloff: false,
+          });
+          ctx.vfx?.explosion?.(_a, 4.5, 0xff9a3c);
+          ctx.vfx?.beam?.(player.muzzlePosition(), _a, 0xffd76a);
+        }
+        _group.length = 0;
+
+        // The cast is *never* silent, even when nothing was burning: an ability
+        // whose feedback depends on whether it found targets teaches the player
+        // that the button is unreliable rather than that their setup was.
+        ctx.vfx?.rings?.spawn?.(player.position, _up, 0xff8a20, 1.0, 34, 0.55, 0.7);
+        ctx.vfx?.lights?.flick?.(player.position, 0xffd76a, 30 + lit * 4, 20, 0.22);
+        player.mesh.addRecoil(1.6);
+        player.addAimPunch(2.2);
+        ctx.cameraRig?.punch(3.2);
+        ctx.pipeline?.addShake?.(0.10 + Math.min(0.2, lit * 0.03));
+        if (lit) ctx.hitstop = Math.max(ctx.hitstop || 0, 0.07);
+        ctx.audio?.explosion?.(player.position, 10);
+      });
+    },
+  },
 };
 
 export const SLOT_ORDER = ['primary', 'secondary', 'utility', 'special'];

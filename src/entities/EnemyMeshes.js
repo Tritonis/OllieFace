@@ -122,6 +122,26 @@ const PALETTE = {
   mortar:   { body: 0x5a4a44, dark: 0x1e1814, accent: 0xff8a3c, eye: 0xffa860 },
   hulk:     { body: 0x4e3a34, dark: 0x1c1210, accent: 0xff5a12, eye: 0xff7a2a },
 
+  // Round 7. Same rule as the block above — each takes a hue no neighbour in
+  // its own tier is using, because tier is what decides which units the player
+  // sees standing next to each other.
+  //
+  // Tier 1 was five warm species and one magenta, so the Shriver is the only
+  // *cold* thing in the opening roster; that is deliberate beyond palette
+  // hygiene, since it is also the only unit in the tier whose hit does something
+  // other than damage, and it should not look like the things around it.
+  shriver:  { body: 0x2e3560, dark: 0x11142a, accent: 0x6f8cff, eye: 0x9fb4ff },
+  // Tier 2 had green (brood), blue (warden), violet (stalker), teal (acolyte),
+  // grey-blue (golem) and burnt orange (mortar) — no red at all. The Lasher's
+  // own attack colours match this accent so the reel and the thorn volley are
+  // legibly *its*.
+  lasher:   { body: 0x5e2a34, dark: 0x1f0d12, accent: 0xff6a7a, eye: 0xff8a9a },
+  // Pale gold, which nothing else on the roster runs: the Redoubt has to be
+  // identifiable from behind at a glance, because "get behind it" is the whole
+  // fight and the player needs to know which side they are looking at from
+  // across the arena.
+  redoubt:  { body: 0x6a6250, dark: 0x25211a, accent: 0xffd8a0, eye: 0xffe8b8 },
+
   wyrm:        { body: 0x9a8f74, dark: 0x332e22, accent: 0xe8d6a8, eye: 0xfff0c0 },
   thunderhead: { body: 0x3a4458, dark: 0x141a26, accent: 0x9fd0ff, eye: 0xc9b5ff },
   matron:      { body: 0x6a3a2e, dark: 0x241010, accent: 0xff6a12, eye: 0xff9a3c },
@@ -3967,6 +3987,357 @@ function animHerald(rig, a) {
   common(rig, a);
 }
 
+// ---------------------------------------------------------------------------
+// GLOOMSHRIVER — a suspended bell with a shroud and a clapper.
+//
+// The three tier-1 flyers already occupy a vertical spire (wisp), a wide flat
+// parasol (pest) and a horizontal arrowhead (harrier). A bell is the fourth
+// shape none of them makes: narrow at the top, flared hard at the bottom, and
+// *hollow* — the only silhouette in the roster you can see through. The tell is
+// the flare, which opens and rings before every shot, so the wind-up is a change
+// in the outline rather than a change in brightness.
+// ---------------------------------------------------------------------------
+
+function buildShriver() {
+  const rig = newRig('shriver');
+  rig.centerY = 0;
+  rig.height = 1.2;
+  rig.auraR = 1.05;
+  rig.shadowR = 0.6;
+  rig.flyer = true;
+
+  const bell = grp(rig.pivot, 0, 0.1, 0);
+  rig.parts.bell = bell;
+  // Open-ended cone would be ideal, but `cone()` is cached closed; the rim
+  // torus underneath is what sells the opening, and it costs one draw against a
+  // custom geometry that nothing else could share.
+  add(rig, bell, 'body', merged('shr.bell', [
+    P(cone(0.46, 0.72, 7), 0, -0.04, 0, Math.PI),
+    P(cyl(0.14, 0.2, 0.24, 6), 0, 0.42, 0),
+    // Three ribs down the outside. A smooth cone is a party hat; the ribs are
+    // what make it read as cast metal at 20 m.
+    P(box(0.06, 0.66, 0.06), 0.3, -0.06, 0.16, 0, 0, -0.35),
+    P(box(0.06, 0.66, 0.06), -0.24, -0.06, -0.26, 0, 0, 0.35),
+    P(box(0.06, 0.66, 0.06), 0.02, -0.06, -0.32, 0, 0, 0.05),
+  ]));
+  rig.parts.rim = add(rig, bell, 'accent', ring(0.44, 0.045, 4, 18), 0, -0.36, 0);
+  rig.parts.rim.rotation.x = Math.PI * 0.5;
+
+  // The clapper hangs *below the rim*, i.e. outside the body, so the unit's
+  // outline has a detached dot under it — the one piece of the shape that keeps
+  // moving when the bell is still.
+  const clapper = grp(bell, 0, -0.34, 0);
+  rig.parts.clapper = clapper;
+  add(rig, clapper, 'dark', merged('shr.clapper', [
+    P(cyl(0.03, 0.03, 0.3, 5), 0, -0.15, 0),
+  ]));
+  rig.parts.knell = add(rig, clapper, 'eye', ico(0.11, 0), 0, -0.32, 0);
+
+  // Shroud: four ragged panels hanging off the crown, well outside the cone.
+  // They are the reason the unit does not resolve to a clean triangle.
+  rig.parts.shroud = [];
+  for (let i = 0; i < 4; i++) {
+    const ang = (i / 4) * Math.PI * 2 + 0.5;
+    const g = grp(bell, Math.cos(ang) * 0.34, 0.2, Math.sin(ang) * 0.34);
+    g.rotation.y = -ang;
+    add(rig, g, 'dark', merged('shr.rag', [
+      P(box(0.24, 0.6, 0.04), 0, -0.3, 0, 0, 0, 0.12),
+      P(box(0.14, 0.26, 0.04), 0.06, -0.68, 0, 0, 0, -0.2),
+    ]));
+    rig.parts.shroud.push(g);
+  }
+
+  makeAura(rig, rig.auraR);
+  rig.animate = animShriver;
+  return rig;
+}
+
+function animShriver(rig, a) {
+  const p = rig.parts;
+  const w = anticipate(a.windup);
+  const fired = a.swing > 0 ? 1 - a.swing : 0;
+
+  // Idle: a slow pendulum swing on the whole bell, which is what a hanging
+  // object does and no other flyer in the roster is doing.
+  const bob = Math.sin(a.t * 1.3) * 0.1;
+  p.bell.position.y = 0.1 + bob - w * 0.12;
+  p.bell.rotation.z = Math.sin(a.t * 1.1) * 0.16 + a.lean * 0.4;
+  p.bell.rotation.x = Math.cos(a.t * 0.9) * 0.1 + w * 0.2 - fired * 0.3;
+  p.bell.rotation.y = a.lookY * 0.3;
+
+  // The wind-up FLARES the bell — a scale on X/Z only, so the outline widens
+  // without the unit getting bigger. That is the tell, and it survives being
+  // seen against a bright sky where a brightness cue would not.
+  const flare = 1 + w * 0.42 - fired * 0.2;
+  p.bell.scale.set(flare, 1 - w * 0.1, flare);
+  p.rim.scale.setScalar(1 + w * 0.3 + fired * 0.5);
+
+  // The clapper swings hard on the release and rings afterwards.
+  const ring = fired > 0 ? Math.sin(fired * 34) * fired * 0.7 : Math.sin(a.t * 1.9) * 0.14;
+  p.clapper.rotation.z = ring;
+  p.clapper.rotation.x = Math.cos(a.t * 1.5) * 0.1;
+  p.knell.scale.setScalar(0.7 + w * 1.5 + fired * 1.2);
+
+  if (a.lod > 0) return common(rig, a);
+
+  for (let i = 0; i < 4; i++) {
+    const g = p.shroud[i];
+    const ph = a.t * 2.0 + i * 1.57;
+    g.rotation.x = Math.sin(ph) * 0.22 - a.speed * 0.5 - w * 0.3;
+    g.rotation.z = Math.cos(ph * 0.8) * 0.18 + w * 0.35;
+  }
+  common(rig, a);
+}
+
+// ---------------------------------------------------------------------------
+// BRAMBLE LASHER — a thin trunk carrying a wide crown of tendrils.
+//
+// Every other ground unit in tier 2 keeps its mass low or central (the golem's
+// slab, the warden's tower, the mortar's quadruped chassis, the acolyte's cone).
+// This one is almost all *crown*: a narrow stem with six long arms whipping off
+// the top, so it reads as a plant and its outline is mostly gaps. The reel is
+// telegraphed by every arm hauling backwards at once — a whole-silhouette
+// anticipation, which it needs, because the attack does not travel and there is
+// no projectile for the player to read instead.
+// ---------------------------------------------------------------------------
+
+const LSH_CROWN = 2.05;
+
+function buildLasher() {
+  const rig = newRig('lasher');
+  rig.centerY = 1.4;
+  rig.height = 2.6;
+  rig.auraR = 1.6;
+  rig.shadowR = 0.75;
+
+  // Root ball and stem. Kept deliberately thin (0.24 at the waist) — the crown
+  // is only wide if the thing under it is not.
+  add(rig, rig.pivot, 'dark', merged('lsh.root', [
+    P(hemi(0.62, 9, 5), 0, 0.02, 0, 0, 0, 0, 1.1, 0.5, 1.1),
+    P(cyl(0.2, 0.34, 0.5, 6), 0, 0.28, 0),
+    // Buttress roots: three low fins, which is what stops the base being a bare
+    // dome next to the Brood Sac.
+    P(box(0.14, 0.26, 0.7), 0.34, 0.1, 0.1, 0, 0.5, 0),
+    P(box(0.14, 0.26, 0.7), -0.34, 0.1, 0.1, 0, -0.5, 0),
+    P(box(0.14, 0.26, 0.62), 0, 0.1, -0.4),
+  ]));
+
+  const stem = grp(rig.pivot, 0, 0.5, 0);
+  rig.parts.stem = stem;
+  add(rig, stem, 'body', merged('lsh.stem', [
+    P(cyl(0.16, 0.24, 1.5, 6), 0, 0.75, 0),
+    P(ring(0.2, 0.05, 4, 12), 0, 0.5, 0, Math.PI * 0.5),
+    P(ring(0.18, 0.045, 4, 12), 0, 1.05, 0, Math.PI * 0.5),
+  ]));
+
+  const crown = grp(stem, 0, 1.55, 0);
+  rig.parts.crown = crown;
+  add(rig, crown, 'body', merged('lsh.head', [
+    P(hemi(0.34, 8, 5), 0, 0, 0),
+    P(cyl(0.3, 0.36, 0.24, 7), 0, -0.1, 0),
+  ]));
+  // The maw the reel drags you toward, and the only bright thing on the unit —
+  // so the player can see what the suction is pointing at.
+  rig.parts.maw = add(rig, crown, 'eye', ico(0.19, 1), 0, 0.06, 0.24);
+
+  // Six tendrils, each two segments so the whip has an elbow. `merged` keys are
+  // shared across all six: one geometry, six meshes.
+  const seg1 = [P(cyl(0.055, 0.085, 0.7, 5), 0, -0.35, 0)];
+  const seg2 = [
+    P(cyl(0.03, 0.055, 0.62, 5), 0, -0.31, 0),
+    P(cone(0.05, 0.2, 4), 0, -0.68, 0, Math.PI),
+  ];
+  rig.parts.arm = [];
+  rig.parts.tip = [];
+  for (let i = 0; i < 6; i++) {
+    const ang = (i / 6) * Math.PI * 2 + 0.3;
+    const sh = grp(crown, Math.cos(ang) * 0.26, 0.02, Math.sin(ang) * 0.26);
+    sh.rotation.y = -ang;
+    add(rig, sh, 'dark', merged('lsh.seg1', seg1));
+    const el = grp(sh, 0, -0.7, 0);
+    add(rig, el, 'dark', merged('lsh.seg2', seg2));
+    const barb = add(rig, el, 'accent', ico(0.06, 0), 0, -0.7, 0);
+    crumbles(rig, el);
+    rig.parts.arm.push(sh);
+    rig.parts.tip.push(barb);
+  }
+
+  makeAura(rig, rig.auraR);
+  rig.animate = animLasher;
+  return rig;
+}
+
+function animLasher(rig, a) {
+  const p = rig.parts;
+  const sp = a.speed;
+  const w = anticipate(a.windup);
+  // `pull` holds `swing` across a long active window, so the reel is read off
+  // the *active* phase rather than off the recovery snap the strike-frame
+  // attacks use — otherwise the arms would relax during the two seconds the
+  // suction is actually running.
+  const reel = a.attack === 'reel' && a.swing > 0 ? 1 : 0;
+  const fired = a.swing > 0 ? 1 - a.swing : 0;
+
+  // A stem sways. It never bobs — a plant with a walk cycle is a biped.
+  p.stem.rotation.x = Math.sin(a.t * 0.8) * 0.06 + sp * 0.18 - w * 0.26 + reel * 0.2;
+  p.stem.rotation.z = Math.sin(a.t * 0.65) * 0.07 + a.lean * 0.6;
+  p.crown.rotation.y = a.lookY * 0.5;
+  p.crown.rotation.x = a.pitch * 0.5 + w * 0.3;
+  p.maw.scale.setScalar(0.8 + w * 1.4 + reel * (1.1 + Math.sin(a.t * 18) * 0.18) + fired * 0.6);
+
+  if (a.lod > 0) return common(rig, a);
+
+  for (let i = 0; i < 6; i++) {
+    const ph = a.t * 1.5 + i * 1.05;
+    const sh = p.arm[i];
+    // Idle: a lazy independent drift per arm. Wind-up: every arm hauls
+    // *outward and back* together, which is the whole-silhouette tell. Reel:
+    // they curl inward toward the maw, pointing at what is being dragged.
+    sh.rotation.x = Math.sin(ph) * 0.2 - w * 0.7 + reel * 0.55 + sp * 0.25;
+    sh.rotation.z = Math.cos(ph * 0.8) * 0.16 + (0.35 + w * 0.5 - reel * 0.6);
+    sh.rotation.y = Math.sin(ph * 0.5) * 0.12;
+    p.tip[i].scale.setScalar(0.7 + w * 1.2 + reel * 1.0);
+  }
+  common(rig, a);
+}
+
+// ---------------------------------------------------------------------------
+// FERRITE REDOUBT — a squat drum behind a slab of shield, on three stubby legs.
+//
+// The unit is designed to be identified *by which face you are looking at*,
+// because the entire fight is getting round to the other one. So the two halves
+// are made as different as a single silhouette allows: the front is one flat
+// unbroken plate with a single lens in it, and the back is an open frame of
+// exposed ribs, vents and a hot core. Front reads as a wall, back reads as
+// machinery, and at 25 m the player can tell which they are facing without
+// having to shoot it first.
+// ---------------------------------------------------------------------------
+
+const RDT_BODY = 1.55;
+
+function buildRedoubt() {
+  const rig = newRig('redoubt');
+  rig.centerY = 1.5;
+  rig.height = 2.9;
+  rig.auraR = 1.9;
+  rig.shadowR = 1.05;
+
+  const hull = grp(rig.pivot, 0, RDT_BODY, 0);
+  rig.parts.hull = hull;
+  // Wide and shallow: 2.3 across, 0.9 deep. The golem is the other wide tier-2
+  // slab and it is a *tall* one on legs; this sits low and reads as a bunker.
+  add(rig, hull, 'body', merged('rdt.drum', [
+    P(cyl(0.78, 0.86, 1.0, 7), 0, 0, 0, Math.PI * 0.5, 0, 0, 1, 1.35, 1),
+    P(box(1.5, 0.34, 0.8), 0, 0.62, -0.1),
+  ]));
+
+  // The shield. One flat plate, no ornament, deliberately larger than the hull
+  // it protects — the reason a frontal shot is the wrong idea has to be visible.
+  const shield = grp(hull, 0, -0.05, 0.62);
+  rig.parts.shield = shield;
+  add(rig, shield, 'body', merged('rdt.shield', [
+    P(box(2.2, 1.9, 0.16), 0, 0, 0),
+    P(box(2.34, 0.2, 0.3), 0, 0.9, -0.04),
+    P(box(0.24, 1.9, 0.3), 1.06, 0, -0.06),
+    P(box(0.24, 1.9, 0.3), -1.06, 0, -0.06),
+  ]));
+  // The one aperture. Small, central, and the beam comes out of it.
+  rig.parts.lens = add(rig, shield, 'eye', ico(0.2, 1), 0, 0.06, 0.14);
+  rig.parts.beam = beam(rig, shield, 0.06, 0.2);
+  // Two shutters that clamp over the lens between shots and peel back through
+  // the wind-up. The beam is a 1.7 s charge and the tell has to run the whole
+  // length of it, which brightness alone cannot do.
+  rig.parts.shutter = [];
+  for (let i = 0; i < 2; i++) {
+    const s = i ? 1 : -1;
+    const g = grp(shield, 0, 0.06, 0.16);
+    add(rig, g, 'dark', merged('rdt.shutter', [P(box(0.34, 0.5, 0.07), 0.17, 0, 0)]));
+    g.rotation.z = s * Math.PI * 0.5;
+    rig.parts.shutter.push(g);
+  }
+
+  // The open back. Exposed ribs and a hot core — this is the half the player is
+  // meant to be shooting, so it is the half with something to aim at.
+  const rear = grp(hull, 0, 0, -0.55);
+  rig.parts.rear = rear;
+  add(rig, rear, 'dark', merged('rdt.frame', [
+    P(box(0.12, 1.5, 0.12), 0.6, 0, 0),
+    P(box(0.12, 1.5, 0.12), -0.6, 0, 0),
+    P(box(1.4, 0.12, 0.12), 0, 0.72, 0),
+    P(box(1.4, 0.12, 0.12), 0, -0.72, 0),
+    P(box(0.9, 0.12, 0.5), 0, 0, -0.2),
+  ]));
+  rig.parts.core = add(rig, rear, 'accent', ico(0.32, 1), 0, 0, -0.02);
+  // Vent stacks off the back corners, canted outward. They are what makes the
+  // rear outline ragged where the front is one clean rectangle.
+  add(rig, rear, 'dark', merged('rdt.vents', [
+    P(cyl(0.11, 0.15, 0.62, 6), 0.66, 0.62, -0.16, 0.3, 0, -0.3),
+    P(cyl(0.11, 0.15, 0.62, 6), -0.66, 0.62, -0.16, 0.3, 0, 0.3),
+  ]));
+
+  // Three legs, not four: an odd count reads as a tripod emplacement rather
+  // than as a walker, which is the correct impression for something that barely
+  // moves and cannot turn.
+  rig.parts.leg = [];
+  for (let i = 0; i < 3; i++) {
+    const ang = (i / 3) * Math.PI * 2 + Math.PI;
+    const hip = grp(rig.pivot, Math.sin(ang) * 0.62, RDT_BODY - 0.55, Math.cos(ang) * 0.62);
+    hip.rotation.y = ang;
+    add(rig, hip, 'dark', merged('rdt.leg', [
+      P(cyl(0.16, 0.12, 0.6, 5), 0, -0.3, 0, 0, 0, -0.24),
+      P(cyl(0.11, 0.09, 0.62, 5), 0.22, -0.86, 0, 0, 0, 0.12),
+      P(box(0.34, 0.12, 0.42), 0.28, -1.18, 0),
+    ]));
+    rig.parts.leg.push(hip);
+  }
+
+  makeAura(rig, rig.auraR);
+  rig.animate = animRedoubt;
+  return rig;
+}
+
+function animRedoubt(rig, a) {
+  const p = rig.parts;
+  const sp = a.speed;
+  const w = anticipate(a.windup);
+  const fire = a.swing > 0 ? 1 - a.swing : 0;
+
+  // Barely animates while walking, on purpose: the unit's whole identity is
+  // that it does not reposition, and a lively gait would argue with that.
+  p.hull.position.y = RDT_BODY + Math.sin(a.stride * 2) * 0.05 * sp - w * 0.06;
+  p.hull.rotation.x = -w * 0.1 + fire * 0.16;
+  p.hull.rotation.z = Math.sin(a.stride) * 0.05 * sp;
+
+  // Recoil rocks the shield back on the shot rather than the body — the plate
+  // is the heaviest thing on the unit and it should be the thing that moves.
+  p.shield.rotation.x = -w * 0.14 + fire * 0.3;
+  p.shield.position.z = 0.62 - fire * 0.18;
+  p.lens.scale.setScalar(1 + w * 1.6 + fire * 1.4 + Math.sin(a.t * 24) * 0.1 * w);
+  setBeam(p.beam, a.beamLen, 0.05 + w * 0.05 + fire * 0.3, a.beamOn);
+
+  // The shutters peel from closed (edge-on across the lens) to fully open over
+  // the wind-up. Half a right angle each, so at rest they overlap the aperture.
+  for (let i = 0; i < 2; i++) {
+    const s = i ? 1 : -1;
+    p.shutter[i].rotation.z = s * (Math.PI * 0.5 - (w + fire * 0.6) * Math.PI * 0.42);
+  }
+
+  // The core breathes with the charge — the rear read, so a player who is
+  // already behind it can still see the attack coming.
+  p.core.scale.setScalar(1 + w * 0.6 + fire * 0.5 + Math.sin(a.t * 2.2) * 0.06);
+  p.rear.rotation.y = Math.sin(a.t * 0.5) * 0.03;
+
+  if (a.lod > 0) return common(rig, a);
+
+  for (let i = 0; i < 3; i++) {
+    const ph = a.stride + i * 2.09;
+    const leg = p.leg[i];
+    leg.rotation.x = Math.cos(ph) * (0.06 + 0.24 * sp);
+    leg.rotation.z = -Math.max(0, -Math.sin(ph)) * 0.18 * sp - w * 0.08;
+  }
+  common(rig, a);
+}
+
 const BUILDERS = {
   herald: buildHerald,
   lemurian: buildLemurian,
@@ -3992,6 +4363,12 @@ const BUILDERS = {
   matron: buildMatron,
   vizier: buildVizier,
   maw: buildMaw,
+  // Round 7 roster. Registering here is what puts them in `ENEMY_IDS`, which is
+  // what `fx/Prewarm.js` walks — a rig missing from this table compiles its
+  // materials the first time one spawns, i.e. mid-fight.
+  shriver: buildShriver,
+  lasher: buildLasher,
+  redoubt: buildRedoubt,
 };
 
 /** Every rig the game can build. Drives the boot-time shader prewarm. */

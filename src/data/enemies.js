@@ -303,6 +303,53 @@ export const ENEMIES = [
     ],
   },
 
+  {
+    id: 'shriver',
+    maxAlive: 3,
+    selectionWeight: 0.5,
+    name: 'Gloomshriver',
+    tier: 1,
+    cost: 15,
+    // Deliberately the least dangerous unit in the tier by raw output — 8 base
+    // damage against the Shrike's 16 — because what it takes from the player is
+    // not health. Every shot it lands is a slow, and a slowed player in a horde
+    // is a player who cannot leave. The threat is what the *rest* of the field
+    // does to you while it holds you still, which is why it is priced above the
+    // Skink despite hitting for half as much.
+    baseHealth: 95,
+    baseDamage: 8,
+    moveSpeed: 5.2,
+    turnRate: 3.6,
+    attackRange: 24,
+    radius: 0.5,
+    height: 1.2,
+    hoverHeight: 6.4,
+    mass: 0.5,
+    xp: 2,
+    isFlyer: true,
+    eliteEligible: true,
+    // Holds range hard, like the Spitling, but *high* — the one flyer that
+    // parks above the fight rather than in it. A player who answers the pack by
+    // backing off is walking further into its envelope, which is the whole
+    // reason it works as a pressure unit rather than as another shooter.
+    behavior: 'kiter',
+    preferredRange: 18,
+    packMin: 1,
+    packMax: 2,
+    meshFactory: 'shriver',
+    attacks: [
+      // A slow, fat, unmistakable orb. It is easy to sidestep on its own and
+      // nearly impossible to sidestep while three mites are on your heels,
+      // which is the interaction the card exists for. `burst: 2` means the
+      // dodge has to be held rather than flicked.
+      {
+        id: 'knell', kind: 'projectile', range: 24, minRange: 5, windup: 0.8, active: 0.06, recover: 0.55,
+        cooldown: 3.4, damage: 1.0, speed: 11, gravity: 0, homing: 1.2, radius: 0.45, blast: 2.0, life: 6,
+        color: 0x6f8cff, muzzleY: 0, muzzleZ: 0.4, burst: 2, burstGap: 0.34, status: 'slow',
+      },
+    ],
+  },
+
   // -------------------------------------------------------------------------
   // TIER 2 — the mid-run roster. These are the units that stop the fight being
   // solvable by standing on one rock and holding the trigger.
@@ -527,6 +574,116 @@ export const ENEMIES = [
         id: 'shell', kind: 'projectile', range: 58, minRange: 12, windup: 1.35, active: 0.1, recover: 0.9,
         cooldown: 7.0, damage: 1.5, speed: 24, gravity: 22, radius: 0.42, blast: 5.0, life: 6, color: 0xff8a3c,
         muzzleY: 2.2, muzzleZ: 0.6, burst: 3, burstGap: 0.42, telegraph: 5.0, scatter: 2.4,
+      },
+    ],
+  },
+
+  {
+    id: 'lasher',
+    maxAlive: 3,
+    selectionWeight: 0.45,
+    name: 'Bramble Lasher',
+    tier: 2,
+    cost: 29,
+    baseHealth: 340,
+    baseDamage: 21,
+    moveSpeed: 4.6,
+    turnRate: 2.6,
+    attackRange: 26,
+    radius: 0.7,
+    height: 2.6,
+    mass: 5,
+    xp: 6,
+    isFlyer: false,
+    eliteEligible: true,
+    behavior: 'ranged',
+    preferredRange: 18,
+    packMin: 1,
+    packMax: 2,
+    meshFactory: 'lasher',
+    attacks: [
+      // The unit that changes how a fight is *fought*.
+      //
+      // Every answer this game teaches for a horde is positional: kite, break
+      // line of sight, hold a ledge, back off the melee and shoot. The Lasher
+      // deletes all four for two seconds at a time, and it is the only ordinary
+      // spawn card that can — `pull` was previously boss-only (the Maw's draw,
+      // the Herald's collapse), which meant the "you cannot simply walk away"
+      // lesson only ever appeared at the teleporter.
+      //
+      // The suction falls off with distance and never beats a player at full
+      // sprint (see `Enemy.pullPlayer`), so it steals ground rather than taking
+      // control. The counterplay is therefore real and threefold: sprint out of
+      // the cone, break the reel by killing it, or *let it pull you* and spend
+      // the free approach on whatever is standing next to it. That last one is
+      // the reason its own melee is weak — the unit must not be able to punish
+      // the player for accepting its offer.
+      {
+        id: 'reel', kind: 'pull', range: 26, minRange: 4, windup: 1.15, active: 1.5, recover: 1.0,
+        cooldown: 8.0, damage: 0.45, pull: 19, blast: 6, color: 0xff6a7a, weight: 3,
+      },
+      // Thorn spray: the reason standing at mid range and ignoring it is not
+      // free either. Low damage, wide, and it applies nothing — it exists so
+      // the unit has an output while the reel is on cooldown.
+      {
+        id: 'thorns', kind: 'projectile', range: 22, minRange: 5, windup: 0.75, active: 0.2, recover: 0.6,
+        cooldown: 4.5, damage: 0.55, speed: 22, gravity: 6, radius: 0.3, blast: 1.8, life: 3.5,
+        color: 0xff6a7a, muzzleY: 2.0, muzzleZ: 0.8, volley: 4, volleySpread: 0.34, weight: 2,
+      },
+      { id: 'flail', kind: 'melee', range: 4.2, windup: 0.6, active: 0.14, recover: 0.5, cooldown: 2.4, damage: 0.9, arc: 1.2, lunge: 5, weight: 1 },
+    ],
+  },
+  {
+    id: 'redoubt',
+    maxAlive: 2,
+    selectionWeight: 0.35,
+    name: 'Ferrite Redoubt',
+    tier: 2,
+    cost: 36,
+    baseHealth: 620,
+    baseDamage: 23,
+    // Barely mobile, and — the load-bearing number — it *turns* at 1.1 rad/s,
+    // the slowest on the roster. The Aegis Warden also has to be walked around,
+    // but it is a melee unit that closes on you, so the flank is a moment. This
+    // one holds ground at 20 m and its whole fight is the player circling faster
+    // than it can traverse: the counterplay is a skill (keep moving laterally,
+    // arrive behind it) rather than a reaction (dodge the tell).
+    moveSpeed: 2.6,
+    turnRate: 1.1,
+    attackRange: 38,
+    radius: 1.0,
+    height: 2.9,
+    mass: 9,
+    xp: 8,
+    isFlyer: false,
+    eliteEligible: true,
+    // Harder and wider than the Warden's shield (0.82 over 1.15 rad): the
+    // Warden's front arc is a suggestion you can trade through if you have to,
+    // and this one genuinely cannot be answered from the front. It is affordable
+    // because the unit has no way to close the distance and punish you for
+    // taking the long way round.
+    frontArc: 1.3,
+    frontArmor: 0.88,
+    behavior: 'ranged',
+    preferredRange: 20,
+    packMin: 1,
+    packMax: 1,
+    meshFactory: 'redoubt',
+    attacks: [
+      // A long, slow, tracking beam. Paired with the slow traverse it produces
+      // the shape the unit is for: the beam can follow you, the *body* cannot,
+      // so a player who keeps circling eventually arrives at the open back while
+      // a player who strafes in place is exactly where the beam is going.
+      {
+        id: 'enfilade', kind: 'beam', range: 38, minRange: 0, windup: 1.7, active: 0.32, recover: 1.1,
+        cooldown: 5.6, damage: 2.1, beamRadius: 0.85, trackDuring: 0.9, color: 0xffd8a0, weight: 3,
+      },
+      // The answer to hugging it. Short, radial, and it does not care which way
+      // the shield is pointing — so "walk around it" is the right answer and
+      // "stand on top of it" is not.
+      {
+        id: 'backblast', kind: 'nova', range: 6, windup: 1.0, active: 0.2, recover: 0.8, cooldown: 7.5,
+        damage: 1.5, blast: 9, waveSpeed: 24, color: 0xffd8a0, weight: 2,
       },
     ],
   },
