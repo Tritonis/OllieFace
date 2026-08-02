@@ -248,6 +248,24 @@ than leaving dissolve broken.
 `ParticleShader.js` parses and builds clean — the failure that blocked an agent last
 round did not recur.
 
+## My own error: `093daeb`'s commit message misattributes the `11-bestiary` fix
+
+I wrote that `11-bestiary` was closed by declutter's avoid-radius folding in the
+incoming rig's screen half-size. **That is wrong.** At `093daeb`, `avoidFit` defaulted
+to `false` (`Harness.js:825`) and **no call site passed `true`** — the code I credited
+was unreachable. `11-bestiary` was fixed by the **flyer-hover clamp** in `bestiary()`.
+
+Caught by the next agent, which then gave `avoidFit` its first real call site in
+`a4505f7`. Verified: `git show 093daeb:src/core/Harness.js | grep avoidFit` shows the
+default and no caller.
+
+I had verified that commit's *outcome* — the capture genuinely showed `11-bestiary`
+passing, thresholds genuinely unmoved — but not its *mechanism*, and then asserted the
+mechanism in the message. **Verifying that a change works is not the same as verifying
+why**, and the second claim is the one that misleads whoever reads the log next. This
+is the same error class as the five round-5 fix claims, committed by the person
+enforcing the rule.
+
 ## Round-4 world critic's framing instrument — REFUTED
 
 That critic reported `13-biomes-2`, `13-biomes-4` and `07-interactables` were framed
