@@ -2487,7 +2487,7 @@ export function installHarness(ctx) {
        * `hdiag5` — this scenario's layout feeds the next one's, so a change here
        * is never local. Reverted to the state `hdiag5` measures.
        */
-      declutter(12, { keep: mark, maxDist: 30 });
+      declutter(12, { keep: mark, maxDist: 30, avoidFit: true });
       if (mark && markAt) mark.position.copy(markAt);
       await frames(2);
       freeze();
