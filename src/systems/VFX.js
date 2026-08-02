@@ -4,7 +4,7 @@ import { Trails } from '../fx/Trails.js';
 import { Decals, DECAL } from '../fx/Decals.js';
 import { makeDissolvable } from '../shaders/DissolveShader.js';
 import { MAX_BLASTS } from '../shaders/DistortShader.js';
-import { clamp, lerp, RNG } from '../core/MathUtil.js';
+import { clamp, lerp } from '../core/MathUtil.js';
 
 /**
  * The impact layer.
@@ -2316,7 +2316,6 @@ class DamageNumbers {
     // at most four entries.
     this._runs = [];
     this._scratch = { pos: new THREE.Vector3() };
-    this._rng = new RNG(((ctx.seed ?? 0) ^ 0x5bf03635) >>> 0);
 
     const map = makeGlyphAtlas();
     const quad = new THREE.PlaneGeometry(1, 1);
@@ -2374,6 +2373,24 @@ class DamageNumbers {
     // with the horde for attention and telling the player nothing.
     if (this.ctx.camera?.position.distanceToSquared(pos) > NUM_MAX_DIST * NUM_MAX_DIST) return;
 
+    // The two cosmetic draws are taken *here*, before any of the gating below,
+    // and unconditionally.
+    //
+    // The hazard is not that this layer shares `fxRng` with the particle
+    // system — cosmetic jitter belongs on the cosmetic stream. The hazard is
+    // that the draw *count* used to depend on presentation decisions, so
+    // changing how many readouts are shown silently re-jittered every particle
+    // in the frame: `10-inventory`'s equipment blast measured 21,486 px in a
+    // control arm and 56,735 px under a numeral-only change
+    // (`reviews/round6/uictrl` vs `reviews/round6/uifix4`), which pushed that
+    // shot's own monster-legibility check below its bar. Taken here, the count
+    // is a function of how many in-range damage events occurred and of nothing
+    // this layer decides. Third instance of shared-stream displacement in this
+    // project, after `archGeo` and the shrine roll.
+    const rng = this.ctx.fxRng ?? this.ctx.rng;
+    const vx = (rng.next() * 2 - 1) * 1.1;
+    const vz = (rng.next() * 2 - 1) * 1.1;
+
     this._reap();
 
     let value = Math.max(1, Math.round(amount));
@@ -2423,25 +2440,11 @@ class DamageNumbers {
     }
     if (crit) chars[len++] = 10; // '!'
 
-    // Private stream, deliberately not the shared cosmetic one.
-    //
-    // Every accept/reject decision above changes how many draws this layer
-    // takes, and ctx.fxRng is shared with the whole particle system — so gating
-    // the numerals was silently re-jittering every particle in the frame. It
-    // showed up as 10-inventory's equipment blast measuring 21,486 px in the
-    // control arm (reviews/round6/uictrl) and 56,735 px with a numeral-only
-    // change on top (reviews/round6/uifix4), which then dropped that shot's
-    // monster-legibility check below its bar. This is the shared-stream
-    // displacement the project has now been bitten by three times (archGeo, the
-    // shrine roll, this). Seeded off the run seed, so it stays reproducible.
-    const rng = this._rng;
     const half = len * 0.5 - 0.5;
     const scale = crit ? CRIT_SCALE : NUM_SCALE;
     _tmpColor.set(colour ?? (crit ? 0xffc23a : 0xfff2d8));
 
-    const vx = (rng.next() * 2 - 1) * 1.1;
     const vy = crit ? 3.6 : 2.9;
-    const vz = (rng.next() * 2 - 1) * 1.1;
     const life = crit ? 1.25 : 1.0;
 
     // 3. Spatial reservation. Project the run's own box and every live run's

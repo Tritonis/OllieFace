@@ -25,6 +25,12 @@ const DEFAULTS = {
 
 const QUALITY_NAMES = ['Low', 'Medium', 'High', 'Ultra'];
 
+// Tiles per row inside one tier block on the run summary. Narrow on purpose:
+// the blocks wrap as units, so 8 lets two small tiers share a line instead of
+// each taking one of its own. At 16 the grouped grid was two rows taller than
+// the ungrouped one and pushed the headline and both buttons off the card.
+const DEATH_ROW = 8;
+
 const SLIDERS = [
   { key: 'fov', label: 'Field of view', min: 60, max: 110, step: 1, fmt: (v) => `${v | 0}°` },
   { key: 'sensitivity', label: 'Mouse sensitivity', min: 0.2, max: 3, step: 0.05, fmt: (v) => v.toFixed(2) },
@@ -1197,7 +1203,10 @@ export class Menus {
       ['Level reached', stats.level ?? 1],
       ['Enemies killed', stats.kills],
       ['Damage dealt', stats.damage],
-      ['Items collected', stats.itemCount ?? 0],
+      // Not "Items collected": that is the heading of the grid below, and the
+      // two carry different numbers (1087 stacks against 83 distinct items).
+      // One screen using one phrase for two figures is worse than either.
+      ['Item pickups', stats.itemCount ?? 0],
     ];
     host.innerHTML = rows
       .map(([k, v]) => `<div class="stat"><div class="stat-k">${k}</div><div class="stat-v">${v}</div></div>`)
@@ -1206,12 +1215,40 @@ export class Menus {
     const itemsLabel = this.root.querySelector('[data-items-label]');
     if (itemsLabel) itemsLabel.textContent = 'Items Collected';
 
+    // One shrink-wrapped block per tier, in `TIER_ORDER`.
+    //
+    // The grid used to be a single wrapping row of `stats.items` in pickup
+    // order, so tier boundaries fell wherever the wrap happened to put them:
+    // the round-4 critique read the shipped card's tier map at 16 columns and
+    // found **five** of six boundaries mid-row, against round 2/3's four. It
+    // also ordered the haul magenta-first here while `10-inventory`'s HUD strip
+    // ordered the identical 83-item haul magenta-last — two screens, one haul,
+    // opposite tier order. Grouping here off the same `TIER_ORDER` the strip
+    // uses fixes both at once.
+    //
+    // Rows inside a block are explicit rather than `flex-wrap`, for the reason
+    // `HUD.onItemPickup` documents: `width: max-content` on a wrapping flex
+    // container resolves to the *unwrapped* width of all its children, so a
+    // wrapped tier drew its rule across the whole container and overhung its
+    // last tile.
     const grid = this.root.querySelector('[data-death-items]');
-    grid.innerHTML = stats.items?.length
-      ? stats.items
-          .map((it) => `<div class="ditem t-${it.tier}"><img src="${itemArt(it.id, it.tier)}" alt="" />
-             ${it.count > 1 ? `<b>x${it.count}</b>` : ''}</div>`)
-          .join('')
+    const byTier = new Map();
+    for (const it of stats.items ?? []) {
+      if (!byTier.has(it.tier)) byTier.set(it.tier, []);
+      byTier.get(it.tier).push(it);
+    }
+    const tile = (it) => `<div class="ditem t-${it.tier}"><img src="${itemArt(it.id, it.tier)}" alt="" />
+             ${it.count > 1 ? `<b>x${it.count}</b>` : ''}</div>`;
+    const tiers = TIER_ORDER.filter((t) => byTier.get(t)?.length);
+    grid.innerHTML = tiers.length
+      ? tiers.map((t) => {
+        const list = byTier.get(t);
+        let rows = '';
+        for (let i = 0; i < list.length; i += DEATH_ROW) {
+          rows += `<div class="dtier-row">${list.slice(i, i + DEATH_ROW).map(tile).join('')}</div>`;
+        }
+        return `<div class="dtier t-${t}">${rows}</div>`;
+      }).join('')
       : '<div class="ditem-empty">None</div>';
 
     // Unlocks are drained rather than read, so the same one is never announced

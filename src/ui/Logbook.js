@@ -428,7 +428,13 @@ export class Logbook {
 
   renderList() {
     const known = this.entries.filter((e) => !e.locked && e.seen).length;
-    this.refs.count.textContent = `${known} / ${this.entries.length} recorded`;
+    // "0 / 16 recorded" sat above sixteen fully rendered entries, which is a
+    // counter contradicting the list under it — the round-4 critique read it as
+    // the panel telling the player nothing is there while showing everything.
+    // The catalogue is always complete; what varies is how much of it the
+    // player has met, so the tag names both figures and neither can be read as
+    // the other.
+    this.refs.count.textContent = `${this.entries.length} catalogued · ${known} encountered`;
     this.refs.list.innerHTML = this.entries.map((e) => `
       <button class="book-row t-${e.tier}${e.locked ? ' is-locked' : ''}${e.seen ? '' : ' is-unseen'}"
               data-nav data-entry="${e.id}">
