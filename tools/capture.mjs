@@ -87,11 +87,11 @@ const SCENARIOS = [
   // Early on purpose: the roster shot wants a clean HUD behind it, and every
   // scenario from `06-loaded-hud` onward hands the player 37 items and a full
   // inventory panel over the top-left quarter of frame. The scenario removes
-  // its four display rigs from the scene *after* stopping the render loop, so
+  // its display rigs from the scene *after* stopping the render loop, so
   // nothing later inherits them.
   {
     name: '09-survivors',
-    doc: 'The full roster side by side. Judges silhouette read and how distinguishable the four survivors are from one another.',
+    doc: 'The full roster side by side. Judges silhouette read and how distinguishable the survivors are from one another.',
     setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.survivors?.()),
   },
   // The two browsing screens go here for the same reason `09-survivors` does:

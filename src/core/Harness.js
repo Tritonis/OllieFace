@@ -3692,7 +3692,8 @@ export function installHarness(ctx) {
      * other note in this file was — by shipping the frame that got them wrong:
      *
      *  1. **The ground under the row must be flat.** A 2.3 m spacing across a
-     *     slope puts the four at four different heights, and "are these four
+     *     slope puts the row at as many different heights as it has members, and
+     *     "are these
      *     the same size?" is most of what axis 4 is being asked. The search
      *     below scores flatness above everything else and sweeps bearings as
      *     well as distances, because one bearing on rolling terrain is a
@@ -3703,8 +3704,8 @@ export function installHarness(ctx) {
      *     top-down. The lift is measured off the *subjects* and only raised
      *     enough to clear the terrain the lens is standing in.
      *  3. **The rigs must not survive the shutter.** They are permanent scene
-     *     additions with no owner, so any later scenario would have four extra
-     *     characters standing in its background. `freeze()` stops the loop and
+     *     additions with no owner, so any later scenario would have the whole
+     *     roster standing in its background. `freeze()` stops the loop and
      *     the canvas keeps presenting the frame it last drew — so removing them
      *     *after* the freeze takes them out of the world without taking them
      *     out of the photograph, which is what lets this run early, against a
@@ -3722,7 +3723,45 @@ export function installHarness(ctx) {
       ]);
 
       const p = playerPos();
-      const SPACING = 2.35;
+      /* The row's *width* is the framing constant, not the gap between its
+       * members — because the lens is solved from that width, and a fixed gap
+       * makes the width grow with the cast.
+       *
+       * The arithmetic, because the effect is not small and it is not linear.
+       * `halfW` below is `(span * 0.5 + 1.3) / fill`, i.e. the frame is exactly
+       * as many metres wide as the row demands; a survivor's on-screen width is
+       * his own metres over that, so `px ∝ 1 / halfW` and his *area* goes as
+       * `1 / halfW²`. With `SPACING` held constant, `halfW` is linear in the
+       * cast size, so every survivor already in the shot loses area as the
+       * square of the roster:
+       *
+       *   4 at 2.35 m: span 7.05, halfW 6.03 — perPx [897, 1199, 992, 986]
+       *   5 at 2.35 m: span 9.40, halfW 7.50 — perPx [785, 1208, 892, 876, 953]
+       *
+       * `(6.03 / 7.50)² = 0.647`, and the 0.80-fill note below predicted ~1240
+       * for the weakest of four: `1240 x 0.647 = 802` against the 785 measured
+       * on `reviews/round7/E-baseline/manifest.json` once the fifth arrived. The model
+       * is the entire explanation. Adding a survivor did not make this shot
+       * busier — it made every survivor already in it 35% smaller, which is a
+       * roster showcase that punishes the roster for growing.
+       *
+       * So the cast's growth is spent on the gap rather than on the frame.
+       * `ROW_SPAN / (N - 1)` returns the tuned 2.35 exactly at the four this was
+       * measured on, so this is the shipped constant generalised, not a new one.
+       *
+       * `MIN_GAP` is where that has to stop, and it is a real limit rather than
+       * a formality: two rigs sampled at `radius: 0.75` and turned 0.24 rad
+       * off-axis need about a metre of air between their silhouettes, or the
+       * row stops being a lineup and the per-object masks start occluding one
+       * another — which would fail this subject in a way no amount of frame
+       * would fix. Past the clamp the row widens again and members shrink
+       * again. That is deliberately loud: the floor below is stated per member
+       * and does *not* move to meet it, so the shot goes red rather than
+       * quietly documenting a sixth survivor at the expense of the other five.
+       */
+      const ROW_SPAN = 7.05;
+      const MIN_GAP = 1.55;
+      const SPACING = Math.max(MIN_GAP, ROW_SPAN / Math.max(1, SURVIVORS.length - 1));
       const span = SPACING * (SURVIVORS.length - 1);
       // Standoff is derived before the search because the visibility and
       // flatness tests have to run against the camera position that will
@@ -3808,7 +3847,7 @@ export function installHarness(ctx) {
         }
       }
       if (!best) {
-        // Nothing on the sweep could hold four figures on one plane in clear
+        // Nothing on the sweep could hold the row on one plane in clear
         // view. Shoot it anyway and let the assertions report it — a fallback
         // that silently ships is the failure mode this whole file exists to
         // prevent — but say so in the console as well.
@@ -3829,7 +3868,7 @@ export function installHarness(ctx) {
       SURVIVORS.forEach((card, i) => {
         const x = best.x + best.rx * rowOffsets[i];
         const z = best.z + best.rz * rowOffsets[i];
-        // One ground plane for all four, not `groundY` per slot. The row is
+        // One ground plane for the whole row, not `groundY` per slot. The row is
         // only accepted when the terrain under it is flat to `FLAT_MAX`, so
         // this floats a rig by at most 10 cm — against the 35 cm of *staging*
         // difference that put ROOK on a different footline from its three
@@ -3861,9 +3900,9 @@ export function installHarness(ctx) {
       camera.position.set(best.camX, best.camY, best.camZ);
       // Aim at chest height rather than at the centre of the row's bounding
       // box: it puts the feet on the lower third and leaves the upper frame to
-      // the terrain, which is what four dark silhouettes are read against.
+      // the terrain, which is what a row of dark silhouettes is read against.
       camera.lookAt(best.x, best.y + 0.95, best.z);
-      // Lens solved from the row rather than picked: the four have to *fill*
+      // Lens solved from the row rather than picked: the roster has to *fill*
       // the frame or this is a landscape photograph with some characters in it.
       // At the 44 deg default and an 18 m standoff each survivor was 110 px of
       // a 900 px frame — a third of the shot was foreground rock and another
@@ -3895,8 +3934,9 @@ export function installHarness(ctx) {
         2 * Math.atan(Math.tan(hHalf) / aspect) * 180 / Math.PI));
       camera.updateProjectionMatrix();
 
-      // Park the player behind the lens. He is a fifth survivor as far as the
-      // frame is concerned, and this shot compares four.
+      // Park the player behind the lens. As far as the frame is concerned he is
+      // one more survivor than the roster has, and this shot compares the
+      // roster.
       if (ctx.player) {
         const bx = best.camX - best.fx * 9, bz = best.camZ - best.fz * 9;
         ctx.player.position.set(bx, groundY(bx, bz, best.camY), bz);
@@ -3924,14 +3964,46 @@ export function installHarness(ctx) {
         camera.position, _probe.set(x, y, z),
         { height: 2.0, radius: 0.75, cols: 3, rows: 5, slack: 0.3, y0: 0.02, y1: 0.98 },
       ).toFixed(3));
+      /* The floor is authored per survivor and the aggregate is derived from
+       * it, which is the reverse of how this subject used to read.
+       *
+       * `minPixels: 4000` was written when the cast was four, and the fill note
+       * above says what it meant by it in so many words: "a floor of 1000
+       * each". The gate turns an aggregate into per-object floors by even share
+       * (`minPixels / need`), and that derivation is right — it is what makes
+       * the per-object check strictly stronger than the aggregate beside it,
+       * and nothing here touches it. What was wrong is which end of it this
+       * subject authored. A fixed aggregate over a growing cast moves each
+       * member's floor from 1000 to 800 the moment a fifth survivor is added:
+       * the gate relaxed by 20% in the same shutter that made every member 35%
+       * smaller. A gate that yields to content growth in the same direction the
+       * render does is measuring the wrong thing, however sound its arithmetic
+       * — the whole point of the note above is that a floor is "not negotiable
+       * by whoever is trying to ship", and a roster edit was negotiating it.
+       *
+       * So the claim is stated in the unit this shot actually cares about. Each
+       * survivor must be individually legible; N of them claim N x 1000; and
+       * `minPixels / need` hands back 1000 whatever N is. The per-object floors
+       * still sum to exactly `minPixels`, so the check is still strictly
+       * stronger than its aggregate.
+       *
+       * **This is a raise, not a relaxation.** It is identical at four
+       * (4000 / 4 = 1000) and stricter at every size above it — at five the
+       * aggregate goes 4000 -> 5000 and the per-member floor 800 -> 1000. The
+       * framing change above is what pays for it; the floor is not what moved
+       * to meet the framing.
+       */
+      const PER_SURVIVOR_PX = 1000;
       mustContain('09-survivors', [
         {
-          subject: 'the four survivors',
+          subject: 'every survivor in the roster',
           objects: () => rigs.map((m) => m.group),
-          perObject: true, minPixels: 4000, minObjects: SURVIVORS.length,
+          perObject: true,
+          minPixels: PER_SURVIVOR_PX * SURVIVORS.length,
+          minObjects: SURVIVORS.length,
         },
         {
-          subject: 'all four on one footline',
+          subject: 'the whole roster on one footline',
           dom: () => footSpread <= 12,
           detail: () => ({ spreadPx: +footSpread.toFixed(1), footY: footY.map((v) => +v.toFixed(0)) }),
         },
@@ -3942,7 +4014,7 @@ export function installHarness(ctx) {
         },
       ]);
       // See note 3 above: the loop is stopped, so nothing will render again and
-      // the presented frame still contains all four.
+      // the presented frame still contains every one of them.
       for (const mesh of rigs) ctx.scene.remove(mesh.group);
       return { survivors: SURVIVORS.map((s) => s.id), spots };
     },
@@ -4149,7 +4221,7 @@ export function installHarness(ctx) {
      *     rank, or the hulk stands in front of the mite and the shot documents
      *     one of the sixteen.
      */
-    async bestiary({ settleFrames = 40, spacing = 2.4, rows = 3, standoff = 16, rankGap = 6, fill = 0.86, flyerHover = 1.5 } = {}) {
+    async bestiary({ settleFrames = 40, spacing = 2.4, rows = null, standoff = 16, rankGap = null, fill = 0.86, flyerHover = 1.5 } = {}) {
       await begin();
       invulnerable();
       detach();
@@ -4180,6 +4252,75 @@ export function installHarness(ctx) {
        * failure mode "big at the back" was invented to prevent, one rank deeper.
        */
       const cards = [...SPAWN_CARDS].sort((a, b) => a.height - b.height);
+      /* Ranks are counted from the roster, and the block's *depth* is what is
+       * held constant while they are.
+       *
+       * With `rows` fixed at 3, a roster edit lands entirely on the rank width:
+       * sixteen cards made ranks of six, nineteen make ranks of seven, and
+       * `halfW` went 6.0 -> 7.2 m while the lens stayed where it was. Measured
+       * on `reviews/round7/E-baseline/manifest.json`, `11-bestiary` -> `DIAG roster`,
+       * that is not a near miss — the front rank is *clipped at both frame
+       * edges*: the mite's mask box starts at x 0.024 and the harrier's ends at
+       * x 0.999, and the whole roster's box spans 0.024-0.999. Three cards
+       * arrived and the shot quietly started cropping the two on the ends.
+       *
+       * Nothing gated caught it, and nothing gated could: clipping removes some
+       * of a member's pixels, not all of them, so `perPx` still cleared a floor
+       * that had itself dropped from 219 to 184 for the same reason. A roster
+       * shot missing the edges of its roster is the `11-bestiary` failure this
+       * scenario's own doc comment was written about, arrived at from the other
+       * direction.
+       *
+       * `ceil(N / PER_RANK_MAX)` returns 3 at sixteen — the shipped value — and
+       * 4 at nineteen, and it also fixes a distribution the fixed count made
+       * worse: `ceil(19 / 3) = 7` puts seven in the front rank and leaves five
+       * in the back, so the near rank (which projects widest) took the overflow
+       * and the far rank used a third of the frame. Four ranks of five is
+       * 5/5/5/4.
+       *
+       * `rankGap` is then derived so the block occupies the same depth however
+       * many ranks divide it. That is not tidiness, it is the specific
+       * mitigation for the failure a bare `rows: 4` was already known to cause:
+       * at the shipped 6 m gap a fourth rank puts the back rank at 25 m, and the
+       * note below records that 25 m is where members come back fog-washed at
+       * sepP50 0.15 and 0.23 against the 0.25 floor. Holding `BLOCK_DEPTH` at 12
+       * keeps `rankZ` spanning -6..+6 exactly as it does at three ranks, so the
+       * near rank stays at 10 m and the far rank at 22 m, the separation
+       * measurements below still describe this frame, and the vertical solve
+       * (which reads `dNear` and `dFar`) is untouched by the change.
+       */
+      const PER_RANK_MAX = 6;
+      const BLOCK_DEPTH = 12;
+      rows = rows ?? Math.max(1, Math.ceil(cards.length / PER_RANK_MAX));
+      rankGap = rankGap ?? BLOCK_DEPTH / Math.max(1, rows - 1);
+      /* Every rank on its own lateral phase, not two phases shared out.
+       *
+       * `row % 2 ? spacing * 0.5 : 0` is exactly right for two ranks and
+       * degenerates the moment there are more: at three it puts ranks 0 and 2
+       * back in line, and at four it makes two aligned *pairs* (0 with 2, 1
+       * with 3). That is the same "a back slot stands exactly behind a front
+       * one and photographs as nothing at all" failure the placement comment
+       * below was written about, reintroduced by rank count rather than by
+       * stagger.
+       *
+       * It bites harder at four ranks than at three for a second reason: the
+       * block's depth is held at 12 m, so four ranks sit 4 m apart instead of
+       * 6 m, and a member has much less depth in which to clear the one behind
+       * it. Measured on `reviews/round7/E-step-slots/manifest.json`, the
+       * four-rank run before this change: the warden — row 2, in line with row
+       * 0 and with row 3 four metres behind it — came back at `bgLumP50` 36
+       * against 10 on the three-rank `E-baseline`, and `sepP50` 0.17 against
+       * 0.41. It stopped being photographed against ground and started being
+       * photographed against the back rank's bodies, and lost pixels to the
+       * rank in front on the way (3674 px -> 2980 in a frame 1.7x tighter).
+       * With every rank on its own phase it reads 0.29 in `E-after`.
+       *
+       * `r / rows` spreads the ranks evenly across one slot instead. At two
+       * ranks it returns 0 and `spacing * 0.5` — the shipped rule exactly, at
+       * the size the shipped rule was right for — and at three and four it
+       * gives every rank a phase of its own.
+       */
+      const stagger = (r) => (r / rows) * spacing;
       const perRow = Math.ceil(cards.length / rows);
       const halfW = (perRow - 1) * 0.5 * spacing;
       // Along the view direction, back rank last. Evenly spread so no two ranks
@@ -4260,7 +4401,7 @@ export function installHarness(ctx) {
           const fz = rankZ[row];
           for (let i = 0; i < perRow; i++) {
             if (row * perRow + i >= cards.length) break;
-            const off = i * spacing - halfW + (row % 2 ? spacing * 0.5 : 0);
+            const off = i * spacing - halfW + stagger(row);
             const x = c.x + ax * off + dx * fz, z = c.z + az * off + dz * fz;
             const y = groundY(x, z, c.y);
             lo = Math.min(lo, y); hi = Math.max(hi, y);
@@ -4287,22 +4428,71 @@ export function installHarness(ctx) {
       }
 
       const { c, ax, az, dx, dz } = best;
+
+      /* Within a rank, the end slots go to cards that stand on the ground.
+       *
+       * The rank a card lands in is its height order and that is the shot's
+       * documented composition ("big at the back"). Its slot *inside* that rank
+       * was previously just the same index again, which is an arbitrary choice
+       * being made about the one variable that decides what a member is
+       * photographed against — and it is not a free one, because the two ends
+       * of a rank are the two worst backdrops in the block. Everything else has
+       * a rank standing behind it; an end slot has open ground running to fog.
+       *
+       * That compounds with the flyer problem the note below already documents
+       * and already spent a staging decision on: a hovering card's ray clears
+       * the ranks behind it at *every* lateral position. Hovering **and** on
+       * the end is both at once, and it is measurable. Re-dividing 19 cards
+       * into four ranks of five moved the wisp — a near-black shell — from the
+       * interior of a rank of seven to the outer slot of a rank of five, and it
+       * came back at `sepP50` 0.13 against the 0.25 floor —
+       * `reviews/round7/E-step-ranks/manifest.json` — while the same card sat
+       * at 0.59 on `reviews/round7/E-baseline/manifest.json` one rank layout
+       * earlier. Putting it back inside its rank restores it exactly: 0.59
+       * again on `reviews/round7/E-after/manifest.json`. Nothing about the card
+       * or the lighting changed; only which slot it stood in.
+       *
+       * So the scarce resource (a slot with a rank behind it) is spent on the
+       * cards that need it. Ground units are dealt to the outermost slots
+       * first, working inward, and the hovering cards take what is left, which
+       * is the middle. What this costs is honest and it is small: the
+       * left-to-right order *within* a rank is no longer height order. Across
+       * ranks it still is, and a rank spans a narrow height band anyway — the
+       * front rank here runs 0.5 m to 1.1 m. The shot's "small to large" reads
+       * front to back, which is the axis it was ever true on.
+       */
+      const slotCards = [];
+      for (let r = 0; r < rows; r++) {
+        const group = cards.slice(r * perRow, Math.min((r + 1) * perRow, cards.length));
+        const n = group.length;
+        const ground = group.filter((k) => !k.isFlyer);
+        const flyers = group.filter((k) => k.isFlyer);
+        // Slot indices most-distant-from-centre first, so the ends are dealt
+        // before the middle.
+        const outermost = [...group.keys()]
+          .sort((a, b) => Math.abs(b - (n - 1) / 2) - Math.abs(a - (n - 1) / 2));
+        const row = new Array(n);
+        let g = 0, f = 0;
+        for (const s of outermost) row[s] = g < ground.length ? ground[g++] : flyers[f++];
+        slotCards.push(...row);
+      }
+
       const placed = [];
-      for (let i = 0; i < cards.length; i++) {
+      for (let i = 0; i < slotCards.length; i++) {
         const row = Math.floor(i / perRow);       // taller cards go to the back
         const idx = i - row * perRow;
         // Alternate ranks staggered half a slot across. Aligned, a back slot
         // stands exactly behind a front one and photographs as nothing at all —
         // measured at 0 of the 8231 pixels the rank contributed, which is a
         // roster shot missing one of the sixteen species it exists to compare.
-        const off = idx * spacing - halfW + (row % 2 ? spacing * 0.5 : 0);
+        const off = idx * spacing - halfW + stagger(row);
         const fz = rankZ[row];
         const x = c.x + ax * off + dx * fz, z = c.z + az * off + dz * fz;
         const y = groundY(x, z, c.y);
         // Two tier-2 elites, on cards big enough for the aura to read.
-        const affix = cards[i].id === 'golem' ? 'withering'
-          : (cards[i].id === 'warden' ? 'warded' : null);
-        const e = ctx.director?.spawnOne?.(ctx, cards[i], new THREE.Vector3(x, y, z), affix);
+        const affix = slotCards[i].id === 'golem' ? 'withering'
+          : (slotCards[i].id === 'warden' ? 'warded' : null);
+        const e = ctx.director?.spawnOne?.(ctx, slotCards[i], new THREE.Vector3(x, y, z), affix);
         if (e) placed.push({ e, x, y, z });
       }
 
@@ -4384,8 +4574,57 @@ export function installHarness(ctx) {
       const aHigh = Math.atan2(gy + tallest - cam.y, dFar);
       const aMid = (aLow + aHigh) * 0.5;
       const aspect = camera.aspect || (16 / 9);
+      /* Two different questions, and the shipped solve only asked one.
+       *
+       * `fill` is a *composition* preference — the share of frame width the
+       * roster should occupy so the shot is not a landscape with monsters in
+       * it. Not cropping the roster is a *correctness* requirement. Those are
+       * not the same claim and they do not have the same remedy, so they are
+       * computed separately here and the wider of the two wins.
+       *
+       * The composition term is exactly what shipped, unchanged, measured at
+       * the block's centre distance. The correctness term is what was missing,
+       * and its absence is the same defect the paragraph above fixed on the
+       * *vertical* axis ("the vertical extent is checked rather than hoped
+       * for") left unfixed on the horizontal: a 12 m-deep block does not
+       * project its width at its middle depth. The front rank stands 6 m
+       * nearer and subtends more than the answer, and the old form is exact
+       * only for a flat rank — which this stopped being when it went to three.
+       *
+       * How far out, on the shipped frame: `9.9 / (16 x 0.86)` gives
+       * `tan(hHalf) = 0.719`, a half-frame 7.19 m wide at the front rank's
+       * 10 m, against the 7.2 m that rank's outermost slot needs. Predicted
+       * screen x 1.001; `reviews/round7/E-baseline` measured 0.999. The error grows
+       * with the block's depth and with the rank's width, both of which grow
+       * with the roster, so this gets worse every time a card is added.
+       *
+       * **Why the card's own `radius` and not a flat margin.** The composition
+       * term's `+1.5` is a taste margin and is far too generous to reuse at
+       * 10 m, where a metre is 1.5x the angle it is at the centre: applying it
+       * (and `fill`) at the near rank widened the frame 34% and cost every
+       * member a third of its area — measured, rejected. What the correctness
+       * term needs is the real lateral reach of the widest card standing in
+       * that rank, which the card already declares. That `radius` is a safe
+       * upper bound rather than an estimate: on the baseline frame the harrier
+       * (`radius` 0.55) projected a half-width of 0.42 m at 12.3 m, so the
+       * collision radius over-states the silhouette. The 1.25 is headroom for
+       * the cards that lean or swing wider than they collide.
+       *
+       * The stagger is counted in, because a rank displaced half a slot
+       * sideways is half a slot wider on one side.
+       */
       const halfExtent = halfW + spacing * 0.5 + 1.5;
-      const hHalf = Math.atan(halfExtent / Math.max(1, standoff * fill));
+      const compTan = halfExtent / Math.max(1, standoff * fill);
+      let cropTan = 0;
+      for (let r = 0; r < rows; r++) {
+        let maxR = 0;
+        for (let i = r * perRow; i < Math.min((r + 1) * perRow, cards.length); i++) {
+          maxR = Math.max(maxR, cards[i].radius ?? 0.5);
+        }
+        const lateral = halfW + stagger(r) + maxR * 1.25;
+        cropTan = Math.max(cropTan, lateral / Math.max(1, standoff + rankZ[r]));
+      }
+      const hHalf = Math.atan(Math.max(compTan, cropTan));
       const vNeed = Math.max(Math.abs(aLow - aMid), Math.abs(aHigh - aMid)) * 1.12;
       const vHalf = Math.max(Math.atan(Math.tan(hHalf) / aspect), vNeed);
       camera.fov = Math.max(14, Math.min(55, vHalf * 2 * 180 / Math.PI));
@@ -4396,11 +4635,33 @@ export function installHarness(ctx) {
       pin();
       await frames(1);
       freeze();
+      /* Per card, with the aggregate derived — for the reason set out at
+       * `09-survivors`' floor, which this subject demonstrates just as well.
+       *
+       * `minPixels: 3500` was authored against sixteen cards, and the block
+       * above states what it meant by it: "The per-object floor this subject
+       * sets for itself is `minPixels / N` = 3500 / 16 = 219 px", tuned until
+       * the mite cleared it at ~245. Three cards later the same constant means
+       * 184, so the roster edit that made every member smaller also lowered the
+       * bar each member had to clear, by 16%. The gate moved in the content's
+       * favour without anyone deciding it should.
+       *
+       * 220 is that same tuned number, authored in the unit it was reasoned in.
+       * The even-share derivation in `mustContain` is unchanged and still hands
+       * back exactly this figure at any roster size, and the per-object floors
+       * still sum to `minPixels`. **A raise, not a relaxation**: identical at
+       * sixteen (3500 / 16 = 219) and stricter at every size above it — at
+       * nineteen the aggregate goes 3500 -> 4180 and the per-card floor
+       * 184 -> 220. The rank and lens changes above are what pay for it.
+       */
+      const PER_CARD_PX = 220;
       mustContain('11-bestiary', [
         {
           subject: 'the whole spawn roster',
           objects: () => rigsOf(placed.map((s) => s.e)),
-          perObject: true, minPixels: 3500, minObjects: cards.length,
+          perObject: true,
+          minPixels: PER_CARD_PX * cards.length,
+          minObjects: cards.length,
         },
         // DIAG. See the note on `04-combat`'s: `info`, read-only, and it must sit
         // immediately after the check it explains.
