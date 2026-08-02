@@ -1440,6 +1440,44 @@ body.menu-open { cursor: default; }
   --end-weight: 700;
   --end-track: 0.22em;
 }
+
+/* The run report is the one panel whose height is authored by the *run* rather
+   than by the layout: a long successful run collects most of a 108-item pool,
+   earns a dozen challenges and beats a shelf of records, and every one of those
+   sections grows without limit. Unbounded, the panel simply ran off the bottom
+   of the viewport — "Closing in" cut through mid-bar and the Logbook and
+   Restart buttons left the frame entirely, which strands the player on a screen
+   with no way forward but a reload.
+
+   Capping the *sections* was tried first and is not sufficient on its own: it
+   bounds the parts someone remembered to cap, and the item grid — the section
+   that actually scales with the run — was still free to grow. So the panel is
+   bounded instead, and the overflow is given somewhere to go.
+
+   The footer is sticky rather than outside the scroller because it needs no
+   markup change and cannot be missed: however far the report runs, the buttons
+   are on screen. `min-height: 0` is the flex-child escape hatch — without it a
+   flex item refuses to shrink below its content and `overflow` never engages. */
+.screen--death .panel--wide {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: calc(100vh - 12em);
+}
+/* `min-height: 0` is the flex-child escape hatch: without it a flex item
+   refuses to shrink below its content's height and `overflow` never engages,
+   so the scroller silently does nothing and the panel grows anyway. */
+.screen--death .run-report {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.screen--death .panel--wide > .menu-list {
+  flex: 0 0 auto;
+  padding-top: 0.9em;
+  border-top: 1px solid var(--line);
+}
 .screen--death[data-ending="victory"] {
   --end: #c864d4;
   --end-glow: rgba(200, 100, 212, 0.55);

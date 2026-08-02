@@ -376,13 +376,25 @@ export class Menus {
           <!-- The run's identity — who, on what, under which rules — leads the
                summary. Time and kills without it describe a run nobody can
                place next to their last one. -->
-          <div class="run-id" data-run-id></div>
-          <div class="stat-grid" data-stats></div>
-          <div class="stat-items">
-            <div class="stat-items-label" data-items-label>Items Collected</div>
-            <div class="stat-items-row" data-death-items></div>
+          <!-- The report scrolls; the buttons do not. Everything above the nav
+               is authored by the *run* rather than by the layout — a long run
+               collects most of a 108-item pool, earns a dozen challenges and
+               beats a shelf of records — so without a bounded scroller the
+               panel grew until Logbook and Restart left the viewport and the
+               player was stranded with no way forward but a reload. Keeping the
+               nav outside this wrapper is what guarantees it is always on
+               screen, and is why this is a wrapper rather than a sticky footer:
+               a sticky nav still lets content scroll through the panel's own
+               bottom padding, which reads as clipping. -->
+          <div class="run-report">
+            <div class="run-id" data-run-id></div>
+            <div class="stat-grid" data-stats></div>
+            <div class="stat-items">
+              <div class="stat-items-label" data-items-label>Items Collected</div>
+              <div class="stat-items-row" data-death-items></div>
+            </div>
+            <div class="run-unlocks" data-run-unlocks></div>
           </div>
-          <div class="run-unlocks" data-run-unlocks></div>
           <nav class="menu-list menu-list--row">
             <button class="mbtn" data-nav data-act="logbook"><span>Logbook</span></button>
             <button class="mbtn mbtn--go" data-nav data-act="restart"><span data-restart-label>Restart run</span></button>
