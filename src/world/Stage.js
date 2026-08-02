@@ -194,6 +194,14 @@ export class Stage {
     this.minY = lo;
     this.maxY = hi;
 
+    // The reflection probe, now that there is a stage to reflect. `applyBiome`
+    // above re-lights the sky and re-bakes from it, which is what the terrain's
+    // first compile needs; this is the bake that actually puts terrain, props
+    // and structures into the environment map, and it can only run once they
+    // exist. Same frame as the rebuild above, once per stage transition — see
+    // `Environment.bakeProbe`.
+    ctx.environment?.bakeProbe?.(this.terrain.sampleHeight(0, 0) + 12);
+
     return this;
   }
 

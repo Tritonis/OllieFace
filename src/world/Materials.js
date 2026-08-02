@@ -602,6 +602,11 @@ export function attachDetail(material, kind) {
         vec3 detGradW; float detH; float detVarW;
         detField( vDetW, normalize( vDetN ), detDist, detFW, detGradW, detH, detVarW );
         float detCav = 1.0 - uDetB.z * clamp( -detH * 2.4, 0.0, 1.0 );
+        // How much of the normal perturbation this pixel actually resolves.
+        // Written by the normal block below and read by the sky-visibility
+        // weight further down; declared here because those are two separate
+        // include replacements and GLSL block scope does not span them.
+        float detLP = 1.0;
         #include <roughnessmap_fragment>
         roughnessFactor = clamp( roughnessFactor + uDetB.w * detH * 2.0, 0.03, 1.0 );`)
       .replace('#include <normal_fragment_maps>', /* glsl */`
@@ -633,6 +638,35 @@ export function attachDetail(material, kind) {
           // contribution as well as this pass's.
           float detNV = clamp( dot( normalize( vViewPosition ), nonPerturbedNormal ), 0.0, 1.0 );
           float detSlope = mix( 0.30, 4.0, smoothstep( 0.05, 0.50, detNV ) );
+          // ...and the same limit on the *light* axis, which is the half of it
+          // that was missing. A height field hides slopes steeper than the
+          // grazing angle in two independent directions: behind the crest in
+          // front of the eye (masking, above) and behind the crest in front of
+          // the sun (shadowing, here). Only masking was bounded, so a surface
+          // viewed head-on but lit at a hard rake kept the full 4.0 slope
+          // budget and its facets could still flip the sign of N.L per pixel —
+          // the exact failure the paragraph above describes, on the exact
+          // surfaces it was written to protect, just reached from the other
+          // side.
+          //
+          // That is the asymmetry between the two shots. 13-biomes-1's far
+          // mountain is viewed at a hard rake, so masking clamped it and the
+          // specular-AA term finished the job: PEAK 0.000%. 13-biomes-2's far
+          // right spire is viewed close to head-on under a 19-degree sun, so
+          // nothing clamped it at all, and it measures PEAK 0.220% — the
+          // noisiest surface in the build, on the geometry that should carry
+          // the least detail (reviews/round6/world2-base/13-biomes-2.png,
+          // x1000-1180 y30-260).
+          //
+          // directionalLights[0] is the key: Environment._buildLights adds key,
+          // then rim, then bounce, and direction is view-space and points at
+          // the light. The rim and the bounce are deliberately not included —
+          // they are fill, an order of magnitude down, and clamping to the
+          // weakest light in the rig would flatten relief the key does resolve.
+          #if NUM_DIR_LIGHTS > 0
+            float detNLk = clamp( dot( directionalLights[ 0 ].direction, nonPerturbedNormal ), 0.0, 1.0 );
+            detSlope = min( detSlope, mix( 0.30, 4.0, smoothstep( 0.05, 0.50, detNLk ) ) );
+          #endif
           vec3 detT = normal - nonPerturbedNormal * dot( normal, nonPerturbedNormal );
           float detTL = length( detT );
           float detTMax = detSlope * inversesqrt( 1.0 + detSlope * detSlope );
@@ -672,7 +706,76 @@ export function attachDetail(material, kind) {
           vec3 detDNx = dFdx( normal ), detDNy = dFdy( normal );
           float detVarS = 0.5 * ( dot( detDNx, detDNx ) + dot( detDNy, detDNy ) );
           float detAlpha = min( 2.0 * detVarS, 0.45 ) + min( detVarW, 0.60 );
+
+          // Third variance source: the UV normal map's own. The two above took
+          // 13-biomes-1's far mountain to PEAK 0.000% and left 13-biomes-2's
+          // far right spire — the surface in that frame that should carry the
+          // *least* detail — at MED 4.766% / PEAK 0.222%, the noisiest surface
+          // in the build (reviews/round6/world2-base/13-biomes-2.png, ROI
+          // x1000-1180 y30-260; the round-4 critic measured 4.734 / 0.220 on
+          // FINAL/). PEAK returns 0.000% on resolved 2x2 and 3x3 relief by
+          // calibration, so that is aliasing and not relief the filter cannot
+          // name.
+          //
+          // Neither existing term can see it. detVarS is a 2x2 quad difference
+          // and returns near zero on content at Nyquist, which is stated above.
+          // detVarW knows this pass's own octaves and their feature sizes, and
+          // the normal map is not one of them — it is a *texture*, so what it
+          // hides is hidden by mip filtering rather than by an amplitude gate,
+          // and no analytic accounting of this pass reaches it.
+          //
+          // Toksvig reaches it exactly. A mip-averaged tangent normal is short
+          // in proportion to the variance the averaging removed: unit length at
+          // mip 0, and shorter the more slope went into the average. That
+          // length is a direct read of the hidden variance, taken from the same
+          // fetch and the same mip the shading normal came from. normalScale
+          // amplifies slope and variance goes as slope squared, so it enters
+          // squared; uvK is the distance fade already applied to the map, and
+          // it enters squared for the same reason.
+          #ifdef USE_NORMALMAP_TANGENTSPACE
+            vec3 detNT = texture2D( normalMap, vNormalMapUv ).xyz * 2.0 - 1.0;
+            float detNLen = clamp( length( detNT ), 0.06, 1.0 );
+            float detTok = ( 1.0 - detNLen ) / detNLen;
+            detAlpha += min( detTok * dot( normalScale, normalScale ) * 0.5
+                             * uvK * uvK, 0.50 );
+          #endif
+
           roughnessFactor = sqrt( min( 1.0, roughnessFactor * roughnessFactor + detAlpha ) );
+
+          // Low-pass for the sky-visibility weight below. Round 3 specified
+          // this fix in full — "do not remove the term; low-pass its input" —
+          // and it was never actioned: b1's mesa top is still a per-pixel
+          // blue/red chroma checker at chroma-HF 5.66. The term reads
+          // normal - nonPerturbedNormal, which on sub-pixel relief is a
+          // per-pixel coin toss, and it scales the indirect *diffuse* (cool
+          // hemisphere) against the indirect *specular* (warm env) — so the
+          // coin toss comes out as chroma, not as value.
+          //
+          // detAlpha is already a measurement of exactly how much of that
+          // perturbation is sub-pixel, so the low-pass is free and needs no
+          // fourth statistic: fade the weight out where the relief is not
+          // resolved and leave it untouched where it is.
+          //
+          // Measured, and it is NOT the fix for the chroma checker, which is
+          // worth recording because round 3 specified it as one and two rounds
+          // have now been spent on it. b1's mesa ROI (x520-880 y540-620) reads
+          // per-pixel chroma HF 5.67 on reviews/round6/world2-base/; with
+          // this low-pass at gain 3 it reads 6.13 (world2-c) and at gain 8 —
+          // a 2.7x stronger low-pass — 6.15 (world2-d). Moving the gain by
+          // 2.7x moved the target statistic by 0.02. Whatever writes that
+          // chroma, this term is not it.
+          //
+          // What does is Environment.bakeProbe: the environment map now
+          // carries real scene structure, so a per-pixel normal now returns a
+          // per-pixel *reflection*, and indirect specular is warm where
+          // indirect diffuse is cool. That is a cost of the probe fix and it is
+          // reported as one in FIX-world.md §4b rather than buried here.
+          //
+          // The term stays at 3, because what it does is still correct — the
+          // sky-visibility weight should not fire on relief the pixel cannot
+          // resolve — and because removing it would put back a coin toss that
+          // no measurement here defends.
+          detLP = 1.0 - clamp( detAlpha * 3.0, 0.0, 1.0 );
         }`)
       .replace('#include <aomap_fragment>', /* glsl */`
         #include <aomap_fragment>
@@ -687,7 +790,7 @@ export function attachDetail(material, kind) {
         // moves no surface's mean and no terminator ratio.
         {
           vec3 upV = vec3( viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1] );
-          float skyD = dot( normal - nonPerturbedNormal, upV );
+          float skyD = dot( normal - nonPerturbedNormal, upV ) * detLP;
           // The two indirect terms are floored *together* at 0.45. Multiplied
           // independently they bottomed out near 0.04x, which does not read as a
           // crevice, it reads as a hole: on a cool ambient the surviving pixels
@@ -1240,9 +1343,32 @@ export const BIOMES = [
         strataAmt: 0.09, strataStep: 9.0,
       },
     },
+    // The magenta demotion, and it is the whole of this biome's axis-3 defect.
+    //
+    // Measured on `reviews/round6/world2-base/13-biomes-3.png`: the magenta
+    // mask (hue 290-345, sat > 0.35) covered **10.41%** of the frame against a
+    // < 4% target, the dominant 15-degree bin was 240 at **34.8%** against a
+    // 30% cap, and clip255 was **1.635%** — the highest in the build. The
+    // counter-example ships in the same build: `13-biomes-2` measures 0.00% on
+    // the identical mask.
+    //
+    // The rock was never magenta — every albedo below sits at 259-270 degrees.
+    // What put a tenth of the frame in the magenta band was that the *whole
+    // frame* is on one hue axis: violet rock lit through a violet ambient, with
+    // a hot magenta emissive at 1.35 blooming over it, so the rock's own hue
+    // was pushed across the band boundary by the accent rather than by its
+    // albedo. Two hue families were competing for one 45-degree window.
+    //
+    // So the rock leaves the violet axis and goes grey — near-neutral, a trace
+    // of violet left in it — and the magenta stays, unchanged in hue, on the
+    // crystals and the fungus caps alone. Grey rock also drops out of the
+    // saturated-weight histogram entirely (sat < 0.15 is not counted), which is
+    // what lets the 240-degree bin fall back under its cap without moving a
+    // single hue. That is the demotion the round-4 critic asked for: magenta
+    // becomes the accent it was authored as instead of the field it had become.
     mats: {
-      rock: 0x8f7aa8, cliff: 0x453456, moss: 0x6f57a0, sand: 0xd8c6e4,
-      wood: 0x33253d, wetStone: 0x5a4880, metal: 0x9a90a8,
+      rock: 0x8b8794, cliff: 0x3e3b45, moss: 0x6a5f8e, sand: 0xcfc9cd,
+      wood: 0x2f2a35, wetStone: 0x4f4a63, metal: 0x9a969e,
       crystal: 0xff6fd0, crystalGlow: 0xc02898,
       beacon: 0xff6fd0, // the cavern's own light source colour
     },
@@ -1257,7 +1383,12 @@ export const BIOMES = [
       moss:     { roughness: 0.72, metalness: 0.0, env: 1.30, normal: 0.90 },
       wetStone: { roughness: 0.05, metalness: 0.12, env: 3.1, normal: 0.50 },
       sand:     { roughness: 0.88, metalness: 0.0, env: 0.85, normal: 0.65 },
-      crystal:  { roughness: 0.05, metalness: 0.0, env: 1.6, emissive: 1.35 },
+      // 1.35 -> 0.95. It is still the only emissive in the game past 1.0 and it
+      // is still this cavern's light source; 1.35 was also the single largest
+      // contributor to a 1.635% clip255, the highest in the build, and a
+      // clipped emissive is a light source that has stopped carrying any of the
+      // form it is lighting.
+      crystal:  { roughness: 0.05, metalness: 0.0, env: 1.6, emissive: 0.95 },
     },
     props: {
       boulders: 190, boulderScale: [0.4, 2.2],

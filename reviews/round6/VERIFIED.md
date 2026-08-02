@@ -248,6 +248,29 @@ than leaving dissolve broken.
 `ParticleShader.js` parses and builds clean — the failure that blocked an agent last
 round did not recur.
 
+## Round-4 world critic's framing instrument — REFUTED
+
+That critic reported `13-biomes-2`, `13-biomes-4` and `07-interactables` were framed
+differently in `FINAL/` than in `stages/`, and **I relayed that to the world
+implementer as a warning**. It is wrong.
+
+Its `w4frame.mjs` uses block-mean luma, which **cannot separate an exposure change
+from a re-framing**. It reports FRAMING CHANGED on three shots whose cameras the
+implementer then proved did not move. The implementer built a level-invariant
+replacement and calibrated it against the critic's own ground truth — re-framed pairs
+score 0.04–0.27, same-framing pairs 0.92–0.95 — and confirmed all seven shots
+comparable by three independent checks.
+
+So the round-3 scores on those shots **are** comparable after all, and their salt
+deltas **are** attributable. This is a live trap for the next measurer: a block-mean
+statistic will call any relighting a re-framing.
+
+Third instrument refuted this round, after the VFX agent's per-ray median and its
+`y ∈ [90,470]` band. **Instruments in this project fail about as often as the code
+they measure** — which is why calibration against a known input is mandatory here and
+why the stages agent and this implementer both doing it is the difference between a
+number that survives and one that doesn't.
+
 ## Second `capture.mjs` defect — CONFIRMED in source
 
 `tools/capture.mjs:275-276` clears the `--out` directory *before* navigating and before

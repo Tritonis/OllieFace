@@ -113,9 +113,110 @@ const SHADOW_TIERS = [
 const FILL = {
   hemiScale: 0.40, hemiMin: 0.12,
   envScale: 0.82, envMin: 0.52,
-  rimScale: 0.29, rimMin: 0.30,
+  rimScale: 0.74, rimMin: 0.46,
   groundBoost: 1.45,
 };
+
+/**
+ * The second azimuth, and the reason it had to be a *light* and not a floor.
+ *
+ * `02-vista`'s right cliff is 216 000 px — 24% of the establishing frame — at
+ * P10-P90 = 30-35, five luma of range (`reviews/round6/FINAL/02-vista.png`,
+ * and reproduced on `reviews/round6/world2-base/02-vista.png`). The round-4
+ * critic proved it is not a material or an aliasing problem: PEAK on that ROI
+ * is 0.004% and NYQ 2.438 against `detON/`'s 0.004% / 2.441, i.e. bit-for-bit
+ * unchanged by two rounds of material work. There is nothing there to alias.
+ * It is unlit.
+ *
+ * Every previous attempt raised a *floor* — `envMin`, `rimMin`, `hemiMin` —
+ * and the FILL note above records why they all failed by construction. A
+ * hemisphere light is azimuth-blind: on a vertical wall it returns exactly
+ * 0.5 whichever way the wall faces and whichever way each of its facets tips,
+ * so it adds mean and no range. The IBL floor has the same problem for the
+ * same reason. Raising either lifts the whole 216 000 px together, which is
+ * the 0.003 pp the critic measured.
+ *
+ * Range on a shadow-side surface needs a term that varies with the normal,
+ * which means a directional light, which means an azimuth. The key holds one
+ * and the rim holds the one opposite it, so a face turned across both — which
+ * is what this cliff is — sees neither. This is the third: a warm bounce off
+ * the lit basin, 250 degrees round from the sun and slightly *below* the
+ * horizon, so it is the ground throwing the key back up rather than a second
+ * sun. It carries the biome's own boosted ground colour, so it is the same
+ * energy the hemisphere's lower half already stands for, arriving oriented.
+ *
+ * It casts no shadow: it is a bounce approximation, and a shadowed bounce is
+ * both wrong and a second 4k map.
+ */
+/*
+ * Sizing, measured rather than guessed, because the first attempt at this was
+ * aimed correctly and still did nothing — which is the same shape as the two
+ * rounds before it, and worth writing down so it is not repeated a fourth time.
+ *
+ * Biome 0's sun is azimuth 34 deg. The vista camera's bearing is a fixed world
+ * diagonal (`Harness.js`, `02-vista`), so its view azimuth is ~126 deg and the
+ * right-hand cliff's outward normal is ~306 deg. That puts the wall **87 deg
+ * off the key and 93 deg off the rim** — both terms are within four degrees of
+ * their own terminator, so N.L is ~0.04 and ~0.00 respectively. The round-4
+ * critic's "key 0, bounce 0, rim 0" is exact, and it is a geometric fact about
+ * one bearing rather than an intensity that was set too low.
+ *
+ * It also means the *rim* can never fix it: at 2.55x its previous strength
+ * (`rimScale` 0.29 -> 0.74) the wall's mean moved 35.1 -> 35.9 and P10-P90
+ * 30-35 -> 30-37, measured on `reviews/round6/world2-base/02-vista.png` against
+ * `reviews/round6/world2-a/02-vista.png`. Multiplying a term that is zero.
+ *
+ * At 250 deg round from the sun the bounce lands 22 deg off that wall's normal,
+ * N.L = 0.91 — the first light in the rig that actually reaches it. The first
+ * pass then set its intensity to `max(0.50 * 0.62, 0.40) = 0.40` against a key
+ * at `4.4 * 2.5 = 11.0`: **3.6% of the key**, which is why a correctly aimed
+ * light still moved two luma. A bounce card off a sunlit basin is not a 4%
+ * term.
+ *
+ * Sized in measured steps rather than one guess, all on
+ * `02-vista`'s right cliff ROI x900-1500 y520-880 against
+ * `reviews/round6/world2-base/02-vista.png` at P10-P90 = 30-35:
+ *
+ *   0.40 (3.6% of key)   `world2-a`  P10-P90 30-37 (7 luma), mean 35.9
+ *   1.60 (14.5% of key)  `world2-b`  P10-P90 31-41 (10 luma), mean 38.1
+ *   2.60 (24% of key)    `world2-c`  P10-P90 32-42 (10 luma), mean 38.8
+ *
+ * It doubles the range and then stops: 1.6 -> 2.6 bought no further luma and
+ * cost 02-vista's dominant-hue share (whole frame 40.5% -> ... it is the same
+ * violet, and more of it crosses the saturation threshold as the wall
+ * brightens). So the setting is the middle one, not the largest — this is the
+ * point where more of the correct lever stops being the answer. The remaining
+ * gap to the round-4 verify line of 15 luma is not light at all; see
+ * `FIX-world.md` §2.
+ */
+const BOUNCE = { scale: 2.60, min: 1.60, azimuth: 4.363, elevation: -0.16 };
+const BOUNCE_DISTANCE = 120;
+
+/**
+ * Exposure trim on the IBL, re-derived rather than inherited.
+ *
+ * `envScale` / `envMin` were tuned against a probe whose lower hemisphere was
+ * an analytic gradient. `bakeProbe` replaces that with the actual stage, which
+ * carries a different amount of energy — mostly less, because real terrain
+ * under fog is darker than the gradient it replaces, and mostly *below* the
+ * horizon, which is the half every shadow-side facet reads. Left alone the
+ * probe change would arrive partly as an exposure change and the roughness
+ * result would not be separable from it.
+ *
+ * Derived by holding frame mean luma, on the four world shots that neither the
+ * palette edit nor a re-framing touched, `reviews/round6/world2-base/` ->
+ * `reviews/round6/world2-b/`:
+ *
+ *   13-biomes-1  92.1 -> 92.1     13-biomes-2  87.9 -> 86.1
+ *   13-biomes-4  61.3 ->  61.9    02-vista     63.4 -> 64.3
+ *
+ * Mean ratio 1.001, so the trim is 1.00 and the constant is inherited *because
+ * it was re-measured*, not because nobody looked. The stage carries about as
+ * much energy as the analytic gradient it replaced; what changed is where that
+ * energy is, which is the point. 13-biomes-3 and 07-interactables are excluded
+ * and why is in `FIX-world.md` §1.
+ */
+const ENV_PROBE_TRIM = 1.00;
 
 /**
  * Gain on the biome's own sun intensity.
@@ -308,10 +409,12 @@ export class Environment {
     this.rim.intensity = Math.max(L.rimIntensity * FILL.rimScale, FILL.rimMin);
     // Back light stays opposite the key wherever the key has moved to.
     this.rim.position.set(this.sunDir.x * -120, 34, this.sunDir.z * -120);
-    // The IBL probe is baked once at boot and deliberately not re-rendered per
-    // stage — a PMREM pass mid-run is both a stall and a shader-compile risk.
-    // Scaling its contribution instead is free and carries most of the read.
-    scene.environmentIntensity = Math.max(L.envIntensity * FILL.envScale, FILL.envMin);
+    // Third azimuth. Ground colour, boosted the same way the hemisphere's lower
+    // half is, because it stands for the same bounce. See `BOUNCE`.
+    this.bounce.color.set(L.hemiGround).multiplyScalar(FILL.groundBoost);
+    this.bounce.intensity = Math.max(L.hemiIntensity * BOUNCE.scale, BOUNCE.min);
+    this._placeBounce();
+    scene.environmentIntensity = Math.max(L.envIntensity * FILL.envScale, FILL.envMin) * ENV_PROBE_TRIM;
 
     // --- dust ---
     this.dustMaterial.color.set(biome.dust.color);
@@ -367,7 +470,7 @@ export class Environment {
       // which is what left the frame with no occlusion and no shadow contrast —
       // but 0.55 went past "carve into" and into "nothing to carve". `FILL`
       // holds the floor; GTAO is what puts the occlusion back.
-      ctx.scene.environmentIntensity = Math.max(0.55 * FILL.envScale, FILL.envMin);
+      ctx.scene.environmentIntensity = Math.max(0.55 * FILL.envScale, FILL.envMin) * ENV_PROBE_TRIM;
     }
   }
 
@@ -392,6 +495,68 @@ export class Environment {
     const rt = this._pmrem.fromScene(this._probeScene, 0.05, 1, 2000);
     this.ctx.scene.environment = rt.texture;
     this.envRT = rt;
+    prev?.dispose();
+  }
+
+  /**
+   * Re-bake the probe from the **stage**, not from the sky sphere alone.
+   *
+   * Two round-4 critics reached opposite conclusions about this map and both
+   * were right about what they looked at. The world critic established from
+   * `SkyShader.js:151-161` that the sky is not featureless — it renders a hard
+   * sun disc at 15x plus a three-lobe glow, and `07-interactables`' glitter
+   * field is that disc arriving through a near-mirror rung, so reflections
+   * demonstrably work. The character critic established that roughness 0.12 and
+   * roughness 0.90 resolve to the same pixel almost everywhere, so the ladder
+   * discriminates nothing.
+   *
+   * The reconciliation was in `_buildSky`: `_probeScene` held exactly one mesh,
+   * the sky dome. So the environment carried exactly *one* high-frequency
+   * feature — the disc — and a smooth analytic gradient in every other
+   * direction. A roughness ladder can only separate two rungs where there is
+   * something with an edge to either resolve or blur, so the ladder worked in
+   * the one direction the disc reflects and nowhere else. No terrain, prop or
+   * character has ever appeared in any reflection in this project.
+   *
+   * That is also why an HDRI would not have fixed it: it swaps a one-feature
+   * sky for a many-feature sky and still reflects no scene geometry.
+   *
+   * Cost is bounded and already budgeted. `applyBiome` runs *before* the
+   * terrain and props exist (`Stage.build` retints and re-lights first so the
+   * terrain's first compile sees the biome), so the sky-only bake there stays
+   * — it is what the first compile reads. This one is called at the *end* of
+   * `Stage.build`, in the same frame as a full terrain rebuild, and it is the
+   * only place the scene is complete enough to be worth photographing.
+   */
+  bakeProbe(y = 12) {
+    if (!this._pmrem) return;
+    const scene = this.ctx.scene;
+    // The probe must not photograph the environment it is replacing, or each
+    // stage's reflections would compound the previous stage's.
+    const prevEnv = scene.environment;
+    scene.environment = null;
+    // Camera-space furniture would be photographed from the wrong place: the
+    // dome follows the camera and the motes wrap around it, but the cube camera
+    // sits over the basin.
+    const skyPos = this.sky.position.clone();
+    this.sky.position.set(0, 0, 0);
+    const dustVis = this.dust ? this.dust.visible : false;
+    if (this.dust) this.dust.visible = false;
+
+    const prev = this.envRT;
+    // `near` is 0.5 rather than 1: at 1 a boulder standing within a metre of
+    // the probe would be clipped away and leave a hole rather than a
+    // reflection. The probe sits over the basin centre because that is where
+    // the play surface is; at y = 0 it can be inside the terrain.
+    const rt = this._pmrem.fromScene(scene, 0.05, 0.5, 2000,
+                                     { position: new THREE.Vector3(0, y, 0) });
+
+    if (this.dust) this.dust.visible = dustVis;
+    this.sky.position.copy(skyPos);
+    scene.environment = rt.texture;
+    this.envRT = rt;
+    // `prevEnv` is `prev.texture`; disposing the target frees it.
+    void prevEnv;
     prev?.dispose();
   }
 
@@ -457,6 +622,27 @@ export class Environment {
     rim.castShadow = false;
     scene.add(rim);
     this.rim = rim;
+
+    // See `BOUNCE`. One more directional light is one more program variant,
+    // compiled once at boot alongside the other three — it is not a per-biome
+    // fork, because `applyBiome` only ever writes its colour and intensity.
+    const bounce = new THREE.DirectionalLight(L.hemiGround, 0.50 * BOUNCE.scale);
+    bounce.color.multiplyScalar(FILL.groundBoost);
+    bounce.castShadow = false;
+    scene.add(bounce);
+    this.bounce = bounce;
+    this._placeBounce();
+  }
+
+  /** Park the bounce light 250 degrees round from the sun and just below the
+   *  horizon, so it moves with the biome's sun the way the rim does. */
+  _placeBounce() {
+    const sd = this.sunDir;
+    const a = Math.atan2(sd.x, sd.z) + BOUNCE.azimuth;
+    const ce = Math.cos(BOUNCE.elevation) * BOUNCE_DISTANCE;
+    this.bounce.position.set(Math.sin(a) * ce,
+                             Math.sin(BOUNCE.elevation) * BOUNCE_DISTANCE,
+                             Math.cos(a) * ce);
   }
 
   _buildDust(ctx) {
