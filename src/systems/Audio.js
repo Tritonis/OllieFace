@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { clamp, lerp } from '../core/MathUtil.js';
+import { clamp } from '../core/MathUtil.js';
+import { MusicEngine } from './Music.js';
 
 /**
  * Fully procedural WebAudio. No files, no network, no decode step.
@@ -18,6 +19,11 @@ import { clamp, lerp } from '../core/MathUtil.js';
  * clip a raw sum into digital distortion. The voice cap exists for the same
  * reason one layer up — past ~28 concurrent voices nothing is audible anyway,
  * so new hits steal from the oldest rather than piling on.
+ *
+ * The soundtrack lives in Music.js and owns everything downstream of the
+ * `music` bus, including its own voice accounting: the sequencer is
+ * deliberately outside MAX_VOICES, because a cap that works by refusing new
+ * sounds must never be allowed to refuse the downbeat. See MusicEngine._count.
  */
 
 const MAX_VOICES = 28;
@@ -56,10 +62,9 @@ export class Audio {
     this.intensity = 0;
 
     this._throttles = new Map();
-    this._musicTime = 0;
-    this._step = 0;
-    this._bar = 0;
+    this._variants = new Map();
     this._shotIndex = 0;
+    this._footIndex = 0;
   }
 
   init(ctx) {
@@ -77,19 +82,33 @@ export class Audio {
     addEventListener('keydown', unlock);
     addEventListener('touchstart', unlock);
 
+    // Most of these hooks do two things: play the sound, and feed the music's
+    // fast intensity term. The impulse weights are what decide how a fight
+    // "feels" to the soundtrack — a swing at a lone beetle should not lift the
+    // track, twenty seconds of sustained trading should.
     const e = ctx.events;
     e.on('damage', (p) => {
       if (!p) return;
       if (p.target?.isPlayer) return;
       this.hit(p.position || p.target?.position, p.crit);
+      this.musicEngine?.bump(p.crit ? 0.045 : 0.028);
     });
-    e.on('kill', (p) => this.death(p?.position || p?.victim?.position, p?.isElite, p?.isBoss));
+    e.on('kill', (p) => {
+      this.death(p?.position || p?.victim?.position, p?.isElite, p?.isBoss);
+      this.musicEngine?.bump(p?.isBoss ? 0.5 : p?.isElite ? 0.14 : 0.05);
+    });
     e.on('playerHurt', (p) => this.playerHurt(p?.amount ?? 0));
     e.on('itemPickup', (p) => this.pickup(p?.tier ?? 0));
     e.on('goldChanged', () => this.coin());
     e.on('abilityUsed', (p) => this.ability(p?.slot ?? 0));
-    e.on('stageStart', () => this.stageSting());
-    e.on('bossSpawn', () => this.bossHorn());
+    e.on('levelUp', () => this.musicEngine?.bump(0.22));
+    e.on('stageStart', () => {
+      this.stageSting();
+      // A new stage starts empty. Carrying the last fight's heat across the
+      // teleport left the track at full tilt over an empty arena.
+      this.musicEngine?.cool();
+    });
+    e.on('bossSpawn', () => { this.bossHorn(); this.musicEngine?.bump(0.7); });
     e.on('teleporterComplete', () => this.stageSting());
     e.on('playerDead', () => this.playerDead());
   }
@@ -146,7 +165,9 @@ export class Audio {
     this.shaper.curve = makeDistortionCurve(60);
 
     this._buildAmbient();
-    this._musicTime = ac.currentTime + 0.15;
+    // The soundtrack owns everything downstream of `this.music`. It is built
+    // last because it needs the bus and the shared noise buffer.
+    this.musicEngine = new MusicEngine(ac, this.music, this.noiseBuf);
     this.ready = true;
     return ac;
   }
@@ -229,6 +250,21 @@ export class Audio {
   _release(node) {
     this.voices++;
     node.onended = () => { this.voices = Math.max(0, this.voices - 1); };
+  }
+
+  /**
+   * Variant picker for sounds that fire in bursts.
+   *
+   * Not `Math.random() * n`: uniform picking repeats the same variant back to
+   * back roughly 1/n of the time, and a back-to-back identical burst is
+   * precisely the machine-gun artefact variants exist to remove. Advancing by
+   * 1 or occasionally 2 walks the whole set, never repeats consecutively, and
+   * still never sounds like a fixed rotation.
+   */
+  _variant(key, n) {
+    const i = ((this._variants.get(key) ?? 0) + (Math.random() < 0.3 ? 2 : 1)) % n;
+    this._variants.set(key, i);
+    return i;
   }
 
   /** Rate limit by key. Returns false if the sound should be dropped. */
@@ -329,9 +365,17 @@ export class Audio {
     this._shotIndex++;
     const vary = 1 + Math.sin(this._shotIndex * 2.399) * 0.055 + (Math.random() - 0.5) * 0.05;
 
+    // Pitch alone was not enough at sustained fire rates: three shots a second
+    // all with the same envelope shape still fuse into a buzz. Rotating the
+    // body's *timbre* — bandwidth and how far the sweep falls — makes each
+    // shot a distinguishable event even at 10rps.
+    const v = this._variant('shoot', 3);
+    const bodyQ = [0.9, 1.5, 0.6][v];
+    const bodyEnd = [420, 300, 560][v];
+
     this._noise(t, 0.006, { type: 'highpass', freq: 4000 * vary, gain: 0.5 * scale, out, attack: 0.0008 });
     this._noise(t, 0.13 * scale, {
-      type: 'bandpass', freq: 2600 * vary, freqEnd: 420, q: 0.9, gain: 0.55 * scale, out,
+      type: 'bandpass', freq: 2600 * vary, freqEnd: bodyEnd, q: bodyQ, gain: 0.55 * scale, out,
     });
     this._tone(t, 0.11 * scale, {
       type: 'triangle', f0: 320 * vary, f1: 55, gain: 0.42 * scale, out, attack: 0.001,
@@ -339,6 +383,13 @@ export class Audio {
     this._tone(t, 0.19 * scale, {
       type: 'sine', f0: 120 * vary, f1: 40, gain: 0.3 * scale, out, attack: 0.002,
     });
+    // Mechanical tail on every third shot: the action cycling. Only sometimes,
+    // because a gun that clatters on every round sounds broken.
+    if (v === 1) {
+      this._noise(t + 0.045, 0.05, {
+        type: 'bandpass', freq: 3000 * vary, freqEnd: 1500, q: 4, gain: 0.14 * scale, out, attack: 0.002,
+      });
+    }
   }
 
   /** Surface impact tick, tuned per material. */
@@ -351,16 +402,29 @@ export class Audio {
     const t = ac.currentTime;
     const out = this._out(pos, 5);
     const vary = 0.9 + Math.random() * 0.25;
+    // Impacts fire in dense volleys, so they get length variation as well as
+    // pitch — a shorter tick and a longer scatter read as different surfaces
+    // being struck rather than as one sound retriggering.
+    const v = this._variant('impact', 3);
+    const len = [1, 0.7, 1.35][v];
 
-    this._noise(t, s.decay, {
-      type: 'bandpass', freq: s.freq * vary, freqEnd: s.freq * 0.35, q: s.q, gain: s.gain, out,
-      attack: 0.001,
+    this._noise(t, s.decay * len, {
+      type: 'bandpass', freq: s.freq * vary, freqEnd: s.freq * 0.35, q: s.q * (v === 1 ? 1.8 : 1),
+      gain: s.gain, out, attack: 0.001,
     });
     this._tone(t, s.decay * 0.8, {
       type: 'triangle', f0: 180 * vary, f1: 60, gain: 0.22, out, attack: 0.001,
     });
     if (s.ring) {
-      this._tone(t, 0.5, { type: 'sine', f0: 2400 * vary, gain: 0.1, out, attack: 0.002 });
+      // Metal rings at a different partial each strike; a fixed 2400Hz ping on
+      // every hit turned a firefight against armour into a single held tone.
+      this._tone(t, 0.5, { type: 'sine', f0: [2400, 3150, 1870][v] * vary, gain: 0.1, out, attack: 0.002 });
+    }
+    if (v === 2) {
+      // Occasional grit scatter after the strike: chips coming off.
+      this._noise(t + s.decay * 0.6, 0.09, {
+        type: 'highpass', freq: 5200, gain: 0.09, out, attack: 0.006,
+      });
     }
   }
 
@@ -373,13 +437,19 @@ export class Audio {
     const t = ac.currentTime;
     const out = this._out(pos, 7);
     const vary = 0.92 + Math.random() * 0.18;
+    // Hit confirms are the most-repeated sound in the game by a wide margin —
+    // a sustained beam can trigger this twenty times a second — so the four
+    // variants shift the mid body between wet, dry and clicky.
+    const v = this._variant('hit', 4);
+    const bodyQ = [1.4, 3.0, 0.7, 2.0][v];
 
-    this._noise(t, crit ? 0.13 : 0.07, {
+    this._noise(t, (crit ? 0.13 : 0.07) * [1, 0.75, 1.25, 0.9][v], {
       type: 'bandpass', freq: (crit ? 3400 : 2100) * vary, freqEnd: 500,
-      q: 1.4, gain: crit ? 0.55 : 0.36, out, attack: 0.001,
+      q: bodyQ, gain: crit ? 0.55 : 0.36, out, attack: 0.001,
     });
     this._tone(t, crit ? 0.16 : 0.09, {
-      type: 'square', f0: (crit ? 640 : 420) * vary, f1: 90,
+      type: ['square', 'sawtooth', 'square', 'triangle'][v],
+      f0: (crit ? 640 : 420) * vary, f1: 90,
       gain: crit ? 0.28 : 0.17, out, attack: 0.001,
     });
     this._tone(t, 0.12, {
@@ -399,21 +469,34 @@ export class Audio {
     const t = ac.currentTime;
     const out = this._out(pos, 12, 220);
     const s = clamp(radius / 4, 0.5, 3);
+    const v = this._variant('boom', 3);
+    const vary = 0.88 + Math.random() * 0.24;
 
-    this._noise(t, 0.02, { type: 'highpass', freq: 3000, gain: 0.6, out, attack: 0.0008 });
+    this._noise(t, 0.02, { type: 'highpass', freq: 3000 * vary, gain: 0.6, out, attack: 0.0008 });
     this._noise(t, 0.55 * s, {
-      type: 'lowpass', freq: 2400, freqEnd: 180, q: 0.7, gain: 0.85, out, attack: 0.004,
+      type: 'lowpass', freq: 2400 * vary, freqEnd: 180, q: 0.7, gain: 0.85, out, attack: 0.004,
     });
     this._tone(t, 0.45 * s, {
-      type: 'sine', f0: 90, f1: 24, gain: 0.9, out, attack: 0.006, curve: 'exp',
+      type: 'sine', f0: 90 * vary, f1: 24, gain: 0.9, out, attack: 0.006, curve: 'exp',
     });
     this._tone(t, 0.3 * s, {
-      type: 'triangle', f0: 220, f1: 45, gain: 0.35, out, attack: 0.003,
+      type: 'triangle', f0: 220 * vary, f1: 45, gain: 0.35, out, attack: 0.003,
     });
     // Debris tail arriving slightly late reads as distance and scale.
     this._noise(t + 0.09, 0.9 * s, {
-      type: 'bandpass', freq: 1400, freqEnd: 300, q: 0.5, gain: 0.16, out, attack: 0.05,
+      type: 'bandpass', freq: 1400 * vary, freqEnd: 300, q: 0.5, gain: 0.16, out, attack: 0.05,
     });
+    // Scattered debris ticks on two of three variants. Randomised count and
+    // timing, because a fixed number of ticks at fixed offsets becomes a
+    // rhythm the ear locks onto once it has heard three explosions.
+    if (v > 0) {
+      const n = 2 + ((Math.random() * 3) | 0);
+      for (let i = 0; i < n; i++) {
+        this._noise(t + 0.12 + Math.random() * 0.4 * s, 0.05, {
+          type: 'bandpass', freq: 900 + Math.random() * 2600, q: 3, gain: 0.1, out, attack: 0.003,
+        });
+      }
+    }
   }
 
   zap(pos) {
@@ -428,6 +511,15 @@ export class Audio {
     });
     this._tone(t, 0.1, { type: 'sawtooth', f0: 1400 * vary, f1: 260, gain: 0.18, out });
     this._tone(t, 0.16, { type: 'square', f0: 90, f1: 55, gain: 0.2, out });
+    // Arc crackle. Electricity is not a single sweep — the irregular retriggers
+    // are what separate "lightning" from "laser", and they are what the old
+    // version was missing.
+    const n = 2 + this._variant('zapN', 3);
+    for (let i = 0; i < n; i++) {
+      this._noise(t + 0.015 + Math.random() * 0.12, 0.02, {
+        type: 'bandpass', freq: 3000 + Math.random() * 5000, q: 8, gain: 0.2, out, attack: 0.0008,
+      });
+    }
   }
 
   /** Monster vocalisation: detuned saws through a formant band, distorted. */
@@ -480,11 +572,23 @@ export class Audio {
     const t = ac.currentTime;
     const out = this._out(pos, 4, 40);
     const vary = 0.85 + Math.random() * 0.3;
+    // Left/right alternation. Real footsteps are two slightly different sounds
+    // trading off; a single sound repeating at a fixed interval is the most
+    // recognisably synthetic thing in a game's mix, and it was the state of
+    // this one. The offset is small — this is a limp, not two people.
+    this._footIndex++;
+    const foot = this._footIndex % 2 ? 1.09 : 0.94;
     this._noise(t, 0.07, {
-      type: 'bandpass', freq: s.freq * 0.6 * vary, freqEnd: s.freq * 0.22, q: 1.1, gain: 0.22, out,
+      type: 'bandpass', freq: s.freq * 0.6 * vary * foot, freqEnd: s.freq * 0.22, q: 1.1, gain: 0.22, out,
       attack: 0.001,
     });
-    this._tone(t, 0.06, { type: 'sine', f0: 110 * vary, f1: 55, gain: 0.16, out, attack: 0.001 });
+    this._tone(t, 0.06, { type: 'sine', f0: 110 * vary * foot, f1: 55, gain: 0.16, out, attack: 0.001 });
+    // Occasional scuff: the toe dragging. One step in four or so.
+    if (this._variant('scuff', 4) === 0) {
+      this._noise(t + 0.02, 0.11, {
+        type: 'highpass', freq: s.freq * 1.6, gain: 0.07, out, attack: 0.02,
+      });
+    }
   }
 
   playerHurt(amount = 0) {
@@ -509,6 +613,10 @@ export class Audio {
     if (!ac) return;
     const t = ac.currentTime;
     this._musicOff = true;
+    // Fade the layers rather than the bus: the bus is also what `playerHurt`
+    // and `setMusicVolume` write to, and a bus parked at 0 would silently eat
+    // the next run's music if anything ever revived this instance.
+    this.musicEngine?.stop(t);
     if (this.music) {
       this.music.gain.cancelScheduledValues(t);
       this.music.gain.setTargetAtTime(0, t, 0.5);
@@ -567,8 +675,14 @@ export class Audio {
     if (!ac) return;
     if (!this._throttle('coin', 0.06)) return;
     const t = ac.currentTime;
-    this._tone(t, 0.09, { type: 'square', f0: 1760, gain: 0.06, attack: 0.002 });
-    this._tone(t + 0.03, 0.12, { type: 'square', f0: 2637, gain: 0.05, attack: 0.002 });
+    // Gold arrives in streams, so the pair walks up a pentatonic ladder rather
+    // than replaying the same two pitches. Four rungs is enough that a long
+    // payout sounds like a cascade instead of a stuck bleep.
+    const v = this._variant('coin', 4);
+    const m = Math.pow(2, SCALE[v] / 12);
+    this._tone(t, 0.09, { type: 'square', f0: 1760 * m, gain: 0.06, attack: 0.002 });
+    this._tone(t + 0.03, 0.12, { type: 'square', f0: 2637 * m, gain: 0.05, attack: 0.002 });
+    this._noise(t, 0.04, { type: 'highpass', freq: 8000, gain: 0.05, attack: 0.001 });
   }
 
   levelUp() {
@@ -635,107 +749,138 @@ export class Audio {
   }
 
   /* ------------------------------------------------------------------ */
-  /* Music: a lookahead step sequencer whose layers gate on difficulty    */
+  /* World interaction sounds                                            */
   /* ------------------------------------------------------------------ */
 
-  _scheduleMusic() {
-    const ac = this.ac;
-    if (this._musicOff) return;
-    const lookahead = 0.25;
-    const d = this.ctx.director?.difficultyCoefficient ?? 1;
-    this.intensity = clamp((d - 1) / 5, 0, 1);
-    const bpm = lerp(88, 132, this.intensity);
-    const stepDur = 60 / bpm / 4; // 16th notes
-
-    // Resync guard.
-    //
-    // `_musicTime` is a wall-clock cursor advanced once per frame, so anything
-    // that stops frames advancing — a shader-compile stall, a backgrounded tab
-    // (where rAF stops entirely), a long GC — leaves it behind `currentTime` by
-    // however long the gap was. Without this, the loop below then emits the
-    // whole backlog at timestamps already in the past, and WebAudio fires every
-    // one of them *immediately*: a second of missed sequencer steps arrives as
-    // a single garbled cluster, which then blows the voice cap and drops the
-    // notes that follow. That burst-then-stumble is what "the music slips"
-    // sounds like, and a tab switch alone is enough to cause it.
-    //
-    // Missed steps are simply gone rather than replayed — a bar the player
-    // never heard is not owed to them, and the pulse matters more than the
-    // phase. Snapping to the next step boundary keeps the grid aligned.
-    if (this._musicTime < ac.currentTime) {
-      this._musicTime = ac.currentTime + 0.02;
-      this._step = 0;
-      this._bar = 0;
+  /**
+   * Chest opening. Names like this one used to fall through the dispatcher's
+   * default case and emit a UI blip, so a chest — one of the loudest moments
+   * in a run's economy — sounded exactly like clicking a menu button.
+   */
+  chest(pos) {
+    const ac = this._ensure();
+    if (!ac) return;
+    const t = ac.currentTime;
+    const out = this._out(pos, 6, 90);
+    // Latch, then lid, then the reward shimmer. The 90ms gap between the first
+    // two is the mechanism; without it the whole thing is one wooden thud.
+    this._noise(t, 0.05, { type: 'bandpass', freq: 3400, freqEnd: 1200, q: 5, gain: 0.4, out, attack: 0.0008 });
+    this._tone(t, 0.09, { type: 'square', f0: 900, f1: 420, gain: 0.1, out, attack: 0.001 });
+    this._noise(t + 0.09, 0.3, { type: 'bandpass', freq: 1500, freqEnd: 380, q: 1.6, gain: 0.34, out, attack: 0.004 });
+    this._tone(t + 0.09, 0.26, { type: 'triangle', f0: 150, f1: 70, gain: 0.24, out, attack: 0.003 });
+    for (let i = 0; i < 4; i++) {
+      this._tone(t + 0.16 + i * 0.05, 0.4, {
+        type: 'sine', f0: ROOT * 8 * Math.pow(2, SCALE[i + 2] / 12), gain: 0.075, out, attack: 0.006,
+      });
     }
-
-    while (this._musicTime < ac.currentTime + lookahead) {
-      this._emitStep(this._musicTime, stepDur);
-      this._musicTime += stepDur;
-      this._step++;
-      if (this._step % 16 === 0) this._bar++;
-    }
+    this._noise(t + 0.2, 0.6, { type: 'highpass', freq: 7000, gain: 0.09, out, attack: 0.08 });
   }
 
-  _emitStep(t, stepDur) {
-    const s = this._step % 16;
-    const I = this.intensity;
-    const out = this.music;
-    const bar = this._bar;
-    // Chord root walks a 4-bar loop so the bed has somewhere to go.
-    const rootStep = SCALE[[0, 0, 3, 2][bar % 4]];
-    const root = ROOT * Math.pow(2, rootStep / 12);
+  /** Shop / vault purchase: register clunk, then a rising two-note confirm. */
+  purchase(pos) {
+    const ac = this._ensure();
+    if (!ac) return;
+    const t = ac.currentTime;
+    const out = this._out(pos, 5, 60);
+    this._tone(t, 0.06, { type: 'square', f0: 260, f1: 150, gain: 0.16, out, attack: 0.001 });
+    this._noise(t, 0.07, { type: 'bandpass', freq: 2000, freqEnd: 700, q: 2.4, gain: 0.28, out, attack: 0.001 });
+    // The confirm sits on the same interval the pickup jingle opens on, so a
+    // purchase and the item it buys read as one family of event.
+    this._tone(t + 0.07, 0.22, { type: 'triangle', f0: ROOT * 6, gain: 0.13, out, attack: 0.004 });
+    this._tone(t + 0.13, 0.3, { type: 'triangle', f0: ROOT * 8, gain: 0.13, out, attack: 0.004 });
+    this._tone(t + 0.13, 0.22, { type: 'sine', f0: ROOT * 16, gain: 0.05, out, attack: 0.004 });
+  }
 
-    // --- bass pulse: always present, it is the run's heartbeat ---
-    if (s === 0 || s === 6 || s === 10) {
-      this._tone(t, 0.28, { type: 'triangle', f0: root * 0.5, gain: 0.22, out, attack: 0.006 });
-      this._tone(t, 0.4, { type: 'sine', f0: root * 0.25, gain: 0.3, out, attack: 0.01 });
+  /** Shrine paid off: a bright bell chord over a sub swell. */
+  shrineWin(pos) {
+    const ac = this._ensure();
+    if (!ac) return;
+    const t = ac.currentTime;
+    const out = this._out(pos, 9, 120);
+    const IVS = [0, 7, 12, 19];
+    for (let i = 0; i < IVS.length; i++) {
+      const f = ROOT * 4 * Math.pow(2, IVS[i] / 12);
+      // The inharmonic partial at 2.76x is what makes a stack of sines read as
+      // a bell instead of as an organ. Harmonic multiples do not do it.
+      this._tone(t + i * 0.04, 1.5, { type: 'sine', f0: f, gain: 0.12, out, attack: 0.006 });
+      this._tone(t + i * 0.04, 0.7, { type: 'sine', f0: f * 2.76, gain: 0.035, out, attack: 0.004 });
     }
+    this._tone(t, 1.4, { type: 'sine', f0: ROOT * 0.5, f1: ROOT, gain: 0.34, out, attack: 0.06 });
+    this._noise(t, 1.0, { type: 'highpass', freq: 6000, gain: 0.1, out, attack: 0.12 });
+  }
 
-    // --- kick: enters as the director starts pushing ---
-    if (I > 0.08 && (s === 0 || s === 8 || (I > 0.5 && s === 11))) {
-      this._tone(t, 0.16, { type: 'sine', f0: 130, f1: 42, gain: 0.55, out, attack: 0.001 });
-      this._noise(t, 0.02, { type: 'lowpass', freq: 2000, gain: 0.2, out, attack: 0.001 });
+  /** Shrine refused: the same gesture inverted — falling, detuned, dull. */
+  shrineFail(pos) {
+    const ac = this._ensure();
+    if (!ac) return;
+    const t = ac.currentTime;
+    const out = this._out(pos, 9, 120);
+    for (let i = 0; i < 3; i++) {
+      const f = ROOT * 3 * Math.pow(2, -(i * 3) / 12);
+      this._tone(t + i * 0.1, 0.5, { type: 'triangle', f0: f, gain: 0.13, out, attack: 0.006 });
+      // A second voice 30 cents flat is the entire "that did not work" signal;
+      // the falling contour alone still sounds like a deliberate cadence.
+      this._tone(t + i * 0.1, 0.5, { type: 'triangle', f0: f, gain: 0.1, out, attack: 0.008, detune: -30 });
     }
+    this._tone(t, 0.7, { type: 'sine', f0: 120, f1: 44, gain: 0.34, out, attack: 0.01 });
+    this._noise(t + 0.28, 0.5, { type: 'lowpass', freq: 1400, freqEnd: 220, q: 0.7, gain: 0.2, out, attack: 0.02 });
+  }
 
-    // --- hats ---
-    if (I > 0.2 && s % 2 === 1) {
-      this._noise(t, I > 0.6 ? 0.045 : 0.03, {
-        type: 'highpass', freq: 7800, gain: 0.06 + I * 0.05, out, attack: 0.001,
+  /** Blood shrine: a wet squelch over a heartbeat. */
+  shrineBlood(pos) {
+    const ac = this._ensure();
+    if (!ac) return;
+    const t = ac.currentTime;
+    const out = this._out(pos, 7, 90);
+    // High Q on the downward sweep is what turns a noise glide from "wind"
+    // into something fleshy — the resonance tracks like a closing throat.
+    this._noise(t, 0.34, { type: 'bandpass', freq: 1800, freqEnd: 220, q: 7, gain: 0.42, out, attack: 0.008 });
+    this._noise(t + 0.05, 0.3, { type: 'lowpass', freq: 900, freqEnd: 160, q: 1.2, gain: 0.3, out, attack: 0.02 });
+    // Two thumps 240ms apart: a resting lub-dub, which is what makes the price
+    // of this shrine land in the body rather than in the UI.
+    for (const d of [0, 0.24]) {
+      this._tone(t + d, 0.3, { type: 'sine', f0: 76, f1: 34, gain: 0.5, out, attack: 0.006 });
+    }
+    this._tone(t, 0.9, { type: 'sawtooth', f0: ROOT * 0.5, f1: ROOT * 0.47, gain: 0.07, out, attack: 0.2 });
+  }
+
+  /** Teleporter engaging: a long rising charge that lands on a boom. */
+  teleporterStart(pos) {
+    const ac = this._ensure();
+    if (!ac) return;
+    const t = ac.currentTime;
+    const out = this._out(pos, 14, 200);
+    const RISE = 1.9;
+    // Linear sweep, not exponential: an exponential glide spends most of its
+    // length loitering near the start pitch and only "arrives" in the last
+    // 200ms, which reads as a glitch rather than as a machine spinning up.
+    const IVS = [0, 7, 12];
+    for (let i = 0; i < IVS.length; i++) {
+      const f = ROOT * Math.pow(2, IVS[i] / 12);
+      this._tone(t, RISE, {
+        type: 'sawtooth', f0: f, f1: f * 4, gain: 0.11, out, attack: RISE * 0.75,
+        curve: 'lin', detune: i * 7 - 7,
       });
     }
-
-    // --- pad: sustained chord once a bar ---
-    if (I > 0.25 && s === 0) {
-      for (const iv of [0, 3, 7]) {
-        this._tone(t, 1.6, {
-          type: 'sawtooth', f0: root * Math.pow(2, iv / 12), gain: 0.05 + I * 0.04,
-          out, attack: 0.35,
-        });
-      }
-    }
-
-    // --- arp: the "it is getting bad" layer ---
-    if (I > 0.42 && s % 2 === 0) {
-      const n = SCALE[(this._step * 3 + bar) % SCALE.length];
-      this._tone(t, 0.16, {
-        type: 'square', f0: root * 2 * Math.pow(2, n / 12), gain: 0.05 + I * 0.05,
-        out, attack: 0.003,
+    this._noise(t, RISE, { type: 'bandpass', freq: 500, freqEnd: 6500, q: 1.6, gain: 0.24, out, attack: RISE * 0.8 });
+    // Electrical crackle scattered across the charge so the rise is not a
+    // single clean tone for two whole seconds.
+    for (let i = 0; i < 5; i++) {
+      this._noise(t + 0.3 + i * 0.3 + Math.random() * 0.1, 0.05, {
+        type: 'highpass', freq: 4000 + Math.random() * 3000, gain: 0.16, out, attack: 0.001,
       });
     }
+    this._tone(t + RISE, 1.3, { type: 'sine', f0: 86, f1: 30, gain: 0.6, out, attack: 0.004 });
+    this._noise(t + RISE, 0.9, { type: 'lowpass', freq: 2600, freqEnd: 300, q: 0.7, gain: 0.36, out, attack: 0.003 });
+  }
 
-    // --- snare / claps ---
-    if (I > 0.6 && (s === 4 || s === 12)) {
-      this._noise(t, 0.13, { type: 'highpass', freq: 1800, gain: 0.22, out, attack: 0.001 });
-      this._tone(t, 0.09, { type: 'triangle', f0: 220, f1: 140, gain: 0.14, out, attack: 0.001 });
-    }
-
-    // --- lead stabs at full tilt ---
-    if (I > 0.82 && s === 14) {
-      const n = SCALE[(bar * 2) % SCALE.length];
-      this._tone(t, 0.4, {
-        type: 'sawtooth', f0: root * 4 * Math.pow(2, n / 12), gain: 0.07, out, attack: 0.004,
-      });
-    }
+  /** Rejected input: short, low, and unmistakably not a confirm. */
+  deny() {
+    const ac = this._ensure();
+    if (!ac) return;
+    const t = ac.currentTime;
+    this._tone(t, 0.08, { type: 'square', f0: 200, gain: 0.09, attack: 0.001 });
+    this._tone(t + 0.08, 0.12, { type: 'square', f0: 150, gain: 0.09, attack: 0.001 });
   }
 
   /* ------------------------------------------------------------------ */
@@ -770,9 +915,15 @@ export class Audio {
       }
     }
 
-    this._scheduleMusic();
+    // The soundtrack runs while paused too — `update` is called every frame
+    // regardless, and a sequencer that stopped advancing across a menu would
+    // hand the resync guard a multi-second gap on resume.
+    this.musicEngine.update(ctx, dt);
+    this.intensity = this.musicEngine.intensity;
 
-    // Ambient bed leans darker and louder as the run heats up.
+    // Ambient bed leans darker and louder as the run heats up. It tracks the
+    // blended intensity, so the drone swells during a fight and not only as
+    // the difficulty coefficient grinds upward.
     if (this.droneGain && !this._musicOff) {
       this.droneGain.gain.setTargetAtTime(0.14 + this.intensity * 0.14, ac.currentTime, 1.5);
     }
@@ -805,6 +956,17 @@ export class Audio {
       case 'stageStart': case 'teleporterComplete': return this.stageSting();
       case 'playerHurt': return this.playerHurt(arg ?? 0);
       case 'playerDead': return this.playerDead();
+      // World interaction. Every name below was already being passed by
+      // Interactables/RealmProps and was landing on the default case, i.e. a
+      // chest, a purchase and a shrine payout all played the same UI blip.
+      case 'chest': return this.chest(pos);
+      case 'purchase': case 'vaultPaid': return this.purchase(pos);
+      case 'shrineWin': return this.shrineWin(pos);
+      case 'shrineFail': return this.shrineFail(pos);
+      case 'deny': return this.deny();
+      case 'shrineBlood': return this.shrineBlood(pos);
+      case 'teleporterStart': return this.teleporterStart(pos);
+      case 'ui': case 'uiClick': return this.uiClick(arg ?? 0);
       default: return this.uiClick(0);
     }
   }
