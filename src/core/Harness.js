@@ -823,6 +823,10 @@ export function installHarness(ctx) {
      * placed, instead of assuming it is the same size as the body it must clear.
      * Off by default for the same reason as the two above. */
     avoidFit = false,
+    /* Spend a short grid on the bodies that need it most rather than on the
+     * nearest ones. Off by default, and see the note at the seat loop for why
+     * this is a different lever from the refuted `nearFirst`. */
+    worstFirst = false,
   } = {}) => {
     const list = (ctx.director?.enemies ?? [])
       .filter((e) => e?.alive && e.position && e !== keep && !seated?.has(e));
@@ -866,16 +870,20 @@ export function installHarness(ctx) {
     }).sort((a, b) => a.d - b.d);
 
     const bad = [];
+    /* How well each `bad` body is doing *where it stands*, 0 (contributing
+     * nothing) to 1 (fully in view). Read only by `worstFirst` below. */
+    const need = new Map();
     const kept = kept0;
     for (const { e, d } of ranked) {
       const h = e.def?.height ?? 2;
       const es = screenOf(e.position.x, e.position.y + h * 0.5, e.position.z);
       const merged = es.front > 0 && Math.hypot(es.x - ps.x, es.y - ps.y) < 0.09;
       const framed = es.front > 0 && es.x > 0.03 && es.x < 0.97 && es.y > 0.03 && es.y < 0.97;
-      const seen = framed && visibleFraction(
+      const vis = framed ? visibleFraction(
         cam, _cc.set(e.position.x, e.position.y, e.position.z),
         { height: h, radius: (e.def?.radius ?? 0.5) + 0.2, cols: 3, rows: 3, slack: 0.3 },
-      ) >= 0.6;
+      ) : 0;
+      const seen = framed && vis >= 0.6;
       /* And the third question, which nothing was asking: is anything else
        * already standing there.
        *
@@ -899,6 +907,21 @@ export function installHarness(ctx) {
         kept.push({ x: es.x, y: es.y, half });
         continue;
       }
+      /* How many pixels this body is going to contribute where it stands —
+       * *not* how wrong it looks there. The two are different questions and
+       * conflating them is measured: scoring `d < minDist` as 0 alongside
+       * `!framed` put seven bodies on the same key, and V8's stable sort then
+       * handed the slots back to the nearest ones in the original order, for a
+       * partition byte-identical to not sorting at all
+       * (`reviews/round6/cfit2/manifest.json` — same eight `unplaced`, merely
+       * reordered). A body inside the near clamp is *over*-photographed: it is
+       * a composition defect, and it is the one kind of `bad` that never fails
+       * a pixel gate. It scores what it shows, which ranks it last.
+       *
+       * Off frame scores 0 — it contributes literally nothing and cannot
+       * improve by being left alone. Fused with the survivor scores just above
+       * that: a few pixels, and they read as a growth on his arm. */
+      need.set(e, !framed ? 0 : merged ? 0.05 : vis);
       bad.push(e);
     }
     if (!bad.length) return 0;
@@ -941,16 +964,70 @@ export function installHarness(ctx) {
       avoid: kept.map((k) => ({ x: k.x, y: k.y, r: avoidR(k) })),
     });
     const order = nearFirst ? slots.slice().reverse() : slots;
+    /* Who gets the slots when there are not enough to go round.
+     *
+     * `bad` is ordered nearest-first, and that order is *required* by the
+     * crowding test above — pairs are resolved in favour of the near body, so
+     * it has to be considered first. It was then reused verbatim as the
+     * priority for a scarce grid, and there is no reason those two orders
+     * should be the same one. Measured on `reviews/round6/cfit1/manifest.json`,
+     * `04-combat` -> `DIAG declutter`: pass 1 had 15 homeless bodies and 7
+     * slots, and the 7 that got them were simply the 7 nearest. The 8 left over
+     * were the far ones — and every one of the shot's four remaining zero-pixel
+     * objects was in that leftover list, while bodies that were already
+     * rendering hundreds of pixels were re-seated ahead of them.
+     *
+     * `worstFirst` hands the scarce slots to the bodies contributing least
+     * where they stand. It is not the refuted `nearFirst`
+     * (`reviews/round6/hdiag6/`), which reversed the *slots* and left this
+     * order alone; nothing had previously reordered the candidates.
+     *
+     * **It is REFUTED anyway — do not re-apply it. It cost three passing
+     * shots.** Both scorings were built and captured full:
+     *
+     *  - Scoring off-frame, `merged` and `d < minDist` all at 0
+     *    (`reviews/round6/cfit2/manifest.json`) is a **no-op**: seven bodies
+     *    tie on one key, V8's sort is stable, and the partition comes back
+     *    byte-identical to not sorting — the same eight `unplaced`, merely
+     *    reordered. `04-combat` did not move a pixel.
+     *  - Scoring by contribution instead — off-frame 0, `merged` 0.05, else the
+     *    visible fraction, so an over-photographed near body ranks last
+     *    (`reviews/round6/cfit3/manifest.json`) — **does** work locally and is
+     *    not worth it. `04-combat` went 4 failing objects to 3 (object 7, the
+     *    charger that has been off frame all round, finally landed at 40 px)
+     *    and the capture went from **one failing shot to four**:
+     *    `08-explosion` -> `damage numbers`, `10-inventory` -> `monsters
+     *    standing in it` (object 3, `sepP50` 0.45 -> 0.21) and `11-bestiary`
+     *    -> `the whole spawn roster` (object 12, `sepP50` 0.61 -> 0.19) all
+     *    began failing.
+     *
+     * The displacement is the shared-RNG hazard, and this is the cleanest
+     * measurement of it in the repo: `10-inventory`'s equipment blast moved
+     * **19,488 -> 57,049 px** on a change that touches only which of
+     * `04-combat`'s monsters get re-seated. Re-seating a *different* body
+     * changes what the horde does over the following frames, and the enemy AI
+     * draws from the same stream every later scenario draws from. `avoidFit`
+     * above is safe for exactly the reason this is not: it changes where bodies
+     * are placed without changing the set of bodies that move, and its capture
+     * moved no other shot by more than one pixel.
+     *
+     * Kept, off, as `supply` and `nearFirst` are: the lever is sound and the
+     * evidence against it is about this scenario's position in the run order,
+     * not about the idea.
+     */
+    const take = worstFirst
+      ? bad.slice().sort((a, b) => (need.get(a) ?? 1) - (need.get(b) ?? 1))
+      : bad;
     let moved = 0;
-    for (let i = 0; i < bad.length && i < order.length; i++) {
-      _seat(bad[i], order[i]);
-      seated?.add(bad[i]);
+    for (let i = 0; i < take.length && i < order.length; i++) {
+      _seat(take[i], order[i]);
+      seated?.add(take[i]);
       moved++;
     }
     _lastDeclutter.push({
       bad: bad.length, kept: kept.length, asked: Math.max(bad.length + 4, supply),
       slots: slots.length, moved, why: _lastSlots,
-      unplaced: bad.slice(moved).map((e) => e.def?.id ?? '?'),
+      unplaced: take.slice(moved).map((e) => e.def?.id ?? '?'),
     });
     // What was *moved*, not what was found wanting. A pass that reported its
     // whole bad list would keep the loop alive forever on bodies it has no slot
@@ -2487,6 +2564,10 @@ export function installHarness(ctx) {
        * `hdiag5` — this scenario's layout feeds the next one's, so a change here
        * is never local. Reverted to the state `hdiag5` measures.
        */
+      /* `worstFirst: true` belongs here on the local evidence — it is the one
+       * lever that has ever moved object 7 off the frame edge — and it is
+       * REFUTED: it took the capture to four failing shots.
+       * `reviews/round6/cfit3/manifest.json`, and see the seat loop. */
       declutter(12, { keep: mark, maxDist: 30, avoidFit: true });
       if (mark && markAt) mark.position.copy(markAt);
       await frames(2);
