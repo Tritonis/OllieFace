@@ -75,11 +75,32 @@ function floorDisc(stage, material, segments = 72) {
   return m;
 }
 
+/**
+ * The one-sided variant of a material this helper does *not* own.
+ *
+ * `roomWall` and `roomCeiling` need `BackSide` on their own shell, and both
+ * used to get it by writing `mesh.material.side = BackSide` — on the object the
+ * caller passed in. Every other mesh sharing that rung then rendered back-face
+ * only: the bazaar's pale columns and its two-tier dais share `paleStone` with
+ * the ceiling, the crucible's cover blocks and brazier bowls share `iron` with
+ * both. With `flatShading: true` a back face takes its normal from screen
+ * derivatives, so those meshes lost their form shading entirely — measured on
+ * `reviews/round6/audfix-pre-full/realms/22-realm-bazaar.png`, the "pale
+ * limestone" columns came back *darker* than the mid-grey floor they stand on,
+ * which is the exact inverse of the value separation the room is built around.
+ *
+ * One clone per room shell, at build time, is the whole cost.
+ */
+function backSided(mat) {
+  const m = mat.clone();
+  m.side = THREE.BackSide;
+  return m;
+}
+
 /** A closed room wall: an inward-facing cylinder plus a heavy cornice. */
 function roomWall(stage, radius, height, wallMat, trimMat, ribs = 16) {
   const shell = new THREE.Mesh(
-    new THREE.CylinderGeometry(radius, radius, height, 48, 1, true), wallMat);
-  shell.material.side = THREE.BackSide;
+    new THREE.CylinderGeometry(radius, radius, height, 48, 1, true), backSided(wallMat));
   shell.position.set(stage.origin.x, height * 0.5 - 1, stage.origin.z);
   stage.addMesh(shell);
 
@@ -120,8 +141,7 @@ function roomWall(stage, radius, height, wallMat, trimMat, ribs = 16) {
  */
 function roomCeiling(stage, radius, height, mat, rise = 7) {
   const g = new THREE.ConeGeometry(radius * 1.02, rise, 40, 1, true);
-  const m = new THREE.Mesh(g, mat);
-  m.material.side = THREE.BackSide;
+  const m = new THREE.Mesh(g, backSided(mat));
   m.position.set(stage.origin.x, height + rise * 0.5 - 1.2, stage.origin.z);
   m.receiveShadow = true;
   stage.addMesh(m, { solid: false });
@@ -539,8 +559,25 @@ function buildVault(stage) {
   stage.addMesh(key, { solid: false });
   // A second, tight and low, throwing the chest's own front face. Short range
   // on purpose: the pillars and the wall must stay in the dark.
-  const face = new THREE.PointLight(0xffe0a0, 46, 16, 1.9);
-  face.position.set(stage.origin.x, 3.2, stage.origin.z - 7.5);
+  //
+  // Re-sited, because at 46/16/1.9 from (0, 3.2, -7.5) the arithmetic said the
+  // brightest lit surface in the room was a patch of empty floor between the
+  // camera and the prize: 46 / 3.2^1.9 = 5.05 on the floor directly beneath it
+  // against 46 / 7.8^1.9 = 0.92 on the chest's front face, i.e. **5.5x** the
+  // subject, and 1.6x what the key puts on the dais (210 / 9.5^1.85 = 3.27).
+  // `reviews/round6/audfix-pre-full/realms/24-realm-vault.png` shows that as a
+  // gold wash across the lower half of the frame, against a room whose stated
+  // rule is that the walls fall off into black.
+  //
+  // A fill for a subject has to be closer to the subject than to anything else.
+  // At (0, 2.9, -3.0) it stands just off the dais lip: the chest's front face
+  // (~1.2 m out, ~1.6 m up) is 2.2 m away and the nearest floor it can pool on
+  // is the dais top 2.1 m below it, which is the prize's own plinth rather than
+  // open ground. 27 / 2.22^1.9 x cos(35 deg) = 4.0 on the face against
+  // 27 / 2.9^1.9 = 3.5 on the dais — the subject is now the brightest thing the
+  // fill touches, and the fill no longer reaches past the dais at all.
+  const face = new THREE.PointLight(0xffe0a0, 27, 9, 1.9);
+  face.position.set(stage.origin.x, 2.9, stage.origin.z - 3.0);
   stage.addMesh(face, { solid: false });
 }
 
@@ -572,8 +609,11 @@ function buildFracture(stage) {
   // a player could not tell the floor had moved. A long dark taper falling away
   // under the lip is the *persistent* void read — it is there in every frame at
   // every radius, not only during the two seconds of the collapse.
-  const under = new THREE.Mesh(new THREE.CylinderGeometry(1, 0.18, 14, 64, 1, true), edge);
-  under.material.side = THREE.DoubleSide;
+  // Cloned, not mutated: `edge` is also the rim teeth and the monoliths, and
+  // making those double-sided is a silent cost nobody asked this line for.
+  const underMat = edge.clone();
+  underMat.side = THREE.DoubleSide;
+  const under = new THREE.Mesh(new THREE.CylinderGeometry(1, 0.18, 14, 64, 1, true), underMat);
   under.position.set(stage.origin.x, -7, stage.origin.z);
   stage.addMesh(under, { solid: false });
 
@@ -582,17 +622,53 @@ function buildFracture(stage) {
   // that leaves the rim looking lathed is not a collapse. This is 96 tapered
   // teeth of broken slab at alternating lengths and tilts, with the emissive
   // band threaded behind them, so the edge is a fracture line at any radius.
+  //
+  // The first version of this block drew nothing at all, for four independent
+  // reasons, and the 4x rim crop of
+  // `reviews/round6/audfix-pre-full/realms/26-finale-phase2.png` shows the
+  // smooth band it was written to break up:
+  //
+  //  1. every tooth sat at 0.970-0.990 of the floor radius, i.e. *inside* the
+  //     opaque floor disc;
+  //  2. `y` ran -0.12..-0.02 against a floor disc at exactly y = 0, so what was
+  //     not inside the disc was under it;
+  //  3. `onFloorRadius` scales X and Z by 34 and leaves Y at 1, so a cone whose
+  //     Y extent is its own 0.02-0.03 radius came out 2-3 cm tall and a metre
+  //     wide;
+  //  4. `mergeParts` applies rotateY *before* rotateZ, so the per-tooth `ry`
+  //     turned a cone that still pointed along +Y — a no-op — and the shared
+  //     `rz: pi/2` then swung all 96 axes to world -X together.
+  //
+  // So the rotations are baked here, in order, and handed to `mergeParts` as a
+  // finished geometry with only a translation left to apply. Y is pre-scaled by
+  // `R` to cancel the hook's anisotropy, which is exact at the phase-1 radius
+  // and leaves the teeth slightly taller than wide once the floor has collapsed
+  // — the right way for that error to point on a rim made of broken slab.
   const teeth = [];
   for (let i = 0; i < 96; i++) {
     const a = (i / 96) * Math.PI * 2;
     // Deterministic jitter — no RNG in a realm builder, ever.
     const j = Math.sin(i * 12.9898) * 43758.5453;
     const f = j - Math.floor(j);
-    const len = 0.030 + f * 0.055;
-    const drop = -0.02 - f * 0.10;
-    teeth.push({ g: new THREE.ConeGeometry(0.020 + f * 0.012, len, 4),
-                 x: Math.cos(a) * (1 - len * 0.35), y: drop, z: Math.sin(a) * (1 - len * 0.35),
-                 rz: Math.PI * 0.5, ry: -a, rx: (f - 0.5) * 0.5 });
+    // Unit-space, so `onFloorRadius` carries them: 1.5-3.4 m long and
+    // 1.8-2.6 m across at R = 34, against a 2.2 m tooth pitch.
+    const len = 0.045 + f * 0.055;
+    const rad = 0.026 + f * 0.012;
+    const g = new THREE.ConeGeometry(rad, len, 4);
+    // +Y axis -> +X, tip outward, with a per-tooth pitch so the rim is not a
+    // single lathed bevel. Then swung to bearing `a` (matching the `ry: -a`
+    // convention used everywhere else in this file).
+    g.rotateZ(-Math.PI * 0.5 + (f - 0.5) * 0.55);
+    g.rotateX((f - 0.5) * 0.8);
+    g.rotateY(-a);
+    // Cancel the hook's X/Z-only scale so the tooth is not a ribbon. 0.55 keeps
+    // it wider than it is tall, which is what broken slab looks like.
+    g.scale(1, R * 0.55, 1);
+    // Rooted just inside the lip and projecting past it: `len * 0.35` of the
+    // tooth is buried in the floor disc and the rest overhangs the void, which
+    // is the part that has to break the silhouette.
+    const seat = 1 - len * 0.35 + len * 0.5;
+    teeth.push({ g, x: Math.cos(a) * seat, y: -0.10 - f * 0.30, z: Math.sin(a) * seat });
   }
   const rimTeeth = new THREE.Mesh(mergeParts(teeth), edge);
   rimTeeth.position.set(stage.origin.x, 0.02, stage.origin.z);

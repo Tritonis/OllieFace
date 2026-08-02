@@ -49,6 +49,7 @@ attribute vec2 aCurve;
 uniform float uTime;
 uniform float uAtlasCols;
 uniform vec3  uGravity;
+uniform float uLensFloor;
 
 varying vec4 vColor;
 varying vec2 vUv;
@@ -122,14 +123,23 @@ void main() {
   // bright, and the shot's own subject assertion needs the blast to be there.
   // '08-explosion' sits at ~0.23, below the knee, and is not touched at all.
   //
-  // Round-5 r4: the floor was 0.18 and '10-inventory' still shipped a 3D
-  // viewport at mean L 132.4 against a 63.4 control on the same stage and
-  // camera (reviews/round5/shots-vfxr4-base). A quad that fades to 0.18 is
-  // still a screen-filling wash when six of them overlap; 0.05 is a nova you
-  // are standing inside rather than a nova that has replaced the frame. The
-  // knee is unchanged so nothing below ~0.30 subtense moves.
+  // **The floor is per blend layer, and that is the whole point.** This shader
+  // is shared: createParticleMaterial builds the additive layer and the
+  // alpha layer from it and differs only in the blending mode. The failure this fade
+  // exists for is *additive accumulation* — six unclamped quads summing past
+  // clip — which an alpha-blended quad cannot do: it occludes, it does not sum.
+  // Applying one floor to both meant the layer that never had the problem paid
+  // for it, and paid hardest, because the alpha layer is where the dust skirt
+  // and the smoke column live and those are sized off the blast radius: the
+  // dust skirt is size1 = r * 1.1 spawned at the blast centre, so at
+  // 'overload-cell' (r = 12, six metres from the lens) its subtense is 1.10,
+  // past the knee, and it was drawn at 5% — the one opaque layer the effect
+  // has, the layer added specifically 'so the fireball has something dark to be
+  // read against', switched off by a constant tuned for the additive one.
+  //
+  // Values are in LENS_FLOOR below with the capture they were chosen from.
   float subtense = (size * 0.5) / max(-mv.z, 0.05);
-  c.a *= mix(1.0, 0.05, smoothstep(0.30, 0.85, subtense));
+  c.a *= mix(1.0, uLensFloor, smoothstep(0.30, 0.85, subtense));
 
   vColor = c;
 
@@ -279,12 +289,51 @@ void main() {
 }
 `;
 
+/**
+ * How far the near-lens fade in the vertex shader is allowed to take a quad,
+ * per blend layer. See the comment at the fade itself for why one number for
+ * both layers was wrong.
+ *
+ * **Chosen against a control captured for this decision, because the previous
+ * one could not be.** `0.05` was fitted across a commit that also carried
+ * `#define DET_KILL 0.0`, which moves terrain luminance in every frame — so the
+ * "identical stage and camera" reference it leaned on (`06-loaded-hud`) had
+ * itself moved 67.50 -> 69.63 and the comparison proved nothing. `DET_KILL` is
+ * gone, so the control is a control again. Three full captures at seed 1337,
+ * identical trees apart from this object, measured over the 3D-only region
+ * x 520-1600 / y 110-760 (the item strip and both HUD bars excluded):
+ *
+ * | arm | file | `06-loaded-hud` control | `10-inventory` | excess | `08-explosion` |
+ * |---|---|---|---|---|---|
+ * | add .05 / alpha .05 | `reviews/round6/audfix-A/` | 68.33 | 90.18 | +21.85 | 82.24 |
+ * | add .05 / alpha 1.0 | `reviews/round6/audfix-B/` | 68.34 | 90.14 | +21.80 | 82.20 |
+ * | add .18 / alpha 1.0 | `reviews/round6/audfix-C/` | 68.39 | 93.86 | +25.47 | 82.74 |
+ *
+ * The control holds to 0.06 L across all three, which is what makes the row
+ * differences readable at all. Restoring the additive floor to 0.18 costs
+ * **+3.7 L of wash on the one shot the constant exists for** and buys +0.54 L
+ * on the blast shot, so it is rejected on the measurement rather than kept out
+ * of deference to the older number. `0.05` stays, and it is now defensible for
+ * the reason it never was: it is applied only to the layer whose failure mode
+ * is additive accumulation.
+ *
+ * `alpha: 1.0` is no fade at all. An alpha-blended quad cannot sum past clip,
+ * and the measurement agrees that it does not wash: freeing it moves
+ * `10-inventory` by −0.04 L and `08-explosion` by −0.04 L (A vs B above). It is
+ * a correctness change, not a look change — it stops a constant tuned for
+ * additive accumulation from silently attenuating the dust skirt and the smoke
+ * column, which are the effect's only opacity.
+ */
+export const LENS_FLOOR = { add: 0.05, alpha: 1.0 };
+
 /** Builds the ShaderMaterial for one blend layer. */
 export function createParticleMaterial({
   map, additive, atlasCols = 4, intensity = 1, maxIntensity = 0.92,
+  lensFloor = additive ? LENS_FLOOR.add : LENS_FLOOR.alpha,
 }) {
   return new THREE.ShaderMaterial({
     uniforms: {
+      uLensFloor: { value: lensFloor },
       uMap: { value: map },
       uDepth: { value: null },
       uTime: { value: 0 },

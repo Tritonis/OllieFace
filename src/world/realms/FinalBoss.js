@@ -144,10 +144,38 @@ export class FinaleController {
 
   // -------------------------------------------------------------------------
 
+  /**
+   * `Realms.enterRealm` calls this on a co-op client too (`Realms.js:254`,
+   * `ctx.authority || replicated`), so the authority gate here decides what a
+   * guest sees. NETCODE.md's one rule: *"If it changes game state, gate it on
+   * `ctx.authority`. If it only changes what you see or hear, never gate it."*
+   *
+   * The gate used to be the first line of the method, which put the boss's
+   * modelling lights, its ring and spar, the objective line and the finale's
+   * own boss sub-line behind it — none of which writes gameplay state, and the
+   * lights in particular are the entire fix for the Herald photographing as one
+   * flat pink value. So the cosmetic half runs first and unconditionally, and
+   * the gate now covers only what it should: spawning the entity, taking
+   * ownership of `director.boss`, and the `bossSpawn` event.
+   *
+   * **Not verified, and cannot be from here:** no two-peer session has ever been
+   * run under `PROTOCOL_VERSION` 2, and the capture harness is single-player, so
+   * every statement in this comment about client behaviour is read off the call
+   * graph rather than off a running client. See `_raiseAnchors` for the part of
+   * this defect that is *not* fixed.
+   */
   enter(ctx, stage) {
-    if (!ctx.authority) return;
     const card = ENEMY_BY_ID.get('herald');
     if (!card) return;
+
+    this._dressBoss(ctx, stage);
+    // The HUD's boss sub-line is authored for the teleporter event. This is not
+    // that, and the finale's own frame should not say it is.
+    if (ctx.hud?.refs?.bossSub) ctx.hud.refs.bossSub.textContent = 'THE FRACTURE — FINAL';
+    ctx.pipeline?.addShake?.(0.8);
+    ctx.hud?.setObjective?.('Destroy the Herald');
+
+    if (!ctx.authority) return;
 
     // Placed across the arena rather than on top of the player: the first thing
     // the finale has to do is let you look at it.
@@ -161,12 +189,6 @@ export class FinaleController {
     // profile's boss counter all hang off that one fact.
     ctx.director.boss = boss;
     ctx.events.emit('bossSpawn', { enemy: boss });
-    // The HUD's boss sub-line is authored for the teleporter event. This is not
-    // that, and the finale's own frame should not say it is.
-    if (ctx.hud?.refs?.bossSub) ctx.hud.refs.bossSub.textContent = 'THE FRACTURE — FINAL';
-    ctx.pipeline?.addShake?.(0.8);
-    ctx.hud?.setObjective?.('Destroy the Herald');
-    this._dressBoss(ctx, stage);
   }
 
   // -------------------------------------------------------------------------
@@ -276,6 +298,21 @@ export class FinaleController {
    * at `HERALD_HUE` *and a drawn tether to the Herald*, so the ward is a visible
    * relationship rather than an assertion in the objective line: three beams
    * feeding one boss, and breaking a beam is obviously what unwards it.
+   *
+   * **Known and unfixed: on a co-op client the tethers do not exist.** This is
+   * reached only from `_enterPhase`, which is reached only from the
+   * `ctx.authority` early-return in `fixedUpdate`, so a guest sees an
+   * unkillable Herald, a yellow objective line and three unexplained polyhedra.
+   * That is a NETCODE.md violation and it is *not* closed here, because the art
+   * is built from the `Enemy` instances this method spawns and a client has no
+   * local equivalent: its anchors arrive as snapshot views through
+   * `src/net/NetViews.js`, and nothing in this file is told about them. Closing
+   * it needs a client-side hook in `src/net/` / `Realms.js`, which this change
+   * does not own — and it cannot be tested either way, because no two-peer
+   * session has ever been run under `PROTOCOL_VERSION` 2. Writing speculative
+   * discovery code against an untestable path would be worse than recording the
+   * gap. `_updateWardArt` and `_updateBossArt` already run ungated, so they will
+   * drive whatever art a future hook builds without further change.
    */
   _raiseAnchors(ctx, stage, count) {
     const card = ENEMY_BY_ID.get('anchor');

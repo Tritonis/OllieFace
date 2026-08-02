@@ -520,16 +520,15 @@ export class VFX {
     // 3. Shockwave ring. Both tinted: a white ring on a white core is invisible,
     // and the inner-edge boost in RingFrag clips it.
     //
-    // The axis is chosen per blast rather than pinned to UP. `RingFrag` fades a
-    // ring out as its plane goes edge-on (below |dot(viewRay, axis)| = 0.28),
-    // because a ground-plane ring seen from its own height projects to a laser
-    // across the whole frame. That fade is correct and it is also why
-    // `08-explosion` — an airburst ~40 m out, near the camera's own height —
-    // photographed with **no ring at all** for three rounds running. An airburst
-    // has no ground plane to align to; `_ringAxis` tilts the normal toward the
-    // camera by exactly enough to clear the fade, and returns UP untouched for
-    // every blast that does sit on the ground.
-    const axis = this._ringAxis(pos);
+    // The axis is UP for anything standing on the ground, which is nearly
+    // everything: `RingFrag` fades a ring out as its plane goes edge-on (below
+    // |dot(viewRay, axis)| = 0.28) because a ground-plane ring seen from its own
+    // height projects to a laser across the whole frame, and that fade is the
+    // guard. `_ringAxis` only overrides it for a blast whose centre clears the
+    // terrain under it by more than its own radius — a real airburst, which has
+    // no ground plane to align to. See `_ringAxis` for the measurement that
+    // moved this test off the camera ray and onto the blast's own geometry.
+    const axis = this._ringAxis(pos, r);
     this.rings.spawn(pos, axis, colour, r * 0.35, r * 2.6, 0.45, 0.95);
     this.rings.spawn(pos, axis, 0xffd2a0, r * 0.2, r * 1.5, 0.28, 0.7);
 
@@ -1552,15 +1551,43 @@ export class VFX {
   /**
    * Pick the plane a shockwave ring should expand in.
    *
-   * Ground-plane (UP) whenever the camera can actually see that plane. When it
-   * cannot — an airburst at the camera's own height, where `RingFrag`'s
-   * edge-on fade correctly reduces a ground ring to nothing — the normal is
-   * tilted toward the viewer until it clears that fade. Returns UP unchanged in
-   * the common case, so no ground blast's read changes.
+   * **UP, and `RingFrag`'s edge-on fade wins, unless the blast genuinely has no
+   * ground plane to align to.** That fade — `a *= clamp(vFacing / 0.28, 0, 1)`,
+   * "what stops a shockwave becoming a laser" — is a guard, and a guard that a
+   * helper overrides on the common path is not a guard.
+   *
+   * The previous test asked `|dir.y| < 0.34` on the *camera→blast* ray, i.e.
+   * "is the blast at least 34% of its distance above or below the lens". Its
+   * comment claimed that returns UP "for every blast that does sit on the
+   * ground". It does not: for a third-person lens 3-6 m up, a blast sitting on
+   * the ground clears 0.34 only inside ~9-18 m, so every ground blast past that
+   * was tilted 21.8 degrees toward the camera. Measured on
+   * `reviews/round6/audfix-pre-full/08-explosion.png` (a 6 m blast lifted
+   * 2.4-4.4 m at 11.2 m): the frame contains no shockwave at all, only three
+   * ~25 m ellipse arcs crossing the top-left, top-right and right edges as
+   * unrelated light streaks, and the region x 1150-1600 / y 250-850 measures
+   * mean L 118.7 against 93.8 for the whole frame.
+   *
+   * The airburst test is therefore geometric and about the *blast*, not about
+   * the lens: a blast has no ground plane when the ground is not inside the
+   * blast at all, i.e. when its centre clears the terrain under it by more than
+   * its own radius. A 6 m fireball whose centre is 3 m up is half buried in the
+   * hill it is standing on — it has a ground plane and the fade is right about
+   * it. The lens-height test is kept as a second condition, because tilting a
+   * true airburst's ring is only worth doing when the fade would otherwise have
+   * eaten it.
+   *
+   * What replaces the tilt for near-camera blasts is the camera-facing rim
+   * billboard in `explosion` step 3b: a screen-space ring is concentric with
+   * the fireball from every angle by construction, which is the correct way to
+   * give a blast an edge. Rotating a world-space disc into the lens is not.
    */
-  _ringAxis(pos) {
+  _ringAxis(pos, radius = Infinity) {
     const cam = this.ctx?.camera;
     if (!cam) return UP;
+    const g = this.ctx.stage?.sampleHeight?.(pos.x, pos.z);
+    // No sampler (a realm, a menu scene): assume ground, i.e. let the fade win.
+    if (!Number.isFinite(g) || pos.y - g < radius) return UP;
     _ax1.subVectors(pos, cam.position);
     const d = _ax1.length();
     if (d < 1e-3) return UP;
