@@ -1,10 +1,22 @@
 node_modules/
 dist/
+
+# Local build config. `.env.example` is the committed template; a real `.env`
+# carries TURN credentials and must not be.
+.env
+.env.*
+!.env.example
 shots/
 .codegraph/
 *.log
 shots-*/
 dist/
+
+# Critic-round screenshots. The written reviews and manifests are the artefact
+# worth keeping; the captures are regenerable and were flooding `git status`
+# with hundreds of untracked PNGs per round.
+reviews/**/*.png
+reviews/**/*.jpg
 
 # Round-6 scratch captures (intermediate agent runs; manifests are committed)
 reviews/round6/dbg*/

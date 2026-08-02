@@ -1419,9 +1419,11 @@ class Portal extends Interactable {
       new THREE.MeshStandardMaterial({ color: 0x9b5cff, emissive: 0x9b5cff, emissiveIntensity: 1.6, roughness: 0.2 })
     );
     this.frame.position.y = 2.0;
-    this.light = new THREE.PointLight(0x9b5cff, 4, 16);
-    this.light.position.y = 2.0;
-    this.group.add(this.disc, this.frame, this.light);
+    // No PointLight here either, for the reason spelled out on `ItemOrb`: a
+    // portal is spawned mid-run, and a light appearing mid-run forks every
+    // shader program in the scene. The frame's emissive pulse below carries the
+    // same "it is alive" read through bloom.
+    this.group.add(this.disc, this.frame);
   }
 
   prompt() { return 'Enter Portal'; }
@@ -1439,7 +1441,7 @@ class Portal extends Interactable {
     // flat sliver seen edge-on.
     this.disc.quaternion.copy(this.ctx.camera.quaternion);
     this.frame.rotation.x = 0;
-    this.light.intensity = 4 + Math.sin(this.spin * 3) * 1.5;
+    this.frame.material.emissiveIntensity = 2.2 + Math.sin(this.spin * 3) * 0.8;
   }
 }
 
@@ -1463,19 +1465,36 @@ class ItemOrb {
     this.claimed = false;
 
     const colour = TIERS[this.def?.tier || 'common'].colour;
+    // Emissive + bloom, no PointLight — the same trade the teleporter beacon
+    // makes a few hundred lines up, and for the same reason.
+    //
+    // This orb was the game's first-chest freeze. Adding a PointLight to the
+    // scene changes `numPointLights`, which is part of every material's program
+    // cache key, so three has to recompile *every* program in the scene — a
+    // multi-hundred-millisecond synchronous stall on the render thread. The
+    // first chest of a run was the first time the count ever moved off its
+    // boot-time value, which is why it always froze; later chests only froze
+    // when two orbs happened to be alive at once and pushed the count to a
+    // value that had not been compiled yet.
+    //
+    // `Prewarm` cannot cover this: it warms permutations at a fixed light
+    // count, and its own header says a light appearing at runtime defeats it.
+    // The rule the rest of the codebase follows is that runtime light changes
+    // go through `VFX.LightPool`, which keeps a fixed set permanently in the
+    // scene and only animates intensity. An orb wants a steady glow for its
+    // whole life rather than a flash, so it takes the beacon's route instead:
+    // emissive well above 1 and let bloom do the work for free.
     this.mesh = new THREE.Mesh(
       new THREE.IcosahedronGeometry(0.32, 0),
-      new THREE.MeshStandardMaterial({ color: colour, emissive: colour, emissiveIntensity: 1.4, roughness: 0.25 })
+      new THREE.MeshStandardMaterial({ color: colour, emissive: colour, emissiveIntensity: 2.6, roughness: 0.25 })
     );
     this.halo = new THREE.Mesh(
       new THREE.SphereGeometry(0.55, 12, 10),
-      new THREE.MeshBasicMaterial({ color: colour, transparent: true, opacity: 0.16, depthWrite: false })
+      new THREE.MeshBasicMaterial({ color: colour, transparent: true, opacity: 0.26, depthWrite: false })
     );
     this.group = new THREE.Group();
     this.group.add(this.mesh, this.halo);
     this.group.position.copy(this.position);
-    this.light = new THREE.PointLight(colour, 2.5, 8);
-    this.group.add(this.light);
   }
 
   fixedUpdate(h) {
@@ -1615,7 +1634,7 @@ export class Interactables {
     // and the teleporter is the run, not loot.
     const bought = !ctx.artifacts?.has('sacrifice');
 
-    const chestCount = bought ? 6 + stageIndex * 2 : 0;
+    const chestCount = bought ? 14 + stageIndex * 4 : 0;
     for (let i = 0; i < chestCount; i++) {
       const roll = ctx.rng.next();
       const size = roll > 0.94 ? 'legendary' : roll > 0.75 ? 'large' : 'small';
@@ -1629,7 +1648,7 @@ export class Interactables {
       this.add(new Chest(ctx, pos, size, Math.round(base * scale)));
     }
 
-    const shopCount = bought ? 1 + Math.floor(stageIndex / 2) : 0;
+    const shopCount = bought ? 2 + stageIndex : 0;
     for (let s = 0; s < shopCount; s++) {
       // Terminals go *between* two landmarks rather than at either, so the
       // walk between the stage's two anchors has a reason to be taken.
@@ -1675,17 +1694,21 @@ export class Interactables {
    * decision in this method and it is not a stylistic one.
    *
    * `ctx.rng` is one shared sequence: every draw taken here displaces every
-   * draw taken after it, on this stage and every later one. The first version
-   * of this method took one draw per shrine off `ctx.rng` — two draws where the
-   * old two-shrine code took two — and it still moved the director's spawn
-   * points far enough to break **three** harness shots that had nothing to do
-   * with shrines (`05-boss`, `06-loaded-hud`, `10-inventory`), measured against
-   * `iso-base/manifest.json`. The gate draws below are deliberately the same
-   * two `ctx.rng.next()` calls, in the same order, at the same thresholds the
-   * two-shrine version used, and `_sited` is called exactly where it was, so
-   * for stages 0-2 this method's consumption of the shared stream is
-   * byte-identical to the code it replaces. Only the third shrine, from stage 3
-   * on, adds a draw.
+   * draw taken after it, on this stage and every later one. An earlier version
+   * of this method took one draw per shrine off `ctx.rng`, and that alone moved
+   * the director's spawn points far enough to break **three** harness shots
+   * that had nothing to do with shrines (`05-boss`, `06-loaded-hud`,
+   * `10-inventory`), measured against `iso-base/manifest.json`. Keeping the
+   * *type* choice off the shared stream is what stops the shrine table from
+   * being able to do that again.
+   *
+   * The gate draws below do still come off `ctx.rng`, and the interactable
+   * density raise — more chests, more shops, more gates here — moved all of
+   * them. Every harness reference capture therefore needs regenerating against
+   * this revision; the old manifests describe a stage layout that no longer
+   * exists. That is a one-time cost of the density change, not a regression,
+   * and it is the reason the type stream stayed private: had it not been, this
+   * change would have re-rolled which shrines appear as well as where.
    *
    * Nothing is lost by taking the type off a private stream: `populate` runs on
    * the host only (a client's props are replicated, never regenerated — see
@@ -1712,11 +1735,18 @@ export class Interactables {
       { w: stageIndex >= 1 ? 16 : 0, build: (p) => new FallowVault(ctx, p, stageIndex) },
     ].filter((e) => e.w > 0);
 
-    // The two inherited gates, unchanged: a stage carries a shrine 70% of the
-    // time and a second one half the time. The third is new and only exists
-    // deep enough into a run that two decisions have stopped being enough.
-    const gates = [0.7, 0.5];
-    if (stageIndex >= 3) gates.push(0.55);
+    // A stage now always carries at least one shrine, very likely a second, and
+    // often a third and fourth; a fifth opens up once a run is deep enough that
+    // four decisions have stopped being enough. The old [0.7, 0.5] pair left
+    // nearly a third of stages with no shrine at all, which — at the density
+    // the rest of `populate` now runs at — read as the shrines having been
+    // forgotten rather than as a dry stage.
+    //
+    // The bag caps this regardless of how many gates pass: shrine types are
+    // drawn without replacement, and stage 0 only has three types unlocked, so
+    // the opening stage still tops out at three however the dice land.
+    const gates = [1, 0.9, 0.7, 0.5];
+    if (stageIndex >= 3) gates.push(0.5);
 
     for (let n = 0; n < gates.length; n++) {
       if (!bag.length) break;

@@ -51,6 +51,10 @@ const RADIUS = 0.45;
 const HEIGHT = 1.8;
 const EYE = 1.6;
 
+// How far the aim ray looks for something to converge on. Past this there is
+// nothing to hit, so the residual muzzle/camera parallax costs nothing.
+const AIM_RANGE = 300;
+
 const GRAVITY = 26;
 // sqrt(2*g*h): 12.6 m/s clears ~3.05 m. Nominal airtime is ~0.97s, but the
 // apex-hang multiplier below stretches the top of the arc so it *plays* at
@@ -845,15 +849,41 @@ export class Player {
 
   // -------------------------------------------------------------------- aim
 
-  /** Screen-centre ray: camera position + true camera forward. */
+  /**
+   * Screen-centre ray: camera position + true camera forward.
+   *
+   * `point` is the convergence target `fireRay` aims the muzzle at, and it has
+   * to be the thing the crosshair is actually over — including a body. It used
+   * to be resolved against `stage.raycast` alone, which sees terrain and props
+   * and nothing else, so any shot at an enemy converged on whatever was *behind*
+   * it: distant terrain, or the 300m fallback when the target was against sky.
+   *
+   * That is what made shots miss the reticle. Convergence only puts the muzzle
+   * ray and the camera ray in the same place at the convergence distance; the
+   * camera sits ~7m behind and ~1.15m right of the muzzle, so converging at
+   * 300m leaves the two rays nearly a full metre apart at the 10-20m where the
+   * fight actually happens. Aiming at a body two feet to the left of the
+   * crosshair is exactly that error, and it is worst against the sky, where the
+   * old code always took the 300m fallback.
+   *
+   * Resolving bodies too collapses the error to zero at the target.
+   */
   aimRay() {
     const ctx = this.ctx;
     const r = this._aimRay;
     ctx.camera.getWorldDirection(r.dir);
     r.origin.setFromMatrixPosition(ctx.camera.matrixWorld);
-    const hit = ctx.stage?.raycast?.(r.origin, r.dir, 300);
-    if (hit && hit.point) r.point.copy(hit.point);
-    else r.point.copy(r.origin).addScaledVector(r.dir, 300);
+
+    const hit = ctx.stage?.raycast?.(r.origin, r.dir, AIM_RANGE);
+    let dist = hit && hit.point ? hit.distance : AIM_RANGE;
+
+    // Bodies cap it further. Nearest wins: the crosshair is over whichever of
+    // the two the player can see, and that is always the closer one.
+    const body = ctx.combat?.probeDistance?.(r.origin, r.dir, dist, this.team, this);
+    if (body >= 0 && body < dist) dist = body;
+
+    if (hit && hit.point && dist === hit.distance) r.point.copy(hit.point);
+    else r.point.copy(r.origin).addScaledVector(r.dir, dist);
     return r;
   }
 

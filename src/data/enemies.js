@@ -202,8 +202,16 @@ export const ENEMIES = [
     cost: 16,
     baseHealth: 100,
     baseDamage: 16,
-    moveSpeed: 8.5,
-    turnRate: 5.5,
+    // Cruise speed is a *readability* budget, not a threat budget. At 8.5 the
+    // Shrike crossed its own 15m attack range in under two seconds while
+    // jinking on `erratic: 1`, which put it inside the player's reaction window
+    // before the target had finished being acquired — it read as unkillable
+    // rather than as fast, and a suicide diver you cannot shoot down first is
+    // just unavoidable damage. 5.8 keeps it clearly the quicker half of the
+    // tier-1 flyers (the Mote cruises 4.2) while leaving roughly a second of
+    // tracking time on the approach.
+    moveSpeed: 5.8,
+    turnRate: 4.2,
     attackRange: 15,
     radius: 0.5,
     height: 1.0,
@@ -217,9 +225,13 @@ export const ENEMIES = [
     erratic: 1,
     meshFactory: 'pest',
     attacks: [
+      // The dive keeps its bite — a longer `windup` is what buys the reaction,
+      // not a weaker hit. The telegraph now runs 0.85s before the commit, and
+      // the commit itself is slower, so the dive is a thing you dodge or shoot
+      // out of the air rather than a thing that has already landed.
       {
-        id: 'dive', kind: 'dive', range: 15, windup: 0.62, active: 1.1, recover: 0.2, cooldown: 3.0,
-        damage: 1.9, blast: 4.6, diveSpeed: 22, suicide: true, color: 0xff3566,
+        id: 'dive', kind: 'dive', range: 15, windup: 0.85, active: 1.1, recover: 0.2, cooldown: 3.0,
+        damage: 1.9, blast: 4.6, diveSpeed: 17, suicide: true, color: 0xff3566,
       },
     ],
   },

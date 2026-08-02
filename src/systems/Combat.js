@@ -277,6 +277,43 @@ export class Combat {
   // Ray vs vertical capsule approximated as a sphere at capsule centre; enemy
   // hitboxes are chunky enough that the difference is invisible and this keeps
   // the inner loop branch-free.
+  /**
+   * Distance to the first hostile body along a ray, or -1.
+   *
+   * Exists for aim convergence, not for damage: `Player.aimRay` needs to know
+   * how far away the thing under the crosshair actually is, and the only other
+   * ray query in the engine is `hitscan`, which cannot be borrowed for it. That
+   * one writes into `_hits` and `_hitPool`, both of which are reused in place
+   * and are live between a shot's scan and its damage application — calling it
+   * speculatively once a frame would hand the shot a clobbered hit list.
+   *
+   * So this walks the same cells with the same sphere test and returns one
+   * number, touching no shared buffer.
+   */
+  probeDistance(origin, dir, maxDist, team = null, exclude = null) {
+    let best = -1;
+    const minX = Math.floor(Math.min(origin.x, origin.x + dir.x * maxDist) / CELL) - 1;
+    const maxX = Math.floor(Math.max(origin.x, origin.x + dir.x * maxDist) / CELL) + 1;
+    const minZ = Math.floor(Math.min(origin.z, origin.z + dir.z * maxDist) / CELL) - 1;
+    const maxZ = Math.floor(Math.max(origin.z, origin.z + dir.z * maxDist) / CELL) + 1;
+
+    for (let cx = minX; cx <= maxX; cx++) {
+      for (let cz = minZ; cz <= maxZ; cz++) {
+        const bucket = this.cells.get(((cx + 4096) << 13) | (cz + 4096));
+        if (!bucket) continue;
+        for (let i = 0; i < bucket.length; i++) {
+          const e = bucket[i];
+          if (!e.alive || e === exclude) continue;
+          if (team && e.team === team) continue;
+          const t = this._raySphere(origin, dir, e, maxDist);
+          if (t < 0) continue;
+          if (best < 0 || t < best) best = t;
+        }
+      }
+    }
+    return best;
+  }
+
   _raySphere(origin, dir, e, limit) {
     const r = (e.radius || 0.5) * 1.15;
     const cy = e.position.y + (e.height || 1.8) * 0.5;

@@ -40,16 +40,22 @@ const FAR_SPAWN_DIST = 52;      // beyond this, an on-screen spawn reads as "dis
 const EDGE_SPAWN_CHANCE = 0.3;
 const BOSS_SPAWN_DIST = 22;   // just outside the teleporter's charge radius
 
+// The escalation ladder. Geologic rather than the generic Easy/Hard/Insane run
+// it used to carry, whose tail ("I SEE YOU", "HAHAHAHA") was Risk of Rain's
+// verbatim. The register still turns from description to address at the top —
+// that turn is the joke, and it survives the rename.
+//
+// `HUD.DIFFICULTY` carries the same list for display and must be kept in step.
 const DIFFICULTY_NAMES = [
-  [0.0, 'Easy'],
-  [1.4, 'Medium'],
-  [2.2, 'Hard'],
-  [3.2, 'Very Hard'],
-  [4.5, 'Insane'],
-  [6.0, 'Impossible'],
-  [8.0, 'I SEE YOU'],
-  [10.5, "I'M COMING FOR YOU"],
-  [13.5, 'HAHAHAHA'],
+  [0.0, 'Stable'],
+  [1.4, 'Shifting'],
+  [2.2, 'Straining'],
+  [3.2, 'Fracturing'],
+  [4.5, 'Faulting'],
+  [6.0, 'Collapse'],
+  [8.0, 'THE GROUND REMEMBERS'],
+  [10.5, 'IT IS OPENING'],
+  [13.5, 'SWALLOWED'],
 ];
 
 /** Enemy-side damage always goes through Combat's single path when it exists. */

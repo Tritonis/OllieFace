@@ -643,21 +643,21 @@ function drawInverted(g, s, t, item) {
 // other icon in the build: a filled accent silhouette under a white stroke,
 // centred, sized to a fixed box. No text glyph is used as an icon anywhere.
 
-/** Shared cloud shoulder — the three difficulty marks are one family. */
-function cloud(g, s) {
-  const y = s * 0.42;
-  g.beginPath();
-  g.moveTo(s * 0.18, y + s * 0.1);
-  g.bezierCurveTo(s * 0.06, y + s * 0.1, s * 0.08, y - s * 0.12, s * 0.22, y - s * 0.1);
-  g.bezierCurveTo(s * 0.26, y - s * 0.3, s * 0.58, y - s * 0.34, s * 0.62, y - s * 0.12);
-  g.bezierCurveTo(s * 0.8, y - s * 0.18, s * 0.88, y + s * 0.1, s * 0.72, y + s * 0.1);
-  g.closePath();
+/**
+ * One shelf of ground, filled and outlined.
+ *
+ * The three difficulty marks are one family — a horizon seen edge-on — and they
+ * differ only in how far it has come apart. That difference has to survive the
+ * ~20px the difficulty cards actually render these at, which is why it is
+ * carried by the *gap* between two shelves rather than by a crack stroked onto
+ * one: at this size a white line on a filled slab merges into the slab's own
+ * outline, and all three marks collapse into the same solid bar. A gap is
+ * negative space against a transparent ground, so it stays legible as long as
+ * the glyph itself does.
+ */
+function shelf(g, s, pts) {
+  poly(g, pts.map(([x, y]) => [s * x, s * y]));
   g.fill(); g.stroke();
-}
-
-/** Vertical rain stroke, used by drizzle/rainstorm/monsoon at three densities. */
-function rain(g, s, x, y0, y1) {
-  g.beginPath(); g.moveTo(s * x, s * y0); g.lineTo(s * (x - 0.03), s * y1); g.stroke();
 }
 
 const MARKS = {
@@ -749,23 +749,28 @@ const MARKS = {
       g.fill(); g.stroke();
     }
   },
-  // ---- difficulties: one cloud, three weathers -------------------------
-  drizzle: (g, s) => {
-    cloud(g, s);
-    rain(g, s, 0.5, 0.62, 0.8);
+  // ---- difficulties: one horizon, three states of it --------------------
+  //
+  // The same picture at three degrees of failure, so the ladder reads as a
+  // ladder. What escalates is the gap and the displacement between the two
+  // shelves, both of which survive being drawn at 20px; the cloud-and-rain set
+  // these replace matched a naming scheme the game no longer uses.
+  settling: (g, s) => {
+    // Sound ground. One hairline seam, and the two halves still sit level.
+    shelf(g, s, [[0.08, 0.44], [0.49, 0.44], [0.49, 0.92], [0.08, 0.92]]);
+    shelf(g, s, [[0.53, 0.44], [0.92, 0.44], [0.92, 0.92], [0.53, 0.92]]);
   },
-  rainstorm: (g, s) => {
-    cloud(g, s);
-    rain(g, s, 0.3, 0.6, 0.82);
-    rain(g, s, 0.5, 0.64, 0.88);
-    rain(g, s, 0.7, 0.6, 0.82);
+  fracture: (g, s) => {
+    // Split clean through, and the right shelf has begun to drop.
+    shelf(g, s, [[0.08, 0.40], [0.45, 0.40], [0.41, 0.92], [0.08, 0.92]]);
+    shelf(g, s, [[0.57, 0.52], [0.92, 0.52], [0.92, 0.92], [0.61, 0.92]]);
   },
-  monsoon: (g, s) => {
-    cloud(g, s);
-    rain(g, s, 0.24, 0.6, 0.84);
-    rain(g, s, 0.78, 0.6, 0.84);
-    poly(g, [[s * 0.56, s * 0.54], [s * 0.38, s * 0.76], [s * 0.5, s * 0.76],
-             [s * 0.44, s * 0.94], [s * 0.64, s * 0.7], [s * 0.52, s * 0.7]]);
+  cataclysm: (g, s) => {
+    // The horizon has failed: a wide throat between two shelves at different
+    // heights, tilted away from each other, with debris going down it.
+    shelf(g, s, [[0.06, 0.34], [0.40, 0.42], [0.30, 0.92], [0.06, 0.92]]);
+    shelf(g, s, [[0.66, 0.56], [0.94, 0.46], [0.94, 0.92], [0.72, 0.92]]);
+    poly(g, [[s * 0.50, s * 0.50], [s * 0.58, s * 0.64], [s * 0.45, s * 0.68]]);
     g.fill(); g.stroke();
   },
 };

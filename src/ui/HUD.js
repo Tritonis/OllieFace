@@ -28,18 +28,22 @@ const SLOTS = [
   { id: 'special', key: 'R', label: 'Special' },
 ];
 
-// RoR2's escalation ladder. `t` is the difficulty coefficient at which the
-// tier begins; the meter fills across the span to the next one.
+// The escalation ladder as the HUD shows it. `t` is the difficulty coefficient
+// at which the tier begins; the meter fills across the span to the next one.
+//
+// Names match `Director.DIFFICULTY_NAMES`. The thresholds deliberately do not
+// and never have — the HUD's are wider, so the meter spends longer filling each
+// band than the Director spends in it. Renaming did not touch either set.
 const DIFFICULTY = [
-  { t: 0.0, name: 'Easy', color: '#7fd4ff' },
-  { t: 1.6, name: 'Normal', color: '#8ef08a' },
-  { t: 2.6, name: 'Hard', color: '#e9e46b' },
-  { t: 4.0, name: 'Very Hard', color: '#ffb44f' },
-  { t: 6.0, name: 'Insane', color: '#ff7a45' },
-  { t: 9.0, name: 'Impossible', color: '#ff4634' },
-  { t: 13.0, name: 'I See You', color: '#ff3ac6' },
-  { t: 18.0, name: "I'm Coming For You", color: '#b44dff' },
-  { t: 25.0, name: 'HAHAHAHA', color: '#ff1414' },
+  { t: 0.0, name: 'Stable', color: '#7fd4ff' },
+  { t: 1.6, name: 'Shifting', color: '#8ef08a' },
+  { t: 2.6, name: 'Straining', color: '#e9e46b' },
+  { t: 4.0, name: 'Fracturing', color: '#ffb44f' },
+  { t: 6.0, name: 'Faulting', color: '#ff7a45' },
+  { t: 9.0, name: 'Collapse', color: '#ff4634' },
+  { t: 13.0, name: 'The Ground Remembers', color: '#ff3ac6' },
+  { t: 18.0, name: 'It Is Opening', color: '#b44dff' },
+  { t: 25.0, name: 'SWALLOWED', color: '#ff1414' },
 ];
 
 const NOTCHES = 10;

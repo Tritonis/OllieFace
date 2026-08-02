@@ -56,9 +56,9 @@ const SLIDERS = [
  * lands, `ctx.difficulty.list()` wins and this table stops being consulted.
  */
 const FALLBACK_DIFFICULTIES = [
-  { id: 'drizzle', name: 'Overcast', description: 'Fewer monsters, a gentler clock. For learning a survivor.', spawnRate: 0.65 },
-  { id: 'rainstorm', name: 'Downpour', description: 'The tuned curve. This is the game as it is balanced.', spawnRate: 1.0 },
-  { id: 'monsoon', name: 'Deluge', description: 'More of everything, sooner. Mistakes stop being survivable.', spawnRate: 1.6 },
+  { id: 'drizzle', name: 'Settling', description: 'Fewer monsters, a gentler clock. For learning a survivor.', spawnRate: 0.65 },
+  { id: 'rainstorm', name: 'Fracture', description: 'The tuned curve. This is the game as it is balanced.', spawnRate: 1.0 },
+  { id: 'monsoon', name: 'Cataclysm', description: 'More of everything, sooner. Mistakes stop being survivable.', spawnRate: 1.6 },
 ];
 
 /**
@@ -834,12 +834,28 @@ export class Menus {
     }).join('');
   }
 
-  /** Show or hide every route into the Edict, per the live artifact set. */
+  /**
+   * Open every menu route into the Edict.
+   *
+   * These used to be hidden and disabled unless Command was active, which was
+   * half of why the entry appeared to be dead: `.mbtn`'s `display: flex` beat
+   * the UA's `[hidden] { display: none }`, so the button drew anyway while
+   * still carrying `disabled` — and a disabled button never receives a click.
+   * The CSS half is fixed in `hud.css`; this is the other half.
+   *
+   * Gating it at all was the wrong call regardless. `renderEdict` already
+   * writes a note for exactly this case — orders filed while Command is inert
+   * are kept and applied the next run that carries the artifact — so the screen
+   * is built to be useful before Command is running, and pre-filing from the
+   * artifacts screen is the natural way to set a run up.
+   *
+   * The `C` hotkey stays gated: that one binds a key in the world, and keeping
+   * it free in runs that cannot use it is deliberate.
+   */
   syncEdictEntries() {
-    const on = this.commandActive();
     for (const el of this.root.querySelectorAll('[data-edict-entry]')) {
-      el.hidden = !on;
-      el.disabled = !on;
+      el.hidden = false;
+      el.disabled = false;
     }
   }
 

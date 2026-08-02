@@ -647,6 +647,27 @@ export class Audio {
     const bpm = lerp(88, 132, this.intensity);
     const stepDur = 60 / bpm / 4; // 16th notes
 
+    // Resync guard.
+    //
+    // `_musicTime` is a wall-clock cursor advanced once per frame, so anything
+    // that stops frames advancing — a shader-compile stall, a backgrounded tab
+    // (where rAF stops entirely), a long GC — leaves it behind `currentTime` by
+    // however long the gap was. Without this, the loop below then emits the
+    // whole backlog at timestamps already in the past, and WebAudio fires every
+    // one of them *immediately*: a second of missed sequencer steps arrives as
+    // a single garbled cluster, which then blows the voice cap and drops the
+    // notes that follow. That burst-then-stumble is what "the music slips"
+    // sounds like, and a tab switch alone is enough to cause it.
+    //
+    // Missed steps are simply gone rather than replayed — a bar the player
+    // never heard is not owed to them, and the pulse matters more than the
+    // phase. Snapping to the next step boundary keeps the grid aligned.
+    if (this._musicTime < ac.currentTime) {
+      this._musicTime = ac.currentTime + 0.02;
+      this._step = 0;
+      this._bar = 0;
+    }
+
     while (this._musicTime < ac.currentTime + lookahead) {
       this._emitStep(this._musicTime, stepDur);
       this._musicTime += stepDur;

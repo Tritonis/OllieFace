@@ -162,19 +162,19 @@ export const CAPRICE_TIERS = [
  *
  * | | coeff | enemy hp | enemy dmg | gold | your regen |
  * |---|---|---|---|---|---|
- * | Overcast | 0.5 | 0.80 | 0.60 | 1.20 | 2.0 |
- * | Downpour | 1.0 | 1.00 | 1.00 | 1.00 | 1.0 |
- * | Deluge | 1.5 | 1.20 | 1.40 | 0.90 | 0.5 |
+ * | Settling  | 0.5 | 0.80 | 0.60 | 1.20 | 2.0 |
+ * | Fracture  | 1.0 | 1.00 | 1.00 | 1.00 | 1.0 |
+ * | Cataclysm | 1.5 | 1.20 | 1.40 | 0.90 | 0.5 |
  */
 export const DIFFICULTIES = [
   {
     id: 'drizzle',
-    name: 'Overcast',
+    name: 'Settling',
     index: 0,
     coeff: 0.5,
     description: 'A forgiving run. The clock climbs at half speed, monsters hit '
       + 'softer, gold is plentiful and you mend quickly.',
-    mark: 'drizzle',
+    mark: 'settling',
     color: '#7fd4ff',
     enemyHealth: 0.8,
     enemyDamage: 0.6,
@@ -183,11 +183,11 @@ export const DIFFICULTIES = [
   },
   {
     id: 'rainstorm',
-    name: 'Downpour',
+    name: 'Fracture',
     index: 1,
     coeff: 1.0,
     description: 'The intended run. Every number in the game is the tuned one.',
-    mark: 'rainstorm',
+    mark: 'fracture',
     color: '#8ef08a',
     enemyHealth: 1,
     enemyDamage: 1,
@@ -196,12 +196,12 @@ export const DIFFICULTIES = [
   },
   {
     id: 'monsoon',
-    name: 'Deluge',
+    name: 'Cataclysm',
     index: 2,
     coeff: 1.5,
     description: 'A punishing run. The clock climbs half again as fast, monsters '
       + 'are tougher and hit far harder, and you heal at half rate.',
-    mark: 'monsoon',
+    mark: 'cataclysm',
     color: '#ff4634',
     enemyHealth: 1.2,
     enemyDamage: 1.4,

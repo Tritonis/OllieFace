@@ -1263,6 +1263,15 @@ body.menu-open { cursor: default; }
   overflow: hidden;
   transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1), color 0.16s ease, border-color 0.16s ease;
 }
+/* `display: flex` on a class selector is an author rule, and author rules beat
+   the UA stylesheet's `[hidden] { display: none }` — so every `.mbtn` that JS
+   hid stayed on screen. `syncEdictEntries` sets `hidden` and `disabled`
+   together, which meant The Edict rendered as a normal pause-menu entry while
+   the browser silently swallowed every click on it, because clicks are never
+   dispatched to a disabled button. Hence "clicking The Edict does nothing".
+   This restores the attribute's meaning for every menu button, not just that
+   one. */
+.mbtn[hidden] { display: none; }
 .mbtn span { position: relative; z-index: 1; }
 .mbtn::before {
   content: '';
