@@ -5,3 +5,10 @@ shots/
 *.log
 shots-*/
 dist/
+
+# Round-6 scratch captures (intermediate agent runs; manifests are committed)
+reviews/round6/dbg*/
+reviews/round6/fix[A-D]/
+reviews/round6/diag-*.json
+reviews/round6/realms-w*/
+reviews/round6/vfx-t*/
