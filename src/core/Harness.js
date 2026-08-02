@@ -2226,21 +2226,65 @@ export function installHarness(ctx) {
             const rank = rep.perPx.map((_, i) => i)
               .sort((a, b) => rep.perPx[b] - rep.perPx[a]).slice(0, need);
             const gated = new Set(rank);
-            /* An object that renders nothing is not a member of the subject,
-             * and `crowd` does not license it. A declared object below the
-             * noise floor fails the shot outright, gated or not: this is where
-             * `04-combat` was hiding six zeros in twenty-four, one of them the
-             * `glacial` elite whose whole affix claim was then measured on a
-             * subject that contributes no pixels at all. A scenario that cannot
-             * photograph a member of its subject must stop declaring it, not
-             * average it away.
+            /* An object that renders nothing is not a member of the subject.
+             * This is where `04-combat` was hiding six zeros in twenty-four, one
+             * of them the `glacial` elite whose whole affix claim was then
+             * measured on a subject that contributes no pixels at all, and where
+             * `23-realm-crucible` certified `perPx: [141, 0, 299]`.
+             *
+             * **The absence floor applies to the gated set**, and the gated set
+             * is what the subject declared it to be:
+             *
+             *  - A subject that says nothing about `crowd` gates *every object it
+             *    declares* — `need === n`, so `rank` is all of them and `gated`
+             *    is the whole cast. Every zero it carries is inside the gated set
+             *    and fails the shot. `09-survivors` (4), `11-bestiary` (16) and
+             *    every un-annotated pixel subject are in this case, and nothing
+             *    below can excuse one of their zeros: there is no `crowd` branch
+             *    for the rule to take.
+             *  - A `crowd: N` subject declares a *population*, and the contract
+             *    it signs is "N of these are individually in the photograph". So
+             *    the gate holds its best N to every floor including this one, and
+             *    an absence outside those N is the scene working as `crowdWhy`
+             *    says it works — a body knocked out of frame by the blast that is
+             *    the subject of `08-explosion`, a monster behind a terrain lip at
+             *    the far edge of `04-combat`'s 30 m arena. Those are published in
+             *    `absentObjects` and again, named, in `crowd.absentBeyondCrowd`;
+             *    they are not gated.
+             *
+             * The old rule failed *any* declared object under the floor, ranked
+             * or not, which read on a crowd as "all 24 must be individually
+             * photographed" — the exact opposite of the contract the same subject
+             * declares two lines up in its own scenario. The two could not both
+             * be right and this is the reconciliation: absence is fatal wherever
+             * the gate is looking, and `crowd` says where that is. It is not a
+             * relaxation for anyone else, and it is strictly *stricter* than what
+             * shipped for the gated set — `ABSENT_PX` is now tested on ranked
+             * objects too, which matters where `minPerPx` falls below it.
+             *
+             * **What a zero inside this check looks like.** A gated object at
+             * `px: 0` is an entry in `objectFailures` and in `absentObjects`, and
+             * it sets `perObjectOk: false`, so the shot is red — that is true for
+             * a fixed cast always and for a crowd's best N always. A non-gated
+             * object at `px: 0` on a `crowd` subject is an entry in
+             * `absentObjects`, an entry in `crowd.absentBeyondCrowd`, sets
+             * `crowd.carriesAbsence: true`, is named in `notGated`, and is
+             * hoisted to `manifest.toleratedAbsences` by `tools/capture.mjs`
+             * beside `subjectFailures`. It is never absent from the manifest and
+             * it is never silent: a green shot that carried a zero says so in
+             * four places. Publish, don't just gate.
              */
+            const ABSENT_PX = 12;
             c.absentObjects = rep.perPx
-              .map((px, i) => (px < 12 ? { i, px, sepP50: rep.perSep[i] } : null)).filter(Boolean);
+              .map((px, i) => (px < ABSENT_PX ? { i, px, sepP50: rep.perSep[i] } : null)).filter(Boolean);
             c.objectFailures = rank
-              .filter((i) => rep.perPx[i] < c.minPerPx || rep.perSep[i] < c.minSep)
-              .map((i) => ({ i, px: rep.perPx[i], sepP50: rep.perSep[i] }))
-              .concat(c.absentObjects.filter((o) => !gated.has(o.i)));
+              .filter((i) => rep.perPx[i] < ABSENT_PX
+                || rep.perPx[i] < c.minPerPx || rep.perSep[i] < c.minSep)
+              .map((i) => ({ i, px: rep.perPx[i], sepP50: rep.perSep[i] }));
+            if (c.crowd) {
+              c.crowd.absentBeyondCrowd = c.absentObjects.filter((o) => !gated.has(o.i));
+              c.crowd.carriesAbsence = c.crowd.absentBeyondCrowd.length > 0;
+            }
             c.perObjectOk = c.objectFailures.length === 0;
           } else {
             c.perObjectOk = true;
@@ -2296,9 +2340,16 @@ export function installHarness(ctx) {
           c.gatedOn = ['px >= minPx']
             .concat(c.minObjects ? ['visibleObjects >= minObjects'] : [])
             .concat(s.minCarriedPx ? ['carriedPx >= minCarried'] : ['sepP50 >= minSep'])
-            .concat(rep.perPx && !s.minCarriedPx ? ['perPx/perSep per object'] : []);
+            .concat(rep.perPx && !s.minCarriedPx
+              ? [c.crowd
+                ? `perPx/perSep/absence over the ${c.crowd.need} gated of ${rep.perPx.length}`
+                : 'perPx/perSep/absence over every declared object']
+              : []);
           c.notGated = ['contrast', 'sep', 'sepP25']
-            .concat(s.minCarriedPx ? [] : ['legible']);
+            .concat(s.minCarriedPx ? [] : ['legible'])
+            // Named on every crowd, not only when it is carrying one, so that a
+            // reader learns the rule from a green check as well as a red one.
+            .concat(c.crowd ? ['crowd.absentBeyondCrowd'] : []);
           c.ok = c.present && c.legibleOk && c.perObjectOk;
         } else if (s.point) {
           c.kind = 'bounds';
@@ -2325,6 +2376,17 @@ export function installHarness(ctx) {
     }
     const failed = checks.filter((c) => !c.ok);
     subjects[shot] = { ok: failed.length === 0, checks };
+    // Published, not gated, and said out loud. A `crowd` check can go green
+    // while one of the objects it declares rendered nothing, which is the one
+    // shape of zero this gate deliberately does not fail on — so it must not be
+    // the one shape of zero a reader has to go looking for. `manifest.
+    // toleratedAbsences` carries the same list beside `subjectFailures`.
+    const tolerated = checks.filter((c) => c.crowd?.carriesAbsence);
+    if (tolerated.length) {
+      console.warn(`[harness] ${shot}: crowd tolerated absences (published, not gated) — `
+        + tolerated.map((c) => `${c.subject} [${c.crowd.why}] ${c.crowd.need}/${c.perPx.length} gated, `
+          + `absent beyond: ${JSON.stringify(c.crowd.absentBeyondCrowd)}`).join('; '));
+    }
     if (failed.length) {
       const msg = `[harness] ${shot}: subject missing or illegible — `
         + failed.map((c) => `${c.subject} (${c.kind}: ${JSON.stringify(
