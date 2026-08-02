@@ -2,8 +2,12 @@
 
 Written 2026-08-01. Supersedes `reviews/round5/HANDOFF.md`. Read this first on resume.
 
-HEAD `83d76eb` · build **green** · tree clean · **2 failing shots**, down from 4.
-Shipping capture: `reviews/round6/SHIP/manifest.json` (seed 1337, `clockPinned: true`).
+HEAD `093daeb` · build **green** · tree clean · **1 failing shot**, down from 4.
+Shipping capture: `reviews/round6/resume/manifest.json` (seed 1337, `clockPinned: true`).
+
+`11-bestiary` was closed after this file was first written — declutter's avoid-radius
+ignored the size of the object being placed. **Only `04-combat` remains**, at 3
+zero-pixel objects of 24.
 
 ## The verdict, up front
 
