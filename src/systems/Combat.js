@@ -425,13 +425,26 @@ export class Combat {
     amount = Math.max(1, amount);
 
     // Shields absorb first and regenerate out of combat (owner's job).
-    let dealt = amount;
+    //
+    // `dealt` used to be captured *here*, before absorption, and then reported
+    // as the amount on every event below. So a hit swallowed whole by a shield
+    // still announced its full pre-shield value: the HUD counted damage that
+    // never landed, `playerHurt` claimed a number while `remaining` showed
+    // unchanged health, and — the one that actually pays out — every
+    // `onDamaged` item hook fired, so a gold-on-hurt item minted gold for
+    // damage the player did not take. It also reset "time since last hurt" for
+    // the items keyed on that, on hits that cost nothing.
+    //
+    // Two quantities are needed, not one: what the hit was worth on arrival,
+    // and what reached health. Only the second is `dealt`.
+    const incoming = amount;
     if (target.shield > 0) {
       const absorbed = Math.min(target.shield, amount);
       target.shield -= absorbed;
       amount -= absorbed;
-      if (target.isPlayer) ctx.events.emit('shieldBroken', { remaining: target.shield });
+      if (target.isPlayer) ctx.events.emit('shieldBroken', { remaining: target.shield, absorbed });
     }
+    const dealt = amount;
 
     const pos = info.position || target.position;
 
@@ -445,8 +458,18 @@ export class Combat {
     });
 
     if (target.isPlayer) {
-      ctx.events.emit('playerHurt', { amount: dealt, remaining: target.health });
-      if (ctx.items) this._dispatch('onDamaged', { target, source, amount: dealt, position: pos, procDepth: (info.procDepth || 0) + 1 });
+      // Emitted even at zero so the HUD still flashes when a shield eats a hit
+      // — its handler already shakes the bar only when the amount is positive,
+      // so an absorbed hit reads as "that connected" without claiming health
+      // was lost. `absorbed` rides along for anything that wants to tell the
+      // two apart.
+      ctx.events.emit('playerHurt', { amount: dealt, absorbed: incoming - dealt, remaining: target.health });
+      // Item hooks are the paying customers, so these only fire on damage that
+      // actually reached health. A fully-absorbed hit firing `onDamaged` is how
+      // a gold-on-hurt item printed money off a shield.
+      if (ctx.items && dealt > 0) {
+        this._dispatch('onDamaged', { target, source, amount: dealt, position: pos, procDepth: (info.procDepth || 0) + 1 });
+      }
     }
 
     // Proc chain. A hit only fires hooks if it carries coefficient and we are

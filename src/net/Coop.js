@@ -62,7 +62,11 @@ export class Coop {
     const i = this.pawns.indexOf(pawn);
     if (i >= 0) this.pawns.splice(i, 1);
     this.ctx.combat?.unregister?.(pawn);
-    pawn.group?.removeFromParent();
+    // Detaching the group is not releasing the pawn: `Player.init` subscribes
+    // to `stageStart`, and a live bus subscription pins the whole object. This
+    // list going empty while the listeners accumulated is exactly what made the
+    // leak invisible — `pawns.length` read zero and looked correct.
+    pawn.dispose?.();
   }
 
   // ---------------------------------------------------------------- client

@@ -195,7 +195,13 @@ export class Player {
     this.placeables = new PlaceablePool(ctx);
     // Nothing a survivor left on the ground survives a stage transition — the
     // stage it was standing on no longer exists.
-    ctx.events?.on?.('stageStart', () => this.placeables.clear());
+    //
+    // The unsubscribe is kept because `Player` is not always a singleton: co-op
+    // spawns one per remote peer, and `Coop._despawnPawn` used to drop the pawn
+    // while this closure stayed on the bus, pinning the whole Player — mesh,
+    // pools and all — for the rest of the session. Every join/leave cycle added
+    // another. `dispose()` is what releases it.
+    this._offStageStart = ctx.events?.on?.('stageStart', () => this.placeables.clear());
 
     this.mesh = new CharacterMesh(this.survivor.meshKey);
     // `mesh` is the rig wrapper, not a scene node. Anything generic that wants
@@ -885,6 +891,33 @@ export class Player {
     if (hit && hit.point && dist === hit.distance) r.point.copy(hit.point);
     else r.point.copy(r.origin).addScaledVector(r.dir, dist);
     return r;
+  }
+
+  /**
+   * Release everything this pawn holds on the rest of the engine.
+   *
+   * Only co-op calls this — the local player lives as long as the page does.
+   * A remote pawn does not: it is created on join and dropped on leave, and
+   * until now "dropped" meant removed from a list and detached from the scene,
+   * which left its `stageStart` subscription live on the bus. A bus entry is a
+   * strong reference, so the Player, its rig, its projectile pool and its
+   * placeable pool all stayed resident for the session, once per join.
+   *
+   * Materials and geometry are deliberately *not* disposed here. The character
+   * rigs share material instances (see `makeCharacterMats`), so disposing a
+   * departing pawn's would blank the rig of anyone still wearing the same
+   * survivor — and three drops a program from its cache when the last material
+   * referencing it goes, which would then recompile mid-session. Dropping the
+   * references is enough; the GPU cost of a handful of rigs is not what was
+   * hurting here.
+   */
+  dispose() {
+    this._offStageStart?.();
+    this._offStageStart = null;
+    this.placeables?.clear?.();
+    this.projectiles?.clear?.();
+    this.group?.removeFromParent?.();
+    this.alive = false;
   }
 
   /**
