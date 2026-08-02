@@ -104,3 +104,62 @@ download and VRAM budgets, and this project has already been through perf passes
 Recommended order: **HDRI first, then a small PBR set, then meshes** — increasing
 cost, decreasing certainty of payoff. The HDRI is the one with a measured defect
 waiting for it.
+
+---
+
+## 2026-08-01 — DO NOT BUY THE HDRI YET. Its premise is refuted.
+
+The round-4 world critic (`reviews/round6/critic-r4-world.md`) refuted the stated
+cause above for the specular half of axis 5. Verified independently in the source:
+
+- `src/shaders/SkyShader.js:151-161` renders a **hard sun disc at 15× intensity**
+  (`col += uSunColor * (disc * 15.0 + glow)`) plus a three-lobe scatter glow, and a
+  warped-fbm cloud deck.
+- `src/world/Environment.js:388` bakes the PMREM **from that scene, per stage**
+  (`this._pmrem.fromScene(this._probeScene, 0.05, 1, 2000)`).
+
+So the environment map is **not** a featureless gradient, and "no high-frequency
+content in the environment to reflect" is not why specular response reads flat.
+`07-interactables`' glitter field is that very sun disc reflected in the ladder's
+lowest rung — the reflection mechanism demonstrably works.
+
+**An HDRI bought on the old premise would be spending money to add something the
+scene already has.** Someone must re-derive the specular defect from the shipped
+pixels before this purchase is made.
+
+**What still stands:** the *detail-starvation* half of axis 5 is real and is
+genuinely an asset problem. The chest in `07-interactables` carries **67 unique luma
+values over 117,000 px**. No shader term reaches that — it needs authored texel
+variation. A small PBR set, not an HDRI, is the purchase with a measured defect
+waiting for it.
+
+### Adjudication: the two round-4 critics disagreed, and the synthesis is a code fix
+
+The world critic said the environment is *not* featureless (true — 15× sun disc).
+The character/enemies critic said the PMREM probe reflects a featureless analytic
+gradient, so "roughness 0.12 and 0.90 are literally the same pixel" (also true).
+Both are correct, and neither conclusion follows from the other. Verified in source
+at `Environment.js:359-366`:
+
+```js
+this._probeScene = new THREE.Scene();
+const probe = new THREE.Mesh(geo, mat);   // the sky sphere
+this._probeScene.add(probe);              // ...and nothing else
+```
+
+**The probe scene contains exactly one mesh.** So the environment map holds one
+high-frequency feature — the sun disc — and a smooth gradient everywhere else.
+Roughness contrast therefore resolves *only* where the sun reflects (which is
+precisely `07`'s glitter field on the ladder rung) and is invisible everywhere else.
+
+**Conclusion: axis 5's specular half is a CODE problem, not an asset problem.** No
+terrain, prop, or character ever appears in any reflection, because none of them are
+in the probe scene. An HDRI would replace a one-feature sky with a many-feature sky
+and still reflect **no scene geometry** — it cannot fix this.
+
+The fix is to bake the probe from scene content rather than from a sky sphere alone.
+Cost is bounded: `_bakeEnvironment` is already a per-stage-build cost, not per-frame,
+called from `applyBiome` alongside a full terrain rebuild.
+
+Both critics reached FAIL on axis 5 and both called it blocked. They were right that
+it is blocked and wrong about what blocks it.

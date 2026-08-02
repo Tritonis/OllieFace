@@ -633,8 +633,34 @@ export function installHarness(ctx) {
       const near = _slotRow(sx, minDist, hardMax);
       if (far && near && near.sy > far.sy + 0.01) band.push({ sx, far: far.sy, near: near.sy });
     }
-    // Back rank (further away, higher in frame) first so the nearest bodies are
-    // the last to be placed and the first to be dropped when the grid runs out.
+    /* Back rank (further away, higher in frame) first so the nearest bodies are
+     * the last to be placed and the first to be dropped when the grid runs out.
+     *
+     * **This fills row 0 — the `maxDist` rank — before it touches row 1**, so a
+     * caller asking for thirteen or fewer bodies gets every one of them at the
+     * far edge of its own depth band. That is real and it is measured: with
+     * `spawnRing(10, ..., 14)` asking for a 14-47 m band, `06-loaded-hud`'s ten
+     * monsters stood at 20.1, 25.7, 29.4, 30.8, 32.8, 33.7, 34.8, 38.1, 40.1 and
+     * 44.0 m, with the three smallest cards in the deck on the three longest
+     * ranges (`reviews/round6/hdiag3/manifest.json`, `DIAG horde`).
+     *
+     * **Sampling the whole grid at an even stride instead was tried, measured,
+     * and is REFUTED — do not re-apply it without reading this.** Building all
+     * `ROWS x COLS` slots and taking `count` of them at an even far-to-near
+     * stride did spread the depth (`reviews/round6/hdiag4/manifest.json`,
+     * `06-loaded-hud` -> `DIAG horde`: 14.6-40.9 m), and it made the capture
+     * worse in three places at once: `06-loaded-hud` went from one failing
+     * object to **two at literally 0 px** (`perPx [6,22,27,...]` ->
+     * `[0,0,26,199,...]`), and `08-explosion` -> `damage numbers` and
+     * `10-inventory` -> `monsters standing in it` both **started failing**, for
+     * five failing shots against a documented four. `04-combat` did not move at
+     * all — byte-identical `perPx` — because on that frame the grid yields fewer
+     * than the twenty-four it asks for, so the stride never engages.
+     *
+     * The lesson is that this function's supply is not the lever it looks like:
+     * the callers that need a nearer rank can say so, and `declutter`'s
+     * `maxDist` already exists for exactly that. See `lateRun`.
+     */
     for (let row = 0; row < ROWS && out.length < count; row++) {
       const t = ROWS === 1 ? 0.5 : row / (ROWS - 1);
       for (let ci = 0; ci < band.length && out.length < count; ci++) {
@@ -758,7 +784,22 @@ export function installHarness(ctx) {
     return moved;
   };
 
-  const _declutterPass = (minDist = 12, { keep = null, maxDist = null, seated = null } = {}) => {
+  const _declutterPass = (minDist = 12, {
+    keep = null, maxDist = null, seated = null,
+    /* Both default to what every caller had before and are opt-in per call
+     * site, deliberately. The last attempt to improve slot supply for one
+     * scenario by changing `screenSlots` for all of them cost two shots that
+     * were passing (see the refutation recorded in `screenSlots`), so a lever
+     * that only one scenario has evidence for is a lever only that scenario
+     * pulls.
+     *
+     * `supply` asks the grid for more cells than there are bodies to place, so
+     * the re-seat is choosing rather than taking what is left. `nearFirst`
+     * hands them out from the near end of the band: a body in this list is one
+     * that failed to be photographed where it stood, and the far rank is where
+     * it failed. */
+    supply = 0, nearFirst = false,
+  } = {}) => {
     const list = (ctx.director?.enemies ?? [])
       .filter((e) => e?.alive && e.position && e !== keep && !seated?.has(e));
     const cam = camera.position;
@@ -843,13 +884,14 @@ export function installHarness(ctx) {
     // they stood. Rejected slots are simply not returned, so a body that cannot
     // be placed anywhere visible stays where it is and the subject assertion
     // reports the shortfall rather than the frame hiding it.
-    const slots = screenSlots(bad.length + 4, {
+    const slots = screenSlots(Math.max(bad.length + 4, supply), {
       minDist, maxDist: far, avoidPlayer: 0.085,
       avoid: kept.map((k) => ({ x: k.x, y: k.y, r: Math.max(0.05, k.half * 2.3) })),
     });
+    const order = nearFirst ? slots.slice().reverse() : slots;
     let moved = 0;
-    for (let i = 0; i < bad.length && i < slots.length; i++) {
-      _seat(bad[i], slots[i]);
+    for (let i = 0; i < bad.length && i < order.length; i++) {
+      _seat(bad[i], order[i]);
       seated?.add(bad[i]);
       moved++;
     }
@@ -1589,7 +1631,86 @@ export function installHarness(ctx) {
     if (hide) hide.forEach((o, i) => { o.visible = was[i]; });
   };
 
-  const subjectReport = (objects, { perObject = false, aggregate = false } = {}) => {
+  /**
+   * Retarget every soft-particle depth lookup at the buffer we are about to
+   * render into. **This is what made `08-explosion`'s blast gate stop observing
+   * the blast**, and it would have done the same to any future effect subject.
+   *
+   * The soft-particle fade in `ParticleShader` and in VFX's `RingFrag` reads the
+   * scene depth at `gl_FragCoord.xy / uResolution`, and `uResolution` is set —
+   * correctly, for the real frame — to the *drawing buffer* size, 1600x900.
+   * These mask renders go to a 480x270 offscreen target, so every fragment's
+   * `gl_FragCoord` lands in the bottom-left 30% x 30% of that division: the
+   * whole effect is faded against the depth of the bottom-left corner of the
+   * frame instead of against what is behind it. Where that corner holds near
+   * foreground — which is most third-person framings — `(vViewZ - sceneZ)`
+   * goes negative, alpha clamps to 0 and the fragment is `discard`ed.
+   *
+   * Measured on `reviews/round6/hdiag/manifest.json`, the frozen `08-explosion`
+   * frame with a 6 m fireball 11.2 m from the lens and nothing between them
+   * (`DIAG blast` -> `occluders: []`): `vfx.particles` 619 px and `vfx.rings`
+   * **0 px**, against 19,323 and 23,977 for the same code and the same effect on
+   * a frame whose bottom-left corner is sky
+   * (`reviews/round6/hdiag-only/manifest.json`). The gate was reading the depth
+   * of a corner of the frame, which is why it sat bit-identical at 640 px across
+   * five captures spanning a `screenSlots` rewrite, a 45-name rename and a set
+   * of VFX fixes: none of those change that corner.
+   *
+   * The correction is exact rather than an approximation. `uDepth` is a
+   * *full-frame* depth texture (half canvas resolution, same camera, same
+   * frustum) and the shader's division is only there to turn `gl_FragCoord` into
+   * a [0,1] frame UV. Setting `uResolution` to the target being rendered
+   * restores that identity, so the fade fades against the same surfaces it does
+   * in the photograph. Nothing is disabled and no threshold moves.
+   *
+   * Collected by traversing the scene for materials that declare *both*
+   * uniforms, rather than by naming `ctx.vfx.particles` and `ctx.vfx.rings`: a
+   * pool added later inherits the fix instead of silently inheriting the bug.
+   */
+  const _pinSoftResolution = (w, h) => {
+    const saved = [];
+    const take = (m) => {
+      const u = m?.uniforms;
+      if (!u || !u.uDepth || !u.uResolution?.value?.isVector2) return;
+      saved.push([u.uResolution, u.uResolution.value.x, u.uResolution.value.y]);
+      u.uResolution.value.set(w, h);
+    };
+    ctx.scene.traverse((o) => {
+      if (!o.material) return;
+      if (Array.isArray(o.material)) o.material.forEach(take); else take(o.material);
+    });
+    return saved;
+  };
+  const _restoreSoftResolution = (saved) => {
+    for (const [u, x, y] of saved) u.value.set(x, y);
+  };
+
+  /**
+   * `region`, and why a pixel count needs one.
+   *
+   * A subject named by *shared buffers* — the VFX pools — is not a subject. The
+   * pools carry every effect alive in the frame: muzzle flashes, tracer trails,
+   * hit sparks, another monster's death embers. Counting their whole
+   * contribution and calling it "the blast" measures the frame's VFX budget, not
+   * the event the shot exists to photograph, and the two move independently.
+   *
+   * A region is a disc in screen space, in frame-width fractions with the aspect
+   * divided out (the same metric `screenGap` uses), and only pixels inside it are
+   * counted. Given to a subject whose *world position and size are known* — which
+   * is exactly the blast's case — it turns "some VFX somewhere" into "this
+   * effect, here". It is strictly subtractive: no pixel that failed to be counted
+   * before can start being counted because of it.
+   */
+  const _inRegion = (region, i) => {
+    if (!region) return true;
+    const x = (i % MASK_W + 0.5) / MASK_W;
+    // `readRenderTargetPixels` hands back rows bottom-up; `screenOf` is top-down.
+    const y = 1 - (((i / MASK_W) | 0) + 0.5) / MASK_H;
+    const a = camera.aspect || (16 / 9);
+    return Math.hypot(x - region.x, (y - region.y) / a) <= region.r;
+  };
+
+  const subjectReport = (objects, { perObject = false, aggregate = false, region = null } = {}) => {
     const r = ctx.pipeline?.renderer;
     const objs = (objects ?? []).filter((o) => o && o.parent);
     // A subject made of more than one object is measured per object whether or
@@ -1617,6 +1738,7 @@ export function installHarness(ctx) {
     r.shadowMap.autoUpdate = false;
     r.setRenderTarget(_maskRT);
     camera.updateMatrixWorld(true);
+    const softSaved = _pinSoftResolution(MASK_W, MASK_H);
 
     maskPass(r, null);
     r.readRenderTargetPixels(_maskRT, 0, 0, MASK_W, MASK_H, _maskA);
@@ -1644,6 +1766,10 @@ export function installHarness(ctx) {
     const hist = new Int32Array(SEP_BINS);
     const count = (buf, stats = false) => {
       let n = 0, ls = 0, lb = 0, sep = 0, carried = 0;
+      // Where the counted pixels are, in frame fractions. A count alone cannot
+      // tell "the effect rendered small" from "the effect did not render and
+      // something else in the same buffer did"; a centroid and a box can.
+      let sx = 0, sy = 0, x0 = 1, x1 = 0, y0 = 1, y1 = 0;
       if (stats) hist.fill(0);
       for (let i = 0; i < MASK_PX; i++) {
         const j = i * 4;
@@ -1651,12 +1777,18 @@ export function installHarness(ctx) {
           + Math.abs(_maskA[j + 1] - buf[j + 1])
           + Math.abs(_maskA[j + 2] - buf[j + 2]);
         if (d <= 6) continue;
+        if (!_inRegion(region, i)) continue;
         n++;
         const a = 0.2126 * _maskA[j] + 0.7152 * _maskA[j + 1] + 0.0722 * _maskA[j + 2];
         const b = 0.2126 * buf[j] + 0.7152 * buf[j + 1] + 0.0722 * buf[j + 2];
         ls += a;
         lb += b;
         if (!stats) continue;
+        const fx = (i % MASK_W + 0.5) / MASK_W;
+        const fy = 1 - (((i / MASK_W) | 0) + 0.5) / MASK_H;
+        sx += fx; sy += fy;
+        if (fx < x0) x0 = fx; if (fx > x1) x1 = fx;
+        if (fy < y0) y0 = fy; if (fy > y1) y1 = fy;
         const c = Math.abs(a - b) / (a + b + 8);
         sep += c;
         if (c >= SEP_MIN) carried++;
@@ -1679,6 +1811,8 @@ export function installHarness(ctx) {
         sepP25: n ? at(0.25) : 0,
         sepP50: n ? at(0.50) : 0,
         legible: n ? +(carried / n).toFixed(3) : 0,
+        at: n ? [+(sx / n).toFixed(3), +(sy / n).toFixed(3)] : null,
+        box: n ? [+x0.toFixed(3), +y0.toFixed(3), +x1.toFixed(3), +y1.toFixed(3)] : null,
       };
     };
 
@@ -1712,6 +1846,7 @@ export function installHarness(ctx) {
       }
     }
 
+    _restoreSoftResolution(softSaved);
     r.setRenderTarget(prevRT);
     r.shadowMap.autoUpdate = prevShadow;
 
@@ -1727,6 +1862,10 @@ export function installHarness(ctx) {
       // `minSeparation` gate reads; the rest is there so a reviewer can see the
       // shape of the distribution rather than one number.
       sep: all.sep, sepP25: all.sepP25, sepP50: all.sepP50, legible: all.legible,
+      // Where the mask landed, so a reader can see whether the pixels counted
+      // are where the subject is.
+      at: all.at, box: all.box,
+      region: region ? [region.x, region.y, +region.r.toFixed(4)] : undefined,
       objects: objs.length,
       visibleObjects,
       // Published, not just gated on. A reviewer reading the manifest has to be
@@ -1840,6 +1979,7 @@ export function installHarness(ctx) {
           c.kind = 'pixels';
           const rep = subjectReport(s.objects(), {
             perObject: !!s.perObject, aggregate: !!s.minCarriedPx,
+            region: s.region ? s.region() : null,
           });
           Object.assign(c, rep);
           c.minPx = s.minPixels ?? 250;
@@ -1849,6 +1989,11 @@ export function installHarness(ctx) {
           // behind it*. A subject that is present and indistinguishable is a
           // failed shot — that is the whole finding of round 2.
           c.present = rep.px >= c.minPx && (!c.minObjects || rep.visibleObjects >= c.minObjects);
+          // A pixel subject may publish detail too. `perPx` is an array of
+          // anonymous numbers; for a subject whose objects are shared buffers
+          // that is not readable, and "which of them is the zero" is exactly the
+          // question a reader has.
+          if (s.detail) c.detail = s.detail();
           // Pixels that carry their own edge, as opposed to pixels the subject
           // merely touched.
           c.carriedPx = Math.round(rep.px * rep.legible);
@@ -1927,6 +2072,60 @@ export function installHarness(ctx) {
           } else {
             c.perObjectOk = true;
           }
+          /* Which of the numbers beside it actually decided `ok`.
+           *
+           * This check publishes seven statistics and reads three of them. The
+           * other four — `contrast`, `sep`, `sepP25`, `legible` — are computed,
+           * recorded, and never looked at, and a reader has no way to tell which
+           * is which. That is the round-6 defect class one more time: not an
+           * aggregate hiding an absence this time, but *evidence sitting in the
+           * manifest that nothing reads*, which is worse, because it looks like
+           * a measurement that was taken into account. The round-2 critic
+           * quoted `contrast: 0.053` as a finding against a shot the harness had
+           * already certified; the round-4 critic quoted `contrast 0.442 ->
+           * 0.088` the same way. Both were reading a number no gate had ever
+           * consulted.
+           *
+           * `gatedOn` is that list, per check, in the manifest.
+           *
+           * **Why `contrast` is not on it, measured rather than asserted.** It is
+           * `|Σls − Σlb| / Σ(ls + lb)`: a *signed mean*, so it cancels, and this
+           * file already documents that at the definition. The on-disk captures
+           * say how badly, and they say it on subjects that are plainly legible:
+           *
+           *  - `reviews/round6/realms/manifest.json`, `24-realm-vault` -> `the
+           *    vault chest`: `contrast 0.052` with `sepP50 0.51` over 1,852 px.
+           *    Half that chest's pixels differ from what is behind them by more
+           *    than 50% Michelson and the mean reports it as invisible.
+           *  - the same file, `22-realm-bazaar` -> `the survivor`:
+           *    `contrast 0.101`, `sepP50 0.29`.
+           *  - `reviews/round6/hdiag5/manifest.json`, `04-combat` -> `survivor`:
+           *    `contrast 0.094`, `sepP50 0.41`, `lum 48.8` against `bgLum 59.0`.
+           *    He has not stopped standing off his background; he has stopped
+           *    being a *different average value* from it, which is a composition
+           *    observation and not a legibility one.
+           *
+           * A floor at 0.15 — the empty band between 0.101 and 0.264 in the 502
+           * pixel-checks on disk, placed by the same method as
+           * `MIN_SEPARATION` — would therefore fail three subjects a viewer can
+           * see in order to catch one, and two of the three sit in shots that
+           * currently pass. That is why `sepP50` exists and why it, not this,
+           * carries the floor. **The field stays published, because the
+           * composition observation is worth having; it is now declared as
+           * something no gate read.**
+           *
+           * **What a zero inside `gatedOn` looks like.** It is a list of names,
+           * not a count and not a boolean: an empty array would mean a `pixels`
+           * check that gated on nothing at all, which is visible on sight. Every
+           * name in it is a field present on the same object, so a reader can
+           * check the verdict against the number without being told what it was.
+           */
+          c.gatedOn = ['px >= minPx']
+            .concat(c.minObjects ? ['visibleObjects >= minObjects'] : [])
+            .concat(s.minCarriedPx ? ['carriedPx >= minCarried'] : ['sepP50 >= minSep'])
+            .concat(rep.perPx && !s.minCarriedPx ? ['perPx/perSep per object'] : []);
+          c.notGated = ['contrast', 'sep', 'sepP25']
+            .concat(s.minCarriedPx ? [] : ['legible']);
           c.ok = c.present && c.legibleOk && c.perObjectOk;
         } else if (s.point) {
           c.kind = 'bounds';
@@ -2170,6 +2369,28 @@ export function installHarness(ctx) {
       // largest card in the deck — came back at 32.6 m with sepP50 0.23 against
       // the 0.25 floor, while every body inside 25 m cleared it. Pulling the
       // back rank in is a framing change; the floor is untouched.
+      /* Why the four zeros here are not a slot-supply problem, measured.
+       *
+       * On `reviews/round6/hdiag5/manifest.json` four of the twenty-four come
+       * back at 0, 0, 1 and 0 px, and that file's `DIAG horde` dump says where
+       * each of them is: object 0 is a mite at 27.1 m at screen (0.52, 0.63),
+       * which is where the lemurian 15 m in front of it is standing; object 14
+       * is a mortar at 29.7 m; and objects 7 and 23 are chargers at screen x
+       * **-2.61** and **-1.38** — outside the frame altogether. That reads as
+       * this pass running out of cells: it asks for `bad.length + 4` slots and
+       * `screenSlots` hands its far rank out first.
+       *
+       * **REFUTED — do not re-apply.** Giving this call the whole grid and
+       * taking from the near end (`{ supply: 26, nearFirst: true }`, the options
+       * still in `_declutterPass` for a future caller with better evidence) was
+       * applied and captured to `reviews/round6/hdiag6/manifest.json`. The two
+       * off-frame chargers did not move — still 0 px — object 14 stayed at 1 px,
+       * and objects 0, 1 and 2 *fell* from 0/17/17 to 2/8/6 as the re-seat pulled
+       * the near rank across them: six failing objects became **seven**. It also
+       * cost `08-explosion` its `damage numbers` check, which passes in
+       * `hdiag5` — this scenario's layout feeds the next one's, so a change here
+       * is never local. Reverted to the state `hdiag5` measures.
+       */
       declutter(12, { keep: mark, maxDist: 30 });
       if (mark && markAt) mark.position.copy(markAt);
       await frames(2);
@@ -2492,7 +2713,24 @@ export function installHarness(ctx) {
       await faceOpenGround();
       spawnRing(10, SPAWN_CARDS, 14, 3);
       await frames(settleFrames);
-      declutter(12);
+      /* 28 m, not the default 46, and this is the fix for the regression above.
+       *
+       * `screenSlots` hands its far rank out first (see the note there), so ten
+       * bodies in a 14-47 m band all landed in the back of it — measured at
+       * 20.1 to 44.0 m, with the three smallest cards in the deck at 38.1, 40.1
+       * and 44.0 (`reviews/round6/hdiag3/manifest.json`, `DIAG horde`). A mite at
+       * 40 m is 6 px. Every lever inside `screenSlots` was tried first and made
+       * the capture worse; the caller narrowing its own band is what works,
+       * and it is the same mechanism and very nearly the same number `04-combat`
+       * already uses for the same reason ("past about 30 m on this stage the fog
+       * has taken enough of a monster that it stops standing off what is behind
+       * it").
+       *
+       * The shot is documented as judging UI density under load, so the horde is
+       * scenery: pulling it in costs nothing this frame is graded on. No
+       * threshold moved — `minPixels` is still 300 across ten objects.
+       */
+      declutter(12, { maxDist: 28 });
       await frames(3);
       freeze();
       mustContain('06-loaded-hud', [
@@ -2818,6 +3056,27 @@ export function installHarness(ctx) {
        */
       victims.forEach((e, i) => {
         const a = (i / Math.max(1, victims.length)) * Math.PI * 2;
+        /* Where the damage numbers are read against, and why moving the victims
+         * is REFUTED as the lever — do not spend another capture on it.
+         *
+         * Once the mask stopped being measured through a broken depth lookup
+         * (see `_pinSoftResolution`) this subject came back at `sepP50 0.23`
+         * against the 0.25 floor, with a mask centroid at screen
+         * **(0.629, 0.246)** and `lum 63.9` against `bgLum 63.0` — white glyphs
+         * over a sunset sky of exactly their own value
+         * (`reviews/round6/hfix/manifest.json`). The obvious reading is that the
+         * readouts follow their victims, so standing the ring lower in frame
+         * would put them over terrain.
+         *
+         * Applied and captured to `reviews/round6/hfix2/manifest.json` as
+         * `sin(a) * 0.10 + 0.07`: the victims demonstrably moved — `monsters
+         * standing in it` went `perPx [134,97,55,1228,...]` -> `[32,313,270,250,...]`
+         * — and the damage-number mask **did not**, staying at (0.629, 0.244)
+         * with `sepP50 0.23` and `lum 63.9 / bgLum 63.8`. The centroid sits on
+         * the blast's own screen position (0.622), not on the victims: what this
+         * subject is measuring is one readout drawn at the blast, and no victim
+         * placement reaches it. Reverted.
+         */
         const g = groundAtScreen(bs.x + Math.cos(a) * 0.16, bs.y + Math.sin(a) * 0.075,
                                  { minDist: 7, maxDist: 40 });
         if (g) { _seat(e, g); return; }
@@ -2841,6 +3100,55 @@ export function installHarness(ctx) {
           // behind them — the light wash the blast throws across the terrain no
           // longer counts toward it.
           minPixels: 1200, minCarriedPx: 1200,
+          /* Counted inside the fireball's own footprint, and published per pool.
+           *
+           * Two separate holes were letting this check certify without observing
+           * the blast, and they compounded.
+           *
+           * 1. **It was not measuring the blast.** The four objects it names are
+           *    the engine's shared VFX buffers — every muzzle flash, tracer,
+           *    hit spark and death ember alive anywhere in the frame draws into
+           *    the same pools. Their whole contribution is the frame's VFX
+           *    budget, not this event. The region is a disc of twice the blast
+           *    radius about the blast's own projected centre, so what is counted
+           *    is the effect this scenario fired, at the place it fired it. It is
+           *    strictly subtractive — every pixel it removes was being counted
+           *    before, so no shot can pass under it that failed before.
+           *
+           * 2. **`minCarriedPx` bought an exemption from per-object reporting**,
+           *    on the grounds that shared pools are not nameable objects. They
+           *    are not nameable *to a viewer*; they are perfectly nameable in the
+           *    manifest, and the exemption is how `vfx.rings` contributing
+           *    **exactly zero** stayed invisible inside a union sum for five
+           *    captures. `perObject` and `pools` are on, so every pool's own
+           *    pixel count is on the record whether or not it is gated.
+           *
+           * **What a zero inside this check looks like.** The union `px` and
+           * `carriedPx` are the gate and are unchanged at 1200 each. Beside them
+           * `perPx` now carries one entry per pool and `detail.pools` names them
+           * in the same order, so an empty pool reads as `vfx.rings: 0` rather
+           * than as a sum that happens to clear. It is deliberately *not* gated
+           * per pool: on this frame `vfx.rings` is legitimately 0, because
+           * `RingFrag` fades a ground-plane ring out as it goes edge-on and this
+           * lens sits 7.6 deg above a blast 11 m away — the guard working, not a
+           * missing ring (`reviews/round6/hdiag2/manifest.json`). A per-pool
+           * floor would fail the shot for a ring that is correctly absent. The
+           * zero is published so a reader decides that, instead of a sum
+           * deciding it for them.
+           *
+           * `at` and `box` on the check are where the counted pixels actually
+           * landed, in frame fractions. A blast measured at the far corner of
+           * the frame is not this blast, and that is now visible.
+           */
+          perObject: true,
+          region: () => ({
+            x: blastScreen.x, y: blastScreen.y,
+            r: screenHalf(BLAST_R * 2, camera.position.distanceTo(at)),
+          }),
+          detail: () => ({
+            pools: vfxObjects(/^vfx\.(particles|rings|trails|beams)$/).map((o) => o.name),
+            distM: +camera.position.distanceTo(at).toFixed(1),
+          }),
         },
         {
           subject: 'monsters standing in it',

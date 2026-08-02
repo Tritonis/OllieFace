@@ -225,6 +225,22 @@ away by construction, so it reported both annulus-mean (6.6 → 8.1 → 9.2 L) a
 median (21.5 → 46.2 → 57.4 L). Reporting the critic's own weaker instrument alongside
 its better one is the right call.
 
+> **CORRECTION, from the round-4 UI/VFX critic.** Two of that agent's instruments are
+> now refuted, and I had accepted both above:
+> - **The per-ray median does not discriminate.** Plain scenery in `06-loaded-hud`
+>   scores **113.3** at the same coordinate where `08-explosion`'s blast scores **54.0**.
+>   A statistic that ranks empty terrain above the explosion it was built to measure
+>   cannot support the 21.5 → 46.2 → 57.4 claim. **Treat that number as withdrawn.**
+> - **Its `y ∈ [90,470]` "3D-only" band does not exclude the inventory strip.** Its
+>   `10-inventory` aberration figure was therefore measured across ~9,000 HUD tile
+>   edges. This one cuts in its favour — it *understates* its own win — but the band
+>   was chosen specifically to avoid the round-2 HUD-chamfer error, and it did not.
+>
+> What survives unchallenged: **chromatic aberration is genuinely fixed**, and the
+> round-4 critic explicitly *withdrew* its predecessor's finding after verifying on
+> 3D-only water and sky windows, 6 px → 1 px. The fix was real; two of the instruments
+> used to measure it were not.
+
 **Dissolve trap: not touched**, as instructed — no sibling guard, no half-fix,
 `resolveObject` unchanged. Shipping an invisible-enemy bug would have been far worse
 than leaving dissolve broken.
