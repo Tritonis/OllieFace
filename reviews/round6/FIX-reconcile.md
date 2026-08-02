@@ -3,8 +3,18 @@
 Owned files touched: `src/core/Harness.js`, `tools/capture.mjs`. Nothing else
 was written.
 
-Commit: `a61bf6d`. Build green (`node node_modules/vite/bin/vite.js build`),
-tree clean, **0 failing shots**, down from 1.
+Commits: `a61bf6d` (the reconciliation), `345ed97` (the aggregate publication).
+Build green (`node node_modules/vite/bin/vite.js build`), tree clean,
+**0 failing shots**, down from 1. Shipping capture:
+`reviews/round6/publish-agg/manifest.json`.
+
+Two changes, and only the first moves a verdict:
+
+1. **The reconciliation.** `crowd` and `absentObjects` contradicted each other on
+   `04-combat`; absence is now fatal inside the *gated set* and the subject
+   declares what that set is. `04-combat` goes green.
+2. **The aggregate publication.** `minCarriedPx` subjects computed no per-object
+   absence list at all. They now do, published and not gated. No verdict moves.
 
 ## The new rule, in one sentence
 
@@ -203,10 +213,79 @@ de-dup versus `avoid` therefore did not apply — I never went near either, and
   but if the intent is that all seven blast victims be individually accounted for,
   that is a one-word scenario edit (drop `crowd`) and it is a spec decision, not
   mine.
-- **`08-explosion` → `the blast`.** It publishes `perPx: [21164, 0, 6, 26304]` and
-  is gated on `carriedPx` alone — the `minCarriedPx` aggregate opt-out for shared
-  particle pools, which skips the per-object branch entirely and always has. That
-  is a pre-existing published zero inside an aggregate, documented at
-  `aggregateWhy`, and outside the scope of this reconciliation. Flagging it because
-  it is the closest thing left in the file to the defect class this gate exists to
-  catch.
+- **`10-inventory` → `the equipment blast`** — see the residual below. Not touched.
+
+## The second change: the aggregate was not ungated, it was silent (`345ed97`)
+
+I flagged `08-explosion` → `the blast` in the first draft of this report and
+understated it. The check does not merely decline to gate its per-object numbers:
+the `minCarriedPx` branch **skipped the per-object block entirely**, so
+`absentObjects` came out `undefined` — uncomputed, unpublished, invisible. A
+subject certifying on a sum while carrying zeros in silence is the
+`23-realm-crucible` shape (`perPx: [141, 0, 299]`) sitting inside the one subject
+that opted out of the gate built to catch it. Sixth instance of the round's defect
+class.
+
+**What it was carrying**, from `reviews/round6/publish-agg/manifest.json`,
+`08-explosion` → `the blast`:
+
+```
+ok: true   px: 22332   carriedPx: 12372   minCarried: 800
+perPx:          [22330, 0, 23, 0]
+absentObjects:  [{i:1, px:0, sepP50:0}, {i:3, px:0, sepP50:0}]
+carriesAbsence: true
+notGated:       [contrast, sep, sepP25, perPx, perSep, absentObjects]
+aggregate:      "VFX buffers: the meshes are shared particle/ring/trail pools,
+                 not nameable objects"
+```
+
+and at the top of the same file:
+
+```
+toleratedAbsences
+  04-combat: horde [crowd 8/24 individually gated] carries 4 absent
+             — #0@2px #7@0px #9@3px #14@1px
+  08-explosion: the blast [aggregate: carriedPx only, no per-object gate]
+             carries 2 absent — #1@0px #3@0px
+```
+
+**The verdict was deliberately not touched.** `perObjectOk` is still
+unconditionally `true` for aggregates, `carriedPx >= minCarried` is still the whole
+gate, and nothing downstream reads the new field. Whether pools 1 and 3 are the
+beams and trails this explosion legitimately never used, or two emitters that
+silently stopped emitting, is a spec question with a real answer and it now has
+evidence attached: the numbers are recorded in the source comment at the branch so
+the next reader judges them instead of rediscovering them. Object 2 at 23 px is
+*not* an absence — it clears the 12 px floor — and it is published in `perPx`,
+which is itself now named in `notGated`.
+
+**Proof no verdict moved.** `reviews/round6/reconcile/manifest.json` (before) vs
+`reviews/round6/publish-agg/manifest.json` (after), all **68** checks of all 21
+shots compared on `ok`, `px`, `carriedPx`, `sepP50`, `perPx`:
+
+```
+checks 68   deltas 5   verdicts moved 0   every shot's subject.ok identical
+subjectsOk true in both
+```
+
+The five deltas are the same 1-2 px jitter set as before and they oscillate rather
+than drift — `03-thirdperson` → `survivor` reads 975 in `final2`, 977 in
+`reconcile`, 975 again in `publish-agg`, on two changes that provably cannot reach
+it.
+
+The two shapes of tolerated absence now share one mechanism: `c.ungatedAbsences`
+and `c.carriesAbsence` on the check, one `console.warn` in `mustContain`, one
+filter in `tools/capture.mjs`. A crowd's is also still nested under
+`crowd.absentBeyondCrowd`; a fixed cast's is empty by construction, because
+everything it declares is gated.
+
+## Residual, flagged not fixed
+
+**`10-inventory` → `the equipment blast`** is a `minCarriedPx` aggregate whose spec
+does not set `perObject: true`, so `rep.perPx` is `undefined` and there is nothing
+to publish — `absentObjects` stays absent there for a different reason: not hidden,
+never measured. It is the same family of silence one level further back. The fix is
+one word in the scenario and it cannot move the verdict (aggregates never gate on
+per-object numbers), but it adds a mask render per pool and it is a change to a
+check nobody asked me to touch, so I am reporting it rather than making it. If it
+is wanted, it wants its own before/after on `10-inventory` alone.
