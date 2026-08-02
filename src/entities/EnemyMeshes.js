@@ -1217,6 +1217,33 @@ function buildWisp() {
   }
   plates.push(P(cone(0.19, 0.6, 5), 0, 0.62, 0));
   plates.push(P(cone(0.16, 0.44, 5), 0, -0.52, 0, Math.PI));
+  /* `dark`, and it stays `dark` — **repainting this shell is REFUTED, do not
+   * re-apply it.**
+   *
+   * `wisp` is the only build in this file that never uses its own `body` colour
+   * (`0x2c1a34` is declared and unreferenced), and the shell is the whole
+   * silhouette, so `add(rig, shell, 'body', ...)` looks like an obvious repair —
+   * especially against `11-bestiary`, where object 4's median masked pixel reads
+   * luminance **19 against a background of 17** for `sepP50 0.15` against the
+   * 0.25 floor (`reviews/round6/lastdiag2/manifest.json`, `DIAG roster`).
+   *
+   * It was applied, captured full to `reviews/round6/wispA/manifest.json`, and it
+   * traded one failing shot for two. `11-bestiary` did pass (object 4 `sepP50`
+   * 0.15 -> 0.25, `lumP50` 19 -> 31) — and on the same capture:
+   *
+   *   - `06-loaded-hud` -> `monsters under load` started failing, object 4
+   *     `perSep` **0.27 -> 0.23**;
+   *   - `08-explosion` -> `monsters standing in it` started failing, object 4
+   *     `perSep` **0.33 -> 0.17**.
+   *
+   * `perPx` is byte-identical in both, so nothing moved and nothing was hidden:
+   * the same lift that pulled the shell *away* from a dark backdrop pushed it
+   * *into* a bright one. Separation is a distance from the background, not a
+   * brightness, and this rig is photographed against both. A single albedo
+   * cannot satisfy all three frames, so the frame that is the outlier gets
+   * fixed instead — see the flyer-hover clamp in `Harness.js` `bestiary()`.
+   *
+   * Reverted. Three failing shots against a documented two. */
   add(rig, shell, 'dark', merged('wisp.shell', plates));
 
   const emb = grp(rig.pivot, 0, 0, 0);

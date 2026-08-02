@@ -603,6 +603,7 @@ export function installHarness(ctx) {
     return (r + 0.3) / Math.max(1e-3, 2 * Math.max(1, d) * tanH);
   };
 
+  let _lastSlots = null;
   const screenSlots = (count, { minDist = 11, maxDist = 46, avoidPlayer = 0.075, avoid = [] } = {}) => {
     camera.updateMatrixWorld(true);
     const pp = playerPos();
@@ -661,28 +662,39 @@ export function installHarness(ctx) {
      * the callers that need a nearer rank can say so, and `declutter`'s
      * `maxDist` already exists for exactly that. See `lateRun`.
      */
+    /* Why a request for N cells came back with fewer, by reason. `slots.length`
+     * alone says the grid ran out and cannot say which of the four filters
+     * emptied it, and they have four different answers. A zero inside this is a
+     * reason that rejected nothing; `cells` is the number of (row, column) pairs
+     * considered, so `cells - noGround - player - avoid - dup` is exactly `got`
+     * and a counter that stops being incremented shows up as an arithmetic
+     * mismatch rather than as a plausible-looking small number. */
+    const why = { cells: 0, band: band.length, noGround: 0, player: 0, avoid: 0, dup: 0, got: 0 };
+    _lastSlots = why;
     for (let row = 0; row < ROWS && out.length < count; row++) {
       const t = ROWS === 1 ? 0.5 : row / (ROWS - 1);
       for (let ci = 0; ci < band.length && out.length < count; ci++) {
         const col = band[ci];
         const sx = col.sx + ((row % 2) ? 0.033 : 0);
         const sy = col.far + (col.near - col.far) * t;
+        why.cells++;
         const g = groundAtScreen(sx, sy, { minDist, maxDist });
-        if (!g) continue;
+        if (!g) { why.noGround++; continue; }
         const r = { g, sy, d: Math.hypot(g.x - camera.position.x, g.z - camera.position.z) };
-        if (ps.front > 0 && Math.hypot(sx - ps.x, r.sy - ps.y) < avoidPlayer) continue;
+        if (ps.front > 0 && Math.hypot(sx - ps.x, r.sy - ps.y) < avoidPlayer) { why.player++; continue; }
         // Cells already spoken for by a body the caller is *not* moving. Without
         // this the grid happily re-seats a monster on top of one that was left
         // alone, and the mask pass then measures the one behind at a couple of
         // pixels — see the crowding pass in `declutter`.
-        if (avoid.some((a) => screenGap(sx, r.sy, a.x, a.y) < a.r)) continue;
+        if (avoid.some((a) => screenGap(sx, r.sy, a.x, a.y) < a.r)) { why.avoid++; continue; }
         // Two rows whose requested distances the terrain cannot tell apart
         // bisect to the same `sy`, and two bodies on one point is the crowding
         // this grid exists to prevent. Emitted slots stand off each other by
         // construction; the row is simply short when the ground cannot hold it.
-        if (used.some((u) => screenGap(sx, r.sy, u.x, u.y) < 0.05)) continue;
+        if (used.some((u) => screenGap(sx, r.sy, u.x, u.y) < 0.05)) { why.dup++; continue; }
         used.push({ x: sx, y: r.sy });
         out.push(r.g);
+        why.got++;
       }
     }
     return out;
@@ -773,9 +785,17 @@ export function installHarness(ctx) {
    * is carried forward as an *obstacle*: excluded from the candidates, included
    * in the crowding list. Each pass therefore strictly reduces the number of
    * unplaced bodies, and terminates when a pass moves none. */
+  /* What the last `declutter` actually had to work with, per pass. `moved` alone
+   * cannot tell "nothing needed moving" from "everything needed moving and there
+   * was nowhere to put it", and those have opposite fixes. Read by `DIAG
+   * declutter`. A zero inside it is an empty array: no pass ran at all. */
+  let _lastDeclutter = [];
+  const lastDeclutter = () => _lastDeclutter;
+
   const declutter = (minDist = 12, opts = {}) => {
     const seated = new Set();
     let moved = 0;
+    _lastDeclutter = [];
     for (let i = 0; i < (opts.passes ?? 2); i++) {
       const n = _declutterPass(minDist, { ...opts, seated });
       moved += n;
@@ -799,6 +819,10 @@ export function installHarness(ctx) {
      * that failed to be photographed where it stood, and the far rank is where
      * it failed. */
     supply = 0, nearFirst = false,
+    /* Size the grid's keep-out discs to the body that is actually going to be
+     * placed, instead of assuming it is the same size as the body it must clear.
+     * Off by default for the same reason as the two above. */
+    avoidFit = false,
   } = {}) => {
     const list = (ctx.director?.enemies ?? [])
       .filter((e) => e?.alive && e.position && e !== keep && !seated?.has(e));
@@ -884,9 +908,37 @@ export function installHarness(ctx) {
     // they stood. Rejected slots are simply not returned, so a body that cannot
     // be placed anywhere visible stays where it is and the subject assertion
     // reports the shortfall rather than the frame hiding it.
+    /* The keep-out radius around a body the grid must not re-seat on top of.
+     *
+     * The default is `k.half * 2.3` — the obstacle's own projected half-width,
+     * doubled for the incoming body and given the same 1.15 slack the crowding
+     * test above uses. That is only right when the two bodies are the same size,
+     * and here they systematically are not: the obstacles are the bodies that
+     * were photographed well (near, large) and the candidates are the ones that
+     * were not (far, small). Measured on
+     * `reviews/round6/lastdiag3/manifest.json`, `04-combat` -> `DIAG declutter`:
+     * of 52 grid cells, **20 were rejected by `avoid` on the first pass and 36 on
+     * the second**, which left 6 slots for 15 homeless bodies and then 0 for 10.
+     * `avoid` is the filter that empties this grid — not the depth band
+     * (`noGround` 14) and not the row de-dup (`dup` 10).
+     *
+     * `avoidFit` replaces the second `k.half` with the projected half-width of
+     * the body that is actually going to stand there: the median radius of the
+     * `bad` list, at the middle of the band it will be placed in. It is a
+     * correction to an estimate, not a relaxation of a rule — the crowding test
+     * it mirrors (`(half + k.half) * 1.15`) is unchanged, and a pass that seats a
+     * body too close to another still shows up as a per-object zero in the gate.
+     */
+    let avoidR = (k) => Math.max(0.05, k.half * 2.3);
+    if (avoidFit) {
+      const radii = bad.map((e) => e.def?.radius ?? 0.5).sort((a, b) => a - b);
+      const rMed = radii[radii.length >> 1] ?? 0.5;
+      const hIn = screenHalf(rMed, (minDist + far) * 0.5);
+      avoidR = (k) => Math.max(0.05, (k.half + hIn) * 1.15);
+    }
     const slots = screenSlots(Math.max(bad.length + 4, supply), {
       minDist, maxDist: far, avoidPlayer: 0.085,
-      avoid: kept.map((k) => ({ x: k.x, y: k.y, r: Math.max(0.05, k.half * 2.3) })),
+      avoid: kept.map((k) => ({ x: k.x, y: k.y, r: avoidR(k) })),
     });
     const order = nearFirst ? slots.slice().reverse() : slots;
     let moved = 0;
@@ -895,6 +947,11 @@ export function installHarness(ctx) {
       seated?.add(bad[i]);
       moved++;
     }
+    _lastDeclutter.push({
+      bad: bad.length, kept: kept.length, asked: Math.max(bad.length + 4, supply),
+      slots: slots.length, moved, why: _lastSlots,
+      unplaced: bad.slice(moved).map((e) => e.def?.id ?? '?'),
+    });
     // What was *moved*, not what was found wanting. A pass that reported its
     // whole bad list would keep the loop alive forever on bodies it has no slot
     // for, and would report progress it did not make.
@@ -1710,6 +1767,13 @@ export function installHarness(ctx) {
     return Math.hypot(x - region.x, (y - region.y) / a) <= region.r;
   };
 
+  /* Per-object statistics from the most recent `perObject` report, for a
+   * scenario that wants to publish *why* one of its objects failed. Cleared at
+   * the top of every report, so a `detail()` that reads it after a check which
+   * was not per-object gets `null` rather than the previous subject's numbers. */
+  let _lastPerObject = null;
+  const lastPerObject = () => _lastPerObject;
+
   const subjectReport = (objects, { perObject = false, aggregate = false, region = null } = {}) => {
     const r = ctx.pipeline?.renderer;
     const objs = (objects ?? []).filter((o) => o && o.parent);
@@ -1764,13 +1828,18 @@ export function installHarness(ctx) {
     const SEP_BINS = 50;
     const SEP_MIN = 0.15;      // a pixel that carries its own edge
     const hist = new Int32Array(SEP_BINS);
+    // Exact 8-bit luminance histograms of subject and background over the same
+    // mask, so a median can be taken beside the mean. `lum`/`bgLum` are means and
+    // a mean cannot tell a uniformly dim subject from a dark one carrying a small
+    // blown core — which is the difference between "restage it" and "relight it".
+    const lumH = new Int32Array(256), bgH = new Int32Array(256);
     const count = (buf, stats = false) => {
       let n = 0, ls = 0, lb = 0, sep = 0, carried = 0;
       // Where the counted pixels are, in frame fractions. A count alone cannot
       // tell "the effect rendered small" from "the effect did not render and
       // something else in the same buffer did"; a centroid and a box can.
       let sx = 0, sy = 0, x0 = 1, x1 = 0, y0 = 1, y1 = 0;
-      if (stats) hist.fill(0);
+      if (stats) { hist.fill(0); lumH.fill(0); bgH.fill(0); }
       for (let i = 0; i < MASK_PX; i++) {
         const j = i * 4;
         const d = Math.abs(_maskA[j] - buf[j])
@@ -1793,6 +1862,8 @@ export function installHarness(ctx) {
         sep += c;
         if (c >= SEP_MIN) carried++;
         hist[Math.min(SEP_BINS - 1, (c * SEP_BINS) | 0)]++;
+        lumH[Math.min(255, a | 0)]++;
+        bgH[Math.min(255, b | 0)]++;
       }
       if (!stats) return { n, ls, lb };
       // Percentiles off the histogram rather than a sorted array: this runs
@@ -1805,8 +1876,14 @@ export function installHarness(ctx) {
         }
         return 1;
       };
+      const med = (h) => {
+        let acc = 0;
+        for (let i = 0; i < 256; i++) { acc += h[i]; if (acc * 2 >= n) return i; }
+        return 255;
+      };
       return {
         n, ls, lb,
+        lumP50: n ? med(lumH) : 0, bgLumP50: n ? med(bgH) : 0,
         sep: n ? +(sep / n).toFixed(3) : 0,
         sepP25: n ? at(0.25) : 0,
         sepP50: n ? at(0.50) : 0,
@@ -1832,9 +1909,11 @@ export function installHarness(ctx) {
      */
     let visibleObjects = objs.length;
     let perPx = null, perSep = null;
+    _lastPerObject = null;
     if (perObject) {
       perPx = [];
       perSep = [];
+      const full = [];
       visibleObjects = 0;
       for (const o of objs) {
         maskPass(r, [o]);
@@ -1842,8 +1921,25 @@ export function installHarness(ctx) {
         const c = count(_maskB, true);
         perPx.push(c.n);
         perSep.push(c.n ? c.sepP50 : 0);
+        /* The whole statistic set per object, not just the two the gate reads.
+         *
+         * `perPx`/`perSep` say *that* an object failed; they cannot say why, and
+         * the two questions have opposite fixes — an object at 0 px is somewhere
+         * else, an object at 1,287 px and `sepP50 0.15` is exactly where it
+         * should be and the same value as what is behind it. Stashed rather than
+         * published on every check because a 24-object horde would add 24 objects
+         * of noise to every manifest; a scenario that wants it says so with a
+         * `detail: () => lastPerObject()` spec. See `04-combat`'s `DIAG horde`.
+         */
+        full.push(c.n ? {
+          px: c.n, sep: c.sep, sepP25: c.sepP25, sepP50: c.sepP50, legible: c.legible,
+          lum: +(c.ls / c.n).toFixed(1), bgLum: +(c.lb / c.n).toFixed(1),
+          lumP50: c.lumP50, bgLumP50: c.bgLumP50,
+          at: c.at, box: c.box,
+        } : { px: 0 });
         if (c.n >= 12) visibleObjects++;  // ~4x3 px: smaller than that is noise
       }
+      _lastPerObject = full;
     }
 
     _restoreSoftResolution(softSaved);
@@ -2405,6 +2501,33 @@ export function installHarness(ctx) {
           // working; what has to be true is that eight of them are individually
           // in the photograph and individually stand off it.
           crowd: 8, crowdWhy: 'director horde: an unbounded population, not a fixed cast',
+        },
+        // DIAG. Read-only, `info`, and immediately after the check whose
+        // per-object numbers it explains — `subjectReport` clears the stash at
+        // the top of every report, so a spec between the two would blank it.
+        { subject: 'DIAG declutter', info: true, detail: () => lastDeclutter() },
+        {
+          subject: 'DIAG horde', info: true,
+          detail: () => {
+            const per = lastPerObject() ?? [];
+            camera.updateMatrixWorld(true);
+            const list = (ctx.director?.enemies ?? [])
+              .filter((e) => e && e.rig && e.rig.root && e.rig.root.parent);
+            return list.map((e, i) => {
+              const h = e.def?.height ?? 2;
+              const s = screenOf(e.position.x, e.position.y + h * 0.5, e.position.z);
+              const d = Math.hypot(e.position.x - camera.position.x, e.position.z - camera.position.z);
+              return {
+                i, id: e.def?.id, d: +d.toFixed(1),
+                sx: +s.x.toFixed(3), sy: +s.y.toFixed(3), front: +s.front.toFixed(1),
+                wy: +e.position.y.toFixed(1),
+                vis: +visibleFraction(camera.position, _cc.set(e.position.x, e.position.y, e.position.z),
+                                      { height: h, radius: (e.def?.radius ?? 0.5) + 0.2, cols: 3, rows: 3, slack: 0.3 }).toFixed(2),
+                visRig: e.rig.root.visible !== false,
+                ...(per[i] ?? {}),
+              };
+            });
+          },
         },
         // The survivor has to be findable in his own combat frame, which is
         // two claims and not one: enough of him drawn, and enough of him
@@ -3815,7 +3938,7 @@ export function installHarness(ctx) {
      *     rank, or the hulk stands in front of the mite and the shot documents
      *     one of the sixteen.
      */
-    async bestiary({ settleFrames = 40, spacing = 2.4, rows = 3, standoff = 16, rankGap = 6, fill = 0.86 } = {}) {
+    async bestiary({ settleFrames = 40, spacing = 2.4, rows = 3, standoff = 16, rankGap = 6, fill = 0.86, flyerHover = 1.5 } = {}) {
       await begin();
       invulnerable();
       detach();
@@ -3973,9 +4096,41 @@ export function installHarness(ctx) {
       }
 
       const yaw = Math.atan2(-dx, -dz) + 0.45;
+      /* Flyers are photographed at `flyerHover`, not at their combat hover.
+       *
+       * This is a staging decision and it is stated as one. Three of the sixteen
+       * cards hover — pest, wisp and harrier at 3-4.2 m — and in the *near* rank
+       * that puts them 4-5 m above a lens solved for a block whose declared top
+       * is the tallest card's 4.2 m crown at the *far* rank. Two things follow,
+       * both measured on `reviews/round6/lastdiag2/manifest.json`, `11-bestiary`
+       * -> `DIAG roster`:
+       *
+       *  - they are the only three members whose backdrop is not the ground the
+       *    other thirteen stand on. Their `bgLumP50` reads **19, 17 and 28**
+       *    against **1-8** for every member on the ground, because at that
+       *    elevation the ray behind them clears the far rank and runs to
+       *    fog-lifted distance. Object 4 (the wisp) is a near-black shell at
+       *    `lumP50 19` in front of a backdrop at 17 — `sepP50 0.15` against the
+       *    0.25 floor, the shot's one remaining failure.
+       *  - the harrier is photographed at screen y **-0.022** with its mask box
+       *    starting at y 0.002: it is already running off the top of the frame.
+       *
+       * Repainting the wisp brighter was tried first, because it is the more
+       * obvious fix and it is a defect on its own terms; it is **refuted** with
+       * two named regressions at `EnemyMeshes.js` `buildWisp`. The frame is what
+       * is wrong here, not the rig.
+       *
+       * What this does *not* do: it does not hide that these three fly (at 1.5 m
+       * the wisp's tendril tips still clear the ground by 0.7 m), it does not
+       * touch any rig, and it does not move a floor. What it does cost is honest:
+       * the roster no longer shows their combat altitude. This shot is a specimen
+       * board — positions, yaw, velocity and animation are all pinned already,
+       * and its own `doc` asks for "one rank, small to large", which a body four
+       * metres above the line is not. */
       const pin = () => {
         for (const s of placed) {
-          s.e.position.set(s.x, s.e.def?.isFlyer ? s.y + (s.e.def.hoverHeight ?? 2) : s.y, s.z);
+          const hover = Math.min(s.e.def?.hoverHeight ?? 2, flyerHover);
+          s.e.position.set(s.x, s.e.def?.isFlyer ? s.y + hover : s.y, s.z);
           s.e.velocity?.set?.(0, 0, 0);
           s.e.yaw = yaw;                       // three-quarter view, not dead on
           if (s.e.rig?.root) {
@@ -4035,6 +4190,26 @@ export function installHarness(ctx) {
           subject: 'the whole spawn roster',
           objects: () => rigsOf(placed.map((s) => s.e)),
           perObject: true, minPixels: 3500, minObjects: cards.length,
+        },
+        // DIAG. See the note on `04-combat`'s: `info`, read-only, and it must sit
+        // immediately after the check it explains.
+        {
+          subject: 'DIAG roster', info: true,
+          detail: () => {
+            const per = lastPerObject() ?? [];
+            camera.updateMatrixWorld(true);
+            return placed.filter((s) => s.e?.rig?.root?.parent).map((s, i) => {
+              const h = s.e.def?.height ?? 2;
+              const sc = screenOf(s.e.position.x, s.e.position.y + h * 0.5, s.e.position.z);
+              const d = Math.hypot(s.e.position.x - camera.position.x, s.e.position.z - camera.position.z);
+              return {
+                i, id: s.e.def?.id, row: Math.floor(i / perRow), d: +d.toFixed(1),
+                sx: +sc.x.toFixed(3), sy: +sc.y.toFixed(3),
+                wy: +s.e.position.y.toFixed(1),
+                ...(per[i] ?? {}),
+              };
+            });
+          },
         },
       ]);
     },
