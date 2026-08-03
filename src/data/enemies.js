@@ -316,7 +316,17 @@ export const ENEMIES = [
     // is a player who cannot leave. The threat is what the *rest* of the field
     // does to you while it holds you still, which is why it is priced above the
     // Skink despite hitting for half as much.
-    baseHealth: 95,
+    //
+    // The Bile Spitling is the tier's other slow-applier at 9 credits, so the
+    // 15 has to be paid for on axes the Spitling does not have, not merely
+    // asserted. It is: two homing shells per attack against one lobbed arc (two
+    // chances to land the slow, and they *steer*), a 24 m envelope against 20,
+    // 6.4 m of hover that puts it outside every ground AoE and most melee, and —
+    // the number that was wrong — more health than the Spitling rather than
+    // less, because a flyer the player must stop and shoot down is the cost the
+    // rest of the card is charging for. `maxAlive` 3 against 6 and `packMax` 2
+    // against 4 keep the field share honest at that price.
+    baseHealth: 130,
     baseDamage: 8,
     moveSpeed: 5.2,
     turnRate: 3.6,
@@ -344,7 +354,7 @@ export const ENEMIES = [
       // dodge has to be held rather than flicked.
       {
         id: 'knell', kind: 'projectile', range: 24, minRange: 5, windup: 0.8, active: 0.06, recover: 0.55,
-        cooldown: 3.4, damage: 1.0, speed: 11, gravity: 0, homing: 1.2, radius: 0.45, blast: 2.0, life: 6,
+        cooldown: 3.0, damage: 1.0, speed: 11, gravity: 0, homing: 1.2, radius: 0.45, blast: 2.0, life: 6,
         color: 0x6f8cff, muzzleY: 0, muzzleZ: 0.4, burst: 2, burstGap: 0.34, status: 'slow',
       },
     ],
@@ -540,7 +550,7 @@ export const ENEMIES = [
     attacks: [
       {
         id: 'laser', kind: 'beam', range: 42, minRange: 0, windup: 1.55, active: 0.28, recover: 0.95,
-        cooldown: 5.2, damage: 2.3, beamRadius: 0.9, trackDuring: 0.75, color: 0x22d3ff,
+        cooldown: 5.2, damage: 2.3, beamRadius: 0.9, color: 0x22d3ff,
       },
     ],
   },
@@ -625,10 +635,18 @@ export const ENEMIES = [
       // Thorn spray: the reason standing at mid range and ignoring it is not
       // free either. Low damage, wide, and it applies nothing — it exists so
       // the unit has an output while the reel is on cooldown.
+      //
+      // `volley` MUST be odd. `Enemy.launchProjectile` fans a volley as
+      // `t = (i/(n-1) - 0.5) * 2`, which is symmetric about zero — an even count
+      // straddles the aim line and puts *nothing* on it, so a stationary target
+      // at `preferredRange` is never hit. With 5 the middle round flies true and
+      // the other four are the spread. Every other non-boss volley in this file
+      // is already odd (Acolyte 5, Herald 7) or compensates with `scatter`
+      // (Matron); this one was the exception and it made the unit harmless.
       {
         id: 'thorns', kind: 'projectile', range: 22, minRange: 5, windup: 0.75, active: 0.2, recover: 0.6,
         cooldown: 4.5, damage: 0.55, speed: 22, gravity: 6, radius: 0.3, blast: 1.8, life: 3.5,
-        color: 0xff6a7a, muzzleY: 2.0, muzzleZ: 0.8, volley: 4, volleySpread: 0.34, weight: 2,
+        color: 0xff6a7a, muzzleY: 2.0, muzzleZ: 0.8, volley: 5, volleySpread: 0.34, weight: 2,
       },
       { id: 'flail', kind: 'melee', range: 4.2, windup: 0.6, active: 0.14, recover: 0.5, cooldown: 2.4, damage: 0.9, arc: 1.2, lunge: 5, weight: 1 },
     ],
@@ -642,14 +660,24 @@ export const ENEMIES = [
     cost: 36,
     baseHealth: 620,
     baseDamage: 23,
-    // Barely mobile, and — the load-bearing number — it *turns* at 1.1 rad/s,
+    // Barely mobile, and — the load-bearing number — it *turns* at 0.6 rad/s,
     // the slowest on the roster. The Aegis Warden also has to be walked around,
     // but it is a melee unit that closes on you, so the flank is a moment. This
-    // one holds ground at 20 m and its whole fight is the player circling faster
-    // than it can traverse: the counterplay is a skill (keep moving laterally,
-    // arrive behind it) rather than a reaction (dodge the tell).
+    // one holds ground and its whole fight is the player circling faster than it
+    // can traverse: the counterplay is a skill (keep moving laterally, arrive
+    // behind it) rather than a reaction (dodge the tell).
+    //
+    // `turnRate` and `preferredRange` are one number, not two, and they were
+    // previously set so that the fight the card describes could not happen. A
+    // player circling at radius r sweeps `sprintSpeed / r` rad/s, so out-turning
+    // the unit requires r < 10.15 / turnRate. At the old 1.1 rad/s that meant
+    // r < 9.2 m while the unit held 20 m — the exposed back was unreachable and
+    // circling only ever made the beam miss. At 0.6 rad/s the ceiling is 16.9 m,
+    // so the 13 m stand-off below sits inside it with room for a real circle
+    // rather than a perfect one. The `backblast` nova (6 m) is the inner wall,
+    // which leaves a 6-13 m band where the stated counterplay is the play.
     moveSpeed: 2.6,
-    turnRate: 1.1,
+    turnRate: 0.6,
     attackRange: 38,
     radius: 1.0,
     height: 2.9,
@@ -665,18 +693,23 @@ export const ENEMIES = [
     frontArc: 1.3,
     frontArmor: 0.88,
     behavior: 'ranged',
-    preferredRange: 20,
+    preferredRange: 13,
     packMin: 1,
     packMax: 1,
     meshFactory: 'redoubt',
     attacks: [
-      // A long, slow, tracking beam. Paired with the slow traverse it produces
-      // the shape the unit is for: the beam can follow you, the *body* cannot,
-      // so a player who keeps circling eventually arrives at the open back while
-      // a player who strafes in place is exactly where the beam is going.
+      // A long, slow beam whose aim is the body's own facing — `Enemy.fireBeam`
+      // takes x/z straight from `yaw` and only corrects `dir.y`. That is the
+      // shape the unit is for and it is why the traverse rate above is the whole
+      // fight: a player who keeps circling arrives at the open back, and a
+      // player who strafes in place is exactly where the beam is going.
+      //
+      // No `trackDuring` here. Nothing in `src/` reads that field — it named a
+      // separate beam-tracking rate that does not exist, and leaving it in the
+      // card documented a mechanic the engine has never had.
       {
         id: 'enfilade', kind: 'beam', range: 38, minRange: 0, windup: 1.7, active: 0.32, recover: 1.1,
-        cooldown: 5.6, damage: 2.1, beamRadius: 0.85, trackDuring: 0.9, color: 0xffd8a0, weight: 3,
+        cooldown: 5.6, damage: 2.1, beamRadius: 0.85, color: 0xffd8a0, weight: 3,
       },
       // The answer to hugging it. Short, radial, and it does not care which way
       // the shield is pointing — so "walk around it" is the right answer and
@@ -1119,7 +1152,7 @@ ENEMIES.push(
     attacks: [
       {
         id: 'lance', kind: 'beam', range: 60, minRange: 0, windup: 1.6, active: 0.32, recover: 0.9,
-        cooldown: 5.0, damage: 2.2, beamRadius: 1.0, trackDuring: 0.8, color: 0xd050ff, weight: 3,
+        cooldown: 5.0, damage: 2.2, beamRadius: 1.0, color: 0xd050ff, weight: 3,
       },
       {
         // Arena denial: eight shells with ground rings, scattered wide. On the

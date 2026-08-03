@@ -5,7 +5,7 @@ import {
 // is what discovers the reward bindings off the content cards and generates the
 // per-survivor mastery challenges, and it has to have run before the first gate
 // question. See the header of that file for why it is not an `init` hook.
-import { catalogueSizes, unlockName } from './UnlockRegistry.js';
+import { catalogueSizes, catalogueHas, unlockName } from './UnlockRegistry.js';
 
 /**
  * The persistent player profile — everything that outlives a run.
@@ -291,12 +291,22 @@ export class Profile {
     // would otherwise drop up to WRITE_DEBOUNCE_MS of progress. `pagehide` and
     // a hidden `visibilitychange` are the two that actually fire on mobile and
     // on a killed tab; `unload` does not, reliably.
+    //
+    // The two events are registered on *different* targets, and that is not a
+    // stylistic difference. `pagehide` fires on the window; `visibilitychange`
+    // fires on the document and does not propagate to the window, so the bare
+    // (window-scoped) `addEventListener` this used to use registered the
+    // hidden-tab flush on a target the event never reaches — the half of the
+    // net that covers a backgrounded mobile tab was inert for its whole life.
     if (typeof addEventListener === 'function') {
       this._onHide = () => this.flush();
       addEventListener('pagehide', this._onHide);
-      addEventListener('visibilitychange', () => {
-        if (typeof document !== 'undefined' && document.visibilityState === 'hidden') this.flush();
-      });
+    }
+    if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+      this._onVisibility = () => {
+        if (document.visibilityState === 'hidden') this.flush();
+      };
+      document.addEventListener('visibilitychange', this._onVisibility);
     }
   }
 
@@ -700,7 +710,35 @@ export class Profile {
   }
 
   /** Live counters for the run in flight, or null between runs. */
-  currentRun() { return this.run ? { ...this.run } : null; }
+  currentRun() { this._syncRunClock(); return this.run ? { ...this.run } : null; }
+
+  /**
+   * Pull the run clock off the simulation.
+   *
+   * `run.time` is the field every "…in a single run" challenge reads as
+   * `r.time`, and nothing pushed it: `Progression` owns the clock and only ever
+   * wrote its own `stats.time`, which reaches the *persisted record* at
+   * `commitRun` and never reaches the live object the `track` functions are
+   * handed. So `marathon` ("survive 30 minutes") could not advance on any run
+   * of any length, and `blitz` ("reach stage 5 within 10 minutes") had its time
+   * half satisfied by a permanent zero and collapsed to "reach stage 5".
+   *
+   * Pulled rather than pushed because `Profile` is not a registered system and
+   * has no frame of its own; every reader of `run.time` goes through
+   * `_evaluate` or `currentRun`, so sampling there is exactly as fresh as a
+   * per-frame copy would be and costs nothing between events.
+   *
+   * `ctx.time` is the raw simulation clock — the same value the persisted
+   * record's `time` is taken from, so the challenge and the run history can
+   * never disagree — and it only advances while unpaused, so a run does not
+   * accrue minutes on the title screen or in a menu. Monotonic on purpose: a
+   * run clock never runs backwards, and the harness sets `ctx.time` by hand.
+   */
+  _syncRunClock() {
+    if (!this.run) return;
+    const t = num(this.ctx?.time, 0);
+    if (t > this.run.time) this.run.time = t;
+  }
 
   /** Wipe everything. Used by the settings screen; there is no undo. */
   reset() {
@@ -805,6 +843,10 @@ export class Profile {
   commitRun(won, stats = {}) {
     const run = this.run;
     if (!run) return null;
+    // Last sample before the live object is let go: from here on `_evaluate`
+    // has nothing to pull from, so the "…in a single run" challenges must see
+    // the clock's final value on this pass.
+    this._syncRunClock();
     this.run = null;
 
     const record = {
@@ -1005,13 +1047,36 @@ export class Profile {
     this._touch();
   }
 
+  /**
+   * Record a monster sighting, but only for a monster the bestiary knows.
+   *
+   * `fieldGuide` and `apexSurvey` are fractions: the numerator is
+   * `distinct('enemy'|'boss')` and the denominator is `catalogue('enemy'|'boss')`,
+   * which is sized off `SPAWN_CARDS`/`BOSS_CARDS`. Those two arrays exclude the
+   * `special: true` finale monsters (anchor, warden_vault, herald) — placed by
+   * name, never rolled — so a Herald kill used to move the numerator while
+   * leaving the denominator alone, and "defeat every kind of teleporter boss"
+   * could read 6/6 with one of the six never fought.
+   *
+   * One definition of "content", applied to both halves, and it is the
+   * catalogue's: the logbook lists exactly these arrays too, so anything
+   * excluded here was never displayable as a bestiary entry in the first place.
+   * Filtering the numerator rather than growing the denominator is the choice
+   * that keeps the survey goals at the counts they already ship with, and keeps
+   * a bestiary challenge from quietly requiring a full clear of the game.
+   */
+  _discoverMonster(kind, id) {
+    if (!catalogueHas(kind, id)) return false;
+    return this.discover(kind, id);
+  }
+
   _onKill(e) {
     const run = this.run;
     if (!run || e?.victim?.isPlayer) return;
     // Discovery is a "have I seen this" fact and is credited on sight, host or
     // client — a client that watched a Titan die has seen a Titan.
     const vid = e?.victim?.def?.id ?? e?.victim?.id;
-    if (typeof vid === 'string') this.discover(e.isBoss ? 'boss' : 'enemy', vid);
+    if (typeof vid === 'string') this._discoverMonster(e.isBoss ? 'boss' : 'enemy', vid);
 
     if (!this._isLocalSource(e?.source)) return;
     run.kills++;
@@ -1084,7 +1149,7 @@ export class Profile {
   _onBossDead(e) {
     const run = this.run;
     const bid = e?.enemy?.def?.id ?? e?.enemy?.id;
-    if (typeof bid === 'string') this.discover('boss', bid);
+    if (typeof bid === 'string') this._discoverMonster('boss', bid);
     if (!run) return;
     // Shared credit: everyone in the fight downed the boss.
     run.bosses++;
@@ -1128,6 +1193,7 @@ export class Profile {
    * a completed challenge is never re-evaluated at all.
    */
   _evaluate(runStats, force = false) {
+    this._syncRunClock();
     const stats = this.data.stats;
     const store = this.data.challenges;
     const facts = this.facts();

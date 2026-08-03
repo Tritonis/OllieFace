@@ -52,18 +52,41 @@ const BAR_ROOTS = [0, 0, 0, 0, 10, 10, 3, 3];
  * The order is the arrangement: at intensity 0 the track is a sub pulse and a
  * pad and nothing else, which is what the first minute of a run should sound
  * like. The kit assembles from the bottom up as the run heats.
+ *
+ * `maxGain` is calibrated against *measured* per-layer loudness, not intuition.
+ *
+ * The intrinsic energy of these voices differs by orders of magnitude before
+ * any layer gain is applied — `_kick` is a 0.95 sine with a 360 ms tail at
+ * 46-165 Hz, `_clap` is three 20 ms noise taps through a Q=1.1 bandpass — so a
+ * table that reads like a balanced mix (kick 1.00 against clap 0.62) rendered
+ * as a kick with 26 dB of decoration under it. The numbers below come from
+ * rendering each layer in isolation at intensity 1 with the bus disconnected
+ * and solving for a target balance relative to the kick:
+ *
+ *   kick 0 / clap -5 / bass -6 / lead -10 / openhat -10 / hat -12 / acid -12
+ *   perc -16 / sub -14 / pad -16   (dB RMS)
+ *
+ * The bed sits low on purpose. `sub` and `pad` are the only layers audible at
+ * intensity 0, and once the pad was given a real sustain (see its block in
+ * `_emit`) a bed calibrated for presence rendered the *opening* 3 dB hotter in
+ * RMS than the full arrangement — a ramping soundtrack that ramped downwards.
+ * They belong under the kit, which is what a bed is.
+ *
+ * Gains above 1 are not a mistake: these are plain GainNodes and the layer's
+ * own note gains are small. The kick comes *down* rather than everything else
+ * coming up, so the bus peak stays where it was.
  */
 const LAYERS = [
-  ['sub',    -0.06, 0.10, 0.85],
-  ['pad',    -0.08, 0.14, 0.75],
-  ['kick',    0.13, 0.12, 1.00],
-  ['hat',     0.24, 0.14, 0.62],
-  ['bass',    0.31, 0.14, 0.90],
-  ['openhat', 0.45, 0.12, 0.50],
-  ['clap',    0.52, 0.12, 0.62],
-  ['perc',    0.64, 0.12, 0.42],
-  ['acid',    0.70, 0.14, 0.55],
-  ['lead',    0.86, 0.12, 0.45],
+  ['sub',    -0.06, 0.30, 0.89],
+  ['pad',    -0.08, 0.34, 0.19],
+  ['kick',    0.13, 0.12, 0.50],
+  ['hat',     0.24, 0.14, 0.82],
+  ['bass',    0.31, 0.14, 0.52],
+  ['openhat', 0.45, 0.12, 0.95],
+  ['clap',    0.52, 0.12, 3.50],
+  ['perc',    0.64, 0.12, 1.98],
+  ['acid',    0.70, 0.14, 0.49],
+  ['lead',    0.86, 0.12, 2.12],
 ];
 
 // Layers whose arrival is a structural event rather than a texture change.
@@ -100,7 +123,10 @@ const HAT_VEL = [
   0.38, 0.18, 0.62, 0.30,
 ];
 
-const LOOKAHEAD = 0.25;
+// One lookahead is also the resync tolerance: `_schedule` resyncs whenever a
+// single frame gap exceeds roughly LOOKAHEAD + one step. At 0.25 that was
+// ~0.36 s, which a stage transition or a shader compile clears routinely.
+const LOOKAHEAD = 0.4;
 
 export class MusicEngine {
   /**
@@ -129,6 +155,10 @@ export class MusicEngine {
     this._runT = 0;
     this.intensity = 0;
     this.bpm = 118;
+    // Set by Audio when the music is inaudible (muted, or music volume 0). The
+    // intensity model keeps integrating so the arrangement is in the right
+    // place when it comes back; only note emission is skipped.
+    this.silent = false;
 
     // --- diagnostics (read by tools/_musicprobe) ---------------------------
     this.stepsEmitted = 0;
@@ -139,6 +169,9 @@ export class MusicEngine {
     this._step = 0;
     this._bar = 0;
     this._acidPrev = ROOT;
+    // Hat density is bar-quantised like every other arrangement change; see
+    // `_onBar`. Reading intensity per 16th flipped it mid-bar.
+    this._hat16 = false;
     // Layer levels are committed one bar at a time. `_pending` holds a
     // commitment deferred by a bar so a riser has somewhere to live.
     this._pending = null;
@@ -161,7 +194,7 @@ export class MusicEngine {
       // The kick is the sidechain key, so it must not pass through the node it
       // is modulating. Everything else does.
       g.connect(name === 'kick' ? this.bus : this.duck);
-      this.layers.set(name, { name, enter, band, max, g, cur: 0, target: 0 });
+      this.layers.set(name, { name, enter, band, max, g, cur: 0, target: 0, until: 0 });
     }
 
     // The acid voice is one persistent filter rather than one per note: a Q of
@@ -195,14 +228,36 @@ export class MusicEngine {
     this.pressure *= 0.3;
   }
 
+  /**
+   * Start of a run. The opening ceiling below is a statement about how long the
+   * *player* has been playing, and the engine is built on the first user
+   * gesture anywhere on the page — the click that opens survivor select, not
+   * the one that begins the run. Without this, forty-five seconds spent reading
+   * the survivor cards opened the run at I=0.51 with the kick, the hats and the
+   * bassline already up.
+   */
+  reset() {
+    this._runT = 0;
+    this._heat = 0;
+    this._sustain = 0;
+    this.pressure = 0;
+  }
+
   update(ctx, dt) {
     if (this.stopped) return;
     // `dt` is real frame time and this runs while paused too, so a long pause
     // must not integrate a huge decay step in one go.
     const d = Math.min(dt, 0.1);
-    this._runT += d;
+    // Menu time is not run time. `Engine._frame` calls `update` unconditionally
+    // (only `fixedUpdate` is behind the pause gate), so without this the
+    // opening ceiling relaxes while the player is still choosing a survivor.
+    if (!ctx.paused) this._runT += d;
 
-    this.arc = clamp(((ctx.director?.difficultyCoefficient ?? 1) - 1) / 5, 0, 1);
+    // Divided by a coefficient a run actually reaches. `/5` put `arc = 1` at
+    // difficulty 6 — "Collapse" — so across three minutes of measured play the
+    // term moved 0.002 -> 0.052 and contributed nothing. `/2.5` maps the top of
+    // the arc onto "Fracturing", which a real run passes through.
+    this.arc = clamp(((ctx.director?.difficultyCoefficient ?? 1) - 1) / 2.5, 0, 1);
 
     // Sustained pressure: things that are true right now rather than things
     // that just happened. Rescanned at 4Hz — the enemy list can be sixty deep
@@ -224,7 +279,15 @@ export class MusicEngine {
     // Blend, not max. Pressure lifts into whatever headroom `arc` has left, so
     // a fight early in a run is a big change and the same fight at difficulty
     // "HAHAHA" barely moves the needle — which is correct, it is already loud.
-    let I = this.arc + (1 - this.arc) * this.pressure * 0.7;
+    //
+    // The 0.88 coefficient is what lets the arrangement reach its own top. At
+    // 0.7 a maxed-out `pressure` with `arc` at zero produced I = 0.70 exactly —
+    // the acid layer's entry threshold and not a decibel above it — so `acid`
+    // was never more than a whisper and `lead` (enter 0.86) was unreachable
+    // without a difficulty coefficient no early stage supplies. At 0.88 an
+    // arena genuinely full of monsters reaches the top of the kit on its own,
+    // and `arc` still decides how much of a *change* that fight is.
+    let I = this.arc + (1 - this.arc) * this.pressure * 0.88;
 
     // Opening ceiling. The director's coefficient does climb from 1 on its
     // own, but not fast enough to stop a busy first thirty seconds from
@@ -236,7 +299,10 @@ export class MusicEngine {
     this.intensity = clamp(I, 0, 1);
     this.bpm = lerp(118, 142, this.intensity);
 
-    this._schedule();
+    // Muted or music volume 0: keep the model warm, stop synthesising. The
+    // sequencer costs ~270 nodes a second and every one of them was being
+    // rendered into a gain of zero.
+    if (!this.silent) this._schedule();
   }
 
   _scanSustain(ctx) {
@@ -250,13 +316,20 @@ export class MusicEngine {
         const dx = e.position.x - p.x, dz = e.position.z - p.z;
         if (dx * dx + dz * dz < 2025) near++; // 45u radius
       }
-      s = Math.min(near / 7, 1) * 0.58;
+      // Scaled to the arena the director is allowed to fill, not to a constant.
+      // A fixed `/7` saturated at seven monsters against a population cap that
+      // starts at 18 and climbs past 60, so the term was pinned at its ceiling
+      // for every sample of a three-minute fight and could not tell seven
+      // monsters from sixty. Half the cap is "the arena is full of them".
+      const full = Math.max(7, (dir.populationCap ?? 18) * 0.5);
+      s = Math.min(near / full, 1) * 0.9;
     }
     // A boss or a charging teleporter is a floor, not an addend: those are
     // set-pieces and the track should sit high for their whole duration even
-    // if the arena momentarily empties out.
-    if (dir?.boss?.alive) s = Math.max(s, 0.72);
-    if (ctx.progression?.state === 'charging') s = Math.max(s, 0.76);
+    // if the arena momentarily empties out. Both sit below a genuinely full
+    // arena, which is louder than either.
+    if (dir?.boss?.alive) s = Math.max(s, 0.8);
+    if (ctx.progression?.state === 'charging') s = Math.max(s, 0.84);
     return s;
   }
 
@@ -281,12 +354,22 @@ export class MusicEngine {
     // sounds like, and a tab switch alone is enough to cause it.
     //
     // Missed steps are simply gone rather than replayed — a bar the player
-    // never heard is not owed to them, and the pulse matters more than the
-    // phase. Restarting on a bar boundary keeps layer commits aligned.
+    // never heard is not owed to them — but the *phase* is kept. Zeroing
+    // `_step` and `_bar` threw away the 8-bar chord progression along with the
+    // missed audio, and at a dozen resyncs in three minutes the progression
+    // restarted more often than it completed, so the movement at bars 5-8 that
+    // BAR_ROOTS exists for mostly never played. Snapping forward by a whole
+    // number of steps costs nothing and lands the cursor on the same grid, so
+    // downbeats stay downbeats and layer commits stay bar-aligned.
+    //
+    // The +0.05 lead (was +0.02) is deliberate: 20 ms is inside the output
+    // latency of an `interactive` context, so the first post-resync step — a
+    // downbeat, with a kick on it — landed late or jittered.
     if (this._musicTime < ac.currentTime) {
-      this._musicTime = ac.currentTime + 0.02;
-      this._step = 0;
-      this._bar = 0;
+      const skip = Math.ceil((ac.currentTime + 0.05 - this._musicTime) / stepDur);
+      this._musicTime += skip * stepDur;
+      this._step += skip;
+      this._bar = Math.floor(this._step / 16);
     }
 
     while (this._musicTime < ac.currentTime + LOOKAHEAD) {
@@ -310,6 +393,11 @@ export class MusicEngine {
    */
   _onBar(t, stepDur) {
     const bar = 16 * stepDur;
+
+    // Hat density latches here with everything else. Hysteresis on top of the
+    // quantisation, because `pressure` genuinely oscillates and a threshold
+    // read once a bar still toggles every other bar when it sits on the line.
+    this._hat16 = this.intensity > (this._hat16 ? 0.53 : 0.57);
 
     // A deferred commit from last bar (we spent that bar on a riser).
     if (this._pending) {
@@ -345,17 +433,26 @@ export class MusicEngine {
     for (const L of this.layers.values()) {
       const v = levels.get(L.name);
       if (v === L.target) continue;
+      // `L.cur` is the value the gain is *at* when this commit lands, and it is
+      // always the previous target: the ramp is half a bar and commits are a
+      // whole bar apart, so the last one has always finished by `t`.
       L.g.gain.setValueAtTime(L.cur, t);
       L.g.gain.linearRampToValueAtTime(v, t + ramp);
+      // When a layer is on its way out, remember when it actually goes silent.
+      // Without this the layer stopped *emitting notes* on the same bar line
+      // its gain began to fade, so the half-bar fade rendered a ramp with no
+      // signal passing through it and nine of ten layers cut dead — which is
+      // not what `_on`'s own contract said.
+      L.until = v === 0 ? t + ramp : 0;
       L.target = v;
       L.cur = v;
     }
   }
 
-  /** True while a layer is audible, including its fade-out tail. */
-  _on(name) {
+  /** True while a layer is audible at time `t`, including its fade-out tail. */
+  _on(name, t) {
     const L = this.layers.get(name);
-    return L.target > 0 || L.cur > 0;
+    return L.target > 0 || t < L.until;
   }
 
   _emit(t, stepDur) {
@@ -365,28 +462,36 @@ export class MusicEngine {
     const root = ROOT * Math.pow(2, BAR_ROOTS[bar % 8] / 12);
 
     // --- kick: four on the floor, and the sidechain key -------------------
-    if (this._on('kick') && s % 4 === 0) {
+    if (this._on('kick', t) && s % 4 === 0) {
       this._kick(t, stepDur);
-    } else if (!this._on('kick') && this._on('sub') && (s === 0 || s === 8)) {
+    } else if (!this._on('kick', t) && this._on('sub', t) && (s === 0 || s === 8)) {
       // Before the kick exists the sub pulse is the only pulse, and it is half
       // time. This is the "low and slow" opening: two soft thumps a bar.
       const g = this.layers.get('sub').g;
       this._osc(t, 0.5, { type: 'sine', f0: root * 0.5, gain: 0.5, out: g, attack: 0.02 });
       this._osc(t, 0.34, { type: 'triangle', f0: root * 0.25, gain: 0.34, out: g, attack: 0.03 });
-    } else if (this._on('kick') && this._on('sub') && s === 14 && bar % 2 === 1) {
+    } else if (this._on('kick', t) && this._on('sub', t) && s === 14 && bar % 2 === 1) {
       // Once the kick is in, `sub` becomes a pickup note into the next bar.
       const g = this.layers.get('sub').g;
       this._osc(t, 0.16, { type: 'sine', f0: root * 0.5, f1: root * 0.25, gain: 0.4, out: g });
     }
 
     // --- pad: one sustained chord a bar -----------------------------------
-    if (this._on('pad') && s === 0) {
+    //
+    // `hold` is the whole point of this voice. `_osc`'s default envelope is
+    // attack/decay with no sustain, so a 1.89 s pad decayed 57 dB across the
+    // bar and roughly 55% of every intro bar sat below -50 dBFS — a "bed" that
+    // fell to digital silence between downbeats, which is exactly what the
+    // layer table says `sub` and `pad` exist to prevent. The voice now holds
+    // its level to 78% of the bar and releases across a length that overlaps
+    // the next bar's attack, so the chord is continuous.
+    if (this._on('pad', t) && s === 0) {
       const g = this.layers.get('pad').g;
-      const dur = 16 * stepDur * 0.95;
+      const dur = 16 * stepDur * 1.08;
       for (const iv of [0, 3, 7, 12]) {
         this._osc(t, dur, {
           type: 'sawtooth', f0: root * Math.pow(2, iv / 12), gain: 0.075,
-          out: g, attack: dur * 0.3, detune: (iv % 5) * 6 - 6,
+          out: g, attack: dur * 0.22, hold: 0.78, detune: (iv % 5) * 6 - 6,
         });
       }
     }
@@ -394,7 +499,7 @@ export class MusicEngine {
     // --- closed hats -------------------------------------------------------
     // 8ths until the track can carry a 16th roll; the roll is most of what
     // makes the tempo feel like it doubled without the BPM moving.
-    if (this._on('hat') && (I > 0.55 ? true : s % 2 === 0)) {
+    if (this._on('hat', t) && (this._hat16 || s % 2 === 0)) {
       this._noise(t, 0.028 + HAT_VEL[s] * 0.02, {
         type: 'highpass', freq: 8200, q: 0.8,
         gain: HAT_VEL[s], out: this.layers.get('hat').g, attack: 0.0006,
@@ -402,7 +507,7 @@ export class MusicEngine {
     }
 
     // --- open hat on the offbeat ------------------------------------------
-    if (this._on('openhat') && s % 4 === 2) {
+    if (this._on('openhat', t) && s % 4 === 2) {
       this._noise(t, 0.16, {
         type: 'bandpass', freq: 9000, freqEnd: 6200, q: 0.7,
         gain: 0.5, out: this.layers.get('openhat').g, attack: 0.001,
@@ -410,12 +515,12 @@ export class MusicEngine {
     }
 
     // --- clap on 2 and 4 ---------------------------------------------------
-    if (this._on('clap') && (s === 4 || s === 12)) {
+    if (this._on('clap', t) && (s === 4 || s === 12)) {
       this._clap(t);
     }
 
     // --- bass --------------------------------------------------------------
-    if (this._on('bass')) {
+    if (this._on('bass', t)) {
       const n = BASS_PATTERN[s];
       if (n !== null) {
         const g = this.layers.get('bass').g;
@@ -428,7 +533,7 @@ export class MusicEngine {
     }
 
     // --- perc: a dry metallic tick that gives the 4th 16th somewhere to sit -
-    if (this._on('perc') && (s === 7 || (s === 15 && bar % 2 === 0))) {
+    if (this._on('perc', t) && (s === 7 || (s === 15 && bar % 2 === 0))) {
       const g = this.layers.get('perc').g;
       this._noise(t, 0.07, {
         type: 'bandpass', freq: 3200 + (bar % 3) * 700, q: 6, gain: 0.5, out: g, attack: 0.001,
@@ -437,12 +542,12 @@ export class MusicEngine {
     }
 
     // --- acid --------------------------------------------------------------
-    if (this._on('acid')) {
+    if (this._on('acid', t)) {
       this._acid(t, stepDur, ACID_PATTERN[s], root, I);
     }
 
     // --- lead stabs --------------------------------------------------------
-    if (this._on('lead') && (s === 0 || s === 10) && bar % 2 === 1) {
+    if (this._on('lead', t) && (s === 0 || s === 10) && bar % 2 === 1) {
       const g = this.layers.get('lead').g;
       for (const iv of [0, 7, 12]) {
         this._osc(t, 0.26, {
@@ -522,9 +627,25 @@ export class MusicEngine {
     // so the line opens up across the run rather than being one static timbre.
     const base = 280 + I * 900;
     const top = Math.min(base * (note.a ? 7 : 3.6), 7000);
+    //
+    // One filter for the whole line means one shared automation timeline, and a
+    // slide note is 1.9 steps long — so its `dur * 0.8` ramp used to be
+    // scheduled to *end* half a step after the next note had already written
+    // its own `setValueAtTime`. Out-of-order events, which WebAudio resolved by
+    // holding the slide note's cutoff flat wide open for a whole step — three
+    // times a bar, every bar, no envelope on 19% of the notes, and the accent
+    // after it starting late. A resonant filter envelope *is* the 303.
+    //
+    // The release is therefore clamped so it can never cross the next step,
+    // which keeps the timeline in order by construction. NOT
+    // `cancelScheduledValues(t)`: this is a lookahead scheduler, so the next
+    // note is written while the previous one is still a quarter of a second in
+    // the future, and cancelling from `t` deletes that in-flight ramp
+    // retroactively — measured, it left the same 106 ms flat spot exactly where
+    // it was.
     const fp = this.acidFilter.frequency;
     fp.setValueAtTime(top, t);
-    fp.exponentialRampToValueAtTime(base, t + Math.max(0.05, dur * 0.8));
+    fp.exponentialRampToValueAtTime(base, t + Math.min(stepDur * 0.9, Math.max(0.05, dur * 0.8)));
   }
 
   /**
@@ -534,6 +655,11 @@ export class MusicEngine {
    */
   _riser(t, bar) {
     const out = this.duck;
+    // Scaled by intensity for the same reason the kick's sidechain depth is:
+    // the first transition happens at I=0.13 over a bed peaking near -30 dBFS,
+    // and a fixed 0.34 there is a 25 dB transient. An identical one used to
+    // fire at I=0.9 where the mix is 20 dB louder and it barely registered.
+    const amp = 0.12 + 0.22 * this.intensity;
     const n = this.ac.createBufferSource();
     n.buffer = this.noiseBuf;
     n.loop = true;
@@ -544,7 +670,7 @@ export class MusicEngine {
     f.frequency.exponentialRampToValueAtTime(9000, t + bar);
     const g = this.ac.createGain();
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(0.34, t + bar * 0.96);
+    g.gain.exponentialRampToValueAtTime(amp, t + bar * 0.96);
     g.gain.exponentialRampToValueAtTime(0.0001, t + bar * 1.02);
     n.connect(f).connect(g).connect(out);
     n.start(t, Math.random());
@@ -552,7 +678,7 @@ export class MusicEngine {
     this._count(n);
 
     this._osc(t, bar, {
-      type: 'sawtooth', f0: ROOT, f1: ROOT * 4, gain: 0.11, out, attack: bar * 0.7, curve: 'lin',
+      type: 'sawtooth', f0: ROOT, f1: ROOT * 4, gain: amp * 0.32, out, attack: bar * 0.7, curve: 'lin',
     });
   }
 
@@ -564,11 +690,18 @@ export class MusicEngine {
     });
   }
 
-  /** Downbeat impact under a landing layer. */
+  /**
+   * Downbeat impact under a landing layer. Routed through `duck` rather than
+   * straight at the bus so it participates in the pump like everything else
+   * that is not the sidechain key, and scaled by intensity so the transition
+   * into a two-layer intro is not the same 25 dB event as the one into a full
+   * arrangement.
+   */
   _impact(t) {
-    this._osc(t, 1.1, { type: 'sine', f0: 70, f1: 28, gain: 0.7, out: this.bus, attack: 0.004 });
+    const amp = 0.25 + 0.45 * this.intensity;
+    this._osc(t, 1.1, { type: 'sine', f0: 70, f1: 28, gain: amp, out: this.duck, attack: 0.004 });
     this._noise(t, 0.9, {
-      type: 'highpass', freq: 5000, gain: 0.22, out: this.duck, attack: 0.002,
+      type: 'highpass', freq: 5000, gain: amp * 0.31, out: this.duck, attack: 0.002,
     });
   }
 
@@ -594,7 +727,12 @@ export class MusicEngine {
     node.onended = () => { this.voices = Math.max(0, this.voices - 1); };
   }
 
-  _osc(t0, dur, { type = 'sine', f0, f1, gain = 0.3, out, attack = 0.004, detune = 0, curve = 'exp' }) {
+  /**
+   * One note. Attack/decay by default; pass `hold` (a fraction of `dur`) to get
+   * attack/sustain/release instead, for voices that have to stay up between
+   * downbeats rather than decay away under them.
+   */
+  _osc(t0, dur, { type = 'sine', f0, f1, gain = 0.3, out, attack = 0.004, hold = 0, detune = 0, curve = 'exp' }) {
     const ac = this.ac;
     const o = ac.createOscillator();
     o.type = type;
@@ -605,8 +743,12 @@ export class MusicEngine {
       else o.frequency.exponentialRampToValueAtTime(Math.max(1, f1), t0 + dur);
     }
     const g = ac.createGain();
+    const peak = Math.max(0.0002, gain);
     g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(Math.max(0.0002, gain), t0 + attack);
+    g.gain.exponentialRampToValueAtTime(peak, t0 + attack);
+    // After a ramp ends the param holds at its final value until the next
+    // event, so this one write is the whole sustain.
+    if (hold > 0 && dur * hold > attack) g.gain.setValueAtTime(peak, t0 + dur * hold);
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
     o.connect(g).connect(out);
     o.start(t0);
@@ -651,6 +793,7 @@ export class MusicEngine {
       L.g.gain.setTargetAtTime(0, t, 0.5);
       L.cur = 0;
       L.target = 0;
+      L.until = 0;
     }
   }
 }

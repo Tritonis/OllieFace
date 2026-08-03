@@ -147,13 +147,48 @@ const consumes = (id) => ITEM_BY_ID.get(id)?.name || id;
  *
  * A WeakMap rather than `Items.mark`: the mark table is Hunter's Tag's, and two
  * items writing one shared set of marks would mean picking up either of them
- * silently powers the other. Weak keys also mean a horde that dies mid-stage is
- * collected without anyone having to sweep this, which `Items._sweepMarks`
- * exists to do for the table that *is* keyed strongly.
+ * silently powers the other.
+ *
+ * The entry carries `Enemy.id` — the counter the entity mints fresh on every
+ * `spawn` — and not just a timestamp, because the key alone does not identify a
+ * *monster*. `Director` pools dead `Enemy` instances and `spawnOne` pops them
+ * back out, so a newly spawned body is literally the previous one's object and
+ * used to inherit its stamp: a fresh spawn arriving inside the four-second
+ * window was denied the opener bonus entirely (measured 100 against 170). A
+ * mismatched `id` now reads as "never struck", which is what a new monster is.
+ *
+ * Those same strong pool references are also why the weak keys buy nothing —
+ * the Director holds every Enemy for the life of the run, so nothing here is
+ * ever actually collected. Kept weak anyway: it costs nothing and it is correct
+ * for the bodies (bosses, summons) that are not pooled.
  */
 const _lastStruck = new WeakMap();
 /** How long a target has to be left alone before it counts as fresh again. */
 const OPENING_WINDOW = 4;
+
+/**
+ * Per-spawn rate limiter for hooks that must not fire repeatedly on one body.
+ *
+ * Same `Enemy.id` guard as `_lastStruck` and for the same reason: the key is a
+ * pooled object, so without the id a fresh spawn inherits the previous
+ * monster's cooldown. Returns true and stamps when the caller may act.
+ */
+function onceEvery(map, entity, now, seconds) {
+  const prev = map.get(entity);
+  if (prev && prev.id === entity?.id && now - prev.t < seconds) return false;
+  if (prev) { prev.id = entity?.id; prev.t = now; }
+  else map.set(entity, { id: entity?.id, t: now });
+  return true;
+}
+
+/** Grapnel Tether's per-body reel cooldown. */
+const _reeled = new WeakMap();
+/**
+ * How close the tether may ever bring a body, and how long it must leave that
+ * body alone afterwards. See the item for why both exist.
+ */
+const TETHER_FLOOR = 6;
+const TETHER_RECOVER = 1.5;
 
 /**
  * The statuses Afflictor's Index recognises — i.e. every entry in Combat's
@@ -662,10 +697,24 @@ export const ITEMS = [
       // read a line earlier: the bonus is a property of the previous hit's age,
       // not of this one's, and stamping afterwards would make a burst of two
       // rounds in the same tick both count as openers.
+      //
+      // Damage-over-time is excluded and does not stamp. `Combat.modifyOutgoing`
+      // runs for DoT ticks as well as for hits, and burn ticks every 0.5 s for
+      // 4 s — so any burn the player applied re-stamped its own target often
+      // enough that the four-second window could never elapse and the item
+      // switched itself off. That is not a corner case: it is CINDER's primary,
+      // Ashen Pact, Warm Coals, the Leaking Jerrycan and every cloud on the
+      // field. An opener is a *hit*; a tick of something already burning is not
+      // one, and it should neither be paid the bonus nor reset the clock.
       outgoing: (amount, target, info, api) => {
+        if (info?.isDot) return amount;
         const now = api.ctx.time;
-        const last = _lastStruck.get(target);
-        _lastStruck.set(target, now);
+        const prev = _lastStruck.get(target);
+        // `Enemy.id` is minted per spawn, so a pooled body that came back as a
+        // different monster does not inherit the old one's stamp.
+        const last = (prev && prev.id === target?.id) ? prev.t : undefined;
+        if (prev) { prev.id = target?.id; prev.t = now; }
+        else _lastStruck.set(target, { id: target?.id, t: now });
         return (last === undefined || now - last >= OPENING_WINDOW)
           ? amount * (1 + linear(0.70, api.count)) : amount;
       },
@@ -676,16 +725,25 @@ export const ITEMS = [
     flavour: 'Whatever it was taken from spent its whole life being chased, and won.',
     description: (n) => `While below 40% health, gain +${pct(linear(0.18, n))} movement speed.`,
     hooks: {
-      // Refreshed every step onto the existing `quickfoot` buff rather than
-      // being a conditional entry in the stat block. Conditional *stats* are the
-      // one shape `Items.stats` cannot express — the cache is keyed on the base
-      // block and would not rebuild when health crossed the threshold — whereas
-      // a short buff re-applied while the condition holds expires on its own the
-      // moment it stops, with no edge case to get wrong.
+      // Refreshed every step onto a buff slot rather than being a conditional
+      // entry in the stat block. Conditional *stats* are the one shape
+      // `Items.stats` cannot express — the cache is keyed on the base block and
+      // would not rebuild when health crossed the threshold — whereas a short
+      // buff re-applied while the condition holds expires on its own the moment
+      // it stops, with no edge case to get wrong.
+      //
+      // Its own slot, `preyfoot`, and not Bloodied Spurs' `quickfoot`. A buff
+      // name is a shared slot: `Items.addBuff` overwrites both magnitude and
+      // remaining, so writing `quickfoot` here meant this item stamped its 0.5 s
+      // +18% over the Spurs' 15 s +20% every single step while the player was
+      // hurt. Holding both commons made the player *slower* than holding Spurs
+      // alone (8.26 against 8.40 m/s, measured) — picking up an item was a
+      // strict downgrade. `Items.stats` now multiplies the two together, which
+      // is what two independent movement commons should do.
       onInterval: (e, api) => {
         const p = api.player;
         if (!p?.alive || p.health > (p.stats?.maxHealth || 100) * 0.4) return;
-        api.items.addBuff('quickfoot', 0.5, 1, linear(0.18, api.count));
+        api.items.addBuff('preyfoot', 0.5, 1, linear(0.18, api.count));
       },
     },
   },
@@ -1019,8 +1077,26 @@ export const ITEMS = [
   {
     id: 'tether-harpoon', name: 'Grapnel Tether', tier: 'uncommon', glyph: 'harpoon',
     flavour: 'Range is a negotiation and this is the only argument it accepts.',
-    description: (n) => `${pct(hyperbolic(0.10, n))} chance on hit to reel an enemy a third of the way to you and slow it.`,
+    description: (n) => `${pct(hyperbolic(0.10, n))} chance on hit to reel an enemy a third of the way to you — no closer than ${TETHER_FLOOR}m — and slow it.`,
     hooks: {
+      // The stacking curve is deliberately in *breadth*, not in depth.
+      //
+      // Stacks buy proc chance and nothing else: `hyperbolic(0.10, n)` takes ten
+      // of them from 10% to 50%, so a full stack reels far more of the field —
+      // but each body may only be reeled once every `TETHER_RECOVER` seconds and
+      // never inside `TETHER_FLOOR` metres. Without those two floors the curve
+      // compounded: at 10 stacks, thirty hits (about four seconds of Ranger
+      // primary fire) landed sixteen procs on the *same* body and 0.66^16 x 20 m
+      // put it 0.02 m from the player's feet. That is not a strong item, it is
+      // an item that deletes the game's whole positional layer, and the card's
+      // own boss exclusion — "a boss whose position the player controls has no
+      // fight left in it" — is exactly the argument against letting it happen to
+      // everything else.
+      //
+      // The floor is 6 m rather than contact for a specific reason too: it is
+      // outside the melee reach of every ordinary spawn, so a reel drags a
+      // shooter into your kill zone without also stacking a pack inside your
+      // own hitbox.
       onHit: (e, api) => {
         if (!api.roll(hyperbolic(0.10, api.count))) return;
         const t = e.target;
@@ -1033,8 +1109,23 @@ export const ITEMS = [
         // not. `onHit` only reaches here on the host today; the guard is what
         // stops that being load-bearing.
         if (api.ctx.authority) {
-          t.position.lerp(api.player.position, 0.34);
-          t.velocity?.set?.(0, 0, 0);
+          if (!onceEvery(_reeled, t, api.ctx.time, TETHER_RECOVER)) return;
+          const p = api.player.position;
+          // Horizontal only. The old `Vector3.lerp` interpolated y as well, so
+          // it hauled the Gloomshriver — a flyer whose entire card is holding
+          // 6.4 m of altitude — down onto the floor and left it there. Altitude
+          // belongs to the mover, which is the only thing that knows about
+          // `hoverHeight` and terrain.
+          const dx = p.x - t.position.x;
+          const dz = p.z - t.position.z;
+          const d = Math.hypot(dx, dz);
+          if (d <= TETHER_FLOOR) return;
+          const f = (d - Math.max(TETHER_FLOOR, d * 0.66)) / d;
+          t.position.x += dx * f;
+          t.position.z += dz * f;
+          // Horizontal velocity only, for the same reason: zeroing y drops a
+          // hovering unit for a frame.
+          if (t.velocity) { t.velocity.x = 0; t.velocity.z = 0; }
           api.combat.applyStatus(t, 'slow', api.player, 1);
         }
         api.ctx.vfx?.beam?.(api.player.position, t.position, 0xd8c07a);
@@ -1044,7 +1135,7 @@ export const ITEMS = [
   {
     id: 'emberwake', name: 'Emberwake Cleats', tier: 'uncommon', glyph: 'emberwake',
     flavour: 'The soles never cooled after the foundry. Neither did the man wearing them.',
-    description: (n) => `While moving, scorch the ground behind you: a 3m cinder patch every 0.6s dealing ${pct(linear(0.55, n))} damage per second for 4s.`,
+    description: (n) => `While moving, scorch the ground behind you: a 3.2m cinder patch every 0.6s dealing ${pct(linear(0.55, n))} damage per second for 4s.`,
     hooks: {
       // Kiting becomes damage. Every other AoE in the file is anchored to a kill
       // or to a proc, so the player earns it by shooting; this one is earned by
@@ -1055,7 +1146,14 @@ export const ITEMS = [
       onInterval: (e, api) => {
         if (!api.player?.moving) return;
         if (!api.items.cooldownReady('emberwake', 0.6)) return;
-        api.items.addCloud(api.player.position, 3.2, 4, linear(0.55, api.count));
+        // Fire colour and fire damage type, not the primitive's Spore Sac
+        // default — a "cinder patch" that drew as a green spore ring was a
+        // cosmetic lie about which hazard the player was standing in. No
+        // `status`: this card never claimed to ignite, and giving it burn would
+        // quietly make an uncommon into an ailment engine.
+        api.items.addCloud(api.player.position, 3.2, 4, linear(0.55, api.count), {
+          colour: 0xff7a2a, type: 'fire',
+        });
       },
     },
   },
@@ -1082,16 +1180,48 @@ export const ITEMS = [
   {
     id: 'scrapfly-hive', name: 'Scrapfly Hive', tier: 'uncommon', glyph: 'scrapfly',
     flavour: 'They eat metal, they nest in wounds, and they are extremely loyal about it.',
-    description: (n) => `Every 14s, release a scrapfly that strikes a nearby enemy for ${pct(linear(1.3, n))} damage once a second for 5s.`,
+    description: (n) => `Every 14s, release a scrapfly that hunts one enemy at a time, striking for ${pct(linear(1.3, n))} damage and causing bleed once a second for 5s.`,
     hooks: {
+      // What makes this card not a slower Hive Gland.
+      //
+      // It used to be exactly that and nothing else: five `seekingStrike` calls
+      // fired from `player.position`, which is the identical call Hive Gland
+      // makes from the identical origin, at a lower rate. There was no fly, no
+      // follower and no DoT — the description promised all three. Two of the
+      // three are now real, and they are the two that change how the item plays:
+      //
+      //  - The fly is a *position*. It is released at the player and closes on
+      //    whatever it is chasing, and it re-acquires from where it is rather
+      //    than from where the player is. So it works while the player retreats,
+      //    it follows a pack the player has disengaged from, and its reach is
+      //    measured from the front line instead of from the survivor.
+      //  - It commits to one body until that body dies, applying `bleed` on
+      //    every strike. Hive Gland sprays N distinct targets for burst; this
+      //    picks one and takes it apart, which is a different answer to a
+      //    different problem and ties the card to Afflictor's Index and the rest
+      //    of the ailment half of the pool.
       onInterval: (e, api) => {
         if (!api.items.cooldownReady('scrapfly-hive', 14)) return;
         // The stack count is captured *now*: `Items._tickEffects` runs its
         // callbacks with `api.count = 1` (an effect is not an item stack), so a
         // closure that read `a.count` would silently price every hive at one.
         const stacks = api.count;
+        // Released at the survivor; from here on it is the fly's own position
+        // that matters, carried across the five ticks by this closure.
+        const fly = api.player.position.clone();
+        let quarry = null;
         api.items.addEffect('scrapfly-hive', 5, 1.0, (a) => {
-          seekingStrike(a, a.player.position, a.items.baseDamage() * linear(1.3, stacks), 1, 0xc8d86a, 'scrapfly');
+          if (!quarry?.alive) quarry = a.combat.nearestHostile(fly, 30, 'player', null);
+          if (!quarry) return;
+          // Closes rather than teleports, so the beam reads as a thing crossing
+          // the arena and the next re-acquire happens from where it ended up.
+          fly.lerp(quarry.position, 0.6);
+          a.ctx.vfx?.beam?.(fly, quarry.position, 0xc8d86a);
+          a.combat.applyDamage(quarry, a.items.baseDamage() * linear(1.3, stacks), {
+            source: a.player, position: quarry.position, type: 'scrapfly',
+            procCoefficient: 1, procDepth: a.procDepth,
+          });
+          a.combat.applyStatus(quarry, 'bleed', a.player, 1);
         });
       },
     },

@@ -365,6 +365,11 @@ export class Combat {
    *   crit             force crit/no-crit, otherwise rolled from stats
    *   position         impact point for VFX and floating numbers
    *   ignoreArmor      true for true-damage effects like Shrine of Blood
+   *
+   * Returns the damage the hit landed for after crit, items and armour — the
+   * same figure it puts on the `damage` event as `amount`, including anything
+   * a barrier absorbed. 0 means the hit did not happen at all (i-frames, a
+   * block, a dead target, or a client).
    */
   applyDamage(target, amount, info = {}) {
     if (!target || !target.alive || amount <= 0) return 0;
@@ -426,17 +431,25 @@ export class Combat {
 
     // Shields absorb first and regenerate out of combat (owner's job).
     //
-    // `dealt` used to be captured *here*, before absorption, and then reported
-    // as the amount on every event below. So a hit swallowed whole by a shield
-    // still announced its full pre-shield value: the HUD counted damage that
-    // never landed, `playerHurt` claimed a number while `remaining` showed
-    // unchanged health, and — the one that actually pays out — every
-    // `onDamaged` item hook fired, so a gold-on-hurt item minted gold for
-    // damage the player did not take. It also reset "time since last hurt" for
-    // the items keyed on that, on hits that cost nothing.
+    // A hit produces two quantities and they are not interchangeable:
+    // `incoming` is what it was worth on arrival (post-crit, post-armour) and
+    // `dealt` is what reached health after a barrier took its cut. Which one a
+    // consumer wants depends entirely on whose barrier it was.
     //
-    // Two quantities are needed, not one: what the hit was worth on arrival,
-    // and what reached health. Only the second is `dealt`.
+    // Attacking side — `incoming`. A hit into a barrier landed; the barrier is
+    // the thing it landed on. Reporting `dealt` on the outgoing channels made
+    // every point spent breaking an elite's shield read as zero: floating
+    // numbers rendered "1", the run counter froze, and the `warded` affix —
+    // whose reflect by construction only fires *while* the barrier is up
+    // (`Director.js`) — multiplied 0.22 by nothing for its entire window.
+    //
+    // Defending side — `dealt`. `onDamaged` hooks are the paying customers and
+    // a gold-on-hurt item must not mint gold off a barrier; `playerHurt` must
+    // not reset "time since hurt" for a hit that cost nothing. Those stay on
+    // health lost, and a fully-absorbed hit does not emit `playerHurt` at all.
+    //
+    // `toHealth`/`absorbed` ride along on `damage` so anything that wants the
+    // other figure has it without a second event.
     const incoming = amount;
     if (target.shield > 0) {
       const absorbed = Math.min(target.shield, amount);
@@ -454,20 +467,19 @@ export class Combat {
     }
 
     ctx.events.emit('damage', {
-      target, source, amount: dealt, crit, position: pos, proc: info.procCoefficient || 0,
+      target, source, amount: incoming, toHealth: dealt, absorbed: incoming - dealt,
+      crit, position: pos, proc: info.procCoefficient || 0,
     });
 
-    if (target.isPlayer) {
-      // Emitted even at zero so the HUD still flashes when a shield eats a hit
-      // — its handler already shakes the bar only when the amount is positive,
-      // so an absorbed hit reads as "that connected" without claiming health
-      // was lost. `absorbed` rides along for anything that wants to tell the
-      // two apart.
+    if (target.isPlayer && dealt > 0) {
+      // Gated at the emit rather than in each listener. Four systems subscribe
+      // and only one of them checked the amount, so a hit a barrier ate whole
+      // still reset the hurt timer three items key off, fired a hitstop, an
+      // aberration bump and a vignette flash, and ducked the music to a third
+      // for 0.7s. `shieldBroken` above is the channel for "a barrier took
+      // that"; this one means health was lost.
       ctx.events.emit('playerHurt', { amount: dealt, absorbed: incoming - dealt, remaining: target.health });
-      // Item hooks are the paying customers, so these only fire on damage that
-      // actually reached health. A fully-absorbed hit firing `onDamaged` is how
-      // a gold-on-hurt item printed money off a shield.
-      if (ctx.items && dealt > 0) {
+      if (ctx.items) {
         this._dispatch('onDamaged', { target, source, amount: dealt, position: pos, procDepth: (info.procDepth || 0) + 1 });
       }
     }
@@ -479,14 +491,14 @@ export class Combat {
     const depth = info.procDepth || 0;
     if (coeff > 0 && depth < MAX_PROC_DEPTH && source?.isPlayer && target.alive) {
       this._dispatch('onHit', {
-        target, source, amount: dealt, crit, position: pos,
+        target, source, amount: incoming, toHealth: dealt, crit, position: pos,
         procCoefficient: coeff, procDepth: depth + 1, type: info.type || 'hit',
       });
     }
 
     if (target.health <= 0 && target.alive) this._kill(target, source, pos, depth);
 
-    return dealt;
+    return incoming;
   }
 
   _kill(victim, source, position, depth) {

@@ -191,10 +191,13 @@ const PALETTES = {
     cellBase: 0x1a1206,
     visorBase: 0x140d02,
     rim: 0xffd9a0,
-    // Same problem Rook had, for the opposite reason: the burner bank is six
-    // lamps in a 0.4 m strip across the chest and shoulders, and at full gain
-    // they merged into one blown patch that took the brass plate's value with
-    // them. Two thirds keeps each lamp a discrete hot dot.
+    // Same problem Rook had, for the opposite reason: the burner bank is three
+    // lamps at 0.09 m spacing — a 0.18 m strip across the chest — plus the pilot
+    // light on the left tank cap, and at full gain they merged into one blown
+    // patch that took the brass plate's value with them. Two thirds keeps each
+    // lamp a discrete hot dot. (The strip is narrow, which is *why* the gain has
+    // to come down: four emitters inside 0.18 m bloom into each other far more
+    // readily than the same four spread across a shoulder line would.)
     cellGain: 0.66,
   },
 };

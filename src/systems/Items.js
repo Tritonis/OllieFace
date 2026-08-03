@@ -511,6 +511,20 @@ export class Items {
     // Bloodied Spurs — movement only, so it reads differently from a frenzy.
     const quickfoot = this.buffs.get('quickfoot');
     if (quickfoot) s.moveSpeed *= 1 + quickfoot.magnitude;
+    // Prey Instinct. Its own slot, multiplied *alongside* `quickfoot` rather
+    // than sharing it: the two are different items with different durations and
+    // different magnitudes, and writing one name made picking up the second one
+    // a downgrade — a 15 s +20% window collapsing to a 0.5 s +18% one.
+    const preyfoot = this.buffs.get('preyfoot');
+    if (preyfoot) s.moveSpeed *= 1 + preyfoot.magnitude;
+    // Aegis Emitter's dome. Armour lives here rather than on `Player.grantBuff`
+    // because that call only ever *pushes* — it has no refresh semantics, so a
+    // 0.7 s grant re-issued on a 0.5 s tick always had two live entries and paid
+    // double the number on the card. `addBuff` refreshes in place, so the dome
+    // grants exactly what it advertises and still lapses on its own once the
+    // survivor steps out and the ticks stop arriving.
+    const aegis = this.buffs.get('aegis');
+    if (aegis) s.armor += aegis.magnitude;
     // Scrap Bandolier — a short, hard cooldown cut on a kill.
     const quickhands = this.buffs.get('quickhands');
     if (quickhands) s.cooldownMult *= quickhands.magnitude;
@@ -557,13 +571,31 @@ export class Items {
 
   // ------------------------------------------------------------------ buffs
 
+  /**
+   * Apply or refresh a named buff.
+   *
+   * Re-application overwrites `magnitude` and `remaining` rather than merging
+   * them, which is what makes the buff *name* a shared slot: two items writing
+   * the same name will clobber each other, and the second one is not
+   * necessarily the better one. Callers own that — pick a name nobody else
+   * uses. (Taking `Math.max` of both fields here looks like the general fix and
+   * is not: it would let a large short buff inherit a small long one's timer,
+   * which is a bigger lie than the collision it repairs.)
+   *
+   * `remaining` is not an input to `stats`, so a refresh that changes only the
+   * timer does not dirty the cache. That matters: Prey Instinct re-applies
+   * every fixed step while the player is below 40% health, and dirtying
+   * unconditionally rebuilt the whole stat block 60 times a second (+82% of the
+   * per-step item cost, measured) to produce the identical answer.
+   */
   addBuff(name, duration, maxStacks = 1, magnitude = 1) {
     let b = this.buffs.get(name);
     if (!b) { b = { stacks: 0, remaining: 0, magnitude }; this.buffs.set(name, b); }
-    b.stacks = Math.min(maxStacks, b.stacks + 1);
+    const stacks = Math.min(maxStacks, b.stacks + 1);
+    if (stacks !== b.stacks || magnitude !== b.magnitude) this._dirty = true;
+    b.stacks = stacks;
     b.remaining = duration;
     b.magnitude = magnitude;
-    this._dirty = true;
   }
 
   buffStacks(name) { return this.buffs.get(name)?.stacks || 0; }
@@ -622,8 +654,21 @@ export class Items {
     return e;
   }
 
-  /** A lingering ground hazard. Spore Sac leaves one on every kill. */
-  addCloud(position, radius, duration, dps) {
+  /**
+   * A lingering ground hazard. Spore Sac leaves one on every kill.
+   *
+   * This is the one shared hazard primitive in the game, and it used to be
+   * *only* Spore Sac's: hardcoded `type: 'spore'`, a hardcoded green ring, and
+   * no way to apply a status. Every later caller inherited that — CINDER's Pyre
+   * Flask left a "burning" pyre that neither burned nor looked like fire, and
+   * Emberwake's cinder patch drew as spore green. The options bag fixes both
+   * without each caller re-implementing the bounded overlap accounting:
+   *
+   *   status  a Combat status applied to anything standing in it
+   *   colour  the ring drawn each tick
+   *   type    the damage type, which is what item hooks and VFX read
+   */
+  addCloud(position, radius, duration, dps, opts = null) {
     if (!this.ctx.authority || !position) return;
     // Bounded, because a horde death can leave dozens in a second and each one
     // is an overlap query per fixed step.
@@ -631,7 +676,16 @@ export class Items {
     // A real Vector3 clone, not a {x,y,z} literal: VFX and Combat both take
     // this straight into `copy`/`distanceTo`, and a bare object works for some
     // of those calls and not others.
-    this._clouds.push({ at: position.clone(), radius, remaining: duration, dps, t: 0 });
+    this._clouds.push({
+      at: position.clone(),
+      radius,
+      remaining: duration,
+      dps,
+      t: 0,
+      status: opts?.status || null,
+      colour: opts?.colour ?? CLOUD_COLOUR,
+      type: opts?.type || 'spore',
+    });
   }
 
   addBarrier(amount) {
@@ -1025,12 +1079,20 @@ export class Items {
         for (let k = 0; k < n; k++) targets.push(combat.overlapAt(k));
         for (const t of targets) {
           combat.applyDamage(t, this.baseDamage() * c.dps * CLOUD_TICK, {
-            source: ctx.player, position: t.position, type: 'spore',
+            source: ctx.player, position: t.position, type: c.type,
             procCoefficient: 0, procDepth: 2, isDot: true,
           });
+          // Topped up rather than stacked: a body standing in an 8 s pyre would
+          // otherwise collect sixteen independent burn stacks and turn a setup
+          // tool into the biggest DoT in the game. "Everything in the fire is
+          // burning" is the contract the ability describes and the one
+          // Conflagration and Afflictor's Index need — one live stack does it.
+          if (c.status && t.alive && !combat.hasStatus(t, c.status)) {
+            combat.applyStatus(t, c.status, ctx.player, 1);
+          }
         }
         // Purely cosmetic — never draws off `ctx.rng`, so it cannot desync.
-        ctx.vfx?.ring?.(c.at, c.radius, 0x9fdc6a);
+        ctx.vfx?.ring?.(c.at, c.radius, c.colour);
       }
       if (c.remaining > 0) continue;
       this._clouds[i] = this._clouds[this._clouds.length - 1];
@@ -1096,5 +1158,8 @@ export const EQUIPMENT_KEY_LABEL = 'F';
 // into a frame spike.
 const CLOUD_TICK = 0.5;
 const MAX_CLOUDS = 12;
+// The default ring colour, i.e. Spore Sac green. Callers that are not spores
+// pass their own through `addCloud`'s options bag.
+const CLOUD_COLOUR = 0x9fdc6a;
 
 export { ITEMS, ITEM_BY_ID, TIERS, hyperbolic, EQUIPMENT, EQUIPMENT_BY_ID };

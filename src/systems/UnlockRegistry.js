@@ -77,6 +77,18 @@ const CATALOGUES = [
 
 /** kind -> how many ids exist. Read by the survey challenges' dynamic goals. */
 const _sizes = {};
+/**
+ * kind -> the set of ids that size was counted from.
+ *
+ * The survey challenges ("record every monster") are a fraction whose
+ * denominator is `_sizes` and whose numerator is the profile's distinct
+ * encounter count. Those two only mean what the challenge says if they agree
+ * about what counts as content — and `SPAWN_CARDS`/`BOSS_CARDS` deliberately
+ * exclude the `special: true` finale monsters, which the kill stream does not.
+ * Publishing the membership, not just the count, is what lets the profile
+ * apply the same definition on its side.
+ */
+const _members = {};
 /** `${type}:${id}` -> display name, so no surface has to print a storage key. */
 const _names = new Map();
 
@@ -92,10 +104,10 @@ function scan() {
   let bound = 0;
   for (const cat of CATALOGUES) {
     const cards = Array.isArray(cat.cards) ? cat.cards : [];
-    if (cat.kind) _sizes[cat.kind] = 0;
+    if (cat.kind) { _sizes[cat.kind] = 0; _members[cat.kind] = new Set(); }
     for (const card of cards) {
       if (!card || typeof card.id !== 'string' || !card.id) continue;
-      if (cat.kind) _sizes[cat.kind]++;
+      if (cat.kind) { _sizes[cat.kind]++; _members[cat.kind].add(card.id); }
       if (cat.unlockType) _names.set(`${cat.unlockType}:${card.id}`, card.name || card.id);
 
       if (typeof card.unlock !== 'string' || !card.unlock) continue;
@@ -168,6 +180,19 @@ export function catalogueSize(kind) { return _sizes[kind] ?? 0; }
 
 /** The full size map, shaped for `Profile.facts().catalogue`. */
 export function catalogueSizes() { return { ..._sizes }; }
+
+/**
+ * Is this id one of the ones `catalogueSize(kind)` counted?
+ *
+ * A kind this build has no catalogue for answers `true`: the caller is a
+ * discovery recorder, and refusing to record something we cannot size is the
+ * failure direction that loses a player's history. Only a kind we *do* have a
+ * catalogue for can meaningfully say "no, that is not one of these".
+ */
+export function catalogueHas(kind, id) {
+  const set = _members[kind];
+  return set ? set.has(id) : true;
+}
 
 /**
  * The player-facing name of a piece of unlockable content.

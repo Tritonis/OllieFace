@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { clamp } from '../core/MathUtil.js';
 import { MusicEngine } from './Music.js';
+import { ITEM_BY_ID } from '../data/items.js';
 
 /**
  * Fully procedural WebAudio. No files, no network, no decode step.
@@ -13,12 +14,15 @@ import { MusicEngine } from './Music.js';
  * same rule as the VFX layer.
  *
  * Signal flow:
- *   voices -> sfx / music / ambient buses -> master -> limiter -> destination
+ *   voices -> sfx -> sfxLimiter ─┐
+ *             music / ambient ──┴─> master -> limiter -> destination
  *
- * The limiter is not optional: forty simultaneous explosion sub-thumps will
- * clip a raw sum into digital distortion. The voice cap exists for the same
- * reason one layer up — past ~28 concurrent voices nothing is audible anyway,
- * so new hits steal from the oldest rather than piling on.
+ * There are two limiters, and the split matters. `sfx` gets its own before the
+ * master, because a single limiter on the sum meant an explosion pulled the
+ * soundtrack down with it — measured at 3-14 dB of gain reduction continuously
+ * through combat, against a music engine whose entire dynamic range from sparse
+ * opening to full tilt is under 8 dB. The master limiter is now a safety net
+ * for the sum rather than the thing shaping the mix.
  *
  * The soundtrack lives in Music.js and owns everything downstream of the
  * `music` bus, including its own voice accounting: the sequencer is
@@ -26,7 +30,58 @@ import { MusicEngine } from './Music.js';
  * sounds must never be allowed to refuse the downbeat. See MusicEngine._count.
  */
 
-const MAX_VOICES = 28;
+/**
+ * Voice budget.
+ *
+ * Two things were wrong with a single flat cap. The counter is incremented per
+ * *node* while the gate was checked per *sound*, and one sound is four to
+ * eleven nodes — so it routinely overshot its own ceiling (measured peak 35
+ * against a cap of 28) and then refused everything until it drained. And it
+ * applied to the player's own damage cue: measured over three minutes of heavy
+ * combat the gate refused 1720 times, ~9.6 a second, and `playerHurt` bailing
+ * took the music duck with it. The "I am taking damage" sound is the player's
+ * primary off-screen threat signal and it was being deleted selectively in
+ * exactly the fights it exists for.
+ *
+ * So `_take` is charged the node count the sound is about to spend, and world
+ * SFX may not take the graph above WORLD_VOICES. The difference is a standing
+ * reservation that only player-feedback sounds can spend.
+ *
+ * The ceiling moved 28 -> 40 with the accounting, and that is a correction
+ * rather than a loosening: the old gate let the *measured* count run to 35
+ * because it charged one per sound and counted one per node, so 28 was never
+ * the number the graph actually ran at. Charging honestly at 28 would have cut
+ * the real world-SFX budget from ~35 concurrent nodes to 20 and thinned a
+ * firefight — measured, refusals went from 658 to 2739 over 150 s of the same
+ * combat. 40/10 keeps the density the game was tuned against and still holds
+ * ten nodes in reserve that no amount of world noise can take.
+ */
+const MAX_VOICES = 40;
+const PRIORITY_RESERVE = 10;
+const WORLD_VOICES = MAX_VOICES - PRIORITY_RESERVE;
+
+/**
+ * Music bus coefficient, against an SFX bus of 0.9. Named because three places
+ * write it — graph setup, `setMusicVolume`, and the `playerHurt` duck's restore
+ * target — and a duplicated literal across those is a silent way for the duck
+ * to restore the bus to the wrong level.
+ */
+const MUSIC_BUS = 0.80;
+
+/**
+ * Item tiers as a pitch ladder for `pickup()`. The tier never reached the sound
+ * at all before — `itemPickup` carries `{id, count}` and the one direct
+ * `play('pickup')` call passes no argument — so all six tiers played the
+ * identical tier-0 jingle and `pickup`'s tier-scaled pitch, its extra note and
+ * its shimmer tail were unreachable. Resolved from the id here rather than
+ * waiting on the payload, so the read is correct whatever the emitter sends.
+ */
+const PICKUP_TIER = {
+  common: 0, uncommon: 1, legendary: 2, boss: 3, lunar: 4, equipment: 1,
+  // A blight card is a corruption, not a reward; it takes the plainest voice
+  // until it gets a cue of its own.
+  blight: 0,
+};
 
 const SURFACES = {
   stone:    { freq: 2600, q: 1.2, decay: 0.09, gain: 0.5 },
@@ -63,6 +118,9 @@ export class Audio {
 
     this._throttles = new Map();
     this._variants = new Map();
+    // Last announced stack count per item id. `itemPickup` carries an absolute
+    // total, not a delta, so this is what tells a pickup from a removal.
+    this._itemCounts = new Map();
     this._shotIndex = 0;
     this._footIndex = 0;
   }
@@ -98,15 +156,22 @@ export class Audio {
       this.musicEngine?.bump(p?.isBoss ? 0.5 : p?.isElite ? 0.14 : 0.05);
     });
     e.on('playerHurt', (p) => this.playerHurt(p?.amount ?? 0));
-    e.on('itemPickup', (p) => this.pickup(p?.tier ?? 0));
+    e.on('itemPickup', (p) => this.itemChanged(p));
     e.on('goldChanged', () => this.coin());
     e.on('abilityUsed', (p) => this.ability(p?.slot ?? 0));
     e.on('levelUp', () => this.musicEngine?.bump(0.22));
-    e.on('stageStart', () => {
+    e.on('stageStart', (p) => {
       this.stageSting();
       // A new stage starts empty. Carrying the last fight's heat across the
       // teleport left the track at full tilt over an empty arena.
       this.musicEngine?.cool();
+      // Stage 1 is the start of the run, and the run is what the opening
+      // ceiling measures — not the age of the AudioContext, which begins at
+      // the first gesture anywhere on the page.
+      if ((p?.index ?? 0) === 0) {
+        this.musicEngine?.reset();
+        this._itemCounts.clear();
+      }
     });
     e.on('bossSpawn', () => { this.bossHorn(); this.musicEngine?.bump(0.7); });
     e.on('teleporterComplete', () => this.stageSting());
@@ -127,10 +192,14 @@ export class Audio {
     const ac = new AC({ latencyHint: 'interactive' });
     this.ac = ac;
 
+    // Master limiter: a safety net on the sum, not the mix bus. It used to sit
+    // at -8 dB / 18:1 with the SFX peaks 10 dB over it, which meant it was
+    // pulling continuously during combat — and it pulls everything, so the
+    // soundtrack was being compressed out by the explosions.
     const limiter = ac.createDynamicsCompressor();
-    limiter.threshold.value = -8;
+    limiter.threshold.value = -3;
     limiter.knee.value = 2;
-    limiter.ratio.value = 18;
+    limiter.ratio.value = 12;
     limiter.attack.value = 0.002;
     limiter.release.value = 0.18;
     limiter.connect(ac.destination);
@@ -141,12 +210,27 @@ export class Audio {
     master.connect(limiter);
     this.master = master;
 
+    // SFX gets the tight limiter instead, so explosions are tamed where they
+    // are made rather than by dragging the rest of the mix down with them.
+    const sfxLimiter = ac.createDynamicsCompressor();
+    sfxLimiter.threshold.value = -7;
+    sfxLimiter.knee.value = 2;
+    sfxLimiter.ratio.value = 14;
+    sfxLimiter.attack.value = 0.002;
+    sfxLimiter.release.value = 0.15;
+    sfxLimiter.connect(master);
+    this.sfxLimiter = sfxLimiter;
+
     this.sfx = ac.createGain();
     this.sfx.gain.value = this.sfxVolume * 0.9;
-    this.sfx.connect(master);
+    this.sfx.connect(sfxLimiter);
 
+    // 0.32 against an SFX bus of 0.9 was a 9 dB structural deficit: rendered at
+    // the shipped defaults the music sat 10 dB under a firefight in RMS and 19
+    // under it in the sparse opening. MUSIC_BUS is the one place that number
+    // lives; `setMusicVolume` and the `playerHurt` duck both read it.
     this.music = ac.createGain();
-    this.music.gain.value = this.musicVolume * 0.32;
+    this.music.gain.value = this.musicVolume * MUSIC_BUS;
     this.music.connect(master);
 
     this.ambient = ac.createGain();
@@ -168,6 +252,7 @@ export class Audio {
     // The soundtrack owns everything downstream of `this.music`. It is built
     // last because it needs the bus and the shared noise buffer.
     this.musicEngine = new MusicEngine(ac, this.music, this.noiseBuf);
+    this._syncMusicSilence();
     this.ready = true;
     return ac;
   }
@@ -239,12 +324,18 @@ export class Audio {
   /* ------------------------------------------------------------------ */
 
   /**
-   * Voice cap check. Counting happens per source node in _release, not here —
-   * one "sound" is three or four nodes, and charging it as one would let fifty
-   * simultaneous explosions through the gate.
+   * Voice cap check, charged the number of source nodes the sound is about to
+   * spend. `cost` is the sound's worst case, counted from its own body — the
+   * gate has to be in the same units as `_release`'s counter or the cap is
+   * unpredictable.
+   *
+   * `priority` is for sounds the player needs in order to play correctly: their
+   * own damage, their death, a shield breaking, a heal, an ability firing.
+   * Those may spend the whole budget; world SFX may not take it past
+   * WORLD_VOICES, so the difference is always there when one of them arrives.
    */
-  _take() {
-    return this.voices < MAX_VOICES;
+  _take(cost = 1, priority = false) {
+    return this.voices + cost <= (priority ? MAX_VOICES : WORLD_VOICES);
   }
 
   _release(node) {
@@ -355,7 +446,7 @@ export class Audio {
   /** Weapon fire: transient click + noise body + pitched thump. */
   shoot(pos, scale = 1) {
     const ac = this._ensure();
-    if (!ac || !this._take()) return;
+    if (!ac || !this._take(5)) return;
     const t = ac.currentTime;
     const out = this._out(pos, 8);
 
@@ -397,7 +488,7 @@ export class Audio {
     const ac = this._ensure();
     if (!ac) return;
     if (!this._throttle('impact', 0.03)) return;
-    if (!this._take()) return;
+    if (!this._take(4)) return;
     const s = SURFACES[material] || SURFACES.stone;
     const t = ac.currentTime;
     const out = this._out(pos, 5);
@@ -433,7 +524,7 @@ export class Audio {
     const ac = this._ensure();
     if (!ac) return;
     if (!this._throttle(crit ? 'crit' : 'hit', crit ? 0.04 : 0.055)) return;
-    if (!this._take()) return;
+    if (!this._take(4)) return;
     const t = ac.currentTime;
     const out = this._out(pos, 7);
     const vary = 0.92 + Math.random() * 0.18;
@@ -465,7 +556,7 @@ export class Audio {
   /** Explosion: crack, filtered noise body, sub thump, and a tail. */
   explosion(pos, radius = 4) {
     const ac = this._ensure();
-    if (!ac || !this._take()) return;
+    if (!ac || !this._take(9)) return;
     const t = ac.currentTime;
     const out = this._out(pos, 12, 220);
     const s = clamp(radius / 4, 0.5, 3);
@@ -502,7 +593,7 @@ export class Audio {
   zap(pos) {
     const ac = this._ensure();
     if (!ac) return;
-    if (!this._throttle('zap', 0.05) || !this._take()) return;
+    if (!this._throttle('zap', 0.05) || !this._take(7)) return;
     const t = ac.currentTime;
     const out = this._out(pos, 8);
     const vary = 0.85 + Math.random() * 0.3;
@@ -526,7 +617,7 @@ export class Audio {
   enemyVocal(pos, kind = 'small') {
     const ac = this._ensure();
     if (!ac) return;
-    if (!this._throttle('vocal', 0.12) || !this._take()) return;
+    if (!this._throttle('vocal', 0.12) || !this._take(4)) return;
     const t = ac.currentTime;
 
     const base = kind === 'boss' ? 62 : kind === 'big' ? 95 : kind === 'elite' ? 130 : 180;
@@ -554,7 +645,7 @@ export class Audio {
     const ac = this._ensure();
     if (!ac) return;
     this.enemyVocal(pos, isBoss ? 'boss' : isElite ? 'elite' : 'small');
-    if (!this._take()) return;
+    if (!this._take(2)) return;
     const t = ac.currentTime;
     const out = this._out(pos, 8);
     // Descending noise sweep = the dissolve, audibly.
@@ -567,7 +658,7 @@ export class Audio {
   footstep(pos, surface = 'dirt') {
     const ac = this._ensure();
     if (!ac) return;
-    if (!this._throttle('step', 0.12) || !this._take()) return;
+    if (!this._throttle('step', 0.12) || !this._take(3)) return;
     const s = SURFACES[surface] || SURFACES.dirt;
     const t = ac.currentTime;
     const out = this._out(pos, 4, 40);
@@ -593,19 +684,22 @@ export class Audio {
 
   playerHurt(amount = 0) {
     const ac = this._ensure();
-    if (!ac || !this._take()) return;
+    if (!ac) return;
     const t = ac.currentTime;
+    // Duck first, and unconditionally. The duck is the reason the hit reads in
+    // a loud fight, it costs no voices, and it has no business being gated on
+    // the voice budget the fight has just filled.
+    if (this.music) {
+      this.music.gain.cancelScheduledValues(t);
+      this.music.gain.setValueAtTime(this.music.gain.value, t);
+      this.music.gain.linearRampToValueAtTime(this.musicVolume * MUSIC_BUS * 0.31, t + 0.03);
+      this.music.gain.linearRampToValueAtTime(this.musicVolume * MUSIC_BUS, t + 0.7);
+    }
+    if (!this._take(3, true)) return;
     const sev = clamp(amount / 40, 0.3, 1.4);
     this._noise(t, 0.22, { type: 'lowpass', freq: 1400, freqEnd: 240, q: 0.8, gain: 0.5 * sev, attack: 0.002 });
     this._tone(t, 0.3, { type: 'sine', f0: 140, f1: 42, gain: 0.55 * sev, attack: 0.003 });
     this._tone(t, 0.18, { type: 'square', f0: 320, f1: 90, gain: 0.13 * sev });
-    // Duck the music briefly so the hit reads even in a loud fight.
-    if (this.music) {
-      this.music.gain.cancelScheduledValues(t);
-      this.music.gain.setValueAtTime(this.music.gain.value, t);
-      this.music.gain.linearRampToValueAtTime(this.musicVolume * 0.1, t + 0.03);
-      this.music.gain.linearRampToValueAtTime(this.musicVolume * 0.32, t + 0.7);
-    }
   }
 
   playerDead() {
@@ -629,7 +723,7 @@ export class Audio {
 
   heal(pos) {
     const ac = this._ensure();
-    if (!ac || !this._take()) return;
+    if (!ac || !this._take(3, true)) return;
     const t = ac.currentTime;
     const out = this._out(pos, 6);
     for (let i = 0; i < 3; i++) {
@@ -641,7 +735,7 @@ export class Audio {
 
   shieldBreak(pos) {
     const ac = this._ensure();
-    if (!ac || !this._take()) return;
+    if (!ac || !this._take(3, true)) return;
     const t = ac.currentTime;
     const out = this._out(pos, 8);
     this._noise(t, 0.35, { type: 'highpass', freq: 3200, gain: 0.4, out, attack: 0.001 });
@@ -649,10 +743,37 @@ export class Audio {
     this._tone(t, 0.4, { type: 'sine', f0: 90, f1: 40, gain: 0.35, out });
   }
 
+  /**
+   * Inventory changed. `itemPickup` carries an absolute stack total rather than
+   * a delta, so the direction is derived here: a total that went up is a
+   * pickup, a total that went down is a removal, and a removal used to play the
+   * reward jingle — `take()` and the blight corruption transform both go
+   * through the same event as `give()`.
+   */
+  itemChanged(p) {
+    const id = p?.id;
+    if (!id) return;
+    const total = p.count ?? 0;
+    const prev = this._itemCounts.get(id) ?? 0;
+    this._itemCounts.set(id, total);
+    const delta = p.delta ?? (total - prev);
+    if (delta === 0) return;
+    if (delta < 0) { this.deny(); return; }
+    this.pickup(PICKUP_TIER[p.tier ?? ITEM_BY_ID.get(id)?.tier] ?? 0);
+  }
+
   /** Rising arpeggio; higher tiers start higher and add a shimmer tail. */
   pickup(tier = 0) {
     const ac = this._ensure();
     if (!ac) return;
+    // `Items.give` reaches this twice for one item — once through the
+    // `itemPickup` event and once through a direct `play('pickup')` — and the
+    // jingle is fully deterministic, so the two copies landed 10.6 ms apart as
+    // bit-identical waveforms and comb-filtered the game's most-heard reward
+    // cue into something hollow. The duplicate call site is in Items.js and is
+    // not this file's to delete; this collapses the pair either way, and also
+    // folds the two events the blight transform fires for one card.
+    if (!this._throttle('pickup', 0.04)) return;
     const t = ac.currentTime;
     const n = 3 + Math.min(2, tier);
     const base = ROOT * 4 * Math.pow(2, tier / 6);
@@ -702,7 +823,7 @@ export class Audio {
 
   ability(slot = 0) {
     const ac = this._ensure();
-    if (!ac || !this._take()) return;
+    if (!ac || !this._take(3, true)) return;
     const t = ac.currentTime;
     // `abilityUsed` carries the slot as a string id, not an index — multiplying
     // that produces NaN and WebAudio throws on a non-finite frequency.
@@ -978,8 +1099,9 @@ export class Audio {
 
   setMusicVolume(v) {
     this.musicVolume = clamp(v, 0, 1);
-    if (this.music) this.music.gain.setTargetAtTime(this.musicVolume * 0.32, this.ac.currentTime, 0.05);
+    if (this.music) this.music.gain.setTargetAtTime(this.musicVolume * MUSIC_BUS, this.ac.currentTime, 0.05);
     if (this.ambient) this.ambient.gain.setTargetAtTime(this.musicVolume * 0.4, this.ac.currentTime, 0.05);
+    this._syncMusicSilence();
   }
 
   setMuted(muted) {
@@ -987,7 +1109,18 @@ export class Audio {
     if (this.master) {
       this.master.gain.setTargetAtTime(this.muted ? 0 : this.masterVolume, this.ac.currentTime, 0.03);
     }
+    this._syncMusicSilence();
     return this.muted;
+  }
+
+  /**
+   * Tell the sequencer whether anything can hear it. Muted or music volume 0,
+   * it was still synthesising ~270 nodes a second into a gain of zero. The
+   * intensity model keeps running either way, so the arrangement is in the
+   * right place the moment the sound comes back.
+   */
+  _syncMusicSilence() {
+    if (this.musicEngine) this.musicEngine.silent = this.muted || this.musicVolume <= 0;
   }
 
   toggleMute() { return this.setMuted(!this.muted); }

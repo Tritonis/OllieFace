@@ -443,6 +443,53 @@ if (!ready) {
       sceneObjects: objects,
     };
   });
+
+  /* Does the audio system run at all?
+   *
+   * WebAudio's autoplay policy means `Audio._ensure()` runs on the first
+   * pointerdown/keydown/touchstart and not before, so without a gesture no
+   * statement in `Audio.js` or `Music.js` ever executes under this harness.
+   * `errorCount: 0` from a capture was therefore not evidence about the audio
+   * domain at all — and that is the hole an every-frame `ReferenceError` in the
+   * music boot walked through to reach a human reviewer.
+   *
+   * Dead last, after the final shutter, and that placement is measured rather
+   * than cautious. Building the audio graph fills a two-second white-noise
+   * buffer — ~96 000 `Math.random()` draws — off the same global generator the
+   * rest of the game draws from, so every unseeded visual downstream of it
+   * lands somewhere else. With the gesture before the first scenario, against a
+   * three-run noise floor of 0.10-2.08% of pixels differing on `01-title`, the
+   * same shot came back at 4.74-7.90%, and `14-survivor-select` went
+   * 0.01-0.46% to 1.70-2.67%. That is true of a click and of a keypress alike;
+   * it is not the pointer, it is the entropy. A gate may not move the thing it
+   * is gating, so the audio check goes where it cannot.
+   *
+   * `KeyZ` because `Input` reads only WASD, arrows, Space, Shift, E/Q/R, Enter,
+   * Escape and Backspace, and `thaw()` because every scenario stops the engine
+   * loop before resolving — the sequencer needs frames to emit into.
+   *
+   * The assertion is about `stepsEmitted` rather than `ready`: a music engine
+   * that was constructed and then threw on every frame reports `ready: true`
+   * and emits zero steps, which is exactly the state that shipped. What this
+   * does *not* cover is the SFX catalogue, whose entry points are gameplay
+   * events that only fire during scenarios; closing that would mean holding the
+   * graph open across the shots, which is the thing measured above as
+   * unacceptable.
+   */
+  const errorsBeforeAudio = errors.length;
+  await page.keyboard.press('KeyZ');
+  await page.evaluate(() => globalThis.__HARNESS__?.thaw?.());
+  await page.evaluate(() => globalThis.__HARNESS__?.frames?.(90));
+  manifest.audio = await page.evaluate(() => {
+    const a = globalThis.__GAME__?.ctx?.audio;
+    return {
+      ready: !!a?.ready,
+      state: a?.ac?.state ?? null,
+      stepsEmitted: a?.musicEngine?.stepsEmitted ?? 0,
+    };
+  });
+  manifest.audio.newErrors = errors.slice(errorsBeforeAudio);
+  manifest.audioOk = manifest.audio.stepsEmitted > 0 && manifest.audio.newErrors.length === 0;
 }
 
 // A failed boot writes its own file rather than overwriting the record of
@@ -459,6 +506,8 @@ console.log(JSON.stringify({
   determinism: manifest.determinism ?? null,
   shots: manifest.shots.map((s) => s.name),
   errorCount: errors.length,
+  audio: manifest.audio ?? null,
+  audioOk: manifest.audioOk ?? null,
   subjectsOk: manifest.subjectsOk ?? null,
   subjectFailures: failures.map((f) => `${f.name}: ${f.failed.join(', ')}`),
   toleratedAbsences: (manifest.toleratedAbsences ?? []).map(
@@ -470,7 +519,12 @@ if (errors.length) console.log('\nFIRST ERRORS:\n' + errors.slice(0, 8).join('\n
 if (failures.length) {
   console.log('\nSUBJECT FAILURES:\n' + JSON.stringify(failures, null, 2));
 }
-// Non-zero on a missing subject as well as on a failed boot. A capture that
-// produced twenty plausible-looking images without their subjects is not a
-// successful run, and the exit code is the one signal a caller cannot ignore.
-process.exit(ready && !failures.length ? 0 : 1);
+if (ready && manifest.audioOk === false) {
+  console.log('\nAUDIO FAILURE: the music engine emitted no steps, or threw.\n'
+    + JSON.stringify(manifest.audio, null, 2));
+}
+// Non-zero on a missing subject as well as on a failed boot, and on a dead
+// audio system. A capture that produced twenty plausible-looking images without
+// their subjects is not a successful run, and neither is one whose soundtrack
+// never played a note; the exit code is the one signal a caller cannot ignore.
+process.exit(ready && !failures.length && manifest.audioOk !== false ? 0 : 1);

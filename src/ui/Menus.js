@@ -385,7 +385,14 @@ export class Menus {
                nav outside this wrapper is what guarantees it is always on
                screen, and is why this is a wrapper rather than a sticky footer:
                a sticky nav still lets content scroll through the panel's own
-               bottom padding, which reads as clipping. -->
+               bottom padding, which reads as clipping.
+
+               Nothing inside the report is focusable, which is what made the
+               scroller mouse-and-touch-only: the navigator only ever scrolls
+               through paintFocus's scrollIntoView, and it had nothing in here
+               to land on. Menus.navScroll is the other half — up and down
+               drive this container directly while the ring sits on the nav
+               below. -->
           <div class="run-report">
             <div class="run-id" data-run-id></div>
             <div class="stat-grid" data-stats></div>
@@ -1395,6 +1402,50 @@ export class Menus {
     this.paintFocus(list);
   }
 
+  /**
+   * The open screen's scrollable region, when the navigator cannot reach into
+   * it, and only while it actually overflows.
+   *
+   * The run summary is the one screen whose content is authored by the *run*:
+   * a long run fills the report with chips, bars, records and an item grid,
+   * none of which is focusable, and the two `[data-nav]` buttons sit outside
+   * the scroller by design so they can never be pushed off frame. That design
+   * is right for the buttons and left the content unreadable without a mouse —
+   * `paintFocus`'s `scrollIntoView` is the only thing in this file that ever
+   * scrolls anything, and it has nothing inside `.run-report` to land on.
+   */
+  scrollRegion() {
+    if (this.screen !== 'death') return null;
+    const el = this.screens.death?.querySelector('.run-report');
+    if (!el || el.querySelector('[data-nav]')) return null;
+    return el.scrollHeight - el.clientHeight > 1 ? el : null;
+  }
+
+  /**
+   * Vertical input on a screen with an unreachable scroller: scroll it.
+   *
+   * Returns true when the press was spent here. At either end of the travel it
+   * returns false and the press falls through to `navMove`, so the ring is
+   * never trapped behind the scroller and a report with nothing to scroll
+   * behaves exactly as it did before. Left/right always move the ring — the
+   * summary's buttons are a row, so that costs nothing and gives a controller
+   * a way past the report at any scroll position.
+   *
+   * A page at a time rather than a line: a stick repeats at 140 ms and the
+   * keyboard does not repeat at all, so a line-sized step would make a long
+   * report a chore rather than a read.
+   */
+  navScroll(dir) {
+    const el = this.scrollRegion();
+    if (!el) return false;
+    const max = el.scrollHeight - el.clientHeight;
+    const at = el.scrollTop;
+    if (dir > 0 ? at >= max - 1 : at <= 1) return false;
+    const step = Math.max(64, el.clientHeight * 0.6);
+    el.scrollTop = Math.max(0, Math.min(max, at + dir * step));
+    return true;
+  }
+
   navConfirm() {
     const el = this.navTargets()[this.navIndex];
     if (!el) return;
@@ -1436,7 +1487,10 @@ export class Menus {
     // it; everywhere else both walk the same list, which is what makes one
     // navigator work on a grid, a column and a tab rail alike.
     const step = dy || dx;
-    if (step) this.navMove(step > 0 ? 1 : -1);
+    // Vertical is offered to the screen's scroller first; `navScroll` hands it
+    // straight back at either end of the travel, and always on a screen with
+    // nothing to scroll.
+    if (step && !(dy && this.navScroll(dy > 0 ? 1 : -1))) this.navMove(step > 0 ? 1 : -1);
     if (confirm) this.navConfirm();
     if (back) this.escape();
   }

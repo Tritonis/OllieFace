@@ -109,6 +109,12 @@ function fireFlash(ctx, player, scale = 1) {
 // before it hits the first target — the same trap `Combat.explode` documents.
 const _group = [];
 
+// A second snapshot buffer, for the one caller that has to filter `_group` and
+// then keep the result across a loop that re-enters Combat: Conflagration's
+// burning set. Sharing `_group` for both would mean the filter and the source
+// were the same array.
+const _lit = [];
+
 /**
  * Everything hostile inside a cone from `origin` along `dir`.
  *
@@ -1130,11 +1136,19 @@ export const ABILITIES = {
       //
       // `Items.addCloud` is host-only and bounded to MAX_CLOUDS, so a survivor
       // spamming both charges cannot grow the per-step overlap cost.
+      //
+      // The options bag is what makes this a *pyre* rather than a green Spore
+      // Sac puddle with a fire ring drawn over it. The whole kit is organised
+      // around `burn` — the Special pays per burning body — and the only ranged
+      // setup tool in it used to contribute nothing to that count, because the
+      // shared cloud primitive had no status channel at all until it was given
+      // one. `type: 'fire'` matters too: Afflictor's Index and the ailment
+      // commons read the damage type.
       groundAim(ctx, player, 26, _a);
       const px = _a.x, py = _a.y, pz = _a.z;
       player.schedule(0.55, () => {
         _origin.set(px, py, pz);
-        ctx.items?.addCloud?.(_origin, 6, 8, 0.9);
+        ctx.items?.addCloud?.(_origin, 6, 8, 0.9, { status: 'burn', colour: 0xff7a2a, type: 'fire' });
         ctx.vfx?.ring?.(_origin, 6, 0xff7a2a);
         ctx.vfx?.rings?.spawn?.(_origin, _up, 0xffd76a, 0.4, 6, 0.5, 0.85);
         ctx.vfx?.lights?.flick?.(_origin, 0xff8a20, 22, 14, 0.28);
@@ -1224,7 +1238,7 @@ export const ABILITIES = {
     key: 'R',
     cooldown: 13.0,
     charges: 1,
-    description: 'Detonate every burning enemy within 34m for 600% damage each.',
+    description: 'Detonate every burning enemy within 34m: each one bursts for 600% damage in 5.5m.',
     fire(ctx, player) {
       const CHARGE = 0.4;
       chargeTell(ctx, player, CHARGE, 0xff8a20, 6);
@@ -1242,35 +1256,72 @@ export const ABILITIES = {
           for (let i = 0; i < n; i++) _group.push(c.overlapAt(i));
         }
 
+        // The burning set is resolved *before* the first detonation, and this is
+        // load-bearing rather than tidy.
+        //
+        // Each detonation re-applies `burn` inside its own 5.5 m radius. Testing
+        // `hasStatus` inside the loop therefore meant a body that was not
+        // burning at cast time could be lit by an earlier blast and then pass
+        // the test when the loop reached it — a cascade nobody documented, which
+        // could only propagate *forwards* through `_group`, whose order is the
+        // spatial hash's. Identical formations paid different amounts depending
+        // on iteration order, which is the part that is unacceptable at any
+        // magnitude: the player cannot see the hash.
+        //
+        // Measured, one lit body among eight at 3 m spacing detonated two of
+        // them for 332 against a stated 78.
+        _lit.length = 0;
+        for (let i = 0; i < _group.length; i++) {
+          const e = _group[i];
+          if (e?.alive && c.hasStatus(e, 'burn')) _lit.push(e);
+        }
+        _group.length = 0;
+
         // The payoff, and the reason the primary is allowed to be weak: this
         // pays *per burning body*, so its value is entirely a function of how
         // well the last ten seconds were spent spreading the fire. Against one
         // target it is a mediocre 600%; against a horde the Stoke cone has been
         // washed over it is the biggest single number on the roster.
-        let lit = 0;
-        for (let i = 0; i < _group.length; i++) {
-          const e = _group[i];
-          if (!e?.alive || !c.hasStatus(e, 'burn')) continue;
-          lit++;
-          _a.copy(e.position).setY(e.position.y + (e.height || 1.8) * 0.4);
+        //
+        // `falloff` is left on (the default). With it off, overlapping 5.5 m
+        // blasts each paid full damage to every body in range, so a tight
+        // cluster multiplied the printed number by however many of its members
+        // happened to be alight — the second half of the 4-6x overpay. Falloff
+        // bottoms out at 0.35, so a cluster still pays more than a lone target,
+        // which is the intended shape; it just no longer pays linearly in the
+        // square of the pack size.
+        const litCount = _lit.length;
+        for (let i = 0; i < _lit.length; i++) {
+          const e = _lit[i];
+          if (!e.alive) continue;
+          // The blast is centred on the body, not on the raised point the VFX
+          // is drawn at. With falloff live those are no longer the same thing:
+          // an epicentre lifted 0.4 of the target's height put the detonating
+          // body itself a metre off its own explosion and paid it 93% of the
+          // printed 600%. The fire draws from the chest; the damage comes from
+          // where the monster is.
+          // Copied, not aliased: `explode` holds `point` across a loop that can
+          // proc items which move bodies, and `e.position` is live.
+          _a.copy(e.position);
+          _b.copy(e.position).setY(e.position.y + (e.height || 1.8) * 0.4);
           c.explode(_a, 5.5, player.stats.damage * 6.0, player, {
-            proc: 0.5, type: 'fire', status: 'burn', falloff: false,
+            proc: 0.5, type: 'fire', status: 'burn',
           });
-          ctx.vfx?.explosion?.(_a, 4.5, 0xff9a3c);
-          ctx.vfx?.beam?.(player.muzzlePosition(), _a, 0xffd76a);
+          ctx.vfx?.explosion?.(_b, 4.5, 0xff9a3c);
+          ctx.vfx?.beam?.(player.muzzlePosition(), _b, 0xffd76a);
         }
-        _group.length = 0;
+        _lit.length = 0;
 
         // The cast is *never* silent, even when nothing was burning: an ability
         // whose feedback depends on whether it found targets teaches the player
         // that the button is unreliable rather than that their setup was.
         ctx.vfx?.rings?.spawn?.(player.position, _up, 0xff8a20, 1.0, 34, 0.55, 0.7);
-        ctx.vfx?.lights?.flick?.(player.position, 0xffd76a, 30 + lit * 4, 20, 0.22);
+        ctx.vfx?.lights?.flick?.(player.position, 0xffd76a, 30 + litCount * 4, 20, 0.22);
         player.mesh.addRecoil(1.6);
         player.addAimPunch(2.2);
         ctx.cameraRig?.punch(3.2);
-        ctx.pipeline?.addShake?.(0.10 + Math.min(0.2, lit * 0.03));
-        if (lit) ctx.hitstop = Math.max(ctx.hitstop || 0, 0.07);
+        ctx.pipeline?.addShake?.(0.10 + Math.min(0.2, litCount * 0.03));
+        if (litCount) ctx.hitstop = Math.max(ctx.hitstop || 0, 0.07);
         ctx.audio?.explosion?.(player.position, 10);
       });
     },

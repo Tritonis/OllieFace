@@ -375,8 +375,16 @@ export const EQUIPMENT = [
         // buff has to lapse the moment the survivor steps out of the dome, and
         // a short buff refreshed while inside expires on its own with no
         // enter/exit bookkeeping to get wrong.
+        //
+        // Through `Items.addBuff`, not `Player.grantBuff`. `grantBuff` pushes a
+        // new entry every call and sums the live ones, so a 0.7 s grant on a
+        // 0.5 s tick always had two of them alive and the dome paid +60 against
+        // the +30 printed on the card. `addBuff` refreshes the one named slot,
+        // which is what "refreshed while inside" was always supposed to mean.
+        // The duration still outruns the interval on purpose — it is the gap
+        // that stops the armour flickering off between ticks.
         if (a.player.position.distanceTo(at) <= AEGIS_RADIUS) {
-          a.player.grantBuff?.({ armor: AEGIS_ARMOR }, 0.7);
+          a.items.addBuff('aegis', 0.7, 1, AEGIS_ARMOR);
         }
         a.ctx.vfx?.ring?.(at, AEGIS_RADIUS, 0x8fd8ff);
       });

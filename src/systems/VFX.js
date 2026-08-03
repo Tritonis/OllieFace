@@ -170,6 +170,7 @@ export class VFX {
     e.on('damage', (p) => this._onDamage(p));
     e.on('kill', (p) => this._onKill(p));
     e.on('playerHurt', (p) => this._onPlayerHurt(p));
+    e.on('shieldBroken', (p) => this._onShieldAbsorb(p));
     e.on('itemPickup', () => {
       const pp = ctx.player?.position;
       if (pp) this.itemPickupBurst(pp, 0xffffff);
@@ -1222,6 +1223,18 @@ export class VFX {
       e.frame = FRAME.BLOB; e.spin = 6; e.gravity = 18; e.drag = 1.2;
       this.particles.emit(e);
     }
+  }
+
+  /**
+   * A barrier ate the hit. Combat no longer emits `playerHurt` at zero, so this
+   * is what keeps an absorbed hit readable — deliberately a fraction of the
+   * hurt response: a shove on the camera and nothing else. No hitstop, no
+   * vignette, no aberration, because sustained chip damage under a barrier used
+   * to stutter the whole screen for zero health lost.
+   */
+  _onShieldAbsorb(p) {
+    if ((p?.absorbed ?? 0) <= 0) return;
+    this.ctx.pipeline?.addShake(0.035);
   }
 
   /* ------------------------------------------------------------------ */

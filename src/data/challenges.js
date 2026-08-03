@@ -415,7 +415,12 @@ export const CHALLENGES = [
   {
     id: 'wholeRoster',
     name: 'Whole Roster',
-    description: 'Finish a run with every survivor.',
+    // "Play", not "finish": `finisher` four challenges up uses "finish a run"
+    // to mean *win* one ("Finish a run at the Fracture instead of dying in
+    // it"), and both rows are visible in the same logbook list. This one is
+    // tracked by `survivorsPlayed`, which `commitRun` moves on every committed
+    // run whatever the outcome, so the word has to say so.
+    description: 'Play a run with every survivor.',
     category: 'mastery',
     hidden: false,
     goal: (f) => Math.max(1, catalogue(f, 'survivor')),
@@ -517,6 +522,22 @@ export const UNLOCK_BINDINGS = {};
 /** Ids that were written here by hand rather than discovered. */
 const MANUAL = new Set(Object.keys(UNLOCK_BINDINGS));
 
+/**
+ * `${type}:${id}` -> the challenge that claimed it.
+ *
+ * The forward table is keyed by challenge, so it can only see one direction of
+ * the collision: one challenge naming two rewards. Two *different* challenges
+ * naming the same reward is the same content bug seen from the other side, and
+ * it fails in the quieter way — `Profile.unlock` is idempotent, so whichever
+ * challenge completes second grants nothing and shows no "earned this run"
+ * chip, having legitimately completed. Nothing in the shipped catalogues
+ * triggers it today, which is exactly the moment to close it: the failure
+ * arrives with content nobody is looking at this file while adding.
+ */
+const REWARD_OWNER = new Map(
+  Object.entries(UNLOCK_BINDINGS).map(([cid, r]) => [`${r.type}:${r.id}`, cid]),
+);
+
 // Bumped by anything that changes the binding table or the challenge list, so
 // `Profile`'s cached gate map can tell it is stale. In a normal session this
 // settles before the first `isUnlocked`; it matters for hot reload and for
@@ -535,7 +556,10 @@ export function bindingStamp() { return _stamp; }
  *  - a malformed reward;
  *  - a second binding for a challenge that already has one, unless it is the
  *    same reward. Two content cards naming the same challenge is a content bug
- *    and the first one silently winning is how it stays invisible.
+ *    and the first one silently winning is how it stays invisible;
+ *  - a reward already claimed by a *different* challenge. Same content bug from
+ *    the other side, and quieter still: both bindings would take, and the
+ *    challenge that completes second would grant nothing.
  */
 export function registerUnlockBinding(challengeId, reward, { manual = false } = {}) {
   const c = CHALLENGE_BY_ID[challengeId];
@@ -559,7 +583,15 @@ export function registerUnlockBinding(challengeId, reward, { manual = false } = 
       + `and ${reward.type}:${reward.id} — one of them will never unlock`);
     return false;
   }
+  const rewardKey = `${reward.type}:${reward.id}`;
+  const owner = REWARD_OWNER.get(rewardKey);
+  if (owner !== undefined && owner !== challengeId) {
+    console.warn(`[challenges] ${rewardKey} is claimed by both "${owner}" and `
+      + `"${challengeId}" — the second to complete would grant nothing`);
+    return false;
+  }
   if (manual) MANUAL.add(challengeId);
+  REWARD_OWNER.set(rewardKey, challengeId);
   UNLOCK_BINDINGS[challengeId] = { type: reward.type, id: reward.id };
   c.unlocks = { type: reward.type, id: reward.id };
   _stamp++;

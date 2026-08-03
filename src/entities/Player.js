@@ -70,6 +70,12 @@ const TERMINAL = 55;
 
 const GROUND_ACCEL = 68;   // ~0.10s to top speed — responsiveness wins over weight
 const GROUND_DECEL = 86;
+// How long velocity written by something other than the controller survives.
+// Sized against both ends of the channel: a 9-12 m/s knockback reads as a shove
+// of roughly two metres, and a sustained pull settles at `accel * TAU`, which
+// puts the strongest one in the game (30 m/s^2 at contact) at ~4.6 m/s against
+// a 10.15 m/s sprint. See `_harvestExternal`.
+const EXTERNAL_TAU = 0.25;
 const AIR_CONTROL = 0.35;
 const AIR_DECEL = 7;
 const SPRINT_MULT = 1.45;
@@ -91,6 +97,26 @@ const MAX_SCHEDULED = 32;
 
 // Stand-in when the host has no command to feed a starved pawn.
 const IDLE_CMD = { tick: 0, moveX: 0, moveZ: 0, buttons: 0, yaw: 0, pitch: 0 };
+
+/**
+ * Detach a subtree from the scene and give its GPU buffers back.
+ *
+ * Everything this is pointed at — the character rig, the projectile pool root,
+ * the placeable pool root — builds its own geometries and materials in its own
+ * constructor, so there is nothing here another live object is still reading.
+ * `VFX.hitFlash` swaps in per-object material clones, which live on these same
+ * meshes and go with them.
+ */
+function releaseSubtree(root) {
+  if (!root) return;
+  root.removeFromParent?.();
+  root.traverse?.((o) => {
+    o.geometry?.dispose?.();
+    const m = o.material;
+    if (Array.isArray(m)) for (const mm of m) mm?.dispose?.();
+    else m?.dispose?.();
+  });
+}
 
 let NEXT_ID = 1;
 
@@ -122,6 +148,12 @@ export class Player {
     this.height = HEIGHT;
     this.position = new THREE.Vector3(0, 2, 0);
     this.velocity = new THREE.Vector3();
+    // Horizontal velocity this pawn did not put there itself. `_harvestExternal`
+    // owns both of these; `_extVX/_extVZ` is the velocity as this pawn last left
+    // it, and anything that differs when the next step begins came from outside.
+    this._external = new THREE.Vector3();
+    this._extVX = 0;
+    this._extVZ = 0;
 
     // Timed stat buffs (Anvil's Bulwark and anything like it). Folded into the
     // *base* block rather than onto the result of `ctx.items.stats()`, because
@@ -293,11 +325,13 @@ export class Player {
     this.placeables.clear();
     this.projectiles.clear();
 
-    // Rebuild the rig. The old one is dropped rather than disposed: a swap
-    // happens between runs, at most a handful of times a session, and disposing
-    // geometry that `VFX.hitFlash` may still be holding a clone of is a far
-    // worse failure than a few kilobytes of retained buffers.
-    ctx.scene.remove(this.group);
+    // Rebuild the rig, and free the old one. It used to be detached and dropped
+    // on the grounds that rigs share materials and that `VFX.hitFlash` might
+    // hold a clone of the geometry; neither is so. `CharacterMesh` builds every
+    // geometry and material per instance, and `hitFlash` clones *materials* onto
+    // the meshes it is flashing, which are these ones. Detaching alone leaked
+    // ~53 geometries a swap — 462 to 1260 over fifteen.
+    releaseSubtree(this.group);
     this.mesh = new CharacterMesh(card.meshKey);
     this.group = this.mesh.group;
     this.group.position.copy(this.position);
@@ -382,6 +416,8 @@ export class Player {
     this.maxShield = this.maxHealth * 0.5;
     if (this.health > this.maxHealth) this.health = this.maxHealth;
 
+    this._harvestExternal(dt);
+
     if (!replay) this._runSchedule(dt);
     this._tickTimers(dt);
     this._tickCooldowns(dt);
@@ -412,7 +448,60 @@ export class Player {
     this._commit(c, buttons, pressed);
   }
 
+  /**
+   * Fold in whatever moved this pawn from outside, and age what is already held.
+   *
+   * An enemy's knockback and the suction of a `pull` attack both write straight
+   * onto `velocity` between steps, and `_accelerate` then steered the horizontal
+   * velocity back toward `wish * speed` at up to 68 m/s^2 — larger than any
+   * injection in the game. The strongest pull is 30 m/s^2 at contact, so the
+   * correction cancelled it *exactly*, every step, and the injected component
+   * never reached the position integrator: a full 1.5s reel closed 0.000-0.081 m.
+   * Knockback survived only because 9-12 m/s takes a few steps to grind off.
+   *
+   * So the two are kept apart. What arrived from outside is stripped off before
+   * the correction runs and added back after it, which means it reaches
+   * `_resolve` intact — through the capsule solver, so a wall still stops a pull
+   * — while the player keeps full authority over their own velocity throughout.
+   * It is drift laid on top of control, never instead of it: a reeled player can
+   * still turn, still sprint, and still out-run the pull.
+   *
+   * It ages out on a time constant rather than being fought off, which is the
+   * only reason a sustained pull can build at all — a constant injection settles
+   * at `accel * EXTERNAL_TAU` instead of at zero.
+   *
+   * An exactly-zero horizontal velocity is the signature of a hard reset (stage
+   * respawn, a harness placement) rather than of anything this channel models,
+   * and drops the accumulator: without that, zeroing a sprinting player's
+   * velocity would read as a 10 m/s shove backwards.
+   */
+  _harvestExternal(h) {
+    const ext = this._external;
+    if (!this.alive || (this.velocity.x === 0 && this.velocity.z === 0)) {
+      ext.set(0, 0, 0);
+      this._extVX = this.velocity.x;
+      this._extVZ = this.velocity.z;
+      return;
+    }
+
+    ext.x += this.velocity.x - this._extVX;
+    ext.z += this.velocity.z - this._extVZ;
+
+    const drop = 1 - Math.exp(-h / EXTERNAL_TAU);
+    const dx = ext.x * drop;
+    const dz = ext.z * drop;
+    ext.x -= dx; ext.z -= dz;
+    this.velocity.x -= dx; this.velocity.z -= dz;
+    if (Math.abs(ext.x) < 1e-4) ext.x = 0;
+    if (Math.abs(ext.z) < 1e-4) ext.z = 0;
+  }
+
   _commit(cmd, buttons, pressed) {
+    // `velocity` as this pawn is leaving it. Everything that differs by the time
+    // the next step reads it was written by something else — see `_harvestExternal`.
+    this._extVX = this.velocity.x;
+    this._extVZ = this.velocity.z;
+
     // The interact bit is a request, not an action — Interactables resolves it,
     // and only where authority allows.
     this.interactPressed = (pressed & BTN.INTERACT) !== 0;
@@ -474,18 +563,29 @@ export class Player {
     this.sprinting = wantsSprint && this.fireLock <= 0;
     this.sprintBlend = damp(this.sprintBlend, this.sprinting ? 1 : 0, 0.995, h);
 
-    const speed = stats.moveSpeed * (this.sprinting ? SPRINT_MULT : 1);
+    // Slow and freeze reach the player here. `Combat.speedMultiplier` computed
+    // the right answer for both and nothing asked it, so every `slow` in the
+    // game — the Gloomshriver's whole identity, Grapnel Tether, the Aegis
+    // Emitter's dome, Frost Lattice — changed the player's speed by nothing.
+    const status = ctx.combat?.speedMultiplier?.(this) ?? 1;
+    const speed = stats.moveSpeed * (this.sprinting ? SPRINT_MULT : 1) * status;
 
     // Dash overrides horizontal control entirely — committing to the dash is
-    // what makes the i-frames a real decision.
+    // what makes the i-frames a real decision, and that includes shrugging off
+    // whatever the external channel is holding.
     if (this.dashTime > 0) {
       this.velocity.x = this.dashDirection.x * this.dashSpeed;
       this.velocity.z = this.dashDirection.z * this.dashSpeed;
       if (this.velocity.y < 0) this.velocity.y *= 0.35; // brief float, no slam
       this.dashRoll = damp(this.dashRoll, this._dashLateral(), 0.99, h);
+      this._external.set(0, 0, 0);
     } else {
       this.dashRoll = damp(this.dashRoll, 0, 0.99, h);
+      // The correction is allowed to steer only the velocity this pawn owns.
+      const ext = this._external;
+      this.velocity.x -= ext.x; this.velocity.z -= ext.z;
       this._accelerate(h, speed, wishLen > 0.01);
+      this.velocity.x += ext.x; this.velocity.z += ext.z;
     }
 
     this._gravity(h, (buttons & BTN.JUMP) !== 0);
@@ -903,20 +1003,28 @@ export class Player {
    * strong reference, so the Player, its rig, its projectile pool and its
    * placeable pool all stayed resident for the session, once per join.
    *
-   * Materials and geometry are deliberately *not* disposed here. The character
-   * rigs share material instances (see `makeCharacterMats`), so disposing a
-   * departing pawn's would blank the rig of anyone still wearing the same
-   * survivor — and three drops a program from its cache when the last material
-   * referencing it goes, which would then recompile mid-session. Dropping the
-   * references is enough; the GPU cost of a handful of rigs is not what was
-   * hurting here.
+   * Releasing the pools means their *roots*, not just their contents. `clear()`
+   * deactivates live entries and nothing more; both pools add their root to the
+   * scene at construction and populate it to full capacity there (96 projectile
+   * meshes, 24 placeable groups), so a joined-and-left pawn left 122 nodes for
+   * three to walk in `updateMatrixWorld` and `projectObject` every frame, for
+   * the life of the tab, while `coop.pawns.length` read zero.
+   *
+   * Geometry and materials go too. The comment that used to sit here said the
+   * character rigs share material instances and that disposing one would blank
+   * anyone wearing the same survivor. That is not true: `makeCharacterMats` is
+   * called from the `CharacterMesh` constructor and builds a fresh set per
+   * instance, as does every geometry in that file, and each pool likewise owns
+   * its own. Nothing here is shared with a pawn that is still standing.
    */
   dispose() {
     this._offStageStart?.();
     this._offStageStart = null;
     this.placeables?.clear?.();
     this.projectiles?.clear?.();
-    this.group?.removeFromParent?.();
+    releaseSubtree(this.placeables?.root);
+    releaseSubtree(this.projectiles?.root);
+    releaseSubtree(this.group);
     this.alive = false;
   }
 
@@ -993,7 +1101,14 @@ export class Player {
   setNetState(s) {
     if (!s) return;
     if (s.x !== undefined) this.position.set(s.x, s.y, s.z);
-    if (s.vx !== undefined) this.velocity.set(s.vx, s.vy, s.vz);
+    if (s.vx !== undefined) {
+      this.velocity.set(s.vx, s.vy, s.vz);
+      // A hard set from the host is not an outside shove — the host's velocity
+      // already has whatever pull or knockback it resolved folded into it.
+      this._external.set(0, 0, 0);
+      this._extVX = s.vx;
+      this._extVZ = s.vz;
+    }
     if (s.health !== undefined) this.health = s.health;
     if (s.grounded !== undefined) this.grounded = !!s.grounded;
     if (s.dashTime !== undefined) this.dashTime = s.dashTime;
@@ -1059,6 +1174,9 @@ export class Player {
   onDeath() {
     this.alive = false;
     this.velocity.set(0, 0, 0);
+    this._external.set(0, 0, 0);
+    this._extVX = 0;
+    this._extVZ = 0;
     this.projectiles.clear();
     this.placeables.clear();
     this._buffs.length = 0;

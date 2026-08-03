@@ -4101,8 +4101,6 @@ function animShriver(rig, a) {
 // no projectile for the player to read instead.
 // ---------------------------------------------------------------------------
 
-const LSH_CROWN = 2.05;
-
 function buildLasher() {
   const rig = newRig('lasher');
   rig.centerY = 1.4;

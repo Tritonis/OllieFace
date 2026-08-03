@@ -940,8 +940,19 @@ const DISCOVERY_NOUN = {
  * into an `innerHTML` that is rebuilt on every death anyway, and a node tree
  * built here would be one more thing for that screen to own and dispose.
  *
- * Returns `''` when the run genuinely changed nothing, so the container's
- * `:empty` rule collapses it rather than leaving a heading over a void.
+ * Returns `''` only when there is no report at all — a death screen opened
+ * without a committed run, which the harness and a mid-load quit both produce.
+ * The container's `:empty` rule collapses it there rather than leaving a
+ * heading over a void.
+ *
+ * It used to claim `''` for "a run that genuinely changed nothing", and that
+ * state is not reachable: the career line below is unconditional whenever the
+ * report carries lifetime numbers, which `_buildReport` populates for every
+ * committed run, and `veteran`/`centurion`/`clockedIn` tick on every run until
+ * each caps out, so `advanced` is non-empty too. That is the better behaviour —
+ * a bad run still gets a sentence about itself rather than a bare "You Died" —
+ * but it is not what the comment said, and a floor nobody can fall through is
+ * not a fallback.
  */
 export function renderRunReport(report) {
   if (!report) return '';
