@@ -650,6 +650,42 @@ export class Player {
     this.coyote = 0;
     this.grounded = false;
     if (!this._replaying) ctx.audio?.footstep?.(this.position, 'dirt');
+
+    /*
+     * The jump channel, both ends of it.
+     *
+     * `Items` has listened for a `jump` event since it was written and nothing
+     * in the project ever emitted one, so `onJump` never ran; and `onJump` is
+     * the only thing that calls `applyImpulse`, whose `consumeImpulse` had no
+     * caller either. Three shipped cards sat on the far side of that gap doing
+     * literally nothing — Waxed Wing, Updraft Vents, and Tectonic Heart, whose
+     * every-third-jump quake never counted a jump.
+     *
+     * The emit and the consume are the same statement on purpose: the hooks run
+     * synchronously inside `emit`, so whatever they push lands before the read
+     * on the next line and there is no one-frame ordering question to get wrong.
+     *
+     * The impulse goes onto the player's *own* velocity rather than through the
+     * external channel. It is self-caused — the player pressed jump — so they
+     * should keep authority over it: air control steers it and bleeds it off,
+     * which is what makes a 10 m/s launch a movement tool instead of a two-metre
+     * shove they watch happen. The external channel is for velocity the world
+     * writes onto the player, and it decays on a fixed 0.25 s timer that would
+     * throw all of this away before the apex.
+     */
+    if (!this._replaying) {
+      ctx.events?.emit?.('jump', { air: !canGround, jumps: this.jumpsUsed });
+      const impulse = ctx.items?.consumeImpulse?.() || 0;
+      if (impulse > 0) {
+        // Forward is where the player is going if they are going anywhere, and
+        // where they are looking if they are not — a launch that fires
+        // backwards because the stick was neutral is a bug the player feels.
+        const dx = this.moving ? this._wish.x : this._fwd.x;
+        const dz = this.moving ? this._wish.z : this._fwd.z;
+        this.velocity.x += dx * impulse;
+        this.velocity.z += dz * impulse;
+      }
+    }
   }
 
   _resolve(ctx, h) {

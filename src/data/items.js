@@ -847,7 +847,10 @@ export const ITEMS = [
   {
     id: 'wax-quail', name: 'Waxed Wing', tier: 'uncommon', glyph: 'feather',
     flavour: 'Up is a direction. Forward is a lifestyle.',
-    description: (n) => `Jumping while sprinting boosts you forward by ${linear(10, n)} m/s.`,
+    // "While sprinting" was in this text and never in the hook, and until the
+    // `jump` event existed nothing fired either way. Now that it does, the text
+    // says what the code does: every jump.
+    description: (n) => `Every jump boosts you forward by ${linear(10, n)} m/s.`,
     stat: (n, s) => { s.jumpCount += 0; },
     hooks: {
       onJump: (e, api) => { api.items.applyImpulse(linear(10, api.count)); },

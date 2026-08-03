@@ -628,9 +628,30 @@ export const ENEMIES = [
       // the free approach on whatever is standing next to it. That last one is
       // the reason its own melee is weak — the unit must not be able to punish
       // the player for accepting its offer.
+      //
+      // `pull: 26` is tuned against a working pull. The 19 it carried was
+      // chosen when no pull could move a grounded player at all, so it had
+      // never been measured against anything. Measured now, over the 1.5 s
+      // `active` window against a stationary player at 10 m: 19 steals 3.56 m
+      // and leaves them at 6.44 m — *outside* this attack's own 6 m `blast`, so
+      // the reel could not deliver the damage tick it exists to set up. 26
+      // steals 4.87 m and lands them at 5.13 m, inside the blast with margin.
+      // That is the threat: ignore the reel and it drags you into its own
+      // damage radius.
+      //
+      // It does not take control away, and that is measured too: against a
+      // sprinting player at 10 m it costs 0.22 m of a 10.57 m escape, and at
+      // 5 m — the closest the reel is allowed to start — it costs 1.48 m of a
+      // 10.31 m escape and never reverses their direction for a frame. 30 was
+      // measured and rejected on that arm: it takes 2.46 m at 5 m, which is a
+      // quarter of the escape. The number is deliberately equal
+      // to the Maw's `draw`, because `pull` is meaningless without `range` —
+      // the falloff is `1 - d/range`, so at 10 m this reads 16.0 m/s^2 against
+      // the Maw's 18.4 and the Herald's 22.5. The boss attacks stay stronger;
+      // the ordering lives in the range term, which is where it belongs.
       {
         id: 'reel', kind: 'pull', range: 26, minRange: 4, windup: 1.15, active: 1.5, recover: 1.0,
-        cooldown: 8.0, damage: 0.45, pull: 19, blast: 6, color: 0xff6a7a, weight: 3,
+        cooldown: 8.0, damage: 0.45, pull: 26, blast: 6, color: 0xff6a7a, weight: 3,
       },
       // Thorn spray: the reason standing at mid range and ignoring it is not
       // free either. Low damage, wide, and it applies nothing — it exists so

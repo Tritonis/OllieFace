@@ -362,7 +362,7 @@ export class Enemy {
       this.cd.fill(0);
       this.gcd = 0.5;
       if (this._ctx) {
-        const c = this.def.attacks[this.def.attacks.length - 1].color || 0xffa514;
+        const c = this.def.attacks[this.def.attacks.length - 1]?.color || 0xffa514;
         fx(this._ctx, 'explosion', this.position, 6 + this.radius * 2, c);
         this._ctx.director?.spawnWave?.(this.position, 8 + this.radius * 3, 34, 0, null, c);
         sfx(this._ctx, 'explosion', this.position, 1);
@@ -660,12 +660,31 @@ export class Enemy {
     const st = this.fsm.state;
     const dying = st === S.DIE;
 
+    /*
+     * `slow` and `freeze` reach a monster here. `Combat.speedMultiplier` had no
+     * callers at all, so Frost Lattice, Hoarfrost Band, Concussion Charge,
+     * Grapnel Tether's slow and the Aegis Emitter's dome all changed nothing
+     * about how fast anything moved.
+     *
+     * It is applied to the *whole* desired velocity and to the clamp above it,
+     * not to `steer`'s `speed` argument alone. Scaling only that would leave
+     * separation, obstacle avoidance and the pest jitter running at full pace —
+     * so a frozen unit would still slide around the field under its neighbours,
+     * which is the opposite of what a freeze reads as. The charge and the
+     * burrow return before that point and are scaled where they integrate.
+     *
+     * A dying unit is not slowed: its ragdoll is presentation, and freezing a
+     * corpse mid-topple looks like a hitch.
+     */
+    const slow = dying ? 1 : (ctx.combat?.speedMultiplier?.(this) ?? 1);
+
     // A dash and a burrow both own their own integration: neither wants
     // separation (a charge that gets nudged off its line stops being readable),
     // and the burrow is under the terrain the capsule solver would push it out
     // of. Both are also above the normal speed clamp by definition.
     if (st === S.CHARGE) {
       const a = this.atk;
+      d.x *= slow; d.z *= slow;
       this.velocity.x = d.x; this.velocity.z = d.z;
       moveGrounded(this, ctx, d, h, 200);
       this.yaw = turnToward(this.yaw, this.yaw, 0, h);
@@ -673,7 +692,7 @@ export class Enemy {
       return;
     }
     if (st === S.SUBMERGED) {
-      const s = def.burrowSpeed || this.moveSpeed * 2;
+      const s = (def.burrowSpeed || this.moveSpeed * 2) * slow;
       const len = Math.hypot(d.x, d.z) || 1;
       this.position.x += (d.x / len) * s * h;
       this.position.z += (d.z / len) * s * h;
@@ -739,7 +758,11 @@ export class Enemy {
       }
     }
 
-    const max = this.moveSpeed * 1.9;
+    // The status scale lands here, after every contribution to the desired
+    // velocity and on the ceiling as well, so a slow taxes the whole mover and
+    // a freeze is an actual stop rather than a slide under separation.
+    d.x *= slow; d.z *= slow;
+    const max = this.moveSpeed * 1.9 * slow;
     const sq = d.x * d.x + d.z * d.z;
     if (sq > max * max) {
       const k = max / Math.sqrt(sq);
@@ -1240,7 +1263,9 @@ function dist2D(a, b) {
  * exactly as they did before `behavior` existed.
  */
 function defaultBehavior(def) {
-  const k = def.attacks[0].kind;
+  // Same empty-`attacks` landmine as the REPOSITION test: this one fires once
+  // per spawn rather than once per frame, but it throws just as hard.
+  const k = def.attacks[0]?.kind;
   if (k === 'melee') return 'melee';
   if (k === 'dive') return 'diver';
   return 'ranged';
@@ -1294,7 +1319,13 @@ const STATES = {
       // Ranged units that can't shoot yet go find a better angle instead of
       // standing still — this is what stops golem/wisp clusters looking inert.
       const def = e.def;
-      const ranged = def.attacks[0].kind !== 'melee' && def.attacks[0].kind !== 'dive';
+      // `attacks` is empty for no shipping card, but a spawn card or a test
+      // dummy written without one used to throw here *every frame* — thousands
+      // of frame errors for a missing array element. A unit with nothing to
+      // fire has no reason to reposition for a better angle, so an empty list
+      // reads as "not ranged".
+      const first = def.attacks[0];
+      const ranged = !!first && first.kind !== 'melee' && first.kind !== 'dive';
       if (ranged && fsm.t > 1.2 && (!e.hasLOS || e.distToPlayer < (def.preferredRange || 10) * 0.7)) {
         e.orbitSign = ctx.rng.next() < 0.5 ? -1 : 1;
         fsm.set(S.REPOSITION, ctx);

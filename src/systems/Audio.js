@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { clamp } from '../core/MathUtil.js';
 import { MusicEngine } from './Music.js';
-import { ITEM_BY_ID } from '../data/items.js';
 
 /**
  * Fully procedural WebAudio. No files, no network, no decode step.
@@ -70,11 +69,12 @@ const MUSIC_BUS = 0.80;
 
 /**
  * Item tiers as a pitch ladder for `pickup()`. The tier never reached the sound
- * at all before — `itemPickup` carries `{id, count}` and the one direct
- * `play('pickup')` call passes no argument — so all six tiers played the
- * identical tier-0 jingle and `pickup`'s tier-scaled pitch, its extra note and
- * its shimmer tail were unreachable. Resolved from the id here rather than
- * waiting on the payload, so the read is correct whatever the emitter sends.
+ * at all before — the emitter sent `{id, count}` and the direct `play('pickup')`
+ * calls beside it passed no argument — so all six tiers played the identical
+ * tier-0 jingle and `pickup`'s tier-scaled pitch, its extra note and its
+ * shimmer tail were unreachable. `itemPickup` now carries the tier name and
+ * this maps it to a rung; `play('pickup', null, 'equipment')` takes the same
+ * road.
  */
 const PICKUP_TIER = {
   common: 0, uncommon: 1, legendary: 2, boss: 3, lunar: 4, equipment: 1,
@@ -744,11 +744,15 @@ export class Audio {
   }
 
   /**
-   * Inventory changed. `itemPickup` carries an absolute stack total rather than
-   * a delta, so the direction is derived here: a total that went up is a
-   * pickup, a total that went down is a removal, and a removal used to play the
-   * reward jingle — `take()` and the blight corruption transform both go
-   * through the same event as `give()`.
+   * Inventory changed. The payload carries `delta` and `tier` alongside the
+   * absolute `count` (`Items._set`), so the direction and the voice are both
+   * read straight off the wire: a total that went up is a pickup, one that went
+   * down is a removal, and a removal used to play the reward jingle — `take()`
+   * and the blight corruption transform both go through the same event as
+   * `give()`.
+   *
+   * The shadow count is the fallback for a payload without a delta, which is
+   * the shape a replicated event from an older host would have.
    */
   itemChanged(p) {
     const id = p?.id;
@@ -759,20 +763,20 @@ export class Audio {
     const delta = p.delta ?? (total - prev);
     if (delta === 0) return;
     if (delta < 0) { this.deny(); return; }
-    this.pickup(PICKUP_TIER[p.tier ?? ITEM_BY_ID.get(id)?.tier] ?? 0);
+    this.pickup(PICKUP_TIER[p.tier] ?? 0);
   }
 
   /** Rising arpeggio; higher tiers start higher and add a shimmer tail. */
   pickup(tier = 0) {
     const ac = this._ensure();
     if (!ac) return;
-    // `Items.give` reaches this twice for one item — once through the
-    // `itemPickup` event and once through a direct `play('pickup')` — and the
-    // jingle is fully deterministic, so the two copies landed 10.6 ms apart as
-    // bit-identical waveforms and comb-filtered the game's most-heard reward
-    // cue into something hollow. The duplicate call site is in Items.js and is
-    // not this file's to delete; this collapses the pair either way, and also
-    // folds the two events the blight transform fires for one card.
+    // The jingle is fully deterministic, so two copies a few milliseconds apart
+    // are bit-identical waveforms that comb-filter the game's most-heard reward
+    // cue into something hollow. `Items.give` still reaches this twice for one
+    // card when the blight transform runs — `_set` fires once for the stack and
+    // again for the corrupted total — and that pair is what this collapses.
+    // (The other duplicate, a direct `play('pickup')` beside every emit, is
+    // deleted at the source rather than papered over here.)
     if (!this._throttle('pickup', 0.04)) return;
     const t = ac.currentTime;
     const n = 3 + Math.min(2, tier);
@@ -1069,7 +1073,10 @@ export class Audio {
       case 'footstep': return this.footstep(pos, arg ?? 'dirt');
       case 'heal': return this.heal(pos);
       case 'shieldBreak': return this.shieldBreak(pos);
-      case 'pickup': case 'itemPickup': return this.pickup(arg ?? 0);
+      // A named tier ('legendary', 'equipment') routes through the same ladder
+      // `itemPickup` uses; a number is still accepted as a raw rung.
+      case 'pickup': case 'itemPickup':
+        return this.pickup(typeof arg === 'string' ? (PICKUP_TIER[arg] ?? 0) : (arg ?? 0));
       case 'coin': case 'gold': return this.coin();
       case 'levelUp': return this.levelUp();
       case 'ability': return this.ability(arg ?? 0);

@@ -217,7 +217,10 @@ export class Items {
       if (e.count > 0) this.counts.set(e.id, e.count); else this.counts.delete(e.id);
       this._dirty = true;
       this._rebuildHooks();
-      ctx.audio?.play?.('pickup');
+      // No `play('pickup')` here. `Audio` subscribes to this same event and
+      // resolves the tier and the direction from the payload; a second direct
+      // call played a bit-identical tier-0 jingle a few milliseconds later and
+      // comb-filtered the pair. See `_set`.
     });
 
     // Same story for the purse. Gold is host-authoritative and appears in no
@@ -257,13 +260,10 @@ export class Items {
     // the HUD strip for an item the player does not own — see `_settleBlight`.
     const waiting = BLIGHT_BY_BASE.get(id);
     if (waiting && this.count(waiting.id) > 0) {
-      const total = this._set(waiting.id, this.count(waiting.id) + count);
-      this.ctx.audio?.play?.('pickup');
-      return total;
+      return this._set(waiting.id, this.count(waiting.id) + count);
     }
 
     const next = this._set(id, (this.counts.get(id) || 0) + count);
-    this.ctx.audio?.play?.('pickup');
     // The other direction: a blight card arriving on top of an inventory that
     // already holds its base.
     return this._settleBlight(id) ?? next;
@@ -275,13 +275,24 @@ export class Items {
    * through it, so the invariants (no zero-count entries left in the Map, hooks
    * rebuilt, stat cache dirtied, an absolute `itemPickup` on the wire) are
    * stated once instead of three times.
+   *
+   * The payload carries `tier` and `delta` alongside the absolute `count`.
+   * `count` stays absolute because that is what makes the client mirror safe to
+   * apply out of order or twice; `delta` rides along because a *listener*
+   * cannot derive direction from an absolute total without keeping its own
+   * shadow copy of the inventory, and `Audio` was reduced to doing exactly
+   * that. `tier` likewise: without it every consumer has to import the item
+   * catalogue to learn what it was just handed.
    */
   _set(id, count) {
     const next = Math.max(0, count | 0);
+    const prev = this.counts.get(id) || 0;
     if (next === 0) this.counts.delete(id); else this.counts.set(id, next);
     this._dirty = true;
     this._rebuildHooks();
-    this.ctx.events.emit('itemPickup', { id, count: next });
+    this.ctx.events.emit('itemPickup', {
+      id, count: next, tier: ITEM_BY_ID.get(id)?.tier, delta: next - prev,
+    });
     return next;
   }
 
@@ -795,7 +806,10 @@ export class Items {
     this.ctx.events.emit('equipmentChanged', {
       id: next, previous, charges: this.equipCharges, cooldown: 0,
     });
-    if (next) this.ctx.audio?.play?.('pickup', null, 2);
+    // The tier goes over as its *name*, not as a raw ladder index: `2` used to
+    // be written here, which is the legendary rung, and it bypassed the tier
+    // map that every other pickup goes through.
+    if (next) this.ctx.audio?.play?.('pickup', null, 'equipment');
     return previous;
   }
 
