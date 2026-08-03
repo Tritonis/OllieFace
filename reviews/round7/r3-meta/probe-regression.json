@@ -1,0 +1,138 @@
+{
+  "migration": {
+    "version": 2,
+    "grunt": {
+      "at": 111,
+      "count": 0
+    },
+    "ember": {
+      "at": 333,
+      "count": 0
+    },
+    "droppedDiscovered": true,
+    "ranger": {
+      "runs": 1,
+      "wins": 1,
+      "deaths": 0,
+      "kills": 50,
+      "time": 600,
+      "bestStage": 6,
+      "bestTime": 600
+    },
+    "anvil": {
+      "runs": 1,
+      "wins": 0,
+      "deaths": 1,
+      "kills": 20,
+      "time": 300,
+      "bestStage": 3,
+      "bestTime": 300
+    },
+    "firstBlood": {
+      "progress": 1,
+      "done": true,
+      "doneAt": 7,
+      "goal": 1
+    },
+    "unlockCommand": 9
+  },
+  "hostile": {
+    "truncated": {
+      "threw": false,
+      "version": 2,
+      "runs": 0,
+      "runsType": "number",
+      "runsIsArray": true,
+      "unlocksIsObj": true,
+      "pwned": "no-prototype-pollution"
+    },
+    "array": {
+      "threw": false,
+      "version": 2,
+      "runs": 0,
+      "runsType": "number",
+      "runsIsArray": true,
+      "unlocksIsObj": true,
+      "pwned": "no-prototype-pollution"
+    },
+    "bareString": {
+      "threw": false,
+      "version": 2,
+      "runs": 0,
+      "runsType": "number",
+      "runsIsArray": true,
+      "unlocksIsObj": true,
+      "pwned": "no-prototype-pollution"
+    },
+    "nullPayload": {
+      "threw": false,
+      "version": 2,
+      "runs": 0,
+      "runsType": "number",
+      "runsIsArray": true,
+      "unlocksIsObj": true,
+      "pwned": "no-prototype-pollution"
+    },
+    "wrongTypes": {
+      "threw": false,
+      "version": 2,
+      "runs": 0,
+      "runsType": "number",
+      "runsIsArray": true,
+      "unlocksIsObj": true,
+      "pwned": "no-prototype-pollution"
+    },
+    "protoKey": {
+      "threw": false,
+      "version": 2,
+      "runs": 1,
+      "runsType": "number",
+      "runsIsArray": true,
+      "unlocksIsObj": true,
+      "pwned": "no-prototype-pollution"
+    },
+    "futureVersion": {
+      "threw": false,
+      "version": 2,
+      "runs": 3,
+      "runsType": "number",
+      "runsIsArray": true,
+      "unlocksIsObj": true,
+      "pwned": "no-prototype-pollution"
+    }
+  },
+  "unlockIdempotent": [
+    true,
+    false
+  ],
+  "unlockStamp": 1785716319515,
+  "massacre": {
+    "progress": 25,
+    "done": true,
+    "doneAt": 1785716319998,
+    "goal": 25,
+    "killTimesLen": 25,
+    "burst": 25
+  },
+  "registry": {
+    "sizes": {
+      "survivor": 5,
+      "item": 108,
+      "equipment": 14,
+      "enemy": 19,
+      "boss": 6
+    },
+    "bound": 7,
+    "generated": 5,
+    "stamp": 9
+  },
+  "catalogueHas": {
+    "grunt": false,
+    "anchor": false,
+    "herald": false,
+    "unknownKind": true
+  },
+  "challengeCount": 38,
+  "dupIds": 0,
+  "consoleErrors": []
+}

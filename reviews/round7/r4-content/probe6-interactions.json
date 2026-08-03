@@ -1,0 +1,87 @@
+{
+  "results": {
+    "echoConflagration": {
+      "withoutEcho": {
+        "echo": false,
+        "casts": 1,
+        "stated": 72,
+        "fireDamageTotal": 140.4,
+        "overpayVsOneLitBody": 1.95,
+        "bodiesBurningAfter": 3
+      },
+      "withEcho": {
+        "echo": true,
+        "casts": 2,
+        "stated": 72,
+        "fireDamageTotal": 673.2,
+        "overpayVsOneLitBody": 9.35,
+        "bodiesBurningAfter": 5
+      }
+    },
+    "ashenPact": {
+      "healthFractionBySecond": [
+        0.809,
+        0.656,
+        0.534,
+        0.436,
+        0.358,
+        0.309,
+        0.309,
+        0.3,
+        0.3,
+        0.3,
+        0.301,
+        0.301
+      ],
+      "settledFraction": 0.303,
+      "selfCostFloorDeclared": 0.3,
+      "entropyLedgerPayoutOn100": 169.7,
+      "preyInstinctLive": true,
+      "moveSpeed": 8.26,
+      "targetIgnitedByAshenPact": true
+    },
+    "outgoingStack": [
+      {
+        "label": "nothing",
+        "itemCount": 0,
+        "multiplier": 1
+      },
+      {
+        "label": "every outgoing item @10, healthy player, clean target",
+        "itemCount": 11,
+        "multiplier": 172.8
+      },
+      {
+        "label": "every outgoing item @10, 20% health, ailing target",
+        "itemCount": 11,
+        "multiplier": 5443.2
+      }
+    ],
+    "outgoingItemIds": [
+      "splinter-bar",
+      "crowbar",
+      "ammo-pouch",
+      "bipod",
+      "whetstone",
+      "hunters-tag",
+      "affliction-index",
+      "siege-battery",
+      "entropy-ledger",
+      "gilded-reliquary",
+      "vow-of-momentum"
+    ],
+    "twoPyres": {
+      "peakBurnStacks": 1,
+      "cloudsAlive": 2,
+      "expected": 1
+    },
+    "whetstoneXAshen": {
+      "first": 170,
+      "afterSixSeconds": 170,
+      "burning": true
+    },
+    "frameErrors": 0,
+    "lastFrameError": null
+  },
+  "consoleErrors": []
+}

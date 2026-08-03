@@ -1,0 +1,55 @@
+{
+  "out": {
+    "at2m": {
+      "distM": 2,
+      "repinAim": false,
+      "casts": 20,
+      "landed": 3,
+      "missed": 17,
+      "directDamage": 37.1,
+      "expectedDirect": 247,
+      "totalDamageIncludingBurn": 111.8,
+      "aimPunchFields": []
+    },
+    "at4m": {
+      "distM": 4,
+      "repinAim": false,
+      "casts": 20,
+      "landed": 2,
+      "missed": 18,
+      "directDamage": 37.1,
+      "expectedDirect": 247,
+      "totalDamageIncludingBurn": 89.1,
+      "aimPunchFields": []
+    },
+    "at6m": {
+      "distM": 6,
+      "repinAim": false,
+      "casts": 20,
+      "landed": 3,
+      "missed": 17,
+      "directDamage": 37.1,
+      "expectedDirect": 247,
+      "totalDamageIncludingBurn": 115.1,
+      "aimPunchFields": []
+    },
+    "at4mAimRepinned": {
+      "distM": 4,
+      "repinAim": true,
+      "casts": 20,
+      "landed": 5,
+      "missed": 15,
+      "directDamage": 61.8,
+      "expectedDirect": 247,
+      "totalDamageIncludingBurn": 149.5,
+      "aimPunchFields": [
+        "_aimPunch",
+        "aimPunch"
+      ]
+    },
+    "coneRange": 7,
+    "coneHalfAngleRad": 0.42,
+    "frameErrors": 0
+  },
+  "errors": []
+}

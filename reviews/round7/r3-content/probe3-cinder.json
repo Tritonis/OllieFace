@@ -1,0 +1,147 @@
+{
+  "probe": "probe3-cinder",
+  "frameErrors": 0,
+  "lastFrameError": null,
+  "consoleErrors": [],
+  "pageErrors": [],
+  "results": {
+    "pyreFlask": {
+      "cloudRecord": {
+        "radius": 6,
+        "dps": 0.9,
+        "status": "burn",
+        "colour": "0xff7a2a",
+        "type": "fire"
+      },
+      "burnStacksAfterFirstTick": 1,
+      "peakBurnStacks": 1,
+      "framesBurning": 454,
+      "totalDamageOverPyreLife": 134
+    },
+    "emberwakeCloud": {
+      "radius": 3.2,
+      "status": null,
+      "colour": "0xff7a2a",
+      "type": "fire"
+    },
+    "conflagration": {
+      "statedPerBody": 72,
+      "runs": [
+        {
+          "label": "8 bodies @3m, 1 lit, forward order",
+          "spacing": 3,
+          "litCount": 1,
+          "order": "forward",
+          "statedPerBody": 72,
+          "perBodyDamage": [
+            72,
+            31,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "total": 103,
+          "bodiesDamaged": 2
+        },
+        {
+          "label": "8 bodies @3m, 1 lit, reverse order",
+          "spacing": 3,
+          "litCount": 1,
+          "order": "reverse",
+          "statedPerBody": 72,
+          "perBodyDamage": [
+            72,
+            31,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "total": 103,
+          "bodiesDamaged": 2
+        },
+        {
+          "label": "8 bodies @3m, 3 lit, forward order",
+          "spacing": 3,
+          "litCount": 3,
+          "order": "forward",
+          "statedPerBody": 72,
+          "perBodyDamage": [
+            103,
+            135,
+            104,
+            27,
+            0,
+            0,
+            0,
+            0
+          ],
+          "total": 369,
+          "bodiesDamaged": 4
+        },
+        {
+          "label": "8 bodies @3m, 3 lit, reverse order",
+          "spacing": 3,
+          "litCount": 3,
+          "order": "reverse",
+          "statedPerBody": 72,
+          "perBodyDamage": [
+            103,
+            135,
+            104,
+            27,
+            0,
+            0,
+            0,
+            0
+          ],
+          "total": 369,
+          "bodiesDamaged": 4
+        },
+        {
+          "label": "8 bodies @9m, 1 lit, forward order",
+          "spacing": 9,
+          "litCount": 1,
+          "order": "forward",
+          "statedPerBody": 72,
+          "perBodyDamage": [
+            72,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "total": 72,
+          "bodiesDamaged": 1
+        },
+        {
+          "label": "8 bodies @9m, 0 lit, forward order",
+          "spacing": 9,
+          "litCount": 0,
+          "order": "forward",
+          "statedPerBody": 72,
+          "perBodyDamage": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "total": 0,
+          "bodiesDamaged": 0
+        }
+      ]
+    }
+  }
+}

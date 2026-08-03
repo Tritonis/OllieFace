@@ -1,0 +1,55 @@
+{
+  "out": {
+    "musicLatch": {
+      "before": {
+        "stopped": false,
+        "musicOff": null,
+        "steps": 14
+      },
+      "afterDead": {
+        "stopped": true,
+        "musicOff": true
+      },
+      "afterStageStart": {
+        "stopped": true,
+        "musicOff": true,
+        "stepsGainedIn1s": 0,
+        "resumeFn": "undefined"
+      }
+    },
+    "playerSpeed": {
+      "clean": 7,
+      "slow1": 1.132,
+      "freeze": 0.005
+    },
+    "enemyTravel2s": {
+      "clean": 1.074,
+      "slow": 2.392,
+      "freeze": 1.073
+    },
+    "interactablesScaling": [
+      {
+        "stageIndex": 0,
+        "rootKids": 24,
+        "list": 24
+      },
+      {
+        "stageIndex": 3,
+        "rootKids": 46,
+        "list": 46
+      },
+      {
+        "stageIndex": 6,
+        "rootKids": 66,
+        "list": 66
+      },
+      {
+        "stageIndex": 9,
+        "rootKids": 88,
+        "list": 88
+      }
+    ],
+    "errors": 0
+  },
+  "errs": []
+}

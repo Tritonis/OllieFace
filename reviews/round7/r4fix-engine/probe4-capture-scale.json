@@ -1,0 +1,55 @@
+{
+  "pinnedFixed": [
+    {
+      "label": "fixed, after gameplay()+thaw",
+      "raf": 60,
+      "engineFrames": 60,
+      "loops": 1,
+      "ctxTimeAdvance": 1
+    }
+  ],
+  "pinnedOld": [
+    {
+      "label": "old start(), handover (baseline for the slope)",
+      "raf": 60,
+      "engineFrames": 120,
+      "loops": 2,
+      "ctxTimeAdvance": 2
+    },
+    {
+      "label": "old start(), after 1 cumulative freeze/thaw cycles",
+      "raf": 60,
+      "engineFrames": 180,
+      "loops": 3,
+      "ctxTimeAdvance": 3
+    },
+    {
+      "label": "old start(), after 5 cumulative freeze/thaw cycles",
+      "raf": 60,
+      "engineFrames": 420,
+      "loops": 7,
+      "ctxTimeAdvance": 7
+    },
+    {
+      "label": "old start(), after 10 cumulative freeze/thaw cycles",
+      "raf": 60,
+      "engineFrames": 720,
+      "loops": 12,
+      "ctxTimeAdvance": 11.817
+    },
+    {
+      "label": "old start(), after 20 cumulative freeze/thaw cycles",
+      "raf": 60,
+      "engineFrames": 1320,
+      "loops": 22,
+      "ctxTimeAdvance": 10.517
+    },
+    {
+      "label": "old start(), after 21 cumulative freeze/thaw cycles",
+      "raf": 60,
+      "engineFrames": 1380,
+      "loops": 23,
+      "ctxTimeAdvance": 0
+    }
+  ]
+}

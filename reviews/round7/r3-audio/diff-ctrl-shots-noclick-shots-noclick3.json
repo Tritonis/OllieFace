@@ -1,0 +1,140 @@
+{
+ "dirs": [
+  "shots-noclick",
+  "shots-noclick3"
+ ],
+ "files": 21,
+ "aggregate": {
+  "meanDiff": 2.995,
+  "pctOver8": 6.243,
+  "maxOfMax": 227
+ },
+ "rows": [
+  {
+   "file": "01-title.png",
+   "meanDiff": 1.674,
+   "maxDiff": 49,
+   "pctOver8": 2.083
+  },
+  {
+   "file": "02-vista.png",
+   "meanDiff": 0.969,
+   "maxDiff": 76,
+   "pctOver8": 0.216
+  },
+  {
+   "file": "03-thirdperson.png",
+   "meanDiff": 0.988,
+   "maxDiff": 178,
+   "pctOver8": 0.062
+  },
+  {
+   "file": "04-combat.png",
+   "meanDiff": 24.092,
+   "maxDiff": 227,
+   "pctOver8": 51.428
+  },
+  {
+   "file": "05-boss.png",
+   "meanDiff": 0.954,
+   "maxDiff": 88,
+   "pctOver8": 0.23
+  },
+  {
+   "file": "06-loaded-hud.png",
+   "meanDiff": 11.278,
+   "maxDiff": 224,
+   "pctOver8": 33.158
+  },
+  {
+   "file": "07-interactables.png",
+   "meanDiff": 0.905,
+   "maxDiff": 96,
+   "pctOver8": 0.06
+  },
+  {
+   "file": "08-explosion.png",
+   "meanDiff": 9.18,
+   "maxDiff": 212,
+   "pctOver8": 25.945
+  },
+  {
+   "file": "09-survivors.png",
+   "meanDiff": 1.007,
+   "maxDiff": 104,
+   "pctOver8": 0.256
+  },
+  {
+   "file": "10-inventory.png",
+   "meanDiff": 4.694,
+   "maxDiff": 153,
+   "pctOver8": 14.191
+  },
+  {
+   "file": "11-bestiary.png",
+   "meanDiff": 1.042,
+   "maxDiff": 101,
+   "pctOver8": 0.434
+  },
+  {
+   "file": "12-boss-phases.png",
+   "meanDiff": 0.943,
+   "maxDiff": 95,
+   "pctOver8": 0.261
+  },
+  {
+   "file": "13-biomes-1.png",
+   "meanDiff": 1.004,
+   "maxDiff": 72,
+   "pctOver8": 0.601
+  },
+  {
+   "file": "13-biomes-2.png",
+   "meanDiff": 0.968,
+   "maxDiff": 109,
+   "pctOver8": 0.496
+  },
+  {
+   "file": "13-biomes-3.png",
+   "meanDiff": 1.082,
+   "maxDiff": 111,
+   "pctOver8": 0.652
+  },
+  {
+   "file": "13-biomes-4.png",
+   "meanDiff": 1.064,
+   "maxDiff": 95,
+   "pctOver8": 0.568
+  },
+  {
+   "file": "14-survivor-select.png",
+   "meanDiff": 0.711,
+   "maxDiff": 33,
+   "pctOver8": 0.459
+  },
+  {
+   "file": "15-logbook.png",
+   "meanDiff": 0.077,
+   "maxDiff": 5,
+   "pctOver8": 0
+  },
+  {
+   "file": "16-run-summary.png",
+   "meanDiff": 0.036,
+   "maxDiff": 1,
+   "pctOver8": 0
+  },
+  {
+   "file": "17-artifacts.png",
+   "meanDiff": 0.112,
+   "maxDiff": 4,
+   "pctOver8": 0
+  },
+  {
+   "file": "18-difficulty.png",
+   "meanDiff": 0.125,
+   "maxDiff": 4,
+   "pctOver8": 0
+  }
+ ]
+}

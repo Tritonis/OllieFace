@@ -1,0 +1,84 @@
+{
+ "R": {
+  "giveCommon": [
+   {
+    "tier": 0,
+    "t": 3.9307
+   },
+   {
+    "tier": 0,
+    "t": 3.9413
+   }
+  ],
+  "giveUncommon": [
+   {
+    "tier": 0,
+    "t": 3.9413
+   },
+   {
+    "tier": 0,
+    "t": 3.952
+   }
+  ],
+  "tiersSeen": [
+   "blight",
+   "common",
+   "uncommon",
+   "legendary",
+   "boss",
+   "lunar"
+  ],
+  "legendaryId": "behemoth",
+  "giveLegendary": [
+   {
+    "tier": 0,
+    "t": 4.0107
+   },
+   {
+    "tier": 0,
+    "t": 4.0213
+   }
+  ],
+  "takeCommon": [
+   {
+    "tier": 0,
+    "t": 4.0213
+   }
+  ],
+  "blightId": "spasm-gland",
+  "corrupts": "syringe",
+  "giveBlight": [
+   {
+    "tier": 0,
+    "t": 4.0613
+   },
+   {
+    "tier": 0,
+    "t": 4.2213
+   },
+   {
+    "tier": 0,
+    "t": 4.2213
+   },
+   {
+    "tier": 0,
+    "t": 4.232
+   }
+  ],
+  "counts": [
+   [
+    "atg",
+    1
+   ],
+   [
+    "behemoth",
+    1
+   ],
+   [
+    "spasm-gland",
+    4
+   ]
+  ]
+ },
+ "errs": []
+}

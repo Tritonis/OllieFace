@@ -1,0 +1,24 @@
+{
+  "readout": {
+    "marathonChallengeState": {
+      "id": "marathon",
+      "name": "Marathon",
+      "description": "Survive for 30 minutes in a single run.",
+      "category": "depth",
+      "hidden": false,
+      "masked": false,
+      "progress": 1074,
+      "goal": 1800,
+      "fraction": 0.5966666666666667,
+      "done": false,
+      "doneAt": 0,
+      "unlocks": null
+    },
+    "closingInRawSnippet": "1,074 / 1,800",
+    "reportHtmlHasClosingIn": true,
+    "fullReportHtml": "<div class=\"stat-items-label\">New personal bests</div>\n      <div class=\"run-bests\">\n        <div class=\"run-best\">\n          <span class=\"run-best-k\">Deepest stage</span>\n          <span class=\"run-best-v\">1</span>\n          <span class=\"run-best-was\">first</span>\n        </div></div><div class=\"stat-items-label\">Closing in</div>\n      <div class=\"run-prog-list\"><div class=\"run-prog\">\n          <div class=\"run-prog-k\">Marathon</div>\n          <div class=\"book-prog\"><i style=\"transform:scaleX(0.597)\"></i></div>\n          <div class=\"run-prog-v\">1,074 / 1,800</div>\n        </div><div class=\"run-prog\">\n          <div class=\"run-prog-k\">The Long Haul</div>\n          <div class=\"book-prog\"><i style=\"transform:scaleX(0.200)\"></i></div>\n          <div class=\"run-prog-v\">1 / 5</div>\n        </div><div class=\"run-prog\">\n          <div class=\"run-prog-k\">Whole Roster</div>\n          <div class=\"book-prog\"><i style=\"transform:scaleX(0.200)\"></i></div>\n          <div class=\"run-prog-v\">1 / 5</div>\n        </div></div><div class=\"run-career\">1 new survivor  —  Run 1 · 0 lifetime kills · 0m in the field</div>"
+  },
+  "logbookRow": {
+    "subText": "1074 / 1800"
+  }
+}

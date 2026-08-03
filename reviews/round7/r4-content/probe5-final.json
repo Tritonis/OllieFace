@@ -1,0 +1,944 @@
+{
+  "results": {
+    "engineLoops": [
+      {
+        "label": "as booted (0 freeze/thaw cycles)",
+        "raf": 60,
+        "engineFrames": 60,
+        "loops": 1
+      },
+      {
+        "label": "after 1 freeze/thaw cycle(s)",
+        "raf": 60,
+        "engineFrames": 120,
+        "loops": 2
+      },
+      {
+        "label": "after 2 freeze/thaw cycle(s)",
+        "raf": 60,
+        "engineFrames": 180,
+        "loops": 3
+      },
+      {
+        "label": "after 3 freeze/thaw cycle(s)",
+        "raf": 60,
+        "engineFrames": 240,
+        "loops": 4
+      },
+      {
+        "label": "after H.gameplay() + thaw (what every r3 probe ran on)",
+        "raf": 60,
+        "engineFrames": 300,
+        "loops": 5
+      }
+    ],
+    "determinism": {
+      "clockPinned": true,
+      "frameDt": 0.016666666666666666,
+      "frameTimeouts": 0
+    },
+    "conflagration": [
+      {
+        "label": "8 bodies @3m, 1 lit",
+        "n": 8,
+        "spacing": 3,
+        "lit": 1,
+        "order": 1,
+        "stated": 72,
+        "distancesFromBody0": [
+          0,
+          3,
+          6,
+          9,
+          12,
+          15,
+          18,
+          21
+        ],
+        "perBody": [
+          72,
+          32.7,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "total": 104.7,
+        "overpayVsPrinted": 1.45,
+        "simSeconds": 1.58
+      },
+      {
+        "label": "8 bodies @3m, 1 lit",
+        "n": 8,
+        "spacing": 3,
+        "lit": 1,
+        "order": -1,
+        "stated": 72,
+        "distancesFromBody0": [
+          0,
+          3,
+          6,
+          9,
+          12,
+          15,
+          18,
+          21
+        ],
+        "perBody": [
+          72,
+          32.7,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "total": 104.7,
+        "overpayVsPrinted": 1.45,
+        "simSeconds": 1.6
+      },
+      {
+        "label": "8 bodies @3m, 3 lit",
+        "n": 8,
+        "spacing": 3,
+        "lit": 3,
+        "order": 1,
+        "stated": 72,
+        "distancesFromBody0": [
+          0,
+          3,
+          6,
+          9,
+          12,
+          15,
+          18,
+          21
+        ],
+        "perBody": [
+          104.7,
+          137.5,
+          104.7,
+          32.7,
+          0,
+          0,
+          0,
+          0
+        ],
+        "total": 379.6,
+        "overpayVsPrinted": 1.76,
+        "simSeconds": 1.58
+      },
+      {
+        "label": "8 bodies @3m, 3 lit",
+        "n": 8,
+        "spacing": 3,
+        "lit": 3,
+        "order": -1,
+        "stated": 72,
+        "distancesFromBody0": [
+          0,
+          3,
+          6,
+          9,
+          12,
+          15,
+          18,
+          21
+        ],
+        "perBody": [
+          104.7,
+          137.5,
+          104.7,
+          32.7,
+          0,
+          0,
+          0,
+          0
+        ],
+        "total": 379.6,
+        "overpayVsPrinted": 1.76,
+        "simSeconds": 1.6
+      },
+      {
+        "label": "isolated body, 1 lit",
+        "n": 1,
+        "spacing": 3,
+        "lit": 1,
+        "order": 1,
+        "stated": 72,
+        "distancesFromBody0": [
+          0
+        ],
+        "perBody": [
+          72
+        ],
+        "total": 72,
+        "overpayVsPrinted": 1,
+        "simSeconds": 1.6
+      },
+      {
+        "label": "isolated body, 1 lit",
+        "n": 1,
+        "spacing": 3,
+        "lit": 1,
+        "order": -1,
+        "stated": 72,
+        "distancesFromBody0": [
+          0
+        ],
+        "perBody": [
+          72
+        ],
+        "total": 72,
+        "overpayVsPrinted": 1,
+        "simSeconds": 1.67
+      },
+      {
+        "label": "8 bodies @9m, 0 lit",
+        "n": 8,
+        "spacing": 9,
+        "lit": 0,
+        "order": 1,
+        "stated": 72,
+        "distancesFromBody0": [
+          0,
+          9,
+          18,
+          27,
+          36,
+          45,
+          54,
+          63
+        ],
+        "perBody": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "total": 0,
+        "overpayVsPrinted": 0,
+        "simSeconds": 1.67
+      },
+      {
+        "label": "8 bodies @9m, 0 lit",
+        "n": 8,
+        "spacing": 9,
+        "lit": 0,
+        "order": -1,
+        "stated": 72,
+        "distancesFromBody0": [
+          0,
+          9,
+          18,
+          27,
+          36,
+          45,
+          54,
+          63
+        ],
+        "perBody": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "total": 0,
+        "overpayVsPrinted": 0,
+        "simSeconds": 1.67
+      },
+      {
+        "label": "tight pile @1.2m, all 8 lit",
+        "n": 8,
+        "spacing": 1.2,
+        "lit": 8,
+        "order": 1,
+        "stated": 72,
+        "distancesFromBody0": [
+          0,
+          1.2,
+          2.4,
+          3.6,
+          4.8,
+          6,
+          7.2,
+          8.4
+        ],
+        "perBody": [
+          219.3,
+          275.6,
+          316.1,
+          341.3,
+          341.3,
+          316.1,
+          275.6,
+          219.3
+        ],
+        "total": 2304.6,
+        "overpayVsPrinted": 4,
+        "simSeconds": 1.6
+      },
+      {
+        "label": "tight pile @1.2m, all 8 lit",
+        "n": 8,
+        "spacing": 1.2,
+        "lit": 8,
+        "order": -1,
+        "stated": 72,
+        "distancesFromBody0": [
+          0,
+          1.2,
+          2.4,
+          3.6,
+          4.8,
+          6,
+          7.2,
+          8.4
+        ],
+        "perBody": [
+          219.3,
+          275.6,
+          316.1,
+          341.3,
+          341.3,
+          316.1,
+          275.6,
+          219.3
+        ],
+        "total": 2304.6,
+        "overpayVsPrinted": 4,
+        "simSeconds": 1.6
+      },
+      {
+        "label": "pack @1.5m, all 12 lit",
+        "n": 12,
+        "spacing": 1.5,
+        "lit": 12,
+        "order": 1,
+        "stated": 72,
+        "distancesFromBody0": [
+          0,
+          1.5,
+          3,
+          4.5,
+          6,
+          7.5,
+          9,
+          10.5,
+          12,
+          13.5,
+          15,
+          16.5
+        ],
+        "perBody": [
+          182.3,
+          234.7,
+          267.4,
+          292.6,
+          292.6,
+          292.6,
+          292.6,
+          292.6,
+          292.6,
+          267.4,
+          234.7,
+          182.3
+        ],
+        "total": 3124.4,
+        "overpayVsPrinted": 3.62,
+        "simSeconds": 1.67
+      },
+      {
+        "label": "pack @1.5m, all 12 lit",
+        "n": 12,
+        "spacing": 1.5,
+        "lit": 12,
+        "order": -1,
+        "stated": 72,
+        "distancesFromBody0": [
+          0,
+          1.5,
+          3,
+          4.5,
+          6,
+          7.5,
+          9,
+          10.5,
+          12,
+          13.5,
+          15,
+          16.5
+        ],
+        "perBody": [
+          182.3,
+          234.7,
+          267.4,
+          292.6,
+          292.6,
+          292.6,
+          292.6,
+          292.6,
+          292.6,
+          267.4,
+          234.7,
+          182.3
+        ],
+        "total": 3124.4,
+        "overpayVsPrinted": 3.62,
+        "simSeconds": 1.6
+      }
+    ],
+    "openStand13": {
+      "x": 65.17082699349655,
+      "z": 46.568169666718774,
+      "openBearings": 14,
+      "tested": 14
+    },
+    "openStand18": {
+      "x": -63.17177293504205,
+      "z": 48.44061084019048,
+      "openBearings": 15,
+      "tested": 15
+    },
+    "redoubt": [
+      {
+        "mode": "still",
+        "radius": 13,
+        "sprint": 10.15,
+        "affix": null,
+        "reachedTarget": true,
+        "attacks": {
+          "enfilade": 8
+        },
+        "playerHurtEvents": 0,
+        "damage": 0,
+        "dps": 0,
+        "fractionOutsideFrontArc": 0,
+        "losFraction": 1,
+        "yawTravelled": 0.08,
+        "simSeconds": 40.42
+      },
+      {
+        "mode": "circle",
+        "radius": 13,
+        "sprint": 10.15,
+        "affix": null,
+        "reachedTarget": true,
+        "attacks": {
+          "enfilade": 8
+        },
+        "playerHurtEvents": 0,
+        "damage": 0,
+        "dps": 0,
+        "fractionOutsideFrontArc": 0.602,
+        "losFraction": 0.963,
+        "yawTravelled": 13.78,
+        "simSeconds": 40.42
+      },
+      {
+        "mode": "circle",
+        "radius": 20,
+        "sprint": 10.15,
+        "affix": null,
+        "reachedTarget": true,
+        "attacks": {
+          "enfilade": 8
+        },
+        "playerHurtEvents": 0,
+        "damage": 0,
+        "dps": 0,
+        "fractionOutsideFrontArc": 0.529,
+        "losFraction": 0.931,
+        "yawTravelled": 13.61,
+        "simSeconds": 40.33
+      },
+      {
+        "mode": "circle",
+        "radius": 13,
+        "sprint": 7.1,
+        "affix": null,
+        "reachedTarget": true,
+        "attacks": {
+          "enfilade": 8
+        },
+        "playerHurtEvents": 0,
+        "damage": 0,
+        "dps": 0,
+        "fractionOutsideFrontArc": 0.573,
+        "losFraction": 0.973,
+        "yawTravelled": 13.74,
+        "simSeconds": 40.33
+      }
+    ],
+    "redoubtElite": [
+      {
+        "mode": "circle",
+        "radius": 13,
+        "sprint": 10.15,
+        "affix": "blazing",
+        "reachedTarget": true,
+        "attacks": {
+          "enfilade": 5
+        },
+        "playerHurtEvents": 0,
+        "damage": 0,
+        "dps": 0,
+        "fractionOutsideFrontArc": 0.503,
+        "losFraction": 0.949,
+        "yawTravelled": 8.29,
+        "simSeconds": 25.33
+      },
+      {
+        "mode": "circle",
+        "radius": 13,
+        "sprint": 10.15,
+        "affix": "overloading",
+        "reachedTarget": true,
+        "attacks": {
+          "enfilade": 5
+        },
+        "playerHurtEvents": 0,
+        "damage": 0,
+        "dps": 0,
+        "fractionOutsideFrontArc": 0.545,
+        "losFraction": 0.956,
+        "yawTravelled": 8.3,
+        "simSeconds": 25.33
+      },
+      {
+        "mode": "circle",
+        "radius": 13,
+        "sprint": 10.15,
+        "affix": "glacial",
+        "reachedTarget": true,
+        "attacks": {
+          "enfilade": 5
+        },
+        "playerHurtEvents": 0,
+        "damage": 0,
+        "dps": 0,
+        "fractionOutsideFrontArc": 0.555,
+        "losFraction": 0.949,
+        "yawTravelled": 8.29,
+        "simSeconds": 25.42
+      },
+      {
+        "mode": "circle",
+        "radius": 13,
+        "sprint": 10.15,
+        "affix": "withering",
+        "reachedTarget": true,
+        "attacks": {
+          "enfilade": 5
+        },
+        "playerHurtEvents": 0,
+        "damage": 0,
+        "dps": 0,
+        "fractionOutsideFrontArc": 0.67,
+        "losFraction": 0.971,
+        "yawTravelled": 8.3,
+        "simSeconds": 25.42
+      },
+      {
+        "mode": "circle",
+        "radius": 13,
+        "sprint": 10.15,
+        "affix": "warded",
+        "reachedTarget": true,
+        "attacks": {
+          "enfilade": 5
+        },
+        "playerHurtEvents": 0,
+        "damage": 0,
+        "dps": 0,
+        "fractionOutsideFrontArc": 0.519,
+        "losFraction": 0.956,
+        "yawTravelled": 8.3,
+        "simSeconds": 25.42
+      }
+    ],
+    "lasher": [
+      {
+        "standoff": 8,
+        "secs": 42,
+        "attacks": {
+          "reel": 6,
+          "thorns": 5
+        },
+        "playerHurtEvents": 0,
+        "damage": 0,
+        "dps": 0,
+        "losFraction": 1,
+        "meanDistance": 12,
+        "simSeconds": 42.37
+      },
+      {
+        "standoff": 12,
+        "secs": 42,
+        "attacks": {
+          "reel": 6,
+          "thorns": 5
+        },
+        "playerHurtEvents": 0,
+        "damage": 0,
+        "dps": 0,
+        "losFraction": 1,
+        "meanDistance": 12.6,
+        "simSeconds": 42.35
+      },
+      {
+        "standoff": 18,
+        "secs": 42,
+        "attacks": {
+          "reel": 6,
+          "thorns": 5
+        },
+        "playerHurtEvents": 0,
+        "damage": 0,
+        "dps": 0,
+        "losFraction": 1,
+        "meanDistance": 18,
+        "simSeconds": 42.4
+      },
+      {
+        "standoff": 22,
+        "secs": 42,
+        "attacks": {
+          "reel": 6,
+          "thorns": 5
+        },
+        "playerHurtEvents": 0,
+        "damage": 0,
+        "dps": 0,
+        "losFraction": 1,
+        "meanDistance": 18.7,
+        "simSeconds": 42.35
+      }
+    ],
+    "tether": [
+      {
+        "enemyId": "mite",
+        "stacks": 1,
+        "reelProcs": 3,
+        "floorDeclared": 6,
+        "minDistanceReached": 6,
+        "largestYWriteByReel": 0,
+        "y0": -10.68,
+        "simSeconds": 12.43
+      },
+      {
+        "enemyId": "shriver",
+        "stacks": 1,
+        "reelProcs": 3,
+        "floorDeclared": 6,
+        "minDistanceReached": 6,
+        "largestYWriteByReel": 0,
+        "y0": -4.86,
+        "simSeconds": 12.47
+      },
+      {
+        "enemyId": "mite",
+        "stacks": 10,
+        "reelProcs": 3,
+        "floorDeclared": 6,
+        "minDistanceReached": 6,
+        "largestYWriteByReel": 0,
+        "y0": -10.68,
+        "simSeconds": 12.43
+      },
+      {
+        "enemyId": "shriver",
+        "stacks": 10,
+        "reelProcs": 3,
+        "floorDeclared": 6,
+        "minDistanceReached": 6,
+        "largestYWriteByReel": 0,
+        "y0": -4.17,
+        "simSeconds": 12.43
+      }
+    ],
+    "waxedWing": [
+      {
+        "label": "nothing, standing",
+        "sprintingAtJump": false,
+        "statMoveSpeed": 7,
+        "peakHorizontal": 0,
+        "peakAirborne": 0,
+        "displacement1s": 0,
+        "simSeconds": 3.75
+      },
+      {
+        "label": "nothing, sprinting",
+        "sprintingAtJump": true,
+        "statMoveSpeed": 7,
+        "peakHorizontal": 10.15,
+        "peakAirborne": 10.15,
+        "displacement1s": 9.51,
+        "simSeconds": 3.75
+      },
+      {
+        "label": "1x Waxed Wing, standing",
+        "sprintingAtJump": false,
+        "statMoveSpeed": 7,
+        "peakHorizontal": 9.533,
+        "peakAirborne": 9.533,
+        "displacement1s": 6.69,
+        "simSeconds": 3.75
+      },
+      {
+        "label": "1x Waxed Wing, sprinting",
+        "sprintingAtJump": true,
+        "statMoveSpeed": 7,
+        "peakHorizontal": 18.563,
+        "peakAirborne": 18.563,
+        "displacement1s": 9.52,
+        "simSeconds": 3.75
+      },
+      {
+        "label": "3x Waxed Wing, sprinting",
+        "sprintingAtJump": true,
+        "statMoveSpeed": 7,
+        "peakHorizontal": 38.563,
+        "peakAirborne": 38.563,
+        "displacement1s": 9.6,
+        "simSeconds": 3.75
+      },
+      {
+        "label": "10x Waxed Wing, sprinting",
+        "sprintingAtJump": true,
+        "statMoveSpeed": 7,
+        "peakHorizontal": 10.15,
+        "peakAirborne": 8.727,
+        "displacement1s": 9.5,
+        "simSeconds": 3.75
+      },
+      {
+        "label": "1x Updraft Vents, sprinting",
+        "sprintingAtJump": true,
+        "statMoveSpeed": 7,
+        "peakHorizontal": 13.563,
+        "peakAirborne": 13.563,
+        "displacement1s": 9.51,
+        "simSeconds": 3.75
+      }
+    ],
+    "slow": [
+      {
+        "id": "mite",
+        "moveSpeed": 8.4,
+        "isFlyer": false,
+        "clean": {
+          "mean": 8.498,
+          "peak": 9.04,
+          "states": {
+            "chase": 125
+          }
+        },
+        "slow1": {
+          "mean": 5.407,
+          "peak": 11.393,
+          "states": {
+            "chase": 125
+          }
+        },
+        "slow5": {
+          "mean": 2.218,
+          "peak": 5.971,
+          "states": {
+            "chase": 125
+          }
+        },
+        "meanRatio1": 0.636,
+        "meanRatio5": 0.261,
+        "expected1": 0.6,
+        "expected5": 0.25,
+        "simSeconds": 10.33
+      },
+      {
+        "id": "shriver",
+        "moveSpeed": 5.2,
+        "isFlyer": true,
+        "clean": {
+          "mean": 4.86,
+          "peak": 5.209,
+          "states": {
+            "reposition": 53,
+            "chase": 72
+          }
+        },
+        "slow1": {
+          "mean": 2.967,
+          "peak": 4.42,
+          "states": {
+            "reposition": 53,
+            "chase": 72
+          }
+        },
+        "slow5": {
+          "mean": 1.272,
+          "peak": 2.652,
+          "states": {
+            "reposition": 42,
+            "chase": 83
+          }
+        },
+        "meanRatio1": 0.61,
+        "meanRatio5": 0.262,
+        "expected1": 0.6,
+        "expected5": 0.25,
+        "simSeconds": 10.33
+      },
+      {
+        "id": "charger",
+        "moveSpeed": 5.6,
+        "isFlyer": false,
+        "clean": {
+          "mean": 5.261,
+          "peak": 5.794,
+          "states": {
+            "reposition": 53,
+            "chase": 72
+          }
+        },
+        "slow1": {
+          "mean": 3.175,
+          "peak": 4.76,
+          "states": {
+            "reposition": 53,
+            "chase": 72
+          }
+        },
+        "slow5": {
+          "mean": 1.339,
+          "peak": 2.856,
+          "states": {
+            "reposition": 53,
+            "chase": 72
+          }
+        },
+        "meanRatio1": 0.603,
+        "meanRatio5": 0.255,
+        "expected1": 0.6,
+        "expected5": 0.25,
+        "simSeconds": 10.33
+      },
+      {
+        "id": "burrower",
+        "moveSpeed": 5.2,
+        "isFlyer": false,
+        "clean": {
+          "mean": 3.4,
+          "peak": 5.177,
+          "states": {
+            "reposition": 53,
+            "chase": 72
+          }
+        },
+        "slow1": {
+          "mean": 2.377,
+          "peak": 4.42,
+          "states": {
+            "reposition": 53,
+            "chase": 72
+          }
+        },
+        "slow5": {
+          "mean": 1.349,
+          "peak": 4.381,
+          "states": {
+            "reposition": 53,
+            "chase": 72
+          }
+        },
+        "meanRatio1": 0.699,
+        "meanRatio5": 0.397,
+        "expected1": 0.6,
+        "expected5": 0.25,
+        "simSeconds": 10.33
+      },
+      {
+        "id": "titan",
+        "moveSpeed": 3.2,
+        "isFlyer": false,
+        "clean": {
+          "mean": 2.992,
+          "peak": 3.236,
+          "states": {
+            "reposition": 53,
+            "chase": 72
+          }
+        },
+        "slow1": {
+          "mean": 1.435,
+          "peak": 1.924,
+          "states": {
+            "reposition": 53,
+            "chase": 72
+          }
+        },
+        "slow5": {
+          "mean": 0.761,
+          "peak": 1.643,
+          "states": {
+            "reposition": 53,
+            "chase": 72
+          }
+        },
+        "meanRatio1": 0.48,
+        "meanRatio5": 0.254,
+        "expected1": 0.6,
+        "expected5": 0.25,
+        "simSeconds": 10.33
+      }
+    ],
+    "economy": {
+      "smallChest20k": {
+        "common": 15114,
+        "uncommon": 3894,
+        "legendary": 182,
+        "blight": 810
+      },
+      "largeChest20k": {
+        "uncommon": 17513,
+        "blight": 765,
+        "legendary": 1722
+      },
+      "itemsPerTier": {
+        "blight": 11,
+        "common": 31,
+        "uncommon": 31,
+        "legendary": 18,
+        "boss": 8,
+        "lunar": 9
+      },
+      "totalItems": 108
+    },
+    "itemCost": [
+      {
+        "label": "empty inventory",
+        "steps": 185,
+        "meanExtraMsPerStep": 0.0022
+      },
+      {
+        "label": "10x of every non-blight/lunar item, 12 bodies, 20% health",
+        "steps": 185,
+        "meanExtraMsPerStep": 0.02
+      }
+    ],
+    "inventorySize": 88,
+    "frameErrors": 0,
+    "lastFrameError": null
+  },
+  "consoleErrors": []
+}

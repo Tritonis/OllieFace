@@ -1,0 +1,494 @@
+{
+  "1600x900": {
+    "vh": 900,
+    "vw": 1600,
+    "panelRect": {
+      "x": 431.515625,
+      "y": 222.40625,
+      "width": 736.953125,
+      "height": 641.59375,
+      "top": 222.40625,
+      "right": 1168.46875,
+      "bottom": 864,
+      "left": 431.515625
+    },
+    "reportRect": {
+      "x": 456.203125,
+      "y": 244.453125,
+      "width": 687.578125,
+      "height": 540.25,
+      "top": 244.453125,
+      "right": 1143.78125,
+      "bottom": 784.703125,
+      "left": 456.203125
+    },
+    "navRect": {
+      "x": 456.203125,
+      "y": 784.703125,
+      "width": 687.578125,
+      "height": 58.5625,
+      "top": 784.703125,
+      "right": 1143.78125,
+      "bottom": 843.265625,
+      "left": 456.203125
+    },
+    "logbookRect": {
+      "x": 785.9844360351562,
+      "y": 797.546875,
+      "width": 156.984375,
+      "height": 45.71875,
+      "top": 797.546875,
+      "right": 942.9688110351562,
+      "bottom": 843.265625,
+      "left": 785.9844360351562
+    },
+    "restartRect": {
+      "x": 939.609375,
+      "y": 797.546875,
+      "width": 204.171875,
+      "height": 45.71875,
+      "top": 797.546875,
+      "right": 1143.78125,
+      "bottom": 843.265625,
+      "left": 939.609375
+    },
+    "deathMarkRect": {
+      "x": 477.65625,
+      "y": 36,
+      "width": 644.671875,
+      "height": 165.359375,
+      "top": 36,
+      "right": 1122.328125,
+      "bottom": 201.359375,
+      "left": 477.65625
+    },
+    "logbookFullyVisible": true,
+    "restartFullyVisible": true,
+    "deathMarkTopClipped": false,
+    "reportScrollHeight": 814,
+    "reportClientHeight": 540,
+    "reportIsScrollable": true,
+    "reportHasAnyDataNav": 0,
+    "navReach": {
+      "navTargetCount": 2,
+      "navTargetIds": [
+        "logbook",
+        "restart"
+      ],
+      "scrollTopBefore": 0,
+      "scrollTopAfter": 0,
+      "scrollMovedByNav": false
+    },
+    "errors": []
+  },
+  "1280x720": {
+    "vh": 720,
+    "vw": 1280,
+    "panelRect": {
+      "x": 332,
+      "y": 203.078125,
+      "width": 616,
+      "height": 488.125,
+      "top": 203.078125,
+      "right": 948,
+      "bottom": 691.203125,
+      "left": 332
+    },
+    "reportRect": {
+      "x": 352.796875,
+      "y": 221.671875,
+      "width": 574.40625,
+      "height": 401.640625,
+      "top": 221.671875,
+      "right": 927.203125,
+      "bottom": 623.3125,
+      "left": 352.796875
+    },
+    "navRect": {
+      "x": 352.796875,
+      "y": 623.3125,
+      "width": 574.40625,
+      "height": 50.390625,
+      "top": 623.3125,
+      "right": 927.203125,
+      "bottom": 673.703125,
+      "left": 352.796875
+    },
+    "logbookRect": {
+      "x": 626.74560546875,
+      "y": 634.203125,
+      "width": 131.90625,
+      "height": 39.5,
+      "top": 634.203125,
+      "right": 758.65185546875,
+      "bottom": 673.703125,
+      "left": 626.74560546875
+    },
+    "restartRect": {
+      "x": 755.84375,
+      "y": 634.203125,
+      "width": 171.359375,
+      "height": 39.5,
+      "top": 634.203125,
+      "right": 927.203125,
+      "bottom": 673.703125,
+      "left": 755.84375
+    },
+    "deathMarkRect": {
+      "x": 322.625,
+      "y": 28.796875,
+      "width": 634.75,
+      "height": 156.6875,
+      "top": 28.796875,
+      "right": 957.375,
+      "bottom": 185.484375,
+      "left": 322.625
+    },
+    "logbookFullyVisible": true,
+    "restartFullyVisible": true,
+    "deathMarkTopClipped": false,
+    "reportScrollHeight": 689,
+    "reportClientHeight": 402,
+    "reportIsScrollable": true,
+    "reportHasAnyDataNav": 0,
+    "navReach": {
+      "navTargetCount": 2,
+      "navTargetIds": [
+        "logbook",
+        "restart"
+      ],
+      "scrollTopBefore": 0,
+      "scrollTopAfter": 0,
+      "scrollMovedByNav": false
+    },
+    "errors": []
+  },
+  "1024x600": {
+    "vh": 600,
+    "vw": 1024,
+    "panelRect": {
+      "x": 204,
+      "y": 173.28125,
+      "width": 616,
+      "height": 402.71875,
+      "top": 173.28125,
+      "right": 820,
+      "bottom": 576,
+      "left": 204
+    },
+    "reportRect": {
+      "x": 224.796875,
+      "y": 191.875,
+      "width": 574.40625,
+      "height": 316.234375,
+      "top": 191.875,
+      "right": 799.203125,
+      "bottom": 508.109375,
+      "left": 224.796875
+    },
+    "navRect": {
+      "x": 224.796875,
+      "y": 508.109375,
+      "width": 574.40625,
+      "height": 50.390625,
+      "top": 508.109375,
+      "right": 799.203125,
+      "bottom": 558.5,
+      "left": 224.796875
+    },
+    "logbookRect": {
+      "x": 498.7456359863281,
+      "y": 519,
+      "width": 131.90621948242188,
+      "height": 39.5,
+      "top": 519,
+      "right": 630.65185546875,
+      "bottom": 558.5,
+      "left": 498.7456359863281
+    },
+    "restartRect": {
+      "x": 627.84375,
+      "y": 519,
+      "width": 171.359375,
+      "height": 39.5,
+      "top": 519,
+      "right": 799.203125,
+      "bottom": 558.5,
+      "left": 627.84375
+    },
+    "deathMarkRect": {
+      "x": 258.09375,
+      "y": 24,
+      "width": 507.796875,
+      "height": 131.6875,
+      "top": 24,
+      "right": 765.890625,
+      "bottom": 155.6875,
+      "left": 258.09375
+    },
+    "logbookFullyVisible": true,
+    "restartFullyVisible": true,
+    "deathMarkTopClipped": false,
+    "reportScrollHeight": 689,
+    "reportClientHeight": 316,
+    "reportIsScrollable": true,
+    "reportHasAnyDataNav": 0,
+    "navReach": {
+      "navTargetCount": 2,
+      "navTargetIds": [
+        "logbook",
+        "restart"
+      ],
+      "scrollTopBefore": 0,
+      "scrollTopAfter": 0,
+      "scrollMovedByNav": false
+    },
+    "errors": []
+  },
+  "2560x1080-ultrawide": {
+    "vh": 1080,
+    "vw": 2560,
+    "panelRect": {
+      "x": 776,
+      "y": 251.5625,
+      "width": 1008,
+      "height": 785.25,
+      "top": 251.5625,
+      "right": 1784,
+      "bottom": 1036.8125,
+      "left": 776
+    },
+    "reportRect": {
+      "x": 809.390625,
+      "y": 281.359375,
+      "width": 941.21875,
+      "height": 649.078125,
+      "top": 281.359375,
+      "right": 1750.609375,
+      "bottom": 930.4375,
+      "left": 809.390625
+    },
+    "navRect": {
+      "x": 809.390625,
+      "y": 930.4375,
+      "width": 941.21875,
+      "height": 78.375,
+      "top": 930.4375,
+      "right": 1750.609375,
+      "bottom": 1008.8125,
+      "left": 809.390625
+    },
+    "logbookRect": {
+      "x": 1264.083740234375,
+      "y": 947.625,
+      "width": 213.28125,
+      "height": 61.1875,
+      "top": 947.625,
+      "right": 1477.364990234375,
+      "bottom": 1008.8125,
+      "left": 1264.083740234375
+    },
+    "restartRect": {
+      "x": 1472.765625,
+      "y": 947.625,
+      "width": 277.84375,
+      "height": 61.1875,
+      "top": 947.625,
+      "right": 1750.609375,
+      "bottom": 1008.8125,
+      "left": 1472.765625
+    },
+    "deathMarkRect": {
+      "x": 957.65625,
+      "y": 43.1875,
+      "width": 644.671875,
+      "height": 179.578125,
+      "top": 43.1875,
+      "right": 1602.328125,
+      "bottom": 222.765625,
+      "left": 957.65625
+    },
+    "logbookFullyVisible": true,
+    "restartFullyVisible": true,
+    "deathMarkTopClipped": false,
+    "reportScrollHeight": 1119,
+    "reportClientHeight": 649,
+    "reportIsScrollable": true,
+    "reportHasAnyDataNav": 0,
+    "navReach": {
+      "navTargetCount": 2,
+      "navTargetIds": [
+        "logbook",
+        "restart"
+      ],
+      "scrollTopBefore": 0,
+      "scrollTopAfter": 0,
+      "scrollMovedByNav": false
+    },
+    "errors": []
+  },
+  "900x1600-portrait": {
+    "vh": 1600,
+    "vw": 900,
+    "panelRect": {
+      "x": 36,
+      "y": 225.265625,
+      "width": 828,
+      "height": 1304.96875,
+      "top": 225.265625,
+      "right": 864,
+      "bottom": 1530.234375,
+      "left": 36
+    },
+    "reportRect": {
+      "x": 64,
+      "y": 250.265625,
+      "width": 772,
+      "height": 1189.65625,
+      "top": 250.265625,
+      "right": 836,
+      "bottom": 1439.921875,
+      "left": 64
+    },
+    "navRect": {
+      "x": 64,
+      "y": 1439.921875,
+      "width": 772,
+      "height": 66.8125,
+      "top": 1439.921875,
+      "right": 836,
+      "bottom": 1506.734375,
+      "left": 64
+    },
+    "logbookRect": {
+      "x": 429.23126220703125,
+      "y": 1454.421875,
+      "width": 178.390625,
+      "height": 52.3125,
+      "top": 1454.421875,
+      "right": 607.6218872070312,
+      "bottom": 1506.734375,
+      "left": 429.23126220703125
+    },
+    "restartRect": {
+      "x": 603.796875,
+      "y": 1454.421875,
+      "width": 232.203125,
+      "height": 52.3125,
+      "top": 1454.421875,
+      "right": 836,
+      "bottom": 1506.734375,
+      "left": 603.796875
+    },
+    "deathMarkRect": {
+      "x": 226.84375,
+      "y": 69.765625,
+      "width": 446.3125,
+      "height": 131.5,
+      "top": 69.765625,
+      "right": 673.15625,
+      "bottom": 201.265625,
+      "left": 226.84375
+    },
+    "logbookFullyVisible": true,
+    "restartFullyVisible": true,
+    "deathMarkTopClipped": false,
+    "reportScrollHeight": 1190,
+    "reportClientHeight": 1190,
+    "reportIsScrollable": false,
+    "reportHasAnyDataNav": 0,
+    "navReach": {
+      "navTargetCount": 2,
+      "navTargetIds": [
+        "logbook",
+        "restart"
+      ],
+      "scrollTopBefore": 0,
+      "scrollTopAfter": 0,
+      "scrollMovedByNav": false
+    },
+    "errors": []
+  },
+  "800x500-short": {
+    "vh": 500,
+    "vw": 800,
+    "panelRect": {
+      "x": 92,
+      "y": 148.28125,
+      "width": 616,
+      "height": 331.71875,
+      "top": 148.28125,
+      "right": 708,
+      "bottom": 480,
+      "left": 92
+    },
+    "reportRect": {
+      "x": 112.796875,
+      "y": 166.875,
+      "width": 574.40625,
+      "height": 245.234375,
+      "top": 166.875,
+      "right": 687.203125,
+      "bottom": 412.109375,
+      "left": 112.796875
+    },
+    "navRect": {
+      "x": 112.796875,
+      "y": 412.109375,
+      "width": 574.40625,
+      "height": 50.390625,
+      "top": 412.109375,
+      "right": 687.203125,
+      "bottom": 462.5,
+      "left": 112.796875
+    },
+    "logbookRect": {
+      "x": 386.7456359863281,
+      "y": 423,
+      "width": 131.90621948242188,
+      "height": 39.5,
+      "top": 423,
+      "right": 518.65185546875,
+      "bottom": 462.5,
+      "left": 386.7456359863281
+    },
+    "restartRect": {
+      "x": 515.84375,
+      "y": 423,
+      "width": 171.359375,
+      "height": 39.5,
+      "top": 423,
+      "right": 687.203125,
+      "bottom": 462.5,
+      "left": 515.84375
+    },
+    "deathMarkRect": {
+      "x": 201.640625,
+      "y": 20,
+      "width": 396.71875,
+      "height": 110.6875,
+      "top": 20,
+      "right": 598.359375,
+      "bottom": 130.6875,
+      "left": 201.640625
+    },
+    "logbookFullyVisible": true,
+    "restartFullyVisible": true,
+    "deathMarkTopClipped": false,
+    "reportScrollHeight": 891,
+    "reportClientHeight": 245,
+    "reportIsScrollable": true,
+    "reportHasAnyDataNav": 0,
+    "navReach": {
+      "navTargetCount": 2,
+      "navTargetIds": [
+        "logbook",
+        "restart"
+      ],
+      "scrollTopBefore": 0,
+      "scrollTopAfter": 0,
+      "scrollMovedByNav": false
+    },
+    "errors": []
+  }
+}

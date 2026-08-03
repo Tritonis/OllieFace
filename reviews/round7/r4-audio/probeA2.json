@@ -1,0 +1,70 @@
+{
+  "pinnedI_1.0": {
+    "intensity": 1,
+    "bpm": 142,
+    "stepDur_ms": 105.63,
+    "events": 380,
+    "outOfOrder": 0,
+    "worstBacktrack_ms": 0,
+    "rampsCrossingNextNote": 0,
+    "worstOverlap_ms": 0,
+    "longestFlatHold_ms": 27.89,
+    "medianFlatHold_ms": 27.89,
+    "negativeHolds": 0,
+    "rampLengths_ms": [
+      77.75,
+      95.07
+    ]
+  },
+  "free_diff6_full": {
+    "intensity": 1,
+    "bpm": 142,
+    "stepDur_ms": 105.63,
+    "events": 380,
+    "outOfOrder": 0,
+    "worstBacktrack_ms": 0,
+    "rampsCrossingNextNote": 0,
+    "worstOverlap_ms": 0,
+    "longestFlatHold_ms": 27.89,
+    "medianFlatHold_ms": 27.89,
+    "negativeHolds": 0,
+    "rampLengths_ms": [
+      77.75,
+      95.07
+    ]
+  },
+  "pinnedI_0.75": {
+    "intensity": 0.75,
+    "bpm": 142,
+    "stepDur_ms": 105.63,
+    "events": 380,
+    "outOfOrder": 0,
+    "worstBacktrack_ms": 0,
+    "rampsCrossingNextNote": 0,
+    "worstOverlap_ms": 0,
+    "longestFlatHold_ms": 27.89,
+    "medianFlatHold_ms": 27.89,
+    "negativeHolds": 0,
+    "rampLengths_ms": [
+      77.75,
+      95.07
+    ]
+  },
+  "rising_bpm": {
+    "intensity": 0.875,
+    "bpm": 139,
+    "stepDur_ms": 107.91,
+    "events": 370,
+    "outOfOrder": 0,
+    "worstBacktrack_ms": 0,
+    "rampsCrossingNextNote": 0,
+    "worstOverlap_ms": 0,
+    "longestFlatHold_ms": 28.49,
+    "medianFlatHold_ms": 28.49,
+    "negativeHolds": 0,
+    "rampLengths_ms": [
+      79.42,
+      97.12
+    ]
+  }
+}

@@ -1,0 +1,245 @@
+{
+  "probe": "probe2-items",
+  "frameErrors": 0,
+  "lastFrameError": null,
+  "consoleErrors": [],
+  "pageErrors": [],
+  "results": {
+    "tether": {
+      "singleBody": [
+        {
+          "stacks": 1,
+          "unit": "mite",
+          "hoverHeight": 0,
+          "startDistance": 20.03,
+          "endDistance": 8.79,
+          "startY": 4.41,
+          "endY": 2.25,
+          "groundY": null,
+          "reelsThatMoved": 2
+        },
+        {
+          "stacks": 1,
+          "unit": "shriver",
+          "hoverHeight": 6.4,
+          "startDistance": 21.49,
+          "endDistance": 21.16,
+          "startY": 11.24,
+          "endY": 10.3,
+          "groundY": null,
+          "reelsThatMoved": 0
+        },
+        {
+          "stacks": 2,
+          "unit": "mite",
+          "hoverHeight": 0,
+          "startDistance": 20.03,
+          "endDistance": 13.3,
+          "startY": 4.41,
+          "endY": 1.73,
+          "groundY": null,
+          "reelsThatMoved": 1
+        },
+        {
+          "stacks": 2,
+          "unit": "shriver",
+          "hoverHeight": 6.4,
+          "startDistance": 21.18,
+          "endDistance": 10.39,
+          "startY": 10.35,
+          "endY": 9.04,
+          "groundY": null,
+          "reelsThatMoved": 2
+        },
+        {
+          "stacks": 10,
+          "unit": "mite",
+          "hoverHeight": 0,
+          "startDistance": 20.03,
+          "endDistance": 6.02,
+          "startY": 4.41,
+          "endY": 3.11,
+          "groundY": null,
+          "reelsThatMoved": 3
+        },
+        {
+          "stacks": 10,
+          "unit": "shriver",
+          "hoverHeight": 6.4,
+          "startDistance": 21.14,
+          "endDistance": 8.87,
+          "startY": 10.23,
+          "endY": 9.91,
+          "groundY": null,
+          "reelsThatMoved": 3
+        }
+      ],
+      "breadth": {
+        "seconds": 20,
+        "startMean": 22.12,
+        "endMean": 6.18,
+        "endMin": 6.01,
+        "bodiesMoved": 8
+      }
+    },
+    "movementBuffs": [
+      {
+        "label": "5x Spurs, after a kill",
+        "spurs": 5,
+        "prey": 0,
+        "lowHealth": false,
+        "quickfoot": {
+          "magnitude": 0.2,
+          "remaining": 14.57
+        },
+        "preyfoot": null,
+        "moveSpeed": 8.4
+      },
+      {
+        "label": "1x Prey, 20% health",
+        "spurs": 0,
+        "prey": 1,
+        "lowHealth": true,
+        "quickfoot": null,
+        "preyfoot": {
+          "magnitude": 0.18,
+          "remaining": 0.5
+        },
+        "moveSpeed": 8.26
+      },
+      {
+        "label": "5x Spurs + 1x Prey, 20% health, 0.5s after a kill",
+        "spurs": 5,
+        "prey": 1,
+        "lowHealth": true,
+        "quickfoot": {
+          "magnitude": 0.2,
+          "remaining": 14.55
+        },
+        "preyfoot": {
+          "magnitude": 0.18,
+          "remaining": 0.5
+        },
+        "moveSpeed": 9.91
+      },
+      {
+        "label": "5x Spurs + 10x Prey, 20% health, 0.5s after a kill",
+        "spurs": 5,
+        "prey": 10,
+        "lowHealth": true,
+        "quickfoot": {
+          "magnitude": 0.2,
+          "remaining": 14.57
+        },
+        "preyfoot": {
+          "magnitude": 1.8,
+          "remaining": 0.5
+        },
+        "moveSpeed": 23.52
+      }
+    ],
+    "whetstone": {
+      "vsDot": [
+        {
+          "label": "control (nothing on the target)",
+          "firstHit": 170,
+          "afterFiveSeconds": 170
+        },
+        {
+          "label": "player-applied burn on the target",
+          "firstHit": 170,
+          "afterFiveSeconds": 170
+        },
+        {
+          "label": "standing in a player-owned pyre cloud",
+          "firstHit": 170,
+          "afterFiveSeconds": 170
+        }
+      ],
+      "pooling": {
+        "brandNewBody": 170,
+        "sameBodyImmediate": 100,
+        "sameObjectReused": true,
+        "idBefore": 21,
+        "idAfter": 22,
+        "recycledBody": 170
+      }
+    },
+    "aegis": {
+      "declared": "Drop a 10m dome for 8s. Enemies inside it are slowed; while you stand inside it you gain +30 armor.",
+      "fired": true,
+      "armorBefore": 0,
+      "armorInsideDome": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30,
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "armorInsideMax": 30,
+      "armorAfterLeaving": 0
+    },
+    "scrapfly": [
+      {
+        "stacks": 1,
+        "perBodyDamage": [
+          0,
+          262
+        ],
+        "totalDamage": 262,
+        "focusedOneBody": true,
+        "framesWithBleedLive": 479,
+        "bodiesStruck": 1
+      },
+      {
+        "stacks": 2,
+        "perBodyDamage": [
+          355,
+          0
+        ],
+        "totalDamage": 355,
+        "focusedOneBody": true,
+        "framesWithBleedLive": 479,
+        "bodiesStruck": 1
+      },
+      {
+        "stacks": 10,
+        "perBodyDamage": [
+          1104,
+          0
+        ],
+        "totalDamage": 1104,
+        "focusedOneBody": true,
+        "framesWithBleedLive": 479,
+        "bodiesStruck": 1
+      }
+    ],
+    "statCache": [
+      {
+        "label": "no items",
+        "prey": 0,
+        "lowHealth": false,
+        "statRebuildsIn180Frames": 0
+      },
+      {
+        "label": "1x Prey Instinct, healthy",
+        "prey": 1,
+        "lowHealth": false,
+        "statRebuildsIn180Frames": 0
+      },
+      {
+        "label": "1x Prey Instinct, below 40% health",
+        "prey": 1,
+        "lowHealth": true,
+        "statRebuildsIn180Frames": 1
+      }
+    ]
+  }
+}

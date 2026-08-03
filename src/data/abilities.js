@@ -1238,7 +1238,7 @@ export const ABILITIES = {
     key: 'R',
     cooldown: 13.0,
     charges: 1,
-    description: 'Detonate every burning enemy within 34m: each one bursts for 600% damage in 5.5m.',
+    description: 'Detonate every burning enemy within 34m: each one bursts for 600% damage in 5.5m. The bursts overlap, so a tight pack pays several times over.',
     fire(ctx, player) {
       const CHARGE = 0.4;
       chargeTell(ctx, player, CHARGE, 0xff8a20, 6);
@@ -1290,6 +1290,18 @@ export const ABILITIES = {
         // bottoms out at 0.35, so a cluster still pays more than a lone target,
         // which is the intended shape; it just no longer pays linearly in the
         // square of the pack size.
+        //
+        // The ceiling, measured rather than argued, because "bounded" is not a
+        // number: a body inside K overlapping blasts pays at worst 1 + 0.35(K-1)
+        // of the printed 600%, so the whole cast plateaus near 4x printed and
+        // does not grow past it. Measured: a lone body pays exactly 72.0 on a
+        // printed 72 (1.00x) and nothing at all with 0 lit; 8 bodies at 3 m
+        // with 1 lit pay 1.45x; 3 lit pay 1.76x; 8 at 1.2 m all lit pay 4.00x
+        // (2302.9 against 576); 12 at 1.5 m all lit pay 2.79x (2410.2 against
+        // 864) — the ratio falls, not rises, once the pack is wider than one
+        // blast. 4x on a pile the Stoke cone had to build is the
+        // card working; it is stated in the description because a payout the
+        // player cannot predict is the same defect as one they cannot see.
         const litCount = _lit.length;
         for (let i = 0; i < _lit.length; i++) {
           const e = _lit[i];
@@ -1304,8 +1316,19 @@ export const ABILITIES = {
           // proc items which move bodies, and `e.position` is live.
           _a.copy(e.position);
           _b.copy(e.position).setY(e.position.y + (e.height || 1.8) * 0.4);
+          // No `status: 'burn'` rider. Snapshotting `_lit` closed the cascade
+          // *within* one cast; the rider re-opened it *across* casts, because
+          // every detonation left a much larger burning set behind it and
+          // Temporal Echo fires the identical ability again 0.9 s later.
+          // Measured, ten bodies at 2.2 m with exactly one lit: 140.4 alone
+          // against 673.2 with the echo — 9.35x the printed 72, with the "free"
+          // second cast worth 4.79x the first because it inherited a set the
+          // first one made. This ability is the payout; the Pyre Flask and the
+          // Stoke cone are the setup, and a payout that re-arms itself is not a
+          // payout. Bodies the player lit stay lit — `explode` still cannot put
+          // one out — so the echo pays for the setup that was actually spent.
           c.explode(_a, 5.5, player.stats.damage * 6.0, player, {
-            proc: 0.5, type: 'fire', status: 'burn',
+            proc: 0.5, type: 'fire',
           });
           ctx.vfx?.explosion?.(_b, 4.5, 0xff9a3c);
           ctx.vfx?.beam?.(player.muzzlePosition(), _b, 0xffd76a);

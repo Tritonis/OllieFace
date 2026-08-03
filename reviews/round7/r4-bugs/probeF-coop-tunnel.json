@@ -1,0 +1,98 @@
+{
+  "out": {
+    "stageNodeAttribution": {
+      "transitions": 8,
+      "delta": {
+        "Group": {
+          "before": 310,
+          "after": 543,
+          "delta": 233
+        }
+      }
+    },
+    "remoteJumpCrossTalk": {
+      "hostItems": "wax-quail x3 (30 m/s impulse), rubber-soles x1 (10 barrier), tectonic-heart x1 (3rd-jump quake)",
+      "hostBefore": {
+        "shield": 0,
+        "vel": 0
+      },
+      "hostAfter": {
+        "shield": 30,
+        "vel": 0
+      },
+      "pawnJumps": [
+        {
+          "j": 0,
+          "pawnVz": 30,
+          "pawnVx": 0,
+          "pawnVy": 12.6
+        },
+        {
+          "j": 1,
+          "pawnVz": 30,
+          "pawnVx": 0,
+          "pawnVy": 12.6
+        },
+        {
+          "j": 2,
+          "pawnVz": 0,
+          "pawnVx": 0,
+          "pawnVy": 12.6
+        }
+      ],
+      "tectonicTally": "0 -> 0",
+      "quakeRingsDrawn": 1
+    },
+    "replayDivergence": {
+      "live": {
+        "vx": 0,
+        "vz": 0,
+        "vy": 12.6,
+        "lastTick": 901
+      },
+      "replay": {
+        "vx": 0,
+        "vz": 0,
+        "vy": 12.6
+      },
+      "horizDelta": 0
+    },
+    "tunnelling": {
+      "thinnestCylR": 0.21,
+      "cylCount": 315,
+      "results": [
+        {
+          "speed": 10,
+          "cylR": 0.21,
+          "metresPerStep": 0.167,
+          "minGap": 0,
+          "passedThrough": false
+        },
+        {
+          "speed": 20,
+          "cylR": 0.21,
+          "metresPerStep": 0.333,
+          "minGap": 0,
+          "passedThrough": false
+        },
+        {
+          "speed": 40,
+          "cylR": 0.21,
+          "metresPerStep": 0.667,
+          "minGap": 0,
+          "passedThrough": false
+        },
+        {
+          "speed": 110,
+          "cylR": 0.21,
+          "metresPerStep": 1.833,
+          "minGap": 0,
+          "passedThrough": true
+        }
+      ]
+    },
+    "errors": 0,
+    "lastFrameError": null
+  },
+  "errs": []
+}

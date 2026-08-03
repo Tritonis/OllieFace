@@ -1,0 +1,152 @@
+{
+  "results": {
+    "cinderIgnition": {
+      "stoke": {
+        "ability": "cinderStoke",
+        "targetAtM": 4,
+        "threw": null,
+        "burnStacks": 1,
+        "statuses": [
+          "burn"
+        ],
+        "damageSoFar": 12.4,
+        "cloudsAlive": 0,
+        "cloudRadii": [],
+        "cloudDistFromTargetM": [],
+        "burnStacksAfter6s": 0,
+        "totalDamage": 38.4
+      },
+      "backdraft": {
+        "ability": "cinderBackdraft",
+        "targetAtM": 3,
+        "threw": null,
+        "burnStacks": 1,
+        "statuses": [
+          "burn"
+        ],
+        "damageSoFar": 12.7,
+        "cloudsAlive": 0,
+        "cloudRadii": [],
+        "cloudDistFromTargetM": [],
+        "burnStacksAfter6s": 0,
+        "totalDamage": 38.7
+      },
+      "pyreFlaskAimedDown": {
+        "ability": "cinderPyreFlask",
+        "targetAtM": 8,
+        "threw": null,
+        "burnStacks": 0,
+        "statuses": [],
+        "damageSoFar": 23.5,
+        "cloudsAlive": 1,
+        "cloudRadii": [
+          6
+        ],
+        "cloudDistFromTargetM": [
+          2.1
+        ],
+        "burnStacksAfter6s": 0,
+        "totalDamage": 87.9
+      },
+      "pyreFlaskPointBlank": {
+        "ability": "cinderPyreFlask",
+        "targetAtM": 3,
+        "threw": null,
+        "burnStacks": 0,
+        "statuses": [],
+        "damageSoFar": 36.3,
+        "cloudsAlive": 1,
+        "cloudRadii": [
+          6
+        ],
+        "cloudDistFromTargetM": [
+          2.6
+        ],
+        "burnStacksAfter6s": 0,
+        "totalDamage": 100.7
+      },
+      "loop": {
+        "bodiesInCone": 4,
+        "litByStoke": 3,
+        "conflagDamage": [
+          332,
+          332,
+          332,
+          325
+        ],
+        "statedPerBody": 78
+      }
+    },
+    "whetstonePooling": {
+      "brandNewBody": 170,
+      "sameObjectReused": true,
+      "poolSize": 3,
+      "recycledBody": 100,
+      "recycledAfterWindow": 170,
+      "pooledObjectsTotal": 3
+    },
+    "primaryDps": {
+      "roster": [
+        {
+          "survivor": "ranger",
+          "primary": "rangerDoubleTap",
+          "cooldown": 0.26,
+          "baseDamage": 12,
+          "description": "Fire two rounds for 2x110% damage.",
+          "castsPerSecond": 3.85
+        },
+        {
+          "survivor": "anvil",
+          "primary": "anvilSweep",
+          "cooldown": 0.44,
+          "baseDamage": 15,
+          "description": "Sweep the gauntlet for 210% damage in a wide arc.",
+          "castsPerSecond": 2.27
+        },
+        {
+          "survivor": "kestrel",
+          "primary": "kestrelMark",
+          "cooldown": 0.62,
+          "baseDamage": 17,
+          "description": "A single precise round for 250% damage that pierces one target.",
+          "castsPerSecond": 1.61
+        },
+        {
+          "survivor": "rook",
+          "primary": "rookRivet",
+          "cooldown": 0.17,
+          "baseDamage": 11,
+          "description": "A rapid stream of rivets for 85% damage each.",
+          "castsPerSecond": 5.88
+        },
+        {
+          "survivor": "cinder",
+          "primary": "cinderStoke",
+          "cooldown": 0.3,
+          "baseDamage": 13,
+          "description": "Wash a short cone of flame for 95% damage, igniting everything caught.",
+          "castsPerSecond": 3.33
+        }
+      ],
+      "stokeSustained": {
+        "seconds": 6,
+        "casts": 19,
+        "damageDealt": 115.1,
+        "dpsAsMultipleOfDamageStat": 1.48,
+        "peakBurnStacksOnOneBody": 3,
+        "burnStackCapExists": false
+      }
+    },
+    "shieldAndLastHurt": {
+      "shieldBefore": 55,
+      "shieldAfter": 5,
+      "healthLost": 0,
+      "timeSinceHurtBeforeAbsorbedHit": 7.42,
+      "timeSinceHurtAfterAbsorbedHit": 0,
+      "onDamagedHooksFired": 0
+    }
+  },
+  "errors": [],
+  "frameErrors": 0,
+  "lastFrameError": null
+}

@@ -1,0 +1,127 @@
+{
+  "out": {
+    "rendererFound": true,
+    "untouchable": {
+      "healthUnchanged": true,
+      "shieldLeft": 950,
+      "flawlessAfterTwoCleanClears": [
+        1,
+        2
+      ],
+      "damageTakenThisStageFromAbsorbedHit": 50,
+      "flawlessAfterBarrierStage": 2,
+      "expected": 3,
+      "BROKEN": true
+    },
+    "survivorSwaps": {
+      "roster": null,
+      "trace": [
+        {
+          "pass": 0,
+          "geometries": 396,
+          "children": 25,
+          "nodes": 399
+        },
+        {
+          "pass": 1,
+          "geometries": 343,
+          "children": 25,
+          "nodes": 399
+        },
+        {
+          "pass": 2,
+          "geometries": 343,
+          "children": 25,
+          "nodes": 399
+        },
+        {
+          "pass": 3,
+          "geometries": 343,
+          "children": 25,
+          "nodes": 399
+        }
+      ],
+      "perPass": -53
+    },
+    "stageTransitions6": {
+      "before": {
+        "listeners": 75,
+        "children": 25,
+        "nodes": 399,
+        "geometries": 343,
+        "entities": 1,
+        "statuses": 0,
+        "clouds": 0,
+        "enemies": 0
+      },
+      "after": {
+        "listeners": 75,
+        "children": 25,
+        "nodes": 585,
+        "geometries": 402,
+        "entities": 1,
+        "statuses": 0,
+        "clouds": 0,
+        "enemies": 0
+      }
+    },
+    "extAcrossStage": {
+      "extBefore": 11.226,
+      "extAfterStage": 0,
+      "vx": 0,
+      "extVX": 0
+    },
+    "extAcrossDeath": {
+      "extBefore": 11.226,
+      "extAfterDeath": 0
+    },
+    "repeatedRuns": [
+      {
+        "run": 0,
+        "progDamageTaken": 70,
+        "profRunTaken": null,
+        "lifetimeRuns": 1,
+        "lifetimeTaken": 70,
+        "earnedThisRun": 0,
+        "completedThisRun": 0
+      },
+      {
+        "run": 1,
+        "progDamageTaken": 90,
+        "profRunTaken": null,
+        "lifetimeRuns": 2,
+        "lifetimeTaken": 90,
+        "earnedThisRun": 0,
+        "completedThisRun": 0
+      },
+      {
+        "run": 2,
+        "progDamageTaken": 110,
+        "profRunTaken": null,
+        "lifetimeRuns": 3,
+        "lifetimeTaken": 110,
+        "earnedThisRun": 0,
+        "completedThisRun": 0
+      }
+    ],
+    "logbookCycles": {
+      "before": {
+        "geometries": 400,
+        "textures": 53,
+        "nodes": 609,
+        "listeners": 75,
+        "dom": 533
+      },
+      "after": {
+        "geometries": 400,
+        "textures": 53,
+        "nodes": 609,
+        "listeners": 75,
+        "dom": 596
+      }
+    },
+    "errors": 0,
+    "lastFrameError": null
+  },
+  "errs": []
+}

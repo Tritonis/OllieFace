@@ -725,7 +725,24 @@ export class Items {
     return false;
   }
 
-  applyImpulse(speed) { this._pendingImpulse = Math.max(this._pendingImpulse, speed); }
+  /**
+   * Horizontal launch speed banked for the jump that is being resolved.
+   *
+   * This sums. It used to be `Math.max`, which made the channel
+   * winner-takes-all: `linear(10, n) > linear(5, n)` for every n, so a single
+   * Waxed Wing silently deleted Updraft Vents' entire movement clause (20.15
+   * m/s held together, exactly the 20.15 of the Wing alone) and Tectonic
+   * Heart's 6 m/s throw with it. Three cards write here and two of them could
+   * never be read; one of those two has only the one clause.
+   *
+   * Summed rather than summed-and-capped on purpose. A cap has to be a number,
+   * and any number low enough to matter clips Waxed Wing's own printed
+   * linearity before it clips a combination — the card's contract is +10 m/s a
+   * stack with no ceiling, and the largest single contributor was already
+   * unbounded under `Math.max`. Summing therefore adds no new order of
+   * magnitude, it only lets the smaller cards reach the number at all.
+   */
+  applyImpulse(speed) { this._pendingImpulse += speed; }
   consumeImpulse() { const v = this._pendingImpulse; this._pendingImpulse = 0; return v; }
 
   // -------------------------------------------------------------- equipment
@@ -904,7 +921,22 @@ export class Items {
   onJump(e) { this._fire('onJump', e || {}, 1, 1); }
   onAbility(e) { if (this.ctx.authority) this._fire('onAbility', e || {}, 1, 1); }
 
-  /** Conditional damage multipliers. Called from Combat before mitigation. */
+  /**
+   * Conditional damage multipliers. Called from Combat before mitigation.
+   *
+   * Fully multiplicative, deliberately and with the ceiling measured rather
+   * than assumed. Eleven items carry an `outgoing` hook; ten stacks of each
+   * multiply to x172.8 on a healthy player against a clean target, and to
+   * x5443.2 at 20% health against a target that is burning, bleeding and
+   * slowed — before crit, before proc chains, before Shrapnel Heart. That is
+   * the genre's shape and it is the reason a minute-25 inventory feels like a
+   * different game than a minute-5 one, so it is kept.
+   *
+   * What is worth knowing if a ceiling is ever wanted: the tail is short. Two
+   * cards — Chipped Whetstone at 8x and Entropy Ledger at 9x — are x72 of the
+   * x172.8 on their own, so a cap belongs on the individual conditional
+   * multipliers, not on this product.
+   */
   modifyOutgoing(amount, target, info, combat) {
     const list = this._hooks.outgoing;
     if (!list.length) return amount;
@@ -1096,6 +1128,15 @@ export class Items {
             source: ctx.player, position: t.position, type: c.type,
             procCoefficient: 0, procDepth: 2, isDot: true,
           });
+          // Two overlapping clouds do each pay their own damage tick, so a body
+          // standing in two Pyre Flasks takes twice the printed dps. Measured
+          // and kept. Every other overlapping AoE in the game pays per source,
+          // the flask has two charges precisely so that overlapping them is a
+          // decision worth making, and halving the second cloud would make the
+          // second charge worth nothing. What must not stack is the *status* —
+          // that is the next line, and it is verified: peak 1 burn stack with 2
+          // clouds alive.
+          //
           // Topped up rather than stacked: a body standing in an 8 s pyre would
           // otherwise collect sixteen independent burn stacks and turn a setup
           // tool into the biggest DoT in the game. "Everything in the fire is

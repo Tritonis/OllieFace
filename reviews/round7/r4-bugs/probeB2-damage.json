@@ -1,0 +1,69 @@
+{
+  "out": {
+    "absorbedHitAccounting": {
+      "hit": 50,
+      "health": "110 -> 110",
+      "shield": "1000 -> 950",
+      "progressionDamageTaken": "0 -> 50",
+      "profileRunDamageTaken": "0 -> 50",
+      "profileStageDamageTaken": "0 -> 50",
+      "profileLifetimeDamageTaken": "0 -> 50"
+    },
+    "untouchable": {
+      "healthLost": 0,
+      "shieldLeft": 950,
+      "flawlessAfterCleanStage": 0,
+      "damageTakenThisStageAfterAbsorbedHit": 50,
+      "flawlessAfterAbsorbedStage": 0,
+      "verdict": "absorbed hit BROKE the flawless stage"
+    },
+    "reflectChain": {
+      "itemsHeld": [
+        "iron-thorns x3",
+        "razor-wire x3"
+      ],
+      "applyDamageCalls": 6,
+      "maxNesting": 4,
+      "playerHealth": "100000 -> 99505.0",
+      "eliteShield": "50000 -> 47390.0",
+      "eliteHealth": 50000
+    },
+    "absorbedFeedback": {
+      "playerHurt": 0,
+      "shieldBroken": 1,
+      "damage": 1,
+      "ts": 30,
+      "before": {
+        "shake": 0.2307,
+        "aberr": 0.0076,
+        "hitstop": 0.05
+      },
+      "after": {
+        "shake": 0.2657,
+        "aberr": 0.0076,
+        "hitstop": 0.05
+      }
+    },
+    "dotIntoShield": {
+      "fired": true,
+      "ev": {
+        "amount": 40,
+        "toHealth": 0,
+        "absorbed": 40
+      },
+      "shield": 960,
+      "health": 100000
+    },
+    "selfAndEnv": {
+      "playerHurt": 2,
+      "damage": 2,
+      "returnedSelf": 25,
+      "returnedEnv": 25,
+      "health": 99950,
+      "progTaken": 710
+    },
+    "errors": 0,
+    "lastFrameError": null
+  },
+  "errs": []
+}

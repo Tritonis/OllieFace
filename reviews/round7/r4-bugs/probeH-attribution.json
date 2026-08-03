@@ -1,0 +1,54 @@
+{
+  "out": {
+    "attribution": [
+      {
+        "tag": "obj8",
+        "name": "terrain",
+        "before": 1,
+        "after": "REMOVED",
+        "delta": null
+      },
+      {
+        "tag": "obj9",
+        "name": "props",
+        "before": 26,
+        "after": "REMOVED",
+        "delta": null
+      },
+      {
+        "tag": "obj26",
+        "name": "terrain",
+        "before": "ADDED",
+        "after": 1,
+        "delta": null
+      },
+      {
+        "tag": "obj27",
+        "name": "props",
+        "before": "ADDED",
+        "after": 25,
+        "delta": null
+      },
+      {
+        "tag": "obj13",
+        "name": "Group",
+        "before": 112,
+        "after": 395,
+        "delta": 283
+      }
+    ],
+    "totals": {
+      "childrenBefore": 25,
+      "childrenAfter": 25,
+      "nodesBefore": 399,
+      "nodesAfter": 681
+    },
+    "worst": {
+      "tag": "obj8",
+      "kinds": {},
+      "series": null
+    },
+    "errors": 0
+  },
+  "errs": []
+}

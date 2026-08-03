@@ -52,12 +52,51 @@ import { MusicEngine } from './Music.js';
  * the number the graph actually ran at. Charging honestly at 28 would have cut
  * the real world-SFX budget from ~35 concurrent nodes to 20 and thinned a
  * firefight — measured, refusals went from 658 to 2739 over 150 s of the same
- * combat. 40/10 keeps the density the game was tuned against and still holds
- * ten nodes in reserve that no amount of world noise can take.
+ * combat. 40/10 kept the density the game was tuned against and was supposed to
+ * hold ten nodes in reserve that no amount of world noise could take.
+ *
+ * Two further things were wrong with THAT, and both are measured.
+ *
+ * Fourteen catalogue entries — `pickup`, `levelUp`, `chest`, `shrineWin`,
+ * `teleporterStart`, `coin` and the rest — emitted nodes through `_release`,
+ * which charges the counter, without ever calling `_take`, which reads it. So
+ * they pushed the counter arbitrarily far past its own ceiling: measured, six
+ * calls in sequence reached 58 against a cap of 40, at which point BOTH
+ * `_take(5)` and `_take(3, true)` returned false. The reserve was fiction, and
+ * `playerHurt` — the sound the whole scheme exists to protect — was refused at
+ * any `voices >= 38` whatever its priority flag said.
+ *
+ * The fix is structural rather than a fourteenth exception: the two classes get
+ * two counters, and each gate reads ONLY the counter its own class can fill.
+ * World SFX are gated on `worldVoices` against WORLD_VOICES; player-feedback
+ * sounds are gated on `priorityVoices` against PRIORITY_RESERVE. Neither can
+ * refuse the other, at any load, by construction rather than by arithmetic that
+ * happens to work out. The bucket is chosen by `_take` and spent by `_release`,
+ * so the gate and the charge cannot drift apart the way they did.
+ *
+ * A shared total does NOT give that property, and this is measured rather than
+ * argued: with world gated on its own counter but priority still gated on the
+ * sum, 60 s of ordinary combat refused 158 three-node player-feedback sounds,
+ * because the graph legitimately reached 58 live nodes and the priority gate
+ * read all of them. A reserve that a full graph can consume is not a reserve.
+ *
+ * The sizes. WORLD_VOICES 44 is what the game was in fact tuned against: the
+ * old cap was 30 world nodes, but fourteen sounds spent outside it and the
+ * graph ran to a measured 58 in ordinary play with zero clipped samples and the
+ * master limiter pulling 0.5 dB at its worst. Refusals over 60 s of combat go
+ * 48.8/s (54.6% of everything the mix asked for) to 14.0/s (29.5%), and the
+ * price of that is on the SFX limiter, which goes from -2.82 dB of mean gain
+ * reduction to -4.26 dB. That is the trade, stated: more of the fight survives,
+ * and the bus that catches it works harder. PRIORITY_RESERVE 28 is the worst
+ * realistic concurrency of the sounds allowed into it — a `pickup` (11) and a
+ * `levelUp` (12) overlapping while the player takes a hit (3) is 26.
+ *
+ * MAX_VOICES is then just the sum, and is a diagnostic ceiling rather than a
+ * gate: nothing is measured against it.
  */
-const MAX_VOICES = 40;
-const PRIORITY_RESERVE = 10;
-const WORLD_VOICES = MAX_VOICES - PRIORITY_RESERVE;
+const WORLD_VOICES = 44;
+const PRIORITY_RESERVE = 28;
+const MAX_VOICES = WORLD_VOICES + PRIORITY_RESERVE;
 
 /**
  * Music bus coefficient, against an SFX bus of 0.9. Named because three places
@@ -114,6 +153,22 @@ export class Audio {
     this.sfxVolume = 1;
     this.musicVolume = 1;
     this.voices = 0;
+    // Nodes owned by world SFX only. World sounds are gated on this rather than
+    // on the total, so a burst of player-feedback sounds can never refuse a
+    // gunshot and — the failure this exists for — a wall of world noise can
+    // never refuse the player's own damage cue.
+    this.worldVoices = 0;
+    // Nodes owned by player-feedback sounds only, gated against a reserve
+    // nothing else may spend. Its whole job is to still have room in it during
+    // the loudest fight in the game.
+    this.priorityVoices = 0;
+    this._priorityCharge = false;
+    // Gate diagnostics. Read by the audio probes; nothing makes decisions on
+    // them. They are here because "how often is the mix being deleted" was
+    // reported from a one-off instrumented build twice and disagreed with
+    // itself by 5x both times.
+    this._takes = 0;
+    this._refusals = 0;
     this.intensity = 0;
 
     this._throttles = new Map();
@@ -168,14 +223,54 @@ export class Audio {
       // Stage 1 is the start of the run, and the run is what the opening
       // ceiling measures — not the age of the AudioContext, which begins at
       // the first gesture anywhere on the page.
-      if ((p?.index ?? 0) === 0) {
-        this.musicEngine?.reset();
-        this._itemCounts.clear();
-      }
+      if ((p?.index ?? 0) === 0) this.beginRun();
     });
     e.on('bossSpawn', () => { this.bossHorn(); this.musicEngine?.bump(0.7); });
     e.on('teleporterComplete', () => this.stageSting());
-    e.on('playerDead', () => this.playerDead());
+    // Only the local survivor's death silences the local soundtrack. The event
+    // carries no victim (`{}` from Combat, Player and the harness alike) and
+    // `NetHost` forwards it to every client, where `NetClient` re-emits it
+    // verbatim — so on a client a *teammate* dying used to stop the sequencer
+    // and latch the ambient bed down for the rest of the session, for a player
+    // still alive and still fighting. `alive` is set to false before the emit on
+    // every path that raises this, so the local player being alive here is
+    // positive evidence that the death belongs to somebody else.
+    e.on('playerDead', () => {
+      if (this.ctx?.player && this.ctx.player.alive !== false) return;
+      this.playerDead();
+    });
+  }
+
+  /**
+   * A run is starting. The counterpart of `playerDead`, and the only thing that
+   * undoes it.
+   *
+   * `stop()` latches the sequencer off and `_musicOff` latches the ambient bed
+   * down, and until now nothing cleared either: `reset()` demonstrably ran (the
+   * run clock went back to zero) while the sequencer stayed dead and the music
+   * bus sat wide open at 0.8. A second run in the same page session was silence.
+   * Single-player got away with it only because the menu's restart does a
+   * `location.reload()`.
+   *
+   * Public because it is also what the capture harness drives to put the audio
+   * system into a state where "is it making a sound?" is a question with a
+   * meaningful answer.
+   */
+  beginRun() {
+    const ac = this._ensure();
+    if (!ac) return;
+    this._musicOff = false;
+    this._itemCounts.clear();
+    this.musicEngine?.reset();
+    if (this.music) {
+      // `playerDead` ran the bus to zero with a `setTargetAtTime`, which never
+      // actually arrives — so a bare `setTargetAtTime` back up would be racing
+      // an automation that is still scheduled. Cancel first, then climb.
+      const t = ac.currentTime;
+      this.music.gain.cancelScheduledValues(t);
+      this.music.gain.setValueAtTime(this.music.gain.value, t);
+      this.music.gain.setTargetAtTime(this.musicVolume * MUSIC_BUS, t, 0.15);
+    }
   }
 
   /* ------------------------------------------------------------------ */
@@ -184,7 +279,10 @@ export class Audio {
 
   _ensure() {
     if (this.ac) {
-      if (this.ac.state === 'suspended') this.ac.resume();
+      // `resume()` on an OfflineAudioContext throws InvalidStateError, and an
+      // offline context is exactly what any sample-exact verification rig has
+      // to use. `startRendering` is the thing that tells the two apart.
+      if (this.ac.state === 'suspended' && !this.ac.startRendering) this.ac.resume();
       return this.ac;
     }
     const AC = globalThis.AudioContext || globalThis.webkitAudioContext;
@@ -212,10 +310,19 @@ export class Audio {
 
     // SFX gets the tight limiter instead, so explosions are tamed where they
     // are made rather than by dragging the rest of the mix down with them.
+    // -7/14:1 was chosen against no measurement at all. Measured afterwards, it
+    // pulled -2.82 dB of gain reduction on average and -8.86 dB at its worst,
+    // continuously, through combat — i.e. it was not a limiter, it was the
+    // thing shaping the SFX mix, which is the exact criticism that moved the
+    // compression off the master in the first place. Widening the voice budget
+    // (see MAX_VOICES) pushed it further, to -5.21 dB mean / -11.96 worst.
+    // -5/10:1 hands that headroom back: it catches the explosion peaks and lets
+    // the body of a firefight through, with the master limiter — which is
+    // pulling 0.04 dB on average — as the actual safety net for the sum.
     const sfxLimiter = ac.createDynamicsCompressor();
-    sfxLimiter.threshold.value = -7;
+    sfxLimiter.threshold.value = -5;
     sfxLimiter.knee.value = 2;
-    sfxLimiter.ratio.value = 14;
+    sfxLimiter.ratio.value = 10;
     sfxLimiter.attack.value = 0.002;
     sfxLimiter.release.value = 0.15;
     sfxLimiter.connect(master);
@@ -335,12 +442,43 @@ export class Audio {
    * WORLD_VOICES, so the difference is always there when one of them arrives.
    */
   _take(cost = 1, priority = false) {
-    return this.voices + cost <= (priority ? MAX_VOICES : WORLD_VOICES);
+    const ok = priority
+      ? this.priorityVoices + cost <= PRIORITY_RESERVE
+      : this.worldVoices + cost <= WORLD_VOICES;
+    this._takes++;
+    if (!ok) { this._refusals++; return false; }
+    // Remember which budget the sound just approved will be charged to. Sound
+    // bodies are synchronous and non-overlapping — every one of them calls
+    // `_take` and then emits — so this is a straight handover to `_release`
+    // rather than shared state. Making the gate and the charge two halves of
+    // one decision is what stops them drifting, which is how the counter ended
+    // up 18 nodes above a ceiling it was still being asked about.
+    this._priorityCharge = priority;
+    return true;
+  }
+
+  /**
+   * Charge the following sound to a budget without gating it, for the two
+   * sounds that may never be refused for any reason. Still an explicit call, so
+   * "this sound is exempt" is visible at the call site rather than being the
+   * silent default it used to be for fourteen of them.
+   */
+  _always(priority = true) {
+    this._priorityCharge = priority;
+    return true;
   }
 
   _release(node) {
     this.voices++;
-    node.onended = () => { this.voices = Math.max(0, this.voices - 1); };
+    // Captured, not re-read: `onended` fires seconds later, long after
+    // `_priorityCharge` belongs to some other sound.
+    const world = !this._priorityCharge;
+    if (world) this.worldVoices++; else this.priorityVoices++;
+    node.onended = () => {
+      this.voices = Math.max(0, this.voices - 1);
+      if (world) this.worldVoices = Math.max(0, this.worldVoices - 1);
+      else this.priorityVoices = Math.max(0, this.priorityVoices - 1);
+    };
   }
 
   /**
@@ -446,7 +584,15 @@ export class Audio {
   /** Weapon fire: transient click + noise body + pitched thump. */
   shoot(pos, scale = 1) {
     const ac = this._ensure();
-    if (!ac || !this._take(5)) return;
+    if (!ac) return;
+    // Same graceful refusal as `explosion`, and for the same reason: shots are
+    // the largest single class of refused sound in a firefight (1074 of 1912
+    // refusals over 60 s), and the player's own weapon falling silent is the
+    // worst possible thing for the voice cap to choose. Under pressure a shot
+    // keeps its transient and its body and loses the pitched thump and the
+    // mechanical tail — thinner, not absent.
+    const full = this._take(5);
+    if (!full && !this._take(2)) return;
     const t = ac.currentTime;
     const out = this._out(pos, 8);
 
@@ -468,6 +614,7 @@ export class Audio {
     this._noise(t, 0.13 * scale, {
       type: 'bandpass', freq: 2600 * vary, freqEnd: bodyEnd, q: bodyQ, gain: 0.55 * scale, out,
     });
+    if (!full) return;
     this._tone(t, 0.11 * scale, {
       type: 'triangle', f0: 320 * vary, f1: 55, gain: 0.42 * scale, out, attack: 0.001,
     });
@@ -556,7 +703,16 @@ export class Audio {
   /** Explosion: crack, filtered noise body, sub thump, and a tail. */
   explosion(pos, radius = 4) {
     const ac = this._ensure();
-    if (!ac || !this._take(9)) return;
+    if (!ac) return;
+    // An explosion is the loudest event in the game and it honestly costs nine
+    // nodes, which made it the first thing a busy fight deleted — measured, 1768
+    // of them dropped in 60 s of ordinary combat, more than half of every
+    // refusal in the mix. Refusal is now graceful rather than total: if the full
+    // voice cannot be afforded, the crack, the body and the sub thump still
+    // play and the tail and the debris scatter do not. A firefight where distant
+    // explosions get thinner is a mix; one where they vanish is a bug.
+    const full = this._take(9);
+    if (!full && !this._take(3)) return;
     const t = ac.currentTime;
     const out = this._out(pos, 12, 220);
     const s = clamp(radius / 4, 0.5, 3);
@@ -570,6 +726,7 @@ export class Audio {
     this._tone(t, 0.45 * s, {
       type: 'sine', f0: 90 * vary, f1: 24, gain: 0.9, out, attack: 0.006, curve: 'exp',
     });
+    if (!full) return;
     this._tone(t, 0.3 * s, {
       type: 'triangle', f0: 220 * vary, f1: 45, gain: 0.35, out, attack: 0.003,
     });
@@ -707,6 +864,9 @@ export class Audio {
     if (!ac) return;
     const t = ac.currentTime;
     this._musicOff = true;
+    // Charged, never gated. The run ending is not a moment to save three nodes,
+    // and every world voice in the graph is about to expire anyway.
+    this._always();
     // Fade the layers rather than the bus: the bus is also what `playerHurt`
     // and `setMusicVolume` write to, and a bus parked at 0 would silently eat
     // the next run's music if anything ever revived this instance.
@@ -762,22 +922,66 @@ export class Audio {
     this._itemCounts.set(id, total);
     const delta = p.delta ?? (total - prev);
     if (delta === 0) return;
-    if (delta < 0) { this.deny(); return; }
-    this.pickup(PICKUP_TIER[p.tier] ?? 0);
+    if (delta > 0) {
+      const tier = PICKUP_TIER[p.tier] ?? 0;
+      this._cueTier = Math.max(this._cueTier ?? -1, tier);
+    } else {
+      this._cueRemoval = true;
+    }
+    if (!this._cuePending) {
+      this._cuePending = true;
+      queueMicrotask(() => this._flushItemCue());
+    }
+  }
+
+  /**
+   * One cue per inventory *transaction*, not per write.
+   *
+   * A blight card is a corruption: `Items._settleBlight` zeroes the stack it
+   * eats and then writes the blight's own total, so `_set` fires a negative
+   * delta in the middle of a pickup and the player heard the reward jingle
+   * followed by the rejection buzzer — `deny()` is the UI "that did not work"
+   * sound — for successfully picking an item up. Every write in one grant is
+   * synchronous, so a microtask sees the whole transaction and can answer it
+   * once: anything gained plays `pickup` at the best tier involved, and only a
+   * transaction that is *purely* a loss plays `deny`.
+   *
+   * Two different items granted in the same frame therefore also collapse to a
+   * single cue, which is what the deleted 40 ms throttle was silencing.
+   *
+   * What this cannot fix is a removal that is the consequence of a successful
+   * action with no gain beside it — the Marrow Kiln burning an item for gold
+   * (`Interactables.js`), the Hollow Market refinery trading a stack up
+   * (`RealmProps.js`). Both play their own success cue and then this buzzer.
+   * That needs `Items._set` to carry a reason ('give' | 'take' | 'corrupt' |
+   * 'refine') so the direction stops being guessed from the sign; it is filed
+   * for the item system's owner and is not fixable from here.
+   */
+  _flushItemCue() {
+    this._cuePending = false;
+    const tier = this._cueTier;
+    const removed = this._cueRemoval;
+    this._cueTier = null;
+    this._cueRemoval = false;
+    if (tier != null) this.pickup(tier);
+    else if (removed) this.deny();
   }
 
   /** Rising arpeggio; higher tiers start higher and add a shimmer tail. */
   pickup(tier = 0) {
     const ac = this._ensure();
-    if (!ac) return;
-    // The jingle is fully deterministic, so two copies a few milliseconds apart
-    // are bit-identical waveforms that comb-filter the game's most-heard reward
-    // cue into something hollow. `Items.give` still reaches this twice for one
-    // card when the blight transform runs — `_set` fires once for the stack and
-    // again for the corrupted total — and that pair is what this collapses.
-    // (The other duplicate, a direct `play('pickup')` beside every emit, is
-    // deleted at the source rather than papered over here.)
-    if (!this._throttle('pickup', 0.04)) return;
+    // Priority: the reward cue for the game's central verb does not queue
+    // behind gunfire. Eleven nodes is its worst case (five rungs plus the
+    // legendary shimmer).
+    //
+    // The 40 ms throttle that used to sit here is gone. It existed to collapse
+    // the duplicate jingle the blight transform produced; that duplicate is now
+    // collapsed at its source in `itemChanged`, where the whole transaction is
+    // visible, and all the throttle still did was delete the second of two
+    // *different* items granted in the same frame — a chest burst, a Void
+    // field's multi-grant — because `_throttle` keys on `ac.currentTime`, which
+    // is identical for two synchronous calls.
+    if (!ac || !this._take(11, true)) return;
     const t = ac.currentTime;
     const n = 3 + Math.min(2, tier);
     const base = ROOT * 4 * Math.pow(2, tier / 6);
@@ -799,6 +1003,9 @@ export class Audio {
     const ac = this._ensure();
     if (!ac) return;
     if (!this._throttle('coin', 0.06)) return;
+    // Gold cascades reach this up to 16 times a second and it was spending
+    // three uncharged nodes every time, i.e. up to 50 a second off-budget.
+    if (!this._take(3)) return;
     const t = ac.currentTime;
     // Gold arrives in streams, so the pair walks up a pentatonic ladder rather
     // than replaying the same two pitches. Four rungs is enough that a long
@@ -812,7 +1019,9 @@ export class Audio {
 
   levelUp() {
     const ac = this._ensure();
-    if (!ac) return;
+    // Priority: a level-up is progression feedback, not scenery, and twelve
+    // nodes is too many to fit the world budget during the fight that earned it.
+    if (!ac || !this._take(12, true)) return;
     const t = ac.currentTime;
     // Major-ish rising sting over a sub swell.
     const steps = [0, 4, 7, 12, 16];
@@ -842,7 +1051,7 @@ export class Audio {
 
   bossHorn() {
     const ac = this._ensure();
-    if (!ac) return;
+    if (!ac || !this._take(5)) return;
     const t = ac.currentTime;
     for (const d of [0, 7, 12]) {
       this._tone(t, 2.4, {
@@ -855,7 +1064,7 @@ export class Audio {
 
   stageSting() {
     const ac = this._ensure();
-    if (!ac) return;
+    if (!ac || !this._take(5)) return;
     const t = ac.currentTime;
     for (let i = 0; i < 4; i++) {
       this._tone(t + i * 0.09, 0.7, {
@@ -867,7 +1076,7 @@ export class Audio {
 
   uiClick(kind = 0) {
     const ac = this._ensure();
-    if (!ac) return;
+    if (!ac || !this._take(2)) return;
     const t = ac.currentTime;
     this._tone(t, 0.05, { type: 'square', f0: kind ? 1200 : 880, gain: 0.07, attack: 0.001 });
     this._noise(t, 0.03, { type: 'highpass', freq: 5000, gain: 0.08, attack: 0.001 });
@@ -884,7 +1093,7 @@ export class Audio {
    */
   chest(pos) {
     const ac = this._ensure();
-    if (!ac) return;
+    if (!ac || !this._take(9)) return;
     const t = ac.currentTime;
     const out = this._out(pos, 6, 90);
     // Latch, then lid, then the reward shimmer. The 90ms gap between the first
@@ -904,7 +1113,7 @@ export class Audio {
   /** Shop / vault purchase: register clunk, then a rising two-note confirm. */
   purchase(pos) {
     const ac = this._ensure();
-    if (!ac) return;
+    if (!ac || !this._take(5)) return;
     const t = ac.currentTime;
     const out = this._out(pos, 5, 60);
     this._tone(t, 0.06, { type: 'square', f0: 260, f1: 150, gain: 0.16, out, attack: 0.001 });
@@ -919,7 +1128,7 @@ export class Audio {
   /** Shrine paid off: a bright bell chord over a sub swell. */
   shrineWin(pos) {
     const ac = this._ensure();
-    if (!ac) return;
+    if (!ac || !this._take(10)) return;
     const t = ac.currentTime;
     const out = this._out(pos, 9, 120);
     const IVS = [0, 7, 12, 19];
@@ -937,7 +1146,7 @@ export class Audio {
   /** Shrine refused: the same gesture inverted — falling, detuned, dull. */
   shrineFail(pos) {
     const ac = this._ensure();
-    if (!ac) return;
+    if (!ac || !this._take(8)) return;
     const t = ac.currentTime;
     const out = this._out(pos, 9, 120);
     for (let i = 0; i < 3; i++) {
@@ -954,7 +1163,7 @@ export class Audio {
   /** Blood shrine: a wet squelch over a heartbeat. */
   shrineBlood(pos) {
     const ac = this._ensure();
-    if (!ac) return;
+    if (!ac || !this._take(5)) return;
     const t = ac.currentTime;
     const out = this._out(pos, 7, 90);
     // High Q on the downward sweep is what turns a noise glide from "wind"
@@ -972,7 +1181,7 @@ export class Audio {
   /** Teleporter engaging: a long rising charge that lands on a boom. */
   teleporterStart(pos) {
     const ac = this._ensure();
-    if (!ac) return;
+    if (!ac || !this._take(11)) return;
     const t = ac.currentTime;
     const out = this._out(pos, 14, 200);
     const RISE = 1.9;
@@ -1002,7 +1211,10 @@ export class Audio {
   /** Rejected input: short, low, and unmistakably not a confirm. */
   deny() {
     const ac = this._ensure();
-    if (!ac) return;
+    // Priority for the same reason `pickup` is: it is the answer to something
+    // the player just did, and an answer that sometimes does not arrive is
+    // worse than no answer at all.
+    if (!ac || !this._take(2, true)) return;
     const t = ac.currentTime;
     this._tone(t, 0.08, { type: 'square', f0: 200, gain: 0.09, attack: 0.001 });
     this._tone(t + 0.08, 0.12, { type: 'square', f0: 150, gain: 0.09, attack: 0.001 });

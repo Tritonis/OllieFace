@@ -1,0 +1,304 @@
+{
+  "out": {
+    "stageTrace": [
+      {
+        "i": 0,
+        "geo": 396,
+        "tex": 53,
+        "prog": 71,
+        "nodes": 399,
+        "children": 25,
+        "dom": 519
+      },
+      {
+        "i": 1,
+        "geo": 392,
+        "tex": 53,
+        "prog": 79,
+        "nodes": 428,
+        "children": 25,
+        "dom": 522
+      },
+      {
+        "i": 2,
+        "geo": 398,
+        "tex": 53,
+        "prog": 81,
+        "nodes": 447,
+        "children": 25,
+        "dom": 525
+      },
+      {
+        "i": 3,
+        "geo": 400,
+        "tex": 53,
+        "prog": 82,
+        "nodes": 488,
+        "children": 25,
+        "dom": 528
+      },
+      {
+        "i": 4,
+        "geo": 402,
+        "tex": 53,
+        "prog": 83,
+        "nodes": 525,
+        "children": 25,
+        "dom": 531
+      },
+      {
+        "i": 5,
+        "geo": 402,
+        "tex": 53,
+        "prog": 83,
+        "nodes": 551,
+        "children": 25,
+        "dom": 534
+      },
+      {
+        "i": 6,
+        "geo": 402,
+        "tex": 53,
+        "prog": 83,
+        "nodes": 585,
+        "children": 25,
+        "dom": 534
+      },
+      {
+        "i": 7,
+        "geo": 400,
+        "tex": 53,
+        "prog": 83,
+        "nodes": 609,
+        "children": 25,
+        "dom": 534
+      },
+      {
+        "i": 8,
+        "geo": 403,
+        "tex": 53,
+        "prog": 83,
+        "nodes": 632,
+        "children": 25,
+        "dom": 534
+      },
+      {
+        "i": 9,
+        "geo": 402,
+        "tex": 53,
+        "prog": 83,
+        "nodes": 677,
+        "children": 25,
+        "dom": 534
+      },
+      {
+        "i": 10,
+        "geo": 402,
+        "tex": 53,
+        "prog": 83,
+        "nodes": 681,
+        "children": 25,
+        "dom": 534
+      },
+      {
+        "i": 11,
+        "geo": 400,
+        "tex": 53,
+        "prog": 83,
+        "nodes": 735,
+        "children": 25,
+        "dom": 534
+      },
+      {
+        "i": 12,
+        "geo": 403,
+        "tex": 53,
+        "prog": 83,
+        "nodes": 765,
+        "children": 25,
+        "dom": 534
+      }
+    ],
+    "logbookTrace": [
+      {
+        "i": 0,
+        "geo": 403,
+        "tex": 53,
+        "prog": 83,
+        "nodes": 765,
+        "children": 25,
+        "dom": 534
+      },
+      {
+        "i": 1,
+        "geo": 403,
+        "tex": 53,
+        "prog": 83,
+        "nodes": 765,
+        "children": 25,
+        "dom": 585
+      },
+      {
+        "i": 2,
+        "geo": 403,
+        "tex": 53,
+        "prog": 83,
+        "nodes": 765,
+        "children": 25,
+        "dom": 585
+      },
+      {
+        "i": 3,
+        "geo": 403,
+        "tex": 53,
+        "prog": 83,
+        "nodes": 765,
+        "children": 25,
+        "dom": 585
+      },
+      {
+        "i": 4,
+        "geo": 403,
+        "tex": 53,
+        "prog": 83,
+        "nodes": 765,
+        "children": 25,
+        "dom": 585
+      },
+      {
+        "i": 5,
+        "geo": 403,
+        "tex": 53,
+        "prog": 83,
+        "nodes": 765,
+        "children": 25,
+        "dom": 585
+      },
+      {
+        "i": 6,
+        "geo": 403,
+        "tex": 53,
+        "prog": 83,
+        "nodes": 765,
+        "children": 25,
+        "dom": 585
+      },
+      {
+        "i": 7,
+        "geo": 403,
+        "tex": 53,
+        "prog": 83,
+        "nodes": 765,
+        "children": 25,
+        "dom": 585
+      },
+      {
+        "i": 8,
+        "geo": 403,
+        "tex": 53,
+        "prog": 83,
+        "nodes": 765,
+        "children": 25,
+        "dom": 585
+      },
+      {
+        "i": 9,
+        "geo": 403,
+        "tex": 53,
+        "prog": 83,
+        "nodes": 765,
+        "children": 25,
+        "dom": 585
+      },
+      {
+        "i": 10,
+        "geo": 403,
+        "tex": 53,
+        "prog": 83,
+        "nodes": 765,
+        "children": 25,
+        "dom": 585
+      },
+      {
+        "i": 11,
+        "geo": 403,
+        "tex": 53,
+        "prog": 83,
+        "nodes": 765,
+        "children": 25,
+        "dom": 585
+      },
+      {
+        "i": 12,
+        "geo": 403,
+        "tex": 53,
+        "prog": 83,
+        "nodes": 765,
+        "children": 25,
+        "dom": 585
+      }
+    ],
+    "progressionReset": {
+      "has": {
+        "beginRun": "undefined",
+        "_endRun": "function",
+        "resetRun": "undefined"
+      },
+      "before": {
+        "time": 7.516666666666645,
+        "kills": 0,
+        "elites": 0,
+        "bosses": 0,
+        "damageDealt": 0,
+        "damageTaken": 0,
+        "highestHit": 0,
+        "items": 0,
+        "goldEarned": 0,
+        "stagesCleared": 12
+      },
+      "afterStage0": {
+        "time": 7.516666666666645,
+        "kills": 0,
+        "elites": 0,
+        "bosses": 0,
+        "damageDealt": 0,
+        "damageTaken": 0,
+        "highestHit": 0,
+        "items": 0,
+        "goldEarned": 0,
+        "stagesCleared": 12
+      }
+    },
+    "itemsGiven": {
+      "catalogue": 108,
+      "nonZero": 97,
+      "given": 108
+    },
+    "bigFight": {
+      "framesStepped": 300,
+      "frameErrorsDelta": 0,
+      "lastFrameError": null,
+      "enemies": 16,
+      "entities": 17
+    },
+    "emptyAttacks": {
+      "spawned": true,
+      "frameErrorsDelta": 0,
+      "lastFrameError": null
+    },
+    "newEnemies": {
+      "found": [
+        true,
+        true,
+        true
+      ],
+      "spawned": 9,
+      "afterStageStart": 0,
+      "entities": 1,
+      "frameErrorsDelta": 0
+    },
+    "errors": 0,
+    "lastFrameError": null
+  },
+  "errs": []
+}

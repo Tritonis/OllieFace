@@ -1,0 +1,188 @@
+{
+  "results": {
+    "slowOnPlayer": {
+      "statedMoveSpeed": 7,
+      "clean": {
+        "peakSpeed": 10.15,
+        "distTravelledM": 13.34,
+        "meanStacksDuring": 0,
+        "meanSpeedMultiplierDuring": 1
+      },
+      "slow1": {
+        "peakSpeed": 10.15,
+        "distTravelledM": 13.34,
+        "meanStacksDuring": 0.99,
+        "meanSpeedMultiplierDuring": 0.604
+      },
+      "slow5": {
+        "peakSpeed": 10.15,
+        "distTravelledM": 13.32,
+        "meanStacksDuring": 4.94,
+        "meanSpeedMultiplierDuring": 0.258
+      },
+      "freeze1": {
+        "peakSpeed": 10.15,
+        "distTravelledM": 13.32,
+        "meanStacksDuring": 0.99,
+        "meanSpeedMultiplierDuring": 0.011
+      },
+      "playerStatArmor": 0,
+      "armorOfPlayerSlowed": 0
+    },
+    "slowOnMonster": {
+      "card": "mite",
+      "clean": {
+        "distTravelledM": 20.08,
+        "armorAtEnd": 0
+      },
+      "slowed": {
+        "distTravelledM": 16.67,
+        "armorAtEnd": -15
+      }
+    },
+    "enemies": [
+      {
+        "id": "shriver",
+        "name": "Gloomshriver",
+        "tier": 1,
+        "cost": 15,
+        "declaredHealth": 95,
+        "movedM": 13.17,
+        "losFrac": 0.69,
+        "attacksSeen": [
+          "knell"
+        ],
+        "attacksDeclared": [
+          "knell"
+        ],
+        "phasesSeen": [
+          "knell:1"
+        ],
+        "minDistM": 21.14,
+        "playerHurtEvents": 6,
+        "playerDamageTakenHP": 47.9,
+        "playerMaxSpeed": 0,
+        "slowStacksOnPlayerAtEnd": 2,
+        "maxEnemyProjectilesAlive": 2,
+        "beamFrames": 0,
+        "dead": true,
+        "retiredFromDirector": true,
+        "frameErrors": 0
+      },
+      {
+        "id": "lasher",
+        "name": "Bramble Lasher",
+        "tier": 2,
+        "cost": 29,
+        "declaredHealth": 340,
+        "movedM": 2.02,
+        "losFrac": 1,
+        "attacksSeen": [
+          "reel",
+          "thorns"
+        ],
+        "attacksDeclared": [
+          "reel",
+          "thorns",
+          "flail"
+        ],
+        "phasesSeen": [
+          "reel:1",
+          "thorns:1"
+        ],
+        "minDistM": 18.02,
+        "playerHurtEvents": 0,
+        "playerDamageTakenHP": 0,
+        "playerMaxSpeed": 0.1,
+        "slowStacksOnPlayerAtEnd": 0,
+        "maxEnemyProjectilesAlive": 4,
+        "beamFrames": 697,
+        "dead": true,
+        "retiredFromDirector": true,
+        "frameErrors": 0
+      },
+      {
+        "id": "redoubt",
+        "name": "Ferrite Redoubt",
+        "tier": 2,
+        "cost": 36,
+        "declaredHealth": 620,
+        "movedM": 0,
+        "losFrac": 1,
+        "attacksSeen": [
+          "enfilade"
+        ],
+        "attacksDeclared": [
+          "enfilade",
+          "backblast"
+        ],
+        "phasesSeen": [
+          "enfilade:1"
+        ],
+        "minDistM": 20.03,
+        "playerHurtEvents": 9,
+        "playerDamageTakenHP": 246.3,
+        "playerMaxSpeed": 0,
+        "slowStacksOnPlayerAtEnd": 0,
+        "maxEnemyProjectilesAlive": 0,
+        "beamFrames": 719,
+        "dead": true,
+        "retiredFromDirector": true,
+        "frameErrors": 0
+      }
+    ],
+    "lasherPull": {
+      "walkAway": {
+        "label": "walk away, no slow",
+        "lashers": 1,
+        "startD": 14,
+        "endD": 18.12,
+        "gainedM": 4.12,
+        "closestApproachM": 14.06,
+        "reelWindows": 0,
+        "pullActiveFrames": 0,
+        "groundLostToPullM": 0,
+        "escaped": true
+      },
+      "sprintAway": {
+        "label": "sprint away, no slow",
+        "lashers": 1,
+        "startD": 14,
+        "endD": 18.12,
+        "gainedM": 4.12,
+        "closestApproachM": 14.06,
+        "reelWindows": 0,
+        "pullActiveFrames": 0,
+        "groundLostToPullM": 0,
+        "escaped": true
+      },
+      "sprintAwaySlowed": {
+        "label": "sprint away, slow x3 held (shriver composition)",
+        "lashers": 1,
+        "startD": 14,
+        "endD": 18.12,
+        "gainedM": 4.12,
+        "closestApproachM": 14.06,
+        "reelWindows": 0,
+        "pullActiveFrames": 0,
+        "groundLostToPullM": 0,
+        "escaped": true
+      },
+      "sprintAwayThreeLashers": {
+        "label": "sprint away, 3 lashers (maxAlive)",
+        "lashers": 3,
+        "startD": 14.32,
+        "endD": 48.7,
+        "gainedM": 34.38,
+        "closestApproachM": 14.37,
+        "reelWindows": 0,
+        "pullActiveFrames": 0,
+        "groundLostToPullM": 0,
+        "escaped": true
+      }
+    }
+  },
+  "errors": [],
+  "frameErrors": 0,
+  "lastFrameError": null
+}

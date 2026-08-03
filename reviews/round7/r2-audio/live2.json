@@ -1,0 +1,73 @@
+{
+ "R": {
+  "coldBoot": {
+   "beforeClick": {
+    "hasEngine": false,
+    "ready": false
+   },
+   "afterClick": {
+    "ready": true,
+    "state": "running",
+    "steps": 1,
+    "runT": 1.39,
+    "paused": true
+   }
+  },
+  "ceiling": {
+   "runT": 41.8,
+   "ceilingNow": 0.587,
+   "paused": true,
+   "steps": 330,
+   "intensity": 0,
+   "sixSecondsIntoRun": {
+    "runT": 50.9,
+    "I": 0.514,
+    "levels": {
+     "sub": 0.85,
+     "pad": 0.75,
+     "kick": 1,
+     "hat": 0.62,
+     "bass": 0.9,
+     "openhat": 0.28345293771289437,
+     "clap": 0,
+     "perc": 0,
+     "acid": 0,
+     "lead": 0
+    }
+   }
+  },
+  "fps": {
+   "n": 600,
+   "medianMs": 28.3,
+   "p95": 135.8,
+   "maxMs": 500.7,
+   "over550ms": 0
+  },
+  "hurtGate": {
+   "voicesHigh": {
+    "before": 0.192,
+    "after": 0.192,
+    "moved": false
+   },
+   "voicesZero": {
+    "before": 0.192,
+    "after": 0.08193,
+    "moved": true
+   }
+  },
+  "pickup": {
+   "ids": [],
+   "giveCommon": [],
+   "take": []
+  },
+  "resyncState": {
+   "sawPending": true,
+   "pendingBefore": true,
+   "pendingAfterStall": false,
+   "barBefore": 0,
+   "barAfter": 0,
+   "acidPrev": 110
+  }
+ },
+ "errs": []
+}

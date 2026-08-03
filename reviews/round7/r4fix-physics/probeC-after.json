@@ -1,0 +1,424 @@
+{
+  "steepestPoint": {
+    "x": 56,
+    "z": -77,
+    "dot": 0.111,
+    "h": 13.01
+  },
+  "bound": 104,
+  "walls": [
+    {
+      "stacks": 0,
+      "from": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 0,
+      "underFloorSteps": 0,
+      "maxUnderFloor": 0,
+      "outOfBoundsSteps": 0,
+      "maxOverBound": 0,
+      "maxGroundRiseReached": 20.233,
+      "endHeightAboveStart": 8.894
+    },
+    {
+      "stacks": 0,
+      "from": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 3.14,
+      "underFloorSteps": 0,
+      "maxUnderFloor": 0,
+      "outOfBoundsSteps": 0,
+      "maxOverBound": 0,
+      "maxGroundRiseReached": 21.379,
+      "endHeightAboveStart": 3.701
+    },
+    {
+      "stacks": 0,
+      "from": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 1.57,
+      "underFloorSteps": 0,
+      "maxUnderFloor": 0,
+      "outOfBoundsSteps": 0,
+      "maxOverBound": 0,
+      "maxGroundRiseReached": 16.093,
+      "endHeightAboveStart": 2.514
+    },
+    {
+      "stacks": 0,
+      "from": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": -1.57,
+      "underFloorSteps": 0,
+      "maxUnderFloor": 0,
+      "outOfBoundsSteps": 0,
+      "maxOverBound": 0,
+      "maxGroundRiseReached": 3.249,
+      "endHeightAboveStart": 3.053
+    },
+    {
+      "stacks": 0,
+      "from": {
+        "x": 84,
+        "z": 84
+      },
+      "yaw": 0.79,
+      "underFloorSteps": 0,
+      "maxUnderFloor": 0,
+      "outOfBoundsSteps": 0,
+      "maxOverBound": 0,
+      "maxGroundRiseReached": 6.35,
+      "endHeightAboveStart": -0.063
+    },
+    {
+      "stacks": 3,
+      "from": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 0,
+      "underFloorSteps": 0,
+      "maxUnderFloor": 0,
+      "outOfBoundsSteps": 0,
+      "maxOverBound": 0,
+      "maxGroundRiseReached": 20.233,
+      "endHeightAboveStart": 8.646
+    },
+    {
+      "stacks": 3,
+      "from": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 3.14,
+      "underFloorSteps": 0,
+      "maxUnderFloor": 0,
+      "outOfBoundsSteps": 0,
+      "maxOverBound": 0,
+      "maxGroundRiseReached": 21.402,
+      "endHeightAboveStart": 3.628
+    },
+    {
+      "stacks": 3,
+      "from": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 1.57,
+      "underFloorSteps": 0,
+      "maxUnderFloor": 0,
+      "outOfBoundsSteps": 0,
+      "maxOverBound": 0,
+      "maxGroundRiseReached": 16.093,
+      "endHeightAboveStart": 2.633
+    },
+    {
+      "stacks": 3,
+      "from": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": -1.57,
+      "underFloorSteps": 0,
+      "maxUnderFloor": 0,
+      "outOfBoundsSteps": 0,
+      "maxOverBound": 0,
+      "maxGroundRiseReached": 3.249,
+      "endHeightAboveStart": 2.419
+    },
+    {
+      "stacks": 3,
+      "from": {
+        "x": 84,
+        "z": 84
+      },
+      "yaw": 0.79,
+      "underFloorSteps": 0,
+      "maxUnderFloor": 0,
+      "outOfBoundsSteps": 0,
+      "maxOverBound": 0,
+      "maxGroundRiseReached": 6.022,
+      "endHeightAboveStart": -0.062
+    },
+    {
+      "stacks": 6,
+      "from": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 0,
+      "underFloorSteps": 0,
+      "maxUnderFloor": 0,
+      "outOfBoundsSteps": 0,
+      "maxOverBound": 0,
+      "maxGroundRiseReached": 20.233,
+      "endHeightAboveStart": 9.203
+    },
+    {
+      "stacks": 6,
+      "from": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 3.14,
+      "underFloorSteps": 0,
+      "maxUnderFloor": 0,
+      "outOfBoundsSteps": 0,
+      "maxOverBound": 0,
+      "maxGroundRiseReached": 19.745,
+      "endHeightAboveStart": 19.695
+    },
+    {
+      "stacks": 6,
+      "from": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 1.57,
+      "underFloorSteps": 0,
+      "maxUnderFloor": 0,
+      "outOfBoundsSteps": 0,
+      "maxOverBound": 0,
+      "maxGroundRiseReached": 32.814,
+      "endHeightAboveStart": 28.294
+    },
+    {
+      "stacks": 6,
+      "from": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": -1.57,
+      "underFloorSteps": 0,
+      "maxUnderFloor": 0,
+      "outOfBoundsSteps": 0,
+      "maxOverBound": 0,
+      "maxGroundRiseReached": 6.125,
+      "endHeightAboveStart": 6.056
+    },
+    {
+      "stacks": 6,
+      "from": {
+        "x": 84,
+        "z": 84
+      },
+      "yaw": 0.79,
+      "underFloorSteps": 0,
+      "maxUnderFloor": 0,
+      "outOfBoundsSteps": 0,
+      "maxOverBound": 0,
+      "maxGroundRiseReached": 6.764,
+      "endHeightAboveStart": -0.062
+    },
+    {
+      "stacks": 12,
+      "from": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 0,
+      "underFloorSteps": 0,
+      "maxUnderFloor": 0,
+      "outOfBoundsSteps": 0,
+      "maxOverBound": 0,
+      "maxGroundRiseReached": 30.34,
+      "endHeightAboveStart": 30.303
+    },
+    {
+      "stacks": 12,
+      "from": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 3.14,
+      "underFloorSteps": 0,
+      "maxUnderFloor": 0,
+      "outOfBoundsSteps": 0,
+      "maxOverBound": 0,
+      "maxGroundRiseReached": 27.733,
+      "endHeightAboveStart": 25.165
+    },
+    {
+      "stacks": 12,
+      "from": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 1.57,
+      "underFloorSteps": 0,
+      "maxUnderFloor": 0,
+      "outOfBoundsSteps": 0,
+      "maxOverBound": 0,
+      "maxGroundRiseReached": 16.093,
+      "endHeightAboveStart": 12.151
+    },
+    {
+      "stacks": 12,
+      "from": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": -1.57,
+      "underFloorSteps": 0,
+      "maxUnderFloor": 0,
+      "outOfBoundsSteps": 0,
+      "maxOverBound": 0,
+      "maxGroundRiseReached": 3.249,
+      "endHeightAboveStart": 2.157
+    },
+    {
+      "stacks": 12,
+      "from": {
+        "x": 84,
+        "z": 84
+      },
+      "yaw": 0.79,
+      "underFloorSteps": 0,
+      "maxUnderFloor": 0,
+      "outOfBoundsSteps": 0,
+      "maxOverBound": 0,
+      "maxGroundRiseReached": 6.071,
+      "endHeightAboveStart": -0.063
+    }
+  ],
+  "cliffs": [
+    {
+      "stacks": 0,
+      "from": {
+        "x": 56,
+        "z": -52
+      },
+      "yaw": 3.14,
+      "underFloorSteps": 0,
+      "maxUnderFloor": 0,
+      "outOfBoundsSteps": 0,
+      "maxOverBound": 0,
+      "maxGroundRiseReached": 8.468,
+      "endHeightAboveStart": 8.153,
+      "steepDot": 0.111
+    },
+    {
+      "stacks": 0,
+      "from": {
+        "x": 56,
+        "z": -102
+      },
+      "yaw": 6.28,
+      "underFloorSteps": 0,
+      "maxUnderFloor": 0,
+      "outOfBoundsSteps": 0,
+      "maxOverBound": 0,
+      "maxGroundRiseReached": 0,
+      "endHeightAboveStart": -30.029,
+      "steepDot": 0.111
+    },
+    {
+      "stacks": 3,
+      "from": {
+        "x": 56,
+        "z": -52
+      },
+      "yaw": 3.14,
+      "underFloorSteps": 0,
+      "maxUnderFloor": 0,
+      "outOfBoundsSteps": 0,
+      "maxOverBound": 0,
+      "maxGroundRiseReached": 8.421,
+      "endHeightAboveStart": 8.138,
+      "steepDot": 0.111
+    },
+    {
+      "stacks": 3,
+      "from": {
+        "x": 56,
+        "z": -102
+      },
+      "yaw": 6.28,
+      "underFloorSteps": 0,
+      "maxUnderFloor": 0,
+      "outOfBoundsSteps": 0,
+      "maxOverBound": 0,
+      "maxGroundRiseReached": 3.899,
+      "endHeightAboveStart": -2.088,
+      "steepDot": 0.111
+    },
+    {
+      "stacks": 6,
+      "from": {
+        "x": 56,
+        "z": -52
+      },
+      "yaw": 3.14,
+      "underFloorSteps": 0,
+      "maxUnderFloor": 0,
+      "outOfBoundsSteps": 0,
+      "maxOverBound": 0,
+      "maxGroundRiseReached": 8.367,
+      "endHeightAboveStart": 8.145,
+      "steepDot": 0.111
+    },
+    {
+      "stacks": 6,
+      "from": {
+        "x": 56,
+        "z": -102
+      },
+      "yaw": 6.28,
+      "underFloorSteps": 0,
+      "maxUnderFloor": 0,
+      "outOfBoundsSteps": 0,
+      "maxOverBound": 0,
+      "maxGroundRiseReached": 0.047,
+      "endHeightAboveStart": -0.002,
+      "steepDot": 0.111
+    },
+    {
+      "stacks": 12,
+      "from": {
+        "x": 56,
+        "z": -52
+      },
+      "yaw": 3.14,
+      "underFloorSteps": 0,
+      "maxUnderFloor": 0,
+      "outOfBoundsSteps": 0,
+      "maxOverBound": 0,
+      "maxGroundRiseReached": 8.398,
+      "endHeightAboveStart": 8.144,
+      "steepDot": 0.111
+    },
+    {
+      "stacks": 12,
+      "from": {
+        "x": 56,
+        "z": -102
+      },
+      "yaw": 6.28,
+      "underFloorSteps": 0,
+      "maxUnderFloor": 0,
+      "outOfBoundsSteps": 0,
+      "maxOverBound": 0,
+      "maxGroundRiseReached": 3.517,
+      "endHeightAboveStart": -1.984,
+      "steepDot": 0.111
+    }
+  ],
+  "summary": {
+    "wallUnderFloorSteps": 0,
+    "wallOutOfBoundsSteps": 0,
+    "wallMaxOverBound": 0,
+    "wallMaxGroundRiseReached": 32.814,
+    "cliffUnderFloorSteps": 0,
+    "cliffOutOfBoundsSteps": 0,
+    "cliffMaxGroundRiseReached": 8.468
+  },
+  "frameErrors": 0,
+  "errors": []
+}

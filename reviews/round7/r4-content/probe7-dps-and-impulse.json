@@ -1,0 +1,476 @@
+{
+  "results": {
+    "stands": {
+      "openStand": {
+        "x": -63.17177293504205,
+        "z": 48.44061084019048
+      },
+      "flatStand": {
+        "x": 21.24986654205707,
+        "z": 21.070575770489206,
+        "relief": 0.46
+      }
+    },
+    "lasherDps": [
+      {
+        "enemyId": "lasher",
+        "standoff": 8,
+        "mode": "still",
+        "simSeconds": 42.03,
+        "attacks": {
+          "reel": 6,
+          "thorns": 5
+        },
+        "playerHurtEvents": 5,
+        "damage": 57.8,
+        "dps": 1.37,
+        "losFraction": 1,
+        "fractionOutsideFrontArc": 0,
+        "meanDistance": 11.9,
+        "playerMaxHealth": 110,
+        "playerArmor": 0
+      },
+      {
+        "enemyId": "lasher",
+        "standoff": 12,
+        "mode": "still",
+        "simSeconds": 42.03,
+        "attacks": {
+          "reel": 6,
+          "thorns": 5
+        },
+        "playerHurtEvents": 5,
+        "damage": 57.8,
+        "dps": 1.37,
+        "losFraction": 1,
+        "fractionOutsideFrontArc": 0,
+        "meanDistance": 12.5,
+        "playerMaxHealth": 110,
+        "playerArmor": 0
+      },
+      {
+        "enemyId": "lasher",
+        "standoff": 18,
+        "mode": "still",
+        "simSeconds": 42.02,
+        "attacks": {
+          "reel": 6,
+          "thorns": 5
+        },
+        "playerHurtEvents": 5,
+        "damage": 57.8,
+        "dps": 1.37,
+        "losFraction": 1,
+        "fractionOutsideFrontArc": 0,
+        "meanDistance": 18,
+        "playerMaxHealth": 110,
+        "playerArmor": 0
+      },
+      {
+        "enemyId": "lasher",
+        "standoff": 22,
+        "mode": "still",
+        "simSeconds": 42.02,
+        "attacks": {
+          "reel": 6,
+          "thorns": 5
+        },
+        "playerHurtEvents": 5,
+        "damage": 57.8,
+        "dps": 1.37,
+        "losFraction": 1,
+        "fractionOutsideFrontArc": 0,
+        "meanDistance": 18.7,
+        "playerMaxHealth": 110,
+        "playerArmor": 0
+      }
+    ],
+    "redoubtDps": [
+      {
+        "enemyId": "redoubt",
+        "standoff": 13,
+        "mode": "still",
+        "simSeconds": 40.02,
+        "attacks": {
+          "enfilade": 8
+        },
+        "playerHurtEvents": 15,
+        "damage": 410.6,
+        "dps": 10.26,
+        "losFraction": 1,
+        "fractionOutsideFrontArc": 0.137,
+        "meanDistance": 13,
+        "playerMaxHealth": 110,
+        "playerArmor": 0
+      },
+      {
+        "enemyId": "redoubt",
+        "standoff": 13,
+        "mode": "circle",
+        "simSeconds": 40,
+        "attacks": {
+          "enfilade": 7
+        },
+        "playerHurtEvents": 0,
+        "damage": 0,
+        "dps": 0,
+        "losFraction": 0.844,
+        "fractionOutsideFrontArc": 0.636,
+        "meanDistance": 13,
+        "playerMaxHealth": 110,
+        "playerArmor": 0
+      }
+    ],
+    "rosterDps": [
+      {
+        "enemyId": "spitling",
+        "standoff": 13,
+        "mode": "still",
+        "simSeconds": 40.02,
+        "attacks": {
+          "spit": 16
+        },
+        "playerHurtEvents": 15,
+        "damage": 217.8,
+        "dps": 5.44,
+        "losFraction": 0.991,
+        "fractionOutsideFrontArc": 0,
+        "meanDistance": 12.7,
+        "playerMaxHealth": 110,
+        "playerArmor": 0
+      },
+      {
+        "enemyId": "golem",
+        "standoff": 13,
+        "mode": "still",
+        "simSeconds": 40.03,
+        "attacks": {
+          "laser": 8
+        },
+        "playerHurtEvents": 21,
+        "damage": 656.9,
+        "dps": 16.41,
+        "losFraction": 1,
+        "fractionOutsideFrontArc": 0,
+        "meanDistance": 15.1,
+        "playerMaxHealth": 110,
+        "playerArmor": 0
+      },
+      {
+        "enemyId": "shriver",
+        "standoff": 13,
+        "mode": "still",
+        "simSeconds": 40.03,
+        "attacks": {
+          "knell": 13
+        },
+        "playerHurtEvents": 13,
+        "damage": 124.8,
+        "dps": 3.12,
+        "losFraction": 0.988,
+        "fractionOutsideFrontArc": 0,
+        "meanDistance": 15,
+        "playerMaxHealth": 110,
+        "playerArmor": 0
+      },
+      {
+        "enemyId": "mortar",
+        "standoff": 13,
+        "mode": "still",
+        "simSeconds": 40.03,
+        "attacks": {
+          "shell": 6
+        },
+        "playerHurtEvents": 12,
+        "damage": 518.4,
+        "dps": 12.95,
+        "losFraction": 1,
+        "fractionOutsideFrontArc": 0,
+        "meanDistance": 24,
+        "playerMaxHealth": 110,
+        "playerArmor": 0
+      }
+    ],
+    "impulse": [
+      {
+        "label": "0x Waxed Wing @ open stand",
+        "groundSpeedAtJump": 10.15,
+        "peakHorizontal": 10.15,
+        "peakAirborne": 10.15,
+        "firstEightSteps": [
+          10.15,
+          10.15,
+          10.15,
+          10.15,
+          10.15,
+          10.15,
+          10.15,
+          10.15
+        ],
+        "relief": null
+      },
+      {
+        "label": "1x Waxed Wing @ open stand",
+        "groundSpeedAtJump": 10.15,
+        "peakHorizontal": 20.15,
+        "peakAirborne": 20.15,
+        "firstEightSteps": [
+          20.15,
+          19.75,
+          19.36,
+          18.96,
+          18.56,
+          18.17,
+          17.77,
+          17.37
+        ],
+        "relief": null
+      },
+      {
+        "label": "2x Waxed Wing @ open stand",
+        "groundSpeedAtJump": 10.15,
+        "peakHorizontal": 30.15,
+        "peakAirborne": 30.15,
+        "firstEightSteps": [
+          30.15,
+          29.75,
+          29.36,
+          28.96,
+          28.56,
+          28.17,
+          27.77,
+          26.64
+        ],
+        "relief": null
+      },
+      {
+        "label": "3x Waxed Wing @ open stand",
+        "groundSpeedAtJump": 10.15,
+        "peakHorizontal": 40.15,
+        "peakAirborne": 40.15,
+        "firstEightSteps": [
+          40.15,
+          39.75,
+          39.36,
+          38.22,
+          37.09,
+          35.96,
+          34.82,
+          33.69
+        ],
+        "relief": null
+      },
+      {
+        "label": "4x Waxed Wing @ open stand",
+        "groundSpeedAtJump": 10.15,
+        "peakHorizontal": 50.15,
+        "peakAirborne": 5.55,
+        "firstEightSteps": [
+          50.15,
+          49.02,
+          47.88,
+          46.75,
+          45.62,
+          44.48,
+          43.35,
+          42.22
+        ],
+        "relief": null
+      },
+      {
+        "label": "5x Waxed Wing @ open stand",
+        "groundSpeedAtJump": 10.15,
+        "peakHorizontal": 60.15,
+        "peakAirborne": 8.33,
+        "firstEightSteps": [
+          60.15,
+          59.02,
+          57.88,
+          56.75,
+          0,
+          0.4,
+          0.79,
+          1.19
+        ],
+        "relief": null
+      },
+      {
+        "label": "6x Waxed Wing @ open stand",
+        "groundSpeedAtJump": 10.15,
+        "peakHorizontal": 70.15,
+        "peakAirborne": 8.73,
+        "firstEightSteps": [
+          70.15,
+          69.02,
+          67.88,
+          0,
+          0.4,
+          0.79,
+          1.19,
+          1.59
+        ],
+        "relief": null
+      },
+      {
+        "label": "8x Waxed Wing @ open stand",
+        "groundSpeedAtJump": 10.15,
+        "peakHorizontal": 90.15,
+        "peakAirborne": 10.15,
+        "firstEightSteps": [
+          90.15,
+          0,
+          0.4,
+          0.79,
+          1.19,
+          1.59,
+          1.98,
+          2.38
+        ],
+        "relief": null
+      },
+      {
+        "label": "10x Waxed Wing @ open stand",
+        "groundSpeedAtJump": 10.15,
+        "peakHorizontal": 110.15,
+        "peakAirborne": 10.15,
+        "firstEightSteps": [
+          110.15,
+          0,
+          0.4,
+          0.79,
+          1.19,
+          1.59,
+          1.98,
+          2.38
+        ],
+        "relief": null
+      }
+    ],
+    "impulseFlat": [
+      {
+        "label": "1x Waxed Wing @ flattest stand (relief 0.46)",
+        "groundSpeedAtJump": 10.15,
+        "peakHorizontal": 20.15,
+        "peakAirborne": 20.15,
+        "firstEightSteps": [
+          20.15,
+          19.75,
+          19.36,
+          18.96,
+          3.7,
+          3.65,
+          3.63,
+          3.62
+        ],
+        "relief": 0.46
+      },
+      {
+        "label": "3x Waxed Wing @ flattest stand (relief 0.46)",
+        "groundSpeedAtJump": 10.15,
+        "peakHorizontal": 40.15,
+        "peakAirborne": 40.15,
+        "firstEightSteps": [
+          40.15,
+          39.75,
+          12.01,
+          11.75,
+          11.49,
+          11.24,
+          11,
+          10.77
+        ],
+        "relief": 0.46
+      },
+      {
+        "label": "5x Waxed Wing @ flattest stand (relief 0.46)",
+        "groundSpeedAtJump": 10.15,
+        "peakHorizontal": 60.15,
+        "peakAirborne": 60.15,
+        "firstEightSteps": [
+          60.15,
+          18.51,
+          18.18,
+          17.84,
+          17.51,
+          17.19,
+          16.86,
+          16.54
+        ],
+        "relief": 0.46
+      },
+      {
+        "label": "10x Waxed Wing @ flattest stand (relief 0.46)",
+        "groundSpeedAtJump": 10.15,
+        "peakHorizontal": 27.71,
+        "peakAirborne": 27.71,
+        "firstEightSteps": [
+          27.71,
+          27.35,
+          26.98,
+          26.61,
+          26.24,
+          25.88,
+          25.51,
+          25.15
+        ],
+        "relief": 0.46
+      }
+    ],
+    "impulseCombined": [
+      {
+        "label": "1x Updraft Vents alone",
+        "groundSpeedAtJump": 10.15,
+        "peakHorizontal": 15.15,
+        "peakAirborne": 15.15,
+        "firstEightSteps": [
+          15.15,
+          14.75,
+          14.36,
+          13.96,
+          13.56,
+          13.17,
+          12.77,
+          12.37
+        ],
+        "relief": null
+      },
+      {
+        "label": "1x Waxed Wing alone",
+        "groundSpeedAtJump": 10.15,
+        "peakHorizontal": 20.15,
+        "peakAirborne": 20.15,
+        "firstEightSteps": [
+          20.15,
+          19.75,
+          19.36,
+          18.96,
+          18.56,
+          18.17,
+          17.77,
+          17.37
+        ],
+        "relief": null
+      },
+      {
+        "label": "1x Waxed Wing + 1x Updraft Vents",
+        "groundSpeedAtJump": 10.15,
+        "peakHorizontal": 20.15,
+        "peakAirborne": 20.15,
+        "firstEightSteps": [
+          20.15,
+          19.75,
+          19.36,
+          18.96,
+          18.56,
+          18.17,
+          17.77,
+          17.37
+        ],
+        "relief": null
+      }
+    ],
+    "frameErrors": 0,
+    "lastFrameError": null
+  },
+  "consoleErrors": []
+}

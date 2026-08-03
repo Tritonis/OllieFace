@@ -1,0 +1,613 @@
+{
+  "engineLoops": 1,
+  "result": {
+    "stands": [
+      {
+        "x": 38.7588122153267,
+        "z": 39.87992897328641
+      },
+      {
+        "x": -27.475475248717377,
+        "z": 35.43311661692659
+      },
+      {
+        "x": -1.0100742472410393,
+        "z": -1.053339977965462
+      },
+      {
+        "x": -19.032571299440846,
+        "z": -42.345550034335325
+      },
+      {
+        "x": 27.418626922768855,
+        "z": 49.65756753416508
+      }
+    ],
+    "arms": [
+      {
+        "cardId": "lasher",
+        "standIdx": 0,
+        "standoff": 8,
+        "clearBearing": 1,
+        "bearingsTried": 2,
+        "simSeconds": 30.02,
+        "losFraction": 0.153,
+        "meanDistance": 9,
+        "picks": {
+          "thorns": 1,
+          "reel": 1
+        },
+        "byType": {
+          "pull": 28.4
+        },
+        "damage": 28.4,
+        "hurtEvents": 3,
+        "dps": 0.94,
+        "aliveAfter": true,
+        "enemyAlive": true
+      },
+      {
+        "cardId": "lasher",
+        "standIdx": 0,
+        "standoff": 11,
+        "clearBearing": 0,
+        "bearingsTried": 1,
+        "simSeconds": 30.02,
+        "losFraction": 0.941,
+        "meanDistance": 4.81,
+        "picks": {
+          "reel": 4,
+          "flail": 4,
+          "thorns": 3
+        },
+        "byType": {
+          "pull": 141.8,
+          "melee": 21,
+          "projectile": 46.2
+        },
+        "damage": 208.9,
+        "hurtEvents": 20,
+        "dps": 6.96,
+        "aliveAfter": true,
+        "enemyAlive": true
+      },
+      {
+        "cardId": "lasher",
+        "standIdx": 0,
+        "standoff": 14,
+        "clearBearing": 0,
+        "bearingsTried": 1,
+        "simSeconds": 30.02,
+        "losFraction": 1,
+        "meanDistance": 5.62,
+        "picks": {
+          "reel": 4,
+          "thorns": 4,
+          "flail": 3
+        },
+        "byType": {
+          "projectile": 46.2,
+          "pull": 113.4,
+          "melee": 21
+        },
+        "damage": 180.6,
+        "hurtEvents": 17,
+        "dps": 6.02,
+        "aliveAfter": true,
+        "enemyAlive": true
+      },
+      {
+        "cardId": "lasher",
+        "standIdx": 0,
+        "standoff": 18,
+        "clearBearing": 0,
+        "bearingsTried": 1,
+        "simSeconds": 30.02,
+        "losFraction": 1,
+        "meanDistance": 7.57,
+        "picks": {
+          "reel": 5,
+          "thorns": 4,
+          "flail": 2
+        },
+        "byType": {
+          "projectile": 46.2,
+          "pull": 85.1
+        },
+        "damage": 131.3,
+        "hurtEvents": 13,
+        "dps": 4.37,
+        "aliveAfter": true,
+        "enemyAlive": true
+      },
+      {
+        "cardId": "lasher",
+        "standIdx": 0,
+        "standoff": 22,
+        "clearBearing": 0,
+        "bearingsTried": 1,
+        "simSeconds": 30,
+        "losFraction": 1,
+        "meanDistance": 10.01,
+        "picks": {
+          "reel": 5,
+          "thorns": 4,
+          "flail": 2
+        },
+        "byType": {
+          "projectile": 57.7,
+          "pull": 75.6,
+          "melee": 21
+        },
+        "damage": 154.4,
+        "hurtEvents": 14,
+        "dps": 5.14,
+        "aliveAfter": true,
+        "enemyAlive": true
+      },
+      {
+        "cardId": "lasher",
+        "standIdx": 1,
+        "standoff": 8,
+        "clearBearing": 1,
+        "bearingsTried": 2,
+        "simSeconds": 30,
+        "losFraction": 0.794,
+        "meanDistance": 6.28,
+        "picks": {
+          "reel": 4,
+          "flail": 3,
+          "thorns": 2
+        },
+        "byType": {
+          "pull": 113.4,
+          "melee": 42,
+          "projectile": 23.1
+        },
+        "damage": 178.5,
+        "hurtEvents": 16,
+        "dps": 5.95,
+        "aliveAfter": true,
+        "enemyAlive": true
+      },
+      {
+        "cardId": "lasher",
+        "standIdx": 1,
+        "standoff": 11,
+        "clearBearing": 2,
+        "bearingsTried": 3,
+        "simSeconds": 30,
+        "losFraction": 0.822,
+        "meanDistance": 5.6,
+        "picks": {
+          "reel": 4,
+          "thorns": 1,
+          "flail": 4
+        },
+        "byType": {
+          "pull": 104,
+          "projectile": 11.5,
+          "melee": 63
+        },
+        "damage": 178.5,
+        "hurtEvents": 15,
+        "dps": 5.95,
+        "aliveAfter": true,
+        "enemyAlive": true
+      },
+      {
+        "cardId": "lasher",
+        "standIdx": 1,
+        "standoff": 14,
+        "clearBearing": 4,
+        "bearingsTried": 5,
+        "simSeconds": 30,
+        "losFraction": 1,
+        "meanDistance": 5.75,
+        "picks": {
+          "reel": 4,
+          "thorns": 2,
+          "flail": 5
+        },
+        "byType": {
+          "projectile": 27.7,
+          "pull": 124.7,
+          "melee": 126
+        },
+        "damage": 278.5,
+        "hurtEvents": 18,
+        "dps": 9.28,
+        "aliveAfter": true,
+        "enemyAlive": true
+      },
+      {
+        "cardId": "lasher",
+        "standIdx": 1,
+        "standoff": 18,
+        "clearBearing": 4,
+        "bearingsTried": 5,
+        "simSeconds": 30.02,
+        "losFraction": 1,
+        "meanDistance": 8.29,
+        "picks": {
+          "thorns": 5,
+          "reel": 4,
+          "flail": 2
+        },
+        "byType": {
+          "projectile": 55.4,
+          "pull": 102.1
+        },
+        "damage": 157.5,
+        "hurtEvents": 13,
+        "dps": 5.25,
+        "aliveAfter": true,
+        "enemyAlive": true
+      },
+      {
+        "cardId": "lasher",
+        "standIdx": 1,
+        "standoff": 22,
+        "clearBearing": 6,
+        "bearingsTried": 7,
+        "simSeconds": 30.02,
+        "losFraction": 0.982,
+        "meanDistance": 10.99,
+        "picks": {
+          "reel": 5,
+          "thorns": 4,
+          "flail": 1
+        },
+        "byType": {
+          "projectile": 55.4,
+          "pull": 102.1,
+          "melee": 25.2
+        },
+        "damage": 182.7,
+        "hurtEvents": 14,
+        "dps": 6.09,
+        "aliveAfter": true,
+        "enemyAlive": true
+      },
+      {
+        "cardId": "lasher",
+        "standIdx": 2,
+        "standoff": 8,
+        "clearBearing": 1,
+        "bearingsTried": 2,
+        "simSeconds": 30.02,
+        "losFraction": 1,
+        "meanDistance": 3.87,
+        "picks": {
+          "reel": 4,
+          "flail": 5,
+          "thorns": 3
+        },
+        "byType": {
+          "pull": 181.4,
+          "melee": 50.4,
+          "projectile": 55.4
+        },
+        "damage": 287.3,
+        "hurtEvents": 22,
+        "dps": 9.57,
+        "aliveAfter": true,
+        "enemyAlive": true
+      },
+      {
+        "cardId": "lasher",
+        "standIdx": 2,
+        "standoff": 11,
+        "clearBearing": 0,
+        "bearingsTried": 1,
+        "simSeconds": 30.02,
+        "losFraction": 0.814,
+        "meanDistance": 5.45,
+        "picks": {
+          "reel": 4,
+          "thorns": 3,
+          "flail": 3
+        },
+        "byType": {
+          "pull": 170.1,
+          "projectile": 69.3,
+          "melee": 50.4
+        },
+        "damage": 289.8,
+        "hurtEvents": 22,
+        "dps": 9.65,
+        "aliveAfter": true,
+        "enemyAlive": true
+      },
+      {
+        "cardId": "lasher",
+        "standIdx": 2,
+        "standoff": 14,
+        "clearBearing": 0,
+        "bearingsTried": 1,
+        "simSeconds": 30.02,
+        "losFraction": 0.8,
+        "meanDistance": 5.4,
+        "picks": {
+          "reel": 4,
+          "thorns": 2,
+          "flail": 4
+        },
+        "byType": {
+          "pull": 170.1,
+          "projectile": 41.6,
+          "melee": 50.4
+        },
+        "damage": 262.1,
+        "hurtEvents": 20,
+        "dps": 8.73,
+        "aliveAfter": true,
+        "enemyAlive": true
+      },
+      {
+        "cardId": "lasher",
+        "standIdx": 2,
+        "standoff": 18,
+        "clearBearing": 0,
+        "bearingsTried": 1,
+        "simSeconds": 30.02,
+        "losFraction": 1,
+        "meanDistance": 8.06,
+        "picks": {
+          "thorns": 5,
+          "reel": 4,
+          "flail": 2
+        },
+        "byType": {
+          "projectile": 80.9,
+          "pull": 119.1
+        },
+        "damage": 199.9,
+        "hurtEvents": 14,
+        "dps": 6.66,
+        "aliveAfter": true,
+        "enemyAlive": true
+      },
+      {
+        "cardId": "lasher",
+        "standIdx": 2,
+        "standoff": 22,
+        "clearBearing": 0,
+        "bearingsTried": 1,
+        "simSeconds": 30.02,
+        "losFraction": 1,
+        "meanDistance": 10.44,
+        "picks": {
+          "reel": 5,
+          "thorns": 4,
+          "flail": 1
+        },
+        "byType": {
+          "projectile": 64.7,
+          "pull": 119.1
+        },
+        "damage": 183.8,
+        "hurtEvents": 13,
+        "dps": 6.12,
+        "aliveAfter": true,
+        "enemyAlive": true
+      },
+      {
+        "cardId": "lasher",
+        "standIdx": 0,
+        "standoff": 14,
+        "clearBearing": 0,
+        "bearingsTried": 1,
+        "simSeconds": 30.02,
+        "losFraction": 1,
+        "meanDistance": 5.62,
+        "picks": {
+          "reel": 4,
+          "thorns": 4,
+          "flail": 3
+        },
+        "byType": {
+          "projectile": 64.7,
+          "pull": 158.8,
+          "melee": 29.4
+        },
+        "damage": 252.8,
+        "hurtEvents": 17,
+        "dps": 8.42,
+        "aliveAfter": true,
+        "enemyAlive": true,
+        "roster": true
+      },
+      {
+        "cardId": "spitling",
+        "standIdx": 0,
+        "standoff": 14,
+        "clearBearing": 0,
+        "bearingsTried": 1,
+        "simSeconds": 30.02,
+        "losFraction": 1,
+        "meanDistance": 15.87,
+        "picks": {
+          "spit": 12
+        },
+        "byType": {},
+        "damage": 0,
+        "hurtEvents": 0,
+        "dps": 0,
+        "aliveAfter": true,
+        "enemyAlive": true,
+        "roster": true
+      },
+      {
+        "cardId": "shriver",
+        "standIdx": 0,
+        "standoff": 14,
+        "clearBearing": 0,
+        "bearingsTried": 1,
+        "simSeconds": 30.02,
+        "losFraction": 0.505,
+        "meanDistance": 17.09,
+        "picks": {
+          "knell": 6
+        },
+        "byType": {
+          "projectile": 33.6
+        },
+        "damage": 33.6,
+        "hurtEvents": 3,
+        "dps": 1.12,
+        "aliveAfter": true,
+        "enemyAlive": true,
+        "roster": true
+      },
+      {
+        "cardId": "redoubt",
+        "standIdx": 0,
+        "standoff": 14,
+        "clearBearing": 0,
+        "bearingsTried": 1,
+        "simSeconds": 30.02,
+        "losFraction": 1,
+        "meanDistance": 13.25,
+        "picks": {
+          "enfilade": 6
+        },
+        "byType": {
+          "projectile": 11.2,
+          "beam": 459.8
+        },
+        "damage": 471,
+        "hurtEvents": 13,
+        "dps": 15.69,
+        "aliveAfter": true,
+        "enemyAlive": true,
+        "roster": true
+      },
+      {
+        "cardId": "golem",
+        "standIdx": 0,
+        "standoff": 14,
+        "clearBearing": 0,
+        "bearingsTried": 1,
+        "simSeconds": 30.02,
+        "losFraction": 1,
+        "meanDistance": 15.1,
+        "picks": {
+          "laser": 6
+        },
+        "byType": {
+          "beam": 437.9
+        },
+        "damage": 437.9,
+        "hurtEvents": 12,
+        "dps": 14.59,
+        "aliveAfter": true,
+        "enemyAlive": true,
+        "roster": true
+      },
+      {
+        "cardId": "mortar",
+        "standIdx": 0,
+        "standoff": 14,
+        "clearBearing": 0,
+        "bearingsTried": 1,
+        "simSeconds": 30.02,
+        "losFraction": 0.904,
+        "meanDistance": 22.82,
+        "picks": {
+          "shell": 5
+        },
+        "byType": {
+          "projectile": 115.2
+        },
+        "damage": 115.2,
+        "hurtEvents": 2,
+        "dps": 3.84,
+        "aliveAfter": true,
+        "enemyAlive": true,
+        "roster": true
+      }
+    ],
+    "frameErrors": 0
+  },
+  "agency": [
+    {
+      "startDist": 11,
+      "reelStarted": false,
+      "reversedDirection": false,
+      "escapeDistance": 13.05,
+      "finalDistance": 25.25,
+      "distanceTrail": []
+    },
+    {
+      "startDist": 8,
+      "reelStarted": true,
+      "reversedDirection": false,
+      "escapeDistance": 28.6,
+      "finalDistance": 34.19,
+      "distanceTrail": [
+        11.43,
+        13.01,
+        14.59,
+        16.17,
+        17.76,
+        19.34,
+        20.92,
+        22.5,
+        24.09,
+        25.67,
+        27.25,
+        28.83,
+        30.42,
+        32,
+        33.58,
+        35.16,
+        35.49,
+        35.5,
+        35.51,
+        35.52,
+        35.53,
+        35.54,
+        35.54,
+        35.09,
+        34.34
+      ]
+    },
+    {
+      "startDist": 5,
+      "reelStarted": true,
+      "reversedDirection": false,
+      "escapeDistance": 2.23,
+      "finalDistance": 6.23,
+      "distanceTrail": [
+        5.79,
+        5.79,
+        5.79,
+        5.79,
+        5.79,
+        5.79,
+        5.79,
+        5.79,
+        5.79,
+        5.79,
+        5.79,
+        5.79,
+        5.8,
+        5.8,
+        5.8,
+        5.8,
+        5.8,
+        5.81,
+        5.81,
+        5.83,
+        5.85,
+        5.89,
+        5.95,
+        6.07,
+        6.14,
+        6.22
+      ]
+    }
+  ],
+  "errors": []
+}

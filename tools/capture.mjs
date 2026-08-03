@@ -444,14 +444,53 @@ if (!ready) {
     };
   });
 
-  /* Does the audio system run at all?
+  /* Does the audio system make a sound?
    *
-   * WebAudio's autoplay policy means `Audio._ensure()` runs on the first
-   * pointerdown/keydown/touchstart and not before, so without a gesture no
-   * statement in `Audio.js` or `Music.js` ever executes under this harness.
-   * `errorCount: 0` from a capture was therefore not evidence about the audio
-   * domain at all — and that is the hole an every-frame `ReferenceError` in the
-   * music boot walked through to reach a human reviewer.
+   * That is the question, and the previous version of this gate did not ask it.
+   * It asserted `musicEngine.stepsEmitted > 0` — a *lifetime* counter with no
+   * reset — so it was really asserting "the sequencer ran at some point since
+   * the page loaded". On every full run it passed while reading the same 305 it
+   * had reached minutes earlier, with the sequencer verifiably stopped
+   * (`16-run-summary` kills the player, and death stops the music), the music
+   * bus at -52 dBFS and falling, and the ambient bed latched off:
+   * `stepsEmittedDuringGateWindow: 0`. It also returned green on a build with
+   * every `Oscillator.start` and `BufferSource.start` no-op'd — total silence,
+   * zero errors, byte-identical exit code. A gate that reports green on silence
+   * is worse than no gate, because it gets cited as evidence.
+   *
+   * So this one asserts three independent things, each of which fails on a
+   * different class of breakage:
+   *
+   *  1. **A delta, not a level.** `stepsEmitted` is sampled either side of the
+   *     window and the *difference* has to clear a floor. Catches an engine
+   *     that ran and then died, which the level form cannot.
+   *  2. **Liveness of the graph**, read off the product's own state rather than
+   *     inferred: not stopped, not silenced, context running, music and master
+   *     gains open, not muted. Catches a parked bus or a muted master, neither
+   *     of which a step counter can see.
+   *  3. **Audibility**, from two `AnalyserNode`s: one on the music bus, one on
+   *     the *last node before the device* (the master limiter). Peak-sampled
+   *     across the whole window and asserted above a floor 23 dB under the
+   *     quietest arrangement this gate ever sees. This is the check a step
+   *     counter can never be: a graph that schedules everything correctly and
+   *     never starts a source reads as digital silence here, and so does one
+   *     whose master never reaches the limiter.
+   *
+   *     The honest limit of it: a tap reads the node it is attached to, so the
+   *     one link this cannot see is the limiter's own connection to
+   *     `ac.destination`. Nothing reachable from JavaScript can observe the
+   *     device itself. Everything upstream of that last edge is covered.
+   *
+   * Each of those was proved by making it fail on purpose — no-op'd source
+   * nodes, a re-latched engine, a parked music bus, a muted master and a
+   * disconnected master — see `reviews/round7/r4fix-audio/`.
+   *
+   * The window is opened by `beginRun()`, which is the product's own new-run
+   * path (`stageStart` with index 0 calls exactly this). Without it the gate
+   * would be measuring a corpse: the last scenario ends with the player dead,
+   * and a dead player's soundtrack is *supposed* to be silent. Reviving through
+   * the real API means the gate also covers the revival — which is where a
+   * genuine one-way latch lived unnoticed for two rounds.
    *
    * Dead last, after the final shutter, and that placement is measured rather
    * than cautious. Building the audio graph fills a two-second white-noise
@@ -464,32 +503,136 @@ if (!ready) {
    * it is not the pointer, it is the entropy. A gate may not move the thing it
    * is gating, so the audio check goes where it cannot.
    *
-   * `KeyZ` because `Input` reads only WASD, arrows, Space, Shift, E/Q/R, Enter,
-   * Escape and Backspace, and `thaw()` because every scenario stops the engine
-   * loop before resolving — the sequencer needs frames to emit into.
+   * The keypress stays, but its old justification was false and is worth
+   * retiring explicitly: the comment here used to claim that without a gesture
+   * "no statement in `Audio.js` or `Music.js` ever executes under this
+   * harness". Measured on a full run *before* the keypress: `ready: true`,
+   * `ac.state: "running"`, 305 steps already emitted. `Audio._ensure()` is
+   * called from the body of every catalogue entry and the scenarios fire
+   * hundreds of them, so the context is built and running long before any
+   * gesture. The press only matters on an `--only` run whose scenarios happen
+   * to make no sound. `KeyZ` because `Input` reads only WASD, arrows, Space,
+   * Shift, E/Q/R, Enter, Escape and Backspace; `thaw()` because every scenario
+   * stops the engine loop before resolving and the sequencer needs frames to
+   * emit into.
    *
-   * The assertion is about `stepsEmitted` rather than `ready`: a music engine
-   * that was constructed and then threw on every frame reports `ready: true`
-   * and emits zero steps, which is exactly the state that shipped. What this
-   * does *not* cover is the SFX catalogue, whose entry points are gameplay
-   * events that only fire during scenarios; closing that would mean holding the
-   * graph open across the shots, which is the thing measured above as
-   * unacceptable.
+   * What this still does not cover is the SFX catalogue, whose entry points are
+   * gameplay events that only fire during scenarios; closing that would mean
+   * holding the graph open across the shots, which is the thing measured above
+   * as unacceptable.
    */
   const errorsBeforeAudio = errors.length;
+  // 3 s of real time. The arrangement commits layer levels on bar boundaries
+  // and a bar at the opening tempo is 2.03 s, so a 90-frame window could open
+  // and close inside one bar with the layer gains still ramping up from zero.
+  const GATE_FRAMES = 180;
+  // -60 dBFS. Calibrated against the sparsest configuration this gate ever
+  // sees — `--only 01-title`, where the run clock never advanced, the opening
+  // ceiling holds intensity at 0.10 and the arrangement is a sub pulse and a
+  // pad and nothing else. Measured there across two runs: music bus peak
+  // 0.0139 and 0.0558, limiter output 0.0174 and 0.0538. The floor sits 23 dB
+  // under the quieter of those and 60 dB over digital silence, which is the
+  // gap that matters — every sabotage arm that should fail it reads 0.000.
+  const PEAK_FLOOR = 1e-3;
   await page.keyboard.press('KeyZ');
+  const gateArm = await page.evaluate(() => {
+    const a = globalThis.__GAME__?.ctx?.audio;
+    if (!a) return { armed: false, why: 'no audio system on ctx' };
+    const before = {
+      ready: !!a.ready,
+      state: a.ac?.state ?? null,
+      stepsEmitted: a.musicEngine?.stepsEmitted ?? 0,
+      stopped: a.musicEngine?.stopped ?? null,
+      musicOff: !!a._musicOff,
+      musicGain: a.music?.gain?.value ?? null,
+      masterGain: a.master?.gain?.value ?? null,
+    };
+    a.beginRun();
+    const ac = a.ac;
+    if (!ac || !a.music || !a.master) return { armed: false, why: 'no graph after beginRun', before };
+    const tap = (src) => {
+      const an = ac.createAnalyser();
+      an.fftSize = 2048;
+      an.smoothingTimeConstant = 0;
+      src.connect(an);
+      return { an, buf: new Float32Array(an.fftSize) };
+    };
+    const music = tap(a.music);
+    // The limiter, not master: tapping master would read master's own output
+    // and so would stay green with the master disconnected from everything
+    // downstream of it. One node further along is one more edge covered.
+    const out = tap(a.limiter ?? a.master);
+    const state = { musicPeak: 0, outputPeak: 0, samples: 0 };
+    const peak = ({ an, buf }) => {
+      an.getFloatTimeDomainData(buf);
+      let p = 0;
+      for (let i = 0; i < buf.length; i++) { const v = Math.abs(buf[i]); if (v > p) p = v; }
+      return p;
+    };
+    // A 2048-sample analyser window is ~43 ms at 48 kHz, so sampling every
+    // 16 ms cannot miss a transient between reads.
+    state.timer = setInterval(() => {
+      state.samples++;
+      state.musicPeak = Math.max(state.musicPeak, peak(music));
+      state.outputPeak = Math.max(state.outputPeak, peak(out));
+    }, 16);
+    globalThis.__AUDIOGATE__ = { state, music, out, audio: a };
+    return { armed: true, before };
+  });
   await page.evaluate(() => globalThis.__HARNESS__?.thaw?.());
-  await page.evaluate(() => globalThis.__HARNESS__?.frames?.(90));
+  await page.evaluate((n) => globalThis.__HARNESS__?.frames?.(n), GATE_FRAMES);
   manifest.audio = await page.evaluate(() => {
     const a = globalThis.__GAME__?.ctx?.audio;
+    const G = globalThis.__AUDIOGATE__;
+    if (G) {
+      clearInterval(G.state.timer);
+      try { a.music.disconnect(G.music.an); } catch { /* sabotaged or torn down */ }
+      try { (a.limiter ?? a.master).disconnect(G.out.an); } catch { /* ditto */ }
+    }
     return {
       ready: !!a?.ready,
       state: a?.ac?.state ?? null,
       stepsEmitted: a?.musicEngine?.stepsEmitted ?? 0,
+      stopped: a?.musicEngine?.stopped ?? null,
+      silent: a?.musicEngine?.silent ?? null,
+      muted: a?.muted ?? null,
+      musicOff: !!a?._musicOff,
+      musicGain: a?.music?.gain?.value ?? null,
+      masterGain: a?.master?.gain?.value ?? null,
+      voices: a?.voices ?? null,
+      worldVoices: a?.worldVoices ?? null,
+      musicPeak: G?.state.musicPeak ?? 0,
+      outputPeak: G?.state.outputPeak ?? 0,
+      samples: G?.state.samples ?? 0,
     };
   });
-  manifest.audio.newErrors = errors.slice(errorsBeforeAudio);
-  manifest.audioOk = manifest.audio.stepsEmitted > 0 && manifest.audio.newErrors.length === 0;
+  const A = manifest.audio;
+  A.armed = !!gateArm.armed;
+  A.beforeGate = gateArm.before ?? null;
+  A.stepsDelta = A.stepsEmitted - (gateArm.before?.stepsEmitted ?? 0);
+  A.newErrors = errors.slice(errorsBeforeAudio);
+  A.checks = {
+    armed: A.armed,
+    graphBuilt: A.ready === true,
+    contextRunning: A.state === 'running',
+    // The three liveness latches, each of which has silenced this game.
+    sequencerRunning: A.stopped === false,
+    notSilenced: A.silent === false && A.muted === false && A.musicOff === false,
+    musicBusOpen: A.musicGain > PEAK_FLOOR,
+    masterOpen: A.masterGain > PEAK_FLOOR,
+    // A delta over the window, not a lifetime level. 3 s at the opening tempo
+    // is 23 sixteenths and the measured window emits 24-40; 8 leaves room for
+    // a slow renderer without leaving room for a dead sequencer, which reads 0.
+    stepsAdvanced: A.stepsDelta >= 8,
+    // The two a step counter cannot make.
+    musicAudible: A.musicPeak >= PEAK_FLOOR,
+    outputAudible: A.outputPeak >= PEAK_FLOOR,
+    // If the sampler never ran, the two above are vacuous rather than passing.
+    sampled: A.samples >= 20,
+    noNewErrors: A.newErrors.length === 0,
+  };
+  A.failed = Object.entries(A.checks).filter(([, v]) => !v).map(([k]) => k);
+  manifest.audioOk = A.failed.length === 0;
 }
 
 // A failed boot writes its own file rather than overwriting the record of
@@ -506,7 +649,14 @@ console.log(JSON.stringify({
   determinism: manifest.determinism ?? null,
   shots: manifest.shots.map((s) => s.name),
   errorCount: errors.length,
-  audio: manifest.audio ?? null,
+  audio: manifest.audio
+    ? {
+        stepsDelta: manifest.audio.stepsDelta, musicPeak: manifest.audio.musicPeak,
+        outputPeak: manifest.audio.outputPeak, samples: manifest.audio.samples,
+        stopped: manifest.audio.stopped, musicGain: manifest.audio.musicGain,
+        failed: manifest.audio.failed, newErrors: manifest.audio.newErrors.length,
+      }
+    : null,
   audioOk: manifest.audioOk ?? null,
   subjectsOk: manifest.subjectsOk ?? null,
   subjectFailures: failures.map((f) => `${f.name}: ${f.failed.join(', ')}`),
@@ -520,7 +670,7 @@ if (failures.length) {
   console.log('\nSUBJECT FAILURES:\n' + JSON.stringify(failures, null, 2));
 }
 if (ready && manifest.audioOk === false) {
-  console.log('\nAUDIO FAILURE: the music engine emitted no steps, or threw.\n'
+  console.log(`\nAUDIO FAILURE: ${manifest.audio.failed.join(', ')}\n`
     + JSON.stringify(manifest.audio, null, 2));
 }
 // Non-zero on a missing subject as well as on a failed boot, and on a dead

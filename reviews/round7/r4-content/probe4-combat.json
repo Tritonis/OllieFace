@@ -1,0 +1,584 @@
+{
+  "results": {
+    "conflagration": [
+      {
+        "label": "8 bodies @3m, 1 lit",
+        "n": 8,
+        "spacing": 3,
+        "lit": 1,
+        "order": 1,
+        "boss": false,
+        "stated": 72,
+        "perBody": [
+          72,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "total": 72,
+        "healthDelta": [
+          81,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "ratioToStated": 1,
+        "_sim": {
+          "dt": 2.1,
+          "alive": true
+        }
+      },
+      {
+        "label": "8 bodies @3m, 3 lit",
+        "n": 8,
+        "spacing": 3,
+        "lit": 3,
+        "order": 1,
+        "boss": false,
+        "stated": 72,
+        "perBody": [
+          72,
+          120.8,
+          120.8,
+          63.2,
+          25.2,
+          0,
+          0,
+          0
+        ],
+        "total": 402,
+        "healthDelta": [
+          81,
+          132.8,
+          132.8,
+          69.2,
+          28.2,
+          0,
+          0,
+          0
+        ],
+        "ratioToStated": 1.86,
+        "_sim": {
+          "dt": 2.1,
+          "alive": true
+        }
+      },
+      {
+        "label": "isolated body, 1 lit",
+        "n": 1,
+        "spacing": 3,
+        "lit": 1,
+        "order": 1,
+        "boss": false,
+        "stated": 72,
+        "perBody": [
+          72
+        ],
+        "total": 72,
+        "healthDelta": [
+          81
+        ],
+        "ratioToStated": 1,
+        "_sim": {
+          "dt": 2.12,
+          "alive": true
+        }
+      },
+      {
+        "label": "8 bodies @9m, 0 lit",
+        "n": 8,
+        "spacing": 9,
+        "lit": 0,
+        "order": 1,
+        "boss": false,
+        "stated": 72,
+        "perBody": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "total": 0,
+        "healthDelta": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "ratioToStated": 0,
+        "_sim": {
+          "dt": 2.23,
+          "alive": true
+        }
+      },
+      {
+        "label": "PILE: 8 bodies @1.2m, ALL lit",
+        "n": 8,
+        "spacing": 1.2,
+        "lit": 8,
+        "order": 1,
+        "boss": false,
+        "stated": 72,
+        "perBody": [
+          281.7,
+          332.8,
+          345.5,
+          341.3,
+          306,
+          303.7,
+          97.2,
+          97.2
+        ],
+        "total": 2105.4,
+        "healthDelta": [
+          305.7,
+          356.8,
+          369.5,
+          365.3,
+          330,
+          327.7,
+          109.2,
+          109.2
+        ],
+        "ratioToStated": 3.66,
+        "_sim": {
+          "dt": 2.1,
+          "alive": true
+        }
+      },
+      {
+        "label": "8 bodies @3m, 1 lit",
+        "n": 8,
+        "spacing": 3,
+        "lit": 1,
+        "order": -1,
+        "boss": false,
+        "stated": 72,
+        "perBody": [
+          72,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "total": 72,
+        "healthDelta": [
+          81,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "ratioToStated": 1,
+        "_sim": {
+          "dt": 2.1,
+          "alive": true
+        }
+      },
+      {
+        "label": "8 bodies @3m, 3 lit",
+        "n": 8,
+        "spacing": 3,
+        "lit": 3,
+        "order": -1,
+        "boss": false,
+        "stated": 72,
+        "perBody": [
+          72,
+          120.8,
+          192.8,
+          63.4,
+          25.2,
+          0,
+          0,
+          0
+        ],
+        "total": 474.2,
+        "healthDelta": [
+          81,
+          132.8,
+          204.8,
+          69.4,
+          28.2,
+          0,
+          0,
+          0
+        ],
+        "ratioToStated": 2.2,
+        "_sim": {
+          "dt": 2.12,
+          "alive": true
+        }
+      },
+      {
+        "label": "isolated body, 1 lit",
+        "n": 1,
+        "spacing": 3,
+        "lit": 1,
+        "order": -1,
+        "boss": false,
+        "stated": 72,
+        "perBody": [
+          72
+        ],
+        "total": 72,
+        "healthDelta": [
+          81
+        ],
+        "ratioToStated": 1,
+        "_sim": {
+          "dt": 2.1,
+          "alive": true
+        }
+      },
+      {
+        "label": "8 bodies @9m, 0 lit",
+        "n": 8,
+        "spacing": 9,
+        "lit": 0,
+        "order": -1,
+        "boss": false,
+        "stated": 72,
+        "perBody": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "total": 0,
+        "healthDelta": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "ratioToStated": 0,
+        "_sim": {
+          "dt": 2.23,
+          "alive": true
+        }
+      },
+      {
+        "label": "PILE: 8 bodies @1.2m, ALL lit",
+        "n": 8,
+        "spacing": 1.2,
+        "lit": 8,
+        "order": -1,
+        "boss": false,
+        "stated": 72,
+        "perBody": [
+          289.4,
+          337.5,
+          348.6,
+          343.2,
+          307.4,
+          306,
+          97.2,
+          97.2
+        ],
+        "total": 2126.5,
+        "healthDelta": [
+          313.4,
+          361.5,
+          372.6,
+          367.2,
+          331.4,
+          330,
+          109.2,
+          109.2
+        ],
+        "ratioToStated": 3.69,
+        "_sim": {
+          "dt": 2.1,
+          "alive": true
+        }
+      }
+    ],
+    "conflagrationBoss": {
+      "label": "boss + 3 mites, all lit",
+      "n": 4,
+      "spacing": 3,
+      "lit": 4,
+      "order": 1,
+      "boss": true,
+      "stated": 72,
+      "perBody": [
+        72,
+        117.2,
+        117.2,
+        72
+      ],
+      "total": 378.4,
+      "healthDelta": [
+        81,
+        129.2,
+        129.2,
+        81
+      ],
+      "ratioToStated": 1.31,
+      "_sim": {
+        "dt": 2.12,
+        "alive": true
+      }
+    },
+    "redoubt": [
+      {
+        "mode": "still",
+        "radius": 13,
+        "secs": 40,
+        "playerHurtEvents": 0,
+        "damage": 0,
+        "dps": 0,
+        "fractionOutsideFrontArc": 0,
+        "enemyYawTravelled": 0.25,
+        "_sim": {
+          "dt": 80,
+          "alive": true
+        }
+      },
+      {
+        "mode": "circle",
+        "radius": 13,
+        "secs": 40,
+        "playerHurtEvents": 0,
+        "damage": 0,
+        "dps": 0,
+        "fractionOutsideFrontArc": 0.575,
+        "enemyYawTravelled": 33.62,
+        "_sim": {
+          "dt": 80,
+          "alive": true
+        }
+      },
+      {
+        "mode": "circle",
+        "radius": 20,
+        "secs": 40,
+        "playerHurtEvents": 0,
+        "damage": 0,
+        "dps": 0,
+        "fractionOutsideFrontArc": 0.589,
+        "enemyYawTravelled": 29.6,
+        "_sim": {
+          "dt": 80,
+          "alive": true
+        }
+      },
+      {
+        "mode": "circle",
+        "radius": 8,
+        "secs": 40,
+        "playerHurtEvents": 0,
+        "damage": 0,
+        "dps": 0,
+        "fractionOutsideFrontArc": 0.547,
+        "enemyYawTravelled": 27.72,
+        "_sim": {
+          "dt": 80,
+          "alive": true
+        }
+      },
+      {
+        "mode": "circle",
+        "radius": 13,
+        "secs": 40,
+        "playerHurtEvents": 0,
+        "damage": 0,
+        "dps": 0,
+        "fractionOutsideFrontArc": 0.59,
+        "enemyYawTravelled": 28.6,
+        "_sim": {
+          "dt": 80,
+          "alive": true
+        }
+      }
+    ],
+    "redoubtElite": [
+      {
+        "affix": "blazing",
+        "elite": true,
+        "armorFacing": 733,
+        "playerHurtEvents": 0,
+        "damage": 0,
+        "dps": 0,
+        "fractionOutsideFrontArc": 0.534,
+        "_sim": {
+          "dt": 40,
+          "alive": true
+        }
+      },
+      {
+        "affix": "overloading",
+        "elite": true,
+        "armorFacing": 733,
+        "playerHurtEvents": 0,
+        "damage": 0,
+        "dps": 0,
+        "fractionOutsideFrontArc": 0.643,
+        "_sim": {
+          "dt": 39.85,
+          "alive": true
+        }
+      },
+      {
+        "affix": "glacial",
+        "elite": true,
+        "armorFacing": 733,
+        "playerHurtEvents": 0,
+        "damage": 0,
+        "dps": 0,
+        "fractionOutsideFrontArc": 0.652,
+        "_sim": {
+          "dt": 39.72,
+          "alive": true
+        }
+      },
+      {
+        "affix": "withering",
+        "elite": true,
+        "armorFacing": 733,
+        "playerHurtEvents": 0,
+        "damage": 0,
+        "dps": 0,
+        "fractionOutsideFrontArc": 0.498,
+        "_sim": {
+          "dt": 39.87,
+          "alive": true
+        }
+      },
+      {
+        "affix": "warded",
+        "elite": true,
+        "armorFacing": 856,
+        "playerHurtEvents": 0,
+        "damage": 0,
+        "dps": 0,
+        "fractionOutsideFrontArc": 0.584,
+        "_sim": {
+          "dt": 39.85,
+          "alive": true
+        }
+      }
+    ],
+    "slow": [
+      {
+        "id": "mite",
+        "label": "grounded chaser (control)",
+        "state": "chase",
+        "moveSpeed": 8.4,
+        "peakClean": 6.77,
+        "peakSlow1": 3.694,
+        "peakSlow5": 2.886,
+        "ratio1": 0.546,
+        "ratio5": 0.426,
+        "_sim": {
+          "dt": 14,
+          "alive": true
+        }
+      },
+      {
+        "id": "shriver",
+        "label": "flyer",
+        "state": "windup",
+        "moveSpeed": 5.2,
+        "peakClean": 5.2,
+        "peakSlow1": 2.184,
+        "peakSlow5": 2.184,
+        "ratio1": 0.42,
+        "ratio5": 0.42,
+        "_sim": {
+          "dt": 13.7,
+          "alive": true
+        }
+      },
+      {
+        "id": "charger",
+        "label": "charger (may be mid-charge)",
+        "state": "chase",
+        "moveSpeed": 5.6,
+        "peakClean": 26,
+        "peakSlow1": 4.028,
+        "peakSlow5": 6.5,
+        "ratio1": 0.155,
+        "ratio5": 0.25,
+        "_sim": {
+          "dt": 14,
+          "alive": true
+        }
+      },
+      {
+        "id": "burrower",
+        "label": "burrower (may be submerged)",
+        "state": "recover",
+        "moveSpeed": 5.2,
+        "peakClean": 4.249,
+        "peakSlow1": 6.05,
+        "peakSlow5": 0.302,
+        "ratio1": 1.424,
+        "ratio5": 0.071,
+        "_sim": {
+          "dt": 13.77,
+          "alive": true
+        }
+      },
+      {
+        "id": "titan",
+        "label": "boss",
+        "state": "chase",
+        "moveSpeed": 3.2,
+        "peakClean": 0.33,
+        "peakSlow1": 1.845,
+        "peakSlow5": 0.832,
+        "ratio1": 5.591,
+        "ratio5": 2.521,
+        "_sim": {
+          "dt": 13.65,
+          "alive": true
+        }
+      }
+    ],
+    "frozenFlyer": {
+      "y0": 39.78,
+      "yAfterFreeze": 40.01,
+      "drop": -0.23,
+      "hoverHeight": 6.4,
+      "_sim": {
+        "dt": 9.65,
+        "alive": true
+      }
+    },
+    "frameErrors": 0,
+    "lastFrameError": null
+  },
+  "consoleErrors": []
+}

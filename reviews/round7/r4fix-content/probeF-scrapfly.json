@@ -1,0 +1,18 @@
+{
+  "out": {
+    "releases": 1,
+    "strikes": 4,
+    "bleeds": 4,
+    "flyMotesDrawn": 19,
+    "totalStrikeDamage": 62.4,
+    "strikeGaps": [
+      1.07,
+      1.06,
+      1.07
+    ],
+    "quarryAlive": true,
+    "windowSimSeconds": 13,
+    "frameErrors": 0
+  },
+  "errors": []
+}

@@ -146,7 +146,14 @@ export class Progression {
         this.stats.damageDealt += e.amount;
         if (e.amount > this.stats.highestHit) this.stats.highestHit = e.amount;
       } else if (e.target?.isPlayer) {
-        this.stats.damageTaken += e.amount;
+        // `amount` is what arrived; `toHealth` is what got through. A barrier
+        // exists precisely so that the hit costs nothing, and counting it as
+        // damage taken is what makes the run summary disagree with the health
+        // bar. Guarded on the local survivor too — a remote pawn is `isPlayer`,
+        // and a teammate's blood is not this run's.
+        if (!ctx.player || e.target === ctx.player) {
+          this.stats.damageTaken += e.toHealth ?? e.amount;
+        }
       }
     });
     ctx.events.on('itemPickup', () => { this.stats.items++; });

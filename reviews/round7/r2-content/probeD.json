@@ -1,0 +1,234 @@
+{
+  "results": {
+    "pullPhysics": {
+      "lasherStationary": {
+        "label": "lasher pull 19, standing still, grounded",
+        "pull": 19,
+        "distM": 10,
+        "holdKey": "none",
+        "airborne": false,
+        "netClosedM": 0,
+        "summedClosureM": -0.007,
+        "pullAccel": 11.69,
+        "groundAccel": 68,
+        "groundDecel": 86
+      },
+      "lasherStationaryClose": {
+        "label": "lasher pull 19 at 5 m, standing still",
+        "pull": 19,
+        "distM": 5,
+        "holdKey": "none",
+        "airborne": false,
+        "netClosedM": 0,
+        "summedClosureM": 0.081,
+        "pullAccel": 15.35,
+        "groundAccel": 68,
+        "groundDecel": 86
+      },
+      "lasherWalkingAway": {
+        "label": "lasher pull 19, walking",
+        "pull": 19,
+        "distM": 10,
+        "holdKey": "KeyW",
+        "airborne": false,
+        "netClosedM": 9.661,
+        "summedClosureM": 9.654,
+        "pullAccel": 11.69,
+        "groundAccel": 68,
+        "groundDecel": 86
+      },
+      "lasherAirborne": {
+        "label": "lasher pull 19, airborne",
+        "pull": 19,
+        "distM": 10,
+        "holdKey": "none",
+        "airborne": true,
+        "netClosedM": -1.896,
+        "summedClosureM": -1.904,
+        "pullAccel": 11.69,
+        "groundAccel": 68,
+        "groundDecel": 86
+      },
+      "mawDrawStationary": {
+        "label": "Maw draw pull 26, standing still",
+        "pull": 26,
+        "distM": 10,
+        "holdKey": "none",
+        "airborne": false,
+        "netClosedM": 0.002,
+        "summedClosureM": -0.005,
+        "pullAccel": 16,
+        "groundAccel": 68,
+        "groundDecel": 86
+      },
+      "heraldCollapseStationary": {
+        "label": "Herald collapse pull 30, standing still",
+        "pull": 30,
+        "distM": 10,
+        "holdKey": "none",
+        "airborne": false,
+        "netClosedM": 0,
+        "summedClosureM": -0.007,
+        "pullAccel": 18.46,
+        "groundAccel": 68,
+        "groundDecel": 86
+      }
+    },
+    "remainingHooks": {
+      "arcCapacitor": {
+        "chargeAfterPrimaryCast": 0,
+        "chargeAfterSecondaryCast": 1,
+        "chargeAfterHit": 0,
+        "spilledToBystanders": [
+          26.4,
+          26.4
+        ]
+      },
+      "scrapflyHive": {
+        "x1": {
+          "stacks": 1,
+          "damage": 93.6,
+          "effects": 0
+        },
+        "x10": {
+          "stacks": 10,
+          "damage": 936,
+          "effects": 0
+        }
+      },
+      "tectonicHeart": [
+        {
+          "jump": 1,
+          "cumulativeDamage": 0
+        },
+        {
+          "jump": 2,
+          "cumulativeDamage": 0
+        },
+        {
+          "jump": 3,
+          "cumulativeDamage": 23.3
+        },
+        {
+          "jump": 4,
+          "cumulativeDamage": 23.3
+        },
+        {
+          "jump": 5,
+          "cumulativeDamage": 23.3
+        },
+        {
+          "jump": 6,
+          "cumulativeDamage": 46.6
+        }
+      ],
+      "temporalEcho": {
+        "secondaryX1": {
+          "stacks": 1,
+          "slot": "secondary",
+          "casts": 40,
+          "extraFires": 7,
+          "chancePerCast": 0.175
+        },
+        "secondaryX10": {
+          "stacks": 10,
+          "slot": "secondary",
+          "casts": 40,
+          "extraFires": 30,
+          "chancePerCast": 0.75
+        },
+        "utilityX10": {
+          "stacks": 10,
+          "slot": "utility",
+          "casts": 40,
+          "extraFires": 0,
+          "chancePerCast": 0
+        },
+        "primaryX10": {
+          "stacks": 10,
+          "slot": "primary",
+          "casts": 40,
+          "extraFires": 0,
+          "chancePerCast": 0
+        }
+      },
+      "ashenPact": {
+        "stacks": 10,
+        "startHp": 125,
+        "endHp": 38.5,
+        "floor": 37.5,
+        "lostFraction": 0.692,
+        "ignitesOnHit": 1
+      },
+      "gorgeTooth": {
+        "monsterToothLeft": 0,
+        "gorgeToothTotal": 4,
+        "maxHealth": 125
+      },
+      "splinterBar": {
+        "crowbarLeft": 0,
+        "splinterTotal": 3
+      }
+    },
+    "equipment": {
+      "recallBeacon": {
+        "chargesStart": 1,
+        "plantReturned": false,
+        "chargesAfterPlant": 1,
+        "recallReturned": true,
+        "chargesAfterRecall": 0,
+        "landedWithinM": 0.1,
+        "healed": 31.3,
+        "anchorSurvivesStageStart": false
+      },
+      "aegisEmitter": {
+        "armorBefore": 4,
+        "armorInsideDome": 64,
+        "armorAfterLeaving": 4,
+        "enemySlowStacks": 3,
+        "effectsAlive": 1,
+        "grantBuffExists": true
+      }
+    },
+    "rigs": [
+      {
+        "id": "ranger",
+        "meshKey": "ranger",
+        "nodes": 0,
+        "tris": 0,
+        "frameErrorsAdded": 0
+      },
+      {
+        "id": "anvil",
+        "meshKey": "anvil",
+        "nodes": 0,
+        "tris": 0,
+        "frameErrorsAdded": 0
+      },
+      {
+        "id": "kestrel",
+        "meshKey": "kestrel",
+        "nodes": 0,
+        "tris": 0,
+        "frameErrorsAdded": 0
+      },
+      {
+        "id": "rook",
+        "meshKey": "rook",
+        "nodes": 0,
+        "tris": 0,
+        "frameErrorsAdded": 0
+      },
+      {
+        "id": "cinder",
+        "meshKey": "cinder",
+        "nodes": 0,
+        "tris": 0,
+        "frameErrorsAdded": 0
+      }
+    ]
+  },
+  "errors": [],
+  "frameErrors": 0,
+  "lastFrameError": null
+}

@@ -24,6 +24,17 @@ const SNAP_DIST = 0.42;
 const SLIDE_ACCEL = 32;
 const CELL = 10;
 
+// Horizontal sweep granularity. `capsuleResolve` tests terrain at a *point*, so
+// a step longer than this jumps the test clean over whatever is between here and
+// there: the destination reads as a wall (and the whole velocity is deleted) or
+// as clear (and the capsule lands on the far side of a prop). 0.3 m is well
+// under the capsule radius, so at ordinary speeds — 10 m/s is 0.17 m a step —
+// this resolves to a single pass and the solver is unchanged.
+const SWEEP_STEP = 0.3;
+// Ceiling on the sub-step count, so a pathological velocity costs bounded work
+// rather than a frame. 16 covers 4.8 m of travel in one fixed step (288 m/s).
+const SWEEP_MAX = 16;
+
 // Safety stop for the terrain DDA. A ray can visit at most 2N+2 cells before
 // leaving the grid; anything beyond that means the stepping has gone wrong.
 const DDA_MAX_CELLS = 1024;
@@ -508,55 +519,101 @@ export class Stage {
     _vel.copy(velocity);
 
     const startY = _pos.y;
-    let dx = _vel.x * dt;
-    let dz = _vel.z * dt;
+    const dx = _vel.x * dt;
+    const dz = _vel.z * dt;
 
-    // --- terrain: full move, else slide along whichever axis is free ---
-    if (dx !== 0 || dz !== 0) {
-      const tx = _pos.x + dx, tz = _pos.z + dz;
-      if (this._climbable(tx, tz, startY)) {
-        _pos.x = tx; _pos.z = tz;
-      } else {
-        let moved = false;
-        if (dx !== 0 && this._climbable(_pos.x + dx, _pos.z, startY)) {
-          _pos.x += dx; moved = true;
+    /*
+     * The horizontal half is swept in sub-steps rather than taken as one
+     * teleport. Both terrain and props are tested at a single destination point,
+     * which is correct only while the destination is close enough to stand in
+     * for the path: a 10 m/s walk covers 0.17 m a step and it is. A jump impulse
+     * does not. At 40 m/s the step is 0.67 m and at 110 m/s it is 1.84 m, and
+     * over that distance the destination test answers a different question from
+     * the one the solver is asking — it deleted the whole velocity because the
+     * far end of the leap happened to land on a rise (`_climbable` fails, both
+     * components zeroed, launch gone), and it let the capsule land past a thin
+     * prop entirely, so the depenetration pass never saw it.
+     *
+     * `n` is 1 for every ordinary velocity in the game, so this is the same
+     * single pass it has always been unless something is genuinely moving fast.
+     */
+    const n = Math.min(SWEEP_MAX, Math.max(1, Math.ceil(Math.hypot(dx, dz) / SWEEP_STEP)));
+
+    /*
+     * `_climbable` is a *walking* test — "could this capsule step up onto that,
+     * and is the face it would step onto shallow enough to walk". Applied to a
+     * body in the air it asks the wrong question and answers it destructively:
+     * a jump passing over ground that rises at all, at more than the walk slope,
+     * fails the test, no axis is free, and both horizontal components are set to
+     * zero. The launch is deleted in mid-flight, over ground the player is
+     * metres above and never touches.
+     *
+     * Airborne, the only thing that can stop a horizontal move is terrain that
+     * is actually in the way — above the capsule's feet. How steep it is and
+     * whether it could have been walked up are questions for a body on the
+     * ground, and this one is not on the ground.
+     */
+    // Rising counts as airborne too. Horizontal is resolved before vertical, so
+    // on the very step a jump is taken the capsule's feet are still at ground
+    // height — and that is the longest step of the whole launch, the one the
+    // walking test was deleting outright.
+    const airborne = _vel.y > 0 || startY > T.sampleHeight(_pos.x, _pos.z) + SNAP_DIST;
+    const clear = airborne
+      ? (x, z) => this._airClear(x, z, startY)
+      : (x, z) => this._climbable(x, z, startY);
+
+    for (let step = 0; step < n; step++) {
+      // Read the velocity fresh each sub-step: a wall hit in an earlier one has
+      // already projected it, and the rest of the move must follow that.
+      const sx = _vel.x * dt / n, sz = _vel.z * dt / n;
+
+      // --- terrain: full move, else slide along whichever axis is free ---
+      if (sx !== 0 || sz !== 0) {
+        const tx = _pos.x + sx, tz = _pos.z + sz;
+        if (clear(tx, tz)) {
+          _pos.x = tx; _pos.z = tz;
         } else {
-          _vel.x = 0;
+          let moved = false;
+          if (sx !== 0 && clear(_pos.x + sx, _pos.z)) {
+            _pos.x += sx; moved = true;
+          } else {
+            _vel.x = 0;
+          }
+          if (sz !== 0 && clear(_pos.x, _pos.z + sz)) {
+            _pos.z += sz; moved = true;
+          } else {
+            _vel.z = 0;
+          }
+          if (!moved) { _vel.x = 0; _vel.z = 0; }
         }
-        if (dz !== 0 && this._climbable(_pos.x, _pos.z + dz, startY)) {
-          _pos.z += dz; moved = true;
-        } else {
-          _vel.z = 0;
+      }
+
+      _pos.x = clamp(_pos.x, -this.bound, this.bound);
+      _pos.z = clamp(_pos.z, -this.bound, this.bound);
+
+      // --- props: depenetrate horizontally, project velocity onto the wall ---
+      this.grid.query(_pos.x, _pos.z, _near);
+      for (let iter = 0; iter < 2; iter++) {
+        let hit = false;
+        for (const c of _near) {
+          if (c.kind !== 'cyl') continue;
+          // Capsule vertical span vs cylinder span.
+          if (_pos.y + height < c.y0 || _pos.y > c.y1) continue;
+          let ox = _pos.x - c.x, oz = _pos.z - c.z;
+          const minD = c.r + radius;
+          let d = Math.hypot(ox, oz);
+          if (d >= minD) continue;
+          if (d < 1e-4) { ox = 1; oz = 0; d = 1e-4; }
+          const nx = ox / d, nz = oz / d;
+          const push = minD - d;
+          _pos.x += nx * push;
+          _pos.z += nz * push;
+          const into = _vel.x * nx + _vel.z * nz;
+          if (into < 0) { _vel.x -= nx * into; _vel.z -= nz * into; }
+          hit = true;
         }
-        if (!moved) { _vel.x = 0; _vel.z = 0; }
+        if (!hit) break;
       }
-    }
-
-    _pos.x = clamp(_pos.x, -this.bound, this.bound);
-    _pos.z = clamp(_pos.z, -this.bound, this.bound);
-
-    // --- props: depenetrate horizontally, project velocity onto the wall ---
-    this.grid.query(_pos.x, _pos.z, _near);
-    for (let iter = 0; iter < 2; iter++) {
-      let hit = false;
-      for (const c of _near) {
-        if (c.kind !== 'cyl') continue;
-        // Capsule vertical span vs cylinder span.
-        if (_pos.y + height < c.y0 || _pos.y > c.y1) continue;
-        let ox = _pos.x - c.x, oz = _pos.z - c.z;
-        const minD = c.r + radius;
-        let d = Math.hypot(ox, oz);
-        if (d >= minD) continue;
-        if (d < 1e-4) { ox = 1; oz = 0; d = 1e-4; }
-        const nx = ox / d, nz = oz / d;
-        const push = minD - d;
-        _pos.x += nx * push;
-        _pos.z += nz * push;
-        const into = _vel.x * nx + _vel.z * nz;
-        if (into < 0) { _vel.x -= nx * into; _vel.z -= nz * into; }
-        hit = true;
-      }
-      if (!hit) break;
     }
 
     // --- vertical ---
@@ -624,6 +681,18 @@ export class Stage {
     // ground steeper than the walk limit is a wall regardless of rise rate.
     if (h > fromY + 0.01 && this.terrain.slopeDot(x, z) < WALK_DOT) return false;
     return true;
+  }
+
+  /**
+   * The airborne counterpart of `_climbable`. A body off the ground cannot
+   * "step up" onto anything and does not care how steep the ground it is flying
+   * over is; the only terrain that can stop it is terrain that is genuinely in
+   * the way. Same step-up allowance so that a landing on a low lip is a landing
+   * rather than a wall, and the same bound check.
+   */
+  _airClear(x, z, fromY) {
+    if (Math.abs(x) > this.bound || Math.abs(z) > this.bound) return false;
+    return this.terrain.sampleHeight(x, z) - fromY <= STEP_HEIGHT;
   }
 
   dispose() {

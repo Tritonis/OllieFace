@@ -1,0 +1,431 @@
+{
+  "results": {
+    "stacking": {
+      "bipod": {
+        "id": "bipod",
+        "description": {
+          "n=1": "Deal +40% damage while standing still.",
+          "n=2": "Deal +80% damage while standing still.",
+          "n=10": "Deal +400% damage while standing still."
+        },
+        "x0": 100,
+        "x1": 140,
+        "x2": 180,
+        "x10": 500,
+        "ratio_x1": 1.4,
+        "ratio_x2": 1.8,
+        "ratio_x10": 5
+      },
+      "vow-of-momentum": {
+        "id": "vow-of-momentum",
+        "description": {
+          "n=1": "+110% damage while moving. Your damage is reduced to 52.6% while standing still.",
+          "n=2": "+220% damage while moving. Your damage is reduced to 35.7% while standing still.",
+          "n=10": "+1100% damage while moving. Your damage is reduced to 10% while standing still."
+        },
+        "x0": 100,
+        "x1": 52.632,
+        "x2": 35.714,
+        "x10": 10,
+        "ratio_x1": 0.526,
+        "ratio_x2": 0.357,
+        "ratio_x10": 0.1
+      },
+      "vow-of-momentum-moving": {
+        "id": "vow-of-momentum",
+        "description": {
+          "n=1": "+110% damage while moving. Your damage is reduced to 52.6% while standing still.",
+          "n=2": "+220% damage while moving. Your damage is reduced to 35.7% while standing still.",
+          "n=10": "+1100% damage while moving. Your damage is reduced to 10% while standing still."
+        },
+        "x0": 100,
+        "x1": 210,
+        "x2": 320,
+        "x10": 1200,
+        "ratio_x1": 2.1,
+        "ratio_x2": 3.2,
+        "ratio_x10": 12
+      },
+      "entropy-ledger": {
+        "id": "entropy-ledger",
+        "description": {
+          "n=1": "Deal up to +80% damage, scaling with the fraction of your health that is missing.",
+          "n=2": "Deal up to +160% damage, scaling with the fraction of your health that is missing.",
+          "n=10": "Deal up to +800% damage, scaling with the fraction of your health that is missing."
+        },
+        "x0": 100,
+        "x1": 180,
+        "x2": 260,
+        "x10": 900,
+        "ratio_x1": 1.8,
+        "ratio_x2": 2.6,
+        "ratio_x10": 9
+      },
+      "gilded-reliquary": {
+        "id": "gilded-reliquary",
+        "description": {
+          "n=1": "Deal +5% damage per 250 gold carried, up to +40%. Spending gold spends the bonus.",
+          "n=2": "Deal +10% damage per 250 gold carried, up to +80%. Spending gold spends the bonus.",
+          "n=10": "Deal +50% damage per 250 gold carried, up to +400%. Spending gold spends the bonus."
+        },
+        "x0": 100,
+        "x1": 140,
+        "x2": 180,
+        "x10": 500,
+        "ratio_x1": 1.4,
+        "ratio_x2": 1.8,
+        "ratio_x10": 5
+      },
+      "affliction-index": {
+        "id": "affliction-index",
+        "description": {
+          "n=1": "Deal +25% damage to enemies suffering burn, bleed, slow, freeze or shock.",
+          "n=2": "Deal +50% damage to enemies suffering burn, bleed, slow, freeze or shock.",
+          "n=10": "Deal +250% damage to enemies suffering burn, bleed, slow, freeze or shock."
+        },
+        "x0": 100,
+        "x1": 125,
+        "x2": 150,
+        "x10": 350,
+        "ratio_x1": 1.25,
+        "ratio_x2": 1.5,
+        "ratio_x10": 3.5
+      },
+      "splinter-bar": {
+        "id": "splinter-bar",
+        "description": {
+          "n=1": "Deal +130% damage to enemies above 90% health. You deal 33.3% less damage to enemies below 25% health. Consumes every Pry Bar you hold.",
+          "n=2": "Deal +260% damage to enemies above 90% health. You deal 50% less damage to enemies below 25% health. Consumes every Pry Bar you hold.",
+          "n=10": "Deal +1300% damage to enemies above 90% health. You deal 83.3% less damage to enemies below 25% health. Consumes every Pry Bar you hold."
+        },
+        "x0": 100,
+        "x1": 230,
+        "x2": 360,
+        "x10": 1400,
+        "ratio_x1": 2.3,
+        "ratio_x2": 3.6,
+        "ratio_x10": 14
+      },
+      "whetstone": {
+        "id": "whetstone",
+        "description": {
+          "n=1": "Deal +70% damage to an enemy you have not hit in the last 4s.",
+          "n=2": "Deal +140% damage to an enemy you have not hit in the last 4s.",
+          "n=10": "Deal +700% damage to an enemy you have not hit in the last 4s."
+        },
+        "x0": 100,
+        "x1": 170,
+        "x2": 100,
+        "x10": 100,
+        "ratio_x1": 1.7,
+        "ratio_x2": 1,
+        "ratio_x10": 1
+      }
+    },
+    "quickfootCollision": {
+      "spursOnly": {
+        "stacks": 1,
+        "magnitude": 0.2,
+        "remaining": 14.8,
+        "moveSpeed": 8.4
+      },
+      "preyOnly": {
+        "stacks": 1,
+        "magnitude": 0.18,
+        "remaining": 0.5,
+        "moveSpeed": 8.26
+      },
+      "bothHeld": {
+        "immediatelyAfterKill": {
+          "stacks": 1,
+          "magnitude": 0.2,
+          "remaining": 15,
+          "moveSpeed": 8.26
+        },
+        "after0_5s": {
+          "stacks": 1,
+          "magnitude": 0.18,
+          "remaining": 0.5,
+          "moveSpeed": 8.26
+        }
+      },
+      "preyTenThenSpurs": {
+        "preyTen": {
+          "stacks": 1,
+          "magnitude": 1.8,
+          "remaining": 0.5,
+          "moveSpeed": 19.6
+        },
+        "rightAfterSpurs": {
+          "stacks": 1,
+          "magnitude": 0.2,
+          "remaining": 15,
+          "moveSpeed": 19.6
+        },
+        "settled": {
+          "stacks": 1,
+          "magnitude": 1.8,
+          "remaining": 0.5,
+          "moveSpeed": 19.6
+        }
+      }
+    },
+    "whetstoneVsDot": {
+      "control": {
+        "first": 100,
+        "immediateSecond": 100,
+        "afterFiveSeconds": 170
+      },
+      "burning": {
+        "first": 100,
+        "afterFiveSecondsOfBurn": 100,
+        "burnStacksAtEnd": 0
+      },
+      "inCloud": {
+        "first": 100,
+        "afterFiveSecondsInCloud": 100
+      }
+    },
+    "cloudSemantics": {
+      "ringColoursDrawn": [
+        "0x9fdc6a@r6",
+        "0x9fdc6a@r6",
+        "0x9fdc6a@r6",
+        "0x9fdc6a@r6",
+        "0x9fdc6a@r6",
+        "0x9fdc6a@r6"
+      ],
+      "pyre": {
+        "damageDealt": 43.2,
+        "burnStacksApplied": 0,
+        "anyStatus": []
+      },
+      "distinctRingColours": [
+        "0x9fdc6a@r6"
+      ]
+    },
+    "cinder": {
+      "frameErrorsBefore": 0,
+      "survivor": {
+        "id": "cinder",
+        "damage": 13,
+        "maxHealth": 125
+      },
+      "slots": [
+        {
+          "slot": "primary",
+          "id": "cinderStoke"
+        },
+        {
+          "slot": "secondary",
+          "id": "cinderPyreFlask"
+        },
+        {
+          "slot": "utility",
+          "id": "cinderBackdraft"
+        },
+        {
+          "slot": "special",
+          "id": "cinderConflagration"
+        }
+      ],
+      "stoke": {
+        "ability": "cinderStoke",
+        "threw": null,
+        "frameErrorsAdded": 0,
+        "damageToTarget": 38.4,
+        "burnStacksOnTarget": 0,
+        "allStatuses": [],
+        "cloudsAlive": 0
+      },
+      "pyreFlask": {
+        "ability": "cinderPyreFlask",
+        "threw": null,
+        "frameErrorsAdded": 0,
+        "damageToTarget": 0,
+        "burnStacksOnTarget": 0,
+        "allStatuses": [],
+        "cloudsAlive": 1
+      },
+      "backdraft": {
+        "ability": "cinderBackdraft",
+        "threw": null,
+        "frameErrorsAdded": 0,
+        "damageToTarget": 38.7,
+        "burnStacksOnTarget": 0,
+        "allStatuses": [],
+        "cloudsAlive": 0
+      },
+      "conflagOneLitSpread": {
+        "cluster": 8,
+        "spacingM": 9,
+        "litAtCast": 1,
+        "damagedBodies": 1,
+        "totalDamage": 7,
+        "perBodyDamage": [
+          7,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "burnStacksAfter": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "expectedIfPerBurningBodyOnly": 78
+      },
+      "conflagOneLitTight": {
+        "cluster": 8,
+        "spacingM": 3,
+        "litAtCast": 1,
+        "damagedBodies": 2,
+        "totalDamage": 332,
+        "perBodyDamage": [
+          169,
+          163,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "burnStacksAfter": [
+          3,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "expectedIfPerBurningBodyOnly": 78
+      },
+      "conflagAllLitTight": {
+        "cluster": 8,
+        "spacingM": 3,
+        "litAtCast": 8,
+        "damagedBodies": 8,
+        "totalDamage": 1670,
+        "perBodyDamage": [
+          169,
+          169,
+          169,
+          328,
+          250,
+          247,
+          169,
+          169
+        ],
+        "burnStacksAfter": [
+          3,
+          3,
+          3,
+          4,
+          4,
+          3,
+          3,
+          3
+        ],
+        "expectedIfPerBurningBodyOnly": 624
+      },
+      "frameErrorsAfter": 0
+    },
+    "harpoon": {
+      "ground10": {
+        "card": "mite",
+        "stacks": 10,
+        "hits": 30,
+        "startM": 19.92,
+        "endM": 0.02,
+        "procs": 16,
+        "yStart": 4.41,
+        "yEnd": 3.38,
+        "groundYatEnd": 3.38,
+        "hoverHeight": null
+      },
+      "flyer10": {
+        "card": "shriver",
+        "stacks": 10,
+        "hits": 30,
+        "startM": 21.24,
+        "endM": 0.02,
+        "procs": 16,
+        "yStart": 10.55,
+        "yEnd": 3.39,
+        "groundYatEnd": 3.38,
+        "hoverHeight": 6.4
+      }
+    },
+    "intervalCost": {
+      "empty": {
+        "label": "no items",
+        "usPerStep": 0.83,
+        "dirtyAfter": false,
+        "hooks": 0
+      },
+      "fullNoPrey": {
+        "label": "one of every non-blight item, full health",
+        "usPerStep": 3.03,
+        "dirtyAfter": false,
+        "hooks": 12
+      },
+      "fullWithPreyBelow40": {
+        "label": "same, prey-instinct live (health 20%)",
+        "usPerStep": 5.5,
+        "dirtyAfter": false,
+        "hooks": 12
+      },
+      "preyAlone": {
+        "label": "prey-instinct only, health 20%",
+        "usPerStep": 1.2,
+        "dirtyAfter": false,
+        "hooks": 1
+      }
+    },
+    "dropTable": {
+      "poolSizes": {
+        "blight": 11,
+        "common": 31,
+        "uncommon": 31,
+        "legendary": 18,
+        "boss": 8,
+        "lunar": 9
+      },
+      "tierShare": {
+        "common": 0.7609,
+        "uncommon": 0.191,
+        "legendary": 0.0089,
+        "blight": 0.0392
+      },
+      "perItemShareNew": {
+        "bipod": 0.02362,
+        "whetstone": 0.02472,
+        "prey-instinct": 0.0246,
+        "affliction-index": 0.00605,
+        "tether-harpoon": 0.00587,
+        "emberwake": 0.0056,
+        "arc-capacitor": 0.00612,
+        "scrapfly-hive": 0.00612,
+        "entropy-ledger": 0.00063,
+        "temporal-echo": 0.00053,
+        "gilded-reliquary": 0.0005
+      },
+      "legendaryPerItemShare": 0.00049
+    }
+  },
+  "errors": [],
+  "frameErrors": 0,
+  "lastFrameError": null
+}

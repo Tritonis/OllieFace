@@ -169,7 +169,11 @@ export class Director {
       const t = e.target;
       const em = t?.elite;
       if (!em || !em.reflect || !t.alive || t.shield <= 0) return;
-      const p = ctx.player;
+      // The reflect pays back the player who *landed* the hit. `ctx.player` is
+      // whoever this client is playing, which on a host is not the peer whose
+      // shot arrived — a teammate shooting a warded elite used to bleed the
+      // host. `e.source` is already known to be a player from the guard above.
+      const p = e.source;
       if (!p || !p.alive) return;
       this._reflect.source = t;
       this._reflect.position = t.position;

@@ -1,0 +1,421 @@
+{
+  "bothEnds": [
+    {
+      "build": "round3",
+      "diff": 1,
+      "I_empty": 0,
+      "I_full": 0.792,
+      "span": 0.792,
+      "arc": 0,
+      "pressure_full": 0.9,
+      "pressure_empty": 0,
+      "bpm_empty": 118,
+      "bpm_full": 137,
+      "cool_from": 0.792,
+      "cool_to": 0.0044,
+      "cool_moved": 0.7876
+    },
+    {
+      "build": "round3",
+      "diff": 1.5,
+      "I_empty": 0.2,
+      "I_full": 0.8336,
+      "span": 0.6336,
+      "arc": 0.2,
+      "pressure_full": 0.9,
+      "pressure_empty": 0,
+      "bpm_empty": 122.8,
+      "bpm_full": 138,
+      "cool_from": 0.8336,
+      "cool_to": 0.2035,
+      "cool_moved": 0.6301
+    },
+    {
+      "build": "round3",
+      "diff": 2,
+      "I_empty": 0.4,
+      "I_full": 0.8752,
+      "span": 0.4752,
+      "arc": 0.4,
+      "pressure_full": 0.9,
+      "pressure_empty": 0,
+      "bpm_empty": 127.6,
+      "bpm_full": 139,
+      "cool_from": 0.8752,
+      "cool_to": 0.4026,
+      "cool_moved": 0.4726
+    },
+    {
+      "build": "round3",
+      "diff": 2.875,
+      "I_empty": 0.75,
+      "I_full": 0.948,
+      "span": 0.198,
+      "arc": 0.75,
+      "pressure_full": 0.9,
+      "pressure_empty": 0,
+      "bpm_empty": 136,
+      "bpm_full": 140.8,
+      "cool_from": 0.948,
+      "cool_to": 0.7511,
+      "cool_moved": 0.1969
+    },
+    {
+      "build": "round3",
+      "diff": 3.2,
+      "I_empty": 0.88,
+      "I_full": 0.975,
+      "span": 0.095,
+      "arc": 0.88,
+      "pressure_full": 0.9,
+      "pressure_empty": 0,
+      "bpm_empty": 139.1,
+      "bpm_full": 141.4,
+      "cool_from": 0.975,
+      "cool_to": 0.8805,
+      "cool_moved": 0.0945
+    },
+    {
+      "build": "round3",
+      "diff": 3.5,
+      "I_empty": 1,
+      "I_full": 1,
+      "span": 0,
+      "arc": 1,
+      "pressure_full": 0.9,
+      "pressure_empty": 0,
+      "bpm_empty": 142,
+      "bpm_full": 142,
+      "cool_from": 1,
+      "cool_to": 1,
+      "cool_moved": 0
+    },
+    {
+      "build": "round3",
+      "diff": 4.5,
+      "I_empty": 1,
+      "I_full": 1,
+      "span": 0,
+      "arc": 1,
+      "pressure_full": 0.9,
+      "pressure_empty": 0,
+      "bpm_empty": 142,
+      "bpm_full": 142,
+      "cool_from": 1,
+      "cool_to": 1,
+      "cool_moved": 0
+    },
+    {
+      "build": "round3",
+      "diff": 6,
+      "I_empty": 1,
+      "I_full": 1,
+      "span": 0,
+      "arc": 1,
+      "pressure_full": 0.9,
+      "pressure_empty": 0,
+      "bpm_empty": 142,
+      "bpm_full": 142,
+      "cool_from": 1,
+      "cool_to": 1,
+      "cool_moved": 0
+    },
+    {
+      "build": "round3",
+      "diff": 12,
+      "I_empty": 1,
+      "I_full": 1,
+      "span": 0,
+      "arc": 1,
+      "pressure_full": 0.9,
+      "pressure_empty": 0,
+      "bpm_empty": 142,
+      "bpm_full": 142,
+      "cool_from": 1,
+      "cool_to": 1,
+      "cool_moved": 0
+    },
+    {
+      "build": "round4",
+      "diff": 1,
+      "I_empty": 0,
+      "I_full": 0.792,
+      "span": 0.792,
+      "arc": 0,
+      "pressure_full": 0.9,
+      "pressure_empty": 0,
+      "bpm_empty": 118,
+      "bpm_full": 137,
+      "cool_from": 0.792,
+      "cool_to": 0.0044,
+      "cool_moved": 0.7876
+    },
+    {
+      "build": "round4",
+      "diff": 1.5,
+      "I_empty": 0.13,
+      "I_full": 0.819,
+      "span": 0.689,
+      "arc": 0.13,
+      "pressure_full": 0.9,
+      "pressure_empty": 0,
+      "bpm_empty": 121.1,
+      "bpm_full": 137.7,
+      "cool_from": 0.819,
+      "cool_to": 0.1338,
+      "cool_moved": 0.6852
+    },
+    {
+      "build": "round4",
+      "diff": 2,
+      "I_empty": 0.26,
+      "I_full": 0.8461,
+      "span": 0.5861,
+      "arc": 0.26,
+      "pressure_full": 0.9,
+      "pressure_empty": 0,
+      "bpm_empty": 124.2,
+      "bpm_full": 138.3,
+      "cool_from": 0.8461,
+      "cool_to": 0.2632,
+      "cool_moved": 0.5829
+    },
+    {
+      "build": "round4",
+      "diff": 2.875,
+      "I_empty": 0.4875,
+      "I_full": 0.8934,
+      "span": 0.4059,
+      "arc": 0.4875,
+      "pressure_full": 0.9,
+      "pressure_empty": 0,
+      "bpm_empty": 129.7,
+      "bpm_full": 139.4,
+      "cool_from": 0.8934,
+      "cool_to": 0.4897,
+      "cool_moved": 0.4037
+    },
+    {
+      "build": "round4",
+      "diff": 3.2,
+      "I_empty": 0.572,
+      "I_full": 0.911,
+      "span": 0.339,
+      "arc": 0.572,
+      "pressure_full": 0.9,
+      "pressure_empty": 0,
+      "bpm_empty": 131.7,
+      "bpm_full": 139.9,
+      "cool_from": 0.911,
+      "cool_to": 0.5739,
+      "cool_moved": 0.3371
+    },
+    {
+      "build": "round4",
+      "diff": 3.5,
+      "I_empty": 0.65,
+      "I_full": 0.9272,
+      "span": 0.2772,
+      "arc": 0.65,
+      "pressure_full": 0.9,
+      "pressure_empty": 0,
+      "bpm_empty": 133.6,
+      "bpm_full": 140.3,
+      "cool_from": 0.9272,
+      "cool_to": 0.6515,
+      "cool_moved": 0.2757
+    },
+    {
+      "build": "round4",
+      "diff": 4.5,
+      "I_empty": 0.65,
+      "I_full": 0.9272,
+      "span": 0.2772,
+      "arc": 0.65,
+      "pressure_full": 0.9,
+      "pressure_empty": 0,
+      "bpm_empty": 133.6,
+      "bpm_full": 140.3,
+      "cool_from": 0.9272,
+      "cool_to": 0.6515,
+      "cool_moved": 0.2757
+    },
+    {
+      "build": "round4",
+      "diff": 6,
+      "I_empty": 0.65,
+      "I_full": 0.9272,
+      "span": 0.2772,
+      "arc": 0.65,
+      "pressure_full": 0.9,
+      "pressure_empty": 0,
+      "bpm_empty": 133.6,
+      "bpm_full": 140.3,
+      "cool_from": 0.9272,
+      "cool_to": 0.6515,
+      "cool_moved": 0.2757
+    },
+    {
+      "build": "round4",
+      "diff": 12,
+      "I_empty": 0.65,
+      "I_full": 0.9272,
+      "span": 0.2772,
+      "arc": 0.65,
+      "pressure_full": 0.9,
+      "pressure_empty": 0,
+      "bpm_empty": 133.6,
+      "bpm_full": 140.3,
+      "cool_from": 0.9272,
+      "cool_to": 0.6515,
+      "cool_moved": 0.2757
+    }
+  ],
+  "bothEndsVerdict": {
+    "round3_deadRows": [
+      3.5,
+      4.5,
+      6,
+      12
+    ],
+    "round4_deadRows": [],
+    "invariant": "span > 0 for every reachable difficulty"
+  },
+  "openingCeiling": {
+    "round3": {
+      "idle": {
+        "runT": 0,
+        "I": 0
+      },
+      "at6": 0.17,
+      "at60": 0.7962,
+      "ceilingAt6s": 0.17
+    },
+    "round4": {
+      "idle": {
+        "runT": 0,
+        "I": 0
+      },
+      "at6": 0.17,
+      "at60": 0.7947,
+      "ceilingAt6s": 0.17
+    }
+  },
+  "floors": [
+    {
+      "build": "round3",
+      "diff": 1,
+      "boss": 0.704,
+      "charging": 0.7392,
+      "full": 0.792,
+      "separation": 0.088
+    },
+    {
+      "build": "round3",
+      "diff": 2,
+      "boss": 0.8224,
+      "charging": 0.8435,
+      "full": 0.8752,
+      "separation": 0.0528
+    },
+    {
+      "build": "round3",
+      "diff": 3.5,
+      "boss": 1,
+      "charging": 1,
+      "full": 1,
+      "separation": 0
+    },
+    {
+      "build": "round3",
+      "diff": 6,
+      "boss": 1,
+      "charging": 1,
+      "full": 1,
+      "separation": 0
+    },
+    {
+      "build": "round4",
+      "diff": 1,
+      "boss": 0.704,
+      "charging": 0.7392,
+      "full": 0.792,
+      "separation": 0.088
+    },
+    {
+      "build": "round4",
+      "diff": 2,
+      "boss": 0.781,
+      "charging": 0.807,
+      "full": 0.8461,
+      "separation": 0.0651
+    },
+    {
+      "build": "round4",
+      "diff": 3.5,
+      "boss": 0.8964,
+      "charging": 0.9087,
+      "full": 0.9272,
+      "separation": 0.0308
+    },
+    {
+      "build": "round4",
+      "diff": 6,
+      "boss": 0.8964,
+      "charging": 0.9087,
+      "full": 0.9272,
+      "separation": 0.0308
+    }
+  ],
+  "stopLatch": {
+    "round3": {
+      "stepsBeforeStop": 51,
+      "stepsAfterStop": 51,
+      "stepsAfterReset": 51,
+      "emittedAfterReset": 0,
+      "stoppedFlagAfterReset": true,
+      "verdict": "reset() does NOT revive a stopped engine"
+    },
+    "round4": {
+      "stepsBeforeStop": 51,
+      "stepsAfterStop": 51,
+      "stepsAfterReset": 94,
+      "emittedAfterReset": 43,
+      "stoppedFlagAfterReset": false,
+      "verdict": "revived"
+    }
+  },
+  "guards": {
+    "round3": {
+      "resync": {
+        "bars": 6,
+        "rewinds": 0,
+        "resyncs": 3
+      },
+      "runTBefore": 10.2,
+      "stepsDuringSilent": 0,
+      "intensityStillMoving": true
+    },
+    "round4": {
+      "resync": {
+        "bars": 6,
+        "rewinds": 0,
+        "resyncs": 3
+      },
+      "runTBefore": 10.2,
+      "stepsDuringSilent": 0,
+      "intensityStillMoving": true
+    }
+  },
+  "clap": {
+    "round3": {
+      "clapMax": 3.5,
+      "kickMax": 0.5
+    },
+    "round4": {
+      "clapMax": 2.2,
+      "kickMax": 0.5
+    },
+    "dB_change": -4.03
+  }
+}

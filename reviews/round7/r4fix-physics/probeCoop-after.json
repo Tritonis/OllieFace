@@ -1,0 +1,201 @@
+{
+  "link": {
+    "hostClients": 1,
+    "hostNetRole": "host",
+    "hostAuthority": true,
+    "clientNetRole": "client",
+    "clientAuthority": false,
+    "hostHasPawn": true,
+    "clientSeesHostSnapshots": 0
+  },
+  "jumpCrossTalk": {
+    "before": {
+      "hostShield": 0,
+      "hostSpeed": 0,
+      "hostItemsHeld": {
+        "wing": 3,
+        "soles": 1,
+        "heart": 1
+      }
+    },
+    "after": {
+      "hostShield": 0,
+      "hostSpeed": 0,
+      "hostJumpsUsed": 0,
+      "pawnJumpsUsed": 1,
+      "pawnPeakSpeed": 0,
+      "hostPeakSpeed": 0,
+      "pawnInstantSpeed": 0,
+      "jumpEventsSeenByHostBus": 0,
+      "consumeImpulseCalls": []
+    },
+    "wire": {
+      "host": {
+        "inputsApplied": 66,
+        "lastTick": 30,
+        "commandsWithButtons": 18,
+        "buttonValues": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "commandsSeen": 66,
+        "receivedWithButtons": [
+          {
+            "tick": 1,
+            "buttons": 1
+          },
+          {
+            "tick": 6,
+            "buttons": 1
+          },
+          {
+            "tick": 11,
+            "buttons": 1
+          },
+          {
+            "tick": 16,
+            "buttons": 1
+          },
+          {
+            "tick": 21,
+            "buttons": 1
+          },
+          {
+            "tick": 26,
+            "buttons": 1
+          }
+        ],
+        "rxError": null,
+        "queuedWithButtons": [
+          {
+            "tick": 1,
+            "buttons": 1
+          },
+          {
+            "tick": 6,
+            "buttons": 1
+          },
+          {
+            "tick": 11,
+            "buttons": 1
+          },
+          {
+            "tick": 16,
+            "buttons": 1
+          },
+          {
+            "tick": 21,
+            "buttons": 1
+          },
+          {
+            "tick": 26,
+            "buttons": 1
+          }
+        ]
+      },
+      "client": {
+        "sends": 30,
+        "connected": true,
+        "tick": 30,
+        "sentButtons": [
+          {
+            "msg": 3,
+            "tick": 1,
+            "buttons": 1
+          },
+          {
+            "msg": 3,
+            "tick": 6,
+            "buttons": 1
+          },
+          {
+            "msg": 3,
+            "tick": 11,
+            "buttons": 1
+          },
+          {
+            "msg": 3,
+            "tick": 16,
+            "buttons": 1
+          },
+          {
+            "msg": 3,
+            "tick": 21,
+            "buttons": 1
+          },
+          {
+            "msg": 3,
+            "tick": 26,
+            "buttons": 1
+          }
+        ]
+      },
+      "clientSampledButtons": 1,
+      "clientPlayerAlive": true,
+      "clientJumpsUsed": 1,
+      "clientInputEnabled": true
+    }
+  },
+  "pawnLaunch": 0,
+  "clientReplay": {
+    "liveVelocity": 31.133,
+    "replayVelocity": 31.133,
+    "liveConsumeImpulse": [
+      30
+    ],
+    "replayConsumeImpulse": [],
+    "divergence": 0
+  },
+  "teammateDamage": {
+    "localPlayerHurtEvents": 0,
+    "localShieldBrokenEvents": 0,
+    "timeSinceHurt": [
+      30,
+      30
+    ],
+    "pawnHealth": [
+      110,
+      16
+    ],
+    "hostHealth": [
+      110,
+      110
+    ],
+    "wardedReflect": {
+      "ran": true,
+      "hostHealth": [
+        110,
+        110
+      ],
+      "pawnHealth": [
+        60,
+        16
+      ],
+      "reflectLandedOnHost": false,
+      "reflectLandedOnAttacker": true
+    }
+  },
+  "barrierAccounting": {
+    "before": {
+      "health": 110,
+      "shield": 1000,
+      "progressionDamageTaken": 0,
+      "profileRunDamageTakenThisStage": 0
+    },
+    "after": {
+      "health": 110,
+      "shield": 950,
+      "progressionDamageTaken": 0,
+      "profileRunDamageTakenThisStage": 50
+    }
+  },
+  "errors": []
+}

@@ -1,0 +1,166 @@
+{
+  "reelBand": [
+    {
+      "stand": 0,
+      "standingStill": {
+        "sprint": false,
+        "simSeconds": 30.02,
+        "picks": {
+          "reel": 4,
+          "thorns": 4,
+          "flail": 3
+        },
+        "byType": {
+          "pull": 132.3,
+          "projectile": 34.6
+        },
+        "dps": 5.56,
+        "reelDamage": 132.3,
+        "meanDistance": 4.55,
+        "minDistance": 0.01,
+        "losFraction": 1
+      },
+      "sprintingAway": {
+        "sprint": true,
+        "simSeconds": 30.02,
+        "picks": {
+          "thorns": 4,
+          "reel": 3
+        },
+        "byType": {
+          "projectile": 34.6
+        },
+        "dps": 1.15,
+        "reelDamage": 0,
+        "meanDistance": 24.95,
+        "minDistance": 11.01,
+        "losFraction": 0.889
+      }
+    },
+    {
+      "stand": 1,
+      "standingStill": {
+        "sprint": false,
+        "simSeconds": 30.02,
+        "picks": {
+          "reel": 4,
+          "thorns": 3,
+          "flail": 4
+        },
+        "byType": {
+          "pull": 132.3,
+          "projectile": 34.6,
+          "melee": 21
+        },
+        "dps": 6.26,
+        "reelDamage": 132.3,
+        "meanDistance": 4.95,
+        "minDistance": 0.01,
+        "losFraction": 0.936
+      },
+      "sprintingAway": {
+        "sprint": true,
+        "simSeconds": 30.02,
+        "picks": {
+          "reel": 4,
+          "thorns": 4
+        },
+        "byType": {
+          "projectile": 46.2
+        },
+        "dps": 1.54,
+        "reelDamage": 0,
+        "meanDistance": 16.57,
+        "minDistance": 11.01,
+        "losFraction": 0.82
+      }
+    },
+    {
+      "stand": 2,
+      "standingStill": {
+        "sprint": false,
+        "simSeconds": 30,
+        "picks": {
+          "reel": 4,
+          "thorns": 4,
+          "flail": 4
+        },
+        "byType": {
+          "pull": 132.3,
+          "projectile": 46.2,
+          "melee": 21
+        },
+        "dps": 6.65,
+        "reelDamage": 132.3,
+        "meanDistance": 4.59,
+        "minDistance": 0.02,
+        "losFraction": 1
+      },
+      "sprintingAway": {
+        "sprint": true,
+        "simSeconds": 30,
+        "picks": {
+          "reel": 4,
+          "thorns": 2
+        },
+        "byType": {
+          "projectile": 23.1
+        },
+        "dps": 0.77,
+        "reelDamage": 0,
+        "meanDistance": 21.78,
+        "minDistance": 11.01,
+        "losFraction": 0.624
+      }
+    },
+    {
+      "stand": 3,
+      "standingStill": {
+        "sprint": false,
+        "simSeconds": 30,
+        "picks": {
+          "reel": 4,
+          "thorns": 4,
+          "flail": 4
+        },
+        "byType": {
+          "pull": 132.3,
+          "projectile": 46.2,
+          "melee": 21
+        },
+        "dps": 6.65,
+        "reelDamage": 132.3,
+        "meanDistance": 4.61,
+        "minDistance": 0,
+        "losFraction": 1
+      },
+      "sprintingAway": {
+        "sprint": true,
+        "simSeconds": 30,
+        "picks": {
+          "reel": 4,
+          "thorns": 3
+        },
+        "byType": {
+          "projectile": 41.6
+        },
+        "dps": 1.39,
+        "reelDamage": 0,
+        "meanDistance": 25.85,
+        "minDistance": 11.01,
+        "losFraction": 0.789
+      }
+    }
+  ],
+  "scrapfly": {
+    "releases": 0,
+    "strikes": 4,
+    "bleeds": 4,
+    "flyMotesDrawn": 18,
+    "totalStrikeDamage": 62.4,
+    "quarryAlive": true,
+    "window": 13
+  },
+  "frameErrors": 0,
+  "errors": []
+}

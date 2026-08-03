@@ -1,0 +1,284 @@
+{
+  "engineLoops": 1,
+  "inventoryShape": [
+    "counts",
+    "gold",
+    "permanentHealth",
+    "buffs",
+    "cooldowns",
+    "equipmentId",
+    "equipCharges",
+    "equipTimer",
+    "ctx"
+  ],
+  "impulse": [
+    {
+      "give": [],
+      "peakAirborne": 0,
+      "trail": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "give": [
+        [
+          "wax-quail",
+          1
+        ]
+      ],
+      "peakAirborne": 9.36,
+      "trail": [
+        9.36,
+        8.75,
+        8.19,
+        7.66,
+        7.17,
+        6.7,
+        6.27,
+        5.87
+      ]
+    },
+    {
+      "give": [
+        [
+          "updraft-vents",
+          1
+        ]
+      ],
+      "peakAirborne": 4.68,
+      "trail": [
+        4.68,
+        4.38,
+        4.09,
+        3.83,
+        3.58,
+        3.35,
+        3.14,
+        2.93
+      ]
+    },
+    {
+      "give": [
+        [
+          "wax-quail",
+          1
+        ],
+        [
+          "updraft-vents",
+          1
+        ]
+      ],
+      "peakAirborne": 14.03,
+      "trail": [
+        14.03,
+        13.13,
+        12.28,
+        11.49,
+        10.75,
+        10.05,
+        9.41,
+        8.8
+      ]
+    },
+    {
+      "give": [
+        [
+          "wax-quail",
+          2
+        ],
+        [
+          "updraft-vents",
+          1
+        ]
+      ],
+      "peakAirborne": 23.39,
+      "trail": [
+        23.39,
+        21.88,
+        20.47,
+        19.15,
+        17.91,
+        16.76,
+        15.68,
+        14.67
+      ]
+    },
+    {
+      "give": [
+        [
+          "tectonic-heart",
+          1
+        ],
+        [
+          "wax-quail",
+          1
+        ]
+      ],
+      "thirdJumpPeaks": [
+        9.36,
+        9.36,
+        16
+      ]
+    }
+  ],
+  "conflag": [
+    {
+      "n": 10,
+      "spacing": 2.2,
+      "litCount": 1,
+      "echo": false,
+      "printed": 72,
+      "fireDamage": 140.4,
+      "ratio": 1.95,
+      "burningAfter": 1,
+      "simSeconds": 3
+    },
+    {
+      "n": 10,
+      "spacing": 2.2,
+      "litCount": 1,
+      "echo": true,
+      "printed": 72,
+      "fireDamage": 144,
+      "ratio": 2,
+      "burningAfter": 1,
+      "simSeconds": 3.02
+    },
+    {
+      "n": 8,
+      "spacing": 3,
+      "litCount": 1,
+      "echo": false,
+      "printed": 72,
+      "fireDamage": 104.2,
+      "ratio": 1.45,
+      "burningAfter": 1,
+      "simSeconds": 3.02
+    },
+    {
+      "n": 8,
+      "spacing": 3,
+      "litCount": 3,
+      "echo": false,
+      "printed": 216,
+      "fireDamage": 379.6,
+      "ratio": 1.76,
+      "burningAfter": 3,
+      "simSeconds": 3.02
+    },
+    {
+      "n": 8,
+      "spacing": 1.2,
+      "litCount": 8,
+      "echo": false,
+      "printed": 576,
+      "fireDamage": 2302.9,
+      "ratio": 4,
+      "burningAfter": 8,
+      "simSeconds": 3.02
+    },
+    {
+      "n": 12,
+      "spacing": 1.5,
+      "litCount": 12,
+      "echo": false,
+      "printed": 864,
+      "fireDamage": 2410.2,
+      "ratio": 2.79,
+      "burningAfter": 12,
+      "simSeconds": 3.02
+    },
+    {
+      "n": 1,
+      "spacing": 3,
+      "litCount": 1,
+      "echo": false,
+      "printed": 72,
+      "fireDamage": 72,
+      "ratio": 1,
+      "burningAfter": 1,
+      "simSeconds": 3.02
+    },
+    {
+      "n": 8,
+      "spacing": 3,
+      "litCount": 0,
+      "echo": false,
+      "printed": 0,
+      "fireDamage": 0,
+      "ratio": null,
+      "burningAfter": 0,
+      "simSeconds": 3.02
+    }
+  ],
+  "ashen": [
+    {
+      "stacks": 10,
+      "healthFractionBySecond": [
+        0.851,
+        0.71,
+        0.569,
+        0.501,
+        0.501,
+        0.501,
+        0.501,
+        0.501,
+        0.501,
+        0.501,
+        0.501,
+        0.501,
+        0.501,
+        0.501,
+        0.501
+      ],
+      "settledFraction": 0.501,
+      "ledgerOn100": 149.9,
+      "preyInstinctLive": false,
+      "moveSpeed": 7,
+      "baseMoveSpeed": 7,
+      "alive": true
+    },
+    {
+      "stacks": 1,
+      "healthFractionBySecond": [
+        0.986,
+        0.98,
+        0.974,
+        0.969,
+        0.963,
+        0.957,
+        0.951,
+        0.946,
+        0.94,
+        0.934,
+        0.928,
+        0.923,
+        0.917,
+        0.911,
+        0.905
+      ],
+      "settledFraction": 0.905,
+      "ledgerOn100": 109.5,
+      "preyInstinctLive": false,
+      "moveSpeed": 7,
+      "baseMoveSpeed": 7,
+      "alive": true
+    }
+  ],
+  "scrapfly": {
+    "strikes": 4,
+    "bleeds": 4,
+    "flyMotesDrawn": 19,
+    "bodiesKilled": 1,
+    "bodiesMade": 2
+  },
+  "frameErrors": 0,
+  "errors": []
+}

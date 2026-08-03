@@ -1,0 +1,78 @@
+{
+  "gamepadReal": {
+    "1600x900": {
+      "vpName": "1600x900",
+      "scrollable": true,
+      "before": 0,
+      "afterHeld": 71,
+      "afterDpad": 0,
+      "ticks": 13
+    },
+    "1024x600": {
+      "vpName": "1024x600",
+      "scrollable": true,
+      "before": 0,
+      "afterHeld": 224,
+      "afterDpad": 0,
+      "ticks": 83
+    },
+    "900x1600-portrait": {
+      "vpName": "900x1600-portrait",
+      "scrollable": false,
+      "before": 0,
+      "afterHeld": 0,
+      "afterDpad": 0,
+      "ticks": 85
+    }
+  },
+  "keyboardScroll": {
+    "scrollable": true,
+    "before": 0,
+    "after1": 71
+  },
+  "survey": {
+    "specialsCount": 3,
+    "afterSpecialsDistinct": {
+      "enemy": 0,
+      "boss": 0
+    },
+    "spawnIdsCount": 19,
+    "bossIdsCount": 6,
+    "finalDistinct": {
+      "enemy": 19,
+      "boss": 6
+    },
+    "finalCatalogue": {
+      "enemy": 19,
+      "boss": 6
+    },
+    "fieldGuide": {
+      "id": "fieldGuide",
+      "name": "Field Guide",
+      "description": "Record every monster in the bestiary.",
+      "category": "discovery",
+      "hidden": false,
+      "masked": false,
+      "progress": 19,
+      "goal": 19,
+      "fraction": 1,
+      "done": true,
+      "doneAt": 1785723219970,
+      "unlocks": null
+    },
+    "apexSurvey": {
+      "id": "apexSurvey",
+      "name": "Apex Survey",
+      "description": "Defeat every kind of teleporter boss.",
+      "category": "discovery",
+      "hidden": false,
+      "masked": false,
+      "progress": 6,
+      "goal": 6,
+      "fraction": 1,
+      "done": true,
+      "doneAt": 1785723219973,
+      "unlocks": null
+    }
+  }
+}

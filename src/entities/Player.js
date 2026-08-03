@@ -213,6 +213,13 @@ export class Player {
     this._lastCmdTick = 0;
     this._prevButtons = 0;
     this._replaying = false;
+    // Tick of the command currently being applied, and what each jump on it
+    // consumed from `Items`. A rollback re-runs several unacknowledged commands
+    // in order and each of their jumps may have consumed a different amount
+    // (Updraft Vents is conditional, Tectonic Heart pays on every third), so one
+    // cached value is not enough — the impulse has to be keyed by tick.
+    this._cmdTick = 0;
+    this._jumpImpulses = new Map();
     this.interactPressed = false;
     this._renderOffset = new THREE.Vector3();
 
@@ -410,6 +417,7 @@ export class Player {
     // not fire twice.
     const replay = c.tick > 0 && c.tick <= this._lastCmdTick;
     this._replaying = replay;
+    this._cmdTick = c.tick | 0;
 
     this.stats = ctx.items?.stats?.(this._effectiveBase()) || { ...this._effectiveBase() };
     this.maxHealth = this.stats.maxHealth;
@@ -673,9 +681,32 @@ export class Player {
      * writes onto the player, and it decays on a fixed 0.25 s timer that would
      * throw all of this away before the apex.
      */
-    if (!this._replaying) {
-      ctx.events?.emit?.('jump', { air: !canGround, jumps: this.jumpsUsed });
-      const impulse = ctx.items?.consumeImpulse?.() || 0;
+    /*
+     * Two gates, and they are not the same gate.
+     *
+     * `local` — there is one `Items` per client and its hook API hard-binds the
+     * local survivor, so a remote pawn's jump running these hooks pays the local
+     * player's Rubber Soles barrier, advances the local Tectonic Heart tally and
+     * detonates its quake at the local player's feet, all for a jump 25 m away
+     * that this client did not make. A pawn is somebody else's inventory; it
+     * cannot spend ours. The `player` field on the payload says whose jump it is
+     * so a future listener does not have to infer it.
+     *
+     * `_replaying` — one-shot *effects* must not fire twice, but the impulse is
+     * not an effect, it is movement, and a replayed command has to reproduce the
+     * trajectory it produced live or the client mispredicts by the whole launch
+     * on every corrected jump. The live pass records what it consumed against
+     * the tick that consumed it; the replay re-applies that same number.
+     */
+    if (this.local) {
+      let impulse = 0;
+      if (this._replaying) {
+        impulse = this._jumpImpulses.get(this._cmdTick) || 0;
+      } else {
+        ctx.events?.emit?.('jump', { player: this, air: !canGround, jumps: this.jumpsUsed });
+        impulse = ctx.items?.consumeImpulse?.() || 0;
+        this._recordJumpImpulse(this._cmdTick, impulse);
+      }
       if (impulse > 0) {
         // Forward is where the player is going if they are going anywhere, and
         // where they are looking if they are not — a launch that fires
@@ -685,6 +716,21 @@ export class Player {
         this.velocity.x += dx * impulse;
         this.velocity.z += dz * impulse;
       }
+    }
+  }
+
+  /**
+   * Remember what a jump consumed, so the replay of that tick reproduces it.
+   * Only unacknowledged ticks can ever be replayed, so the window is bounded by
+   * the correction depth; a couple of seconds of ticks is far more than enough
+   * and keeps this from growing over a run.
+   */
+  _recordJumpImpulse(tick, impulse) {
+    const m = this._jumpImpulses;
+    m.set(tick, impulse);
+    if (m.size > 128) {
+      const cutoff = tick - 128;
+      for (const t of m.keys()) if (t <= cutoff) m.delete(t);
     }
   }
 

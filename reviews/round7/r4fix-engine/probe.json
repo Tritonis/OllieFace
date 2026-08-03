@@ -1,0 +1,281 @@
+{
+  "engineLoops": {
+    "fixed": [
+      {
+        "label": "as booted (0 freeze/thaw cycles)",
+        "raf": 60,
+        "engineFrames": 60,
+        "loops": 1,
+        "ctxTimeAdvance": 0
+      },
+      {
+        "label": "after 1 freeze/thaw cycle(s)",
+        "raf": 60,
+        "engineFrames": 60,
+        "loops": 1,
+        "ctxTimeAdvance": 0
+      },
+      {
+        "label": "after 2 freeze/thaw cycle(s)",
+        "raf": 60,
+        "engineFrames": 60,
+        "loops": 1,
+        "ctxTimeAdvance": 0
+      },
+      {
+        "label": "after 3 freeze/thaw cycle(s)",
+        "raf": 60,
+        "engineFrames": 60,
+        "loops": 1,
+        "ctxTimeAdvance": 0
+      },
+      {
+        "label": "after H.gameplay() + thaw (what every r3 probe ran on)",
+        "raf": 60,
+        "engineFrames": 60,
+        "loops": 1,
+        "ctxTimeAdvance": 0.6
+      },
+      {
+        "label": "after 21 further freeze/thaw cycles (a full capture run)",
+        "raf": 60,
+        "engineFrames": 60,
+        "loops": 1,
+        "ctxTimeAdvance": 0.617
+      }
+    ],
+    "frozen": [
+      {
+        "label": "frozen after 1 freeze(s)",
+        "raf": 30,
+        "engineFrames": 0,
+        "loops": 0,
+        "ctxTimeAdvance": 0
+      },
+      {
+        "label": "frozen after 2 freeze(s)",
+        "raf": 30,
+        "engineFrames": 0,
+        "loops": 0,
+        "ctxTimeAdvance": 0
+      },
+      {
+        "label": "frozen after 3 freeze(s)",
+        "raf": 30,
+        "engineFrames": 0,
+        "loops": 0,
+        "ctxTimeAdvance": 0
+      }
+    ],
+    "oldAlgorithm": [
+      {
+        "label": "old start(), 0 further cycles",
+        "raf": 60,
+        "engineFrames": 120,
+        "loops": 2,
+        "ctxTimeAdvance": 1.167
+      },
+      {
+        "label": "old start(), after 1 freeze/thaw cycle(s)",
+        "raf": 60,
+        "engineFrames": 180,
+        "loops": 3,
+        "ctxTimeAdvance": 1.65
+      },
+      {
+        "label": "old start(), after 2 freeze/thaw cycle(s)",
+        "raf": 60,
+        "engineFrames": 240,
+        "loops": 4,
+        "ctxTimeAdvance": 2.317
+      },
+      {
+        "label": "old start(), after 3 freeze/thaw cycle(s)",
+        "raf": 60,
+        "engineFrames": 300,
+        "loops": 5,
+        "ctxTimeAdvance": 2.933
+      }
+    ]
+  },
+  "frameErrors": {
+    "frameErrors": 0,
+    "lastFrameError": null
+  },
+  "singlePageRace": {
+    "twoTabRace": {
+      "bLoadedKills": 10,
+      "storageAfterA2": 25,
+      "storageAfterB": 28,
+      "expectedIfNothingLost": 28,
+      "lostKills": 0
+    },
+    "threeWayFlush": {
+      "runsOnDisk": [
+        2000,
+        1000
+      ],
+      "unlockSurvivorCinder": true,
+      "unlockItemMedkit": true,
+      "unlockArtifactGlass": true,
+      "statsRuns": 2,
+      "statsKills": 5
+    },
+    "reset": {
+      "afterResetRuns": 0,
+      "afterResetThenOtherTab": 999
+    },
+    "import": {
+      "afterImport": 7
+    }
+  },
+  "twoRealTabs": {
+    "bLoadedKills": 10,
+    "storageAfterA2": 25,
+    "storageAfterB": 28,
+    "expectedIfNothingLost": 28,
+    "tabAMemoryAfterConvergence": {
+      "kills": 28,
+      "runs": [
+        5002,
+        5001
+      ],
+      "unlocks": [
+        "aTab",
+        "bTab"
+      ]
+    },
+    "tabBMemoryAfterConvergence": {
+      "kills": 28,
+      "runs": [
+        5002,
+        5001
+      ],
+      "unlocks": [
+        "aTab",
+        "bTab"
+      ]
+    },
+    "diskFinal": 28
+  },
+  "cleanList": {
+    "migration": {
+      "version": 2,
+      "grunt": {
+        "at": 111,
+        "count": 0
+      },
+      "doneAt": 42,
+      "survivorRow": {
+        "runs": 1,
+        "wins": 0,
+        "deaths": 1,
+        "kills": 4,
+        "time": 60,
+        "bestStage": 3,
+        "bestTime": 60
+      }
+    },
+    "hostile": {
+      "truncated": {
+        "threw": null,
+        "kills": 0,
+        "killsIsNumber": true,
+        "polluted": null
+      },
+      "array": {
+        "threw": null,
+        "kills": 0,
+        "killsIsNumber": true,
+        "polluted": null
+      },
+      "bareString": {
+        "threw": null,
+        "kills": 0,
+        "killsIsNumber": true,
+        "polluted": null
+      },
+      "nullish": {
+        "threw": null,
+        "kills": 0,
+        "killsIsNumber": true,
+        "polluted": null
+      },
+      "wrongTypes": {
+        "threw": null,
+        "kills": 0,
+        "killsIsNumber": true,
+        "polluted": null
+      },
+      "protoLiteral": {
+        "threw": null,
+        "kills": 1,
+        "killsIsNumber": true,
+        "polluted": null
+      },
+      "future": {
+        "threw": null,
+        "kills": 3,
+        "killsIsNumber": true,
+        "polluted": null
+      }
+    },
+    "quota": {
+      "threw": null,
+      "storageBlocked": true,
+      "engineRunning": true
+    },
+    "unlockIdempotency": {
+      "first": true,
+      "second": false,
+      "stampStable": true
+    },
+    "abandonedDebounce": {
+      "storageMidDebounce": null,
+      "afterReset": 0,
+      "afterOldTimer": 0
+    }
+  },
+  "timeFormat": {
+    "runTime": 1074,
+    "advancedMarathon": {
+      "id": "marathon",
+      "name": "Marathon",
+      "from": 0,
+      "to": 1074,
+      "goal": 1800,
+      "format": "time"
+    },
+    "closingInRows": [
+      {
+        "name": "Marathon",
+        "value": "17:54 / 30:00"
+      },
+      {
+        "name": "The Long Haul",
+        "value": "1 / 5"
+      },
+      {
+        "name": "Whole Roster",
+        "value": "1 / 5"
+      }
+    ],
+    "closingInRawSnippet": "17:54 / 30:00",
+    "challengeStateFormat": {
+      "marathon": "time",
+      "clockedIn": "time",
+      "veteran": "number"
+    },
+    "logbookRow": {
+      "marathon": "17:54 / 30:00",
+      "clockedIn": "17m / 10h 0m",
+      "veteran": "1 / 25"
+    },
+    "logbookDetail": {
+      "marathon": "17:54 / 30:00 ",
+      "clockedIn": "17m / 10h 0m ",
+      "veteran": "1 / 25 "
+    }
+  },
+  "consoleErrors": []
+}

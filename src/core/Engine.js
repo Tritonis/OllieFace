@@ -79,6 +79,8 @@ export class Engine {
     this._reported = new Set();
     // Rolling credit for the hitstop duty-cycle ceiling.
     this._stopBudget = 0;
+    // Identity of the live frame loop. See `start()`.
+    this._loopGen = 0;
   }
 
   /**
@@ -157,12 +159,32 @@ export class Engine {
     return this.systems.find((s) => s.constructor.name === name);
   }
 
+  /**
+   * Start the frame loop.
+   *
+   * `running` alone cannot identify a loop, and that is the whole reason for
+   * `_loopGen`. `stop()` only clears the flag — it cannot cancel the rAF that
+   * the live tick has *already* armed for the next frame. So a `stop()` /
+   * `start()` pair that happens inside one frame (which is exactly what
+   * `Harness.freeze()` then `thaw()` does, both from inside a rAF-driven async
+   * chain) leaves the old callback queued, and it wakes up to `running === true`
+   * again, re-arms, and runs alongside the chain `start()` just created. Two
+   * loops, then three, then four — `_frame` per presented frame, and with it
+   * `ctx.time`, every fixed step and every `update()` delta, multiplied by the
+   * number of freeze/thaw cycles the page has seen.
+   *
+   * A generation counter fixes it without needing to cancel anything: each
+   * `start()` mints an id, each tick checks it still holds the current one, and
+   * a superseded chain retires on its next wake.
+   */
   start() {
     if (this.running) return;
     this.running = true;
     this.clock.start();
+    const gen = ++this._loopGen;
     const tick = () => {
-      if (!this.running) return;
+      // A stopped engine, or a chain a later `start()` has already replaced.
+      if (!this.running || gen !== this._loopGen) return;
       // Re-arm first: a throw anywhere below must never be able to kill the loop.
       requestAnimationFrame(tick);
       try {

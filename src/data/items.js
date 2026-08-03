@@ -120,12 +120,21 @@ export function nearbyHostiles(api, point, radius) {
  *
  * Never lethal, ever. Losing a run to your own item, with no enemy involved and
  * no way to react, is not a trade — it is the item playing the game for you.
+ *
+ * `floorFrac` is per-card because the floor is not only a safety rail, it is
+ * also where the card *parks* the player, and that is a design number. A cost
+ * billed on an event (Brittle Edge's crit, Gale Reliquary's cast) only reaches
+ * the floor if the player keeps paying, so 30% is fine there. A cost billed on
+ * a timer reaches it unconditionally and then holds the player at it for the
+ * rest of the run — see Ashen Pact, which used 30% and thereby handed Prey
+ * Instinct (below 40%) and Entropy Ledger (missing health) their full payout
+ * for free and forever, which is the opposite of a Lunar drawback.
  */
 const SELF_COST_FLOOR = 0.30;
-function payHealth(api, amount) {
+function payHealth(api, amount, floorFrac = SELF_COST_FLOOR) {
   const p = api.player;
   if (!p?.alive || amount <= 0) return 0;
-  const floor = (p.stats?.maxHealth || 100) * SELF_COST_FLOOR;
+  const floor = (p.stats?.maxHealth || 100) * floorFrac;
   const cost = Math.min(amount, Math.max(0, p.health - floor));
   if (cost <= 0) return 0;
   p.health -= cost;
@@ -1210,15 +1219,46 @@ export const ITEMS = [
         // closure that read `a.count` would silently price every hive at one.
         const stacks = api.count;
         // Released at the survivor; from here on it is the fly's own position
-        // that matters, carried across the five ticks by this closure.
+        // that matters, carried across the whole flight by this closure.
         const fly = api.player.position.clone();
         let quarry = null;
-        api.items.addEffect('scrapfly-hive', 5, 1.0, (a) => {
+        // Ticked four times a second and striking on every fourth tick, so the
+        // damage keeps its stated rhythm — five strikes about a second apart,
+        // measured at 1.07/1.06/1.07/1.07 s — while the fly itself gets sixteen
+        // intermediate positions to be *drawn* at. The card promised "release a
+        // scrapfly" and drew nothing but a beam that teleported between two
+        // points; a description of a creature the player never sees is the same
+        // defect as a description of a radius that is not the radius. Now there
+        // is a mote that leaves the survivor, crosses the arena, and lashes
+        // what it catches: 22 of them per release, measured. Sixteen extra
+        // no-op callbacks per 14 s is not a cost worth measuring against
+        // `Items.fixedUpdate`'s 0.020 ms at 880 stacks.
+        let tick = 0, struck = 0;
+        api.ctx.vfx?.burst?.(fly, 0xc8d86a);
+        api.items.addEffect('scrapfly-hive', 5.6, 0.25, (a) => {
           if (!quarry?.alive) quarry = a.combat.nearestHostile(fly, 30, 'player', null);
           if (!quarry) return;
-          // Closes rather than teleports, so the beam reads as a thing crossing
+          // Closes rather than teleports, so the fly reads as a thing crossing
           // the arena and the next re-acquire happens from where it ended up.
-          fly.lerp(quarry.position, 0.6);
+          // 0.18 a tick over four ticks covers the same ground the old 0.6 a
+          // second did, so the reach measured from the front line is the same.
+          fly.lerp(quarry.position, 0.18);
+          a.ctx.vfx?.hitSpark?.(fly, 0xc8d86a, 0.45);
+          // Five strikes, counted rather than inferred, and the duration above
+          // carries the slack that lets the fifth one land.
+          //
+          // `Items._tickEffects` re-arms `t` to `interval` *after* subtracting
+          // the step, so the realised period is a whole number of fixed steps
+          // and lands at 0.267 s rather than 0.25. Over a 5.0 s effect that is
+          // 18-19 ticks, not 20 — measured, one whole release from its first
+          // tick paid **four** strikes at 1.07/1.06/1.07 s spacing for 62.4,
+          // against a card that prints five. That shortfall predates this
+          // change (the old 1.0 s interval quantised to 1.067 s and lost the
+          // same strike); it is fixed here because the number a card prints is
+          // the contract. 5.6 s buys the twenty-first tick, and the counter is
+          // what stops the slack from ever buying a sixth strike.
+          if (++tick % 4 || struck >= 5) return;
+          struck++;
           a.ctx.vfx?.beam?.(fly, quarry.position, 0xc8d86a);
           a.combat.applyDamage(quarry, a.items.baseDamage() * linear(1.3, stacks), {
             source: a.player, position: quarry.position, type: 'scrapfly',
@@ -1597,9 +1637,12 @@ export const ITEMS = [
         api.combat.explode(api.player.position, 9, api.items.baseDamage() * linear(3.5, api.count), api.player, {
           team: 'player', proc: 0.4, procDepth: api.procDepth, type: 'quake',
         });
-        // Composes with Waxed Wing and Updraft Vents rather than competing:
-        // `applyImpulse` takes the largest pending value, so stacking movement
-        // items does not stack into a launch nobody can steer.
+        // Composes with Waxed Wing and Updraft Vents. That sentence used to be
+        // written here beside a `Math.max` channel, which is the definition of
+        // competing — measured, one Waxed Wing plus one Updraft Vents launched
+        // at exactly the Wing's own 20.15 m/s and this 6 was unreachable in any
+        // inventory holding either. `Items.applyImpulse` sums now, so the throw
+        // is worth its 6 m/s on top of whatever else the jump banked.
         api.items.applyImpulse(6);
         api.ctx.vfx?.ring?.(api.player.position, 9, 0xffa514);
         api.ctx.pipeline?.addShake?.(0.12);
@@ -1734,7 +1777,7 @@ export const ITEMS = [
   {
     id: 'ashen-pact', name: 'Ashen Pact', tier: 'lunar', glyph: 'ashenpact',
     flavour: 'It agreed to burn everything you touch. You were not excluded from the list.',
-    description: (n) => `All of your hits ignite. You burn too: lose ${pct(linear(0.02, n))} of your current health every second, down to 30%.`,
+    description: (n) => `All of your hits ignite. You burn too: lose ${pct(linear(0.015, n))} of your maximum health every second, down to 50%.`,
     hooks: {
       // Unconditional ignite is a bigger card than it looks: it hands the whole
       // burn half of the pool — Ash-adjacent commons, Warlock Ember, Afflictor's
@@ -1745,10 +1788,27 @@ export const ITEMS = [
       onHit: (e, api) => { api.combat.applyStatus(e.target, 'burn', api.player, 1); },
       onInterval: (e, api) => {
         if (!api.items.cooldownReady('ashen-pact', 1)) return;
-        // `payHealth` refuses to bill below 30% of maximum and is never lethal,
-        // which is the difference between a permanent tax and a run that ends
-        // with no enemy involved.
-        payHealth(api, api.player.health * linear(0.02, api.count));
+        // Two numbers here, and both of them were wrong in the same direction.
+        //
+        // A fraction of *current* health is a cost that pays itself off: it is
+        // an exponential decay onto the floor, so the bill shrinks every second
+        // and the last one before the floor is nearly nothing. Measured, ten
+        // stacks settled at 0.303 of maximum in eight seconds and then cost
+        // exactly zero for the rest of the run. A fraction of *maximum* keeps
+        // costing the same every second, so healing, shields and level-up
+        // health are all eaten at a constant rate for as long as the card is
+        // held — the player has to keep paying to stay where they are.
+        //
+        // And the floor is 50%, not the shared 30%. At 30% this card was not a
+        // drawback at all, it was a free enabler: it parks the player, without
+        // any decision on their part, inside Prey Instinct's below-40% band and
+        // at 87% of Entropy Ledger's one-stack maximum (+69.7% on a 100 hit).
+        // Three cards from this same round, and holding all three made the
+        // Lunar strictly positive. At 50% the pact spends half the health bar
+        // — a real and permanent loss of effective HP, which is the trade the
+        // tier promises — and the low-health payoffs still have to be earned by
+        // taking actual damage, with actual risk, on top of it.
+        payHealth(api, (api.player.stats?.maxHealth || 100) * linear(0.015, api.count), 0.50);
       },
     },
   },

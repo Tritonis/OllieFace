@@ -1,0 +1,82 @@
+{
+  "result": {
+    "music_I1": {
+      "rms_dB": -28.53,
+      "peak_dB": -10.47,
+      "musicBus": 0.48,
+      "sfxBus": 0.81,
+      "master": 0.8
+    },
+    "music_I1_noLimiters": {
+      "rms_dB": -29.82,
+      "peak_dB": -11.98,
+      "musicBus": 0.48,
+      "sfxBus": 0.81,
+      "master": 0.8
+    },
+    "music_opening": {
+      "rms_dB": -35.99,
+      "peak_dB": -15.25,
+      "musicBus": 0.48,
+      "sfxBus": 0.81,
+      "master": 0.8
+    },
+    "explosions_1s": {
+      "rms_dB": -22.11,
+      "peak_dB": -2.19,
+      "musicBus": 0.8,
+      "sfxBus": 0.81,
+      "master": 0.8
+    },
+    "explosions_1s_noLimiters": {
+      "rms_dB": -24.98,
+      "peak_dB": -2.36,
+      "musicBus": 0.8,
+      "sfxBus": 0.81,
+      "master": 0.8
+    },
+    "both_1s": {
+      "rms_dB": -21.55,
+      "peak_dB": -2.26,
+      "musicBus": 0.48,
+      "sfxBus": 0.81,
+      "master": 0.8
+    },
+    "both_1s_noLimiters": {
+      "rms_dB": -23.8,
+      "peak_dB": -3.46,
+      "musicBus": 0.48,
+      "sfxBus": 0.81,
+      "master": 0.8
+    },
+    "both_3s": {
+      "rms_dB": -17.7,
+      "peak_dB": -1,
+      "musicBus": 0.48,
+      "sfxBus": 0.81,
+      "master": 0.8
+    },
+    "both_3s_noLimiters": {
+      "rms_dB": -20.19,
+      "peak_dB": -2.34,
+      "musicBus": 0.48,
+      "sfxBus": 0.81,
+      "master": 0.8
+    },
+    "_derived": {
+      "music_to_explosion_deficit_dB": 6.42,
+      "engine_dynamic_range_dB": 7.46,
+      "limiting_on_music_only_dB": 1.29,
+      "limiting_on_both_1s_dB": 2.25,
+      "limiting_on_both_3s_dB": 2.49,
+      "limiting_on_explosions_dB": 2.87
+    }
+  },
+  "logs": [
+    "Failed to execute 'resume' on 'OfflineAudioContext': cannot resume an offline context that has not started",
+    "Failed to execute 'resume' on 'OfflineAudioContext': cannot resume an offline context that has not started",
+    "Failed to execute 'resume' on 'OfflineAudioContext': cannot resume an offline context that has not started",
+    "Failed to execute 'resume' on 'OfflineAudioContext': cannot resume an offline context that has not started",
+    "Failed to execute 'resume' on 'OfflineAudioContext': cannot resume an offline context that has not started"
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "out": {
+    "eliteSpawned": true,
+    "wardedReflect": {
+      "elite": {
+        "reflect": 0.22,
+        "shield": 3272,
+        "health": 1632
+      },
+      "reflectHits": 9,
+      "reflectTotal": 118.8,
+      "playerHp": "110.0 -> 0.0",
+      "damageEvents": 39
+    },
+    "thornsIdsGiven": 2,
+    "reflectChain": {
+      "applyDamageCalls": 1,
+      "maxNesting": 1,
+      "playerHp": 110,
+      "eliteShield": 4775
+    },
+    "playerShieldAbsorb": {
+      "playerHurt": 0,
+      "shieldBroken": 0,
+      "damage": 0,
+      "ts": 30,
+      "health": 110,
+      "shield": 1000,
+      "musicGain": [
+        null,
+        null
+      ]
+    },
+    "dotThroughIframes": {
+      "fired": false,
+      "ev": null,
+      "shield": 1000
+    },
+    "selfDamage": {
+      "playerHurt": 0,
+      "damage": 0,
+      "returnedSelf": 0,
+      "returnedEnv": 0,
+      "health": 110
+    },
+    "note": "return-value consumers checked statically in the report",
+    "bossProbe": "skipped (no direct boss card handle)",
+    "errors": 0,
+    "lastFrameError": null
+  },
+  "errs": []
+}

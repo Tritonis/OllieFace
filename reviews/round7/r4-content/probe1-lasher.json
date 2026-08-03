@@ -1,0 +1,1045 @@
+{
+  "results": {
+    "arms": [
+      {
+        "label": "standoff-6m",
+        "mode": "standoff",
+        "standoff": 6,
+        "secs": 25,
+        "attackCounts": {
+          "thorns": 7,
+          "reel": 6
+        },
+        "begins": [
+          {
+            "id": "thorns",
+            "dist": 6,
+            "t": 2
+          },
+          {
+            "id": "reel",
+            "dist": 6,
+            "t": 3.83
+          },
+          {
+            "id": "thorns",
+            "dist": 6,
+            "t": 7.77
+          },
+          {
+            "id": "reel",
+            "dist": 6,
+            "t": 11.83
+          },
+          {
+            "id": "thorns",
+            "dist": 6,
+            "t": 15.77
+          },
+          {
+            "id": "reel",
+            "dist": 6,
+            "t": 19.83
+          },
+          {
+            "id": "thorns",
+            "dist": 6,
+            "t": 23.77
+          },
+          {
+            "id": "reel",
+            "dist": 6,
+            "t": 27.83
+          },
+          {
+            "id": "thorns",
+            "dist": 6,
+            "t": 31.77
+          },
+          {
+            "id": "reel",
+            "dist": 6,
+            "t": 35.83
+          },
+          {
+            "id": "thorns",
+            "dist": 6,
+            "t": 39.77
+          },
+          {
+            "id": "reel",
+            "dist": 6,
+            "t": 43.83
+          },
+          {
+            "id": "thorns",
+            "dist": 6,
+            "t": 47.77
+          }
+        ],
+        "playerHurtEvents": 22,
+        "damage": 245.7,
+        "dps": 9.83,
+        "meanDist": 6,
+        "minDist": 6,
+        "maxDist": 6,
+        "pickCensus": {
+          "calls": 909,
+          "gcdBlocked": 195,
+          "noLOS": 11,
+          "meanDistAtPick": 6,
+          "distRange": [
+            6,
+            6.47
+          ],
+          "per": {
+            "reel": {
+              "onCd": 696,
+              "tooFar": 0,
+              "tooClose": 0,
+              "eligible": 7,
+              "chosen": 6
+            },
+            "thorns": {
+              "onCd": 696,
+              "tooFar": 0,
+              "tooClose": 0,
+              "eligible": 7,
+              "chosen": 7
+            },
+            "flail": {
+              "onCd": 0,
+              "tooFar": 703,
+              "tooClose": 0,
+              "eligible": 0,
+              "chosen": 0
+            }
+          },
+          "states": {
+            "chase": 519,
+            "reposition": 390
+          }
+        },
+        "frameErrors": 0,
+        "lastFrameError": null
+      },
+      {
+        "label": "standoff-8m",
+        "mode": "standoff",
+        "standoff": 8,
+        "secs": 25,
+        "attackCounts": {
+          "reel": 7,
+          "thorns": 6
+        },
+        "begins": [
+          {
+            "id": "reel",
+            "dist": 8,
+            "t": 50.58
+          },
+          {
+            "id": "thorns",
+            "dist": 8,
+            "t": 54.52
+          },
+          {
+            "id": "reel",
+            "dist": 8,
+            "t": 58.58
+          },
+          {
+            "id": "thorns",
+            "dist": 8,
+            "t": 62.52
+          },
+          {
+            "id": "reel",
+            "dist": 8,
+            "t": 66.58
+          },
+          {
+            "id": "thorns",
+            "dist": 8,
+            "t": 70.52
+          },
+          {
+            "id": "reel",
+            "dist": 8,
+            "t": 74.58
+          },
+          {
+            "id": "thorns",
+            "dist": 8,
+            "t": 78.52
+          },
+          {
+            "id": "reel",
+            "dist": 8,
+            "t": 82.58
+          },
+          {
+            "id": "thorns",
+            "dist": 8,
+            "t": 86.52
+          },
+          {
+            "id": "reel",
+            "dist": 8,
+            "t": 90.58
+          },
+          {
+            "id": "thorns",
+            "dist": 8,
+            "t": 94.52
+          },
+          {
+            "id": "reel",
+            "dist": 8,
+            "t": 98.58
+          }
+        ],
+        "playerHurtEvents": 18,
+        "damage": 207.9,
+        "dps": 8.32,
+        "meanDist": 8,
+        "minDist": 8,
+        "maxDist": 8,
+        "pickCensus": {
+          "calls": 986,
+          "gcdBlocked": 180,
+          "noLOS": 0,
+          "meanDistAtPick": 8,
+          "distRange": [
+            8,
+            8
+          ],
+          "per": {
+            "reel": {
+              "onCd": 799,
+              "tooFar": 0,
+              "tooClose": 0,
+              "eligible": 7,
+              "chosen": 7
+            },
+            "thorns": {
+              "onCd": 799,
+              "tooFar": 0,
+              "tooClose": 0,
+              "eligible": 7,
+              "chosen": 6
+            },
+            "flail": {
+              "onCd": 0,
+              "tooFar": 806,
+              "tooClose": 0,
+              "eligible": 0,
+              "chosen": 0
+            }
+          },
+          "states": {
+            "chase": 529,
+            "reposition": 457
+          }
+        },
+        "frameErrors": 0,
+        "lastFrameError": null
+      },
+      {
+        "label": "standoff-10m",
+        "mode": "standoff",
+        "standoff": 10,
+        "secs": 25,
+        "attackCounts": {
+          "reel": 7,
+          "thorns": 6
+        },
+        "begins": [
+          {
+            "id": "reel",
+            "dist": 10,
+            "t": 99.87
+          },
+          {
+            "id": "thorns",
+            "dist": 10,
+            "t": 103.8
+          },
+          {
+            "id": "reel",
+            "dist": 10,
+            "t": 107.87
+          },
+          {
+            "id": "thorns",
+            "dist": 10.03,
+            "t": 111.8
+          },
+          {
+            "id": "reel",
+            "dist": 10,
+            "t": 115.93
+          },
+          {
+            "id": "thorns",
+            "dist": 10,
+            "t": 119.87
+          },
+          {
+            "id": "reel",
+            "dist": 10,
+            "t": 123.93
+          },
+          {
+            "id": "thorns",
+            "dist": 10,
+            "t": 127.87
+          },
+          {
+            "id": "reel",
+            "dist": 10,
+            "t": 131.93
+          },
+          {
+            "id": "thorns",
+            "dist": 10,
+            "t": 135.87
+          },
+          {
+            "id": "reel",
+            "dist": 10,
+            "t": 139.93
+          },
+          {
+            "id": "thorns",
+            "dist": 10,
+            "t": 143.87
+          },
+          {
+            "id": "reel",
+            "dist": 10,
+            "t": 147.93
+          }
+        ],
+        "playerHurtEvents": 14,
+        "damage": 161.7,
+        "dps": 6.47,
+        "meanDist": 10,
+        "minDist": 10,
+        "maxDist": 10,
+        "pickCensus": {
+          "calls": 990,
+          "gcdBlocked": 180,
+          "noLOS": 0,
+          "meanDistAtPick": 10,
+          "distRange": [
+            10,
+            10.03
+          ],
+          "per": {
+            "reel": {
+              "onCd": 803,
+              "tooFar": 0,
+              "tooClose": 0,
+              "eligible": 7,
+              "chosen": 7
+            },
+            "thorns": {
+              "onCd": 803,
+              "tooFar": 0,
+              "tooClose": 0,
+              "eligible": 7,
+              "chosen": 6
+            },
+            "flail": {
+              "onCd": 0,
+              "tooFar": 810,
+              "tooClose": 0,
+              "eligible": 0,
+              "chosen": 0
+            }
+          },
+          "states": {
+            "chase": 529,
+            "reposition": 461
+          }
+        },
+        "frameErrors": 0,
+        "lastFrameError": null
+      },
+      {
+        "label": "standoff-12m",
+        "mode": "standoff",
+        "standoff": 12,
+        "secs": 25,
+        "attackCounts": {
+          "reel": 6,
+          "thorns": 6
+        },
+        "begins": [
+          {
+            "id": "reel",
+            "dist": 12,
+            "t": 149.17
+          },
+          {
+            "id": "thorns",
+            "dist": 12,
+            "t": 153.1
+          },
+          {
+            "id": "reel",
+            "dist": 12,
+            "t": 157.17
+          },
+          {
+            "id": "thorns",
+            "dist": 12,
+            "t": 161.1
+          },
+          {
+            "id": "reel",
+            "dist": 12,
+            "t": 165.17
+          },
+          {
+            "id": "thorns",
+            "dist": 12,
+            "t": 169.1
+          },
+          {
+            "id": "reel",
+            "dist": 12,
+            "t": 173.17
+          },
+          {
+            "id": "thorns",
+            "dist": 12,
+            "t": 177.1
+          },
+          {
+            "id": "reel",
+            "dist": 12,
+            "t": 181.17
+          },
+          {
+            "id": "thorns",
+            "dist": 12,
+            "t": 185.1
+          },
+          {
+            "id": "reel",
+            "dist": 12,
+            "t": 189.17
+          },
+          {
+            "id": "thorns",
+            "dist": 12,
+            "t": 193.1
+          }
+        ],
+        "playerHurtEvents": 13,
+        "damage": 150.2,
+        "dps": 6.01,
+        "meanDist": 12,
+        "minDist": 12,
+        "maxDist": 12,
+        "pickCensus": {
+          "calls": 996,
+          "gcdBlocked": 180,
+          "noLOS": 31,
+          "meanDistAtPick": 12,
+          "distRange": [
+            12,
+            12
+          ],
+          "per": {
+            "reel": {
+              "onCd": 779,
+              "tooFar": 0,
+              "tooClose": 0,
+              "eligible": 6,
+              "chosen": 6
+            },
+            "thorns": {
+              "onCd": 778,
+              "tooFar": 0,
+              "tooClose": 0,
+              "eligible": 7,
+              "chosen": 6
+            },
+            "flail": {
+              "onCd": 0,
+              "tooFar": 785,
+              "tooClose": 0,
+              "eligible": 0,
+              "chosen": 0
+            }
+          },
+          "states": {
+            "chase": 560,
+            "reposition": 436
+          }
+        },
+        "frameErrors": 0,
+        "lastFrameError": null
+      },
+      {
+        "label": "standoff-18m",
+        "mode": "standoff",
+        "standoff": 18,
+        "secs": 25,
+        "attackCounts": {},
+        "begins": [],
+        "playerHurtEvents": 0,
+        "damage": 0,
+        "dps": 0,
+        "meanDist": 18,
+        "minDist": 18,
+        "maxDist": 18,
+        "pickCensus": {
+          "calls": 1296,
+          "gcdBlocked": 0,
+          "noLOS": 1296,
+          "meanDistAtPick": 18,
+          "distRange": [
+            18,
+            18
+          ],
+          "per": {
+            "reel": {
+              "onCd": 0,
+              "tooFar": 0,
+              "tooClose": 0,
+              "eligible": 0,
+              "chosen": 0
+            },
+            "thorns": {
+              "onCd": 0,
+              "tooFar": 0,
+              "tooClose": 0,
+              "eligible": 0,
+              "chosen": 0
+            },
+            "flail": {
+              "onCd": 0,
+              "tooFar": 0,
+              "tooClose": 0,
+              "eligible": 0,
+              "chosen": 0
+            }
+          },
+          "states": {
+            "chase": 1296
+          }
+        },
+        "frameErrors": 0,
+        "lastFrameError": null
+      },
+      {
+        "label": "standoff-22m",
+        "mode": "standoff",
+        "standoff": 22,
+        "secs": 25,
+        "attackCounts": {},
+        "begins": [],
+        "playerHurtEvents": 0,
+        "damage": 0,
+        "dps": 0,
+        "meanDist": 22,
+        "minDist": 22,
+        "maxDist": 22,
+        "pickCensus": {
+          "calls": 1296,
+          "gcdBlocked": 0,
+          "noLOS": 1296,
+          "meanDistAtPick": 22,
+          "distRange": [
+            22,
+            22
+          ],
+          "per": {
+            "reel": {
+              "onCd": 0,
+              "tooFar": 0,
+              "tooClose": 0,
+              "eligible": 0,
+              "chosen": 0
+            },
+            "thorns": {
+              "onCd": 0,
+              "tooFar": 0,
+              "tooClose": 0,
+              "eligible": 0,
+              "chosen": 0
+            },
+            "flail": {
+              "onCd": 0,
+              "tooFar": 0,
+              "tooClose": 0,
+              "eligible": 0,
+              "chosen": 0
+            }
+          },
+          "states": {
+            "chase": 1296
+          }
+        },
+        "frameErrors": 0,
+        "lastFrameError": null
+      },
+      {
+        "label": "standoff-25m",
+        "mode": "standoff",
+        "standoff": 25,
+        "secs": 25,
+        "attackCounts": {},
+        "begins": [],
+        "playerHurtEvents": 0,
+        "damage": 0,
+        "dps": 0,
+        "meanDist": 25,
+        "minDist": 25,
+        "maxDist": 25,
+        "pickCensus": {
+          "calls": 1296,
+          "gcdBlocked": 0,
+          "noLOS": 1296,
+          "meanDistAtPick": 25,
+          "distRange": [
+            25,
+            25
+          ],
+          "per": {
+            "reel": {
+              "onCd": 0,
+              "tooFar": 0,
+              "tooClose": 0,
+              "eligible": 0,
+              "chosen": 0
+            },
+            "thorns": {
+              "onCd": 0,
+              "tooFar": 0,
+              "tooClose": 0,
+              "eligible": 0,
+              "chosen": 0
+            },
+            "flail": {
+              "onCd": 0,
+              "tooFar": 0,
+              "tooClose": 0,
+              "eligible": 0,
+              "chosen": 0
+            }
+          },
+          "states": {
+            "chase": 1296
+          }
+        },
+        "frameErrors": 0,
+        "lastFrameError": null
+      },
+      {
+        "label": "pinnedPlayer-from-30m",
+        "mode": "pinPlayer",
+        "standoff": 30,
+        "secs": 45,
+        "attackCounts": {},
+        "begins": [],
+        "playerHurtEvents": 0,
+        "damage": 0,
+        "dps": 0,
+        "meanDist": 24.07,
+        "minDist": 21.68,
+        "maxDist": 30.03,
+        "pickCensus": {
+          "calls": 2304,
+          "gcdBlocked": 0,
+          "noLOS": 2304,
+          "meanDistAtPick": 24.04,
+          "distRange": [
+            21.68,
+            30.02
+          ],
+          "per": {
+            "reel": {
+              "onCd": 0,
+              "tooFar": 0,
+              "tooClose": 0,
+              "eligible": 0,
+              "chosen": 0
+            },
+            "thorns": {
+              "onCd": 0,
+              "tooFar": 0,
+              "tooClose": 0,
+              "eligible": 0,
+              "chosen": 0
+            },
+            "flail": {
+              "onCd": 0,
+              "tooFar": 0,
+              "tooClose": 0,
+              "eligible": 0,
+              "chosen": 0
+            }
+          },
+          "states": {
+            "chase": 2304
+          }
+        },
+        "frameErrors": 0,
+        "lastFrameError": null
+      },
+      {
+        "label": "pinnedPlayer-from-12m (r3 dps claim)",
+        "mode": "pinPlayer",
+        "standoff": 12,
+        "secs": 42,
+        "attackCounts": {
+          "reel": 11,
+          "thorns": 10
+        },
+        "begins": [
+          {
+            "id": "reel",
+            "dist": 12,
+            "t": 438.48
+          },
+          {
+            "id": "thorns",
+            "dist": 12,
+            "t": 442.42
+          },
+          {
+            "id": "reel",
+            "dist": 12.41,
+            "t": 446.48
+          },
+          {
+            "id": "thorns",
+            "dist": 12.48,
+            "t": 450.42
+          },
+          {
+            "id": "reel",
+            "dist": 12.68,
+            "t": 454.48
+          },
+          {
+            "id": "thorns",
+            "dist": 12.69,
+            "t": 458.42
+          },
+          {
+            "id": "reel",
+            "dist": 12.69,
+            "t": 462.48
+          },
+          {
+            "id": "thorns",
+            "dist": 12.69,
+            "t": 466.42
+          },
+          {
+            "id": "reel",
+            "dist": 12.69,
+            "t": 470.48
+          },
+          {
+            "id": "thorns",
+            "dist": 12.69,
+            "t": 474.42
+          },
+          {
+            "id": "reel",
+            "dist": 12.69,
+            "t": 478.48
+          },
+          {
+            "id": "thorns",
+            "dist": 12.69,
+            "t": 482.42
+          },
+          {
+            "id": "reel",
+            "dist": 12.69,
+            "t": 486.48
+          },
+          {
+            "id": "thorns",
+            "dist": 12.69,
+            "t": 490.42
+          },
+          {
+            "id": "reel",
+            "dist": 12.69,
+            "t": 494.48
+          },
+          {
+            "id": "thorns",
+            "dist": 12.69,
+            "t": 498.42
+          },
+          {
+            "id": "reel",
+            "dist": 12.69,
+            "t": 502.48
+          },
+          {
+            "id": "thorns",
+            "dist": 12.69,
+            "t": 506.42
+          },
+          {
+            "id": "reel",
+            "dist": 12.69,
+            "t": 510.48
+          },
+          {
+            "id": "thorns",
+            "dist": 12.69,
+            "t": 514.42
+          },
+          {
+            "id": "reel",
+            "dist": 12.69,
+            "t": 518.48
+          }
+        ],
+        "playerHurtEvents": 10,
+        "damage": 161.7,
+        "dps": 3.85,
+        "meanDist": 12.6,
+        "minDist": 12,
+        "maxDist": 12.69,
+        "pickCensus": {
+          "calls": 1639,
+          "gcdBlocked": 300,
+          "noLOS": 0,
+          "meanDistAtPick": 12.62,
+          "distRange": [
+            12,
+            12.69
+          ],
+          "per": {
+            "reel": {
+              "onCd": 1328,
+              "tooFar": 0,
+              "tooClose": 0,
+              "eligible": 11,
+              "chosen": 11
+            },
+            "thorns": {
+              "onCd": 1328,
+              "tooFar": 0,
+              "tooClose": 0,
+              "eligible": 11,
+              "chosen": 10
+            },
+            "flail": {
+              "onCd": 0,
+              "tooFar": 1339,
+              "tooClose": 0,
+              "eligible": 0,
+              "chosen": 0
+            }
+          },
+          "states": {
+            "chase": 1505,
+            "reposition": 134
+          }
+        },
+        "frameErrors": 0,
+        "lastFrameError": null
+      },
+      {
+        "label": "free-from-12m",
+        "mode": "free",
+        "standoff": 12,
+        "secs": 42,
+        "attackCounts": {
+          "reel": 10,
+          "thorns": 10
+        },
+        "begins": [
+          {
+            "id": "reel",
+            "dist": 12,
+            "t": 521.07
+          },
+          {
+            "id": "thorns",
+            "dist": 8.73,
+            "t": 525
+          },
+          {
+            "id": "reel",
+            "dist": 12.81,
+            "t": 532.07
+          },
+          {
+            "id": "thorns",
+            "dist": 12.81,
+            "t": 536
+          },
+          {
+            "id": "reel",
+            "dist": 12.81,
+            "t": 540.07
+          },
+          {
+            "id": "thorns",
+            "dist": 12.81,
+            "t": 544
+          },
+          {
+            "id": "reel",
+            "dist": 12.81,
+            "t": 548.07
+          },
+          {
+            "id": "thorns",
+            "dist": 12.81,
+            "t": 552
+          },
+          {
+            "id": "reel",
+            "dist": 12.81,
+            "t": 556.07
+          },
+          {
+            "id": "thorns",
+            "dist": 12.81,
+            "t": 560
+          },
+          {
+            "id": "reel",
+            "dist": 12.81,
+            "t": 564.07
+          },
+          {
+            "id": "thorns",
+            "dist": 12.81,
+            "t": 568
+          },
+          {
+            "id": "reel",
+            "dist": 12.81,
+            "t": 572.07
+          },
+          {
+            "id": "thorns",
+            "dist": 12.81,
+            "t": 576
+          },
+          {
+            "id": "reel",
+            "dist": 12.81,
+            "t": 580.07
+          },
+          {
+            "id": "thorns",
+            "dist": 12.81,
+            "t": 584
+          },
+          {
+            "id": "reel",
+            "dist": 12.81,
+            "t": 588.07
+          },
+          {
+            "id": "thorns",
+            "dist": 12.81,
+            "t": 592
+          },
+          {
+            "id": "reel",
+            "dist": 12.81,
+            "t": 596.07
+          },
+          {
+            "id": "thorns",
+            "dist": 12.81,
+            "t": 600
+          }
+        ],
+        "playerHurtEvents": 10,
+        "damage": 161.7,
+        "dps": 3.85,
+        "meanDist": 12.55,
+        "minDist": 7.98,
+        "maxDist": 12.82,
+        "pickCensus": {
+          "calls": 1639,
+          "gcdBlocked": 300,
+          "noLOS": 72,
+          "meanDistAtPick": 12.65,
+          "distRange": [
+            7.98,
+            12.81
+          ],
+          "per": {
+            "reel": {
+              "onCd": 1257,
+              "tooFar": 0,
+              "tooClose": 0,
+              "eligible": 10,
+              "chosen": 10
+            },
+            "thorns": {
+              "onCd": 1255,
+              "tooFar": 0,
+              "tooClose": 0,
+              "eligible": 12,
+              "chosen": 10
+            },
+            "flail": {
+              "onCd": 0,
+              "tooFar": 1267,
+              "tooClose": 0,
+              "eligible": 0,
+              "chosen": 0
+            }
+          },
+          "states": {
+            "chase": 1601,
+            "reposition": 38
+          }
+        },
+        "frameErrors": 0,
+        "lastFrameError": null
+      }
+    ],
+    "lasherAttacks": [
+      {
+        "id": "reel",
+        "kind": "pull",
+        "range": 26,
+        "minRange": 4,
+        "weight": 3,
+        "cooldown": 8
+      },
+      {
+        "id": "thorns",
+        "kind": "projectile",
+        "range": 22,
+        "minRange": 5,
+        "weight": 2,
+        "cooldown": 4.5
+      },
+      {
+        "id": "flail",
+        "kind": "melee",
+        "range": 4.2,
+        "minRange": null,
+        "weight": 1,
+        "cooldown": 2.4
+      }
+    ],
+    "preferredRange": 18,
+    "frameErrorsTotal": 0
+  },
+  "consoleErrors": []
+}

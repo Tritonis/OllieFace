@@ -1,0 +1,24 @@
+{
+  "settles": {
+    "writesByA": 1,
+    "writesByB": 1,
+    "diskKills": 14,
+    "aMemoryKills": 14,
+    "bMemoryKills": 14
+  },
+  "resetVsStaleTab": {
+    "afterResetDisk": 0,
+    "bMemoryAfterResetEvent": 0,
+    "afterStaleTabWrites": 0
+  },
+  "visibilityFlush": {
+    "midDebounceKills": 1,
+    "afterHiddenDispatch": 5
+  },
+  "foreignClear": {
+    "diskAfterClear": null,
+    "aMemoryKills": 42
+  },
+  "frameErrors": 0,
+  "consoleErrors": []
+}

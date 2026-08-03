@@ -1,0 +1,474 @@
+{
+  "out": {
+    "before": [
+      {
+        "label": "sky",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "DirectionalLight#anon",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "Object3D#anon",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "HemisphereLight#anon",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "DirectionalLight#anon",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "DirectionalLight#anon",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "Points#anon",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "terrain",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "props",
+        "n": 26,
+        "kids": 25,
+        "sample": [
+          "Mesh(0)",
+          "Mesh(0)",
+          "Mesh(0)",
+          "Mesh(0)"
+        ]
+      },
+      {
+        "label": "player.projectiles.root",
+        "n": 97,
+        "kids": 96,
+        "sample": [
+          "Mesh(0)",
+          "Mesh(0)",
+          "Mesh(0)",
+          "Mesh(0)"
+        ]
+      },
+      {
+        "label": "player.placeables.root",
+        "n": 25,
+        "kids": 24,
+        "sample": [
+          "Group(0)",
+          "Group(0)",
+          "Group(0)",
+          "Group(0)"
+        ]
+      },
+      {
+        "label": "player.group",
+        "n": 76,
+        "kids": 2,
+        "sample": [
+          "Group(1)",
+          "Mesh(0)"
+        ]
+      },
+      {
+        "label": "interactables.root",
+        "n": 112,
+        "kids": 24,
+        "sample": [
+          "Group(3)",
+          "Group(3)",
+          "Group(3)",
+          "Group(3)"
+        ]
+      },
+      {
+        "label": "vfx.particles.root",
+        "n": 3,
+        "kids": 2,
+        "sample": [
+          "Mesh(0)",
+          "Mesh(0)"
+        ]
+      },
+      {
+        "label": "vfx.trails.root",
+        "n": 41,
+        "kids": 40,
+        "sample": [
+          "Mesh(0)",
+          "Mesh(0)",
+          "Mesh(0)",
+          "Mesh(0)"
+        ]
+      },
+      {
+        "label": "vfx.decals.mesh",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "PointLight#anon",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "PointLight#anon",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "PointLight#anon",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "PointLight#anon",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "PointLight#anon",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "PointLight#anon",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "vfx.beams",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "vfx.rings",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "vfx.damageNumbers",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      }
+    ],
+    "after": [
+      {
+        "label": "sky",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "DirectionalLight#anon",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "Object3D#anon",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "HemisphereLight#anon",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "DirectionalLight#anon",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "DirectionalLight#anon",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "Points#anon",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "player.projectiles.root",
+        "n": 97,
+        "kids": 96,
+        "sample": [
+          "Mesh(0)",
+          "Mesh(0)",
+          "Mesh(0)",
+          "Mesh(0)"
+        ]
+      },
+      {
+        "label": "player.placeables.root",
+        "n": 25,
+        "kids": 24,
+        "sample": [
+          "Group(0)",
+          "Group(0)",
+          "Group(0)",
+          "Group(0)"
+        ]
+      },
+      {
+        "label": "player.group",
+        "n": 76,
+        "kids": 2,
+        "sample": [
+          "Group(1)",
+          "Mesh(0)"
+        ]
+      },
+      {
+        "label": "interactables.root",
+        "n": 395,
+        "kids": 93,
+        "sample": [
+          "Group(3)",
+          "Group(3)",
+          "Group(3)",
+          "Group(3)"
+        ]
+      },
+      {
+        "label": "vfx.particles.root",
+        "n": 3,
+        "kids": 2,
+        "sample": [
+          "Mesh(0)",
+          "Mesh(0)"
+        ]
+      },
+      {
+        "label": "vfx.trails.root",
+        "n": 41,
+        "kids": 40,
+        "sample": [
+          "Mesh(0)",
+          "Mesh(0)",
+          "Mesh(0)",
+          "Mesh(0)"
+        ]
+      },
+      {
+        "label": "vfx.decals.mesh",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "PointLight#anon",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "PointLight#anon",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "PointLight#anon",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "PointLight#anon",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "PointLight#anon",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "PointLight#anon",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "vfx.beams",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "vfx.rings",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "vfx.damageNumbers",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "terrain",
+        "n": 1,
+        "kids": 0,
+        "sample": []
+      },
+      {
+        "label": "props",
+        "n": 25,
+        "kids": 24,
+        "sample": [
+          "Mesh(0)",
+          "Mesh(0)",
+          "Mesh(0)",
+          "Mesh(0)"
+        ]
+      }
+    ],
+    "deep": {
+      "label": "interactables.root",
+      "n": 395,
+      "kids": 93,
+      "childLabels": [
+        {
+          "name": "Group",
+          "kids": 3,
+          "grand": [
+            "Mesh",
+            "Mesh",
+            "Group"
+          ]
+        },
+        {
+          "name": "Group",
+          "kids": 3,
+          "grand": [
+            "Mesh",
+            "Mesh",
+            "Group"
+          ]
+        },
+        {
+          "name": "Group",
+          "kids": 3,
+          "grand": [
+            "Mesh",
+            "Mesh",
+            "Group"
+          ]
+        },
+        {
+          "name": "Group",
+          "kids": 3,
+          "grand": [
+            "Mesh",
+            "Mesh",
+            "Group"
+          ]
+        },
+        {
+          "name": "Group",
+          "kids": 3,
+          "grand": [
+            "Mesh",
+            "Mesh",
+            "Group"
+          ]
+        },
+        {
+          "name": "Group",
+          "kids": 3,
+          "grand": [
+            "Mesh",
+            "Mesh",
+            "Group"
+          ]
+        },
+        {
+          "name": "Group",
+          "kids": 3,
+          "grand": [
+            "Mesh",
+            "Mesh",
+            "Group"
+          ]
+        },
+        {
+          "name": "Group",
+          "kids": 3,
+          "grand": [
+            "Mesh",
+            "Mesh",
+            "Group"
+          ]
+        },
+        {
+          "name": "Group",
+          "kids": 3,
+          "grand": [
+            "Mesh",
+            "Mesh",
+            "Group"
+          ]
+        },
+        {
+          "name": "Group",
+          "kids": 3,
+          "grand": [
+            "Mesh",
+            "Mesh",
+            "Group"
+          ]
+        }
+      ],
+      "isInteractables": true,
+      "isEnemyPoolHolder": null,
+      "matchesEnemyRig": false
+    },
+    "pooled": 0,
+    "pooledAttached": 0,
+    "enemiesAlive": 0
+  },
+  "errs": []
+}

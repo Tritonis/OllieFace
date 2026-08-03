@@ -1,0 +1,114 @@
+{
+  "seed": 1337,
+  "ready": true,
+  "clockPinned": true,
+  "ms": {
+    "boot": 16285,
+    "bootTimeout": 60000
+  },
+  "shots": [
+    {
+      "name": "01-title",
+      "doc": "First frame the player sees. Menu framing and background composition.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round7\\r4fix-audio\\gate-latch\\01-title.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 0
+      },
+      "ms": {
+        "setup": 1519,
+        "screenshot": 1034,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "title screen",
+            "kind": "dom",
+            "ok": true,
+            "detail": "title"
+          },
+          {
+            "subject": "the menu itself",
+            "kind": "dom",
+            "ok": true,
+            "detail": 900
+          },
+          {
+            "subject": "a live stage behind it",
+            "kind": "dom",
+            "ok": true,
+            "detail": null
+          }
+        ]
+      },
+      "newErrors": []
+    }
+  ],
+  "errors": [],
+  "partial": true,
+  "subjectFailures": [],
+  "subjectsOk": true,
+  "toleratedAbsences": [],
+  "determinism": {
+    "clockPinned": true,
+    "frameDt": 0.016666666666666666,
+    "frameTimeouts": 0
+  },
+  "perf": {
+    "programs": 68,
+    "geometries": 370,
+    "textures": 52,
+    "sceneObjects": 288
+  },
+  "audio": {
+    "ready": true,
+    "state": "running",
+    "stepsEmitted": 0,
+    "stopped": true,
+    "silent": false,
+    "muted": false,
+    "musicOff": false,
+    "musicGain": 0.47999998927116394,
+    "masterGain": 0.800000011920929,
+    "voices": 0,
+    "worldVoices": 0,
+    "musicPeak": 0,
+    "outputPeak": 0.014957712963223457,
+    "samples": 90,
+    "armed": true,
+    "beforeGate": {
+      "ready": true,
+      "state": "running",
+      "stepsEmitted": 0,
+      "stopped": true,
+      "musicOff": false,
+      "musicGain": 0.47999998927116394,
+      "masterGain": 0.800000011920929
+    },
+    "stepsDelta": 0,
+    "newErrors": [],
+    "checks": {
+      "armed": true,
+      "graphBuilt": true,
+      "contextRunning": true,
+      "sequencerRunning": false,
+      "notSilenced": true,
+      "musicBusOpen": true,
+      "masterOpen": true,
+      "stepsAdvanced": false,
+      "musicAudible": false,
+      "outputAudible": true,
+      "sampled": true,
+      "noNewErrors": true
+    },
+    "failed": [
+      "sequencerRunning",
+      "stepsAdvanced",
+      "musicAudible"
+    ]
+  },
+  "audioOk": false
+}

@@ -1,0 +1,74 @@
+{
+  "migration": {
+    "version": 2,
+    "encountersHasGrunt": true,
+    "grunt": {
+      "at": 111,
+      "count": 0
+    },
+    "challengeDoneAt": 7
+  },
+  "hostile": {
+    "truncated": {
+      "threw": false,
+      "runsIsNumber": true,
+      "runsIsArray": true,
+      "unlocksIsObj": true,
+      "version": 2,
+      "protoPolluted": false
+    },
+    "array": {
+      "threw": false,
+      "runsIsNumber": true,
+      "runsIsArray": true,
+      "unlocksIsObj": true,
+      "version": 2,
+      "protoPolluted": false
+    },
+    "string": {
+      "threw": false,
+      "runsIsNumber": true,
+      "runsIsArray": true,
+      "unlocksIsObj": true,
+      "version": 2,
+      "protoPolluted": false
+    },
+    "nul": {
+      "threw": false,
+      "runsIsNumber": true,
+      "runsIsArray": true,
+      "unlocksIsObj": true,
+      "version": 2,
+      "protoPolluted": false
+    },
+    "wrongTypes": {
+      "threw": false,
+      "runsIsNumber": true,
+      "runsIsArray": true,
+      "unlocksIsObj": true,
+      "version": 2,
+      "protoPolluted": false
+    },
+    "protoInjection": {
+      "threw": false,
+      "runsIsNumber": true,
+      "runsIsArray": true,
+      "unlocksIsObj": true,
+      "version": 2,
+      "protoPolluted": false
+    },
+    "futureVersion": {
+      "threw": false,
+      "runsIsNumber": true,
+      "runsIsArray": true,
+      "unlocksIsObj": true,
+      "version": 2,
+      "protoPolluted": false
+    }
+  },
+  "quota": {
+    "quotaThrew": false,
+    "storageBlocked": true,
+    "gameStillRunning": true
+  }
+}

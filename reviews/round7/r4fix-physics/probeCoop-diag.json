@@ -1,0 +1,102 @@
+{
+  "link": {
+    "hostClients": 1,
+    "hostNetRole": "host",
+    "hostAuthority": true,
+    "clientNetRole": "client",
+    "clientAuthority": false,
+    "hostHasPawn": true,
+    "clientSeesHostSnapshots": 0
+  },
+  "jumpCrossTalk": {
+    "before": {
+      "hostShield": 0,
+      "hostSpeed": 0,
+      "hostItemsHeld": {
+        "wing": 3,
+        "soles": 1,
+        "heart": 1
+      }
+    },
+    "after": {
+      "hostShield": 0,
+      "hostSpeed": 0,
+      "hostJumpsUsed": 0,
+      "pawnJumpsUsed": 0,
+      "pawnPeakSpeed": 0,
+      "hostPeakSpeed": 0,
+      "pawnInstantSpeed": 0,
+      "jumpEventsSeenByHostBus": 0,
+      "consumeImpulseCalls": []
+    },
+    "wire": {
+      "host": {
+        "inputsApplied": 0,
+        "lastTick": 0,
+        "buttons": []
+      },
+      "client": {
+        "sends": 0,
+        "connected": true,
+        "tick": 0
+      },
+      "clientPlayerAlive": true,
+      "clientJumpsUsed": 0,
+      "clientInputEnabled": true
+    }
+  },
+  "pawnLaunch": 0,
+  "clientReplay": {
+    "liveVelocity": 31.133,
+    "replayVelocity": 31.133,
+    "liveConsumeImpulse": [
+      30
+    ],
+    "replayConsumeImpulse": [],
+    "divergence": 0
+  },
+  "teammateDamage": {
+    "localPlayerHurtEvents": 0,
+    "localShieldBrokenEvents": 0,
+    "timeSinceHurt": [
+      30,
+      30
+    ],
+    "pawnHealth": [
+      110,
+      16
+    ],
+    "hostHealth": [
+      110,
+      110
+    ],
+    "wardedReflect": {
+      "ran": true,
+      "hostHealth": [
+        110,
+        110
+      ],
+      "pawnHealth": [
+        60,
+        16
+      ],
+      "reflectLandedOnHost": false,
+      "reflectLandedOnAttacker": true
+    }
+  },
+  "barrierAccounting": {
+    "before": {
+      "health": 110,
+      "shield": 1000,
+      "progressionDamageTaken": 0,
+      "profileRunDamageTakenThisStage": 0
+    },
+    "after": {
+      "health": 110,
+      "shield": 950,
+      "progressionDamageTaken": 0,
+      "profileRunDamageTakenThisStage": 50
+    }
+  },
+  "errors": []
+}

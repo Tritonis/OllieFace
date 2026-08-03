@@ -455,7 +455,10 @@ export class Combat {
       const absorbed = Math.min(target.shield, amount);
       target.shield -= absorbed;
       amount -= absorbed;
-      if (target.isPlayer) ctx.events.emit('shieldBroken', { remaining: target.shield, absorbed });
+      // `isPlayer` is true of every remote pawn too, and this channel drives the
+      // local camera shake and the local HUD. It has to mean *this client's*
+      // survivor, not "a survivor".
+      if (target === ctx.player) ctx.events.emit('shieldBroken', { target, remaining: target.shield, absorbed });
     }
     const dealt = amount;
 
@@ -471,14 +474,21 @@ export class Combat {
       crit, position: pos, proc: info.procCoefficient || 0,
     });
 
-    if (target.isPlayer && dealt > 0) {
+    if (target === ctx.player && dealt > 0) {
       // Gated at the emit rather than in each listener. Four systems subscribe
       // and only one of them checked the amount, so a hit a barrier ate whole
       // still reset the hurt timer three items key off, fired a hitstop, an
       // aberration bump and a vignette flash, and ducked the music to a third
       // for 0.7s. `shieldBroken` above is the channel for "a barrier took
       // that"; this one means health was lost.
-      ctx.events.emit('playerHurt', { amount: dealt, absorbed: incoming - dealt, remaining: target.health });
+      //
+      // And it is `=== ctx.player`, not `isPlayer`, for the same reason: a
+      // remote pawn is `isPlayer`, so a teammate 40 m away losing health used to
+      // reset *this* player's "time since hurt" (Field Dressing and Siege
+      // Battery both key off it), flash their HUD and duck their music. The
+      // `onDamaged` hooks below are the local inventory's and must only be paid
+      // for the local survivor's blood.
+      ctx.events.emit('playerHurt', { target, amount: dealt, absorbed: incoming - dealt, remaining: target.health });
       if (ctx.items) {
         this._dispatch('onDamaged', { target, source, amount: dealt, position: pos, procDepth: (info.procDepth || 0) + 1 });
       }
@@ -593,7 +603,13 @@ export class Combat {
     let mult = 1;
     for (let i = 0; i < list.length; i++) {
       const s = list[i];
-      if (s.type === 'freeze') return 0;
+      // A hard zero is the point on a monster — a frozen thing stops. On a
+      // player it is a total movement lock with no duration readout and no
+      // counterplay, and it also skips the 0.25 floor below that every other
+      // status obeys. Nothing in shipping enemy data applies `freeze` to the
+      // player yet; this is here so the first card that does is a hard slow and
+      // not a stun.
+      if (s.type === 'freeze') return entity?.isPlayer ? 0.15 : 0;
       if (s.type === 'slow') mult *= 1 - s.magnitude;
     }
     return Math.max(0.25, mult);

@@ -1,0 +1,184 @@
+{
+  "results": {
+    "geometry": [
+      {
+        "tag": "stage1-as-booted",
+        "stands": 60,
+        "losFraction": {
+          "4": 0.981,
+          "6": 0.95,
+          "8": 0.899,
+          "10": 0.818,
+          "12": 0.78,
+          "13": 0.749,
+          "14": 0.721,
+          "16": 0.658,
+          "18": 0.605,
+          "20": 0.521,
+          "22": 0.46,
+          "25": 0.378
+        },
+        "samples": {
+          "4": {
+            "clear": 723,
+            "total": 737
+          },
+          "6": {
+            "clear": 633,
+            "total": 666
+          },
+          "8": {
+            "clear": 568,
+            "total": 632
+          },
+          "10": {
+            "clear": 540,
+            "total": 660
+          },
+          "12": {
+            "clear": 488,
+            "total": 626
+          },
+          "13": {
+            "clear": 460,
+            "total": 614
+          },
+          "14": {
+            "clear": 444,
+            "total": 616
+          },
+          "16": {
+            "clear": 386,
+            "total": 587
+          },
+          "18": {
+            "clear": 334,
+            "total": 552
+          },
+          "20": {
+            "clear": 294,
+            "total": 564
+          },
+          "22": {
+            "clear": 259,
+            "total": 563
+          },
+          "25": {
+            "clear": 207,
+            "total": 547
+          }
+        }
+      }
+    ],
+    "live": [
+      {
+        "spot": [
+          -45.5,
+          -69.7
+        ],
+        "attacks": {
+          "reel": 8,
+          "thorns": 7
+        },
+        "totalAttacks": 15,
+        "playerHurtEvents": 7,
+        "damage": 80.8,
+        "dps": 2.69,
+        "losFraction": 0.987,
+        "finalDist": 18,
+        "minDist": 18,
+        "meanDist": 19.2
+      },
+      {
+        "spot": [
+          -73.1,
+          38.6
+        ],
+        "attacks": {
+          "reel": 8,
+          "thorns": 7
+        },
+        "totalAttacks": 15,
+        "playerHurtEvents": 7,
+        "damage": 80.8,
+        "dps": 2.69,
+        "losFraction": 0.981,
+        "finalDist": 18,
+        "minDist": 18,
+        "meanDist": 18.9
+      },
+      {
+        "spot": [
+          15.4,
+          71
+        ],
+        "attacks": {},
+        "totalAttacks": 0,
+        "playerHurtEvents": 0,
+        "damage": 0,
+        "dps": 0,
+        "losFraction": 0.002,
+        "finalDist": 16,
+        "minDist": 13.7,
+        "meanDist": 17
+      },
+      {
+        "spot": [
+          26.4,
+          49
+        ],
+        "attacks": {
+          "reel": 8,
+          "thorns": 7
+        },
+        "totalAttacks": 15,
+        "playerHurtEvents": 7,
+        "damage": 80.8,
+        "dps": 2.69,
+        "losFraction": 0.935,
+        "finalDist": 18,
+        "minDist": 18,
+        "meanDist": 18.8
+      },
+      {
+        "spot": [
+          7.8,
+          -70
+        ],
+        "attacks": {
+          "reel": 8,
+          "thorns": 7
+        },
+        "totalAttacks": 15,
+        "playerHurtEvents": 7,
+        "damage": 97,
+        "dps": 3.23,
+        "losFraction": 1,
+        "finalDist": 18,
+        "minDist": 18,
+        "meanDist": 19.1
+      },
+      {
+        "spot": [
+          -35.4,
+          -19.6
+        ],
+        "attacks": {
+          "reel": 8,
+          "thorns": 7
+        },
+        "totalAttacks": 15,
+        "playerHurtEvents": 7,
+        "damage": 97,
+        "dps": 3.23,
+        "losFraction": 0.909,
+        "finalDist": 18,
+        "minDist": 18,
+        "meanDist": 19.1
+      }
+    ],
+    "frameErrors": 0,
+    "lastFrameError": null
+  },
+  "consoleErrors": []
+}

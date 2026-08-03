@@ -1,0 +1,26 @@
+{
+  "visibilityFlush": {
+    "before": {
+      "dirty": true,
+      "timerArmed": true,
+      "midDebounceStorage": 0
+    },
+    "afterHiddenDispatch": 5
+  },
+  "abruptQuitNoTeardown": {
+    "killsEmitted": 9,
+    "killsAfterColdReopen": null
+  },
+  "twoTabRace": {
+    "bLoadedKills": 10,
+    "storageAfterA2": 25,
+    "storageAfterB": 13,
+    "aTotalKillsLostIfClobbered": 12
+  },
+  "abandonedDebounce": {
+    "armedBefore": true,
+    "storageAfterReset": 0,
+    "storageAfterOldTimer": 0,
+    "dirtyAfterWait": false
+  }
+}

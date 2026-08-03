@@ -1,0 +1,318 @@
+{
+  "out": {
+    "groupGrowth": [
+      {
+        "i": 7,
+        "name": "terrain",
+        "type": "Mesh",
+        "before": 1,
+        "after": 97,
+        "delta": 96,
+        "kidsBefore": 0,
+        "kidsAfter": 96,
+        "kidNames": [
+          "Mesh",
+          "Mesh",
+          "Mesh",
+          "Mesh",
+          "Mesh",
+          "Mesh"
+        ]
+      },
+      {
+        "i": 8,
+        "name": "props",
+        "type": "Group",
+        "before": 26,
+        "after": 25,
+        "delta": -1,
+        "kidsBefore": 25,
+        "kidsAfter": 24,
+        "kidNames": [
+          "Group",
+          "Group",
+          "Group",
+          "Group",
+          "Group",
+          "Group"
+        ]
+      },
+      {
+        "i": 9,
+        "name": "",
+        "type": "Group",
+        "before": 97,
+        "after": 76,
+        "delta": -21,
+        "kidsBefore": 96,
+        "kidsAfter": 2,
+        "kidNames": [
+          "Group",
+          "Mesh"
+        ]
+      },
+      {
+        "i": 10,
+        "name": "",
+        "type": "Group",
+        "before": 25,
+        "after": 345,
+        "delta": 320,
+        "kidsBefore": 24,
+        "kidsAfter": 81,
+        "kidNames": [
+          "Group",
+          "Group",
+          "Group",
+          "Group",
+          "Group",
+          "Group"
+        ]
+      },
+      {
+        "i": 11,
+        "name": "",
+        "type": "Group",
+        "before": 76,
+        "after": 3,
+        "delta": -73,
+        "kidsBefore": 2,
+        "kidsAfter": 2,
+        "kidNames": [
+          "Mesh",
+          "Mesh"
+        ]
+      },
+      {
+        "i": 12,
+        "name": "",
+        "type": "Group",
+        "before": 112,
+        "after": 41,
+        "delta": -71,
+        "kidsBefore": 24,
+        "kidsAfter": 40,
+        "kidNames": [
+          "Mesh",
+          "Mesh",
+          "Mesh",
+          "Mesh",
+          "Mesh",
+          "Mesh"
+        ]
+      },
+      {
+        "i": 13,
+        "name": "vfx.particles",
+        "type": "Group",
+        "before": 3,
+        "after": 1,
+        "delta": -2,
+        "kidsBefore": 2,
+        "kidsAfter": 0,
+        "kidNames": []
+      },
+      {
+        "i": 14,
+        "name": "vfx.trails",
+        "type": "Group",
+        "before": 41,
+        "after": 1,
+        "delta": -40,
+        "kidsBefore": 40,
+        "kidsAfter": 0,
+        "kidNames": []
+      },
+      {
+        "i": 24,
+        "name": "vfx.damageNumbers",
+        "type": "Mesh",
+        "before": 1,
+        "after": 26,
+        "delta": 25,
+        "kidsBefore": 0,
+        "kidsAfter": 25,
+        "kidNames": [
+          "Mesh",
+          "Mesh",
+          "Mesh",
+          "Mesh",
+          "Mesh",
+          "Mesh"
+        ]
+      }
+    ],
+    "groupAll": [
+      {
+        "name": "sky",
+        "type": "Mesh",
+        "n": 1,
+        "kids": 0
+      },
+      {
+        "name": "",
+        "type": "DirectionalLight",
+        "n": 1,
+        "kids": 0
+      },
+      {
+        "name": "",
+        "type": "Object3D",
+        "n": 1,
+        "kids": 0
+      },
+      {
+        "name": "",
+        "type": "HemisphereLight",
+        "n": 1,
+        "kids": 0
+      },
+      {
+        "name": "",
+        "type": "DirectionalLight",
+        "n": 1,
+        "kids": 0
+      },
+      {
+        "name": "",
+        "type": "DirectionalLight",
+        "n": 1,
+        "kids": 0
+      },
+      {
+        "name": "",
+        "type": "Points",
+        "n": 1,
+        "kids": 0
+      },
+      {
+        "name": "",
+        "type": "Group",
+        "n": 97,
+        "kids": 96
+      },
+      {
+        "name": "",
+        "type": "Group",
+        "n": 25,
+        "kids": 24
+      },
+      {
+        "name": "",
+        "type": "Group",
+        "n": 76,
+        "kids": 2
+      },
+      {
+        "name": "",
+        "type": "Group",
+        "n": 345,
+        "kids": 81
+      },
+      {
+        "name": "vfx.particles",
+        "type": "Group",
+        "n": 3,
+        "kids": 2
+      },
+      {
+        "name": "vfx.trails",
+        "type": "Group",
+        "n": 41,
+        "kids": 40
+      },
+      {
+        "name": "vfx.decals",
+        "type": "Mesh",
+        "n": 1,
+        "kids": 0
+      },
+      {
+        "name": "",
+        "type": "PointLight",
+        "n": 1,
+        "kids": 0
+      },
+      {
+        "name": "",
+        "type": "PointLight",
+        "n": 1,
+        "kids": 0
+      },
+      {
+        "name": "",
+        "type": "PointLight",
+        "n": 1,
+        "kids": 0
+      },
+      {
+        "name": "",
+        "type": "PointLight",
+        "n": 1,
+        "kids": 0
+      },
+      {
+        "name": "",
+        "type": "PointLight",
+        "n": 1,
+        "kids": 0
+      },
+      {
+        "name": "",
+        "type": "PointLight",
+        "n": 1,
+        "kids": 0
+      },
+      {
+        "name": "vfx.beams",
+        "type": "Mesh",
+        "n": 1,
+        "kids": 0
+      },
+      {
+        "name": "vfx.rings",
+        "type": "Mesh",
+        "n": 1,
+        "kids": 0
+      },
+      {
+        "name": "vfx.damageNumbers",
+        "type": "Mesh",
+        "n": 1,
+        "kids": 0
+      },
+      {
+        "name": "terrain",
+        "type": "Mesh",
+        "n": 1,
+        "kids": 0
+      },
+      {
+        "name": "props",
+        "type": "Group",
+        "n": 26,
+        "kids": 25
+      }
+    ],
+    "replayGate": {
+      "liveJumpEmits": 1,
+      "liveImpulseConsumed": [
+        30
+      ],
+      "replayJumpEmits": 0,
+      "replayImpulseConsumed": [],
+      "lastCmdTick": 701,
+      "verdict": "client replay silently drops the jump impulse -> mispredict"
+    },
+    "localFirstJumps": {
+      "impulseConsumedPerJump": [
+        30,
+        30,
+        30
+      ]
+    },
+    "errors": 0,
+    "lastFrameError": null
+  },
+  "errs": []
+}

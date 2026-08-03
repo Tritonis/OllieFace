@@ -1,0 +1,208 @@
+{
+  "link": {
+    "hostClients": 1,
+    "hostNetRole": "host",
+    "hostAuthority": true,
+    "clientNetRole": "client",
+    "clientAuthority": false,
+    "hostHasPawn": true,
+    "clientSeesHostSnapshots": 0
+  },
+  "jumpCrossTalk": {
+    "before": {
+      "hostShield": 0,
+      "hostSpeed": 0,
+      "hostItemsHeld": {
+        "wing": 3,
+        "soles": 1,
+        "heart": 1
+      }
+    },
+    "after": {
+      "hostShield": 55,
+      "hostSpeed": 0,
+      "hostJumpsUsed": 0,
+      "pawnJumpsUsed": 1,
+      "pawnPeakSpeed": 36,
+      "hostPeakSpeed": 0,
+      "pawnInstantSpeed": 0,
+      "jumpEventsSeenByHostBus": 6,
+      "consumeImpulseCalls": [
+        30,
+        30,
+        36,
+        30,
+        30,
+        36
+      ]
+    },
+    "wire": {
+      "host": {
+        "inputsApplied": 66,
+        "lastTick": 30,
+        "commandsWithButtons": 18,
+        "buttonValues": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "commandsSeen": 66,
+        "receivedWithButtons": [
+          {
+            "tick": 1,
+            "buttons": 1
+          },
+          {
+            "tick": 6,
+            "buttons": 1
+          },
+          {
+            "tick": 11,
+            "buttons": 1
+          },
+          {
+            "tick": 16,
+            "buttons": 1
+          },
+          {
+            "tick": 21,
+            "buttons": 1
+          },
+          {
+            "tick": 26,
+            "buttons": 1
+          }
+        ],
+        "rxError": null,
+        "queuedWithButtons": [
+          {
+            "tick": 1,
+            "buttons": 1
+          },
+          {
+            "tick": 6,
+            "buttons": 1
+          },
+          {
+            "tick": 11,
+            "buttons": 1
+          },
+          {
+            "tick": 16,
+            "buttons": 1
+          },
+          {
+            "tick": 21,
+            "buttons": 1
+          },
+          {
+            "tick": 26,
+            "buttons": 1
+          }
+        ]
+      },
+      "client": {
+        "sends": 30,
+        "connected": true,
+        "tick": 30,
+        "sentButtons": [
+          {
+            "msg": 3,
+            "tick": 1,
+            "buttons": 1
+          },
+          {
+            "msg": 3,
+            "tick": 6,
+            "buttons": 1
+          },
+          {
+            "msg": 3,
+            "tick": 11,
+            "buttons": 1
+          },
+          {
+            "msg": 3,
+            "tick": 16,
+            "buttons": 1
+          },
+          {
+            "msg": 3,
+            "tick": 21,
+            "buttons": 1
+          },
+          {
+            "msg": 3,
+            "tick": 26,
+            "buttons": 1
+          }
+        ]
+      },
+      "clientSampledButtons": 1,
+      "clientPlayerAlive": true,
+      "clientJumpsUsed": 1,
+      "clientInputEnabled": true
+    }
+  },
+  "pawnLaunch": 36,
+  "clientReplay": {
+    "liveVelocity": 31.133,
+    "replayVelocity": 1.133,
+    "liveConsumeImpulse": [
+      30
+    ],
+    "replayConsumeImpulse": [],
+    "divergence": 30
+  },
+  "teammateDamage": {
+    "localPlayerHurtEvents": 2,
+    "localShieldBrokenEvents": 0,
+    "timeSinceHurt": [
+      30,
+      0
+    ],
+    "pawnHealth": [
+      110,
+      60
+    ],
+    "hostHealth": [
+      110,
+      66
+    ],
+    "wardedReflect": {
+      "ran": true,
+      "hostHealth": [
+        110,
+        66
+      ],
+      "pawnHealth": [
+        60,
+        60
+      ],
+      "reflectLandedOnHost": true,
+      "reflectLandedOnAttacker": false
+    }
+  },
+  "barrierAccounting": {
+    "before": {
+      "health": 110,
+      "shield": 1000,
+      "progressionDamageTaken": 94,
+      "profileRunDamageTakenThisStage": 44
+    },
+    "after": {
+      "health": 110,
+      "shield": 950,
+      "progressionDamageTaken": 144,
+      "profileRunDamageTakenThisStage": 94
+    }
+  },
+  "errors": []
+}

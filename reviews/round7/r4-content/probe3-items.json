@@ -1,0 +1,611 @@
+{
+  "results": {
+    "aegis": {
+      "declared": 30,
+      "used": true,
+      "before": 0,
+      "insideDistinct": [
+        30
+      ],
+      "insideMax": 30,
+      "afterLeaving": 0,
+      "samples": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30,
+        30,
+        30,
+        30,
+        30,
+        30,
+        30,
+        30,
+        30,
+        30,
+        30,
+        30,
+        30,
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "_sim": {
+        "dtElapsed": 7.9,
+        "aliveBefore": true,
+        "aliveAfter": true
+      }
+    },
+    "tether": [
+      {
+        "enemyId": "mite",
+        "stacks": 1,
+        "hoverHeight": null,
+        "startDistance": 20,
+        "endDistance": 13.2,
+        "reelProcs": 1,
+        "minDistanceEverSeen": 13.2,
+        "y0": 4.4,
+        "yEnd": 4.4,
+        "maxYDropInOneReel": 0,
+        "slowed": true,
+        "_sim": {
+          "dtElapsed": 1.85,
+          "aliveBefore": true,
+          "aliveAfter": true
+        }
+      },
+      {
+        "enemyId": "mite",
+        "stacks": 2,
+        "hoverHeight": null,
+        "startDistance": 20,
+        "endDistance": 13.2,
+        "reelProcs": 1,
+        "minDistanceEverSeen": 13.2,
+        "y0": 4.4,
+        "yEnd": 4.4,
+        "maxYDropInOneReel": 0,
+        "slowed": true,
+        "_sim": {
+          "dtElapsed": 1.9,
+          "aliveBefore": true,
+          "aliveAfter": true
+        }
+      },
+      {
+        "enemyId": "mite",
+        "stacks": 10,
+        "hoverHeight": null,
+        "startDistance": 20,
+        "endDistance": 13.2,
+        "reelProcs": 1,
+        "minDistanceEverSeen": 13.2,
+        "y0": 4.4,
+        "yEnd": 4.4,
+        "maxYDropInOneReel": 0,
+        "slowed": true,
+        "_sim": {
+          "dtElapsed": 1.93,
+          "aliveBefore": true,
+          "aliveAfter": true
+        }
+      },
+      {
+        "enemyId": "shriver",
+        "stacks": 1,
+        "hoverHeight": 6.4,
+        "startDistance": 20,
+        "endDistance": 13.2,
+        "reelProcs": 1,
+        "minDistanceEverSeen": 13.2,
+        "y0": 10.27,
+        "yEnd": 10.27,
+        "maxYDropInOneReel": 0,
+        "slowed": true,
+        "_sim": {
+          "dtElapsed": 1.93,
+          "aliveBefore": true,
+          "aliveAfter": true
+        }
+      },
+      {
+        "enemyId": "shriver",
+        "stacks": 2,
+        "hoverHeight": 6.4,
+        "startDistance": 20,
+        "endDistance": 13.2,
+        "reelProcs": 1,
+        "minDistanceEverSeen": 13.2,
+        "y0": 11.43,
+        "yEnd": 11.43,
+        "maxYDropInOneReel": 0,
+        "slowed": true,
+        "_sim": {
+          "dtElapsed": 1.9,
+          "aliveBefore": true,
+          "aliveAfter": true
+        }
+      },
+      {
+        "enemyId": "shriver",
+        "stacks": 10,
+        "hoverHeight": 6.4,
+        "startDistance": 20,
+        "endDistance": 13.2,
+        "reelProcs": 1,
+        "minDistanceEverSeen": 13.2,
+        "y0": 10.28,
+        "yEnd": 10.28,
+        "maxYDropInOneReel": 0,
+        "slowed": true,
+        "_sim": {
+          "dtElapsed": 1.9,
+          "aliveBefore": true,
+          "aliveAfter": true
+        }
+      }
+    ],
+    "tetherBoss": {
+      "boss": "titan",
+      "d0": 19.99,
+      "totalReelDisplacement": 0,
+      "_sim": {
+        "dtElapsed": 1.68,
+        "aliveBefore": true,
+        "aliveAfter": true
+      }
+    },
+    "whetstone": [
+      {
+        "label": "control",
+        "first": 170,
+        "afterWindow": 170,
+        "simGapSeconds": 11,
+        "openingWindow": 4,
+        "_sim": {
+          "dtElapsed": 11.17,
+          "aliveBefore": true,
+          "aliveAfter": true
+        }
+      },
+      {
+        "label": "player-applied burn on target",
+        "first": 170,
+        "afterWindow": 170,
+        "simGapSeconds": 10.75,
+        "openingWindow": 4,
+        "_sim": {
+          "dtElapsed": 10.88,
+          "aliveBefore": true,
+          "aliveAfter": true
+        }
+      },
+      {
+        "label": "target inside a player-owned fire cloud",
+        "first": 170,
+        "afterWindow": 170,
+        "simGapSeconds": 10.55,
+        "openingWindow": 4,
+        "_sim": {
+          "dtElapsed": 10.68,
+          "aliveBefore": true,
+          "aliveAfter": true
+        }
+      },
+      {
+        "label": "target inside a burn-applying pyre cloud",
+        "first": 170,
+        "afterWindow": 170,
+        "simGapSeconds": 10.27,
+        "openingWindow": 4,
+        "_sim": {
+          "dtElapsed": 10.4,
+          "aliveBefore": true,
+          "aliveAfter": true
+        }
+      }
+    ],
+    "whetstonePooling": {
+      "brandNew": 170,
+      "sameBodyImmediate": 100,
+      "sameObjectReused": true,
+      "idBefore": 12,
+      "idAfter": 13,
+      "recycledBody": 170,
+      "_sim": {
+        "dtElapsed": 8.15,
+        "aliveBefore": true,
+        "aliveAfter": true
+      }
+    },
+    "whetstoneXTag": {
+      "withTag": true,
+      "opener": 170,
+      "immediateFollowUp": 118,
+      "afterWindow": 170,
+      "nextHit": 118,
+      "_sim": {
+        "dtElapsed": 11.1,
+        "aliveBefore": true,
+        "aliveAfter": true
+      }
+    },
+    "whetstoneXTagControl": {
+      "withTag": false,
+      "opener": 170,
+      "immediateFollowUp": 100,
+      "afterWindow": 170,
+      "nextHit": 100,
+      "_sim": {
+        "dtElapsed": 11.12,
+        "aliveBefore": true,
+        "aliveAfter": true
+      }
+    },
+    "waxedWing": [
+      {
+        "label": "nothing, standing",
+        "groundedBeforeJump": true,
+        "speedBeforeJump": 0,
+        "peakHorizontal": 0,
+        "displacement1s": 0,
+        "_sim": {
+          "dtElapsed": 8.3,
+          "aliveBefore": true,
+          "aliveAfter": true
+        }
+      },
+      {
+        "label": "nothing, sprinting",
+        "groundedBeforeJump": true,
+        "speedBeforeJump": 0.101,
+        "peakHorizontal": 10.15,
+        "displacement1s": 6.94,
+        "_sim": {
+          "dtElapsed": 8.33,
+          "aliveBefore": true,
+          "aliveAfter": true
+        }
+      },
+      {
+        "label": "1x Waxed Wing, standing",
+        "groundedBeforeJump": true,
+        "speedBeforeJump": 0,
+        "peakHorizontal": 9.883,
+        "displacement1s": 6.69,
+        "_sim": {
+          "dtElapsed": 8.33,
+          "aliveBefore": true,
+          "aliveAfter": true
+        }
+      },
+      {
+        "label": "1x Waxed Wing, sprinting",
+        "groundedBeforeJump": true,
+        "speedBeforeJump": 0,
+        "peakHorizontal": 8.33,
+        "displacement1s": 2.81,
+        "_sim": {
+          "dtElapsed": 8.33,
+          "aliveBefore": true,
+          "aliveAfter": true
+        }
+      },
+      {
+        "label": "3x Waxed Wing, sprinting",
+        "groundedBeforeJump": true,
+        "speedBeforeJump": 0.093,
+        "peakHorizontal": 8.33,
+        "displacement1s": 2.69,
+        "_sim": {
+          "dtElapsed": 8.33,
+          "aliveBefore": true,
+          "aliveAfter": true
+        }
+      },
+      {
+        "label": "10x Waxed Wing, sprinting",
+        "groundedBeforeJump": true,
+        "speedBeforeJump": 0.15,
+        "peakHorizontal": 8.329,
+        "displacement1s": 2.7,
+        "_sim": {
+          "dtElapsed": 8.33,
+          "aliveBefore": true,
+          "aliveAfter": true
+        }
+      },
+      {
+        "label": "1x Updraft Vents, sprinting",
+        "groundedBeforeJump": true,
+        "speedBeforeJump": 0.131,
+        "peakHorizontal": 8.33,
+        "displacement1s": 2.76,
+        "_sim": {
+          "dtElapsed": 8.33,
+          "aliveBefore": true,
+          "aliveAfter": true
+        }
+      }
+    ],
+    "scrapfly": [
+      {
+        "label": "r3 fixture: 10M health, 1 stack",
+        "stacks": 1,
+        "bodyHp": 10000000,
+        "strikes": [
+          {
+            "target": "a",
+            "amount": 15.6,
+            "t": 154.33
+          },
+          {
+            "target": "a",
+            "amount": 15.6,
+            "t": 155.33
+          },
+          {
+            "target": "a",
+            "amount": 15.6,
+            "t": 156.33
+          },
+          {
+            "target": "a",
+            "amount": 15.6,
+            "t": 157.33
+          },
+          {
+            "target": "a",
+            "amount": 15.6,
+            "t": 158.33
+          },
+          {
+            "target": "a",
+            "amount": 31.2,
+            "t": 159.33
+          }
+        ],
+        "perBody": {
+          "a": 109.2,
+          "b": 0
+        },
+        "aliveAtEnd": [
+          true,
+          true
+        ],
+        "bleedFrames": 271,
+        "effectsLeft": 0,
+        "_sim": {
+          "dtElapsed": 12.97,
+          "aliveBefore": true,
+          "aliveAfter": true
+        }
+      },
+      {
+        "label": "r3 fixture: 10M health, 2 stacks",
+        "stacks": 2,
+        "bodyHp": 10000000,
+        "strikes": [
+          {
+            "target": "a",
+            "amount": 31.2,
+            "t": 167.3
+          },
+          {
+            "target": "a",
+            "amount": 31.2,
+            "t": 168.3
+          },
+          {
+            "target": "a",
+            "amount": 31.2,
+            "t": 169.3
+          },
+          {
+            "target": "a",
+            "amount": 31.2,
+            "t": 170.3
+          },
+          {
+            "target": "a",
+            "amount": 31.2,
+            "t": 171.3
+          },
+          {
+            "target": "a",
+            "amount": 31.2,
+            "t": 172.3
+          }
+        ],
+        "perBody": {
+          "a": 187.2,
+          "b": 0
+        },
+        "aliveAtEnd": [
+          true,
+          true
+        ],
+        "bleedFrames": 270,
+        "effectsLeft": 0,
+        "_sim": {
+          "dtElapsed": 12.98,
+          "aliveBefore": true,
+          "aliveAfter": true
+        }
+      },
+      {
+        "label": "r3 fixture: 10M health, 10 stacks",
+        "stacks": 10,
+        "bodyHp": 10000000,
+        "strikes": [
+          {
+            "target": "a",
+            "amount": 156,
+            "t": 180.28
+          },
+          {
+            "target": "a",
+            "amount": 156,
+            "t": 181.28
+          },
+          {
+            "target": "a",
+            "amount": 312,
+            "t": 182.28
+          },
+          {
+            "target": "a",
+            "amount": 156,
+            "t": 183.28
+          },
+          {
+            "target": "a",
+            "amount": 156,
+            "t": 184.28
+          },
+          {
+            "target": "a",
+            "amount": 156,
+            "t": 185.28
+          }
+        ],
+        "perBody": {
+          "a": 1092,
+          "b": 0
+        },
+        "aliveAtEnd": [
+          true,
+          true
+        ],
+        "bleedFrames": 271,
+        "effectsLeft": 0,
+        "_sim": {
+          "dtElapsed": 12.97,
+          "aliveBefore": true,
+          "aliveAfter": true
+        }
+      },
+      {
+        "label": "MORTAL bodies (re-acquire path), 10 stacks",
+        "stacks": 10,
+        "bodyHp": 120,
+        "strikes": [
+          {
+            "target": "a",
+            "amount": 156,
+            "t": 193.25
+          },
+          {
+            "target": "b",
+            "amount": 156,
+            "t": 194.25
+          }
+        ],
+        "perBody": {
+          "a": 156,
+          "b": 156
+        },
+        "aliveAtEnd": [
+          false,
+          false
+        ],
+        "bleedFrames": 0,
+        "effectsLeft": 0,
+        "_sim": {
+          "dtElapsed": 13.88,
+          "aliveBefore": true,
+          "aliveAfter": true
+        }
+      }
+    ],
+    "movementBuffs": [
+      {
+        "label": "baseline, healthy",
+        "healthFraction": 1,
+        "moveSpeed": 7,
+        "quickfoot": null,
+        "preyfoot": null,
+        "_sim": {
+          "dtElapsed": 1.62,
+          "aliveBefore": true,
+          "aliveAfter": true
+        }
+      },
+      {
+        "label": "5x Spurs after a kill, 20% health",
+        "healthFraction": 0.2,
+        "moveSpeed": 8.4,
+        "quickfoot": {
+          "m": 0.2,
+          "remaining": 14.07
+        },
+        "preyfoot": null,
+        "_sim": {
+          "dtElapsed": 1.6,
+          "aliveBefore": true,
+          "aliveAfter": true
+        }
+      },
+      {
+        "label": "1x Prey Instinct, 20% health",
+        "healthFraction": 0.2,
+        "moveSpeed": 8.26,
+        "quickfoot": null,
+        "preyfoot": {
+          "m": 0.18,
+          "remaining": 0.5
+        },
+        "_sim": {
+          "dtElapsed": 1.62,
+          "aliveBefore": true,
+          "aliveAfter": true
+        }
+      },
+      {
+        "label": "5x Spurs + 1x Prey, 20% health",
+        "healthFraction": 0.2,
+        "moveSpeed": 9.91,
+        "quickfoot": {
+          "m": 0.2,
+          "remaining": 14.07
+        },
+        "preyfoot": {
+          "m": 0.18,
+          "remaining": 0.5
+        },
+        "_sim": {
+          "dtElapsed": 1.6,
+          "aliveBefore": true,
+          "aliveAfter": true
+        }
+      },
+      {
+        "label": "5x Spurs + 10x Prey, 20% health",
+        "healthFraction": 0.2,
+        "moveSpeed": 23.52,
+        "quickfoot": {
+          "m": 0.2,
+          "remaining": 14.05
+        },
+        "preyfoot": {
+          "m": 1.8,
+          "remaining": 0.5
+        },
+        "_sim": {
+          "dtElapsed": 1.62,
+          "aliveBefore": true,
+          "aliveAfter": true
+        }
+      }
+    ],
+    "frameErrors": 0,
+    "lastFrameError": null
+  },
+  "consoleErrors": []
+}

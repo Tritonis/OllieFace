@@ -1,0 +1,45 @@
+{
+  "probe": "probe4-redoubt",
+  "frameErrors": 0,
+  "lastFrameError": null,
+  "consoleErrors": [],
+  "pageErrors": [],
+  "results": {
+    "turnRate": 0.6,
+    "preferredRange": 13,
+    "frontArc": 1.3,
+    "outTurnCeilingMetres": 16.92,
+    "runs": [
+      {
+        "mode": "stationary",
+        "radius": 13,
+        "seconds": 39.1,
+        "damageHP": 492.7,
+        "dps": 12.58,
+        "yawTravelRad": 2.5,
+        "meanRadius": 13,
+        "fractionOutsideFrontArc": 0.12
+      },
+      {
+        "mode": "circling",
+        "radius": 13,
+        "seconds": 40,
+        "damageHP": 0,
+        "dps": 0,
+        "yawTravelRad": 16.66,
+        "meanRadius": 13,
+        "fractionOutsideFrontArc": 0.567
+      },
+      {
+        "mode": "circling",
+        "radius": 20,
+        "seconds": 40,
+        "damageHP": 0,
+        "dps": 0,
+        "yawTravelRad": 17.46,
+        "meanRadius": 20,
+        "fractionOutsideFrontArc": 0.397
+      }
+    ]
+  }
+}

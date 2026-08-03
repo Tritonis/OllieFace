@@ -1,0 +1,433 @@
+{
+  "rows": [
+    {
+      "id": "burrower",
+      "moveSpeed": 5.2,
+      "burrowSpeed": 11.5,
+      "multipliers": {
+        "slow1": 0.6,
+        "slow4": 0.25
+      },
+      "perState": {
+        "chase": {
+          "cleanSpeed": 3.193,
+          "slow1Speed": 3.358,
+          "slow4Speed": 1.695,
+          "ratioSlow1": 1.052,
+          "ratioSlow4": 0.531,
+          "expectedSlow1": 0.6,
+          "expectedSlow4": 0.25,
+          "dwellSeconds": {
+            "clean": 8.683,
+            "slow1": 8.367,
+            "slow4": 8.683
+          },
+          "sane_cleanFaster": false
+        },
+        "reposition": {
+          "cleanSpeed": 4.058,
+          "slow1Speed": 2.737,
+          "slow4Speed": 1.434,
+          "ratioSlow1": 0.674,
+          "ratioSlow4": 0.353,
+          "expectedSlow1": 0.6,
+          "expectedSlow4": 0.25,
+          "dwellSeconds": {
+            "clean": 11.317,
+            "slow1": 11.25,
+            "slow4": 11.317
+          },
+          "sane_cleanFaster": true
+        }
+      },
+      "rawStates": {
+        "clean": {
+          "chase": {
+            "path": 27.723,
+            "time": 8.683,
+            "speed": 3.193
+          },
+          "reposition": {
+            "path": 45.922,
+            "time": 11.317,
+            "speed": 4.058
+          }
+        },
+        "slow1": {
+          "chase": {
+            "path": 28.096,
+            "time": 8.367,
+            "speed": 3.358
+          },
+          "reposition": {
+            "path": 30.788,
+            "time": 11.25,
+            "speed": 2.737
+          },
+          "windup": {
+            "path": 0.041,
+            "time": 0.383,
+            "speed": 0.106
+          }
+        },
+        "slow4": {
+          "chase": {
+            "path": 14.721,
+            "time": 8.683,
+            "speed": 1.695
+          },
+          "reposition": {
+            "path": 16.226,
+            "time": 11.317,
+            "speed": 1.434
+          }
+        }
+      }
+    },
+    {
+      "id": "mite",
+      "moveSpeed": 8.4,
+      "burrowSpeed": null,
+      "multipliers": {
+        "slow1": 0.6,
+        "slow4": 0.25
+      },
+      "perState": {
+        "chase": {
+          "cleanSpeed": 5.306,
+          "slow1Speed": 2.969,
+          "slow4Speed": 1.318,
+          "ratioSlow1": 0.56,
+          "ratioSlow4": 0.248,
+          "expectedSlow1": 0.6,
+          "expectedSlow4": 0.25,
+          "dwellSeconds": {
+            "clean": 20,
+            "slow1": 20,
+            "slow4": 20
+          },
+          "sane_cleanFaster": true
+        }
+      },
+      "rawStates": {
+        "clean": {
+          "chase": {
+            "path": 106.122,
+            "time": 20,
+            "speed": 5.306
+          }
+        },
+        "slow1": {
+          "chase": {
+            "path": 59.38,
+            "time": 20,
+            "speed": 2.969
+          }
+        },
+        "slow4": {
+          "chase": {
+            "path": 26.355,
+            "time": 20,
+            "speed": 1.318
+          }
+        }
+      }
+    },
+    {
+      "id": "beetle",
+      "moveSpeed": 5.4,
+      "burrowSpeed": null,
+      "multipliers": {
+        "slow1": 0.6,
+        "slow4": 0.25
+      },
+      "perState": {
+        "chase": {
+          "cleanSpeed": 2.869,
+          "slow1Speed": 3.115,
+          "slow4Speed": 1.517,
+          "ratioSlow1": 1.086,
+          "ratioSlow4": 0.529,
+          "expectedSlow1": 0.6,
+          "expectedSlow4": 0.25,
+          "dwellSeconds": {
+            "clean": 20,
+            "slow1": 20,
+            "slow4": 20
+          },
+          "sane_cleanFaster": false
+        }
+      },
+      "rawStates": {
+        "clean": {
+          "chase": {
+            "path": 57.373,
+            "time": 20,
+            "speed": 2.869
+          }
+        },
+        "slow1": {
+          "chase": {
+            "path": 62.298,
+            "time": 20,
+            "speed": 3.115
+          }
+        },
+        "slow4": {
+          "chase": {
+            "path": 30.338,
+            "time": 20,
+            "speed": 1.517
+          }
+        }
+      }
+    },
+    {
+      "id": "lemurian",
+      "moveSpeed": 6.2,
+      "burrowSpeed": null,
+      "multipliers": {
+        "slow1": 0.6,
+        "slow4": 0.25
+      },
+      "perState": {
+        "chase": {
+          "cleanSpeed": 5.826,
+          "slow1Speed": 3.615,
+          "slow4Speed": 1.458,
+          "ratioSlow1": 0.62,
+          "ratioSlow4": 0.25,
+          "expectedSlow1": 0.6,
+          "expectedSlow4": 0.25,
+          "dwellSeconds": {
+            "clean": 20,
+            "slow1": 20,
+            "slow4": 20
+          },
+          "sane_cleanFaster": true
+        }
+      },
+      "rawStates": {
+        "clean": {
+          "chase": {
+            "path": 116.513,
+            "time": 20,
+            "speed": 5.826
+          }
+        },
+        "slow1": {
+          "chase": {
+            "path": 72.302,
+            "time": 20,
+            "speed": 3.615
+          }
+        },
+        "slow4": {
+          "chase": {
+            "path": 29.163,
+            "time": 20,
+            "speed": 1.458
+          }
+        }
+      }
+    },
+    {
+      "id": "golem",
+      "moveSpeed": 3.6,
+      "burrowSpeed": null,
+      "multipliers": {
+        "slow1": 0.6,
+        "slow4": 0.25
+      },
+      "perState": {
+        "chase": {
+          "cleanSpeed": 1.919,
+          "slow1Speed": 1.45,
+          "slow4Speed": 0.493,
+          "ratioSlow1": 0.756,
+          "ratioSlow4": 0.257,
+          "expectedSlow1": 0.6,
+          "expectedSlow4": 0.25,
+          "dwellSeconds": {
+            "clean": 8.683,
+            "slow1": 8.683,
+            "slow4": 8.683
+          },
+          "sane_cleanFaster": true
+        },
+        "reposition": {
+          "cleanSpeed": 2.349,
+          "slow1Speed": 2.07,
+          "slow4Speed": 0.777,
+          "ratioSlow1": 0.881,
+          "ratioSlow4": 0.331,
+          "expectedSlow1": 0.6,
+          "expectedSlow4": 0.25,
+          "dwellSeconds": {
+            "clean": 11.317,
+            "slow1": 11.317,
+            "slow4": 11.317
+          },
+          "sane_cleanFaster": true
+        }
+      },
+      "rawStates": {
+        "clean": {
+          "chase": {
+            "path": 16.667,
+            "time": 8.683,
+            "speed": 1.919
+          },
+          "reposition": {
+            "path": 26.578,
+            "time": 11.317,
+            "speed": 2.349
+          }
+        },
+        "slow1": {
+          "chase": {
+            "path": 12.587,
+            "time": 8.683,
+            "speed": 1.45
+          },
+          "reposition": {
+            "path": 23.427,
+            "time": 11.317,
+            "speed": 2.07
+          }
+        },
+        "slow4": {
+          "chase": {
+            "path": 4.285,
+            "time": 8.683,
+            "speed": 0.493
+          },
+          "reposition": {
+            "path": 8.796,
+            "time": 11.317,
+            "speed": 0.777
+          }
+        }
+      }
+    },
+    {
+      "id": "wisp",
+      "moveSpeed": 4.2,
+      "burrowSpeed": null,
+      "multipliers": {
+        "slow1": 0.6,
+        "slow4": 0.25
+      },
+      "perState": {
+        "chase": {
+          "cleanSpeed": 3.723,
+          "slow1Speed": 2.707,
+          "slow4Speed": 1.094,
+          "ratioSlow1": 0.727,
+          "ratioSlow4": 0.294,
+          "expectedSlow1": 0.6,
+          "expectedSlow4": 0.25,
+          "dwellSeconds": {
+            "clean": 7.467,
+            "slow1": 8.717,
+            "slow4": 8.683
+          },
+          "sane_cleanFaster": true
+        },
+        "reposition": {
+          "cleanSpeed": 4.267,
+          "slow1Speed": 2.167,
+          "slow4Speed": 0.905,
+          "ratioSlow1": 0.508,
+          "ratioSlow4": 0.212,
+          "expectedSlow1": 0.6,
+          "expectedSlow4": 0.25,
+          "dwellSeconds": {
+            "clean": 3.333,
+            "slow1": 9.75,
+            "slow4": 11.317
+          },
+          "sane_cleanFaster": true
+        }
+      },
+      "rawStates": {
+        "clean": {
+          "chase": {
+            "path": 27.798,
+            "time": 7.467,
+            "speed": 3.723
+          },
+          "reposition": {
+            "path": 14.223,
+            "time": 3.333,
+            "speed": 4.267
+          },
+          "windup": {
+            "path": 2.599,
+            "time": 4.4,
+            "speed": 0.591
+          },
+          "attack": {
+            "path": 0,
+            "time": 1.7,
+            "speed": 0
+          },
+          "recover": {
+            "path": 0.027,
+            "time": 3.1,
+            "speed": 0.009
+          }
+        },
+        "slow1": {
+          "chase": {
+            "path": 23.599,
+            "time": 8.717,
+            "speed": 2.707
+          },
+          "reposition": {
+            "path": 21.129,
+            "time": 9.75,
+            "speed": 2.167
+          },
+          "windup": {
+            "path": 0.055,
+            "time": 0.733,
+            "speed": 0.075
+          },
+          "attack": {
+            "path": 0,
+            "time": 0.283,
+            "speed": 0
+          },
+          "recover": {
+            "path": 0.004,
+            "time": 0.517,
+            "speed": 0.009
+          }
+        },
+        "slow4": {
+          "chase": {
+            "path": 9.5,
+            "time": 8.683,
+            "speed": 1.094
+          },
+          "reposition": {
+            "path": 10.238,
+            "time": 11.317,
+            "speed": 0.905
+          }
+        }
+      }
+    }
+  ],
+  "statusFloor": {
+    "playerClean": 1,
+    "playerSlow1": 0.6,
+    "playerSlow4": 0.25,
+    "playerFreeze": 0.15,
+    "enemyFreeze": 0,
+    "enemySlow4": 0.25
+  },
+  "frameErrors": 0,
+  "errors": []
+}

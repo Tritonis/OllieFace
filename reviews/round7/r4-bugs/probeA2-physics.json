@@ -1,0 +1,350 @@
+{
+  "out": {
+    "escape": {
+      "free_sprint_1p5s": -12.275,
+      "lasher26_from10m": {
+        "travelled": -11.03,
+        "finalD": 21.03,
+        "reversedEver": false
+      },
+      "lasher26_from5m": {
+        "travelled": -9.333,
+        "finalD": 14.333,
+        "reversedEver": false
+      },
+      "herald30_from5m": {
+        "travelled": -8.293,
+        "finalD": 13.293,
+        "reversedEver": false
+      },
+      "herald30_from2m": {
+        "travelled": -7.417,
+        "finalD": 9.417,
+        "reversedEver": false
+      }
+    },
+    "reelIntoWall": {
+      "cyl": {
+        "x": 33.7,
+        "z": -64.58,
+        "r": 3.74,
+        "y0": 23.3,
+        "y1": 35.5
+      },
+      "startX": 38.44,
+      "finalX": 37.89,
+      "playerY": 25.3,
+      "minGap": 0,
+      "penetratedSteps": 0,
+      "crossedSteps": 0,
+      "ext": -3.16,
+      "vx": 0
+    },
+    "knockIntoProp": {
+      "peakOutwardVx": 0,
+      "trace": [
+        {
+          "i": 0,
+          "x": 38.453,
+          "vx": -11.226,
+          "ext": -11.226
+        },
+        {
+          "i": 1,
+          "x": 38.278,
+          "vx": -10.502,
+          "ext": -10.502
+        },
+        {
+          "i": 2,
+          "x": 38.114,
+          "vx": -9.825,
+          "ext": -9.825
+        },
+        {
+          "i": 3,
+          "x": 37.961,
+          "vx": -9.191,
+          "ext": -9.191
+        },
+        {
+          "i": 4,
+          "x": 37.89,
+          "vx": 0,
+          "ext": -8.598
+        },
+        {
+          "i": 5,
+          "x": 37.89,
+          "vx": 0,
+          "ext": 0
+        },
+        {
+          "i": 6,
+          "x": 37.89,
+          "vx": 0,
+          "ext": 0
+        },
+        {
+          "i": 7,
+          "x": 37.89,
+          "vx": 0,
+          "ext": 0
+        },
+        {
+          "i": 8,
+          "x": 37.89,
+          "vx": 0,
+          "ext": 0
+        },
+        {
+          "i": 9,
+          "x": 37.89,
+          "vx": 0,
+          "ext": 0
+        },
+        {
+          "i": 10,
+          "x": 37.89,
+          "vx": 0,
+          "ext": 0
+        },
+        {
+          "i": 11,
+          "x": 37.89,
+          "vx": 0,
+          "ext": 0
+        },
+        {
+          "i": 12,
+          "x": 37.89,
+          "vx": 0,
+          "ext": 0
+        },
+        {
+          "i": 13,
+          "x": 37.89,
+          "vx": 0,
+          "ext": 0
+        },
+        {
+          "i": 20,
+          "x": 37.89,
+          "vx": 0,
+          "ext": 0
+        },
+        {
+          "i": 30,
+          "x": 37.89,
+          "vx": 0,
+          "ext": 0
+        },
+        {
+          "i": 40,
+          "x": 37.89,
+          "vx": 0,
+          "ext": 0
+        },
+        {
+          "i": 50,
+          "x": 37.89,
+          "vx": 0,
+          "ext": 0
+        }
+      ]
+    },
+    "knockIntoTerrain": {
+      "spot": {
+        "x": -90,
+        "z": -72,
+        "y": 41.005409240722656
+      },
+      "peakBackwardVx": 0,
+      "trace": [
+        {
+          "i": 0,
+          "x": -89.813,
+          "y": 41.252,
+          "vx": 11.226,
+          "ext": 11.226
+        },
+        {
+          "i": 1,
+          "x": -89.638,
+          "y": 41.482,
+          "vx": 10.502,
+          "ext": 10.502
+        },
+        {
+          "i": 2,
+          "x": -89.474,
+          "y": 41.698,
+          "vx": 9.825,
+          "ext": 9.825
+        },
+        {
+          "i": 3,
+          "x": -89.321,
+          "y": 41.855,
+          "vx": 9.191,
+          "ext": 9.191
+        },
+        {
+          "i": 4,
+          "x": -89.178,
+          "y": 41.927,
+          "vx": 8.598,
+          "ext": 8.598
+        },
+        {
+          "i": 5,
+          "x": -89.044,
+          "y": 41.995,
+          "vx": 8.044,
+          "ext": 8.044
+        },
+        {
+          "i": 6,
+          "x": -88.918,
+          "y": 42.057,
+          "vx": 7.525,
+          "ext": 7.525
+        },
+        {
+          "i": 7,
+          "x": -88.801,
+          "y": 42.107,
+          "vx": 7.04,
+          "ext": 7.04
+        },
+        {
+          "i": 8,
+          "x": -88.691,
+          "y": 42.149,
+          "vx": 6.586,
+          "ext": 6.586
+        },
+        {
+          "i": 9,
+          "x": -88.588,
+          "y": 42.189,
+          "vx": 6.161,
+          "ext": 6.161
+        },
+        {
+          "i": 10,
+          "x": -88.492,
+          "y": 42.225,
+          "vx": 5.764,
+          "ext": 5.764
+        },
+        {
+          "i": 11,
+          "x": -88.402,
+          "y": 42.26,
+          "vx": 5.392,
+          "ext": 5.392
+        },
+        {
+          "i": 15,
+          "x": -88.097,
+          "y": 42.376,
+          "vx": 4.13,
+          "ext": 4.13
+        },
+        {
+          "i": 30,
+          "x": -87.466,
+          "y": 42.228,
+          "vx": 1.519,
+          "ext": 1.519
+        },
+        {
+          "i": 45,
+          "x": -87.234,
+          "y": 42.054,
+          "vx": 0.559,
+          "ext": 0.559
+        },
+        {
+          "i": 60,
+          "x": -87.149,
+          "y": 41.99,
+          "vx": 0.206,
+          "ext": 0.206
+        },
+        {
+          "i": 75,
+          "x": -87.117,
+          "y": 41.966,
+          "vx": 0.076,
+          "ext": 0.076
+        }
+      ]
+    },
+    "waxedWing": [
+      {
+        "stacks": 0,
+        "peakHorizSpeed": 10.156,
+        "metresPerStep": 0.169,
+        "minClearance": 0,
+        "stepsBelowFloor": 0,
+        "finalPos": [
+          -3.2,
+          11.3,
+          55.2
+        ],
+        "outOfBounds": false
+      },
+      {
+        "stacks": 1,
+        "peakHorizSpeed": 20.15,
+        "metresPerStep": 0.336,
+        "minClearance": 0,
+        "stepsBelowFloor": 0,
+        "finalPos": [
+          -3.5,
+          12.3,
+          56
+        ],
+        "outOfBounds": false
+      },
+      {
+        "stacks": 3,
+        "peakHorizSpeed": 40.15,
+        "metresPerStep": 0.669,
+        "minClearance": 0,
+        "stepsBelowFloor": 0,
+        "finalPos": [
+          -2.9,
+          20.8,
+          60.7
+        ],
+        "outOfBounds": false
+      },
+      {
+        "stacks": 10,
+        "peakHorizSpeed": 110.15,
+        "metresPerStep": 1.836,
+        "minClearance": 0,
+        "stepsBelowFloor": 0,
+        "finalPos": [
+          -2.4,
+          19.3,
+          59.2
+        ],
+        "outOfBounds": false
+      }
+    ],
+    "stackedMovement": {
+      "peakHorizSpeed": 10.161,
+      "pos": [
+        0.6,
+        39.3
+      ]
+    },
+    "errors": 0,
+    "lastFrameError": null
+  },
+  "errs": []
+}

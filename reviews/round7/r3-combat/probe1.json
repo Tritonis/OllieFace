@@ -1,0 +1,297 @@
+{
+  "results": {
+    "enemyShield": {
+      "before": {
+        "elite": {
+          "reflect": 0.22,
+          "shield": 1.1
+        },
+        "shield": 1795.2,
+        "hp": 1632,
+        "php": 110
+      },
+      "after": {
+        "shield": 504.3,
+        "hp": 1632,
+        "php": 62.5
+      },
+      "returns": [
+        54,
+        54,
+        54
+      ],
+      "damageEvents": [
+        {
+          "amount": 54,
+          "toHealth": 0,
+          "absorbed": 54
+        },
+        {
+          "amount": 54,
+          "toHealth": 0,
+          "absorbed": 54
+        },
+        {
+          "amount": 54,
+          "toHealth": 0,
+          "absorbed": 54
+        }
+      ],
+      "damageEventCount": 30,
+      "reflectEvents": 4,
+      "reflectDamage": 47.5
+    },
+    "playerShield": {
+      "fullyAbsorbed": {
+        "hit": 50,
+        "shield": [
+          1000,
+          950
+        ],
+        "health": [
+          110,
+          110
+        ],
+        "timeSinceHurt": [
+          30,
+          30
+        ],
+        "aberration": [
+          0.00273,
+          0.00273
+        ],
+        "vignette": [
+          0.43808,
+          0.43808
+        ],
+        "musicGain": [
+          null,
+          null
+        ],
+        "playerHurtEvents": [],
+        "damageEvent": {
+          "amount": 50,
+          "toHealth": 0,
+          "absorbed": 50
+        }
+      },
+      "partlyAbsorbed": {
+        "hit": 50,
+        "shield": [
+          20,
+          0
+        ],
+        "health": [
+          110,
+          80
+        ],
+        "timeSinceHurt": [
+          30,
+          0
+        ],
+        "aberration": [
+          0.00273,
+          0.01418
+        ],
+        "vignette": [
+          0.43808,
+          0.78172
+        ],
+        "musicGain": [
+          null,
+          null
+        ],
+        "playerHurtEvents": [
+          {
+            "amount": 30,
+            "absorbed": 20
+          }
+        ],
+        "damageEvent": {
+          "amount": 50,
+          "toHealth": 30,
+          "absorbed": 20
+        }
+      },
+      "noShield": {
+        "hit": 50,
+        "shield": [
+          0,
+          0
+        ],
+        "health": [
+          110,
+          60
+        ],
+        "timeSinceHurt": [
+          30,
+          0
+        ],
+        "aberration": [
+          0.01418,
+          0.02927
+        ],
+        "vignette": [
+          0.78172,
+          1.23445
+        ],
+        "musicGain": [
+          null,
+          null
+        ],
+        "playerHurtEvents": [
+          {
+            "amount": 50,
+            "absorbed": 0
+          }
+        ],
+        "damageEvent": {
+          "amount": 50,
+          "toHealth": 50,
+          "absorbed": 0
+        }
+      }
+    },
+    "slowOnPlayer": {
+      "clean": {
+        "peakSpeed": 10.15,
+        "distance3s": 10.82,
+        "meanMult": 1,
+        "meanStacks": 0,
+        "steps": 181
+      },
+      "slow1": {
+        "peakSpeed": 1.13,
+        "distance3s": 0.26,
+        "meanMult": 0.6,
+        "meanStacks": 1,
+        "steps": 184
+      },
+      "slow5": {
+        "peakSpeed": 0,
+        "distance3s": 0,
+        "meanMult": 0.25,
+        "meanStacks": 5,
+        "steps": 184
+      },
+      "freeze1": {
+        "peakSpeed": 0,
+        "distance3s": 0,
+        "meanMult": 0.95,
+        "meanStacks": 0.05,
+        "steps": 400
+      }
+    },
+    "pull": {
+      "lasher10": {
+        "pull": 19,
+        "range": 26,
+        "dist": 10,
+        "steps": 200,
+        "sprintAway": false,
+        "accel": 11.69,
+        "movedTowardEnemy": 0,
+        "totalGroundMoved": 0
+      },
+      "lasher5": {
+        "pull": 19,
+        "range": 26,
+        "dist": 5,
+        "steps": 200,
+        "sprintAway": false,
+        "accel": 15.35,
+        "movedTowardEnemy": 0,
+        "totalGroundMoved": 0
+      },
+      "lasher10sprintAway": {
+        "pull": 19,
+        "range": 26,
+        "dist": 10,
+        "steps": 200,
+        "sprintAway": true,
+        "accel": 11.69,
+        "movedTowardEnemy": 0,
+        "totalGroundMoved": 0
+      },
+      "maw10": {
+        "pull": 26,
+        "range": 34,
+        "dist": 10,
+        "steps": 200,
+        "sprintAway": false,
+        "accel": 18.35,
+        "movedTowardEnemy": 0,
+        "totalGroundMoved": 0
+      }
+    },
+    "knockback": {
+      "displacementIn1s": 0,
+      "residualSpeed": 9
+    },
+    "pullVsSprint": {
+      "steps": 200,
+      "playerMovedIn2s": 0,
+      "distanceToEnemy": [
+        8,
+        8
+      ]
+    },
+    "movementControl": {
+      "sprintFwd": {
+        "peak": 0,
+        "dist": 0
+      },
+      "walkFwd": {
+        "peak": 0,
+        "dist": 0
+      },
+      "strafe": {
+        "peak": 0,
+        "dist": 0
+      },
+      "driftAfterRelease": 0,
+      "externalHeld": 0
+    },
+    "stageTransition": {
+      "speedBeforeTransition": 0,
+      "driftIn1sAfter": 0,
+      "externalHeld": 0
+    },
+    "coop": {
+      "before": {
+        "children": 26,
+        "nodes": 424,
+        "listeners": 0,
+        "geometries": -1,
+        "entities": 1
+      },
+      "after": {
+        "children": 26,
+        "nodes": 424,
+        "listeners": 0,
+        "geometries": -1,
+        "entities": 1
+      },
+      "leakedRootsObserved": 0,
+      "cycles": 4
+    },
+    "setSurvivor": {
+      "geometries": [
+        -1,
+        -1,
+        -1,
+        -1
+      ],
+      "sceneChildren": [
+        26,
+        26,
+        26,
+        26
+      ],
+      "swaps": 15,
+      "alive": false,
+      "rigInScene": true
+    }
+  },
+  "errors": []
+}

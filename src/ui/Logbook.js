@@ -475,7 +475,7 @@ export class Logbook {
             id: c.id,
             kind: 'challenge',
             name: c.name,
-            sub: c.done ? 'Complete' : `${c.progress} / ${c.goal}`,
+            sub: c.done ? 'Complete' : progressPair(c.progress, c.goal, c.format, String),
             group: label.get(c.category) || 'Other',
             card: c,
             tier: c.done ? 'boss' : 'common',
@@ -778,7 +778,7 @@ export class Logbook {
       </div>
       <p class="book-lore book-lore--plain">${escapeHtml(c.description)}</p>
       <div class="book-prog"><i style="transform:scaleX(${(c.fraction ?? 0).toFixed(3)})"></i></div>
-      <div class="book-prog-read">${c.progress} / ${c.goal} <b>${pct}%</b></div>
+      <div class="book-prog-read">${progressPair(c.progress, c.goal, c.format, String)} <b>${pct}%</b></div>
       ${c.unlocks ? `<div class="book-reward">Unlocks — ${escapeHtml(KIND_LABEL[c.unlocks.type] || c.unlocks.type)} · ${escapeHtml(c.unlocks.name || c.unlocks.id)}</div>` : ''}`;
   }
 
@@ -987,7 +987,7 @@ export function renderRunReport(report) {
     return `<div class="run-prog">
           <div class="run-prog-k">${escapeHtml(a.name)}</div>
           <div class="book-prog"><i style="transform:scaleX(${f.toFixed(3)})"></i></div>
-          <div class="run-prog-v">${fmtCount(a.to)} / ${fmtCount(a.goal)}</div>
+          <div class="run-prog-v">${progressPair(a.to, a.goal, a.format)}</div>
         </div>`;
   }).join('')}</div>`);
   }
@@ -1017,6 +1017,30 @@ function fmtCount(n) {
   const v = Math.round(n || 0);
   if (v >= 100000) return `${Math.round(v / 1000)}k`;
   return v.toLocaleString();
+}
+
+/**
+ * A challenge's `progress / goal` pair, in the unit the challenge counts in.
+ *
+ * `Profile` tags a time-scoped challenge `format: 'time'`; everything else is a
+ * count and renders exactly as it did. Which duration helper depends on the
+ * goal, not on the progress: `marathon` is thirty minutes and reads as a run
+ * clock (`17:54 / 30:00`), while `clockedIn` is ten hours and would read as
+ * `1074:00 / 600:00` on the same helper, so it takes the career-scale one
+ * (`17m / 10h`). The switch is at an hour because that is where `clock()` stops
+ * being a number anybody parses at a glance.
+ *
+ * `plain` is how a non-time pair is drawn, because the two call sites disagree
+ * on purpose: the run report abbreviates past four digits to keep its 12-em
+ * column from wrapping, and the logbook — which that column is a pointer to —
+ * shows the exact number.
+ */
+export function progressPair(progress, goal, format, plain = fmtCount) {
+  if (format === 'time') {
+    const f = goal >= 3600 ? duration : clock;
+    return `${f(progress)} / ${f(goal)}`;
+  }
+  return `${plain(progress)} / ${plain(goal)}`;
 }
 
 function escapeHtml(s) {

@@ -228,6 +228,155 @@ const MIGRATIONS = {
   },
 };
 
+/**
+ * Lifetime totals that are *sums*, and so merge as deltas: whatever this tab
+ * added since it last saw the disk is added to whatever is on the disk now.
+ */
+const SUM_STATS = [
+  'runs', 'wins', 'deaths', 'timePlayed', 'kills', 'elites', 'bosses',
+  'damageDealt', 'damageTaken', 'items', 'gold', 'stagesCleared', 'teleporters',
+];
+
+/** Personal bests, which merge as a maximum. */
+const MAX_STATS = [
+  'bestStage', 'bestTime', 'bestKills', 'highestHit', 'bestLevel', 'bestGold', 'bestItems',
+];
+
+/**
+ * Which challenges count in seconds.
+ *
+ * The right home for this is a `format` field on the challenge definition
+ * itself, next to `goal` — but `src/data/challenges.js` belongs to the content
+ * agents this round, so the mapping lives here, where the two consumers
+ * (`_buildReport` and `challengeState`) already are. Both entries are checked
+ * against a real definition at module scope below, so if a content change
+ * renames or drops one, the console says so rather than the UI silently
+ * reverting to raw seconds.
+ */
+const TIME_GOAL_CHALLENGES = new Set(['marathon', 'clockedIn']);
+for (const id of TIME_GOAL_CHALLENGES) {
+  if (!CHALLENGE_BY_ID[id]) console.warn(`[profile] no challenge '${id}' to format as a duration`);
+}
+
+/** The unit a challenge's progress readout should be drawn in. */
+function challengeFormat(id) {
+  return TIME_GOAL_CHALLENGES.has(id) ? 'time' : 'number';
+}
+
+/**
+ * Three-way merge of two profiles that diverged from a common ancestor.
+ *
+ * `base` is what this tab last saw on disk, `remote` is what is on disk *now*
+ * (another tab wrote it), `mine` is this tab's in-memory state. Every field
+ * has a join that cannot lose work, chosen from what the field means:
+ *
+ *  - **sums** (lifetime kills, time played, per-survivor runs, encounter
+ *    counts) take `remote + (mine - base)` — each tab's own contribution, once.
+ *    This is why the ancestor is kept at all; without it the only safe answer
+ *    is `max`, which throws away the smaller tab's play entirely.
+ *  - **bests, goals and challenge progress** take the maximum.
+ *  - **unlocks, completions and first-seen stamps** take the union, keeping the
+ *    *earliest* timestamp, because "when did I first earn this" is a fact about
+ *    the player and the later write is not a re-earning.
+ *  - **run history** is unioned by its `at` stamp and re-capped, so a completed
+ *    run can only be dropped by being older than `MAX_RUNS` other runs — the
+ *    same rule a single tab already plays by.
+ *
+ * Returns the merged profile and whether it contains anything `remote` did
+ * not. That flag is what stops two tabs writing back and forth forever: a tab
+ * with nothing of its own to contribute adopts the remote copy and goes quiet.
+ */
+function mergeProfiles(base, remote, mine) {
+  const out = freshProfile();
+  let tookLocal = false;
+  /** Choose `v`, and remember whether it says something `remote` did not. */
+  const pick = (v, remoteV) => {
+    if (v !== remoteV) tookLocal = true;
+    return v;
+  };
+  const sum = (b, r, m) => Math.max(0, num(r, 0) + (num(m, 0) - num(b, 0)));
+  // An unset stamp is 0, and 0 must not win a "first seen" race.
+  const earliest = (a, b) => (a > 0 && b > 0 ? Math.min(a, b) : Math.max(num(a, 0), num(b, 0)));
+
+  out.version = PROFILE_VERSION;
+  out.createdAt = earliest(num(remote.createdAt, 0), num(mine.createdAt, 0)) || Date.now();
+  out.updatedAt = Math.max(num(remote.updatedAt, 0), num(mine.updatedAt, 0));
+
+  for (const type of UNLOCK_TYPES) {
+    const r = remote.unlocks[type] || {};
+    const m = mine.unlocks[type] || {};
+    for (const id of new Set([...Object.keys(r), ...Object.keys(m)])) {
+      out.unlocks[type][id] = pick(earliest(num(r[id], 0), num(m[id], 0)), r[id]);
+    }
+  }
+
+  for (const id of new Set([...Object.keys(remote.challenges), ...Object.keys(mine.challenges)])) {
+    const r = remote.challenges[id];
+    const m = mine.challenges[id];
+    const merged = {
+      progress: Math.max(num(r?.progress, 0), num(m?.progress, 0)),
+      done: !!(r?.done || m?.done),
+      doneAt: earliest(num(r?.doneAt, 0), num(m?.doneAt, 0)),
+      goal: Math.max(num(r?.goal, 0), num(m?.goal, 0)),
+    };
+    if (!r || merged.progress !== r.progress || merged.done !== !!r.done
+      || merged.doneAt !== num(r.doneAt, 0) || merged.goal !== num(r.goal, 0)) tookLocal = true;
+    out.challenges[id] = merged;
+  }
+
+  for (const kind of ENCOUNTER_KINDS) {
+    const b = base.encounters?.[kind] || {};
+    const r = remote.encounters[kind] || {};
+    const m = mine.encounters[kind] || {};
+    for (const id of new Set([...Object.keys(r), ...Object.keys(m)])) {
+      const merged = {
+        at: earliest(num(r[id]?.at, 0), num(m[id]?.at, 0)),
+        count: sum(b[id]?.count, r[id]?.count, m[id]?.count),
+      };
+      if (!r[id] || merged.at !== r[id].at || merged.count !== r[id].count) tookLocal = true;
+      out.encounters[kind][id] = merged;
+    }
+  }
+
+  for (const id of new Set([...Object.keys(remote.survivors), ...Object.keys(mine.survivors)])) {
+    const b = base.survivors?.[id];
+    const r = remote.survivors[id];
+    const m = mine.survivors[id];
+    const merged = {
+      runs: sum(b?.runs, r?.runs, m?.runs),
+      wins: sum(b?.wins, r?.wins, m?.wins),
+      deaths: sum(b?.deaths, r?.deaths, m?.deaths),
+      kills: sum(b?.kills, r?.kills, m?.kills),
+      time: sum(b?.time, r?.time, m?.time),
+      bestStage: Math.max(num(r?.bestStage, 0), num(m?.bestStage, 0)),
+      bestTime: Math.max(num(r?.bestTime, 0), num(m?.bestTime, 0)),
+    };
+    if (!r || Object.keys(merged).some((k) => merged[k] !== r[k])) tookLocal = true;
+    out.survivors[id] = merged;
+  }
+
+  // A run is identified by when it was committed. Two runs cannot end in the
+  // same millisecond in the same profile, and across tabs a collision would
+  // have to be a millisecond-exact tie — in which case either record is a
+  // truthful one and keeping one of them is correct.
+  const byAt = new Map();
+  for (const r of remote.runs) byAt.set(num(r.at, 0), r);
+  for (const r of mine.runs) if (!byAt.has(num(r.at, 0))) { byAt.set(num(r.at, 0), r); tookLocal = true; }
+  out.runs = [...byAt.values()].sort((a, b) => num(b.at, 0) - num(a.at, 0)).slice(0, MAX_RUNS);
+  // Losing the tail to the cap is not "taking something local" — it is the
+  // same trim a single tab performs, and flagging it would write back forever.
+
+  for (const k of Object.keys(out.stats)) {
+    const v = SUM_STATS.includes(k)
+      ? sum(base.stats?.[k], remote.stats[k], mine.stats[k])
+      : Math.max(num(remote.stats[k], 0), num(mine.stats[k], 0));
+    out.stats[k] = pick(v, num(remote.stats[k], 0));
+  }
+  if (!MAX_STATS.every((k) => k in out.stats)) console.warn('[profile] merge stat table is out of date');
+
+  return { data: out, tookLocal };
+}
+
 export class Profile {
   constructor() {
     this.data = freshProfile();
@@ -250,6 +399,12 @@ export class Profile {
     this._writeTimer = null;
     this._evalTimer = null;
     this._dirty = false;
+    // The bytes, and the parsed copy, of what this tab last saw on disk. The
+    // ancestor for the cross-tab three-way merge; see `_reconcile`.
+    this._baseRaw = null;
+    this._baseData = null;
+    // Set only by `reset`/`importProfile`, which must overwrite rather than merge.
+    this._authoritative = false;
     // Set while a run is in flight. Null between runs so a stray event after
     // the death screen cannot append to a committed run.
     this.run = null;
@@ -301,6 +456,22 @@ export class Profile {
     if (typeof addEventListener === 'function') {
       this._onHide = () => this.flush();
       addEventListener('pagehide', this._onHide);
+
+      // Converge as soon as another tab writes, rather than only at this tab's
+      // next flush. Without this the two tabs still cannot lose each other's
+      // work — `_reconcile` catches it on the way to disk — but this tab would
+      // keep showing a logbook that predates the other tab's unlocks, and a
+      // player who closes it without ever earning anything else would never
+      // learn otherwise. `key === null` is `localStorage.clear()`, which
+      // `_reconcile` treats as "the disk lost the profile, ours is the copy".
+      this._onForeignWrite = (e) => {
+        if (e && e.key !== null && e.key !== STORE_KEY) return;
+        if (this._storageBlocked) return;
+        // Write back only if this tab holds something the other one does not —
+        // otherwise every tab answers every write and they never settle.
+        if (this._reconcile()) { this._dirty = true; this.flush(); }
+      };
+      addEventListener('storage', this._onForeignWrite);
     }
     if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
       this._onVisibility = () => {
@@ -331,26 +502,41 @@ export class Profile {
       this._storageBlocked = true;
       return freshProfile();
     }
-    if (!raw) return freshProfile();
+    // Remember the exact bytes this tab started from. `flush` compares against
+    // them to notice another tab has written since, and `mergeProfiles` needs
+    // the *ancestor* to tell this tab's own contribution from the disk's.
+    this._baseRaw = raw;
+    const data = raw ? (this._parse(raw) ?? freshProfile()) : freshProfile();
+    this._baseData = JSON.parse(JSON.stringify(data));
+    return data;
+  }
 
+  /**
+   * Parse one stored blob into a usable profile, or null if it is not one.
+   *
+   * Split out of `_load` because the cross-tab reconcile has to read exactly
+   * the same way — a foreign write is no more trustworthy than a stored one,
+   * and it arrives through the identical migrate/coerce path.
+   */
+  _parse(raw) {
     let parsed;
     try {
       parsed = JSON.parse(raw);
     } catch {
-      console.warn('[profile] stored profile is not valid JSON — starting fresh');
-      return freshProfile();
+      console.warn('[profile] stored profile is not valid JSON — ignoring it');
+      return null;
     }
     // `null`, arrays and primitives all parse cleanly and are all unusable.
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      console.warn('[profile] stored profile is not an object — starting fresh');
-      return freshProfile();
+      console.warn('[profile] stored profile is not an object — ignoring it');
+      return null;
     }
 
     try {
       return this._coerce(this._migrate(parsed));
     } catch (e) {
-      console.warn('[profile] migration failed — starting fresh:', e);
-      return freshProfile();
+      console.warn('[profile] migration failed — ignoring the stored profile:', e);
+      return null;
     }
   }
 
@@ -504,12 +690,62 @@ export class Profile {
    * stringify — but it still only ever runs on a timer or on page hide, never
    * inside a frame.
    */
+  /**
+   * Fold in anything another tab has written since this one last touched disk.
+   *
+   * Every tab of the same origin shares one `localStorage`, holds its own
+   * in-memory snapshot taken at `init()`, and used to `setItem` that snapshot
+   * over whatever was there. Two tabs open at once — a duplicated tab, a
+   * restored session, a player checking a build in a second window — meant the
+   * one that wrote *last* won in full: a 25-kill profile was silently replaced
+   * by a 13-kill one, and an unlock earned in the losing tab was gone with no
+   * error and no way for either tab to know.
+   *
+   * So the write is now a compare-and-merge, not an overwrite. The compare is
+   * the raw bytes: if the disk still holds exactly what this tab last read or
+   * wrote, nobody else has been here and the write is unconditional. If it has
+   * moved, the two profiles are merged against their common ancestor (see
+   * `mergeProfiles`) and the merge is what gets written.
+   *
+   * Returns whether the merge kept anything the disk did not already have.
+   */
+  _reconcile() {
+    let raw = null;
+    try {
+      raw = localStorage.getItem(STORE_KEY);
+    } catch {
+      return false;
+    }
+    if (raw === this._baseRaw) return false;
+    const remote = raw ? this._parse(raw) : null;
+    // Unreadable, or cleared out from under us. This tab's copy is the only
+    // usable profile left, so it is the one that gets written.
+    if (!remote) { this._baseRaw = raw; return true; }
+    const { data, tookLocal } = mergeProfiles(this._baseData || freshProfile(), remote, this.data);
+    this.data = data;
+    // Anything derived from the profile was computed against the pre-merge copy.
+    this._facts = null;
+    this._baseRaw = raw;
+    this._baseData = remote;
+    return tookLocal;
+  }
+
   flush() {
     if (!this._dirty || this._storageBlocked) return;
     this._dirty = false;
+    // `reset()` and `importProfile()` are deliberate replacements — the player
+    // asked for this profile to *become* something. Merging a wipe against the
+    // copy it is wiping would undo it.
+    if (this._authoritative) this._authoritative = false;
+    else this._reconcile();
     this.data.updatedAt = Date.now();
     try {
-      localStorage.setItem(STORE_KEY, JSON.stringify(this.data));
+      const json = JSON.stringify(this.data);
+      localStorage.setItem(STORE_KEY, json);
+      // The bytes we just wrote are the new ancestor: the next divergence is
+      // measured from here, not from whatever this tab loaded at boot.
+      this._baseRaw = json;
+      this._baseData = JSON.parse(json);
     } catch (e) {
       // Quota, private mode, or a storage partition that went away mid-session.
       // Stop retrying every 1.5s; the run still plays, it just will not persist.
@@ -598,6 +834,9 @@ export class Profile {
       masked,
       progress,
       goal,
+      // The unit `progress`/`goal` are counted in, so the logbook's list row and
+      // detail panel can print a duration as a duration.
+      format: challengeFormat(def.id),
       fraction: goal > 0 ? progress / goal : 0,
       done,
       doneAt: st?.doneAt ?? 0,
@@ -752,6 +991,8 @@ export class Profile {
     // The derived view is a cache of data that no longer exists.
     this._facts = null;
     this._dirty = true;
+    // A wipe is not a divergence to be merged away.
+    this._authoritative = true;
     this.flush();
   }
 
@@ -783,6 +1024,9 @@ export class Profile {
     this.data = next;
     this._facts = null;
     this._dirty = true;
+    // The player handed us this file to *be* their profile; merging the copy it
+    // replaces back into it would make the import a partial one.
+    this._authoritative = true;
     this.flush();
     return true;
   }
@@ -941,6 +1185,11 @@ export class Profile {
       if (!def || (def.hidden && !st.done)) continue;
       advanced.push({
         id, name: def.name, from: was, to: st.progress, goal: st.goal || goalOf(def, this.facts()),
+        // Same tag `records` below carries, for the same reason: `marathon`'s
+        // progress is seconds, and "1,074 / 1,800" on the one readout built to
+        // answer "how close am I" is a number the player has to divide by 60 in
+        // their head. See `challengeFormat`.
+        format: challengeFormat(id),
       });
     }
     // Closest to done first: the row a player is one run away from is the row
@@ -1108,9 +1357,16 @@ export class Profile {
       // stream includes every player's hits, and "took no damage this stage"
       // must mean this player.
       if (e.target !== this.ctx?.player && this.ctx?.netRole !== 'single') return;
-      run.damageTaken += amount;
-      run.damageTakenThisStage += amount;
-      this.data.stats.damageTaken += amount;
+      // A hit a barrier ate whole is not damage taken. `amount` is what the
+      // attack carried; `toHealth` is what reached the survivor, and the two
+      // differ by exactly the absorbed part. Counting the former made
+      // `untouchable` and `ironclad` unachievable for anyone holding a barrier
+      // item -- the shield did its job and the challenge punished them for it.
+      const taken = num(e?.toHealth ?? e?.amount, 0);
+      if (taken <= 0) return;
+      run.damageTaken += taken;
+      run.damageTakenThisStage += taken;
+      this.data.stats.damageTaken += taken;
     } else if (e?.source?.isPlayer) {
       if (!this._isLocalSource(e.source)) return;
       run.damageDealt += amount;

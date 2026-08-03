@@ -1,0 +1,73 @@
+{
+  "results": {
+    "stokeOnRay": {
+      "on2m": {
+        "rangeFromMuzzleM": 2,
+        "casts": 20,
+        "landed": 20,
+        "directDamage": 259.4,
+        "expected": 247
+      },
+      "on4m": {
+        "rangeFromMuzzleM": 4,
+        "casts": 20,
+        "landed": 20,
+        "directDamage": 247,
+        "expected": 247
+      },
+      "on6m": {
+        "rangeFromMuzzleM": 6,
+        "casts": 20,
+        "landed": 20,
+        "directDamage": 247,
+        "expected": 247
+      },
+      "on7_5m": {
+        "rangeFromMuzzleM": 7.5,
+        "casts": 20,
+        "landed": 0,
+        "directDamage": 0,
+        "expected": 247
+      },
+      "parallax": {
+        "rayVsBodyAngleRad": 0.339,
+        "coneHalfAngleRad": 0.42,
+        "rayOriginIsCamera": 0
+      }
+    },
+    "redoubtArmour": {
+      "frontalDamage": 120,
+      "rearDamage": 1000,
+      "unshieldedReference": 1000,
+      "frontReductionMeasured": 0.88,
+      "declaredFrontArmor": 0.88,
+      "declaredFrontArc": 1.3,
+      "facingPlayerFront": true,
+      "facingPlayerRear": false
+    },
+    "redoubtTraverse": {
+      "stationary": {
+        "mode": "still",
+        "seconds": 40,
+        "damageTaken": 492.7,
+        "dps": 12.32,
+        "enemyYawTravelRad": 2.19,
+        "turnRateDeclared": 1.1,
+        "fractionOfTimePlayerOutsideFrontArc": 0.08,
+        "finalDistM": 18
+      },
+      "strafing": {
+        "mode": "strafe",
+        "seconds": 40,
+        "damageTaken": 328.4,
+        "dps": 8.21,
+        "enemyYawTravelRad": 1.82,
+        "turnRateDeclared": 1.1,
+        "fractionOfTimePlayerOutsideFrontArc": 0.01,
+        "finalDistM": 24
+      }
+    }
+  },
+  "errors": [],
+  "frameErrors": 0
+}

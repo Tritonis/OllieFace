@@ -1,0 +1,66 @@
+{
+  "step1_afterA100": {
+    "A": {
+      "memKills": 100,
+      "baseKills": 100,
+      "baseRawKills": 100,
+      "diskKills": 100,
+      "dirty": false
+    },
+    "B": {
+      "memKills": 100,
+      "baseKills": 100,
+      "baseRawKills": 100,
+      "diskKills": 100,
+      "dirty": false
+    }
+  },
+  "step2_afterAReset": {
+    "A": {
+      "memKills": 0,
+      "baseKills": 0,
+      "baseRawKills": 0,
+      "diskKills": 0,
+      "dirty": false
+    },
+    "B": {
+      "memKills": 0,
+      "baseKills": 0,
+      "baseRawKills": 0,
+      "diskKills": 0,
+      "dirty": false
+    }
+  },
+  "step3_afterBWriteImmediate": {
+    "A": {
+      "memKills": 0,
+      "baseKills": 0,
+      "baseRawKills": 0,
+      "diskKills": 1,
+      "dirty": false
+    },
+    "B": {
+      "memKills": 1,
+      "baseKills": 1,
+      "baseRawKills": 1,
+      "diskKills": 1,
+      "dirty": false
+    }
+  },
+  "step4_afterSettle": {
+    "A": {
+      "memKills": 1,
+      "baseKills": 1,
+      "baseRawKills": 1,
+      "diskKills": 1,
+      "dirty": false
+    },
+    "B": {
+      "memKills": 1,
+      "baseKills": 1,
+      "baseRawKills": 1,
+      "diskKills": 1,
+      "dirty": false
+    }
+  }
+}

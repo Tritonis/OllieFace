@@ -1,0 +1,93 @@
+{
+  "out": {
+    "knockback": [
+      {
+        "k": 3,
+        "dx": 0.723,
+        "extResidual": 0.0074
+      },
+      {
+        "k": 6,
+        "dx": 1.447,
+        "extResidual": 0.0149
+      },
+      {
+        "k": 9,
+        "dx": 2.17,
+        "extResidual": 0.0223
+      },
+      {
+        "k": 12,
+        "dx": 2.894,
+        "extResidual": 0.0297
+      },
+      {
+        "k": 20,
+        "dx": 4.823,
+        "extResidual": 0.0496
+      },
+      {
+        "k": 40,
+        "dx": 6.113,
+        "extResidual": 0
+      }
+    ],
+    "stacked5x9": {
+      "dx": 5.991
+    },
+    "pull": {
+      "stationary_10m_1p5s": {
+        "finalD": 4.568,
+        "minD": 4.568,
+        "ext": 4.885
+      },
+      "stationary_5m_1p5s": {
+        "finalD": 0.161,
+        "minD": 0.028,
+        "ext": -3.007
+      },
+      "sprintAway_10m_1p5s": {
+        "finalD": 1.639,
+        "minD": 1.615,
+        "ext": 5.424
+      },
+      "sustained_10s": {
+        "finalD": 2.944,
+        "minD": 2.943,
+        "ext": 5.56
+      }
+    },
+    "cylCount": 316,
+    "wallCyl": {
+      "x": 33.69999593040267,
+      "z": -64.58022614665904,
+      "r": 3.74,
+      "y0": 23.297664642333984,
+      "y1": 35.49766464233399
+    },
+    "pullIntoWall": {
+      "minGap": 2.55,
+      "penetratedSteps": 0,
+      "finalX": 40.44,
+      "cylX": 33.7
+    },
+    "boundPush": {
+      "bound": 104,
+      "outSteps": 0,
+      "maxOver": 0,
+      "finalX": 99.191,
+      "vx": -18.272,
+      "ext": 42.206
+    },
+    "dashClearsExternal": {
+      "extBefore": 8.42,
+      "extAfter": 0
+    },
+    "zeroHorizSteps": {
+      "of": 240,
+      "zeroSteps": 240
+    },
+    "errors": 0
+  },
+  "errs": []
+}

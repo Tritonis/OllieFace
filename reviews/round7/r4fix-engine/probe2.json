@@ -1,0 +1,67 @@
+{
+  "settles": {
+    "writesByA": 1,
+    "writesByB": 1,
+    "diskKills": 14,
+    "aMemoryKills": 14,
+    "bMemoryKills": 14
+  },
+  "resetVsStaleTab": {
+    "afterResetDisk": 0,
+    "bMemoryAfterResetEvent": 0,
+    "afterStaleTabWrites": 1
+  },
+  "visibilityFlush": {
+    "midDebounceKills": 1,
+    "afterHiddenDispatch": 5
+  },
+  "foreignClear": {
+    "diskAfterClear": {
+      "version": 2,
+      "createdAt": 1785726595773,
+      "updatedAt": 1785726661032,
+      "unlocks": {
+        "survivor": {},
+        "item": {},
+        "equipment": {},
+        "artifact": {},
+        "skin": {}
+      },
+      "challenges": {},
+      "encounters": {
+        "item": {},
+        "equipment": {},
+        "enemy": {},
+        "boss": {},
+        "survivor": {}
+      },
+      "survivors": {},
+      "runs": [],
+      "stats": {
+        "runs": 0,
+        "wins": 0,
+        "deaths": 0,
+        "timePlayed": 0,
+        "kills": 42,
+        "elites": 0,
+        "bosses": 0,
+        "damageDealt": 0,
+        "damageTaken": 0,
+        "items": 0,
+        "gold": 0,
+        "stagesCleared": 0,
+        "teleporters": 0,
+        "bestStage": 0,
+        "bestTime": 0,
+        "bestKills": 0,
+        "highestHit": 0,
+        "bestLevel": 0,
+        "bestGold": 0,
+        "bestItems": 0
+      }
+    },
+    "aMemoryKills": 42
+  },
+  "frameErrors": 0,
+  "consoleErrors": []
+}

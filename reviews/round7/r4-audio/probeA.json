@@ -1,0 +1,352 @@
+{
+  "intensity": [
+    {
+      "scen": "stage1-full-arena (cap18,18 near,diff1.25)",
+      "I": 0.8128,
+      "pressure": 0.9,
+      "arc": 0.1,
+      "sustain": 0.9,
+      "levels": {
+        "sub": 0.89,
+        "pad": 0.19,
+        "kick": 0.5,
+        "hat": 0.82,
+        "bass": 0.52,
+        "openhat": 0.95,
+        "clap": 3.5,
+        "perc": 1.98,
+        "acid": 0.395,
+        "lead": 0
+      }
+    },
+    {
+      "scen": "stage1-full-arena diff1.0",
+      "I": 0.792,
+      "pressure": 0.9,
+      "arc": 0,
+      "sustain": 0.9,
+      "levels": {
+        "sub": 0.89,
+        "pad": 0.19,
+        "kick": 0.5,
+        "hat": 0.82,
+        "bass": 0.52,
+        "openhat": 0.95,
+        "clap": 3.5,
+        "perc": 1.98,
+        "acid": 0.322,
+        "lead": 0
+      }
+    },
+    {
+      "scen": "stage1-24-enemies cap18",
+      "I": 0.8128,
+      "pressure": 0.9,
+      "arc": 0.1,
+      "sustain": 0.9,
+      "levels": {
+        "sub": 0.89,
+        "pad": 0.19,
+        "kick": 0.5,
+        "hat": 0.82,
+        "bass": 0.52,
+        "openhat": 0.95,
+        "clap": 3.5,
+        "perc": 1.98,
+        "acid": 0.395,
+        "lead": 0
+      }
+    },
+    {
+      "scen": "stage4 arc-dominant (cap60,60 near,diff3.5)",
+      "I": 1,
+      "pressure": 0.9,
+      "arc": 1,
+      "sustain": 0.9,
+      "levels": {
+        "sub": 0.89,
+        "pad": 0.19,
+        "kick": 0.5,
+        "hat": 0.82,
+        "bass": 0.52,
+        "openhat": 0.95,
+        "clap": 3.5,
+        "perc": 1.98,
+        "acid": 0.49,
+        "lead": 2.12
+      }
+    },
+    {
+      "scen": "stage4 EMPTY arena diff3.5",
+      "I": 1,
+      "pressure": 0,
+      "arc": 1,
+      "sustain": 0,
+      "levels": {
+        "sub": 0.89,
+        "pad": 0.19,
+        "kick": 0.5,
+        "hat": 0.82,
+        "bass": 0.52,
+        "openhat": 0.95,
+        "clap": 3.5,
+        "perc": 1.98,
+        "acid": 0.49,
+        "lead": 2.12
+      }
+    },
+    {
+      "scen": "stage4 half arena diff3.5",
+      "I": 1,
+      "pressure": 0.9,
+      "arc": 1,
+      "sustain": 0.9,
+      "levels": {
+        "sub": 0.89,
+        "pad": 0.19,
+        "kick": 0.5,
+        "hat": 0.82,
+        "bass": 0.52,
+        "openhat": 0.95,
+        "clap": 3.5,
+        "perc": 1.98,
+        "acid": 0.49,
+        "lead": 2.12
+      }
+    },
+    {
+      "scen": "boss floor (0 enemies, boss alive)",
+      "I": 0.8224,
+      "pressure": 0.8,
+      "arc": 0.4,
+      "sustain": 0.8,
+      "levels": {
+        "sub": 0.89,
+        "pad": 0.19,
+        "kick": 0.5,
+        "hat": 0.82,
+        "bass": 0.52,
+        "openhat": 0.95,
+        "clap": 3.5,
+        "perc": 1.98,
+        "acid": 0.428,
+        "lead": 0
+      }
+    },
+    {
+      "scen": "teleporter charging (0 enemies)",
+      "I": 0.8435,
+      "pressure": 0.84,
+      "arc": 0.4,
+      "sustain": 0.84,
+      "levels": {
+        "sub": 0.89,
+        "pad": 0.19,
+        "kick": 0.5,
+        "hat": 0.82,
+        "bass": 0.52,
+        "openhat": 0.95,
+        "clap": 3.5,
+        "perc": 1.98,
+        "acid": 0.49,
+        "lead": 0
+      }
+    },
+    {
+      "scen": "boss + full arena diff3.5",
+      "I": 1,
+      "pressure": 0.9,
+      "arc": 1,
+      "sustain": 0.9,
+      "levels": {
+        "sub": 0.89,
+        "pad": 0.19,
+        "kick": 0.5,
+        "hat": 0.82,
+        "bass": 0.52,
+        "openhat": 0.95,
+        "clap": 3.5,
+        "perc": 1.98,
+        "acid": 0.49,
+        "lead": 2.12
+      }
+    },
+    {
+      "scen": "diff 6 (Collapse) full arena",
+      "I": 1,
+      "pressure": 0.9,
+      "arc": 1,
+      "sustain": 0.9,
+      "levels": {
+        "sub": 0.89,
+        "pad": 0.19,
+        "kick": 0.5,
+        "hat": 0.82,
+        "bass": 0.52,
+        "openhat": 0.95,
+        "clap": 3.5,
+        "perc": 1.98,
+        "acid": 0.49,
+        "lead": 2.12
+      }
+    }
+  ],
+  "ceiling": {
+    "formula": "I = arc + (1-arc)*pressure*0.88, pressure_target = clamp(sustain+heat,0,1), sustain <= 0.9",
+    "grid": [
+      {
+        "arc": 0,
+        "pMax": 0.88,
+        "pTypical0_95": 0.836
+      },
+      {
+        "arc": 0.1,
+        "pMax": 0.892,
+        "pTypical0_95": 0.8524
+      },
+      {
+        "arc": 0.25,
+        "pMax": 0.91,
+        "pTypical0_95": 0.877
+      },
+      {
+        "arc": 0.5,
+        "pMax": 0.94,
+        "pTypical0_95": 0.918
+      },
+      {
+        "arc": 0.75,
+        "pMax": 0.97,
+        "pTypical0_95": 0.959
+      },
+      {
+        "arc": 1,
+        "pMax": 1,
+        "pTypical0_95": 1
+      }
+    ],
+    "note_sustain_max": 0.9,
+    "note_pressure_without_heat": 0.9,
+    "I_at_arc0_no_heat": 0.792,
+    "I_at_arc0_full_heat": 0.88,
+    "lead_enter": 0.86,
+    "lead_full": 0.98
+  },
+  "ceiling_run": {
+    "idle": {
+      "runT": 0,
+      "I": 0
+    },
+    "at6": {
+      "runT": 6,
+      "I": 0.17
+    },
+    "at60": {
+      "runT": 60,
+      "I": 0.7962
+    },
+    "ceilingAt6s": 0.17
+  },
+  "stopLatch": {
+    "stepsBeforeStop": 27,
+    "stepsAfterStop": 27,
+    "stepsAfterReset": 27,
+    "stoppedFlagAfterReset": true,
+    "verdict": "reset() does NOT revive a stopped engine"
+  },
+  "resync": {
+    "three_0p6s_stalls": {
+      "bars": 6,
+      "rewinds": 0,
+      "resyncs": 3,
+      "steps": 94,
+      "finalBar": 6
+    },
+    "no_stall": {
+      "bars": 6,
+      "rewinds": 0,
+      "resyncs": 0,
+      "steps": 100,
+      "finalBar": 6
+    },
+    "tab_backgrounded_30s": {
+      "barBefore": 1,
+      "barAfter": 16,
+      "stepBefore": 19,
+      "stepAfter": 260,
+      "jumped": 241
+    }
+  },
+  "hatQuantise": {
+    "perBar": [
+      16,
+      16,
+      16,
+      16,
+      16,
+      16,
+      16,
+      16,
+      16,
+      16,
+      16,
+      16,
+      16,
+      16,
+      16
+    ],
+    "clean": 15,
+    "total": 15
+  },
+  "acid": {
+    "events": 424,
+    "outOfOrder": 161,
+    "worstBacktrack": 0.197,
+    "longestFlatHold_ms": 27.89,
+    "top5FlatHolds_ms": [
+      27.89,
+      27.89,
+      27.89,
+      27.89,
+      27.89
+    ],
+    "negativeFlats": 35,
+    "stepDur_at142bpm_ms": 105.63
+  },
+  "acidBpmDrift": {
+    "pairs": 417,
+    "rampsCrossingNextNote": 30
+  },
+  "musicNodes": {
+    "intensity": 1,
+    "nodesPerSecond": 110.1,
+    "reportedVoicesPeak": 4863,
+    "note": "engine .voices never decrements here (no onended in stub) - nodes/s is the real figure"
+  },
+  "silentResume": {
+    "before": {
+      "steps": 252,
+      "I": 0.45,
+      "musicTime": 30.496,
+      "bar": 15
+    },
+    "during": {
+      "steps": 252,
+      "I": 0.6833,
+      "musicTime": 30.496,
+      "bar": 15
+    },
+    "after": {
+      "steps": 255,
+      "bar": 26,
+      "jumpedSteps": null,
+      "musicTime": 50.473,
+      "barJump": 11
+    }
+  },
+  "layerCur": {
+    "note": "informational",
+    "bar": 50,
+    "steps": 801
+  }
+}

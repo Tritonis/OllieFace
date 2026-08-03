@@ -1,0 +1,73 @@
+{
+  "results": {
+    "field": {
+      "enemies": 0,
+      "entities": 1,
+      "directorEnabled": false
+    },
+    "ordinaryMovement": {
+      "sprintDist2s": 9.99,
+      "maxExternalDuringSprint": 0,
+      "maxEnemiesOnField": 0,
+      "stopFramesAfterRelease": 1,
+      "driftIn1sAfterStop": 0,
+      "externalAfterStop": 0,
+      "groundedAtEnd": true,
+      "speedAtEnd": 0.02
+    },
+    "pullClean": {
+      "lasher10": {
+        "unit": "lasher",
+        "attack": "reel",
+        "pull": 19,
+        "dist": 10,
+        "accel": 11.69,
+        "input": "none",
+        "closedTowardPullerIn1_5s": 3.558,
+        "groundMoved": 3.558,
+        "maxExternal": 2.82
+      },
+      "lasher5": {
+        "unit": "lasher",
+        "attack": "reel",
+        "pull": 19,
+        "dist": 5,
+        "accel": 15.35,
+        "input": "none",
+        "closedTowardPullerIn1_5s": 4.67,
+        "groundMoved": 4.67,
+        "maxExternal": 3.701
+      },
+      "maw10": {
+        "unit": "maw",
+        "attack": "draw",
+        "pull": 26,
+        "dist": 10,
+        "accel": 18.35,
+        "input": "none",
+        "closedTowardPullerIn1_5s": 5.585,
+        "groundMoved": 5.585,
+        "maxExternal": 4.426
+      },
+      "herald10": {
+        "unit": "herald",
+        "attack": "collapse",
+        "pull": 30,
+        "dist": 10,
+        "accel": 22.5,
+        "input": "none",
+        "closedTowardPullerIn1_5s": 6.22,
+        "groundMoved": 6.22,
+        "maxExternal": 5.426
+      }
+    },
+    "sprintOutOfHeraldPull": {
+      "startDistance": 10,
+      "endDistance": 21.6,
+      "minDistance": 10,
+      "maxDistance": 21.6,
+      "groundGainedIn2s": 11.6
+    }
+  },
+  "errors": []
+}

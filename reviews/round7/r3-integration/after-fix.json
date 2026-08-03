@@ -1,0 +1,747 @@
+{
+ "pickup": {
+  "cases": [
+   {
+    "label": "give common (syringe)",
+    "cues": [
+     {
+      "cue": "pickup",
+      "tier": 0,
+      "voices": 6
+     }
+    ],
+    "wire": [
+     {
+      "id": "syringe",
+      "count": 1,
+      "tier": "common",
+      "delta": 1
+     }
+    ]
+   },
+   {
+    "label": "give uncommon (ukulele)",
+    "cues": [
+     {
+      "cue": "pickup",
+      "tier": 1,
+      "voices": 8
+     }
+    ],
+    "wire": [
+     {
+      "id": "ukulele",
+      "count": 1,
+      "tier": "uncommon",
+      "delta": 1
+     }
+    ]
+   },
+   {
+    "label": "give legendary (behemoth)",
+    "cues": [
+     {
+      "cue": "pickup",
+      "tier": 2,
+      "voices": 11
+     }
+    ],
+    "wire": [
+     {
+      "id": "behemoth",
+      "count": 1,
+      "tier": "legendary",
+      "delta": 1
+     }
+    ]
+   },
+   {
+    "label": "give boss (titanic-knurl)",
+    "cues": [
+     {
+      "cue": "pickup",
+      "tier": 3,
+      "voices": 11
+     }
+    ],
+    "wire": [
+     {
+      "id": "titanic-knurl",
+      "count": 1,
+      "tier": "boss",
+      "delta": 1
+     }
+    ]
+   },
+   {
+    "label": "give lunar (shattered-covenant)",
+    "cues": [
+     {
+      "cue": "pickup",
+      "tier": 4,
+      "voices": 11
+     }
+    ],
+    "wire": [
+     {
+      "id": "shattered-covenant",
+      "count": 1,
+      "tier": "lunar",
+      "delta": 1
+     }
+    ]
+   },
+   {
+    "label": "give blight (spasm-gland)",
+    "cues": [
+     {
+      "cue": "pickup",
+      "tier": 0,
+      "voices": 6
+     },
+     {
+      "cue": "deny",
+      "voices": 2
+     },
+     {
+      "cue": "pickup",
+      "tier": 0,
+      "voices": 6
+     }
+    ],
+    "wire": [
+     {
+      "id": "spasm-gland",
+      "count": 1,
+      "tier": "blight",
+      "delta": 1
+     },
+     {
+      "id": "syringe",
+      "count": 0,
+      "tier": "common",
+      "delta": -1
+     },
+     {
+      "id": "spasm-gland",
+      "count": 2,
+      "tier": "blight",
+      "delta": 1
+     }
+    ]
+   },
+   {
+    "label": "give common again (syringe)",
+    "cues": [
+     {
+      "cue": "pickup",
+      "tier": 0,
+      "voices": 6
+     }
+    ],
+    "wire": [
+     {
+      "id": "spasm-gland",
+      "count": 3,
+      "tier": "blight",
+      "delta": 1
+     }
+    ]
+   },
+   {
+    "label": "take common (syringe)",
+    "cues": [],
+    "wire": []
+   },
+   {
+    "label": "setEquipment(blink-anchor)",
+    "cues": [
+     {
+      "cue": "pickup",
+      "tier": 1,
+      "voices": 8
+     }
+    ],
+    "wire": []
+   }
+  ],
+  "audioState": "running"
+ },
+ "enemySlow": [
+  {
+   "label": "clean",
+   "multiplier": 1,
+   "peakSpeed": 8.4,
+   "dist2s": 16.8,
+   "moveSpeed": 8.4,
+   "state": "chase"
+  },
+  {
+   "label": "slow x1",
+   "multiplier": 0.6,
+   "peakSpeed": 5.04,
+   "dist2s": 10.08,
+   "moveSpeed": 8.4,
+   "state": "chase"
+  },
+  {
+   "label": "slow x5",
+   "multiplier": 0.25,
+   "peakSpeed": 2.1,
+   "dist2s": 4.2,
+   "moveSpeed": 8.4,
+   "state": "chase"
+  },
+  {
+   "label": "freeze x1",
+   "multiplier": 0,
+   "peakSpeed": 0,
+   "dist2s": 0,
+   "moveSpeed": 8.4,
+   "state": "chase"
+  }
+ ],
+ "jumpImpulse": [
+  {
+   "label": "no items, standing",
+   "holdingForward": false,
+   "jumpEvents": 1,
+   "peakHoriz": 0,
+   "dist1s": 0,
+   "pendingAfter": 0
+  },
+  {
+   "label": "no items, running",
+   "holdingForward": true,
+   "jumpEvents": 1,
+   "peakHoriz": 10.15,
+   "dist1s": 4.822,
+   "pendingAfter": 0
+  },
+  {
+   "label": "1x Waxed Wing, standing",
+   "holdingForward": false,
+   "jumpEvents": 1,
+   "peakHoriz": 9.767,
+   "dist1s": 5.889,
+   "pendingAfter": 0
+  },
+  {
+   "label": "1x Waxed Wing, running",
+   "holdingForward": true,
+   "jumpEvents": 1,
+   "peakHoriz": 19.357,
+   "dist1s": 4.981,
+   "pendingAfter": 0
+  },
+  {
+   "label": "3x Waxed Wing, running",
+   "holdingForward": true,
+   "jumpEvents": 1,
+   "peakHoriz": 39.357,
+   "dist1s": 4.942,
+   "pendingAfter": 0
+  },
+  {
+   "label": "1x Updraft Vents, running",
+   "holdingForward": true,
+   "jumpEvents": 1,
+   "peakHoriz": 14.357,
+   "dist1s": 4.927,
+   "pendingAfter": 0
+  }
+ ],
+ "tectonic": {
+  "peakHorizPerJump": [
+   10.15,
+   10.15,
+   16.15,
+   10.15
+  ],
+  "quakes": [
+   {
+    "jump": 0,
+    "radius": 9,
+    "damage": 42
+   }
+  ]
+ },
+ "pull": [
+  {
+   "pull": 10,
+   "range": 26,
+   "dist": 10,
+   "sprint": false,
+   "towardPuller": 1.873,
+   "travel": 1.873,
+   "terminalDrag": 1.484
+  },
+  {
+   "pull": 13,
+   "range": 26,
+   "dist": 10,
+   "sprint": false,
+   "towardPuller": 2.435,
+   "travel": 2.435,
+   "terminalDrag": 1.929
+  },
+  {
+   "pull": 16,
+   "range": 26,
+   "dist": 10,
+   "sprint": false,
+   "towardPuller": 2.997,
+   "travel": 2.997,
+   "terminalDrag": 2.374
+  },
+  {
+   "pull": 19,
+   "range": 26,
+   "dist": 10,
+   "sprint": false,
+   "towardPuller": 3.558,
+   "travel": 3.558,
+   "terminalDrag": 2.82
+  },
+  {
+   "pull": 24,
+   "range": 26,
+   "dist": 10,
+   "sprint": false,
+   "towardPuller": 4.495,
+   "travel": 4.495,
+   "terminalDrag": 3.562
+  },
+  {
+   "pull": 26,
+   "range": 26,
+   "dist": 10,
+   "sprint": false,
+   "towardPuller": 4.869,
+   "travel": 4.869,
+   "terminalDrag": 3.859
+  },
+  {
+   "pull": 30,
+   "range": 26,
+   "dist": 10,
+   "sprint": false,
+   "towardPuller": 5.619,
+   "travel": 5.619,
+   "terminalDrag": 4.452
+  }
+ ],
+ "pullClose": [
+  {
+   "pull": 10,
+   "range": 26,
+   "dist": 5,
+   "sprint": false,
+   "towardPuller": 2.458,
+   "travel": 2.458,
+   "terminalDrag": 1.948
+  },
+  {
+   "pull": 13,
+   "range": 26,
+   "dist": 5,
+   "sprint": false,
+   "towardPuller": 3.196,
+   "travel": 3.196,
+   "terminalDrag": 2.532
+  },
+  {
+   "pull": 16,
+   "range": 26,
+   "dist": 5,
+   "sprint": false,
+   "towardPuller": 3.933,
+   "travel": 3.933,
+   "terminalDrag": 3.117
+  },
+  {
+   "pull": 19,
+   "range": 26,
+   "dist": 5,
+   "sprint": false,
+   "towardPuller": 4.67,
+   "travel": 4.67,
+   "terminalDrag": 3.701
+  },
+  {
+   "pull": 26,
+   "range": 26,
+   "dist": 5,
+   "sprint": false,
+   "towardPuller": 6.162,
+   "travel": 6.162,
+   "terminalDrag": 5.064
+  },
+  {
+   "pull": 30,
+   "range": 26,
+   "dist": 5,
+   "sprint": false,
+   "towardPuller": 6.253,
+   "travel": 6.253,
+   "terminalDrag": 5.843
+  }
+ ],
+ "pullSprintClose": [
+  {
+   "pull": 0,
+   "range": 26,
+   "dist": 5,
+   "sprint": true,
+   "towardPuller": -10.309,
+   "travel": 10.309,
+   "terminalDrag": 3.896
+  },
+  {
+   "pull": 19,
+   "range": 26,
+   "dist": 5,
+   "sprint": true,
+   "towardPuller": -10.424,
+   "travel": 10.424,
+   "terminalDrag": 3.701
+  },
+  {
+   "pull": 26,
+   "range": 26,
+   "dist": 5,
+   "sprint": true,
+   "towardPuller": -8.834,
+   "travel": 8.834,
+   "terminalDrag": 5.064
+  },
+  {
+   "pull": 30,
+   "range": 26,
+   "dist": 5,
+   "sprint": true,
+   "towardPuller": -7.851,
+   "travel": 7.851,
+   "terminalDrag": 5.843
+  }
+ ],
+ "pullPreferred": [
+  {
+   "pull": 19,
+   "range": 26,
+   "dist": 18,
+   "sprint": false,
+   "towardPuller": 1.779,
+   "travel": 1.779,
+   "terminalDrag": 1.41
+  },
+  {
+   "pull": 26,
+   "range": 26,
+   "dist": 18,
+   "sprint": false,
+   "towardPuller": 2.435,
+   "travel": 2.435,
+   "terminalDrag": 1.929
+  },
+  {
+   "pull": 32,
+   "range": 26,
+   "dist": 18,
+   "sprint": false,
+   "towardPuller": 2.997,
+   "travel": 2.997,
+   "terminalDrag": 2.374
+  },
+  {
+   "pull": 38,
+   "range": 26,
+   "dist": 18,
+   "sprint": false,
+   "towardPuller": 3.558,
+   "travel": 3.558,
+   "terminalDrag": 2.82
+  },
+  {
+   "pull": 44,
+   "range": 26,
+   "dist": 18,
+   "sprint": false,
+   "towardPuller": 4.12,
+   "travel": 4.12,
+   "terminalDrag": 3.265
+  }
+ ],
+ "pullFar": [
+  {
+   "pull": 19,
+   "range": 26,
+   "dist": 23,
+   "sprint": false,
+   "towardPuller": 0.667,
+   "travel": 0.667,
+   "terminalDrag": 0.529
+  },
+  {
+   "pull": 32,
+   "range": 26,
+   "dist": 23,
+   "sprint": false,
+   "towardPuller": 1.124,
+   "travel": 1.124,
+   "terminalDrag": 0.89
+  },
+  {
+   "pull": 38,
+   "range": 26,
+   "dist": 23,
+   "sprint": false,
+   "towardPuller": 1.334,
+   "travel": 1.334,
+   "terminalDrag": 1.057
+  }
+ ],
+ "pullSprint": [
+  {
+   "pull": 0,
+   "range": 26,
+   "dist": 10,
+   "sprint": true,
+   "towardPuller": -10.572,
+   "travel": 10.578,
+   "terminalDrag": 2.968
+  },
+  {
+   "pull": 13,
+   "range": 26,
+   "dist": 10,
+   "sprint": true,
+   "towardPuller": -10.953,
+   "travel": 10.989,
+   "terminalDrag": 1.929
+  },
+  {
+   "pull": 19,
+   "range": 26,
+   "dist": 10,
+   "sprint": true,
+   "towardPuller": -10.609,
+   "travel": 10.618,
+   "terminalDrag": 2.82
+  },
+  {
+   "pull": 26,
+   "range": 26,
+   "dist": 10,
+   "sprint": true,
+   "towardPuller": -10.356,
+   "travel": 10.356,
+   "terminalDrag": 3.859
+  },
+  {
+   "pull": 30,
+   "range": 26,
+   "dist": 10,
+   "sprint": true,
+   "towardPuller": -9.606,
+   "travel": 9.606,
+   "terminalDrag": 4.452
+  },
+  {
+   "pull": 38,
+   "range": 26,
+   "dist": 10,
+   "sprint": true,
+   "towardPuller": -8.108,
+   "travel": 8.108,
+   "terminalDrag": 5.639
+  },
+  {
+   "pull": 44,
+   "range": 26,
+   "dist": 10,
+   "sprint": true,
+   "towardPuller": -6.985,
+   "travel": 6.985,
+   "terminalDrag": 6.53
+  }
+ ],
+ "pullSprintPreferred": [
+  {
+   "pull": 0,
+   "range": 26,
+   "dist": 18,
+   "sprint": true,
+   "towardPuller": -11.209,
+   "travel": 11.264,
+   "terminalDrag": 1.484
+  },
+  {
+   "pull": 19,
+   "range": 26,
+   "dist": 18,
+   "sprint": true,
+   "towardPuller": -11.269,
+   "travel": 11.328,
+   "terminalDrag": 1.41
+  },
+  {
+   "pull": 32,
+   "range": 26,
+   "dist": 18,
+   "sprint": true,
+   "towardPuller": -10.754,
+   "travel": 10.773,
+   "terminalDrag": 2.374
+  },
+  {
+   "pull": 38,
+   "range": 26,
+   "dist": 18,
+   "sprint": true,
+   "towardPuller": -10.609,
+   "travel": 10.618,
+   "terminalDrag": 2.82
+  },
+  {
+   "pull": 44,
+   "range": 26,
+   "dist": 18,
+   "sprint": true,
+   "towardPuller": -10.5,
+   "travel": 10.503,
+   "terminalDrag": 3.265
+  }
+ ],
+ "knockback": [
+  {
+   "knock": 9,
+   "disp1s": 2.136,
+   "peakHoriz": 8.42
+  },
+  {
+   "knock": 12,
+   "disp1s": 2.848,
+   "peakHoriz": 11.226
+  },
+  {
+   "knock": 20,
+   "disp1s": 4.747,
+   "peakHoriz": 18.71
+  }
+ ],
+ "knockAgainstInput": [
+  {
+   "knock": 0,
+   "netGain1s": 2.306,
+   "worstGiveback": 0
+  },
+  {
+   "knock": 9,
+   "netGain1s": 2.098,
+   "worstGiveback": 0
+  },
+  {
+   "knock": 12,
+   "netGain1s": 2.11,
+   "worstGiveback": -0.024
+  }
+ ],
+ "lasherLive": [
+  {
+   "pull": 19,
+   "standoff": 12,
+   "sprint": false,
+   "seconds": 25,
+   "minDistToLasher": 5.058,
+   "insideBlast": true,
+   "reelActiveFrames": 189,
+   "maxDrag": 3.599,
+   "playerHurtEvents": 2,
+   "damageTaken": 18.9,
+   "endDist": 5.058
+  },
+  {
+   "pull": 26,
+   "standoff": 12,
+   "sprint": false,
+   "seconds": 25,
+   "minDistToLasher": 6.145,
+   "insideBlast": false,
+   "reelActiveFrames": 91,
+   "maxDrag": 4.291,
+   "playerHurtEvents": 0,
+   "damageTaken": 0,
+   "endDist": 6.145
+  },
+  {
+   "pull": 19,
+   "standoff": 18,
+   "sprint": false,
+   "seconds": 25,
+   "minDistToLasher": 17.993,
+   "insideBlast": false,
+   "reelActiveFrames": 0,
+   "maxDrag": 0,
+   "playerHurtEvents": 0,
+   "damageTaken": 0,
+   "endDist": 17.993
+  },
+  {
+   "pull": 26,
+   "standoff": 18,
+   "sprint": false,
+   "seconds": 25,
+   "minDistToLasher": 17.993,
+   "insideBlast": false,
+   "reelActiveFrames": 0,
+   "maxDrag": 0,
+   "playerHurtEvents": 0,
+   "damageTaken": 0,
+   "endDist": 17.993
+  },
+  {
+   "pull": 26,
+   "standoff": 12,
+   "sprint": true,
+   "seconds": 25,
+   "minDistToLasher": 12,
+   "insideBlast": false,
+   "reelActiveFrames": 91,
+   "maxDrag": 0.015,
+   "playerHurtEvents": 0,
+   "damageTaken": 0,
+   "endDist": 67.165
+  },
+  {
+   "pull": 26,
+   "standoff": 18,
+   "sprint": true,
+   "seconds": 25,
+   "minDistToLasher": 18,
+   "insideBlast": false,
+   "reelActiveFrames": 0,
+   "maxDrag": 0,
+   "playerHurtEvents": 0,
+   "damageTaken": 0,
+   "endDist": 73.145
+  }
+ ],
+ "emptyAttacks": [
+  {
+   "label": "attacks: [] with no behavior",
+   "frameErrorsAdded": 0,
+   "lastFrameError": null,
+   "spawnThrew": null
+  },
+  {
+   "label": "attacks: [] with behavior ranged",
+   "frameErrorsAdded": 0,
+   "lastFrameError": null,
+   "spawnThrew": null
+  }
+ ],
+ "frameErrors": 0,
+ "lastFrameError": null,
+ "errors": []
+}

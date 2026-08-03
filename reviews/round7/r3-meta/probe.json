@@ -1,0 +1,590 @@
+{
+  "runTime": {
+    "runTimeAtStart": 0,
+    "zeroTime": {
+      "runTime": 0,
+      "blitz": {
+        "progress": 1,
+        "done": true,
+        "doneAt": 1785716117050,
+        "goal": 1
+      }
+    },
+    "at12min": {
+      "runTime": 720,
+      "marathon": {
+        "progress": 720,
+        "done": false,
+        "doneAt": 0,
+        "goal": 1800
+      },
+      "blitz": {
+        "progress": 1,
+        "done": true,
+        "doneAt": 1785716117050,
+        "goal": 1
+      }
+    },
+    "at31min": {
+      "runTime": 1860,
+      "marathon": {
+        "progress": 1800,
+        "done": true,
+        "doneAt": 1785716117051,
+        "goal": 1800
+      },
+      "currentRun": 1860
+    },
+    "afterRewind": 1860,
+    "blitzEarly": {
+      "runTime": 480,
+      "blitz": {
+        "progress": 1,
+        "done": true,
+        "doneAt": 1785716117051,
+        "goal": 1
+      }
+    },
+    "blitzLate": {
+      "runTime": 840,
+      "blitz": {
+        "progress": 0,
+        "done": false,
+        "doneAt": 0,
+        "goal": 1
+      }
+    },
+    "commit": {
+      "recordTime": 1200,
+      "marathon": {
+        "progress": 1200,
+        "done": false,
+        "doneAt": 0,
+        "goal": 1800
+      }
+    }
+  },
+  "saveDurability": {
+    "whereTheEventLands": {
+      "sawOnWindow": false,
+      "sawOnDocument": true
+    },
+    "hiddenTab": {
+      "before": 0,
+      "midDebounce": 0,
+      "afterHide": 7,
+      "inRun": 7,
+      "pending": {
+        "dirty": true,
+        "timerArmed": true
+      }
+    },
+    "pagehide": {
+      "beforePagehide": 7,
+      "after": 10
+    }
+  },
+  "saveSurvivesQuit": {
+    "seeded": {
+      "inRun": 11,
+      "storedImmediately": 11
+    },
+    "killsAfterColdBoot": 11
+  },
+  "survey": {
+    "before": {
+      "catalogue": {
+        "survivor": 5,
+        "item": 108,
+        "equipment": 14,
+        "enemy": 19,
+        "boss": 6
+      },
+      "distinct": {
+        "item": 0,
+        "equipment": 0,
+        "enemy": 0,
+        "boss": 0,
+        "survivor": 1
+      }
+    },
+    "afterSpecialsOnly": {
+      "catalogue": {
+        "survivor": 5,
+        "item": 108,
+        "equipment": 14,
+        "enemy": 19,
+        "boss": 6
+      },
+      "distinct": {
+        "item": 0,
+        "equipment": 0,
+        "enemy": 0,
+        "boss": 0,
+        "survivor": 1
+      }
+    },
+    "counts": {
+      "spawn": 19,
+      "boss": 6
+    },
+    "specialsInSpawnCards": [],
+    "specialsInBossCards": [],
+    "afterEveryRealCard": {
+      "catalogue": {
+        "survivor": 5,
+        "item": 108,
+        "equipment": 14,
+        "enemy": 19,
+        "boss": 6
+      },
+      "distinct": {
+        "item": 0,
+        "equipment": 0,
+        "enemy": 19,
+        "boss": 6,
+        "survivor": 1
+      }
+    },
+    "fieldGuide": {
+      "progress": 19,
+      "done": true,
+      "doneAt": 1785716124589,
+      "goal": 19
+    },
+    "apexSurvey": {
+      "progress": 6,
+      "done": true,
+      "doneAt": 1785716124589,
+      "goal": 6
+    },
+    "missing": {
+      "enemy": [],
+      "boss": []
+    },
+    "specialsRecorded": []
+  },
+  "bindings": {
+    "firstClaim": true,
+    "secondChallengeSameReward": false,
+    "bindingsAfter": {
+      "firstBlood": {
+        "type": "item",
+        "id": "r3-shared-id"
+      }
+    },
+    "idempotentRebind": false,
+    "twoRewardsOneChallenge": false,
+    "malformedType": false,
+    "emptyId": false,
+    "unknownChallenge": false,
+    "freshPairStillBinds": true,
+    "challengeCount": 38,
+    "duplicateIds": 0,
+    "wholeRosterDesc": "Play a run with every survivor.",
+    "finisherDesc": "Finish a run at the Fracture instead of dying in it.",
+    "veteranDesc": "Finish 25 runs."
+  },
+  "scroll": [
+    {
+      "viewport": "1600x900",
+      "screen": "death",
+      "scrollHeight": 685,
+      "clientHeight": 540,
+      "scrollable": true,
+      "navTargetCount": 2,
+      "reportHasAnyDataNav": 0,
+      "navMoveOnly": {
+        "before": 0,
+        "after": 0,
+        "moved": false
+      },
+      "keyboardDown": {
+        "before": 0,
+        "after": 145,
+        "moved": true
+      },
+      "keyboardKeyS": {
+        "before": 0,
+        "after": 145,
+        "moved": true
+      },
+      "keyboardUp": {
+        "before": 145,
+        "after": 0,
+        "moved": true
+      },
+      "gamepadDown": {
+        "before": 0,
+        "after": 145,
+        "moved": true
+      },
+      "horizontalMovesRing": {
+        "from": 0,
+        "to": 1,
+        "moved": true
+      },
+      "downAtBottomMovesRing": {
+        "from": 1,
+        "to": 0,
+        "moved": true
+      },
+      "directScrollWorks": true,
+      "buttonsFullyVisible": [
+        {
+          "act": "logbook",
+          "visible": true
+        },
+        {
+          "act": "restart",
+          "visible": true
+        }
+      ],
+      "deathMarkTopClipped": false
+    },
+    {
+      "viewport": "1280x720",
+      "screen": "death",
+      "scrollHeight": 581,
+      "clientHeight": 402,
+      "scrollable": true,
+      "navTargetCount": 2,
+      "reportHasAnyDataNav": 0,
+      "navMoveOnly": {
+        "before": 0,
+        "after": 0,
+        "moved": false
+      },
+      "keyboardDown": {
+        "before": 0,
+        "after": 179,
+        "moved": true
+      },
+      "keyboardKeyS": {
+        "before": 0,
+        "after": 179,
+        "moved": true
+      },
+      "keyboardUp": {
+        "before": 179,
+        "after": 0,
+        "moved": true
+      },
+      "gamepadDown": {
+        "before": 0,
+        "after": 179,
+        "moved": true
+      },
+      "horizontalMovesRing": {
+        "from": 0,
+        "to": 1,
+        "moved": true
+      },
+      "downAtBottomMovesRing": {
+        "from": 1,
+        "to": 0,
+        "moved": true
+      },
+      "directScrollWorks": true,
+      "buttonsFullyVisible": [
+        {
+          "act": "logbook",
+          "visible": true
+        },
+        {
+          "act": "restart",
+          "visible": true
+        }
+      ],
+      "deathMarkTopClipped": false
+    },
+    {
+      "viewport": "1024x600",
+      "screen": "death",
+      "scrollHeight": 581,
+      "clientHeight": 316,
+      "scrollable": true,
+      "navTargetCount": 2,
+      "reportHasAnyDataNav": 0,
+      "navMoveOnly": {
+        "before": 0,
+        "after": 0,
+        "moved": false
+      },
+      "keyboardDown": {
+        "before": 0,
+        "after": 265,
+        "moved": true
+      },
+      "keyboardKeyS": {
+        "before": 0,
+        "after": 265,
+        "moved": true
+      },
+      "keyboardUp": {
+        "before": 265,
+        "after": 0,
+        "moved": true
+      },
+      "gamepadDown": {
+        "before": 0,
+        "after": 265,
+        "moved": true
+      },
+      "horizontalMovesRing": {
+        "from": 0,
+        "to": 1,
+        "moved": true
+      },
+      "downAtBottomMovesRing": {
+        "from": 1,
+        "to": 0,
+        "moved": true
+      },
+      "directScrollWorks": true,
+      "buttonsFullyVisible": [
+        {
+          "act": "logbook",
+          "visible": true
+        },
+        {
+          "act": "restart",
+          "visible": true
+        }
+      ],
+      "deathMarkTopClipped": false
+    },
+    {
+      "viewport": "2560x1080-ultrawide",
+      "screen": "death",
+      "scrollHeight": 944,
+      "clientHeight": 649,
+      "scrollable": true,
+      "navTargetCount": 2,
+      "reportHasAnyDataNav": 0,
+      "navMoveOnly": {
+        "before": 0,
+        "after": 0,
+        "moved": false
+      },
+      "keyboardDown": {
+        "before": 0,
+        "after": 295,
+        "moved": true
+      },
+      "keyboardKeyS": {
+        "before": 0,
+        "after": 295,
+        "moved": true
+      },
+      "keyboardUp": {
+        "before": 295,
+        "after": 0,
+        "moved": true
+      },
+      "gamepadDown": {
+        "before": 0,
+        "after": 295,
+        "moved": true
+      },
+      "horizontalMovesRing": {
+        "from": 0,
+        "to": 1,
+        "moved": true
+      },
+      "downAtBottomMovesRing": {
+        "from": 1,
+        "to": 0,
+        "moved": true
+      },
+      "directScrollWorks": true,
+      "buttonsFullyVisible": [
+        {
+          "act": "logbook",
+          "visible": true
+        },
+        {
+          "act": "restart",
+          "visible": true
+        }
+      ],
+      "deathMarkTopClipped": false
+    },
+    {
+      "viewport": "900x1600-portrait",
+      "screen": "death",
+      "scrollHeight": 1045,
+      "clientHeight": 1045,
+      "scrollable": false,
+      "navTargetCount": 2,
+      "reportHasAnyDataNav": 0,
+      "navMoveOnly": {
+        "before": 0,
+        "after": 0,
+        "moved": false
+      },
+      "keyboardDown": {
+        "before": 0,
+        "after": 0,
+        "moved": false
+      },
+      "keyboardKeyS": {
+        "before": 0,
+        "after": 0,
+        "moved": false
+      },
+      "keyboardUp": {
+        "before": 0,
+        "after": 0,
+        "moved": false
+      },
+      "gamepadDown": {
+        "before": 0,
+        "after": 0,
+        "moved": false
+      },
+      "horizontalMovesRing": {
+        "from": 0,
+        "to": 1,
+        "moved": true
+      },
+      "downAtBottomMovesRing": {
+        "from": 1,
+        "to": 0,
+        "moved": true
+      },
+      "directScrollWorks": false,
+      "buttonsFullyVisible": [
+        {
+          "act": "logbook",
+          "visible": true
+        },
+        {
+          "act": "restart",
+          "visible": true
+        }
+      ],
+      "deathMarkTopClipped": false
+    },
+    {
+      "viewport": "800x500-short",
+      "screen": "death",
+      "scrollHeight": 784,
+      "clientHeight": 230,
+      "scrollable": true,
+      "navTargetCount": 2,
+      "reportHasAnyDataNav": 0,
+      "navMoveOnly": {
+        "before": 0,
+        "after": 0,
+        "moved": false
+      },
+      "keyboardDown": {
+        "before": 0,
+        "after": 554,
+        "moved": true
+      },
+      "keyboardKeyS": {
+        "before": 0,
+        "after": 554,
+        "moved": true
+      },
+      "keyboardUp": {
+        "before": 554,
+        "after": 0,
+        "moved": true
+      },
+      "gamepadDown": {
+        "before": 0,
+        "after": 554,
+        "moved": true
+      },
+      "horizontalMovesRing": {
+        "from": 0,
+        "to": 1,
+        "moved": true
+      },
+      "downAtBottomMovesRing": {
+        "from": 1,
+        "to": 0,
+        "moved": true
+      },
+      "directScrollWorks": true,
+      "buttonsFullyVisible": [
+        {
+          "act": "logbook",
+          "visible": true
+        },
+        {
+          "act": "restart",
+          "visible": true
+        }
+      ],
+      "deathMarkTopClipped": false
+    },
+    {
+      "viewport": "1366x768",
+      "screen": "death",
+      "scrollHeight": 588,
+      "clientHeight": 442,
+      "scrollable": true,
+      "navTargetCount": 2,
+      "reportHasAnyDataNav": 0,
+      "navMoveOnly": {
+        "before": 0,
+        "after": 0,
+        "moved": false
+      },
+      "keyboardDown": {
+        "before": 0,
+        "after": 146,
+        "moved": true
+      },
+      "keyboardKeyS": {
+        "before": 0,
+        "after": 146,
+        "moved": true
+      },
+      "keyboardUp": {
+        "before": 146,
+        "after": 0,
+        "moved": true
+      },
+      "gamepadDown": {
+        "before": 0,
+        "after": 146,
+        "moved": true
+      },
+      "horizontalMovesRing": {
+        "from": 0,
+        "to": 1,
+        "moved": true
+      },
+      "downAtBottomMovesRing": {
+        "from": 1,
+        "to": 0,
+        "moved": true
+      },
+      "directScrollWorks": true,
+      "buttonsFullyVisible": [
+        {
+          "act": "logbook",
+          "visible": true
+        },
+        {
+          "act": "restart",
+          "visible": true
+        }
+      ],
+      "deathMarkTopClipped": false
+    }
+  ],
+  "consoleErrors": [],
+  "consoleWarnings": [
+    "[challenges] item:r3-shared-id is claimed by both \"firstBlood\" and \"warmingUp\" — the second to complete would grant nothing",
+    "[challenges] \"firstBlood\" is claimed by both item:r3-shared-id and item:r3-other-id — one of them will never unlock",
+    "[challenges] challenge \"massacre\" was given a malformed unlock binding",
+    "[challenges] challenge \"massacre\" was given a malformed unlock binding",
+    "[challenges] unlock binding names unknown challenge \"no-such-challenge\""
+  ]
+}

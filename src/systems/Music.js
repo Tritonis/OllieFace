@@ -83,7 +83,14 @@ const LAYERS = [
   ['hat',     0.24, 0.14, 0.82],
   ['bass',    0.31, 0.14, 0.52],
   ['openhat', 0.45, 0.12, 0.95],
-  ['clap',    0.52, 0.12, 3.50],
+  // The clap's 3.50 came out of an RMS-only solve, and RMS across layers with
+  // very different note densities is not a balance: the clap fires twice a bar
+  // and the hats sixteen times, so equalising their *average* level left the
+  // clap peaking 4.0 dB OVER the kick at -0.39 dBFS from a single isolated
+  // layer. In a four-on-the-floor kit the kick is the peak of the mix by
+  // definition. 2.20 is -4 dB, which puts the clap's transient under the kick's
+  // and hands 4 dB of headroom back to the bus.
+  ['clap',    0.52, 0.12, 2.20],
   ['perc',    0.64, 0.12, 1.98],
   ['acid',    0.70, 0.14, 0.49],
   ['lead',    0.86, 0.12, 2.12],
@@ -128,6 +135,32 @@ const HAT_VEL = [
 // ~0.36 s, which a stage transition or a shader compile clears routinely.
 const LOOKAHEAD = 0.4;
 
+/**
+ * How much of the intensity range the run's difficulty arc is allowed to own.
+ *
+ * `I = arc + (1 - arc) * pressure * K` is a blend, and a blend whose first term
+ * can reach 1 annihilates its second: at `arc = 1` the pressure term is
+ * multiplied by zero and `I = 1` unconditionally, so `bump()`, `cool()` and
+ * every combat input become no-ops. That is measurable rather than theoretical
+ * — I was 0.9856 at difficulty 3.5 and exactly 1.0 at 4.5 in an arena with no
+ * enemies in it, and difficulty 3.5 is roughly five minutes into a stage-7 run.
+ *
+ * Capping the arc's authority is what keeps the invariant the model needs:
+ * `max(I) - min(I) > 0` for EVERY reachable arc, so a full arena is always
+ * audibly louder than an empty one and a stage transition always drops the
+ * track. At 0.65 the late-run floor is 0.65 and pressure still owns 0.31 of
+ * range above it (I spans 0.650 -> 0.958); early on, with `arc = 0`, it spans
+ * 0.000 -> 0.880 exactly as before.
+ *
+ * The cost, stated: the *swing* a fight buys shrinks as the run goes on, from
+ * 0.88 of range at difficulty 1 to 0.31 at difficulty 3.5 and above. That is
+ * the intended shape — a fight late in a run is a smaller change because the
+ * track is already loud — but it also means the boss and teleporter floors sit
+ * closer together late (see `_scanSustain`). They are separated by 0.088 of I
+ * at `arc = 0` and 0.031 at the cap, rather than by 0.044 collapsing to 0.
+ */
+const ARC_AUTHORITY = 0.65;
+
 export class MusicEngine {
   /**
    * @param {AudioContext} ac
@@ -161,6 +194,10 @@ export class MusicEngine {
     this.silent = false;
 
     // --- diagnostics (read by tools/_musicprobe) ---------------------------
+    // Lifetime counter, never reset — so it can only be read as a DELTA. `> 0`
+    // says the sequencer ran at some point since the page loaded, which is not
+    // the same claim as "the sequencer is running", and reading it as the
+    // latter is what let a capture gate pass over a stopped engine.
     this.stepsEmitted = 0;
     this.voices = 0;
 
@@ -241,6 +278,20 @@ export class MusicEngine {
     this._heat = 0;
     this._sustain = 0;
     this.pressure = 0;
+    // A run starting is also the one place `stop()` is undone. Without this the
+    // latch `stop()` sets is permanent for the life of the page: `reset()` ran,
+    // `_runT` went back to 0, the bus was reopened by `setMusicVolume` — and the
+    // sequencer had emitted no further steps, so a second run in the same
+    // session was total silence behind a wide-open music bus. Single-player only
+    // escaped it because the menu's restart does `location.reload()`; a
+    // multiplayer client, which takes `playerDead` off the wire when a *teammate*
+    // dies, had no way out at all.
+    this.stopped = false;
+    this._pending = null;
+    // Re-seed the cursor. It has been sitting still since `stop()`, so without
+    // this the first `_schedule` after a revival is a resync — which is
+    // survivable, but it discards a bar and lands the downbeat off the grid.
+    this._musicTime = this.ac.currentTime + 0.15;
   }
 
   update(ctx, dt) {
@@ -253,11 +304,14 @@ export class MusicEngine {
     // opening ceiling relaxes while the player is still choosing a survivor.
     if (!ctx.paused) this._runT += d;
 
-    // Divided by a coefficient a run actually reaches. `/5` put `arc = 1` at
-    // difficulty 6 — "Collapse" — so across three minutes of measured play the
-    // term moved 0.002 -> 0.052 and contributed nothing. `/2.5` maps the top of
-    // the arc onto "Fracturing", which a real run passes through.
-    this.arc = clamp(((ctx.director?.difficultyCoefficient ?? 1) - 1) / 2.5, 0, 1);
+    // Divided by a coefficient a run actually reaches. `/5` put the top of the
+    // ramp at difficulty 6 — "Collapse" — so across three minutes of measured
+    // play the term moved 0.002 -> 0.052 and contributed nothing. `/2.5` maps
+    // it onto "Fracturing", which a real run passes through.
+    //
+    // Scaled by ARC_AUTHORITY so it can never reach 1 and cancel the pressure
+    // term; see that constant for the measurement that made this necessary.
+    this.arc = clamp(((ctx.director?.difficultyCoefficient ?? 1) - 1) / 2.5, 0, 1) * ARC_AUTHORITY;
 
     // Sustained pressure: things that are true right now rather than things
     // that just happened. Rescanned at 4Hz — the enemy list can be sixty deep
@@ -786,6 +840,11 @@ export class MusicEngine {
     return o;
   }
 
+  /**
+   * Stop emitting and fade the layers out. Undone by `reset()` and by nothing
+   * else — a run ending is the only thing that stops the soundtrack, and a run
+   * starting is the only thing that starts it.
+   */
   stop(t) {
     this.stopped = true;
     for (const L of this.layers.values()) {

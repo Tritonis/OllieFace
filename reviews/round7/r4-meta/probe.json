@@ -1,0 +1,116 @@
+{
+  "runTime": {
+    "stage5at8min": {
+      "runTime": 480,
+      "blitz": {
+        "id": "blitz",
+        "name": "Ahead of the Curve",
+        "description": "Reach stage 5 within 10 minutes.",
+        "category": "depth",
+        "hidden": false,
+        "masked": false,
+        "progress": 1,
+        "goal": 1,
+        "fraction": 1,
+        "done": true,
+        "doneAt": 1785722757829,
+        "unlocks": null
+      }
+    },
+    "stage5at14min": {
+      "runTime": 840,
+      "blitz": {
+        "id": "blitz",
+        "name": "Ahead of the Curve",
+        "description": "Reach stage 5 within 10 minutes.",
+        "category": "depth",
+        "hidden": false,
+        "masked": false,
+        "progress": 0,
+        "goal": 1,
+        "fraction": 0,
+        "done": false,
+        "doneAt": 0,
+        "unlocks": null
+      }
+    },
+    "stage5atExactly10min": {
+      "runTime": 600,
+      "blitz": {
+        "id": "blitz",
+        "name": "Ahead of the Curve",
+        "description": "Reach stage 5 within 10 minutes.",
+        "category": "depth",
+        "hidden": false,
+        "masked": false,
+        "progress": 1,
+        "goal": 1,
+        "fraction": 1,
+        "done": true,
+        "doneAt": 1785722757832,
+        "unlocks": null
+      }
+    },
+    "stage5at9min_evaluatedAt12min": {
+      "runTime": 720,
+      "blitz": {
+        "id": "blitz",
+        "name": "Ahead of the Curve",
+        "description": "Reach stage 5 within 10 minutes.",
+        "category": "depth",
+        "hidden": false,
+        "masked": false,
+        "progress": 1,
+        "goal": 1,
+        "fraction": 1,
+        "done": true,
+        "doneAt": 1785722757833,
+        "unlocks": null
+      }
+    },
+    "marathonAt31min": {
+      "runTime": 1860,
+      "marathon": {
+        "id": "marathon",
+        "name": "Marathon",
+        "description": "Survive for 30 minutes in a single run.",
+        "category": "depth",
+        "hidden": false,
+        "masked": false,
+        "progress": 1800,
+        "goal": 1800,
+        "fraction": 1,
+        "done": true,
+        "doneAt": 1785722757834,
+        "unlocks": null
+      }
+    },
+    "marathonAt2959": {
+      "runTime": 1799,
+      "marathon": {
+        "id": "marathon",
+        "name": "Marathon",
+        "description": "Survive for 30 minutes in a single run.",
+        "category": "depth",
+        "hidden": false,
+        "masked": false,
+        "progress": 1799,
+        "goal": 1800,
+        "fraction": 0.9994444444444445,
+        "done": false,
+        "doneAt": 0,
+        "unlocks": null
+      }
+    },
+    "pausedClock": {
+      "beforePause": 60,
+      "afterPauseFrames": 60,
+      "afterUnpause": 60.16666666666666,
+      "ctxTime": 60.16666666666666
+    },
+    "hostileClock": {
+      "nanSync": 0,
+      "negSync": 0
+    }
+  }
+}

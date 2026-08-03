@@ -1,0 +1,74 @@
+{
+  "out": {
+    "remotePawnJump": {
+      "localWaxQuailStacks": 3,
+      "pawnHorizVelAfter1stJump": {
+        "vx": 0.07,
+        "vz": 0.07,
+        "vy": 12.6
+      },
+      "pawnGotHostsImpulse": true,
+      "hostBarrierBefore": 0,
+      "hostBarrierAfter": 30,
+      "hostTectonicTally": "n/a",
+      "jumpEventsSeen": 3,
+      "hostPlayerMoved": 0,
+      "quakeDamageEventsAttributedToHost": 0
+    },
+    "jumpReplay": {
+      "live": {
+        "vx": 0,
+        "vz": 30,
+        "vy": 12.6,
+        "replaying": false
+      },
+      "replay": {
+        "vx": 0,
+        "vz": 0,
+        "vy": 12.6,
+        "replaying": false
+      },
+      "divergenceHoriz": 30
+    },
+    "remotePawnDamage": {
+      "tsBefore": 30,
+      "afterAbsorbed": {
+        "playerHurt": 0,
+        "shieldBroken": 1,
+        "onDamaged": 0,
+        "damage": 1,
+        "ts": 30,
+        "pawnShield": 950
+      },
+      "afterReal": {
+        "playerHurt": 1,
+        "shieldBroken": 1,
+        "onDamaged": 0,
+        "damage": 2,
+        "ts": 0,
+        "pawnHealth": 60,
+        "hostHealth": 110
+      }
+    },
+    "joinLeave15": {
+      "before": {
+        "children": 25,
+        "nodes": 399,
+        "listeners": 75,
+        "geometries": -1,
+        "entities": 1
+      },
+      "after": {
+        "children": 25,
+        "nodes": 399,
+        "listeners": 75,
+        "geometries": -1,
+        "entities": 1
+      },
+      "pawnsLength": 0
+    },
+    "errors": 0,
+    "lastFrameError": null
+  },
+  "errs": []
+}

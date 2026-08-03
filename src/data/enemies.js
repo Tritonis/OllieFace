@@ -607,7 +607,15 @@ export const ENEMIES = [
     isFlyer: false,
     eliteEligible: true,
     behavior: 'ranged',
-    preferredRange: 18,
+    // 11, and this is the number the whole card turns on — see the attack table
+    // below. Two independent measurements say 18 was wrong. Its own reel could
+    // not reach its own damage radius from 18 m, and 18 m is further than this
+    // terrain reliably permits: a stage-wide survey (60 walkable stands x 16
+    // bearings, casting exactly what `Enemy.checkLOS` casts) found clear line of
+    // sight for 0.605 of pairs at 18 m against 0.818 at 10 m, and `pickAttack`
+    // returns -1 unconditionally without LOS. One live engagement in six was a
+    // 29-credit monster standing at 24 m doing nothing for thirty seconds.
+    preferredRange: 11,
     packMin: 1,
     packMax: 2,
     meshFactory: 'lasher',
@@ -631,31 +639,82 @@ export const ENEMIES = [
       //
       // `pull: 26` is tuned against a working pull. The 19 it carried was
       // chosen when no pull could move a grounded player at all, so it had
-      // never been measured against anything. Measured now, over the 1.5 s
-      // `active` window against a stationary player at 10 m: 19 steals 3.56 m
-      // and leaves them at 6.44 m — *outside* this attack's own 6 m `blast`, so
-      // the reel could not deliver the damage tick it exists to set up. 26
-      // steals 4.87 m and lands them at 5.13 m, inside the blast with margin.
-      // That is the threat: ignore the reel and it drags you into its own
-      // damage radius.
+      // never been measured against anything. Measured, over the 1.5 s `active`
+      // window against a stationary player at 10 m: 19 steals 3.56 m and leaves
+      // them at 6.44 m; 26 steals 4.87 m and lands them at 5.13 m.
       //
-      // It does not take control away, and that is measured too: against a
-      // sprinting player at 10 m it costs 0.22 m of a 10.57 m escape, and at
-      // 5 m — the closest the reel is allowed to start — it costs 1.48 m of a
-      // 10.31 m escape and never reverses their direction for a frame. 30 was
-      // measured and rejected on that arm: it takes 2.46 m at 5 m, which is a
-      // quarter of the escape. The number is deliberately equal
-      // to the Maw's `draw`, because `pull` is meaningless without `range` —
-      // the falloff is `1 - d/range`, so at 10 m this reads 16.0 m/s^2 against
-      // the Maw's 18.4 and the Herald's 22.5. The boss attacks stay stronger;
-      // the ordering lives in the range term, which is where it belongs.
+      // That tuning was correct and it was measured at a range the card never
+      // fought at. The unit stood at `preferredRange`, which was 18, where the
+      // falloff `1 - d/range` leaves the same 26 stealing only 2.435 m — ending
+      // the player at 15.6 m, two and a half times outside the blast. And
+      // `pullPlayer` only ticks damage `if (d < a.blast)`. So the reel's entire
+      // payoff was unreachable from the unit's own standing position, and that
+      // is not an argument, it is a count: at every standoff from 8 m to 22 m,
+      // **six reels fired and contributed 0 of the 57.8 HP the card dealt in
+      // 42 s.** All of it was thorns. 1.37 dps, on a 29-credit tier-2 card,
+      // against the 9-credit Bile Spitling's 5.44 and the Ferrite Redoubt's
+      // 10.26 measured in the same probe at the same stand.
+      //
+      // Three rounds of moving numbers inside the wrong frame. So the frame
+      // moved instead: **this is a close-mid grappler, not an artillery
+      // piece.** It stands at 11 m — inside where its own pull was measured,
+      // inside what this terrain's line of sight reliably permits — and the
+      // reel is now the attack the card is named for rather than a gesture.
+      //
+      // `blast: 9` is the second half of that. `Enemy` draws a ground telegraph
+      // at `a.blast` for the whole 1.15 s wind-up, so the blast radius *is* the
+      // warning the player reads: a 9 m ring that reaches most of the way to a
+      // player standing at 11 m, announcing "you are on the edge of this and it
+      // is about to pull you in". At 6 m the ring was a circle around the
+      // monster's feet that the player was never in and could never be dragged
+      // into. The suction ends them near 6.3 m, so ignoring the reel now costs
+      // roughly three 0.4 s ticks, which is the threat the card always claimed.
+      //
+      // The agency end of the range, stated because a fix aimed at a number can
+      // overshoot into the opposite failure: nothing here touches `pull`, so the
+      // escape is exactly the one that was already measured — 26 costs a
+      // sprinting player 0.22 m of a 10.57 m escape at 10 m, and 1.48 m of a
+      // 10.31 m escape at 5 m, the closest the reel is allowed to start, and
+      // never reverses their direction for a frame. Sprinting out remains the
+      // answer, breaking the reel by killing it remains the answer, and taking
+      // the pull to close on whatever it is standing next to remains the answer.
+      // What changed is that declining to do any of the three now costs
+      // something.
+      //
+      // The outcome, over thirty 30 s arms at six stands and standoffs from 8 m
+      // to 22 m, against a stationary survivor with real i-frames: **1.37 dps
+      // to a mean 6.5, and 8.42 and 8.33 dps at the two roster stands** where
+      // the Ferrite Redoubt reads 15.69/15.32 at 36 credits, the Basalt
+      // Sentinel 14.59/21.88 at 32, the Bile Spitling 7.09 at 9 and the Siege
+      // Bombard 3.36 at 34. A 29-credit card that was a quarter of a 9-credit
+      // one is now above it and roughly half the tier's turret, while also
+      // being the only ordinary spawn that moves the player. The reel is
+      // roughly 60% of that output, which it previously contributed none of.
+      //
+      // 30 was measured and rejected on that arm: it takes 2.46 m at
+      // 5 m, a quarter of the escape. The number is deliberately equal to the
+      // Maw's `draw`, because `pull` is meaningless without `range` — the
+      // falloff means that at 10 m this reads 16.0 m/s^2 against the Maw's 18.4
+      // and the Herald's 22.5. The boss attacks stay stronger; the ordering
+      // lives in the range term, which is where it belongs.
       {
         id: 'reel', kind: 'pull', range: 26, minRange: 4, windup: 1.15, active: 1.5, recover: 1.0,
-        cooldown: 8.0, damage: 0.45, pull: 26, blast: 6, color: 0xff6a7a, weight: 3,
+        cooldown: 6.5, damage: 0.45, pull: 26, blast: 9, color: 0xff6a7a, weight: 3,
       },
       // Thorn spray: the reason standing at mid range and ignoring it is not
       // free either. Low damage, wide, and it applies nothing — it exists so
       // the unit has an output while the reel is on cooldown.
+      //
+      // 0.55, unchanged, and that is a decision rather than an omission. The
+      // round-3 critique proposed raising it to ~1.6 to lift the card off 1.37
+      // dps, and that proposal was correct *given* a reel that paid nothing:
+      // with the reel inert, this attack was the whole unit and every point it
+      // dealt came from here. Now that the reel works, raising this would be
+      // paying twice for the same problem. Measured over thirty arms across six
+      // stands and five standoffs, the split is reel ~60%, thorns ~23%, flail
+      // ~17% — which is the card the comments describe, with the attack it is
+      // named for carrying it. So this stays what it says it is: filler between
+      // reels, priced to be worth stepping out of rather than to carry a unit.
       //
       // `volley` MUST be odd. `Enemy.launchProjectile` fans a volley as
       // `t = (i/(n-1) - 0.5) * 2`, which is symmetric about zero — an even count
@@ -669,7 +728,21 @@ export const ENEMIES = [
         cooldown: 4.5, damage: 0.55, speed: 22, gravity: 6, radius: 0.3, blast: 1.8, life: 3.5,
         color: 0xff6a7a, muzzleY: 2.0, muzzleZ: 0.8, volley: 5, volleySpread: 0.34, weight: 2,
       },
-      { id: 'flail', kind: 'melee', range: 4.2, windup: 0.6, active: 0.14, recover: 0.5, cooldown: 2.4, damage: 0.9, arc: 1.2, lunge: 5, weight: 1 },
+      // Reach 6.5, not 4.2. At 4.2 this attack was unreachable and therefore
+      // did not exist: a `ranged` unit backs away below `preferredRange * 0.65`
+      // (`Enemy.steer`), so across fifteen probe arms at standoffs from 6 m to
+      // 25 m `flail` was rejected as `tooFar` on every single `pickAttack` call
+      // and fired **zero** times — a third of the card's attack table.
+      //
+      // 6.5 is not a buff picked to make the number bigger, it is the distance
+      // the reel leaves the player at (~6.3 m). That makes the card a two-beat
+      // sequence instead of two unrelated attacks: the reel drags you in and
+      // the lasher swats at you while it backs off. It stays weak on purpose —
+      // 0.9 of base, the lowest multiplier on the card — because the stated
+      // counterplay includes *letting* the pull land and spending the free
+      // approach, and a unit that punished the player for accepting its own
+      // offer would make that line a lie.
+      { id: 'flail', kind: 'melee', range: 6.5, windup: 0.6, active: 0.14, recover: 0.5, cooldown: 2.4, damage: 0.9, arc: 1.2, lunge: 5, weight: 1 },
     ],
   },
   {
@@ -695,8 +768,17 @@ export const ENEMIES = [
     // r < 9.2 m while the unit held 20 m — the exposed back was unreachable and
     // circling only ever made the beam miss. At 0.6 rad/s the ceiling is 16.9 m,
     // so the 13 m stand-off below sits inside it with room for a real circle
-    // rather than a perfect one. The `backblast` nova (6 m) is the inner wall,
-    // which leaves a 6-13 m band where the stated counterplay is the play.
+    // rather than a perfect one. The `backblast` nova is the inner wall, and
+    // the wall is at **9 m, not 6**: `range: 6` is only the distance at which
+    // `pickAttack` will select it, while `blast: 9` is the radius that actually
+    // damages (`Enemy.js` `spawnBlast(ctx, this, a.blast, …)`) and is also what
+    // the wind-up telegraph is drawn at. So the corridor where the stated
+    // counterplay is the play is 9-13 m — 4 m wide, not the 7 this comment used
+    // to claim. The gap between the two numbers is deliberate and stays: a
+    // 1.0 s wind-up with `blast === range` would let anyone who was at 5.9 m at
+    // selection stroll out of the nova, which is exactly the hug the attack
+    // exists to punish. The player is told the truth by the telegraph, which is
+    // drawn at 9.
     moveSpeed: 2.6,
     turnRate: 0.6,
     attackRange: 38,

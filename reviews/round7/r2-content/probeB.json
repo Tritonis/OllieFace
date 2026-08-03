@@ -1,0 +1,295 @@
+{
+  "results": {
+    "attackCensus": [
+      {
+        "id": "shriver",
+        "standoffM": 16,
+        "distEndM": 16.76,
+        "stateFrames": {
+          "-:spawn": 13,
+          "-:chase": 1,
+          "knell:windup": 316,
+          "knell:attack": 161,
+          "knell:recover": 216,
+          "knell:chase": 683
+        },
+        "attackEntries": {
+          "knell": 13
+        },
+        "declared": [
+          "knell"
+        ],
+        "playerHurtEvents": 13,
+        "playerDamageHP": 103.8,
+        "dps": 2.31
+      },
+      {
+        "id": "lasher",
+        "standoffM": 12,
+        "distEndM": 9.38,
+        "stateFrames": {
+          "-:spawn": 13,
+          "-:chase": 1,
+          "thorns:windup": 134,
+          "thorns:attack": 40,
+          "thorns:recover": 124,
+          "thorns:chase": 203,
+          "reel:windup": 210,
+          "reel:attack": 274,
+          "reel:recover": 152,
+          "reel:chase": 40,
+          "thorns:reposition": 195
+        },
+        "attackEntries": {
+          "thorns": 6,
+          "reel": 6
+        },
+        "declared": [
+          "reel",
+          "thorns",
+          "flail"
+        ],
+        "playerHurtEvents": 0,
+        "playerDamageHP": 0,
+        "dps": 0
+      },
+      {
+        "id": "redoubt",
+        "standoffM": 18,
+        "distEndM": 18.02,
+        "stateFrames": {
+          "-:spawn": 13,
+          "-:chase": 1,
+          "enfilade:windup": 412,
+          "enfilade:attack": 114,
+          "enfilade:recover": 264,
+          "enfilade:chase": 580
+        },
+        "attackEntries": {
+          "enfilade": 8
+        },
+        "declared": [
+          "enfilade",
+          "backblast"
+        ],
+        "playerHurtEvents": 24,
+        "playerDamageHP": 656.9,
+        "dps": 14.6
+      }
+    ],
+    "pull": {
+      "standStill": {
+        "label": "stand still at 10 m",
+        "lashers": 1,
+        "sprint": false,
+        "slowHeld": 0,
+        "startM": 10,
+        "endM": 18.01,
+        "netGainM": 8.01,
+        "closestM": 10.06,
+        "pullWindows": 5,
+        "pullFrames": 225,
+        "groundLostDuringPullM": 0,
+        "groundGainedDuringPullM": 10.5,
+        "playerDamageHP": 46.1
+      },
+      "walk": {
+        "label": "walk away from 10 m",
+        "lashers": 1,
+        "sprint": false,
+        "slowHeld": 0,
+        "startM": 10,
+        "endM": 18.01,
+        "netGainM": 8.01,
+        "closestM": 10.06,
+        "pullWindows": 5,
+        "pullFrames": 225,
+        "groundLostDuringPullM": 0,
+        "groundGainedDuringPullM": 10.5,
+        "playerDamageHP": 46.1
+      },
+      "sprint": {
+        "label": "sprint away from 10 m",
+        "lashers": 1,
+        "sprint": true,
+        "slowHeld": 0,
+        "startM": 10,
+        "endM": 18,
+        "netGainM": 8,
+        "closestM": 10.06,
+        "pullWindows": 4,
+        "pullFrames": 180,
+        "groundLostDuringPullM": 0,
+        "groundGainedDuringPullM": 0,
+        "playerDamageHP": 55.4
+      },
+      "sprintSlowed": {
+        "label": "sprint away, slow x3 held",
+        "lashers": 1,
+        "sprint": true,
+        "slowHeld": 3,
+        "startM": 10,
+        "endM": 18,
+        "netGainM": 8,
+        "closestM": 10.06,
+        "pullWindows": 4,
+        "pullFrames": 180,
+        "groundLostDuringPullM": 0,
+        "groundGainedDuringPullM": 0,
+        "playerDamageHP": 55.4
+      },
+      "threeSprint": {
+        "label": "sprint away, 3 lashers (maxAlive)",
+        "lashers": 3,
+        "sprint": true,
+        "slowHeld": 0,
+        "startM": 10.77,
+        "endM": 48.7,
+        "netGainM": 37.93,
+        "closestM": 10.82,
+        "pullWindows": 5,
+        "pullFrames": 272,
+        "groundLostDuringPullM": 0.03,
+        "groundGainedDuringPullM": 15.2,
+        "playerDamageHP": 96.9
+      }
+    },
+    "thornVolley": {
+      "attack": {
+        "volley": 4,
+        "spread": 0.34,
+        "radius": 0.3,
+        "blast": 1.8
+      },
+      "ranges": [
+        {
+          "rangeM": 8,
+          "volleysFired": 9,
+          "playerHurtEvents": 1,
+          "damageHP": 13.9,
+          "predictedInnerMissM": 0.91,
+          "hitRadiusM": 2.55
+        },
+        {
+          "rangeM": 12,
+          "volleysFired": 9,
+          "playerHurtEvents": 1,
+          "damageHP": 13.9,
+          "predictedInnerMissM": 1.37,
+          "hitRadiusM": 2.55
+        },
+        {
+          "rangeM": 18,
+          "volleysFired": 9,
+          "playerHurtEvents": 0,
+          "damageHP": 0,
+          "predictedInnerMissM": 2.05,
+          "hitRadiusM": 2.55
+        },
+        {
+          "rangeM": 22,
+          "volleysFired": 9,
+          "playerHurtEvents": 0,
+          "damageHP": 0,
+          "predictedInnerMissM": 2.5,
+          "hitRadiusM": 2.55
+        }
+      ],
+      "innerAngleRad": 0.1133
+    },
+    "shriverValue": {
+      "tier1Roster": [
+        {
+          "id": "mite",
+          "cost": 4,
+          "hp": 46,
+          "dmg": 6,
+          "atk": [
+            "nip(melee,cd0.9,dmg1)"
+          ]
+        },
+        {
+          "id": "beetle",
+          "cost": 6,
+          "hp": 90,
+          "dmg": 10,
+          "atk": [
+            "headbutt(melee,cd1.6,dmg1)"
+          ]
+        },
+        {
+          "id": "spitling",
+          "cost": 9,
+          "hp": 105,
+          "dmg": 11,
+          "atk": [
+            "spit(projectile,cd2.6,dmg1.1,slow)"
+          ]
+        },
+        {
+          "id": "lemurian",
+          "cost": 11,
+          "hp": 150,
+          "dmg": 14,
+          "atk": [
+            "bite(melee,cd1.4,dmg1)",
+            "fireball(projectile,cd5,dmg1.5)"
+          ]
+        },
+        {
+          "id": "wisp",
+          "cost": 13,
+          "hp": 110,
+          "dmg": 12,
+          "atk": [
+            "bolt(projectile,cd2.2,dmg1)"
+          ]
+        },
+        {
+          "id": "pest",
+          "cost": 16,
+          "hp": 100,
+          "dmg": 16,
+          "atk": [
+            "dive(dive,cd3,dmg1.9)"
+          ]
+        },
+        {
+          "id": "harrier",
+          "cost": 18,
+          "hp": 145,
+          "dmg": 13,
+          "atk": [
+            "strafe(barrage,cd6,dmg0.5)"
+          ]
+        },
+        {
+          "id": "charger",
+          "cost": 22,
+          "hp": 260,
+          "dmg": 20,
+          "atk": [
+            "gore(charge,cd6.5,dmg2.2)",
+            "buck(melee,cd2.2,dmg1)"
+          ]
+        },
+        {
+          "id": "shriver",
+          "cost": 15,
+          "hp": 95,
+          "dmg": 8,
+          "atk": [
+            "knell(projectile,cd3.4,dmg1,slow)"
+          ]
+        }
+      ],
+      "shriverDamage45s": 145.4,
+      "shriverDps": 3.23,
+      "fractionOfTimePlayerSlowed": 0.3,
+      "playerSpeedWhileSlowed": 0
+    }
+  },
+  "errors": [],
+  "frameErrors": 0,
+  "lastFrameError": null
+}
