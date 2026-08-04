@@ -7,6 +7,7 @@ import { Environment } from './world/Environment.js';
 import { Player } from './entities/Player.js';
 import { CameraRig } from './core/CameraRig.js';
 import { Combat } from './systems/Combat.js';
+import { Roster } from './systems/Roster.js';
 import { Items } from './systems/Items.js';
 import { Artifacts } from './systems/Artifacts.js';
 import { Director } from './systems/Director.js';
@@ -50,6 +51,9 @@ engine.add(new Environment());
 engine.add(new Stage());
 engine.add(new Items());
 engine.add(new Combat());
+// Before Player, which registers itself into it during `init` — the same
+// ordering reason Combat sits above.
+engine.add(new Roster());
 engine.add(new Player());
 engine.add(new Director());
 engine.add(new Progression());

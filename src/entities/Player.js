@@ -280,6 +280,11 @@ export class Player {
 
     ctx.combat?.register?.(this);
 
+    // Combat decides what can be hit; the roster decides who can be *chosen*.
+    // Both registrations are unconditional — a remote pawn is as much a player
+    // as the local one, and the whole of N-1 was that nothing ever asked which.
+    ctx.roster?.add?.(this);
+
     // Drop onto the stage if it can tell us where the floor is.
     const y = ctx.stage?.sampleHeight?.(0, 0);
     if (typeof y === 'number' && isFinite(y)) this.position.set(0, y + 0.2, 0);
@@ -1125,6 +1130,7 @@ export class Player {
    * its own. Nothing here is shared with a pawn that is still standing.
    */
   dispose() {
+    this.ctx?.roster?.remove?.(this);
     this._offStageStart?.();
     this._offStageStart = null;
     this.placeables?.clear?.();
