@@ -99,11 +99,8 @@ export class Director {
     this.trails = new Trails();
     this.telegraphs = new Telegraphs();
 
-    // Withering elites nullify healing while they have you. The lock lives here
-    // rather than in Combat because the director is the one system that already
-    // knows what is on the field — see `denyHealing`.
-    this.healDenyUntil = -1;
-    this._healCap = null;
+    // Withering elites nullify healing while they have you. The deadline and
+    // the ceiling live on each player rather than here — see `denyHealing`.
     // Bosses are drawn without replacement so a run does not show the same one
     // three stages running.
     this._bossBag = [];
@@ -334,33 +331,56 @@ export class Director {
   // -------------------------------------------------------------------------
 
   /**
-   * Lock the player's healing for `seconds`. Called by any withering elite that
+   * Lock one player's healing for `seconds`. Called by any withering elite that
    * currently has line of sight, so overlapping elites just keep it topped up.
+   *
+   * The victim is required and there is deliberately no fallback. This used to
+   * write a single `healDenyUntil` on the Director, so one withering elite
+   * denied healing to every player on the map — including ones it had no line
+   * of sight to, which is precisely the counterplay the LOS test in
+   * `Enemy.js` exists to preserve. A call that cannot name a victim should do
+   * nothing rather than quietly do it to everyone.
    */
-  denyHealing(seconds) {
+  denyHealing(seconds, victim) {
+    if (!victim) return;
     const t = (this.ctx?.time ?? 0) + (seconds || 2);
-    if (t > this.healDenyUntil) this.healDenyUntil = t;
+    if (t > (victim._healDenyUntil ?? -1)) victim._healDenyUntil = t;
   }
 
-  /** Read by the HUD to show the debuff. Cosmetic — safe on clients too. */
-  get healingDenied() { return (this.ctx?.time ?? 0) < this.healDenyUntil; }
+  /** Is this player's healing locked? Cosmetic reads are safe on clients too. */
+  healingDeniedFor(player) {
+    if (!player) return false;
+    return (this.ctx?.time ?? 0) < (player._healDenyUntil ?? -1);
+  }
+
+  /**
+   * Back-compat for the single-player read (`RealmHarness`'s finale check):
+   * the local player's answer.
+   */
+  get healingDenied() { return this.healingDeniedFor(this.ctx?.roster?.local ?? this.ctx?.player); }
 
   /**
    * Enforce the lock.
    *
    * Combat.heal is the single heal path and it has no notion of a debuff, so
-   * rather than reaching into it this holds a running ceiling on the player's
-   * health while the lock is up: damage lowers the ceiling, healing cannot
-   * raise it. Net effect is exactly RoR2's Malachite — every heal source in the
-   * game is nullified at once, including ones written after this code — and it
-   * costs one comparison per fixed step when no withering elite is alive.
+   * rather than reaching into it this holds a running ceiling on each denied
+   * player's health: damage lowers the ceiling, healing cannot raise it. Net
+   * effect is exactly RoR2's Malachite — every heal source in the game is
+   * nullified at once, including ones written after this code.
+   *
+   * The ceiling lives on the player rather than on the Director because two
+   * players can be denied by two different elites at two different times, and
+   * one scalar cannot hold both.
    */
   enforceHealDenial(ctx) {
-    if (!this.healingDenied) { this._healCap = null; return; }
-    const p = ctx.player;
-    if (!p || !p.alive) { this._healCap = null; return; }
-    if (this._healCap == null || p.health < this._healCap) this._healCap = p.health;
-    else if (p.health > this._healCap) p.health = this._healCap;
+    const roster = ctx.roster;
+    if (!roster) return;
+    const now = ctx.time ?? 0;
+    roster.forEachTargetable((p) => {
+      if (now >= (p._healDenyUntil ?? -1)) { p._healCap = null; return; }
+      if (p._healCap == null || p.health < p._healCap) p._healCap = p.health;
+      else if (p.health > p._healCap) p.health = p._healCap;
+    });
   }
 
   // -------------------------------------------------------------------------
@@ -595,15 +615,26 @@ export class Director {
       _m4.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
       this._frustum.setFromProjectionMatrix(_m4);
     }
-    const player = ctx.player ? ctx.player.position : _v.set(0, 0, 0);
+    // One anchor, not one per player: `randomWalkablePoint` takes a single
+    // `minDistFrom`, and re-rolling the sample per player would change how many
+    // draws the shared RNG makes per iteration — which single-player
+    // equivalence is measured against. Only the acceptance test below is
+    // roster-aware.
+    const anchor = ctx.roster?.local ?? ctx.player;
+    const player = anchor ? anchor.position : _v.set(0, 0, 0);
     let fallback = null;
     let fallbackD = -1;
 
     for (let i = 0; i < 16; i++) {
       const p = this.samplePoint(ctx, player);
       if (!p) continue;
+      // Distance from the anchor decides how far out this spawn reads; distance
+      // from the *nearest* player decides whether it is legal. A guest who has
+      // wandered away from the host must not have monsters materialise on top
+      // of them just because they are far from whoever the anchor is.
       const d = Math.hypot(p.x - player.x, p.z - player.z);
-      if (d < MIN_SPAWN_DIST || d > MAX_SPAWN_DIST) continue;
+      const dNearest = ctx.roster ? Math.min(d, ctx.roster.distanceToNearest(p)) : d;
+      if (dNearest < MIN_SPAWN_DIST || d > MAX_SPAWN_DIST) continue;
       this._sphere.center.set(p.x, p.y + 2, p.z);
       const visible = cam ? this._frustum.intersectsSphere(this._sphere) : false;
       if (!visible) return this._point.copy(p);
@@ -747,9 +778,11 @@ export class Director {
     this.waves.clear();
     this.trails.clear();
     this.telegraphs.clear();
-    // Nothing withering is alive any more, so the heal lock goes with them.
-    this.healDenyUntil = -1;
-    this._healCap = null;
+    // Nothing withering is alive any more, so every player's heal lock goes
+    // with them. Cleared through `all` rather than `forEachTargetable` because
+    // a dead or downed player must not carry a stale ceiling into the next
+    // stage, where the revive that puts them back up would be capped by it.
+    if (ctx?.roster) for (const p of ctx.roster.all) { p._healDenyUntil = -1; p._healCap = null; }
     this.boss = null;
   }
 

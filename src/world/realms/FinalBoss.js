@@ -205,9 +205,16 @@ export class FinaleController {
     if (!ctx.authority || this.done) return;
 
     // Phase 3's rule: nothing heals. Topped up every step rather than set once,
-    // because the director's own lock is a deadline and any withering elite in
-    // the run uses the same field.
-    if (this.phase >= 3) ctx.director?.denyHealing?.(0.5);
+    // because the director's lock is a deadline and any withering elite in the
+    // run tops up the same one.
+    //
+    // The lock is per-player and now needs a named victim. This controller is
+    // not an `Enemy` and has no `targetPlayer` of its own, so the victim is the
+    // local player — which is exactly what the old global lock did on a
+    // single-player run. See the task-7 report: the finale is a single-player
+    // realm today, and widening this to the whole roster is a balance decision
+    // rather than part of this fix.
+    if (this.phase >= 3) ctx.director?.denyHealing?.(0.5, ctx.roster?.local ?? ctx.player);
 
     const boss = this.boss;
     if (boss && !boss.alive && this.victoryT < 0) {
