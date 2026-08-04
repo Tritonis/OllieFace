@@ -130,9 +130,9 @@
     "liveness": {
       "gate": "fired",
       "paused": false,
-      "localTick": 62,
+      "localTick": 61,
       "menuScreen": null,
-      "time": 1.033,
+      "time": 1.017,
       "engineRunning": true,
       "stageIndex": 0
     },

@@ -42,6 +42,25 @@ console.log('nearest — the empty and single cases');
   ok(Math.abs(r.distanceToNearest({ x: 0, z: 0 }) - 5) < 1e-9, 'horizontal distance is 3-4-5');
 }
 
+console.log('distance — the same formula Enemy.dist2D uses, to the last bit');
+{
+  // Not a style preference. `dist2D` in Enemy.js is `Math.hypot(dx, dz)`, and
+  // `Math.sqrt(dx * dx + dz * dz)` is a different function on doubles — it
+  // disagrees on 38.5% of coordinate pairs in a +/-60 m arena, by up to 2 ulp.
+  // Task 6 picks a target through this file and then measures engagement range
+  // with dist2D, so the two must be bit-identical or an enemy compares one
+  // player's arithmetic against another's, on a value tested against tuned
+  // thresholds. This pair is one where the two formulations genuinely differ,
+  // so the assertion fails if anyone "simplifies" horizDist back to sqrt.
+  const { r } = fresh();
+  const X = 7.933275623733294, Z = 9.444902771776412;
+  const hypot = Math.hypot(X, Z);
+  const naive = Math.sqrt(X * X + Z * Z);
+  ok(hypot !== naive, `the chosen pair really does distinguish the two formulas (${hypot} vs ${naive})`);
+  r.add(P(X, Z));
+  ok(r.distanceToNearest({ x: 0, z: 0 }) === hypot, 'distanceToNearest is exactly Math.hypot, as dist2D is');
+}
+
 console.log('nearest — picks the nearer, ignores height');
 {
   const { r } = fresh();

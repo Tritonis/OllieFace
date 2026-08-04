@@ -95,5 +95,26 @@ console.log('an empty roster yields null, not a stale target');
   ok(acquireTarget(r, { x: 0, z: 0 }, held) === null, 'target that left the roster is dropped');
 }
 
+console.log('a deregistered target is dropped even while a survivor remains');
+{
+  // The case the empty-roster test above cannot reach: with only one player,
+  // `nearest` returns null and the early return answers before the membership
+  // check is consulted, so deleting that check breaks nothing the suite sees.
+  //
+  // Four-player co-op, the real shape of it: a teammate disconnects mid-fight
+  // (NetHost -> Coop._despawnPawn -> Player.dispose -> roster.remove) while an
+  // enemy is standing on top of their pawn and holding it as `current`. The
+  // pawn is still `alive` and still `targetable` — it is simply no longer in
+  // the world — and it is far nearer than the only survivor, so the hysteresis
+  // would happily keep it: 40 < 1 * 0.8 is false. Only membership releases it.
+  const held = P(1, 0);
+  const survivor = P(40, 0);
+  const r = rosterOf(held, survivor);
+  r.remove(held);
+  ok(Roster.targetable(held), 'the departed pawn is still alive and targetable — membership is the only thing that changed');
+  ok(r.count === 1, 'and a survivor is still registered, so nearest() has an answer');
+  ok(acquireTarget(r, { x: 0, z: 0 }, held) === survivor, 'a nearer target that left the roster is released for a far survivor');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
