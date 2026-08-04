@@ -3,6 +3,7 @@
     "seed": 20260804,
     "preSteps": 600,
     "steps": 3600,
+    "deadSteps": 900,
     "damageToPlayer": 33.1,
     "damageToPlayerToHealth": 33.1,
     "damageToPlayerAbsorbed": 0,
@@ -19,60 +20,41 @@
     "kills": 7,
     "enemyKills": 7,
     "playerDeaths": 0,
-    "enemiesAlive": 13,
-    "enemiesAliveMax": 13,
+    "enemiesAlive": 5,
+    "enemiesAliveMax": 6,
+    "enemyStates": {
+      "reposition": 1,
+      "chase": 4
+    },
     "goldTotal": 53,
-    "playerHealth": 143,
-    "playerShield": 0,
     "playerLevel": 2,
+    "playerMaxHealth": 143,
+    "playerHealthMin": 89,
+    "healthRestored": 33.1,
+    "playerShield": 0,
+    "playerPosition": [
+      0,
+      1.766513,
+      0
+    ],
+    "playerVelocity": [
+      0,
+      0,
+      0
+    ],
     "ctxTime": 70,
     "frameErrors": 0,
     "lastFrameError": null,
     "finalEnemyPositions": [
-      [
-        -23.617102,
-        -5.294914,
-        -16.273706
-      ],
       [
         -20.725029,
         0.052433,
         -30.668236
       ],
       [
-        -5.973376,
-        4.595071,
-        2.002341
-      ],
-      [
         -2.752981,
         5.729301,
         9.706023
-      ],
-      [
-        2.179941,
-        -2.480415,
-        -5.413967
-      ],
-      [
-        4.616042,
-        5.491636,
-        8.152614
-      ],
-      [
-        4.622695,
-        -5.158742,
-        -15.144862
-      ],
-      [
-        5.234484,
-        -1.120667,
-        -1.465554
-      ],
-      [
-        13.699648,
-        -3.245301,
-        -9.553801
       ],
       [
         28.218921,
@@ -88,13 +70,61 @@
         30.734147,
         12.000682,
         -14.128709
-      ],
-      [
-        37.35998,
-        23.682858,
-        20.767912
       ]
-    ]
+    ],
+    "deadTarget": {
+      "steps": 900,
+      "killedOnDemand": true,
+      "playerAlive": false,
+      "playerExists": true,
+      "enemiesOnFallbackTarget": 0,
+      "damageToPlayer": 0,
+      "damageToPlayerToHealth": 0,
+      "damageToPlayerAbsorbed": 0,
+      "damageToPlayerBySource": {},
+      "damageToEnemies": 0,
+      "damageToEnemiesBySource": {},
+      "damageEvents": 0,
+      "crits": 0,
+      "kills": 0,
+      "enemyKills": 0,
+      "playerDeaths": 0,
+      "enemiesAlive": 5,
+      "enemyStates": {
+        "reposition": 1,
+        "chase": 4
+      },
+      "finalEnemyPositions": [
+        [
+          -7.332426,
+          5.863605,
+          6.84182
+        ],
+        [
+          -6.073376,
+          -2.631792,
+          -8.612903
+        ],
+        [
+          27.889487,
+          12.000682,
+          -12.916989
+        ],
+        [
+          28.385315,
+          12.000682,
+          -12.482046
+        ],
+        [
+          29.032342,
+          -3.695244,
+          -44.342811
+        ]
+      ],
+      "directorEnabled": false,
+      "frameErrors": 0,
+      "lastFrameError": null
+    }
   },
   "diagnostics": {
     "liveness": {
@@ -122,7 +152,7 @@
       "localTick": 0,
       "progressionStarted": false
     },
-    "rawCtxTime": 69.99999999999731,
-    "clockDrift": 2.6858515411731787e-12
+    "rawCtxTime": 84.99999999999646,
+    "clockDrift": 3.538502824085299e-12
   }
 }
