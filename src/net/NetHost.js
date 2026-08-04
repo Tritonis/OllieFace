@@ -27,12 +27,14 @@ const MAX_INPUT_BACKLOG = 12;
 // snapshot carrying that peer's death can reach it. Three snapshot intervals
 // plus a frame, rounded up; see `_holdSession`.
 const HOLD_GRACE = 1.5;
-// How old a peer's pawn may be, in host ticks (60Hz), when its HELLO lands and
-// still be re-stated from it. Two seconds is far past any real join — the
-// message is the first thing a client sends on the reliable channel — and it is
-// the difference between "re-stat a pawn nothing has happened to yet" and
-// "re-stat a pawn somebody has been playing", which is a free full heal.
-const HELLO_MAX_PAWN_AGE = 120;
+// How long a peer may take to identify itself before the host gives up on it.
+//
+// Counted in seconds, not host ticks. It used to be 120 ticks, which reads as
+// ~2 s at 60 fps and ~15 s at the ~8 ticks/s a throttled host actually runs
+// at — a join gate whose real length depended on the host's frame rate. Too
+// short and a peer on a slow connection is refused mid-handshake; too long and
+// a silent peer is simulated as the host's own survivor for that whole window.
+const HELLO_MAX_AGE_SEC = 2.5;
 // How long the refusal is given to leave the reliable channel before the peer
 // is closed under it: 8 tries at 16 ms, so ~128 ms and never longer. See
 // `_closeWhenFlushed`.
@@ -104,6 +106,9 @@ export class NetHost {
 
   get playerCount() { return 1 + this.clients.size; }
 
+  /** Seconds, monotonic. A seam so the age gates are testable. */
+  _now() { return performance.now() / 1000; }
+
   _onPeer(peer) {
     peer.onMessage = (data, channel) => this._onMessage(peer, data, channel);
     peer.onClose = () => this._onPeerLeave(peer);
@@ -118,7 +123,7 @@ export class NetHost {
     // whole session. See `_onHello`.
     this.clients.set(peer.id, {
       peer, pawn, inputs: [], lastTick: 0, name: `Player ${peer.id + 1}`,
-      joinTick: this.tick, helloSeen: false, survivorId: null,
+      joinTick: this.tick, joinedAt: this._now(), helloSeen: false, survivorId: null,
     });
 
     const w = this.writer.reset();
@@ -285,12 +290,33 @@ export class NetHost {
       return this._refuse(peer, REFUSE.SURVIVOR, hello.survivorId || '(none)');
     }
     if (!c.pawn) return;
-    if (this.tick - (c.joinTick ?? 0) > HELLO_MAX_PAWN_AGE) {
+    if (this._now() - (c.joinedAt ?? 0) > HELLO_MAX_AGE_SEC) {
       return this._refuse(peer, REFUSE.HELLO, 'it arrived too late to re-stat the pawn safely');
     }
 
     c.survivorId = hello.survivorId;
     c.pawn.setSurvivor?.(hello.survivorId);
+  }
+
+  /**
+   * The fifth HELLO door.
+   *
+   * `_onHello` can refuse a message that is duplicated, unparseable,
+   * truncated, version-mismatched, survivor-invalid or late. It cannot refuse
+   * a peer that never sends one at all, because nothing ever looks. Such a
+   * peer keeps the pawn's default survivor — the host's — and is simulated as
+   * it for the whole session, silently: measured at host `ranger` 70.17/110
+   * against joiner `anvil` 108.44/170 with both lobbies reading "connected"
+   * and zero console errors, page errors or `[net]` warnings.
+   */
+  _checkHelloDeadlines() {
+    if (this.clients.size === 0) return;
+    const now = this._now();
+    for (const c of [...this.clients.values()]) {
+      if (c.helloSeen) continue;
+      if (now - (c.joinedAt ?? 0) <= HELLO_MAX_AGE_SEC) continue;
+      this._refuse(c.peer, REFUSE.HELLO, 'it never sent an identity message');
+    }
   }
 
   /**
@@ -345,6 +371,7 @@ export class NetHost {
    * tick so remote players can never gain an action-rate advantage by flooding.
    */
   fixedUpdate(ctx, h) {
+    this._checkHelloDeadlines();
     this.tick++;
     for (const c of this.clients.values()) {
       if (!c.pawn) continue;
@@ -425,7 +452,13 @@ export class NetHost {
       // in the arena, targeted by everything in it (`Enemy.js:449`) and unable
       // to move, dodge or shoot for a measured 1.68 s. `hasLivePeer()` is the
       // question the mute is actually asking.
-      if (ctx.input) ctx.input.enabled = !live;
+      // Two questions, two predicates. The grace exists so a peer that has just
+      // died still receives the snapshot carrying its own death; the mute
+      // exists because the world is still being played by somebody. But while a
+      // local menu is open the host is not playing it — leaving input live let
+      // pause-menu keystrokes drive the survivor for up to HOLD_GRACE (1.5 s)
+      // after the last peer died.
+      if (ctx.input) ctx.input.enabled = !live && !screen;
     } else if (this._holding) {
       ctx.paused = !!screen;
       if (ctx.input) ctx.input.enabled = true;
