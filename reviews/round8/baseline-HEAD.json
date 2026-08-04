@@ -1,0 +1,128 @@
+{
+  "fingerprint": {
+    "seed": 20260804,
+    "preSteps": 600,
+    "steps": 3600,
+    "damageToPlayer": 33.1,
+    "damageToPlayerToHealth": 33.1,
+    "damageToPlayerAbsorbed": 0,
+    "damageToPlayerBySource": {
+      "lemurian": 21,
+      "spitling": 12.1
+    },
+    "damageToEnemies": 726,
+    "damageToEnemiesBySource": {
+      "player": 726
+    },
+    "damageEvents": 53,
+    "crits": 0,
+    "kills": 7,
+    "enemyKills": 7,
+    "playerDeaths": 0,
+    "enemiesAlive": 13,
+    "enemiesAliveMax": 13,
+    "goldTotal": 53,
+    "playerHealth": 143,
+    "playerShield": 0,
+    "playerLevel": 2,
+    "ctxTime": 70,
+    "frameErrors": 0,
+    "lastFrameError": null,
+    "finalEnemyPositions": [
+      [
+        -23.617102,
+        -5.294914,
+        -16.273706
+      ],
+      [
+        -20.725029,
+        0.052433,
+        -30.668236
+      ],
+      [
+        -5.973376,
+        4.595071,
+        2.002341
+      ],
+      [
+        -2.752981,
+        5.729301,
+        9.706023
+      ],
+      [
+        2.179941,
+        -2.480415,
+        -5.413967
+      ],
+      [
+        4.616042,
+        5.491636,
+        8.152614
+      ],
+      [
+        4.622695,
+        -5.158742,
+        -15.144862
+      ],
+      [
+        5.234484,
+        -1.120667,
+        -1.465554
+      ],
+      [
+        13.699648,
+        -3.245301,
+        -9.553801
+      ],
+      [
+        28.218921,
+        12.000682,
+        -12.816715
+      ],
+      [
+        28.979474,
+        -3.879297,
+        -44.61393
+      ],
+      [
+        30.734147,
+        12.000682,
+        -14.128709
+      ],
+      [
+        37.35998,
+        23.682858,
+        20.767912
+      ]
+    ]
+  },
+  "diagnostics": {
+    "liveness": {
+      "gate": "fired",
+      "paused": false,
+      "localTick": 61,
+      "menuScreen": null,
+      "time": 1.017,
+      "engineRunning": true,
+      "stageIndex": 0
+    },
+    "settleGate": {
+      "paused": false,
+      "menuScreen": null,
+      "localTick": 600,
+      "expectedLocalTick": 600,
+      "progressionStarted": true,
+      "stageIndex": 0,
+      "playerAlive": true,
+      "enemiesAlive": 1,
+      "engineRunning": false
+    },
+    "startState": {
+      "time": 0,
+      "localTick": 0,
+      "progressionStarted": false
+    },
+    "rawCtxTime": 69.99999999999731,
+    "clockDrift": 2.6858515411731787e-12
+  }
+}

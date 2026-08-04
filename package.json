@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "vite",
+    "test": "node tests/run.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "shots": "node tools/capture.mjs",
