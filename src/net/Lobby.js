@@ -118,9 +118,19 @@ export class Lobby {
     const id = this._inviteIdFor(answerBlob);
     const invite = this.pendingInvites.get(id);
     if (!invite) throw new Error('No pending invite matches that code');
+    // Set the placeholder *before* the await. `invite.accept` resolves the
+    // transport's `ready` promise, which fires `onPeer` -> `netPlayerJoined` ->
+    // the status a successful join deserves. Setting 'peerConnecting'
+    // afterwards overwrote that, so a host that had just accepted a player sat
+    // reading "Reply accepted — connecting…" forever.
+    // Set the placeholder *before* the await. `invite.accept` resolves the
+    // transport's `ready` promise, which fires `onPeer` -> `netPlayerJoined` ->
+    // the status a successful join deserves. Setting 'peerConnecting'
+    // afterwards overwrote that, so a host that had just accepted a player sat
+    // reading "Reply accepted — connecting…" forever.
+    this._set('peerConnecting', { id });
     await invite.accept(answerBlob);
     this.pendingInvites.delete(id);
-    this._set('peerConnecting', { id });
   }
 
   _inviteIdFor(blob) {
@@ -239,6 +249,13 @@ export class Lobby {
     this.net = null;
     this.mode = 'single';
     this.ctx.authority = true;
+    // Every consumer of `netRole` has to be handed back its single-player
+    // answer, not just `authority`. A stale 'client' stops
+    // `Player.fixedUpdate` sampling input at all (Player.js:366 — the measured
+    // 0.000 units of movement after leaving), re-points two damage filters
+    // (Engine.js:357, :363) and silently disables profile and achievement
+    // recording for the rest of the page's life (Profile.js:1272, :1369).
+    this.ctx.netRole = 'single';
     this._refused = false;
     this._refusedPeers.clear();
     this.players = [{ id: 0, name: 'You', local: true }];
