@@ -77,5 +77,19 @@ console.log('C-1 — the other end: a peer that did send one is left alone');
   ok(refusals.length === 0, 'peer with a HELLO is not refused');
 }
 
+console.log('C-1 — the sweep is actually reachable from the tick loop');
+{
+  const host = makeHost();
+  const { refusals } = addClient(host, { helloSeen: false, joinedAt: 0 });
+  host._now = () => 99;
+  // Engine._frame calls `s.fixedUpdate(ctx, FIXED)` with FIXED = 1/60
+  // (src/core/Engine.js:16, :236) — drive it with that real shape rather
+  // than calling `_checkHelloDeadlines()` directly, so this assertion fails
+  // if the wiring is ever removed from `fixedUpdate`, not just if the swept
+  // logic itself regresses.
+  host.fixedUpdate(host.ctx, 1 / 60);
+  ok(refusals.length === 1, `silent peer refused via fixedUpdate, not just the direct call (got ${refusals.length})`);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
