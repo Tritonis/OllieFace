@@ -13,7 +13,7 @@ comparator knows which fields are wall-clock diagnostics and which are real.
 
 | File | What it captures | Command that produced it |
 |---|---|---|
-| `baseline-precoop.json` | The tree **before** Wave C — i.e. before any enemy read the roster. Kept for audit; do not compare new work against it. | `node tests/sp-equivalence.mjs --out reviews/round8/baseline-HEAD.json` at commit `00b0bf6`, then copied to this name before the re-baseline. |
+| `baseline-precoop.json` | The tree **before** Wave C — i.e. before any enemy read the roster. Kept for audit; do not compare new work against it. | `node tests/sp-equivalence.mjs --out reviews/round8/baseline-HEAD.json` at commit `e4d25b6`, the commit that last wrote the blob; untouched through `8e33e63`, then copied to this name before the re-baseline. |
 | `baseline-HEAD.json` | **The current baseline. Cite this one.** The tree with both Wave C halves in: Task 7 (`8e33e63`, Director/FinalBoss/HUD) and Task 6 (`394d727`, Enemy targeting). | `node tests/sp-equivalence.mjs --out reviews/round8/baseline-HEAD.json` at commit `394d727`. |
 
 The pre-Wave-C baseline stays committed on purpose. A re-baseline with no

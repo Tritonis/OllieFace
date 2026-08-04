@@ -43,6 +43,26 @@ const _info = { source: null, position: new THREE.Vector3(), procCoefficient: 0,
 const RETARGET_INTERVAL = 0.5;
 
 /**
+ * A unit's starting re-query timer: already expired, by a per-unit amount.
+ *
+ * Returns a value in `[-RETARGET_INTERVAL, 0)`. Expired, so the unit acquires a
+ * target on its very first step and never idles waiting for a phase it does not
+ * have yet. Expired *by a different amount per unit*, so that when the
+ * scheduled path adds one interval to it the sixty resulting deadlines are
+ * sixty different deadlines. Adding rather than assigning is what carries the
+ * offset forward for the life of the unit; assigning a constant would flatten
+ * every unit onto one phase on step one and keep them there.
+ *
+ * `spawn` draws `this.noise` from `ctx.rng.range(0, 100)` — a phase offset for
+ * `Math.sin`, where only the spread ever mattered and the scale never did.
+ * Dividing by that range is what turns it into a fraction of one interval;
+ * multiplying it raw would put a unit's first re-query up to 50 seconds out.
+ */
+function retargetSeed(noise) {
+  return (noise / 100 - 1) * RETARGET_INTERVAL;
+}
+
+/**
  * Route through Combat's one damage path; fall back only if it isn't up.
  *
  * The victim is passed rather than looked up. It used to read `ctx.player`,
@@ -279,12 +299,8 @@ export class Enemy {
     this.stallT = 0;
     this.noise = ctx.rng.range(0, 100);
     // Staggered by unit so sixty enemies never re-query on one step, the same
-    // way `losT` is. `this.noise` is the per-unit jitter the class already
-    // carries, but it spans [0, 100) — not [0, 1) — because its other users are
-    // phase offsets for `Math.sin`/`Math.cos` where the scale is irrelevant.
-    // Multiplying it raw would push the first evaluation up to 50 s out, so it
-    // is normalised to a fraction of one interval first.
-    this.retargetT = (this.noise / 100) * RETARGET_INTERVAL;
+    // way `losT` is. Starts already expired — see `retargetSeed`.
+    this.retargetT = retargetSeed(this.noise);
     this.targetPlayer = null;
     this.hasLOS = true;
     this.losT = ctx.rng.range(0, 0.13);
@@ -347,7 +363,7 @@ export class Enemy {
     if (!def) return a;
     // The tower shield only exists in the phase that is holding it up.
     const gated = def.frontArmorPhase ? this.phase <= def.frontArmorPhase : true;
-    if (def.frontArmor && gated && this._ctx?.player && this.facingPlayer(def.frontArc || 1.0)) {
+    if (def.frontArmor && gated && this.targetPlayer && this.facingPlayer(def.frontArc || 1.0)) {
       a += fracToArmor(def.frontArmor);
     }
     // A warded elite's barrier is armour while the barrier is still up, which
@@ -357,9 +373,25 @@ export class Enemy {
     return a;
   }
 
-  /** Is the player inside `arc` radians of this unit's facing? */
+  /**
+   * Is the player this unit is fighting inside `arc` radians of its facing?
+   *
+   * The unit's *own* target, not the local screen's player. Reading the global
+   * here inverted the shield in co-op: a warden whose target is the guest turns
+   * to face the guest, but the arc was measured against the host, so the
+   * guest's point-blank frontal shot arrived unmitigated while the host merely
+   * standing in the front arc applied the full reduction to the guest's shot
+   * from behind.
+   *
+   * This narrows the defect rather than closing it. `Combat.armorOf(entity)`
+   * takes no attacker, so directional armour is attacker-agnostic by
+   * construction and a shield still cannot be right for two shooters at once;
+   * the complete fix threads `info.source` through that signature. Until then
+   * the arc at least agrees with the direction the unit is actually facing,
+   * which is the rule the animation is already telling the player.
+   */
   facingPlayer(arc) {
-    const p = this._ctx?.player;
+    const p = this.targetPlayer;
     if (!p) return false;
     const dx = p.position.x - this.position.x, dz = p.position.z - this.position.z;
     const d = Math.hypot(dx, dz);
@@ -488,8 +520,20 @@ export class Enemy {
     // immediately — not on the next tick — when the held target stops being
     // targetable, so an enemy never spends half a second swinging at a corpse.
     this.retargetT -= h;
-    if (this.retargetT <= 0 || !Roster.targetable(this.targetPlayer)) {
-      this.retargetT = RETARGET_INTERVAL;
+    if (this.retargetT <= 0) {
+      // Scheduled path. The only branch that touches the timer, and it *adds*
+      // rather than assigns, so this unit's offset survives every reset — see
+      // `retargetSeed`. It is also the only branch a unit with no target at all
+      // ever takes, which is what stops a stage where everyone is dead from
+      // asking the roster the same question sixty times a step forever.
+      this.retargetT += RETARGET_INTERVAL;
+      this.targetPlayer = acquireTarget(ctx.roster, this.position, this.targetPlayer);
+    } else if (this.targetPlayer && !Roster.targetable(this.targetPlayer)) {
+      // Forced path: the target this unit is holding died, went down or left
+      // the roster. Re-acquire on this step rather than the next scheduled one,
+      // so an enemy never spends half a second swinging at a corpse. The timer
+      // is deliberately left alone; there is nothing to re-schedule, only
+      // something to drop.
       this.targetPlayer = acquireTarget(ctx.roster, this.position, this.targetPlayer);
     }
 
@@ -1177,19 +1221,32 @@ export class Enemy {
     // Aimed at one player, but it damages everyone it passes through. A
     // hitscan beam that goes straight through your teammate without touching
     // them is the kind of thing that reads as broken rather than as a rule.
+    //
+    // The segment is copied into scalars first, and no module scratch is read
+    // inside the loop. `origin` is `_v1` and `dir` is `_v2`, and damaging one
+    // victim can re-enter this file: `Combat.applyDamage` dispatches
+    // `onDamaged`, Razor Wire and the thorns card retaliate synchronously, and
+    // an enemy dying to that retaliation runs `onDeath`, which writes `_v1`.
+    // With one victim the geometry was finished before any damage landed; with
+    // several, holding the vectors across the call would test the next player
+    // against a segment that is now the difference of two enemy positions.
+    const ox = origin.x, oy = origin.y, oz = origin.z;
+    const dx = dir.x, dy = dir.y, dz = dir.z;
     ctx.roster?.forEachTargetable?.((p) => {
-      _v3.copy(p.position);
-      _v3.y += 1.0;
-      _v3.sub(origin);
-      const t = clamp(_v3.dot(dir), 0, len);
-      const px = origin.x + dir.x * t - (p.position.x);
-      const py = origin.y + dir.y * t - (p.position.y + 1.0);
-      const pz = origin.z + dir.z * t - (p.position.z);
+      const vx = p.position.x - ox, vy = (p.position.y + 1.0) - oy, vz = p.position.z - oz;
+      const t = clamp(vx * dx + vy * dy + vz * dz, 0, len);
+      const px = ox + dx * t - p.position.x;
+      const py = oy + dy * t - (p.position.y + 1.0);
+      const pz = oz + dz * t - p.position.z;
       const r = radius + (p.radius || 0.45);
       if (px * px + py * py + pz * pz < r * r) hurtPlayer(ctx, p, this, damage, 'beam');
     });
+    // Restored from the snapshot for the same reason: the trail is drawn after
+    // the damage, so `_v1`/`_v2` may no longer hold the beam.
     const dr = ctx.director;
-    if (dr && dr.spawnBeamTrail) dr.spawnBeamTrail(origin, dir, len, a.color);
+    if (dr && dr.spawnBeamTrail) {
+      dr.spawnBeamTrail(origin.set(ox, oy, oz), dir.set(dx, dy, dz), len, a.color);
+    }
   }
 
   detonate(ctx) {
@@ -1205,14 +1262,17 @@ export class Enemy {
       // Combat owns the kill path, and bypassing it meant a suiciding unit
       // emitted no `kill` event — so it never counted toward the run's kill
       // tally, never triggered on-kill item procs, and (once kill rewards
-      // existed) paid no gold. Credited to the player, since the pest died
-      // completing an attack on them.
+      // existed) paid no gold.
       const combat = ctx.combat;
       if (combat?.applyDamage) {
-        // Credited to whoever it was attacking, not to `ctx.player`. On a host
-        // that read as the host's own survivor, so a pest that killed itself
-        // completing an attack on a guest paid the host the gold.
-        combat.applyDamage(this, this.health, { source: this.targetPlayer ?? null, procCoefficient: 0 });
+        // Credited to whoever it was attacking, not to `ctx.player` — on a host
+        // that read as the host's own survivor whichever player the pest
+        // actually dived on. What the attribution buys is the `kill` event's
+        // `source` and the `onKill` dispatch, which only fires for
+        // `source?.isPlayer`: a guest's on-kill items now proc off the pest
+        // that killed itself on them. Not gold — `Items.rewardKill(victim)`
+        // takes no source and pays the local inventory either way.
+        combat.applyDamage(this, this.health, { source: this.targetPlayer, procCoefficient: 0 });
       } else {
         this.health = 0;
         this.onDeath(null);
