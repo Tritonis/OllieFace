@@ -17,6 +17,7 @@ import {
 import { acquireRig, releaseRig, configureShadows, makeAnim, BEAM_MAX_LEN } from './EnemyMeshes.js';
 import { ELITE_STATS } from '../data/enemies.js';
 import { ESTATE } from '../net/Protocol.js';
+import { Roster, acquireTarget } from '../systems/Roster.js';
 import { clamp, damp, lerp } from '../core/MathUtil.js';
 
 let NEXT_ID = 1;
@@ -31,9 +32,26 @@ const FLASH_TIME = 0.075;
 
 const _info = { source: null, position: new THREE.Vector3(), procCoefficient: 0, type: '' };
 
-/** Route through Combat's one damage path; fall back only if it isn't up. */
-function hurtPlayer(ctx, source, amount, type, at) {
-  const p = ctx.player;
+/**
+ * How often an enemy reconsiders its target, in seconds.
+ *
+ * Too long and an enemy keeps swinging at a player who has already run out of
+ * the fight; too short and 60 units re-query every step for a decision that
+ * changes a few times a minute. Staggered per unit so they never land together
+ * — the same reason `losT` is staggered in `spawn`.
+ */
+const RETARGET_INTERVAL = 0.5;
+
+/**
+ * Route through Combat's one damage path; fall back only if it isn't up.
+ *
+ * The victim is passed rather than looked up. It used to read `ctx.player`,
+ * which on a host is the host's own survivor — so every directed attack in a
+ * co-op session landed on one person no matter who it was aimed at. Measured at
+ * 78 directed hits on the host and 0 on a pawn standing 3 m away over 30 s.
+ */
+function hurtPlayer(ctx, victim, source, amount, type, at) {
+  const p = victim;
   if (!p || p.alive === false) return;
   _info.source = source;
   _info.procCoefficient = 0;
@@ -51,16 +69,20 @@ function explodeAt(ctx, source, point, radius, damage, status) {
     c.explode(point, radius, damage, source, { proc: 0, status: status || null, type: 'blast' });
     return;
   }
-  const p = ctx.player;
-  if (p && dist2D(p.position, point) < radius + (p.radius || 0.45)) {
-    hurtPlayer(ctx, source, damage, 'blast', point);
-  }
+  // Fallback only — reached when Combat is not up. It has to sweep the roster
+  // for the same reason `combat.explode` does: a blast is a place, not a
+  // person, and everyone standing in it is in it.
+  ctx.roster?.forEachTargetable?.((p) => {
+    if (dist2D(p.position, point) < radius + (p.radius || 0.45)) {
+      hurtPlayer(ctx, p, source, damage, 'blast', point);
+    }
+  });
 }
 
 /** Elite on-hit riders, expressed as Combat's own status types. */
-function statusPlayer(ctx, source, type, count = 1) {
+function statusPlayer(ctx, victim, source, type, count = 1) {
   const c = ctx.combat;
-  if (c && c.applyStatus && ctx.player) c.applyStatus(ctx.player, type, source, count);
+  if (c && c.applyStatus && victim) c.applyStatus(victim, type, source, count);
 }
 
 function fx(ctx, name, a, b, c) {
@@ -162,6 +184,12 @@ export class Enemy {
     this.distToPlayer = 999;
     this.spawnT = 0;
 
+    // Who this unit is fighting. Null until the first evaluation, which the
+    // `!targetable(null)` clause in `fixedUpdate` forces on the very first step
+    // regardless of the stagger below.
+    this.targetPlayer = null;
+    this.retargetT = 0;
+
     this.home = new THREE.Vector3();
     this.target = new THREE.Vector3();
     this._desired = new THREE.Vector3();
@@ -250,6 +278,14 @@ export class Enemy {
     this.commitT = this.melee ? ctx.rng.range(0.35, 1.3) : 0;
     this.stallT = 0;
     this.noise = ctx.rng.range(0, 100);
+    // Staggered by unit so sixty enemies never re-query on one step, the same
+    // way `losT` is. `this.noise` is the per-unit jitter the class already
+    // carries, but it spans [0, 100) — not [0, 1) — because its other users are
+    // phase offsets for `Math.sin`/`Math.cos` where the scale is irrelevant.
+    // Multiplying it raw would push the first evaluation up to 50 s out, so it
+    // is normalised to a fraction of one interval first.
+    this.retargetT = (this.noise / 100) * RETARGET_INTERVAL;
+    this.targetPlayer = null;
     this.hasLOS = true;
     this.losT = ctx.rng.range(0, 0.13);
     this.avoidT = ctx.rng.range(0, 0.1);
@@ -446,7 +482,21 @@ export class Enemy {
       this.shield = Math.min(this.maxShield, this.shield + this.maxShield * 0.5 * h);
     }
 
-    const p = ctx.player;
+    // Who this unit is fighting. Re-evaluated on a stagger rather than every
+    // step: the answer changes a few times a minute, and 60 units re-querying
+    // the roster every step would pay for that sixty times a frame. Dropped
+    // immediately — not on the next tick — when the held target stops being
+    // targetable, so an enemy never spends half a second swinging at a corpse.
+    this.retargetT -= h;
+    if (this.retargetT <= 0 || !Roster.targetable(this.targetPlayer)) {
+      this.retargetT = RETARGET_INTERVAL;
+      this.targetPlayer = acquireTarget(ctx.roster, this.position, this.targetPlayer);
+    }
+
+    // Everything below this line — the FSM, the steering, the attack selection —
+    // reads these three fields and nothing else. They were always per-enemy;
+    // only the source they were filled from was wrong.
+    const p = this.targetPlayer;
     if (p && p.position) {
       this.target.copy(p.position);
       this.distToPlayer = dist2D(this.position, p.position);
@@ -469,8 +519,8 @@ export class Enemy {
       if (this.auraT <= 0) {
         this.auraT = 0.5;
         if (this.distToPlayer < em.auraRadius) {
-          hurtPlayer(ctx, this, this.damage * em.auraDps, 'burn');
-          statusPlayer(ctx, this, 'burn', 1);
+          hurtPlayer(ctx, this.targetPlayer, this, this.damage * em.auraDps, 'burn');
+          statusPlayer(ctx, this.targetPlayer, this, 'burn', 1);
         }
       }
     }
@@ -483,9 +533,9 @@ export class Enemy {
       if (this.auraT <= 0) {
         this.auraT = 0.4;
         if (this.distToPlayer < em.denyRadius && this.hasLOS) {
-          ctx.director?.denyHealing?.(em.denyTime);
+          ctx.director?.denyHealing?.(em.denyTime, this.targetPlayer);
           if (this.distToPlayer < em.auraRadius) {
-            hurtPlayer(ctx, this, this.damage * em.thornDps, 'wither');
+            hurtPlayer(ctx, this.targetPlayer, this, this.damage * em.thornDps, 'wither');
           }
         }
       }
@@ -496,7 +546,7 @@ export class Enemy {
   }
 
   checkLOS(ctx) {
-    const p = ctx.player;
+    const p = this.targetPlayer;
     if (!p || !ctx.stage || !ctx.stage.raycast) return true;
     _v1.copy(this.position);
     _v1.y += this.height * 0.75;
@@ -597,7 +647,7 @@ export class Enemy {
       return arrive(d, this, this._orbit, speed * 0.72, 2.0, 0);
     }
 
-    if (st === S.IDLE || !ctx.player) {
+    if (st === S.IDLE || !this.targetPlayer) {
       // Loose patrol around the spawn anchor so idle packs still drift.
       const t = ctx.time * 0.25 + this.noise;
       this._tmp.set(this.home.x + Math.cos(t) * 6, this.position.y, this.home.z + Math.sin(t * 0.8) * 6);
@@ -613,7 +663,7 @@ export class Enemy {
       case 'swarm':
         // Straight in, leading the player slightly, with none of the arc or
         // patience a prowler gets. A swarm is supposed to arrive all at once.
-        return pursue(d, this, this.target, ctx.player?.velocity, speed, 0.25);
+        return pursue(d, this, this.target, this.targetPlayer?.velocity, speed, 0.25);
 
       case 'charger': {
         // Closes to charge range and then holds — the dash is what it wants to
@@ -799,7 +849,7 @@ export class Enemy {
     const combatFacing = st === S.WINDUP || st === S.ATTACK || st === S.CIRCLE || st === S.REPOSITION
       || (st === S.CHASE && (!this.melee || this.distToPlayer < this.engageRadius * 1.6));
     let want = this.yaw;
-    if (combatFacing && ctx.player) {
+    if (combatFacing && this.targetPlayer) {
       want = Math.atan2(this.target.x - this.position.x, this.target.z - this.position.z);
     } else if (this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z > 0.4) {
       want = Math.atan2(this.velocity.x, this.velocity.z);
@@ -816,7 +866,7 @@ export class Enemy {
 
   pickAttack(ctx) {
     const def = this.def;
-    if (this.gcd > 0 || !ctx.player || !this.hasLOS) return -1;
+    if (this.gcd > 0 || !this.targetPlayer || !this.hasLOS) return -1;
     let best = -1;
     let bestW = 0;
     for (let i = 0; i < def.attacks.length; i++) {
@@ -862,13 +912,13 @@ export class Enemy {
     switch (a.kind) {
       case 'melee': {
         // Cone check in front of the unit at the strike frame.
-        const p = ctx.player;
+        const p = this.targetPlayer;
         if (p && this.distToPlayer < a.range + this.radius) {
           _v2.set(p.position.x - this.position.x, 0, p.position.z - this.position.z).normalize();
           if (_v2.dot(dir) > Math.cos(a.arc || 1)) {
-            hurtPlayer(ctx, this, this.damage, 'melee');
-            if (this.elite && this.elite.burn) statusPlayer(ctx, this, 'burn', 2);
-            if (this.elite && this.elite.slow) statusPlayer(ctx, this, 'slow', 1);
+            hurtPlayer(ctx, p, this, this.damage, 'melee');
+            if (this.elite && this.elite.burn) statusPlayer(ctx, p, this, 'burn', 2);
+            if (this.elite && this.elite.slow) statusPlayer(ctx, p, this, 'slow', 1);
             ctx.pipeline?.addShake?.(0.03);
           }
         }
@@ -945,12 +995,12 @@ export class Enemy {
 
   /** Contact test for a committed dash. Latched, so one dash lands one hit. */
   chargeContact(ctx, a, h) {
-    const p = ctx.player;
+    const p = this.targetPlayer;
     if (!p || this.chargeHit) return;
     const r = (a.hitRadius || 1.2) + this.radius + (p.radius || 0.45);
     if (dist2D(this.position, p.position) > r) return;
     this.chargeHit = true;
-    hurtPlayer(ctx, this, this.damage * a.damage, 'charge');
+    hurtPlayer(ctx, p, this, this.damage * a.damage, 'charge');
     if (a.knock && p.velocity) {
       // Shoved along the dash line, not away from a point: being run over
       // should move you the way the thing that hit you was going.
@@ -1014,7 +1064,7 @@ export class Enemy {
 
   /** Per-step suction while a `pull` attack is live. */
   pullPlayer(ctx, a, h) {
-    const p = ctx.player;
+    const p = this.targetPlayer;
     if (!p || !p.velocity) return;
     _v2.set(this.position.x - p.position.x, 0, this.position.z - p.position.z);
     const d = _v2.length();
@@ -1028,7 +1078,7 @@ export class Enemy {
       this.tickT -= h;
       if (this.tickT <= 0) {
         this.tickT = 0.4;
-        hurtPlayer(ctx, this, this.damage * a.damage, 'pull');
+        hurtPlayer(ctx, p, this, this.damage * a.damage, 'pull');
       }
     }
   }
@@ -1110,8 +1160,9 @@ export class Enemy {
   fireBeam(ctx, a, radius, damage) {
     const origin = _v1.set(this.position.x, this.position.y + this.height * 0.82, this.position.z);
     const dir = _v2.set(Math.sin(this.yaw), 0, Math.cos(this.yaw));
-    if (ctx.player) {
-      _v3.copy(ctx.player.position);
+    const aim = this.targetPlayer;
+    if (aim) {
+      _v3.copy(aim.position);
       _v3.y += 1.0;
       const dy = _v3.y - origin.y;
       const dh = Math.hypot(_v3.x - origin.x, _v3.z - origin.z);
@@ -1123,8 +1174,10 @@ export class Enemy {
     if (hit) len = hit.distance;
     this.anim.beamLen = Math.min(len, BEAM_MAX_LEN);
 
-    const p = ctx.player;
-    if (p) {
+    // Aimed at one player, but it damages everyone it passes through. A
+    // hitscan beam that goes straight through your teammate without touching
+    // them is the kind of thing that reads as broken rather than as a rule.
+    ctx.roster?.forEachTargetable?.((p) => {
       _v3.copy(p.position);
       _v3.y += 1.0;
       _v3.sub(origin);
@@ -1133,8 +1186,8 @@ export class Enemy {
       const py = origin.y + dir.y * t - (p.position.y + 1.0);
       const pz = origin.z + dir.z * t - (p.position.z);
       const r = radius + (p.radius || 0.45);
-      if (px * px + py * py + pz * pz < r * r) hurtPlayer(ctx, this, damage, 'beam');
-    }
+      if (px * px + py * py + pz * pz < r * r) hurtPlayer(ctx, p, this, damage, 'beam');
+    });
     const dr = ctx.director;
     if (dr && dr.spawnBeamTrail) dr.spawnBeamTrail(origin, dir, len, a.color);
   }
@@ -1156,7 +1209,10 @@ export class Enemy {
       // completing an attack on them.
       const combat = ctx.combat;
       if (combat?.applyDamage) {
-        combat.applyDamage(this, this.health, { source: ctx.player, procCoefficient: 0 });
+        // Credited to whoever it was attacking, not to `ctx.player`. On a host
+        // that read as the host's own survivor, so a pest that killed itself
+        // completing an attack on a guest paid the host the gold.
+        combat.applyDamage(this, this.health, { source: this.targetPlayer ?? null, procCoefficient: 0 });
       } else {
         this.health = 0;
         this.onDeath(null);
@@ -1183,7 +1239,7 @@ export class Enemy {
     a.hurt = damp(a.hurt, this.hurtT > 0 ? 1 : 0, 0.999, dt);
     a.lean = clamp(-this.velocity.x * Math.cos(this.yaw) + this.velocity.z * Math.sin(this.yaw), -1, 1) * 0.3;
 
-    if (ctx.player) {
+    if (this.targetPlayer) {
       const yawToTarget = Math.atan2(this.target.x - this.position.x, this.target.z - this.position.z);
       a.lookY = clamp(angleDelta(this.yaw, yawToTarget), -1.1, 1.1);
       const dy = (this.target.y + 1.2) - (this.position.y + this.height * 0.8);
@@ -1300,13 +1356,13 @@ const STATES = {
 
   [S.IDLE]: {
     update(e, ctx, h, fsm) {
-      if (ctx.player && e.distToPlayer < 70) fsm.set(S.CHASE, ctx);
+      if (e.targetPlayer && e.distToPlayer < 70) fsm.set(S.CHASE, ctx);
     },
   },
 
   [S.CHASE]: {
     update(e, ctx, h, fsm) {
-      if (!ctx.player) { fsm.set(S.IDLE, ctx); return; }
+      if (!e.targetPlayer) { fsm.set(S.IDLE, ctx); return; }
       // Support units live in their own loop: find someone to mend, go stand
       // near them, and only look at the player to decide how far to run away.
       if (e.behavior === 'support' && fsm.t > 0.4) {
@@ -1340,7 +1396,7 @@ const STATES = {
 
   [S.CIRCLE]: {
     update(e, ctx, h, fsm) {
-      if (!ctx.player) { fsm.set(S.IDLE, ctx); return; }
+      if (!e.targetPlayer) { fsm.set(S.IDLE, ctx); return; }
       e.commitT -= h;
       // The player broke away — go back to closing, and re-arm a short hold so
       // the next arrival is prowled rather than charged.
@@ -1544,7 +1600,7 @@ const STATES = {
         e.anim.beamOn = true;
         e.anim.beamLen = Math.min(a.range, Math.max(4, e.distToPlayer));
       } else if (a.kind === 'dive') {
-        const p = ctx.player;
+        const p = e.targetPlayer;
         const near = p ? e.position.distanceTo(p.position) : 99;
         if (near < 2.2 || e.grounded || e.position.y < groundAt(ctx, e.position.x, e.position.z) + 0.9) {
           e.detonate(ctx);

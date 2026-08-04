@@ -1,0 +1,157 @@
+{
+  "fingerprint": {
+    "seed": 20260804,
+    "preSteps": 600,
+    "steps": 3600,
+    "deadSteps": 900,
+    "damageToPlayer": 33.1,
+    "damageToPlayerToHealth": 33.1,
+    "damageToPlayerAbsorbed": 0,
+    "damageToPlayerBySource": {
+      "lemurian": 21,
+      "spitling": 12.1
+    },
+    "damageToEnemies": 726,
+    "damageToEnemiesBySource": {
+      "player": 726
+    },
+    "damageEvents": 53,
+    "crits": 0,
+    "kills": 7,
+    "enemyKills": 7,
+    "playerDeaths": 0,
+    "enemiesAlive": 5,
+    "enemiesAliveMax": 6,
+    "enemyStates": {
+      "reposition": 1,
+      "chase": 4
+    },
+    "goldTotal": 53,
+    "playerLevel": 2,
+    "playerMaxHealth": 143,
+    "playerHealthMin": 89,
+    "healthRestored": 33.1,
+    "playerShield": 0,
+    "playerPosition": [
+      0,
+      1.766513,
+      0
+    ],
+    "playerVelocity": [
+      0,
+      0,
+      0
+    ],
+    "ctxTime": 70,
+    "frameErrors": 0,
+    "lastFrameError": null,
+    "finalEnemyPositions": [
+      [
+        -20.725029,
+        0.052433,
+        -30.668236
+      ],
+      [
+        -2.752981,
+        5.729301,
+        9.706023
+      ],
+      [
+        28.218921,
+        12.000682,
+        -12.816715
+      ],
+      [
+        28.979474,
+        -3.879297,
+        -44.61393
+      ],
+      [
+        30.734147,
+        12.000682,
+        -14.128709
+      ]
+    ],
+    "deadTarget": {
+      "steps": 900,
+      "killedOnDemand": true,
+      "playerAlive": false,
+      "playerExists": true,
+      "enemiesOnFallbackTarget": 5,
+      "damageToPlayer": 0,
+      "damageToPlayerToHealth": 0,
+      "damageToPlayerAbsorbed": 0,
+      "damageToPlayerBySource": {},
+      "damageToEnemies": 0,
+      "damageToEnemiesBySource": {},
+      "damageEvents": 0,
+      "crits": 0,
+      "kills": 0,
+      "enemyKills": 0,
+      "playerDeaths": 0,
+      "enemiesAlive": 5,
+      "enemyStates": {
+        "idle": 5
+      },
+      "finalEnemyPositions": [
+        [
+          -25.230632,
+          -3.705427,
+          -33.964315
+        ],
+        [
+          3.350688,
+          6.092747,
+          30.173527
+        ],
+        [
+          27.424016,
+          -2.491181,
+          -64.122227
+        ],
+        [
+          32.792206,
+          4.093132,
+          -38.548531
+        ],
+        [
+          54.897282,
+          2.492748,
+          -19.448022
+        ]
+      ],
+      "directorEnabled": false,
+      "frameErrors": 0,
+      "lastFrameError": null
+    }
+  },
+  "diagnostics": {
+    "liveness": {
+      "gate": "fired",
+      "paused": false,
+      "localTick": 61,
+      "menuScreen": null,
+      "time": 1.017,
+      "engineRunning": true,
+      "stageIndex": 0
+    },
+    "settleGate": {
+      "paused": false,
+      "menuScreen": null,
+      "localTick": 600,
+      "expectedLocalTick": 600,
+      "progressionStarted": true,
+      "stageIndex": 0,
+      "playerAlive": true,
+      "enemiesAlive": 1,
+      "engineRunning": false
+    },
+    "startState": {
+      "time": 0,
+      "localTick": 0,
+      "progressionStarted": false
+    },
+    "rawCtxTime": 84.99999999999646,
+    "clockDrift": 3.538502824085299e-12
+  }
+}
