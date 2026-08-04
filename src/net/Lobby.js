@@ -123,11 +123,6 @@ export class Lobby {
     // the status a successful join deserves. Setting 'peerConnecting'
     // afterwards overwrote that, so a host that had just accepted a player sat
     // reading "Reply accepted — connecting…" forever.
-    // Set the placeholder *before* the await. `invite.accept` resolves the
-    // transport's `ready` promise, which fires `onPeer` -> `netPlayerJoined` ->
-    // the status a successful join deserves. Setting 'peerConnecting'
-    // afterwards overwrote that, so a host that had just accepted a player sat
-    // reading "Reply accepted — connecting…" forever.
     this._set('peerConnecting', { id });
     await invite.accept(answerBlob);
     this.pendingInvites.delete(id);
