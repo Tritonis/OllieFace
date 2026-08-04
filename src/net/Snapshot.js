@@ -95,6 +95,7 @@ export class SnapshotBuffer {
     out.z = ea.z + (eb.z - ea.z) * t;
     out.yaw = lerpAngle(ea.yaw, eb.yaw, t);
     out.healthFrac = ea.healthFrac + (eb.healthFrac - ea.healthFrac) * t;
+    out.shieldFrac = (ea.shieldFrac ?? 0) + ((eb.shieldFrac ?? 0) - (ea.shieldFrac ?? 0)) * t;
     // Discrete state must never be blended — snap to the newer one.
     out.state = eb.state;
     out.t = t;

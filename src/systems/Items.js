@@ -202,7 +202,21 @@ export class Items {
     // "How long since I was last hit" backs three items (Field Dressing, Siege
     // Battery, Mineral Lick). Tracked once here rather than each of them
     // keeping its own timer and each of them being subtly wrong about DoTs.
-    ctx.events.on('playerHurt', () => { this._lastHurt = ctx.time; });
+    ctx.events.on('playerHurt', (e) => {
+      this._lastHurt = ctx.time;
+      // On a client the hit was resolved on the host, so `Combat`'s local
+      // `onDamaged` dispatch (Combat.js:493) never ran here — this forwarded
+      // event is the only signal that arrives, and without dispatching from it
+      // every `onDamaged` card is dead in co-op. The hooks that deal damage
+      // no-op on a non-authority exactly as the rest of a client's combat does;
+      // the ones that grant barriers, buffs and heals are the point.
+      if (!ctx.authority) {
+        this.onDamaged({
+          target: ctx.player, source: e?.source ?? null, amount: e?.amount ?? 0,
+          position: ctx.player?.position, procDepth: 1,
+        });
+      }
+    });
 
     // A client never rolls loot; it mirrors the host's inventory off the
     // replicated `itemPickup`, whose `count` is the new total and so is safe to

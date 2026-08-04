@@ -29,6 +29,12 @@ const STATUS_DEFS = {
   shock: { duration: 1.4, tick: 0.25, stackDamage: 0.15, colour: 0xc9b5ff },
 };
 
+// How many stacks of one damage-over-time type may sit on the survivor at
+// once. Monsters are uncapped. This is a balance number, not a correctness
+// one: at 8 (the steady state an aura reaches unaided) a blazing elite kills
+// a full-health survivor through the rider alone.
+const PLAYER_DOT_STACK_CAP = 3;
+
 export class Combat {
   constructor() {
     this.entities = [];
@@ -523,7 +529,12 @@ export class Combat {
     });
 
     if (victim.isPlayer) {
-      ctx.events.emit('playerDead', {});
+      // Name the victim. `NetHost` broadcasts this to every client and
+      // `sanitise` reduces an entity to `{ netId }`, so the receiver can tell
+      // its own death from a teammate's — which is not something a client can
+      // infer from its own state, since nothing ever clears `alive` locally
+      // (`applyDamage` returns above for a non-authority).
+      ctx.events.emit('playerDead', { victim });
       return;
     }
 
@@ -562,6 +573,19 @@ export class Combat {
   applyStatus(entity, type, source, count = 1, overrides = null) {
     const def = STATUS_DEFS[type];
     if (!def || !entity || !entity.alive) return;
+    // Uncapped damage-over-time stacks are fine on a monster and a death
+    // spiral on the survivor. A blazing aura re-applies every 0.5 s and burn
+    // lasts 4.0 s, so one elite parks eight stacks on the player and the
+    // rider out-damages the hit that carries it — 73.95 dps against a 110 HP
+    // survivor, 5.3x the equal-cost `glacial` affix on the same card.
+    // Monsters keep the uncapped RoR2 behaviour; only the player is capped,
+    // for the same reason `speedMultiplier` refuses to hand the player a hard
+    // zero: a survivor needs the debuff to be survivable and legible.
+    if (entity.isPlayer && (def.stackDamage ?? 0) > 0) {
+      const live = this.statusStacks(entity, type);
+      if (live >= PLAYER_DOT_STACK_CAP) return;
+      count = Math.min(count, PLAYER_DOT_STACK_CAP - live);
+    }
     let list = this.statuses.get(entity);
     if (!list) { list = []; this.statuses.set(entity, list); }
     const srcDamage = source?.stats?.damage || source?.damage || 12;

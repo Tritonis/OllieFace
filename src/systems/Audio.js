@@ -227,16 +227,30 @@ export class Audio {
     });
     e.on('bossSpawn', () => { this.bossHorn(); this.musicEngine?.bump(0.7); });
     e.on('teleporterComplete', () => this.stageSting());
-    // Only the local survivor's death silences the local soundtrack. The event
-    // carries no victim (`{}` from Combat, Player and the harness alike) and
-    // `NetHost` forwards it to every client, where `NetClient` re-emits it
-    // verbatim — so on a client a *teammate* dying used to stop the sequencer
-    // and latch the ambient bed down for the rest of the session, for a player
-    // still alive and still fighting. `alive` is set to false before the emit on
-    // every path that raises this, so the local player being alive here is
-    // positive evidence that the death belongs to somebody else.
-    e.on('playerDead', () => {
-      if (this.ctx?.player && this.ctx.player.alive !== false) return;
+    // Only the local survivor's death silences the local soundtrack. `NetHost`
+    // broadcasts this event to every client, where `NetClient` re-emits it, so
+    // on a client a *teammate* dying must not stop the sequencer and latch the
+    // ambient bed down for a player still alive and still fighting.
+    //
+    // The test used to be "is the local player still alive", on the premise
+    // that `alive` is cleared before every emit. That is true on a host and
+    // false on a client: `Combat.applyDamage` returns at the authority check
+    // before it can reach `_kill`, `Player`'s self-kill fallback needs there to
+    // be no `Combat` at all, and no snapshot field writes the local player's
+    // health. So on a client `alive` was *never* false and the guard returned on
+    // the client's own death too — full soundtrack over the death screen, no
+    // sting, no darkening. Measured on a real two-page session.
+    //
+    // So: identity when the wire gives it (`Combat` names the victim and
+    // `sanitise` carries it as a netId), the liveness test as the fallback for
+    // single-player and for any emit that carries no victim.
+    e.on('playerDead', (p) => {
+      const me = this.ctx?.player;
+      const myNetId = this.ctx?.authority === false ? (this.ctx.net?.myNetId ?? 0) : 0;
+      const victimNetId = p?.victim?.netId;
+      if (myNetId > 0 && victimNetId != null) {
+        if (victimNetId !== myNetId) return;
+      } else if (me && me.alive !== false) return;
       this.playerDead();
     });
   }
@@ -511,6 +525,11 @@ export class Audio {
    */
   _out(pos, refDistance = 6, maxDistance = 140) {
     if (!pos) return this.sfx;
+    // A `PannerNode`'s position params reject non-finite values by throwing, and
+    // a throw out of a listener used to take the rest of that event's dispatch
+    // with it. Anything we cannot place, we play unpanned rather than not at
+    // all — the belt to the wire-format braces in `NetHost.sanitise`.
+    if (!Number.isFinite(pos.x) || !Number.isFinite(pos.y) || !Number.isFinite(pos.z)) return this.sfx;
     const ac = this.ac;
     const p = ac.createPanner();
     p.panningModel = 'equalpower';

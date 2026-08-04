@@ -9,6 +9,7 @@ import { EQUIPMENT_KEY_LABEL } from '../systems/Items.js';
 import { abilityIcon, abilityArt, equipmentArt, itemArt, hexOf, TIER_ORDER } from './Icons.js';
 import { Tooltip, describeItem, prettify } from './Tooltip.js';
 import { Menus } from './Menus.js';
+import { isLocalVictim, isLocalKill } from '../core/Engine.js';
 
 /**
  * The HUD. DOM + CSS rather than canvas so text stays crisp at any DPI.
@@ -165,7 +166,26 @@ export class HUD {
     });
 
     on('kill', (e) => {
-      if (!e?.source || e.source === ctx.player || e.source?.isPlayer) {
+      // Three clauses, because the HUD needs a *narrower* rule than the run
+      // summary and `isLocalKill` alone is wider than what was here before.
+      //
+      //  · `!e?.victim?.isPlayer` — the guard `Progression` already carries
+      //    (Progression.js:126). A player dying is not a kill on anybody's
+      //    counter, and without this a teammate's death flashed `is-kill` on
+      //    your reticle.
+      //  · the source test is HEAD `a43cc70`'s exact condition, restored. It
+      //    excludes kills whose source is an *enemy* — an Overloading death
+      //    blast, a Blazing aura, a stray mortar — which `isLocalKill`'s
+      //    authority branch admits (it only excludes *other players*), because
+      //    that branch was written for the run summary where an environmental
+      //    kill should still count. Dropping it added +1 per enemy-on-enemy
+      //    kill to the on-screen counter in **single-player**.
+      //  · `isLocalKill` — L-4's rule, and the only one of the three that is
+      //    about co-op: the number on your HUD is your kills, not the party's.
+      //    On a client it is also the strictest of the three.
+      const src = e?.source;
+      const localSource = !src || src === ctx.player || src.isPlayer;
+      if (!e?.victim?.isPlayer && localSource && isLocalKill(ctx, e)) {
         this.stats.kills++;
         this.pulse(this.refs.reticle, 'is-kill');
       }
@@ -216,7 +236,10 @@ export class HUD {
 
     on('bossSpawn', ({ enemy }) => this.setBoss(enemy));
     on('bossDead', () => this.clearBoss());
-    on('playerDead', () => this.onDeath());
+    // The run-summary screen belongs to the survivor who died. Raising it for a
+    // teammate's death left a co-op client alive and mobile behind a death
+    // screen it could not dismiss.
+    on('playerDead', (p) => { if (isLocalVictim(this.ctx, p)) this.onDeath(); });
 
     // Hover tooltips only exist while the cursor is free — while pointer-locked
     // the HUD must not intercept anything.

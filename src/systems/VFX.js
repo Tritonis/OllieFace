@@ -5,6 +5,7 @@ import { Decals, DECAL } from '../fx/Decals.js';
 import { makeDissolvable } from '../shaders/DissolveShader.js';
 import { MAX_BLASTS } from '../shaders/DistortShader.js';
 import { clamp, lerp } from '../core/MathUtil.js';
+import { isLocalVictim } from '../core/Engine.js';
 
 /**
  * The impact layer.
@@ -186,7 +187,9 @@ export class VFX {
       ctx.pipeline?.addShake(0.16);
       this._hitstop(HITSTOP.boss, true);
     });
-    e.on('playerDead', () => {
+    e.on('playerDead', (p) => {
+      // Somebody else's death does not black out your screen.
+      if (!isLocalVictim(ctx, p)) return;
       ctx.pipeline?.addShake(0.35);
       if (ctx.pipeline) {
         ctx.pipeline.aberration = 0.03;

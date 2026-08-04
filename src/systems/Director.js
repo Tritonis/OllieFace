@@ -26,6 +26,7 @@ import {
 } from '../data/enemies.js';
 import { prewarm, makeProjectile, makeShockwave, makeTelegraph } from '../entities/EnemyMeshes.js';
 import { clamp, lerp } from '../core/MathUtil.js';
+import { isLocalVictim } from '../core/Engine.js';
 
 const DIFFICULTY_SCALE = 2.0;   // Rainstorm
 const CREDIT_BASE = 0.95;
@@ -153,7 +154,9 @@ export class Director {
       this.boss = null;
       this.clear(ctx);
     });
-    ctx.events.on('playerDead', () => { this.enabled = false; });
+    // On a host a remote pawn's death is not the end of the run - stopping the
+    // spawner then would empty the arena for everyone still alive.
+    ctx.events.on('playerDead', (p) => { if (isLocalVictim(ctx, p)) this.enabled = false; });
 
     // Warded elites pay damage back out of their barrier.
     //

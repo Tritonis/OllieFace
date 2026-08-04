@@ -6,6 +6,7 @@ import {
 // per-survivor mastery challenges, and it has to have run before the first gate
 // question. See the header of that file for why it is not an `init` hook.
 import { catalogueSizes, catalogueHas, unlockName } from './UnlockRegistry.js';
+import { isLocalVictim } from '../core/Engine.js';
 
 /**
  * The persistent player profile — everything that outlives a run.
@@ -440,7 +441,16 @@ export class Profile {
     on('goldChanged', (e) => this._onGold(e));
     on('bossDead', (e) => this._onBossDead(e));
     on('teleporterComplete', () => this._onTeleporterComplete());
-    on('playerDead', () => { if (this.run) this.run.died = true; });
+    // A teammate's death is not this run's death; see `isLocalVictim`.
+    // Same gap as `Progression`'s: `_onDamage` hangs off `damage`, which a
+    // client never sees. Without this a co-op client took no damage all run, so
+    // `damageTakenThisStage` stayed 0 and every stage it cleared counted as
+    // flawless - `Untouchable` and `Ironclad` unlocked for free.
+    on('playerHurt', (e) => {
+      if (this.ctx?.authority !== false) return;
+      this._onDamage({ target: this.ctx.player, amount: e?.amount ?? 0, toHealth: e?.amount ?? 0 });
+    });
+    on('playerDead', (p) => { if (this.run && isLocalVictim(this.ctx, p)) this.run.died = true; });
 
     // Last line of defence for the debounce: a tab closed inside the window
     // would otherwise drop up to WRITE_DEBOUNCE_MS of progress. `pagehide` and

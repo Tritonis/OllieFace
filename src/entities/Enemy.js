@@ -779,7 +779,12 @@ export class Enemy {
         const g = groundAt(ctx, this.position.x, this.position.z);
         if (this.position.y < g + 0.3) { this.position.y = g + 0.3; this.velocity.set(0, 0, 0); }
       } else if (this.diving) {
-        this.position.addScaledVector(this.velocity, h);
+        // The dive integrates its own velocity rather than going through the
+        // movers, so it has to pay the status tax here or it pays it nowhere:
+        // without this the committed dive ignores `slow` *and* `freeze`
+        // outright, and every defensive item that buys time against a diving
+        // flyer buys none.
+        this.position.addScaledVector(this.velocity, h * slow);
       } else {
         const hover = def.hoverHeight + Math.sin(ctx.time * 0.9 + this.noise) * 0.6;
         moveFlying(this, ctx, d, h, 16, hover);

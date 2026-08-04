@@ -42,10 +42,18 @@ export class Lobby {
     this.onStatus = null;
     this.players = [{ id: 0, name: 'You', local: true }];
     this.pendingInvites = new Map();
+    // Peers this host turned away, so their departure does not overwrite the
+    // reason with a generic one. Cleared as each leave arrives.
+    this._refusedPeers = new Set();
+    this._refused = false;
   }
 
   _set(status, detail) {
     this.status = status;
+    // Kept so the screen can be *re*-rendered later with the same words it
+    // would have shown at the time. `Menus.openCoop` renders from `status`, and
+    // a refusal's whole content is in the detail.
+    this.statusDetail = detail;
     this.onStatus?.(status, detail);
   }
 
@@ -56,16 +64,41 @@ export class Lobby {
     if (this.net) throw new Error('Already networked');
     this.mode = 'host';
     this.net = this.engine.add(new NetHost({ maxPlayers }));
+    this._bindHost();
+    this._set('hosting');
+    return this.net;
+  }
+
+  /**
+   * Subscribe once per Lobby, not once per session.
+   *
+   * `startHost` and `joinManual` can both be called again after `leave()`, and
+   * `EventBus.on` has no idea it has seen these closures before — so a second
+   * host session pushed every joiner into `players` twice and set the status
+   * twice, and a second join accumulated a second `netDisconnected` handler on
+   * the same bus. Nothing here needs per-session state: the handlers read
+   * `this`, and the events they listen for are only raised by the role that
+   * raises them.
+   */
+  _bindHost() {
+    if (this._hostBound) return;
+    this._hostBound = true;
     this.ctx.events.on('netPlayerJoined', ({ id }) => {
       this.players.push({ id, name: `Player ${id + 1}`, local: false });
       this._set('peerJoined', { id, count: this.players.length });
     });
     this.ctx.events.on('netPlayerLeft', ({ id }) => {
       this.players = this.players.filter((p) => p.id !== id);
+      // A refused peer leaves too, and "a player left" is a worse answer than
+      // the reason we just refused them for. `_refuse` fires first and the close
+      // is deferred a turn, so this arrives second and must not overwrite it.
+      if (this._refusedPeers.has(id)) { this._refusedPeers.delete(id); return; }
       this._set('peerLeft', { id, count: this.players.length });
     });
-    this._set('hosting');
-    return this.net;
+    this.ctx.events.on('netPeerRefused', ({ id, reason, detail }) => {
+      this._refusedPeers.add(id);
+      this._set('peerRefused', { id, reason, detail });
+    });
   }
 
   /**
@@ -113,10 +146,23 @@ export class Lobby {
 
     const answerBlob = await client.join(inviteBlob);
     this._set('answerReady', { blob: answerBlob });
-
-    this.ctx.events.on('netWelcome', (w) => this._set('connected', w));
-    this.ctx.events.on('netDisconnected', () => this._set('disconnected'));
+    this._bindClient();
     return answerBlob;
+  }
+
+  /** The client half of `_bindHost`, once per Lobby. */
+  _bindClient() {
+    if (this._clientBound) return;
+    this._clientBound = true;
+    this.ctx.events.on('netWelcome', (w) => this._set('connected', w));
+    this.ctx.events.on('netRefused', ({ reason, detail }) => {
+      this._refused = true;
+      this._set('refused', { reason, detail });
+    });
+    // A refusal closes the channel, so the bare disconnect follows it by one
+    // turn. The reason is the more useful of the two and it goes second, so it
+    // has to win.
+    this.ctx.events.on('netDisconnected', () => { if (!this._refused) this._set('disconnected'); });
   }
 
   // --- relay path ----------------------------------------------------------
@@ -170,12 +216,32 @@ export class Lobby {
     });
   }
 
+  /**
+   * End the session and put the lobby back where it started.
+   *
+   * Both refusal latches are cleared here, and neither is optional. They exist
+   * to stop a *later* generic message overwriting the reason for a refusal that
+   * has already happened, which is a within-session job — carried across a
+   * `leave()` they silence the next session instead:
+   *
+   *  · `_refused` suppresses the generic `disconnected` status. Left set, every
+   *    subsequent disconnect on this Lobby is silent for ever and the panel
+   *    keeps showing a refusal from a session that has ended.
+   *  · `_refusedPeers` is keyed by peer id, and peer ids are not unique across
+   *    sessions: `leave()` drops the `NetHost`, `startHost()` builds a new one
+   *    with a fresh `HostTransport` whose `_nextId` opens at 1 again. So a host
+   *    that refused peer 1, left and hosted again swallowed the *next* peer 1's
+   *    departure.
+   */
   leave() {
     this.net?.close?.();
     this.ws?.close?.();
     this.net = null;
     this.mode = 'single';
     this.ctx.authority = true;
+    this._refused = false;
+    this._refusedPeers.clear();
+    this.players = [{ id: 0, name: 'You', local: true }];
     this._set('idle');
   }
 }

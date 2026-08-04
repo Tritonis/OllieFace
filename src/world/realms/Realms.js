@@ -10,6 +10,7 @@ import {
   rollMarketStock,
 } from './RealmProps.js';
 import { FinaleController } from './FinalBoss.js';
+import { isLocalVictim } from '../../core/Engine.js';
 
 /**
  * Hidden realms, the finale, and the two ways a run can end.
@@ -78,7 +79,7 @@ export class Realms {
 
     // Dying inside a realm ends the run like dying anywhere else; the realm
     // just has to stop driving waves at a corpse.
-    ctx.events.on('playerDead', () => { this.active?.controller?.abort?.(); });
+    ctx.events.on('playerDead', (p) => { if (isLocalVictim(ctx, p)) this.active?.controller?.abort?.(); });
   }
 
   get inRealm() { return !!this.active; }

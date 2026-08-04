@@ -83,6 +83,12 @@ const SPRINT_MULT = 1.45;
 const COYOTE = 0.12;
 const JUMP_BUFFER = 0.15;
 
+// How far back a command tick may be and still be treated as a re-simulation of
+// something already run. `NetClient.INPUT_HISTORY` is 128, so a genuine replay
+// is never deeper than that; anything older is a new tick origin (a join or a
+// reconnect re-bases the counter at 0), not a replay. See `applyCommand`.
+const REPLAY_WINDOW = 256;
+
 // Defaults for `beginDash`. A survivor's utility skill may override any of the
 // three per cast — Anvil's Breach Charge is longer, faster and aim-directed —
 // and the live values are mirrored onto the pawn so they survive a snapshot.
@@ -415,7 +421,17 @@ export class Player {
     // correction or the host repeating a starved command. Movement must re-run
     // identically; one-shot effects (projectiles, scheduled volleys, VFX) must
     // not fire twice.
-    const replay = c.tick > 0 && c.tick <= this._lastCmdTick;
+    // The bound is what makes this safe across a change of tick origin. A join
+    // (or a reconnect) re-bases the wire's counter at 0 while `_lastCmdTick`
+    // still holds however far single-player got, so without it every command
+    // for the next `_lastCmdTick` ticks looks like a replay and the client
+    // spends its first seconds with dead projectiles, dead placeables, no
+    // scheduled volleys and no jump impulse. `resetCommandEpoch` clears the
+    // counter at the join itself; this bound catches any other origin change,
+    // and it cannot swallow a real replay because the client only ever replays
+    // unacknowledged commands and its history is capped at 128.
+    const replay = c.tick > 0 && c.tick <= this._lastCmdTick
+                && this._lastCmdTick - c.tick < REPLAY_WINDOW;
     this._replaying = replay;
     this._cmdTick = c.tick | 0;
 
@@ -682,15 +698,24 @@ export class Player {
      * throw all of this away before the apex.
      */
     /*
-     * Two gates, and they are not the same gate.
+     * Two gates, and they are not the same gate — and neither of them is
+     * `this.local` around the whole block, which is what the previous revision
+     * had. That version removed the launch from the host's copy of a remote
+     * pawn, and the host is the authority: the client predicted 30 m/s, the host
+     * simulated 0, and reconciliation dragged the client back down to the host's
+     * trajectory over about five snapshots. Waxed Wing, Updraft Vents and
+     * Tectonic Heart were inert for every non-host player.
      *
-     * `local` — there is one `Items` per client and its hook API hard-binds the
-     * local survivor, so a remote pawn's jump running these hooks pays the local
-     * player's Rubber Soles barrier, advances the local Tectonic Heart tally and
-     * detonates its quake at the local player's feet, all for a jump 25 m away
-     * that this client did not make. A pawn is somebody else's inventory; it
-     * cannot spend ours. The `player` field on the payload says whose jump it is
-     * so a future listener does not have to infer it.
+     * `local` on the *hooks*, not on the impulse. There is one `Items` per
+     * client and its hook API hard-binds the local survivor, so a remote pawn's
+     * jump must not pay the local player's Rubber Soles barrier, advance the
+     * local Tectonic Heart tally or detonate its quake at the local player's
+     * feet. That is the half worth gating, and it is gated where the effect
+     * lands — the two cards read `e.local` (`data/items.js`). The launch itself
+     * is movement belonging to the jumper, and a client's inventory is a mirror
+     * of the host's (`Items.js:251-252`, `Items.js:211-215`), so both ends
+     * compute the same number from the same stacks and agree without a protocol
+     * change.
      *
      * `_replaying` — one-shot *effects* must not fire twice, but the impulse is
      * not an effect, it is movement, and a replayed command has to reproduce the
@@ -698,24 +723,24 @@ export class Player {
      * on every corrected jump. The live pass records what it consumed against
      * the tick that consumed it; the replay re-applies that same number.
      */
-    if (this.local) {
-      let impulse = 0;
-      if (this._replaying) {
-        impulse = this._jumpImpulses.get(this._cmdTick) || 0;
-      } else {
-        ctx.events?.emit?.('jump', { player: this, air: !canGround, jumps: this.jumpsUsed });
-        impulse = ctx.items?.consumeImpulse?.() || 0;
-        this._recordJumpImpulse(this._cmdTick, impulse);
-      }
-      if (impulse > 0) {
-        // Forward is where the player is going if they are going anywhere, and
-        // where they are looking if they are not — a launch that fires
-        // backwards because the stick was neutral is a bug the player feels.
-        const dx = this.moving ? this._wish.x : this._fwd.x;
-        const dz = this.moving ? this._wish.z : this._fwd.z;
-        this.velocity.x += dx * impulse;
-        this.velocity.z += dz * impulse;
-      }
+    let impulse = 0;
+    if (this._replaying) {
+      impulse = this._jumpImpulses.get(this._cmdTick) || 0;
+    } else {
+      ctx.events?.emit?.('jump', {
+        player: this, local: this.local, air: !canGround, jumps: this.jumpsUsed,
+      });
+      impulse = ctx.items?.consumeImpulse?.() || 0;
+      this._recordJumpImpulse(this._cmdTick, impulse);
+    }
+    if (impulse > 0) {
+      // Forward is where the player is going if they are going anywhere, and
+      // where they are looking if they are not — a launch that fires
+      // backwards because the stick was neutral is a bug the player feels.
+      const dx = this.moving ? this._wish.x : this._fwd.x;
+      const dz = this.moving ? this._wish.z : this._fwd.z;
+      this.velocity.x += dx * impulse;
+      this.velocity.z += dz * impulse;
     }
   }
 
@@ -1179,6 +1204,23 @@ export class Player {
     };
   }
 
+  /**
+   * The tick origin changed — this pawn is about to be driven by a counter that
+   * starts again at 0. Joining a game does exactly that: `NetClient.tick` opens
+   * at 0 while `_lastCmdTick` still holds wherever single-player (or the title
+   * screen, which also steps) got to, and every command below that mark would
+   * otherwise be classified as a replay. The recorded impulses go with it —
+   * they are keyed by ticks from the old epoch and would collide with the new
+   * one's.
+   */
+  resetCommandEpoch() {
+    this._lastCmdTick = 0;
+    this._localTick = 0;
+    this._cmdTick = 0;
+    this._replaying = false;
+    this._jumpImpulses.clear();
+  }
+
   /** Hard-set from the host. Absent fields are left alone. */
   setNetState(s) {
     if (!s) return;
@@ -1242,7 +1284,7 @@ export class Player {
     // the playerDead event; only self-kill when there is no Combat to do it.
     if (this.health <= 0) {
       this.health = 0;
-      if (!this.ctx.combat) { this.onDeath(); this.ctx.events.emit('playerDead', {}); }
+      if (!this.ctx.combat) { this.onDeath(); this.ctx.events.emit('playerDead', { victim: this }); }
     }
     return dealt;
   }

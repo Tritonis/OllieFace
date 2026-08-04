@@ -647,7 +647,13 @@ export const ITEMS = [
     flavour: 'Air is the safest place to be.',
     description: (n) => `Jumping grants a ${linear(10, n)} point barrier.`,
     hooks: {
-      onJump: (e, api) => { api.items.addBarrier(linear(10, api.count)); },
+      // `e.local === false` is a *remote pawn's* jump, seen on the host. The
+      // barrier lands on `api.player`, which is always this machine's own
+      // survivor, so paying it for somebody else's jump would hand the host a
+      // free barrier every time a teammate 25 m away pressed space. The launch
+      // impulse is not gated this way — that one belongs to the jumper and the
+      // host has to reproduce it (see `Player._jump`).
+      onJump: (e, api) => { if (e.local === false) return; api.items.addBarrier(linear(10, api.count)); },
     },
   },
   {
@@ -1633,6 +1639,12 @@ export const ITEMS = [
       // item you play around. `tally` is host-only, so a client never advances
       // the counter and the two machines cannot disagree about which jump it was.
       onJump: (e, api) => {
+        // A remote pawn's jump, seen on the host, must not advance this tally
+        // or erupt at this player's feet — and because `tally` is host-only the
+        // client cannot fire this card for its own jump either, so skipping the
+        // pawn here is also what keeps the two machines agreeing about the
+        // impulse: both compute 0 from this card for a client's jump.
+        if (e.local === false) return;
         if (!api.items.tally('tectonic-heart', 3)) return;
         api.combat.explode(api.player.position, 9, api.items.baseDamage() * linear(3.5, api.count), api.player, {
           team: 'player', proc: 0.4, procDepth: api.procDepth, type: 'quake',

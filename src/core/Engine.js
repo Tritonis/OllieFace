@@ -258,9 +258,108 @@ class EventBus {
     return () => this.off(name, fn);
   }
   off(name, fn) { this.map.get(name)?.delete(fn); }
+  /**
+   * Deliver to every subscriber, even if one of them throws.
+   *
+   * Without the try/catch a single bad listener aborts the whole dispatch and
+   * silently starves everything registered after it — measured in co-op, where
+   * a `NaN` position from the wire made `Audio`'s `kill` listener throw and the
+   * HUD's kill counter (registered after it) never ran once in a session, 0 of
+   * 4 kills. Registration order is an accident of `main.js`, so "which
+   * listeners survive an exception" was an accident too.
+   *
+   * The error is re-surfaced on the console rather than swallowed: a listener
+   * that throws is still a bug, and this must not be the reason nobody finds
+   * it. The subscriber set is copied first so an `off()` from inside a handler
+   * cannot mutate the set mid-iteration.
+   *
+   * The copy is not one-directional, and both of its other edges are real:
+   *  · A listener *removed* during a dispatch still receives that dispatch.
+   *    `for (const fn of set)` would have skipped it.
+   *  · A listener *added* during a dispatch of the same event does NOT receive
+   *    it. Iterating a `Set` directly visits entries appended mid-iteration;
+   *    iterating a copy cannot.
+   * Neither is reachable today — there is not one `.off()` call site in `src/`
+   * outside this class, and nothing subscribes from inside a handler — so this
+   * is a note for whoever writes the first one, not a known defect. If you need
+   * "removed means removed", check membership per call (`if (!set.has(fn))
+   * continue;`) rather than dropping the copy: dropping it reintroduces the
+   * mid-iteration mutation hazard the copy exists for.
+   */
   emit(name, payload) {
     const set = this.map.get(name);
-    if (!set) return;
-    for (const fn of set) fn(payload);
+    if (!set || set.size === 0) return;
+    for (const fn of [...set]) {
+      try {
+        fn(payload);
+      } catch (err) {
+        console.error('[events] listener threw for event: ' + name, err);
+      }
+    }
   }
+}
+
+/**
+ * Does a `playerDead` payload name *this machine's own survivor*?
+ *
+ * `playerDead` is emitted for every player: on a host when a remote pawn dies,
+ * and on a client for every peer, because `NetHost` broadcasts it. Almost every
+ * listener means "the run is over" by it, which is only true of the local
+ * survivor — unguarded, a teammate's death ends your run, commits your record,
+ * raises your summary screen and disables the director for everyone.
+ *
+ * `Combat._kill` names the victim and `NetClient._resolve` maps a client's own
+ * netId back to `ctx.player`, so identity comparison works on both roles. An
+ * emit that carries no victim (the harness's, and any older caller) is treated
+ * as local, which is what it always meant in single-player.
+ *
+ * ...except on a client, where it is treated as *not* local. Every `playerDead`
+ * a client sees arrives over the wire, so a missing victim there is a failure to
+ * name one, not an old-style local emit — and answering "yes" to it silently
+ * reverts all six guards at once plus round 1's audio identity test. That is not
+ * hypothetical: `NetHost.sanitise` serialises a victim with no `netId` as `null`
+ * (K-10), and `{victimIsNull: true}` is exactly the payload that reproduced the
+ * whole pre-K-2 failure on the `preVictim` arm. A predicate asked "is this mine"
+ * answers no when it cannot tell, on the role where it cannot tell.
+ *
+ * The host keeps the permissive default deliberately: single-player and the
+ * harness both emit through it, and on a host a victimless payload cannot have
+ * come off the wire.
+ */
+/**
+ * Was *this machine's own survivor* the source of a `kill`?
+ *
+ * The counterpart to `isLocalVictim`, and the rule round 1's F-9 already applies
+ * to `damageDealt`: a teammate's kill is not your run's kill. `kill` never got
+ * it, so a co-op client's run summary read `kills 4, damageDealt 0` for a fight
+ * it did not take part in — internally contradictory, and it inflates any
+ * run-scoped kill goal. (`Profile._onKill` was already witness-gated, so the
+ * lifetime stats were right and only the run summary was wrong.)
+ *
+ * The two roles need opposite defaults, which is why this is not one comparison:
+ *  · On an authority, `source` is a real entity. Excluding another player's
+ *    kills is enough, and everything else — an environmental kill, a kill by a
+ *    deployed mine or sentry, a burn tick whose source has despawned — keeps
+ *    counting exactly as it did in single-player.
+ *  · On a client, `source` came off the wire. Its own kills resolve to
+ *    `ctx.player` (`NetClient._resolve` maps its own netId back), and every
+ *    other kill in the session resolves to an interpolated *view*, which is not
+ *    `isPlayer` and would sail through the authority test. So a client counts
+ *    only what it can positively identify as its own.
+ *
+ * The client rule under-reports where the authority rule over-reported: a
+ * client's mine or turret kill resolves to that projectile's view, not to the
+ * client, and is not counted. That is the same wire-identity gap as K-4's and it
+ * is named as held rather than closed.
+ */
+export function isLocalKill(ctx, payload) {
+  const source = payload?.source;
+  if (ctx?.netRole === 'client') return !!ctx.player && source === ctx.player;
+  return !(source?.isPlayer && ctx?.player && source !== ctx.player);
+}
+
+export function isLocalVictim(ctx, payload) {
+  const victim = payload?.victim;
+  if (!victim) return ctx?.netRole !== 'client';
+  return !ctx?.player || victim === ctx.player;
 }

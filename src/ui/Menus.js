@@ -10,6 +10,35 @@ import { ITEMS_BY_TIER } from '../data/items.js';
 import { SURVIVORS, getSurvivor, loadoutOf } from '../data/survivors.js';
 import { Logbook, ModelPreview, disposeTree, renderRunReport } from './Logbook.js';
 import { describeNet } from '../net/NetConfig.js';
+import { REFUSE } from '../net/Protocol.js';
+
+/**
+ * A refused join, in the language of the person it happened to.
+ *
+ * Both sides of every refusal get a line: the one who was turned away, and the
+ * one who turned them away. The alternative — dropping the channel and letting
+ * the generic "Disconnected from the host" stand — is what makes a deliberate,
+ * correct refusal indistinguishable from a broken network, and this build
+ * refuses precisely in the cases where continuing would silently mis-simulate
+ * somebody.
+ */
+function refusalText(detail, asHost) {
+  const why = detail?.reason;
+  const extra = detail?.detail ? ` (${detail.detail})` : '';
+  if (why === REFUSE.VERSION) {
+    return asHost
+      ? `Turned a player away: they are running a different version of the game${extra}. Both of you need the same build.`
+      : `That host is running a different version of the game${extra}. Both of you need the same build.`;
+  }
+  if (why === REFUSE.SURVIVOR) {
+    return asHost
+      ? `Turned a player away: they picked a survivor this build does not have${extra}.`
+      : 'The host does not have the survivor you picked. Choose one from their build and join again.';
+  }
+  return asHost
+    ? `Turned a player away: their join did not make sense${extra}.`
+    : 'The host refused the join. Try joining again.';
+}
 
 const STORE_KEY = 'petrichor.settings';
 
@@ -1083,7 +1112,10 @@ export class Menus {
       lobby.onStatus = (status, detail) => this.coopStatus(status, detail);
     }
     this.push('coop');
-    this.coopStatus(lobby?.status || 'idle');
+    // `statusDetail` and not just `status`: a refusal says nothing useful
+    // without its reason, and the player who was turned away is exactly the one
+    // most likely to open this screen *after* it happened rather than during.
+    this.coopStatus(lobby?.status || 'idle', lobby?.statusDetail);
     this.coopWiring();
   }
 
@@ -1210,6 +1242,8 @@ export class Menus {
       answerReady: 'Send your reply code back to the host.',
       connected: 'Connected. Rebuilding the host\'s world…',
       disconnected: 'Disconnected from the host.',
+      refused: refusalText(detail, false),
+      peerRefused: refusalText(detail, true),
       idle: 'Up to 4 players. One player hosts and runs the game; everyone else joins them.',
     }[status];
     if (said) this.coopSay(said);

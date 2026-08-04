@@ -19,7 +19,47 @@
 // only if the bytes are there, so a 1.x host degrades to vanilla rules rather
 // than to a throw. Bumped because the message layout genuinely changed and the
 // next person to add a check needs the number to already be honest.
-export const PROTOCOL_VERSION = 2;
+// 3 — two additions, both about a client being simulated as *itself*:
+//     · HELLO gained a body. It is the first thing a client sends and it
+//       carries the survivor it picked. Until now nothing in `src/net/` carried
+//       a joiner's survivor id at all, so `Coop._spawnPawn` fell through to
+//       `ctx.survivorId` — the host's — and a client joining a `ranger` host as
+//       `anvil` was simulated at 110 max health / 7.0 move speed against its own
+//       170 / 6.5. Its own health readout then mapped the host's health
+//       *fraction* onto its own maximum and read 55 % high forever.
+//     · The entity record gained a shield fraction, for the same reason it
+//       already carries a health fraction: a client's barrier was purely local
+//       decoration over a pawn the host resolves every hit against with
+//       `shield === 0`.
+//     The HELLO half degrades cleanly (a host that does not understand it keeps
+//     the old behaviour, a client that never sends one is spawned as before).
+//     The entity half does NOT: the snapshot record grew by two bytes, so a 2.x
+//     reader would mis-frame every entity after the first. Nothing validates
+//     `PROTOCOL_VERSION` on either side today — WELCOME carries it and NetClient
+//     reads it into a discard — so a cross-version pairing garbles rather than
+//     refuses. That was already true at 2 and is not made worse here; it is the
+//     next thing this file needs and is stated in round 3's report as held.
+//     ** Now done — see below. **
+//
+// Both sides compare `PROTOCOL_VERSION` and refuse a mismatch out loud
+// (`MSG.REFUSE`): the host on HELLO's version field, the client on WELCOME's,
+// which is the first field of each after the message kind and is therefore
+// readable even from a build whose layout has since moved.
+//
+// 4 — the number, not the bytes. `MSG.REFUSE` was added at "3" and the set of
+//     HELLOs a host accepts changed again here (an empty or truncated survivor
+//     id is now refused instead of silently simulated as the host's own
+//     survivor). No layout moved for either change, and the earlier argument —
+//     a new message *code* is inert to a reader that does not know it — is
+//     still true of the wire. What it is not true of is the *check*: three
+//     builds now call themselves "3" with three different behaviours, so the
+//     one field whose entire job is to make a mismatched pairing refuse rather
+//     than garble could not tell them apart. A version that does not identify
+//     the protocol is worse than no version, because it is trusted. The cost of
+//     bumping is that a pre-round-5 build can no longer join a round-5 one —
+//     which is the correct outcome, told out loud on both machines, and it is
+//     free today because the co-op entry is held and no build is deployed.
+export const PROTOCOL_VERSION = 4;
 
 export const MSG = {
   HELLO: 1,       // client -> host
@@ -30,7 +70,38 @@ export const MSG = {
   PING: 6,
   PONG: 7,
   BYE: 8,
+  REFUSE: 9,      // host   -> client, last message before the channel closes
 };
+
+/**
+ * Why a host would not let a peer in.
+ *
+ * Refusal is a *told* failure, not a dropped one: the host sends this, then
+ * closes the peer. A silent drop reads to the player as "co-op is broken", and
+ * an accepted-but-wrong join reads as "the game is broken", which is worse —
+ * both of the states this refuses (a version-skewed pairing, a survivor this
+ * build does not have) end in a session where one player is silently simulated
+ * as somebody else. That is the exact defect PROTOCOL_VERSION 3 was bumped to
+ * fix, and accepting it here would recreate it from one bad byte.
+ */
+export const REFUSE = {
+  VERSION: 'version',
+  SURVIVOR: 'survivor',
+  HELLO: 'hello',
+};
+
+export function writeRefuse(w, reason, detail = '') {
+  w.u8(MSG.REFUSE);
+  w.str(String(reason ?? ''));
+  w.str(String(detail ?? ''));
+  return w;
+}
+
+export function readRefuse(r, out = {}) {
+  out.reason = r.remaining >= 2 ? r.str() : '';
+  out.detail = r.remaining >= 2 ? r.str() : '';
+  return out;
+}
 
 // Button bits packed into the input word.
 export const BTN = {
@@ -76,7 +147,7 @@ export const unpackAngle = (q) => q / ANG_SCALE;
 
 // --- sizes ------------------------------------------------------------------
 export const INPUT_SIZE = 1 + 4 + 1 + 1 + 2 + 2 + 2; // kind,tick,mx,mz,buttons,yaw,pitch
-export const ENTITY_SIZE = 2 + 1 + 1 + 6 + 2 + 2 + 1; // id,kind,type,pos,yaw,health,state
+export const ENTITY_SIZE = 2 + 1 + 1 + 6 + 2 + 2 + 2 + 1; // id,kind,type,pos,yaw,health,shield,state
 export const SNAPSHOT_HEADER = 1 + 4 + 4 + 2;         // kind,tick,ackInput,count
 
 /**
@@ -175,6 +246,11 @@ export function writeEntity(w, e) {
   // Health as a 0..65535 fraction of max — max is derived from typeId
   // client-side, so scaling changes don't need their own field.
   w.u16(Math.max(0, Math.min(65535, Math.round((e.health / Math.max(1, e.maxHealth)) * 65535))));
+  // Barrier, as a fraction of the same maximum health rather than of
+  // `maxShield`: `maxShield` is derived (`maxHealth * 0.5`) and a receiver that
+  // scales by its own copy of it would double the divergence when the two
+  // maxima disagree. One denominator for both bars.
+  w.u16(Math.max(0, Math.min(65535, Math.round((Math.max(0, e.shield ?? 0) / Math.max(1, e.maxHealth)) * 65535))));
   w.u8(e.netState ?? ESTATE.ALIVE);
 }
 
@@ -187,6 +263,49 @@ export function readEntity(r, out = {}) {
   out.z = unpackPos(r.i16());
   out.yaw = unpackAngle(r.i16());
   out.healthFrac = r.u16() / 65535;
+  out.shieldFrac = r.u16() / 65535;
   out.state = r.u8();
   return out;
 }
+
+// --- hello ------------------------------------------------------------------
+
+/**
+ * First message a client sends, the moment both channels are open.
+ *
+ * The host has already spawned this peer's pawn by then (it does so on channel
+ * open, before any message can arrive) and it built it from its own
+ * `ctx.survivorId`, because until PROTOCOL_VERSION 3 there was nothing else to
+ * build it from. This is what tells it otherwise.
+ */
+export function writeHello(w, { survivorId = '' } = {}) {
+  w.u8(MSG.HELLO);
+  w.u16(PROTOCOL_VERSION);
+  w.str(String(survivorId ?? ''));
+  return w;
+}
+
+export function readHello(r, out = {}) {
+  // Read defensively for the same reason WELCOME's trailing fields are: a peer
+  // that sends a bare HELLO must not throw out of the message that identifies it.
+  //
+  // But defensive reading manufactures values, and a manufactured value that
+  // reaches a *decision* is a lie the decision cannot see. Both substitutions
+  // below were read as facts by `NetHost._onHello`: a 3-byte HELLO became
+  // "version 0", which the host reported to the player as a version mismatch
+  // ("theirs 0, ours 3") — wrong diagnosis, wrong remedy — and a 5-byte one
+  // became `survivorId: ''`, which was waved through into a session where the
+  // peer was simulated as the host's own survivor. `malformed` is the one bit
+  // that distinguishes "they told us 0" from "they told us nothing": a
+  // well-formed HELLO body is at minimum a u16 version plus a u16 length
+  // prefix, so anything shorter than four bytes carries neither field.
+  out.malformed = r.remaining < 4;
+  out.version = r.remaining >= 2 ? r.u16() : 0;
+  out.survivorId = r.remaining >= 2 ? r.str() : '';
+  return out;
+}
+
+// Longest attacker-supplied string this build will echo into a refusal or a
+// status line. Survivor ids are a dozen characters; the rest is somebody else's
+// machine choosing how much of our screen to fill. See `NetHost._refuse`.
+export const REFUSE_DETAIL_MAX = 64;

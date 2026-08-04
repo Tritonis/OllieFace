@@ -3,6 +3,7 @@ import { Interactables } from '../world/Interactables.js';
 import { ITEMS_BY_TIER } from '../data/items.js';
 import { BIOMES, stageNameFor } from '../world/Materials.js';
 import { Profile } from './Profile.js';
+import { isLocalVictim, isLocalKill } from '../core/Engine.js';
 
 /**
  * Progression drives the run: which stage we're on, how hard the game is
@@ -123,6 +124,10 @@ export class Progression {
 
     ctx.events.on('kill', (e) => {
       if (e.victim?.isPlayer) return;
+      // Your run's kills, not the party's. `damageDealt` below has carried this
+      // rule since round 1's F-9; `kill` never did, and a client's summary read
+      // four kills and zero damage for a fight the host had.
+      if (!isLocalKill(ctx, e)) return;
       this.stats.kills++;
       if (e.isElite) this.stats.elites++;
       // XP is game state, so only the host awards it. Clients learn the result
@@ -142,7 +147,11 @@ export class Progression {
       if (ctx.player) ctx.vfx?.levelUp?.(ctx.player.position);
     });
     ctx.events.on('damage', (e) => {
-      if (e.source?.isPlayer) {
+      // Both branches carry the same guard for the same reason: `isPlayer` is
+      // true of every remote pawn, so without it a teammate's hits land in this
+      // run's `damageDealt` and a teammate's biggest hit becomes this run's
+      // `highestHit`.
+      if (e.source?.isPlayer && (!ctx.player || e.source === ctx.player)) {
         this.stats.damageDealt += e.amount;
         if (e.amount > this.stats.highestHit) this.stats.highestHit = e.amount;
       } else if (e.target?.isPlayer) {
@@ -156,13 +165,26 @@ export class Progression {
         }
       }
     });
+    // A client resolves no damage, so the `damage` event above never fires for
+    // it and its run summary reported 0 damage taken for the whole run. The
+    // host's per-owner `playerHurt` forward is the only record that arrives, and
+    // its `amount` is already what got through a barrier - the same quantity the
+    // `damage` branch books as `toHealth`.
+    ctx.events.on('playerHurt', (e) => {
+      if (ctx.authority) return;
+      this.stats.damageTaken += e?.amount ?? 0;
+    });
     ctx.events.on('itemPickup', () => { this.stats.items++; });
     ctx.events.on('goldChanged', (e) => {
       const delta = e.gold - (this._lastGold || 0);
       if (delta > 0) this.stats.goldEarned += delta;
       this._lastGold = e.gold;
     });
-    ctx.events.on('playerDead', () => { this._endRun(false); });
+    // Only *your* death ends *your* run. `_endRun` commits the permanent run
+    // record and is idempotent on `_ended`, so an unguarded teammate's death in
+    // co-op filed the record taken at the moment your friend died and made your
+    // own death, later, a no-op.
+    ctx.events.on('playerDead', (p) => { if (isLocalVictim(ctx, p)) this._endRun(false); });
 
     // A client never advances the run; it learns a stage happened and rebuilds
     // the same world from the host's seed. What sits *on* that world is
