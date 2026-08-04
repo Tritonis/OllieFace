@@ -210,10 +210,12 @@ export class FinaleController {
     //
     // The lock is per-player and now needs a named victim. This controller is
     // not an `Enemy` and has no `targetPlayer` of its own, so the victim is the
-    // local player — which is exactly what the old global lock did on a
-    // single-player run. See the task-7 report: the finale is a single-player
-    // realm today, and widening this to the whole roster is a balance decision
-    // rather than part of this fix.
+    // local player — which is behaviour-preserving rather than a narrowing: the
+    // old lock's flag was global but its *enforcement* only ever capped
+    // `ctx.player`, so no guest was ever denied here. Widening this to the whole
+    // roster would be new co-op behaviour (which the per-player ceiling now
+    // makes possible for the first time), and that is a balance decision rather
+    // than part of this fix.
     if (this.phase >= 3) ctx.director?.denyHealing?.(0.5, ctx.roster?.local ?? ctx.player);
 
     const boss = this.boss;

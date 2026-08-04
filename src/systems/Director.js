@@ -26,6 +26,7 @@ import {
 } from '../data/enemies.js';
 import { prewarm, makeProjectile, makeShockwave, makeTelegraph } from '../entities/EnemyMeshes.js';
 import { clamp, lerp } from '../core/MathUtil.js';
+import { Roster } from './Roster.js';
 import { isLocalVictim } from '../core/Engine.js';
 
 const DIFFICULTY_SCALE = 2.0;   // Rainstorm
@@ -35,8 +36,11 @@ const HARD_POP_CAP = 64;
 // Ceiling on the player's spawn-rate setting. 3x the tuned curve is already
 // well past what the pop cap will let onto the stage at most difficulties.
 const SPAWN_RATE_MAX = 3;
-const MIN_SPAWN_DIST = 34;      // far enough that the run-in is audible and visible
-const MAX_SPAWN_DIST = 90;
+// Exported so `tests/heal-denial.test.mjs` can assert the acceptance window
+// against the real numbers rather than pinning literals that would silently
+// stop testing the boundary the moment either is retuned.
+export const MIN_SPAWN_DIST = 34;      // far enough that the run-in is audible and visible
+export const MAX_SPAWN_DIST = 90;
 const FAR_SPAWN_DIST = 52;      // beyond this, an on-screen spawn reads as "distant", not "popped in"
 const EDGE_SPAWN_CHANCE = 0.3;
 const BOSS_SPAWN_DIST = 22;   // just outside the teleporter's charge radius
@@ -99,8 +103,6 @@ export class Director {
     this.trails = new Trails();
     this.telegraphs = new Telegraphs();
 
-    // Withering elites nullify healing while they have you. The deadline and
-    // the ceiling live on each player rather than here — see `denyHealing`.
     // Bosses are drawn without replacement so a run does not show the same one
     // three stages running.
     this._bossBag = [];
@@ -371,16 +373,29 @@ export class Director {
    * The ceiling lives on the player rather than on the Director because two
    * players can be denied by two different elites at two different times, and
    * one scalar cannot hold both.
+   *
+   * The sweep walks `roster.all` and does its own targetable test rather than
+   * calling `forEachTargetable`, for two reasons. A plain loop takes no
+   * callback, so this allocates nothing on a path that runs every fixed step
+   * for the whole run. And a player who is dead or downed has to be *reached*
+   * in order to have their ceiling dropped: a ceiling held across a death
+   * would be re-applied the instant they were revived, slamming a player
+   * brought back at full health down to whatever they died on. Clearing it
+   * here means the first sweep after they stand up re-seeds the ceiling from
+   * the health they were revived with, while the denial deadline — which is
+   * about the elite, not about them — keeps running.
    */
   enforceHealDenial(ctx) {
     const roster = ctx.roster;
     if (!roster) return;
     const now = ctx.time ?? 0;
-    roster.forEachTargetable((p) => {
-      if (now >= (p._healDenyUntil ?? -1)) { p._healCap = null; return; }
+    const list = roster.all;
+    for (let i = 0; i < list.length; i++) {
+      const p = list[i];
+      if (!Roster.targetable(p) || now >= (p._healDenyUntil ?? -1)) { p._healCap = null; continue; }
       if (p._healCap == null || p.health < p._healCap) p._healCap = p.health;
       else if (p.health > p._healCap) p.health = p._healCap;
-    });
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -598,9 +613,10 @@ export class Director {
   }
 
   /**
-   * A walkable point at least MIN_SPAWN_DIST from the player and outside the
-   * camera frustum. Falls back to the furthest candidate rather than failing —
-   * a spawn behind a rock in view beats no pressure at all.
+   * A walkable point at least MIN_SPAWN_DIST from *every* player, no more than
+   * MAX_SPAWN_DIST from the anchor, and outside the camera frustum. Falls back
+   * to the furthest candidate rather than failing — a spawn behind a rock in
+   * view beats no pressure at all.
    *
    * The off-screen rule is what stops monsters materialising in front of you,
    * but applied strictly it also means every monster is always behind you, and
@@ -728,6 +744,12 @@ export class Director {
     if (this.boss) return;
     const card = this.pickBossCard(ctx);
     if (!card) return;
+    // The fallback is 18 m from the local player — inside MIN_SPAWN_DIST and
+    // roster-blind, so in co-op it can drop the boss on a guest. Pre-existing,
+    // and left alone here because moving a boss is a balance change rather than
+    // a targeting fix; noted because the roster-aware acceptance test in
+    // `findSpawnPoint` makes the null return that reaches this line more
+    // likely with players spread across the arena.
     const at = this.findSpawnPoint(ctx) || this._scratch.set(
       (ctx.player?.position.x || 0) + 18, 0, (ctx.player?.position.z || 0) + 18);
     const affix = ctx.rng.next() < clamp(this.eliteChance * 1.5, 0, 0.6)
