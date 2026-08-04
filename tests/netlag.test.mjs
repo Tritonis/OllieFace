@@ -52,6 +52,34 @@ console.log('on — a delayed packet is held, then released in order');
   ok(p.state.sent[0][0] === 1 && p.state.sent[1][0] === 2, 'released in order');
 }
 
+console.log('on — under jitter, release stays in send order even when a later packet is due sooner');
+{
+  // jitterMs:0 above ties both packets' due times, so a broken sort-by-due
+  // release would pass that check too (stable sort on equal keys). Force
+  // distinct delays by mocking Math.random so the FIRST-sent packet draws
+  // the LONGER delay and the SECOND-sent packet draws the SHORTER one — a
+  // due-sorted implementation would then release the second packet first.
+  const p = peerWith({ on: true, lagMs: 0, jitterMs: 100, lossPct: 0 });
+  p._t = 0;
+  const realRandom = Math.random;
+  const draws = [0.99, 0.01]; // packet A -> due 0.099s, packet B -> due 0.001s
+  let di = 0;
+  Math.random = () => draws[di++];
+  try {
+    p.sendState(new Uint8Array([10])); // A: sent first, due later
+    p.sendState(new Uint8Array([11])); // B: sent second, due sooner
+  } finally {
+    Math.random = realRandom;
+  }
+  p._t = 0.05; p.pumpSim();
+  ok(p.state.sent.length === 0, `B's earlier due time does not jump the still-held A (got ${p.state.sent.length})`);
+  p._t = 0.10; p.pumpSim();
+  ok(
+    p.state.sent.length === 2 && p.state.sent[0][0] === 10 && p.state.sent[1][0] === 11,
+    `both released in send order despite B being due first (got ${p.state.sent.map((b) => b[0])})`
+  );
+}
+
 console.log('on — loss applies to the unreliable channel only');
 {
   const p = peerWith({ on: true, lagMs: 0, jitterMs: 0, lossPct: 100 });

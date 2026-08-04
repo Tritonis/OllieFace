@@ -159,18 +159,53 @@ export function describeNet() {
  * there would misrepresent a guarantee the transport actually provides, and
  * every conclusion drawn from it would be about a transport we do not ship.
  */
+// A bare non-negative number is a flat delay; `lo-hi` is a jitter range,
+// both sides non-negative. Anchoring both patterns to digits-only (no `-`
+// prefix) is what stops `'-60'.split('-')` from being read as the range
+// `['', '60']` — a leading minus sign is never a range separator here.
+const NETLAG_FLAT = /^\d+(?:\.\d+)?$/;
+const NETLAG_RANGE = /^(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)$/;
+
 export function netSim() {
   const lag = setting('netlag', 'VITE_NET_LAG');
   const loss = setting('netloss', 'VITE_NET_LOSS');
   if (!lag && !loss) return { on: false, lagMs: 0, jitterMs: 0, lossPct: 0 };
   let lagMs = 0, jitterMs = 0;
   if (lag) {
-    const [a, b] = lag.split('-').map((s) => Number(s.trim()));
-    if (Number.isFinite(a)) {
-      if (Number.isFinite(b) && b > a) { lagMs = a; jitterMs = b - a; }
-      else lagMs = a;
+    if (NETLAG_FLAT.test(lag)) {
+      lagMs = Number(lag);
+    } else {
+      const m = lag.match(NETLAG_RANGE);
+      if (m) {
+        let a = Number(m[1]), b = Number(m[2]);
+        if (b < a) {
+          // `?netlag=90-40` is one transposed character away from the
+          // documented `?netlag=40-90`. Keeping only `a` (the brief's
+          // original behaviour) would silently drop the jitter and measure a
+          // materially simpler network than requested, with nothing to show
+          // it happened — precisely the "later task reports testing under
+          // jitter when it did not" failure this rig exists to prevent.
+          // Normalise instead: the requested spread is still simulated, and
+          // we say so on the console rather than proceeding quietly.
+          [a, b] = [b, a];
+          console.warn(`[net] ?netlag=${lag} is a reversed range; using ${a}-${b}`);
+        }
+        lagMs = a;
+        jitterMs = b - a;
+      } else {
+        // Neither a flat number nor a recognised range (e.g. "abc", "40-",
+        // "-60" with nothing after it that parses). Refusing loudly and
+        // falling back to no added lag is safer than guessing at intent —
+        // a rig that guesses wrong measures a network nobody asked for.
+        console.warn(`[net] ?netlag=${lag} is not a recognised value (want "N" or "lo-hi"); ignoring`);
+      }
     }
   }
-  const lossPct = Number(loss) || 0;
+  let lossPct = 0;
+  if (loss) {
+    const n = Number(loss);
+    if (Number.isFinite(n) && n >= 0) lossPct = n;
+    else console.warn(`[net] ?netloss=${loss} is not a valid non-negative number; ignoring`);
+  }
   return { on: lagMs > 0 || jitterMs > 0 || lossPct > 0, lagMs, jitterMs, lossPct };
 }

@@ -26,6 +26,25 @@ import { rtcConfig, netSim } from './NetConfig.js';
 const encode = (obj) => btoa(JSON.stringify(obj)).replace(/=+$/, '');
 const decode = (s) => JSON.parse(atob(s));
 
+// Above this, the unreliable channel is backed up enough that we are already
+// behind, so a fresh snapshot is dropped rather than queued (below, `0`
+// would drop every send and defeat the channel entirely). Named once so the
+// immediate-send and delayed-release paths cannot silently diverge.
+const MAX_STATE_BUFFERED = 256 * 1024;
+
+// Caps the `?netlag=` delay queue. Sends that reach `_simSend` are driven by
+// message callbacks (hello/ping/refuse/forwarded events), not only by the
+// per-frame `pumpSim()` caller, so a stalled render/update loop could
+// otherwise grow this without bound while the data channel keeps delivering.
+// Too low (below the packets a real probe legitimately has in flight at the
+// configured lag) would drop traffic a real network of that latency would
+// have delivered, contaminating the exact measurement this rig exists to
+// produce; too high defeats the point of capping a stall at all. Dropping
+// the oldest queued entry — the one held longest and therefore already the
+// most stale — mirrors the "drop rather than queue" choice already made for
+// a backed-up `state` channel above.
+const MAX_SIM_QUEUE = 2048;
+
 /** One connected remote endpoint, with the two channels Protocol.js expects. */
 export class Peer {
   constructor(pc, id) {
@@ -80,7 +99,7 @@ export class Peer {
   _rawSend(label, bytes) {
     const ch = label === 'state' ? this.state : this.events;
     if (ch?.readyState !== 'open') return;
-    if (label === 'state' && ch.bufferedAmount > 256 * 1024) return;
+    if (label === 'state' && ch.bufferedAmount > MAX_STATE_BUFFERED) return;
     ch.send(bytes);
   }
 
@@ -91,7 +110,9 @@ export class Peer {
     if (label === 'state' && sim.lossPct > 0 && Math.random() * 100 < sim.lossPct) return true;
     const delay = (sim.lagMs + (sim.jitterMs ? Math.random() * sim.jitterMs : 0)) / 1000;
     if (delay <= 0) return false;
-    this._simQueue.push({ ch: label, bytes, due: this._simClock() + delay });
+    const q = this._simQueue;
+    if (q.length >= MAX_SIM_QUEUE) q.shift();
+    q.push({ ch: label, bytes, due: this._simClock() + delay });
     return true;
   }
 
@@ -100,7 +121,7 @@ export class Peer {
     if (this.state?.readyState === 'open') {
       // Drop rather than queue: a backed-up unreliable channel means we are
       // already behind, and stale snapshots are worse than none.
-      if (this.state.bufferedAmount > 256 * 1024) return;
+      if (this.state.bufferedAmount > MAX_STATE_BUFFERED) return;
       this.state.send(bytes);
     }
   }
