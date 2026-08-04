@@ -77,7 +77,7 @@
       "killedOnDemand": true,
       "playerAlive": false,
       "playerExists": true,
-      "enemiesOnFallbackTarget": 0,
+      "enemiesOnFallbackTarget": 5,
       "damageToPlayer": 0,
       "damageToPlayerToHealth": 0,
       "damageToPlayerAbsorbed": 0,
@@ -91,34 +91,33 @@
       "playerDeaths": 0,
       "enemiesAlive": 5,
       "enemyStates": {
-        "reposition": 1,
-        "chase": 4
+        "idle": 5
       },
       "finalEnemyPositions": [
         [
-          -7.332426,
-          5.863605,
-          6.84182
+          -25.230632,
+          -3.705427,
+          -33.964315
         ],
         [
-          -6.073376,
-          -2.631792,
-          -8.612903
+          3.350688,
+          6.092747,
+          30.173527
         ],
         [
-          27.889487,
-          12.000682,
-          -12.916989
+          27.424016,
+          -2.491181,
+          -64.122227
         ],
         [
-          28.385315,
-          12.000682,
-          -12.482046
+          32.792206,
+          4.093132,
+          -38.548531
         ],
         [
-          29.032342,
-          -3.695244,
-          -44.342811
+          54.897282,
+          2.492748,
+          -19.448022
         ]
       ],
       "directorEnabled": false,
@@ -130,9 +129,9 @@
     "liveness": {
       "gate": "fired",
       "paused": false,
-      "localTick": 61,
+      "localTick": 62,
       "menuScreen": null,
-      "time": 1.017,
+      "time": 1.033,
       "engineRunning": true,
       "stageIndex": 0
     },
