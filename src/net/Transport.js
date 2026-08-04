@@ -19,7 +19,7 @@
 // ICE config is resolved per connection rather than captured once at module
 // load, so a `?turn=` / `?ice=relay` override applies to the next invite without
 // a reload. See `NetConfig.js` for why TURN is not optional past a friendly LAN.
-import { rtcConfig } from './NetConfig.js';
+import { rtcConfig, netSim } from './NetConfig.js';
 
 // Base64 of the JSON description. Deflate would roughly halve it, but SDP blobs
 // are already paste-able and CompressionStream isn't worth the fallback path.
@@ -37,6 +37,8 @@ export class Peer {
     this.onClose = null;
     this.rtt = 0;
     this.closed = false;
+    this._sim = null;
+    this._simQueue = null;
   }
 
   _wire(ch, label) {
@@ -47,7 +49,54 @@ export class Peer {
     return ch;
   }
 
+  /**
+   * Arm the latency rig. `clock` returns seconds, monotonic; it is a parameter
+   * so tests can drive it. Called only when `netSim().on` — a Peer that is not
+   * armed has `_sim === null` and every send takes the original branch, so the
+   * shipped path costs one null check and allocates nothing.
+   */
+  installSim(sim, clock) {
+    this._sim = sim;
+    this._simClock = clock;
+    this._simQueue = [];
+  }
+
+  /** Release anything whose delay has elapsed. Inert when not armed. */
+  pumpSim() {
+    const q = this._simQueue;
+    if (!q || q.length === 0) return;
+    const now = this._simClock();
+    let i = 0;
+    // The queue is append-ordered and delays are drawn per packet, so a later
+    // packet can come due first under jitter. Releasing strictly in queue order
+    // preserves the ordering the channel would have had; reordering here would
+    // be simulating a different network than the flag asks for.
+    while (i < q.length && q[i].due <= now) i++;
+    if (i === 0) return;
+    const due = q.splice(0, i);
+    for (const p of due) this._rawSend(p.ch, p.bytes);
+  }
+
+  _rawSend(label, bytes) {
+    const ch = label === 'state' ? this.state : this.events;
+    if (ch?.readyState !== 'open') return;
+    if (label === 'state' && ch.bufferedAmount > 256 * 1024) return;
+    ch.send(bytes);
+  }
+
+  /** Returns true when the rig consumed the packet (dropped or queued). */
+  _simSend(label, bytes) {
+    const sim = this._sim;
+    if (!sim) return false;
+    if (label === 'state' && sim.lossPct > 0 && Math.random() * 100 < sim.lossPct) return true;
+    const delay = (sim.lagMs + (sim.jitterMs ? Math.random() * sim.jitterMs : 0)) / 1000;
+    if (delay <= 0) return false;
+    this._simQueue.push({ ch: label, bytes, due: this._simClock() + delay });
+    return true;
+  }
+
   sendState(bytes) {
+    if (this._simSend('state', bytes)) return;
     if (this.state?.readyState === 'open') {
       // Drop rather than queue: a backed-up unreliable channel means we are
       // already behind, and stale snapshots are worse than none.
@@ -57,6 +106,7 @@ export class Peer {
   }
 
   sendEvent(bytes) {
+    if (this._simSend('events', bytes)) return;
     if (this.events?.readyState === 'open') this.events.send(bytes);
   }
 
@@ -100,6 +150,8 @@ export class HostTransport {
     const id = this._nextId++;
     const pc = new RTCPeerConnection(rtcConfig());
     const peer = new Peer(pc, id);
+    const sim = netSim();
+    if (sim.on) peer.installSim(sim, () => performance.now() / 1000);
 
     // Host creates both channels so ordering/ids are deterministic; the client
     // just picks them up via ondatachannel.
@@ -173,6 +225,8 @@ export class ClientTransport {
 
     const pc = new RTCPeerConnection(rtcConfig());
     const peer = new Peer(pc, msg.id);
+    const sim = netSim();
+    if (sim.on) peer.installSim(sim, () => performance.now() / 1000);
     this.peer = peer;
 
     let opened = 0;

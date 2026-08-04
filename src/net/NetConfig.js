@@ -139,5 +139,38 @@ export function describeNet() {
     signalIsLocal: signalIsLocal(),
     hasTurn: ice.some((s) => String(s.urls).includes('turn:') || String(s.urls).includes('turns:')),
     relayOnly: rtcConfig().iceTransportPolicy === 'relay',
+    sim: netSim(),
   };
+}
+
+/**
+ * Artificial latency and loss, for measuring the game as it is actually played.
+ *
+ * Every number in seven rounds of co-op review came from two pages on one
+ * machine, where RTT is zero and no packet is ever lost. That is not a network;
+ * it is the absence of one. This rig makes the same probes runnable against a
+ * realistic path without deploying anything.
+ *
+ *   ?netlag=60          60 ms one-way delay
+ *   ?netlag=40-90       uniform jitter between 40 and 90 ms
+ *   ?netloss=2          2% loss, unreliable channel only
+ *
+ * Loss is deliberately never applied to the reliable `events` channel: dropping
+ * there would misrepresent a guarantee the transport actually provides, and
+ * every conclusion drawn from it would be about a transport we do not ship.
+ */
+export function netSim() {
+  const lag = setting('netlag', 'VITE_NET_LAG');
+  const loss = setting('netloss', 'VITE_NET_LOSS');
+  if (!lag && !loss) return { on: false, lagMs: 0, jitterMs: 0, lossPct: 0 };
+  let lagMs = 0, jitterMs = 0;
+  if (lag) {
+    const [a, b] = lag.split('-').map((s) => Number(s.trim()));
+    if (Number.isFinite(a)) {
+      if (Number.isFinite(b) && b > a) { lagMs = a; jitterMs = b - a; }
+      else lagMs = a;
+    }
+  }
+  const lossPct = Number(loss) || 0;
+  return { on: lagMs > 0 || jitterMs > 0 || lossPct > 0, lagMs, jitterMs, lossPct };
 }

@@ -468,6 +468,7 @@ export class NetHost {
 
   update(ctx, dt) {
     this._holdSession(ctx);
+    for (const c of this.clients.values()) c.peer.pumpSim();
     if (this.clients.size === 0) return;
     // Nothing useful can be sent from a paused world: `this.tick` advances only
     // in `fixedUpdate`, and a client discards any snapshot that is not newer

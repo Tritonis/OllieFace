@@ -392,6 +392,7 @@ export class NetClient {
   // --- interpolation of everyone else --------------------------------------
 
   update(ctx, dt) {
+    this.peer?.pumpSim();
     if (!this.connected) return;
 
     this._pingAccum += dt;
