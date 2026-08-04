@@ -46,14 +46,19 @@ those as one problem is why seven rounds of co-op fixes did not converge.
 
 | Meaning | Sites | Verdict |
 |---|---|---|
-| "the player this screen belongs to" | `HUD` (10), `VFX` (8), `Menus` (4), `CameraRig` (1), `Music` (1) | **Correct.** Genuinely means the local viewer. Do not touch. |
-| "the one player the authority simulates" | `Enemy` (21), `Director` (9), `Realms` (8), `Interactables` (6), `Combat` (3) | **Wrong.** Needs a roster and a spatial query. This is N-1. |
+| "the player this screen belongs to" | `HUD` (10), `VFX` (8), `Menus` (4), `Combat` (3), `CameraRig` (1), `Music` (1) | **Correct.** Genuinely means the local viewer. Do not touch. |
+| "the one player the authority simulates" | `Enemy` (21), `Director` (9), `Realms` (8), `Interactables` (6) | **Wrong.** Needs a roster and a spatial query. This is N-1. |
 | "the owner of this gameplay state" | `Items` (16), `Progression` (6), `Profile` (2) | **Wrong.** Needs per-pawn ownership. This is the economy work. |
 
 Three problems, three different fixes, three different risk profiles.
 
+`Combat`'s three sit in the first row deliberately. Round 5 changed them from
+`isPlayer` to `=== ctx.player` precisely so that a teammate 40 m away losing
+health stops resetting *this* player's hurt timer, flashing their HUD and
+ducking their music. They are already right; touching them would undo that fix.
+
 The middle row is split across sub-projects rather than done at once, so that no
-subsystem's reads go unclaimed: `Enemy` + `Director` + `Combat` → **P1**;
+subsystem's reads go unclaimed: `Enemy` + `Director` → **P1**;
 `Interactables` → **P2**, where proximity and ownership are the same question;
 `Realms` + `FinalBoss` → **P3**, because authored arenas have scripted targeting
 that needs a design pass rather than a mechanical substitution, and specifying

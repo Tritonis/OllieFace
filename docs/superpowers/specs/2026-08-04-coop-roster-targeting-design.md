@@ -297,7 +297,13 @@ unclaimed:
   loses it. Realm arenas are authored encounters with their own scripted
   targeting; they need a design pass, not a mechanical substitution, and
   reaching them before revive exists would mean specifying them twice.
-- **`Combat.js` (3)** → **P1**, since two of them sit on the damage path
-  `hurtPlayer` now routes through.
+- **`Combat.js` (3)** → **nothing. They are already correct and must not be
+  touched.** `Combat.js:467`, `:483` and the comment at `:491` gate
+  `shieldBroken` and `playerHurt` on `=== ctx.player` rather than `isPlayer`,
+  which is a round-5 fix: a remote pawn *is* `isPlayer`, so before it, a
+  teammate 40 m away losing health reset this player's "time since hurt"
+  (Field Dressing and Siege Battery both key off it), flashed their HUD and
+  ducked their music. Any task that "migrates Combat to the roster" is
+  reintroducing that bug.
 
 `PROTOCOL_VERSION` does **not** change in P0 or P1. No wire format moves here.
