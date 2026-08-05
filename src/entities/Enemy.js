@@ -100,9 +100,29 @@ function explodeAt(ctx, source, point, radius, damage, status) {
 }
 
 /** Elite on-hit riders, expressed as Combat's own status types. */
-function statusPlayer(ctx, victim, source, type, count = 1) {
+function statusPlayer(ctx, victim, source, type, count = 1, overrides = null) {
   const c = ctx.combat;
-  if (c && c.applyStatus && victim) c.applyStatus(victim, type, source, count);
+  if (c && c.applyStatus && victim) c.applyStatus(victim, type, source, count, overrides);
+}
+
+/**
+ * The per-tick damage an elite's own status does, as an override, or null.
+ *
+ * `STATUS_DEFS.burn` is 0.25 of the source's damage stat every 0.5 s, which is
+ * the rate a *player's* burn does to a monster. Applied by a monster to the
+ * survivor it is a different quantity entirely: one capped stack from a
+ * 42-damage elite is 21 dps against a 110 HP pool, i.e. more than twice the
+ * whole output of the same card without an affix. Before this override the
+ * affix table could only choose between that and no fire at all, and both
+ * measured answers were wrong (`reviews/round8/balance/`).
+ *
+ * `overrides.stackDamage` is a parameter `Combat.applyStatus` has always
+ * accepted and that nothing in `src/` passed. The player DoT stack cap is
+ * unaffected: it tests `def.stackDamage`, not the override, so a blazing burn is
+ * still capped at three stacks.
+ */
+function eliteStatusOverride(em) {
+  return em && em.burnTick != null ? { stackDamage: em.burnTick } : null;
 }
 
 function fx(ctx, name, a, b, c) {
@@ -564,7 +584,7 @@ export class Enemy {
         this.auraT = 0.5;
         if (this.distToPlayer < em.auraRadius) {
           hurtPlayer(ctx, this.targetPlayer, this, this.damage * em.auraDps, 'burn');
-          statusPlayer(ctx, this.targetPlayer, this, 'burn', 1);
+          statusPlayer(ctx, this.targetPlayer, this, 'burn', 1, eliteStatusOverride(em));
         }
       }
     }
@@ -961,7 +981,15 @@ export class Enemy {
           _v2.set(p.position.x - this.position.x, 0, p.position.z - this.position.z).normalize();
           if (_v2.dot(dir) > Math.cos(a.arc || 1)) {
             hurtPlayer(ctx, p, this, this.damage, 'melee');
-            if (this.elite && this.elite.burn) statusPlayer(ctx, p, this, 'burn', 2);
+            // The affix's melee rider. `burn` is the gate and `burnTick` is the
+            // rate, and they are deliberately independent: no shipping affix
+            // sets `burn` today (blazing's went to 0 — see `ELITE_STATS`), so
+            // this arm is currently unreachable, and it carries the override so
+            // that the next affix to switch it on gets the elite burn rate
+            // rather than the 21-dps-per-stack player rate the last one did.
+            if (this.elite && this.elite.burn) {
+              statusPlayer(ctx, p, this, 'burn', 2, eliteStatusOverride(this.elite));
+            }
             if (this.elite && this.elite.slow) statusPlayer(ctx, p, this, 'slow', 1);
             ctx.pipeline?.addShake?.(0.03);
           }

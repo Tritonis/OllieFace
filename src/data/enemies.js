@@ -1347,7 +1347,47 @@ export function eliteAffixesFor(difficulty) {
  * to trade damage with it from the front.
  */
 export const ELITE_STATS = {
-  blazing:     { health: 4.0, damage: 2.0, cost: 4.5, speed: 1.0,  burn: 0.35, auraRadius: 3.2, auraDps: 0.35 },
+  /* Blazing, retuned against its own cost.
+   *
+   * Measured at 100.7 dps against a parked 110 HP survivor held inside the aura
+   * — 11.3x the same card without an affix and 5.6x `glacial`, which costs the
+   * identical 4.5 credits and whose rider deals no damage at all. Raw arms and
+   * the reachable-set probes are in `reviews/round8/balance/`.
+   *
+   * Now 40.9 dps on the same fixture — 2.29x glacial, 4.6x the plain card — and
+   * 22.3 dps at an 11 m free-roam stand against the old 48.5, so the point-blank
+   * case was brought down without deleting the threat at range. The rider is
+   * split so that contact is survivable and *staying* in contact is not: the
+   * direct tick is 9.3 dps of it and the burn, which needs four seconds to reach
+   * its cap, is 18.0.
+   *
+   * Three numbers carry the affix and each names both ends of its own range:
+   *
+   * `auraDps` — the direct tick, `damage x auraDps` every 0.5 s. Also the gate
+   * on the whole aura block (`Enemy.js:561`), so 0 deletes the ignition with it
+   * and blazing stops being a fire affix. Too high and standing next to one is
+   * lethal before the survivor can react — at the old 0.35 the aura alone was
+   * 27 dps and a full-health survivor died in ~1.1 s of contact, which no stack
+   * cap could change because stacks have not ramped that early. Too low and the
+   * aura is a decoration you can stand in: below ~0.08 a beat does under 3.5
+   * damage on a 110 HP pool, which reads as nothing at all.
+   *
+   * `burnTick` — what one stack of the aura's burn does per tick, as a fraction
+   * of the unit's damage stat, overriding `STATUS_DEFS.burn`'s 0.25. That 0.25
+   * is a player-to-monster rate; against the survivor it made a single capped
+   * stack worth 21 dps. Too high and the DoT is the whole affix again and the
+   * cap is the only thing standing between the survivor and a spiral; too low
+   * (below ~0.02) and the burn is a coloured icon with no cost, so breaking
+   * contact stops being a decision.
+   *
+   * `burn` — the gate on the undocumented +2-stack melee rider at
+   * `Enemy.js:964`, which appears in no design document and was 49.6 dps on its
+   * own with the aura deleted entirely. Off. Non-zero and the affix has a second
+   * ignition source that is invisible in this table and ramps to the cap on
+   * contact; off, as now, and every stack blazing applies comes from the aura,
+   * which is the mechanic the card is actually about.
+   */
+  blazing:     { health: 4.0, damage: 2.0, cost: 4.5, speed: 1.0,  burn: 0, burnTick: 0.075, auraRadius: 3.2, auraDps: 0.12 },
   overloading: { health: 3.2, damage: 2.0, cost: 5.0, speed: 1.15, shield: 0.5, deathBlast: 3.0, blastRadius: 7 },
   glacial:     { health: 4.0, damage: 2.0, cost: 4.5, speed: 0.92, slow: 0.5, slowTime: 2.0, novaRadius: 8, novaDamage: 1.5 },
   // Malachite's role: while one of these has line of sight on you inside
