@@ -134,9 +134,12 @@ one. Halving blazing's `auraDps` from 0.12 to 0.06 in `src/data/enemies.js`:
 
 ```
 $ npm run gate:elite
-ELITE DAMAGE MOVED vs reviews/round8/elite-baseline-HEAD.json — 12 field(s):
-  arms.blazing@11.auraDirectDps       baseline: 3.173333   now: 1.586667
-  arms.blazing@2.5.dps                baseline: 40.929     now: 24.129
+ELITE DAMAGE MOVED vs reviews/round8/elite-baseline-HEAD.json — 17 field(s):
+  arms.blazing@2.5.auraDirectDps      baseline: 9.324     now: 4.662
+  arms.blazing@2.5.dps                baseline: 40.929    now: 36.267
+  arms.blazing@11.auraDirectDps       baseline: 3.173333  now: 1.586667
+  lethal.damageTaken                  baseline: 124.53    now: 110.04
+  lethal.timeToDeath                  baseline: 3.5       now: 3.533333
   …
 exit 1
 ```
