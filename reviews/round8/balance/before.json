@@ -18,8 +18,13 @@
         "burn:dot": 2394,
         "melee": 546
       },
+      "sourceKeys": {
+        "lasher+blazing": 4027.8
+      },
       "events": 315,
       "foreignDamage": 0,
+      "auraRadius": 3.2,
+      "hasAura": true,
       "unitDamageStat": 42,
       "baseDamage": 21,
       "unitLevel": 1,
@@ -51,8 +56,13 @@
         "projectile": 69.3,
         "pull": 245.7
       },
+      "sourceKeys": {
+        "lasher+blazing": 1310.4
+      },
       "events": 101,
       "foreignDamage": 0,
+      "auraRadius": 3.2,
+      "hasAura": true,
       "unitDamageStat": 42,
       "baseDamage": 21,
       "unitLevel": 1,
@@ -80,8 +90,13 @@
       "byType": {
         "melee": 714
       },
+      "sourceKeys": {
+        "lasher+glacial": 714
+      },
       "events": 17,
       "foreignDamage": 0,
+      "auraRadius": 0,
+      "hasAura": false,
       "unitDamageStat": 42,
       "baseDamage": 21,
       "unitLevel": 1,
@@ -111,8 +126,13 @@
         "projectile": 92.4,
         "pull": 264.6
       },
+      "sourceKeys": {
+        "lasher+glacial": 399
+      },
       "events": 19,
       "foreignDamage": 0,
+      "auraRadius": 0,
+      "hasAura": false,
       "unitDamageStat": 42,
       "baseDamage": 21,
       "unitLevel": 1,
@@ -140,8 +160,13 @@
       "byType": {
         "melee": 357
       },
+      "sourceKeys": {
+        "lasher": 357
+      },
       "events": 17,
       "foreignDamage": 0,
+      "auraRadius": 0,
+      "hasAura": false,
       "unitDamageStat": 21,
       "baseDamage": 21,
       "unitLevel": 1,
@@ -171,8 +196,13 @@
         "projectile": 34.65,
         "pull": 132.3
       },
+      "sourceKeys": {
+        "lasher": 187.95
+      },
       "events": 18,
       "foreignDamage": 0,
+      "auraRadius": 0,
+      "hasAura": false,
       "unitDamageStat": 21,
       "baseDamage": 21,
       "unitLevel": 1,
@@ -186,6 +216,30 @@
       "playerMaxHealth": 110,
       "playerAlive": true
     }
+  },
+  "lethal": {
+    "affix": "blazing",
+    "card": "lasher",
+    "metres": 2.5,
+    "startHealth": 110,
+    "timeToDeath": 1.566667,
+    "survivedWindow": false,
+    "windowSeconds": 40,
+    "stepsRun": 94,
+    "damageTaken": 121.8,
+    "byType": {
+      "burn": 58.8,
+      "burn:dot": 63
+    },
+    "sourceKeys": {
+      "lasher+blazing": 121.8
+    },
+    "events": 10,
+    "foreignDamage": 0,
+    "unitDamageStat": 42,
+    "playerMaxHealth": 110,
+    "playerAlive": false,
+    "runEnded": true
   },
   "diagnostics": {
     "liveness": {
@@ -209,7 +263,8 @@
       "authority": true,
       "cardFound": true
     },
-    "rawCtxTime": 203.0000000000537,
-    "clockDrift": 5.368860911403317e-11
+    "rawCtxTime": 204.5666666667216,
+    "stepsTaken": 12274,
+    "clockDrift": 5.4939164328970946e-11
   }
 }

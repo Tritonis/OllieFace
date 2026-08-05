@@ -1361,16 +1361,24 @@ export const ELITE_STATS = {
    * direct tick is 9.3 dps of it and the burn, which needs four seconds to reach
    * its cap, is 18.0.
    *
+   * The number a player actually feels, measured rather than divided out of an
+   * average: a full-health 110 HP survivor held in the aura and never healed
+   * lives **1.57 s** at the old constants and **3.50 s** at these
+   * (`reviews/round8/balance/{before,after}.json`, `lethal`). The before figure
+   * reproduces the round-7 verifier's lethal arm to the decimal — 121.8 damage,
+   * `burn 58.8 + burn:dot 63` — which is what says the two are the same fixture.
+   *
    * Three numbers carry the affix and each names both ends of its own range:
    *
    * `auraDps` — the direct tick, `damage x auraDps` every 0.5 s. Also the gate
-   * on the whole aura block (`Enemy.js:561`), so 0 deletes the ignition with it
+   * on the whole aura block (`Enemy.js:581`), so 0 deletes the ignition with it
    * and blazing stops being a fire affix. Too high and standing next to one is
    * lethal before the survivor can react — at the old 0.35 the aura alone was
-   * 27 dps and a full-health survivor died in ~1.1 s of contact, which no stack
-   * cap could change because stacks have not ramped that early. Too low and the
-   * aura is a decoration you can stand in: below ~0.08 a beat does under 3.5
-   * damage on a 110 HP pool, which reads as nothing at all.
+   * 27 dps and the survivor was dead in 1.57 s, which no stack cap could change
+   * because stacks have not ramped that early. Too low and the aura is a
+   * decoration you can stand in: below ~0.08 a beat does under 3.5 damage on a
+   * 110 HP pool, which reads as nothing at all. (Both floors are arithmetic on
+   * the measured rates, not captures; the 0.35 and 0.12 ends are measured.)
    *
    * `burnTick` — what one stack of the aura's burn does per tick, as a fraction
    * of the unit's damage stat, overriding `STATUS_DEFS.burn`'s 0.25. That 0.25
@@ -1381,11 +1389,13 @@ export const ELITE_STATS = {
    * contact stops being a decision.
    *
    * `burn` — the gate on the undocumented +2-stack melee rider at
-   * `Enemy.js:964`, which appears in no design document and was 49.6 dps on its
+   * `Enemy.js:990`, which appears in no design document and was 49.6 dps on its
    * own with the aura deleted entirely. Off. Non-zero and the affix has a second
-   * ignition source that is invisible in this table and ramps to the cap on
-   * contact; off, as now, and every stack blazing applies comes from the aura,
-   * which is the mechanic the card is actually about.
+   * ignition source that is invisible in this table, ramps to the cap on contact
+   * and is not scaled by anything above; zero, as now, and blazing has no on-hit
+   * fire at all — every stack it applies comes from the aura, and the branch at
+   * `Enemy.js:990` is dead code that no test covers. That is the cost of this
+   * end, and it is accepted because the aura is the mechanic the card is about.
    */
   blazing:     { health: 4.0, damage: 2.0, cost: 4.5, speed: 1.0,  burn: 0, burnTick: 0.075, auraRadius: 3.2, auraDps: 0.12 },
   overloading: { health: 3.2, damage: 2.0, cost: 5.0, speed: 1.15, shield: 0.5, deathBlast: 3.0, blastRadius: 7 },

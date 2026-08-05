@@ -371,8 +371,15 @@ try {
          * driven and the trigger is not held: this arm measures damage *to* the
          * survivor, and a survivor who shoots back kills the subject.
          */
+        // Counted rather than derived, because the lethal arm below stops the
+        // moment the survivor dies and there is no closed form for how many
+        // steps that took. The drift assertion still does its job: it compares
+        // `ctx.time` against the steps *this loop* took, so a surviving rAF
+        // advancing the clock underneath us is still caught.
+        let stepsTaken = 0;
         const step = () => {
           ctx.time += H;
+          stepsTaken++;
           for (const s of engine.systems) if (s.fixedUpdate) s.fixedUpdate(ctx, H);
           for (const en of dir.enemies) en.update?.(ctx, H);
         };
@@ -417,11 +424,25 @@ try {
          */
         const origApply = ctx.combat.applyDamage.bind(ctx.combat);
         let rec = null;
+        // The same shape the fingerprint mode's `sourceKey` files an elite under
+        // — `<id>+<affix>` — so the arm can assert that an elite is actually
+        // *in* the window it claims to have measured one in. Deliberately the
+        // same convention and not a second one: the whole point of the assertion
+        // is that a reader can compare it against the fingerprint's buckets.
+        const srcKey = (s) => {
+          if (!s) return 'environment';
+          if (s.isPlayer) return 'player';
+          const id = s.def?.id;
+          if (id) return s.affix ? `${id}+${s.affix}` : id;
+          return s.constructor?.name || 'unknown';
+        };
         ctx.combat.applyDamage = (target, amount, info = {}) => {
           const dealt = origApply(target, amount, info);
           if (rec && target === ctx.player && dealt > 0) {
             const key = `${info.type || 'none'}${info.isDot ? ':dot' : ''}`;
             rec.byType[key] = (rec.byType[key] || 0) + dealt;
+            const sk = srcKey(info.source);
+            rec.sourceKeys[sk] = (rec.sourceKeys[sk] || 0) + dealt;
             rec.total += dealt;
             rec.events++;
             if (info.source !== rec.unit) rec.foreign += dealt;
@@ -459,7 +480,7 @@ try {
           // held unit spends the arm hovering or buried.
           const holdY = unit.position.y;
 
-          rec = { byType: {}, total: 0, events: 0, foreign: 0, unit };
+          rec = { byType: {}, total: 0, events: 0, foreign: 0, sourceKeys: {}, unit };
           let inAura = 0;
           let distSum = 0;
           let distMin = Infinity;
@@ -531,8 +552,15 @@ try {
             burnDotDps: dpsOf('burn:dot'),
             meleeDps: dpsOf('melee'),
             byType,
+            sourceKeys: Object.fromEntries(Object.keys(rec.sourceKeys).sort().map((k) => [k, round(rec.sourceKeys[k])])),
             events: rec.events,
             foreignDamage: round(rec.foreign),
+            // Read off the affix table rather than off the observed damage, so
+            // an arm whose aura silently stopped existing is distinguishable
+            // from one that was never supposed to have an aura. See the runner's
+            // `inAuraFraction` invariant.
+            auraRadius: round(unit.elite?.auraRadius ?? 0),
+            hasAura: !!(unit.elite?.auraDps && unit.elite?.auraRadius),
             unitDamageStat: round(unit.damage),
             baseDamage: round(def.baseDamage),
             unitLevel: unit.level,
@@ -550,21 +578,100 @@ try {
           arms[`${affix ?? 'plain'}@${metres}`] = out;
         };
 
+        /* The survivability arm, and why it is last and alone.
+         *
+         * The six arms above top the survivor up after every step, which is what
+         * makes them dps measurements — but it also means the quantity this
+         * affix's `auraDps` was tuned *for*, how long a full-health survivor
+         * lives in the aura, has no instrument at all. It is not enough to
+         * divide 110 by a 40-second steady-state average: the burn needs four
+         * seconds to reach its three-stack cap, so the first two seconds are not
+         * billed at that average and the division overstates the threat by about
+         * 40%.
+         *
+         * It runs last and only once because killing the survivor is not a
+         * reversible fixture input: the real damage path fires `playerDead`,
+         * `Progression._endRun` puts a menu up and disables the Director, and
+         * every arm after it would be measuring a paused game.
+         */
+        const runLethal = (affix, metres, maxSteps) => {
+          dir.clear(ctx);
+          ctx.combat.statuses.delete(p);
+          p.health = p.maxHealth;
+          // The killing blow must be the aura's, not a leftover i-frame's.
+          p._iframeUntil = 0;
+          dir.level = 1;
+          dir.damageMult = 1;
+          dir.healthMult = 1;
+
+          const p0 = { x: p.position.x, y: p.position.y, z: p.position.z };
+          const unit = dir.spawnOne(ctx, def, { x: p0.x + metres, y: p0.y, z: p0.z }, affix);
+          const holdY = unit.position.y;
+          rec = { byType: {}, total: 0, events: 0, foreign: 0, sourceKeys: {}, unit };
+
+          const startHealth = p.health;
+          const t0 = ctx.time;
+          let deathAt = null;
+          let taken = 0;
+          for (let i = 0; i < maxSteps; i++) {
+            if (unit.alive) {
+              unit.position.set(p0.x + metres, holdY, p0.z);
+              unit.velocity.set(0, 0, 0);
+            }
+            step();
+            taken++;
+            // Parked, and *not* topped up — this is the one arm where the
+            // survivor is allowed to lose the fight.
+            p.position.set(p0.x, p0.y, p0.z);
+            p.velocity.set(0, 0, 0);
+            if (!p.alive) { deathAt = ctx.time - t0; break; }
+          }
+
+          const byType = {};
+          for (const k of Object.keys(rec.byType).sort()) byType[k] = round(rec.byType[k]);
+          const out = {
+            affix: affix ?? 'none',
+            card,
+            metres,
+            startHealth: round(startHealth),
+            // The number this arm exists for. `null` means the survivor was
+            // still standing when the window closed, which is itself a result.
+            timeToDeath: deathAt == null ? null : round(deathAt),
+            survivedWindow: deathAt == null,
+            windowSeconds: round(maxSteps / 60),
+            stepsRun: taken,
+            damageTaken: round(rec.total),
+            byType,
+            sourceKeys: Object.fromEntries(Object.keys(rec.sourceKeys).sort().map((k) => [k, round(rec.sourceKeys[k])])),
+            events: rec.events,
+            foreignDamage: round(rec.foreign),
+            unitDamageStat: round(unit.damage),
+            playerMaxHealth: round(p.maxHealth),
+            playerAlive: !!p.alive,
+            runEnded: !!ctx.progression?._ended,
+          };
+          rec = null;
+          return out;
+        };
+
         const errorsAtStart = ctx.frameErrors;
         for (const affix of ['blazing', 'glacial', null]) {
           runArm(affix, contactM, contactSteps, true);
           runArm(affix, freeM, freeSteps, false);
         }
+        const lethal = runLethal('blazing', contactM, contactSteps);
         ctx.combat.applyDamage = origApply;
 
         return {
           arms,
+          lethal,
           gate,
           card,
           frameErrors: ctx.frameErrors - errorsAtStart,
           lastFrameError: ctx.frameErrors > errorsAtStart ? ctx.lastFrameError : null,
           rawCtxTime: ctx.time,
-          expectedCtxTime: (settle + 3 * (contactSteps + freeSteps)) / 60,
+          expectedCtxTime: stepsTaken / 60,
+          stepsTaken,
         };
       },
       {
@@ -1007,10 +1114,49 @@ if (MODE === 'elite-dps') {
     if (a.baseDamage !== 21) armFail.push(`${name}: baseDamage ${a.baseDamage}, expected 21 — the difficulty pin did not hold`);
     if (a.unitLevel !== 1) armFail.push(`${name}: unit level ${a.unitLevel}, expected 1`);
     if (!a.playerAlive) armFail.push(`${name}: the survivor died — the top-up did not hold`);
-    if (a.hold && a.inAuraFraction > 0 && a.inAuraFraction < 1) {
-      armFail.push(`${name}: inAuraFraction ${a.inAuraFraction} on a held arm, expected 1`);
+    /* Keyed off the affix table, not off the observed fraction.
+     *
+     * The first version of this was `inAuraFraction > 0 && < 1`, where the `> 0`
+     * existed so glacial and plain — which have no aura — could pass. The cost
+     * was that the one failure it exists to catch walked through it: a blazing
+     * arm whose aura had silently stopped existing (an `auraRadius` typo, or
+     * `auraDps` falling to 0 and taking the whole gated block with it) records
+     * `inAuraFraction` 0 and passed every gate, reporting a collapsed dps as a
+     * clean measurement. `hasAura` is read off `unit.elite` at spawn, so the
+     * assertion now knows whether the arm was *supposed* to have one.
+     */
+    if (a.hold && a.hasAura && a.metres < a.auraRadius && a.inAuraFraction !== 1) {
+      armFail.push(`${name}: inAuraFraction ${a.inAuraFraction} on a held arm ${a.metres} m inside a ${a.auraRadius} m aura, expected 1`);
+    }
+    if (a.hold && a.affix === 'blazing' && !a.hasAura) {
+      armFail.push(`${name}: blazing recorded no aura at all — auraDps or auraRadius is 0 in ELITE_STATS`);
     }
   }
+
+  /* The elite is actually in the window. Fail loudly rather than report clean.
+   *
+   * `reviews/round8/baseline-HEAD.json` — the fingerprint mode's baseline —
+   * contains no `<id>+<affix>` source key anywhere, because its 60 s of stage 1
+   * never banks enough credit for a 4.5-credit affix. So a change to
+   * `ELITE_STATS` gets `no fields moved` from that gate and it means nothing.
+   * This arm is the instrument that *does* have power over an affix change, and
+   * it is worth exactly as much as the elite being present. Without this
+   * assertion, an affix that stopped spawning, stopped reaching the survivor or
+   * stopped dealing damage would report six clean arms and a green run.
+   */
+  const eliteKeys = [];
+  for (const [name, a] of Object.entries(elite.arms)) {
+    if (a.affix === 'none') continue;
+    const keys = Object.keys(a.sourceKeys ?? {}).filter((k) => k.includes('+'));
+    if (!keys.length) armFail.push(`${name}: no "<id>+<affix>" damage source recorded — no elite was measured`);
+    else eliteKeys.push(...keys);
+  }
+  if (!eliteKeys.length) {
+    armFail.push('no elite damage source in any arm — this capture proves nothing about an affix change');
+  }
+  const lethalKeys = Object.keys(elite.lethal?.sourceKeys ?? {}).filter((k) => k.includes('+'));
+  if (!lethalKeys.length) armFail.push('lethal arm: no elite damage source recorded');
+  if (elite.lethal?.foreignDamage > 0) armFail.push(`lethal arm: ${elite.lethal.foreignDamage} damage from something other than the subject`);
   if (armFail.length) {
     console.error('ELITE ARM INVARIANTS FAILED:\n  ' + armFail.join('\n  '));
     process.exit(1);
@@ -1020,7 +1166,11 @@ if (MODE === 'elite-dps') {
     mode: 'elite-dps',
     card: elite.card,
     arms: elite.arms,
-    diagnostics: { liveness, gate: elite.gate, rawCtxTime: elite.rawCtxTime, clockDrift: eDrift },
+    lethal: elite.lethal,
+    diagnostics: {
+      liveness, gate: elite.gate, rawCtxTime: elite.rawCtxTime,
+      stepsTaken: elite.stepsTaken, clockDrift: eDrift,
+    },
   };
   const ejson = JSON.stringify(eliteOut, null, 2);
   if (outPath) {
@@ -1039,6 +1189,10 @@ if (MODE === 'elite-dps') {
       console.log(`${k} is ${(elite.arms[k].dps / plainContact).toFixed(2)}x plain@${CONTACT_M}`);
     }
   }
+  const L = elite.lethal;
+  console.log(`lethal ${L.affix}@${L.metres}  time to death from ${L.startHealth} HP: `
+    + (L.timeToDeath == null ? `SURVIVED ${L.windowSeconds}s` : `${L.timeToDeath}s`)
+    + `  (${L.damageTaken} damage, ${JSON.stringify(L.byType)})`);
   process.exit(0);
 }
 
@@ -1087,6 +1241,30 @@ if (outPath) {
   console.log(`wrote ${outPath}`);
 } else if (!comparePath) {
   console.log(json);
+}
+
+/* What this fingerprint cannot see, said out loud every time it is taken.
+ *
+ * `sourceKey` files an elite as `<id>+<affix>`. Measured: no such key exists
+ * anywhere in `reviews/round8/baseline-HEAD.json` — 10 s of settle plus 60 s of
+ * stage 1 never banks the 4.5 credits an affix costs, and `enemiesAliveMax` is
+ * 6. So a change to `ELITE_STATS` moves nothing here and `--compare` reports
+ * `no fields moved` for a change that halved an affix's damage.
+ *
+ * This is not fixed by failing the run — it would fail every run, including the
+ * five earlier tasks legitimately gated by this file — so it is printed instead,
+ * next to the verdict a reader is about to act on. `--mode elite-dps` is the
+ * instrument with power over an affix change, and *that* mode does fail loudly
+ * when no elite is in its window.
+ */
+const eliteBuckets = [
+  ...Object.keys(out.fingerprint.damageToPlayerBySource ?? {}),
+  ...Object.keys(out.fingerprint.damageToEnemiesBySource ?? {}),
+  ...Object.keys(out.fingerprint.deadTarget?.damageToPlayerBySource ?? {}),
+].filter((k) => k.includes('+'));
+if (!eliteBuckets.length) {
+  console.error('NOTE: this window contains no elite (no "<id>+<affix>" damage source).');
+  console.error('      A change to ELITE_STATS cannot move this fingerprint. Use --mode elite-dps.');
 }
 
 if (comparePath) {
