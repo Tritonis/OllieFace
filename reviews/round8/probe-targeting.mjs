@@ -262,6 +262,11 @@ try {
     // refused join says more on the console than it does in any field.
     page.on('console', (m) => {
       const t = m.type();
+      // 500 characters per line. Shorter and a refusal detail is clipped — the
+      // one message that would explain a failed join is the longest thing the
+      // net layer ever prints, and `NetHost._refuse` echoes a peer-supplied
+      // string into it. Longer and one page's shader-compile warning (measured
+      // at 4 kB of HLSL) buries every other line in the failure file.
       if (t === 'warning' || t === 'error') consoleLines.push({ player: i, type: t, text: m.text().slice(0, 500) });
     });
     await page.goto(url, { waitUntil: 'load' });
@@ -332,20 +337,88 @@ try {
   for (let k = 1; k < peers.length; k++) {
     const client = peers[k];
     const t0 = Date.now();
-    const invite = await host.page.evaluate(async () => {
-      const inv = await globalThis.__GAME__.ctx.lobby.createInvite();
-      return inv.blob;
-    });
-    const answer = await client.page.evaluate(
-      async (blob) => await globalThis.__GAME__.ctx.lobby.joinManual(blob), invite,
-    );
-    await host.page.evaluate(async (a) => { await globalThis.__GAME__.ctx.lobby.acceptAnswer(a); }, answer);
-    await host.page.waitForFunction(
-      (n) => (globalThis.__GAME__.ctx.coop?.pawns?.length ?? 0) >= n, k, { timeout: JOIN_TIMEOUT_MS },
-    );
-    await client.page.waitForFunction(
-      () => globalThis.__GAME__.ctx.lobby?.net?.connected === true, null, { timeout: JOIN_TIMEOUT_MS },
-    );
+    /* Every failure in here captures `snapshotOf` on **every** page before it
+     * gives up, and that is the difference between a finding and a shrug.
+     *
+     * The committed `n1/4p-lag60.FAILED-attempt2.json` is what this block used
+     * to produce: a Playwright timeout string, a stack pointing at the pawn-count
+     * wait, an empty `pageErrors`, and 37 console lines of which zero were
+     * non-THREE. No host state, no client state, no lobby status. The reviewer's
+     * ruling on it is the whole argument for this code — a real, reproducible
+     * join failure at four peers that *cannot be localised* from what was kept,
+     * because the one path where the answer lived was the one path that recorded
+     * nothing. `snapshotOf` was already written and already called on both gate
+     * failures; it simply was not called here.
+     *
+     * Deliberately captured for all pages and not just the two in this exchange:
+     * whether the *other* peers were still connected while this one hung is
+     * exactly the question that separates "the host stopped stepping" from "this
+     * peer's answer never arrived".
+     */
+    const joinFailure = async (stage, err) => {
+      const pages = [];
+      for (const p of peers) {
+        pages.push({
+          player: p.i, role: p.role,
+          state: await snapshotOf(p.page).catch((e) => ({ snapshotFailed: String(e?.message ?? e) })),
+        });
+      }
+      const hostDetail = await host.page.evaluate(() => {
+        const net = globalThis.__GAME__.ctx.lobby?.net;
+        if (!net) return null;
+        return {
+          playerCount: net.playerCount ?? null,
+          pawnCount: globalThis.__GAME__.ctx.coop?.pawns?.length ?? null,
+          pendingInvites: globalThis.__GAME__.ctx.lobby.pendingInvites?.size ?? null,
+          clients: [...(net.clients?.values?.() ?? [])].map((c) => ({
+            id: c.peer?.id ?? null,
+            hasPawn: !!c.pawn,
+            helloSeen: c.helloSeen === true,
+            survivorId: c.survivorId ?? null,
+            lastTick: c.lastTick ?? null,
+            inputBacklog: c.inputs?.length ?? null,
+            joinTick: c.joinTick ?? null,
+            peerClosed: c.peer?.closed === true,
+            stateChannel: c.peer?.state?.readyState ?? null,
+            eventsChannel: c.peer?.events?.readyState ?? null,
+            simQueued: c.peer?._simQueue?.length ?? null,
+          })),
+        };
+      }).catch((e) => ({ hostDetailFailed: String(e?.message ?? e) }));
+      armFailure = [`the join for player ${k} failed at: ${stage}`, {
+        stage, player: k, elapsedMs: Date.now() - t0,
+        error: String(err?.message ?? err),
+        joinsCompleted: joins, pages, hostDetail, consoleLines,
+      }];
+      throw new Error('join failure');
+    };
+
+    let invite = null;
+    let answer = null;
+    try {
+      invite = await host.page.evaluate(async () => {
+        const inv = await globalThis.__GAME__.ctx.lobby.createInvite();
+        return inv.blob;
+      });
+    } catch (e) { await joinFailure('host createInvite', e); }
+    try {
+      answer = await client.page.evaluate(
+        async (blob) => await globalThis.__GAME__.ctx.lobby.joinManual(blob), invite,
+      );
+    } catch (e) { await joinFailure('client joinManual', e); }
+    try {
+      await host.page.evaluate(async (a) => { await globalThis.__GAME__.ctx.lobby.acceptAnswer(a); }, answer);
+    } catch (e) { await joinFailure('host acceptAnswer', e); }
+    try {
+      await host.page.waitForFunction(
+        (n) => (globalThis.__GAME__.ctx.coop?.pawns?.length ?? 0) >= n, k, { timeout: JOIN_TIMEOUT_MS },
+      );
+    } catch (e) { await joinFailure('host never spawned a pawn for this peer', e); }
+    try {
+      await client.page.waitForFunction(
+        () => globalThis.__GAME__.ctx.lobby?.net?.connected === true, null, { timeout: JOIN_TIMEOUT_MS },
+      );
+    } catch (e) { await joinFailure('client never reported connected', e); }
     joins.push({
       player: k, ms: Date.now() - t0,
       inviteBytes: invite.length, answerBytes: answer.length,
@@ -449,16 +522,39 @@ try {
         const x = hostPlayer.position.x + Math.cos(a) * ringRadius;
         const z = hostPlayer.position.z + Math.sin(a) * ringRadius;
         const y = ctx.stage?.sampleHeight?.(x, z);
+        // 0.2 m above sampled terrain — the same clearance `Coop._spawnPawn`
+        // gives a joining pawn (`src/net/Coop.js:53-54`). Lower (0) and a pawn
+        // parked on a slope has its capsule intersecting the ground the sample
+        // came from; higher and it hovers, which changes the vertical leg of
+        // every line-of-sight raycast an enemy runs against it.
         anchors.set(p, new THREE.Vector3(x, typeof y === 'number' && isFinite(y) ? y + 0.2 : hostPlayer.position.y, z));
       });
 
       let pinFrames = 0;
+      let firstPinDisplacement = 0;
       let maxDrift = 0;
       let running = true;
+      /* Two separate quantities, and conflating them published a false claim.
+       *
+       * The *first* pin is a teleport: the anchors are ring geometry computed
+       * from the host's position, not from where the pawns are standing, so the
+       * first call measures spawn-to-ring displacement and nothing about
+       * knockback. Recorded as one number, once, it was quoted in the task
+       * report as evidence that "the parking fixture was holding real knockback
+       * back" — and the captures refute that reading outright: it is bit
+       * identical at 2.236 across `2p-lag0`, `2p-lag60` **and** the sabotage arm,
+       * in which the pawn takes zero hits and the host takes 124 instead of 51.
+       * A quantity accumulated from live knockback cannot be identical to the
+       * millimetre across runs with different combat.
+       *
+       * Every pin after the first *is* drift: how far a player moved in one
+       * frame before being put back. That is the number the claim wanted.
+       */
       const pin = () => {
+        const first = pinFrames === 0;
         for (const [p, a] of anchors) {
           const d = horiz(p.position, a);
-          if (d > maxDrift) maxDrift = d;
+          if (first) { if (d > firstPinDisplacement) firstPinDisplacement = d; } else if (d > maxDrift) maxDrift = d;
           p.position.copy(a);
           p.velocity?.set?.(0, 0, 0);
         }
@@ -554,6 +650,12 @@ try {
           };
         }
         tick('settle', settleFrom);
+        // 100 ms between checks of a 20 s sim-time target: the settle can
+        // overshoot by at most one poll, and the window's opening moment is
+        // recorded rather than assumed, so an overshoot costs nothing. Poll
+        // faster and this loop competes for main-thread time with the
+        // simulation it is waiting for; slower and the settle is measurably
+        // longer than the constant says it is.
         await wait(100);
       }
 
@@ -625,6 +727,12 @@ try {
         }
         if (ctx.time >= nextAt) { samples.push(census()); nextAt += sampleSec; beacon.samples = samples.length; }
         tick('window', from);
+        // 50 ms inside the measured window — half the settle's interval,
+        // because here the poll decides *when a census is taken*: a census can
+        // land up to one poll late, so this bounds the sampling jitter against
+        // the 1 s `SAMPLE_SEC` grid at 5%. Slower and the grid visibly drifts;
+        // faster and the polling costs the sim the frames the census is
+        // measuring.
         await wait(50);
       }
       samples.push(census());
@@ -646,6 +754,14 @@ try {
         openGate,
         fixture: {
           pinFrames,
+          // Frames per second the pin loop actually ran at, against the sim's
+          // fixed 60 steps/s. Four-player pages render at ~26 fps, so the pin
+          // runs about once every 2.3 fixed steps there against roughly every
+          // frame in the two-player arms: the four-player fixture is materially
+          // looser, and the census is the proof it still held (every player on
+          // its exact anchor at every sample).
+          pinHz: rnd(pinFrames / Math.max(1e-6, ctx.time - settleFrom)),
+          firstPinDisplacementMetres: rnd(firstPinDisplacement),
           maxDriftMetres: rnd(maxDrift),
           healthRestoredSettle: rnd(healthRestoredSettle),
           healthRestoredWindow: rnd(healthRestoredWindow),
