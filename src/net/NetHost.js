@@ -11,12 +11,25 @@ import { SURVIVOR_BY_ID } from '../data/survivors.js';
  * The host runs the game exactly as single-player does — same Engine, same
  * fixedUpdate, same systems, `ctx.authority === true`. Networking is layered on
  * top rather than woven in: the only things this system does are (1) drive
- * remote players' input into their pawns before the sim step, and (2) publish
- * the resulting state afterwards.
+ * remote players' input into their pawns, and (2) publish the resulting state
+ * afterwards.
  *
- * That ordering is the whole design. If snapshots were built before remote
- * input was applied, every client would see its own actions a full tick late on
- * top of the network delay.
+ * The ordering that is load-bearing is (2) after (1), and it is guaranteed by
+ * *which callback each half runs in*, not by this system's position in the
+ * list: input is applied in `fixedUpdate` and snapshots are built in `update`,
+ * which `Engine._frame` runs after every fixed step. If snapshots were built
+ * before remote input was applied, every client would see its own actions a
+ * full tick late on top of the network delay.
+ *
+ * What is *not* true, and used to be claimed here, is that remote input lands
+ * before the sim step. `Lobby.startHost`/`joinManual` add this system through
+ * `Engine.add`, which appends (`Engine.js:152-155`), so `fixedUpdate` runs
+ * last in the fixed step — after `Player`, after `Combat`, and after the
+ * `Director` where enemy steering lives. A pawn's command for tick N is
+ * applied at the end of tick N, so enemies steer on a position read one tick
+ * (16.7 ms) before that pawn's own command for the tick, while the host's own
+ * player is stepped in the same tick it sampled. Sub-centimetre, and not worth
+ * reordering the engine for — but the comment should say what runs.
  */
 
 const SNAPSHOT_HZ = 20;

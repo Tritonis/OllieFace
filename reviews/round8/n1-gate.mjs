@@ -84,6 +84,21 @@ export function checkCapture(capture, label = '<capture>') {
   const keys = Object.keys(perPlayer);
   let checked = 0;
 
+  // The census below can only speak about players the file contains, so a
+  // capture missing one passed with fewer checks and no complaint — and "the
+  // player is not in the file at all" is a stronger form of this gate's own
+  // defect than "nobody targets them". On the live probe path the
+  // `rosterCheck.rosterCount !== players` clause catches it first, but standalone
+  // replay of a committed capture is what this file is for, and there nothing did.
+  checked++;
+  if (typeof players === 'number' && keys.length !== players) {
+    violations.push({
+      check: 'roster-census', label,
+      why: `derived.perPlayer holds ${keys.length} player(s) but the arm ran ${players} — `
+        + 'a player absent from the capture cannot be checked at all',
+    });
+  }
+
   for (const k of keys) {
     const p = perPlayer[k];
 

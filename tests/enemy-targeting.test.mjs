@@ -85,7 +85,13 @@ console.log('an enemy standing by the guest fights the guest, not ctx.player');
   ok(e.targetPlayer !== ctx.player, 'and is NOT ctx.player, which is the host');
   ok(Math.abs(e.target.x - guest.position.x) < 1e-9, 'this.target tracks the guest');
   ok(Math.abs(e.distToPlayer - 2) < 1e-6, `distToPlayer is the 2 m to the guest, not the 38 m to the host (got ${e.distToPlayer.toFixed(3)})`);
-  ok(host.position.x === 0, 'the host was never moved — the divergence is real, not a setup artefact');
+  // Deliberately not an `ok()`. Nothing in this scenario writes a player's
+  // position — only `chargeContact`, `pullPlayer` and `knock` do, and none of
+  // those attacks fires for this melee unit — so as an assertion it is true
+  // whether the targeting defect is present or fixed, and it would pad the
+  // count with a check that discriminates nothing. It is a setup precondition,
+  // so it is enforced as one and fails loudly if the fixture ever changes.
+  if (host.position.x !== 0) throw new Error('setup broke: the host was moved during the step');
 }
 
 console.log('two enemies at opposite ends fight different players');
