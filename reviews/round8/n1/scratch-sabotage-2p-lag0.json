@@ -1,0 +1,7548 @@
+{
+  "arm": {
+    "players": 2,
+    "netlag": "0",
+    "seed": 20260804,
+    "out": "reviews/round8/n1/scratch-sabotage-2p-lag0.json",
+    "argv": [
+      "--players",
+      "2",
+      "--netlag",
+      "0",
+      "--out",
+      "reviews/round8/n1/scratch-sabotage-2p-lag0.json"
+    ],
+    "at": "2026-08-04T23:57:16.693Z"
+  },
+  "derived": {
+    "totalDirectedHits": 124,
+    "totalHits": 124,
+    "perPlayer": {
+      "host": {
+        "directedHits": 124,
+        "directedDamage": 744,
+        "allHits": 124,
+        "allDamage": 744,
+        "hitTypes": {
+          "melee": 124
+        },
+        "enemiesTargetingPerSample": [
+          8,
+          8,
+          8,
+          8,
+          9,
+          9,
+          9,
+          9,
+          9,
+          10,
+          10,
+          10,
+          11,
+          11,
+          11,
+          11,
+          11,
+          12,
+          12,
+          12,
+          12,
+          12,
+          12,
+          12,
+          12,
+          13,
+          13,
+          13,
+          13,
+          13,
+          13
+        ],
+        "enemiesTargetingMean": 10.839,
+        "enemiesTargetingMax": 13,
+        "directedShare": 1
+      },
+      "pawn1": {
+        "directedHits": 0,
+        "directedDamage": 0,
+        "allHits": 0,
+        "allDamage": 0,
+        "hitTypes": {},
+        "enemiesTargetingPerSample": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "enemiesTargetingMean": 0,
+        "enemiesTargetingMax": 0,
+        "directedShare": 0
+      }
+    },
+    "enemyCensusRows": 336,
+    "enemyRowsWithNoTarget": 0,
+    "enemyRowsTargetingNearest": 320,
+    "targetIsNearestFraction": 0.952
+  },
+  "raw": {
+    "parked": [
+      {
+        "key": "host",
+        "anchor": [
+          0,
+          1.767,
+          0
+        ],
+        "distanceToHost": 0
+      },
+      {
+        "key": "pawn1",
+        "anchor": [
+          3,
+          0.782,
+          0
+        ],
+        "distanceToHost": 3
+      }
+    ],
+    "window": {
+      "fromCtxTime": 24.2,
+      "toCtxTime": 54.217,
+      "measureSec": 30,
+      "sampleSec": 1
+    },
+    "openGate": [
+      {
+        "key": "host",
+        "alive": true,
+        "downed": false,
+        "health": 110,
+        "maxHealth": 110
+      },
+      {
+        "key": "pawn1",
+        "alive": true,
+        "downed": false,
+        "health": 110,
+        "maxHealth": 110
+      }
+    ],
+    "fixture": {
+      "pinFrames": 4665,
+      "maxDriftMetres": 2.236,
+      "healthRestoredSettle": 126,
+      "healthRestoredWindow": 522,
+      "deathsTotal": 0,
+      "ringRadius": 3
+    },
+    "damage": [
+      {
+        "t": 24.65,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.804
+      },
+      {
+        "t": 24.65,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.666
+      },
+      {
+        "t": 24.967,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.939
+      },
+      {
+        "t": 25.567,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.683
+      },
+      {
+        "t": 25.567,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.758
+      },
+      {
+        "t": 25.683,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.376
+      },
+      {
+        "t": 25.883,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.263
+      },
+      {
+        "t": 26.483,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.473
+      },
+      {
+        "t": 26.483,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.874
+      },
+      {
+        "t": 26.6,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.529
+      },
+      {
+        "t": 27.3,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.85
+      },
+      {
+        "t": 27.4,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.878
+      },
+      {
+        "t": 27.4,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.658
+      },
+      {
+        "t": 27.517,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.35
+      },
+      {
+        "t": 27.717,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.45
+      },
+      {
+        "t": 28.217,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.973
+      },
+      {
+        "t": 28.317,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.776
+      },
+      {
+        "t": 29.233,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.86
+      },
+      {
+        "t": 30.05,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.574
+      },
+      {
+        "t": 30.15,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.89
+      },
+      {
+        "t": 30.15,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.428
+      },
+      {
+        "t": 30.967,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.546
+      },
+      {
+        "t": 31.067,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.629
+      },
+      {
+        "t": 31.067,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.29
+      },
+      {
+        "t": 31.183,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.536
+      },
+      {
+        "t": 31.383,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.075
+      },
+      {
+        "t": 31.883,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 1.017
+      },
+      {
+        "t": 31.983,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.765
+      },
+      {
+        "t": 32.3,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.497
+      },
+      {
+        "t": 32.8,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 1.02
+      },
+      {
+        "t": 32.9,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.753
+      },
+      {
+        "t": 33.017,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.342
+      },
+      {
+        "t": 33.717,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.74
+      },
+      {
+        "t": 33.817,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.486
+      },
+      {
+        "t": 33.817,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.596
+      },
+      {
+        "t": 33.933,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 1.04
+      },
+      {
+        "t": 34.133,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.145
+      },
+      {
+        "t": 34.633,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.781
+      },
+      {
+        "t": 34.733,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.929
+      },
+      {
+        "t": 34.85,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.779
+      },
+      {
+        "t": 35.05,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.728
+      },
+      {
+        "t": 35.55,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.821
+      },
+      {
+        "t": 35.65,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.235
+      },
+      {
+        "t": 35.65,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.807
+      },
+      {
+        "t": 35.767,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.526
+      },
+      {
+        "t": 35.967,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.337
+      },
+      {
+        "t": 36.083,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.907
+      },
+      {
+        "t": 36.567,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.435
+      },
+      {
+        "t": 36.567,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.486
+      },
+      {
+        "t": 36.683,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.313
+      },
+      {
+        "t": 36.883,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.265
+      },
+      {
+        "t": 37.383,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.551
+      },
+      {
+        "t": 37.483,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.909
+      },
+      {
+        "t": 37.6,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.345
+      },
+      {
+        "t": 37.917,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.763
+      },
+      {
+        "t": 38.3,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.848
+      },
+      {
+        "t": 38.4,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.721
+      },
+      {
+        "t": 38.517,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.242
+      },
+      {
+        "t": 38.833,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.717
+      },
+      {
+        "t": 39.05,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.971
+      },
+      {
+        "t": 39.217,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.87
+      },
+      {
+        "t": 39.317,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.78
+      },
+      {
+        "t": 39.317,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.368
+      },
+      {
+        "t": 39.633,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.138
+      },
+      {
+        "t": 39.75,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.774
+      },
+      {
+        "t": 40.667,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.549
+      },
+      {
+        "t": 41.05,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.628
+      },
+      {
+        "t": 41.267,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.781
+      },
+      {
+        "t": 41.583,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.666
+      },
+      {
+        "t": 41.967,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.505
+      },
+      {
+        "t": 42.067,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.203
+      },
+      {
+        "t": 42.067,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.946
+      },
+      {
+        "t": 42.183,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.468
+      },
+      {
+        "t": 42.5,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.265
+      },
+      {
+        "t": 42.717,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.543
+      },
+      {
+        "t": 42.883,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.699
+      },
+      {
+        "t": 42.983,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.825
+      },
+      {
+        "t": 42.983,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.524
+      },
+      {
+        "t": 43.1,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.436
+      },
+      {
+        "t": 43.3,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.685
+      },
+      {
+        "t": 43.417,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 1.108
+      },
+      {
+        "t": 43.8,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 1.056
+      },
+      {
+        "t": 43.9,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.53
+      },
+      {
+        "t": 44.017,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.854
+      },
+      {
+        "t": 44.333,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.862
+      },
+      {
+        "t": 44.55,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 1.164
+      },
+      {
+        "t": 44.717,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 1.027
+      },
+      {
+        "t": 44.817,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.824
+      },
+      {
+        "t": 44.817,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.587
+      },
+      {
+        "t": 45.633,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.891
+      },
+      {
+        "t": 45.733,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.264
+      },
+      {
+        "t": 45.85,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.966
+      },
+      {
+        "t": 46.55,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.755
+      },
+      {
+        "t": 46.967,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.895
+      },
+      {
+        "t": 47.467,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.943
+      },
+      {
+        "t": 47.567,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.944
+      },
+      {
+        "t": 47.683,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.693
+      },
+      {
+        "t": 48,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.507
+      },
+      {
+        "t": 48.383,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.477
+      },
+      {
+        "t": 48.483,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.295
+      },
+      {
+        "t": 48.6,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.229
+      },
+      {
+        "t": 48.917,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.447
+      },
+      {
+        "t": 49.033,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.962
+      },
+      {
+        "t": 49.4,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.298
+      },
+      {
+        "t": 49.517,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.86
+      },
+      {
+        "t": 49.833,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.668
+      },
+      {
+        "t": 50.05,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.768
+      },
+      {
+        "t": 50.217,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.759
+      },
+      {
+        "t": 50.317,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.96
+      },
+      {
+        "t": 51.233,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.598
+      },
+      {
+        "t": 51.233,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.129
+      },
+      {
+        "t": 51.35,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.813
+      },
+      {
+        "t": 51.667,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.793
+      },
+      {
+        "t": 52.05,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.938
+      },
+      {
+        "t": 52.267,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.457
+      },
+      {
+        "t": 52.583,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.644
+      },
+      {
+        "t": 52.7,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.562
+      },
+      {
+        "t": 52.8,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.461
+      },
+      {
+        "t": 52.967,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.868
+      },
+      {
+        "t": 53.067,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.391
+      },
+      {
+        "t": 53.5,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.767
+      },
+      {
+        "t": 53.617,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.88
+      },
+      {
+        "t": 53.883,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.691
+      },
+      {
+        "t": 53.983,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.58
+      }
+    ],
+    "samples": [
+      {
+        "t": 24.2,
+        "wallMs": 56278,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              -0.651,
+              0.684
+            ],
+            "target": "host",
+            "distToTarget": 0.912,
+            "distToPlayers": [
+              0.945,
+              3.715
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.553,
+              -23.247
+            ],
+            "target": "host",
+            "distToTarget": 23.254,
+            "distToPlayers": [
+              23.254,
+              23.517
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.141,
+              -0.049
+            ],
+            "target": "host",
+            "distToTarget": 0.257,
+            "distToPlayers": [
+              0.149,
+              3.141
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              1.673,
+              1.645
+            ],
+            "target": "host",
+            "distToTarget": 2.354,
+            "distToPlayers": [
+              2.347,
+              2.113
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              1.298,
+              0.669
+            ],
+            "target": "host",
+            "distToTarget": 1.47,
+            "distToPlayers": [
+              1.461,
+              1.829
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.973,
+              0.569
+            ],
+            "target": "host",
+            "distToTarget": 1.137,
+            "distToPlayers": [
+              1.127,
+              4.013
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -25.475,
+              -37.907
+            ],
+            "target": "host",
+            "distToTarget": 45.812,
+            "distToPlayers": [
+              45.672,
+              47.411
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -65.901,
+              -17.694
+            ],
+            "target": "host",
+            "distToTarget": 68.23,
+            "distToPlayers": [
+              68.235,
+              71.136
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 25.25,
+        "wallMs": 57422,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              1.071,
+              -0.705
+            ],
+            "target": "host",
+            "distToTarget": 1.274,
+            "distToPlayers": [
+              1.282,
+              2.054
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.566,
+              -23.241
+            ],
+            "target": "host",
+            "distToTarget": 23.248,
+            "distToPlayers": [
+              23.248,
+              23.513
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.035,
+              -0.357
+            ],
+            "target": "host",
+            "distToTarget": 0.444,
+            "distToPlayers": [
+              0.359,
+              3.056
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.315,
+              -0.311
+            ],
+            "target": "host",
+            "distToTarget": 0.422,
+            "distToPlayers": [
+              0.443,
+              3.33
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.51,
+              -0.806
+            ],
+            "target": "host",
+            "distToTarget": 1.034,
+            "distToPlayers": [
+              0.954,
+              3.601
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.205,
+              0.096
+            ],
+            "target": "host",
+            "distToTarget": 0.311,
+            "distToPlayers": [
+              0.227,
+              2.796
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -20.6,
+              -30.295
+            ],
+            "target": "host",
+            "distToTarget": 37.005,
+            "distToPlayers": [
+              36.635,
+              38.403
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -66.093,
+              -18.05
+            ],
+            "target": "host",
+            "distToTarget": 68.487,
+            "distToPlayers": [
+              68.513,
+              71.412
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 26.217,
+        "wallMs": 58515,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              -0.733,
+              0.433
+            ],
+            "target": "host",
+            "distToTarget": 0.847,
+            "distToPlayers": [
+              0.851,
+              3.758
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.577,
+              -23.235
+            ],
+            "target": "host",
+            "distToTarget": 23.242,
+            "distToPlayers": [
+              23.242,
+              23.509
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.113,
+              -0.327
+            ],
+            "target": "host",
+            "distToTarget": 0.243,
+            "distToPlayers": [
+              0.347,
+              3.13
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.168,
+              0.169
+            ],
+            "target": "host",
+            "distToTarget": 0.225,
+            "distToPlayers": [
+              0.238,
+              2.837
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.094,
+              0.92
+            ],
+            "target": "host",
+            "distToTarget": 0.984,
+            "distToPlayers": [
+              0.924,
+              3.227
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.134,
+              0.054
+            ],
+            "target": "host",
+            "distToTarget": 0.1,
+            "distToPlayers": [
+              0.144,
+              2.866
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -16.264,
+              -22.813
+            ],
+            "target": "host",
+            "distToTarget": 28.157,
+            "distToPlayers": [
+              28.017,
+              29.858
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -66.133,
+              -18.155
+            ],
+            "target": "host",
+            "distToTarget": 68.583,
+            "distToPlayers": [
+              68.58,
+              71.477
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 27.233,
+        "wallMs": 59647,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              1.063,
+              -0.174
+            ],
+            "target": "host",
+            "distToTarget": 1.124,
+            "distToPlayers": [
+              1.078,
+              1.945
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.589,
+              -23.229
+            ],
+            "target": "host",
+            "distToTarget": 23.237,
+            "distToPlayers": [
+              23.236,
+              23.505
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.043,
+              0.689
+            ],
+            "target": "host",
+            "distToTarget": 0.622,
+            "distToPlayers": [
+              0.69,
+              3.12
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.24,
+              -0.458
+            ],
+            "target": "host",
+            "distToTarget": 0.477,
+            "distToPlayers": [
+              0.517,
+              3.273
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.042,
+              0.088
+            ],
+            "target": "host",
+            "distToTarget": 0.104,
+            "distToPlayers": [
+              0.097,
+              2.96
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.235,
+              -0.07
+            ],
+            "target": "host",
+            "distToTarget": 0.21,
+            "distToPlayers": [
+              0.246,
+              3.236
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -11.307,
+              -15.859
+            ],
+            "target": "host",
+            "distToTarget": 19.617,
+            "distToPlayers": [
+              19.477,
+              21.359
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -66.075,
+              -18.008
+            ],
+            "target": "host",
+            "distToTarget": 68.501,
+            "distToPlayers": [
+              68.485,
+              71.384
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 28.217,
+        "wallMs": 60804,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              -0.258,
+              0.701
+            ],
+            "target": "host",
+            "distToTarget": 0.783,
+            "distToPlayers": [
+              0.747,
+              3.332
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.6,
+              -23.223
+            ],
+            "target": "host",
+            "distToTarget": 23.231,
+            "distToPlayers": [
+              23.231,
+              23.501
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.041,
+              -0.885
+            ],
+            "target": "host",
+            "distToTarget": 0.973,
+            "distToPlayers": [
+              0.886,
+              3.089
+            ],
+            "nearestPlayer": "host",
+            "state": "attack"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.219,
+              0.568
+            ],
+            "target": "host",
+            "distToTarget": 0.581,
+            "distToPlayers": [
+              0.609,
+              2.839
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.033,
+              -0.058
+            ],
+            "target": "host",
+            "distToTarget": 0.151,
+            "distToPlayers": [
+              0.066,
+              3.033
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.654,
+              -0.019
+            ],
+            "target": "host",
+            "distToTarget": 0.608,
+            "distToPlayers": [
+              0.654,
+              2.346
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -6.512,
+              -9.133
+            ],
+            "target": "host",
+            "distToTarget": 11.357,
+            "distToPlayers": [
+              11.217,
+              13.187
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -65.834,
+              -17.601
+            ],
+            "target": "host",
+            "distToTarget": 68.155,
+            "distToPlayers": [
+              68.146,
+              71.048
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              1.65,
+              -57.213
+            ],
+            "target": "host",
+            "distToTarget": 57.236,
+            "distToPlayers": [
+              57.236,
+              57.229
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "spawn"
+          }
+        ]
+      },
+      {
+        "t": 29.217,
+        "wallMs": 61804,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0.262,
+              -0.353
+            ],
+            "target": "host",
+            "distToTarget": 0.543,
+            "distToPlayers": [
+              0.44,
+              2.76
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.611,
+              -23.218
+            ],
+            "target": "host",
+            "distToTarget": 23.226,
+            "distToPlayers": [
+              23.226,
+              23.497
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              1.077,
+              0.309
+            ],
+            "target": "host",
+            "distToTarget": 1.084,
+            "distToPlayers": [
+              1.12,
+              1.948
+            ],
+            "nearestPlayer": "host",
+            "state": "attack"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.538,
+              -0.502
+            ],
+            "target": "host",
+            "distToTarget": 0.68,
+            "distToPlayers": [
+              0.736,
+              3.573
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.469,
+              0.076
+            ],
+            "target": "host",
+            "distToTarget": 0.389,
+            "distToPlayers": [
+              0.475,
+              3.47
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.281,
+              0.813
+            ],
+            "target": "host",
+            "distToTarget": 0.863,
+            "distToPlayers": [
+              0.86,
+              2.837
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -5.927,
+              -8.494
+            ],
+            "target": "host",
+            "distToTarget": 10.356,
+            "distToPlayers": [
+              10.358,
+              12.323
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -66.129,
+              -18.145
+            ],
+            "target": "host",
+            "distToTarget": 68.597,
+            "distToPlayers": [
+              68.574,
+              71.471
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              1.472,
+              -52.202
+            ],
+            "target": "host",
+            "distToTarget": 52.363,
+            "distToPlayers": [
+              52.223,
+              52.224
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 30.233,
+        "wallMs": 62918,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              -0.009,
+              -0.243
+            ],
+            "target": "host",
+            "distToTarget": 0.154,
+            "distToPlayers": [
+              0.243,
+              3.019
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.621,
+              -23.212
+            ],
+            "target": "host",
+            "distToTarget": 23.22,
+            "distToPlayers": [
+              23.22,
+              23.493
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.644,
+              -0.578
+            ],
+            "target": "host",
+            "distToTarget": 0.806,
+            "distToPlayers": [
+              0.865,
+              3.689
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.509,
+              0.658
+            ],
+            "target": "host",
+            "distToTarget": 0.813,
+            "distToPlayers": [
+              0.832,
+              2.577
+            ],
+            "nearestPlayer": "host",
+            "state": "attack"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.486,
+              -0.11
+            ],
+            "target": "host",
+            "distToTarget": 0.453,
+            "distToPlayers": [
+              0.498,
+              2.516
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.335,
+              -0.015
+            ],
+            "target": "host",
+            "distToTarget": 0.31,
+            "distToPlayers": [
+              0.336,
+              3.335
+            ],
+            "nearestPlayer": "host",
+            "state": "attack"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -5.989,
+              -8.547
+            ],
+            "target": "host",
+            "distToTarget": 10.426,
+            "distToPlayers": [
+              10.436,
+              12.403
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -66.164,
+              -18.252
+            ],
+            "target": "host",
+            "distToTarget": 68.643,
+            "distToPlayers": [
+              68.635,
+              71.532
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              1.231,
+              -43.665
+            ],
+            "target": "host",
+            "distToTarget": 43.823,
+            "distToPlayers": [
+              43.683,
+              43.701
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 31.267,
+        "wallMs": 64044,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              -0.106,
+              0.161
+            ],
+            "target": "host",
+            "distToTarget": 0.195,
+            "distToPlayers": [
+              0.193,
+              3.11
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.632,
+              -23.206
+            ],
+            "target": "host",
+            "distToTarget": 23.215,
+            "distToPlayers": [
+              23.215,
+              23.489
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.583,
+              -0.56
+            ],
+            "target": "host",
+            "distToTarget": 0.779,
+            "distToPlayers": [
+              0.808,
+              3.626
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.383,
+              0.235
+            ],
+            "target": "host",
+            "distToTarget": 0.443,
+            "distToPlayers": [
+              0.45,
+              3.391
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.454,
+              0.516
+            ],
+            "target": "host",
+            "distToTarget": 0.646,
+            "distToPlayers": [
+              0.687,
+              3.492
+            ],
+            "nearestPlayer": "host",
+            "state": "attack"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.851,
+              -0.125
+            ],
+            "target": "host",
+            "distToTarget": 0.819,
+            "distToPlayers": [
+              0.86,
+              3.853
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -6.239,
+              -8.722
+            ],
+            "target": "host",
+            "distToTarget": 10.691,
+            "distToPlayers": [
+              10.723,
+              12.705
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -66.208,
+              -18.433
+            ],
+            "target": "host",
+            "distToTarget": 68.728,
+            "distToPlayers": [
+              68.726,
+              71.621
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.987,
+              -34.989
+            ],
+            "target": "host",
+            "distToTarget": 35.143,
+            "distToPlayers": [
+              35.003,
+              35.047
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 32.217,
+        "wallMs": 65110,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              -0.032,
+              0.499
+            ],
+            "target": "host",
+            "distToTarget": 0.499,
+            "distToPlayers": [
+              0.5,
+              3.072
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.641,
+              -23.201
+            ],
+            "target": "host",
+            "distToTarget": 23.21,
+            "distToPlayers": [
+              23.21,
+              23.485
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.851,
+              0.736
+            ],
+            "target": "host",
+            "distToTarget": 1.124,
+            "distToPlayers": [
+              1.125,
+              2.272
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.044,
+              -0.602
+            ],
+            "target": "host",
+            "distToTarget": 0.604,
+            "distToPlayers": [
+              0.604,
+              3.017
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -1.308,
+              -0.826
+            ],
+            "target": "host",
+            "distToTarget": 1.459,
+            "distToPlayers": [
+              1.547,
+              4.386
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.943,
+              -0.366
+            ],
+            "target": "host",
+            "distToTarget": 0.998,
+            "distToPlayers": [
+              1.012,
+              2.089
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -6.316,
+              -8.765
+            ],
+            "target": "host",
+            "distToTarget": 10.828,
+            "distToPlayers": [
+              10.803,
+              12.791
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -66.028,
+              -17.911
+            ],
+            "target": "host",
+            "distToTarget": 68.415,
+            "distToPlayers": [
+              68.415,
+              71.314
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.762,
+              -27.012
+            ],
+            "target": "host",
+            "distToTarget": 27.163,
+            "distToPlayers": [
+              27.023,
+              27.104
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 33.233,
+        "wallMs": 66252,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              -0.951,
+              0.128
+            ],
+            "target": "host",
+            "distToTarget": 0.907,
+            "distToPlayers": [
+              0.96,
+              3.953
+            ],
+            "nearestPlayer": "host",
+            "state": "attack"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -1.515,
+              -22.116
+            ],
+            "target": "host",
+            "distToTarget": 22.245,
+            "distToPlayers": [
+              22.168,
+              22.572
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.243,
+              -1.435
+            ],
+            "target": "host",
+            "distToTarget": 1.503,
+            "distToPlayers": [
+              1.456,
+              3.546
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              1.153,
+              0.541
+            ],
+            "target": "host",
+            "distToTarget": 1.247,
+            "distToPlayers": [
+              1.274,
+              1.924
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.57,
+              -0.037
+            ],
+            "target": "host",
+            "distToTarget": 0.553,
+            "distToPlayers": [
+              0.571,
+              2.43
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.149,
+              1.922
+            ],
+            "target": "host",
+            "distToTarget": 1.928,
+            "distToPlayers": [
+              1.928,
+              3.689
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -5.929,
+              -8.496
+            ],
+            "target": "host",
+            "distToTarget": 10.358,
+            "distToPlayers": [
+              10.36,
+              12.325
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -66.103,
+              -18.076
+            ],
+            "target": "host",
+            "distToTarget": 68.555,
+            "distToPlayers": [
+              68.53,
+              71.428
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.098,
+              -23.401
+            ],
+            "target": "host",
+            "distToTarget": 23.401,
+            "distToPlayers": [
+              23.401,
+              23.605
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              25.074,
+              -33.437
+            ],
+            "target": "host",
+            "distToTarget": 41.794,
+            "distToPlayers": [
+              41.794,
+              40.066
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "spawn"
+          }
+        ]
+      },
+      {
+        "t": 34.25,
+        "wallMs": 67412,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0.513,
+              -0.137
+            ],
+            "target": "host",
+            "distToTarget": 0.472,
+            "distToPlayers": [
+              0.53,
+              2.491
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -1.026,
+              -13.839
+            ],
+            "target": "host",
+            "distToTarget": 14.017,
+            "distToPlayers": [
+              13.877,
+              14.413
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.362,
+              0.337
+            ],
+            "target": "host",
+            "distToTarget": 0.523,
+            "distToPlayers": [
+              0.494,
+              2.66
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.496,
+              -0.621
+            ],
+            "target": "host",
+            "distToTarget": 0.854,
+            "distToPlayers": [
+              0.795,
+              3.55
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.936,
+              0.144
+            ],
+            "target": "host",
+            "distToTarget": 0.941,
+            "distToPlayers": [
+              0.947,
+              3.939
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.449,
+              -0.652
+            ],
+            "target": "host",
+            "distToTarget": 0.825,
+            "distToPlayers": [
+              0.792,
+              2.633
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -5.998,
+              -8.555
+            ],
+            "target": "host",
+            "distToTarget": 10.436,
+            "distToPlayers": [
+              10.448,
+              12.416
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -66.056,
+              -17.966
+            ],
+            "target": "host",
+            "distToTarget": 68.424,
+            "distToPlayers": [
+              68.455,
+              71.354
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.148,
+              -23.39
+            ],
+            "target": "host",
+            "distToTarget": 23.391,
+            "distToPlayers": [
+              23.391,
+              23.601
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              22.911,
+              -30.157
+            ],
+            "target": "host",
+            "distToTarget": 37.983,
+            "distToPlayers": [
+              37.873,
+              36.137
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 35.267,
+        "wallMs": 68573,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              -0.651,
+              -0.755
+            ],
+            "target": "host",
+            "distToTarget": 0.981,
+            "distToPlayers": [
+              0.996,
+              3.728
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -1.259,
+              -6.655
+            ],
+            "target": "host",
+            "distToTarget": 6.913,
+            "distToPlayers": [
+              6.773,
+              7.901
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.2,
+              -0.225
+            ],
+            "target": "host",
+            "distToTarget": 0.341,
+            "distToPlayers": [
+              0.301,
+              2.809
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.417,
+              0.225
+            ],
+            "target": "host",
+            "distToTarget": 0.522,
+            "distToPlayers": [
+              0.473,
+              2.593
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.106,
+              0.048
+            ],
+            "target": "host",
+            "distToTarget": 0.146,
+            "distToPlayers": [
+              0.117,
+              2.894
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.548,
+              0.288
+            ],
+            "target": "host",
+            "distToTarget": 0.725,
+            "distToPlayers": [
+              0.619,
+              3.559
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -6.239,
+              -8.722
+            ],
+            "target": "host",
+            "distToTarget": 10.691,
+            "distToPlayers": [
+              10.723,
+              12.705
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -65.745,
+              -17.494
+            ],
+            "target": "host",
+            "distToTarget": 68.033,
+            "distToPlayers": [
+              68.033,
+              70.936
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.192,
+              -23.38
+            ],
+            "target": "host",
+            "distToTarget": 23.381,
+            "distToPlayers": [
+              23.38,
+              23.597
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              21.28,
+              -22.341
+            ],
+            "target": "host",
+            "distToTarget": 30.994,
+            "distToPlayers": [
+              30.854,
+              28.867
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 36.267,
+        "wallMs": 69745,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              -0.377,
+              0.692
+            ],
+            "target": "host",
+            "distToTarget": 0.743,
+            "distToPlayers": [
+              0.788,
+              3.447
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.539,
+              0.357
+            ],
+            "target": "host",
+            "distToTarget": 0.612,
+            "distToPlayers": [
+              0.646,
+              3.557
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.116,
+              -0.246
+            ],
+            "target": "host",
+            "distToTarget": 0.17,
+            "distToPlayers": [
+              0.272,
+              3.125
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.335,
+              -0.034
+            ],
+            "target": "host",
+            "distToTarget": 0.354,
+            "distToPlayers": [
+              0.337,
+              2.665
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -1.022,
+              -0.079
+            ],
+            "target": "host",
+            "distToTarget": 1.039,
+            "distToPlayers": [
+              1.025,
+              4.022
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.377,
+              0.193
+            ],
+            "target": "host",
+            "distToTarget": 0.461,
+            "distToPlayers": [
+              0.424,
+              2.63
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -6.193,
+              -8.694
+            ],
+            "target": "host",
+            "distToTarget": 10.727,
+            "distToPlayers": [
+              10.674,
+              12.653
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -66.048,
+              -17.949
+            ],
+            "target": "host",
+            "distToTarget": 68.466,
+            "distToPlayers": [
+              68.443,
+              71.342
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.231,
+              -23.369
+            ],
+            "target": "host",
+            "distToTarget": 23.371,
+            "distToPlayers": [
+              23.37,
+              23.592
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              16.87,
+              -16.02
+            ],
+            "target": "host",
+            "distToTarget": 23.405,
+            "distToPlayers": [
+              23.265,
+              21.19
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -18.339,
+              61.441
+            ],
+            "target": "host",
+            "distToTarget": 64.12,
+            "distToPlayers": [
+              64.12,
+              65.041
+            ],
+            "nearestPlayer": "host",
+            "state": "spawn"
+          }
+        ]
+      },
+      {
+        "t": 37.25,
+        "wallMs": 70822,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              -0.438,
+              0.426
+            ],
+            "target": "host",
+            "distToTarget": 0.547,
+            "distToPlayers": [
+              0.611,
+              3.465
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              1.391,
+              -0.223
+            ],
+            "target": "host",
+            "distToTarget": 1.389,
+            "distToPlayers": [
+              1.408,
+              1.625
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.238,
+              -0.099
+            ],
+            "target": "host",
+            "distToTarget": 0.251,
+            "distToPlayers": [
+              0.258,
+              3.239
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.039,
+              0.04
+            ],
+            "target": "host",
+            "distToTarget": 0.004,
+            "distToPlayers": [
+              0.056,
+              3.04
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.88,
+              0.58
+            ],
+            "target": "host",
+            "distToTarget": 1.121,
+            "distToPlayers": [
+              1.054,
+              2.198
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.114,
+              0.447
+            ],
+            "target": "host",
+            "distToTarget": 0.419,
+            "distToPlayers": [
+              0.461,
+              2.92
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -5.931,
+              -8.497
+            ],
+            "target": "host",
+            "distToTarget": 10.36,
+            "distToPlayers": [
+              10.363,
+              12.328
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -65.95,
+              -17.77
+            ],
+            "target": "host",
+            "distToTarget": 68.302,
+            "distToPlayers": [
+              68.302,
+              71.203
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.266,
+              -23.359
+            ],
+            "target": "host",
+            "distToTarget": 23.361,
+            "distToPlayers": [
+              23.361,
+              23.586
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              10.88,
+              -10.332
+            ],
+            "target": "host",
+            "distToTarget": 15.145,
+            "distToPlayers": [
+              15.005,
+              12.994
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -16.095,
+              54.7
+            ],
+            "target": "host",
+            "distToTarget": 57.158,
+            "distToPlayers": [
+              57.018,
+              57.937
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 38.233,
+        "wallMs": 71950,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              1.334,
+              -0.289
+            ],
+            "target": "host",
+            "distToTarget": 1.413,
+            "distToPlayers": [
+              1.365,
+              1.691
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -1.363,
+              -0.201
+            ],
+            "target": "host",
+            "distToTarget": 1.344,
+            "distToPlayers": [
+              1.378,
+              4.368
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.712,
+              -0.019
+            ],
+            "target": "host",
+            "distToTarget": 0.652,
+            "distToPlayers": [
+              0.712,
+              2.288
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.107,
+              -0.133
+            ],
+            "target": "host",
+            "distToTarget": 0.135,
+            "distToPlayers": [
+              0.171,
+              3.11
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.293,
+              0.054
+            ],
+            "target": "host",
+            "distToTarget": 0.284,
+            "distToPlayers": [
+              0.298,
+              2.708
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.602,
+              -0.054
+            ],
+            "target": "host",
+            "distToTarget": 0.577,
+            "distToPlayers": [
+              0.604,
+              3.602
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -5.989,
+              -8.547
+            ],
+            "target": "host",
+            "distToTarget": 10.426,
+            "distToPlayers": [
+              10.436,
+              12.403
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -65.933,
+              -17.743
+            ],
+            "target": "host",
+            "distToTarget": 68.275,
+            "distToPlayers": [
+              68.279,
+              71.18
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.298,
+              -23.349
+            ],
+            "target": "host",
+            "distToTarget": 23.351,
+            "distToPlayers": [
+              23.351,
+              23.581
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              4.891,
+              -4.644
+            ],
+            "target": "host",
+            "distToTarget": 6.885,
+            "distToPlayers": [
+              6.745,
+              5.014
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -15.153,
+              50.466
+            ],
+            "target": "host",
+            "distToTarget": 52.705,
+            "distToPlayers": [
+              52.692,
+              53.632
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 39.25,
+        "wallMs": 73141,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0.003,
+              1.068
+            ],
+            "target": "host",
+            "distToTarget": 1.129,
+            "distToPlayers": [
+              1.068,
+              3.182
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.418,
+              0
+            ],
+            "target": "host",
+            "distToTarget": 0.443,
+            "distToPlayers": [
+              0.418,
+              3.418
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.037,
+              -0.872
+            ],
+            "target": "host",
+            "distToTarget": 0.856,
+            "distToPlayers": [
+              0.873,
+              3.088
+            ],
+            "nearestPlayer": "host",
+            "state": "attack"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.047,
+              0.779
+            ],
+            "target": "host",
+            "distToTarget": 0.778,
+            "distToPlayers": [
+              0.78,
+              3.145
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.133,
+              -0.129
+            ],
+            "target": "host",
+            "distToTarget": 0.143,
+            "distToPlayers": [
+              0.185,
+              2.87
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.018,
+              0.355
+            ],
+            "target": "host",
+            "distToTarget": 0.343,
+            "distToPlayers": [
+              0.356,
+              3.039
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -6.209,
+              -8.704
+            ],
+            "target": "host",
+            "distToTarget": 10.662,
+            "distToPlayers": [
+              10.691,
+              12.671
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -65.895,
+              -17.686
+            ],
+            "target": "host",
+            "distToTarget": 68.217,
+            "distToPlayers": [
+              68.227,
+              71.129
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.328,
+              -23.34
+            ],
+            "target": "host",
+            "distToTarget": 23.342,
+            "distToPlayers": [
+              23.342,
+              23.576
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.162,
+              -0.249
+            ],
+            "target": "host",
+            "distToTarget": 0.288,
+            "distToPlayers": [
+              0.297,
+              2.849
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -13.345,
+              49.329
+            ],
+            "target": "host",
+            "distToTarget": 51.226,
+            "distToPlayers": [
+              51.102,
+              51.966
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 40.217,
+        "wallMs": 74162,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              -0.061,
+              -0.568
+            ],
+            "target": "host",
+            "distToTarget": 0.636,
+            "distToPlayers": [
+              0.571,
+              3.113
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.401,
+              0.519
+            ],
+            "target": "host",
+            "distToTarget": 0.69,
+            "distToPlayers": [
+              0.656,
+              2.65
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.862,
+              0.662
+            ],
+            "target": "host",
+            "distToTarget": 1.03,
+            "distToPlayers": [
+              1.087,
+              3.918
+            ],
+            "nearestPlayer": "host",
+            "state": "attack"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              1.043,
+              -0.619
+            ],
+            "target": "host",
+            "distToTarget": 1.184,
+            "distToPlayers": [
+              1.212,
+              2.053
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.351,
+              -0.145
+            ],
+            "target": "host",
+            "distToTarget": 0.331,
+            "distToPlayers": [
+              0.38,
+              3.354
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.376,
+              -0.162
+            ],
+            "target": "host",
+            "distToTarget": 0.392,
+            "distToPlayers": [
+              0.409,
+              2.629
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -6.316,
+              -8.765
+            ],
+            "target": "host",
+            "distToTarget": 10.828,
+            "distToPlayers": [
+              10.803,
+              12.791
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -65.914,
+              -17.715
+            ],
+            "target": "host",
+            "distToTarget": 68.253,
+            "distToPlayers": [
+              68.253,
+              71.155
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.354,
+              -23.331
+            ],
+            "target": "host",
+            "distToTarget": 23.333,
+            "distToPlayers": [
+              23.333,
+              23.57
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -1.371,
+              1.249
+            ],
+            "target": "host",
+            "distToTarget": 1.813,
+            "distToPlayers": [
+              1.855,
+              4.546
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -11.225,
+              41.502
+            ],
+            "target": "host",
+            "distToTarget": 43.133,
+            "distToPlayers": [
+              42.993,
+              43.872
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 41.217,
+        "wallMs": 75270,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0.051,
+              0.19
+            ],
+            "target": "host",
+            "distToTarget": 0.267,
+            "distToPlayers": [
+              0.197,
+              2.955
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.804,
+              -1.639
+            ],
+            "target": "host",
+            "distToTarget": 1.88,
+            "distToPlayers": [
+              1.825,
+              2.74
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.033,
+              0.05
+            ],
+            "target": "host",
+            "distToTarget": 0.096,
+            "distToPlayers": [
+              0.06,
+              3.033
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.831,
+              -0.388
+            ],
+            "target": "host",
+            "distToTarget": 0.827,
+            "distToPlayers": [
+              0.917,
+              3.85
+            ],
+            "nearestPlayer": "host",
+            "state": "attack"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.74,
+              -0.054
+            ],
+            "target": "host",
+            "distToTarget": 0.718,
+            "distToPlayers": [
+              0.742,
+              2.26
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.691,
+              -1.203
+            ],
+            "target": "host",
+            "distToTarget": 1.295,
+            "distToPlayers": [
+              1.387,
+              3.882
+            ],
+            "nearestPlayer": "host",
+            "state": "attack"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -5.927,
+              -8.494
+            ],
+            "target": "host",
+            "distToTarget": 10.356,
+            "distToPlayers": [
+              10.358,
+              12.323
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -66.094,
+              -18.054
+            ],
+            "target": "host",
+            "distToTarget": 68.489,
+            "distToPlayers": [
+              68.516,
+              71.414
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.379,
+              -23.322
+            ],
+            "target": "host",
+            "distToTarget": 23.325,
+            "distToPlayers": [
+              23.325,
+              23.565
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              1.044,
+              -0.824
+            ],
+            "target": "host",
+            "distToTarget": 1.324,
+            "distToPlayers": [
+              1.33,
+              2.123
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -9.032,
+              33.393
+            ],
+            "target": "host",
+            "distToTarget": 34.733,
+            "distToPlayers": [
+              34.593,
+              35.495
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              23.64,
+              -54.053
+            ],
+            "target": "host",
+            "distToTarget": 58.996,
+            "distToPlayers": [
+              58.996,
+              57.859
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "spawn"
+          }
+        ]
+      },
+      {
+        "t": 42.233,
+        "wallMs": 76480,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0.254,
+              0.158
+            ],
+            "target": "host",
+            "distToTarget": 0.247,
+            "distToPlayers": [
+              0.299,
+              2.751
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.96,
+              0.136
+            ],
+            "target": "host",
+            "distToTarget": 1.047,
+            "distToPlayers": [
+              0.97,
+              2.044
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.804,
+              -0.575
+            ],
+            "target": "host",
+            "distToTarget": 0.965,
+            "distToPlayers": [
+              0.989,
+              2.27
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.257,
+              0.675
+            ],
+            "target": "host",
+            "distToTarget": 0.669,
+            "distToPlayers": [
+              0.722,
+              2.824
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.213,
+              -0.169
+            ],
+            "target": "host",
+            "distToTarget": 0.314,
+            "distToPlayers": [
+              0.272,
+              3.217
+            ],
+            "nearestPlayer": "host",
+            "state": "attack"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.125,
+              -0.487
+            ],
+            "target": "host",
+            "distToTarget": 0.506,
+            "distToPlayers": [
+              0.503,
+              2.916
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -5.989,
+              -8.547
+            ],
+            "target": "host",
+            "distToTarget": 10.426,
+            "distToPlayers": [
+              10.436,
+              12.403
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -66.118,
+              -18.113
+            ],
+            "target": "host",
+            "distToTarget": 68.578,
+            "distToPlayers": [
+              68.554,
+              71.451
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.402,
+              -23.313
+            ],
+            "target": "host",
+            "distToTarget": 23.316,
+            "distToPlayers": [
+              23.316,
+              23.56
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -1.092,
+              0.091
+            ],
+            "target": "host",
+            "distToTarget": 1.14,
+            "distToPlayers": [
+              1.096,
+              4.093
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -7.353,
+              28.112
+            ],
+            "target": "host",
+            "distToTarget": 29.06,
+            "distToPlayers": [
+              29.058,
+              29.958
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              21.215,
+              -49.093
+            ],
+            "target": "host",
+            "distToTarget": 53.62,
+            "distToPlayers": [
+              53.48,
+              52.363
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 43.267,
+        "wallMs": 77668,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0.519,
+              -0.393
+            ],
+            "target": "host",
+            "distToTarget": 0.617,
+            "distToPlayers": [
+              0.651,
+              2.511
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.138,
+              -0.62
+            ],
+            "target": "host",
+            "distToTarget": 0.572,
+            "distToPlayers": [
+              0.635,
+              2.929
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.762,
+              -0.061
+            ],
+            "target": "host",
+            "distToTarget": 0.772,
+            "distToPlayers": [
+              0.764,
+              3.762
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.055,
+              0.703
+            ],
+            "target": "host",
+            "distToTarget": 0.672,
+            "distToPlayers": [
+              0.706,
+              3.028
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.003,
+              0.034
+            ],
+            "target": "host",
+            "distToTarget": 0.028,
+            "distToPlayers": [
+              0.034,
+              2.997
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.691,
+              0.659
+            ],
+            "target": "host",
+            "distToTarget": 0.936,
+            "distToPlayers": [
+              0.955,
+              3.75
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -6.239,
+              -8.722
+            ],
+            "target": "host",
+            "distToTarget": 10.691,
+            "distToPlayers": [
+              10.723,
+              12.705
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -65.944,
+              -17.761
+            ],
+            "target": "host",
+            "distToTarget": 68.298,
+            "distToPlayers": [
+              68.294,
+              71.195
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.424,
+              -23.304
+            ],
+            "target": "host",
+            "distToTarget": 23.308,
+            "distToPlayers": [
+              23.308,
+              23.554
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.795,
+              0.001
+            ],
+            "target": "host",
+            "distToTarget": 0.865,
+            "distToPlayers": [
+              0.795,
+              2.205
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -7.911,
+              27.808
+            ],
+            "target": "host",
+            "distToTarget": 28.911,
+            "distToPlayers": [
+              28.911,
+              29.872
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              18.28,
+              -40.844
+            ],
+            "target": "host",
+            "distToTarget": 44.88,
+            "distToPlayers": [
+              44.748,
+              43.608
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 44.217,
+        "wallMs": 78724,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0.345,
+              0.823
+            ],
+            "target": "host",
+            "distToTarget": 0.865,
+            "distToPlayers": [
+              0.892,
+              2.779
+            ],
+            "nearestPlayer": "host",
+            "state": "attack"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.716,
+              0.257
+            ],
+            "target": "host",
+            "distToTarget": 0.731,
+            "distToPlayers": [
+              0.761,
+              3.725
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.976,
+              0.327
+            ],
+            "target": "host",
+            "distToTarget": 1.073,
+            "distToPlayers": [
+              1.029,
+              2.05
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -1.689,
+              -0.181
+            ],
+            "target": "host",
+            "distToTarget": 1.698,
+            "distToPlayers": [
+              1.699,
+              4.692
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -1.528,
+              0.708
+            ],
+            "target": "host",
+            "distToTarget": 1.646,
+            "distToPlayers": [
+              1.684,
+              4.583
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.462,
+              -0.834
+            ],
+            "target": "host",
+            "distToTarget": 0.934,
+            "distToPlayers": [
+              0.953,
+              2.672
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -6.316,
+              -8.765
+            ],
+            "target": "host",
+            "distToTarget": 10.828,
+            "distToPlayers": [
+              10.803,
+              12.791
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -65.988,
+              -17.835
+            ],
+            "target": "host",
+            "distToTarget": 68.34,
+            "distToPlayers": [
+              68.355,
+              71.256
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.443,
+              -23.297
+            ],
+            "target": "host",
+            "distToTarget": 23.301,
+            "distToPlayers": [
+              23.301,
+              23.55
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.181,
+              -0.284
+            ],
+            "target": "host",
+            "distToTarget": 0.47,
+            "distToPlayers": [
+              0.337,
+              3.194
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -7.909,
+              27.809
+            ],
+            "target": "host",
+            "distToTarget": 28.912,
+            "distToPlayers": [
+              28.912,
+              29.873
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              15.157,
+              -33.564
+            ],
+            "target": "host",
+            "distToTarget": 36.967,
+            "distToPlayers": [
+              36.827,
+              35.697
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 45.25,
+        "wallMs": 79822,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              -1.526,
+              -0.161
+            ],
+            "target": "host",
+            "distToTarget": 1.452,
+            "distToPlayers": [
+              1.534,
+              4.529
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.264,
+              -0.419
+            ],
+            "target": "host",
+            "distToTarget": 0.369,
+            "distToPlayers": [
+              0.495,
+              2.768
+            ],
+            "nearestPlayer": "host",
+            "state": "attack"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -1.55,
+              0.7
+            ],
+            "target": "host",
+            "distToTarget": 1.76,
+            "distToPlayers": [
+              1.701,
+              4.603
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              1.182,
+              -0.026
+            ],
+            "target": "host",
+            "distToTarget": 1.226,
+            "distToPlayers": [
+              1.182,
+              1.818
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.48,
+              -1.437
+            ],
+            "target": "host",
+            "distToTarget": 1.515,
+            "distToPlayers": [
+              1.515,
+              2.901
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -1.596,
+              0.058
+            ],
+            "target": "host",
+            "distToTarget": 1.599,
+            "distToPlayers": [
+              1.598,
+              4.597
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -5.931,
+              -8.497
+            ],
+            "target": "host",
+            "distToTarget": 10.36,
+            "distToPlayers": [
+              10.363,
+              12.328
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -65.972,
+              -17.807
+            ],
+            "target": "host",
+            "distToTarget": 68.312,
+            "distToPlayers": [
+              68.333,
+              71.234
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.462,
+              -23.289
+            ],
+            "target": "host",
+            "distToTarget": 23.293,
+            "distToPlayers": [
+              23.293,
+              23.545
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.074,
+              0.031
+            ],
+            "target": "host",
+            "distToTarget": 0.085,
+            "distToPlayers": [
+              0.08,
+              3.074
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -7.909,
+              27.809
+            ],
+            "target": "host",
+            "distToTarget": 28.912,
+            "distToPlayers": [
+              28.912,
+              29.873
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              12.219,
+              -25.831
+            ],
+            "target": "host",
+            "distToTarget": 28.716,
+            "distToPlayers": [
+              28.576,
+              27.427
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 46.25,
+        "wallMs": 80919,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0.68,
+              -1.077
+            ],
+            "target": "host",
+            "distToTarget": 1.213,
+            "distToPlayers": [
+              1.273,
+              2.558
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -1.033,
+              -0.122
+            ],
+            "target": "host",
+            "distToTarget": 0.966,
+            "distToPlayers": [
+              1.04,
+              4.035
+            ],
+            "nearestPlayer": "host",
+            "state": "attack"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.101,
+              0.373
+            ],
+            "target": "host",
+            "distToTarget": 0.446,
+            "distToPlayers": [
+              0.387,
+              3.124
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.335,
+              -0.866
+            ],
+            "target": "host",
+            "distToTarget": 1.022,
+            "distToPlayers": [
+              0.929,
+              3.445
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.684,
+              0.843
+            ],
+            "target": "host",
+            "distToTarget": 1.097,
+            "distToPlayers": [
+              1.085,
+              2.465
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.897,
+              -0.385
+            ],
+            "target": "host",
+            "distToTarget": 1.025,
+            "distToPlayers": [
+              0.976,
+              2.138
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -5.998,
+              -8.555
+            ],
+            "target": "host",
+            "distToTarget": 10.436,
+            "distToPlayers": [
+              10.448,
+              12.416
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -65.807,
+              -17.568
+            ],
+            "target": "host",
+            "distToTarget": 68.112,
+            "distToPlayers": [
+              68.112,
+              71.015
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.479,
+              -23.281
+            ],
+            "target": "host",
+            "distToTarget": 23.286,
+            "distToPlayers": [
+              23.286,
+              23.54
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.001,
+              0.367
+            ],
+            "target": "host",
+            "distToTarget": 0.313,
+            "distToPlayers": [
+              0.367,
+              3.023
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -7.909,
+              27.809
+            ],
+            "target": "host",
+            "distToTarget": 28.912,
+            "distToPlayers": [
+              28.912,
+              29.873
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              8.628,
+              -18.238
+            ],
+            "target": "host",
+            "distToTarget": 20.316,
+            "distToPlayers": [
+              20.176,
+              19.087
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 47.233,
+        "wallMs": 81994,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              -0.911,
+              0.747
+            ],
+            "target": "host",
+            "distToTarget": 1.163,
+            "distToPlayers": [
+              1.178,
+              3.982
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.873,
+              -1.485
+            ],
+            "target": "host",
+            "distToTarget": 1.636,
+            "distToPlayers": [
+              1.722,
+              2.594
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.06,
+              0.197
+            ],
+            "target": "host",
+            "distToTarget": 0.122,
+            "distToPlayers": [
+              0.206,
+              2.947
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.239,
+              1.114
+            ],
+            "target": "host",
+            "distToTarget": 1.226,
+            "distToPlayers": [
+              1.14,
+              3.426
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.591,
+              -0.613
+            ],
+            "target": "host",
+            "distToTarget": 0.929,
+            "distToPlayers": [
+              0.851,
+              3.643
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.154,
+              -0.017
+            ],
+            "target": "host",
+            "distToTarget": 0.234,
+            "distToPlayers": [
+              0.155,
+              3.154
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -6.182,
+              -8.687
+            ],
+            "target": "host",
+            "distToTarget": 10.634,
+            "distToPlayers": [
+              10.662,
+              12.64
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -65.994,
+              -17.846
+            ],
+            "target": "host",
+            "distToTarget": 68.386,
+            "distToPlayers": [
+              68.365,
+              71.265
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.495,
+              -23.274
+            ],
+            "target": "host",
+            "distToTarget": 23.28,
+            "distToPlayers": [
+              23.28,
+              23.535
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.509,
+              0.069
+            ],
+            "target": "host",
+            "distToTarget": 0.464,
+            "distToPlayers": [
+              0.514,
+              3.51
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -7.909,
+              27.809
+            ],
+            "target": "host",
+            "distToTarget": 28.912,
+            "distToPlayers": [
+              28.912,
+              29.873
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              4.005,
+              -11.862
+            ],
+            "target": "host",
+            "distToTarget": 12.592,
+            "distToPlayers": [
+              12.52,
+              11.905
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 48.25,
+        "wallMs": 83160,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0.734,
+              -0.873
+            ],
+            "target": "host",
+            "distToTarget": 1.143,
+            "distToPlayers": [
+              1.141,
+              2.428
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.402,
+              0.478
+            ],
+            "target": "host",
+            "distToTarget": 0.58,
+            "distToPlayers": [
+              0.624,
+              3.436
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.125,
+              -0.004
+            ],
+            "target": "host",
+            "distToTarget": 0.129,
+            "distToPlayers": [
+              0.125,
+              2.875
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.062,
+              -0.314
+            ],
+            "target": "host",
+            "distToTarget": 0.435,
+            "distToPlayers": [
+              0.32,
+              3.078
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.363,
+              -0.017
+            ],
+            "target": "host",
+            "distToTarget": 0.408,
+            "distToPlayers": [
+              0.364,
+              3.363
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.196,
+              0.178
+            ],
+            "target": "host",
+            "distToTarget": 0.354,
+            "distToPlayers": [
+              0.265,
+              2.81
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -6.242,
+              -8.724
+            ],
+            "target": "host",
+            "distToTarget": 10.77,
+            "distToPlayers": [
+              10.727,
+              12.709
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -65.882,
+              -17.667
+            ],
+            "target": "host",
+            "distToTarget": 68.228,
+            "distToPlayers": [
+              68.21,
+              71.111
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.51,
+              -23.267
+            ],
+            "target": "host",
+            "distToTarget": 23.273,
+            "distToPlayers": [
+              23.273,
+              23.531
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.926,
+              -0.43
+            ],
+            "target": "host",
+            "distToTarget": 0.966,
+            "distToPlayers": [
+              1.021,
+              2.118
+            ],
+            "nearestPlayer": "host",
+            "state": "attack"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -7.909,
+              27.809
+            ],
+            "target": "host",
+            "distToTarget": 28.912,
+            "distToPlayers": [
+              28.912,
+              29.873
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              2.596,
+              -5.969
+            ],
+            "target": "host",
+            "distToTarget": 6.649,
+            "distToPlayers": [
+              6.509,
+              5.983
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 49.233,
+        "wallMs": 84325,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              -0.756,
+              1.329
+            ],
+            "target": "host",
+            "distToTarget": 1.578,
+            "distToPlayers": [
+              1.529,
+              3.984
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.335,
+              -0.175
+            ],
+            "target": "host",
+            "distToTarget": 0.328,
+            "distToPlayers": [
+              0.378,
+              2.671
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.277,
+              0.875
+            ],
+            "target": "host",
+            "distToTarget": 0.884,
+            "distToPlayers": [
+              0.918,
+              3.392
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.065,
+              0.321
+            ],
+            "target": "host",
+            "distToTarget": 0.372,
+            "distToPlayers": [
+              0.328,
+              2.952
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.225,
+              -0.067
+            ],
+            "target": "host",
+            "distToTarget": 0.145,
+            "distToPlayers": [
+              0.235,
+              3.226
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.24,
+              0.182
+            ],
+            "target": "host",
+            "distToTarget": 0.285,
+            "distToPlayers": [
+              0.302,
+              2.766
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -5.929,
+              -8.496
+            ],
+            "target": "host",
+            "distToTarget": 10.358,
+            "distToPlayers": [
+              10.36,
+              12.325
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -66.219,
+              -18.496
+            ],
+            "target": "host",
+            "distToTarget": 68.739,
+            "distToPlayers": [
+              68.754,
+              71.648
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.524,
+              -23.261
+            ],
+            "target": "host",
+            "distToTarget": 23.267,
+            "distToPlayers": [
+              23.267,
+              23.526
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -1.297,
+              0.076
+            ],
+            "target": "host",
+            "distToTarget": 1.256,
+            "distToPlayers": [
+              1.299,
+              4.298
+            ],
+            "nearestPlayer": "host",
+            "state": "attack"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -7.909,
+              27.809
+            ],
+            "target": "host",
+            "distToTarget": 28.912,
+            "distToPlayers": [
+              28.912,
+              29.873
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.391,
+              0.207
+            ],
+            "target": "host",
+            "distToTarget": 0.408,
+            "distToPlayers": [
+              0.442,
+              2.617
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "spitling",
+            "pos": [
+              -59.621,
+              11.535
+            ],
+            "target": "host",
+            "distToTarget": 60.743,
+            "distToPlayers": [
+              60.727,
+              63.674
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 50.217,
+        "wallMs": 85447,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0.252,
+              -1.439
+            ],
+            "target": "host",
+            "distToTarget": 1.529,
+            "distToPlayers": [
+              1.461,
+              3.103
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.52,
+              0.961
+            ],
+            "target": "host",
+            "distToTarget": 1.122,
+            "distToPlayers": [
+              1.093,
+              2.66
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.227,
+              -0.694
+            ],
+            "target": "host",
+            "distToTarget": 0.759,
+            "distToPlayers": [
+              0.73,
+              3.301
+            ],
+            "nearestPlayer": "host",
+            "state": "attack"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.122,
+              0.409
+            ],
+            "target": "host",
+            "distToTarget": 0.373,
+            "distToPlayers": [
+              0.427,
+              2.907
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.076,
+              -0.123
+            ],
+            "target": "host",
+            "distToTarget": 0.177,
+            "distToPlayers": [
+              0.145,
+              3.078
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.502,
+              0.555
+            ],
+            "target": "host",
+            "distToTarget": 0.678,
+            "distToPlayers": [
+              0.748,
+              3.545
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -5.98,
+              -8.54
+            ],
+            "target": "host",
+            "distToTarget": 10.416,
+            "distToPlayers": [
+              10.426,
+              12.392
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -66.158,
+              -18.23
+            ],
+            "target": "host",
+            "distToTarget": 68.604,
+            "distToPlayers": [
+              68.623,
+              71.52
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.538,
+              -23.254
+            ],
+            "target": "host",
+            "distToTarget": 23.261,
+            "distToPlayers": [
+              23.261,
+              23.522
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.731,
+              -0.161
+            ],
+            "target": "host",
+            "distToTarget": 0.727,
+            "distToPlayers": [
+              0.748,
+              2.275
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -7.909,
+              27.809
+            ],
+            "target": "host",
+            "distToTarget": 28.912,
+            "distToPlayers": [
+              28.912,
+              29.873
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -1.07,
+              -0.859
+            ],
+            "target": "host",
+            "distToTarget": 1.357,
+            "distToPlayers": [
+              1.372,
+              4.16
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "spitling",
+            "pos": [
+              -55.074,
+              10.606
+            ],
+            "target": "host",
+            "distToTarget": 56.169,
+            "distToPlayers": [
+              56.086,
+              59.035
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 51.233,
+        "wallMs": 86488,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0.083,
+              0.459
+            ],
+            "target": "host",
+            "distToTarget": 0.572,
+            "distToPlayers": [
+              0.466,
+              2.952
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -1.831,
+              -0.23
+            ],
+            "target": "host",
+            "distToTarget": 1.849,
+            "distToPlayers": [
+              1.846,
+              4.837
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.627,
+              0.583
+            ],
+            "target": "host",
+            "distToTarget": 0.796,
+            "distToPlayers": [
+              0.856,
+              3.673
+            ],
+            "nearestPlayer": "host",
+            "state": "attack"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.416,
+              -0.359
+            ],
+            "target": "host",
+            "distToTarget": 0.598,
+            "distToPlayers": [
+              0.549,
+              2.609
+            ],
+            "nearestPlayer": "host",
+            "state": "attack"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.598,
+              -0.398
+            ],
+            "target": "host",
+            "distToTarget": 0.711,
+            "distToPlayers": [
+              0.719,
+              3.62
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.112,
+              -0.049
+            ],
+            "target": "host",
+            "distToTarget": 0.129,
+            "distToPlayers": [
+              0.122,
+              2.889
+            ],
+            "nearestPlayer": "host",
+            "state": "attack"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -6.182,
+              -8.687
+            ],
+            "target": "host",
+            "distToTarget": 10.634,
+            "distToPlayers": [
+              10.662,
+              12.64
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -65.838,
+              -17.608
+            ],
+            "target": "host",
+            "distToTarget": 68.139,
+            "distToPlayers": [
+              68.152,
+              71.055
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.551,
+              -23.248
+            ],
+            "target": "host",
+            "distToTarget": 23.255,
+            "distToPlayers": [
+              23.254,
+              23.518
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -1.197,
+              -1.077
+            ],
+            "target": "host",
+            "distToTarget": 1.606,
+            "distToPlayers": [
+              1.61,
+              4.333
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -7.909,
+              27.809
+            ],
+            "target": "host",
+            "distToTarget": 28.912,
+            "distToPlayers": [
+              28.912,
+              29.873
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.942,
+              0.836
+            ],
+            "target": "host",
+            "distToTarget": 1.273,
+            "distToPlayers": [
+              1.259,
+              2.222
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "spitling",
+            "pos": [
+              -50.629,
+              10.432
+            ],
+            "target": "host",
+            "distToTarget": 51.762,
+            "distToPlayers": [
+              51.692,
+              54.634
+            ],
+            "nearestPlayer": "host",
+            "state": "reposition"
+          }
+        ]
+      },
+      {
+        "t": 52.233,
+        "wallMs": 87665,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              -0.194,
+              0.235
+            ],
+            "target": "host",
+            "distToTarget": 0.202,
+            "distToPlayers": [
+              0.305,
+              3.202
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.088,
+              -0.564
+            ],
+            "target": "host",
+            "distToTarget": 0.621,
+            "distToPlayers": [
+              0.571,
+              3.139
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.43,
+              -0.392
+            ],
+            "target": "host",
+            "distToTarget": 0.569,
+            "distToPlayers": [
+              0.582,
+              2.599
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.972,
+              0.857
+            ],
+            "target": "host",
+            "distToTarget": 1.215,
+            "distToPlayers": [
+              1.296,
+              4.063
+            ],
+            "nearestPlayer": "host",
+            "state": "attack"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.37,
+              0.211
+            ],
+            "target": "host",
+            "distToTarget": 0.39,
+            "distToPlayers": [
+              0.426,
+              2.638
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.699,
+              0.707
+            ],
+            "target": "host",
+            "distToTarget": 0.893,
+            "distToPlayers": [
+              0.994,
+              3.766
+            ],
+            "nearestPlayer": "host",
+            "state": "attack"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -6.283,
+              -8.747
+            ],
+            "target": "host",
+            "distToTarget": 10.803,
+            "distToPlayers": [
+              10.77,
+              12.755
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -65.846,
+              -17.618
+            ],
+            "target": "host",
+            "distToTarget": 68.17,
+            "distToPlayers": [
+              68.162,
+              71.065
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.564,
+              -23.242
+            ],
+            "target": "host",
+            "distToTarget": 23.249,
+            "distToPlayers": [
+              23.249,
+              23.513
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.691,
+              1.844
+            ],
+            "target": "host",
+            "distToTarget": 1.979,
+            "distToPlayers": [
+              1.97,
+              2.955
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -7.909,
+              27.809
+            ],
+            "target": "host",
+            "distToTarget": 28.912,
+            "distToPlayers": [
+              28.912,
+              29.873
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.322,
+              -1.439
+            ],
+            "target": "host",
+            "distToTarget": 1.524,
+            "distToPlayers": [
+              1.474,
+              3.62
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "spitling",
+            "pos": [
+              -46.245,
+              10.23
+            ],
+            "target": "host",
+            "distToTarget": 47.446,
+            "distToPlayers": [
+              47.363,
+              50.296
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 53.25,
+        "wallMs": 88841,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0.088,
+              0.142
+            ],
+            "target": "host",
+            "distToTarget": 0.219,
+            "distToPlayers": [
+              0.167,
+              2.916
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.04,
+              -0.175
+            ],
+            "target": "host",
+            "distToTarget": 0.086,
+            "distToPlayers": [
+              0.179,
+              2.965
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.769,
+              -0.03
+            ],
+            "target": "host",
+            "distToTarget": 0.747,
+            "distToPlayers": [
+              0.77,
+              3.77
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.206,
+              -0.456
+            ],
+            "target": "host",
+            "distToTarget": 0.445,
+            "distToPlayers": [
+              0.5,
+              2.831
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.057,
+              -0.988
+            ],
+            "target": "host",
+            "distToTarget": 0.895,
+            "distToPlayers": [
+              0.99,
+              3.105
+            ],
+            "nearestPlayer": "host",
+            "state": "attack"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.835,
+              -1.234
+            ],
+            "target": "host",
+            "distToTarget": 1.438,
+            "distToPlayers": [
+              1.49,
+              2.492
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -5.931,
+              -8.497
+            ],
+            "target": "host",
+            "distToTarget": 10.36,
+            "distToPlayers": [
+              10.363,
+              12.328
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -65.941,
+              -17.756
+            ],
+            "target": "host",
+            "distToTarget": 68.294,
+            "distToPlayers": [
+              68.289,
+              71.191
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.576,
+              -23.236
+            ],
+            "target": "host",
+            "distToTarget": 23.243,
+            "distToPlayers": [
+              23.243,
+              23.509
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.573,
+              -0.992
+            ],
+            "target": "host",
+            "distToTarget": 1.172,
+            "distToPlayers": [
+              1.146,
+              3.708
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -7.909,
+              27.809
+            ],
+            "target": "host",
+            "distToTarget": 28.912,
+            "distToPlayers": [
+              28.912,
+              29.873
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.309,
+              0.074
+            ],
+            "target": "host",
+            "distToTarget": 0.375,
+            "distToPlayers": [
+              0.318,
+              2.692
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "spitling",
+            "pos": [
+              -42.489,
+              9.063
+            ],
+            "target": "host",
+            "distToTarget": 43.459,
+            "distToPlayers": [
+              43.444,
+              46.383
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 54.217,
+        "wallMs": 89904,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0.683,
+              0.363
+            ],
+            "target": "host",
+            "distToTarget": 0.751,
+            "distToPlayers": [
+              0.774,
+              2.345
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.291,
+              0.08
+            ],
+            "target": "host",
+            "distToTarget": 0.232,
+            "distToPlayers": [
+              0.301,
+              3.292
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              1.105,
+              1.057
+            ],
+            "target": "host",
+            "distToTarget": 1.513,
+            "distToPlayers": [
+              1.529,
+              2.17
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.711,
+              -0.699
+            ],
+            "target": "host",
+            "distToTarget": 0.986,
+            "distToPlayers": [
+              0.997,
+              3.776
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.563,
+              1.017
+            ],
+            "target": "host",
+            "distToTarget": 1.128,
+            "distToPlayers": [
+              1.163,
+              3.706
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              0.316,
+              1.422
+            ],
+            "target": "host",
+            "distToTarget": 1.463,
+            "distToPlayers": [
+              1.456,
+              3.037
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -5.98,
+              -8.54
+            ],
+            "target": "host",
+            "distToTarget": 10.416,
+            "distToPlayers": [
+              10.426,
+              12.392
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -66.021,
+              -17.896
+            ],
+            "target": "host",
+            "distToTarget": 68.385,
+            "distToPlayers": [
+              68.404,
+              71.304
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.587,
+              -23.23
+            ],
+            "target": "host",
+            "distToTarget": 23.237,
+            "distToPlayers": [
+              23.237,
+              23.505
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.153,
+              2.084
+            ],
+            "target": "host",
+            "distToTarget": 2.099,
+            "distToPlayers": [
+              2.09,
+              3.78
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -7.909,
+              27.809
+            ],
+            "target": "host",
+            "distToTarget": 28.912,
+            "distToPlayers": [
+              28.912,
+              29.873
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              -0.517,
+              0.119
+            ],
+            "target": "host",
+            "distToTarget": 0.624,
+            "distToPlayers": [
+              0.531,
+              3.519
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "spitling",
+            "pos": [
+              -40.104,
+              7.817
+            ],
+            "target": "host",
+            "distToTarget": 40.942,
+            "distToPlayers": [
+              40.859,
+              43.807
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          }
+        ]
+      }
+    ],
+    "frameErrors": 0,
+    "lastFrameError": null,
+    "diagnostics": {
+      "preJoinGate": [
+        {
+          "player": 0,
+          "gate": "fired",
+          "paused": false,
+          "engineRunning": true,
+          "menuScreen": null,
+          "netRole": "single",
+          "authority": true,
+          "lobbyMode": "single",
+          "lobbyStatus": "idle",
+          "lobbyStatusDetail": null,
+          "localTick": 61,
+          "clientTick": null,
+          "clientConnected": null,
+          "survivorId": "ranger",
+          "ctxTime": 1.017,
+          "rosterCount": 1,
+          "pawnCount": 0,
+          "enemiesAlive": 0,
+          "playerAlive": true,
+          "frameErrors": 0,
+          "lastFrameError": null
+        },
+        {
+          "player": 1,
+          "gate": "fired",
+          "paused": false,
+          "engineRunning": true,
+          "menuScreen": null,
+          "netRole": "single",
+          "authority": true,
+          "lobbyMode": "single",
+          "lobbyStatus": "idle",
+          "lobbyStatusDetail": null,
+          "localTick": 63,
+          "clientTick": null,
+          "clientConnected": null,
+          "survivorId": "ranger",
+          "ctxTime": 1.05,
+          "rosterCount": 1,
+          "pawnCount": 0,
+          "enemiesAlive": 0,
+          "playerAlive": true,
+          "frameErrors": 0,
+          "lastFrameError": null
+        }
+      ],
+      "postJoinGate": [
+        {
+          "player": 0,
+          "role": "host",
+          "gate": "fired",
+          "paused": false,
+          "engineRunning": true,
+          "menuScreen": null,
+          "netRole": "host",
+          "authority": true,
+          "lobbyMode": "host",
+          "lobbyStatus": "peerJoined",
+          "lobbyStatusDetail": {
+            "id": 1,
+            "count": 2
+          },
+          "localTick": 193,
+          "clientTick": 129,
+          "clientConnected": false,
+          "survivorId": "ranger",
+          "ctxTime": 3.217,
+          "rosterCount": 2,
+          "pawnCount": 1,
+          "enemiesAlive": 1,
+          "playerAlive": true,
+          "frameErrors": 0,
+          "lastFrameError": null
+        },
+        {
+          "player": 1,
+          "role": "client",
+          "gate": "fired",
+          "paused": false,
+          "engineRunning": true,
+          "menuScreen": null,
+          "netRole": "client",
+          "authority": false,
+          "lobbyMode": "client",
+          "lobbyStatus": "connected",
+          "lobbyStatusDetail": {
+            "seed": 20260804,
+            "stageIndex": 0,
+            "time": 1.399999976158142,
+            "myNetId": 1,
+            "artifactMask": 0,
+            "difficulty": 1
+          },
+          "localTick": 0,
+          "clientTick": 61,
+          "clientConnected": true,
+          "survivorId": "ranger",
+          "ctxTime": 2.4,
+          "rosterCount": 1,
+          "pawnCount": 0,
+          "enemiesAlive": 0,
+          "playerAlive": true,
+          "frameErrors": 0,
+          "lastFrameError": null
+        }
+      ],
+      "joins": [
+        {
+          "player": 1,
+          "ms": 4583,
+          "inviteBytes": 1095,
+          "answerBytes": 914,
+          "hostPawnCount": 1
+        }
+      ],
+      "rosterCheck": {
+        "rosterCount": 2,
+        "pawnCount": 1,
+        "netPlayerCount": 2,
+        "peerSim": [
+          {
+            "id": 1,
+            "sim": null,
+            "rtt": 0,
+            "survivorId": "ranger"
+          }
+        ]
+      },
+      "finalState": [
+        {
+          "player": 0,
+          "role": "host",
+          "paused": false,
+          "engineRunning": true,
+          "menuScreen": null,
+          "netRole": "host",
+          "authority": true,
+          "lobbyMode": "host",
+          "lobbyStatus": "peerJoined",
+          "lobbyStatusDetail": {
+            "id": 1,
+            "count": 2
+          },
+          "localTick": 3537,
+          "clientTick": 3473,
+          "clientConnected": false,
+          "survivorId": "ranger",
+          "ctxTime": 58.95,
+          "rosterCount": 2,
+          "pawnCount": 1,
+          "enemiesAlive": 13,
+          "playerAlive": true,
+          "frameErrors": 0,
+          "lastFrameError": null
+        },
+        {
+          "player": 1,
+          "role": "client",
+          "paused": false,
+          "engineRunning": true,
+          "menuScreen": null,
+          "netRole": "client",
+          "authority": false,
+          "lobbyMode": "client",
+          "lobbyStatus": "connected",
+          "lobbyStatusDetail": {
+            "seed": 20260804,
+            "stageIndex": 0,
+            "time": 1.399999976158142,
+            "myNetId": 1,
+            "artifactMask": 0,
+            "difficulty": 1
+          },
+          "localTick": 0,
+          "clientTick": 3664,
+          "clientConnected": true,
+          "survivorId": "ranger",
+          "ctxTime": 62.45,
+          "rosterCount": 1,
+          "pawnCount": 0,
+          "enemiesAlive": 0,
+          "playerAlive": true,
+          "frameErrors": 0,
+          "lastFrameError": null
+        }
+      ],
+      "url": "http://127.0.0.1:5211/?seed=20260804&quality=1&harness=1&netlag=0",
+      "pageErrors": [],
+      "consoleLines": [
+        {
+          "player": 0,
+          "type": "warning",
+          "text": "THREE.Clock: This module has been deprecated. Please use THREE.Timer instead."
+        },
+        {
+          "player": 0,
+          "type": "warning",
+          "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+        },
+        {
+          "player": 0,
+          "type": "warning",
+          "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+        },
+        {
+          "player": 0,
+          "type": "warning",
+          "text": "THREE.WebGLProgram: Program Info Log: (210,81-129): warning X4122: sum of 0.996094 and -2.98545e-017 cannot be represented accurately in double precision\n(209,37-61): warning X4122: sum of 1 and -1.49272e-017 cannot be represented accurately in double precision\n(210,82-106): warning X4122: sum of 1 and -1.49272e-017 cannot be represented accurately in double precision\n(209,37-61): warning X4122: sum of 1 and -1.66644e-018 cannot be represented accurately in double precision\n(210,82-106): warning"
+        },
+        {
+          "player": 0,
+          "type": "warning",
+          "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+        },
+        {
+          "player": 0,
+          "type": "warning",
+          "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+        },
+        {
+          "player": 0,
+          "type": "warning",
+          "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+        },
+        {
+          "player": 0,
+          "type": "warning",
+          "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+        },
+        {
+          "player": 1,
+          "type": "warning",
+          "text": "THREE.Clock: This module has been deprecated. Please use THREE.Timer instead."
+        },
+        {
+          "player": 1,
+          "type": "warning",
+          "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+        },
+        {
+          "player": 1,
+          "type": "warning",
+          "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+        },
+        {
+          "player": 1,
+          "type": "warning",
+          "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+        },
+        {
+          "player": 1,
+          "type": "warning",
+          "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+        },
+        {
+          "player": 1,
+          "type": "warning",
+          "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+        },
+        {
+          "player": 1,
+          "type": "warning",
+          "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+        },
+        {
+          "player": 1,
+          "type": "warning",
+          "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+        },
+        {
+          "player": 1,
+          "type": "warning",
+          "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+        },
+        {
+          "player": 1,
+          "type": "warning",
+          "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+        },
+        {
+          "player": 1,
+          "type": "warning",
+          "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+        }
+      ]
+    }
+  }
+}

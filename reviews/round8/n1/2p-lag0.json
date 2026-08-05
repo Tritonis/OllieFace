@@ -1,0 +1,5915 @@
+{
+  "arm": {
+    "players": 2,
+    "netlag": "0",
+    "seed": 20260804,
+    "out": "reviews/round8/n1/2p-lag0.json",
+    "argv": [
+      "--players",
+      "2",
+      "--netlag",
+      "0",
+      "--out",
+      "reviews/round8/n1/2p-lag0.json"
+    ],
+    "at": "2026-08-04T23:33:28.286Z"
+  },
+  "derived": {
+    "totalDirectedHits": 94,
+    "totalHits": 94,
+    "perPlayer": {
+      "host": {
+        "directedHits": 51,
+        "directedDamage": 386,
+        "allHits": 51,
+        "allDamage": 386,
+        "hitTypes": {
+          "melee": 51
+        },
+        "enemiesTargetingPerSample": [
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          3,
+          3,
+          3,
+          4,
+          4,
+          4,
+          5,
+          5,
+          5,
+          6,
+          5,
+          5,
+          5,
+          6,
+          6,
+          5,
+          4,
+          4,
+          4,
+          4,
+          4,
+          2,
+          2,
+          3
+        ],
+        "enemiesTargetingMean": 3.71,
+        "enemiesTargetingMax": 6,
+        "directedShare": 0.543
+      },
+      "pawn1": {
+        "directedHits": 43,
+        "directedDamage": 314,
+        "allHits": 43,
+        "allDamage": 314,
+        "hitTypes": {
+          "melee": 43
+        },
+        "enemiesTargetingPerSample": [
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          3,
+          3,
+          3,
+          2,
+          2,
+          2,
+          1,
+          4,
+          4,
+          4,
+          3,
+          3,
+          4,
+          5,
+          5,
+          6,
+          6,
+          6,
+          8,
+          8,
+          8
+        ],
+        "enemiesTargetingMean": 4.194,
+        "enemiesTargetingMax": 8,
+        "directedShare": 0.457
+      }
+    },
+    "enemyCensusRows": 245,
+    "enemyRowsWithNoTarget": 0,
+    "enemyRowsTargetingNearest": 239,
+    "targetIsNearestFraction": 0.976
+  },
+  "raw": {
+    "parked": [
+      {
+        "key": "host",
+        "anchor": [
+          0,
+          1.767,
+          0
+        ],
+        "distanceToHost": 0
+      },
+      {
+        "key": "pawn1",
+        "anchor": [
+          3,
+          0.782,
+          0
+        ],
+        "distanceToHost": 3
+      }
+    ],
+    "window": {
+      "fromCtxTime": 24.25,
+      "toCtxTime": 54.267,
+      "measureSec": 30,
+      "sampleSec": 1
+    },
+    "openGate": [
+      {
+        "key": "host",
+        "alive": true,
+        "downed": false,
+        "health": 104,
+        "maxHealth": 110
+      },
+      {
+        "key": "pawn1",
+        "alive": true,
+        "downed": false,
+        "health": 104,
+        "maxHealth": 110
+      }
+    ],
+    "fixture": {
+      "pinFrames": 4560,
+      "maxDriftMetres": 2.236,
+      "healthRestoredSettle": 168,
+      "healthRestoredWindow": 661.517,
+      "deathsTotal": 0,
+      "ringRadius": 3
+    },
+    "damage": [
+      {
+        "t": 24.967,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.362
+      },
+      {
+        "t": 25.15,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.539
+      },
+      {
+        "t": 25.883,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.517
+      },
+      {
+        "t": 26.067,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.369
+      },
+      {
+        "t": 26.8,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.348
+      },
+      {
+        "t": 26.983,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.525
+      },
+      {
+        "t": 27.717,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.504
+      },
+      {
+        "t": 27.9,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.356
+      },
+      {
+        "t": 28.633,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.334
+      },
+      {
+        "t": 28.817,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.511
+      },
+      {
+        "t": 29.55,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.49
+      },
+      {
+        "t": 29.733,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.342
+      },
+      {
+        "t": 30.467,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.32
+      },
+      {
+        "t": 30.583,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 10,
+        "source": "beetle",
+        "sourceAffix": null,
+        "sourceDist": 2.329
+      },
+      {
+        "t": 30.65,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.497
+      },
+      {
+        "t": 31.383,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.656
+      },
+      {
+        "t": 31.567,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.328
+      },
+      {
+        "t": 31.967,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 10,
+        "source": "beetle",
+        "sourceAffix": null,
+        "sourceDist": 2.326
+      },
+      {
+        "t": 32.3,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.054
+      },
+      {
+        "t": 32.483,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.483
+      },
+      {
+        "t": 32.783,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 10,
+        "source": "beetle",
+        "sourceAffix": null,
+        "sourceDist": 2.252
+      },
+      {
+        "t": 33.217,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.794
+      },
+      {
+        "t": 33.4,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.452
+      },
+      {
+        "t": 33.8,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 10,
+        "source": "beetle",
+        "sourceAffix": null,
+        "sourceDist": 1.835
+      },
+      {
+        "t": 34.133,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.117
+      },
+      {
+        "t": 34.317,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.577
+      },
+      {
+        "t": 34.75,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 10,
+        "source": "beetle",
+        "sourceAffix": null,
+        "sourceDist": 2.368
+      },
+      {
+        "t": 35.05,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.306
+      },
+      {
+        "t": 35.2,
+        "target": "host",
+        "type": "melee",
+        "amount": 10,
+        "source": "beetle",
+        "sourceAffix": null,
+        "sourceDist": 1.844
+      },
+      {
+        "t": 35.233,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.04
+      },
+      {
+        "t": 35.867,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 10,
+        "source": "beetle",
+        "sourceAffix": null,
+        "sourceDist": 2.275
+      },
+      {
+        "t": 35.967,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.664
+      },
+      {
+        "t": 36.15,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.569
+      },
+      {
+        "t": 36.9,
+        "target": "host",
+        "type": "melee",
+        "amount": 10,
+        "source": "beetle",
+        "sourceAffix": null,
+        "sourceDist": 2.018
+      },
+      {
+        "t": 37.067,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.19
+      },
+      {
+        "t": 37.667,
+        "target": "host",
+        "type": "melee",
+        "amount": 10,
+        "source": "beetle",
+        "sourceAffix": null,
+        "sourceDist": 2.128
+      },
+      {
+        "t": 37.8,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.614
+      },
+      {
+        "t": 37.983,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.722
+      },
+      {
+        "t": 38.55,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 10,
+        "source": "beetle",
+        "sourceAffix": null,
+        "sourceDist": 2.369
+      },
+      {
+        "t": 38.717,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.25
+      },
+      {
+        "t": 39.233,
+        "target": "host",
+        "type": "melee",
+        "amount": 10,
+        "source": "beetle",
+        "sourceAffix": null,
+        "sourceDist": 2.3
+      },
+      {
+        "t": 39.633,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.495
+      },
+      {
+        "t": 39.783,
+        "target": "host",
+        "type": "melee",
+        "amount": 10,
+        "source": "beetle",
+        "sourceAffix": null,
+        "sourceDist": 2.377
+      },
+      {
+        "t": 39.817,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.58
+      },
+      {
+        "t": 40.55,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.515
+      },
+      {
+        "t": 40.733,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.215
+      },
+      {
+        "t": 40.8,
+        "target": "host",
+        "type": "melee",
+        "amount": 10,
+        "source": "beetle",
+        "sourceAffix": null,
+        "sourceDist": 1.603
+      },
+      {
+        "t": 41.467,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.309
+      },
+      {
+        "t": 41.65,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.746
+      },
+      {
+        "t": 42.383,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.46
+      },
+      {
+        "t": 42.533,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 10,
+        "source": "beetle",
+        "sourceAffix": null,
+        "sourceDist": 2.348
+      },
+      {
+        "t": 42.7,
+        "target": "host",
+        "type": "melee",
+        "amount": 10,
+        "source": "beetle",
+        "sourceAffix": null,
+        "sourceDist": 1.785
+      },
+      {
+        "t": 43.3,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.449
+      },
+      {
+        "t": 43.433,
+        "target": "host",
+        "type": "melee",
+        "amount": 10,
+        "source": "beetle",
+        "sourceAffix": null,
+        "sourceDist": 2.41
+      },
+      {
+        "t": 43.483,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.984
+      },
+      {
+        "t": 44.217,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.184
+      },
+      {
+        "t": 44.4,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.045
+      },
+      {
+        "t": 44.433,
+        "target": "host",
+        "type": "melee",
+        "amount": 10,
+        "source": "beetle",
+        "sourceAffix": null,
+        "sourceDist": 2.352
+      },
+      {
+        "t": 45,
+        "target": "host",
+        "type": "melee",
+        "amount": 10,
+        "source": "beetle",
+        "sourceAffix": null,
+        "sourceDist": 2.342
+      },
+      {
+        "t": 45.133,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.617
+      },
+      {
+        "t": 45.317,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.786
+      },
+      {
+        "t": 45.567,
+        "target": "host",
+        "type": "melee",
+        "amount": 10,
+        "source": "beetle",
+        "sourceAffix": null,
+        "sourceDist": 2.497
+      },
+      {
+        "t": 46,
+        "target": "host",
+        "type": "melee",
+        "amount": 10,
+        "source": "beetle",
+        "sourceAffix": null,
+        "sourceDist": 2.427
+      },
+      {
+        "t": 46.05,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.253
+      },
+      {
+        "t": 46.35,
+        "target": "host",
+        "type": "melee",
+        "amount": 10,
+        "source": "beetle",
+        "sourceAffix": null,
+        "sourceDist": 2.38
+      },
+      {
+        "t": 46.9,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 10,
+        "source": "beetle",
+        "sourceAffix": null,
+        "sourceDist": 1.293
+      },
+      {
+        "t": 46.967,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.589
+      },
+      {
+        "t": 47.15,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.732
+      },
+      {
+        "t": 47.517,
+        "target": "host",
+        "type": "melee",
+        "amount": 10,
+        "source": "beetle",
+        "sourceAffix": null,
+        "sourceDist": 2.218
+      },
+      {
+        "t": 47.883,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.234
+      },
+      {
+        "t": 48.067,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.415
+      },
+      {
+        "t": 48.083,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 10,
+        "source": "beetle",
+        "sourceAffix": null,
+        "sourceDist": 2.393
+      },
+      {
+        "t": 48.533,
+        "target": "host",
+        "type": "melee",
+        "amount": 10,
+        "source": "beetle",
+        "sourceAffix": null,
+        "sourceDist": 2.58
+      },
+      {
+        "t": 48.8,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.525
+      },
+      {
+        "t": 48.983,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.341
+      },
+      {
+        "t": 49.117,
+        "target": "host",
+        "type": "melee",
+        "amount": 10,
+        "source": "beetle",
+        "sourceAffix": null,
+        "sourceDist": 2.333
+      },
+      {
+        "t": 49.5,
+        "target": "host",
+        "type": "melee",
+        "amount": 10,
+        "source": "beetle",
+        "sourceAffix": null,
+        "sourceDist": 2.325
+      },
+      {
+        "t": 49.717,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.356
+      },
+      {
+        "t": 49.9,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.496
+      },
+      {
+        "t": 50.183,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 10,
+        "source": "beetle",
+        "sourceAffix": null,
+        "sourceDist": 2.501
+      },
+      {
+        "t": 50.633,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.511
+      },
+      {
+        "t": 50.817,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.327
+      },
+      {
+        "t": 51,
+        "target": "host",
+        "type": "melee",
+        "amount": 10,
+        "source": "beetle",
+        "sourceAffix": null,
+        "sourceDist": 2.273
+      },
+      {
+        "t": 51.5,
+        "target": "host",
+        "type": "melee",
+        "amount": 10,
+        "source": "beetle",
+        "sourceAffix": null,
+        "sourceDist": 2.229
+      },
+      {
+        "t": 51.55,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.347
+      },
+      {
+        "t": 51.733,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.482
+      },
+      {
+        "t": 52.067,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 10,
+        "source": "beetle",
+        "sourceAffix": null,
+        "sourceDist": 2.369
+      },
+      {
+        "t": 52.467,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.446
+      },
+      {
+        "t": 52.633,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 10,
+        "source": "beetle",
+        "sourceAffix": null,
+        "sourceDist": 2.352
+      },
+      {
+        "t": 52.65,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.472
+      },
+      {
+        "t": 53.067,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 10,
+        "source": "beetle",
+        "sourceAffix": null,
+        "sourceDist": 1.797
+      },
+      {
+        "t": 53.383,
+        "target": "host",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.435
+      },
+      {
+        "t": 53.567,
+        "target": "pawn1",
+        "type": "melee",
+        "amount": 6,
+        "source": "mite",
+        "sourceAffix": null,
+        "sourceDist": 0.531
+      },
+      {
+        "t": 53.65,
+        "target": "host",
+        "type": "melee",
+        "amount": 10,
+        "source": "beetle",
+        "sourceAffix": null,
+        "sourceDist": 2.357
+      }
+    ],
+    "samples": [
+      {
+        "t": 24.25,
+        "wallMs": 58267,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0,
+              0.328
+            ],
+            "target": "host",
+            "distToTarget": 0.305,
+            "distToPlayers": [
+              0.328,
+              3.018
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              3,
+              -0.172
+            ],
+            "target": "pawn1",
+            "distToTarget": 0.274,
+            "distToPlayers": [
+              3.005,
+              0.172
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "attack"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              22.166,
+              -8.229
+            ],
+            "target": "pawn1",
+            "distToTarget": 20.89,
+            "distToPlayers": [
+              23.644,
+              20.858
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              32.798,
+              -5.022
+            ],
+            "target": "pawn1",
+            "distToTarget": 30.307,
+            "distToPlayers": [
+              33.18,
+              30.218
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              30.955,
+              18.842
+            ],
+            "target": "pawn1",
+            "distToTarget": 33.792,
+            "distToPlayers": [
+              36.239,
+              33.712
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -64.663,
+              5.066
+            ],
+            "target": "host",
+            "distToTarget": 64.914,
+            "distToPlayers": [
+              64.861,
+              67.852
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 25.3,
+        "wallMs": 59368,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0,
+              0.523
+            ],
+            "target": "host",
+            "distToTarget": 0.523,
+            "distToPlayers": [
+              0.523,
+              3.045
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              3,
+              0.231
+            ],
+            "target": "pawn1",
+            "distToTarget": 0.186,
+            "distToPlayers": [
+              3.009,
+              0.231
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "recover"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              19.473,
+              -5.258
+            ],
+            "target": "pawn1",
+            "distToTarget": 17.353,
+            "distToPlayers": [
+              20.171,
+              17.292
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              27.278,
+              -5.89
+            ],
+            "target": "pawn1",
+            "distToTarget": 25.06,
+            "distToPlayers": [
+              27.907,
+              24.982
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              25.347,
+              18.015
+            ],
+            "target": "pawn1",
+            "distToTarget": 28.784,
+            "distToPlayers": [
+              31.097,
+              28.705
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -60.825,
+              9.238
+            ],
+            "target": "host",
+            "distToTarget": 61.575,
+            "distToPlayers": [
+              61.523,
+              64.49
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 26.267,
+        "wallMs": 60391,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0,
+              0.324
+            ],
+            "target": "host",
+            "distToTarget": 0.345,
+            "distToPlayers": [
+              0.324,
+              3.017
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              3,
+              0.49
+            ],
+            "target": "pawn1",
+            "distToTarget": 0.467,
+            "distToPlayers": [
+              3.04,
+              0.49
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "recover"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              16.746,
+              -0.823
+            ],
+            "target": "pawn1",
+            "distToTarget": 13.831,
+            "distToPlayers": [
+              16.766,
+              13.771
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              24.217,
+              -7.07
+            ],
+            "target": "pawn1",
+            "distToTarget": 22.432,
+            "distToPlayers": [
+              25.227,
+              22.363
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              20.333,
+              16.684
+            ],
+            "target": "pawn1",
+            "distToTarget": 24.137,
+            "distToPlayers": [
+              26.302,
+              24.058
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -57.027,
+              12.817
+            ],
+            "target": "host",
+            "distToTarget": 58.502,
+            "distToPlayers": [
+              58.449,
+              61.38
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 27.267,
+        "wallMs": 61432,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0,
+              0.276
+            ],
+            "target": "host",
+            "distToTarget": 0.334,
+            "distToPlayers": [
+              0.276,
+              3.013
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              3,
+              0.359
+            ],
+            "target": "pawn1",
+            "distToTarget": 0.359,
+            "distToPlayers": [
+              3.021,
+              0.359
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "recover"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              12.701,
+              2.697
+            ],
+            "target": "pawn1",
+            "distToTarget": 10.136,
+            "distToPlayers": [
+              12.984,
+              10.069
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              19.454,
+              -8.933
+            ],
+            "target": "pawn1",
+            "distToTarget": 18.795,
+            "distToPlayers": [
+              21.407,
+              18.722
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              15.235,
+              14.913
+            ],
+            "target": "pawn1",
+            "distToTarget": 19.369,
+            "distToPlayers": [
+              21.319,
+              19.29
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -53.138,
+              15.744
+            ],
+            "target": "host",
+            "distToTarget": 55.466,
+            "distToPlayers": [
+              55.422,
+              58.304
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 28.317,
+        "wallMs": 62537,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0,
+              -0.298
+            ],
+            "target": "host",
+            "distToTarget": 0.269,
+            "distToPlayers": [
+              0.298,
+              3.015
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              3,
+              0.421
+            ],
+            "target": "pawn1",
+            "distToTarget": 0.457,
+            "distToPlayers": [
+              3.029,
+              0.421
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              7.189,
+              3.138
+            ],
+            "target": "pawn1",
+            "distToTarget": 5.319,
+            "distToPlayers": [
+              7.844,
+              5.234
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              13.799,
+              -9.172
+            ],
+            "target": "pawn1",
+            "distToTarget": 14.241,
+            "distToPlayers": [
+              16.569,
+              14.169
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              10.238,
+              12.281
+            ],
+            "target": "pawn1",
+            "distToTarget": 14.341,
+            "distToPlayers": [
+              15.989,
+              14.255
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -51.325,
+              14.065
+            ],
+            "target": "host",
+            "distToTarget": 53.278,
+            "distToPlayers": [
+              53.217,
+              56.116
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 29.333,
+        "wallMs": 63588,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0,
+              -0.482
+            ],
+            "target": "host",
+            "distToTarget": 0.468,
+            "distToPlayers": [
+              0.482,
+              3.039
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              3,
+              -0.089
+            ],
+            "target": "pawn1",
+            "distToTarget": 0.024,
+            "distToPlayers": [
+              3.001,
+              0.089
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              5.645,
+              0.18
+            ],
+            "target": "pawn1",
+            "distToTarget": 2.661,
+            "distToPlayers": [
+              5.648,
+              2.651
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              8.459,
+              -8.027
+            ],
+            "target": "pawn1",
+            "distToTarget": 9.785,
+            "distToPlayers": [
+              11.662,
+              9.708
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              7.531,
+              9.176
+            ],
+            "target": "pawn1",
+            "distToTarget": 10.315,
+            "distToPlayers": [
+              11.871,
+              10.234
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -46.472,
+              14.679
+            ],
+            "target": "host",
+            "distToTarget": 48.841,
+            "distToPlayers": [
+              48.735,
+              51.604
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 30.267,
+        "wallMs": 64589,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0,
+              -0.32
+            ],
+            "target": "host",
+            "distToTarget": 0.32,
+            "distToPlayers": [
+              0.32,
+              3.017
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              3,
+              -0.021
+            ],
+            "target": "pawn1",
+            "distToTarget": 0.066,
+            "distToPlayers": [
+              3,
+              0.021
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              4.994,
+              -1.203
+            ],
+            "target": "pawn1",
+            "distToTarget": 2.329,
+            "distToPlayers": [
+              5.137,
+              2.329
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "windup"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              4.687,
+              -4.783
+            ],
+            "target": "pawn1",
+            "distToTarget": 5.159,
+            "distToPlayers": [
+              6.696,
+              5.071
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              4.388,
+              5.288
+            ],
+            "target": "pawn1",
+            "distToTarget": 5.555,
+            "distToPlayers": [
+              6.871,
+              5.467
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -40.475,
+              13.402
+            ],
+            "target": "host",
+            "distToTarget": 42.743,
+            "distToPlayers": [
+              42.636,
+              45.494
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 31.267,
+        "wallMs": 65626,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0,
+              -0.656
+            ],
+            "target": "host",
+            "distToTarget": 0.656,
+            "distToPlayers": [
+              0.656,
+              3.071
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              3,
+              -0.313
+            ],
+            "target": "pawn1",
+            "distToTarget": 0.292,
+            "distToPlayers": [
+              3.016,
+              0.313
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              4.139,
+              -0.951
+            ],
+            "target": "pawn1",
+            "distToTarget": 1.472,
+            "distToPlayers": [
+              4.246,
+              1.483
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              5.426,
+              -2.162
+            ],
+            "target": "pawn1",
+            "distToTarget": 3.249,
+            "distToPlayers": [
+              5.84,
+              3.249
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              4.424,
+              1.961
+            ],
+            "target": "pawn1",
+            "distToTarget": 2.465,
+            "distToPlayers": [
+              4.84,
+              2.424
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -35.186,
+              14.492
+            ],
+            "target": "host",
+            "distToTarget": 38.109,
+            "distToPlayers": [
+              38.054,
+              40.844
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -53.016,
+              -6.299
+            ],
+            "target": "host",
+            "distToTarget": 53.455,
+            "distToPlayers": [
+              53.389,
+              56.369
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 32.267,
+        "wallMs": 66673,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 100,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0,
+              -0.054
+            ],
+            "target": "host",
+            "distToTarget": 0.054,
+            "distToPlayers": [
+              0.054,
+              3
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              3,
+              -0.476
+            ],
+            "target": "pawn1",
+            "distToTarget": 0.462,
+            "distToPlayers": [
+              3.038,
+              0.476
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "windup"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              2.097,
+              -2.063
+            ],
+            "target": "pawn1",
+            "distToTarget": 2.252,
+            "distToPlayers": [
+              2.942,
+              2.252
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "windup"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              5.646,
+              0.238
+            ],
+            "target": "pawn1",
+            "distToTarget": 2.645,
+            "distToPlayers": [
+              5.651,
+              2.657
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              3.981,
+              1.13
+            ],
+            "target": "pawn1",
+            "distToTarget": 1.496,
+            "distToPlayers": [
+              4.138,
+              1.496
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "recover"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -30.037,
+              15.678
+            ],
+            "target": "host",
+            "distToTarget": 33.961,
+            "distToPlayers": [
+              33.882,
+              36.568
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -49.372,
+              -2.315
+            ],
+            "target": "host",
+            "distToTarget": 49.493,
+            "distToPlayers": [
+              49.427,
+              52.423
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 33.267,
+        "wallMs": 67774,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 100,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0.018,
+              -0.407
+            ],
+            "target": "host",
+            "distToTarget": 0.493,
+            "distToPlayers": [
+              0.407,
+              3.009
+            ],
+            "nearestPlayer": "host",
+            "state": "attack"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              3.088,
+              -0.448
+            ],
+            "target": "pawn1",
+            "distToTarget": 0.459,
+            "distToPlayers": [
+              3.12,
+              0.457
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "windup"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              2.155,
+              -1.177
+            ],
+            "target": "pawn1",
+            "distToTarget": 1.447,
+            "distToPlayers": [
+              2.456,
+              1.449
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "recover"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              5.277,
+              1.627
+            ],
+            "target": "pawn1",
+            "distToTarget": 2.784,
+            "distToPlayers": [
+              5.522,
+              2.798
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              4.833,
+              0.098
+            ],
+            "target": "pawn1",
+            "distToTarget": 1.835,
+            "distToPlayers": [
+              4.833,
+              1.835
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "windup"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -25.066,
+              17.383
+            ],
+            "target": "host",
+            "distToTarget": 30.556,
+            "distToPlayers": [
+              30.503,
+              33.013
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -45.443,
+              1.387
+            ],
+            "target": "host",
+            "distToTarget": 45.53,
+            "distToPlayers": [
+              45.464,
+              48.463
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 34.267,
+        "wallMs": 68825,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 100,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0.201,
+              0.401
+            ],
+            "target": "host",
+            "distToTarget": 0.432,
+            "distToPlayers": [
+              0.448,
+              2.828
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              2.836,
+              -0.551
+            ],
+            "target": "pawn1",
+            "distToTarget": 0.574,
+            "distToPlayers": [
+              2.889,
+              0.575
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "windup"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              1.143,
+              -0.436
+            ],
+            "target": "host",
+            "distToTarget": 1.191,
+            "distToPlayers": [
+              1.224,
+              1.907
+            ],
+            "nearestPlayer": "host",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              3.486,
+              2.317
+            ],
+            "target": "pawn1",
+            "distToTarget": 2.368,
+            "distToPlayers": [
+              4.186,
+              2.368
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "windup"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              3.715,
+              0.257
+            ],
+            "target": "pawn1",
+            "distToTarget": 0.759,
+            "distToPlayers": [
+              3.724,
+              0.76
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "recover"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -19.854,
+              18.777
+            ],
+            "target": "host",
+            "distToTarget": 27.38,
+            "distToPlayers": [
+              27.327,
+              29.578
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -41.228,
+              4.76
+            ],
+            "target": "host",
+            "distToTarget": 41.568,
+            "distToPlayers": [
+              41.502,
+              44.483
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 35.267,
+        "wallMs": 69915,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 100,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0,
+              0.569
+            ],
+            "target": "host",
+            "distToTarget": 0.554,
+            "distToPlayers": [
+              0.569,
+              3.054
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              2.886,
+              0.224
+            ],
+            "target": "pawn1",
+            "distToTarget": 0.164,
+            "distToPlayers": [
+              2.894,
+              0.251
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "attack"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              0.808,
+              -1.055
+            ],
+            "target": "host",
+            "distToTarget": 1.412,
+            "distToPlayers": [
+              1.329,
+              2.433
+            ],
+            "nearestPlayer": "host",
+            "state": "attack"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              3.452,
+              1.212
+            ],
+            "target": "pawn1",
+            "distToTarget": 1.286,
+            "distToPlayers": [
+              3.659,
+              1.294
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "recover"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              4.289,
+              -1.875
+            ],
+            "target": "pawn1",
+            "distToTarget": 2.275,
+            "distToPlayers": [
+              4.681,
+              2.275
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "windup"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -14.726,
+              18.02
+            ],
+            "target": "host",
+            "distToTarget": 23.391,
+            "distToPlayers": [
+              23.272,
+              25.277
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -36.732,
+              7.747
+            ],
+            "target": "host",
+            "distToTarget": 37.606,
+            "distToPlayers": [
+              37.54,
+              40.48
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 36.283,
+        "wallMs": 70971,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              -0.125,
+              0.18
+            ],
+            "target": "host",
+            "distToTarget": 0.219,
+            "distToPlayers": [
+              0.219,
+              3.13
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              2.878,
+              0.167
+            ],
+            "target": "pawn1",
+            "distToTarget": 0.167,
+            "distToPlayers": [
+              2.883,
+              0.207
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "recover"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              0.506,
+              -1.953
+            ],
+            "target": "host",
+            "distToTarget": 2.018,
+            "distToPlayers": [
+              2.018,
+              3.168
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              1.528,
+              1.836
+            ],
+            "target": "pawn1",
+            "distToTarget": 2.349,
+            "distToPlayers": [
+              2.388,
+              2.353
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              3.963,
+              -1.097
+            ],
+            "target": "pawn1",
+            "distToTarget": 1.46,
+            "distToPlayers": [
+              4.112,
+              1.46
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "recover"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -9.283,
+              17.17
+            ],
+            "target": "host",
+            "distToTarget": 19.55,
+            "distToPlayers": [
+              19.519,
+              21.112
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -31.884,
+              10.318
+            ],
+            "target": "host",
+            "distToTarget": 33.578,
+            "distToPlayers": [
+              33.512,
+              36.378
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 37.3,
+        "wallMs": 72033,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 100,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              -0.499,
+              0.306
+            ],
+            "target": "host",
+            "distToTarget": 0.635,
+            "distToPlayers": [
+              0.585,
+              3.513
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              3,
+              0.693
+            ],
+            "target": "pawn1",
+            "distToTarget": 0.685,
+            "distToPlayers": [
+              3.079,
+              0.693
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "recover"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              0.445,
+              -0.864
+            ],
+            "target": "host",
+            "distToTarget": 0.972,
+            "distToPlayers": [
+              0.972,
+              2.697
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              0.558,
+              2.053
+            ],
+            "target": "host",
+            "distToTarget": 2.128,
+            "distToPlayers": [
+              2.128,
+              3.19
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              2.379,
+              -2.275
+            ],
+            "target": "pawn1",
+            "distToTarget": 2.353,
+            "distToPlayers": [
+              3.291,
+              2.358
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -4.278,
+              17.207
+            ],
+            "target": "host",
+            "distToTarget": 17.784,
+            "distToPlayers": [
+              17.731,
+              18.683
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -26.781,
+              12.334
+            ],
+            "target": "host",
+            "distToTarget": 29.551,
+            "distToPlayers": [
+              29.485,
+              32.234
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 38.267,
+        "wallMs": 73083,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              -0.01,
+              -0.005
+            ],
+            "target": "host",
+            "distToTarget": 0.068,
+            "distToPlayers": [
+              0.011,
+              3.01
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              3,
+              0.163
+            ],
+            "target": "pawn1",
+            "distToTarget": 0.163,
+            "distToPlayers": [
+              3.004,
+              0.163
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "recover"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -1.769,
+              -1.45
+            ],
+            "target": "host",
+            "distToTarget": 2.28,
+            "distToPlayers": [
+              2.287,
+              4.984
+            ],
+            "nearestPlayer": "host",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              0.513,
+              0.993
+            ],
+            "target": "host",
+            "distToTarget": 1.108,
+            "distToPlayers": [
+              1.117,
+              2.678
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              1.493,
+              -1.828
+            ],
+            "target": "pawn1",
+            "distToTarget": 2.369,
+            "distToPlayers": [
+              2.36,
+              2.369
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              0.263,
+              14.662
+            ],
+            "target": "host",
+            "distToTarget": 14.718,
+            "distToPlayers": [
+              14.665,
+              14.916
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -21.73,
+              13.639
+            ],
+            "target": "host",
+            "distToTarget": 25.722,
+            "distToPlayers": [
+              25.656,
+              28.242
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 39.3,
+        "wallMs": 74220,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 100,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 100,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0.189,
+              0
+            ],
+            "target": "host",
+            "distToTarget": 0.11,
+            "distToPlayers": [
+              0.189,
+              2.811
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              3.569,
+              0.313
+            ],
+            "target": "pawn1",
+            "distToTarget": 0.689,
+            "distToPlayers": [
+              3.583,
+              0.649
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -1.661,
+              -0.617
+            ],
+            "target": "host",
+            "distToTarget": 1.859,
+            "distToPlayers": [
+              1.772,
+              4.701
+            ],
+            "nearestPlayer": "host",
+            "state": "attack"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -1.516,
+              1.831
+            ],
+            "target": "host",
+            "distToTarget": 2.377,
+            "distToPlayers": [
+              2.377,
+              4.873
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              1.729,
+              -1.045
+            ],
+            "target": "pawn1",
+            "distToTarget": 1.621,
+            "distToPlayers": [
+              2.02,
+              1.645
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              4.082,
+              10.633
+            ],
+            "target": "host",
+            "distToTarget": 11.442,
+            "distToPlayers": [
+              11.389,
+              10.688
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -16.189,
+              14.245
+            ],
+            "target": "host",
+            "distToTarget": 21.63,
+            "distToPlayers": [
+              21.564,
+              23.899
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 40.283,
+        "wallMs": 75291,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 100,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0.475,
+              0.005
+            ],
+            "target": "host",
+            "distToTarget": 0.442,
+            "distToPlayers": [
+              0.475,
+              2.525
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              3.045,
+              0
+            ],
+            "target": "pawn1",
+            "distToTarget": 0.103,
+            "distToPlayers": [
+              3.045,
+              0.045
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -2.205,
+              -0.189
+            ],
+            "target": "host",
+            "distToTarget": 2.187,
+            "distToPlayers": [
+              2.213,
+              5.209
+            ],
+            "nearestPlayer": "host",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -1.07,
+              1.155
+            ],
+            "target": "host",
+            "distToTarget": 1.575,
+            "distToPlayers": [
+              1.575,
+              4.231
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              1.396,
+              -0.673
+            ],
+            "target": "host",
+            "distToTarget": 1.543,
+            "distToPlayers": [
+              1.55,
+              1.739
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              5.257,
+              5.577
+            ],
+            "target": "host",
+            "distToTarget": 7.739,
+            "distToPlayers": [
+              7.665,
+              6.017
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -10.897,
+              13.911
+            ],
+            "target": "host",
+            "distToTarget": 17.737,
+            "distToPlayers": [
+              17.671,
+              19.663
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 41.267,
+        "wallMs": 76388,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 100,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0.286,
+              0.101
+            ],
+            "target": "host",
+            "distToTarget": 0.305,
+            "distToPlayers": [
+              0.304,
+              2.715
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              3.106,
+              0
+            ],
+            "target": "pawn1",
+            "distToTarget": 0.193,
+            "distToPlayers": [
+              3.106,
+              0.106
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -2.36,
+              -0.451
+            ],
+            "target": "host",
+            "distToTarget": 2.411,
+            "distToPlayers": [
+              2.403,
+              5.379
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -2.109,
+              0.199
+            ],
+            "target": "host",
+            "distToTarget": 2.115,
+            "distToPlayers": [
+              2.119,
+              5.113
+            ],
+            "nearestPlayer": "host",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              0.61,
+              -0.981
+            ],
+            "target": "host",
+            "distToTarget": 1.146,
+            "distToPlayers": [
+              1.155,
+              2.584
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              3.135,
+              2.796
+            ],
+            "target": "pawn1",
+            "distToTarget": 2.814,
+            "distToPlayers": [
+              4.201,
+              2.799
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -5.789,
+              12.504
+            ],
+            "target": "host",
+            "distToTarget": 13.845,
+            "distToPlayers": [
+              13.779,
+              15.284
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              38.739,
+              3.357
+            ],
+            "target": "pawn1",
+            "distToTarget": 35.896,
+            "distToPlayers": [
+              38.884,
+              35.896
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "spawn"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              37.543,
+              1.408
+            ],
+            "target": "pawn1",
+            "distToTarget": 34.571,
+            "distToPlayers": [
+              37.569,
+              34.571
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "spawn"
+          }
+        ]
+      },
+      {
+        "t": 42.267,
+        "wallMs": 77422,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0.46,
+              0
+            ],
+            "target": "host",
+            "distToTarget": 0.46,
+            "distToPlayers": [
+              0.46,
+              2.54
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              2.987,
+              0
+            ],
+            "target": "pawn1",
+            "distToTarget": 0.05,
+            "distToPlayers": [
+              2.987,
+              0.013
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -2.315,
+              -1.949
+            ],
+            "target": "host",
+            "distToTarget": 3.012,
+            "distToPlayers": [
+              3.026,
+              5.661
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -1.633,
+              -0.915
+            ],
+            "target": "host",
+            "distToTarget": 1.882,
+            "distToPlayers": [
+              1.872,
+              4.723
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -0.902,
+              -2.075
+            ],
+            "target": "host",
+            "distToTarget": 2.254,
+            "distToPlayers": [
+              2.263,
+              4.419
+            ],
+            "nearestPlayer": "host",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              1.778,
+              2.005
+            ],
+            "target": "pawn1",
+            "distToTarget": 2.348,
+            "distToPlayers": [
+              2.68,
+              2.348
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "windup"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -1.236,
+              9.672
+            ],
+            "target": "host",
+            "distToTarget": 9.823,
+            "distToPlayers": [
+              9.75,
+              10.559
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              35.872,
+              0.837
+            ],
+            "target": "pawn1",
+            "distToTarget": 32.953,
+            "distToPlayers": [
+              35.882,
+              32.883
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              34.824,
+              -1.965
+            ],
+            "target": "pawn1",
+            "distToTarget": 31.941,
+            "distToPlayers": [
+              34.88,
+              31.885
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 43.267,
+        "wallMs": 78516,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 100,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 100,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0.449,
+              0
+            ],
+            "target": "host",
+            "distToTarget": 0.449,
+            "distToPlayers": [
+              0.449,
+              2.551
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              3,
+              -0.656
+            ],
+            "target": "pawn1",
+            "distToTarget": 0.584,
+            "distToPlayers": [
+              3.071,
+              0.656
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "windup"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -2.999,
+              0.119
+            ],
+            "target": "host",
+            "distToTarget": 3.011,
+            "distToPlayers": [
+              3.001,
+              6
+            ],
+            "nearestPlayer": "host",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -0.718,
+              -0.481
+            ],
+            "target": "host",
+            "distToTarget": 0.864,
+            "distToPlayers": [
+              0.864,
+              3.749
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -1.516,
+              -1.866
+            ],
+            "target": "host",
+            "distToTarget": 2.405,
+            "distToPlayers": [
+              2.405,
+              4.887
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              1.835,
+              1.177
+            ],
+            "target": "pawn1",
+            "distToTarget": 1.629,
+            "distToPlayers": [
+              2.18,
+              1.656
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              0.949,
+              4.847
+            ],
+            "target": "host",
+            "distToTarget": 5.026,
+            "distToPlayers": [
+              4.939,
+              5.263
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              31.592,
+              -2.427
+            ],
+            "target": "pawn1",
+            "distToTarget": 28.763,
+            "distToPlayers": [
+              31.685,
+              28.695
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              30.259,
+              -4.896
+            ],
+            "target": "pawn1",
+            "distToTarget": 27.799,
+            "distToPlayers": [
+              30.653,
+              27.695
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 44.267,
+        "wallMs": 79667,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              -0.208,
+              -0.014
+            ],
+            "target": "host",
+            "distToTarget": 0.122,
+            "distToPlayers": [
+              0.208,
+              3.208
+            ],
+            "nearestPlayer": "host",
+            "state": "attack"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              3,
+              0.045
+            ],
+            "target": "pawn1",
+            "distToTarget": 0.045,
+            "distToPlayers": [
+              3,
+              0.045
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "windup"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -2.185,
+              0.872
+            ],
+            "target": "host",
+            "distToTarget": 2.352,
+            "distToPlayers": [
+              2.352,
+              5.258
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              1.381,
+              -1.883
+            ],
+            "target": "host",
+            "distToTarget": 2.332,
+            "distToPlayers": [
+              2.335,
+              2.483
+            ],
+            "nearestPlayer": "host",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -1.725,
+              -0.875
+            ],
+            "target": "host",
+            "distToTarget": 1.907,
+            "distToPlayers": [
+              1.934,
+              4.806
+            ],
+            "nearestPlayer": "host",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              1.456,
+              1.006
+            ],
+            "target": "host",
+            "distToTarget": 1.747,
+            "distToPlayers": [
+              1.77,
+              1.843
+            ],
+            "nearestPlayer": "host",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -1.034,
+              2.589
+            ],
+            "target": "host",
+            "distToTarget": 2.796,
+            "distToPlayers": [
+              2.788,
+              4.793
+            ],
+            "nearestPlayer": "host",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              27.124,
+              -5.05
+            ],
+            "target": "pawn1",
+            "distToTarget": 24.714,
+            "distToPlayers": [
+              27.591,
+              24.647
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              24.661,
+              -6.439
+            ],
+            "target": "pawn1",
+            "distToTarget": 22.657,
+            "distToPlayers": [
+              25.488,
+              22.598
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 45.3,
+        "wallMs": 80845,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              -0.189,
+              0
+            ],
+            "target": "host",
+            "distToTarget": 0.152,
+            "distToPlayers": [
+              0.189,
+              3.189
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              3,
+              0.786
+            ],
+            "target": "pawn1",
+            "distToTarget": 0.786,
+            "distToPlayers": [
+              3.101,
+              0.786
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "windup"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -0.926,
+              1.29
+            ],
+            "target": "host",
+            "distToTarget": 1.565,
+            "distToPlayers": [
+              1.588,
+              4.132
+            ],
+            "nearestPlayer": "host",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              1.05,
+              -1.116
+            ],
+            "target": "host",
+            "distToTarget": 1.532,
+            "distToPlayers": [
+              1.532,
+              2.247
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -2.733,
+              0.61
+            ],
+            "target": "host",
+            "distToTarget": 2.793,
+            "distToPlayers": [
+              2.8,
+              5.765
+            ],
+            "nearestPlayer": "host",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              0.365,
+              2.26
+            ],
+            "target": "host",
+            "distToTarget": 2.289,
+            "distToPlayers": [
+              2.289,
+              3.471
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -1.968,
+              1.416
+            ],
+            "target": "host",
+            "distToTarget": 2.454,
+            "distToPlayers": [
+              2.425,
+              5.166
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              24.516,
+              -5.398
+            ],
+            "target": "pawn1",
+            "distToTarget": 22.187,
+            "distToPlayers": [
+              25.103,
+              22.183
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              24.643,
+              -6.648
+            ],
+            "target": "pawn1",
+            "distToTarget": 22.652,
+            "distToPlayers": [
+              25.524,
+              22.641
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 46.3,
+        "wallMs": 81950,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              -0.632,
+              0
+            ],
+            "target": "host",
+            "distToTarget": 0.63,
+            "distToPlayers": [
+              0.632,
+              3.632
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              3.12,
+              -0.43
+            ],
+            "target": "pawn1",
+            "distToTarget": 0.375,
+            "distToPlayers": [
+              3.149,
+              0.446
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "attack"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              1.386,
+              2.08
+            ],
+            "target": "host",
+            "distToTarget": 2.49,
+            "distToPlayers": [
+              2.499,
+              2.633
+            ],
+            "nearestPlayer": "host",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              1.957,
+              -0.673
+            ],
+            "target": "pawn1",
+            "distToTarget": 1.24,
+            "distToPlayers": [
+              2.07,
+              1.242
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "windup"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -2.36,
+              0.308
+            ],
+            "target": "host",
+            "distToTarget": 2.379,
+            "distToPlayers": [
+              2.38,
+              5.369
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              1.553,
+              1.128
+            ],
+            "target": "host",
+            "distToTarget": 1.91,
+            "distToPlayers": [
+              1.919,
+              1.835
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -1.144,
+              1.152
+            ],
+            "target": "host",
+            "distToTarget": 1.624,
+            "distToPlayers": [
+              1.624,
+              4.301
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              23.626,
+              -4.128
+            ],
+            "target": "pawn1",
+            "distToTarget": 21.112,
+            "distToPlayers": [
+              23.984,
+              21.035
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              24.677,
+              -6.451
+            ],
+            "target": "pawn1",
+            "distToTarget": 22.625,
+            "distToPlayers": [
+              25.506,
+              22.616
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 47.283,
+        "wallMs": 83016,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              -0.295,
+              0
+            ],
+            "target": "host",
+            "distToTarget": 0.295,
+            "distToPlayers": [
+              0.295,
+              3.295
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              3.2,
+              0.082
+            ],
+            "target": "pawn1",
+            "distToTarget": 0.211,
+            "distToPlayers": [
+              3.201,
+              0.216
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "recover"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              4.177,
+              2.075
+            ],
+            "target": "pawn1",
+            "distToTarget": 2.381,
+            "distToPlayers": [
+              4.664,
+              2.386
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              2.605,
+              -0.639
+            ],
+            "target": "pawn1",
+            "distToTarget": 0.718,
+            "distToPlayers": [
+              2.682,
+              0.751
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "recover"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -1.591,
+              0.612
+            ],
+            "target": "host",
+            "distToTarget": 1.687,
+            "distToPlayers": [
+              1.705,
+              4.632
+            ],
+            "nearestPlayer": "host",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              0.388,
+              2.184
+            ],
+            "target": "host",
+            "distToTarget": 2.218,
+            "distToPlayers": [
+              2.218,
+              3.404
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -2.537,
+              0.658
+            ],
+            "target": "host",
+            "distToTarget": 2.603,
+            "distToPlayers": [
+              2.621,
+              5.576
+            ],
+            "nearestPlayer": "host",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              19.894,
+              -0.324
+            ],
+            "target": "pawn1",
+            "distToTarget": 16.967,
+            "distToPlayers": [
+              19.897,
+              16.897
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              24.609,
+              -6.825
+            ],
+            "target": "pawn1",
+            "distToTarget": 22.662,
+            "distToPlayers": [
+              25.538,
+              22.661
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 48.267,
+        "wallMs": 84096,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              -0.471,
+              0.008
+            ],
+            "target": "host",
+            "distToTarget": 0.493,
+            "distToPlayers": [
+              0.472,
+              3.471
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              3.363,
+              -0.08
+            ],
+            "target": "pawn1",
+            "distToTarget": 0.356,
+            "distToPlayers": [
+              3.364,
+              0.372
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "recover"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              4.047,
+              1.188
+            ],
+            "target": "pawn1",
+            "distToTarget": 1.598,
+            "distToPlayers": [
+              4.218,
+              1.584
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "recover"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              4.157,
+              -1.988
+            ],
+            "target": "pawn1",
+            "distToTarget": 2.287,
+            "distToPlayers": [
+              4.608,
+              2.3
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -1.03,
+              2.205
+            ],
+            "target": "host",
+            "distToTarget": 2.434,
+            "distToPlayers": [
+              2.434,
+              4.594
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              0.287,
+              1.348
+            ],
+            "target": "host",
+            "distToTarget": 1.338,
+            "distToPlayers": [
+              1.378,
+              3.03
+            ],
+            "nearestPlayer": "host",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -1.577,
+              -1.994
+            ],
+            "target": "host",
+            "distToTarget": 2.545,
+            "distToPlayers": [
+              2.542,
+              4.993
+            ],
+            "nearestPlayer": "host",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              15.501,
+              2.639
+            ],
+            "target": "pawn1",
+            "distToTarget": 12.847,
+            "distToPlayers": [
+              15.724,
+              12.777
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              24.695,
+              -6.257
+            ],
+            "target": "pawn1",
+            "distToTarget": 22.581,
+            "distToPlayers": [
+              25.476,
+              22.579
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 49.317,
+        "wallMs": 85291,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 100,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0.103,
+              0
+            ],
+            "target": "host",
+            "distToTarget": 0.038,
+            "distToPlayers": [
+              0.103,
+              2.897
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              3.544,
+              0
+            ],
+            "target": "pawn1",
+            "distToTarget": 0.544,
+            "distToPlayers": [
+              3.544,
+              0.544
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "recover"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              5.177,
+              0.606
+            ],
+            "target": "pawn1",
+            "distToTarget": 2.252,
+            "distToPlayers": [
+              5.213,
+              2.26
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              5.663,
+              -0.251
+            ],
+            "target": "pawn1",
+            "distToTarget": 2.68,
+            "distToPlayers": [
+              5.668,
+              2.675
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -1.581,
+              1.524
+            ],
+            "target": "host",
+            "distToTarget": 2.184,
+            "distToPlayers": [
+              2.196,
+              4.827
+            ],
+            "nearestPlayer": "host",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -0.446,
+              2.219
+            ],
+            "target": "host",
+            "distToTarget": 2.258,
+            "distToPlayers": [
+              2.263,
+              4.099
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -0.955,
+              -1.155
+            ],
+            "target": "host",
+            "distToTarget": 1.512,
+            "distToPlayers": [
+              1.499,
+              4.121
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              10.082,
+              4.044
+            ],
+            "target": "pawn1",
+            "distToTarget": 8.236,
+            "distToPlayers": [
+              10.863,
+              8.156
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              24.612,
+              -6.815
+            ],
+            "target": "pawn1",
+            "distToTarget": 22.661,
+            "distToPlayers": [
+              25.538,
+              22.661
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              54.878,
+              -42.992
+            ],
+            "target": "pawn1",
+            "distToTarget": 67.427,
+            "distToPlayers": [
+              69.714,
+              67.377
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 50.283,
+        "wallMs": 86352,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 100,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0.186,
+              0
+            ],
+            "target": "host",
+            "distToTarget": 0.114,
+            "distToPlayers": [
+              0.186,
+              2.814
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              3.345,
+              0
+            ],
+            "target": "pawn1",
+            "distToTarget": 0.367,
+            "distToPlayers": [
+              3.345,
+              0.345
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              5.555,
+              -0.357
+            ],
+            "target": "pawn1",
+            "distToTarget": 2.576,
+            "distToPlayers": [
+              5.567,
+              2.58
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              4.497,
+              -1.157
+            ],
+            "target": "pawn1",
+            "distToTarget": 1.947,
+            "distToPlayers": [
+              4.643,
+              1.892
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "attack"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -0.312,
+              3.047
+            ],
+            "target": "host",
+            "distToTarget": 3.07,
+            "distToPlayers": [
+              3.063,
+              4.5
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -0.4,
+              1.499
+            ],
+            "target": "host",
+            "distToTarget": 1.529,
+            "distToPlayers": [
+              1.552,
+              3.716
+            ],
+            "nearestPlayer": "host",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              0.172,
+              -2.244
+            ],
+            "target": "host",
+            "distToTarget": 2.242,
+            "distToPlayers": [
+              2.251,
+              3.61
+            ],
+            "nearestPlayer": "host",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              5.569,
+              2.239
+            ],
+            "target": "pawn1",
+            "distToTarget": 3.449,
+            "distToPlayers": [
+              6.002,
+              3.408
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              24.686,
+              -6.329
+            ],
+            "target": "pawn1",
+            "distToTarget": 22.597,
+            "distToPlayers": [
+              25.484,
+              22.59
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              49.851,
+              -41.916
+            ],
+            "target": "pawn1",
+            "distToTarget": 62.944,
+            "distToPlayers": [
+              65.132,
+              62.865
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 51.3,
+        "wallMs": 87472,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 100,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0.349,
+              0.026
+            ],
+            "target": "host",
+            "distToTarget": 0.35,
+            "distToPlayers": [
+              0.35,
+              2.651
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              3.233,
+              0
+            ],
+            "target": "pawn1",
+            "distToTarget": 0.298,
+            "distToPlayers": [
+              3.233,
+              0.233
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              4.419,
+              -2.11
+            ],
+            "target": "pawn1",
+            "distToTarget": 2.574,
+            "distToPlayers": [
+              4.897,
+              2.543
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              4.878,
+              -0.521
+            ],
+            "target": "pawn1",
+            "distToTarget": 1.941,
+            "distToPlayers": [
+              4.906,
+              1.949
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              1.972,
+              1.579
+            ],
+            "target": "host",
+            "distToTarget": 2.529,
+            "distToPlayers": [
+              2.526,
+              1.885
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -2.084,
+              0.791
+            ],
+            "target": "host",
+            "distToTarget": 2.229,
+            "distToPlayers": [
+              2.229,
+              5.145
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              0.328,
+              -1.115
+            ],
+            "target": "host",
+            "distToTarget": 1.157,
+            "distToPlayers": [
+              1.162,
+              2.895
+            ],
+            "nearestPlayer": "host",
+            "state": "recover"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              5.756,
+              -0.261
+            ],
+            "target": "pawn1",
+            "distToTarget": 2.765,
+            "distToPlayers": [
+              5.762,
+              2.769
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              24.607,
+              -6.833
+            ],
+            "target": "pawn1",
+            "distToTarget": 22.662,
+            "distToPlayers": [
+              25.538,
+              22.661
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              44.707,
+              -41.535
+            ],
+            "target": "pawn1",
+            "distToTarget": 58.94,
+            "distToPlayers": [
+              61.023,
+              58.861
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 52.3,
+        "wallMs": 88509,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 110,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 100,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0.446,
+              0
+            ],
+            "target": "host",
+            "distToTarget": 0.446,
+            "distToPlayers": [
+              0.446,
+              2.554
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              2.731,
+              0
+            ],
+            "target": "pawn1",
+            "distToTarget": 0.212,
+            "distToPlayers": [
+              2.731,
+              0.269
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              3.803,
+              -1.223
+            ],
+            "target": "pawn1",
+            "distToTarget": 1.47,
+            "distToPlayers": [
+              3.995,
+              1.463
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "recover"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              4.358,
+              2.061
+            ],
+            "target": "pawn1",
+            "distToTarget": 2.457,
+            "distToPlayers": [
+              4.821,
+              2.468
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              3.046,
+              2.328
+            ],
+            "target": "pawn1",
+            "distToTarget": 2.326,
+            "distToPlayers": [
+              3.834,
+              2.329
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "windup"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -1.574,
+              0.637
+            ],
+            "target": "host",
+            "distToTarget": 1.666,
+            "distToPlayers": [
+              1.698,
+              4.618
+            ],
+            "nearestPlayer": "host",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              1.845,
+              -0.999
+            ],
+            "target": "pawn1",
+            "distToTarget": 1.509,
+            "distToPlayers": [
+              2.098,
+              1.527
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              5.186,
+              -1.548
+            ],
+            "target": "pawn1",
+            "distToTarget": 2.653,
+            "distToPlayers": [
+              5.412,
+              2.678
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              24.591,
+              -6.884
+            ],
+            "target": "pawn1",
+            "distToTarget": 22.661,
+            "distToPlayers": [
+              25.536,
+              22.661
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              39.365,
+              -40.92
+            ],
+            "target": "pawn1",
+            "distToTarget": 54.668,
+            "distToPlayers": [
+              56.781,
+              54.744
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 53.3,
+        "wallMs": 89551,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 100,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0.435,
+              0
+            ],
+            "target": "host",
+            "distToTarget": 0.435,
+            "distToPlayers": [
+              0.435,
+              2.565
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              2.561,
+              0.093
+            ],
+            "target": "pawn1",
+            "distToTarget": 0.423,
+            "distToPlayers": [
+              2.562,
+              0.449
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              2.397,
+              -2.054
+            ],
+            "target": "pawn1",
+            "distToTarget": 2.124,
+            "distToPlayers": [
+              3.156,
+              2.14
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              3.004,
+              3.041
+            ],
+            "target": "pawn1",
+            "distToTarget": 3.035,
+            "distToPlayers": [
+              4.275,
+              3.041
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              2.914,
+              1.281
+            ],
+            "target": "pawn1",
+            "distToTarget": 1.255,
+            "distToPlayers": [
+              3.183,
+              1.284
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -2.054,
+              -1.156
+            ],
+            "target": "host",
+            "distToTarget": 2.357,
+            "distToPlayers": [
+              2.357,
+              5.184
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              2.175,
+              -0.663
+            ],
+            "target": "pawn1",
+            "distToTarget": 1.049,
+            "distToPlayers": [
+              2.274,
+              1.058
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "recover"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              3.523,
+              -2.982
+            ],
+            "target": "pawn1",
+            "distToTarget": 3.033,
+            "distToPlayers": [
+              4.616,
+              3.028
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              24.694,
+              -6.316
+            ],
+            "target": "pawn1",
+            "distToTarget": 22.59,
+            "distToPlayers": [
+              25.489,
+              22.595
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              34.324,
+              -38.997
+            ],
+            "target": "pawn1",
+            "distToTarget": 50.098,
+            "distToPlayers": [
+              51.951,
+              50.019
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          }
+        ]
+      },
+      {
+        "t": 54.267,
+        "wallMs": 90638,
+        "players": [
+          {
+            "key": "host",
+            "pos": [
+              0,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 100,
+            "maxHealth": 110
+          },
+          {
+            "key": "pawn1",
+            "pos": [
+              3,
+              0
+            ],
+            "alive": true,
+            "downed": false,
+            "health": 104,
+            "maxHealth": 110
+          }
+        ],
+        "enemies": [
+          {
+            "id": "mite",
+            "pos": [
+              0.376,
+              0.346
+            ],
+            "target": "host",
+            "distToTarget": 0.511,
+            "distToPlayers": [
+              0.511,
+              2.647
+            ],
+            "nearestPlayer": "host",
+            "state": "windup"
+          },
+          {
+            "id": "mite",
+            "pos": [
+              3.08,
+              0
+            ],
+            "target": "pawn1",
+            "distToTarget": 0.08,
+            "distToPlayers": [
+              3.08,
+              0.08
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "windup"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              0.514,
+              -0.895
+            ],
+            "target": "host",
+            "distToTarget": 1.004,
+            "distToPlayers": [
+              1.032,
+              2.642
+            ],
+            "nearestPlayer": "host",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              1.367,
+              1.753
+            ],
+            "target": "pawn1",
+            "distToTarget": 2.403,
+            "distToPlayers": [
+              2.223,
+              2.395
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              4.703,
+              1.357
+            ],
+            "target": "pawn1",
+            "distToTarget": 2.177,
+            "distToPlayers": [
+              4.894,
+              2.177
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "windup"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              -1.184,
+              -0.893
+            ],
+            "target": "host",
+            "distToTarget": 1.477,
+            "distToPlayers": [
+              1.483,
+              4.278
+            ],
+            "nearestPlayer": "host",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              3.148,
+              -1.829
+            ],
+            "target": "pawn1",
+            "distToTarget": 1.817,
+            "distToPlayers": [
+              3.64,
+              1.835
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "circle"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              1.973,
+              -2.544
+            ],
+            "target": "pawn1",
+            "distToTarget": 2.766,
+            "distToPlayers": [
+              3.22,
+              2.744
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              24.611,
+              -6.818
+            ],
+            "target": "pawn1",
+            "distToTarget": 22.584,
+            "distToPlayers": [
+              25.538,
+              22.661
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              32.095,
+              -39.984
+            ],
+            "target": "pawn1",
+            "distToTarget": 49.445,
+            "distToPlayers": [
+              51.272,
+              49.449
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "chase"
+          },
+          {
+            "id": "beetle",
+            "pos": [
+              61.743,
+              23.196
+            ],
+            "target": "pawn1",
+            "distToTarget": 63.157,
+            "distToPlayers": [
+              65.956,
+              63.157
+            ],
+            "nearestPlayer": "pawn1",
+            "state": "spawn"
+          }
+        ]
+      }
+    ],
+    "frameErrors": 0,
+    "lastFrameError": null,
+    "diagnostics": {
+      "preJoinGate": [
+        {
+          "player": 0,
+          "gate": "fired",
+          "paused": false,
+          "engineRunning": true,
+          "menuScreen": null,
+          "netRole": "single",
+          "authority": true,
+          "lobbyMode": "single",
+          "lobbyStatus": "idle",
+          "lobbyStatusDetail": null,
+          "localTick": 62,
+          "clientTick": null,
+          "clientConnected": null,
+          "survivorId": "ranger",
+          "ctxTime": 1.033,
+          "rosterCount": 1,
+          "pawnCount": 0,
+          "enemiesAlive": 0,
+          "playerAlive": true,
+          "frameErrors": 0,
+          "lastFrameError": null
+        },
+        {
+          "player": 1,
+          "gate": "fired",
+          "paused": false,
+          "engineRunning": true,
+          "menuScreen": null,
+          "netRole": "single",
+          "authority": true,
+          "lobbyMode": "single",
+          "lobbyStatus": "idle",
+          "lobbyStatusDetail": null,
+          "localTick": 64,
+          "clientTick": null,
+          "clientConnected": null,
+          "survivorId": "ranger",
+          "ctxTime": 1.067,
+          "rosterCount": 1,
+          "pawnCount": 0,
+          "enemiesAlive": 0,
+          "playerAlive": true,
+          "frameErrors": 0,
+          "lastFrameError": null
+        }
+      ],
+      "postJoinGate": [
+        {
+          "player": 0,
+          "role": "host",
+          "gate": "fired",
+          "paused": false,
+          "engineRunning": true,
+          "menuScreen": null,
+          "netRole": "host",
+          "authority": true,
+          "lobbyMode": "host",
+          "lobbyStatus": "peerJoined",
+          "lobbyStatusDetail": {
+            "id": 1,
+            "count": 2
+          },
+          "localTick": 194,
+          "clientTick": 130,
+          "clientConnected": false,
+          "survivorId": "ranger",
+          "ctxTime": 3.233,
+          "rosterCount": 2,
+          "pawnCount": 1,
+          "enemiesAlive": 1,
+          "playerAlive": true,
+          "frameErrors": 0,
+          "lastFrameError": null
+        },
+        {
+          "player": 1,
+          "role": "client",
+          "gate": "fired",
+          "paused": false,
+          "engineRunning": true,
+          "menuScreen": null,
+          "netRole": "client",
+          "authority": false,
+          "lobbyMode": "client",
+          "lobbyStatus": "connected",
+          "lobbyStatusDetail": {
+            "seed": 20260804,
+            "stageIndex": 0,
+            "time": 1.4166666269302368,
+            "myNetId": 1,
+            "artifactMask": 0,
+            "difficulty": 1
+          },
+          "localTick": 0,
+          "clientTick": 62,
+          "clientConnected": true,
+          "survivorId": "ranger",
+          "ctxTime": 2.433,
+          "rosterCount": 1,
+          "pawnCount": 0,
+          "enemiesAlive": 0,
+          "playerAlive": true,
+          "frameErrors": 0,
+          "lastFrameError": null
+        }
+      ],
+      "joins": [
+        {
+          "player": 1,
+          "ms": 4432,
+          "inviteBytes": 1095,
+          "answerBytes": 914,
+          "hostPawnCount": 1
+        }
+      ],
+      "rosterCheck": {
+        "rosterCount": 2,
+        "pawnCount": 1,
+        "netPlayerCount": 2,
+        "peerSim": [
+          {
+            "id": 1,
+            "sim": null,
+            "rtt": 0,
+            "survivorId": "ranger"
+          }
+        ]
+      },
+      "finalState": [
+        {
+          "player": 0,
+          "role": "host",
+          "paused": false,
+          "engineRunning": true,
+          "menuScreen": null,
+          "netRole": "host",
+          "authority": true,
+          "lobbyMode": "host",
+          "lobbyStatus": "peerJoined",
+          "lobbyStatusDetail": {
+            "id": 1,
+            "count": 2
+          },
+          "localTick": 3626,
+          "clientTick": 3562,
+          "clientConnected": false,
+          "survivorId": "ranger",
+          "ctxTime": 60.433,
+          "rosterCount": 2,
+          "pawnCount": 1,
+          "enemiesAlive": 11,
+          "playerAlive": true,
+          "frameErrors": 0,
+          "lastFrameError": null
+        },
+        {
+          "player": 1,
+          "role": "client",
+          "paused": false,
+          "engineRunning": true,
+          "menuScreen": null,
+          "netRole": "client",
+          "authority": false,
+          "lobbyMode": "client",
+          "lobbyStatus": "connected",
+          "lobbyStatusDetail": {
+            "seed": 20260804,
+            "stageIndex": 0,
+            "time": 1.4166666269302368,
+            "myNetId": 1,
+            "artifactMask": 0,
+            "difficulty": 1
+          },
+          "localTick": 0,
+          "clientTick": 3483,
+          "clientConnected": true,
+          "survivorId": "ranger",
+          "ctxTime": 59.45,
+          "rosterCount": 1,
+          "pawnCount": 0,
+          "enemiesAlive": 0,
+          "playerAlive": true,
+          "frameErrors": 0,
+          "lastFrameError": null
+        }
+      ],
+      "url": "http://127.0.0.1:5211/?seed=20260804&quality=1&harness=1&netlag=0",
+      "pageErrors": [],
+      "consoleLines": [
+        {
+          "player": 0,
+          "type": "warning",
+          "text": "THREE.Clock: This module has been deprecated. Please use THREE.Timer instead."
+        },
+        {
+          "player": 0,
+          "type": "warning",
+          "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+        },
+        {
+          "player": 0,
+          "type": "warning",
+          "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+        },
+        {
+          "player": 0,
+          "type": "warning",
+          "text": "THREE.WebGLProgram: Program Info Log: (210,81-129): warning X4122: sum of 0.996094 and -2.98545e-017 cannot be represented accurately in double precision\n(209,37-61): warning X4122: sum of 1 and -1.49272e-017 cannot be represented accurately in double precision\n(210,82-106): warning X4122: sum of 1 and -1.49272e-017 cannot be represented accurately in double precision\n(209,37-61): warning X4122: sum of 1 and -1.66644e-018 cannot be represented accurately in double precision\n(210,82-106): warning"
+        },
+        {
+          "player": 0,
+          "type": "warning",
+          "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+        },
+        {
+          "player": 0,
+          "type": "warning",
+          "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+        },
+        {
+          "player": 0,
+          "type": "warning",
+          "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+        },
+        {
+          "player": 0,
+          "type": "warning",
+          "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+        },
+        {
+          "player": 1,
+          "type": "warning",
+          "text": "THREE.Clock: This module has been deprecated. Please use THREE.Timer instead."
+        },
+        {
+          "player": 1,
+          "type": "warning",
+          "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+        },
+        {
+          "player": 1,
+          "type": "warning",
+          "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+        },
+        {
+          "player": 1,
+          "type": "warning",
+          "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+        },
+        {
+          "player": 1,
+          "type": "warning",
+          "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+        },
+        {
+          "player": 1,
+          "type": "warning",
+          "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+        },
+        {
+          "player": 1,
+          "type": "warning",
+          "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+        },
+        {
+          "player": 1,
+          "type": "warning",
+          "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+        },
+        {
+          "player": 1,
+          "type": "warning",
+          "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+        },
+        {
+          "player": 1,
+          "type": "warning",
+          "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+        },
+        {
+          "player": 1,
+          "type": "warning",
+          "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+        }
+      ]
+    }
+  }
+}
