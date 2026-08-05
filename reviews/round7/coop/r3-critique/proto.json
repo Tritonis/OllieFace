@@ -1,0 +1,488 @@
+{
+  "arm": "proto",
+  "startedAt": "2026-08-04T02:30:54.999Z",
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 66,
+      "survivorId": "ranger",
+      "maxHealth": 110,
+      "netRole": "single",
+      "authority": true
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 62,
+      "survivorId": "anvil",
+      "maxHealth": 170,
+      "netRole": "single",
+      "authority": true
+    }
+  },
+  "runningGateAfterFocus": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "simTick": 69,
+      "localTick": 69,
+      "netTick": 0
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "simTick": 65,
+      "localTick": 0,
+      "netTick": 65
+    }
+  },
+  "roles": {
+    "host": {
+      "role": "host",
+      "authority": true,
+      "clients": 1
+    },
+    "client": {
+      "role": "client",
+      "authority": false,
+      "myNetId": 1,
+      "connected": true
+    }
+  },
+  "baselinePawn": {
+    "survivorId": "anvil",
+    "maxHealth": 170,
+    "health": 170,
+    "alive": true
+  },
+  "protocolVersion": 3,
+  "H1": {
+    "sent": {
+      "sent": "normal",
+      "survivorId": "not-a-survivor",
+      "version": 3
+    },
+    "pawn": {
+      "survivorId": "ranger",
+      "maxHealth": 110,
+      "health": 110,
+      "alive": true
+    },
+    "newHostErrors": [],
+    "newHostConsole": []
+  },
+  "H2": {
+    "sent": {
+      "sent": "bare",
+      "survivorId": null,
+      "version": 3
+    },
+    "pawn": {
+      "survivorId": "ranger",
+      "maxHealth": 110,
+      "health": 110,
+      "alive": true
+    },
+    "newHostErrors": [],
+    "newHostConsole": [],
+    "hostStillConnected": 1
+  },
+  "H3": {
+    "sent": {
+      "sent": "truncated",
+      "survivorId": null,
+      "version": 3
+    },
+    "pawn": {
+      "survivorId": "ranger",
+      "maxHealth": 110,
+      "health": 110,
+      "alive": true
+    },
+    "newHostErrors": [
+      "Invalid typed array length: 200"
+    ],
+    "newHostConsole": [],
+    "hostStillConnected": 1,
+    "hostStillSimulating": 440,
+    "hostTickLater": 483
+  },
+  "H4": {
+    "hits": [
+      {
+        "sentId": "kestrel",
+        "pawn": {
+          "survivorId": "kestrel",
+          "maxHealth": 90,
+          "health": 90,
+          "alive": true
+        }
+      },
+      {
+        "sentId": "anvil",
+        "pawn": {
+          "survivorId": "anvil",
+          "maxHealth": 170,
+          "health": 170,
+          "alive": true
+        }
+      },
+      {
+        "sentId": "kestrel",
+        "pawn": {
+          "survivorId": "kestrel",
+          "maxHealth": 90,
+          "health": 90,
+          "alive": true
+        }
+      },
+      {
+        "sentId": "anvil",
+        "pawn": {
+          "survivorId": "anvil",
+          "maxHealth": 170,
+          "health": 170,
+          "alive": true
+        }
+      }
+    ],
+    "afterHit": {
+      "survivorId": "ranger",
+      "maxHealth": 110,
+      "health": 35,
+      "alive": true
+    },
+    "clientOwn": {
+      "survivorId": "anvil",
+      "health": 170,
+      "maxHealth": 170
+    }
+  },
+  "H5": {
+    "sent": {
+      "sent": "normal",
+      "survivorId": "anvil",
+      "version": 99
+    },
+    "pawn": {
+      "survivorId": "anvil",
+      "maxHealth": 170,
+      "health": 170,
+      "alive": true
+    },
+    "newHostErrors": [],
+    "newHostConsole": [],
+    "hostReadClientVersion": [
+      {
+        "survivorId": "anvil",
+        "version": null,
+        "hasVersionField": false
+      }
+    ],
+    "clientReadHostVersion": {
+      "storedOnClient": null,
+      "keys": []
+    }
+  },
+  "HEAL": {
+    "inventories": {
+      "host": {
+        "wax-quail": 3,
+        "rubber-soles": 1,
+        "tectonic-heart": 1,
+        "sunken-vertebra": 1,
+        "planula": 1
+      },
+      "client": {
+        "wax-quail": 3,
+        "rubber-soles": 1,
+        "tectonic-heart": 1,
+        "sunken-vertebra": 1,
+        "planula": 1
+      }
+    },
+    "before": {
+      "pawn": {
+        "survivorId": "anvil",
+        "maxHealth": 170,
+        "health": 170,
+        "alive": true
+      },
+      "client": {
+        "health": 170,
+        "shield": 0
+      }
+    },
+    "series": [
+      {
+        "pawn": {
+          "health": 138.75,
+          "shield": 0
+        },
+        "client": {
+          "health": 170,
+          "shield": 30
+        }
+      },
+      {
+        "pawn": {
+          "health": 138.75,
+          "shield": 0
+        },
+        "client": {
+          "health": 138.75,
+          "shield": 0
+        }
+      },
+      {
+        "pawn": {
+          "health": 138.75,
+          "shield": 0
+        },
+        "client": {
+          "health": 138.75,
+          "shield": 0
+        }
+      },
+      {
+        "pawn": {
+          "health": 138.75,
+          "shield": 0
+        },
+        "client": {
+          "health": 138.75,
+          "shield": 0
+        }
+      },
+      {
+        "pawn": {
+          "health": 138.86,
+          "shield": 0
+        },
+        "client": {
+          "health": 138.84,
+          "shield": 0
+        }
+      },
+      {
+        "pawn": {
+          "health": 139.4,
+          "shield": 0
+        },
+        "client": {
+          "health": 139.34,
+          "shield": 0
+        }
+      }
+    ],
+    "hostControl": {
+      "before": {
+        "health": 110,
+        "shield": 0
+      },
+      "after": {
+        "health": 93.75,
+        "shield": 29.86
+      }
+    }
+  },
+  "P1pack": {
+    "placed": 4,
+    "hostHealth": 110,
+    "maxHealth": 110
+  },
+  "P1": {
+    "before": [
+      1254,
+      1286,
+      1316
+    ],
+    "hostHealthBeforePause": 110,
+    "during": [
+      {
+        "clientTick": 1361,
+        "host": {
+          "paused": false,
+          "screen": "pause",
+          "inputEnabled": false,
+          "holding": true,
+          "hasLivePeer": true,
+          "hostHealth": 110,
+          "hostAlive": true
+        }
+      },
+      {
+        "clientTick": 1394,
+        "host": {
+          "paused": false,
+          "screen": "pause",
+          "inputEnabled": false,
+          "holding": true,
+          "hasLivePeer": true,
+          "hostHealth": 110,
+          "hostAlive": true
+        }
+      },
+      {
+        "clientTick": 1424,
+        "host": {
+          "paused": false,
+          "screen": "pause",
+          "inputEnabled": false,
+          "holding": true,
+          "hasLivePeer": true,
+          "hostHealth": 110,
+          "hostAlive": true
+        }
+      },
+      {
+        "clientTick": 1450,
+        "host": {
+          "paused": false,
+          "screen": "pause",
+          "inputEnabled": false,
+          "holding": true,
+          "hasLivePeer": true,
+          "hostHealth": 110,
+          "hostAlive": true
+        }
+      },
+      {
+        "clientTick": 1482,
+        "host": {
+          "paused": false,
+          "screen": "pause",
+          "inputEnabled": false,
+          "holding": true,
+          "hasLivePeer": true,
+          "hostHealth": 110,
+          "hostAlive": true
+        }
+      }
+    ],
+    "after": [
+      {
+        "clientTick": 1548,
+        "host": {
+          "paused": false,
+          "inputEnabled": true,
+          "screen": null
+        }
+      },
+      {
+        "clientTick": 1578,
+        "host": {
+          "paused": false,
+          "inputEnabled": true,
+          "screen": null
+        }
+      },
+      {
+        "clientTick": 1609,
+        "host": {
+          "paused": false,
+          "inputEnabled": true,
+          "screen": null
+        }
+      }
+    ]
+  },
+  "P2": {
+    "atOpen": {
+      "paused": false,
+      "inputEnabled": false,
+      "holding": true
+    },
+    "samples": [
+      {
+        "msSincePeerDeath": 5,
+        "paused": false,
+        "inputEnabled": false,
+        "holding": true,
+        "hasLivePeer": false,
+        "screen": "pause"
+      },
+      {
+        "msSincePeerDeath": 212,
+        "paused": false,
+        "inputEnabled": false,
+        "holding": true,
+        "hasLivePeer": false,
+        "screen": "pause"
+      },
+      {
+        "msSincePeerDeath": 427,
+        "paused": false,
+        "inputEnabled": false,
+        "holding": true,
+        "hasLivePeer": false,
+        "screen": "pause"
+      },
+      {
+        "msSincePeerDeath": 635,
+        "paused": false,
+        "inputEnabled": false,
+        "holding": true,
+        "hasLivePeer": false,
+        "screen": "pause"
+      },
+      {
+        "msSincePeerDeath": 837,
+        "paused": false,
+        "inputEnabled": false,
+        "holding": true,
+        "hasLivePeer": false,
+        "screen": "pause"
+      },
+      {
+        "msSincePeerDeath": 1054,
+        "paused": false,
+        "inputEnabled": false,
+        "holding": true,
+        "hasLivePeer": false,
+        "screen": "pause"
+      },
+      {
+        "msSincePeerDeath": 1269,
+        "paused": false,
+        "inputEnabled": false,
+        "holding": true,
+        "hasLivePeer": false,
+        "screen": "pause"
+      },
+      {
+        "msSincePeerDeath": 1473,
+        "paused": false,
+        "inputEnabled": false,
+        "holding": true,
+        "hasLivePeer": false,
+        "screen": "pause"
+      },
+      {
+        "msSincePeerDeath": 1681,
+        "paused": true,
+        "inputEnabled": true,
+        "holding": false,
+        "hasLivePeer": false,
+        "screen": "pause"
+      }
+    ],
+    "mutedWindowMs": 1681,
+    "clientAfter": {
+      "alive": false,
+      "health": 0,
+      "screen": "death",
+      "ended": true
+    }
+  },
+  "errors": {
+    "host": [
+      "Invalid typed array length: 200"
+    ],
+    "client": [],
+    "hostConsole": [],
+    "clientConsole": []
+  },
+  "ok": true
+}

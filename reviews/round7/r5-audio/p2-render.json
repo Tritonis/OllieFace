@@ -1,0 +1,466 @@
+{
+  "result": {
+    "notes": [],
+    "layerIsolated": {
+      "kick": {
+        "rms_dB": -22.97,
+        "peak_dB": -4.53,
+        "peak_lin": 0.59359,
+        "dc_mean": -0.000386,
+        "worst20msDC": -0.0373,
+        "maxSlew": 0.1855,
+        "maxSlew_at_s": 5.53,
+        "clipped": 0,
+        "win50_min_dB": -240,
+        "win50_count": 140,
+        "finalI": 0.958,
+        "layerTarget": 0.5,
+        "maxGain": 0.5
+      },
+      "clap": {
+        "rms_dB": -32.38,
+        "peak_dB": -3.74,
+        "peak_lin": 0.64985,
+        "dc_mean": 0.00000303,
+        "worst20msDC": 0.00178,
+        "maxSlew": 0.306,
+        "maxSlew_at_s": 5.559,
+        "clipped": 0,
+        "win50_min_dB": -240,
+        "win50_count": 140,
+        "finalI": 0.958,
+        "layerTarget": 2.2,
+        "maxGain": 2.2
+      },
+      "bass": {
+        "rms_dB": -28.98,
+        "peak_dB": -9.29,
+        "peak_lin": 0.34323,
+        "dc_mean": -0.00196,
+        "worst20msDC": -0.11,
+        "maxSlew": 0.165,
+        "maxSlew_at_s": 6.173,
+        "clipped": 0,
+        "win50_min_dB": -240,
+        "win50_count": 140,
+        "finalI": 0.958,
+        "layerTarget": 0.52,
+        "maxGain": 0.52
+      },
+      "lead": {
+        "rms_dB": -35.53,
+        "peak_dB": -6.89,
+        "peak_lin": 0.45262,
+        "dc_mean": 0.00000184,
+        "worst20msDC": 0.00479,
+        "maxSlew": 0.3178,
+        "maxSlew_at_s": 1.71,
+        "clipped": 0,
+        "win50_min_dB": -240,
+        "win50_count": 140,
+        "finalI": 0.958,
+        "layerTarget": 1.731,
+        "maxGain": 2.12
+      },
+      "openhat": {
+        "rms_dB": -33.2,
+        "peak_dB": -7.81,
+        "peak_lin": 0.40705,
+        "dc_mean": -2.23e-7,
+        "worst20msDC": -0.000437,
+        "maxSlew": 0.5728,
+        "maxSlew_at_s": 3.193,
+        "clipped": 0,
+        "win50_min_dB": -240,
+        "win50_count": 140,
+        "finalI": 0.958,
+        "layerTarget": 0.95,
+        "maxGain": 0.95
+      },
+      "hat": {
+        "rms_dB": -35.22,
+        "peak_dB": -5.48,
+        "peak_lin": 0.53214,
+        "dc_mean": -8.22e-7,
+        "worst20msDC": 0.000109,
+        "maxSlew": 0.8972,
+        "maxSlew_at_s": 1.913,
+        "clipped": 0,
+        "win50_min_dB": -240,
+        "win50_count": 140,
+        "finalI": 0.958,
+        "layerTarget": 0.82,
+        "maxGain": 0.82
+      },
+      "acid": {
+        "rms_dB": -34.78,
+        "peak_dB": -10.25,
+        "peak_lin": 0.30716,
+        "dc_mean": 0.00000215,
+        "worst20msDC": 0.00312,
+        "maxSlew": 0.1645,
+        "maxSlew_at_s": 4.683,
+        "clipped": 0,
+        "win50_min_dB": -240,
+        "win50_count": 140,
+        "finalI": 0.958,
+        "layerTarget": 0.49,
+        "maxGain": 0.49
+      },
+      "perc": {
+        "rms_dB": -38.93,
+        "peak_dB": -7.46,
+        "peak_lin": 0.42375,
+        "dc_mean": 0.00000308,
+        "worst20msDC": 0.000917,
+        "maxSlew": 0.3704,
+        "maxSlew_at_s": 1.595,
+        "clipped": 0,
+        "win50_min_dB": -240,
+        "win50_count": 140,
+        "finalI": 0.958,
+        "layerTarget": 1.98,
+        "maxGain": 1.98
+      },
+      "sub": {
+        "rms_dB": -37.19,
+        "peak_dB": -9.4,
+        "peak_lin": 0.33901,
+        "dc_mean": -0.000164,
+        "worst20msDC": -0.0513,
+        "maxSlew": 0.0145,
+        "maxSlew_at_s": 6.597,
+        "clipped": 0,
+        "win50_min_dB": -240,
+        "win50_count": 140,
+        "finalI": 0.958,
+        "layerTarget": 0.89,
+        "maxGain": 0.89
+      },
+      "pad": {
+        "rms_dB": -39.17,
+        "peak_dB": -26.88,
+        "peak_lin": 0.04531,
+        "dc_mean": 2.56e-8,
+        "worst20msDC": -0.00157,
+        "maxSlew": 0.0347,
+        "maxSlew_at_s": 0.48,
+        "clipped": 0,
+        "win50_min_dB": -87.5,
+        "win50_count": 140,
+        "finalI": 0.958,
+        "layerTarget": 0.19,
+        "maxGain": 0.19
+      }
+    },
+    "layerBalance": {
+      "relKick": {},
+      "spanRMS": 16.2,
+      "spanPeak": 23.14,
+      "rows": [
+        {
+          "layer": "clap",
+          "rms_dB": -32.38,
+          "relKickRMS": -9.41,
+          "peak_dB": -3.74,
+          "relKickPeak": 0.79,
+          "target": 2.2
+        },
+        {
+          "layer": "kick",
+          "rms_dB": -22.97,
+          "relKickRMS": 0,
+          "peak_dB": -4.53,
+          "relKickPeak": 0,
+          "target": 0.5
+        },
+        {
+          "layer": "hat",
+          "rms_dB": -35.22,
+          "relKickRMS": -12.25,
+          "peak_dB": -5.48,
+          "relKickPeak": -0.95,
+          "target": 0.82
+        },
+        {
+          "layer": "lead",
+          "rms_dB": -35.53,
+          "relKickRMS": -12.56,
+          "peak_dB": -6.89,
+          "relKickPeak": -2.36,
+          "target": 1.731
+        },
+        {
+          "layer": "perc",
+          "rms_dB": -38.93,
+          "relKickRMS": -15.96,
+          "peak_dB": -7.46,
+          "relKickPeak": -2.93,
+          "target": 1.98
+        },
+        {
+          "layer": "openhat",
+          "rms_dB": -33.2,
+          "relKickRMS": -10.23,
+          "peak_dB": -7.81,
+          "relKickPeak": -3.28,
+          "target": 0.95
+        },
+        {
+          "layer": "bass",
+          "rms_dB": -28.98,
+          "relKickRMS": -6.01,
+          "peak_dB": -9.29,
+          "relKickPeak": -4.76,
+          "target": 0.52
+        },
+        {
+          "layer": "sub",
+          "rms_dB": -37.19,
+          "relKickRMS": -14.22,
+          "peak_dB": -9.4,
+          "relKickPeak": -4.87,
+          "target": 0.89
+        },
+        {
+          "layer": "acid",
+          "rms_dB": -34.78,
+          "relKickRMS": -11.81,
+          "peak_dB": -10.25,
+          "relKickPeak": -5.72,
+          "target": 0.49
+        },
+        {
+          "layer": "pad",
+          "rms_dB": -39.17,
+          "relKickRMS": -16.2,
+          "peak_dB": -26.88,
+          "relKickPeak": -22.35,
+          "target": 0.19
+        }
+      ],
+      "clapOverKick_peak_dB": 0.79
+    },
+    "mixes": {
+      "opening_I0.10": {
+        "rms_dB": -38.23,
+        "peak_dB": -18.46,
+        "peak_lin": 0.11946,
+        "dc_mean": 0.0000193,
+        "worst20msDC": 0.0244,
+        "maxSlew": 0.0091,
+        "maxSlew_at_s": 2.936,
+        "clipped": 0,
+        "win50_min_dB": -73.7,
+        "win50_count": 140,
+        "I": 0,
+        "bpm": 118
+      },
+      "lateEmpty_I0.65": {
+        "rms_dB": -21.97,
+        "peak_dB": -3.85,
+        "peak_lin": 0.64179,
+        "dc_mean": -0.00204,
+        "worst20msDC": -0.105,
+        "maxSlew": 0.6903,
+        "maxSlew_at_s": 2.359,
+        "clipped": 0,
+        "win50_min_dB": -45.2,
+        "win50_count": 140,
+        "I": 0.65,
+        "bpm": 133.6
+      },
+      "lateFull_I0.958": {
+        "rms_dB": -21.62,
+        "peak_dB": -3.08,
+        "peak_lin": 0.70124,
+        "dc_mean": -0.00196,
+        "worst20msDC": -0.109,
+        "maxSlew": 0.7397,
+        "maxSlew_at_s": 0.636,
+        "clipped": 0,
+        "win50_min_dB": -80.7,
+        "win50_count": 140,
+        "I": 0.958,
+        "bpm": 141
+      },
+      "earlyFull_I0.88": {
+        "rms_dB": -21.35,
+        "peak_dB": -3.62,
+        "peak_lin": 0.65924,
+        "dc_mean": -0.00105,
+        "worst20msDC": 0.0613,
+        "maxSlew": 0.8072,
+        "maxSlew_at_s": 4.26,
+        "clipped": 0,
+        "win50_min_dB": -51.7,
+        "win50_count": 140,
+        "I": 0.88,
+        "bpm": 139.1
+      }
+    },
+    "ramp": {
+      "commits": 33,
+      "top12": [
+        {
+          "d": 1.0554,
+          "t": 58.7398,
+          "nearCommit": false
+        },
+        {
+          "d": 0.8498,
+          "t": 50.3299,
+          "nearCommit": false
+        },
+        {
+          "d": 0.8305,
+          "t": 46.7447,
+          "nearCommit": false
+        },
+        {
+          "d": 0.8263,
+          "t": 40.8589,
+          "nearCommit": false
+        },
+        {
+          "d": 0.8097,
+          "t": 37.6595,
+          "nearCommit": false
+        },
+        {
+          "d": 0.7935,
+          "t": 57.8619,
+          "nearCommit": false
+        },
+        {
+          "d": 0.7874,
+          "t": 40.8593,
+          "nearCommit": false
+        },
+        {
+          "d": 0.7872,
+          "t": 50.3294,
+          "nearCommit": false
+        },
+        {
+          "d": 0.7835,
+          "t": 50.7758,
+          "nearCommit": false
+        },
+        {
+          "d": 0.7755,
+          "t": 46.7434,
+          "nearCommit": false
+        },
+        {
+          "d": 0.7727,
+          "t": 57.8613,
+          "nearCommit": false
+        },
+        {
+          "d": 0.7692,
+          "t": 36.2813,
+          "nearCommit": false
+        }
+      ],
+      "of200LargestNearCommit": 0,
+      "rms_dB": -22.71,
+      "peak_dB": -2.4,
+      "peak_lin": 0.75841,
+      "dc_mean": -0.0012,
+      "worst20msDC": -0.124,
+      "maxSlew": 1.0554,
+      "maxSlew_at_s": 58.74,
+      "clipped": 0,
+      "win50_min_dB": -240,
+      "win50_count": 1400
+    },
+    "revival": {
+      "stopAt": 10,
+      "resetAt": 16,
+      "beforeStop": {
+        "rms_dB": -22.02,
+        "peak_dB": -4.1,
+        "peak_lin": 0.62341,
+        "dc_mean": -0.00128,
+        "worst20msDC": -0.0443,
+        "maxSlew": 0.5954,
+        "maxSlew_at_s": 1.869,
+        "clipped": 0,
+        "win50_min_dB": -40.3,
+        "win50_count": 40
+      },
+      "afterStop": {
+        "rms_dB": -240,
+        "peak_dB": -240,
+        "peak_lin": 0,
+        "dc_mean": 0,
+        "worst20msDC": 0,
+        "maxSlew": 0,
+        "maxSlew_at_s": 0,
+        "clipped": 0,
+        "win50_min_dB": -240,
+        "win50_count": 60
+      },
+      "justAfterReset_0to3s": {
+        "rms_dB": -31.24,
+        "peak_dB": -11.37,
+        "peak_lin": 0.27005,
+        "dc_mean": -0.0000111,
+        "worst20msDC": -0.0477,
+        "maxSlew": 0.0198,
+        "maxSlew_at_s": 2.856,
+        "clipped": 0,
+        "win50_min_dB": -240,
+        "win50_count": 60
+      },
+      "settled_3to9s": {
+        "rms_dB": -28.93,
+        "peak_dB": -7.69,
+        "peak_lin": 0.41248,
+        "dc_mean": 0.000153,
+        "worst20msDC": 0.0565,
+        "maxSlew": 0.1055,
+        "maxSlew_at_s": 3.22,
+        "clipped": 0,
+        "win50_min_dB": -65,
+        "win50_count": 120
+      },
+      "maxSlewNearReset": 0.0004,
+      "maxSlewNearReset_at_s": 16.57,
+      "stepsEmitted": 174
+    },
+    "phase": {
+      "mix_rms_dB": -21.28,
+      "sumOfParts_rms_dB": -11.58,
+      "delta_dB": -9.7,
+      "residual_rms_dB": -12.8,
+      "note": "a large negative delta_dB would be destructive cancellation between layers"
+    },
+    "nearNyquist": {
+      "above18k_rel_dB": -19.7
+    },
+    "gateConfig": {
+      "musicBusPeak_inGateWindow": 0.05249,
+      "marginOverFloor_dB": 34.4,
+      "per250ms": [
+        0,
+        0,
+        0,
+        0.00177,
+        0.00158,
+        0.00254,
+        0.00347,
+        0.05249,
+        0.02608,
+        0.00461
+      ],
+      "firstQuarterSecondPeak": 0,
+      "note": "PEAK_FLOOR in tools/capture.mjs is 1e-3"
+    }
+  },
+  "logs": [
+    "debug: [vite] connecting...",
+    "debug: [vite] connected."
+  ]
+}

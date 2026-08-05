@@ -1,0 +1,370 @@
+{
+  "voiceCap": {
+    "rows": [
+      {
+        "call": "teleporterStart",
+        "voices": 11,
+        "worldVoices": 11,
+        "priorityVoices": 0
+      },
+      {
+        "call": "levelUp",
+        "voices": 23,
+        "worldVoices": 11,
+        "priorityVoices": 12
+      },
+      {
+        "call": "stageSting",
+        "voices": 28,
+        "worldVoices": 16,
+        "priorityVoices": 12
+      },
+      {
+        "call": "pickup(2)",
+        "voices": 39,
+        "worldVoices": 16,
+        "priorityVoices": 23
+      },
+      {
+        "call": "chest",
+        "voices": 48,
+        "worldVoices": 25,
+        "priorityVoices": 23
+      },
+      {
+        "call": "shrineWin",
+        "voices": 58,
+        "worldVoices": 35,
+        "priorityVoices": 23
+      }
+    ],
+    "shootAllowed": true,
+    "hurtAllowed": true
+  },
+  "hurtAtSaturation": {
+    "voices": 43,
+    "worldVoices": 43,
+    "priorityVoices": 0,
+    "worldTakeRefused": true,
+    "musicBefore": 0.48,
+    "voicesSpentByHurt": 3,
+    "prioritySpentByHurt": 3,
+    "liveNodesAtHurt": 43,
+    "musicAfter60ms": 0.16955,
+    "musicAfter1s": 0.48
+  },
+  "sweep": [
+    {
+      "budget": 30,
+      "seconds": 25,
+      "takes": 0,
+      "refusals": 0,
+      "refusalPct": 0,
+      "refusalsPerSec": 0,
+      "enemiesMean": 0,
+      "enemiesMax": 0,
+      "worldPeak": 0,
+      "priorityPeak": 0,
+      "masterWorst": -0.003,
+      "masterMean": 0,
+      "sfxWorst": -0.235,
+      "sfxMean": -0.004,
+      "engineStoppedSamples": 0,
+      "playerDeadSamples": 0,
+      "samples": 355
+    },
+    {
+      "budget": 44,
+      "seconds": 25,
+      "takes": 0,
+      "refusals": 0,
+      "refusalPct": 0,
+      "refusalsPerSec": 0,
+      "enemiesMean": 0,
+      "enemiesMax": 0,
+      "worldPeak": 0,
+      "priorityPeak": 0,
+      "masterWorst": 0,
+      "masterMean": 0,
+      "sfxWorst": 0,
+      "sfxMean": 0,
+      "engineStoppedSamples": 0,
+      "playerDeadSamples": 0,
+      "samples": 298
+    },
+    {
+      "budget": 60,
+      "seconds": 27.9,
+      "takes": 0,
+      "refusals": 0,
+      "refusalPct": 0,
+      "refusalsPerSec": 0,
+      "enemiesMean": 0,
+      "enemiesMax": 0,
+      "worldPeak": 0,
+      "priorityPeak": 0,
+      "masterWorst": 0,
+      "masterMean": 0,
+      "sfxWorst": 0,
+      "sfxMean": 0,
+      "engineStoppedSamples": 0,
+      "playerDeadSamples": 0,
+      "samples": 338
+    },
+    {
+      "budget": 88,
+      "seconds": 25.3,
+      "takes": 0,
+      "refusals": 0,
+      "refusalPct": 0,
+      "refusalsPerSec": 0,
+      "enemiesMean": 0,
+      "enemiesMax": 0,
+      "worldPeak": 0,
+      "priorityPeak": 0,
+      "masterWorst": 0,
+      "masterMean": 0,
+      "sfxWorst": 0,
+      "sfxMean": 0,
+      "engineStoppedSamples": 0,
+      "playerDeadSamples": 0,
+      "samples": 274
+    }
+  ],
+  "latches": [
+    {
+      "step": "baseline",
+      "stopped": false,
+      "steps": 227,
+      "runT": 0,
+      "musicGain": 0.48,
+      "musicOff": false,
+      "drone": 0.1401,
+      "playerAlive": true,
+      "authority": true
+    },
+    {
+      "step": "stageStart{2}",
+      "stopped": false,
+      "steps": 231,
+      "runT": 0,
+      "musicGain": 0.48,
+      "musicOff": false,
+      "drone": 0.1401,
+      "playerAlive": true,
+      "authority": true
+    },
+    {
+      "step": "playerDead (local alive)",
+      "stopped": false,
+      "steps": 235,
+      "runT": 0,
+      "musicGain": 0.48,
+      "musicOff": false,
+      "drone": 0.1401,
+      "playerAlive": true,
+      "authority": true
+    },
+    {
+      "step": "playerDead (local dead)",
+      "stopped": true,
+      "steps": 235,
+      "runT": 0,
+      "musicGain": 0.06636,
+      "musicOff": true,
+      "drone": 0.0895,
+      "playerAlive": false,
+      "authority": true
+    },
+    {
+      "step": "stageStart{0} = new run",
+      "stopped": false,
+      "steps": 235,
+      "runT": 0,
+      "musicGain": 0.45705,
+      "musicOff": false,
+      "drone": 0.0682,
+      "playerAlive": true,
+      "authority": true
+    },
+    {
+      "step": "+3 s",
+      "stopped": false,
+      "steps": 241,
+      "runT": 0,
+      "musicGain": 0.48,
+      "musicOff": false,
+      "drone": 0.1258,
+      "playerAlive": true,
+      "authority": true
+    }
+  ],
+  "clientDeath": {
+    "before": {
+      "alive": true,
+      "stopped": false,
+      "musicOff": false,
+      "musicGain": 0.48,
+      "steps": 244
+    },
+    "damage": {
+      "dealt": 0,
+      "healthBefore": 110,
+      "healthAfter": 110,
+      "alive": true
+    },
+    "after": {
+      "alive": true,
+      "stopped": false,
+      "musicOff": false,
+      "musicGain": 0.48,
+      "steps": 246,
+      "screen": "death"
+    },
+    "deathCueFired": false
+  },
+  "lateArc": [
+    {
+      "diff": 1,
+      "empty": {
+        "I": 0,
+        "bpm": 118,
+        "pressure": 0
+      },
+      "full": {
+        "I": 0,
+        "bpm": 118,
+        "pressure": 0,
+        "enemies": 0
+      },
+      "cooled": {
+        "I": 0,
+        "bpm": 118
+      },
+      "span": 0,
+      "coolDrop": 0
+    },
+    {
+      "diff": 2,
+      "empty": {
+        "I": 0.26,
+        "bpm": 124.2,
+        "pressure": 0
+      },
+      "full": {
+        "I": 0.26,
+        "bpm": 124.2,
+        "pressure": 0,
+        "enemies": 0
+      },
+      "cooled": {
+        "I": 0.26,
+        "bpm": 124.2
+      },
+      "span": 0,
+      "coolDrop": 0
+    },
+    {
+      "diff": 3.5,
+      "empty": {
+        "I": 0.65,
+        "bpm": 133.6,
+        "pressure": 0
+      },
+      "full": {
+        "I": 0.65,
+        "bpm": 133.6,
+        "pressure": 0,
+        "enemies": 0
+      },
+      "cooled": {
+        "I": 0.65,
+        "bpm": 133.6
+      },
+      "span": 0,
+      "coolDrop": 0
+    },
+    {
+      "diff": 6,
+      "empty": {
+        "I": 0.65,
+        "bpm": 133.6,
+        "pressure": 0
+      },
+      "full": {
+        "I": 0.65,
+        "bpm": 133.6,
+        "pressure": 0,
+        "enemies": 0
+      },
+      "cooled": {
+        "I": 0.65,
+        "bpm": 133.6
+      },
+      "span": 0,
+      "coolDrop": 0
+    }
+  ],
+  "itemCues": [
+    {
+      "label": "give common",
+      "cues": [
+        "pickup(0)"
+      ]
+    },
+    {
+      "label": "take common",
+      "cues": [
+        "deny()"
+      ]
+    },
+    {
+      "label": "give two different commons in one frame",
+      "cues": [
+        "pickup(0)"
+      ]
+    }
+  ],
+  "controls": {
+    "music06": {
+      "music": 0.48,
+      "master": 0.8,
+      "sfx": 0.81,
+      "silent": false
+    },
+    "music0": {
+      "music": 0.0002,
+      "master": 0.8,
+      "sfx": 0.81,
+      "silent": true
+    },
+    "musicBack": {
+      "music": 0.4792,
+      "master": 0.8,
+      "sfx": 0.81,
+      "silent": false
+    },
+    "muted": {
+      "music": 0.48,
+      "master": 0,
+      "sfx": 0.81,
+      "silent": true
+    },
+    "unmuted": {
+      "music": 0.48,
+      "master": 0.8,
+      "sfx": 0.81,
+      "silent": false
+    }
+  },
+  "nonFinite": [],
+  "finalState": {
+    "voices": 0,
+    "worldVoices": 0,
+    "priorityVoices": 0,
+    "stopped": false,
+    "steps": 461,
+    "acState": "running"
+  },
+  "consoleErrors": []
+}

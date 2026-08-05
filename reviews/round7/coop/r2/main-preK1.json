@@ -1,0 +1,519 @@
+{
+  "arm": "preK1",
+  "scenario": "main",
+  "substitutions": [
+    "K1:src/net/NetClient.js"
+  ],
+  "steps": [
+    "host booted",
+    "client booted",
+    "HOST pageerror: The root document of this element is not valid for pointer lock.",
+    "HOST runningGate {\"paused\":false,\"screen\":null,\"localTick\":61}",
+    "CLIENT runningGate {\"paused\":false,\"screen\":null,\"localTick\":61}",
+    "roles {\"host\":{\"authority\":true,\"role\":\"host\",\"playerCount\":2,\"clients\":1},\"client\":{\"authority\":false,\"role\":\"client\",\"myNetId\":1,\"connected\":true}}",
+    "K3 host {\"deathCalls\":4,\"deathThrows\":0,\"downstreamKill\":4,\"killPayloads\":[{\"posType\":\"object\",\"posXFinite\":true,\"sourceIsPlayer\":true},{\"posType\":\"object\",\"posXFinite\":true,\"sourceIsPlayer\":true},{\"posType\":\"object\",\"posXFinite\":true,\"sourceIsPlayer\":true},{\"posType\":\"object\",\"posXFinite\":true,\"sourceIsPlayer\":true}],\"playerDeadPayloads\":[],\"playerHurt\":0} client {\"deathCalls\":4,\"deathThrows\":0,\"downstreamKill\":4,\"killPayloads\":[{\"posType\":\"object\",\"posXFinite\":true,\"sourceIsPlayer\":true},{\"posType\":\"object\",\"posXFinite\":true,\"sourceIsPlayer\":true},{\"posType\":\"object\",\"posXFinite\":true,\"sourceIsPlayer\":true},{\"posType\":\"object\",\"posXFinite\":true,\"sourceIsPlayer\":true}],\"playerDeadPayloads\":[],\"playerHurt\":0}",
+    "K1 series [{\"hostPawn\":103,\"clientOwn\":112.56},{\"hostPawn\":103,\"clientOwn\":112.88},{\"hostPawn\":103,\"clientOwn\":113.18},{\"hostPawn\":103,\"clientOwn\":113.5},{\"hostPawn\":103.16,\"clientOwn\":113.82},{\"hostPawn\":103.48,\"clientOwn\":114.14},{\"hostPawn\":103.8,\"clientOwn\":114.46},{\"hostPawn\":104.12,\"clientOwn\":114.78}]",
+    "K2/K1 host {\"alive\":true,\"health\":143,\"maxHealth\":143,\"shield\":0,\"screen\":null,\"paused\":false,\"progEnded\":null,\"progKills\":4,\"progDamageTaken\":0,\"profRunDied\":false,\"profRunDamageTaken\":0,\"profStageDamage\":0,\"profFlawless\":0,\"hudKills\":5,\"directorEnabled\":true,\"probe\":{\"deathCalls\":5,\"deathThrows\":0,\"downstreamKill\":5,\"killPayloads\":[{\"posType\":\"object\",\"posXFinite\":true,\"sourceIsPlayer\":true},{\"posType\":\"object\",\"posXFinite\":true,\"sourceIsPlayer\":true},{\"posType\":\"object\",\"posXFinite\":true,\"sourceIsPlayer\":true},{\"posType\":\"object\",\"posXFinite\":true,\"sourceIsPlayer\":true}],\"playerDeadPayloads\":[{\"victimIsSelf\":false,\"victimNetId\":1}],\"playerHurt\":0}} client {\"alive\":true,\"health\":114.8,\"maxHealth\":143,\"shield\":0,\"screen\":\"death\",\"paused\":true,\"progEnded\":true,\"progKills\":4,\"progDamageTaken\":1000040,\"profRunDied\":null,\"profRunDamageTaken\":-1,\"profStageDamage\":-1,\"profFlawless\":null,\"hudKills\":5,\"directorEnabled\":false,\"probe\":{\"deathCalls\":5,\"deathThrows\":0,\"downstreamKill\":5,\"killPayloads\":[{\"posType\":\"object\",\"posXFinite\":true,\"sourceIsPlayer\":true},{\"posType\":\"object\",\"posXFinite\":true,\"sourceIsPlayer\":true},{\"posType\":\"object\",\"posXFinite\":true,\"sourceIsPlayer\":true},{\"posType\":\"object\",\"posXFinite\":true,\"sourceIsPlayer\":true}],\"playerDeadPayloads\":[{\"victimIsSelf\":true,\"victimNetId\":1}],\"playerHurt\":2}}"
+  ],
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 61
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 61
+    }
+  },
+  "connected": true,
+  "roles": {
+    "host": {
+      "authority": true,
+      "role": "host",
+      "playerCount": 2,
+      "clients": 1
+    },
+    "client": {
+      "authority": false,
+      "role": "client",
+      "myNetId": 1,
+      "connected": true
+    }
+  },
+  "runningGateAfterJoin": {
+    "host": {
+      "paused": false,
+      "localTick": 408
+    },
+    "client": {
+      "paused": false,
+      "localTick": 0
+    }
+  },
+  "before": {
+    "host": {
+      "alive": true,
+      "health": 110,
+      "maxHealth": 110,
+      "shield": 0,
+      "screen": null,
+      "paused": false,
+      "progEnded": null,
+      "progKills": 0,
+      "progDamageTaken": 0,
+      "profRunDied": false,
+      "profRunDamageTaken": 0,
+      "profStageDamage": 0,
+      "profFlawless": 0,
+      "hudKills": 0,
+      "directorEnabled": true,
+      "probe": {
+        "deathCalls": 0,
+        "deathThrows": 0,
+        "downstreamKill": 0,
+        "killPayloads": [],
+        "playerDeadPayloads": [],
+        "playerHurt": 0
+      }
+    },
+    "client": {
+      "alive": true,
+      "health": 110,
+      "maxHealth": 110,
+      "shield": 0,
+      "screen": null,
+      "paused": false,
+      "progEnded": null,
+      "progKills": 0,
+      "progDamageTaken": 0,
+      "profRunDied": false,
+      "profRunDamageTaken": 0,
+      "profStageDamage": 0,
+      "profFlawless": 0,
+      "hudKills": 0,
+      "directorEnabled": true,
+      "probe": {
+        "deathCalls": 0,
+        "deathThrows": 0,
+        "downstreamKill": 0,
+        "killPayloads": [],
+        "playerDeadPayloads": [],
+        "playerHurt": 0
+      }
+    }
+  },
+  "forcedKills": {
+    "killed": 4
+  },
+  "afterKills": {
+    "host": {
+      "alive": true,
+      "health": 143,
+      "maxHealth": 143,
+      "shield": 0,
+      "screen": null,
+      "paused": false,
+      "progEnded": null,
+      "progKills": 4,
+      "progDamageTaken": 0,
+      "profRunDied": false,
+      "profRunDamageTaken": 0,
+      "profStageDamage": 0,
+      "profFlawless": 0,
+      "hudKills": 4,
+      "directorEnabled": true,
+      "probe": {
+        "deathCalls": 4,
+        "deathThrows": 0,
+        "downstreamKill": 4,
+        "killPayloads": [
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "sourceIsPlayer": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "sourceIsPlayer": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "sourceIsPlayer": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "sourceIsPlayer": true
+          }
+        ],
+        "playerDeadPayloads": [],
+        "playerHurt": 0
+      }
+    },
+    "client": {
+      "alive": true,
+      "health": 112.32,
+      "maxHealth": 143,
+      "shield": 0,
+      "screen": null,
+      "paused": false,
+      "progEnded": null,
+      "progKills": 4,
+      "progDamageTaken": 0,
+      "profRunDied": false,
+      "profRunDamageTaken": 0,
+      "profStageDamage": 0,
+      "profFlawless": 0,
+      "hudKills": 4,
+      "directorEnabled": true,
+      "probe": {
+        "deathCalls": 4,
+        "deathThrows": 0,
+        "downstreamKill": 4,
+        "killPayloads": [
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "sourceIsPlayer": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "sourceIsPlayer": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "sourceIsPlayer": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "sourceIsPlayer": true
+          }
+        ],
+        "playerDeadPayloads": [],
+        "playerHurt": 0
+      }
+    }
+  },
+  "hostDamagesPawn": {
+    "found": true,
+    "dealt": 40,
+    "healthBefore": 143,
+    "healthAfter": 103,
+    "aliveOnHost": true
+  },
+  "healthSeries": [
+    {
+      "hostPawn": 103,
+      "clientOwn": 112.56
+    },
+    {
+      "hostPawn": 103,
+      "clientOwn": 112.88
+    },
+    {
+      "hostPawn": 103,
+      "clientOwn": 113.18
+    },
+    {
+      "hostPawn": 103,
+      "clientOwn": 113.5
+    },
+    {
+      "hostPawn": 103.16,
+      "clientOwn": 113.82
+    },
+    {
+      "hostPawn": 103.48,
+      "clientOwn": 114.14
+    },
+    {
+      "hostPawn": 103.8,
+      "clientOwn": 114.46
+    },
+    {
+      "hostPawn": 104.12,
+      "clientOwn": 114.78
+    }
+  ],
+  "afterHit": {
+    "host": {
+      "alive": true,
+      "health": 143,
+      "maxHealth": 143,
+      "shield": 0,
+      "screen": null,
+      "paused": false,
+      "progEnded": null,
+      "progKills": 4,
+      "progDamageTaken": 0,
+      "profRunDied": false,
+      "profRunDamageTaken": 0,
+      "profStageDamage": 0,
+      "profFlawless": 0,
+      "hudKills": 4,
+      "directorEnabled": true,
+      "probe": {
+        "deathCalls": 4,
+        "deathThrows": 0,
+        "downstreamKill": 4,
+        "killPayloads": [
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "sourceIsPlayer": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "sourceIsPlayer": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "sourceIsPlayer": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "sourceIsPlayer": true
+          }
+        ],
+        "playerDeadPayloads": [],
+        "playerHurt": 0
+      }
+    },
+    "client": {
+      "alive": true,
+      "health": 114.78,
+      "maxHealth": 143,
+      "shield": 0,
+      "screen": null,
+      "paused": false,
+      "progEnded": null,
+      "progKills": 4,
+      "progDamageTaken": 40,
+      "profRunDied": false,
+      "profRunDamageTaken": 40,
+      "profStageDamage": 40,
+      "profFlawless": 0,
+      "hudKills": 4,
+      "directorEnabled": true,
+      "probe": {
+        "deathCalls": 4,
+        "deathThrows": 0,
+        "downstreamKill": 4,
+        "killPayloads": [
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "sourceIsPlayer": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "sourceIsPlayer": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "sourceIsPlayer": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "sourceIsPlayer": true
+          }
+        ],
+        "playerDeadPayloads": [],
+        "playerHurt": 1
+      }
+    }
+  },
+  "clientHurtTimer": 2.05,
+  "hostKillsPawn": {
+    "found": true,
+    "aliveOnHost": false,
+    "healthOnHost": 0
+  },
+  "afterPawnDeath": {
+    "host": {
+      "alive": true,
+      "health": 143,
+      "maxHealth": 143,
+      "shield": 0,
+      "screen": null,
+      "paused": false,
+      "progEnded": null,
+      "progKills": 4,
+      "progDamageTaken": 0,
+      "profRunDied": false,
+      "profRunDamageTaken": 0,
+      "profStageDamage": 0,
+      "profFlawless": 0,
+      "hudKills": 5,
+      "directorEnabled": true,
+      "probe": {
+        "deathCalls": 5,
+        "deathThrows": 0,
+        "downstreamKill": 5,
+        "killPayloads": [
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "sourceIsPlayer": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "sourceIsPlayer": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "sourceIsPlayer": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "sourceIsPlayer": true
+          }
+        ],
+        "playerDeadPayloads": [
+          {
+            "victimIsSelf": false,
+            "victimNetId": 1
+          }
+        ],
+        "playerHurt": 0
+      }
+    },
+    "client": {
+      "alive": true,
+      "health": 114.8,
+      "maxHealth": 143,
+      "shield": 0,
+      "screen": "death",
+      "paused": true,
+      "progEnded": true,
+      "progKills": 4,
+      "progDamageTaken": 1000040,
+      "profRunDied": null,
+      "profRunDamageTaken": -1,
+      "profStageDamage": -1,
+      "profFlawless": null,
+      "hudKills": 5,
+      "directorEnabled": false,
+      "probe": {
+        "deathCalls": 5,
+        "deathThrows": 0,
+        "downstreamKill": 5,
+        "killPayloads": [
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "sourceIsPlayer": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "sourceIsPlayer": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "sourceIsPlayer": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "sourceIsPlayer": true
+          }
+        ],
+        "playerDeadPayloads": [
+          {
+            "victimIsSelf": true,
+            "victimNetId": 1
+          }
+        ],
+        "playerHurt": 2
+      }
+    }
+  },
+  "clientAudioAfterOwnDeath": {
+    "stopped": true,
+    "musicOff": true,
+    "musicGain": 0.00119
+  },
+  "afterHostOwnDeath": {
+    "host": {
+      "alive": false,
+      "health": 0,
+      "maxHealth": 143,
+      "shield": 0,
+      "screen": "death",
+      "paused": true,
+      "progEnded": true,
+      "progKills": 4,
+      "progDamageTaken": 1000000,
+      "profRunDied": null,
+      "profRunDamageTaken": -1,
+      "profStageDamage": -1,
+      "profFlawless": null,
+      "hudKills": 6,
+      "directorEnabled": false,
+      "probe": {
+        "deathCalls": 6,
+        "deathThrows": 0,
+        "downstreamKill": 6,
+        "killPayloads": [
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "sourceIsPlayer": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "sourceIsPlayer": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "sourceIsPlayer": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "sourceIsPlayer": true
+          }
+        ],
+        "playerDeadPayloads": [
+          {
+            "victimIsSelf": false,
+            "victimNetId": 1
+          },
+          {
+            "victimIsSelf": true,
+            "victimNetId": 2
+          }
+        ],
+        "playerHurt": 1
+      }
+    }
+  },
+  "pageErrors": {
+    "host": 1,
+    "client": 0
+  },
+  "substitutionsApplied": [
+    "K1:src/net/NetClient.js"
+  ],
+  "substitutionsMissing": []
+}

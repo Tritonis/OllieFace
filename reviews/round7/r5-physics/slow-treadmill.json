@@ -1,0 +1,2061 @@
+{
+  "pageErrors": [],
+  "engineRunning": false,
+  "anchor": {
+    "x": 0,
+    "y": 3.382030487060547,
+    "z": 0
+  },
+  "ctxTime": 2.8999999999999946,
+  "frameErrors": 0,
+  "multiplier": {
+    "clean": 1,
+    "slow x1": 0.6,
+    "slow x2": 0.36,
+    "slow x3": 0.25,
+    "slow x4": 0.25,
+    "slow x8": 0.25,
+    "freeze": 0
+  },
+  "statusDef": {
+    "slowMagnitude": 0.4,
+    "note": "from src/systems/Combat.js STATUS_DEFS"
+  },
+  "submerged": {
+    "cleanA": {
+      "steps": 60,
+      "states": [
+        "submerged"
+      ],
+      "mult": 1,
+      "firstStepSpeed": 11.5,
+      "tailMeanSpeed": 11.5,
+      "tailMinSpeed": 11.5,
+      "tailMaxSpeed": 11.5,
+      "allMeanSpeed": 11.5,
+      "perStepDisp": 0.191666667,
+      "rows": [
+        {
+          "step": 0,
+          "disp": 0.19166666666666665,
+          "speed": 11.5,
+          "state": "submerged",
+          "mult": 1,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 1,
+          "disp": 0.19166666666666665,
+          "speed": 11.5,
+          "state": "submerged",
+          "mult": 1,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 2,
+          "disp": 0.19166666666666665,
+          "speed": 11.5,
+          "state": "submerged",
+          "mult": 1,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 3,
+          "disp": 0.19166666666666665,
+          "speed": 11.5,
+          "state": "submerged",
+          "mult": 1,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 4,
+          "disp": 0.19166666666666665,
+          "speed": 11.5,
+          "state": "submerged",
+          "mult": 1,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 5,
+          "disp": 0.19166666666666665,
+          "speed": 11.5,
+          "state": "submerged",
+          "mult": 1,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 54,
+          "disp": 0.19166666666666665,
+          "speed": 11.5,
+          "state": "submerged",
+          "mult": 1,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 55,
+          "disp": 0.19166666666666665,
+          "speed": 11.5,
+          "state": "submerged",
+          "mult": 1,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 56,
+          "disp": 0.19166666666666665,
+          "speed": 11.5,
+          "state": "submerged",
+          "mult": 1,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 57,
+          "disp": 0.19166666666666665,
+          "speed": 11.5,
+          "state": "submerged",
+          "mult": 1,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 58,
+          "disp": 0.19166666666666665,
+          "speed": 11.5,
+          "state": "submerged",
+          "mult": 1,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 59,
+          "disp": 0.19166666666666665,
+          "speed": 11.5,
+          "state": "submerged",
+          "mult": 1,
+          "vx": 0,
+          "vz": 0
+        }
+      ]
+    },
+    "cleanB": {
+      "steps": 60,
+      "states": [
+        "submerged"
+      ],
+      "mult": 1,
+      "firstStepSpeed": 11.5,
+      "tailMeanSpeed": 11.5,
+      "tailMinSpeed": 11.5,
+      "tailMaxSpeed": 11.5,
+      "allMeanSpeed": 11.5,
+      "perStepDisp": 0.191666667,
+      "rows": [
+        {
+          "step": 0,
+          "disp": 0.19166666666666665,
+          "speed": 11.5,
+          "state": "submerged",
+          "mult": 1,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 1,
+          "disp": 0.19166666666666665,
+          "speed": 11.5,
+          "state": "submerged",
+          "mult": 1,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 2,
+          "disp": 0.19166666666666665,
+          "speed": 11.5,
+          "state": "submerged",
+          "mult": 1,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 3,
+          "disp": 0.19166666666666665,
+          "speed": 11.5,
+          "state": "submerged",
+          "mult": 1,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 4,
+          "disp": 0.19166666666666665,
+          "speed": 11.5,
+          "state": "submerged",
+          "mult": 1,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 5,
+          "disp": 0.19166666666666665,
+          "speed": 11.5,
+          "state": "submerged",
+          "mult": 1,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 54,
+          "disp": 0.19166666666666665,
+          "speed": 11.5,
+          "state": "submerged",
+          "mult": 1,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 55,
+          "disp": 0.19166666666666665,
+          "speed": 11.5,
+          "state": "submerged",
+          "mult": 1,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 56,
+          "disp": 0.19166666666666665,
+          "speed": 11.5,
+          "state": "submerged",
+          "mult": 1,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 57,
+          "disp": 0.19166666666666665,
+          "speed": 11.5,
+          "state": "submerged",
+          "mult": 1,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 58,
+          "disp": 0.19166666666666665,
+          "speed": 11.5,
+          "state": "submerged",
+          "mult": 1,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 59,
+          "disp": 0.19166666666666665,
+          "speed": 11.5,
+          "state": "submerged",
+          "mult": 1,
+          "vx": 0,
+          "vz": 0
+        }
+      ]
+    },
+    "slow1": {
+      "steps": 60,
+      "states": [
+        "submerged"
+      ],
+      "mult": 0.6,
+      "firstStepSpeed": 6.9,
+      "tailMeanSpeed": 6.9,
+      "tailMinSpeed": 6.9,
+      "tailMaxSpeed": 6.9,
+      "allMeanSpeed": 6.9,
+      "perStepDisp": 0.115,
+      "rows": [
+        {
+          "step": 0,
+          "disp": 0.11499999999999999,
+          "speed": 6.8999999999999995,
+          "state": "submerged",
+          "mult": 0.6,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 1,
+          "disp": 0.11499999999999999,
+          "speed": 6.8999999999999995,
+          "state": "submerged",
+          "mult": 0.6,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 2,
+          "disp": 0.11499999999999999,
+          "speed": 6.8999999999999995,
+          "state": "submerged",
+          "mult": 0.6,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 3,
+          "disp": 0.11499999999999999,
+          "speed": 6.8999999999999995,
+          "state": "submerged",
+          "mult": 0.6,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 4,
+          "disp": 0.11499999999999999,
+          "speed": 6.8999999999999995,
+          "state": "submerged",
+          "mult": 0.6,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 5,
+          "disp": 0.11499999999999999,
+          "speed": 6.8999999999999995,
+          "state": "submerged",
+          "mult": 0.6,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 54,
+          "disp": 0.11499999999999999,
+          "speed": 6.8999999999999995,
+          "state": "submerged",
+          "mult": 0.6,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 55,
+          "disp": 0.11499999999999999,
+          "speed": 6.8999999999999995,
+          "state": "submerged",
+          "mult": 0.6,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 56,
+          "disp": 0.11499999999999999,
+          "speed": 6.8999999999999995,
+          "state": "submerged",
+          "mult": 0.6,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 57,
+          "disp": 0.11499999999999999,
+          "speed": 6.8999999999999995,
+          "state": "submerged",
+          "mult": 0.6,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 58,
+          "disp": 0.11499999999999999,
+          "speed": 6.8999999999999995,
+          "state": "submerged",
+          "mult": 0.6,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 59,
+          "disp": 0.11499999999999999,
+          "speed": 6.8999999999999995,
+          "state": "submerged",
+          "mult": 0.6,
+          "vx": 0,
+          "vz": 0
+        }
+      ]
+    },
+    "slow2": {
+      "steps": 60,
+      "states": [
+        "submerged"
+      ],
+      "mult": 0.36,
+      "firstStepSpeed": 4.14,
+      "tailMeanSpeed": 4.14,
+      "tailMinSpeed": 4.14,
+      "tailMaxSpeed": 4.14,
+      "allMeanSpeed": 4.14,
+      "perStepDisp": 0.069,
+      "rows": [
+        {
+          "step": 0,
+          "disp": 0.06899999999999999,
+          "speed": 4.14,
+          "state": "submerged",
+          "mult": 0.36,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 1,
+          "disp": 0.06899999999999999,
+          "speed": 4.14,
+          "state": "submerged",
+          "mult": 0.36,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 2,
+          "disp": 0.06899999999999999,
+          "speed": 4.14,
+          "state": "submerged",
+          "mult": 0.36,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 3,
+          "disp": 0.06899999999999999,
+          "speed": 4.14,
+          "state": "submerged",
+          "mult": 0.36,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 4,
+          "disp": 0.06899999999999999,
+          "speed": 4.14,
+          "state": "submerged",
+          "mult": 0.36,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 5,
+          "disp": 0.06899999999999999,
+          "speed": 4.14,
+          "state": "submerged",
+          "mult": 0.36,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 54,
+          "disp": 0.06899999999999999,
+          "speed": 4.14,
+          "state": "submerged",
+          "mult": 0.36,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 55,
+          "disp": 0.06899999999999999,
+          "speed": 4.14,
+          "state": "submerged",
+          "mult": 0.36,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 56,
+          "disp": 0.06899999999999999,
+          "speed": 4.14,
+          "state": "submerged",
+          "mult": 0.36,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 57,
+          "disp": 0.06899999999999999,
+          "speed": 4.14,
+          "state": "submerged",
+          "mult": 0.36,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 58,
+          "disp": 0.06899999999999999,
+          "speed": 4.14,
+          "state": "submerged",
+          "mult": 0.36,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 59,
+          "disp": 0.06899999999999999,
+          "speed": 4.14,
+          "state": "submerged",
+          "mult": 0.36,
+          "vx": 0,
+          "vz": 0
+        }
+      ]
+    },
+    "slow4": {
+      "steps": 60,
+      "states": [
+        "submerged"
+      ],
+      "mult": 0.25,
+      "firstStepSpeed": 2.875,
+      "tailMeanSpeed": 2.875,
+      "tailMinSpeed": 2.875,
+      "tailMaxSpeed": 2.875,
+      "allMeanSpeed": 2.875,
+      "perStepDisp": 0.047916667,
+      "rows": [
+        {
+          "step": 0,
+          "disp": 0.04791666666666666,
+          "speed": 2.875,
+          "state": "submerged",
+          "mult": 0.25,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 1,
+          "disp": 0.04791666666666666,
+          "speed": 2.875,
+          "state": "submerged",
+          "mult": 0.25,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 2,
+          "disp": 0.04791666666666666,
+          "speed": 2.875,
+          "state": "submerged",
+          "mult": 0.25,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 3,
+          "disp": 0.04791666666666666,
+          "speed": 2.875,
+          "state": "submerged",
+          "mult": 0.25,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 4,
+          "disp": 0.04791666666666666,
+          "speed": 2.875,
+          "state": "submerged",
+          "mult": 0.25,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 5,
+          "disp": 0.04791666666666666,
+          "speed": 2.875,
+          "state": "submerged",
+          "mult": 0.25,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 54,
+          "disp": 0.04791666666666666,
+          "speed": 2.875,
+          "state": "submerged",
+          "mult": 0.25,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 55,
+          "disp": 0.04791666666666666,
+          "speed": 2.875,
+          "state": "submerged",
+          "mult": 0.25,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 56,
+          "disp": 0.04791666666666666,
+          "speed": 2.875,
+          "state": "submerged",
+          "mult": 0.25,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 57,
+          "disp": 0.04791666666666666,
+          "speed": 2.875,
+          "state": "submerged",
+          "mult": 0.25,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 58,
+          "disp": 0.04791666666666666,
+          "speed": 2.875,
+          "state": "submerged",
+          "mult": 0.25,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 59,
+          "disp": 0.04791666666666666,
+          "speed": 2.875,
+          "state": "submerged",
+          "mult": 0.25,
+          "vx": 0,
+          "vz": 0
+        }
+      ]
+    },
+    "freeze": {
+      "steps": 60,
+      "states": [
+        "submerged"
+      ],
+      "mult": 0,
+      "firstStepSpeed": 0,
+      "tailMeanSpeed": 0,
+      "tailMinSpeed": 0,
+      "tailMaxSpeed": 0,
+      "allMeanSpeed": 0,
+      "perStepDisp": 0,
+      "rows": [
+        {
+          "step": 0,
+          "disp": 0,
+          "speed": 0,
+          "state": "submerged",
+          "mult": 0,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 1,
+          "disp": 0,
+          "speed": 0,
+          "state": "submerged",
+          "mult": 0,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 2,
+          "disp": 0,
+          "speed": 0,
+          "state": "submerged",
+          "mult": 0,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 3,
+          "disp": 0,
+          "speed": 0,
+          "state": "submerged",
+          "mult": 0,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 4,
+          "disp": 0,
+          "speed": 0,
+          "state": "submerged",
+          "mult": 0,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 5,
+          "disp": 0,
+          "speed": 0,
+          "state": "submerged",
+          "mult": 0,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 54,
+          "disp": 0,
+          "speed": 0,
+          "state": "submerged",
+          "mult": 0,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 55,
+          "disp": 0,
+          "speed": 0,
+          "state": "submerged",
+          "mult": 0,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 56,
+          "disp": 0,
+          "speed": 0,
+          "state": "submerged",
+          "mult": 0,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 57,
+          "disp": 0,
+          "speed": 0,
+          "state": "submerged",
+          "mult": 0,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 58,
+          "disp": 0,
+          "speed": 0,
+          "state": "submerged",
+          "mult": 0,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 59,
+          "disp": 0,
+          "speed": 0,
+          "state": "submerged",
+          "mult": 0,
+          "vx": 0,
+          "vz": 0
+        }
+      ]
+    },
+    "analytic": {
+      "cleanA": {
+        "mult": 1,
+        "expectedPerStepDisp": 0.191666666667,
+        "measuredPerStepDisp": 0.191666667,
+        "absErr": 3.333e-10,
+        "relErr": 1.739e-9
+      },
+      "cleanB": {
+        "mult": 1,
+        "expectedPerStepDisp": 0.191666666667,
+        "measuredPerStepDisp": 0.191666667,
+        "absErr": 3.333e-10,
+        "relErr": 1.739e-9
+      },
+      "slow1": {
+        "mult": 0.6,
+        "expectedPerStepDisp": 0.115,
+        "measuredPerStepDisp": 0.115,
+        "absErr": 1.388e-17,
+        "relErr": 1.207e-16
+      },
+      "slow2": {
+        "mult": 0.36,
+        "expectedPerStepDisp": 0.069,
+        "measuredPerStepDisp": 0.069,
+        "absErr": 1.388e-17,
+        "relErr": 2.011e-16
+      },
+      "slow4": {
+        "mult": 0.25,
+        "expectedPerStepDisp": 0.047916666667,
+        "measuredPerStepDisp": 0.047916667,
+        "absErr": 3.333e-10,
+        "relErr": 6.957e-9
+      },
+      "freeze": {
+        "mult": 0,
+        "expectedPerStepDisp": 0,
+        "measuredPerStepDisp": 0,
+        "absErr": 0,
+        "relErr": 0
+      }
+    },
+    "ratios": {
+      "identity_cleanB_over_cleanA": 1,
+      "slow1_over_clean": 0.6,
+      "slow2_over_clean": 0.36,
+      "slow4_over_clean": 0.25,
+      "freeze_over_clean": 0
+    }
+  },
+  "chase": {
+    "cleanA": {
+      "steps": 40,
+      "states": [
+        "chase"
+      ],
+      "mult": 1,
+      "firstStepSpeed": 5.2,
+      "tailMeanSpeed": 5.2,
+      "tailMinSpeed": 5.2,
+      "tailMaxSpeed": 5.2,
+      "allMeanSpeed": 5.2,
+      "perStepDisp": 0.086666667,
+      "rows": [
+        {
+          "step": 0,
+          "disp": 0.08666666666666667,
+          "speed": 5.2,
+          "state": "chase",
+          "mult": 1,
+          "vx": 5.2,
+          "vz": 0
+        },
+        {
+          "step": 1,
+          "disp": 0.08666666666666667,
+          "speed": 5.2,
+          "state": "chase",
+          "mult": 1,
+          "vx": 5.2,
+          "vz": 0
+        },
+        {
+          "step": 2,
+          "disp": 0.08666666666666667,
+          "speed": 5.2,
+          "state": "chase",
+          "mult": 1,
+          "vx": 5.2,
+          "vz": 0
+        },
+        {
+          "step": 3,
+          "disp": 0.08666666666666667,
+          "speed": 5.2,
+          "state": "chase",
+          "mult": 1,
+          "vx": 5.2,
+          "vz": 0
+        },
+        {
+          "step": 4,
+          "disp": 0.08666666666666667,
+          "speed": 5.2,
+          "state": "chase",
+          "mult": 1,
+          "vx": 5.2,
+          "vz": 0
+        },
+        {
+          "step": 5,
+          "disp": 0.08666666666666667,
+          "speed": 5.2,
+          "state": "chase",
+          "mult": 1,
+          "vx": 5.2,
+          "vz": 0
+        },
+        {
+          "step": 34,
+          "disp": 0.08666666666666667,
+          "speed": 5.2,
+          "state": "chase",
+          "mult": 1,
+          "vx": 5.2,
+          "vz": 0
+        },
+        {
+          "step": 35,
+          "disp": 0.08666666666666667,
+          "speed": 5.2,
+          "state": "chase",
+          "mult": 1,
+          "vx": 5.2,
+          "vz": 0
+        },
+        {
+          "step": 36,
+          "disp": 0.08666666666666667,
+          "speed": 5.2,
+          "state": "chase",
+          "mult": 1,
+          "vx": 5.2,
+          "vz": 0
+        },
+        {
+          "step": 37,
+          "disp": 0.08666666666666667,
+          "speed": 5.2,
+          "state": "chase",
+          "mult": 1,
+          "vx": 5.2,
+          "vz": 0
+        },
+        {
+          "step": 38,
+          "disp": 0.08666666666666667,
+          "speed": 5.2,
+          "state": "chase",
+          "mult": 1,
+          "vx": 5.2,
+          "vz": 0
+        },
+        {
+          "step": 39,
+          "disp": 0.08666666666666667,
+          "speed": 5.2,
+          "state": "chase",
+          "mult": 1,
+          "vx": 5.2,
+          "vz": 0
+        }
+      ]
+    },
+    "cleanB": {
+      "steps": 40,
+      "states": [
+        "chase"
+      ],
+      "mult": 1,
+      "firstStepSpeed": 5.2,
+      "tailMeanSpeed": 5.2,
+      "tailMinSpeed": 5.2,
+      "tailMaxSpeed": 5.2,
+      "allMeanSpeed": 5.2,
+      "perStepDisp": 0.086666667,
+      "rows": [
+        {
+          "step": 0,
+          "disp": 0.08666666666666667,
+          "speed": 5.2,
+          "state": "chase",
+          "mult": 1,
+          "vx": 5.2,
+          "vz": 0
+        },
+        {
+          "step": 1,
+          "disp": 0.08666666666666667,
+          "speed": 5.2,
+          "state": "chase",
+          "mult": 1,
+          "vx": 5.2,
+          "vz": 0
+        },
+        {
+          "step": 2,
+          "disp": 0.08666666666666667,
+          "speed": 5.2,
+          "state": "chase",
+          "mult": 1,
+          "vx": 5.2,
+          "vz": 0
+        },
+        {
+          "step": 3,
+          "disp": 0.08666666666666667,
+          "speed": 5.2,
+          "state": "chase",
+          "mult": 1,
+          "vx": 5.2,
+          "vz": 0
+        },
+        {
+          "step": 4,
+          "disp": 0.08666666666666667,
+          "speed": 5.2,
+          "state": "chase",
+          "mult": 1,
+          "vx": 5.2,
+          "vz": 0
+        },
+        {
+          "step": 5,
+          "disp": 0.08666666666666667,
+          "speed": 5.2,
+          "state": "chase",
+          "mult": 1,
+          "vx": 5.2,
+          "vz": 0
+        },
+        {
+          "step": 34,
+          "disp": 0.08666666666666667,
+          "speed": 5.2,
+          "state": "chase",
+          "mult": 1,
+          "vx": 5.2,
+          "vz": 0
+        },
+        {
+          "step": 35,
+          "disp": 0.08666666666666667,
+          "speed": 5.2,
+          "state": "chase",
+          "mult": 1,
+          "vx": 5.2,
+          "vz": 0
+        },
+        {
+          "step": 36,
+          "disp": 0.08666666666666667,
+          "speed": 5.2,
+          "state": "chase",
+          "mult": 1,
+          "vx": 5.2,
+          "vz": 0
+        },
+        {
+          "step": 37,
+          "disp": 0.08666666666666667,
+          "speed": 5.2,
+          "state": "chase",
+          "mult": 1,
+          "vx": 5.2,
+          "vz": 0
+        },
+        {
+          "step": 38,
+          "disp": 0.08666666666666667,
+          "speed": 5.2,
+          "state": "chase",
+          "mult": 1,
+          "vx": 5.2,
+          "vz": 0
+        },
+        {
+          "step": 39,
+          "disp": 0.08666666666666667,
+          "speed": 5.2,
+          "state": "chase",
+          "mult": 1,
+          "vx": 5.2,
+          "vz": 0
+        }
+      ]
+    },
+    "slow1": {
+      "steps": 40,
+      "states": [
+        "chase"
+      ],
+      "mult": 0.6,
+      "firstStepSpeed": 3.12,
+      "tailMeanSpeed": 3.12,
+      "tailMinSpeed": 3.12,
+      "tailMaxSpeed": 3.12,
+      "allMeanSpeed": 3.12,
+      "perStepDisp": 0.052,
+      "rows": [
+        {
+          "step": 0,
+          "disp": 0.052,
+          "speed": 3.12,
+          "state": "chase",
+          "mult": 0.6,
+          "vx": 3.12,
+          "vz": 0
+        },
+        {
+          "step": 1,
+          "disp": 0.052,
+          "speed": 3.12,
+          "state": "chase",
+          "mult": 0.6,
+          "vx": 3.12,
+          "vz": 0
+        },
+        {
+          "step": 2,
+          "disp": 0.052,
+          "speed": 3.12,
+          "state": "chase",
+          "mult": 0.6,
+          "vx": 3.12,
+          "vz": 0
+        },
+        {
+          "step": 3,
+          "disp": 0.052,
+          "speed": 3.12,
+          "state": "chase",
+          "mult": 0.6,
+          "vx": 3.12,
+          "vz": 0
+        },
+        {
+          "step": 4,
+          "disp": 0.052,
+          "speed": 3.12,
+          "state": "chase",
+          "mult": 0.6,
+          "vx": 3.12,
+          "vz": 0
+        },
+        {
+          "step": 5,
+          "disp": 0.052,
+          "speed": 3.12,
+          "state": "chase",
+          "mult": 0.6,
+          "vx": 3.12,
+          "vz": 0
+        },
+        {
+          "step": 34,
+          "disp": 0.052,
+          "speed": 3.12,
+          "state": "chase",
+          "mult": 0.6,
+          "vx": 3.12,
+          "vz": 0
+        },
+        {
+          "step": 35,
+          "disp": 0.052,
+          "speed": 3.12,
+          "state": "chase",
+          "mult": 0.6,
+          "vx": 3.12,
+          "vz": 0
+        },
+        {
+          "step": 36,
+          "disp": 0.052,
+          "speed": 3.12,
+          "state": "chase",
+          "mult": 0.6,
+          "vx": 3.12,
+          "vz": 0
+        },
+        {
+          "step": 37,
+          "disp": 0.052,
+          "speed": 3.12,
+          "state": "chase",
+          "mult": 0.6,
+          "vx": 3.12,
+          "vz": 0
+        },
+        {
+          "step": 38,
+          "disp": 0.052,
+          "speed": 3.12,
+          "state": "chase",
+          "mult": 0.6,
+          "vx": 3.12,
+          "vz": 0
+        },
+        {
+          "step": 39,
+          "disp": 0.052,
+          "speed": 3.12,
+          "state": "chase",
+          "mult": 0.6,
+          "vx": 3.12,
+          "vz": 0
+        }
+      ]
+    },
+    "slow2": {
+      "steps": 40,
+      "states": [
+        "chase"
+      ],
+      "mult": 0.36,
+      "firstStepSpeed": 1.872,
+      "tailMeanSpeed": 1.872,
+      "tailMinSpeed": 1.872,
+      "tailMaxSpeed": 1.872,
+      "allMeanSpeed": 1.872,
+      "perStepDisp": 0.0312,
+      "rows": [
+        {
+          "step": 0,
+          "disp": 0.0312,
+          "speed": 1.8719999999999999,
+          "state": "chase",
+          "mult": 0.36,
+          "vx": 1.872,
+          "vz": 0
+        },
+        {
+          "step": 1,
+          "disp": 0.0312,
+          "speed": 1.8719999999999999,
+          "state": "chase",
+          "mult": 0.36,
+          "vx": 1.872,
+          "vz": 0
+        },
+        {
+          "step": 2,
+          "disp": 0.0312,
+          "speed": 1.8719999999999999,
+          "state": "chase",
+          "mult": 0.36,
+          "vx": 1.872,
+          "vz": 0
+        },
+        {
+          "step": 3,
+          "disp": 0.0312,
+          "speed": 1.8719999999999999,
+          "state": "chase",
+          "mult": 0.36,
+          "vx": 1.872,
+          "vz": 0
+        },
+        {
+          "step": 4,
+          "disp": 0.0312,
+          "speed": 1.8719999999999999,
+          "state": "chase",
+          "mult": 0.36,
+          "vx": 1.872,
+          "vz": 0
+        },
+        {
+          "step": 5,
+          "disp": 0.0312,
+          "speed": 1.8719999999999999,
+          "state": "chase",
+          "mult": 0.36,
+          "vx": 1.872,
+          "vz": 0
+        },
+        {
+          "step": 34,
+          "disp": 0.0312,
+          "speed": 1.8719999999999999,
+          "state": "chase",
+          "mult": 0.36,
+          "vx": 1.872,
+          "vz": 0
+        },
+        {
+          "step": 35,
+          "disp": 0.0312,
+          "speed": 1.8719999999999999,
+          "state": "chase",
+          "mult": 0.36,
+          "vx": 1.872,
+          "vz": 0
+        },
+        {
+          "step": 36,
+          "disp": 0.0312,
+          "speed": 1.8719999999999999,
+          "state": "chase",
+          "mult": 0.36,
+          "vx": 1.872,
+          "vz": 0
+        },
+        {
+          "step": 37,
+          "disp": 0.0312,
+          "speed": 1.8719999999999999,
+          "state": "chase",
+          "mult": 0.36,
+          "vx": 1.872,
+          "vz": 0
+        },
+        {
+          "step": 38,
+          "disp": 0.0312,
+          "speed": 1.8719999999999999,
+          "state": "chase",
+          "mult": 0.36,
+          "vx": 1.872,
+          "vz": 0
+        },
+        {
+          "step": 39,
+          "disp": 0.0312,
+          "speed": 1.8719999999999999,
+          "state": "chase",
+          "mult": 0.36,
+          "vx": 1.872,
+          "vz": 0
+        }
+      ]
+    },
+    "slow4": {
+      "steps": 40,
+      "states": [
+        "chase"
+      ],
+      "mult": 0.25,
+      "firstStepSpeed": 1.3,
+      "tailMeanSpeed": 1.3,
+      "tailMinSpeed": 1.3,
+      "tailMaxSpeed": 1.3,
+      "allMeanSpeed": 1.3,
+      "perStepDisp": 0.021666667,
+      "rows": [
+        {
+          "step": 0,
+          "disp": 0.021666666666666667,
+          "speed": 1.3,
+          "state": "chase",
+          "mult": 0.25,
+          "vx": 1.3,
+          "vz": 0
+        },
+        {
+          "step": 1,
+          "disp": 0.021666666666666667,
+          "speed": 1.3,
+          "state": "chase",
+          "mult": 0.25,
+          "vx": 1.3,
+          "vz": 0
+        },
+        {
+          "step": 2,
+          "disp": 0.021666666666666667,
+          "speed": 1.3,
+          "state": "chase",
+          "mult": 0.25,
+          "vx": 1.3,
+          "vz": 0
+        },
+        {
+          "step": 3,
+          "disp": 0.021666666666666667,
+          "speed": 1.3,
+          "state": "chase",
+          "mult": 0.25,
+          "vx": 1.3,
+          "vz": 0
+        },
+        {
+          "step": 4,
+          "disp": 0.021666666666666667,
+          "speed": 1.3,
+          "state": "chase",
+          "mult": 0.25,
+          "vx": 1.3,
+          "vz": 0
+        },
+        {
+          "step": 5,
+          "disp": 0.021666666666666667,
+          "speed": 1.3,
+          "state": "chase",
+          "mult": 0.25,
+          "vx": 1.3,
+          "vz": 0
+        },
+        {
+          "step": 34,
+          "disp": 0.021666666666666667,
+          "speed": 1.3,
+          "state": "chase",
+          "mult": 0.25,
+          "vx": 1.3,
+          "vz": 0
+        },
+        {
+          "step": 35,
+          "disp": 0.021666666666666667,
+          "speed": 1.3,
+          "state": "chase",
+          "mult": 0.25,
+          "vx": 1.3,
+          "vz": 0
+        },
+        {
+          "step": 36,
+          "disp": 0.021666666666666667,
+          "speed": 1.3,
+          "state": "chase",
+          "mult": 0.25,
+          "vx": 1.3,
+          "vz": 0
+        },
+        {
+          "step": 37,
+          "disp": 0.021666666666666667,
+          "speed": 1.3,
+          "state": "chase",
+          "mult": 0.25,
+          "vx": 1.3,
+          "vz": 0
+        },
+        {
+          "step": 38,
+          "disp": 0.021666666666666667,
+          "speed": 1.3,
+          "state": "chase",
+          "mult": 0.25,
+          "vx": 1.3,
+          "vz": 0
+        },
+        {
+          "step": 39,
+          "disp": 0.021666666666666667,
+          "speed": 1.3,
+          "state": "chase",
+          "mult": 0.25,
+          "vx": 1.3,
+          "vz": 0
+        }
+      ]
+    },
+    "freeze": {
+      "steps": 40,
+      "states": [
+        "chase"
+      ],
+      "mult": 0,
+      "firstStepSpeed": 0,
+      "tailMeanSpeed": 0,
+      "tailMinSpeed": 0,
+      "tailMaxSpeed": 0,
+      "allMeanSpeed": 0,
+      "perStepDisp": 0,
+      "rows": [
+        {
+          "step": 0,
+          "disp": 0,
+          "speed": 0,
+          "state": "chase",
+          "mult": 0,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 1,
+          "disp": 0,
+          "speed": 0,
+          "state": "chase",
+          "mult": 0,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 2,
+          "disp": 0,
+          "speed": 0,
+          "state": "chase",
+          "mult": 0,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 3,
+          "disp": 0,
+          "speed": 0,
+          "state": "chase",
+          "mult": 0,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 4,
+          "disp": 0,
+          "speed": 0,
+          "state": "chase",
+          "mult": 0,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 5,
+          "disp": 0,
+          "speed": 0,
+          "state": "chase",
+          "mult": 0,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 34,
+          "disp": 0,
+          "speed": 0,
+          "state": "chase",
+          "mult": 0,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 35,
+          "disp": 0,
+          "speed": 0,
+          "state": "chase",
+          "mult": 0,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 36,
+          "disp": 0,
+          "speed": 0,
+          "state": "chase",
+          "mult": 0,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 37,
+          "disp": 0,
+          "speed": 0,
+          "state": "chase",
+          "mult": 0,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 38,
+          "disp": 0,
+          "speed": 0,
+          "state": "chase",
+          "mult": 0,
+          "vx": 0,
+          "vz": 0
+        },
+        {
+          "step": 39,
+          "disp": 0,
+          "speed": 0,
+          "state": "chase",
+          "mult": 0,
+          "vx": 0,
+          "vz": 0
+        }
+      ]
+    },
+    "ratios": {
+      "identity_cleanB_over_cleanA": 1,
+      "slow1_over_clean": 0.6,
+      "slow2_over_clean": 0.36,
+      "slow4_over_clean": 0.25,
+      "freeze_over_clean": 0
+    }
+  },
+  "chaseBeetle": {
+    "cleanA": {
+      "steps": 40,
+      "states": [
+        "chase"
+      ],
+      "mult": 1,
+      "firstStepSpeed": 5.4,
+      "tailMeanSpeed": 5.4,
+      "tailMinSpeed": 5.4,
+      "tailMaxSpeed": 5.4,
+      "allMeanSpeed": 5.4,
+      "perStepDisp": 0.09,
+      "rows": [
+        {
+          "step": 0,
+          "disp": 0.09000000000000001,
+          "speed": 5.4,
+          "state": "chase",
+          "mult": 1,
+          "vx": 4.78545,
+          "vz": 2.501893
+        },
+        {
+          "step": 1,
+          "disp": 0.09000000000000001,
+          "speed": 5.4,
+          "state": "chase",
+          "mult": 1,
+          "vx": 4.78545,
+          "vz": 2.501893
+        },
+        {
+          "step": 2,
+          "disp": 0.09000000000000001,
+          "speed": 5.4,
+          "state": "chase",
+          "mult": 1,
+          "vx": 4.78545,
+          "vz": 2.501893
+        },
+        {
+          "step": 3,
+          "disp": 0.09000000000000001,
+          "speed": 5.4,
+          "state": "chase",
+          "mult": 1,
+          "vx": 4.78545,
+          "vz": 2.501893
+        },
+        {
+          "step": 4,
+          "disp": 0.09000000000000001,
+          "speed": 5.4,
+          "state": "chase",
+          "mult": 1,
+          "vx": 4.78545,
+          "vz": 2.501893
+        },
+        {
+          "step": 5,
+          "disp": 0.09000000000000001,
+          "speed": 5.4,
+          "state": "chase",
+          "mult": 1,
+          "vx": 4.78545,
+          "vz": 2.501893
+        },
+        {
+          "step": 34,
+          "disp": 0.09000000000000001,
+          "speed": 5.4,
+          "state": "chase",
+          "mult": 1,
+          "vx": 4.78545,
+          "vz": 2.501893
+        },
+        {
+          "step": 35,
+          "disp": 0.09000000000000001,
+          "speed": 5.4,
+          "state": "chase",
+          "mult": 1,
+          "vx": 4.78545,
+          "vz": 2.501893
+        },
+        {
+          "step": 36,
+          "disp": 0.09000000000000001,
+          "speed": 5.4,
+          "state": "chase",
+          "mult": 1,
+          "vx": 4.78545,
+          "vz": 2.501893
+        },
+        {
+          "step": 37,
+          "disp": 0.09000000000000001,
+          "speed": 5.4,
+          "state": "chase",
+          "mult": 1,
+          "vx": 4.78545,
+          "vz": 2.501893
+        },
+        {
+          "step": 38,
+          "disp": 0.09000000000000001,
+          "speed": 5.4,
+          "state": "chase",
+          "mult": 1,
+          "vx": 4.78545,
+          "vz": 2.501893
+        },
+        {
+          "step": 39,
+          "disp": 0.09000000000000001,
+          "speed": 5.4,
+          "state": "chase",
+          "mult": 1,
+          "vx": 4.78545,
+          "vz": 2.501893
+        }
+      ]
+    },
+    "cleanB": {
+      "steps": 40,
+      "states": [
+        "chase"
+      ],
+      "mult": 1,
+      "firstStepSpeed": 5.4,
+      "tailMeanSpeed": 5.4,
+      "tailMinSpeed": 5.4,
+      "tailMaxSpeed": 5.4,
+      "allMeanSpeed": 5.4,
+      "perStepDisp": 0.09,
+      "rows": [
+        {
+          "step": 0,
+          "disp": 0.09000000000000001,
+          "speed": 5.4,
+          "state": "chase",
+          "mult": 1,
+          "vx": 4.04752,
+          "vz": -3.574575
+        },
+        {
+          "step": 1,
+          "disp": 0.09000000000000001,
+          "speed": 5.4,
+          "state": "chase",
+          "mult": 1,
+          "vx": 4.04752,
+          "vz": -3.574575
+        },
+        {
+          "step": 2,
+          "disp": 0.09000000000000001,
+          "speed": 5.4,
+          "state": "chase",
+          "mult": 1,
+          "vx": 4.04752,
+          "vz": -3.574575
+        },
+        {
+          "step": 3,
+          "disp": 0.09000000000000001,
+          "speed": 5.4,
+          "state": "chase",
+          "mult": 1,
+          "vx": 4.04752,
+          "vz": -3.574575
+        },
+        {
+          "step": 4,
+          "disp": 0.09000000000000001,
+          "speed": 5.4,
+          "state": "chase",
+          "mult": 1,
+          "vx": 4.04752,
+          "vz": -3.574575
+        },
+        {
+          "step": 5,
+          "disp": 0.09000000000000001,
+          "speed": 5.4,
+          "state": "chase",
+          "mult": 1,
+          "vx": 4.04752,
+          "vz": -3.574575
+        },
+        {
+          "step": 34,
+          "disp": 0.09000000000000001,
+          "speed": 5.4,
+          "state": "chase",
+          "mult": 1,
+          "vx": 4.04752,
+          "vz": -3.574575
+        },
+        {
+          "step": 35,
+          "disp": 0.09000000000000001,
+          "speed": 5.4,
+          "state": "chase",
+          "mult": 1,
+          "vx": 4.04752,
+          "vz": -3.574575
+        },
+        {
+          "step": 36,
+          "disp": 0.09000000000000001,
+          "speed": 5.4,
+          "state": "chase",
+          "mult": 1,
+          "vx": 4.04752,
+          "vz": -3.574575
+        },
+        {
+          "step": 37,
+          "disp": 0.09000000000000001,
+          "speed": 5.4,
+          "state": "chase",
+          "mult": 1,
+          "vx": 4.04752,
+          "vz": -3.574575
+        },
+        {
+          "step": 38,
+          "disp": 0.09000000000000001,
+          "speed": 5.4,
+          "state": "chase",
+          "mult": 1,
+          "vx": 4.04752,
+          "vz": -3.574575
+        },
+        {
+          "step": 39,
+          "disp": 0.09000000000000001,
+          "speed": 5.4,
+          "state": "chase",
+          "mult": 1,
+          "vx": 4.04752,
+          "vz": -3.574575
+        }
+      ]
+    },
+    "slow1": {
+      "steps": 40,
+      "states": [
+        "chase"
+      ],
+      "mult": 0.6,
+      "firstStepSpeed": 3.24,
+      "tailMeanSpeed": 3.24,
+      "tailMinSpeed": 3.24,
+      "tailMaxSpeed": 3.24,
+      "allMeanSpeed": 3.24,
+      "perStepDisp": 0.054,
+      "rows": [
+        {
+          "step": 0,
+          "disp": 0.054000000000000006,
+          "speed": 3.24,
+          "state": "chase",
+          "mult": 0.6,
+          "vx": 2.151363,
+          "vz": -2.422651
+        },
+        {
+          "step": 1,
+          "disp": 0.054000000000000006,
+          "speed": 3.24,
+          "state": "chase",
+          "mult": 0.6,
+          "vx": 2.151363,
+          "vz": -2.422651
+        },
+        {
+          "step": 2,
+          "disp": 0.054000000000000006,
+          "speed": 3.24,
+          "state": "chase",
+          "mult": 0.6,
+          "vx": 2.151363,
+          "vz": -2.422651
+        },
+        {
+          "step": 3,
+          "disp": 0.054000000000000006,
+          "speed": 3.24,
+          "state": "chase",
+          "mult": 0.6,
+          "vx": 2.151363,
+          "vz": -2.422651
+        },
+        {
+          "step": 4,
+          "disp": 0.054000000000000006,
+          "speed": 3.24,
+          "state": "chase",
+          "mult": 0.6,
+          "vx": 2.151363,
+          "vz": -2.422651
+        },
+        {
+          "step": 5,
+          "disp": 0.054000000000000006,
+          "speed": 3.24,
+          "state": "chase",
+          "mult": 0.6,
+          "vx": 2.151363,
+          "vz": -2.422651
+        },
+        {
+          "step": 34,
+          "disp": 0.054000000000000006,
+          "speed": 3.24,
+          "state": "chase",
+          "mult": 0.6,
+          "vx": 2.151363,
+          "vz": -2.422651
+        },
+        {
+          "step": 35,
+          "disp": 0.054000000000000006,
+          "speed": 3.24,
+          "state": "chase",
+          "mult": 0.6,
+          "vx": 2.151363,
+          "vz": -2.422651
+        },
+        {
+          "step": 36,
+          "disp": 0.054000000000000006,
+          "speed": 3.24,
+          "state": "chase",
+          "mult": 0.6,
+          "vx": 2.151363,
+          "vz": -2.422651
+        },
+        {
+          "step": 37,
+          "disp": 0.054000000000000006,
+          "speed": 3.24,
+          "state": "chase",
+          "mult": 0.6,
+          "vx": 2.151363,
+          "vz": -2.422651
+        },
+        {
+          "step": 38,
+          "disp": 0.054000000000000006,
+          "speed": 3.24,
+          "state": "chase",
+          "mult": 0.6,
+          "vx": 2.151363,
+          "vz": -2.422651
+        },
+        {
+          "step": 39,
+          "disp": 0.054000000000000006,
+          "speed": 3.24,
+          "state": "chase",
+          "mult": 0.6,
+          "vx": 2.151363,
+          "vz": -2.422651
+        }
+      ]
+    },
+    "slow4": {
+      "steps": 40,
+      "states": [
+        "chase"
+      ],
+      "mult": 0.25,
+      "firstStepSpeed": 1.35,
+      "tailMeanSpeed": 1.35,
+      "tailMinSpeed": 1.35,
+      "tailMaxSpeed": 1.35,
+      "allMeanSpeed": 1.35,
+      "perStepDisp": 0.0225,
+      "rows": [
+        {
+          "step": 0,
+          "disp": 0.0225,
+          "speed": 1.3499999999999999,
+          "state": "chase",
+          "mult": 0.25,
+          "vx": 1.061332,
+          "vz": 0.83431
+        },
+        {
+          "step": 1,
+          "disp": 0.0225,
+          "speed": 1.3499999999999999,
+          "state": "chase",
+          "mult": 0.25,
+          "vx": 1.061332,
+          "vz": 0.83431
+        },
+        {
+          "step": 2,
+          "disp": 0.0225,
+          "speed": 1.3499999999999999,
+          "state": "chase",
+          "mult": 0.25,
+          "vx": 1.061332,
+          "vz": 0.83431
+        },
+        {
+          "step": 3,
+          "disp": 0.0225,
+          "speed": 1.3499999999999999,
+          "state": "chase",
+          "mult": 0.25,
+          "vx": 1.061332,
+          "vz": 0.83431
+        },
+        {
+          "step": 4,
+          "disp": 0.0225,
+          "speed": 1.3499999999999999,
+          "state": "chase",
+          "mult": 0.25,
+          "vx": 1.061332,
+          "vz": 0.83431
+        },
+        {
+          "step": 5,
+          "disp": 0.0225,
+          "speed": 1.3499999999999999,
+          "state": "chase",
+          "mult": 0.25,
+          "vx": 1.061332,
+          "vz": 0.83431
+        },
+        {
+          "step": 34,
+          "disp": 0.0225,
+          "speed": 1.3499999999999999,
+          "state": "chase",
+          "mult": 0.25,
+          "vx": 1.061332,
+          "vz": 0.83431
+        },
+        {
+          "step": 35,
+          "disp": 0.0225,
+          "speed": 1.3499999999999999,
+          "state": "chase",
+          "mult": 0.25,
+          "vx": 1.061332,
+          "vz": 0.83431
+        },
+        {
+          "step": 36,
+          "disp": 0.0225,
+          "speed": 1.3499999999999999,
+          "state": "chase",
+          "mult": 0.25,
+          "vx": 1.061332,
+          "vz": 0.83431
+        },
+        {
+          "step": 37,
+          "disp": 0.0225,
+          "speed": 1.3499999999999999,
+          "state": "chase",
+          "mult": 0.25,
+          "vx": 1.061332,
+          "vz": 0.83431
+        },
+        {
+          "step": 38,
+          "disp": 0.0225,
+          "speed": 1.3499999999999999,
+          "state": "chase",
+          "mult": 0.25,
+          "vx": 1.061332,
+          "vz": 0.83431
+        },
+        {
+          "step": 39,
+          "disp": 0.0225,
+          "speed": 1.3499999999999999,
+          "state": "chase",
+          "mult": 0.25,
+          "vx": 1.061332,
+          "vz": 0.83431
+        }
+      ]
+    },
+    "ratios": {
+      "identity": 1,
+      "slow1_over_clean": 0.6,
+      "slow4_over_clean": 0.25
+    }
+  }
+}

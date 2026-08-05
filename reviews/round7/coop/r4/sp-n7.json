@@ -1,0 +1,145 @@
+{
+  "sp-fixed": {
+    "arm": "sp-fixed",
+    "substitutions": [],
+    "substitutionsApplied": [],
+    "substitutionsMissing": [],
+    "runningGate": {
+      "paused": false,
+      "screen": null,
+      "localTick": 71,
+      "survivorId": "ranger",
+      "maxHealth": 110,
+      "netRole": "single",
+      "authority": true
+    },
+    "spawned": 7,
+    "start": {
+      "progression": 0,
+      "hud": 0,
+      "killFlashes": 0
+    },
+    "playerKills": {
+      "killed": 4,
+      "progression": 4,
+      "hud": 4,
+      "killFlashes": 4
+    },
+    "enemyOnEnemy": {
+      "attackerIsPlayer": false,
+      "victimDied": true,
+      "sourceWasEnemy": true,
+      "progression": 5,
+      "hud": 4,
+      "killFlashes": 4
+    },
+    "playerDeath": {
+      "playerAlive": false,
+      "playerHealth": 0,
+      "killerIsPlayer": false,
+      "progression": 5,
+      "hud": 4,
+      "killFlashes": 4
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  "sp-head": {
+    "arm": "sp-head",
+    "substitutions": [
+      "N7-head"
+    ],
+    "substitutionsApplied": [
+      "N7-head"
+    ],
+    "substitutionsMissing": [],
+    "runningGate": {
+      "paused": false,
+      "screen": null,
+      "localTick": 67,
+      "survivorId": "ranger",
+      "maxHealth": 110,
+      "netRole": "single",
+      "authority": true
+    },
+    "spawned": 7,
+    "start": {
+      "progression": 0,
+      "hud": 0,
+      "killFlashes": 0
+    },
+    "playerKills": {
+      "killed": 4,
+      "progression": 4,
+      "hud": 4,
+      "killFlashes": 4
+    },
+    "enemyOnEnemy": {
+      "attackerIsPlayer": false,
+      "victimDied": true,
+      "sourceWasEnemy": true,
+      "progression": 5,
+      "hud": 4,
+      "killFlashes": 4
+    },
+    "playerDeath": {
+      "playerAlive": false,
+      "playerHealth": 0,
+      "killerIsPlayer": false,
+      "progression": 5,
+      "hud": 4,
+      "killFlashes": 4
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  "sp-r3": {
+    "arm": "sp-r3",
+    "substitutions": [
+      "N7-r3"
+    ],
+    "substitutionsApplied": [
+      "N7-r3"
+    ],
+    "substitutionsMissing": [],
+    "runningGate": {
+      "paused": false,
+      "screen": null,
+      "localTick": 71,
+      "survivorId": "ranger",
+      "maxHealth": 110,
+      "netRole": "single",
+      "authority": true
+    },
+    "spawned": 7,
+    "start": {
+      "progression": 0,
+      "hud": 0,
+      "killFlashes": 0
+    },
+    "playerKills": {
+      "killed": 4,
+      "progression": 4,
+      "hud": 4,
+      "killFlashes": 4
+    },
+    "enemyOnEnemy": {
+      "attackerIsPlayer": false,
+      "victimDied": true,
+      "sourceWasEnemy": true,
+      "progression": 5,
+      "hud": 5,
+      "killFlashes": 5
+    },
+    "playerDeath": {
+      "playerAlive": false,
+      "playerHealth": 0,
+      "killerIsPlayer": false,
+      "progression": 5,
+      "hud": 6,
+      "killFlashes": 6
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  }
+}

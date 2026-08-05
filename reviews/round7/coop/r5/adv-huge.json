@@ -1,0 +1,94 @@
+{
+  "arm": "adv-huge",
+  "shape": "huge",
+  "substitutions": [],
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 310,
+      "survivorId": "ranger",
+      "maxHealth": 110
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 65,
+      "survivorId": "anvil",
+      "maxHealth": 170
+    }
+  },
+  "helloBytes": 60005,
+  "host": {
+    "tick": 140,
+    "paused": false,
+    "screen": null,
+    "inputEnabled": true,
+    "pointerLocked": false,
+    "clients": 0,
+    "pawns": [],
+    "helloSeen": [],
+    "peerSurvivors": [],
+    "lobbyStatus": "peerRefused",
+    "lobbyDetail": {
+      "reason": "survivor",
+      "detail": 64,
+      "detailHead": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "count": null
+    },
+    "players": 1,
+    "ownSurvivor": "ranger",
+    "ownMax": 110,
+    "ownAlive": true
+  },
+  "client": {
+    "connected": false,
+    "myNetId": 1,
+    "netTick": 10,
+    "serverTick": 70,
+    "paused": false,
+    "screen": null,
+    "survivorId": "anvil",
+    "maxHealth": 170,
+    "health": 170,
+    "alive": true,
+    "lobbyStatus": "refused",
+    "lobbyDetail": {
+      "reason": "survivor",
+      "detail": 64,
+      "detailHead": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+  },
+  "mistated": false,
+  "sentences": {
+    "host": {
+      "text": "Turned a player away: they picked a survivor this build does not have (xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx).",
+      "length": 137
+    },
+    "client": {
+      "text": "The host does not have the survivor you picked. Choose one from their build and join again.",
+      "length": 91
+    }
+  },
+  "errors": {
+    "host": {
+      "consoleErrors": 0,
+      "netWarns": 0,
+      "netWarnTexts": [],
+      "consoleWarns": 12,
+      "pageErrors": 0,
+      "errorTexts": [],
+      "pageErrorTexts": []
+    },
+    "client": {
+      "consoleErrors": 0,
+      "netWarns": 0,
+      "netWarnTexts": [],
+      "consoleWarns": 12,
+      "pageErrors": 0,
+      "errorTexts": [],
+      "pageErrorTexts": []
+    }
+  },
+  "substitutionsMissing": []
+}

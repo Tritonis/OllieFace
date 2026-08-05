@@ -1,0 +1,1545 @@
+{
+  "stands": [
+    {
+      "x": 59.16890900939188,
+      "y": 3.7729878089340727,
+      "z": 56.388894612383524
+    },
+    {
+      "x": -56.92853736711133,
+      "y": -8.766584382490931,
+      "z": 42.005942686696514
+    },
+    {
+      "x": -6.5700456286175415,
+      "y": 1.8988945515379763,
+      "z": -21.237047653988494
+    },
+    {
+      "x": 31.2594430873913,
+      "y": 19.344012002899003,
+      "z": 17.994950092628113
+    }
+  ],
+  "lasher": [
+    {
+      "card": "lasher",
+      "standoff": 8,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 28.467,
+      "damage": 241.5,
+      "events": 23,
+      "dps": 8.48,
+      "byType": {
+        "projectile": 69.3,
+        "pull": 151.2,
+        "melee": 21
+      },
+      "picks": {
+        "reel": 4,
+        "flail": 3,
+        "thorns": 3
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 21,
+      "baseDamage": 21,
+      "losFraction": 1,
+      "meanDist": 4.1,
+      "minDist": 0.04,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 0
+    },
+    {
+      "card": "lasher",
+      "standoff": 11,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 28.75,
+      "damage": 166.9,
+      "events": 17,
+      "dps": 5.81,
+      "byType": {
+        "pull": 132.3,
+        "projectile": 34.65
+      },
+      "picks": {
+        "thorns": 4,
+        "reel": 3,
+        "flail": 3
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 21,
+      "baseDamage": 21,
+      "losFraction": 1,
+      "meanDist": 4.42,
+      "minDist": 0.01,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 0
+    },
+    {
+      "card": "lasher",
+      "standoff": 14,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 28.667,
+      "damage": 243.6,
+      "events": 20,
+      "dps": 8.5,
+      "byType": {
+        "projectile": 46.2,
+        "pull": 113.4,
+        "melee": 84
+      },
+      "picks": {
+        "reel": 4,
+        "thorns": 2,
+        "flail": 4
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 21,
+      "baseDamage": 21,
+      "losFraction": 1,
+      "meanDist": 5.4,
+      "minDist": 0.03,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 0
+    },
+    {
+      "card": "lasher",
+      "standoff": 18,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 28.917,
+      "damage": 131.3,
+      "events": 13,
+      "dps": 4.54,
+      "byType": {
+        "projectile": 46.2,
+        "pull": 85.05
+      },
+      "picks": {
+        "thorns": 4,
+        "reel": 4,
+        "flail": 2
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 21,
+      "baseDamage": 21,
+      "losFraction": 1,
+      "meanDist": 7.38,
+      "minDist": 0.01,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 0
+    },
+    {
+      "card": "lasher",
+      "standoff": 22,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 29.033,
+      "damage": 163.8,
+      "events": 13,
+      "dps": 5.64,
+      "byType": {
+        "projectile": 34.65,
+        "pull": 66.15,
+        "melee": 63
+      },
+      "picks": {
+        "thorns": 3,
+        "reel": 4,
+        "flail": 3
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 21,
+      "baseDamage": 21,
+      "losFraction": 1,
+      "meanDist": 9.29,
+      "minDist": 0,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 0
+    },
+    {
+      "card": "lasher",
+      "standoff": 8,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 28.65,
+      "damage": 229.9,
+      "events": 22,
+      "dps": 8.03,
+      "byType": {
+        "pull": 151.2,
+        "melee": 21,
+        "projectile": 57.75
+      },
+      "picks": {
+        "flail": 4,
+        "thorns": 3,
+        "reel": 3
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 21,
+      "baseDamage": 21,
+      "losFraction": 1,
+      "meanDist": 3.66,
+      "minDist": 0.04,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 1
+    },
+    {
+      "card": "lasher",
+      "standoff": 11,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 28.817,
+      "damage": 178.5,
+      "events": 18,
+      "dps": 6.19,
+      "byType": {
+        "pull": 132.3,
+        "projectile": 46.2
+      },
+      "picks": {
+        "thorns": 4,
+        "reel": 3,
+        "flail": 3
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 21,
+      "baseDamage": 21,
+      "losFraction": 1,
+      "meanDist": 4.44,
+      "minDist": 0.01,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 1
+    },
+    {
+      "card": "lasher",
+      "standoff": 14,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 28.917,
+      "damage": 180.6,
+      "events": 17,
+      "dps": 6.25,
+      "byType": {
+        "projectile": 46.2,
+        "pull": 113.4,
+        "melee": 21
+      },
+      "picks": {
+        "thorns": 4,
+        "reel": 3,
+        "flail": 3
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 21,
+      "baseDamage": 21,
+      "losFraction": 1,
+      "meanDist": 5.43,
+      "minDist": 0.03,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 1
+    },
+    {
+      "card": "lasher",
+      "standoff": 18,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 28.983,
+      "damage": 142.8,
+      "events": 14,
+      "dps": 4.93,
+      "byType": {
+        "projectile": 57.75,
+        "pull": 85.05
+      },
+      "picks": {
+        "thorns": 4,
+        "reel": 4,
+        "flail": 2
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 21,
+      "baseDamage": 21,
+      "losFraction": 1,
+      "meanDist": 7.39,
+      "minDist": 0.01,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 1
+    },
+    {
+      "card": "lasher",
+      "standoff": 22,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 29.017,
+      "damage": 131.3,
+      "events": 13,
+      "dps": 4.52,
+      "byType": {
+        "projectile": 46.2,
+        "pull": 85.05
+      },
+      "picks": {
+        "reel": 4,
+        "thorns": 4,
+        "flail": 2
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 21,
+      "baseDamage": 21,
+      "losFraction": 1,
+      "meanDist": 8.56,
+      "minDist": 0.01,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 1
+    },
+    {
+      "card": "lasher",
+      "standoff": 8,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 28.667,
+      "damage": 218.4,
+      "events": 21,
+      "dps": 7.62,
+      "byType": {
+        "pull": 151.2,
+        "melee": 21,
+        "projectile": 46.2
+      },
+      "picks": {
+        "reel": 4,
+        "flail": 3,
+        "thorns": 3
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 21,
+      "baseDamage": 21,
+      "losFraction": 0.949,
+      "meanDist": 4.06,
+      "minDist": 0.01,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 2
+    },
+    {
+      "card": "lasher",
+      "standoff": 11,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 28.85,
+      "damage": 227.8,
+      "events": 19,
+      "dps": 7.9,
+      "byType": {
+        "pull": 132.3,
+        "projectile": 11.55,
+        "melee": 84
+      },
+      "picks": {
+        "reel": 4,
+        "thorns": 1,
+        "flail": 5
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 21,
+      "baseDamage": 21,
+      "losFraction": 0.947,
+      "meanDist": 4.47,
+      "minDist": 0,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 2
+    },
+    {
+      "card": "lasher",
+      "standoff": 14,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 28.967,
+      "damage": 185.8,
+      "events": 17,
+      "dps": 6.42,
+      "byType": {
+        "pull": 132.3,
+        "projectile": 11.55,
+        "melee": 42
+      },
+      "picks": {
+        "reel": 4,
+        "thorns": 1,
+        "flail": 5
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 21,
+      "baseDamage": 21,
+      "losFraction": 0.941,
+      "meanDist": 4.86,
+      "minDist": 0.01,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 2
+    },
+    {
+      "card": "lasher",
+      "standoff": 18,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 28.8,
+      "damage": 178.5,
+      "events": 17,
+      "dps": 6.2,
+      "byType": {
+        "pull": 122.85,
+        "projectile": 34.65,
+        "melee": 21
+      },
+      "picks": {
+        "reel": 4,
+        "thorns": 3,
+        "flail": 3
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 21,
+      "baseDamage": 21,
+      "losFraction": 0.948,
+      "meanDist": 5.59,
+      "minDist": 0.02,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 2
+    },
+    {
+      "card": "lasher",
+      "standoff": 22,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 28.933,
+      "damage": 142.8,
+      "events": 14,
+      "dps": 4.94,
+      "byType": {
+        "projectile": 57.75,
+        "pull": 85.05
+      },
+      "picks": {
+        "thorns": 4,
+        "reel": 4,
+        "flail": 2
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 21,
+      "baseDamage": 21,
+      "losFraction": 0.854,
+      "meanDist": 7.18,
+      "minDist": 0.01,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 2
+    },
+    {
+      "card": "lasher",
+      "standoff": 8,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 28.517,
+      "damage": 206.8,
+      "events": 20,
+      "dps": 7.25,
+      "byType": {
+        "pull": 151.2,
+        "melee": 21,
+        "projectile": 34.65
+      },
+      "picks": {
+        "flail": 4,
+        "thorns": 3,
+        "reel": 3
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 21,
+      "baseDamage": 21,
+      "losFraction": 1,
+      "meanDist": 4.02,
+      "minDist": 0,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 3
+    },
+    {
+      "card": "lasher",
+      "standoff": 11,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 28.567,
+      "damage": 169,
+      "events": 17,
+      "dps": 5.92,
+      "byType": {
+        "projectile": 46.2,
+        "pull": 122.85
+      },
+      "picks": {
+        "reel": 4,
+        "thorns": 3,
+        "flail": 3
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 21,
+      "baseDamage": 21,
+      "losFraction": 1,
+      "meanDist": 5.22,
+      "minDist": 0,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 3
+    },
+    {
+      "card": "lasher",
+      "standoff": 14,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 28.733,
+      "damage": 140.7,
+      "events": 14,
+      "dps": 4.9,
+      "byType": {
+        "projectile": 46.2,
+        "pull": 94.5
+      },
+      "picks": {
+        "thorns": 4,
+        "reel": 3,
+        "flail": 2
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 21,
+      "baseDamage": 21,
+      "losFraction": 1,
+      "meanDist": 6.47,
+      "minDist": 0,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 3
+    },
+    {
+      "card": "lasher",
+      "standoff": 18,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 28.933,
+      "damage": 142.8,
+      "events": 13,
+      "dps": 4.94,
+      "byType": {
+        "projectile": 46.2,
+        "pull": 75.6,
+        "melee": 21
+      },
+      "picks": {
+        "reel": 4,
+        "thorns": 3,
+        "flail": 2
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 21,
+      "baseDamage": 21,
+      "losFraction": 0.872,
+      "meanDist": 9.53,
+      "minDist": 0.03,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 3
+    },
+    {
+      "card": "lasher",
+      "standoff": 22,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 29.367,
+      "damage": 89.3,
+      "events": 8,
+      "dps": 3.04,
+      "byType": {
+        "pull": 56.7,
+        "projectile": 11.55,
+        "melee": 21
+      },
+      "picks": {
+        "thorns": 3,
+        "reel": 2,
+        "flail": 1
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 21,
+      "baseDamage": 21,
+      "losFraction": 0.422,
+      "meanDist": 9.58,
+      "minDist": 0.02,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 3
+    }
+  ],
+  "roster": [
+    {
+      "card": "lasher",
+      "standoff": 12,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 28.617,
+      "damage": 178.5,
+      "events": 18,
+      "dps": 6.24,
+      "byType": {
+        "projectile": 46.2,
+        "pull": 132.3
+      },
+      "picks": {
+        "reel": 4,
+        "thorns": 3,
+        "flail": 3
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 21,
+      "baseDamage": 21,
+      "losFraction": 1,
+      "meanDist": 5.2,
+      "minDist": 0,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 0
+    },
+    {
+      "card": "redoubt",
+      "standoff": 12,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 29.3,
+      "damage": 410.6,
+      "events": 15,
+      "dps": 14.01,
+      "byType": {
+        "beam": 410.55
+      },
+      "picks": {
+        "enfilade": 5
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 23,
+      "baseDamage": 23,
+      "losFraction": 1,
+      "meanDist": 12,
+      "minDist": 12,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 0
+    },
+    {
+      "card": "golem",
+      "standoff": 12,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 29.15,
+      "damage": 469.2,
+      "events": 18,
+      "dps": 16.1,
+      "byType": {
+        "beam": 469.2
+      },
+      "picks": {
+        "laser": 5
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 20,
+      "baseDamage": 20,
+      "losFraction": 1,
+      "meanDist": 14.79,
+      "minDist": 12.01,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 0
+    },
+    {
+      "card": "mortar",
+      "standoff": 12,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 29.35,
+      "damage": 288,
+      "events": 8,
+      "dps": 9.81,
+      "byType": {
+        "projectile": 288
+      },
+      "picks": {
+        "shell": 4
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 24,
+      "baseDamage": 24,
+      "losFraction": 1,
+      "meanDist": 17.96,
+      "minDist": 12.01,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 0
+    },
+    {
+      "card": "spitling",
+      "standoff": 12,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 29.217,
+      "damage": 133.1,
+      "events": 11,
+      "dps": 4.56,
+      "byType": {
+        "projectile": 133.1
+      },
+      "picks": {
+        "spit": 10
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 11,
+      "baseDamage": 11,
+      "losFraction": 0.853,
+      "meanDist": 11.55,
+      "minDist": 10.87,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 0
+    },
+    {
+      "card": "shriver",
+      "standoff": 12,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 29.067,
+      "damage": 80,
+      "events": 10,
+      "dps": 2.75,
+      "byType": {
+        "projectile": 80
+      },
+      "picks": {
+        "knell": 9
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 8,
+      "baseDamage": 8,
+      "losFraction": 1,
+      "meanDist": 14.76,
+      "minDist": 12.01,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 0
+    },
+    {
+      "card": "lasher",
+      "standoff": 12,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 28.833,
+      "damage": 178.5,
+      "events": 18,
+      "dps": 6.19,
+      "byType": {
+        "pull": 132.3,
+        "projectile": 46.2
+      },
+      "picks": {
+        "thorns": 4,
+        "reel": 3,
+        "flail": 3
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 21,
+      "baseDamage": 21,
+      "losFraction": 1,
+      "meanDist": 4.68,
+      "minDist": 0.01,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 1
+    },
+    {
+      "card": "redoubt",
+      "standoff": 12,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 29.433,
+      "damage": 328.4,
+      "events": 12,
+      "dps": 11.16,
+      "byType": {
+        "beam": 328.44
+      },
+      "picks": {
+        "enfilade": 5
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 23,
+      "baseDamage": 23,
+      "losFraction": 1,
+      "meanDist": 12,
+      "minDist": 12,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 1
+    },
+    {
+      "card": "golem",
+      "standoff": 12,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 29.15,
+      "damage": 469.2,
+      "events": 18,
+      "dps": 16.1,
+      "byType": {
+        "beam": 469.2
+      },
+      "picks": {
+        "laser": 5
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 20,
+      "baseDamage": 20,
+      "losFraction": 1,
+      "meanDist": 15.45,
+      "minDist": 12.01,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 1
+    },
+    {
+      "card": "mortar",
+      "standoff": 12,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 29.333,
+      "damage": 288,
+      "events": 8,
+      "dps": 9.82,
+      "byType": {
+        "projectile": 288
+      },
+      "picks": {
+        "shell": 3
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 24,
+      "baseDamage": 24,
+      "losFraction": 0.886,
+      "meanDist": 23.19,
+      "minDist": 12.01,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 1
+    },
+    {
+      "card": "spitling",
+      "standoff": 12,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 29.217,
+      "damage": 133.1,
+      "events": 11,
+      "dps": 4.56,
+      "byType": {
+        "projectile": 133.1
+      },
+      "picks": {
+        "spit": 10
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 11,
+      "baseDamage": 11,
+      "losFraction": 0.857,
+      "meanDist": 11.3,
+      "minDist": 8.3,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 1
+    },
+    {
+      "card": "shriver",
+      "standoff": 12,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 29.117,
+      "damage": 72,
+      "events": 9,
+      "dps": 2.47,
+      "byType": {
+        "projectile": 72
+      },
+      "picks": {
+        "knell": 9
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 8,
+      "baseDamage": 8,
+      "losFraction": 1,
+      "meanDist": 14.87,
+      "minDist": 12.03,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 1
+    },
+    {
+      "card": "lasher",
+      "standoff": 12,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 28.867,
+      "damage": 227.8,
+      "events": 19,
+      "dps": 7.89,
+      "byType": {
+        "pull": 132.3,
+        "projectile": 11.55,
+        "melee": 84
+      },
+      "picks": {
+        "reel": 4,
+        "thorns": 1,
+        "flail": 5
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 21,
+      "baseDamage": 21,
+      "losFraction": 0.945,
+      "meanDist": 4.53,
+      "minDist": 0,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 2
+    },
+    {
+      "card": "redoubt",
+      "standoff": 12,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 29.283,
+      "damage": 410.6,
+      "events": 15,
+      "dps": 14.02,
+      "byType": {
+        "beam": 410.55
+      },
+      "picks": {
+        "enfilade": 5
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 23,
+      "baseDamage": 23,
+      "losFraction": 0.937,
+      "meanDist": 11.53,
+      "minDist": 11.5,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 2
+    },
+    {
+      "card": "golem",
+      "standoff": 12,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 29.3,
+      "damage": 391,
+      "events": 15,
+      "dps": 13.34,
+      "byType": {
+        "beam": 391
+      },
+      "picks": {
+        "laser": 5
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 20,
+      "baseDamage": 20,
+      "losFraction": 0.856,
+      "meanDist": 16.34,
+      "minDist": 12.58,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 2
+    },
+    {
+      "card": "mortar",
+      "standoff": 12,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 29.383,
+      "damage": 288,
+      "events": 8,
+      "dps": 9.8,
+      "byType": {
+        "projectile": 288
+      },
+      "picks": {
+        "shell": 4
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 24,
+      "baseDamage": 24,
+      "losFraction": 0.936,
+      "meanDist": 19.97,
+      "minDist": 12.19,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 2
+    },
+    {
+      "card": "spitling",
+      "standoff": 12,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 29.217,
+      "damage": 133.1,
+      "events": 11,
+      "dps": 4.56,
+      "byType": {
+        "projectile": 133.1
+      },
+      "picks": {
+        "spit": 11
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 11,
+      "baseDamage": 11,
+      "losFraction": 0.867,
+      "meanDist": 11.25,
+      "minDist": 10.59,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 2
+    },
+    {
+      "card": "shriver",
+      "standoff": 12,
+      "count": 1,
+      "affix": null,
+      "simSeconds": 29.133,
+      "damage": 72,
+      "events": 9,
+      "dps": 2.47,
+      "byType": {
+        "projectile": 72
+      },
+      "picks": {
+        "knell": 9
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 8,
+      "baseDamage": 8,
+      "losFraction": 0.979,
+      "meanDist": 15.34,
+      "minDist": 12.01,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 2
+    }
+  ],
+  "pack": [
+    {
+      "card": "lasher",
+      "standoff": 11,
+      "count": 2,
+      "affix": null,
+      "simSeconds": 27.483,
+      "damage": 417.9,
+      "events": 38,
+      "dps": 15.21,
+      "byType": {
+        "projectile": 69.3,
+        "pull": 264.6,
+        "melee": 84
+      },
+      "picks": {
+        "reel": 7,
+        "flail": 8,
+        "thorns": 5
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 21,
+      "baseDamage": 21,
+      "losFraction": 1,
+      "meanDist": 4.43,
+      "minDist": 0,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 0
+    },
+    {
+      "card": "lasher",
+      "standoff": 11,
+      "count": 2,
+      "affix": null,
+      "simSeconds": 28.267,
+      "damage": 331.8,
+      "events": 29,
+      "dps": 11.74,
+      "byType": {
+        "pull": 141.75,
+        "melee": 63,
+        "projectile": 127.05
+      },
+      "picks": {
+        "flail": 4,
+        "thorns": 8,
+        "reel": 8
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 21,
+      "baseDamage": 21,
+      "losFraction": 1,
+      "meanDist": 5.61,
+      "minDist": 1.92,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 1
+    },
+    {
+      "card": "lasher",
+      "standoff": 11,
+      "count": 2,
+      "affix": null,
+      "simSeconds": 28.05,
+      "damage": 372.8,
+      "events": 31,
+      "dps": 13.29,
+      "byType": {
+        "pull": 189,
+        "melee": 126,
+        "projectile": 57.75
+      },
+      "picks": {
+        "reel": 7,
+        "flail": 7,
+        "thorns": 7
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 21,
+      "baseDamage": 21,
+      "losFraction": 1,
+      "meanDist": 4.98,
+      "minDist": 0.01,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 2
+    }
+  ],
+  "elite": [
+    {
+      "card": "lasher",
+      "standoff": 11,
+      "count": 1,
+      "affix": "blazing",
+      "simSeconds": 28.85,
+      "damage": 2133.6,
+      "events": 182,
+      "dps": 73.95,
+      "byType": {
+        "pull": 226.8,
+        "projectile": 69.3,
+        "burn": 1837.5
+      },
+      "picks": {
+        "thorns": 4,
+        "reel": 3,
+        "flail": 3
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 42,
+      "baseDamage": 21,
+      "losFraction": 1,
+      "meanDist": 4.35,
+      "minDist": 0.01,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 0
+    },
+    {
+      "card": "lasher",
+      "standoff": 11,
+      "count": 1,
+      "affix": "blazing",
+      "simSeconds": 28.9,
+      "damage": 2314.2,
+      "events": 198,
+      "dps": 80.08,
+      "byType": {
+        "burn": 1995,
+        "pull": 226.8,
+        "projectile": 92.4
+      },
+      "picks": {
+        "thorns": 4,
+        "reel": 3,
+        "flail": 3
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 42,
+      "baseDamage": 21,
+      "losFraction": 1,
+      "meanDist": 4.35,
+      "minDist": 0.01,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 1
+    },
+    {
+      "card": "lasher",
+      "standoff": 11,
+      "count": 1,
+      "affix": "overloading",
+      "simSeconds": 28.817,
+      "damage": 533.4,
+      "events": 33,
+      "dps": 18.51,
+      "byType": {
+        "burn": 157.5,
+        "pull": 264.6,
+        "melee": 42,
+        "projectile": 69.3
+      },
+      "picks": {
+        "flail": 4,
+        "thorns": 4,
+        "reel": 3
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 42,
+      "baseDamage": 21,
+      "losFraction": 1,
+      "meanDist": 4.64,
+      "minDist": 0,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 0
+    },
+    {
+      "card": "lasher",
+      "standoff": 11,
+      "count": 1,
+      "affix": "overloading",
+      "simSeconds": 28.75,
+      "damage": 403.2,
+      "events": 20,
+      "dps": 14.02,
+      "byType": {
+        "pull": 264.6,
+        "projectile": 138.6
+      },
+      "picks": {
+        "thorns": 4,
+        "reel": 3,
+        "flail": 3
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 42,
+      "baseDamage": 21,
+      "losFraction": 1,
+      "meanDist": 4.59,
+      "minDist": 0,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 1
+    },
+    {
+      "card": "lasher",
+      "standoff": 11,
+      "count": 1,
+      "affix": "glacial",
+      "simSeconds": 28.7,
+      "damage": 399,
+      "events": 19,
+      "dps": 13.9,
+      "byType": {
+        "pull": 264.6,
+        "projectile": 92.4,
+        "melee": 42
+      },
+      "picks": {
+        "thorns": 3,
+        "flail": 4,
+        "reel": 3
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 42,
+      "baseDamage": 21,
+      "losFraction": 1,
+      "meanDist": 4.41,
+      "minDist": 0.01,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 0
+    },
+    {
+      "card": "lasher",
+      "standoff": 11,
+      "count": 1,
+      "affix": "glacial",
+      "simSeconds": 28.783,
+      "damage": 399,
+      "events": 19,
+      "dps": 13.86,
+      "byType": {
+        "pull": 264.6,
+        "projectile": 92.4,
+        "melee": 42
+      },
+      "picks": {
+        "thorns": 3,
+        "flail": 4,
+        "reel": 3
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 42,
+      "baseDamage": 21,
+      "losFraction": 1,
+      "meanDist": 4.39,
+      "minDist": 0.01,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 1
+    },
+    {
+      "card": "lasher",
+      "standoff": 11,
+      "count": 1,
+      "affix": "withering",
+      "simSeconds": 27.533,
+      "damage": 579.8,
+      "events": 40,
+      "dps": 21.06,
+      "byType": {
+        "pull": 291.06,
+        "projectile": 76.23,
+        "wither": 212.52
+      },
+      "picks": {
+        "thorns": 3,
+        "reel": 3,
+        "flail": 3
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 46.2,
+      "baseDamage": 21,
+      "losFraction": 1,
+      "meanDist": 4.33,
+      "minDist": 0.01,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 0
+    },
+    {
+      "card": "lasher",
+      "standoff": 11,
+      "count": 1,
+      "affix": "withering",
+      "simSeconds": 27.567,
+      "damage": 614.5,
+      "events": 42,
+      "dps": 22.29,
+      "byType": {
+        "pull": 291.06,
+        "projectile": 101.64,
+        "wither": 221.76
+      },
+      "picks": {
+        "thorns": 3,
+        "reel": 3,
+        "flail": 3
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 46.2,
+      "baseDamage": 21,
+      "losFraction": 1,
+      "meanDist": 4.33,
+      "minDist": 0.01,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 1
+    },
+    {
+      "card": "lasher",
+      "standoff": 11,
+      "count": 1,
+      "affix": "warded",
+      "simSeconds": 28.717,
+      "damage": 438.9,
+      "events": 19,
+      "dps": 15.28,
+      "byType": {
+        "pull": 291.06,
+        "projectile": 101.64,
+        "melee": 46.2
+      },
+      "picks": {
+        "thorns": 3,
+        "flail": 4,
+        "reel": 3
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 46.2,
+      "baseDamage": 21,
+      "losFraction": 1,
+      "meanDist": 4.42,
+      "minDist": 0.01,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 0
+    },
+    {
+      "card": "lasher",
+      "standoff": 11,
+      "count": 1,
+      "affix": "warded",
+      "simSeconds": 28.667,
+      "damage": 464.3,
+      "events": 20,
+      "dps": 16.2,
+      "byType": {
+        "projectile": 127.05,
+        "pull": 291.06,
+        "melee": 46.2
+      },
+      "picks": {
+        "reel": 4,
+        "thorns": 3,
+        "flail": 3
+      },
+      "foreignDamage": 0,
+      "foreign": {},
+      "unitDamageStat": 46.2,
+      "baseDamage": 21,
+      "losFraction": 1,
+      "meanDist": 5.01,
+      "minDist": 0.01,
+      "aliveAfter": 0,
+      "playerAlive": true,
+      "enemiesOnStage": 0,
+      "stand": 1
+    }
+  ],
+  "errors": [],
+  "frameErrors": 0
+}

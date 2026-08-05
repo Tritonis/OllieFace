@@ -1,0 +1,156 @@
+{
+  "arm": "n4-fixed",
+  "scenario": "n4",
+  "substitutions": [],
+  "substitutionsApplied": [],
+  "substitutionsMissing": [],
+  "helloOverride": null,
+  "port": 5806,
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 71,
+      "survivorId": "ranger",
+      "maxHealth": 110
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 69,
+      "survivorId": "anvil",
+      "maxHealth": 170
+    }
+  },
+  "runningGateAfterFocus": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "tick": 320,
+      "netRole": "host",
+      "authority": true,
+      "clients": 1,
+      "myNetId": null,
+      "connected": null
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "tick": 144,
+      "netRole": "client",
+      "authority": false,
+      "clients": null,
+      "myNetId": 1,
+      "connected": true
+    }
+  },
+  "before": {
+    "pawnAgeTicks": 176,
+    "pawns": [
+      {
+        "survivorId": "anvil",
+        "health": 45,
+        "maxHealth": 170
+      }
+    ]
+  },
+  "replays": [
+    {
+      "sent": "kestrel",
+      "pawns": []
+    },
+    {
+      "sent": "anvil",
+      "pawns": []
+    },
+    {
+      "sent": "kestrel",
+      "pawns": []
+    },
+    {
+      "sent": "anvil",
+      "pawns": []
+    }
+  ],
+  "hostStatus": [
+    {
+      "s": "hosting"
+    },
+    {
+      "s": "inviteReady",
+      "d": {
+        "id": 1,
+        "blob": "eyJ2IjoxLCJyb2xlIjoib2ZmZXIiLCJpZCI6MSwic2RwIjp7InR5cGUiOiJvZmZlciIsInNkcCI6InY9MFxyXG5vPS0gODMxNDAyNDA4NDMzNDE2NjAyNCAyIElOIElQNCAxMjcuMC4wLjFcclxucz0tXHJcbnQ9MCAwXHJcbmE9Z3JvdXA6QlVORExFIDBcclxuYT1leHRtYXAtYWxsb3ctbWl4ZWRcclxuYT1tc2lkLXNlbWFudGljOiBXTVNcclxubT1hcHBsaWNhdGlvbiA2NTI2NyBVRFAvRFRMUy9TQ1RQIHdlYnJ0Yy1kYXRhY2hhbm5lbFxyXG5jPUlOIElQNCA5OS4xMDkuMTQxLjE1OFxyXG5hPWNhbmRpZGF0ZToyOTExNzA3MzQ4IDEgdWRwIDIxMTM5MzcxNTEgMDRmMGZkNTgtNzFhNy00YTgyLWIwNmQtMmZiN2RkZDRiMmYxLmxvY2FsIDY1MjY3IHR5cCBob3N0IGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9Y2FuZGlkYXRlOjE1OTg4MjU4NjggMSB1ZHAgMTY3NzcyOTUzNSA5OS4xMDkuMTQxLjE1OCA2NTI2NyB0eXAgc3JmbHggcmFkZHIgMC4wLjAuMCBycG9ydCAwIGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9aWNlLXVmcmFnOklnUnVcclxuYT1pY2UtcHdkOmRWamhSVHpRNDJ2eG9uN2hvWGJ1VW5xYVxyXG5hPWljZS1vcHRpb25zOnRyaWNrbGVcclxuYT1maW5nZXJwcmludDpzaGEtMjU2IEJBOjIxOkI3OjJDOjQ3OjIzOjkwOkU2OjRDOjNCOkRGOkRCOjg5OkFDOjdDOkVEOkE1OjVFOjg4OkJCOjczOkREOjNFOjA0OjgwOkNFOkRCOjM1OkM1OjBDOkE1OkVEXHJcbmE9c2V0dXA6YWN0cGFzc1xyXG5hPW1pZDowXHJcbmE9c2N0cC1wb3J0OjUwMDBcclxuYT1tYXgtbWVzc2FnZS1zaXplOjI2MjE0NFxyXG4ifX0"
+      }
+    },
+    {
+      "s": "peerJoined",
+      "d": {
+        "id": 1,
+        "count": 2
+      }
+    },
+    {
+      "s": "peerConnecting",
+      "d": {
+        "id": 1
+      }
+    },
+    {
+      "s": "peerRefused",
+      "d": {
+        "id": 1,
+        "reason": "hello",
+        "detail": "a second identity message"
+      }
+    }
+  ],
+  "clientStatus": [
+    {
+      "s": "joining"
+    },
+    {
+      "s": "answerReady",
+      "d": {
+        "blob": "eyJ2IjoxLCJyb2xlIjoiYW5zd2VyIiwiaWQiOjEsInNkcCI6eyJ0eXBlIjoiYW5zd2VyIiwic2RwIjoidj0wXHJcbm89LSA1MzIxNjg3NjQxOTY3NTM2MzUzIDIgSU4gSVA0IDEyNy4wLjAuMVxyXG5zPS1cclxudD0wIDBcclxuYT1ncm91cDpCVU5ETEUgMFxyXG5hPWV4dG1hcC1hbGxvdy1taXhlZFxyXG5hPW1zaWQtc2VtYW50aWM6IFdNU1xyXG5tPWFwcGxpY2F0aW9uIDkgVURQL0RUTFMvU0NUUCB3ZWJydGMtZGF0YWNoYW5uZWxcclxuYz1JTiBJUDQgMC4wLjAuMFxyXG5hPWNhbmRpZGF0ZTo4OTc0NDE4MzIgMSB1ZHAgMjExMzkzNzE1MSBkZTY3NWNhNy02NzY0LTQxMWEtYWU0Yi0zYjBjYzI2MzczZWQubG9jYWwgNjQ5MTMgdHlwIGhvc3QgZ2VuZXJhdGlvbiAwIG5ldHdvcmstY29zdCA5OTlcclxuYT1pY2UtdWZyYWc6QUcwSFxyXG5hPWljZS1wd2Q6UEh4MDVzUlRaLzNkZ1YxS0ZrZEhDWUFSXHJcbmE9aWNlLW9wdGlvbnM6dHJpY2tsZVxyXG5hPWZpbmdlcnByaW50OnNoYS0yNTYgMTA6MDc6Q0I6NTc6N0Q6N0U6Rjk6QTk6NzA6QUU6MTQ6NUE6NTE6N0I6NzM6MEU6NjE6N0Q6MUM6Qjg6N0U6MDA6NTg6MEM6REI6OTc6MEE6ODQ6RUM6MEI6N0Y6MDZcclxuYT1zZXR1cDphY3RpdmVcclxuYT1taWQ6MFxyXG5hPXNjdHAtcG9ydDo1MDAwXHJcbmE9bWF4LW1lc3NhZ2Utc2l6ZToyNjIxNDRcclxuIn19"
+      }
+    },
+    {
+      "s": "connected",
+      "d": {
+        "seed": 1337,
+        "stageIndex": 0,
+        "time": 2.683333396911621,
+        "myNetId": 1,
+        "artifactMask": 0,
+        "difficulty": 1
+      }
+    },
+    {
+      "s": "refused",
+      "d": {
+        "reason": "hello",
+        "detail": "a second identity message"
+      }
+    }
+  ],
+  "clientOwn": {
+    "survivorId": "anvil",
+    "maxHealth": 170,
+    "connected": false
+  },
+  "errors": {
+    "host": {
+      "console": [],
+      "page": [],
+      "harness": [
+        "WrongDocumentError: The root document of this element is not valid for pointer lock."
+      ]
+    },
+    "client": {
+      "console": [],
+      "page": [],
+      "harness": []
+    }
+  }
+}

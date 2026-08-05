@@ -1,0 +1,153 @@
+{
+  "pageErrors": [],
+  "engineRunning": false,
+  "liveDive": {
+    "clean": {
+      "status": "none",
+      "appliedAtStep": 75,
+      "multDuringDive": 1,
+      "diveSteps": 45,
+      "divePath": 6.7426,
+      "diveMeanSpeed": 8.9901,
+      "firstSixStepSpeeds": [
+        8.99,
+        8.99,
+        8.99,
+        8.99,
+        8.99,
+        8.99
+      ],
+      "dwell": {
+        "chase": 24,
+        "windup": 51,
+        "attack": 45,
+        "die": 1
+      },
+      "aliveAtEnd": false
+    },
+    "slow4": {
+      "status": "slow4",
+      "appliedAtStep": 75,
+      "multDuringDive": 0.25,
+      "diveSteps": 48,
+      "divePath": 8.2937,
+      "diveMeanSpeed": 10.3671,
+      "firstSixStepSpeeds": [
+        10.367,
+        10.367,
+        10.367,
+        10.367,
+        10.367,
+        10.367
+      ],
+      "dwell": {
+        "chase": 24,
+        "windup": 51,
+        "attack": 48,
+        "die": 1
+      },
+      "aliveAtEnd": false
+    },
+    "freeze": {
+      "status": "freeze",
+      "appliedAtStep": 75,
+      "multDuringDive": 0,
+      "diveSteps": 45,
+      "divePath": 6.7093,
+      "diveMeanSpeed": 8.9457,
+      "firstSixStepSpeeds": [
+        8.946,
+        8.946,
+        8.946,
+        8.946,
+        8.946,
+        8.946
+      ],
+      "dwell": {
+        "chase": 24,
+        "windup": 51,
+        "attack": 45,
+        "die": 1
+      },
+      "aliveAtEnd": false
+    },
+    "ratio_slow4": 1.23,
+    "ratio_freeze": 0.9951,
+    "contract": {
+      "slow4": 0.25,
+      "freeze": 0
+    }
+  },
+  "meleeLunge": {
+    "clean": {
+      "mult": 1,
+      "vAfterImpulse": 6,
+      "path0_5s": 2.506,
+      "firstEightSpeeds": [
+        5.584,
+        5.206,
+        4.876,
+        4.605,
+        4.403,
+        4.28,
+        4.243,
+        4.294
+      ]
+    },
+    "slow1": {
+      "mult": 0.6,
+      "vAfterImpulse": 6,
+      "path0_5s": 1.7879,
+      "firstEightSpeeds": [
+        5.584,
+        5.206,
+        4.876,
+        4.605,
+        4.403,
+        4.28,
+        4.243,
+        4.019
+      ]
+    },
+    "slow4": {
+      "mult": 0.25,
+      "vAfterImpulse": 6,
+      "path0_5s": 1.0876,
+      "firstEightSpeeds": [
+        5.584,
+        5.206,
+        4.876,
+        4.46,
+        4.048,
+        3.64,
+        3.239,
+        2.847
+      ]
+    },
+    "freeze": {
+      "mult": 0,
+      "vAfterImpulse": 6,
+      "path0_5s": 0.6428,
+      "firstEightSpeeds": [
+        5.567,
+        5.133,
+        4.7,
+        4.267,
+        3.833,
+        3.4,
+        2.967,
+        2.533
+      ]
+    },
+    "measuredRatio_slow4": 0.434,
+    "measuredRatio_slow1": 0.7134,
+    "measuredRatio_freeze": 0.2565,
+    "contract": {
+      "slow1": 0.6,
+      "slow4": 0.25,
+      "freeze": 0
+    },
+    "excessMetres_slow4": 0.4611,
+    "excessMetres_freeze": 0.6428
+  }
+}

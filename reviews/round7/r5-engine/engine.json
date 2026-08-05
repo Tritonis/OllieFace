@@ -1,0 +1,439 @@
+{
+  "errors": [],
+  "notes": [],
+  "fixed": [
+    {
+      "label": "fixed after gameplay()+thaw cycles",
+      "raf": 60,
+      "engineFrames": 60,
+      "loops": 1,
+      "ctxTimeAdvance": 1,
+      "simWhileUnpaused": 1,
+      "wallMs": 1664,
+      "pausedFrames": 0,
+      "hitstopFrames": 0,
+      "saturatedFrames": 0,
+      "stepsHist": {
+        "1": 60
+      },
+      "accumulator": 0,
+      "menuScreen": null,
+      "playerAlive": true,
+      "playerHealth": 110,
+      "frameErrors": 0,
+      "loopGen": 2
+    },
+    {
+      "label": "fixed +1 cycles",
+      "raf": 60,
+      "engineFrames": 60,
+      "loops": 1,
+      "ctxTimeAdvance": 1,
+      "simWhileUnpaused": 1,
+      "wallMs": 1148,
+      "pausedFrames": 0,
+      "hitstopFrames": 0,
+      "saturatedFrames": 0,
+      "stepsHist": {
+        "1": 60
+      },
+      "accumulator": 0,
+      "menuScreen": null,
+      "playerAlive": true,
+      "playerHealth": 110,
+      "frameErrors": 0,
+      "loopGen": 3
+    },
+    {
+      "label": "fixed +2 cycles",
+      "raf": 60,
+      "engineFrames": 60,
+      "loops": 1,
+      "ctxTimeAdvance": 1,
+      "simWhileUnpaused": 1,
+      "wallMs": 4667,
+      "pausedFrames": 0,
+      "hitstopFrames": 0,
+      "saturatedFrames": 0,
+      "stepsHist": {
+        "1": 60
+      },
+      "accumulator": 0,
+      "menuScreen": null,
+      "playerAlive": true,
+      "playerHealth": 110,
+      "frameErrors": 0,
+      "loopGen": 4
+    },
+    {
+      "label": "fixed +3 cycles",
+      "raf": 60,
+      "engineFrames": 60,
+      "loops": 1,
+      "ctxTimeAdvance": 1,
+      "simWhileUnpaused": 1,
+      "wallMs": 1549,
+      "pausedFrames": 0,
+      "hitstopFrames": 0,
+      "saturatedFrames": 0,
+      "stepsHist": {
+        "1": 60
+      },
+      "accumulator": 0,
+      "menuScreen": null,
+      "playerAlive": true,
+      "playerHealth": 110,
+      "frameErrors": 0,
+      "loopGen": 5
+    },
+    {
+      "label": "fixed +5 cycles",
+      "raf": 60,
+      "engineFrames": 60,
+      "loops": 1,
+      "ctxTimeAdvance": 1,
+      "simWhileUnpaused": 1,
+      "wallMs": 2679,
+      "pausedFrames": 0,
+      "hitstopFrames": 0,
+      "saturatedFrames": 0,
+      "stepsHist": {
+        "1": 60
+      },
+      "accumulator": 0,
+      "menuScreen": null,
+      "playerAlive": true,
+      "playerHealth": 110,
+      "frameErrors": 0,
+      "loopGen": 7
+    },
+    {
+      "label": "fixed +10 cycles",
+      "raf": 60,
+      "engineFrames": 60,
+      "loops": 1,
+      "ctxTimeAdvance": 1,
+      "simWhileUnpaused": 1,
+      "wallMs": 857,
+      "pausedFrames": 0,
+      "hitstopFrames": 0,
+      "saturatedFrames": 0,
+      "stepsHist": {
+        "1": 60
+      },
+      "accumulator": 0,
+      "menuScreen": null,
+      "playerAlive": true,
+      "playerHealth": 110,
+      "frameErrors": 0,
+      "loopGen": 12
+    },
+    {
+      "label": "fixed +20 cycles",
+      "raf": 60,
+      "engineFrames": 60,
+      "loops": 1,
+      "ctxTimeAdvance": 1,
+      "simWhileUnpaused": 1,
+      "wallMs": 1376,
+      "pausedFrames": 0,
+      "hitstopFrames": 0,
+      "saturatedFrames": 0,
+      "stepsHist": {
+        "1": 60
+      },
+      "accumulator": 0,
+      "menuScreen": null,
+      "playerAlive": true,
+      "playerHealth": 110,
+      "frameErrors": 0,
+      "loopGen": 22
+    },
+    {
+      "label": "fixed +21 cycles",
+      "raf": 60,
+      "engineFrames": 60,
+      "loops": 1,
+      "ctxTimeAdvance": 1,
+      "simWhileUnpaused": 1,
+      "wallMs": 4919,
+      "pausedFrames": 0,
+      "hitstopFrames": 0,
+      "saturatedFrames": 0,
+      "stepsHist": {
+        "1": 60
+      },
+      "accumulator": 0,
+      "menuScreen": null,
+      "playerAlive": true,
+      "playerHealth": 110,
+      "frameErrors": 0,
+      "loopGen": 23
+    },
+    {
+      "label": "fixed +31 cycles",
+      "raf": 60,
+      "engineFrames": 60,
+      "loops": 1,
+      "ctxTimeAdvance": 1,
+      "simWhileUnpaused": 1,
+      "wallMs": 1154,
+      "pausedFrames": 0,
+      "hitstopFrames": 0,
+      "saturatedFrames": 0,
+      "stepsHist": {
+        "1": 60
+      },
+      "accumulator": 0,
+      "menuScreen": null,
+      "playerAlive": true,
+      "playerHealth": 110,
+      "frameErrors": 0,
+      "loopGen": 33
+    },
+    {
+      "label": "fixed +51 cycles",
+      "raf": 60,
+      "engineFrames": 60,
+      "loops": 1,
+      "ctxTimeAdvance": 1,
+      "simWhileUnpaused": 1,
+      "wallMs": 1713,
+      "pausedFrames": 0,
+      "hitstopFrames": 0,
+      "saturatedFrames": 0,
+      "stepsHist": {
+        "1": 60
+      },
+      "accumulator": 0,
+      "menuScreen": null,
+      "playerAlive": true,
+      "playerHealth": 110,
+      "frameErrors": 0,
+      "loopGen": 53
+    }
+  ],
+  "fixedFreezeThaw": {
+    "frozen": {
+      "label": "frozen",
+      "raf": 30,
+      "engineFrames": 0,
+      "loops": 0,
+      "ctxTimeAdvance": 0,
+      "simWhileUnpaused": 0,
+      "wallMs": 46,
+      "pausedFrames": 0,
+      "hitstopFrames": 0,
+      "saturatedFrames": 0,
+      "stepsHist": {},
+      "accumulator": 0,
+      "menuScreen": null,
+      "playerAlive": true,
+      "playerHealth": 110,
+      "frameErrors": 0,
+      "loopGen": 53
+    },
+    "thawed": {
+      "label": "thawed again",
+      "raf": 60,
+      "engineFrames": 60,
+      "loops": 1,
+      "ctxTimeAdvance": 1,
+      "simWhileUnpaused": 1,
+      "wallMs": 1085,
+      "pausedFrames": 0,
+      "hitstopFrames": 0,
+      "saturatedFrames": 0,
+      "stepsHist": {
+        "1": 60
+      },
+      "accumulator": 0,
+      "menuScreen": null,
+      "playerAlive": true,
+      "playerHealth": 110,
+      "frameErrors": 0,
+      "loopGen": 54
+    }
+  },
+  "doubleStart": {
+    "label": "after 3x start() with no stop()",
+    "raf": 60,
+    "engineFrames": 60,
+    "loops": 1,
+    "ctxTimeAdvance": 1,
+    "simWhileUnpaused": 1,
+    "wallMs": 2545,
+    "pausedFrames": 0,
+    "hitstopFrames": 0,
+    "saturatedFrames": 0,
+    "stepsHist": {
+      "1": 60
+    },
+    "accumulator": 0,
+    "menuScreen": null,
+    "playerAlive": true,
+    "playerHealth": 110,
+    "frameErrors": 0,
+    "loopGen": 54
+  },
+  "longFrozen": {
+    "label": "frozen 120 raf",
+    "raf": 120,
+    "engineFrames": 0,
+    "loops": 0,
+    "ctxTimeAdvance": 0,
+    "simWhileUnpaused": 0,
+    "wallMs": 72,
+    "pausedFrames": 0,
+    "hitstopFrames": 0,
+    "saturatedFrames": 0,
+    "stepsHist": {},
+    "accumulator": 0,
+    "menuScreen": null,
+    "playerAlive": true,
+    "playerHealth": 110,
+    "frameErrors": 0,
+    "loopGen": 54
+  },
+  "old": [
+    {
+      "label": "old handover",
+      "raf": 60,
+      "engineFrames": 120,
+      "loops": 2,
+      "ctxTimeAdvance": 2,
+      "simWhileUnpaused": 2,
+      "wallMs": 5096,
+      "pausedFrames": 0,
+      "hitstopFrames": 0,
+      "saturatedFrames": 0,
+      "stepsHist": {
+        "1": 120
+      },
+      "accumulator": 0,
+      "menuScreen": null,
+      "playerAlive": true,
+      "playerHealth": 110,
+      "frameErrors": 0,
+      "loopGen": 55
+    },
+    {
+      "label": "old +1",
+      "raf": 60,
+      "engineFrames": 180,
+      "loops": 3,
+      "ctxTimeAdvance": 3,
+      "simWhileUnpaused": 3,
+      "wallMs": 5143,
+      "pausedFrames": 0,
+      "hitstopFrames": 0,
+      "saturatedFrames": 0,
+      "stepsHist": {
+        "1": 180
+      },
+      "accumulator": 0,
+      "menuScreen": null,
+      "playerAlive": true,
+      "playerHealth": 110,
+      "frameErrors": 0,
+      "loopGen": 55
+    },
+    {
+      "label": "old +5",
+      "raf": 60,
+      "engineFrames": 420,
+      "loops": 7,
+      "ctxTimeAdvance": 6.767,
+      "simWhileUnpaused": 6.767,
+      "wallMs": 16912,
+      "pausedFrames": 0,
+      "hitstopFrames": 16,
+      "saturatedFrames": 0,
+      "stepsHist": {
+        "0": 14,
+        "1": 406
+      },
+      "accumulator": 0.006667,
+      "menuScreen": null,
+      "playerAlive": true,
+      "playerHealth": 72,
+      "frameErrors": 0,
+      "loopGen": 55
+    },
+    {
+      "label": "old +10",
+      "raf": 60,
+      "engineFrames": 720,
+      "loops": 12,
+      "ctxTimeAdvance": 7.117,
+      "simWhileUnpaused": 7.117,
+      "wallMs": 24018,
+      "pausedFrames": 265,
+      "hitstopFrames": 40,
+      "saturatedFrames": 0,
+      "stepsHist": {
+        "0": 293,
+        "1": 427
+      },
+      "accumulator": 0.013333,
+      "menuScreen": "death",
+      "playerAlive": false,
+      "playerHealth": 0,
+      "frameErrors": 0,
+      "loopGen": 55
+    },
+    {
+      "label": "old +20",
+      "raf": 60,
+      "engineFrames": 1320,
+      "loops": 22,
+      "ctxTimeAdvance": 0,
+      "simWhileUnpaused": 0,
+      "wallMs": 33773,
+      "pausedFrames": 1320,
+      "hitstopFrames": 0,
+      "saturatedFrames": 0,
+      "stepsHist": {
+        "0": 1320
+      },
+      "accumulator": 0.013333,
+      "menuScreen": "death",
+      "playerAlive": false,
+      "playerHealth": 0,
+      "frameErrors": 0,
+      "loopGen": 55
+    },
+    {
+      "label": "old +21",
+      "raf": 60,
+      "engineFrames": 1380,
+      "loops": 23,
+      "ctxTimeAdvance": 0,
+      "simWhileUnpaused": 0,
+      "wallMs": 28312,
+      "pausedFrames": 1380,
+      "hitstopFrames": 0,
+      "saturatedFrames": 0,
+      "stepsHist": {
+        "0": 1380
+      },
+      "accumulator": 0.013333,
+      "menuScreen": "death",
+      "playerAlive": false,
+      "playerHealth": 0,
+      "frameErrors": 0,
+      "loopGen": 55
+    }
+  ],
+  "oldPostState": {
+    "paused": true,
+    "screen": "death",
+    "playerAlive": false,
+    "ctxTime": 37.63,
+    "determinism": {
+      "clockPinned": true,
+      "frameDt": 0.016666666666666666,
+      "frameTimeouts": 0
+    }
+  }
+}

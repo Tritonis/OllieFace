@@ -1,0 +1,113 @@
+{
+  "seed": 1337,
+  "ready": true,
+  "clockPinned": true,
+  "ms": {
+    "boot": 13353,
+    "bootTimeout": 60000
+  },
+  "shots": [
+    {
+      "name": "15-logbook",
+      "doc": "Logbook, survivors tab, with the 3D model viewer live. Judges the index/detail split, unlock and discovery states, and whether the browsing UI reads as the same product as the HUD.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\uifix9\\15-logbook.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 0.35
+      },
+      "ms": {
+        "setup": 4924,
+        "screenshot": 491,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "logbook screen",
+            "kind": "dom",
+            "ok": true,
+            "detail": null
+          },
+          {
+            "subject": "enemies index",
+            "kind": "dom",
+            "ok": true,
+            "detail": 16
+          },
+          {
+            "subject": "a selected entry",
+            "kind": "dom",
+            "ok": true,
+            "detail": "golem"
+          },
+          {
+            "subject": "the 3D model viewer",
+            "kind": "dom",
+            "ok": true,
+            "detail": null
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "16-run-summary",
+      "doc": "Run-end summary after a real death: survivor, difficulty, artifacts, time, stages, kills, damage, the run's item haul and anything earned. Judges whether the run reads back as a story rather than a number dump.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\uifix9\\16-run-summary.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 1063.816666666665
+      },
+      "ms": {
+        "setup": 3251,
+        "screenshot": 265,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "the summary screen",
+            "kind": "dom",
+            "ok": true,
+            "detail": "death"
+          },
+          {
+            "subject": "a committed run record",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "time": 1063.816666666665,
+              "stage": 1
+            }
+          },
+          {
+            "subject": "the run's item haul",
+            "kind": "dom",
+            "ok": true,
+            "detail": 22
+          }
+        ]
+      },
+      "newErrors": []
+    }
+  ],
+  "errors": [],
+  "partial": true,
+  "subjectFailures": [],
+  "subjectsOk": true,
+  "determinism": {
+    "clockPinned": true,
+    "frameDt": 0.016666666666666666,
+    "frameTimeouts": 0
+  },
+  "perf": {
+    "programs": 72,
+    "geometries": 372,
+    "textures": 52,
+    "sceneObjects": 743
+  }
+}

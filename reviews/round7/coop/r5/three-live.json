@@ -1,0 +1,494 @@
+{
+  "arm": "three-live",
+  "mode": "live",
+  "substitutions": [],
+  "samples": [
+    {
+      "label": "both-joined",
+      "host": {
+        "tick": 95,
+        "paused": false,
+        "screen": null,
+        "inputEnabled": true,
+        "pointerLocked": false,
+        "clients": 2,
+        "pawns": [
+          {
+            "survivorId": "anvil",
+            "health": 170,
+            "maxHealth": 170,
+            "alive": true,
+            "localTick": 0
+          },
+          {
+            "survivorId": "kestrel",
+            "health": 90,
+            "maxHealth": 90,
+            "alive": true,
+            "localTick": 0
+          }
+        ],
+        "helloSeen": [
+          true,
+          true
+        ],
+        "peerSurvivors": [
+          "anvil",
+          "kestrel"
+        ],
+        "lobbyStatus": "peerConnecting",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null,
+          "count": null
+        },
+        "players": 3,
+        "ownSurvivor": "ranger",
+        "ownMax": 110,
+        "ownAlive": true
+      },
+      "a": {
+        "connected": true,
+        "myNetId": 1,
+        "netTick": 10,
+        "serverTick": 95,
+        "paused": false,
+        "screen": null,
+        "survivorId": "anvil",
+        "maxHealth": 170,
+        "health": 170,
+        "alive": true,
+        "lobbyStatus": "connected",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null
+        }
+      },
+      "b": {
+        "connected": true,
+        "myNetId": 30,
+        "netTick": 10,
+        "serverTick": 130,
+        "paused": false,
+        "screen": null,
+        "survivorId": "kestrel",
+        "maxHealth": 90,
+        "health": 90,
+        "alive": true,
+        "lobbyStatus": "connected",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null
+        }
+      },
+      "hasLivePeer": true,
+      "holding": false
+    },
+    {
+      "label": "menu-open-two-live",
+      "host": {
+        "tick": 175,
+        "paused": false,
+        "screen": "pause",
+        "inputEnabled": false,
+        "pointerLocked": false,
+        "clients": 2,
+        "pawns": [
+          {
+            "survivorId": "anvil",
+            "health": 170,
+            "maxHealth": 170,
+            "alive": true,
+            "localTick": 0
+          },
+          {
+            "survivorId": "kestrel",
+            "health": 90,
+            "maxHealth": 90,
+            "alive": true,
+            "localTick": 0
+          }
+        ],
+        "helloSeen": [
+          true,
+          true
+        ],
+        "peerSurvivors": [
+          "anvil",
+          "kestrel"
+        ],
+        "lobbyStatus": "peerConnecting",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null,
+          "count": null
+        },
+        "players": 3,
+        "ownSurvivor": "ranger",
+        "ownMax": 110,
+        "ownAlive": true
+      },
+      "a": {
+        "connected": true,
+        "myNetId": 1,
+        "netTick": 65,
+        "serverTick": 175,
+        "paused": false,
+        "screen": null,
+        "survivorId": "anvil",
+        "maxHealth": 170,
+        "health": 170,
+        "alive": true,
+        "lobbyStatus": "connected",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null
+        }
+      },
+      "b": {
+        "connected": true,
+        "myNetId": 30,
+        "netTick": 20,
+        "serverTick": 180,
+        "paused": false,
+        "screen": null,
+        "survivorId": "kestrel",
+        "maxHealth": 90,
+        "health": 90,
+        "alive": true,
+        "lobbyStatus": "connected",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null
+        }
+      },
+      "hasLivePeer": true,
+      "holding": true
+    },
+    {
+      "label": "one-pawn-dead-one-live",
+      "host": {
+        "tick": 195,
+        "paused": false,
+        "screen": "pause",
+        "inputEnabled": false,
+        "pointerLocked": false,
+        "clients": 2,
+        "pawns": [
+          {
+            "survivorId": "anvil",
+            "health": 0,
+            "maxHealth": 170,
+            "alive": false,
+            "localTick": 0
+          },
+          {
+            "survivorId": "kestrel",
+            "health": 90,
+            "maxHealth": 90,
+            "alive": true,
+            "localTick": 0
+          }
+        ],
+        "helloSeen": [
+          true,
+          true
+        ],
+        "peerSurvivors": [
+          "anvil",
+          "kestrel"
+        ],
+        "lobbyStatus": "peerConnecting",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null,
+          "count": null
+        },
+        "players": 3,
+        "ownSurvivor": "ranger",
+        "ownMax": 110,
+        "ownAlive": true
+      },
+      "a": {
+        "connected": true,
+        "myNetId": 1,
+        "netTick": 70,
+        "serverTick": 195,
+        "paused": true,
+        "screen": "death",
+        "survivorId": "anvil",
+        "maxHealth": 170,
+        "health": 0,
+        "alive": false,
+        "lobbyStatus": "connected",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null
+        }
+      },
+      "b": {
+        "connected": true,
+        "myNetId": 30,
+        "netTick": 40,
+        "serverTick": 200,
+        "paused": false,
+        "screen": null,
+        "survivorId": "kestrel",
+        "maxHealth": 90,
+        "health": 90,
+        "alive": true,
+        "lobbyStatus": "connected",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null
+        }
+      },
+      "hasLivePeer": true,
+      "holding": true
+    },
+    {
+      "label": "both-dead-inside-grace",
+      "host": {
+        "tick": 205,
+        "paused": false,
+        "screen": "pause",
+        "inputEnabled": true,
+        "pointerLocked": false,
+        "clients": 2,
+        "pawns": [
+          {
+            "survivorId": "anvil",
+            "health": 0,
+            "maxHealth": 170,
+            "alive": false,
+            "localTick": 0
+          },
+          {
+            "survivorId": "kestrel",
+            "health": 0,
+            "maxHealth": 90,
+            "alive": false,
+            "localTick": 0
+          }
+        ],
+        "helloSeen": [
+          true,
+          true
+        ],
+        "peerSurvivors": [
+          "anvil",
+          "kestrel"
+        ],
+        "lobbyStatus": "peerConnecting",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null,
+          "count": null
+        },
+        "players": 3,
+        "ownSurvivor": "ranger",
+        "ownMax": 110,
+        "ownAlive": true
+      },
+      "a": {
+        "connected": true,
+        "myNetId": 1,
+        "netTick": 70,
+        "serverTick": 205,
+        "paused": true,
+        "screen": "death",
+        "survivorId": "anvil",
+        "maxHealth": 170,
+        "health": 0,
+        "alive": false,
+        "lobbyStatus": "connected",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null
+        }
+      },
+      "b": {
+        "connected": true,
+        "myNetId": 30,
+        "netTick": 40,
+        "serverTick": 205,
+        "paused": true,
+        "screen": "death",
+        "survivorId": "kestrel",
+        "maxHealth": 90,
+        "health": 0,
+        "alive": false,
+        "lobbyStatus": "connected",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null
+        }
+      },
+      "hasLivePeer": false,
+      "holding": false
+    },
+    {
+      "label": "both-dead-after-grace",
+      "host": {
+        "tick": 210,
+        "paused": true,
+        "screen": "pause",
+        "inputEnabled": true,
+        "pointerLocked": false,
+        "clients": 2,
+        "pawns": [
+          {
+            "survivorId": "anvil",
+            "health": 0,
+            "maxHealth": 170,
+            "alive": false,
+            "localTick": 0
+          },
+          {
+            "survivorId": "kestrel",
+            "health": 0,
+            "maxHealth": 90,
+            "alive": false,
+            "localTick": 0
+          }
+        ],
+        "helloSeen": [
+          true,
+          true
+        ],
+        "peerSurvivors": [
+          "anvil",
+          "kestrel"
+        ],
+        "lobbyStatus": "peerConnecting",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null,
+          "count": null
+        },
+        "players": 3,
+        "ownSurvivor": "ranger",
+        "ownMax": 110,
+        "ownAlive": true
+      },
+      "a": {
+        "connected": true,
+        "myNetId": 1,
+        "netTick": 70,
+        "serverTick": 205,
+        "paused": true,
+        "screen": "death",
+        "survivorId": "anvil",
+        "maxHealth": 170,
+        "health": 0,
+        "alive": false,
+        "lobbyStatus": "connected",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null
+        }
+      },
+      "b": {
+        "connected": true,
+        "myNetId": 30,
+        "netTick": 40,
+        "serverTick": 205,
+        "paused": true,
+        "screen": "death",
+        "survivorId": "kestrel",
+        "maxHealth": 90,
+        "health": 0,
+        "alive": false,
+        "lobbyStatus": "connected",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null
+        }
+      },
+      "hasLivePeer": false,
+      "holding": false
+    }
+  ],
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 1035,
+      "survivorId": "ranger",
+      "maxHealth": 110
+    },
+    "a": {
+      "paused": false,
+      "screen": null,
+      "localTick": 700,
+      "survivorId": "anvil",
+      "maxHealth": 170
+    },
+    "b": {
+      "paused": false,
+      "screen": null,
+      "localTick": 65,
+      "survivorId": "kestrel",
+      "maxHealth": 90
+    }
+  },
+  "sentences": {
+    "host": {
+      "text": "Reply accepted — connecting…",
+      "length": 28
+    },
+    "a": {
+      "text": "Connected. Rebuilding the host's world…",
+      "length": 39
+    },
+    "b": {
+      "text": "Connected. Rebuilding the host's world…",
+      "length": 39
+    }
+  },
+  "errors": {
+    "host": {
+      "consoleErrors": 0,
+      "netWarns": 0,
+      "netWarnTexts": [],
+      "consoleWarns": 12,
+      "pageErrors": 0,
+      "errorTexts": [],
+      "pageErrorTexts": []
+    },
+    "a": {
+      "consoleErrors": 0,
+      "netWarns": 0,
+      "netWarnTexts": [],
+      "consoleWarns": 12,
+      "pageErrors": 0,
+      "errorTexts": [],
+      "pageErrorTexts": []
+    },
+    "b": {
+      "consoleErrors": 0,
+      "netWarns": 0,
+      "netWarnTexts": [],
+      "consoleWarns": 12,
+      "pageErrors": 0,
+      "errorTexts": [],
+      "pageErrorTexts": []
+    }
+  },
+  "substitutionsMissing": []
+}

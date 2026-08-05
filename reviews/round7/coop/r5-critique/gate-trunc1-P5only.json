@@ -1,0 +1,183 @@
+{
+  "arm": "gate-trunc1-P5only",
+  "substitutions": [
+    "P5-malformed"
+  ],
+  "substitutionsMissing": [],
+  "port": 5867,
+  "gateHost": {
+    "paused": false,
+    "screen": null,
+    "localTick": 70,
+    "survivorId": "ranger",
+    "maxHealth": 110,
+    "lobbyMode": "single",
+    "pointerLock": true
+  },
+  "gateClient": {
+    "paused": false,
+    "screen": null,
+    "localTick": 70,
+    "survivorId": "anvil",
+    "maxHealth": 170,
+    "lobbyMode": "single",
+    "pointerLock": true
+  },
+  "host": {
+    "role": "host",
+    "lobbyMode": "host",
+    "status": "peerRefused",
+    "statusDetail": {
+      "id": 1,
+      "reason": "version",
+      "detail": "theirs 0, ours 4"
+    },
+    "players": 2,
+    "refusedPeers": [
+      1
+    ],
+    "clientsCount": 1,
+    "clients": [
+      {
+        "id": 1,
+        "helloSeen": true,
+        "survivorId": null,
+        "hasPawn": true,
+        "joinTick": 50
+      }
+    ],
+    "pawns": [
+      {
+        "survivorId": "ranger",
+        "health": 110,
+        "maxHealth": 110,
+        "alive": true,
+        "netId": 1
+      }
+    ],
+    "tick": 60,
+    "paused": false,
+    "screen": null,
+    "inputEnabled": true,
+    "holding": false,
+    "pointerLock": true,
+    "my": {
+      "survivorId": "ranger",
+      "health": 110,
+      "maxHealth": 110,
+      "alive": true
+    },
+    "said": "Turned a player away: they are running a different version of the game (theirs 0, ours 4). Both of you need the same build.",
+    "saidLen": 123,
+    "statuses": [
+      {
+        "status": "hosting",
+        "detail": null,
+        "said": "Hosting. Create an invite for each friend you want to bring in."
+      },
+      {
+        "status": "inviteReady",
+        "detail": {
+          "id": 1,
+          "blob": "eyJ2IjoxLCJyb2xlIjoib2ZmZXIiLCJpZCI6MSwic2RwIjp7InR5cGUiOiJvZmZlciIsInNkcCI6InY9MFxyXG5vPS0gMTg2ODU4Mjg1ODM5MjA4NjU2IDIgSU4gSVA0IDEyNy4wLjAuMVxyXG5zPS1cclxudD0wIDBcclxuYT1ncm91cDpCVU5ETEUgMFxyXG5hPWV4dG1hcC1hbGxvdy1taXhlZFxyXG5hPW1zaWQtc2VtYW50aWM6IFdNU1xyXG5tPWFwcGxpY2F0aW9uIDkgVURQL0RUTFMvU0NUUCB3ZWJydGMtZGF0YWNoYW5uZWxcclxuYz1JTiBJUDQgMC4wLjAuMFxyXG5hPWNhbmRpZGF0ZTozNzQ5MjA0MjIyIDEgdWRwIDIxMTM5MzcxNTEgMDhmOWM1ZWUtMDQ2Yi00MGVkLTliYTgtMjAyYmYxY2VjYmEwLmxvY2FsIDUxMzcwIHR5cCBob3N0IGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9aWNlLXVmcmFnOjdrNm5cclxuYT1pY2UtcHdkOkFtdUVjRG1xSldldVgrQnRTWUFoNUo2UVxyXG5hPWljZS1vcHRpb25zOnRyaWNrbGVcclxuYT1maW5nZXJwcmludDpzaGEtMjU2IDhBOjIzOkIzOkU3OjgwOjAyOkJBOjg5OjFCOjJDOkY0OkNBOjY3OkE1OkYwOjc2OjVFOkNDOkNCOjZCOkE1OjU5Ojg4OkVGOjNBOkU5OjhBOkRGOjRCOkNFOkU3OkEyXHJcbmE9c2V0dXA6YWN0cGFzc1xyXG5hPW1pZDowXHJcbmE9c2N0cC1wb3J0OjUwMDBcclxuYT1tYXgtbWVzc2FnZS1zaXplOjI2MjE0NFxyXG4ifX0"
+        },
+        "said": "Invite ready. Send that code to your friend."
+      },
+      {
+        "status": "peerJoined",
+        "detail": {
+          "id": 1,
+          "count": 2
+        },
+        "said": "A player joined. 2 in the game."
+      },
+      {
+        "status": "peerConnecting",
+        "detail": {
+          "id": 1
+        },
+        "said": "Reply accepted — connecting…"
+      },
+      {
+        "status": "peerRefused",
+        "detail": {
+          "id": 1,
+          "reason": "version",
+          "detail": "theirs 0, ours 4"
+        },
+        "said": "Turned a player away: they are running a different version of the game (theirs 0, ours 4). Both of you need the same build."
+      }
+    ]
+  },
+  "client": {
+    "role": "client",
+    "lobbyMode": "client",
+    "status": "refused",
+    "statusDetail": {
+      "reason": "version",
+      "detail": "theirs 0, ours 4"
+    },
+    "connected": false,
+    "myNetId": 1,
+    "serverTick": 60,
+    "paused": false,
+    "screen": null,
+    "refusedLatch": true,
+    "my": {
+      "survivorId": "anvil",
+      "health": 170,
+      "maxHealth": 170,
+      "alive": true
+    },
+    "said": "That host is running a different version of the game (theirs 0, ours 4). Both of you need the same build.",
+    "saidLen": 105,
+    "statuses": [
+      {
+        "status": "joining",
+        "detail": null,
+        "said": "Answering the invite…"
+      },
+      {
+        "status": "answerReady",
+        "detail": {
+          "blob": "eyJ2IjoxLCJyb2xlIjoiYW5zd2VyIiwiaWQiOjEsInNkcCI6eyJ0eXBlIjoiYW5zd2VyIiwic2RwIjoidj0wXHJcbm89LSA1NTUyNzI0NDIwNzI0ODMxMDcgMiBJTiBJUDQgMTI3LjAuMC4xXHJcbnM9LVxyXG50PTAgMFxyXG5hPWdyb3VwOkJVTkRMRSAwXHJcbmE9ZXh0bWFwLWFsbG93LW1peGVkXHJcbmE9bXNpZC1zZW1hbnRpYzogV01TXHJcbm09YXBwbGljYXRpb24gNTUyMjcgVURQL0RUTFMvU0NUUCB3ZWJydGMtZGF0YWNoYW5uZWxcclxuYz1JTiBJUDQgOTkuMTA5LjE0MS4xNThcclxuYT1jYW5kaWRhdGU6MTAzMzI1MDkyNyAxIHVkcCAyMTEzOTM3MTUxIGIxNDJmODBmLTU3YWEtNDg3YS05MjQzLTliN2QwMGI5YmJmYS5sb2NhbCA1NTIyNyB0eXAgaG9zdCBnZW5lcmF0aW9uIDAgbmV0d29yay1jb3N0IDk5OVxyXG5hPWNhbmRpZGF0ZToyNjYwNDQ5ODUyIDEgdWRwIDE2Nzc3Mjk1MzUgOTkuMTA5LjE0MS4xNTggNTUyMjcgdHlwIHNyZmx4IHJhZGRyIDAuMC4wLjAgcnBvcnQgMCBnZW5lcmF0aW9uIDAgbmV0d29yay1jb3N0IDk5OVxyXG5hPWljZS11ZnJhZzozRW8wXHJcbmE9aWNlLXB3ZDpyTEI5cDNzaEJOT1BBRWRsWjJiQzVvS2RcclxuYT1pY2Utb3B0aW9uczp0cmlja2xlXHJcbmE9ZmluZ2VycHJpbnQ6c2hhLTI1NiA0QTpDODo5NDo4Rjo1NDo0ODo3NTowODowNzpDODpGNDowODpFQTpERTpDNzoxMTo4NzpBNzozRTpFQjpFRTo2Rjo1ODo5NjpBRjpGQzpDMjpBQjo1RTpGNzoxNjo3RFxyXG5hPXNldHVwOmFjdGl2ZVxyXG5hPW1pZDowXHJcbmE9c2N0cC1wb3J0OjUwMDBcclxuYT1tYXgtbWVzc2FnZS1zaXplOjI2MjE0NFxyXG4ifX0"
+        },
+        "said": "Send your reply code back to the host."
+      },
+      {
+        "status": "connected",
+        "detail": {
+          "seed": 1337,
+          "stageIndex": 0,
+          "time": 3.5,
+          "myNetId": 1,
+          "artifactMask": 0,
+          "difficulty": 1
+        },
+        "said": "Connected. Rebuilding the host's world…"
+      },
+      {
+        "status": "refused",
+        "detail": {
+          "reason": "version",
+          "detail": "theirs 0, ours 4"
+        },
+        "said": "That host is running a different version of the game (theirs 0, ours 4). Both of you need the same build."
+      }
+    ]
+  },
+  "appliedAtRuntime": [
+    "P5-malformed"
+  ],
+  "hostLog": {
+    "errors": [],
+    "pageErrors": [],
+    "netWarns": []
+  },
+  "clientLog": {
+    "errors": [],
+    "pageErrors": [],
+    "netWarns": []
+  },
+  "elapsedMs": 179326
+}

@@ -1,0 +1,277 @@
+{
+  "arm": "n4-fixed",
+  "scenario": "hello",
+  "substitutions": [],
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 65,
+      "survivorId": "ranger",
+      "maxHealth": 110
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 70,
+      "survivorId": "anvil",
+      "maxHealth": 170
+    }
+  },
+  "wireUp": true,
+  "afterJoin": {
+    "host": {
+      "tick": 145,
+      "clients": 1,
+      "paused": false,
+      "inputEnabled": true,
+      "holding": false,
+      "hasLivePeer": true,
+      "screen": null,
+      "hudKills": 0,
+      "flashes": 0,
+      "progression": 0,
+      "lobbyStatus": "peerConnecting",
+      "lobbyDetail": {
+        "id": 1
+      },
+      "pawns": [
+        {
+          "survivorId": "anvil",
+          "health": 170,
+          "maxHealth": 170,
+          "alive": true,
+          "localTick": 0,
+          "helloSeen": true,
+          "joinTick": 35
+        }
+      ],
+      "own": {
+        "survivorId": "ranger",
+        "health": 110,
+        "maxHealth": 110,
+        "alive": true
+      }
+    },
+    "client": {
+      "tick": 70,
+      "serverTick": 145,
+      "connected": true,
+      "myNetId": 1,
+      "paused": false,
+      "screen": null,
+      "hudKills": 0,
+      "flashes": 0,
+      "progression": 0,
+      "lobbyStatus": "connected",
+      "lobbyDetail": {
+        "seed": 1337,
+        "stageIndex": 0,
+        "time": 1.75,
+        "myNetId": 1,
+        "artifactMask": 0,
+        "difficulty": 1
+      },
+      "own": {
+        "survivorId": "anvil",
+        "health": 170,
+        "maxHealth": 170,
+        "alive": true,
+        "shield": 0,
+        "localTick": 0
+      },
+      "ended": null
+    }
+  },
+  "result": {
+    "damaged": {
+      "health": 54.26,
+      "maxHealth": 170,
+      "survivorId": "anvil",
+      "pawnLocalTick": 0,
+      "pawnAgeTicks": 175,
+      "joinTick": 35,
+      "hostTick": 210
+    },
+    "replays": [
+      {
+        "sent": "kestrel",
+        "host": {
+          "clients": 1,
+          "pawns": [
+            {
+              "survivorId": "anvil",
+              "health": 54.26,
+              "maxHealth": 170,
+              "helloSeen": true,
+              "pawnLocalTick": 0,
+              "ageTicks": 180
+            }
+          ],
+          "lobbyStatus": "peerRefused",
+          "lobbyDetail": {
+            "id": 1,
+            "reason": "hello",
+            "detail": "a second identity message"
+          },
+          "pawnTicksSeenByGate": null
+        },
+        "client": {
+          "connected": false,
+          "lobbyStatus": "refused",
+          "lobbyDetail": {
+            "reason": "hello",
+            "detail": "a second identity message"
+          },
+          "own": {
+            "survivorId": "anvil",
+            "maxHealth": 170,
+            "health": 54.26
+          }
+        }
+      },
+      {
+        "sent": "anvil",
+        "host": {
+          "clients": 0,
+          "pawns": [],
+          "lobbyStatus": "peerRefused",
+          "lobbyDetail": {
+            "id": 1,
+            "reason": "hello",
+            "detail": "a second identity message"
+          },
+          "pawnTicksSeenByGate": null
+        },
+        "client": {
+          "connected": false,
+          "lobbyStatus": "refused",
+          "lobbyDetail": {
+            "reason": "hello",
+            "detail": "a second identity message"
+          },
+          "own": {
+            "survivorId": "anvil",
+            "maxHealth": 170,
+            "health": 54.26
+          }
+        }
+      },
+      {
+        "sent": "kestrel",
+        "host": {
+          "clients": 0,
+          "pawns": [],
+          "lobbyStatus": "peerRefused",
+          "lobbyDetail": {
+            "id": 1,
+            "reason": "hello",
+            "detail": "a second identity message"
+          },
+          "pawnTicksSeenByGate": null
+        },
+        "client": {
+          "connected": false,
+          "lobbyStatus": "refused",
+          "lobbyDetail": {
+            "reason": "hello",
+            "detail": "a second identity message"
+          },
+          "own": {
+            "survivorId": "anvil",
+            "maxHealth": 170,
+            "health": 54.26
+          }
+        }
+      },
+      {
+        "sent": "anvil",
+        "host": {
+          "clients": 0,
+          "pawns": [],
+          "lobbyStatus": "peerRefused",
+          "lobbyDetail": {
+            "id": 1,
+            "reason": "hello",
+            "detail": "a second identity message"
+          },
+          "pawnTicksSeenByGate": null
+        },
+        "client": {
+          "connected": false,
+          "lobbyStatus": "refused",
+          "lobbyDetail": {
+            "reason": "hello",
+            "detail": "a second identity message"
+          },
+          "own": {
+            "survivorId": "anvil",
+            "maxHealth": 170,
+            "health": 54.26
+          }
+        }
+      }
+    ],
+    "hostSaid": "Turned a player away: their join did not make sense (a second identity message).",
+    "clientSaid": "The host refused the join. Try joining again.",
+    "final": {
+      "host": {
+        "tick": 235,
+        "clients": 0,
+        "paused": true,
+        "inputEnabled": true,
+        "holding": false,
+        "hasLivePeer": false,
+        "screen": "coop",
+        "hudKills": 0,
+        "flashes": 0,
+        "progression": 0,
+        "lobbyStatus": "peerRefused",
+        "lobbyDetail": {
+          "id": 1,
+          "reason": "hello",
+          "detail": "a second identity message"
+        },
+        "pawns": [],
+        "own": {
+          "survivorId": "ranger",
+          "health": 110,
+          "maxHealth": 110,
+          "alive": true
+        }
+      },
+      "client": {
+        "tick": 135,
+        "serverTick": 215,
+        "connected": false,
+        "myNetId": 1,
+        "paused": true,
+        "screen": "coop",
+        "hudKills": 0,
+        "flashes": 0,
+        "progression": 0,
+        "lobbyStatus": "refused",
+        "lobbyDetail": {
+          "reason": "hello",
+          "detail": "a second identity message"
+        },
+        "own": {
+          "survivorId": "anvil",
+          "health": 54.26,
+          "maxHealth": 170,
+          "alive": true,
+          "shield": 0,
+          "localTick": 0
+        },
+        "ended": null
+      }
+    }
+  },
+  "ok": true,
+  "substitutionsApplied": [],
+  "substitutionsMissing": [],
+  "hostConsoleErrors": [],
+  "hostPageErrors": [],
+  "clientConsoleErrors": [],
+  "clientPageErrors": []
+}

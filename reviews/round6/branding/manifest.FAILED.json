@@ -1,0 +1,14 @@
+{
+  "seed": 1337,
+  "ready": false,
+  "clockPinned": false,
+  "ms": {
+    "boot": 61324,
+    "bootTimeout": 60000
+  },
+  "shots": [],
+  "errors": [
+    "Unexpected identifier 'createParticleMaterial'\n"
+  ],
+  "partial": false
+}

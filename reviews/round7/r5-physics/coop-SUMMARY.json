@@ -1,0 +1,134 @@
+{
+  "what": "Independent verification of the co-op arm, round-4 fix report reviews/round7/round4-fix-physics.md §2 and §3",
+  "branch": "round7/content-and-polish",
+  "head": "a43cc70",
+  "baselineForBEFORE": {
+    "commit": "b18a2b4",
+    "why": "the ungated `jump` emit was introduced in b18a2b4, not ac85d85; the co-op fixes are the b18a2b4..a43cc70 delta. ac85d85 has no jump emit at all and is NOT the right baseline.",
+    "method": "vite `load` plugin serving the b18a2b4 text of the four files from a scratchpad copy; real source, real module graph, main repo node_modules, tree never dirtied",
+    "gate": "coop-claims-before.json .gates.substitutedModules lists all four; .gates.build.hasRecordJumpImpulse=false and .jumpGatesOnLocal=false; the AFTER arm asserts the inverse"
+  },
+  "sessionRealism": "two browser pages, ctx.lobby.createInvite -> joinManual -> acceptAnswer, real RTCPeerConnection, NetHost.clients.size>=1, authority true/false, pawn from the real peer-join path",
+  "engineConcession": "REFUTED. coop-live-d3d11.json: two live free-running engines in one headed chromium (--use-angle=d3d11), 20s, 0 page errors, 0 console errors, 0 frameErrors, 0 webglcontextlost, no crash. The fixer's 'two live engines crash the renderer' did not reproduce on this path. Measurements below still use frozen engines + hand-pumped net systems, for determinism, and say so.",
+  "claimTable": [
+    {"claim": "2a host shield from a PEER's jump (host holds Rubber Soles)", "reported": "0->55 / 0->0", "measured": "0->55 / 0->0", "verdict": "CONFIRMED"},
+    {"claim": "2a `jump` events on host bus while host never jumps", "reported": "6 / 0", "measured": "6 / 0", "verdict": "CONFIRMED"},
+    {"claim": "2a host consumeImpulse calls", "reported": "[30,30,36,30,30,36] / []", "measured": "[30,30,36,30,30,36] / []", "verdict": "CONFIRMED exactly"},
+    {"claim": "2a pawn peak horizontal speed", "reported": "36 / 0", "measured": "35.89 / 0", "verdict": "CONFIRMED"},
+    {"claim": "2b client replay velocity / divergence", "reported": "1.133->31.133 / 30.000->0.000", "measured": "replay hs 0->30, divergence 30.000->0.000 (base 30 not 31.133; the fixer's stand had residual ground speed)", "verdict": "CONFIRMED (divergence figure exact)"},
+    {"claim": "2c local playerHurt events for a PAWN 40m away taking 50", "reported": "2 / 0", "measured": "2 / 0", "verdict": "CONFIRMED"},
+    {"claim": "2c local timeSinceHurt", "reported": "30->0 / 30->30", "measured": "30->0 / 30->30", "verdict": "CONFIRMED"},
+    {"claim": "2c warded reflect lands on attacker", "reported": "pawn 60->16, reflectLandedOnAttacker true, host untouched", "measured": "BEFORE host 110->66 pawn 60->60; AFTER host 110->110 pawn 60->16", "verdict": "CONFIRMED; control (local attacker) lands on local in both arms"},
+    {"claim": "3 Progression.stats.damageTaken on 50 into a 1000 barrier", "reported": "+50 / +0", "measured": "+50 / +0 (health 110->110, shield 1000->950 in both)", "verdict": "CONFIRMED"}
+  ],
+  "instrumentGates": {
+    "restGate": "host pawn vs client player, both at rest, 30 lockstep ticks with real snapshots: maxDivergence 0.0000, 0 reconciles replayed, maxErr 0.0108 (= i16/64 position quantisation, below the 0.02 reconcile floor). PASS.",
+    "settleGate": "same, immediately before every jump measurement: 0.0000 in BOTH arms",
+    "controlArms": "idle command consumes nothing (hs 0, consumed []); a hit on a non-player emits no player events; the local player attacking a warded elite takes the reflect in BOTH arms",
+    "armGate": "every run asserts which build is loaded before measuring",
+    "failedInstruments": [
+      "firingInsideLock / firingPastLock (coop-hunt3): spawnCalls 0 in BOTH the locked and unlocked arm, so the control returns the identity and the instrument is disqualified. No claim is made about a joining client's projectiles.",
+      "backlogDrain (coop-hunt1): the queue fell 12->6 under a nominally 1:1 loop, i.e. commands were lost to the unordered channel rather than drained. The instrument cannot separate drain from loss; the no-drain claim is code-reading only."
+    ]
+  },
+  "newDefects": [
+    {
+      "id": "COOP-1",
+      "severity": "CRITICAL",
+      "title": "The `this.local` gate makes the host stop simulating a peer's jump impulse, so every non-host jump is mispredicted and rubber-banded",
+      "site": "src/entities/Player.js:701",
+      "regression": true,
+      "evidence": "coop-hunt3-before-drained.json vs coop-hunt3-after-drained.json. Identical 211-tick scenario, one jump, host queue drained, snapshot after every tick. BEFORE: host pawn peak hs 30, client peak hs 30, max host-client divergence 0.0000 across the whole run. AFTER: host pawn peak hs 0, client peak hs 30, max divergence 0.500 m with a residual that decays over ~200 ticks (final 0.014). coop-hunt2-after.json, with the product's own lag present: max divergence 6.013 m, 40 of 71 reconciles replayed, single largest yank 2.181 m.",
+      "why": "A client's inventory is a mirror of the host's (Items.js:210, `give` is host-only at Items.js:251), so before the fix both ends applied the SAME impulse and agreed exactly. The fix removes it from the host only. Waxed Wing, Updraft Vents and Tectonic Heart therefore do nothing for any non-host player: the authoritative position never moves and the local launch is erased by _reconcile.",
+      "fix": "Do not skip the impulse on a pawn — resolve it against the jumping player's own inventory, or replicate it. Minimum viable: keep the emit gated on `this.local` (that part is right) but have the host apply the same impulse to the pawn, e.g. hold a per-pawn impulse resolved from the shared inventory, so both ends compute the same launch."
+    },
+    {
+      "id": "COOP-2",
+      "severity": "MAJOR",
+      "title": "A joining client mis-classifies its first N ticks as replays, where N is the number of fixed steps the page ran before joining",
+      "site": "src/entities/Player.js:418 (`c.tick <= this._lastCmdTick`), with src/entities/Player.js:359 and src/net/NetClient.js:133",
+      "regression": false,
+      "evidence": "coop-hunt2-after.json .m.replayLock — client sat in the menu 6 s: _localTick/_lastCmdTick 512. On join NetClient.tick = 0. First 40 pumped client ticks: 40/40 classified as replay, remainingLockedTicks 472 (= 7.9 s at 60 Hz). coop-hunt3: 313 ticks locked after only 4 s in the menu, 90/90 replay. Nothing ever resets _lastCmdTick on join (_reconcile calls setNetState with x/y/z only).",
+      "suppressedDuringWindow": ["_runSchedule", "projectiles.fixedUpdate", "placeables.fixedUpdate", "air-jump vfx.impact", "audio.footstep", "the new _jumpImpulses impulse (map is empty for those ticks)"],
+      "notProven": "I could not demonstrate the visible symptom: my projectile instrument returned 0 spawns in the unlocked control arm too, so it is disqualified. The misclassification itself is measured; its cost is inferred from the code.",
+      "fix": "On WELCOME / netWelcome, reset the local player's command clock: `ctx.player._lastCmdTick = 0` (and `_localTick = 0`). Or have NetClient seed `this.tick = ctx.player._lastCmdTick` at join."
+    },
+    {
+      "id": "COOP-3",
+      "severity": "MAJOR",
+      "title": "Progression counts a teammate's damage DEALT as this run's, while the same fix guards damage TAKEN",
+      "site": "src/systems/Progression.js:146-148",
+      "regression": false,
+      "evidence": "coop-claims-{before,after}.json .m.teammateDamageDealt — a 777 hit whose `source` is the remote pawn: damageDealtDelta +777 and highestHit 200 -> 777, identical in BOTH arms.",
+      "fix": "Guard the `if` branch the same way the `else if` was guarded: `if (e.source?.isPlayer && (!ctx.player || e.source === ctx.player))`."
+    },
+    {
+      "id": "COOP-4",
+      "severity": "MAJOR",
+      "title": "After the fix nobody runs a remote player's `onDamaged` hooks, and a client never learns it was hurt at all",
+      "site": "src/systems/Combat.js:478-492 and src/net/NetHost.js:57",
+      "regression": "partial - before the fix the hooks ran against the WRONG inventory; now they run nowhere",
+      "evidence": "coop-claims-after.json .m.clientHurtFeedback — on a live client, ctx.items.timeSinceHurt() reads 1000.52 (i.e. Items._lastHurt is still its -999 sentinel) after the host has resolved damage. `playerHurt` and `shieldBroken` are not in NetHost's forwarded-event list, and Combat.applyDamage returns 0 immediately on a client (`if (!ctx.authority) return 0`).",
+      "consequence": "Field Dressing, Siege Battery and Mineral Lick key off timeSinceHurt and are permanently 'has not been hit in ages' for every non-host player; every onDamaged card is dead for them.",
+      "fix": "Forward `playerHurt`/`shieldBroken` and resolve them per target on the client, or dispatch `onDamaged` on the host against the damaged player's own hook set."
+    },
+    {
+      "id": "COOP-5",
+      "severity": "MINOR",
+      "title": "A joining peer's pawn is placed 35.8 m from where the client itself is standing",
+      "site": "src/net/Coop.js:51-55",
+      "regression": false,
+      "evidence": "coop-hunt1-after.json .joinPlacement — clientSelf (-14.98, 16.04, 31.12) vs hostPawn (2, 3.93, 2), gap 35.811 m. The pawn is parked at hostPlayer+ (2,·,2); the client's own player is wherever its own regenerated stage put it, and is never told.",
+      "mitigation": "err 35.8 exceeds SNAP_THRESHOLD 2.0 so the first snapshot snaps the client. Visible as a teleport on join rather than a persistent desync."
+    }
+  ],
+  "maxInputBacklogVerdict": {
+    "verdict": "BUG - low-to-moderate severity. I do not accept 'a property of the product'.",
+    "site": "src/net/NetHost.js:127",
+    "evidence": "coop-hunt1-after.json .m.inputBacklog — client bursts 25 ticks (72..96) with the jump bit on tick 72. Host queue caps at 12; ticks 72..84 (13 commands, INCLUDING the only jump-bearing command) are spliced off and never applied. appliedTicks = 85..96, droppedTicks = 72..84, jumpTickApplied false, jumpBearingCommandsQueued 0.",
+    "reachability": "Engine.js clamps to MAX_SUBSTEPS=5 per frame, so a client cannot burst 20 ticks from its own throttling alone. It does not need to: the host has the same clamp, so any host-side hitch below ~48 effective steps/s builds the queue at 12/s, and a backgrounded host (rAF halts entirely) stops consuming while the client keeps sending — the queue overflows in 200 ms and then discards every command for the whole absence, keeping only the newest 12.",
+    "codeComment": "The comment says 'a client is so far behind that catching up would let it act in the past. Discard and let it resync from the next snapshot.' Discarding the OLDEST is a catch-up policy, not a discard-the-late-client policy, and nothing resyncs the input stream — only the position does.",
+    "userVisible": "silently lost jumps/dodges, plus a position snap-back the size of the discarded movement. Not a permanent desync: the client's history still contains the acked tick, so _reconcile converges (confirmed: coop-hunt3 tail 0.0091-0.014 m).",
+    "fix": "Drain rather than discard: consume up to 2 commands per host tick while inputs.length exceeds a small target buffer. Failing that, OR the dropped commands' button bits into the next applied command so a press edge is never lost."
+  },
+  "notDefects": [
+    {
+      "title": "_jumpImpulses does not leak",
+      "evidence": "coop-hunt1-after.json .m.jumpImpulseMap — 4000 monotonic jumps leave size 106. Forcing a tick reset (200 entries at high ticks, then 2000 jumps at tick 1..24000) leaves size 102: the stale high-tick entries are never collected but they do not grow. Bounded at ~128 + jumps-within-128-ticks. My leak hypothesis is REFUTED."
+    },
+    {
+      "title": "Three peers work, and Tectonic Heart's tally is not polluted",
+      "evidence": "coop-hunt2-after.json .m.threePeers — 2 clients / 2 pawns / playerCount 3 with both peers jump-spamming 180 ticks: host shield 0, host jump events 0, tectonicTallyFires 0, host consumeImpulse calls []. The fix holds at pawn count 2."
+    },
+    {
+      "title": "Peer departure is clean",
+      "evidence": "coop-hunt2-after.json .m.peerLeave — clients 2->1, coop.pawns 2->1, combat entities 3->2, 60 further host fixedUpdate+update calls threw nothing, 0 orphaned player entities left in Combat, frameErrors 0."
+    },
+    {
+      "title": "Mid-stage join works",
+      "evidence": "coop-hunt2-after.json .m.midStageJoin — host at stageIndex 3, joining client adopts stageIndex 3, seed 1337 and host time; host ends with 2 clients / 2 pawns."
+    },
+    {
+      "title": "The rollback trajectory does reconverge",
+      "evidence": "coop-hunt3-after-drained.json — 200 ticks after the jump the divergence settles at 0.0091-0.014 m and stays there (tailMax == tailMean). That is one snapshot quantum (1/64 = 0.0156 m), not zero: reconverged to within quantisation, not to an identical position."
+    }
+  ],
+  "notTested": [
+    "a real lossy/high-latency link - both peers were loopback",
+    "four peers (protocol allows maxPlayers 4, i.e. 3 clients; I ran 2)",
+    "a peer leaving during a boss specifically - I tested leaving with a pawn alive and a live session",
+    "what the join-time replay lock costs visually (instrument disqualified)",
+    "reconnect after Lobby.leave() (the same stale-_lastCmdTick mechanism applies, measured synthetically in coop-hunt1 .m.reconnectTickReset: staleLastCmdTick 168 vs fresh tick 1 -> classifiedAsReplay true)",
+    "headless swiftshader with two live engines - only d3d11 headed was exercised for the liveness question"
+  ],
+  "files": {
+    "coop-live-d3d11.json": "two free-running engines in one browser, 20 s",
+    "coop-claims-before.json": "claim table, b18a2b4 arm",
+    "coop-claims-after.json": "claim table, a43cc70 arm",
+    "coop-diag-impulse.json": "why Items.give returns 0 on a client",
+    "coop-hunt1-after.json": "rest gate, input backlog, _jumpImpulses lifetime, reconnect tick reset",
+    "coop-hunt2-after.json": "join-time replay lock, real reconcile with a jump, three peers, peer leave, mid-stage join",
+    "coop-hunt3-after-drained.json": "AFTER: 211-tick convergence with the host queue drained",
+    "coop-hunt3-before-drained.json": "BEFORE: the same, the regression control"
+  }
+}

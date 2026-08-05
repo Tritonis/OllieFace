@@ -1,0 +1,97 @@
+{
+  "arm": "adv-k300-pre",
+  "shape": "k300",
+  "substitutions": [
+    "P2-slice",
+    "P2-flush"
+  ],
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 310,
+      "survivorId": "ranger",
+      "maxHealth": 110
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 65,
+      "survivorId": "anvil",
+      "maxHealth": 170
+    }
+  },
+  "helloBytes": 305,
+  "host": {
+    "tick": 150,
+    "paused": false,
+    "screen": null,
+    "inputEnabled": true,
+    "pointerLocked": false,
+    "clients": 0,
+    "pawns": [],
+    "helloSeen": [],
+    "peerSurvivors": [],
+    "lobbyStatus": "peerRefused",
+    "lobbyDetail": {
+      "reason": "survivor",
+      "detail": 300,
+      "detailHead": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy",
+      "count": null
+    },
+    "players": 1,
+    "ownSurvivor": "ranger",
+    "ownMax": 110,
+    "ownAlive": true
+  },
+  "client": {
+    "connected": false,
+    "myNetId": 1,
+    "netTick": 10,
+    "serverTick": 70,
+    "paused": false,
+    "screen": null,
+    "survivorId": "anvil",
+    "maxHealth": 170,
+    "health": 170,
+    "alive": true,
+    "lobbyStatus": "refused",
+    "lobbyDetail": {
+      "reason": "survivor",
+      "detail": 64,
+      "detailHead": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+    }
+  },
+  "mistated": false,
+  "sentences": {
+    "host": {
+      "text": "Turned a player away: they picked a survivor this build does not have (yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy",
+      "length": 373
+    },
+    "client": {
+      "text": "The host does not have the survivor you picked. Choose one from their build and join again.",
+      "length": 91
+    }
+  },
+  "errors": {
+    "host": {
+      "consoleErrors": 0,
+      "netWarns": 0,
+      "netWarnTexts": [],
+      "consoleWarns": 12,
+      "pageErrors": 0,
+      "errorTexts": [],
+      "pageErrorTexts": []
+    },
+    "client": {
+      "consoleErrors": 0,
+      "netWarns": 0,
+      "netWarnTexts": [],
+      "consoleWarns": 12,
+      "pageErrors": 0,
+      "errorTexts": [],
+      "pageErrorTexts": []
+    }
+  },
+  "substitutionsMissing": []
+}

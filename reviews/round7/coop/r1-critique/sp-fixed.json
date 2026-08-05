@@ -1,0 +1,90 @@
+{
+  "arm": "fixed",
+  "want": [],
+  "steps": [
+    "RUNNING {\"paused\":false,\"screen\":null,\"localTick\":61,\"authority\":true,\"netRole\":\"single\"}",
+    "jumpChannel {\"impulsesApplied\":[30,30,36],\"peakHs\":37,\"barriers\":[10,10,10],\"quakes\":1,\"jumpPayloads\":[{\"local\":true,\"isSelf\":true},{\"local\":true,\"isSelf\":true},{\"local\":true,\"isSelf\":true}]}",
+    "damage {\"ownDealtDelta\":500,\"ownHighest\":500,\"highestBefore\":0,\"absorbedOnly\":{\"takenDelta\":0,\"onDamagedDelta\":0,\"playerHurtDelta\":0,\"healthDelta\":0},\"throughHealth\":{\"takenDelta\":20.83,\"onDamagedDelta\":1,\"playerHurtDelta\":1,\"healthDelta\":-20.83,\"timeSinceHurtBefore\":1006.55,\"timeSinceHurtAfter\":0,\"shield\":30}}",
+    "death {\"before\":{\"stopped\":false,\"musicOff\":false,\"musicGain\":0.27415,\"screen\":null,\"alive\":true,\"health\":89.2},\"after\":{\"stopped\":true,\"musicOff\":true,\"musicGain\":0.00172,\"screen\":\"death\",\"alive\":false,\"health\":0}}"
+  ],
+  "errors": [],
+  "runningGate": {
+    "paused": false,
+    "screen": null,
+    "localTick": 61,
+    "authority": true,
+    "netRole": "single"
+  },
+  "inventory": {
+    "rubber-soles": 1,
+    "sunken-vertebra": 1,
+    "tectonic-heart": 1,
+    "wax-quail": 3
+  },
+  "jumpChannel": {
+    "impulsesApplied": [
+      30,
+      30,
+      36
+    ],
+    "peakHs": 37,
+    "barriers": [
+      10,
+      10,
+      10
+    ],
+    "quakes": 1,
+    "jumpPayloads": [
+      {
+        "local": true,
+        "isSelf": true
+      },
+      {
+        "local": true,
+        "isSelf": true
+      },
+      {
+        "local": true,
+        "isSelf": true
+      }
+    ]
+  },
+  "damage": {
+    "ownDealtDelta": 500,
+    "ownHighest": 500,
+    "highestBefore": 0,
+    "absorbedOnly": {
+      "takenDelta": 0,
+      "onDamagedDelta": 0,
+      "playerHurtDelta": 0,
+      "healthDelta": 0
+    },
+    "throughHealth": {
+      "takenDelta": 20.83,
+      "onDamagedDelta": 1,
+      "playerHurtDelta": 1,
+      "healthDelta": -20.83,
+      "timeSinceHurtBefore": 1006.55,
+      "timeSinceHurtAfter": 0,
+      "shield": 30
+    }
+  },
+  "beforeDeath": {
+    "stopped": false,
+    "musicOff": false,
+    "musicGain": 0.27415,
+    "screen": null,
+    "alive": true,
+    "health": 89.2
+  },
+  "afterDeath": {
+    "stopped": true,
+    "musicOff": true,
+    "musicGain": 0.00172,
+    "screen": "death",
+    "alive": false,
+    "health": 0
+  },
+  "substitutions": [],
+  "substitutionsMissing": []
+}

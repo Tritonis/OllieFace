@@ -1,0 +1,155 @@
+{
+  "question": "Does the burrower enemy honour the `slow` status contract?",
+  "verdict": "CONFIRMED ON CONTRACT — the burrower's slow scaling is exact in every state it owns. The round-3 0.699/0.397 is a measurement artifact, mechanism proven.",
+  "head": "a43cc70017da2d0217353d278bcd868a98d7ec09",
+  "branch": "round7/content-and-polish",
+  "instrument": "Engine stopped (engine.stop() via __HARNESS__.freeze(); engineRunning:false recorded in every raw file). Every fixed step driven by hand via enemy.fixedUpdate(ctx, 1/60) — no rAF loop, single or doubled, touches any number here. Measured quantity is PER-STEP DISPLACEMENT bucketed by FSM state, never path length. Enemy AND player re-anchored to fixed world points before every step (double treadmill), so all arms integrate from an identical position on identical terrain at an identical bearing; velocity carries across steps so accel-limited movers reach steady state. fsm.t pinned to 0 and cooldowns filled so the state under test cannot time out or be stolen.",
+  "sanityGates": {
+    "identity_cleanVsClean": {
+      "submerged": 1.0,
+      "chase_burrower": 1.0,
+      "chase_beetle": 1.0,
+      "pass": true
+    },
+    "monotonicity_slow4_le_slow1_le_clean": {
+      "submerged_mps": { "clean": 11.5, "slow1": 6.9, "slow2": 4.14, "slow4": 2.875, "freeze": 0.0 },
+      "chase_mps": { "clean": 5.2, "slow1": 3.12, "slow2": 1.872, "slow4": 1.3, "freeze": 0.0 },
+      "pass": true
+    },
+    "analytic_submerged": {
+      "formula": "burrowSpeed(11.5) * slow * h(1/60)",
+      "clean": { "expected": 0.191666666667, "measured": 0.191666667, "relErr": 1.739e-9 },
+      "slow1": { "expected": 0.115, "measured": 0.115, "relErr": 1.207e-16 },
+      "slow2": { "expected": 0.069, "measured": 0.069, "relErr": 2.011e-16 },
+      "slow4": { "expected": 0.047916666667, "measured": 0.047916667, "relErr": 6.957e-9 },
+      "freeze": { "expected": 0, "measured": 0 },
+      "note": "residual is the probe's own toFixed(9) rounding, not a physics error",
+      "pass": true
+    },
+    "multiplierRead": {
+      "source": "ctx.combat.speedMultiplier(liveBurrowerInstance)",
+      "clean": 1.0, "slow x1": 0.6, "slow x2": 0.36, "slow x3": 0.25, "slow x4": 0.25, "slow x8": 0.25, "freeze": 0.0,
+      "contract": "STATUS_DEFS.slow.magnitude = 0.4 (Combat.js:27) -> 0.6 per stack; Math.max(0.25, mult) floor (Combat.js:615)",
+      "pass": true
+    }
+  },
+  "subQuestions": {
+    "a_submerged_proportional": "YES, exactly. Per-step displacement = burrowSpeed * slow * h to floating point at every stack count and under freeze.",
+    "b_grounded_chase_proportional": "YES at steady state, exactly (5.2 / 3.12 / 1.872 / 1.3 / 0.0 m/s). The desired vector and the max clamp both carry the same `slow` factor, so both the clamped and unclamped regimes scale. The one non-proportional regime is the from-rest acceleration ramp: moveGrounded's accel (26) is NOT slow-scaled, so for the first 3 steps out of rest every arm accelerates identically (0.4333, 0.8667, 1.3 m/s) and the per-step ratio is 1.000 before falling to contract by step 12 (slow x1) / step 11 (slow x4). Benign: bounded above by the clean arm at every step, never exceeds it, lasts <=50 ms for slow x4.",
+    "c_round3_numbers": "ARTIFACT, mechanism proven — Enemy.js:1481 `const close = e.distToPlayer < 2.5` plus general arrival damping. See burrowArtifact and freeRun20s below.",
+    "d_unslowed_movement_paths": "TWO found. (1) Enemy.js:781-782 the flyer dive integration ignores `slow` and `freeze` entirely. (2) Enemy.js:871-872 the melee lunge impulse is added unslowed. Everything else scales.",
+    "e_attack_rate": "slow does NOT affect attack rate, windups, recovery or cooldowns — and nothing promises it does. Measured: windup->attack->recover->chase transitions land on the identical step (31 / 39 / 65) at clean, slow x4 AND freeze."
+  },
+  "artifactProof_freeRunningBurrow": {
+    "method": "No treadmill, no pinned timer — the same situation the round-3 and round-4 instruments were in. Burrow forced, player parked at a fixed distance, run until SUBMERGED ends; exit reason attributed from distToPlayer at exit.",
+    "dist12m": {
+      "clean": { "steps": 51, "seconds": 0.85, "pathLen": 9.5833, "exitReason": "close (<2.5m) — Enemy.js:1481", "speedFromPath": 11.2745 },
+      "slow1": { "steps": 84, "seconds": 1.40, "pathLen": 9.545, "exitReason": "close (<2.5m) — Enemy.js:1481", "speedFromPath": 6.8179 },
+      "slow4": { "steps": 145, "seconds": 2.4167, "pathLen": 6.9, "exitReason": "submerge timer expired (2.4s)", "speedFromPath": 2.8552 },
+      "pathLenRatio_slow1": 0.996, "pathLenRatio_slow4": 0.72,
+      "trueSpeedRatio_slow1": 0.6047, "trueSpeedRatio_slow4": 0.2532
+    },
+    "dist20m": { "pathLenRatio_slow1": 0.9391, "pathLenRatio_slow4": 0.3913, "trueSpeedRatio_slow1": 0.6023, "trueSpeedRatio_slow4": 0.251 },
+    "dist25m": { "pathLenRatio_slow1": 0.7322, "pathLenRatio_slow4": 0.3051, "trueSpeedRatio_slow1": 0.6009, "trueSpeedRatio_slow4": 0.2504 },
+    "dist30m": { "pathLenRatio_slow1": 0.6, "note": "at 30m neither arm can arrive inside 2.4s, the artifact vanishes and path length returns to contract", "trueSpeedRatio_slow1": 0.6 },
+    "reading": "The `close` clause truncates whichever arm arrives. At 12 m the clean arm is cut off after 0.85 s having walked 9.58 m while slow x1 runs 1.40 s and walks 9.55 m — path-length ratio 0.996 against a true speed ratio of 0.6047. Path length measures arrival, not speed. The round-4 fixer's unproven hypothesis is CONFIRMED."
+  },
+  "artifactProof_round3Replication": {
+    "method": "20 simulated seconds, burrower free-running, player parked and never moved at 25 m — the shape of the round-3 measurement.",
+    "clean": { "pathLen": 52.2778, "finalDistToPlayer": 13.29 },
+    "slow1": { "pathLen": 35.5547, "finalDistToPlayer": 18.36 },
+    "slow4": { "pathLen": 24.0026, "finalDistToPlayer": 21.68 },
+    "dwellStepsIdenticalAcrossArms": { "chase": 521, "reposition": 679 },
+    "pathRatio_slow1": 0.6801,
+    "pathRatio_slow4": 0.4591,
+    "round3Reported": { "slow1": 0.699, "slow4": 0.397 },
+    "reading": "Reproduces the round-3 numbers to within 0.02/0.06 using the round-3 instrument shape, while the same build measures 0.600/0.250 exactly under per-step displacement. The inflation is arrival: the clean arm closes to 13.29 m — inside the burrower's 18 m stand-off ring, where `arrive` damps and the `distToPlayer < stand*0.65` clause reverses it — so its path length understates its capability."
+  },
+  "newDefects": [
+    {
+      "id": "R5-PHYS-1",
+      "severity": "MAJOR",
+      "title": "A committed flyer dive ignores slow AND freeze completely",
+      "location": "src/entities/Enemy.js:781-782",
+      "code": "} else if (this.diving) { this.position.addScaledVector(this.velocity, h); }",
+      "why": "The `slow` scalar computed at Enemy.js:679 is applied to `d` at line 764 and to the clamp at 765. The diving branch integrates `this.velocity` — set once, unslowed, at Enemy.js:888 by fireAttack's `dive` case — and never touches `d` or `slow`.",
+      "controlledMeasurement": {
+        "rig": "anchored treadmill, identical instance state and identical injected velocity in all four arms, 30 steps",
+        "clean": { "mult": 1.0, "path": 8.5, "speed_mps": 17.0 },
+        "slow1": { "mult": 0.6, "path": 8.5, "speed_mps": 17.0, "ratio": 1.0, "contract": 0.6 },
+        "slow4": { "mult": 0.25, "path": 8.5, "speed_mps": 17.0, "ratio": 1.0, "contract": 0.25 },
+        "freeze": { "mult": 0.0, "path": 8.5, "speed_mps": 17.0, "ratio": 1.0, "contract": 0.0 }
+      },
+      "liveUnforcedRepro": {
+        "method": "Blind Shrike (`pest`) spawned 11 m from a parked player, left to choose its own dive; the status is applied on the first step it is committed (step 75 of the free run).",
+        "freezeArm": { "multDuringDive": 0.0, "diveSteps": 45, "divePath_m": 6.7093, "constantSpeed_mps": 8.946, "firstSixStepSpeeds": [8.946, 8.946, 8.946, 8.946, 8.946, 8.946] },
+        "cleanArm": { "multDuringDive": 1.0, "diveSteps": 45, "divePath_m": 6.7426, "constantSpeed_mps": 8.990 },
+        "note": "Cross-arm ratios from this free run are NOT reported as a measurement — the Shrike is `erratic:1` and the arms consume different rng, so their commit geometry differs (the slow4 arm committed from a different height and shows ratio 1.23, which fails monotonicity). The valid claim is the within-arm one: a FROZEN Shrike held speedMultiplier 0.000 for all 45 steps and still travelled 6.71 m at a rock-constant 8.946 m/s."
+      },
+      "playerImpact": "The Blind Shrike is a shipping tier-1 unit (selectionWeight 0.7, packMax 4) whose dive is `suicide: true`. Frost Lattice, Hoarfrost Band, Concussion Charge, Grapnel Tether and the Aegis Emitter dome all fail to slow — or even to freeze — a Shrike that has already committed, for the whole 1.1 s / ~18 m of the dive. That is the exact window the card is bought for.",
+      "fix": "Scale the diving integration by the same scalar the rest of the mover uses. In `applyMovement`, replace `this.position.addScaledVector(this.velocity, h)` at Enemy.js:782 with `this.position.addScaledVector(this.velocity, h * slow)` (`slow` is already in scope from line 679, and is already 1 for a dying unit, which preserves the deliberate corpse exemption). Scaling the step rather than `velocity` itself keeps the dive's stored heading and speed intact for `diveContact`/recovery, and makes a frozen diver stop dead rather than drift."
+    },
+    {
+      "id": "R5-PHYS-2",
+      "severity": "MINOR",
+      "title": "The melee lunge impulse is unslowed, so a frozen unit still lunges",
+      "location": "src/entities/Enemy.js:871-872",
+      "code": "this.velocity.x += dir.x * (a.lunge || 0); this.velocity.z += dir.z * (a.lunge || 0);",
+      "why": "The impulse is written straight into velocity at the strike frame with no `slow` term. It then decays through moveGrounded's fixed accel (26, also unslowed) toward the slow-scaled desired, so the excess persists for ~8 fixed steps.",
+      "measurement": {
+        "rig": "anchored treadmill, burrower `rake` (lunge 6), 30 steps (0.5 s) after the strike frame",
+        "velocityAfterImpulse_mps": { "clean": 6.0, "slow1": 6.0, "slow4": 6.0, "freeze": 6.0, "comment": "identical in all four arms" },
+        "path0_5s_m": { "clean": 2.506, "slow1": 1.7879, "slow4": 1.0876, "freeze": 0.6428 },
+        "measuredRatio": { "slow1": 0.7134, "slow4": 0.434, "freeze": 0.2565 },
+        "contract": { "slow1": 0.6, "slow4": 0.25, "freeze": 0.0 },
+        "excessMetres": { "slow4": 0.4611, "freeze": 0.6428 },
+        "firstThreeStepSpeeds_allArmsIdentical_mps": [5.584, 5.206, 4.876],
+        "clampBreach": "a slow x4 burrower peaks at 5.58 m/s against its own slowed clamp of moveSpeed*1.9*slow = 2.47 m/s, a 2.26x breach"
+      },
+      "fix": "Multiply the impulse by the live multiplier at the point of application: `const k = (a.lunge || 0) * (ctx.combat?.speedMultiplier?.(this) ?? 1);` then `this.velocity.x += dir.x * k; this.velocity.z += dir.z * k;`. `fireAttack` already takes `ctx`. If the lunge is deliberately exempt as attack follow-through (the same argument the DIE exemption makes at Enemy.js:679), say so in the comment at Enemy.js:870 — right now nothing marks it as intentional."
+    }
+  ],
+  "notDefects": [
+    {
+      "claim": "S.CHARGE sets an unslowed velocity at Enemy.js:1424 (`e.velocity.set(Math.sin(e.yaw)*s, e.velocity.y, Math.cos(e.yaw)*s)`)",
+      "finding": "Dead assignment, zero effect. `applyMovement` overwrites velocity with the slow-scaled desired on the very same fixed step (Enemy.js:687-688), because `steer` returns the full chargeSpeed vector for S.CHARGE (Enemy.js:557-564) and line 687 scales it. Measured on Ridgeback Charger, gore, chargeSpeed 26, anchored, full 69-step active window: clean 29.611 m, slow x1 17.764 m (ratio 0.5999), slow x4 7.397 m (ratio 0.2498). Step-0 speeds 26.0 / 6.5 m/s — already scaled on the first step. Duration identical (69 steps) in all arms."
+    },
+    {
+      "claim": "The erupt vertical pop (Enemy.js:967, velocity.set(0, 9, 0)) is unslowed",
+      "finding": "True but not a movement contract: it is vertical presentation on the surfacing frame with no horizontal component. Measured vy = 9 under slow x4. Not reported as a defect."
+    },
+    {
+      "claim": "A dying unit is not slowed (Enemy.js:679, `dying ? 1 : ...`)",
+      "finding": "Deliberate and documented in the comment at Enemy.js:675-678. Not a defect."
+    },
+    {
+      "claim": "Gravity (Steering.js:202, `v.y -= GRAVITY * h`) is unslowed",
+      "finding": "Correct — a slow is a movement tax, not a change to the local value of g. Not a defect."
+    },
+    {
+      "claim": "Item-driven displacement of enemies (items.js:1136-1137 Grapnel Tether reel, items.js:1431 Collapsing Well drag)",
+      "finding": "Player-driven pulls, not enemy self-locomotion. Out of the `slow` contract by design."
+    }
+  ],
+  "whyRound4CouldNotReachTheBurrow": {
+    "finding": "Not a product bug — instrument siting. `Enemy.chooseAttack` (Enemy.js:814) requires `this.hasLOS`, and LOS is a real raycast against stage geometry.",
+    "measured": {
+      "playerParkedAt25m": { "hasLOSfraction": 0.001, "dwellSteps": { "chase": 791, "reposition": 1009 }, "firstSubmergeStep": -1, "simSeconds": 30 },
+      "playerParkedAt12m": { "hasLOSfraction": 0.413, "dwellSteps": { "chase": 647, "windup": 168, "submerged": 200, "attack": 112, "recover": 240, "reposition": 433 }, "firstSubmergeStep": 66, "simSeconds": 30 }
+    },
+    "reading": "At the 25 m stand round 4 used, the burrower had line of sight 0.1% of 30 simulated seconds, so it never chose `erupt` and never submerged. At 12 m it has LOS 41% of the time and submerges within 66 steps (1.1 s), spending 200 of 1800 steps under the terrain. SUBMERGED is reachable in ordinary play; round 4 was simply standing behind a rock."
+  },
+  "rawFiles": {
+    "C:/Users/tpzap/source/repos/OllieFace/reviews/round7/r5-physics/slow-treadmill.json": "the headline instrument — multiplier read, SUBMERGED and CHASE per-step displacement, all sanity gates, burrower + beetle",
+    "C:/Users/tpzap/source/repos/OllieFace/reviews/round7/r5-physics/slow-artifact-and-paths.json": "the artifact: free-running burrow at 12/20/25/30 m with exit attribution, 20 s round-3 replication, charge, lunge, erupt pop, attack-rate timing",
+    "C:/Users/tpzap/source/repos/OllieFace/reviews/round7/r5-physics/slow-dive-ramp-reach.json": "flyer dive under slow/freeze (anchored), the from-rest accel ramp, SUBMERGED reachability and LOS",
+    "C:/Users/tpzap/source/repos/OllieFace/reviews/round7/r5-physics/slow-live-dive-and-lunge.json": "live unforced Shrike dive with freeze applied at the commit step, and the lunge excess"
+  },
+  "hygiene": {
+    "engineRunningDuringEveryMeasurement": false,
+    "handSteppedSimulation": true,
+    "pageErrors": [],
+    "srcModified": false,
+    "port": 5331
+  }
+}

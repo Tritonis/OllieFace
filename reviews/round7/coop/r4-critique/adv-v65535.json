@@ -1,0 +1,139 @@
+{
+  "arm": "adv-v65535",
+  "scenario": "advhello",
+  "substitutions": [],
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 65,
+      "survivorId": "ranger",
+      "maxHealth": 110
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 65,
+      "survivorId": "anvil",
+      "maxHealth": 170
+    }
+  },
+  "wireUp": false,
+  "afterJoin": {
+    "host": {
+      "tick": 535,
+      "clients": 0,
+      "paused": false,
+      "inputEnabled": true,
+      "holding": false,
+      "hasLivePeer": false,
+      "screen": null,
+      "hudKills": 0,
+      "flashes": 0,
+      "progression": 0,
+      "lobbyStatus": "peerRefused",
+      "lobbyDetail": {
+        "id": 1,
+        "reason": "version",
+        "detail": "theirs 65535, ours 3"
+      },
+      "pawns": [],
+      "own": {
+        "survivorId": "ranger",
+        "health": 110,
+        "maxHealth": 110,
+        "alive": true
+      }
+    },
+    "client": {
+      "tick": 10,
+      "serverTick": 60,
+      "connected": false,
+      "myNetId": 1,
+      "paused": false,
+      "screen": null,
+      "hudKills": 0,
+      "flashes": 0,
+      "progression": 0,
+      "lobbyStatus": "refused",
+      "lobbyDetail": {
+        "reason": "version",
+        "detail": "theirs 65535, ours 3"
+      },
+      "own": {
+        "survivorId": "anvil",
+        "health": 170,
+        "maxHealth": 170,
+        "alive": true,
+        "shield": 0,
+        "localTick": 0
+      },
+      "ended": null
+    }
+  },
+  "variant": "v65535",
+  "result": {
+    "host": {
+      "tick": 550,
+      "clients": 0,
+      "paused": false,
+      "inputEnabled": true,
+      "holding": false,
+      "hasLivePeer": false,
+      "screen": null,
+      "hudKills": 0,
+      "flashes": 0,
+      "progression": 0,
+      "lobbyStatus": "peerRefused",
+      "lobbyDetail": {
+        "id": 1,
+        "reason": "version",
+        "detail": "theirs 65535, ours 3"
+      },
+      "pawns": [],
+      "own": {
+        "survivorId": "ranger",
+        "health": 110,
+        "maxHealth": 110,
+        "alive": true
+      }
+    },
+    "client": {
+      "tick": 10,
+      "serverTick": 60,
+      "connected": false,
+      "myNetId": 1,
+      "paused": false,
+      "screen": null,
+      "hudKills": 0,
+      "flashes": 0,
+      "progression": 0,
+      "lobbyStatus": "refused",
+      "lobbyDetail": {
+        "reason": "version",
+        "detail": "theirs 65535, ours 3"
+      },
+      "own": {
+        "survivorId": "anvil",
+        "health": 170,
+        "maxHealth": 170,
+        "alive": true,
+        "shield": 0,
+        "localTick": 0
+      },
+      "ended": null
+    },
+    "hostSaid": "Turned a player away: they are running a different version of the game (theirs 65535, ours 3). Both of you need the same build.",
+    "hostSaidLen": 127,
+    "clientSaid": "That host is running a different version of the game (theirs 65535, ours 3). Both of you need the same build.",
+    "clientSaidLen": 109,
+    "mistated": false
+  },
+  "ok": true,
+  "substitutionsApplied": [],
+  "substitutionsMissing": [],
+  "hostConsoleErrors": [],
+  "hostPageErrors": [],
+  "clientConsoleErrors": [],
+  "clientPageErrors": []
+}

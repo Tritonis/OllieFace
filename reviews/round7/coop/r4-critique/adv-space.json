@@ -1,0 +1,139 @@
+{
+  "arm": "adv-space",
+  "scenario": "advhello",
+  "substitutions": [],
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 65,
+      "survivorId": "ranger",
+      "maxHealth": 110
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 65,
+      "survivorId": "anvil",
+      "maxHealth": 170
+    }
+  },
+  "wireUp": true,
+  "afterJoin": {
+    "host": {
+      "tick": 325,
+      "clients": 0,
+      "paused": false,
+      "inputEnabled": true,
+      "holding": false,
+      "hasLivePeer": false,
+      "screen": null,
+      "hudKills": 0,
+      "flashes": 0,
+      "progression": 0,
+      "lobbyStatus": "peerRefused",
+      "lobbyDetail": {
+        "id": 1,
+        "reason": "survivor",
+        "detail": " anvil "
+      },
+      "pawns": [],
+      "own": {
+        "survivorId": "ranger",
+        "health": 110,
+        "maxHealth": 110,
+        "alive": true
+      }
+    },
+    "client": {
+      "tick": 5,
+      "serverTick": 55,
+      "connected": false,
+      "myNetId": 1,
+      "paused": false,
+      "screen": null,
+      "hudKills": 0,
+      "flashes": 0,
+      "progression": 0,
+      "lobbyStatus": "refused",
+      "lobbyDetail": {
+        "reason": "survivor",
+        "detail": " anvil "
+      },
+      "own": {
+        "survivorId": "anvil",
+        "health": 170,
+        "maxHealth": 170,
+        "alive": true,
+        "shield": 0,
+        "localTick": 0
+      },
+      "ended": null
+    }
+  },
+  "variant": "space",
+  "result": {
+    "host": {
+      "tick": 340,
+      "clients": 0,
+      "paused": false,
+      "inputEnabled": true,
+      "holding": false,
+      "hasLivePeer": false,
+      "screen": null,
+      "hudKills": 0,
+      "flashes": 0,
+      "progression": 0,
+      "lobbyStatus": "peerRefused",
+      "lobbyDetail": {
+        "id": 1,
+        "reason": "survivor",
+        "detail": " anvil "
+      },
+      "pawns": [],
+      "own": {
+        "survivorId": "ranger",
+        "health": 110,
+        "maxHealth": 110,
+        "alive": true
+      }
+    },
+    "client": {
+      "tick": 5,
+      "serverTick": 55,
+      "connected": false,
+      "myNetId": 1,
+      "paused": false,
+      "screen": null,
+      "hudKills": 0,
+      "flashes": 0,
+      "progression": 0,
+      "lobbyStatus": "refused",
+      "lobbyDetail": {
+        "reason": "survivor",
+        "detail": " anvil "
+      },
+      "own": {
+        "survivorId": "anvil",
+        "health": 170,
+        "maxHealth": 170,
+        "alive": true,
+        "shield": 0,
+        "localTick": 0
+      },
+      "ended": null
+    },
+    "hostSaid": "Turned a player away: they picked a survivor this build does not have ( anvil ).",
+    "hostSaidLen": 80,
+    "clientSaid": "The host does not have the survivor you picked. Choose one from their build and join again.",
+    "clientSaidLen": 91,
+    "mistated": false
+  },
+  "ok": true,
+  "substitutionsApplied": [],
+  "substitutionsMissing": [],
+  "hostConsoleErrors": [],
+  "hostPageErrors": [],
+  "clientConsoleErrors": [],
+  "clientPageErrors": []
+}

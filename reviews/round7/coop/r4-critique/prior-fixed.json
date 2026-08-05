@@ -1,0 +1,308 @@
+{
+  "arm": "prior-fixed",
+  "scenario": "prior",
+  "substitutions": [],
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 75,
+      "survivorId": "ranger",
+      "maxHealth": 110
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 65,
+      "survivorId": "anvil",
+      "maxHealth": 170
+    }
+  },
+  "wireUp": true,
+  "afterJoin": {
+    "host": {
+      "tick": 195,
+      "clients": 1,
+      "paused": false,
+      "inputEnabled": true,
+      "holding": false,
+      "hasLivePeer": true,
+      "screen": null,
+      "hudKills": 0,
+      "flashes": 0,
+      "progression": 0,
+      "lobbyStatus": "peerConnecting",
+      "lobbyDetail": {
+        "id": 1
+      },
+      "pawns": [
+        {
+          "survivorId": "anvil",
+          "health": 170,
+          "maxHealth": 170,
+          "alive": true,
+          "localTick": 0,
+          "helloSeen": true,
+          "joinTick": 65
+        }
+      ],
+      "own": {
+        "survivorId": "ranger",
+        "health": 110,
+        "maxHealth": 110,
+        "alive": true
+      }
+    },
+    "client": {
+      "tick": 70,
+      "serverTick": 195,
+      "connected": true,
+      "myNetId": 1,
+      "paused": false,
+      "screen": null,
+      "hudKills": 0,
+      "flashes": 0,
+      "progression": 0,
+      "lobbyStatus": "connected",
+      "lobbyDetail": {
+        "seed": 1337,
+        "stageIndex": 0,
+        "time": 2.4166667461395264,
+        "myNetId": 1,
+        "artifactMask": 0,
+        "difficulty": 1
+      },
+      "own": {
+        "survivorId": "anvil",
+        "health": 170,
+        "maxHealth": 170,
+        "alive": true,
+        "shield": 0,
+        "localTick": 0
+      },
+      "ended": null
+    }
+  },
+  "result": {
+    "L5": {
+      "client": {
+        "victimless": false,
+        "nullVictim": false,
+        "ownVictim": true,
+        "strangerVictim": false,
+        "killOwn": true,
+        "killStranger": false,
+        "killEnvironment": false
+      },
+      "host": {
+        "victimless": true,
+        "ownVictim": true,
+        "pawnVictim": false,
+        "killOwn": true,
+        "killPawn": false,
+        "killEnvironment": true
+      }
+    },
+    "F6": {
+      "lastCmdTick": 85,
+      "localTick": 0,
+      "netTick": 85,
+      "delta": 0
+    },
+    "spawned": 10,
+    "K3": {
+      "seen": 4,
+      "rows": [
+        {
+          "posType": "object",
+          "finiteX": true,
+          "victimNetId": null
+        },
+        {
+          "posType": "object",
+          "finiteX": true,
+          "victimNetId": null
+        },
+        {
+          "posType": "object",
+          "finiteX": true,
+          "victimNetId": null
+        },
+        {
+          "posType": "object",
+          "finiteX": true,
+          "victimNetId": null
+        }
+      ],
+      "audioDeathCalls": 4,
+      "audioThrows": 0,
+      "hudKills": 0
+    },
+    "beforeHurt": {
+      "client": {
+        "tick": 100,
+        "serverTick": 225,
+        "connected": true,
+        "myNetId": 1,
+        "paused": false,
+        "screen": null,
+        "hudKills": 0,
+        "flashes": 0,
+        "progression": 0,
+        "lobbyStatus": "connected",
+        "lobbyDetail": {
+          "seed": 1337,
+          "stageIndex": 0,
+          "time": 2.4166667461395264,
+          "myNetId": 1,
+          "artifactMask": 0,
+          "difficulty": 1
+        },
+        "own": {
+          "survivorId": "anvil",
+          "health": 170,
+          "maxHealth": 170,
+          "alive": true,
+          "shield": 41.29,
+          "localTick": 0
+        },
+        "ended": null
+      }
+    },
+    "K1_K5_F10_L3": {
+      "hostSideOfPawn": {
+        "pawnHealth": 132.96,
+        "pawnMax": 170,
+        "pawnShield": 0
+      },
+      "client": {
+        "health": 132.96,
+        "maxHealth": 170,
+        "shield": 0,
+        "damageTaken": 37.04,
+        "timeSinceHurt": 0.08
+      }
+    },
+    "F9": {
+      "peerDealt": 500,
+      "deltaFromPeer": 0,
+      "deltaFromLocal": 500,
+      "targetAlive": true
+    },
+    "L1": {
+      "beforeHostDeath": 240,
+      "serverTicks": [
+        240,
+        245,
+        250,
+        255,
+        265,
+        265,
+        270,
+        275
+      ],
+      "advanced": true,
+      "host": {
+        "alive": false,
+        "paused": false,
+        "screen": "death",
+        "input": false,
+        "holding": true
+      },
+      "client": {
+        "screen": null,
+        "ended": null,
+        "alive": true,
+        "playerDeadCalls": 0
+      }
+    },
+    "K2_M1": {
+      "host": {
+        "screen": "death",
+        "ended": true,
+        "hudKills": 4,
+        "directorEnabled": true
+      },
+      "client": {
+        "screen": "death",
+        "ended": true,
+        "alive": false,
+        "health": 0,
+        "musicOff": true,
+        "playerDeadCalls": 1,
+        "killsSeen": 6
+      }
+    },
+    "final": {
+      "host": {
+        "tick": 295,
+        "clients": 1,
+        "paused": true,
+        "inputEnabled": true,
+        "holding": false,
+        "hasLivePeer": false,
+        "screen": "death",
+        "hudKills": 4,
+        "flashes": 4,
+        "progression": 4,
+        "lobbyStatus": "peerConnecting",
+        "lobbyDetail": {
+          "id": 1
+        },
+        "pawns": [
+          {
+            "survivorId": "anvil",
+            "health": 0,
+            "maxHealth": 170,
+            "alive": false,
+            "localTick": 0,
+            "helloSeen": true,
+            "joinTick": 65
+          }
+        ],
+        "own": {
+          "survivorId": "ranger",
+          "health": 0,
+          "maxHealth": 110,
+          "alive": false
+        }
+      },
+      "client": {
+        "tick": 175,
+        "serverTick": 290,
+        "connected": true,
+        "myNetId": 1,
+        "paused": true,
+        "screen": "death",
+        "hudKills": 0,
+        "flashes": 0,
+        "progression": 0,
+        "lobbyStatus": "connected",
+        "lobbyDetail": {
+          "seed": 1337,
+          "stageIndex": 0,
+          "time": 2.4166667461395264,
+          "myNetId": 1,
+          "artifactMask": 0,
+          "difficulty": 1
+        },
+        "own": {
+          "survivorId": "anvil",
+          "health": 0,
+          "maxHealth": 170,
+          "alive": false,
+          "shield": 0,
+          "localTick": 0
+        },
+        "ended": true
+      }
+    }
+  },
+  "ok": true,
+  "substitutionsApplied": [],
+  "substitutionsMissing": [],
+  "hostConsoleErrors": [],
+  "hostPageErrors": [],
+  "clientConsoleErrors": [],
+  "clientPageErrors": []
+}

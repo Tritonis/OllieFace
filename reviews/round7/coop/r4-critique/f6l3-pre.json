@@ -1,0 +1,114 @@
+{
+  "arm": "f6l3-pre",
+  "scenario": "f6l3",
+  "substitutions": [
+    "F6-epoch",
+    "L3-shield"
+  ],
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 70,
+      "survivorId": "ranger",
+      "maxHealth": 110
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 65,
+      "survivorId": "anvil",
+      "maxHealth": 170
+    }
+  },
+  "wireUp": true,
+  "afterJoin": {
+    "host": {
+      "tick": 205,
+      "clients": 1,
+      "paused": false,
+      "inputEnabled": true,
+      "holding": false,
+      "hasLivePeer": true,
+      "screen": null,
+      "hudKills": 0,
+      "flashes": 0,
+      "progression": 0,
+      "lobbyStatus": "peerConnecting",
+      "lobbyDetail": {
+        "id": 1
+      },
+      "pawns": [
+        {
+          "survivorId": "anvil",
+          "health": 170,
+          "maxHealth": 170,
+          "alive": true,
+          "localTick": 0,
+          "helloSeen": true,
+          "joinTick": 85
+        }
+      ],
+      "own": {
+        "survivorId": "ranger",
+        "health": 110,
+        "maxHealth": 110,
+        "alive": true
+      }
+    },
+    "client": {
+      "tick": 70,
+      "serverTick": 205,
+      "connected": true,
+      "myNetId": 1,
+      "paused": false,
+      "screen": null,
+      "hudKills": 0,
+      "flashes": 0,
+      "progression": 0,
+      "lobbyStatus": "connected",
+      "lobbyDetail": {
+        "seed": 1337,
+        "stageIndex": 0,
+        "time": 2.6666667461395264,
+        "myNetId": 1,
+        "artifactMask": 0,
+        "difficulty": 1
+      },
+      "own": {
+        "survivorId": "anvil",
+        "health": 170,
+        "maxHealth": 170,
+        "alive": true,
+        "shield": 0,
+        "localTick": 115
+      },
+      "ended": null
+    }
+  },
+  "result": {
+    "F6": {
+      "lastCmdTick": 115,
+      "localTick": 115,
+      "netTick": 70,
+      "delta": 45
+    },
+    "shieldBefore": 42,
+    "hostSideShield": {
+      "shield": 0,
+      "health": 170,
+      "max": 170
+    },
+    "shieldAfter": 39.88
+  },
+  "ok": true,
+  "substitutionsApplied": [
+    "F6-epoch",
+    "L3-shield"
+  ],
+  "substitutionsMissing": [],
+  "hostConsoleErrors": [],
+  "hostPageErrors": [],
+  "clientConsoleErrors": [],
+  "clientPageErrors": []
+}

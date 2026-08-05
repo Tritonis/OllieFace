@@ -1,0 +1,454 @@
+{
+  "sites": 12,
+  "runs": [
+    {
+      "face": [
+        -31,
+        44
+      ],
+      "deg": 84.1,
+      "faceRise": 10.22,
+      "seconds": 10,
+      "oldNetAscent": 1.214,
+      "newNetAscent": 1.216,
+      "delta": 0.002,
+      "oldTravel": 76.22,
+      "newTravel": 76.22,
+      "oldRestWalkable": false,
+      "newRestWalkable": false,
+      "under": 0,
+      "oob": 0
+    },
+    {
+      "face": [
+        -31,
+        44
+      ],
+      "deg": 84.1,
+      "faceRise": 10.22,
+      "seconds": 60,
+      "oldNetAscent": 7.257,
+      "newNetAscent": 7.26,
+      "delta": 0.003,
+      "oldTravel": 108.29,
+      "newTravel": 108.29,
+      "oldRestWalkable": true,
+      "newRestWalkable": true,
+      "under": 0,
+      "oob": 0
+    },
+    {
+      "face": [
+        -52,
+        -25
+      ],
+      "deg": 84.1,
+      "faceRise": 11.48,
+      "seconds": 10,
+      "oldNetAscent": -2.453,
+      "newNetAscent": -2.453,
+      "delta": 0,
+      "oldTravel": 12.64,
+      "newTravel": 12.63,
+      "oldRestWalkable": true,
+      "newRestWalkable": true,
+      "under": 0,
+      "oob": 0
+    },
+    {
+      "face": [
+        -52,
+        -25
+      ],
+      "deg": 84.1,
+      "faceRise": 11.48,
+      "seconds": 60,
+      "oldNetAscent": -2.453,
+      "newNetAscent": -2.453,
+      "delta": 0,
+      "oldTravel": 12.64,
+      "newTravel": 12.63,
+      "oldRestWalkable": true,
+      "newRestWalkable": true,
+      "under": 0,
+      "oob": 0
+    },
+    {
+      "face": [
+        -73,
+        -19
+      ],
+      "deg": 83.9,
+      "faceRise": 15.8,
+      "seconds": 10,
+      "oldNetAscent": 3.213,
+      "newNetAscent": 3.213,
+      "delta": 0,
+      "oldTravel": 4.81,
+      "newTravel": 4.81,
+      "oldRestWalkable": false,
+      "newRestWalkable": false,
+      "under": 0,
+      "oob": 0
+    },
+    {
+      "face": [
+        -73,
+        -19
+      ],
+      "deg": 83.9,
+      "faceRise": 15.8,
+      "seconds": 60,
+      "oldNetAscent": 3.213,
+      "newNetAscent": 3.213,
+      "delta": 0,
+      "oldTravel": 4.81,
+      "newTravel": 4.81,
+      "oldRestWalkable": false,
+      "newRestWalkable": false,
+      "under": 0,
+      "oob": 0
+    },
+    {
+      "face": [
+        -37,
+        17
+      ],
+      "deg": 83.2,
+      "faceRise": 15.11,
+      "seconds": 10,
+      "oldNetAscent": 11.713,
+      "newNetAscent": 11.721,
+      "delta": 0.008,
+      "oldTravel": 87.49,
+      "newTravel": 87.5,
+      "oldRestWalkable": false,
+      "newRestWalkable": false,
+      "under": 0,
+      "oob": 0
+    },
+    {
+      "face": [
+        -37,
+        17
+      ],
+      "deg": 83.2,
+      "faceRise": 15.11,
+      "seconds": 60,
+      "oldNetAscent": 11.9,
+      "newNetAscent": 11.904,
+      "delta": 0.004,
+      "oldTravel": 87.97,
+      "newTravel": 87.97,
+      "oldRestWalkable": false,
+      "newRestWalkable": false,
+      "under": 0,
+      "oob": 0
+    },
+    {
+      "face": [
+        59,
+        -43
+      ],
+      "deg": 83.1,
+      "faceRise": 12.74,
+      "seconds": 10,
+      "oldNetAscent": 1.034,
+      "newNetAscent": 1.089,
+      "delta": 0.055,
+      "oldTravel": 5.9,
+      "newTravel": 6.16,
+      "oldRestWalkable": true,
+      "newRestWalkable": true,
+      "under": 0,
+      "oob": 0
+    },
+    {
+      "face": [
+        59,
+        -43
+      ],
+      "deg": 83.1,
+      "faceRise": 12.74,
+      "seconds": 60,
+      "oldNetAscent": 1.034,
+      "newNetAscent": 1.089,
+      "delta": 0.055,
+      "oldTravel": 5.9,
+      "newTravel": 6.16,
+      "oldRestWalkable": true,
+      "newRestWalkable": true,
+      "under": 0,
+      "oob": 0
+    },
+    {
+      "face": [
+        -1,
+        -76
+      ],
+      "deg": 83.1,
+      "faceRise": 9.98,
+      "seconds": 10,
+      "oldNetAscent": 2.273,
+      "newNetAscent": 2.308,
+      "delta": 0.035,
+      "oldTravel": 50.42,
+      "newTravel": 50.43,
+      "oldRestWalkable": false,
+      "newRestWalkable": false,
+      "under": 0,
+      "oob": 0
+    },
+    {
+      "face": [
+        -1,
+        -76
+      ],
+      "deg": 83.1,
+      "faceRise": 9.98,
+      "seconds": 60,
+      "oldNetAscent": 2.273,
+      "newNetAscent": 2.308,
+      "delta": 0.035,
+      "oldTravel": 50.42,
+      "newTravel": 50.43,
+      "oldRestWalkable": false,
+      "newRestWalkable": false,
+      "under": 0,
+      "oob": 0
+    },
+    {
+      "face": [
+        62,
+        -70
+      ],
+      "deg": 83.1,
+      "faceRise": 8.48,
+      "seconds": 10,
+      "oldNetAscent": -1.314,
+      "newNetAscent": -1.314,
+      "delta": 0,
+      "oldTravel": 72.61,
+      "newTravel": 72.61,
+      "oldRestWalkable": false,
+      "newRestWalkable": false,
+      "under": 0,
+      "oob": 0
+    },
+    {
+      "face": [
+        62,
+        -70
+      ],
+      "deg": 83.1,
+      "faceRise": 8.48,
+      "seconds": 60,
+      "oldNetAscent": 0.41,
+      "newNetAscent": 0.41,
+      "delta": 0,
+      "oldTravel": 79.57,
+      "newTravel": 79.57,
+      "oldRestWalkable": false,
+      "newRestWalkable": false,
+      "under": 0,
+      "oob": 0
+    },
+    {
+      "face": [
+        11,
+        -40
+      ],
+      "deg": 82.8,
+      "faceRise": 8.34,
+      "seconds": 10,
+      "oldNetAscent": 1.182,
+      "newNetAscent": 1.182,
+      "delta": 0,
+      "oldTravel": 6.77,
+      "newTravel": 6.77,
+      "oldRestWalkable": false,
+      "newRestWalkable": false,
+      "under": 0,
+      "oob": 0
+    },
+    {
+      "face": [
+        11,
+        -40
+      ],
+      "deg": 82.8,
+      "faceRise": 8.34,
+      "seconds": 60,
+      "oldNetAscent": 0.774,
+      "newNetAscent": 0.774,
+      "delta": 0,
+      "oldTravel": 6.97,
+      "newTravel": 6.97,
+      "oldRestWalkable": false,
+      "newRestWalkable": false,
+      "under": 0,
+      "oob": 0
+    },
+    {
+      "face": [
+        8,
+        92
+      ],
+      "deg": 82.8,
+      "faceRise": 11.9,
+      "seconds": 10,
+      "oldNetAscent": 0.805,
+      "newNetAscent": 0.805,
+      "delta": 0,
+      "oldTravel": 11.24,
+      "newTravel": 11.24,
+      "oldRestWalkable": true,
+      "newRestWalkable": true,
+      "under": 0,
+      "oob": 0
+    },
+    {
+      "face": [
+        8,
+        92
+      ],
+      "deg": 82.8,
+      "faceRise": 11.9,
+      "seconds": 60,
+      "oldNetAscent": 0.805,
+      "newNetAscent": 0.805,
+      "delta": 0,
+      "oldTravel": 11.24,
+      "newTravel": 11.24,
+      "oldRestWalkable": true,
+      "newRestWalkable": true,
+      "under": 0,
+      "oob": 0
+    },
+    {
+      "face": [
+        -28,
+        65
+      ],
+      "deg": 82.8,
+      "faceRise": 11.03,
+      "seconds": 10,
+      "oldNetAscent": 2.428,
+      "newNetAscent": 2.38,
+      "delta": -0.048,
+      "oldTravel": 50.88,
+      "newTravel": 50.84,
+      "oldRestWalkable": false,
+      "newRestWalkable": false,
+      "under": 0,
+      "oob": 0
+    },
+    {
+      "face": [
+        -28,
+        65
+      ],
+      "deg": 82.8,
+      "faceRise": 11.03,
+      "seconds": 60,
+      "oldNetAscent": 2.901,
+      "newNetAscent": 2.913,
+      "delta": 0.012,
+      "oldTravel": 51.46,
+      "newTravel": 51.46,
+      "oldRestWalkable": false,
+      "newRestWalkable": false,
+      "under": 0,
+      "oob": 0
+    },
+    {
+      "face": [
+        -91,
+        -34
+      ],
+      "deg": 82.6,
+      "faceRise": 13.82,
+      "seconds": 10,
+      "oldNetAscent": 1.876,
+      "newNetAscent": 1.814,
+      "delta": -0.062,
+      "oldTravel": 6.35,
+      "newTravel": 6.32,
+      "oldRestWalkable": true,
+      "newRestWalkable": true,
+      "under": 0,
+      "oob": 0
+    },
+    {
+      "face": [
+        -91,
+        -34
+      ],
+      "deg": 82.6,
+      "faceRise": 13.82,
+      "seconds": 60,
+      "oldNetAscent": 1.876,
+      "newNetAscent": 1.814,
+      "delta": -0.062,
+      "oldTravel": 6.35,
+      "newTravel": 6.32,
+      "oldRestWalkable": true,
+      "newRestWalkable": true,
+      "under": 0,
+      "oob": 0
+    },
+    {
+      "face": [
+        20,
+        62
+      ],
+      "deg": 82.4,
+      "faceRise": 16.03,
+      "seconds": 10,
+      "oldNetAscent": -0.57,
+      "newNetAscent": -0.57,
+      "delta": 0,
+      "oldTravel": 7.99,
+      "newTravel": 7.99,
+      "oldRestWalkable": false,
+      "newRestWalkable": false,
+      "under": 0,
+      "oob": 0
+    },
+    {
+      "face": [
+        20,
+        62
+      ],
+      "deg": 82.4,
+      "faceRise": 16.03,
+      "seconds": 60,
+      "oldNetAscent": -0.498,
+      "newNetAscent": -0.498,
+      "delta": 0,
+      "oldTravel": 8.11,
+      "newTravel": 8.11,
+      "oldRestWalkable": false,
+      "newRestWalkable": false,
+      "under": 0,
+      "oob": 0
+    }
+  ],
+  "summary": {
+    "totalUnderFloor": 0,
+    "totalOob": 0,
+    "delta10s": {
+      "min": -0.062,
+      "median": 0,
+      "max": 0.055
+    },
+    "delta60s": {
+      "min": -0.062,
+      "median": 0,
+      "max": 0.055
+    },
+    "newRestedOnUnwalkable": 15,
+    "oldRestedOnUnwalkable": 15
+  },
+  "pageErrors": []
+}

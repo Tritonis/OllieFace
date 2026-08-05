@@ -1,0 +1,65 @@
+{
+  "S1_engineLoop": [
+    {
+      "cycles": 0,
+      "frames": 30,
+      "frameCalls": 0,
+      "callsPerFrame": 0
+    },
+    {
+      "cycles": 1,
+      "loopGen": 2,
+      "frames": 30,
+      "frameCalls": 30,
+      "callsPerFrame": 1
+    },
+    {
+      "cycles": 3,
+      "loopGen": 5,
+      "frames": 30,
+      "frameCalls": 30,
+      "callsPerFrame": 1
+    },
+    {
+      "cycles": 10,
+      "loopGen": 15,
+      "frames": 30,
+      "frameCalls": 30,
+      "callsPerFrame": 1
+    },
+    {
+      "cycles": 25,
+      "loopGen": 40,
+      "frames": 30,
+      "frameCalls": 30,
+      "callsPerFrame": 1
+    }
+  ],
+  "S2_launchShortfall": [
+    {
+      "stacks": 0,
+      "printed": 10.15,
+      "samples": 492,
+      "atPrinted": 442,
+      "atPrintedPct": 89.8,
+      "runUpShort": 47,
+      "clippedOnJumpTick": 3,
+      "other": 0,
+      "medianShortfall": 7.44,
+      "maxShortfall": 9.91
+    },
+    {
+      "stacks": 12,
+      "printed": 130.15,
+      "samples": 492,
+      "atPrinted": 369,
+      "atPrintedPct": 75,
+      "runUpShort": 48,
+      "clippedOnJumpTick": 75,
+      "other": 0,
+      "medianShortfall": 115.7,
+      "maxShortfall": 130.15
+    }
+  ],
+  "pageErrors": []
+}

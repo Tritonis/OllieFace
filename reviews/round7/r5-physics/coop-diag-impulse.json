@@ -1,0 +1,88 @@
+{
+  "hostSinglePlayer": {
+    "authority": true,
+    "count": 3,
+    "onJumpHooks": 1,
+    "apiPlayerIsCtxPlayer": false,
+    "pendingBefore": 0,
+    "pendingAfterDirectHook": 30,
+    "consumeDirect": 30,
+    "throughJumpPath": {
+      "consumed": [
+        30
+      ],
+      "hs": 30,
+      "vy": 12.6,
+      "moving": false,
+      "fwd": [
+        0,
+        1
+      ]
+    }
+  },
+  "clientBeforeJoin": {
+    "authority": true,
+    "count": 3,
+    "onJumpHooks": 1,
+    "apiPlayerIsCtxPlayer": false,
+    "pendingBefore": 0,
+    "pendingAfterDirectHook": 30,
+    "consumeDirect": 30,
+    "throughJumpPath": {
+      "consumed": [
+        30
+      ],
+      "hs": 30,
+      "vy": 12.6,
+      "moving": false,
+      "fwd": [
+        0,
+        1
+      ]
+    }
+  },
+  "clientAfterJoin": {
+    "authority": false,
+    "count": 3,
+    "onJumpHooks": 1,
+    "apiPlayerIsCtxPlayer": true,
+    "pendingBefore": 0,
+    "pendingAfterDirectHook": 30,
+    "consumeDirect": 30,
+    "throughJumpPath": {
+      "consumed": [
+        30
+      ],
+      "hs": 30,
+      "vy": 12.6,
+      "moving": false,
+      "fwd": [
+        0,
+        1
+      ]
+    }
+  },
+  "hostAfterJoin": {
+    "authority": true,
+    "count": 6,
+    "onJumpHooks": 1,
+    "apiPlayerIsCtxPlayer": true,
+    "pendingBefore": 0,
+    "pendingAfterDirectHook": 60,
+    "consumeDirect": 60,
+    "throughJumpPath": {
+      "consumed": [
+        60
+      ],
+      "hs": 60,
+      "vy": 12.6,
+      "moving": false,
+      "fwd": [
+        0,
+        1
+      ]
+    }
+  },
+  "hostErrors": [],
+  "clientErrors": []
+}

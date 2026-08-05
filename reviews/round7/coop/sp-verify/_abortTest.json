@@ -1,0 +1,20 @@
+{
+  "arm": "_abortTest",
+  "seed": 1337,
+  "sabotage": [],
+  "gate": null,
+  "unit": null,
+  "playerDealt": null,
+  "lapse": null,
+  "dive": null,
+  "misc": null,
+  "blazing": null,
+  "contactTopped": null,
+  "contactGlacial": null,
+  "contactPlain": null,
+  "midGate": null,
+  "contactLethal": null,
+  "deathAftermath": null,
+  "pageErrors": [],
+  "error": "page.waitForFunction: Timeout 90000ms exceeded.\n    at C:\\Users\\tpzap\\source\\repos\\OllieFace\\tools\\_spv.mjs:99:14"
+}

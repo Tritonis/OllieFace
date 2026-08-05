@@ -1,0 +1,77 @@
+{
+  "arm": "sp-prescribed",
+  "substitutions": [
+    "N7-prescribed"
+  ],
+  "runningGate": {
+    "paused": false,
+    "screen": null,
+    "localTick": 65,
+    "survivorId": "ranger",
+    "maxHealth": 110
+  },
+  "fixture": {
+    "defId": "beetle",
+    "count": 7,
+    "allAlive": true
+  },
+  "phases": {
+    "start": {
+      "hudKills": 0,
+      "flashes": 0,
+      "progression": 0
+    },
+    "afterOwnKills": {
+      "hudKills": 4,
+      "flashes": 4,
+      "progression": 4
+    },
+    "afterEnemyOnEnemy": {
+      "hudKills": 5,
+      "flashes": 5,
+      "progression": 5
+    },
+    "afterPlayerDeath": {
+      "hudKills": 5,
+      "flashes": 5,
+      "progression": 5
+    }
+  },
+  "phaseAInfo": {
+    "attackerIsPlayer": true,
+    "killed": [
+      {
+        "alive": false
+      },
+      {
+        "alive": false
+      },
+      {
+        "alive": false
+      },
+      {
+        "alive": false
+      }
+    ]
+  },
+  "phaseBInfo": {
+    "sourceWasEnemy": true,
+    "killerIsPlayer": false,
+    "victimWasAlive": true,
+    "victimDied": true,
+    "victimIsPlayer": false
+  },
+  "phaseCInfo": {
+    "killerIsPlayer": false,
+    "playerAlive": false,
+    "playerHealth": 0,
+    "victimIsPlayer": true
+  },
+  "ok": true,
+  "substitutionsApplied": [
+    "N7-prescribed"
+  ],
+  "substitutionsMissing": [],
+  "consoleErrors": [],
+  "pageErrors": []
+}

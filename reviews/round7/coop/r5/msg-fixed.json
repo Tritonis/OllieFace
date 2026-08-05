@@ -1,0 +1,930 @@
+{
+  "arm": "msg-fixed",
+  "substitutions": [],
+  "shots": [
+    {
+      "label": "empty message (0 bytes)",
+      "dir": "c2h",
+      "shape": "empty",
+      "hostConsoleErrorDelta": 1,
+      "clientConsoleErrorDelta": 0,
+      "hostNetWarnDelta": 0,
+      "clientNetWarnDelta": 0,
+      "hostPageErrorDelta": 0,
+      "clientPageErrorDelta": 0,
+      "host": {
+        "tick": 135,
+        "paused": false,
+        "screen": null,
+        "inputEnabled": true,
+        "pointerLocked": false,
+        "clients": 1,
+        "pawns": [
+          {
+            "survivorId": "anvil",
+            "health": 170,
+            "maxHealth": 170,
+            "alive": true,
+            "localTick": 0
+          }
+        ],
+        "helloSeen": [
+          true
+        ],
+        "peerSurvivors": [
+          "anvil"
+        ],
+        "lobbyStatus": "peerConnecting",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null,
+          "count": null
+        },
+        "players": 2,
+        "ownSurvivor": "ranger",
+        "ownMax": 110,
+        "ownAlive": true
+      },
+      "client": {
+        "connected": true,
+        "myNetId": 1,
+        "netTick": 30,
+        "serverTick": 135,
+        "paused": false,
+        "screen": null,
+        "survivorId": "anvil",
+        "maxHealth": 170,
+        "health": 170,
+        "alive": true,
+        "lobbyStatus": "connected",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null
+        }
+      }
+    },
+    {
+      "label": "unknown kind 200",
+      "dir": "c2h",
+      "shape": "k200",
+      "hostConsoleErrorDelta": 0,
+      "clientConsoleErrorDelta": 0,
+      "hostNetWarnDelta": 1,
+      "clientNetWarnDelta": 0,
+      "hostPageErrorDelta": 0,
+      "clientPageErrorDelta": 0,
+      "host": {
+        "tick": 150,
+        "paused": false,
+        "screen": null,
+        "inputEnabled": true,
+        "pointerLocked": false,
+        "clients": 1,
+        "pawns": [
+          {
+            "survivorId": "anvil",
+            "health": 170,
+            "maxHealth": 170,
+            "alive": true,
+            "localTick": 0
+          }
+        ],
+        "helloSeen": [
+          true
+        ],
+        "peerSurvivors": [
+          "anvil"
+        ],
+        "lobbyStatus": "peerConnecting",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null,
+          "count": null
+        },
+        "players": 2,
+        "ownSurvivor": "ranger",
+        "ownMax": 110,
+        "ownAlive": true
+      },
+      "client": {
+        "connected": true,
+        "myNetId": 1,
+        "netTick": 45,
+        "serverTick": 150,
+        "paused": false,
+        "screen": null,
+        "survivorId": "anvil",
+        "maxHealth": 170,
+        "health": 170,
+        "alive": true,
+        "lobbyStatus": "connected",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null
+        }
+      }
+    },
+    {
+      "label": "kind 0",
+      "dir": "c2h",
+      "shape": "k0",
+      "hostConsoleErrorDelta": 0,
+      "clientConsoleErrorDelta": 0,
+      "hostNetWarnDelta": 1,
+      "clientNetWarnDelta": 0,
+      "hostPageErrorDelta": 0,
+      "clientPageErrorDelta": 0,
+      "host": {
+        "tick": 165,
+        "paused": false,
+        "screen": null,
+        "inputEnabled": true,
+        "pointerLocked": false,
+        "clients": 1,
+        "pawns": [
+          {
+            "survivorId": "anvil",
+            "health": 170,
+            "maxHealth": 170,
+            "alive": true,
+            "localTick": 0
+          }
+        ],
+        "helloSeen": [
+          true
+        ],
+        "peerSurvivors": [
+          "anvil"
+        ],
+        "lobbyStatus": "peerConnecting",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null,
+          "count": null
+        },
+        "players": 2,
+        "ownSurvivor": "ranger",
+        "ownMax": 110,
+        "ownAlive": true
+      },
+      "client": {
+        "connected": true,
+        "myNetId": 1,
+        "netTick": 60,
+        "serverTick": 165,
+        "paused": false,
+        "screen": null,
+        "survivorId": "anvil",
+        "maxHealth": 170,
+        "health": 170,
+        "alive": true,
+        "lobbyStatus": "connected",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null
+        }
+      }
+    },
+    {
+      "label": "SNAPSHOT misdirected to the host",
+      "dir": "c2h",
+      "shape": "snapshot",
+      "hostConsoleErrorDelta": 0,
+      "clientConsoleErrorDelta": 0,
+      "hostNetWarnDelta": 1,
+      "clientNetWarnDelta": 0,
+      "hostPageErrorDelta": 0,
+      "clientPageErrorDelta": 0,
+      "host": {
+        "tick": 175,
+        "paused": false,
+        "screen": null,
+        "inputEnabled": true,
+        "pointerLocked": false,
+        "clients": 1,
+        "pawns": [
+          {
+            "survivorId": "anvil",
+            "health": 170,
+            "maxHealth": 170,
+            "alive": true,
+            "localTick": 0
+          }
+        ],
+        "helloSeen": [
+          true
+        ],
+        "peerSurvivors": [
+          "anvil"
+        ],
+        "lobbyStatus": "peerConnecting",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null,
+          "count": null
+        },
+        "players": 2,
+        "ownSurvivor": "ranger",
+        "ownMax": 110,
+        "ownAlive": true
+      },
+      "client": {
+        "connected": true,
+        "myNetId": 1,
+        "netTick": 70,
+        "serverTick": 175,
+        "paused": false,
+        "screen": null,
+        "survivorId": "anvil",
+        "maxHealth": 170,
+        "health": 170,
+        "alive": true,
+        "lobbyStatus": "connected",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null
+        }
+      }
+    },
+    {
+      "label": "INPUT truncated",
+      "dir": "c2h",
+      "shape": "inputTrunc",
+      "hostConsoleErrorDelta": 1,
+      "clientConsoleErrorDelta": 0,
+      "hostNetWarnDelta": 0,
+      "clientNetWarnDelta": 0,
+      "hostPageErrorDelta": 0,
+      "clientPageErrorDelta": 0,
+      "host": {
+        "tick": 190,
+        "paused": false,
+        "screen": null,
+        "inputEnabled": true,
+        "pointerLocked": false,
+        "clients": 1,
+        "pawns": [
+          {
+            "survivorId": "anvil",
+            "health": 170,
+            "maxHealth": 170,
+            "alive": true,
+            "localTick": 0
+          }
+        ],
+        "helloSeen": [
+          true
+        ],
+        "peerSurvivors": [
+          "anvil"
+        ],
+        "lobbyStatus": "peerConnecting",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null,
+          "count": null
+        },
+        "players": 2,
+        "ownSurvivor": "ranger",
+        "ownMax": 110,
+        "ownAlive": true
+      },
+      "client": {
+        "connected": true,
+        "myNetId": 1,
+        "netTick": 85,
+        "serverTick": 190,
+        "paused": false,
+        "screen": null,
+        "survivorId": "anvil",
+        "maxHealth": 170,
+        "health": 170,
+        "alive": true,
+        "lobbyStatus": "connected",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null
+        }
+      }
+    },
+    {
+      "label": "PING truncated",
+      "dir": "c2h",
+      "shape": "pingTrunc",
+      "hostConsoleErrorDelta": 1,
+      "clientConsoleErrorDelta": 0,
+      "hostNetWarnDelta": 0,
+      "clientNetWarnDelta": 0,
+      "hostPageErrorDelta": 0,
+      "clientPageErrorDelta": 0,
+      "host": {
+        "tick": 205,
+        "paused": false,
+        "screen": null,
+        "inputEnabled": true,
+        "pointerLocked": false,
+        "clients": 1,
+        "pawns": [
+          {
+            "survivorId": "anvil",
+            "health": 170,
+            "maxHealth": 170,
+            "alive": true,
+            "localTick": 0
+          }
+        ],
+        "helloSeen": [
+          true
+        ],
+        "peerSurvivors": [
+          "anvil"
+        ],
+        "lobbyStatus": "peerConnecting",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null,
+          "count": null
+        },
+        "players": 2,
+        "ownSurvivor": "ranger",
+        "ownMax": 110,
+        "ownAlive": true
+      },
+      "client": {
+        "connected": true,
+        "myNetId": 1,
+        "netTick": 100,
+        "serverTick": 205,
+        "paused": false,
+        "screen": null,
+        "survivorId": "anvil",
+        "maxHealth": 170,
+        "health": 170,
+        "alive": true,
+        "lobbyStatus": "connected",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null
+        }
+      }
+    },
+    {
+      "label": "unknown kind 201",
+      "dir": "h2c",
+      "shape": "k201",
+      "hostConsoleErrorDelta": 0,
+      "clientConsoleErrorDelta": 0,
+      "hostNetWarnDelta": 0,
+      "clientNetWarnDelta": 1,
+      "hostPageErrorDelta": 0,
+      "clientPageErrorDelta": 0,
+      "host": {
+        "tick": 220,
+        "paused": false,
+        "screen": null,
+        "inputEnabled": true,
+        "pointerLocked": false,
+        "clients": 1,
+        "pawns": [
+          {
+            "survivorId": "anvil",
+            "health": 170,
+            "maxHealth": 170,
+            "alive": true,
+            "localTick": 0
+          }
+        ],
+        "helloSeen": [
+          true
+        ],
+        "peerSurvivors": [
+          "anvil"
+        ],
+        "lobbyStatus": "peerConnecting",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null,
+          "count": null
+        },
+        "players": 2,
+        "ownSurvivor": "ranger",
+        "ownMax": 110,
+        "ownAlive": true
+      },
+      "client": {
+        "connected": true,
+        "myNetId": 1,
+        "netTick": 115,
+        "serverTick": 220,
+        "paused": false,
+        "screen": null,
+        "survivorId": "anvil",
+        "maxHealth": 170,
+        "health": 170,
+        "alive": true,
+        "lobbyStatus": "connected",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null
+        }
+      }
+    },
+    {
+      "label": "kind 0",
+      "dir": "h2c",
+      "shape": "k0",
+      "hostConsoleErrorDelta": 0,
+      "clientConsoleErrorDelta": 0,
+      "hostNetWarnDelta": 0,
+      "clientNetWarnDelta": 1,
+      "hostPageErrorDelta": 0,
+      "clientPageErrorDelta": 0,
+      "host": {
+        "tick": 235,
+        "paused": false,
+        "screen": null,
+        "inputEnabled": true,
+        "pointerLocked": false,
+        "clients": 1,
+        "pawns": [
+          {
+            "survivorId": "anvil",
+            "health": 170,
+            "maxHealth": 170,
+            "alive": true,
+            "localTick": 0
+          }
+        ],
+        "helloSeen": [
+          true
+        ],
+        "peerSurvivors": [
+          "anvil"
+        ],
+        "lobbyStatus": "peerConnecting",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null,
+          "count": null
+        },
+        "players": 2,
+        "ownSurvivor": "ranger",
+        "ownMax": 110,
+        "ownAlive": true
+      },
+      "client": {
+        "connected": true,
+        "myNetId": 1,
+        "netTick": 130,
+        "serverTick": 235,
+        "paused": false,
+        "screen": null,
+        "survivorId": "anvil",
+        "maxHealth": 170,
+        "health": 170,
+        "alive": true,
+        "lobbyStatus": "connected",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null
+        }
+      }
+    },
+    {
+      "label": "EVENT name length 60000",
+      "dir": "h2c",
+      "shape": "eventBomb",
+      "hostConsoleErrorDelta": 0,
+      "clientConsoleErrorDelta": 1,
+      "hostNetWarnDelta": 0,
+      "clientNetWarnDelta": 0,
+      "hostPageErrorDelta": 0,
+      "clientPageErrorDelta": 0,
+      "host": {
+        "tick": 250,
+        "paused": false,
+        "screen": null,
+        "inputEnabled": true,
+        "pointerLocked": false,
+        "clients": 1,
+        "pawns": [
+          {
+            "survivorId": "anvil",
+            "health": 170,
+            "maxHealth": 170,
+            "alive": true,
+            "localTick": 0
+          }
+        ],
+        "helloSeen": [
+          true
+        ],
+        "peerSurvivors": [
+          "anvil"
+        ],
+        "lobbyStatus": "peerConnecting",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null,
+          "count": null
+        },
+        "players": 2,
+        "ownSurvivor": "ranger",
+        "ownMax": 110,
+        "ownAlive": true
+      },
+      "client": {
+        "connected": true,
+        "myNetId": 1,
+        "netTick": 145,
+        "serverTick": 250,
+        "paused": false,
+        "screen": null,
+        "survivorId": "anvil",
+        "maxHealth": 170,
+        "health": 170,
+        "alive": true,
+        "lobbyStatus": "connected",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null
+        }
+      }
+    },
+    {
+      "label": "EVENT with malformed JSON",
+      "dir": "h2c",
+      "shape": "eventJson",
+      "hostConsoleErrorDelta": 0,
+      "clientConsoleErrorDelta": 1,
+      "hostNetWarnDelta": 0,
+      "clientNetWarnDelta": 0,
+      "hostPageErrorDelta": 0,
+      "clientPageErrorDelta": 0,
+      "host": {
+        "tick": 265,
+        "paused": false,
+        "screen": null,
+        "inputEnabled": true,
+        "pointerLocked": false,
+        "clients": 1,
+        "pawns": [
+          {
+            "survivorId": "anvil",
+            "health": 170,
+            "maxHealth": 170,
+            "alive": true,
+            "localTick": 0
+          }
+        ],
+        "helloSeen": [
+          true
+        ],
+        "peerSurvivors": [
+          "anvil"
+        ],
+        "lobbyStatus": "peerConnecting",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null,
+          "count": null
+        },
+        "players": 2,
+        "ownSurvivor": "ranger",
+        "ownMax": 110,
+        "ownAlive": true
+      },
+      "client": {
+        "connected": true,
+        "myNetId": 1,
+        "netTick": 160,
+        "serverTick": 265,
+        "paused": false,
+        "screen": null,
+        "survivorId": "anvil",
+        "maxHealth": 170,
+        "health": 170,
+        "alive": true,
+        "lobbyStatus": "connected",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null
+        }
+      }
+    },
+    {
+      "label": "SNAPSHOT truncated",
+      "dir": "h2c",
+      "shape": "snapTrunc",
+      "hostConsoleErrorDelta": 0,
+      "clientConsoleErrorDelta": 1,
+      "hostNetWarnDelta": 0,
+      "clientNetWarnDelta": 0,
+      "hostPageErrorDelta": 0,
+      "clientPageErrorDelta": 0,
+      "host": {
+        "tick": 275,
+        "paused": false,
+        "screen": null,
+        "inputEnabled": true,
+        "pointerLocked": false,
+        "clients": 1,
+        "pawns": [
+          {
+            "survivorId": "anvil",
+            "health": 170,
+            "maxHealth": 170,
+            "alive": true,
+            "localTick": 0
+          }
+        ],
+        "helloSeen": [
+          true
+        ],
+        "peerSurvivors": [
+          "anvil"
+        ],
+        "lobbyStatus": "peerConnecting",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null,
+          "count": null
+        },
+        "players": 2,
+        "ownSurvivor": "ranger",
+        "ownMax": 110,
+        "ownAlive": true
+      },
+      "client": {
+        "connected": true,
+        "myNetId": 1,
+        "netTick": 170,
+        "serverTick": 275,
+        "paused": false,
+        "screen": null,
+        "survivorId": "anvil",
+        "maxHealth": 170,
+        "health": 170,
+        "alive": true,
+        "lobbyStatus": "connected",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null
+        }
+      }
+    },
+    {
+      "label": "WELCOME truncated",
+      "dir": "h2c",
+      "shape": "welcomeTrunc",
+      "hostConsoleErrorDelta": 0,
+      "clientConsoleErrorDelta": 1,
+      "hostNetWarnDelta": 0,
+      "clientNetWarnDelta": 0,
+      "hostPageErrorDelta": 0,
+      "clientPageErrorDelta": 0,
+      "host": {
+        "tick": 285,
+        "paused": false,
+        "screen": null,
+        "inputEnabled": true,
+        "pointerLocked": false,
+        "clients": 1,
+        "pawns": [
+          {
+            "survivorId": "anvil",
+            "health": 170,
+            "maxHealth": 170,
+            "alive": true,
+            "localTick": 0
+          }
+        ],
+        "helloSeen": [
+          true
+        ],
+        "peerSurvivors": [
+          "anvil"
+        ],
+        "lobbyStatus": "peerConnecting",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null,
+          "count": null
+        },
+        "players": 2,
+        "ownSurvivor": "ranger",
+        "ownMax": 110,
+        "ownAlive": true
+      },
+      "client": {
+        "connected": true,
+        "myNetId": 1,
+        "netTick": 180,
+        "serverTick": 285,
+        "paused": false,
+        "screen": null,
+        "survivorId": "anvil",
+        "maxHealth": 170,
+        "health": 170,
+        "alive": true,
+        "lobbyStatus": "connected",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null
+        }
+      }
+    },
+    {
+      "label": "REFUSE with an empty body",
+      "dir": "h2c",
+      "shape": "refuseEmpty",
+      "hostConsoleErrorDelta": 0,
+      "clientConsoleErrorDelta": 0,
+      "hostNetWarnDelta": 0,
+      "clientNetWarnDelta": 0,
+      "hostPageErrorDelta": 0,
+      "clientPageErrorDelta": 0,
+      "host": {
+        "tick": 295,
+        "paused": false,
+        "screen": null,
+        "inputEnabled": true,
+        "pointerLocked": false,
+        "clients": 0,
+        "pawns": [],
+        "helloSeen": [],
+        "peerSurvivors": [],
+        "lobbyStatus": "peerLeft",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null,
+          "count": 1
+        },
+        "players": 1,
+        "ownSurvivor": "ranger",
+        "ownMax": 110,
+        "ownAlive": true
+      },
+      "client": {
+        "connected": false,
+        "myNetId": 1,
+        "netTick": 185,
+        "serverTick": 295,
+        "paused": false,
+        "screen": null,
+        "survivorId": "anvil",
+        "maxHealth": 170,
+        "health": 170,
+        "alive": true,
+        "lobbyStatus": "refused",
+        "lobbyDetail": {
+          "reason": "",
+          "detail": 0,
+          "detailHead": ""
+        }
+      }
+    }
+  ],
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 295,
+      "survivorId": "ranger",
+      "maxHealth": 110
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 65,
+      "survivorId": "anvil",
+      "maxHealth": 170
+    }
+  },
+  "joined": {
+    "host": {
+      "tick": 60,
+      "paused": false,
+      "screen": null,
+      "inputEnabled": true,
+      "pointerLocked": false,
+      "clients": 1,
+      "pawns": [
+        {
+          "survivorId": "anvil",
+          "health": 170,
+          "maxHealth": 170,
+          "alive": true,
+          "localTick": 0
+        }
+      ],
+      "helloSeen": [
+        true
+      ],
+      "peerSurvivors": [
+        "anvil"
+      ],
+      "lobbyStatus": "peerConnecting",
+      "lobbyDetail": {
+        "reason": null,
+        "detail": null,
+        "detailHead": null,
+        "count": null
+      },
+      "players": 2,
+      "ownSurvivor": "ranger",
+      "ownMax": 110,
+      "ownAlive": true
+    },
+    "client": {
+      "connected": true,
+      "myNetId": 1,
+      "netTick": 15,
+      "serverTick": 65,
+      "paused": false,
+      "screen": null,
+      "survivorId": "anvil",
+      "maxHealth": 170,
+      "health": 170,
+      "alive": true,
+      "lobbyStatus": "connected",
+      "lobbyDetail": {
+        "reason": null,
+        "detail": null,
+        "detailHead": null
+      }
+    }
+  },
+  "sentences": {
+    "host": {
+      "text": "A player left. 1 in the game.",
+      "length": 29
+    },
+    "client": {
+      "text": "The host refused the join. Try joining again.",
+      "length": 45
+    }
+  },
+  "errors": {
+    "host": {
+      "consoleErrors": 3,
+      "netWarns": 3,
+      "netWarnTexts": [
+        "[net] host ignored an unknown message kind 200 from peer 1",
+        "[net] host ignored an unknown message kind 0 from peer 1",
+        "[net] host ignored an unknown message kind 4 from peer 1"
+      ],
+      "consoleWarns": 15,
+      "pageErrors": 0,
+      "errorTexts": [
+        "[net] host dropped a malformed message from peer 1 RangeError: Offset is outside the bounds of the DataView\n    at DataView.prototype.getUint8 (<anonymous>)\n    at Reader.u8 (http://127.0.0.1:5850/src/net/Protocol.js:198:30)\n    at NetHost._handleMessage (http://127.0.0.1:5850/src/net/NetHost.js:179",
+        "[net] host dropped a malformed message from peer 1 RangeError: Offset is outside the bounds of the DataView\n    at DataView.prototype.getUint32 (<anonymous>)\n    at Reader.u32 (http://127.0.0.1:5850/src/net/Protocol.js:202:31)\n    at readInput (http://127.0.0.1:5850/src/net/Protocol.js:227:16)\n    a",
+        "[net] host dropped a malformed message from peer 1 RangeError: Offset is outside the bounds of the DataView\n    at DataView.prototype.getFloat32 (<anonymous>)\n    at Reader.f32 (http://127.0.0.1:5850/src/net/Protocol.js:203:31)\n    at NetHost._handleMessage (http://127.0.0.1:5850/src/net/NetHost.js:"
+      ],
+      "pageErrorTexts": []
+    },
+    "client": {
+      "consoleErrors": 4,
+      "netWarns": 2,
+      "netWarnTexts": [
+        "[net] client ignored an unknown message kind 201 from the host",
+        "[net] client ignored an unknown message kind 0 from the host"
+      ],
+      "consoleWarns": 14,
+      "pageErrors": 0,
+      "errorTexts": [
+        "[net] client dropped a malformed message from the host RangeError: Invalid typed array length: 60000\n    at new Uint8Array (<anonymous>)\n    at Reader.str (http://127.0.0.1:5850/src/net/Protocol.js:206:40)\n    at NetClient._handleMessage (http://127.0.0.1:5850/src/net/NetClient.js:169:24)\n    at Net",
+        "[net] client dropped a malformed message from the host SyntaxError: Expected property name or '}' in JSON at position 1 (line 1 column 2)\n    at JSON.parse (<anonymous>)\n    at Reader.json (http://127.0.0.1:5850/src/net/Protocol.js:210:24)\n    at NetClient._handleMessage (http://127.0.0.1:5850/src/n",
+        "[net] client dropped a malformed message from the host RangeError: Offset is outside the bounds of the DataView\n    at DataView.prototype.getUint32 (<anonymous>)\n    at Reader.u32 (http://127.0.0.1:5850/src/net/Protocol.js:202:31)\n    at SnapshotBuffer.ingest (http://127.0.0.1:5850/src/net/Snapshot.",
+        "[net] client dropped a malformed message from the host RangeError: Offset is outside the bounds of the DataView\n    at DataView.prototype.getUint16 (<anonymous>)\n    at Reader.u16 (http://127.0.0.1:5850/src/net/Protocol.js:200:31)\n    at NetClient._handleMessage (http://127.0.0.1:5850/src/net/NetCli"
+      ],
+      "pageErrorTexts": []
+    }
+  },
+  "substitutionsMissing": []
+}

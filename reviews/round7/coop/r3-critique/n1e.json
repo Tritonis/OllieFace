@@ -1,0 +1,228 @@
+{
+  "arm": "n1e",
+  "startedAt": "2026-08-04T02:15:45.402Z",
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 66,
+      "survivorId": "ranger",
+      "maxHealth": 110,
+      "netRole": "single",
+      "authority": true
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 63,
+      "survivorId": "anvil",
+      "maxHealth": 170,
+      "netRole": "single",
+      "authority": true
+    }
+  },
+  "runningGateAfterFocus": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "simTick": 70,
+      "localTick": 70,
+      "netTick": 0
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "simTick": 63,
+      "localTick": 0,
+      "netTick": 63
+    }
+  },
+  "roles": {
+    "host": {
+      "role": "host",
+      "authority": true,
+      "clients": 1
+    },
+    "client": {
+      "role": "client",
+      "authority": false,
+      "myNetId": 1,
+      "connected": true
+    }
+  },
+  "pack": {
+    "spec": [
+      "lemurian",
+      "beetle",
+      "wisp",
+      "mortar",
+      "lemurian/overloading"
+    ],
+    "spawned": [
+      {
+        "id": "lemurian",
+        "affix": null,
+        "eliteMods": false,
+        "deathBlast": null,
+        "blastRadius": null
+      },
+      {
+        "id": "beetle",
+        "affix": null,
+        "eliteMods": false,
+        "deathBlast": null,
+        "blastRadius": null
+      },
+      {
+        "id": "wisp",
+        "affix": null,
+        "eliteMods": false,
+        "deathBlast": null,
+        "blastRadius": null
+      },
+      {
+        "id": "mortar",
+        "affix": null,
+        "eliteMods": false,
+        "deathBlast": null,
+        "blastRadius": null
+      },
+      {
+        "id": "lemurian",
+        "affix": "set",
+        "eliteMods": true,
+        "deathBlast": 3,
+        "blastRadius": 7
+      }
+    ],
+    "live": 6,
+    "affixTable": [
+      "0",
+      "1",
+      "2",
+      "3",
+      "4"
+    ]
+  },
+  "E1": {
+    "hitsOnHost": 78,
+    "hitsOnPawn": 0,
+    "typesOnHost": [
+      "projectile:lemurian",
+      "melee:lemurian",
+      "projectile:wisp",
+      "projectile:mortar",
+      "melee:beetle",
+      "melee:mite"
+    ],
+    "typesOnPawn": [],
+    "hostAlive": true,
+    "pawnAlive": true,
+    "dist": 3
+  },
+  "E2": {
+    "elite": "lemurian",
+    "blastRadius": 7,
+    "deathBlast": 3,
+    "pawnHealthBefore": 170
+  },
+  "E2after": {
+    "hitsOnPawn": 6,
+    "typesOnPawn": [
+      "blast:lemurian:66",
+      "shock:lemurian:4.2",
+      "shock:lemurian:4.2",
+      "shock:lemurian:4.2",
+      "shock:lemurian:4.2",
+      "shock:lemurian:4.2"
+    ],
+    "hitsOnHost": 13,
+    "typesOnHost": [
+      "blast:lemurian",
+      "shock:lemurian",
+      "melee:beetle",
+      "projectile:wisp",
+      "melee:mite",
+      "melee:lemurian"
+    ],
+    "pawnHealth": 102.03
+  },
+  "E2client": {
+    "health": 102.03,
+    "maxHealth": 170,
+    "damageTaken": 67.96
+  },
+  "E3": {
+    "overlapCount": 3,
+    "overlapIncludesPawn": true,
+    "pawnTeam": "player",
+    "playerTeam": "player",
+    "enemyTeam": "monster",
+    "pawnRegistered": true,
+    "pawnHealthBefore": 102.03,
+    "pawnHealthAfter": 70.78,
+    "hitsRecorded": 1
+  },
+  "observer": {
+    "toPawnAll": [
+      {
+        "phase": "E2",
+        "amount": 66,
+        "type": "blast",
+        "srcId": "lemurian",
+        "byEnemy": true
+      },
+      {
+        "phase": "E2",
+        "amount": 4.2,
+        "type": "shock",
+        "srcId": "lemurian",
+        "byEnemy": true
+      },
+      {
+        "phase": "E2",
+        "amount": 4.2,
+        "type": "shock",
+        "srcId": "lemurian",
+        "byEnemy": true
+      },
+      {
+        "phase": "E2",
+        "amount": 4.2,
+        "type": "shock",
+        "srcId": "lemurian",
+        "byEnemy": true
+      },
+      {
+        "phase": "E2",
+        "amount": 4.2,
+        "type": "shock",
+        "srcId": "lemurian",
+        "byEnemy": true
+      },
+      {
+        "phase": "E2",
+        "amount": 4.2,
+        "type": "shock",
+        "srcId": "lemurian",
+        "byEnemy": true
+      },
+      {
+        "phase": "E3",
+        "amount": 40,
+        "type": "blast",
+        "srcId": "spitling",
+        "byEnemy": true
+      }
+    ],
+    "toLocalByEnemy": 92,
+    "toLocalTotal": 92
+  },
+  "errors": {
+    "host": [],
+    "client": [],
+    "hostConsole": [],
+    "clientConsole": []
+  },
+  "ok": true
+}

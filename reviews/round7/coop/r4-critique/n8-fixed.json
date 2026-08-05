@@ -1,0 +1,350 @@
+{
+  "arm": "n8-fixed",
+  "scenario": "n8",
+  "substitutions": [],
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 70,
+      "survivorId": "ranger",
+      "maxHealth": 110
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 65,
+      "survivorId": "anvil",
+      "maxHealth": 170
+    }
+  },
+  "wireUp": true,
+  "afterJoin": {
+    "host": {
+      "tick": 190,
+      "clients": 1,
+      "paused": false,
+      "inputEnabled": true,
+      "holding": false,
+      "hasLivePeer": true,
+      "screen": null,
+      "hudKills": 0,
+      "flashes": 0,
+      "progression": 0,
+      "lobbyStatus": "peerConnecting",
+      "lobbyDetail": {
+        "id": 1
+      },
+      "pawns": [
+        {
+          "survivorId": "anvil",
+          "health": 170,
+          "maxHealth": 170,
+          "alive": true,
+          "localTick": 0,
+          "helloSeen": true,
+          "joinTick": 60
+        }
+      ],
+      "own": {
+        "survivorId": "ranger",
+        "health": 110,
+        "maxHealth": 110,
+        "alive": true
+      }
+    },
+    "client": {
+      "tick": 75,
+      "serverTick": 195,
+      "connected": true,
+      "myNetId": 1,
+      "paused": false,
+      "screen": null,
+      "hudKills": 0,
+      "flashes": 0,
+      "progression": 0,
+      "lobbyStatus": "connected",
+      "lobbyDetail": {
+        "seed": 1337,
+        "stageIndex": 0,
+        "time": 2.25,
+        "myNetId": 1,
+        "artifactMask": 0,
+        "difficulty": 1
+      },
+      "own": {
+        "survivorId": "anvil",
+        "health": 170,
+        "maxHealth": 170,
+        "alive": true,
+        "shield": 0,
+        "localTick": 0
+      },
+      "ended": null
+    }
+  },
+  "result": {
+    "mode": "death",
+    "beforeTail": [
+      {
+        "t": 68846.39999999851,
+        "paused": false,
+        "input": false,
+        "hold": true,
+        "live": true,
+        "screen": "pause",
+        "tick": 205
+      },
+      {
+        "t": 68864.60000000149,
+        "paused": false,
+        "input": false,
+        "hold": true,
+        "live": true,
+        "screen": "pause",
+        "tick": 205
+      },
+      {
+        "t": 69511.69999999553,
+        "paused": false,
+        "input": false,
+        "hold": true,
+        "live": true,
+        "screen": "pause",
+        "tick": 210
+      },
+      {
+        "t": 69525.39999999851,
+        "paused": false,
+        "input": false,
+        "hold": true,
+        "live": true,
+        "screen": "pause",
+        "tick": 210
+      },
+      {
+        "t": 70167.10000000149,
+        "paused": false,
+        "input": false,
+        "hold": true,
+        "live": true,
+        "screen": "pause",
+        "tick": 215
+      }
+    ],
+    "clientBefore": {
+      "serverTick": 215,
+      "connected": true,
+      "alive": true
+    },
+    "trace": [
+      {
+        "ms": 0,
+        "dTick": 0,
+        "paused": false,
+        "input": false,
+        "hold": true,
+        "live": true,
+        "screen": "pause"
+      },
+      {
+        "ms": 12,
+        "dTick": 0,
+        "paused": false,
+        "input": false,
+        "hold": true,
+        "live": false,
+        "screen": "pause"
+      },
+      {
+        "ms": 723,
+        "dTick": 0,
+        "paused": false,
+        "input": true,
+        "hold": true,
+        "live": false,
+        "screen": "pause"
+      },
+      {
+        "ms": 732,
+        "dTick": 0,
+        "paused": false,
+        "input": true,
+        "hold": true,
+        "live": false,
+        "screen": "pause"
+      },
+      {
+        "ms": 756,
+        "dTick": 0,
+        "paused": false,
+        "input": true,
+        "hold": true,
+        "live": false,
+        "screen": "pause"
+      },
+      {
+        "ms": 1442,
+        "dTick": 5,
+        "paused": false,
+        "input": true,
+        "hold": true,
+        "live": false,
+        "screen": "pause"
+      },
+      {
+        "ms": 1452,
+        "dTick": 5,
+        "paused": false,
+        "input": true,
+        "hold": true,
+        "live": false,
+        "screen": "pause"
+      },
+      {
+        "ms": 1476,
+        "dTick": 5,
+        "paused": false,
+        "input": true,
+        "hold": true,
+        "live": false,
+        "screen": "pause"
+      },
+      {
+        "ms": 2155,
+        "dTick": 10,
+        "paused": true,
+        "input": true,
+        "hold": false,
+        "live": false,
+        "screen": "pause"
+      },
+      {
+        "ms": 2827,
+        "dTick": 10,
+        "paused": true,
+        "input": true,
+        "hold": false,
+        "live": false,
+        "screen": "pause"
+      },
+      {
+        "ms": 2833,
+        "dTick": 10,
+        "paused": true,
+        "input": true,
+        "hold": false,
+        "live": false,
+        "screen": "pause"
+      },
+      {
+        "ms": 2852,
+        "dTick": 10,
+        "paused": true,
+        "input": true,
+        "hold": false,
+        "live": false,
+        "screen": "pause"
+      },
+      {
+        "ms": 3512,
+        "dTick": 10,
+        "paused": true,
+        "input": true,
+        "hold": false,
+        "live": false,
+        "screen": "pause"
+      },
+      {
+        "ms": 3533,
+        "dTick": 10,
+        "paused": true,
+        "input": true,
+        "hold": false,
+        "live": false,
+        "screen": "pause"
+      },
+      {
+        "ms": 4878,
+        "dTick": 10,
+        "paused": true,
+        "input": true,
+        "hold": false,
+        "live": false,
+        "screen": "pause"
+      }
+    ],
+    "hostTicksPerSecond": 3.64,
+    "final": {
+      "host": {
+        "tick": 230,
+        "clients": 1,
+        "paused": true,
+        "inputEnabled": true,
+        "holding": false,
+        "hasLivePeer": false,
+        "screen": "pause",
+        "hudKills": 0,
+        "flashes": 0,
+        "progression": 0,
+        "lobbyStatus": "peerConnecting",
+        "lobbyDetail": {
+          "id": 1
+        },
+        "pawns": [
+          {
+            "survivorId": "anvil",
+            "health": 0,
+            "maxHealth": 170,
+            "alive": false,
+            "localTick": 0,
+            "helloSeen": true,
+            "joinTick": 60
+          }
+        ],
+        "own": {
+          "survivorId": "ranger",
+          "health": 110,
+          "maxHealth": 110,
+          "alive": true
+        }
+      },
+      "client": {
+        "tick": 110,
+        "serverTick": 225,
+        "connected": true,
+        "myNetId": 1,
+        "paused": true,
+        "screen": "death",
+        "hudKills": 0,
+        "flashes": 0,
+        "progression": 0,
+        "lobbyStatus": "connected",
+        "lobbyDetail": {
+          "seed": 1337,
+          "stageIndex": 0,
+          "time": 2.25,
+          "myNetId": 1,
+          "artifactMask": 0,
+          "difficulty": 1
+        },
+        "own": {
+          "survivorId": "anvil",
+          "health": 0,
+          "maxHealth": 170,
+          "alive": false,
+          "shield": 0,
+          "localTick": 0
+        },
+        "ended": true
+      }
+    }
+  },
+  "ok": true,
+  "substitutionsApplied": [],
+  "substitutionsMissing": [],
+  "hostConsoleErrors": [],
+  "hostPageErrors": [],
+  "clientConsoleErrors": [],
+  "clientPageErrors": []
+}

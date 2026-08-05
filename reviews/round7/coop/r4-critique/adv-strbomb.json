@@ -1,0 +1,165 @@
+{
+  "arm": "adv-strbomb",
+  "scenario": "advhello",
+  "substitutions": [],
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 65,
+      "survivorId": "ranger",
+      "maxHealth": 110
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 65,
+      "survivorId": "anvil",
+      "maxHealth": 170
+    }
+  },
+  "wireUp": true,
+  "afterJoin": {
+    "host": {
+      "tick": 150,
+      "clients": 1,
+      "paused": false,
+      "inputEnabled": true,
+      "holding": false,
+      "hasLivePeer": true,
+      "screen": null,
+      "hudKills": 0,
+      "flashes": 0,
+      "progression": 0,
+      "lobbyStatus": "peerConnecting",
+      "lobbyDetail": {
+        "id": 1
+      },
+      "pawns": [
+        {
+          "survivorId": "ranger",
+          "health": 110,
+          "maxHealth": 110,
+          "alive": true,
+          "localTick": 0,
+          "helloSeen": false,
+          "joinTick": 45
+        }
+      ],
+      "own": {
+        "survivorId": "ranger",
+        "health": 110,
+        "maxHealth": 110,
+        "alive": true
+      }
+    },
+    "client": {
+      "tick": 70,
+      "serverTick": 150,
+      "connected": true,
+      "myNetId": 1,
+      "paused": false,
+      "screen": null,
+      "hudKills": 0,
+      "flashes": 0,
+      "progression": 0,
+      "lobbyStatus": "connected",
+      "lobbyDetail": {
+        "seed": 1337,
+        "stageIndex": 0,
+        "time": 1.9166666269302368,
+        "myNetId": 1,
+        "artifactMask": 0,
+        "difficulty": 1
+      },
+      "own": {
+        "survivorId": "anvil",
+        "health": 170,
+        "maxHealth": 170,
+        "alive": true,
+        "shield": 0,
+        "localTick": 0
+      },
+      "ended": null
+    }
+  },
+  "variant": "strbomb",
+  "result": {
+    "host": {
+      "tick": 165,
+      "clients": 1,
+      "paused": false,
+      "inputEnabled": true,
+      "holding": false,
+      "hasLivePeer": true,
+      "screen": null,
+      "hudKills": 0,
+      "flashes": 0,
+      "progression": 0,
+      "lobbyStatus": "peerConnecting",
+      "lobbyDetail": {
+        "id": 1
+      },
+      "pawns": [
+        {
+          "survivorId": "ranger",
+          "health": 110,
+          "maxHealth": 110,
+          "alive": true,
+          "localTick": 0,
+          "helloSeen": false,
+          "joinTick": 45
+        }
+      ],
+      "own": {
+        "survivorId": "ranger",
+        "health": 110,
+        "maxHealth": 110,
+        "alive": true
+      }
+    },
+    "client": {
+      "tick": 85,
+      "serverTick": 170,
+      "connected": true,
+      "myNetId": 1,
+      "paused": false,
+      "screen": null,
+      "hudKills": 0,
+      "flashes": 0,
+      "progression": 0,
+      "lobbyStatus": "connected",
+      "lobbyDetail": {
+        "seed": 1337,
+        "stageIndex": 0,
+        "time": 1.9166666269302368,
+        "myNetId": 1,
+        "artifactMask": 0,
+        "difficulty": 1
+      },
+      "own": {
+        "survivorId": "anvil",
+        "health": 170,
+        "maxHealth": 170,
+        "alive": true,
+        "shield": 0,
+        "localTick": 0
+      },
+      "ended": null
+    },
+    "hostSaid": "Reply accepted — connecting…",
+    "hostSaidLen": 28,
+    "clientSaid": "Connected. Rebuilding the host's world…",
+    "clientSaidLen": 39,
+    "mistated": true
+  },
+  "ok": true,
+  "substitutionsApplied": [],
+  "substitutionsMissing": [],
+  "hostConsoleErrors": [
+    "[net] host dropped a malformed message from peer 1 RangeError: Invalid typed array length: 60000\n    at new Uint8Array (<anonymous>)\n    at Reader.str (http://127.0.0.1:5831/src/net/Protocol.js:195:40)\n    at readHello (http://127.0.0.1:5831/src/net/Protocol.js:281:41)\n    at NetHost._onHello (http://127.0.0.1:5831/src/net/NetHost.js:227:19)\n    at NetHost._handleMessage (http://127.0.0.1:5831/src/net/NetHost.js:187:12)\n    at NetHost._onMessage (http://127.0.0.1:5831/src/net/NetHost.js:166:12)\n"
+  ],
+  "hostPageErrors": [],
+  "clientConsoleErrors": [],
+  "clientPageErrors": []
+}

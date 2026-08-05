@@ -1,0 +1,989 @@
+{
+  "arm": "preL2",
+  "subs": [
+    "L2-hello"
+  ],
+  "peers": 1,
+  "startedAt": "2026-08-04T02:20:38.337Z",
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 64,
+      "survivorId": "ranger",
+      "maxHealth": 110,
+      "netRole": "single",
+      "authority": true
+    },
+    "client0": {
+      "paused": false,
+      "screen": null,
+      "localTick": 61,
+      "survivorId": "anvil",
+      "maxHealth": 170,
+      "netRole": "single",
+      "authority": true
+    }
+  },
+  "inventory": {
+    "host": {
+      "wax-quail": 3,
+      "rubber-soles": 1,
+      "tectonic-heart": 1,
+      "sunken-vertebra": 1
+    },
+    "client0": {
+      "wax-quail": 3,
+      "rubber-soles": 1,
+      "tectonic-heart": 1,
+      "sunken-vertebra": 1
+    }
+  },
+  "atJoinPre": {
+    "client0": {
+      "lastCmdTick": 66,
+      "localTick": 66,
+      "atJoin": {
+        "lastCmdTick": 6,
+        "netTick": 6,
+        "localTick": 0,
+        "myNetId": 1
+      }
+    }
+  },
+  "runningGateAfterFocus": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "simTick": 143,
+      "localTick": 143,
+      "netTick": 75
+    },
+    "client0": {
+      "paused": false,
+      "screen": null,
+      "simTick": 65,
+      "localTick": 0,
+      "netTick": 65
+    }
+  },
+  "roles": {
+    "host": {
+      "role": "host",
+      "authority": true,
+      "clients": 1
+    },
+    "client0": {
+      "role": "client",
+      "authority": false,
+      "myNetId": 1,
+      "connected": true
+    }
+  },
+  "L2": {
+    "hostOwn": {
+      "survivorId": "ranger",
+      "maxHealth": 110,
+      "moveSpeed": 7,
+      "damage": 12
+    },
+    "hostPawns": [
+      {
+        "survivorId": "ranger",
+        "maxHealth": 110,
+        "moveSpeed": 7,
+        "damage": 12,
+        "netId": 1
+      }
+    ],
+    "clientOwn": [
+      {
+        "survivorId": "anvil",
+        "maxHealth": 170,
+        "moveSpeed": 6.5,
+        "damage": 15,
+        "netId": 1
+      }
+    ]
+  },
+  "spawned": {
+    "requested": 7,
+    "placed": 7,
+    "live": 8
+  },
+  "hostDamagesPawn": {
+    "dealt": 33.33,
+    "healthBefore": 110,
+    "healthAfter": 76.67,
+    "maxHealth": 110,
+    "shield": 0
+  },
+  "healthSeries": [
+    {
+      "i": 0,
+      "hostPawn": {
+        "health": 76.67,
+        "shield": 0
+      },
+      "clientOwn": {
+        "health": 170,
+        "shield": 30,
+        "maxHealth": 170
+      },
+      "gap": 93.33
+    },
+    {
+      "i": 1,
+      "hostPawn": {
+        "health": 76.67,
+        "shield": 0
+      },
+      "clientOwn": {
+        "health": 118.49,
+        "shield": 0,
+        "maxHealth": 170
+      },
+      "gap": 41.82
+    },
+    {
+      "i": 2,
+      "hostPawn": {
+        "health": 76.67,
+        "shield": 0
+      },
+      "clientOwn": {
+        "health": 118.49,
+        "shield": 0,
+        "maxHealth": 170
+      },
+      "gap": 41.82
+    },
+    {
+      "i": 3,
+      "hostPawn": {
+        "health": 76.67,
+        "shield": 0
+      },
+      "clientOwn": {
+        "health": 118.49,
+        "shield": 0,
+        "maxHealth": 170
+      },
+      "gap": 41.82
+    },
+    {
+      "i": 4,
+      "hostPawn": {
+        "health": 76.67,
+        "shield": 0
+      },
+      "clientOwn": {
+        "health": 118.49,
+        "shield": 0,
+        "maxHealth": 170
+      },
+      "gap": 41.82
+    },
+    {
+      "i": 5,
+      "hostPawn": {
+        "health": 76.8,
+        "shield": 0
+      },
+      "clientOwn": {
+        "health": 118.66,
+        "shield": 0,
+        "maxHealth": 170
+      },
+      "gap": 41.86
+    },
+    {
+      "i": 6,
+      "hostPawn": {
+        "health": 77.07,
+        "shield": 0
+      },
+      "clientOwn": {
+        "health": 119.05,
+        "shield": 0,
+        "maxHealth": 170
+      },
+      "gap": 41.98
+    },
+    {
+      "i": 7,
+      "hostPawn": {
+        "health": 77.33,
+        "shield": 0
+      },
+      "clientOwn": {
+        "health": 119.51,
+        "shield": 0,
+        "maxHealth": 170
+      },
+      "gap": 42.18
+    }
+  ],
+  "afterHit": {
+    "host": {
+      "role": "host",
+      "paused": false,
+      "screen": null,
+      "inputEnabled": true,
+      "alive": true,
+      "health": 92.5,
+      "maxHealth": 110,
+      "shield": 29.82,
+      "kills": 0,
+      "hudKills": 0,
+      "damageDealt": 33.33,
+      "damageTaken": 17.5,
+      "ended": null,
+      "directorEnabled": true,
+      "runDied": false,
+      "timeSinceHurt": 0.03,
+      "serverTick": null,
+      "netTick": 345,
+      "connected": null,
+      "localTick": 413,
+      "musicOff": false,
+      "audioPlayerDead": 0,
+      "killUpstream": 0,
+      "killDownstream": 0,
+      "deathCalls": 0,
+      "deathThrows": 0,
+      "playerHurt": 1,
+      "hasLivePeer": true,
+      "pawns": [
+        {
+          "sid": "ranger",
+          "alive": true,
+          "health": 77.48,
+          "maxHealth": 110,
+          "shield": 0
+        }
+      ]
+    },
+    "client0": {
+      "role": "client",
+      "paused": false,
+      "screen": null,
+      "inputEnabled": true,
+      "alive": true,
+      "health": 119.75,
+      "maxHealth": 170,
+      "shield": 0,
+      "kills": 0,
+      "hudKills": 0,
+      "damageDealt": 0,
+      "damageTaken": 33.33,
+      "ended": null,
+      "directorEnabled": true,
+      "runDied": false,
+      "timeSinceHurt": 2.07,
+      "serverTick": 345,
+      "netTick": 282,
+      "connected": true,
+      "localTick": 0,
+      "musicOff": false,
+      "audioPlayerDead": 0,
+      "killUpstream": 0,
+      "killDownstream": 0,
+      "deathCalls": 0,
+      "deathThrows": 0,
+      "playerHurt": 1,
+      "hasLivePeer": null,
+      "pawns": []
+    }
+  },
+  "forcedKills": {
+    "available": 8,
+    "killed": 4
+  },
+  "afterHostKills": {
+    "host": {
+      "role": "host",
+      "paused": false,
+      "screen": null,
+      "inputEnabled": true,
+      "alive": true,
+      "health": 126.08,
+      "maxHealth": 143,
+      "shield": 0.69,
+      "kills": 4,
+      "hudKills": 4,
+      "damageDealt": 4000000033.33,
+      "damageTaken": 17.5,
+      "ended": null,
+      "directorEnabled": true,
+      "runDied": false,
+      "timeSinceHurt": 1.67,
+      "serverTick": null,
+      "netTick": 443,
+      "connected": null,
+      "localTick": 511,
+      "musicOff": false,
+      "audioPlayerDead": 0,
+      "killUpstream": 4,
+      "killDownstream": 4,
+      "deathCalls": 4,
+      "deathThrows": 0,
+      "playerHurt": 1,
+      "hasLivePeer": true,
+      "pawns": [
+        {
+          "sid": "ranger",
+          "alive": true,
+          "health": 112.44,
+          "maxHealth": 143,
+          "shield": 0
+        }
+      ]
+    },
+    "client0": {
+      "role": "client",
+      "paused": false,
+      "screen": null,
+      "inputEnabled": true,
+      "alive": true,
+      "health": 173.74,
+      "maxHealth": 221,
+      "shield": 0,
+      "kills": 0,
+      "hudKills": 0,
+      "damageDealt": 0,
+      "damageTaken": 33.33,
+      "ended": null,
+      "directorEnabled": true,
+      "runDied": false,
+      "timeSinceHurt": 3.63,
+      "serverTick": 442,
+      "netTick": 376,
+      "connected": true,
+      "localTick": 0,
+      "musicOff": false,
+      "audioPlayerDead": 0,
+      "killUpstream": 4,
+      "killDownstream": 4,
+      "deathCalls": 4,
+      "deathThrows": 0,
+      "playerHurt": 1,
+      "hasLivePeer": null,
+      "pawns": []
+    }
+  },
+  "pawnKill": {
+    "available": 4,
+    "killed": 1
+  },
+  "afterPawnKill": {
+    "host": {
+      "role": "host",
+      "paused": false,
+      "screen": null,
+      "inputEnabled": true,
+      "alive": true,
+      "health": 119.29,
+      "maxHealth": 143,
+      "shield": 28.33,
+      "kills": 4,
+      "hudKills": 4,
+      "damageDealt": 4000000033.33,
+      "damageTaken": 25.83,
+      "ended": null,
+      "directorEnabled": true,
+      "runDied": false,
+      "timeSinceHurt": 0.23,
+      "serverTick": null,
+      "netTick": 534,
+      "connected": null,
+      "localTick": 602,
+      "musicOff": false,
+      "audioPlayerDead": 0,
+      "killUpstream": 5,
+      "killDownstream": 5,
+      "deathCalls": 5,
+      "deathThrows": 0,
+      "playerHurt": 2,
+      "hasLivePeer": true,
+      "pawns": [
+        {
+          "sid": "ranger",
+          "alive": true,
+          "health": 114.26,
+          "maxHealth": 143,
+          "shield": 0
+        }
+      ]
+    },
+    "client0": {
+      "role": "client",
+      "paused": false,
+      "screen": null,
+      "inputEnabled": true,
+      "alive": true,
+      "health": 176.52,
+      "maxHealth": 221,
+      "shield": 0,
+      "kills": 1,
+      "hudKills": 1,
+      "damageDealt": 0,
+      "damageTaken": 33.33,
+      "ended": null,
+      "directorEnabled": true,
+      "runDied": false,
+      "timeSinceHurt": 5.2,
+      "serverTick": 532,
+      "netTick": 470,
+      "connected": true,
+      "localTick": 0,
+      "musicOff": false,
+      "audioPlayerDead": 0,
+      "killUpstream": 5,
+      "killDownstream": 5,
+      "deathCalls": 5,
+      "deathThrows": 0,
+      "playerHurt": 1,
+      "hasLivePeer": null,
+      "pawns": []
+    }
+  },
+  "F9": {
+    "peerDealt": 777,
+    "localDealt": 500,
+    "peerDelta": 0,
+    "localDelta": 500,
+    "targetAliveThroughout": true,
+    "usedRealEnemy": true,
+    "highestHit": 1000000000
+  },
+  "tickBefore": [
+    {
+      "serverTick": 532,
+      "connected": true
+    },
+    {
+      "serverTick": 564,
+      "connected": true
+    },
+    {
+      "serverTick": 594,
+      "connected": true
+    },
+    {
+      "serverTick": 623,
+      "connected": true
+    }
+  ],
+  "tickAfter": [
+    {
+      "i": 0,
+      "client": {
+        "serverTick": 664,
+        "connected": true
+      },
+      "host": {
+        "paused": false,
+        "screen": "death",
+        "inputEnabled": false,
+        "holding": true,
+        "hasLivePeer": true
+      }
+    },
+    {
+      "i": 1,
+      "client": {
+        "serverTick": 694,
+        "connected": true
+      },
+      "host": {
+        "paused": false,
+        "screen": "death",
+        "inputEnabled": false,
+        "holding": true,
+        "hasLivePeer": true
+      }
+    },
+    {
+      "i": 2,
+      "client": {
+        "serverTick": 727,
+        "connected": true
+      },
+      "host": {
+        "paused": false,
+        "screen": "death",
+        "inputEnabled": false,
+        "holding": true,
+        "hasLivePeer": true
+      }
+    },
+    {
+      "i": 3,
+      "client": {
+        "serverTick": 757,
+        "connected": true
+      },
+      "host": {
+        "paused": false,
+        "screen": "death",
+        "inputEnabled": false,
+        "holding": true,
+        "hasLivePeer": true
+      }
+    },
+    {
+      "i": 4,
+      "client": {
+        "serverTick": 787,
+        "connected": true
+      },
+      "host": {
+        "paused": false,
+        "screen": "death",
+        "inputEnabled": false,
+        "holding": true,
+        "hasLivePeer": true
+      }
+    },
+    {
+      "i": 5,
+      "client": {
+        "serverTick": 820,
+        "connected": true
+      },
+      "host": {
+        "paused": false,
+        "screen": "death",
+        "inputEnabled": false,
+        "holding": true,
+        "hasLivePeer": true
+      }
+    },
+    {
+      "i": 6,
+      "client": {
+        "serverTick": 850,
+        "connected": true
+      },
+      "host": {
+        "paused": false,
+        "screen": "death",
+        "inputEnabled": false,
+        "holding": true,
+        "hasLivePeer": true
+      }
+    },
+    {
+      "i": 7,
+      "client": {
+        "serverTick": 879,
+        "connected": true
+      },
+      "host": {
+        "paused": false,
+        "screen": "death",
+        "inputEnabled": false,
+        "holding": true,
+        "hasLivePeer": true
+      }
+    }
+  ],
+  "afterHostDeath": {
+    "host": {
+      "role": "host",
+      "paused": false,
+      "screen": "death",
+      "inputEnabled": false,
+      "alive": false,
+      "health": 0,
+      "maxHealth": 143,
+      "shield": 0,
+      "kills": 4,
+      "hudKills": 5,
+      "damageDealt": 4000000533.33,
+      "damageTaken": 833333334.9,
+      "ended": true,
+      "directorEnabled": false,
+      "runDied": null,
+      "timeSinceHurt": 4.33,
+      "serverTick": null,
+      "netTick": 912,
+      "connected": null,
+      "localTick": 980,
+      "musicOff": true,
+      "audioPlayerDead": 1,
+      "killUpstream": 6,
+      "killDownstream": 6,
+      "deathCalls": 6,
+      "deathThrows": 0,
+      "playerHurt": 4,
+      "hasLivePeer": true,
+      "pawns": [
+        {
+          "sid": "ranger",
+          "alive": true,
+          "health": 121.82,
+          "maxHealth": 143,
+          "shield": 0
+        }
+      ]
+    },
+    "client0": {
+      "role": "client",
+      "paused": false,
+      "screen": null,
+      "inputEnabled": true,
+      "alive": true,
+      "health": 188.27,
+      "maxHealth": 221,
+      "shield": 0,
+      "kills": 1,
+      "hudKills": 1,
+      "damageDealt": 0,
+      "damageTaken": 33.33,
+      "ended": null,
+      "directorEnabled": true,
+      "runDied": false,
+      "timeSinceHurt": 11.65,
+      "serverTick": 912,
+      "netTick": 857,
+      "connected": true,
+      "localTick": 0,
+      "musicOff": false,
+      "audioPlayerDead": 0,
+      "killUpstream": 6,
+      "killDownstream": 6,
+      "deathCalls": 6,
+      "deathThrows": 0,
+      "playerHurt": 1,
+      "hasLivePeer": null,
+      "pawns": []
+    }
+  },
+  "pawn0DeathAttempt": {
+    "pawnAlive": false,
+    "pawnHealth": 0
+  },
+  "afterOwnDeath": {
+    "host": {
+      "role": "host",
+      "paused": true,
+      "screen": "death",
+      "inputEnabled": true,
+      "alive": false,
+      "health": 0,
+      "maxHealth": 143,
+      "shield": 0,
+      "kills": 4,
+      "hudKills": 6,
+      "damageDealt": 4833333866.67,
+      "damageTaken": 833333334.9,
+      "ended": true,
+      "directorEnabled": false,
+      "runDied": null,
+      "timeSinceHurt": 5.78,
+      "serverTick": null,
+      "netTick": 999,
+      "connected": null,
+      "localTick": 1067,
+      "musicOff": true,
+      "audioPlayerDead": 2,
+      "killUpstream": 7,
+      "killDownstream": 7,
+      "deathCalls": 7,
+      "deathThrows": 0,
+      "playerHurt": 4,
+      "hasLivePeer": false,
+      "pawns": [
+        {
+          "sid": "ranger",
+          "alive": false,
+          "health": 0,
+          "maxHealth": 143,
+          "shield": 0
+        }
+      ]
+    },
+    "client0": {
+      "role": "client",
+      "paused": true,
+      "screen": "death",
+      "inputEnabled": true,
+      "alive": false,
+      "health": 0,
+      "maxHealth": 221,
+      "shield": 0,
+      "kills": 1,
+      "hudKills": 1,
+      "damageDealt": 0,
+      "damageTaken": 833333366.66,
+      "ended": true,
+      "directorEnabled": false,
+      "runDied": null,
+      "timeSinceHurt": 0,
+      "serverTick": 996,
+      "netTick": 857,
+      "connected": true,
+      "localTick": 0,
+      "musicOff": true,
+      "audioPlayerDead": 1,
+      "killUpstream": 7,
+      "killDownstream": 7,
+      "deathCalls": 7,
+      "deathThrows": 0,
+      "playerHurt": 2,
+      "hasLivePeer": null,
+      "pawns": []
+    }
+  },
+  "hostReleased": {
+    "paused": true,
+    "screen": "death",
+    "inputEnabled": true,
+    "holding": false,
+    "hasLivePeer": false
+  },
+  "probes": {
+    "host": {
+      "killUpstream": [
+        {
+          "posType": "object",
+          "finiteX": true,
+          "sourceIsSelf": true,
+          "sourceIsPlayer": true
+        },
+        {
+          "posType": "object",
+          "finiteX": true,
+          "sourceIsSelf": true,
+          "sourceIsPlayer": true
+        },
+        {
+          "posType": "object",
+          "finiteX": true,
+          "sourceIsSelf": true,
+          "sourceIsPlayer": true
+        },
+        {
+          "posType": "object",
+          "finiteX": true,
+          "sourceIsSelf": true,
+          "sourceIsPlayer": true
+        },
+        {
+          "posType": "object",
+          "finiteX": true,
+          "sourceIsSelf": false,
+          "sourceIsPlayer": true
+        },
+        {
+          "posType": "object",
+          "finiteX": true,
+          "sourceIsSelf": false,
+          "sourceIsPlayer": false
+        },
+        {
+          "posType": "object",
+          "finiteX": true,
+          "sourceIsSelf": true,
+          "sourceIsPlayer": true
+        }
+      ],
+      "killDownstream": 7,
+      "deathCalls": 7,
+      "deathThrows": 0,
+      "playerHurt": 4,
+      "playerDeadPayloads": [
+        {
+          "victimIsNull": false,
+          "victimIsSelf": true,
+          "victimNetId": 2
+        },
+        {
+          "victimIsNull": false,
+          "victimIsSelf": false,
+          "victimNetId": 1
+        }
+      ],
+      "audioPlayerDead": 2,
+      "damageToPawn": [
+        {
+          "amount": 40,
+          "type": "hitscan",
+          "srcId": "player",
+          "pawn": 0
+        },
+        {
+          "amount": 1000000000,
+          "type": "hitscan",
+          "srcId": "player",
+          "pawn": 0
+        }
+      ],
+      "damageToLocal": [
+        {
+          "amount": 21,
+          "type": "projectile",
+          "srcId": "lemurian"
+        },
+        {
+          "amount": 21,
+          "type": "projectile",
+          "srcId": "lemurian"
+        },
+        {
+          "amount": 21,
+          "type": "projectile",
+          "srcId": "lemurian"
+        },
+        {
+          "amount": 21,
+          "type": "projectile",
+          "srcId": "lemurian"
+        },
+        {
+          "amount": 10,
+          "type": "melee",
+          "srcId": "beetle"
+        },
+        {
+          "amount": 14,
+          "type": "melee",
+          "srcId": "lemurian"
+        },
+        {
+          "amount": 10,
+          "type": "melee",
+          "srcId": "beetle"
+        },
+        {
+          "amount": 1000000000,
+          "type": "hitscan",
+          "srcId": "lemurian"
+        }
+      ],
+      "enemyDamageToPawn": [],
+      "enemyDamageToLocal": [
+        {
+          "amount": 21,
+          "type": "projectile",
+          "srcId": "lemurian"
+        },
+        {
+          "amount": 21,
+          "type": "projectile",
+          "srcId": "lemurian"
+        },
+        {
+          "amount": 21,
+          "type": "projectile",
+          "srcId": "lemurian"
+        },
+        {
+          "amount": 21,
+          "type": "projectile",
+          "srcId": "lemurian"
+        },
+        {
+          "amount": 10,
+          "type": "melee",
+          "srcId": "beetle"
+        },
+        {
+          "amount": 14,
+          "type": "melee",
+          "srcId": "lemurian"
+        },
+        {
+          "amount": 10,
+          "type": "melee",
+          "srcId": "beetle"
+        },
+        {
+          "amount": 1000000000,
+          "type": "hitscan",
+          "srcId": "lemurian"
+        }
+      ]
+    },
+    "client0": {
+      "killUpstream": [
+        {
+          "posType": "object",
+          "finiteX": true,
+          "sourceIsSelf": false,
+          "sourceIsPlayer": true
+        },
+        {
+          "posType": "object",
+          "finiteX": true,
+          "sourceIsSelf": false,
+          "sourceIsPlayer": true
+        },
+        {
+          "posType": "object",
+          "finiteX": true,
+          "sourceIsSelf": false,
+          "sourceIsPlayer": true
+        },
+        {
+          "posType": "object",
+          "finiteX": true,
+          "sourceIsSelf": false,
+          "sourceIsPlayer": true
+        },
+        {
+          "posType": "object",
+          "finiteX": true,
+          "sourceIsSelf": true,
+          "sourceIsPlayer": true
+        },
+        {
+          "posType": "object",
+          "finiteX": true,
+          "sourceIsSelf": false,
+          "sourceIsPlayer": false
+        },
+        {
+          "posType": "object",
+          "finiteX": true,
+          "sourceIsSelf": false,
+          "sourceIsPlayer": true
+        }
+      ],
+      "killDownstream": 7,
+      "deathCalls": 7,
+      "deathThrows": 0,
+      "playerHurt": 2,
+      "playerDeadPayloads": [
+        {
+          "victimIsNull": false,
+          "victimIsSelf": false,
+          "victimNetId": 2
+        },
+        {
+          "victimIsNull": false,
+          "victimIsSelf": true,
+          "victimNetId": 1
+        }
+      ],
+      "audioPlayerDead": 1,
+      "damageToPawn": [],
+      "damageToLocal": [],
+      "enemyDamageToPawn": [],
+      "enemyDamageToLocal": []
+    }
+  },
+  "errors": {
+    "host": [],
+    "hostConsole": [],
+    "client0": [],
+    "client0Console": []
+  },
+  "substitutionsApplied": [
+    "L2-hello"
+  ],
+  "substitutionsMissing": [],
+  "ok": true
+}

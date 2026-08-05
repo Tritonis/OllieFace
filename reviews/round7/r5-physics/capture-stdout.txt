@@ -1,0 +1,223 @@
+[     0s] starting vite...
+[  0.24s] vite up; launching chromium...
+[  1.16s] chromium up; opening page...
+[ 6.448s] navigating...
+[22.733s] loaded; waiting for stage...
+[22.813s] scenario 01-title...
+[27.115s] scenario 17-artifacts...
+[28.191s] scenario 18-difficulty...
+[ 29.05s] scenario 02-vista...
+[33.056s] scenario 03-thirdperson...
+[35.596s] scenario 09-survivors...
+[37.431s] scenario 14-survivor-select...
+[40.783s] scenario 15-logbook...
+[44.982s] scenario 13-biomes-1...
+[51.367s] scenario 13-biomes-2...
+[54.048s] scenario 13-biomes-3...
+[ 56.71s] scenario 13-biomes-4...
+[62.307s] scenario 04-combat...
+[70.238s] scenario 05-boss...
+[79.222s] scenario 07-interactables...
+[81.621s] scenario 08-explosion...
+[84.727s] scenario 11-bestiary...
+[123.857s] scenario 12-boss-phases...
+[130.597s] scenario 06-loaded-hud...
+[2m1:14:28 AM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m [2m[console.error] [22m[harness] 06-loaded-hud: subject missing or illegible — monsters under load (pixels: {"why":"object absent or illegible","px":759,"need":300,"objs":"8/10","need2":3,"sepP50":0.69,"needSep":0.25,"carriedPx":673,"perPx":[6,4,24,215,59,31,135,81,86,118],"perSep":[0.85,0.83,0.63,0.61,0.39,0.79,0.13,0.81,0.73,0.91],"needPerPx":100,"badObjects":[{"i":6,"px":135,"sepP50":0.13}],"lum":220.1,"bgLum":62.3})
+[135.647s] scenario 10-inventory...
+[143.701s] scenario 16-run-summary...
+{
+  "ready": true,
+  "clockPinned": true,
+  "determinism": {
+    "clockPinned": true,
+    "frameDt": 0.016666666666666666,
+    "frameTimeouts": 0
+  },
+  "shots": [
+    "01-title",
+    "02-vista",
+    "03-thirdperson",
+    "04-combat",
+    "05-boss",
+    "06-loaded-hud",
+    "07-interactables",
+    "08-explosion",
+    "09-survivors",
+    "10-inventory",
+    "11-bestiary",
+    "12-boss-phases",
+    "13-biomes-1",
+    "13-biomes-2",
+    "13-biomes-3",
+    "13-biomes-4",
+    "14-survivor-select",
+    "15-logbook",
+    "16-run-summary",
+    "17-artifacts",
+    "18-difficulty"
+  ],
+  "errorCount": 1,
+  "audio": {
+    "stepsDelta": 26,
+    "musicPeak": 0.13702553510665894,
+    "outputPeak": 0.12060462683439255,
+    "samples": 100,
+    "stopped": false,
+    "musicGain": 0.47999998927116394,
+    "failed": [],
+    "newErrors": 0
+  },
+  "audioOk": true,
+  "subjectsOk": false,
+  "subjectFailures": [
+    "06-loaded-hud: monsters under load"
+  ],
+  "toleratedAbsences": [
+    "04-combat: horde [crowd 8/24 individually gated] carries 2 absent — #1@0px #2@1px",
+    "06-loaded-hud: monsters under load [crowd 3/10 individually gated] carries 2 absent — #0@6px #1@4px",
+    "08-explosion: the blast [aggregate: carriedPx only, no per-object gate] carries 2 absent — #1@0px #3@0px",
+    "10-inventory: the equipment blast [aggregate: carriedPx only, no per-object gate] carries 3 absent — #1@0px #2@0px #3@5px"
+  ],
+  "perf": {
+    "programs": 87,
+    "geometries": 681,
+    "textures": 53,
+    "sceneObjects": 395
+  }
+}
+
+FIRST ERRORS:
+[harness] 06-loaded-hud: subject missing or illegible — monsters under load (pixels: {"why":"object absent or illegible","px":759,"need":300,"objs":"8/10","need2":3,"sepP50":0.69,"needSep":0.25,"carriedPx":673,"perPx":[6,4,24,215,59,31,135,81,86,118],"perSep":[0.85,0.83,0.63,0.61,0.39,0.79,0.13,0.81,0.73,0.91],"needPerPx":100,"badObjects":[{"i":6,"px":135,"sepP50":0.13}],"lum":220.1,"bgLum":62.3})
+
+SUBJECT FAILURES:
+[
+  {
+    "name": "06-loaded-hud",
+    "failed": [
+      "monsters under load"
+    ],
+    "detail": [
+      {
+        "subject": "monsters under load",
+        "kind": "pixels",
+        "ok": false,
+        "px": 759,
+        "frac": 0.00586,
+        "lum": 220.1,
+        "bgLum": 62.3,
+        "contrast": 0.558,
+        "sep": 0.593,
+        "sepP25": 0.37,
+        "sepP50": 0.69,
+        "legible": 0.887,
+        "at": [
+          0.561,
+          0.383
+        ],
+        "box": [
+          0.195,
+          0.206,
+          0.878,
+          0.472
+        ],
+        "objects": 10,
+        "visibleObjects": 8,
+        "perPx": [
+          6,
+          4,
+          24,
+          215,
+          59,
+          31,
+          135,
+          81,
+          86,
+          118
+        ],
+        "perSep": [
+          0.85,
+          0.83,
+          0.63,
+          0.61,
+          0.39,
+          0.79,
+          0.13,
+          0.81,
+          0.73,
+          0.91
+        ],
+        "minPx": 300,
+        "minObjects": 3,
+        "present": true,
+        "carriedPx": 673,
+        "minSep": 0.25,
+        "legibleOk": true,
+        "crowd": {
+          "need": 3,
+          "why": "director horde: an unbounded population, not a fixed cast",
+          "absentBeyondCrowd": [
+            {
+              "i": 0,
+              "px": 6,
+              "sepP50": 0.85
+            },
+            {
+              "i": 1,
+              "px": 4,
+              "sepP50": 0.83
+            }
+          ],
+          "carriesAbsence": true
+        },
+        "minPerPx": 100,
+        "absentObjects": [
+          {
+            "i": 0,
+            "px": 6,
+            "sepP50": 0.85
+          },
+          {
+            "i": 1,
+            "px": 4,
+            "sepP50": 0.83
+          }
+        ],
+        "objectFailures": [
+          {
+            "i": 6,
+            "px": 135,
+            "sepP50": 0.13
+          }
+        ],
+        "ungatedAbsences": [
+          {
+            "i": 0,
+            "px": 6,
+            "sepP50": 0.85
+          },
+          {
+            "i": 1,
+            "px": 4,
+            "sepP50": 0.83
+          }
+        ],
+        "perObjectOk": false,
+        "carriesAbsence": true,
+        "gatedOn": [
+          "px >= minPx",
+          "visibleObjects >= minObjects",
+          "sepP50 >= minSep",
+          "perPx/perSep/absence over the 3 gated of 10"
+        ],
+        "notGated": [
+          "contrast",
+          "sep",
+          "sepP25",
+          "legible",
+          "crowd.absentBeyondCrowd"
+        ]
+      }
+    ]
+  }
+]
+CAPTURE_EXIT=1

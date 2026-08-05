@@ -1,0 +1,217 @@
+{
+  "arm": "n8-fixed",
+  "scenario": "n8",
+  "substitutions": [],
+  "substitutionsApplied": [],
+  "substitutionsMissing": [],
+  "helloOverride": null,
+  "port": 5802,
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 65,
+      "survivorId": "ranger",
+      "maxHealth": 110
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 72,
+      "survivorId": "anvil",
+      "maxHealth": 170
+    }
+  },
+  "runningGateAfterFocus": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "tick": 368,
+      "serverTick": null,
+      "netRole": "host",
+      "authority": true,
+      "clients": 1,
+      "myNetId": null,
+      "connected": null
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "tick": 137,
+      "serverTick": 217,
+      "netRole": "client",
+      "authority": false,
+      "clients": null,
+      "myNetId": 1,
+      "connected": true
+    }
+  },
+  "overlay": [
+    {
+      "paused": false,
+      "input": false,
+      "holding": true,
+      "live": true,
+      "screen": "pause"
+    },
+    {
+      "paused": false,
+      "input": false,
+      "holding": true,
+      "live": true,
+      "screen": "pause"
+    },
+    {
+      "paused": false,
+      "input": false,
+      "holding": true,
+      "live": true,
+      "screen": "pause"
+    },
+    {
+      "paused": false,
+      "input": false,
+      "holding": true,
+      "live": true,
+      "screen": "pause"
+    }
+  ],
+  "clientTickDuringOverlay": {
+    "a": 279,
+    "b": 314
+  },
+  "release": [
+    {
+      "ms": 4,
+      "paused": false,
+      "input": false,
+      "holding": true,
+      "live": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 207,
+      "paused": false,
+      "input": true,
+      "holding": true,
+      "live": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 418,
+      "paused": false,
+      "input": true,
+      "holding": true,
+      "live": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 620,
+      "paused": false,
+      "input": true,
+      "holding": true,
+      "live": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 829,
+      "paused": false,
+      "input": true,
+      "holding": true,
+      "live": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 1031,
+      "paused": false,
+      "input": true,
+      "holding": true,
+      "live": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 1243,
+      "paused": false,
+      "input": true,
+      "holding": true,
+      "live": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 1444,
+      "paused": false,
+      "input": true,
+      "holding": true,
+      "live": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 1648,
+      "paused": true,
+      "input": true,
+      "holding": false,
+      "live": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 1855,
+      "paused": true,
+      "input": true,
+      "holding": false,
+      "live": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 2058,
+      "paused": true,
+      "input": true,
+      "holding": false,
+      "live": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 2259,
+      "paused": true,
+      "input": true,
+      "holding": false,
+      "live": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 2462,
+      "paused": true,
+      "input": true,
+      "holding": false,
+      "live": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 2678,
+      "paused": true,
+      "input": true,
+      "holding": false,
+      "live": false,
+      "screen": "pause"
+    }
+  ],
+  "clientDeath": {
+    "alive": false,
+    "health": 0,
+    "screen": "death",
+    "ended": true
+  },
+  "errors": {
+    "host": {
+      "console": [],
+      "page": [],
+      "harness": [
+        "WrongDocumentError: The root document of this element is not valid for pointer lock."
+      ]
+    },
+    "client": {
+      "console": [],
+      "page": [],
+      "harness": []
+    }
+  }
+}

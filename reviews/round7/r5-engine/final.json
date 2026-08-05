@@ -1,0 +1,130 @@
+{
+  "inventory": {
+    "count": 38,
+    "byIdCount": 38,
+    "statesCount": 38,
+    "generated": [
+      "mastery.ranger",
+      "mastery.anvil",
+      "mastery.kestrel",
+      "mastery.rook",
+      "mastery.cinder"
+    ],
+    "timeFormatted": [
+      "marathon",
+      "clockedIn"
+    ],
+    "anyNullState": 0,
+    "goalsZeroOrNegative": []
+  },
+  "logbookDom": {
+    "hasBook": true,
+    "tabs": [
+      "tab"
+    ],
+    "rows": [
+      {
+        "name": "The Long Haul",
+        "sub": "1 / 5"
+      },
+      {
+        "name": "Marathon",
+        "sub": "17:54 / 30:00"
+      },
+      {
+        "name": "Veteran",
+        "sub": "1 / 25"
+      },
+      {
+        "name": "Centurion",
+        "sub": "1 / 100"
+      },
+      {
+        "name": "Clocked In",
+        "sub": "17m / 10h 0m"
+      }
+    ],
+    "detailMarathon": "17:54 / 30:00",
+    "detailClockedIn": "17m / 10h 0m",
+    "detailVeteran": "1 / 25",
+    "unlockHint": "Marathon — Survive for 30 minutes in a single run. (1074 / 1800)",
+    "unlockHintNumeric": "Veteran — Finish 25 runs. (1 / 25)"
+  },
+  "resetVsStale_bFlushed": {
+    "bFlushedBeforeWipe": true,
+    "diskBeforeWipeKills": 100,
+    "diskAfterWipeKills": 0,
+    "diskAfterWipeUnlocks": [
+      "hardWon"
+    ],
+    "bMemAfterWipe": {
+      "kills": 0,
+      "unlocks": [
+        "hardWon"
+      ]
+    },
+    "diskFinalKills": 1,
+    "diskFinalUnlocks": [
+      "hardWon"
+    ],
+    "aMemFinal": 1
+  },
+  "resetVsStale_bUnflushed": {
+    "bFlushedBeforeWipe": false,
+    "diskBeforeWipeKills": 1,
+    "diskAfterWipeKills": 99,
+    "diskAfterWipeUnlocks": [
+      "hardWon"
+    ],
+    "bMemAfterWipe": {
+      "kills": 99,
+      "unlocks": [
+        "hardWon"
+      ]
+    },
+    "diskFinalKills": 100,
+    "diskFinalUnlocks": [
+      "hardWon"
+    ],
+    "aMemFinal": 100
+  },
+  "resetVsStale_bUnflushed_r2": {
+    "bFlushedBeforeWipe": false,
+    "diskBeforeWipeKills": 100,
+    "diskAfterWipeKills": 0,
+    "diskAfterWipeUnlocks": [
+      "hardWon"
+    ],
+    "bMemAfterWipe": {
+      "kills": 0,
+      "unlocks": [
+        "hardWon"
+      ]
+    },
+    "diskFinalKills": 1,
+    "diskFinalUnlocks": [
+      "hardWon"
+    ],
+    "aMemFinal": 1
+  },
+  "resetVsStale_bUnflushed_r3": {
+    "bFlushedBeforeWipe": false,
+    "diskBeforeWipeKills": 1,
+    "diskAfterWipeKills": 99,
+    "diskAfterWipeUnlocks": [
+      "hardWon"
+    ],
+    "bMemAfterWipe": {
+      "kills": 99,
+      "unlocks": [
+        "hardWon"
+      ]
+    },
+    "diskFinalKills": 100,
+    "diskFinalUnlocks": [
+      "hardWon"
+    ],
+    "aMemFinal": 100
+  },
+  "errors": []
+}

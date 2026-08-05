@@ -1,0 +1,274 @@
+{
+  "arm": "pre",
+  "steps": [
+    "host booted",
+    "client booted",
+    "HOST pageerror: The root document of this element is not valid for pointer lock.",
+    "HOST running, audio ready",
+    "CLIENT running, audio ready",
+    "client before join {\"lastCmdTick\":332,\"localTick\":332}",
+    "roles {\"host\":{\"authority\":true,\"peers\":2},\"client\":{\"authority\":false,\"role\":\"client\",\"myNetId\":1,\"playerNetId\":1}}",
+    "F-6 first second after join {\"steps\":76,\"classifiedReplay\":76,\"replayInReconcile\":5,\"projectileTicks\":0,\"firstTicks\":[{\"t\":1,\"lastCmdTick\":365},{\"t\":2,\"lastCmdTick\":365},{\"t\":3,\"lastCmdTick\":365},{\"t\":4,\"lastCmdTick\":365},{\"t\":5,\"lastCmdTick\":365},{\"t\":6,\"lastCmdTick\":365}],\"lastCmdTickNow\":365}",
+    "F-6 ninth second after join {\"steps\":480,\"classifiedReplay\":294,\"replayInReconcile\":0,\"projectileTicks\":186,\"firstTicks\":[{\"t\":1,\"lastCmdTick\":365},{\"t\":2,\"lastCmdTick\":365},{\"t\":3,\"lastCmdTick\":365},{\"t\":4,\"lastCmdTick\":365},{\"t\":5,\"lastCmdTick\":365},{\"t\":6,\"lastCmdTick\":365}],\"lastCmdTickNow\":551}",
+    "F-6 {\"lockedTicksAtJoin\":365,\"firstCommandTick\":1,\"replayFractionFirstSecond\":1,\"replayFractionNinthSecond\":0.613,\"replayInReconcileFirstSecond\":5,\"projectileTicksFirstSecond\":0,\"projectileTicksNinthSecond\":186}",
+    "F-11 {\"hostPawnAtJoin\":{\"x\":2,\"y\":2.248745762218129,\"z\":2},\"clientSelfAtJoin\":{\"x\":19.997455040869472,\"y\":17.9472599029541,\"z\":-16.609822250485262},\"gap\":30.277}",
+    "inventory {\"host\":{\"wax\":3,\"soles\":1,\"tect\":1,\"vert\":1},\"client\":{\"wax\":3,\"soles\":1,\"tect\":1,\"vert\":1}}",
+    "F-7 {\"hostPawnPeakHs\":7,\"clientSelfPeakHs\":37,\"hostPlayerPeakHs\":0,\"hostShieldPeakDuringPeerJumps\":30,\"hostBarrierGrants\":[30,30,30,30],\"hostRubberSolesGrants\":0,\"hostItemsOnJumpCalls\":[\"pawn\",\"pawn\",\"pawn\"],\"hostQuakesDuringPeerJumps\":0,\"endDivergence\":0.0168}",
+    "F-9 {\"peerDealtDelta\":777,\"peerHighest\":777,\"selfDealtDelta\":500,\"selfHighest\":777}",
+    "F-10 before {\"timeSinceHurt\":1022.55,\"shield\":0,\"health\":110,\"cues\":{\"playerHurt\":0}} after {\"timeSinceHurt\":1024.07,\"shield\":0,\"health\":110,\"cues\":{\"playerHurt\":0}}",
+    "CLIENT pageerror: Failed to set the 'value' property on 'AudioParam': The provided float value is non-finite.",
+    "after the HOST (a teammate, from the client) died: {\"host\":{\"alive\":false,\"stopped\":true,\"musicOff\":true,\"musicGain\":0.00274,\"screen\":\"death\",\"I\":0.4112,\"directorEnemies\":8},\"client\":{\"alive\":true,\"stopped\":false,\"musicOff\":false,\"musicGain\":0.48,\"screen\":\"death\",\"I\":0.0028,\"directorEnemies\":0}}",
+    "CLIENT pageerror: Failed to set the 'value' property on 'AudioParam': The provided float value is non-finite.",
+    "after the CLIENT itself died: {\"host\":{\"alive\":false,\"stopped\":true,\"musicOff\":true,\"musicGain\":0,\"screen\":\"death\",\"I\":0.4112,\"directorEnemies\":8},\"client\":{\"alive\":true,\"stopped\":false,\"musicOff\":false,\"musicGain\":0.48,\"screen\":\"death\",\"I\":0.0028,\"directorEnemies\":0}}",
+    "VERDICTS {\"F6_noJoinLockReplays\":false,\"F6_projectilesTickedAtJoin\":false,\"F7_hostPawnLaunched\":false,\"F7_hostPaidNoRubberSoles\":true,\"F7_hostFiredNoQuake\":true,\"F9_peerDamageNotCredited\":false,\"F9_ownDamageStillCredited\":true,\"F10_clientHurtTimerMoved\":false,\"F10_clientHeardHurt\":false,\"F10_onDamagedFired\":false,\"M1_teammateDeathLeftClientMusicRunning\":true,\"M1_ownDeathStoppedClientMusic\":false}"
+  ],
+  "substitutions": [
+    "F-6:src/entities/Player.js",
+    "F-7:src/entities/Player.js",
+    "F-9:src/systems/Progression.js",
+    "M1:src/systems/Audio.js",
+    "F-6:src/net/NetClient.js",
+    "F-10:src/net/NetHost.js"
+  ],
+  "clientBeforeJoin": {
+    "lastCmdTick": 332,
+    "localTick": 332
+  },
+  "connected": true,
+  "roles": {
+    "host": {
+      "authority": true,
+      "peers": 2
+    },
+    "client": {
+      "authority": false,
+      "role": "client",
+      "myNetId": 1,
+      "playerNetId": 1
+    }
+  },
+  "F6_firstSecond": {
+    "steps": 76,
+    "classifiedReplay": 76,
+    "replayInReconcile": 5,
+    "projectileTicks": 0,
+    "firstTicks": [
+      {
+        "t": 1,
+        "lastCmdTick": 365
+      },
+      {
+        "t": 2,
+        "lastCmdTick": 365
+      },
+      {
+        "t": 3,
+        "lastCmdTick": 365
+      },
+      {
+        "t": 4,
+        "lastCmdTick": 365
+      },
+      {
+        "t": 5,
+        "lastCmdTick": 365
+      },
+      {
+        "t": 6,
+        "lastCmdTick": 365
+      }
+    ],
+    "lastCmdTickNow": 365
+  },
+  "F6_ninthSecond": {
+    "steps": 480,
+    "classifiedReplay": 294,
+    "replayInReconcile": 0,
+    "projectileTicks": 186,
+    "firstTicks": [
+      {
+        "t": 1,
+        "lastCmdTick": 365
+      },
+      {
+        "t": 2,
+        "lastCmdTick": 365
+      },
+      {
+        "t": 3,
+        "lastCmdTick": 365
+      },
+      {
+        "t": 4,
+        "lastCmdTick": 365
+      },
+      {
+        "t": 5,
+        "lastCmdTick": 365
+      },
+      {
+        "t": 6,
+        "lastCmdTick": 365
+      }
+    ],
+    "lastCmdTickNow": 551
+  },
+  "F6": {
+    "lockedTicksAtJoin": 365,
+    "firstCommandTick": 1,
+    "replayFractionFirstSecond": 1,
+    "replayFractionNinthSecond": 0.613,
+    "replayInReconcileFirstSecond": 5,
+    "projectileTicksFirstSecond": 0,
+    "projectileTicksNinthSecond": 186
+  },
+  "F11": {
+    "hostPawnAtJoin": {
+      "x": 2,
+      "y": 2.248745762218129,
+      "z": 2
+    },
+    "clientSelfAtJoin": {
+      "x": 19.997455040869472,
+      "y": 17.9472599029541,
+      "z": -16.609822250485262
+    },
+    "gap": 30.277
+  },
+  "inventory": {
+    "host": {
+      "wax": 3,
+      "soles": 1,
+      "tect": 1,
+      "vert": 1
+    },
+    "client": {
+      "wax": 3,
+      "soles": 1,
+      "tect": 1,
+      "vert": 1
+    }
+  },
+  "F7": {
+    "hostPawnPeakHs": 7,
+    "clientSelfPeakHs": 37,
+    "hostPlayerPeakHs": 0,
+    "hostShieldPeakDuringPeerJumps": 30,
+    "hostBarrierGrants": [
+      30,
+      30,
+      30,
+      30
+    ],
+    "hostRubberSolesGrants": 0,
+    "hostItemsOnJumpCalls": [
+      "pawn",
+      "pawn",
+      "pawn"
+    ],
+    "hostQuakesDuringPeerJumps": 0,
+    "endDivergence": 0.0168
+  },
+  "F9": {
+    "peerDealtDelta": 777,
+    "peerHighest": 777,
+    "selfDealtDelta": 500,
+    "selfHighest": 777
+  },
+  "F10before": {
+    "timeSinceHurt": 1022.55,
+    "shield": 0,
+    "health": 110,
+    "cues": {
+      "playerHurt": 0
+    }
+  },
+  "hostDamagesPawn": {
+    "found": true,
+    "dealt": 40,
+    "healthBefore": 110,
+    "healthAfter": 70
+  },
+  "F10after": {
+    "timeSinceHurt": 1024.07,
+    "shield": 0,
+    "health": 110,
+    "cues": {
+      "playerHurt": 0
+    }
+  },
+  "beforeAnyDeath": {
+    "host": {
+      "alive": true,
+      "stopped": false,
+      "musicOff": false,
+      "musicGain": 0.43056,
+      "screen": null,
+      "I": 0.4112,
+      "directorEnemies": 8
+    },
+    "client": {
+      "alive": true,
+      "stopped": false,
+      "musicOff": false,
+      "musicGain": 0.48,
+      "screen": null,
+      "I": 0.0028,
+      "directorEnemies": 0
+    }
+  },
+  "afterTeammateDeath": {
+    "host": {
+      "alive": false,
+      "stopped": true,
+      "musicOff": true,
+      "musicGain": 0.00274,
+      "screen": "death",
+      "I": 0.4112,
+      "directorEnemies": 8
+    },
+    "client": {
+      "alive": true,
+      "stopped": false,
+      "musicOff": false,
+      "musicGain": 0.48,
+      "screen": "death",
+      "I": 0.0028,
+      "directorEnemies": 0
+    }
+  },
+  "afterOwnDeath": {
+    "host": {
+      "alive": false,
+      "stopped": true,
+      "musicOff": true,
+      "musicGain": 0,
+      "screen": "death",
+      "I": 0.4112,
+      "directorEnemies": 8
+    },
+    "client": {
+      "alive": true,
+      "stopped": false,
+      "musicOff": false,
+      "musicGain": 0.48,
+      "screen": "death",
+      "I": 0.0028,
+      "directorEnemies": 0
+    }
+  },
+  "verdicts": {
+    "F6_noJoinLockReplays": false,
+    "F6_projectilesTickedAtJoin": false,
+    "F7_hostPawnLaunched": false,
+    "F7_hostPaidNoRubberSoles": true,
+    "F7_hostFiredNoQuake": true,
+    "F9_peerDamageNotCredited": false,
+    "F9_ownDamageStillCredited": true,
+    "F10_clientHurtTimerMoved": false,
+    "F10_clientHeardHurt": false,
+    "F10_onDamagedFired": false,
+    "M1_teammateDeathLeftClientMusicRunning": true,
+    "M1_ownDeathStoppedClientMusic": false
+  }
+}

@@ -1,0 +1,145 @@
+{
+  "arm": "main-l2pre",
+  "scenario": "main",
+  "substitutions": [
+    "L2-hello"
+  ],
+  "substitutionsApplied": [
+    "L2-hello"
+  ],
+  "substitutionsMissing": [],
+  "helloOverride": null,
+  "port": 5805,
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 68,
+      "survivorId": "ranger",
+      "maxHealth": 110
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 70,
+      "survivorId": "anvil",
+      "maxHealth": 170
+    }
+  },
+  "runningGateAfterFocus": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "tick": 309,
+      "netRole": "host",
+      "authority": true,
+      "clients": 1,
+      "myNetId": null,
+      "connected": null
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "tick": 138,
+      "netRole": "client",
+      "authority": false,
+      "clients": null,
+      "myNetId": 1,
+      "connected": true
+    }
+  },
+  "pawns": [
+    {
+      "id": 1,
+      "survivorId": "ranger",
+      "helloSeen": false,
+      "health": 110,
+      "maxHealth": 110,
+      "alive": true
+    }
+  ],
+  "clientOwn": {
+    "survivorId": "anvil",
+    "maxHealth": 170
+  },
+  "before": {
+    "label": "before",
+    "host": {
+      "prog": 0,
+      "hud": 0,
+      "flash": 0
+    },
+    "client": {
+      "prog": 0,
+      "hud": 0,
+      "flash": 0
+    }
+  },
+  "hostKills": 4,
+  "afterHostKills": {
+    "label": "after 4 host kills",
+    "host": {
+      "prog": 4,
+      "hud": 4,
+      "flash": 4
+    },
+    "client": {
+      "prog": 0,
+      "hud": 0,
+      "flash": 0
+    }
+  },
+  "pawnKill": {
+    "ok": true,
+    "sourceWasPawn": true
+  },
+  "afterPawnKill": {
+    "label": "after 1 pawn kill",
+    "host": {
+      "prog": 4,
+      "hud": 4,
+      "flash": 4
+    },
+    "client": {
+      "prog": 1,
+      "hud": 1,
+      "flash": 1
+    }
+  },
+  "pawnDeath": {
+    "ok": true
+  },
+  "afterPawnDeath": {
+    "label": "after the pawn dies",
+    "host": {
+      "prog": 4,
+      "hud": 4,
+      "flash": 4
+    },
+    "client": {
+      "prog": 1,
+      "hud": 1,
+      "flash": 1
+    }
+  },
+  "clientAfterDeath": {
+    "alive": false,
+    "health": 0,
+    "screen": "death",
+    "ended": true
+  },
+  "errors": {
+    "host": {
+      "console": [],
+      "page": [],
+      "harness": [
+        "WrongDocumentError: The root document of this element is not valid for pointer lock."
+      ]
+    },
+    "client": {
+      "console": [],
+      "page": [],
+      "harness": []
+    }
+  }
+}

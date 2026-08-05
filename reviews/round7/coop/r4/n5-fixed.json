@@ -1,0 +1,140 @@
+{
+  "arm": "n5-fixed",
+  "scenario": "badHello",
+  "substitutions": [],
+  "substitutionsApplied": [],
+  "substitutionsMissing": [],
+  "helloOverride": [
+    3,
+    "not-a-survivor"
+  ],
+  "port": 5810,
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 68,
+      "survivorId": "ranger",
+      "maxHealth": 110
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 69,
+      "survivorId": "anvil",
+      "maxHealth": 170
+    }
+  },
+  "runningGateAfterFocus": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "tick": 310,
+      "netRole": "host",
+      "authority": true,
+      "clients": 0,
+      "myNetId": null,
+      "connected": null
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "tick": 5,
+      "netRole": "client",
+      "authority": false,
+      "clients": null,
+      "myNetId": 1,
+      "connected": false
+    }
+  },
+  "pawns": [],
+  "clientOwn": {
+    "survivorId": "anvil",
+    "maxHealth": 170,
+    "connected": false,
+    "myNetId": 1
+  },
+  "hostStatus": [
+    {
+      "s": "hosting"
+    },
+    {
+      "s": "inviteReady",
+      "d": {
+        "id": 1,
+        "blob": "eyJ2IjoxLCJyb2xlIjoib2ZmZXIiLCJpZCI6MSwic2RwIjp7InR5cGUiOiJvZmZlciIsInNkcCI6InY9MFxyXG5vPS0gNTU2OTk0NDUwNzA3MTc1Nzg1OCAyIElOIElQNCAxMjcuMC4wLjFcclxucz0tXHJcbnQ9MCAwXHJcbmE9Z3JvdXA6QlVORExFIDBcclxuYT1leHRtYXAtYWxsb3ctbWl4ZWRcclxuYT1tc2lkLXNlbWFudGljOiBXTVNcclxubT1hcHBsaWNhdGlvbiA0OTcwNSBVRFAvRFRMUy9TQ1RQIHdlYnJ0Yy1kYXRhY2hhbm5lbFxyXG5jPUlOIElQNCA5OS4xMDkuMTQxLjE1OFxyXG5hPWNhbmRpZGF0ZToxMDYzMzI4NTYzIDEgdWRwIDIxMTM5MzcxNTEgNzdkYTFiZjgtYzFlOC00ZjNmLWJhMWMtM2YwNTliNWQ1Y2MzLmxvY2FsIDQ5NzA1IHR5cCBob3N0IGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9Y2FuZGlkYXRlOjM0NDk4MjI4MjcgMSB1ZHAgMTY3NzcyOTUzNSA5OS4xMDkuMTQxLjE1OCA0OTcwNSB0eXAgc3JmbHggcmFkZHIgMC4wLjAuMCBycG9ydCAwIGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9aWNlLXVmcmFnOnFwbm9cclxuYT1pY2UtcHdkOmJldzlNKzdtcXZIU3FNQWUvQUJIUExYcFxyXG5hPWljZS1vcHRpb25zOnRyaWNrbGVcclxuYT1maW5nZXJwcmludDpzaGEtMjU2IEFBOkE3OjM5OjgxOjE5OkM3OjQwOjkxOkFFOkY4OkEyOjJFOkVEOjc3OkU5OjI0OkYwOjYyOkU3OkJDOkNDOjIwOjgwOkIzOjIzOjY2OjI3OjlCOkYwOjJCOjI1OkNFXHJcbmE9c2V0dXA6YWN0cGFzc1xyXG5hPW1pZDowXHJcbmE9c2N0cC1wb3J0OjUwMDBcclxuYT1tYXgtbWVzc2FnZS1zaXplOjI2MjE0NFxyXG4ifX0"
+      }
+    },
+    {
+      "s": "peerJoined",
+      "d": {
+        "id": 1,
+        "count": 2
+      }
+    },
+    {
+      "s": "peerConnecting",
+      "d": {
+        "id": 1
+      }
+    },
+    {
+      "s": "peerRefused",
+      "d": {
+        "id": 1,
+        "reason": "survivor",
+        "detail": "not-a-survivor"
+      }
+    }
+  ],
+  "clientStatus": [
+    {
+      "s": "joining"
+    },
+    {
+      "s": "answerReady",
+      "d": {
+        "blob": "eyJ2IjoxLCJyb2xlIjoiYW5zd2VyIiwiaWQiOjEsInNkcCI6eyJ0eXBlIjoiYW5zd2VyIiwic2RwIjoidj0wXHJcbm89LSA0MzYxNzgwNzg3OTMxNDQ2MzQzIDIgSU4gSVA0IDEyNy4wLjAuMVxyXG5zPS1cclxudD0wIDBcclxuYT1ncm91cDpCVU5ETEUgMFxyXG5hPWV4dG1hcC1hbGxvdy1taXhlZFxyXG5hPW1zaWQtc2VtYW50aWM6IFdNU1xyXG5tPWFwcGxpY2F0aW9uIDkgVURQL0RUTFMvU0NUUCB3ZWJydGMtZGF0YWNoYW5uZWxcclxuYz1JTiBJUDQgMC4wLjAuMFxyXG5hPWNhbmRpZGF0ZTozNzE3NDEwMTIxIDEgdWRwIDIxMTM5MzcxNTEgYzAzN2VhNTctOTgxNC00MWYzLWIxMjktZTBkYjgwYWQxYWNjLmxvY2FsIDUyMzg1IHR5cCBob3N0IGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9aWNlLXVmcmFnOitUcXNcclxuYT1pY2UtcHdkOk4vUW5PZkZGT2NzVkd6OHhvbjArMWQra1xyXG5hPWljZS1vcHRpb25zOnRyaWNrbGVcclxuYT1maW5nZXJwcmludDpzaGEtMjU2IDIyOkQ2OjIwOjY0OkZBOkE5OkIzOkM1OkREOjUzOjRDOjEzOjgyOjc3OjBGOkM4OjFGOkJEOjE5OjJDOkUzOjU3OjUzOjNBOkI2OkNDOkQ5OjZGOkZCOkE2OjE4OjI3XHJcbmE9c2V0dXA6YWN0aXZlXHJcbmE9bWlkOjBcclxuYT1zY3RwLXBvcnQ6NTAwMFxyXG5hPW1heC1tZXNzYWdlLXNpemU6MjYyMTQ0XHJcbiJ9fQ"
+      }
+    },
+    {
+      "s": "connected",
+      "d": {
+        "seed": 1337,
+        "stageIndex": 0,
+        "time": 2.5999999046325684,
+        "myNetId": 1,
+        "artifactMask": 0,
+        "difficulty": 1
+      }
+    },
+    {
+      "s": "refused",
+      "d": {
+        "reason": "survivor",
+        "detail": "not-a-survivor"
+      }
+    }
+  ],
+  "hostClients": 0,
+  "hostTick": {
+    "a": 163,
+    "b": 205
+  },
+  "hostSaid": "Turned a player away: they picked a survivor this build does not have (not-a-survivor).",
+  "clientSaid": "The host does not have the survivor you picked. Choose one from their build and join again.",
+  "errors": {
+    "host": {
+      "console": [],
+      "page": [],
+      "harness": [
+        "WrongDocumentError: The root document of this element is not valid for pointer lock."
+      ]
+    },
+    "client": {
+      "console": [],
+      "page": [],
+      "harness": []
+    }
+  }
+}

@@ -1,0 +1,232 @@
+{
+  "arm": "latch-host-P4-bindhost",
+  "mode": "host",
+  "substitutions": [
+    "P4-bindhost"
+  ],
+  "steps": [
+    {
+      "label": "session1-refused",
+      "host": {
+        "tick": 75,
+        "paused": false,
+        "screen": null,
+        "inputEnabled": true,
+        "pointerLocked": false,
+        "clients": 0,
+        "pawns": [],
+        "helloSeen": [],
+        "peerSurvivors": [],
+        "lobbyStatus": "peerRefused",
+        "lobbyDetail": {
+          "reason": "survivor",
+          "detail": 9,
+          "detailHead": "__proto__",
+          "count": null
+        },
+        "players": 1,
+        "ownSurvivor": "ranger",
+        "ownMax": 110,
+        "ownAlive": true
+      },
+      "client": {
+        "connected": false,
+        "myNetId": 1,
+        "netTick": 10,
+        "serverTick": 70,
+        "paused": false,
+        "screen": null,
+        "survivorId": "anvil",
+        "maxHealth": 170,
+        "health": 170,
+        "alive": true,
+        "lobbyStatus": "refused",
+        "lobbyDetail": {
+          "reason": "survivor",
+          "detail": 9,
+          "detailHead": "__proto__"
+        }
+      },
+      "hostSays": "Turned a player away: they picked a survivor this build does not have (__proto__).",
+      "clientSays": "The host does not have the survivor you picked. Choose one from their build and join again."
+    },
+    {
+      "label": "after-leave",
+      "host": {
+        "tick": 155,
+        "paused": false,
+        "screen": null,
+        "inputEnabled": true,
+        "pointerLocked": false,
+        "clients": 0,
+        "pawns": [],
+        "helloSeen": [],
+        "peerSurvivors": [],
+        "lobbyStatus": "idle",
+        "lobbyDetail": null,
+        "players": 1,
+        "ownSurvivor": "ranger",
+        "ownMax": 110,
+        "ownAlive": true
+      },
+      "client": {
+        "connected": false,
+        "myNetId": 1,
+        "netTick": 10,
+        "serverTick": 70,
+        "paused": false,
+        "screen": null,
+        "survivorId": "anvil",
+        "maxHealth": 170,
+        "health": 170,
+        "alive": true,
+        "lobbyStatus": "idle",
+        "lobbyDetail": null
+      },
+      "hostSays": "Up to 4 players. One player hosts and runs the game; everyone else joins them.",
+      "clientSays": "Up to 4 players. One player hosts and runs the game; everyone else joins them."
+    },
+    {
+      "label": "session2-joined",
+      "host": {
+        "tick": 25,
+        "paused": false,
+        "screen": null,
+        "inputEnabled": true,
+        "pointerLocked": false,
+        "clients": 1,
+        "pawns": [
+          {
+            "survivorId": "anvil",
+            "health": 170,
+            "maxHealth": 170,
+            "alive": true,
+            "localTick": 0
+          }
+        ],
+        "helloSeen": [
+          true
+        ],
+        "peerSurvivors": [
+          "anvil"
+        ],
+        "lobbyStatus": "peerConnecting",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null,
+          "count": null
+        },
+        "players": 3,
+        "ownSurvivor": "ranger",
+        "ownMax": 110,
+        "ownAlive": true
+      },
+      "client": {
+        "connected": true,
+        "myNetId": 1,
+        "netTick": 15,
+        "serverTick": 25,
+        "paused": false,
+        "screen": null,
+        "survivorId": "anvil",
+        "maxHealth": 170,
+        "health": 170,
+        "alive": true,
+        "lobbyStatus": "connected",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null
+        }
+      },
+      "hostSays": "Reply accepted — connecting…",
+      "clientSays": "Connected. Rebuilding the host's world…"
+    },
+    {
+      "label": "after-disconnect",
+      "host": {
+        "tick": 60,
+        "paused": false,
+        "screen": null,
+        "inputEnabled": true,
+        "pointerLocked": false,
+        "clients": 0,
+        "pawns": [],
+        "helloSeen": [],
+        "peerSurvivors": [],
+        "lobbyStatus": "peerLeft",
+        "lobbyDetail": {
+          "reason": null,
+          "detail": null,
+          "detailHead": null,
+          "count": 1
+        },
+        "players": 1,
+        "ownSurvivor": "ranger",
+        "ownMax": 110,
+        "ownAlive": true
+      },
+      "client": {
+        "connected": false,
+        "myNetId": 1,
+        "netTick": 25,
+        "serverTick": 40,
+        "paused": false,
+        "screen": null,
+        "survivorId": "anvil",
+        "maxHealth": 170,
+        "health": 170,
+        "alive": true,
+        "lobbyStatus": "idle",
+        "lobbyDetail": null
+      },
+      "hostSays": "A player left. 1 in the game.",
+      "clientSays": "Up to 4 players. One player hosts and runs the game; everyone else joins them."
+    }
+  ],
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 310,
+      "survivorId": "ranger",
+      "maxHealth": 110
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 65,
+      "survivorId": "anvil",
+      "maxHealth": 170
+    }
+  },
+  "afterLeave": {
+    "hostRefusedPeers": [],
+    "clientRefusedLatch": false
+  },
+  "session2PeerId": [
+    1
+  ],
+  "errors": {
+    "host": {
+      "consoleErrors": 0,
+      "netWarns": 0,
+      "netWarnTexts": [],
+      "consoleWarns": 12,
+      "pageErrors": 0,
+      "errorTexts": [],
+      "pageErrorTexts": []
+    },
+    "client": {
+      "consoleErrors": 0,
+      "netWarns": 0,
+      "netWarnTexts": [],
+      "consoleWarns": 16,
+      "pageErrors": 0,
+      "errorTexts": [],
+      "pageErrorTexts": []
+    }
+  },
+  "substitutionsMissing": []
+}

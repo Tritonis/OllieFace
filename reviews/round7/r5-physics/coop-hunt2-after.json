@@ -1,0 +1,487 @@
+{
+  "arm": "after",
+  "m": {
+    "replayLock": {
+      "preJoin": {
+        "localTick": 91,
+        "lastCmdTick": 91,
+        "netRole": "single"
+      },
+      "afterSittingInMenu": {
+        "localTick": 512,
+        "lastCmdTick": 512
+      },
+      "atJoin": {
+        "netRole": "client",
+        "netTick": 0,
+        "playerLastCmdTick": 512
+      },
+      "firstTicks": {
+        "ticksPumped": 40,
+        "classifiedAsReplay": 40,
+        "netTickNow": 40,
+        "lastCmdTick": 512,
+        "remainingLockedTicks": 472,
+        "suppressed": [
+          "_runSchedule",
+          "projectiles.fixedUpdate",
+          "placeables.fixedUpdate",
+          "air-jump vfx.impact",
+          "audio.footstep",
+          "Waxed Wing / Updraft / Tectonic impulse (reads _jumpImpulses, which is empty)"
+        ]
+      },
+      "firingInsideLock": {
+        "locked": true,
+        "projectilesBefore": -1,
+        "projectilesAfter": -1
+      },
+      "pastLock": {
+        "netTick": 517,
+        "lastCmdTick": 517,
+        "stillLocked": false
+      }
+    },
+    "realReconcileWithJump": {
+      "settleGateMaxDivergence": 0,
+      "settleGatePASS": true,
+      "hostPawnPeakHs": 0,
+      "clientSelfPeakHs": 30,
+      "maxDivergence": 6.0132,
+      "finalDivergence": 0.6124,
+      "divergenceSeries": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0.5423,
+        1.0769,
+        1.604,
+        2.1239,
+        2.6369,
+        3.1433,
+        3.6433,
+        4.1373,
+        4.6256,
+        5.1085,
+        5.5861,
+        6.0132,
+        5.5872,
+        4.3571,
+        2.3806,
+        1.3862,
+        0.6922,
+        1.1615,
+        0.4302,
+        1.331,
+        0.3988,
+        1.456,
+        0.3796,
+        1.1016,
+        1.5985,
+        0.3707,
+        1.0974,
+        1.7085,
+        0.3604,
+        1.0765,
+        1.786,
+        0.349,
+        1.0698,
+        1.831,
+        0.3363,
+        0.3918,
+        0.4475,
+        1.24,
+        1.8338,
+        0.321,
+        0.3585,
+        0.3961,
+        0.4336,
+        0.4756,
+        0.5221,
+        1.686,
+        0.3041,
+        1.0177,
+        1.1144,
+        1.5221,
+        0.2821,
+        0.9968,
+        1.3613,
+        1.2959,
+        0.267,
+        1.1411,
+        0.2522,
+        0.9538,
+        0.2363,
+        0.7343,
+        0.6124
+      ],
+      "reconciles": 71,
+      "replayed": 40,
+      "snapped": 0,
+      "maxErr": 0.5063,
+      "maxYank": 2.1808,
+      "correctionEvents": [
+        {
+          "acked": 528,
+          "idx": 0,
+          "err": 0.5063,
+          "replayed": true,
+          "snapped": false,
+          "hs": [
+            28.717,
+            27.433
+          ],
+          "yanked": 1.2211
+        },
+        {
+          "acked": 529,
+          "idx": 0,
+          "err": 0.4968,
+          "replayed": true,
+          "snapped": false,
+          "hs": [
+            27.317,
+            15.5
+          ],
+          "yanked": 1.5977
+        },
+        {
+          "acked": 530,
+          "idx": 0,
+          "err": 0.489,
+          "replayed": true,
+          "snapped": false,
+          "hs": [
+            14.067,
+            8.833
+          ],
+          "yanked": 2.1808
+        },
+        {
+          "acked": 531,
+          "idx": 0,
+          "err": 0.2671,
+          "replayed": true,
+          "snapped": false,
+          "hs": [
+            7.4,
+            4.8
+          ],
+          "yanked": 1.3588
+        },
+        {
+          "acked": 532,
+          "idx": 0,
+          "err": 0.1921,
+          "replayed": true,
+          "snapped": false,
+          "hs": [
+            4.683,
+            2.083
+          ],
+          "yanked": 0.8412
+        },
+        {
+          "acked": 533,
+          "idx": 0,
+          "err": 0.1437,
+          "replayed": true,
+          "snapped": false,
+          "hs": [
+            1.967,
+            0
+          ],
+          "yanked": 0.6466
+        },
+        {
+          "acked": 534,
+          "idx": 0,
+          "err": 0.1791,
+          "replayed": true,
+          "snapped": false,
+          "hs": [
+            0,
+            0
+          ],
+          "yanked": 0.8875
+        },
+        {
+          "acked": 535,
+          "idx": 0,
+          "err": 0.1018,
+          "replayed": true,
+          "snapped": false,
+          "hs": [
+            0,
+            0
+          ],
+          "yanked": 0.8151
+        },
+        {
+          "acked": 536,
+          "idx": 0,
+          "err": 0.1452,
+          "replayed": true,
+          "snapped": false,
+          "hs": [
+            0,
+            0
+          ],
+          "yanked": 1.0504
+        },
+        {
+          "acked": 537,
+          "idx": 0,
+          "err": 0.0706,
+          "replayed": true,
+          "snapped": false,
+          "hs": [
+            0,
+            0
+          ],
+          "yanked": 0.5276
+        },
+        {
+          "acked": 538,
+          "idx": 0,
+          "err": 0.1139,
+          "replayed": true,
+          "snapped": false,
+          "hs": [
+            0,
+            0
+          ],
+          "yanked": 1.1754
+        },
+        {
+          "acked": 539,
+          "idx": 0,
+          "err": 0.055,
+          "replayed": true,
+          "snapped": false,
+          "hs": [
+            0,
+            0
+          ],
+          "yanked": 0.5432
+        },
+        {
+          "acked": 540,
+          "idx": 0,
+          "err": 0.0983,
+          "replayed": true,
+          "snapped": false,
+          "hs": [
+            0,
+            0
+          ],
+          "yanked": 0.453
+        },
+        {
+          "acked": 541,
+          "idx": 0,
+          "err": 0.1864,
+          "replayed": true,
+          "snapped": false,
+          "hs": [
+            0,
+            0
+          ],
+          "yanked": 1.316
+        },
+        {
+          "acked": 542,
+          "idx": 0,
+          "err": 0.0393,
+          "replayed": true,
+          "snapped": false,
+          "hs": [
+            0,
+            0
+          ],
+          "yanked": 0.5588
+        },
+        {
+          "acked": 543,
+          "idx": 0,
+          "err": 0.0983,
+          "replayed": true,
+          "snapped": false,
+          "hs": [
+            0,
+            0
+          ],
+          "yanked": 0.578
+        },
+        {
+          "acked": 544,
+          "idx": 0,
+          "err": 0.1708,
+          "replayed": true,
+          "snapped": false,
+          "hs": [
+            0,
+            0
+          ],
+          "yanked": 1.4254
+        },
+        {
+          "acked": 545,
+          "idx": 0,
+          "err": 0.0393,
+          "replayed": true,
+          "snapped": false,
+          "hs": [
+            0,
+            0
+          ],
+          "yanked": 0.5588
+        },
+        {
+          "acked": 546,
+          "idx": 0,
+          "err": 0.067,
+          "replayed": true,
+          "snapped": false,
+          "hs": [
+            0,
+            0
+          ],
+          "yanked": 0.6873
+        },
+        {
+          "acked": 547,
+          "idx": 0,
+          "err": 0.1708,
+          "replayed": true,
+          "snapped": false,
+          "hs": [
+            0,
+            0
+          ],
+          "yanked": 1.5035
+        },
+        {
+          "acked": 548,
+          "idx": 0,
+          "err": 0.0237,
+          "replayed": true,
+          "snapped": false,
+          "hs": [
+            0,
+            0
+          ],
+          "yanked": 0.5744
+        },
+        {
+          "acked": 549,
+          "idx": 0,
+          "err": 0.067,
+          "replayed": true,
+          "snapped": false,
+          "hs": [
+            0,
+            0
+          ],
+          "yanked": 0.7498
+        },
+        {
+          "acked": 550,
+          "idx": 0,
+          "err": 0.1552,
+          "replayed": true,
+          "snapped": false,
+          "hs": [
+            0,
+            0
+          ],
+          "yanked": 1.5504
+        },
+        {
+          "acked": 553,
+          "idx": 0,
+          "err": 0.0351,
+          "replayed": true,
+          "snapped": false,
+          "hs": [
+            0,
+            0
+          ],
+          "yanked": 0.6481
+        },
+        {
+          "acked": 554,
+          "idx": 0,
+          "err": 0.0586,
+          "replayed": true,
+          "snapped": false,
+          "hs": [
+            0,
+            0
+          ],
+          "yanked": 0.6004
+        }
+      ]
+    },
+    "threePeers": {
+      "joined": {
+        "clients": 2,
+        "pawns": 2,
+        "playerCount": 3
+      },
+      "result": {
+        "hostShield": 0,
+        "hostJumpEvents": 0,
+        "tectonicTallyFires": 0,
+        "hostConsumeCallsNonZero": [],
+        "pawnJumpsUsed": [
+          1,
+          1
+        ],
+        "hostJumpsUsed": 0
+      }
+    },
+    "peerLeave": {
+      "before": {
+        "clients": 2,
+        "pawns": 2,
+        "combatEntities": 3
+      },
+      "after": {
+        "clients": 1,
+        "pawns": 1,
+        "combatEntities": 2,
+        "threw": null,
+        "orphanedPlayerEntitiesInCombat": 0,
+        "frameErrors": 0
+      }
+    },
+    "midStageJoin": {
+      "hostStage": {
+        "stageIndex": 3,
+        "time": 1.52
+      },
+      "clientAfterJoin": {
+        "stageIndex": 3,
+        "seed": 1337,
+        "time": 1.52,
+        "netId": 28
+      },
+      "hostAfter": {
+        "clients": 2,
+        "pawns": 2
+      },
+      "error": null
+    }
+  },
+  "hostErrors": [],
+  "clientErrors": [],
+  "client2Errors": []
+}

@@ -1,0 +1,287 @@
+{
+  "arm": "prior2-eb-gate",
+  "substitutions": [
+    "EB-isolate"
+  ],
+  "substitutionsMissing": [],
+  "port": 5866,
+  "gateHost": {
+    "paused": false,
+    "screen": null,
+    "localTick": 70,
+    "survivorId": "ranger",
+    "maxHealth": 110,
+    "lobbyMode": "single",
+    "pointerLock": true
+  },
+  "gateClient": {
+    "paused": false,
+    "screen": null,
+    "localTick": 65,
+    "survivorId": "anvil",
+    "maxHealth": 170,
+    "lobbyMode": "single",
+    "pointerLock": true
+  },
+  "joined": {
+    "host": {
+      "role": "host",
+      "lobbyMode": "host",
+      "status": "peerConnecting",
+      "statusDetail": {
+        "id": 1
+      },
+      "players": 2,
+      "refusedPeers": [],
+      "clientsCount": 1,
+      "clients": [
+        {
+          "id": 1,
+          "helloSeen": true,
+          "survivorId": "anvil",
+          "hasPawn": true,
+          "joinTick": 65
+        }
+      ],
+      "pawns": [
+        {
+          "survivorId": "anvil",
+          "health": 170,
+          "maxHealth": 170,
+          "alive": true,
+          "netId": 1
+        }
+      ],
+      "tick": 75,
+      "paused": false,
+      "screen": null,
+      "inputEnabled": true,
+      "holding": false,
+      "pointerLock": true,
+      "my": {
+        "survivorId": "ranger",
+        "health": 110,
+        "maxHealth": 110,
+        "alive": true
+      },
+      "said": "Reply accepted — connecting…",
+      "saidLen": 28,
+      "statuses": [
+        {
+          "status": "hosting",
+          "detail": null,
+          "said": "Hosting. Create an invite for each friend you want to bring in."
+        },
+        {
+          "status": "inviteReady",
+          "detail": {
+            "id": 1,
+            "blob": "eyJ2IjoxLCJyb2xlIjoib2ZmZXIiLCJpZCI6MSwic2RwIjp7InR5cGUiOiJvZmZlciIsInNkcCI6InY9MFxyXG5vPS0gNjQ1ODcyODAyNDQ4NDU5MTgzNSAyIElOIElQNCAxMjcuMC4wLjFcclxucz0tXHJcbnQ9MCAwXHJcbmE9Z3JvdXA6QlVORExFIDBcclxuYT1leHRtYXAtYWxsb3ctbWl4ZWRcclxuYT1tc2lkLXNlbWFudGljOiBXTVNcclxubT1hcHBsaWNhdGlvbiA5IFVEUC9EVExTL1NDVFAgd2VicnRjLWRhdGFjaGFubmVsXHJcbmM9SU4gSVA0IDAuMC4wLjBcclxuYT1jYW5kaWRhdGU6MjI3ODcyMzIwNCAxIHVkcCAxNjc3NzI5NTM1IDk5LjEwOS4xNDEuMTU4IDYxMjkwIHR5cCBzcmZseCByYWRkciAwLjAuMC4wIHJwb3J0IDAgZ2VuZXJhdGlvbiAwIG5ldHdvcmstY29zdCA5OTlcclxuYT1jYW5kaWRhdGU6MTk2NDIxNTI2MCAxIHVkcCAyMTEzOTM3MTUxIDNhNTEyYjJjLTJhNGQtNDYwMy1hZWRjLTNhODVlZDFlOGMxYS5sb2NhbCA2MTI5MCB0eXAgaG9zdCBnZW5lcmF0aW9uIDAgbmV0d29yay1jb3N0IDk5OVxyXG5hPWljZS11ZnJhZzpLakZsXHJcbmE9aWNlLXB3ZDpLY1ZnLy9RZXJXanBNeXRvTzB2b1ZESXpcclxuYT1pY2Utb3B0aW9uczp0cmlja2xlXHJcbmE9ZmluZ2VycHJpbnQ6c2hhLTI1NiA3QzpCNzowRDo0RTo3NTozQjpFMjpEOTpBQToyQTo5MzpCRjo5QzowRTpGNDowNjo3RjowMTpFQzo1RjpENDo3MDpERTpEQzpFNTo4Qzo0MDpERDo0NDo0Qzo4MzoyMlxyXG5hPXNldHVwOmFjdHBhc3NcclxuYT1taWQ6MFxyXG5hPXNjdHAtcG9ydDo1MDAwXHJcbmE9bWF4LW1lc3NhZ2Utc2l6ZToyNjIxNDRcclxuIn19"
+          },
+          "said": "Invite ready. Send that code to your friend."
+        },
+        {
+          "status": "peerJoined",
+          "detail": {
+            "id": 1,
+            "count": 2
+          },
+          "said": "A player joined. 2 in the game."
+        },
+        {
+          "status": "peerConnecting",
+          "detail": {
+            "id": 1
+          },
+          "said": "Reply accepted — connecting…"
+        }
+      ]
+    },
+    "client": {
+      "role": "client",
+      "lobbyMode": "client",
+      "status": "connected",
+      "statusDetail": {
+        "seed": 1337,
+        "stageIndex": 0,
+        "time": 3.75,
+        "myNetId": 1,
+        "artifactMask": 0,
+        "difficulty": 1
+      },
+      "connected": true,
+      "myNetId": 1,
+      "serverTick": 75,
+      "paused": false,
+      "screen": null,
+      "refusedLatch": false,
+      "my": {
+        "survivorId": "anvil",
+        "health": 170,
+        "maxHealth": 170,
+        "alive": true
+      },
+      "said": "Connected. Rebuilding the host's world…",
+      "saidLen": 39,
+      "statuses": [
+        {
+          "status": "joining",
+          "detail": null,
+          "said": "Answering the invite…"
+        },
+        {
+          "status": "answerReady",
+          "detail": {
+            "blob": "eyJ2IjoxLCJyb2xlIjoiYW5zd2VyIiwiaWQiOjEsInNkcCI6eyJ0eXBlIjoiYW5zd2VyIiwic2RwIjoidj0wXHJcbm89LSA4MzIwNTI3NjQ5MzU4MTg3MTA4IDIgSU4gSVA0IDEyNy4wLjAuMVxyXG5zPS1cclxudD0wIDBcclxuYT1ncm91cDpCVU5ETEUgMFxyXG5hPWV4dG1hcC1hbGxvdy1taXhlZFxyXG5hPW1zaWQtc2VtYW50aWM6IFdNU1xyXG5tPWFwcGxpY2F0aW9uIDkgVURQL0RUTFMvU0NUUCB3ZWJydGMtZGF0YWNoYW5uZWxcclxuYz1JTiBJUDQgMC4wLjAuMFxyXG5hPWNhbmRpZGF0ZToyMjY5ODc4MjY1IDEgdWRwIDIxMTM5MzcxNTEgYmVlNGVhNjQtY2MxYi00NDA0LWIzMjUtMDVmODRiOWE1MjZkLmxvY2FsIDU1MDI2IHR5cCBob3N0IGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9aWNlLXVmcmFnOmJYU1dcclxuYT1pY2UtcHdkOmQ3dzhtemw3STdERndZdVlwWWJTTjlja1xyXG5hPWljZS1vcHRpb25zOnRyaWNrbGVcclxuYT1maW5nZXJwcmludDpzaGEtMjU2IEE3OjYyOjhFOjFDOjY2OkQ5Ojk1OkU0OjE0OjYwOjBCOjdCOkE1OjBEOjk1OjhEOjI4OjM1OjlDOkNFOjQ5OjFBOjQzOjA0OkIzOjY4OjVGOjRGOkM4Ojg5OjJDOjU4XHJcbmE9c2V0dXA6YWN0aXZlXHJcbmE9bWlkOjBcclxuYT1zY3RwLXBvcnQ6NTAwMFxyXG5hPW1heC1tZXNzYWdlLXNpemU6MjYyMTQ0XHJcbiJ9fQ"
+          },
+          "said": "Send your reply code back to the host."
+        },
+        {
+          "status": "connected",
+          "detail": {
+            "seed": 1337,
+            "stageIndex": 0,
+            "time": 3.75,
+            "myNetId": 1,
+            "artifactMask": 0,
+            "difficulty": 1
+          },
+          "said": "Connected. Rebuilding the host's world…"
+        }
+      ]
+    }
+  },
+  "audioBefore": {
+    "acState": "running",
+    "musicGain": 0.48
+  },
+  "eb": {
+    "first": 4,
+    "third": 0
+  },
+  "F9": {
+    "skipped": "only 1 live enemies with headroom"
+  },
+  "K10driver": {
+    "dealt": 18.51851851851852,
+    "ghostHasNetId": false,
+    "ghostKeyCount": 10
+  },
+  "K10": [
+    {
+      "amount": 18.52,
+      "remaining": 151.48,
+      "sourceType": "null",
+      "sourceKeys": null
+    }
+  ],
+  "K5": {
+    "timeSinceHurt": 0.17,
+    "progDamageTaken": 18.52,
+    "runDamageTaken": 18.52,
+    "runDamageTakenThisStage": 18.52
+  },
+  "audioAfterTeammate": {
+    "acState": "running",
+    "musicGain": 0.48
+  },
+  "deadAfterTeammate": [
+    {
+      "victimNetId": 2,
+      "victimIsMe": false,
+      "gain": 0.48
+    }
+  ],
+  "audioAfterOwn": {
+    "acState": "running",
+    "musicGain": 0.00019
+  },
+  "deadAfterOwn": [
+    {
+      "victimNetId": 2,
+      "victimIsMe": false,
+      "gain": 0.48
+    },
+    {
+      "victimNetId": 1,
+      "victimIsMe": true,
+      "gain": 0.14033
+    }
+  ],
+  "clientEnd": {
+    "role": "client",
+    "lobbyMode": "client",
+    "status": "connected",
+    "statusDetail": {
+      "seed": 1337,
+      "stageIndex": 0,
+      "time": 3.75,
+      "myNetId": 1,
+      "artifactMask": 0,
+      "difficulty": 1
+    },
+    "connected": true,
+    "myNetId": 1,
+    "serverTick": 175,
+    "paused": true,
+    "screen": "death",
+    "refusedLatch": false,
+    "my": {
+      "survivorId": "anvil",
+      "health": 0,
+      "maxHealth": 170,
+      "alive": false
+    },
+    "said": "Connected. Rebuilding the host's world…",
+    "saidLen": 39,
+    "statuses": [
+      {
+        "status": "joining",
+        "detail": null,
+        "said": "Answering the invite…"
+      },
+      {
+        "status": "answerReady",
+        "detail": {
+          "blob": "eyJ2IjoxLCJyb2xlIjoiYW5zd2VyIiwiaWQiOjEsInNkcCI6eyJ0eXBlIjoiYW5zd2VyIiwic2RwIjoidj0wXHJcbm89LSA4MzIwNTI3NjQ5MzU4MTg3MTA4IDIgSU4gSVA0IDEyNy4wLjAuMVxyXG5zPS1cclxudD0wIDBcclxuYT1ncm91cDpCVU5ETEUgMFxyXG5hPWV4dG1hcC1hbGxvdy1taXhlZFxyXG5hPW1zaWQtc2VtYW50aWM6IFdNU1xyXG5tPWFwcGxpY2F0aW9uIDkgVURQL0RUTFMvU0NUUCB3ZWJydGMtZGF0YWNoYW5uZWxcclxuYz1JTiBJUDQgMC4wLjAuMFxyXG5hPWNhbmRpZGF0ZToyMjY5ODc4MjY1IDEgdWRwIDIxMTM5MzcxNTEgYmVlNGVhNjQtY2MxYi00NDA0LWIzMjUtMDVmODRiOWE1MjZkLmxvY2FsIDU1MDI2IHR5cCBob3N0IGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9aWNlLXVmcmFnOmJYU1dcclxuYT1pY2UtcHdkOmQ3dzhtemw3STdERndZdVlwWWJTTjlja1xyXG5hPWljZS1vcHRpb25zOnRyaWNrbGVcclxuYT1maW5nZXJwcmludDpzaGEtMjU2IEE3OjYyOjhFOjFDOjY2OkQ5Ojk1OkU0OjE0OjYwOjBCOjdCOkE1OjBEOjk1OjhEOjI4OjM1OjlDOkNFOjQ5OjFBOjQzOjA0OkIzOjY4OjVGOjRGOkM4Ojg5OjJDOjU4XHJcbmE9c2V0dXA6YWN0aXZlXHJcbmE9bWlkOjBcclxuYT1zY3RwLXBvcnQ6NTAwMFxyXG5hPW1heC1tZXNzYWdlLXNpemU6MjYyMTQ0XHJcbiJ9fQ"
+        },
+        "said": "Send your reply code back to the host."
+      },
+      {
+        "status": "connected",
+        "detail": {
+          "seed": 1337,
+          "stageIndex": 0,
+          "time": 3.75,
+          "myNetId": 1,
+          "artifactMask": 0,
+          "difficulty": 1
+        },
+        "said": "Connected. Rebuilding the host's world…"
+      }
+    ]
+  },
+  "appliedAtRuntime": [
+    "EB-isolate"
+  ],
+  "hostLog": {
+    "errors": [],
+    "pageErrors": [],
+    "errorCount": 0,
+    "pageErrorCount": 0
+  },
+  "clientLog": {
+    "errors": [
+      "[net] client dropped a malformed message from the host Error: deliberate listener failure\n    at eval (eval at evaluate (:311:30), <anonymous>:15:42)\n    at EventBus.emit (http://127.0.0.1:5866/src/core/Engine.js:293:7)\n    at NetClient._handleMessage (http://127.0.0.1:5866/src/net/NetClient.js:172:25)\n    at NetClient._onMessage (http://127.0.0.1:5866/src/net/NetClient.js:115:12)\n    at peer.onMe",
+      "[net] client dropped a malformed message from the host Error: deliberate listener failure\n    at eval (eval at evaluate (:311:30), <anonymous>:15:42)\n    at EventBus.emit (http://127.0.0.1:5866/src/core/Engine.js:293:7)\n    at NetClient._handleMessage (http://127.0.0.1:5866/src/net/NetClient.js:172:25)\n    at NetClient._onMessage (http://127.0.0.1:5866/src/net/NetClient.js:115:12)\n    at peer.onMe",
+      "[net] client dropped a malformed message from the host Error: deliberate listener failure\n    at eval (eval at evaluate (:311:30), <anonymous>:15:42)\n    at EventBus.emit (http://127.0.0.1:5866/src/core/Engine.js:293:7)\n    at NetClient._handleMessage (http://127.0.0.1:5866/src/net/NetClient.js:172:25)\n    at NetClient._onMessage (http://127.0.0.1:5866/src/net/NetClient.js:115:12)\n    at peer.onMe",
+      "[net] client dropped a malformed message from the host Error: deliberate listener failure\n    at eval (eval at evaluate (:311:30), <anonymous>:15:42)\n    at EventBus.emit (http://127.0.0.1:5866/src/core/Engine.js:293:7)\n    at NetClient._handleMessage (http://127.0.0.1:5866/src/net/NetClient.js:172:25)\n    at NetClient._onMessage (http://127.0.0.1:5866/src/net/NetClient.js:115:12)\n    at peer.onMe",
+      "[net] client dropped a malformed message from the host Error: deliberate listener failure\n    at eval (eval at evaluate (:311:30), <anonymous>:15:42)\n    at EventBus.emit (http://127.0.0.1:5866/src/core/Engine.js:293:7)\n    at NetClient._handleMessage (http://127.0.0.1:5866/src/net/NetClient.js:172:25)\n    at NetClient._onMessage (http://127.0.0.1:5866/src/net/NetClient.js:115:12)\n    at peer.onMe",
+      "[net] client dropped a malformed message from the host Error: deliberate listener failure\n    at eval (eval at evaluate (:311:30), <anonymous>:15:42)\n    at EventBus.emit (http://127.0.0.1:5866/src/core/Engine.js:293:7)\n    at NetClient._handleMessage (http://127.0.0.1:5866/src/net/NetClient.js:172:25)\n    at NetClient._onMessage (http://127.0.0.1:5866/src/net/NetClient.js:115:12)\n    at peer.onMe"
+    ],
+    "pageErrors": [],
+    "errorCount": 6,
+    "pageErrorCount": 0
+  },
+  "elapsedMs": 190985
+}

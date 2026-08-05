@@ -1,0 +1,793 @@
+{
+  "pageErrors": [],
+  "engineRunning": false,
+  "frameErrors": 0,
+  "burrowArtifact": {
+    "dist12": {
+      "clean": {
+        "stacks": 0,
+        "mult": 1,
+        "playerDist": 12,
+        "steps": 51,
+        "simSeconds": 0.85,
+        "pathLen": 9.5833,
+        "netDisp": 9.5833,
+        "exitState": "attack",
+        "exitDistToPlayer": 2.417,
+        "exitReason": "close (<2.5m) — Enemy.js:1481",
+        "speedFromPath": 11.2745
+      },
+      "slow1": {
+        "stacks": 1,
+        "mult": 0.6,
+        "playerDist": 12,
+        "steps": 84,
+        "simSeconds": 1.4,
+        "pathLen": 9.545,
+        "netDisp": 9.545,
+        "exitState": "attack",
+        "exitDistToPlayer": 2.455,
+        "exitReason": "close (<2.5m) — Enemy.js:1481",
+        "speedFromPath": 6.8179
+      },
+      "slow4": {
+        "stacks": 4,
+        "mult": 0.25,
+        "playerDist": 12,
+        "steps": 145,
+        "simSeconds": 2.4167,
+        "pathLen": 6.9,
+        "netDisp": 6.9,
+        "exitState": "attack",
+        "exitDistToPlayer": 5.1,
+        "exitReason": "submerge timer expired (2.4s)",
+        "speedFromPath": 2.8552
+      },
+      "pathLenRatio_slow1_over_clean": 0.996,
+      "pathLenRatio_slow4_over_clean": 0.72,
+      "trueSpeedRatio_slow1": 0.6047,
+      "trueSpeedRatio_slow4": 0.2532
+    },
+    "dist20": {
+      "clean": {
+        "stacks": 0,
+        "mult": 1,
+        "playerDist": 20,
+        "steps": 93,
+        "simSeconds": 1.55,
+        "pathLen": 17.6333,
+        "netDisp": 17.6333,
+        "exitState": "attack",
+        "exitDistToPlayer": 2.367,
+        "exitReason": "close (<2.5m) — Enemy.js:1481",
+        "speedFromPath": 11.3763
+      },
+      "slow1": {
+        "stacks": 1,
+        "mult": 0.6,
+        "playerDist": 20,
+        "steps": 145,
+        "simSeconds": 2.4167,
+        "pathLen": 16.56,
+        "netDisp": 16.56,
+        "exitState": "attack",
+        "exitDistToPlayer": 3.44,
+        "exitReason": "submerge timer expired (2.4s)",
+        "speedFromPath": 6.8524
+      },
+      "slow4": {
+        "stacks": 4,
+        "mult": 0.25,
+        "playerDist": 20,
+        "steps": 145,
+        "simSeconds": 2.4167,
+        "pathLen": 6.9,
+        "netDisp": 6.9,
+        "exitState": "attack",
+        "exitDistToPlayer": 13.1,
+        "exitReason": "submerge timer expired (2.4s)",
+        "speedFromPath": 2.8552
+      },
+      "pathLenRatio_slow1_over_clean": 0.9391,
+      "pathLenRatio_slow4_over_clean": 0.3913,
+      "trueSpeedRatio_slow1": 0.6023,
+      "trueSpeedRatio_slow4": 0.251
+    },
+    "dist25": {
+      "clean": {
+        "stacks": 0,
+        "mult": 1,
+        "playerDist": 25,
+        "steps": 119,
+        "simSeconds": 1.9833,
+        "pathLen": 22.6167,
+        "netDisp": 22.6167,
+        "exitState": "attack",
+        "exitDistToPlayer": 2.383,
+        "exitReason": "close (<2.5m) — Enemy.js:1481",
+        "speedFromPath": 11.4034
+      },
+      "slow1": {
+        "stacks": 1,
+        "mult": 0.6,
+        "playerDist": 25,
+        "steps": 145,
+        "simSeconds": 2.4167,
+        "pathLen": 16.56,
+        "netDisp": 16.56,
+        "exitState": "attack",
+        "exitDistToPlayer": 8.44,
+        "exitReason": "submerge timer expired (2.4s)",
+        "speedFromPath": 6.8524
+      },
+      "slow4": {
+        "stacks": 4,
+        "mult": 0.25,
+        "playerDist": 25,
+        "steps": 145,
+        "simSeconds": 2.4167,
+        "pathLen": 6.9,
+        "netDisp": 6.9,
+        "exitState": "attack",
+        "exitDistToPlayer": 18.1,
+        "exitReason": "submerge timer expired (2.4s)",
+        "speedFromPath": 2.8552
+      },
+      "pathLenRatio_slow1_over_clean": 0.7322,
+      "pathLenRatio_slow4_over_clean": 0.3051,
+      "trueSpeedRatio_slow1": 0.6009,
+      "trueSpeedRatio_slow4": 0.2504
+    },
+    "dist30": {
+      "clean": {
+        "stacks": 0,
+        "mult": 1,
+        "playerDist": 30,
+        "steps": 145,
+        "simSeconds": 2.4167,
+        "pathLen": 27.6,
+        "netDisp": 27.6,
+        "exitState": "attack",
+        "exitDistToPlayer": 2.4,
+        "exitReason": "close (<2.5m) — Enemy.js:1481",
+        "speedFromPath": 11.4207
+      },
+      "slow1": {
+        "stacks": 1,
+        "mult": 0.6,
+        "playerDist": 30,
+        "steps": 145,
+        "simSeconds": 2.4167,
+        "pathLen": 16.56,
+        "netDisp": 16.56,
+        "exitState": "attack",
+        "exitDistToPlayer": 13.44,
+        "exitReason": "submerge timer expired (2.4s)",
+        "speedFromPath": 6.8524
+      },
+      "slow4": {
+        "stacks": 4,
+        "mult": 0.25,
+        "playerDist": 30,
+        "steps": 145,
+        "simSeconds": 2.4167,
+        "pathLen": 6.9,
+        "netDisp": 6.9,
+        "exitState": "attack",
+        "exitDistToPlayer": 23.1,
+        "exitReason": "submerge timer expired (2.4s)",
+        "speedFromPath": 2.8552
+      },
+      "pathLenRatio_slow1_over_clean": 0.6,
+      "pathLenRatio_slow4_over_clean": 0.25,
+      "trueSpeedRatio_slow1": 0.6,
+      "trueSpeedRatio_slow4": 0.25
+    }
+  },
+  "freeRun20s": {
+    "clean": {
+      "stacks": 0,
+      "mult": 1,
+      "pathLen": 52.2778,
+      "dwellSteps": {
+        "chase": 521,
+        "reposition": 679
+      },
+      "finalDistToPlayer": 13.29
+    },
+    "slow1": {
+      "stacks": 1,
+      "mult": 0.6,
+      "pathLen": 35.5547,
+      "dwellSteps": {
+        "chase": 521,
+        "reposition": 679
+      },
+      "finalDistToPlayer": 18.36
+    },
+    "slow4": {
+      "stacks": 4,
+      "mult": 0.25,
+      "pathLen": 24.0026,
+      "dwellSteps": {
+        "chase": 521,
+        "reposition": 679
+      },
+      "finalDistToPlayer": 21.68
+    },
+    "pathRatio_slow1": 0.6801,
+    "pathRatio_slow4": 0.4591
+  },
+  "flyerDive": {
+    "clean": {
+      "steps": 40,
+      "totalPath": 0.05517,
+      "first": {
+        "step": 0,
+        "disp": 0.055167,
+        "speed": 3.31,
+        "state": "die"
+      },
+      "last": {
+        "step": 39,
+        "disp": 0,
+        "speed": 0,
+        "state": "die"
+      },
+      "rows": [
+        {
+          "step": 0,
+          "disp": 0.055167,
+          "speed": 3.31,
+          "state": "die"
+        },
+        {
+          "step": 1,
+          "disp": 0,
+          "speed": 0,
+          "state": "die"
+        },
+        {
+          "step": 2,
+          "disp": 0,
+          "speed": 0,
+          "state": "die"
+        },
+        {
+          "step": 3,
+          "disp": 0,
+          "speed": 0,
+          "state": "die"
+        },
+        {
+          "step": 4,
+          "disp": 0,
+          "speed": 0,
+          "state": "die"
+        },
+        {
+          "step": 5,
+          "disp": 0,
+          "speed": 0,
+          "state": "die"
+        },
+        {
+          "step": 6,
+          "disp": 0,
+          "speed": 0,
+          "state": "die"
+        },
+        {
+          "step": 7,
+          "disp": 0,
+          "speed": 0,
+          "state": "die"
+        },
+        {
+          "step": 36,
+          "disp": 0,
+          "speed": 0,
+          "state": "die"
+        },
+        {
+          "step": 37,
+          "disp": 0,
+          "speed": 0,
+          "state": "die"
+        },
+        {
+          "step": 38,
+          "disp": 0,
+          "speed": 0,
+          "state": "die"
+        },
+        {
+          "step": 39,
+          "disp": 0,
+          "speed": 0,
+          "state": "die"
+        }
+      ]
+    },
+    "slow4": {
+      "steps": 40,
+      "totalPath": 0.05517,
+      "first": {
+        "step": 0,
+        "disp": 0.055167,
+        "speed": 3.31,
+        "state": "die"
+      },
+      "last": {
+        "step": 39,
+        "disp": 0,
+        "speed": 0,
+        "state": "die"
+      },
+      "rows": [
+        {
+          "step": 0,
+          "disp": 0.055167,
+          "speed": 3.31,
+          "state": "die"
+        },
+        {
+          "step": 1,
+          "disp": 0,
+          "speed": 0,
+          "state": "die"
+        },
+        {
+          "step": 2,
+          "disp": 0,
+          "speed": 0,
+          "state": "die"
+        },
+        {
+          "step": 3,
+          "disp": 0,
+          "speed": 0,
+          "state": "die"
+        },
+        {
+          "step": 4,
+          "disp": 0,
+          "speed": 0,
+          "state": "die"
+        },
+        {
+          "step": 5,
+          "disp": 0,
+          "speed": 0,
+          "state": "die"
+        },
+        {
+          "step": 6,
+          "disp": 0,
+          "speed": 0,
+          "state": "die"
+        },
+        {
+          "step": 7,
+          "disp": 0,
+          "speed": 0,
+          "state": "die"
+        },
+        {
+          "step": 36,
+          "disp": 0,
+          "speed": 0,
+          "state": "die"
+        },
+        {
+          "step": 37,
+          "disp": 0,
+          "speed": 0,
+          "state": "die"
+        },
+        {
+          "step": 38,
+          "disp": 0,
+          "speed": 0,
+          "state": "die"
+        },
+        {
+          "step": 39,
+          "disp": 0,
+          "speed": 0,
+          "state": "die"
+        }
+      ]
+    },
+    "ratio_slow4_over_clean": 1,
+    "contracted": 0.25
+  },
+  "charge": {
+    "clean": {
+      "steps": 69,
+      "totalPath": 29.61111,
+      "first": {
+        "step": 0,
+        "disp": 0.433333,
+        "speed": 26,
+        "state": "charge"
+      },
+      "last": {
+        "step": 68,
+        "disp": 0.144444,
+        "speed": 8.6667,
+        "state": "recover"
+      },
+      "rows": [
+        {
+          "step": 0,
+          "disp": 0.433333,
+          "speed": 26,
+          "state": "charge"
+        },
+        {
+          "step": 1,
+          "disp": 0.433333,
+          "speed": 26,
+          "state": "charge"
+        },
+        {
+          "step": 2,
+          "disp": 0.433333,
+          "speed": 26,
+          "state": "charge"
+        },
+        {
+          "step": 3,
+          "disp": 0.433333,
+          "speed": 26,
+          "state": "charge"
+        },
+        {
+          "step": 4,
+          "disp": 0.433333,
+          "speed": 26,
+          "state": "charge"
+        },
+        {
+          "step": 5,
+          "disp": 0.433333,
+          "speed": 26,
+          "state": "charge"
+        },
+        {
+          "step": 6,
+          "disp": 0.433333,
+          "speed": 26,
+          "state": "charge"
+        },
+        {
+          "step": 7,
+          "disp": 0.433333,
+          "speed": 26,
+          "state": "charge"
+        },
+        {
+          "step": 65,
+          "disp": 0.433333,
+          "speed": 26,
+          "state": "charge"
+        },
+        {
+          "step": 66,
+          "disp": 0.433333,
+          "speed": 26,
+          "state": "charge"
+        },
+        {
+          "step": 67,
+          "disp": 0.433333,
+          "speed": 26,
+          "state": "charge"
+        },
+        {
+          "step": 68,
+          "disp": 0.144444,
+          "speed": 8.6667,
+          "state": "recover"
+        }
+      ]
+    },
+    "slow1": {
+      "steps": 69,
+      "totalPath": 17.76378,
+      "first": {
+        "step": 0,
+        "disp": 0.26,
+        "speed": 15.6,
+        "state": "charge"
+      },
+      "last": {
+        "step": 68,
+        "disp": 0.083778,
+        "speed": 5.0267,
+        "state": "recover"
+      },
+      "rows": [
+        {
+          "step": 0,
+          "disp": 0.26,
+          "speed": 15.6,
+          "state": "charge"
+        },
+        {
+          "step": 1,
+          "disp": 0.26,
+          "speed": 15.6,
+          "state": "charge"
+        },
+        {
+          "step": 2,
+          "disp": 0.26,
+          "speed": 15.6,
+          "state": "charge"
+        },
+        {
+          "step": 3,
+          "disp": 0.26,
+          "speed": 15.6,
+          "state": "charge"
+        },
+        {
+          "step": 4,
+          "disp": 0.26,
+          "speed": 15.6,
+          "state": "charge"
+        },
+        {
+          "step": 5,
+          "disp": 0.26,
+          "speed": 15.6,
+          "state": "charge"
+        },
+        {
+          "step": 6,
+          "disp": 0.26,
+          "speed": 15.6,
+          "state": "charge"
+        },
+        {
+          "step": 7,
+          "disp": 0.26,
+          "speed": 15.6,
+          "state": "charge"
+        },
+        {
+          "step": 65,
+          "disp": 0.26,
+          "speed": 15.6,
+          "state": "charge"
+        },
+        {
+          "step": 66,
+          "disp": 0.26,
+          "speed": 15.6,
+          "state": "charge"
+        },
+        {
+          "step": 67,
+          "disp": 0.26,
+          "speed": 15.6,
+          "state": "charge"
+        },
+        {
+          "step": 68,
+          "disp": 0.083778,
+          "speed": 5.0267,
+          "state": "recover"
+        }
+      ]
+    },
+    "slow4": {
+      "steps": 69,
+      "totalPath": 7.39736,
+      "first": {
+        "step": 0,
+        "disp": 0.108333,
+        "speed": 6.5,
+        "state": "charge"
+      },
+      "last": {
+        "step": 68,
+        "disp": 0.030694,
+        "speed": 1.8417,
+        "state": "recover"
+      },
+      "rows": [
+        {
+          "step": 0,
+          "disp": 0.108333,
+          "speed": 6.5,
+          "state": "charge"
+        },
+        {
+          "step": 1,
+          "disp": 0.108333,
+          "speed": 6.5,
+          "state": "charge"
+        },
+        {
+          "step": 2,
+          "disp": 0.108333,
+          "speed": 6.5,
+          "state": "charge"
+        },
+        {
+          "step": 3,
+          "disp": 0.108333,
+          "speed": 6.5,
+          "state": "charge"
+        },
+        {
+          "step": 4,
+          "disp": 0.108333,
+          "speed": 6.5,
+          "state": "charge"
+        },
+        {
+          "step": 5,
+          "disp": 0.108333,
+          "speed": 6.5,
+          "state": "charge"
+        },
+        {
+          "step": 6,
+          "disp": 0.108333,
+          "speed": 6.5,
+          "state": "charge"
+        },
+        {
+          "step": 7,
+          "disp": 0.108333,
+          "speed": 6.5,
+          "state": "charge"
+        },
+        {
+          "step": 65,
+          "disp": 0.108333,
+          "speed": 6.5,
+          "state": "charge"
+        },
+        {
+          "step": 66,
+          "disp": 0.108333,
+          "speed": 6.5,
+          "state": "charge"
+        },
+        {
+          "step": 67,
+          "disp": 0.108333,
+          "speed": 6.5,
+          "state": "charge"
+        },
+        {
+          "step": 68,
+          "disp": 0.030694,
+          "speed": 1.8417,
+          "state": "recover"
+        }
+      ]
+    },
+    "ratio_slow1": 0.5999,
+    "ratio_slow4": 0.2498
+  },
+  "meleeLunge": {
+    "clean": {
+      "lungeParam": 6,
+      "vBefore": 0,
+      "vAfterImpulse": 6,
+      "pathOver30Steps": 2.506,
+      "mult": 1
+    },
+    "slow4": {
+      "lungeParam": 6,
+      "vBefore": 0,
+      "vAfterImpulse": 6,
+      "pathOver30Steps": 1.0876,
+      "mult": 0.25
+    },
+    "impulseRatio": 1
+  },
+  "eruptPop": {
+    "vy": 9,
+    "note": "set at Enemy.js:967 with no slow term; vertical presentation"
+  },
+  "attackRate": {
+    "clean": {
+      "mult": 1,
+      "transitions": [
+        {
+          "from": "windup",
+          "to": "attack",
+          "atStep": 31,
+          "atSeconds": 0.5167
+        },
+        {
+          "from": "attack",
+          "to": "recover",
+          "atStep": 39,
+          "atSeconds": 0.65
+        },
+        {
+          "from": "recover",
+          "to": "chase",
+          "atStep": 65,
+          "atSeconds": 1.0833
+        },
+        {
+          "from": "chase",
+          "to": "reposition",
+          "atStep": 137,
+          "atSeconds": 2.2833
+        }
+      ],
+      "isStunned": false
+    },
+    "slow4": {
+      "mult": 0.25,
+      "transitions": [
+        {
+          "from": "windup",
+          "to": "attack",
+          "atStep": 31,
+          "atSeconds": 0.5167
+        },
+        {
+          "from": "attack",
+          "to": "recover",
+          "atStep": 39,
+          "atSeconds": 0.65
+        },
+        {
+          "from": "recover",
+          "to": "chase",
+          "atStep": 65,
+          "atSeconds": 1.0833
+        },
+        {
+          "from": "chase",
+          "to": "reposition",
+          "atStep": 137,
+          "atSeconds": 2.2833
+        }
+      ],
+      "isStunned": false
+    },
+    "freeze": {
+      "mult": 0,
+      "transitions": [
+        {
+          "from": "windup",
+          "to": "attack",
+          "atStep": 31,
+          "atSeconds": 0.5167
+        },
+        {
+          "from": "attack",
+          "to": "recover",
+          "atStep": 39,
+          "atSeconds": 0.65
+        },
+        {
+          "from": "recover",
+          "to": "chase",
+          "atStep": 65,
+          "atSeconds": 1.0833
+        },
+        {
+          "from": "chase",
+          "to": "reposition",
+          "atStep": 137,
+          "atSeconds": 2.2833
+        }
+      ],
+      "isStunned": true
+    }
+  },
+  "speedMultiplierCallers": "grep: only src/entities/Enemy.js:679 (applyMovement) and src/entities/Player.js:578"
+}

@@ -1,0 +1,312 @@
+{
+  "seconds": 40,
+  "runs": [
+    {
+      "budget": 30,
+      "seconds": 40.2,
+      "samples": 67,
+      "takes": 3,
+      "refusals": 0,
+      "refusalPct": 0,
+      "refusalsPerSec": 0,
+      "refusalsByCost": {},
+      "worldRefusals": 0,
+      "priorityRefusals": 0,
+      "enemiesMean": 0,
+      "enemiesMax": 0,
+      "capMax": 18,
+      "diffMax": 1.005,
+      "voicesPeak": 17,
+      "worldPeak": 10,
+      "priorityPeak": 7,
+      "I": {
+        "min": 0.0001,
+        "max": 0.0012,
+        "mean": 0.001
+      },
+      "pressure": {
+        "max": 0,
+        "mean": 0
+      },
+      "masterRed": {
+        "worst": 0,
+        "mean": 0
+      },
+      "sfxRed": {
+        "worst": -0.056,
+        "mean": -0.001
+      },
+      "engineStoppedSamples": 0,
+      "playerDeadSamples": 0
+    },
+    {
+      "budget": 44,
+      "seconds": 40,
+      "samples": 77,
+      "takes": 0,
+      "refusals": 0,
+      "refusalPct": 0,
+      "refusalsPerSec": 0,
+      "refusalsByCost": {},
+      "worldRefusals": 0,
+      "priorityRefusals": 0,
+      "enemiesMean": 0.481,
+      "enemiesMax": 1,
+      "capMax": 18,
+      "diffMax": 1.011,
+      "voicesPeak": 0,
+      "worldPeak": 0,
+      "priorityPeak": 0,
+      "I": {
+        "min": 0.0012,
+        "max": 0.0028,
+        "mean": 0.002
+      },
+      "pressure": {
+        "max": 0,
+        "mean": 0
+      },
+      "masterRed": {
+        "worst": 0,
+        "mean": 0
+      },
+      "sfxRed": {
+        "worst": 0,
+        "mean": 0
+      },
+      "engineStoppedSamples": 0,
+      "playerDeadSamples": 0
+    },
+    {
+      "budget": 60,
+      "seconds": 40.1,
+      "samples": 76,
+      "takes": 0,
+      "refusals": 0,
+      "refusalPct": 0,
+      "refusalsPerSec": 0,
+      "refusalsByCost": {},
+      "worldRefusals": 0,
+      "priorityRefusals": 0,
+      "enemiesMean": 1,
+      "enemiesMax": 1,
+      "capMax": 18,
+      "diffMax": 1.017,
+      "voicesPeak": 0,
+      "worldPeak": 0,
+      "priorityPeak": 0,
+      "I": {
+        "min": 0.0029,
+        "max": 0.0896,
+        "mean": 0.027
+      },
+      "pressure": {
+        "max": 0.0971,
+        "mean": 0.027
+      },
+      "masterRed": {
+        "worst": 0,
+        "mean": 0
+      },
+      "sfxRed": {
+        "worst": 0,
+        "mean": 0
+      },
+      "engineStoppedSamples": 0,
+      "playerDeadSamples": 0
+    },
+    {
+      "budget": 88,
+      "seconds": 40.5,
+      "samples": 76,
+      "takes": 0,
+      "refusals": 0,
+      "refusalPct": 0,
+      "refusalsPerSec": 0,
+      "refusalsByCost": {},
+      "worldRefusals": 0,
+      "priorityRefusals": 0,
+      "enemiesMean": 1,
+      "enemiesMax": 1,
+      "capMax": 18,
+      "diffMax": 1.023,
+      "voicesPeak": 0,
+      "worldPeak": 0,
+      "priorityPeak": 0,
+      "I": {
+        "min": 0.0896,
+        "max": 0.0935,
+        "mean": 0.093
+      },
+      "pressure": {
+        "max": 0.1,
+        "mean": 0.1
+      },
+      "masterRed": {
+        "worst": 0,
+        "mean": 0
+      },
+      "sfxRed": {
+        "worst": 0,
+        "mean": 0
+      },
+      "engineStoppedSamples": 0,
+      "playerDeadSamples": 0
+    }
+  ],
+  "shippedControl": {
+    "seconds": 40.4,
+    "takes": 11,
+    "refusals": 0,
+    "refusalPct": 0,
+    "refusalsPerSec": 0,
+    "enemiesMean": 1.705,
+    "enemiesMax": 2,
+    "worldPeak": 10,
+    "priorityPeak": 3,
+    "voicesPeak": 13,
+    "I": {
+      "min": 0.0935,
+      "max": 0.095,
+      "mean": 0.094
+    },
+    "pressureMax": 0.1,
+    "diffMax": 1.03,
+    "masterRed": {
+      "worst": -0.067,
+      "mean": -0.001
+    },
+    "sfxRed": {
+      "worst": -3.486,
+      "mean": -0.057
+    },
+    "engineStoppedSamples": 0,
+    "playerDeadSamples": 0
+  },
+  "drain": {
+    "series": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        3,
+        3,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "newTakesDuringDrain": 7
+  },
+  "errors": []
+}

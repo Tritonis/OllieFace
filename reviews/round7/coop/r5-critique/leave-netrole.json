@@ -1,0 +1,425 @@
+{
+  "arm": "leave-netrole",
+  "substitutions": [],
+  "substitutionsMissing": [],
+  "steps": [
+    {
+      "label": "client BEFORE joining (control)",
+      "before": {
+        "netRole": "single",
+        "lobbyMode": "single",
+        "authority": true,
+        "ctxNetNull": false,
+        "ctxNetType": null,
+        "systems": 15,
+        "netClients": 0,
+        "netHosts": 0,
+        "paused": false,
+        "screen": null,
+        "localTick": 75,
+        "pos": {
+          "x": 0,
+          "z": 0
+        },
+        "alive": true,
+        "survivorId": "anvil"
+      },
+      "after": {
+        "netRole": "single",
+        "lobbyMode": "single",
+        "authority": true,
+        "ctxNetNull": false,
+        "ctxNetType": null,
+        "systems": 15,
+        "netClients": 0,
+        "netHosts": 0,
+        "paused": false,
+        "screen": null,
+        "localTick": 95,
+        "pos": {
+          "x": 0,
+          "z": 1.367
+        },
+        "alive": true,
+        "survivorId": "anvil"
+      },
+      "moved": 1.367,
+      "tickDelta": 20
+    },
+    {
+      "label": "host BEFORE hosting (control)",
+      "before": {
+        "netRole": "single",
+        "lobbyMode": "single",
+        "authority": true,
+        "ctxNetNull": false,
+        "ctxNetType": null,
+        "systems": 15,
+        "netClients": 0,
+        "netHosts": 0,
+        "paused": false,
+        "screen": null,
+        "localTick": 190,
+        "pos": {
+          "x": 0,
+          "z": 0
+        },
+        "alive": true,
+        "survivorId": "ranger"
+      },
+      "after": {
+        "netRole": "single",
+        "lobbyMode": "single",
+        "authority": true,
+        "ctxNetNull": false,
+        "ctxNetType": null,
+        "systems": 15,
+        "netClients": 0,
+        "netHosts": 0,
+        "paused": false,
+        "screen": null,
+        "localTick": 210,
+        "pos": {
+          "x": 0,
+          "z": 1.447
+        },
+        "alive": true,
+        "survivorId": "ranger"
+      },
+      "moved": 1.447,
+      "tickDelta": 20
+    },
+    {
+      "label": "client WHILE joined",
+      "before": {
+        "netRole": "client",
+        "lobbyMode": "client",
+        "authority": false,
+        "ctxNetNull": false,
+        "ctxNetType": "NetClient",
+        "systems": 16,
+        "netClients": 1,
+        "netHosts": 0,
+        "paused": false,
+        "screen": null,
+        "localTick": 0,
+        "pos": {
+          "x": 2,
+          "z": 3.672
+        },
+        "alive": true,
+        "survivorId": "anvil"
+      },
+      "after": {
+        "netRole": "client",
+        "lobbyMode": "client",
+        "authority": false,
+        "ctxNetNull": false,
+        "ctxNetType": "NetClient",
+        "systems": 16,
+        "netClients": 1,
+        "netHosts": 0,
+        "paused": false,
+        "screen": null,
+        "localTick": 0,
+        "pos": {
+          "x": 2,
+          "z": 5.039
+        },
+        "alive": true,
+        "survivorId": "anvil"
+      },
+      "moved": 1.367,
+      "tickDelta": 0
+    },
+    {
+      "label": "client AFTER leave()",
+      "before": {
+        "netRole": "client",
+        "lobbyMode": "single",
+        "authority": true,
+        "ctxNetNull": false,
+        "ctxNetType": "NetClient",
+        "systems": 16,
+        "netClients": 1,
+        "netHosts": 0,
+        "paused": false,
+        "screen": null,
+        "localTick": 0,
+        "pos": {
+          "x": 2,
+          "z": 5.233
+        },
+        "alive": true,
+        "survivorId": "anvil"
+      },
+      "after": {
+        "netRole": "client",
+        "lobbyMode": "single",
+        "authority": true,
+        "ctxNetNull": false,
+        "ctxNetType": "NetClient",
+        "systems": 16,
+        "netClients": 1,
+        "netHosts": 0,
+        "paused": false,
+        "screen": null,
+        "localTick": 0,
+        "pos": {
+          "x": 2,
+          "z": 5.233
+        },
+        "alive": true,
+        "survivorId": "anvil"
+      },
+      "moved": 0,
+      "tickDelta": 0
+    },
+    {
+      "label": "host AFTER leave()",
+      "before": {
+        "netRole": "host",
+        "lobbyMode": "single",
+        "authority": true,
+        "ctxNetNull": false,
+        "ctxNetType": "NetHost",
+        "systems": 16,
+        "netClients": 0,
+        "netHosts": 1,
+        "paused": false,
+        "screen": null,
+        "localTick": 405,
+        "pos": {
+          "x": 0,
+          "z": 1.674
+        },
+        "alive": true,
+        "survivorId": "ranger"
+      },
+      "after": {
+        "netRole": "host",
+        "lobbyMode": "single",
+        "authority": true,
+        "ctxNetNull": false,
+        "ctxNetType": "NetHost",
+        "systems": 16,
+        "netClients": 0,
+        "netHosts": 1,
+        "paused": false,
+        "screen": null,
+        "localTick": 420,
+        "pos": {
+          "x": 0,
+          "z": 2.766
+        },
+        "alive": true,
+        "survivorId": "ranger"
+      },
+      "moved": 1.092,
+      "tickDelta": 15
+    },
+    {
+      "label": "client after opening and closing the pause menu",
+      "before": {
+        "netRole": "client",
+        "lobbyMode": "single",
+        "authority": true,
+        "ctxNetNull": false,
+        "ctxNetType": "NetClient",
+        "systems": 16,
+        "netClients": 1,
+        "netHosts": 0,
+        "paused": false,
+        "screen": null,
+        "localTick": 0,
+        "pos": {
+          "x": 2,
+          "z": 5.233
+        },
+        "alive": true,
+        "survivorId": "anvil"
+      },
+      "after": {
+        "netRole": "client",
+        "lobbyMode": "single",
+        "authority": true,
+        "ctxNetNull": false,
+        "ctxNetType": "NetClient",
+        "systems": 16,
+        "netClients": 1,
+        "netHosts": 0,
+        "paused": false,
+        "screen": null,
+        "localTick": 0,
+        "pos": {
+          "x": 2,
+          "z": 5.233
+        },
+        "alive": true,
+        "survivorId": "anvil"
+      },
+      "moved": 0,
+      "tickDelta": 0
+    }
+  ],
+  "port": 5867,
+  "gateHost": {
+    "paused": false,
+    "screen": null,
+    "localTick": 70,
+    "survivorId": "ranger",
+    "maxHealth": 110,
+    "lobbyMode": "single",
+    "pointerLock": true
+  },
+  "gateClient": {
+    "paused": false,
+    "screen": null,
+    "localTick": 70,
+    "survivorId": "anvil",
+    "maxHealth": 170,
+    "lobbyMode": "single",
+    "pointerLock": true
+  },
+  "joined": {
+    "host": {
+      "role": "host",
+      "lobbyMode": "host",
+      "status": "peerConnecting",
+      "statusDetail": {
+        "id": 1
+      },
+      "players": 2,
+      "refusedPeers": [],
+      "clientsCount": 1,
+      "clients": [
+        {
+          "id": 1,
+          "helloSeen": true,
+          "survivorId": "anvil",
+          "hasPawn": true,
+          "joinTick": 55
+        }
+      ],
+      "pawns": [
+        {
+          "survivorId": "anvil",
+          "health": 170,
+          "maxHealth": 170,
+          "alive": true,
+          "netId": 1
+        }
+      ],
+      "tick": 65,
+      "paused": false,
+      "screen": null,
+      "inputEnabled": true,
+      "holding": false,
+      "pointerLock": true,
+      "my": {
+        "survivorId": "ranger",
+        "health": 110,
+        "maxHealth": 110,
+        "alive": true
+      },
+      "said": "Reply accepted — connecting…",
+      "saidLen": 28,
+      "statuses": [
+        {
+          "status": "hosting",
+          "detail": null,
+          "said": "Hosting. Create an invite for each friend you want to bring in."
+        },
+        {
+          "status": "inviteReady",
+          "detail": {
+            "id": 1,
+            "blob": "eyJ2IjoxLCJyb2xlIjoib2ZmZXIiLCJpZCI6MSwic2RwIjp7InR5cGUiOiJvZmZlciIsInNkcCI6InY9MFxyXG5vPS0gMjk2MjUwNzAzNjExOTI0MTM1MyAyIElOIElQNCAxMjcuMC4wLjFcclxucz0tXHJcbnQ9MCAwXHJcbmE9Z3JvdXA6QlVORExFIDBcclxuYT1leHRtYXAtYWxsb3ctbWl4ZWRcclxuYT1tc2lkLXNlbWFudGljOiBXTVNcclxubT1hcHBsaWNhdGlvbiA5IFVEUC9EVExTL1NDVFAgd2VicnRjLWRhdGFjaGFubmVsXHJcbmM9SU4gSVA0IDAuMC4wLjBcclxuYT1jYW5kaWRhdGU6MzM4MzMzNzAwMCAxIHVkcCAyMTEzOTM3MTUxIDcyYzkwOWZkLWUwMjktNDA5OC04MGNlLWU4ZmEyOWNhZDQ3NS5sb2NhbCA1Mjg3MCB0eXAgaG9zdCBnZW5lcmF0aW9uIDAgbmV0d29yay1jb3N0IDk5OVxyXG5hPWljZS11ZnJhZzpyL1ZwXHJcbmE9aWNlLXB3ZDp4N2t4SENmSUluK3duTVJKaEVQZkxZc2pcclxuYT1pY2Utb3B0aW9uczp0cmlja2xlXHJcbmE9ZmluZ2VycHJpbnQ6c2hhLTI1NiBDMTpGRTozOTpFNTpDQTo4NTpENjo2MjpBQTpBMzpFMzo5Mjo4RjpDMTo5MjoyOToyOTo0NjoyNzpENDpFRjpGMDoyQjpGMzoxMzpEMzo1NTpEMDpFMjoyNDpCQTpFM1xyXG5hPXNldHVwOmFjdHBhc3NcclxuYT1taWQ6MFxyXG5hPXNjdHAtcG9ydDo1MDAwXHJcbmE9bWF4LW1lc3NhZ2Utc2l6ZToyNjIxNDRcclxuIn19"
+          },
+          "said": "Invite ready. Send that code to your friend."
+        },
+        {
+          "status": "peerJoined",
+          "detail": {
+            "id": 1,
+            "count": 2
+          },
+          "said": "A player joined. 2 in the game."
+        },
+        {
+          "status": "peerConnecting",
+          "detail": {
+            "id": 1
+          },
+          "said": "Reply accepted — connecting…"
+        }
+      ]
+    },
+    "client": {
+      "role": "client",
+      "lobbyMode": "client",
+      "status": "connected",
+      "statusDetail": {
+        "seed": 1337,
+        "stageIndex": 0,
+        "time": 4.416666507720947,
+        "myNetId": 1,
+        "artifactMask": 0,
+        "difficulty": 1
+      },
+      "connected": true,
+      "myNetId": 1,
+      "serverTick": 65,
+      "paused": false,
+      "screen": null,
+      "refusedLatch": false,
+      "my": {
+        "survivorId": "anvil",
+        "health": 170,
+        "maxHealth": 170,
+        "alive": true
+      },
+      "said": "Connected. Rebuilding the host's world…",
+      "saidLen": 39,
+      "statuses": [
+        {
+          "status": "joining",
+          "detail": null,
+          "said": "Answering the invite…"
+        },
+        {
+          "status": "answerReady",
+          "detail": {
+            "blob": "eyJ2IjoxLCJyb2xlIjoiYW5zd2VyIiwiaWQiOjEsInNkcCI6eyJ0eXBlIjoiYW5zd2VyIiwic2RwIjoidj0wXHJcbm89LSA0MzM4NzI0NDkxODM2Nzk0ODM2IDIgSU4gSVA0IDEyNy4wLjAuMVxyXG5zPS1cclxudD0wIDBcclxuYT1ncm91cDpCVU5ETEUgMFxyXG5hPWV4dG1hcC1hbGxvdy1taXhlZFxyXG5hPW1zaWQtc2VtYW50aWM6IFdNU1xyXG5tPWFwcGxpY2F0aW9uIDkgVURQL0RUTFMvU0NUUCB3ZWJydGMtZGF0YWNoYW5uZWxcclxuYz1JTiBJUDQgMC4wLjAuMFxyXG5hPWNhbmRpZGF0ZToyODc1OTAzMCAxIHVkcCAyMTEzOTM3MTUxIGQzNmZmNmI3LWY3NzEtNGE5YS05YmZmLTAxNTY0NzdiMTZiNy5sb2NhbCA1MTE5NSB0eXAgaG9zdCBnZW5lcmF0aW9uIDAgbmV0d29yay1jb3N0IDk5OVxyXG5hPWljZS11ZnJhZzpoYTRMXHJcbmE9aWNlLXB3ZDp2Qzl0dkI3NjJhazhickkrdVdyWURmNE9cclxuYT1pY2Utb3B0aW9uczp0cmlja2xlXHJcbmE9ZmluZ2VycHJpbnQ6c2hhLTI1NiAxQTo5NDoxQToxRTpERDo5QjpDMzpEMzo5OToxMDpCQzo1RDo1NToxMTo3OTpCMDoxQTo5RDowMjpERTozMDpDMjowOTo0RDo4OTpGMTo2QTpERToyQjpCNDo5OTpGN1xyXG5hPXNldHVwOmFjdGl2ZVxyXG5hPW1pZDowXHJcbmE9c2N0cC1wb3J0OjUwMDBcclxuYT1tYXgtbWVzc2FnZS1zaXplOjI2MjE0NFxyXG4ifX0"
+          },
+          "said": "Send your reply code back to the host."
+        },
+        {
+          "status": "connected",
+          "detail": {
+            "seed": 1337,
+            "stageIndex": 0,
+            "time": 4.416666507720947,
+            "myNetId": 1,
+            "artifactMask": 0,
+            "difficulty": 1
+          },
+          "said": "Connected. Rebuilding the host's world…"
+        }
+      ]
+    }
+  },
+  "menuReads": {
+    "menusIsClient": true,
+    "profileGate": false
+  },
+  "hostLog": {
+    "errors": [],
+    "pageErrors": []
+  },
+  "clientLog": {
+    "errors": [],
+    "pageErrors": []
+  },
+  "elapsedMs": 218283
+}

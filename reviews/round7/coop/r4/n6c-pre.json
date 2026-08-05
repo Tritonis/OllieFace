@@ -1,0 +1,74 @@
+{
+  "arm": "n6c-pre",
+  "scenario": "n6client",
+  "substitutions": [
+    "N6-client"
+  ],
+  "substitutionsApplied": [
+    "N6-client"
+  ],
+  "substitutionsMissing": [],
+  "helloOverride": null,
+  "port": 5819,
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 70,
+      "survivorId": "ranger",
+      "maxHealth": 110
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 71,
+      "survivorId": "anvil",
+      "maxHealth": 170
+    }
+  },
+  "runningGateAfterFocus": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "tick": 315,
+      "netRole": "host",
+      "authority": true,
+      "clients": 1,
+      "myNetId": null,
+      "connected": null
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "tick": 140,
+      "netRole": "client",
+      "authority": false,
+      "clients": null,
+      "myNetId": 1,
+      "connected": true
+    }
+  },
+  "tickBefore": 140,
+  "tickAfter": 196,
+  "clientConnected": true,
+  "clientAlive": {
+    "alive": true,
+    "health": 170
+  },
+  "errors": {
+    "host": {
+      "console": [],
+      "page": [],
+      "harness": [
+        "WrongDocumentError: The root document of this element is not valid for pointer lock."
+      ]
+    },
+    "client": {
+      "console": [],
+      "page": [
+        "RangeError: Invalid typed array length: 60000"
+      ],
+      "harness": []
+    }
+  }
+}

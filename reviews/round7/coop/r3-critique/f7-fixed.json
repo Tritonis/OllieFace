@@ -1,0 +1,140 @@
+{
+  "arm": "f7-fixed",
+  "subs": [],
+  "startedAt": "2026-08-04T02:33:19.358Z",
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 65,
+      "survivorId": "ranger",
+      "maxHealth": 110,
+      "netRole": "single",
+      "authority": true
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 62,
+      "survivorId": "anvil",
+      "maxHealth": 170,
+      "netRole": "single",
+      "authority": true
+    }
+  },
+  "runningGateAfterFocus": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "simTick": 69,
+      "localTick": 69,
+      "netTick": 0
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "simTick": 61,
+      "localTick": 0,
+      "netTick": 61
+    }
+  },
+  "roles": {
+    "host": {
+      "role": "host",
+      "authority": true,
+      "clients": 1
+    },
+    "client": {
+      "role": "client",
+      "authority": false,
+      "myNetId": 1,
+      "connected": true
+    }
+  },
+  "inventories": {
+    "host": {
+      "wax-quail": 3,
+      "rubber-soles": 1,
+      "tectonic-heart": 1,
+      "sunken-vertebra": 1
+    },
+    "client": {
+      "wax-quail": 3,
+      "rubber-soles": 1,
+      "tectonic-heart": 1,
+      "sunken-vertebra": 1
+    }
+  },
+  "presses": [
+    {
+      "grounded": true
+    },
+    {
+      "grounded": true
+    },
+    {
+      "grounded": true
+    }
+  ],
+  "hostSide": {
+    "pawnImpulses": [
+      30,
+      30,
+      30
+    ],
+    "hostBarriers": [],
+    "quakes": [],
+    "jumpEvents": [
+      {
+        "local": false,
+        "isPawn": true
+      },
+      {
+        "local": false,
+        "isPawn": true
+      },
+      {
+        "local": false,
+        "isPawn": true
+      }
+    ],
+    "hostShield": 0,
+    "pawnVelY": 0
+  },
+  "clientSide": {
+    "ownImpulses": [
+      30,
+      30,
+      30
+    ],
+    "barriers": [
+      10,
+      10,
+      10
+    ],
+    "quakes": [],
+    "shield": 0
+  },
+  "agreement": {
+    "pawn": [
+      30,
+      30,
+      30
+    ],
+    "client": [
+      30,
+      30,
+      30
+    ],
+    "equal": true
+  },
+  "errors": {
+    "host": [],
+    "client": [],
+    "hostConsole": [],
+    "clientConsole": []
+  },
+  "substitutionsApplied": [],
+  "substitutionsMissing": [],
+  "ok": true
+}

@@ -1,0 +1,54 @@
+{
+  "steps": [
+    "running {\"netRole\":\"single\",\"authority\":true}",
+    "jump {\"peakHs\":43,\"barrierGrants\":[10,10,10],\"quakes\":1,\"jumpHooks\":[\"self\",\"self\",\"self\"]}",
+    "progression {\"ownDealtDelta\":500,\"ownHighest\":500}",
+    "death {\"alive\":true,\"stopped\":false,\"musicOff\":false,\"musicGain\":0.48,\"screen\":null} -> {\"alive\":false,\"stopped\":true,\"musicOff\":true,\"musicGain\":0.00317,\"screen\":\"death\"}",
+    "VERDICTS {\"jumpImpulseStillFires\":true,\"rubberSolesStillPays\":true,\"tectonicStillErupts\":true,\"allJumpsSeenAsLocal\":true,\"ownDamageCredited\":true,\"ownDeathStopsMusic\":true}"
+  ],
+  "pageErrors": [],
+  "role": {
+    "netRole": "single",
+    "authority": true
+  },
+  "jump": {
+    "peakHs": 43,
+    "barrierGrants": [
+      10,
+      10,
+      10
+    ],
+    "quakes": 1,
+    "jumpHooks": [
+      "self",
+      "self",
+      "self"
+    ]
+  },
+  "progression": {
+    "ownDealtDelta": 500,
+    "ownHighest": 500
+  },
+  "beforeDeath": {
+    "alive": true,
+    "stopped": false,
+    "musicOff": false,
+    "musicGain": 0.48,
+    "screen": null
+  },
+  "afterDeath": {
+    "alive": false,
+    "stopped": true,
+    "musicOff": true,
+    "musicGain": 0.00317,
+    "screen": "death"
+  },
+  "verdicts": {
+    "jumpImpulseStillFires": true,
+    "rubberSolesStillPays": true,
+    "tectonicStillErupts": true,
+    "allJumpsSeenAsLocal": true,
+    "ownDamageCredited": true,
+    "ownDeathStopsMusic": true
+  }
+}

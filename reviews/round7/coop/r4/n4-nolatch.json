@@ -1,0 +1,160 @@
+{
+  "arm": "n4-nolatch",
+  "scenario": "n4",
+  "substitutions": [
+    "N4-latch"
+  ],
+  "substitutionsApplied": [
+    "N4-latch"
+  ],
+  "substitutionsMissing": [],
+  "helloOverride": null,
+  "port": 5807,
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 71,
+      "survivorId": "ranger",
+      "maxHealth": 110
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 70,
+      "survivorId": "anvil",
+      "maxHealth": 170
+    }
+  },
+  "runningGateAfterFocus": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "tick": 313,
+      "netRole": "host",
+      "authority": true,
+      "clients": 1,
+      "myNetId": null,
+      "connected": null
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "tick": 138,
+      "netRole": "client",
+      "authority": false,
+      "clients": null,
+      "myNetId": 1,
+      "connected": true
+    }
+  },
+  "before": {
+    "pawnAgeTicks": 173,
+    "pawns": [
+      {
+        "survivorId": "anvil",
+        "health": 45,
+        "maxHealth": 170
+      }
+    ]
+  },
+  "replays": [
+    {
+      "sent": "kestrel",
+      "pawns": []
+    },
+    {
+      "sent": "anvil",
+      "pawns": []
+    },
+    {
+      "sent": "kestrel",
+      "pawns": []
+    },
+    {
+      "sent": "anvil",
+      "pawns": []
+    }
+  ],
+  "hostStatus": [
+    {
+      "s": "hosting"
+    },
+    {
+      "s": "inviteReady",
+      "d": {
+        "id": 1,
+        "blob": "eyJ2IjoxLCJyb2xlIjoib2ZmZXIiLCJpZCI6MSwic2RwIjp7InR5cGUiOiJvZmZlciIsInNkcCI6InY9MFxyXG5vPS0gOTAyNzcwMTM0NzM1ODQ4NTU1IDIgSU4gSVA0IDEyNy4wLjAuMVxyXG5zPS1cclxudD0wIDBcclxuYT1ncm91cDpCVU5ETEUgMFxyXG5hPWV4dG1hcC1hbGxvdy1taXhlZFxyXG5hPW1zaWQtc2VtYW50aWM6IFdNU1xyXG5tPWFwcGxpY2F0aW9uIDUxMDY2IFVEUC9EVExTL1NDVFAgd2VicnRjLWRhdGFjaGFubmVsXHJcbmM9SU4gSVA0IDk5LjEwOS4xNDEuMTU4XHJcbmE9Y2FuZGlkYXRlOjQxNzM1OTY3NDggMSB1ZHAgMjExMzkzNzE1MSBiMzQ3MWUyYi0xNjhmLTRiMzctYmU4NC0yNzVkYWExMTU4M2YubG9jYWwgNTEwNjYgdHlwIGhvc3QgZ2VuZXJhdGlvbiAwIG5ldHdvcmstY29zdCA5OTlcclxuYT1jYW5kaWRhdGU6MTY4MTAzMTg4IDEgdWRwIDE2Nzc3Mjk1MzUgOTkuMTA5LjE0MS4xNTggNTEwNjYgdHlwIHNyZmx4IHJhZGRyIDAuMC4wLjAgcnBvcnQgMCBnZW5lcmF0aW9uIDAgbmV0d29yay1jb3N0IDk5OVxyXG5hPWljZS11ZnJhZzpzbk9rXHJcbmE9aWNlLXB3ZDpkdVRQRjJWNzJhZ1dvTXE1K1VuTFA2MGdcclxuYT1pY2Utb3B0aW9uczp0cmlja2xlXHJcbmE9ZmluZ2VycHJpbnQ6c2hhLTI1NiA2MzozMjozNzo2MDpGQTpDMTo4Nzo0Mzo1NzpEMjpFQTo2Njo0RjoxMjo4Nzo3MzpCMjpDNDo5OTpFODo0RjpFOTowQToxMjoyMjoxNzo5NDo1OToyQTo3MzpDRjo5MFxyXG5hPXNldHVwOmFjdHBhc3NcclxuYT1taWQ6MFxyXG5hPXNjdHAtcG9ydDo1MDAwXHJcbmE9bWF4LW1lc3NhZ2Utc2l6ZToyNjIxNDRcclxuIn19"
+      }
+    },
+    {
+      "s": "peerJoined",
+      "d": {
+        "id": 1,
+        "count": 2
+      }
+    },
+    {
+      "s": "peerConnecting",
+      "d": {
+        "id": 1
+      }
+    },
+    {
+      "s": "peerRefused",
+      "d": {
+        "id": 1,
+        "reason": "hello",
+        "detail": "it arrived too late to re-stat the pawn safely"
+      }
+    }
+  ],
+  "clientStatus": [
+    {
+      "s": "joining"
+    },
+    {
+      "s": "answerReady",
+      "d": {
+        "blob": "eyJ2IjoxLCJyb2xlIjoiYW5zd2VyIiwiaWQiOjEsInNkcCI6eyJ0eXBlIjoiYW5zd2VyIiwic2RwIjoidj0wXHJcbm89LSA4ODkwMDk1NTY1Nzk3NDYzODI2IDIgSU4gSVA0IDEyNy4wLjAuMVxyXG5zPS1cclxudD0wIDBcclxuYT1ncm91cDpCVU5ETEUgMFxyXG5hPWV4dG1hcC1hbGxvdy1taXhlZFxyXG5hPW1zaWQtc2VtYW50aWM6IFdNU1xyXG5tPWFwcGxpY2F0aW9uIDkgVURQL0RUTFMvU0NUUCB3ZWJydGMtZGF0YWNoYW5uZWxcclxuYz1JTiBJUDQgMC4wLjAuMFxyXG5hPWNhbmRpZGF0ZToyNjMzNTk4NDMyIDEgdWRwIDIxMTM5MzcxNTEgZGRlMjdiNmQtMGE1MS00MGM5LTk1Y2MtZTViNDkyOTU4ZDA3LmxvY2FsIDU1MTY1IHR5cCBob3N0IGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9aWNlLXVmcmFnOm1YcjVcclxuYT1pY2UtcHdkOmJFR2djamVqRzFhM3N1OWw4TUdZVE9kTFxyXG5hPWljZS1vcHRpb25zOnRyaWNrbGVcclxuYT1maW5nZXJwcmludDpzaGEtMjU2IDVGOjgxOkM4Ojc3OkY0Ojc5OjZDOjhGOjU4OjA4OkUxOkI2OkI5OjhFOkUxOkYzOjZGOkY5OjBDOjQ2OjQxOjFBOjI1OkVGOjU0OkI5OkQ0OjZGOjRFOjA0OjIyOjZGXHJcbmE9c2V0dXA6YWN0aXZlXHJcbmE9bWlkOjBcclxuYT1zY3RwLXBvcnQ6NTAwMFxyXG5hPW1heC1tZXNzYWdlLXNpemU6MjYyMTQ0XHJcbiJ9fQ"
+      }
+    },
+    {
+      "s": "connected",
+      "d": {
+        "seed": 1337,
+        "stageIndex": 0,
+        "time": 2.6500000953674316,
+        "myNetId": 1,
+        "artifactMask": 0,
+        "difficulty": 1
+      }
+    },
+    {
+      "s": "refused",
+      "d": {
+        "reason": "hello",
+        "detail": "it arrived too late to re-stat the pawn safely"
+      }
+    }
+  ],
+  "clientOwn": {
+    "survivorId": "anvil",
+    "maxHealth": 170,
+    "connected": false
+  },
+  "errors": {
+    "host": {
+      "console": [],
+      "page": [],
+      "harness": [
+        "WrongDocumentError: The root document of this element is not valid for pointer lock."
+      ]
+    },
+    "client": {
+      "console": [],
+      "page": [],
+      "harness": []
+    }
+  }
+}

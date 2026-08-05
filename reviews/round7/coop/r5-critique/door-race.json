@@ -1,0 +1,321 @@
+{
+  "arm": "door-race",
+  "doc": "two HELLOs in the same turn: empty then legit",
+  "substitutions": [],
+  "substitutionsMissing": [],
+  "gateHost": {
+    "paused": false,
+    "screen": null,
+    "localTick": 75,
+    "survivorId": "ranger",
+    "maxHealth": 110,
+    "lobbyMode": "single",
+    "pointerLock": true
+  },
+  "gateClient": {
+    "paused": false,
+    "screen": null,
+    "localTick": 65,
+    "survivorId": "anvil",
+    "maxHealth": 170,
+    "lobbyMode": "single",
+    "pointerLock": true
+  },
+  "host": {
+    "role": "host",
+    "lobbyMode": "host",
+    "status": "peerRefused",
+    "statusDetail": {
+      "id": 1,
+      "reason": "hello",
+      "detail": "a second identity message"
+    },
+    "players": 1,
+    "refusedPeers": [],
+    "clientsCount": 0,
+    "clients": [],
+    "pawns": [],
+    "tick": 100,
+    "paused": false,
+    "screen": null,
+    "inputEnabled": true,
+    "holding": false,
+    "pointerLock": true,
+    "my": {
+      "survivorId": "ranger",
+      "health": 110,
+      "maxHealth": 110,
+      "alive": true
+    },
+    "said": "Turned a player away: their join did not make sense (a second identity message).",
+    "saidLen": 80,
+    "statuses": [
+      {
+        "status": "hosting",
+        "detail": null,
+        "said": "Hosting. Create an invite for each friend you want to bring in."
+      },
+      {
+        "status": "inviteReady",
+        "detail": {
+          "id": 1,
+          "blob": "eyJ2IjoxLCJyb2xlIjoib2ZmZXIiLCJpZCI6MSwic2RwIjp7InR5cGUiOiJvZmZlciIsInNkcCI6InY9MFxyXG5vPS0gNjI0MzY2NDg5MzQ4MTQ5MzY5MyAyIElOIElQNCAxMjcuMC4wLjFcclxucz0tXHJcbnQ9MCAwXHJcbmE9Z3JvdXA6QlVORExFIDBcclxuYT1leHRtYXAtYWxsb3ctbWl4ZWRcclxuYT1tc2lkLXNlbWFudGljOiBXTVNcclxubT1hcHBsaWNhdGlvbiA1ODgwMiBVRFAvRFRMUy9TQ1RQIHdlYnJ0Yy1kYXRhY2hhbm5lbFxyXG5jPUlOIElQNCA5OS4xMDkuMTQxLjE1OFxyXG5hPWNhbmRpZGF0ZTo4OTk0MzM0NTUgMSB1ZHAgMjExMzkzNzE1MSBhYWI2NWNjZS1kYWI4LTRhNmMtODZhNS04Yzg0MWZlZTg2MWIubG9jYWwgNTg4MDIgdHlwIGhvc3QgZ2VuZXJhdGlvbiAwIG5ldHdvcmstY29zdCA5OTlcclxuYT1jYW5kaWRhdGU6MzM0NDc3ODkzNSAxIHVkcCAxNjc3NzI5NTM1IDk5LjEwOS4xNDEuMTU4IDU4ODAyIHR5cCBzcmZseCByYWRkciAwLjAuMC4wIHJwb3J0IDAgZ2VuZXJhdGlvbiAwIG5ldHdvcmstY29zdCA5OTlcclxuYT1pY2UtdWZyYWc6QVhYalxyXG5hPWljZS1wd2Q6VEVZQ0tLK3VVSXJRSUtCUFVGenpjc0RTXHJcbmE9aWNlLW9wdGlvbnM6dHJpY2tsZVxyXG5hPWZpbmdlcnByaW50OnNoYS0yNTYgNzE6MDU6Mzk6NDU6MTA6RUY6NUU6MkU6OEE6QjM6MDU6OEI6Mzk6REE6QjQ6QTk6MUU6MTY6QkM6REE6QTA6Q0I6QzE6RjI6NjM6NkE6NkI6MkM6ODI6MDI6QTA6MTZcclxuYT1zZXR1cDphY3RwYXNzXHJcbmE9bWlkOjBcclxuYT1zY3RwLXBvcnQ6NTAwMFxyXG5hPW1heC1tZXNzYWdlLXNpemU6MjYyMTQ0XHJcbiJ9fQ"
+        },
+        "said": "Invite ready. Send that code to your friend."
+      },
+      {
+        "status": "peerJoined",
+        "detail": {
+          "id": 1,
+          "count": 2
+        },
+        "said": "A player joined. 2 in the game."
+      },
+      {
+        "status": "peerConnecting",
+        "detail": {
+          "id": 1
+        },
+        "said": "Reply accepted — connecting…"
+      },
+      {
+        "status": "peerRefused",
+        "detail": {
+          "id": 1,
+          "reason": "survivor",
+          "detail": "(none)"
+        },
+        "said": "Turned a player away: they picked a survivor this build does not have ((none))."
+      },
+      {
+        "status": "peerRefused",
+        "detail": {
+          "id": 1,
+          "reason": "hello",
+          "detail": "a second identity message"
+        },
+        "said": "Turned a player away: their join did not make sense (a second identity message)."
+      }
+    ]
+  },
+  "client": {
+    "role": "client",
+    "lobbyMode": "client",
+    "status": "refused",
+    "statusDetail": {
+      "reason": "hello",
+      "detail": "a second identity message"
+    },
+    "connected": false,
+    "myNetId": 1,
+    "serverTick": 90,
+    "paused": false,
+    "screen": null,
+    "refusedLatch": true,
+    "my": {
+      "survivorId": "anvil",
+      "health": 170,
+      "maxHealth": 170,
+      "alive": true
+    },
+    "said": "The host refused the join. Try joining again.",
+    "saidLen": 45,
+    "statuses": [
+      {
+        "status": "joining",
+        "detail": null,
+        "said": "Answering the invite…"
+      },
+      {
+        "status": "answerReady",
+        "detail": {
+          "blob": "eyJ2IjoxLCJyb2xlIjoiYW5zd2VyIiwiaWQiOjEsInNkcCI6eyJ0eXBlIjoiYW5zd2VyIiwic2RwIjoidj0wXHJcbm89LSAzNzc4Nzk5NTUwNjE1OTcwMDA1IDIgSU4gSVA0IDEyNy4wLjAuMVxyXG5zPS1cclxudD0wIDBcclxuYT1ncm91cDpCVU5ETEUgMFxyXG5hPWV4dG1hcC1hbGxvdy1taXhlZFxyXG5hPW1zaWQtc2VtYW50aWM6IFdNU1xyXG5tPWFwcGxpY2F0aW9uIDkgVURQL0RUTFMvU0NUUCB3ZWJydGMtZGF0YWNoYW5uZWxcclxuYz1JTiBJUDQgMC4wLjAuMFxyXG5hPWNhbmRpZGF0ZTozNTY4OTc4NjI0IDEgdWRwIDIxMTM5MzcxNTEgOWM4YmYxNzktYjhkNC00Mjg1LWE0ODItMThhYjAyNTk3NTM2LmxvY2FsIDQ5NzIwIHR5cCBob3N0IGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9aWNlLXVmcmFnOnM4ejJcclxuYT1pY2UtcHdkOmYreFNHUGZ1YVBsSlA4Y0xqRno5UklRR1xyXG5hPWljZS1vcHRpb25zOnRyaWNrbGVcclxuYT1maW5nZXJwcmludDpzaGEtMjU2IEMzOjRDOjJCOjJCOkNFOjA4OkVCOjYyOjE1Ojk2OkZCOkExOkI4OjhDOjk3OkFDOjJGOjRGOkNFOkNFOjE4OjQ3OjA4OkY1OkExOjBEOjM3OkE3OjdBOkIxOjc4OjJGXHJcbmE9c2V0dXA6YWN0aXZlXHJcbmE9bWlkOjBcclxuYT1zY3RwLXBvcnQ6NTAwMFxyXG5hPW1heC1tZXNzYWdlLXNpemU6MjYyMTQ0XHJcbiJ9fQ"
+        },
+        "said": "Send your reply code back to the host."
+      },
+      {
+        "status": "connected",
+        "detail": {
+          "seed": 1337,
+          "stageIndex": 0,
+          "time": 4.083333492279053,
+          "myNetId": 1,
+          "artifactMask": 0,
+          "difficulty": 1
+        },
+        "said": "Connected. Rebuilding the host's world…"
+      },
+      {
+        "status": "refused",
+        "detail": {
+          "reason": "survivor",
+          "detail": "(none)"
+        },
+        "said": "The host does not have the survivor you picked. Choose one from their build and join again."
+      },
+      {
+        "status": "refused",
+        "detail": {
+          "reason": "hello",
+          "detail": "a second identity message"
+        },
+        "said": "The host refused the join. Try joining again."
+      }
+    ]
+  },
+  "settled": {
+    "host": {
+      "role": "host",
+      "lobbyMode": "host",
+      "status": "peerRefused",
+      "statusDetail": {
+        "id": 1,
+        "reason": "hello",
+        "detail": "a second identity message"
+      },
+      "players": 1,
+      "refusedPeers": [],
+      "clientsCount": 0,
+      "clients": [],
+      "pawns": [],
+      "tick": 160,
+      "paused": false,
+      "screen": null,
+      "inputEnabled": true,
+      "holding": false,
+      "pointerLock": true,
+      "my": {
+        "survivorId": "ranger",
+        "health": 110,
+        "maxHealth": 110,
+        "alive": true
+      },
+      "said": "Turned a player away: their join did not make sense (a second identity message).",
+      "saidLen": 80,
+      "statuses": [
+        {
+          "status": "hosting",
+          "detail": null,
+          "said": "Hosting. Create an invite for each friend you want to bring in."
+        },
+        {
+          "status": "inviteReady",
+          "detail": {
+            "id": 1,
+            "blob": "eyJ2IjoxLCJyb2xlIjoib2ZmZXIiLCJpZCI6MSwic2RwIjp7InR5cGUiOiJvZmZlciIsInNkcCI6InY9MFxyXG5vPS0gNjI0MzY2NDg5MzQ4MTQ5MzY5MyAyIElOIElQNCAxMjcuMC4wLjFcclxucz0tXHJcbnQ9MCAwXHJcbmE9Z3JvdXA6QlVORExFIDBcclxuYT1leHRtYXAtYWxsb3ctbWl4ZWRcclxuYT1tc2lkLXNlbWFudGljOiBXTVNcclxubT1hcHBsaWNhdGlvbiA1ODgwMiBVRFAvRFRMUy9TQ1RQIHdlYnJ0Yy1kYXRhY2hhbm5lbFxyXG5jPUlOIElQNCA5OS4xMDkuMTQxLjE1OFxyXG5hPWNhbmRpZGF0ZTo4OTk0MzM0NTUgMSB1ZHAgMjExMzkzNzE1MSBhYWI2NWNjZS1kYWI4LTRhNmMtODZhNS04Yzg0MWZlZTg2MWIubG9jYWwgNTg4MDIgdHlwIGhvc3QgZ2VuZXJhdGlvbiAwIG5ldHdvcmstY29zdCA5OTlcclxuYT1jYW5kaWRhdGU6MzM0NDc3ODkzNSAxIHVkcCAxNjc3NzI5NTM1IDk5LjEwOS4xNDEuMTU4IDU4ODAyIHR5cCBzcmZseCByYWRkciAwLjAuMC4wIHJwb3J0IDAgZ2VuZXJhdGlvbiAwIG5ldHdvcmstY29zdCA5OTlcclxuYT1pY2UtdWZyYWc6QVhYalxyXG5hPWljZS1wd2Q6VEVZQ0tLK3VVSXJRSUtCUFVGenpjc0RTXHJcbmE9aWNlLW9wdGlvbnM6dHJpY2tsZVxyXG5hPWZpbmdlcnByaW50OnNoYS0yNTYgNzE6MDU6Mzk6NDU6MTA6RUY6NUU6MkU6OEE6QjM6MDU6OEI6Mzk6REE6QjQ6QTk6MUU6MTY6QkM6REE6QTA6Q0I6QzE6RjI6NjM6NkE6NkI6MkM6ODI6MDI6QTA6MTZcclxuYT1zZXR1cDphY3RwYXNzXHJcbmE9bWlkOjBcclxuYT1zY3RwLXBvcnQ6NTAwMFxyXG5hPW1heC1tZXNzYWdlLXNpemU6MjYyMTQ0XHJcbiJ9fQ"
+          },
+          "said": "Invite ready. Send that code to your friend."
+        },
+        {
+          "status": "peerJoined",
+          "detail": {
+            "id": 1,
+            "count": 2
+          },
+          "said": "A player joined. 2 in the game."
+        },
+        {
+          "status": "peerConnecting",
+          "detail": {
+            "id": 1
+          },
+          "said": "Reply accepted — connecting…"
+        },
+        {
+          "status": "peerRefused",
+          "detail": {
+            "id": 1,
+            "reason": "survivor",
+            "detail": "(none)"
+          },
+          "said": "Turned a player away: they picked a survivor this build does not have ((none))."
+        },
+        {
+          "status": "peerRefused",
+          "detail": {
+            "id": 1,
+            "reason": "hello",
+            "detail": "a second identity message"
+          },
+          "said": "Turned a player away: their join did not make sense (a second identity message)."
+        }
+      ]
+    },
+    "client": {
+      "role": "client",
+      "lobbyMode": "client",
+      "status": "refused",
+      "statusDetail": {
+        "reason": "hello",
+        "detail": "a second identity message"
+      },
+      "connected": false,
+      "myNetId": 1,
+      "serverTick": 90,
+      "paused": false,
+      "screen": null,
+      "refusedLatch": true,
+      "my": {
+        "survivorId": "anvil",
+        "health": 170,
+        "maxHealth": 170,
+        "alive": true
+      },
+      "said": "The host refused the join. Try joining again.",
+      "saidLen": 45,
+      "statuses": [
+        {
+          "status": "joining",
+          "detail": null,
+          "said": "Answering the invite…"
+        },
+        {
+          "status": "answerReady",
+          "detail": {
+            "blob": "eyJ2IjoxLCJyb2xlIjoiYW5zd2VyIiwiaWQiOjEsInNkcCI6eyJ0eXBlIjoiYW5zd2VyIiwic2RwIjoidj0wXHJcbm89LSAzNzc4Nzk5NTUwNjE1OTcwMDA1IDIgSU4gSVA0IDEyNy4wLjAuMVxyXG5zPS1cclxudD0wIDBcclxuYT1ncm91cDpCVU5ETEUgMFxyXG5hPWV4dG1hcC1hbGxvdy1taXhlZFxyXG5hPW1zaWQtc2VtYW50aWM6IFdNU1xyXG5tPWFwcGxpY2F0aW9uIDkgVURQL0RUTFMvU0NUUCB3ZWJydGMtZGF0YWNoYW5uZWxcclxuYz1JTiBJUDQgMC4wLjAuMFxyXG5hPWNhbmRpZGF0ZTozNTY4OTc4NjI0IDEgdWRwIDIxMTM5MzcxNTEgOWM4YmYxNzktYjhkNC00Mjg1LWE0ODItMThhYjAyNTk3NTM2LmxvY2FsIDQ5NzIwIHR5cCBob3N0IGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9aWNlLXVmcmFnOnM4ejJcclxuYT1pY2UtcHdkOmYreFNHUGZ1YVBsSlA4Y0xqRno5UklRR1xyXG5hPWljZS1vcHRpb25zOnRyaWNrbGVcclxuYT1maW5nZXJwcmludDpzaGEtMjU2IEMzOjRDOjJCOjJCOkNFOjA4OkVCOjYyOjE1Ojk2OkZCOkExOkI4OjhDOjk3OkFDOjJGOjRGOkNFOkNFOjE4OjQ3OjA4OkY1OkExOjBEOjM3OkE3OjdBOkIxOjc4OjJGXHJcbmE9c2V0dXA6YWN0aXZlXHJcbmE9bWlkOjBcclxuYT1zY3RwLXBvcnQ6NTAwMFxyXG5hPW1heC1tZXNzYWdlLXNpemU6MjYyMTQ0XHJcbiJ9fQ"
+          },
+          "said": "Send your reply code back to the host."
+        },
+        {
+          "status": "connected",
+          "detail": {
+            "seed": 1337,
+            "stageIndex": 0,
+            "time": 4.083333492279053,
+            "myNetId": 1,
+            "artifactMask": 0,
+            "difficulty": 1
+          },
+          "said": "Connected. Rebuilding the host's world…"
+        },
+        {
+          "status": "refused",
+          "detail": {
+            "reason": "survivor",
+            "detail": "(none)"
+          },
+          "said": "The host does not have the survivor you picked. Choose one from their build and join again."
+        },
+        {
+          "status": "refused",
+          "detail": {
+            "reason": "hello",
+            "detail": "a second identity message"
+          },
+          "said": "The host refused the join. Try joining again."
+        }
+      ]
+    }
+  },
+  "hostLog": {
+    "errors": [],
+    "pageErrors": [],
+    "netWarns": []
+  },
+  "clientLog": {
+    "errors": [],
+    "pageErrors": [],
+    "netWarns": []
+  },
+  "elapsedMs": 117747
+}

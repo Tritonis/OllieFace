@@ -1,0 +1,352 @@
+{
+  "seed": 1337,
+  "ready": true,
+  "clockPinned": true,
+  "ms": {
+    "boot": 10814,
+    "bootTimeout": 60000
+  },
+  "shots": [
+    {
+      "name": "08-explosion",
+      "doc": "Peak VFX moment: explosion + damage numbers + shake. Judges impact feedback.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\hdiag-only\\08-explosion.png",
+      "engine": {
+        "frameErrors": 1,
+        "lastFrameError": {
+          "who": "harness:08-explosion",
+          "message": "[harness] 08-explosion: subject missing or illegible — damage numbers (pixels: {\"why\":\"illegible\",\"px\":137,\"need\":60,\"objs\":\"1/1\",\"need2\":0,\"sepP50\":0.23,\"needSep\":0.25,\"carriedPx\":95,\"lum\":59.8,\"bgLum\":97.1})",
+          "frame": -1
+        },
+        "time": 759.4666666666653
+      },
+      "ms": {
+        "setup": 4892,
+        "screenshot": 712,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": false,
+        "checks": [
+          {
+            "subject": "the blast",
+            "kind": "pixels",
+            "ok": true,
+            "px": 35193,
+            "frac": 0.27155,
+            "lum": 43.4,
+            "bgLum": 20.2,
+            "contrast": 0.365,
+            "sep": 0.327,
+            "sepP25": 0.15,
+            "sepP50": 0.29,
+            "legible": 0.752,
+            "at": [
+              0.415,
+              0.215
+            ],
+            "box": [
+              0.001,
+              0.002,
+              0.999,
+              0.561
+            ],
+            "objects": 4,
+            "visibleObjects": 4,
+            "minPx": 1200,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 26465,
+            "minCarried": 1200,
+            "legibleOk": true,
+            "aggregate": "VFX buffers: the meshes are shared particle/ring/trail pools, not nameable objects",
+            "perObjectOk": true
+          },
+          {
+            "subject": "monsters standing in it",
+            "kind": "pixels",
+            "ok": true,
+            "px": 3262,
+            "frac": 0.02517,
+            "lum": 81,
+            "bgLum": 8,
+            "contrast": 0.819,
+            "sep": 0.693,
+            "sepP25": 0.59,
+            "sepP50": 0.73,
+            "legible": 0.998,
+            "at": [
+              0.451,
+              0.61
+            ],
+            "box": [
+              0.026,
+              0.213,
+              0.643,
+              0.857
+            ],
+            "objects": 7,
+            "visibleObjects": 7,
+            "perPx": [
+              120,
+              2075,
+              163,
+              55,
+              361,
+              162,
+              326
+            ],
+            "perSep": [
+              0.85,
+              0.75,
+              0.85,
+              0.73,
+              0.45,
+              0.73,
+              0.67
+            ],
+            "minPx": 200,
+            "minObjects": 2,
+            "present": true,
+            "carriedPx": 3255,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "crowd": {
+              "need": 2,
+              "why": "blast victims: knockback removes members from frame by design"
+            },
+            "minPerPx": 100,
+            "absentObjects": [],
+            "objectFailures": [],
+            "perObjectOk": true
+          },
+          {
+            "subject": "damage numbers",
+            "kind": "pixels",
+            "ok": false,
+            "px": 137,
+            "frac": 0.00106,
+            "lum": 59.8,
+            "bgLum": 97.1,
+            "contrast": 0.238,
+            "sep": 0.315,
+            "sepP25": 0.13,
+            "sepP50": 0.23,
+            "legible": 0.693,
+            "at": [
+              0.355,
+              0.263
+            ],
+            "box": [
+              0.334,
+              0.25,
+              0.374,
+              0.276
+            ],
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 60,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 95,
+            "minSep": 0.25,
+            "legibleOk": false,
+            "perObjectOk": true
+          },
+          {
+            "subject": "DIAG pools",
+            "kind": "info",
+            "ok": true,
+            "detail": [
+              {
+                "name": "vfx.particles",
+                "px": 19323,
+                "at": [
+                  0.374,
+                  0.25
+                ],
+                "box": [
+                  0.001,
+                  0.002,
+                  0.716,
+                  0.561
+                ],
+                "sep": 0.13
+              },
+              {
+                "name": "vfx.trails",
+                "px": 0,
+                "at": null,
+                "box": null,
+                "sep": 0
+              },
+              {
+                "name": "vfx.decals",
+                "px": 172,
+                "at": [
+                  0.349,
+                  0.726
+                ],
+                "box": [
+                  0.272,
+                  0.669,
+                  0.436,
+                  0.78
+                ],
+                "sep": 0.13
+              },
+              {
+                "name": "vfx.beams",
+                "px": 0,
+                "at": null,
+                "box": null,
+                "sep": 0
+              },
+              {
+                "name": "vfx.rings",
+                "px": 23977,
+                "at": [
+                  0.42,
+                  0.173
+                ],
+                "box": [
+                  0.001,
+                  0.002,
+                  0.999,
+                  0.365
+                ],
+                "sep": 0.25
+              },
+              {
+                "name": "vfx.damageNumbers",
+                "px": 137,
+                "at": [
+                  0.355,
+                  0.263
+                ],
+                "box": [
+                  0.334,
+                  0.25,
+                  0.374,
+                  0.276
+                ],
+                "sep": 0.23
+              }
+            ]
+          },
+          {
+            "subject": "DIAG blast",
+            "kind": "info",
+            "ok": true,
+            "detail": {
+              "distM": 10.8,
+              "screen": [
+                0.3539939696423153,
+                0.34569536189997113
+              ],
+              "regionR": 0.7449,
+              "sphereVisible": 1,
+              "inRegionPx": 35193,
+              "inRegionCarried": 26465,
+              "inRegionSep": 0.29,
+              "at": [
+                0.415,
+                0.215
+              ],
+              "box": [
+                0.001,
+                0.002,
+                0.999,
+                0.561
+              ]
+            }
+          },
+          {
+            "subject": "blast framed in the middle band",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "x": 0.354,
+              "y": 0.346,
+              "distM": 10.7,
+              "pass": 0
+            }
+          },
+          {
+            "subject": "shutter (effect seconds)",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "age": 0.1167,
+              "frames": 7,
+              "exact": true,
+              "sim": 0.1167
+            }
+          }
+        ]
+      },
+      "newErrors": [
+        "[harness] 08-explosion: subject missing or illegible — damage numbers (pixels: {\"why\":\"illegible\",\"px\":137,\"need\":60,\"objs\":\"1/1\",\"need2\":0,\"sepP50\":0.23,\"needSep\":0.25,\"carriedPx\":95,\"lum\":59.8,\"bgLum\":97.1})"
+      ]
+    }
+  ],
+  "errors": [
+    "[harness] 08-explosion: subject missing or illegible — damage numbers (pixels: {\"why\":\"illegible\",\"px\":137,\"need\":60,\"objs\":\"1/1\",\"need2\":0,\"sepP50\":0.23,\"needSep\":0.25,\"carriedPx\":95,\"lum\":59.8,\"bgLum\":97.1})"
+  ],
+  "partial": true,
+  "subjectFailures": [
+    {
+      "name": "08-explosion",
+      "failed": [
+        "damage numbers"
+      ],
+      "detail": [
+        {
+          "subject": "damage numbers",
+          "kind": "pixels",
+          "ok": false,
+          "px": 137,
+          "frac": 0.00106,
+          "lum": 59.8,
+          "bgLum": 97.1,
+          "contrast": 0.238,
+          "sep": 0.315,
+          "sepP25": 0.13,
+          "sepP50": 0.23,
+          "legible": 0.693,
+          "at": [
+            0.355,
+            0.263
+          ],
+          "box": [
+            0.334,
+            0.25,
+            0.374,
+            0.276
+          ],
+          "objects": 1,
+          "visibleObjects": 1,
+          "minPx": 60,
+          "minObjects": 0,
+          "present": true,
+          "carriedPx": 95,
+          "minSep": 0.25,
+          "legibleOk": false,
+          "perObjectOk": true
+        }
+      ]
+    }
+  ],
+  "subjectsOk": false,
+  "determinism": {
+    "clockPinned": true,
+    "frameDt": 0.016666666666666666,
+    "frameTimeouts": 0
+  },
+  "perf": {
+    "programs": 62,
+    "geometries": 366,
+    "textures": 53,
+    "sceneObjects": 791
+  }
+}

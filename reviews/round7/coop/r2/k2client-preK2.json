@@ -1,0 +1,195 @@
+{
+  "arm": "preK2",
+  "scenario": "k2client",
+  "substitutions": [
+    "K2:src/core/Engine.js"
+  ],
+  "steps": [
+    "host booted",
+    "client booted",
+    "HOST pageerror: The root document of this element is not valid for pointer lock.",
+    "HOST runningGate {\"paused\":false,\"screen\":null,\"localTick\":61}",
+    "CLIENT runningGate {\"paused\":false,\"screen\":null,\"localTick\":61}",
+    "roles {\"host\":{\"authority\":true,\"role\":\"host\",\"playerCount\":2,\"clients\":1},\"client\":{\"authority\":false,\"role\":\"client\",\"myNetId\":1,\"connected\":true}}"
+  ],
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 61
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 61
+    }
+  },
+  "connected": true,
+  "roles": {
+    "host": {
+      "authority": true,
+      "role": "host",
+      "playerCount": 2,
+      "clients": 1
+    },
+    "client": {
+      "authority": false,
+      "role": "client",
+      "myNetId": 1,
+      "connected": true
+    }
+  },
+  "runningGateAfterJoin": {
+    "host": {
+      "paused": false,
+      "localTick": 402
+    },
+    "client": {
+      "paused": false,
+      "localTick": 0
+    }
+  },
+  "before": {
+    "host": {
+      "alive": true,
+      "health": 110,
+      "maxHealth": 110,
+      "shield": 0,
+      "screen": null,
+      "paused": false,
+      "progEnded": null,
+      "progKills": 0,
+      "progDamageTaken": 0,
+      "profRunDied": false,
+      "profRunDamageTaken": 0,
+      "profStageDamage": 0,
+      "profFlawless": 0,
+      "hudKills": 0,
+      "directorEnabled": true,
+      "probe": {
+        "deathCalls": 0,
+        "deathThrows": 0,
+        "downstreamKill": 0,
+        "killPayloads": [],
+        "playerDeadPayloads": [],
+        "playerHurt": 0
+      }
+    },
+    "client": {
+      "alive": true,
+      "health": 110,
+      "maxHealth": 110,
+      "shield": 0,
+      "screen": null,
+      "paused": false,
+      "progEnded": null,
+      "progKills": 0,
+      "progDamageTaken": 0,
+      "profRunDied": false,
+      "profRunDamageTaken": 0,
+      "profStageDamage": 0,
+      "profFlawless": 0,
+      "hudKills": 0,
+      "directorEnabled": true,
+      "probe": {
+        "deathCalls": 0,
+        "deathThrows": 0,
+        "downstreamKill": 0,
+        "killPayloads": [],
+        "playerDeadPayloads": [],
+        "playerHurt": 0
+      }
+    }
+  },
+  "hostDies": {
+    "hostAlive": false,
+    "hostHealth": 0
+  },
+  "afterHostDeath": {
+    "host": {
+      "alive": false,
+      "health": 0,
+      "maxHealth": 110,
+      "shield": 0,
+      "screen": "death",
+      "paused": true,
+      "progEnded": true,
+      "progKills": 0,
+      "progDamageTaken": 1000000,
+      "profRunDied": null,
+      "profRunDamageTaken": -1,
+      "profStageDamage": -1,
+      "profFlawless": null,
+      "hudKills": 1,
+      "directorEnabled": false,
+      "probe": {
+        "deathCalls": 1,
+        "deathThrows": 0,
+        "downstreamKill": 1,
+        "killPayloads": [
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "sourceIsPlayer": false
+          }
+        ],
+        "playerDeadPayloads": [
+          {
+            "victimIsSelf": true,
+            "victimNetId": 2
+          }
+        ],
+        "playerHurt": 1
+      }
+    },
+    "client": {
+      "alive": true,
+      "health": 110,
+      "maxHealth": 110,
+      "shield": 0,
+      "screen": "death",
+      "paused": true,
+      "progEnded": true,
+      "progKills": 0,
+      "progDamageTaken": 0,
+      "profRunDied": null,
+      "profRunDamageTaken": -1,
+      "profStageDamage": -1,
+      "profFlawless": null,
+      "hudKills": 1,
+      "directorEnabled": false,
+      "probe": {
+        "deathCalls": 1,
+        "deathThrows": 0,
+        "downstreamKill": 1,
+        "killPayloads": [
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "sourceIsPlayer": false
+          }
+        ],
+        "playerDeadPayloads": [
+          {
+            "victimIsSelf": false,
+            "victimNetId": 2
+          }
+        ],
+        "playerHurt": 0
+      }
+    }
+  },
+  "clientAudioAfterHostDeath": {
+    "stopped": false,
+    "musicOff": false,
+    "musicGain": 0.48
+  },
+  "pageErrors": {
+    "host": 1,
+    "client": 0
+  },
+  "substitutionsApplied": [
+    "K2:src/core/Engine.js"
+  ],
+  "substitutionsMissing": []
+}

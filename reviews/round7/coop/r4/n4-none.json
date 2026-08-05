@@ -1,0 +1,183 @@
+{
+  "arm": "n4-none",
+  "scenario": "n4",
+  "substitutions": [
+    "N4-latch",
+    "N4-age"
+  ],
+  "substitutionsApplied": [
+    "N4-latch",
+    "N4-age"
+  ],
+  "substitutionsMissing": [],
+  "helloOverride": null,
+  "port": 5809,
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 71,
+      "survivorId": "ranger",
+      "maxHealth": 110
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 71,
+      "survivorId": "anvil",
+      "maxHealth": 170
+    }
+  },
+  "runningGateAfterFocus": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "tick": 316,
+      "netRole": "host",
+      "authority": true,
+      "clients": 1,
+      "myNetId": null,
+      "connected": null
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "tick": 138,
+      "netRole": "client",
+      "authority": false,
+      "clients": null,
+      "myNetId": 1,
+      "connected": true
+    }
+  },
+  "before": {
+    "pawnAgeTicks": 171,
+    "pawns": [
+      {
+        "survivorId": "anvil",
+        "health": 45,
+        "maxHealth": 170
+      }
+    ]
+  },
+  "replays": [
+    {
+      "sent": "kestrel",
+      "pawns": [
+        {
+          "id": 1,
+          "survivorId": "kestrel",
+          "helloSeen": false,
+          "health": 90,
+          "maxHealth": 90,
+          "alive": true
+        }
+      ]
+    },
+    {
+      "sent": "anvil",
+      "pawns": [
+        {
+          "id": 1,
+          "survivorId": "anvil",
+          "helloSeen": false,
+          "health": 170,
+          "maxHealth": 170,
+          "alive": true
+        }
+      ]
+    },
+    {
+      "sent": "kestrel",
+      "pawns": [
+        {
+          "id": 1,
+          "survivorId": "kestrel",
+          "helloSeen": false,
+          "health": 90,
+          "maxHealth": 90,
+          "alive": true
+        }
+      ]
+    },
+    {
+      "sent": "anvil",
+      "pawns": [
+        {
+          "id": 1,
+          "survivorId": "anvil",
+          "helloSeen": false,
+          "health": 170,
+          "maxHealth": 170,
+          "alive": true
+        }
+      ]
+    }
+  ],
+  "hostStatus": [
+    {
+      "s": "hosting"
+    },
+    {
+      "s": "inviteReady",
+      "d": {
+        "id": 1,
+        "blob": "eyJ2IjoxLCJyb2xlIjoib2ZmZXIiLCJpZCI6MSwic2RwIjp7InR5cGUiOiJvZmZlciIsInNkcCI6InY9MFxyXG5vPS0gODE3NDA0NDkwNjcyMzIxNDY4NyAyIElOIElQNCAxMjcuMC4wLjFcclxucz0tXHJcbnQ9MCAwXHJcbmE9Z3JvdXA6QlVORExFIDBcclxuYT1leHRtYXAtYWxsb3ctbWl4ZWRcclxuYT1tc2lkLXNlbWFudGljOiBXTVNcclxubT1hcHBsaWNhdGlvbiA1NTEwMyBVRFAvRFRMUy9TQ1RQIHdlYnJ0Yy1kYXRhY2hhbm5lbFxyXG5jPUlOIElQNCA5OS4xMDkuMTQxLjE1OFxyXG5hPWNhbmRpZGF0ZTo2MjMwNTk0ODkgMSB1ZHAgMjExMzkzNzE1MSA4ZGQyMzNkZS0wN2EzLTQ2MDAtOWU5NC0wMGNiNGJlNTQ1ZTIubG9jYWwgNTUxMDMgdHlwIGhvc3QgZ2VuZXJhdGlvbiAwIG5ldHdvcmstY29zdCA5OTlcclxuYT1jYW5kaWRhdGU6MjI1MDY1MDczOCAxIHVkcCAxNjc3NzI5NTM1IDk5LjEwOS4xNDEuMTU4IDU1MTAzIHR5cCBzcmZseCByYWRkciAwLjAuMC4wIHJwb3J0IDAgZ2VuZXJhdGlvbiAwIG5ldHdvcmstY29zdCA5OTlcclxuYT1pY2UtdWZyYWc6RmdXTlxyXG5hPWljZS1wd2Q6VHU0Qk14R21pM09tQ1lzelJRWURrSU9wXHJcbmE9aWNlLW9wdGlvbnM6dHJpY2tsZVxyXG5hPWZpbmdlcnByaW50OnNoYS0yNTYgQjQ6NTQ6RDM6NUE6Nzc6N0M6NEE6MDA6QTU6QTc6NTk6RjA6MUY6Rjk6NEU6QzU6OUM6NEE6MjA6Q0Y6RUM6NTY6Nzk6QTA6REI6RkI6RTM6QjM6OTU6QzM6MDA6QkNcclxuYT1zZXR1cDphY3RwYXNzXHJcbmE9bWlkOjBcclxuYT1zY3RwLXBvcnQ6NTAwMFxyXG5hPW1heC1tZXNzYWdlLXNpemU6MjYyMTQ0XHJcbiJ9fQ"
+      }
+    },
+    {
+      "s": "peerJoined",
+      "d": {
+        "id": 1,
+        "count": 2
+      }
+    },
+    {
+      "s": "peerConnecting",
+      "d": {
+        "id": 1
+      }
+    }
+  ],
+  "clientStatus": [
+    {
+      "s": "joining"
+    },
+    {
+      "s": "answerReady",
+      "d": {
+        "blob": "eyJ2IjoxLCJyb2xlIjoiYW5zd2VyIiwiaWQiOjEsInNkcCI6eyJ0eXBlIjoiYW5zd2VyIiwic2RwIjoidj0wXHJcbm89LSA2NTI1NTc5ODM2NzIyMjczODU3IDIgSU4gSVA0IDEyNy4wLjAuMVxyXG5zPS1cclxudD0wIDBcclxuYT1ncm91cDpCVU5ETEUgMFxyXG5hPWV4dG1hcC1hbGxvdy1taXhlZFxyXG5hPW1zaWQtc2VtYW50aWM6IFdNU1xyXG5tPWFwcGxpY2F0aW9uIDkgVURQL0RUTFMvU0NUUCB3ZWJydGMtZGF0YWNoYW5uZWxcclxuYz1JTiBJUDQgMC4wLjAuMFxyXG5hPWNhbmRpZGF0ZTozMDcyNDQ5Nzc2IDEgdWRwIDIxMTM5MzcxNTEgNTFiNzUxNTctYmNiMC00ZTY1LWExMzYtNWM4YmU2ZWZiNWMwLmxvY2FsIDU3NDI2IHR5cCBob3N0IGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9aWNlLXVmcmFnOmg5T0hcclxuYT1pY2UtcHdkOkNzS2Q1U2JWb2k5ZGNjL3VOTW1TZGpuRlxyXG5hPWljZS1vcHRpb25zOnRyaWNrbGVcclxuYT1maW5nZXJwcmludDpzaGEtMjU2IEI2OjAzOjhGOkUyOkZFOkIzOjFEOkUyOjE3OjREOjM0OjU2OkY0OkMwOjU3Ojk3OjY4OkFBOkUyOjI3OjVCOjM5OjdDOjVEOjEwOjU2OjM1OjNEOjU2Ojg0OjZDOkZFXHJcbmE9c2V0dXA6YWN0aXZlXHJcbmE9bWlkOjBcclxuYT1zY3RwLXBvcnQ6NTAwMFxyXG5hPW1heC1tZXNzYWdlLXNpemU6MjYyMTQ0XHJcbiJ9fQ"
+      }
+    },
+    {
+      "s": "connected",
+      "d": {
+        "seed": 1337,
+        "stageIndex": 0,
+        "time": 2.7333333492279053,
+        "myNetId": 1,
+        "artifactMask": 0,
+        "difficulty": 1
+      }
+    }
+  ],
+  "clientOwn": {
+    "survivorId": "anvil",
+    "maxHealth": 170,
+    "connected": true
+  },
+  "errors": {
+    "host": {
+      "console": [],
+      "page": [],
+      "harness": [
+        "WrongDocumentError: The root document of this element is not valid for pointer lock."
+      ]
+    },
+    "client": {
+      "console": [],
+      "page": [],
+      "harness": []
+    }
+  }
+}

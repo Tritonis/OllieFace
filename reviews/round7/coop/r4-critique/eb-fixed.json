@@ -1,0 +1,29 @@
+{
+  "arm": "eb-fixed",
+  "substitutions": [],
+  "runningGate": {
+    "paused": false,
+    "screen": null,
+    "localTick": 65
+  },
+  "fixture": {
+    "spawned": 4,
+    "dead": 4
+  },
+  "eb": {
+    "thrown": 4,
+    "after": 4,
+    "before": 4
+  },
+  "hudKills": 4,
+  "ok": true,
+  "substitutionsApplied": [],
+  "substitutionsMissing": [],
+  "consoleErrors": [
+    "[events] listener threw for event: kill Error: r4c: deliberate listener failure\n    at eval (eval at evaluate (:311:30), <anonymous>:5:69)\n    at EventBus.emit (http://127.0.0.1:5832/src/core/Engine.js:294:9)\n    at Combat._kill (http://127.0.0.1:5832/src/systems/Combat.js:521:16)\n    at Combat.appl",
+    "[events] listener threw for event: kill Error: r4c: deliberate listener failure\n    at eval (eval at evaluate (:311:30), <anonymous>:5:69)\n    at EventBus.emit (http://127.0.0.1:5832/src/core/Engine.js:294:9)\n    at Combat._kill (http://127.0.0.1:5832/src/systems/Combat.js:521:16)\n    at Combat.appl",
+    "[events] listener threw for event: kill Error: r4c: deliberate listener failure\n    at eval (eval at evaluate (:311:30), <anonymous>:5:69)\n    at EventBus.emit (http://127.0.0.1:5832/src/core/Engine.js:294:9)\n    at Combat._kill (http://127.0.0.1:5832/src/systems/Combat.js:521:16)\n    at Combat.appl",
+    "[events] listener threw for event: kill Error: r4c: deliberate listener failure\n    at eval (eval at evaluate (:311:30), <anonymous>:5:69)\n    at EventBus.emit (http://127.0.0.1:5832/src/core/Engine.js:294:9)\n    at Combat._kill (http://127.0.0.1:5832/src/systems/Combat.js:521:16)\n    at Combat.appl"
+  ],
+  "pageErrors": []
+}

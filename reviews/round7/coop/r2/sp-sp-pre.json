@@ -1,0 +1,236 @@
+{
+  "arm": "sp-pre",
+  "scenario": "sp",
+  "substitutions": [
+    "K1:src/net/NetClient.js",
+    "K2:src/core/Engine.js",
+    "K3wire:src/net/NetHost.js",
+    "K3guard:src/systems/Audio.js",
+    "EB:src/core/Engine.js",
+    "K5:src/systems/Progression.js",
+    "K5:src/systems/Profile.js",
+    "K10:src/net/NetHost.js"
+  ],
+  "steps": [
+    "SP runningGate {\"paused\":false,\"screen\":null,\"localTick\":61}"
+  ],
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 61
+    }
+  },
+  "roles": {
+    "authority": true,
+    "netRole": "single"
+  },
+  "before": {
+    "alive": true,
+    "health": 110,
+    "maxHealth": 110,
+    "shield": 0,
+    "screen": null,
+    "paused": false,
+    "progEnded": null,
+    "progKills": 0,
+    "progDamageTaken": 0,
+    "profRunDied": false,
+    "profRunDamageTaken": 0,
+    "profStageDamage": 0,
+    "profFlawless": 0,
+    "hudKills": 0,
+    "directorEnabled": true,
+    "probe": {
+      "deathCalls": 0,
+      "deathThrows": 0,
+      "downstreamKill": 0,
+      "killPayloads": [],
+      "playerDeadPayloads": [],
+      "playerHurt": 0
+    }
+  },
+  "forcedKills": {
+    "killed": 4
+  },
+  "afterKills": {
+    "alive": true,
+    "health": 143,
+    "maxHealth": 143,
+    "shield": 0,
+    "screen": null,
+    "paused": false,
+    "progEnded": null,
+    "progKills": 4,
+    "progDamageTaken": 0,
+    "profRunDied": false,
+    "profRunDamageTaken": 0,
+    "profStageDamage": 0,
+    "profFlawless": 0,
+    "hudKills": 4,
+    "directorEnabled": true,
+    "probe": {
+      "deathCalls": 4,
+      "deathThrows": 0,
+      "downstreamKill": 4,
+      "killPayloads": [
+        {
+          "posType": "object",
+          "posXFinite": true,
+          "sourceIsPlayer": true
+        },
+        {
+          "posType": "object",
+          "posXFinite": true,
+          "sourceIsPlayer": true
+        },
+        {
+          "posType": "object",
+          "posXFinite": true,
+          "sourceIsPlayer": true
+        },
+        {
+          "posType": "object",
+          "posXFinite": true,
+          "sourceIsPlayer": true
+        }
+      ],
+      "playerDeadPayloads": [],
+      "playerHurt": 0
+    }
+  },
+  "hit": {
+    "dealt": 40,
+    "healthBefore": 143,
+    "healthAfter": 103
+  },
+  "afterHit": {
+    "alive": true,
+    "health": 103,
+    "maxHealth": 143,
+    "shield": 0,
+    "screen": null,
+    "paused": false,
+    "progEnded": null,
+    "progKills": 4,
+    "progDamageTaken": 40,
+    "profRunDied": false,
+    "profRunDamageTaken": 40,
+    "profStageDamage": 40,
+    "profFlawless": 0,
+    "hudKills": 4,
+    "directorEnabled": true,
+    "probe": {
+      "deathCalls": 4,
+      "deathThrows": 0,
+      "downstreamKill": 4,
+      "killPayloads": [
+        {
+          "posType": "object",
+          "posXFinite": true,
+          "sourceIsPlayer": true
+        },
+        {
+          "posType": "object",
+          "posXFinite": true,
+          "sourceIsPlayer": true
+        },
+        {
+          "posType": "object",
+          "posXFinite": true,
+          "sourceIsPlayer": true
+        },
+        {
+          "posType": "object",
+          "posXFinite": true,
+          "sourceIsPlayer": true
+        }
+      ],
+      "playerDeadPayloads": [],
+      "playerHurt": 1
+    }
+  },
+  "hurtTimer": 1.15,
+  "jumps": {
+    "impulses": [
+      30,
+      30
+    ],
+    "barriers": [
+      10,
+      10
+    ],
+    "quakes": 0
+  },
+  "death": {
+    "gainBefore": 0.48
+  },
+  "afterDeath": {
+    "alive": false,
+    "health": 0,
+    "maxHealth": 143,
+    "shield": 0,
+    "screen": "death",
+    "paused": true,
+    "progEnded": true,
+    "progKills": 4,
+    "progDamageTaken": 1000036.33,
+    "profRunDied": null,
+    "profRunDamageTaken": -1,
+    "profStageDamage": -1,
+    "profFlawless": null,
+    "hudKills": 5,
+    "directorEnabled": false,
+    "probe": {
+      "deathCalls": 5,
+      "deathThrows": 0,
+      "downstreamKill": 5,
+      "killPayloads": [
+        {
+          "posType": "object",
+          "posXFinite": true,
+          "sourceIsPlayer": true
+        },
+        {
+          "posType": "object",
+          "posXFinite": true,
+          "sourceIsPlayer": true
+        },
+        {
+          "posType": "object",
+          "posXFinite": true,
+          "sourceIsPlayer": true
+        },
+        {
+          "posType": "object",
+          "posXFinite": true,
+          "sourceIsPlayer": true
+        }
+      ],
+      "playerDeadPayloads": [
+        {
+          "victimIsSelf": true,
+          "victimNetId": null
+        }
+      ],
+      "playerHurt": 2
+    }
+  },
+  "afterDeathAudio": {
+    "stopped": true,
+    "musicOff": true,
+    "musicGain": 0.00812
+  },
+  "pageErrors": 0,
+  "substitutionsApplied": [
+    "K2:src/core/Engine.js",
+    "EB:src/core/Engine.js",
+    "K5:src/systems/Progression.js",
+    "K3guard:src/systems/Audio.js",
+    "K5:src/systems/Profile.js",
+    "K1:src/net/NetClient.js",
+    "K3wire:src/net/NetHost.js",
+    "K10:src/net/NetHost.js"
+  ],
+  "substitutionsMissing": []
+}

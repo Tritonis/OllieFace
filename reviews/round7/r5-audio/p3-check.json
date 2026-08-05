@@ -1,0 +1,141 @@
+{
+  "result": {
+    "clapVsKick": {
+      "rows": [
+        {
+          "seed": 11,
+          "kick_peak_dB": -4.35,
+          "clap_peak_dB": -3.19,
+          "clapOverKick_peak_dB": 1.16,
+          "kick_rms_dB": -22.97,
+          "clap_rms_dB": -32.21,
+          "clapOverKick_rms_dB": -9.24,
+          "I": 0.958
+        },
+        {
+          "seed": 2222,
+          "kick_peak_dB": -4.37,
+          "clap_peak_dB": -4.58,
+          "clapOverKick_peak_dB": -0.21,
+          "kick_rms_dB": -22.97,
+          "clap_rms_dB": -32.63,
+          "clapOverKick_rms_dB": -9.66,
+          "I": 0.958
+        },
+        {
+          "seed": 33333,
+          "kick_peak_dB": -4.51,
+          "clap_peak_dB": -4.06,
+          "clapOverKick_peak_dB": 0.45,
+          "kick_rms_dB": -22.97,
+          "clap_rms_dB": -32.4,
+          "clapOverKick_rms_dB": -9.43,
+          "I": 0.958
+        },
+        {
+          "seed": 444444,
+          "kick_peak_dB": -4.36,
+          "clap_peak_dB": -3.93,
+          "clapOverKick_peak_dB": 0.43,
+          "kick_rms_dB": -22.97,
+          "clap_rms_dB": -32.65,
+          "clapOverKick_rms_dB": -9.68,
+          "I": 0.958
+        },
+        {
+          "seed": 5555555,
+          "kick_peak_dB": -4.04,
+          "clap_peak_dB": -3.32,
+          "clapOverKick_peak_dB": 0.72,
+          "kick_rms_dB": -22.97,
+          "clap_rms_dB": -32.33,
+          "clapOverKick_rms_dB": -9.36,
+          "I": 0.958
+        }
+      ],
+      "mean": 0.51,
+      "min": -0.21,
+      "max": 1.16
+    },
+    "phase": {
+      "parts": {
+        "kick": {
+          "rms_dB": -22.56,
+          "peak_dB": -3.31,
+          "peak_lin": 0.6834,
+          "dc": -0.000438
+        },
+        "clap": {
+          "rms_dB": -30.99,
+          "peak_dB": -9.45,
+          "peak_lin": 0.33708,
+          "dc": -0.0000266
+        },
+        "bass": {
+          "rms_dB": -28.03,
+          "peak_dB": -9.49,
+          "peak_lin": 0.33536,
+          "dc": -0.00122
+        },
+        "lead": {
+          "rms_dB": -30.61,
+          "peak_dB": -9.46,
+          "peak_lin": 0.3367,
+          "dc": -0.0000305
+        },
+        "openhat": {
+          "rms_dB": -30.09,
+          "peak_dB": -9.45,
+          "peak_lin": 0.33708,
+          "dc": -0.0000305
+        },
+        "hat": {
+          "rms_dB": -30.64,
+          "peak_dB": -7.35,
+          "peak_lin": 0.42898,
+          "dc": -0.0000298
+        },
+        "acid": {
+          "rms_dB": -30.67,
+          "peak_dB": -9.45,
+          "peak_lin": 0.33693,
+          "dc": -0.0000481
+        },
+        "perc": {
+          "rms_dB": -30.83,
+          "peak_dB": -7.49,
+          "peak_lin": 0.42197,
+          "dc": -0.0000284
+        },
+        "sub": {
+          "rms_dB": -31.08,
+          "peak_dB": -9.45,
+          "peak_lin": 0.33708,
+          "dc": -0.0000382
+        },
+        "pad": {
+          "rms_dB": -31.06,
+          "peak_dB": -9.45,
+          "peak_lin": 0.33707,
+          "dc": -0.0000271
+        }
+      },
+      "mix": {
+        "rms_dB": -21.29,
+        "peak_dB": -3.24,
+        "peak_lin": 0.68894,
+        "dc": -0.00165
+      },
+      "sumOfParts": {
+        "rms_dB": -11.07,
+        "peak_dB": 11.42,
+        "peak_lin": 3.7227,
+        "dc": -0.00192
+      },
+      "delta_dB": -10.22,
+      "residual_rms_dB": -12.36,
+      "residualBelowMix_dB": 8.93
+    }
+  },
+  "logs": []
+}

@@ -1,0 +1,70 @@
+{
+  "arm": "n6c-fixed",
+  "scenario": "n6client",
+  "substitutions": [],
+  "substitutionsApplied": [],
+  "substitutionsMissing": [],
+  "helloOverride": null,
+  "port": 5818,
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 67,
+      "survivorId": "ranger",
+      "maxHealth": 110
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 70,
+      "survivorId": "anvil",
+      "maxHealth": 170
+    }
+  },
+  "runningGateAfterFocus": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "tick": 317,
+      "netRole": "host",
+      "authority": true,
+      "clients": 1,
+      "myNetId": null,
+      "connected": null
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "tick": 137,
+      "netRole": "client",
+      "authority": false,
+      "clients": null,
+      "myNetId": 1,
+      "connected": true
+    }
+  },
+  "tickBefore": 137,
+  "tickAfter": 193,
+  "clientConnected": true,
+  "clientAlive": {
+    "alive": true,
+    "health": 170
+  },
+  "errors": {
+    "host": {
+      "console": [],
+      "page": [],
+      "harness": [
+        "WrongDocumentError: The root document of this element is not valid for pointer lock."
+      ]
+    },
+    "client": {
+      "console": [
+        "[net] client dropped a malformed message from the host RangeError: Invalid typed array length: 60000\n    at new Uint8Array (<anonymous>)\n    at Reader.str (http://localhost:5818/src/net/Protocol.js:195:40)\n    at NetClie"
+      ],
+      "page": [],
+      "harness": []
+    }
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "arm": "adv-empty-pre",
+  "shape": "empty",
+  "substitutions": [
+    "P1-order"
+  ],
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 300,
+      "survivorId": "ranger",
+      "maxHealth": 110
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 65,
+      "survivorId": "anvil",
+      "maxHealth": 170
+    }
+  },
+  "helloBytes": 5,
+  "host": {
+    "tick": 120,
+    "paused": false,
+    "screen": null,
+    "inputEnabled": true,
+    "pointerLocked": false,
+    "clients": 1,
+    "pawns": [
+      {
+        "survivorId": "ranger",
+        "health": 110,
+        "maxHealth": 110,
+        "alive": true,
+        "localTick": 0
+      }
+    ],
+    "helloSeen": [
+      true
+    ],
+    "peerSurvivors": [
+      null
+    ],
+    "lobbyStatus": "peerConnecting",
+    "lobbyDetail": {
+      "reason": null,
+      "detail": null,
+      "detailHead": null,
+      "count": null
+    },
+    "players": 2,
+    "ownSurvivor": "ranger",
+    "ownMax": 110,
+    "ownAlive": true
+  },
+  "client": {
+    "connected": true,
+    "myNetId": 1,
+    "netTick": 20,
+    "serverTick": 120,
+    "paused": false,
+    "screen": null,
+    "survivorId": "anvil",
+    "maxHealth": 170,
+    "health": 170,
+    "alive": true,
+    "lobbyStatus": "connected",
+    "lobbyDetail": {
+      "reason": null,
+      "detail": null,
+      "detailHead": null
+    }
+  },
+  "mistated": true,
+  "sentences": {
+    "host": {
+      "text": "Reply accepted — connecting…",
+      "length": 28
+    },
+    "client": {
+      "text": "Connected. Rebuilding the host's world…",
+      "length": 39
+    }
+  },
+  "errors": {
+    "host": {
+      "consoleErrors": 0,
+      "netWarns": 0,
+      "netWarnTexts": [],
+      "consoleWarns": 12,
+      "pageErrors": 0,
+      "errorTexts": [],
+      "pageErrorTexts": []
+    },
+    "client": {
+      "consoleErrors": 0,
+      "netWarns": 0,
+      "netWarnTexts": [],
+      "consoleWarns": 12,
+      "pageErrors": 0,
+      "errorTexts": [],
+      "pageErrorTexts": []
+    }
+  },
+  "substitutionsMissing": []
+}

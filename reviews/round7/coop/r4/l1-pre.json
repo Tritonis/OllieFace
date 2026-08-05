@@ -1,0 +1,91 @@
+{
+  "arm": "l1-pre",
+  "scenario": "l1",
+  "substitutions": [
+    "L1-hold"
+  ],
+  "substitutionsApplied": [
+    "L1-hold"
+  ],
+  "substitutionsMissing": [],
+  "helloOverride": null,
+  "port": 5805,
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 66,
+      "survivorId": "ranger",
+      "maxHealth": 110
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 69,
+      "survivorId": "anvil",
+      "maxHealth": 170
+    }
+  },
+  "runningGateAfterFocus": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "tick": 307,
+      "serverTick": null,
+      "netRole": "host",
+      "authority": true,
+      "clients": 1,
+      "myNetId": null,
+      "connected": null
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "tick": 131,
+      "serverTick": 161,
+      "netRole": "client",
+      "authority": false,
+      "clients": null,
+      "myNetId": 1,
+      "connected": true
+    }
+  },
+  "tickBefore": [
+    161,
+    185,
+    210,
+    233
+  ],
+  "hostAfter": {
+    "alive": false,
+    "paused": true,
+    "screen": "death",
+    "input": true,
+    "holding": false,
+    "live": true
+  },
+  "tickAfter": [
+    260,
+    260,
+    260,
+    260,
+    260,
+    260,
+    260,
+    260
+  ],
+  "errors": {
+    "host": {
+      "console": [],
+      "page": [],
+      "harness": [
+        "WrongDocumentError: The root document of this element is not valid for pointer lock."
+      ]
+    },
+    "client": {
+      "console": [],
+      "page": [],
+      "harness": []
+    }
+  }
+}

@@ -1,0 +1,1202 @@
+{
+  "meta": {
+    "bound": 104,
+    "btnJump": 1,
+    "btnSprint": 2,
+    "standCount": 123,
+    "frameErrors": 0,
+    "seed": 1337
+  },
+  "gate": {
+    "maxDeltaNew": 0,
+    "maxDeltaOldVsNew": 81.2889435297708,
+    "samples": 12960,
+    "pass": true,
+    "oldDiffers": true
+  },
+  "P1": [
+    {
+      "stacks": 0,
+      "printedLaunch": 10.15,
+      "samples": 492,
+      "wedged": 0,
+      "launchAtPrinted": 442,
+      "launchAtPrintedPct": 89.8,
+      "zeroed": 5,
+      "zeroedPct": 1,
+      "causes": {
+        "oob": 3,
+        "terrainRise": 2,
+        "climbTest": 0,
+        "propOnly": 0
+      },
+      "medianTravel": 13.706,
+      "meanTravel": 13.129,
+      "medianHeightAtZero": -0.249,
+      "meanHeightAtZero": 0.184,
+      "medianTravelAtZero": 13.875,
+      "medianRiseAtZero": 0.891
+    },
+    {
+      "stacks": 3,
+      "printedLaunch": 40.15,
+      "samples": 492,
+      "wedged": 0,
+      "launchAtPrinted": 426,
+      "launchAtPrintedPct": 86.6,
+      "zeroed": 8,
+      "zeroedPct": 1.6,
+      "causes": {
+        "oob": 4,
+        "terrainRise": 4,
+        "climbTest": 0,
+        "propOnly": 0
+      },
+      "medianTravel": 22.958,
+      "meanTravel": 22.965,
+      "medianHeightAtZero": 2.608,
+      "meanHeightAtZero": 2.45,
+      "medianTravelAtZero": 13.752,
+      "medianRiseAtZero": 0.915
+    },
+    {
+      "stacks": 6,
+      "printedLaunch": 70.15,
+      "samples": 492,
+      "wedged": 0,
+      "launchAtPrinted": 411,
+      "launchAtPrintedPct": 83.5,
+      "zeroed": 15,
+      "zeroedPct": 3,
+      "causes": {
+        "oob": 5,
+        "terrainRise": 10,
+        "climbTest": 0,
+        "propOnly": 0
+      },
+      "medianTravel": 23.511,
+      "meanTravel": 33.568,
+      "medianHeightAtZero": 2.698,
+      "meanHeightAtZero": 2.512,
+      "medianTravelAtZero": 18.2,
+      "medianRiseAtZero": 0.892
+    },
+    {
+      "stacks": 12,
+      "printedLaunch": 130.15,
+      "samples": 492,
+      "wedged": 0,
+      "launchAtPrinted": 369,
+      "launchAtPrintedPct": 75,
+      "zeroed": 15,
+      "zeroedPct": 3,
+      "causes": {
+        "oob": 5,
+        "terrainRise": 10,
+        "climbTest": 0,
+        "propOnly": 0
+      },
+      "medianTravel": 24.975,
+      "meanTravel": 39.685,
+      "medianHeightAtZero": 2.167,
+      "meanHeightAtZero": 1.781,
+      "medianTravelAtZero": 26.052,
+      "medianRiseAtZero": 1.268
+    }
+  ],
+  "P2": [
+    {
+      "site": "wall +X",
+      "stacks": 0,
+      "solver": "old",
+      "maxGroundStoodOn": 6.199,
+      "maxY": 8.457,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.9981,
+      "maxAbsZ": 0.0575,
+      "endPos": [
+        104,
+        7.27,
+        -0.06
+      ],
+      "startGround": -1.727
+    },
+    {
+      "site": "wall +X",
+      "stacks": 0,
+      "solver": "new",
+      "maxGroundStoodOn": 6.2,
+      "maxY": 8.516,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.9981,
+      "maxAbsZ": 0.0504,
+      "endPos": [
+        104,
+        7.44,
+        -0.05
+      ],
+      "startGround": -1.727
+    },
+    {
+      "site": "wall +X",
+      "stacks": 3,
+      "solver": "old",
+      "maxGroundStoodOn": 6.186,
+      "maxY": 8.444,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.9941,
+      "maxAbsZ": 0.0613,
+      "endPos": [
+        103.99,
+        7.52,
+        -0.06
+      ],
+      "startGround": -1.727
+    },
+    {
+      "site": "wall +X",
+      "stacks": 3,
+      "solver": "new",
+      "maxGroundStoodOn": 6.195,
+      "maxY": 8.511,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.9969,
+      "maxAbsZ": 0.0653,
+      "endPos": [
+        104,
+        8.43,
+        -0.07
+      ],
+      "startGround": -1.727
+    },
+    {
+      "site": "wall +X",
+      "stacks": 12,
+      "solver": "old",
+      "maxGroundStoodOn": 6.192,
+      "maxY": 8.508,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.9959,
+      "maxAbsZ": 0.0616,
+      "endPos": [
+        104,
+        7.68,
+        -0.06
+      ],
+      "startGround": -1.727
+    },
+    {
+      "site": "wall +X",
+      "stacks": 12,
+      "solver": "new",
+      "maxGroundStoodOn": 6.191,
+      "maxY": 8.448,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.9956,
+      "maxAbsZ": 0.0666,
+      "endPos": [
+        104,
+        6.78,
+        -0.07
+      ],
+      "startGround": -1.727
+    },
+    {
+      "site": "wall -X",
+      "stacks": 0,
+      "solver": "old",
+      "maxGroundStoodOn": 5.668,
+      "maxY": 7.926,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.9996,
+      "maxAbsZ": 0.159,
+      "endPos": [
+        -104,
+        7.68,
+        0.16
+      ],
+      "startGround": -3.664
+    },
+    {
+      "site": "wall -X",
+      "stacks": 0,
+      "solver": "new",
+      "maxGroundStoodOn": 5.669,
+      "maxY": 7.936,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.9981,
+      "maxAbsZ": 0.1518,
+      "endPos": [
+        -104,
+        6.69,
+        0.15
+      ],
+      "startGround": -3.664
+    },
+    {
+      "site": "wall -X",
+      "stacks": 3,
+      "solver": "old",
+      "maxGroundStoodOn": 5.662,
+      "maxY": 7.92,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.9978,
+      "maxAbsZ": 0.1665,
+      "endPos": [
+        -104,
+        7.44,
+        0.17
+      ],
+      "startGround": -3.664
+    },
+    {
+      "site": "wall -X",
+      "stacks": 3,
+      "solver": "new",
+      "maxGroundStoodOn": 5.644,
+      "maxY": 8.03,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.9966,
+      "maxAbsZ": 0.2218,
+      "endPos": [
+        -104,
+        6.95,
+        0.22
+      ],
+      "startGround": -3.664
+    },
+    {
+      "site": "wall -X",
+      "stacks": 12,
+      "solver": "old",
+      "maxGroundStoodOn": 5.659,
+      "maxY": 7.917,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.995,
+      "maxAbsZ": 0.1656,
+      "endPos": [
+        -103.99,
+        7.66,
+        0.17
+      ],
+      "startGround": -3.664
+    },
+    {
+      "site": "wall -X",
+      "stacks": 12,
+      "solver": "new",
+      "maxGroundStoodOn": 5.642,
+      "maxY": 7.958,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.9941,
+      "maxAbsZ": 0.2121,
+      "endPos": [
+        -103.99,
+        6.19,
+        0.21
+      ],
+      "startGround": -3.664
+    },
+    {
+      "site": "wall +Z",
+      "stacks": 0,
+      "solver": "old",
+      "maxGroundStoodOn": 12.338,
+      "maxY": 25.873,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 0.1481,
+      "maxAbsZ": 103.9981,
+      "endPos": [
+        -0.15,
+        13.43,
+        104
+      ],
+      "startGround": 23.615
+    },
+    {
+      "site": "wall +Z",
+      "stacks": 0,
+      "solver": "new",
+      "maxGroundStoodOn": 12.338,
+      "maxY": 25.873,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 0.1481,
+      "maxAbsZ": 103.9981,
+      "endPos": [
+        -0.15,
+        13.43,
+        104
+      ],
+      "startGround": 23.615
+    },
+    {
+      "site": "wall +Z",
+      "stacks": 3,
+      "solver": "old",
+      "maxGroundStoodOn": 12.324,
+      "maxY": 25.873,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 0.148,
+      "maxAbsZ": 103.9936,
+      "endPos": [
+        -0.15,
+        13.41,
+        103.99
+      ],
+      "startGround": 23.615
+    },
+    {
+      "site": "wall +Z",
+      "stacks": 3,
+      "solver": "new",
+      "maxGroundStoodOn": 12.34,
+      "maxY": 25.873,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 0.1481,
+      "maxAbsZ": 103.9985,
+      "endPos": [
+        -0.15,
+        13.43,
+        104
+      ],
+      "startGround": 23.615
+    },
+    {
+      "site": "wall +Z",
+      "stacks": 12,
+      "solver": "old",
+      "maxGroundStoodOn": 12.339,
+      "maxY": 25.873,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 0.1481,
+      "maxAbsZ": 103.9984,
+      "endPos": [
+        -0.15,
+        13.43,
+        104
+      ],
+      "startGround": 23.615
+    },
+    {
+      "site": "wall +Z",
+      "stacks": 12,
+      "solver": "new",
+      "maxGroundStoodOn": 12.328,
+      "maxY": 25.873,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 0.148,
+      "maxAbsZ": 103.9949,
+      "endPos": [
+        -0.15,
+        13.42,
+        103.99
+      ],
+      "startGround": 23.615
+    },
+    {
+      "site": "wall -Z",
+      "stacks": 0,
+      "solver": "old",
+      "maxGroundStoodOn": 6.853,
+      "maxY": 9.111,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 0.1428,
+      "maxAbsZ": 103.9969,
+      "endPos": [
+        0.14,
+        9,
+        -104
+      ],
+      "startGround": -3.229
+    },
+    {
+      "site": "wall -Z",
+      "stacks": 0,
+      "solver": "new",
+      "maxGroundStoodOn": 6.869,
+      "maxY": 9.185,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 0.1317,
+      "maxAbsZ": 103.9981,
+      "endPos": [
+        0.13,
+        8.05,
+        -104
+      ],
+      "startGround": -3.229
+    },
+    {
+      "site": "wall -Z",
+      "stacks": 3,
+      "solver": "old",
+      "maxGroundStoodOn": 6.858,
+      "maxY": 9.174,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 0.1482,
+      "maxAbsZ": 103.9977,
+      "endPos": [
+        0.15,
+        9.04,
+        -104
+      ],
+      "startGround": -3.229
+    },
+    {
+      "site": "wall -Z",
+      "stacks": 3,
+      "solver": "new",
+      "maxGroundStoodOn": 6.846,
+      "maxY": 9.104,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 0.1649,
+      "maxAbsZ": 103.9955,
+      "endPos": [
+        0.16,
+        8.91,
+        -104
+      ],
+      "startGround": -3.229
+    },
+    {
+      "site": "wall -Z",
+      "stacks": 12,
+      "solver": "old",
+      "maxGroundStoodOn": 6.848,
+      "maxY": 9.106,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 0.1475,
+      "maxAbsZ": 103.9946,
+      "endPos": [
+        0.15,
+        8.89,
+        -103.99
+      ],
+      "startGround": -3.229
+    },
+    {
+      "site": "wall -Z",
+      "stacks": 12,
+      "solver": "new",
+      "maxGroundStoodOn": 6.835,
+      "maxY": 9.151,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 0.1813,
+      "maxAbsZ": 103.9936,
+      "endPos": [
+        0.18,
+        7.36,
+        -103.99
+      ],
+      "startGround": -3.229
+    },
+    {
+      "site": "corner +X+Z",
+      "stacks": 0,
+      "solver": "old",
+      "maxGroundStoodOn": 35.142,
+      "maxY": 43.806,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.9996,
+      "maxAbsZ": 103.9996,
+      "endPos": [
+        104,
+        36.14,
+        104
+      ],
+      "startGround": 41.548
+    },
+    {
+      "site": "corner +X+Z",
+      "stacks": 0,
+      "solver": "new",
+      "maxGroundStoodOn": 35.142,
+      "maxY": 43.806,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.9996,
+      "maxAbsZ": 103.9996,
+      "endPos": [
+        104,
+        36.14,
+        104
+      ],
+      "startGround": 41.548
+    },
+    {
+      "site": "corner +X+Z",
+      "stacks": 3,
+      "solver": "old",
+      "maxGroundStoodOn": 35.06,
+      "maxY": 43.806,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.9998,
+      "maxAbsZ": 103.9998,
+      "endPos": [
+        104,
+        36,
+        104
+      ],
+      "startGround": 41.548
+    },
+    {
+      "site": "corner +X+Z",
+      "stacks": 3,
+      "solver": "new",
+      "maxGroundStoodOn": 35.06,
+      "maxY": 43.806,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.9998,
+      "maxAbsZ": 103.9998,
+      "endPos": [
+        104,
+        36,
+        104
+      ],
+      "startGround": 41.548
+    },
+    {
+      "site": "corner +X+Z",
+      "stacks": 12,
+      "solver": "old",
+      "maxGroundStoodOn": 35.062,
+      "maxY": 43.806,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.9956,
+      "maxAbsZ": 103.9956,
+      "endPos": [
+        104,
+        36.01,
+        104
+      ],
+      "startGround": 41.548
+    },
+    {
+      "site": "corner +X+Z",
+      "stacks": 12,
+      "solver": "new",
+      "maxGroundStoodOn": 35.061,
+      "maxY": 43.806,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.9976,
+      "maxAbsZ": 103.9976,
+      "endPos": [
+        104,
+        36.01,
+        104
+      ],
+      "startGround": 41.548
+    },
+    {
+      "site": "corner +X-Z",
+      "stacks": 0,
+      "solver": "old",
+      "maxGroundStoodOn": 41.119,
+      "maxY": 43.435,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.9965,
+      "maxAbsZ": 103.9959,
+      "endPos": [
+        104,
+        42.15,
+        -104
+      ],
+      "startGround": 39.388
+    },
+    {
+      "site": "corner +X-Z",
+      "stacks": 0,
+      "solver": "new",
+      "maxGroundStoodOn": 41.119,
+      "maxY": 43.435,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.9996,
+      "maxAbsZ": 103.9996,
+      "endPos": [
+        104,
+        42.15,
+        -104
+      ],
+      "startGround": 39.388
+    },
+    {
+      "site": "corner +X-Z",
+      "stacks": 3,
+      "solver": "old",
+      "maxGroundStoodOn": 40.593,
+      "maxY": 42.851,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.999,
+      "maxAbsZ": 103.999,
+      "endPos": [
+        104,
+        42.51,
+        -104
+      ],
+      "startGround": 39.388
+    },
+    {
+      "site": "corner +X-Z",
+      "stacks": 3,
+      "solver": "new",
+      "maxGroundStoodOn": 41.977,
+      "maxY": 44.429,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.9957,
+      "maxAbsZ": 103.9986,
+      "endPos": [
+        104,
+        42.19,
+        -104
+      ],
+      "startGround": 39.388
+    },
+    {
+      "site": "corner +X-Z",
+      "stacks": 12,
+      "solver": "old",
+      "maxGroundStoodOn": 40.326,
+      "maxY": 42.642,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.9976,
+      "maxAbsZ": 103.9981,
+      "endPos": [
+        104,
+        41.27,
+        -104
+      ],
+      "startGround": 39.388
+    },
+    {
+      "site": "corner +X-Z",
+      "stacks": 12,
+      "solver": "new",
+      "maxGroundStoodOn": 40.325,
+      "maxY": 42.641,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.9973,
+      "maxAbsZ": 103.999,
+      "endPos": [
+        104,
+        42.64,
+        -104
+      ],
+      "startGround": 39.388
+    },
+    {
+      "site": "corner -X+Z",
+      "stacks": 0,
+      "solver": "old",
+      "maxGroundStoodOn": 30.235,
+      "maxY": 35.46,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.9959,
+      "maxAbsZ": 103.9965,
+      "endPos": [
+        -104,
+        29.39,
+        104
+      ],
+      "startGround": 33.202
+    },
+    {
+      "site": "corner -X+Z",
+      "stacks": 0,
+      "solver": "new",
+      "maxGroundStoodOn": 30.235,
+      "maxY": 35.46,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.9996,
+      "maxAbsZ": 103.9996,
+      "endPos": [
+        -104,
+        29.38,
+        104
+      ],
+      "startGround": 33.202
+    },
+    {
+      "site": "corner -X+Z",
+      "stacks": 3,
+      "solver": "old",
+      "maxGroundStoodOn": 28.139,
+      "maxY": 35.46,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.9998,
+      "maxAbsZ": 103.9998,
+      "endPos": [
+        -104,
+        29.71,
+        104
+      ],
+      "startGround": 33.202
+    },
+    {
+      "site": "corner -X+Z",
+      "stacks": 3,
+      "solver": "new",
+      "maxGroundStoodOn": 28.139,
+      "maxY": 35.46,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.9998,
+      "maxAbsZ": 103.9998,
+      "endPos": [
+        -104,
+        29.71,
+        104
+      ],
+      "startGround": 33.202
+    },
+    {
+      "site": "corner -X+Z",
+      "stacks": 12,
+      "solver": "old",
+      "maxGroundStoodOn": 28.142,
+      "maxY": 35.46,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.9956,
+      "maxAbsZ": 103.9956,
+      "endPos": [
+        -104,
+        29.71,
+        104
+      ],
+      "startGround": 33.202
+    },
+    {
+      "site": "corner -X+Z",
+      "stacks": 12,
+      "solver": "new",
+      "maxGroundStoodOn": 28.141,
+      "maxY": 35.46,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.9976,
+      "maxAbsZ": 103.9976,
+      "endPos": [
+        -104,
+        29.71,
+        104
+      ],
+      "startGround": 33.202
+    },
+    {
+      "site": "corner -X-Z",
+      "stacks": 0,
+      "solver": "old",
+      "maxGroundStoodOn": 35.233,
+      "maxY": 37.491,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.9965,
+      "maxAbsZ": 103.9959,
+      "endPos": [
+        -104,
+        27.74,
+        -104
+      ],
+      "startGround": 34.364
+    },
+    {
+      "site": "corner -X-Z",
+      "stacks": 0,
+      "solver": "new",
+      "maxGroundStoodOn": 36.186,
+      "maxY": 38.502,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.9996,
+      "maxAbsZ": 103.9996,
+      "endPos": [
+        -104,
+        27.16,
+        -104
+      ],
+      "startGround": 34.364
+    },
+    {
+      "site": "corner -X-Z",
+      "stacks": 3,
+      "solver": "old",
+      "maxGroundStoodOn": 34.817,
+      "maxY": 37.075,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.9971,
+      "maxAbsZ": 103.9969,
+      "endPos": [
+        -104,
+        27.17,
+        -104
+      ],
+      "startGround": 34.364
+    },
+    {
+      "site": "corner -X-Z",
+      "stacks": 3,
+      "solver": "new",
+      "maxGroundStoodOn": 36.306,
+      "maxY": 38.564,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 104,
+      "maxAbsZ": 103.999,
+      "endPos": [
+        -104,
+        28.49,
+        -104
+      ],
+      "startGround": 34.364
+    },
+    {
+      "site": "corner -X-Z",
+      "stacks": 12,
+      "solver": "old",
+      "maxGroundStoodOn": 34.908,
+      "maxY": 37.36,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.9979,
+      "maxAbsZ": 103.9988,
+      "endPos": [
+        -104,
+        27.26,
+        -104
+      ],
+      "startGround": 34.364
+    },
+    {
+      "site": "corner -X-Z",
+      "stacks": 12,
+      "solver": "new",
+      "maxGroundStoodOn": 35.484,
+      "maxY": 37.937,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 103.9982,
+      "maxAbsZ": 104,
+      "endPos": [
+        -104,
+        27.73,
+        -104
+      ],
+      "startGround": 34.364
+    },
+    {
+      "site": "steepest face (56,-77)",
+      "stacks": 0,
+      "solver": "old",
+      "maxGroundStoodOn": 25.298,
+      "maxY": 27.614,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 56.3953,
+      "maxAbsZ": 77,
+      "endPos": [
+        56.12,
+        6.6,
+        35.12
+      ],
+      "startGround": 13.006
+    },
+    {
+      "site": "steepest face (56,-77)",
+      "stacks": 0,
+      "solver": "new",
+      "maxGroundStoodOn": 25.298,
+      "maxY": 27.726,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 56.3807,
+      "maxAbsZ": 76.9811,
+      "endPos": [
+        55.49,
+        6.02,
+        52.53
+      ],
+      "startGround": 13.006
+    },
+    {
+      "site": "steepest face (56,-77)",
+      "stacks": 3,
+      "solver": "old",
+      "maxGroundStoodOn": 38.02,
+      "maxY": 40.278,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 56.3953,
+      "maxAbsZ": 103.9998,
+      "endPos": [
+        55.88,
+        37.16,
+        104
+      ],
+      "startGround": 13.006
+    },
+    {
+      "site": "steepest face (56,-77)",
+      "stacks": 3,
+      "solver": "new",
+      "maxGroundStoodOn": 36.698,
+      "maxY": 39.151,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 56.3639,
+      "maxAbsZ": 103.999,
+      "endPos": [
+        54.81,
+        33.41,
+        104
+      ],
+      "startGround": 13.006
+    },
+    {
+      "site": "steepest face (56,-77)",
+      "stacks": 12,
+      "solver": "old",
+      "maxGroundStoodOn": 36.789,
+      "maxY": 39.047,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 56.3953,
+      "maxAbsZ": 103.9972,
+      "endPos": [
+        55.83,
+        34.35,
+        104
+      ],
+      "startGround": 13.006
+    },
+    {
+      "site": "steepest face (56,-77)",
+      "stacks": 12,
+      "solver": "new",
+      "maxGroundStoodOn": 37.553,
+      "maxY": 40.005,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbsX": 56.3639,
+      "maxAbsZ": 103.9998,
+      "endPos": [
+        55.41,
+        33.77,
+        104
+      ],
+      "startGround": 13.006
+    }
+  ],
+  "walkBase": [
+    {
+      "site": "wall +X",
+      "maxGroundWalked": -0.623
+    },
+    {
+      "site": "wall -X",
+      "maxGroundWalked": -0.658
+    },
+    {
+      "site": "wall +Z",
+      "maxGroundWalked": 23.615
+    },
+    {
+      "site": "wall -Z",
+      "maxGroundWalked": -1.188
+    },
+    {
+      "site": "corner +X+Z",
+      "maxGroundWalked": 41.754
+    },
+    {
+      "site": "corner +X-Z",
+      "maxGroundWalked": 40.578
+    },
+    {
+      "site": "corner -X+Z",
+      "maxGroundWalked": 33.205
+    },
+    {
+      "site": "corner -X-Z",
+      "maxGroundWalked": 34.909
+    },
+    {
+      "site": "steepest face (56,-77)",
+      "maxGroundWalked": 13.006
+    }
+  ],
+  "extreme": [
+    {
+      "speed": 110,
+      "site": "wall +X",
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "minYMinusGround": 0,
+      "maxAbs": 100.381
+    },
+    {
+      "speed": 110,
+      "site": "steepest face (56,-77)",
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "minYMinusGround": 0,
+      "maxAbs": 80.2389
+    },
+    {
+      "speed": 160,
+      "site": "wall +X",
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "minYMinusGround": 0,
+      "maxAbs": 99.4074
+    },
+    {
+      "speed": 160,
+      "site": "steepest face (56,-77)",
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "minYMinusGround": 0,
+      "maxAbs": 80.2389
+    },
+    {
+      "speed": 240,
+      "site": "wall +X",
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "minYMinusGround": 0,
+      "maxAbs": 100.5714
+    },
+    {
+      "speed": 240,
+      "site": "steepest face (56,-77)",
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "minYMinusGround": 0,
+      "maxAbs": 80.2389
+    },
+    {
+      "speed": 400,
+      "site": "wall +X",
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "minYMinusGround": 0,
+      "maxAbs": 99.9167
+    },
+    {
+      "speed": 400,
+      "site": "steepest face (56,-77)",
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "minYMinusGround": 0,
+      "maxAbs": 80.2389
+    },
+    {
+      "speed": 800,
+      "site": "wall +X",
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "minYMinusGround": 0,
+      "maxAbs": 100.3333
+    },
+    {
+      "speed": 800,
+      "site": "steepest face (56,-77)",
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "minYMinusGround": 0,
+      "maxAbs": 80.2389
+    }
+  ],
+  "pageErrors": []
+}

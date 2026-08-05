@@ -1,0 +1,277 @@
+{
+  "pageErrors": [],
+  "engineRunning": false,
+  "flyerDive": {
+    "clean": {
+      "mult": 1,
+      "diveSpeed": 17,
+      "totalPath30": 8.5,
+      "perStepSpeed": 17,
+      "rows": [
+        {
+          "step": 0,
+          "disp": 0.283333,
+          "speed": 17,
+          "state": "chase",
+          "diving": true,
+          "dying": false
+        },
+        {
+          "step": 1,
+          "disp": 0.283333,
+          "speed": 17,
+          "state": "chase",
+          "diving": true,
+          "dying": false
+        },
+        {
+          "step": 2,
+          "disp": 0.283333,
+          "speed": 17,
+          "state": "chase",
+          "diving": true,
+          "dying": false
+        }
+      ]
+    },
+    "slow1": {
+      "mult": 0.6,
+      "diveSpeed": 17,
+      "totalPath30": 8.5,
+      "perStepSpeed": 17,
+      "rows": [
+        {
+          "step": 0,
+          "disp": 0.283333,
+          "speed": 17,
+          "state": "chase",
+          "diving": true,
+          "dying": false
+        },
+        {
+          "step": 1,
+          "disp": 0.283333,
+          "speed": 17,
+          "state": "chase",
+          "diving": true,
+          "dying": false
+        },
+        {
+          "step": 2,
+          "disp": 0.283333,
+          "speed": 17,
+          "state": "chase",
+          "diving": true,
+          "dying": false
+        }
+      ]
+    },
+    "slow4": {
+      "mult": 0.25,
+      "diveSpeed": 17,
+      "totalPath30": 8.5,
+      "perStepSpeed": 17,
+      "rows": [
+        {
+          "step": 0,
+          "disp": 0.283333,
+          "speed": 17,
+          "state": "chase",
+          "diving": true,
+          "dying": false
+        },
+        {
+          "step": 1,
+          "disp": 0.283333,
+          "speed": 17,
+          "state": "chase",
+          "diving": true,
+          "dying": false
+        },
+        {
+          "step": 2,
+          "disp": 0.283333,
+          "speed": 17,
+          "state": "chase",
+          "diving": true,
+          "dying": false
+        }
+      ]
+    },
+    "freeze": {
+      "mult": 0,
+      "diveSpeed": 17,
+      "totalPath30": 8.5,
+      "perStepSpeed": 17,
+      "rows": [
+        {
+          "step": 0,
+          "disp": 0.283333,
+          "speed": 17,
+          "state": "chase",
+          "diving": true,
+          "dying": false
+        },
+        {
+          "step": 1,
+          "disp": 0.283333,
+          "speed": 17,
+          "state": "chase",
+          "diving": true,
+          "dying": false
+        },
+        {
+          "step": 2,
+          "disp": 0.283333,
+          "speed": 17,
+          "state": "chase",
+          "diving": true,
+          "dying": false
+        }
+      ]
+    },
+    "ratio_slow1": 1,
+    "ratio_slow4": 1,
+    "ratio_freeze": 1
+  },
+  "accelRamp": {
+    "clean": [
+      0.433333,
+      0.866667,
+      1.3,
+      1.733333,
+      2.166667,
+      2.6,
+      3.033333,
+      3.466667,
+      3.9,
+      4.333333,
+      4.766667,
+      5.2,
+      5.2,
+      5.2,
+      5.2,
+      5.2,
+      5.2,
+      5.2,
+      5.2,
+      5.2
+    ],
+    "slow1": [
+      0.433333,
+      0.866667,
+      1.3,
+      1.733333,
+      2.166667,
+      2.6,
+      3.033333,
+      3.12,
+      3.12,
+      3.12,
+      3.12,
+      3.12,
+      3.12,
+      3.12,
+      3.12,
+      3.12,
+      3.12,
+      3.12,
+      3.12,
+      3.12
+    ],
+    "slow4": [
+      0.433333,
+      0.866667,
+      1.3,
+      1.3,
+      1.3,
+      1.3,
+      1.3,
+      1.3,
+      1.3,
+      1.3,
+      1.3,
+      1.3,
+      1.3,
+      1.3,
+      1.3,
+      1.3,
+      1.3,
+      1.3,
+      1.3,
+      1.3
+    ],
+    "perStepRatio_slow4_over_clean": [
+      1,
+      1,
+      1,
+      0.75,
+      0.6,
+      0.5,
+      0.4286,
+      0.375,
+      0.3333,
+      0.3,
+      0.2727,
+      0.25,
+      0.25,
+      0.25,
+      0.25,
+      0.25,
+      0.25,
+      0.25,
+      0.25,
+      0.25
+    ],
+    "perStepRatio_slow1_over_clean": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0.9,
+      0.8,
+      0.72,
+      0.6545,
+      0.6,
+      0.6,
+      0.6,
+      0.6,
+      0.6,
+      0.6,
+      0.6,
+      0.6,
+      0.6
+    ],
+    "contract": {
+      "slow1": 0.6,
+      "slow4": 0.25
+    }
+  },
+  "naturalBurrowReachability": {
+    "at25m": {
+      "dwellSteps": {
+        "chase": 791,
+        "reposition": 1009
+      },
+      "hasLOSfraction": 0.001,
+      "firstSubmergeStep": -1,
+      "simSeconds": 30
+    },
+    "at12m": {
+      "dwellSteps": {
+        "chase": 647,
+        "windup": 168,
+        "submerged": 200,
+        "attack": 112,
+        "recover": 240,
+        "reposition": 433
+      },
+      "hasLOSfraction": 0.413,
+      "firstSubmergeStep": 66,
+      "simSeconds": 30
+    }
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "arm": "fixed",
+  "steps": [
+    "both running",
+    "connected",
+    "killDispatch {\"emitted\":4,\"reachedLate\":0,\"audioDeathCalls\":4,\"audioDeathThrew\":4,\"hudKillsAtStart\":0,\"hudKillsNow\":0,\"views\":25,\"directorEnemies\":0,\"progressionKills\":4} | host {\"enemies\":1,\"hudKills\":4,\"progressionKills\":4}",
+    "phantomBarrier {\"before\":{\"clientShield\":0,\"clientGold\":23,\"clientHealth\":114.79999999999905},\"hit\":{\"found\":true,\"dealt\":40,\"pawnShieldAfter\":0,\"pawnHealth\":103},\"after\":{\"clientShield\":19.63,\"clientGold\":23,\"clientHealth\":116.5,\"progressionDamageTaken\":0,\"profileRunDamageTaken\":0,\"profileStageDamage\":0,\"profileFlawlessStages\":0,\"profileDied\":false},\"hostPawnAfter\":{\"pawnShield\":0,\"pawnHealth\":103.4}}",
+    "VERDICT {\"killEmitsOnClient\":4,\"killReachedListenersAfterAudio\":0,\"audioDeathThrew\":4,\"hudKillCounterMoved\":false,\"clientBarrierWithoutHostBarrier\":true}"
+  ],
+  "errors": {
+    "host": [
+      "The root document of this element is not valid for pointer lock."
+    ],
+    "client": [
+      "Failed to set the 'value' property on 'AudioParam': The provided float value is non-finite.",
+      "Failed to set the 'value' property on 'AudioParam': The provided float value is non-finite.",
+      "Failed to set the 'value' property on 'AudioParam': The provided float value is non-finite.",
+      "Failed to set the 'value' property on 'AudioParam': The provided float value is non-finite."
+    ]
+  },
+  "forcedKills": {
+    "killed": 4,
+    "hostHudKills": 4
+  },
+  "killDispatch": {
+    "emitted": 4,
+    "reachedLate": 0,
+    "audioDeathCalls": 4,
+    "audioDeathThrew": 4,
+    "hudKillsAtStart": 0,
+    "hudKillsNow": 0,
+    "views": 25,
+    "directorEnemies": 0,
+    "progressionKills": 4
+  },
+  "hostFight": {
+    "enemies": 1,
+    "hudKills": 4,
+    "progressionKills": 4
+  },
+  "phantomBarrier": {
+    "before": {
+      "clientShield": 0,
+      "clientGold": 23,
+      "clientHealth": 114.79999999999905
+    },
+    "hit": {
+      "found": true,
+      "dealt": 40,
+      "pawnShieldAfter": 0,
+      "pawnHealth": 103
+    },
+    "after": {
+      "clientShield": 19.63,
+      "clientGold": 23,
+      "clientHealth": 116.5,
+      "progressionDamageTaken": 0,
+      "profileRunDamageTaken": 0,
+      "profileStageDamage": 0,
+      "profileFlawlessStages": 0,
+      "profileDied": false
+    },
+    "hostPawnAfter": {
+      "pawnShield": 0,
+      "pawnHealth": 103.4
+    }
+  },
+  "verdict": {
+    "killEmitsOnClient": 4,
+    "killReachedListenersAfterAudio": 0,
+    "audioDeathThrew": 4,
+    "hudKillCounterMoved": false,
+    "clientBarrierWithoutHostBarrier": true
+  },
+  "substitutions": []
+}

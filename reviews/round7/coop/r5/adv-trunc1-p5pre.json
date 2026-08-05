@@ -1,0 +1,96 @@
+{
+  "arm": "adv-trunc1-p5pre",
+  "shape": "trunc1",
+  "substitutions": [
+    "P5-malformed"
+  ],
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 300,
+      "survivorId": "ranger",
+      "maxHealth": 110
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 65,
+      "survivorId": "anvil",
+      "maxHealth": 170
+    }
+  },
+  "helloBytes": 1,
+  "host": {
+    "tick": 140,
+    "paused": false,
+    "screen": null,
+    "inputEnabled": true,
+    "pointerLocked": false,
+    "clients": 0,
+    "pawns": [],
+    "helloSeen": [],
+    "peerSurvivors": [],
+    "lobbyStatus": "peerRefused",
+    "lobbyDetail": {
+      "reason": "version",
+      "detail": 16,
+      "detailHead": "theirs 0, ours 4",
+      "count": null
+    },
+    "players": 1,
+    "ownSurvivor": "ranger",
+    "ownMax": 110,
+    "ownAlive": true
+  },
+  "client": {
+    "connected": false,
+    "myNetId": 1,
+    "netTick": 10,
+    "serverTick": 65,
+    "paused": false,
+    "screen": null,
+    "survivorId": "anvil",
+    "maxHealth": 170,
+    "health": 170,
+    "alive": true,
+    "lobbyStatus": "refused",
+    "lobbyDetail": {
+      "reason": "version",
+      "detail": 16,
+      "detailHead": "theirs 0, ours 4"
+    }
+  },
+  "mistated": false,
+  "sentences": {
+    "host": {
+      "text": "Turned a player away: they are running a different version of the game (theirs 0, ours 4). Both of you need the same build.",
+      "length": 123
+    },
+    "client": {
+      "text": "That host is running a different version of the game (theirs 0, ours 4). Both of you need the same build.",
+      "length": 105
+    }
+  },
+  "errors": {
+    "host": {
+      "consoleErrors": 0,
+      "netWarns": 0,
+      "netWarnTexts": [],
+      "consoleWarns": 12,
+      "pageErrors": 0,
+      "errorTexts": [],
+      "pageErrorTexts": []
+    },
+    "client": {
+      "consoleErrors": 0,
+      "netWarns": 0,
+      "netWarnTexts": [],
+      "consoleWarns": 12,
+      "pageErrors": 0,
+      "errorTexts": [],
+      "pageErrorTexts": []
+    }
+  },
+  "substitutionsMissing": []
+}

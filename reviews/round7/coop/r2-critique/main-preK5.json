@@ -1,0 +1,844 @@
+{
+  "arm": "preK5",
+  "scenario": "main",
+  "port": 5750,
+  "substitutions": [
+    "K5-prog",
+    "K5-prof"
+  ],
+  "steps": [
+    "vite up on 5750 arm preK5 subs K5-prog|K5-prof",
+    "host booted",
+    "client booted",
+    "HOST running-game gate {\"paused\":false,\"screen\":null,\"localTick\":61}",
+    "CLIENT running-game gate {\"paused\":false,\"screen\":null,\"localTick\":61}"
+  ],
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 61
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 61
+    }
+  },
+  "inventory": {
+    "host": {
+      "wax": 3,
+      "soles": 1,
+      "tect": 1,
+      "vert": 1
+    },
+    "client": {
+      "wax": 3,
+      "soles": 1,
+      "tect": 1,
+      "vert": 1
+    }
+  },
+  "clientBeforeJoin": {
+    "lastCmdTick": 367,
+    "localTick": 367
+  },
+  "connected": true,
+  "atJoin": {
+    "lastCmdTick": 6,
+    "localTick": 0,
+    "netTick": 6
+  },
+  "F6_firstSecond": {
+    "steps": 56,
+    "classifiedReplay": 0,
+    "projectileTicks": 56,
+    "frac": 0
+  },
+  "roles": {
+    "host": {
+      "authority": true,
+      "role": "host",
+      "playerCount": 2,
+      "clients": 1
+    },
+    "client": {
+      "authority": false,
+      "role": "client",
+      "myNetId": 1,
+      "connected": true
+    }
+  },
+  "runningGateAfterJoin": {
+    "host": {
+      "paused": false,
+      "localTick": 571
+    },
+    "client": {
+      "paused": false,
+      "localTick": 0
+    }
+  },
+  "before": {
+    "host": {
+      "alive": true,
+      "health": 105.63,
+      "maxHealth": 110,
+      "shield": 15.01,
+      "sinceDamage": 1.82,
+      "screen": null,
+      "paused": false,
+      "progEnded": null,
+      "progKills": 0,
+      "progDamageDealt": 0,
+      "progHighestHit": 0,
+      "progDamageTaken": 5,
+      "profRunDied": false,
+      "profRunDamageTaken": 5,
+      "profStageDamage": 5,
+      "hudKills": 0,
+      "directorEnabled": true,
+      "directorEnemies": 2,
+      "timeSinceHurt": 1.82,
+      "stopped": false,
+      "musicOff": false,
+      "musicGain": 0.48,
+      "intensity": 0.0924,
+      "probe": {
+        "deathCalls": 0,
+        "deathThrows": 0,
+        "downstreamKill": 0,
+        "downstreamPlayerDead": 0,
+        "playerHurtCue": 0,
+        "killWire": [],
+        "playerDeadWire": [],
+        "hurtEvents": []
+      }
+    },
+    "client": {
+      "alive": true,
+      "health": 110,
+      "maxHealth": 110,
+      "shield": 0,
+      "sinceDamage": 108.28,
+      "screen": null,
+      "paused": false,
+      "progEnded": null,
+      "progKills": 0,
+      "progDamageDealt": 0,
+      "progHighestHit": 0,
+      "progDamageTaken": 0,
+      "profRunDied": false,
+      "profRunDamageTaken": 0,
+      "profStageDamage": 0,
+      "hudKills": 0,
+      "directorEnabled": true,
+      "directorEnemies": 0,
+      "timeSinceHurt": 1008.93,
+      "stopped": false,
+      "musicOff": false,
+      "musicGain": 0.48,
+      "intensity": 0.0032,
+      "probe": {
+        "deathCalls": 0,
+        "deathThrows": 0,
+        "downstreamKill": 0,
+        "downstreamPlayerDead": 0,
+        "playerHurtCue": 0,
+        "killWire": [],
+        "playerDeadWire": [],
+        "hurtEvents": []
+      }
+    }
+  },
+  "enemyWait": {
+    "alive": 4,
+    "waitedMs": 10138
+  },
+  "emitRate": {
+    "perSecond": 4,
+    "byName": {
+      "shieldBroken": 9,
+      "damage": 10,
+      "playerHurt": 3,
+      "challengeProgress": 3
+    }
+  },
+  "forcedKills": {
+    "available": 4,
+    "killed": 4
+  },
+  "afterKills": {
+    "host": {
+      "alive": true,
+      "health": 142.37,
+      "maxHealth": 143,
+      "shield": 0,
+      "sinceDamage": 3.72,
+      "screen": null,
+      "paused": false,
+      "progEnded": null,
+      "progKills": 4,
+      "progDamageDealt": 0,
+      "progHighestHit": 0,
+      "progDamageTaken": 10.25,
+      "profRunDied": false,
+      "profRunDamageTaken": 10.25,
+      "profStageDamage": 10.25,
+      "hudKills": 4,
+      "directorEnabled": true,
+      "directorEnemies": 0,
+      "timeSinceHurt": 3.72,
+      "stopped": false,
+      "musicOff": false,
+      "musicGain": 0.48,
+      "intensity": 0.3987,
+      "probe": {
+        "deathCalls": 4,
+        "deathThrows": 0,
+        "downstreamKill": 4,
+        "downstreamPlayerDead": 0,
+        "playerHurtCue": 3,
+        "killWire": [
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "hasVictim": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "hasVictim": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "hasVictim": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "hasVictim": true
+          }
+        ],
+        "playerDeadWire": [],
+        "hurtEvents": [
+          {
+            "amount": 0.12499999999984546
+          },
+          {
+            "amount": 5
+          },
+          {
+            "amount": 0.12499999999982414
+          }
+        ]
+      }
+    },
+    "client": {
+      "alive": true,
+      "health": 143,
+      "maxHealth": 143,
+      "shield": 0,
+      "sinceDamage": 122.37,
+      "screen": null,
+      "paused": false,
+      "progEnded": null,
+      "progKills": 4,
+      "progDamageDealt": 0,
+      "progHighestHit": 0,
+      "progDamageTaken": 0,
+      "profRunDied": false,
+      "profRunDamageTaken": 0,
+      "profStageDamage": 0,
+      "hudKills": 4,
+      "directorEnabled": true,
+      "directorEnemies": 0,
+      "timeSinceHurt": 1023.02,
+      "stopped": false,
+      "musicOff": false,
+      "musicGain": 0.48,
+      "intensity": 0.2688,
+      "probe": {
+        "deathCalls": 4,
+        "deathThrows": 0,
+        "downstreamKill": 4,
+        "downstreamPlayerDead": 0,
+        "playerHurtCue": 0,
+        "killWire": [
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "hasVictim": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "hasVictim": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "hasVictim": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "hasVictim": true
+          }
+        ],
+        "playerDeadWire": [],
+        "hurtEvents": []
+      }
+    }
+  },
+  "clientJump": {
+    "impulses": [
+      30,
+      30,
+      30
+    ],
+    "barriers": [
+      10,
+      10,
+      10
+    ],
+    "quakes": 0
+  },
+  "hostPawnJump": {
+    "found": true,
+    "impulses": [
+      30,
+      30,
+      30
+    ]
+  },
+  "hostSideEffects": {
+    "barriers": [],
+    "quakes": 0
+  },
+  "hostOwnJump": {
+    "impulses": [
+      30,
+      30,
+      36
+    ],
+    "barriers": [
+      10,
+      10,
+      10
+    ],
+    "quakes": 1
+  },
+  "hostDamagesPawn": {
+    "found": true,
+    "dealt": 40,
+    "healthBefore": 143,
+    "healthAfter": 103,
+    "maxHealth": 143,
+    "aliveOnHost": true
+  },
+  "healthSeries": [
+    {
+      "hostPawn": 103,
+      "hostPawnMax": 143,
+      "clientOwn": 103,
+      "clientMax": 143,
+      "clientSince": 0.18
+    },
+    {
+      "hostPawn": 103,
+      "hostPawnMax": 143,
+      "clientOwn": 103,
+      "clientMax": 143,
+      "clientSince": 0.45
+    },
+    {
+      "hostPawn": 103,
+      "hostPawnMax": 143,
+      "clientOwn": 103,
+      "clientMax": 143,
+      "clientSince": 0.72
+    },
+    {
+      "hostPawn": 103,
+      "hostPawnMax": 143,
+      "clientOwn": 103,
+      "clientMax": 143,
+      "clientSince": 0.98
+    },
+    {
+      "hostPawn": 103.16,
+      "hostPawnMax": 143,
+      "clientOwn": 103.18,
+      "clientMax": 143,
+      "clientSince": 1.25
+    },
+    {
+      "hostPawn": 103.46,
+      "hostPawnMax": 143,
+      "clientOwn": 103.44,
+      "clientMax": 143,
+      "clientSince": 0.23
+    },
+    {
+      "hostPawn": 103.78,
+      "hostPawnMax": 143,
+      "clientOwn": 103.74,
+      "clientMax": 143,
+      "clientSince": 0.5
+    },
+    {
+      "hostPawn": 104.1,
+      "hostPawnMax": 143,
+      "clientOwn": 104.1,
+      "clientMax": 143,
+      "clientSince": 0.77
+    }
+  ],
+  "afterHit": {
+    "host": {
+      "alive": true,
+      "health": 143,
+      "maxHealth": 143,
+      "shield": 0,
+      "sinceDamage": 12.05,
+      "screen": null,
+      "paused": false,
+      "progEnded": null,
+      "progKills": 4,
+      "progDamageDealt": 0,
+      "progHighestHit": 0,
+      "progDamageTaken": 10.25,
+      "profRunDied": false,
+      "profRunDamageTaken": 10.25,
+      "profStageDamage": 10.25,
+      "hudKills": 4,
+      "directorEnabled": true,
+      "directorEnemies": 1,
+      "timeSinceHurt": 12.05,
+      "stopped": false,
+      "musicOff": false,
+      "musicGain": 0.48,
+      "intensity": 0.2017,
+      "probe": {
+        "deathCalls": 4,
+        "deathThrows": 0,
+        "downstreamKill": 4,
+        "downstreamPlayerDead": 0,
+        "playerHurtCue": 3,
+        "killWire": [
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "hasVictim": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "hasVictim": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "hasVictim": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "hasVictim": true
+          }
+        ],
+        "playerDeadWire": [],
+        "hurtEvents": [
+          {
+            "amount": 0.12499999999984546
+          },
+          {
+            "amount": 5
+          },
+          {
+            "amount": 0.12499999999982414
+          }
+        ]
+      }
+    },
+    "client": {
+      "alive": true,
+      "health": 104.1,
+      "maxHealth": 143,
+      "shield": 15.34,
+      "sinceDamage": 0.77,
+      "screen": null,
+      "paused": false,
+      "progEnded": null,
+      "progKills": 4,
+      "progDamageDealt": 0,
+      "progHighestHit": 0,
+      "progDamageTaken": 0,
+      "profRunDied": false,
+      "profRunDamageTaken": 0,
+      "profStageDamage": 0,
+      "hudKills": 4,
+      "directorEnabled": true,
+      "directorEnemies": 0,
+      "timeSinceHurt": 2.05,
+      "stopped": false,
+      "musicOff": false,
+      "musicGain": 0.48,
+      "intensity": 0.0989,
+      "probe": {
+        "deathCalls": 4,
+        "deathThrows": 0,
+        "downstreamKill": 4,
+        "downstreamPlayerDead": 0,
+        "playerHurtCue": 1,
+        "killWire": [
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "hasVictim": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "hasVictim": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "hasVictim": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "hasVictim": true
+          }
+        ],
+        "playerDeadWire": [],
+        "hurtEvents": [
+          {
+            "amount": 40
+          }
+        ]
+      }
+    }
+  },
+  "F9": {
+    "usedRealEnemy": true,
+    "sourceWasPawn": true,
+    "targetAliveThroughout": true,
+    "peerDealt": 777,
+    "localDealt": 500,
+    "peerDelta": 0,
+    "highestAfterPeer": 0,
+    "localDelta": 500,
+    "highestAfterLocal": 500
+  },
+  "hostKillsPawn": {
+    "found": true,
+    "aliveOnHost": false,
+    "healthOnHost": 0
+  },
+  "afterPawnDeath": {
+    "host": {
+      "alive": true,
+      "health": 143,
+      "maxHealth": 143,
+      "shield": 0,
+      "sinceDamage": 15,
+      "screen": null,
+      "paused": false,
+      "progEnded": null,
+      "progKills": 4,
+      "progDamageDealt": 500,
+      "progHighestHit": 500,
+      "progDamageTaken": 10.25,
+      "profRunDied": false,
+      "profRunDamageTaken": 10.25,
+      "profStageDamage": 10.25,
+      "hudKills": 5,
+      "directorEnabled": true,
+      "directorEnemies": 1,
+      "timeSinceHurt": 15,
+      "stopped": false,
+      "musicOff": false,
+      "musicGain": 0.48,
+      "intensity": 0.193,
+      "probe": {
+        "deathCalls": 5,
+        "deathThrows": 0,
+        "downstreamKill": 5,
+        "downstreamPlayerDead": 1,
+        "playerHurtCue": 3,
+        "killWire": [
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "hasVictim": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "hasVictim": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "hasVictim": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "hasVictim": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "hasVictim": true
+          }
+        ],
+        "playerDeadWire": [
+          {
+            "victimIsSelf": false,
+            "victimIsNull": false,
+            "victimNetId": 1,
+            "myNetId": null
+          }
+        ],
+        "hurtEvents": [
+          {
+            "amount": 0.12499999999984546
+          },
+          {
+            "amount": 5
+          },
+          {
+            "amount": 0.12499999999982414
+          }
+        ]
+      }
+    },
+    "client": {
+      "alive": false,
+      "health": 0,
+      "maxHealth": 143,
+      "shield": 45.22,
+      "sinceDamage": 0.12,
+      "screen": "death",
+      "paused": true,
+      "progEnded": true,
+      "progKills": 4,
+      "progDamageDealt": 0,
+      "progHighestHit": 0,
+      "progDamageTaken": 0,
+      "profRunDied": null,
+      "profRunDamageTaken": null,
+      "profStageDamage": null,
+      "hudKills": 5,
+      "directorEnabled": false,
+      "directorEnemies": 0,
+      "timeSinceHurt": 0,
+      "stopped": true,
+      "musicOff": true,
+      "musicGain": 0.00119,
+      "intensity": 0.0986,
+      "probe": {
+        "deathCalls": 5,
+        "deathThrows": 0,
+        "downstreamKill": 5,
+        "downstreamPlayerDead": 1,
+        "playerHurtCue": 2,
+        "killWire": [
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "hasVictim": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "hasVictim": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "hasVictim": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "hasVictim": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "hasVictim": true
+          }
+        ],
+        "playerDeadWire": [
+          {
+            "victimIsSelf": true,
+            "victimIsNull": false,
+            "victimNetId": 1,
+            "myNetId": 1
+          }
+        ],
+        "hurtEvents": [
+          {
+            "amount": 40
+          },
+          {
+            "amount": 1000000
+          }
+        ]
+      }
+    }
+  },
+  "afterHostOwnDeath": {
+    "host": {
+      "alive": false,
+      "health": 0,
+      "maxHealth": 143,
+      "shield": 30,
+      "sinceDamage": 0,
+      "screen": "death",
+      "paused": true,
+      "progEnded": true,
+      "progKills": 4,
+      "progDamageDealt": 500,
+      "progHighestHit": 500,
+      "progDamageTaken": 1000010.25,
+      "profRunDied": null,
+      "profRunDamageTaken": null,
+      "profStageDamage": null,
+      "hudKills": 6,
+      "directorEnabled": false,
+      "directorEnemies": 1,
+      "timeSinceHurt": 0,
+      "stopped": true,
+      "musicOff": true,
+      "musicGain": 0.00311,
+      "intensity": 0.1928,
+      "probe": {
+        "deathCalls": 6,
+        "deathThrows": 0,
+        "downstreamKill": 6,
+        "downstreamPlayerDead": 2,
+        "playerHurtCue": 4,
+        "killWire": [
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "hasVictim": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "hasVictim": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "hasVictim": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "hasVictim": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "hasVictim": true
+          },
+          {
+            "posType": "object",
+            "posXFinite": true,
+            "hasVictim": true
+          }
+        ],
+        "playerDeadWire": [
+          {
+            "victimIsSelf": false,
+            "victimIsNull": false,
+            "victimNetId": 1,
+            "myNetId": null
+          },
+          {
+            "victimIsSelf": true,
+            "victimIsNull": false,
+            "victimNetId": 2,
+            "myNetId": null
+          }
+        ],
+        "hurtEvents": [
+          {
+            "amount": 0.12499999999984546
+          },
+          {
+            "amount": 5
+          },
+          {
+            "amount": 0.12499999999982414
+          },
+          {
+            "amount": 1000000
+          }
+        ]
+      }
+    }
+  },
+  "emitTotals": {
+    "host": {
+      "total": 74,
+      "byName": {
+        "shieldBroken": 9,
+        "damage": 19,
+        "playerHurt": 4,
+        "challengeProgress": 18,
+        "kill": 6,
+        "goldChanged": 4,
+        "goldReward": 4,
+        "levelUp": 1,
+        "jump": 6,
+        "playerDead": 2,
+        "runEnd": 1
+      }
+    },
+    "client": {
+      "total": 31,
+      "byName": {
+        "kill": 6,
+        "goldChanged": 4,
+        "levelUp": 1,
+        "challengeProgress": 12,
+        "jump": 3,
+        "playerHurt": 2,
+        "playerDead": 2,
+        "runEnd": 1
+      }
+    }
+  },
+  "pageErrors": {
+    "host": 1,
+    "client": 0
+  },
+  "pageErrorTexts": {
+    "host": [
+      "The root document of this element is not valid for pointer lock."
+    ],
+    "client": []
+  },
+  "listenerThrewLogs": {
+    "host": 0,
+    "client": 0,
+    "sampleClient": null,
+    "sampleHost": null
+  },
+  "substitutionsApplied": [
+    "K5-prog",
+    "K5-prof"
+  ],
+  "substitutionsMissing": []
+}

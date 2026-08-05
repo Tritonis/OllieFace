@@ -1,0 +1,335 @@
+{
+  "arm": "host-death-freeze",
+  "substitutions": [],
+  "steps": [
+    "HOST gate {\"paused\":false,\"screen\":null,\"localTick\":61}",
+    "CLIENT gate {\"paused\":false,\"screen\":null,\"localTick\":61}",
+    "before {\"host\":{\"paused\":false,\"hostTick\":395,\"alive\":true,\"screen\":null,\"dirEnabled\":true},\"client\":{\"paused\":false,\"serverTick\":393,\"snapshots\":32,\"connected\":true,\"views\":26,\"ownAlive\":true,\"ownHealth\":110,\"screen\":null}}",
+    "after {\"host\":{\"paused\":true,\"hostTick\":396,\"alive\":false,\"screen\":\"death\",\"dirEnabled\":false},\"client\":{\"paused\":false,\"serverTick\":396,\"snapshots\":32,\"connected\":true,\"views\":26,\"ownAlive\":true,\"ownHealth\":110,\"screen\":null}}",
+    "after the pawn was killed on a dead host {\"host\":{\"paused\":true,\"hostTick\":396,\"alive\":false,\"screen\":\"death\",\"dirEnabled\":false},\"client\":{\"paused\":true,\"serverTick\":396,\"snapshots\":32,\"connected\":true,\"views\":26,\"ownAlive\":true,\"ownHealth\":110,\"screen\":\"death\"}}"
+  ],
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 61
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 61
+    }
+  },
+  "roles": {
+    "host": {
+      "authority": true,
+      "role": "host",
+      "playerCount": 2,
+      "clients": 1
+    },
+    "client": {
+      "authority": false,
+      "role": "client",
+      "myNetId": 1,
+      "connected": true
+    }
+  },
+  "beforeHostDeath": [
+    {
+      "host": {
+        "paused": false,
+        "hostTick": 303,
+        "alive": true,
+        "screen": null,
+        "dirEnabled": true
+      },
+      "client": {
+        "paused": false,
+        "serverTick": 301,
+        "snapshots": 32,
+        "connected": true,
+        "views": 26,
+        "ownAlive": true,
+        "ownHealth": 110,
+        "screen": null
+      }
+    },
+    {
+      "host": {
+        "paused": false,
+        "hostTick": 334,
+        "alive": true,
+        "screen": null,
+        "dirEnabled": true
+      },
+      "client": {
+        "paused": false,
+        "serverTick": 333,
+        "snapshots": 32,
+        "connected": true,
+        "views": 26,
+        "ownAlive": true,
+        "ownHealth": 110,
+        "screen": null
+      }
+    },
+    {
+      "host": {
+        "paused": false,
+        "hostTick": 365,
+        "alive": true,
+        "screen": null,
+        "dirEnabled": true
+      },
+      "client": {
+        "paused": false,
+        "serverTick": 363,
+        "snapshots": 32,
+        "connected": true,
+        "views": 26,
+        "ownAlive": true,
+        "ownHealth": 110,
+        "screen": null
+      }
+    },
+    {
+      "host": {
+        "paused": false,
+        "hostTick": 395,
+        "alive": true,
+        "screen": null,
+        "dirEnabled": true
+      },
+      "client": {
+        "paused": false,
+        "serverTick": 393,
+        "snapshots": 32,
+        "connected": true,
+        "views": 26,
+        "ownAlive": true,
+        "ownHealth": 110,
+        "screen": null
+      }
+    }
+  ],
+  "hostDies": {
+    "hostAlive": false,
+    "hostHealth": 0
+  },
+  "afterHostDeath": [
+    {
+      "host": {
+        "paused": true,
+        "hostTick": 396,
+        "alive": false,
+        "screen": "death",
+        "dirEnabled": false
+      },
+      "client": {
+        "paused": false,
+        "serverTick": 396,
+        "snapshots": 32,
+        "connected": true,
+        "views": 26,
+        "ownAlive": true,
+        "ownHealth": 110,
+        "screen": null
+      }
+    },
+    {
+      "host": {
+        "paused": true,
+        "hostTick": 396,
+        "alive": false,
+        "screen": "death",
+        "dirEnabled": false
+      },
+      "client": {
+        "paused": false,
+        "serverTick": 396,
+        "snapshots": 32,
+        "connected": true,
+        "views": 26,
+        "ownAlive": true,
+        "ownHealth": 110,
+        "screen": null
+      }
+    },
+    {
+      "host": {
+        "paused": true,
+        "hostTick": 396,
+        "alive": false,
+        "screen": "death",
+        "dirEnabled": false
+      },
+      "client": {
+        "paused": false,
+        "serverTick": 396,
+        "snapshots": 32,
+        "connected": true,
+        "views": 26,
+        "ownAlive": true,
+        "ownHealth": 110,
+        "screen": null
+      }
+    },
+    {
+      "host": {
+        "paused": true,
+        "hostTick": 396,
+        "alive": false,
+        "screen": "death",
+        "dirEnabled": false
+      },
+      "client": {
+        "paused": false,
+        "serverTick": 396,
+        "snapshots": 32,
+        "connected": true,
+        "views": 26,
+        "ownAlive": true,
+        "ownHealth": 110,
+        "screen": null
+      }
+    },
+    {
+      "host": {
+        "paused": true,
+        "hostTick": 396,
+        "alive": false,
+        "screen": "death",
+        "dirEnabled": false
+      },
+      "client": {
+        "paused": false,
+        "serverTick": 396,
+        "snapshots": 32,
+        "connected": true,
+        "views": 26,
+        "ownAlive": true,
+        "ownHealth": 110,
+        "screen": null
+      }
+    },
+    {
+      "host": {
+        "paused": true,
+        "hostTick": 396,
+        "alive": false,
+        "screen": "death",
+        "dirEnabled": false
+      },
+      "client": {
+        "paused": false,
+        "serverTick": 396,
+        "snapshots": 32,
+        "connected": true,
+        "views": 26,
+        "ownAlive": true,
+        "ownHealth": 110,
+        "screen": null
+      }
+    },
+    {
+      "host": {
+        "paused": true,
+        "hostTick": 396,
+        "alive": false,
+        "screen": "death",
+        "dirEnabled": false
+      },
+      "client": {
+        "paused": false,
+        "serverTick": 396,
+        "snapshots": 32,
+        "connected": true,
+        "views": 26,
+        "ownAlive": true,
+        "ownHealth": 110,
+        "screen": null
+      }
+    },
+    {
+      "host": {
+        "paused": true,
+        "hostTick": 396,
+        "alive": false,
+        "screen": "death",
+        "dirEnabled": false
+      },
+      "client": {
+        "paused": false,
+        "serverTick": 396,
+        "snapshots": 32,
+        "connected": true,
+        "views": 26,
+        "ownAlive": true,
+        "ownHealth": 110,
+        "screen": null
+      }
+    }
+  ],
+  "hostKillsPawnAfterwards": {
+    "found": true,
+    "aliveOnHost": false,
+    "healthOnHost": 0
+  },
+  "afterPawnKilled": {
+    "host": {
+      "paused": true,
+      "hostTick": 396,
+      "alive": false,
+      "screen": "death",
+      "dirEnabled": false
+    },
+    "client": {
+      "paused": true,
+      "serverTick": 396,
+      "snapshots": 32,
+      "connected": true,
+      "views": 26,
+      "ownAlive": true,
+      "ownHealth": 110,
+      "screen": "death"
+    }
+  },
+  "deltas": {
+    "serverTickBefore": [
+      301,
+      333,
+      363,
+      393
+    ],
+    "serverTickAfter": [
+      396,
+      396,
+      396,
+      396,
+      396,
+      396,
+      396,
+      396
+    ],
+    "hostTickBefore": [
+      303,
+      334,
+      365,
+      395
+    ],
+    "hostTickAfter": [
+      396,
+      396,
+      396,
+      396,
+      396,
+      396,
+      396,
+      396
+    ]
+  },
+  "pageErrors": {
+    "host": 1,
+    "client": 0
+  }
+}

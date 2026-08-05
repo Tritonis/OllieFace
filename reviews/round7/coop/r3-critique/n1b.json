@@ -1,0 +1,1656 @@
+{
+  "arm": "n1b",
+  "startedAt": "2026-08-04T02:12:05.279Z",
+  "secondsPerPhase": 25,
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 65,
+      "survivorId": "ranger",
+      "maxHealth": 110,
+      "netRole": "single",
+      "authority": true
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 63,
+      "survivorId": "anvil",
+      "maxHealth": 170,
+      "netRole": "single",
+      "authority": true
+    }
+  },
+  "runningGateAfterFocus": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "simTick": 141,
+      "localTick": 141,
+      "netTick": 73
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "simTick": 64,
+      "localTick": 0,
+      "netTick": 64
+    }
+  },
+  "roles": {
+    "host": {
+      "role": "host",
+      "authority": true,
+      "clients": 1
+    },
+    "client": {
+      "role": "client",
+      "authority": false,
+      "myNetId": 1,
+      "connected": true
+    }
+  },
+  "unkillable": {
+    "host": 1000000,
+    "pawn": 1000000,
+    "hostAlive": true,
+    "pawnAlive": true
+  },
+  "anchors": {
+    "arena": [
+      0,
+      3.6,
+      0
+    ],
+    "exile": [
+      150,
+      43.6,
+      150
+    ]
+  },
+  "placeA": [
+    {
+      "who": "host",
+      "at": [
+        150,
+        43.6,
+        150
+      ]
+    },
+    {
+      "who": "pawn",
+      "at": [
+        1.2,
+        3.6,
+        0
+      ]
+    }
+  ],
+  "A_pawnAlonePack": {
+    "cards": [
+      "lemurian",
+      "lemurian",
+      "beetle",
+      "wisp",
+      "spitling",
+      "wisp"
+    ],
+    "placed": 6,
+    "live": 6
+  },
+  "A_pawnAlone": {
+    "hostHealth0": 1000000,
+    "pawnHealth0": 1000000,
+    "hostAlive": true,
+    "pawnAlive": true,
+    "hostHealth1": 110,
+    "pawnHealth1": 170,
+    "hostLost": 999890,
+    "pawnLost": 999830,
+    "hitsOnHost": 0,
+    "hitsOnPawn": 0,
+    "hitTypesOnHost": [],
+    "hitTypesOnPawn": [],
+    "telemetry": [
+      [
+        {
+          "id": "lemurian",
+          "state": "chase",
+          "distToHost": 141.5,
+          "distToPawn": 19.6,
+          "distToPlayerField": 141.5,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "lemurian",
+          "state": "chase",
+          "distToHost": 141.4,
+          "distToPawn": 21.2,
+          "distToPlayerField": 141.5,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "beetle",
+          "state": "chase",
+          "distToHost": 132.8,
+          "distToPawn": 21.9,
+          "distToPlayerField": 132.8,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "reposition",
+          "distToHost": 136.6,
+          "distToPawn": 15,
+          "distToPlayerField": 136.7,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "spitling",
+          "state": "reposition",
+          "distToHost": 141.2,
+          "distToPawn": 6.3,
+          "distToPlayerField": 141.3,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "reposition",
+          "distToHost": 135.6,
+          "distToPawn": 19.1,
+          "distToPlayerField": 135.6,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        }
+      ],
+      [
+        {
+          "id": "lemurian",
+          "state": "chase",
+          "distToHost": 140.5,
+          "distToPawn": 38,
+          "distToPlayerField": 140.5,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "lemurian",
+          "state": "chase",
+          "distToHost": 137.5,
+          "distToPawn": 43,
+          "distToPlayerField": 137.6,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "beetle",
+          "state": "chase",
+          "distToHost": 116.2,
+          "distToPawn": 42.1,
+          "distToPlayerField": 116.2,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "chase",
+          "distToHost": 119.9,
+          "distToPawn": 35.5,
+          "distToPlayerField": 120,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "spitling",
+          "state": "chase",
+          "distToHost": 130.4,
+          "distToPawn": 26,
+          "distToPlayerField": 130.5,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "chase",
+          "distToHost": 116.3,
+          "distToPawn": 33.2,
+          "distToPlayerField": 116.4,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "mite",
+          "state": "chase",
+          "distToHost": 57.4,
+          "distToPawn": 88.9,
+          "distToPlayerField": 57.5,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        }
+      ],
+      [
+        {
+          "id": "lemurian",
+          "state": "chase",
+          "distToHost": 125.1,
+          "distToPawn": 61.3,
+          "distToPlayerField": 125.1,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "lemurian",
+          "state": "chase",
+          "distToHost": 117.1,
+          "distToPawn": 61.2,
+          "distToPlayerField": 117.2,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "beetle",
+          "state": "chase",
+          "distToHost": 106.7,
+          "distToPawn": 46.9,
+          "distToPlayerField": 106.8,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "chase",
+          "distToHost": 101,
+          "distToPawn": 50.8,
+          "distToPlayerField": 101.1,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "spitling",
+          "state": "chase",
+          "distToHost": 111.2,
+          "distToPawn": 44.2,
+          "distToPlayerField": 111.3,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "chase",
+          "distToHost": 97.5,
+          "distToPawn": 50.5,
+          "distToPlayerField": 97.5,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "mite",
+          "state": "chase",
+          "distToHost": 46.7,
+          "distToPawn": 100.1,
+          "distToPlayerField": 46.8,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "lemurian",
+          "state": "chase",
+          "distToHost": 86.4,
+          "distToPawn": 70,
+          "distToPlayerField": 86.5,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        }
+      ],
+      [
+        {
+          "id": "lemurian",
+          "state": "chase",
+          "distToHost": 103.8,
+          "distToPawn": 86.8,
+          "distToPlayerField": 103.9,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "lemurian",
+          "state": "chase",
+          "distToHost": 94.5,
+          "distToPawn": 86.3,
+          "distToPlayerField": 94.6,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "beetle",
+          "state": "chase",
+          "distToHost": 103.3,
+          "distToPawn": 49.2,
+          "distToPlayerField": 103.4,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "reposition",
+          "distToHost": 81.9,
+          "distToPawn": 68.1,
+          "distToPlayerField": 82,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "spitling",
+          "state": "reposition",
+          "distToHost": 88.8,
+          "distToPawn": 61.6,
+          "distToPlayerField": 88.9,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "reposition",
+          "distToHost": 78.4,
+          "distToPawn": 69.2,
+          "distToPlayerField": 78.5,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "mite",
+          "state": "chase",
+          "distToHost": 46.8,
+          "distToPawn": 99.9,
+          "distToPlayerField": 46.8,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "lemurian",
+          "state": "chase",
+          "distToHost": 70.9,
+          "distToPawn": 75.3,
+          "distToPlayerField": 70.9,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        }
+      ],
+      [
+        {
+          "id": "lemurian",
+          "state": "chase",
+          "distToHost": 78.3,
+          "distToPawn": 99.5,
+          "distToPlayerField": 78.5,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "lemurian",
+          "state": "chase",
+          "distToHost": 71,
+          "distToPawn": 99.9,
+          "distToPlayerField": 71,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "beetle",
+          "state": "chase",
+          "distToHost": 88.4,
+          "distToPawn": 59.2,
+          "distToPlayerField": 88.5,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "reposition",
+          "distToHost": 62.7,
+          "distToPawn": 85.5,
+          "distToPlayerField": 62.7,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "spitling",
+          "state": "reposition",
+          "distToHost": 65.8,
+          "distToPawn": 82.6,
+          "distToPlayerField": 65.9,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "reposition",
+          "distToHost": 59.2,
+          "distToPawn": 88,
+          "distToPlayerField": 59.2,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "mite",
+          "state": "chase",
+          "distToHost": 46.6,
+          "distToPawn": 100.1,
+          "distToPlayerField": 46.7,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "lemurian",
+          "state": "chase",
+          "distToHost": 53,
+          "distToPawn": 99.2,
+          "distToPlayerField": 53,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        }
+      ]
+    ],
+    "clientOwn": {
+      "health": 170,
+      "maxHealth": 170,
+      "alive": true
+    }
+  },
+  "placeB": [
+    {
+      "who": "pawn",
+      "at": [
+        151.2,
+        43.6,
+        150
+      ]
+    },
+    {
+      "who": "host",
+      "at": [
+        0,
+        3.6,
+        0
+      ]
+    }
+  ],
+  "B_hostAlonePack": {
+    "cards": [
+      "lemurian",
+      "lemurian",
+      "beetle",
+      "wisp",
+      "spitling",
+      "wisp"
+    ],
+    "placed": 6,
+    "live": 6
+  },
+  "B_hostAlone": {
+    "hostHealth0": 1000000,
+    "pawnHealth0": 1000000,
+    "hostAlive": false,
+    "pawnAlive": true,
+    "hostHealth1": 0,
+    "pawnHealth1": 170,
+    "hostLost": 1000000,
+    "pawnLost": 999830,
+    "hitsOnHost": 80,
+    "hitsOnPawn": 0,
+    "hitTypesOnHost": [
+      "projectile:spitling",
+      "projectile:lemurian",
+      "projectile:wisp",
+      "melee:beetle",
+      "melee:lemurian",
+      "melee:mite"
+    ],
+    "hitTypesOnPawn": [],
+    "telemetry": [
+      [
+        {
+          "id": "lemurian",
+          "state": "circle",
+          "distToHost": 2.3,
+          "distToPawn": 144.9,
+          "distToPlayerField": 2.3,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "lemurian",
+          "state": "windup",
+          "distToHost": 2.9,
+          "distToPawn": 146,
+          "distToPlayerField": 2.9,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "beetle",
+          "state": "circle",
+          "distToHost": 1.9,
+          "distToPawn": 145.3,
+          "distToPlayerField": 1.9,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "chase",
+          "distToHost": 10.6,
+          "distToPawn": 154.7,
+          "distToPlayerField": 10.5,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "spitling",
+          "state": "chase",
+          "distToHost": 10.1,
+          "distToPawn": 155.7,
+          "distToPlayerField": 10.1,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "chase",
+          "distToHost": 10.6,
+          "distToPawn": 150.1,
+          "distToPlayerField": 10.6,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "mite",
+          "state": "chase",
+          "distToHost": 55.9,
+          "distToPawn": 94.4,
+          "distToPlayerField": 56,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "mite",
+          "state": "chase",
+          "distToHost": 70.9,
+          "distToPawn": 114.7,
+          "distToPlayerField": 71,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        }
+      ],
+      [
+        {
+          "id": "lemurian",
+          "state": "circle",
+          "distToHost": 2.6,
+          "distToPawn": 148.8,
+          "distToPlayerField": 2.6,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "lemurian",
+          "state": "recover",
+          "distToHost": 2.4,
+          "distToPawn": 149.4,
+          "distToPlayerField": 2.4,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "beetle",
+          "state": "windup",
+          "distToHost": 1.8,
+          "distToPawn": 147.3,
+          "distToPlayerField": 1.8,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "windup",
+          "distToHost": 10.8,
+          "distToPawn": 154.9,
+          "distToPlayerField": 10.8,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "spitling",
+          "state": "reposition",
+          "distToHost": 11.1,
+          "distToPawn": 155.9,
+          "distToPlayerField": 11.1,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "windup",
+          "distToHost": 10.6,
+          "distToPawn": 150.2,
+          "distToPlayerField": 10.6,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "mite",
+          "state": "chase",
+          "distToHost": 42.2,
+          "distToPawn": 109.4,
+          "distToPlayerField": 42.2,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "mite",
+          "state": "chase",
+          "distToHost": 49.5,
+          "distToPawn": 118.6,
+          "distToPlayerField": 49.5,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        }
+      ],
+      [
+        {
+          "id": "lemurian",
+          "state": "windup",
+          "distToHost": 2.8,
+          "distToPawn": 149,
+          "distToPlayerField": 2.8,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "lemurian",
+          "state": "circle",
+          "distToHost": 2.4,
+          "distToPawn": 144.6,
+          "distToPlayerField": 2.4,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "beetle",
+          "state": "windup",
+          "distToHost": 2.1,
+          "distToPawn": 146.4,
+          "distToPlayerField": 2.1,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "windup",
+          "distToHost": 10.8,
+          "distToPawn": 154.9,
+          "distToPlayerField": 10.8,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "spitling",
+          "state": "chase",
+          "distToHost": 11.4,
+          "distToPawn": 154.9,
+          "distToPlayerField": 11.4,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "windup",
+          "distToHost": 10.6,
+          "distToPawn": 150.2,
+          "distToPlayerField": 10.6,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "mite",
+          "state": "chase",
+          "distToHost": 23.1,
+          "distToPawn": 125.3,
+          "distToPlayerField": 23.2,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "mite",
+          "state": "chase",
+          "distToHost": 49.4,
+          "distToPawn": 118.6,
+          "distToPlayerField": 49.4,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        }
+      ],
+      [
+        {
+          "id": "lemurian",
+          "state": "windup",
+          "distToHost": 2.9,
+          "distToPawn": 145.1,
+          "distToPlayerField": 2.9,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "lemurian",
+          "state": "circle",
+          "distToHost": 2.8,
+          "distToPawn": 149.8,
+          "distToPlayerField": 2.8,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "beetle",
+          "state": "chase",
+          "distToHost": 1.5,
+          "distToPawn": 145.6,
+          "distToPlayerField": 1.5,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "windup",
+          "distToHost": 10.8,
+          "distToPawn": 154.9,
+          "distToPlayerField": 10.8,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "spitling",
+          "state": "windup",
+          "distToHost": 11.4,
+          "distToPawn": 156.6,
+          "distToPlayerField": 11.4,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "windup",
+          "distToHost": 10.6,
+          "distToPawn": 150.2,
+          "distToPlayerField": 10.6,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "mite",
+          "state": "attack",
+          "distToHost": 0.4,
+          "distToPawn": 146.8,
+          "distToPlayerField": 0.5,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "mite",
+          "state": "chase",
+          "distToHost": 49.3,
+          "distToPawn": 118.5,
+          "distToPlayerField": 49.3,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        }
+      ],
+      [
+        {
+          "id": "lemurian",
+          "state": "attack",
+          "distToHost": 3,
+          "distToPawn": 144.1,
+          "distToPlayerField": 3.1,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "lemurian",
+          "state": "circle",
+          "distToHost": 2.6,
+          "distToPawn": 144.8,
+          "distToPlayerField": 2.6,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "beetle",
+          "state": "circle",
+          "distToHost": 1.4,
+          "distToPawn": 147.9,
+          "distToPlayerField": 1.4,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "windup",
+          "distToHost": 10.8,
+          "distToPawn": 154.9,
+          "distToPlayerField": 10.8,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "spitling",
+          "state": "chase",
+          "distToHost": 11.2,
+          "distToPawn": 155.5,
+          "distToPlayerField": 11.1,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "windup",
+          "distToHost": 10.6,
+          "distToPawn": 150.2,
+          "distToPlayerField": 10.6,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "mite",
+          "state": "windup",
+          "distToHost": 1,
+          "distToPawn": 146.2,
+          "distToPlayerField": 1,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "mite",
+          "state": "chase",
+          "distToHost": 49.2,
+          "distToPawn": 118.1,
+          "distToPlayerField": 49.2,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        }
+      ]
+    ],
+    "clientOwn": {
+      "health": 170,
+      "maxHealth": 170,
+      "alive": true
+    }
+  },
+  "placeC": [
+    {
+      "who": "host",
+      "at": [
+        0,
+        3.6,
+        0
+      ]
+    },
+    {
+      "who": "pawn",
+      "at": [
+        1.2,
+        3.6,
+        0
+      ]
+    }
+  ],
+  "C_togetherPack": {
+    "cards": [
+      "lemurian",
+      "lemurian",
+      "beetle",
+      "wisp",
+      "spitling",
+      "wisp"
+    ],
+    "placed": 6,
+    "live": 6
+  },
+  "C_together": {
+    "hostHealth0": 1000000,
+    "pawnHealth0": 1000000,
+    "hostAlive": false,
+    "pawnAlive": true,
+    "hostHealth1": 110,
+    "pawnHealth1": 170,
+    "hostLost": 999890,
+    "pawnLost": 999830,
+    "hitsOnHost": 50,
+    "hitsOnPawn": 0,
+    "hitTypesOnHost": [
+      "projectile:spitling",
+      "projectile:lemurian",
+      "projectile:wisp"
+    ],
+    "hitTypesOnPawn": [],
+    "telemetry": [
+      [
+        {
+          "id": "lemurian",
+          "state": "circle",
+          "distToHost": 2.6,
+          "distToPawn": 2.2,
+          "distToPlayerField": 2.6,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "lemurian",
+          "state": "recover",
+          "distToHost": 2.2,
+          "distToPawn": 1.1,
+          "distToPlayerField": 2.2,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "beetle",
+          "state": "windup",
+          "distToHost": 2.3,
+          "distToPawn": 2,
+          "distToPlayerField": 2.3,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "chase",
+          "distToHost": 10.7,
+          "distToPawn": 11.9,
+          "distToPlayerField": 10.7,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "spitling",
+          "state": "chase",
+          "distToHost": 10.1,
+          "distToPawn": 11.1,
+          "distToPlayerField": 10.1,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "chase",
+          "distToHost": 10.6,
+          "distToPawn": 10.1,
+          "distToPlayerField": 10.6,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        }
+      ],
+      [
+        {
+          "id": "lemurian",
+          "state": "windup",
+          "distToHost": 2.3,
+          "distToPawn": 3.2,
+          "distToPlayerField": 2.3,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "lemurian",
+          "state": "circle",
+          "distToHost": 2.8,
+          "distToPawn": 3.9,
+          "distToPlayerField": 2.7,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "beetle",
+          "state": "recover",
+          "distToHost": 1.1,
+          "distToPawn": 1,
+          "distToPlayerField": 1.1,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "windup",
+          "distToHost": 11.3,
+          "distToPawn": 12.5,
+          "distToPlayerField": 11.3,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "spitling",
+          "state": "chase",
+          "distToHost": 10,
+          "distToPawn": 11.2,
+          "distToPlayerField": 10,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "windup",
+          "distToHost": 10.6,
+          "distToPawn": 10.1,
+          "distToPlayerField": 10.6,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        }
+      ],
+      [
+        {
+          "id": "lemurian",
+          "state": "recover",
+          "distToHost": 2.3,
+          "distToPawn": 1.2,
+          "distToPlayerField": 2.3,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "lemurian",
+          "state": "windup",
+          "distToHost": 2.8,
+          "distToPawn": 2.4,
+          "distToPlayerField": 2.8,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "beetle",
+          "state": "circle",
+          "distToHost": 1.9,
+          "distToPawn": 3,
+          "distToPlayerField": 1.9,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "windup",
+          "distToHost": 11.3,
+          "distToPawn": 12.5,
+          "distToPlayerField": 11.3,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "spitling",
+          "state": "windup",
+          "distToHost": 8.6,
+          "distToPawn": 9.7,
+          "distToPlayerField": 8.6,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "windup",
+          "distToHost": 10.6,
+          "distToPawn": 10.1,
+          "distToPlayerField": 10.6,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        }
+      ],
+      [
+        {
+          "id": "lemurian",
+          "state": "circle",
+          "distToHost": 2.6,
+          "distToPawn": 3.8,
+          "distToPlayerField": 2.6,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "lemurian",
+          "state": "recover",
+          "distToHost": 2,
+          "distToPawn": 2.2,
+          "distToPlayerField": 2,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "beetle",
+          "state": "windup",
+          "distToHost": 1.9,
+          "distToPawn": 0.7,
+          "distToPlayerField": 1.9,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "windup",
+          "distToHost": 11.3,
+          "distToPawn": 12.5,
+          "distToPlayerField": 11.3,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "spitling",
+          "state": "chase",
+          "distToHost": 10,
+          "distToPawn": 11.1,
+          "distToPlayerField": 10,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "windup",
+          "distToHost": 10.6,
+          "distToPawn": 10.1,
+          "distToPlayerField": 10.6,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        }
+      ],
+      [
+        {
+          "id": "lemurian",
+          "state": "recover",
+          "distToHost": 2.4,
+          "distToPawn": 1.5,
+          "distToPlayerField": 2.4,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "lemurian",
+          "state": "circle",
+          "distToHost": 2.3,
+          "distToPawn": 2.9,
+          "distToPlayerField": 2.2,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "beetle",
+          "state": "windup",
+          "distToHost": 2.3,
+          "distToPawn": 3.5,
+          "distToPlayerField": 2.3,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "attack",
+          "distToHost": 11.3,
+          "distToPawn": 12.5,
+          "distToPlayerField": 11.3,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "spitling",
+          "state": "chase",
+          "distToHost": 10.1,
+          "distToPawn": 11.3,
+          "distToPlayerField": 10.1,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "attack",
+          "distToHost": 10.6,
+          "distToPawn": 10.1,
+          "distToPlayerField": 10.6,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        }
+      ]
+    ],
+    "clientOwn": {
+      "health": 170,
+      "maxHealth": 170,
+      "alive": true
+    }
+  },
+  "placeD": {
+    "shooter": null,
+    "pawnAt": [
+      2,
+      0
+    ],
+    "hostAt": [
+      0,
+      0
+    ]
+  },
+  "D_lineOfFirePack": {
+    "cards": [
+      "lemurian",
+      "lemurian",
+      "beetle",
+      "wisp",
+      "spitling",
+      "wisp"
+    ],
+    "placed": 6,
+    "live": 6
+  },
+  "D_lineOfFire": {
+    "hostHealth0": 1000000,
+    "pawnHealth0": 1000000,
+    "hostAlive": false,
+    "pawnAlive": true,
+    "hostHealth1": 110,
+    "pawnHealth1": 170,
+    "hostLost": 999890,
+    "pawnLost": 999830,
+    "hitsOnHost": 50,
+    "hitsOnPawn": 0,
+    "hitTypesOnHost": [
+      "projectile:spitling",
+      "projectile:lemurian",
+      "projectile:wisp"
+    ],
+    "hitTypesOnPawn": [],
+    "telemetry": [
+      [
+        {
+          "id": "lemurian",
+          "state": "circle",
+          "distToHost": 2.4,
+          "distToPawn": 1.9,
+          "distToPlayerField": 2.4,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "lemurian",
+          "state": "windup",
+          "distToHost": 2.9,
+          "distToPawn": 4.9,
+          "distToPlayerField": 2.9,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "beetle",
+          "state": "attack",
+          "distToHost": 1.7,
+          "distToPawn": 3.5,
+          "distToPlayerField": 1.7,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "chase",
+          "distToHost": 10.7,
+          "distToPawn": 12.7,
+          "distToPlayerField": 10.7,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "spitling",
+          "state": "chase",
+          "distToHost": 10.1,
+          "distToPawn": 10.6,
+          "distToPlayerField": 10.1,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "chase",
+          "distToHost": 10.6,
+          "distToPawn": 9.8,
+          "distToPlayerField": 10.6,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        }
+      ],
+      [
+        {
+          "id": "lemurian",
+          "state": "windup",
+          "distToHost": 2.9,
+          "distToPawn": 4.6,
+          "distToPlayerField": 2.9,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "lemurian",
+          "state": "recover",
+          "distToHost": 2.3,
+          "distToPawn": 2.5,
+          "distToPlayerField": 2.3,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "beetle",
+          "state": "circle",
+          "distToHost": 1.4,
+          "distToPawn": 1.3,
+          "distToPlayerField": 1.4,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "windup",
+          "distToHost": 10.8,
+          "distToPawn": 12.8,
+          "distToPlayerField": 10.8,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "spitling",
+          "state": "windup",
+          "distToHost": 11.1,
+          "distToPawn": 11.6,
+          "distToPlayerField": 11.1,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "windup",
+          "distToHost": 10.6,
+          "distToPawn": 9.8,
+          "distToPlayerField": 10.6,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        }
+      ],
+      [
+        {
+          "id": "lemurian",
+          "state": "recover",
+          "distToHost": 2.4,
+          "distToPawn": 0.9,
+          "distToPlayerField": 2.4,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "lemurian",
+          "state": "recover",
+          "distToHost": 2.3,
+          "distToPawn": 3.4,
+          "distToPlayerField": 2.3,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "beetle",
+          "state": "windup",
+          "distToHost": 1.9,
+          "distToPawn": 3.1,
+          "distToPlayerField": 1.9,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "windup",
+          "distToHost": 10.8,
+          "distToPawn": 12.8,
+          "distToPlayerField": 10.8,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "spitling",
+          "state": "chase",
+          "distToHost": 11.4,
+          "distToPawn": 11.7,
+          "distToPlayerField": 11.4,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "windup",
+          "distToHost": 10.6,
+          "distToPawn": 9.8,
+          "distToPlayerField": 10.6,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        }
+      ],
+      [
+        {
+          "id": "lemurian",
+          "state": "circle",
+          "distToHost": 2.3,
+          "distToPawn": 4.2,
+          "distToPlayerField": 2.3,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "lemurian",
+          "state": "circle",
+          "distToHost": 2.9,
+          "distToPawn": 3.1,
+          "distToPlayerField": 2.9,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "beetle",
+          "state": "windup",
+          "distToHost": 2.2,
+          "distToPawn": 1.7,
+          "distToPlayerField": 2.2,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "windup",
+          "distToHost": 10.8,
+          "distToPawn": 12.8,
+          "distToPlayerField": 10.8,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "spitling",
+          "state": "reposition",
+          "distToHost": 12.8,
+          "distToPawn": 12.5,
+          "distToPlayerField": 12.8,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "windup",
+          "distToHost": 10.6,
+          "distToPawn": 9.8,
+          "distToPlayerField": 10.6,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        }
+      ],
+      [
+        {
+          "id": "lemurian",
+          "state": "circle",
+          "distToHost": 2.7,
+          "distToPawn": 1.1,
+          "distToPlayerField": 2.7,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "lemurian",
+          "state": "windup",
+          "distToHost": 2.8,
+          "distToPawn": 3.1,
+          "distToPlayerField": 2.8,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "beetle",
+          "state": "attack",
+          "distToHost": 1.5,
+          "distToPawn": 3.3,
+          "distToPlayerField": 1.5,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "attack",
+          "distToHost": 10.8,
+          "distToPawn": 12.8,
+          "distToPlayerField": 10.8,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "spitling",
+          "state": "chase",
+          "distToHost": 12.4,
+          "distToPawn": 12.4,
+          "distToPlayerField": 12.4,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        },
+        {
+          "id": "wisp",
+          "state": "attack",
+          "distToHost": 10.6,
+          "distToPawn": 9.8,
+          "distToPlayerField": 10.6,
+          "targetIsHostPos": true,
+          "targetIsPawnPos": false
+        }
+      ]
+    ],
+    "clientOwn": {
+      "health": 170,
+      "maxHealth": 170,
+      "alive": true
+    }
+  },
+  "observer": {
+    "toPawnTotal": 0,
+    "toLocalTotal": 180,
+    "toPawnByEnemy": [],
+    "toLocalByEnemySample": [
+      {
+        "phase": "B_hostAlone",
+        "amount": 12.1,
+        "type": "projectile",
+        "srcId": "spitling",
+        "byEnemy": true
+      },
+      {
+        "phase": "B_hostAlone",
+        "amount": 21,
+        "type": "projectile",
+        "srcId": "lemurian",
+        "byEnemy": true
+      },
+      {
+        "phase": "B_hostAlone",
+        "amount": 21,
+        "type": "projectile",
+        "srcId": "lemurian",
+        "byEnemy": true
+      },
+      {
+        "phase": "B_hostAlone",
+        "amount": 12,
+        "type": "projectile",
+        "srcId": "wisp",
+        "byEnemy": true
+      },
+      {
+        "phase": "B_hostAlone",
+        "amount": 12,
+        "type": "projectile",
+        "srcId": "wisp",
+        "byEnemy": true
+      },
+      {
+        "phase": "B_hostAlone",
+        "amount": 12,
+        "type": "projectile",
+        "srcId": "wisp",
+        "byEnemy": true
+      },
+      {
+        "phase": "B_hostAlone",
+        "amount": 12,
+        "type": "projectile",
+        "srcId": "wisp",
+        "byEnemy": true
+      },
+      {
+        "phase": "B_hostAlone",
+        "amount": 10,
+        "type": "melee",
+        "srcId": "beetle",
+        "byEnemy": true
+      },
+      {
+        "phase": "B_hostAlone",
+        "amount": 14,
+        "type": "melee",
+        "srcId": "lemurian",
+        "byEnemy": true
+      },
+      {
+        "phase": "B_hostAlone",
+        "amount": 12,
+        "type": "projectile",
+        "srcId": "wisp",
+        "byEnemy": true
+      },
+      {
+        "phase": "B_hostAlone",
+        "amount": 12,
+        "type": "projectile",
+        "srcId": "wisp",
+        "byEnemy": true
+      },
+      {
+        "phase": "B_hostAlone",
+        "amount": 12,
+        "type": "projectile",
+        "srcId": "wisp",
+        "byEnemy": true
+      }
+    ],
+    "toLocalByEnemyCount": 180
+  },
+  "errors": {
+    "host": [],
+    "client": [],
+    "hostConsole": [],
+    "clientConsole": []
+  },
+  "ok": true
+}

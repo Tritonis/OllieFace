@@ -1,0 +1,62 @@
+{
+  "arm": "sp-fixed",
+  "substitutions": [],
+  "runningGate": {
+    "paused": false,
+    "screen": null,
+    "localTick": 65,
+    "survivorId": "ranger",
+    "maxHealth": 110
+  },
+  "rows": [
+    {
+      "label": "four-own-kills",
+      "progression": 4,
+      "hud": 4,
+      "flashes": 4
+    },
+    {
+      "label": "enemy-kills-enemy-before",
+      "progression": 4,
+      "hud": 4,
+      "flashes": 4,
+      "controls": {
+        "sourceWasEnemy": true,
+        "killerIsPlayer": false,
+        "victimIsPlayer": false
+      }
+    },
+    {
+      "label": "enemy-kills-enemy",
+      "progression": 5,
+      "hud": 4,
+      "flashes": 4
+    },
+    {
+      "label": "player-death",
+      "progression": 5,
+      "hud": 4,
+      "flashes": 4
+    }
+  ],
+  "world": {
+    "lobbyMode": "single",
+    "net": null,
+    "authority": true,
+    "paused": false,
+    "localTick": 70,
+    "alive": true,
+    "health": 110,
+    "maxHealth": 110
+  },
+  "errors": {
+    "consoleErrors": 0,
+    "netWarns": 0,
+    "netWarnTexts": [],
+    "consoleWarns": 12,
+    "pageErrors": 0,
+    "errorTexts": [],
+    "pageErrorTexts": []
+  },
+  "substitutionsMissing": []
+}

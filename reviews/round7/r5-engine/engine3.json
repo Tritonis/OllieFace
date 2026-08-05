@@ -1,0 +1,538 @@
+{
+  "scenarios": [
+    {
+      "name": "01-title",
+      "raf": 30,
+      "shadowTicks": 0,
+      "shadowLoops": 0,
+      "sAlive": 0,
+      "sMaxAlive": 1,
+      "maxTicksPerFrame": 1,
+      "realEngineRunning": false,
+      "loopGen": 1
+    },
+    {
+      "name": "17-artifacts",
+      "raf": 30,
+      "shadowTicks": 0,
+      "shadowLoops": 0,
+      "sAlive": 0,
+      "sMaxAlive": 1,
+      "maxTicksPerFrame": 1,
+      "realEngineRunning": false,
+      "loopGen": 2
+    },
+    {
+      "name": "18-difficulty",
+      "raf": 30,
+      "shadowTicks": 0,
+      "shadowLoops": 0,
+      "sAlive": 0,
+      "sMaxAlive": 1,
+      "maxTicksPerFrame": 1,
+      "realEngineRunning": false,
+      "loopGen": 3
+    },
+    {
+      "name": "02-vista",
+      "raf": 30,
+      "shadowTicks": 0,
+      "shadowLoops": 0,
+      "sAlive": 0,
+      "sMaxAlive": 1,
+      "maxTicksPerFrame": 1,
+      "realEngineRunning": false,
+      "loopGen": 4
+    },
+    {
+      "name": "03-thirdperson",
+      "raf": 30,
+      "shadowTicks": 0,
+      "shadowLoops": 0,
+      "sAlive": 0,
+      "sMaxAlive": 1,
+      "maxTicksPerFrame": 1,
+      "realEngineRunning": false,
+      "loopGen": 5
+    },
+    {
+      "name": "09-survivors",
+      "raf": 30,
+      "shadowTicks": 0,
+      "shadowLoops": 0,
+      "sAlive": 0,
+      "sMaxAlive": 1,
+      "maxTicksPerFrame": 1,
+      "realEngineRunning": false,
+      "loopGen": 6
+    },
+    {
+      "name": "14-survivor-select",
+      "raf": 30,
+      "shadowTicks": 0,
+      "shadowLoops": 0,
+      "sAlive": 0,
+      "sMaxAlive": 1,
+      "maxTicksPerFrame": 1,
+      "realEngineRunning": false,
+      "loopGen": 7
+    },
+    {
+      "name": "15-logbook",
+      "raf": 30,
+      "shadowTicks": 0,
+      "shadowLoops": 0,
+      "sAlive": 0,
+      "sMaxAlive": 1,
+      "maxTicksPerFrame": 1,
+      "realEngineRunning": false,
+      "loopGen": 8
+    },
+    {
+      "name": "13-biomes-1",
+      "raf": 30,
+      "shadowTicks": 0,
+      "shadowLoops": 0,
+      "sAlive": 0,
+      "sMaxAlive": 1,
+      "maxTicksPerFrame": 1,
+      "realEngineRunning": false,
+      "loopGen": 9
+    },
+    {
+      "name": "13-biomes-2",
+      "raf": 30,
+      "shadowTicks": 0,
+      "shadowLoops": 0,
+      "sAlive": 0,
+      "sMaxAlive": 1,
+      "maxTicksPerFrame": 1,
+      "realEngineRunning": false,
+      "loopGen": 10
+    },
+    {
+      "name": "13-biomes-3",
+      "raf": 30,
+      "shadowTicks": 0,
+      "shadowLoops": 0,
+      "sAlive": 0,
+      "sMaxAlive": 1,
+      "maxTicksPerFrame": 1,
+      "realEngineRunning": false,
+      "loopGen": 11
+    },
+    {
+      "name": "13-biomes-4",
+      "raf": 30,
+      "shadowTicks": 0,
+      "shadowLoops": 0,
+      "sAlive": 0,
+      "sMaxAlive": 1,
+      "maxTicksPerFrame": 1,
+      "realEngineRunning": false,
+      "loopGen": 12
+    },
+    {
+      "name": "04-combat",
+      "raf": 30,
+      "shadowTicks": 0,
+      "shadowLoops": 0,
+      "sAlive": 0,
+      "sMaxAlive": 1,
+      "maxTicksPerFrame": 1,
+      "realEngineRunning": false,
+      "loopGen": 13
+    },
+    {
+      "name": "05-boss",
+      "raf": 30,
+      "shadowTicks": 0,
+      "shadowLoops": 0,
+      "sAlive": 0,
+      "sMaxAlive": 1,
+      "maxTicksPerFrame": 1,
+      "realEngineRunning": false,
+      "loopGen": 14
+    },
+    {
+      "name": "07-interactables",
+      "raf": 30,
+      "shadowTicks": 0,
+      "shadowLoops": 0,
+      "sAlive": 0,
+      "sMaxAlive": 1,
+      "maxTicksPerFrame": 1,
+      "realEngineRunning": false,
+      "loopGen": 15
+    },
+    {
+      "name": "08-explosion",
+      "raf": 30,
+      "shadowTicks": 0,
+      "shadowLoops": 0,
+      "sAlive": 0,
+      "sMaxAlive": 1,
+      "maxTicksPerFrame": 1,
+      "realEngineRunning": false,
+      "loopGen": 16
+    },
+    {
+      "name": "11-bestiary",
+      "raf": 30,
+      "shadowTicks": 0,
+      "shadowLoops": 0,
+      "sAlive": 0,
+      "sMaxAlive": 1,
+      "maxTicksPerFrame": 1,
+      "realEngineRunning": false,
+      "loopGen": 17
+    },
+    {
+      "name": "12-boss-phases",
+      "raf": 30,
+      "shadowTicks": 0,
+      "shadowLoops": 0,
+      "sAlive": 0,
+      "sMaxAlive": 1,
+      "maxTicksPerFrame": 1,
+      "realEngineRunning": false,
+      "loopGen": 18
+    },
+    {
+      "name": "06-loaded-hud",
+      "raf": 30,
+      "shadowTicks": 0,
+      "shadowLoops": 0,
+      "sAlive": 0,
+      "sMaxAlive": 1,
+      "maxTicksPerFrame": 1,
+      "realEngineRunning": false,
+      "loopGen": 19
+    },
+    {
+      "name": "10-inventory",
+      "raf": 30,
+      "shadowTicks": 0,
+      "shadowLoops": 0,
+      "sAlive": 0,
+      "sMaxAlive": 1,
+      "maxTicksPerFrame": 1,
+      "realEngineRunning": false,
+      "loopGen": 20
+    },
+    {
+      "name": "16-run-summary",
+      "raf": 30,
+      "shadowTicks": 0,
+      "shadowLoops": 0,
+      "sAlive": 0,
+      "sMaxAlive": 1,
+      "maxTicksPerFrame": 1,
+      "realEngineRunning": false,
+      "loopGen": 21
+    }
+  ],
+  "errors": [
+    "[harness] 06-loaded-hud: subject missing or illegible — monsters under load (pixels: {\"why\":\"object absent or illegible\",\"px\":759,\"need\":300,\"objs\":\"8/10\",\"need2\":3,\"sepP50\":0.69,\"needSep\":0.25,\"carriedPx\":672,\"perPx\":[6,4,24,215,59,31,135,81,86,118],\"perSep\":[0.85,0.83,0.63,0.61,0.39,0.79,0.13,0.81,0.73,0.91],\"needPerPx\":100,\"badObjects\":[{\"i\":6,\"px\":135,\"sepP50\":0.13}],\"lum\":220,\"bgLum\":62.7})"
+  ],
+  "baseline": {
+    "raf": 60,
+    "shadowTicks": 60,
+    "shadowLoops": 1,
+    "sAlive": 1,
+    "sMaxAlive": 1,
+    "maxTicksPerFrame": 1,
+    "realEngineRunning": true,
+    "loopGen": 1
+  },
+  "final": {
+    "raf": 60,
+    "shadowTicks": 0,
+    "shadowLoops": 0,
+    "sAlive": 0,
+    "sMaxAlive": 1,
+    "maxTicksPerFrame": 1,
+    "realEngineRunning": false,
+    "loopGen": 21
+  },
+  "stats": {
+    "sChains": 21,
+    "sTicks": 2188,
+    "rafIdx": 29197,
+    "sRunning": false,
+    "sAlive": 0,
+    "sMaxAlive": 1,
+    "maxTicksPerFrame": 1
+  },
+  "log": [
+    {
+      "op": "stop",
+      "raf": 152,
+      "running": true,
+      "sAlive": 1
+    },
+    {
+      "op": "start",
+      "raf": 2477,
+      "sameFrameAsStop": false,
+      "running": false,
+      "sAlive": 0
+    },
+    {
+      "op": "stop",
+      "raf": 2507,
+      "running": true,
+      "sAlive": 1
+    },
+    {
+      "op": "start",
+      "raf": 3758,
+      "sameFrameAsStop": false,
+      "running": false,
+      "sAlive": 0
+    },
+    {
+      "op": "stop",
+      "raf": 3788,
+      "running": true,
+      "sAlive": 1
+    },
+    {
+      "op": "start",
+      "raf": 5177,
+      "sameFrameAsStop": false,
+      "running": false,
+      "sAlive": 0
+    },
+    {
+      "op": "stop",
+      "raf": 5268,
+      "running": true,
+      "sAlive": 1
+    },
+    {
+      "op": "start",
+      "raf": 7005,
+      "sameFrameAsStop": false,
+      "running": false,
+      "sAlive": 0
+    },
+    {
+      "op": "stop",
+      "raf": 7095,
+      "running": true,
+      "sAlive": 1
+    },
+    {
+      "op": "start",
+      "raf": 8622,
+      "sameFrameAsStop": false,
+      "running": false,
+      "sAlive": 0
+    },
+    {
+      "op": "stop",
+      "raf": 8676,
+      "running": true,
+      "sAlive": 1
+    },
+    {
+      "op": "start",
+      "raf": 9575,
+      "sameFrameAsStop": false,
+      "running": false,
+      "sAlive": 0
+    },
+    {
+      "op": "stop",
+      "raf": 9687,
+      "running": true,
+      "sAlive": 1
+    },
+    {
+      "op": "start",
+      "raf": 10359,
+      "sameFrameAsStop": false,
+      "running": false,
+      "sAlive": 0
+    },
+    {
+      "op": "stop",
+      "raf": 10471,
+      "running": true,
+      "sAlive": 1
+    },
+    {
+      "op": "start",
+      "raf": 10833,
+      "sameFrameAsStop": false,
+      "running": false,
+      "sAlive": 0
+    },
+    {
+      "op": "stop",
+      "raf": 10929,
+      "running": true,
+      "sAlive": 1
+    },
+    {
+      "op": "start",
+      "raf": 12173,
+      "sameFrameAsStop": false,
+      "running": false,
+      "sAlive": 0
+    },
+    {
+      "op": "stop",
+      "raf": 12269,
+      "running": true,
+      "sAlive": 1
+    },
+    {
+      "op": "start",
+      "raf": 13657,
+      "sameFrameAsStop": false,
+      "running": false,
+      "sAlive": 0
+    },
+    {
+      "op": "stop",
+      "raf": 13753,
+      "running": true,
+      "sAlive": 1
+    },
+    {
+      "op": "start",
+      "raf": 14843,
+      "sameFrameAsStop": false,
+      "running": false,
+      "sAlive": 0
+    },
+    {
+      "op": "stop",
+      "raf": 14939,
+      "running": true,
+      "sAlive": 1
+    },
+    {
+      "op": "start",
+      "raf": 15711,
+      "sameFrameAsStop": false,
+      "running": false,
+      "sAlive": 0
+    },
+    {
+      "op": "stop",
+      "raf": 15968,
+      "running": true,
+      "sAlive": 1
+    },
+    {
+      "op": "start",
+      "raf": 16894,
+      "sameFrameAsStop": false,
+      "running": false,
+      "sAlive": 0
+    },
+    {
+      "op": "stop",
+      "raf": 17042,
+      "running": true,
+      "sAlive": 1
+    },
+    {
+      "op": "start",
+      "raf": 18086,
+      "sameFrameAsStop": false,
+      "running": false,
+      "sAlive": 0
+    },
+    {
+      "op": "stop",
+      "raf": 18176,
+      "running": true,
+      "sAlive": 1
+    },
+    {
+      "op": "start",
+      "raf": 19619,
+      "sameFrameAsStop": false,
+      "running": false,
+      "sAlive": 0
+    },
+    {
+      "op": "stop",
+      "raf": 19707,
+      "running": true,
+      "sAlive": 1
+    },
+    {
+      "op": "start",
+      "raf": 20792,
+      "sameFrameAsStop": false,
+      "running": false,
+      "sAlive": 0
+    },
+    {
+      "op": "stop",
+      "raf": 20835,
+      "running": true,
+      "sAlive": 1
+    },
+    {
+      "op": "start",
+      "raf": 25231,
+      "sameFrameAsStop": false,
+      "running": false,
+      "sAlive": 0
+    },
+    {
+      "op": "stop",
+      "raf": 25343,
+      "running": true,
+      "sAlive": 1
+    },
+    {
+      "op": "start",
+      "raf": 27500,
+      "sameFrameAsStop": false,
+      "running": false,
+      "sAlive": 0
+    },
+    {
+      "op": "stop",
+      "raf": 27575,
+      "running": true,
+      "sAlive": 1
+    },
+    {
+      "op": "start",
+      "raf": 28151,
+      "sameFrameAsStop": false,
+      "running": false,
+      "sAlive": 0
+    },
+    {
+      "op": "stop",
+      "raf": 28271,
+      "running": true,
+      "sAlive": 1
+    },
+    {
+      "op": "start",
+      "raf": 28541,
+      "sameFrameAsStop": false,
+      "running": false,
+      "sAlive": 0
+    },
+    {
+      "op": "stop",
+      "raf": 28741,
+      "running": true,
+      "sAlive": 1
+    }
+  ],
+  "startStopPairsInSameFrame": 0,
+  "startCalls": 20,
+  "stopCalls": 21
+}

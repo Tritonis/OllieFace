@@ -1,0 +1,98 @@
+{
+  "arm": "sp-fixed",
+  "substitutions": [],
+  "substitutionsMissing": [],
+  "port": 5876,
+  "gate": {
+    "paused": false,
+    "screen": null,
+    "localTick": 75,
+    "survivorId": "ranger",
+    "maxHealth": 110,
+    "lobbyMode": "single",
+    "pointerLock": true
+  },
+  "rows": [
+    {
+      "label": "start",
+      "prog": 0,
+      "hud": 0,
+      "flashes": 0
+    },
+    {
+      "label": "player kill 1",
+      "prog": 1,
+      "hud": 1,
+      "flashes": 1
+    },
+    {
+      "label": "player kill 2",
+      "prog": 2,
+      "hud": 2,
+      "flashes": 2
+    },
+    {
+      "label": "player kill 3",
+      "prog": 3,
+      "hud": 3,
+      "flashes": 3
+    },
+    {
+      "label": "player kill 4",
+      "prog": 4,
+      "hud": 4,
+      "flashes": 4
+    },
+    {
+      "label": "enemy kills an enemy",
+      "prog": 5,
+      "hud": 4,
+      "flashes": 4
+    },
+    {
+      "label": "player dies to an enemy",
+      "prog": 5,
+      "hud": 4,
+      "flashes": 4
+    },
+    {
+      "label": "player dies to ITSELF",
+      "prog": 5,
+      "hud": 4,
+      "flashes": 4
+    },
+    {
+      "label": "player dies, no source",
+      "prog": 5,
+      "hud": 4,
+      "flashes": 4
+    },
+    {
+      "label": "enemy dies, no source",
+      "prog": 6,
+      "hud": 5,
+      "flashes": 5
+    }
+  ],
+  "controls": {
+    "lobbyMode": "single",
+    "authority": true,
+    "paused": false,
+    "netRole": "single",
+    "localTick": 90,
+    "alive": true,
+    "health": 110,
+    "maxHealth": 110,
+    "sourceWasEnemy": true,
+    "killerIsPlayer": false,
+    "victimIsPlayer": false
+  },
+  "appliedAtRuntime": [],
+  "log": {
+    "errors": [
+      "The AudioContext encountered an error from the audio device or the WebAudio renderer."
+    ],
+    "pageErrors": []
+  },
+  "elapsedMs": 178965
+}

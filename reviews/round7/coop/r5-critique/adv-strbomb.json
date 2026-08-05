@@ -1,0 +1,287 @@
+{
+  "arm": "adv-strbomb",
+  "doc": "5 bytes, length prefix claims 60000",
+  "substitutions": [],
+  "substitutionsMissing": [],
+  "gateHost": {
+    "paused": false,
+    "screen": null,
+    "localTick": 70,
+    "survivorId": "ranger",
+    "maxHealth": 110,
+    "lobbyMode": "single",
+    "pointerLock": true
+  },
+  "gateClient": {
+    "paused": false,
+    "screen": null,
+    "localTick": 65,
+    "survivorId": "anvil",
+    "maxHealth": 170,
+    "lobbyMode": "single",
+    "pointerLock": true
+  },
+  "host": {
+    "role": "host",
+    "lobbyMode": "host",
+    "status": "peerRefused",
+    "statusDetail": {
+      "id": 1,
+      "reason": "hello",
+      "detail": "its identity message did not parse"
+    },
+    "players": 1,
+    "refusedPeers": [],
+    "clientsCount": 0,
+    "clients": [],
+    "pawns": [],
+    "tick": 55,
+    "paused": false,
+    "screen": null,
+    "inputEnabled": true,
+    "holding": false,
+    "pointerLock": true,
+    "my": {
+      "survivorId": "ranger",
+      "health": 110,
+      "maxHealth": 110,
+      "alive": true
+    },
+    "said": "Turned a player away: their join did not make sense (its identity message did not parse).",
+    "saidLen": 89,
+    "statuses": [
+      {
+        "status": "hosting",
+        "detail": null,
+        "said": "Hosting. Create an invite for each friend you want to bring in."
+      },
+      {
+        "status": "inviteReady",
+        "detail": {
+          "id": 1,
+          "blob": "eyJ2IjoxLCJyb2xlIjoib2ZmZXIiLCJpZCI6MSwic2RwIjp7InR5cGUiOiJvZmZlciIsInNkcCI6InY9MFxyXG5vPS0gMzQ3NDY0MjMzMzI2MzY5NDc2MiAyIElOIElQNCAxMjcuMC4wLjFcclxucz0tXHJcbnQ9MCAwXHJcbmE9Z3JvdXA6QlVORExFIDBcclxuYT1leHRtYXAtYWxsb3ctbWl4ZWRcclxuYT1tc2lkLXNlbWFudGljOiBXTVNcclxubT1hcHBsaWNhdGlvbiA1NzI5NSBVRFAvRFRMUy9TQ1RQIHdlYnJ0Yy1kYXRhY2hhbm5lbFxyXG5jPUlOIElQNCA5OS4xMDkuMTQxLjE1OFxyXG5hPWNhbmRpZGF0ZTozNTY3MzAzODA1IDEgdWRwIDIxMTM5MzcxNTEgODk3NGZiMGUtZTliYy00NjQ3LWJmMGUtZTIwMDQ1MjRiY2YxLmxvY2FsIDU3Mjk1IHR5cCBob3N0IGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9Y2FuZGlkYXRlOjIwMDczNDU3MTAgMSB1ZHAgMTY3NzcyOTUzNSA5OS4xMDkuMTQxLjE1OCA1NzI5NSB0eXAgc3JmbHggcmFkZHIgMC4wLjAuMCBycG9ydCAwIGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9aWNlLXVmcmFnOjRlVjJcclxuYT1pY2UtcHdkOmVOK1NBalJHTVdvUDFMWjhwWEZ2Z2ZCWlxyXG5hPWljZS1vcHRpb25zOnRyaWNrbGVcclxuYT1maW5nZXJwcmludDpzaGEtMjU2IEIyOkFBOkI2OkJBOjkxOjEwOkM1OkU2OkM2OjIyOjM0OjhBOkIzOkY4OkRDOjEyOkM5OjU2OkMxOjg0OkMxOkIxOjY5OkRCOkQ3OkQ4OkFEOjM1OkMxOjExOkE3OkNBXHJcbmE9c2V0dXA6YWN0cGFzc1xyXG5hPW1pZDowXHJcbmE9c2N0cC1wb3J0OjUwMDBcclxuYT1tYXgtbWVzc2FnZS1zaXplOjI2MjE0NFxyXG4ifX0"
+        },
+        "said": "Invite ready. Send that code to your friend."
+      },
+      {
+        "status": "peerJoined",
+        "detail": {
+          "id": 1,
+          "count": 2
+        },
+        "said": "A player joined. 2 in the game."
+      },
+      {
+        "status": "peerConnecting",
+        "detail": {
+          "id": 1
+        },
+        "said": "Reply accepted — connecting…"
+      },
+      {
+        "status": "peerRefused",
+        "detail": {
+          "id": 1,
+          "reason": "hello",
+          "detail": "its identity message did not parse"
+        },
+        "said": "Turned a player away: their join did not make sense (its identity message did not parse)."
+      }
+    ]
+  },
+  "client": {
+    "role": "client",
+    "lobbyMode": "client",
+    "status": "refused",
+    "statusDetail": {
+      "reason": "hello",
+      "detail": "its identity message did not parse"
+    },
+    "connected": false,
+    "myNetId": 1,
+    "serverTick": 45,
+    "paused": false,
+    "screen": null,
+    "refusedLatch": true,
+    "my": {
+      "survivorId": "anvil",
+      "health": 170,
+      "maxHealth": 170,
+      "alive": true
+    },
+    "said": "The host refused the join. Try joining again.",
+    "saidLen": 45,
+    "statuses": [
+      {
+        "status": "joining",
+        "detail": null,
+        "said": "Answering the invite…"
+      },
+      {
+        "status": "answerReady",
+        "detail": {
+          "blob": "eyJ2IjoxLCJyb2xlIjoiYW5zd2VyIiwiaWQiOjEsInNkcCI6eyJ0eXBlIjoiYW5zd2VyIiwic2RwIjoidj0wXHJcbm89LSAzNzcwMzU5MDc1MTMzNzA1MTg4IDIgSU4gSVA0IDEyNy4wLjAuMVxyXG5zPS1cclxudD0wIDBcclxuYT1ncm91cDpCVU5ETEUgMFxyXG5hPWV4dG1hcC1hbGxvdy1taXhlZFxyXG5hPW1zaWQtc2VtYW50aWM6IFdNU1xyXG5tPWFwcGxpY2F0aW9uIDkgVURQL0RUTFMvU0NUUCB3ZWJydGMtZGF0YWNoYW5uZWxcclxuYz1JTiBJUDQgMC4wLjAuMFxyXG5hPWNhbmRpZGF0ZToyOTY5MzEyNDMyIDEgdWRwIDIxMTM5MzcxNTEgODVmNmQzNzAtMGQ2MS00OThlLTg3YjEtYTk2YzM3Y2I4MmIwLmxvY2FsIDYyOTUyIHR5cCBob3N0IGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9aWNlLXVmcmFnOlZCTUVcclxuYT1pY2UtcHdkOkdhUmxmVGt1YSt4bFJKOWhmanVyVVBzNlxyXG5hPWljZS1vcHRpb25zOnRyaWNrbGVcclxuYT1maW5nZXJwcmludDpzaGEtMjU2IEIzOkE0OkYwOjU5OjY2OkVEOjFDOjE3OkI1OkE4OkY3OjFFOjFBOkExOjhEOjlDOjI2OjAyOkU3OjAyOkJDOkNGOkMzOjNGOkNFOjM0OjEwOkJFOjVEOjIzOjBFOjQwXHJcbmE9c2V0dXA6YWN0aXZlXHJcbmE9bWlkOjBcclxuYT1zY3RwLXBvcnQ6NTAwMFxyXG5hPW1heC1tZXNzYWdlLXNpemU6MjYyMTQ0XHJcbiJ9fQ"
+        },
+        "said": "Send your reply code back to the host."
+      },
+      {
+        "status": "connected",
+        "detail": {
+          "seed": 1337,
+          "stageIndex": 0,
+          "time": 3.3333332538604736,
+          "myNetId": 1,
+          "artifactMask": 0,
+          "difficulty": 1
+        },
+        "said": "Connected. Rebuilding the host's world…"
+      },
+      {
+        "status": "refused",
+        "detail": {
+          "reason": "hello",
+          "detail": "its identity message did not parse"
+        },
+        "said": "The host refused the join. Try joining again."
+      }
+    ]
+  },
+  "settled": {
+    "host": {
+      "role": "host",
+      "lobbyMode": "host",
+      "status": "peerRefused",
+      "statusDetail": {
+        "id": 1,
+        "reason": "hello",
+        "detail": "its identity message did not parse"
+      },
+      "players": 1,
+      "refusedPeers": [],
+      "clientsCount": 0,
+      "clients": [],
+      "pawns": [],
+      "tick": 110,
+      "paused": false,
+      "screen": null,
+      "inputEnabled": true,
+      "holding": false,
+      "pointerLock": true,
+      "my": {
+        "survivorId": "ranger",
+        "health": 110,
+        "maxHealth": 110,
+        "alive": true
+      },
+      "said": "Turned a player away: their join did not make sense (its identity message did not parse).",
+      "saidLen": 89,
+      "statuses": [
+        {
+          "status": "hosting",
+          "detail": null,
+          "said": "Hosting. Create an invite for each friend you want to bring in."
+        },
+        {
+          "status": "inviteReady",
+          "detail": {
+            "id": 1,
+            "blob": "eyJ2IjoxLCJyb2xlIjoib2ZmZXIiLCJpZCI6MSwic2RwIjp7InR5cGUiOiJvZmZlciIsInNkcCI6InY9MFxyXG5vPS0gMzQ3NDY0MjMzMzI2MzY5NDc2MiAyIElOIElQNCAxMjcuMC4wLjFcclxucz0tXHJcbnQ9MCAwXHJcbmE9Z3JvdXA6QlVORExFIDBcclxuYT1leHRtYXAtYWxsb3ctbWl4ZWRcclxuYT1tc2lkLXNlbWFudGljOiBXTVNcclxubT1hcHBsaWNhdGlvbiA1NzI5NSBVRFAvRFRMUy9TQ1RQIHdlYnJ0Yy1kYXRhY2hhbm5lbFxyXG5jPUlOIElQNCA5OS4xMDkuMTQxLjE1OFxyXG5hPWNhbmRpZGF0ZTozNTY3MzAzODA1IDEgdWRwIDIxMTM5MzcxNTEgODk3NGZiMGUtZTliYy00NjQ3LWJmMGUtZTIwMDQ1MjRiY2YxLmxvY2FsIDU3Mjk1IHR5cCBob3N0IGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9Y2FuZGlkYXRlOjIwMDczNDU3MTAgMSB1ZHAgMTY3NzcyOTUzNSA5OS4xMDkuMTQxLjE1OCA1NzI5NSB0eXAgc3JmbHggcmFkZHIgMC4wLjAuMCBycG9ydCAwIGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9aWNlLXVmcmFnOjRlVjJcclxuYT1pY2UtcHdkOmVOK1NBalJHTVdvUDFMWjhwWEZ2Z2ZCWlxyXG5hPWljZS1vcHRpb25zOnRyaWNrbGVcclxuYT1maW5nZXJwcmludDpzaGEtMjU2IEIyOkFBOkI2OkJBOjkxOjEwOkM1OkU2OkM2OjIyOjM0OjhBOkIzOkY4OkRDOjEyOkM5OjU2OkMxOjg0OkMxOkIxOjY5OkRCOkQ3OkQ4OkFEOjM1OkMxOjExOkE3OkNBXHJcbmE9c2V0dXA6YWN0cGFzc1xyXG5hPW1pZDowXHJcbmE9c2N0cC1wb3J0OjUwMDBcclxuYT1tYXgtbWVzc2FnZS1zaXplOjI2MjE0NFxyXG4ifX0"
+          },
+          "said": "Invite ready. Send that code to your friend."
+        },
+        {
+          "status": "peerJoined",
+          "detail": {
+            "id": 1,
+            "count": 2
+          },
+          "said": "A player joined. 2 in the game."
+        },
+        {
+          "status": "peerConnecting",
+          "detail": {
+            "id": 1
+          },
+          "said": "Reply accepted — connecting…"
+        },
+        {
+          "status": "peerRefused",
+          "detail": {
+            "id": 1,
+            "reason": "hello",
+            "detail": "its identity message did not parse"
+          },
+          "said": "Turned a player away: their join did not make sense (its identity message did not parse)."
+        }
+      ]
+    },
+    "client": {
+      "role": "client",
+      "lobbyMode": "client",
+      "status": "refused",
+      "statusDetail": {
+        "reason": "hello",
+        "detail": "its identity message did not parse"
+      },
+      "connected": false,
+      "myNetId": 1,
+      "serverTick": 45,
+      "paused": false,
+      "screen": null,
+      "refusedLatch": true,
+      "my": {
+        "survivorId": "anvil",
+        "health": 170,
+        "maxHealth": 170,
+        "alive": true
+      },
+      "said": "The host refused the join. Try joining again.",
+      "saidLen": 45,
+      "statuses": [
+        {
+          "status": "joining",
+          "detail": null,
+          "said": "Answering the invite…"
+        },
+        {
+          "status": "answerReady",
+          "detail": {
+            "blob": "eyJ2IjoxLCJyb2xlIjoiYW5zd2VyIiwiaWQiOjEsInNkcCI6eyJ0eXBlIjoiYW5zd2VyIiwic2RwIjoidj0wXHJcbm89LSAzNzcwMzU5MDc1MTMzNzA1MTg4IDIgSU4gSVA0IDEyNy4wLjAuMVxyXG5zPS1cclxudD0wIDBcclxuYT1ncm91cDpCVU5ETEUgMFxyXG5hPWV4dG1hcC1hbGxvdy1taXhlZFxyXG5hPW1zaWQtc2VtYW50aWM6IFdNU1xyXG5tPWFwcGxpY2F0aW9uIDkgVURQL0RUTFMvU0NUUCB3ZWJydGMtZGF0YWNoYW5uZWxcclxuYz1JTiBJUDQgMC4wLjAuMFxyXG5hPWNhbmRpZGF0ZToyOTY5MzEyNDMyIDEgdWRwIDIxMTM5MzcxNTEgODVmNmQzNzAtMGQ2MS00OThlLTg3YjEtYTk2YzM3Y2I4MmIwLmxvY2FsIDYyOTUyIHR5cCBob3N0IGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9aWNlLXVmcmFnOlZCTUVcclxuYT1pY2UtcHdkOkdhUmxmVGt1YSt4bFJKOWhmanVyVVBzNlxyXG5hPWljZS1vcHRpb25zOnRyaWNrbGVcclxuYT1maW5nZXJwcmludDpzaGEtMjU2IEIzOkE0OkYwOjU5OjY2OkVEOjFDOjE3OkI1OkE4OkY3OjFFOjFBOkExOjhEOjlDOjI2OjAyOkU3OjAyOkJDOkNGOkMzOjNGOkNFOjM0OjEwOkJFOjVEOjIzOjBFOjQwXHJcbmE9c2V0dXA6YWN0aXZlXHJcbmE9bWlkOjBcclxuYT1zY3RwLXBvcnQ6NTAwMFxyXG5hPW1heC1tZXNzYWdlLXNpemU6MjYyMTQ0XHJcbiJ9fQ"
+          },
+          "said": "Send your reply code back to the host."
+        },
+        {
+          "status": "connected",
+          "detail": {
+            "seed": 1337,
+            "stageIndex": 0,
+            "time": 3.3333332538604736,
+            "myNetId": 1,
+            "artifactMask": 0,
+            "difficulty": 1
+          },
+          "said": "Connected. Rebuilding the host's world…"
+        },
+        {
+          "status": "refused",
+          "detail": {
+            "reason": "hello",
+            "detail": "its identity message did not parse"
+          },
+          "said": "The host refused the join. Try joining again."
+        }
+      ]
+    }
+  },
+  "hostLog": {
+    "errors": [],
+    "pageErrors": [],
+    "netWarns": []
+  },
+  "clientLog": {
+    "errors": [],
+    "pageErrors": [],
+    "netWarns": []
+  },
+  "elapsedMs": 109082
+}

@@ -1,0 +1,1100 @@
+{
+  "spots": [
+    {
+      "x": -55.57693493136994,
+      "y": -8.439591963640623,
+      "z": 53.331157886344556,
+      "relief": 5.44
+    },
+    {
+      "x": -55.66081237567627,
+      "y": -8.26024993326091,
+      "z": 53.87058433255674,
+      "relief": 5.45
+    },
+    {
+      "x": -55.66081237567627,
+      "y": -8.26024993326091,
+      "z": 53.87058433255674,
+      "relief": 5.45
+    }
+  ],
+  "impulse": [
+    {
+      "label": "nothing",
+      "spec": {},
+      "peaks": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "displacements": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "airSteps": [
+        50,
+        50,
+        50,
+        50
+      ],
+      "zeroCounts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "trail0": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "zeroes0": [],
+      "extraJumps": []
+    },
+    {
+      "label": "vents x1",
+      "spec": {
+        "updraft-vents": 1
+      },
+      "peaks": [
+        4.88,
+        4.88,
+        4.88,
+        4.88
+      ],
+      "displacements": [
+        1.83,
+        1.83,
+        1.83,
+        1.83
+      ],
+      "airSteps": [
+        47,
+        54,
+        54,
+        45
+      ],
+      "zeroCounts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "trail0": [
+        4.88,
+        4.77,
+        4.65,
+        4.53,
+        4.42,
+        4.3,
+        4.18,
+        4.07,
+        3.95,
+        3.83,
+        3.72,
+        3.6,
+        3.48,
+        3.37,
+        3.25,
+        3.13,
+        3.02,
+        2.9,
+        2.78,
+        2.67
+      ],
+      "zeroes0": [],
+      "extraJumps": []
+    },
+    {
+      "label": "wing x1",
+      "spec": {
+        "wax-quail": 1
+      },
+      "peaks": [
+        9.88,
+        9.88,
+        9.88,
+        9.88
+      ],
+      "displacements": [
+        5.73,
+        6.61,
+        6.66,
+        5.15
+      ],
+      "airSteps": [
+        45,
+        59,
+        60,
+        38
+      ],
+      "zeroCounts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "trail0": [
+        9.88,
+        9.77,
+        9.65,
+        9.53,
+        9.42,
+        9.3,
+        9.18,
+        9.07,
+        8.95,
+        8.83,
+        8.72,
+        8.6,
+        8.48,
+        8.37,
+        8.25,
+        8.13,
+        8.02,
+        7.9,
+        7.78,
+        7.67
+      ],
+      "zeroes0": [],
+      "extraJumps": []
+    },
+    {
+      "label": "wing x1 + vents x1",
+      "spec": {
+        "wax-quail": 1,
+        "updraft-vents": 1
+      },
+      "peaks": [
+        14.88,
+        14.88,
+        14.88,
+        14.88
+      ],
+      "displacements": [
+        10.86,
+        11.42,
+        11.42,
+        6.65
+      ],
+      "airSteps": [
+        53,
+        57,
+        57,
+        28
+      ],
+      "zeroCounts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "trail0": [
+        14.88,
+        14.77,
+        14.65,
+        14.53,
+        14.42,
+        14.3,
+        14.18,
+        14.07,
+        13.95,
+        13.83,
+        13.72,
+        13.6,
+        13.48,
+        13.37,
+        13.25,
+        13.13,
+        13.02,
+        12.9,
+        12.78,
+        12.67
+      ],
+      "zeroes0": [],
+      "extraJumps": []
+    },
+    {
+      "label": "wing x2 + vents x1",
+      "spec": {
+        "wax-quail": 2,
+        "updraft-vents": 1
+      },
+      "peaks": [
+        24.88,
+        24.88,
+        24.88,
+        24.88
+      ],
+      "displacements": [
+        20.65,
+        20.03,
+        14.93,
+        7.96
+      ],
+      "airSteps": [
+        55,
+        53,
+        55,
+        18
+      ],
+      "zeroCounts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "trail0": [
+        24.88,
+        24.77,
+        24.65,
+        24.53,
+        24.42,
+        24.3,
+        24.18,
+        24.07,
+        23.95,
+        23.83,
+        23.72,
+        23.6,
+        23.48,
+        23.37,
+        23.25,
+        23.13,
+        23.02,
+        22.9,
+        22.78,
+        22.67
+      ],
+      "zeroes0": [],
+      "extraJumps": []
+    },
+    {
+      "label": "wing x1 + tectonic",
+      "spec": {
+        "wax-quail": 1,
+        "tectonic-heart": 1
+      },
+      "peaks": [
+        9.88,
+        9.88,
+        9.88,
+        9.88
+      ],
+      "displacements": [
+        5.73,
+        6.61,
+        6.66,
+        5.15
+      ],
+      "airSteps": [
+        45,
+        59,
+        60,
+        38
+      ],
+      "zeroCounts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "trail0": [
+        9.88,
+        9.77,
+        9.65,
+        9.53,
+        9.42,
+        9.3,
+        9.18,
+        9.07,
+        8.95,
+        8.83,
+        8.72,
+        8.6,
+        8.48,
+        8.37,
+        8.25,
+        8.13,
+        8.02,
+        7.9,
+        7.78,
+        7.67
+      ],
+      "zeroes0": [],
+      "extraJumps": [
+        {
+          "peak": 9.88,
+          "displacement": 6.56
+        },
+        {
+          "peak": 16,
+          "displacement": 10.43
+        }
+      ]
+    },
+    {
+      "label": "wing x2",
+      "spec": {
+        "wax-quail": 2
+      },
+      "peaks": [
+        19.88,
+        19.88,
+        19.88,
+        19.88
+      ],
+      "displacements": [
+        16.34,
+        16.56,
+        13.61,
+        8.32
+      ],
+      "airSteps": [
+        57,
+        58,
+        57,
+        25
+      ],
+      "zeroCounts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "trail0": [
+        19.88,
+        19.77,
+        19.65,
+        19.53,
+        19.42,
+        19.3,
+        19.18,
+        19.07,
+        18.95,
+        18.83,
+        18.72,
+        18.6,
+        18.48,
+        18.37,
+        18.25,
+        18.13,
+        18.02,
+        17.9,
+        17.78,
+        17.67
+      ],
+      "zeroes0": [],
+      "extraJumps": []
+    },
+    {
+      "label": "wing x3",
+      "spec": {
+        "wax-quail": 3
+      },
+      "peaks": [
+        29.88,
+        29.88,
+        29.88,
+        29.88
+      ],
+      "displacements": [
+        23.02,
+        20.63,
+        16.34,
+        7.77
+      ],
+      "airSteps": [
+        49,
+        49,
+        51,
+        14
+      ],
+      "zeroCounts": [
+        0,
+        1,
+        0,
+        0
+      ],
+      "trail0": [
+        29.88,
+        29.77,
+        29.65,
+        29.53,
+        29.42,
+        29.3,
+        29.18,
+        29.07,
+        28.95,
+        28.83,
+        28.72,
+        28.6,
+        28.48,
+        28.37,
+        28.25,
+        28.13,
+        28.02,
+        27.9,
+        27.78,
+        27.67
+      ],
+      "zeroes0": [],
+      "extraJumps": []
+    },
+    {
+      "label": "wing x4",
+      "spec": {
+        "wax-quail": 4
+      },
+      "peaks": [
+        39.88,
+        39.88,
+        39.88,
+        38.57
+      ],
+      "displacements": [
+        25.15,
+        23.22,
+        18.26,
+        7.43
+      ],
+      "airSteps": [
+        38,
+        35,
+        45,
+        9
+      ],
+      "zeroCounts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "trail0": [
+        39.88,
+        39.77,
+        39.65,
+        39.53,
+        39.42,
+        39.3,
+        39.18,
+        39.07,
+        38.95,
+        38.83,
+        38.72,
+        38.6,
+        38.48,
+        38.37,
+        38.25,
+        38.13,
+        38.02,
+        37.9,
+        37.78,
+        37.67
+      ],
+      "zeroes0": [],
+      "extraJumps": []
+    },
+    {
+      "label": "wing x5",
+      "spec": {
+        "wax-quail": 5
+      },
+      "peaks": [
+        48.57,
+        49.88,
+        49.88,
+        45.7
+      ],
+      "displacements": [
+        25.77,
+        24.08,
+        19.91,
+        6.88
+      ],
+      "airSteps": [
+        31,
+        30,
+        39,
+        4
+      ],
+      "zeroCounts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "trail0": [
+        48.57,
+        48.45,
+        48.33,
+        48.22,
+        48.1,
+        47.98,
+        47.87,
+        47.75,
+        47.63,
+        47.52,
+        47.4,
+        47.28,
+        47.17,
+        47.05,
+        46.93,
+        46.82,
+        46.7,
+        46.58,
+        46.47,
+        46.35
+      ],
+      "zeroes0": [],
+      "extraJumps": []
+    },
+    {
+      "label": "wing x8",
+      "spec": {
+        "wax-quail": 8
+      },
+      "peaks": [
+        77.13,
+        79.88,
+        79.88,
+        75.7
+      ],
+      "displacements": [
+        26.49,
+        21.67,
+        22.29,
+        11.25
+      ],
+      "airSteps": [
+        18,
+        21,
+        25,
+        1
+      ],
+      "zeroCounts": [
+        1,
+        1,
+        0,
+        0
+      ],
+      "trail0": [
+        78.57,
+        77.13,
+        77.02,
+        76.9,
+        76.78,
+        76.67,
+        76.55,
+        76.43,
+        76.32,
+        76.2,
+        76.08,
+        75.97,
+        75.85,
+        75.73,
+        75.62,
+        75.5,
+        75.38,
+        75.27,
+        75.15,
+        0
+      ],
+      "zeroes0": [
+        {
+          "before": 75.03,
+          "after": 0
+        }
+      ],
+      "extraJumps": []
+    },
+    {
+      "label": "wing x10",
+      "spec": {
+        "wax-quail": 10
+      },
+      "peaks": [
+        97.13,
+        99.88,
+        99.88,
+        97.13
+      ],
+      "displacements": [
+        26.33,
+        21.71,
+        21.69,
+        14.27
+      ],
+      "airSteps": [
+        14,
+        17,
+        57,
+        1
+      ],
+      "zeroCounts": [
+        1,
+        1,
+        2,
+        0
+      ],
+      "trail0": [
+        98.57,
+        97.13,
+        97.02,
+        96.9,
+        96.78,
+        96.67,
+        96.55,
+        96.43,
+        96.32,
+        96.2,
+        96.08,
+        95.97,
+        95.85,
+        95.73,
+        95.62,
+        0
+      ],
+      "zeroes0": [
+        {
+          "before": 95.5,
+          "after": 0
+        }
+      ],
+      "extraJumps": []
+    }
+  ],
+  "conflag": [
+    {
+      "n": 1,
+      "spacing": 3,
+      "lit": 1,
+      "echo": false,
+      "crit": false,
+      "rider": false,
+      "casts": 1,
+      "fire": 72,
+      "all": {
+        "fire": 72,
+        "burn": 15
+      },
+      "printed": 72,
+      "ratio": 1,
+      "burningAfter": 1
+    },
+    {
+      "n": 8,
+      "spacing": 3,
+      "lit": 0,
+      "echo": false,
+      "crit": false,
+      "rider": false,
+      "casts": 1,
+      "fire": 0,
+      "all": {},
+      "printed": 0,
+      "ratio": null,
+      "burningAfter": 0
+    },
+    {
+      "n": 8,
+      "spacing": 3,
+      "lit": 1,
+      "echo": false,
+      "crit": false,
+      "rider": false,
+      "casts": 1,
+      "fire": 162.7,
+      "all": {
+        "fire": 162.6546,
+        "burn": 15
+      },
+      "printed": 72,
+      "ratio": 2.26,
+      "burningAfter": 1
+    },
+    {
+      "n": 8,
+      "spacing": 3,
+      "lit": 3,
+      "echo": false,
+      "crit": false,
+      "rider": false,
+      "casts": 1,
+      "fire": 545.9,
+      "all": {
+        "fire": 545.8911,
+        "burn": 45
+      },
+      "printed": 216,
+      "ratio": 2.53,
+      "burningAfter": 3
+    },
+    {
+      "n": 8,
+      "spacing": 1.2,
+      "lit": 8,
+      "echo": false,
+      "crit": false,
+      "rider": false,
+      "casts": 1,
+      "fire": 3221.1,
+      "all": {
+        "fire": 3221.0652,
+        "burn": 120
+      },
+      "printed": 576,
+      "ratio": 5.59,
+      "burningAfter": 8
+    },
+    {
+      "n": 12,
+      "spacing": 1.5,
+      "lit": 12,
+      "echo": false,
+      "crit": false,
+      "rider": false,
+      "casts": 1,
+      "fire": 5802.2,
+      "all": {
+        "fire": 5802.1988,
+        "burn": 180
+      },
+      "printed": 864,
+      "ratio": 6.72,
+      "burningAfter": 12
+    },
+    {
+      "n": 16,
+      "spacing": 1,
+      "lit": 16,
+      "echo": false,
+      "crit": false,
+      "rider": false,
+      "casts": 1,
+      "fire": 11744,
+      "all": {
+        "fire": 11743.954,
+        "burn": 240
+      },
+      "printed": 1152,
+      "ratio": 10.19,
+      "burningAfter": 16
+    },
+    {
+      "n": 8,
+      "spacing": 1.2,
+      "lit": 8,
+      "echo": false,
+      "crit": true,
+      "rider": false,
+      "casts": 1,
+      "fire": 6442.1,
+      "all": {
+        "fire": 6442.1304,
+        "burn": 120
+      },
+      "printed": 576,
+      "ratio": 11.18,
+      "burningAfter": 8
+    },
+    {
+      "n": 16,
+      "spacing": 1,
+      "lit": 16,
+      "echo": false,
+      "crit": true,
+      "rider": false,
+      "casts": 1,
+      "fire": 23487.9,
+      "all": {
+        "fire": 23487.9076,
+        "burn": 240
+      },
+      "printed": 1152,
+      "ratio": 20.39,
+      "burningAfter": 16
+    },
+    {
+      "n": 10,
+      "spacing": 2.2,
+      "lit": 1,
+      "echo": false,
+      "crit": false,
+      "rider": false,
+      "casts": 1,
+      "fire": 290.5,
+      "all": {
+        "fire": 290.4706,
+        "burn": 15
+      },
+      "printed": 72,
+      "ratio": 4.03,
+      "burningAfter": 1
+    },
+    {
+      "n": 10,
+      "spacing": 2.2,
+      "lit": 1,
+      "echo": true,
+      "crit": false,
+      "rider": false,
+      "casts": 2,
+      "fire": 606.1,
+      "all": {
+        "fire": 606.1412,
+        "burn": 15
+      },
+      "printed": 72,
+      "ratio": 8.42,
+      "burningAfter": 1
+    },
+    {
+      "n": 10,
+      "spacing": 2.2,
+      "lit": 1,
+      "echo": false,
+      "crit": false,
+      "rider": true,
+      "casts": 1,
+      "fire": 290.5,
+      "all": {
+        "fire": 290.4706,
+        "burn": 111
+      },
+      "printed": 72,
+      "ratio": 4.03,
+      "burningAfter": 8
+    },
+    {
+      "n": 10,
+      "spacing": 2.2,
+      "lit": 1,
+      "echo": true,
+      "crit": false,
+      "rider": true,
+      "casts": 2,
+      "fire": 3015.6,
+      "all": {
+        "fire": 3015.6002,
+        "burn": 537
+      },
+      "printed": 72,
+      "ratio": 41.88,
+      "burningAfter": 10
+    }
+  ],
+  "ashen": [
+    {
+      "spec": {
+        "ashen-pact": 10
+      },
+      "fight": false,
+      "seconds": 12,
+      "settled": 0.5,
+      "trace": [
+        1,
+        0.85,
+        0.71,
+        0.569,
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "alive": true,
+      "moveSpeed": 7,
+      "preyLive": false,
+      "outgoingOn100": 100,
+      "maxHealth": 110,
+      "label": "pact x10"
+    },
+    {
+      "spec": {
+        "ashen-pact": 1
+      },
+      "fight": false,
+      "seconds": 15,
+      "settled": 0.903,
+      "trace": [
+        1,
+        0.986,
+        0.98,
+        0.974,
+        0.968,
+        0.962,
+        0.956,
+        0.95,
+        0.945,
+        0.939,
+        0.933,
+        0.927,
+        0.921,
+        0.915,
+        0.909,
+        0.903
+      ],
+      "alive": true,
+      "moveSpeed": 7,
+      "preyLive": false,
+      "outgoingOn100": 100,
+      "maxHealth": 110,
+      "label": "pact x1"
+    },
+    {
+      "spec": {
+        "ashen-pact": 10,
+        "entropy-ledger": 1,
+        "prey-instinct": 1
+      },
+      "fight": false,
+      "seconds": 12,
+      "settled": 0.501,
+      "trace": [
+        1,
+        0.851,
+        0.71,
+        0.57,
+        0.501,
+        0.501,
+        0.501,
+        0.501,
+        0.501,
+        0.501,
+        0.501,
+        0.501,
+        0.501
+      ],
+      "alive": true,
+      "moveSpeed": 7,
+      "preyLive": false,
+      "outgoingOn100": 149.9,
+      "maxHealth": 110,
+      "label": "pact x10 + ledger + prey"
+    },
+    {
+      "spec": {
+        "ashen-pact": 10,
+        "medkit": 10,
+        "leeching-seed": 10
+      },
+      "fight": true,
+      "seconds": 14,
+      "settled": 1,
+      "trace": [
+        1,
+        0.851,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "alive": true,
+      "moveSpeed": 7,
+      "preyLive": false,
+      "outgoingOn100": 100,
+      "maxHealth": 110,
+      "label": "pact x10 + medkit x10 + burr x10, fighting"
+    },
+    {
+      "spec": {
+        "ashen-pact": 1,
+        "medkit": 10,
+        "leeching-seed": 10
+      },
+      "fight": true,
+      "seconds": 14,
+      "settled": 1,
+      "trace": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "alive": true,
+      "moveSpeed": 7,
+      "preyLive": false,
+      "outgoingOn100": 100,
+      "maxHealth": 110,
+      "label": "pact x1 + medkit x10 + burr x10, fighting"
+    },
+    {
+      "spec": {
+        "ashen-pact": 10,
+        "steak": 10
+      },
+      "fight": false,
+      "seconds": 12,
+      "settled": 0.502,
+      "trace": [
+        1,
+        0.852,
+        0.705,
+        0.558,
+        0.502,
+        0.502,
+        0.502,
+        0.502,
+        0.502,
+        0.502,
+        0.502,
+        0.502,
+        0.502
+      ],
+      "alive": true,
+      "moveSpeed": 7,
+      "preyLive": false,
+      "outgoingOn100": 100,
+      "maxHealth": 360,
+      "label": "pact x10 + steak x10"
+    }
+  ],
+  "errors": [],
+  "frameErrors": 0
+}

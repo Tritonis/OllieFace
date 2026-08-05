@@ -1,0 +1,276 @@
+{
+  "damage": {
+    "runInFlight": true,
+    "noShield": {
+      "shield": 0,
+      "requested": 50,
+      "event": {
+        "amount": 50,
+        "toHealth": 50,
+        "absorbed": 0,
+        "targetIsPlayer": true,
+        "targetIsLocal": true,
+        "sourceIsPlayer": false
+      },
+      "dTaken": 50,
+      "dStage": 50,
+      "dLifetime": 50
+    },
+    "fullyAbsorbed": {
+      "shield": 1000,
+      "requested": 50,
+      "event": {
+        "amount": 50,
+        "toHealth": 0,
+        "absorbed": 50,
+        "targetIsPlayer": true,
+        "targetIsLocal": true,
+        "sourceIsPlayer": false
+      },
+      "dTaken": 0,
+      "dStage": 0,
+      "dLifetime": 0
+    },
+    "partiallyAbsorbed": {
+      "shield": 20,
+      "requested": 50,
+      "event": {
+        "amount": 50,
+        "toHealth": 30,
+        "absorbed": 20,
+        "targetIsPlayer": true,
+        "targetIsLocal": true,
+        "sourceIsPlayer": false
+      },
+      "dTaken": 30,
+      "dStage": 30,
+      "dLifetime": 30
+    },
+    "bigHit": {
+      "shield": 0,
+      "requested": 7,
+      "event": {
+        "amount": 7,
+        "toHealth": 7,
+        "absorbed": 0,
+        "targetIsPlayer": true,
+        "targetIsLocal": true,
+        "sourceIsPlayer": false
+      },
+      "dTaken": 7,
+      "dStage": 7,
+      "dLifetime": 7
+    },
+    "attacking": {
+      "error": "no enemy available"
+    },
+    "coop": {
+      "remoteBilled": 0,
+      "localBilled": 40
+    },
+    "noToHealthField": 13,
+    "hostileToHealth": {
+      "nan": 0,
+      "negative": 0,
+      "string": 0
+    }
+  },
+  "flawless": {
+    "armA": {
+      "flawlessStages": 3,
+      "damageTaken": 140,
+      "untouchable": {
+        "progress": 1,
+        "goal": 1,
+        "done": true,
+        "format": "number"
+      },
+      "ironclad": {
+        "progress": 3,
+        "goal": 3,
+        "done": true,
+        "format": "number"
+      }
+    },
+    "armB": {
+      "flawlessStages": 3,
+      "damageTaken": 220,
+      "untouchable": {
+        "progress": 1,
+        "goal": 1,
+        "done": true,
+        "format": "number"
+      },
+      "ironclad": {
+        "progress": 3,
+        "goal": 3,
+        "done": true,
+        "format": "number"
+      }
+    },
+    "armC": {
+      "flawlessStages": 5,
+      "untouchable": {
+        "progress": 1,
+        "goal": 1,
+        "done": true,
+        "format": "number"
+      },
+      "ironclad": {
+        "progress": 3,
+        "goal": 3,
+        "done": true,
+        "format": "number"
+      }
+    }
+  },
+  "timeFormat": {
+    "challengeStateFormat": {
+      "marathon": "time",
+      "clockedIn": "time",
+      "veteran": "number"
+    },
+    "challengeStateProgress": {
+      "marathon": [
+        1074,
+        1800
+      ],
+      "clockedIn": [
+        1074,
+        36000
+      ],
+      "veteran": [
+        1,
+        25
+      ]
+    },
+    "advanced": [
+      {
+        "id": "theLongHaul",
+        "from": 0,
+        "to": 4,
+        "goal": 5,
+        "format": "number"
+      },
+      {
+        "id": "mastery.ranger",
+        "from": 0,
+        "to": 4,
+        "goal": 5,
+        "format": "number"
+      },
+      {
+        "id": "marathon",
+        "from": 0,
+        "to": 1074,
+        "goal": 1800,
+        "format": "time"
+      }
+    ],
+    "closingIn": [
+      "4 / 5",
+      "4 / 5",
+      "17:54 / 30:00"
+    ],
+    "logbookRows": [],
+    "detail": []
+  },
+  "massacre": {
+    "bestKillBurst": 25,
+    "state": {
+      "progress": 25,
+      "goal": 25,
+      "done": true
+    }
+  },
+  "cleanList": {
+    "migration": {
+      "version": 2,
+      "grunt": {
+        "at": 111,
+        "count": 0
+      },
+      "doneAt": 42,
+      "ranger": {
+        "runs": 1,
+        "wins": 0,
+        "deaths": 1,
+        "kills": 4,
+        "time": 60,
+        "bestStage": 3,
+        "bestTime": 60
+      }
+    },
+    "payloads": {
+      "truncated": {
+        "threw": null,
+        "kills": 0,
+        "killsIsNumber": true,
+        "version": 2
+      },
+      "array": {
+        "threw": null,
+        "kills": 0,
+        "killsIsNumber": true,
+        "version": 2
+      },
+      "bareString": {
+        "threw": null,
+        "kills": 0,
+        "killsIsNumber": true,
+        "version": 2
+      },
+      "nullish": {
+        "threw": null,
+        "kills": 0,
+        "killsIsNumber": true,
+        "version": 2
+      },
+      "wrongTypes": {
+        "threw": null,
+        "kills": 0,
+        "killsIsNumber": true,
+        "version": 2
+      },
+      "protoLiteral": {
+        "threw": null,
+        "kills": 1,
+        "killsIsNumber": true,
+        "version": 2
+      },
+      "future": {
+        "threw": null,
+        "kills": 3,
+        "killsIsNumber": true,
+        "version": 2
+      }
+    },
+    "quotaPlain": {
+      "threw": null,
+      "blocked": true,
+      "kills": 5
+    },
+    "quotaDuringMerge": {
+      "threw": null,
+      "blocked": true,
+      "memKills": 34,
+      "diskKills": 30
+    },
+    "unlockIdempotent": {
+      "first": true,
+      "second": false,
+      "stampStable": true
+    },
+    "abandonedDebounce": {
+      "killsAtReset": 0,
+      "killsAfterOldTimer": 25
+    },
+    "hostileStorageEvent": {
+      "threw": null,
+      "killsBefore": 11,
+      "killsAfter": 11,
+      "killsIsNumber": true
+    }
+  },
+  "errors": []
+}

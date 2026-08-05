@@ -1,0 +1,137 @@
+{
+  "arm": "n3c-pre",
+  "scenario": "badHello",
+  "substitutions": [
+    "FX-hostv99",
+    "N3-client"
+  ],
+  "substitutionsApplied": [
+    "FX-hostv99",
+    "N3-client"
+  ],
+  "substitutionsMissing": [],
+  "helloOverride": null,
+  "port": 5815,
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 71,
+      "survivorId": "ranger",
+      "maxHealth": 110
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 68,
+      "survivorId": "anvil",
+      "maxHealth": 170
+    }
+  },
+  "runningGateAfterFocus": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "tick": 317,
+      "netRole": "host",
+      "authority": true,
+      "clients": 1,
+      "myNetId": null,
+      "connected": null
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "tick": 139,
+      "netRole": "client",
+      "authority": false,
+      "clients": null,
+      "myNetId": 1,
+      "connected": true
+    }
+  },
+  "pawns": [
+    {
+      "id": 1,
+      "survivorId": "anvil",
+      "helloSeen": true,
+      "health": 170,
+      "maxHealth": 170,
+      "alive": true
+    }
+  ],
+  "clientOwn": {
+    "survivorId": "anvil",
+    "maxHealth": 170,
+    "connected": true,
+    "myNetId": 1
+  },
+  "hostStatus": [
+    {
+      "s": "hosting"
+    },
+    {
+      "s": "inviteReady",
+      "d": {
+        "id": 1,
+        "blob": "eyJ2IjoxLCJyb2xlIjoib2ZmZXIiLCJpZCI6MSwic2RwIjp7InR5cGUiOiJvZmZlciIsInNkcCI6InY9MFxyXG5vPS0gMTg4OTE3ODEwODY1NTI5NDgyNSAyIElOIElQNCAxMjcuMC4wLjFcclxucz0tXHJcbnQ9MCAwXHJcbmE9Z3JvdXA6QlVORExFIDBcclxuYT1leHRtYXAtYWxsb3ctbWl4ZWRcclxuYT1tc2lkLXNlbWFudGljOiBXTVNcclxubT1hcHBsaWNhdGlvbiA1Mzc5MyBVRFAvRFRMUy9TQ1RQIHdlYnJ0Yy1kYXRhY2hhbm5lbFxyXG5jPUlOIElQNCA5OS4xMDkuMTQxLjE1OFxyXG5hPWNhbmRpZGF0ZTo0MTE4MDAxMTM4IDEgdWRwIDIxMTM5MzcxNTEgNTU3ZDU2MjktM2JlOS00MWE4LWJhZGYtYTY3ODcwMzRhMmNiLmxvY2FsIDUzNzkzIHR5cCBob3N0IGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9Y2FuZGlkYXRlOjE0NTA2MTU3MTMgMSB1ZHAgMTY3NzcyOTUzNSA5OS4xMDkuMTQxLjE1OCA1Mzc5MyB0eXAgc3JmbHggcmFkZHIgMC4wLjAuMCBycG9ydCAwIGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9aWNlLXVmcmFnOmhveU9cclxuYT1pY2UtcHdkOmdWYnVQcXdFajRJVWRrbmMvVE5xRnh3clxyXG5hPWljZS1vcHRpb25zOnRyaWNrbGVcclxuYT1maW5nZXJwcmludDpzaGEtMjU2IEI4OjBEOjgwOjExOjA3OjIyOkFFOjI2OkM4OjQyOjgwOjlCOjc4OjM0Ojg2OjVBOjk3OjFCOjRFOjZFOjdEOkUzOjZEOjU1OjZDOjUzOjAyOjE4OkM2OkVEOjNFOjgyXHJcbmE9c2V0dXA6YWN0cGFzc1xyXG5hPW1pZDowXHJcbmE9c2N0cC1wb3J0OjUwMDBcclxuYT1tYXgtbWVzc2FnZS1zaXplOjI2MjE0NFxyXG4ifX0"
+      }
+    },
+    {
+      "s": "peerJoined",
+      "d": {
+        "id": 1,
+        "count": 2
+      }
+    },
+    {
+      "s": "peerConnecting",
+      "d": {
+        "id": 1
+      }
+    }
+  ],
+  "clientStatus": [
+    {
+      "s": "joining"
+    },
+    {
+      "s": "answerReady",
+      "d": {
+        "blob": "eyJ2IjoxLCJyb2xlIjoiYW5zd2VyIiwiaWQiOjEsInNkcCI6eyJ0eXBlIjoiYW5zd2VyIiwic2RwIjoidj0wXHJcbm89LSA2NjY4ODkwMTM3MjQ1NjUwODg2IDIgSU4gSVA0IDEyNy4wLjAuMVxyXG5zPS1cclxudD0wIDBcclxuYT1ncm91cDpCVU5ETEUgMFxyXG5hPWV4dG1hcC1hbGxvdy1taXhlZFxyXG5hPW1zaWQtc2VtYW50aWM6IFdNU1xyXG5tPWFwcGxpY2F0aW9uIDkgVURQL0RUTFMvU0NUUCB3ZWJydGMtZGF0YWNoYW5uZWxcclxuYz1JTiBJUDQgMC4wLjAuMFxyXG5hPWNhbmRpZGF0ZTo2NDkzMTg5ODEgMSB1ZHAgMjExMzkzNzE1MSA3ZDFlYjg3Zi1lMzE3LTRkMDQtYmE5OC1hMWNmMjg0ZWFiNmMubG9jYWwgNTQ4NjYgdHlwIGhvc3QgZ2VuZXJhdGlvbiAwIG5ldHdvcmstY29zdCA5OTlcclxuYT1pY2UtdWZyYWc6TzYyRlxyXG5hPWljZS1wd2Q6R08zWlhYdEZCQWg4MnF5TWx0aER3NHlRXHJcbmE9aWNlLW9wdGlvbnM6dHJpY2tsZVxyXG5hPWZpbmdlcnByaW50OnNoYS0yNTYgMTE6NDQ6NUQ6MzE6REQ6REU6QkU6QjI6Q0Q6OTI6RTE6ODQ6MTI6QzQ6OTU6Qzg6MTg6Njk6RjA6NUQ6MTg6OTM6REU6QkY6NkM6QTY6MjU6MEI6OTY6NjI6MzA6RkFcclxuYT1zZXR1cDphY3RpdmVcclxuYT1taWQ6MFxyXG5hPXNjdHAtcG9ydDo1MDAwXHJcbmE9bWF4LW1lc3NhZ2Utc2l6ZToyNjIxNDRcclxuIn19"
+      }
+    },
+    {
+      "s": "connected",
+      "d": {
+        "seed": 1337,
+        "stageIndex": 0,
+        "time": 2.700000047683716,
+        "myNetId": 1,
+        "artifactMask": 0,
+        "difficulty": 1
+      }
+    }
+  ],
+  "hostClients": 1,
+  "hostTick": {
+    "a": 167,
+    "b": 209
+  },
+  "hostSaid": "Reply accepted — connecting…",
+  "clientSaid": "Connected. Rebuilding the host's world…",
+  "errors": {
+    "host": {
+      "console": [],
+      "page": [],
+      "harness": [
+        "WrongDocumentError: The root document of this element is not valid for pointer lock."
+      ]
+    },
+    "client": {
+      "console": [],
+      "page": [],
+      "harness": []
+    }
+  }
+}

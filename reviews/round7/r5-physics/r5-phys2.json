@@ -1,0 +1,917 @@
+{
+  "gate": {
+    "maxDeltaNew": 0,
+    "maxDeltaOld": 81.2889435297708,
+    "samples": 15120,
+    "pass": true,
+    "oldDiffers": true
+  },
+  "Q1": [
+    {
+      "solver": "old",
+      "stacks": 0,
+      "samples": 492,
+      "launchAtPrintedPct": 89.2,
+      "zeroed": 14,
+      "zeroedPct": 2.8,
+      "causes": {
+        "oob": 3,
+        "terrainRise": 0,
+        "climbTest": 11,
+        "other": 0
+      },
+      "medianTravel": 13.706,
+      "meanTravel": 13.127
+    },
+    {
+      "solver": "old",
+      "stacks": 3,
+      "samples": 492,
+      "launchAtPrintedPct": 86,
+      "zeroed": 38,
+      "zeroedPct": 7.7,
+      "causes": {
+        "oob": 5,
+        "terrainRise": 0,
+        "climbTest": 33,
+        "other": 0
+      },
+      "medianTravel": 23.152,
+      "meanTravel": 23.117
+    },
+    {
+      "solver": "old",
+      "stacks": 6,
+      "samples": 492,
+      "launchAtPrintedPct": 83.5,
+      "zeroed": 60,
+      "zeroedPct": 12.2,
+      "causes": {
+        "oob": 6,
+        "terrainRise": 0,
+        "climbTest": 54,
+        "other": 0
+      },
+      "medianTravel": 25.701,
+      "meanTravel": 34.017
+    },
+    {
+      "solver": "old",
+      "stacks": 12,
+      "samples": 492,
+      "launchAtPrintedPct": 77.8,
+      "zeroed": 88,
+      "zeroedPct": 17.9,
+      "causes": {
+        "oob": 5,
+        "terrainRise": 0,
+        "climbTest": 83,
+        "other": 0
+      },
+      "medianTravel": 27.003,
+      "meanTravel": 41.148
+    },
+    {
+      "solver": "new",
+      "stacks": 0,
+      "samples": 492,
+      "launchAtPrintedPct": 89.8,
+      "zeroed": 5,
+      "zeroedPct": 1,
+      "causes": {
+        "oob": 3,
+        "terrainRise": 2,
+        "climbTest": 0,
+        "other": 0
+      },
+      "medianTravel": 13.706,
+      "meanTravel": 13.129
+    },
+    {
+      "solver": "new",
+      "stacks": 3,
+      "samples": 492,
+      "launchAtPrintedPct": 86.6,
+      "zeroed": 8,
+      "zeroedPct": 1.6,
+      "causes": {
+        "oob": 4,
+        "terrainRise": 4,
+        "climbTest": 0,
+        "other": 0
+      },
+      "medianTravel": 22.958,
+      "meanTravel": 22.965
+    },
+    {
+      "solver": "new",
+      "stacks": 6,
+      "samples": 492,
+      "launchAtPrintedPct": 83.5,
+      "zeroed": 15,
+      "zeroedPct": 3,
+      "causes": {
+        "oob": 5,
+        "terrainRise": 10,
+        "climbTest": 0,
+        "other": 0
+      },
+      "medianTravel": 23.511,
+      "meanTravel": 33.568
+    },
+    {
+      "solver": "new",
+      "stacks": 12,
+      "samples": 492,
+      "launchAtPrintedPct": 75,
+      "zeroed": 15,
+      "zeroedPct": 3,
+      "causes": {
+        "oob": 5,
+        "terrainRise": 10,
+        "climbTest": 0,
+        "other": 0
+      },
+      "medianTravel": 24.975,
+      "meanTravel": 39.685
+    }
+  ],
+  "Q2": [
+    {
+      "site": "steep#0 slopeDot 0.107 rise 14.1m @(-84,-24)",
+      "stacks": 0,
+      "solver": "old",
+      "jumpCount": 1,
+      "walkBaseline": -6.38,
+      "maxGroundStoodOn": 41.684,
+      "maxY": 44,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9981,
+      "startGround": -7.525,
+      "end": [
+        -84.11,
+        26.91,
+        -104
+      ]
+    },
+    {
+      "site": "steep#0 slopeDot 0.107 rise 14.1m @(-84,-24)",
+      "stacks": 0,
+      "solver": "new",
+      "jumpCount": 1,
+      "walkBaseline": -6.38,
+      "maxGroundStoodOn": 41.603,
+      "maxY": 43.919,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.998,
+      "startGround": -7.525,
+      "end": [
+        -85,
+        27.54,
+        -104
+      ]
+    },
+    {
+      "site": "steep#0 slopeDot 0.107 rise 14.1m @(-84,-24)",
+      "stacks": 12,
+      "solver": "old",
+      "jumpCount": 1,
+      "walkBaseline": -6.38,
+      "maxGroundStoodOn": 42.022,
+      "maxY": 44.338,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9971,
+      "startGround": -7.525,
+      "end": [
+        -84.54,
+        26.52,
+        -104
+      ]
+    },
+    {
+      "site": "steep#0 slopeDot 0.107 rise 14.1m @(-84,-24)",
+      "stacks": 12,
+      "solver": "new",
+      "jumpCount": 1,
+      "walkBaseline": -6.38,
+      "maxGroundStoodOn": 41.649,
+      "maxY": 44.101,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9987,
+      "startGround": -7.525,
+      "end": [
+        -84.25,
+        26.99,
+        -104
+      ]
+    },
+    {
+      "site": "steep#0 slopeDot 0.107 rise 14.1m @(-84,-24)",
+      "stacks": 12,
+      "solver": "new",
+      "jumpCount": 3,
+      "walkBaseline": -6.38,
+      "maxGroundStoodOn": 40.906,
+      "maxY": 43.921,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9952,
+      "startGround": -7.525,
+      "end": [
+        -83.68,
+        25.85,
+        -104
+      ]
+    },
+    {
+      "site": "steep#1 slopeDot 0.108 rise 12.1m @(-88,-28)",
+      "stacks": 0,
+      "solver": "old",
+      "jumpCount": 1,
+      "walkBaseline": -4.965,
+      "maxGroundStoodOn": 42.925,
+      "maxY": 45.241,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9949,
+      "startGround": -6.524,
+      "end": [
+        -88.42,
+        28.59,
+        -103.99
+      ]
+    },
+    {
+      "site": "steep#1 slopeDot 0.108 rise 12.1m @(-88,-28)",
+      "stacks": 0,
+      "solver": "new",
+      "jumpCount": 1,
+      "walkBaseline": -4.965,
+      "maxGroundStoodOn": 42.15,
+      "maxY": 44.603,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9985,
+      "startGround": -6.524,
+      "end": [
+        -88.67,
+        27.05,
+        -104
+      ]
+    },
+    {
+      "site": "steep#1 slopeDot 0.108 rise 12.1m @(-88,-28)",
+      "stacks": 12,
+      "solver": "old",
+      "jumpCount": 1,
+      "walkBaseline": -4.965,
+      "maxGroundStoodOn": 42.224,
+      "maxY": 44.482,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9962,
+      "startGround": -6.524,
+      "end": [
+        -88.74,
+        28.6,
+        -104
+      ]
+    },
+    {
+      "site": "steep#1 slopeDot 0.108 rise 12.1m @(-88,-28)",
+      "stacks": 12,
+      "solver": "new",
+      "jumpCount": 1,
+      "walkBaseline": -4.965,
+      "maxGroundStoodOn": 42.298,
+      "maxY": 44.75,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9981,
+      "startGround": -6.524,
+      "end": [
+        -88.14,
+        26.79,
+        -104
+      ]
+    },
+    {
+      "site": "steep#1 slopeDot 0.108 rise 12.1m @(-88,-28)",
+      "stacks": 12,
+      "solver": "new",
+      "jumpCount": 3,
+      "walkBaseline": -4.965,
+      "maxGroundStoodOn": 42.282,
+      "maxY": 45.296,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9969,
+      "startGround": -6.524,
+      "end": [
+        -87.46,
+        28.98,
+        -104
+      ]
+    },
+    {
+      "site": "steep#2 slopeDot 0.111 rise 12.0m @(-60,-20)",
+      "stacks": 0,
+      "solver": "old",
+      "jumpCount": 1,
+      "walkBaseline": -4.215,
+      "maxGroundStoodOn": 15.681,
+      "maxY": 17.939,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.994,
+      "startGround": -4.214,
+      "end": [
+        -103.99,
+        7.6,
+        -17.16
+      ]
+    },
+    {
+      "site": "steep#2 slopeDot 0.111 rise 12.0m @(-60,-20)",
+      "stacks": 0,
+      "solver": "new",
+      "jumpCount": 1,
+      "walkBaseline": -4.215,
+      "maxGroundStoodOn": 16.455,
+      "maxY": 18.907,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9973,
+      "startGround": -4.214,
+      "end": [
+        -104,
+        8.89,
+        -17.63
+      ]
+    },
+    {
+      "site": "steep#2 slopeDot 0.111 rise 12.0m @(-60,-20)",
+      "stacks": 12,
+      "solver": "old",
+      "jumpCount": 1,
+      "walkBaseline": -4.215,
+      "maxGroundStoodOn": 15.288,
+      "maxY": 17.604,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9989,
+      "startGround": -4.214,
+      "end": [
+        -104,
+        8.19,
+        -17.1
+      ]
+    },
+    {
+      "site": "steep#2 slopeDot 0.111 rise 12.0m @(-60,-20)",
+      "stacks": 12,
+      "solver": "new",
+      "jumpCount": 1,
+      "walkBaseline": -4.215,
+      "maxGroundStoodOn": 14.243,
+      "maxY": 16.696,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9983,
+      "startGround": -4.214,
+      "end": [
+        -104,
+        7.58,
+        -16.27
+      ]
+    },
+    {
+      "site": "steep#2 slopeDot 0.111 rise 12.0m @(-60,-20)",
+      "stacks": 12,
+      "solver": "new",
+      "jumpCount": 3,
+      "walkBaseline": -4.215,
+      "maxGroundStoodOn": 17.432,
+      "maxY": 20.446,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9997,
+      "startGround": -4.214,
+      "end": [
+        -104,
+        10.16,
+        -19.36
+      ]
+    },
+    {
+      "site": "steep#3 slopeDot 0.115 rise 10.0m @(52,-80)",
+      "stacks": 0,
+      "solver": "old",
+      "jumpCount": 1,
+      "walkBaseline": 2.304,
+      "maxGroundStoodOn": 42.972,
+      "maxY": 45.23,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9973,
+      "startGround": 2.32,
+      "end": [
+        -104,
+        33.93,
+        -81.04
+      ]
+    },
+    {
+      "site": "steep#3 slopeDot 0.115 rise 10.0m @(52,-80)",
+      "stacks": 0,
+      "solver": "new",
+      "jumpCount": 1,
+      "walkBaseline": 2.304,
+      "maxGroundStoodOn": 44.108,
+      "maxY": 46.366,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9946,
+      "startGround": 2.32,
+      "end": [
+        -103.99,
+        34.02,
+        -80.32
+      ]
+    },
+    {
+      "site": "steep#3 slopeDot 0.115 rise 10.0m @(52,-80)",
+      "stacks": 12,
+      "solver": "old",
+      "jumpCount": 1,
+      "walkBaseline": 2.304,
+      "maxGroundStoodOn": 44.594,
+      "maxY": 46.91,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9977,
+      "startGround": 2.32,
+      "end": [
+        -104,
+        32.53,
+        -79.11
+      ]
+    },
+    {
+      "site": "steep#3 slopeDot 0.115 rise 10.0m @(52,-80)",
+      "stacks": 12,
+      "solver": "new",
+      "jumpCount": 1,
+      "walkBaseline": 2.304,
+      "maxGroundStoodOn": 44.61,
+      "maxY": 47.062,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9968,
+      "startGround": 2.32,
+      "end": [
+        -104,
+        34.18,
+        -80.63
+      ]
+    },
+    {
+      "site": "steep#3 slopeDot 0.115 rise 10.0m @(52,-80)",
+      "stacks": 12,
+      "solver": "new",
+      "jumpCount": 3,
+      "walkBaseline": 2.304,
+      "maxGroundStoodOn": 44.599,
+      "maxY": 47.613,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9948,
+      "startGround": 2.32,
+      "end": [
+        -103.99,
+        33.65,
+        -79.78
+      ]
+    },
+    {
+      "site": "steep#4 slopeDot 0.116 rise 4.8m @(-32,44)",
+      "stacks": 0,
+      "solver": "old",
+      "jumpCount": 1,
+      "walkBaseline": -8.628,
+      "maxGroundStoodOn": 23.006,
+      "maxY": 25.264,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9974,
+      "startGround": -8.373,
+      "end": [
+        -31.69,
+        25.13,
+        -104
+      ]
+    },
+    {
+      "site": "steep#4 slopeDot 0.116 rise 4.8m @(-32,44)",
+      "stacks": 0,
+      "solver": "new",
+      "jumpCount": 1,
+      "walkBaseline": -8.628,
+      "maxGroundStoodOn": 23.024,
+      "maxY": 25.399,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9971,
+      "startGround": -8.373,
+      "end": [
+        -31.86,
+        24.1,
+        -104
+      ]
+    },
+    {
+      "site": "steep#4 slopeDot 0.116 rise 4.8m @(-32,44)",
+      "stacks": 12,
+      "solver": "old",
+      "jumpCount": 1,
+      "walkBaseline": -8.628,
+      "maxGroundStoodOn": 22.768,
+      "maxY": 25.026,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9952,
+      "startGround": -8.373,
+      "end": [
+        -29.33,
+        24.89,
+        -104
+      ]
+    },
+    {
+      "site": "steep#4 slopeDot 0.116 rise 4.8m @(-32,44)",
+      "stacks": 12,
+      "solver": "new",
+      "jumpCount": 1,
+      "walkBaseline": -8.628,
+      "maxGroundStoodOn": 24.824,
+      "maxY": 27.14,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9964,
+      "startGround": -8.373,
+      "end": [
+        12.08,
+        9.24,
+        -104
+      ]
+    },
+    {
+      "site": "steep#4 slopeDot 0.116 rise 4.8m @(-32,44)",
+      "stacks": 12,
+      "solver": "new",
+      "jumpCount": 3,
+      "walkBaseline": -8.628,
+      "maxGroundStoodOn": 32.049,
+      "maxY": 35.05,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9975,
+      "startGround": -8.373,
+      "end": [
+        -43.27,
+        34.38,
+        -104
+      ]
+    },
+    {
+      "site": "steep#5 slopeDot 0.121 rise 17.6m @(-76,-20)",
+      "stacks": 0,
+      "solver": "old",
+      "jumpCount": 1,
+      "walkBaseline": -7.516,
+      "maxGroundStoodOn": 21.751,
+      "maxY": 24.067,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 80.9364,
+      "startGround": -7.589,
+      "end": [
+        -56.03,
+        23.79,
+        -35.97
+      ]
+    },
+    {
+      "site": "steep#5 slopeDot 0.121 rise 17.6m @(-76,-20)",
+      "stacks": 0,
+      "solver": "new",
+      "jumpCount": 1,
+      "walkBaseline": -7.516,
+      "maxGroundStoodOn": 42.549,
+      "maxY": 45.001,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9994,
+      "startGround": -7.589,
+      "end": [
+        104,
+        42.45,
+        -104
+      ]
+    },
+    {
+      "site": "steep#5 slopeDot 0.121 rise 17.6m @(-76,-20)",
+      "stacks": 12,
+      "solver": "old",
+      "jumpCount": 1,
+      "walkBaseline": -7.516,
+      "maxGroundStoodOn": 45.421,
+      "maxY": 47.679,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9995,
+      "startGround": -7.589,
+      "end": [
+        104,
+        41.4,
+        -104
+      ]
+    },
+    {
+      "site": "steep#5 slopeDot 0.121 rise 17.6m @(-76,-20)",
+      "stacks": 12,
+      "solver": "new",
+      "jumpCount": 1,
+      "walkBaseline": -7.516,
+      "maxGroundStoodOn": 46.304,
+      "maxY": 48.757,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 104,
+      "startGround": -7.589,
+      "end": [
+        104,
+        41.67,
+        -104
+      ]
+    },
+    {
+      "site": "steep#5 slopeDot 0.121 rise 17.6m @(-76,-20)",
+      "stacks": 12,
+      "solver": "new",
+      "jumpCount": 3,
+      "walkBaseline": -7.516,
+      "maxGroundStoodOn": 44.053,
+      "maxY": 47.068,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 104,
+      "startGround": -7.589,
+      "end": [
+        104,
+        43.14,
+        -104
+      ]
+    },
+    {
+      "site": "corner +X+Z",
+      "stacks": 0,
+      "solver": "old",
+      "jumpCount": 1,
+      "walkBaseline": 35.418,
+      "maxGroundStoodOn": 35.062,
+      "maxY": 37.326,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9964,
+      "startGround": 35.069,
+      "end": [
+        104,
+        37.31,
+        104
+      ]
+    },
+    {
+      "site": "corner +X+Z",
+      "stacks": 0,
+      "solver": "new",
+      "jumpCount": 1,
+      "walkBaseline": 35.418,
+      "maxGroundStoodOn": 35.062,
+      "maxY": 37.326,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9964,
+      "startGround": 35.069,
+      "end": [
+        104,
+        37.31,
+        104
+      ]
+    },
+    {
+      "site": "corner +X+Z",
+      "stacks": 12,
+      "solver": "old",
+      "jumpCount": 1,
+      "walkBaseline": 35.418,
+      "maxGroundStoodOn": 35.308,
+      "maxY": 37.76,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9979,
+      "startGround": 35.069,
+      "end": [
+        104,
+        37.24,
+        104
+      ]
+    },
+    {
+      "site": "corner +X+Z",
+      "stacks": 12,
+      "solver": "new",
+      "jumpCount": 1,
+      "walkBaseline": 35.418,
+      "maxGroundStoodOn": 35.308,
+      "maxY": 37.76,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9999,
+      "startGround": 35.069,
+      "end": [
+        104,
+        37.24,
+        104
+      ]
+    },
+    {
+      "site": "corner +X+Z",
+      "stacks": 12,
+      "solver": "new",
+      "jumpCount": 3,
+      "walkBaseline": 35.418,
+      "maxGroundStoodOn": 35.308,
+      "maxY": 38.322,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9999,
+      "startGround": 35.069,
+      "end": [
+        104,
+        37.56,
+        104
+      ]
+    },
+    {
+      "site": "corner -X-Z",
+      "stacks": 0,
+      "solver": "old",
+      "jumpCount": 1,
+      "walkBaseline": 29.997,
+      "maxGroundStoodOn": 26.664,
+      "maxY": 32.273,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9964,
+      "startGround": 30.015,
+      "end": [
+        -104,
+        28.37,
+        -104
+      ]
+    },
+    {
+      "site": "corner -X-Z",
+      "stacks": 0,
+      "solver": "new",
+      "jumpCount": 1,
+      "walkBaseline": 29.997,
+      "maxGroundStoodOn": 26.664,
+      "maxY": 32.273,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9964,
+      "startGround": 30.015,
+      "end": [
+        -104,
+        28.37,
+        -104
+      ]
+    },
+    {
+      "site": "corner -X-Z",
+      "stacks": 12,
+      "solver": "old",
+      "jumpCount": 1,
+      "walkBaseline": 29.997,
+      "maxGroundStoodOn": 26.66,
+      "maxY": 32.273,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9979,
+      "startGround": 30.015,
+      "end": [
+        -104,
+        28.37,
+        -104
+      ]
+    },
+    {
+      "site": "corner -X-Z",
+      "stacks": 12,
+      "solver": "new",
+      "jumpCount": 1,
+      "walkBaseline": 29.997,
+      "maxGroundStoodOn": 26.661,
+      "maxY": 32.273,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9977,
+      "startGround": 30.015,
+      "end": [
+        -104,
+        28.37,
+        -104
+      ]
+    },
+    {
+      "site": "corner -X-Z",
+      "stacks": 12,
+      "solver": "new",
+      "jumpCount": 3,
+      "walkBaseline": 29.997,
+      "maxGroundStoodOn": 26.661,
+      "maxY": 32.835,
+      "minYMinusGround": 0,
+      "underFloorSteps": 0,
+      "oobSteps": 0,
+      "maxAbs": 103.9977,
+      "startGround": 30.015,
+      "end": [
+        -104,
+        29.46,
+        -104
+      ]
+    }
+  ],
+  "Q3": {
+    "maxTerrainInBound": 52.15,
+    "argmax": [
+      98,
+      80
+    ],
+    "maxGroundStoodOnNew": 46.304,
+    "maxGroundStoodOnOld": 45.421,
+    "maxWalkBaseline": 35.418
+  },
+  "meta": {
+    "bound": 104,
+    "stands": 123,
+    "frameErrors": 0
+  },
+  "pageErrors": []
+}

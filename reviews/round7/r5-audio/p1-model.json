@@ -1,0 +1,592 @@
+{
+  "result": {
+    "bothEnds": [
+      {
+        "diff": 1,
+        "arc": 0,
+        "Iempty": 0,
+        "Ifull": 0.792,
+        "Ihot": 0.88,
+        "span_emptyToFull": 0.792,
+        "span_emptyToHot": 0.88,
+        "bpmEmpty": 118,
+        "bpmHot": 139.1,
+        "coolFrom": 0.88,
+        "coolAt1s": 0.2161,
+        "coolAt15s": 0.0131,
+        "coolDrop15s": 0.8669,
+        "layersEmpty": {
+          "sub": 0.2,
+          "pad": 0.235,
+          "kick": 0,
+          "hat": 0,
+          "bass": 0,
+          "openhat": 0,
+          "clap": 0,
+          "perc": 0,
+          "acid": 0,
+          "lead": 0
+        },
+        "layersHot": {
+          "sub": 1,
+          "pad": 1,
+          "kick": 1,
+          "hat": 1,
+          "bass": 1,
+          "openhat": 1,
+          "clap": 1,
+          "perc": 1,
+          "acid": 1,
+          "lead": 0.167
+        }
+      },
+      {
+        "diff": 1.5,
+        "arc": 0.13,
+        "Iempty": 0.13,
+        "Ifull": 0.819,
+        "Ihot": 0.8956,
+        "span_emptyToFull": 0.689,
+        "span_emptyToHot": 0.7656,
+        "bpmEmpty": 121.1,
+        "bpmHot": 139.5,
+        "coolFrom": 0.8956,
+        "coolAt1s": 0.318,
+        "coolAt15s": 0.1414,
+        "coolDrop15s": 0.7542,
+        "layersEmpty": {
+          "sub": 0.633,
+          "pad": 0.618,
+          "kick": 0,
+          "hat": 0,
+          "bass": 0,
+          "openhat": 0,
+          "clap": 0,
+          "perc": 0,
+          "acid": 0,
+          "lead": 0
+        },
+        "layersHot": {
+          "sub": 1,
+          "pad": 1,
+          "kick": 1,
+          "hat": 1,
+          "bass": 1,
+          "openhat": 1,
+          "clap": 1,
+          "perc": 1,
+          "acid": 1,
+          "lead": 0.297
+        }
+      },
+      {
+        "diff": 2,
+        "arc": 0.26,
+        "Iempty": 0.26,
+        "Ifull": 0.8461,
+        "Ihot": 0.9112,
+        "span_emptyToFull": 0.5861,
+        "span_emptyToHot": 0.6512,
+        "bpmEmpty": 124.2,
+        "bpmHot": 139.9,
+        "coolFrom": 0.9112,
+        "coolAt1s": 0.4199,
+        "coolAt15s": 0.2697,
+        "coolDrop15s": 0.6415,
+        "layersEmpty": {
+          "sub": 1,
+          "pad": 1,
+          "kick": 1,
+          "hat": 0.143,
+          "bass": 0,
+          "openhat": 0,
+          "clap": 0,
+          "perc": 0,
+          "acid": 0,
+          "lead": 0
+        },
+        "layersHot": {
+          "sub": 1,
+          "pad": 1,
+          "kick": 1,
+          "hat": 1,
+          "bass": 1,
+          "openhat": 1,
+          "clap": 1,
+          "perc": 1,
+          "acid": 1,
+          "lead": 0.427
+        }
+      },
+      {
+        "diff": 2.5,
+        "arc": 0.39,
+        "Iempty": 0.39,
+        "Ifull": 0.8731,
+        "Ihot": 0.9268,
+        "span_emptyToFull": 0.4831,
+        "span_emptyToHot": 0.5368,
+        "bpmEmpty": 127.4,
+        "bpmHot": 140.2,
+        "coolFrom": 0.9268,
+        "coolAt1s": 0.5218,
+        "coolAt15s": 0.398,
+        "coolDrop15s": 0.5288,
+        "layersEmpty": {
+          "sub": 1,
+          "pad": 1,
+          "kick": 1,
+          "hat": 1,
+          "bass": 0.571,
+          "openhat": 0,
+          "clap": 0,
+          "perc": 0,
+          "acid": 0,
+          "lead": 0
+        },
+        "layersHot": {
+          "sub": 1,
+          "pad": 1,
+          "kick": 1,
+          "hat": 1,
+          "bass": 1,
+          "openhat": 1,
+          "clap": 1,
+          "perc": 1,
+          "acid": 1,
+          "lead": 0.557
+        }
+      },
+      {
+        "diff": 2.875,
+        "arc": 0.4875,
+        "Iempty": 0.4875,
+        "Ifull": 0.8934,
+        "Ihot": 0.9385,
+        "span_emptyToFull": 0.4059,
+        "span_emptyToHot": 0.451,
+        "bpmEmpty": 129.7,
+        "bpmHot": 140.5,
+        "coolFrom": 0.9385,
+        "coolAt1s": 0.5983,
+        "coolAt15s": 0.4942,
+        "coolDrop15s": 0.4443,
+        "layersEmpty": {
+          "sub": 1,
+          "pad": 1,
+          "kick": 1,
+          "hat": 1,
+          "bass": 1,
+          "openhat": 0.313,
+          "clap": 0,
+          "perc": 0,
+          "acid": 0,
+          "lead": 0
+        },
+        "layersHot": {
+          "sub": 1,
+          "pad": 1,
+          "kick": 1,
+          "hat": 1,
+          "bass": 1,
+          "openhat": 1,
+          "clap": 1,
+          "perc": 1,
+          "acid": 1,
+          "lead": 0.654
+        }
+      },
+      {
+        "diff": 3.2,
+        "arc": 0.572,
+        "Iempty": 0.572,
+        "Ifull": 0.911,
+        "Ihot": 0.9486,
+        "span_emptyToFull": 0.339,
+        "span_emptyToHot": 0.3766,
+        "bpmEmpty": 131.7,
+        "bpmHot": 140.8,
+        "coolFrom": 0.9486,
+        "coolAt1s": 0.6645,
+        "coolAt15s": 0.5776,
+        "coolDrop15s": 0.371,
+        "layersEmpty": {
+          "sub": 1,
+          "pad": 1,
+          "kick": 1,
+          "hat": 1,
+          "bass": 1,
+          "openhat": 1,
+          "clap": 0.433,
+          "perc": 0,
+          "acid": 0,
+          "lead": 0
+        },
+        "layersHot": {
+          "sub": 1,
+          "pad": 1,
+          "kick": 1,
+          "hat": 1,
+          "bass": 1,
+          "openhat": 1,
+          "clap": 1,
+          "perc": 1,
+          "acid": 1,
+          "lead": 0.739
+        }
+      },
+      {
+        "diff": 3.5,
+        "arc": 0.65,
+        "Iempty": 0.65,
+        "Ifull": 0.9272,
+        "Ihot": 0.958,
+        "span_emptyToFull": 0.2772,
+        "span_emptyToHot": 0.308,
+        "bpmEmpty": 133.6,
+        "bpmHot": 141,
+        "coolFrom": 0.958,
+        "coolAt1s": 0.7257,
+        "coolAt15s": 0.6546,
+        "coolDrop15s": 0.3034,
+        "layersEmpty": {
+          "sub": 1,
+          "pad": 1,
+          "kick": 1,
+          "hat": 1,
+          "bass": 1,
+          "openhat": 1,
+          "clap": 1,
+          "perc": 0.083,
+          "acid": 0,
+          "lead": 0
+        },
+        "layersHot": {
+          "sub": 1,
+          "pad": 1,
+          "kick": 1,
+          "hat": 1,
+          "bass": 1,
+          "openhat": 1,
+          "clap": 1,
+          "perc": 1,
+          "acid": 1,
+          "lead": 0.817
+        }
+      },
+      {
+        "diff": 4.5,
+        "arc": 0.65,
+        "Iempty": 0.65,
+        "Ifull": 0.9272,
+        "Ihot": 0.958,
+        "span_emptyToFull": 0.2772,
+        "span_emptyToHot": 0.308,
+        "bpmEmpty": 133.6,
+        "bpmHot": 141,
+        "coolFrom": 0.958,
+        "coolAt1s": 0.7257,
+        "coolAt15s": 0.6546,
+        "coolDrop15s": 0.3034,
+        "layersEmpty": {
+          "sub": 1,
+          "pad": 1,
+          "kick": 1,
+          "hat": 1,
+          "bass": 1,
+          "openhat": 1,
+          "clap": 1,
+          "perc": 0.083,
+          "acid": 0,
+          "lead": 0
+        },
+        "layersHot": {
+          "sub": 1,
+          "pad": 1,
+          "kick": 1,
+          "hat": 1,
+          "bass": 1,
+          "openhat": 1,
+          "clap": 1,
+          "perc": 1,
+          "acid": 1,
+          "lead": 0.817
+        }
+      },
+      {
+        "diff": 6,
+        "arc": 0.65,
+        "Iempty": 0.65,
+        "Ifull": 0.9272,
+        "Ihot": 0.958,
+        "span_emptyToFull": 0.2772,
+        "span_emptyToHot": 0.308,
+        "bpmEmpty": 133.6,
+        "bpmHot": 141,
+        "coolFrom": 0.958,
+        "coolAt1s": 0.7257,
+        "coolAt15s": 0.6546,
+        "coolDrop15s": 0.3034,
+        "layersEmpty": {
+          "sub": 1,
+          "pad": 1,
+          "kick": 1,
+          "hat": 1,
+          "bass": 1,
+          "openhat": 1,
+          "clap": 1,
+          "perc": 0.083,
+          "acid": 0,
+          "lead": 0
+        },
+        "layersHot": {
+          "sub": 1,
+          "pad": 1,
+          "kick": 1,
+          "hat": 1,
+          "bass": 1,
+          "openhat": 1,
+          "clap": 1,
+          "perc": 1,
+          "acid": 1,
+          "lead": 0.817
+        }
+      },
+      {
+        "diff": 12,
+        "arc": 0.65,
+        "Iempty": 0.65,
+        "Ifull": 0.9272,
+        "Ihot": 0.958,
+        "span_emptyToFull": 0.2772,
+        "span_emptyToHot": 0.308,
+        "bpmEmpty": 133.6,
+        "bpmHot": 141,
+        "coolFrom": 0.958,
+        "coolAt1s": 0.7257,
+        "coolAt15s": 0.6546,
+        "coolDrop15s": 0.3034,
+        "layersEmpty": {
+          "sub": 1,
+          "pad": 1,
+          "kick": 1,
+          "hat": 1,
+          "bass": 1,
+          "openhat": 1,
+          "clap": 1,
+          "perc": 0.083,
+          "acid": 0,
+          "lead": 0
+        },
+        "layersHot": {
+          "sub": 1,
+          "pad": 1,
+          "kick": 1,
+          "hat": 1,
+          "bass": 1,
+          "openhat": 1,
+          "clap": 1,
+          "perc": 1,
+          "acid": 1,
+          "lead": 0.817
+        }
+      }
+    ],
+    "bothEndsVerdict": {
+      "deadRows": [],
+      "minSpan": 0.308,
+      "maxI": 0.958
+    },
+    "floors": [
+      {
+        "diff": 1,
+        "empty": 0,
+        "boss": 0.704,
+        "charging": 0.7392,
+        "full": 0.792,
+        "bossToFull": 0.088,
+        "spread": 0.088
+      },
+      {
+        "diff": 2,
+        "empty": 0.26,
+        "boss": 0.781,
+        "charging": 0.807,
+        "full": 0.8461,
+        "bossToFull": 0.0651,
+        "spread": 0.0651
+      },
+      {
+        "diff": 3.5,
+        "empty": 0.65,
+        "boss": 0.8964,
+        "charging": 0.9087,
+        "full": 0.9272,
+        "bossToFull": 0.0308,
+        "spread": 0.0308
+      },
+      {
+        "diff": 6,
+        "empty": 0.65,
+        "boss": 0.8964,
+        "charging": 0.9087,
+        "full": 0.9272,
+        "bossToFull": 0.0308,
+        "spread": 0.0308
+      }
+    ],
+    "openingCeiling": {
+      "afterMenu": {
+        "runT": 0,
+        "I": 0
+      },
+      "atSeconds": {
+        "6": 0.1644,
+        "30": 0.4444,
+        "60": 0.7944,
+        "90": 0.88,
+        "120": 0.88
+      },
+      "formulaAt6s": 0.17
+    },
+    "stopLatch": {
+      "beforeStop": 43,
+      "afterStop": 43,
+      "afterReset": 86,
+      "revived": true,
+      "stoppedAfterReset": false,
+      "runTAfterReset": 5,
+      "pendingAfterReset": {}
+    },
+    "resync": {
+      "bars": 33,
+      "rewinds": 0,
+      "resyncs": 3,
+      "finalStep": 533,
+      "steps": 526
+    },
+    "hatQuantise": {
+      "bars": 23,
+      "barsWithMoreThanOneFlip": 0,
+      "totalFlips": 1
+    },
+    "layerTable": {
+      "sub": {
+        "enter": -0.06,
+        "band": 0.3,
+        "max": 0.89,
+        "fullAt": 0.24
+      },
+      "pad": {
+        "enter": -0.08,
+        "band": 0.34,
+        "max": 0.19,
+        "fullAt": 0.26
+      },
+      "kick": {
+        "enter": 0.13,
+        "band": 0.12,
+        "max": 0.5,
+        "fullAt": 0.25
+      },
+      "hat": {
+        "enter": 0.24,
+        "band": 0.14,
+        "max": 0.82,
+        "fullAt": 0.38
+      },
+      "bass": {
+        "enter": 0.31,
+        "band": 0.14,
+        "max": 0.52,
+        "fullAt": 0.45
+      },
+      "openhat": {
+        "enter": 0.45,
+        "band": 0.12,
+        "max": 0.95,
+        "fullAt": 0.57
+      },
+      "clap": {
+        "enter": 0.52,
+        "band": 0.12,
+        "max": 2.2,
+        "fullAt": 0.64
+      },
+      "perc": {
+        "enter": 0.64,
+        "band": 0.12,
+        "max": 1.98,
+        "fullAt": 0.76
+      },
+      "acid": {
+        "enter": 0.7,
+        "band": 0.14,
+        "max": 0.49,
+        "fullAt": 0.84
+      },
+      "lead": {
+        "enter": 0.86,
+        "band": 0.12,
+        "max": 2.12,
+        "fullAt": 0.98
+      }
+    },
+    "lateRunArrangement": {
+      "atI": {
+        "0.65": {
+          "sub": 1,
+          "pad": 1,
+          "kick": 1,
+          "hat": 1,
+          "bass": 1,
+          "openhat": 1,
+          "clap": 1,
+          "perc": 0.083,
+          "acid": 0,
+          "lead": 0
+        },
+        "0.6918": {
+          "sub": 1,
+          "pad": 1,
+          "kick": 1,
+          "hat": 1,
+          "bass": 1,
+          "openhat": 1,
+          "clap": 1,
+          "perc": 0.432,
+          "acid": 0,
+          "lead": 0
+        },
+        "0.9272": {
+          "sub": 1,
+          "pad": 1,
+          "kick": 1,
+          "hat": 1,
+          "bass": 1,
+          "openhat": 1,
+          "clap": 1,
+          "perc": 1,
+          "acid": 1,
+          "lead": 0.56
+        },
+        "0.958": {
+          "sub": 1,
+          "pad": 1,
+          "kick": 1,
+          "hat": 1,
+          "bass": 1,
+          "openhat": 1,
+          "clap": 1,
+          "perc": 1,
+          "acid": 1,
+          "lead": 0.817
+        }
+      }
+    }
+  },
+  "logs": [
+    "debug: [vite] connecting...",
+    "debug: [vite] connected."
+  ]
+}

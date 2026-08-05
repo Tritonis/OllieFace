@@ -1,0 +1,94 @@
+{
+  "arm": "adv-trunc1",
+  "shape": "trunc1",
+  "substitutions": [],
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 310,
+      "survivorId": "ranger",
+      "maxHealth": 110
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 65,
+      "survivorId": "anvil",
+      "maxHealth": 170
+    }
+  },
+  "helloBytes": 1,
+  "host": {
+    "tick": 145,
+    "paused": false,
+    "screen": null,
+    "inputEnabled": true,
+    "pointerLocked": false,
+    "clients": 0,
+    "pawns": [],
+    "helloSeen": [],
+    "peerSurvivors": [],
+    "lobbyStatus": "peerRefused",
+    "lobbyDetail": {
+      "reason": "hello",
+      "detail": 34,
+      "detailHead": "its identity message was truncated",
+      "count": null
+    },
+    "players": 1,
+    "ownSurvivor": "ranger",
+    "ownMax": 110,
+    "ownAlive": true
+  },
+  "client": {
+    "connected": false,
+    "myNetId": 1,
+    "netTick": 10,
+    "serverTick": 80,
+    "paused": false,
+    "screen": null,
+    "survivorId": "anvil",
+    "maxHealth": 170,
+    "health": 170,
+    "alive": true,
+    "lobbyStatus": "refused",
+    "lobbyDetail": {
+      "reason": "hello",
+      "detail": 34,
+      "detailHead": "its identity message was truncated"
+    }
+  },
+  "mistated": false,
+  "sentences": {
+    "host": {
+      "text": "Turned a player away: their join did not make sense (its identity message was truncated).",
+      "length": 89
+    },
+    "client": {
+      "text": "The host refused the join. Try joining again.",
+      "length": 45
+    }
+  },
+  "errors": {
+    "host": {
+      "consoleErrors": 0,
+      "netWarns": 0,
+      "netWarnTexts": [],
+      "consoleWarns": 12,
+      "pageErrors": 0,
+      "errorTexts": [],
+      "pageErrorTexts": []
+    },
+    "client": {
+      "consoleErrors": 0,
+      "netWarns": 0,
+      "netWarnTexts": [],
+      "consoleWarns": 12,
+      "pageErrors": 0,
+      "errorTexts": [],
+      "pageErrorTexts": []
+    }
+  },
+  "substitutionsMissing": []
+}

@@ -1,0 +1,35 @@
+{
+  "engineLoops": {
+    "framesPerRaf": 1,
+    "raf": 60,
+    "frames": 60
+  },
+  "direct": {
+    "systems": [
+      "Artifacts",
+      "Environment",
+      "Stage",
+      "Items",
+      "Combat",
+      "Player",
+      "Director",
+      "Progression",
+      "Realms",
+      "VFX",
+      "Audio",
+      "CameraRig",
+      "Coop",
+      "HUD",
+      "Object"
+    ],
+    "simSeconds": 5,
+    "wallMs": 3184,
+    "simPerWallSec": 1.57
+  },
+  "determinism": {
+    "clockPinned": true,
+    "frameDt": 0.016666666666666666,
+    "frameTimeouts": 0
+  },
+  "errors": []
+}

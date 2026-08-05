@@ -1,0 +1,419 @@
+{
+  "arm": "nogate",
+  "want": [
+    "F7-gate-soles",
+    "F7-gate-tectonic"
+  ],
+  "substitutions": [
+    "F7-gate-soles",
+    "F7-gate-tectonic"
+  ],
+  "steps": [
+    "host booted",
+    "client booted",
+    "HOST RUNNING {\"paused\":false,\"screen\":null,\"localTick\":61,\"enemies\":0}",
+    "CLIENT RUNNING {\"paused\":false,\"screen\":null,\"localTick\":61,\"enemies\":0}",
+    "instruments installed",
+    "client before join {\"lastCmdTick\":422,\"localTick\":422,\"steps\":361,\"replay\":0,\"projFU\":361,\"health\":110,\"pos\":[0,-1.753,0],\"enemies\":1}",
+    "roles {\"host\":{\"authority\":true,\"role\":\"host\",\"playerCount\":2,\"clients\":1},\"client\":{\"authority\":false,\"role\":\"client\",\"myNetId\":1,\"connected\":true}}",
+    "F6 window 1st second {\"steps\":64,\"replay\":0,\"replayInReconcile\":0,\"projFU\":64,\"reconciles\":22,\"replayFrac\":0,\"projFrac\":1}",
+    "F6 window 9th second {\"steps\":61,\"replay\":0,\"replayInReconcile\":0,\"projFU\":61,\"reconciles\":20,\"replayFrac\":0,\"projFrac\":1}",
+    "FIGHT {\"host\":{\"enemies\":5,\"alive\":5,\"intensity\":0.2726,\"kills\":0,\"dealt\":0},\"client\":{\"enemies\":0,\"views\":30,\"intensity\":0.0037,\"cues\":0,\"health\":110}}",
+    "inventory {\"host\":{\"rubber-soles\":1,\"sunken-vertebra\":1,\"tectonic-heart\":1,\"wax-quail\":3},\"client\":{\"rubber-soles\":1,\"sunken-vertebra\":1,\"tectonic-heart\":1,\"wax-quail\":3},\"match\":true}",
+    "F7 {\"host\":{\"pawnImpulsesApplied\":[30,30,36],\"pawnPeakHs\":46.15,\"ownPeakHs\":0,\"barriers\":[30,10,10,30,10,30],\"barriersOf10\":3,\"quakes\":1,\"explodes\":[\"quake\"],\"jumpPayloads\":[{\"local\":false,\"isPawn\":true},{\"local\":false,\"isPawn\":true},{\"local\":false,\"isPawn\":true}],\"pawnPos\":[1.999,5.662,102.442]},\"client\":{\"selfImpulsesApplied\":[30,30,30],\"selfPeakHs\":40.15,\"pos\":[2,5.657,102.438],\"shield\":0},\"endStateDivergence\":0.0065}",
+    "F10 {\"before\":{\"timeSinceHurt\":1033.82,\"cues\":0,\"shield\":0,\"health\":110,\"damageTaken\":0},\"hostDeals\":{\"found\":true,\"dealt\":40,\"healthBefore\":110,\"healthAfter\":70},\"after\":{\"timeSinceHurt\":1.45,\"cues\":1,\"shield\":22.03,\"health\":110,\"damageTaken\":0},\"shieldOnly\":{\"beforeCues\":1,\"hostDeals\":{\"found\":true,\"dealt\":30,\"shieldAfter\":470,\"healthUnchanged\":true},\"after\":{\"shieldBrokenEvents\":1,\"cues\":1,\"timeSinceHurt\":2.68}}}",
+    "F9 {\"usedRealEnemy\":true,\"sourceWasPawn\":true,\"peerDealtDelta\":0,\"highestAfterPeer\":41,\"ownDealtDelta\":500,\"highestAfterOwn\":500,\"highestBefore\":41}",
+    "barrierRegression {\"absorbedOnly\":{\"takenDelta\":0,\"onDamagedDelta\":0,\"healthDelta\":0,\"shield\":266.7},\"throughHealth\":{\"takenDelta\":20.83,\"onDamagedDelta\":1,\"healthDelta\":-20.83}}",
+    "host page state before own-jump {\"url\":\"http://127.0.0.1:5701/index.html\",\"hasH\":true,\"hasGame\":true}",
+    "hostOwnJump {\"ownImpulsesApplied\":[30,30,36],\"ownPeakHs\":40.15,\"barriers\":[10,10,10],\"quakes\":1,\"jumpPayloads\":[{\"local\":true,\"isPawn\":false},{\"local\":true,\"isPawn\":false},{\"local\":true,\"isPawn\":false}]}",
+    "after HOST (teammate) death {\"host\":{\"stopped\":true,\"musicOff\":true,\"musicGain\":0.00311,\"screen\":\"death\",\"alive\":false,\"health\":0,\"intensity\":0.547,\"directorEnemies\":8},\"client\":{\"stopped\":false,\"musicOff\":false,\"musicGain\":0.48,\"screen\":\"death\",\"alive\":true,\"health\":110,\"intensity\":0.0037,\"directorEnemies\":0}}",
+    "after CLIENT own death {\"host\":{\"stopped\":true,\"musicOff\":true,\"musicGain\":0,\"screen\":\"death\",\"alive\":false,\"health\":0,\"intensity\":0.547,\"directorEnemies\":8},\"client\":{\"stopped\":true,\"musicOff\":true,\"musicGain\":0.00317,\"screen\":\"death\",\"alive\":true,\"health\":110,\"intensity\":0.0037,\"directorEnemies\":0}}",
+    "VERDICTS {\n \"F6_replayFrac_w1\": 0,\n \"F6_replayFrac_w9\": 0,\n \"F7_pawnImpulsesOnHost\": [\n  30,\n  30,\n  36\n ],\n \"F7_selfImpulsesOnClient\": [\n  30,\n  30,\n  30\n ],\n \"F7_hostPawnPeak\": 46.15,\n \"F7_clientSelfPeak\": 40.15,\n \"F7_hostBarriersOf10_forPeerJump\": 3,\n \"F7_hostQuakes_forPeerJump\": 1,\n \"F9_peerDealtDelta\": 0,\n \"F9_ownDealtDelta\": 500,\n \"F10_timeSinceHurt_after\": 1.45,\n \"F10_cuesDelta\": 1,\n \"F10_shieldDelta\": 22.03,\n \"M1_teammateDeathLeftClientMusicRunning\": true,\n \"M1_ownDeathStoppedClientMusic\": true,\n \"M1_clientScreenAfterTeammateDeath\": \"death\",\n \"clientHealthEverMoved\": false\n}"
+  ],
+  "errors": {
+    "host": [
+      "The root document of this element is not valid for pointer lock."
+    ],
+    "client": [
+      "Failed to set the 'value' property on 'AudioParam': The provided float value is non-finite.",
+      "Failed to set the 'value' property on 'AudioParam': The provided float value is non-finite.",
+      "Failed to set the 'value' property on 'AudioParam': The provided float value is non-finite."
+    ]
+  },
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 61,
+      "enemies": 0
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 61,
+      "enemies": 0
+    }
+  },
+  "clientBeforeJoin": {
+    "lastCmdTick": 422,
+    "localTick": 422,
+    "steps": 361,
+    "replay": 0,
+    "projFU": 361,
+    "health": 110,
+    "pos": [
+      0,
+      -1.753,
+      0
+    ],
+    "enemies": 1
+  },
+  "connected": true,
+  "atJoin": {
+    "lastCmdTick": 6,
+    "netTick": 6,
+    "myNetId": 1,
+    "cmdTick": 6
+  },
+  "roles": {
+    "host": {
+      "authority": true,
+      "role": "host",
+      "playerCount": 2,
+      "clients": 1
+    },
+    "client": {
+      "authority": false,
+      "role": "client",
+      "myNetId": 1,
+      "connected": true
+    }
+  },
+  "F11": {
+    "pawnPos": [
+      2,
+      2.482,
+      2
+    ],
+    "hostPos": [
+      0,
+      2.014,
+      0
+    ],
+    "gapPawnToClientStand": 5.093,
+    "gapPawnToHost": 2.867
+  },
+  "sectionErrors": [],
+  "F6": {
+    "window1": {
+      "steps": 64,
+      "replay": 0,
+      "replayInReconcile": 0,
+      "projFU": 64,
+      "reconciles": 22,
+      "replayFrac": 0,
+      "projFrac": 1
+    },
+    "window9": {
+      "steps": 61,
+      "replay": 0,
+      "replayInReconcile": 0,
+      "projFU": 61,
+      "reconciles": 20,
+      "replayFrac": 0,
+      "projFrac": 1
+    },
+    "clientHealthDuringLock": 110
+  },
+  "fight": {
+    "host": {
+      "enemies": 5,
+      "alive": 5,
+      "intensity": 0.2726,
+      "kills": 0,
+      "dealt": 0
+    },
+    "client": {
+      "enemies": 0,
+      "views": 30,
+      "intensity": 0.0037,
+      "cues": 0,
+      "health": 110
+    }
+  },
+  "inventory": {
+    "host": {
+      "rubber-soles": 1,
+      "sunken-vertebra": 1,
+      "tectonic-heart": 1,
+      "wax-quail": 3
+    },
+    "client": {
+      "rubber-soles": 1,
+      "sunken-vertebra": 1,
+      "tectonic-heart": 1,
+      "wax-quail": 3
+    },
+    "match": true
+  },
+  "F7": {
+    "host": {
+      "pawnImpulsesApplied": [
+        30,
+        30,
+        36
+      ],
+      "pawnPeakHs": 46.15,
+      "ownPeakHs": 0,
+      "barriers": [
+        30,
+        10,
+        10,
+        30,
+        10,
+        30
+      ],
+      "barriersOf10": 3,
+      "quakes": 1,
+      "explodes": [
+        "quake"
+      ],
+      "jumpPayloads": [
+        {
+          "local": false,
+          "isPawn": true
+        },
+        {
+          "local": false,
+          "isPawn": true
+        },
+        {
+          "local": false,
+          "isPawn": true
+        }
+      ],
+      "pawnPos": [
+        1.999,
+        5.662,
+        102.442
+      ]
+    },
+    "client": {
+      "selfImpulsesApplied": [
+        30,
+        30,
+        30
+      ],
+      "selfPeakHs": 40.15,
+      "pos": [
+        2,
+        5.657,
+        102.438
+      ],
+      "shield": 0
+    },
+    "endStateDivergence": 0.0065
+  },
+  "F10": {
+    "before": {
+      "timeSinceHurt": 1033.82,
+      "cues": 0,
+      "shield": 0,
+      "health": 110,
+      "damageTaken": 0
+    },
+    "hostDeals": {
+      "found": true,
+      "dealt": 40,
+      "healthBefore": 110,
+      "healthAfter": 70
+    },
+    "after": {
+      "timeSinceHurt": 1.45,
+      "cues": 1,
+      "shield": 22.03,
+      "health": 110,
+      "damageTaken": 0
+    },
+    "shieldOnly": {
+      "beforeCues": 1,
+      "hostDeals": {
+        "found": true,
+        "dealt": 30,
+        "shieldAfter": 470,
+        "healthUnchanged": true
+      },
+      "after": {
+        "shieldBrokenEvents": 1,
+        "cues": 1,
+        "timeSinceHurt": 2.68
+      }
+    }
+  },
+  "F9": {
+    "usedRealEnemy": true,
+    "sourceWasPawn": true,
+    "peerDealtDelta": 0,
+    "highestAfterPeer": 41,
+    "ownDealtDelta": 500,
+    "highestAfterOwn": 500,
+    "highestBefore": 41
+  },
+  "barrierRegression": {
+    "absorbedOnly": {
+      "takenDelta": 0,
+      "onDamagedDelta": 0,
+      "healthDelta": 0,
+      "shield": 266.7
+    },
+    "throughHealth": {
+      "takenDelta": 20.83,
+      "onDamagedDelta": 1,
+      "healthDelta": -20.83
+    }
+  },
+  "hostPageState": {
+    "url": "http://127.0.0.1:5701/index.html",
+    "hasH": true,
+    "hasGame": true
+  },
+  "hostOwnJump": {
+    "ownImpulsesApplied": [
+      30,
+      30,
+      36
+    ],
+    "ownPeakHs": 40.15,
+    "barriers": [
+      10,
+      10,
+      10
+    ],
+    "quakes": 1,
+    "jumpPayloads": [
+      {
+        "local": true,
+        "isPawn": false
+      },
+      {
+        "local": true,
+        "isPawn": false
+      },
+      {
+        "local": true,
+        "isPawn": false
+      }
+    ]
+  },
+  "M1": {
+    "before": {
+      "host": {
+        "stopped": false,
+        "musicOff": false,
+        "musicGain": 0.48,
+        "screen": null,
+        "alive": true,
+        "health": 69.8,
+        "intensity": 0.5475,
+        "directorEnemies": 8
+      },
+      "client": {
+        "stopped": false,
+        "musicOff": false,
+        "musicGain": 0.48,
+        "screen": "pause",
+        "alive": true,
+        "health": 110,
+        "intensity": 0.0037,
+        "directorEnemies": 0
+      }
+    },
+    "afterHostDeath": {
+      "host": {
+        "stopped": true,
+        "musicOff": true,
+        "musicGain": 0.00311,
+        "screen": "death",
+        "alive": false,
+        "health": 0,
+        "intensity": 0.547,
+        "directorEnemies": 8
+      },
+      "client": {
+        "stopped": false,
+        "musicOff": false,
+        "musicGain": 0.48,
+        "screen": "death",
+        "alive": true,
+        "health": 110,
+        "intensity": 0.0037,
+        "directorEnemies": 0
+      }
+    },
+    "killPawn": {
+      "found": true,
+      "aliveOnHost": false,
+      "netId": 1
+    },
+    "afterClientDeath": {
+      "host": {
+        "stopped": true,
+        "musicOff": true,
+        "musicGain": 0,
+        "screen": "death",
+        "alive": false,
+        "health": 0,
+        "intensity": 0.547,
+        "directorEnemies": 8
+      },
+      "client": {
+        "stopped": true,
+        "musicOff": true,
+        "musicGain": 0.00317,
+        "screen": "death",
+        "alive": true,
+        "health": 110,
+        "intensity": 0.0037,
+        "directorEnemies": 0
+      }
+    },
+    "clientDeadEvents": [
+      {
+        "victimNetId": 2,
+        "isSelf": false
+      },
+      {
+        "victimNetId": 1,
+        "isSelf": true
+      }
+    ]
+  },
+  "verdicts": {
+    "F6_replayFrac_w1": 0,
+    "F6_replayFrac_w9": 0,
+    "F7_pawnImpulsesOnHost": [
+      30,
+      30,
+      36
+    ],
+    "F7_selfImpulsesOnClient": [
+      30,
+      30,
+      30
+    ],
+    "F7_hostPawnPeak": 46.15,
+    "F7_clientSelfPeak": 40.15,
+    "F7_hostBarriersOf10_forPeerJump": 3,
+    "F7_hostQuakes_forPeerJump": 1,
+    "F9_peerDealtDelta": 0,
+    "F9_ownDealtDelta": 500,
+    "F10_timeSinceHurt_after": 1.45,
+    "F10_cuesDelta": 1,
+    "F10_shieldDelta": 22.03,
+    "M1_teammateDeathLeftClientMusicRunning": true,
+    "M1_ownDeathStoppedClientMusic": true,
+    "M1_clientScreenAfterTeammateDeath": "death",
+    "clientHealthEverMoved": false
+  },
+  "substitutionsMissing": []
+}

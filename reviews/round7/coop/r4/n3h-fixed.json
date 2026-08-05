@@ -1,0 +1,140 @@
+{
+  "arm": "n3h-fixed",
+  "scenario": "badHello",
+  "substitutions": [],
+  "substitutionsApplied": [],
+  "substitutionsMissing": [],
+  "helloOverride": [
+    99,
+    "anvil"
+  ],
+  "port": 5812,
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 70,
+      "survivorId": "ranger",
+      "maxHealth": 110
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 69,
+      "survivorId": "anvil",
+      "maxHealth": 170
+    }
+  },
+  "runningGateAfterFocus": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "tick": 316,
+      "netRole": "host",
+      "authority": true,
+      "clients": 0,
+      "myNetId": null,
+      "connected": null
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "tick": 5,
+      "netRole": "client",
+      "authority": false,
+      "clients": null,
+      "myNetId": 1,
+      "connected": false
+    }
+  },
+  "pawns": [],
+  "clientOwn": {
+    "survivorId": "anvil",
+    "maxHealth": 170,
+    "connected": false,
+    "myNetId": 1
+  },
+  "hostStatus": [
+    {
+      "s": "hosting"
+    },
+    {
+      "s": "inviteReady",
+      "d": {
+        "id": 1,
+        "blob": "eyJ2IjoxLCJyb2xlIjoib2ZmZXIiLCJpZCI6MSwic2RwIjp7InR5cGUiOiJvZmZlciIsInNkcCI6InY9MFxyXG5vPS0gNTEyNDUwODMzMzQzOTA0ODM4NyAyIElOIElQNCAxMjcuMC4wLjFcclxucz0tXHJcbnQ9MCAwXHJcbmE9Z3JvdXA6QlVORExFIDBcclxuYT1leHRtYXAtYWxsb3ctbWl4ZWRcclxuYT1tc2lkLXNlbWFudGljOiBXTVNcclxubT1hcHBsaWNhdGlvbiA1MDQ2MiBVRFAvRFRMUy9TQ1RQIHdlYnJ0Yy1kYXRhY2hhbm5lbFxyXG5jPUlOIElQNCA5OS4xMDkuMTQxLjE1OFxyXG5hPWNhbmRpZGF0ZTozMTIxNzI1OTQgMSB1ZHAgMjExMzkzNzE1MSBiNmJjNzEwOC1jNWNiLTQ5ZjMtYmE0Ny0xMTdkZmE2ODM1ZmQubG9jYWwgNTA0NjIgdHlwIGhvc3QgZ2VuZXJhdGlvbiAwIG5ldHdvcmstY29zdCA5OTlcclxuYT1jYW5kaWRhdGU6Mjk3OTk1MjIyNSAxIHVkcCAxNjc3NzI5NTM1IDk5LjEwOS4xNDEuMTU4IDUwNDYyIHR5cCBzcmZseCByYWRkciAwLjAuMC4wIHJwb3J0IDAgZ2VuZXJhdGlvbiAwIG5ldHdvcmstY29zdCA5OTlcclxuYT1pY2UtdWZyYWc6VDlSb1xyXG5hPWljZS1wd2Q6RDlNRzZQMk9hWkNpOTJUdlRZOXdhTXpkXHJcbmE9aWNlLW9wdGlvbnM6dHJpY2tsZVxyXG5hPWZpbmdlcnByaW50OnNoYS0yNTYgMTg6MTc6OTM6RDg6RTU6MTI6QkQ6NjY6NzE6MDY6Nzg6OUQ6RkM6QTM6NEM6QUU6MTk6MTA6RjU6NTM6RUU6Qzk6MTU6NjY6OEY6Njc6QzU6QkU6NEE6NTE6QTI6RjhcclxuYT1zZXR1cDphY3RwYXNzXHJcbmE9bWlkOjBcclxuYT1zY3RwLXBvcnQ6NTAwMFxyXG5hPW1heC1tZXNzYWdlLXNpemU6MjYyMTQ0XHJcbiJ9fQ"
+      }
+    },
+    {
+      "s": "peerJoined",
+      "d": {
+        "id": 1,
+        "count": 2
+      }
+    },
+    {
+      "s": "peerConnecting",
+      "d": {
+        "id": 1
+      }
+    },
+    {
+      "s": "peerRefused",
+      "d": {
+        "id": 1,
+        "reason": "version",
+        "detail": "theirs 99, ours 3"
+      }
+    }
+  ],
+  "clientStatus": [
+    {
+      "s": "joining"
+    },
+    {
+      "s": "answerReady",
+      "d": {
+        "blob": "eyJ2IjoxLCJyb2xlIjoiYW5zd2VyIiwiaWQiOjEsInNkcCI6eyJ0eXBlIjoiYW5zd2VyIiwic2RwIjoidj0wXHJcbm89LSAyNzk5NTA2MTE0NDgwMTM0Nzg5IDIgSU4gSVA0IDEyNy4wLjAuMVxyXG5zPS1cclxudD0wIDBcclxuYT1ncm91cDpCVU5ETEUgMFxyXG5hPWV4dG1hcC1hbGxvdy1taXhlZFxyXG5hPW1zaWQtc2VtYW50aWM6IFdNU1xyXG5tPWFwcGxpY2F0aW9uIDkgVURQL0RUTFMvU0NUUCB3ZWJydGMtZGF0YWNoYW5uZWxcclxuYz1JTiBJUDQgMC4wLjAuMFxyXG5hPWNhbmRpZGF0ZToyMjMzMzczMDggMSB1ZHAgMjExMzkzNzE1MSA0Yjc5ZTRlYy1mYTY3LTQyY2EtYmY3My0yZmM2ODAwMjkyOTUubG9jYWwgNTgxMjkgdHlwIGhvc3QgZ2VuZXJhdGlvbiAwIG5ldHdvcmstY29zdCA5OTlcclxuYT1pY2UtdWZyYWc6MW5tQVxyXG5hPWljZS1wd2Q6emx1Q0JxQzhKUVE5TEEwakQ2aXgxME9TXHJcbmE9aWNlLW9wdGlvbnM6dHJpY2tsZVxyXG5hPWZpbmdlcnByaW50OnNoYS0yNTYgRjg6NDc6QzU6Qjk6QTg6NzY6NTk6NEY6OTU6RkQ6Mzc6MDM6NDE6REY6MTE6RjE6NTA6M0M6RDU6OUI6MjM6NTA6MjY6Njc6RTQ6NDA6Mzk6RTU6MDI6QTg6RTQ6MzBcclxuYT1zZXR1cDphY3RpdmVcclxuYT1taWQ6MFxyXG5hPXNjdHAtcG9ydDo1MDAwXHJcbmE9bWF4LW1lc3NhZ2Utc2l6ZToyNjIxNDRcclxuIn19"
+      }
+    },
+    {
+      "s": "connected",
+      "d": {
+        "seed": 1337,
+        "stageIndex": 0,
+        "time": 2.683333396911621,
+        "myNetId": 1,
+        "artifactMask": 0,
+        "difficulty": 1
+      }
+    },
+    {
+      "s": "refused",
+      "d": {
+        "reason": "version",
+        "detail": "theirs 99, ours 3"
+      }
+    }
+  ],
+  "hostClients": 0,
+  "hostTick": {
+    "a": 171,
+    "b": 216
+  },
+  "hostSaid": "Turned a player away: they are running a different version of the game (theirs 99, ours 3). Both of you need the same build.",
+  "clientSaid": "That host is running a different version of the game (theirs 99, ours 3). Both of you need the same build.",
+  "errors": {
+    "host": {
+      "console": [],
+      "page": [],
+      "harness": [
+        "WrongDocumentError: The root document of this element is not valid for pointer lock."
+      ]
+    },
+    "client": {
+      "console": [],
+      "page": [],
+      "harness": []
+    }
+  }
+}

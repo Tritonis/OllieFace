@@ -1,0 +1,164 @@
+{
+  "arm": "sp-pre",
+  "subs": [
+    "L2-hello",
+    "L1-hold",
+    "L3-shield",
+    "L4-prog",
+    "L4-hud",
+    "L5-open"
+  ],
+  "startedAt": "2026-08-04T02:29:41.972Z",
+  "runningGate": {
+    "paused": false,
+    "screen": null,
+    "localTick": 64,
+    "survivorId": "ranger",
+    "maxHealth": 110,
+    "netRole": "single",
+    "authority": true
+  },
+  "inventory": {
+    "wax-quail": 3,
+    "rubber-soles": 1,
+    "tectonic-heart": 1,
+    "sunken-vertebra": 1
+  },
+  "role": {
+    "netRole": "single",
+    "authority": true
+  },
+  "spawned": {
+    "requested": 6,
+    "placed": 6,
+    "live": 6
+  },
+  "forcedKills": {
+    "available": 6,
+    "killed": 4,
+    "before": {
+      "prog": 0,
+      "hud": 0
+    }
+  },
+  "afterKills": {
+    "progKills": 4,
+    "hudKills": 4,
+    "killUpstream": [
+      {
+        "posType": "object",
+        "finiteX": true,
+        "sourceIsSelf": true,
+        "victimIsPlayer": false
+      },
+      {
+        "posType": "object",
+        "finiteX": true,
+        "sourceIsSelf": true,
+        "victimIsPlayer": false
+      },
+      {
+        "posType": "object",
+        "finiteX": true,
+        "sourceIsSelf": true,
+        "victimIsPlayer": false
+      },
+      {
+        "posType": "object",
+        "finiteX": true,
+        "sourceIsSelf": true,
+        "victimIsPlayer": false
+      }
+    ],
+    "killDownstream": 4,
+    "deathCalls": 4,
+    "deathThrows": 0,
+    "playerHurt": 0,
+    "audioPlayerDead": 0
+  },
+  "enemyOnEnemy": {
+    "before": {
+      "prog": 4,
+      "hud": 4
+    },
+    "victimAlive": false,
+    "sourceWasEnemy": true
+  },
+  "afterEnemyOnEnemy": {
+    "progKills": 5,
+    "hudKills": 5
+  },
+  "barrier": {
+    "before": {
+      "shield": 14.865833333333129,
+      "health": 126.62,
+      "cooldownReady": "n/a-consumes",
+      "vertebra": 1
+    },
+    "dealt": 33.33,
+    "immediate": {
+      "shield": 30,
+      "health": 108.15
+    },
+    "at120ms": {
+      "shield": 29.28
+    },
+    "at620ms": {
+      "shield": 25.71
+    },
+    "maxShield": 71.5
+  },
+  "jump": {
+    "impulses": [
+      30,
+      30,
+      36
+    ],
+    "tectonic": 1,
+    "soles": 1,
+    "pressesGrounded": [
+      true,
+      true,
+      true
+    ]
+  },
+  "beforeDeath": {
+    "progKills": 5,
+    "hudKills": 5,
+    "damageTaken": 35.97
+  },
+  "afterDeath": {
+    "alive": false,
+    "screen": "death",
+    "ended": true,
+    "directorEnabled": false,
+    "paused": true,
+    "musicOff": true,
+    "audioPlayerDead": 1,
+    "progKills": 5,
+    "hudKills": 6
+  },
+  "probes": {
+    "killDownstream": 6,
+    "deathCalls": 6,
+    "deathThrows": 0,
+    "playerHurt": 3,
+    "audioPlayerDead": 1,
+    "killUpstreamCount": 6,
+    "killUpstreamPlayerVictims": 1
+  },
+  "errors": {
+    "page": [],
+    "console": []
+  },
+  "substitutionsApplied": [
+    "L5-open",
+    "L4-prog",
+    "L4-hud",
+    "L1-hold",
+    "L2-hello",
+    "L3-shield"
+  ],
+  "substitutionsMissing": [],
+  "ok": true
+}

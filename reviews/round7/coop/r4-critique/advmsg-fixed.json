@@ -1,0 +1,657 @@
+{
+  "arm": "advmsg-fixed",
+  "scenario": "advmsg",
+  "substitutions": [],
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 75,
+      "survivorId": "ranger",
+      "maxHealth": 110
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 65,
+      "survivorId": "anvil",
+      "maxHealth": 170
+    }
+  },
+  "wireUp": true,
+  "afterJoin": {
+    "host": {
+      "tick": 150,
+      "clients": 1,
+      "paused": false,
+      "inputEnabled": true,
+      "holding": false,
+      "hasLivePeer": true,
+      "screen": null,
+      "hudKills": 0,
+      "flashes": 0,
+      "progression": 0,
+      "lobbyStatus": "peerConnecting",
+      "lobbyDetail": {
+        "id": 1
+      },
+      "pawns": [
+        {
+          "survivorId": "anvil",
+          "health": 170,
+          "maxHealth": 170,
+          "alive": true,
+          "localTick": 0,
+          "helloSeen": true,
+          "joinTick": 35
+        }
+      ],
+      "own": {
+        "survivorId": "ranger",
+        "health": 110,
+        "maxHealth": 110,
+        "alive": true
+      }
+    },
+    "client": {
+      "tick": 70,
+      "serverTick": 150,
+      "connected": true,
+      "myNetId": 1,
+      "paused": false,
+      "screen": null,
+      "hudKills": 0,
+      "flashes": 0,
+      "progression": 0,
+      "lobbyStatus": "connected",
+      "lobbyDetail": {
+        "seed": 1337,
+        "stageIndex": 0,
+        "time": 1.9166666269302368,
+        "myNetId": 1,
+        "artifactMask": 0,
+        "difficulty": 1
+      },
+      "own": {
+        "survivorId": "anvil",
+        "health": 170,
+        "maxHealth": 170,
+        "alive": true,
+        "shield": 0,
+        "localTick": 0
+      },
+      "ended": null
+    }
+  },
+  "result": {
+    "shots": [
+      {
+        "name": "empty-message",
+        "from": "client",
+        "bytes": 0,
+        "newHostConsole": [
+          "[net] host dropped a malformed message from peer 1 RangeError: Offset is outside the bounds of the DataView\n    at DataView.prototype.getUint8 (<anonymous>)\n    at Reader.u8 (http://127.0.0.1:5834/src"
+        ],
+        "newHostPage": [],
+        "newClientConsole": [],
+        "newClientPage": [],
+        "after": {
+          "host": {
+            "tick": 165,
+            "clients": 1,
+            "paused": false,
+            "pawn": {
+              "survivorId": "anvil",
+              "health": 170,
+              "maxHealth": 170,
+              "helloSeen": true
+            },
+            "lobbyStatus": "peerConnecting"
+          },
+          "client": {
+            "tick": 85,
+            "serverTick": 165,
+            "connected": true,
+            "paused": false,
+            "health": 170,
+            "lobbyStatus": "connected"
+          }
+        }
+      },
+      {
+        "name": "input-truncated",
+        "from": "client",
+        "bytes": 3,
+        "newHostConsole": [
+          "[net] host dropped a malformed message from peer 1 RangeError: Offset is outside the bounds of the DataView\n    at DataView.prototype.getUint32 (<anonymous>)\n    at Reader.u32 (http://127.0.0.1:5834/s"
+        ],
+        "newHostPage": [],
+        "newClientConsole": [],
+        "newClientPage": [],
+        "after": {
+          "host": {
+            "tick": 175,
+            "clients": 1,
+            "paused": false,
+            "pawn": {
+              "survivorId": "anvil",
+              "health": 170,
+              "maxHealth": 170,
+              "helloSeen": true
+            },
+            "lobbyStatus": "peerConnecting"
+          },
+          "client": {
+            "tick": 95,
+            "serverTick": 175,
+            "connected": true,
+            "paused": false,
+            "health": 170,
+            "lobbyStatus": "connected"
+          }
+        }
+      },
+      {
+        "name": "ping-truncated",
+        "from": "client",
+        "bytes": 2,
+        "newHostConsole": [
+          "[net] host dropped a malformed message from peer 1 RangeError: Offset is outside the bounds of the DataView\n    at DataView.prototype.getFloat32 (<anonymous>)\n    at Reader.f32 (http://127.0.0.1:5834/"
+        ],
+        "newHostPage": [],
+        "newClientConsole": [],
+        "newClientPage": [],
+        "after": {
+          "host": {
+            "tick": 185,
+            "clients": 1,
+            "paused": false,
+            "pawn": {
+              "survivorId": "anvil",
+              "health": 170,
+              "maxHealth": 170,
+              "helloSeen": true
+            },
+            "lobbyStatus": "peerConnecting"
+          },
+          "client": {
+            "tick": 105,
+            "serverTick": 185,
+            "connected": true,
+            "paused": false,
+            "health": 170,
+            "lobbyStatus": "connected"
+          }
+        }
+      },
+      {
+        "name": "unknown-kind-200",
+        "from": "client",
+        "bytes": 4,
+        "newHostConsole": [],
+        "newHostPage": [],
+        "newClientConsole": [],
+        "newClientPage": [],
+        "after": {
+          "host": {
+            "tick": 200,
+            "clients": 1,
+            "paused": false,
+            "pawn": {
+              "survivorId": "anvil",
+              "health": 170,
+              "maxHealth": 170,
+              "helloSeen": true
+            },
+            "lobbyStatus": "peerConnecting"
+          },
+          "client": {
+            "tick": 120,
+            "serverTick": 200,
+            "connected": true,
+            "paused": false,
+            "health": 170,
+            "lobbyStatus": "connected"
+          }
+        }
+      },
+      {
+        "name": "kind-0",
+        "from": "client",
+        "bytes": 1,
+        "newHostConsole": [],
+        "newHostPage": [],
+        "newClientConsole": [],
+        "newClientPage": [],
+        "after": {
+          "host": {
+            "tick": 210,
+            "clients": 1,
+            "paused": false,
+            "pawn": {
+              "survivorId": "anvil",
+              "health": 170,
+              "maxHealth": 170,
+              "helloSeen": true
+            },
+            "lobbyStatus": "peerConnecting"
+          },
+          "client": {
+            "tick": 130,
+            "serverTick": 210,
+            "connected": true,
+            "paused": false,
+            "health": 170,
+            "lobbyStatus": "connected"
+          }
+        }
+      },
+      {
+        "name": "snapshot-at-host",
+        "from": "client",
+        "bytes": 4,
+        "newHostConsole": [],
+        "newHostPage": [],
+        "newClientConsole": [],
+        "newClientPage": [],
+        "after": {
+          "host": {
+            "tick": 220,
+            "clients": 1,
+            "paused": false,
+            "pawn": {
+              "survivorId": "anvil",
+              "health": 170,
+              "maxHealth": 170,
+              "helloSeen": true
+            },
+            "lobbyStatus": "peerConnecting"
+          },
+          "client": {
+            "tick": 140,
+            "serverTick": 220,
+            "connected": true,
+            "paused": false,
+            "health": 170,
+            "lobbyStatus": "connected"
+          }
+        }
+      },
+      {
+        "name": "event-namebomb",
+        "from": "host",
+        "bytes": 3,
+        "newHostConsole": [],
+        "newHostPage": [],
+        "newClientConsole": [
+          "[net] client dropped a malformed message from the host RangeError: Invalid typed array length: 60000\n    at new Uint8Array (<anonymous>)\n    at Reader.str (http://127.0.0.1:5834/src/net/Protocol.js:19"
+        ],
+        "newClientPage": [],
+        "after": {
+          "host": {
+            "tick": 230,
+            "clients": 1,
+            "paused": false,
+            "pawn": {
+              "survivorId": "anvil",
+              "health": 170,
+              "maxHealth": 170,
+              "helloSeen": true
+            },
+            "lobbyStatus": "peerConnecting"
+          },
+          "client": {
+            "tick": 150,
+            "serverTick": 230,
+            "connected": true,
+            "paused": false,
+            "health": 170,
+            "lobbyStatus": "connected"
+          }
+        }
+      },
+      {
+        "name": "event-badjson",
+        "from": "host",
+        "bytes": 12,
+        "newHostConsole": [],
+        "newHostPage": [],
+        "newClientConsole": [
+          "[net] client dropped a malformed message from the host SyntaxError: Expected property name or '}' in JSON at position 1 (line 1 column 2)\n    at JSON.parse (<anonymous>)\n    at Reader.json (http://127"
+        ],
+        "newClientPage": [],
+        "after": {
+          "host": {
+            "tick": 240,
+            "clients": 1,
+            "paused": false,
+            "pawn": {
+              "survivorId": "anvil",
+              "health": 170,
+              "maxHealth": 170,
+              "helloSeen": true
+            },
+            "lobbyStatus": "peerConnecting"
+          },
+          "client": {
+            "tick": 160,
+            "serverTick": 240,
+            "connected": true,
+            "paused": false,
+            "health": 170,
+            "lobbyStatus": "connected"
+          }
+        }
+      },
+      {
+        "name": "snapshot-truncated",
+        "from": "host",
+        "bytes": 4,
+        "newHostConsole": [],
+        "newHostPage": [],
+        "newClientConsole": [
+          "[net] client dropped a malformed message from the host RangeError: Offset is outside the bounds of the DataView\n    at DataView.prototype.getUint32 (<anonymous>)\n    at Reader.u32 (http://127.0.0.1:58"
+        ],
+        "newClientPage": [],
+        "after": {
+          "host": {
+            "tick": 250,
+            "clients": 1,
+            "paused": false,
+            "pawn": {
+              "survivorId": "anvil",
+              "health": 170,
+              "maxHealth": 170,
+              "helloSeen": true
+            },
+            "lobbyStatus": "peerConnecting"
+          },
+          "client": {
+            "tick": 170,
+            "serverTick": 250,
+            "connected": true,
+            "paused": false,
+            "health": 170,
+            "lobbyStatus": "connected"
+          }
+        }
+      },
+      {
+        "name": "welcome-truncated",
+        "from": "host",
+        "bytes": 3,
+        "newHostConsole": [],
+        "newHostPage": [],
+        "newClientConsole": [
+          "[net] client dropped a malformed message from the host RangeError: Offset is outside the bounds of the DataView\n    at DataView.prototype.getUint16 (<anonymous>)\n    at Reader.u16 (http://127.0.0.1:58"
+        ],
+        "newClientPage": [],
+        "after": {
+          "host": {
+            "tick": 260,
+            "clients": 1,
+            "paused": false,
+            "pawn": {
+              "survivorId": "anvil",
+              "health": 170,
+              "maxHealth": 170,
+              "helloSeen": true
+            },
+            "lobbyStatus": "peerConnecting"
+          },
+          "client": {
+            "tick": 180,
+            "serverTick": 260,
+            "connected": true,
+            "paused": false,
+            "health": 170,
+            "lobbyStatus": "connected"
+          }
+        }
+      },
+      {
+        "name": "unknown-kind-201",
+        "from": "host",
+        "bytes": 3,
+        "newHostConsole": [],
+        "newHostPage": [],
+        "newClientConsole": [],
+        "newClientPage": [],
+        "after": {
+          "host": {
+            "tick": 270,
+            "clients": 1,
+            "paused": false,
+            "pawn": {
+              "survivorId": "anvil",
+              "health": 170,
+              "maxHealth": 170,
+              "helloSeen": true
+            },
+            "lobbyStatus": "peerConnecting"
+          },
+          "client": {
+            "tick": 190,
+            "serverTick": 270,
+            "connected": true,
+            "paused": false,
+            "health": 170,
+            "lobbyStatus": "connected"
+          }
+        }
+      },
+      {
+        "name": "refuse-truncated",
+        "from": "host",
+        "bytes": 3,
+        "newHostConsole": [],
+        "newHostPage": [],
+        "newClientConsole": [
+          "[net] client dropped a malformed message from the host RangeError: Invalid typed array length: 60000\n    at new Uint8Array (<anonymous>)\n    at Reader.str (http://127.0.0.1:5834/src/net/Protocol.js:19"
+        ],
+        "newClientPage": [],
+        "after": {
+          "host": {
+            "tick": 280,
+            "clients": 1,
+            "paused": false,
+            "pawn": {
+              "survivorId": "anvil",
+              "health": 170,
+              "maxHealth": 170,
+              "helloSeen": true
+            },
+            "lobbyStatus": "peerConnecting"
+          },
+          "client": {
+            "tick": 200,
+            "serverTick": 280,
+            "connected": true,
+            "paused": false,
+            "health": 170,
+            "lobbyStatus": "connected"
+          }
+        }
+      },
+      {
+        "name": "hello-strbomb",
+        "from": "client",
+        "bytes": 5,
+        "newHostConsole": [
+          "[net] host dropped a malformed message from peer 1 RangeError: Invalid typed array length: 60000\n    at new Uint8Array (<anonymous>)\n    at Reader.str (http://127.0.0.1:5834/src/net/Protocol.js:195:40"
+        ],
+        "newHostPage": [],
+        "newClientConsole": [],
+        "newClientPage": [],
+        "after": {
+          "host": {
+            "tick": 290,
+            "clients": 1,
+            "paused": false,
+            "pawn": {
+              "survivorId": "anvil",
+              "health": 170,
+              "maxHealth": 170,
+              "helloSeen": true
+            },
+            "lobbyStatus": "peerConnecting"
+          },
+          "client": {
+            "tick": 210,
+            "serverTick": 290,
+            "connected": true,
+            "paused": false,
+            "health": 170,
+            "lobbyStatus": "connected"
+          }
+        }
+      },
+      {
+        "name": "hello-1byte",
+        "from": "client",
+        "bytes": 1,
+        "newHostConsole": [],
+        "newHostPage": [],
+        "newClientConsole": [],
+        "newClientPage": [],
+        "after": {
+          "host": {
+            "tick": 305,
+            "clients": 0,
+            "paused": false,
+            "pawn": null,
+            "lobbyStatus": "peerRefused"
+          },
+          "client": {
+            "tick": 220,
+            "serverTick": 300,
+            "connected": false,
+            "paused": false,
+            "health": 170,
+            "lobbyStatus": "refused"
+          }
+        }
+      },
+      {
+        "name": "refuse-empty",
+        "from": "host",
+        "bytes": 1,
+        "newHostConsole": [],
+        "newHostPage": [],
+        "newClientConsole": [],
+        "newClientPage": [],
+        "after": {
+          "host": {
+            "tick": 315,
+            "clients": 0,
+            "paused": false,
+            "pawn": null,
+            "lobbyStatus": "peerRefused"
+          },
+          "client": {
+            "tick": 220,
+            "serverTick": 300,
+            "connected": false,
+            "paused": false,
+            "health": 170,
+            "lobbyStatus": "refused"
+          }
+        }
+      }
+    ],
+    "baseline": {
+      "host": {
+        "tick": 155,
+        "clients": 1,
+        "paused": false,
+        "pawn": {
+          "survivorId": "anvil",
+          "health": 170,
+          "maxHealth": 170,
+          "helloSeen": true
+        },
+        "lobbyStatus": "peerConnecting"
+      },
+      "client": {
+        "tick": 75,
+        "serverTick": 155,
+        "connected": true,
+        "paused": false,
+        "health": 170,
+        "lobbyStatus": "connected"
+      }
+    },
+    "hostSaid": "Turned a player away: their join did not make sense (a second identity message).",
+    "clientSaid": "The host refused the join. Try joining again.",
+    "final": {
+      "host": {
+        "tick": 320,
+        "clients": 0,
+        "paused": true,
+        "inputEnabled": true,
+        "holding": false,
+        "hasLivePeer": false,
+        "screen": "coop",
+        "hudKills": 0,
+        "flashes": 0,
+        "progression": 0,
+        "lobbyStatus": "peerRefused",
+        "lobbyDetail": {
+          "id": 1,
+          "reason": "hello",
+          "detail": "a second identity message"
+        },
+        "pawns": [],
+        "own": {
+          "survivorId": "ranger",
+          "health": 110,
+          "maxHealth": 110,
+          "alive": true
+        }
+      },
+      "client": {
+        "tick": 220,
+        "serverTick": 300,
+        "connected": false,
+        "myNetId": 1,
+        "paused": true,
+        "screen": "coop",
+        "hudKills": 0,
+        "flashes": 0,
+        "progression": 0,
+        "lobbyStatus": "refused",
+        "lobbyDetail": {
+          "reason": "hello",
+          "detail": "a second identity message"
+        },
+        "own": {
+          "survivorId": "anvil",
+          "health": 170,
+          "maxHealth": 170,
+          "alive": true,
+          "shield": 0,
+          "localTick": 0
+        },
+        "ended": null
+      }
+    }
+  },
+  "ok": true,
+  "substitutionsApplied": [],
+  "substitutionsMissing": [],
+  "hostConsoleErrors": [
+    "[net] host dropped a malformed message from peer 1 RangeError: Offset is outside the bounds of the DataView\n    at DataView.prototype.getUint8 (<anonymous>)\n    at Reader.u8 (http://127.0.0.1:5834/src/net/Protocol.js:187:30)\n    at NetHost._handleMessage (http://127.0.0.1:5834/src/net/NetHost.js:174:20)\n    at NetHost._onMessage (http://127.0.0.1:5834/src/net/NetHost.js:166:12)\n    at peer.onMessage (http://127.0.0.1:5834/src/net/NetHost.js:103:46)\n    at ch.onmessage (http://127.0.0.1:5834/src/",
+    "[net] host dropped a malformed message from peer 1 RangeError: Offset is outside the bounds of the DataView\n    at DataView.prototype.getUint32 (<anonymous>)\n    at Reader.u32 (http://127.0.0.1:5834/src/net/Protocol.js:191:31)\n    at readInput (http://127.0.0.1:5834/src/net/Protocol.js:216:16)\n    at NetHost._handleMessage (http://127.0.0.1:5834/src/net/NetHost.js:179:19)\n    at NetHost._onMessage (http://127.0.0.1:5834/src/net/NetHost.js:166:12)\n    at peer.onMessage (http://127.0.0.1:5834/src/",
+    "[net] host dropped a malformed message from peer 1 RangeError: Offset is outside the bounds of the DataView\n    at DataView.prototype.getFloat32 (<anonymous>)\n    at Reader.f32 (http://127.0.0.1:5834/src/net/Protocol.js:192:31)\n    at NetHost._handleMessage (http://127.0.0.1:5834/src/net/NetHost.js:189:24)\n    at NetHost._onMessage (http://127.0.0.1:5834/src/net/NetHost.js:166:12)\n    at peer.onMessage (http://127.0.0.1:5834/src/net/NetHost.js:103:46)\n    at ch.onmessage (http://127.0.0.1:5834/s",
+    "[net] host dropped a malformed message from peer 1 RangeError: Invalid typed array length: 60000\n    at new Uint8Array (<anonymous>)\n    at Reader.str (http://127.0.0.1:5834/src/net/Protocol.js:195:40)\n    at readHello (http://127.0.0.1:5834/src/net/Protocol.js:281:41)\n    at NetHost._onHello (http://127.0.0.1:5834/src/net/NetHost.js:227:19)\n    at NetHost._handleMessage (http://127.0.0.1:5834/src/net/NetHost.js:187:12)\n    at NetHost._onMessage (http://127.0.0.1:5834/src/net/NetHost.js:166:12)\n"
+  ],
+  "hostPageErrors": [],
+  "clientConsoleErrors": [
+    "[net] client dropped a malformed message from the host RangeError: Invalid typed array length: 60000\n    at new Uint8Array (<anonymous>)\n    at Reader.str (http://127.0.0.1:5834/src/net/Protocol.js:195:40)\n    at NetClient._handleMessage (http://127.0.0.1:5834/src/net/NetClient.js:169:24)\n    at NetClient._onMessage (http://127.0.0.1:5834/src/net/NetClient.js:115:12)\n    at peer.onMessage (http://127.0.0.1:5834/src/net/NetClient.js:84:39)\n    at ch.onmessage (http://127.0.0.1:5834/src/net/Transp",
+    "[net] client dropped a malformed message from the host SyntaxError: Expected property name or '}' in JSON at position 1 (line 1 column 2)\n    at JSON.parse (<anonymous>)\n    at Reader.json (http://127.0.0.1:5834/src/net/Protocol.js:199:24)\n    at NetClient._handleMessage (http://127.0.0.1:5834/src/net/NetClient.js:170:27)\n    at NetClient._onMessage (http://127.0.0.1:5834/src/net/NetClient.js:115:12)\n    at peer.onMessage (http://127.0.0.1:5834/src/net/NetClient.js:84:39)\n    at ch.onmessage (ht",
+    "[net] client dropped a malformed message from the host RangeError: Offset is outside the bounds of the DataView\n    at DataView.prototype.getUint32 (<anonymous>)\n    at Reader.u32 (http://127.0.0.1:5834/src/net/Protocol.js:191:31)\n    at SnapshotBuffer.ingest (http://127.0.0.1:5834/src/net/Snapshot.js:34:25)\n    at NetClient._handleMessage (http://127.0.0.1:5834/src/net/NetClient.js:165:21)\n    at NetClient._onMessage (http://127.0.0.1:5834/src/net/NetClient.js:115:12)\n    at peer.onMessage (htt",
+    "[net] client dropped a malformed message from the host RangeError: Offset is outside the bounds of the DataView\n    at DataView.prototype.getUint16 (<anonymous>)\n    at Reader.u16 (http://127.0.0.1:5834/src/net/Protocol.js:189:31)\n    at NetClient._handleMessage (http://127.0.0.1:5834/src/net/NetClient.js:139:27)\n    at NetClient._onMessage (http://127.0.0.1:5834/src/net/NetClient.js:115:12)\n    at peer.onMessage (http://127.0.0.1:5834/src/net/NetClient.js:84:39)\n    at ch.onmessage (http://127.",
+    "[net] client dropped a malformed message from the host RangeError: Invalid typed array length: 60000\n    at new Uint8Array (<anonymous>)\n    at Reader.str (http://127.0.0.1:5834/src/net/Protocol.js:195:40)\n    at readRefuse (http://127.0.0.1:5834/src/net/Protocol.js:90:37)\n    at NetClient._handleMessage (http://127.0.0.1:5834/src/net/NetClient.js:182:36)\n    at NetClient._onMessage (http://127.0.0.1:5834/src/net/NetClient.js:115:12)\n    at peer.onMessage (http://127.0.0.1:5834/src/net/NetClient"
+  ],
+  "clientPageErrors": []
+}

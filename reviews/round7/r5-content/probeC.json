@@ -1,0 +1,667 @@
+{
+  "flatSpot": {
+    "x": 0,
+    "y": 3.382030487060547,
+    "z": 0,
+    "relief": -1
+  },
+  "impulse": [
+    {
+      "spec": {},
+      "jumps": [
+        {
+          "peak": 0,
+          "trail": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "pendingAfter": 0,
+      "label": "nothing"
+    },
+    {
+      "spec": {
+        "updraft-vents": 1
+      },
+      "jumps": [
+        {
+          "peak": 4.88,
+          "trail": [
+            4.88,
+            4.77,
+            4.65,
+            4.53,
+            4.42,
+            4.3,
+            4.18,
+            4.07,
+            3.95,
+            3.83,
+            3.72,
+            3.6
+          ]
+        }
+      ],
+      "pendingAfter": 0,
+      "label": "vents x1"
+    },
+    {
+      "spec": {
+        "wax-quail": 1
+      },
+      "jumps": [
+        {
+          "peak": 9.88,
+          "trail": [
+            9.88,
+            9.77,
+            9.65,
+            9.53,
+            9.42,
+            9.3,
+            9.18,
+            9.07,
+            8.95,
+            8.83,
+            8.72,
+            8.6
+          ]
+        }
+      ],
+      "pendingAfter": 0,
+      "label": "wing x1"
+    },
+    {
+      "spec": {
+        "wax-quail": 1,
+        "updraft-vents": 1
+      },
+      "jumps": [
+        {
+          "peak": 14.88,
+          "trail": [
+            14.88,
+            14.77,
+            14.65,
+            14.53,
+            14.42,
+            14.3,
+            14.18,
+            14.07,
+            13.95,
+            13.83,
+            13.72,
+            13.6
+          ]
+        }
+      ],
+      "pendingAfter": 0,
+      "label": "wing x1 + vents x1"
+    },
+    {
+      "spec": {
+        "wax-quail": 2,
+        "updraft-vents": 1
+      },
+      "jumps": [
+        {
+          "peak": 24.88,
+          "trail": [
+            24.88,
+            24.77,
+            24.65,
+            24.53,
+            24.42,
+            24.3,
+            24.18,
+            24.07,
+            23.95,
+            23.83,
+            23.72,
+            23.6
+          ]
+        }
+      ],
+      "pendingAfter": 0,
+      "label": "wing x2 + vents x1"
+    },
+    {
+      "spec": {
+        "wax-quail": 1,
+        "tectonic-heart": 1
+      },
+      "jumps": [
+        {
+          "peak": 9.88,
+          "trail": [
+            9.88,
+            9.77,
+            9.65,
+            9.53,
+            9.42,
+            9.3,
+            9.18,
+            9.07,
+            8.95,
+            8.83,
+            8.72,
+            8.6
+          ]
+        },
+        {
+          "peak": 9.88,
+          "trail": [
+            9.88,
+            9.77,
+            9.48,
+            7.87,
+            6.24,
+            4.62,
+            3,
+            1.41
+          ]
+        },
+        {
+          "peak": 1.08,
+          "trail": [
+            5.95,
+            5.95,
+            5.95,
+            5.95,
+            5.95,
+            4.23,
+            2.51,
+            1.08,
+            0.96,
+            0.85,
+            0.73,
+            0.61
+          ]
+        }
+      ],
+      "pendingAfter": 0,
+      "label": "wing x1 + tectonic"
+    },
+    {
+      "spec": {
+        "wax-quail": 4
+      },
+      "jumps": [
+        {
+          "peak": 39.88,
+          "trail": [
+            39.88,
+            39.77,
+            39.65,
+            39.53,
+            39.42,
+            39.3,
+            39.18,
+            39.07,
+            38.95,
+            38.83,
+            0.32
+          ]
+        }
+      ],
+      "pendingAfter": 0,
+      "label": "wing x4"
+    },
+    {
+      "spec": {
+        "wax-quail": 5
+      },
+      "jumps": [
+        {
+          "peak": 49.88,
+          "trail": [
+            49.88,
+            49.77,
+            49.65,
+            49.53,
+            49.42,
+            49.3,
+            49.18,
+            49.07,
+            0.32
+          ]
+        }
+      ],
+      "pendingAfter": 0,
+      "label": "wing x5"
+    },
+    {
+      "spec": {
+        "wax-quail": 8
+      },
+      "jumps": [
+        {
+          "peak": 79.88,
+          "trail": [
+            79.88,
+            79.77,
+            79.65,
+            79.53,
+            0.31,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "pendingAfter": 0,
+      "label": "wing x8"
+    },
+    {
+      "spec": {
+        "wax-quail": 10
+      },
+      "jumps": [
+        {
+          "peak": 99.88,
+          "trail": [
+            99.88,
+            99.77,
+            99.65,
+            0.31,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "pendingAfter": 0,
+      "label": "wing x10"
+    },
+    {
+      "spec": {
+        "wax-quail": 10,
+        "updraft-vents": 10
+      },
+      "jumps": [
+        {
+          "peak": 148.57,
+          "trail": [
+            148.57,
+            57.54,
+            0.12,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "pendingAfter": 0,
+      "label": "wing x10 + vents x10"
+    }
+  ],
+  "conflag": [
+    {
+      "n": 1,
+      "spacing": 3,
+      "lit": 1,
+      "echo": false,
+      "crit": false,
+      "rider": false,
+      "fire": 72,
+      "all": {
+        "fire": 72,
+        "burn": 15
+      },
+      "printed": 72,
+      "ratio": 1,
+      "burningAfter": 1
+    },
+    {
+      "n": 8,
+      "spacing": 3,
+      "lit": 0,
+      "echo": false,
+      "crit": false,
+      "rider": false,
+      "fire": 0,
+      "all": {},
+      "printed": 0,
+      "ratio": null,
+      "burningAfter": 0
+    },
+    {
+      "n": 8,
+      "spacing": 3,
+      "lit": 1,
+      "echo": false,
+      "crit": false,
+      "rider": false,
+      "fire": 72,
+      "all": {
+        "fire": 72,
+        "burn": 15
+      },
+      "printed": 72,
+      "ratio": 1,
+      "burningAfter": 1
+    },
+    {
+      "n": 8,
+      "spacing": 3,
+      "lit": 3,
+      "echo": false,
+      "crit": false,
+      "rider": false,
+      "fire": 241.2,
+      "all": {
+        "fire": 241.2,
+        "burn": 45
+      },
+      "printed": 216,
+      "ratio": 1.12,
+      "burningAfter": 3
+    },
+    {
+      "n": 8,
+      "spacing": 1.2,
+      "lit": 8,
+      "echo": false,
+      "crit": false,
+      "rider": false,
+      "fire": 1423.5,
+      "all": {
+        "fire": 1423.4976,
+        "burn": 120
+      },
+      "printed": 576,
+      "ratio": 2.47,
+      "burningAfter": 8
+    },
+    {
+      "n": 12,
+      "spacing": 1.5,
+      "lit": 12,
+      "echo": false,
+      "crit": false,
+      "rider": false,
+      "fire": 2287.9,
+      "all": {
+        "fire": 2287.9412,
+        "burn": 180
+      },
+      "printed": 864,
+      "ratio": 2.65,
+      "burningAfter": 12
+    },
+    {
+      "n": 8,
+      "spacing": 1.2,
+      "lit": 8,
+      "echo": false,
+      "crit": true,
+      "rider": false,
+      "fire": 2847,
+      "all": {
+        "fire": 2846.995,
+        "burn": 120
+      },
+      "printed": 576,
+      "ratio": 4.94,
+      "burningAfter": 8
+    },
+    {
+      "n": 12,
+      "spacing": 1.5,
+      "lit": 12,
+      "echo": false,
+      "crit": true,
+      "rider": false,
+      "fire": 4575.9,
+      "all": {
+        "fire": 4575.8826,
+        "burn": 180
+      },
+      "printed": 864,
+      "ratio": 5.3,
+      "burningAfter": 12
+    },
+    {
+      "n": 10,
+      "spacing": 2.2,
+      "lit": 1,
+      "echo": false,
+      "crit": false,
+      "rider": false,
+      "fire": 97.2,
+      "all": {
+        "fire": 97.2,
+        "burn": 15
+      },
+      "printed": 72,
+      "ratio": 1.35,
+      "burningAfter": 1
+    },
+    {
+      "n": 10,
+      "spacing": 2.2,
+      "lit": 1,
+      "echo": true,
+      "crit": false,
+      "rider": false,
+      "fire": 97.2,
+      "all": {
+        "fire": 97.2,
+        "burn": 15
+      },
+      "printed": 72,
+      "ratio": 1.35,
+      "burningAfter": 1
+    },
+    {
+      "n": 10,
+      "spacing": 2.2,
+      "lit": 1,
+      "echo": false,
+      "crit": false,
+      "rider": true,
+      "fire": 97.2,
+      "all": {
+        "fire": 97.2,
+        "burn": 39
+      },
+      "printed": 72,
+      "ratio": 1.35,
+      "burningAfter": 2
+    },
+    {
+      "n": 10,
+      "spacing": 2.2,
+      "lit": 1,
+      "echo": true,
+      "crit": false,
+      "rider": true,
+      "fire": 97.2,
+      "all": {
+        "fire": 97.2,
+        "burn": 39
+      },
+      "printed": 72,
+      "ratio": 1.35,
+      "burningAfter": 2
+    }
+  ],
+  "ashen": [
+    {
+      "spec": {
+        "ashen-pact": 10
+      },
+      "seconds": 12,
+      "settled": 0.507,
+      "trace": [
+        0.85,
+        0.859,
+        0.718,
+        0.577,
+        0.509,
+        0.508,
+        0.508,
+        0.508,
+        0.508,
+        0.508,
+        0.508,
+        0.508,
+        0.507
+      ],
+      "alive": true,
+      "moveSpeed": 7,
+      "preyLive": false,
+      "outgoingOn100": 100,
+      "maxHealth": 110,
+      "label": "pact x10"
+    },
+    {
+      "spec": {
+        "ashen-pact": 1
+      },
+      "seconds": 15,
+      "settled": 0.91,
+      "trace": [
+        1,
+        0.992,
+        0.986,
+        0.98,
+        0.975,
+        0.969,
+        0.963,
+        0.957,
+        0.951,
+        0.945,
+        0.939,
+        0.933,
+        0.927,
+        0.921,
+        0.915,
+        0.91
+      ],
+      "alive": true,
+      "moveSpeed": 7,
+      "preyLive": false,
+      "outgoingOn100": 100,
+      "maxHealth": 110,
+      "label": "pact x1"
+    },
+    {
+      "spec": {
+        "ashen-pact": 10,
+        "entropy-ledger": 1,
+        "prey-instinct": 1
+      },
+      "seconds": 12,
+      "settled": 0.503,
+      "trace": [
+        1,
+        0.855,
+        0.714,
+        0.573,
+        0.505,
+        0.504,
+        0.504,
+        0.504,
+        0.504,
+        0.504,
+        0.504,
+        0.503,
+        0.503
+      ],
+      "alive": true,
+      "moveSpeed": 7,
+      "preyLive": false,
+      "outgoingOn100": 149.7,
+      "maxHealth": 110,
+      "label": "pact x10 + ledger + prey"
+    },
+    {
+      "spec": {
+        "ashen-pact": 10,
+        "medkit": 10,
+        "leeching-seed": 10
+      },
+      "seconds": 12,
+      "settled": 0.502,
+      "trace": [
+        1,
+        0.853,
+        0.712,
+        0.571,
+        0.503,
+        0.503,
+        0.502,
+        0.502,
+        0.502,
+        0.502,
+        0.502,
+        0.502,
+        0.502
+      ],
+      "alive": true,
+      "moveSpeed": 7,
+      "preyLive": false,
+      "outgoingOn100": 100,
+      "maxHealth": 110,
+      "label": "pact x10 + medkit x10 + burr x10"
+    },
+    {
+      "spec": {
+        "ashen-pact": 10,
+        "steak": 10
+      },
+      "seconds": 12,
+      "settled": 0.339,
+      "trace": [
+        0.306,
+        0.308,
+        0.311,
+        0.314,
+        0.317,
+        0.319,
+        0.322,
+        0.325,
+        0.328,
+        0.331,
+        0.333,
+        0.336,
+        0.339
+      ],
+      "alive": true,
+      "moveSpeed": 7,
+      "preyLive": false,
+      "outgoingOn100": 100,
+      "maxHealth": 360,
+      "label": "pact x10 + steak x10"
+    }
+  ],
+  "errors": [],
+  "frameErrors": 0
+}

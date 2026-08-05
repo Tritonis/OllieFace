@@ -1,0 +1,1148 @@
+{
+  "arm": "three-live",
+  "substitutions": [],
+  "substitutionsMissing": [],
+  "samples": [
+    {
+      "label": "both joined",
+      "host": {
+        "role": "host",
+        "lobbyMode": "host",
+        "status": "peerConnecting",
+        "statusDetail": {
+          "id": 2
+        },
+        "players": 3,
+        "refusedPeers": [],
+        "clientsCount": 2,
+        "clients": [
+          {
+            "id": 1,
+            "helloSeen": true,
+            "survivorId": "anvil",
+            "hasPawn": true,
+            "joinTick": 35
+          },
+          {
+            "id": 2,
+            "helloSeen": true,
+            "survivorId": "kestrel",
+            "hasPawn": true,
+            "joinTick": 70
+          }
+        ],
+        "pawns": [
+          {
+            "survivorId": "anvil",
+            "health": 170,
+            "maxHealth": 170,
+            "alive": true,
+            "netId": 1
+          },
+          {
+            "survivorId": "kestrel",
+            "health": 90,
+            "maxHealth": 90,
+            "alive": true,
+            "netId": 28
+          }
+        ],
+        "tick": 80,
+        "paused": false,
+        "screen": null,
+        "inputEnabled": true,
+        "holding": false,
+        "pointerLock": true,
+        "my": {
+          "survivorId": "ranger",
+          "health": 110,
+          "maxHealth": 110,
+          "alive": true
+        },
+        "said": "Reply accepted — connecting…",
+        "saidLen": 28,
+        "statuses": [
+          {
+            "status": "hosting",
+            "detail": null,
+            "said": "Hosting. Create an invite for each friend you want to bring in."
+          },
+          {
+            "status": "inviteReady",
+            "detail": {
+              "id": 1,
+              "blob": "eyJ2IjoxLCJyb2xlIjoib2ZmZXIiLCJpZCI6MSwic2RwIjp7InR5cGUiOiJvZmZlciIsInNkcCI6InY9MFxyXG5vPS0gMTM1MjU2MTEzOTI3NDQ4MTkzIDIgSU4gSVA0IDEyNy4wLjAuMVxyXG5zPS1cclxudD0wIDBcclxuYT1ncm91cDpCVU5ETEUgMFxyXG5hPWV4dG1hcC1hbGxvdy1taXhlZFxyXG5hPW1zaWQtc2VtYW50aWM6IFdNU1xyXG5tPWFwcGxpY2F0aW9uIDU2MTg3IFVEUC9EVExTL1NDVFAgd2VicnRjLWRhdGFjaGFubmVsXHJcbmM9SU4gSVA0IDk5LjEwOS4xNDEuMTU4XHJcbmE9Y2FuZGlkYXRlOjEwODIwMDYwMTEgMSB1ZHAgMjExMzkzNzE1MSBlM2I5MjVkYi04NTY0LTQ5ZDYtYjI1OS1mYzE4ZjI4ZGVhOGIubG9jYWwgNTYxODcgdHlwIGhvc3QgZ2VuZXJhdGlvbiAwIG5ldHdvcmstY29zdCA5OTlcclxuYT1jYW5kaWRhdGU6MzgxNjQ5Mjk2OCAxIHVkcCAxNjc3NzI5NTM1IDk5LjEwOS4xNDEuMTU4IDU2MTg3IHR5cCBzcmZseCByYWRkciAwLjAuMC4wIHJwb3J0IDAgZ2VuZXJhdGlvbiAwIG5ldHdvcmstY29zdCA5OTlcclxuYT1pY2UtdWZyYWc6ZXZHdVxyXG5hPWljZS1wd2Q6Rk1VM09tczlNOTV0aFlxRkZlOVVXcXl1XHJcbmE9aWNlLW9wdGlvbnM6dHJpY2tsZVxyXG5hPWZpbmdlcnByaW50OnNoYS0yNTYgNzk6QjQ6NUQ6NjI6RjU6REU6MDY6ODY6NTY6NjM6NUU6Njc6RDI6MkE6QTU6RDM6MUY6NjU6MEQ6RjM6QjI6RUQ6NjI6MzM6RkQ6QTk6NkM6QUQ6MzM6NjU6MzA6NjRcclxuYT1zZXR1cDphY3RwYXNzXHJcbmE9bWlkOjBcclxuYT1zY3RwLXBvcnQ6NTAwMFxyXG5hPW1heC1tZXNzYWdlLXNpemU6MjYyMTQ0XHJcbiJ9fQ"
+            },
+            "said": "Invite ready. Send that code to your friend."
+          },
+          {
+            "status": "peerJoined",
+            "detail": {
+              "id": 1,
+              "count": 2
+            },
+            "said": "A player joined. 2 in the game."
+          },
+          {
+            "status": "peerConnecting",
+            "detail": {
+              "id": 1
+            },
+            "said": "Reply accepted — connecting…"
+          },
+          {
+            "status": "inviteReady",
+            "detail": {
+              "id": 2,
+              "blob": "eyJ2IjoxLCJyb2xlIjoib2ZmZXIiLCJpZCI6Miwic2RwIjp7InR5cGUiOiJvZmZlciIsInNkcCI6InY9MFxyXG5vPS0gMTc0ODIxMzI0NjA5MjEyNTA1NCAyIElOIElQNCAxMjcuMC4wLjFcclxucz0tXHJcbnQ9MCAwXHJcbmE9Z3JvdXA6QlVORExFIDBcclxuYT1leHRtYXAtYWxsb3ctbWl4ZWRcclxuYT1tc2lkLXNlbWFudGljOiBXTVNcclxubT1hcHBsaWNhdGlvbiA2MzYwNiBVRFAvRFRMUy9TQ1RQIHdlYnJ0Yy1kYXRhY2hhbm5lbFxyXG5jPUlOIElQNCA5OS4xMDkuMTQxLjE1OFxyXG5hPWNhbmRpZGF0ZToyNzg1ODgyNjE1IDEgdWRwIDIxMTM5MzcxNTEgZTNiOTI1ZGItODU2NC00OWQ2LWIyNTktZmMxOGYyOGRlYThiLmxvY2FsIDYzNjA2IHR5cCBob3N0IGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9Y2FuZGlkYXRlOjg0NDIwNTE2IDEgdWRwIDE2Nzc3Mjk1MzUgOTkuMTA5LjE0MS4xNTggNjM2MDYgdHlwIHNyZmx4IHJhZGRyIDAuMC4wLjAgcnBvcnQgMCBnZW5lcmF0aW9uIDAgbmV0d29yay1jb3N0IDk5OVxyXG5hPWljZS11ZnJhZzpFWEZQXHJcbmE9aWNlLXB3ZDpQK0lOS2JGc3VXbE1SVXRZR2hyS1RuVC9cclxuYT1pY2Utb3B0aW9uczp0cmlja2xlXHJcbmE9ZmluZ2VycHJpbnQ6c2hhLTI1NiA0QTo1ODo3Njo2NDpCRjpDODpFNzowRjo1QzpBNDoyODo4MjpDRjpBNjpDRDoxNjpBQzpFMjpCRjpGRTpDNjowNTo0RTo5RDpBRTo3MDo2MTpDMjo5OTpDOTo0Qjo2NVxyXG5hPXNldHVwOmFjdHBhc3NcclxuYT1taWQ6MFxyXG5hPXNjdHAtcG9ydDo1MDAwXHJcbmE9bWF4LW1lc3NhZ2Utc2l6ZToyNjIxNDRcclxuIn19"
+            },
+            "said": "Invite ready. Send that code to your friend."
+          },
+          {
+            "status": "peerJoined",
+            "detail": {
+              "id": 2,
+              "count": 3
+            },
+            "said": "A player joined. 3 in the game."
+          },
+          {
+            "status": "peerConnecting",
+            "detail": {
+              "id": 2
+            },
+            "said": "Reply accepted — connecting…"
+          }
+        ]
+      },
+      "A": {
+        "role": "client",
+        "lobbyMode": "client",
+        "status": "connected",
+        "statusDetail": {
+          "seed": 1337,
+          "stageIndex": 0,
+          "time": 5.666666507720947,
+          "myNetId": 1,
+          "artifactMask": 0,
+          "difficulty": 1
+        },
+        "connected": true,
+        "myNetId": 1,
+        "serverTick": 80,
+        "paused": false,
+        "screen": null,
+        "refusedLatch": false,
+        "my": {
+          "survivorId": "anvil",
+          "health": 170,
+          "maxHealth": 170,
+          "alive": true
+        },
+        "said": "Connected. Rebuilding the host's world…",
+        "saidLen": 39,
+        "statuses": [
+          {
+            "status": "joining",
+            "detail": null,
+            "said": "Answering the invite…"
+          },
+          {
+            "status": "answerReady",
+            "detail": {
+              "blob": "eyJ2IjoxLCJyb2xlIjoiYW5zd2VyIiwiaWQiOjEsInNkcCI6eyJ0eXBlIjoiYW5zd2VyIiwic2RwIjoidj0wXHJcbm89LSA0MDc1MjYzNzc1ODA2NjA1MjAwIDIgSU4gSVA0IDEyNy4wLjAuMVxyXG5zPS1cclxudD0wIDBcclxuYT1ncm91cDpCVU5ETEUgMFxyXG5hPWV4dG1hcC1hbGxvdy1taXhlZFxyXG5hPW1zaWQtc2VtYW50aWM6IFdNU1xyXG5tPWFwcGxpY2F0aW9uIDkgVURQL0RUTFMvU0NUUCB3ZWJydGMtZGF0YWNoYW5uZWxcclxuYz1JTiBJUDQgMC4wLjAuMFxyXG5hPWNhbmRpZGF0ZTozMDMyNjc2NzQzIDEgdWRwIDIxMTM5MzcxNTEgNTNlOGUwOWUtOTkyMy00Nzg2LWJkNDQtZDY1YzM3YzFiNjlkLmxvY2FsIDU2ODIwIHR5cCBob3N0IGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9aWNlLXVmcmFnOm9QUFFcclxuYT1pY2UtcHdkOmVEOTY4Z2JSLzB5UDYzVXpoWVFodDNjbVxyXG5hPWljZS1vcHRpb25zOnRyaWNrbGVcclxuYT1maW5nZXJwcmludDpzaGEtMjU2IDdBOkUwOjA1OjZBOkJCOkVGOjBGOjZCOkQxOjkyOjgzOkQzOkU0OjVFOkYyOkJEOjVDOjREOkU1OjE0OjA1OkI5OjZFOjkzOkEwOkY5OjEyOjBCOkNGOkYzOkE0OjE5XHJcbmE9c2V0dXA6YWN0aXZlXHJcbmE9bWlkOjBcclxuYT1zY3RwLXBvcnQ6NTAwMFxyXG5hPW1heC1tZXNzYWdlLXNpemU6MjYyMTQ0XHJcbiJ9fQ"
+            },
+            "said": "Send your reply code back to the host."
+          },
+          {
+            "status": "connected",
+            "detail": {
+              "seed": 1337,
+              "stageIndex": 0,
+              "time": 5.666666507720947,
+              "myNetId": 1,
+              "artifactMask": 0,
+              "difficulty": 1
+            },
+            "said": "Connected. Rebuilding the host's world…"
+          }
+        ]
+      },
+      "B": {
+        "role": "client",
+        "lobbyMode": "client",
+        "status": "connected",
+        "statusDetail": {
+          "seed": 1337,
+          "stageIndex": 0,
+          "time": 6.25,
+          "myNetId": 28,
+          "artifactMask": 0,
+          "difficulty": 1
+        },
+        "connected": true,
+        "myNetId": 28,
+        "serverTick": 115,
+        "paused": false,
+        "screen": null,
+        "refusedLatch": false,
+        "my": {
+          "survivorId": "kestrel",
+          "health": 90,
+          "maxHealth": 90,
+          "alive": true
+        },
+        "said": "Connected. Rebuilding the host's world…",
+        "saidLen": 39,
+        "statuses": [
+          {
+            "status": "joining",
+            "detail": null,
+            "said": "Answering the invite…"
+          },
+          {
+            "status": "answerReady",
+            "detail": {
+              "blob": "eyJ2IjoxLCJyb2xlIjoiYW5zd2VyIiwiaWQiOjIsInNkcCI6eyJ0eXBlIjoiYW5zd2VyIiwic2RwIjoidj0wXHJcbm89LSA4NjUzNTMyNDgxODQxMzA5MzgwIDIgSU4gSVA0IDEyNy4wLjAuMVxyXG5zPS1cclxudD0wIDBcclxuYT1ncm91cDpCVU5ETEUgMFxyXG5hPWV4dG1hcC1hbGxvdy1taXhlZFxyXG5hPW1zaWQtc2VtYW50aWM6IFdNU1xyXG5tPWFwcGxpY2F0aW9uIDkgVURQL0RUTFMvU0NUUCB3ZWJydGMtZGF0YWNoYW5uZWxcclxuYz1JTiBJUDQgMC4wLjAuMFxyXG5hPWNhbmRpZGF0ZToxOTk3MzU1NDE0IDEgdWRwIDIxMTM5MzcxNTEgMmQ2M2Y3MWYtNWMzNi00NzljLWFhYjgtZjMzNTBjNWViZTRlLmxvY2FsIDYyMTg5IHR5cCBob3N0IGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9aWNlLXVmcmFnOmFPTWZcclxuYT1pY2UtcHdkOms5ZjhUYms2QncwNEJyZE11VHRLNUpGSFxyXG5hPWljZS1vcHRpb25zOnRyaWNrbGVcclxuYT1maW5nZXJwcmludDpzaGEtMjU2IDM0OjIzOkU2OkM0OkM5OjdGOjE5OjE3OjE4OjY1OkQ5OjVDOkFEOjBCOjkzOjBBOjYyOjI2Ojg5OjU3OkYxOjA0OkM3OkM3OjIyOkE2OkI5OjQ1OjdCOjZCOkYyOjQ2XHJcbmE9c2V0dXA6YWN0aXZlXHJcbmE9bWlkOjBcclxuYT1zY3RwLXBvcnQ6NTAwMFxyXG5hPW1heC1tZXNzYWdlLXNpemU6MjYyMTQ0XHJcbiJ9fQ"
+            },
+            "said": "Send your reply code back to the host."
+          },
+          {
+            "status": "connected",
+            "detail": {
+              "seed": 1337,
+              "stageIndex": 0,
+              "time": 6.25,
+              "myNetId": 28,
+              "artifactMask": 0,
+              "difficulty": 1
+            },
+            "said": "Connected. Rebuilding the host's world…"
+          }
+        ]
+      },
+      "live": true
+    },
+    {
+      "label": "host pause menu",
+      "host": {
+        "role": "host",
+        "lobbyMode": "host",
+        "status": "peerConnecting",
+        "statusDetail": {
+          "id": 2
+        },
+        "players": 3,
+        "refusedPeers": [],
+        "clientsCount": 2,
+        "clients": [
+          {
+            "id": 1,
+            "helloSeen": true,
+            "survivorId": "anvil",
+            "hasPawn": true,
+            "joinTick": 35
+          },
+          {
+            "id": 2,
+            "helloSeen": true,
+            "survivorId": "kestrel",
+            "hasPawn": true,
+            "joinTick": 70
+          }
+        ],
+        "pawns": [
+          {
+            "survivorId": "anvil",
+            "health": 170,
+            "maxHealth": 170,
+            "alive": true,
+            "netId": 1
+          },
+          {
+            "survivorId": "kestrel",
+            "health": 90,
+            "maxHealth": 90,
+            "alive": true,
+            "netId": 28
+          }
+        ],
+        "tick": 160,
+        "paused": false,
+        "screen": "pause",
+        "inputEnabled": false,
+        "holding": true,
+        "pointerLock": false,
+        "my": {
+          "survivorId": "ranger",
+          "health": 110,
+          "maxHealth": 110,
+          "alive": true
+        },
+        "said": "Reply accepted — connecting…",
+        "saidLen": 28,
+        "statuses": [
+          {
+            "status": "hosting",
+            "detail": null,
+            "said": "Hosting. Create an invite for each friend you want to bring in."
+          },
+          {
+            "status": "inviteReady",
+            "detail": {
+              "id": 1,
+              "blob": "eyJ2IjoxLCJyb2xlIjoib2ZmZXIiLCJpZCI6MSwic2RwIjp7InR5cGUiOiJvZmZlciIsInNkcCI6InY9MFxyXG5vPS0gMTM1MjU2MTEzOTI3NDQ4MTkzIDIgSU4gSVA0IDEyNy4wLjAuMVxyXG5zPS1cclxudD0wIDBcclxuYT1ncm91cDpCVU5ETEUgMFxyXG5hPWV4dG1hcC1hbGxvdy1taXhlZFxyXG5hPW1zaWQtc2VtYW50aWM6IFdNU1xyXG5tPWFwcGxpY2F0aW9uIDU2MTg3IFVEUC9EVExTL1NDVFAgd2VicnRjLWRhdGFjaGFubmVsXHJcbmM9SU4gSVA0IDk5LjEwOS4xNDEuMTU4XHJcbmE9Y2FuZGlkYXRlOjEwODIwMDYwMTEgMSB1ZHAgMjExMzkzNzE1MSBlM2I5MjVkYi04NTY0LTQ5ZDYtYjI1OS1mYzE4ZjI4ZGVhOGIubG9jYWwgNTYxODcgdHlwIGhvc3QgZ2VuZXJhdGlvbiAwIG5ldHdvcmstY29zdCA5OTlcclxuYT1jYW5kaWRhdGU6MzgxNjQ5Mjk2OCAxIHVkcCAxNjc3NzI5NTM1IDk5LjEwOS4xNDEuMTU4IDU2MTg3IHR5cCBzcmZseCByYWRkciAwLjAuMC4wIHJwb3J0IDAgZ2VuZXJhdGlvbiAwIG5ldHdvcmstY29zdCA5OTlcclxuYT1pY2UtdWZyYWc6ZXZHdVxyXG5hPWljZS1wd2Q6Rk1VM09tczlNOTV0aFlxRkZlOVVXcXl1XHJcbmE9aWNlLW9wdGlvbnM6dHJpY2tsZVxyXG5hPWZpbmdlcnByaW50OnNoYS0yNTYgNzk6QjQ6NUQ6NjI6RjU6REU6MDY6ODY6NTY6NjM6NUU6Njc6RDI6MkE6QTU6RDM6MUY6NjU6MEQ6RjM6QjI6RUQ6NjI6MzM6RkQ6QTk6NkM6QUQ6MzM6NjU6MzA6NjRcclxuYT1zZXR1cDphY3RwYXNzXHJcbmE9bWlkOjBcclxuYT1zY3RwLXBvcnQ6NTAwMFxyXG5hPW1heC1tZXNzYWdlLXNpemU6MjYyMTQ0XHJcbiJ9fQ"
+            },
+            "said": "Invite ready. Send that code to your friend."
+          },
+          {
+            "status": "peerJoined",
+            "detail": {
+              "id": 1,
+              "count": 2
+            },
+            "said": "A player joined. 2 in the game."
+          },
+          {
+            "status": "peerConnecting",
+            "detail": {
+              "id": 1
+            },
+            "said": "Reply accepted — connecting…"
+          },
+          {
+            "status": "inviteReady",
+            "detail": {
+              "id": 2,
+              "blob": "eyJ2IjoxLCJyb2xlIjoib2ZmZXIiLCJpZCI6Miwic2RwIjp7InR5cGUiOiJvZmZlciIsInNkcCI6InY9MFxyXG5vPS0gMTc0ODIxMzI0NjA5MjEyNTA1NCAyIElOIElQNCAxMjcuMC4wLjFcclxucz0tXHJcbnQ9MCAwXHJcbmE9Z3JvdXA6QlVORExFIDBcclxuYT1leHRtYXAtYWxsb3ctbWl4ZWRcclxuYT1tc2lkLXNlbWFudGljOiBXTVNcclxubT1hcHBsaWNhdGlvbiA2MzYwNiBVRFAvRFRMUy9TQ1RQIHdlYnJ0Yy1kYXRhY2hhbm5lbFxyXG5jPUlOIElQNCA5OS4xMDkuMTQxLjE1OFxyXG5hPWNhbmRpZGF0ZToyNzg1ODgyNjE1IDEgdWRwIDIxMTM5MzcxNTEgZTNiOTI1ZGItODU2NC00OWQ2LWIyNTktZmMxOGYyOGRlYThiLmxvY2FsIDYzNjA2IHR5cCBob3N0IGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9Y2FuZGlkYXRlOjg0NDIwNTE2IDEgdWRwIDE2Nzc3Mjk1MzUgOTkuMTA5LjE0MS4xNTggNjM2MDYgdHlwIHNyZmx4IHJhZGRyIDAuMC4wLjAgcnBvcnQgMCBnZW5lcmF0aW9uIDAgbmV0d29yay1jb3N0IDk5OVxyXG5hPWljZS11ZnJhZzpFWEZQXHJcbmE9aWNlLXB3ZDpQK0lOS2JGc3VXbE1SVXRZR2hyS1RuVC9cclxuYT1pY2Utb3B0aW9uczp0cmlja2xlXHJcbmE9ZmluZ2VycHJpbnQ6c2hhLTI1NiA0QTo1ODo3Njo2NDpCRjpDODpFNzowRjo1QzpBNDoyODo4MjpDRjpBNjpDRDoxNjpBQzpFMjpCRjpGRTpDNjowNTo0RTo5RDpBRTo3MDo2MTpDMjo5OTpDOTo0Qjo2NVxyXG5hPXNldHVwOmFjdHBhc3NcclxuYT1taWQ6MFxyXG5hPXNjdHAtcG9ydDo1MDAwXHJcbmE9bWF4LW1lc3NhZ2Utc2l6ZToyNjIxNDRcclxuIn19"
+            },
+            "said": "Invite ready. Send that code to your friend."
+          },
+          {
+            "status": "peerJoined",
+            "detail": {
+              "id": 2,
+              "count": 3
+            },
+            "said": "A player joined. 3 in the game."
+          },
+          {
+            "status": "peerConnecting",
+            "detail": {
+              "id": 2
+            },
+            "said": "Reply accepted — connecting…"
+          }
+        ]
+      },
+      "A": {
+        "role": "client",
+        "lobbyMode": "client",
+        "status": "connected",
+        "statusDetail": {
+          "seed": 1337,
+          "stageIndex": 0,
+          "time": 5.666666507720947,
+          "myNetId": 1,
+          "artifactMask": 0,
+          "difficulty": 1
+        },
+        "connected": true,
+        "myNetId": 1,
+        "serverTick": 165,
+        "paused": false,
+        "screen": null,
+        "refusedLatch": false,
+        "my": {
+          "survivorId": "anvil",
+          "health": 170,
+          "maxHealth": 170,
+          "alive": true
+        },
+        "said": "Connected. Rebuilding the host's world…",
+        "saidLen": 39,
+        "statuses": [
+          {
+            "status": "joining",
+            "detail": null,
+            "said": "Answering the invite…"
+          },
+          {
+            "status": "answerReady",
+            "detail": {
+              "blob": "eyJ2IjoxLCJyb2xlIjoiYW5zd2VyIiwiaWQiOjEsInNkcCI6eyJ0eXBlIjoiYW5zd2VyIiwic2RwIjoidj0wXHJcbm89LSA0MDc1MjYzNzc1ODA2NjA1MjAwIDIgSU4gSVA0IDEyNy4wLjAuMVxyXG5zPS1cclxudD0wIDBcclxuYT1ncm91cDpCVU5ETEUgMFxyXG5hPWV4dG1hcC1hbGxvdy1taXhlZFxyXG5hPW1zaWQtc2VtYW50aWM6IFdNU1xyXG5tPWFwcGxpY2F0aW9uIDkgVURQL0RUTFMvU0NUUCB3ZWJydGMtZGF0YWNoYW5uZWxcclxuYz1JTiBJUDQgMC4wLjAuMFxyXG5hPWNhbmRpZGF0ZTozMDMyNjc2NzQzIDEgdWRwIDIxMTM5MzcxNTEgNTNlOGUwOWUtOTkyMy00Nzg2LWJkNDQtZDY1YzM3YzFiNjlkLmxvY2FsIDU2ODIwIHR5cCBob3N0IGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9aWNlLXVmcmFnOm9QUFFcclxuYT1pY2UtcHdkOmVEOTY4Z2JSLzB5UDYzVXpoWVFodDNjbVxyXG5hPWljZS1vcHRpb25zOnRyaWNrbGVcclxuYT1maW5nZXJwcmludDpzaGEtMjU2IDdBOkUwOjA1OjZBOkJCOkVGOjBGOjZCOkQxOjkyOjgzOkQzOkU0OjVFOkYyOkJEOjVDOjREOkU1OjE0OjA1OkI5OjZFOjkzOkEwOkY5OjEyOjBCOkNGOkYzOkE0OjE5XHJcbmE9c2V0dXA6YWN0aXZlXHJcbmE9bWlkOjBcclxuYT1zY3RwLXBvcnQ6NTAwMFxyXG5hPW1heC1tZXNzYWdlLXNpemU6MjYyMTQ0XHJcbiJ9fQ"
+            },
+            "said": "Send your reply code back to the host."
+          },
+          {
+            "status": "connected",
+            "detail": {
+              "seed": 1337,
+              "stageIndex": 0,
+              "time": 5.666666507720947,
+              "myNetId": 1,
+              "artifactMask": 0,
+              "difficulty": 1
+            },
+            "said": "Connected. Rebuilding the host's world…"
+          }
+        ]
+      },
+      "B": {
+        "role": "client",
+        "lobbyMode": "client",
+        "status": "connected",
+        "statusDetail": {
+          "seed": 1337,
+          "stageIndex": 0,
+          "time": 6.25,
+          "myNetId": 28,
+          "artifactMask": 0,
+          "difficulty": 1
+        },
+        "connected": true,
+        "myNetId": 28,
+        "serverTick": 165,
+        "paused": false,
+        "screen": null,
+        "refusedLatch": false,
+        "my": {
+          "survivorId": "kestrel",
+          "health": 90,
+          "maxHealth": 90,
+          "alive": true
+        },
+        "said": "Connected. Rebuilding the host's world…",
+        "saidLen": 39,
+        "statuses": [
+          {
+            "status": "joining",
+            "detail": null,
+            "said": "Answering the invite…"
+          },
+          {
+            "status": "answerReady",
+            "detail": {
+              "blob": "eyJ2IjoxLCJyb2xlIjoiYW5zd2VyIiwiaWQiOjIsInNkcCI6eyJ0eXBlIjoiYW5zd2VyIiwic2RwIjoidj0wXHJcbm89LSA4NjUzNTMyNDgxODQxMzA5MzgwIDIgSU4gSVA0IDEyNy4wLjAuMVxyXG5zPS1cclxudD0wIDBcclxuYT1ncm91cDpCVU5ETEUgMFxyXG5hPWV4dG1hcC1hbGxvdy1taXhlZFxyXG5hPW1zaWQtc2VtYW50aWM6IFdNU1xyXG5tPWFwcGxpY2F0aW9uIDkgVURQL0RUTFMvU0NUUCB3ZWJydGMtZGF0YWNoYW5uZWxcclxuYz1JTiBJUDQgMC4wLjAuMFxyXG5hPWNhbmRpZGF0ZToxOTk3MzU1NDE0IDEgdWRwIDIxMTM5MzcxNTEgMmQ2M2Y3MWYtNWMzNi00NzljLWFhYjgtZjMzNTBjNWViZTRlLmxvY2FsIDYyMTg5IHR5cCBob3N0IGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9aWNlLXVmcmFnOmFPTWZcclxuYT1pY2UtcHdkOms5ZjhUYms2QncwNEJyZE11VHRLNUpGSFxyXG5hPWljZS1vcHRpb25zOnRyaWNrbGVcclxuYT1maW5nZXJwcmludDpzaGEtMjU2IDM0OjIzOkU2OkM0OkM5OjdGOjE5OjE3OjE4OjY1OkQ5OjVDOkFEOjBCOjkzOjBBOjYyOjI2Ojg5OjU3OkYxOjA0OkM3OkM3OjIyOkE2OkI5OjQ1OjdCOjZCOkYyOjQ2XHJcbmE9c2V0dXA6YWN0aXZlXHJcbmE9bWlkOjBcclxuYT1zY3RwLXBvcnQ6NTAwMFxyXG5hPW1heC1tZXNzYWdlLXNpemU6MjYyMTQ0XHJcbiJ9fQ"
+            },
+            "said": "Send your reply code back to the host."
+          },
+          {
+            "status": "connected",
+            "detail": {
+              "seed": 1337,
+              "stageIndex": 0,
+              "time": 6.25,
+              "myNetId": 28,
+              "artifactMask": 0,
+              "difficulty": 1
+            },
+            "said": "Connected. Rebuilding the host's world…"
+          }
+        ]
+      },
+      "live": true
+    },
+    {
+      "label": "one pawn dead one live",
+      "host": {
+        "role": "host",
+        "lobbyMode": "host",
+        "status": "peerConnecting",
+        "statusDetail": {
+          "id": 2
+        },
+        "players": 3,
+        "refusedPeers": [],
+        "clientsCount": 2,
+        "clients": [
+          {
+            "id": 1,
+            "helloSeen": true,
+            "survivorId": "anvil",
+            "hasPawn": true,
+            "joinTick": 35
+          },
+          {
+            "id": 2,
+            "helloSeen": true,
+            "survivorId": "kestrel",
+            "hasPawn": true,
+            "joinTick": 70
+          }
+        ],
+        "pawns": [
+          {
+            "survivorId": "anvil",
+            "health": 0,
+            "maxHealth": 170,
+            "alive": false,
+            "netId": 1
+          },
+          {
+            "survivorId": "kestrel",
+            "health": 90,
+            "maxHealth": 90,
+            "alive": true,
+            "netId": 28
+          }
+        ],
+        "tick": 180,
+        "paused": false,
+        "screen": "pause",
+        "inputEnabled": false,
+        "holding": true,
+        "pointerLock": false,
+        "my": {
+          "survivorId": "ranger",
+          "health": 110,
+          "maxHealth": 110,
+          "alive": true
+        },
+        "said": "Reply accepted — connecting…",
+        "saidLen": 28,
+        "statuses": [
+          {
+            "status": "hosting",
+            "detail": null,
+            "said": "Hosting. Create an invite for each friend you want to bring in."
+          },
+          {
+            "status": "inviteReady",
+            "detail": {
+              "id": 1,
+              "blob": "eyJ2IjoxLCJyb2xlIjoib2ZmZXIiLCJpZCI6MSwic2RwIjp7InR5cGUiOiJvZmZlciIsInNkcCI6InY9MFxyXG5vPS0gMTM1MjU2MTEzOTI3NDQ4MTkzIDIgSU4gSVA0IDEyNy4wLjAuMVxyXG5zPS1cclxudD0wIDBcclxuYT1ncm91cDpCVU5ETEUgMFxyXG5hPWV4dG1hcC1hbGxvdy1taXhlZFxyXG5hPW1zaWQtc2VtYW50aWM6IFdNU1xyXG5tPWFwcGxpY2F0aW9uIDU2MTg3IFVEUC9EVExTL1NDVFAgd2VicnRjLWRhdGFjaGFubmVsXHJcbmM9SU4gSVA0IDk5LjEwOS4xNDEuMTU4XHJcbmE9Y2FuZGlkYXRlOjEwODIwMDYwMTEgMSB1ZHAgMjExMzkzNzE1MSBlM2I5MjVkYi04NTY0LTQ5ZDYtYjI1OS1mYzE4ZjI4ZGVhOGIubG9jYWwgNTYxODcgdHlwIGhvc3QgZ2VuZXJhdGlvbiAwIG5ldHdvcmstY29zdCA5OTlcclxuYT1jYW5kaWRhdGU6MzgxNjQ5Mjk2OCAxIHVkcCAxNjc3NzI5NTM1IDk5LjEwOS4xNDEuMTU4IDU2MTg3IHR5cCBzcmZseCByYWRkciAwLjAuMC4wIHJwb3J0IDAgZ2VuZXJhdGlvbiAwIG5ldHdvcmstY29zdCA5OTlcclxuYT1pY2UtdWZyYWc6ZXZHdVxyXG5hPWljZS1wd2Q6Rk1VM09tczlNOTV0aFlxRkZlOVVXcXl1XHJcbmE9aWNlLW9wdGlvbnM6dHJpY2tsZVxyXG5hPWZpbmdlcnByaW50OnNoYS0yNTYgNzk6QjQ6NUQ6NjI6RjU6REU6MDY6ODY6NTY6NjM6NUU6Njc6RDI6MkE6QTU6RDM6MUY6NjU6MEQ6RjM6QjI6RUQ6NjI6MzM6RkQ6QTk6NkM6QUQ6MzM6NjU6MzA6NjRcclxuYT1zZXR1cDphY3RwYXNzXHJcbmE9bWlkOjBcclxuYT1zY3RwLXBvcnQ6NTAwMFxyXG5hPW1heC1tZXNzYWdlLXNpemU6MjYyMTQ0XHJcbiJ9fQ"
+            },
+            "said": "Invite ready. Send that code to your friend."
+          },
+          {
+            "status": "peerJoined",
+            "detail": {
+              "id": 1,
+              "count": 2
+            },
+            "said": "A player joined. 2 in the game."
+          },
+          {
+            "status": "peerConnecting",
+            "detail": {
+              "id": 1
+            },
+            "said": "Reply accepted — connecting…"
+          },
+          {
+            "status": "inviteReady",
+            "detail": {
+              "id": 2,
+              "blob": "eyJ2IjoxLCJyb2xlIjoib2ZmZXIiLCJpZCI6Miwic2RwIjp7InR5cGUiOiJvZmZlciIsInNkcCI6InY9MFxyXG5vPS0gMTc0ODIxMzI0NjA5MjEyNTA1NCAyIElOIElQNCAxMjcuMC4wLjFcclxucz0tXHJcbnQ9MCAwXHJcbmE9Z3JvdXA6QlVORExFIDBcclxuYT1leHRtYXAtYWxsb3ctbWl4ZWRcclxuYT1tc2lkLXNlbWFudGljOiBXTVNcclxubT1hcHBsaWNhdGlvbiA2MzYwNiBVRFAvRFRMUy9TQ1RQIHdlYnJ0Yy1kYXRhY2hhbm5lbFxyXG5jPUlOIElQNCA5OS4xMDkuMTQxLjE1OFxyXG5hPWNhbmRpZGF0ZToyNzg1ODgyNjE1IDEgdWRwIDIxMTM5MzcxNTEgZTNiOTI1ZGItODU2NC00OWQ2LWIyNTktZmMxOGYyOGRlYThiLmxvY2FsIDYzNjA2IHR5cCBob3N0IGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9Y2FuZGlkYXRlOjg0NDIwNTE2IDEgdWRwIDE2Nzc3Mjk1MzUgOTkuMTA5LjE0MS4xNTggNjM2MDYgdHlwIHNyZmx4IHJhZGRyIDAuMC4wLjAgcnBvcnQgMCBnZW5lcmF0aW9uIDAgbmV0d29yay1jb3N0IDk5OVxyXG5hPWljZS11ZnJhZzpFWEZQXHJcbmE9aWNlLXB3ZDpQK0lOS2JGc3VXbE1SVXRZR2hyS1RuVC9cclxuYT1pY2Utb3B0aW9uczp0cmlja2xlXHJcbmE9ZmluZ2VycHJpbnQ6c2hhLTI1NiA0QTo1ODo3Njo2NDpCRjpDODpFNzowRjo1QzpBNDoyODo4MjpDRjpBNjpDRDoxNjpBQzpFMjpCRjpGRTpDNjowNTo0RTo5RDpBRTo3MDo2MTpDMjo5OTpDOTo0Qjo2NVxyXG5hPXNldHVwOmFjdHBhc3NcclxuYT1taWQ6MFxyXG5hPXNjdHAtcG9ydDo1MDAwXHJcbmE9bWF4LW1lc3NhZ2Utc2l6ZToyNjIxNDRcclxuIn19"
+            },
+            "said": "Invite ready. Send that code to your friend."
+          },
+          {
+            "status": "peerJoined",
+            "detail": {
+              "id": 2,
+              "count": 3
+            },
+            "said": "A player joined. 3 in the game."
+          },
+          {
+            "status": "peerConnecting",
+            "detail": {
+              "id": 2
+            },
+            "said": "Reply accepted — connecting…"
+          }
+        ]
+      },
+      "A": {
+        "role": "client",
+        "lobbyMode": "client",
+        "status": "connected",
+        "statusDetail": {
+          "seed": 1337,
+          "stageIndex": 0,
+          "time": 5.666666507720947,
+          "myNetId": 1,
+          "artifactMask": 0,
+          "difficulty": 1
+        },
+        "connected": true,
+        "myNetId": 1,
+        "serverTick": 180,
+        "paused": false,
+        "screen": null,
+        "refusedLatch": false,
+        "my": {
+          "survivorId": "anvil",
+          "health": 0,
+          "maxHealth": 170,
+          "alive": false
+        },
+        "said": "Connected. Rebuilding the host's world…",
+        "saidLen": 39,
+        "statuses": [
+          {
+            "status": "joining",
+            "detail": null,
+            "said": "Answering the invite…"
+          },
+          {
+            "status": "answerReady",
+            "detail": {
+              "blob": "eyJ2IjoxLCJyb2xlIjoiYW5zd2VyIiwiaWQiOjEsInNkcCI6eyJ0eXBlIjoiYW5zd2VyIiwic2RwIjoidj0wXHJcbm89LSA0MDc1MjYzNzc1ODA2NjA1MjAwIDIgSU4gSVA0IDEyNy4wLjAuMVxyXG5zPS1cclxudD0wIDBcclxuYT1ncm91cDpCVU5ETEUgMFxyXG5hPWV4dG1hcC1hbGxvdy1taXhlZFxyXG5hPW1zaWQtc2VtYW50aWM6IFdNU1xyXG5tPWFwcGxpY2F0aW9uIDkgVURQL0RUTFMvU0NUUCB3ZWJydGMtZGF0YWNoYW5uZWxcclxuYz1JTiBJUDQgMC4wLjAuMFxyXG5hPWNhbmRpZGF0ZTozMDMyNjc2NzQzIDEgdWRwIDIxMTM5MzcxNTEgNTNlOGUwOWUtOTkyMy00Nzg2LWJkNDQtZDY1YzM3YzFiNjlkLmxvY2FsIDU2ODIwIHR5cCBob3N0IGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9aWNlLXVmcmFnOm9QUFFcclxuYT1pY2UtcHdkOmVEOTY4Z2JSLzB5UDYzVXpoWVFodDNjbVxyXG5hPWljZS1vcHRpb25zOnRyaWNrbGVcclxuYT1maW5nZXJwcmludDpzaGEtMjU2IDdBOkUwOjA1OjZBOkJCOkVGOjBGOjZCOkQxOjkyOjgzOkQzOkU0OjVFOkYyOkJEOjVDOjREOkU1OjE0OjA1OkI5OjZFOjkzOkEwOkY5OjEyOjBCOkNGOkYzOkE0OjE5XHJcbmE9c2V0dXA6YWN0aXZlXHJcbmE9bWlkOjBcclxuYT1zY3RwLXBvcnQ6NTAwMFxyXG5hPW1heC1tZXNzYWdlLXNpemU6MjYyMTQ0XHJcbiJ9fQ"
+            },
+            "said": "Send your reply code back to the host."
+          },
+          {
+            "status": "connected",
+            "detail": {
+              "seed": 1337,
+              "stageIndex": 0,
+              "time": 5.666666507720947,
+              "myNetId": 1,
+              "artifactMask": 0,
+              "difficulty": 1
+            },
+            "said": "Connected. Rebuilding the host's world…"
+          }
+        ]
+      },
+      "B": {
+        "role": "client",
+        "lobbyMode": "client",
+        "status": "connected",
+        "statusDetail": {
+          "seed": 1337,
+          "stageIndex": 0,
+          "time": 6.25,
+          "myNetId": 28,
+          "artifactMask": 0,
+          "difficulty": 1
+        },
+        "connected": true,
+        "myNetId": 28,
+        "serverTick": 185,
+        "paused": false,
+        "screen": null,
+        "refusedLatch": false,
+        "my": {
+          "survivorId": "kestrel",
+          "health": 90,
+          "maxHealth": 90,
+          "alive": true
+        },
+        "said": "Connected. Rebuilding the host's world…",
+        "saidLen": 39,
+        "statuses": [
+          {
+            "status": "joining",
+            "detail": null,
+            "said": "Answering the invite…"
+          },
+          {
+            "status": "answerReady",
+            "detail": {
+              "blob": "eyJ2IjoxLCJyb2xlIjoiYW5zd2VyIiwiaWQiOjIsInNkcCI6eyJ0eXBlIjoiYW5zd2VyIiwic2RwIjoidj0wXHJcbm89LSA4NjUzNTMyNDgxODQxMzA5MzgwIDIgSU4gSVA0IDEyNy4wLjAuMVxyXG5zPS1cclxudD0wIDBcclxuYT1ncm91cDpCVU5ETEUgMFxyXG5hPWV4dG1hcC1hbGxvdy1taXhlZFxyXG5hPW1zaWQtc2VtYW50aWM6IFdNU1xyXG5tPWFwcGxpY2F0aW9uIDkgVURQL0RUTFMvU0NUUCB3ZWJydGMtZGF0YWNoYW5uZWxcclxuYz1JTiBJUDQgMC4wLjAuMFxyXG5hPWNhbmRpZGF0ZToxOTk3MzU1NDE0IDEgdWRwIDIxMTM5MzcxNTEgMmQ2M2Y3MWYtNWMzNi00NzljLWFhYjgtZjMzNTBjNWViZTRlLmxvY2FsIDYyMTg5IHR5cCBob3N0IGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9aWNlLXVmcmFnOmFPTWZcclxuYT1pY2UtcHdkOms5ZjhUYms2QncwNEJyZE11VHRLNUpGSFxyXG5hPWljZS1vcHRpb25zOnRyaWNrbGVcclxuYT1maW5nZXJwcmludDpzaGEtMjU2IDM0OjIzOkU2OkM0OkM5OjdGOjE5OjE3OjE4OjY1OkQ5OjVDOkFEOjBCOjkzOjBBOjYyOjI2Ojg5OjU3OkYxOjA0OkM3OkM3OjIyOkE2OkI5OjQ1OjdCOjZCOkYyOjQ2XHJcbmE9c2V0dXA6YWN0aXZlXHJcbmE9bWlkOjBcclxuYT1zY3RwLXBvcnQ6NTAwMFxyXG5hPW1heC1tZXNzYWdlLXNpemU6MjYyMTQ0XHJcbiJ9fQ"
+            },
+            "said": "Send your reply code back to the host."
+          },
+          {
+            "status": "connected",
+            "detail": {
+              "seed": 1337,
+              "stageIndex": 0,
+              "time": 6.25,
+              "myNetId": 28,
+              "artifactMask": 0,
+              "difficulty": 1
+            },
+            "said": "Connected. Rebuilding the host's world…"
+          }
+        ]
+      },
+      "live": true
+    },
+    {
+      "label": "both dead, inside the grace",
+      "host": {
+        "role": "host",
+        "lobbyMode": "host",
+        "status": "peerConnecting",
+        "statusDetail": {
+          "id": 2
+        },
+        "players": 3,
+        "refusedPeers": [],
+        "clientsCount": 2,
+        "clients": [
+          {
+            "id": 1,
+            "helloSeen": true,
+            "survivorId": "anvil",
+            "hasPawn": true,
+            "joinTick": 35
+          },
+          {
+            "id": 2,
+            "helloSeen": true,
+            "survivorId": "kestrel",
+            "hasPawn": true,
+            "joinTick": 70
+          }
+        ],
+        "pawns": [
+          {
+            "survivorId": "anvil",
+            "health": 0,
+            "maxHealth": 170,
+            "alive": false,
+            "netId": 1
+          },
+          {
+            "survivorId": "kestrel",
+            "health": 0,
+            "maxHealth": 90,
+            "alive": false,
+            "netId": 28
+          }
+        ],
+        "tick": 190,
+        "paused": false,
+        "screen": "pause",
+        "inputEnabled": true,
+        "holding": true,
+        "pointerLock": false,
+        "my": {
+          "survivorId": "ranger",
+          "health": 110,
+          "maxHealth": 110,
+          "alive": true
+        },
+        "said": "Reply accepted — connecting…",
+        "saidLen": 28,
+        "statuses": [
+          {
+            "status": "hosting",
+            "detail": null,
+            "said": "Hosting. Create an invite for each friend you want to bring in."
+          },
+          {
+            "status": "inviteReady",
+            "detail": {
+              "id": 1,
+              "blob": "eyJ2IjoxLCJyb2xlIjoib2ZmZXIiLCJpZCI6MSwic2RwIjp7InR5cGUiOiJvZmZlciIsInNkcCI6InY9MFxyXG5vPS0gMTM1MjU2MTEzOTI3NDQ4MTkzIDIgSU4gSVA0IDEyNy4wLjAuMVxyXG5zPS1cclxudD0wIDBcclxuYT1ncm91cDpCVU5ETEUgMFxyXG5hPWV4dG1hcC1hbGxvdy1taXhlZFxyXG5hPW1zaWQtc2VtYW50aWM6IFdNU1xyXG5tPWFwcGxpY2F0aW9uIDU2MTg3IFVEUC9EVExTL1NDVFAgd2VicnRjLWRhdGFjaGFubmVsXHJcbmM9SU4gSVA0IDk5LjEwOS4xNDEuMTU4XHJcbmE9Y2FuZGlkYXRlOjEwODIwMDYwMTEgMSB1ZHAgMjExMzkzNzE1MSBlM2I5MjVkYi04NTY0LTQ5ZDYtYjI1OS1mYzE4ZjI4ZGVhOGIubG9jYWwgNTYxODcgdHlwIGhvc3QgZ2VuZXJhdGlvbiAwIG5ldHdvcmstY29zdCA5OTlcclxuYT1jYW5kaWRhdGU6MzgxNjQ5Mjk2OCAxIHVkcCAxNjc3NzI5NTM1IDk5LjEwOS4xNDEuMTU4IDU2MTg3IHR5cCBzcmZseCByYWRkciAwLjAuMC4wIHJwb3J0IDAgZ2VuZXJhdGlvbiAwIG5ldHdvcmstY29zdCA5OTlcclxuYT1pY2UtdWZyYWc6ZXZHdVxyXG5hPWljZS1wd2Q6Rk1VM09tczlNOTV0aFlxRkZlOVVXcXl1XHJcbmE9aWNlLW9wdGlvbnM6dHJpY2tsZVxyXG5hPWZpbmdlcnByaW50OnNoYS0yNTYgNzk6QjQ6NUQ6NjI6RjU6REU6MDY6ODY6NTY6NjM6NUU6Njc6RDI6MkE6QTU6RDM6MUY6NjU6MEQ6RjM6QjI6RUQ6NjI6MzM6RkQ6QTk6NkM6QUQ6MzM6NjU6MzA6NjRcclxuYT1zZXR1cDphY3RwYXNzXHJcbmE9bWlkOjBcclxuYT1zY3RwLXBvcnQ6NTAwMFxyXG5hPW1heC1tZXNzYWdlLXNpemU6MjYyMTQ0XHJcbiJ9fQ"
+            },
+            "said": "Invite ready. Send that code to your friend."
+          },
+          {
+            "status": "peerJoined",
+            "detail": {
+              "id": 1,
+              "count": 2
+            },
+            "said": "A player joined. 2 in the game."
+          },
+          {
+            "status": "peerConnecting",
+            "detail": {
+              "id": 1
+            },
+            "said": "Reply accepted — connecting…"
+          },
+          {
+            "status": "inviteReady",
+            "detail": {
+              "id": 2,
+              "blob": "eyJ2IjoxLCJyb2xlIjoib2ZmZXIiLCJpZCI6Miwic2RwIjp7InR5cGUiOiJvZmZlciIsInNkcCI6InY9MFxyXG5vPS0gMTc0ODIxMzI0NjA5MjEyNTA1NCAyIElOIElQNCAxMjcuMC4wLjFcclxucz0tXHJcbnQ9MCAwXHJcbmE9Z3JvdXA6QlVORExFIDBcclxuYT1leHRtYXAtYWxsb3ctbWl4ZWRcclxuYT1tc2lkLXNlbWFudGljOiBXTVNcclxubT1hcHBsaWNhdGlvbiA2MzYwNiBVRFAvRFRMUy9TQ1RQIHdlYnJ0Yy1kYXRhY2hhbm5lbFxyXG5jPUlOIElQNCA5OS4xMDkuMTQxLjE1OFxyXG5hPWNhbmRpZGF0ZToyNzg1ODgyNjE1IDEgdWRwIDIxMTM5MzcxNTEgZTNiOTI1ZGItODU2NC00OWQ2LWIyNTktZmMxOGYyOGRlYThiLmxvY2FsIDYzNjA2IHR5cCBob3N0IGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9Y2FuZGlkYXRlOjg0NDIwNTE2IDEgdWRwIDE2Nzc3Mjk1MzUgOTkuMTA5LjE0MS4xNTggNjM2MDYgdHlwIHNyZmx4IHJhZGRyIDAuMC4wLjAgcnBvcnQgMCBnZW5lcmF0aW9uIDAgbmV0d29yay1jb3N0IDk5OVxyXG5hPWljZS11ZnJhZzpFWEZQXHJcbmE9aWNlLXB3ZDpQK0lOS2JGc3VXbE1SVXRZR2hyS1RuVC9cclxuYT1pY2Utb3B0aW9uczp0cmlja2xlXHJcbmE9ZmluZ2VycHJpbnQ6c2hhLTI1NiA0QTo1ODo3Njo2NDpCRjpDODpFNzowRjo1QzpBNDoyODo4MjpDRjpBNjpDRDoxNjpBQzpFMjpCRjpGRTpDNjowNTo0RTo5RDpBRTo3MDo2MTpDMjo5OTpDOTo0Qjo2NVxyXG5hPXNldHVwOmFjdHBhc3NcclxuYT1taWQ6MFxyXG5hPXNjdHAtcG9ydDo1MDAwXHJcbmE9bWF4LW1lc3NhZ2Utc2l6ZToyNjIxNDRcclxuIn19"
+            },
+            "said": "Invite ready. Send that code to your friend."
+          },
+          {
+            "status": "peerJoined",
+            "detail": {
+              "id": 2,
+              "count": 3
+            },
+            "said": "A player joined. 3 in the game."
+          },
+          {
+            "status": "peerConnecting",
+            "detail": {
+              "id": 2
+            },
+            "said": "Reply accepted — connecting…"
+          }
+        ]
+      },
+      "A": {
+        "role": "client",
+        "lobbyMode": "client",
+        "status": "connected",
+        "statusDetail": {
+          "seed": 1337,
+          "stageIndex": 0,
+          "time": 5.666666507720947,
+          "myNetId": 1,
+          "artifactMask": 0,
+          "difficulty": 1
+        },
+        "connected": true,
+        "myNetId": 1,
+        "serverTick": 190,
+        "paused": false,
+        "screen": null,
+        "refusedLatch": false,
+        "my": {
+          "survivorId": "anvil",
+          "health": 0,
+          "maxHealth": 170,
+          "alive": false
+        },
+        "said": "Connected. Rebuilding the host's world…",
+        "saidLen": 39,
+        "statuses": [
+          {
+            "status": "joining",
+            "detail": null,
+            "said": "Answering the invite…"
+          },
+          {
+            "status": "answerReady",
+            "detail": {
+              "blob": "eyJ2IjoxLCJyb2xlIjoiYW5zd2VyIiwiaWQiOjEsInNkcCI6eyJ0eXBlIjoiYW5zd2VyIiwic2RwIjoidj0wXHJcbm89LSA0MDc1MjYzNzc1ODA2NjA1MjAwIDIgSU4gSVA0IDEyNy4wLjAuMVxyXG5zPS1cclxudD0wIDBcclxuYT1ncm91cDpCVU5ETEUgMFxyXG5hPWV4dG1hcC1hbGxvdy1taXhlZFxyXG5hPW1zaWQtc2VtYW50aWM6IFdNU1xyXG5tPWFwcGxpY2F0aW9uIDkgVURQL0RUTFMvU0NUUCB3ZWJydGMtZGF0YWNoYW5uZWxcclxuYz1JTiBJUDQgMC4wLjAuMFxyXG5hPWNhbmRpZGF0ZTozMDMyNjc2NzQzIDEgdWRwIDIxMTM5MzcxNTEgNTNlOGUwOWUtOTkyMy00Nzg2LWJkNDQtZDY1YzM3YzFiNjlkLmxvY2FsIDU2ODIwIHR5cCBob3N0IGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9aWNlLXVmcmFnOm9QUFFcclxuYT1pY2UtcHdkOmVEOTY4Z2JSLzB5UDYzVXpoWVFodDNjbVxyXG5hPWljZS1vcHRpb25zOnRyaWNrbGVcclxuYT1maW5nZXJwcmludDpzaGEtMjU2IDdBOkUwOjA1OjZBOkJCOkVGOjBGOjZCOkQxOjkyOjgzOkQzOkU0OjVFOkYyOkJEOjVDOjREOkU1OjE0OjA1OkI5OjZFOjkzOkEwOkY5OjEyOjBCOkNGOkYzOkE0OjE5XHJcbmE9c2V0dXA6YWN0aXZlXHJcbmE9bWlkOjBcclxuYT1zY3RwLXBvcnQ6NTAwMFxyXG5hPW1heC1tZXNzYWdlLXNpemU6MjYyMTQ0XHJcbiJ9fQ"
+            },
+            "said": "Send your reply code back to the host."
+          },
+          {
+            "status": "connected",
+            "detail": {
+              "seed": 1337,
+              "stageIndex": 0,
+              "time": 5.666666507720947,
+              "myNetId": 1,
+              "artifactMask": 0,
+              "difficulty": 1
+            },
+            "said": "Connected. Rebuilding the host's world…"
+          }
+        ]
+      },
+      "B": {
+        "role": "client",
+        "lobbyMode": "client",
+        "status": "connected",
+        "statusDetail": {
+          "seed": 1337,
+          "stageIndex": 0,
+          "time": 6.25,
+          "myNetId": 28,
+          "artifactMask": 0,
+          "difficulty": 1
+        },
+        "connected": true,
+        "myNetId": 28,
+        "serverTick": 190,
+        "paused": false,
+        "screen": null,
+        "refusedLatch": false,
+        "my": {
+          "survivorId": "kestrel",
+          "health": 0,
+          "maxHealth": 90,
+          "alive": false
+        },
+        "said": "Connected. Rebuilding the host's world…",
+        "saidLen": 39,
+        "statuses": [
+          {
+            "status": "joining",
+            "detail": null,
+            "said": "Answering the invite…"
+          },
+          {
+            "status": "answerReady",
+            "detail": {
+              "blob": "eyJ2IjoxLCJyb2xlIjoiYW5zd2VyIiwiaWQiOjIsInNkcCI6eyJ0eXBlIjoiYW5zd2VyIiwic2RwIjoidj0wXHJcbm89LSA4NjUzNTMyNDgxODQxMzA5MzgwIDIgSU4gSVA0IDEyNy4wLjAuMVxyXG5zPS1cclxudD0wIDBcclxuYT1ncm91cDpCVU5ETEUgMFxyXG5hPWV4dG1hcC1hbGxvdy1taXhlZFxyXG5hPW1zaWQtc2VtYW50aWM6IFdNU1xyXG5tPWFwcGxpY2F0aW9uIDkgVURQL0RUTFMvU0NUUCB3ZWJydGMtZGF0YWNoYW5uZWxcclxuYz1JTiBJUDQgMC4wLjAuMFxyXG5hPWNhbmRpZGF0ZToxOTk3MzU1NDE0IDEgdWRwIDIxMTM5MzcxNTEgMmQ2M2Y3MWYtNWMzNi00NzljLWFhYjgtZjMzNTBjNWViZTRlLmxvY2FsIDYyMTg5IHR5cCBob3N0IGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9aWNlLXVmcmFnOmFPTWZcclxuYT1pY2UtcHdkOms5ZjhUYms2QncwNEJyZE11VHRLNUpGSFxyXG5hPWljZS1vcHRpb25zOnRyaWNrbGVcclxuYT1maW5nZXJwcmludDpzaGEtMjU2IDM0OjIzOkU2OkM0OkM5OjdGOjE5OjE3OjE4OjY1OkQ5OjVDOkFEOjBCOjkzOjBBOjYyOjI2Ojg5OjU3OkYxOjA0OkM3OkM3OjIyOkE2OkI5OjQ1OjdCOjZCOkYyOjQ2XHJcbmE9c2V0dXA6YWN0aXZlXHJcbmE9bWlkOjBcclxuYT1zY3RwLXBvcnQ6NTAwMFxyXG5hPW1heC1tZXNzYWdlLXNpemU6MjYyMTQ0XHJcbiJ9fQ"
+            },
+            "said": "Send your reply code back to the host."
+          },
+          {
+            "status": "connected",
+            "detail": {
+              "seed": 1337,
+              "stageIndex": 0,
+              "time": 6.25,
+              "myNetId": 28,
+              "artifactMask": 0,
+              "difficulty": 1
+            },
+            "said": "Connected. Rebuilding the host's world…"
+          }
+        ]
+      },
+      "live": false
+    },
+    {
+      "label": "both dead, after the grace",
+      "host": {
+        "role": "host",
+        "lobbyMode": "host",
+        "status": "peerConnecting",
+        "statusDetail": {
+          "id": 2
+        },
+        "players": 3,
+        "refusedPeers": [],
+        "clientsCount": 2,
+        "clients": [
+          {
+            "id": 1,
+            "helloSeen": true,
+            "survivorId": "anvil",
+            "hasPawn": true,
+            "joinTick": 35
+          },
+          {
+            "id": 2,
+            "helloSeen": true,
+            "survivorId": "kestrel",
+            "hasPawn": true,
+            "joinTick": 70
+          }
+        ],
+        "pawns": [
+          {
+            "survivorId": "anvil",
+            "health": 0,
+            "maxHealth": 170,
+            "alive": false,
+            "netId": 1
+          },
+          {
+            "survivorId": "kestrel",
+            "health": 0,
+            "maxHealth": 90,
+            "alive": false,
+            "netId": 28
+          }
+        ],
+        "tick": 195,
+        "paused": true,
+        "screen": "pause",
+        "inputEnabled": true,
+        "holding": false,
+        "pointerLock": false,
+        "my": {
+          "survivorId": "ranger",
+          "health": 110,
+          "maxHealth": 110,
+          "alive": true
+        },
+        "said": "Reply accepted — connecting…",
+        "saidLen": 28,
+        "statuses": [
+          {
+            "status": "hosting",
+            "detail": null,
+            "said": "Hosting. Create an invite for each friend you want to bring in."
+          },
+          {
+            "status": "inviteReady",
+            "detail": {
+              "id": 1,
+              "blob": "eyJ2IjoxLCJyb2xlIjoib2ZmZXIiLCJpZCI6MSwic2RwIjp7InR5cGUiOiJvZmZlciIsInNkcCI6InY9MFxyXG5vPS0gMTM1MjU2MTEzOTI3NDQ4MTkzIDIgSU4gSVA0IDEyNy4wLjAuMVxyXG5zPS1cclxudD0wIDBcclxuYT1ncm91cDpCVU5ETEUgMFxyXG5hPWV4dG1hcC1hbGxvdy1taXhlZFxyXG5hPW1zaWQtc2VtYW50aWM6IFdNU1xyXG5tPWFwcGxpY2F0aW9uIDU2MTg3IFVEUC9EVExTL1NDVFAgd2VicnRjLWRhdGFjaGFubmVsXHJcbmM9SU4gSVA0IDk5LjEwOS4xNDEuMTU4XHJcbmE9Y2FuZGlkYXRlOjEwODIwMDYwMTEgMSB1ZHAgMjExMzkzNzE1MSBlM2I5MjVkYi04NTY0LTQ5ZDYtYjI1OS1mYzE4ZjI4ZGVhOGIubG9jYWwgNTYxODcgdHlwIGhvc3QgZ2VuZXJhdGlvbiAwIG5ldHdvcmstY29zdCA5OTlcclxuYT1jYW5kaWRhdGU6MzgxNjQ5Mjk2OCAxIHVkcCAxNjc3NzI5NTM1IDk5LjEwOS4xNDEuMTU4IDU2MTg3IHR5cCBzcmZseCByYWRkciAwLjAuMC4wIHJwb3J0IDAgZ2VuZXJhdGlvbiAwIG5ldHdvcmstY29zdCA5OTlcclxuYT1pY2UtdWZyYWc6ZXZHdVxyXG5hPWljZS1wd2Q6Rk1VM09tczlNOTV0aFlxRkZlOVVXcXl1XHJcbmE9aWNlLW9wdGlvbnM6dHJpY2tsZVxyXG5hPWZpbmdlcnByaW50OnNoYS0yNTYgNzk6QjQ6NUQ6NjI6RjU6REU6MDY6ODY6NTY6NjM6NUU6Njc6RDI6MkE6QTU6RDM6MUY6NjU6MEQ6RjM6QjI6RUQ6NjI6MzM6RkQ6QTk6NkM6QUQ6MzM6NjU6MzA6NjRcclxuYT1zZXR1cDphY3RwYXNzXHJcbmE9bWlkOjBcclxuYT1zY3RwLXBvcnQ6NTAwMFxyXG5hPW1heC1tZXNzYWdlLXNpemU6MjYyMTQ0XHJcbiJ9fQ"
+            },
+            "said": "Invite ready. Send that code to your friend."
+          },
+          {
+            "status": "peerJoined",
+            "detail": {
+              "id": 1,
+              "count": 2
+            },
+            "said": "A player joined. 2 in the game."
+          },
+          {
+            "status": "peerConnecting",
+            "detail": {
+              "id": 1
+            },
+            "said": "Reply accepted — connecting…"
+          },
+          {
+            "status": "inviteReady",
+            "detail": {
+              "id": 2,
+              "blob": "eyJ2IjoxLCJyb2xlIjoib2ZmZXIiLCJpZCI6Miwic2RwIjp7InR5cGUiOiJvZmZlciIsInNkcCI6InY9MFxyXG5vPS0gMTc0ODIxMzI0NjA5MjEyNTA1NCAyIElOIElQNCAxMjcuMC4wLjFcclxucz0tXHJcbnQ9MCAwXHJcbmE9Z3JvdXA6QlVORExFIDBcclxuYT1leHRtYXAtYWxsb3ctbWl4ZWRcclxuYT1tc2lkLXNlbWFudGljOiBXTVNcclxubT1hcHBsaWNhdGlvbiA2MzYwNiBVRFAvRFRMUy9TQ1RQIHdlYnJ0Yy1kYXRhY2hhbm5lbFxyXG5jPUlOIElQNCA5OS4xMDkuMTQxLjE1OFxyXG5hPWNhbmRpZGF0ZToyNzg1ODgyNjE1IDEgdWRwIDIxMTM5MzcxNTEgZTNiOTI1ZGItODU2NC00OWQ2LWIyNTktZmMxOGYyOGRlYThiLmxvY2FsIDYzNjA2IHR5cCBob3N0IGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9Y2FuZGlkYXRlOjg0NDIwNTE2IDEgdWRwIDE2Nzc3Mjk1MzUgOTkuMTA5LjE0MS4xNTggNjM2MDYgdHlwIHNyZmx4IHJhZGRyIDAuMC4wLjAgcnBvcnQgMCBnZW5lcmF0aW9uIDAgbmV0d29yay1jb3N0IDk5OVxyXG5hPWljZS11ZnJhZzpFWEZQXHJcbmE9aWNlLXB3ZDpQK0lOS2JGc3VXbE1SVXRZR2hyS1RuVC9cclxuYT1pY2Utb3B0aW9uczp0cmlja2xlXHJcbmE9ZmluZ2VycHJpbnQ6c2hhLTI1NiA0QTo1ODo3Njo2NDpCRjpDODpFNzowRjo1QzpBNDoyODo4MjpDRjpBNjpDRDoxNjpBQzpFMjpCRjpGRTpDNjowNTo0RTo5RDpBRTo3MDo2MTpDMjo5OTpDOTo0Qjo2NVxyXG5hPXNldHVwOmFjdHBhc3NcclxuYT1taWQ6MFxyXG5hPXNjdHAtcG9ydDo1MDAwXHJcbmE9bWF4LW1lc3NhZ2Utc2l6ZToyNjIxNDRcclxuIn19"
+            },
+            "said": "Invite ready. Send that code to your friend."
+          },
+          {
+            "status": "peerJoined",
+            "detail": {
+              "id": 2,
+              "count": 3
+            },
+            "said": "A player joined. 3 in the game."
+          },
+          {
+            "status": "peerConnecting",
+            "detail": {
+              "id": 2
+            },
+            "said": "Reply accepted — connecting…"
+          }
+        ]
+      },
+      "A": {
+        "role": "client",
+        "lobbyMode": "client",
+        "status": "connected",
+        "statusDetail": {
+          "seed": 1337,
+          "stageIndex": 0,
+          "time": 5.666666507720947,
+          "myNetId": 1,
+          "artifactMask": 0,
+          "difficulty": 1
+        },
+        "connected": true,
+        "myNetId": 1,
+        "serverTick": 190,
+        "paused": false,
+        "screen": null,
+        "refusedLatch": false,
+        "my": {
+          "survivorId": "anvil",
+          "health": 0,
+          "maxHealth": 170,
+          "alive": false
+        },
+        "said": "Connected. Rebuilding the host's world…",
+        "saidLen": 39,
+        "statuses": [
+          {
+            "status": "joining",
+            "detail": null,
+            "said": "Answering the invite…"
+          },
+          {
+            "status": "answerReady",
+            "detail": {
+              "blob": "eyJ2IjoxLCJyb2xlIjoiYW5zd2VyIiwiaWQiOjEsInNkcCI6eyJ0eXBlIjoiYW5zd2VyIiwic2RwIjoidj0wXHJcbm89LSA0MDc1MjYzNzc1ODA2NjA1MjAwIDIgSU4gSVA0IDEyNy4wLjAuMVxyXG5zPS1cclxudD0wIDBcclxuYT1ncm91cDpCVU5ETEUgMFxyXG5hPWV4dG1hcC1hbGxvdy1taXhlZFxyXG5hPW1zaWQtc2VtYW50aWM6IFdNU1xyXG5tPWFwcGxpY2F0aW9uIDkgVURQL0RUTFMvU0NUUCB3ZWJydGMtZGF0YWNoYW5uZWxcclxuYz1JTiBJUDQgMC4wLjAuMFxyXG5hPWNhbmRpZGF0ZTozMDMyNjc2NzQzIDEgdWRwIDIxMTM5MzcxNTEgNTNlOGUwOWUtOTkyMy00Nzg2LWJkNDQtZDY1YzM3YzFiNjlkLmxvY2FsIDU2ODIwIHR5cCBob3N0IGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9aWNlLXVmcmFnOm9QUFFcclxuYT1pY2UtcHdkOmVEOTY4Z2JSLzB5UDYzVXpoWVFodDNjbVxyXG5hPWljZS1vcHRpb25zOnRyaWNrbGVcclxuYT1maW5nZXJwcmludDpzaGEtMjU2IDdBOkUwOjA1OjZBOkJCOkVGOjBGOjZCOkQxOjkyOjgzOkQzOkU0OjVFOkYyOkJEOjVDOjREOkU1OjE0OjA1OkI5OjZFOjkzOkEwOkY5OjEyOjBCOkNGOkYzOkE0OjE5XHJcbmE9c2V0dXA6YWN0aXZlXHJcbmE9bWlkOjBcclxuYT1zY3RwLXBvcnQ6NTAwMFxyXG5hPW1heC1tZXNzYWdlLXNpemU6MjYyMTQ0XHJcbiJ9fQ"
+            },
+            "said": "Send your reply code back to the host."
+          },
+          {
+            "status": "connected",
+            "detail": {
+              "seed": 1337,
+              "stageIndex": 0,
+              "time": 5.666666507720947,
+              "myNetId": 1,
+              "artifactMask": 0,
+              "difficulty": 1
+            },
+            "said": "Connected. Rebuilding the host's world…"
+          }
+        ]
+      },
+      "B": {
+        "role": "client",
+        "lobbyMode": "client",
+        "status": "connected",
+        "statusDetail": {
+          "seed": 1337,
+          "stageIndex": 0,
+          "time": 6.25,
+          "myNetId": 28,
+          "artifactMask": 0,
+          "difficulty": 1
+        },
+        "connected": true,
+        "myNetId": 28,
+        "serverTick": 190,
+        "paused": false,
+        "screen": null,
+        "refusedLatch": false,
+        "my": {
+          "survivorId": "kestrel",
+          "health": 0,
+          "maxHealth": 90,
+          "alive": false
+        },
+        "said": "Connected. Rebuilding the host's world…",
+        "saidLen": 39,
+        "statuses": [
+          {
+            "status": "joining",
+            "detail": null,
+            "said": "Answering the invite…"
+          },
+          {
+            "status": "answerReady",
+            "detail": {
+              "blob": "eyJ2IjoxLCJyb2xlIjoiYW5zd2VyIiwiaWQiOjIsInNkcCI6eyJ0eXBlIjoiYW5zd2VyIiwic2RwIjoidj0wXHJcbm89LSA4NjUzNTMyNDgxODQxMzA5MzgwIDIgSU4gSVA0IDEyNy4wLjAuMVxyXG5zPS1cclxudD0wIDBcclxuYT1ncm91cDpCVU5ETEUgMFxyXG5hPWV4dG1hcC1hbGxvdy1taXhlZFxyXG5hPW1zaWQtc2VtYW50aWM6IFdNU1xyXG5tPWFwcGxpY2F0aW9uIDkgVURQL0RUTFMvU0NUUCB3ZWJydGMtZGF0YWNoYW5uZWxcclxuYz1JTiBJUDQgMC4wLjAuMFxyXG5hPWNhbmRpZGF0ZToxOTk3MzU1NDE0IDEgdWRwIDIxMTM5MzcxNTEgMmQ2M2Y3MWYtNWMzNi00NzljLWFhYjgtZjMzNTBjNWViZTRlLmxvY2FsIDYyMTg5IHR5cCBob3N0IGdlbmVyYXRpb24gMCBuZXR3b3JrLWNvc3QgOTk5XHJcbmE9aWNlLXVmcmFnOmFPTWZcclxuYT1pY2UtcHdkOms5ZjhUYms2QncwNEJyZE11VHRLNUpGSFxyXG5hPWljZS1vcHRpb25zOnRyaWNrbGVcclxuYT1maW5nZXJwcmludDpzaGEtMjU2IDM0OjIzOkU2OkM0OkM5OjdGOjE5OjE3OjE4OjY1OkQ5OjVDOkFEOjBCOjkzOjBBOjYyOjI2Ojg5OjU3OkYxOjA0OkM3OkM3OjIyOkE2OkI5OjQ1OjdCOjZCOkYyOjQ2XHJcbmE9c2V0dXA6YWN0aXZlXHJcbmE9bWlkOjBcclxuYT1zY3RwLXBvcnQ6NTAwMFxyXG5hPW1heC1tZXNzYWdlLXNpemU6MjYyMTQ0XHJcbiJ9fQ"
+            },
+            "said": "Send your reply code back to the host."
+          },
+          {
+            "status": "connected",
+            "detail": {
+              "seed": 1337,
+              "stageIndex": 0,
+              "time": 6.25,
+              "myNetId": 28,
+              "artifactMask": 0,
+              "difficulty": 1
+            },
+            "said": "Connected. Rebuilding the host's world…"
+          }
+        ]
+      },
+      "live": false
+    }
+  ],
+  "port": 5866,
+  "gateHost": {
+    "paused": false,
+    "screen": null,
+    "localTick": 70,
+    "survivorId": "ranger",
+    "maxHealth": 110,
+    "lobbyMode": "single",
+    "pointerLock": true
+  },
+  "gateA": {
+    "paused": false,
+    "screen": null,
+    "localTick": 65,
+    "survivorId": "anvil",
+    "maxHealth": 170,
+    "lobbyMode": "single",
+    "pointerLock": true
+  },
+  "gateB": {
+    "paused": false,
+    "screen": null,
+    "localTick": 70,
+    "survivorId": "kestrel",
+    "maxHealth": 90,
+    "lobbyMode": "single",
+    "pointerLock": true
+  },
+  "hostLog": {
+    "errors": [],
+    "pageErrors": []
+  },
+  "ALog": {
+    "errors": [],
+    "pageErrors": []
+  },
+  "BLog": {
+    "errors": [],
+    "pageErrors": []
+  },
+  "elapsedMs": 336658
+}

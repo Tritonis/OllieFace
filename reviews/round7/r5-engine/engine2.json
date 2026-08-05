@@ -1,0 +1,229 @@
+{
+  "notes": [],
+  "errors": [],
+  "gapCycles": [
+    {
+      "label": "old start, cumulative gap-cycles (gap 0 frames), +0",
+      "raf": 60,
+      "engineFrames": 60,
+      "loops": 1,
+      "ctxTimeAdvance": 1,
+      "predictedIfLinear": 1,
+      "pausedFrames": 0,
+      "hitstopFrames": 0,
+      "saturatedFrames": 0,
+      "revivals": 0,
+      "stepsHist": {
+        "1": 60
+      },
+      "menuScreen": null,
+      "playerAlive": true
+    },
+    {
+      "label": "old start, cumulative gap-cycles (gap 1 frames), +1",
+      "raf": 60,
+      "engineFrames": 60,
+      "loops": 1,
+      "ctxTimeAdvance": 1,
+      "predictedIfLinear": 1,
+      "pausedFrames": 0,
+      "hitstopFrames": 0,
+      "saturatedFrames": 0,
+      "revivals": 0,
+      "stepsHist": {
+        "1": 60
+      },
+      "menuScreen": null,
+      "playerAlive": true
+    },
+    {
+      "label": "old start, cumulative gap-cycles (gap 1 frames), +4",
+      "raf": 60,
+      "engineFrames": 60,
+      "loops": 1,
+      "ctxTimeAdvance": 1,
+      "predictedIfLinear": 1,
+      "pausedFrames": 0,
+      "hitstopFrames": 0,
+      "saturatedFrames": 0,
+      "revivals": 0,
+      "stepsHist": {
+        "1": 60
+      },
+      "menuScreen": null,
+      "playerAlive": true
+    },
+    {
+      "label": "old start, cumulative gap-cycles (gap 3 frames), +5",
+      "raf": 60,
+      "engineFrames": 60,
+      "loops": 1,
+      "ctxTimeAdvance": 1,
+      "predictedIfLinear": 1,
+      "pausedFrames": 0,
+      "hitstopFrames": 0,
+      "saturatedFrames": 0,
+      "revivals": 0,
+      "stepsHist": {
+        "1": 60
+      },
+      "menuScreen": null,
+      "playerAlive": true
+    },
+    {
+      "label": "old start, cumulative gap-cycles (gap 10 frames), +10",
+      "raf": 60,
+      "engineFrames": 60,
+      "loops": 1,
+      "ctxTimeAdvance": 1,
+      "predictedIfLinear": 1,
+      "pausedFrames": 0,
+      "hitstopFrames": 0,
+      "saturatedFrames": 0,
+      "revivals": 0,
+      "stepsHist": {
+        "1": 60
+      },
+      "menuScreen": null,
+      "playerAlive": true
+    }
+  ],
+  "controlled": [
+    {
+      "label": "old start, same-frame cycles baseline, run held alive, hitstop suppressed",
+      "raf": 60,
+      "engineFrames": 60,
+      "loops": 1,
+      "ctxTimeAdvance": 1,
+      "predictedIfLinear": 1,
+      "pausedFrames": 0,
+      "hitstopFrames": 0,
+      "saturatedFrames": 0,
+      "revivals": 0,
+      "stepsHist": {
+        "1": 60
+      },
+      "menuScreen": null,
+      "playerAlive": true
+    },
+    {
+      "label": "old start, same-frame cycles +1, run held alive, hitstop suppressed",
+      "raf": 60,
+      "engineFrames": 120,
+      "loops": 2,
+      "ctxTimeAdvance": 2,
+      "predictedIfLinear": 2,
+      "pausedFrames": 0,
+      "hitstopFrames": 0,
+      "saturatedFrames": 0,
+      "revivals": 0,
+      "stepsHist": {
+        "1": 120
+      },
+      "menuScreen": null,
+      "playerAlive": true
+    },
+    {
+      "label": "old start, same-frame cycles +2, run held alive, hitstop suppressed",
+      "raf": 60,
+      "engineFrames": 180,
+      "loops": 3,
+      "ctxTimeAdvance": 3,
+      "predictedIfLinear": 3,
+      "pausedFrames": 0,
+      "hitstopFrames": 0,
+      "saturatedFrames": 0,
+      "revivals": 0,
+      "stepsHist": {
+        "1": 180
+      },
+      "menuScreen": null,
+      "playerAlive": true
+    },
+    {
+      "label": "old start, same-frame cycles +6, run held alive, hitstop suppressed",
+      "raf": 60,
+      "engineFrames": 420,
+      "loops": 7,
+      "ctxTimeAdvance": 7,
+      "predictedIfLinear": 7,
+      "pausedFrames": 0,
+      "hitstopFrames": 0,
+      "saturatedFrames": 0,
+      "revivals": 0,
+      "stepsHist": {
+        "1": 420
+      },
+      "menuScreen": null,
+      "playerAlive": true
+    },
+    {
+      "label": "old start, same-frame cycles +11, run held alive, hitstop suppressed",
+      "raf": 60,
+      "engineFrames": 720,
+      "loops": 12,
+      "ctxTimeAdvance": 12,
+      "predictedIfLinear": 12,
+      "pausedFrames": 0,
+      "hitstopFrames": 0,
+      "saturatedFrames": 0,
+      "revivals": 0,
+      "stepsHist": {
+        "1": 720
+      },
+      "menuScreen": null,
+      "playerAlive": true
+    },
+    {
+      "label": "old start, same-frame cycles +21, run held alive, hitstop suppressed",
+      "raf": 60,
+      "engineFrames": 1320,
+      "loops": 22,
+      "ctxTimeAdvance": 22,
+      "predictedIfLinear": 22,
+      "pausedFrames": 0,
+      "hitstopFrames": 0,
+      "saturatedFrames": 0,
+      "revivals": 0,
+      "stepsHist": {
+        "1": 1320
+      },
+      "menuScreen": null,
+      "playerAlive": true
+    },
+    {
+      "label": "old start, same-frame cycles +22, run held alive, hitstop suppressed",
+      "raf": 60,
+      "engineFrames": 1380,
+      "loops": 23,
+      "ctxTimeAdvance": 23,
+      "predictedIfLinear": 23,
+      "pausedFrames": 0,
+      "hitstopFrames": 0,
+      "saturatedFrames": 0,
+      "revivals": 0,
+      "stepsHist": {
+        "1": 1380
+      },
+      "menuScreen": null,
+      "playerAlive": true
+    },
+    {
+      "label": "old start, same-frame cycles +32, run held alive, hitstop suppressed",
+      "raf": 60,
+      "engineFrames": 1980,
+      "loops": 33,
+      "ctxTimeAdvance": 33,
+      "predictedIfLinear": 33,
+      "pausedFrames": 0,
+      "hitstopFrames": 0,
+      "saturatedFrames": 0,
+      "revivals": 0,
+      "stepsHist": {
+        "1": 1980
+      },
+      "menuScreen": null,
+      "playerAlive": true
+    }
+  ]
+}

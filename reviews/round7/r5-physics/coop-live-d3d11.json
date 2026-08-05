@@ -1,0 +1,247 @@
+{
+  "arm": "after",
+  "headless": false,
+  "seconds": 20,
+  "buildGate": {
+    "hasRecordJumpImpulse": true,
+    "hasJumpImpulsesMap": true
+  },
+  "connected": {
+    "hostClients": 1,
+    "hostAuthority": true,
+    "clientAuthority": false,
+    "clientNetId": 1,
+    "hostHasPawn": true
+  },
+  "samples": [
+    {
+      "wall": 3.1,
+      "host": {
+        "t": 1.73,
+        "tick": 13,
+        "backlog": 2,
+        "lastTick": 12,
+        "pawn": {
+          "x": 2,
+          "y": 3.5531,
+          "z": 2.8633
+        },
+        "frameErrors": 0,
+        "lost": 0
+      },
+      "client": {
+        "t": 1.77,
+        "tick": 15,
+        "history": 1,
+        "acked": 14,
+        "me": {
+          "x": 2,
+          "y": 3.4711,
+          "z": 3.2073
+        },
+        "err": 0.0158,
+        "frameErrors": 0,
+        "lost": 0
+      },
+      "divergence": 0.3536
+    },
+    {
+      "wall": 6.5,
+      "host": {
+        "t": 1.92,
+        "tick": 24,
+        "backlog": 0,
+        "lastTick": 19,
+        "pawn": {
+          "x": 2,
+          "y": 3.2426,
+          "z": 4.1467
+        },
+        "frameErrors": 0,
+        "lost": 0
+      },
+      "client": {
+        "t": 1.87,
+        "tick": 21,
+        "history": 2,
+        "acked": 19,
+        "me": {
+          "x": 2,
+          "y": 3.1762,
+          "z": 4.374
+        },
+        "err": 0.1476,
+        "frameErrors": 0,
+        "lost": 0
+      },
+      "divergence": 0.2368
+    },
+    {
+      "wall": 10.5,
+      "host": {
+        "t": 2.07,
+        "tick": 33,
+        "backlog": 5,
+        "lastTick": 24,
+        "pawn": {
+          "x": 2,
+          "y": 2.9417,
+          "z": 5.1967
+        },
+        "frameErrors": 0,
+        "lost": 0
+      },
+      "client": {
+        "t": 2.03,
+        "tick": 31,
+        "history": 7,
+        "acked": 24,
+        "me": {
+          "x": 2,
+          "y": 2.698,
+          "z": 6.0198
+        },
+        "err": 1.2181,
+        "frameErrors": 0,
+        "lost": 0
+      },
+      "divergence": 0.8584
+    },
+    {
+      "wall": 11.7,
+      "host": {
+        "t": 2.3,
+        "tick": 47,
+        "backlog": 5,
+        "lastTick": 36,
+        "pawn": {
+          "x": 2,
+          "y": 2.7693,
+          "z": 6.42
+        },
+        "frameErrors": 0,
+        "lost": 0
+      },
+      "client": {
+        "t": 2.2,
+        "tick": 41,
+        "history": 4,
+        "acked": 37,
+        "me": {
+          "x": 2,
+          "y": 2.8038,
+          "z": 6.4611
+        },
+        "err": 0.0009,
+        "frameErrors": 0,
+        "lost": 0
+      },
+      "divergence": 0.0537
+    },
+    {
+      "wall": 14.8,
+      "host": {
+        "t": 2.62,
+        "tick": 66,
+        "backlog": 0,
+        "lastTick": 46,
+        "pawn": {
+          "x": 2,
+          "y": 2.801,
+          "z": 6.4578
+        },
+        "frameErrors": 0,
+        "lost": 0
+      },
+      "client": {
+        "t": 2.28,
+        "tick": 46,
+        "history": 0,
+        "acked": 46,
+        "me": {
+          "x": 2,
+          "y": 2.8038,
+          "z": 6.4611
+        },
+        "err": 0,
+        "frameErrors": 0,
+        "lost": 0
+      },
+      "divergence": 0.0043
+    },
+    {
+      "wall": 16.2,
+      "host": {
+        "t": 2.88,
+        "tick": 82,
+        "backlog": 0,
+        "lastTick": 47,
+        "pawn": {
+          "x": 2,
+          "y": 2.801,
+          "z": 6.4578
+        },
+        "frameErrors": 0,
+        "lost": 0
+      },
+      "client": {
+        "t": 2.33,
+        "tick": 49,
+        "history": 2,
+        "acked": 47,
+        "me": {
+          "x": 2,
+          "y": 2.8038,
+          "z": 6.4611
+        },
+        "err": 0,
+        "frameErrors": 0,
+        "lost": 0
+      },
+      "divergence": 0.0043
+    },
+    {
+      "wall": 21.6,
+      "host": {
+        "t": 2.98,
+        "tick": 88,
+        "backlog": 0,
+        "lastTick": 53,
+        "pawn": {
+          "x": 2,
+          "y": 2.801,
+          "z": 6.4578
+        },
+        "frameErrors": 0,
+        "lost": 0
+      },
+      "client": {
+        "t": 2.4,
+        "tick": 53,
+        "history": 0,
+        "acked": 53,
+        "me": {
+          "x": 2,
+          "y": 2.8038,
+          "z": 6.4611
+        },
+        "err": 0,
+        "frameErrors": 0,
+        "lost": 0
+      },
+      "divergence": 0.0043
+    }
+  ],
+  "divergenceSeries": [
+    0.3536,
+    0.2368,
+    0.8584,
+    0.0537,
+    0.0043,
+    0.0043,
+    0.0043
+  ],
+  "hostErrors": [],
+  "clientErrors": [],
+  "crashed": false
+}

@@ -1,0 +1,155 @@
+{
+  "arm": "f7-pregate",
+  "subs": [
+    "R1-F7-soles",
+    "R1-F7-tectonic"
+  ],
+  "startedAt": "2026-08-04T02:33:47.836Z",
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 65,
+      "survivorId": "ranger",
+      "maxHealth": 110,
+      "netRole": "single",
+      "authority": true
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 62,
+      "survivorId": "anvil",
+      "maxHealth": 170,
+      "netRole": "single",
+      "authority": true
+    }
+  },
+  "runningGateAfterFocus": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "simTick": 69,
+      "localTick": 69,
+      "netTick": 0
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "simTick": 63,
+      "localTick": 0,
+      "netTick": 63
+    }
+  },
+  "roles": {
+    "host": {
+      "role": "host",
+      "authority": true,
+      "clients": 1
+    },
+    "client": {
+      "role": "client",
+      "authority": false,
+      "myNetId": 1,
+      "connected": true
+    }
+  },
+  "inventories": {
+    "host": {
+      "wax-quail": 3,
+      "rubber-soles": 1,
+      "tectonic-heart": 1,
+      "sunken-vertebra": 1
+    },
+    "client": {
+      "wax-quail": 3,
+      "rubber-soles": 1,
+      "tectonic-heart": 1,
+      "sunken-vertebra": 1
+    }
+  },
+  "presses": [
+    {
+      "grounded": true
+    },
+    {
+      "grounded": true
+    },
+    {
+      "grounded": true
+    }
+  ],
+  "hostSide": {
+    "pawnImpulses": [
+      30,
+      30,
+      36
+    ],
+    "hostBarriers": [
+      10,
+      10,
+      10
+    ],
+    "quakes": [
+      {
+        "r": 9,
+        "d": 52.5
+      }
+    ],
+    "jumpEvents": [
+      {
+        "local": false,
+        "isPawn": true
+      },
+      {
+        "local": false,
+        "isPawn": true
+      },
+      {
+        "local": false,
+        "isPawn": true
+      }
+    ],
+    "hostShield": 0,
+    "pawnVelY": 0
+  },
+  "clientSide": {
+    "ownImpulses": [
+      30,
+      30,
+      30
+    ],
+    "barriers": [
+      10,
+      10,
+      10
+    ],
+    "quakes": [],
+    "shield": 0
+  },
+  "agreement": {
+    "pawn": [
+      30,
+      30,
+      36
+    ],
+    "client": [
+      30,
+      30,
+      30
+    ],
+    "equal": false
+  },
+  "errors": {
+    "host": [],
+    "client": [],
+    "hostConsole": [],
+    "clientConsole": []
+  },
+  "substitutionsApplied": [
+    "R1-F7-soles",
+    "R1-F7-tectonic"
+  ],
+  "substitutionsMissing": [],
+  "ok": true
+}

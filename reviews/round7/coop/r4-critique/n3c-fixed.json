@@ -1,0 +1,138 @@
+{
+  "arm": "n3c-fixed",
+  "scenario": "snap",
+  "substitutions": [
+    "FX-hostv99"
+  ],
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 80,
+      "survivorId": "ranger",
+      "maxHealth": 110
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 65,
+      "survivorId": "anvil",
+      "maxHealth": 170
+    }
+  },
+  "wireUp": true,
+  "afterJoin": {
+    "host": {
+      "tick": 260,
+      "clients": 0,
+      "paused": false,
+      "inputEnabled": true,
+      "holding": false,
+      "hasLivePeer": false,
+      "screen": null,
+      "hudKills": 0,
+      "flashes": 0,
+      "progression": 0,
+      "lobbyStatus": "peerLeft",
+      "lobbyDetail": {
+        "id": 1,
+        "count": 1
+      },
+      "pawns": [],
+      "own": {
+        "survivorId": "ranger",
+        "health": 110,
+        "maxHealth": 110,
+        "alive": true
+      }
+    },
+    "client": {
+      "tick": 5,
+      "serverTick": 55,
+      "connected": false,
+      "myNetId": 0,
+      "paused": false,
+      "screen": null,
+      "hudKills": 0,
+      "flashes": 0,
+      "progression": 0,
+      "lobbyStatus": "refused",
+      "lobbyDetail": {
+        "reason": "version",
+        "detail": "theirs 99, ours 3"
+      },
+      "own": {
+        "survivorId": "anvil",
+        "health": 170,
+        "maxHealth": 170,
+        "alive": true,
+        "shield": 0,
+        "localTick": 0
+      },
+      "ended": null
+    }
+  },
+  "result": {
+    "host": {
+      "tick": 275,
+      "clients": 0,
+      "paused": false,
+      "inputEnabled": true,
+      "holding": false,
+      "hasLivePeer": false,
+      "screen": null,
+      "hudKills": 0,
+      "flashes": 0,
+      "progression": 0,
+      "lobbyStatus": "peerLeft",
+      "lobbyDetail": {
+        "id": 1,
+        "count": 1
+      },
+      "pawns": [],
+      "own": {
+        "survivorId": "ranger",
+        "health": 110,
+        "maxHealth": 110,
+        "alive": true
+      }
+    },
+    "client": {
+      "tick": 5,
+      "serverTick": 55,
+      "connected": false,
+      "myNetId": 0,
+      "paused": false,
+      "screen": null,
+      "hudKills": 0,
+      "flashes": 0,
+      "progression": 0,
+      "lobbyStatus": "refused",
+      "lobbyDetail": {
+        "reason": "version",
+        "detail": "theirs 99, ours 3"
+      },
+      "own": {
+        "survivorId": "anvil",
+        "health": 170,
+        "maxHealth": 170,
+        "alive": true,
+        "shield": 0,
+        "localTick": 0
+      },
+      "ended": null
+    },
+    "hostSaid": "A player left. 1 in the game.",
+    "clientSaid": "That host is running a different version of the game (theirs 99, ours 3). Both of you need the same build.",
+    "mistated": false
+  },
+  "ok": true,
+  "substitutionsApplied": [
+    "FX-hostv99"
+  ],
+  "substitutionsMissing": [],
+  "hostConsoleErrors": [],
+  "hostPageErrors": [],
+  "clientConsoleErrors": [],
+  "clientPageErrors": []
+}

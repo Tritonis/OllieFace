@@ -1,0 +1,221 @@
+{
+  "arm": "n8-pre",
+  "scenario": "n8",
+  "substitutions": [
+    "N8-input"
+  ],
+  "substitutionsApplied": [
+    "N8-input"
+  ],
+  "substitutionsMissing": [],
+  "helloOverride": null,
+  "port": 5803,
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 68,
+      "survivorId": "ranger",
+      "maxHealth": 110
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 72,
+      "survivorId": "anvil",
+      "maxHealth": 170
+    }
+  },
+  "runningGateAfterFocus": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "tick": 317,
+      "serverTick": null,
+      "netRole": "host",
+      "authority": true,
+      "clients": 1,
+      "myNetId": null,
+      "connected": null
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "tick": 139,
+      "serverTick": 165,
+      "netRole": "client",
+      "authority": false,
+      "clients": null,
+      "myNetId": 1,
+      "connected": true
+    }
+  },
+  "overlay": [
+    {
+      "paused": false,
+      "input": false,
+      "holding": true,
+      "live": true,
+      "screen": "pause"
+    },
+    {
+      "paused": false,
+      "input": false,
+      "holding": true,
+      "live": true,
+      "screen": "pause"
+    },
+    {
+      "paused": false,
+      "input": false,
+      "holding": true,
+      "live": true,
+      "screen": "pause"
+    },
+    {
+      "paused": false,
+      "input": false,
+      "holding": true,
+      "live": true,
+      "screen": "pause"
+    }
+  ],
+  "clientTickDuringOverlay": {
+    "a": 226,
+    "b": 262
+  },
+  "release": [
+    {
+      "ms": 4,
+      "paused": false,
+      "input": false,
+      "holding": true,
+      "live": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 210,
+      "paused": false,
+      "input": false,
+      "holding": true,
+      "live": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 416,
+      "paused": false,
+      "input": false,
+      "holding": true,
+      "live": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 625,
+      "paused": false,
+      "input": false,
+      "holding": true,
+      "live": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 834,
+      "paused": false,
+      "input": false,
+      "holding": true,
+      "live": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 1040,
+      "paused": false,
+      "input": false,
+      "holding": true,
+      "live": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 1242,
+      "paused": false,
+      "input": false,
+      "holding": true,
+      "live": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 1447,
+      "paused": false,
+      "input": false,
+      "holding": true,
+      "live": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 1652,
+      "paused": true,
+      "input": true,
+      "holding": false,
+      "live": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 1859,
+      "paused": true,
+      "input": true,
+      "holding": false,
+      "live": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 2071,
+      "paused": true,
+      "input": true,
+      "holding": false,
+      "live": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 2277,
+      "paused": true,
+      "input": true,
+      "holding": false,
+      "live": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 2480,
+      "paused": true,
+      "input": true,
+      "holding": false,
+      "live": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 2694,
+      "paused": true,
+      "input": true,
+      "holding": false,
+      "live": false,
+      "screen": "pause"
+    }
+  ],
+  "clientDeath": {
+    "alive": false,
+    "health": 0,
+    "screen": "death",
+    "ended": true
+  },
+  "errors": {
+    "host": {
+      "console": [],
+      "page": [],
+      "harness": [
+        "WrongDocumentError: The root document of this element is not valid for pointer lock."
+      ]
+    },
+    "client": {
+      "console": [],
+      "page": [],
+      "harness": []
+    }
+  }
+}

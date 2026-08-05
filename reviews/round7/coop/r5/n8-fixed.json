@@ -1,0 +1,325 @@
+{
+  "arm": "n8-fixed",
+  "substitutions": [],
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 325,
+      "survivorId": "ranger",
+      "maxHealth": 110
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 65,
+      "survivorId": "anvil",
+      "maxHealth": 170
+    }
+  },
+  "joined": {
+    "host": {
+      "tick": 80,
+      "paused": false,
+      "screen": null,
+      "inputEnabled": true,
+      "pointerLocked": false,
+      "clients": 1,
+      "pawns": [
+        {
+          "survivorId": "anvil",
+          "health": 170,
+          "maxHealth": 170,
+          "alive": true,
+          "localTick": 0
+        }
+      ],
+      "helloSeen": [
+        true
+      ],
+      "peerSurvivors": [
+        "anvil"
+      ],
+      "lobbyStatus": "peerConnecting",
+      "lobbyDetail": {
+        "reason": null,
+        "detail": null,
+        "detailHead": null,
+        "count": null
+      },
+      "players": 2,
+      "ownSurvivor": "ranger",
+      "ownMax": 110,
+      "ownAlive": true
+    },
+    "client": {
+      "connected": true,
+      "myNetId": 1,
+      "netTick": 10,
+      "serverTick": 80,
+      "paused": false,
+      "screen": null,
+      "survivorId": "anvil",
+      "maxHealth": 170,
+      "health": 170,
+      "alive": true,
+      "lobbyStatus": "connected",
+      "lobbyDetail": {
+        "reason": null,
+        "detail": null,
+        "detailHead": null
+      }
+    }
+  },
+  "beforeEvent": {
+    "tick": 150,
+    "paused": false,
+    "screen": "pause",
+    "inputEnabled": false,
+    "pointerLocked": false,
+    "clients": 1,
+    "pawns": [
+      {
+        "survivorId": "anvil",
+        "health": 170,
+        "maxHealth": 170,
+        "alive": true,
+        "localTick": 0
+      }
+    ],
+    "helloSeen": [
+      true
+    ],
+    "peerSurvivors": [
+      "anvil"
+    ],
+    "lobbyStatus": "peerConnecting",
+    "lobbyDetail": {
+      "reason": null,
+      "detail": null,
+      "detailHead": null,
+      "count": null
+    },
+    "players": 2,
+    "ownSurvivor": "ranger",
+    "ownMax": 110,
+    "ownAlive": true
+  },
+  "killMs": 9,
+  "samples": [
+    {
+      "ms": 743,
+      "tick": 150,
+      "paused": false,
+      "input": true,
+      "hold": true,
+      "live": false,
+      "locked": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 1460,
+      "tick": 155,
+      "paused": true,
+      "input": true,
+      "hold": false,
+      "live": false,
+      "locked": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 2787,
+      "tick": 155,
+      "paused": true,
+      "input": true,
+      "hold": false,
+      "live": false,
+      "locked": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 2793,
+      "tick": 155,
+      "paused": true,
+      "input": true,
+      "hold": false,
+      "live": false,
+      "locked": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 2817,
+      "tick": 155,
+      "paused": true,
+      "input": true,
+      "hold": false,
+      "live": false,
+      "locked": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 3458,
+      "tick": 155,
+      "paused": true,
+      "input": true,
+      "hold": false,
+      "live": false,
+      "locked": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 3472,
+      "tick": 155,
+      "paused": true,
+      "input": true,
+      "hold": false,
+      "live": false,
+      "locked": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 4122,
+      "tick": 155,
+      "paused": true,
+      "input": true,
+      "hold": false,
+      "live": false,
+      "locked": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 4794,
+      "tick": 155,
+      "paused": true,
+      "input": true,
+      "hold": false,
+      "live": false,
+      "locked": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 4811,
+      "tick": 155,
+      "paused": true,
+      "input": true,
+      "hold": false,
+      "live": false,
+      "locked": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 5470,
+      "tick": 155,
+      "paused": true,
+      "input": true,
+      "hold": false,
+      "live": false,
+      "locked": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 5471,
+      "tick": 155,
+      "paused": true,
+      "input": true,
+      "hold": false,
+      "live": false,
+      "locked": false,
+      "screen": "pause"
+    },
+    {
+      "ms": 6135,
+      "tick": 155,
+      "paused": true,
+      "input": true,
+      "hold": false,
+      "live": false,
+      "locked": false,
+      "screen": "pause"
+    }
+  ],
+  "tickAtKill": 150,
+  "firstRelease": {
+    "ms": 743,
+    "tick": 150,
+    "dTick": 0,
+    "locked": false
+  },
+  "firstRepause": {
+    "ms": 1460,
+    "tick": 155
+  },
+  "hostAfter": {
+    "tick": 155,
+    "paused": true,
+    "screen": "pause",
+    "inputEnabled": true,
+    "pointerLocked": false,
+    "clients": 1,
+    "pawns": [
+      {
+        "survivorId": "anvil",
+        "health": 0,
+        "maxHealth": 170,
+        "alive": false,
+        "localTick": 0
+      }
+    ],
+    "helloSeen": [
+      true
+    ],
+    "peerSurvivors": [
+      "anvil"
+    ],
+    "lobbyStatus": "peerConnecting",
+    "lobbyDetail": {
+      "reason": null,
+      "detail": null,
+      "detailHead": null,
+      "count": null
+    },
+    "players": 2,
+    "ownSurvivor": "ranger",
+    "ownMax": 110,
+    "ownAlive": true
+  },
+  "clientAfter": {
+    "connected": true,
+    "myNetId": 1,
+    "netTick": 25,
+    "serverTick": 150,
+    "paused": true,
+    "screen": "death",
+    "survivorId": "anvil",
+    "maxHealth": 170,
+    "health": 170,
+    "alive": true,
+    "lobbyStatus": "connected",
+    "lobbyDetail": {
+      "reason": null,
+      "detail": null,
+      "detailHead": null
+    }
+  },
+  "errors": {
+    "host": {
+      "consoleErrors": 0,
+      "netWarns": 0,
+      "netWarnTexts": [],
+      "consoleWarns": 12,
+      "pageErrors": 0,
+      "errorTexts": [],
+      "pageErrorTexts": []
+    },
+    "client": {
+      "consoleErrors": 0,
+      "netWarns": 0,
+      "netWarnTexts": [],
+      "consoleWarns": 12,
+      "pageErrors": 0,
+      "errorTexts": [],
+      "pageErrorTexts": []
+    }
+  },
+  "substitutionsMissing": []
+}

@@ -1,0 +1,397 @@
+{
+  "seed": 1337,
+  "ready": true,
+  "clockPinned": true,
+  "ms": {
+    "boot": 18843,
+    "bootTimeout": 60000
+  },
+  "shots": [
+    {
+      "name": "10-inventory",
+      "doc": "Dense late-run inventory across every tier, with an equipment nuke firing. Judges item icon craft, tier legibility and equipment effect quality.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round6\\uidbg\\10-inventory.png",
+      "engine": {
+        "frameErrors": 1,
+        "lastFrameError": {
+          "who": "harness:10-inventory",
+          "message": "[harness] 10-inventory: subject missing or illegible — monsters standing in it (pixels: {\"why\":\"illegible\",\"px\":2507,\"need\":200,\"objs\":\"7/8\",\"need2\":2,\"sepP50\":0.23,\"needSep\":0.25,\"carriedPx\":1574,\"perPx\":[133,734,11,502,118,187,81,741],\"perSep\":[0.23,0.27,0.03,0.11,0.51,0.13,0.29,0.27],\"needPerPx\":100,\"badObjects\":[{\"i\":2,\"px\":11,\"sepP50\":0.03}],\"lum\":102.7,\"bgLum\":61.8})",
+          "frame": -1
+        },
+        "time": 1562.1333333333314
+      },
+      "ms": {
+        "setup": 8231,
+        "screenshot": 1122,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": false,
+        "checks": [
+          {
+            "subject": "every tier in the inventory strip",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "shown": 83,
+              "held": 83,
+              "floor": 60,
+              "catalogue": 92
+            }
+          },
+          {
+            "subject": "the equipment effect",
+            "kind": "dom",
+            "ok": true,
+            "detail": null
+          },
+          {
+            "subject": "the equipment blast",
+            "kind": "pixels",
+            "ok": true,
+            "px": 62790,
+            "frac": 0.48449,
+            "lum": 59.5,
+            "bgLum": 14.5,
+            "contrast": 0.607,
+            "sep": 0.53,
+            "sepP25": 0.29,
+            "sepP50": 0.59,
+            "legible": 0.894,
+            "at": [
+              0.46,
+              0.535
+            ],
+            "box": [
+              0.001,
+              0.013,
+              0.999,
+              0.998
+            ],
+            "objects": 4,
+            "visibleObjects": 4,
+            "minPx": 800,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 56134,
+            "minCarried": 800,
+            "legibleOk": true,
+            "aggregate": "VFX buffers: the meshes are shared particle/ring/trail pools, not nameable objects",
+            "perObjectOk": true,
+            "gatedOn": [
+              "px >= minPx",
+              "carriedPx >= minCarried"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25"
+            ]
+          },
+          {
+            "subject": "monsters standing in it",
+            "kind": "pixels",
+            "ok": false,
+            "px": 2507,
+            "frac": 0.01934,
+            "lum": 102.7,
+            "bgLum": 61.8,
+            "contrast": 0.249,
+            "sep": 0.265,
+            "sepP25": 0.09,
+            "sepP50": 0.23,
+            "legible": 0.628,
+            "at": [
+              0.427,
+              0.55
+            ],
+            "box": [
+              0.001,
+              0.309,
+              0.595,
+              0.761
+            ],
+            "objects": 8,
+            "visibleObjects": 7,
+            "perPx": [
+              133,
+              734,
+              11,
+              502,
+              118,
+              187,
+              81,
+              741
+            ],
+            "perSep": [
+              0.23,
+              0.27,
+              0.03,
+              0.11,
+              0.51,
+              0.13,
+              0.29,
+              0.27
+            ],
+            "minPx": 200,
+            "minObjects": 2,
+            "present": true,
+            "carriedPx": 1574,
+            "minSep": 0.25,
+            "legibleOk": false,
+            "crowd": {
+              "need": 2,
+              "why": "blast victims: knockback removes members from frame by design"
+            },
+            "minPerPx": 100,
+            "absentObjects": [
+              {
+                "i": 2,
+                "px": 11,
+                "sepP50": 0.03
+              }
+            ],
+            "objectFailures": [
+              {
+                "i": 2,
+                "px": 11,
+                "sepP50": 0.03
+              }
+            ],
+            "perObjectOk": false,
+            "gatedOn": [
+              "px >= minPx",
+              "visibleObjects >= minObjects",
+              "sepP50 >= minSep",
+              "perPx/perSep per object"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "legible"
+            ]
+          },
+          {
+            "subject": "shutter (effect seconds)",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "age": 0.1167,
+              "frames": 7,
+              "exact": true,
+              "sim": 0.1167
+            }
+          }
+        ]
+      },
+      "newErrors": [
+        "NUMDBG place 22 crit 0",
+        "NUMDBG place 44 crit 0",
+        "NUMDBG place 66 crit 0",
+        "NUMDBG place 88 crit 0",
+        "NUMDBG place 110 crit 0",
+        "NUMDBG place 115 crit 0",
+        "NUMDBG place 120 crit 0",
+        "NUMDBG place 123 crit 0",
+        "NUMDBG place 128 crit 0",
+        "NUMDBG place 133 crit 0",
+        "NUMDBG place 138 crit 0",
+        "NUMDBG place 22 crit 0",
+        "NUMDBG place 2 crit 2",
+        "NUMDBG place 2 crit 0.9999999999999996",
+        "NUMDBG drop-budget 2",
+        "NUMDBG drop-budget 594",
+        "NUMDBG place 322 crit 2",
+        "NUMDBG place 409 crit 2",
+        "NUMDBG place 102 crit 0",
+        "NUMDBG place 172 crit 1.0000000000000004",
+        "NUMDBG drop-budget 320",
+        "NUMDBG drop-budget 320",
+        "NUMDBG drop-budget 170",
+        "NUMDBG drop-budget 58",
+        "NUMDBG drop-budget 42",
+        "NUMDBG drop-budget 320",
+        "NUMDBG place 2313 crit 0",
+        "NUMDBG place 1318 crit 1",
+        "NUMDBG drop-budget 1146",
+        "NUMDBG drop-budget 87",
+        "NUMDBG drop-budget 1179",
+        "NUMDBG drop-budget 1179",
+        "NUMDBG drop-budget 849",
+        "NUMDBG drop-budget 1179",
+        "NUMDBG drop-budget 15",
+        "NUMDBG drop-budget 640",
+        "NUMDBG drop-budget 640",
+        "NUMDBG drop-budget 640",
+        "NUMDBG drop-budget 640",
+        "NUMDBG drop-budget 640",
+        "NUMDBG drop-budget 150",
+        "NUMDBG drop-budget 15",
+        "NUMDBG drop-budget 218",
+        "NUMDBG drop-budget 4715",
+        "NUMDBG drop-budget 4715",
+        "NUMDBG place 1317 crit 0",
+        "NUMDBG drop-budget 579",
+        "[harness] 10-inventory: subject missing or illegible — monsters standing in it (pixels: {\"why\":\"illegible\",\"px\":2507,\"need\":200,\"objs\":\"7/8\",\"need2\":2,\"sepP50\":0.23,\"needSep\":0.25,\"carriedPx\":1574,\"perPx\":[133,734,11,502,118,187,81,741],\"perSep\":[0.23,0.27,0.03,0.11,0.51,0.13,0.29,0.27],\"needPerPx\":100,\"badObjects\":[{\"i\":2,\"px\":11,\"sepP50\":0.03}],\"lum\":102.7,\"bgLum\":61.8})"
+      ]
+    }
+  ],
+  "errors": [
+    "NUMDBG place 22 crit 0",
+    "NUMDBG place 44 crit 0",
+    "NUMDBG place 66 crit 0",
+    "NUMDBG place 88 crit 0",
+    "NUMDBG place 110 crit 0",
+    "NUMDBG place 115 crit 0",
+    "NUMDBG place 120 crit 0",
+    "NUMDBG place 123 crit 0",
+    "NUMDBG place 128 crit 0",
+    "NUMDBG place 133 crit 0",
+    "NUMDBG place 138 crit 0",
+    "NUMDBG place 22 crit 0",
+    "NUMDBG place 2 crit 2",
+    "NUMDBG place 2 crit 0.9999999999999996",
+    "NUMDBG drop-budget 2",
+    "NUMDBG drop-budget 594",
+    "NUMDBG place 322 crit 2",
+    "NUMDBG place 409 crit 2",
+    "NUMDBG place 102 crit 0",
+    "NUMDBG place 172 crit 1.0000000000000004",
+    "NUMDBG drop-budget 320",
+    "NUMDBG drop-budget 320",
+    "NUMDBG drop-budget 170",
+    "NUMDBG drop-budget 58",
+    "NUMDBG drop-budget 42",
+    "NUMDBG drop-budget 320",
+    "NUMDBG place 2313 crit 0",
+    "NUMDBG place 1318 crit 1",
+    "NUMDBG drop-budget 1146",
+    "NUMDBG drop-budget 87",
+    "NUMDBG drop-budget 1179",
+    "NUMDBG drop-budget 1179",
+    "NUMDBG drop-budget 849",
+    "NUMDBG drop-budget 1179",
+    "NUMDBG drop-budget 15",
+    "NUMDBG drop-budget 640",
+    "NUMDBG drop-budget 640",
+    "NUMDBG drop-budget 640",
+    "NUMDBG drop-budget 640",
+    "NUMDBG drop-budget 640",
+    "NUMDBG drop-budget 150",
+    "NUMDBG drop-budget 15",
+    "NUMDBG drop-budget 218",
+    "NUMDBG drop-budget 4715",
+    "NUMDBG drop-budget 4715",
+    "NUMDBG place 1317 crit 0",
+    "NUMDBG drop-budget 579",
+    "[harness] 10-inventory: subject missing or illegible — monsters standing in it (pixels: {\"why\":\"illegible\",\"px\":2507,\"need\":200,\"objs\":\"7/8\",\"need2\":2,\"sepP50\":0.23,\"needSep\":0.25,\"carriedPx\":1574,\"perPx\":[133,734,11,502,118,187,81,741],\"perSep\":[0.23,0.27,0.03,0.11,0.51,0.13,0.29,0.27],\"needPerPx\":100,\"badObjects\":[{\"i\":2,\"px\":11,\"sepP50\":0.03}],\"lum\":102.7,\"bgLum\":61.8})"
+  ],
+  "partial": true,
+  "subjectFailures": [
+    {
+      "name": "10-inventory",
+      "failed": [
+        "monsters standing in it"
+      ],
+      "detail": [
+        {
+          "subject": "monsters standing in it",
+          "kind": "pixels",
+          "ok": false,
+          "px": 2507,
+          "frac": 0.01934,
+          "lum": 102.7,
+          "bgLum": 61.8,
+          "contrast": 0.249,
+          "sep": 0.265,
+          "sepP25": 0.09,
+          "sepP50": 0.23,
+          "legible": 0.628,
+          "at": [
+            0.427,
+            0.55
+          ],
+          "box": [
+            0.001,
+            0.309,
+            0.595,
+            0.761
+          ],
+          "objects": 8,
+          "visibleObjects": 7,
+          "perPx": [
+            133,
+            734,
+            11,
+            502,
+            118,
+            187,
+            81,
+            741
+          ],
+          "perSep": [
+            0.23,
+            0.27,
+            0.03,
+            0.11,
+            0.51,
+            0.13,
+            0.29,
+            0.27
+          ],
+          "minPx": 200,
+          "minObjects": 2,
+          "present": true,
+          "carriedPx": 1574,
+          "minSep": 0.25,
+          "legibleOk": false,
+          "crowd": {
+            "need": 2,
+            "why": "blast victims: knockback removes members from frame by design"
+          },
+          "minPerPx": 100,
+          "absentObjects": [
+            {
+              "i": 2,
+              "px": 11,
+              "sepP50": 0.03
+            }
+          ],
+          "objectFailures": [
+            {
+              "i": 2,
+              "px": 11,
+              "sepP50": 0.03
+            }
+          ],
+          "perObjectOk": false,
+          "gatedOn": [
+            "px >= minPx",
+            "visibleObjects >= minObjects",
+            "sepP50 >= minSep",
+            "perPx/perSep per object"
+          ],
+          "notGated": [
+            "contrast",
+            "sep",
+            "sepP25",
+            "legible"
+          ]
+        }
+      ]
+    }
+  ],
+  "subjectsOk": false,
+  "determinism": {
+    "clockPinned": true,
+    "frameDt": 0.016666666666666666,
+    "frameTimeouts": 0
+  },
+  "perf": {
+    "programs": 71,
+    "geometries": 371,
+    "textures": 53,
+    "sceneObjects": 1125
+  }
+}

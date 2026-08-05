@@ -1,0 +1,195 @@
+{
+  "flawless": {
+    "allAbsorbed": {
+      "flawlessStages": 3,
+      "damageTaken": 0,
+      "damageTakenThisStage": 0,
+      "untouchable": [
+        1,
+        1,
+        true
+      ],
+      "ironclad": [
+        3,
+        3,
+        true
+      ]
+    },
+    "allReal": {
+      "flawlessStages": 0,
+      "damageTaken": 60,
+      "damageTakenThisStage": 0,
+      "untouchable": [
+        0,
+        1,
+        false
+      ],
+      "ironclad": [
+        0,
+        3,
+        false
+      ]
+    },
+    "mixed": {
+      "flawlessStages": 2,
+      "damageTaken": 20,
+      "damageTakenThisStage": 0,
+      "untouchable": [
+        1,
+        1,
+        true
+      ],
+      "ironclad": [
+        2,
+        3,
+        false
+      ]
+    },
+    "noDamage": {
+      "flawlessStages": 3,
+      "damageTaken": 0,
+      "damageTakenThisStage": 0,
+      "untouchable": [
+        1,
+        1,
+        true
+      ],
+      "ironclad": [
+        3,
+        3,
+        true
+      ]
+    }
+  },
+  "readout": {
+    "direct": {
+      "marathon": "17:54 / 30:00",
+      "clockedIn": "17m / 10h 0m",
+      "veteran": "1 / 25",
+      "marathonAtGoal": "30:00 / 30:00",
+      "clockedInAtGoal": "10h 0m / 10h 0m",
+      "boundary3599": "1:40 / 59:59",
+      "boundary3600": "1m / 1h 0m"
+    },
+    "rows": [],
+    "detail": [],
+    "err": null,
+    "bookKeys": [
+      "ctx",
+      "root",
+      "screen",
+      "stack",
+      "orbitAngle",
+      "bannerTimer",
+      "settings",
+      "survivorId",
+      "difficultyId",
+      "artifactIds",
+      "edictTier",
+      "preview",
+      "navIndex",
+      "navRepeat",
+      "pad",
+      "newChallenges",
+      "logbook",
+      "screens",
+      "banner",
+      "bannerRefs"
+    ]
+  },
+  "twoRealTabs": {
+    "bLoadedKills": 10,
+    "storageAfterA2": 25,
+    "diskKills": 28,
+    "diskUnlocks": [
+      "aTab",
+      "bTab"
+    ],
+    "memA": {
+      "kills": 28,
+      "unlocks": [
+        "aTab",
+        "bTab"
+      ]
+    },
+    "memB": {
+      "kills": 28,
+      "unlocks": [
+        "aTab",
+        "bTab"
+      ]
+    },
+    "writes": {
+      "a": 3,
+      "b": 1
+    },
+    "lostKills": 0
+  },
+  "settle": {
+    "writesA": 1,
+    "writesB": 2,
+    "disk": 14,
+    "memA": 14,
+    "memB": 14
+  },
+  "resetVsStale": [
+    {
+      "bAfterResetEvent": 100,
+      "diskAfterStaleWrite": 101,
+      "memB": 101
+    },
+    {
+      "bAfterResetEvent": 100,
+      "diskAfterStaleWrite": 101,
+      "memB": 101
+    },
+    {
+      "bAfterResetEvent": 100,
+      "diskAfterStaleWrite": 101,
+      "memB": 101
+    },
+    {
+      "bAfterResetEvent": 100,
+      "diskAfterStaleWrite": 101,
+      "memB": 101
+    },
+    {
+      "bAfterResetEvent": 100,
+      "diskAfterStaleWrite": 101,
+      "memB": 101
+    }
+  ],
+  "casWindow": {
+    "diskKills": 15,
+    "diskHasGhostUnlock": false,
+    "memKills": 15,
+    "lostForeignKills": 984
+  },
+  "casRecovery": {
+    "diskKillsNow": 15,
+    "baseRawMatchesDisk": true
+  },
+  "importAndClear": {
+    "afterImport": 7,
+    "afterClearMem": 42,
+    "afterClearDisk": 43
+  },
+  "resetMidRun": {
+    "runBefore": {
+      "kills": 77,
+      "damageTaken": 999
+    },
+    "runStillThere": true,
+    "runAfter": {
+      "kills": 77,
+      "damageTaken": 999
+    },
+    "committedAfterWipe": {
+      "kills": 77,
+      "damageTaken": 999,
+      "time": 600
+    },
+    "lifetimeKillsAfterWipe": 0
+  },
+  "errors": []
+}

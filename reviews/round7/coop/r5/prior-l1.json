@@ -1,0 +1,228 @@
+{
+  "arm": "prior-l1",
+  "mode": "l1",
+  "substitutions": [],
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 270,
+      "survivorId": "ranger",
+      "maxHealth": 110
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 65,
+      "survivorId": "anvil",
+      "maxHealth": 170
+    }
+  },
+  "joined": {
+    "host": {
+      "tick": 75,
+      "paused": false,
+      "screen": null,
+      "inputEnabled": true,
+      "pointerLocked": false,
+      "clients": 1,
+      "pawns": [
+        {
+          "survivorId": "anvil",
+          "health": 170,
+          "maxHealth": 170,
+          "alive": true,
+          "localTick": 0
+        }
+      ],
+      "helloSeen": [
+        true
+      ],
+      "peerSurvivors": [
+        "anvil"
+      ],
+      "lobbyStatus": "peerConnecting",
+      "lobbyDetail": {
+        "reason": null,
+        "detail": null,
+        "detailHead": null,
+        "count": null
+      },
+      "players": 2,
+      "ownSurvivor": "ranger",
+      "ownMax": 110,
+      "ownAlive": true
+    },
+    "client": {
+      "connected": true,
+      "myNetId": 1,
+      "netTick": 10,
+      "serverTick": 80,
+      "paused": false,
+      "screen": null,
+      "survivorId": "anvil",
+      "maxHealth": 170,
+      "health": 170,
+      "alive": true,
+      "lobbyStatus": "connected",
+      "lobbyDetail": {
+        "reason": null,
+        "detail": null,
+        "detailHead": null
+      }
+    }
+  },
+  "L2": {
+    "pawnSurvivor": "anvil",
+    "pawnMax": 170,
+    "clientSurvivor": "anvil",
+    "clientMax": 170
+  },
+  "series": [
+    {
+      "i": 0,
+      "serverTick": 140,
+      "host": {
+        "alive": false,
+        "paused": false,
+        "screen": "death",
+        "input": false,
+        "holding": true,
+        "tick": 140
+      }
+    },
+    {
+      "i": 1,
+      "serverTick": 145,
+      "host": {
+        "alive": false,
+        "paused": false,
+        "screen": "death",
+        "input": false,
+        "holding": true,
+        "tick": 150
+      }
+    },
+    {
+      "i": 2,
+      "serverTick": 155,
+      "host": {
+        "alive": false,
+        "paused": false,
+        "screen": "death",
+        "input": false,
+        "holding": true,
+        "tick": 160
+      }
+    },
+    {
+      "i": 3,
+      "serverTick": 165,
+      "host": {
+        "alive": false,
+        "paused": false,
+        "screen": "death",
+        "input": false,
+        "holding": true,
+        "tick": 170
+      }
+    },
+    {
+      "i": 4,
+      "serverTick": 175,
+      "host": {
+        "alive": false,
+        "paused": false,
+        "screen": "death",
+        "input": false,
+        "holding": true,
+        "tick": 180
+      }
+    },
+    {
+      "i": 5,
+      "serverTick": 185,
+      "host": {
+        "alive": false,
+        "paused": false,
+        "screen": "death",
+        "input": false,
+        "holding": true,
+        "tick": 190
+      }
+    },
+    {
+      "i": 6,
+      "serverTick": 195,
+      "host": {
+        "alive": false,
+        "paused": false,
+        "screen": "death",
+        "input": false,
+        "holding": true,
+        "tick": 200
+      }
+    },
+    {
+      "i": 7,
+      "serverTick": 205,
+      "host": {
+        "alive": false,
+        "paused": false,
+        "screen": "death",
+        "input": false,
+        "holding": true,
+        "tick": 210
+      }
+    }
+  ],
+  "clientAfter": {
+    "connected": true,
+    "myNetId": 1,
+    "netTick": 85,
+    "serverTick": 210,
+    "paused": false,
+    "screen": null,
+    "survivorId": "anvil",
+    "maxHealth": 170,
+    "health": 170,
+    "alive": true,
+    "lobbyStatus": "connected",
+    "lobbyDetail": {
+      "reason": null,
+      "detail": null,
+      "detailHead": null
+    }
+  },
+  "sentences": {
+    "host": {
+      "text": "Reply accepted — connecting…",
+      "length": 28
+    },
+    "client": {
+      "text": "Connected. Rebuilding the host's world…",
+      "length": 39
+    }
+  },
+  "errors": {
+    "host": {
+      "consoleErrors": 0,
+      "netWarns": 0,
+      "netWarnTexts": [],
+      "consoleWarns": 12,
+      "pageErrors": 0,
+      "errorTexts": [],
+      "pageErrorTexts": []
+    },
+    "client": {
+      "consoleErrors": 0,
+      "netWarns": 0,
+      "netWarnTexts": [],
+      "consoleWarns": 12,
+      "pageErrors": 0,
+      "errorTexts": [],
+      "pageErrorTexts": []
+    }
+  },
+  "substitutionsMissing": []
+}

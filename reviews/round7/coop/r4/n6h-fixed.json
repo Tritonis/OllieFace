@@ -1,0 +1,77 @@
+{
+  "arm": "n6h-fixed",
+  "scenario": "n6host",
+  "substitutions": [],
+  "substitutionsApplied": [],
+  "substitutionsMissing": [],
+  "helloOverride": null,
+  "port": 5816,
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 70,
+      "survivorId": "ranger",
+      "maxHealth": 110
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 69,
+      "survivorId": "anvil",
+      "maxHealth": 170
+    }
+  },
+  "runningGateAfterFocus": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "tick": 314,
+      "netRole": "host",
+      "authority": true,
+      "clients": 1,
+      "myNetId": null,
+      "connected": null
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "tick": 136,
+      "netRole": "client",
+      "authority": false,
+      "clients": null,
+      "myNetId": 1,
+      "connected": true
+    }
+  },
+  "tickBefore": 166,
+  "tickAfter": 219,
+  "hostClients": 1,
+  "pawns": [
+    {
+      "id": 1,
+      "survivorId": "anvil",
+      "helloSeen": true,
+      "health": 170,
+      "maxHealth": 170,
+      "alive": true
+    }
+  ],
+  "hostPaused": false,
+  "errors": {
+    "host": {
+      "console": [
+        "[net] host dropped a malformed message from peer 1 RangeError: Invalid typed array length: 200\n    at new Uint8Array (<anonymous>)\n    at Reader.str (http://localhost:5816/src/net/Protocol.js:195:40)\n    at readHello (ht"
+      ],
+      "page": [],
+      "harness": [
+        "WrongDocumentError: The root document of this element is not valid for pointer lock."
+      ]
+    },
+    "client": {
+      "console": [],
+      "page": [],
+      "harness": []
+    }
+  }
+}

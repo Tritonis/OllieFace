@@ -1,0 +1,188 @@
+{
+  "arm": "survivor-mismatch",
+  "hostSurvivor": "ranger",
+  "clientSurvivor": "anvil",
+  "substitutions": [],
+  "steps": [
+    "HOST gate {\"paused\":false,\"screen\":null,\"localTick\":61,\"survivorId\":\"ranger\",\"baseMax\":110,\"maxHealth\":110}",
+    "CLIENT gate {\"paused\":false,\"screen\":null,\"localTick\":61,\"survivorId\":\"anvil\",\"baseMax\":170,\"maxHealth\":170}",
+    "identities {\"hostOwn\":{\"survivorId\":\"ranger\",\"baseMax\":110,\"maxHealth\":110},\"hostPawn\":{\"survivorId\":\"ranger\",\"baseMax\":110,\"maxHealth\":110,\"moveSpeed\":7,\"damage\":12},\"clientOwn\":{\"survivorId\":\"anvil\",\"baseMax\":170,\"maxHealth\":170,\"moveSpeed\":6.5,\"damage\":15}}",
+    "healthSeries {\"hostPawn\":70.92,\"hostPawnMax\":110,\"hostPawnShield\":0,\"clientOwn\":109.6,\"clientMax\":170,\"clientShield\":12.43,\"gap\":38.68}",
+    "sourced kills {\"killed\":1,\"sourceWasHostPlayer\":true} {\"host\":{\"kills\":1,\"dealt\":1000000,\"hudKills\":1},\"client\":{\"kills\":1,\"dealt\":0,\"hudKills\":1}}"
+  ],
+  "runningGate": {
+    "host": {
+      "paused": false,
+      "screen": null,
+      "localTick": 61,
+      "survivorId": "ranger",
+      "baseMax": 110,
+      "maxHealth": 110
+    },
+    "client": {
+      "paused": false,
+      "screen": null,
+      "localTick": 61,
+      "survivorId": "anvil",
+      "baseMax": 170,
+      "maxHealth": 170
+    }
+  },
+  "inventory": {
+    "host": {
+      "vert": 1
+    },
+    "client": {
+      "vert": 1
+    }
+  },
+  "roles": {
+    "host": {
+      "authority": true,
+      "role": "host",
+      "playerCount": 2,
+      "clients": 1
+    },
+    "client": {
+      "authority": false,
+      "role": "client",
+      "myNetId": 1,
+      "connected": true
+    }
+  },
+  "identities": {
+    "hostOwn": {
+      "survivorId": "ranger",
+      "baseMax": 110,
+      "maxHealth": 110
+    },
+    "hostPawn": {
+      "survivorId": "ranger",
+      "baseMax": 110,
+      "maxHealth": 110,
+      "moveSpeed": 7,
+      "damage": 12
+    },
+    "clientOwn": {
+      "survivorId": "anvil",
+      "baseMax": 170,
+      "maxHealth": 170,
+      "moveSpeed": 6.5,
+      "damage": 15
+    }
+  },
+  "hostDamagesPawn": {
+    "found": true,
+    "dealt": 40,
+    "healthBefore": 110,
+    "healthAfter": 70,
+    "maxHealth": 110,
+    "frac": 0.6364
+  },
+  "healthSeries": [
+    {
+      "hostPawn": 70,
+      "hostPawnMax": 110,
+      "hostPawnShield": 0,
+      "clientOwn": 108.18,
+      "clientMax": 170,
+      "clientShield": 28.02,
+      "gap": 38.18
+    },
+    {
+      "hostPawn": 70,
+      "hostPawnMax": 110,
+      "hostPawnShield": 0,
+      "clientOwn": 108.18,
+      "clientMax": 170,
+      "clientShield": 25.75,
+      "gap": 38.18
+    },
+    {
+      "hostPawn": 70,
+      "hostPawnMax": 110,
+      "hostPawnShield": 0,
+      "clientOwn": 108.18,
+      "clientMax": 170,
+      "clientShield": 23.63,
+      "gap": 38.18
+    },
+    {
+      "hostPawn": 70,
+      "hostPawnMax": 110,
+      "hostPawnShield": 0,
+      "clientOwn": 108.18,
+      "clientMax": 170,
+      "clientShield": 21.36,
+      "gap": 38.18
+    },
+    {
+      "hostPawn": 70.13,
+      "hostPawnMax": 110,
+      "hostPawnShield": 0,
+      "clientOwn": 108.36,
+      "clientMax": 170,
+      "clientShield": 19.09,
+      "gap": 38.23
+    },
+    {
+      "hostPawn": 70.4,
+      "hostPawnMax": 110,
+      "hostPawnShield": 0,
+      "clientOwn": 108.75,
+      "clientMax": 170,
+      "clientShield": 16.83,
+      "gap": 38.35
+    },
+    {
+      "hostPawn": 70.65,
+      "hostPawnMax": 110,
+      "hostPawnShield": 0,
+      "clientOwn": 109.13,
+      "clientMax": 170,
+      "clientShield": 14.7,
+      "gap": 38.48
+    },
+    {
+      "hostPawn": 70.92,
+      "hostPawnMax": 110,
+      "hostPawnShield": 0,
+      "clientOwn": 109.6,
+      "clientMax": 170,
+      "clientShield": 12.43,
+      "gap": 38.68
+    }
+  ],
+  "beforeSourcedKills": {
+    "host": {
+      "kills": 0,
+      "dealt": 0,
+      "hudKills": 0
+    },
+    "client": {
+      "kills": 0,
+      "dealt": 0,
+      "hudKills": 0
+    }
+  },
+  "sourcedKills": {
+    "killed": 1,
+    "sourceWasHostPlayer": true
+  },
+  "afterSourcedKills": {
+    "host": {
+      "kills": 1,
+      "dealt": 1000000,
+      "hudKills": 1
+    },
+    "client": {
+      "kills": 1,
+      "dealt": 0,
+      "hudKills": 1
+    }
+  },
+  "pageErrors": {
+    "host": 1,
+    "client": 0
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "arm": "eb-pre",
+  "substitutions": [
+    "EB-iso"
+  ],
+  "runningGate": {
+    "paused": false,
+    "screen": null,
+    "localTick": 65
+  },
+  "ok": false,
+  "error": "Error: page.evaluate: Error: r4c: deliberate listener failure\n    at eval (eval at evaluate (:311:30), <anonymous>:5:69)\n    at EventBus.emit (http://127.0.0.1:5833/src/core/Engine.js:292:27)\n    at Combat._kill (http://127.0.0.1:5833/src/systems/Combat.js:521:16)\n    at Combat.applyDamage (http://127.0.0.1:5833/src/systems/Combat.js:509:50)\n    at eval (eval at evaluate (:311:30), <anonymous>:11:61)\n    at async <anonymous>:337:30",
+  "substitutionsApplied": [
+    "EB-iso"
+  ],
+  "substitutionsMissing": [],
+  "consoleErrors": [],
+  "pageErrors": []
+}
