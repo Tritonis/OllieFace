@@ -1243,6 +1243,7 @@ export class Menus {
       hosting: 'Hosting. Create an invite for each friend you want to bring in.',
       inviteReady: 'Invite ready. Send that code to your friend.',
       peerConnecting: 'Reply accepted — connecting…',
+      peerFailed: detail?.detail || 'That player never finished connecting.',
       peerJoined: `A player joined. ${detail?.count ?? '?'} in the game.`,
       peerLeft: `A player left. ${detail?.count ?? '?'} in the game.`,
       joining: 'Answering the invite…',

@@ -70,7 +70,25 @@ export class NetClient {
   /** A view factory turns a replicated entity into something renderable. */
   registerViewFactory(kind, factory) { this.viewFactories.set(kind, factory); }
 
+  /**
+   * Say once that this client is not talking to the host any more.
+   *
+   * Two paths report it and only one of them exists at any moment: `onClose`
+   * on a peer that connected, and the transport's `onDisconnected` for a
+   * connection that failed before the channels ever opened — where `onClose`
+   * is still null, which is why that failure used to be completely silent and
+   * the joiner sat on "the game starts when they accept it" for ever. Both go
+   * through here so a peer that connected and then dropped does not emit twice.
+   */
+  _reportDisconnect() {
+    if (this._disconnectReported) return;
+    this._disconnectReported = true;
+    this.connected = false;
+    this.ctx.events.emit('netDisconnected', {});
+  }
+
   async join(inviteBlob) {
+    this.transport.onDisconnected = () => this._reportDisconnect();
     const { blob, connected } = await this.transport.join(inviteBlob);
     connected.then((peer) => {
       this.peer = peer;
@@ -82,8 +100,12 @@ export class NetClient {
       // playing the host's survivor for the whole session, silently.
       this._sendHello();
       peer.onMessage = (data) => this._onMessage(data);
-      peer.onClose = () => { this.connected = false; this.ctx.events.emit('netDisconnected', {}); };
-    });
+      peer.onClose = () => this._reportDisconnect();
+    // The rejection handler is not decoration: `connected` now rejects when the
+    // connection fails before the channels open, and without one here this
+    // chain is an unhandled rejection. The failure itself is already reported
+    // through `onDisconnected` above.
+    }, () => {});
     return blob; // caller shows this to the player to send back to the host
   }
 

@@ -152,7 +152,16 @@ export class NetHost {
 
   _onPeerLeave(peer) {
     const c = this.clients.get(peer.id);
-    if (!c) return;
+    if (!c) {
+      // A peer that died before `_onPeer` ran — i.e. before its channels ever
+      // opened — never entered `clients`, and every refusal door this system
+      // has is reached through `clients`. Returning bare here made that whole
+      // failure silent: no `netPlayerLeft`, no `netPeerRefused`, no status
+      // change, nothing in the console. This line is the only record that the
+      // peer existed at all, and it is what a bug report can be written from.
+      console.warn(`[net] peer ${peer?.id} dropped before its channels opened — it never joined the session.`);
+      return;
+    }
     this.clients.delete(peer.id);
     if (c.pawn) this.ctx.despawnRemotePlayer?.(c.pawn);
     this.ctx.events.emit('netPlayerLeft', { id: peer.id });

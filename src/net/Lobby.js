@@ -124,8 +124,22 @@ export class Lobby {
     // afterwards overwrote that, so a host that had just accepted a player sat
     // reading "Reply accepted — connecting…" forever.
     this._set('peerConnecting', { id });
-    await invite.accept(answerBlob);
-    this.pendingInvites.delete(id);
+    try {
+      await invite.accept(answerBlob);
+    } catch (err) {
+      // `accept` now rejects on its connect deadline instead of awaiting a
+      // promise that can never settle, so this is reachable — and the panel
+      // has to stop saying "connecting…" when it is not.
+      this._set('peerFailed', { id, detail: err?.message });
+      throw err;
+    } finally {
+      // In the `finally` and not after the await: an invite whose connection
+      // failed is spent either way — its RTCPeerConnection has a remote
+      // description and is closed — so keeping it would only let the host
+      // paste the same dead answer again. A mistyped code never reaches here;
+      // it throws out of `_inviteIdFor` above, with the invite intact.
+      this.pendingInvites.delete(id);
+    }
   }
 
   _inviteIdFor(blob) {

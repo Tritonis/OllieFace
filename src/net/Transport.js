@@ -60,6 +60,41 @@ const MAX_STATE_BUFFERED = 256 * 1024;
 // rather than against a copy of the number that can drift away from it.
 export const MAX_SIM_QUEUE = 2048;
 
+// How long the host waits, *after applying a joiner's answer*, for both data
+// channels to open before it gives up on that peer.
+//
+// The window opens at `accept` rather than at `createInvite` deliberately: the
+// invite-to-answer leg is a human copying a blob into a chat window and can
+// legitimately take minutes, while from `setRemoteDescription` onwards both
+// ends are exchanging ICE checks and nothing is waiting on a person.
+//
+// Too short and a slow-but-healthy join is refused mid-negotiation — a TURN
+// allocation on a poor mobile network is seconds on its own, and the slowest
+// *successful* join in this branch's own captures (reviews/round8/n1) took
+// 8972 ms. Too long and this constant becomes the hang it exists to remove:
+// the host's co-op panel sits on "connecting…" with the answer code still in
+// the box and no error, which is precisely the state that made the four-peer
+// join failure unreportable by either player. 20 s is a little over twice the
+// slowest observed success and still inside the span a player will wait before
+// concluding the game is broken.
+const CONNECT_TIMEOUT_MS = 20000;
+
+/**
+ * Settle `promise` one way or the other within `ms`.
+ *
+ * `ready` below resolves only when both channels open, so on a peer whose
+ * connection never forms it neither resolves nor rejects, and every caller
+ * awaiting it — `Lobby.acceptAnswer`, and the host UI's `await` around that —
+ * waits for ever, reaching neither its success path nor its `catch`.
+ */
+function withDeadline(promise, ms, message) {
+  let timer = null;
+  return new Promise((resolve, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), ms);
+    promise.then(resolve, reject);
+  }).finally(() => clearTimeout(timer));
+}
+
 /** One connected remote endpoint, with the two channels Protocol.js expects. */
 export class Peer {
   constructor(pc, id) {
@@ -206,6 +241,13 @@ export class HostTransport {
     this._nextId = 1;
   }
 
+  /**
+   * The connect deadline in milliseconds. A seam so the gate is testable
+   * without a 20 s test, in the same shape and for the same reason as
+   * `NetHost._now()`.
+   */
+  _connectTimeoutMs() { return CONNECT_TIMEOUT_MS; }
+
   async createInvite() {
     const id = this._nextId++;
     const pc = new RTCPeerConnection(rtcConfig());
@@ -248,7 +290,17 @@ export class HostTransport {
         const msg = decode(answerBlob.trim());
         if (msg.role !== 'answer' || msg.id !== id) throw new Error('Answer does not match this invite');
         await pc.setRemoteDescription(msg.sdp);
-        return ready;
+        // From here both ends are negotiating and nothing is waiting on a
+        // person, so the wait gets a deadline. On expiry the peer leaves
+        // through the ordinary path — `_drop`, hence `onPeerLeave`, hence the
+        // host's log line — and the rejection is what finally reaches the
+        // co-op panel's `catch` instead of it awaiting for ever.
+        return withDeadline(
+          ready,
+          this._connectTimeoutMs(),
+          'That player never finished connecting. Their network may be blocking it — '
+          + 'ask them to try again, and see the connection note on this screen.',
+        ).catch((err) => { this._drop(peer); throw err; });
       },
     };
   }
@@ -290,7 +342,9 @@ export class ClientTransport {
     this.peer = peer;
 
     let opened = 0;
-    const ready = new Promise((resolve) => {
+    let failJoin = null;
+    const ready = new Promise((resolve, reject) => {
+      failJoin = reject;
       pc.ondatachannel = (e) => {
         const ch = peer._wire(e.channel, e.channel.label);
         if (e.channel.label === 'state') peer.state = ch;
@@ -302,6 +356,17 @@ export class ClientTransport {
 
     pc.onconnectionstatechange = () => {
       if (['failed', 'closed', 'disconnected'].includes(pc.connectionState)) {
+        // Settle `connected` rather than leaving it pending for ever: on a
+        // client whose channels never opened there is nothing else that can
+        // ever settle it. A no-op once it has already resolved.
+        //
+        // Deliberately no *deadline* on this side, unlike the host's. The
+        // client cannot tell "the host has not pasted my answer yet" from "the
+        // connection is failing" — both look like `connecting` — so any timer
+        // armed here races a human with a chat window and would refuse healthy
+        // joins. The browser's own ICE failure is the honest signal, and this
+        // is what makes it audible.
+        failJoin(new Error('The connection to the host failed before the game could start.'));
         peer.close();
         this.onDisconnected?.();
       }
@@ -311,7 +376,10 @@ export class ClientTransport {
     await pc.setLocalDescription(await pc.createAnswer());
     await waitForIce(pc);
 
-    ready.then((p) => this.onConnected?.(p));
+    // The second handler is not decoration: without it this internal chain is
+    // an unhandled rejection whenever the join fails. The `connected` promise
+    // the caller receives still rejects.
+    ready.then((p) => this.onConnected?.(p), () => {});
 
     return {
       blob: encode({ v: 1, role: 'answer', id: msg.id, sdp: pc.localDescription }),
