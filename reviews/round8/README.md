@@ -128,7 +128,9 @@ Every arm compares against the same HEAD figure of **78 / 0**. The host column i
 the same order of magnitude it always was; the pawn columns are the numbers that
 were 0.
 
-Each arm also leaves a `.log` beside its JSON with the probe's phase lines
+Each arm also leaves a `.log.txt` beside its JSON — the extension is `.txt`
+because `*.log` is gitignored repo-wide and these are evidence, not scratch —
+carrying the probe's phase lines
 (page loads, per-player join times, both liveness gates, and sim-vs-wall
 progress during the measured window).
 
@@ -153,7 +155,7 @@ claims is fixed. `git status` shows `src/` clean afterwards.
 
 ## Failures kept on purpose
 
-`n1/4p-lag60.FAILED-attempt2.json` and `n1/4p-lag60.attempt2.log` are a real
+`n1/4p-lag60.FAILED-attempt2.json` and `n1/4p-lag60.attempt2.log.txt` are a real
 failed arm, not noise: with three peers and 60 ms of one-way delay, the **second
 joiner never produced a pawn on the host** inside `JOIN_TIMEOUT_MS` (45 s), so
 the arm refused to measure and exited non-zero. The third attempt of the same

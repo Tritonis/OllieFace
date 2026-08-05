@@ -1,0 +1,101 @@
+[probe] page 0 loaded (host)
+[probe] page 1 loaded (client)
+[probe] pre-join liveness: 0:fired 1:fired
+[probe] player 1 joined in 4432 ms
+[probe] post-join liveness: 0:fired 1:fired
+[probe] parking and measuring: 20 s settle + 30 s window, in simulation seconds
+[probe] settle: sim +19.1 s in 20 s wall, 0 samples
+[probe] window: sim +17.9 s in 40 s wall, 18 samples
+wrote reviews/round8/n1/2p-lag0.json
+{
+  "host": {
+    "directedHits": 51,
+    "directedDamage": 386,
+    "allHits": 51,
+    "allDamage": 386,
+    "hitTypes": {
+      "melee": 51
+    },
+    "enemiesTargetingPerSample": [
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      3,
+      3,
+      3,
+      4,
+      4,
+      4,
+      5,
+      5,
+      5,
+      6,
+      5,
+      5,
+      5,
+      6,
+      6,
+      5,
+      4,
+      4,
+      4,
+      4,
+      4,
+      2,
+      2,
+      3
+    ],
+    "enemiesTargetingMean": 3.71,
+    "enemiesTargetingMax": 6,
+    "directedShare": 0.543
+  },
+  "pawn1": {
+    "directedHits": 43,
+    "directedDamage": 314,
+    "allHits": 43,
+    "allDamage": 314,
+    "hitTypes": {
+      "melee": 43
+    },
+    "enemiesTargetingPerSample": [
+      4,
+      4,
+      4,
+      4,
+      4,
+      4,
+      4,
+      4,
+      4,
+      4,
+      3,
+      3,
+      3,
+      2,
+      2,
+      2,
+      1,
+      4,
+      4,
+      4,
+      3,
+      3,
+      4,
+      5,
+      5,
+      6,
+      6,
+      6,
+      8,
+      8,
+      8
+    ],
+    "enemiesTargetingMean": 4.194,
+    "enemiesTargetingMax": 8,
+    "directedShare": 0.457
+  }
+}

@@ -1,0 +1,99 @@
+[probe] page 0 loaded (host)
+[probe] page 1 loaded (client)
+[probe] pre-join liveness: 0:fired 1:fired
+[probe] player 1 joined in 4583 ms
+[probe] post-join liveness: 0:fired 1:fired
+[probe] parking and measuring: 20 s settle + 30 s window, in simulation seconds
+[probe] settle: sim +19.0 s in 20 s wall, 0 samples
+[probe] window: sim +16.9 s in 40 s wall, 17 samples
+wrote reviews/round8/n1/scratch-sabotage-2p-lag0.json
+{
+  "host": {
+    "directedHits": 124,
+    "directedDamage": 744,
+    "allHits": 124,
+    "allDamage": 744,
+    "hitTypes": {
+      "melee": 124
+    },
+    "enemiesTargetingPerSample": [
+      8,
+      8,
+      8,
+      8,
+      9,
+      9,
+      9,
+      9,
+      9,
+      10,
+      10,
+      10,
+      11,
+      11,
+      11,
+      11,
+      11,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      13,
+      13,
+      13,
+      13,
+      13,
+      13
+    ],
+    "enemiesTargetingMean": 10.839,
+    "enemiesTargetingMax": 13,
+    "directedShare": 1
+  },
+  "pawn1": {
+    "directedHits": 0,
+    "directedDamage": 0,
+    "allHits": 0,
+    "allDamage": 0,
+    "hitTypes": {},
+    "enemiesTargetingPerSample": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "enemiesTargetingMean": 0,
+    "enemiesTargetingMax": 0,
+    "directedShare": 0
+  }
+}

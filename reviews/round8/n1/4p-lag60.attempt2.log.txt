@@ -1,0 +1,200 @@
+[probe] page 0 loaded (host)
+[probe] page 1 loaded (client)
+[probe] page 2 loaded (client)
+[probe] page 3 loaded (client)
+[probe] pre-join liveness: 0:fired 1:fired 2:fired 3:fired
+[probe] player 1 joined in 9289 ms
+wrote reviews/round8/n1/4p-lag60.FAILED.json
+ARM FAILED — the arm threw
+{
+  "message": "page.waitForFunction: Timeout 45000ms exceeded.",
+  "stack": "page.waitForFunction: Timeout 45000ms exceeded.\n    at C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round8\\probe-targeting.mjs:343:21",
+  "pageErrors": [],
+  "consoleLines": [
+    {
+      "player": 0,
+      "type": "warning",
+      "text": "THREE.Clock: This module has been deprecated. Please use THREE.Timer instead."
+    },
+    {
+      "player": 0,
+      "type": "warning",
+      "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+    },
+    {
+      "player": 0,
+      "type": "warning",
+      "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+    },
+    {
+      "player": 0,
+      "type": "warning",
+      "text": "THREE.WebGLProgram: Program Info Log: (210,81-129): warning X4122: sum of 0.996094 and -2.98545e-017 cannot be represented accurately in double precision\n(209,37-61): warning X4122: sum of 1 and -1.49272e-017 cannot be represented accurately in double precision\n(210,82-106): warning X4122: sum of 1 and -1.49272e-017 cannot be represented accurately in double precision\n(209,37-61): warning X4122: sum of 1 and -1.66644e-018 cannot be represented accurately in double precision\n(210,82-106): warning"
+    },
+    {
+      "player": 0,
+      "type": "warning",
+      "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+    },
+    {
+      "player": 0,
+      "type": "warning",
+      "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+    },
+    {
+      "player": 0,
+      "type": "warning",
+      "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+    },
+    {
+      "player": 0,
+      "type": "warning",
+      "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+    },
+    {
+      "player": 1,
+      "type": "warning",
+      "text": "THREE.Clock: This module has been deprecated. Please use THREE.Timer instead."
+    },
+    {
+      "player": 1,
+      "type": "warning",
+      "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+    },
+    {
+      "player": 1,
+      "type": "warning",
+      "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+    },
+    {
+      "player": 1,
+      "type": "warning",
+      "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+    },
+    {
+      "player": 1,
+      "type": "warning",
+      "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+    },
+    {
+      "player": 1,
+      "type": "warning",
+      "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+    },
+    {
+      "player": 1,
+      "type": "warning",
+      "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+    },
+    {
+      "player": 2,
+      "type": "warning",
+      "text": "THREE.Clock: This module has been deprecated. Please use THREE.Timer instead."
+    },
+    {
+      "player": 2,
+      "type": "warning",
+      "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+    },
+    {
+      "player": 2,
+      "type": "warning",
+      "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+    },
+    {
+      "player": 2,
+      "type": "warning",
+      "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+    },
+    {
+      "player": 2,
+      "type": "warning",
+      "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+    },
+    {
+      "player": 2,
+      "type": "warning",
+      "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+    },
+    {
+      "player": 2,
+      "type": "warning",
+      "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+    },
+    {
+      "player": 3,
+      "type": "warning",
+      "text": "THREE.Clock: This module has been deprecated. Please use THREE.Timer instead."
+    },
+    {
+      "player": 3,
+      "type": "warning",
+      "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+    },
+    {
+      "player": 3,
+      "type": "warning",
+      "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+    },
+    {
+      "player": 3,
+      "type": "warning",
+      "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+    },
+    {
+      "player": 3,
+      "type": "warning",
+      "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+    },
+    {
+      "player": 3,
+      "type": "warning",
+      "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+    },
+    {
+      "player": 3,
+      "type": "warning",
+      "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+    },
+    {
+      "player": 1,
+      "type": "warning",
+      "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+    },
+    {
+      "player": 1,
+      "type": "warning",
+      "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+    },
+    {
+      "player": 1,
+      "type": "warning",
+      "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+    },
+    {
+      "player": 1,
+      "type": "warning",
+      "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+    },
+    {
+      "player": 2,
+      "type": "warning",
+      "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+    },
+    {
+      "player": 2,
+      "type": "warning",
+      "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+    },
+    {
+      "player": 2,
+      "type": "warning",
+      "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+    },
+    {
+      "player": 2,
+      "type": "warning",
+      "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+    }
+  ]
+}

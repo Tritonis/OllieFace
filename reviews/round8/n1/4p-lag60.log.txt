@@ -1,0 +1,196 @@
+[probe] page 0 loaded (host)
+[probe] page 1 loaded (client)
+[probe] page 2 loaded (client)
+[probe] page 3 loaded (client)
+[probe] pre-join liveness: 0:fired 1:fired 2:fired 3:fired
+[probe] player 1 joined in 933 ms
+[probe] player 2 joined in 6274 ms
+[probe] player 3 joined in 531 ms
+[probe] post-join liveness: 0:fired 1:fired 2:fired 3:fired
+[probe] parking and measuring: 20 s settle + 30 s window, in simulation seconds
+[probe] settle: sim +18.6 s in 20 s wall, 0 samples
+[probe] window: sim +16.8 s in 40 s wall, 17 samples
+wrote reviews/round8/n1/4p-lag60.json
+{
+  "host": {
+    "directedHits": 46,
+    "directedDamage": 300.4,
+    "allHits": 46,
+    "allDamage": 300.4,
+    "hitTypes": {
+      "melee": 42,
+      "projectile": 4
+    },
+    "enemiesTargetingPerSample": [
+      2,
+      3,
+      3,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      1,
+      1
+    ],
+    "enemiesTargetingMean": 2,
+    "enemiesTargetingMax": 3,
+    "directedShare": 0.272
+  },
+  "pawn1": {
+    "directedHits": 15,
+    "directedDamage": 90,
+    "allHits": 15,
+    "allDamage": 90,
+    "hitTypes": {
+      "melee": 15
+    },
+    "enemiesTargetingPerSample": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      2,
+      2,
+      2,
+      2,
+      2,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3
+    ],
+    "enemiesTargetingMean": 2.032,
+    "enemiesTargetingMax": 3,
+    "directedShare": 0.089
+  },
+  "pawn2": {
+    "directedHits": 2,
+    "directedDamage": 12,
+    "allHits": 2,
+    "allDamage": 12,
+    "hitTypes": {
+      "melee": 2
+    },
+    "enemiesTargetingPerSample": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "enemiesTargetingMean": 0.258,
+    "enemiesTargetingMax": 1,
+    "directedShare": 0.012
+  },
+  "pawn3": {
+    "directedHits": 106,
+    "directedDamage": 636,
+    "allHits": 106,
+    "allDamage": 636,
+    "hitTypes": {
+      "melee": 106
+    },
+    "enemiesTargetingPerSample": [
+      7,
+      6,
+      6,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      8,
+      9,
+      9
+    ],
+    "enemiesTargetingMean": 7.097,
+    "enemiesTargetingMax": 9,
+    "directedShare": 0.627
+  }
+}
