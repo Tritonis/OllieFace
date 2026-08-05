@@ -108,6 +108,32 @@ export class Director {
     this._bossBag = [];
     // Reused damage-info for the warded reflect, so a barrier under sustained
     // fire allocates nothing.
+    //
+    // This is module-scratch handed to a call that CAN synchronously re-enter
+    // the writer, which is the shape that produced the `fireBeam` bug. The path
+    // is real, and it is not the one you would guess: the reflect's own hit
+    // cannot re-trigger the `damage` handler below (its source is the elite, and
+    // the handler wants `isPlayer`), but `Combat.applyDamage` on the player
+    // dispatches `onDamaged`, and Iron Thornplate and Barb Snare retaliate from
+    // inside that dispatch with `source: api.player`. If that retaliation lands
+    // on a *second* warded elite, the handler fires again and overwrites the
+    // fields of this very object while the outer `applyDamage` is still on the
+    // stack.
+    //
+    // It is safe, and structurally rather than by luck: `applyDamage` reads
+    // `info.source` and `info.position` into locals *before* it dispatches
+    // anything (`Combat.js`, `const source = info.source` and `const pos =
+    // info.position || target.position`), and the only fields it reads *after*
+    // the dispatch are `procCoefficient`, `procDepth` and `type` — which on this
+    // object are a literal 0, never set at all, and a constant string. A nested
+    // write therefore cannot change any value the outer call has yet to read.
+    //
+    // What that costs: this holds only while those two reads stay ahead of the
+    // dispatch and while every mutable field here is read early. Adding a field
+    // that Combat reads late, or moving a read below the hook dispatch, breaks
+    // it silently — a reflect would then pay the wrong player or draw its
+    // numbers at the wrong elite's feet. Allocate per hit instead of extending
+    // this object.
     this._reflect = { source: null, position: null, procCoefficient: 0, type: 'reflect' };
 
     this._frustum = new THREE.Frustum();
@@ -636,7 +662,26 @@ export class Director {
     // draws the shared RNG makes per iteration — which single-player
     // equivalence is measured against. Only the acceptance test below is
     // roster-aware.
-    const anchor = ctx.roster?.local ?? ctx.player;
+    //
+    // The anchor prefers a *living* player. `roster.local` is `ctx.player`
+    // regardless of liveness by design (`Roster.js`, `get local`), so anchoring
+    // on it alone put the two distance tests below on different subjects the
+    // moment a co-op host died: `MAX_SPAWN_DIST` and the sampling distribution
+    // measured from the corpse, while the `MIN_SPAWN_DIST` floor measured from
+    // the nearest living player. The pack then kept spawning in the 34-90 m
+    // annulus around a body and 100+ m from the one survivor, who spent the
+    // rest of the stage watching monsters walk towards them. That only became
+    // reachable when dead players stopped being targetable — before that,
+    // enemies chased the corpse anyway, so where they spawned did not matter.
+    //
+    // Single-player is unchanged, and structurally rather than empirically:
+    // with one living player `nearest` returns that player (distance 0), and
+    // with a dead solo player nothing is targetable so `nearest` returns null
+    // and this falls through to `ctx.player` exactly as before. `nearest` draws
+    // no RNG, so the per-iteration draw count the equivalence harness measures
+    // is untouched.
+    const local = ctx.roster?.local ?? ctx.player;
+    const anchor = (local ? ctx.roster?.nearest?.(local.position) : null) ?? local;
     const player = anchor ? anchor.position : _v.set(0, 0, 0);
     let fallback = null;
     let fallbackD = -1;
