@@ -168,5 +168,53 @@ console.log('spawn placement respects every player, not just the anchor');
      'beyond MAX_SPAWN_DIST from the anchor is still rejected');
 }
 
+console.log('the spawn anchor follows a living player when the local one is dead');
+{
+  // The case the anchor line in `Director.findSpawnPoint` exists for, and the
+  // only one that can tell the two forms apart. Every assertion above uses a
+  // *living* `ctx.player`, and with a living local `nearest(local.position)`
+  // returns that same player at distance 0 — so `roster.local` and
+  // `nearest(roster.local.position)` are the same object and the fix is
+  // invisible. Here the local player is a corpse.
+  //
+  // Corpse at the origin, the one survivor 100 m away, candidate 140 m out:
+  // 40 m from the survivor (inside the 34-90 m window at both ends) and 140 m
+  // from the corpse (past `MAX_SPAWN_DIST`). Anchored on the corpse the point
+  // is rejected and the pack keeps spawning around the body; anchored on the
+  // survivor it is accepted.
+  const guestAt = 100;
+  const at = guestAt + MIN_SPAWN_DIST + 6;      // 140 m: 40 m out from the survivor
+  const candidate = { x: at, y: 0, z: 0 };
+
+  const corpse = P(0, 0), survivor = P(guestAt, 0);
+  corpse.alive = false;
+  const co = spawnCtx(candidate, corpse, survivor);
+  const point = co.d.findSpawnPoint(co.ctx);
+  ok(!!point && Math.abs(point.x - at) < 1e-9,
+     `a dead local player hands the anchor to the survivor (got ${point && point.x})`);
+
+  // One end of the range: a *living* local is never displaced by a teammate.
+  // `nearest` from a living local's own position is that player at distance 0,
+  // so the same candidate is still measured from the local and still rejected.
+  const host = P(0, 0), guest = P(guestAt, 0);
+  const live = spawnCtx(candidate, host, guest);
+  ok(live.d.findSpawnPoint(live.ctx) === null,
+     'a living local keeps the anchor — a distant teammate cannot legalise a 140 m spawn');
+
+  // The other end: nobody alive at all. `nearest` returns null and the anchor
+  // falls back to `ctx.player`, which is what keeps single-player after the
+  // survivor's death identical to what it was before this line existed. Placed
+  // at 500 m rather than the origin so the fallback is load-bearing: drop the
+  // `?? local` and the anchor becomes the world origin, 540 m away, and this
+  // point is rejected.
+  const loneCorpse = P(500, 0);
+  loneCorpse.alive = false;
+  const soloAt = 500 + MIN_SPAWN_DIST + 6;
+  const solo = spawnCtx({ x: soloAt, y: 0, z: 0 }, loneCorpse);
+  const soloPoint = solo.d.findSpawnPoint(solo.ctx);
+  ok(!!soloPoint && Math.abs(soloPoint.x - soloAt) < 1e-9,
+     `a solo corpse still anchors the ring on itself (got ${soloPoint && soloPoint.x})`);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
