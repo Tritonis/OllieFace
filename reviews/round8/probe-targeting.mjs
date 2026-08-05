@@ -23,7 +23,12 @@
  *    run is not bit-reproducible. That is a property of the thing being
  *    measured, not a shortcut: a per-arm figure here is a sample, and the gate
  *    is written against effects (zero vs. non-zero, a 15% share) far larger
- *    than the run-to-run spread.
+ *    than the run-to-run spread. That gate is `n1-gate.mjs`, it is applied to
+ *    this file's own output before it exits, and it can be pointed at any
+ *    committed capture — including the sabotage control, which it rejects.
+ *    For most of this branch's life the sentence above described something
+ *    that did not exist: the share was computed, serialised and never compared
+ *    to anything, so the sabotage arm exited 0 with `directedShare: 0`.
  *
  *  · **The liveness gate is per page and post-join.** `ctx.player._localTick`
  *    only advances in `Player._sampleCommand`, and `Player.fixedUpdate` skips
@@ -68,6 +73,11 @@ import { chromium } from 'playwright';
 import { createServer } from 'vite';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
+// The acceptance criterion this file's docblock calls a gate. It lives in its
+// own file because it has to be runnable against a committed capture without a
+// browser — that is how it gets failed on purpose — but a live arm applies it
+// here so a run that re-breaks targeting can no longer exit 0.
+import { checkCapture } from './n1-gate.mjs';
 
 // The dev-server port. Not a range: it has to be free, and it has to differ
 // from every other probe's — `tools/` uses 5202/5203 and `tests/sp-equivalence`
@@ -851,6 +861,22 @@ if (armFailure) {
     },
     raw: result,
   };
+  // The capture is written either way. A failing arm is still evidence — the
+  // sabotage control is a *committed* capture that this gate rejects — so the
+  // verdict rides alongside it rather than replacing it.
   write(outPath, out);
   console.log(JSON.stringify(out.derived.perPlayer, null, 2));
+
+  const gate = checkCapture(out, outPath);
+  if (gate.violations.length) {
+    write(outPath.replace(/\.json$/, '') + '.FAILED.json', {
+      failed: 'the N-1 targeting gate', detail: gate.violations,
+      capture: outPath, argv: process.argv.slice(2), at: new Date().toISOString(),
+    });
+    console.error('N-1 GATE FAILED');
+    for (const v of gate.violations) console.error(`  [${v.check}] ${v.why}`);
+    process.exitCode = 1;
+  } else {
+    console.log(`N-1 gate: ${gate.checked} checks passed`);
+  }
 }

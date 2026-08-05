@@ -143,6 +143,37 @@ Every arm compares against the control in the last row. The host column is the
 same order of magnitude it is under sabotage; the pawn columns are the numbers
 that are 0 under sabotage.
 
+### Running the gate
+
+`node reviews/round8/n1-gate.mjs` reads the four committed arms above and exits
+non-zero if any of them violates the acceptance criterion. No browser, no
+session — it reads the captures. `probe-targeting.mjs` applies the same check
+to its own output before it exits, so a live arm that re-breaks targeting now
+writes `<out>.FAILED.json` and exits 1 instead of a normal-looking capture.
+
+**It has been failed on purpose**, which is the only evidence that a gate is
+one:
+
+```
+$ node reviews/round8/n1-gate.mjs reviews/round8/n1/scratch-sabotage-2p-lag0.json
+FAIL  reviews/round8/n1/scratch-sabotage-2p-lag0.json — 2p
+        [zero-census] no enemy ever held pawn1 as its target in any sample (enemiesTargetingMax 0)
+        [directed-share] pawn1 took 0 of 124 directed hits (share 0), under the 0.15 floor
+
+4 checks over 1 capture(s), 2 violation(s)
+N-1 GATE FAILED — an enemy population that never attacks a guest is the defect this branch exists to close.
+exit 1
+```
+
+Until that file existed the word "gate" on this page was wrong. The probe
+computed `directedShare`, wrote it into the JSON and never compared it to
+anything; the sabotage arm — every enemy locked onto the host, 336 of 336
+census rows, `directedShare: 0` for the pawn — **exited 0 and wrote to the
+normal output path**. The verdict was a human reading the table above. The
+`scratch-` prefix and the `.FAILED` suffix are excluded from the default set
+precisely so the sabotage control can stay committed as evidence while the
+default run stays green; name it on the command line to see it rejected.
+
 The census target counts are the sum over every one-second census of how many
 living enemies held each player as `targetPlayer`. Both columns are counted
 directly from `raw.damage` and `raw.samples`; neither is read off `derived`.
@@ -282,7 +313,9 @@ this failure should start by reproducing it against the fixed probe.
   * **A run is a sample, not a fingerprint.** Unlike `sp-equivalence`, this probe
     cannot pin the clock — a networked session has to run in real time — so
     small differences between runs of the same arm are expected. The gate is
-    written against effects (0 vs. 43, a 15% share) far larger than that spread.
+    written against effects (0 vs. 43, a 15% share) far larger than that spread,
+    and it is `n1-gate.mjs` — see "Running the gate" above, including the run
+    where it is failed on purpose.
   * **How to tell the parking fixture held**, and how not to. Read the census:
     every player sits on its recorded anchor at every sample, and host↔pawn
     separation is **3.000 m at every census in every arm** (recomputed from
