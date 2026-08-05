@@ -15,8 +15,9 @@
  * shortens the deadline through the `_connectTimeoutMs()` seam, the same shape
  * `NetHost._now()` uses so the HELLO age gate is testable.
  */
-import { HostTransport } from '../src/net/Transport.js';
+import { HostTransport, ClientTransport } from '../src/net/Transport.js';
 import { NetHost } from '../src/net/NetHost.js';
+import { NetClient } from '../src/net/NetClient.js';
 import { Lobby } from '../src/net/Lobby.js';
 
 let pass = 0, fail = 0;
@@ -33,25 +34,57 @@ function fakeChannel(label) {
 
 function fakePc() {
   const channels = [];
-  return {
+  const pc = {
     channels,
     connectionState: 'new',
     iceGatheringState: 'complete',
     localDescription: { type: 'offer', sdp: 'v=0' },
     createDataChannel(label) { const c = fakeChannel(label); channels.push(c); return c; },
     async createOffer() { return { type: 'offer', sdp: 'v=0' }; },
+    async createAnswer() { return { type: 'answer', sdp: 'v=0' }; },
     async setLocalDescription() {},
     async setRemoteDescription() {},
     addEventListener() {}, removeEventListener() {},
-    close() {},
+    /**
+     * Drive the browser's own connection-state signal.
+     *
+     * `close()` routes through here rather than being inert, because that is
+     * what a real `RTCPeerConnection` does: closing fires
+     * `onconnectionstatechange` with `closed` from inside the call. That
+     * re-entry is not incidental — it is the reason both transports' handlers
+     * have to be idempotent and the reason `NetClient._reportDisconnect` has a
+     * once-only guard at all. A stub with an inert `close()` cannot reach any
+     * of it.
+     */
+    _setState(s) {
+      if (pc.connectionState === s) return;
+      pc.connectionState = s;
+      pc.onconnectionstatechange?.();
+    },
+    close() { pc._setState('closed'); },
   };
+  return pc;
 }
 
-globalThis.RTCPeerConnection = function RTCPeerConnectionStub() { return fakePc(); };
+const pcs = [];
+globalThis.RTCPeerConnection = function RTCPeerConnectionStub() {
+  const pc = fakePc();
+  pcs.push(pc);
+  return pc;
+};
+/** The `RTCPeerConnection` the transport under test just built. */
+const lastPc = () => pcs[pcs.length - 1];
 
 /** The answer blob the host expects back for `invite`. */
 const answerFor = (invite) =>
   btoa(JSON.stringify({ v: 1, role: 'answer', id: invite.id, sdp: { type: 'answer', sdp: 'v=0' } }));
+
+/** A host invite blob, from the joiner's point of view. */
+const offerBlob = (id) =>
+  btoa(JSON.stringify({ v: 1, role: 'offer', id, sdp: { type: 'offer', sdp: 'v=0' } }));
+
+/** Yield to the macrotask queue, so promise chains and node's own unhandled-rejection reporting run. */
+const turn = (ms = 0) => new Promise((r) => setTimeout(r, ms));
 
 /**
  * Await `p`, but never longer than `ms`.
@@ -166,6 +199,148 @@ console.log('I1 — Lobby surfaces the failure and does not keep the spent invit
   ok(lobby.status === 'peerFailed', `the panel stops saying "connecting…" (got '${lobby.status}')`);
   ok(seen.indexOf('peerConnecting') < seen.indexOf('peerFailed'), `in that order (${JSON.stringify(seen)})`);
   ok(!lobby.pendingInvites.has(7), 'the spent invite is dropped');
+}
+
+/* --------------------------------------------------------------------------
+ * I2 — the host's *failure* signal, as distinct from its deadline.
+ *
+ * The deadline above is the backstop for a connection that never fails and
+ * never opens. It is not the signal for one that fails: ICE can fail in three
+ * seconds, and until the host rejected `ready` on it the co-op panel went on
+ * reading "Reply accepted — connecting…" for the remaining seventeen — while
+ * the console had already logged the drop. Every arm below therefore uses a
+ * deadline long enough that reaching it is itself the failure.
+ * ------------------------------------------------------------------------ */
+
+console.log('I2 — the host settles on the connection failure, not on the deadline');
+{
+  const t = new HostTransport();
+  t._connectTimeoutMs = () => 5000;   // if this arm waits for the deadline, it fails
+  const left = [];
+  t.onPeerLeave = (p) => left.push(p.id);
+
+  const invite = await t.createInvite();
+  const accepted = invite.accept(answerFor(invite));
+  await turn();                        // let `accept` arm the deadline first
+  lastPc()._setState('failed');        // ICE gives up, well inside the window
+
+  const outcome = await settleWithin(accepted, 300);   // a sixteenth of the deadline
+  ok(outcome.startsWith('rejected'), `accept settled on the failure (got '${outcome}')`);
+  ok(/connection failed/.test(outcome), `and says what happened (got '${outcome}')`);
+  ok(left.length === 1, `the peer was dropped through onPeerLeave exactly once (got ${left.length})`);
+  ok(!t.peers.has(invite.id), 'and is gone from transport.peers');
+}
+
+console.log('I2 — the other end: a join that already succeeded is not retroactively failed');
+{
+  const t = new HostTransport();
+  t._connectTimeoutMs = () => 5000;
+  const left = [];
+  t.onPeerLeave = (p) => left.push(p.id);
+
+  const invite = await t.createInvite();
+  const accepted = invite.accept(answerFor(invite));
+  const peer = t.peers.get(invite.id);
+  peer.state.open();
+  peer.events.open();
+  ok(await settleWithin(accepted, 300) === 'resolved', 'the healthy join resolves');
+
+  // The session ends later, the way every session ends. `ready` is already
+  // settled, so the new reject is a no-op — but the drop still has to happen.
+  lastPc()._setState('failed');
+  ok(left.length === 1, `the later drop still reaches onPeerLeave (got ${left.length})`);
+  ok(await settleWithin(accepted, 100) === 'resolved',
+     'and the completed join is still resolved, not rewritten into a rejection');
+}
+
+console.log('I2 — a failure before the answer is pasted is dropped, not thrown into the void');
+{
+  // `ready`'s rejection now exists from `createInvite`, which is before any
+  // caller holds a promise — the host is still waiting for a human to paste a
+  // code. Without the rejection handler on the internal `onPeer` chain that is
+  // an unhandled rejection on a machine that has done nothing wrong.
+  const unhandled = [];
+  const onUnhandled = (e) => unhandled.push(String(e?.message ?? e));
+  process.on('unhandledRejection', onUnhandled);
+  try {
+    const t = new HostTransport();
+    const left = [];
+    t.onPeerLeave = (p) => left.push(p.id);
+    const invite = await t.createInvite();
+    lastPc()._setState('failed');
+    await turn(20);                    // node reports unhandled rejections a turn later
+    ok(left.length === 1 && left[0] === invite.id,
+       `the peer left through onPeerLeave (got ${JSON.stringify(left)})`);
+    ok(unhandled.length === 0, `and nothing was left unhandled (got ${JSON.stringify(unhandled)})`);
+  } finally {
+    process.off('unhandledRejection', onUnhandled);
+  }
+}
+
+/* --------------------------------------------------------------------------
+ * I3 — the joiner's half of the same fix, which had no test at all.
+ * ------------------------------------------------------------------------ */
+
+console.log('I3 — a client whose connection fails rejects `connected` rather than hanging');
+{
+  const c = new ClientTransport();
+  const reports = [];
+  c.onDisconnected = () => reports.push(1);
+
+  const { connected } = await c.join(offerBlob(11));
+  // No `ondatachannel` ever fires: the channels are the host's to create and
+  // this connection dies before it carries one.
+  lastPc()._setState('failed');
+
+  const outcome = await settleWithin(connected, 300);
+  ok(outcome.startsWith('rejected'), `the join settles (got '${outcome}')`);
+  ok(/connection to the host failed/.test(outcome), `and says so (got '${outcome}')`);
+  // The measurement the guard in `NetClient._reportDisconnect` exists for, made
+  // rather than asserted from the source: the handler calls `peer.close()`,
+  // which re-enters it with state `closed`, so the transport reports the same
+  // dead connection twice.
+  ok(reports.length === 2,
+     `onDisconnected fires twice — peer.close() re-enters the handler (got ${reports.length})`);
+}
+
+console.log('I3 — the joiner says "disconnected" once when both report paths are live');
+{
+  const client = new NetClient();
+  const emitted = [];
+  client.ctx = { events: { emit: (n) => emitted.push(n) } };
+  const peer = { id: 1, sendEvent() {}, onMessage: null, onClose: null };
+  // A transport stand-in, because what is under test is `join`'s wiring of the
+  // two report paths, not the transport it wires them to.
+  client.transport = { join: async () => ({ blob: 'b', connected: Promise.resolve(peer) }) };
+
+  await client.join('irrelevant-blob');
+  await turn();
+  ok(client.connected === true, 'the client came up');
+  ok(typeof peer.onClose === 'function', 'and the peer-close path is wired');
+
+  peer.onClose();                     // a peer that connected and then dropped…
+  client.transport.onDisconnected();  // …reported by both live sources
+  ok(emitted.filter((n) => n === 'netDisconnected').length === 1,
+     `netDisconnected emitted exactly once (got ${JSON.stringify(emitted)})`);
+  ok(client.connected === false, 'and the client knows it is down');
+}
+
+console.log('I3 — the other end: a client that never connected still says it once');
+{
+  const client = new NetClient();
+  const emitted = [];
+  client.ctx = { events: { emit: (n) => emitted.push(n) } };
+  // The failure the previous NetClient arm cannot reach: `connected` rejects,
+  // so `onClose` is never wired and the transport is the only source — firing
+  // the two times the real `ClientTransport` was just measured firing.
+  client.transport = { join: async () => ({ blob: 'b', connected: Promise.reject(new Error('failed')) }) };
+
+  await client.join('irrelevant-blob');
+  await turn();
+  client.transport.onDisconnected();
+  client.transport.onDisconnected();
+  ok(emitted.filter((n) => n === 'netDisconnected').length === 1,
+     `netDisconnected emitted exactly once (got ${JSON.stringify(emitted)})`);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

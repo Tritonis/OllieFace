@@ -276,7 +276,9 @@ export class HostTransport {
     );
 
     let opened = 0;
-    const ready = new Promise((resolve) => {
+    let failConnect = null;
+    const ready = new Promise((resolve, reject) => {
+      failConnect = reject;
       const tick = () => { if (++opened === 2) resolve(peer); };
       peer.state.onopen = tick;
       peer.events.onopen = tick;
@@ -284,6 +286,24 @@ export class HostTransport {
 
     pc.onconnectionstatechange = () => {
       if (['failed', 'closed', 'disconnected'].includes(pc.connectionState)) {
+        // Settle `ready` on the browser's own failure signal, symmetric with
+        // the client's `failJoin`. Without this the host had a *deadline* but
+        // no *failure* signal: ICE could fail at t=3 s, `_drop` would run and
+        // the console would say so, while `ready` stayed pending and the co-op
+        // panel read "Reply accepted — connecting…" for the remaining 17 s of
+        // `CONNECT_TIMEOUT_MS` — the exact "connecting with no error" state
+        // that constant's own comment says made the four-peer join failure
+        // unreportable. The deadline is the backstop for a connection that
+        // never fails and never opens; this is the signal for one that fails.
+        //
+        // Reject before `_drop`, because `_drop` calls `peer.close()` and
+        // re-enters this handler with state `closed`: settling first means the
+        // rejection carries the state that actually failed. Both re-entrant
+        // calls are no-ops — a settled promise ignores a second reject and
+        // `_drop` returns on its own `peers.has` guard.
+        failConnect(new Error('That player\'s connection failed before the game could start. '
+          + 'Their network may be blocking it — ask them to try again, and see the connection '
+          + 'note on this screen.'));
         this._drop(peer);
       }
     };
@@ -292,7 +312,14 @@ export class HostTransport {
     await waitForIce(pc);
 
     this.peers.set(id, peer);
-    ready.then((p) => this.onPeer?.(p));
+    // The rejection handler is not decoration, and it becomes required the
+    // moment `ready` can reject: this chain is created inside `createInvite`,
+    // before any caller holds a promise, so a connection that fails while the
+    // host is still waiting for a human to paste the answer would be an
+    // unhandled rejection on a machine that has done nothing wrong. Same shape
+    // and same reason as `ClientTransport.join`. The promise `accept` returns
+    // still rejects for the caller that has one.
+    ready.then((p) => this.onPeer?.(p), () => {});
 
     return {
       id,
