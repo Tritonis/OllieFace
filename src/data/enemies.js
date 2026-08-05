@@ -1354,7 +1354,11 @@ export const ELITE_STATS = {
    * identical 4.5 credits and whose rider deals no damage at all. Raw arms and
    * the reachable-set probes are in `reviews/round8/balance/`.
    *
-   * Now 40.9 dps on the same fixture — 2.29x glacial, 4.6x the plain card — and
+   * Now 40.9 dps on the same fixture — 2.29x glacial, and 4.6x the *plain*
+   * (non-elite) card, which is the affix ratio times the elite damage
+   * multiplier, not the affix in isolation; 2.29x is the affix-isolating
+   * number, since the elite base with the rider removed is 17.85, identical to
+   * glacial (`probe-no-rider.json`) — and
    * 22.3 dps at an 11 m free-roam stand against the old 48.5, so the point-blank
    * case was brought down without deleting the threat at range. The rider is
    * split so that contact is survivable and *staying* in contact is not: the

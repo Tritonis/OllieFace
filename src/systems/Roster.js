@@ -9,9 +9,19 @@
  * rather than assuming there is one.
  *
  * It deliberately does not import THREE and does not know what a Player is: any
- * object with a `position` and an `alive` flag can register, which is what lets
- * a client register its interpolated `PlayerView`s for the HUD's teammate bars
- * without pulling the entity layer into the net layer.
+ * object with a `position` and an `alive` flag can register. The reason that is
+ * worth the constraint today is testability — `tests/roster.test.mjs` drives
+ * every path in this file, including the targeting hysteresis, with plain
+ * object literals, and a suite that had to build real `Player`s to ask a
+ * question about a roster would not be the decisive one it is.
+ *
+ * Forward intent, stated as intent because it is not built: a client *could*
+ * register its interpolated `PlayerView`s here for teammate health bars without
+ * pulling the entity layer into the net layer. Nothing does. `add` has exactly
+ * one caller (`Player.init`), the net layer never mentions this file, and there
+ * are no teammate bars in the HUD. Do not read the paragraph above as a live
+ * requirement; if that consumer never arrives, the testability argument is the
+ * one that has to carry the constraint on its own.
  *
  * Single-player registers exactly one entity, `nearest()` returns it for every
  * query, and every number in the game is what it was before this file existed.
