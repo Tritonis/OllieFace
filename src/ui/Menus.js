@@ -184,7 +184,13 @@ export class Menus {
                three quarters something to do. -->
           <button class="mbtn mbtn--go" data-nav data-act="play"><span>Play</span><em class="mbtn-sub">choose a survivor</em></button>
           <button class="mbtn" data-nav data-act="logbook"><span>Logbook</span><em class="mbtn-sub">roster &amp; bestiary</em></button>
-          <button class="mbtn" data-nav data-act="coop"><span>Co-op</span><em class="mbtn-sub">host or join</em></button>
+          <!-- "(beta)" is load-bearing, not decoration: co-op has never been
+               played end to end by two people on a real remote network, only
+               by automated probes on one machine, and four-peer joins are a
+               known open item. It stays until that hand-played session
+               happens. See the plan's final gate under
+               .superpowers/sdd/2026-08-04-coop-roster-targeting/. -->
+          <button class="mbtn" data-nav data-act="coop"><span>Co-op (beta)</span><em class="mbtn-sub">host or join</em></button>
           <button class="mbtn" data-nav data-act="settings"><span>Settings</span><em class="mbtn-sub">video &amp; input</em></button>
           <button class="mbtn mbtn--quiet" data-nav data-act="quit"><span>Quit</span><em class="mbtn-sub">exit</em></button>
         </nav>
@@ -289,7 +295,8 @@ export class Menus {
             <button class="mbtn mbtn--go" data-nav data-act="resume"><span>Resume</span></button>
             <button class="mbtn" data-nav data-act="edict" data-edict-entry hidden disabled><span>The Edict</span><em class="mbtn-sub">standing order — C</em></button>
             <button class="mbtn" data-nav data-act="logbook"><span>Logbook</span></button>
-            <button class="mbtn" data-nav data-act="coop"><span>Co-op</span></button>
+            <!-- Same caveat as the title-screen entry above; both say it. -->
+            <button class="mbtn" data-nav data-act="coop"><span>Co-op (beta)</span></button>
             <button class="mbtn" data-nav data-act="settings"><span>Settings</span></button>
             <button class="mbtn mbtn--quiet" data-nav data-act="quit"><span>Quit to title</span></button>
           </nav>
@@ -310,7 +317,7 @@ export class Menus {
       <section class="screen screen--coop" data-screen="coop">
         <div class="panel panel--wide">
           <header class="panel-head">
-            <h2>Co-op</h2>
+            <h2>Co-op (beta)</h2>
             <div class="panel-tag" data-coop-role>Single player</div>
           </header>
 
