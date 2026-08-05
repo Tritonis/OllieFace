@@ -20,7 +20,7 @@ comparator knows which fields are wall-clock diagnostics and which are real.
 | File | What it captures | Command that produced it |
 |---|---|---|
 | `baseline-precoop.json` | The tree **before** Wave C — i.e. before any enemy read the roster. Kept for audit; do not compare new work against it. | `node tests/sp-equivalence.mjs --out reviews/round8/baseline-HEAD.json` at commit `e4d25b6`, the commit that last wrote the blob; untouched through `8e33e63`, then copied to this name before the re-baseline. |
-| `baseline-HEAD.json` | **The current baseline. Cite this one.** The tree with both Wave C halves in: Task 7 (`8e33e63`, Director/FinalBoss/HUD) and Task 6 (`394d727`, Enemy targeting). | `node tests/sp-equivalence.mjs --out reviews/round8/baseline-HEAD.json` at commit `394d727`. |
+| `baseline-HEAD.json` | **The current baseline. Cite this one.** The tree with both Wave C halves in: Task 7 (`8e33e63`, Director/FinalBoss) and Task 6 (`394d727`, Enemy targeting). Task 7 was *planned* as Director/FinalBoss/HUD; `git show 8e33e63 --stat` lists no HUD file and `git log 2f11823..HEAD -- src/ui/HUD.js` is empty, so HUD.js is untouched anywhere on this branch. See `deferred-rollup.md`. | `node tests/sp-equivalence.mjs --out reviews/round8/baseline-HEAD.json` at commit `394d727`. |
 
 The pre-Wave-C baseline stays committed on purpose. A re-baseline with no
 on-disk record of what it absorbed is how a real regression hides inside an
@@ -61,7 +61,9 @@ which are distinct fields from the `deadTarget.*` entries of the same name.
 `frameErrors` all held.
 
 **Why.** `ctx.player` outlives the local player's death — `alive` goes false and
-nothing clears the reference (`src/systems/Roster.js:92-97`). Before Wave C,
+nothing clears the reference — the `get local` docblock in `src/systems/Roster.js`
+says so; find it by name rather than by line, because two fix waves have now
+moved it. Before Wave C,
 `Enemy.fixedUpdate` read `ctx.player` with no liveness test, so after the
 survivor died the pack kept tracking the corpse's position and stayed in
 `chase`/`reposition`; the null-target arm of that branch was unreachable in

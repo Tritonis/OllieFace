@@ -139,7 +139,16 @@ console.log('with nobody targetable the enemy holds null and does not thrash the
 
   ok(e.targetPlayer === null, 'target is null');
   ok(e.distToPlayer === 999, 'distToPlayer is the no-target sentinel');
-  ok(queries < 120, `does not re-query on every one of 120 steps (got ${queries})`);
+  // Bounded against what the stagger actually produces, not against the step
+  // count. `< 120` discriminated exactly one implementation — one that queried
+  // on every single step — and passed one that queried on 119 of them, which
+  // is the thrash this arm claims to rule out. 120 steps is 2 s at a 0.5 s
+  // `RETARGET_INTERVAL`, so the correct count is 5 (four intervals plus the
+  // acquisition on the first step) and is stable: the fixture's LCG is
+  // deterministic. 6 leaves exactly one step of slack for the stagger phase.
+  // Tighter than 5 would fail a correct implementation whose stagger offset
+  // lands the last re-query inside the window rather than past it.
+  ok(queries <= 6, `re-queries on the retarget interval, not on every step (got ${queries} over 120 steps)`);
 }
 
 console.log('the stagger survives the first step — 60 units do not re-query together');

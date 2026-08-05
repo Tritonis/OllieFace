@@ -10,10 +10,12 @@
  *
  * It deliberately does not import THREE and does not know what a Player is: any
  * object with a `position` and an `alive` flag can register. The reason that is
- * worth the constraint today is testability — `tests/roster.test.mjs` drives
- * every path in this file, including the targeting hysteresis, with plain
- * object literals, and a suite that had to build real `Player`s to ask a
- * question about a roster would not be the decisive one it is.
+ * worth the constraint today is testability — `tests/roster.test.mjs` and
+ * `tests/targeting.test.mjs` between them drive every path in this file,
+ * including the targeting hysteresis, which is `targeting.test.mjs`'s subject
+ * and not `roster.test.mjs`'s. Both do it with plain object literals, and a
+ * suite that had to build real `Player`s to ask a question about a roster would
+ * not be the decisive one it is.
  *
  * Forward intent, stated as intent because it is not built: a client *could*
  * register its interpolated `PlayerView`s here for teammate health bars without
@@ -180,8 +182,8 @@ const _acq = { player: null, dist: Infinity };
  * combat reading as coherent rather than twitchy is in that word.
  *
  * Lives here rather than in `Enemy.js` because it is a question about the
- * roster, and because a 1600-line entity file should not be exporting symbols
- * that exist for a test.
+ * roster, and because a 1,758-line entity file (`wc -l src/entities/Enemy.js`,
+ * at this commit) should not be exporting symbols that exist for a test.
  *
  * `roster` is guarded and `pos` is not, deliberately. Callers reach this through
  * `ctx.roster`, which is legitimately absent in a headless or partially built
