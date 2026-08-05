@@ -181,6 +181,17 @@ export class Peer {
   _simSend(label, bytes) {
     const sim = this._sim;
     if (!sim) return false;
+    // The shipped transport drops when the channel is not open — `sendState` /
+    // `sendEvent` below both check, and so does `_rawSend` on release. The rig
+    // queued first and never consulted channel state, and a `Peer` enters
+    // `HostTransport.peers` at *invite* time, so `_forward`'s broadcast filled
+    // this queue for the whole pre-connect window and released the lot in one
+    // burst on the first pump after the channels opened: a purse jump,
+    // unearned level-ups and a stale realmEnter/realmExit pair the shipped
+    // game never delivers. Returning false hands the packet back to the
+    // caller's own open-check, so the drop is the same code either way.
+    const ch = label === 'state' ? this.state : this.events;
+    if (ch?.readyState !== 'open') return false;
     if (label === 'state' && sim.lossPct > 0 && Math.random() * 100 < sim.lossPct) return true;
     const delay = (sim.lagMs + (sim.jitterMs ? Math.random() * sim.jitterMs : 0)) / 1000;
     if (delay <= 0) return false;

@@ -80,6 +80,41 @@ console.log('on — under jitter, release stays in send order even when a later 
   );
 }
 
+// A `Peer` enters `HostTransport.peers` at *invite* time, seconds or minutes
+// before its channels open, and `NetHost._forward` broadcasts over `peers`. The
+// shipped transport drops those sends — `sendEvent` checks `readyState` — but
+// the rig used to queue first and never consult the channel, so the whole
+// pre-connect backlog released in one burst on the first pump after open:
+// goldChanged, levelUp, kill, stageStart, bossSpawn, playerDead and a stale
+// realmEnter/realmExit pair, none of which the shipped game delivers.
+console.log('on — a send on a channel that is not open is dropped, exactly as when off');
+{
+  const p = peerWith({ on: true, lagMs: 60, jitterMs: 0, lossPct: 0 });
+  p._t = 0;
+  p.events.readyState = 'connecting';
+  p.state.readyState = 'connecting';
+  for (let i = 0; i < 40; i++) p.sendEvent(new Uint8Array([i]));
+  for (let i = 0; i < 40; i++) p.sendState(new Uint8Array([i]));
+  ok(p._simQueue.length === 0, `nothing queued while connecting (got ${p._simQueue.length})`);
+
+  // The channels open, as they do the instant the peer actually connects.
+  p.events.readyState = 'open';
+  p.state.readyState = 'open';
+  p._t = 10; p.pumpSim();
+  ok(p.events.sent.length === 0, `no event burst on open (got ${p.events.sent.length})`);
+  ok(p.state.sent.length === 0, `no snapshot burst on open (got ${p.state.sent.length})`);
+}
+
+console.log('on — the other end: once open, the rig still delays rather than dropping');
+{
+  const p = peerWith({ on: true, lagMs: 60, jitterMs: 0, lossPct: 0 });
+  p._t = 0;
+  p.sendEvent(new Uint8Array([1]));
+  ok(p._simQueue.length === 1, `an open channel still goes through the rig (got ${p._simQueue.length})`);
+  p._t = 0.07; p.pumpSim();
+  ok(p.events.sent.length === 1, `and is delivered after the delay (got ${p.events.sent.length})`);
+}
+
 console.log('on — loss applies to the unreliable channel only');
 {
   const p = peerWith({ on: true, lagMs: 0, jitterMs: 0, lossPct: 100 });
