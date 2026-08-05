@@ -39,11 +39,26 @@ const MAX_STATE_BUFFERED = 256 * 1024;
 // Too low (below the packets a real probe legitimately has in flight at the
 // configured lag) would drop traffic a real network of that latency would
 // have delivered, contaminating the exact measurement this rig exists to
-// produce; too high defeats the point of capping a stall at all. Dropping
-// the oldest queued entry — the one held longest and therefore already the
-// most stale — mirrors the "drop rather than queue" choice already made for
-// a backed-up `state` channel above.
-const MAX_SIM_QUEUE = 2048;
+// produce; too high defeats the point of capping a stall at all.
+//
+// The eviction policy is `state`-only, and that is not a nicety. This queue
+// is shared by both channels — `_simSend` is reached from `sendState` and
+// from `sendEvent` — so an unqualified `shift()` here could discard a queued
+// `events` packet, which the transport declares `{ ordered: true }` and the
+// rig's own charter (`NetConfig.js`, `netSim`) promises never to drop. A
+// HELLO, a WELCOME or a forwarded event vanishing with no refusal and
+// nothing in the console is indistinguishable from the join defects this rig
+// was built to measure, so the rig would be manufacturing its own evidence.
+// `_simEvict` therefore drops the oldest *state* entry (held longest, so
+// already the most stale — the same "drop rather than queue" choice made for
+// a backed-up `state` channel above) and, when the backlog is entirely
+// reliable, exceeds the cap and says so once rather than lying about the
+// guarantee. Unbounded growth is the lesser failure: it is loud, it is
+// bounded in practice because state traffic dominates by an order of
+// magnitude, and it does not corrupt a measurement.
+// Exported so `tests/netlag.test.mjs` fills the queue against the real cap
+// rather than against a copy of the number that can drift away from it.
+export const MAX_SIM_QUEUE = 2048;
 
 /** One connected remote endpoint, with the two channels Protocol.js expects. */
 export class Peer {
@@ -78,6 +93,30 @@ export class Peer {
     this._sim = sim;
     this._simClock = clock;
     this._simQueue = [];
+    this._simOverflowWarned = false;
+  }
+
+  /**
+   * Make room for one more queued packet, never at a reliable packet's expense.
+   *
+   * Drops the oldest `state` entry if there is one. If the whole backlog is
+   * `events`, the queue is allowed past `MAX_SIM_QUEUE` and we warn once: a rig
+   * that quietly discards ordered/reliable traffic measures a transport this
+   * game does not ship. The scan is O(queue) but only on overflow, and lands on
+   * index 0 in the ordinary case because snapshots dominate the queue.
+   */
+  _simEvict() {
+    const q = this._simQueue;
+    for (let i = 0; i < q.length; i++) {
+      if (q[i].ch === 'state') { q.splice(i, 1); return; }
+    }
+    if (!this._simOverflowWarned) {
+      this._simOverflowWarned = true;
+      console.warn(
+        `[net] ?netlag= queue is past ${MAX_SIM_QUEUE} entries and holds no droppable state packet; ` +
+        'growing rather than dropping reliable traffic — the pump is stalled.'
+      );
+    }
   }
 
   /** Release anything whose delay has elapsed. Inert when not armed. */
@@ -111,7 +150,7 @@ export class Peer {
     const delay = (sim.lagMs + (sim.jitterMs ? Math.random() * sim.jitterMs : 0)) / 1000;
     if (delay <= 0) return false;
     const q = this._simQueue;
-    if (q.length >= MAX_SIM_QUEUE) q.shift();
+    if (q.length >= MAX_SIM_QUEUE) this._simEvict();
     q.push({ ch: label, bytes, due: this._simClock() + delay });
     return true;
   }

@@ -158,6 +158,12 @@ export function describeNet() {
  * Loss is deliberately never applied to the reliable `events` channel: dropping
  * there would misrepresent a guarantee the transport actually provides, and
  * every conclusion drawn from it would be about a transport we do not ship.
+ *
+ * That is a property of the whole rig, not just of `?netloss=`. The delay queue
+ * both channels share is capped, and its overflow eviction is `state`-only for
+ * the same reason (`Transport.js`, `MAX_SIM_QUEUE` / `_simEvict`); a reliable
+ * backlog grows past the cap and warns instead. `tests/netlag.test.mjs` holds
+ * both halves of the guarantee.
  */
 // A bare non-negative number is a flat delay; `lo-hi` is a jitter range,
 // both sides non-negative. Anchoring both patterns to digits-only (no `-`
