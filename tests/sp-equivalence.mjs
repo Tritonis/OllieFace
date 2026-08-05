@@ -158,12 +158,84 @@ const DEFAULT_ENEMY_HEIGHT = 1.6;
 // this wrong.
 const PORT = 5209;
 
+/* ---------------------------------------------------------------------------
+ * `--mode elite-dps` — the elite-affix damage arm.
+ *
+ * A second *export* of this file rather than a second fixture file, because the
+ * pinned clock, the liveness gate and the settle gate above are the expensive
+ * part and a second copy of them is a second thing that can drift out of true.
+ * The default mode is untouched: `--compare` still runs the equivalence
+ * fingerprint and nothing below this block executes for it.
+ *
+ * What it measures: how much damage one elite puts on one parked survivor per
+ * second, split by damage *type*, at two standoffs. The split is the whole
+ * point — a blazing elite's total is three separate riders (the aura's direct
+ * tick, the burn DoT the aura and the melee rider light, and the melee hit
+ * itself) and they answer to three different levers, so a single total cannot
+ * tell you which one to move.
+ *
+ * The `damage` event carries no `type` and no `isDot` (`Combat.js:478-481`), so
+ * the split cannot be taken from it. `ctx.combat.applyDamage` is wrapped for
+ * the duration of the run instead, which is where `info.type` and `info.isDot`
+ * actually are. Nothing in `src/` is modified: the wrapper delegates and is
+ * removed before the page closes.
+ */
+
+// The spawn card every arm uses. `lasher` is the card the round-7 fixture this
+// arm reproduces used, and the choice is load-bearing rather than arbitrary:
+// `baseDamage: 21` is what makes the plain arm's melee land on exactly 21 and
+// the elite arms' on exactly 42, so a per-hit number that is off by a
+// multiplier is visible as a non-integer rather than hidden in a dps average.
+// Its `flail` reaches 6.5 m while `reel` and `thorns` have minRanges of 4 and 5,
+// so at the 2.5 m stand it can *only* melee — the contact arm is therefore melee
+// plus affix rider and nothing else.
+const ARM_CARD = 'lasher';
+
+// The two standoffs, both reported, because a fix aimed at one end can overshoot
+// into the other. 2.5 m is inside blazing's 3.2 m `auraRadius` and is the worst
+// case: the aura fires on every beat, `inAuraFraction` is 1, and AI variance in
+// whether the unit closed is removed entirely. 11 m is outside every aura and
+// outside the melee reach, so the unit has to choose and travel — that arm can
+// still be moved by a targeting or steering change, which is exactly why it
+// cannot be the only one.
+const CONTACT_M = 2.5;
+const FREE_M = 11;
+
+// Settle before the first arm. Short on purpose, unlike `PRE_STEPS`: this arm
+// does not want the Director's spawn wave at all, and `updateDifficulty` runs
+// on every step whether the Director is enabled or not (`Director.js:276`), so
+// every extra settle step pushes `difficultyCoefficient` and with it the level
+// the arms would spawn at. Too few and `ctx.stage`/`Progression` are not up yet
+// and the gate below fails; too many and the survivor is fighting a horde the
+// arm then has to clear, at a monster level that is no longer 1.
+const ARM_SETTLE = 120;
+
+// 40 s held in contact. The floor is set by quantisation, not by the ramp: the
+// plain arm's whole damage is melee hits worth 21 each on a ~2.4 s cooldown, so
+// at 20 s a single hit landing either side of the window edge moved the plain
+// denominator by 14% and the blazing/plain ratio by 1.6x between two runs of an
+// unchanged tree. At 40 s that is ~6%. Too many and the six arms together push
+// `difficultyCoefficient` far enough that the later arms are measured on a
+// different curve from the earlier ones, and each capture costs minutes.
+const CONTACT_STEPS = 2400;
+
+// 27 s free-roam. Longer than the contact arm because the unit spends the first
+// seconds closing and choosing, and a window that ends mid-approach measures
+// travel time rather than damage. Too many and the same difficulty drift above
+// applies.
+const FREE_STEPS = 1620;
+
 const arg = (name) => {
   const i = process.argv.indexOf(name);
   return i >= 0 ? process.argv[i + 1] : null;
 };
 const outPath = arg('--out');
 const comparePath = arg('--compare');
+const MODE = arg('--mode') || 'equivalence';
+if (MODE !== 'equivalence' && MODE !== 'elite-dps') {
+  console.error(`unknown --mode ${MODE}; expected "equivalence" or "elite-dps"`);
+  process.exit(2);
+}
 
 /**
  * Flatten to dotted leaf paths so a nested window (`deadTarget.*`) and a bucket
@@ -196,6 +268,7 @@ const compareFingerprints = (baseline, fresh) => {
 let server = null;
 let browser = null;
 let result = null;
+let elite = null;
 let liveness = null;
 let pageErrors = [];
 
@@ -258,7 +331,250 @@ try {
   pageErrors.push(...a.errs);
   await a.page.close();
 
-  if (liveness.gate === 'fired') {
+  if (liveness.gate === 'fired' && MODE === 'elite-dps') {
+    // --- Phase B': the elite-affix damage arm --------------------------------
+    const e = await newPage();
+    elite = await e.page.evaluate(
+      async ({ card, contactM, freeM, settle, contactSteps, freeSteps, r }) => {
+        const { engine, ctx } = globalThis.__GAME__;
+        const H = 1 / 60;
+        const round = (n) => Math.round(n * r) / r;
+
+        /* The spawn card, by id, from the module the game itself imports.
+         *
+         * Taken through the dev server's own module graph rather than fished
+         * out of whatever happens to be on the field, so the arm spawns the card
+         * it names even when the Director has never rolled one — `lasher` is
+         * tier 2 and is not affordable 2 s into stage 1. This is the only
+         * `await` in the block and it is deliberately *before* the
+         * dismiss-and-stop pair below, so no rAF can land between those two.
+         */
+        const { ENEMY_BY_ID } = await import('/src/data/enemies.js');
+        const def = ENEMY_BY_ID.get(card) ?? null;
+
+        // Same synchronous dismiss-and-stop as the fingerprint mode: no rAF can
+        // land between them, so the sim has taken exactly zero steps when the
+        // hand-driven loop below starts.
+        globalThis.__HARNESS__.dismiss();
+        engine.stop();
+
+        const p = ctx.player;
+        const dir = ctx.director;
+        if (!p || !dir) return { armFailures: ['no player or no director'] };
+
+        /* One step of the pinned loop.
+         *
+         * `Director.fixedUpdate` already steps every enemy, so unlike the
+         * fingerprint mode this loop does not call `Enemy.fixedUpdate` itself —
+         * it calls `update` for the presentation half only, which is what
+         * advances `deathT` and lets a corpse be reaped. The camera rig is not
+         * driven and the trigger is not held: this arm measures damage *to* the
+         * survivor, and a survivor who shoots back kills the subject.
+         */
+        const step = () => {
+          ctx.time += H;
+          for (const s of engine.systems) if (s.fixedUpdate) s.fixedUpdate(ctx, H);
+          for (const en of dir.enemies) en.update?.(ctx, H);
+        };
+
+        for (let i = 0; i < settle; i++) step();
+
+        const gate = {
+          paused: ctx.paused,
+          menuScreen: ctx.hud?.menus?.screen ?? null,
+          localTick: p._localTick ?? null,
+          expectedLocalTick: settle,
+          progressionStarted: !!ctx.progression?._started,
+          playerAlive: !!p.alive,
+          playerMaxHealth: p.maxHealth,
+          engineRunning: engine.running,
+          authority: !!ctx.authority,
+          cardFound: null,
+        };
+        const gateFailures = [];
+        if (gate.paused !== false) gateFailures.push('ctx.paused is not false');
+        if (gate.menuScreen != null) gateFailures.push(`a menu is up: ${gate.menuScreen}`);
+        if (gate.localTick !== settle) gateFailures.push(`player stepped ${gate.localTick}, expected ${settle}`);
+        if (!gate.progressionStarted) gateFailures.push('Progression never began stage 1');
+        if (!gate.playerAlive) gateFailures.push('player died during the settle window');
+        if (gate.engineRunning) gateFailures.push('engine.stop() did not stop the frame loop');
+        if (!gate.authority) gateFailures.push('ctx.authority is false — applyDamage returns 0');
+
+        gate.cardFound = !!def;
+        if (!def) gateFailures.push(`spawn card "${card}" not found in ENEMY_BY_ID`);
+        if (gateFailures.length) return { gateFailures, gate };
+
+        // Ambient spawning off for the whole run. `enabled` gates credit accrual
+        // and spawning only (`Director.js:302`); everything already on the field
+        // keeps stepping, which is why the field is cleared per arm as well.
+        dir.enabled = false;
+
+        /* The type/isDot split, taken where it exists.
+         *
+         * `applyDamage` returns the amount that actually landed, so this records
+         * what the survivor took rather than what was requested — a shield or an
+         * armour change shows up here as it would in play.
+         */
+        const origApply = ctx.combat.applyDamage.bind(ctx.combat);
+        let rec = null;
+        ctx.combat.applyDamage = (target, amount, info = {}) => {
+          const dealt = origApply(target, amount, info);
+          if (rec && target === ctx.player && dealt > 0) {
+            const key = `${info.type || 'none'}${info.isDot ? ':dot' : ''}`;
+            rec.byType[key] = (rec.byType[key] || 0) + dealt;
+            rec.total += dealt;
+            rec.events++;
+            if (info.source !== rec.unit) rec.foreign += dealt;
+          }
+          return dealt;
+        };
+
+        const arms = {};
+        const runArm = (affix, metres, steps, hold) => {
+          dir.clear(ctx);
+          ctx.combat.statuses.delete(p);
+          p.health = p.maxHealth;
+          p._iframeUntil = 0;
+
+          /* Monster stats are baked at spawn (`Enemy.js:262-268`), and
+           * `updateDifficulty` runs on every step whether the Director is
+           * enabled or not — so by the sixth arm the curve has moved. Forcing
+           * the three multipliers immediately before the spawn is what makes
+           * all six arms the same unit: level 1, `damageMult` 1, so
+           * `unitDamageStat` is `baseDamage` times the affix multiplier and
+           * nothing else. The assertion that this worked is `baseDamage: 21`
+           * in every arm's output.
+           */
+          dir.level = 1;
+          dir.damageMult = 1;
+          dir.healthMult = 1;
+
+          const p0 = { x: p.position.x, y: p.position.y, z: p.position.z };
+          // A fixed bearing rather than camera-forward: camera yaw at this point
+          // is whatever the rig last wrote, which is not a pinned quantity.
+          const at = { x: p0.x + metres, y: p0.y, z: p0.z };
+          const unit = dir.spawnOne(ctx, def, at, affix);
+          // `Enemy.spawn` grounds the body (`Enemy.js:273`); the hold re-forces
+          // the position it was actually placed at, not the player's y, or the
+          // held unit spends the arm hovering or buried.
+          const holdY = unit.position.y;
+
+          rec = { byType: {}, total: 0, events: 0, foreign: 0, unit };
+          let inAura = 0;
+          let distSum = 0;
+          let distMin = Infinity;
+          let stackSum = 0;
+          let stackMax = 0;
+
+          for (let i = 0; i < steps; i++) {
+            if (hold && unit.alive) {
+              // Held in contact: position re-forced every step, so the standoff
+              // is exactly `metres` on every beat of the aura and the arm has no
+              // AI variance in it at all.
+              unit.position.set(p0.x + metres, holdY, p0.z);
+              unit.velocity.set(0, 0, 0);
+            }
+            // Sampled *before* the step, because this is the separation the
+            // step's `Enemy.fixedUpdate` will read into `distToPlayer` — sampling
+            // after it would report the post-movement position instead of the one
+            // the aura test actually used, and on a held arm that reads as an
+            // `inAuraFraction` below 1 on a fixture that never left the aura.
+            const d = Math.hypot(unit.position.x - p.position.x, unit.position.z - p.position.z);
+            distSum += d;
+            if (d < distMin) distMin = d;
+            const aura = unit.elite?.auraRadius ?? 0;
+            if (aura > 0 && d < aura) inAura++;
+
+            step();
+
+            /* The survivor gives no input in either arm and is topped up in
+             * both: damage is *measured*, not prevented, and restoring after the
+             * step means the step's damage is already recorded.
+             *
+             * His *position* is forced only on the held arm, where the whole
+             * point is a standoff with no variance in it. On the free-roam arm
+             * it is left alone, because the lasher's `reel` is a pull — forcing
+             * the position there would silently delete a mechanic and leave an
+             * arm that no aura change can move, i.e. an overshoot detector that
+             * cannot detect an overshoot. The round-7 fixture this reproduces
+             * recorded `minDist 0.005` on its free-roam arm for exactly that
+             * reason: the survivor was yanked into contact and burned.
+             */
+            if (hold) {
+              p.position.set(p0.x, p0.y, p0.z);
+              p.velocity.set(0, 0, 0);
+            }
+            p.health = p.maxHealth;
+
+            const st = ctx.combat.statusStacks(p, 'burn');
+            stackSum += st;
+            if (st > stackMax) stackMax = st;
+          }
+
+          const seconds = steps * H;
+          const byType = {};
+          for (const k of Object.keys(rec.byType).sort()) byType[k] = round(rec.byType[k]);
+          const dpsOf = (k) => round((rec.byType[k] || 0) / seconds);
+          const out = {
+            affix: affix ?? 'none',
+            card,
+            metres,
+            hold,
+            seconds: round(seconds),
+            damage: round(rec.total),
+            dps: round(rec.total / seconds),
+            // The three riders, separated. `burn` is the aura's *direct* tick
+            // (`Enemy.js:566`), `burn:dot` is the stack damage `_tickStatuses`
+            // applies, and `melee` is the hit itself. A stack cap moves the
+            // second and neither of the other two.
+            auraDirectDps: dpsOf('burn'),
+            burnDotDps: dpsOf('burn:dot'),
+            meleeDps: dpsOf('melee'),
+            byType,
+            events: rec.events,
+            foreignDamage: round(rec.foreign),
+            unitDamageStat: round(unit.damage),
+            baseDamage: round(def.baseDamage),
+            unitLevel: unit.level,
+            eliteAlive: !!unit.alive,
+            enemiesOnStage: dir.enemies.length,
+            inAuraFraction: round(inAura / steps),
+            meanBurnStacks: round(stackSum / steps),
+            maxBurnStacks: stackMax,
+            meanDist: round(distSum / steps),
+            minDist: round(distMin),
+            playerMaxHealth: round(p.maxHealth),
+            playerAlive: !!p.alive,
+          };
+          rec = null;
+          arms[`${affix ?? 'plain'}@${metres}`] = out;
+        };
+
+        const errorsAtStart = ctx.frameErrors;
+        for (const affix of ['blazing', 'glacial', null]) {
+          runArm(affix, contactM, contactSteps, true);
+          runArm(affix, freeM, freeSteps, false);
+        }
+        ctx.combat.applyDamage = origApply;
+
+        return {
+          arms,
+          gate,
+          card,
+          frameErrors: ctx.frameErrors - errorsAtStart,
+          lastFrameError: ctx.frameErrors > errorsAtStart ? ctx.lastFrameError : null,
+          rawCtxTime: ctx.time,
+          expectedCtxTime: (settle + 3 * (contactSteps + freeSteps)) / 60,
+        };
+      },
+      {
+        card: ARM_CARD, contactM: CONTACT_M, freeM: FREE_M, settle: ARM_SETTLE,
+        contactSteps: CONTACT_STEPS, freeSteps: FREE_STEPS, r: R,
+      },
+    );
+    pageErrors.push(...e.errs);
+    await e.page.close();
+  } else if (liveness.gate === 'fired') {
     // --- Phase B: the pinned fingerprint ------------------------------------
     const b = await newPage();
     result = await b.page.evaluate(
@@ -666,6 +982,66 @@ if (pageErrors.length) {
   console.error('PAGE ERRORS — fingerprint is not trustworthy:', pageErrors);
   process.exit(1);
 }
+if (MODE === 'elite-dps') {
+  if (elite?.gateFailures || elite?.armFailures) {
+    console.error('ELITE ARM GATE FAILED — the page is not playing:', elite);
+    process.exit(1);
+  }
+  const eDrift = Math.abs(elite.rawCtxTime - elite.expectedCtxTime);
+  if (eDrift > DRIFT_TOLERANCE) {
+    console.error(`CLOCK DRIFT — ctx.time is ${elite.rawCtxTime}, expected ${elite.expectedCtxTime} (drift ${eDrift}).`);
+    process.exit(1);
+  }
+  if (elite.frameErrors > 0) {
+    console.error('SYSTEM THREW DURING A MEASURED ARM:', elite.frameErrors, elite.lastFrameError);
+    process.exit(1);
+  }
+  // Per-arm invariants. Each of these has failed a real run at least once in
+  // this repo's history, and every one of them turns a plausible-looking dps
+  // into a number about a different fixture than the one the report describes.
+  const armFail = [];
+  for (const [name, a] of Object.entries(elite.arms)) {
+    if (a.foreignDamage > 0) armFail.push(`${name}: ${a.foreignDamage} damage from something other than the subject`);
+    if (!a.eliteAlive) armFail.push(`${name}: the subject died mid-arm`);
+    if (a.enemiesOnStage !== 1) armFail.push(`${name}: ${a.enemiesOnStage} enemies on stage, expected 1`);
+    if (a.baseDamage !== 21) armFail.push(`${name}: baseDamage ${a.baseDamage}, expected 21 — the difficulty pin did not hold`);
+    if (a.unitLevel !== 1) armFail.push(`${name}: unit level ${a.unitLevel}, expected 1`);
+    if (!a.playerAlive) armFail.push(`${name}: the survivor died — the top-up did not hold`);
+    if (a.hold && a.inAuraFraction > 0 && a.inAuraFraction < 1) {
+      armFail.push(`${name}: inAuraFraction ${a.inAuraFraction} on a held arm, expected 1`);
+    }
+  }
+  if (armFail.length) {
+    console.error('ELITE ARM INVARIANTS FAILED:\n  ' + armFail.join('\n  '));
+    process.exit(1);
+  }
+
+  const eliteOut = {
+    mode: 'elite-dps',
+    card: elite.card,
+    arms: elite.arms,
+    diagnostics: { liveness, gate: elite.gate, rawCtxTime: elite.rawCtxTime, clockDrift: eDrift },
+  };
+  const ejson = JSON.stringify(eliteOut, null, 2);
+  if (outPath) {
+    mkdirSync(dirname(outPath), { recursive: true });
+    writeFileSync(outPath, ejson);
+    console.log(`wrote ${outPath}`);
+  } else {
+    console.log(ejson);
+  }
+  const plainContact = elite.arms[`plain@${CONTACT_M}`]?.dps ?? 0;
+  for (const [name, a] of Object.entries(elite.arms)) {
+    console.log(`${name.padEnd(16)} dps ${String(a.dps).padStart(7)}  aura ${String(a.auraDirectDps).padStart(6)}  burnDot ${String(a.burnDotDps).padStart(6)}  melee ${String(a.meleeDps).padStart(6)}`);
+  }
+  if (plainContact > 0) {
+    for (const k of [`blazing@${CONTACT_M}`, `glacial@${CONTACT_M}`]) {
+      console.log(`${k} is ${(elite.arms[k].dps / plainContact).toFixed(2)}x plain@${CONTACT_M}`);
+    }
+  }
+  process.exit(0);
+}
+
 if (result?.gateFailures) {
   console.error('SETTLE GATE FAILED — the page is not playing:', result);
   process.exit(1);
