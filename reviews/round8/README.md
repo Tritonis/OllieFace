@@ -96,6 +96,77 @@ adjust the harness, do not re-capture the baseline, and do not explain the
 difference away. Re-baselining is a decision for the human partner, and when it
 happens the old baseline is preserved and this file records what it absorbed.
 
+## Part 1b — the affix gate, because the fingerprint cannot see `ELITE_STATS`
+
+```
+npm run gate:elite
+```
+
+which is `node tests/sp-equivalence.mjs --mode elite-dps --compare reviews/round8/elite-baseline-HEAD.json`.
+
+**Why it is a second gate and not a field in the first one.** The fingerprint's
+window — 10 s of settle plus 60 s of stage 1 — never banks the 4.5 credits an
+affix costs, so it contains no elite of any kind and no `<id>+<affix>` damage
+source. A change to `ELITE_STATS` moves nothing in it and `--compare` reports
+`no fields moved` for a change that halved an affix's damage. The default gate
+prints a NOTE saying exactly that beside its own verdict. This is the gate that
+has power over the change the NOTE disclaims.
+
+**What it covers.** Six arms — `blazing`, `glacial` and plain `lasher`, each at
+a 2.5 m contact stand and an 11 m free-roam stand — plus a lethal arm that runs
+a full-health survivor to death. Every arm's `dps` and its three-way split
+(`auraDirectDps` / `burnDotDps` / `meleeDps`), every field read straight off
+`ELITE_STATS` (`auraRadius`, `unitDamageStat`, `hasAura`), the difficulty pins
+(`baseDamage`, `unitLevel`, `enemiesOnStage`) and the lethal arm's
+`damageTaken`, `stepsRun` and `timeToDeath`. `diagnostics` is excluded, for the
+same reason the fingerprint excludes its own: wall-clock.
+
+**The comparison is exact, and that is measured rather than assumed.** Three
+consecutive captures of an unchanged tree are identical in every compared
+field — all 24 per-arm rates, every `ELITE_STATS`-derived field, and the whole
+lethal arm. The arm has no wall-clock input: the survivor is parked, the elite
+is the only unit on stage, and the clock is hand-driven from step zero. The
+~6% run-to-run spread recorded in `CONTACT_STEPS`' comment was measured at a
+20 s window and is why the window is 40 s.
+
+**It has been failed on purpose**, which is the only evidence that a gate is
+one. Halving blazing's `auraDps` from 0.12 to 0.06 in `src/data/enemies.js`:
+
+```
+$ npm run gate:elite
+ELITE DAMAGE MOVED vs reviews/round8/elite-baseline-HEAD.json — 12 field(s):
+  arms.blazing@11.auraDirectDps       baseline: 3.173333   now: 1.586667
+  arms.blazing@2.5.dps                baseline: 40.929     now: 24.129
+  …
+exit 1
+```
+
+and the same substitution run through the **default** gate:
+
+```
+$ node tests/sp-equivalence.mjs --compare reviews/round8/baseline-HEAD.json
+NOTE: this window contains no elite …
+single-player unchanged vs reviews/round8/baseline-HEAD.json — no fields moved
+exit 0
+```
+
+Those two runs are the argument for this file existing. Full output of both is
+in the loop-3 fix report.
+
+**Deliberately not in `npm test`.** It drives Chromium through a Vite dev
+server and takes about 18 s per capture plus browser start; `tests/run.mjs`
+filters on `*.test.mjs` and excludes `sp-equivalence.mjs` for the same reason
+the equivalence gate is excluded. Both are separately-invoked merge gates. The
+merge gate list is now five: `npm test`, the Vite build, the SP equivalence
+compare, `npm run gate:elite`, and `node reviews/round8/n1-gate.mjs`.
+
+| File | What it captures | Command that produced it |
+|---|---|---|
+| `elite-baseline-HEAD.json` | **The affix baseline. Cite this one.** The six arms and the lethal arm at the branch's retuned `ELITE_STATS`. | `node tests/sp-equivalence.mjs --mode elite-dps --out reviews/round8/elite-baseline-HEAD.json` |
+
+`balance/{before,after}.json` remain what they were — the evidence for Task 9's
+retune, not a baseline any tool reads.
+
 ---
 
 # Part 2 — N-1: who do enemies actually attack

@@ -4,6 +4,12 @@
  *   node tests/sp-equivalence.mjs --out reviews/round8/baseline-HEAD.json
  *   node tests/sp-equivalence.mjs --compare reviews/round8/baseline-HEAD.json
  *
+ * and the affix gate, which is a separate baseline because this one is
+ * structurally blind to `ELITE_STATS` (`npm run gate:elite`):
+ *
+ *   node tests/sp-equivalence.mjs --mode elite-dps --out reviews/round8/elite-baseline-HEAD.json
+ *   node tests/sp-equivalence.mjs --mode elite-dps --compare reviews/round8/elite-baseline-HEAD.json
+ *
  * The roster migration's whole safety argument is that a roster of one behaves
  * exactly as `ctx.player` did. This is the instrument that decides it. Capture
  * a baseline from HEAD's literal condition first — not from the current tree
@@ -1177,7 +1183,9 @@ if (MODE === 'elite-dps') {
     mkdirSync(dirname(outPath), { recursive: true });
     writeFileSync(outPath, ejson);
     console.log(`wrote ${outPath}`);
-  } else {
+  } else if (!comparePath) {
+    // Same condition as the fingerprint mode's: dumping the whole capture on
+    // top of a one-line verdict trains a reader to skim past the verdict.
     console.log(ejson);
   }
   const plainContact = elite.arms[`plain@${CONTACT_M}`]?.dps ?? 0;
@@ -1193,6 +1201,58 @@ if (MODE === 'elite-dps') {
   console.log(`lethal ${L.affix}@${L.metres}  time to death from ${L.startHealth} HP: `
     + (L.timeToDeath == null ? `SURVIVED ${L.windowSeconds}s` : `${L.timeToDeath}s`)
     + `  (${L.damageTaken} damage, ${JSON.stringify(L.byType)})`);
+
+  /* `--compare` for this mode, which is what turns it from an instrument into a
+   * gate.
+   *
+   * Until this existed, `ELITE_STATS` was the largest measured behaviour change
+   * on the branch — blazing 100.7 -> 40.9 dps — with nothing that could fail on
+   * it. The default fingerprint is structurally blind to affixes (see the NOTE
+   * it prints), this mode had no comparator at all, and there was no committed
+   * baseline for one to read. A regression was caught by a human reading six
+   * numbers, or not at all.
+   *
+   * Exact, not tolerance-banded, and that is a measurement rather than a hope.
+   * Three consecutive captures of an unchanged tree were compared field by
+   * field and are identical in every one — all 24 per-arm rates, every
+   * ELITE_STATS-derived field, and the lethal arm's damage, step count and
+   * time-to-death. The arm has no wall-clock input: the survivor is parked, the
+   * elite is the only unit on stage, and the clock is hand-driven from step
+   * zero, so there is nothing left to vary. `CONTACT_STEPS`' comment records a
+   * ~6% run-to-run spread — that was measured at a 20 s window, and it is the
+   * reason the window is 40 s; at 40 s the spread is zero.
+   *
+   * A tolerance would therefore be a band around a number that does not move,
+   * and every dps in it would be free to drift by that band with no gate. If
+   * this ever proves machine-dependent rather than run-dependent, the answer is
+   * a tolerance with a measured floor — not a re-baseline.
+   *
+   * `diagnostics` is excluded for the same reason the fingerprint mode excludes
+   * its own: it carries the liveness gate and the clock drift, which are
+   * wall-clock derived.
+   */
+  if (comparePath) {
+    const baseline = JSON.parse(readFileSync(comparePath, 'utf8'));
+    if (baseline.mode !== 'elite-dps') {
+      console.error(`${comparePath} is not an elite-dps capture (mode: ${baseline.mode ?? 'absent'}).`);
+      console.error('The fingerprint baseline cannot gate an affix change — that blindness is why this mode exists.');
+      process.exit(2);
+    }
+    const view = (o) => ({ mode: o.mode, card: o.card, arms: o.arms, lethal: o.lethal });
+    const moved = compareFingerprints(view(baseline), view(eliteOut));
+    if (!moved.length) {
+      console.log(`\nelite damage unchanged vs ${comparePath} — no fields moved`);
+      process.exit(0);
+    }
+    console.error(`\nELITE DAMAGE MOVED vs ${comparePath} — ${moved.length} field(s):\n`);
+    for (const m of moved) {
+      console.error(`  ${m.field}\n    baseline: ${JSON.stringify(m.baseline)}\n    now:      ${JSON.stringify(m.fresh)}`);
+    }
+    console.error('\nUnlike the fingerprint gate, this one is not a chaotic amplifier: the arms are');
+    console.error('one pinned unit against one parked survivor, so the size of a move here is the');
+    console.error('size of the change. Re-baselining is a decision for the human partner.');
+    process.exit(1);
+  }
   process.exit(0);
 }
 
@@ -1264,11 +1324,20 @@ const eliteBuckets = [
 ].filter((k) => k.includes('+'));
 if (!eliteBuckets.length) {
   console.error('NOTE: this window contains no elite (no "<id>+<affix>" damage source).');
-  console.error('      A change to ELITE_STATS cannot move this fingerprint. Use --mode elite-dps.');
+  console.error('      A change to ELITE_STATS cannot move this fingerprint. Run `npm run gate:elite`,');
+  console.error('      which is the gate that does have power over it.');
 }
 
 if (comparePath) {
   const baseline = JSON.parse(readFileSync(comparePath, 'utf8'));
+  // The mirror of the elite mode's guard. Handing this mode an elite baseline
+  // used to flatten `undefined` into a single empty-named field and report one
+  // meaningless move, which reads as a regression in a file that has none.
+  if (!baseline.fingerprint) {
+    console.error(`${comparePath} is not an equivalence capture (no "fingerprint" object).`);
+    console.error('An elite-dps baseline is compared with --mode elite-dps.');
+    process.exit(2);
+  }
   const moved = compareFingerprints(baseline.fingerprint, out.fingerprint);
   if (!moved.length) {
     console.log(`single-player unchanged vs ${comparePath} — no fields moved`);
