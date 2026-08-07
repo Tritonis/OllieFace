@@ -365,6 +365,15 @@ try {
      * exactly the question that separates "the host stopped stepping" from "this
      * peer's answer never arrived".
      */
+    // The joining peer's net id, discovered from the join itself:
+    // `Lobby.createInvite` returns the `Peer` object's own `id`
+    // (`HostTransport.createInvite`, `Transport.js:273-275`), and `accept`
+    // refuses any answer blob whose `id` is not this one — so the peer that
+    // completes *this* exchange is this id and no other. Ids are emphatically
+    // not sequential with `k`: `_nextId` increments once per invite and a
+    // connect-retry burns one each time (one captured session burned ~30), so
+    // deriving it from the loop index would key the wait below on a stranger.
+    let netId = null;
     const joinFailure = async (stage, err) => {
       const pages = [];
       for (const p of peers) {
@@ -395,8 +404,8 @@ try {
           })),
         };
       }).catch((e) => ({ hostDetailFailed: String(e?.message ?? e) }));
-      armFailure = [`the join for player ${k} failed at: ${stage}`, {
-        stage, player: k, elapsedMs: Date.now() - t0,
+      armFailure = [`the join for player ${k} (peer id ${netId ?? 'unassigned'}) failed at: ${stage}`, {
+        stage, player: k, netId, elapsedMs: Date.now() - t0,
         error: String(err?.message ?? err),
         joinsCompleted: joins, pages, hostDetail, consoleLines,
       }];
@@ -408,33 +417,77 @@ try {
     try {
       invite = await host.page.evaluate(async () => {
         const inv = await globalThis.__GAME__.ctx.lobby.createInvite();
-        return inv.blob;
+        return { id: inv.id, blob: inv.blob };
       });
+      netId = invite.id;
     } catch (e) { await joinFailure('host createInvite', e); }
     try {
       answer = await client.page.evaluate(
-        async (blob) => await globalThis.__GAME__.ctx.lobby.joinManual(blob), invite,
+        async (blob) => await globalThis.__GAME__.ctx.lobby.joinManual(blob), invite.blob,
       );
     } catch (e) { await joinFailure('client joinManual', e); }
     try {
       await host.page.evaluate(async (a) => { await globalThis.__GAME__.ctx.lobby.acceptAnswer(a); }, answer);
     } catch (e) { await joinFailure('host acceptAnswer', e); }
+    /* Keyed on **this peer's** entry in the host's client table, not on the
+     * global pawn count reaching `k`.
+     *
+     * The count predicate is satisfiable by somebody else's pawn, and
+     * `reviews/audit-fixes/after-ice-1.FAILED.json` is that happening: player 2
+     * resolved as joined at 10.2 s with `hostPawnCount` still 1 — its peer id
+     * was absent from the host's client table entirely, so the pawn the count
+     * saw belonged to peer 1 — and the arm then attributed the eventual failure
+     * to player 3, whose peer *was* connected, pawned and holding two open
+     * channels. Both halves of that report were wrong, and a count can never
+     * tell the difference: it is one number for N independent joins.
+     *
+     * `hasPawn` is the same `!!c.pawn` the failure path below collects, read
+     * off the same host-side record, so the predicate and the evidence that
+     * explains a predicate failure cannot disagree about what was true. */
+    const pawnOnHost = (id) => host.page.waitForFunction(
+      (want) => {
+        const net = globalThis.__GAME__.ctx.lobby?.net;
+        for (const c of net?.clients?.values?.() ?? []) {
+          if ((c.peer?.id ?? null) === want) return !!c.pawn;
+        }
+        return false;
+      }, id, { timeout: JOIN_TIMEOUT_MS },
+    );
     try {
-      await host.page.waitForFunction(
-        (n) => (globalThis.__GAME__.ctx.coop?.pawns?.length ?? 0) >= n, k, { timeout: JOIN_TIMEOUT_MS },
-      );
-    } catch (e) { await joinFailure('host never spawned a pawn for this peer', e); }
+      await pawnOnHost(netId);
+    } catch (e) { await joinFailure(`host never spawned a pawn for peer id ${netId}`, e); }
     try {
       await client.page.waitForFunction(
         () => globalThis.__GAME__.ctx.lobby?.net?.connected === true, null, { timeout: JOIN_TIMEOUT_MS },
       );
     } catch (e) { await joinFailure('client never reported connected', e); }
+    // Re-read after *both* waits rather than trusting the first one: the client
+    // wait runs in between, and a peer whose pawn was despawned while it ran
+    // would otherwise be announced as joined on the strength of a stale check.
+    // This is the read the line below actually claims.
+    const entry = await host.page.evaluate((want) => {
+      const net = globalThis.__GAME__.ctx.lobby?.net;
+      for (const c of net?.clients?.values?.() ?? []) {
+        if ((c.peer?.id ?? null) === want) {
+          return { hasPawn: !!c.pawn, helloSeen: c.helloSeen === true, survivorId: c.survivorId ?? null };
+        }
+      }
+      return null;
+    }, netId).catch(() => null);
+    if (!entry?.hasPawn) {
+      await joinFailure(`peer id ${netId} holds no pawn on the host after both join waits returned`, new Error(
+        entry ? 'the host client entry for this peer exists but its pawn is gone' : 'this peer is not in the host client table',
+      ));
+    }
     joins.push({
-      player: k, ms: Date.now() - t0,
-      inviteBytes: invite.length, answerBytes: answer.length,
+      player: k, netId, ms: Date.now() - t0,
+      inviteBytes: invite.blob.length, answerBytes: answer.length,
+      peerHasPawn: entry.hasPawn, peerSurvivorId: entry.survivorId, peerHelloSeen: entry.helloSeen,
+      // Kept alongside the per-peer fact, no longer standing in for it: a
+      // global count that disagrees with the roster is still worth seeing.
       hostPawnCount: await host.page.evaluate(() => globalThis.__GAME__.ctx.coop.pawns.length),
     });
-    console.log(`[probe] player ${k} joined in ${joins[joins.length - 1].ms} ms`);
+    console.log(`[probe] player ${k} (peer id ${netId}) joined with a pawn on the host in ${joins[joins.length - 1].ms} ms`);
   }
 
   // --- gate 2: every page is playing, after the joins -----------------------
