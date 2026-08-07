@@ -450,7 +450,12 @@ export class NetHost {
    */
   _holdSession(ctx) {
     const screen = ctx.hud?.menus?.screen ?? null;
-    const now = performance.now() / 1000;
+    // Through the same seam as every other age gate in this file. It used to
+    // read `performance.now()` directly — identical arithmetic, but it put the
+    // one number this method turns on (HOLD_GRACE) out of reach of a unit test,
+    // which is why the riskiest method in `src/net/` had no test of its own
+    // release edge. See `tests/nethost-dead-host-join.test.mjs`.
+    const now = this._now();
     const live = this.hasLivePeer();
     if (live) this._lastLivePeer = now;
     // The grace window is not padding. `SnapshotBuffer.ingest` drops any
@@ -490,6 +495,20 @@ export class NetHost {
 
   update(ctx, dt) {
     this._holdSession(ctx);
+    // The sixth HELLO door, and the only one that can be shut on a paused host.
+    //
+    // `_checkHelloDeadlines` is swept from `fixedUpdate`, which `ctx.paused`
+    // gates at the Engine level (`Engine.js:246`) — no fixed step runs, so no
+    // sweep does either. `_holdSession` above releases that pause for a peer
+    // with a live pawn, so the ordinary join is already covered. A peer whose
+    // pawn is null is not: it keeps `hasLivePeer()` false, nothing un-pauses,
+    // and the deadline that exists to close it can never fire. Measured on the
+    // unfixed path — a pawnless peer still in `clients`, unclosed and unrefused,
+    // 30 s past a 2.5 s deadline, with the host's `tick` still at 0.
+    //
+    // Only while paused: when the world is running `fixedUpdate` has already
+    // swept this frame, and sweeping twice would be work for nothing.
+    if (ctx.paused) this._checkHelloDeadlines();
     for (const c of this.clients.values()) c.peer.pumpSim();
     if (this.clients.size === 0) return;
     // Nothing useful can be sent from a paused world: `this.tick` advances only
