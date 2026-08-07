@@ -18,6 +18,7 @@ const MAX_PROC_DEPTH = 3;    // a proc's proc's proc cannot proc
 const PROC_BUDGET = 512;     // hook dispatches per fixed step, a hard circuit breaker
 const HIT_POOL = 64;
 const OVERLAP_POOL = 256;
+const CANDIDATE_POOL = 256;
 
 // Status tuning. `stackDamage` is a fraction of the source's damage stat per
 // tick, so DoT scales with the attacker rather than with the victim's health.
@@ -50,6 +51,11 @@ export class Combat {
     this._hits = [];
     this._overlap = new Array(OVERLAP_POOL);
     this._overlapCount = 0;
+    this._cand = new Array(CANDIDATE_POOL);
+    // Largest radius in the registry, so a broadphase can size its search by
+    // the biggest thing that could reach into it. Radii come from spawn cards,
+    // not from a constant, so this is measured rather than assumed.
+    this._maxEntityRadius = 0;
 
     this._v0 = new THREE.Vector3();
     this._v1 = new THREE.Vector3();
@@ -87,6 +93,10 @@ export class Combat {
     if (entity._combatIndex !== undefined && this.entities[entity._combatIndex] === entity) return entity;
     entity._combatIndex = this.entities.length;
     entity._cellKey = null;
+    // A unit spawned after this step's reindex has to widen the broadphase
+    // immediately; the reindex will re-measure the whole registry next step.
+    const r = entity.radius || 0.5;
+    if (r > this._maxEntityRadius) this._maxEntityRadius = r;
     entity._iframeUntil = 0;
     this.entities.push(entity);
     this._insert(entity);
@@ -138,11 +148,15 @@ export class Combat {
   fixedUpdate(ctx, h) {
     this._procBudget = PROC_BUDGET;
 
+    let maxR = 0;
     for (let i = 0; i < this.entities.length; i++) {
       const e = this.entities[i];
+      const r = e.radius || 0.5;
+      if (r > maxR) maxR = r;
       if (!e.alive) continue;
       this._reindex(e);
     }
+    this._maxEntityRadius = maxR;
 
     this._tickStatuses(ctx, h);
   }
@@ -184,6 +198,51 @@ export class Combat {
   }
 
   overlapAt(i) { return this._overlap[i]; }
+
+  /** The largest radius currently registered — the reach of the biggest unit. */
+  get maxEntityRadius() { return this._maxEntityRadius; }
+
+  /**
+   * Broadphase for a caller that has to reproduce a full-registry scan exactly.
+   * Fills the shared candidate buffer with every registered entity bucketed
+   * near the point and returns the count; read results with `candidateAt(i)`.
+   *
+   * Deliberately unlike `sphereOverlap`: nothing is filtered — not liveness,
+   * not team, not distance — because the caller's accept test is the one that
+   * has to stay bit-identical, and this must not apply a second, subtly
+   * different one. Results arrive in bucket order, which is insertion order
+   * with swap-removal and therefore NOT `entities` order, so a caller whose
+   * answer depends on registry order must re-derive it from `_combatIndex`.
+   *
+   * Returns -1 when more entities are bucketed nearby than the buffer holds:
+   * there is no correct truncation of an exhaustive query, so the caller has to
+   * scan the registry itself.
+   *
+   * Cells are widened by one on each side, as the hitscan queries are. The hash
+   * is only reindexed at the top of the fixed step, so an entity that has moved
+   * since is still found under its stale key — a whole cell of slack against a
+   * step's worth of travel.
+   */
+  candidatesNear(point, radius) {
+    const minX = Math.floor((point.x - radius) / CELL) - 1;
+    const maxX = Math.floor((point.x + radius) / CELL) + 1;
+    const minZ = Math.floor((point.z - radius) / CELL) - 1;
+    const maxZ = Math.floor((point.z + radius) / CELL) + 1;
+    let n = 0;
+    for (let cx = minX; cx <= maxX; cx++) {
+      for (let cz = minZ; cz <= maxZ; cz++) {
+        const bucket = this.cells.get(((cx + 4096) << 13) | (cz + 4096));
+        if (!bucket) continue;
+        for (let i = 0; i < bucket.length; i++) {
+          if (n >= CANDIDATE_POOL) return -1;
+          this._cand[n++] = bucket[i];
+        }
+      }
+    }
+    return n;
+  }
+
+  candidateAt(i) { return this._cand[i]; }
 
   /** Nearest living hostile within `radius`, or null. Used by chain lightning. */
   nearestHostile(point, radius, team, exclude) {

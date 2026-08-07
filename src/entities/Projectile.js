@@ -195,16 +195,38 @@ export class ProjectilePool {
   _entityAt(ctx, p) {
     const list = enemyList(ctx);
     if (!list) return null;
-    for (const e of list) {
-      if (!e || !e.alive || e === p.owner) continue;
-      if (p.owner && e.team === p.owner.team) continue;
-      const hh = (e.height || 1.6) * 0.5;
-      const dx = e.position.x - p.position.x;
-      const dz = e.position.z - p.position.z;
-      const dy = (e.position.y + hh) - p.position.y;
-      const r = (e.radius || 0.5) + p.radius;
-      if (dx * dx + dz * dz < r * r && Math.abs(dy) < hh + p.radius) return e;
+    const c = ctx.combat;
+
+    // This runs per collision substep per live projectile, so walking the whole
+    // registry costs tens of thousands of distance checks in a step of a dense
+    // fight. Combat already buckets every entity into an 8 m hash; ask it for
+    // the handful that could possibly be touching, whenever the hash is what is
+    // backing `list` (`enemyList` also accepts registries the hash knows
+    // nothing about).
+    //
+    // What may NOT change is *which* entity comes back. The scan below returns
+    // the first overlap in registry order, and the fixed-seed equivalence gate
+    // is sensitive to that choice: in a crowd several enemies overlap the same
+    // shot, and picking a different one of them rewrites the whole run. Hash
+    // buckets are in insertion order with swap-removal, so candidates arrive
+    // shuffled relative to the registry — the winner is therefore re-selected
+    // by `_combatIndex`, which is the registry position the scan was walking.
+    if (list === c.entities && typeof c.candidatesNear === 'function') {
+      const n = c.candidatesNear(p.position, p.radius + (c.maxEntityRadius || 0));
+      let ordered = n >= 0;   // -1 means more candidates than the buffer holds
+      let best = null, bestIndex = Infinity;
+      for (let i = 0; i < n && ordered; i++) {
+        const e = c.candidateAt(i);
+        const idx = e._combatIndex;
+        // Without a live index there is no registry order to pick by, and
+        // guessing is exactly the thing this must not do — fall through.
+        if (idx === undefined || list[idx] !== e) { ordered = false; break; }
+        if (idx < bestIndex && hits(p, e)) { best = e; bestIndex = idx; }
+      }
+      if (ordered) return best;
     }
+
+    for (const e of list) if (hits(p, e)) return e;
     return null;
   }
 
@@ -270,6 +292,25 @@ export class ProjectilePool {
 // --- shared enemy queries ---------------------------------------------------
 // Combat owns the entity registry but the contract only guarantees `register`,
 // so probe for whichever accessor exists and degrade to "no targets".
+
+/**
+ * Whether projectile `p` is touching entity `e` — the accept test `_entityAt`
+ * applies, lifted out whole so the hash path and the scan path cannot drift
+ * into two subtly different overlaps. Capsule against sphere: XZ separation
+ * only, with the vertical extent tested against the capsule's own half-height,
+ * which is why a shot passing over a beetle misses and the same shot at a
+ * golem's knee hits.
+ */
+function hits(p, e) {
+  if (!e || !e.alive || e === p.owner) return false;
+  if (p.owner && e.team === p.owner.team) return false;
+  const hh = (e.height || 1.6) * 0.5;
+  const dx = e.position.x - p.position.x;
+  const dz = e.position.z - p.position.z;
+  const dy = (e.position.y + hh) - p.position.y;
+  const r = (e.radius || 0.5) + p.radius;
+  return dx * dx + dz * dz < r * r && Math.abs(dy) < hh + p.radius;
+}
 
 export function enemyList(ctx) {
   const c = ctx.combat;
