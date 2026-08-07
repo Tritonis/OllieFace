@@ -1,0 +1,346 @@
+{
+  "failed": "the join for player 2 failed at: host never spawned a pawn for this peer",
+  "detail": {
+    "stage": "host never spawned a pawn for this peer",
+    "player": 2,
+    "elapsedMs": 46009,
+    "error": "page.waitForFunction: Timeout 45000ms exceeded.",
+    "joinsCompleted": [
+      {
+        "player": 1,
+        "ms": 11452,
+        "inviteBytes": 1094,
+        "answerBytes": 914,
+        "hostPawnCount": 0
+      }
+    ],
+    "pages": [
+      {
+        "player": 0,
+        "role": "host",
+        "state": {
+          "paused": true,
+          "engineRunning": true,
+          "menuScreen": "death",
+          "netRole": "host",
+          "authority": true,
+          "lobbyMode": "host",
+          "lobbyStatus": "peerJoined",
+          "lobbyStatusDetail": {
+            "id": 2,
+            "count": 2
+          },
+          "localTick": 1910,
+          "clientTick": 1830,
+          "clientConnected": false,
+          "survivorId": "ranger",
+          "ctxTime": 31.833,
+          "rosterCount": 2,
+          "pawnCount": 1,
+          "enemiesAlive": 8,
+          "playerAlive": false,
+          "frameErrors": 0,
+          "lastFrameError": null
+        }
+      },
+      {
+        "player": 1,
+        "role": "client",
+        "state": {
+          "paused": false,
+          "engineRunning": true,
+          "menuScreen": null,
+          "netRole": "client",
+          "authority": false,
+          "lobbyMode": "client",
+          "lobbyStatus": "disconnected",
+          "lobbyStatusDetail": null,
+          "localTick": 0,
+          "clientTick": 11,
+          "clientConnected": false,
+          "survivorId": "ranger",
+          "ctxTime": 47.767,
+          "rosterCount": 1,
+          "pawnCount": 0,
+          "enemiesAlive": 0,
+          "playerAlive": true,
+          "frameErrors": 0,
+          "lastFrameError": null
+        }
+      },
+      {
+        "player": 2,
+        "role": "client",
+        "state": {
+          "paused": true,
+          "engineRunning": true,
+          "menuScreen": "death",
+          "netRole": "client",
+          "authority": false,
+          "lobbyMode": "client",
+          "lobbyStatus": "connected",
+          "lobbyStatusDetail": {
+            "seed": 20260804,
+            "stageIndex": 0,
+            "time": 10.316666603088379,
+            "myNetId": 26,
+            "artifactMask": 0,
+            "difficulty": 1
+          },
+          "localTick": 0,
+          "clientTick": 593,
+          "clientConnected": true,
+          "survivorId": "ranger",
+          "ctxTime": 20.067,
+          "rosterCount": 1,
+          "pawnCount": 0,
+          "enemiesAlive": 0,
+          "playerAlive": false,
+          "frameErrors": 0,
+          "lastFrameError": null
+        }
+      },
+      {
+        "player": 3,
+        "role": "client",
+        "state": {
+          "paused": true,
+          "engineRunning": true,
+          "menuScreen": "death",
+          "netRole": "single",
+          "authority": true,
+          "lobbyMode": "single",
+          "lobbyStatus": "idle",
+          "lobbyStatusDetail": null,
+          "localTick": 1376,
+          "clientTick": null,
+          "clientConnected": null,
+          "survivorId": "ranger",
+          "ctxTime": 22.933,
+          "rosterCount": 1,
+          "pawnCount": 0,
+          "enemiesAlive": 8,
+          "playerAlive": false,
+          "frameErrors": 0,
+          "lastFrameError": null
+        }
+      }
+    ],
+    "hostDetail": {
+      "playerCount": 2,
+      "pawnCount": 1,
+      "pendingInvites": 0,
+      "clients": [
+        {
+          "id": 2,
+          "hasPawn": true,
+          "helloSeen": true,
+          "survivorId": "ranger",
+          "lastTick": 593,
+          "inputBacklog": 0,
+          "joinTick": 539,
+          "peerClosed": false,
+          "stateChannel": "open",
+          "eventsChannel": "open",
+          "simQueued": 0
+        }
+      ]
+    },
+    "consoleLines": [
+      {
+        "player": 0,
+        "type": "warning",
+        "text": "THREE.Clock: This module has been deprecated. Please use THREE.Timer instead."
+      },
+      {
+        "player": 0,
+        "type": "warning",
+        "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+      },
+      {
+        "player": 0,
+        "type": "warning",
+        "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+      },
+      {
+        "player": 0,
+        "type": "warning",
+        "text": "THREE.WebGLProgram: Program Info Log: (210,81-129): warning X4122: sum of 0.996094 and -2.98545e-017 cannot be represented accurately in double precision\n(209,37-61): warning X4122: sum of 1 and -1.49272e-017 cannot be represented accurately in double precision\n(210,82-106): warning X4122: sum of 1 and -1.49272e-017 cannot be represented accurately in double precision\n(209,37-61): warning X4122: sum of 1 and -1.66644e-018 cannot be represented accurately in double precision\n(210,82-106): warning"
+      },
+      {
+        "player": 0,
+        "type": "warning",
+        "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+      },
+      {
+        "player": 0,
+        "type": "warning",
+        "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+      },
+      {
+        "player": 0,
+        "type": "warning",
+        "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+      },
+      {
+        "player": 0,
+        "type": "warning",
+        "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+      },
+      {
+        "player": 1,
+        "type": "warning",
+        "text": "THREE.Clock: This module has been deprecated. Please use THREE.Timer instead."
+      },
+      {
+        "player": 1,
+        "type": "warning",
+        "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+      },
+      {
+        "player": 1,
+        "type": "warning",
+        "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+      },
+      {
+        "player": 1,
+        "type": "warning",
+        "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+      },
+      {
+        "player": 1,
+        "type": "warning",
+        "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+      },
+      {
+        "player": 1,
+        "type": "warning",
+        "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+      },
+      {
+        "player": 1,
+        "type": "warning",
+        "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+      },
+      {
+        "player": 2,
+        "type": "warning",
+        "text": "THREE.Clock: This module has been deprecated. Please use THREE.Timer instead."
+      },
+      {
+        "player": 2,
+        "type": "warning",
+        "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+      },
+      {
+        "player": 2,
+        "type": "warning",
+        "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+      },
+      {
+        "player": 2,
+        "type": "warning",
+        "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+      },
+      {
+        "player": 2,
+        "type": "warning",
+        "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+      },
+      {
+        "player": 2,
+        "type": "warning",
+        "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+      },
+      {
+        "player": 2,
+        "type": "warning",
+        "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+      },
+      {
+        "player": 3,
+        "type": "warning",
+        "text": "THREE.Clock: This module has been deprecated. Please use THREE.Timer instead."
+      },
+      {
+        "player": 3,
+        "type": "warning",
+        "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+      },
+      {
+        "player": 3,
+        "type": "warning",
+        "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+      },
+      {
+        "player": 3,
+        "type": "warning",
+        "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+      },
+      {
+        "player": 3,
+        "type": "warning",
+        "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+      },
+      {
+        "player": 3,
+        "type": "warning",
+        "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+      },
+      {
+        "player": 3,
+        "type": "warning",
+        "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+      },
+      {
+        "player": 1,
+        "type": "warning",
+        "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+      },
+      {
+        "player": 1,
+        "type": "warning",
+        "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+      },
+      {
+        "player": 1,
+        "type": "warning",
+        "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+      },
+      {
+        "player": 1,
+        "type": "warning",
+        "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+      },
+      {
+        "player": 2,
+        "type": "warning",
+        "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+      },
+      {
+        "player": 2,
+        "type": "warning",
+        "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+      },
+      {
+        "player": 2,
+        "type": "warning",
+        "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+      },
+      {
+        "player": 2,
+        "type": "warning",
+        "text": "THREE.sigmaRadians, 0.05, is too large and will clip, as it requested 25 samples when the maximum is set to 20"
+      }
+    ]
+  },
+  "argv": [
+    "--players",
+    "4",
+    "--netlag",
+    "60",
+    "--out",
+    "C:\\Users\\tpzap\\AppData\\Local\\Temp\\claude\\C--Users-tpzap-source-repos-OllieFace\\59b0fe87-bbad-45a1-a937-973da6507121\\scratchpad/after-ice-2.json"
+  ],
+  "at": "2026-08-07T17:24:15.721Z"
+}

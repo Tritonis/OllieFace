@@ -224,12 +224,22 @@ export class Peer {
   }
 }
 
-function waitForIce(pc) {
+export function waitForIce(pc, capMs = 4000) {
   if (pc.iceGatheringState === 'complete') return Promise.resolve();
   return new Promise((resolve) => {
     // Some networks never reach 'complete' (no reflexive candidate). Cap the
     // wait so a join doesn't hang forever on a bad network.
-    const timer = setTimeout(done, 4000);
+    //
+    // Do not "optimize" this into an early exit once candidates go quiet: that
+    // was tried, and it turned a 4/4-success four-player probe into 0/2 with
+    // 10-14 s joins. Chromium publishes host candidates as mDNS names that a
+    // remote peer may not resolve, so the blob is useless until the reflexive
+    // (STUN) candidate arrives — 1-3 s on a good day, and the last thing
+    // gathering produces. Shipping early forces connect-retry churn (one
+    // captured session burned ~30 peer ids). The cap is the floor a blob can
+    // be trusted at, not slack to be clawed back; the evidence is
+    // reviews/audit-fixes/ice-quiescence-refuted.md.
+    const timer = setTimeout(done, capMs);
     function done() {
       clearTimeout(timer);
       pc.removeEventListener('icegatheringstatechange', check);
