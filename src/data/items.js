@@ -812,13 +812,13 @@ export const ITEMS = [
     },
   },
   {
-    id: 'shatterspleen', name: 'Hoarfrost Band', tier: 'uncommon', glyph: 'snowflake',
+    id: 'hoarfrost-band', name: 'Hoarfrost Band', tier: 'uncommon', glyph: 'snowflake',
     flavour: 'Cold enough to stop a heart mid-beat.',
     description: (n) => `Hits that deal over 400% damage freeze and blast for ${pct(linear(2.5, n))} damage.`,
     hooks: {
       onHit: (e, api) => {
         if (e.amount < api.items.baseDamage() * 4) return;
-        if (!api.items.cooldownReady('runald', 5)) return;
+        if (!api.items.cooldownReady('hoarfrost-band', 5)) return;
         api.combat.applyStatus(e.target, 'freeze', api.player, 1);
         api.combat.explode(e.position, 6, api.items.baseDamage() * linear(2.5, api.count), api.player, {
           team: 'player', proc: 0.3, procDepth: api.procDepth, type: 'frost',
@@ -872,7 +872,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'hopoo-feather', name: 'Hollow Plume', tier: 'uncommon', glyph: 'plume',
+    id: 'hollow-plume', name: 'Hollow Plume', tier: 'uncommon', glyph: 'plume',
     flavour: 'Weightless, mostly.',
     description: (n) => `+${linear(1, n)} maximum jump count.`,
     stat: (n, s) => { s.jumpCount += linear(1, n); },

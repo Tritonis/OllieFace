@@ -11,6 +11,7 @@ import { SURVIVORS, getSurvivor, loadoutOf } from '../data/survivors.js';
 import { Logbook, ModelPreview, disposeTree, renderRunReport } from './Logbook.js';
 import { describeNet } from '../net/NetConfig.js';
 import { REFUSE } from '../net/Protocol.js';
+import { adoptLegacyKey } from '../core/LegacyStorage.js';
 
 /**
  * A refused join, in the language of the person it happened to.
@@ -40,7 +41,10 @@ function refusalText(detail, asHost) {
     : 'The host refused the join. Try joining again.';
 }
 
-const STORE_KEY = 'petrichor.settings';
+const STORE_KEY = 'telluric.settings';
+
+/** The pre-rename key, adopted once in `load`. See `core/LegacyStorage.js`. */
+const LEGACY_STORE_KEY = 'petrichor.settings';
 
 const DEFAULTS = {
   quality: 2,
@@ -1898,7 +1902,7 @@ function load(fallbackQuality) {
   const base = { ...DEFAULTS };
   if (Number.isFinite(fallbackQuality)) base.quality = fallbackQuality;
   try {
-    const raw = localStorage.getItem(STORE_KEY);
+    const raw = adoptLegacyKey(STORE_KEY, LEGACY_STORE_KEY, localStorage);
     if (!raw) return base;
     const parsed = JSON.parse(raw);
     const out = base;

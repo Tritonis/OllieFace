@@ -7,6 +7,8 @@ import {
 // question. See the header of that file for why it is not an `init` hook.
 import { catalogueSizes, catalogueHas, unlockName } from './UnlockRegistry.js';
 import { isLocalVictim } from '../core/Engine.js';
+import { adoptLegacyKey } from '../core/LegacyStorage.js';
+import { renameItemId } from '../data/renamedItems.js';
 
 /**
  * The persistent player profile — everything that outlives a run.
@@ -67,7 +69,7 @@ import { isLocalVictim } from '../core/Engine.js';
 
 // Bump this whenever the persisted shape changes, and add the matching entry to
 // MIGRATIONS below. Never reuse a number.
-export const PROFILE_VERSION = 2;
+export const PROFILE_VERSION = 3;
 
 /**
  * One key, one JSON blob, forever.
@@ -80,7 +82,13 @@ export const PROFILE_VERSION = 2;
  * key changes only if a shape is ever so alien that migration is not worth
  * writing, and then the old blob is left on disk rather than mangled.
  */
-const STORE_KEY = 'petrichor.profile.v1';
+const STORE_KEY = 'telluric.profile.v1';
+
+/**
+ * What the key was called while the game was called Petrichor. `_load` adopts
+ * it once; see `src/core/LegacyStorage.js` for why the move is byte-level.
+ */
+const LEGACY_STORE_KEY = 'petrichor.profile.v1';
 
 // Run history is what the logbook's "recent runs" list reads. 25 is about two
 // evenings of play and keeps the serialised profile comfortably under 20 KB,
@@ -225,6 +233,68 @@ const MIGRATIONS = {
     // the blob that grows with the catalogue.
     const out = { ...p, version: 2, encounters, survivors };
     delete out.discovered;
+    return out;
+  },
+
+  /**
+   * v2 -> v3. Two item ids were renamed, so every record keyed by one moves.
+   *
+   * `hopoo-feather` and `shatterspleen` were the last two ids that were
+   * themselves Risk of Rain 2 vocabulary rather than merely attached to it (see
+   * `data/renamedItems.js`). Their display names changed in round 6; the ids
+   * could not, because a profile records them in three places and a bare rename
+   * would have read as "the game forgot I ever found that item".
+   *
+   * Nothing here is a merge of *different* things, so every join is the one the
+   * cross-tab merge already uses for that field: earliest wins for a first-seen
+   * or unlock stamp, counts add. The old and new id cannot both be present in a
+   * profile this build wrote — but `importProfile` accepts arbitrary blobs
+   * through this same path, and a collision that silently dropped one side
+   * would be a data loss discovered months later.
+   */
+  2: (p) => {
+    const out = { ...p, version: 3 };
+
+    if (isObj(p.unlocks) && isObj(p.unlocks.item)) {
+      const item = {};
+      for (const [id, at] of Object.entries(p.unlocks.item)) {
+        const k = renameItemId(id);
+        const prev = item[k];
+        // An unlock stamp is "when did I first earn this"; 0/absent must lose.
+        item[k] = prev > 0 ? Math.min(prev, num(at, 0) || prev) : num(at, 0);
+      }
+      out.unlocks = { ...p.unlocks, item };
+    }
+
+    if (isObj(p.encounters) && isObj(p.encounters.item)) {
+      const item = {};
+      for (const [id, rec] of Object.entries(p.encounters.item)) {
+        const k = renameItemId(id);
+        const at = num(rec?.at, 0);
+        const count = num(rec?.count, 0);
+        const prev = item[k];
+        item[k] = prev
+          ? { at: prev.at > 0 && at > 0 ? Math.min(prev.at, at) : Math.max(prev.at, at), count: prev.count + count }
+          : { at, count };
+      }
+      out.encounters = { ...p.encounters, item };
+    }
+
+    if (Array.isArray(p.runs)) {
+      out.runs = p.runs.map((r) => {
+        if (!isObj(r) || !Array.isArray(r.inventory)) return r;
+        // One row per id: two rows for the same item is not a shape the run
+        // report or the logbook's item strip knows how to draw.
+        const rows = new Map();
+        for (const entry of r.inventory) {
+          if (!isObj(entry)) continue;
+          const k = renameItemId(entry.id);
+          rows.set(k, { id: k, count: num(rows.get(k)?.count, 0) + num(entry.count, 0) });
+        }
+        return { ...r, inventory: [...rows.values()] };
+      });
+    }
+
     return out;
   },
 };
@@ -506,7 +576,12 @@ export class Profile {
   _load() {
     let raw = null;
     try {
-      raw = localStorage.getItem(STORE_KEY);
+      // The boot read, and the only place the pre-rename key is looked at: a
+      // profile stored under the Petrichor name is adopted here and is a
+      // `telluric.*` profile from this line on. `_reconcile` re-reads the new
+      // key alone, because by the time another tab can write there is nothing
+      // left under the old one.
+      raw = adoptLegacyKey(STORE_KEY, LEGACY_STORE_KEY, localStorage);
     } catch {
       // Private mode / storage disabled. Play un-persisted rather than not at all.
       this._storageBlocked = true;

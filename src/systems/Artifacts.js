@@ -3,6 +3,8 @@ import {
   DIFFICULTIES, DIFFICULTY_BY_ID, DEFAULT_DIFFICULTY,
 } from '../data/artifacts.js';
 import { CHALLENGE_BY_ID, UNLOCK_BINDINGS } from '../data/challenges.js';
+import { adoptLegacyKey } from '../core/LegacyStorage.js';
+import { renameItemId } from '../data/renamedItems.js';
 
 /**
  * Artifacts and difficulty — the run's rules.
@@ -48,7 +50,10 @@ import { CHALLENGE_BY_ID, UNLOCK_BINDINGS } from '../data/challenges.js';
  * feeds — a mid-run flip would apply to some numbers and not others.
  */
 
-const STORE_KEY = 'petrichor.run.v1';
+const STORE_KEY = 'telluric.run.v1';
+
+/** The pre-rename key, adopted once in `_load`. See `core/LegacyStorage.js`. */
+const LEGACY_STORE_KEY = 'petrichor.run.v1';
 
 // Glass. Five times damage, a tenth of the health — the RoR2 trade, and the
 // only artifact whose numbers are a straight multiplier on the finished stat
@@ -453,7 +458,7 @@ export class Artifacts {
    * artifact would be un-selected by the time the run it was selected for
    * actually began.
    *
-   * Own key, own owner: `Profile` owns `petrichor.profile.v1` for meta state
+   * Own key, own owner: `Profile` owns `telluric.profile.v1` for meta state
    * and `Menus` owns the settings blob. This is neither — it is what the *next*
    * run is configured as — so it gets its own and overlaps nothing.
    *
@@ -463,7 +468,7 @@ export class Artifacts {
    */
   _load() {
     let raw = null;
-    try { raw = globalThis.localStorage?.getItem(STORE_KEY); } catch { return; }
+    try { raw = adoptLegacyKey(STORE_KEY, LEGACY_STORE_KEY, globalThis.localStorage); } catch { return; }
     if (!raw) return;
     let data = null;
     try { data = JSON.parse(raw); } catch { return; }
@@ -484,7 +489,11 @@ export class Artifacts {
     // does not import one — `commandPick` validates against the live pool.
     if (data.edict && typeof data.edict === 'object') {
       for (const [tier, id] of Object.entries(data.edict)) {
-        if (typeof id === 'string' && id) this.edict.set(tier, id);
+        // Two ids were renamed after this store shipped (`data/renamedItems.js`).
+        // A stale one here is not a crash — `commandPick` validates against the
+        // live pool — it is a Command pick that quietly stops being honoured,
+        // which is the harder bug to notice.
+        if (typeof id === 'string' && id) this.edict.set(tier, renameItemId(id));
       }
     }
   }

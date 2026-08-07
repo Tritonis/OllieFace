@@ -13,7 +13,12 @@
  * Dismissal is remembered, and it never appears on a discrete adapter.
  */
 
-const STORE_KEY = 'petrichor.gpuNoticeDismissed';
+import { adoptLegacyKey } from '../core/LegacyStorage.js';
+
+const STORE_KEY = 'telluric.gpuNoticeDismissed';
+
+/** The pre-rename key. A player who dismissed this once must not see it again. */
+const LEGACY_STORE_KEY = 'petrichor.gpuNoticeDismissed';
 
 const CSS = `
 .gpu-notice{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);
@@ -42,7 +47,7 @@ const CSS = `
 
 export function maybeShowGpuNotice(gpu) {
   if (!gpu?.integrated) return null;
-  try { if (localStorage.getItem(STORE_KEY)) return null; } catch { /* private mode */ }
+  try { if (adoptLegacyKey(STORE_KEY, LEGACY_STORE_KEY, localStorage)) return null; } catch { /* private mode */ }
 
   const style = document.createElement('style');
   style.textContent = CSS;

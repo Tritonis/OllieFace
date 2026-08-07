@@ -32,16 +32,32 @@
  * once and every later plain visit keeps the same configuration.
  */
 
-const LS_PREFIX = 'petrichor.net.';
+import { adoptLegacyKey } from '../core/LegacyStorage.js';
+
+const LS_PREFIX = 'telluric.net.';
+
+/** The pre-rename prefix. `store.get` adopts each sub-key on first read. */
+const LEGACY_LS_PREFIX = 'petrichor.net.';
 
 const params = (() => {
   try { return new URLSearchParams(location.search); } catch { return new URLSearchParams(); }
 })();
 
 const store = {
-  get(k) { try { return localStorage.getItem(LS_PREFIX + k); } catch { return null; } },
+  get(k) {
+    try { return adoptLegacyKey(LS_PREFIX + k, LEGACY_LS_PREFIX + k, localStorage); }
+    catch { return null; }
+  },
   set(k, v) { try { localStorage.setItem(LS_PREFIX + k, v); } catch { /* private mode */ } },
-  del(k) { try { localStorage.removeItem(LS_PREFIX + k); } catch { /* private mode */ } },
+  // Both names, always. `?turn=` means "stop using TURN", and a clear that left
+  // the pre-rename key behind would have the next `get` adopt it and turn the
+  // setting straight back on.
+  del(k) {
+    try {
+      localStorage.removeItem(LS_PREFIX + k);
+      localStorage.removeItem(LEGACY_LS_PREFIX + k);
+    } catch { /* private mode */ }
+  },
 };
 
 /** Build-time env, guarded: `import.meta.env` is absent outside a Vite build. */
