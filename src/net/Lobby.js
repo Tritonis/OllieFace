@@ -163,7 +163,22 @@ export class Lobby {
     this.ctx.coop?.attachClient?.(client);
     this._set('joining');
 
-    const answerBlob = await client.join(inviteBlob);
+    let answerBlob;
+    try {
+      answerBlob = await client.join(inviteBlob);
+    } catch (err) {
+      // The system was registered before the await, so a join that never lands
+      // leaves a dead `NetClient` ticking and owning `ctx.net` — and the retry
+      // the caller is most likely to make next dies on 'Already networked'.
+      this._release();
+      this.mode = 'single';
+      // `NetClient.init` already dropped this machine to non-authoritative, and
+      // C-2's reasons for restoring both fields on `leave()` apply verbatim to a
+      // session that failed before it began.
+      this.ctx.authority = true;
+      this.ctx.netRole = 'single';
+      throw err;
+    }
     this._set('answerReady', { blob: answerBlob });
     this._bindClient();
     return answerBlob;
@@ -255,7 +270,12 @@ export class Lobby {
   leave() {
     this.net?.close?.();
     this.ws?.close?.();
-    this.net = null;
+    // Dropping `this.net` was never enough. The system is registered with the
+    // engine and publishes itself as `ctx.net` in `init`, so a closed `NetHost`
+    // that is only forgotten here keeps being ticked every frame and stays the
+    // answer every `ctx.net` reader gets — and hosting again registered a second
+    // live host beside the dead one.
+    this._release();
     this.mode = 'single';
     this.ctx.authority = true;
     // Every consumer of `netRole` has to be handed back its single-player
@@ -269,5 +289,13 @@ export class Lobby {
     this._refusedPeers.clear();
     this.players = [{ id: 0, name: 'You', local: true }];
     this._set('idle');
+  }
+
+  /** Undo `engine.add` and the `ctx.net` that the system's `init` published. */
+  _release() {
+    if (!this.net) return;
+    this.engine.remove?.(this.net);
+    if (this.ctx.net === this.net) this.ctx.net = null;
+    this.net = null;
   }
 }

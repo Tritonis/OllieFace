@@ -155,6 +155,22 @@ export class Engine {
     return system;
   }
 
+  /**
+   * Deregister a system. `add` had no counterpart, so nothing that ends a
+   * session could take its system back out: `Lobby.leave()` closed the `NetHost`
+   * and dropped its own reference, but the closed instance stayed in `systems`
+   * and kept being ticked, and hosting again registered a *second* one beside it.
+   *
+   * Removing a system that was never added is a no-op rather than an error —
+   * teardown paths run on both the "we registered it" and "we failed before we
+   * did" branches, and neither should have to know which one it is on.
+   */
+  remove(system) {
+    const i = this.systems.indexOf(system);
+    if (i >= 0) this.systems.splice(i, 1);
+    return system;
+  }
+
   get(name) {
     return this.systems.find((s) => s.constructor.name === name);
   }
@@ -233,14 +249,18 @@ export class Engine {
         this.accumulator -= FIXED;
         steps++;
         ctx.time += FIXED;
-        for (const s of this.systems) if (s.fixedUpdate) this._call(s, 'fixedUpdate', ctx, FIXED);
+        // Iterated over a copy for the same reason `EventBus.emit` is: a system
+        // whose tick ends the session calls `remove()`, and splicing the live
+        // array under `for...of` silently skips whichever system followed it
+        // for that phase.
+        for (const s of [...this.systems]) if (s.fixedUpdate) this._call(s, 'fixedUpdate', ctx, FIXED);
       }
       // Bleed off unpayable debt rather than spiralling.
       if (steps === MAX_SUBSTEPS) this.accumulator = 0;
     }
 
-    for (const s of this.systems) if (s.update) this._call(s, 'update', ctx, dt);
-    for (const s of this.systems) if (s.lateUpdate) this._call(s, 'lateUpdate', ctx, dt);
+    for (const s of [...this.systems]) if (s.update) this._call(s, 'update', ctx, dt);
+    for (const s of [...this.systems]) if (s.lateUpdate) this._call(s, 'lateUpdate', ctx, dt);
 
     if (this.profiling) {
       this.profileFrames++;
