@@ -21,6 +21,16 @@ import { isLocalVictim, isLocalKill } from '../core/Engine.js';
  * before touching the DOM, and by animating with transforms/opacity only.
  */
 
+// How long the inventory strip's screen rect is re-measured for after anything
+// disturbs it; see `updateStripRect`.
+//
+// Counted in seconds, not HUD frames. It used to be 60 frames, which reads as
+// "the next second" only at exactly 60 fps — 2 s at 30, 0.42 s at 144. Too
+// short and the window closes while the tiles are still animating in, leaving
+// the numeral clip on a stale rect; too long and every frame of it costs a
+// forced layout flush.
+const STRIP_HOLD_SEC = 1.0;
+
 const SLOTS = [
   { id: 'primary', key: 'M1', label: 'Primary' },
   { id: 'secondary', key: 'M2', label: 'Secondary' },
@@ -103,7 +113,7 @@ export class HUD {
     this.hoverId = null;
     // Screen rect of the inventory strip, read by VFX's numeral clip.
     this.stripRect = null;
-    this._stripHold = 60;
+    this._stripHoldT = STRIP_HOLD_SEC;
     this.tmp = new THREE.Vector3();
     this.tmpF = new THREE.Vector3();
 
@@ -459,7 +469,7 @@ export class HUD {
     this.updateObjectivePing(ctx);
     this.updateDirections(ctx, dt);
     this.updateToasts(dt);
-    this.updateStripRect();
+    this.updateStripRect(dt);
 
     if (this.hoverId) {
       const el = this.inv.get(this.hoverId)?.el;
@@ -482,8 +492,8 @@ export class HUD {
    * `getBoundingClientRect` every frame would force a layout flush per frame
    * for a value that is constant almost all of the time.
    */
-  updateStripRect() {
-    if (this._stripHold > 0) this._stripHold--;
+  updateStripRect(dt) {
+    if (this._stripHoldT > 0) this._stripHoldT -= dt;
     else if (this.stripRect) return;
     const el = this.refs.inventory;
     if (!el) { this.stripRect = null; return; }
@@ -494,7 +504,7 @@ export class HUD {
   }
 
   /** Re-measure the strip for the next second. */
-  markStripDirty() { this._stripHold = 60; }
+  markStripDirty() { this._stripHoldT = STRIP_HOLD_SEC; }
 
   lateUpdate(ctx, dt) {
     // Runs after CameraRig, so the title orbit is what actually ships to the

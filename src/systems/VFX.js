@@ -131,7 +131,11 @@ export class VFX {
     this._dissolving = [];
     this._flashes = [];
     this._auras = [];
-    this._statuses = [];
+    // target -> (type -> entry). Keyed rather than a flat list because the
+    // dedup below runs on every proc; see `statusApplied`. Both levels are
+    // Maps, so iteration in `_updateStatuses` stays in application order and
+    // overlays layer in the order they were applied.
+    this._statuses = new Map();
     this._teleAccum = 0;
     this._teleRing = 0;
     this._teleProgress = 0;
@@ -918,41 +922,47 @@ export class VFX {
     this.ctx.audio?.shieldBreak(pos);
   }
 
-  /** Ongoing status overlay on an entity, for `duration` seconds. */
+  /**
+   * Ongoing status overlay on an entity, for `duration` seconds.
+   * Returns the live entry, so callers that want to dress the application
+   * itself do not have to go looking for it.
+   */
   statusApplied(target, type = 'burn', duration) {
     const def = STATUS[type];
-    if (!def || !target) return;
+    if (!def || !target) return null;
     const dur = duration ?? def.dur ?? 3;
     // Reapplying an existing status refreshes it rather than doubling the
     // particle rate — five stacks of burn should not be five times the smoke.
-    for (const s of this._statuses) {
-      if (s.target === target && s.type === type) { s.t = 0; s.dur = dur; return; }
-    }
-    this._statuses.push({ target, type, def, t: 0, dur, accum: 0 });
+    // Two Map lookups, not a scan of every live overlay: this runs on every
+    // proc of every hit, and a boss fight has both in quantity.
+    let byType = this._statuses.get(target);
+    if (!byType) this._statuses.set(target, (byType = new Map()));
+    const existing = byType.get(type);
+    if (existing) { existing.t = 0; existing.dur = dur; return existing; }
+    const s = { target, type, def, t: 0, dur, accum: 0 };
+    byType.set(type, s);
+    return s;
   }
 
   /** Combat's calling convention: (entity, type, colour). */
   status(entity, type, colour) {
-    this.statusApplied(entity, type);
-    if (colour === undefined) return;
-    const s = this._statuses[this._statuses.length - 1];
-    if (s && s.target === entity && s.type === type && s.t === 0) {
-      // One-shot application pop in the status's own colour, so a fresh proc
-      // reads distinctly from the ongoing overlay.
-      const p = entity.position;
-      if (!p) return;
-      const e = this._ep();
-      e.count = 8; e.position.copy(p); e.position.y += (entity.height ?? 1.6) * 0.5;
-      e.shell = entity.radius ?? 0.5;
-      e.dir.set(0, 1, 0); e.spread = Math.PI;
-      e.speed = 3.5; e.speedVar = 0.7;
-      e.life = 0.4; e.lifeVar = 0.4;
-      e.size0 = 0.14; e.size1 = 0.01;
-      e.color0.set(0xffffff); e.color1.set(colour);
-      e.layer = s.def.alpha ? 'alpha' : 'add';
-      e.frame = s.def.frame; e.spin = 6; e.drag = 3.5;
-      this.particles.emit(e);
-    }
+    const s = this.statusApplied(entity, type);
+    if (colour === undefined || !s) return;
+    // One-shot application pop in the status's own colour, so a fresh proc
+    // reads distinctly from the ongoing overlay.
+    const p = entity.position;
+    if (!p) return;
+    const e = this._ep();
+    e.count = 8; e.position.copy(p); e.position.y += (entity.height ?? 1.6) * 0.5;
+    e.shell = entity.radius ?? 0.5;
+    e.dir.set(0, 1, 0); e.spread = Math.PI;
+    e.speed = 3.5; e.speedVar = 0.7;
+    e.life = 0.4; e.lifeVar = 0.4;
+    e.size0 = 0.14; e.size1 = 0.01;
+    e.color0.set(0xffffff); e.color1.set(colour);
+    e.layer = s.def.alpha ? 'alpha' : 'add';
+    e.frame = s.def.frame; e.spin = 6; e.drag = 3.5;
+    this.particles.emit(e);
   }
 
   /** Proc beam (chain lightning, seeking strikes): thicker and longer than a tracer. */
@@ -1480,41 +1490,44 @@ export class VFX {
   }
 
   _updateStatuses(dt) {
-    for (let i = this._statuses.length - 1; i >= 0; i--) {
-      const s = this._statuses[i];
-      s.t += dt;
-      const target = s.target;
-      if (s.t >= s.dur || !target || target.alive === false) {
-        this._statuses.splice(i, 1);
-        continue;
-      }
-      s.accum += dt;
-      const interval = 1 / s.def.rate;
-      if (s.accum < interval) continue;
-      s.accum = 0;
-      const p = target.position;
-      if (!p) continue;
-      const h = target.height ?? 1.6;
-      const r = target.radius ?? 0.5;
+    for (const [target, byType] of this._statuses) {
+      for (const [type, s] of byType) {
+        s.t += dt;
+        if (s.t >= s.dur || !target || target.alive === false) {
+          byType.delete(type);
+          continue;
+        }
+        s.accum += dt;
+        const interval = 1 / s.def.rate;
+        if (s.accum < interval) continue;
+        s.accum = 0;
+        const p = target.position;
+        if (!p) continue;
+        const h = target.height ?? 1.6;
+        const r = target.radius ?? 0.5;
 
-      const e = this._ep();
-      e.count = 2;
-      e.layer = s.def.alpha ? 'alpha' : 'add';
-      e.position.copy(p); e.position.y += h * 0.4;
-      e.shell = r;
-      e.dir.set(0, s.def.rise >= 0 ? 1 : -1, 0); e.spread = 0.7;
-      e.speed = Math.abs(s.def.rise) * 1.6 + 0.4; e.speedVar = 0.6;
-      e.life = 0.55; e.lifeVar = 0.4;
-      // Sized off the host, not a constant. At 0.13 flat a status puff on a
-      // 0.4 m mite was as wide as the mite; the overlay has to dress whatever
-      // it is attached to, never outgrow it.
-      e.size0 = clamp(r * 0.26, 0.05, 0.2); e.size1 = 0.01;
-      e.color0.set(s.def.tip); e.color1.set(s.def.color);
-      e.alpha0 = s.def.tipAlpha ?? 1;
-      e.frame = s.def.frame;
-      e.stretch = s.def.frame === FRAME.SPARK ? 1.0 : 0;
-      e.spin = 6; e.gravity = -s.def.rise * 0.8; e.drag = 2.0; e.turbulence = 0.4;
-      this.particles.emit(e);
+        const e = this._ep();
+        e.count = 2;
+        e.layer = s.def.alpha ? 'alpha' : 'add';
+        e.position.copy(p); e.position.y += h * 0.4;
+        e.shell = r;
+        e.dir.set(0, s.def.rise >= 0 ? 1 : -1, 0); e.spread = 0.7;
+        e.speed = Math.abs(s.def.rise) * 1.6 + 0.4; e.speedVar = 0.6;
+        e.life = 0.55; e.lifeVar = 0.4;
+        // Sized off the host, not a constant. At 0.13 flat a status puff on a
+        // 0.4 m mite was as wide as the mite; the overlay has to dress whatever
+        // it is attached to, never outgrow it.
+        e.size0 = clamp(r * 0.26, 0.05, 0.2); e.size1 = 0.01;
+        e.color0.set(s.def.tip); e.color1.set(s.def.color);
+        e.alpha0 = s.def.tipAlpha ?? 1;
+        e.frame = s.def.frame;
+        e.stretch = s.def.frame === FRAME.SPARK ? 1.0 : 0;
+        e.spin = 6; e.gravity = -s.def.rise * 0.8; e.drag = 2.0; e.turbulence = 0.4;
+        this.particles.emit(e);
+      }
+      // A target that has lost its last overlay must lose its key too, or the
+      // outer Map keeps every entity that was ever set on fire alive forever.
+      if (byType.size === 0) this._statuses.delete(target);
     }
   }
 
