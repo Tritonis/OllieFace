@@ -11,9 +11,20 @@
  *
  * Both produce the same connected `Peer`, so nothing above this file cares.
  *
- * ICE is gathered non-trickle (we wait for gathering to complete before handing
- * out the blob) specifically so manual signalling is a single copy/paste rather
- * than an ongoing candidate exchange.
+ * ICE is gathered non-trickle by default — we wait for gathering to complete
+ * before handing out the blob — specifically so manual signalling is a single
+ * copy/paste rather than an ongoing candidate exchange. That wait costs up to
+ * `waitForIce`'s 4 s cap on each side of a join and is the measured cause of
+ * this branch's 0.6-10.9 s bimodal join spread. It cannot be shortened on the
+ * manual path: a blob a human is about to paste has no way to carry a candidate
+ * that arrives afterwards, and trying to leave early was refuted by measurement
+ * (reviews/audit-fixes/ice-quiescence-refuted.md).
+ *
+ * The room-code path has a live WebSocket relay, so it can carry candidates.
+ * Passing `{ trickle: true }` (or setting `.trickle` on the transport, which is
+ * how `Lobby` reaches it through `NetHost`/`NetClient`) skips the gathering wait
+ * entirely and hands the exchange over to `onIceCandidate`/`addIceCandidate`.
+ * Nothing on the manual path passes it, so nothing on the manual path changed.
  */
 
 // ICE config is resolved per connection rather than captured once at module
@@ -250,6 +261,96 @@ export function waitForIce(pc, capMs = 4000) {
   });
 }
 
+// Both candidate buffers below hold remote input off a relay we do not control,
+// and neither has a natural ceiling. A healthy connection gathers well under
+// twenty candidates per side, so this is far above any real exchange while
+// still refusing to grow without bound if a peer or a relay misbehaves.
+const MAX_BUFFERED_CANDIDATES = 64;
+
+/**
+ * The trickle half of a connection: candidates out, candidates in.
+ *
+ * Split out of both transports because both ends need the identical pair of
+ * buffers, for two races that are unavoidable rather than defensive:
+ *
+ *  · *outbound* — `setLocalDescription` starts gathering, and candidates begin
+ *    arriving immediately. The caller that will relay them (`Lobby`) does not
+ *    exist as a sink until the invite has been created and matched to a joiner,
+ *    which is strictly later. Candidates gathered in that gap are held and
+ *    replayed to the first sink registered.
+ *
+ *  · *inbound* — the whole point of trickling is that the SDP ships before
+ *    gathering finishes, so the peer's candidates are in flight while the
+ *    *answer* still is. `addIceCandidate` before a remote description is an
+ *    error in every browser, so anything arriving early is held until the
+ *    description that gives it meaning has been applied.
+ *
+ * Constructed unattached so `ClientTransport` can accept candidates that arrive
+ * before `join()` has built a peer connection at all — over one socket, the
+ * host's offer and the host's first candidates are microseconds apart.
+ */
+class TrickleIce {
+  constructor() {
+    this._pc = null;
+    this._sink = null;
+    this._out = [];
+    this._in = [];
+    this._remoteSet = false;
+    this._dead = false;
+  }
+
+  attach(pc) {
+    this._pc = pc;
+    pc.onicecandidate = (e) => {
+      // `null` is the end-of-gathering sentinel, not a candidate. Relaying it
+      // would have the far end call `addIceCandidate(null)`, which in WebRTC
+      // means "no more candidates" — ending the remote's checking early on a
+      // connection whose useful reflexive candidate may not have arrived yet.
+      const c = e?.candidate;
+      if (!c) return;
+      const plain = typeof c.toJSON === 'function' ? c.toJSON() : c;
+      if (this._sink) this._sink(plain);
+      else if (this._out.length < MAX_BUFFERED_CANDIDATES) this._out.push(plain);
+    };
+  }
+
+  /** Stop accepting anything. Used when the caller turns out not to be trickling. */
+  discard() {
+    this._dead = true;
+    this._out.length = 0;
+    this._in.length = 0;
+  }
+
+  onCandidate(cb) {
+    if (this._dead) return;
+    this._sink = cb;
+    for (const c of this._out.splice(0)) cb(c);
+  }
+
+  /** The remote description just landed; anything held becomes applicable. */
+  remoteReady() {
+    if (this._dead) return;
+    this._remoteSet = true;
+    for (const c of this._in.splice(0)) this._apply(c);
+  }
+
+  add(candidate) {
+    if (this._dead || !candidate) return;
+    if (this._remoteSet) this._apply(candidate);
+    else if (this._in.length < MAX_BUFFERED_CANDIDATES) this._in.push(candidate);
+  }
+
+  _apply(candidate) {
+    // A stale, duplicate or malformed candidate is ordinary traffic on a relay
+    // and the browser rejects the promise for it. Nothing is awaiting this, so
+    // an unswallowed rejection would be an unhandled rejection on a machine
+    // that has done nothing wrong — and would say nothing useful if it were
+    // reported, because the connection carries on with the candidates that did
+    // parse.
+    try { this._pc?.addIceCandidate(candidate)?.catch?.(() => {}); } catch { /* sync throw, same story */ }
+  }
+}
+
 /**
  * Host side. Call `createInvite()` once per joining player, hand the blob over,
  * then feed the returned answer blob back into the matching `accept`.
@@ -260,6 +361,12 @@ export class HostTransport {
     this.onPeer = null;      // (peer) => void, fired once channels are open
     this.onPeerLeave = null;
     this._nextId = 1;
+    // The default for every invite this transport mints, because `Lobby` reaches
+    // `createInvite` through `NetHost.createInvite()` — which owns the lobby-full
+    // check and forwards no arguments. A relay session is trickle or not for its
+    // whole life, so the transport is the right grain for the switch; the
+    // per-call option remains for tests and direct callers.
+    this.trickle = false;
   }
 
   /**
@@ -269,9 +376,11 @@ export class HostTransport {
    */
   _connectTimeoutMs() { return CONNECT_TIMEOUT_MS; }
 
-  async createInvite() {
+  async createInvite({ trickle = this.trickle } = {}) {
     const id = this._nextId++;
     const pc = new RTCPeerConnection(rtcConfig());
+    const ice = trickle ? new TrickleIce() : null;
+    ice?.attach(pc);
     const peer = new Peer(pc, id);
     const sim = netSim();
     if (sim.on) peer.installSim(sim, () => performance.now() / 1000);
@@ -319,7 +428,11 @@ export class HostTransport {
     };
 
     await pc.setLocalDescription(await pc.createOffer());
-    await waitForIce(pc);
+    // The wait is the whole cost being removed here. Under trickle the offer is
+    // shipped candidate-free the instant it exists and the candidates follow it
+    // over the relay; under manual signalling the blob must be complete, so the
+    // call is byte-identical to what it has always been.
+    if (!trickle) await waitForIce(pc);
 
     this.peers.set(id, peer);
     // The rejection handler is not decoration, and it becomes required the
@@ -334,10 +447,18 @@ export class HostTransport {
     return {
       id,
       blob: encode({ v: 1, role: 'offer', id, sdp: pc.localDescription }),
+      // The two halves of the candidate exchange, for a caller that has a relay
+      // to carry them. Inert on a non-trickle invite rather than absent, so the
+      // relay path can wire them unconditionally and let the negotiated mode
+      // decide whether anything flows — a missing method would make "this relay
+      // is too old" a TypeError instead of a slower join.
+      onIceCandidate: (cb) => ice?.onCandidate(cb),
+      addIceCandidate: (candidate) => ice?.add(candidate),
       accept: async (answerBlob) => {
         const msg = decode(answerBlob.trim());
         if (msg.role !== 'answer' || msg.id !== id) throw new Error('Answer does not match this invite');
         await pc.setRemoteDescription(msg.sdp);
+        ice?.remoteReady();
         // From here both ends are negotiating and nothing is waiting on a
         // person, so the wait gets a deadline. On expiry the peer leaves
         // through the ordinary path — `_drop`, hence `onPeerLeave`, hence the
@@ -377,13 +498,27 @@ export class ClientTransport {
     this.peer = null;
     this.onConnected = null;
     this.onDisconnected = null;
+    // As on the host: `Lobby` reaches `join` through `NetClient.join`, which
+    // forwards no options.
+    this.trickle = false;
+    // Built before `join`, because the relay delivers the host's offer and the
+    // host's first candidates over one socket and `join` is async — a candidate
+    // can arrive before there is a peer connection to give it to.
+    this._ice = new TrickleIce();
   }
 
-  async join(inviteBlob) {
+  /** Relay this connection's local candidates to `cb`. One transport, one peer. */
+  onIceCandidate(cb) { this._ice.onCandidate(cb); }
+
+  /** Apply a candidate from the host, buffering it if the answer is not out yet. */
+  addIceCandidate(candidate) { this._ice.add(candidate); }
+
+  async join(inviteBlob, { trickle = this.trickle } = {}) {
     const msg = decode(inviteBlob.trim());
     if (msg.role !== 'offer') throw new Error('That is not a host invite code');
 
     const pc = new RTCPeerConnection(rtcConfig());
+    if (trickle) this._ice.attach(pc); else this._ice.discard();
     const peer = new Peer(pc, msg.id);
     const sim = netSim();
     if (sim.on) peer.installSim(sim, () => performance.now() / 1000);
@@ -421,8 +556,11 @@ export class ClientTransport {
     };
 
     await pc.setRemoteDescription(msg.sdp);
+    this._ice.remoteReady();
     await pc.setLocalDescription(await pc.createAnswer());
-    await waitForIce(pc);
+    // See `HostTransport.createInvite`: the answer ships candidate-free under
+    // trickle and unchanged under manual signalling.
+    if (!trickle) await waitForIce(pc);
 
     // The second handler is not decoration: without it this internal chain is
     // an unhandled rejection whenever the join fails. The `connected` promise

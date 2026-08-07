@@ -1,14 +1,36 @@
 /**
  * Minimal WebSocket signalling relay.
  *
- * Exists only to hand an offer to a joiner and an answer back to the host, so a
- * player can type a 4-letter room code instead of pasting an SDP blob. It sees
- * no game traffic — once the peer connection is up, this process is irrelevant.
+ * Exists only to hand an offer to a joiner, an answer back to the host, and ICE
+ * candidates either way, so a player can type a 4-letter room code instead of
+ * pasting an SDP blob. It sees no game traffic — once the peer connection is up,
+ * this process is irrelevant.
  *
  *   node tools/signal-server.mjs --port 8787
  *
  * Deliberately stateless beyond a room map, and rooms are dropped as soon as
  * both sides disconnect.
+ *
+ * ## Protocol version
+ *
+ * `hosting` carries `v`. Version 2 is "this relay forwards `ice` messages and
+ * preserves the `trickle` flag on an offer", which is what lets a host skip the
+ * non-trickle gathering wait (`Transport.js`, `waitForIce`).
+ *
+ * The version is advertised rather than required, and the degrade is by
+ * omission in both directions:
+ *
+ *  · a NEW page against an OLD relay sees no `v` on `hosting`, so it never asks
+ *    for trickle and never sends an `ice` message the old relay would drop; and
+ *    a joiner through an old relay sees no `trickle` on its offer, because an
+ *    old relay reconstructs that message from `blob` alone and drops fields it
+ *    does not know. Both ends therefore fall back to today's behaviour, which
+ *    is the behaviour that works.
+ *  · an OLD page against a NEW relay never sets `trickle`, so the flag this
+ *    server forwards is `undefined` and the joiner does not trickle either.
+ *
+ * The page's test is `v >= 2` — a floor, not an equality — so this number can
+ * rise for a later feature without stranding a client that only needs ICE.
  *
  * ## Deploying it
  *
@@ -33,6 +55,10 @@ const argPort = process.argv.includes('--port')
   : null;
 const port = Number(argPort ?? process.env.PORT ?? 8787);
 
+// Bumped when a page can tell the difference. 2 = relays `ice` and preserves an
+// offer's `trickle` flag; see the header for how each mismatch degrades.
+const PROTOCOL_VERSION = 2;
+
 const rooms = new Map(); // code -> { host, clients:Set }
 
 const http = createServer((req, res) => {
@@ -45,7 +71,11 @@ const http = createServer((req, res) => {
 });
 
 const wss = new WebSocketServer({ server: http });
-http.listen(port, () => console.log(`signalling on ws://0.0.0.0:${port} (health: /healthz)`));
+// `http.address().port` rather than `port`: `--port 0` asks the OS for a free
+// one, which is how a test or a local driver runs a relay without colliding
+// with whatever is already on 8787 — and the number it got is only knowable
+// here.
+http.listen(port, () => console.log(`signalling on ws://0.0.0.0:${http.address().port} (health: /healthz)`));
 
 const send = (ws, msg) => { if (ws?.readyState === 1) ws.send(JSON.stringify(msg)); };
 
@@ -64,7 +94,7 @@ wss.on('connection', (ws) => {
         if (!code || rooms.has(code)) code = newCode();
         rooms.set(code, { host: ws, clients: new Set() });
         ws.room = code; ws.role = 'host';
-        send(ws, { type: 'hosting', code });
+        send(ws, { type: 'hosting', code, v: PROTOCOL_VERSION });
         break;
       }
       case 'join': {
@@ -77,16 +107,35 @@ wss.on('connection', (ws) => {
         break;
       }
       case 'offer': {
-        // Host -> a specific joiner.
+        // Host -> a specific joiner. `trickle` rides along untouched: it is the
+        // host telling that joiner "candidates will follow over this relay", and
+        // forwarding it is exactly what makes this server a v2 one.
         const room = rooms.get(ws.room);
         const target = [...(room?.clients ?? [])].find((c) => c.id === msg.clientId);
-        send(target, { type: 'offer', blob: msg.blob });
+        send(target, { type: 'offer', blob: msg.blob, trickle: !!msg.trickle });
         break;
       }
       case 'answer': {
         // Joiner -> host.
         const room = rooms.get(ws.room);
         send(room?.host, { type: 'answer', blob: msg.blob, clientId: ws.id });
+        break;
+      }
+      case 'ice': {
+        // One ICE candidate, in whichever direction the sender is not. Addressed
+        // exactly like offer/answer — the host names a joiner, a joiner is
+        // stamped with its own id — and just as dumb: the candidate is an opaque
+        // object this server never looks inside. A candidate for a joiner who
+        // has gone (or was never here) finds no target and is dropped, which is
+        // the normal end of a join, not an error worth a reply.
+        const room = rooms.get(ws.room);
+        if (!room) break;
+        if (ws.role === 'host') {
+          const target = [...room.clients].find((c) => c.id === msg.clientId);
+          send(target, { type: 'ice', candidate: msg.candidate });
+        } else {
+          send(room.host, { type: 'ice', candidate: msg.candidate, clientId: ws.id });
+        }
         break;
       }
     }

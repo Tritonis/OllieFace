@@ -61,6 +61,15 @@ as-is on Render, Railway, Fly.io, Cloud Run or Heroku.
 
 Check it: `curl https://your-thing.onrender.com/healthz` → `{"ok":true,"rooms":0}`
 
+> **Redeploy the relay when you update the game.** The relay now also carries
+> ICE candidates, which lets both sides skip a gathering wait of up to four
+> seconds *each* — the difference between a room-code join and a copy-paste
+> one. It advertises that ability as a version number when a host opens a room,
+> and a page that does not see it falls back to the slower join rather than
+> failing. So an old relay in front of a new build still works; it is just as
+> slow as it was. Nothing else about the pairing breaks in either direction —
+> an old page against a new relay is equally fine.
+
 > **The scheme matters.** A page served over `https://` may only open a
 > `wss://` socket. A `ws://` URL is blocked as mixed content before it reaches
 > the network. `NetConfig.js` auto-upgrades `ws://`→`wss://` on an https page,
