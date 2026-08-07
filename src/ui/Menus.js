@@ -172,7 +172,7 @@ export class Menus {
       <section class="screen screen--title" data-screen="title">
         <div class="title-mark">
           <div class="title-kicker">The smell of rain on dead ground</div>
-          <h1 class="title-word">PETRICHOR</h1>
+          <h1 class="title-word">TELLURIC VOID</h1>
           <div class="title-rule"></div>
           <div class="title-seed">SEED <span data-seed>—</span></div>
         </div>
@@ -1652,7 +1652,7 @@ export class Menus {
  * Idempotent, so a second `Menus` (the harness builds one per scenario) does
  * not accumulate stylesheets.
  */
-const EDICT_STYLE_ID = 'petrichor-edict-style';
+const EDICT_STYLE_ID = 'telluric-edict-style';
 function injectEdictStyles() {
   if (document.getElementById(EDICT_STYLE_ID)) return;
   const el = document.createElement('style');

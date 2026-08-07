@@ -32,7 +32,7 @@ export const TIERS = {
   uncommon:  { label: 'Uncommon',  color: '#63e06a', dim: '#2f7a37', plate: '#14231a' },
   legendary: { label: 'Legendary', color: '#ff5b45', dim: '#8a2b20', plate: '#26120f' },
   boss:      { label: 'Boss',      color: '#ffd44f', dim: '#94742a', plate: '#241d0c' },
-  lunar:     { label: 'Lunar',     color: '#5fd9f7', dim: '#2b7d92', plate: '#0e2029' },
+  lunar:     { label: 'Umbral',    color: '#5fd9f7', dim: '#2b7d92', plate: '#0e2029' },
   // Blight is the one tier drawn inverted (see `itemArt`), so it is also the one
   // tier whose `color` has to work as a *field* rather than as a stroke: a
   // magenta at this luminance carries a dark glyph at 33px and is the only hue

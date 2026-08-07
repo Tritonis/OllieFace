@@ -1401,15 +1401,19 @@ export const ELITE_STATS = {
    * `Enemy.js:990` is dead code that no test covers. That is the cost of this
    * end, and it is accepted because the aura is the mechanic the card is about.
    */
-  blazing:     { health: 4.0, damage: 2.0, cost: 4.5, speed: 1.0,  burn: 0, burnTick: 0.075, auraRadius: 3.2, auraDps: 0.12 },
-  overloading: { health: 3.2, damage: 2.0, cost: 5.0, speed: 1.15, shield: 0.5, deathBlast: 3.0, blastRadius: 7 },
-  glacial:     { health: 4.0, damage: 2.0, cost: 4.5, speed: 0.92, slow: 0.5, slowTime: 2.0, novaRadius: 8, novaDamage: 1.5 },
+  // `label` is the player-facing name; the keys are save/balance-load-bearing
+  // ids and stay. The first three keys are Risk of Rain 2's elite prefixes
+  // verbatim, which is why the HUD must never print a raw key —
+  // tests/branding-display.test.mjs holds every affix to that.
+  blazing:     { label: 'Emberclad', health: 4.0, damage: 2.0, cost: 4.5, speed: 1.0,  burn: 0, burnTick: 0.075, auraRadius: 3.2, auraDps: 0.12 },
+  overloading: { label: 'Galvanic', health: 3.2, damage: 2.0, cost: 5.0, speed: 1.15, shield: 0.5, deathBlast: 3.0, blastRadius: 7 },
+  glacial:     { label: 'Rimebound', health: 4.0, damage: 2.0, cost: 4.5, speed: 0.92, slow: 0.5, slowTime: 2.0, novaRadius: 8, novaDamage: 1.5 },
   // Malachite's role: while one of these has line of sight on you inside
   // `denyRadius`, healing does nothing. Every source — regen, item procs,
   // shrine drops — is nullified, so the answer is to kill it or break contact.
-  withering:   { health: 5.0, damage: 2.2, cost: 6.8, speed: 1.0, tier: 2, denyRadius: 16, denyTime: 3.0, thornDps: 0.2, auraRadius: 4.0 },
+  withering:   { label: 'Withering', health: 5.0, damage: 2.2, cost: 6.8, speed: 1.0, tier: 2, denyRadius: 16, denyTime: 3.0, thornDps: 0.2, auraRadius: 4.0 },
   // Celestine's role, inverted into an offensive problem: a reflective barrier
   // that must be broken before the unit takes real damage, and that pays a
   // quarter of everything you put into it straight back at you.
-  warded:      { health: 3.4, damage: 2.2, cost: 7.2, speed: 0.95, tier: 2, shield: 1.1, reflect: 0.22, wardArmor: 0.55, novaRadius: 6, novaDamage: 1.2 },
+  warded:      { label: 'Warded', health: 3.4, damage: 2.2, cost: 7.2, speed: 0.95, tier: 2, shield: 1.1, reflect: 0.22, wardArmor: 0.55, novaRadius: 6, novaDamage: 1.2 },
 };

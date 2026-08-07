@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { clamp, damp, invLerp } from '../core/MathUtil.js';
 import { ITEM_BY_ID } from '../data/items.js';
+// The affix keys are internal ids (three are RoR2's elite prefixes verbatim);
+// only the label may reach the screen. tests/branding-display.test.mjs pins it.
+import { ELITE_STATS } from '../data/enemies.js';
 // A constant, not the system: the key the equipment slot is bound to is decided
 // in one place (`Items`) and printed in another, and hardcoding 'F' here is how
 // a rebind ships a HUD that lies about its own controls. Nothing else about
@@ -335,7 +338,7 @@ export class HUD {
     // beneath it said "find the teleporter". It now carries the affix, which is
     // the thing the player actually has to plan around.
     this.refs.bossSub.textContent = enemy.isElite
-      ? `${prettify(enemy.affix || 'Elite')} — Teleporter Boss`
+      ? `${ELITE_STATS[enemy.affix]?.label ?? 'Elite'} — Teleporter Boss`
       : 'Teleporter Boss';
     this.refs.bossBar.classList.add('is-on');
     this.c.bossHp = -1;

@@ -319,7 +319,7 @@ export const ENDINGS = {
   obliterated: {
     id: 'obliterated',
     won: true,
-    title: 'Obliterated',
+    title: 'Unmade',
     line: 'You stepped into the obelisk and unmade yourself. The run ends on your terms.',
   },
   death: { id: 'death', won: false, title: 'Dead', line: '' },

@@ -33,7 +33,7 @@ export const TIERS = {
   uncommon: { name: 'Uncommon', colour: 0x49d67a, css: '#49d67a', weight: 20 },
   legendary: { name: 'Legendary', colour: 0xf0453f, css: '#f0453f', weight: 1 },
   boss: { name: 'Boss', colour: 0xffd23f, css: '#ffd23f', weight: 0 },
-  lunar: { name: 'Lunar', colour: 0x5fd9f7, css: '#5fd9f7', weight: 0 },
+  lunar: { name: 'Umbral', colour: 0x5fd9f7, css: '#5fd9f7', weight: 0 },
   // Blight sits at weight 0 for the same reason boss and lunar do: it is never
   // reached by multiplying the generic ladder. `Items.rollTier` adds it as an
   // explicit share of whatever table it was handed, so one constant sets the
