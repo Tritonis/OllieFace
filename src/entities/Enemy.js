@@ -1300,7 +1300,19 @@ export class Enemy {
         // `source?.isPlayer`: a guest's on-kill items now proc off the pest
         // that killed itself on them. Not gold — `Items.rewardKill(victim)`
         // takes no source and pays the local inventory either way.
-        combat.applyDamage(this, this.health, { source: this.targetPlayer, procCoefficient: 0 });
+        // Health plus shield, and past armour — a suicide is a certainty, not
+        // a hit to be mitigated. Sized to the health pool alone, an elite's
+        // detonation was eaten by its own shield: a Warded Shrike (shield 1.1x
+        // max health, ward armour while it holds) took nothing to health,
+        // never armed the shield-regen delay, and dived again at full strength
+        // every cooldown — an unkillable bomber that exploded on screen and
+        // stayed.
+        // The +1 is float hygiene: the shield pool is a product (1.1 * max
+        // health) whose absorption can leave 1e-13 health behind, and the kill
+        // gate is `health <= 0`. A point of overkill costs nothing.
+        combat.applyDamage(this, this.health + (this.shield || 0) + 1, {
+          source: this.targetPlayer, procCoefficient: 0, ignoreArmor: true,
+        });
       } else {
         this.health = 0;
         this.onDeath(null);
