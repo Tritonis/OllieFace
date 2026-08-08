@@ -207,6 +207,11 @@ export const ELITE = {
   // allowed to, but it is now a wireframe crystal rather than a filled sphere,
   // so what it adds is facets and not a disc.
   warded:      { tint: 0x6a4ad0, aura: 0xc9a8ff, glow: 3.0, name: 'Warded', tier: 2, bands: 0, bits: 0, ward: 1 },
+  // The void's family. Blight-ramp magenta pulled toward black: the read is
+  // "eaten", not "empowered". Two slow bands plus seven shards — ringed like
+  // the tier-1s so it still reads elite at 40 m, but in the one hue family no
+  // other affix owns, which is what lets the ground and the monster agree.
+  voidtouched: { tint: 0x8a2fd0, aura: 0xff2fb0, glow: 2.7, name: 'Hollowed', bands: 2, tilt: 0.9, bits: 7, shape: 'shard', bitScale: 0.16, spin: 1.1, bandAlpha: 0.6 },
 };
 
 const _c1 = new THREE.Color();

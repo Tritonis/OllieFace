@@ -1416,4 +1416,14 @@ export const ELITE_STATS = {
   // that must be broken before the unit takes real damage, and that pays a
   // quarter of everything you put into it straight back at you.
   warded:      { label: 'Warded', health: 3.4, damage: 2.2, cost: 7.2, speed: 0.95, tier: 2, shield: 1.1, reflect: 0.22, wardArmor: 0.55, novaRadius: 6, novaDamage: 1.2 },
+  // The void's own family. Not in ELITE_TIERS — the normal roll can never
+  // produce one; the Director's void path is the only door, and it opens only
+  // where a blight seed was planted (see VOIDTOUCHED in data/corruption.js).
+  // The rider is a siphon: `damage x siphonDps` every 0.5 s to anyone inside
+  // `siphonRadius`, and the unit heals `maxHealth x siphonHeal` per tick it
+  // connects — breaking contact starves it, standing in it feeds it. Kills
+  // refund corruption (Corruption's kill listener), which is why its cost sits
+  // between the tier-1s and the tier-2s: it is nasty, but killing it is the
+  // one elite kill that pays twice.
+  voidtouched: { label: 'Hollowed', health: 4.2, damage: 2.0, cost: 5.5, speed: 1.05, siphonRadius: 3.6, siphonDps: 0.10, siphonHeal: 0.012 },
 };

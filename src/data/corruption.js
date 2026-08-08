@@ -32,3 +32,26 @@ export function bandOf(world) {
   for (let i = 0; i < BANDS.length; i++) if (world >= BANDS[i].at) band = i;
   return band;
 }
+
+/**
+ * Voidtouched spawn economy. The void's bank is separate from the Director's
+ * credits by design: its rate is a function of World Corruption alone, so a
+ * pristine run never pays a single frame of cost for the feature existing.
+ * `refund` is the counterplay valve — each Voidtouched kill returns this
+ * fraction of the *current* world corruption, so the refund is worth most
+ * exactly when the party is deepest in the red.
+ */
+export const VOIDTOUCHED = {
+  affix: 'voidtouched',
+  ratePerWorld: 0.012,   // void credits per second per point of World Corruption
+  maxBank: 90,           // ~2 queued elites; the void saves, it does not flood
+  interval: 4,           // seconds between spend attempts
+  telegraph: 1.1,        // seconds of warning ring before the unit surfaces
+  spawnRing: { min: 2.5, max: 6.5 },  // metres from the chosen seed
+  minPlayerDist: 12,     // never surfaces in someone's face
+  refund: 0.03,          // fraction of World Corruption returned per kill
+};
+
+export function voidCreditRate(world) {
+  return VOIDTOUCHED.ratePerWorld * Math.max(0, world);
+}
