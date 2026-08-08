@@ -18,7 +18,7 @@ Every system is a class with `init(ctx)` plus any of `fixedUpdate(ctx, h)`,
 | `director` | Director | `src/systems/Director.js` |
 | `combat` | Combat | `src/systems/Combat.js` |
 | `items` | Items | `src/systems/Items.js` |
-| `corruption` | Corruption | `src/systems/Corruption.js` — the run's second economy; read `world`/`band`, call `feed`/`seed`. Never import it |
+| `corruption` | Corruption | `src/systems/Corruption.js` — the run's second economy; read `world`/`band`, call `feed`/`seed`/`bleed`. Never import it |
 | `blight` | Blight | `src/systems/Blight.js` — presentation only. Nothing in gameplay may read it; it is published so tools and tests can see the patch registry |
 | `vfx` | VFX | `src/systems/VFX.js` |
 | `audio` | Audio | `src/systems/Audio.js` |
@@ -49,6 +49,7 @@ Every system is a class with `init(ctx)` plus any of `fixedUpdate(ctx, h)`,
 | `corruptionChanged` | `{ world, band }` — fired on every non-zero feed | Corruption |
 | `corruptionBand` | `{ band, prev }` — only on a threshold crossing | Corruption |
 | `blightSeed` | `{ x, z, strength }` — where greed happened | Corruption |
+| `voidtouchedSpawn` | `{ x, z, id }` — a Hollowed unit surfaced from blight | Director |
 
 ## Settings
 
