@@ -672,10 +672,16 @@ export class HUD {
       this.set('corruptionFrac', Math.round(frac * 100), (v) => {
         this.refs.corruptionFill.style.width = `${v}%`;
       });
+      // The first update of a session is not a crossing: the cache starts empty
+      // and `undefined !== 0` fires the callback for band 0. The label and the
+      // data-band still need to land; the flare — which now means "you just
+      // crossed a line", alongside the screen lurch and the band sting — must
+      // not fire for the line nobody crossed.
+      const crossed = this.c.corruptionBand !== undefined;
       this.set('corruptionBand', cor.band ?? 0, (v) => {
         this.refs.corruption.dataset.band = String(v);
         this.refs.corruptionBand.textContent = BANDS[v].name;
-        this.pulse(this.refs.corruption, 'is-tick');
+        if (crossed) this.pulse(this.refs.corruption, 'is-tick');
       });
 
       // Route preview, not surprise (launch spec §2): from stage 3 the party

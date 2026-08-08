@@ -300,6 +300,13 @@ console.log('the vignette write is a floor, so transients from other systems sur
   ctx.pipeline.vignetteBoost = 0.9;                 // VFX's death spike, written absolutely
   b.update(ctx, 0.016);
   ok(ctx.pipeline.vignetteBoost === 0.9, 'a bigger transient is not stomped back to the band floor');
+  // Two frames, not one: Blight can put its *own* level back when nothing else
+  // has written, so the invariant is only really pinned by a frame that runs
+  // after Blight has already seen the foreign value once. A version that
+  // records the channel's value instead of its own passes frame 1 and retracts
+  // VFX's spike on frame 2.
+  b.update(ctx, 0.016);
+  ok(ctx.pipeline.vignetteBoost === 0.9, 'and it is still not stomped a frame later');
   ctx.pipeline.vignetteBoost = 0;                   // the pipeline damped it away
   b.update(ctx, 0.016);
   ok(Math.abs(ctx.pipeline.vignetteBoost - BAND_GRADE[4].vignette) < 1e-3, 'the band floor is re-asserted every frame');

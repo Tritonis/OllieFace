@@ -52,14 +52,28 @@ export const GRADE_BLEND = 2.5;   // seconds for a band change to settle
 /**
  * A band crossing is announced, not discovered (2026-08-08 playtest). For
  * SNAP.window seconds after a crossing the grade/sky settle runs at
- * SNAP.rateMult speed — the world lurches to its new state — and the pipeline
- * takes an immediate vignette + aberration hit, the same channels VFX speaks.
+ * SNAP.rateMult speed — the world lurches to its new state — and, going *up*,
+ * the pipeline takes a vignette + aberration hit, the same channels VFX speaks.
  *
  * Dilating time into `settle` rather than raising GRADE_RATE is what keeps this
  * one knob: every blended channel (sat, vignette offset, sky weight) rides the
  * same `dt`, so none of them can be left behind by a later channel being added.
+ *
+ * The hit is not symmetric, and that asymmetry is the vocabulary:
+ *   - up into band 2+ : the full punch. The world is now visibly worse.
+ *   - up into band 1  : SNAP.earlyMult of it. BAND_GRADE/BAND_SKY are null at
+ *                       bands 0-1 on purpose, so the crossing is a tap, not a
+ *                       hit — the band sting still announces it either way.
+ *   - down (a cleanse): no hit at all. The window still opens, so the grade
+ *                       and sky snap *back* toward clean fast, but a dark
+ *                       flash on the frame the player buys a cleanse reads as
+ *                       damage. The sting's resolving fifth is the
+ *                       announcement.
+ * SNAP.decay is the spike's own per-second damp rate — in the same family as
+ * RenderPipeline's own vignette fade (0.98), a touch quicker so the flash is
+ * spent before the window closes.
  */
-export const SNAP = { window: 1.6, rateMult: 5, vignette: 0.45, aberration: 0.0035 };
+export const SNAP = { window: 1.6, rateMult: 5, vignette: 0.45, aberration: 0.0035, earlyMult: 0.5, decay: 0.99 };
 // Per-second damp rate that lands 97% of the way home in GRADE_BLEND seconds.
 // Derived rather than tuned so the constant above is the only knob.
 const GRADE_RATE = 1 - Math.pow(0.03, 1 / GRADE_BLEND);
@@ -394,8 +408,13 @@ export class Blight {
     this._satBase = null;
     this._sat = 0;
     this._vig = 0;
-    // The last value we put on `pipeline.vignetteBoost`. Null until first
-    // touch, which can never equal a live number, so frame one takes the floor.
+    // The crossing flash, owned and decayed here rather than pushed onto the
+    // shared channel and left for somebody else to take back. Folded into the
+    // level `_grade` writes.
+    this._spike = 0;
+    // The level *we computed* last frame — our own number, never a value read
+    // back off the channel. Null until first touch, which can never equal a
+    // live number, so frame one takes the floor.
     this._vigWrote = null;
     this._skyW = 0;
     // Seconds of accelerated settle left after a crossing. Presentation only:
@@ -416,16 +435,23 @@ export class Blight {
       // it is already on (a clamped 12 is still band 4), and a pulse per emit
       // would ratchet the vignette against the pipeline's damp for free.
       if (band === this.band) return;
+      const rising = band > this.band;
       this.band = band;
+      // Both directions get the window: crossing back down should snap toward
+      // the cleaner world just as fast as crossing up snapped away from it.
       this._snapT = SNAP.window;
-      // The floor/sum split matches _grade and VFX: vignetteBoost is a floor so
-      // the loudest writer wins, aberration is additive because that is how
-      // every other transient spends it.
+      // Only getting worse hits the screen (see SNAP). A cleanse is announced
+      // by the sting and by the world visibly clearing, never by a dark flash.
+      if (!rising) return;
+      const mult = band >= 2 ? 1 : SNAP.earlyMult;
+      // The vignette goes into our own decaying spike — `_grade` folds it into
+      // the level it writes, so the flash is retracted by this system and not
+      // by whoever damps the channel next. Aberration stays a direct add: it is
+      // additive by contract and the pipeline both damps and clamps it, so
+      // there is nothing to take back.
+      this._spike = Math.max(this._spike, SNAP.vignette * mult);
       const pipe = this.ctx?.pipeline;
-      if (pipe) {
-        pipe.vignetteBoost = Math.max(pipe.vignetteBoost || 0, SNAP.vignette);
-        pipe.aberration = (pipe.aberration || 0) + SNAP.aberration;
-      }
+      if (pipe) pipe.aberration = (pipe.aberration || 0) + SNAP.aberration * mult;
     });
     ctx.events.on('stageStart', () => this._clear());
   }
@@ -557,18 +583,32 @@ export class Blight {
     this._vig = settle(this._vig, g.vignette, sdt);
 
     gradeU.uSaturation.value = this._satBase + this._sat;
+    // The crossing flash decays on raw `dt`, not `sdt`: a flash is not one of
+    // the settled channels, and dilating it would have the snap window cut its
+    // own announcement short. Snapped to zero at the settle's epsilon, so band
+    // 0 still hands the pipeline back an exact 0.
+    if (this._spike > 0) {
+      this._spike = damp(this._spike, 0, SNAP.decay, dt);
+      if (this._spike < GRADE_EPS) this._spike = 0;
+    }
+    const level = this._vig + this._spike;
     // The floor is still the rule — the loudest writer wins — with one carve-out
-    // the crossing spike needs. `Math.max` alone can only ever *raise*
-    // vignetteBoost, so the 0.45 hit a crossing writes can only come back down
-    // if somebody else lowers it. In game that somebody is RenderPipeline's own
-    // damp, which is exactly the intended fade. But this system must not depend
-    // on another system to retract its own transient, so: if the live value is
-    // byte-identical to what we wrote last frame, nothing else has touched it
-    // (no damp, no VFX spike) and we are free to assign our own level back.
-    // Anything else on the channel takes the floor path, unchanged.
+    // our own spike needs. `Math.max` alone can only ever *raise* vignetteBoost,
+    // so a decaying spike would stay pinned at its peak anywhere the pipeline's
+    // damp is not running (any headless host, any fixture). So: if the channel
+    // still carries *the level we computed last frame*, nobody else has written
+    // since, and we may put our own lower level back.
+    //
+    // `_vigWrote` is deliberately the number we computed and never the result of
+    // the floor. Recording the floor's result would mean that on any frame
+    // somebody else's louder value won, the next frame's equality test would
+    // read that other system's value as our own and retract *their* transient to
+    // our band level. Compared against what we computed, a foreign write never
+    // matches — VFX's 0.9 is outside the range `_vig + _spike` can even reach —
+    // so it takes the floor path for as long as it stands.
     const cur = pipe.vignetteBoost || 0;
-    pipe.vignetteBoost = cur === this._vigWrote ? this._vig : Math.max(cur, this._vig);
-    this._vigWrote = pipe.vignetteBoost;
+    pipe.vignetteBoost = cur === this._vigWrote ? level : Math.max(cur, level);
+    this._vigWrote = level;
 
     // --- sky and fog: blend toward the void against the biome's own anchor.
     // Absolute mix from the recorded baseline every frame, never incremental:

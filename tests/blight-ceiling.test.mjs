@@ -380,18 +380,25 @@ console.log('a band crossing snaps instead of drifting');
   const wBefore = b._skyW;
 
   ctx.events.emit('corruptionBand', { band: 4, prev: 3 });
-  ok(ctx.pipeline.vignetteBoost >= SNAP.vignette, 'crossing spikes the vignette floor immediately');
   ok(Math.abs(ctx.pipeline.aberration - SNAP.aberration) < 1e-12, 'crossing adds its aberration immediately');
   ok(b._skyW === wBefore, 'the pulse is a pipeline write, not a teleported blend');
+  // The vignette half of the hit is Blight's own decaying spike, folded into the
+  // level `_grade` writes — so it lands on the first update after the crossing
+  // rather than inside the event handler. In the real loop that is the same
+  // frame: Corruption (main.js:58) updates before Blight (main.js:62).
+  b.update(ctx, 1 / 60);
+  ok(ctx.pipeline.vignetteBoost >= SNAP.vignette, 'the crossing spikes the vignette on the next update');
 
   // Blend speed: within SNAP.window seconds the sky weight must be essentially
   // home. The un-snapped settle retains 0.03^(t/GRADE_BLEND) of the gap, so
   // 1.6s of ordinary drift off band 3 only reaches ~0.957 of the way — the
   // threshold below is above anything the un-dilated rate can reach in the
-  // window, by a margin no rounding closes.
+  // window, by a margin no rounding closes. The 0.03 is the 97%-in-GRADE_BLEND
+  // target that Blight's private GRADE_RATE is derived from (Blight.js:40-42);
+  // if that target moves, this reference has to move with it.
   const gap = 1 - wBefore;
   const unsnapped = 1 - gap * Math.pow(0.03, SNAP.window / GRADE_BLEND);
-  let t = 0;
+  let t = 1 / 60;
   while (t < SNAP.window) { b.update(ctx, 1 / 60); t += 1 / 60; }
   ok(b._skyW > 0.999 && b._skyW > unsnapped + 0.01,
      `sky weight ${b._skyW.toFixed(5)} beats the un-snapped ${unsnapped.toFixed(5)} within ${SNAP.window}s`);
@@ -409,9 +416,16 @@ console.log('a band crossing snaps instead of drifting');
   ok(b._skyW === BAND_SKY[2], 'past the window the blend still lands exactly on its band');
 
   // A redundant emit is not a crossing: nothing to announce, nothing to pulse.
-  ctx.pipeline.vignetteBoost = 0;
+  const abBefore = ctx.pipeline.aberration;
   ctx.events.emit('corruptionBand', { band: 2, prev: 2 });
-  ok(ctx.pipeline.vignetteBoost === 0, 'a repeat of the same band does not pulse');
+  ok(ctx.pipeline.aberration === abBefore && b._snapT === 0 && b._spike === 0,
+     'a repeat of the same band does not pulse');
+
+  // rateMult is pinned directly. The blend-speed assertion above cannot do it:
+  // by SNAP.window seconds anything at rateMult >= 3 has already hit GRADE_EPS
+  // and snapped to exactly 1.0, so the end-state measurement saturates and a
+  // silent 5 -> 3 retune would sail through it.
+  ok(SNAP.rateMult === 5, 'the snap rate multiplier is 5');
 
   // Degraded ctx: no pipeline at all must not throw on the crossing.
   const bare = makeCtx();
@@ -422,6 +436,53 @@ console.log('a band crossing snaps instead of drifting');
   try { bare.events.emit('corruptionBand', { band: 3, prev: 0 }); b2.update(bare, 1 / 60); } catch { threw = true; }
   ok(!threw, 'a ctx without a pipeline never throws on a crossing');
   ok(b2.band === 3, 'the band still lands without a pipeline');
+}
+
+console.log('the crossing hit speaks three different volumes');
+{
+  const { SNAP } = await import('../src/systems/Blight.js');
+  ok(SNAP.earlyMult > 0 && SNAP.earlyMult < 1, 'the early-band multiplier is exported and is a fraction');
+
+  // Up into a band the screen actually grades: the full punch.
+  const loud = makeCtx();
+  const bl = new Blight();
+  bl.init(loud);
+  loud.events.emit('corruptionBand', { band: 2, prev: 1 });
+  bl.update(loud, 1 / 60);
+  ok(Math.abs(loud.pipeline.aberration - SNAP.aberration) < 1e-12, 'band 2 takes the full aberration');
+  ok(loud.pipeline.vignetteBoost > SNAP.vignette * 0.9,
+     `band 2 takes the full vignette hit (${loud.pipeline.vignetteBoost.toFixed(3)})`);
+
+  // Up into band 1, where BAND_GRADE and BAND_SKY are deliberately null: the
+  // crossing is still announced, at half volume.
+  const quiet = makeCtx();
+  const bq = new Blight();
+  bq.init(quiet);
+  quiet.events.emit('corruptionBand', { band: 1, prev: 0 });
+  bq.update(quiet, 1 / 60);
+  ok(Math.abs(quiet.pipeline.aberration - SNAP.aberration * SNAP.earlyMult) < 1e-12,
+     'band 1 takes half the aberration');
+  ok(quiet.pipeline.vignetteBoost > SNAP.vignette * SNAP.earlyMult * 0.9 &&
+     quiet.pipeline.vignetteBoost < SNAP.vignette * 0.6,
+     `band 1 takes half the vignette hit (${quiet.pipeline.vignetteBoost.toFixed(3)})`);
+  ok(bq._snapT > 0, 'band 1 still opens the snap window');
+
+  // Down (a cleanse): no hit at all. Spending money to clean the world must not
+  // read as taking one — the window still opens, so the grade snaps back toward
+  // clean fast, and the band sting is the announcement.
+  const down = makeCtx();
+  const bd = new Blight();
+  bd.init(down);
+  down.events.emit('corruptionBand', { band: 4, prev: 3 });
+  for (let i = 0; i < 600; i++) bd.update(down, 1 / 60);   // 10s: settled, spike gone
+  down.pipeline.vignetteBoost = 0;
+  down.pipeline.aberration = 0;
+  down.events.emit('corruptionBand', { band: 1, prev: 4 });
+  ok(down.pipeline.aberration === 0 && bd._spike === 0, 'a cleanse adds no aberration and no spike');
+  bd.update(down, 1 / 60);
+  ok(down.pipeline.vignetteBoost < BAND_GRADE[4].vignette,
+     `a cleanse never raises the vignette above the band it is leaving (${down.pipeline.vignetteBoost.toFixed(3)})`);
+  ok(bd._snapT > 0, 'a cleanse still opens the snap window');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
