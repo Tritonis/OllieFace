@@ -1,5 +1,6 @@
 // src/systems/Corruption.js
 import { bandOf, SOURCES } from '../data/corruption.js';
+import { ITEM_BY_ID } from '../data/items.js';
 
 /**
  * The run's second economy. Corruption rises only through choices — chest
@@ -31,6 +32,14 @@ export class Corruption {
     // passive-looking source, and it is still a choice — leaving is free.
     ctx.events.on('teleporterComplete', () => { this._greed = true; });
     ctx.events.on('stageStart', () => { this._greed = false; });
+    // Items feed by tier. Riding the event rather than patching Items keeps
+    // the systems decoupled (CONTRACTS.md) and means blight transforms, chest
+    // bursts and shop buys all pay without knowing corruption exists. `feed`
+    // is authority-gated, so the same event firing on a client is inert.
+    ctx.events.on('itemPickup', ({ id, count = 1 }) => {
+      const tier = ITEM_BY_ID.get(id)?.tier;
+      this.feed(ctx.player, (SOURCES.itemFeed[tier] ?? 1) * count);
+    });
   }
 
   get world() { return this._world; }

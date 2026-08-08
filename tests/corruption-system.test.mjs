@@ -1,6 +1,7 @@
 // tests/corruption-system.test.mjs
 import { Corruption } from '../src/systems/Corruption.js';
 import { BANDS, SOURCES } from '../src/data/corruption.js';
+import { ITEM_BY_ID } from '../src/data/items.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
@@ -109,6 +110,20 @@ console.log('seeds are recorded, broadcast, and capped');
   for (let i = 0; i < 100; i++) c.seed({ x: i, y: 0, z: 0 }, 1);
   ok(c.seeds.length === 64, 'seed list capped at 64');
   ok(c.seeds[0].x === 36, 'oldest seeds dropped first');
+}
+
+console.log('item pickups feed by tier through the itemPickup event');
+{
+  const { ctx } = makeCtx();
+  ctx.player = P();
+  const c = new Corruption();
+  c.init(ctx);
+  // Find one real item of a known tier so the test tracks the live item table.
+  const common = [...ITEM_BY_ID.values()].find((i) => i.tier === 'common');
+  ctx.events.emit('itemPickup', { id: common.id, count: 2 });
+  ok(c.world === SOURCES.itemFeed.common * 2, `two commons feed ${SOURCES.itemFeed.common * 2} (got ${c.world})`);
+  ctx.events.emit('itemPickup', { id: 'not-a-real-item', count: 1 });
+  ok(c.world === SOURCES.itemFeed.common * 2 + 1, 'unknown items feed the fallback 1');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
