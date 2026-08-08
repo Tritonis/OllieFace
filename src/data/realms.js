@@ -202,6 +202,37 @@ export const REALMS = [
       dustColor: 0xd0a8ff, dustOpacity: 0.85,
     }),
   },
+
+  {
+    id: 'fracture-void',
+    name: 'The Hungering Fracture',
+    kind: 'finale',
+    combat: true,
+    exit: 'end',
+    floorRadius: 34,
+    wallRadius: 62,
+    objective: 'Destroy the Herald',
+    toast: 'The Hungering Fracture',
+    // The void route's teeth and its pay. The Herald here is the same fight
+    // with less forgiveness; the loot is the richest corrupted haul in the
+    // game, paid on arrival — you already paid for it all run.
+    bossScale: { health: 1.5, damage: 1.35 },
+    voidLoot: 4,
+    air: air({
+      // The Fracture's palette dragged all the way into the blight ramp
+      // (hud.css: #7a4fd0 -> #ff2fb0): denser dust, magenta haze, and the rim
+      // light is the blight edge colour itself. Same sun geometry as the
+      // clean finale — the room reads as the same place, further gone.
+      zenith: 0x120420, horizon: 0x521a4e, haze: 0xc72fd6, ground: 0x0a0410,
+      sun: 0xff9ae0, cloud: 0x241030, cloudAmount: 0.7, hazePow: 3.4,
+      ceiling: 0x120826, ceilingAmount: 0.5,
+      fogColor: 0x2a1038, fogDensity: 0.011,
+      sunEl: 18, sunAz: 35, sunColor: 0xff70d8, sunIntensity: 4.6,
+      hemiSky: 0x58286a, hemiGround: 0x140818, hemiIntensity: 0.6,
+      rim: 0xff2fb0, rimIntensity: 1.4, envIntensity: 0.5,
+      dustColor: 0xff8ae0, dustOpacity: 1.0,
+    }),
+  },
 ];
 
 export const REALM_BY_ID = new Map(REALMS.map((r) => [r.id, r]));
@@ -308,6 +339,36 @@ export const FINALE_PHASES = [
   },
 ];
 
+/**
+ * Corruption is the router (launch spec §2). At the finale-gate stage the
+ * party's corruption band decides which Fracture opens: Pristine/Seeded see
+ * the clean route, Overrun/Consumed see the void-saturated one, and Blighted
+ * — the middle band — sees both and must commit. Every band matches at least
+ * one route: corruption changes which game you are playing, never whether
+ * you finish (tests/corruption-routing.test.mjs asserts the coverage).
+ */
+export const FINALE_ROUTES = [
+  {
+    realm: 'fracture',
+    name: 'The Fracture',
+    label: 'Enter The Fracture — this ends the run',
+    tint: 0xff4ad0,
+    bands: { min: 0, max: 2 },
+  },
+  {
+    realm: 'fracture-void',
+    name: 'The Hungering Fracture',
+    label: 'Enter The Hungering Fracture — this ends the run',
+    tint: 0xc72fd6,
+    bands: { min: 2, max: 4 },
+  },
+];
+
+/** The routes a party at this corruption band may take. Never empty. */
+export function routesFor(band) {
+  return FINALE_ROUTES.filter((r) => band >= r.bands.min && band <= r.bands.max);
+}
+
 /** Run-ending ids. Both commit a record; only the cause differs. */
 export const ENDINGS = {
   victory: {
@@ -315,6 +376,12 @@ export const ENDINGS = {
     won: true,
     title: 'The Herald Falls',
     line: 'You broke the thing at the end of the run.',
+  },
+  victoryVoid: {
+    id: 'victory-void',
+    won: true,
+    title: 'The Herald Drowns',
+    line: 'You fed the world to the void, and broke the thing it sent to thank you.',
   },
   obliterated: {
     id: 'obliterated',

@@ -857,6 +857,10 @@ const BUILDERS = {
   fracture: buildFracture,
 };
 
+// The Hungering Fracture is the same arena further gone: the air and the
+// Herald carry the difference, not the geometry.
+BUILDERS['fracture-void'] = BUILDERS.fracture;
+
 /** Build the arena for a realm onto its stage. */
 export function buildArena(stage) {
   const b = BUILDERS[stage.realmId];
