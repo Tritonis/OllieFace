@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { ITEM_BY_ID, TIERS } from '../data/items.js';
 import { eliteAffixesFor } from '../data/enemies.js';
-import { SOURCES } from '../data/corruption.js';
+import { SOURCES, CLEANSE, PACT } from '../data/corruption.js';
 import { RNG } from '../core/MathUtil.js';
 import { getTextureSets, withRepeat, attachDetail } from './Materials.js';
 
@@ -40,6 +40,8 @@ const TYPE_ID = {
   // was renamed, because the value is a wire constant and the rule above is
   // append, never renumber.
   hollowChime: 9, gildedSnare: 10, fallowVault: 11, marrowKiln: 12,
+  // Counterplay shrines, round 7.
+  argentFont: 13, covenantStone: 14,
 };
 
 const CHEST_TYPE = { small: TYPE_ID.chest, large: TYPE_ID.chestLarge, legendary: TYPE_ID.chestLegendary };
@@ -1309,6 +1311,137 @@ export class MarrowKiln extends Interactable {
   }
 }
 
+/**
+ * The Argent Font — pay gold, bleed the world. The counterplay valve given a
+ * body (launch spec §1): the font undoes what greed did, at a price that
+ * climbs per use, and it is NOT a greed act — no seed, no tithe. Refuses a
+ * pristine world outright rather than selling nothing.
+ */
+export class ArgentFont extends Interactable {
+  constructor(ctx, position, stageIndex) {
+    super(ctx, position);
+    this.uses = 0;
+    this.maxUses = CLEANSE.maxUses;
+    this.cost = Math.round(CLEANSE.gold * Math.pow(CLEANSE.goldGrowth, stageIndex || 0));
+    this.typeId = TYPE_ID.argentFont;
+
+    const base = new THREE.Mesh(sharedGeo('bloodBase', () => plinthGeo(1.0, 8)), STONE());
+    // The Ichor Font's basin form in silver: the two fonts rhyme on purpose —
+    // one takes, one gives back — and the palette is the whole difference.
+    const rim = new THREE.Mesh(
+      sharedGeo('bloodRim', () => new THREE.TorusGeometry(0.78, 0.075, 12, 32)
+        .rotateX(Math.PI / 2).translate(0, 1.11, 0)),
+      IRON_POLISH()
+    );
+    base.castShadow = rim.castShadow = true;
+    base.receiveShadow = true;
+
+    // Per-instance material: `interact` dims it when the font is spent.
+    this.water = new THREE.Mesh(
+      sharedGeo('argentWater', () => new THREE.CylinderGeometry(0.72, 0.72, 0.06, 20).translate(0, 1.05, 0)),
+      new THREE.MeshStandardMaterial({
+        color: 0xcfe8ff, emissive: 0x9fd4ff, emissiveIntensity: 0.8,
+        roughness: 0.05, metalness: 0.2, envMapIntensity: 3.0,
+      })
+    );
+    this.group.add(base, rim, this.water);
+  }
+
+  available() { return this.enabled && this.uses < this.maxUses; }
+  prompt() { return `Argent Font — bleed the world ($${this.cost})`; }
+
+  interact() {
+    const cor = this.ctx.corruption;
+    // Nothing to bleed means nothing to sell; refuse before taking the gold.
+    if (!cor || !(cor.world > 0)) return false;
+    if (!this.ctx.items?.spendGold(this.cost)) return false;
+    this.uses++;
+    cor.bleed(this.ctx.player, CLEANSE.amount);
+    this.ctx.vfx?.burst?.(this.position, 0x9fd4ff);
+    this.ctx.audio?.play?.('shrineWin', this.position);
+    if (this.uses >= this.maxUses) this.water.material.emissiveIntensity = 0.05;
+    this.cost = Math.round(this.cost * CLEANSE.costClimb);
+    return true;
+  }
+
+  update(dt) {
+    this.water.material.emissiveIntensity = this.available()
+      ? 0.8 + Math.sin(this.ctx.time * 2.2) * 0.25 : 0.05;
+  }
+}
+
+/**
+ * The Covenant Stone — the pact shrine (launch spec §2). A volunteer takes a
+ * share of the most-corrupted teammate's ledger onto their own; world
+ * corruption does not move. Solo runs are refused, not punished: the stone
+ * only spawns for parties, and a party with clean teammates gets its use back.
+ * The volunteer is `ctx.player` — the same host-resolution rule every shrine
+ * already follows.
+ */
+export class CovenantStone extends Interactable {
+  constructor(ctx, position) {
+    super(ctx, position);
+    this.uses = 0;
+    this.maxUses = PACT.maxUses;
+    this.typeId = TYPE_ID.covenantStone;
+
+    const base = new THREE.Mesh(sharedGeo('shrineBase', () => plinthGeo(1.1, 10)), STONE());
+    base.castShadow = true;
+    base.receiveShadow = true;
+    // Two leaning slabs meeting at the top: the silhouette is a handshake.
+    this.stones = new THREE.Mesh(
+      sharedGeo('covenantStones', () => {
+        const parts = [
+          box(0.5, 2.4, 0.4, -0.55, 1.35, 0).rotateZ(-0.2),
+          box(0.5, 2.4, 0.4, 0.55, 1.35, 0).rotateZ(0.2),
+        ];
+        const g = mergeGeometries(parts, false);
+        for (const p of parts) p.dispose();
+        return g;
+      }),
+      IRON_DARK()
+    );
+    this.stones.castShadow = true;
+    // Per-instance material: dimmed once the covenant is struck.
+    this.bond = new THREE.Mesh(
+      sharedGeo('covenantBond', () => new THREE.TorusGeometry(0.34, 0.07, 8, 24).translate(0, 2.35, 0)),
+      new THREE.MeshStandardMaterial({
+        color: 0x0a0c10, emissive: 0x9fd4ff, emissiveIntensity: 1.6, roughness: 0.3,
+      })
+    );
+    this.group.add(base, this.stones, this.bond);
+  }
+
+  available() { return this.enabled && this.uses < this.maxUses; }
+  prompt() { return 'Covenant Stone — shoulder a share of the party\'s corruption'; }
+
+  interact() {
+    const cor = this.ctx.corruption;
+    const me = this.ctx.player;
+    if (!cor || !me) return false;
+    // The heaviest ledger that is not the volunteer's own.
+    let donor = null, worst = 0;
+    for (const p of this.ctx.roster?.all || []) {
+      if (p === me) continue;
+      const own = cor.corruptionOf(p);
+      if (own > worst) { worst = own; donor = p; }
+    }
+    if (!donor || !(worst > 0)) return false;
+    const moved = cor.transfer(donor, me, worst * PACT.share);
+    if (!(moved > 0)) return false;
+    this.uses++;
+    this.bond.material.emissiveIntensity = 0.1;
+    this.ctx.vfx?.burst?.(this.position, 0x9fd4ff);
+    this.ctx.audio?.play?.('shrineWin', this.position);
+    return true;
+  }
+
+  update(dt) {
+    if (!this.available()) return;
+    this.bond.material.emissiveIntensity = 1.6 + Math.sin(this.ctx.time * 3.0) * 0.4;
+  }
+}
+
 // ---------------------------------------------------------------- teleporter
 
 /**
@@ -1775,6 +1908,10 @@ export class Interactables {
       { w: stageIndex >= 1 ? 20 : 0, build: (p) => new GildedSnare(ctx, p, stageIndex) },
       { w: stageIndex >= 1 ? 18 : 0, build: (p) => new MarrowKiln(ctx, p, stageIndex) },
       { w: stageIndex >= 1 ? 16 : 0, build: (p) => new FallowVault(ctx, p, stageIndex) },
+      // Counterplay joins the bag once there is a run to have regrets about.
+      { w: stageIndex >= 1 ? 14 : 0, build: (p) => new ArgentFont(ctx, p, stageIndex) },
+      // The pact is a party mechanic: solo runs never see the stone (spec §2).
+      { w: (ctx.roster?.count ?? 1) > 1 ? 16 : 0, build: (p) => new CovenantStone(ctx, p) },
     ].filter((e) => e.w > 0);
 
     // A stage now always carries at least one shrine, very likely a second, and
@@ -1942,6 +2079,10 @@ const VIEW_BUILDERS = {
   [TYPE_ID.gildedSnare]: (ctx, p) => new GildedSnare(ctx, p, 0),
   [TYPE_ID.fallowVault]: (ctx, p) => new FallowVault(ctx, p, 0),
   [TYPE_ID.marrowKiln]: (ctx, p) => new MarrowKiln(ctx, p, 0),
+  [TYPE_ID.argentFont]: (ctx, p) => new ArgentFont(ctx, p, 0),
+  // The stone only exists in co-op, so a client with no view for it would be
+  // the one player guaranteed to be looking for it.
+  [TYPE_ID.covenantStone]: (ctx, p) => new CovenantStone(ctx, p),
   [TYPE_ID.teleporter]: (ctx, p) => new Teleporter(ctx, p),
   [TYPE_ID.portal]: (ctx, p) => new Portal(ctx, p, null),
 };

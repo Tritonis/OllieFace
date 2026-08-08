@@ -67,5 +67,98 @@ console.log('a client cannot transfer');
   ok(c.transfer(a, b, 5) === 0, 'transfer returns 0 without authority');
 }
 
+console.log('— interactables —');
+const { ArgentFont, CovenantStone } = await import('../src/world/Interactables.js');
+
+function makeWorldCtx({ gold = 1000, roster = null } = {}) {
+  const listeners = new Map();
+  const ctx = {
+    authority: true,
+    player: { isPlayer: true, alive: true, health: 100, maxHealth: 100 },
+    events: {
+      emit(name, p) { for (const fn of listeners.get(name) || []) fn(p); },
+      on(name, fn) { if (!listeners.has(name)) listeners.set(name, []); listeners.get(name).push(fn); },
+    },
+    items: {
+      gold,
+      spendGold(cost) { if (this.gold < cost) return false; this.gold -= cost; return true; },
+    },
+    vfx: null, audio: null,
+  };
+  if (roster) ctx.roster = roster;
+  const corruption = new Corruption();
+  corruption.init(ctx);
+  return ctx;
+}
+
+console.log('the Argent Font bleeds the world for climbing gold');
+{
+  const ctx = makeWorldCtx({ gold: 1000 });
+  ctx.corruption.feed(ctx.player, 100);
+  const font = new ArgentFont(ctx, new THREE.Vector3(1, 0, 1), 0);
+  const cost0 = font.cost;
+  ok(cost0 === Math.round(CLEANSE.gold * Math.pow(CLEANSE.goldGrowth, 0)), 'stage-0 price is the base price');
+  ok(font.interact() === true, 'a paid cleanse succeeds');
+  ok(ctx.corruption.world === 100 - CLEANSE.amount, 'the world bled by the tuned amount');
+  ok(ctx.items.gold === 1000 - cost0, 'and the gold is gone');
+  ok(font.cost === Math.round(cost0 * CLEANSE.costClimb), 'the price climbed');
+  ok(ctx.corruption.seeds.length === 0, 'cleansing is not a greed act — no seed');
+  for (let i = font.uses; i < CLEANSE.maxUses; i++) font.interact();
+  ok(font.available() === false, 'spent after maxUses');
+}
+
+console.log('the font refuses a pristine world and an empty purse');
+{
+  const ctx = makeWorldCtx({ gold: 1000 });
+  const font = new ArgentFont(ctx, new THREE.Vector3(0, 0, 0), 0);
+  ok(font.interact() === false, 'nothing to bleed, nothing charged');
+  ok(ctx.items.gold === 1000, 'gold untouched by the refusal');
+  ctx.corruption.feed(ctx.player, 50);
+  ctx.items.gold = 1;
+  ok(font.interact() === false, 'no gold, no cleanse');
+  ok(ctx.corruption.world === 50, 'the world did not bleed for free');
+}
+
+console.log('the Covenant Stone moves the heaviest ledger onto the volunteer');
+{
+  const mateA = { isPlayer: true, alive: true, position: { x: 0, z: 0 } };
+  const mateB = { isPlayer: true, alive: true, position: { x: 1, z: 0 } };
+  const ctx = makeWorldCtx({ roster: { count: 3, all: [] } });
+  ctx.roster.all = [ctx.player, mateA, mateB];
+  ctx.corruption.feed(mateA, 40);
+  ctx.corruption.feed(mateB, 80);
+  const stone = new CovenantStone(ctx, new THREE.Vector3(2, 0, 2));
+  ok(stone.interact() === true, 'the pact is struck');
+  const share = 80 * PACT.share;
+  ok(Math.abs(ctx.corruption.corruptionOf(mateB) - (80 - share)) < 1e-9, 'the heaviest teammate is relieved');
+  ok(Math.abs(ctx.corruption.corruptionOf(ctx.player) - share) < 1e-9, 'the volunteer carries it now');
+  ok(Math.abs(ctx.corruption.corruptionOf(mateA) - 40) < 1e-9, 'the lighter teammate untouched');
+  ok(ctx.corruption.world === 120, 'world unchanged — blame moved, not absolved');
+  ok(stone.available() === false, 'one covenant per stone');
+  ok(ctx.corruption.seeds.length === 0, 'a pact is not a greed act — no seed');
+}
+
+console.log('solo, or a party with nothing to shoulder, is refused');
+{
+  const ctx = makeWorldCtx({ roster: { count: 1, all: [] } });
+  ctx.roster.all = [ctx.player];
+  const stone = new CovenantStone(ctx, new THREE.Vector3(0, 0, 0));
+  ok(stone.interact() === false, 'no teammate, no pact');
+  const ctx2 = makeWorldCtx({ roster: { count: 2, all: [] } });
+  const mate = { isPlayer: true, alive: true, position: { x: 1, z: 0 } };
+  ctx2.roster.all = [ctx2.player, mate];
+  const stone2 = new CovenantStone(ctx2, new THREE.Vector3(0, 0, 0));
+  ok(stone2.interact() === false, 'a clean teammate has nothing to hand over');
+  ok(stone2.uses === 0, 'a refusal consumes no use');
+}
+
+console.log('wire values are appended, never renumbered');
+{
+  const font = new ArgentFont(makeWorldCtx(), new THREE.Vector3(), 0);
+  const stone = new CovenantStone(makeWorldCtx(), new THREE.Vector3());
+  ok(font.typeId === 13, 'argentFont is wire value 13');
+  ok(stone.typeId === 14, 'covenantStone is wire value 14');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
