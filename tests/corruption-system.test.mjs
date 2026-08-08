@@ -120,10 +120,18 @@ console.log('item pickups feed by tier through the itemPickup event');
   c.init(ctx);
   // Find one real item of a known tier so the test tracks the live item table.
   const common = [...ITEM_BY_ID.values()].find((i) => i.tier === 'common');
-  ctx.events.emit('itemPickup', { id: common.id, count: 2 });
-  ok(c.world === SOURCES.itemFeed.common * 2, `two commons feed ${SOURCES.itemFeed.common * 2} (got ${c.world})`);
+  // Production shapes, copied from Items.js:_set — count is the absolute new
+  // stack total, delta is the actual change. Two sequential real pickups of
+  // the same item look like this on the wire.
+  ctx.events.emit('itemPickup', { id: common.id, count: 1, tier: common.tier, delta: 1 });
+  ctx.events.emit('itemPickup', { id: common.id, count: 2, tier: common.tier, delta: 1 });
+  ok(c.world === SOURCES.itemFeed.common * 2, `two sequential real pickups feed ${SOURCES.itemFeed.common * 2} (got ${c.world})`);
+  // A removal (e.g. the Marrow Kiln burning one item) must not raise corruption.
+  const before = c.world;
+  ctx.events.emit('itemPickup', { id: common.id, count: 1, tier: common.tier, delta: -1 });
+  ok(c.world === before, 'a removal (negative delta) does not increase corruption');
   ctx.events.emit('itemPickup', { id: 'not-a-real-item', count: 1 });
-  ok(c.world === SOURCES.itemFeed.common * 2 + 1, 'unknown items feed the fallback 1');
+  ok(c.world === before + 1, 'unknown items feed the fallback 1');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -36,9 +36,17 @@ export class Corruption {
     // the systems decoupled (CONTRACTS.md) and means blight transforms, chest
     // bursts and shop buys all pay without knowing corruption exists. `feed`
     // is authority-gated, so the same event firing on a client is inert.
-    ctx.events.on('itemPickup', ({ id, count = 1 }) => {
+    // `count` on the wire is the absolute new stack total (Items.js:_set), not
+    // a pickup delta — feeding by it would double-count every restack and even
+    // reward removals. `delta` carries the actual change; mirror the same
+    // fix Audio.js already needed for this event. Fall back to treating
+    // `count` as the delta only when a payload omits `delta` entirely (older
+    // synthetic/CONTRACTS.md-shaped events).
+    ctx.events.on('itemPickup', ({ id, count = 1, delta }) => {
+      const change = delta === undefined ? count : delta;
+      if (!(change > 0)) return;
       const tier = ITEM_BY_ID.get(id)?.tier;
-      this.feed(ctx.player, (SOURCES.itemFeed[tier] ?? 1) * count);
+      this.feed(ctx.player, (SOURCES.itemFeed[tier] ?? 1) * change);
     });
   }
 
