@@ -60,6 +60,14 @@ float blightMask(vec3 wp) {
     if (p.z <= 0.0) continue;
     vec2 d2 = wp.xz - p.xy;
     float d = length(d2);
+    // Cheap reject before the transcendentals. Without it every terrain and
+    // prop fragment on screen pays 8 atan + 32 sin for a result of 0 as soon as
+    // eight patches exist anywhere in the stage. The bite only ever chews
+    // *inward* (edge = p.z * (1.0 - bite), bite in [0, 0.10]), so 1.15x the
+    // radius is a conservative bound outside which the term is provably 0 —
+    // and distant terrain rejects a whole warp at a time, so the branch does
+    // not pay for itself in divergence.
+    if (d > p.z * 1.15) continue;
     float ang = atan(d2.y, d2.x);
     float bite = bmNoise(vec2(ang * 2.55, (uBlightTime + p.w) * 0.35)) * 0.10;
     float edge = p.z * (1.0 - bite);
@@ -96,6 +104,12 @@ if (uBlightCount > 0) {
 const VERT_VARYING = /* glsl */ `#include <common>
 varying vec3 vBlightWorld;`;
 
+// Known duplication: eight of the nine library materials already carry
+// `vDetW`, which Materials.js builds from the same product in the same chunk.
+// Reusing it would need a define handshake between two independently attached
+// hooks (crystal and every non-library material have no vDetW), so the two
+// interpolators are the deliberate price of the hooks staying independent.
+//
 // `transformed` exists after begin_vertex; project_vertex has already folded
 // instanceMatrix into mvPosition but does not expose a world position, so the
 // chunk rebuilds it — including the instance transform, or every boulder in an
@@ -115,6 +129,11 @@ const VERT_WORLD = /* glsl */ `#include <project_vertex>
  * the metre-scale identity pass off every surface in the game).
  */
 export function attachBlightMask(material) {
+  // Idempotent: a second attach would inject a second `varying vec3
+  // vBlightWorld;` (a GLSL redeclaration error, i.e. a black world) and append
+  // a second `|blightmask` to the cache key.
+  if (material.userData.blightMask) return material;
+  material.userData.blightMask = true;
   const prev = material.onBeforeCompile;
   material.onBeforeCompile = function (shader, renderer) {
     if (prev) prev.call(this, shader, renderer);
