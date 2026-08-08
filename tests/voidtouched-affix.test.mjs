@@ -81,5 +81,22 @@ console.log('a plain beetle is untouched by the new block');
   ok(player.hits.filter((x) => x.type === 'void').length === 0, 'no affix, no siphon');
 }
 
+console.log('submerged, the siphon goes quiet — and resumes when it surfaces');
+{
+  const { ctx, player } = makeWorld(2, 0);
+  const e = new Enemy();
+  e.spawn(ctx, beetle, { x: 0, y: 0, z: 0 }, { affix: 'voidtouched' });
+  e.health = e.maxHealth * 0.5;
+  const h0 = e.health;
+  e.submerged = true;
+  for (let i = 0; i < 40; i++) e.fixedUpdate(ctx, H);
+  ok(player.hits.filter((x) => x.type === 'void').length === 0, 'no drain while submerged');
+  ok(e.health === h0, 'no self-heal while submerged');
+  e.submerged = false;
+  for (let i = 0; i < 40; i++) e.fixedUpdate(ctx, H);
+  ok(player.hits.filter((x) => x.type === 'void').length >= 1, 'drain resumes once surfaced');
+  ok(e.health > h0, 'self-heal resumes once surfaced');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
