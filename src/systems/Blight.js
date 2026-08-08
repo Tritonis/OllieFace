@@ -12,6 +12,7 @@ import * as THREE from 'three';
  */
 export const MAX_PATCHES = 48;
 export const RADIUS = { base: 2.0, perStrength: 1.5, perWorld: 0.04, cap: 14 };
+export const GROW_RATE = 1.2;   // metres per second — visible spread, not a pop
 
 export function radiusOf(strength, world) {
   return Math.min(RADIUS.base + RADIUS.perStrength * strength + RADIUS.perWorld * world, RADIUS.cap);
@@ -222,6 +223,22 @@ export class Blight {
     mesh.name = 'blight.patch';
     ctx.scene.add(mesh);
     patch.mesh = mesh;
+  }
+
+  update(ctx, dt) {
+    const world = ctx.corruption?.world || 0;
+    for (let i = 0; i < this.patches.length; i++) {
+      const p = this.patches[i];
+      const m = p.mesh;
+      if (!m) continue;
+      const u = m.material.uniforms;
+      const target = radiusOf(p.strength, world);
+      if (u.uRadius.value < target) {
+        u.uRadius.value = Math.min(target, u.uRadius.value + GROW_RATE * dt);
+      }
+      u.uTime.value = ctx.time;
+      u.uBand.value = this.band;
+    }
   }
 
   _recycle(patch) {

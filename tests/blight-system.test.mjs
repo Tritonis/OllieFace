@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Blight, radiusOf, RADIUS, MAX_PATCHES, buildPatchGeometry, makeBlightMaterial } from '../src/systems/Blight.js';
+import { Blight, radiusOf, RADIUS, MAX_PATCHES, buildPatchGeometry, makeBlightMaterial, GROW_RATE } from '../src/systems/Blight.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
@@ -118,6 +118,31 @@ console.log('no scene, no crash');
   ctx.events.emit('blightSeed', { x: 1, z: 1, strength: 1 });
   ok(b.patches.length === 1, 'registry still records the seed');
   ok(b.patches[0].mesh === null, 'and simply skips the mesh');
+}
+
+console.log('update grows patches toward their target and never shrinks them');
+{
+  const ctx = makeCtx();
+  ctx.scene = new THREE.Scene();
+  ctx.stage = { sampleHeight: () => 0 };
+  ctx.time = 0;
+  const b = new Blight();
+  b.init(ctx);
+  ctx.events.emit('blightSeed', { x: 0, z: 0, strength: 1 });
+  const u = b.patches[0].mesh.material.uniforms;
+  const r0 = u.uRadius.value;
+  ctx.corruption.world = 200;                     // target leaps to the cap
+  ctx.time = 0.5; b.update(ctx, 0.5);
+  ok(u.uRadius.value > r0, 'radius grew');
+  ok(u.uRadius.value <= r0 + GROW_RATE * 0.5 + 1e-9, 'growth is rate-limited, not a snap');
+  ctx.corruption.world = 0;                       // gauge bled down (future cleansing)
+  const r1 = u.uRadius.value;
+  ctx.time = 1.0; b.update(ctx, 0.5);
+  ok(u.uRadius.value === r1, 'the scar never shrinks');
+  ok(u.uTime.value === 1.0, 'uTime tracks ctx.time');
+  ctx.events.emit('corruptionBand', { band: 4, prev: 3 });
+  b.update(ctx, 0.016);
+  ok(u.uBand.value === 4, 'uBand tracks the band');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
