@@ -1,5 +1,6 @@
 // src/systems/Blight.js
 import * as THREE from 'three';
+import { damp } from '../core/MathUtil.js';
 
 /**
  * Blight fields — the visible consequence of greed. Corruption records where
@@ -14,8 +15,36 @@ export const MAX_PATCHES = 48;
 export const RADIUS = { base: 2.0, perStrength: 1.5, perWorld: 0.04, cap: 14 };
 export const GROW_RATE = 1.2;   // metres per second — visible spread, not a pop
 
+/**
+ * What each band does to the frame, as *offsets* from whatever grade the
+ * pipeline is already running — never absolute values. Bands 0 and 1 are
+ * deliberately null: the gauge and the ground patches carry the news that
+ * early, and a screen that desaturates before the world is actually in trouble
+ * spends the effect before it means anything.
+ */
+export const BAND_GRADE = [
+  { sat: 0, vignette: 0 },
+  { sat: 0, vignette: 0 },
+  { sat: -0.06, vignette: 0.05 },
+  { sat: -0.12, vignette: 0.11 },
+  { sat: -0.20, vignette: 0.20 },
+];
+export const GRADE_BLEND = 2.5;   // seconds for a band change to settle
+// Per-second damp rate that lands 97% of the way home in GRADE_BLEND seconds.
+// Derived rather than tuned so the constant above is the only knob.
+const GRADE_RATE = 1 - Math.pow(0.03, 1 / GRADE_BLEND);
+// Below this the offset is snapped to zero, so dropping back to band 0 hands
+// the pipeline its own baseline back byte-for-byte instead of an asymptote.
+const GRADE_EPS = 1e-4;
+
 export function radiusOf(strength, world) {
   return Math.min(RADIUS.base + RADIUS.perStrength * strength + RADIUS.perWorld * world, RADIUS.cap);
+}
+
+/** Frame-rate-independent approach, snapped once it is close enough to land on. */
+function settle(v, target, dt) {
+  const next = damp(v, target, GRADE_RATE, dt);
+  return Math.abs(target - next) < GRADE_EPS ? target : next;
 }
 
 // A radial grid this dense is 275 verts and two dozen triangles per ring — a
@@ -176,6 +205,12 @@ export class Blight {
     // Recycled meshes keep their material and shader program; only the draped
     // geometry is rebuilt per seed.
     this._meshPool = [];
+    // Grade blend state. `_satBase` is the pipeline's own saturation, latched
+    // the first time we touch it; `_sat` / `_vig` are the offsets currently
+    // blended in, never the absolute values.
+    this._satBase = null;
+    this._sat = 0;
+    this._vig = 0;
   }
 
   init(ctx) {
@@ -239,6 +274,39 @@ export class Blight {
       u.uTime.value = ctx.time;
       u.uBand.value = this.band;
     }
+    this._grade(ctx, dt);
+  }
+
+  /**
+   * The screen itself sickens. Rides the existing grade pass rather than adding
+   * one: saturation comes off `passes.grade`, the vignette off the pipeline's
+   * own `vignetteBoost` (which is what feeds `uVignette` — writing that uniform
+   * directly would be overwritten by the pipeline on the same frame).
+   *
+   * Two rules keep this a good neighbour. Everything is an offset from a
+   * baseline latched on first touch, so no other system's grade is destroyed
+   * and band 0 gives it back exactly. And the vignette is a *floor*
+   * (`Math.max`), not an assignment: `RenderPipeline.update` damps
+   * `vignetteBoost` toward zero every frame and VFX writes absolute spikes into
+   * it (0.9 on death), so assigning would stomp a death vignette mid-fade and
+   * summing would ratchet against the damp into a value nobody chose. A floor
+   * lets the loudest writer win and re-asserts the band's own level once the
+   * transient has decayed past it. The cost is that the band level is written
+   * before the pipeline's damp reads it, so on-screen it lands a few percent
+   * under the nominal offset at 60Hz — under the noise floor of the effect.
+   */
+  _grade(ctx, dt) {
+    const pipe = ctx.pipeline;
+    const gradeU = pipe?.passes?.grade?.uniforms;
+    if (!gradeU?.uSaturation) return;
+    if (this._satBase == null) this._satBase = gradeU.uSaturation.value;
+
+    const g = BAND_GRADE[Math.min(this.band, BAND_GRADE.length - 1)] || BAND_GRADE[0];
+    this._sat = settle(this._sat, g.sat, dt);
+    this._vig = settle(this._vig, g.vignette, dt);
+
+    gradeU.uSaturation.value = this._satBase + this._sat;
+    pipe.vignetteBoost = Math.max(pipe.vignetteBoost || 0, this._vig);
   }
 
   _recycle(patch) {

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Blight, radiusOf, RADIUS, MAX_PATCHES, buildPatchGeometry, makeBlightMaterial, GROW_RATE } from '../src/systems/Blight.js';
+import { Blight, radiusOf, RADIUS, MAX_PATCHES, buildPatchGeometry, makeBlightMaterial, GROW_RATE, BAND_GRADE, GRADE_BLEND } from '../src/systems/Blight.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
@@ -143,6 +143,65 @@ console.log('update grows patches toward their target and never shrinks them');
   ctx.events.emit('corruptionBand', { band: 4, prev: 3 });
   b.update(ctx, 0.016);
   ok(u.uBand.value === 4, 'uBand tracks the band');
+}
+
+console.log('band grading offsets the pipeline baseline, blended over time');
+{
+  const ctx = makeCtx();
+  ctx.time = 0;
+  ctx.pipeline = {
+    vignetteBoost: 0,
+    passes: { grade: { uniforms: { uSaturation: { value: 1.0 }, uVignette: { value: 0.16 } } } },
+  };
+  const b = new Blight();
+  b.init(ctx);
+  b.update(ctx, 0.016);
+  ok(ctx.pipeline.passes.grade.uniforms.uSaturation.value === 1.0, 'band 0 changes nothing');
+  ctx.events.emit('corruptionBand', { band: 4, prev: 0 });
+  b.update(ctx, 0.5);
+  const mid = ctx.pipeline.passes.grade.uniforms.uSaturation.value;
+  ok(mid < 1.0 && mid > 1.0 + BAND_GRADE[4].sat, 'saturation easing down, not snapped');
+  for (let i = 0; i < 20; i++) b.update(ctx, 0.5);
+  const settled = ctx.pipeline.passes.grade.uniforms.uSaturation.value;
+  ok(Math.abs(settled - (1.0 + BAND_GRADE[4].sat)) < 1e-3, 'settles on baseline + offset');
+  ok(Math.abs(ctx.pipeline.vignetteBoost - BAND_GRADE[4].vignette) < 1e-3, 'vignette rides along');
+  ok(ctx.pipeline.passes.grade.uniforms.uVignette.value === 0.16, 'unrelated grade uniforms untouched');
+  ctx.events.emit('corruptionBand', { band: 0, prev: 4 });
+  for (let i = 0; i < 20; i++) b.update(ctx, 0.5);
+  ok(ctx.pipeline.passes.grade.uniforms.uSaturation.value === 1.0, 'band 0 restores the baseline exactly');
+}
+
+console.log('the vignette write is a floor, so transients from other systems survive');
+{
+  const ctx = makeCtx();
+  ctx.time = 0;
+  ctx.pipeline = { vignetteBoost: 0, passes: { grade: { uniforms: { uSaturation: { value: 1.0 } } } } };
+  const b = new Blight();
+  b.init(ctx);
+  ctx.events.emit('corruptionBand', { band: 4, prev: 0 });
+  for (let i = 0; i < 20; i++) b.update(ctx, GRADE_BLEND);
+  ctx.pipeline.vignetteBoost = 0.9;                 // VFX's death spike, written absolutely
+  b.update(ctx, 0.016);
+  ok(ctx.pipeline.vignetteBoost === 0.9, 'a bigger transient is not stomped back to the band floor');
+  ctx.pipeline.vignetteBoost = 0;                   // the pipeline damped it away
+  b.update(ctx, 0.016);
+  ok(Math.abs(ctx.pipeline.vignetteBoost - BAND_GRADE[4].vignette) < 1e-3, 'the band floor is re-asserted every frame');
+  ctx.events.emit('corruptionBand', { band: 0, prev: 4 });
+  for (let i = 0; i < 20; i++) b.update(ctx, GRADE_BLEND);
+  ctx.pipeline.vignetteBoost = 0;
+  b.update(ctx, 0.016);
+  ok(ctx.pipeline.vignetteBoost === 0, 'band 0 stops holding the vignette up at all');
+}
+
+console.log('no pipeline, no crash');
+{
+  const ctx = makeCtx();
+  ctx.time = 0;
+  const b = new Blight();
+  b.init(ctx);
+  ctx.events.emit('corruptionBand', { band: 3, prev: 0 });
+  b.update(ctx, 0.016);
+  ok(b.band === 3, 'headless update survives a pipeline-less ctx');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
