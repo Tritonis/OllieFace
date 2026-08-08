@@ -144,11 +144,15 @@ const ROOT = 110; // A2
  * before the world does spends the effect before it means anything.
  *
  * Priced against `master`, not the ambient bus — the layer is routed there so
- * the Music slider cannot silence it. These are the old ambient-bus figures
- * (0.05 / 0.11 / 0.18) times the ambient bus's own 0.4, so what a player hears
- * at the default Music setting is exactly what it was.
+ * the Music slider cannot silence it.
+ *
+ * Re-priced after the 2026-08-08 playtest, where nobody heard the layer at all.
+ * The old numbers were the ambient-bus figures folded through that bus's own
+ * 0.4, which made the reroute loudness-neutral and left the result well under
+ * the combat mix floor. These are chosen against that floor instead; the
+ * tone-routing fix below is the other half of the same repair.
  */
-export const VOID_LAYER = [0, 0, 0.020, 0.044, 0.072];
+export const VOID_LAYER = [0, 0, 0.05, 0.10, 0.16];
 
 export function voidLayerGain(band) {
   const b = Number.isFinite(band) ? Math.floor(band) : 0;
@@ -191,6 +195,8 @@ export class Audio {
 
     this._throttles = new Map();
     this._variants = new Map();
+    // Context time before which no band sting may fire. See `bandSting`.
+    this._stingReady = 0;
     // Last announced stack count per item id. `itemPickup` carries an absolute
     // total, not a delta, so this is what tells a pickup from a removal.
     this._itemCounts = new Map();
@@ -243,6 +249,7 @@ export class Audio {
       // the first gesture anywhere on the page.
       if ((p?.index ?? 0) === 0) this.beginRun();
     });
+    e.on('corruptionBand', (p) => this.bandSting(p?.band ?? 0, p?.prev ?? 0));
     e.on('bossSpawn', () => { this.bossHorn(); this.musicEngine?.bump(0.7); });
     e.on('teleporterComplete', () => this.stageSting());
     // Only the local survivor's death silences the local soundtrack. `NetHost`
@@ -459,14 +466,20 @@ export class Audio {
     // running in phase and combing each other.
     vnoise.start(0, 1.5);
 
-    for (const [freq, det, g0] of [[523.25, -14, 0.30], [739.99, 11, 0.22]]) {
+    // Straight to `voidGain`, around the bandpass. The filter shapes the *noise*
+    // and only the noise: it sits at 2400 Hz Q1.4, and these tones are 523 and
+    // 740 Hz — about -25 dB through it. The tritone pair is the audible identity
+    // of the layer, and it was being deleted by the layer's own filter, which is
+    // why the 2026-08-08 playtest heard nothing at any band. Nothing may route
+    // the pair through `voidFilter` again. Gains trimmed to suit the bypass.
+    for (const [freq, det, g0] of [[523.25, -14, 0.20], [739.99, 11, 0.15]]) {
       const o = ac.createOscillator();
       o.type = 'sine';
       o.frequency.value = freq;
       o.detune.value = det;
       const g = ac.createGain();
       g.gain.value = g0;
-      o.connect(g).connect(voidFilter);
+      o.connect(g).connect(voidGain);
       o.start();
     }
 
@@ -1159,6 +1172,35 @@ export class Audio {
       });
     }
     this._tone(t, 1.2, { type: 'sine', f0: ROOT * 0.5, gain: 0.3, attack: 0.05 });
+  }
+
+  /**
+   * A band crossing is a moment, not a drift (2026-08-08 playtest: the world
+   * state changed under the player and nothing announced it). Ascending: a
+   * low boom under a tritone pair — the void layer's own interval, so the
+   * sting teaches the drone's meaning. Descending: the pair resolves to a
+   * fifth, the one consonance in the corruption voice.
+   *
+   * `_stingReady` rather than `_throttle`: a threshold the world is sitting on
+   * can be crossed twice in a frame (a font bleed and a Maw feed either side of
+   * it), and the guard has to outlast the sting itself, not merely thin a
+   * repeat. Band 0<->1 crossings sting too — the sting is the announcement the
+   * gauge alone was not.
+   */
+  bandSting(band, prev) {
+    const ac = this._ensure();
+    if (!ac || ac.currentTime < this._stingReady || !this._take(4, true)) return;
+    this._stingReady = ac.currentTime + 1.6;
+    const t = ac.currentTime;
+    const up = band > prev;
+    if (up) {
+      this._tone(t, 0.9, { type: 'sine', f0: 55 + band * 8, gain: 0.5, attack: 0.005 });
+      this._tone(t + 0.06, 0.8, { type: 'triangle', f0: 523.25, gain: 0.16, attack: 0.01 });
+      this._tone(t + 0.06, 0.8, { type: 'triangle', f0: 739.99, gain: 0.13, attack: 0.01 });
+    } else {
+      this._tone(t, 0.6, { type: 'sine', f0: 523.25, gain: 0.12, attack: 0.01 });
+      this._tone(t + 0.10, 0.7, { type: 'sine', f0: 784.0, gain: 0.12, attack: 0.01 });
+    }
   }
 
   uiClick(kind = 0) {
