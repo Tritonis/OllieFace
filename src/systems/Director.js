@@ -25,7 +25,8 @@ import {
   SPAWN_CARDS, BOSS_CARDS, ENEMY_BY_ID, TIER_UNLOCK, ELITE_STATS, eliteAffixesFor,
 } from '../data/enemies.js';
 import { prewarm, makeProjectile, makeShockwave, makeTelegraph } from '../entities/EnemyMeshes.js';
-import { clamp, lerp } from '../core/MathUtil.js';
+import { clamp, lerp, RNG } from '../core/MathUtil.js';
+import { VOIDTOUCHED, voidCreditRate } from '../data/corruption.js';
 import { Roster } from './Roster.js';
 import { isLocalVictim } from '../core/Engine.js';
 
@@ -97,6 +98,15 @@ export class Director {
     this.eventActive = false;
     this.boss = null;
     this.enabled = true;
+
+    // The void's own economy — see VOIDTOUCHED in data/corruption.js. Seeds
+    // are tracked here (not read from ctx.corruption.seeds) because that list
+    // is run-scoped and this one must die with the stage.
+    this.voidCredits = 0;
+    this.voidSpawnT = 0;
+    this._voidSeeds = [];
+    this._voidPending = [];
+    this._voidRng = new RNG(1);
 
     this.projectiles = new Projectiles();
     this.waves = new Waves();
@@ -178,6 +188,20 @@ export class Director {
       this.eventActive = false;
       this.boss = null;
       this.clear(ctx);
+      // The void's slate is per-stage: seeds, queued surfacings and the bank
+      // all die with the ground they referred to. The stream is re-derived
+      // from (run seed, stage) — the shrine-roll shape — so a corrupted run
+      // is deterministic per stage without ever touching ctx.rng.
+      this._voidSeeds.length = 0;
+      this._voidPending.length = 0;
+      this.voidCredits = 0;
+      this.voidSpawnT = 0;
+      this._voidRng = new RNG(((ctx.seed >>> 0) ^ (0x7f4a7c15 * (this.stagesCompleted + 1))) >>> 0 || 1);
+    });
+    // Where greed happened. Capped mirror of the event stream, oldest first.
+    ctx.events.on('blightSeed', (s) => {
+      this._voidSeeds.push({ x: s.x, z: s.z, strength: s.strength });
+      if (this._voidSeeds.length > 32) this._voidSeeds.shift();
     });
     // On a host a remote pawn's death is not the end of the run - stopping the
     // spawner then would empty the arena for everyone still alive.
@@ -210,6 +234,7 @@ export class Director {
 
     this.updateDifficulty(ctx);
     this.card = SPAWN_CARDS[0];
+    this._voidRng = new RNG(((ctx.seed >>> 0) ^ (0x7f4a7c15 * (this.stagesCompleted + 1))) >>> 0 || 1);
   }
 
   // -------------------------------------------------------------------------
@@ -342,6 +367,31 @@ export class Director {
     if (this.spawnT <= 0) {
       this.spawnT = this.spawnInterval;
       this.spendCredits(ctx);
+    }
+
+    // The void's bank. A separate stream and a separate budget: rate is a
+    // function of World Corruption alone, spends happen only where a blight
+    // seed exists this stage, and none of it draws on ctx.rng — which is the
+    // whole sp-equivalence argument: at world 0 this block is two reads.
+    const world = ctx.corruption?.world || 0;
+    if (world > 0 && this._voidSeeds.length) {
+      this.voidCredits = Math.min(VOIDTOUCHED.maxBank, this.voidCredits + voidCreditRate(world) * h);
+      this.voidSpawnT -= h;
+      if (this.voidSpawnT <= 0) {
+        this.voidSpawnT = VOIDTOUCHED.interval;
+        this.spendVoidCredits(ctx);
+      }
+    }
+    // Queued surfacings ripen on their own clock so the telegraph is honest.
+    for (let i = this._voidPending.length - 1; i >= 0; i--) {
+      const p = this._voidPending[i];
+      p.t -= h;
+      if (p.t > 0) continue;
+      this._voidPending.splice(i, 1);
+      if (this.enemies.length >= this.populationCap) continue;
+      this._scratch.set(p.x, p.y, p.z);
+      this.spawnOne(ctx, p.card, this._scratch, VOIDTOUCHED.affix);
+      ctx.events.emit('voidtouchedSpawn', { x: p.x, z: p.z, id: p.card.id });
     }
   }
 
@@ -592,6 +642,60 @@ export class Director {
       placed++;
     }
     return placed;
+  }
+
+  /**
+   * Buy one Voidtouched unit at a blight seed. Every roll here comes from
+   * `_voidRng` — the per-(run seed, stage) derived stream — because this path
+   * only exists when corruption does, and a single draw on ctx.rng would shift
+   * every later shared roll relative to a corruption-free run of the same
+   * seed, which is exactly what the sp-equivalence gate forbids.
+   */
+  spendVoidCredits(ctx) {
+    if (!this._voidSeeds.length || this.enemies.length >= this.populationCap) return;
+    const stats = ELITE_STATS[VOIDTOUCHED.affix];
+    // Ground-walking, elite-eligible, tier-unlocked, under its own cap: the
+    // void corrupts the stage's fauna, it does not import new species.
+    const d = this.difficultyCoefficient;
+    const pool = [];
+    for (const c of SPAWN_CARDS) {
+      if (!c.eliteEligible || c.isFlyer) continue;
+      if (d < (TIER_UNLOCK[c.tier] ?? Infinity)) continue;
+      if (this.countAlive(c) >= (c.maxAlive || 99)) continue;
+      pool.push(c);
+    }
+    if (!pool.length) return;
+    const card = this._voidRng.weighted(pool, (c) => (c.selectionWeight ?? 1));
+    const unit = card.cost * stats.cost;
+    if (this.voidCredits < unit) return;
+    const seed = this._voidRng.pick(this._voidSeeds);
+    const at = this.findVoidPoint(ctx, seed);
+    if (!at) return;
+    this.voidCredits -= unit;
+    this.spawnTelegraph(at.x, at.z, 2.2, VOIDTOUCHED.telegraph, 0xd8479b);
+    this._voidPending.push({ t: VOIDTOUCHED.telegraph, x: at.x, y: at.y, z: at.z, card });
+  }
+
+  /** A surfacing point on the ring around a seed, clear of every player. */
+  findVoidPoint(ctx, seed) {
+    const min2 = VOIDTOUCHED.minPlayerDist * VOIDTOUCHED.minPlayerDist;
+    for (let i = 0; i < 8; i++) {
+      const a = this._voidRng.range(0, Math.PI * 2);
+      const r = this._voidRng.range(VOIDTOUCHED.spawnRing.min, VOIDTOUCHED.spawnRing.max);
+      const x = seed.x + Math.cos(a) * r;
+      const z = seed.z + Math.sin(a) * r;
+      let tooClose = false;
+      const check = (p) => {
+        const dx = p.position.x - x, dz = p.position.z - z;
+        if (dx * dx + dz * dz < min2) tooClose = true;
+      };
+      if (ctx.roster) ctx.roster.forEachTargetable(check);
+      else if (ctx.player) check(ctx.player);
+      if (tooClose) continue;
+      const y = ctx.stage?.sampleHeight?.(x, z);
+      return { x, y: Number.isFinite(y) ? y : 0, z };
+    }
+    return null;
   }
 
   spawnOne(ctx, def, at, affix) {
@@ -878,6 +982,14 @@ export class Director {
     // A new stage means the run is still going; only `playerDead` turns the
     // director off for good.
     this.enabled = true;
+    // The void's per-stage slate, same as the `stageStart` handler: the seeds
+    // referred to ground that no longer exists, and the stream re-derives from
+    // (run seed, stage) so the new stage is deterministic without ctx.rng.
+    this._voidSeeds.length = 0;
+    this._voidPending.length = 0;
+    this.voidCredits = 0;
+    this.voidSpawnT = 0;
+    if (ctx) this._voidRng = new RNG(((ctx.seed >>> 0) ^ (0x7f4a7c15 * (stageIndex + 1))) >>> 0 || 1);
     if (ctx) this.updateDifficulty(ctx);
   }
 
