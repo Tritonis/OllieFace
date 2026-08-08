@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { damp } from '../core/MathUtil.js';
 import { MASK_UNIFORMS, MAX_MASK } from '../shaders/BlightMask.js';
 import { MAX_RIMS } from '../shaders/BlightShimmer.js';
+import { FRAME } from '../fx/ParticleSystem.js';
 
 /**
  * Blight fields — the visible consequence of greed. Corruption records where
@@ -20,6 +21,10 @@ export const GROW_RATE = 1.2;   // metres per second — visible spread, not a p
 // at the edge, and a distant ellipse projected as a screen-space circle is
 // wrong enough to notice. Strength is deliberately under half a blast's.
 export const SHIMMER = { near: 14, far: 55, strength: 0.0055 };
+// Rim particulate. Steady-state cost at the cap: 6 patches x 2.5/s x ~2s life
+// = ~30 live sprites — noise against the particle budget, and the additive
+// layer evicts by ring anyway.
+export const MOTES = { perPatchPerSecond: 2.5, maxPatches: 6, range: 55 };
 
 /**
  * What each band does to the frame, as *offsets* from whatever grade the
@@ -462,6 +467,7 @@ export class Blight {
     this._grade(ctx, dt);
     this._mask(ctx);
     this._shimmer(ctx);
+    if (!ctx.paused) this._motes(ctx, dt);
   }
 
   /**
@@ -607,6 +613,52 @@ export class Blight {
     }
     pass.uniforms.uRimCount.value = n;
     pass.uniforms.uRimAspect.value = (globalThis.innerWidth || 1) / (globalThis.innerHeight || 1);
+  }
+
+  /**
+   * The edge breathes: embers of the vein palette drift up off each rim.
+   * Emission is per-patch accumulator driven, so rate is framerate-independent;
+   * patches beyond MOTES.range of the camera don't spend budget. Everything
+   * rolls on fxRng — one ctx.rng draw here would desync every later loot roll.
+   */
+  _motes(ctx, dt) {
+    const particles = ctx.vfx?.particles;
+    if (!particles) return;
+    const cam = ctx.camera;
+    const fx = ctx.fxRng;
+    let considered = 0;
+    for (const p of this.patches) {
+      if (considered >= MOTES.maxPatches) break;
+      const m = p.mesh;
+      if (!m) continue;
+      if (cam) {
+        const dx = p.x - cam.position.x, dz = p.z - cam.position.z;
+        if (dx * dx + dz * dz > MOTES.range * MOTES.range) continue;
+      }
+      considered++;
+      p.moteAcc = (p.moteAcc || 0) + MOTES.perPatchPerSecond * dt;
+      while (p.moteAcc >= 1) {
+        p.moteAcc -= 1;
+        const r = m.material.uniforms.uRadius.value * fx.range(0.82, 1.0);
+        const a = fx.range(0, Math.PI * 2);
+        const x = p.x + Math.cos(a) * r;
+        const z = p.z + Math.sin(a) * r;
+        const y = ctx.stage?.sampleHeight ? ctx.stage.sampleHeight(x, z) : 0;
+        particles.emit({
+          count: 1,
+          position: { x, y: y + 0.15, z },
+          dir: { x: 0, y: 1, z: 0 }, spread: 0.35,
+          speed: 0.5, speedVar: 0.5,
+          life: 1.8, lifeVar: 0.4,
+          size0: 0.06, size1: 0.015,
+          color0: 0x9a5fe0, color1: 0xc8379b,   // vein-to-rim family
+          frame: FRAME.EMBER,
+          gravity: -0.35,                        // rises: the void exhales
+          drag: 0.6, turbulence: 0.45,
+          fadeIn: 0.25, alphaPow: 1.2,
+        });
+      }
+    }
   }
 
   _recycle(patch) {

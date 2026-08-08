@@ -140,5 +140,93 @@ console.log('per-band sky and fog shift, and byte-for-byte restore');
   ok(ctx.scene.fog.density === baseline.fogDensity, 'fog density restored exactly');
 }
 
+console.log('rim motes: budgeted, fxRng-only, on the rim, paused-gated');
+{
+  // Dynamic so a missing export reads as `undefined` here rather than failing
+  // the whole module link and taking the suites above down with it.
+  const { MOTES } = await import('../src/systems/Blight.js');
+  ok(MOTES && MOTES.perPatchPerSecond > 0 && MOTES.maxPatches > 0 && MOTES.range > 0,
+     'MOTES budget exported');
+
+  const ctx = makeCtx();
+  const emitted = [];
+  // makeCtx already carries a real THREE.Scene, so _build produces a real mesh
+  // headless and uRadius is the live animated radius the motes must ride.
+  ctx.vfx = { particles: { emit: (o) => emitted.push({ x: o.position.x, y: o.position.y, z: o.position.z }) } };
+  ctx.stage = { sampleHeight: () => 2 };
+
+  const b = new Blight();
+  b.init(ctx);
+  ctx.events.emit('blightSeed', { x: 5, z: -3, strength: 2 });
+  ok(b.patches[0]?.mesh != null, 'the seeded patch built a mesh headless');
+
+  // Two seconds at 60Hz. strength 2 at world 0 puts radiusOf at its target from
+  // frame one, so uRadius is constant across the window and the rim band the
+  // motes must land in is a fixed annulus.
+  for (let i = 0; i < 120; i++) { ctx.time += 1 / 60; b.update(ctx, 1 / 60); }
+
+  const expect = MOTES.perPatchPerSecond * 2;
+  ok(emitted.length >= expect * 0.5 && emitted.length <= expect * 1.5,
+     `~${expect} motes over 2s (got ${emitted.length})`);
+
+  const r = b.patches[0].mesh.material.uniforms.uRadius.value;
+  let offRim = 0, offGround = 0;
+  for (const m of emitted) {
+    const d = Math.hypot(m.x - 5, m.z + 3);
+    if (!(d <= r * 1.01 && d >= r * 0.75)) offRim++;
+    if (!(Math.abs(m.y - 2.15) < 0.5)) offGround++;
+  }
+  ok(emitted.length > 0 && offRim === 0, `every mote sits in the rim band (${offRim} strays)`);
+  ok(emitted.length > 0 && offGround === 0, `every mote sits at sampled ground height (${offGround} strays)`);
+
+  // Framerate independence: the same two seconds in 20Hz steps buys the same
+  // budget, because emission is accumulator driven rather than per-frame.
+  const ctxB = makeCtx();
+  const slow = [];
+  ctxB.vfx = { particles: { emit: () => slow.push(1) } };
+  ctxB.stage = { sampleHeight: () => 2 };
+  const b2 = new Blight();
+  b2.init(ctxB);
+  ctxB.events.emit('blightSeed', { x: 5, z: -3, strength: 2 });
+  for (let i = 0; i < 40; i++) { ctxB.time += 1 / 20; b2.update(ctxB, 1 / 20); }
+  ok(Math.abs(slow.length - emitted.length) <= 1, `20Hz spends the same budget (${slow.length} vs ${emitted.length})`);
+
+  // No camera at all: still emits. The headless assertions above depend on the
+  // cull being skipped rather than defaulting to "cull everything".
+  const ctxC = makeCtx();
+  const blind = [];
+  ctxC.camera = null;
+  ctxC.vfx = { particles: { emit: () => blind.push(1) } };
+  const b3 = new Blight();
+  b3.init(ctxC);
+  ctxC.events.emit('blightSeed', { x: 400, z: 400, strength: 2 });
+  for (let i = 0; i < 120; i++) { ctxC.time += 1 / 60; b3.update(ctxC, 1 / 60); }
+  ok(blind.length > 0, 'no camera means no cull');
+
+  // With a camera, a patch past MOTES.range spends nothing.
+  const ctxD = makeCtx();
+  const far = [];
+  ctxD.vfx = { particles: { emit: () => far.push(1) } };
+  const b4 = new Blight();
+  b4.init(ctxD);
+  ctxD.events.emit('blightSeed', { x: MOTES.range + 200, z: 0, strength: 2 });
+  for (let i = 0; i < 120; i++) { ctxD.time += 1 / 60; b4.update(ctxD, 1 / 60); }
+  ok(far.length === 0, 'a patch beyond MOTES.range is culled');
+
+  // No vfx subsystem at all must not throw.
+  const ctxE = makeCtx();
+  const b5 = new Blight();
+  b5.init(ctxE);
+  ctxE.events.emit('blightSeed', { x: 0, z: 0, strength: 2 });
+  let threw = false;
+  try { b5.update(ctxE, 1 / 60); } catch { threw = true; }
+  ok(!threw, 'a ctx without vfx never throws');
+
+  const before = emitted.length;
+  ctx.paused = true;
+  for (let i = 0; i < 60; i++) b.update(ctx, 1 / 60);
+  ok(emitted.length === before, 'a paused frame emits nothing');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
