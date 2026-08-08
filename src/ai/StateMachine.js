@@ -53,7 +53,21 @@ export class StateMachine {
     const table = this.table;
     if (!table) return;
     const cur = table[this.state];
+    const from = this.state;
     if (cur && cur.exit) cur.exit(this.owner, ctx, this);
+    // An exit handler is allowed to transition the machine itself, and when it
+    // does, its transition is the one that counts — this one was decided
+    // before the handler ran and is now stale. Writing it anyway would undo a
+    // completed transition on the way back out.
+    //
+    // The Blind Shrike is why. A dive that misses runs its window out, so
+    // ATTACK.update calls set(RECOVER); ATTACK.exit detonates the still-alive
+    // diver, the detonation self-kills through Combat, and onDeath sets DIE.
+    // Resuming here would stamp RECOVER onto a corpse — a dead unit in a live
+    // state, which is unhittable (the ray path skips !alive), unkillable
+    // (takeDamage early-returns on the dead), never reaped (`finished`
+    // requires DIE), and still detonating at the player every cooldown.
+    if (this.state !== from) return;
     this.prev = this.state;
     this.state = name;
     this.t = 0;
