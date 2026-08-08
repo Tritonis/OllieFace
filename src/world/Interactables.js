@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { ITEM_BY_ID, TIERS } from '../data/items.js';
 import { eliteAffixesFor } from '../data/enemies.js';
+import { SOURCES } from '../data/corruption.js';
 import { RNG } from '../core/MathUtil.js';
 import { getTextureSets, withRepeat, attachDetail } from './Materials.js';
 
@@ -282,7 +283,7 @@ function chestLidGeo(s) {
   );
 }
 
-class Chest extends Interactable {
+export class Chest extends Interactable {
   constructor(ctx, position, size, cost) {
     super(ctx, position);
     this.size = size;
@@ -319,10 +320,30 @@ class Chest extends Interactable {
     this._scale = scale;
   }
 
-  prompt() { return `${this.size === 'legendary' ? 'Legendary Chest' : this.size === 'large' ? 'Large Chest' : 'Chest'} ($${this.cost})`; }
+  prompt() {
+    const name = this.size === 'legendary' ? 'Legendary Chest' : this.size === 'large' ? 'Large Chest' : 'Chest';
+    // When the gold isn't there and the void will extend credit, the prompt is
+    // the informed-consent line: the player must know which price they are
+    // about to pay. `gold` may be undefined on stub contexts — treat as broke.
+    const gold = this.ctx.items?.gold ?? 0;
+    if (this.ctx.corruption && gold < this.cost) return `${name} — pay in corruption`;
+    return `${name} ($${this.cost})`;
+  }
 
   interact() {
-    if (!this.ctx.items?.spendGold(this.cost)) return false;
+    const cor = this.ctx.corruption;
+    if (this.ctx.items?.spendGold(this.cost)) {
+      // Paid open: gold as before, plus the tithe. The void takes its cut of
+      // every transaction; it just doesn't leave a mark on this one.
+      cor?.feed(this.ctx.player, SOURCES.chestTithe[this.size] ?? SOURCES.chestTithe.small, this.position);
+    } else if (cor) {
+      // Void credit: the most deliberate corruption choice in the game. Steep
+      // lump, and a seed planted where it happened.
+      cor.feed(this.ctx.player, SOURCES.voidCredit[this.size] ?? SOURCES.voidCredit.small, this.position);
+      cor.seed(this.position, this.size === 'legendary' ? 3 : this.size === 'large' ? 2 : 1);
+    } else {
+      return false;
+    }
     this.used = true;
     this.openT = 0;
     const id = this.ctx.items.rollItem(null, TIER_BIAS[this.size]);
