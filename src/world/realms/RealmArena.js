@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { getTextureSets, withRepeat } from '../Materials.js';
+import { getTextureSets, withRepeat, attachWorldSurface } from '../Materials.js';
 
 /**
  * The four authored arenas.
@@ -25,9 +25,15 @@ import { getTextureSets, withRepeat } from '../Materials.js';
 
 const _tex = (name, repeat) => withRepeat(getTextureSets()[name], repeat);
 
-/** A standard rung. Realms allocate their own materials and dispose them. */
+/**
+ * A standard rung. Realms allocate their own materials and dispose them.
+ *
+ * Through `attachWorldSurface`, so an arena floor takes the blight mask like
+ * any other world surface. `glow` below deliberately does not: an emissive
+ * lantern or rift seam is light, not substance, and has no surface to corrupt.
+ */
 function rung(set, repeat, opts) {
-  return new THREE.MeshStandardMaterial({ ..._tex(set, repeat), flatShading: true, ...opts });
+  return attachWorldSurface(new THREE.MeshStandardMaterial({ ..._tex(set, repeat), flatShading: true, ...opts }));
 }
 
 /** Untextured emissive — lanterns, seams, rift light. */

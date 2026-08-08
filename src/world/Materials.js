@@ -810,6 +810,27 @@ export function attachDetail(material, kind) {
   return material;
 }
 
+/**
+ * The one entry point for a material that renders a *world surface* — ground,
+ * rock, iron, brass, anything the player reads as part of the place they are
+ * standing in. Detail first, corruption second, in that order, so the mask
+ * re-shades the detailed fragment rather than the other way round.
+ *
+ * It exists because the world's surfaces are built in four files, not one:
+ * `buildMaterials` here, `Interactables.js`'s parallel ladder, and the two
+ * realm prop sets. A chest standing inside a blight patch in untouched ochre
+ * iron while the ground under it shades violet is the "assets from visibly
+ * different styles" failure arriving from the other direction, and the only
+ * durable fix is that every one of those ladders calls the same function.
+ *
+ * `kind` is the detail class; omit it for materials that carry no detail pass
+ * (the realm rungs), and they still take the mask.
+ */
+export function attachWorldSurface(material, kind) {
+  if (kind) attachDetail(material, kind);
+  return attachBlightMask(material);
+}
+
 let _sets = null;
 let _mats = null;
 

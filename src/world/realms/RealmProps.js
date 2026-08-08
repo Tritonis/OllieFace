@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { ITEM_BY_ID, ITEMS_BY_TIER, TIERS } from '../../data/items.js';
-import { getTextureSets, withRepeat } from '../Materials.js';
+import { getTextureSets, withRepeat, attachWorldSurface } from '../Materials.js';
 
 /**
  * Everything in a realm the player can press E on, plus the three gateways that
@@ -29,14 +29,18 @@ const TYPE = {
 
 const _tex = (name, repeat) => withRepeat(getTextureSets()[name], repeat);
 
-const stoneMat = (color, opts = {}) => new THREE.MeshStandardMaterial({
+// The two textured rungs go through `attachWorldSurface`: a gateway or a vault
+// standing inside a blight patch has to corrupt with the ground under it. The
+// emissive rungs below deliberately do not — a rift's own light is its identity,
+// and the mask would tint the one part of the prop that is not a surface.
+const stoneMat = (color, opts = {}) => attachWorldSurface(new THREE.MeshStandardMaterial({
   ..._tex('stone', 2.4), color, roughness: 0.78, metalness: 0.04,
   envMapIntensity: 1.1, flatShading: true, ...opts,
-});
-const metalMat = (color, opts = {}) => new THREE.MeshStandardMaterial({
+}));
+const metalMat = (color, opts = {}) => attachWorldSurface(new THREE.MeshStandardMaterial({
   ..._tex('metal', 2.6), color, roughness: 0.21, metalness: 0.7,
   envMapIntensity: 2.6, flatShading: true, ...opts,
-});
+}));
 const glowMat = (hex, i = 2.2) => new THREE.MeshStandardMaterial({
   color: 0x05070a, emissive: hex, emissiveIntensity: i, roughness: 0.4,
 });
