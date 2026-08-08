@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {
-  REALM_BY_ID, GATEWAYS, FINALE_STAGE, ENDINGS, VOID_KILL_Y,
+  REALM_BY_ID, GATEWAYS, FINALE_STAGE, ENDINGS, VOID_KILL_Y, routesFor,
 } from '../../data/realms.js';
 import { SPAWN_CARDS, TIER_UNLOCK, ENEMY_BY_ID, eliteAffixesFor } from '../../data/enemies.js';
 import { RealmStage, pullToFloor } from './RealmStage.js';
@@ -152,12 +152,20 @@ export class Realms {
     }
 
     if (stageIndex >= FINALE_STAGE) {
-      const p = new RealmPortal(ctx, _v.copy(at).add(new THREE.Vector3(0, 0, -8)).clone(), {
-        label: 'Enter The Fracture — this ends the run', tint: 0xff4ad0,
-        onEnter: () => this.requestEnter('fracture'),
+      // Corruption is the router: the band decides which Fracture is offered.
+      // Both portals stand beside the ordinary one — the run still never
+      // forces you to finish, whatever the band says.
+      const routes = routesFor(ctx.corruption?.band ?? 0);
+      routes.forEach((route, i) => {
+        const p = new RealmPortal(ctx, _v.copy(at).add(new THREE.Vector3(i * 6, 0, -8)).clone(), {
+          label: route.label, tint: route.tint,
+          onEnter: () => this.requestEnter(route.realm),
+        });
+        ctx.interactables.add(p);
       });
-      ctx.interactables.add(p);
-      ctx.hud?.setObjective?.('Proceed — or take the Fracture and finish it');
+      ctx.hud?.setObjective?.(routes.length > 1
+        ? 'Proceed — or commit to a Fracture and finish it'
+        : 'Proceed — or take the Fracture and finish it');
     }
   }
 
@@ -359,7 +367,10 @@ export class Realms {
 
   /** Called by the finale controller once the Herald is down. */
   victory() {
-    this.ctx.progression?.finishRun?.(ENDINGS.victory);
+    // Endings key off the route taken (launch spec §2): the void Fracture has
+    // its own record, and both count as wins.
+    const ending = this.realmId === 'fracture-void' ? ENDINGS.victoryVoid : ENDINGS.victory;
+    this.ctx.progression?.finishRun?.(ending);
   }
 
   // --------------------------------------------------------------- harness

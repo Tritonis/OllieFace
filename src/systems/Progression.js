@@ -504,6 +504,12 @@ export class Progression {
       stageName: this.stageName,
       difficulty: this.difficulty,
       gold: this.ctx.items?.gold || 0,
+      // The run's corruption record: how deep, and which band it ended in.
+      // Endings key off band plus route (launch spec §2); the summary screen
+      // and the logbook read these if they know about them and ignore them
+      // if they do not.
+      corruption: Math.round(this.ctx.corruption?.world ?? 0),
+      corruptionBand: this.ctx.corruption?.band ?? 0,
       inventory: items,
       timeText: formatTime(this.stats.time),
       // Which ending this was, or null for the ordinary one (death). Read by
