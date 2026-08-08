@@ -220,6 +220,14 @@ export class HUD {
     });
 
     on('itemPickup', ({ id, count }) => this.onItemPickup(id, count));
+    // The strip already repaints itself off the two `itemPickup` writes the
+    // conversion rides, so this line exists only to say *why* the pack changed
+    // — otherwise a stack silently vanishes and an unfamiliar one appears.
+    on('itemMutated', ({ baseId, blightId, count }) => {
+      const base = ITEM_BY_ID.get(baseId), blight = ITEM_BY_ID.get(blightId);
+      if (!blight) return;
+      this.toast(`${base?.name || prettify(baseId)} festers — ${count}x ${blight.name}`, 'blight', blightId);
+    });
     on('goldChanged', () => { /* value polled in update; event kept for parity */ });
     on('abilityUsed', ({ slot }) => {
       const i = slotIndex(slot);

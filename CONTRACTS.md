@@ -49,6 +49,7 @@ Every system is a class with `init(ctx)` plus any of `fixedUpdate(ctx, h)`,
 | `corruptionChanged` | `{ world, band }` — fired on every non-zero feed | Corruption |
 | `corruptionBand` | `{ band, prev }` — only on a threshold crossing | Corruption |
 | `blightSeed` | `{ x, z, strength }` — where greed happened | Corruption |
+| `itemMutated` | `{ baseId, blightId, count, band }` — a corruption threshold converted a held stack | Items |
 | `voidtouchedSpawn` | `{ x, z, id }` — a Hollowed unit surfaced from blight | Director |
 
 ## Settings

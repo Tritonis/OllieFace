@@ -4,7 +4,8 @@
 // blight counterpart, deterministically, off the shared rng, without charging.
 import { Items } from '../src/systems/Items.js';
 import { Corruption } from '../src/systems/Corruption.js';
-import { BLIGHT_BY_BASE } from '../src/data/items.js';
+import { BLIGHT_BY_BASE, ITEM_BY_ID } from '../src/data/items.js';
+import { HUD } from '../src/ui/HUD.js';
 import { MUTATION, BANDS } from '../src/data/corruption.js';
 import { RNG } from '../src/core/MathUtil.js';
 
@@ -120,6 +121,45 @@ console.log('a client never mutates');
   ctx.events.emit('corruptionBand', { band: 4, prev: 0 });
   ok(!emitted.some((e) => e.name === 'itemMutated'), 'authority-gated');
   ok(items.counts.get(baseA) === 3, 'mirror untouched');
+}
+
+// The HUD end of the wire. `HUD.bind` is registration only, so it runs on a
+// hand-built `this` the way tests/hud-strip-hold.test.mjs drives
+// `updateStripRect` — the two DOM touches at the tail of `bind` are the only
+// things stubbed, and `toast` is replaced so the assertion is on the arguments
+// the handler chose rather than on rendered markup.
+console.log('the HUD turns the event into a blight-tier toast');
+{
+  const toasts = [];
+  const self = Object.create(HUD.prototype);
+  self.toast = (text, tier, id) => toasts.push({ text, tier, id });
+  self.refs = { inventory: { addEventListener() {} } };
+  globalThis.addEventListener ??= () => {};
+
+  const listeners = new Map();
+  self.bind({
+    events: {
+      on(name, fn) { if (!listeners.has(name)) listeners.set(name, []); listeners.get(name).push(fn); },
+    },
+  });
+  const fire = (p) => { for (const fn of listeners.get('itemMutated') || []) fn(p); };
+
+  ok((listeners.get('itemMutated') || []).length === 1, 'HUD subscribes to itemMutated');
+
+  const blightId = blightOf(baseA);
+  fire({ baseId: baseA, blightId, count: 3, band: 2 });
+  ok(toasts.length === 1, 'one toast per mutation');
+  ok(toasts[0].tier === 'blight', `blight tier (got "${toasts[0].tier}")`);
+  ok(toasts[0].id === blightId, 'the emblem is the blight card, not the base');
+  const base = ITEM_BY_ID.get(baseA), blight = ITEM_BY_ID.get(blightId);
+  ok(toasts[0].text.includes(base.name), `names the base ("${toasts[0].text}")`);
+  ok(toasts[0].text.includes(blight.name), 'names the blight card it became');
+  ok(toasts[0].text.includes('3x'), 'carries the stack size');
+
+  // A payload naming a card that is not in the catalogue must stay silent
+  // rather than toast "undefined".
+  fire({ baseId: baseA, blightId: 'no-such-card', count: 1, band: 3 });
+  ok(toasts.length === 1, 'an unknown blight id is refused, not printed');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
