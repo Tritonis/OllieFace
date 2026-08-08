@@ -19,6 +19,7 @@ Every system is a class with `init(ctx)` plus any of `fixedUpdate(ctx, h)`,
 | `combat` | Combat | `src/systems/Combat.js` |
 | `items` | Items | `src/systems/Items.js` |
 | `corruption` | Corruption | `src/systems/Corruption.js` — the run's second economy; read `world`/`band`, call `feed`/`seed`. Never import it |
+| `blight` | Blight | `src/systems/Blight.js` — presentation only. Nothing in gameplay may read it; it is published so tools and tests can see the patch registry |
 | `vfx` | VFX | `src/systems/VFX.js` |
 | `audio` | Audio | `src/systems/Audio.js` |
 | `hud` | HUD | `src/ui/HUD.js` |
