@@ -61,6 +61,28 @@ export const VOIDTOUCHED = {
  */
 export const MUTATION = { minBand: 2 };
 
+/**
+ * The cleansing font (Argent Font) — counterplay, costly, never free. One use
+ * bleeds `amount` world corruption, attributed to the user, for gold that
+ * climbs per use and per stage. The gold price is the point: cleansing
+ * competes with the chest you were about to open.
+ */
+export const CLEANSE = {
+  gold: 60,          // base cost on stage 0
+  goldGrowth: 1.25,  // per-stage cost multiplier (the populate scale curve)
+  amount: 30,        // world corruption bled per use
+  maxUses: 2,
+  costClimb: 1.4,    // per-use multiplier, same curve as the Auric Cairn
+};
+
+/**
+ * The pact shrine (Covenant Stone) — co-op's social valve. A volunteer takes
+ * this share of the most-corrupted teammate's ledger onto their own. World
+ * corruption does not move: the pact re-attributes blame, it does not absolve
+ * the party. Solo runs lose nothing — the stone simply refuses (spec §2).
+ */
+export const PACT = { share: 0.35, maxUses: 1 };
+
 export function voidCreditRate(world) {
   return VOIDTOUCHED.ratePerWorld * Math.max(0, world);
 }

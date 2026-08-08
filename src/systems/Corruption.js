@@ -114,6 +114,24 @@ export class Corruption {
   }
 
   /**
+   * Move attribution from one player's ledger to another's — the pact shrine's
+   * mechanism. World corruption and the band are deliberately untouched: a
+   * pact re-attributes blame ahead of a route lock, it does not absolve the
+   * party. Returns the amount actually moved, 0 when refused.
+   */
+  transfer(from, to, amount) {
+    if (!this.ctx?.authority) return 0;
+    if (!from || !to || from === to || !(amount > 0)) return 0;
+    const own = this._byPlayer.get(from) || 0;
+    const moved = Math.min(own, amount);
+    if (!(moved > 0)) return 0;
+    this._byPlayer.set(from, own - moved);
+    this._byPlayer.set(to, (this._byPlayer.get(to) || 0) + moved);
+    this.ctx.events.emit('corruptionPact', { from, to, amount: moved });
+    return moved;
+  }
+
+  /**
    * Record where greed happened. The blight-visuals plan grows fields from
    * these, and the Director surfaces Voidtouched from them. Greed time cuts
    * deeper: the same act after the teleporter has finished leaves a stronger
