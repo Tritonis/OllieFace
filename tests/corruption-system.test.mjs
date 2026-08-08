@@ -1,5 +1,6 @@
 // tests/corruption-system.test.mjs
 import { Corruption } from '../src/systems/Corruption.js';
+import { Items } from '../src/systems/Items.js';
 import { BANDS, SOURCES } from '../src/data/corruption.js';
 import { ITEM_BY_ID } from '../src/data/items.js';
 
@@ -132,6 +133,45 @@ console.log('item pickups feed by tier through the itemPickup event');
   ok(c.world === before, 'a removal (negative delta) does not increase corruption');
   ctx.events.emit('itemPickup', { id: 'not-a-real-item', count: 1 });
   ok(c.world === before + 1, 'unknown items feed the fallback 1');
+}
+
+console.log('a client cannot plant seeds either');
+{
+  const { ctx, emitted } = makeCtx({ authority: false });
+  const c = new Corruption();
+  c.init(ctx);
+  c.seed({ x: 9, y: 0, z: -3 }, 2);
+  ok(c.seeds.length === 0, 'no seed stored without authority');
+  ok(!emitted.some((e) => e.name === 'blightSeed'), 'no blightSeed event without authority');
+}
+
+console.log('the blight transform does not re-charge stacks already paid for');
+{
+  // Real Items + real Corruption on one bus — the double-charge this arm exists
+  // for lived in the seam between them, and a synthetic itemPickup cannot show
+  // it: only the real `_settleBlight` emits the re-stack write.
+  const { ctx } = makeCtx();
+  ctx.player = P();
+  ctx.rng = () => { throw new Error('the corruption path must draw no rng'); };
+  new Items().init(ctx);
+  const c = new Corruption();
+  c.init(ctx);
+
+  for (let i = 0; i < 5; i++) ctx.items.give('syringe', 1);
+  ok(c.world === SOURCES.itemFeed.common * 5, `five commons cost ${SOURCES.itemFeed.common * 5} (got ${c.world})`);
+
+  // Spasm Gland eats every syringe held. The card's own pickup is the whole
+  // price; the five syringes were already paid for at common on arrival.
+  ctx.items.give('spasm-gland', 1);
+  const expected = SOURCES.itemFeed.common * 5 + SOURCES.itemFeed.blight;
+  ok(c.world === expected, `the transform costs only the card: ${expected} (got ${c.world})`);
+  ok(ctx.items.count('spasm-gland') === 6 && ctx.items.count('syringe') === 0,
+    'the inventory still converted all five stacks');
+
+  // A genuine second copy of the same blight card is a real pickup and pays.
+  ctx.items.give('spasm-gland', 1);
+  ok(c.world === expected + SOURCES.itemFeed.blight,
+    `a later real pickup of the blight card still feeds ${SOURCES.itemFeed.blight} (got ${c.world - expected})`);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -42,7 +42,17 @@ export class Corruption {
     // fix Audio.js already needed for this event. Fall back to treating
     // `count` as the delta only when a payload omits `delta` entirely (older
     // synthetic/CONTRACTS.md-shaped events).
-    ctx.events.on('itemPickup', ({ id, count = 1, delta }) => {
+    //
+    // `reason: 'corrupt'` is the blight transform re-stacking copies the player
+    // already owns, and it is not a pickup: taking the blight card emitted its
+    // own 'give' at the blight tier — the full, highest price in the table —
+    // and the base stacks were charged at their own tier when they arrived.
+    // Feeding the re-stack too would bill a five-syringe stack a second time at
+    // 8 each, an unprompted 40-point spike the player never chose. A later,
+    // genuine pickup of another copy of the same blight card still arrives as
+    // 'give' and still pays.
+    ctx.events.on('itemPickup', ({ id, count = 1, delta, reason }) => {
+      if (reason === 'corrupt') return;
       const change = delta === undefined ? count : delta;
       if (!(change > 0)) return;
       const tier = ITEM_BY_ID.get(id)?.tier;

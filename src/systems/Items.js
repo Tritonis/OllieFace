@@ -297,15 +297,23 @@ export class Items {
    * shadow copy of the inventory, and `Audio` was reduced to doing exactly
    * that. `tier` likewise: without it every consumer has to import the item
    * catalogue to learn what it was just handed.
+   *
+   * `reason` says *why* the write happened — 'give' (the player acquired this),
+   * 'take' (something consumed it), 'corrupt' (the blight transform moved
+   * stacks the player already owns from one id to another). The sign alone
+   * cannot tell those apart, and listeners that price or announce acquisition
+   * need to: `Corruption` must not charge again for stacks already paid for at
+   * their own tier, and `Audio` (see its `_flushItemCue` note) wants the same
+   * distinction to stop guessing direction.
    */
-  _set(id, count) {
+  _set(id, count, reason = 'give') {
     const next = Math.max(0, count | 0);
     const prev = this.counts.get(id) || 0;
     if (next === 0) this.counts.delete(id); else this.counts.set(id, next);
     this._dirty = true;
     this._rebuildHooks();
     this.ctx.events.emit('itemPickup', {
-      id, count: next, tier: ITEM_BY_ID.get(id)?.tier, delta: next - prev,
+      id, count: next, tier: ITEM_BY_ID.get(id)?.tier, delta: next - prev, reason,
     });
     return next;
   }
@@ -348,8 +356,14 @@ export class Items {
     // Absolute writes in both directions: `itemPickup` carries a total, not a
     // delta, so a client that drops or duplicates one of these self-corrects on
     // the next one instead of drifting a stack apart from the host forever.
-    this._set(def.corrupts, 0);
-    return this._set(id, this.count(id) + held);
+    //
+    // Both are tagged 'corrupt': nothing was acquired here. The blight card's
+    // own pickup already emitted its 'give' — that is the whole price of taking
+    // a corruption card — and the base stacks were paid for at their own tier
+    // when the player picked them up. Charging the re-stack too would bill the
+    // same items twice, at the highest tier in the game.
+    this._set(def.corrupts, 0, 'corrupt');
+    return this._set(id, this.count(id) + held, 'corrupt');
   }
 
   /**
@@ -366,7 +380,7 @@ export class Items {
     if (!this.ctx.authority) return this.count(id);
     const have = this.counts.get(id) || 0;
     if (have <= 0) return 0;
-    return this._set(id, have - count);
+    return this._set(id, have - count, 'take');
   }
 
   count(id) { return this.counts.get(id) || 0; }

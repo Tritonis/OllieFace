@@ -331,6 +331,12 @@ export class Chest extends Interactable {
   }
 
   interact() {
+    // No item system, no chest — every open ends in `rollItem` below, so the
+    // void-credit branch must not become a path that reaches it without one.
+    // (Unreachable from `main.js`, where Items is always registered and
+    // registered before Corruption, but the old code returned `false` here and
+    // this keeps that true.)
+    if (!this.ctx.items) return false;
     const cor = this.ctx.corruption;
     if (this.ctx.items?.spendGold(this.cost)) {
       // Paid open: gold as before, plus the tithe. The void takes its cut of
