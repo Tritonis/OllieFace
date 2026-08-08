@@ -1,0 +1,1380 @@
+{
+  "what": "Render state at each shot-harness shutter, pre-slice vs post-slice, for the blight-ceiling slice. These are the receipts for task 7's 04-combat / 08-explosion drift diagnosis (task-7-review Finding 1).",
+  "instrument": "reviews/round8/blight-state-probe.mjs",
+  "commands": [
+    "git worktree add <tmp>/base355 355a686 --detach",
+    "node reviews/round8/blight-state-probe.mjs --out <tmp>/state-after.json --port 5231     # tree: blight-ceiling HEAD 6ae15a2",
+    "node blight-state-probe.mjs --out <tmp>/state-before.json --port 5232                   # tree: 355a686 worktree, probe copied in"
+  ],
+  "trees": {
+    "before": {
+      "ref": "355a686",
+      "desc": "branch base, pre-slice"
+    },
+    "after": {
+      "ref": "6ae15a2",
+      "desc": "blight-ceiling HEAD, post-slice"
+    }
+  },
+  "reading": "Every scenario is a paired shutter: same seed (1337), same pinned clock (1/60), same scenario prefix in capture.mjs order. `fieldsMoved` is the exhaustive list of render-state fields that differ between the two trees at that shutter. Every numeric grade uniform is dumped by enumeration rather than by name, so a uniform nobody thought to list cannot move unseen. `uShake` and `uBlastCount` are frame-count driven and so vary run to run in absolute value; what matters here is that they are identical between the two trees at the same shutter.",
+  "bootMs": {
+    "before": 8406,
+    "after": 11935
+  },
+  "pageErrors": {
+    "before": 0,
+    "after": 0
+  },
+  "diff": {
+    "01-title": {
+      "fieldsMoved": [
+        "cam",
+        "quat",
+        "grade.uTime"
+      ],
+      "moved": {
+        "cam": {
+          "before": [
+            -22.706426,
+            19.38203,
+            25.306485
+          ],
+          "after": [
+            -22.738395,
+            19.38203,
+            25.277764
+          ]
+        },
+        "quat": {
+          "before": [
+            -0.169583,
+            -0.351611,
+            -0.064928,
+            0.918366
+          ],
+          "after": [
+            -0.169542,
+            -0.352191,
+            -0.065035,
+            0.918143
+          ]
+        },
+        "grade.uTime": {
+          "before": 1.70157,
+          "after": 1.72263
+        }
+      }
+    },
+    "17-artifacts": {
+      "fieldsMoved": [
+        "grade.uTime"
+      ],
+      "moved": {
+        "grade.uTime": {
+          "before": 2.20157,
+          "after": 2.22263
+        }
+      }
+    },
+    "18-difficulty": {
+      "fieldsMoved": [
+        "grade.uTime"
+      ],
+      "moved": {
+        "grade.uTime": {
+          "before": 2.70157,
+          "after": 2.72263
+        }
+      }
+    },
+    "02-vista": {
+      "fieldsMoved": [
+        "grade.uTime"
+      ],
+      "moved": {
+        "grade.uTime": {
+          "before": 4.21823,
+          "after": 4.2393
+        }
+      }
+    },
+    "03-thirdperson": {
+      "fieldsMoved": [
+        "grade.uTime"
+      ],
+      "moved": {
+        "grade.uTime": {
+          "before": 5.71823,
+          "after": 5.7393
+        }
+      }
+    },
+    "09-survivors": {
+      "fieldsMoved": [
+        "grade.uTime"
+      ],
+      "moved": {
+        "grade.uTime": {
+          "before": 6.56823,
+          "after": 6.5893
+        }
+      }
+    },
+    "14-survivor-select": {
+      "fieldsMoved": [
+        "cam",
+        "quat",
+        "grade.uTime"
+      ],
+      "moved": {
+        "cam": {
+          "before": [
+            -24.935314,
+            19.38203,
+            23.113418
+          ],
+          "after": [
+            -24.96451,
+            19.38203,
+            23.081882
+          ]
+        },
+        "quat": {
+          "before": [
+            -0.166418,
+            -0.393469,
+            -0.072657,
+            0.901226
+          ],
+          "after": [
+            -0.166372,
+            -0.394038,
+            -0.072762,
+            0.900977
+          ]
+        },
+        "grade.uTime": {
+          "before": 8.4349,
+          "after": 8.45597
+        }
+      }
+    },
+    "15-logbook": {
+      "fieldsMoved": [
+        "grade.uTime"
+      ],
+      "moved": {
+        "grade.uTime": {
+          "before": 10.30157,
+          "after": 10.32263
+        }
+      }
+    },
+    "13-biomes-1": {
+      "fieldsMoved": [
+        "grade.uTime"
+      ],
+      "moved": {
+        "grade.uTime": {
+          "before": 11.90157,
+          "after": 11.92263
+        }
+      }
+    },
+    "13-biomes-2": {
+      "fieldsMoved": [
+        "grade.uTime"
+      ],
+      "moved": {
+        "grade.uTime": {
+          "before": 13.50157,
+          "after": 13.52263
+        }
+      }
+    },
+    "13-biomes-3": {
+      "fieldsMoved": [
+        "grade.uTime"
+      ],
+      "moved": {
+        "grade.uTime": {
+          "before": 15.10157,
+          "after": 15.12263
+        }
+      }
+    },
+    "13-biomes-4": {
+      "fieldsMoved": [
+        "grade.uTime"
+      ],
+      "moved": {
+        "grade.uTime": {
+          "before": 16.70157,
+          "after": 16.72263
+        }
+      }
+    },
+    "04-combat": {
+      "fieldsMoved": [
+        "grade.uTime"
+      ],
+      "moved": {
+        "grade.uTime": {
+          "before": 20.9849,
+          "after": 21.00597
+        }
+      }
+    },
+    "05-boss": {
+      "fieldsMoved": [
+        "grade.uTime"
+      ],
+      "moved": {
+        "grade.uTime": {
+          "before": 23.45157,
+          "after": 23.47263
+        }
+      }
+    },
+    "07-interactables": {
+      "fieldsMoved": [
+        "grade.uTime"
+      ],
+      "moved": {
+        "grade.uTime": {
+          "before": 24.95157,
+          "after": 24.97263
+        }
+      }
+    },
+    "08-explosion": {
+      "fieldsMoved": [
+        "grade.uTime"
+      ],
+      "moved": {
+        "grade.uTime": {
+          "before": 26.41823,
+          "after": 26.4393
+        }
+      }
+    }
+  },
+  "before": {
+    "seed": 1337,
+    "port": 5232,
+    "ready": true,
+    "clockPinned": true,
+    "bootMs": 8406,
+    "viewport": {
+      "w": 1600,
+      "h": 900
+    },
+    "note": "capture.mjs scenario prefix through 08-explosion, same flags and pinned clock; state read at each shutter",
+    "scenarios": {
+      "01-title": {
+        "cam": [
+          -22.706426,
+          19.38203,
+          25.306485
+        ],
+        "quat": [
+          -0.169583,
+          -0.351611,
+          -0.064928,
+          0.918366
+        ],
+        "fov": 58,
+        "ctxTime": 0,
+        "resScale": 1,
+        "dpr": 1,
+        "adaptive": null,
+        "grade": {
+          "uTime": 1.70157,
+          "uShake": 0,
+          "uAberration": 0.00042,
+          "uVignette": 0.16,
+          "uSaturation": 1.06,
+          "uContrast": 1.04,
+          "uToeRange": 0.4,
+          "uGrain": 0.01,
+          "uBlastCount": 0,
+          "uBlastAspect": 1
+        },
+        "blightPatches": 0,
+        "band": 0,
+        "world": 0
+      },
+      "17-artifacts": {
+        "cam": [
+          -1.15,
+          6.463225,
+          -6.997652
+        ],
+        "quat": [
+          0,
+          0.99639,
+          0.084898,
+          0
+        ],
+        "fov": 58,
+        "ctxTime": 0,
+        "resScale": 1,
+        "dpr": 1,
+        "adaptive": null,
+        "grade": {
+          "uTime": 2.20157,
+          "uShake": 0,
+          "uAberration": 0.00042,
+          "uVignette": 0.16,
+          "uSaturation": 1.06,
+          "uContrast": 1.04,
+          "uToeRange": 0.4,
+          "uGrain": 0.01,
+          "uBlastCount": 0,
+          "uBlastAspect": 1
+        },
+        "blightPatches": 0,
+        "band": 0,
+        "world": 0
+      },
+      "18-difficulty": {
+        "cam": [
+          -1.15,
+          6.463225,
+          -6.997652
+        ],
+        "quat": [
+          0,
+          0.99639,
+          0.084898,
+          0
+        ],
+        "fov": 58,
+        "ctxTime": 0,
+        "resScale": 1,
+        "dpr": 1,
+        "adaptive": null,
+        "grade": {
+          "uTime": 2.70157,
+          "uShake": 0,
+          "uAberration": 0.00042,
+          "uVignette": 0.16,
+          "uSaturation": 1.06,
+          "uContrast": 1.04,
+          "uToeRange": 0.4,
+          "uGrain": 0.01,
+          "uBlastCount": 0,
+          "uBlastAspect": 1
+        },
+        "blightPatches": 0,
+        "band": 0,
+        "world": 0
+      },
+      "02-vista": {
+        "cam": [
+          -55.865947,
+          12.38203,
+          12.288043
+        ],
+        "quat": [
+          0.030585,
+          -0.626087,
+          0.024589,
+          0.778765
+        ],
+        "fov": 58,
+        "ctxTime": 1.516667,
+        "resScale": 1,
+        "dpr": 1,
+        "adaptive": null,
+        "grade": {
+          "uTime": 4.21823,
+          "uShake": 0,
+          "uAberration": 0.00042,
+          "uVignette": 0.16,
+          "uSaturation": 1.06,
+          "uContrast": 1.04,
+          "uToeRange": 0.4,
+          "uGrain": 0.01,
+          "uBlastCount": 0,
+          "uBlastAspect": 1
+        },
+        "blightPatches": 0,
+        "band": 0,
+        "world": 0
+      },
+      "03-thirdperson": {
+        "cam": [
+          -1.15,
+          5.911987,
+          -7.048941
+        ],
+        "quat": [
+          0,
+          0.998201,
+          0.059964,
+          0
+        ],
+        "fov": 58,
+        "ctxTime": 3.016667,
+        "resScale": 1,
+        "dpr": 1,
+        "adaptive": null,
+        "grade": {
+          "uTime": 5.71823,
+          "uShake": 0,
+          "uAberration": 0.00042,
+          "uVignette": 0.16,
+          "uSaturation": 1.06,
+          "uContrast": 1.04,
+          "uToeRange": 0.4,
+          "uGrain": 0.01,
+          "uBlastCount": 0,
+          "uBlastAspect": 1
+        },
+        "blightPatches": 0,
+        "band": 0,
+        "world": 0
+      },
+      "09-survivors": {
+        "cam": [
+          1.94157,
+          20.825466,
+          0.53901
+        ],
+        "quat": [
+          -0.006729,
+          -0.796035,
+          -0.008851,
+          0.605149
+        ],
+        "fov": 21.364791405777606,
+        "ctxTime": 3.866667,
+        "resScale": 1,
+        "dpr": 1,
+        "adaptive": null,
+        "grade": {
+          "uTime": 6.56823,
+          "uShake": 0,
+          "uAberration": 0.00042,
+          "uVignette": 0.16,
+          "uSaturation": 1.06,
+          "uContrast": 1.04,
+          "uToeRange": 0.4,
+          "uGrain": 0.01,
+          "uBlastCount": 0,
+          "uBlastAspect": 1
+        },
+        "blightPatches": 0,
+        "band": 0,
+        "world": 0
+      },
+      "14-survivor-select": {
+        "cam": [
+          -24.935314,
+          19.38203,
+          23.113418
+        ],
+        "quat": [
+          -0.166418,
+          -0.393469,
+          -0.072657,
+          0.901226
+        ],
+        "fov": 58,
+        "ctxTime": 4.2,
+        "resScale": 1,
+        "dpr": 1,
+        "adaptive": null,
+        "grade": {
+          "uTime": 8.4349,
+          "uShake": 0,
+          "uAberration": 0.00042,
+          "uVignette": 0.16,
+          "uSaturation": 1.06,
+          "uContrast": 1.04,
+          "uToeRange": 0.4,
+          "uGrain": 0.01,
+          "uBlastCount": 0,
+          "uBlastAspect": 1
+        },
+        "blightPatches": 0,
+        "band": 0,
+        "world": 0
+      },
+      "15-logbook": {
+        "cam": [
+          -7.880454,
+          2.791078,
+          -8.917421
+        ],
+        "quat": [
+          0,
+          0.998201,
+          0.059964,
+          0
+        ],
+        "fov": 58,
+        "ctxTime": 4.533333,
+        "resScale": 1,
+        "dpr": 1,
+        "adaptive": null,
+        "grade": {
+          "uTime": 10.30157,
+          "uShake": 0,
+          "uAberration": 0.00042,
+          "uVignette": 0.16,
+          "uSaturation": 1.06,
+          "uContrast": 1.04,
+          "uToeRange": 0.4,
+          "uGrain": 0.01,
+          "uBlastCount": 0,
+          "uBlastAspect": 1
+        },
+        "blightPatches": 0,
+        "band": 0,
+        "world": 0
+      },
+      "13-biomes-1": {
+        "cam": [
+          65.085517,
+          40.297665,
+          13.061757
+        ],
+        "quat": [
+          -0.042397,
+          0.126252,
+          0.005401,
+          0.991077
+        ],
+        "fov": 56,
+        "ctxTime": 6.133333,
+        "resScale": 1,
+        "dpr": 1,
+        "adaptive": null,
+        "grade": {
+          "uTime": 11.90157,
+          "uShake": 0,
+          "uAberration": 0.00042,
+          "uVignette": 0.16,
+          "uSaturation": 1.06,
+          "uContrast": 1.04,
+          "uToeRange": 0.4,
+          "uGrain": 0.01,
+          "uBlastCount": 0,
+          "uBlastAspect": 1
+        },
+        "blightPatches": 0,
+        "band": 0,
+        "world": 0
+      },
+      "13-biomes-2": {
+        "cam": [
+          16.589128,
+          8.227162,
+          9.339298
+        ],
+        "quat": [
+          -0.013487,
+          0.948037,
+          0.040556,
+          0.315277
+        ],
+        "fov": 56,
+        "ctxTime": 7.733333,
+        "resScale": 1,
+        "dpr": 1,
+        "adaptive": null,
+        "grade": {
+          "uTime": 13.50157,
+          "uShake": 0,
+          "uAberration": 0.00042,
+          "uVignette": 0.16,
+          "uSaturation": 1.06,
+          "uContrast": 1.04,
+          "uToeRange": 0.4,
+          "uGrain": 0.01,
+          "uBlastCount": 0,
+          "uBlastAspect": 1
+        },
+        "blightPatches": 0,
+        "band": 0,
+        "world": 0
+      },
+      "13-biomes-3": {
+        "cam": [
+          -25.356126,
+          19.292463,
+          -77.350028
+        ],
+        "quat": [
+          -0.007299,
+          0.985937,
+          0.160853,
+          0.044737
+        ],
+        "fov": 56,
+        "ctxTime": 9.333333,
+        "resScale": 1,
+        "dpr": 1,
+        "adaptive": null,
+        "grade": {
+          "uTime": 15.10157,
+          "uShake": 0,
+          "uAberration": 0.00042,
+          "uVignette": 0.16,
+          "uSaturation": 1.06,
+          "uContrast": 1.04,
+          "uToeRange": 0.4,
+          "uGrain": 0.01,
+          "uBlastCount": 0,
+          "uBlastAspect": 1
+        },
+        "blightPatches": 0,
+        "band": 0,
+        "world": 0
+      },
+      "13-biomes-4": {
+        "cam": [
+          57.231493,
+          27,
+          -54.459497
+        ],
+        "quat": [
+          -0.00104,
+          0.99879,
+          0.042727,
+          0.024321
+        ],
+        "fov": 56,
+        "ctxTime": 10.933333,
+        "resScale": 1,
+        "dpr": 1,
+        "adaptive": null,
+        "grade": {
+          "uTime": 16.70157,
+          "uShake": 0,
+          "uAberration": 0.00042,
+          "uVignette": 0.16,
+          "uSaturation": 1.06,
+          "uContrast": 1.04,
+          "uToeRange": 0.4,
+          "uGrain": 0.01,
+          "uBlastCount": 0,
+          "uBlastAspect": 1
+        },
+        "blightPatches": 0,
+        "band": 0,
+        "world": 0
+      },
+      "04-combat": {
+        "cam": [
+          20.76514,
+          21.212238,
+          38.093144
+        ],
+        "quat": [
+          -0.003995,
+          0.041914,
+          0.000168,
+          0.999113
+        ],
+        "fov": 58.059132322429825,
+        "ctxTime": 15.066667,
+        "resScale": 1,
+        "dpr": 1,
+        "adaptive": null,
+        "grade": {
+          "uTime": 20.9849,
+          "uShake": 0.71946,
+          "uAberration": 0.00064,
+          "uVignette": 0.16,
+          "uSaturation": 1.06,
+          "uContrast": 1.04,
+          "uToeRange": 0.4,
+          "uGrain": 0.01,
+          "uBlastCount": 4,
+          "uBlastAspect": 1.77778
+        },
+        "blightPatches": 0,
+        "band": 0,
+        "world": 0
+      },
+      "05-boss": {
+        "cam": [
+          8.237883,
+          25.975466,
+          52.554939
+        ],
+        "quat": [
+          -0.074891,
+          -0.158219,
+          -0.012036,
+          0.984486
+        ],
+        "fov": 36,
+        "ctxTime": 17.483333,
+        "resScale": 1,
+        "dpr": 1,
+        "adaptive": null,
+        "grade": {
+          "uTime": 23.45157,
+          "uShake": 0.00325,
+          "uAberration": 0.00042,
+          "uVignette": 0.16,
+          "uSaturation": 1.06,
+          "uContrast": 1.04,
+          "uToeRange": 0.4,
+          "uGrain": 0.01,
+          "uBlastCount": 0,
+          "uBlastAspect": 1.77778
+        },
+        "blightPatches": 0,
+        "band": 0,
+        "world": 0
+      },
+      "07-interactables": {
+        "cam": [
+          13.01468,
+          26.615355,
+          72.451222
+        ],
+        "quat": [
+          0.044376,
+          0.940333,
+          0.134968,
+          -0.309173
+        ],
+        "fov": 32,
+        "ctxTime": 18.983333,
+        "resScale": 1,
+        "dpr": 1,
+        "adaptive": null,
+        "grade": {
+          "uTime": 24.95157,
+          "uShake": 0,
+          "uAberration": 0.00042,
+          "uVignette": 0.16,
+          "uSaturation": 1.06,
+          "uContrast": 1.04,
+          "uToeRange": 0.4,
+          "uGrain": 0.01,
+          "uBlastCount": 0,
+          "uBlastAspect": 1.77778
+        },
+        "blightPatches": 0,
+        "band": 0,
+        "world": 0
+      },
+      "08-explosion": {
+        "cam": [
+          20.663076,
+          21.933996,
+          38.060718
+        ],
+        "quat": [
+          -0.054989,
+          0.034847,
+          0.00192,
+          0.997877
+        ],
+        "fov": 58.30437225110303,
+        "ctxTime": 759.466667,
+        "resScale": 1,
+        "dpr": 1,
+        "adaptive": null,
+        "grade": {
+          "uTime": 26.41823,
+          "uShake": 0.50519,
+          "uAberration": 0.00064,
+          "uVignette": 0.16,
+          "uSaturation": 1.06,
+          "uContrast": 1.04,
+          "uToeRange": 0.4,
+          "uGrain": 0.01,
+          "uBlastCount": 2,
+          "uBlastAspect": 1.77778
+        },
+        "blightPatches": 0,
+        "band": 0,
+        "world": 0
+      }
+    },
+    "errors": []
+  },
+  "after": {
+    "seed": 1337,
+    "port": 5231,
+    "ready": true,
+    "clockPinned": true,
+    "bootMs": 11935,
+    "viewport": {
+      "w": 1600,
+      "h": 900
+    },
+    "note": "capture.mjs scenario prefix through 08-explosion, same flags and pinned clock; state read at each shutter",
+    "scenarios": {
+      "01-title": {
+        "cam": [
+          -22.738395,
+          19.38203,
+          25.277764
+        ],
+        "quat": [
+          -0.169542,
+          -0.352191,
+          -0.065035,
+          0.918143
+        ],
+        "fov": 58,
+        "ctxTime": 0,
+        "resScale": 1,
+        "dpr": 1,
+        "adaptive": null,
+        "grade": {
+          "uTime": 1.72263,
+          "uShake": 0,
+          "uAberration": 0.00042,
+          "uVignette": 0.16,
+          "uSaturation": 1.06,
+          "uContrast": 1.04,
+          "uToeRange": 0.4,
+          "uGrain": 0.01,
+          "uBlastCount": 0,
+          "uBlastAspect": 1,
+          "uRimCount": 0,
+          "uRimAspect": 1.77778
+        },
+        "blightPatches": 0,
+        "band": 0,
+        "world": 0
+      },
+      "17-artifacts": {
+        "cam": [
+          -1.15,
+          6.463225,
+          -6.997652
+        ],
+        "quat": [
+          0,
+          0.99639,
+          0.084898,
+          0
+        ],
+        "fov": 58,
+        "ctxTime": 0,
+        "resScale": 1,
+        "dpr": 1,
+        "adaptive": null,
+        "grade": {
+          "uTime": 2.22263,
+          "uShake": 0,
+          "uAberration": 0.00042,
+          "uVignette": 0.16,
+          "uSaturation": 1.06,
+          "uContrast": 1.04,
+          "uToeRange": 0.4,
+          "uGrain": 0.01,
+          "uBlastCount": 0,
+          "uBlastAspect": 1,
+          "uRimCount": 0,
+          "uRimAspect": 1.77778
+        },
+        "blightPatches": 0,
+        "band": 0,
+        "world": 0
+      },
+      "18-difficulty": {
+        "cam": [
+          -1.15,
+          6.463225,
+          -6.997652
+        ],
+        "quat": [
+          0,
+          0.99639,
+          0.084898,
+          0
+        ],
+        "fov": 58,
+        "ctxTime": 0,
+        "resScale": 1,
+        "dpr": 1,
+        "adaptive": null,
+        "grade": {
+          "uTime": 2.72263,
+          "uShake": 0,
+          "uAberration": 0.00042,
+          "uVignette": 0.16,
+          "uSaturation": 1.06,
+          "uContrast": 1.04,
+          "uToeRange": 0.4,
+          "uGrain": 0.01,
+          "uBlastCount": 0,
+          "uBlastAspect": 1,
+          "uRimCount": 0,
+          "uRimAspect": 1.77778
+        },
+        "blightPatches": 0,
+        "band": 0,
+        "world": 0
+      },
+      "02-vista": {
+        "cam": [
+          -55.865947,
+          12.38203,
+          12.288043
+        ],
+        "quat": [
+          0.030585,
+          -0.626087,
+          0.024589,
+          0.778765
+        ],
+        "fov": 58,
+        "ctxTime": 1.516667,
+        "resScale": 1,
+        "dpr": 1,
+        "adaptive": null,
+        "grade": {
+          "uTime": 4.2393,
+          "uShake": 0,
+          "uAberration": 0.00042,
+          "uVignette": 0.16,
+          "uSaturation": 1.06,
+          "uContrast": 1.04,
+          "uToeRange": 0.4,
+          "uGrain": 0.01,
+          "uBlastCount": 0,
+          "uBlastAspect": 1,
+          "uRimCount": 0,
+          "uRimAspect": 1.77778
+        },
+        "blightPatches": 0,
+        "band": 0,
+        "world": 0
+      },
+      "03-thirdperson": {
+        "cam": [
+          -1.15,
+          5.911987,
+          -7.048941
+        ],
+        "quat": [
+          0,
+          0.998201,
+          0.059964,
+          0
+        ],
+        "fov": 58,
+        "ctxTime": 3.016667,
+        "resScale": 1,
+        "dpr": 1,
+        "adaptive": null,
+        "grade": {
+          "uTime": 5.7393,
+          "uShake": 0,
+          "uAberration": 0.00042,
+          "uVignette": 0.16,
+          "uSaturation": 1.06,
+          "uContrast": 1.04,
+          "uToeRange": 0.4,
+          "uGrain": 0.01,
+          "uBlastCount": 0,
+          "uBlastAspect": 1,
+          "uRimCount": 0,
+          "uRimAspect": 1.77778
+        },
+        "blightPatches": 0,
+        "band": 0,
+        "world": 0
+      },
+      "09-survivors": {
+        "cam": [
+          1.94157,
+          20.825466,
+          0.53901
+        ],
+        "quat": [
+          -0.006729,
+          -0.796035,
+          -0.008851,
+          0.605149
+        ],
+        "fov": 21.364791405777606,
+        "ctxTime": 3.866667,
+        "resScale": 1,
+        "dpr": 1,
+        "adaptive": null,
+        "grade": {
+          "uTime": 6.5893,
+          "uShake": 0,
+          "uAberration": 0.00042,
+          "uVignette": 0.16,
+          "uSaturation": 1.06,
+          "uContrast": 1.04,
+          "uToeRange": 0.4,
+          "uGrain": 0.01,
+          "uBlastCount": 0,
+          "uBlastAspect": 1,
+          "uRimCount": 0,
+          "uRimAspect": 1.77778
+        },
+        "blightPatches": 0,
+        "band": 0,
+        "world": 0
+      },
+      "14-survivor-select": {
+        "cam": [
+          -24.96451,
+          19.38203,
+          23.081882
+        ],
+        "quat": [
+          -0.166372,
+          -0.394038,
+          -0.072762,
+          0.900977
+        ],
+        "fov": 58,
+        "ctxTime": 4.2,
+        "resScale": 1,
+        "dpr": 1,
+        "adaptive": null,
+        "grade": {
+          "uTime": 8.45597,
+          "uShake": 0,
+          "uAberration": 0.00042,
+          "uVignette": 0.16,
+          "uSaturation": 1.06,
+          "uContrast": 1.04,
+          "uToeRange": 0.4,
+          "uGrain": 0.01,
+          "uBlastCount": 0,
+          "uBlastAspect": 1,
+          "uRimCount": 0,
+          "uRimAspect": 1.77778
+        },
+        "blightPatches": 0,
+        "band": 0,
+        "world": 0
+      },
+      "15-logbook": {
+        "cam": [
+          -7.880454,
+          2.791078,
+          -8.917421
+        ],
+        "quat": [
+          0,
+          0.998201,
+          0.059964,
+          0
+        ],
+        "fov": 58,
+        "ctxTime": 4.533333,
+        "resScale": 1,
+        "dpr": 1,
+        "adaptive": null,
+        "grade": {
+          "uTime": 10.32263,
+          "uShake": 0,
+          "uAberration": 0.00042,
+          "uVignette": 0.16,
+          "uSaturation": 1.06,
+          "uContrast": 1.04,
+          "uToeRange": 0.4,
+          "uGrain": 0.01,
+          "uBlastCount": 0,
+          "uBlastAspect": 1,
+          "uRimCount": 0,
+          "uRimAspect": 1.77778
+        },
+        "blightPatches": 0,
+        "band": 0,
+        "world": 0
+      },
+      "13-biomes-1": {
+        "cam": [
+          65.085517,
+          40.297665,
+          13.061757
+        ],
+        "quat": [
+          -0.042397,
+          0.126252,
+          0.005401,
+          0.991077
+        ],
+        "fov": 56,
+        "ctxTime": 6.133333,
+        "resScale": 1,
+        "dpr": 1,
+        "adaptive": null,
+        "grade": {
+          "uTime": 11.92263,
+          "uShake": 0,
+          "uAberration": 0.00042,
+          "uVignette": 0.16,
+          "uSaturation": 1.06,
+          "uContrast": 1.04,
+          "uToeRange": 0.4,
+          "uGrain": 0.01,
+          "uBlastCount": 0,
+          "uBlastAspect": 1,
+          "uRimCount": 0,
+          "uRimAspect": 1.77778
+        },
+        "blightPatches": 0,
+        "band": 0,
+        "world": 0
+      },
+      "13-biomes-2": {
+        "cam": [
+          16.589128,
+          8.227162,
+          9.339298
+        ],
+        "quat": [
+          -0.013487,
+          0.948037,
+          0.040556,
+          0.315277
+        ],
+        "fov": 56,
+        "ctxTime": 7.733333,
+        "resScale": 1,
+        "dpr": 1,
+        "adaptive": null,
+        "grade": {
+          "uTime": 13.52263,
+          "uShake": 0,
+          "uAberration": 0.00042,
+          "uVignette": 0.16,
+          "uSaturation": 1.06,
+          "uContrast": 1.04,
+          "uToeRange": 0.4,
+          "uGrain": 0.01,
+          "uBlastCount": 0,
+          "uBlastAspect": 1,
+          "uRimCount": 0,
+          "uRimAspect": 1.77778
+        },
+        "blightPatches": 0,
+        "band": 0,
+        "world": 0
+      },
+      "13-biomes-3": {
+        "cam": [
+          -25.356126,
+          19.292463,
+          -77.350028
+        ],
+        "quat": [
+          -0.007299,
+          0.985937,
+          0.160853,
+          0.044737
+        ],
+        "fov": 56,
+        "ctxTime": 9.333333,
+        "resScale": 1,
+        "dpr": 1,
+        "adaptive": null,
+        "grade": {
+          "uTime": 15.12263,
+          "uShake": 0,
+          "uAberration": 0.00042,
+          "uVignette": 0.16,
+          "uSaturation": 1.06,
+          "uContrast": 1.04,
+          "uToeRange": 0.4,
+          "uGrain": 0.01,
+          "uBlastCount": 0,
+          "uBlastAspect": 1,
+          "uRimCount": 0,
+          "uRimAspect": 1.77778
+        },
+        "blightPatches": 0,
+        "band": 0,
+        "world": 0
+      },
+      "13-biomes-4": {
+        "cam": [
+          57.231493,
+          27,
+          -54.459497
+        ],
+        "quat": [
+          -0.00104,
+          0.99879,
+          0.042727,
+          0.024321
+        ],
+        "fov": 56,
+        "ctxTime": 10.933333,
+        "resScale": 1,
+        "dpr": 1,
+        "adaptive": null,
+        "grade": {
+          "uTime": 16.72263,
+          "uShake": 0,
+          "uAberration": 0.00042,
+          "uVignette": 0.16,
+          "uSaturation": 1.06,
+          "uContrast": 1.04,
+          "uToeRange": 0.4,
+          "uGrain": 0.01,
+          "uBlastCount": 0,
+          "uBlastAspect": 1,
+          "uRimCount": 0,
+          "uRimAspect": 1.77778
+        },
+        "blightPatches": 0,
+        "band": 0,
+        "world": 0
+      },
+      "04-combat": {
+        "cam": [
+          20.76514,
+          21.212238,
+          38.093144
+        ],
+        "quat": [
+          -0.003995,
+          0.041914,
+          0.000168,
+          0.999113
+        ],
+        "fov": 58.059132322429825,
+        "ctxTime": 15.066667,
+        "resScale": 1,
+        "dpr": 1,
+        "adaptive": null,
+        "grade": {
+          "uTime": 21.00597,
+          "uShake": 0.71946,
+          "uAberration": 0.00064,
+          "uVignette": 0.16,
+          "uSaturation": 1.06,
+          "uContrast": 1.04,
+          "uToeRange": 0.4,
+          "uGrain": 0.01,
+          "uBlastCount": 4,
+          "uBlastAspect": 1.77778,
+          "uRimCount": 0,
+          "uRimAspect": 1.77778
+        },
+        "blightPatches": 0,
+        "band": 0,
+        "world": 0
+      },
+      "05-boss": {
+        "cam": [
+          8.237883,
+          25.975466,
+          52.554939
+        ],
+        "quat": [
+          -0.074891,
+          -0.158219,
+          -0.012036,
+          0.984486
+        ],
+        "fov": 36,
+        "ctxTime": 17.483333,
+        "resScale": 1,
+        "dpr": 1,
+        "adaptive": null,
+        "grade": {
+          "uTime": 23.47263,
+          "uShake": 0.00325,
+          "uAberration": 0.00042,
+          "uVignette": 0.16,
+          "uSaturation": 1.06,
+          "uContrast": 1.04,
+          "uToeRange": 0.4,
+          "uGrain": 0.01,
+          "uBlastCount": 0,
+          "uBlastAspect": 1.77778,
+          "uRimCount": 0,
+          "uRimAspect": 1.77778
+        },
+        "blightPatches": 0,
+        "band": 0,
+        "world": 0
+      },
+      "07-interactables": {
+        "cam": [
+          13.01468,
+          26.615355,
+          72.451222
+        ],
+        "quat": [
+          0.044376,
+          0.940333,
+          0.134968,
+          -0.309173
+        ],
+        "fov": 32,
+        "ctxTime": 18.983333,
+        "resScale": 1,
+        "dpr": 1,
+        "adaptive": null,
+        "grade": {
+          "uTime": 24.97263,
+          "uShake": 0,
+          "uAberration": 0.00042,
+          "uVignette": 0.16,
+          "uSaturation": 1.06,
+          "uContrast": 1.04,
+          "uToeRange": 0.4,
+          "uGrain": 0.01,
+          "uBlastCount": 0,
+          "uBlastAspect": 1.77778,
+          "uRimCount": 0,
+          "uRimAspect": 1.77778
+        },
+        "blightPatches": 0,
+        "band": 0,
+        "world": 0
+      },
+      "08-explosion": {
+        "cam": [
+          20.663076,
+          21.933996,
+          38.060718
+        ],
+        "quat": [
+          -0.054989,
+          0.034847,
+          0.00192,
+          0.997877
+        ],
+        "fov": 58.30437225110303,
+        "ctxTime": 759.466667,
+        "resScale": 1,
+        "dpr": 1,
+        "adaptive": null,
+        "grade": {
+          "uTime": 26.4393,
+          "uShake": 0.50519,
+          "uAberration": 0.00064,
+          "uVignette": 0.16,
+          "uSaturation": 1.06,
+          "uContrast": 1.04,
+          "uToeRange": 0.4,
+          "uGrain": 0.01,
+          "uBlastCount": 2,
+          "uBlastAspect": 1.77778,
+          "uRimCount": 0,
+          "uRimAspect": 1.77778
+        },
+        "blightPatches": 0,
+        "band": 0,
+        "world": 0
+      }
+    },
+    "errors": []
+  }
+}
