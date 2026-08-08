@@ -198,6 +198,13 @@ class Interactable {
   get health() { return this.available() ? 1 : 0; }
   prompt() { return this.cost > 0 ? `Open ($${this.cost})` : 'Use'; }
   available() { return this.enabled && !this.used; }
+  /**
+   * Every greed act plants a seed (spec §1). Interactables that grant items or
+   * trade resources call this at their success point; Chest passes its own
+   * size-scaled strengths instead. Corruption applies the greed-time bump, so
+   * a mark left after the teleporter has finished is automatically deeper.
+   */
+  markGreed(strength = 1) { this.ctx.corruption?.seed(this.position, strength); }
   interact() {}
   update(dt) {}
   dispose() {
@@ -371,7 +378,7 @@ export class Chest extends Interactable {
 
 // -------------------------------------------------------- multishop terminal
 
-class MultishopTerminal extends Interactable {
+export class MultishopTerminal extends Interactable {
   constructor(ctx, position, cost, group, index) {
     super(ctx, position);
     this.cost = cost;
@@ -424,6 +431,7 @@ class MultishopTerminal extends Interactable {
   interact() {
     if (!this.ctx.items?.spendGold(this.cost)) return false;
     this.used = true;
+    this.markGreed();
     this.ctx.interactables.spawnOrb(this.position, this.itemId, 1.6);
     // Buying one terminal closes the others: the choice has to cost something.
     for (const t of this.shopGroup) {
@@ -581,7 +589,7 @@ function bloodSlickGeo() {
  * lifted verbatim. The mechanic is genre furniture and stays; the name is not
  * ours to use. `TYPE_ID.auricCairn` is still wire value 3.
  */
-class AuricCairn extends Interactable {
+export class AuricCairn extends Interactable {
   constructor(ctx, position, cost) {
     super(ctx, position);
     this.cost = cost;
@@ -622,6 +630,7 @@ class AuricCairn extends Interactable {
   interact() {
     if (!this.ctx.items?.spendGold(this.cost)) return false;
     this.uses++;
+    this.markGreed();
     // 1-in-4 base; luck grants extra rolls exactly like a chance-on-hit item,
     // which is what makes Clover a shrine item as well as a combat item.
     const win = this.ctx.items.roll(0.25, 1);
@@ -653,7 +662,7 @@ class AuricCairn extends Interactable {
  * Renamed from "Shrine of Blood" for the same reason as the Cairn above: it is
  * on the branding ledger's do-not-ship list. Wire value 4 is unchanged.
  */
-class IchorFont extends Interactable {
+export class IchorFont extends Interactable {
   constructor(ctx, position, stageIndex) {
     super(ctx, position);
     this.uses = 0;
@@ -729,6 +738,7 @@ class IchorFont extends Interactable {
     // Never lethal — the shrine is a gamble on time-to-heal, not on dying.
     if (p.health <= cost + 1) return false;
     this.uses++;
+    this.markGreed();
     this.ctx.combat?.applyDamage(p, cost, {
       source: null, ignoreArmor: true, procCoefficient: 0, procDepth: 99, type: 'shrine',
       position: this.position,
@@ -928,6 +938,7 @@ class HollowChime extends Interactable {
     // nothing is indistinguishable from a broken one. Refuse instead.
     if (!summoned.length) return false;
     this.uses++;
+    this.markGreed();
     this.pending = summoned;
     this.state = 'ringing';
     this.swing = 1.0;
@@ -1046,6 +1057,7 @@ class GildedSnare extends Interactable {
     const id = ctx.items?.rollItem?.(null, { common: 0, uncommon: 46, legendary: 16 });
     if (!id) return false;
     this.uses++;
+    this.markGreed();
     ctx.interactables.spawnOrb(this.position, id, 2.2);
 
     // …and now the hunter. An elite, legal at the current difficulty, placed
@@ -1115,7 +1127,7 @@ function vaultGeo() {
   return twoGroup(shell, trim);
 }
 
-class FallowVault extends Interactable {
+export class FallowVault extends Interactable {
   constructor(ctx, position, stageIndex) {
     super(ctx, position);
     this.stageIndex = stageIndex || 0;
@@ -1162,6 +1174,7 @@ class FallowVault extends Interactable {
     // payout has to outlive one.
     this.ctx.progression?.commitToVault?.(Math.round(stake * VAULT_YIELD));
     this.used = true;
+    this.markGreed();
     this.slot.material.emissiveIntensity = 0.15;
     this.ctx.vfx?.burst?.(this.position, 0xb98a2e);
     this.ctx.audio?.play?.('purchase', this.position);
@@ -1212,7 +1225,7 @@ function kilnGeo() {
   return twoGroup(shell, trim);
 }
 
-class MarrowKiln extends Interactable {
+export class MarrowKiln extends Interactable {
   constructor(ctx, position, stageIndex) {
     super(ctx, position);
     this.stageIndex = stageIndex || 0;
@@ -1278,6 +1291,7 @@ class MarrowKiln extends Interactable {
     const f = this._fuel();
     if (!f) return false;
     this.uses++;
+    this.markGreed();
     this.ctx.items.take(f.id, 1);
     this.ctx.items.addGold(this._payout(f.def));
     this.ctx.vfx?.burst?.(this.position, 0xff5a12);
