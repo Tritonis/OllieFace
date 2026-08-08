@@ -1,4 +1,5 @@
-import { Blight, radiusOf, RADIUS, MAX_PATCHES } from '../src/systems/Blight.js';
+import * as THREE from 'three';
+import { Blight, radiusOf, RADIUS, MAX_PATCHES, buildPatchGeometry, makeBlightMaterial } from '../src/systems/Blight.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
@@ -67,6 +68,56 @@ console.log('band tracking follows corruptionBand');
   ok(b.band === 0, 'starts Pristine');
   ctx.events.emit('corruptionBand', { band: 3, prev: 2 });
   ok(b.band === 3, 'adopts the event band');
+}
+
+console.log('patch geometry conforms to the heightfield');
+{
+  const slope = (x, z) => x * 0.5;                       // a plane tilted in x
+  const geo = buildPatchGeometry(10, 0, 6, slope);
+  const pos = geo.getAttribute('position');
+  let okConform = true;
+  for (let i = 0; i < pos.count; i++) {
+    const wx = pos.getX(i), wy = pos.getY(i);
+    if (Math.abs(wy - (wx * 0.5 + 0.06)) > 1e-4) { okConform = false; break; }
+  }
+  ok(okConform, 'every vertex sits 0.06 above the sampled terrain');
+  ok(pos.count > 32, 'enough vertices to bend over terrain');
+  geo.dispose();
+}
+
+console.log('the material exposes the animation contract');
+{
+  const m = makeBlightMaterial();
+  ok(m.isShaderMaterial === true, 'ShaderMaterial, per the Decals precedent');
+  for (const u of ['uTime', 'uRadius', 'uMaxR', 'uNoise', 'uBand']) {
+    ok(m.uniforms[u] !== undefined, `uniform ${u} present`);
+  }
+  ok(m.transparent === true && m.depthWrite === false, 'blends over terrain without z-fighting the fill');
+  m.dispose();
+}
+
+console.log('meshes attach on build and detach on stage clear');
+{
+  const ctx = makeCtx();
+  ctx.scene = new THREE.Scene();
+  ctx.stage = { sampleHeight: () => 0 };
+  const b = new Blight();
+  b.init(ctx);
+  ctx.events.emit('blightSeed', { x: 0, z: 0, strength: 1 });
+  ok(b.patches[0].mesh !== null, 'patch built a mesh');
+  ok(ctx.scene.children.includes(b.patches[0].mesh), 'mesh is in the scene');
+  ctx.events.emit('stageStart', { index: 1, name: 'n' });
+  ok(ctx.scene.children.length === 0, 'stage clear detached it');
+}
+
+console.log('no scene, no crash');
+{
+  const ctx = makeCtx();                                  // no scene, no stage
+  const b = new Blight();
+  b.init(ctx);
+  ctx.events.emit('blightSeed', { x: 1, z: 1, strength: 1 });
+  ok(b.patches.length === 1, 'registry still records the seed');
+  ok(b.patches[0].mesh === null, 'and simply skips the mesh');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
