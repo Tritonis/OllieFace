@@ -60,6 +60,44 @@ console.log('the patch list is capped and clears on stageStart');
   ok(b.patches.length === 0, 'a new stage starts clean');
 }
 
+console.log('a malformed seed is dropped rather than built');
+{
+  // A NaN x builds a NaN bounding sphere (never culled) and a NaN uRadius,
+  // which disables the shader's radius discard — and none of it throws, so
+  // nothing else would ever surface it.
+  const ctx = makeCtx();
+  ctx.scene = new THREE.Scene();
+  ctx.stage = { sampleHeight: () => 0 };
+  const b = new Blight();
+  b.init(ctx);
+  const junk = [
+    ['NaN x', { x: NaN, z: 0, strength: 1 }],
+    ['Infinity z', { x: 0, z: Infinity, strength: 1 }],
+    ['NaN strength', { x: 0, z: 0, strength: NaN }],
+    ['negative strength', { x: 0, z: 0, strength: -3 }],
+    ['zero strength', { x: 0, z: 0, strength: 0 }],
+    ['no fields', {}],
+    ['no payload', undefined],
+  ];
+  let threw = null;
+  for (const [name, payload] of junk) {
+    try { ctx.events.emit('blightSeed', payload); } catch (e) { threw = `${name}: ${e.message}`; }
+  }
+  ok(threw === null, `no malformed payload throws (${threw || 'none'})`);
+  ok(b.patches.length === 0, 'and none of them became a patch');
+  ok(ctx.scene.children.length === 0, 'so no mesh reached the scene');
+
+  // The guard rejects, it does not clamp: a good seed either side still lands.
+  ctx.events.emit('blightSeed', { x: 3, z: 3, strength: 1 });
+  ok(b.patches.length === 1, 'a well-formed seed still builds');
+  ok(Number.isFinite(b.patches[0].mesh.material.uniforms.uRadius.value), 'with a finite radius');
+
+  // Same family: a bandless corruptionBand must not write undefined into uBand.
+  ctx.events.emit('corruptionBand', { band: 4, prev: 0 });
+  ctx.events.emit('corruptionBand', {});
+  ok(b.band === 4, 'a bandless corruptionBand leaves the last good band standing');
+}
+
 console.log('band tracking follows corruptionBand');
 {
   const ctx = makeCtx();
@@ -199,6 +237,29 @@ console.log('update grows patches toward their target and never shrinks them');
   ctx.events.emit('corruptionBand', { band: 4, prev: 3 });
   b.update(ctx, 0.016);
   ok(u.uBand.value === 4, 'uBand tracks the band');
+}
+
+console.log('growth freezes while the game is paused');
+{
+  // `update` runs every frame regardless of ctx.paused, so the gate has to be
+  // in here — otherwise the spread finishes behind an open menu while the
+  // crawl animation (which rides the frozen ctx.time) stands still.
+  const ctx = makeCtx();
+  ctx.scene = new THREE.Scene();
+  ctx.stage = { sampleHeight: () => 0 };
+  ctx.time = 0;
+  const b = new Blight();
+  b.init(ctx);
+  ctx.events.emit('blightSeed', { x: 0, z: 0, strength: 1 });
+  ctx.corruption.world = 200;                     // target leaps to the cap
+  const u = b.patches[0].mesh.material.uniforms;
+  const r0 = u.uRadius.value;
+  ctx.paused = true;
+  for (let i = 0; i < 60; i++) b.update(ctx, 0.5);   // 30 s of menu
+  ok(u.uRadius.value === r0, 'a paused patch does not spread');
+  ctx.paused = false;
+  b.update(ctx, 0.5);
+  ok(u.uRadius.value > r0, 'and picks up again on unpause');
 }
 
 console.log('band grading offsets the pipeline baseline, blended over time');

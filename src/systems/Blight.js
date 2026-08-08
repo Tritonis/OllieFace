@@ -300,8 +300,23 @@ export function buildPatchGeometry(x, z, maxR, sampleHeight) {
  * The crawl: a dark violet fill, emissive filament veins, and a ragged edge
  * that creeps. uv.x carries normalized radius, uv.y the angle, so the fragment
  * shader needs no world math — it rebuilds patch-local cartesian metres from
- * the two when it needs a direction-free field. Colors are the HUD band ramp
- * so gauge and ground agree.
+ * the two when it needs a direction-free field.
+ *
+ * Colours are the ACES-solved derivation of the HUD band ramp, not the ramp's
+ * own hex values. The gauge is a DOM element that draws its ramp straight to
+ * screen; the patch draws through a tonemapped HDR buffer, so the two cannot
+ * share literals and agree. Each constant below is solved so the *screen*
+ * colour is the ramp's family, and the darker landing is deliberate — the
+ * ground is lit by nothing and read at a glance, the gauge is a lit UI chip:
+ *
+ *   ramp `#7a4fd0` -> VEIN_COOL `#7a46c8`   (as near as the fit lands)
+ *   ramp `#c72fd6` -> VEIN_HOT  `#b64ad0`
+ *   ramp `#ff2fb0` -> RIM       `#c8379b`   (~22% darker, on purpose: a rim at
+ *                                            full ramp value blooms and eats
+ *                                            the vein contrast it frames)
+ *
+ * So changing `hud.css`'s ramp will NOT move the ground. The two are matched by
+ * eye at band 4, not by a shared constant, and re-matching is a manual step.
  */
 export function makeBlightMaterial() {
   return new THREE.ShaderMaterial({
@@ -344,11 +359,23 @@ export class Blight {
     this.ctx = ctx;
     ctx.blight = this;
     ctx.events.on('blightSeed', (s) => this._addPatch(s));
-    ctx.events.on('corruptionBand', ({ band }) => { this.band = band; });
+    ctx.events.on('corruptionBand', (e) => { if (Number.isFinite(e?.band)) this.band = e.band; });
     ctx.events.on('stageStart', () => this._clear());
   }
 
-  _addPatch({ x, z, strength }) {
+  /**
+   * A malformed seed is dropped, not clamped. A non-finite x/z builds a NaN
+   * bounding sphere — and since every comparison against NaN is false, the
+   * frustum reports it visible on every frame forever — plus a NaN `uRadius`,
+   * which turns the fragment shader's `r > uRadius` discard *off* and shades
+   * the full cap-sized disc. Nothing throws on that path, so nothing would
+   * surface it. `Corruption.seed` cannot produce one today; the moment blight
+   * seeds cross the wire, the payload stops being trusted.
+   */
+  _addPatch(seed) {
+    const x = seed?.x, z = seed?.z, strength = seed?.strength;
+    if (!Number.isFinite(x) || !Number.isFinite(z)) return;
+    if (!Number.isFinite(strength) || strength <= 0) return;
     const patch = {
       x, z, strength,
       // Phase offset for the crawl shader — per-patch so a field of patches
@@ -395,7 +422,12 @@ export class Blight {
       if (!m) continue;
       const u = m.material.uniforms;
       const target = radiusOf(p.strength, world);
-      if (u.uRadius.value < target) {
+      // The spread is gameplay time, not wall clock. `update` runs every frame
+      // regardless of `ctx.paused` (the Engine gates only the fixedUpdate
+      // accumulator), and `uTime` rides `ctx.time`, which does freeze — so
+      // growing on the raw frame `dt` would spend the whole 2 -> 14 m crawl
+      // behind an open menu while the crawl *animation* stood still.
+      if (!ctx.paused && u.uRadius.value < target) {
         u.uRadius.value = Math.min(target, u.uRadius.value + GROW_RATE * dt);
       }
       u.uTime.value = ctx.time;
@@ -418,9 +450,23 @@ export class Blight {
    * it (0.9 on death), so assigning would stomp a death vignette mid-fade and
    * summing would ratchet against the damp into a value nobody chose. A floor
    * lets the loudest writer win and re-asserts the band's own level once the
-   * transient has decayed past it. The cost is that the band level is written
-   * before the pipeline's damp reads it, so on-screen it lands a few percent
-   * under the nominal offset at 60Hz — under the noise floor of the effect.
+   * transient has decayed past it.
+   *
+   * The cost, stated exactly because it is easy to mis-round: the band floor is
+   * written in the `update` phase, and `RenderPipeline.update` then applies its
+   * own `damp(vignetteBoost, 0, 0.98, dt)` before reading the result into
+   * `uVignette`. So one frame of decay always eats part of the floor, and the
+   * bite is frame-rate dependent — the damp retains `1 - 0.02^dt` per frame:
+   *
+   *   60Hz -> 93.7% retained -> band 4 lands 0.187 against a nominal 0.20 (6.4% under)
+   *   30Hz -> 87.7% retained -> the same band lands ~12% under
+   *
+   * That is a real coupling between the player's frame rate and the band's
+   * on-screen intensity, not a rounding artifact. It is left in: the alternative
+   * is pre-compensating by the damp's own constant, which would couple this
+   * system to a pipeline internal it currently only writes through, and the
+   * magnitude is well under what the 2.5 s blend makes perceptible. Anyone
+   * tuning `BAND_GRADE` should read the vignette numbers as nominal-minus-6%.
    */
   _grade(ctx, dt) {
     const pipe = ctx.pipeline;
