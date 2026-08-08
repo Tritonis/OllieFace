@@ -572,9 +572,17 @@ Append inside `init(ctx)`, after the `stageStart` subscription:
     // the systems decoupled (CONTRACTS.md) and means blight transforms, chest
     // bursts and shop buys all pay without knowing corruption exists. `feed`
     // is authority-gated, so the same event firing on a client is inert.
-    ctx.events.on('itemPickup', ({ id, count = 1 }) => {
+    //
+    // PLAN CORRECTION (fix round 1): the real producer, Items._set, emits
+    // { id, count: <absolute new stack total>, delta: <change> }. Feeding by
+    // `count` over-counted quadratically and charged corruption on removals
+    // (Marrow Kiln). Feed by the GAIN only — `delta` when present, `count` as
+    // the change only for delta-less synthetic payloads.
+    ctx.events.on('itemPickup', ({ id, count = 1, delta }) => {
+      const gained = delta ?? count;
+      if (gained <= 0) return;
       const tier = ITEM_BY_ID.get(id)?.tier;
-      this.feed(ctx.player, (SOURCES.itemFeed[tier] ?? 1) * count);
+      this.feed(ctx.player, (SOURCES.itemFeed[tier] ?? 1) * gained);
     });
 ```
 
