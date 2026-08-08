@@ -1,5 +1,7 @@
 import { ITEMS, ITEM_BY_ID, ITEMS_BY_TIER, TIERS, BLIGHT_BY_BASE, hyperbolic } from '../data/items.js';
 import { EQUIPMENT, EQUIPMENT_BY_ID } from '../data/equipment.js';
+import { MUTATION } from '../data/corruption.js';
+import { RNG } from '../core/MathUtil.js';
 
 /**
  * Items owns the inventory, the stat pipeline, the item hook dispatch, the
@@ -159,6 +161,11 @@ export class Items {
     // Lingering ground hazards owned by items (Spore Sac).
     this._clouds = [];
     this._lastHurt = -999;
+
+    // Highest band that has already taken a stack this run. Bleeding the gauge
+    // down and reclimbing must not pay a second time — the threshold is a
+    // one-way door, like the blight scar that never shrinks.
+    this._mutePeak = 0;
   }
 
   init(ctx) {
@@ -255,6 +262,18 @@ export class Items {
       this.equipmentId = e.id && EQUIPMENT_BY_ID.has(e.id) ? e.id : null;
       this.equipCharges = e.charges ?? 0;
       this.equipTimer = e.cooldown ?? 0;
+    });
+
+    // The gauge reaching into the inventory (launch spec §1, expression 3).
+    // Upward crossings only, one stack per threshold, never the same band
+    // twice. The writes ride the 'corrupt' reason, so Corruption does not
+    // re-charge and a client mirrors them like any other inventory change.
+    ctx.events.on('corruptionBand', ({ band, prev }) => {
+      if (!ctx.authority || band <= prev) return;
+      for (let b = Math.max(prev + 1, MUTATION.minBand, this._mutePeak + 1); b <= band; b++) {
+        this._mutePeak = b;
+        this._mutateAt(b);
+      }
     });
 
     this._rebuildHooks();
@@ -364,6 +383,31 @@ export class Items {
     // same items twice, at the highest tier in the game.
     this._set(def.corrupts, 0, 'corrupt');
     return this._set(id, this.count(id) + held, 'corrupt');
+  }
+
+  /**
+   * One threshold's toll: convert a random held base stack into its blight
+   * card. The pick comes off a derived stream seeded per (run seed, band) —
+   * one draw on ctx.rng here would displace every later shared roll relative
+   * to a run whose inventory happened to differ, which is the sp-equivalence
+   * hazard the shrine-type roll already documents. Eligible ids are sorted so
+   * the pick cannot depend on Map insertion order.
+   */
+  _mutateAt(band) {
+    const eligible = [];
+    for (const [id, count] of this.counts) {
+      if (count > 0 && BLIGHT_BY_BASE.has(id)) eligible.push(id);
+    }
+    if (!eligible.length) return false;
+    eligible.sort();
+    const rng = new RNG(((this.ctx.seed >>> 0) ^ (0x6b2f8d43 * (band + 1))) >>> 0 || 1);
+    const baseId = rng.pick(eligible);
+    const blight = BLIGHT_BY_BASE.get(baseId);
+    const held = this.count(baseId);
+    this._set(baseId, 0, 'corrupt');
+    this._set(blight.id, this.count(blight.id) + held, 'corrupt');
+    this.ctx.events.emit('itemMutated', { baseId, blightId: blight.id, count: held, band });
+    return true;
   }
 
   /**

@@ -52,6 +52,15 @@ export const VOIDTOUCHED = {
   refund: 0.03,          // fraction of World Corruption returned per kill
 };
 
+/**
+ * Item mutation — the gauge reaching into the inventory. Each upward band
+ * crossing at or above `minBand` converts one randomly chosen held stack into
+ * its blight counterpart (data/items.js BLIGHT_BY_BASE). Band 1 is exempt for
+ * the same reason band 1 has no screen grade: Seeded is the warning, Blighted
+ * is when the world starts taking.
+ */
+export const MUTATION = { minBand: 2 };
+
 export function voidCreditRate(world) {
   return VOIDTOUCHED.ratePerWorld * Math.max(0, world);
 }
