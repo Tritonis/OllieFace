@@ -322,6 +322,37 @@ body.menu-open { cursor: default; }
   0% { transform: scale(1.16); } 100% { transform: scale(1); }
 }
 
+/* The run's second price, directly under the first. The band label is taken
+   out of flow so the bar itself stays a thin rule; the margin below is the
+   room it borrows back from the `.zone--tl` column gap. */
+.corruption {
+  position: relative;
+  width: 180px;
+  height: 6px;
+  margin-bottom: 0.9em;
+  background: rgba(20, 12, 30, 0.55);
+  border: 1px solid rgba(160, 120, 255, 0.25);
+  border-radius: 3px;
+}
+.corruption-fill {
+  height: 100%;
+  width: 0%;
+  background: #7a4fd0;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+.corruption-band {
+  position: absolute;
+  left: 0; top: 8px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #b9a1e8;
+}
+.corruption[data-band="2"] .corruption-fill { background: #9a3fe0; }
+.corruption[data-band="3"] .corruption-fill { background: #c72fd6; box-shadow: 0 0 6px #c72fd6; }
+.corruption[data-band="4"] .corruption-fill { background: #ff2fb0; box-shadow: 0 0 10px #ff2fb0; }
+
 .inventory {
   display: flex;
   flex-wrap: wrap;

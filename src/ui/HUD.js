@@ -4,6 +4,10 @@ import { ITEM_BY_ID } from '../data/items.js';
 // The affix keys are internal ids (three are RoR2's elite prefixes verbatim);
 // only the label may reach the screen. tests/branding-display.test.mjs pins it.
 import { ELITE_STATS } from '../data/enemies.js';
+// Tuning data, not the system: the band names and the top of the gauge come
+// from the same table `Corruption` bands against. The value itself is read
+// through `ctx.corruption`.
+import { BANDS } from '../data/corruption.js';
 // A constant, not the system: the key the equipment slot is bound to is decided
 // in one place (`Items`) and printed in another, and hardcoding 'F' here is how
 // a rebind ships a HUD that lies about its own controls. Nothing else about
@@ -624,6 +628,22 @@ export class HUD {
       this.refs.moneyVal.textContent = `$${v.toLocaleString()}`;
     });
     this.set('goldTarget', gold, () => this.pulse(this.refs.money, 'is-tick'));
+
+    // Corruption gauge: world value + band, polled like gold and sitting under
+    // it, because they are the two prices of the same transaction. Band 4's
+    // `at` is the top of the bar; past it the bar just stays full.
+    const cor = ctx.corruption;
+    if (cor && this.refs.corruption) {
+      const top = BANDS[BANDS.length - 1].at;
+      const frac = Math.min(1, (cor.world ?? 0) / top);
+      this.set('corruptionFrac', Math.round(frac * 100), (v) => {
+        this.refs.corruptionFill.style.width = `${v}%`;
+      });
+      this.set('corruptionBand', cor.band ?? 0, (v) => {
+        this.refs.corruption.dataset.band = String(v);
+        this.refs.corruptionBand.textContent = BANDS[v].name;
+      });
+    }
   }
 
   difficultyOf(coef) {
@@ -966,6 +986,9 @@ function collectRefs(root) {
 
     money: q('.money'),
     moneyVal: q('.money-val'),
+    corruption: q('.corruption'),
+    corruptionFill: q('.corruption-fill'),
+    corruptionBand: q('.corruption-band'),
     inventory: q('.inventory'),
     tierGroups: Object.fromEntries(
       TIER_ORDER.map((t) => [t, root.querySelector(`.inv-group[data-tier="${t}"]`)])
@@ -1056,6 +1079,10 @@ const TEMPLATE = (slots, notches, dirSlots) => `
   <div class="money">
     <i class="money-chip"></i>
     <span class="money-val">$0</span>
+  </div>
+  <div class="corruption" data-band="0">
+    <div class="corruption-fill"></div>
+    <b class="corruption-band">Pristine</b>
   </div>
   <div class="inventory">
     ${TIER_ORDER.map((t) => `<div class="inv-group t-${t}" data-tier="${t}"></div>`).join('')}
