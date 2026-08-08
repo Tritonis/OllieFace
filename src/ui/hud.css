@@ -364,6 +364,19 @@ body.menu-open { cursor: default; }
 }
 .corruption-route.is-on { display: block; }
 .corruption.has-route { margin-bottom: 1.9em; }
+/* A crossing is announced here too, not just on the screen grade: the gauge
+   flares once on the frame the band label changes. Kept to a glow and a label
+   kick — the bar is 6px of a busy corner, so scaling it reads as a glitch. */
+.corruption.is-tick { animation: cortick 0.5s ease-out; }
+.corruption.is-tick .corruption-band { animation: cortickband 0.5s ease-out; }
+@keyframes cortick {
+  0% { box-shadow: 0 0 0 0 rgba(255, 47, 176, 0.7); }
+  100% { box-shadow: 0 0 0 10px rgba(255, 47, 176, 0); }
+}
+@keyframes cortickband {
+  0% { transform: translateY(-2px); color: #ff8fd6; }
+  100% { transform: translateY(0); color: #b9a1e8; }
+}
 .corruption[data-band="2"] .corruption-fill { background: #9a3fe0; }
 .corruption[data-band="3"] .corruption-fill { background: #c72fd6; box-shadow: 0 0 6px #c72fd6; }
 .corruption[data-band="4"] .corruption-fill { background: #ff2fb0; box-shadow: 0 0 10px #ff2fb0; }

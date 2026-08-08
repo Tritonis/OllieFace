@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Blight, SHIMMER, BAND_SKY, VOID_SKY } from '../src/systems/Blight.js';
+import { Blight, SHIMMER, BAND_SKY, BAND_GRADE, VOID_SKY } from '../src/systems/Blight.js';
 import { MASK_UNIFORMS, MAX_MASK } from '../src/shaders/BlightMask.js';
 import { shimmerUniforms, MAX_RIMS, SHIMMER_DECL, SHIMMER_APPLY } from '../src/shaders/BlightShimmer.js';
 import { GradeShader } from '../src/shaders/GradeShader.js';
@@ -338,6 +338,90 @@ console.log('rim motes: budgeted, fxRng-only, on the rim, paused-gated');
   ctx.paused = true;
   for (let i = 0; i < 60; i++) b.update(ctx, 1 / 60);
   ok(emitted.length === before, 'a paused frame emits nothing');
+}
+
+console.log('a band crossing snaps instead of drifting');
+{
+  const { SNAP, GRADE_BLEND } = await import('../src/systems/Blight.js');
+  ok(SNAP && SNAP.window > 0 && SNAP.rateMult > 1, 'snap constants exported');
+
+  // Same env/fog scaffold as the sky suite above: the blend the snap has to
+  // accelerate lives on _skyW, and _skyW only drives anything with a baseline.
+  const mkC = (hex) => new THREE.Color(hex).convertSRGBToLinear();
+  const baseline = {
+    zenith: mkC(0x2a3a5e), horizon: mkC(0xc9885a), haze: mkC(0xe8b06a),
+    fogColor: mkC(0x8a7a6a), fogDensity: 0.0036,
+  };
+  const mkEnv = (ctx) => {
+    const sky = {
+      uZenith: { value: baseline.zenith.clone() },
+      uHorizon: { value: baseline.horizon.clone() },
+      uHaze: { value: baseline.haze.clone() },
+      uGround: { value: mkC(0x6a5a48) },
+      uMid: { value: new THREE.Color() },
+      uBounce: { value: new THREE.Color() },
+    };
+    ctx.environment = { biomeBaseline: baseline, skyUniforms: sky, _deriveSkyMid: Environment.prototype._deriveSkyMid };
+    ctx.environment._deriveSkyMid();
+    ctx.scene = { fog: { color: baseline.fogColor.clone(), density: baseline.fogDensity } };
+    return sky;
+  };
+
+  const ctx = makeCtx();
+  mkEnv(ctx);
+  const b = new Blight();
+  b.init(ctx);
+  // Settle band 3 out first, so the measured crossing is 3 -> 4 and not the
+  // whole 0 -> 4 ramp doing the work.
+  ctx.events.emit('corruptionBand', { band: 3, prev: 2 });
+  for (let i = 0; i < 900; i++) b.update(ctx, 1 / 60);
+  ctx.pipeline.vignetteBoost = 0;
+  ctx.pipeline.aberration = 0;
+  const wBefore = b._skyW;
+
+  ctx.events.emit('corruptionBand', { band: 4, prev: 3 });
+  ok(ctx.pipeline.vignetteBoost >= SNAP.vignette, 'crossing spikes the vignette floor immediately');
+  ok(Math.abs(ctx.pipeline.aberration - SNAP.aberration) < 1e-12, 'crossing adds its aberration immediately');
+  ok(b._skyW === wBefore, 'the pulse is a pipeline write, not a teleported blend');
+
+  // Blend speed: within SNAP.window seconds the sky weight must be essentially
+  // home. The un-snapped settle retains 0.03^(t/GRADE_BLEND) of the gap, so
+  // 1.6s of ordinary drift off band 3 only reaches ~0.957 of the way — the
+  // threshold below is above anything the un-dilated rate can reach in the
+  // window, by a margin no rounding closes.
+  const gap = 1 - wBefore;
+  const unsnapped = 1 - gap * Math.pow(0.03, SNAP.window / GRADE_BLEND);
+  let t = 0;
+  while (t < SNAP.window) { b.update(ctx, 1 / 60); t += 1 / 60; }
+  ok(b._skyW > 0.999 && b._skyW > unsnapped + 0.01,
+     `sky weight ${b._skyW.toFixed(5)} beats the un-snapped ${unsnapped.toFixed(5)} within ${SNAP.window}s`);
+
+  // ...and the dilation is a window, not a permanent rate change.
+  ok(b._snapT <= 1e-9, 'the snap window closes on its own');
+  // The spike retracts under this system's own power. In game RenderPipeline's
+  // damp is what fades it, but a floor that can only ever raise the channel
+  // would leave the crossing's 0.45 pinned forever anywhere that damp is not
+  // running — so Blight takes its own write back when nobody else has moved it.
+  ok(Math.abs(ctx.pipeline.vignetteBoost - BAND_GRADE[4].vignette) < 1e-3,
+     `the crossing spike retracts to the band floor without an external damper (${ctx.pipeline.vignetteBoost.toFixed(3)})`);
+  ctx.events.emit('corruptionBand', { band: 2, prev: 4 });
+  for (let i = 0; i < 600; i++) b.update(ctx, 1 / 60);   // 10s: long past the window
+  ok(b._skyW === BAND_SKY[2], 'past the window the blend still lands exactly on its band');
+
+  // A redundant emit is not a crossing: nothing to announce, nothing to pulse.
+  ctx.pipeline.vignetteBoost = 0;
+  ctx.events.emit('corruptionBand', { band: 2, prev: 2 });
+  ok(ctx.pipeline.vignetteBoost === 0, 'a repeat of the same band does not pulse');
+
+  // Degraded ctx: no pipeline at all must not throw on the crossing.
+  const bare = makeCtx();
+  bare.pipeline = null;
+  const b2 = new Blight();
+  b2.init(bare);
+  let threw = false;
+  try { bare.events.emit('corruptionBand', { band: 3, prev: 0 }); b2.update(bare, 1 / 60); } catch { threw = true; }
+  ok(!threw, 'a ctx without a pipeline never throws on a crossing');
+  ok(b2.band === 3, 'the band still lands without a pipeline');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

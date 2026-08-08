@@ -675,6 +675,7 @@ export class HUD {
       this.set('corruptionBand', cor.band ?? 0, (v) => {
         this.refs.corruption.dataset.band = String(v);
         this.refs.corruptionBand.textContent = BANDS[v].name;
+        this.pulse(this.refs.corruption, 'is-tick');
       });
 
       // Route preview, not surprise (launch spec §2): from stage 3 the party

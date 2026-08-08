@@ -49,6 +49,17 @@ export const BAND_GRADE = [
 export const BAND_SKY = [0, 0, 0.30, 0.60, 1.0];
 export const VOID_SKY = { zenith: 0x120b26, horizon: 0x3a1b52, haze: 0x7a2fae, fog: 0x241236, fogBoost: 0.55 };
 export const GRADE_BLEND = 2.5;   // seconds for a band change to settle
+/**
+ * A band crossing is announced, not discovered (2026-08-08 playtest). For
+ * SNAP.window seconds after a crossing the grade/sky settle runs at
+ * SNAP.rateMult speed — the world lurches to its new state — and the pipeline
+ * takes an immediate vignette + aberration hit, the same channels VFX speaks.
+ *
+ * Dilating time into `settle` rather than raising GRADE_RATE is what keeps this
+ * one knob: every blended channel (sat, vignette offset, sky weight) rides the
+ * same `dt`, so none of them can be left behind by a later channel being added.
+ */
+export const SNAP = { window: 1.6, rateMult: 5, vignette: 0.45, aberration: 0.0035 };
 // Per-second damp rate that lands 97% of the way home in GRADE_BLEND seconds.
 // Derived rather than tuned so the constant above is the only knob.
 const GRADE_RATE = 1 - Math.pow(0.03, 1 / GRADE_BLEND);
@@ -383,7 +394,13 @@ export class Blight {
     this._satBase = null;
     this._sat = 0;
     this._vig = 0;
+    // The last value we put on `pipeline.vignetteBoost`. Null until first
+    // touch, which can never equal a live number, so frame one takes the floor.
+    this._vigWrote = null;
     this._skyW = 0;
+    // Seconds of accelerated settle left after a crossing. Presentation only:
+    // nothing gameplay-readable ever asks how fast the screen got there.
+    this._snapT = 0;
   }
 
   init(ctx) {
@@ -393,7 +410,22 @@ export class Blight {
     // Clamped on assignment: both the shimmer strength cap and the vein
     // emissive ceiling are linear in `band`, and neither is bounded downstream.
     ctx.events.on('corruptionBand', (e) => {
-      if (Number.isFinite(e?.band)) this.band = Math.max(0, Math.min(Math.floor(e.band), 4));
+      if (!Number.isFinite(e?.band)) return;
+      const band = Math.max(0, Math.min(Math.floor(e.band), 4));
+      // Only an actual crossing is a moment. Corruption re-announces the band
+      // it is already on (a clamped 12 is still band 4), and a pulse per emit
+      // would ratchet the vignette against the pipeline's damp for free.
+      if (band === this.band) return;
+      this.band = band;
+      this._snapT = SNAP.window;
+      // The floor/sum split matches _grade and VFX: vignetteBoost is a floor so
+      // the loudest writer wins, aberration is additive because that is how
+      // every other transient spends it.
+      const pipe = this.ctx?.pipeline;
+      if (pipe) {
+        pipe.vignetteBoost = Math.max(pipe.vignetteBoost || 0, SNAP.vignette);
+        pipe.aberration = (pipe.aberration || 0) + SNAP.aberration;
+      }
     });
     ctx.events.on('stageStart', () => this._clear());
   }
@@ -450,6 +482,9 @@ export class Blight {
   }
 
   update(ctx, dt) {
+    // Burns on raw frame time, like the grade blend it accelerates — both are
+    // screen effects, and neither waits behind an open menu.
+    if (this._snapT > 0) this._snapT = Math.max(0, this._snapT - dt);
     const world = ctx.corruption?.world || 0;
     for (let i = 0; i < this.patches.length; i++) {
       const p = this.patches[i];
@@ -512,12 +547,28 @@ export class Blight {
     if (!gradeU?.uSaturation) return;
     if (this._satBase == null) this._satBase = gradeU.uSaturation.value;
 
+    // One knob for the whole blend: inside a snap window every settled channel
+    // sees dilated time, so the lurch is uniform and adding a channel later
+    // cannot accidentally opt out of it.
+    const sdt = this._snapT > 0 ? dt * SNAP.rateMult : dt;
+
     const g = BAND_GRADE[Math.min(this.band, BAND_GRADE.length - 1)] || BAND_GRADE[0];
-    this._sat = settle(this._sat, g.sat, dt);
-    this._vig = settle(this._vig, g.vignette, dt);
+    this._sat = settle(this._sat, g.sat, sdt);
+    this._vig = settle(this._vig, g.vignette, sdt);
 
     gradeU.uSaturation.value = this._satBase + this._sat;
-    pipe.vignetteBoost = Math.max(pipe.vignetteBoost || 0, this._vig);
+    // The floor is still the rule — the loudest writer wins — with one carve-out
+    // the crossing spike needs. `Math.max` alone can only ever *raise*
+    // vignetteBoost, so the 0.45 hit a crossing writes can only come back down
+    // if somebody else lowers it. In game that somebody is RenderPipeline's own
+    // damp, which is exactly the intended fade. But this system must not depend
+    // on another system to retract its own transient, so: if the live value is
+    // byte-identical to what we wrote last frame, nothing else has touched it
+    // (no damp, no VFX spike) and we are free to assign our own level back.
+    // Anything else on the channel takes the floor path, unchanged.
+    const cur = pipe.vignetteBoost || 0;
+    pipe.vignetteBoost = cur === this._vigWrote ? this._vig : Math.max(cur, this._vig);
+    this._vigWrote = pipe.vignetteBoost;
 
     // --- sky and fog: blend toward the void against the biome's own anchor.
     // Absolute mix from the recorded baseline every frame, never incremental:
@@ -528,7 +579,7 @@ export class Blight {
     const base = env?.biomeBaseline;
     const target = BAND_SKY[Math.min(this.band, BAND_SKY.length - 1)] || 0;
     const prevW = this._skyW;
-    this._skyW = settle(this._skyW, target, dt);
+    this._skyW = settle(this._skyW, target, sdt);
     if (!base || (this._skyW === 0 && prevW === 0)) return;
     const w = this._skyW;
     const sky = env.skyUniforms;
