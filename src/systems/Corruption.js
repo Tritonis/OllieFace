@@ -1,0 +1,66 @@
+// src/systems/Corruption.js
+import { bandOf, SOURCES } from '../data/corruption.js';
+
+/**
+ * The run's second economy. Corruption rises only through choices — chest
+ * tithes, void credit, item pickups, greed time — and never passively. This
+ * system owns the numbers and the band events; what the world *does* about
+ * them (blight visuals, Voidtouched spawns, route gates) belongs to the
+ * systems that listen.
+ *
+ * Host-authoritative like every other state change: `feed` is a no-op off the
+ * host, and clients will learn the world value from replication (later plan).
+ * Deliberately consumes NO ctx.rng draws — there is nothing to roll here, and
+ * staying off the shared stream is what keeps sp-equivalence green.
+ */
+const MAX_SEEDS = 64;
+
+export class Corruption {
+  constructor() {
+    this._byPlayer = new Map();   // player entity -> corruption
+    this._world = 0;
+    this._band = 0;
+    this._greed = false;
+    this.seeds = [];              // { x, z, strength }, oldest first
+  }
+
+  init(ctx) {
+    this.ctx = ctx;
+    ctx.corruption = this;
+    // Greed time: looting after the teleporter has finished is the one
+    // passive-looking source, and it is still a choice — leaving is free.
+    ctx.events.on('teleporterComplete', () => { this._greed = true; });
+    ctx.events.on('stageStart', () => { this._greed = false; });
+  }
+
+  get world() { return this._world; }
+  get band() { return this._band; }
+  corruptionOf(player) { return this._byPlayer.get(player) || 0; }
+
+  /**
+   * Add corruption, attributed to `player`. Returns the amount actually added
+   * (after the greed multiplier), 0 when refused. `position` is advisory —
+   * callers that mark a place also call `seed()`; feed itself plants nothing.
+   */
+  feed(player, amount, position = null) {
+    if (!this.ctx?.authority) return 0;
+    if (!player || !(amount > 0)) return 0;   // rejects 0, negatives and NaN in one test
+    const added = this._greed ? amount * SOURCES.greedMult : amount;
+    this._byPlayer.set(player, (this._byPlayer.get(player) || 0) + added);
+    this._world += added;
+    const prev = this._band;
+    this._band = bandOf(this._world);
+    this.ctx.events.emit('corruptionChanged', { world: this._world, band: this._band });
+    if (this._band !== prev) this.ctx.events.emit('corruptionBand', { band: this._band, prev });
+    return added;
+  }
+
+  /** Record where greed happened. The blight-visuals plan grows fields from these. */
+  seed(position, strength = 1) {
+    if (!this.ctx?.authority || !position) return;
+    const s = { x: position.x, z: position.z, strength };
+    this.seeds.push(s);
+    if (this.seeds.length > MAX_SEEDS) this.seeds.shift();
+    this.ctx.events.emit('blightSeed', s);
+  }
+}
