@@ -6,6 +6,7 @@ import { Items } from '../src/systems/Items.js';
 import { Corruption } from '../src/systems/Corruption.js';
 import { BLIGHT_BY_BASE, ITEM_BY_ID } from '../src/data/items.js';
 import { HUD } from '../src/ui/HUD.js';
+import { TIER_ORDER } from '../src/ui/Icons.js';
 import { MUTATION, BANDS } from '../src/data/corruption.js';
 import { RNG } from '../src/core/MathUtil.js';
 
@@ -160,6 +161,139 @@ console.log('the HUD turns the event into a blight-tier toast');
   // rather than toast "undefined".
   fire({ baseId: baseA, blightId: 'no-such-card', count: 1, band: 3 });
   ok(toasts.length === 1, 'an unknown blight id is refused, not printed');
+}
+
+// The strip end of the same wire. Same prototype-driving idiom, one step
+// further: `onItemPickup` builds real elements, so it runs against a document
+// stub holding only the DOM surface that method touches (plus a no-op canvas,
+// because `itemArt` rasterises its emblem). The mutation is driven by real
+// Items + real Corruption — the HUD sees exactly the two `'corrupt'` writes
+// and the `itemMutated` the game emits, in the order it emits them.
+function fakeDom() {
+  const noop = new Proxy(function () {}, {
+    get: (t, k) => (k === 'canvas' ? noop : noop),
+    set: () => true,
+    apply: () => noop,
+  });
+  const makeEl = (tag) => ({
+    tagName: tag, className: '', dataset: {}, innerHTML: '', offsetWidth: 0,
+    width: 0, height: 0, children: [], parent: null, _badge: null,
+    classList: {
+      _s: new Set(),
+      add(...c) { for (const x of c) this._s.add(x); },
+      remove(...c) { for (const x of c) this._s.delete(x); },
+      toggle(c, on) { if (on) this._s.add(c); else this._s.delete(c); },
+      contains(c) { return this._s.has(c); },
+    },
+    get parentElement() { return this.parent; },
+    get lastElementChild() { return this.children[this.children.length - 1] || null; },
+    get childElementCount() { return this.children.length; },
+    appendChild(c) { c.parent = this; this.children.push(c); return c; },
+    remove() {
+      const p = this.parent;
+      if (p) p.children.splice(p.children.indexOf(this), 1);
+      this.parent = null;
+    },
+    querySelector(sel) {
+      if (sel !== '.item-stack') return null;
+      return (this._badge ??= makeEl('b'));
+    },
+    getContext: () => noop,
+    toDataURL: () => 'data:,',
+  });
+  globalThis.document ??= { createElement: (tag) => makeEl(tag) };
+  globalThis.requestAnimationFrame ??= () => {};
+  globalThis.addEventListener ??= () => {};
+  return makeEl;
+}
+
+/** Every tile currently on the strip, walked from the tier groups. */
+function stripTiles(self) {
+  const out = [];
+  for (const group of Object.values(self.refs.tierGroups)) {
+    for (const row of group.children) for (const el of row.children) out.push(el);
+  }
+  return out;
+}
+
+/**
+ * A HUD bound to a real game's event bus. `bind` is driven on a hand-built
+ * `this` and its subscriptions are collected, then only the two inventory
+ * events are forwarded from the real bus — the rest of the HUD's listeners
+ * have no refs to paint into and are not what this arm is about.
+ */
+function bindHud(ctx, makeEl) {
+  const toasts = [], cards = [];
+  const self = Object.create(HUD.prototype);
+  self.inv = new Map();
+  self.refs = {
+    inventory: { addEventListener() {} },
+    tierGroups: Object.fromEntries(TIER_ORDER.map((t) => [t, makeEl('div')])),
+  };
+  self.menus = { showPickup: (c) => cards.push(c) };
+  self.toast = (text, tier, id) => toasts.push({ text, tier, id });
+
+  const listeners = new Map();
+  self.bind({ events: { on(name, fn) { if (!listeners.has(name)) listeners.set(name, []); listeners.get(name).push(fn); } } });
+  for (const name of ['itemPickup', 'itemMutated']) {
+    for (const fn of listeners.get(name) || []) ctx.events.on(name, fn);
+  }
+  return { self, toasts, cards };
+}
+
+console.log('the strip converts the stack — the zeroed tile leaves, the blight tile takes its place');
+{
+  const makeEl = fakeDom();
+  const { ctx, items, corruption } = makeCtx();
+  const { self } = bindHud(ctx, makeEl);
+  const blightId = blightOf(baseA);
+
+  items.give(baseA, 3);
+  ok(self.inv.has(baseA) && self.inv.get(baseA).count === 3, 'the base stack is on the strip to begin with');
+
+  corruption.feed(ctx.player, BANDS[MUTATION.minBand].at + 1 - corruption.world);
+
+  ok(items.count(baseA) === 0 && items.count(blightId) === 3, 'the game converted the stack');
+  ok(!self.inv.has(baseA), 'the zeroed base tile left the strip map');
+  const ids = stripTiles(self).map((el) => el.dataset.id);
+  ok(!ids.includes(baseA), `no stale base element in the strip structure (tiles: ${ids.join(', ') || 'none'})`);
+  const blight = self.inv.get(blightId);
+  ok(blight && blight.count === 3, 'the blight tile holds the moved copies');
+  ok(blight && blight.badge.textContent === 'x3', 'and its badge reads the moved stack size');
+  ok(ids.includes(blightId), 'the blight element is in the strip structure');
+}
+
+console.log('a corrupt write is not an acquisition — the mutation speaks once');
+{
+  const makeEl = fakeDom();
+  const { ctx, items, corruption } = makeCtx();
+  const { self, toasts, cards } = bindHud(ctx, makeEl);
+
+  items.give(baseA, 3);
+  const toastsBefore = toasts.length, cardsBefore = cards.length;
+
+  corruption.feed(ctx.player, BANDS[MUTATION.minBand].at + 1 - corruption.world);
+
+  const during = toasts.slice(toastsBefore);
+  ok(during.length === 1, `exactly one toast for the mutation (got ${during.length}: ${during.map((t) => t.text).join(' | ')})`);
+  ok(during[0]?.tier === 'blight', 'and it is the blight toast, not a pickup toast');
+  ok(cards.length === cardsBefore, 'no pickup card raised for either corrupt write');
+  ok(self.inv.get(blightOf(baseA))?.count === 3, 'while the strip still repainted the arriving stack');
+}
+
+console.log('a give still toasts and still cards — non-corrupt writes are untouched');
+{
+  const makeEl = fakeDom();
+  const { ctx, items } = makeCtx();
+  const { toasts, cards } = bindHud(ctx, makeEl);
+  const blightId = blightOf(baseA);
+
+  items.give(baseA, 2);
+  ok(toasts.length === 1 && cards.length === 1, 'a plain give toasts and raises its card');
+  // A blight card taken on its own is an acquisition: it announces itself even
+  // though settling it fires 'corrupt' writes underneath.
+  items.give(blightId, 1);
+  ok(toasts.some((t) => t.id === blightId), 'a taken blight card still toasts for itself');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

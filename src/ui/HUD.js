@@ -219,7 +219,7 @@ export class HUD {
       this.equipReady = false;
     });
 
-    on('itemPickup', ({ id, count }) => this.onItemPickup(id, count));
+    on('itemPickup', ({ id, count, reason }) => this.onItemPickup(id, count, reason));
     // The strip already repaints itself off the two `itemPickup` writes the
     // conversion rides, so this line exists only to say *why* the pack changed
     // — otherwise a stack silently vanishes and an unfamiliar one appears.
@@ -287,11 +287,27 @@ export class HUD {
 
   // ---------------------------------------------------------------- events
 
-  onItemPickup(id, count) {
+  onItemPickup(id, count, reason) {
     const def = ITEM_BY_ID.get(id) ?? null;
     const tier = def?.tier || 'common';
     let entry = this.inv.get(id);
     const total = count ?? (entry ? entry.count + 1 : 1);
+
+    // A write that empties a stack retires its tile. `count` is absolute, so a
+    // zero left the icon sitting there with a blank badge — which is exactly
+    // how the strip draws a single copy, i.e. the emptied stack read as one
+    // still held. `take` and the refinery reach this too; the corruption
+    // transform is only the first routine driver of it.
+    if (total <= 0) {
+      if (!entry) return;
+      const row = entry.el.parentElement, group = row?.parentElement;
+      entry.el.remove();
+      if (row && row.childElementCount === 0) row.remove();
+      if (group && group.childElementCount === 0) group.classList.remove('has-items');
+      this.inv.delete(id);
+      this.markStripDirty();
+      return;
+    }
 
     if (!entry) {
       const group = this.refs.tierGroups[tier] || this.refs.tierGroups.common;
@@ -324,6 +340,12 @@ export class HUD {
     entry.badge.textContent = total > 1 ? `x${total}` : '';
     entry.badge.classList.toggle('is-on', total > 1);
     this.pulse(entry.el, 'is-pop');
+
+    // `'corrupt'` moves stacks between two ids; nothing was acquired. The strip
+    // above still repaints both halves, but a pickup toast and card for each
+    // would announce the conversion three times and call the emptied base a
+    // gain. The mutation speaks once, through `itemMutated`.
+    if (reason === 'corrupt') return;
 
     const name = def?.name || prettify(id);
     this.toast(name, tier, id);
