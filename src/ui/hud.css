@@ -349,6 +349,21 @@ body.menu-open { cursor: default; }
   text-transform: uppercase;
   color: #b9a1e8;
 }
+/* The door this band is buying, parked under the band label from stage 3 on.
+   Out of flow like the label, so `has-route` is what pays for the second row. */
+.corruption-route {
+  position: absolute;
+  left: 0; top: 20px;
+  display: none;
+  font-style: normal;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  color: #b9a1e8;
+  opacity: 0.75;
+}
+.corruption-route.is-on { display: block; }
+.corruption.has-route { margin-bottom: 1.9em; }
 .corruption[data-band="2"] .corruption-fill { background: #9a3fe0; }
 .corruption[data-band="3"] .corruption-fill { background: #c72fd6; box-shadow: 0 0 6px #c72fd6; }
 .corruption[data-band="4"] .corruption-fill { background: #ff2fb0; box-shadow: 0 0 10px #ff2fb0; }

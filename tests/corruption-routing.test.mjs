@@ -113,5 +113,50 @@ console.log('the void finale arms itself: boss scale applied, blight loot ringed
   ok(orbs.length === orbCount, 'clean Fracture pays no arrival loot');
 }
 
+// The HUD end of the routing table. Same prototype-driving idiom the item
+// mutation arms use: `updateMoney` owns the corruption gauge, so it runs on a
+// hand-built `this` holding only the refs that block touches. `set`'s
+// memoisation lives on `this.c`, so each arm gets a fresh subject.
+console.log('the gauge previews the route from stage 3');
+{
+  const { HUD } = await import('../src/ui/HUD.js');
+  const el = () => ({
+    textContent: '', style: {}, dataset: {},
+    classList: {
+      _s: new Set(),
+      add(c) { this._s.add(c); }, remove(c) { this._s.delete(c); },
+      toggle(c, on) { if (on) this._s.add(c); else this._s.delete(c); },
+      contains(c) { return this._s.has(c); },
+    },
+  });
+  const gauge = (band, stageIndex) => {
+    const self = Object.create(HUD.prototype);
+    self.c = {};
+    self.moneyShown = 0;
+    const refs = {
+      money: el(), moneyVal: el(),
+      corruption: el(), corruptionFill: el(), corruptionBand: el(), corruptionRoute: el(),
+    };
+    self.refs = refs;
+    self.updateMoney({ items: { gold: 0 }, corruption: { world: 0, band }, progression: { stageIndex } }, 0.016);
+    return refs;
+  };
+
+  const early = gauge(2, 0);
+  ok(early.corruptionRoute.textContent === '', 'before stage 3 the gauge says nothing about the route');
+  ok(!early.corruptionRoute.classList.contains('is-on'), 'and the line stays hidden');
+
+  const contested = gauge(2, 2);
+  ok(contested.corruptionRoute.textContent === 'Route: contested', 'Blighted at stage 3 sees both doors');
+  ok(contested.corruptionRoute.classList.contains('is-on'), 'and the line is shown');
+  ok(contested.corruption.classList.contains('has-route'), 'the gauge buys the row it needs');
+
+  ok(gauge(0, 2).corruptionRoute.textContent === `Route: ${routesFor(0)[0].name}`, 'Pristine names the clean door');
+  ok(gauge(4, 2).corruptionRoute.textContent === `Route: ${routesFor(4)[0].name}`, 'Consumed names the void door');
+
+  // The HUD never invents a name the portals would not carry.
+  ok(routesFor(0)[0].name !== routesFor(4)[0].name, 'the two doors read differently on the gauge');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
