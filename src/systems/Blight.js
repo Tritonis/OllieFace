@@ -35,6 +35,14 @@ export const BAND_GRADE = [
   { sat: -0.12, vignette: 0.11 },
   { sat: -0.20, vignette: 0.20 },
 ];
+/**
+ * Sky/fog shift per band, as a blend weight toward VOID_SKY. Bands 0-1 are
+ * null for the same reason BAND_GRADE's are: the atmosphere is the loudest
+ * instrument this system owns, and it must not play before the world is
+ * actually in trouble.
+ */
+export const BAND_SKY = [0, 0, 0.30, 0.60, 1.0];
+export const VOID_SKY = { zenith: 0x120b26, horizon: 0x3a1b52, haze: 0x7a2fae, fog: 0x241236, fogBoost: 0.55 };
 export const GRADE_BLEND = 2.5;   // seconds for a band change to settle
 // Per-second damp rate that lands 97% of the way home in GRADE_BLEND seconds.
 // Derived rather than tuned so the constant above is the only knob.
@@ -89,6 +97,13 @@ const TEAR = { lo: 1.2, hi: 2.6 };   // rise over run
 // Scratch for the per-frame projection in _shimmer — no allocation per patch.
 const _proj = new THREE.Vector3();
 const _v3 = new THREE.Vector3();
+
+// Authored sRGB, converted once — the same convention applyBiome uses for the
+// biome's own colours, so a blend between the two spaces never mixes gammas.
+const VOID_ZENITH = new THREE.Color(VOID_SKY.zenith).convertSRGBToLinear();
+const VOID_HORIZON = new THREE.Color(VOID_SKY.horizon).convertSRGBToLinear();
+const VOID_HAZE = new THREE.Color(VOID_SKY.haze).convertSRGBToLinear();
+const VOID_FOG = new THREE.Color(VOID_SKY.fog).convertSRGBToLinear();
 
 const BlightVert = /* glsl */ `
 attribute float aTear;
@@ -363,6 +378,7 @@ export class Blight {
     this._satBase = null;
     this._sat = 0;
     this._vig = 0;
+    this._skyW = 0;
   }
 
   init(ctx) {
@@ -492,6 +508,30 @@ export class Blight {
 
     gradeU.uSaturation.value = this._satBase + this._sat;
     pipe.vignetteBoost = Math.max(pipe.vignetteBoost || 0, this._vig);
+
+    // --- sky and fog: blend toward the void against the biome's own anchor.
+    // Absolute mix from the recorded baseline every frame, never incremental:
+    // applyBiome rewrites the live values on every stage build, and a system
+    // that added offsets would corrupt the new biome by the old one's delta.
+    // One frame after a rebuild the mix simply re-lands on the same weight.
+    const env = ctx.environment;
+    const base = env?.biomeBaseline;
+    const target = BAND_SKY[Math.min(this.band, BAND_SKY.length - 1)] || 0;
+    const prevW = this._skyW;
+    this._skyW = settle(this._skyW, target, dt);
+    if (!base || (this._skyW === 0 && prevW === 0)) return;
+    const w = this._skyW;
+    const sky = env.skyUniforms;
+    if (sky?.uZenith) {
+      sky.uZenith.value.copy(base.zenith).lerp(VOID_ZENITH, w * 0.60);
+      sky.uHorizon.value.copy(base.horizon).lerp(VOID_HORIZON, w * 0.85);
+      sky.uHaze.value.copy(base.haze).lerp(VOID_HAZE, w * 0.85);
+    }
+    const fog = ctx.scene?.fog;
+    if (fog && base.fogColor) {
+      fog.color.copy(base.fogColor).lerp(VOID_FOG, w * 0.80);
+      fog.density = base.fogDensity * (1 + VOID_SKY.fogBoost * w);
+    }
   }
 
   /**

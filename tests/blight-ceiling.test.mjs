@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Blight, SHIMMER } from '../src/systems/Blight.js';
+import { Blight, SHIMMER, BAND_SKY, VOID_SKY } from '../src/systems/Blight.js';
 import { MASK_UNIFORMS, MAX_MASK } from '../src/shaders/BlightMask.js';
 import { shimmerUniforms, MAX_RIMS, SHIMMER_DECL, SHIMMER_APPLY } from '../src/shaders/BlightShimmer.js';
 import { GradeShader } from '../src/shaders/GradeShader.js';
@@ -101,6 +101,43 @@ console.log('shimmer records: near rims project, inside/far/behind are skipped')
   ctx.camera.updateMatrixWorld(true);
   b.update(ctx, 0.016);
   ok(g.uRimCount.value === 0, 'rim beyond SHIMMER.far writes nothing');
+}
+
+console.log('per-band sky and fog shift, and byte-for-byte restore');
+{
+  ok(Array.isArray(BAND_SKY) && BAND_SKY.length === 5 && BAND_SKY[0] === 0 && BAND_SKY[1] === 0, 'bands 0-1 leave the sky alone');
+  ok(BAND_SKY[2] < BAND_SKY[3] && BAND_SKY[3] < BAND_SKY[4], 'weight is monotonic in band');
+
+  const ctx = makeCtx();
+  const mkC = (hex) => new THREE.Color(hex).convertSRGBToLinear();
+  const baseline = {
+    zenith: mkC(0x2a3a5e), horizon: mkC(0xc9885a), haze: mkC(0xe8b06a),
+    fogColor: mkC(0x8a7a6a), fogDensity: 0.0036,
+  };
+  const sky = {
+    uZenith: { value: baseline.zenith.clone() },
+    uHorizon: { value: baseline.horizon.clone() },
+    uHaze: { value: baseline.haze.clone() },
+  };
+  ctx.environment = { biomeBaseline: baseline, skyUniforms: sky };
+  ctx.scene = { fog: { color: baseline.fogColor.clone(), density: baseline.fogDensity } };
+
+  const b = new Blight();
+  b.init(ctx);
+  ctx.events.emit('corruptionBand', { band: 4, prev: 0 });
+  for (let i = 0; i < 600; i++) b.update(ctx, 1 / 60);   // 10s >> GRADE_BLEND
+  ok(ctx.scene.fog.density > baseline.fogDensity * 1.5, 'band 4 thickens the fog by over half');
+  const vf = mkC(VOID_SKY.fog);
+  ok(ctx.scene.fog.color.g < baseline.fogColor.g, 'fog colour has moved toward the void');
+  ok(Math.abs(sky.uHorizon.value.r - baseline.horizon.r) > 1e-3, 'horizon has left its baseline');
+  void vf;
+
+  ctx.events.emit('corruptionBand', { band: 0, prev: 4 });
+  for (let i = 0; i < 900; i++) b.update(ctx, 1 / 60);
+  ok(sky.uHorizon.value.equals(baseline.horizon), 'horizon restored byte-for-byte');
+  ok(sky.uZenith.value.equals(baseline.zenith), 'zenith restored byte-for-byte');
+  ok(ctx.scene.fog.color.equals(baseline.fogColor), 'fog colour restored byte-for-byte');
+  ok(ctx.scene.fog.density === baseline.fogDensity, 'fog density restored exactly');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

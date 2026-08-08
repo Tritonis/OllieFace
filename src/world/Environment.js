@@ -419,6 +419,17 @@ export class Environment {
     // --- dust ---
     this.dustMaterial.color.set(biome.dust.color);
     this.dustMaterial.opacity = biome.dust.opacity;
+
+    // What this biome's atmosphere actually is, post-conversion — the anchor
+    // the corruption bands blend away from and hand back exactly. Presentation
+    // systems (Blight) read it; nothing here consumes it.
+    this.biomeBaseline = {
+      zenith: this.skyUniforms.uZenith.value.clone(),
+      horizon: this.skyUniforms.uHorizon.value.clone(),
+      haze: this.skyUniforms.uHaze.value.clone(),
+      fogColor: scene.fog ? scene.fog.color.clone() : null,
+      fogDensity: scene.fog ? scene.fog.density : 0,
+    };
   }
 
   _buildSky(ctx) {
