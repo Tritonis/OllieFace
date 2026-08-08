@@ -40,6 +40,8 @@
  * | `caprice`   | `Items.rollItem` — the *tier* is re-rolled first |
  * | `honour`    | `Director.spendCredits` (forced affix) + `Director.spawnOne` |
  * | `evolution` | `Director.spawnOne` via `monsterScale()` |
+ * | `maw`       | `Corruption.feed` via `corruptionMods()` |
+ * | `atonement` | `Corruption.feed` + the Voidtouched-kill refund, via `corruptionMods()` |
  *
  * `unlock` must name the challenge that `UNLOCK_BINDINGS` binds to this same id.
  * `Artifacts.init` cross-checks the two and warns if they ever drift — one of
@@ -118,6 +120,27 @@ export const ARTIFACTS = [
     mark: 'evolution',
     color: '#8ef08a',
     unlock: 'bossSlayer',
+  },
+  {
+    id: 'maw',
+    name: 'Artifact of the Maw',
+    description: 'The world corrupts twice as fast. Every greed act — every '
+      + 'chest, item, shrine and credit — feeds the gauge double.',
+    flavour: 'It was always hungry. You just started shovelling.',
+    mark: 'maw',
+    color: '#c72fd6',
+    unlock: null,
+  },
+  {
+    id: 'atonement',
+    name: 'Artifact of Atonement',
+    description: 'Hollowed kills return five times the corruption, but every '
+      + 'greed act feeds a quarter more. The debt can be worked off; the '
+      + 'interest cannot.',
+    flavour: 'The void keeps a ledger, and it accepts payment in kind.',
+    mark: 'atonement',
+    color: '#9fd4ff',
+    unlock: null,
   },
 ];
 

@@ -749,6 +749,51 @@ const MARKS = {
       g.fill(); g.stroke();
     }
   },
+  // Maw — a ring of inward teeth with the mouth left open at the top.
+  //
+  // One silhouette, not a ring plus separate teeth: the outer edge runs the
+  // long way round and the return edge zig-zags inward, so the teeth are
+  // negative space cut out of the same filled body and survive the white
+  // keyline that would otherwise weld a stroked tooth to its ring. The gap sits
+  // at the top because that is the one place the card's title is not, and it is
+  // what keeps this from reading as a cog at 20px.
+  maw: (g, s) => {
+    const R = 0.42, ROOT = 0.28, TIP = 0.15, TEETH = 7;
+    const a0 = -Math.PI / 3;              // upper right, just past the gap
+    const span = Math.PI * 5 / 3;         // 300 degrees; the missing 60 is the mouth
+    const at = (a, r) => [s * (0.5 + r * Math.cos(a)), s * (0.5 + r * Math.sin(a))];
+    const pts = [];
+    for (let i = 0; i <= 24; i++) pts.push(at(a0 + span * (i / 24), R));
+    for (let i = 0; i < TEETH; i++) {
+      const t = (k) => a0 + span * (1 - (i + k) / TEETH);
+      pts.push(at(t(0), ROOT), at(t(0.5), TIP), at(t(1), ROOT));
+    }
+    poly(g, pts);
+    g.fill(); g.stroke();
+  },
+  // Atonement — a balance, hanging level. What is owed can be paid.
+  atonement: (g, s) => {
+    g.beginPath();
+    g.moveTo(s * 0.5, s * 0.16); g.lineTo(s * 0.5, s * 0.82);
+    g.stroke();
+    poly(g, [[s * 0.10, s * 0.26], [s * 0.90, s * 0.26],
+             [s * 0.90, s * 0.33], [s * 0.10, s * 0.33]]);
+    g.fill(); g.stroke();
+    g.beginPath();
+    for (const x of [0.2, 0.8]) {
+      g.moveTo(s * x, s * 0.33); g.lineTo(s * (x - 0.11), s * 0.56);
+      g.moveTo(s * x, s * 0.33); g.lineTo(s * (x + 0.11), s * 0.56);
+    }
+    g.stroke();
+    for (const x of [0.2, 0.8]) {
+      poly(g, [[s * (x - 0.13), s * 0.56], [s * (x + 0.13), s * 0.56],
+               [s * (x + 0.08), s * 0.68], [s * (x - 0.08), s * 0.68]]);
+      g.fill(); g.stroke();
+    }
+    poly(g, [[s * 0.32, s * 0.88], [s * 0.68, s * 0.88],
+             [s * 0.60, s * 0.80], [s * 0.40, s * 0.80]]);
+    g.fill(); g.stroke();
+  },
   // ---- difficulties: one horizon, three states of it --------------------
   //
   // The same picture at three degrees of failure, so the ladder reads as a

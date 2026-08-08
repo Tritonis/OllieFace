@@ -93,6 +93,16 @@ const SACRIFICE_BASE = 0.055;
 const SACRIFICE_PER_COST = 0.0042;
 const SACRIFICE_MAX = 0.34;
 
+// The Maw. Every greed act feeds the gauge twice, so the run reaches the same
+// corruption in half the acts — the card is a clock, not a tax.
+const MAW_FEED = 2;
+
+// Atonement. The refund is the card; the feed penalty is what stops it being a
+// free one. Five back per Hollowed kill against a quarter more in, so a player
+// who never fights the void ends up worse off than one who took nothing.
+const ATONEMENT_FEED = 1.25;
+const ATONEMENT_REFUND = 5;
+
 export class Artifacts {
   constructor() {
     this.set = new Set();
@@ -110,10 +120,12 @@ export class Artifacts {
     // order against. Without one, `_defaultPick` runs — see below.
     this._chooser = null;
 
-    // Reused output objects. `monsterScale` is called once per spawned unit and
-    // `runMods` once per stat-block rebuild; neither should allocate.
+    // Reused output objects. `monsterScale` is called once per spawned unit,
+    // `runMods` once per stat-block rebuild and `corruptionMods` once per greed
+    // act; none of them should allocate.
     this._mods = { damage: 1, health: 1, regen: 1, gold: 1 };
     this._scale = { health: 1, damage: 1 };
+    this._corMods = { feed: 1, refund: 1 };
   }
 
   init(ctx) {
@@ -236,6 +248,18 @@ export class Artifacts {
     m.health = this.set.has('glass') ? GLASS_HEALTH : 1;
     m.regen = d.regen;
     m.gold = d.gold;
+    return m;
+  }
+
+  /**
+   * Multipliers on the corruption economy. `Corruption.feed` applies `feed`;
+   * the Voidtouched-kill refund applies `refund`. Reused object, same reason
+   * as `runMods`.
+   */
+  corruptionMods() {
+    const m = this._corMods;
+    m.feed = (this.set.has('maw') ? MAW_FEED : 1) * (this.set.has('atonement') ? ATONEMENT_FEED : 1);
+    m.refund = this.set.has('atonement') ? ATONEMENT_REFUND : 1;
     return m;
   }
 
