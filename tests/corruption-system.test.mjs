@@ -1,7 +1,7 @@
 // tests/corruption-system.test.mjs
 import { Corruption } from '../src/systems/Corruption.js';
 import { Items } from '../src/systems/Items.js';
-import { BANDS, SOURCES } from '../src/data/corruption.js';
+import { BANDS, SOURCES, VOIDTOUCHED } from '../src/data/corruption.js';
 import { ITEM_BY_ID } from '../src/data/items.js';
 
 let pass = 0, fail = 0;
@@ -172,6 +172,41 @@ console.log('the blight transform does not re-charge stacks already paid for');
   ctx.items.give('spasm-gland', 1);
   ok(c.world === expected + SOURCES.itemFeed.blight,
     `a later real pickup of the blight card still feeds ${SOURCES.itemFeed.blight} (got ${c.world - expected})`);
+}
+
+console.log('bleed drains the gauge and walks bands back down');
+{
+  const { ctx } = makeCtx();
+  ctx.player = P();
+  const c = new Corruption();
+  c.init(ctx);
+  c.feed(ctx.player, 120);                       // band 3 (Overrun, at 110)
+  const events = [];
+  ctx.events.on('corruptionBand', (p) => events.push(p));
+  const taken = c.bleed(ctx.player, 70);
+  ok(taken === 70, 'bleed returns what it took');
+  ok(c.world === 50, 'world dropped');
+  ok(c.band === 1, 'band recomputed downward (50 is Seeded)');
+  ok(events.length === 1 && events[0].band === 1 && events[0].prev === 3, 'downward crossing emitted');
+  ok(c.corruptionOf(ctx.player) === 50, 'attribution followed');
+  ok(c.bleed(ctx.player, 999) === 50, 'clamped to what exists');
+  ok(c.world === 0, 'floor is zero');
+  ok(c.bleed(ctx.player, -5) === 0 && c.bleed(ctx.player, NaN) === 0, 'junk refused');
+}
+
+console.log('a Hollowed kill refunds a fraction of the world');
+{
+  const { ctx } = makeCtx();
+  ctx.player = P();
+  const c = new Corruption();
+  c.init(ctx);
+  c.feed(ctx.player, 100);
+  ctx.events.emit('kill', { victim: { affix: 'voidtouched' }, source: ctx.player, position: null, isElite: true, isBoss: false });
+  ok(Math.abs(c.world - 100 * (1 - VOIDTOUCHED.refund)) < 1e-9, 'refund is refund-fraction of current world');
+  const w = c.world;
+  ctx.events.emit('kill', { victim: { affix: 'blazing' }, source: ctx.player, position: null, isElite: true, isBoss: false });
+  ctx.events.emit('kill', { victim: null, source: ctx.player, position: null, isElite: false, isBoss: false });
+  ok(c.world === w, 'other kills refund nothing');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

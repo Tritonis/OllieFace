@@ -1,5 +1,5 @@
 // src/systems/Corruption.js
-import { bandOf, SOURCES } from '../data/corruption.js';
+import { bandOf, SOURCES, VOIDTOUCHED } from '../data/corruption.js';
 import { ITEM_BY_ID } from '../data/items.js';
 
 /**
@@ -58,6 +58,14 @@ export class Corruption {
       const tier = ITEM_BY_ID.get(id)?.tier;
       this.feed(ctx.player, (SOURCES.itemFeed[tier] ?? 1) * change);
     });
+    // Counterplay: a Voidtouched kill bleeds a fraction of the world's
+    // corruption back to whoever landed it. Riding the kill event keeps
+    // Combat ignorant of corruption — the same one-way rule as every feed.
+    ctx.events.on('kill', ({ victim, source }) => {
+      if (!victim || victim.affix !== VOIDTOUCHED.affix) return;
+      const player = source && source.isPlayer ? source : ctx.player;
+      this.bleed(player, this._world * VOIDTOUCHED.refund);
+    });
   }
 
   get world() { return this._world; }
@@ -80,6 +88,29 @@ export class Corruption {
     this.ctx.events.emit('corruptionChanged', { world: this._world, band: this._band });
     if (this._band !== prev) this.ctx.events.emit('corruptionBand', { band: this._band, prev });
     return added;
+  }
+
+  /**
+   * Remove corruption, attributed to `player` — the counterplay valve
+   * (Voidtouched kills now; cleansing fonts later). Clamped to what exists;
+   * band events fire on the way down exactly as they do on the way up, which
+   * is what lets the HUD gauge, the grade pass and the route gate all walk
+   * back without knowing why.
+   */
+  bleed(player, amount) {
+    if (!this.ctx?.authority || !(amount > 0)) return 0;
+    const taken = Math.min(this._world, amount);
+    if (!(taken > 0)) return 0;
+    if (player) {
+      const own = this._byPlayer.get(player) || 0;
+      this._byPlayer.set(player, Math.max(0, own - taken));
+    }
+    this._world -= taken;
+    const prev = this._band;
+    this._band = bandOf(this._world);
+    this.ctx.events.emit('corruptionChanged', { world: this._world, band: this._band });
+    if (this._band !== prev) this.ctx.events.emit('corruptionBand', { band: this._band, prev });
+    return taken;
   }
 
   /** Record where greed happened. The blight-visuals plan grows fields from these. */
