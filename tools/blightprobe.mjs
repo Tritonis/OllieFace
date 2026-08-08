@@ -101,6 +101,9 @@ try {
     globalThis.__PIN__();
     const mod = await import('/src/shaders/BlightMask.js');
     globalThis.__BM__ = mod;
+    // Same trick for the growth curve: a gate tool that re-types `radiusOf`'s
+    // formula silently stops testing the game the day the formula moves.
+    globalThis.__BL__ = await import('/src/systems/Blight.js');
     const parts = G.ctx.vfx?.particles;
     globalThis.__MOTES__ = { count: 0, real: !!parts, samples: [] };
     if (parts) {
@@ -164,7 +167,8 @@ try {
     // asserting against a target that has not moved: 200 corruption raises the
     // target to 11.5 m, and GROW_RATE walks it there at 1.2 m/s.
     // `world` is a getter; the only way in is the real feed, which is the path
-    // a greedy chest takes anyway.
+    // a greedy chest takes anyway. The target comes from the shipped
+    // `radiusOf`, not a copy of it.
     ctx.corruption.feed(ctx.player, 200);
     H.thaw(); await H.frames(120); H.freeze();   // 2 s of crawl
     const late = U.uBlightPatches.value.slice(0, 4);
@@ -178,7 +182,7 @@ try {
       early: early.map((v) => +v.toFixed(3)),
       late: late.map((v) => +v.toFixed(3)),
       world: ctx.corruption.world,
-      target: Math.min(2.0 + 1.5 * 1 + 0.04 * ctx.corruption.world, 14),
+      target: globalThis.__BL__.radiusOf(1, ctx.corruption.world),
       uBlightTime: +U.uBlightTime.value.toFixed(2),
       ctxTime: +ctx.time.toFixed(2),
       uBlightBand: U.uBlightBand.value,
