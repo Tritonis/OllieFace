@@ -605,6 +605,20 @@ export class Enemy {
       }
     }
 
+    // Voidtouched: the void eats. A drain aura that feeds the unit what it
+    // takes — the counterplay is range, and the cost of ignoring it compounds,
+    // because every tick you stand in is a tick of your damage undone.
+    if (em && em.siphonDps && this.alive) {
+      this.auraT -= h;
+      if (this.auraT <= 0) {
+        this.auraT = 0.5;
+        if (this.distToPlayer < em.siphonRadius) {
+          hurtPlayer(ctx, this.targetPlayer, this, this.damage * em.siphonDps, 'void');
+          this.health = Math.min(this.maxHealth, this.health + this.maxHealth * em.siphonHeal);
+        }
+      }
+    }
+
     this.fsm.update(ctx, h);
     this.applyMovement(ctx, h);
   }
