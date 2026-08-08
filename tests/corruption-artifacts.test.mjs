@@ -42,5 +42,58 @@ console.log('corruptionMods answers the economy question');
   ok(Math.abs(both.feed - 2.5) < 1e-9 && both.refund === 5, 'the two compose');
 }
 
+console.log('— consultation points —');
+const { Corruption } = await import('../src/systems/Corruption.js');
+const { VOIDTOUCHED } = await import('../src/data/corruption.js');
+
+function makeCtx({ mods = null } = {}) {
+  const listeners = new Map();
+  const ctx = {
+    authority: true,
+    events: {
+      emit(name, p) { for (const fn of listeners.get(name) || []) fn(p); },
+      on(name, fn) { if (!listeners.has(name)) listeners.set(name, []); listeners.get(name).push(fn); },
+    },
+  };
+  if (mods) ctx.artifacts = { corruptionMods: () => mods };
+  const c = new Corruption();
+  c.init(ctx);
+  return { ctx, c };
+}
+const P = () => ({ isPlayer: true, alive: true });
+
+console.log('the Maw doubles every feed');
+{
+  const { c } = makeCtx({ mods: { feed: 2, refund: 1 } });
+  const p = P();
+  ok(c.feed(p, 10) === 20, 'feed returns the accelerated amount');
+  ok(c.world === 20 && c.corruptionOf(p) === 20, 'and the ledgers carry it');
+}
+
+console.log('no artifacts system, no change — the fixture proves the default');
+{
+  const { c } = makeCtx();
+  ok(c.feed(P(), 10) === 10, 'multiplier 1 when ctx.artifacts is absent');
+}
+
+console.log('Atonement multiplies the Voidtouched refund');
+{
+  const { ctx, c } = makeCtx({ mods: { feed: 1, refund: 5 } });
+  const p = P();
+  c.feed(p, 100);
+  ctx.events.emit('kill', { victim: { affix: VOIDTOUCHED.affix }, source: p });
+  const expected = 100 - 100 * VOIDTOUCHED.refund * 5;
+  ok(Math.abs(c.world - expected) < 1e-9, 'five times the refund came back');
+}
+
+console.log('an ordinary kill still refunds nothing');
+{
+  const { ctx, c } = makeCtx({ mods: { feed: 1, refund: 5 } });
+  const p = P();
+  c.feed(p, 100);
+  ctx.events.emit('kill', { victim: { affix: 'overloading' }, source: p });
+  ok(c.world === 100, 'the multiplier gates on the Voidtouched affix as before');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

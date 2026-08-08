@@ -64,7 +64,8 @@ export class Corruption {
     ctx.events.on('kill', ({ victim, source }) => {
       if (!victim || victim.affix !== VOIDTOUCHED.affix) return;
       const player = source && source.isPlayer ? source : ctx.player;
-      this.bleed(player, this._world * VOIDTOUCHED.refund);
+      const refund = this.ctx.artifacts?.corruptionMods?.().refund ?? 1;
+      this.bleed(player, this._world * VOIDTOUCHED.refund * refund);
     });
   }
 
@@ -80,7 +81,10 @@ export class Corruption {
   feed(player, amount, position = null) {
     if (!this.ctx?.authority) return 0;
     if (!player || !(amount > 0)) return 0;   // rejects 0, negatives and NaN in one test
-    const added = this._greed ? amount * SOURCES.greedMult : amount;
+    // The artifact economy question (data/artifacts.js: the Maw, Atonement).
+    // Optional-chained: a fixture without an artifacts system pays face value.
+    const mult = this.ctx.artifacts?.corruptionMods?.().feed ?? 1;
+    const added = (this._greed ? amount * SOURCES.greedMult : amount) * mult;
     this._byPlayer.set(player, (this._byPlayer.get(player) || 0) + added);
     this._world += added;
     const prev = this._band;
