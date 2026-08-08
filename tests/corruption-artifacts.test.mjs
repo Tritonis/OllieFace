@@ -95,5 +95,43 @@ console.log('an ordinary kill still refunds nothing');
   ok(c.world === 100, 'the multiplier gates on the Voidtouched affix as before');
 }
 
+console.log('the two halves agree — no stub: a real Artifacts drives a real Corruption');
+{
+  const listeners = new Map();
+  const ctx = { authority: true, events: { emit(n, p) { for (const f of listeners.get(n) || []) f(p); },
+    on(n, f) { if (!listeners.has(n)) listeners.set(n, []); listeners.get(n).push(f); } } };
+  const art = new Artifacts(); ctx.artifacts = art; art.set.add('maw');
+  const c = new Corruption(); c.init(ctx);
+  ok(c.feed({ isPlayer: true }, 10) === 20, 'a real Artifacts drives a real Corruption');
+}
+
+console.log('the two halves agree — atonement composed with maw, and the refund');
+{
+  const listeners = new Map();
+  const ctx = { authority: true, events: { emit(n, p) { for (const f of listeners.get(n) || []) f(p); },
+    on(n, f) { if (!listeners.has(n)) listeners.set(n, []); listeners.get(n).push(f); } } };
+  const art = new Artifacts(); ctx.artifacts = art;
+  art.set.add('maw'); art.set.add('atonement');
+  const c = new Corruption(); c.init(ctx);
+  const p = P();
+  ok(c.feed(p, 10) === 25, 'maw + atonement compose to ×2.5 on a real feed, real Artifacts driving real Corruption');
+  ctx.events.emit('kill', { victim: { affix: VOIDTOUCHED.affix }, source: p });
+  const expected = 25 - 25 * VOIDTOUCHED.refund * 5;
+  ok(Math.abs(c.world - expected) < 1e-9, 'a real Atonement refunds ×5 on a real Corruption');
+}
+
+console.log('the two halves agree — greed time composes with the real Maw to ×5.0');
+{
+  const listeners = new Map();
+  const ctx = { authority: true, events: { emit(n, p) { for (const f of listeners.get(n) || []) f(p); },
+    on(n, f) { if (!listeners.has(n)) listeners.set(n, []); listeners.get(n).push(f); } } };
+  const art = new Artifacts(); ctx.artifacts = art;
+  art.set.add('maw'); art.set.add('atonement');
+  const c = new Corruption(); c.init(ctx);
+  const p = P();
+  ctx.events.emit('teleporterComplete');
+  ok(c.feed(p, 10) === 50, 'greed time × the Maw × Atonement composes to ×5.0 on a real feed');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
