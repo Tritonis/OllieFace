@@ -36,5 +36,16 @@ console.log('attach injects into a standard-material shader and chains');
   ok(mat.customProgramCacheKey().includes('blightmask'), 'program cache key forks for patched materials');
 }
 
+console.log('the whole material library is patched');
+{
+  const { getMaterials } = await import('../src/world/Materials.js');
+  const mats = getMaterials();
+  const names = ['terrain', 'rock', 'cliff', 'moss', 'wetStone', 'metalRuin', 'sand', 'wood', 'crystal'];
+  for (const n of names) {
+    ok(typeof mats[n]?.customProgramCacheKey === 'function'
+       && mats[n].customProgramCacheKey().includes('blightmask'), `${n} carries the mask`);
+  }
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

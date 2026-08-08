@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { attachBlightMask } from '../shaders/BlightMask.js';
 
 /**
  * Shared art direction + material library.
@@ -1025,7 +1026,13 @@ function buildMaterials(sets) {
     attachDetail({ terrain, rock, cliff, moss, wetStone, metalRuin, sand, wood }[k], k);
   }
 
-  return { terrain, rock, cliff, moss, wetStone, metalRuin, sand, wood, crystal };
+  // The void's claim on every surface. After attachDetail, so the hook chain
+  // runs detail first and corruption last — the mask re-shades the detailed
+  // fragment, not the other way round.
+  const lib = { terrain, rock, cliff, moss, wetStone, metalRuin, sand, wood, crystal };
+  for (const k in lib) attachBlightMask(lib[k]);
+
+  return lib;
 }
 
 export function getMaterials() {
