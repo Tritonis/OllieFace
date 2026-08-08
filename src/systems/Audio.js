@@ -137,6 +137,19 @@ const SURFACES = {
 const SCALE = [0, 3, 5, 7, 10, 12, 15, 17, 19, 22];
 const ROOT = 110; // A2
 
+/**
+ * The world-state audio layer (launch design §1, world state): gain per
+ * corruption band on the void shimmer bed. Zero through band 1 for the same
+ * reason BAND_GRADE's early entries are zero — an atmosphere that sickens
+ * before the world does spends the effect before it means anything.
+ */
+export const VOID_LAYER = [0, 0, 0.05, 0.11, 0.18];
+
+export function voidLayerGain(band) {
+  const b = Number.isFinite(band) ? Math.floor(band) : 0;
+  return VOID_LAYER[Math.max(0, Math.min(b, VOID_LAYER.length - 1))];
+}
+
 const _camPos = new THREE.Vector3();
 const _camDir = new THREE.Vector3();
 const _camUp = new THREE.Vector3();
@@ -409,6 +422,49 @@ export class Audio {
     lfo.connect(lfoGain).connect(droneFilter.frequency);
     lfo.start();
     this.droneGain = droneGain;
+
+    // --- void layer: the corruption band as sound. A glassy tritone pair over
+    // band-passed noise — an interval that never resolves, breathing through a
+    // slow filter LFO. Sits on the ambient bus (it is world state, not music,
+    // so the music-off setting leaves the world still audibly wrong).
+    const voidGain = ac.createGain();
+    voidGain.gain.value = 0.0;
+    const voidFilter = ac.createBiquadFilter();
+    voidFilter.type = 'bandpass';
+    voidFilter.frequency.value = 2400;
+    voidFilter.Q.value = 1.4;
+    voidFilter.connect(voidGain);
+    voidGain.connect(this.ambient);
+
+    const vnoise = ac.createBufferSource();
+    vnoise.buffer = this.noiseBuf;
+    vnoise.loop = true;
+    const vng = ac.createGain();
+    vng.gain.value = 0.5;
+    vnoise.connect(vng).connect(voidFilter);
+    // Same shared buffer as the wind, started three quarters of the way in:
+    // one allocation for the run, and the offset keeps the two loops from
+    // running in phase and combing each other.
+    vnoise.start(0, 1.5);
+
+    for (const [freq, det, g0] of [[523.25, -14, 0.30], [739.99, 11, 0.22]]) {
+      const o = ac.createOscillator();
+      o.type = 'sine';
+      o.frequency.value = freq;
+      o.detune.value = det;
+      const g = ac.createGain();
+      g.gain.value = g0;
+      o.connect(g).connect(voidFilter);
+      o.start();
+    }
+
+    const vlfo = ac.createOscillator();
+    vlfo.frequency.value = 0.11;
+    const vlfoGain = ac.createGain();
+    vlfoGain.gain.value = 500;
+    vlfo.connect(vlfoGain).connect(voidFilter.frequency);
+    vlfo.start();
+    this.voidGain = voidGain;
 
     // --- wind: looping noise through a wandering bandpass ---
     const wind = ac.createBufferSource();
@@ -1282,6 +1338,15 @@ export class Audio {
     // the difficulty coefficient grinds upward.
     if (this.droneGain && !this._musicOff) {
       this.droneGain.gain.setTargetAtTime(0.14 + this.intensity * 0.14, ac.currentTime, 1.5);
+    }
+
+    // The void layer is world state, not music, so it is deliberately not
+    // gated on `_musicOff` — muting the soundtrack must not mute the fact that
+    // the world is sick.
+    if (this.voidGain) {
+      // 2.0s time constant lands in the same felt window as the visual
+      // GRADE_BLEND — the world sickens in one motion, not two.
+      this.voidGain.gain.setTargetAtTime(voidLayerGain(ctx.corruption?.band), ac.currentTime, 2.0);
     }
   }
 
