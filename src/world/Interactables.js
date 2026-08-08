@@ -1353,8 +1353,8 @@ export class ArgentFont extends Interactable {
   interact() {
     const cor = this.ctx.corruption;
     // Nothing to bleed means nothing to sell; refuse before taking the gold.
-    if (!cor || !(cor.world > 0)) return false;
-    if (!this.ctx.items?.spendGold(this.cost)) return false;
+    if (!cor || !(cor.world > 0)) { this.ctx.audio?.play?.('deny'); return false; }
+    if (!this.ctx.items?.spendGold(this.cost)) { this.ctx.audio?.play?.('deny'); return false; }
     this.uses++;
     cor.bleed(this.ctx.player, CLEANSE.amount);
     this.ctx.vfx?.burst?.(this.position, 0x9fd4ff);
@@ -1377,6 +1377,18 @@ export class ArgentFont extends Interactable {
  * only spawns for parties, and a party with clean teammates gets its use back.
  * The volunteer is `ctx.player` — the same host-resolution rule every shrine
  * already follows.
+ *
+ * KNOWN LIMIT, host-only for now: today only the host's pawn can volunteer.
+ * Interactables resolve an interact request for `ctx.player` and nothing else
+ * (see `Interactables.fixedUpdate`), and a remote pawn's BTN.INTERACT is
+ * decoded but never read (Player.js:536) — so a client standing here gets the
+ * prompt and pressing E does nothing, and the volunteer is always the host.
+ * Every other shrine and chest shares that gap, but this is the first
+ * mechanic whose whole point is the negotiation between two players, so the
+ * pact's full value waits on the co-op interact / corruption-replication
+ * plan (per-pawn interact routing, plus a chosen rather than auto-selected
+ * donor). Until then read a client's dead E press as the missing subsystem,
+ * not a broken shrine.
  */
 export class CovenantStone extends Interactable {
   constructor(ctx, position) {
@@ -1418,7 +1430,7 @@ export class CovenantStone extends Interactable {
   interact() {
     const cor = this.ctx.corruption;
     const me = this.ctx.player;
-    if (!cor || !me) return false;
+    if (!cor || !me) { this.ctx.audio?.play?.('deny'); return false; }
     // The heaviest ledger that is not the volunteer's own.
     let donor = null, worst = 0;
     for (const p of this.ctx.roster?.all || []) {
@@ -1426,9 +1438,9 @@ export class CovenantStone extends Interactable {
       const own = cor.corruptionOf(p);
       if (own > worst) { worst = own; donor = p; }
     }
-    if (!donor || !(worst > 0)) return false;
+    if (!donor || !(worst > 0)) { this.ctx.audio?.play?.('deny'); return false; }
     const moved = cor.transfer(donor, me, worst * PACT.share);
-    if (!(moved > 0)) return false;
+    if (!(moved > 0)) { this.ctx.audio?.play?.('deny'); return false; }
     this.uses++;
     this.bond.material.emissiveIntensity = 0.1;
     this.ctx.vfx?.burst?.(this.position, 0x9fd4ff);

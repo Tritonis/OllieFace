@@ -92,25 +92,69 @@ export class Corruption {
 
   /**
    * Remove corruption, attributed to `player` — the counterplay valve
-   * (Voidtouched kills now; cleansing fonts later). Clamped to what exists;
-   * band events fire on the way down exactly as they do on the way up, which
-   * is what lets the HUD gauge, the grade pass and the route gate all walk
-   * back without knowing why.
+   * (Voidtouched kills, the Argent Font). Clamped to what exists; band events
+   * fire on the way down exactly as they do on the way up, which is what lets
+   * the HUD gauge, the grade pass and the route gate all walk back without
+   * knowing why.
+   *
+   * The ledgers stay reconciled with the world: `Σ _byPlayer === world` after
+   * any bleed. The payer's own row pays first — cleaning up after yourself
+   * clears your name before anyone else's — and whatever is left over is
+   * spread across the other rows pro-rata to what they still hold. That is the
+   * founding identity of the design spec ("world corruption is the sum of
+   * per-player corruption"), and without it a low-attribution payer at a font
+   * could buy the gauge down while the sinner's row stayed full, leaving the
+   * pact shrine and any future per-player HUD trading on stale numbers.
+   *
+   * This deliberately changes Voidtouched-refund attribution too: a refund is
+   * a fraction of the *world*, so it now genuinely relieves the whole party's
+   * ledgers rather than only the killer's. Intended — the killer already banks
+   * the whole world-side drop; the ledger side follows the same world.
    */
   bleed(player, amount) {
     if (!this.ctx?.authority || !(amount > 0)) return 0;
     const taken = Math.min(this._world, amount);
     if (!(taken > 0)) return 0;
+    let rest = taken;
     if (player) {
       const own = this._byPlayer.get(player) || 0;
-      this._byPlayer.set(player, Math.max(0, own - taken));
+      const paid = Math.min(own, taken);
+      this._byPlayer.set(player, own - paid);
+      rest -= paid;
     }
+    if (rest > 0) this._spread(player, rest);
     this._world -= taken;
     const prev = this._band;
     this._band = bandOf(this._world);
     this.ctx.events.emit('corruptionChanged', { world: this._world, band: this._band });
     if (this._band !== prev) this.ctx.events.emit('corruptionBand', { band: this._band, prev });
     return taken;
+  }
+
+  /**
+   * Debit `rest` from every ledger except `payer`, pro-rata to what each still
+   * holds. Largest row first, and it absorbs the float residual, so the sum of
+   * the cuts is exactly `rest` and no row can be driven negative.
+   */
+  _spread(payer, rest) {
+    const rows = [];
+    let pool = 0;
+    for (const [p, v] of this._byPlayer) {
+      if (p === payer || !(v > 0)) continue;
+      rows.push([p, v]);
+      pool += v;
+    }
+    if (!(pool > 0)) return;
+    rows.sort((a, b) => b[1] - a[1]);
+    const total = Math.min(rest, pool);
+    let cut = 0;
+    for (let i = rows.length - 1; i >= 0; i--) {
+      const [p, v] = rows[i];
+      // The largest row (i === 0) takes whatever the divisions left behind.
+      const c = i === 0 ? Math.min(v, total - cut) : Math.min(v, (total * v) / pool);
+      this._byPlayer.set(p, v - c);
+      cut += c;
+    }
   }
 
   /**
@@ -121,7 +165,9 @@ export class Corruption {
    */
   transfer(from, to, amount) {
     if (!this.ctx?.authority) return 0;
-    if (!from || !to || from === to || !(amount > 0)) return 0;
+    // Both parties must be players: a ledger row belongs to a survivor, and an
+    // enemy or a prop holding corruption would never be read back by anything.
+    if (!from?.isPlayer || !to?.isPlayer || from === to || !(amount > 0)) return 0;
     const own = this._byPlayer.get(from) || 0;
     const moved = Math.min(own, amount);
     if (!(moved > 0)) return 0;

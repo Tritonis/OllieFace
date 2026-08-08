@@ -58,6 +58,52 @@ console.log('transfer clamps, and refuses nonsense');
   ok(c.transfer(volunteer, volunteer, 5) === 0, 'self-pact refused');
   ok(c.transfer(null, volunteer, 5) === 0 && c.transfer(donor, null, 5) === 0, 'null parties refused');
   ok(c.transfer(volunteer, donor, 0) === 0 && c.transfer(volunteer, donor, -3) === 0 && c.transfer(volunteer, donor, NaN) === 0, 'zero, negative, NaN refused');
+  const enemy = { isPlayer: false, alive: true };
+  c.feed(donor, 10);
+  ok(c.transfer(donor, enemy, 5) === 0, 'a non-player cannot receive a pact');
+  ok(c.transfer(enemy, volunteer, 5) === 0, 'a non-player cannot hand one over');
+  ok(c.corruptionOf(donor) === 10 && c.corruptionOf(enemy) === 0, 'the refused pact moved nothing');
+}
+
+console.log('the ledgers stay reconciled with the world through a bleed');
+{
+  const sum = (c, players) => players.reduce((s, p) => s + c.corruptionOf(p), 0);
+  {
+    // (a) a font-style bleed paid for by someone who caused almost none of it.
+    const { c } = makeCorruption();
+    const payer = P(), sinnerA = P(), sinnerB = P();
+    c.feed(payer, 10);
+    c.feed(sinnerA, 60);
+    c.feed(sinnerB, 30);
+    const taken = c.bleed(payer, CLEANSE.amount);
+    ok(taken === CLEANSE.amount, 'the bleed took the tuned amount from the world');
+    ok(Math.abs(sum(c, [payer, sinnerA, sinnerB]) - c.world) < 1e-9,
+      `Σ per-player === world after the bleed (${sum(c, [payer, sinnerA, sinnerB])} vs ${c.world})`);
+    ok(c.corruptionOf(payer) === 0, 'the payer\'s own row paid first, to zero');
+    const rest = CLEANSE.amount - 10;                     // spread across 60 : 30
+    ok(Math.abs(c.corruptionOf(sinnerA) - (60 - rest * (60 / 90))) < 1e-9, 'the heavier sinner paid two thirds of the remainder');
+    ok(Math.abs(c.corruptionOf(sinnerB) - (30 - rest * (30 / 90))) < 1e-9, 'the lighter sinner paid one third');
+  }
+  {
+    // (b) covered entirely by the payer's own ledger — nobody else is touched.
+    const { c } = makeCorruption();
+    const payer = P(), mate = P();
+    c.feed(payer, 80);
+    c.feed(mate, 40);
+    ok(c.bleed(payer, 50) === 50, 'the bleed took what was asked');
+    ok(c.corruptionOf(payer) === 30, 'the payer alone was debited');
+    ok(c.corruptionOf(mate) === 40, 'a covered bleed touches no one else');
+    ok(Math.abs(sum(c, [payer, mate]) - c.world) < 1e-9, 'Σ per-player === world');
+  }
+  {
+    // And draining the world empties every row: no orphan attribution left.
+    const { c } = makeCorruption();
+    const payer = P(), mate = P();
+    c.feed(payer, 20);
+    c.feed(mate, 80);
+    ok(c.bleed(payer, 999) === 100, 'clamped to the world');
+    ok(c.world === 0 && c.corruptionOf(payer) === 0 && c.corruptionOf(mate) === 0, 'a drained world drains every ledger');
+  }
 }
 
 console.log('a client cannot transfer');
