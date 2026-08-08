@@ -8,6 +8,7 @@ import { Player } from './entities/Player.js';
 import { CameraRig } from './core/CameraRig.js';
 import { Combat } from './systems/Combat.js';
 import { Corruption } from './systems/Corruption.js';
+import { Blight } from './systems/Blight.js';
 import { Roster } from './systems/Roster.js';
 import { Items } from './systems/Items.js';
 import { Artifacts } from './systems/Artifacts.js';
@@ -55,6 +56,10 @@ engine.add(new Combat());
 // No frame hooks of its own — it only has to exist before Items and
 // Interactables charge a tithe against it, and before HUD polls `ctx.corruption`.
 engine.add(new Corruption());
+// Purely presentational, and it only reacts to events Corruption emits, so
+// update order against it is irrelevant — it sits here because the pairing is
+// the thing worth reading.
+engine.add(new Blight());
 // Before Player, which registers itself into it during `init` — the same
 // ordering reason Combat sits above.
 engine.add(new Roster());
