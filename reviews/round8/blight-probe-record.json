@@ -1,0 +1,510 @@
+{
+  "seed": 1337,
+  "out": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\shots-blightceiling",
+  "clean": {
+    "patches": 0,
+    "band": 0,
+    "uBlightCount": 0,
+    "uRimCount": 0,
+    "saturation": 1.06,
+    "satBase": 1.06,
+    "skyW": 0,
+    "motes": 0,
+    "moteStubReal": true
+  },
+  "mask": {
+    "seed": {
+      "x": 10,
+      "z": 10
+    },
+    "patches": 1,
+    "hasMesh": true,
+    "inScene": true,
+    "count": 1,
+    "early": [
+      10,
+      10,
+      3.5,
+      27.075
+    ],
+    "late": [
+      10,
+      10,
+      5.9,
+      27.075
+    ],
+    "world": 200,
+    "target": 11.5,
+    "uBlightTime": 3.62,
+    "ctxTime": 3.62,
+    "uBlightBand": 4,
+    "phase": 27.075
+  },
+  "band4": {
+    "before": {
+      "zenith": "#04224d",
+      "horizon": "#6e2a15",
+      "haze": "#834d65",
+      "fogColor": "#62544e",
+      "fogDensity": 0.003997,
+      "saturation": 0.8721
+    },
+    "baseline": {
+      "zenith": "#073672",
+      "horizon": "#e25f14",
+      "haze": "#ffa141",
+      "fogColor": "#b9a195",
+      "fogDensity": 0.002635
+    },
+    "after": {
+      "zenith": "#04214a",
+      "horizon": "#602415",
+      "haze": "#754267",
+      "fogColor": "#584c46",
+      "fogDensity": 0.004084,
+      "saturation": 0.86,
+      "vignetteBoost": 0.1874
+    },
+    "skyW": 1,
+    "satOffset": -0.2,
+    "satBase": 1.06,
+    "uBlightBand": 4,
+    "band": 4
+  },
+  "band0": {
+    "skyW": 0,
+    "satOffset": 0,
+    "satBase": 1.06,
+    "saturation": 1.06,
+    "zenith": "#073672",
+    "baseZenith": "#073672",
+    "horizon": "#e25f14",
+    "baseHorizon": "#e25f14",
+    "haze": "#ffa141",
+    "baseHaze": "#ffa141",
+    "fogColor": "#b9a195",
+    "baseFogColor": "#b9a195",
+    "fogDensity": 0.002635,
+    "baseFogDensity": 0.002635,
+    "uBlightBand": 0
+  },
+  "shimmer": {
+    "outside": {
+      "radius": 11.5,
+      "count": 1,
+      "rec": [
+        0.5,
+        0.5,
+        0.3235,
+        0.0028
+      ],
+      "aspect": 1.778
+    },
+    "inside": {
+      "count": 0
+    },
+    "patch": {
+      "x": 10,
+      "z": 10
+    }
+  },
+  "motes": {
+    "near": 25,
+    "far": 0,
+    "samples": [
+      {
+        "x": 5.19,
+        "y": 3.93,
+        "z": -0.33
+      },
+      {
+        "x": 1.46,
+        "y": 10.2,
+        "z": 15.54
+      },
+      {
+        "x": -0.68,
+        "y": 2.19,
+        "z": 11.33
+      }
+    ],
+    "radius": 11.5,
+    "patch": {
+      "x": 10,
+      "z": 10
+    }
+  },
+  "money": {
+    "patches": 3,
+    "radii": [
+      11.5,
+      11.5,
+      11.5
+    ],
+    "band": 2,
+    "maskCount": 3,
+    "rimCount": 3,
+    "skyW": 0.3,
+    "propsInside": 369
+  },
+  "pageErrors": [],
+  "consoleErrors": [],
+  "checks": [
+    {
+      "name": "clean stage: no patches",
+      "pass": true,
+      "detail": 0
+    },
+    {
+      "name": "clean stage: mask early-outs at zero",
+      "pass": true,
+      "detail": 0
+    },
+    {
+      "name": "clean stage: shimmer early-outs at zero",
+      "pass": true,
+      "detail": 0
+    },
+    {
+      "name": "clean stage: grade saturation is the pipeline's own",
+      "pass": true,
+      "detail": {
+        "saturation": 1.06,
+        "base": 1.06
+      }
+    },
+    {
+      "name": "clean stage: no motes emitted",
+      "pass": true,
+      "detail": 0
+    },
+    {
+      "name": "mote counter wraps the real particle system",
+      "pass": true,
+      "detail": true
+    },
+    {
+      "name": "blightSeed plants exactly one patch, meshed and in the scene",
+      "pass": true,
+      "detail": {
+        "seed": {
+          "x": 10,
+          "z": 10
+        },
+        "patches": 1,
+        "hasMesh": true,
+        "inScene": true,
+        "count": 1,
+        "early": [
+          10,
+          10,
+          3.5,
+          27.075
+        ],
+        "late": [
+          10,
+          10,
+          5.9,
+          27.075
+        ],
+        "world": 200,
+        "target": 11.5,
+        "uBlightTime": 3.62,
+        "ctxTime": 3.62,
+        "uBlightBand": 4,
+        "phase": 27.075
+      }
+    },
+    {
+      "name": "MASK_UNIFORMS.uBlightCount tracks it",
+      "pass": true,
+      "detail": 1
+    },
+    {
+      "name": "slot 0 carries the seed position (x, z)",
+      "pass": true,
+      "detail": {
+        "slot": [
+          10,
+          10
+        ],
+        "seed": {
+          "x": 10,
+          "z": 10
+        }
+      }
+    },
+    {
+      "name": "slot 0 radius crawls toward the fed target, not a pop",
+      "pass": true,
+      "detail": {
+        "early": 3.5,
+        "late": 5.9,
+        "target": 11.5
+      }
+    },
+    {
+      "name": "slot 0 phase is a per-patch offset, not zero",
+      "pass": true,
+      "detail": 27.075
+    },
+    {
+      "name": "uBlightTime rides ctx.time",
+      "pass": true,
+      "detail": {
+        "uBlightTime": 3.62,
+        "ctxTime": 3.62
+      }
+    },
+    {
+      "name": "band 4: blend weight reached 1",
+      "pass": true,
+      "detail": 1
+    },
+    {
+      "name": "band 4: sky moved off the biome anchor",
+      "pass": true,
+      "detail": {
+        "baseline": {
+          "zenith": "#073672",
+          "horizon": "#e25f14",
+          "haze": "#ffa141",
+          "fogColor": "#b9a195",
+          "fogDensity": 0.002635
+        },
+        "after": {
+          "zenith": "#04214a",
+          "horizon": "#602415",
+          "haze": "#754267",
+          "fogColor": "#584c46",
+          "fogDensity": 0.004084,
+          "saturation": 0.86,
+          "vignetteBoost": 0.1874
+        }
+      }
+    },
+    {
+      "name": "band 4: fog recoloured and thickened",
+      "pass": true,
+      "detail": {
+        "fog": [
+          "#b9a195",
+          "#584c46"
+        ],
+        "density": [
+          0.002635,
+          0.004084
+        ]
+      }
+    },
+    {
+      "name": "band 4: grade saturation offset applied and negative (the screen sickens)",
+      "pass": true,
+      "detail": {
+        "base": 1.06,
+        "offset": -0.2,
+        "live": 0.86
+      }
+    },
+    {
+      "name": "band 4: vignette floor raised",
+      "pass": true,
+      "detail": 0.1874
+    },
+    {
+      "name": "band 4: the mask knows the band",
+      "pass": true,
+      "detail": 4
+    },
+    {
+      "name": "band 0: sky restored to the biome anchor exactly",
+      "pass": true,
+      "detail": {
+        "skyW": 0,
+        "satOffset": 0,
+        "satBase": 1.06,
+        "saturation": 1.06,
+        "zenith": "#073672",
+        "baseZenith": "#073672",
+        "horizon": "#e25f14",
+        "baseHorizon": "#e25f14",
+        "haze": "#ffa141",
+        "baseHaze": "#ffa141",
+        "fogColor": "#b9a195",
+        "baseFogColor": "#b9a195",
+        "fogDensity": 0.002635,
+        "baseFogDensity": 0.002635,
+        "uBlightBand": 0
+      }
+    },
+    {
+      "name": "band 0: fog restored exactly",
+      "pass": true,
+      "detail": {
+        "skyW": 0,
+        "satOffset": 0,
+        "satBase": 1.06,
+        "saturation": 1.06,
+        "zenith": "#073672",
+        "baseZenith": "#073672",
+        "horizon": "#e25f14",
+        "baseHorizon": "#e25f14",
+        "haze": "#ffa141",
+        "baseHaze": "#ffa141",
+        "fogColor": "#b9a195",
+        "baseFogColor": "#b9a195",
+        "fogDensity": 0.002635,
+        "baseFogDensity": 0.002635,
+        "uBlightBand": 0
+      }
+    },
+    {
+      "name": "band 0: grade saturation handed back",
+      "pass": true,
+      "detail": {
+        "skyW": 0,
+        "satOffset": 0,
+        "satBase": 1.06,
+        "saturation": 1.06,
+        "zenith": "#073672",
+        "baseZenith": "#073672",
+        "horizon": "#e25f14",
+        "baseHorizon": "#e25f14",
+        "haze": "#ffa141",
+        "baseHaze": "#ffa141",
+        "fogColor": "#b9a195",
+        "baseFogColor": "#b9a195",
+        "fogDensity": 0.002635,
+        "baseFogDensity": 0.002635,
+        "uBlightBand": 0
+      }
+    },
+    {
+      "name": "band 0: mask band back to 0",
+      "pass": true,
+      "detail": 0
+    },
+    {
+      "name": "shimmer: a rim off the camera records a slot",
+      "pass": true,
+      "detail": {
+        "radius": 11.5,
+        "count": 1,
+        "rec": [
+          0.5,
+          0.5,
+          0.3235,
+          0.0028
+        ],
+        "aspect": 1.778
+      }
+    },
+    {
+      "name": "shimmer: record UV lands on screen",
+      "pass": true,
+      "detail": [
+        0.5,
+        0.5
+      ]
+    },
+    {
+      "name": "shimmer: uv radius is a fraction of the frame",
+      "pass": true,
+      "detail": 0.3235
+    },
+    {
+      "name": "shimmer: strength is live and small (heat haze, not a lens)",
+      "pass": true,
+      "detail": 0.0028
+    },
+    {
+      "name": "shimmer: aspect matches the viewport",
+      "pass": true,
+      "detail": 1.778
+    },
+    {
+      "name": "shimmer: a camera standing inside the patch records nothing",
+      "pass": true,
+      "detail": 0
+    },
+    {
+      "name": "motes: the rim emits at ~2.5/s (10 s -> ~25)",
+      "pass": true,
+      "detail": 25
+    },
+    {
+      "name": "motes: land on the rim, not the centre",
+      "pass": true,
+      "detail": {
+        "samples": [
+          {
+            "x": 5.19,
+            "y": 3.93,
+            "z": -0.33
+          },
+          {
+            "x": 1.46,
+            "y": 10.2,
+            "z": 15.54
+          },
+          {
+            "x": -0.68,
+            "y": 2.19,
+            "z": 11.33
+          }
+        ],
+        "radius": 11.5
+      }
+    },
+    {
+      "name": "motes: a patch beyond MOTES.range spends nothing",
+      "pass": true,
+      "detail": 0
+    },
+    {
+      "name": "money shot: three patches live and masked",
+      "pass": true,
+      "detail": {
+        "patches": 3,
+        "radii": [
+          11.5,
+          11.5,
+          11.5
+        ],
+        "band": 2,
+        "maskCount": 3,
+        "rimCount": 3,
+        "skyW": 0.3,
+        "propsInside": 369
+      }
+    },
+    {
+      "name": "money shot: shimmer is in frame",
+      "pass": true,
+      "detail": 3
+    },
+    {
+      "name": "money shot: the band is on the sky",
+      "pass": true,
+      "detail": {
+        "band": 2,
+        "skyW": 0.3
+      }
+    },
+    {
+      "name": "money shot: real scene meshes stand inside the corruption",
+      "pass": true,
+      "detail": 369
+    },
+    {
+      "name": "no page errors",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "no console errors",
+      "pass": true,
+      "detail": []
+    }
+  ]
+}

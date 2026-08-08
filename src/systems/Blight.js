@@ -390,7 +390,11 @@ export class Blight {
     this.ctx = ctx;
     ctx.blight = this;
     ctx.events.on('blightSeed', (s) => this._addPatch(s));
-    ctx.events.on('corruptionBand', (e) => { if (Number.isFinite(e?.band)) this.band = e.band; });
+    // Clamped on assignment: both the shimmer strength cap and the vein
+    // emissive ceiling are linear in `band`, and neither is bounded downstream.
+    ctx.events.on('corruptionBand', (e) => {
+      if (Number.isFinite(e?.band)) this.band = Math.max(0, Math.min(Math.floor(e.band), 4));
+    });
     ctx.events.on('stageStart', () => this._clear());
   }
 
@@ -532,6 +536,13 @@ export class Blight {
       sky.uZenith.value.copy(base.zenith).lerp(VOID_ZENITH, w * 0.60);
       sky.uHorizon.value.copy(base.horizon).lerp(VOID_HORIZON, w * 0.85);
       sky.uHaze.value.copy(base.haze).lerp(VOID_HAZE, w * 0.85);
+      // uMid and uBounce are *derived* from the three above at applyBiome time,
+      // and SkyShader reads uMid — not uZenith — across the whole visible band.
+      // Without this the dominant colour of the sky stays the clean biome's and
+      // the corruption shows up as a seam. Re-deriving from the already-lerped
+      // live values keeps the restore exact: at w == 0 the lerps put the inputs
+      // back byte-for-byte, so this reproduces applyBiome's own derivation.
+      env._deriveSkyMid?.();
     }
     const fog = ctx.scene?.fog;
     if (fog && base.fogColor) {
@@ -583,6 +594,9 @@ export class Blight {
   _shimmer(ctx) {
     const pass = ctx.pipeline?.passes?.grade;
     const cam = ctx.camera;
+    // Clear first: a frame with no camera must drop the ring, not freeze the
+    // last one at a fixed screen position while the world moves under it.
+    if (pass?.uniforms?.uRimCount) pass.uniforms.uRimCount.value = 0;
     if (!pass?.uniforms?.uRims || !cam) return;
     const u = pass.uniforms.uRims.value;
     let n = 0;
@@ -595,7 +609,7 @@ export class Blight {
       const flat = Math.sqrt(dx * dx + dz * dz);
       if (flat < r + 1.5) continue;            // camera inside or on the rim
       if (flat - r > SHIMMER.far) continue;    // too far to read
-      const y = this.ctx.stage?.sampleHeight ? this.ctx.stage.sampleHeight(p.x, p.z) : 0;
+      const y = ctx.stage?.sampleHeight ? ctx.stage.sampleHeight(p.x, p.z) : 0;
       _proj.set(p.x, y, p.z).project(cam);
       if (_proj.z > 1) continue;               // behind the camera: NDC wraps
       _v3.set(p.x, y, p.z);

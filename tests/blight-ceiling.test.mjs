@@ -3,6 +3,7 @@ import { Blight, SHIMMER, BAND_SKY, VOID_SKY } from '../src/systems/Blight.js';
 import { MASK_UNIFORMS, MAX_MASK } from '../src/shaders/BlightMask.js';
 import { shimmerUniforms, MAX_RIMS, SHIMMER_DECL, SHIMMER_APPLY } from '../src/shaders/BlightShimmer.js';
 import { GradeShader } from '../src/shaders/GradeShader.js';
+import { Environment } from '../src/world/Environment.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
@@ -87,7 +88,28 @@ console.log('shimmer records: near rims project, inside/far/behind are skipped')
   const r = g.uRims.value;
   ok(r[0] > 0 && r[0] < 1 && r[1] > 0 && r[1] < 1, 'rim centre lands in UV space');
   ok(r[2] > 0, 'rim carries a UV radius');
-  ok(r[3] > 0 && r[3] <= SHIMMER.strength + 1e-9, 'strength positive and capped');
+  // Exact, not "under the cap": at band 0 the code produces strength * k * 0.6,
+  // so the old `<= strength` assertion left 1.67x of headroom for a regression
+  // to hide in. k is recomputed here from the live radius and camera stand-off.
+  const kOf = () => {
+    const rad = b.patches[0].mesh.material.uniforms.uRadius.value;
+    const flat = Math.hypot(ctx.camera.position.x - 0, ctx.camera.position.z - 0);
+    return 1 - Math.min(Math.max((flat - rad - SHIMMER.near) / (SHIMMER.far - SHIMMER.near), 0), 1);
+  };
+  ok(Math.abs(r[3] - SHIMMER.strength * kOf() * 0.6) < 1e-12, 'band 0 strength is exactly strength * k * 0.6');
+
+  // Band 4 is where the documented ceiling is actually tight: k <= 1 and the
+  // band term is exactly 1.0, so SHIMMER.strength *is* the cap, to the float.
+  ctx.events.emit('corruptionBand', { band: 4, prev: 0 });
+  b.update(ctx, 0.016);
+  ok(Math.abs(r[3] - SHIMMER.strength * kOf()) < 1e-12, 'band 4 strength is exactly strength * k');
+  ok(r[3] <= SHIMMER.strength + 1e-12, 'band 4 never exceeds the documented cap');
+  // And nothing above band 4 can push past it — the handler clamps on assign.
+  ctx.events.emit('corruptionBand', { band: 12, prev: 4 });
+  b.update(ctx, 0.016);
+  ok(b.band === 4 && r[3] <= SHIMMER.strength + 1e-12, 'a band past 4 is clamped, not obeyed');
+  ctx.events.emit('corruptionBand', { band: 0, prev: 4 });
+  b.update(ctx, 0.016);
 
   // Camera inside the patch: shimmer is an edge phenomenon seen from outside.
   ctx.camera.position.set(0, 2, 1);
@@ -114,12 +136,27 @@ console.log('per-band sky and fog shift, and byte-for-byte restore');
     zenith: mkC(0x2a3a5e), horizon: mkC(0xc9885a), haze: mkC(0xe8b06a),
     fogColor: mkC(0x8a7a6a), fogDensity: 0.0036,
   };
+  // uMid and uBounce are *derived*, and SkyShader reads uMid across the whole
+  // visible dome — so the fixture has to carry them or the suite cannot see
+  // whether the dominant colour of the sky corrupts at all. `_deriveSkyMid` is
+  // the real Environment method, wired here the way Environment wires it.
+  const ground = mkC(0x6a5a48);
   const sky = {
     uZenith: { value: baseline.zenith.clone() },
     uHorizon: { value: baseline.horizon.clone() },
     uHaze: { value: baseline.haze.clone() },
+    uGround: { value: ground.clone() },
+    uMid: { value: new THREE.Color() },
+    uBounce: { value: new THREE.Color() },
   };
-  ctx.environment = { biomeBaseline: baseline, skyUniforms: sky };
+  ctx.environment = {
+    biomeBaseline: baseline,
+    skyUniforms: sky,
+    _deriveSkyMid: Environment.prototype._deriveSkyMid,
+  };
+  ctx.environment._deriveSkyMid();
+  const baseMid = sky.uMid.value.clone();
+  const baseBounce = sky.uBounce.value.clone();
   ctx.scene = { fog: { color: baseline.fogColor.clone(), density: baseline.fogDensity } };
 
   const b = new Blight();
@@ -130,14 +167,89 @@ console.log('per-band sky and fog shift, and byte-for-byte restore');
   const vf = mkC(VOID_SKY.fog);
   ok(ctx.scene.fog.color.g < baseline.fogColor.g, 'fog colour has moved toward the void');
   ok(Math.abs(sky.uHorizon.value.r - baseline.horizon.r) > 1e-3, 'horizon has left its baseline');
+  // The derived pair is the sky the camera actually sees: uMid dominates every
+  // elevation above hh 0.15, uBounce the ground half. If these stay frozen at
+  // the clean biome's values the corruption reads as a seam over a blue stripe.
+  ok(!sky.uMid.value.equals(baseMid), 'uMid corrupts with its inputs');
+  ok(!sky.uBounce.value.equals(baseBounce), 'uBounce corrupts with its inputs');
+  ok(sky.uMid.value.equals(sky.uZenith.value.clone().lerp(sky.uHaze.value, 0.20)),
+     'uMid stays the derivation of the *live* zenith and haze');
   void vf;
 
   ctx.events.emit('corruptionBand', { band: 0, prev: 4 });
   for (let i = 0; i < 900; i++) b.update(ctx, 1 / 60);
   ok(sky.uHorizon.value.equals(baseline.horizon), 'horizon restored byte-for-byte');
   ok(sky.uZenith.value.equals(baseline.zenith), 'zenith restored byte-for-byte');
+  ok(sky.uMid.value.equals(baseMid), 'uMid restored byte-for-byte');
+  ok(sky.uBounce.value.equals(baseBounce), 'uBounce restored byte-for-byte');
   ok(ctx.scene.fog.color.equals(baseline.fogColor), 'fog colour restored byte-for-byte');
   ok(ctx.scene.fog.density === baseline.fogDensity, 'fog density restored exactly');
+}
+
+console.log('a biome swap mid-corruption lands on the *new* baseline, never a ratchet');
+{
+  // The single most load-bearing lifecycle claim in the slice: the mix is
+  // absolute from the recorded baseline every frame, so a stage rebuild at
+  // _skyW > 0 re-lands on the new biome's own colours at the same weight
+  // instead of carrying the old biome's delta into it.
+  const ctx = makeCtx();
+  const mkC = (hex) => new THREE.Color(hex).convertSRGBToLinear();
+  const A = { zenith: mkC(0x2a3a5e), horizon: mkC(0xc9885a), haze: mkC(0xe8b06a),
+              fogColor: mkC(0x8a7a6a), fogDensity: 0.0036 };
+  const B = { zenith: mkC(0x143d2a), horizon: mkC(0x4f8f6b), haze: mkC(0x9fd0a8),
+              fogColor: mkC(0x3d5c4a), fogDensity: 0.0072 };
+  const sky = {
+    uZenith: { value: A.zenith.clone() }, uHorizon: { value: A.horizon.clone() },
+    uHaze: { value: A.haze.clone() }, uGround: { value: mkC(0x6a5a48) },
+    uMid: { value: new THREE.Color() }, uBounce: { value: new THREE.Color() },
+  };
+  ctx.environment = { biomeBaseline: A, skyUniforms: sky, _deriveSkyMid: Environment.prototype._deriveSkyMid };
+  ctx.scene = { fog: { color: A.fogColor.clone(), density: A.fogDensity } };
+
+  const b = new Blight();
+  b.init(ctx);
+  ctx.events.emit('corruptionBand', { band: 4, prev: 0 });
+  for (let i = 0; i < 600; i++) b.update(ctx, 1 / 60);
+  const w = b._skyW;
+  ok(w > 0.99, 'settled at full weight before the swap');
+
+  // What applyBiome does on a rebuild: write the new biome absolutely, then
+  // record it as the new anchor. Blight is not told and does not reset _skyW.
+  sky.uZenith.value.copy(B.zenith);
+  sky.uHorizon.value.copy(B.horizon);
+  sky.uHaze.value.copy(B.haze);
+  ctx.scene.fog.color.copy(B.fogColor);
+  ctx.scene.fog.density = B.fogDensity;
+  ctx.environment.biomeBaseline = B;
+
+  b.update(ctx, 1 / 60);
+  const expZ = B.zenith.clone().lerp(new THREE.Color(VOID_SKY.zenith).convertSRGBToLinear(), b._skyW * 0.60);
+  ok(Math.abs(sky.uZenith.value.r - expZ.r) < 1e-6 && Math.abs(sky.uZenith.value.b - expZ.b) < 1e-6,
+     'one frame after the swap the zenith is B\'s own mix, not A\'s delta applied to B');
+  ok(sky.uMid.value.equals(sky.uZenith.value.clone().lerp(sky.uHaze.value, 0.20)),
+     'the derived mid follows the new biome too');
+  ok(Math.abs(ctx.scene.fog.density - B.fogDensity * (1 + VOID_SKY.fogBoost * b._skyW)) < 1e-9,
+     'fog density is B\'s baseline scaled, not A\'s absolute value');
+
+  // And handing it back lands on B, not on A.
+  ctx.events.emit('corruptionBand', { band: 0, prev: 4 });
+  for (let i = 0; i < 900; i++) b.update(ctx, 1 / 60);
+  ok(sky.uZenith.value.equals(B.zenith) && sky.uHaze.value.equals(B.haze), 'band 0 restores the new biome exactly');
+  ok(ctx.scene.fog.density === B.fogDensity, 'fog density restores to B');
+}
+
+console.log('a vanished camera drops the shimmer instead of freezing it');
+{
+  const ctx = makeCtx();
+  const b = new Blight();
+  b.init(ctx);
+  ctx.events.emit('blightSeed', { x: 0, z: 0, strength: 3 });
+  b.update(ctx, 0.016);
+  const g = ctx.pipeline.passes.grade.uniforms;
+  ok(g.uRimCount.value === 1, 'rim recorded with a camera');
+  ctx.camera = null;
+  b.update(ctx, 0.016);
+  ok(g.uRimCount.value === 0, 'no camera clears the ring rather than leaving it stuck on screen');
 }
 
 console.log('rim motes: budgeted, fxRng-only, on the rim, paused-gated');
