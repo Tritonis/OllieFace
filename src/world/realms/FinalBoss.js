@@ -3,7 +3,8 @@ import { FINALE_PHASES } from '../../data/realms.js';
 import { ENEMY_BY_ID } from '../../data/enemies.js';
 import { raiseIslands, spawnCollapseDebris } from './RealmArena.js';
 import { pullToFloor } from './RealmStage.js';
-import { lerp, clamp } from '../../core/MathUtil.js';
+import { lerp, clamp, RNG } from '../../core/MathUtil.js';
+import { ITEMS_BY_TIER } from '../../data/items.js';
 
 /**
  * The Fracture — the finale, and the only fight in the game where the arena is
@@ -189,6 +190,28 @@ export class FinaleController {
     // profile's boss counter all hang off that one fact.
     ctx.director.boss = boss;
     ctx.events.emit('bossSpawn', { enemy: boss });
+
+    // The void route's teeth and its pay (launch spec §2). Both are def-driven
+    // so the clean Fracture — with neither field — is byte-identical to before.
+    const scale = this.def.bossScale;
+    if (scale) {
+      boss.maxHealth = Math.round(boss.maxHealth * (scale.health ?? 1));
+      boss.health = boss.maxHealth;
+      boss.damage = (boss.damage ?? 0) * (scale.damage ?? 1);
+    }
+    if (this.def.voidLoot > 0) {
+      // The richest corrupted loot in the game, paid on arrival. The pick
+      // rides a derived stream — a ctx.rng draw here would displace the
+      // fight's own rolls relative to a run that took the clean door.
+      const rng = new RNG(((ctx.seed >>> 0) ^ 0x51f0c3a1) >>> 0 || 1);
+      const pool = ITEMS_BY_TIER.blight || [];
+      for (let i = 0; i < this.def.voidLoot && pool.length; i++) {
+        const a = (i / this.def.voidLoot) * Math.PI * 2;
+        const p = stage.origin.clone().add(
+          new THREE.Vector3(Math.cos(a), 0, Math.sin(a)).multiplyScalar(stage.floorRadius * 0.7));
+        ctx.interactables.spawnOrb(p, rng.pick(pool).id, 1.4);
+      }
+    }
   }
 
   // -------------------------------------------------------------------------
