@@ -346,23 +346,25 @@ export const FINALE_PHASES = [
  * — the middle band — sees both and must commit. Every band matches at least
  * one route: corruption changes which game you are playing, never whether
  * you finish (tests/corruption-routing.test.mjs asserts the coverage).
+ *
+ * `name` is stamped from the realm's own name at module init rather than
+ * authored twice: the portal prompt and the HUD's route line must never be
+ * able to drift from the realm they name.
  */
 export const FINALE_ROUTES = [
   {
     realm: 'fracture',
-    name: 'The Fracture',
     label: 'Enter The Fracture — this ends the run',
     tint: 0xff4ad0,
     bands: { min: 0, max: 2 },
   },
   {
     realm: 'fracture-void',
-    name: 'The Hungering Fracture',
     label: 'Enter The Hungering Fracture — this ends the run',
     tint: 0xc72fd6,
     bands: { min: 2, max: 4 },
   },
-];
+].map((r) => ({ ...r, name: REALM_BY_ID.get(r.realm).name }));
 
 /** The routes a party at this corruption band may take. Never empty. */
 export function routesFor(band) {

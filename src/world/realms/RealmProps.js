@@ -211,7 +211,17 @@ export class RealmPortal extends RealmProp {
 
   interact() {
     this.used = true;
-    this.onEnter?.();
+    // A door may refuse. The finale portals are the only ones that do: the band
+    // that opened one can move on before the party walks over to it, and a door
+    // the band no longer allows must not be enterable. Refusal is *reversible*
+    // — the portal stays standing and goes back to available — because a party
+    // that bleeds back down should find it working again, and because removing
+    // a replicated interactable does not reach clients while spawning one does.
+    if (this.onEnter?.() === false) {
+      this.used = false;
+      this.ctx.audio?.play?.('deny');
+      return false;
+    }
     return true;
   }
 

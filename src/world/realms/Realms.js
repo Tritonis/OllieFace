@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {
-  REALM_BY_ID, GATEWAYS, FINALE_STAGE, ENDINGS, VOID_KILL_Y, routesFor,
+  REALM_BY_ID, GATEWAYS, FINALE_STAGE, ENDINGS, VOID_KILL_Y,
+  FINALE_ROUTES, routesFor,
 } from '../../data/realms.js';
 import { SPAWN_CARDS, TIER_UNLOCK, ENEMY_BY_ID, eliteAffixesFor } from '../../data/enemies.js';
 import { RealmStage, pullToFloor } from './RealmStage.js';
@@ -53,6 +54,8 @@ export class Realms {
     this._saved = null;
     this._pendingEnter = null;
     this._voidT = 0;
+    this._finaleAt = null;      // where the finale portals were sited this stage
+    this._finaleOpen = new Set(); // realm ids of the finale doors already standing
   }
 
   init(ctx) {
@@ -65,7 +68,18 @@ export class Realms {
     ctx.events.on('stageStart', () => {
       this.gateways.length = 0;
       this.armedRealm = null;
+      this._finaleAt = null;
+      this._finaleOpen.clear();
     });
+
+    // Corruption is the router, and the router keeps routing after the gate
+    // opens. The band can climb (or bleed back) while the party walks to the
+    // teleporter, so a route the new band allows gets its door *added* here.
+    // Doors are never taken away: a standing portal that the band has since
+    // disallowed refuses on press instead (see `_takeRoute`), which is both
+    // kinder than deleting a door from under someone and the only half that
+    // replicates — `interactables.add` reaches clients, removal does not.
+    ctx.events.on('corruptionBand', () => this._openNewRoutes());
 
     // A client follows the host in and out. It never decides either.
     ctx.events.on('realmEnter', (e) => {
@@ -155,18 +169,59 @@ export class Realms {
       // Corruption is the router: the band decides which Fracture is offered.
       // Both portals stand beside the ordinary one — the run still never
       // forces you to finish, whatever the band says.
+      this._finaleAt = at.clone();
+      this._finaleOpen.clear();
       const routes = routesFor(ctx.corruption?.band ?? 0);
-      routes.forEach((route, i) => {
-        const p = new RealmPortal(ctx, _v.copy(at).add(new THREE.Vector3(i * 6, 0, -8)).clone(), {
-          label: route.label, tint: route.tint,
-          onEnter: () => this.requestEnter(route.realm),
-        });
-        ctx.interactables.add(p);
-      });
+      for (const route of routes) this._openRoute(route);
       ctx.hud?.setObjective?.(routes.length > 1
         ? 'Proceed — or commit to a Fracture and finish it'
         : 'Proceed — or take the Fracture and finish it');
     }
+  }
+
+  /**
+   * Put one finale door on the ground. Position is keyed off the route's index
+   * in `FINALE_ROUTES`, not off spawn order, so the clean door lands in the
+   * same spot whether it opened with the gate or arrived a band later.
+   */
+  _openRoute(route) {
+    const ctx = this.ctx;
+    const i = FINALE_ROUTES.indexOf(route);
+    const p = new RealmPortal(ctx, _v.copy(this._finaleAt).add(new THREE.Vector3(i * 6, 0, -8)).clone(), {
+      label: route.label, tint: route.tint,
+      onEnter: () => this._takeRoute(route),
+    });
+    ctx.interactables.add(p);
+    this._finaleOpen.add(route.realm);
+    return p;
+  }
+
+  /** The band moved: open a door for any route it now allows that has none. */
+  _openNewRoutes() {
+    const ctx = this.ctx;
+    if (!ctx.authority || this.inRealm || !this._finaleAt) return;
+    for (const route of routesFor(ctx.corruption?.band ?? 0)) {
+      if (this._finaleOpen.has(route.realm)) continue;
+      this._openRoute(route);
+      ctx.hud?.setObjective?.(`A second Fracture has opened — ${route.name} waits beside it`);
+    }
+  }
+
+  /**
+   * A finale door was pressed. The band decides at the moment of the press, not
+   * at the moment the door was sited — otherwise the HUD's live route preview
+   * names one Fracture while the party walks into another.
+   */
+  _takeRoute(route) {
+    const ctx = this.ctx;
+    const open = routesFor(ctx.corruption?.band ?? 0);
+    if (!open.some((r) => r.realm === route.realm)) {
+      ctx.hud?.setObjective?.(route.realm === 'fracture-void'
+        ? 'This way has closed — the world is not far gone enough'
+        : 'This way has closed — the world is too far gone');
+      return false;
+    }
+    return this.requestEnter(route.realm);
   }
 
   // ---------------------------------------------------------- enter / exit

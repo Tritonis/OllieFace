@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import {
   REALM_BY_ID, FINALE_ROUTES, routesFor, ENDINGS, FINALE_STAGE,
 } from '../src/data/realms.js';
+import { BANDS } from '../src/data/corruption.js';
 import { Realms } from '../src/world/realms/Realms.js';
 
 let pass = 0, fail = 0;
@@ -12,7 +13,10 @@ const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } e
 
 console.log('every band reaches an ending — no dead ends');
 {
-  for (let band = 0; band <= 4; band++) {
+  // Bounded by the band table itself, not by the bands that happen to exist
+  // today: adding a sixth band without widening a route would dead-end the run,
+  // and this loop is what has to notice.
+  for (let band = 0; band < BANDS.length; band++) {
     ok(routesFor(band).length >= 1, `band ${band} has at least one route`);
   }
   ok(routesFor(0).every((r) => r.realm === 'fracture'), 'Pristine opens only the clean route');
@@ -31,6 +35,8 @@ console.log('the void finale is a real realm riding the finale machinery');
   ok(def.voidLoot >= 1, 'the void route pays corrupted loot');
   ok(FINALE_ROUTES.every((r) => REALM_BY_ID.has(r.realm)), 'every route names a registered realm');
   ok(FINALE_ROUTES.every((r) => typeof r.name === 'string' && r.name.length), 'every route is nameable by the HUD');
+  ok(FINALE_ROUTES.every((r) => r.name === REALM_BY_ID.get(r.realm).name), 'the route name is the realm’s own');
+  ok(FINALE_ROUTES.every((r) => r.label.includes(r.name)), 'and the prompt cannot drift from it');
 }
 
 console.log('endings key off the route');
@@ -56,10 +62,80 @@ console.log('openPortals spawns the routes the band allows');
     return added;
   };
   ok(spawnFor(0).length === 1 && spawnFor(0)[0].label === routesFor(0)[0].label, 'Pristine: one portal, the clean one');
-  ok(spawnFor(2).length === 2, 'Blighted: both portals stand side by side');
+  const blighted = spawnFor(2);
+  ok(blighted.length === 2, 'Blighted: both portals stand side by side');
+  ok(blighted[0].position.distanceTo(blighted[1].position) > blighted[0].radius + blighted[1].radius,
+     'side by side, not on top of each other — the discs cannot overlap');
   const consumed = spawnFor(4);
   ok(consumed.length === 1 && consumed[0].label === routesFor(4)[0].label, 'Consumed: only the void way opens');
   ok(spawnFor(4, { authority: false }).length === 0, 'a client spawns nothing');
+}
+
+// The gate opens once; corruption does not stop moving. The doors on the ground
+// and the route the HUD previews have to still agree ten seconds later.
+console.log('the band keeps routing after the gate opens');
+{
+  const bus = () => {
+    const subs = new Map();
+    return {
+      on(k, f) { if (!subs.has(k)) subs.set(k, []); subs.get(k).push(f); },
+      emit(k, e) { for (const f of subs.get(k) ?? []) f(e); },
+    };
+  };
+  const world = (band) => {
+    const added = [], objectives = [], sounds = [];
+    const corruption = { band };
+    const ctx = {
+      authority: true,
+      corruption,
+      interactables: { add: (p) => added.push(p) },
+      hud: { setObjective: (s) => objectives.push(s) },
+      audio: { play: (n) => sounds.push(n) },
+      events: bus(),
+    };
+    const realms = new Realms();
+    realms.init(ctx);
+    realms.openPortals(new THREE.Vector3(0, 0, 0), FINALE_STAGE);
+    const band_ = (b) => { corruption.band = b; ctx.events.emit('corruptionBand', { band: b }); };
+    return { ctx, realms, added, objectives, sounds, band: band_ };
+  };
+
+  const w = world(1);
+  ok(w.added.length === 1, 'Seeded: the gate opens on the clean door alone');
+  const clean = w.added[0];
+
+  w.band(4);
+  ok(w.added.length === 2, 'the world rots on the walk over and the void door arrives');
+  const voidDoor = w.added[1];
+  ok(voidDoor.label === routesFor(4)[0].label, 'the late arrival is the Hungering Fracture');
+  ok(clean.position.distanceTo(voidDoor.position) > clean.radius + voidDoor.radius,
+     'and it stands where it would have stood at the gate, clear of the first');
+
+  w.band(4);
+  ok(w.added.length === 2, 'a band event that allows nothing new opens nothing');
+
+  ok(clean.interact() === false, 'the door the band left behind refuses the press');
+  ok(w.realms._pendingEnter === null, 'nobody walks into the clean Fracture at Consumed');
+  ok(clean.available(), 'the refused door stays standing — refusal is not removal');
+  ok(w.sounds.includes('deny'), 'the refusal is audible');
+  ok(w.objectives.at(-1).includes('too far gone'), 'and the HUD says which way the world went');
+
+  ok(voidDoor.interact() === true, 'the door the band opened takes the press');
+  ok(w.realms._pendingEnter === 'fracture-void', 'and the void route is the one entered');
+
+  // The mirror case: a Voidtouched refund bleeds the party back down, and the
+  // door that refused a moment ago works again. Nothing was destroyed.
+  w.realms._pendingEnter = null;
+  w.band(1);
+  ok(w.added.length === 2, 'bleeding back opens no third door');
+  ok(clean.interact() === true, 'the clean door works again');
+  ok(w.realms._pendingEnter === 'fracture', 'and it is the clean Fracture that opens');
+
+  // A client neither sites doors nor reacts to a band it cannot compute.
+  const c = world(1);
+  c.ctx.authority = false;
+  c.band(4);
+  ok(c.added.length === 1, 'a client adds no door of its own when the band moves');
 }
 
 console.log('victory picks the ending for the realm it happened in');
