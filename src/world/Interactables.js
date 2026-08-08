@@ -339,9 +339,10 @@ export class Chest extends Interactable {
     if (!this.ctx.items) return false;
     const cor = this.ctx.corruption;
     if (this.ctx.items?.spendGold(this.cost)) {
-      // Paid open: gold as before, plus the tithe. The void takes its cut of
-      // every transaction; it just doesn't leave a mark on this one.
+      // Paid open: gold as before, plus the tithe — and the mark. Every greed
+      // act plants a seed (spec §1); paying in gold only makes it gentler.
       cor?.feed(this.ctx.player, SOURCES.chestTithe[this.size] ?? SOURCES.chestTithe.small, this.position);
+      cor?.seed(this.position, 1);
     } else if (cor) {
       // Void credit: the most deliberate corruption choice in the game. Steep
       // lump, and a seed planted where it happened.

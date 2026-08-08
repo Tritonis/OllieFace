@@ -113,10 +113,15 @@ export class Corruption {
     return taken;
   }
 
-  /** Record where greed happened. The blight-visuals plan grows fields from these. */
+  /**
+   * Record where greed happened. The blight-visuals plan grows fields from
+   * these, and the Director surfaces Voidtouched from them. Greed time cuts
+   * deeper: the same act after the teleporter has finished leaves a stronger
+   * mark, mirroring what `feed` already does to the price.
+   */
   seed(position, strength = 1) {
     if (!this.ctx?.authority || !position) return;
-    const s = { x: position.x, z: position.z, strength };
+    const s = { x: position.x, z: position.z, strength: strength + (this._greed ? 1 : 0) };
     this.seeds.push(s);
     if (this.seeds.length > MAX_SEEDS) this.seeds.shift();
     this.ctx.events.emit('blightSeed', s);

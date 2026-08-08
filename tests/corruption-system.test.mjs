@@ -113,6 +113,21 @@ console.log('seeds are recorded, broadcast, and capped');
   ok(c.seeds[0].x === 36, 'oldest seeds dropped first');
 }
 
+console.log('greed time deepens every seed, and the event carries the bumped strength');
+{
+  const { ctx, emitted } = makeCtx();
+  const c = new Corruption();
+  c.init(ctx);
+  ctx.events.emit('teleporterComplete', {});
+  c.seed({ x: 5, y: 0, z: 5 }, 2);
+  ok(c.seeds[0]?.strength === 3, 'a greed-time seed is one deeper than asked');
+  const ev = emitted.filter((e) => e.name === 'blightSeed').pop();
+  ok(ev?.payload.strength === 3, 'the broadcast agrees with the record');
+  ctx.events.emit('stageStart', { index: 1, name: 'n' });
+  c.seed({ x: 6, y: 0, z: 6 }, 2);
+  ok(c.seeds[1]?.strength === 2, 'a new stage plants at face value again');
+}
+
 console.log('item pickups feed by tier through the itemPickup event');
 {
   const { ctx } = makeCtx();
