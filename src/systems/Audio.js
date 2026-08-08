@@ -142,8 +142,13 @@ const ROOT = 110; // A2
  * corruption band on the void shimmer bed. Zero through band 1 for the same
  * reason BAND_GRADE's early entries are zero — an atmosphere that sickens
  * before the world does spends the effect before it means anything.
+ *
+ * Priced against `master`, not the ambient bus — the layer is routed there so
+ * the Music slider cannot silence it. These are the old ambient-bus figures
+ * (0.05 / 0.11 / 0.18) times the ambient bus's own 0.4, so what a player hears
+ * at the default Music setting is exactly what it was.
  */
-export const VOID_LAYER = [0, 0, 0.05, 0.11, 0.18];
+export const VOID_LAYER = [0, 0, 0.020, 0.044, 0.072];
 
 export function voidLayerGain(band) {
   const b = Number.isFinite(band) ? Math.floor(band) : 0;
@@ -425,8 +430,15 @@ export class Audio {
 
     // --- void layer: the corruption band as sound. A glassy tritone pair over
     // band-passed noise — an interval that never resolves, breathing through a
-    // slow filter LFO. Sits on the ambient bus (it is world state, not music,
-    // so the music-off setting leaves the world still audibly wrong).
+    // slow filter LFO.
+    //
+    // Straight to `master`, deliberately bypassing `ambient`: it is world
+    // state, not music, and `setMusicVolume` scales the whole ambient bus, so a
+    // player at Music 0 would otherwise hear a perfectly healthy world. Master
+    // is still under `setMuted` and `masterVolume`, which is the behaviour we
+    // do want — mute means silence. VOID_LAYER is priced against master, i.e.
+    // the ambient bus's own 0.4 already folded in, so perceived loudness at the
+    // default Music setting is unchanged by the reroute.
     const voidGain = ac.createGain();
     voidGain.gain.value = 0.0;
     const voidFilter = ac.createBiquadFilter();
@@ -434,7 +446,7 @@ export class Audio {
     voidFilter.frequency.value = 2400;
     voidFilter.Q.value = 1.4;
     voidFilter.connect(voidGain);
-    voidGain.connect(this.ambient);
+    voidGain.connect(this.master);
 
     const vnoise = ac.createBufferSource();
     vnoise.buffer = this.noiseBuf;
@@ -1341,8 +1353,9 @@ export class Audio {
     }
 
     // The void layer is world state, not music, so it is deliberately not
-    // gated on `_musicOff` — muting the soundtrack must not mute the fact that
-    // the world is sick.
+    // gated on `_musicOff` — and it hangs off `master` rather than the ambient
+    // bus, so turning the Music slider to 0 does not mute the fact that the
+    // world is sick either. See the routing note in `_build`.
     if (this.voidGain) {
       // 2.0s time constant lands in the same felt window as the visual
       // GRADE_BLEND — the world sickens in one motion, not two.
