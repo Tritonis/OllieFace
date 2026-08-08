@@ -2,12 +2,19 @@
 // Real Items + real Corruption, real item data. The axis under test: the
 // gauge's upward threshold crossings convert one held base stack into its
 // blight counterpart, deterministically, off the shared rng, without charging.
+//
+// The toll is *queued* by the band crossing and paid in `Items.fixedUpdate`
+// (see the `corruptionBand` listener), so every arm below drives one fixed step
+// after the feed that crosses. That deferral is the point of the last strip arm:
+// a pickup can cross the threshold itself, and the mutation must not run inside
+// that pickup's own `itemPickup` dispatch.
 import { Items } from '../src/systems/Items.js';
 import { Corruption } from '../src/systems/Corruption.js';
+import { Progression } from '../src/systems/Progression.js';
 import { BLIGHT_BY_BASE, ITEM_BY_ID } from '../src/data/items.js';
 import { HUD } from '../src/ui/HUD.js';
 import { TIER_ORDER } from '../src/ui/Icons.js';
-import { MUTATION, BANDS } from '../src/data/corruption.js';
+import { MUTATION, BANDS, SOURCES } from '../src/data/corruption.js';
 import { RNG } from '../src/core/MathUtil.js';
 
 let pass = 0, fail = 0;
@@ -19,6 +26,9 @@ function makeCtx({ authority = true } = {}) {
   const ctx = {
     authority, seed: 424242, rng: new RNG(777), time: 0,
     player: { isPlayer: true, alive: true },
+    // Only `Progression` (in the stats arm) reaches for this; `Items` and
+    // `Corruption` never touch the scene graph.
+    scene: { add() {}, remove() {} },
     events: {
       emit(name, p) { emitted.push({ name, payload: p }); for (const fn of listeners.get(name) || []) fn(p); },
       on(name, fn) { if (!listeners.has(name)) listeners.set(name, []); listeners.get(name).push(fn); },
@@ -36,6 +46,8 @@ function makeCtx({ authority = true } = {}) {
 const bases = [...BLIGHT_BY_BASE.keys()].sort();
 const baseA = bases[0], baseB = bases[1];
 const blightOf = (id) => BLIGHT_BY_BASE.get(id).id;
+/** One fixed step — where a crossed band's toll is actually collected. */
+const step = (ctx, items) => items.fixedUpdate(ctx, 1 / 60);
 
 console.log('crossing into minBand mutates exactly one eligible stack');
 {
@@ -44,6 +56,7 @@ console.log('crossing into minBand mutates exactly one eligible stack');
   items.give(baseB, 2);
   const worldBefore = corruption.world;
   corruption.feed(ctx.player, BANDS[MUTATION.minBand].at + 1 - worldBefore);  // cross into minBand once
+  step(ctx, items);
   const mut = emitted.filter((e) => e.name === 'itemMutated');
   ok(mut.length === 1, 'one mutation for one threshold');
   const { baseId, blightId, count, band } = mut[0].payload;
@@ -63,6 +76,7 @@ console.log('the pick ignores the shared rng stream');
     w.items.give(baseA, 3);
     w.items.give(baseB, 2);
     w.corruption.feed(w.ctx.player, BANDS[MUTATION.minBand].at + 1);
+    step(w.ctx, w.items);
   }
   const pick = (w) => w.emitted.find((e) => e.name === 'itemMutated')?.payload.baseId;
   ok(pick(a) !== undefined && pick(a) === pick(b), 'identical pick despite displaced ctx.rng');
@@ -75,9 +89,10 @@ console.log('mutation itself never feeds the gauge');
   const beforeFeed = corruption.world;                    // the give's own tier feed
   const fed = BANDS[MUTATION.minBand].at + 1 - beforeFeed;
   corruption.feed(ctx.player, fed);
-  // Any wrongful charge for the mutation's 'corrupt' writes would land
-  // synchronously inside this feed (the mutation runs inside the band event),
-  // so the only honest check is arithmetic: world === exactly what was fed.
+  step(ctx, items);
+  // Any wrongful charge for the mutation's 'corrupt' writes would land inside
+  // the fixed step that pays the toll, so the only honest check is arithmetic:
+  // world === exactly what was fed.
   ok(emitted.some((e) => e.name === 'itemMutated'), 'a mutation happened');
   ok(Math.abs(corruption.world - (beforeFeed + fed)) < 1e-9, 'world is exactly the feeds — the conversion charged nothing');
 }
@@ -87,12 +102,15 @@ console.log('below minBand nothing mutates; downward crossings never mutate');
   const { ctx, items, corruption, emitted } = makeCtx();
   items.give(baseA, 3);
   corruption.feed(ctx.player, BANDS[1].at + 1);           // into band 1 only
+  step(ctx, items);
   ok(!emitted.some((e) => e.name === 'itemMutated'), 'band 1 is below the mutation floor');
   corruption.feed(ctx.player, BANDS[MUTATION.minBand].at - corruption.world + 1);  // into band 2
+  step(ctx, items);
   ok(emitted.filter((e) => e.name === 'itemMutated').length === 1, 'band 2 mutates');
   corruption.bleed(ctx.player, corruption.world);         // bleed to zero — bands walk down
   items.give(baseB, 2);
   corruption.feed(ctx.player, BANDS[MUTATION.minBand].at + 1);  // reclimb into band 2
+  step(ctx, items);
   ok(emitted.filter((e) => e.name === 'itemMutated').length === 1, 'a reclaimed band never mutates twice');
 }
 
@@ -102,6 +120,7 @@ console.log('a band jump crosses two thresholds and mutates twice');
   items.give(baseA, 3);
   items.give(baseB, 2);
   corruption.feed(ctx.player, BANDS[3].at + 1);           // 0 -> band 3 in one lump
+  step(ctx, items);
   const mut = emitted.filter((e) => e.name === 'itemMutated');
   ok(mut.length === 2, 'bands 2 and 3 each took a stack');
   ok(mut[0].payload.band === 2 && mut[1].payload.band === 3, 'in threshold order');
@@ -110,8 +129,9 @@ console.log('a band jump crosses two thresholds and mutates twice');
 
 console.log('nothing eligible, nothing mutated — and no event');
 {
-  const { ctx, corruption, emitted } = makeCtx();          // empty inventory
+  const { ctx, items, corruption, emitted } = makeCtx();   // empty inventory
   corruption.feed(ctx.player, BANDS[MUTATION.minBand].at + 1);
+  step(ctx, items);
   ok(!emitted.some((e) => e.name === 'itemMutated'), 'no eligible stack, no event');
 }
 
@@ -120,6 +140,7 @@ console.log('a client never mutates');
   const { ctx, items, corruption, emitted } = makeCtx({ authority: false });
   items.counts.set(baseA, 3);                              // mirror state, set directly
   ctx.events.emit('corruptionBand', { band: 4, prev: 0 });
+  step(ctx, items);
   ok(!emitted.some((e) => e.name === 'itemMutated'), 'authority-gated');
   ok(items.counts.get(baseA) === 3, 'mirror untouched');
 }
@@ -252,6 +273,7 @@ console.log('the strip converts the stack — the zeroed tile leaves, the blight
   ok(self.inv.has(baseA) && self.inv.get(baseA).count === 3, 'the base stack is on the strip to begin with');
 
   corruption.feed(ctx.player, BANDS[MUTATION.minBand].at + 1 - corruption.world);
+  step(ctx, items);
 
   ok(items.count(baseA) === 0 && items.count(blightId) === 3, 'the game converted the stack');
   ok(!self.inv.has(baseA), 'the zeroed base tile left the strip map');
@@ -273,6 +295,7 @@ console.log('a corrupt write is not an acquisition — the mutation speaks once'
   const toastsBefore = toasts.length, cardsBefore = cards.length;
 
   corruption.feed(ctx.player, BANDS[MUTATION.minBand].at + 1 - corruption.world);
+  step(ctx, items);
 
   const during = toasts.slice(toastsBefore);
   ok(during.length === 1, `exactly one toast for the mutation (got ${during.length}: ${during.map((t) => t.text).join(' | ')})`);
@@ -294,6 +317,60 @@ console.log('a give still toasts and still cards — non-corrupt writes are unto
   // though settling it fires 'corrupt' writes underneath.
   items.give(blightId, 1);
   ok(toasts.some((t) => t.id === blightId), 'a taken blight card still toasts for itself');
+}
+
+// The path the whole deferral exists for: item pickups are a primary corruption
+// source, so the ordinary way to cross a threshold is *on* a pickup — and the
+// stack that crossed it is then the likeliest thing the band takes. Mutating
+// inside that pickup's own `itemPickup` dispatch put the 'corrupt' writes in
+// front of the 'give' the HUD had not seen yet, which left a tile for an item
+// the player held none of, a pickup card for it, and the toasts in reverse.
+console.log('a pickup that crosses the band and is then eaten by it leaves nothing behind');
+{
+  const makeEl = fakeDom();
+  const { ctx, items, corruption } = makeCtx();
+  const { self, toasts, cards } = bindHud(ctx, makeEl);
+  const blightId = blightOf(baseA);
+
+  // Park the gauge half a point under the threshold on an empty pack, so the
+  // crossing is caused by the very pickup whose stack is then the only thing
+  // eligible to be taken.
+  corruption.feed(ctx.player, BANDS[MUTATION.minBand].at - 0.5 - corruption.world);
+  const perCopy = SOURCES.itemFeed[ITEM_BY_ID.get(baseA).tier] ?? 1;
+  ok(perCopy * 3 > 0.5, 'the pickup alone is enough to cross');
+  items.give(baseA, 3);
+  ok(corruption.band === MUTATION.minBand, 'the pickup itself crossed the threshold');
+  step(ctx, items);
+
+  ok(items.count(baseA) === 0 && items.count(blightId) === 3, 'the band took the stack that fed it');
+  ok(!self.inv.has(baseA), 'no ghost entry for the emptied base');
+  const ids = stripTiles(self).map((el) => el.dataset.id);
+  ok(!ids.includes(baseA), `no ghost tile in the strip structure (tiles: ${ids.join(', ') || 'none'})`);
+  ok(ids.includes(blightId) && self.inv.get(blightId)?.count === 3, 'the blight tile carries the moved copies');
+  ok(cards.length === 1 && cards[0]?.id === baseA, `one pickup card, for the pickup that really happened (got ${cards.map((c) => c.id).join(', ') || 'none'})`);
+  ok(toasts.length === 2, `two toasts: the pickup, then the mutation (got ${toasts.length}: ${toasts.map((t) => t.text).join(' | ')})`);
+  ok(toasts[0]?.id === baseA && toasts[1]?.tier === 'blight',
+    `in causal order (got ${toasts.map((t) => `${t.id}:${t.tier}`).join(' -> ')})`);
+}
+
+// Global Constraint 3 downstream: 'corrupt' is not an acquisition for anything
+// that counts acquisitions either. `Progression` is driven here rather than
+// transcribed, so the arm goes stale if that listener moves.
+console.log('the run item counter does not score a mutation as an acquisition');
+{
+  const { ctx, items, corruption } = makeCtx();
+  const prog = new Progression();
+  prog.init(ctx);
+
+  items.give(baseA, 3);
+  const afterGive = prog.stats.items;
+  ok(afterGive === 1, `a real pickup counts once (got ${afterGive})`);
+
+  corruption.feed(ctx.player, BANDS[MUTATION.minBand].at + 1 - corruption.world);
+  step(ctx, items);
+  ok(items.count(baseA) === 0, 'the mutation ran');
+  ok(prog.stats.items === afterGive,
+    `the two 'corrupt' writes added nothing to the run's item count (got ${prog.stats.items})`);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

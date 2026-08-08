@@ -1466,6 +1466,21 @@ export class Profile {
 
   _onItemPickup(e) {
     const run = this.run;
+    // `reason: 'corrupt'` is the blight transform moving stacks the player
+    // already owns from one id to another. Nothing was acquired, so it feeds no
+    // counter — not the run's, and least of all `data.stats.items`, which is
+    // persisted and drives achievement evaluation: a band crossing was booking
+    // four lifetime items for a conversion the player never chose, and scoring
+    // the *emptied* base as one of them because `count: 0` floors to 1 below.
+    //
+    // The logbook is the single exception, and only for copies that genuinely
+    // arrive (`delta > 0`): the player is holding that blight card now, which
+    // is what "met" means. The emptied side discovers nothing.
+    if (e?.reason === 'corrupt') {
+      const arrived = num(e?.delta, 0);
+      if (arrived > 0 && typeof e?.id === 'string') this.discover('item', e.id, arrived);
+      return;
+    }
     // `itemPickup` is replicated as *this* client's inventory change (see
     // NETCODE.md), so there is no witness filter to apply here.
     const count = Math.max(1, num(e?.count, 1));

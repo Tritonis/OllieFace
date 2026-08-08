@@ -174,7 +174,14 @@ export class Progression {
       if (ctx.authority) return;
       this.stats.damageTaken += e?.amount ?? 0;
     });
-    ctx.events.on('itemPickup', () => { this.stats.items++; });
+    // `reason: 'corrupt'` is the blight transform moving stacks the player
+    // already owns between two ids — the emptied base and the arriving card are
+    // one event, not two acquisitions. Counting them inflated the run summary
+    // by two items every time the corruption gauge crossed a band.
+    ctx.events.on('itemPickup', (e) => {
+      if (e?.reason === 'corrupt') return;
+      this.stats.items++;
+    });
     ctx.events.on('goldChanged', (e) => {
       const delta = e.gold - (this._lastGold || 0);
       if (delta > 0) this.stats.goldEarned += delta;

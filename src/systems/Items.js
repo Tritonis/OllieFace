@@ -166,6 +166,9 @@ export class Items {
     // down and reclimbing must not pay a second time — the threshold is a
     // one-way door, like the blight scar that never shrinks.
     this._mutePeak = 0;
+    // Bands whose toll has been claimed but not yet collected. See the
+    // `corruptionBand` listener for why the collection is deferred.
+    this._muteQueue = [];
   }
 
   init(ctx) {
@@ -268,11 +271,23 @@ export class Items {
     // Upward crossings only, one stack per threshold, never the same band
     // twice. The writes ride the 'corrupt' reason, so Corruption does not
     // re-charge and a client mirrors them like any other inventory change.
+    //
+    // The crossing only *claims* its bands here; `fixedUpdate` collects them.
+    // Mutating inline would run the whole transform inside whatever emission
+    // caused the crossing, and item pickups are a primary corruption source —
+    // so a pickup big enough to tip the gauge dispatched its own `itemPickup`,
+    // and the mutation's `'corrupt'` writes reached listeners *before* the
+    // outer `'give'` did. The HUD then retired a tile it had not created yet
+    // and created it a moment later from the stale outer payload: a permanent
+    // ghost tile for an item the player holds none of, a pickup card for it,
+    // and the toasts in reverse causal order. `_mutePeak` still advances at
+    // claim time, so the one-mutation-per-band rule holds even if two crossings
+    // land in the same frame.
     ctx.events.on('corruptionBand', ({ band, prev }) => {
       if (!ctx.authority || band <= prev) return;
       for (let b = Math.max(prev + 1, MUTATION.minBand, this._mutePeak + 1); b <= band; b++) {
         this._mutePeak = b;
-        this._mutateAt(b);
+        this._muteQueue.push(b);
       }
     });
 
@@ -354,18 +369,16 @@ export class Items {
    * directly. So the two orders converge on the same inventory, and running the
    * transform any number of times changes nothing after the first.
    *
-   * ## The HUD limitation this is written around
+   * ## The HUD, and why the interception in `give` still exists
    *
-   * `ui/HUD.js`'s item strip is append-only: `onItemPickup` creates a tile the
-   * first time it sees an id and there is no path that ever retires one, so an
-   * id driven to zero keeps its tile with a blank stack badge. That is not new
-   * here — `take()` has the same effect and the Hollow Market's refinery already
-   * calls it — but corruption makes it routine, and the fix belongs in `HUD.js`
-   * (retire the tile in `onItemPickup` when `total <= 0`), which this round's
-   * file ownership does not include. Until it lands, a base item consumed *out
-   * of* the inventory leaves a stale empty tile; a base item corrupted *on
-   * arrival* (the branch in `give`) does not, which is why that branch exists
-   * rather than letting both directions fall through to here.
+   * `ui/HUD.js`'s item strip used to be append-only, so an id driven to zero
+   * kept its tile with a blank stack badge. `onItemPickup` now retires a tile
+   * on any write with `total <= 0`, so a base emptied here (or by `take()`, or
+   * by the Hollow Market's refinery) leaves nothing behind. The interception in
+   * `give` is kept regardless: routing a base straight into a blight card the
+   * player already holds means the ordinary item never lands, never toasts and
+   * never cards, which is a quieter truth than creating a tile and retiring it
+   * in the same breath.
    */
   _settleBlight(id) {
     const def = ITEM_BY_ID.get(id);
@@ -1116,6 +1129,14 @@ export class Items {
   // ------------------------------------------------------------------ update
 
   fixedUpdate(ctx, h) {
+    // Collect the tolls the gauge claimed since the last step, in threshold
+    // order, outside any event dispatch. Host-only by construction — the
+    // `corruptionBand` listener never queues on a client — and deterministic:
+    // the queue is FIFO and each band's pick comes off its own derived stream.
+    // `_mutateAt`'s writes are all `'corrupt'`, which Corruption ignores, so
+    // nothing can re-enter this queue while it drains.
+    while (this._muteQueue.length) this._mutateAt(this._muteQueue.shift());
+
     for (const [name, b] of this.buffs) {
       b.remaining -= h;
       if (b.remaining <= 0) { this.buffs.delete(name); this._dirty = true; }
