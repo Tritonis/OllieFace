@@ -1,6 +1,8 @@
 // src/systems/Blight.js
 import * as THREE from 'three';
 import { damp } from '../core/MathUtil.js';
+import { MASK_UNIFORMS, MAX_MASK } from '../shaders/BlightMask.js';
+import { MAX_RIMS } from '../shaders/BlightShimmer.js';
 
 /**
  * Blight fields — the visible consequence of greed. Corruption records where
@@ -14,6 +16,10 @@ import { damp } from '../core/MathUtil.js';
 export const MAX_PATCHES = 48;
 export const RADIUS = { base: 2.0, perStrength: 1.5, perWorld: 0.04, cap: 14 };
 export const GROW_RATE = 1.2;   // metres per second — visible spread, not a pop
+// Rim shimmer only near the camera: it is an edge read for the player standing
+// at the edge, and a distant ellipse projected as a screen-space circle is
+// wrong enough to notice. Strength is deliberately under half a blast's.
+export const SHIMMER = { near: 14, far: 55, strength: 0.0055 };
 
 /**
  * What each band does to the frame, as *offsets* from whatever grade the
@@ -79,6 +85,10 @@ const LIFT = 0.06;
  * dissolved. The patch pools on what is flat and lets go of what is not.
  */
 const TEAR = { lo: 1.2, hi: 2.6 };   // rise over run
+
+// Scratch for the per-frame projection in _shimmer — no allocation per patch.
+const _proj = new THREE.Vector3();
+const _v3 = new THREE.Vector3();
 
 const BlightVert = /* glsl */ `
 attribute float aTear;
@@ -434,6 +444,8 @@ export class Blight {
       u.uBand.value = this.band;
     }
     this._grade(ctx, dt);
+    this._mask(ctx);
+    this._shimmer(ctx);
   }
 
   /**
@@ -480,6 +492,81 @@ export class Blight {
 
     gradeU.uSaturation.value = this._satBase + this._sat;
     pipe.vignetteBoost = Math.max(pipe.vignetteBoost || 0, this._vig);
+  }
+
+  /**
+   * Publish the live patches into the shared material-mask uniforms. One
+   * writer, every patched program a reader — see BlightMask.js. Slots go to
+   * the patches nearest the camera (fall back to world origin headless): the
+   * mask exists to corrupt what the player is looking at, and with more live
+   * patches than slots the far ones are the right ones to drop.
+   */
+  _mask(ctx) {
+    const u = MASK_UNIFORMS;
+    const cam = ctx.camera;
+    const cx = cam ? cam.position.x : 0, cz = cam ? cam.position.z : 0;
+    const live = [];
+    for (const p of this.patches) {
+      if (!p.mesh) continue;
+      const dx = p.x - cx, dz = p.z - cz;
+      live.push([dx * dx + dz * dz, p]);
+    }
+    live.sort((a, b) => a[0] - b[0]);
+    const n = Math.min(live.length, MAX_MASK);
+    const arr = u.uBlightPatches.value;
+    for (let i = 0; i < n; i++) {
+      const p = live[i][1];
+      const o = i * 4;
+      arr[o] = p.x;
+      arr[o + 1] = p.z;
+      arr[o + 2] = p.mesh.material.uniforms.uRadius.value;
+      arr[o + 3] = p.seedNoise;
+    }
+    u.uBlightCount.value = n;
+    u.uBlightTime.value = ctx.time;
+    u.uBlightBand.value = this.band;
+  }
+
+  /**
+   * Project the nearest patch rims into GradeShader's shimmer slots — the
+   * same world-radius-to-UV math VFX._updateDistortion uses for blasts.
+   * Skipped for a patch the camera stands inside (the rim surrounds the
+   * screen; a projected circle would shimmer the centre of the view), for
+   * rims beyond SHIMMER.far, and for anything behind the camera.
+   */
+  _shimmer(ctx) {
+    const pass = ctx.pipeline?.passes?.grade;
+    const cam = ctx.camera;
+    if (!pass?.uniforms?.uRims || !cam) return;
+    const u = pass.uniforms.uRims.value;
+    let n = 0;
+    for (const p of this.patches) {
+      if (n >= MAX_RIMS) break;
+      const m = p.mesh;
+      if (!m) continue;
+      const r = m.material.uniforms.uRadius.value;
+      const dx = p.x - cam.position.x, dz = p.z - cam.position.z;
+      const flat = Math.sqrt(dx * dx + dz * dz);
+      if (flat < r + 1.5) continue;            // camera inside or on the rim
+      if (flat - r > SHIMMER.far) continue;    // too far to read
+      const y = this.ctx.stage?.sampleHeight ? this.ctx.stage.sampleHeight(p.x, p.z) : 0;
+      _proj.set(p.x, y, p.z).project(cam);
+      if (_proj.z > 1) continue;               // behind the camera: NDC wraps
+      _v3.set(p.x, y, p.z);
+      const dist = Math.max(1, cam.position.distanceTo(_v3));
+      const halfH = Math.tan((cam.fov * Math.PI) / 360) * dist;
+      const uvR = r / (halfH * 2);
+      // Full strength at the near line, gone at far — the shimmer walks in.
+      const k = 1 - Math.min(Math.max((flat - r - SHIMMER.near) / (SHIMMER.far - SHIMMER.near), 0), 1);
+      const o = n * 4;
+      u[o] = (_proj.x + 1) * 0.5;
+      u[o + 1] = (_proj.y + 1) * 0.5;
+      u[o + 2] = uvR;
+      u[o + 3] = SHIMMER.strength * k * (0.6 + 0.1 * this.band);
+      n++;
+    }
+    pass.uniforms.uRimCount.value = n;
+    pass.uniforms.uRimAspect.value = (globalThis.innerWidth || 1) / (globalThis.innerHeight || 1);
   }
 
   _recycle(patch) {

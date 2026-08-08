@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { distortUniforms, DISTORT_DECL, DISTORT_APPLY } from './DistortShader.js';
+import { shimmerUniforms, SHIMMER_DECL, SHIMMER_APPLY } from './BlightShimmer.js';
 
 /**
  * Final-look pass: screen shake offset, chromatic aberration, filmic grade,
@@ -66,6 +67,8 @@ export const GradeShader = {
     // A pass of its own measured ~5ms of a 26ms frame purely for its own
     // fullscreen tap, and this shader already takes that tap.
     ...distortUniforms(),
+    // The blight rim shimmer rides the same tap for the same reason.
+    ...shimmerUniforms(),
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -83,6 +86,7 @@ export const GradeShader = {
     uniform vec3  uLift, uGain, uToe;
     varying vec2 vUv;
 ${DISTORT_DECL}
+${SHIMMER_DECL}
     float hash(vec2 p) {
       p = fract(p * vec2(443.897, 441.423));
       p += dot(p, p + 19.19);
@@ -105,6 +109,9 @@ ${DISTORT_DECL}
       // Before the aberration, so the fringe follows the bent geometry instead
       // of separating a straight edge that is no longer there.
 ${DISTORT_APPLY}
+
+      // --- blight rim shimmer: same free ride on this pass's one tap --------
+${SHIMMER_APPLY}
 
       // --- chromatic aberration, scaled by distance from centre ---
       vec2 c = uv - 0.5;
