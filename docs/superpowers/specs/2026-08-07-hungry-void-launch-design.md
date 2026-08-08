@@ -31,13 +31,24 @@ corruption. It rises only through choices, never passively:
 
 | Source | Notes |
 |---|---|
-| Opening chests | Scales with chest tier |
+| Opening chests | Gold price unchanged, plus a corruption tithe scaled by chest tier |
+| **Void credit** | Force a chest open with no gold at all: a steep corruption lump, and a blight seed planted on the spot |
 | Taking items | Higher tiers feed more; corrupted-tier items feed most |
 | Using shrines | Per use |
 | Greed time | Looting after the teleporter event has completed |
 
 A cautious speedrunner ends a stage near zero; a vacuum-everything party ends
 deep in the red.
+
+**Gold is not replaced.** Gold remains the budget — it rations how much a party
+can take per stage and preserves the kill→earn→spend pacing the Director's
+economy is tuned around. Corruption is the shadow price on the same
+transaction: gold answers "can we afford it?", corruption answers "should we?"
+Void credit is the desperation valve where the two meet — the void will always
+extend credit, and taking it is the most deliberate corruption choice in the
+game. Chests therefore have two open paths: paid (gold + tithe) and forced
+(no gold, large corruption). Both are Phase 1 — the forced path is a second
+branch on the existing chest interactable.
 
 ### Expressions (all host-authoritative, replicated as events)
 
@@ -145,7 +156,7 @@ players before the next investment.
 
 | Phase | Builds | Gate |
 |---|---|---|
-| **1. Prove the hook** | `Corruption.js` gauge/seeds/thresholds, first-pass blight visuals, Voidtouched family, item mutation, HUD gauge | Web playtest: testers talk about corruption unprompted; "should we open that chest" is a real decision. Iterate here until yes. |
+| **1. Prove the hook** | `Corruption.js` gauge/seeds/thresholds, chest tithe + void credit, first-pass blight visuals, Voidtouched family, item mutation, HUD gauge | Web playtest: testers talk about corruption unprompted; "should we open that chest" is a real decision. Iterate here until yes. |
 | **2. Corruption owns the run** | Route gating, ending predicates, cleansing fonts, pact shrines, corruption artifacts, greed-time rule | Testers replay to chase a different route, not just to win. |
 | **3. Presentation ceiling** | The five workstreams, blight shader first | Cold-audience screenshot test: described as "the one where the world corrupts," not "a Risk of Rain-like." |
 | **4. Steam arc** | $100 fee + page live immediately (wishlists accrue), Electron port per `docs/STEAM.md`, hired capsule art, trailer from shot library, demo, Next Fest | **Early Access launch** at $9.99 introductory once gates 1–3 have passed, with a public roadmap to 1.0. |
