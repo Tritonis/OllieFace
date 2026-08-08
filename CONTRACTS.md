@@ -18,6 +18,7 @@ Every system is a class with `init(ctx)` plus any of `fixedUpdate(ctx, h)`,
 | `director` | Director | `src/systems/Director.js` |
 | `combat` | Combat | `src/systems/Combat.js` |
 | `items` | Items | `src/systems/Items.js` |
+| `corruption` | Corruption | `src/systems/Corruption.js` — the run's second economy; read `world`/`band`, call `feed`/`seed`. Never import it |
 | `vfx` | VFX | `src/systems/VFX.js` |
 | `audio` | Audio | `src/systems/Audio.js` |
 | `hud` | HUD | `src/ui/HUD.js` |
@@ -36,7 +37,7 @@ Every system is a class with `init(ctx)` plus any of `fixedUpdate(ctx, h)`,
 | `damage` | `{ target, source, amount, crit, position, proc }` | Combat |
 | `kill` | `{ victim, source, position, isElite, isBoss }` | Combat |
 | `playerHurt` | `{ amount, remaining }` | Combat |
-| `itemPickup` | `{ id, count }` | Items |
+| `itemPickup` | `{ id, count, tier, delta, reason }` — `count` is the **absolute new stack total**, `delta` the change (negative on removal); `reason` is `'give'` \| `'take'` \| `'corrupt'` (`'corrupt'` = the blight transform re-stacking items the player already owns, not an acquisition) | Items |
 | `goldChanged` | `{ gold }` | Items |
 | `abilityUsed` | `{ slot, ability }` | Player |
 | `teleporterCharging` | `{ progress }` | Progression |
@@ -44,6 +45,9 @@ Every system is a class with `init(ctx)` plus any of `fixedUpdate(ctx, h)`,
 | `stageStart` | `{ index, name }` | Progression |
 | `bossSpawn` / `bossDead` | `{ enemy }` | Director |
 | `playerDead` | `{}` | Combat |
+| `corruptionChanged` | `{ world, band }` — fired on every non-zero feed | Corruption |
+| `corruptionBand` | `{ band, prev }` — only on a threshold crossing | Corruption |
+| `blightSeed` | `{ x, z, strength }` — where greed happened | Corruption |
 
 ## Settings
 
