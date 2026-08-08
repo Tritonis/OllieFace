@@ -59,14 +59,55 @@ const POOL_MAX = 16;
 // z-fighting, low enough that the patch still reads as painted on.
 const LIFT = 0.06;
 
+/**
+ * Where the draped grid stops being a drape.
+ *
+ * The grid samples the heightfield on a ~1.4 m ring pitch. Over continuous
+ * ground that is plenty — a measured 0.71-gradient hillside conforms to five
+ * decimals. But where the terrain *steps* (cliff lips, ruin walls, pit rims)
+ * the same quad has one edge on the lip and the other on the floor, and it
+ * renders as a near-vertical sheet standing up the cliff face. Those are the
+ * "curtains".
+ *
+ * So every vertex measures the local rise-over-run against its own grid
+ * neighbours and carries the result as `aTear`, which the fragment shader
+ * fades out. The window is chosen to sit clear of both cases rather than
+ * split the difference: `lo` is 50 degrees, well above any slope a player
+ * walks (the 0.71 drape case scores 0 here with room to spare), and `hi` is
+ * 69 degrees, below which nothing that reads as ground can be. A cliff that
+ * drops 10 m across one ring scores ~7 — off the top of the scale, fully
+ * dissolved. The patch pools on what is flat and lets go of what is not.
+ */
+const TEAR = { lo: 1.2, hi: 2.6 };   // rise over run
+
 const BlightVert = /* glsl */ `
+attribute float aTear;
 varying vec2 vUv;
+varying float vTear;
 void main() {
   vUv = uv;
+  vTear = aTear;
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }
 `;
 
+/**
+ * Colours are authored as the linear-space value that *lands* on the intended
+ * screen colour, not as the intended colour itself.
+ *
+ * The patch draws into the composer's HalfFloat target, and `RenderPipeline`'s
+ * output pass tonemaps that whole buffer through ACES at exposure 1.10 and
+ * then encodes sRGB. Writing `0.23, 0.09, 0.38` — which reads as a dark violet
+ * when you type it — therefore puts `#9759b7` on screen: a bright lavender.
+ * That was the wash. Each constant below is the numeric solution of
+ * `sRGB(ACES(x)) = target` for the target in its comment, so the swatch in the
+ * comment is what a player actually sees.
+ *
+ * Everything stays far below the 1.25 bloom threshold. The veins read against
+ * a fill that is genuinely dark — a 10x contrast ratio — rather than by being
+ * bright, which is the only kind of emissive restraint that survives a
+ * pre-tonemap bloom pass.
+ */
 const BlightFrag = /* glsl */ `
 precision highp float;
 uniform float uTime;
@@ -75,23 +116,44 @@ uniform float uMaxR;
 uniform float uNoise;
 uniform float uBand;
 varying vec2 vUv;
+varying float vTear;
 
-// Cheap hash / value noise, wrapped in the angular axis so the seam at 0 = 2pi
-// matches instead of tearing. No texture fetch, no derivatives.
+const vec3 FILL_IN   = vec3(0.0253, 0.0115, 0.0360);   // #1b0c26 on screen
+const vec3 FILL_OUT  = vec3(0.0419, 0.0166, 0.0665);   // #2b1340
+const vec3 VEIN_COOL = vec3(0.1522, 0.0640, 0.5040);   // #7a46c8
+const vec3 VEIN_HOT  = vec3(0.3424, 0.0637, 0.5814);   // #b64ad0
+const vec3 RIM       = vec3(0.4428, 0.0433, 0.2485);   // #c8379b
+
+// Cheap hash / value noise. No texture fetch, no derivatives.
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float vnoise(vec2 p) {
   vec2 i = floor(p), f = fract(p);
   f = f * f * (3.0 - 2.0 * f);
+  float a = hash(i);
+  float b = hash(i + vec2(1.0, 0.0));
+  float c = hash(i + vec2(0.0, 1.0));
+  float d = hash(i + vec2(1.0, 1.0));
+  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+// The angular variant wraps its x axis so the seam at 0 = 2pi matches instead
+// of tearing. Only the rim needs this; the vein field is cartesian and seamless
+// by construction.
+float anoise(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
   const float W = 16.0;                        // angular period, in cells
   float x0 = mod(i.x, W), x1 = mod(i.x + 1.0, W);
-  float a = hash(vec2(x0, i.y));
-  float b = hash(vec2(x1, i.y));
-  float c = hash(vec2(x0, i.y + 1.0));
-  float d = hash(vec2(x1, i.y + 1.0));
-  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+  return mix(mix(hash(vec2(x0, i.y)), hash(vec2(x1, i.y)), f.x),
+             mix(hash(vec2(x0, i.y + 1.0)), hash(vec2(x1, i.y + 1.0)), f.x), f.y);
+}
+float fbm(vec2 p) {
+  return (vnoise(p) * 0.5
+        + vnoise(p * 2.03 + vec2(17.3, 5.1)) * 0.25
+        + vnoise(p * 4.11 + vec2(41.7, 23.9)) * 0.125) / 0.875;
 }
 
 void main() {
+  if (vTear > 0.92) discard;                   // spanning a drop, not lying on ground
   float r = vUv.x * uMaxR;                     // metres from the seed
   if (r > uRadius) discard;                    // uRadius is the hard outer bound
   float ang = vUv.y / 6.2831853;               // turns, 0..1
@@ -100,30 +162,56 @@ void main() {
   // The rim eats inward by an animated, per-angle amount, so the border is
   // ragged and creeping rather than a compass circle. It only ever bites in,
   // which keeps uRadius exactly the reach the sim thinks the patch has.
-  float bite = vnoise(vec2(ang * 16.0, t * 0.35)) * 0.10
-             + vnoise(vec2(ang * 32.0, t * 0.7)) * 0.05;
+  float bite = anoise(vec2(ang * 16.0, t * 0.35)) * 0.10
+             + anoise(vec2(ang * 32.0, t * 0.7)) * 0.05;
   float edge = uRadius * (1.0 - bite);
   if (r > edge) discard;
 
   float rn = r / max(edge, 0.001);             // 0 at the seed, 1 at the rim
 
-  // Veins: two angular ridge fields drifting outward at different rates, so
-  // the crawl never resolves into a spoke pattern.
-  float v1 = pow(abs(sin(vUv.y * 7.0 + r * 1.1 - t * 0.9)), 8.0);
-  float v2 = pow(abs(sin(vUv.y * 13.0 - r * 1.9 + t * 1.5)), 12.0);
-  float vein = (v1 * 0.7 + v2 * 0.5) * (0.35 + 0.65 * rn);
+  // Veins. The old field was two sin(angle) ridges, which is constant along
+  // every ray from the seed — so however it drifted it could only ever resolve
+  // into spokes. This one lives in the patch's own cartesian metres, where no
+  // direction is special: a domain-warped ridged fbm, i.e. filaments running
+  // along the level sets of a warped noise field. They meander, branch and
+  // close loops because the field does, and they have no idea where the centre
+  // is. The two warp axes drift at different rates and against each other, so
+  // the field kneads rather than sliding past as a rigid pattern.
+  vec2 p = vec2(cos(vUv.y), sin(vUv.y)) * r;
+  vec2 warp = vec2(fbm(p * 0.30 + vec2(0.0, t * 0.060)),
+                   fbm(p * 0.30 + vec2(4.7, -t * 0.045)));
+  float n = fbm(p * 0.55 + (warp - 0.5) * 2.6);
+  // A filament is the level set of that field, taken at a fixed width in field
+  // units. The obvious pow(ridge, k) does not work here: an fbm of value noise
+  // piles up around 0.5, so the ridge term is near 1 across most of the disc
+  // and floods the interior with emissive instead of drawing lines. Distance to
+  // the level set gives filaments the same thickness wherever the field is
+  // locally flat, which is what makes them read as veins rather than as glow.
+  float d = abs(n - 0.5);
+  // A pulse that travels *along* the filaments: driven by the field value, so
+  // it runs down a vein rather than sweeping across the patch.
+  float pulse = 0.55 + 0.45 * vnoise(vec2(n * 7.0 - t * 0.85, t * 0.2));
+  float vein = smoothstep(0.055, 0.008, d) * pulse * (0.30 + 0.70 * rn);
 
-  // Edge band: the outer fifth, lit by a noise field that slides around the
+  // Edge band: the outer eighth, lit by a noise field that slides around the
   // rim. This "alive at the border" read is what says spreading, not painted.
-  float band = smoothstep(0.80, 1.0, rn);
-  float crawl = 0.45 + 0.55 * vnoise(vec2(ang * 16.0 + t * 0.6, t * 1.1));
+  // It is deliberately dim — a rim bright enough to notice on its own turns the
+  // patch into a glowing ring with a hole in it.
+  float band = smoothstep(0.86, 1.0, rn);
+  float crawl = 0.45 + 0.55 * anoise(vec2(ang * 16.0 + t * 0.6, t * 1.1));
 
-  vec3 fill = mix(vec3(0.10, 0.05, 0.19), vec3(0.23, 0.09, 0.38), rn);
-  vec3 veinC = mix(vec3(0.48, 0.25, 0.82), vec3(0.78, 0.18, 0.84), min(uBand / 4.0, 1.0));
-  vec3 edgeC = vec3(1.0, 0.18, 0.69);
-  vec3 col = fill + veinC * vein * 0.6 + edgeC * band * crawl * (0.5 + uBand * 0.12);
+  // The same warped field mottles the fill, so the interior pools and thins
+  // instead of reading as one flat disc of colour.
+  vec3 fill = mix(FILL_IN, FILL_OUT, rn) * (0.70 + 0.60 * n);
+  vec3 veinC = mix(VEIN_COOL, VEIN_HOT, min(uBand / 4.0, 1.0));
+  vec3 col = fill + veinC * vein + RIM * band * crawl * (0.18 + uBand * 0.05);
 
-  float alpha = 0.78 - rn * 0.12 + band * crawl * 0.22;
+  // Nearly opaque in the middle, thinning outward. The fill is darker than most
+  // ground it lands on, so every point of alpha it gives away reads directly as
+  // the patch getting brighter — the opacity is a colour control here as much
+  // as a blend one, and it is also what makes the middle read as pooled.
+  float alpha = (0.90 - rn * 0.12 + vein * 0.10 + band * crawl * 0.12)
+              * (1.0 - vTear);                 // dissolve where the grid stands up
   gl_FragColor = vec4(col, alpha);
 }
 `;
@@ -140,22 +228,59 @@ void main() {
  * of coincident centre vertices rather than a triangle fan, so every wedge
  * carries its own angle right down to the seed instead of pinwheeling into a
  * single uv.y = 0.
+ *
+ * Each vertex also carries `aTear` — how steeply the sheet leans to reach its
+ * own neighbours (see TEAR). The geometry still drapes everywhere; the
+ * attribute is what lets the shader stop *drawing* the spans that are leaning
+ * rather than lying, which is cheaper and less brittle than decimating the
+ * grid and keeps the mesh a fixed size for pooling.
  */
 export function buildPatchGeometry(x, z, maxR, sampleHeight) {
   const verts = [];
   const uvs = [];
   const idx = [];
+  const ground = [];                    // sampled height per vertex, for the tear pass
   const cols = SEGMENTS + 1;
+  const ringStep = maxR / RINGS;
   for (let r = 0; r <= RINGS; r++) {
     const rad = (r / RINGS) * maxR;
     for (let s = 0; s < cols; s++) {
       const a = (s / SEGMENTS) * Math.PI * 2;
       const wx = x + Math.cos(a) * rad;
       const wz = z + Math.sin(a) * rad;
-      verts.push(wx, (sampleHeight ? sampleHeight(wx, wz) : 0) + LIFT, wz);
+      const h = sampleHeight ? sampleHeight(wx, wz) : 0;
+      ground.push(h);
+      verts.push(wx, h + LIFT, wz);
       uvs.push(rad / maxR, a);
     }
   }
+
+  // How steeply the sheet has to lean to reach each neighbour it is joined to.
+  // The steepest such span is what decides whether this vertex is part of a
+  // drape or part of a curtain, so it is a max, not an average: one vertical
+  // edge is enough to stand a quad up, and averaging would hide it behind
+  // three flat ones.
+  const tear = new Float32Array(ground.length);
+  const span = 1 / Math.max(TEAR.hi - TEAR.lo, 1e-6);
+  for (let r = 0; r <= RINGS; r++) {
+    // Chord between adjacent columns on this ring — zero on the degenerate
+    // centre ring, where the angular neighbours are the same point and carry
+    // no slope information.
+    const chord = 2 * Math.sin(Math.PI / SEGMENTS) * (r / RINGS) * maxR;
+    for (let s = 0; s < cols; s++) {
+      const i = r * cols + s;
+      let slope = 0;
+      if (r > 0) slope = Math.max(slope, Math.abs(ground[i] - ground[i - cols]) / ringStep);
+      if (r < RINGS) slope = Math.max(slope, Math.abs(ground[i] - ground[i + cols]) / ringStep);
+      if (chord > 1e-6) {
+        if (s > 0) slope = Math.max(slope, Math.abs(ground[i] - ground[i - 1]) / chord);
+        if (s < cols - 1) slope = Math.max(slope, Math.abs(ground[i] - ground[i + 1]) / chord);
+      }
+      const u = Math.min(Math.max((slope - TEAR.lo) * span, 0), 1);
+      tear[i] = u * u * (3 - 2 * u);     // smoothstep, so the dissolve has no hard step
+    }
+  }
+
   for (let r = 0; r < RINGS; r++) {
     const a0 = r * cols, b0 = (r + 1) * cols;
     for (let s = 0; s < SEGMENTS; s++) {
@@ -165,16 +290,18 @@ export function buildPatchGeometry(x, z, maxR, sampleHeight) {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
   geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geo.setAttribute('aTear', new THREE.BufferAttribute(tear, 1));
   geo.setIndex(idx);
   geo.computeBoundingSphere();
   return geo;
 }
 
 /**
- * The crawl: a dark violet fill, emissive veins that pulse along the radius,
- * and a ragged edge that creeps. uv.x carries normalized radius, uv.y the
- * angle, so the fragment shader needs no world math. Colors are the HUD band
- * ramp so gauge and ground agree.
+ * The crawl: a dark violet fill, emissive filament veins, and a ragged edge
+ * that creeps. uv.x carries normalized radius, uv.y the angle, so the fragment
+ * shader needs no world math — it rebuilds patch-local cartesian metres from
+ * the two when it needs a direction-free field. Colors are the HUD band ramp
+ * so gauge and ground agree.
  */
 export function makeBlightMaterial() {
   return new THREE.ShaderMaterial({

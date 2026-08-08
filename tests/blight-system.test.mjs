@@ -85,6 +85,62 @@ console.log('patch geometry conforms to the heightfield');
   geo.dispose();
 }
 
+console.log('the patch pools on ground and tears loose where the ground drops away');
+{
+  // `aTear` is the headless half of the cliff-curtain fix: the shader fades by
+  // it, but whether it is 0 or 1 in the right places is decided at build time
+  // and is testable against a synthetic heightfield.
+  const tearsOf = (geo) => geo.getAttribute('aTear');
+
+  // 1. Flat ground, and the tilted plane the drape check already uses: nothing
+  //    tears. A patch on ground a player walks must be exactly as solid as it
+  //    was before this attribute existed.
+  for (const [name, h] of [['flat', () => 0], ['gentle plane (slope 0.5)', (x) => x * 0.5],
+                           ['the measured 0.71 hillside', (x) => x * 0.71]]) {
+    const geo = buildPatchGeometry(0, 0, 7, h);
+    const t = tearsOf(geo);
+    let max = 0;
+    for (let i = 0; i < t.count; i++) max = Math.max(max, t.getX(i));
+    ok(max === 0, `${name}: no vertex tears (max ${max})`);
+    geo.dispose();
+  }
+
+  // 2. A cliff: flat at 0 west of the step, flat at 12 east of it. Same drape,
+  //    but the ring that spans the step is a vertical sheet. The step sits off
+  //    the vertex grid so no vertex is sampled exactly on the discontinuity,
+  //    where float32 rounding of x would decide which shelf it is on.
+  const CLIFF_X = 10.37, DROP = 12;
+  const cliff = (x) => (x < CLIFF_X ? 0 : DROP);
+  const geo = buildPatchGeometry(10, 0, 7, cliff);
+  const pos = geo.getAttribute('position');
+  const t = tearsOf(geo);
+  ok(t !== undefined && t.count === pos.count, 'every vertex carries a tear value');
+
+  let maxFar = 0, farN = 0, spanning = 0, offCliffMax = 0;
+  for (let i = 0; i < t.count; i++) {
+    const dx = Math.abs(pos.getX(i) - CLIFF_X);
+    const v = t.getX(i);
+    // Ring pitch is 0.7 m and the widest angular chord is ~1.8 m, so beyond
+    // 2.5 m from the step every neighbour is on the same shelf.
+    if (dx > 2.5) { farN++; maxFar = Math.max(maxFar, v); }
+    if (v > 0.999) spanning++;
+    offCliffMax = Math.max(offCliffMax, v);
+  }
+  ok(farN > 40, `enough vertices sit well clear of the step (${farN})`);
+  ok(maxFar === 0, `ground away from the drop stays fully painted (max tear ${maxFar})`);
+  ok(offCliffMax === 1, 'the steepest spans are fully dissolved, not merely dimmed');
+  ok(spanning > 8, `the whole span across the drop lets go, not one vertex (${spanning})`);
+
+  // 3. The drape itself is untouched — this fix hides spans, it does not move
+  //    geometry, so the conformance guarantee above still holds on a cliff.
+  let conforms = true;
+  for (let i = 0; i < pos.count; i++) {
+    if (Math.abs(pos.getY(i) - (cliff(pos.getX(i)) + 0.06)) > 1e-4) { conforms = false; break; }
+  }
+  ok(conforms, 'vertices still sit 0.06 above the heightfield, cliff or not');
+  geo.dispose();
+}
+
 console.log('the material exposes the animation contract');
 {
   const m = makeBlightMaterial();
