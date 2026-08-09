@@ -4,6 +4,7 @@ import { ITEMS_BY_TIER } from '../data/items.js';
 import { BIOMES, stageNameFor } from '../world/Materials.js';
 import { Profile } from './Profile.js';
 import { isLocalVictim, isLocalKill } from '../core/Engine.js';
+import { VOIDTOUCHED, isVoidtouched } from '../data/corruption.js';
 
 /**
  * Progression drives the run: which stage we're on, how hard the game is
@@ -399,6 +400,11 @@ export class Progression {
    * Host-only. A monster is worth its card's `xp`, scaled by the level the
    * Director spawned it at (the same 0.2/level ramp its health and damage use)
    * and doubled for elites, so the reward tracks the effort.
+   *
+   * A Voidtouched victim is the one exception, and it is not the Director that
+   * bought it: the void spawns it off World Corruption, so it pays the same
+   * quarter share `Items.killReward` pays. XP and gold are separate funnels —
+   * this multiplier has to be applied in both places or the two disagree.
    */
   _awardKillXp(e) {
     const v = e.victim;
@@ -407,6 +413,7 @@ export class Progression {
     const lvl = Math.max(1, v.level || 1);
     let amount = base * (1 + XP_PER_MONSTER_LEVEL * (lvl - 1));
     if (e.isElite) amount *= 2;
+    if (isVoidtouched(v)) amount *= VOIDTOUCHED.rewardMult;
     this.addExperience(amount);
   }
 

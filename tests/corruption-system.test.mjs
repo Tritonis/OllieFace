@@ -224,5 +224,29 @@ console.log('a Hollowed kill refunds a fraction of the world');
   ok(c.world === w, 'other kills refund nothing');
 }
 
+console.log('the refund is 8% of the world, and an artifact can bend it');
+{
+  const { ctx } = makeCtx();
+  ctx.player = P();
+  const c = new Corruption();
+  c.init(ctx);
+  c.feed(ctx.player, 100);
+  ok(VOIDTOUCHED.refund === 0.08, 'refund re-priced to 0.08');
+  ctx.events.emit('kill', { victim: { affix: 'voidtouched' }, source: ctx.player, position: null, isElite: true, isBoss: false });
+  ok(Math.abs(c.world - 92) < 1e-9, `a kill against a 100-point world bleeds 8 (got ${c.world})`);
+
+  // The artifact modifier multiplies the same fraction — the listener reads it
+  // per kill, so a doubling artifact bleeds 16 off the next 100.
+  const { ctx: ctx2 } = makeCtx();
+  ctx2.player = P();
+  ctx2.artifacts = { corruptionMods: () => ({ feed: 1, refund: 2 }) };
+  const c2 = new Corruption();
+  c2.init(ctx2);
+  c2.feed(ctx2.player, 100);
+  ctx2.events.emit('kill', { victim: { affix: 'voidtouched' }, source: ctx2.player, position: null, isElite: true, isBoss: false });
+  ok(Math.abs(c2.world - (100 - 100 * VOIDTOUCHED.refund * 2)) < 1e-9,
+    `the artifact refund modifier scales the bleed (got ${c2.world})`);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

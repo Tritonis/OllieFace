@@ -26,7 +26,7 @@ import {
 } from '../data/enemies.js';
 import { prewarm, makeProjectile, makeShockwave, makeTelegraph } from '../entities/EnemyMeshes.js';
 import { clamp, lerp, RNG } from '../core/MathUtil.js';
-import { VOIDTOUCHED, voidCreditRate } from '../data/corruption.js';
+import { VOIDTOUCHED, voidCreditRate, voidBankCap } from '../data/corruption.js';
 import { Roster } from './Roster.js';
 import { isLocalVictim } from '../core/Engine.js';
 
@@ -375,7 +375,10 @@ export class Director {
     // whole sp-equivalence argument: at world 0 this block is two reads.
     const world = ctx.corruption?.world || 0;
     if (world > 0 && this._voidSeeds.length) {
-      this.voidCredits = Math.min(VOIDTOUCHED.maxBank, this.voidCredits + voidCreditRate(world) * h);
+      // The bank deepens with the world too, so a Consumed stage can hold a
+      // wave rather than only ever the next single unit. `voidBankCap(0)` is
+      // the old flat 90, and this branch never runs at world 0 anyway.
+      this.voidCredits = Math.min(voidBankCap(world), this.voidCredits + voidCreditRate(world) * h);
       this.voidSpawnT -= h;
       if (this.voidSpawnT <= 0) {
         this.voidSpawnT = VOIDTOUCHED.interval;

@@ -1,6 +1,6 @@
 import { ITEMS, ITEM_BY_ID, ITEMS_BY_TIER, TIERS, BLIGHT_BY_BASE, hyperbolic } from '../data/items.js';
 import { EQUIPMENT, EQUIPMENT_BY_ID } from '../data/equipment.js';
-import { MUTATION } from '../data/corruption.js';
+import { MUTATION, VOIDTOUCHED, isVoidtouched } from '../data/corruption.js';
 import { RNG } from '../core/MathUtil.js';
 
 /**
@@ -479,6 +479,9 @@ export class Items {
     const cost = victim.def?.cost ?? DEFAULT_KILL_COST;
     const eliteMult = victim.elite?.cost ?? 1;
     const bossMult = victim.isBoss ? BOSS_GOLD_MULT : 1;
+    // The void does not tip its executioners: killing a Voidtouched pays a
+    // quarter, and the refund it bleeds off World Corruption is the reward.
+    const voidMult = isVoidtouched(victim) ? VOIDTOUCHED.rewardMult : 1;
     // The director's own coefficient, not Progression's, so the payout is the
     // exact inverse of the credits that bought this monster. (`ctx.difficulty`
     // used to be the fallback here; it is now the difficulty *selection* API,
@@ -486,7 +489,7 @@ export class Items {
     // single source anyway.)
     const d = Math.max(1, this.ctx.director?.difficultyCoefficient ?? 1);
     const gold = this.ctx.artifacts?.runMods?.().gold ?? 1;
-    return Math.max(1, Math.round(cost * GOLD_PER_COST * eliteMult * bossMult * d * gold));
+    return Math.max(1, Math.round(cost * GOLD_PER_COST * eliteMult * bossMult * voidMult * d * gold));
   }
 
   /**

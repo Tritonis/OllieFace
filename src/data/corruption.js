@@ -43,14 +43,40 @@ export function bandOf(world) {
  */
 export const VOIDTOUCHED = {
   affix: 'voidtouched',
-  ratePerWorld: 0.012,   // void credits per second per point of World Corruption
-  maxBank: 90,           // ~2 queued elites; the void saves, it does not flood
+  // Re-priced 2026-08-08: the void must outscale what it feeds. Rate up from
+  // 0.012, and the bank now deepens with the world so a Consumed party faces
+  // waves rather than a metronome. Both are functions of World Corruption
+  // alone, so a pristine run is byte-identical to one without the feature.
+  ratePerWorld: 0.02,    // void credits per second per point of World Corruption
+  bankBase: 90,          // the pristine bank — ~2 queued elites, unchanged
+  bankPerWorld: 0.5,     // extra bank per point of World Corruption
+  maxBank: 240,          // the ceiling the deepening bank saturates at
   interval: 4,           // seconds between spend attempts
   telegraph: 1.1,        // seconds of warning ring before the unit surfaces
   spawnRing: { min: 2.5, max: 6.5 },  // metres from the chosen seed
   minPlayerDist: 12,     // never surfaces in someone's face
-  refund: 0.03,          // fraction of World Corruption returned per kill
+  // A Voidtouched kill is counterplay, not income: it pays a quarter of a
+  // normal elite's gold and XP, and returns more than double the old refund.
+  refund: 0.08,          // fraction of World Corruption returned per kill
+  rewardMult: 0.25,      // gold/XP multiplier on a Voidtouched victim
 };
+
+/** How deep the void is allowed to save at this world corruption. */
+export function voidBankCap(world) {
+  const w = Number.isFinite(world) ? Math.max(0, world) : 0;
+  return Math.min(VOIDTOUCHED.maxBank, VOIDTOUCHED.bankBase + w * VOIDTOUCHED.bankPerWorld);
+}
+
+/**
+ * Is this victim a Voidtouched elite? Pure and null-tolerant — callers pass
+ * whatever the death event carries. The affix id lives on the enemy itself
+ * (`Enemy.spawn`: `this.affix = opts.affix || null`); `victim.elite` is the
+ * ELITE_STATS *stats* record and carries no id, which is why this reads
+ * `.affix` and why `Corruption`'s kill listener already does the same.
+ */
+export function isVoidtouched(victim) {
+  return !!victim && victim.affix === VOIDTOUCHED.affix;
+}
 
 /**
  * Item mutation — the gauge reaching into the inventory. Each upward band
