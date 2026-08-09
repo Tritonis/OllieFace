@@ -219,10 +219,13 @@ export const CHALLENGES = [
     category: 'depth',
     hidden: false,
     goal: 1,
-    // `cleanVictory` is written exactly once, by `Profile.commitRun`, on a won
-    // run whose final corruption band was Seeded or cleaner — so this cannot be
-    // reached by dying clean or by winning dirty. It is a run field rather than
-    // a lifetime stat because the condition is a fact about one run, and the
+    // `cleanVictory` is written exactly once, by `Profile.commitRun`, on a run
+    // that ended in a Fracture finale victory whose final corruption band was
+    // Seeded or cleaner — so this cannot be reached by dying clean, by winning
+    // dirty, or by stepping into the Obelisk on stage 1 (which is also a `won`
+    // ending, and is exactly what the wording above rules out). It is a run
+    // field rather than a lifetime stat because the condition is a fact about
+    // one run, and the
     // commit's final `_evaluate` pass is the last moment it exists.
     track: (p, r) => (r?.cleanVictory ? 1 : 0),
     unlocks: null,

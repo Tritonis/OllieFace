@@ -114,6 +114,16 @@ const EVAL_DEBOUNCE_MS = 250;
 // re-tuning where Seeded *starts* must not silently re-tune what wins the Vigil.
 const CLEAN_ENDING_BAND = 1;
 
+// Which endings count as "finished a run at the Fracture" — the wording the
+// player is shown on the `unbrokenSeal` row. `ENDINGS` (data/realms.js) marks
+// three outcomes `won: true`, and the third is `obliterated`: the Obelisk of
+// Departure in the bazaar, reachable from stage 1, which ends the run on the
+// player's terms without ever seeing the Fracture. That is a win for every
+// other purpose and must not be one here, so this list is positive — a future
+// ending has to be named before it can seal the Vigil, rather than qualifying
+// by default the moment someone adds it.
+const FINALE_VICTORY_ENDINGS = new Set(['victory', 'victory-void']);
+
 // The window the `massacre` challenge measures its burst over. Ten seconds is
 // about one teleporter-boss add wave, which is the fight the challenge is
 // describing.
@@ -1244,13 +1254,26 @@ export class Profile {
     }
 
     // Restraint's proof, written onto the run block the instant before the last
-    // evaluation can read it: a victory carried home with the world at Seeded or
-    // cleaner. `stats.corruptionBand` is Progression's snapshot of the gauge at
-    // the ending (`runStats()`); an absent one is a build with no corruption
-    // system, which is band 0 and so counts. This is the only writer, and the
-    // `unbrokenSeal` challenge (data/challenges.js) is the only reader — it is
-    // what unlocks the Vigil, the one card greed cannot buy.
-    run.cleanVictory = won && num(stats.corruptionBand, 0) <= CLEAN_ENDING_BAND ? 1 : 0;
+    // evaluation can read it: a Fracture finale carried home with the world at
+    // Seeded or cleaner. Three things must all hold, and each fails closed:
+    //
+    //   * `won` — a defeat can never set it, however spotless.
+    //   * the ending is a named Fracture finale (see FINALE_VICTORY_ENDINGS) —
+    //     `won` alone also covers the Obelisk's stage-1 exit, which the row's
+    //     wording promises does not count.
+    //   * the band is a real band at or under the line. Anything that is not a
+    //     whole number in range — missing, NaN, Infinity, a string — declines,
+    //     because the failure direction for the game's one unbuyable card must
+    //     be "not earned", not "handed out".
+    //
+    // `stats` is Progression's snapshot at the ending (`runStats()`), which
+    // carries both `ending` and `corruptionBand`. This is the only writer, and
+    // the `unbrokenSeal` challenge (data/challenges.js) is the only reader.
+    const band = stats?.corruptionBand;
+    run.cleanVictory = won
+      && FINALE_VICTORY_ENDINGS.has(stats?.ending)
+      && Number.isInteger(band) && band >= 0 && band <= CLEAN_ENDING_BAND
+      ? 1 : 0;
 
     // Final evaluation before the run counters are gone: a challenge phrased
     // "…in a single run" can only be true at this instant.

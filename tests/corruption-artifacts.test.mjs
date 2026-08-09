@@ -178,6 +178,16 @@ console.log('Vigil of the Unbroken Seal — the card, and the condition on it');
   const bound = UNLOCK_BINDINGS[vigil?.unlock];
   ok(bound?.type === 'artifact' && bound?.id === 'vigil',
     'and the registry bound that challenge to this artifact');
+
+  // `Artifacts.netPack` is a `1 << i` bitmask over ARTIFACTS in array order, and
+  // a host and a client on mismatched builds must agree on every bit. So the
+  // order is a wire format: new cards go on the end, and the two assertions
+  // below are what make a mid-array insertion a red test rather than a silent
+  // reinterpretation of every bit above it.
+  ok(ARTIFACTS[ARTIFACTS.length - 1].id === 'vigil',
+    'the Vigil is appended LAST — every netPack bit below it keeps its meaning');
+  ok(ARTIFACTS.length === 10,
+    'ten cards, so the whole mask still fits a u32 (update this number when a card is added)');
 }
 
 console.log('the Vigil discounts every feed and leaves the refund alone');
@@ -212,8 +222,12 @@ console.log('the clean ending is what seals it — a real Profile, a real commit
   };
   const { Profile } = await import('../src/systems/Profile.js');
 
-  /** A fresh profile mid-run: empty storage, one stage started. */
-  function endRun(won, corruptionBand) {
+  /**
+   * A fresh profile mid-run: empty storage, one stage started, then one ending.
+   * `ending` is the id `Progression.runStats()` reports — `ENDINGS.victory` by
+   * default, because that is the run the challenge's wording describes.
+   */
+  function endRun(won, corruptionBand, ending = 'victory') {
     store.clear();
     const listeners = new Map();
     const ctx = {
@@ -227,19 +241,36 @@ console.log('the clean ending is what seals it — a real Profile, a real commit
     // The same shape `Progression.runStats()` hands `commitRun`.
     profile.commitRun(won, {
       stage: 1, stageName: 'Stage 1', time: 300, difficulty: 1, gold: 0,
-      corruption: 12, corruptionBand, inventory: [],
+      corruption: 12, corruptionBand, inventory: [], ending,
     });
     return profile;
   }
+  const sealed = (...args) => endRun(...args).isUnlocked('artifact', 'vigil');
 
-  ok(endRun(true, 0).isUnlocked('artifact', 'vigil') === true,
-    'a victory carried home Pristine seals the Vigil');
-  ok(endRun(true, 1).isUnlocked('artifact', 'vigil') === true,
-    'so does one at Seeded — band 1 is the line');
-  ok(endRun(true, 2).isUnlocked('artifact', 'vigil') === false,
+  ok(sealed(true, 0) === true, 'a victory carried home Pristine seals the Vigil');
+  ok(sealed(true, 1) === true, 'so does one at Seeded — band 1 is the line');
+  ok(sealed(true, 0, 'victory-void') === true,
+    'the void route is still a Fracture finish — the Herald drowns and the seal holds');
+  ok(sealed(true, 2) === false,
     'a victory at Blighted does not: greed cannot buy this one');
-  ok(endRun(false, 0).isUnlocked('artifact', 'vigil') === false,
+  ok(sealed(false, 0) === false,
     'and dying spotless does not — the seal is carried out, not died with');
+
+  // The Obelisk of Departure stands in the bazaar from stage 1 and its ending
+  // carries `won: true` (ENDINGS.obliterated, data/realms.js). Ending the run on
+  // your own terms two minutes in is not "finishing a run at the Fracture", and
+  // the row the player reads says so.
+  ok(sealed(true, 0, 'obliterated') === false,
+    'walking into the Obelisk on stage 1 with a spotless world does NOT seal it');
+  ok(sealed(true, 0, null) === false,
+    'and neither does a win with no named ending at all');
+
+  // The band predicate fails closed: the one unbuyable card is never handed out
+  // by a caller that simply forgot the field.
+  for (const [band, label] of [[undefined, 'a missing band'], [null, 'a null band'], [NaN, 'NaN'],
+    [Infinity, 'Infinity'], ['0', 'the string "0"'], [-1, 'a negative band'], [1.5, 'a fractional band']]) {
+    ok(sealed(true, band) === false, `${label} declines the seal rather than granting it`);
+  }
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
