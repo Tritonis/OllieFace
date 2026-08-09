@@ -1355,6 +1355,14 @@ export class ArgentFont extends Interactable {
   // The live number is in the prompt on purpose: the font's whole re-pricing
   // is invisible otherwise, and a player deciding between this and a chest is
   // deciding about a quantity, not about the word "bleed".
+  //
+  // Co-op caveat, same shape as the `$0` cost gap noted on VIEW_BUILDERS:
+  // `Corruption` is not replicated (nothing in src/net/ carries it) and `feed`
+  // is authority-gated, so a client's `_world` never leaves 0 and its prompt
+  // reads "bleed 30 corruption ($0)" — the floor — while the host may be
+  // selling 88. The press still resolves on the host at the host's number, so
+  // this is stale display, not a stale transaction. Replicating the gauge is a
+  // net-layer change and deliberately not made here.
   prompt() { return `Argent Font — bleed ${this.yield()} corruption ($${this.cost})`; }
 
   interact() {

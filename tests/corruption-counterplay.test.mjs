@@ -39,6 +39,8 @@ console.log('cleanse scales with the debt');
   ok(cleanseAmount(200) === 44, '22% of 200');
   ok(cleanseAmount(400) === 88, 'deep red bleeds proportionally — the playtest font could never move a Consumed party');
   ok(cleanseAmount(-50) === CLEANSE.amount, 'a negative world cannot bleed below the floor');
+  ok(cleanseAmount(NaN) === CLEANSE.amount && cleanseAmount(Infinity) === CLEANSE.amount,
+    'a non-finite world reads as pristine — the prompt never quotes NaN');
   ok(CLEANSE.maxUses === 3, 'three uses per font');
   ok(CLEANSE.guaranteeBand === 2, 'guaranteed font from Blighted up');
 }
@@ -235,13 +237,36 @@ console.log('— the clean path is stocked, and stocking it costs a pristine run
   const { Interactables } = await import('../src/world/Interactables.js');
   const { RNG } = await import('../src/core/MathUtil.js');
 
-  // A populate-level ctx: no stage, no artifacts, a private ctx.rng we can
-  // re-seed identically per run, and a *stubbed* corruption gauge so band and
-  // world can be dialled without feeding anything.
-  function populated(stageIndex, corruption) {
+  // A stage with real landmarks and a *rejecting* isWalkable, because that is
+  // what makes `_nearLandmark` loop: it retries the annulus until it finds a
+  // walkable point, so each siting costs a *variable* number of draws. Without
+  // a stage the helper short-circuits before drawing anything and every siting
+  // costs a flat 2 — which would hide exactly the divergence class this block
+  // exists to catch. Only what `_nearLandmark`/`_point` actually read.
+  const STAGE = () => ({
+    bound: 44,
+    landmarks: [{ x: -14, z: 6, r: 5 }, { x: 12, z: -9, r: 7 }, { x: 2, z: 18, r: 4 }],
+    isWalkable: (x, z) => x * x + z * z > 36 && Math.sin(x * 0.31) + Math.cos(z * 0.27) > -1.2,
+    sampleHeight: (x, z) => Math.sin(x * 0.11) * 0.7 + Math.cos(z * 0.09) * 0.5,
+  });
+
+  // A populate-level ctx: the stage above, no artifacts, a *counted* ctx.rng we
+  // can re-seed identically per run, and a stubbed corruption gauge so band and
+  // world can be dialled without feeding anything. The counter is the point —
+  // a leaked draw that happened to land the same position would still move the
+  // count, and the count is pinned below.
+  function populated(stageIndex, corruption, seed = 1234) {
+    const raw = new RNG(seed);
+    let draws = 0;
+    const rng = {
+      next: () => (draws++, raw.next()),
+      range: (a, b) => (draws++, raw.range(a, b)),
+      int: (a, b) => (draws++, raw.int(a, b)),
+      pick: (a) => (draws++, raw.pick(a)),
+      weighted: (a, w) => (draws++, raw.weighted(a, w)),
+    };
     const ctx = {
-      seed: 1234,
-      rng: new RNG(1234),
+      seed, rng, stage: STAGE(),
       scene: new THREE.Group(),
       player: { isPlayer: true, alive: true, position: new THREE.Vector3() },
       events: { emit() {}, on() {} },
@@ -256,12 +281,17 @@ console.log('— the clean path is stocked, and stocking it costs a pristine run
     const inter = new Interactables();
     inter.init(ctx);
     inter.populate(stageIndex);
-    return inter;
+    return { inter, draws: () => draws };
   }
   // Positions to 6dp plus type, in placement order: the whole draw sequence.
-  const layout = (inter) => inter.list.map((i) =>
+  const layout = (p) => p.inter.list.map((i) =>
     `${i.constructor.name}@${i.position.x.toFixed(6)},${i.position.z.toFixed(6)}`).join('|');
-  const fonts = (inter) => inter.list.filter((i) => i instanceof ArgentFont).length;
+  const fnv = (s) => {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+    return h.toString(16).padStart(8, '0');
+  };
+  const fonts = (p) => p.inter.list.filter((i) => i instanceof ArgentFont).length;
 
   // The guarantee: from Blighted up, every stage carries a font.
   let missing = 0;
@@ -271,27 +301,59 @@ console.log('— the clean path is stocked, and stocking it costs a pristine run
   ok(missing === 0, `every stage from Blighted up sells absolution (${6 - missing}/6 stages)`);
   ok(fonts(populated(1, { band: 2, world: 60 })) >= 1, 'the guarantee opens at the tuned band');
 
-  // And it costs a pristine run nothing: band 0 must draw byte-identically to a
-  // run with no corruption gauge at all — same stream, same layout, no extra.
+  // And it costs a pristine run nothing. This is the anchor, so it is pinned
+  // against the code that existed *before* the guarantee, not against a second
+  // run of the same code: `[seed, stage, ctx.rng draws, layout hash]` captured
+  // from b1979c3 through this exact harness. Comparing band 0 to "no gauge"
+  // alone would pass for any change that shifted both arms together — this
+  // cannot. A future conditional draw at band 0 moves the count, the hash, or
+  // both, and the numbers are regenerable: check out b1979c3's Interactables
+  // and re-run this block.
+  const GOLDEN_B1979C3 = [
+    [1234, 0, 68, '1576708f'], [1234, 1, 95, '90eb9ca4'], [1234, 2, 110, '98b60237'],
+    [1234, 3, 121, 'b918879f'], [1234, 4, 140, '36b9f4d0'], [1234, 5, 162, 'cb332085'],
+    [1234, 6, 186, '03057e76'],
+    [1337, 0, 76, 'c494c9e5'], [1337, 1, 93, 'b2fac454'], [1337, 2, 116, 'c740cb49'],
+    [1337, 3, 133, '2744d0cf'], [1337, 4, 150, 'd22cb99f'], [1337, 5, 179, 'fe0f4259'],
+    [1337, 6, 194, 'dd78453d'],
+  ];
+  let countDrift = 0, hashDrift = 0;
+  for (const [seed, s, draws, hash] of GOLDEN_B1979C3) {
+    const p = populated(s, { band: 0, world: 0 }, seed);
+    if (p.draws() !== draws) countDrift++;
+    if (fnv(layout(p)) !== hash) hashDrift++;
+  }
+  ok(countDrift === 0, `a pristine stage takes the pre-change number of ctx.rng draws (${GOLDEN_B1979C3.length} cases)`);
+  ok(hashDrift === 0, 'and lays out identically to the pre-change code — band 0 is untouched by the guarantee');
+
   let drift = 0;
   for (let s = 0; s <= 6; s++) {
     if (layout(populated(s, { band: 0, world: 0 })) !== layout(populated(s, null))) drift++;
   }
-  ok(drift === 0, 'a pristine stage lays out identically to one with no gauge — the guarantee draws nothing at band 0');
+  ok(drift === 0, 'a gauge reading Pristine is indistinguishable from no gauge at all');
 
   // The sharper guard, and the one with teeth at every band: the teleporter is
   // sited from ctx.rng *after* the shrines, so if the guarantee had taken a
   // single draw off the shared stream the teleporter would move. It must not,
-  // on the very stages where the guarantee is provably doing work.
-  let moved = 0, fired = 0;
-  const tp = (i) => `${i.teleporter.position.x.toFixed(6)},${i.teleporter.position.z.toFixed(6)}`;
-  for (let s = 1; s <= 6; s++) {
-    const clean = populated(s, { band: 0, world: 0 }), deep = populated(s, { band: 3, world: 150 });
-    if (tp(clean) !== tp(deep)) moved++;
-    if (fonts(clean) === 0 && fonts(deep) >= 1) fired++;
+  // on the very stages where the guarantee is provably doing work. Looped over
+  // four seeds so the discriminating margin is not one stage on one seed.
+  let moved = 0, fired = 0, seedsThatFired = 0, cases = 0;
+  const tp = (p) => `${p.inter.teleporter.position.x.toFixed(6)},${p.inter.teleporter.position.z.toFixed(6)}`;
+  for (const seed of [1234, 1337, 7, 99991]) {
+    let firedHere = 0;
+    for (let s = 1; s <= 6; s++) {
+      const clean = populated(s, { band: 0, world: 0 }, seed);
+      const deep = populated(s, { band: 3, world: 150 }, seed);
+      cases++;
+      if (tp(clean) !== tp(deep) || clean.draws() !== deep.draws()) moved++;
+      if (fonts(clean) === 0 && fonts(deep) >= 1) firedHere++;
+    }
+    if (firedHere) seedsThatFired++;
+    fired += firedHere;
   }
-  ok(fired > 0, `the guarantee provably placed a font the bag had not (${fired} stages)`);
-  ok(moved === 0, 'and the teleporter never moved — no draw was taken off ctx.rng');
+  ok(fired > 0 && seedsThatFired === 4,
+    `the guarantee provably placed a font the bag had not, on every seed (${fired} stages across 4 seeds)`);
+  ok(moved === 0, `and the teleporter never moved, nor the draw count (${cases} cases) — nothing was taken off ctx.rng`);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

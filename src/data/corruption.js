@@ -86,9 +86,17 @@ export const CLEANSE = {
   guaranteeBand: 2,
 };
 
-/** What one use of a font is worth against a world this deep in the red. */
+/**
+ * What one use of a font is worth against a world this deep in the red.
+ *
+ * Non-finite reads as a pristine world and returns the floor, the same idiom
+ * `voidLayerGain` uses: the result is user-visible prompt text, and an
+ * artifact `corruptionMods().feed` returning NaN would otherwise poison
+ * `_world` and quote the player "bleed NaN corruption".
+ */
 export function cleanseAmount(world) {
-  return Math.max(CLEANSE.amount, Math.round(Math.max(0, world) * CLEANSE.fraction));
+  const w = Number.isFinite(world) ? Math.max(0, world) : 0;
+  return Math.max(CLEANSE.amount, Math.round(w * CLEANSE.fraction));
 }
 
 /**

@@ -16,9 +16,12 @@
  *                 HUD gauge off Pristine.
  *   4. prompt     walking up to the font puts its price in the real HUD prompt
  *                 through `_updateFocus`, not a string this probe built.
- *   5. use        interacting drops the gauge by CLEANSE.amount, takes exactly
- *                 the prompted gold, climbs the price, and the second use
- *                 spends the font — the third is refused.
+ *   5. use        each interaction drops the gauge by what the *live* world is
+ *                 worth (`cleanseAmount`, clamped to what is left), takes
+ *                 exactly the prompted gold and climbs the price; after
+ *                 CLEANSE.maxUses presses the font is spent and the next press
+ *                 is refused. Driven off the constant, not off a pinned count,
+ *                 so a re-tune of maxUses re-tunes the probe with it.
  *   6. clean      no seed is planted by a cleanse (it is not a greed act), and
  *                 zero page/console errors across the session.
  *
@@ -185,44 +188,58 @@ try {
   // ---------------------------------------------------------------- arm 5
   const used = await page.evaluate(async () => {
     const G = globalThis.__GAME__, Ha = globalThis.__HARNESS__, ctx = G.ctx;
-    const { CLEANSE } = await import('/src/data/corruption.js');
+    const { CLEANSE, cleanseAmount } = await import('/src/data/corruption.js');
     const font = globalThis.__FONT__;
-    ctx.items.gold = 5000;
+    ctx.items.gold = 50000;
     Ha.thaw();
-    const w0 = ctx.corruption.world, g0 = ctx.items.gold, c0 = font.cost;
     const seeds0 = ctx.corruption.seeds.length;
     const fill0 = document.querySelector('.corruption-fill')?.style.width ?? null;
+    let fill1 = fill0;
     // The E press itself: `requestInteract` is what the input path calls, and
     // it is the gate that refuses a spent shrine (`_nearest` skips anything
     // `available()` says no to). Calling `font.interact()` here would bypass
     // exactly the rule under test.
     const press = () => ctx.interactables.requestInteract(ctx.player);
-    const ok1 = press();
-    await Ha.frames(20);
-    const w1 = ctx.corruption.world, g1 = ctx.items.gold, c1 = font.cost;
-    const fill1 = document.querySelector('.corruption-fill')?.style.width ?? null;
-    const ok2 = press();
-    await Ha.frames(10);
-    const ok3 = press();
-    await Ha.frames(10);
+    // maxUses presses that must all land, plus one that must not.
+    const presses = [];
+    for (let i = 0; i <= CLEANSE.maxUses; i++) {
+      const w0 = ctx.corruption.world, g0 = ctx.items.gold, c0 = font.cost;
+      // What a use is worth is re-read from the live world every time, and
+      // `bleed` clamps to what is actually left — so the expectation is
+      // computed here from the same two rules, not from a captured constant.
+      const expectDrop = Math.min(w0, cleanseAmount(w0));
+      const ok = press();
+      await Ha.frames(i === 0 ? 20 : 10);
+      if (i === 0) fill1 = document.querySelector('.corruption-fill')?.style.width ?? null;
+      presses.push({
+        ok, w0, w1: ctx.corruption.world, g0, g1: ctx.items.gold, c0, c1: font.cost,
+        expectDrop, expectCost: Math.round(c0 * CLEANSE.costClimb),
+      });
+    }
     Ha.freeze();
     return {
-      cleanseAmount: CLEANSE.amount, costClimb: CLEANSE.costClimb, maxUses: CLEANSE.maxUses,
-      ok1, ok2, ok3, w0, w1, g0, g1, c0, c1,
+      costClimb: CLEANSE.costClimb, maxUses: CLEANSE.maxUses, presses,
       worldEnd: ctx.corruption.world, goldEnd: ctx.items.gold,
       seedsBefore: seeds0, seedsAfter: ctx.corruption.seeds.length,
       fill0, fill1, uses: font.uses, available: font.available(),
       emissive: font.water.material.emissiveIntensity,
     };
   });
-  check('a paid cleanse succeeds', used.ok1 === true, used.ok1);
-  check('the gauge dropped by CLEANSE.amount',
-    Math.abs((used.w0 - used.w1) - used.cleanseAmount) < 1e-6, { from: used.w0, to: used.w1, expected: used.cleanseAmount });
-  check('exactly the prompted gold was taken', used.g0 - used.g1 === used.c0, { paid: used.g0 - used.g1, prompted: used.c0 });
-  check('the price climbed', used.c1 === Math.round(used.c0 * used.costClimb), { from: used.c0, to: used.c1 });
+  const spent = used.presses.slice(0, used.maxUses);   // the ones that must land
+  const extra = used.presses[used.maxUses];            // the one that must not
+  check('a paid cleanse succeeds', spent[0].ok === true, spent[0].ok);
+  check('every use bled what the live world was worth',
+    spent.every((p) => p.ok && Math.abs((p.w0 - p.w1) - p.expectDrop) < 1e-6),
+    spent.map((p) => ({ from: p.w0, to: p.w1, expected: p.expectDrop })));
+  check('exactly the prompted gold was taken, every use',
+    spent.every((p) => p.g0 - p.g1 === p.c0), spent.map((p) => ({ paid: p.g0 - p.g1, prompted: p.c0 })));
+  check('the price climbed on every use',
+    spent.every((p) => p.c1 === p.expectCost), spent.map((p) => ({ from: p.c0, to: p.c1 })));
   check('the HUD gauge visibly narrowed', used.fill0 !== used.fill1, { before: used.fill0, after: used.fill1 });
-  check('the font is spent after maxUses', used.ok2 === true && used.ok3 === false && used.available === false,
-    { ok2: used.ok2, ok3: used.ok3, uses: used.uses });
+  check('the font is spent after maxUses',
+    spent.every((p) => p.ok === true) && extra.ok === false && used.available === false
+      && used.uses === used.maxUses,
+    { landed: spent.map((p) => p.ok), extra: extra.ok, uses: used.uses, maxUses: used.maxUses });
   check('the spent basin is dimmed', used.emissive <= 0.05, used.emissive);
   check('cleansing planted no seed', used.seedsAfter === used.seedsBefore,
     { before: used.seedsBefore, after: used.seedsAfter });
