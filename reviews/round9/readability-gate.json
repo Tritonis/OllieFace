@@ -1,0 +1,6947 @@
+{
+  "tool": "tools/silhouette.mjs --enemies",
+  "commit": "baa495c56df583197e9d974e8d52d77999ebb46d",
+  "seed": 1337,
+  "range": 40,
+  "width": 1600,
+  "height": 900,
+  "fov": 58,
+  "renderer": "d3d11",
+  "units": [
+    {
+      "id": "mite",
+      "name": "Chitter Mite",
+      "tier": 1,
+      "height": 0.5,
+      "px40": 74,
+      "holesFrac": 0.0002,
+      "bbox": "65x66",
+      "fill": 0.369,
+      "aspect": 0.9848,
+      "bands": [
+        0.092,
+        0.062,
+        0.169,
+        0.523,
+        0.708,
+        0.769,
+        0.923,
+        1,
+        0.969,
+        0.908
+      ]
+    },
+    {
+      "id": "beetle",
+      "name": "Plated Scarab",
+      "tier": 1,
+      "height": 0.95,
+      "px40": 363,
+      "holesFrac": 0.0078,
+      "bbox": "151x108",
+      "fill": 0.4679,
+      "aspect": 1.3981,
+      "bands": [
+        0.02,
+        0.404,
+        0.755,
+        0.914,
+        0.947,
+        0.934,
+        1,
+        0.967,
+        0.921,
+        1
+      ]
+    },
+    {
+      "id": "spitling",
+      "name": "Bile Spitling",
+      "tier": 1,
+      "height": 1,
+      "px40": 316,
+      "holesFrac": 0.0003,
+      "bbox": "100x119",
+      "fill": 0.5708,
+      "aspect": 0.8403,
+      "bands": [
+        0.45,
+        0.6,
+        0.96,
+        0.96,
+        0.92,
+        0.9,
+        0.92,
+        0.85,
+        0.88,
+        0.93
+      ]
+    },
+    {
+      "id": "lemurian",
+      "name": "Emberjaw Skink",
+      "tier": 1,
+      "height": 1.7,
+      "px40": 386,
+      "holesFrac": 0,
+      "bbox": "95x179",
+      "fill": 0.4968,
+      "aspect": 0.5307,
+      "bands": [
+        0.189,
+        0.621,
+        0.916,
+        0.916,
+        0.958,
+        0.989,
+        0.716,
+        0.653,
+        0.632,
+        0.716
+      ]
+    },
+    {
+      "id": "wisp",
+      "name": "Guttering Mote",
+      "tier": 1,
+      "height": 1.1,
+      "px40": 387,
+      "holesFrac": 0,
+      "bbox": "132x164",
+      "fill": 0.3942,
+      "aspect": 0.8049,
+      "bands": [
+        0.068,
+        0.144,
+        0.371,
+        0.621,
+        0.939,
+        0.939,
+        0.773,
+        0.795,
+        0.424,
+        0.455
+      ]
+    },
+    {
+      "id": "pest",
+      "name": "Blind Shrike",
+      "tier": 1,
+      "height": 1,
+      "px40": 340,
+      "holesFrac": 0,
+      "bbox": "132x126",
+      "fill": 0.4208,
+      "aspect": 1.0476,
+      "bands": [
+        0.705,
+        0.939,
+        0.894,
+        0.826,
+        0.689,
+        0.682,
+        0.689,
+        0.682,
+        0.689,
+        0.682
+      ]
+    },
+    {
+      "id": "harrier",
+      "name": "Cinder Harrier",
+      "tier": 1,
+      "height": 1.3,
+      "px40": 248,
+      "holesFrac": 0,
+      "bbox": "246x95",
+      "fill": 0.2398,
+      "aspect": 2.5895,
+      "bands": [
+        0.008,
+        0.012,
+        0.894,
+        0.923,
+        0.972,
+        0.972,
+        0.992,
+        0.963,
+        0.252,
+        0.211
+      ]
+    },
+    {
+      "id": "charger",
+      "name": "Ridgeback Charger",
+      "tier": 1,
+      "height": 1.6,
+      "px40": 810,
+      "holesFrac": 0.0091,
+      "bbox": "163x177",
+      "fill": 0.6181,
+      "aspect": 0.9209,
+      "bands": [
+        0.46,
+        0.755,
+        0.84,
+        0.914,
+        0.975,
+        0.92,
+        0.742,
+        0.681,
+        0.663,
+        0.742
+      ]
+    },
+    {
+      "id": "shriver",
+      "name": "Gloomshriver",
+      "tier": 1,
+      "height": 1.2,
+      "px40": 348,
+      "holesFrac": 0.0206,
+      "bbox": "104x121",
+      "fill": 0.6162,
+      "aspect": 0.8595,
+      "bands": [
+        0.298,
+        0.75,
+        0.827,
+        0.817,
+        0.865,
+        0.904,
+        0.981,
+        0.99,
+        0.942,
+        0.702
+      ]
+    },
+    {
+      "id": "burrower",
+      "name": "Silt Burrower",
+      "tier": 2,
+      "height": 1.4,
+      "px40": 494,
+      "holesFrac": 0.0001,
+      "bbox": "155x100",
+      "fill": 0.6841,
+      "aspect": 1.55,
+      "bands": [
+        0.523,
+        0.555,
+        0.619,
+        0.716,
+        0.845,
+        0.884,
+        0.91,
+        0.981,
+        1,
+        0.935
+      ]
+    },
+    {
+      "id": "brood",
+      "name": "Brood Sac",
+      "tier": 2,
+      "height": 2.4,
+      "px40": 991,
+      "holesFrac": 0,
+      "bbox": "127x254",
+      "fill": 0.6843,
+      "aspect": 0.5,
+      "bands": [
+        0.488,
+        0.496,
+        1,
+        0.984,
+        0.921,
+        0.882,
+        0.724,
+        0.803,
+        0.827,
+        0.866
+      ]
+    },
+    {
+      "id": "warden",
+      "name": "Aegis Warden",
+      "tier": 2,
+      "height": 2.5,
+      "px40": 1687,
+      "holesFrac": 0.0195,
+      "bbox": "199x291",
+      "fill": 0.636,
+      "aspect": 0.6838,
+      "bands": [
+        0.729,
+        0.91,
+        0.935,
+        0.91,
+        0.894,
+        0.894,
+        0.965,
+        0.889,
+        0.482,
+        0.442
+      ]
+    },
+    {
+      "id": "stalker",
+      "name": "Rift Stalker",
+      "tier": 2,
+      "height": 1.9,
+      "px40": 469,
+      "holesFrac": 0.0142,
+      "bbox": "145x230",
+      "fill": 0.3086,
+      "aspect": 0.6304,
+      "bands": [
+        0.448,
+        0.393,
+        0.697,
+        0.641,
+        0.593,
+        0.683,
+        0.745,
+        0.814,
+        0.869,
+        0.89
+      ]
+    },
+    {
+      "id": "acolyte",
+      "name": "Grave Acolyte",
+      "tier": 2,
+      "height": 2,
+      "px40": 737,
+      "holesFrac": 0.0372,
+      "bbox": "121x201",
+      "fill": 0.6585,
+      "aspect": 0.602,
+      "bands": [
+        0.165,
+        0.405,
+        0.95,
+        0.983,
+        0.909,
+        0.86,
+        0.81,
+        0.777,
+        0.826,
+        0.967
+      ]
+    },
+    {
+      "id": "golem",
+      "name": "Basalt Sentinel",
+      "tier": 2,
+      "height": 3.6,
+      "px40": 3277,
+      "holesFrac": 0.0001,
+      "bbox": "319x371",
+      "fill": 0.6116,
+      "aspect": 0.8598,
+      "bands": [
+        0.32,
+        0.928,
+        0.909,
+        0.871,
+        0.909,
+        0.962,
+        0.997,
+        0.994,
+        0.467,
+        0.448
+      ]
+    },
+    {
+      "id": "mortar",
+      "name": "Siege Bombard",
+      "tier": 2,
+      "height": 2.8,
+      "px40": 1495,
+      "holesFrac": 0.0013,
+      "bbox": "202x321",
+      "fill": 0.5035,
+      "aspect": 0.6293,
+      "bands": [
+        0.252,
+        0.312,
+        0.317,
+        0.347,
+        0.767,
+        0.866,
+        0.817,
+        0.931,
+        0.95,
+        1
+      ]
+    },
+    {
+      "id": "lasher",
+      "name": "Bramble Lasher",
+      "tier": 2,
+      "height": 2.6,
+      "px40": 683,
+      "holesFrac": 0.0022,
+      "bbox": "133x231",
+      "fill": 0.4878,
+      "aspect": 0.5758,
+      "bands": [
+        0.451,
+        0.504,
+        0.571,
+        0.519,
+        0.586,
+        0.707,
+        0.692,
+        0.571,
+        0.812,
+        0.962
+      ]
+    },
+    {
+      "id": "redoubt",
+      "name": "Ferrite Redoubt",
+      "tier": 2,
+      "height": 2.9,
+      "px40": 2188,
+      "holesFrac": 0.0015,
+      "bbox": "226x263",
+      "fill": 0.7871,
+      "aspect": 0.8593,
+      "bands": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0.527,
+        0.668
+      ]
+    },
+    {
+      "id": "hulk",
+      "name": "Slag Hulk",
+      "tier": 3,
+      "height": 4.2,
+      "px40": 4307,
+      "holesFrac": 0,
+      "bbox": "332x452",
+      "fill": 0.6319,
+      "aspect": 0.7345,
+      "bands": [
+        0.361,
+        0.753,
+        0.78,
+        0.816,
+        0.873,
+        0.913,
+        0.946,
+        0.982,
+        0.78,
+        0.596
+      ]
+    },
+    {
+      "id": "titan",
+      "name": "Basalt Colossus",
+      "tier": 4,
+      "height": 7.6,
+      "px40": 17168,
+      "holesFrac": 0,
+      "bbox": "858x737",
+      "fill": 0.5873,
+      "aspect": 1.1642,
+      "bands": [
+        0.522,
+        0.737,
+        0.758,
+        0.786,
+        0.857,
+        0.951,
+        0.993,
+        0.994,
+        0.483,
+        0.514
+      ]
+    },
+    {
+      "id": "wyrm",
+      "name": "Ossuary Wyrm",
+      "tier": 4,
+      "height": 5.4,
+      "px40": 7096,
+      "holesFrac": 0,
+      "bbox": "540x760",
+      "fill": 0.3665,
+      "aspect": 0.7105,
+      "bands": [
+        0.272,
+        0.289,
+        0.307,
+        0.333,
+        0.383,
+        0.426,
+        0.47,
+        0.507,
+        0.898,
+        1
+      ]
+    },
+    {
+      "id": "thunderhead",
+      "name": "Thunderhead",
+      "tier": 4,
+      "height": 5,
+      "px40": 4486,
+      "holesFrac": 0.1403,
+      "bbox": "544x267",
+      "fill": 0.5137,
+      "aspect": 2.0375,
+      "bands": [
+        0.533,
+        0.73,
+        0.803,
+        0.836,
+        0.82,
+        0.82,
+        0.908,
+        0.904,
+        0.805,
+        0.836
+      ]
+    },
+    {
+      "id": "matron",
+      "name": "Pyre Matron",
+      "tier": 4,
+      "height": 5.8,
+      "px40": 3851,
+      "holesFrac": 0.0008,
+      "bbox": "566x260",
+      "fill": 0.601,
+      "aspect": 2.1769,
+      "bands": [
+        0.793,
+        0.829,
+        0.866,
+        0.901,
+        0.936,
+        0.972,
+        1,
+        0.986,
+        0.972,
+        0.327
+      ]
+    },
+    {
+      "id": "vizier",
+      "name": "Iron Vizier",
+      "tier": 4,
+      "height": 6.4,
+      "px40": 8848,
+      "holesFrac": 0.0212,
+      "bbox": "452x715",
+      "fill": 0.598,
+      "aspect": 0.6322,
+      "bands": [
+        0.471,
+        1,
+        0.991,
+        0.938,
+        0.796,
+        0.814,
+        0.814,
+        0.681,
+        0.533,
+        0.555
+      ]
+    },
+    {
+      "id": "maw",
+      "name": "Verdant Maw",
+      "tier": 4,
+      "height": 5.2,
+      "px40": 9217,
+      "holesFrac": 0.0029,
+      "bbox": "732x491",
+      "fill": 0.559,
+      "aspect": 1.4908,
+      "bands": [
+        0.358,
+        0.604,
+        0.694,
+        0.675,
+        0.68,
+        0.786,
+        0.96,
+        0.999,
+        0.992,
+        0.597
+      ]
+    }
+  ],
+  "familyPairs": [
+    {
+      "a": "mite",
+      "b": "beetle",
+      "iou": 0.4161
+    },
+    {
+      "a": "mite",
+      "b": "spitling",
+      "iou": 0.4347
+    },
+    {
+      "a": "mite",
+      "b": "lemurian",
+      "iou": 0.4013
+    },
+    {
+      "a": "mite",
+      "b": "wisp",
+      "iou": 0.5451
+    },
+    {
+      "a": "mite",
+      "b": "pest",
+      "iou": 0.2902
+    },
+    {
+      "a": "mite",
+      "b": "harrier",
+      "iou": 0.2486
+    },
+    {
+      "a": "mite",
+      "b": "charger",
+      "iou": 0.4057
+    },
+    {
+      "a": "mite",
+      "b": "shriver",
+      "iou": 0.4888
+    },
+    {
+      "a": "mite",
+      "b": "burrower",
+      "iou": 0.4919
+    },
+    {
+      "a": "mite",
+      "b": "brood",
+      "iou": 0.4106
+    },
+    {
+      "a": "mite",
+      "b": "warden",
+      "iou": 0.4189
+    },
+    {
+      "a": "mite",
+      "b": "stalker",
+      "iou": 0.3492
+    },
+    {
+      "a": "mite",
+      "b": "acolyte",
+      "iou": 0.3979
+    },
+    {
+      "a": "mite",
+      "b": "golem",
+      "iou": 0.3496
+    },
+    {
+      "a": "mite",
+      "b": "mortar",
+      "iou": 0.577
+    },
+    {
+      "a": "mite",
+      "b": "lasher",
+      "iou": 0.3537
+    },
+    {
+      "a": "mite",
+      "b": "redoubt",
+      "iou": 0.354
+    },
+    {
+      "a": "mite",
+      "b": "hulk",
+      "iou": 0.4535
+    },
+    {
+      "a": "mite",
+      "b": "titan",
+      "iou": 0.3554
+    },
+    {
+      "a": "mite",
+      "b": "wyrm",
+      "iou": 0.3141
+    },
+    {
+      "a": "mite",
+      "b": "thunderhead",
+      "iou": 0.4462
+    },
+    {
+      "a": "mite",
+      "b": "matron",
+      "iou": 0.343
+    },
+    {
+      "a": "mite",
+      "b": "vizier",
+      "iou": 0.3639
+    },
+    {
+      "a": "mite",
+      "b": "maw",
+      "iou": 0.5393
+    },
+    {
+      "a": "beetle",
+      "b": "spitling",
+      "iou": 0.6384
+    },
+    {
+      "a": "beetle",
+      "b": "lemurian",
+      "iou": 0.571
+    },
+    {
+      "a": "beetle",
+      "b": "wisp",
+      "iou": 0.4344
+    },
+    {
+      "a": "beetle",
+      "b": "pest",
+      "iou": 0.3667
+    },
+    {
+      "a": "beetle",
+      "b": "harrier",
+      "iou": 0.2291
+    },
+    {
+      "a": "beetle",
+      "b": "charger",
+      "iou": 0.5357
+    },
+    {
+      "a": "beetle",
+      "b": "shriver",
+      "iou": 0.5927
+    },
+    {
+      "a": "beetle",
+      "b": "burrower",
+      "iou": 0.5284
+    },
+    {
+      "a": "beetle",
+      "b": "brood",
+      "iou": 0.521
+    },
+    {
+      "a": "beetle",
+      "b": "warden",
+      "iou": 0.5104
+    },
+    {
+      "a": "beetle",
+      "b": "stalker",
+      "iou": 0.3594
+    },
+    {
+      "a": "beetle",
+      "b": "acolyte",
+      "iou": 0.4751
+    },
+    {
+      "a": "beetle",
+      "b": "golem",
+      "iou": 0.5228
+    },
+    {
+      "a": "beetle",
+      "b": "mortar",
+      "iou": 0.4528
+    },
+    {
+      "a": "beetle",
+      "b": "lasher",
+      "iou": 0.3697
+    },
+    {
+      "a": "beetle",
+      "b": "redoubt",
+      "iou": 0.4797
+    },
+    {
+      "a": "beetle",
+      "b": "hulk",
+      "iou": 0.5413
+    },
+    {
+      "a": "beetle",
+      "b": "titan",
+      "iou": 0.4736
+    },
+    {
+      "a": "beetle",
+      "b": "wyrm",
+      "iou": 0.2347
+    },
+    {
+      "a": "beetle",
+      "b": "thunderhead",
+      "iou": 0.3596
+    },
+    {
+      "a": "beetle",
+      "b": "matron",
+      "iou": 0.4732
+    },
+    {
+      "a": "beetle",
+      "b": "vizier",
+      "iou": 0.4288
+    },
+    {
+      "a": "beetle",
+      "b": "maw",
+      "iou": 0.4763
+    },
+    {
+      "a": "spitling",
+      "b": "lemurian",
+      "iou": 0.5827
+    },
+    {
+      "a": "spitling",
+      "b": "wisp",
+      "iou": 0.4427
+    },
+    {
+      "a": "spitling",
+      "b": "pest",
+      "iou": 0.4743
+    },
+    {
+      "a": "spitling",
+      "b": "harrier",
+      "iou": 0.1842
+    },
+    {
+      "a": "spitling",
+      "b": "charger",
+      "iou": 0.6432
+    },
+    {
+      "a": "spitling",
+      "b": "shriver",
+      "iou": 0.6301
+    },
+    {
+      "a": "spitling",
+      "b": "burrower",
+      "iou": 0.6287
+    },
+    {
+      "a": "spitling",
+      "b": "brood",
+      "iou": 0.6358
+    },
+    {
+      "a": "spitling",
+      "b": "warden",
+      "iou": 0.6063
+    },
+    {
+      "a": "spitling",
+      "b": "stalker",
+      "iou": 0.3862
+    },
+    {
+      "a": "spitling",
+      "b": "acolyte",
+      "iou": 0.5712
+    },
+    {
+      "a": "spitling",
+      "b": "golem",
+      "iou": 0.5697
+    },
+    {
+      "a": "spitling",
+      "b": "mortar",
+      "iou": 0.5297
+    },
+    {
+      "a": "spitling",
+      "b": "lasher",
+      "iou": 0.448
+    },
+    {
+      "a": "spitling",
+      "b": "redoubt",
+      "iou": 0.5929
+    },
+    {
+      "a": "spitling",
+      "b": "hulk",
+      "iou": 0.6169
+    },
+    {
+      "a": "spitling",
+      "b": "titan",
+      "iou": 0.5355
+    },
+    {
+      "a": "spitling",
+      "b": "wyrm",
+      "iou": 0.2867
+    },
+    {
+      "a": "spitling",
+      "b": "thunderhead",
+      "iou": 0.4218
+    },
+    {
+      "a": "spitling",
+      "b": "matron",
+      "iou": 0.5269
+    },
+    {
+      "a": "spitling",
+      "b": "vizier",
+      "iou": 0.5096
+    },
+    {
+      "a": "spitling",
+      "b": "maw",
+      "iou": 0.4929
+    },
+    {
+      "a": "lemurian",
+      "b": "wisp",
+      "iou": 0.4996
+    },
+    {
+      "a": "lemurian",
+      "b": "pest",
+      "iou": 0.3605
+    },
+    {
+      "a": "lemurian",
+      "b": "harrier",
+      "iou": 0.2077
+    },
+    {
+      "a": "lemurian",
+      "b": "charger",
+      "iou": 0.6225
+    },
+    {
+      "a": "lemurian",
+      "b": "shriver",
+      "iou": 0.5683
+    },
+    {
+      "a": "lemurian",
+      "b": "burrower",
+      "iou": 0.5173
+    },
+    {
+      "a": "lemurian",
+      "b": "brood",
+      "iou": 0.6024
+    },
+    {
+      "a": "lemurian",
+      "b": "warden",
+      "iou": 0.5433
+    },
+    {
+      "a": "lemurian",
+      "b": "stalker",
+      "iou": 0.3215
+    },
+    {
+      "a": "lemurian",
+      "b": "acolyte",
+      "iou": 0.5529
+    },
+    {
+      "a": "lemurian",
+      "b": "golem",
+      "iou": 0.564
+    },
+    {
+      "a": "lemurian",
+      "b": "mortar",
+      "iou": 0.4152
+    },
+    {
+      "a": "lemurian",
+      "b": "lasher",
+      "iou": 0.3752
+    },
+    {
+      "a": "lemurian",
+      "b": "redoubt",
+      "iou": 0.4828
+    },
+    {
+      "a": "lemurian",
+      "b": "hulk",
+      "iou": 0.5834
+    },
+    {
+      "a": "lemurian",
+      "b": "titan",
+      "iou": 0.4975
+    },
+    {
+      "a": "lemurian",
+      "b": "wyrm",
+      "iou": 0.302
+    },
+    {
+      "a": "lemurian",
+      "b": "thunderhead",
+      "iou": 0.4145
+    },
+    {
+      "a": "lemurian",
+      "b": "matron",
+      "iou": 0.4867
+    },
+    {
+      "a": "lemurian",
+      "b": "vizier",
+      "iou": 0.4907
+    },
+    {
+      "a": "lemurian",
+      "b": "maw",
+      "iou": 0.4883
+    },
+    {
+      "a": "wisp",
+      "b": "pest",
+      "iou": 0.2944
+    },
+    {
+      "a": "wisp",
+      "b": "harrier",
+      "iou": 0.342
+    },
+    {
+      "a": "wisp",
+      "b": "charger",
+      "iou": 0.51
+    },
+    {
+      "a": "wisp",
+      "b": "shriver",
+      "iou": 0.5073
+    },
+    {
+      "a": "wisp",
+      "b": "burrower",
+      "iou": 0.5306
+    },
+    {
+      "a": "wisp",
+      "b": "brood",
+      "iou": 0.5022
+    },
+    {
+      "a": "wisp",
+      "b": "warden",
+      "iou": 0.5102
+    },
+    {
+      "a": "wisp",
+      "b": "stalker",
+      "iou": 0.3318
+    },
+    {
+      "a": "wisp",
+      "b": "acolyte",
+      "iou": 0.4602
+    },
+    {
+      "a": "wisp",
+      "b": "golem",
+      "iou": 0.4638
+    },
+    {
+      "a": "wisp",
+      "b": "mortar",
+      "iou": 0.4832
+    },
+    {
+      "a": "wisp",
+      "b": "lasher",
+      "iou": 0.3745
+    },
+    {
+      "a": "wisp",
+      "b": "redoubt",
+      "iou": 0.3996
+    },
+    {
+      "a": "wisp",
+      "b": "hulk",
+      "iou": 0.4963
+    },
+    {
+      "a": "wisp",
+      "b": "titan",
+      "iou": 0.4502
+    },
+    {
+      "a": "wisp",
+      "b": "wyrm",
+      "iou": 0.4033
+    },
+    {
+      "a": "wisp",
+      "b": "thunderhead",
+      "iou": 0.4845
+    },
+    {
+      "a": "wisp",
+      "b": "matron",
+      "iou": 0.4943
+    },
+    {
+      "a": "wisp",
+      "b": "vizier",
+      "iou": 0.4228
+    },
+    {
+      "a": "wisp",
+      "b": "maw",
+      "iou": 0.5346
+    },
+    {
+      "a": "pest",
+      "b": "harrier",
+      "iou": 0.1061
+    },
+    {
+      "a": "pest",
+      "b": "charger",
+      "iou": 0.4343
+    },
+    {
+      "a": "pest",
+      "b": "shriver",
+      "iou": 0.4358
+    },
+    {
+      "a": "pest",
+      "b": "burrower",
+      "iou": 0.4024
+    },
+    {
+      "a": "pest",
+      "b": "brood",
+      "iou": 0.4267
+    },
+    {
+      "a": "pest",
+      "b": "warden",
+      "iou": 0.4297
+    },
+    {
+      "a": "pest",
+      "b": "stalker",
+      "iou": 0.3438
+    },
+    {
+      "a": "pest",
+      "b": "acolyte",
+      "iou": 0.3811
+    },
+    {
+      "a": "pest",
+      "b": "golem",
+      "iou": 0.4532
+    },
+    {
+      "a": "pest",
+      "b": "mortar",
+      "iou": 0.3372
+    },
+    {
+      "a": "pest",
+      "b": "lasher",
+      "iou": 0.4191
+    },
+    {
+      "a": "pest",
+      "b": "redoubt",
+      "iou": 0.4751
+    },
+    {
+      "a": "pest",
+      "b": "hulk",
+      "iou": 0.4193
+    },
+    {
+      "a": "pest",
+      "b": "titan",
+      "iou": 0.4207
+    },
+    {
+      "a": "pest",
+      "b": "wyrm",
+      "iou": 0.2712
+    },
+    {
+      "a": "pest",
+      "b": "thunderhead",
+      "iou": 0.3669
+    },
+    {
+      "a": "pest",
+      "b": "matron",
+      "iou": 0.4499
+    },
+    {
+      "a": "pest",
+      "b": "vizier",
+      "iou": 0.471
+    },
+    {
+      "a": "pest",
+      "b": "maw",
+      "iou": 0.3788
+    },
+    {
+      "a": "harrier",
+      "b": "charger",
+      "iou": 0.274
+    },
+    {
+      "a": "harrier",
+      "b": "shriver",
+      "iou": 0.2611
+    },
+    {
+      "a": "harrier",
+      "b": "burrower",
+      "iou": 0.2607
+    },
+    {
+      "a": "harrier",
+      "b": "brood",
+      "iou": 0.2909
+    },
+    {
+      "a": "harrier",
+      "b": "warden",
+      "iou": 0.2988
+    },
+    {
+      "a": "harrier",
+      "b": "stalker",
+      "iou": 0.1687
+    },
+    {
+      "a": "harrier",
+      "b": "acolyte",
+      "iou": 0.2707
+    },
+    {
+      "a": "harrier",
+      "b": "golem",
+      "iou": 0.2636
+    },
+    {
+      "a": "harrier",
+      "b": "mortar",
+      "iou": 0.2591
+    },
+    {
+      "a": "harrier",
+      "b": "lasher",
+      "iou": 0.2765
+    },
+    {
+      "a": "harrier",
+      "b": "redoubt",
+      "iou": 0.2123
+    },
+    {
+      "a": "harrier",
+      "b": "hulk",
+      "iou": 0.2844
+    },
+    {
+      "a": "harrier",
+      "b": "titan",
+      "iou": 0.281
+    },
+    {
+      "a": "harrier",
+      "b": "wyrm",
+      "iou": 0.2876
+    },
+    {
+      "a": "harrier",
+      "b": "thunderhead",
+      "iou": 0.2866
+    },
+    {
+      "a": "harrier",
+      "b": "matron",
+      "iou": 0.3067
+    },
+    {
+      "a": "harrier",
+      "b": "vizier",
+      "iou": 0.2865
+    },
+    {
+      "a": "harrier",
+      "b": "maw",
+      "iou": 0.2821
+    },
+    {
+      "a": "charger",
+      "b": "shriver",
+      "iou": 0.5704
+    },
+    {
+      "a": "charger",
+      "b": "burrower",
+      "iou": 0.6293
+    },
+    {
+      "a": "charger",
+      "b": "brood",
+      "iou": 0.7336
+    },
+    {
+      "a": "charger",
+      "b": "warden",
+      "iou": 0.6564
+    },
+    {
+      "a": "charger",
+      "b": "stalker",
+      "iou": 0.3331
+    },
+    {
+      "a": "charger",
+      "b": "acolyte",
+      "iou": 0.7001
+    },
+    {
+      "a": "charger",
+      "b": "golem",
+      "iou": 0.6306
+    },
+    {
+      "a": "charger",
+      "b": "mortar",
+      "iou": 0.4903
+    },
+    {
+      "a": "charger",
+      "b": "lasher",
+      "iou": 0.5388
+    },
+    {
+      "a": "charger",
+      "b": "redoubt",
+      "iou": 0.6017
+    },
+    {
+      "a": "charger",
+      "b": "hulk",
+      "iou": 0.6812
+    },
+    {
+      "a": "charger",
+      "b": "titan",
+      "iou": 0.5995
+    },
+    {
+      "a": "charger",
+      "b": "wyrm",
+      "iou": 0.3954
+    },
+    {
+      "a": "charger",
+      "b": "thunderhead",
+      "iou": 0.5489
+    },
+    {
+      "a": "charger",
+      "b": "matron",
+      "iou": 0.5826
+    },
+    {
+      "a": "charger",
+      "b": "vizier",
+      "iou": 0.6413
+    },
+    {
+      "a": "charger",
+      "b": "maw",
+      "iou": 0.5483
+    },
+    {
+      "a": "shriver",
+      "b": "burrower",
+      "iou": 0.6769
+    },
+    {
+      "a": "shriver",
+      "b": "brood",
+      "iou": 0.6307
+    },
+    {
+      "a": "shriver",
+      "b": "warden",
+      "iou": 0.6565
+    },
+    {
+      "a": "shriver",
+      "b": "stalker",
+      "iou": 0.3746
+    },
+    {
+      "a": "shriver",
+      "b": "acolyte",
+      "iou": 0.6138
+    },
+    {
+      "a": "shriver",
+      "b": "golem",
+      "iou": 0.6387
+    },
+    {
+      "a": "shriver",
+      "b": "mortar",
+      "iou": 0.5455
+    },
+    {
+      "a": "shriver",
+      "b": "lasher",
+      "iou": 0.437
+    },
+    {
+      "a": "shriver",
+      "b": "redoubt",
+      "iou": 0.5746
+    },
+    {
+      "a": "shriver",
+      "b": "hulk",
+      "iou": 0.6304
+    },
+    {
+      "a": "shriver",
+      "b": "titan",
+      "iou": 0.632
+    },
+    {
+      "a": "shriver",
+      "b": "wyrm",
+      "iou": 0.3047
+    },
+    {
+      "a": "shriver",
+      "b": "thunderhead",
+      "iou": 0.4722
+    },
+    {
+      "a": "shriver",
+      "b": "matron",
+      "iou": 0.5638
+    },
+    {
+      "a": "shriver",
+      "b": "vizier",
+      "iou": 0.5559
+    },
+    {
+      "a": "shriver",
+      "b": "maw",
+      "iou": 0.6536
+    },
+    {
+      "a": "burrower",
+      "b": "brood",
+      "iou": 0.6829
+    },
+    {
+      "a": "burrower",
+      "b": "warden",
+      "iou": 0.6043
+    },
+    {
+      "a": "burrower",
+      "b": "stalker",
+      "iou": 0.4144
+    },
+    {
+      "a": "burrower",
+      "b": "acolyte",
+      "iou": 0.6403
+    },
+    {
+      "a": "burrower",
+      "b": "golem",
+      "iou": 0.5691
+    },
+    {
+      "a": "burrower",
+      "b": "mortar",
+      "iou": 0.6401
+    },
+    {
+      "a": "burrower",
+      "b": "lasher",
+      "iou": 0.5383
+    },
+    {
+      "a": "burrower",
+      "b": "redoubt",
+      "iou": 0.5491
+    },
+    {
+      "a": "burrower",
+      "b": "hulk",
+      "iou": 0.7106
+    },
+    {
+      "a": "burrower",
+      "b": "titan",
+      "iou": 0.5926
+    },
+    {
+      "a": "burrower",
+      "b": "wyrm",
+      "iou": 0.4272
+    },
+    {
+      "a": "burrower",
+      "b": "thunderhead",
+      "iou": 0.5299
+    },
+    {
+      "a": "burrower",
+      "b": "matron",
+      "iou": 0.5327
+    },
+    {
+      "a": "burrower",
+      "b": "vizier",
+      "iou": 0.5354
+    },
+    {
+      "a": "burrower",
+      "b": "maw",
+      "iou": 0.6703
+    },
+    {
+      "a": "brood",
+      "b": "warden",
+      "iou": 0.6749
+    },
+    {
+      "a": "brood",
+      "b": "stalker",
+      "iou": 0.3745
+    },
+    {
+      "a": "brood",
+      "b": "acolyte",
+      "iou": 0.7966
+    },
+    {
+      "a": "brood",
+      "b": "golem",
+      "iou": 0.6221
+    },
+    {
+      "a": "brood",
+      "b": "mortar",
+      "iou": 0.5656
+    },
+    {
+      "a": "brood",
+      "b": "lasher",
+      "iou": 0.5632
+    },
+    {
+      "a": "brood",
+      "b": "redoubt",
+      "iou": 0.5748
+    },
+    {
+      "a": "brood",
+      "b": "hulk",
+      "iou": 0.6485
+    },
+    {
+      "a": "brood",
+      "b": "titan",
+      "iou": 0.6166
+    },
+    {
+      "a": "brood",
+      "b": "wyrm",
+      "iou": 0.4617
+    },
+    {
+      "a": "brood",
+      "b": "thunderhead",
+      "iou": 0.5474
+    },
+    {
+      "a": "brood",
+      "b": "matron",
+      "iou": 0.5921
+    },
+    {
+      "a": "brood",
+      "b": "vizier",
+      "iou": 0.6141
+    },
+    {
+      "a": "brood",
+      "b": "maw",
+      "iou": 0.6429
+    },
+    {
+      "a": "warden",
+      "b": "stalker",
+      "iou": 0.3611
+    },
+    {
+      "a": "warden",
+      "b": "acolyte",
+      "iou": 0.6606
+    },
+    {
+      "a": "warden",
+      "b": "golem",
+      "iou": 0.6806
+    },
+    {
+      "a": "warden",
+      "b": "mortar",
+      "iou": 0.4456
+    },
+    {
+      "a": "warden",
+      "b": "lasher",
+      "iou": 0.4813
+    },
+    {
+      "a": "warden",
+      "b": "redoubt",
+      "iou": 0.6486
+    },
+    {
+      "a": "warden",
+      "b": "hulk",
+      "iou": 0.6686
+    },
+    {
+      "a": "warden",
+      "b": "titan",
+      "iou": 0.633
+    },
+    {
+      "a": "warden",
+      "b": "wyrm",
+      "iou": 0.3667
+    },
+    {
+      "a": "warden",
+      "b": "thunderhead",
+      "iou": 0.5377
+    },
+    {
+      "a": "warden",
+      "b": "matron",
+      "iou": 0.6918
+    },
+    {
+      "a": "warden",
+      "b": "vizier",
+      "iou": 0.7006
+    },
+    {
+      "a": "warden",
+      "b": "maw",
+      "iou": 0.5993
+    },
+    {
+      "a": "stalker",
+      "b": "acolyte",
+      "iou": 0.3917
+    },
+    {
+      "a": "stalker",
+      "b": "golem",
+      "iou": 0.3106
+    },
+    {
+      "a": "stalker",
+      "b": "mortar",
+      "iou": 0.3813
+    },
+    {
+      "a": "stalker",
+      "b": "lasher",
+      "iou": 0.3612
+    },
+    {
+      "a": "stalker",
+      "b": "redoubt",
+      "iou": 0.2852
+    },
+    {
+      "a": "stalker",
+      "b": "hulk",
+      "iou": 0.3733
+    },
+    {
+      "a": "stalker",
+      "b": "titan",
+      "iou": 0.3445
+    },
+    {
+      "a": "stalker",
+      "b": "wyrm",
+      "iou": 0.311
+    },
+    {
+      "a": "stalker",
+      "b": "thunderhead",
+      "iou": 0.3369
+    },
+    {
+      "a": "stalker",
+      "b": "matron",
+      "iou": 0.3462
+    },
+    {
+      "a": "stalker",
+      "b": "vizier",
+      "iou": 0.3778
+    },
+    {
+      "a": "stalker",
+      "b": "maw",
+      "iou": 0.3908
+    },
+    {
+      "a": "acolyte",
+      "b": "golem",
+      "iou": 0.6202
+    },
+    {
+      "a": "acolyte",
+      "b": "mortar",
+      "iou": 0.5254
+    },
+    {
+      "a": "acolyte",
+      "b": "lasher",
+      "iou": 0.5653
+    },
+    {
+      "a": "acolyte",
+      "b": "redoubt",
+      "iou": 0.5334
+    },
+    {
+      "a": "acolyte",
+      "b": "hulk",
+      "iou": 0.6312
+    },
+    {
+      "a": "acolyte",
+      "b": "titan",
+      "iou": 0.6043
+    },
+    {
+      "a": "acolyte",
+      "b": "wyrm",
+      "iou": 0.4862
+    },
+    {
+      "a": "acolyte",
+      "b": "thunderhead",
+      "iou": 0.5219
+    },
+    {
+      "a": "acolyte",
+      "b": "matron",
+      "iou": 0.5808
+    },
+    {
+      "a": "acolyte",
+      "b": "vizier",
+      "iou": 0.6482
+    },
+    {
+      "a": "acolyte",
+      "b": "maw",
+      "iou": 0.6203
+    },
+    {
+      "a": "golem",
+      "b": "mortar",
+      "iou": 0.3896
+    },
+    {
+      "a": "golem",
+      "b": "lasher",
+      "iou": 0.5079
+    },
+    {
+      "a": "golem",
+      "b": "redoubt",
+      "iou": 0.6348
+    },
+    {
+      "a": "golem",
+      "b": "hulk",
+      "iou": 0.5885
+    },
+    {
+      "a": "golem",
+      "b": "titan",
+      "iou": 0.7459
+    },
+    {
+      "a": "golem",
+      "b": "wyrm",
+      "iou": 0.38
+    },
+    {
+      "a": "golem",
+      "b": "thunderhead",
+      "iou": 0.521
+    },
+    {
+      "a": "golem",
+      "b": "matron",
+      "iou": 0.6604
+    },
+    {
+      "a": "golem",
+      "b": "vizier",
+      "iou": 0.636
+    },
+    {
+      "a": "golem",
+      "b": "maw",
+      "iou": 0.5236
+    },
+    {
+      "a": "mortar",
+      "b": "lasher",
+      "iou": 0.4476
+    },
+    {
+      "a": "mortar",
+      "b": "redoubt",
+      "iou": 0.4146
+    },
+    {
+      "a": "mortar",
+      "b": "hulk",
+      "iou": 0.5066
+    },
+    {
+      "a": "mortar",
+      "b": "titan",
+      "iou": 0.4421
+    },
+    {
+      "a": "mortar",
+      "b": "wyrm",
+      "iou": 0.3659
+    },
+    {
+      "a": "mortar",
+      "b": "thunderhead",
+      "iou": 0.4892
+    },
+    {
+      "a": "mortar",
+      "b": "matron",
+      "iou": 0.3471
+    },
+    {
+      "a": "mortar",
+      "b": "vizier",
+      "iou": 0.3827
+    },
+    {
+      "a": "mortar",
+      "b": "maw",
+      "iou": 0.5717
+    },
+    {
+      "a": "lasher",
+      "b": "redoubt",
+      "iou": 0.4195
+    },
+    {
+      "a": "lasher",
+      "b": "hulk",
+      "iou": 0.5126
+    },
+    {
+      "a": "lasher",
+      "b": "titan",
+      "iou": 0.5277
+    },
+    {
+      "a": "lasher",
+      "b": "wyrm",
+      "iou": 0.6045
+    },
+    {
+      "a": "lasher",
+      "b": "thunderhead",
+      "iou": 0.5305
+    },
+    {
+      "a": "lasher",
+      "b": "matron",
+      "iou": 0.4599
+    },
+    {
+      "a": "lasher",
+      "b": "vizier",
+      "iou": 0.5338
+    },
+    {
+      "a": "lasher",
+      "b": "maw",
+      "iou": 0.4589
+    },
+    {
+      "a": "redoubt",
+      "b": "hulk",
+      "iou": 0.5478
+    },
+    {
+      "a": "redoubt",
+      "b": "titan",
+      "iou": 0.5788
+    },
+    {
+      "a": "redoubt",
+      "b": "wyrm",
+      "iou": 0.2722
+    },
+    {
+      "a": "redoubt",
+      "b": "thunderhead",
+      "iou": 0.4416
+    },
+    {
+      "a": "redoubt",
+      "b": "matron",
+      "iou": 0.6206
+    },
+    {
+      "a": "redoubt",
+      "b": "vizier",
+      "iou": 0.609
+    },
+    {
+      "a": "redoubt",
+      "b": "maw",
+      "iou": 0.439
+    },
+    {
+      "a": "hulk",
+      "b": "titan",
+      "iou": 0.5895
+    },
+    {
+      "a": "hulk",
+      "b": "wyrm",
+      "iou": 0.3609
+    },
+    {
+      "a": "hulk",
+      "b": "thunderhead",
+      "iou": 0.5616
+    },
+    {
+      "a": "hulk",
+      "b": "matron",
+      "iou": 0.5711
+    },
+    {
+      "a": "hulk",
+      "b": "vizier",
+      "iou": 0.5888
+    },
+    {
+      "a": "hulk",
+      "b": "maw",
+      "iou": 0.6041
+    },
+    {
+      "a": "titan",
+      "b": "wyrm",
+      "iou": 0.3944
+    },
+    {
+      "a": "titan",
+      "b": "thunderhead",
+      "iou": 0.5148
+    },
+    {
+      "a": "titan",
+      "b": "matron",
+      "iou": 0.5867
+    },
+    {
+      "a": "titan",
+      "b": "vizier",
+      "iou": 0.6055
+    },
+    {
+      "a": "titan",
+      "b": "maw",
+      "iou": 0.5316
+    },
+    {
+      "a": "wyrm",
+      "b": "thunderhead",
+      "iou": 0.4664
+    },
+    {
+      "a": "wyrm",
+      "b": "matron",
+      "iou": 0.3898
+    },
+    {
+      "a": "wyrm",
+      "b": "vizier",
+      "iou": 0.4193
+    },
+    {
+      "a": "wyrm",
+      "b": "maw",
+      "iou": 0.4181
+    },
+    {
+      "a": "thunderhead",
+      "b": "matron",
+      "iou": 0.481
+    },
+    {
+      "a": "thunderhead",
+      "b": "vizier",
+      "iou": 0.5404
+    },
+    {
+      "a": "thunderhead",
+      "b": "maw",
+      "iou": 0.5921
+    },
+    {
+      "a": "matron",
+      "b": "vizier",
+      "iou": 0.6623
+    },
+    {
+      "a": "matron",
+      "b": "maw",
+      "iou": 0.5147
+    },
+    {
+      "a": "vizier",
+      "b": "maw",
+      "iou": 0.5357
+    }
+  ],
+  "foeFriendPairs": [
+    {
+      "a": "mite",
+      "b": "ranger",
+      "iou": 0.3701
+    },
+    {
+      "a": "mite",
+      "b": "anvil",
+      "iou": 0.2548
+    },
+    {
+      "a": "mite",
+      "b": "kestrel",
+      "iou": 0.3699
+    },
+    {
+      "a": "mite",
+      "b": "rook",
+      "iou": 0.3728
+    },
+    {
+      "a": "mite",
+      "b": "cinder",
+      "iou": 0.2611
+    },
+    {
+      "a": "beetle",
+      "b": "ranger",
+      "iou": 0.3763
+    },
+    {
+      "a": "beetle",
+      "b": "anvil",
+      "iou": 0.3354
+    },
+    {
+      "a": "beetle",
+      "b": "kestrel",
+      "iou": 0.3894
+    },
+    {
+      "a": "beetle",
+      "b": "rook",
+      "iou": 0.4319
+    },
+    {
+      "a": "beetle",
+      "b": "cinder",
+      "iou": 0.3747
+    },
+    {
+      "a": "spitling",
+      "b": "ranger",
+      "iou": 0.4029
+    },
+    {
+      "a": "spitling",
+      "b": "anvil",
+      "iou": 0.4139
+    },
+    {
+      "a": "spitling",
+      "b": "kestrel",
+      "iou": 0.4644
+    },
+    {
+      "a": "spitling",
+      "b": "rook",
+      "iou": 0.5127
+    },
+    {
+      "a": "spitling",
+      "b": "cinder",
+      "iou": 0.4434
+    },
+    {
+      "a": "lemurian",
+      "b": "ranger",
+      "iou": 0.445
+    },
+    {
+      "a": "lemurian",
+      "b": "anvil",
+      "iou": 0.4066
+    },
+    {
+      "a": "lemurian",
+      "b": "kestrel",
+      "iou": 0.5346
+    },
+    {
+      "a": "lemurian",
+      "b": "rook",
+      "iou": 0.5429
+    },
+    {
+      "a": "lemurian",
+      "b": "cinder",
+      "iou": 0.4142
+    },
+    {
+      "a": "wisp",
+      "b": "ranger",
+      "iou": 0.4519
+    },
+    {
+      "a": "wisp",
+      "b": "anvil",
+      "iou": 0.3829
+    },
+    {
+      "a": "wisp",
+      "b": "kestrel",
+      "iou": 0.5488
+    },
+    {
+      "a": "wisp",
+      "b": "rook",
+      "iou": 0.4566
+    },
+    {
+      "a": "wisp",
+      "b": "cinder",
+      "iou": 0.391
+    },
+    {
+      "a": "pest",
+      "b": "ranger",
+      "iou": 0.3407
+    },
+    {
+      "a": "pest",
+      "b": "anvil",
+      "iou": 0.4551
+    },
+    {
+      "a": "pest",
+      "b": "kestrel",
+      "iou": 0.3706
+    },
+    {
+      "a": "pest",
+      "b": "rook",
+      "iou": 0.4051
+    },
+    {
+      "a": "pest",
+      "b": "cinder",
+      "iou": 0.4796
+    },
+    {
+      "a": "harrier",
+      "b": "ranger",
+      "iou": 0.1958
+    },
+    {
+      "a": "harrier",
+      "b": "anvil",
+      "iou": 0.1998
+    },
+    {
+      "a": "harrier",
+      "b": "kestrel",
+      "iou": 0.2578
+    },
+    {
+      "a": "harrier",
+      "b": "rook",
+      "iou": 0.1717
+    },
+    {
+      "a": "harrier",
+      "b": "cinder",
+      "iou": 0.1987
+    },
+    {
+      "a": "charger",
+      "b": "ranger",
+      "iou": 0.4271
+    },
+    {
+      "a": "charger",
+      "b": "anvil",
+      "iou": 0.4885
+    },
+    {
+      "a": "charger",
+      "b": "kestrel",
+      "iou": 0.5555
+    },
+    {
+      "a": "charger",
+      "b": "rook",
+      "iou": 0.5793
+    },
+    {
+      "a": "charger",
+      "b": "cinder",
+      "iou": 0.482
+    },
+    {
+      "a": "shriver",
+      "b": "ranger",
+      "iou": 0.4082
+    },
+    {
+      "a": "shriver",
+      "b": "anvil",
+      "iou": 0.4068
+    },
+    {
+      "a": "shriver",
+      "b": "kestrel",
+      "iou": 0.4881
+    },
+    {
+      "a": "shriver",
+      "b": "rook",
+      "iou": 0.4867
+    },
+    {
+      "a": "shriver",
+      "b": "cinder",
+      "iou": 0.4195
+    },
+    {
+      "a": "burrower",
+      "b": "ranger",
+      "iou": 0.387
+    },
+    {
+      "a": "burrower",
+      "b": "anvil",
+      "iou": 0.4297
+    },
+    {
+      "a": "burrower",
+      "b": "kestrel",
+      "iou": 0.4956
+    },
+    {
+      "a": "burrower",
+      "b": "rook",
+      "iou": 0.5094
+    },
+    {
+      "a": "burrower",
+      "b": "cinder",
+      "iou": 0.4371
+    },
+    {
+      "a": "brood",
+      "b": "ranger",
+      "iou": 0.4642
+    },
+    {
+      "a": "brood",
+      "b": "anvil",
+      "iou": 0.4863
+    },
+    {
+      "a": "brood",
+      "b": "kestrel",
+      "iou": 0.5716
+    },
+    {
+      "a": "brood",
+      "b": "rook",
+      "iou": 0.5589
+    },
+    {
+      "a": "brood",
+      "b": "cinder",
+      "iou": 0.4956
+    },
+    {
+      "a": "warden",
+      "b": "ranger",
+      "iou": 0.432
+    },
+    {
+      "a": "warden",
+      "b": "anvil",
+      "iou": 0.5374
+    },
+    {
+      "a": "warden",
+      "b": "kestrel",
+      "iou": 0.5702
+    },
+    {
+      "a": "warden",
+      "b": "rook",
+      "iou": 0.5089
+    },
+    {
+      "a": "warden",
+      "b": "cinder",
+      "iou": 0.5019
+    },
+    {
+      "a": "stalker",
+      "b": "ranger",
+      "iou": 0.3052
+    },
+    {
+      "a": "stalker",
+      "b": "anvil",
+      "iou": 0.3105
+    },
+    {
+      "a": "stalker",
+      "b": "kestrel",
+      "iou": 0.33
+    },
+    {
+      "a": "stalker",
+      "b": "rook",
+      "iou": 0.3171
+    },
+    {
+      "a": "stalker",
+      "b": "cinder",
+      "iou": 0.3679
+    },
+    {
+      "a": "acolyte",
+      "b": "ranger",
+      "iou": 0.4493
+    },
+    {
+      "a": "acolyte",
+      "b": "anvil",
+      "iou": 0.4578
+    },
+    {
+      "a": "acolyte",
+      "b": "kestrel",
+      "iou": 0.5597
+    },
+    {
+      "a": "acolyte",
+      "b": "rook",
+      "iou": 0.5477
+    },
+    {
+      "a": "acolyte",
+      "b": "cinder",
+      "iou": 0.4751
+    },
+    {
+      "a": "golem",
+      "b": "ranger",
+      "iou": 0.4851
+    },
+    {
+      "a": "golem",
+      "b": "anvil",
+      "iou": 0.548
+    },
+    {
+      "a": "golem",
+      "b": "kestrel",
+      "iou": 0.5204
+    },
+    {
+      "a": "golem",
+      "b": "rook",
+      "iou": 0.4627
+    },
+    {
+      "a": "golem",
+      "b": "cinder",
+      "iou": 0.5295
+    },
+    {
+      "a": "mortar",
+      "b": "ranger",
+      "iou": 0.3928
+    },
+    {
+      "a": "mortar",
+      "b": "anvil",
+      "iou": 0.3073
+    },
+    {
+      "a": "mortar",
+      "b": "kestrel",
+      "iou": 0.4349
+    },
+    {
+      "a": "mortar",
+      "b": "rook",
+      "iou": 0.4976
+    },
+    {
+      "a": "mortar",
+      "b": "cinder",
+      "iou": 0.3259
+    },
+    {
+      "a": "lasher",
+      "b": "ranger",
+      "iou": 0.3899
+    },
+    {
+      "a": "lasher",
+      "b": "anvil",
+      "iou": 0.453
+    },
+    {
+      "a": "lasher",
+      "b": "kestrel",
+      "iou": 0.3977
+    },
+    {
+      "a": "lasher",
+      "b": "rook",
+      "iou": 0.4006
+    },
+    {
+      "a": "lasher",
+      "b": "cinder",
+      "iou": 0.4312
+    },
+    {
+      "a": "redoubt",
+      "b": "ranger",
+      "iou": 0.3957
+    },
+    {
+      "a": "redoubt",
+      "b": "anvil",
+      "iou": 0.4924
+    },
+    {
+      "a": "redoubt",
+      "b": "kestrel",
+      "iou": 0.5019
+    },
+    {
+      "a": "redoubt",
+      "b": "rook",
+      "iou": 0.4975
+    },
+    {
+      "a": "redoubt",
+      "b": "cinder",
+      "iou": 0.4777
+    },
+    {
+      "a": "hulk",
+      "b": "ranger",
+      "iou": 0.3362
+    },
+    {
+      "a": "hulk",
+      "b": "anvil",
+      "iou": 0.4295
+    },
+    {
+      "a": "hulk",
+      "b": "kestrel",
+      "iou": 0.4756
+    },
+    {
+      "a": "hulk",
+      "b": "rook",
+      "iou": 0.5114
+    },
+    {
+      "a": "hulk",
+      "b": "cinder",
+      "iou": 0.4569
+    },
+    {
+      "a": "titan",
+      "b": "ranger",
+      "iou": 0.4348
+    },
+    {
+      "a": "titan",
+      "b": "anvil",
+      "iou": 0.5319
+    },
+    {
+      "a": "titan",
+      "b": "kestrel",
+      "iou": 0.5041
+    },
+    {
+      "a": "titan",
+      "b": "rook",
+      "iou": 0.4794
+    },
+    {
+      "a": "titan",
+      "b": "cinder",
+      "iou": 0.513
+    },
+    {
+      "a": "wyrm",
+      "b": "ranger",
+      "iou": 0.3927
+    },
+    {
+      "a": "wyrm",
+      "b": "anvil",
+      "iou": 0.426
+    },
+    {
+      "a": "wyrm",
+      "b": "kestrel",
+      "iou": 0.4119
+    },
+    {
+      "a": "wyrm",
+      "b": "rook",
+      "iou": 0.3826
+    },
+    {
+      "a": "wyrm",
+      "b": "cinder",
+      "iou": 0.3774
+    },
+    {
+      "a": "thunderhead",
+      "b": "ranger",
+      "iou": 0.3949
+    },
+    {
+      "a": "thunderhead",
+      "b": "anvil",
+      "iou": 0.4449
+    },
+    {
+      "a": "thunderhead",
+      "b": "kestrel",
+      "iou": 0.4316
+    },
+    {
+      "a": "thunderhead",
+      "b": "rook",
+      "iou": 0.3984
+    },
+    {
+      "a": "thunderhead",
+      "b": "cinder",
+      "iou": 0.4143
+    },
+    {
+      "a": "matron",
+      "b": "ranger",
+      "iou": 0.4302
+    },
+    {
+      "a": "matron",
+      "b": "anvil",
+      "iou": 0.586
+    },
+    {
+      "a": "matron",
+      "b": "kestrel",
+      "iou": 0.561
+    },
+    {
+      "a": "matron",
+      "b": "rook",
+      "iou": 0.456
+    },
+    {
+      "a": "matron",
+      "b": "cinder",
+      "iou": 0.5825
+    },
+    {
+      "a": "vizier",
+      "b": "ranger",
+      "iou": 0.442
+    },
+    {
+      "a": "vizier",
+      "b": "anvil",
+      "iou": 0.5457
+    },
+    {
+      "a": "vizier",
+      "b": "kestrel",
+      "iou": 0.5665
+    },
+    {
+      "a": "vizier",
+      "b": "rook",
+      "iou": 0.4683
+    },
+    {
+      "a": "vizier",
+      "b": "cinder",
+      "iou": 0.541
+    },
+    {
+      "a": "maw",
+      "b": "ranger",
+      "iou": 0.4066
+    },
+    {
+      "a": "maw",
+      "b": "anvil",
+      "iou": 0.3946
+    },
+    {
+      "a": "maw",
+      "b": "kestrel",
+      "iou": 0.4626
+    },
+    {
+      "a": "maw",
+      "b": "rook",
+      "iou": 0.4583
+    },
+    {
+      "a": "maw",
+      "b": "cinder",
+      "iou": 0.3912
+    }
+  ],
+  "tierMedianPx": {
+    "1": 348,
+    "2": 991,
+    "3": 4307,
+    "4": 7096
+  },
+  "elites": [
+    {
+      "id": "beetle",
+      "affix": "blazing",
+      "delta": 0.6192,
+      "chroma": 0.4644
+    },
+    {
+      "id": "beetle",
+      "affix": "overloading",
+      "delta": 0.5712,
+      "chroma": 0.6062
+    },
+    {
+      "id": "beetle",
+      "affix": "glacial",
+      "delta": 0.5366,
+      "chroma": 0.5089
+    },
+    {
+      "id": "beetle",
+      "affix": "withering",
+      "delta": 0.6914,
+      "chroma": 0.2105
+    },
+    {
+      "id": "beetle",
+      "affix": "warded",
+      "delta": 0.458,
+      "chroma": 0.5038
+    },
+    {
+      "id": "beetle",
+      "affix": "voidtouched",
+      "delta": 0.6351,
+      "chroma": 0.3273
+    },
+    {
+      "id": "golem",
+      "affix": "blazing",
+      "delta": 0.514,
+      "chroma": 0.5747
+    },
+    {
+      "id": "golem",
+      "affix": "overloading",
+      "delta": 0.449,
+      "chroma": 0.3853
+    },
+    {
+      "id": "golem",
+      "affix": "glacial",
+      "delta": 0.3915,
+      "chroma": 0.2895
+    },
+    {
+      "id": "golem",
+      "affix": "withering",
+      "delta": 0.6134,
+      "chroma": 0.1797
+    },
+    {
+      "id": "golem",
+      "affix": "warded",
+      "delta": 0.2691,
+      "chroma": 0.2165
+    },
+    {
+      "id": "golem",
+      "affix": "voidtouched",
+      "delta": 0.4754,
+      "chroma": 0.234
+    },
+    {
+      "id": "hulk",
+      "affix": "blazing",
+      "delta": 0.528,
+      "chroma": 0.3495
+    },
+    {
+      "id": "hulk",
+      "affix": "overloading",
+      "delta": 0.4719,
+      "chroma": 0.6059
+    },
+    {
+      "id": "hulk",
+      "affix": "glacial",
+      "delta": 0.433,
+      "chroma": 0.5041
+    },
+    {
+      "id": "hulk",
+      "affix": "withering",
+      "delta": 0.5875,
+      "chroma": 0.3209
+    },
+    {
+      "id": "hulk",
+      "affix": "warded",
+      "delta": 0.3027,
+      "chroma": 0.4416
+    },
+    {
+      "id": "hulk",
+      "affix": "voidtouched",
+      "delta": 0.4975,
+      "chroma": 0.3573
+    }
+  ],
+  "ok": true,
+  "checks": [
+    {
+      "id": "mite",
+      "kind": "px40",
+      "value": 74,
+      "floor": 74,
+      "ok": true,
+      "exempt": true
+    },
+    {
+      "id": "mite",
+      "kind": "holes",
+      "value": 0.0002,
+      "floor": 0.0002,
+      "ok": true,
+      "exempt": true
+    },
+    {
+      "id": "beetle",
+      "kind": "px40",
+      "value": 363,
+      "floor": 219,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle",
+      "kind": "holes",
+      "value": 0.0078,
+      "floor": 0.004,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "spitling",
+      "kind": "px40",
+      "value": 316,
+      "floor": 219,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "spitling",
+      "kind": "holes",
+      "value": 0.0003,
+      "floor": 0.0003,
+      "ok": true,
+      "exempt": true
+    },
+    {
+      "id": "lemurian",
+      "kind": "px40",
+      "value": 386,
+      "floor": 219,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lemurian",
+      "kind": "holes",
+      "value": 0,
+      "floor": 0,
+      "ok": true,
+      "exempt": true
+    },
+    {
+      "id": "wisp",
+      "kind": "px40",
+      "value": 387,
+      "floor": 219,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wisp",
+      "kind": "holes",
+      "value": 0,
+      "floor": 0,
+      "ok": true,
+      "exempt": true
+    },
+    {
+      "id": "pest",
+      "kind": "px40",
+      "value": 340,
+      "floor": 219,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "pest",
+      "kind": "holes",
+      "value": 0,
+      "floor": 0,
+      "ok": true,
+      "exempt": true
+    },
+    {
+      "id": "harrier",
+      "kind": "px40",
+      "value": 248,
+      "floor": 219,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "harrier",
+      "kind": "holes",
+      "value": 0,
+      "floor": 0,
+      "ok": true,
+      "exempt": true
+    },
+    {
+      "id": "charger",
+      "kind": "px40",
+      "value": 810,
+      "floor": 219,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "charger",
+      "kind": "holes",
+      "value": 0.0091,
+      "floor": 0.004,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "shriver",
+      "kind": "px40",
+      "value": 348,
+      "floor": 219,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "shriver",
+      "kind": "holes",
+      "value": 0.0206,
+      "floor": 0.004,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "burrower",
+      "kind": "px40",
+      "value": 494,
+      "floor": 219,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "burrower",
+      "kind": "holes",
+      "value": 0.0001,
+      "floor": 0.0001,
+      "ok": true,
+      "exempt": true
+    },
+    {
+      "id": "brood",
+      "kind": "px40",
+      "value": 991,
+      "floor": 219,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "brood",
+      "kind": "holes",
+      "value": 0,
+      "floor": 0,
+      "ok": true,
+      "exempt": true
+    },
+    {
+      "id": "warden",
+      "kind": "px40",
+      "value": 1687,
+      "floor": 219,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "warden",
+      "kind": "holes",
+      "value": 0.0195,
+      "floor": 0.004,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "stalker",
+      "kind": "px40",
+      "value": 469,
+      "floor": 219,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "stalker",
+      "kind": "holes",
+      "value": 0.0142,
+      "floor": 0.004,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "acolyte",
+      "kind": "px40",
+      "value": 737,
+      "floor": 219,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "acolyte",
+      "kind": "holes",
+      "value": 0.0372,
+      "floor": 0.004,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "golem",
+      "kind": "px40",
+      "value": 3277,
+      "floor": 219,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "golem",
+      "kind": "holes",
+      "value": 0.0001,
+      "floor": 0.0001,
+      "ok": true,
+      "exempt": true
+    },
+    {
+      "id": "mortar",
+      "kind": "px40",
+      "value": 1495,
+      "floor": 219,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mortar",
+      "kind": "holes",
+      "value": 0.0013,
+      "floor": 0.0013,
+      "ok": true,
+      "exempt": true
+    },
+    {
+      "id": "lasher",
+      "kind": "px40",
+      "value": 683,
+      "floor": 219,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lasher",
+      "kind": "holes",
+      "value": 0.0022,
+      "floor": 0.0022,
+      "ok": true,
+      "exempt": true
+    },
+    {
+      "id": "redoubt",
+      "kind": "px40",
+      "value": 2188,
+      "floor": 219,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "redoubt",
+      "kind": "holes",
+      "value": 0.0015,
+      "floor": 0.0015,
+      "ok": true,
+      "exempt": true
+    },
+    {
+      "id": "hulk",
+      "kind": "px40",
+      "value": 4307,
+      "floor": 219,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "hulk",
+      "kind": "holes",
+      "value": 0,
+      "floor": 0,
+      "ok": true,
+      "exempt": true
+    },
+    {
+      "id": "titan",
+      "kind": "px40",
+      "value": 17168,
+      "floor": 219,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "titan",
+      "kind": "holes",
+      "value": 0,
+      "floor": 0,
+      "ok": true,
+      "exempt": true
+    },
+    {
+      "id": "wyrm",
+      "kind": "px40",
+      "value": 7096,
+      "floor": 219,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wyrm",
+      "kind": "holes",
+      "value": 0,
+      "floor": 0,
+      "ok": true,
+      "exempt": true
+    },
+    {
+      "id": "thunderhead",
+      "kind": "px40",
+      "value": 4486,
+      "floor": 219,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "thunderhead",
+      "kind": "holes",
+      "value": 0.1403,
+      "floor": 0.004,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "matron",
+      "kind": "px40",
+      "value": 3851,
+      "floor": 219,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "matron",
+      "kind": "holes",
+      "value": 0.0008,
+      "floor": 0.0008,
+      "ok": true,
+      "exempt": true
+    },
+    {
+      "id": "vizier",
+      "kind": "px40",
+      "value": 8848,
+      "floor": 219,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "vizier",
+      "kind": "holes",
+      "value": 0.0212,
+      "floor": 0.004,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "maw",
+      "kind": "px40",
+      "value": 9217,
+      "floor": 219,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "maw",
+      "kind": "holes",
+      "value": 0.0029,
+      "floor": 0.0029,
+      "ok": true,
+      "exempt": true
+    },
+    {
+      "id": "mite/beetle",
+      "kind": "familyIoU",
+      "value": 0.4161,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mite/spitling",
+      "kind": "familyIoU",
+      "value": 0.4347,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mite/lemurian",
+      "kind": "familyIoU",
+      "value": 0.4013,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mite/wisp",
+      "kind": "familyIoU",
+      "value": 0.5451,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mite/pest",
+      "kind": "familyIoU",
+      "value": 0.2902,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mite/harrier",
+      "kind": "familyIoU",
+      "value": 0.2486,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mite/charger",
+      "kind": "familyIoU",
+      "value": 0.4057,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mite/shriver",
+      "kind": "familyIoU",
+      "value": 0.4888,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mite/burrower",
+      "kind": "familyIoU",
+      "value": 0.4919,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mite/brood",
+      "kind": "familyIoU",
+      "value": 0.4106,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mite/warden",
+      "kind": "familyIoU",
+      "value": 0.4189,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mite/stalker",
+      "kind": "familyIoU",
+      "value": 0.3492,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mite/acolyte",
+      "kind": "familyIoU",
+      "value": 0.3979,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mite/golem",
+      "kind": "familyIoU",
+      "value": 0.3496,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mite/mortar",
+      "kind": "familyIoU",
+      "value": 0.577,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mite/lasher",
+      "kind": "familyIoU",
+      "value": 0.3537,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mite/redoubt",
+      "kind": "familyIoU",
+      "value": 0.354,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mite/hulk",
+      "kind": "familyIoU",
+      "value": 0.4535,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mite/titan",
+      "kind": "familyIoU",
+      "value": 0.3554,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mite/wyrm",
+      "kind": "familyIoU",
+      "value": 0.3141,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mite/thunderhead",
+      "kind": "familyIoU",
+      "value": 0.4462,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mite/matron",
+      "kind": "familyIoU",
+      "value": 0.343,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mite/vizier",
+      "kind": "familyIoU",
+      "value": 0.3639,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mite/maw",
+      "kind": "familyIoU",
+      "value": 0.5393,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle/spitling",
+      "kind": "familyIoU",
+      "value": 0.6384,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle/lemurian",
+      "kind": "familyIoU",
+      "value": 0.571,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle/wisp",
+      "kind": "familyIoU",
+      "value": 0.4344,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle/pest",
+      "kind": "familyIoU",
+      "value": 0.3667,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle/harrier",
+      "kind": "familyIoU",
+      "value": 0.2291,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle/charger",
+      "kind": "familyIoU",
+      "value": 0.5357,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle/shriver",
+      "kind": "familyIoU",
+      "value": 0.5927,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle/burrower",
+      "kind": "familyIoU",
+      "value": 0.5284,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle/brood",
+      "kind": "familyIoU",
+      "value": 0.521,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle/warden",
+      "kind": "familyIoU",
+      "value": 0.5104,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle/stalker",
+      "kind": "familyIoU",
+      "value": 0.3594,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle/acolyte",
+      "kind": "familyIoU",
+      "value": 0.4751,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle/golem",
+      "kind": "familyIoU",
+      "value": 0.5228,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle/mortar",
+      "kind": "familyIoU",
+      "value": 0.4528,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle/lasher",
+      "kind": "familyIoU",
+      "value": 0.3697,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle/redoubt",
+      "kind": "familyIoU",
+      "value": 0.4797,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle/hulk",
+      "kind": "familyIoU",
+      "value": 0.5413,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle/titan",
+      "kind": "familyIoU",
+      "value": 0.4736,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle/wyrm",
+      "kind": "familyIoU",
+      "value": 0.2347,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle/thunderhead",
+      "kind": "familyIoU",
+      "value": 0.3596,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle/matron",
+      "kind": "familyIoU",
+      "value": 0.4732,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle/vizier",
+      "kind": "familyIoU",
+      "value": 0.4288,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle/maw",
+      "kind": "familyIoU",
+      "value": 0.4763,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "spitling/lemurian",
+      "kind": "familyIoU",
+      "value": 0.5827,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "spitling/wisp",
+      "kind": "familyIoU",
+      "value": 0.4427,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "spitling/pest",
+      "kind": "familyIoU",
+      "value": 0.4743,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "spitling/harrier",
+      "kind": "familyIoU",
+      "value": 0.1842,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "spitling/charger",
+      "kind": "familyIoU",
+      "value": 0.6432,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "spitling/shriver",
+      "kind": "familyIoU",
+      "value": 0.6301,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "spitling/burrower",
+      "kind": "familyIoU",
+      "value": 0.6287,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "spitling/brood",
+      "kind": "familyIoU",
+      "value": 0.6358,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "spitling/warden",
+      "kind": "familyIoU",
+      "value": 0.6063,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "spitling/stalker",
+      "kind": "familyIoU",
+      "value": 0.3862,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "spitling/acolyte",
+      "kind": "familyIoU",
+      "value": 0.5712,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "spitling/golem",
+      "kind": "familyIoU",
+      "value": 0.5697,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "spitling/mortar",
+      "kind": "familyIoU",
+      "value": 0.5297,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "spitling/lasher",
+      "kind": "familyIoU",
+      "value": 0.448,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "spitling/redoubt",
+      "kind": "familyIoU",
+      "value": 0.5929,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "spitling/hulk",
+      "kind": "familyIoU",
+      "value": 0.6169,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "spitling/titan",
+      "kind": "familyIoU",
+      "value": 0.5355,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "spitling/wyrm",
+      "kind": "familyIoU",
+      "value": 0.2867,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "spitling/thunderhead",
+      "kind": "familyIoU",
+      "value": 0.4218,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "spitling/matron",
+      "kind": "familyIoU",
+      "value": 0.5269,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "spitling/vizier",
+      "kind": "familyIoU",
+      "value": 0.5096,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "spitling/maw",
+      "kind": "familyIoU",
+      "value": 0.4929,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lemurian/wisp",
+      "kind": "familyIoU",
+      "value": 0.4996,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lemurian/pest",
+      "kind": "familyIoU",
+      "value": 0.3605,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lemurian/harrier",
+      "kind": "familyIoU",
+      "value": 0.2077,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lemurian/charger",
+      "kind": "familyIoU",
+      "value": 0.6225,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lemurian/shriver",
+      "kind": "familyIoU",
+      "value": 0.5683,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lemurian/burrower",
+      "kind": "familyIoU",
+      "value": 0.5173,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lemurian/brood",
+      "kind": "familyIoU",
+      "value": 0.6024,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lemurian/warden",
+      "kind": "familyIoU",
+      "value": 0.5433,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lemurian/stalker",
+      "kind": "familyIoU",
+      "value": 0.3215,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lemurian/acolyte",
+      "kind": "familyIoU",
+      "value": 0.5529,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lemurian/golem",
+      "kind": "familyIoU",
+      "value": 0.564,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lemurian/mortar",
+      "kind": "familyIoU",
+      "value": 0.4152,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lemurian/lasher",
+      "kind": "familyIoU",
+      "value": 0.3752,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lemurian/redoubt",
+      "kind": "familyIoU",
+      "value": 0.4828,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lemurian/hulk",
+      "kind": "familyIoU",
+      "value": 0.5834,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lemurian/titan",
+      "kind": "familyIoU",
+      "value": 0.4975,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lemurian/wyrm",
+      "kind": "familyIoU",
+      "value": 0.302,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lemurian/thunderhead",
+      "kind": "familyIoU",
+      "value": 0.4145,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lemurian/matron",
+      "kind": "familyIoU",
+      "value": 0.4867,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lemurian/vizier",
+      "kind": "familyIoU",
+      "value": 0.4907,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lemurian/maw",
+      "kind": "familyIoU",
+      "value": 0.4883,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wisp/pest",
+      "kind": "familyIoU",
+      "value": 0.2944,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wisp/harrier",
+      "kind": "familyIoU",
+      "value": 0.342,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wisp/charger",
+      "kind": "familyIoU",
+      "value": 0.51,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wisp/shriver",
+      "kind": "familyIoU",
+      "value": 0.5073,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wisp/burrower",
+      "kind": "familyIoU",
+      "value": 0.5306,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wisp/brood",
+      "kind": "familyIoU",
+      "value": 0.5022,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wisp/warden",
+      "kind": "familyIoU",
+      "value": 0.5102,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wisp/stalker",
+      "kind": "familyIoU",
+      "value": 0.3318,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wisp/acolyte",
+      "kind": "familyIoU",
+      "value": 0.4602,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wisp/golem",
+      "kind": "familyIoU",
+      "value": 0.4638,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wisp/mortar",
+      "kind": "familyIoU",
+      "value": 0.4832,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wisp/lasher",
+      "kind": "familyIoU",
+      "value": 0.3745,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wisp/redoubt",
+      "kind": "familyIoU",
+      "value": 0.3996,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wisp/hulk",
+      "kind": "familyIoU",
+      "value": 0.4963,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wisp/titan",
+      "kind": "familyIoU",
+      "value": 0.4502,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wisp/wyrm",
+      "kind": "familyIoU",
+      "value": 0.4033,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wisp/thunderhead",
+      "kind": "familyIoU",
+      "value": 0.4845,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wisp/matron",
+      "kind": "familyIoU",
+      "value": 0.4943,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wisp/vizier",
+      "kind": "familyIoU",
+      "value": 0.4228,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wisp/maw",
+      "kind": "familyIoU",
+      "value": 0.5346,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "pest/harrier",
+      "kind": "familyIoU",
+      "value": 0.1061,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "pest/charger",
+      "kind": "familyIoU",
+      "value": 0.4343,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "pest/shriver",
+      "kind": "familyIoU",
+      "value": 0.4358,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "pest/burrower",
+      "kind": "familyIoU",
+      "value": 0.4024,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "pest/brood",
+      "kind": "familyIoU",
+      "value": 0.4267,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "pest/warden",
+      "kind": "familyIoU",
+      "value": 0.4297,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "pest/stalker",
+      "kind": "familyIoU",
+      "value": 0.3438,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "pest/acolyte",
+      "kind": "familyIoU",
+      "value": 0.3811,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "pest/golem",
+      "kind": "familyIoU",
+      "value": 0.4532,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "pest/mortar",
+      "kind": "familyIoU",
+      "value": 0.3372,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "pest/lasher",
+      "kind": "familyIoU",
+      "value": 0.4191,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "pest/redoubt",
+      "kind": "familyIoU",
+      "value": 0.4751,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "pest/hulk",
+      "kind": "familyIoU",
+      "value": 0.4193,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "pest/titan",
+      "kind": "familyIoU",
+      "value": 0.4207,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "pest/wyrm",
+      "kind": "familyIoU",
+      "value": 0.2712,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "pest/thunderhead",
+      "kind": "familyIoU",
+      "value": 0.3669,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "pest/matron",
+      "kind": "familyIoU",
+      "value": 0.4499,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "pest/vizier",
+      "kind": "familyIoU",
+      "value": 0.471,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "pest/maw",
+      "kind": "familyIoU",
+      "value": 0.3788,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "harrier/charger",
+      "kind": "familyIoU",
+      "value": 0.274,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "harrier/shriver",
+      "kind": "familyIoU",
+      "value": 0.2611,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "harrier/burrower",
+      "kind": "familyIoU",
+      "value": 0.2607,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "harrier/brood",
+      "kind": "familyIoU",
+      "value": 0.2909,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "harrier/warden",
+      "kind": "familyIoU",
+      "value": 0.2988,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "harrier/stalker",
+      "kind": "familyIoU",
+      "value": 0.1687,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "harrier/acolyte",
+      "kind": "familyIoU",
+      "value": 0.2707,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "harrier/golem",
+      "kind": "familyIoU",
+      "value": 0.2636,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "harrier/mortar",
+      "kind": "familyIoU",
+      "value": 0.2591,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "harrier/lasher",
+      "kind": "familyIoU",
+      "value": 0.2765,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "harrier/redoubt",
+      "kind": "familyIoU",
+      "value": 0.2123,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "harrier/hulk",
+      "kind": "familyIoU",
+      "value": 0.2844,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "harrier/titan",
+      "kind": "familyIoU",
+      "value": 0.281,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "harrier/wyrm",
+      "kind": "familyIoU",
+      "value": 0.2876,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "harrier/thunderhead",
+      "kind": "familyIoU",
+      "value": 0.2866,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "harrier/matron",
+      "kind": "familyIoU",
+      "value": 0.3067,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "harrier/vizier",
+      "kind": "familyIoU",
+      "value": 0.2865,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "harrier/maw",
+      "kind": "familyIoU",
+      "value": 0.2821,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "charger/shriver",
+      "kind": "familyIoU",
+      "value": 0.5704,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "charger/burrower",
+      "kind": "familyIoU",
+      "value": 0.6293,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "charger/brood",
+      "kind": "familyIoU",
+      "value": 0.7336,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "charger/warden",
+      "kind": "familyIoU",
+      "value": 0.6564,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "charger/stalker",
+      "kind": "familyIoU",
+      "value": 0.3331,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "charger/acolyte",
+      "kind": "familyIoU",
+      "value": 0.7001,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "charger/golem",
+      "kind": "familyIoU",
+      "value": 0.6306,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "charger/mortar",
+      "kind": "familyIoU",
+      "value": 0.4903,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "charger/lasher",
+      "kind": "familyIoU",
+      "value": 0.5388,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "charger/redoubt",
+      "kind": "familyIoU",
+      "value": 0.6017,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "charger/hulk",
+      "kind": "familyIoU",
+      "value": 0.6812,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "charger/titan",
+      "kind": "familyIoU",
+      "value": 0.5995,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "charger/wyrm",
+      "kind": "familyIoU",
+      "value": 0.3954,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "charger/thunderhead",
+      "kind": "familyIoU",
+      "value": 0.5489,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "charger/matron",
+      "kind": "familyIoU",
+      "value": 0.5826,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "charger/vizier",
+      "kind": "familyIoU",
+      "value": 0.6413,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "charger/maw",
+      "kind": "familyIoU",
+      "value": 0.5483,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "shriver/burrower",
+      "kind": "familyIoU",
+      "value": 0.6769,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "shriver/brood",
+      "kind": "familyIoU",
+      "value": 0.6307,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "shriver/warden",
+      "kind": "familyIoU",
+      "value": 0.6565,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "shriver/stalker",
+      "kind": "familyIoU",
+      "value": 0.3746,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "shriver/acolyte",
+      "kind": "familyIoU",
+      "value": 0.6138,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "shriver/golem",
+      "kind": "familyIoU",
+      "value": 0.6387,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "shriver/mortar",
+      "kind": "familyIoU",
+      "value": 0.5455,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "shriver/lasher",
+      "kind": "familyIoU",
+      "value": 0.437,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "shriver/redoubt",
+      "kind": "familyIoU",
+      "value": 0.5746,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "shriver/hulk",
+      "kind": "familyIoU",
+      "value": 0.6304,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "shriver/titan",
+      "kind": "familyIoU",
+      "value": 0.632,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "shriver/wyrm",
+      "kind": "familyIoU",
+      "value": 0.3047,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "shriver/thunderhead",
+      "kind": "familyIoU",
+      "value": 0.4722,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "shriver/matron",
+      "kind": "familyIoU",
+      "value": 0.5638,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "shriver/vizier",
+      "kind": "familyIoU",
+      "value": 0.5559,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "shriver/maw",
+      "kind": "familyIoU",
+      "value": 0.6536,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "burrower/brood",
+      "kind": "familyIoU",
+      "value": 0.6829,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "burrower/warden",
+      "kind": "familyIoU",
+      "value": 0.6043,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "burrower/stalker",
+      "kind": "familyIoU",
+      "value": 0.4144,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "burrower/acolyte",
+      "kind": "familyIoU",
+      "value": 0.6403,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "burrower/golem",
+      "kind": "familyIoU",
+      "value": 0.5691,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "burrower/mortar",
+      "kind": "familyIoU",
+      "value": 0.6401,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "burrower/lasher",
+      "kind": "familyIoU",
+      "value": 0.5383,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "burrower/redoubt",
+      "kind": "familyIoU",
+      "value": 0.5491,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "burrower/hulk",
+      "kind": "familyIoU",
+      "value": 0.7106,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "burrower/titan",
+      "kind": "familyIoU",
+      "value": 0.5926,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "burrower/wyrm",
+      "kind": "familyIoU",
+      "value": 0.4272,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "burrower/thunderhead",
+      "kind": "familyIoU",
+      "value": 0.5299,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "burrower/matron",
+      "kind": "familyIoU",
+      "value": 0.5327,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "burrower/vizier",
+      "kind": "familyIoU",
+      "value": 0.5354,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "burrower/maw",
+      "kind": "familyIoU",
+      "value": 0.6703,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "brood/warden",
+      "kind": "familyIoU",
+      "value": 0.6749,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "brood/stalker",
+      "kind": "familyIoU",
+      "value": 0.3745,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "brood/acolyte",
+      "kind": "familyIoU",
+      "value": 0.7966,
+      "ceiling": 0.7966,
+      "ok": true,
+      "exempt": true
+    },
+    {
+      "id": "brood/golem",
+      "kind": "familyIoU",
+      "value": 0.6221,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "brood/mortar",
+      "kind": "familyIoU",
+      "value": 0.5656,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "brood/lasher",
+      "kind": "familyIoU",
+      "value": 0.5632,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "brood/redoubt",
+      "kind": "familyIoU",
+      "value": 0.5748,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "brood/hulk",
+      "kind": "familyIoU",
+      "value": 0.6485,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "brood/titan",
+      "kind": "familyIoU",
+      "value": 0.6166,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "brood/wyrm",
+      "kind": "familyIoU",
+      "value": 0.4617,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "brood/thunderhead",
+      "kind": "familyIoU",
+      "value": 0.5474,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "brood/matron",
+      "kind": "familyIoU",
+      "value": 0.5921,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "brood/vizier",
+      "kind": "familyIoU",
+      "value": 0.6141,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "brood/maw",
+      "kind": "familyIoU",
+      "value": 0.6429,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "warden/stalker",
+      "kind": "familyIoU",
+      "value": 0.3611,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "warden/acolyte",
+      "kind": "familyIoU",
+      "value": 0.6606,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "warden/golem",
+      "kind": "familyIoU",
+      "value": 0.6806,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "warden/mortar",
+      "kind": "familyIoU",
+      "value": 0.4456,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "warden/lasher",
+      "kind": "familyIoU",
+      "value": 0.4813,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "warden/redoubt",
+      "kind": "familyIoU",
+      "value": 0.6486,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "warden/hulk",
+      "kind": "familyIoU",
+      "value": 0.6686,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "warden/titan",
+      "kind": "familyIoU",
+      "value": 0.633,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "warden/wyrm",
+      "kind": "familyIoU",
+      "value": 0.3667,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "warden/thunderhead",
+      "kind": "familyIoU",
+      "value": 0.5377,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "warden/matron",
+      "kind": "familyIoU",
+      "value": 0.6918,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "warden/vizier",
+      "kind": "familyIoU",
+      "value": 0.7006,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "warden/maw",
+      "kind": "familyIoU",
+      "value": 0.5993,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "stalker/acolyte",
+      "kind": "familyIoU",
+      "value": 0.3917,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "stalker/golem",
+      "kind": "familyIoU",
+      "value": 0.3106,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "stalker/mortar",
+      "kind": "familyIoU",
+      "value": 0.3813,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "stalker/lasher",
+      "kind": "familyIoU",
+      "value": 0.3612,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "stalker/redoubt",
+      "kind": "familyIoU",
+      "value": 0.2852,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "stalker/hulk",
+      "kind": "familyIoU",
+      "value": 0.3733,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "stalker/titan",
+      "kind": "familyIoU",
+      "value": 0.3445,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "stalker/wyrm",
+      "kind": "familyIoU",
+      "value": 0.311,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "stalker/thunderhead",
+      "kind": "familyIoU",
+      "value": 0.3369,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "stalker/matron",
+      "kind": "familyIoU",
+      "value": 0.3462,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "stalker/vizier",
+      "kind": "familyIoU",
+      "value": 0.3778,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "stalker/maw",
+      "kind": "familyIoU",
+      "value": 0.3908,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "acolyte/golem",
+      "kind": "familyIoU",
+      "value": 0.6202,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "acolyte/mortar",
+      "kind": "familyIoU",
+      "value": 0.5254,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "acolyte/lasher",
+      "kind": "familyIoU",
+      "value": 0.5653,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "acolyte/redoubt",
+      "kind": "familyIoU",
+      "value": 0.5334,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "acolyte/hulk",
+      "kind": "familyIoU",
+      "value": 0.6312,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "acolyte/titan",
+      "kind": "familyIoU",
+      "value": 0.6043,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "acolyte/wyrm",
+      "kind": "familyIoU",
+      "value": 0.4862,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "acolyte/thunderhead",
+      "kind": "familyIoU",
+      "value": 0.5219,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "acolyte/matron",
+      "kind": "familyIoU",
+      "value": 0.5808,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "acolyte/vizier",
+      "kind": "familyIoU",
+      "value": 0.6482,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "acolyte/maw",
+      "kind": "familyIoU",
+      "value": 0.6203,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "golem/mortar",
+      "kind": "familyIoU",
+      "value": 0.3896,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "golem/lasher",
+      "kind": "familyIoU",
+      "value": 0.5079,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "golem/redoubt",
+      "kind": "familyIoU",
+      "value": 0.6348,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "golem/hulk",
+      "kind": "familyIoU",
+      "value": 0.5885,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "golem/titan",
+      "kind": "familyIoU",
+      "value": 0.7459,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "golem/wyrm",
+      "kind": "familyIoU",
+      "value": 0.38,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "golem/thunderhead",
+      "kind": "familyIoU",
+      "value": 0.521,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "golem/matron",
+      "kind": "familyIoU",
+      "value": 0.6604,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "golem/vizier",
+      "kind": "familyIoU",
+      "value": 0.636,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "golem/maw",
+      "kind": "familyIoU",
+      "value": 0.5236,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mortar/lasher",
+      "kind": "familyIoU",
+      "value": 0.4476,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mortar/redoubt",
+      "kind": "familyIoU",
+      "value": 0.4146,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mortar/hulk",
+      "kind": "familyIoU",
+      "value": 0.5066,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mortar/titan",
+      "kind": "familyIoU",
+      "value": 0.4421,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mortar/wyrm",
+      "kind": "familyIoU",
+      "value": 0.3659,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mortar/thunderhead",
+      "kind": "familyIoU",
+      "value": 0.4892,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mortar/matron",
+      "kind": "familyIoU",
+      "value": 0.3471,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mortar/vizier",
+      "kind": "familyIoU",
+      "value": 0.3827,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mortar/maw",
+      "kind": "familyIoU",
+      "value": 0.5717,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lasher/redoubt",
+      "kind": "familyIoU",
+      "value": 0.4195,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lasher/hulk",
+      "kind": "familyIoU",
+      "value": 0.5126,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lasher/titan",
+      "kind": "familyIoU",
+      "value": 0.5277,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lasher/wyrm",
+      "kind": "familyIoU",
+      "value": 0.6045,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lasher/thunderhead",
+      "kind": "familyIoU",
+      "value": 0.5305,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lasher/matron",
+      "kind": "familyIoU",
+      "value": 0.4599,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lasher/vizier",
+      "kind": "familyIoU",
+      "value": 0.5338,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lasher/maw",
+      "kind": "familyIoU",
+      "value": 0.4589,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "redoubt/hulk",
+      "kind": "familyIoU",
+      "value": 0.5478,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "redoubt/titan",
+      "kind": "familyIoU",
+      "value": 0.5788,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "redoubt/wyrm",
+      "kind": "familyIoU",
+      "value": 0.2722,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "redoubt/thunderhead",
+      "kind": "familyIoU",
+      "value": 0.4416,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "redoubt/matron",
+      "kind": "familyIoU",
+      "value": 0.6206,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "redoubt/vizier",
+      "kind": "familyIoU",
+      "value": 0.609,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "redoubt/maw",
+      "kind": "familyIoU",
+      "value": 0.439,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "hulk/titan",
+      "kind": "familyIoU",
+      "value": 0.5895,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "hulk/wyrm",
+      "kind": "familyIoU",
+      "value": 0.3609,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "hulk/thunderhead",
+      "kind": "familyIoU",
+      "value": 0.5616,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "hulk/matron",
+      "kind": "familyIoU",
+      "value": 0.5711,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "hulk/vizier",
+      "kind": "familyIoU",
+      "value": 0.5888,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "hulk/maw",
+      "kind": "familyIoU",
+      "value": 0.6041,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "titan/wyrm",
+      "kind": "familyIoU",
+      "value": 0.3944,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "titan/thunderhead",
+      "kind": "familyIoU",
+      "value": 0.5148,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "titan/matron",
+      "kind": "familyIoU",
+      "value": 0.5867,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "titan/vizier",
+      "kind": "familyIoU",
+      "value": 0.6055,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "titan/maw",
+      "kind": "familyIoU",
+      "value": 0.5316,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wyrm/thunderhead",
+      "kind": "familyIoU",
+      "value": 0.4664,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wyrm/matron",
+      "kind": "familyIoU",
+      "value": 0.3898,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wyrm/vizier",
+      "kind": "familyIoU",
+      "value": 0.4193,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wyrm/maw",
+      "kind": "familyIoU",
+      "value": 0.4181,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "thunderhead/matron",
+      "kind": "familyIoU",
+      "value": 0.481,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "thunderhead/vizier",
+      "kind": "familyIoU",
+      "value": 0.5404,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "thunderhead/maw",
+      "kind": "familyIoU",
+      "value": 0.5921,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "matron/vizier",
+      "kind": "familyIoU",
+      "value": 0.6623,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "matron/maw",
+      "kind": "familyIoU",
+      "value": 0.5147,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "vizier/maw",
+      "kind": "familyIoU",
+      "value": 0.5357,
+      "ceiling": 0.78,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mite/ranger",
+      "kind": "foeFriendIoU",
+      "value": 0.3701,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mite/anvil",
+      "kind": "foeFriendIoU",
+      "value": 0.2548,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mite/kestrel",
+      "kind": "foeFriendIoU",
+      "value": 0.3699,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mite/rook",
+      "kind": "foeFriendIoU",
+      "value": 0.3728,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mite/cinder",
+      "kind": "foeFriendIoU",
+      "value": 0.2611,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle/ranger",
+      "kind": "foeFriendIoU",
+      "value": 0.3763,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle/anvil",
+      "kind": "foeFriendIoU",
+      "value": 0.3354,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle/kestrel",
+      "kind": "foeFriendIoU",
+      "value": 0.3894,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle/rook",
+      "kind": "foeFriendIoU",
+      "value": 0.4319,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle/cinder",
+      "kind": "foeFriendIoU",
+      "value": 0.3747,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "spitling/ranger",
+      "kind": "foeFriendIoU",
+      "value": 0.4029,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "spitling/anvil",
+      "kind": "foeFriendIoU",
+      "value": 0.4139,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "spitling/kestrel",
+      "kind": "foeFriendIoU",
+      "value": 0.4644,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "spitling/rook",
+      "kind": "foeFriendIoU",
+      "value": 0.5127,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "spitling/cinder",
+      "kind": "foeFriendIoU",
+      "value": 0.4434,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lemurian/ranger",
+      "kind": "foeFriendIoU",
+      "value": 0.445,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lemurian/anvil",
+      "kind": "foeFriendIoU",
+      "value": 0.4066,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lemurian/kestrel",
+      "kind": "foeFriendIoU",
+      "value": 0.5346,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lemurian/rook",
+      "kind": "foeFriendIoU",
+      "value": 0.5429,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lemurian/cinder",
+      "kind": "foeFriendIoU",
+      "value": 0.4142,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wisp/ranger",
+      "kind": "foeFriendIoU",
+      "value": 0.4519,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wisp/anvil",
+      "kind": "foeFriendIoU",
+      "value": 0.3829,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wisp/kestrel",
+      "kind": "foeFriendIoU",
+      "value": 0.5488,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wisp/rook",
+      "kind": "foeFriendIoU",
+      "value": 0.4566,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wisp/cinder",
+      "kind": "foeFriendIoU",
+      "value": 0.391,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "pest/ranger",
+      "kind": "foeFriendIoU",
+      "value": 0.3407,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "pest/anvil",
+      "kind": "foeFriendIoU",
+      "value": 0.4551,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "pest/kestrel",
+      "kind": "foeFriendIoU",
+      "value": 0.3706,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "pest/rook",
+      "kind": "foeFriendIoU",
+      "value": 0.4051,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "pest/cinder",
+      "kind": "foeFriendIoU",
+      "value": 0.4796,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "harrier/ranger",
+      "kind": "foeFriendIoU",
+      "value": 0.1958,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "harrier/anvil",
+      "kind": "foeFriendIoU",
+      "value": 0.1998,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "harrier/kestrel",
+      "kind": "foeFriendIoU",
+      "value": 0.2578,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "harrier/rook",
+      "kind": "foeFriendIoU",
+      "value": 0.1717,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "harrier/cinder",
+      "kind": "foeFriendIoU",
+      "value": 0.1987,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "charger/ranger",
+      "kind": "foeFriendIoU",
+      "value": 0.4271,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "charger/anvil",
+      "kind": "foeFriendIoU",
+      "value": 0.4885,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "charger/kestrel",
+      "kind": "foeFriendIoU",
+      "value": 0.5555,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "charger/rook",
+      "kind": "foeFriendIoU",
+      "value": 0.5793,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "charger/cinder",
+      "kind": "foeFriendIoU",
+      "value": 0.482,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "shriver/ranger",
+      "kind": "foeFriendIoU",
+      "value": 0.4082,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "shriver/anvil",
+      "kind": "foeFriendIoU",
+      "value": 0.4068,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "shriver/kestrel",
+      "kind": "foeFriendIoU",
+      "value": 0.4881,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "shriver/rook",
+      "kind": "foeFriendIoU",
+      "value": 0.4867,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "shriver/cinder",
+      "kind": "foeFriendIoU",
+      "value": 0.4195,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "burrower/ranger",
+      "kind": "foeFriendIoU",
+      "value": 0.387,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "burrower/anvil",
+      "kind": "foeFriendIoU",
+      "value": 0.4297,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "burrower/kestrel",
+      "kind": "foeFriendIoU",
+      "value": 0.4956,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "burrower/rook",
+      "kind": "foeFriendIoU",
+      "value": 0.5094,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "burrower/cinder",
+      "kind": "foeFriendIoU",
+      "value": 0.4371,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "brood/ranger",
+      "kind": "foeFriendIoU",
+      "value": 0.4642,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "brood/anvil",
+      "kind": "foeFriendIoU",
+      "value": 0.4863,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "brood/kestrel",
+      "kind": "foeFriendIoU",
+      "value": 0.5716,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "brood/rook",
+      "kind": "foeFriendIoU",
+      "value": 0.5589,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "brood/cinder",
+      "kind": "foeFriendIoU",
+      "value": 0.4956,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "warden/ranger",
+      "kind": "foeFriendIoU",
+      "value": 0.432,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "warden/anvil",
+      "kind": "foeFriendIoU",
+      "value": 0.5374,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "warden/kestrel",
+      "kind": "foeFriendIoU",
+      "value": 0.5702,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "warden/rook",
+      "kind": "foeFriendIoU",
+      "value": 0.5089,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "warden/cinder",
+      "kind": "foeFriendIoU",
+      "value": 0.5019,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "stalker/ranger",
+      "kind": "foeFriendIoU",
+      "value": 0.3052,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "stalker/anvil",
+      "kind": "foeFriendIoU",
+      "value": 0.3105,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "stalker/kestrel",
+      "kind": "foeFriendIoU",
+      "value": 0.33,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "stalker/rook",
+      "kind": "foeFriendIoU",
+      "value": 0.3171,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "stalker/cinder",
+      "kind": "foeFriendIoU",
+      "value": 0.3679,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "acolyte/ranger",
+      "kind": "foeFriendIoU",
+      "value": 0.4493,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "acolyte/anvil",
+      "kind": "foeFriendIoU",
+      "value": 0.4578,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "acolyte/kestrel",
+      "kind": "foeFriendIoU",
+      "value": 0.5597,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "acolyte/rook",
+      "kind": "foeFriendIoU",
+      "value": 0.5477,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "acolyte/cinder",
+      "kind": "foeFriendIoU",
+      "value": 0.4751,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "golem/ranger",
+      "kind": "foeFriendIoU",
+      "value": 0.4851,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "golem/anvil",
+      "kind": "foeFriendIoU",
+      "value": 0.548,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "golem/kestrel",
+      "kind": "foeFriendIoU",
+      "value": 0.5204,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "golem/rook",
+      "kind": "foeFriendIoU",
+      "value": 0.4627,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "golem/cinder",
+      "kind": "foeFriendIoU",
+      "value": 0.5295,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mortar/ranger",
+      "kind": "foeFriendIoU",
+      "value": 0.3928,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mortar/anvil",
+      "kind": "foeFriendIoU",
+      "value": 0.3073,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mortar/kestrel",
+      "kind": "foeFriendIoU",
+      "value": 0.4349,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mortar/rook",
+      "kind": "foeFriendIoU",
+      "value": 0.4976,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "mortar/cinder",
+      "kind": "foeFriendIoU",
+      "value": 0.3259,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lasher/ranger",
+      "kind": "foeFriendIoU",
+      "value": 0.3899,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lasher/anvil",
+      "kind": "foeFriendIoU",
+      "value": 0.453,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lasher/kestrel",
+      "kind": "foeFriendIoU",
+      "value": 0.3977,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lasher/rook",
+      "kind": "foeFriendIoU",
+      "value": 0.4006,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "lasher/cinder",
+      "kind": "foeFriendIoU",
+      "value": 0.4312,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "redoubt/ranger",
+      "kind": "foeFriendIoU",
+      "value": 0.3957,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "redoubt/anvil",
+      "kind": "foeFriendIoU",
+      "value": 0.4924,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "redoubt/kestrel",
+      "kind": "foeFriendIoU",
+      "value": 0.5019,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "redoubt/rook",
+      "kind": "foeFriendIoU",
+      "value": 0.4975,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "redoubt/cinder",
+      "kind": "foeFriendIoU",
+      "value": 0.4777,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "hulk/ranger",
+      "kind": "foeFriendIoU",
+      "value": 0.3362,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "hulk/anvil",
+      "kind": "foeFriendIoU",
+      "value": 0.4295,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "hulk/kestrel",
+      "kind": "foeFriendIoU",
+      "value": 0.4756,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "hulk/rook",
+      "kind": "foeFriendIoU",
+      "value": 0.5114,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "hulk/cinder",
+      "kind": "foeFriendIoU",
+      "value": 0.4569,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "titan/ranger",
+      "kind": "foeFriendIoU",
+      "value": 0.4348,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "titan/anvil",
+      "kind": "foeFriendIoU",
+      "value": 0.5319,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "titan/kestrel",
+      "kind": "foeFriendIoU",
+      "value": 0.5041,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "titan/rook",
+      "kind": "foeFriendIoU",
+      "value": 0.4794,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "titan/cinder",
+      "kind": "foeFriendIoU",
+      "value": 0.513,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wyrm/ranger",
+      "kind": "foeFriendIoU",
+      "value": 0.3927,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wyrm/anvil",
+      "kind": "foeFriendIoU",
+      "value": 0.426,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wyrm/kestrel",
+      "kind": "foeFriendIoU",
+      "value": 0.4119,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wyrm/rook",
+      "kind": "foeFriendIoU",
+      "value": 0.3826,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "wyrm/cinder",
+      "kind": "foeFriendIoU",
+      "value": 0.3774,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "thunderhead/ranger",
+      "kind": "foeFriendIoU",
+      "value": 0.3949,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "thunderhead/anvil",
+      "kind": "foeFriendIoU",
+      "value": 0.4449,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "thunderhead/kestrel",
+      "kind": "foeFriendIoU",
+      "value": 0.4316,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "thunderhead/rook",
+      "kind": "foeFriendIoU",
+      "value": 0.3984,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "thunderhead/cinder",
+      "kind": "foeFriendIoU",
+      "value": 0.4143,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "matron/ranger",
+      "kind": "foeFriendIoU",
+      "value": 0.4302,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "matron/anvil",
+      "kind": "foeFriendIoU",
+      "value": 0.586,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "matron/kestrel",
+      "kind": "foeFriendIoU",
+      "value": 0.561,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "matron/rook",
+      "kind": "foeFriendIoU",
+      "value": 0.456,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "matron/cinder",
+      "kind": "foeFriendIoU",
+      "value": 0.5825,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "vizier/ranger",
+      "kind": "foeFriendIoU",
+      "value": 0.442,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "vizier/anvil",
+      "kind": "foeFriendIoU",
+      "value": 0.5457,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "vizier/kestrel",
+      "kind": "foeFriendIoU",
+      "value": 0.5665,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "vizier/rook",
+      "kind": "foeFriendIoU",
+      "value": 0.4683,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "vizier/cinder",
+      "kind": "foeFriendIoU",
+      "value": 0.541,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "maw/ranger",
+      "kind": "foeFriendIoU",
+      "value": 0.4066,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "maw/anvil",
+      "kind": "foeFriendIoU",
+      "value": 0.3946,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "maw/kestrel",
+      "kind": "foeFriendIoU",
+      "value": 0.4626,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "maw/rook",
+      "kind": "foeFriendIoU",
+      "value": 0.4583,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "maw/cinder",
+      "kind": "foeFriendIoU",
+      "value": 0.3912,
+      "ceiling": 0.72,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "tier1->2",
+      "kind": "tierArea",
+      "value": 2.8477011494252875,
+      "floor": 1.6,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "tier2->3",
+      "kind": "tierArea",
+      "value": 4.346115035317861,
+      "floor": 1.6,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "tier3->4",
+      "kind": "tierArea",
+      "value": 1.6475504991873693,
+      "floor": 1.6,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle:blazing",
+      "kind": "eliteDelta",
+      "value": 0.6192,
+      "floor": 0.1,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle:blazing",
+      "kind": "eliteChroma",
+      "value": 0.4644,
+      "floor": 0.06,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle:overloading",
+      "kind": "eliteDelta",
+      "value": 0.5712,
+      "floor": 0.1,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle:overloading",
+      "kind": "eliteChroma",
+      "value": 0.6062,
+      "floor": 0.06,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle:glacial",
+      "kind": "eliteDelta",
+      "value": 0.5366,
+      "floor": 0.1,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle:glacial",
+      "kind": "eliteChroma",
+      "value": 0.5089,
+      "floor": 0.06,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle:withering",
+      "kind": "eliteDelta",
+      "value": 0.6914,
+      "floor": 0.1,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle:withering",
+      "kind": "eliteChroma",
+      "value": 0.2105,
+      "floor": 0.06,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle:warded",
+      "kind": "eliteDelta",
+      "value": 0.458,
+      "floor": 0.1,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle:warded",
+      "kind": "eliteChroma",
+      "value": 0.5038,
+      "floor": 0.06,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle:voidtouched",
+      "kind": "eliteDelta",
+      "value": 0.6351,
+      "floor": 0.1,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "beetle:voidtouched",
+      "kind": "eliteChroma",
+      "value": 0.3273,
+      "floor": 0.06,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "golem:blazing",
+      "kind": "eliteDelta",
+      "value": 0.514,
+      "floor": 0.1,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "golem:blazing",
+      "kind": "eliteChroma",
+      "value": 0.5747,
+      "floor": 0.06,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "golem:overloading",
+      "kind": "eliteDelta",
+      "value": 0.449,
+      "floor": 0.1,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "golem:overloading",
+      "kind": "eliteChroma",
+      "value": 0.3853,
+      "floor": 0.06,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "golem:glacial",
+      "kind": "eliteDelta",
+      "value": 0.3915,
+      "floor": 0.1,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "golem:glacial",
+      "kind": "eliteChroma",
+      "value": 0.2895,
+      "floor": 0.06,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "golem:withering",
+      "kind": "eliteDelta",
+      "value": 0.6134,
+      "floor": 0.1,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "golem:withering",
+      "kind": "eliteChroma",
+      "value": 0.1797,
+      "floor": 0.06,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "golem:warded",
+      "kind": "eliteDelta",
+      "value": 0.2691,
+      "floor": 0.1,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "golem:warded",
+      "kind": "eliteChroma",
+      "value": 0.2165,
+      "floor": 0.06,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "golem:voidtouched",
+      "kind": "eliteDelta",
+      "value": 0.4754,
+      "floor": 0.1,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "golem:voidtouched",
+      "kind": "eliteChroma",
+      "value": 0.234,
+      "floor": 0.06,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "hulk:blazing",
+      "kind": "eliteDelta",
+      "value": 0.528,
+      "floor": 0.1,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "hulk:blazing",
+      "kind": "eliteChroma",
+      "value": 0.3495,
+      "floor": 0.06,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "hulk:overloading",
+      "kind": "eliteDelta",
+      "value": 0.4719,
+      "floor": 0.1,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "hulk:overloading",
+      "kind": "eliteChroma",
+      "value": 0.6059,
+      "floor": 0.06,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "hulk:glacial",
+      "kind": "eliteDelta",
+      "value": 0.433,
+      "floor": 0.1,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "hulk:glacial",
+      "kind": "eliteChroma",
+      "value": 0.5041,
+      "floor": 0.06,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "hulk:withering",
+      "kind": "eliteDelta",
+      "value": 0.5875,
+      "floor": 0.1,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "hulk:withering",
+      "kind": "eliteChroma",
+      "value": 0.3209,
+      "floor": 0.06,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "hulk:warded",
+      "kind": "eliteDelta",
+      "value": 0.3027,
+      "floor": 0.1,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "hulk:warded",
+      "kind": "eliteChroma",
+      "value": 0.4416,
+      "floor": 0.06,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "hulk:voidtouched",
+      "kind": "eliteDelta",
+      "value": 0.4975,
+      "floor": 0.1,
+      "ok": true,
+      "exempt": false
+    },
+    {
+      "id": "hulk:voidtouched",
+      "kind": "eliteChroma",
+      "value": 0.3573,
+      "floor": 0.06,
+      "ok": true,
+      "exempt": false
+    }
+  ]
+}

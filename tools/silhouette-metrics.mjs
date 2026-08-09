@@ -158,6 +158,116 @@ export const READABILITY = {
    * recorded value — a new failure is red, and an exempted one that degrades
    * is red. Adding an entry here is a content decision and belongs in a
    * commit of its own, with the record it came from.
+   *
+   * Every value below was measured by
+   * `node tools/silhouette.mjs --enemies --json reviews/round9/readability-gate.json`
+   * under d3d11, and is copied from that record. Nineteen entries, in three
+   * groups, and none of them is a threshold that was moved to fit the roster.
    */
-  exemptions: [],
+  exemptions: [
+    // The mite is 0.5 m tall and covers 74 px at 40 m against a 219 floor — a
+    // third of what the bestiary shot's per-object floor asks for. It is a
+    // swarm card (packMin 5) and was probably never meant to be read as an
+    // individual at range, but "read it as a cloud" is a design decision that
+    // has never been written down, and until it is, this is the roster's one
+    // genuine 40 m failure. Slice-3 / content work.
+    { id: 'mite', kind: 'px40', value: 74, note: 'smallest card, 0.5 m tall: 74 px at 40 m vs a 219 floor' },
+
+    // Daylight. Seventeen of twenty-five cards have less enclosed negative
+    // space in their front-on idle than `minHoles` asks for, and eight of them
+    // have literally none. This is not the instrument failing: thunderhead
+    // reads 14.03%, acolyte 3.72%, vizier 2.12%, warden 1.95% on the same run,
+    // so enclosed space is detected wherever it exists. It is also not a
+    // resolution artifact at the top of the list — titan (858x737 px of bbox),
+    // hulk (332x452) and wyrm (540x760) read exactly zero with tens of
+    // thousands of pixels available to find a hole in.
+    //
+    // What it actually says is that most of this roster's silhouettes are
+    // closed outlines: the gaps that exist are between legs or beside an arm,
+    // open at the boundary, and the flood fill correctly refuses to count
+    // them. Whether that is a defect is a content question and a big one —
+    // it is the single largest finding this gate has produced — and it is
+    // recorded here rather than dissolved by lowering `minHoles`.
+    { id: 'mite',     kind: 'holes', value: 0.0002, note: 'closed outline: no enclosed negative space in the idle read' },
+    { id: 'spitling', kind: 'holes', value: 0.0003, note: 'closed outline: no enclosed negative space in the idle read' },
+    { id: 'lemurian', kind: 'holes', value: 0,      note: 'closed outline: no enclosed negative space in the idle read' },
+    { id: 'wisp',     kind: 'holes', value: 0,      note: 'closed outline: no enclosed negative space in the idle read' },
+    { id: 'pest',     kind: 'holes', value: 0,      note: 'closed outline: no enclosed negative space in the idle read' },
+    { id: 'harrier',  kind: 'holes', value: 0,      note: 'closed outline: no enclosed negative space in the idle read' },
+    { id: 'burrower', kind: 'holes', value: 0.0001, note: 'closed outline: no enclosed negative space in the idle read' },
+    { id: 'brood',    kind: 'holes', value: 0,      note: 'closed outline: no enclosed negative space in the idle read' },
+    { id: 'golem',    kind: 'holes', value: 0.0001, note: 'closed outline: no enclosed negative space in the idle read' },
+    { id: 'mortar',   kind: 'holes', value: 0.0013, note: 'closed outline: no enclosed negative space in the idle read' },
+    { id: 'lasher',   kind: 'holes', value: 0.0022, note: 'closed outline: no enclosed negative space in the idle read' },
+    { id: 'redoubt',  kind: 'holes', value: 0.0015, note: 'closed outline: no enclosed negative space in the idle read' },
+    { id: 'hulk',     kind: 'holes', value: 0,      note: 'closed outline: no enclosed negative space in the idle read' },
+    { id: 'titan',    kind: 'holes', value: 0,      note: 'closed outline: no enclosed negative space in the idle read' },
+    { id: 'wyrm',     kind: 'holes', value: 0,      note: 'closed outline: no enclosed negative space in the idle read' },
+    { id: 'matron',   kind: 'holes', value: 0.0008, note: 'closed outline: no enclosed negative space in the idle read' },
+    { id: 'maw',      kind: 'holes', value: 0.0029, note: 'closed outline: no enclosed negative space in the idle read' },
+
+    // The roster's one silhouette collision, and it is marginal: 0.0166 over
+    // the bar. Both are tall, narrow, hunched tier-2 casters — brood at aspect
+    // 0.500 and acolyte at 0.602 — and at bbox-normalised scale they are close
+    // to the same posture. The next-worst pair in the roster is charger/brood
+    // at 0.734, comfortably under. Slice-3 / content work: one of the two
+    // needs a distinguishing feature that survives being flattened.
+    { id: 'brood/acolyte', kind: 'familyIoU', value: 0.7966, note: 'two hunched tier-2 casters at near-identical normalised posture' },
+  ],
 };
+
+/**
+ * Grade a recorded roster against READABILITY.
+ *
+ * Two directions of threshold, and they ratchet in opposite directions:
+ * `px40`, `tierArea`, `eliteDelta`, `eliteChroma` and `holes` are floors (more
+ * is better, an exemption caps how far *under* the floor a unit may sit);
+ * `familyIoU` and `foeFriendIoU` are ceilings (less is better, an exemption
+ * caps how far *over* it a pair may sit).
+ *
+ * The exemption list is the honest half of this. A gate authored against a
+ * roster it has never measured is a gate that goes red on arrival and gets
+ * switched off within a week. This one is allowed to admit what the roster
+ * already is — once, in writing, with the measured value and the record it
+ * came from — and is then absolute about anything new or anything worse.
+ */
+export function gradeRoster(record, exemptions = READABILITY.exemptions) {
+  const checks = [];
+  const ex = (id, kind) => exemptions.find((e) => e.id === id && e.kind === kind) || null;
+
+  const floor = (id, kind, value, limit) => {
+    const e = ex(id, kind);
+    const bar = e ? Math.min(limit, e.value) : limit;
+    checks.push({ id, kind, value, floor: bar, ok: value >= bar, exempt: !!e });
+  };
+  const ceiling = (id, kind, value, limit) => {
+    const e = ex(id, kind);
+    const bar = e ? Math.max(limit, e.value) : limit;
+    checks.push({ id, kind, value, ceiling: bar, ok: value <= bar, exempt: !!e });
+  };
+
+  for (const u of record.units || []) {
+    floor(u.id, 'px40', u.px40, READABILITY.minPx40);
+    floor(u.id, 'holes', u.holesFrac, READABILITY.minHoles);
+  }
+  for (const p of record.familyPairs || []) {
+    ceiling(`${p.a}/${p.b}`, 'familyIoU', p.iou, READABILITY.maxFamilyIoU);
+  }
+  for (const p of record.foeFriendPairs || []) {
+    ceiling(`${p.a}/${p.b}`, 'foeFriendIoU', p.iou, READABILITY.maxFoeFriendIoU);
+  }
+  // Tier separation is a property of consecutive tiers, so it is graded on the
+  // pairs that exist in the record rather than on a fixed 1..4.
+  const tiers = Object.keys(record.tierMedianPx || {}).map(Number).sort((a, b) => a - b);
+  for (let i = 1; i < tiers.length; i++) {
+    const lo = record.tierMedianPx[tiers[i - 1]], hi = record.tierMedianPx[tiers[i]];
+    floor(`tier${tiers[i - 1]}->${tiers[i]}`, 'tierArea', lo > 0 ? hi / lo : 0,
+          READABILITY.minTierAreaRatio);
+  }
+  for (const e of record.elites || []) {
+    floor(`${e.id}:${e.affix}`, 'eliteDelta', e.delta, READABILITY.minEliteDelta);
+    floor(`${e.id}:${e.affix}`, 'eliteChroma', e.chroma, READABILITY.minEliteChroma);
+  }
+
+  return { ok: checks.every((c) => c.ok), checks };
+}
