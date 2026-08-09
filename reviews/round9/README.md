@@ -19,7 +19,19 @@ see a tint and the tint is half of what an affix is.
 tool non-zero. Exemptions live in `READABILITY.exemptions`
 (`tools/silhouette-metrics.mjs`), each carrying the value measured when it was
 admitted; the gate passes an exempted check only while it is no worse than
-that. Anything new, and anything that degrades, is red.
+that, plus 1 % of relative slack (a whole pixel, for `px40`) so that a
+rasteriser changing its mind does not turn a knife-edge exemption red. Every
+exemption was copied from this record at full precision, so without that
+epsilon every one of them sat exactly on its own bar. Anything new, and
+anything that degrades past the epsilon, is still red — the slack is three
+orders of magnitude under the smallest regression any of these checks could
+describe.
+
+`tests/readability-gate.test.mjs` re-grades this file on every `npm test` run,
+with no GPU and no browser: `gradeRoster` over the stored units against the
+current `READABILITY`, asserting `ok === true` and that the stored `checks`
+array matches a fresh grade. So the nineteen hand-copied exemptions and the
+record they were copied from cannot drift apart unnoticed.
 
 Re-run the command after any change to `src/entities/EnemyMeshes.js`,
 `src/data/enemies.js` or the elite table.
@@ -29,7 +41,8 @@ Re-run the command after any change to `src/entities/EnemyMeshes.js`,
 | Field | Value | Why it is here |
 |---|---|---|
 | `renderer` | `d3d11` | The real adapter, not SwiftShader. `tools/silhouette.mjs --software` produces a record marked `swiftshader`; two records from different renderers are not directly comparable and a reader diffing them needs to know that before concluding the roster moved. |
-| `commit` | `c6795cb` | The tree whose art was measured — the HEAD the tool ran against, recorded by the tool itself. **Re-run at the end of the slice** (Task 6 Step 2), and `git diff --stat` on the record showed *only this field moving*: all 514 checks, all 19 exemptions and every measured value are byte-identical to the run at `baa495c`. That is the gate doing its job — Tasks 3-5 are damage, launch and VFX changes, none of which may touch a rig or a mesh, and if one had, a check would have gone red here. The original run at `baa495c` is in this file's history; the commit that first added it (`4a88cfa`) changed only `tools/`, `tests/` and `reviews/`. |
+| `units[].bands` | ten `{ w, fill, runs }` | Ten horizontal samples crown-to-feet. `runs` is the direct measure of *daylight through the outline* — a band at 1.00 run is a solid bar, arms welded to a torso or legs fused into one column — and it is the metric that can argue about Finding 2 below, where `minHoles` sees only *enclosed* space and reads zero across most of this roster. The record originally kept the widths alone and threw `fill` and `runs` away to the console, which meant the question the exemption note raises could not be answered from committed data without re-running the whole GPU pass. |
+| `commit` | `8ff3eb4` | The tree whose art was measured — the HEAD the tool ran against, recorded by the tool itself. **Re-run at the end of the slice** (Task 6 Step 2), and `git diff --stat` on the record showed *only this field moving*: all 514 checks, all 19 exemptions and every measured value are byte-identical to the run at `baa495c`. That is the gate doing its job — Tasks 3-5 are damage, launch and VFX changes, none of which may touch a rig or a mesh, and if one had, a check would have gone red here. The original run at `baa495c` is in this file's history; the commit that first added it (`4a88cfa`) changed only `tools/`, `tests/` and `reviews/`. The final re-run at `8ff3eb4` — the one that added `bands[].fill` and `bands[].runs` — moved `commit`, the band records, and the `floor`/`ceiling` bars of the nineteen exempted checks (the 1 % slack, above). **Every measured value and every check verdict is unchanged**: 25 units and 514 `{id, kind, value, ok, exempt}` tuples compare equal against the previous record, so no number in this README moved with it. |
 | `seed` / `range` | `1337` / `40` | The `--seed` and `--range` the run used. |
 | `width` / `height` / `fov` | `1600` / `900` / `58` | The 40 m frame. 1600x900 is `tools/capture.mjs`'s own default (`:31`) and is the basis `READABILITY.minPx40` is defined against; `fov` is read off the live camera rather than written down, so the record measures this game's lens. |
 
@@ -101,6 +114,16 @@ orthographic box is sized to the tallest card in the roster, so `mite` occupies
 a 65x66 mask and a 0.4% hole in it is about 17 pixels. That is a real
 sensitivity limit for the smallest cards. It does not touch the finding at the
 top of the list, where the masks are hundreds of pixels on a side.
+
+Which raises the question of whether `minHoles` is the right operator for
+"daylight" at all — enclosed space is a *subset* of daylight, and this roster's
+gaps are open at the boundary. The metric that answers it is `units[].bands`,
+now recorded in full: `runs` counts how many separate spans of the silhouette a
+scanline crosses, so a limb that has genuinely separated from a torso reads
+above 1.00 there whether or not the flood fill can reach it. The threshold is
+deliberately *not* retuned here — the exemptions are the debt and moving the
+bar would erase it — but the next slice can now argue the question against
+committed data instead of re-running the GPU pass to recover it.
 
 ### Finding 3 — brood and acolyte are close to the same shape
 
