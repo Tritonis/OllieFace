@@ -49,6 +49,24 @@ const HITSTOP = {
 const HITSTOP_MAX = 0.14;
 const HITSTOP_GATE = 0.085;
 
+/* --- corpse launch ---------------------------------------------------- *
+ * A kill that lands with damage to spare throws the body. This is
+ * *cosmetic by construction* and the construction is the load-bearing part:
+ * the launch never writes `Enemy.position`, `Enemy.velocity` or anything the
+ * FSM reads. `Enemy.updateRig` copies `this.position` into `rig.root.position`
+ * every frame from `Director`'s update, and `VFX.update` runs after it in the
+ * system order (`src/main.js`; `Engine._frame` drains every `fixedUpdate`
+ * before any `update`). So this re-applies an offset on top of a transform its
+ * owner has just rewritten, every frame, and the instant it stops the corpse
+ * is exactly where the simulation always thought it was. Nothing here is
+ * visible to `tests/sp-equivalence.mjs`, and that is not an accident.
+ *
+ * `minOverkillFrac` is a fraction of the victim's max health: a mite finished
+ * by a rounding error stays where it fell, and a hit that doubled what was
+ * left of it goes flying.
+ * -------------------------------------------------------------------- */
+export const LAUNCH = { minOverkillFrac: 0.35, maxSpeed: 11, spin: 7, gravity: 22, dur: 1.5 };
+
 // Shake falls off with the square of camera distance; 18m is the half-power
 // point, which on a ~14m third-person boom means the player's own weapon shakes
 // hard and a fight across the arena barely registers.
@@ -130,6 +148,7 @@ export class VFX {
     this._lastHitstop = -1;
 
     this._dissolving = [];
+    this._launches = [];
     this._flashes = [];
     this._auras = [];
     // target -> (type -> entry). Keyed rather than a flat list because the
@@ -728,6 +747,78 @@ export class VFX {
   }
 
   /**
+   * Throw a corpse. `dirX`/`dirZ` is the horizontal direction (away from
+   * whatever killed it); `power` in [0,1] scales speed, lift and spin.
+   *
+   * The record holds elapsed time and the launch's own kinematics, never a
+   * position — position is recomputed from t every frame and *added* to
+   * whatever the owner wrote, so two systems writing the same transform
+   * compose instead of fighting.
+   */
+  corpseLaunch(obj, dirX, dirZ, power) {
+    if (!obj?.isObject3D || !(power > 0)) return;
+    for (const l of this._launches) if (l.obj === obj) return;
+    const len = Math.hypot(dirX, dirZ) || 1;
+    const k = clamp(power, 0, 1);
+    const speed = LAUNCH.maxSpeed * k;
+    this._launches.push({
+      obj, t: 0, dur: LAUNCH.dur,
+      // The base rotation, captured once. `Enemy.updateRig` rewrites only
+      // `rotation.y` each frame, so x and z are ours alone and must be *set*
+      // from t rather than accumulated — a `+=` here would spin the corpse
+      // faster every frame and leave it at an arbitrary angle when the launch
+      // retired, which is residue, and residue is what makes a cosmetic
+      // effect stop being cosmetic.
+      rx: obj.rotation.x, rz: obj.rotation.z,
+      vx: (dirX / len) * speed,
+      vz: (dirZ / len) * speed,
+      // Lift is a fixed fraction of the horizontal throw: a body that goes
+      // twice as far also goes twice as high, which is what keeps a weak
+      // launch a stumble and a strong one an event.
+      vy: speed * 0.62,
+      // Tumble axis derived from the throw so the body rotates around the
+      // direction it is travelling, not around an arbitrary one.
+      sx: (dirZ / len) * LAUNCH.spin * k,
+      sz: -(dirX / len) * LAUNCH.spin * k,
+    });
+  }
+
+  /**
+   * Integrate every live launch and stamp the offset. Runs from `update`, so
+   * it keeps animating while `ctx.hitstop` freezes gameplay — a frozen frame
+   * with a corpse hanging mid-arc reads as impact, which is the whole point of
+   * spending the hitstop next to it.
+   */
+  _updateLaunches(dt) {
+    for (let i = this._launches.length - 1; i >= 0; i--) {
+      const l = this._launches[i];
+      l.t += dt;
+      const t = l.t;
+      // Closed form rather than an accumulator: the offset is a pure function
+      // of elapsed time, so a dropped frame changes nothing and re-applying it
+      // on top of the owner's transform can never drift.
+      const y = l.vy * t - 0.5 * LAUNCH.gravity * t * t;
+      const o = l.obj;
+      if (t >= l.dur || y < 0) {
+        // Hand the rotation back exactly as it was found, then let go.
+        o.rotation.x = l.rx;
+        o.rotation.z = l.rz;
+        this._launches.splice(i, 1);
+        continue;
+      }
+      // Position is added, because the owner rewrites it from `this.position`
+      // every frame and we are composing on top of that. Rotation is assigned,
+      // because nobody else writes x or z and we own them for the launch's
+      // life. Both are pure functions of t, so a dropped frame changes nothing.
+      o.position.x += l.vx * t;
+      o.position.z += l.vz * t;
+      o.position.y += y;
+      o.rotation.x = l.rx + l.sx * t;
+      o.rotation.z = l.rz + l.sz * t;
+    }
+  }
+
+  /**
    * World-space arcing damage readout. Crits are bigger, hotter and shake.
    * `target` is the merge key: repeat hits on one enemy accumulate into a
    * single readout rather than stacking a run each.
@@ -1195,6 +1286,22 @@ export class VFX {
     const obj = resolveObject(p.victim);
     if (obj) this.deathDissolve(obj, p.isElite ? 0xff9a30 : 0xff6a1e);
 
+    // Overkill throws the body away from the blow. Scaled against the
+    // victim's own pool, so "a hit with a lot left over" means the same thing
+    // on a mite as on a hulk.
+    const pool = Math.max(1, p.victim?.maxHealth ?? 0);
+    const over = (p.overkill ?? 0) / pool;
+    if (obj && over >= LAUNCH.minOverkillFrac) {
+      const src = p.source?.position;
+      let dx = 0, dz = 1;
+      if (src) {
+        dx = _h1.x - src.x; dz = _h1.z - src.z;
+        if (dx * dx + dz * dz < 1e-6) { dx = 0; dz = 1; }
+      }
+      this.corpseLaunch(obj, dx, dz,
+        clamp((over - LAUNCH.minOverkillFrac) / (1 - LAUNCH.minOverkillFrac), 0, 1));
+    }
+
     const big = p.isBoss ? 2.2 : p.isElite ? 1.4 : 1;
 
     let e = this._ep();
@@ -1313,6 +1420,7 @@ export class VFX {
 
     this._updateFlashes(dt);
     this._updateDissolves(dt);
+    this._updateLaunches(dt);
     this._updateAuras(dt);
     this._updateStatuses(dt);
     this._updateDamageDirections(dt);

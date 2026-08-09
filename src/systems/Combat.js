@@ -533,6 +533,12 @@ export class Combat {
 
     const pos = info.position || target.position;
 
+    // Overkill: how much of this hit landed on a corpse. Read *before* the
+    // damage is applied, because after it `target.health` is already negative
+    // and the same subtraction reads as zero. `dealt` is the post-barrier
+    // figure on purpose — damage a shield ate did not overkill anything.
+    const hpBefore = target.health;
+
     if (amount > 0) {
       if (target.takeDamage) target.takeDamage(amount, info);
       else target.health -= amount;
@@ -582,12 +588,14 @@ export class Combat {
       });
     }
 
-    if (target.health <= 0 && target.alive) this._kill(target, source, pos, depth);
+    if (target.health <= 0 && target.alive) {
+      this._kill(target, source, pos, depth, info, Math.max(0, dealt - Math.max(0, hpBefore)));
+    }
 
     return incoming;
   }
 
-  _kill(victim, source, position, depth) {
+  _kill(victim, source, position, depth, info = null, overkill = 0) {
     const ctx = this.ctx;
     victim.alive = false;
     victim.health = 0;
@@ -596,6 +604,13 @@ export class Combat {
 
     ctx.events.emit('kill', {
       victim, source, position, isElite: !!victim.isElite, isBoss: !!victim.isBoss,
+      // Presentation only, all three. `overkill` is damage past the victim's
+      // remaining health, which is the whole of what makes a death read as
+      // *emphatic* rather than as arithmetic; `type`/`status` are the killing
+      // blow's provenance, so a kill can look like what killed it. Nothing in
+      // gameplay may key off any of them — this event already crosses the wire
+      // through `sanitise`, and a number and two strings ride it unchanged.
+      overkill, type: info?.type || 'hit', status: info?.status || null,
     });
 
     if (victim.isPlayer) {
