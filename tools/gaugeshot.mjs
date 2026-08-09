@@ -21,8 +21,9 @@
  *
  * Alongside the PNG it writes the five numbers that let the next critique argue
  * with the frame instead of about it: the world corruption at capture, the
- * band, the `.corruption-grad` percentages actually rendered, the sample count
- * in `HUD._trace`, and the `d` attribute the pen last wrote.
+ * band, the `.corruption-grad` marks with the pixels each one actually draws
+ * inside the track's clip box, the sample count in `HUD._trace`, and the `d`
+ * attribute the pen last wrote.
  *
  * Renderer note: headed d3d11, same as capture.mjs with no `--software`. The
  * money shot is compared by eye against ui-shots-after/, so it is taken on the
@@ -143,8 +144,34 @@ try {
       bandName: document.querySelector('.corruption-band')?.textContent ?? null,
       dataBand: gauge?.dataset.band ?? null,
       fillPct: document.querySelector('.corruption-fill')?.style.width ?? null,
-      gradations: [...document.querySelectorAll('.corruption-grad')]
-        .map((el) => ({ band: el.dataset.band, left: el.style.left })),
+      // `style.left` is a DOM-presence read: it says where a mark was asked to
+      // go, not whether a single pixel of it survived the track's clip box.
+      // The band-4 mark sat outside it for the whole slice and this record
+      // published it as rendered. So the reading is the mark's own rect
+      // intersected with the track's padding box, in pixels.
+      gradations: (() => {
+        const track = document.querySelector('.corruption-track');
+        const t = track?.getBoundingClientRect();
+        const cs = track ? getComputedStyle(track) : null;
+        // The clip box of `overflow: hidden` is the padding box: border in,
+        // padding included.
+        const clip = t && cs ? {
+          left: t.left + parseFloat(cs.borderLeftWidth),
+          right: t.right - parseFloat(cs.borderRightWidth),
+          top: t.top + parseFloat(cs.borderTopWidth),
+          bottom: t.bottom - parseFloat(cs.borderBottomWidth),
+        } : null;
+        return [...document.querySelectorAll('.corruption-grad')].map((el) => {
+          const r = el.getBoundingClientRect();
+          const w = clip ? Math.min(r.right, clip.right) - Math.max(r.left, clip.left) : 0;
+          const h = clip ? Math.min(r.bottom, clip.bottom) - Math.max(r.top, clip.top) : 0;
+          return {
+            band: el.dataset.band,
+            left: el.style.left,
+            renderedPx: { w: +Math.max(0, w).toFixed(2), h: +Math.max(0, h).toFixed(2) },
+          };
+        });
+      })(),
       redlineLeft: getComputedStyle(document.querySelector('.corruption-redline'), null).left,
       traceSamples: hud?._trace?.length ?? null,
       traceFirst: hud?._trace?.length ? +hud._trace[0].toFixed(4) : null,
@@ -161,8 +188,13 @@ try {
   // The frame is only worth publishing if the five numbers say the instrument
   // was actually doing something when the shutter opened.
   check('deep band', record.band >= 3, { band: record.band, name: record.bandName, world: record.world });
+  // Four marks, at the real thresholds, each of them actually drawing pixels
+  // inside the track's clip box — the last clause is the one that matters, and
+  // the one this check used to be missing.
   check('the gauge is engraved with the real thresholds',
-    record.gradations.length === 4 && record.gradations[0].left.startsWith('10.5'), record.gradations);
+    record.gradations.length === 4 && record.gradations[0].left.startsWith('10.5')
+      && record.gradations.every((g) => g.renderedPx.w >= 1 && g.renderedPx.h >= 1),
+    record.gradations);
   check('the pen has a window to show', record.traceSamples >= 40, record.traceSamples);
   check('the trace is a climb, not a flat line',
     record.traceLast - record.traceFirst > 0.3, { first: record.traceFirst, last: record.traceLast });

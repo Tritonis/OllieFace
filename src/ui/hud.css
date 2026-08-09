@@ -494,11 +494,22 @@ body.menu-open { cursor: default; }
 }
 /* Engraved gradations. `z-index: 3` puts them above the strata, because a
    scale is cut into the casing and the strata are behind the glass. */
+/* The marks are laid out from their left edge at `left: <pct>%`, and the track
+   is a `.core` — `overflow: hidden`. Band 4's threshold is the top of the scale,
+   so at `left: 100%` all 1px of the mark sat outside the clip box and the
+   Consumed gradation drew zero pixels (three of four hairlines rendered; the
+   band-4 rule below was dead CSS). Pulling every mark back by its own width
+   puts the engraving *inside* the scale it is measuring, which is where a mark
+   at 100% has to live anyway. Same reason `top`/`bottom` sit at 0: the -1px
+   bleed they used to carry was clipped away on all four marks, so it only ever
+   lied about the height. `tools/gaugeshot.mjs` now measures the rendered rects
+   against the clip box rather than reading `style.left`. */
 .corruption-grad {
   position: absolute;
-  top: -1px; bottom: -1px;
+  top: 0; bottom: 0;
   z-index: 3;
   width: 1px;
+  margin-left: -1px;
   background: var(--grad);
 }
 .corruption-grad[data-band="4"] { background: rgba(255, 143, 214, 0.75); }
@@ -1149,8 +1160,22 @@ body.menu-open { cursor: default; }
    `PHASE ROU…` in every frame of the game — not a transient state. The row has
    horizontal slack between tiles; let the chip use it, and drop a fifth of a
    step of size so most names never need to. */
+/* The one documented exception to the 0.80em floor, and the only place in the
+   HUD that gets one. `.slot` is a fixed 5.2em tile with 0.55em of gap and this
+   chip is `nowrap` with 0.5em of padding a side, so it is the single label on
+   screen with no room to absorb the ladder. At `--fs-micro` (0.82em) the
+   re-priced `--u` pushed it to 11.87px and the labels collided: Rook's
+   `Scat. Charges`/`Harm. Ward` and Cinder's `Backdraft`/`Conflagration` had
+   glyphs touching at -0.33px and -0.42px, and four of five survivors had merged
+   plates. (Cinder's is structural: `shortName()` returns early on a single-word
+   name, so a 13-character ability can never be abbreviated.) Measured across
+   all five loadouts at 1600x900 / 1366x768 / 1280x720: 0.72em still merges one
+   pair of plates (-0.61px), 0.70em clears every pair — worst plate gap +1.45px,
+   worst glyph gap +10.20px — and is still 13% larger than the 0.62em this label
+   wore before the ladder. `tests/ui-type-scale.test.mjs` names the exception and
+   holds 0.70em as its own floor, so it cannot quietly shrink further. */
 .slot-name {
-  font-size: var(--fs-micro);
+  font-size: 0.70em;
   letter-spacing: 0.04em;
   color: var(--ink);
   white-space: nowrap;

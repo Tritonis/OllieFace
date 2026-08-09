@@ -44,6 +44,24 @@ Both manifests report `subjectsOk: true` and `errorCount: 0`, so every frame in
 both sets passed its per-scenario `mustContain` DOM and pixel assertions. No
 scenario was excluded for scene noise.
 
+### The two recaptured frames
+
+The final whole-branch review found two defects in `src/ui/hud.css` (the ability
+label `.slot-name` collided at `--fs-micro`; the band-4 gauge gradation drew
+zero pixels). Both are fixed, so `06-loaded-hud.png` and `10-inventory.png` —
+the only two frames in this set that photograph the live HUD — were **recaptured
+at the fix commit**, under the same after-command above, same renderer, same
+seed, same clock. The other six frames are untouched from `d21c6a6`.
+
+That the other six are unaffected is measured, not assumed: the fix commit was
+captured in full into a scratch directory and diffed against this set. Only the
+two HUD frames moved (`pctOver8` 3.532% and 2.024%); the remaining six came in
+at capture noise — `maxDiff <= 8` and `pctOver8` exactly 0 on every one. The run
+reported `subjectsOk: true`, `errors: 0` and the same three `toleratedAbsences`.
+`manifest.json` is the one from the `d21c6a6` run and still describes six of the
+eight frames; the recapture's own manifest differed from it only in timings and
+output paths.
+
 ## The measured difference
 
 `reviews/round8/ui-shot-diff.json`, produced by the `shotdiff` command above.
@@ -51,14 +69,14 @@ scenario was excluded for scene noise.
 | scenario | meanDiff | maxDiff | pctOver8 |
 |---|---:|---:|---:|
 | 01-title | 8.797 | 251 | 9.45 |
-| 06-loaded-hud | 26.202 | 255 | 38.271 |
-| 10-inventory | 25.119 | 255 | 34.841 |
+| 06-loaded-hud | 25.477 | 255 | 36.254 |
+| 10-inventory | 24.919 | 255 | 34.459 |
 | 14-survivor-select | 14.573 | 251 | 21.735 |
 | 15-logbook | 8.836 | 253 | 17.969 |
 | 16-run-summary | 17.608 | 255 | 14.643 |
 | 17-artifacts | 7.042 | 247 | 13.613 |
 | 18-difficulty | 3.547 | 247 | 6.689 |
-| **aggregate** | **13.966** | **255** | **19.651** |
+| **aggregate** | **13.85** | **255** | **19.351** |
 
 Read it the right way round: this is a deliberate whole-surface reskin, so a
 *small* diff is the failure mode — it would mean the treatment never reached
@@ -91,12 +109,20 @@ What the record publishes, all read off the live DOM at the instant of capture:
 |---|---|
 | world corruption | 150 |
 | band | 3 — `Overrun`, `data-band="3"`, fill 79% |
-| gradations rendered (`.corruption-grad` `style.left`) | 10.53% / 28.95% / 57.89% / 100% |
+| gradations rendered (`.corruption-grad`, rect ∩ track clip box) | 10.53% / 28.95% / 57.89% / 100%, each drawing 1 x 6.97 px |
 | samples in `HUD._trace` | 48 (the ring's cap) |
 | last `d` the pen wrote | `M 0.00 9.95 L 2.13 9.91 L 4.26 9.86 L 6.38 9.80 …` (48 points, 0.0046 → 0.7895) |
 
 The gradation percentages are the planet's real band thresholds — 20, 55, 110
 and 190 over the 190 top — so the engraving on the gauge is not decoration.
+
+That row says *rendered* and now means it. It used to be read off `style.left`,
+which reports where a mark was asked to go and cannot tell a drawn mark from a
+clipped one — and the band-4 mark, at `left: 100%` inside an `overflow: hidden`
+track, was drawing nothing at all while this table published it. The reading is
+now each mark's `getBoundingClientRect()` intersected with the track's clip box,
+in pixels, and `tools/gaugeshot.mjs` fails the run if any of the four comes back
+smaller than 1 x 1.
 
 Full frame at the library's own 1600x900, not a crop: the thesis is that the
 whole panel reads as one instrument, and a crop would beg that question. It also

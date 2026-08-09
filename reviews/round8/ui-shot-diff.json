@@ -5,8 +5,8 @@
  ],
  "files": 8,
  "aggregate": {
-  "meanDiff": 13.966,
-  "pctOver8": 19.651,
+  "meanDiff": 13.85,
+  "pctOver8": 19.351,
   "maxOfMax": 255
  },
  "rows": [
@@ -19,16 +19,16 @@
   },
   {
    "file": "06-loaded-hud.png",
-   "meanDiff": 26.202,
+   "meanDiff": 25.477,
    "maxDiff": 255,
-   "pctOver8": 38.271,
+   "pctOver8": 36.254,
    "pixels": 1440000
   },
   {
    "file": "10-inventory.png",
-   "meanDiff": 25.119,
+   "meanDiff": 24.919,
    "maxDiff": 255,
-   "pctOver8": 34.841,
+   "pctOver8": 34.459,
    "pixels": 1440000
   },
   {
