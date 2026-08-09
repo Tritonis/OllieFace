@@ -24,7 +24,7 @@ import { ITEMS } from '../data/items.js';
 import { EQUIPMENT } from '../data/equipment.js';
 import { SPAWN_CARDS, BOSS_CARDS } from '../data/enemies.js';
 import { CHALLENGE_CATEGORIES } from '../data/challenges.js';
-import { itemArt, abilityArt, tierMeta, hexOf, cardDef } from './Icons.js';
+import { itemArt, abilityArt, tierMeta, hexOf, cardDef, tracePath } from './Icons.js';
 
 // ---------------------------------------------------------------- 3D preview
 
@@ -362,8 +362,11 @@ export class Logbook {
         <header class="panel-head">
           <h2>Logbook</h2>
           <div class="panel-tag" data-book-count></div>
+          <svg class="trace panel-rule" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
+            <path d="${tracePath('Logbook', { points: 56, amp: 0.5 })}" />
+          </svg>
         </header>
-        <nav class="book-tabs" data-book-tabs>
+        <nav class="book-tabs bez" data-book-tabs>
           ${TABS.map((t) => `<button class="tabbtn" data-nav data-tab="${t.id}"><span>${t.label}</span></button>`).join('')}
         </nav>
         <div class="book-body">
@@ -647,6 +650,9 @@ export class Logbook {
       <div class="book-head" style="--accent:${accent}">
         <div class="book-title">${escapeHtml(c.name)}</div>
         <div class="book-sub">${escapeHtml(c.subtitle)}</div>
+        <svg class="trace book-rule" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
+          <path d="${tracePath(c.name, { points: 44, amp: 0.6 })}" />
+        </svg>
       </div>
       <div class="book-stage" data-viewer></div>
       <p class="book-lore">${escapeHtml(c.lore)}</p>
@@ -671,6 +677,9 @@ export class Logbook {
       <div class="book-head" style="--accent:${meta.color}">
         <div class="book-title">${escapeHtml(d.name)}</div>
         <div class="book-sub">${escapeHtml(meta.label)}</div>
+        <svg class="trace book-rule" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
+          <path d="${tracePath(d.name, { points: 44, amp: 0.6 })}" />
+        </svg>
       </div>
       <div class="book-art"><img src="${itemArt(d.id, d.tier)}" alt="" draggable="false" /></div>
       <div class="book-stats">
@@ -690,6 +699,9 @@ export class Logbook {
       <div class="book-head" style="--accent:${meta.color}">
         <div class="book-title">${escapeHtml(d.name)}</div>
         <div class="book-sub">${escapeHtml(d.isBoss ? 'Teleporter Boss' : `Tier ${d.tier} — ${prettyBehavior(d)}`)}</div>
+        <svg class="trace book-rule" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
+          <path d="${tracePath(d.name, { points: 44, amp: 0.6 })}" />
+        </svg>
       </div>
       <div class="book-stage" data-viewer></div>
       <div class="book-stats">
@@ -723,6 +735,9 @@ export class Logbook {
       <div class="book-head" style="--accent:var(--t-boss)">
         <div class="book-title">Career</div>
         <div class="book-sub">${s.runs ? `${s.runs} run${s.runs === 1 ? '' : 's'} recorded` : 'Nothing recorded yet'}</div>
+        <svg class="trace book-rule" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
+          <path d="${tracePath('Career', { points: 44, amp: 0.6 })}" />
+        </svg>
       </div>
       <div class="book-note">${done} of ${all} challenges complete${runs.length ? ` · last run ${shortDate(runs[0].at)}` : ''}</div>
       <div class="book-stats book-stats--wide">${cells(CAREER_ROWS)}</div>
@@ -750,6 +765,9 @@ export class Logbook {
         <div class="book-sub">${escapeHtml(
     `${won ? 'Finished' : 'Died'} on stage ${r.stage}${r.stageName ? ` — ${r.stageName}` : ''}`
   )}</div>
+        <svg class="trace book-rule" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
+          <path d="${tracePath(entry.name, { points: 44, amp: 0.6 })}" />
+        </svg>
       </div>
       <div class="book-note">${escapeHtml(shortDate(r.at))}${r.survivorId ? ` · ${escapeHtml(survivorName(r.survivorId))}` : ''}</div>
       <div class="book-stats book-stats--wide">
@@ -775,9 +793,12 @@ export class Logbook {
       <div class="book-head" style="--accent:${c.done ? 'var(--t-boss)' : 'var(--line-hot)'}">
         <div class="book-title">${escapeHtml(c.name)}</div>
         <div class="book-sub">${c.done ? 'Complete' : c.masked ? 'Hidden' : 'In progress'}</div>
+        <svg class="trace book-rule" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
+          <path d="${tracePath(c.name, { points: 44, amp: 0.6 })}" />
+        </svg>
       </div>
       <p class="book-lore book-lore--plain">${escapeHtml(c.description)}</p>
-      <div class="book-prog"><i style="transform:scaleX(${(c.fraction ?? 0).toFixed(3)})"></i></div>
+      <div class="book-prog core"><i style="transform:scaleX(${(c.fraction ?? 0).toFixed(3)})"></i></div>
       <div class="book-prog-read">${progressPair(c.progress, c.goal, c.format, String)} <b>${pct}%</b></div>
       ${c.unlocks ? `<div class="book-reward">Unlocks — ${escapeHtml(KIND_LABEL[c.unlocks.type] || c.unlocks.type)} · ${escapeHtml(c.unlocks.name || c.unlocks.id)}</div>` : ''}`;
   }
@@ -845,7 +866,7 @@ function prettyBehavior(d) {
 }
 
 function statCell(k, v) {
-  return `<div class="book-stat"><div class="book-stat-k">${escapeHtml(k)}</div><div class="book-stat-v">${escapeHtml(String(v))}</div></div>`;
+  return `<div class="book-stat bez"><div class="book-stat-k">${escapeHtml(k)}</div><div class="book-stat-v">${escapeHtml(String(v))}</div></div>`;
 }
 
 /** `m:ss` — the run clock, matching the HUD's and the summary's. */
@@ -971,7 +992,7 @@ export function renderRunReport(report) {
   if (report.records?.length) {
     out.push(`<div class="stat-items-label">New personal bests</div>
       <div class="run-bests">${report.records.map((r) => `
-        <div class="run-best">
+        <div class="run-best bez">
           <span class="run-best-k">${escapeHtml(r.label)}</span>
           <span class="run-best-v">${escapeHtml(formatStat(r.value, r.format === 'time' ? 'clock' : r.format))}</span>
           ${r.previous > 0
@@ -984,9 +1005,9 @@ export function renderRunReport(report) {
     out.push(`<div class="stat-items-label">Closing in</div>
       <div class="run-prog-list">${report.advanced.map((a) => {
     const f = Math.max(0, Math.min(1, a.goal > 0 ? a.to / a.goal : 0));
-    return `<div class="run-prog">
+    return `<div class="run-prog bez">
           <div class="run-prog-k">${escapeHtml(a.name)}</div>
-          <div class="book-prog"><i style="transform:scaleX(${f.toFixed(3)})"></i></div>
+          <div class="book-prog core"><i style="transform:scaleX(${f.toFixed(3)})"></i></div>
           <div class="run-prog-v">${progressPair(a.to, a.goal, a.format)}</div>
         </div>`;
   }).join('')}</div>`);

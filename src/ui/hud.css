@@ -2695,6 +2695,13 @@ body.menu-open { cursor: default; }
 .book-head { --accent: var(--t-lunar); padding-left: 0.8em; border-left: 3px solid var(--accent); }
 .book-title { font-size: 1.6em; font-weight: 800; letter-spacing: 0.16em; color: #fff; }
 .book-sub { font-size: var(--fs-micro); letter-spacing: var(--track-eyebrow); color: var(--accent); margin-top: 0.15em; }
+/* A trace per entry, seeded by the entry's own name — the book's index is a
+   run of readings, and no two readings are the same shape. */
+.book-rule {
+  --trace-h: 0.9em;
+  --trace-ink: color-mix(in srgb, var(--accent) 55%, transparent);
+  margin-top: 0.45em;
+}
 .book-stage {
   position: relative;
   height: 20em;
@@ -2726,9 +2733,15 @@ body.menu-open { cursor: default; }
   background: rgba(148, 182, 214, 0.18);
   margin: 0.8em 0;
 }
-.book-stat { padding: 0.6em 0.8em; background: rgba(6, 11, 18, 0.92); }
+.book-stat { padding: 0.6em 0.8em; }
 .book-stat-k { font-size: var(--fs-micro); letter-spacing: 0.2em; color: var(--ink-faint); }
-.book-stat-v { margin-top: 0.25em; font-size: 1.2em; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; }
+.book-stat-v {
+  margin-top: 0.25em;
+  font-size: 1.2em;
+  font-weight: var(--fw-read);
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
 .book-lore {
   margin: 0.8em 0 0;
   font-size: 0.9em;
@@ -2787,14 +2800,13 @@ body.menu-open { cursor: default; }
 .book-prog {
   height: 0.7em;
   margin-top: 1em;
-  background: rgba(3, 6, 10, 0.8);
-  border: 1px solid rgba(148, 182, 214, 0.25);
+  --core-band: 0.4em;
+  --core-grad: 25%;
   transform: skewX(var(--skew));
-  overflow: hidden;
 }
 .book-prog i {
-  display: block;
-  height: 100%;
+  position: absolute;
+  inset: 0;
   transform-origin: left center;
   background: linear-gradient(90deg, #7ba81c, var(--xp));
 }
@@ -2934,7 +2946,6 @@ body.menu-open { cursor: default; }
   align-items: baseline;
   gap: 0.8em;
   padding: 0.22em 0.7em;
-  background: rgba(148, 182, 214, 0.07);
   clip-path: polygon(0.4em 0, 100% 0, calc(100% - 0.4em) 100%, 0 100%);
 }
 .run-best-k { font-size: var(--fs-micro); letter-spacing: 0.18em; color: var(--ink-dim); }
