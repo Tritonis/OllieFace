@@ -378,6 +378,13 @@ export class Director {
       // The bank deepens with the world too, so a Consumed stage can hold a
       // wave rather than only ever the next single unit. `voidBankCap(0)` is
       // the old flat 90, and this branch never runs at world 0 anyway.
+      //
+      // The clamp is deliberately two-way: when the world FALLS — a Hollowed
+      // refund, an Argent Font cleanse — the savings the void built at the
+      // deeper world are confiscated down to the new cap on the very next
+      // tick. That is the counterplay loop, not an accident: cleansing is
+      // supposed to cost the void its war chest, otherwise a banked 240 would
+      // keep paying for waves the cleansed world no longer earns.
       this.voidCredits = Math.min(voidBankCap(world), this.voidCredits + voidCreditRate(world) * h);
       this.voidSpawnT -= h;
       if (this.voidSpawnT <= 0) {

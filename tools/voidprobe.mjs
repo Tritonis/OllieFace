@@ -359,6 +359,11 @@ try {
     const G = globalThis.__GAME__, H = globalThis.__HARNESS__, ctx = G.ctx;
     const u = globalThis.__VOIDUNIT__;
     if (!u || !u.alive) return { skipped: 'no unit' };
+    // Read the live refund off the page rather than restating it here: a
+    // hard-coded fraction turns into a deterministic false failure the moment
+    // the constant is re-priced, which is exactly what happened at 0.03 -> 0.08.
+    const { VOIDTOUCHED } = await import('/src/data/corruption.js');
+    const artRefund = ctx.artifacts?.corruptionMods?.().refund ?? 1;
     const worldBefore = ctx.corruption.world;
     const fillBefore = document.querySelector('.corruption-fill')?.style.width ?? null;
     const bandBefore = document.querySelector('.corruption-band')?.textContent ?? null;
@@ -370,14 +375,22 @@ try {
       alive: u.alive,
       worldBefore: +worldBefore.toFixed(3),
       worldAfter: +ctx.corruption.world.toFixed(3),
-      expected: +(worldBefore * 0.03).toFixed(3),
+      fraction: VOIDTOUCHED.refund * artRefund,
+      expected: +(worldBefore * VOIDTOUCHED.refund * artRefund).toFixed(3),
       fillBefore, fillAfter: document.querySelector('.corruption-fill')?.style.width ?? null,
       bandBefore, bandAfter: document.querySelector('.corruption-band')?.textContent ?? null,
     };
   });
   check('the kill bled World Corruption', refund.worldAfter < refund.worldBefore, refund);
-  check('the refund is 3% of the world value', refund.expected != null
-    && Math.abs((refund.worldBefore - refund.worldAfter) - refund.expected) < 0.05, refund);
+  // Tolerance scales with the world: the bleed is a fraction of a number in the
+  // tens-to-hundreds, so a fixed absolute epsilon is the wrong shape. 1% of the
+  // world (floored at 0.05) is loose enough for the frame the kill lands on and
+  // tight enough to catch a wrong fraction — the smallest mis-tune worth
+  // reporting moves the bleed by a whole percent of the world.
+  check(`the refund is ${refund.fraction != null ? (refund.fraction * 100).toFixed(1) : '?'}% of the world value`,
+    refund.expected != null
+    && Math.abs((refund.worldBefore - refund.worldAfter) - refund.expected)
+       < Math.max(0.05, refund.worldBefore * 0.01), refund);
   check('the HUD gauge visibly narrowed',
     refund.fillBefore !== refund.fillAfter, { before: refund.fillBefore, after: refund.fillAfter });
   await shot('06-gauge-after-kill');

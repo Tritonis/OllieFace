@@ -130,6 +130,24 @@ console.log('the bank is capped');
   ok(voidBankCap(10000) === VOIDTOUCHED.maxBank, 'and at this depth the cap is maxBank');
 }
 
+console.log('cleansing the world confiscates the savings the void made at depth');
+{
+  // The clamp is two-way by design (Director.fixedUpdate): a bank filled at
+  // world 300 is cut to the shallow cap the moment a refund or an Argent Font
+  // cleanse drops the world. Without this, a hoarded 240 would keep paying for
+  // waves the cleansed world no longer earns — the counterplay would not land.
+  const { ctx, d } = makeWorld({ world: 300 });
+  ctx.events.emit('blightSeed', { x: 500, z: 500, strength: 1 });
+  d.voidCredits = voidBankCap(300);
+  d.voidSpawnT = VOIDTOUCHED.interval;      // no spend inside the window: the clamp is what is under test
+  ok(d.voidCredits === 240 && voidBankCap(300) === 240, 'primed full at the deep cap');
+  ctx.corruption.world = 50;                 // the cleanse lands
+  step(ctx, d, 0.1);
+  ok(voidBankCap(50) === 115, 'the shallow cap is 115');
+  ok(Math.abs(d.voidCredits - voidBankCap(50)) < 1e-9,
+    `the bank was cut to the new world's cap on the next tick (got ${d.voidCredits})`);
+}
+
 console.log('the void pressures harder and banks deeper as the world rots');
 {
   ok(VOIDTOUCHED.ratePerWorld === 0.02, 'rate re-priced');
@@ -179,6 +197,13 @@ console.log('the void pays its executioners a quarter');
 
 console.log('and a quarter of the XP — gold and XP are separate funnels');
 {
+  // Scope note: stubbing `addExperience` on an un-`init`ed Progression measures
+  // `_awardKillXp`'s ARITHMETIC only. It deliberately does NOT cover the
+  // authority gate — neither `ctx.authority` at Progression's kill listener nor
+  // the one inside the real `addExperience` (`Progression.js:426`) runs here.
+  // No suite covers that gate today; it is the same `ctx.authority` guard every
+  // other host-only entry point uses, and it is out of scope for a multiplier
+  // arm — but say so rather than let a green line imply coverage it has not got.
   const { Progression } = await import('../src/systems/Progression.js');
   const p = new Progression();
   let granted = 0;

@@ -10,6 +10,10 @@ import { Artifacts } from '../src/systems/Artifacts.js';
 import { hasMark } from '../src/ui/Icons.js';
 
 let pass = 0, fail = 0;
+// `ATONEMENT_REFUND` is module-private; `corruptionMods()` is the exported
+// question about it, so the tests read it from there rather than widen the
+// module's surface (the same rule this file already applies to `MARKS`).
+let ATONE_REFUND = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
 
 console.log('the cards exist and obey the card rules');
@@ -37,9 +41,21 @@ console.log('corruptionMods answers the economy question');
   const maw = mods(['maw']);
   ok(maw.feed === 2 && maw.refund === 1, 'the Maw doubles every feed');
   const atone = mods(['atonement']);
-  ok(atone.feed === 1.25 && atone.refund === 5, 'Atonement: generous refund, worse feeds');
+  ok(atone.feed === 1.25 && atone.refund > 1, 'Atonement: generous refund, worse feeds');
   const both = mods(['maw', 'atonement']);
-  ok(Math.abs(both.feed - 2.5) < 1e-9 && both.refund === 5, 'the two compose');
+  ok(Math.abs(both.feed - 2.5) < 1e-9 && both.refund === atone.refund, 'the two compose');
+  ATONE_REFUND = atone.refund;
+}
+
+// The tuned figure is the EFFECTIVE bleed, not the multiplier: Atonement pays
+// 15% of the world per Hollowed kill. The multiplier is only that target
+// divided by the base refund, so re-pricing `VOIDTOUCHED.refund` without
+// re-deriving `ATONEMENT_REFUND` silently re-tunes the card. This is the pin.
+console.log('Atonement pays an effective 15% of the world per Hollowed kill');
+{
+  const { VOIDTOUCHED } = await import('../src/data/corruption.js');
+  ok(Math.abs(VOIDTOUCHED.refund * ATONE_REFUND - 0.15) < 1e-9,
+    `base refund x the Atonement multiplier is the tuned 0.15 (got ${VOIDTOUCHED.refund * ATONE_REFUND})`);
 }
 
 console.log('— consultation points —');
@@ -116,8 +132,11 @@ console.log('the two halves agree — atonement composed with maw, and the refun
   const p = P();
   ok(c.feed(p, 10) === 25, 'maw + atonement compose to ×2.5 on a real feed, real Artifacts driving real Corruption');
   ctx.events.emit('kill', { victim: { affix: VOIDTOUCHED.affix }, source: p });
-  const expected = 25 - 25 * VOIDTOUCHED.refund * 5;
-  ok(Math.abs(c.world - expected) < 1e-9, 'a real Atonement refunds ×5 on a real Corruption');
+  // The real card, so the expectation is the real effective bleed: 15% of the
+  // world, stated as the tuned target rather than re-deriving the multiplier.
+  const expected = 25 - 25 * 0.15;
+  ok(Math.abs(c.world - expected) < 1e-9,
+    `a real Atonement bleeds the tuned 15% on a real Corruption (got ${c.world})`);
 }
 
 console.log('the two halves agree — greed time composes with the real Maw to ×5.0');

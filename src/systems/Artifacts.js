@@ -98,10 +98,16 @@ const SACRIFICE_MAX = 0.34;
 const MAW_FEED = 2;
 
 // Atonement. The refund is the card; the feed penalty is what stops it being a
-// free one. Five back per Hollowed kill against a quarter more in, so a player
-// who never fights the void ends up worse off than one who took nothing.
+// free one. The tuned figure is the EFFECTIVE bleed: the card pays 15% of the
+// world per Hollowed kill, against a quarter more corruption in on every feed,
+// so a player who never fights the void ends up worse off than one who took
+// nothing. The multiplier below is that target divided by the base refund
+// (`VOIDTOUCHED.refund`, 0.08) — it is not a standalone dial. Retune it
+// whenever `VOIDTOUCHED.refund` moves, or the card silently re-tunes itself;
+// `corruption-artifacts.test.mjs` pins the 0.15 product so it cannot drift
+// unnoticed.
 const ATONEMENT_FEED = 1.25;
-const ATONEMENT_REFUND = 5;
+const ATONEMENT_REFUND = 1.875;   // 0.08 * 1.875 = 0.15 of the world per kill
 
 export class Artifacts {
   constructor() {

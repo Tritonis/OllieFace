@@ -1,5 +1,5 @@
 // src/systems/Corruption.js
-import { bandOf, SOURCES, VOIDTOUCHED } from '../data/corruption.js';
+import { bandOf, isVoidtouched, SOURCES, VOIDTOUCHED } from '../data/corruption.js';
 import { ITEM_BY_ID } from '../data/items.js';
 
 /**
@@ -62,7 +62,7 @@ export class Corruption {
     // corruption back to whoever landed it. Riding the kill event keeps
     // Combat ignorant of corruption — the same one-way rule as every feed.
     ctx.events.on('kill', ({ victim, source }) => {
-      if (!victim || victim.affix !== VOIDTOUCHED.affix) return;
+      if (!isVoidtouched(victim)) return;
       const player = source && source.isPlayer ? source : ctx.player;
       const refund = this.ctx.artifacts?.corruptionMods?.().refund ?? 1;
       this.bleed(player, this._world * VOIDTOUCHED.refund * refund);
