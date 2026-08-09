@@ -3497,6 +3497,340 @@ export function installHarness(ctx) {
     },
 
     /**
+     * A heavy monster killed with damage to spare, photographed with the corpse
+     * mid-launch and its element's kill burst live.
+     *
+     * The shot the readability-juice slice exists to make possible, and the one
+     * question it is graded on: **does a kill read as an event.** Everything
+     * else this slice shipped is a colour lookup or a table; this is the frame
+     * where a player would notice.
+     *
+     * It is built off `explosion`, which is the closest existing analogue — a
+     * VFX-peak frame with a declared subject — and keeps its idiom throughout:
+     * `begin()` / `attach()` / `invulnerable()`, the sun turned away from
+     * before the arena is chosen, the director disabled across the composition
+     * and restored after the shutter, and a `mustContain` whose subjects are
+     * measured in pixels rather than asserted in prose.
+     *
+     * ## Where the six frames come from
+     *
+     * `VFX.corpseLaunch` throws the body at `LAUNCH.maxSpeed * k` with
+     * `vy = speed * 0.62` against `LAUNCH.gravity`, so a full-power launch
+     * (`k = 1`, which a five-pool overkill buys outright) has `vy = 6.82 m/s`
+     * and apexes at `vy / gravity = 0.31 s`. Photographing the apex would be a
+     * picture of a body *floating*: zero vertical velocity, level with the
+     * lens, indistinguishable from a hover. Six frames at the pinned 1/60 is
+     * 0.1 s — a third of the way up, `y = vy*t - g*t^2/2 = 0.57 m` off the
+     * ground it died on and still rising hard, which is the part of the arc
+     * that reads as *thrown*.
+     *
+     * The value is a parameter and the frame it produced is on disk
+     * (`reviews/round9/money-shot/`), with the measured height published in the
+     * manifest under `the corpse is off the ground it died on` — so the next
+     * person to retune it is arguing against a number rather than against a
+     * memory.
+     *
+     * ## Why the killing blow is `applyDamage` and not the trigger
+     *
+     * The shutter has to open a fixed number of frames after *the killing
+     * blow*, and a held trigger cannot say when that was: the survivor's own
+     * fire rate, the beetles wandering into his line and the hulk's own
+     * approach all move it. `ctx.combat.applyDamage` is the same call the
+     * player's weapon makes — same event, same `overkill`, same `type` on the
+     * payload, `ctx.player` as the source so the body is thrown away from him —
+     * and it is the same idiom `08-explosion` already uses when it drives
+     * `ctx.combat.explode` directly. What is *not* faked is any part of the
+     * effect: `VFX._onKill` runs off the real `kill` event and nothing here
+     * calls `corpseLaunch` or `particles.emit` by hand.
+     *
+     * `fire` is the declared element, and it is declared rather than inherited
+     * so the shot is of a *chosen* signature: `KILL_SIGNATURE.fire` is the one
+     * whose embers rise and hang (`gravity: -3`, `life: 1.10`), which is still
+     * live and climbing at 0.1 s where `shock`'s 0.32 s bolts would already be
+     * halfway gone.
+     */
+    async overkill({ launchFrames = 12, settleFrames = 45, element = 'fire', overkillPools = 5,
+                     lensMetres = 12 } = {}) {
+      await begin();
+      attach();
+      invulnerable();
+      // A real mid-run state, for the same reason `08-explosion` seeds one: a
+      // peak moment in a run that has not started is not a peak moment.
+      ctx.time = 14 * 60 + 20;
+      seedLevel(14, 0.4);
+      ctx.items?.addGold?.(2100);
+      await frames(6);
+      // Same reason as `08-explosion`: the burst is additive and reads against
+      // what is behind it, and an 18-degree sunset disc is not a backdrop.
+      if (ctx.cameraRig) {
+        ctx.cameraRig.yaw = sunAzimuth() + Math.PI;
+        ctx.cameraRig.pitch = -0.10;
+        await frames(3);
+      }
+      await faceOpenGround();
+      // The cast is fixed and hand-placed, so a reinforcement landing mid-
+      // composition is a body standing somewhere nobody chose — the same
+      // failure `04-combat` and `08-explosion` both turn the director off for.
+      if (ctx.director) {
+        ctx.director.enabled = false;
+        restoreAfterShutter(() => { ctx.director.enabled = true; });
+      }
+
+      const hulkDef = SPAWN_CARDS.find((c) => c.id === 'hulk');
+      const beetleDef = SPAWN_CARDS.find((c) => c.id === 'beetle');
+      const spawnAt = (def, at) => ctx.director?.spawnOne?.(ctx, def, at, null) ?? null;
+
+      // Sited in screen space, like everything else this file places. ~9 m puts
+      // a 4.2 m hulk large enough in frame that the launch is a visible
+      // displacement rather than a two-pixel hop, and leaves the four beetles
+      // room to flank without stacking on him.
+      camera.updateMatrixWorld(true);
+      const site = groundAtScreen(0.52, 0.62, { minDist: 8, maxDist: 11 })
+        ?? groundAtScreen(0.52, 0.58, { minDist: 7, maxDist: 14 })
+        ?? ahead(9, 0);
+      const hulk = spawnAt(hulkDef, site);
+      const beetles = [];
+      for (let i = 0; i < 4; i++) {
+        const a = (i - 1.5) * 0.42;
+        const g = groundAtScreen(0.52 + Math.sin(a) * 0.20, 0.64 + (i % 2) * 0.05,
+                                 { minDist: 7, maxDist: 15 });
+        const at = g ?? _cc.set(site.x + Math.cos(a) * 4.5,
+                                groundY(site.x + Math.cos(a) * 4.5, site.z + Math.sin(a) * 4.5, site.y),
+                                site.z + Math.sin(a) * 4.5);
+        const b = spawnAt(beetleDef, at);
+        if (b) beetles.push(b);
+      }
+      if (!hulk) console.error('[harness] 19-overkill: the hulk refused to spawn');
+      await frames(settleFrames);
+      // Past the 0.45 s spawn pop and out of any burrow/blink state, then
+      // re-seat: the cast walks at the survivor across the settle, and a hulk
+      // that has closed to 3 m is a cropped torso rather than a body with room
+      // to be thrown into.
+      await awaitVisibleHorde();
+      camera.updateMatrixWorld(true);
+      const reseat = groundAtScreen(0.52, 0.62, { minDist: 8, maxDist: 11 });
+      if (hulk && reseat) _seat(hulk, reseat);
+      beetles.forEach((b, i) => {
+        const a = (i - 1.5) * 0.42;
+        const g = groundAtScreen(0.52 + Math.sin(a) * 0.20, 0.64 + (i % 2) * 0.05,
+                                 { minDist: 7, maxDist: 15 });
+        if (g) _seat(b, g);
+      });
+      await frames(2);
+
+      /* The lens, chosen rather than inherited — and this is the one place this
+       * scenario departs from `08-explosion`'s idiom, on measurement.
+       *
+       * Shot from the third-person boom the survivor carries, the death point
+       * sits **14.6 m from the lens**, and from there the kill burst is not in
+       * the photograph: eighteen sprites 0.14 m across, emitted at the victim's
+       * position inside a 0.35 m shell — i.e. *inside the body* of a 4.2 m hulk
+       * with a 1.25 m radius. Measured from the boom, the burst contributed
+       * **1 px at 6 frames and 43 at 10**.
+       *
+       * A detached lens stood off the death point fixes it, and the standoff
+       * and the shutter were chosen together off a 3x4 grid run on a **fresh
+       * page per cell** (the sweep table is in the task report). Fresh matters:
+       * an earlier sweep that reused one page read the burst at 400-2600 px and
+       * every one of those numbers was a lie — the particle and ring pools are
+       * shared, the previous arm's corpses were seated on nearly the same spot,
+       * and the region was counting *their* deaths.
+       *
+       * What the honest grid says: the burst is small everywhere. Carried px
+       * ran **148-220 across all twelve cells**, best at 11-12 m of standoff
+       * (216-220) and worst close in (148-174), because a corpse thrown toward
+       * a near lens eclipses the effect it came from. The corpse runs the other
+       * way — it is dissolving and receding, so it falls from 3805 carried px
+       * at 12 frames to 459 at 20. The chosen cell is the one where all three
+       * subjects are clear at once: standoff ~11 m, twelve frames.
+       *
+       * The floors below are set from that grid rather than from taste, which
+       * is the same rule `MIN_SEPARATION` is set by. A frame with no burst in
+       * it reads 1 px; the grid's worst legitimate cell reads 78 carried and
+       * its best 220. 120 sits in the empty band between those populations,
+       * nearer the failure than the pass so it cannot be cleared by noise.
+       *
+       * The bearing is searched rather than fixed, for the same reason
+       * `02-vista`'s is: a fixed world diagonal finds a canyon wall on some
+       * stages.
+       */
+      // Where the burst will be, captured before the blow. `VFX._onKill` emits
+      // at the victim's position at the moment of death and the burst then
+      // stays there while the *corpse* leaves — so a region centred on the
+      // corpse at the shutter drifts off the effect it is counting, by
+      // `LAUNCH.maxSpeed * t` per second. This is the same construction
+      // `08-explosion` uses (the blast's own sited centre, not a victim's).
+      const deathAt = hulk ? hulk.position.clone() : null;
+      const lensAt = deathAt ?? playerPos();
+      // Published in the manifest so a reader can tell a searched lens from
+      // the boom fallback without re-deriving it from the camera matrix.
+      let lensPick = null;
+      {
+        const p = playerPos();
+        const axis = Math.atan2(lensAt.x - p.x, lensAt.z - p.z);
+        detach();
+        const home = camera.position.clone();
+        let best = null, bestScore = -Infinity;
+        /* Set-and-test rather than score-then-set, because the survivor is a
+         * declared subject and "the lens can see him" is not the same question
+         * as "he is in the photograph". A first cut scored on `seesTarget`
+         * alone — an occlusion ray, which is blind to the frustum — picked a
+         * bearing that cleared every obstacle, and the survivor came back at
+         * **0 px on all five delays of the shutter sweep**: off the edge of
+         * frame, unoccluded the whole time. So each candidate is actually
+         * mounted and its subjects projected through the real camera.
+         */
+        /* The bearing set reaches past a profile to `swing ~ pi` — the lens on
+         * the far side of the corpse, looking back down the throw with the
+         * survivor beyond it — and that is the half of the sweep that actually
+         * works. The geometry is over-constrained otherwise: the corpse and the
+         * survivor stand ~9 m apart, so a lens 6.5 m off the corpse at a 54 deg
+         * swing puts the survivor ~80 deg off centre against a ~44 deg
+         * half-frame, and every near candidate fails `onScreen` on him. The
+         * search then settled on its widest standoff (10 m, published in the
+         * manifest as `lens.standoffM`) and the burst came back at 253 carried
+         * px against a 300 floor. Shooting back along the throw resolves it in
+         * the direction the shot wants anyway: both subjects are on one line so
+         * both are in frame at any standoff, and the corpse is thrown *toward*
+         * the lens rather than away from it.
+         */
+        for (const dist of [lensMetres, lensMetres + 1.8, lensMetres - 1.0, lensMetres + 3.5]) {
+          for (const swing of [2.9, -2.9, 2.5, -2.5, 2.1, -2.1,
+                               0.95, -0.95, 1.25, -1.25, 1.6, -1.6, 0.65, -0.65]) {
+            const az = axis + Math.PI + swing;
+            const cx = lensAt.x + Math.sin(az) * dist;
+            const cz = lensAt.z + Math.cos(az) * dist;
+            const cy = Math.max(groundY(cx, cz, lensAt.y) + 1.6, lensAt.y + 2.2);
+            const pos = _probe.set(cx, cy, cz);
+            if (!seesTarget(pos, _cc.set(lensAt.x, lensAt.y + 1.6, lensAt.z), 0.4)) continue;
+            if (!seesTarget(pos, _cc.set(p.x, p.y + 1.0, p.z), 0.4)) continue;
+            camera.position.set(cx, cy, cz);
+            camera.lookAt(lensAt.x, lensAt.y + 1.5, lensAt.z);
+            camera.updateMatrixWorld(true);
+            if (!onScreen(lensAt.x, lensAt.y + 1.6, lensAt.z, 0.10)) continue;
+            if (!onScreen(p.x, p.y + 1.0, p.z, 0.04)) continue;
+            const ps = screenOf(p.x, p.y + 1.0, p.z);
+            // Prefer the survivor off the corpse's own screen position (he is
+            // scenery here, and a survivor fused with the subject is the same
+            // defect `08-explosion` sites its blast to avoid), prefer the swing
+            // that reads as a three-quarter view rather than a profile, and
+            // prefer the nearest standoff that satisfies both — every metre
+            // costs the burst pixels quadratically.
+            const cs = screenOf(lensAt.x, lensAt.y + 1.5, lensAt.z);
+            const sep = Math.hypot(ps.x - cs.x, ps.y - cs.y);
+            // Near beats far, hard: every metre of standoff costs the burst
+            // pixels quadratically, and it is the burst that is scarce here.
+            // Separation is preferred up to a cap so the survivor is not fused
+            // with the subject; beyond that cap it buys nothing.
+            const score = Math.min(sep, 0.30) * 10 - (dist - lensMetres) * 0.9;
+            if (score > bestScore) { bestScore = score; best = { cx, cy, cz, dist, swing }; }
+          }
+        }
+        if (!best) {
+          console.error('[harness] 19-overkill: no lens bearing framed both subjects; using the boom');
+          camera.position.copy(home);
+          attach();
+        } else {
+          camera.position.set(best.cx, best.cy, best.cz);
+          camera.lookAt(lensAt.x, lensAt.y + 1.5, lensAt.z);
+          camera.updateMatrixWorld(true);
+          lensPick = { standoffM: +best.dist.toFixed(2), swingRad: best.swing };
+        }
+      }
+
+      // Where it died, and how far off that ground it has to be at the shutter.
+      // Sampled *before* the blow, because `_updateLaunches` writes into the
+      // rig root's position and reading the ground off the corpse afterwards
+      // would be reading the launch out of its own reference.
+      const deathGround = hulk ? groundY(hulk.position.x, hulk.position.z, hulk.position.y) : 0;
+      const pool = hulk?.maxHealth ?? 0;
+
+      // The killing blow. Five pools of damage into a full-health hulk leaves
+      // `overkill / maxHealth` at ~5, far past `LAUNCH.minOverkillFrac` (0.35),
+      // so `k` clamps to 1 and the throw is at full `LAUNCH.maxSpeed` — this
+      // shot documents the top of the effect, not a median one.
+      if (hulk) {
+        ctx.combat?.applyDamage?.(hulk, pool * overkillPools, {
+          source: ctx.player, position: hulk.position.clone(), type: element,
+        });
+      }
+      await frames(launchFrames);
+      freeze();
+      camera.updateMatrixWorld(true);
+
+      const root = hulk?.rig?.root ?? null;
+      const rootWorld = root ? root.getWorldPosition(new THREE.Vector3()) : null;
+      const liftM = rootWorld ? rootWorld.y - deathGround : 0;
+      const burstScreen = deathAt ? screenOf(deathAt.x, deathAt.y + 1.4, deathAt.z) : null;
+      const burstDist = deathAt ? camera.position.distanceTo(deathAt) : 0;
+      mustContain('19-overkill', [
+        {
+          // The rig root itself, not the entity: `resolveObject` learning to
+          // see a rig is what made the launch reach anything at all (see
+          // `VFX.resolveObject`), so the object this check names is precisely
+          // the one the feature moves.
+          subject: 'the launched corpse',
+          objects: () => rigsOf([hulk]),
+          minPixels: 900, perObject: true,
+          detail: () => ({
+            id: hulk?.def?.id ?? null,
+            liftMetres: +liftM.toFixed(3),
+            launchFrames,
+            overkillFrac: pool ? +((pool * overkillPools - pool) / pool).toFixed(2) : null,
+            lens: lensPick,
+          }),
+        },
+        {
+          /* The kill burst, aggregated — and the reason, stated rather than
+           * inherited.
+           *
+           * `aggregateWhy` is the `toleratedAbsences` contract: a subject that
+           * opts out of per-object gating owes the manifest a sentence saying
+           * why its objects are not individually nameable. These are the
+           * engine's shared particle and ring pools — the same four buffers
+           * `08-explosion` names — so "the burst" is not a mesh anywhere in the
+           * scene graph, it is a region of two pools. `perObject` stays on so
+           * every pool's own count is still published beside the sum: an
+           * absence is visible even where it is not gated.
+           *
+           * Counted inside a disc about the corpse's own projected position,
+           * exactly as `08-explosion` counts its blast, so what is measured is
+           * this kill rather than the frame's whole VFX budget.
+           */
+          subject: 'the kill burst',
+          objects: () => vfxObjects(/^vfx\.(particles|rings|trails|beams)$/),
+          minPixels: 150, minCarriedPx: 120, perObject: true,
+          aggregateWhy: 'VFX buffers: the kill burst and its ring are the engine\'s shared particle/ring pools, not nameable objects',
+          region: () => (burstScreen
+            ? { x: burstScreen.x, y: burstScreen.y, r: screenHalf(4.5, burstDist) }
+            : null),
+          detail: () => ({
+            element,
+            signature: ctx.vfx?.killSignature?.(element) ?? null,
+            pools: vfxObjects(/^vfx\.(particles|rings|trails|beams)$/).map((o) => o.name),
+            distM: +burstDist.toFixed(1),
+            regionAt: burstScreen ? [+burstScreen.x.toFixed(3), +burstScreen.y.toFixed(3)] : null,
+          }),
+        },
+        { subject: 'the survivor', objects: () => [ctx.player?.group], minPixels: 400 },
+        // The arc, gated. A corpse standing exactly where it died is this
+        // shot's specific failure — the frame would look plausible and document
+        // nothing — so the height is an assertion and not a caption.
+        {
+          subject: 'the corpse is off the ground it died on',
+          dom: () => liftM > 0.25,
+          detail: () => ({
+            liftMetres: +liftM.toFixed(3),
+            deathGroundY: +deathGround.toFixed(3),
+            rootY: rootWorld ? +rootWorld.y.toFixed(3) : null,
+            launchFrames,
+          }),
+        },
+      ]);
+      return { liftMetres: +liftM.toFixed(3), element, launchFrames };
+    },
+
+    /**
      * Dense late-run inventory plus a live equipment activation.
      *
      * This shot exists to be graded on two things the other nine cannot show:

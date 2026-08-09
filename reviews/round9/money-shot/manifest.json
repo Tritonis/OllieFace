@@ -1,0 +1,351 @@
+{
+  "seed": 1337,
+  "ready": true,
+  "clockPinned": true,
+  "ms": {
+    "boot": 9708,
+    "bootTimeout": 60000
+  },
+  "shots": [
+    {
+      "name": "19-overkill",
+      "doc": "A heavy monster killed with damage to spare, photographed with the corpse mid-launch and its element's kill burst live. Judges whether a kill reads as an event.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round9\\money-shot\\19-overkill.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 861.2333333333322
+      },
+      "ms": {
+        "setup": 3237,
+        "screenshot": 490,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "the launched corpse",
+            "kind": "pixels",
+            "ok": true,
+            "px": 1717,
+            "frac": 0.01325,
+            "lum": 22.7,
+            "bgLum": 10.8,
+            "contrast": 0.353,
+            "sep": 0.357,
+            "sepP25": 0.23,
+            "sepP50": 0.33,
+            "legible": 0.819,
+            "at": [
+              0.364,
+              0.518
+            ],
+            "box": [
+              0.303,
+              0.428,
+              0.441,
+              0.594
+            ],
+            "objects": 1,
+            "visibleObjects": 1,
+            "perPx": [
+              1717
+            ],
+            "perSep": [
+              0.33
+            ],
+            "minPx": 900,
+            "minObjects": 0,
+            "present": true,
+            "detail": {
+              "id": "hulk",
+              "liftMetres": 0.924,
+              "launchFrames": 12,
+              "overkillFrac": 4,
+              "lens": {
+                "standoffM": 11,
+                "swingRad": -0.95
+              }
+            },
+            "carriedPx": 1406,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "minPerPx": 900,
+            "absentObjects": [],
+            "objectFailures": [],
+            "ungatedAbsences": [],
+            "perObjectOk": true,
+            "carriesAbsence": false,
+            "gatedOn": [
+              "px >= minPx",
+              "sepP50 >= minSep",
+              "perPx/perSep/absence over every declared object"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "legible"
+            ]
+          },
+          {
+            "subject": "the kill burst",
+            "kind": "pixels",
+            "ok": true,
+            "px": 269,
+            "frac": 0.00208,
+            "lum": 15.8,
+            "bgLum": 6.7,
+            "contrast": 0.402,
+            "sep": 0.272,
+            "sepP25": 0.17,
+            "sepP50": 0.25,
+            "legible": 0.803,
+            "at": [
+              0.46,
+              0.645
+            ],
+            "box": [
+              0.391,
+              0.517,
+              0.561,
+              0.75
+            ],
+            "region": [
+              0.49999999999999994,
+              0.5081624404853511,
+              0.2171
+            ],
+            "objects": 4,
+            "visibleObjects": 2,
+            "perPx": [
+              53,
+              0,
+              0,
+              220
+            ],
+            "perSep": [
+              0.33,
+              0,
+              0,
+              0.23
+            ],
+            "minPx": 150,
+            "minObjects": 0,
+            "present": true,
+            "detail": {
+              "element": "fire",
+              "signature": {
+                "frame": 8,
+                "speed": 6,
+                "life": 1.1,
+                "gravity": -3,
+                "drag": 2.4,
+                "stretch": 0,
+                "spin": 0,
+                "ring": true,
+                "shock": false
+              },
+              "pools": [
+                "vfx.particles",
+                "vfx.trails",
+                "vfx.beams",
+                "vfx.rings"
+              ],
+              "distM": 11.2,
+              "regionAt": [
+                0.5,
+                0.508
+              ]
+            },
+            "carriedPx": 216,
+            "minCarried": 120,
+            "legibleOk": true,
+            "aggregate": "VFX buffers: the kill burst and its ring are the engine's shared particle/ring pools, not nameable objects",
+            "absentObjects": [
+              {
+                "i": 1,
+                "px": 0,
+                "sepP50": 0
+              },
+              {
+                "i": 2,
+                "px": 0,
+                "sepP50": 0
+              }
+            ],
+            "ungatedAbsences": [
+              {
+                "i": 1,
+                "px": 0,
+                "sepP50": 0
+              },
+              {
+                "i": 2,
+                "px": 0,
+                "sepP50": 0
+              }
+            ],
+            "perObjectOk": true,
+            "carriesAbsence": true,
+            "gatedOn": [
+              "px >= minPx",
+              "carriedPx >= minCarried"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "perPx",
+              "perSep",
+              "absentObjects"
+            ]
+          },
+          {
+            "subject": "the survivor",
+            "kind": "pixels",
+            "ok": true,
+            "px": 976,
+            "frac": 0.00753,
+            "lum": 41.4,
+            "bgLum": 10.5,
+            "contrast": 0.595,
+            "sep": 0.545,
+            "sepP25": 0.31,
+            "sepP50": 0.51,
+            "legible": 0.938,
+            "at": [
+              0.848,
+              0.457
+            ],
+            "box": [
+              0.793,
+              0.324,
+              0.878,
+              0.598
+            ],
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 400,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 915,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true,
+            "carriesAbsence": false,
+            "gatedOn": [
+              "px >= minPx",
+              "sepP50 >= minSep"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "legible"
+            ]
+          },
+          {
+            "subject": "the corpse is off the ground it died on",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "liftMetres": 0.924,
+              "deathGroundY": 2.347,
+              "rootY": 3.271,
+              "launchFrames": 12
+            }
+          }
+        ]
+      },
+      "newErrors": []
+    }
+  ],
+  "errors": [],
+  "partial": true,
+  "subjectFailures": [],
+  "subjectsOk": true,
+  "toleratedAbsences": [
+    {
+      "name": "19-overkill",
+      "subject": "the kill burst",
+      "checkOk": true,
+      "gate": "aggregate: carriedPx only, no per-object gate",
+      "why": "VFX buffers: the kill burst and its ring are the engine's shared particle/ring pools, not nameable objects",
+      "perPx": [
+        53,
+        0,
+        0,
+        220
+      ],
+      "absent": [
+        {
+          "i": 1,
+          "px": 0,
+          "sepP50": 0
+        },
+        {
+          "i": 2,
+          "px": 0,
+          "sepP50": 0
+        }
+      ]
+    }
+  ],
+  "determinism": {
+    "clockPinned": true,
+    "frameDt": 0.016666666666666666,
+    "frameTimeouts": 0
+  },
+  "perf": {
+    "programs": 71,
+    "geometries": 419,
+    "textures": 53,
+    "sceneObjects": 608
+  },
+  "audio": {
+    "ready": true,
+    "state": "running",
+    "stepsEmitted": 27,
+    "stopped": false,
+    "silent": false,
+    "muted": false,
+    "musicOff": false,
+    "musicGain": 0.47999998927116394,
+    "masterGain": 0.800000011920929,
+    "voices": 0,
+    "worldVoices": 0,
+    "musicPeak": 0.13755039870738983,
+    "outputPeak": 0.13153204321861267,
+    "samples": 93,
+    "armed": true,
+    "beforeGate": {
+      "ready": true,
+      "state": "running",
+      "stepsEmitted": 12,
+      "stopped": false,
+      "musicOff": false,
+      "musicGain": 0.47999998927116394,
+      "masterGain": 0.800000011920929
+    },
+    "stepsDelta": 15,
+    "newErrors": [],
+    "checks": {
+      "armed": true,
+      "graphBuilt": true,
+      "contextRunning": true,
+      "sequencerRunning": true,
+      "notSilenced": true,
+      "musicBusOpen": true,
+      "masterOpen": true,
+      "stepsAdvanced": true,
+      "musicAudible": true,
+      "outputAudible": true,
+      "sampled": true,
+      "noNewErrors": true
+    },
+    "failed": []
+  },
+  "audioOk": true
+}

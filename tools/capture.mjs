@@ -188,6 +188,19 @@ const SCENARIOS = [
     doc: 'Run-end summary after a real death: survivor, difficulty, artifacts, time, stages, kills, damage, the run\'s item haul and anything earned. Judges whether the run reads back as a story rather than a number dump.',
     setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.runSummary?.()),
   },
+  // Appended after `16-run-summary` on purpose, and it is the placement that
+  // matters rather than the number. Every scenario draws from the shared RNG
+  // stream, so a new one inserted anywhere in the middle displaces every shot
+  // below it — measured on this harness at 19,488 -> 57,049 px for a change
+  // that only re-seated `04-combat`'s monsters. Last costs nothing. The
+  // trade-off is that `16-run-summary` has already killed the player, so on a
+  // full run this scenario begins from a dead run; it is captured with
+  // `--only 19-overkill` against a fresh page, which is the supported path.
+  {
+    name: '19-overkill',
+    doc: 'A heavy monster killed with damage to spare, photographed with the corpse mid-launch and its element\'s kill burst live. Judges whether a kill reads as an event.',
+    setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.overkill?.()),
+  },
 ];
 
 // A `settle(page, frames, maxMs)` helper used to live here, unreferenced since
