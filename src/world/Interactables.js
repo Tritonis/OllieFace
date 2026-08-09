@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { ITEM_BY_ID, TIERS } from '../data/items.js';
 import { eliteAffixesFor } from '../data/enemies.js';
-import { SOURCES, CLEANSE, PACT } from '../data/corruption.js';
+import { SOURCES, CLEANSE, PACT, cleanseAmount } from '../data/corruption.js';
 import { RNG } from '../core/MathUtil.js';
 import { getTextureSets, withRepeat, attachWorldSurface } from './Materials.js';
 
@@ -1348,7 +1348,14 @@ export class ArgentFont extends Interactable {
   }
 
   available() { return this.enabled && this.uses < this.maxUses; }
-  prompt() { return `Argent Font — bleed the world ($${this.cost})`; }
+
+  /** What this use is worth *right now* — the bleed scales with the debt. */
+  yield() { return cleanseAmount(this.ctx.corruption?.world ?? 0); }
+
+  // The live number is in the prompt on purpose: the font's whole re-pricing
+  // is invisible otherwise, and a player deciding between this and a chest is
+  // deciding about a quantity, not about the word "bleed".
+  prompt() { return `Argent Font — bleed ${this.yield()} corruption ($${this.cost})`; }
 
   interact() {
     const cor = this.ctx.corruption;
@@ -1356,7 +1363,7 @@ export class ArgentFont extends Interactable {
     if (!cor || !(cor.world > 0)) { this.ctx.audio?.play?.('deny'); return false; }
     if (!this.ctx.items?.spendGold(this.cost)) { this.ctx.audio?.play?.('deny'); return false; }
     this.uses++;
-    cor.bleed(this.ctx.player, CLEANSE.amount);
+    cor.bleed(this.ctx.player, this.yield());
     this.ctx.vfx?.burst?.(this.position, 0x9fd4ff);
     this.ctx.audio?.play?.('shrineWin', this.position);
     if (this.uses >= this.maxUses) this.water.material.emissiveIntensity = 0.05;
@@ -1761,9 +1768,9 @@ export class Interactables {
     return obj;
   }
 
-  _point(minDistFrom) {
-    return this.ctx.stage?.randomWalkablePoint?.(this.ctx.rng, { minDistFrom, minDist: 8 })
-      || new THREE.Vector3(this.ctx.rng.range(-40, 40), 0, this.ctx.rng.range(-40, 40));
+  _point(minDistFrom, rng = this.ctx.rng) {
+    return this.ctx.stage?.randomWalkablePoint?.(rng, { minDistFrom, minDist: 8 })
+      || new THREE.Vector3(rng.range(-40, 40), 0, rng.range(-40, 40));
   }
 
   /**
@@ -1777,11 +1784,14 @@ export class Interactables {
    * makes the landmarks worth walking to, gives every chest a backdrop, and
    * gives the composition a subject and a foreground in the same frame.
    *
-   * All of it draws from `ctx.rng`, so a co-op client that regenerates the
-   * stage and replays the same stream lands on the same chests.
+   * All of it draws from `ctx.rng` by default, so a co-op client that
+   * regenerates the stage and replays the same stream lands on the same
+   * chests. A caller may pass its own stream instead — the one caller that
+   * does is the band-gated font guarantee, which must not touch the shared
+   * sequence at all (see `_populateShrines`).
    */
-  _nearLandmark(lm, r0, r1) {
-    const st = this.ctx.stage, rng = this.ctx.rng;
+  _nearLandmark(lm, r0, r1, rng = this.ctx.rng) {
+    const st = this.ctx.stage;
     if (!lm || !st?.isWalkable) return null;
     for (let i = 0; i < 40; i++) {
       const a = rng.range(0, Math.PI * 2);
@@ -1796,8 +1806,8 @@ export class Interactables {
   }
 
   /** Ring placement if the stage has landmarks, uniform scatter if it doesn't. */
-  _sited(lm, r0, r1, fallbackFrom) {
-    return this._nearLandmark(lm, r0, r1) || this._point(fallbackFrom);
+  _sited(lm, r0, r1, fallbackFrom, rng = this.ctx.rng) {
+    return this._nearLandmark(lm, r0, r1, rng) || this._point(fallbackFrom, rng);
   }
 
   /**
@@ -1920,8 +1930,11 @@ export class Interactables {
       { w: stageIndex >= 1 ? 20 : 0, build: (p) => new GildedSnare(ctx, p, stageIndex) },
       { w: stageIndex >= 1 ? 18 : 0, build: (p) => new MarrowKiln(ctx, p, stageIndex) },
       { w: stageIndex >= 1 ? 16 : 0, build: (p) => new FallowVault(ctx, p, stageIndex) },
-      // Counterplay joins the bag once there is a run to have regrets about.
-      { w: stageIndex >= 1 ? 14 : 0, build: (p) => new ArgentFont(ctx, p, stageIndex) },
+      // Counterplay joins the bag once there is a run to have regrets about,
+      // and gets heavier as the debt does: the deeper the red, the likelier
+      // the bag itself offers the way out. At band 0 the weight is the
+      // original 14, so a pristine run's shrine table is untouched.
+      { w: stageIndex >= 1 ? 14 + (ctx.corruption?.band ?? 0) * 8 : 0, build: (p) => new ArgentFont(ctx, p, stageIndex) },
       // The pact is a party mechanic: solo runs never see the stone (spec §2).
       { w: (ctx.roster?.count ?? 1) > 1 ? 16 : 0, build: (p) => new CovenantStone(ctx, p) },
     ].filter((e) => e.w > 0);
@@ -1947,6 +1960,20 @@ export class Interactables {
       // shrine parked in front of the run's set piece competes with it.
       const m = mark(1 + n);
       this.add(picked.build(this._sited(m, (m?.r ?? 0) + 3.5, (m?.r ?? 0) + 11, spawn)));
+    }
+
+    // The clean path has to be walkable, not merely priced (2026-08-08
+    // direction): from Blighted up, a stage always carries a font, however the
+    // bag landed. Deliberately placed *after* every existing draw and sited off
+    // a corruption-salted local stream — `ctx.rng` is never touched here — so
+    // the layout of any stage is byte-identical to what it was before this
+    // block existed, and a pristine run reaches this line and draws nothing.
+    const band = ctx.corruption?.band ?? 0;
+    if (band >= CLEANSE.guaranteeBand && stageIndex >= 1
+        && !this.list.some((i) => i instanceof ArgentFont)) {
+      const grng = new RNG(((ctx.seed >>> 0) ^ (0x51f0ab8d * (stageIndex + 1))) >>> 0 || 1);
+      const m = mark(1 + grng.int(0, 2));
+      this.add(new ArgentFont(ctx, this._sited(m, (m?.r ?? 0) + 3.5, (m?.r ?? 0) + 11, spawn, grng), stageIndex));
     }
   }
 

@@ -63,17 +63,33 @@ export const MUTATION = { minBand: 2 };
 
 /**
  * The cleansing font (Argent Font) — counterplay, costly, never free. One use
- * bleeds `amount` world corruption, attributed to the user, for gold that
- * climbs per use and per stage. The gold price is the point: cleansing
- * competes with the chest you were about to open.
+ * bleeds `cleanseAmount(world)` — a fraction of the current debt with a flat
+ * floor — attributed to the user, for gold that climbs per use and per stage.
+ * The gold price is the point: cleansing competes with the chest you were
+ * about to open.
+ *
+ * Re-priced after the 2026-08-08 playtest: a flat 30 against an unbounded
+ * world meant a Consumed party's font was a rounding error — three uses moved
+ * a 400-point debt by 22% of one band. The fraction mirrors how the
+ * Voidtouched refund already scales, worth most exactly when the party is
+ * deepest in, and the floor keeps an early font from selling nothing.
+ * `guaranteeBand`: from this band up, every stage places at least one font —
+ * staying clean has to be *achievable*, not merely priced.
  */
 export const CLEANSE = {
   gold: 60,          // base cost on stage 0
   goldGrowth: 1.25,  // per-stage cost multiplier (the populate scale curve)
-  amount: 30,        // world corruption bled per use
-  maxUses: 2,
+  amount: 30,        // floor: world corruption bled per use, minimum
+  fraction: 0.22,    // of current world corruption, when above the floor
+  maxUses: 3,
   costClimb: 1.4,    // per-use multiplier, same curve as the Auric Cairn
+  guaranteeBand: 2,
 };
+
+/** What one use of a font is worth against a world this deep in the red. */
+export function cleanseAmount(world) {
+  return Math.max(CLEANSE.amount, Math.round(Math.max(0, world) * CLEANSE.fraction));
+}
 
 /**
  * The pact shrine (Covenant Stone) — co-op's social valve. A volunteer takes

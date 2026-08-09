@@ -4,7 +4,7 @@
 // burden onto a volunteer, and neither is a greed act — no seeds, no feeds.
 import * as THREE from 'three';
 import { Corruption } from '../src/systems/Corruption.js';
-import { CLEANSE, PACT } from '../src/data/corruption.js';
+import { CLEANSE, PACT, cleanseAmount } from '../src/data/corruption.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
@@ -30,6 +30,17 @@ console.log('the tuning constants exist and are sane');
 {
   ok(CLEANSE.gold > 0 && CLEANSE.amount > 0 && CLEANSE.maxUses >= 1 && CLEANSE.costClimb > 1 && CLEANSE.goldGrowth > 1, 'CLEANSE shape');
   ok(PACT.share > 0 && PACT.share < 1 && PACT.maxUses >= 1, 'PACT shape');
+}
+
+console.log('cleanse scales with the debt');
+{
+  ok(cleanseAmount(0) === CLEANSE.amount, 'floor holds at zero world');
+  ok(cleanseAmount(100) === CLEANSE.amount, '22% of 100 is under the 30 floor');
+  ok(cleanseAmount(200) === 44, '22% of 200');
+  ok(cleanseAmount(400) === 88, 'deep red bleeds proportionally — the playtest font could never move a Consumed party');
+  ok(cleanseAmount(-50) === CLEANSE.amount, 'a negative world cannot bleed below the floor');
+  ok(CLEANSE.maxUses === 3, 'three uses per font');
+  ok(CLEANSE.guaranteeBand === 2, 'guaranteed font from Blighted up');
 }
 
 console.log('transfer moves attribution and nothing else');
@@ -165,6 +176,19 @@ console.log('the font refuses a pristine world and an empty purse');
   ok(ctx.corruption.world === 50, 'the world did not bleed for free');
 }
 
+console.log('the font bleeds a share of the debt when the debt is deep');
+{
+  const ctx = makeWorldCtx({ gold: 100000 });
+  ctx.corruption.feed(ctx.player, 400);
+  const font = new ArgentFont(ctx, new THREE.Vector3(1, 0, 1), 0);
+  ok(font.prompt().includes('88'), `the prompt quotes what a use is worth now (${font.prompt()})`);
+  ok(font.interact() === true, 'a deep-red cleanse succeeds');
+  ok(ctx.corruption.world === 400 - 88, 'the world bled 22% of the debt, not the flat floor');
+  ok(font.interact() === true, 'and again');
+  ok(ctx.corruption.world === 312 - cleanseAmount(312), 'the second use re-reads the debt it just shrank');
+  ok(font.prompt().includes(String(cleanseAmount(ctx.corruption.world))), 'the prompt tracks the shrinking debt');
+}
+
 console.log('the Covenant Stone moves the heaviest ledger onto the volunteer');
 {
   const mateA = { isPlayer: true, alive: true, position: { x: 0, z: 0 } };
@@ -204,6 +228,70 @@ console.log('wire values are appended, never renumbered');
   const stone = new CovenantStone(makeWorldCtx(), new THREE.Vector3());
   ok(font.typeId === 13, 'argentFont is wire value 13');
   ok(stone.typeId === 14, 'covenantStone is wire value 14');
+}
+
+console.log('— the clean path is stocked, and stocking it costs a pristine run nothing —');
+{
+  const { Interactables } = await import('../src/world/Interactables.js');
+  const { RNG } = await import('../src/core/MathUtil.js');
+
+  // A populate-level ctx: no stage, no artifacts, a private ctx.rng we can
+  // re-seed identically per run, and a *stubbed* corruption gauge so band and
+  // world can be dialled without feeding anything.
+  function populated(stageIndex, corruption) {
+    const ctx = {
+      seed: 1234,
+      rng: new RNG(1234),
+      scene: new THREE.Group(),
+      player: { isPlayer: true, alive: true, position: new THREE.Vector3() },
+      events: { emit() {}, on() {} },
+      // The shop terminals roll an item on construction; the stub takes one
+      // ctx.rng draw as the real roller does, so the shared stream reaches
+      // _populateShrines at a realistic offset.
+      items: { gold: 0, spendGold: () => false },
+      time: 0,
+    };
+    ctx.items.rollItem = () => { ctx.rng.next(); return 'syringe'; };
+    if (corruption) ctx.corruption = corruption;
+    const inter = new Interactables();
+    inter.init(ctx);
+    inter.populate(stageIndex);
+    return inter;
+  }
+  // Positions to 6dp plus type, in placement order: the whole draw sequence.
+  const layout = (inter) => inter.list.map((i) =>
+    `${i.constructor.name}@${i.position.x.toFixed(6)},${i.position.z.toFixed(6)}`).join('|');
+  const fonts = (inter) => inter.list.filter((i) => i instanceof ArgentFont).length;
+
+  // The guarantee: from Blighted up, every stage carries a font.
+  let missing = 0;
+  for (let s = 1; s <= 6; s++) {
+    if (fonts(populated(s, { band: 3, world: 150 })) < 1) missing++;
+  }
+  ok(missing === 0, `every stage from Blighted up sells absolution (${6 - missing}/6 stages)`);
+  ok(fonts(populated(1, { band: 2, world: 60 })) >= 1, 'the guarantee opens at the tuned band');
+
+  // And it costs a pristine run nothing: band 0 must draw byte-identically to a
+  // run with no corruption gauge at all — same stream, same layout, no extra.
+  let drift = 0;
+  for (let s = 0; s <= 6; s++) {
+    if (layout(populated(s, { band: 0, world: 0 })) !== layout(populated(s, null))) drift++;
+  }
+  ok(drift === 0, 'a pristine stage lays out identically to one with no gauge — the guarantee draws nothing at band 0');
+
+  // The sharper guard, and the one with teeth at every band: the teleporter is
+  // sited from ctx.rng *after* the shrines, so if the guarantee had taken a
+  // single draw off the shared stream the teleporter would move. It must not,
+  // on the very stages where the guarantee is provably doing work.
+  let moved = 0, fired = 0;
+  const tp = (i) => `${i.teleporter.position.x.toFixed(6)},${i.teleporter.position.z.toFixed(6)}`;
+  for (let s = 1; s <= 6; s++) {
+    const clean = populated(s, { band: 0, world: 0 }), deep = populated(s, { band: 3, world: 150 });
+    if (tp(clean) !== tp(deep)) moved++;
+    if (fonts(clean) === 0 && fonts(deep) >= 1) fired++;
+  }
+  ok(fired > 0, `the guarantee provably placed a font the bag had not (${fired} stages)`);
+  ok(moved === 0, 'and the teleporter never moved — no draw was taken off ctx.rng');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
