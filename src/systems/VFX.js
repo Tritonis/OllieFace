@@ -1786,8 +1786,15 @@ function resolveObject(entity) {
   if (entity.isObject3D) return entity;
   const c = entity.mesh;
   if (c?.isObject3D) return c;
-  return firstObject3D(c?.group, c?.root, c?.object3D, entity.group, entity.root,
-    entity.object3d, entity.object3D, entity.object);
+  // `entity.rig?.root` is not one alias among many — it is the *only* handle an
+  // `Enemy` has on its scene node (`Enemy.spawn` does `this.rig = acquireRig(...)`
+  // and never assigns `.mesh`/`.group`/`.root`/`.object3D`). Without it this
+  // function returned null for every enemy in the game, which silently made
+  // `deathDissolve` and `hitFlash` no-ops on every enemy death and every enemy
+  // hit — the two effects most of the combat read depends on. `Player` sets
+  // `.mesh`/`.group`, which is why the seam looked healthy from the player side.
+  return firstObject3D(c?.group, c?.root, c?.object3D, entity.rig?.root,
+    entity.group, entity.root, entity.object3d, entity.object3D, entity.object);
 }
 
 function firstObject3D(...candidates) {

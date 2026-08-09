@@ -42,7 +42,6 @@ console.log('the launch constants are exported and sane');
 console.log('a launch offsets the rig root and never accumulates into it');
 {
   const vfx = new VFX();
-  const ctx = makeCtx();
   const corpse = makeCorpse();
   const home = corpse.position.clone();
 
@@ -121,6 +120,63 @@ console.log('the same corpse is never launched twice');
   vfx.corpseLaunch(corpse, 1, 0, 1);
   vfx.corpseLaunch(corpse, -1, 0, 1);
   ok(vfx._launches.length === 1, 'a second kill event on the same body is ignored');
+}
+
+console.log('a real kill event reaches the launch through _onKill');
+{
+  // The block that matters. Everything above drives `corpseLaunch` directly
+  // with a bare Object3D, which is exactly how a dead feature passes its own
+  // tests: the trigger in `_onKill` resolves the victim through
+  // `resolveObject`, and an `Enemy` is not shaped like an `Object3D` and not
+  // shaped like a `Player`. Its only handle on its scene node is `rig.root`
+  // (`Enemy.spawn`), so this victim carries `rig.root` and deliberately
+  // carries none of the `.mesh`/`.group`/`.root`/`.object3D` aliases the
+  // player path happens to provide. If `resolveObject` stops understanding
+  // that shape, no corpse in the shipped game is ever thrown again and this is
+  // the only assertion in the suite that would notice.
+
+  /** An Enemy-shaped victim: `rig.root` and nothing else to resolve through. */
+  const makeEnemy = (maxHealth) => ({
+    position: new THREE.Vector3(4, 0, -3),
+    maxHealth, alive: false, isElite: false, isBoss: false,
+    rig: { root: makeCorpse() },
+  });
+
+  /** A VFX wired far enough to run `_onKill` headless. The pooled visuals
+   *  below the launch gate need a live ctx; `ctx.rng` throwing is the real
+   *  probe now that it is installed on the instance rather than declared and
+   *  forgotten — the whole kill path is covered by it, not just the launch. */
+  const makeVfx = () => {
+    const v = new VFX();
+    v.ctx = makeCtx();
+    v.rings = { spawn() {} };
+    v.lights = { flick() {} };
+    v._shakeAt = () => {};
+    v._hitstop = () => {};
+    return v;
+  };
+
+  const vfx = makeVfx();
+  const victim = makeEnemy(100);
+  vfx._onKill({
+    victim, source: { position: new THREE.Vector3(0, 0, -3) },
+    position: victim.position, isElite: false, isBoss: false,
+    overkill: 100, type: 'hit', status: null,
+  });
+  ok(vfx._launches.length === 1, 'an Enemy-shaped victim resolves and is launched');
+  ok(vfx._launches[0]?.obj === victim.rig.root, 'and what was launched is its rig root');
+  ok(vfx._launches[0]?.vx > 0, 'thrown away from the source, not toward it');
+
+  // The same event under the threshold must stay put, so the assertion above
+  // is testing the gate and not merely that `_onKill` touches `_launches`.
+  const quiet = makeVfx();
+  const grazed = makeEnemy(100);
+  quiet._onKill({
+    victim: grazed, source: { position: new THREE.Vector3(0, 0, -3) },
+    position: grazed.position, isElite: false, isBoss: false,
+    overkill: 1, type: 'hit', status: null,
+  });
+  ok(quiet._launches.length === 0, 'a kill with nothing left over leaves the body where it fell');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
