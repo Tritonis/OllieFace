@@ -453,52 +453,85 @@ body.menu-open { cursor: default; }
   0% { transform: scale(1.16); } 100% { transform: scale(1); }
 }
 
-/* The run's second price, directly under the first. The band label is taken
-   out of flow so the bar itself stays a thin rule; the margin below is the
-   room it borrows back from the `.zone--tl` column gap. */
+/* The run's second price, and the panel's centrepiece instrument (launch spec
+   3.3). Everything about it is the real economy rendered as gauge hardware:
+   the gradations sit at the actual band thresholds from `data/corruption.js`
+   (see `gaugeGradations`), the redline opens where Overrun does, and the trace
+   under the casing is this run's own corruption history — the instrument is
+   reading the planet, and what it plots is what the party did to it. */
 .corruption {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.18em;
+  width: 13em;
+  margin-bottom: 0.3em;
+}
+.corruption-track {
   position: relative;
-  width: 180px;
-  height: 6px;
-  margin-bottom: 0.9em;
-  background: rgba(20, 12, 30, 0.55);
-  border: 1px solid rgba(160, 120, 255, 0.25);
-  border-radius: 3px;
+  width: 100%;
+  height: 0.62em;
+  --core-band: 0.62em;
+  border-color: rgba(160, 120, 255, 0.34);
 }
 .corruption-fill {
-  height: 100%;
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
   width: 0%;
-  background: #7a4fd0;
-  border-radius: 2px;
+  background: linear-gradient(180deg, #9260e6, #7a4fd0 55%, #4b2b8c);
   transition: width 0.3s ease;
 }
-.corruption-band {
+/* The redline: the gauge tells you where the route stops being contested
+   before the route label does. Opens at Overrun (110 of 190 = 57.89%), which
+   is `gaugeGradations()[2].pct` — hardcoded here because CSS cannot read it,
+   and pinned by `tests/ui-instruments.test.mjs` so a re-tune fails loudly. */
+.corruption-redline {
   position: absolute;
-  left: 0; top: 8px;
+  left: 57.89%; right: 0; top: 0; bottom: 0;
+  z-index: 1;
+  background: repeating-linear-gradient(-45deg,
+    rgba(255, 47, 176, 0.20) 0 2px, transparent 2px 5px);
+}
+/* Engraved gradations. `z-index: 3` puts them above the strata, because a
+   scale is cut into the casing and the strata are behind the glass. */
+.corruption-grad {
+  position: absolute;
+  top: -1px; bottom: -1px;
+  z-index: 3;
+  width: 1px;
+  background: var(--grad);
+}
+.corruption-grad[data-band="4"] { background: rgba(255, 143, 214, 0.75); }
+.corruption-trace {
+  --trace-h: 0.8em;
+  --trace-ink: rgba(185, 161, 232, 0.55);
+  width: 100%;
+}
+.corruption-band {
   font-size: var(--fs-micro);
-  letter-spacing: 0.08em;
+  font-weight: var(--fw-label);
+  letter-spacing: var(--track-eyebrow);
   text-transform: uppercase;
   color: #b9a1e8;
 }
-/* The door this band is buying, parked under the band label from stage 3 on.
-   Out of flow like the label, so `has-route` is what pays for the second row. */
+/* The door this band is buying, from stage 3 on. In flow under the label now:
+   the gauge is a column, so the row it needs is the row it takes. */
 .corruption-route {
-  position: absolute;
-  left: 0; top: 20px;
   display: none;
   font-style: normal;
   font-size: var(--fs-micro);
-  letter-spacing: 0.08em;
+  letter-spacing: var(--track-label);
   white-space: nowrap;
   color: #b9a1e8;
-  opacity: 0.75;
+  opacity: 0.78;
 }
 .corruption-route.is-on { display: block; }
-.corruption.has-route { margin-bottom: 1.9em; }
-/* A crossing is announced here too, not just on the screen grade: the gauge
+/* A crossing is announced here too, not just on the screen grade: the casing
    flares once on the frame the band label changes. Kept to a glow and a label
-   kick — the bar is 6px of a busy corner, so scaling it reads as a glitch. */
-.corruption.is-tick { animation: cortick 0.5s ease-out; }
+   kick — the track is a thin rule in a busy corner, so scaling it reads as a
+   glitch. The class still lands on `.corruption`; the flare is on the casing,
+   which is the part that looks like hardware. */
+.corruption.is-tick .corruption-track { animation: cortick 0.5s ease-out; }
 .corruption.is-tick .corruption-band { animation: cortickband 0.5s ease-out; }
 @keyframes cortick {
   0% { box-shadow: 0 0 0 0 rgba(255, 47, 176, 0.7); }
@@ -512,7 +545,7 @@ body.menu-open { cursor: default; }
    the same kick: the font's own argent blue, downward, and dimmer. Same rule
    the screen grade and the band sting already follow — a cleanse is good news
    and none of the three channels may read as a hit. */
-.corruption.is-tick-down { animation: cortickdown 0.5s ease-out; }
+.corruption.is-tick-down .corruption-track { animation: cortickdown 0.5s ease-out; }
 .corruption.is-tick-down .corruption-band { animation: cortickbanddown 0.5s ease-out; }
 @keyframes cortickdown {
   0% { box-shadow: 0 0 0 0 rgba(159, 212, 255, 0.5); }
@@ -522,9 +555,11 @@ body.menu-open { cursor: default; }
   0% { transform: translateY(2px); color: #cfe8ff; }
   100% { transform: translateY(0); color: #b9a1e8; }
 }
-.corruption[data-band="2"] .corruption-fill { background: #9a3fe0; }
-.corruption[data-band="3"] .corruption-fill { background: #c72fd6; box-shadow: 0 0 6px #c72fd6; }
-.corruption[data-band="4"] .corruption-fill { background: #ff2fb0; box-shadow: 0 0 10px #ff2fb0; }
+.corruption[data-band="2"] .corruption-fill { background: linear-gradient(180deg, #b055f0, #9a3fe0 55%, #5d2288); }
+.corruption[data-band="3"] .corruption-fill { background: linear-gradient(180deg, #dd52e8, #c72fd6 55%, #7a1a86); box-shadow: 0 0 6px #c72fd6; }
+.corruption[data-band="4"] .corruption-fill { background: linear-gradient(180deg, #ff62c6, #ff2fb0 55%, #96125f); box-shadow: 0 0 10px #ff2fb0; }
+.corruption[data-band="3"] .corruption-trace,
+.corruption[data-band="4"] .corruption-trace { --trace-ink: rgba(255, 143, 214, 0.68); }
 
 .inventory {
   display: flex;
@@ -702,11 +737,13 @@ body.menu-open { cursor: default; }
 .boss-track {
   position: relative;
   height: 1.05em;
-  background: rgba(4, 7, 12, 0.78);
-  border: 1px solid rgba(194, 100, 224, 0.5);
+  --core-band: 1.1em;
+  border-color: rgba(194, 100, 224, 0.5);
   transform: skewX(var(--skew));
-  overflow: hidden;
 }
+/* The boss bar already draws its phase segments through `.boss-segs`; a second
+   engraved scale under them would read as a second phase count. */
+.boss-track.core::after { content: none; }
 .boss-fill {
   position: absolute;
   inset: 0;
@@ -848,13 +885,17 @@ body.menu-open { cursor: default; }
 
 .hpblock { position: relative; width: min(34vw, 34em); }
 
+/* The core-sample treatment: `.core` in the markup brings the casing, the
+   strata and the engraved scale. `--core-grad` puts the gradations exactly on
+   the eight segment ticks `.hp-ticks` already draws, so the two scales are one
+   scale. The skew stays here because `hpshake` composes with it. */
 .hpbar {
   position: relative;
   height: 2.5em;
-  background: rgba(3, 6, 10, 0.82);
-  border: 1px solid rgba(190, 215, 240, 0.4);
+  --core-band: 0.9em;
+  --core-grad: calc(100% / 8);
+  border-color: rgba(190, 215, 240, 0.4);
   transform: skewX(var(--skew));
-  overflow: hidden;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6), 0 6px 22px rgba(0, 0, 0, 0.55);
 }
 .hpbar.is-shake { animation: hpshake 0.22s ease-out; }
@@ -954,15 +995,17 @@ body.menu-open { cursor: default; }
   100% { transform: scale(1); filter: brightness(1); }
 }
 
+/* Ten gradations, one per level's worth of the track — the same division
+   `.xp-ticks` already implies, now cut into the casing as well. */
 .xpbar {
   position: relative;
   flex: 1;
   height: 0.75em;
+  --core-band: 0.7em;
+  --core-grad: 10%;
   align-self: center;
-  background: rgba(3, 6, 10, 0.8);
-  border: 1px solid rgba(198, 242, 74, 0.28);
+  border-color: rgba(198, 242, 74, 0.28);
   transform: skewX(var(--skew));
-  overflow: hidden;
 }
 .xp-fill {
   position: absolute;

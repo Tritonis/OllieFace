@@ -16,7 +16,7 @@ import { routesFor } from '../data/realms.js';
 // a rebind ships a HUD that lies about its own controls. Nothing else about
 // Items is imported — the slot itself is read through `ctx.items`.
 import { EQUIPMENT_KEY_LABEL } from '../systems/Items.js';
-import { abilityIcon, abilityArt, equipmentArt, itemArt, hexOf, TIER_ORDER } from './Icons.js';
+import { abilityIcon, abilityArt, equipmentArt, itemArt, hexOf, TIER_ORDER, tracePathFrom } from './Icons.js';
 import { Tooltip, describeItem, prettify } from './Tooltip.js';
 import { Menus } from './Menus.js';
 import { isLocalVictim, isLocalKill } from '../core/Engine.js';
@@ -81,6 +81,14 @@ const PIP_CAP = 5;
 // Tiles per inventory row. 12 * (2.6em tile + 0.28em gap) fits the 460px cap
 // `.inventory` sets; see `onItemPickup` for why the rows are explicit.
 const INV_ROW = 12;
+
+/* The gauge's chart recorder. A run's corruption history is the one piece of
+   state the HUD holds that the world itself does not — Corruption.js knows the
+   number now, nobody knows the shape of how it got there. 48 samples at 1.5 s
+   is 72 seconds of trailing history: long enough that a chest opening shows as
+   a step, short enough that the pen keeps moving. */
+const TRACE_SAMPLES = 48;
+const TRACE_INTERVAL = 1.5;
 
 // Full-bleed screens own the frame outright. A pause or settings panel is a
 // sheet over a live run and the HUD behind it is still that run's state, but
@@ -673,6 +681,20 @@ export class HUD {
       this.set('corruptionFrac', Math.round(frac * 100), (v) => {
         this.refs.corruptionFill.style.width = `${v}%`;
       });
+      // The pen. It advances on wall-clock, not per frame, and the write goes
+      // through the diff cache keyed on the quantised buffer — so a run whose
+      // corruption is not moving costs exactly zero DOM writes, and a run that
+      // is climbing costs one `setAttribute` every 1.5 s.
+      this._trace ??= [];
+      this._traceT = (this._traceT ?? TRACE_INTERVAL) + dt;
+      if (this._traceT >= TRACE_INTERVAL) {
+        this._traceT = 0;
+        this._trace.push(frac);
+        if (this._trace.length > TRACE_SAMPLES) this._trace.shift();
+        this.set('corTrace', this._trace.map((v) => Math.round(v * 200)).join(','), () => {
+          this.refs.corruptionTrace?.setAttribute('d', tracePathFrom(this._trace, { h: 10 }));
+        });
+      }
       // The first update of a session is not a crossing: the cache starts empty
       // and `undefined !== 0` fires the callback for band 0. The label and the
       // data-band still need to land; the flare — which now means "you just
@@ -703,8 +725,9 @@ export class HUD {
       this.set('corruptionRoute', route, (v) => {
         this.refs.corruptionRoute.textContent = v;
         this.refs.corruptionRoute.classList.toggle('is-on', !!v);
-        // The line is absolutely positioned like the band label, so the gauge
-        // has to buy the row back from the column gap only while it is shown.
+        // The gauge is a flex column now, so the route line takes the row it
+        // needs and nothing has to buy it back. The class stays as a hook for
+        // anything that wants to know the gauge grew a second line.
         this.refs.corruption.classList.toggle('has-route', !!v);
       });
     }
@@ -1075,6 +1098,8 @@ function collectRefs(root) {
     moneyVal: q('.money-val'),
     corruption: q('.corruption'),
     corruptionFill: q('.corruption-fill'),
+    corruptionTrack: q('.corruption-track'),
+    corruptionTrace: q('.corruption-trace path'),
     corruptionBand: q('.corruption-band'),
     corruptionRoute: q('.corruption-route'),
     inventory: q('.inventory'),
@@ -1169,7 +1194,14 @@ const TEMPLATE = (slots, notches, dirSlots) => `
     <span class="money-val">$0</span>
   </div>
   <div class="corruption" data-band="0">
-    <div class="corruption-fill"></div>
+    <div class="corruption-track core core--bands">
+      <div class="corruption-fill"></div>
+      <i class="corruption-redline"></i>
+      ${gaugeGradations().map((g) => `<i class="corruption-grad" style="left:${g.pct}%" data-band="${g.id}"></i>`).join('')}
+    </div>
+    <svg class="trace corruption-trace" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M 0.00 5.00 L 100.00 5.00" />
+    </svg>
     <b class="corruption-band">Pristine</b>
     <i class="corruption-route"></i>
   </div>
@@ -1184,7 +1216,7 @@ const TEMPLATE = (slots, notches, dirSlots) => `
       <span class="boss-name">Boss</span>
       <span class="boss-pct">100%</span>
     </div>
-    <div class="boss-track">
+    <div class="boss-track core">
       <div class="boss-fill"></div>
       <div class="boss-segs"></div>
     </div>
@@ -1224,7 +1256,7 @@ const TEMPLATE = (slots, notches, dirSlots) => `
 
 <div class="zone zone--bl">
   <div class="hpblock">
-    <div class="hpbar">
+    <div class="hpbar core">
       <div class="hp-ghost"></div>
       <div class="hp-fill"></div>
       <div class="hp-shield"></div>
@@ -1237,7 +1269,7 @@ const TEMPLATE = (slots, notches, dirSlots) => `
     </div>
     <div class="xprow">
       <div class="level"><span class="level-tag">LVL</span><span class="level-num">1</span></div>
-      <div class="xpbar"><div class="xp-fill"></div><div class="xp-ticks"></div></div>
+      <div class="xpbar core"><div class="xp-fill"></div><div class="xp-ticks"></div></div>
     </div>
   </div>
 </div>

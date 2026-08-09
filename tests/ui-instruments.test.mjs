@@ -61,5 +61,52 @@ console.log('the gauge gradations are the real band thresholds');
      'the function reads whatever BANDS it is handed, so re-tuning corruption re-engraves the gauge');
 }
 
+console.log('the gauge trace is a ring buffer written through the diff cache');
+{
+  const { HUD } = await import('../src/ui/HUD.js');
+  // Same idiom as tests/hud-strip-hold.test.mjs: a real HUD needs a document,
+  // so the method is driven through the prototype on a hand-built `this`
+  // carrying only the fields the gauge block touches.
+  let writes = 0, lastD = null;
+  const noop = { toggle() {}, add() {}, remove() {} };
+  const self = Object.create(HUD.prototype);
+  self.c = {};
+  self.moneyShown = 0;
+  self.refs = {
+    money: { classList: noop }, moneyVal: { textContent: '' },
+    corruption: { dataset: {}, classList: noop },
+    corruptionFill: { style: {} },
+    corruptionBand: { textContent: '' },
+    corruptionRoute: { textContent: '', classList: noop },
+    corruptionTrace: { setAttribute: (k, v) => { writes++; lastD = v; } },
+  };
+  const ctx = (world) => ({
+    items: { gold: 0 },
+    corruption: { world, band: 0 },
+    progression: { stageIndex: 0 },   // < 2, so the route branch stays out of this test
+  });
+
+  // Ten seconds at a flat zero. `_traceT` starts primed, so the pen strikes on
+  // the first frame and then every 1.5 s: 7 samples in 600 frames at 1/60.
+  for (let i = 0; i < 600; i++) self.updateMoney(ctx(0), 1 / 60);
+  ok(self._trace.length === 7, `7 samples in 10 s at a 1.5 s interval (held ${self._trace.length})`);
+  ok(writes === 7, `one write per sample while the window is still filling (wrote ${writes})`);
+
+  // Once the window is full, a still instrument costs nothing: the buffer's
+  // quantised key stops changing and `this.set` swallows every write. This is
+  // the property that lets the pen live in the per-frame update at all.
+  for (let i = 0; i < 5000; i++) self.updateMoney(ctx(0), 1 / 60);
+  ok(self._trace.length === 48, `the ring buffer caps at 48 samples (held ${self._trace.length})`);
+  const settled = writes;
+  for (let i = 0; i < 600; i++) self.updateMoney(ctx(0), 1 / 60);
+  ok(writes === settled, `a flat, full window writes nothing further (${writes - settled} extra writes)`);
+
+  // A climbing run redraws.
+  for (let i = 0; i < 600; i++) self.updateMoney(ctx(i), 1 / 60);
+  ok(writes > settled, 'a climbing run redraws the pen');
+  ok(typeof lastD === 'string' && lastD.startsWith('M '), `the pen writes a path (${lastD?.slice(0, 24)}...)`);
+  ok(self._trace.length === 48, 'the window is still bounded after the climb');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
