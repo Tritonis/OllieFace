@@ -377,6 +377,20 @@ body.menu-open { cursor: default; }
   0% { transform: translateY(-2px); color: #ff8fd6; }
   100% { transform: translateY(0); color: #b9a1e8; }
 }
+/* A descent is announced too, but never in the warning colour and never with
+   the same kick: the font's own argent blue, downward, and dimmer. Same rule
+   the screen grade and the band sting already follow — a cleanse is good news
+   and none of the three channels may read as a hit. */
+.corruption.is-tick-down { animation: cortickdown 0.5s ease-out; }
+.corruption.is-tick-down .corruption-band { animation: cortickbanddown 0.5s ease-out; }
+@keyframes cortickdown {
+  0% { box-shadow: 0 0 0 0 rgba(159, 212, 255, 0.5); }
+  100% { box-shadow: 0 0 0 8px rgba(159, 212, 255, 0); }
+}
+@keyframes cortickbanddown {
+  0% { transform: translateY(2px); color: #cfe8ff; }
+  100% { transform: translateY(0); color: #b9a1e8; }
+}
 .corruption[data-band="2"] .corruption-fill { background: #9a3fe0; }
 .corruption[data-band="3"] .corruption-fill { background: #c72fd6; box-shadow: 0 0 6px #c72fd6; }
 .corruption[data-band="4"] .corruption-fill { background: #ff2fb0; box-shadow: 0 0 10px #ff2fb0; }

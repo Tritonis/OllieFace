@@ -154,6 +154,26 @@ const ROOT = 110; // A2
  */
 export const VOID_LAYER = [0, 0, 0.05, 0.10, 0.16];
 
+/**
+ * How long the band sting holds the floor after it fires, in seconds.
+ *
+ * Longer than the sting itself (0.9 s) on purpose: the guard exists so a
+ * threshold the world is sitting on cannot machine-gun the ears, and a guard
+ * that expires mid-sting would let the second one talk over the first.
+ *
+ * Two things this window is NOT, both easy to assume and both wrong:
+ *
+ *   * It is not `SNAP.window` (Blight.js), which happens to be 1.6 as well.
+ *     Nothing derives one from the other; retuning the screen lurch must not
+ *     silently retune the ears.
+ *   * It is not per-crossing. A genuinely different crossing landing inside the
+ *     window (2->3 arriving 0.3 s after 1->2) is suppressed too, so a fast
+ *     double crossing announces twice on screen and on the gauge and once in
+ *     the ears. That is deliberate — two stings in a third of a second read as
+ *     a glitch, not as two events — and this is where it is written down.
+ */
+export const BAND_STING_WINDOW = 1.6;
+
 export function voidLayerGain(band) {
   const b = Number.isFinite(band) ? Math.floor(band) : 0;
   return VOID_LAYER[Math.max(0, Math.min(b, VOID_LAYER.length - 1))];
@@ -1190,7 +1210,7 @@ export class Audio {
   bandSting(band, prev) {
     const ac = this._ensure();
     if (!ac || ac.currentTime < this._stingReady || !this._take(4, true)) return;
-    this._stingReady = ac.currentTime + 1.6;
+    this._stingReady = ac.currentTime + BAND_STING_WINDOW;
     const t = ac.currentTime;
     const up = band > prev;
     if (up) {

@@ -678,10 +678,17 @@ export class HUD {
       // crossed a line", alongside the screen lurch and the band sting — must
       // not fire for the line nobody crossed.
       const crossed = this.c.corruptionBand !== undefined;
+      const wasBand = this.c.corruptionBand;
       this.set('corruptionBand', cor.band ?? 0, (v) => {
         this.refs.corruption.dataset.band = String(v);
         this.refs.corruptionBand.textContent = BANDS[v].name;
-        if (crossed) this.pulse(this.refs.corruption, 'is-tick');
+        // Direction matters, and the other two channels already say so: Blight
+        // withholds its vignette hit on a descent because a dark flash on the
+        // frame a cleanse is bought reads as damage, and the sting resolves to
+        // a fifth instead of a tritone. The gauge is the one thing the player
+        // is actually looking at, so it must not fire the warning pink for the
+        // $746 they just spent making things better.
+        if (crossed) this.pulse(this.refs.corruption, v > wasBand ? 'is-tick' : 'is-tick-down');
       });
 
       // Route preview, not surprise (launch spec §2): from stage 3 the party
@@ -719,10 +726,17 @@ export class HUD {
 
     const coef = ctx.director?.difficultyCoefficient ?? 1;
     const d = this.difficultyOf(coef);
+    // The coefficient can fall now that World Corruption feeds it and a font can
+    // bleed the world back down, so "the difficulty name changed" is no longer
+    // the same statement as "it got worse". The escalation flare is reserved for
+    // the direction it describes; a step down just relabels. Names are unique in
+    // DIFFICULTY, so the cached one identifies the tier it came from.
+    const prevIdx = this.c.diffName === undefined
+      ? -1 : DIFFICULTY.findIndex((x) => x.name === this.c.diffName);
     this.set('diffName', d.name, (v) => {
       this.refs.clockDiff.textContent = v;
       this.refs.clock.style.setProperty('--diff', d.color);
-      this.pulse(this.refs.clock, 'is-escalate');
+      if (d.index > prevIdx) this.pulse(this.refs.clock, 'is-escalate');
     });
     const filled = Math.round(d.progress * NOTCHES);
     this.set('diffFill', filled, (v) => {

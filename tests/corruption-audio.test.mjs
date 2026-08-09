@@ -1,4 +1,4 @@
-import { Audio, VOID_LAYER, voidLayerGain } from '../src/systems/Audio.js';
+import { Audio, VOID_LAYER, voidLayerGain, BAND_STING_WINDOW } from '../src/systems/Audio.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
@@ -137,6 +137,17 @@ console.log('a band crossing announces itself');
   // bleed and a Maw feed either side of it). One announcement, not four.
   ctx.events.emit('corruptionBand', { band: 3, prev: 2 });
   ok(ac.oscCount() === afterUp, '_stingReady holds off a second sting in the same instant');
+
+  // The window is an exported dial, not a literal, and it is deliberately blunt:
+  // it suppresses genuinely distinct crossings too, so screen and gauge announce
+  // twice where the ears announce once. See BAND_STING_WINDOW's comment.
+  ok(BAND_STING_WINDOW === 1.6, 'the sting guard is a tuned, exported constant');
+  ac.currentTime = BAND_STING_WINDOW - 0.01;
+  ctx.events.emit('corruptionBand', { band: 4, prev: 3 });
+  ok(ac.oscCount() === afterUp, 'a real crossing inside the window is still suppressed');
+  ac.currentTime = BAND_STING_WINDOW + 0.01;
+  ctx.events.emit('corruptionBand', { band: 3, prev: 4 });
+  ok(ac.oscCount() > afterUp, 'and the guard opens exactly one window after the sting');
 
   ac.currentTime = 10;
   ctx.events.emit('corruptionBand', { band: 2, prev: 3 });
