@@ -217,5 +217,36 @@ console.log('and a quarter of the XP — gold and XP are separate funnels');
     `a Hollowed kill is worth rewardMult of an ordinary elite's XP (${plain} -> ${granted})`);
 }
 
+console.log('the world itself turns hostile as it rots');
+{
+  const { PRESSURE } = await import('../src/data/corruption.js');
+  ok(PRESSURE.perWorld === 0.004, 'pressure constant pinned');
+
+  // Two identical Directors, same clock, same stage count: the only difference
+  // is the second ledger. A non-zero stagesCompleted is deliberate — the term
+  // must ride *inside* the stage product, not be bolted on after it.
+  const mk = (world) => {
+    const { ctx, d } = makeWorld({ world });
+    ctx.time = 300;
+    d.stagesCompleted = 2;
+    d.updateDifficulty(ctx);
+    return d;
+  };
+  const stageFactor = Math.pow(1.15, 2);
+  const a = mk(0), b = mk(400);
+  const expected = 400 * PRESSURE.perWorld * stageFactor;
+  ok(Math.abs((b.difficultyCoefficient - a.difficultyCoefficient) - expected) < 1e-9,
+    `a Consumed world adds exactly perWorld*stage (${(b.difficultyCoefficient - a.difficultyCoefficient).toFixed(6)} vs ${expected.toFixed(6)})`);
+  ok(b.level > a.level, 'and it reads out as real Director levels, not just a number');
+
+  // Regression pin for sp-equivalence: at world 0 the coefficient must equal
+  // the pre-change formula (pf + timeFactor) * stageFactor to the bit.
+  const pf = a.playerFactor;
+  const scale = 2.0 * 1;   // DIFFICULTY_SCALE, no difficulty provider in the fixture
+  const timeFactor = (300 / 60) * 0.0506 * Math.pow(a.playerCount, 0.2) * scale;
+  ok(a.difficultyCoefficient === (pf + timeFactor) * stageFactor,
+    'a pristine world is byte-identical to the formula before this term existed');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

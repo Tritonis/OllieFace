@@ -133,6 +133,16 @@ export function cleanseAmount(world) {
  */
 export const PACT = { share: 0.35, maxUses: 1 };
 
+/**
+ * World corruption feeds the Director (2026-08-08 direction): the same number
+ * that buys blight and Voidtouched now buys everyone's health and damage.
+ * 0.004/world means Consumed-at-400 adds ~1.6 coefficient before the stage
+ * multiplier — about five Director levels at minute ten. A pristine run adds
+ * exactly zero, which is what keeps sp-equivalence and the "never a fun-tax
+ * for the cautious" promise intact.
+ */
+export const PRESSURE = { perWorld: 0.004 };
+
 export function voidCreditRate(world) {
   return VOIDTOUCHED.ratePerWorld * Math.max(0, world);
 }

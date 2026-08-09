@@ -26,7 +26,7 @@ import {
 } from '../data/enemies.js';
 import { prewarm, makeProjectile, makeShockwave, makeTelegraph } from '../entities/EnemyMeshes.js';
 import { clamp, lerp, RNG } from '../core/MathUtil.js';
-import { VOIDTOUCHED, voidCreditRate, voidBankCap } from '../data/corruption.js';
+import { VOIDTOUCHED, voidCreditRate, voidBankCap, PRESSURE } from '../data/corruption.js';
 import { Roster } from './Roster.js';
 import { isLocalVictim } from '../core/Engine.js';
 
@@ -270,7 +270,11 @@ export class Director {
     const scale = DIFFICULTY_SCALE * (ctx.difficulty?.current?.().coeff ?? 1);
     const timeFactor = (ctx.time / 60) * 0.0506 * Math.pow(this.playerCount, 0.2) * scale;
     const stageFactor = Math.pow(1.15, this.stagesCompleted);
-    this.difficultyCoefficient = (pf + timeFactor) * stageFactor;
+    // The second ledger, read straight: a rotten world raises everything against
+    // you, and it compounds with the stage the same way time does. World 0 makes
+    // this term exactly 0, so a pristine run keeps the pre-corruption curve.
+    const corFactor = (ctx.corruption?.world ?? 0) * PRESSURE.perWorld;
+    this.difficultyCoefficient = (pf + timeFactor + corFactor) * stageFactor;
 
     this.level = 1 + Math.floor(Math.max(0, this.difficultyCoefficient - pf) / 0.33);
     this.healthMult = 1 + 0.30 * (this.level - 1);
