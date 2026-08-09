@@ -134,7 +134,7 @@ export const ARTIFACTS = [
   {
     id: 'atonement',
     name: 'Artifact of Atonement',
-    description: 'Hollowed kills return five times the corruption, but every '
+    description: "Hollowed kills return 15% of the world's corruption, but every "
       + 'greed act feeds a quarter more. The debt can be worked off; the '
       + 'interest cannot.',
     flavour: 'The void keeps a ledger, and it accepts payment in kind.',
