@@ -478,9 +478,10 @@ export class HUD {
   }
 
   /** Restart a CSS animation without leaving a stale class behind. */
-  pulse(el, cls) {
+  pulse(el, cls, alsoRemove) {
     if (!el) return;
     el.classList.remove(cls);
+    if (alsoRemove) el.classList.remove(...alsoRemove);
     void el.offsetWidth;
     el.classList.add(cls);
   }
@@ -688,7 +689,7 @@ export class HUD {
         // a fifth instead of a tritone. The gauge is the one thing the player
         // is actually looking at, so it must not fire the warning pink for the
         // $746 they just spent making things better.
-        if (crossed) this.pulse(this.refs.corruption, v > wasBand ? 'is-tick' : 'is-tick-down');
+        if (crossed) this.pulse(this.refs.corruption, v > wasBand ? 'is-tick' : 'is-tick-down', v > wasBand ? ['is-tick-down'] : ['is-tick']);
       });
 
       // Route preview, not surprise (launch spec §2): from stage 3 the party

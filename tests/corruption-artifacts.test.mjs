@@ -323,6 +323,18 @@ console.log('the clean ending is what seals it — a real Profile, a real commit
     ok(rec.corruptionBand === 1 && rec.corruptionPeakBand === 4 && rec.corruption === 12,
       `the persisted run carries the corruption it was judged on (${JSON.stringify(
         { c: rec.corruption, band: rec.corruptionBand, peak: rec.corruptionPeakBand })})`);
+
+    // The evidence has to survive the trip through `_coerce`, not just sit in
+    // memory: flush to the (stubbed) localStorage, then load a fresh Profile
+    // over the same store, the same way a reload does.
+    p.flush();
+    const reloaded = new Profile();
+    reloaded.init({ authority: true, netRole: 'single', player: { isPlayer: true, survivorId: null },
+      events: { on() {}, emit() {} } });
+    const rec2 = reloaded.data.runs[0];
+    ok(rec2.corruptionBand === 1 && rec2.corruptionPeakBand === 4 && rec2.corruption === 12,
+      `the corruption fields survive a reload, not just the write (${JSON.stringify(
+        { c: rec2?.corruption, band: rec2?.corruptionBand, peak: rec2?.corruptionPeakBand })})`);
   }
 
   // The band predicate fails closed: the one unbuyable card is never handed out

@@ -146,6 +146,11 @@ export function cleanseAmount(world) {
  *
  * Non-finite reads as pristine, the same idiom as `cleanseAmount`, because this
  * number is prompt text before it is a transaction.
+ *
+ * `world` is read live, not snapshotted at prompt-open: a Voidtouched kill's
+ * refund landing mid-approach re-prices the font under the player before they
+ * press. That is intended — `interact()` reads `this.cost` once and charges
+ * that number, so the transaction itself is still correct.
  */
 export function cleanseCost(stageIndex, uses = 0, world = 0) {
   const s = Number.isFinite(stageIndex) ? Math.max(0, stageIndex) : 0;

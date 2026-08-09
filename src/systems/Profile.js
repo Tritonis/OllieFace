@@ -760,6 +760,9 @@ export class Profile {
         gold: num(r.gold, 0),
         level: num(r.level, 1),
         outcome: r.outcome === 'victory' || r.outcome === 'quit' ? r.outcome : 'death',
+        corruption: num(r.corruption, 0),
+        corruptionBand: num(r.corruptionBand, 0),
+        corruptionPeakBand: num(r.corruptionPeakBand, 0),
         inventory: Array.isArray(r.inventory)
           ? r.inventory.filter(isObj).map((i) => ({ id: str(i.id), count: num(i.count, 0) }))
           : [],
