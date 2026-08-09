@@ -1,0 +1,925 @@
+{
+  "seed": 1337,
+  "ready": true,
+  "clockPinned": true,
+  "ms": {
+    "boot": 11885,
+    "bootTimeout": 60000
+  },
+  "shots": [
+    {
+      "name": "01-title",
+      "doc": "First frame the player sees. Menu framing and background composition.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round8\\ui-shots-after\\01-title.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 0
+      },
+      "ms": {
+        "setup": 1086,
+        "screenshot": 809,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "title screen",
+            "kind": "dom",
+            "ok": true,
+            "detail": "title"
+          },
+          {
+            "subject": "the menu itself",
+            "kind": "dom",
+            "ok": true,
+            "detail": 900
+          },
+          {
+            "subject": "a live stage behind it",
+            "kind": "dom",
+            "ok": true,
+            "detail": null
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "06-loaded-hud",
+      "doc": "Late-run HUD with a full inventory and high difficulty. Judges UI density and hierarchy.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round8\\ui-shots-after\\06-loaded-hud.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 1321.383333333332
+      },
+      "ms": {
+        "setup": 2070,
+        "screenshot": 482,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "survivor",
+            "kind": "pixels",
+            "ok": true,
+            "px": 986,
+            "frac": 0.00761,
+            "lum": 46.1,
+            "bgLum": 88,
+            "contrast": 0.312,
+            "sep": 0.472,
+            "sepP25": 0.21,
+            "sepP50": 0.45,
+            "legible": 0.797,
+            "at": [
+              0.42,
+              0.597
+            ],
+            "box": [
+              0.391,
+              0.443,
+              0.451,
+              0.717
+            ],
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 400,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 786,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true,
+            "carriesAbsence": false,
+            "gatedOn": [
+              "px >= minPx",
+              "sepP50 >= minSep"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "legible"
+            ]
+          },
+          {
+            "subject": "monsters under load",
+            "kind": "pixels",
+            "ok": true,
+            "px": 1304,
+            "frac": 0.01006,
+            "lum": 147.4,
+            "bgLum": 35.5,
+            "contrast": 0.612,
+            "sep": 0.589,
+            "sepP25": 0.43,
+            "sepP50": 0.61,
+            "legible": 0.972,
+            "at": [
+              0.335,
+              0.426
+            ],
+            "box": [
+              0.001,
+              0.213,
+              0.728,
+              0.661
+            ],
+            "objects": 13,
+            "visibleObjects": 9,
+            "perPx": [
+              47,
+              234,
+              1,
+              269,
+              72,
+              57,
+              215,
+              153,
+              154,
+              96,
+              0,
+              6,
+              0
+            ],
+            "perSep": [
+              0.47,
+              0.65,
+              0.71,
+              0.71,
+              0.89,
+              0.61,
+              0.31,
+              0.51,
+              0.65,
+              0.61,
+              0,
+              0.61,
+              0
+            ],
+            "minPx": 300,
+            "minObjects": 3,
+            "present": true,
+            "carriedPx": 1267,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "crowd": {
+              "need": 3,
+              "why": "director horde: an unbounded population, not a fixed cast",
+              "absentBeyondCrowd": [
+                {
+                  "i": 2,
+                  "px": 1,
+                  "sepP50": 0.71
+                },
+                {
+                  "i": 10,
+                  "px": 0,
+                  "sepP50": 0
+                },
+                {
+                  "i": 11,
+                  "px": 6,
+                  "sepP50": 0.61
+                },
+                {
+                  "i": 12,
+                  "px": 0,
+                  "sepP50": 0
+                }
+              ],
+              "carriesAbsence": true
+            },
+            "minPerPx": 100,
+            "absentObjects": [
+              {
+                "i": 2,
+                "px": 1,
+                "sepP50": 0.71
+              },
+              {
+                "i": 10,
+                "px": 0,
+                "sepP50": 0
+              },
+              {
+                "i": 11,
+                "px": 6,
+                "sepP50": 0.61
+              },
+              {
+                "i": 12,
+                "px": 0,
+                "sepP50": 0
+              }
+            ],
+            "objectFailures": [],
+            "ungatedAbsences": [
+              {
+                "i": 2,
+                "px": 1,
+                "sepP50": 0.71
+              },
+              {
+                "i": 10,
+                "px": 0,
+                "sepP50": 0
+              },
+              {
+                "i": 11,
+                "px": 6,
+                "sepP50": 0.61
+              },
+              {
+                "i": 12,
+                "px": 0,
+                "sepP50": 0
+              }
+            ],
+            "perObjectOk": true,
+            "carriesAbsence": true,
+            "gatedOn": [
+              "px >= minPx",
+              "visibleObjects >= minObjects",
+              "sepP50 >= minSep",
+              "perPx/perSep/absence over the 3 gated of 13"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "legible",
+              "crowd.absentBeyondCrowd"
+            ]
+          },
+          {
+            "subject": "a full inventory strip",
+            "kind": "dom",
+            "ok": true,
+            "detail": 97
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "10-inventory",
+      "doc": "Dense late-run inventory across every tier, with an equipment nuke firing. Judges item icon craft, tier legibility and equipment effect quality.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round8\\ui-shots-after\\10-inventory.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 1561.7999999999984
+      },
+      "ms": {
+        "setup": 1830,
+        "screenshot": 480,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "every tier in the inventory strip",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "shown": 97,
+              "held": 97,
+              "floor": 60,
+              "catalogue": 108
+            }
+          },
+          {
+            "subject": "the equipment effect",
+            "kind": "dom",
+            "ok": true,
+            "detail": null
+          },
+          {
+            "subject": "the equipment blast",
+            "kind": "pixels",
+            "ok": true,
+            "px": 29198,
+            "frac": 0.22529,
+            "lum": 28,
+            "bgLum": 9.4,
+            "contrast": 0.497,
+            "sep": 0.396,
+            "sepP25": 0.21,
+            "sepP50": 0.39,
+            "legible": 0.838,
+            "at": [
+              0.429,
+              0.494
+            ],
+            "box": [
+              0.001,
+              0.002,
+              0.999,
+              0.998
+            ],
+            "objects": 4,
+            "visibleObjects": 2,
+            "perPx": [
+              23646,
+              0,
+              0,
+              8269
+            ],
+            "perSep": [
+              0.33,
+              0,
+              0,
+              0.31
+            ],
+            "minPx": 800,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 24468,
+            "minCarried": 800,
+            "legibleOk": true,
+            "aggregate": "VFX buffers: the meshes are shared particle/ring/trail pools, not nameable objects",
+            "absentObjects": [
+              {
+                "i": 1,
+                "px": 0,
+                "sepP50": 0
+              },
+              {
+                "i": 2,
+                "px": 0,
+                "sepP50": 0
+              }
+            ],
+            "ungatedAbsences": [
+              {
+                "i": 1,
+                "px": 0,
+                "sepP50": 0
+              },
+              {
+                "i": 2,
+                "px": 0,
+                "sepP50": 0
+              }
+            ],
+            "perObjectOk": true,
+            "carriesAbsence": true,
+            "gatedOn": [
+              "px >= minPx",
+              "carriedPx >= minCarried"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "perPx",
+              "perSep",
+              "absentObjects"
+            ]
+          },
+          {
+            "subject": "monsters standing in it",
+            "kind": "pixels",
+            "ok": true,
+            "px": 2059,
+            "frac": 0.01589,
+            "lum": 64,
+            "bgLum": 14.9,
+            "contrast": 0.621,
+            "sep": 0.538,
+            "sepP25": 0.39,
+            "sepP50": 0.57,
+            "legible": 0.928,
+            "at": [
+              0.496,
+              0.497
+            ],
+            "box": [
+              0.222,
+              0.265,
+              0.643,
+              0.646
+            ],
+            "objects": 8,
+            "visibleObjects": 4,
+            "perPx": [
+              1,
+              1069,
+              0,
+              286,
+              0,
+              0,
+              297,
+              399
+            ],
+            "perSep": [
+              0.87,
+              0.63,
+              0,
+              0.53,
+              0,
+              0,
+              0.61,
+              0.37
+            ],
+            "minPx": 200,
+            "minObjects": 2,
+            "present": true,
+            "carriedPx": 1911,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "crowd": {
+              "need": 2,
+              "why": "blast victims: knockback removes members from frame by design",
+              "absentBeyondCrowd": [
+                {
+                  "i": 0,
+                  "px": 1,
+                  "sepP50": 0.87
+                },
+                {
+                  "i": 2,
+                  "px": 0,
+                  "sepP50": 0
+                },
+                {
+                  "i": 4,
+                  "px": 0,
+                  "sepP50": 0
+                },
+                {
+                  "i": 5,
+                  "px": 0,
+                  "sepP50": 0
+                }
+              ],
+              "carriesAbsence": true
+            },
+            "minPerPx": 100,
+            "absentObjects": [
+              {
+                "i": 0,
+                "px": 1,
+                "sepP50": 0.87
+              },
+              {
+                "i": 2,
+                "px": 0,
+                "sepP50": 0
+              },
+              {
+                "i": 4,
+                "px": 0,
+                "sepP50": 0
+              },
+              {
+                "i": 5,
+                "px": 0,
+                "sepP50": 0
+              }
+            ],
+            "objectFailures": [],
+            "ungatedAbsences": [
+              {
+                "i": 0,
+                "px": 1,
+                "sepP50": 0.87
+              },
+              {
+                "i": 2,
+                "px": 0,
+                "sepP50": 0
+              },
+              {
+                "i": 4,
+                "px": 0,
+                "sepP50": 0
+              },
+              {
+                "i": 5,
+                "px": 0,
+                "sepP50": 0
+              }
+            ],
+            "perObjectOk": true,
+            "carriesAbsence": true,
+            "gatedOn": [
+              "px >= minPx",
+              "visibleObjects >= minObjects",
+              "sepP50 >= minSep",
+              "perPx/perSep/absence over the 2 gated of 8"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "legible",
+              "crowd.absentBeyondCrowd"
+            ]
+          },
+          {
+            "subject": "shutter (effect seconds)",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "age": 0.1167,
+              "frames": 7,
+              "exact": true,
+              "sim": 0.1167
+            }
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "14-survivor-select",
+      "doc": "Survivor select: the four-strong roster, a rotating 3D portrait, the selected survivor's four abilities and roster-relative stat bars. Judges menu hierarchy, typography and whether the new content is legible before a run starts.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round8\\ui-shots-after\\14-survivor-select.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 0.35
+      },
+      "ms": {
+        "setup": 3104,
+        "screenshot": 512,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "select screen",
+            "kind": "dom",
+            "ok": true,
+            "detail": null
+          },
+          {
+            "subject": "the roster",
+            "kind": "dom",
+            "ok": true,
+            "detail": 5
+          },
+          {
+            "subject": "the 3D portrait",
+            "kind": "dom",
+            "ok": true,
+            "detail": null
+          },
+          {
+            "subject": "kestrel selected",
+            "kind": "dom",
+            "ok": true,
+            "detail": "kestrel"
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "15-logbook",
+      "doc": "Logbook, survivors tab, with the 3D model viewer live. Judges the index/detail split, unlock and discovery states, and whether the browsing UI reads as the same product as the HUD.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round8\\ui-shots-after\\15-logbook.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 0.6833333333333338
+      },
+      "ms": {
+        "setup": 922,
+        "screenshot": 472,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "logbook screen",
+            "kind": "dom",
+            "ok": true,
+            "detail": null
+          },
+          {
+            "subject": "enemies index",
+            "kind": "dom",
+            "ok": true,
+            "detail": 19
+          },
+          {
+            "subject": "a selected entry",
+            "kind": "dom",
+            "ok": true,
+            "detail": "golem"
+          },
+          {
+            "subject": "the 3D model viewer",
+            "kind": "dom",
+            "ok": true,
+            "detail": null
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "16-run-summary",
+      "doc": "Run-end summary after a real death: survivor, difficulty, artifacts, time, stages, kills, damage, the run's item haul and anything earned. Judges whether the run reads back as a story rather than a number dump.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round8\\ui-shots-after\\16-run-summary.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 1064.2333333333313
+      },
+      "ms": {
+        "setup": 2117,
+        "screenshot": 423,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "the summary screen",
+            "kind": "dom",
+            "ok": true,
+            "detail": "death"
+          },
+          {
+            "subject": "a committed run record",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "time": 1064.2333333333313,
+              "stage": 1
+            }
+          },
+          {
+            "subject": "the run's item haul",
+            "kind": "dom",
+            "ok": true,
+            "detail": 97
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "17-artifacts",
+      "doc": "Pre-run artifact grid: earned artifacts enabled, unearned ones showing the challenge that opens them. Judges the card grid and the active/locked state pair.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round8\\ui-shots-after\\17-artifacts.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 0
+      },
+      "ms": {
+        "setup": 256,
+        "screenshot": 424,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "artifact screen",
+            "kind": "dom",
+            "ok": true,
+            "detail": null
+          },
+          {
+            "subject": "the card grid",
+            "kind": "dom",
+            "ok": true,
+            "detail": 10
+          },
+          {
+            "subject": "active and locked states both present",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "active": 2,
+              "total": 10
+            }
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "18-difficulty",
+      "doc": "Pre-run difficulty ladder with a rung selected. Judges the option-list treatment, the icon set and the selected/unselected state pair.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round8\\ui-shots-after\\18-difficulty.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 0
+      },
+      "ms": {
+        "setup": 140,
+        "screenshot": 379,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "difficulty screen",
+            "kind": "dom",
+            "ok": true,
+            "detail": null
+          },
+          {
+            "subject": "the ladder",
+            "kind": "dom",
+            "ok": true,
+            "detail": 3
+          },
+          {
+            "subject": "a selected rung",
+            "kind": "dom",
+            "ok": true,
+            "detail": "monsoon"
+          }
+        ]
+      },
+      "newErrors": []
+    }
+  ],
+  "errors": [],
+  "partial": true,
+  "subjectFailures": [],
+  "subjectsOk": true,
+  "toleratedAbsences": [
+    {
+      "name": "06-loaded-hud",
+      "subject": "monsters under load",
+      "checkOk": true,
+      "gate": "crowd 3/13 individually gated",
+      "why": "director horde: an unbounded population, not a fixed cast",
+      "perPx": [
+        47,
+        234,
+        1,
+        269,
+        72,
+        57,
+        215,
+        153,
+        154,
+        96,
+        0,
+        6,
+        0
+      ],
+      "absent": [
+        {
+          "i": 2,
+          "px": 1,
+          "sepP50": 0.71
+        },
+        {
+          "i": 10,
+          "px": 0,
+          "sepP50": 0
+        },
+        {
+          "i": 11,
+          "px": 6,
+          "sepP50": 0.61
+        },
+        {
+          "i": 12,
+          "px": 0,
+          "sepP50": 0
+        }
+      ]
+    },
+    {
+      "name": "10-inventory",
+      "subject": "the equipment blast",
+      "checkOk": true,
+      "gate": "aggregate: carriedPx only, no per-object gate",
+      "why": "VFX buffers: the meshes are shared particle/ring/trail pools, not nameable objects",
+      "perPx": [
+        23646,
+        0,
+        0,
+        8269
+      ],
+      "absent": [
+        {
+          "i": 1,
+          "px": 0,
+          "sepP50": 0
+        },
+        {
+          "i": 2,
+          "px": 0,
+          "sepP50": 0
+        }
+      ]
+    },
+    {
+      "name": "10-inventory",
+      "subject": "monsters standing in it",
+      "checkOk": true,
+      "gate": "crowd 2/8 individually gated",
+      "why": "blast victims: knockback removes members from frame by design",
+      "perPx": [
+        1,
+        1069,
+        0,
+        286,
+        0,
+        0,
+        297,
+        399
+      ],
+      "absent": [
+        {
+          "i": 0,
+          "px": 1,
+          "sepP50": 0.87
+        },
+        {
+          "i": 2,
+          "px": 0,
+          "sepP50": 0
+        },
+        {
+          "i": 4,
+          "px": 0,
+          "sepP50": 0
+        },
+        {
+          "i": 5,
+          "px": 0,
+          "sepP50": 0
+        }
+      ]
+    }
+  ],
+  "determinism": {
+    "clockPinned": true,
+    "frameDt": 0.016666666666666666,
+    "frameTimeouts": 0
+  },
+  "perf": {
+    "programs": 73,
+    "geometries": 425,
+    "textures": 53,
+    "sceneObjects": 631
+  },
+  "audio": {
+    "ready": true,
+    "state": "running",
+    "stepsEmitted": 83,
+    "stopped": false,
+    "silent": false,
+    "muted": false,
+    "musicOff": false,
+    "musicGain": 0.4798564910888672,
+    "masterGain": 0.800000011920929,
+    "voices": 1,
+    "worldVoices": 0,
+    "musicPeak": 0.006709969136863947,
+    "outputPeak": 0.10463384538888931,
+    "samples": 72,
+    "armed": true,
+    "beforeGate": {
+      "ready": true,
+      "state": "running",
+      "stepsEmitted": 71,
+      "stopped": true,
+      "musicOff": true,
+      "musicGain": 0.021816616877913475,
+      "masterGain": 0.800000011920929
+    },
+    "stepsDelta": 12,
+    "newErrors": [],
+    "checks": {
+      "armed": true,
+      "graphBuilt": true,
+      "contextRunning": true,
+      "sequencerRunning": true,
+      "notSilenced": true,
+      "musicBusOpen": true,
+      "masterOpen": true,
+      "stepsAdvanced": true,
+      "musicAudible": true,
+      "outputAudible": true,
+      "sampled": true,
+      "noNewErrors": true
+    },
+    "failed": []
+  },
+  "audioOk": true
+}

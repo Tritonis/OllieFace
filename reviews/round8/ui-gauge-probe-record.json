@@ -1,0 +1,109 @@
+{
+  "tool": "tools/gaugeshot.mjs",
+  "command": "node tools/gaugeshot.mjs --seed 1337 --secs 75 --target 150",
+  "renderer": "d3d11 (headed)",
+  "viewport": {
+    "w": 1600,
+    "h": 900
+  },
+  "seed": 1337,
+  "shot": "reviews/round8/ui-money-shot.png",
+  "traceIntervalS": 1.5,
+  "climbSteps": 50,
+  "gauge": {
+    "world": 150,
+    "band": 3,
+    "bandName": "Overrun",
+    "dataBand": "3",
+    "fillPct": "79%",
+    "gradations": [
+      {
+        "band": "1",
+        "left": "10.53%"
+      },
+      {
+        "band": "2",
+        "left": "28.95%"
+      },
+      {
+        "band": "3",
+        "left": "57.89%"
+      },
+      {
+        "band": "4",
+        "left": "100%"
+      }
+    ],
+    "redlineLeft": "107.797px",
+    "traceSamples": 48,
+    "traceFirst": 0.0046,
+    "traceLast": 0.7895,
+    "traceD": "M 0.00 9.95 L 2.13 9.91 L 4.26 9.86 L 6.38 9.80 L 8.51 9.66 L 10.64 9.58 L 12.77 9.49 L 14.89 9.40 L 17.02 9.30 L 19.15 9.20 L 21.28 9.09 L 23.40 8.97 L 25.53 8.85 L 27.66 8.72 L 29.79 8.59 L 31.91 8.46 L 34.04 8.32 L 36.17 8.18 L 38.30 8.03 L 40.43 7.88 L 42.55 7.72 L 44.68 7.56 L 46.81 7.40 L 48.94 7.23 L 51.06 7.05 L 53.19 6.88 L 55.32 6.70 L 57.45 6.51 L 59.57 6.33 L 61.70 6.13 L 63.83 5.94 L 65.96 5.74 L 68.09 5.54 L 70.21 5.33 L 72.34 5.12 L 74.47 4.91 L 76.60 4.69 L 78.72 4.48 L 80.85 4.25 L 82.98 4.03 L 85.11 3.80 L 87.23 3.57 L 89.36 3.33 L 91.49 3.09 L 93.62 2.85 L 95.74 2.60 L 97.87 2.36 L 100.00 2.11",
+    "route": "",
+    "inventory": 97,
+    "simTime": 1394.933
+  },
+  "checks": [
+    {
+      "name": "deep band",
+      "pass": true,
+      "detail": {
+        "band": 3,
+        "name": "Overrun",
+        "world": 150
+      }
+    },
+    {
+      "name": "the gauge is engraved with the real thresholds",
+      "pass": true,
+      "detail": [
+        {
+          "band": "1",
+          "left": "10.53%"
+        },
+        {
+          "band": "2",
+          "left": "28.95%"
+        },
+        {
+          "band": "3",
+          "left": "57.89%"
+        },
+        {
+          "band": "4",
+          "left": "100%"
+        }
+      ]
+    },
+    {
+      "name": "the pen has a window to show",
+      "pass": true,
+      "detail": 48
+    },
+    {
+      "name": "the trace is a climb, not a flat line",
+      "pass": true,
+      "detail": {
+        "first": 0.0046,
+        "last": 0.7895
+      }
+    },
+    {
+      "name": "the pen wrote a path",
+      "pass": true,
+      "detail": "M 0.00 9.95 L 2.13 9.91 L 4.26 9.86 L 6.38 9.80 "
+    },
+    {
+      "name": "the panel is loaded",
+      "pass": true,
+      "detail": 97
+    },
+    {
+      "name": "no page errors",
+      "pass": true,
+      "detail": []
+    }
+  ],
+  "pageErrors": [],
+  "ok": true
+}

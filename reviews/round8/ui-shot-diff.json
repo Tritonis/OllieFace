@@ -1,0 +1,70 @@
+{
+ "dirs": [
+  "reviews/round8/ui-shots-before",
+  "reviews/round8/ui-shots-after"
+ ],
+ "files": 8,
+ "aggregate": {
+  "meanDiff": 13.966,
+  "pctOver8": 19.651,
+  "maxOfMax": 255
+ },
+ "rows": [
+  {
+   "file": "01-title.png",
+   "meanDiff": 8.797,
+   "maxDiff": 251,
+   "pctOver8": 9.45,
+   "pixels": 1440000
+  },
+  {
+   "file": "06-loaded-hud.png",
+   "meanDiff": 26.202,
+   "maxDiff": 255,
+   "pctOver8": 38.271,
+   "pixels": 1440000
+  },
+  {
+   "file": "10-inventory.png",
+   "meanDiff": 25.119,
+   "maxDiff": 255,
+   "pctOver8": 34.841,
+   "pixels": 1440000
+  },
+  {
+   "file": "14-survivor-select.png",
+   "meanDiff": 14.573,
+   "maxDiff": 251,
+   "pctOver8": 21.735,
+   "pixels": 1440000
+  },
+  {
+   "file": "15-logbook.png",
+   "meanDiff": 8.836,
+   "maxDiff": 253,
+   "pctOver8": 17.969,
+   "pixels": 1440000
+  },
+  {
+   "file": "16-run-summary.png",
+   "meanDiff": 17.608,
+   "maxDiff": 255,
+   "pctOver8": 14.643,
+   "pixels": 1440000
+  },
+  {
+   "file": "17-artifacts.png",
+   "meanDiff": 7.042,
+   "maxDiff": 247,
+   "pctOver8": 13.613,
+   "pixels": 1440000
+  },
+  {
+   "file": "18-difficulty.png",
+   "meanDiff": 3.547,
+   "maxDiff": 247,
+   "pctOver8": 6.689,
+   "pixels": 1440000
+  }
+ ]
+}
