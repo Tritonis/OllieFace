@@ -29,7 +29,7 @@ Re-run the command after any change to `src/entities/EnemyMeshes.js`,
 | Field | Value | Why it is here |
 |---|---|---|
 | `renderer` | `d3d11` | The real adapter, not SwiftShader. `tools/silhouette.mjs --software` produces a record marked `swiftshader`; two records from different renderers are not directly comparable and a reader diffing them needs to know that before concluding the roster moved. |
-| `commit` | `c363868` | The tree whose art was measured. This task changed only `tools/` and `tests/` — nothing under `src/` — so the geometry in this record is exactly `src/` at `c363868`. |
+| `commit` | `baa495c` | The tree whose art was measured — the HEAD the tool ran against, recorded by the tool itself. The commit that *adds* this record (`4a88cfa`) is its child and changed only `tools/`, `tests/` and `reviews/`: `git diff --stat baa495c 4a88cfa -- src/` is empty, so the geometry in this record is exactly `src/` at `baa495c`, and equally at `4a88cfa`. |
 | `seed` / `range` | `1337` / `40` | The `--seed` and `--range` the run used. |
 | `width` / `height` / `fov` | `1600` / `900` / `58` | The 40 m frame. 1600x900 is `tools/capture.mjs`'s own default (`:31`) and is the basis `READABILITY.minPx40` is defined against; `fov` is read off the live camera rather than written down, so the record measures this game's lens. |
 
