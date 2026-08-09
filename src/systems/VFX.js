@@ -67,6 +67,39 @@ const HITSTOP_GATE = 0.085;
  * -------------------------------------------------------------------- */
 export const LAUNCH = { minOverkillFrac: 0.35, maxSpeed: 11, spin: 7, gravity: 22, dur: 1.5 };
 
+/**
+ * How each read family dies.
+ *
+ * Every kill in this game used to be the same white-to-orange spark shower,
+ * which meant the whole elemental half of the item pool was invisible at the
+ * exact moment it paid off. The table is deliberately about *motion* first
+ * and colour second — the colour comes from `ELEMENT_HUE`, which the hit
+ * sparks already speak, so this adds a verb to a vocabulary rather than a
+ * second vocabulary. Frames, gravity and drag are what make an ember death
+ * and a shatter death read differently in peripheral vision, which is where
+ * kills are actually seen.
+ *
+ * `kinetic` is the shipped burst, value for value (VFX.js:1195-1200 before
+ * this table existed): a kill by an item nobody has mapped looks exactly as
+ * it always did.
+ */
+export const KILL_SIGNATURE = {
+  kinetic: { frame: FRAME.SPARK, speed: 8,  life: 0.60, gravity: 10,  drag: 1.6, stretch: 1.2, spin: 0,   ring: true,  shock: false },
+  // Embers rise and hang: negative gravity, long life, heavy drag.
+  fire:    { frame: FRAME.EMBER, speed: 6,  life: 1.10, gravity: -3,  drag: 2.4, stretch: 0,   spin: 0,   ring: true,  shock: false },
+  // Shards fall hard and tumble: the read is "it broke", not "it burned".
+  ice:     { frame: FRAME.HEX,   speed: 7,  life: 0.75, gravity: 26,  drag: 0.8, stretch: 0,   spin: 9,   ring: true,  shock: false },
+  // Bolts, fast and nearly weightless, gone before the eye settles.
+  shock:   { frame: FRAME.BOLT,  speed: 15, life: 0.32, gravity: 2,   drag: 3.2, stretch: 2.0, spin: 0,   ring: true,  shock: false },
+  // Spores drift: slow, floaty, and they linger the longest of the seven.
+  nature:  { frame: FRAME.SPECK, speed: 4,  life: 1.40, gravity: 1.5, drag: 3.0, stretch: 0,   spin: 1.2, ring: false, shock: false },
+  // The void takes it inward — slow, spinning, and the one death with no
+  // outward ring, because nothing is being pushed away.
+  void:    { frame: FRAME.SHOCK, speed: 5,  life: 0.90, gravity: 0,   drag: 2.0, stretch: 0,   spin: 4,   ring: true,  shock: false },
+  // Debris and a real front.
+  blast:   { frame: FRAME.CHUNK, speed: 11, life: 0.70, gravity: 16,  drag: 1.1, stretch: 0,   spin: 6,   ring: true,  shock: true },
+};
+
 // Shake falls off with the square of camera distance; 18m is the half-power
 // point, which on a ~14m third-person boom means the player's own weapon shakes
 // hard and a fight across the arena barely registers.
@@ -755,6 +788,11 @@ export class VFX {
    * whatever the owner wrote, so two systems writing the same transform
    * compose instead of fighting.
    */
+  /** The death this element dies. Total: anything unknown is kinetic. */
+  killSignature(element) {
+    return KILL_SIGNATURE[element] || KILL_SIGNATURE.kinetic;
+  }
+
   corpseLaunch(obj, dirX, dirZ, power) {
     if (!obj?.isObject3D || !(power > 0)) return;
     for (const l of this._launches) if (l.obj === obj) return;
@@ -1303,19 +1341,32 @@ export class VFX {
     }
 
     const big = p.isBoss ? 2.2 : p.isElite ? 1.4 : 1;
+    const element = elementOf(p.type, p.status);
+    const sig = this.killSignature(element);
+    const hue = ELEMENT_HUE[element] || ELEMENT_HUE.kinetic;
 
     let e = this._ep();
     e.count = Math.round(18 * big); e.position.copy(_h1); e.shell = 0.35 * big;
     e.dir.set(0, 1, 0); e.spread = Math.PI;
-    e.speed = 8 * big; e.speedVar = 0.8;
-    e.life = 0.6; e.lifeVar = 0.5;
+    e.speed = sig.speed * big; e.speedVar = 0.8;
+    e.life = sig.life; e.lifeVar = 0.5;
     e.size0 = 0.14 * big; e.size1 = 0.02;
-    e.color0.set(0xffffff); e.color1.set(0xff5a20);
-    e.frame = FRAME.SPARK; e.stretch = 1.2; e.gravity = 10; e.drag = 1.6;
+    // `killX ?? X`: the kinetic entry overrides all three so an untyped kill
+    // is byte-identical to the one that ships, and the other six families
+    // simply use their own hues.
+    e.color0.set(hue.killCore ?? hue.core); e.color1.set(hue.killTail ?? hue.tail);
+    e.frame = sig.frame; e.stretch = sig.stretch; e.gravity = sig.gravity;
+    e.drag = sig.drag; e.spin = sig.spin;
     this.particles.emit(e);
 
-    this.rings.spawn(_h1, UP, p.isElite ? 0xffa040 : 0xff7030, 0.3 * big, 3.2 * big, 0.45, 0.8);
-    this.lights.flick(_h1, 0xff8030, 24 * big, 6 * big, 0.22);
+    // Elites keep their hotter ring regardless of element — the affix read has
+    // to survive the damage type that finished it, or a Blazing kill by a
+    // frost round stops looking like an elite kill.
+    if (sig.ring) {
+      this.rings.spawn(_h1, UP, p.isElite ? 0xffa040 : hue.ring, 0.3 * big, 3.2 * big, 0.45, 0.8);
+    }
+    this.lights.flick(_h1, hue.killFlick ?? hue.ring, 24 * big, 6 * big, 0.22);
+    if (sig.shock) this.shockwave(_h1, 4 * big, 0.34, 0.020);
 
     this._shakeAt(_h1, p.isBoss ? 0.22 : p.isElite ? 0.07 : 0.03);
     this._hitstop(p.isBoss ? HITSTOP.boss : p.isElite ? HITSTOP.elite : HITSTOP.kill, true);

@@ -164,5 +164,17 @@ console.log('an untyped hit still reads exactly as it did before elements existe
   ok(sparkColour(elementOf(d?.type, d?.status), true) === 0xffd24a, 'the shipped crit spark');
 }
 
+console.log('the default kill is the kill that ships today, all four values');
+{
+  const k = ELEMENT_HUE.kinetic;
+  ok(k.killCore === 0xffffff && k.killTail === 0xff5a20, 'the shipped burst pair');
+  ok(k.ring === 0xff7030, 'the shipped ring colour');
+  ok(k.killFlick === 0xff8030, 'the shipped light-flick colour, which is NOT the ring colour');
+  ok(k.killFlick !== k.ring, 'and the two are held apart on purpose');
+  for (const e of ELEMENTS.filter((x) => x !== 'kinetic')) {
+    ok(ELEMENT_HUE[e].killFlick === undefined, `${e} has no kill override and falls back to its own ring`);
+  }
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
