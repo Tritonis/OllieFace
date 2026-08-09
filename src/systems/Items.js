@@ -204,7 +204,10 @@ export class Items {
       // code, so a stage that starts with an empty slot seeds one. Delete this
       // block the moment the barrel exists; `setEquipment` is the same call it
       // will make.
-      if (!this.equipmentId) this.setEquipment(this.rollEquipment());
+      // `startEquipmentId` is the pre-run pick from the equipment screen
+      // (Menus.launch); absent — the Random card, or a run started before the
+      // picker existed — the slot still seeds off the shared rng as before.
+      if (!this.equipmentId) this.setEquipment(this.ctx.startEquipmentId || this.rollEquipment());
     });
 
     // Lunar cooldown items charge the player for casting, so they need to know

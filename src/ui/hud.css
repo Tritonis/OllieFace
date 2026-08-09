@@ -3027,3 +3027,42 @@ body.menu-open { cursor: default; }
   .run-prog { grid-template-columns: minmax(0, 1fr) auto; }
   .run-prog .book-prog { grid-column: 1 / -1; }
 }
+
+/* =====================================================================
+   PAUSE RUN SUMMARY + EQUIPMENT PICK
+   The pause panel widens to hold the buttons beside the run so far; the
+   stat cells and item tiles are the death screen's own (.stat / .ditem),
+   so the two summaries photograph as one product.
+   ===================================================================== */
+
+.panel--pause { width: min(64em, 92vw); }
+.pause-body { display: flex; gap: 2em; align-items: flex-start; }
+/* The button column, not the global 30em menu column — that min-width is what
+   shoved the stat grid through the panel's right edge on first ship. */
+.pause-body > .menu-list { flex: 0 0 19em; min-width: 0; }
+/* No room for subtitles beside the summary; the labels carry the buttons. */
+.pause-body .mbtn-sub { display: none; }
+.pause-sum { flex: 1; min-width: 0; }
+.pause-sum .sel-h { margin-bottom: 0.6em; }
+.pause-stats { grid-template-columns: repeat(4, 1fr); margin-bottom: 1.2em; }
+/* A grid track's automatic minimum is the cell's content; without this the
+   grid refuses to shrink and overflows the panel instead of ellipsizing. */
+.pause-stats .stat { min-width: 0; }
+.pause-stats .stat-v { font-size: 1.15em; }
+.pause-inv { display: flex; flex-wrap: wrap; gap: 0.4em; }
+/* Tiles must take the pointer or the hover card has no anchor. */
+.pause-inv .ditem { pointer-events: auto; }
+
+@media (max-width: 900px) {
+  .pause-body { flex-direction: column; }
+  .pause-stats { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* The overlay's own tooltip instance: same card, but overlay children take
+   pointer events by default, and a hoverable tooltip flickers against the
+   tile under it. */
+#overlay .tip { pointer-events: none; z-index: 30; }
+
+.equip-icon { display: block; width: 100%; height: 100%; }
+/* Equipment art is a full plate, not a line mark — show it at strength. */
+.art .art-mark .equip-icon { opacity: 1; }

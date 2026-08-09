@@ -5,8 +5,10 @@
 // class exposes plain methods rather than the system lifecycle.
 
 import * as THREE from 'three';
-import { itemArt, tierMeta, abilityArt, hexOf, markIcon, TIER_ORDER, tracePath, tracePathFrom } from './Icons.js';
+import { itemArt, equipmentArt, unknownIcon, tierMeta, abilityArt, hexOf, markIcon, TIER_ORDER, tracePath, tracePathFrom } from './Icons.js';
 import { ITEMS_BY_TIER } from '../data/items.js';
+import { EQUIPMENT } from '../data/equipment.js';
+import { Tooltip } from './Tooltip.js';
 import { SURVIVORS, getSurvivor, loadoutOf } from '../data/survivors.js';
 import { Logbook, ModelPreview, disposeTree, renderRunReport } from './Logbook.js';
 import { describeNet } from '../net/NetConfig.js';
@@ -144,6 +146,9 @@ export class Menus {
     this.survivorId = ctx.survivorId || SURVIVORS[0].id;
     this.difficultyId = null;
     this.artifactIds = new Set();
+    // Pre-run equipment pick; null means the Random card — the stage rolls one
+    // off the shared rng exactly as it did before the picker existed.
+    this.equipmentId = null;
 
     this.edictTier = 'common';   // which tier the Edict screen is showing
     this.preview = null;         // survivor-select 3D portrait
@@ -235,6 +240,9 @@ export class Menus {
             <button class="chip bez" data-nav data-act="artifacts">
               <em>Artifacts</em><span data-chip-arts>None</span>
             </button>
+            <button class="chip bez" data-nav data-act="equipment">
+              <em>Equipment</em><span data-chip-equip>Random</span>
+            </button>
             <div class="sel-spacer"></div>
             <button class="mbtn mbtn--quiet" data-nav data-act="back"><span>Back</span></button>
             <button class="mbtn mbtn--go" data-nav data-act="launch"><span>Begin run</span><em class="mbtn-sub">drop</em></button>
@@ -308,22 +316,53 @@ export class Menus {
         </div>
       </section>
 
+      <!-- ======================================================== EQUIPMENT
+           Pre-run equipment pick. Same grid grammar as the artifacts screen —
+           a rail of cards that toggle — because this is the fifth "choose from
+           tiles" panel in the build and it must read as the same product. The
+           Random card keeps the old roll for anyone who clicks straight past. -->
+      <section class="screen screen--equipment" data-screen="equipment">
+        <div class="panel panel--rules">
+          <header class="panel-head"><h2>Equipment</h2><div class="panel-tag" data-equip-src>Random</div>
+            <svg class="trace panel-rule" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
+              <path d="${tracePath('Equipment', { points: 56, amp: 0.5 })}" />
+            </svg>
+          </header>
+          <div class="art-note is-on">The tool in your Q slot when you drop. Barrels can still swap it mid-run.</div>
+          <div class="art-grid" data-equip-grid></div>
+          <nav class="menu-list menu-list--row">
+            <button class="mbtn mbtn--go" data-nav data-act="back"><span>Back</span></button>
+          </nav>
+        </div>
+      </section>
+
       <section class="screen screen--pause" data-screen="pause">
-        <div class="panel">
+        <div class="panel panel--pause">
           <header class="panel-head"><h2>Paused</h2><div class="panel-tag">Run suspended</div>
             <svg class="trace panel-rule" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
               <path d="${tracePath('Paused', { points: 56, amp: 0.5 })}" />
             </svg>
           </header>
-          <nav class="menu-list">
-            <button class="mbtn mbtn--go" data-nav data-act="resume"><span>Resume</span></button>
-            <button class="mbtn" data-nav data-act="edict" data-edict-entry hidden disabled><span>The Edict</span><em class="mbtn-sub">standing order — C</em></button>
-            <button class="mbtn" data-nav data-act="logbook"><span>Logbook</span></button>
-            <!-- Same caveat as the title-screen entry above; both say it. -->
-            <button class="mbtn" data-nav data-act="coop"><span>Co-op (beta)</span></button>
-            <button class="mbtn" data-nav data-act="settings"><span>Settings</span></button>
-            <button class="mbtn mbtn--quiet" data-nav data-act="quit"><span>Quit to title</span></button>
-          </nav>
+          <div class="pause-body">
+            <nav class="menu-list">
+              <button class="mbtn mbtn--go" data-nav data-act="resume"><span>Resume</span></button>
+              <button class="mbtn" data-nav data-act="edict" data-edict-entry hidden disabled><span>The Edict</span><em class="mbtn-sub">standing order — C</em></button>
+              <button class="mbtn" data-nav data-act="logbook"><span>Logbook</span></button>
+              <!-- Same caveat as the title-screen entry above; both say it. -->
+              <button class="mbtn" data-nav data-act="coop"><span>Co-op (beta)</span></button>
+              <button class="mbtn" data-nav data-act="settings"><span>Settings</span></button>
+              <button class="mbtn mbtn--quiet" data-nav data-act="quit"><span>Quit to title</span></button>
+            </nav>
+            <!-- Run summary: effective stats out of the Items pipeline and the
+                 haul so far, with the standard hover card on every tile. Built
+                 on open, never per-frame — see renderPause. -->
+            <aside class="pause-sum">
+              <div class="sel-h">Stats</div>
+              <div class="stat-grid pause-stats" data-pause-stats></div>
+              <div class="sel-h">Carrying</div>
+              <div class="pause-inv" data-pause-inv></div>
+            </aside>
+          </div>
         </div>
       </section>
 
@@ -515,11 +554,25 @@ export class Menus {
       if (diff) { this.setDifficulty(diff.dataset.difficulty); return; }
       const art = e.target.closest('[data-artifact]');
       if (art) { this.toggleArtifact(art.dataset.artifact); return; }
+      const equip = e.target.closest('[data-equip-id]');
+      if (equip) { this.pickEquipment(equip.dataset.equipId || null); return; }
       const tierTab = e.target.closest('[data-edict-tier]');
       if (tierTab) { this.edictTier = tierTab.dataset.edictTier; this.renderEdict(); return; }
       const order = e.target.closest('[data-edict-item]');
       if (order) this.fileEdict(order.dataset.edictItem);
     });
+    // The pause summary's hover card. Its own instance rather than the HUD's:
+    // the HUD's tooltip lives inside #hud, which is hidden behind the overlay
+    // whenever a menu screen is up.
+    this.tooltip = new Tooltip(this.ctx, this.root);
+    this.root.addEventListener('mouseover', (e) => {
+      const t = e.target.closest?.('[data-tip-id]');
+      if (t) this.tooltip.show(t, t.dataset.tipId, t.dataset.tipTier, Number(t.dataset.tipCount) || 1);
+    });
+    this.root.addEventListener('mouseout', (e) => {
+      if (e.target.closest?.('[data-tip-id]')) this.tooltip.hide();
+    });
+
     // Hovering a control makes it the focus target, so the keyboard ring and
     // the mouse never disagree about what "confirm" would press.
     this.root.addEventListener('mousemove', (e) => {
@@ -676,6 +729,14 @@ export class Menus {
       const n = this.activeArtifacts().length;
       arts.textContent = n ? `${n} active` : 'None';
     }
+    const equip = this.root.querySelector('[data-chip-equip]');
+    if (equip) equip.textContent = this.equipmentName();
+  }
+
+  /** Display name of the current pre-run equipment pick. */
+  equipmentName() {
+    if (!this.equipmentId) return 'Random';
+    return EQUIPMENT.find((e) => e.id === this.equipmentId)?.name ?? this.equipmentId;
   }
 
   /**
@@ -850,6 +911,89 @@ export class Menus {
             : (a.description || ''))}</div>
         </button>`;
     }).join('');
+  }
+
+  // -------------------------------------------------------------- equipment
+
+  pickEquipment(id) {
+    this.equipmentId = id || null;
+    this.renderEquipment();
+    this.syncChips();
+  }
+
+  renderEquipment() {
+    const grid = this.root.querySelector('[data-equip-grid]');
+    if (!grid) return;
+    const src = this.root.querySelector('[data-equip-src]');
+    if (src) src.textContent = this.equipmentName();
+    const sel = this.equipmentId;
+    // `description` is authored as a zero-arg function on every equipment card;
+    // the guard keeps a future data-shape change from taking the screen down.
+    const desc = (d) => {
+      try { return typeof d.description === 'function' ? String(d.description()) : String(d.description || ''); }
+      catch { return ''; }
+    };
+    const accent = tierMeta('equipment').color;
+    const card = (id, mark, name, text) =>
+      `<button class="art${(sel ?? '') === (id ?? '') ? ' is-on' : ''}" data-nav data-equip-id="${escapeHtml(id ?? '')}"
+          style="--accent:${escapeHtml(accent)}">
+        <div class="art-mark">${mark}</div>
+        <div class="art-name">${escapeHtml(name)}</div>
+        <div class="art-desc">${escapeHtml(text)}</div>
+      </button>`;
+    grid.innerHTML = [
+      card(null, `<img class="equip-icon" src="${unknownIcon('equipment')}" alt="" draggable="false" />`, 'Random', 'Whatever the drop rolls. The old behaviour.'),
+      ...EQUIPMENT.map((e) => card(
+        e.id,
+        `<img class="equip-icon" src="${equipmentArt(e.id)}" alt="" draggable="false" />`,
+        e.name,
+        `${desc(e)} Cooldown ${e.cooldown}s.`,
+      )),
+    ].join('');
+  }
+
+  // ------------------------------------------------------------------- pause
+
+  /**
+   * The run so far: effective stats out of the Items pipeline (so items, buffs
+   * and artifacts are all included) and the haul, each tile carrying the same
+   * hover card the HUD strip uses. Rebuilt when the screen opens, never
+   * per-frame.
+   */
+  renderPause() {
+    const host = this.root.querySelector('[data-pause-stats]');
+    const inv = this.root.querySelector('[data-pause-inv]');
+    if (!host || !inv) return;
+    const p = this.ctx.player;
+    const s = p?.stats;
+    if (!s) {
+      host.innerHTML = '';
+      inv.innerHTML = '<div class="ditem-empty">None</div>';
+      return;
+    }
+    const rows = [
+      ['Health', `${Math.ceil(Math.max(0, p.health))} / ${Math.round(s.maxHealth)}`],
+      ['Regen', `${round1(s.healthRegen)}/s`],
+      ['Damage', String(round1(s.damage))],
+      ['Attack speed', `${s.attackSpeed.toFixed(2)}x`],
+      ['Crit', `${Math.round(s.critChance * 100)}% · ${round1(s.critMult)}x`],
+      ['Armor', String(Math.round(s.armor))],
+      ['Speed', `${round1(s.moveSpeed)} m/s`],
+      ['Cooldowns', `${s.cooldownMult.toFixed(2)}x`],
+    ];
+    host.innerHTML = rows
+      .map(([k, v]) => `<div class="stat bez"><div class="stat-k">${k}</div><div class="stat-v">${v}</div></div>`)
+      .join('');
+
+    const tile = (id, tier, count) =>
+      `<div class="ditem t-${escapeHtml(tier)}" data-tip-id="${escapeHtml(id)}" data-tip-tier="${escapeHtml(tier)}" data-tip-count="${count}">
+        <img src="${itemArt(id, tier)}" alt="" draggable="false" />${count > 1 ? `<b>x${count}</b>` : ''}
+      </div>`;
+    const eq = this.ctx.items?.equipment ?? null;
+    const held = this.ctx.items?.inventory?.() ?? [];
+    const tiles = (eq ? tile(eq.id, 'equipment', 1) : '')
+      + held.map((it) => tile(it.id, it.def.tier, it.count)).join('');
+    inv.innerHTML = tiles || '<div class="ditem-empty">None yet</div>';
   }
 
   // ------------------------------------------------------------------- edict
@@ -1031,11 +1175,14 @@ export class Menus {
     if (prev === 'select' && name !== 'select') this.unmountPreview();
     if (prev === 'logbook' && name !== 'logbook') this.logbook.onClose();
 
+    this.tooltip?.hide();
     this.syncEdictEntries();
     if (name === 'select') { this.renderSelect(); this.mountPreview(); }
     if (name === 'difficulty') this.renderDifficulty();
     if (name === 'artifacts') this.renderArtifacts();
+    if (name === 'equipment') this.renderEquipment();
     if (name === 'edict') this.renderEdict();
+    if (name === 'pause') this.renderPause();
     if (name === 'logbook') this.logbook.onOpen();
 
     this.navIndex = 0;
@@ -1073,6 +1220,7 @@ export class Menus {
       case 'logbook':
       case 'difficulty':
       case 'artifacts':
+      case 'equipment':
         this.push(action);
         break;
       case 'edict':
@@ -1139,6 +1287,8 @@ export class Menus {
     const card = getSurvivor(this.survivorId);
     this.ctx.survivorId = card.id;
     this.ctx.setSurvivor?.(card.id);
+    // Items' stage-start seeding reads this; null keeps the random roll.
+    this.ctx.startEquipmentId = this.equipmentId;
     if (!this.ctx.difficultyId) this.setDifficulty(this.currentDifficulty()?.id);
     this.newChallenges.length = 0;
     this.close();
