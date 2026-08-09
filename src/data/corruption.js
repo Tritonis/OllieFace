@@ -109,6 +109,7 @@ export const CLEANSE = {
   fraction: 0.22,    // of current world corruption, when above the floor
   maxUses: 3,
   costClimb: 1.4,    // per-use multiplier, same curve as the Auric Cairn
+  goldPerWorld: 1.5, // and the debt itself is on the bill: see `cleanseCost`
   guaranteeBand: 2,
 };
 
@@ -123,6 +124,35 @@ export const CLEANSE = {
 export function cleanseAmount(world) {
   const w = Number.isFinite(world) ? Math.max(0, world) : 0;
   return Math.max(CLEANSE.amount, Math.round(w * CLEANSE.fraction));
+}
+
+/**
+ * What one use of a font *costs*, at a stage, after `uses` presses, against a
+ * world this deep in the red.
+ *
+ * The stage and per-use terms are the shrine price ladder every other shrine
+ * rides. The world term is the one this slice added, and it is the point: the
+ * price of the exit has to scale with the debt being retired, or corrupting all
+ * run and laundering at the door is strictly dominant — every other number in
+ * that loop (gold income, loot, the Herald's own stats) already scales with the
+ * world, so a fixed price is a discount that grows with greed. At world 400 the
+ * term is +600 gold per press, which is real chest money rather than the ~24
+ * seconds of income the flat curve charged.
+ *
+ * A consequence worth stating: a deep visit's price *falls* across its three
+ * presses, because each press retires part of the debt faster than `costClimb`
+ * climbs. That is the honest reading — the second press is cleaning a smaller
+ * world — and it is what the tests pin.
+ *
+ * Non-finite reads as pristine, the same idiom as `cleanseAmount`, because this
+ * number is prompt text before it is a transaction.
+ */
+export function cleanseCost(stageIndex, uses = 0, world = 0) {
+  const s = Number.isFinite(stageIndex) ? Math.max(0, stageIndex) : 0;
+  const u = Number.isFinite(uses) ? Math.max(0, uses) : 0;
+  const w = Number.isFinite(world) ? Math.max(0, world) : 0;
+  return Math.round(CLEANSE.gold * Math.pow(CLEANSE.goldGrowth, s) * Math.pow(CLEANSE.costClimb, u)
+    + w * CLEANSE.goldPerWorld);
 }
 
 /**

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { ITEM_BY_ID, TIERS } from '../data/items.js';
 import { eliteAffixesFor } from '../data/enemies.js';
-import { SOURCES, CLEANSE, PACT, cleanseAmount } from '../data/corruption.js';
+import { SOURCES, CLEANSE, PACT, cleanseAmount, cleanseCost } from '../data/corruption.js';
 import { RNG } from '../core/MathUtil.js';
 import { getTextureSets, withRepeat, attachWorldSurface } from './Materials.js';
 
@@ -1313,17 +1313,25 @@ export class MarrowKiln extends Interactable {
 
 /**
  * The Argent Font — pay gold, bleed the world. The counterplay valve given a
- * body (launch spec §1): the font undoes what greed did, at a price that
- * climbs per use, and it is NOT a greed act — no seed, no tithe. Refuses a
- * pristine world outright rather than selling nothing.
+ * body (launch spec §1): the font undoes what greed did, at a price that climbs
+ * per use *and* rides the debt being retired (`cleanseCost`), and it is NOT a
+ * greed act — no seed, no tithe. Refuses a pristine world outright rather than
+ * selling nothing.
  */
 export class ArgentFont extends Interactable {
   constructor(ctx, position, stageIndex) {
     super(ctx, position);
     this.uses = 0;
     this.maxUses = CLEANSE.maxUses;
-    this.cost = Math.round(CLEANSE.gold * Math.pow(CLEANSE.goldGrowth, stageIndex || 0));
+    this.stageIndex = stageIndex || 0;
     this.typeId = TYPE_ID.argentFont;
+    // `cost` is live rather than stored, because both terms that set it move
+    // under the font while the player stands at it — the per-use climb and the
+    // world being retired — and a stored price would be stale the moment
+    // anybody fed the gauge. Redefined over the base's plain field so every
+    // existing reader (`prompt`, `spendGold`, the probes) keeps reading `.cost`
+    // and gets the current number.
+    Object.defineProperty(this, 'cost', { get: () => this.price(), enumerable: true });
 
     const base = new THREE.Mesh(sharedGeo('bloodBase', () => plinthGeo(1.0, 8)), STONE());
     // The Ichor Font's basin form in silver: the two fonts rhyme on purpose —
@@ -1352,6 +1360,9 @@ export class ArgentFont extends Interactable {
   /** What this use is worth *right now* — the bleed scales with the debt. */
   yield() { return cleanseAmount(this.ctx.corruption?.world ?? 0); }
 
+  /** What this use costs right now — see the constructor for why it is live. */
+  price() { return cleanseCost(this.stageIndex, this.uses, this.ctx.corruption?.world ?? 0); }
+
   // The live number is in the prompt on purpose: the font's whole re-pricing
   // is invisible otherwise, and a player deciding between this and a chest is
   // deciding about a quantity, not about the word "bleed".
@@ -1359,9 +1370,11 @@ export class ArgentFont extends Interactable {
   // Co-op caveat, same shape as the `$0` cost gap noted on VIEW_BUILDERS:
   // `Corruption` is not replicated (nothing in src/net/ carries it) and `feed`
   // is authority-gated, so a client's `_world` never leaves 0 and its prompt
-  // reads "bleed 30 corruption ($0)" — the floor — while the host may be
-  // selling 88. The press still resolves on the host at the host's number, so
-  // this is stale display, not a stale transaction. Replicating the gauge is a
+  // reads "bleed 30 corruption ($60)" — the floor bleed at the base price —
+  // while the host may be selling 88 for $746. Both halves of the prompt now
+  // read the world, so both are stale on a client, and by the same mechanism:
+  // the press still resolves on the host at the host's numbers, so this is
+  // stale display, not a stale transaction. Replicating the gauge is a
   // net-layer change and deliberately not made here.
   prompt() { return `Argent Font — bleed ${this.yield()} corruption ($${this.cost})`; }
 
@@ -1375,7 +1388,6 @@ export class ArgentFont extends Interactable {
     this.ctx.vfx?.burst?.(this.position, 0x9fd4ff);
     this.ctx.audio?.play?.('shrineWin', this.position);
     if (this.uses >= this.maxUses) this.water.material.emissiveIntensity = 0.05;
-    this.cost = Math.round(this.cost * CLEANSE.costClimb);
     return true;
   }
 

@@ -4,7 +4,7 @@
 // burden onto a volunteer, and neither is a greed act — no seeds, no feeds.
 import * as THREE from 'three';
 import { Corruption } from '../src/systems/Corruption.js';
-import { CLEANSE, PACT, cleanseAmount } from '../src/data/corruption.js';
+import { CLEANSE, PACT, cleanseAmount, cleanseCost } from '../src/data/corruption.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
@@ -43,6 +43,24 @@ console.log('cleanse scales with the debt');
     'a non-finite world reads as pristine — the prompt never quotes NaN');
   ok(CLEANSE.maxUses === 3, 'three uses per font');
   ok(CLEANSE.guaranteeBand === 2, 'guaranteed font from Blighted up');
+}
+
+console.log('and so does the price — the exit is not cheaper the deeper you are');
+{
+  ok(CLEANSE.goldPerWorld === 1.5, 'the world term is the tuned dial');
+  ok(cleanseCost(0, 0, 0) === CLEANSE.gold, 'a pristine world at stage 0 on the first use is the base price');
+  ok(cleanseCost(4, 0, 0) === Math.round(CLEANSE.gold * Math.pow(CLEANSE.goldGrowth, 4)),
+    'the stage ladder is untouched');
+  ok(cleanseCost(0, 2, 0) === Math.round(CLEANSE.gold * Math.pow(CLEANSE.costClimb, 2)),
+    'so is the per-use climb');
+  // The finding this closes: at world 400 the flat curve sold a whole
+  // laundering visit for about 24 seconds of that same run's income.
+  ok(cleanseCost(0, 0, 400) - cleanseCost(0, 0, 0) === 600,
+    'a Consumed world puts 600 gold on the bill it did not used to');
+  ok(cleanseCost(4, 0, 400) > cleanseCost(4, 0, 190) && cleanseCost(4, 0, 190) > cleanseCost(4, 0, 85),
+    'and the price falls as the debt does — you are charged for what you are retiring');
+  ok(cleanseCost(NaN, NaN, NaN) === CLEANSE.gold && cleanseCost(-1, -1, -1) === CLEANSE.gold,
+    'nonsense reads as a pristine first use at stage 0 — the prompt never quotes NaN');
 }
 
 console.log('transfer moves attribution and nothing else');
@@ -156,11 +174,11 @@ console.log('the Argent Font bleeds the world for climbing gold');
   ctx.corruption.feed(ctx.player, 100);
   const font = new ArgentFont(ctx, new THREE.Vector3(1, 0, 1), 0);
   const cost0 = font.cost;
-  ok(cost0 === Math.round(CLEANSE.gold * Math.pow(CLEANSE.goldGrowth, 0)), 'stage-0 price is the base price');
+  ok(cost0 === cleanseCost(0, 0, 100), 'the live price is cleanseCost(stage, uses, world)');
   ok(font.interact() === true, 'a paid cleanse succeeds');
   ok(ctx.corruption.world === 100 - CLEANSE.amount, 'the world bled by the tuned amount');
-  ok(ctx.items.gold === 1000 - cost0, 'and the gold is gone');
-  ok(font.cost === Math.round(cost0 * CLEANSE.costClimb), 'the price climbed');
+  ok(ctx.items.gold === 1000 - cost0, 'and the gold is gone — at the price quoted before the press');
+  ok(font.cost === cleanseCost(0, 1, ctx.corruption.world), 'the price re-reads the use count and the debt');
   ok(ctx.corruption.seeds.length === 0, 'cleansing is not a greed act — no seed');
   for (let i = font.uses; i < CLEANSE.maxUses; i++) font.interact();
   ok(font.available() === false, 'spent after maxUses');
@@ -182,9 +200,15 @@ console.log('the font bleeds a share of the debt when the debt is deep');
 {
   const ctx = makeWorldCtx({ gold: 100000 });
   ctx.corruption.feed(ctx.player, 400);
-  const font = new ArgentFont(ctx, new THREE.Vector3(1, 0, 1), 0);
+  const font = new ArgentFont(ctx, new THREE.Vector3(1, 0, 1), 4);
   ok(font.prompt().includes('88'), `the prompt quotes what a use is worth now (${font.prompt()})`);
+  // The live price the player is shown, and it is a real bill: at stage 4 and
+  // world 400 the world term alone is 600 gold.
+  ok(font.cost === cleanseCost(4, 0, 400), 'the font quotes cleanseCost at its stage, use and world');
+  ok(font.prompt().includes(`$${font.cost}`), 'and the prompt quotes that same number');
+  const goldBefore = ctx.items.gold, priced = font.cost;
   ok(font.interact() === true, 'a deep-red cleanse succeeds');
+  ok(ctx.items.gold === goldBefore - priced, 'the press charged the quoted price');
   ok(ctx.corruption.world === 400 - 88, 'the world bled 22% of the debt, not the flat floor');
   ok(font.interact() === true, 'and again');
   ok(ctx.corruption.world === 312 - cleanseAmount(312), 'the second use re-reads the debt it just shrank');
