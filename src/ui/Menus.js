@@ -1702,7 +1702,7 @@ function injectEdictStyles() {
 .etab-name { grid-column: 1; font-size: 0.95em; font-weight: 700; letter-spacing: 0.2em; }
 .etab-sub {
   grid-column: 1;
-  font-size: 0.68em;
+  font-size: var(--fs-micro);
   font-style: normal;
   letter-spacing: 0.22em;
   color: var(--ink-faint);
@@ -1723,7 +1723,7 @@ function injectEdictStyles() {
   width: 1.9em;
   text-align: center;
   font-size: 1.1em;
-  font-weight: 400;
+  font-weight: var(--fw-body);
   color: var(--ink-faint);
 }
 .etab:hover, .etab.is-focus { color: var(--ink); background: rgba(255, 255, 255, 0.05); }
@@ -1745,7 +1745,7 @@ function injectEdictStyles() {
   border-left: 3px solid var(--accent);
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - 0.9em), calc(100% - 0.9em) 100%, 0 100%);
 }
-.estand-k { font-size: 0.74em; letter-spacing: 0.24em; color: var(--ink-faint); margin-bottom: 0.35em; }
+.estand-k { font-size: var(--fs-micro); letter-spacing: 0.24em; color: var(--ink-faint); margin-bottom: 0.35em; }
 .estand-v {
   font-size: 1.7em;
   font-weight: 800;
@@ -1753,7 +1753,7 @@ function injectEdictStyles() {
   line-height: 1.05;
   color: var(--accent);
 }
-.estand-v em { font-style: normal; font-weight: 600; letter-spacing: 0.16em; color: var(--ink-dim); }
+.estand-v em { font-style: normal; font-weight: var(--fw-label); letter-spacing: 0.16em; color: var(--ink-dim); }
 
 .edict-grid {
   display: grid;
@@ -1800,7 +1800,7 @@ function injectEdictStyles() {
 .eitem-icon { grid-row: 1 / span 2; width: 34px; height: 34px; display: block; opacity: 0.85; }
 .eitem-name { font-size: 0.86em; font-weight: 700; letter-spacing: 0.14em; }
 .eitem-desc {
-  font-size: 0.74em;
+  font-size: var(--fs-micro);
   font-style: normal;
   line-height: 1.4;
   text-transform: none;
@@ -1811,7 +1811,7 @@ function injectEdictStyles() {
   position: absolute;
   right: 0.5em; top: 0.45em;
   padding: 0.05em 0.4em;
-  font-size: 0.62em;
+  font-size: var(--fs-micro);
   font-weight: 700;
   letter-spacing: 0.14em;
   color: #05070a;
@@ -1834,7 +1834,7 @@ function injectEdictStyles() {
   position: absolute;
   right: 0; bottom: 0;
   padding: 0.05em 0.45em 0.05em 0.7em;
-  font-size: 0.6em;
+  font-size: var(--fs-micro);
   letter-spacing: 0.2em;
   color: #05070a;
   background: var(--accent);

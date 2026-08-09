@@ -6,7 +6,12 @@
 
 :root {
   /* Condensed grotesque, system-only. Bahnschrift ships with Windows,
-     DIN Alternate with macOS, Roboto Condensed with most Linux desktops. */
+     DIN Alternate with macOS, Roboto Condensed with most Linux desktops.
+     One family, three roles — a system monospace for the data role was
+     considered and rejected: Consolas, Menlo and DejaVu Sans Mono render at
+     three visibly different widths, which is the exact inconsistency this
+     stack was assembled to avoid. The data role is this same family at
+     --fw-read with tabular numerals. */
   --font: 'Bahnschrift', 'DIN Alternate', 'Roboto Condensed', 'Liberation Sans Narrow',
           'Franklin Gothic Medium', 'Arial Narrow', 'Helvetica Neue', system-ui, sans-serif;
 
@@ -48,9 +53,30 @@
   --line-hot:   rgba(198, 226, 255, 0.72);
 
   --skew: -16deg;
-  /* One responsive unit drives every size in the HUD. */
-  --u: clamp(11px, calc(0.62vw + 0.36vh), 18px);
+  /* One responsive unit drives every size in the HUD. Re-priced after the
+     2026-08-08 playtest ("the UI font is too weak"): the floor was 11px and
+     the slope resolved to 13.16px at the 1600x900 capture size, which is
+     small type before any 0.7em label multiplies it down again. 12.5px floor,
+     14.48px at capture size — about 10% larger everywhere at once. */
+  --u: clamp(12.5px, calc(0.68vw + 0.40vh), 19px);
   --pad: clamp(18px, 3.2vmin, 44px);
+
+  /* The type ladder. Three sizes, four weights, three trackings — every
+     declaration in this file and in the Edict block picks a rung. The floor
+     exists because the same playtest could not read the sub-labels: below
+     0.80em of --u, a condensed grotesque with any tracking at all stops
+     resolving into words. `tests/ui-type-scale.test.mjs` holds the line. */
+  --fs-micro: 0.82em;   /* eyebrows, keys, tier tags, gauge labels */
+  --fs-small: 0.9em;    /* secondary copy: descriptions, lore, subtitles */
+
+  --fw-body:    500;    /* prose and anything otherwise unweighted */
+  --fw-label:   600;    /* eyebrows and section heads */
+  --fw-read:    700;    /* numerals and readouts — the instrument's own voice */
+  --fw-display: 800;    /* wordmark, ending word, survivor name, book title */
+
+  --track-label:   0.14em;   /* default for weighted labels */
+  --track-eyebrow: 0.24em;   /* the cap for anything under 1em */
+  --track-hero:    0.34em;   /* display type only, where the word is a shape */
 }
 
 * { box-sizing: border-box; }
@@ -62,6 +88,11 @@ html, body {
   background: #05070a;
   color: var(--ink);
   font-family: var(--font);
+  /* Nothing in this file declared a weight for prose, so every unstyled run
+     of text — lore, ability descriptions, option copy, the button sub-labels —
+     rendered at 400. On a condensed face over a dark, busy frame that is the
+     "too weak" the playtest reported. */
+  font-weight: var(--fw-body);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -344,7 +375,7 @@ body.menu-open { cursor: default; }
 .corruption-band {
   position: absolute;
   left: 0; top: 8px;
-  font-size: 10px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #b9a1e8;
@@ -356,7 +387,7 @@ body.menu-open { cursor: default; }
   left: 0; top: 20px;
   display: none;
   font-style: normal;
-  font-size: 10px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.08em;
   white-space: nowrap;
   color: #b9a1e8;
@@ -593,7 +624,7 @@ body.menu-open { cursor: default; }
 .boss-sub {
   padding: 0.3em 0.4em 0;
   font-size: 0.8em;
-  letter-spacing: 0.3em;
+  letter-spacing: var(--track-eyebrow);
   color: #c2d1e0;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95);
   text-align: center;
@@ -641,8 +672,8 @@ body.menu-open { cursor: default; }
 }
 .tp-unit { display: none; }
 .tp-label {
-  font-size: 0.75em;
-  letter-spacing: 0.34em;
+  font-size: var(--fs-micro);
+  letter-spacing: var(--track-eyebrow);
   color: var(--t-lunar);
   margin-top: 0.3em;
 }
@@ -810,7 +841,7 @@ body.menu-open { cursor: default; }
   border-left: 2px solid var(--xp);
   clip-path: polygon(0 0, 100% 0, calc(100% - 0.5em) 100%, 0 100%);
 }
-.level-tag { font-size: 0.78em; color: var(--ink-faint); letter-spacing: 0.22em; }
+.level-tag { font-size: var(--fs-micro); color: var(--ink-faint); letter-spacing: 0.22em; }
 .level-num {
   font-size: 1.25em;
   font-weight: 700;
@@ -976,7 +1007,7 @@ body.menu-open { cursor: default; }
    horizontal slack between tiles; let the chip use it, and drop a fifth of a
    step of size so most names never need to. */
 .slot-name {
-  font-size: 0.62em;
+  font-size: var(--fs-micro);
   letter-spacing: 0.04em;
   color: var(--ink);
   white-space: nowrap;
@@ -1153,7 +1184,7 @@ body.menu-open { cursor: default; }
   border-bottom: 1px solid rgba(148, 182, 214, 0.22);
 }
 .tip-name { font-size: 1.25em; font-weight: 700; letter-spacing: 0.1em; }
-.tip-tier { font-size: 0.75em; letter-spacing: 0.24em; opacity: 0.85; }
+.tip-tier { font-size: var(--fs-micro); letter-spacing: 0.24em; opacity: 0.85; }
 .tip-body {
   margin-top: 0.55em;
   font-size: 0.95em;
@@ -1303,7 +1334,7 @@ body.menu-open { cursor: default; }
    barely above the detection floor and effectively invisible at 100% zoom. */
 .title-seed {
   font-size: 0.85em;
-  letter-spacing: 0.4em;
+  letter-spacing: var(--track-eyebrow);
   color: var(--ink-dim);
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95);
 }
@@ -1380,8 +1411,8 @@ body.menu-open { cursor: default; }
 .mbtn-sub {
   position: relative;
   z-index: 1;
-  font-size: 0.56em;
-  font-weight: 400;
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-body);
   font-style: normal;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -1420,7 +1451,7 @@ body.menu-open { cursor: default; }
   font-weight: 700;
   letter-spacing: 0.26em;
 }
-.panel-tag { font-size: 0.8em; letter-spacing: 0.28em; color: var(--ink-faint); }
+.panel-tag { font-size: 0.8em; letter-spacing: var(--track-eyebrow); color: var(--ink-faint); }
 
 /* Settings */
 .settings-grid { display: flex; flex-direction: column; gap: 0.55em; margin-bottom: 1.4em; }
@@ -1620,8 +1651,8 @@ body.menu-open { cursor: default; }
   box-shadow: 0 0 12px var(--end-glow);
 }
 .ending-seal-text {
-  font-size: 0.78em;
-  letter-spacing: 0.30em;
+  font-size: var(--fs-micro);
+  letter-spacing: var(--track-eyebrow);
   text-transform: uppercase;
   color: color-mix(in srgb, var(--end) 80%, #ffffff);
 }
@@ -1641,7 +1672,7 @@ body.menu-open { cursor: default; }
   margin-bottom: 1.3em;
 }
 .stat { padding: 0.9em 1em; background: rgba(6, 11, 18, 0.9); }
-.stat-k { font-size: 0.76em; letter-spacing: 0.2em; color: var(--ink-faint); margin-bottom: 0.4em; }
+.stat-k { font-size: var(--fs-micro); letter-spacing: 0.2em; color: var(--ink-faint); margin-bottom: 0.4em; }
 .stat-v {
   font-size: 1.6em;
   font-weight: 700;
@@ -1651,7 +1682,7 @@ body.menu-open { cursor: default; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.stat-items-label { font-size: 0.8em; letter-spacing: 0.26em; color: var(--ink-faint); margin-bottom: 0.6em; }
+.stat-items-label { font-size: 0.8em; letter-spacing: var(--track-eyebrow); color: var(--ink-faint); margin-bottom: 0.6em; }
 /* A column of shrink-wrapped tier blocks, each with the same 2px tier rule the
    HUD strip uses, so the run summary and the strip read as the same object. */
 .stat-items-row {
@@ -1720,7 +1751,7 @@ body.menu-open { cursor: default; }
 }
 .pickup-icon { width: 4.4em; height: 4.4em; flex: none; }
 .pickup-icon img { width: 100%; height: 100%; display: block; }
-.pickup-tier { font-size: 0.78em; letter-spacing: 0.34em; color: var(--tier); }
+.pickup-tier { font-size: var(--fs-micro); letter-spacing: var(--track-eyebrow); color: var(--tier); }
 .pickup-name {
   font-size: 2em;
   font-weight: 700;
@@ -1819,7 +1850,7 @@ body.menu-open { cursor: default; }
 .coop-input::placeholder { color: var(--ink-faint); letter-spacing: 0.28em; }
 
 /* The wiring readout is deliberately quiet until it has bad news. */
-.coop-wiring { font-size: 0.78em; opacity: 0.75; }
+.coop-wiring { font-size: var(--fs-micro); opacity: 0.75; }
 .coop-wiring.is-warn { color: #ffb44f; opacity: 1; }
 
 .coop-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1.6em; }
@@ -1830,7 +1861,7 @@ body.menu-open { cursor: default; }
   margin: 0;
   font-size: 0.92em;
   font-weight: 600;
-  letter-spacing: 0.26em;
+  letter-spacing: var(--track-eyebrow);
   text-transform: uppercase;
   color: var(--ink);
 }
@@ -1839,7 +1870,7 @@ body.menu-open { cursor: default; }
 
 .coop-field { display: flex; flex-direction: column; gap: 0.35em; }
 .coop-field > span {
-  font-size: 0.76em;
+  font-size: var(--fs-micro);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--ink-faint);
@@ -1975,7 +2006,7 @@ body.menu-open { cursor: default; }
   cursor: pointer;
   transition: border-color 0.15s ease, color 0.15s ease;
 }
-.chip em { font-size: 0.68em; font-style: normal; letter-spacing: 0.24em; color: var(--ink-faint); }
+.chip em { font-size: var(--fs-micro); font-style: normal; letter-spacing: 0.24em; color: var(--ink-faint); }
 .chip span { font-size: 1em; font-weight: 700; letter-spacing: 0.12em; }
 .chip:hover, .chip.is-focus { border-left-color: var(--t-lunar); color: #fff; }
 
@@ -2089,7 +2120,7 @@ body.menu-open { cursor: default; }
 .sur-sub {
   display: block;
   margin-top: 0.2em;
-  font-size: 0.72em;
+  font-size: var(--fs-micro);
   font-style: normal;
   letter-spacing: 0.2em;
   color: var(--ink-faint);
@@ -2111,7 +2142,7 @@ body.menu-open { cursor: default; }
   right: 0.7em; top: 50%;
   margin-top: -0.5em;
   padding: 0.1em 0.5em;
-  font-size: 0.66em;
+  font-size: var(--fs-micro);
   font-style: normal;
   letter-spacing: 0.18em;
   color: #05070a;
@@ -2153,7 +2184,7 @@ body.menu-open { cursor: default; }
   clip-path: polygon(0 0, 100% 0, calc(100% - 0.9em) 100%, 0 100%);
 }
 .sel-name { font-size: 1.9em; font-weight: 800; letter-spacing: 0.16em; color: #fff; }
-.sel-sub { font-size: 0.82em; letter-spacing: 0.3em; color: var(--accent); }
+.sel-sub { font-size: 0.82em; letter-spacing: var(--track-eyebrow); color: var(--accent); }
 .sel-lore {
   margin: 0.6em 0 0;
   font-size: 0.88em;
@@ -2166,8 +2197,8 @@ body.menu-open { cursor: default; }
 /* --- loadout + stats ---------------------------------------------------- */
 .sel-info { display: flex; flex-direction: column; gap: 0.5em; min-width: 0; }
 .sel-h {
-  font-size: 0.74em;
-  letter-spacing: 0.3em;
+  font-size: var(--fs-micro);
+  letter-spacing: var(--track-eyebrow);
   color: var(--ink-faint);
   padding-bottom: 0.3em;
   border-bottom: 1px solid rgba(148, 182, 214, 0.2);
@@ -2200,21 +2231,21 @@ body.menu-open { cursor: default; }
 }
 .sk-key {
   padding: 0 0.4em;
-  font-size: 0.76em;
+  font-size: var(--fs-micro);
   color: #0a0f16;
   background: rgba(198, 226, 255, 0.85);
   clip-path: polygon(0.25em 0, 100% 0, calc(100% - 0.25em) 100%, 0 100%);
 }
 .sk-desc {
   margin-top: 0.18em;
-  font-size: 0.75em;
+  font-size: var(--fs-micro);
   line-height: 1.4;
   letter-spacing: 0.02em;
   text-transform: none;
   color: var(--ink-dim);
 }
 .sk-cd {
-  font-size: 0.78em;
+  font-size: var(--fs-micro);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--accent);
@@ -2224,7 +2255,7 @@ body.menu-open { cursor: default; }
    the only useful question here is "more or less than the other three". */
 .sel-stats { display: flex; flex-direction: column; gap: 0.28em; }
 .sbar { display: grid; grid-template-columns: 5.4em 1fr 3.2em; align-items: center; gap: 0.6em; }
-.sbar-k { font-size: 0.74em; letter-spacing: 0.16em; color: var(--ink-faint); }
+.sbar-k { font-size: var(--fs-micro); letter-spacing: 0.16em; color: var(--ink-faint); }
 .sbar-track {
   position: relative;
   height: 0.6em;
@@ -2380,7 +2411,7 @@ body.menu-open { cursor: default; }
   position: absolute;
   right: 0.7em; top: 0.6em;
   padding: 0.05em 0.45em;
-  font-size: 0.62em;
+  font-size: var(--fs-micro);
   letter-spacing: 0.2em;
   color: #05070a;
   background: var(--ink-faint);
@@ -2481,7 +2512,7 @@ body.menu-open { cursor: default; }
 .book-row-name { display: block; font-size: 0.9em; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: inherit; }
 .book-row-sub {
   display: block;
-  font-size: 0.68em;
+  font-size: var(--fs-micro);
   font-style: normal;
   letter-spacing: 0.16em;
   color: var(--ink-faint);
@@ -2503,7 +2534,7 @@ body.menu-open { cursor: default; }
 .book-detail { overflow-y: auto; padding-right: 0.4em; min-width: 0; }
 .book-head { --accent: var(--t-lunar); padding-left: 0.8em; border-left: 3px solid var(--accent); }
 .book-title { font-size: 1.6em; font-weight: 800; letter-spacing: 0.16em; color: #fff; }
-.book-sub { font-size: 0.78em; letter-spacing: 0.28em; color: var(--accent); margin-top: 0.15em; }
+.book-sub { font-size: var(--fs-micro); letter-spacing: var(--track-eyebrow); color: var(--accent); margin-top: 0.15em; }
 .book-stage {
   position: relative;
   height: 20em;
@@ -2523,7 +2554,7 @@ body.menu-open { cursor: default; }
   align-items: center;
   justify-content: center;
   font-size: 0.8em;
-  letter-spacing: 0.3em;
+  letter-spacing: var(--track-eyebrow);
   color: var(--ink-faint);
 }
 .book-art { display: flex; justify-content: center; margin: 1em 0; }
@@ -2536,7 +2567,7 @@ body.menu-open { cursor: default; }
   margin: 0.8em 0;
 }
 .book-stat { padding: 0.6em 0.8em; background: rgba(6, 11, 18, 0.92); }
-.book-stat-k { font-size: 0.7em; letter-spacing: 0.2em; color: var(--ink-faint); }
+.book-stat-k { font-size: var(--fs-micro); letter-spacing: 0.2em; color: var(--ink-faint); }
 .book-stat-v { margin-top: 0.25em; font-size: 1.2em; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; }
 .book-lore {
   margin: 0.8em 0 0;
@@ -2582,13 +2613,13 @@ body.menu-open { cursor: default; }
 }
 .book-skill-name b {
   padding: 0 0.4em;
-  font-size: 0.76em;
+  font-size: var(--fs-micro);
   color: #0a0f16;
   background: rgba(198, 226, 255, 0.85);
 }
 .book-skill-desc {
   margin-top: 0.15em;
-  font-size: 0.76em;
+  font-size: var(--fs-micro);
   line-height: 1.4;
   text-transform: none;
   color: var(--ink-dim);
@@ -2649,7 +2680,7 @@ body.menu-open { cursor: default; }
   background: rgba(6, 11, 18, 0.92);
   border-top: 2px solid var(--accent);
 }
-.run-id-k { font-size: 0.72em; letter-spacing: 0.24em; color: var(--ink-faint); }
+.run-id-k { font-size: var(--fs-micro); letter-spacing: 0.24em; color: var(--ink-faint); }
 .run-id-v {
   margin-top: 0.3em;
   font-size: 1.25em;
@@ -2700,8 +2731,8 @@ body.menu-open { cursor: default; }
    focusable and carries no mark, so it can never be mistaken for an entry. */
 .book-group {
   padding: 1em 1.1em 0.35em;
-  font-size: 0.68em;
-  letter-spacing: 0.3em;
+  font-size: var(--fs-micro);
+  letter-spacing: var(--track-eyebrow);
   text-transform: uppercase;
   color: var(--ink-faint);
 }
@@ -2712,7 +2743,7 @@ body.menu-open { cursor: default; }
    a competing statement. */
 .book-note {
   margin-top: 0.8em;
-  font-size: 0.78em;
+  font-size: var(--fs-micro);
   letter-spacing: 0.14em;
   color: var(--ink-dim);
   text-transform: none;
@@ -2720,8 +2751,8 @@ body.menu-open { cursor: default; }
 
 .book-section {
   margin: 1.4em 0 0;
-  font-size: 0.7em;
-  letter-spacing: 0.3em;
+  font-size: var(--fs-micro);
+  letter-spacing: var(--track-eyebrow);
   text-transform: uppercase;
   color: var(--ink-faint);
 }
@@ -2747,7 +2778,7 @@ body.menu-open { cursor: default; }
   background: rgba(148, 182, 214, 0.07);
   clip-path: polygon(0.4em 0, 100% 0, calc(100% - 0.4em) 100%, 0 100%);
 }
-.run-best-k { font-size: 0.78em; letter-spacing: 0.18em; color: var(--ink-dim); }
+.run-best-k { font-size: var(--fs-micro); letter-spacing: 0.18em; color: var(--ink-dim); }
 .run-best-v {
   font-size: 0.95em;
   font-weight: 700;
@@ -2755,7 +2786,7 @@ body.menu-open { cursor: default; }
   font-variant-numeric: tabular-nums;
 }
 .run-best-was {
-  font-size: 0.72em;
+  font-size: var(--fs-micro);
   letter-spacing: 0.14em;
   color: var(--ink-faint);
   font-variant-numeric: tabular-nums;
@@ -2771,7 +2802,7 @@ body.menu-open { cursor: default; }
   gap: 0.8em;
 }
 .run-prog-k {
-  font-size: 0.78em;
+  font-size: var(--fs-micro);
   letter-spacing: 0.16em;
   color: var(--ink-dim);
   white-space: nowrap;
@@ -2782,7 +2813,7 @@ body.menu-open { cursor: default; }
    line above itself; inside this row it is a cell. */
 .run-prog .book-prog { margin-top: 0; height: 0.55em; }
 .run-prog-v {
-  font-size: 0.75em;
+  font-size: var(--fs-micro);
   letter-spacing: 0.1em;
   color: var(--ink-faint);
   font-variant-numeric: tabular-nums;
@@ -2791,7 +2822,7 @@ body.menu-open { cursor: default; }
 
 .run-career {
   margin-bottom: 0.8em;
-  font-size: 0.74em;
+  font-size: var(--fs-micro);
   letter-spacing: 0.18em;
   color: var(--ink-faint);
   text-transform: none;
