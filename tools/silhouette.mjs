@@ -14,6 +14,7 @@
  */
 import { chromium } from 'playwright';
 import { createServer } from 'vite';
+import { measureMask, shapeIoU } from './silhouette-metrics.mjs';
 
 const SEED = 1337;
 const W = 512, H = 768;
@@ -97,84 +98,15 @@ await server.close();
 // --- measurement -------------------------------------------------------------
 
 const M = {};
-for (const [id, b64] of Object.entries(masks)) {
-  const bits = Buffer.from(b64, 'base64');
-  const get = (x, y) => (bits[(y * W + x) >> 3] >> ((y * W + x) & 7)) & 1;
-  let x0 = W, x1 = -1, y0 = H, y1 = -1, area = 0, sx = 0, sy = 0;
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    if (!get(x, y)) continue;
-    area++; sx += x; sy += y;
-    if (x < x0) x0 = x; if (x > x1) x1 = x;
-    if (y < y0) y0 = y; if (y > y1) y1 = y;
-  }
-  const bw = x1 - x0 + 1, bh = y1 - y0 + 1;
-
-  // Width profile in ten bands from the crown down, as a fraction of the
-  // widest band. This is the shape of the shape: an hourglass, a top-heavy
-  // triangle and a needle read as three different curves here even when their
-  // bounding boxes agree.
-  const bands = [];
-  for (let b = 0; b < 10; b++) {
-    const ya = y0 + Math.floor(bh * b / 10), yb = y0 + Math.floor(bh * (b + 1) / 10);
-    let lo = W, hi = -1, fill = 0, runs = 0, scan = 0;
-    for (let y = ya; y < yb; y++) {
-      scan++;
-      let prev = 0;
-      for (let x = x0; x <= x1; x++) {
-        const v = get(x, y);
-        if (v && !prev) runs++;
-        prev = v;
-        if (!v) continue;
-        fill++;
-        if (x < lo) lo = x; if (x > hi) hi = x;
-      }
-    }
-    // `runs` is the average number of separate solid segments per scanline —
-    // the direct measure of daylight through the outline. A band at 1.00 is a
-    // solid bar: arms welded to the torso, or legs fused into one column.
-    bands.push({ w: hi < 0 ? 0 : (hi - lo + 1) / bw, fill: fill / ((yb - ya) * bw || 1), runs: runs / (scan || 1) });
-  }
-
-  // Negative space: background pixels inside the bbox that the border flood
-  // cannot reach. Zero of these is the "solid lump" failure — daylight through
-  // the outline is what separates a figure from a blob.
-  const seen = new Uint8Array(bw * bh);
-  const stack = [];
-  for (let x = 0; x < bw; x++) { stack.push([x, 0], [x, bh - 1]); }
-  for (let y = 0; y < bh; y++) { stack.push([0, y], [bw - 1, y]); }
-  while (stack.length) {
-    const [x, y] = stack.pop();
-    if (x < 0 || y < 0 || x >= bw || y >= bh) continue;
-    if (seen[y * bw + x] || get(x0 + x, y0 + y)) continue;
-    seen[y * bw + x] = 1;
-    stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
-  }
-  let holes = 0;
-  for (let i = 0; i < bw * bh; i++) if (!seen[i] && !get(x0 + (i % bw), y0 + ((i / bw) | 0))) holes++;
-
-  // 64x64 shape signature, bbox-normalised — scale is removed on purpose so
-  // this answers "is it the same shape at a different size", which is exactly
-  // what the roster was failing.
-  const sig = new Uint8Array(64 * 64);
-  for (let y = 0; y < 64; y++) for (let x = 0; x < 64; x++) {
-    sig[y * 64 + x] = get(x0 + Math.floor(x * bw / 64), y0 + Math.floor(y * bh / 64));
-  }
-
-  M[id] = {
-    bbox: `${bw}x${bh}`, area, fill: +(area / (bw * bh)).toFixed(3),
-    aspect: +(bw / bh).toFixed(3),
-    cx: +(((sx / area) - x0) / bw).toFixed(3), cy: +(((sy / area) - y0) / bh).toFixed(3),
-    holes: +(holes / (bw * bh)).toFixed(4),
-    bands, sig,
-  };
-}
+for (const [id, b64] of Object.entries(masks)) M[id] = measureMask(b64, W, H);
 
 const ids = Object.keys(M);
 console.log('\n=== SILHOUETTE MASKS (shared ortho box, true relative scale) ===');
 console.log('id       bbox      area   fill  aspect  cx     cy     holes%');
 for (const id of ids) {
   const m = M[id];
-  console.log(`${id.padEnd(8)} ${m.bbox.padEnd(9)} ${String(m.area).padStart(6)} ${m.fill.toFixed(3)}  ${m.aspect.toFixed(3)}   ${m.cx.toFixed(3)}  ${m.cy.toFixed(3)}  ${(m.holes * 100).toFixed(2)}`);
+  const bbox = `${m.bw}x${m.bh}`;
+  console.log(`${id.padEnd(8)} ${bbox.padEnd(9)} ${String(m.area).padStart(6)} ${m.fill.toFixed(3)}  ${m.aspect.toFixed(3)}   ${m.cx.toFixed(3)}  ${m.cy.toFixed(3)}  ${(m.holes / (m.bw * m.bh) * 100).toFixed(2)}`);
 }
 
 console.log('\n=== WIDTH PROFILE (crown -> feet, fraction of own bbox width) ===');
@@ -187,10 +119,7 @@ for (const id of ids) console.log(`${id.padEnd(8)} ${M[id].bands.map((b) => b.fi
 console.log('\n=== PAIRWISE SHAPE IoU (bbox-normalised 64x64 — scale removed) ===');
 let worst = 0, worstPair = '';
 for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) {
-  const a = M[ids[i]].sig, b = M[ids[j]].sig;
-  let inter = 0, uni = 0;
-  for (let k = 0; k < a.length; k++) { if (a[k] & b[k]) inter++; if (a[k] | b[k]) uni++; }
-  const iou = inter / uni;
+  const iou = shapeIoU(M[ids[i]].sig, M[ids[j]].sig);
   if (iou > worst) { worst = iou; worstPair = `${ids[i]}/${ids[j]}`; }
   console.log(`${ids[i].padEnd(8)} vs ${ids[j].padEnd(8)} IoU ${iou.toFixed(3)}`);
 }
