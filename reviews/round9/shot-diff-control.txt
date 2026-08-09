@@ -1,0 +1,23 @@
+  01-title.png             mean     0.31  max    7  %>8        0
+  02-vista.png             mean    0.926  max   63  %>8    0.054
+  03-thirdperson.png       mean    0.961  max  135  %>8     0.02
+  04-combat.png            mean     3.22  max  149  %>8    8.889
+  05-boss.png              mean    0.937  max   83  %>8    0.173
+  06-loaded-hud.png        mean    2.404  max  152  %>8    5.242
+  07-interactables.png     mean    0.896  max   96  %>8    0.028
+  08-explosion.png         mean     5.49  max  173  %>8   16.213
+  09-survivors.png         mean    0.976  max  106  %>8    0.187
+  10-inventory.png         mean    2.349  max  115  %>8    5.156
+  11-bestiary.png          mean    1.027  max   79  %>8    0.405
+  12-boss-phases.png       mean    0.924  max   91  %>8    0.163
+  13-biomes-1.png          mean    0.905  max   85  %>8    0.201
+  13-biomes-2.png          mean    0.936  max   62  %>8    0.306
+  13-biomes-3.png          mean    1.038  max  113  %>8    0.527
+  13-biomes-4.png          mean    1.003  max   80  %>8    0.236
+  14-survivor-select.png   mean    0.139  max    5  %>8        0
+  15-logbook.png           mean    0.074  max    2  %>8        0
+  16-run-summary.png       mean    0.038  max    1  %>8        0
+  17-artifacts.png         mean    0.099  max    2  %>8        0
+  18-difficulty.png        mean    0.121  max    2  %>8        0
+
+aggregate {"meanDiff":1.18,"pctOver8":1.8,"maxOfMax":173}
