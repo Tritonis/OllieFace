@@ -60,6 +60,55 @@ export function hash(str) {
   return h >>> 0;
 }
 
+/* ------------------------------------------------------------------- traces
+ * The seismograph line: the diegetic UI's third component (launch spec 3.3).
+ * SVG path strings rather than canvas, because a trace is a hairline that has
+ * to stay a hairline while its box stretches to any width — `vector-effect:
+ * non-scaling-stroke` gives that for free and a rasterised icon cannot.
+ *
+ * Both functions are pure and deterministic. They are baked into committed
+ * screenshot baselines, so a trace that wandered between runs would make every
+ * UI baseline unreproducible.
+ */
+
+/**
+ * Plot `values` (each in 0..1, 0 at the floor) as a polyline across a
+ * 0..100 x 0..h box. Under two values draws a resting pen at mid-height —
+ * an instrument with no data still shows its zero line.
+ */
+export function tracePathFrom(values, { h = 10, amp = 1 } = {}) {
+  const mid = h / 2;
+  const n = values?.length ?? 0;
+  if (n < 2) return `M 0.00 ${mid.toFixed(2)} L 100.00 ${mid.toFixed(2)}`;
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const v = Math.min(1, Math.max(0, Number(values[i]) || 0));
+    const x = (i / (n - 1)) * 100;
+    const y = mid - (v - 0.5) * h * amp;
+    pts.push(`${x.toFixed(2)} ${y.toFixed(2)}`);
+  }
+  return `M ${pts[0]} L ${pts.slice(1).join(' L ')}`;
+}
+
+/**
+ * A pen wander seeded by any string or number: each step folds an FNV hash of
+ * `seed:i` into a small delta and integrates it, with a pull back toward the
+ * centre line so the trace never parks against an edge. Reads as a plotter,
+ * not as white noise, which is the whole difference between an instrument and
+ * a texture.
+ */
+export function tracePath(seed, { points = 32, h = 10, amp = 1 } = {}) {
+  const n = Math.max(2, points | 0);
+  const values = [];
+  let v = 0.5;
+  for (let i = 0; i < n; i++) {
+    const d = ((hash(`${seed}:${i}`) % 1000) / 1000 - 0.5) * 0.42;
+    v = v + d + (0.5 - v) * 0.22;
+    values.push(Math.min(1, Math.max(0, v)));
+  }
+  return tracePathFrom(values, { h, amp });
+}
+
 const cache = new Map();
 
 function cached(key, draw) {

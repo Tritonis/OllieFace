@@ -1044,6 +1044,22 @@ function formatTime(sec) {
 
 const round3 = (v) => Math.round(v * 1000) / 1000;
 
+/**
+ * Where each corruption band's threshold sits on the gauge, as a percentage of
+ * the top of the scale. The gauge is an instrument reading the planet, so its
+ * gradations are the planet's real numbers: re-tune `BANDS` in
+ * `src/data/corruption.js` and the engraving moves with it. Pristine is the
+ * origin and gets no mark.
+ */
+export function gaugeGradations(bands = BANDS) {
+  const top = bands[bands.length - 1].at || 1;
+  return bands.slice(1).map((b) => ({
+    id: b.id,
+    name: b.name,
+    pct: Math.round((b.at / top) * 10000) / 100,
+  }));
+}
+
 function escapeHtml(s) {
   return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }

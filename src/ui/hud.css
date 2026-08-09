@@ -77,6 +77,16 @@
   --track-label:   0.14em;   /* default for weighted labels */
   --track-eyebrow: 0.24em;   /* the cap for anything under 1em */
   --track-hero:    0.34em;   /* display type only, where the word is a shape */
+
+  /* The instrument panel's own materials (launch spec 3.3). Four surfaces:
+     the casing an instrument is set into, the hairline that machines its edge,
+     the lit top lip that makes the casing read as physical, and the engraving
+     ink used for gradations and plotted traces alike. */
+  --bezel:      rgba(7, 11, 17, 0.86);
+  --bezel-line: rgba(174, 205, 235, 0.30);
+  --bezel-hi:   rgba(198, 226, 255, 0.16);
+  --grad:       rgba(174, 205, 235, 0.42);
+  --trace-ink:  rgba(160, 199, 236, 0.62);
 }
 
 * { box-sizing: border-box; }
@@ -139,6 +149,96 @@ body.menu-open { cursor: default; }
   border: 1px solid var(--line);
   backdrop-filter: blur(7px) saturate(1.2);
   -webkit-backdrop-filter: blur(7px) saturate(1.2);
+}
+
+/* =====================================================================
+   INSTRUMENT LANGUAGE
+   The whole diegetic treatment (launch spec 3.3) is three classes. Every
+   screen in the game is an application of them; a screen that invents its own
+   bar, its own hairline or its own casing is the failure this section exists
+   to prevent.
+
+     .bez    the machined casing an instrument sits in
+     .core   a bar read as a drilled core sample of the planet
+     .trace  a plotted seismograph line
+
+   Deliberately no `clip-path` on `.bez`: the repo unified its chamfers on one
+   `--skew` / corner-cut convention (see `.title-word`), and a second clip-path
+   on the same element would fight it. The casing gives the edge treatment; the
+   element keeps its own silhouette.
+   ===================================================================== */
+
+.bez {
+  position: relative;
+  background: var(--bezel);
+  border: 1px solid var(--bezel-line);
+  box-shadow:
+    inset 0 1px 0 var(--bezel-hi),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.72),
+    0 6px 22px rgba(0, 0, 0, 0.5);
+}
+
+/* A bar is a column of rock the party drilled out of the stage. The casing is
+   dark and lit at the lip; `::before` bands it into strata so length reads as
+   depth rather than as a percentage; `::after` engraves an evenly spaced
+   gradation scale along the bottom lip.
+
+   Both pseudo-elements take `z-index: 2` on purpose. `.core` is the containing
+   block, and every existing fill (`.hp-fill`, `.xp-fill`, `.sbar-track i`, ...)
+   is an absolutely positioned child at `z-index: auto`, which paints in DOM
+   order *after* the pseudo-elements. Without the lift, every fill would bury
+   the strata it is supposed to be read through. */
+.core {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg,
+    rgba(0, 0, 0, 0.58) 0%, rgba(0, 0, 0, 0.22) 42%, rgba(0, 0, 0, 0.62) 100%);
+  border: 1px solid var(--bezel-line);
+  box-shadow: inset 0 1px 0 var(--bezel-hi), inset 0 0 0 1px rgba(0, 0, 0, 0.6);
+}
+.core::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: repeating-linear-gradient(90deg,
+    rgba(0, 0, 0, 0.42) 0 1px,
+    transparent 1px var(--core-band, 0.5em));
+}
+.core::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 0.28em;
+  z-index: 2;
+  pointer-events: none;
+  background: repeating-linear-gradient(90deg,
+    var(--grad) 0 1px,
+    transparent 1px var(--core-grad, 25%));
+}
+/* The corruption gauge's gradations are the real band thresholds and are not
+   evenly spaced, so it engraves its own marks as elements and turns the
+   generated scale off. */
+.core--bands::after { content: none; }
+
+/* The plotted line. `preserveAspectRatio="none"` in the markup lets the 0..100
+   box stretch to any width; `non-scaling-stroke` keeps the pen a hairline
+   through that stretch, which is the reason this is SVG and not a canvas. */
+.trace {
+  display: block;
+  width: 100%;
+  height: var(--trace-h, 0.9em);
+  overflow: visible;
+  opacity: 0.9;
+}
+.trace path {
+  fill: none;
+  stroke: var(--trace-ink);
+  stroke-width: 1;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
 }
 
 /* =====================================================================
