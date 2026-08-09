@@ -60,5 +60,14 @@ console.log('the colours come from the shared palette, not a second one');
   }
 }
 
+console.log('the void takes its own inward, and the ring belongs to the deaths that push outward');
+{
+  ok(KILL_SIGNATURE.void.ring === false, 'the void has no outward ring');
+  ok(KILL_SIGNATURE.nature.ring === true, 'the spore burst disperses outward and keeps one');
+  ok(KILL_SIGNATURE.kinetic.ring === true, 'the shipped default still gets a ring');
+  const ringless = ELEMENTS.filter((e) => KILL_SIGNATURE[e].ring === false);
+  ok(ringless.length === 1 && ringless[0] === 'void', `exactly one family omits the ring, and it is the void (got ${JSON.stringify(ringless)})`);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

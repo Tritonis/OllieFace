@@ -91,11 +91,15 @@ export const KILL_SIGNATURE = {
   ice:     { frame: FRAME.HEX,   speed: 7,  life: 0.75, gravity: 26,  drag: 0.8, stretch: 0,   spin: 9,   ring: true,  shock: false },
   // Bolts, fast and nearly weightless, gone before the eye settles.
   shock:   { frame: FRAME.BOLT,  speed: 15, life: 0.32, gravity: 2,   drag: 3.2, stretch: 2.0, spin: 0,   ring: true,  shock: false },
-  // Spores drift: slow, floaty, and they linger the longest of the seven.
-  nature:  { frame: FRAME.SPECK, speed: 4,  life: 1.40, gravity: 1.5, drag: 3.0, stretch: 0,   spin: 1.2, ring: false, shock: false },
+  // Spores drift: slow, floaty, and they linger the longest of the seven. The
+  // burst still disperses outward, so it keeps the ring — the generic
+  // "something died here" read.
+  nature:  { frame: FRAME.SPECK, speed: 4,  life: 1.40, gravity: 1.5, drag: 3.0, stretch: 0,   spin: 1.2, ring: true,  shock: false },
   // The void takes it inward — slow, spinning, and the one death with no
-  // outward ring, because nothing is being pushed away.
-  void:    { frame: FRAME.SHOCK, speed: 5,  life: 0.90, gravity: 0,   drag: 2.0, stretch: 0,   spin: 4,   ring: true,  shock: false },
+  // outward ring, because nothing is being pushed away. It stays legible
+  // without the ring: the FRAME.SHOCK sprite at spin 4, gravity 0 holds where
+  // the body was and rotates in place instead of expanding away from it.
+  void:    { frame: FRAME.SHOCK, speed: 5,  life: 0.90, gravity: 0,   drag: 2.0, stretch: 0,   spin: 4,   ring: false, shock: false },
   // Debris and a real front.
   blast:   { frame: FRAME.CHUNK, speed: 11, life: 0.70, gravity: 16,  drag: 1.1, stretch: 0,   spin: 6,   ring: true,  shock: true },
 };
@@ -788,11 +792,6 @@ export class VFX {
    * whatever the owner wrote, so two systems writing the same transform
    * compose instead of fighting.
    */
-  /** The death this element dies. Total: anything unknown is kinetic. */
-  killSignature(element) {
-    return KILL_SIGNATURE[element] || KILL_SIGNATURE.kinetic;
-  }
-
   corpseLaunch(obj, dirX, dirZ, power) {
     if (!obj?.isObject3D || !(power > 0)) return;
     for (const l of this._launches) if (l.obj === obj) return;
@@ -819,6 +818,11 @@ export class VFX {
       sx: (dirZ / len) * LAUNCH.spin * k,
       sz: -(dirX / len) * LAUNCH.spin * k,
     });
+  }
+
+  /** The death this element dies. Total: anything unknown is kinetic. */
+  killSignature(element) {
+    return KILL_SIGNATURE[element] || KILL_SIGNATURE.kinetic;
   }
 
   /**
@@ -1361,8 +1365,11 @@ export class VFX {
 
     // Elites keep their hotter ring regardless of element — the affix read has
     // to survive the damage type that finished it, or a Blazing kill by a
-    // frost round stops looking like an elite kill.
-    if (sig.ring) {
+    // frost round stops looking like an elite kill. `p.isElite ||` on the gate
+    // itself (not just the colour) because void.ring is false: without it, a
+    // void weapon finishing a Hollowed elite would drop the amber affix ring
+    // this comment promises survives every damage type.
+    if (p.isElite || sig.ring) {
       this.rings.spawn(_h1, UP, p.isElite ? 0xffa040 : hue.ring, 0.3 * big, 3.2 * big, 0.45, 0.8);
     }
     this.lights.flick(_h1, hue.killFlick ?? hue.ring, 24 * big, 6 * big, 0.22);
