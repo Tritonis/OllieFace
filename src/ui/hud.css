@@ -1465,13 +1465,16 @@ body.menu-open { cursor: default; }
   box-shadow: -0.055em 0 1.2em rgba(95, 217, 247, 0.35);
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - 0.28em), calc(100% - 0.28em) 100%, 0 100%);
 }
+/* The rule under the wordmark is the planet's own seismograph line, plotted
+   from the run seed — the same number the line below it prints. It keeps the
+   lockup's shear so the mark reads as one object. */
 .title-rule {
-  height: 3px;
-  margin: 1.1em auto 0.9em;
+  --trace-h: 1.5em;
+  --trace-ink: color-mix(in srgb, var(--t-lunar) 78%, transparent);
   width: min(54vw, 40em);
-  background: linear-gradient(90deg, transparent, var(--t-lunar) 18%, #fff 50%, var(--t-lunar) 82%, transparent);
-  clip-path: polygon(1.5em 0, 100% 0, calc(100% - 1.5em) 100%, 0 100%);
+  margin: 0.8em auto 0.7em;
   transform: skewX(var(--skew));
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--t-lunar) 40%, transparent));
 }
 /* Was `--ink-faint` (#5f6e80) at 0.85em over a near-black plate — measured
    barely above the detection floor and effectively invisible at 100% zoom. */
@@ -1580,13 +1583,23 @@ body.menu-open { cursor: default; }
 }
 .panel--wide { width: min(56em, 92vw); }
 .panel-head {
+  position: relative;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 1em;
-  padding-bottom: 0.8em;
+  padding-bottom: 0.9em;
   margin-bottom: 1.2em;
-  border-bottom: 1px solid rgba(148, 182, 214, 0.25);
+}
+/* The hairline every panel used to draw is now a plotted line seeded by the
+   panel's own title: the same treatment as the wordmark's rule, so a head and
+   a title read as the same instrument. Absolute so it does not become a third
+   flex item in the head's baseline row. */
+.panel-rule {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  --trace-h: 0.75em;
+  --trace-ink: rgba(148, 182, 214, 0.42);
 }
 .panel-head h2 {
   margin: 0;
@@ -1814,7 +1827,7 @@ body.menu-open { cursor: default; }
   background: rgba(148, 182, 214, 0.18);
   margin-bottom: 1.3em;
 }
-.stat { padding: 0.9em 1em; background: rgba(6, 11, 18, 0.9); }
+.stat { padding: 0.9em 1em; }
 .stat-k { font-size: var(--fs-micro); letter-spacing: 0.2em; color: var(--ink-faint); margin-bottom: 0.4em; }
 .stat-v {
   font-size: 1.6em;
@@ -2142,8 +2155,6 @@ body.menu-open { cursor: default; }
   text-align: left;
   text-transform: uppercase;
   color: var(--ink);
-  background: rgba(8, 13, 21, 0.86);
-  border: 1px solid var(--line);
   border-left: 3px solid rgba(148, 182, 214, 0.5);
   clip-path: polygon(0 0, 100% 0, calc(100% - 0.8em) 100%, 0 100%);
   cursor: pointer;
@@ -2246,8 +2257,6 @@ body.menu-open { cursor: default; }
   font: inherit;
   text-align: left;
   color: var(--ink-dim);
-  background: rgba(255, 255, 255, 0.022);
-  border: 1px solid transparent;
   clip-path: polygon(0.7em 0, 100% 0, 100% 100%, 0 100%);
   cursor: pointer;
   transition: color 0.15s ease, background-color 0.15s ease, transform 0.16s cubic-bezier(0.16, 1, 0.3, 1);
@@ -2322,7 +2331,6 @@ body.menu-open { cursor: default; }
   gap: 1em;
   margin-top: 0.7em;
   padding: 0.35em 0.9em 0.4em;
-  background: rgba(4, 7, 12, 0.86);
   border-left: 3px solid var(--accent);
   clip-path: polygon(0 0, 100% 0, calc(100% - 0.9em) 100%, 0 100%);
 }
@@ -2399,13 +2407,15 @@ body.menu-open { cursor: default; }
 .sel-stats { display: flex; flex-direction: column; gap: 0.28em; }
 .sbar { display: grid; grid-template-columns: 5.4em 1fr 3.2em; align-items: center; gap: 0.6em; }
 .sbar-k { font-size: var(--fs-micro); letter-spacing: 0.16em; color: var(--ink-faint); }
+/* Stat bars are drawn against the roster maximum, not against an absolute —
+   the only useful question here is "more or less than the other three". As
+   core samples they also answer it by depth: four columns drilled side by
+   side, strata aligned, so the eye compares length without reading a number. */
 .sbar-track {
-  position: relative;
-  height: 0.6em;
-  background: rgba(3, 6, 10, 0.8);
-  border: 1px solid rgba(148, 182, 214, 0.22);
+  height: 0.72em;
+  --core-band: 0.42em;
+  --core-grad: 20%;
   transform: skewX(var(--skew));
-  overflow: hidden;
 }
 .sbar-track i {
   position: absolute;
@@ -2413,6 +2423,13 @@ body.menu-open { cursor: default; }
   transform-origin: left center;
   background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 55%, #05070a), var(--accent));
   box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+/* The survivor's whole stat profile as one plotted line, above the four bars
+   that break it out. Real data: these are the same fractions the bars draw. */
+.sel-trace {
+  --trace-h: 1.3em;
+  --trace-ink: color-mix(in srgb, var(--accent) 62%, transparent);
+  margin-bottom: 0.4em;
 }
 .sbar-v {
   font-size: 0.82em;
@@ -2820,7 +2837,6 @@ body.menu-open { cursor: default; }
 .run-id-cell {
   --accent: var(--line-hot);
   padding: 0.7em 1em;
-  background: rgba(6, 11, 18, 0.92);
   border-top: 2px solid var(--accent);
 }
 .run-id-k { font-size: var(--fs-micro); letter-spacing: 0.24em; color: var(--ink-faint); }

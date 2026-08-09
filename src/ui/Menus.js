@@ -5,7 +5,7 @@
 // class exposes plain methods rather than the system lifecycle.
 
 import * as THREE from 'three';
-import { itemArt, tierMeta, abilityArt, hexOf, markIcon, TIER_ORDER } from './Icons.js';
+import { itemArt, tierMeta, abilityArt, hexOf, markIcon, TIER_ORDER, tracePath, tracePathFrom } from './Icons.js';
 import { ITEMS_BY_TIER } from '../data/items.js';
 import { SURVIVORS, getSurvivor, loadoutOf } from '../data/survivors.js';
 import { Logbook, ModelPreview, disposeTree, renderRunReport } from './Logbook.js';
@@ -177,7 +177,9 @@ export class Menus {
         <div class="title-mark">
           <div class="title-kicker">The smell of rain on dead ground</div>
           <h1 class="title-word">TELLURIC VOID</h1>
-          <div class="title-rule"></div>
+          <svg class="trace title-rule" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
+            <path d="${tracePath(this.ctx.seed ?? 'telluric-void', { points: 40, amp: 0.72 })}" />
+          </svg>
           <div class="title-seed">SEED <span data-seed>—</span></div>
         </div>
         <nav class="menu-list">
@@ -205,12 +207,15 @@ export class Menus {
           <header class="panel-head">
             <h2>Select Survivor</h2>
             <div class="panel-tag" data-sel-tag></div>
+            <svg class="trace panel-rule" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
+              <path d="${tracePath('Select Survivor', { points: 56, amp: 0.5 })}" />
+            </svg>
           </header>
           <div class="sel-body">
             <nav class="sel-roster" data-sel-roster></nav>
             <div class="sel-stage">
               <div class="sel-view" data-sel-view></div>
-              <div class="sel-plate">
+              <div class="sel-plate bez">
                 <div class="sel-name" data-sel-name></div>
                 <div class="sel-sub" data-sel-sub></div>
               </div>
@@ -224,10 +229,10 @@ export class Menus {
             </aside>
           </div>
           <footer class="sel-foot">
-            <button class="chip" data-nav data-act="difficulty">
+            <button class="chip bez" data-nav data-act="difficulty">
               <em>Difficulty</em><span data-chip-diff>—</span>
             </button>
-            <button class="chip" data-nav data-act="artifacts">
+            <button class="chip bez" data-nav data-act="artifacts">
               <em>Artifacts</em><span data-chip-arts>None</span>
             </button>
             <div class="sel-spacer"></div>
@@ -239,7 +244,11 @@ export class Menus {
 
       <section class="screen screen--difficulty" data-screen="difficulty">
         <div class="panel panel--wide">
-          <header class="panel-head"><h2>Difficulty</h2><div class="panel-tag" data-diff-src></div></header>
+          <header class="panel-head"><h2>Difficulty</h2><div class="panel-tag" data-diff-src></div>
+            <svg class="trace panel-rule" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
+              <path d="${tracePath('Difficulty', { points: 56, amp: 0.5 })}" />
+            </svg>
+          </header>
           <div class="opt-list" data-diff-list></div>
           <nav class="menu-list menu-list--row">
             <button class="mbtn mbtn--go" data-nav data-act="back"><span>Back</span></button>
@@ -249,7 +258,11 @@ export class Menus {
 
       <section class="screen screen--artifacts" data-screen="artifacts">
         <div class="panel panel--rules">
-          <header class="panel-head"><h2>Artifacts</h2><div class="panel-tag" data-art-src></div></header>
+          <header class="panel-head"><h2>Artifacts</h2><div class="panel-tag" data-art-src></div>
+            <svg class="trace panel-rule" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
+              <path d="${tracePath('Artifacts', { points: 56, amp: 0.5 })}" />
+            </svg>
+          </header>
           <div class="art-note" data-art-note></div>
           <div class="art-grid" data-art-grid></div>
           <nav class="menu-list menu-list--row">
@@ -276,6 +289,9 @@ export class Menus {
           <header class="panel-head">
             <h2>The Edict</h2>
             <div class="panel-tag" data-edict-tag></div>
+            <svg class="trace panel-rule" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
+              <path d="${tracePath('The Edict', { points: 56, amp: 0.5 })}" />
+            </svg>
           </header>
           <div class="art-note" data-edict-note></div>
           <div class="edict-body">
@@ -294,7 +310,11 @@ export class Menus {
 
       <section class="screen screen--pause" data-screen="pause">
         <div class="panel">
-          <header class="panel-head"><h2>Paused</h2><div class="panel-tag">Run suspended</div></header>
+          <header class="panel-head"><h2>Paused</h2><div class="panel-tag">Run suspended</div>
+            <svg class="trace panel-rule" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
+              <path d="${tracePath('Paused', { points: 56, amp: 0.5 })}" />
+            </svg>
+          </header>
           <nav class="menu-list">
             <button class="mbtn mbtn--go" data-nav data-act="resume"><span>Resume</span></button>
             <button class="mbtn" data-nav data-act="edict" data-edict-entry hidden disabled><span>The Edict</span><em class="mbtn-sub">standing order — C</em></button>
@@ -309,7 +329,11 @@ export class Menus {
 
       <section class="screen screen--settings" data-screen="settings">
         <div class="panel panel--wide">
-          <header class="panel-head"><h2>Settings</h2><div class="panel-tag">Saved locally</div></header>
+          <header class="panel-head"><h2>Settings</h2><div class="panel-tag">Saved locally</div>
+            <svg class="trace panel-rule" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
+              <path d="${tracePath('Settings', { points: 56, amp: 0.5 })}" />
+            </svg>
+          </header>
           <div class="settings-grid" data-settings></div>
           <nav class="menu-list menu-list--row">
             <button class="mbtn" data-nav data-act="reset"><span>Defaults</span></button>
@@ -323,6 +347,9 @@ export class Menus {
           <header class="panel-head">
             <h2>Co-op (beta)</h2>
             <div class="panel-tag" data-coop-role>Single player</div>
+            <svg class="trace panel-rule" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
+              <path d="${tracePath('Co-op (beta)', { points: 56, amp: 0.5 })}" />
+            </svg>
           </header>
 
           <div class="coop-status" data-coop-status>
@@ -558,7 +585,7 @@ export class Menus {
   buildSelect() {
     const roster = this.root.querySelector('[data-sel-roster]');
     roster.innerHTML = SURVIVORS.map((c) => `
-      <button class="sur" data-nav data-survivor="${c.id}" style="--accent:${hexOf(c.accentColor)}">
+      <button class="sur bez" data-nav data-survivor="${c.id}" style="--accent:${hexOf(c.accentColor)}">
         <i class="sur-rule"></i>
         <span class="sur-name">${escapeHtml(c.name)}</span>
         <em class="sur-sub">${escapeHtml(c.subtitle)}</em>
@@ -616,7 +643,8 @@ export class Menus {
         <div class="sk-cd">${a.cooldown >= 1 ? `${a.cooldown}s` : ''}</div>
       </div>`).join('');
 
-    q('[data-sel-stats]').innerHTML = STAT_BARS.map((s) => {
+    const fracs = [];
+    const rows = STAT_BARS.map((s) => {
       const v = card.baseStats[s.key] ?? 0;
       const [lo, hi] = s.range;
       // Floored at 0.03 rather than 0: a genuinely zero stat still has to draw
@@ -624,12 +652,17 @@ export class Menus {
       // of as a survivor with no armour.
       const frac = Math.max(0.03, Math.min(0.96, (v - lo) / (hi - lo)));
       const text = s.fmt ? s.fmt(v) : String(round1(v));
+      fracs.push(frac);
       return `<div class="sbar">
           <div class="sbar-k">${s.label}</div>
-          <div class="sbar-track"><i style="transform:scaleX(${frac.toFixed(3)})"></i></div>
+          <div class="sbar-track core"><i style="transform:scaleX(${frac.toFixed(3)})"></i></div>
           <div class="sbar-v">${text}</div>
         </div>`;
     }).join('');
+    q('[data-sel-stats]').innerHTML =
+      `<svg class="trace sel-trace" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
+         <path d="${tracePathFrom(fracs, { amp: 0.9 })}" />
+       </svg>${rows}`;
 
     this.syncChips();
   }
@@ -888,7 +921,7 @@ export class Menus {
     // drop right now" — and it answers it for the un-ordered case too, naming
     // the fallback policy instead of leaving a blank.
     this.root.querySelector('[data-edict-standing]').innerHTML = `
-      <div class="estand" style="--accent:${escapeHtml(meta.color)}">
+      <div class="estand bez" style="--accent:${escapeHtml(meta.color)}">
         <div class="estand-k">Every ${escapeHtml(meta.label.toLowerCase())} drop resolves to</div>
         <div class="estand-v">${orderedDef
           ? escapeHtml(orderedDef.name)
@@ -897,7 +930,7 @@ export class Menus {
 
     grid.innerHTML = ITEMS_BY_TIER[tier].map((def) => {
       const held = this.ctx.items?.count?.(def.id) ?? 0;
-      return `<button class="eitem${def.id === orderedId ? ' is-on' : ''}" data-nav
+      return `<button class="eitem bez${def.id === orderedId ? ' is-on' : ''}" data-nav
                 data-edict-item="${escapeHtml(def.id)}" style="--accent:${escapeHtml(meta.color)}">
           <img class="eitem-icon" src="${itemArt(def.id, tier)}" alt="" draggable="false" />
           <span class="eitem-name">${escapeHtml(def.name)}</span>
@@ -1318,13 +1351,13 @@ export class Menus {
     const byId = new Map(this.artifactList().map((a) => [a.id, a.name || a.id]));
     const arts = this.activeArtifacts().map((id) => byId.get(id) || id);
     this.root.querySelector('[data-run-id]').innerHTML = `
-      <div class="run-id-cell" style="--accent:${hexOf(card.accentColor)}">
+      <div class="run-id-cell bez" style="--accent:${hexOf(card.accentColor)}">
         <div class="run-id-k">Survivor</div><div class="run-id-v">${escapeHtml(card.name)}</div>
       </div>
-      <div class="run-id-cell">
+      <div class="run-id-cell bez">
         <div class="run-id-k">Difficulty</div><div class="run-id-v">${escapeHtml(diff?.name || '—')}</div>
       </div>
-      <div class="run-id-cell">
+      <div class="run-id-cell bez">
         <div class="run-id-k">Artifacts</div>
         <div class="run-id-v">${arts.length ? escapeHtml(arts.join(', ')) : 'None'}</div>
       </div>`;
@@ -1349,7 +1382,7 @@ export class Menus {
       ['Item pickups', stats.itemCount ?? 0],
     ];
     host.innerHTML = rows
-      .map(([k, v]) => `<div class="stat"><div class="stat-k">${k}</div><div class="stat-v">${v}</div></div>`)
+      .map(([k, v]) => `<div class="stat bez"><div class="stat-k">${k}</div><div class="stat-v">${v}</div></div>`)
       .join('');
 
     const itemsLabel = this.root.querySelector('[data-items-label]');
@@ -1741,7 +1774,7 @@ function injectEdictStyles() {
 .estand {
   padding: 0.7em 1em 0.8em;
   margin-bottom: 0.7em;
-  background: rgba(6, 11, 18, 0.9);
+  background: var(--bezel);
   border-left: 3px solid var(--accent);
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - 0.9em), calc(100% - 0.9em) 100%, 0 100%);
 }
@@ -1788,8 +1821,8 @@ function injectEdictStyles() {
   font: inherit;
   text-align: left;
   color: var(--ink-dim);
-  background: rgba(255, 255, 255, 0.022);
-  border: 1px solid transparent;
+  background: var(--bezel);
+  border: 1px solid var(--bezel-line);
   border-left: 3px solid rgba(148, 182, 214, 0.2);
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - 0.7em), calc(100% - 0.7em) 100%, 0 100%);
   cursor: pointer;
