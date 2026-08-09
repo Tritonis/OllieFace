@@ -794,6 +794,29 @@ const MARKS = {
              [s * 0.60, s * 0.80], [s * 0.40, s * 0.80]]);
     g.fill(); g.stroke();
   },
+  // Vigil — the Maw's ring, closed. Deliberately the same silhouette family:
+  // the two cards are each other's answer, and at 20px the only thing that has
+  // to read is whether the ring has a mouth in it. The band is one path — out
+  // along the rim, back along the bore — so the hole is negative space rather
+  // than a second plate, the same trick the Maw's teeth use. Its seam sits at
+  // the top, under the keystone, which is where the Maw's gap is.
+  vigil: (g, s) => {
+    const R = 0.42, W = 0.11, N = 28;
+    const a0 = -Math.PI / 2;
+    const at = (a, r) => [s * (0.5 + r * Math.cos(a)), s * (0.5 + r * Math.sin(a))];
+    const pts = [];
+    for (let i = 0; i <= N; i++) pts.push(at(a0 + (i / N) * Math.PI * 2, R));
+    for (let i = N; i >= 0; i--) pts.push(at(a0 + (i / N) * Math.PI * 2, R - W));
+    poly(g, pts);
+    g.fill(); g.stroke();
+    poly(g, [[s * 0.38, s * 0.13], [s * 0.62, s * 0.13],
+             [s * 0.56, s * 0.35], [s * 0.44, s * 0.35]]);
+    g.fill(); g.stroke();
+    // What the seal is holding still.
+    poly(g, [[s * 0.5, s * 0.37], [s * 0.63, s * 0.5],
+             [s * 0.5, s * 0.63], [s * 0.37, s * 0.5]]);
+    g.fill(); g.stroke();
+  },
   // ---- difficulties: one horizon, three states of it --------------------
   //
   // The same picture at three degrees of failure, so the ladder reads as a

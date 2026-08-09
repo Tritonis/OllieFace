@@ -42,6 +42,7 @@
  * | `evolution` | `Director.spawnOne` via `monsterScale()` |
  * | `maw`       | `Corruption.feed` via `corruptionMods()` |
  * | `atonement` | `Corruption.feed` + the Voidtouched-kill refund, via `corruptionMods()` |
+ * | `vigil`     | `Corruption.feed` via `corruptionMods()` |
  *
  * `unlock` must name the challenge that `UNLOCK_BINDINGS` binds to this same id.
  * `Artifacts.init` cross-checks the two and warns if they ever drift — one of
@@ -141,6 +142,19 @@ export const ARTIFACTS = [
     mark: 'atonement',
     color: '#9fd4ff',
     unlock: null,
+  },
+  {
+    id: 'vigil',
+    name: 'Vigil of the Unbroken Seal',
+    description: 'Every greed act feeds the gauge 35% less. Refunds are '
+      + 'unchanged — the discount is on what you take, never on what you pay '
+      + 'back.',
+    flavour: 'Carried out of a world you did not spend. It remembers.',
+    mark: 'vigil',
+    color: '#cfe8c8',
+    // The one card that cannot be bought: the challenge is a *won* run ended at
+    // Seeded or cleaner, so the only way to earn it is to have not needed it.
+    unlock: 'unbrokenSeal',
   },
 ];
 

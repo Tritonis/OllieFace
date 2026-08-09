@@ -152,5 +152,95 @@ console.log('the two halves agree — greed time composes with the real Maw to �
   ok(c.feed(p, 10) === 50, 'greed time × the Maw × Atonement composes to ×5.0 on a real feed');
 }
 
+// ---------------------------------------------------------------------------
+// The Vigil of the Unbroken Seal — the one card greed cannot buy.
+//
+// Everything below drives the REAL machinery: the card declares a challenge id,
+// `systems/UnlockRegistry.js` discovers it and binds it, and a real `Profile`
+// gates the artifact on it. Nothing here stubs the gate, because a stubbed gate
+// would pass with the binding missing — which is the exact failure that would
+// leave the Vigil either permanently locked or free for the taking.
+console.log('Vigil of the Unbroken Seal — the card, and the condition on it');
+{
+  // Importing the registry is what resolves `UNLOCK_BINDINGS`; it runs at module
+  // evaluation and binds every card that names a challenge.
+  await import('../src/systems/UnlockRegistry.js');
+  const { CHALLENGE_BY_ID, UNLOCK_BINDINGS } = await import('../src/data/challenges.js');
+
+  const vigil = ARTIFACT_BY_ID.get('vigil');
+  ok(!!vigil, 'the card is registered');
+  ok(vigil?.name === 'Vigil of the Unbroken Seal', 'and carries its name');
+  ok(typeof vigil?.description === 'string' && typeof vigil?.flavour === 'string', 'it has its words');
+  ok(hasMark(vigil?.mark), "the Vigil's mark is an authored vector in Icons.js — no fallback glyph");
+  ok(typeof vigil?.unlock === 'string' && !!vigil.unlock,
+    'it is earned, not given: `unlock` names a challenge rather than being null');
+  ok(!!CHALLENGE_BY_ID[vigil?.unlock], `"${vigil?.unlock}" is a real challenge`);
+  const bound = UNLOCK_BINDINGS[vigil?.unlock];
+  ok(bound?.type === 'artifact' && bound?.id === 'vigil',
+    'and the registry bound that challenge to this artifact');
+}
+
+console.log('the Vigil discounts every feed and leaves the refund alone');
+{
+  const art = new Artifacts();
+  const mods = (ids) => { art.set.clear(); for (const id of ids) art.set.add(id); return { ...art.corruptionMods() }; };
+  const v = mods(['vigil']);
+  ok(Math.abs(v.feed - 0.65) < 1e-9, 'feeds cost 35% less');
+  ok(v.refund === 1, 'and the refund is untouched — the discount is on what you take');
+  const vm = mods(['vigil', 'maw']);
+  ok(Math.abs(vm.feed - 1.3) < 1e-9, 'it composes with the Maw rather than replacing it');
+}
+
+console.log('the two halves agree — a real Vigil drives a real Corruption');
+{
+  const listeners = new Map();
+  const ctx = { authority: true, events: { emit(n, p) { for (const f of listeners.get(n) || []) f(p); },
+    on(n, f) { if (!listeners.has(n)) listeners.set(n, []); listeners.get(n).push(f); } } };
+  const art = new Artifacts(); ctx.artifacts = art; art.set.add('vigil');
+  const c = new Corruption(); c.init(ctx);
+  ok(Math.abs(c.feed({ isPlayer: true }, 10) - 6.5) < 1e-9, 'ten points of greed feeds 6.5');
+}
+
+console.log('the clean ending is what seals it — a real Profile, a real commit');
+{
+  const store = new Map();
+  globalThis.localStorage = {
+    getItem: (k) => (store.has(k) ? store.get(k) : null),
+    setItem: (k, v) => store.set(k, String(v)),
+    removeItem: (k) => store.delete(k),
+    clear: () => store.clear(),
+  };
+  const { Profile } = await import('../src/systems/Profile.js');
+
+  /** A fresh profile mid-run: empty storage, one stage started. */
+  function endRun(won, corruptionBand) {
+    store.clear();
+    const listeners = new Map();
+    const ctx = {
+      authority: true, netRole: 'single', player: { isPlayer: true, survivorId: null },
+      events: { on(n, f) { if (!listeners.has(n)) listeners.set(n, []); listeners.get(n).push(f); },
+        emit(n, p) { for (const f of listeners.get(n) || []) f(p); } },
+    };
+    const profile = new Profile();
+    profile.init(ctx);
+    ctx.events.emit('stageStart', { index: 0, name: 'Stage 1' });
+    // The same shape `Progression.runStats()` hands `commitRun`.
+    profile.commitRun(won, {
+      stage: 1, stageName: 'Stage 1', time: 300, difficulty: 1, gold: 0,
+      corruption: 12, corruptionBand, inventory: [],
+    });
+    return profile;
+  }
+
+  ok(endRun(true, 0).isUnlocked('artifact', 'vigil') === true,
+    'a victory carried home Pristine seals the Vigil');
+  ok(endRun(true, 1).isUnlocked('artifact', 'vigil') === true,
+    'so does one at Seeded — band 1 is the line');
+  ok(endRun(true, 2).isUnlocked('artifact', 'vigil') === false,
+    'a victory at Blighted does not: greed cannot buy this one');
+  ok(endRun(false, 0).isUnlocked('artifact', 'vigil') === false,
+    'and dying spotless does not — the seal is carried out, not died with');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

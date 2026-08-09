@@ -210,6 +210,23 @@ export const CHALLENGES = [
     track: (p) => Math.min(1, p.wins),
     unlocks: null,
   },
+  {
+    id: 'unbrokenSeal',
+    name: 'The Unbroken Seal',
+    // Phrased in the band's own name because that is the word on the HUD; a
+    // player reading this row has watched the gauge say "Seeded" all run.
+    description: 'Finish a run at the Fracture with the world no worse than Seeded.',
+    category: 'depth',
+    hidden: false,
+    goal: 1,
+    // `cleanVictory` is written exactly once, by `Profile.commitRun`, on a won
+    // run whose final corruption band was Seeded or cleaner — so this cannot be
+    // reached by dying clean or by winning dirty. It is a run field rather than
+    // a lifetime stat because the condition is a fact about one run, and the
+    // commit's final `_evaluate` pass is the last moment it exists.
+    track: (p, r) => (r?.cleanVictory ? 1 : 0),
+    unlocks: null,
+  },
 
   // ---- combat --------------------------------------------------------------
   {

@@ -107,6 +107,13 @@ const WRITE_DEBOUNCE_MS = 1500;
 // for a toast on.
 const EVAL_DEBOUNCE_MS = 250;
 
+// The deepest corruption band a run may end in and still count as a clean
+// ending. 1 is Seeded (`BANDS` in data/corruption.js) — the band a player
+// reaches by opening a few chests, so the condition is "restrained", not
+// "took nothing". Not imported from there: this is a challenge threshold, and
+// re-tuning where Seeded *starts* must not silently re-tune what wins the Vigil.
+const CLEAN_ENDING_BAND = 1;
+
 // The window the `massacre` challenge measures its burst over. Ten seconds is
 // about one teleporter-boss add wave, which is the fight the challenge is
 // describing.
@@ -1235,6 +1242,15 @@ export class Profile {
       // A new row moves `survivorsPlayed`, which `wholeRoster` tracks.
       this._facts = null;
     }
+
+    // Restraint's proof, written onto the run block the instant before the last
+    // evaluation can read it: a victory carried home with the world at Seeded or
+    // cleaner. `stats.corruptionBand` is Progression's snapshot of the gauge at
+    // the ending (`runStats()`); an absent one is a build with no corruption
+    // system, which is band 0 and so counts. This is the only writer, and the
+    // `unbrokenSeal` challenge (data/challenges.js) is the only reader — it is
+    // what unlocks the Vigil, the one card greed cannot buy.
+    run.cleanVictory = won && num(stats.corruptionBand, 0) <= CLEAN_ENDING_BAND ? 1 : 0;
 
     // Final evaluation before the run counters are gone: a challenge phrased
     // "…in a single run" can only be true at this instant.
