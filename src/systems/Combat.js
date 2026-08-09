@@ -524,6 +524,11 @@ export class Combat {
       const absorbed = Math.min(target.shield, amount);
       target.shield -= absorbed;
       amount -= absorbed;
+      // Arm the regen delay here, not just in `takeDamage`: a fully-absorbed
+      // hit never reaches `takeDamage`, and without this the shield refilled
+      // at full rate while under fire — below ~half the pool per second of
+      // DPS, a shielded elite could never be broken at all.
+      if (target.shieldTimer !== undefined) target.shieldTimer = 7;
       // `isPlayer` is true of every remote pawn too, and this channel drives the
       // local camera shake and the local HUD. It has to mean *this client's*
       // survivor, not "a survivor".
