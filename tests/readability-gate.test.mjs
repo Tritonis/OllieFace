@@ -133,6 +133,20 @@ console.log('the gate grades a record and ratchets against its exemptions');
   worse.tierMedianPx[1] = 120;
   ok(gradeRoster(worse, exempt).ok === false, 'an exempted check that degrades goes red again');
 
+  // The slack on an exempted bar. Every shipped exemption was copied from the
+  // record at full precision, so without it every one of them sits exactly on
+  // its own bar and a rasteriser that moves one pixel turns the gate red. One
+  // pixel of drift is tolerated; a real regression is not, and the two are
+  // three orders of magnitude apart.
+  const jitter = structuredClone(dim);
+  jitter.units[0].px40 = 139;
+  jitter.tierMedianPx[1] = 139;
+  ok(gradeRoster(jitter, exempt).ok === true, 'one pixel of driver noise under an exemption is not a regression');
+  const drop = structuredClone(dim);
+  drop.units[0].px40 = 134;
+  drop.tierMedianPx[1] = 134;
+  ok(gradeRoster(drop, exempt).ok === false, 'and the slack is an epsilon, not a second exemption');
+
   // ...and an exemption never covers a different unit.
   const other = structuredClone(good);
   other.units[1].px40 = 140;
@@ -144,6 +158,9 @@ console.log('the gate grades a record and ratchets against its exemptions');
   ok(gradeRoster(collide, []).ok === false, 'two families that overlap too much fail');
   ok(gradeRoster(collide, [{ id: 'mite/golem', kind: 'familyIoU', value: 0.91 }]).ok === true,
      'exempted at 0.91 it passes');
+  collide.familyPairs[0].iou = 0.9145;
+  ok(gradeRoster(collide, [{ id: 'mite/golem', kind: 'familyIoU', value: 0.91 }]).ok === true,
+     'and the ceiling carries the same slack the floor does');
   collide.familyPairs[0].iou = 0.93;
   ok(gradeRoster(collide, [{ id: 'mite/golem', kind: 'familyIoU', value: 0.91 }]).ok === false,
      'and 0.93 against a 0.91 exemption is a regression');
@@ -162,6 +179,31 @@ console.log('the recorded roster covers every card the director can spawn');
   // slice, so it has to say which tree produced it.
   ok(typeof rec.commit === 'string' && rec.commit.length >= 7, 'the record names the commit it measured');
   ok(rec.seed === 1337 && rec.range === 40, 'and the seed and the range it measured at');
+
+  // Re-grade it. The nineteen exemptions in `silhouette-metrics.mjs` are
+  // hand-copied from this record, and until this ran nothing checked that they
+  // still describe it: a threshold could be tightened, or an exemption dropped
+  // or mistyped, and the suite would stay green because it only ever asked
+  // whether the record existed. Grading is pure arithmetic over the stored
+  // units, so this closes the loop with no GPU, no browser and no re-capture —
+  // which was the whole reason the maths was split out of the tool.
+  const { gradeRoster: grade } = await import('../tools/silhouette-metrics.mjs');
+  const re = grade(rec);
+  ok(re.ok === true, 'the committed record still passes its own thresholds and exemptions');
+  ok(re.checks.length === (rec.checks?.length ?? -1),
+     'and the re-grade produces exactly the checks the record stored');
+  const drift = re.checks.filter((c, i) => {
+    const s = rec.checks?.[i];
+    return !s || s.id !== c.id || s.kind !== c.kind || s.ok !== c.ok || s.exempt !== c.exempt;
+  });
+  ok(drift.length === 0, `stored verdicts match a fresh grade (${drift.length} differences)`);
+  // The record carries the daylight metric, not just band widths — `runs` is
+  // what says whether a silhouette has gaps at all, and dropping it is what
+  // made the roster's largest finding unanswerable from committed data.
+  ok(rec.units.every((u) => Array.isArray(u.bands) && u.bands.length === 10
+     && u.bands.every((b) => typeof b.w === 'number' && typeof b.fill === 'number'
+        && typeof b.runs === 'number')),
+     'every unit records ten bands of width, fill and runs');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

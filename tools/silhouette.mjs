@@ -393,7 +393,16 @@ if (roster) {
     renderer: SOFTWARE ? 'swiftshader' : 'd3d11',
     units: measured.map(({ id, name, tier, height, px40, holesFrac, m }) => ({
       id, name, tier, height, px40, holesFrac,
-      bbox: `${m.bw}x${m.bh}`, fill: m.fill, aspect: m.aspect, bands: m.bands.map((b) => +b.w.toFixed(3)),
+      bbox: `${m.bw}x${m.bh}`, fill: m.fill, aspect: m.aspect,
+      // Width, fill *and* runs, not width alone. `runs` is the direct measure
+      // of daylight through the outline — a band at 1.00 run is a solid bar,
+      // arms welded to a torso or legs fused into one column — and it is the
+      // metric that answers whether `minHoles` (which only sees *enclosed*
+      // space, and reads zero across most of this roster) is measuring the
+      // right thing. Recording width only meant the question the exemption
+      // note raises could not be answered from the committed record, and
+      // recovering the answer cost a whole GPU pass.
+      bands: m.bands.map((b) => ({ w: +b.w.toFixed(3), fill: +b.fill.toFixed(3), runs: +b.runs.toFixed(3) })),
     })),
     familyPairs, foeFriendPairs, tierMedianPx, elites,
   };

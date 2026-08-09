@@ -230,19 +230,37 @@ export const READABILITY = {
  * switched off within a week. This one is allowed to admit what the roster
  * already is — once, in writing, with the measured value and the record it
  * came from — and is then absolute about anything new or anything worse.
+ *
+ * `EXEMPT_SLACK` is the other half of surviving. Every exemption was copied
+ * from the record at full precision, so every exempted check sat at *exactly*
+ * its bar: one pixel off the mite's 40 m footprint, or +0.0001 on the
+ * brood/acolyte IoU, and the gate went red on a re-run that changed nothing
+ * but the rasteriser's mind. A ratchet with no tolerance against a d3d11
+ * driver gets switched off in the same week as a gate authored blind. So an
+ * exempted bar — and *only* an exempted bar; the design thresholds above are
+ * absolute and are not moved by this — carries 1 % of relative slack, floored
+ * at one whole pixel for `px40` where the unit is discrete. That is far under
+ * the smallest real regression any of these checks could describe and far over
+ * the noise, so "no worse than when we admitted it" keeps meaning what it
+ * says: an exemption that genuinely degrades still goes red.
  */
+const EXEMPT_SLACK = 0.01;
+const slackFor = (kind, value) => (kind === 'px40'
+  ? Math.max(1, Math.abs(value) * EXEMPT_SLACK)
+  : Math.abs(value) * EXEMPT_SLACK);
+
 export function gradeRoster(record, exemptions = READABILITY.exemptions) {
   const checks = [];
   const ex = (id, kind) => exemptions.find((e) => e.id === id && e.kind === kind) || null;
 
   const floor = (id, kind, value, limit) => {
     const e = ex(id, kind);
-    const bar = e ? Math.min(limit, e.value) : limit;
+    const bar = e ? Math.min(limit, e.value - slackFor(kind, e.value)) : limit;
     checks.push({ id, kind, value, floor: bar, ok: value >= bar, exempt: !!e });
   };
   const ceiling = (id, kind, value, limit) => {
     const e = ex(id, kind);
-    const bar = e ? Math.max(limit, e.value) : limit;
+    const bar = e ? Math.max(limit, e.value + slackFor(kind, e.value)) : limit;
     checks.push({ id, kind, value, ceiling: bar, ok: value <= bar, exempt: !!e });
   };
 

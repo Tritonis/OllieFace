@@ -86,6 +86,72 @@ console.log('the arc rises then falls, and lands');
   ok(ys.every((y) => y >= -0.001), 'it never sinks through the floor it started on');
 }
 
+console.log('the body stays where it landed until the dissolve has taken it');
+{
+  // The defect this arm exists for: the launch used to retire on ground
+  // contact, which dropped the whole `vx*t` offset in the single frame the arc
+  // ended. At full power that is a 6.8 m teleport back onto the death spot, at
+  // an apparent 400 m/s, while `deathDissolve` (0.85 s) is only three quarters
+  // through and the corpse is still on screen. The throw undid itself in the
+  // frame it finished.
+  const vfx = new VFX();
+  const corpse = makeCorpse();
+  const home = corpse.position.clone();
+  const step = (dt) => { corpse.position.copy(home); vfx._updateLaunches(dt); };
+  vfx.corpseLaunch(corpse, 1, 0, 1);
+
+  // Walk to the frame after touchdown and record the reach.
+  let landed = 0, reach = 0, spinAtLand = 0;
+  for (let i = 0; i < 60 && !landed; i++) {
+    step(1 / 60);
+    if (vfx._launches[0]?.land) { landed = i + 1; reach = corpse.position.x - home.x; spinAtLand = corpse.rotation.z; }
+  }
+  ok(landed > 0, `the arc lands (frame ${landed})`);
+  ok(reach > 5, `and it has travelled by then (${reach.toFixed(2)}m)`);
+  ok(Math.abs(corpse.position.y - home.y) < 1e-9, 'on the ground the owner writes, not under it');
+
+  // The next frame is the one that used to teleport.
+  step(1 / 60);
+  ok(Math.abs((corpse.position.x - home.x) - reach) < 1e-9,
+     'the frame after touchdown holds the landing offset instead of discarding it');
+
+  // And it is still held while the dissolve is running (0.85 s from the kill).
+  let heldThroughDissolve = true;
+  while (vfx._launches.length && vfx._launches[0].t < 0.85) {
+    step(1 / 60);
+    if (vfx._launches.length && Math.abs((corpse.position.x - home.x) - reach) > 1e-9) heldThroughDissolve = false;
+  }
+  ok(heldThroughDissolve, 'and holds it unmoved for every frame the corpse is still visible');
+  ok(vfx._launches.length === 1, 'the launch is still alive at the end of the dissolve');
+  // The tumble is walked back across the hold rather than snapped at the end.
+  // A throw down +x spins about z, so z is the axis that carries it — asserted
+  // on the axis that actually moves, because `rotation.x` is identically zero
+  // here and would pass this for the wrong reason.
+  ok(Math.abs(spinAtLand) > 1, `the body landed mid-tumble (${spinAtLand.toFixed(3)} rad)`);
+  const mid = corpse.rotation.z;
+  ok(Math.abs(mid) > 1e-6 && Math.abs(mid) < Math.abs(spinAtLand),
+     `and the tumble is easing back, not held or snapped (${mid.toFixed(3)} rad)`);
+
+  // ...and it does let go, well before the rig is recycled at DEATH_TIME.
+  let monotone = true, prev = Math.abs(mid);
+  for (let i = 0; i < 30 && vfx._launches.length; i++) {
+    step(1 / 60);
+    if (vfx._launches.length) {
+      const now = Math.abs(corpse.rotation.z);
+      if (now > prev + 1e-9) monotone = false;
+      prev = now;
+    }
+  }
+  ok(monotone, 'the ease only ever walks the tumble toward home');
+  ok(vfx._launches.length === 0, 'the hold ends of its own accord');
+  ok(vfx._launches.length === 0 && LAUNCH.hold < 1.5, 'and ends before the corpse is reaped');
+  corpse.position.copy(home);
+  corpse.rotation.set(0, 0, 0);
+  vfx._updateLaunches(1 / 60);
+  ok(corpse.position.equals(home) && corpse.rotation.x === 0 && corpse.rotation.z === 0,
+     'a held launch leaves no more residue than a retired one did');
+}
+
 console.log('power scales the throw, and zero power throws nothing');
 {
   const vfx = new VFX();

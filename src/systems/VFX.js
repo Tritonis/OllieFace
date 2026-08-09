@@ -64,8 +64,19 @@ const HITSTOP_GATE = 0.085;
  * `minOverkillFrac` is a fraction of the victim's max health: a mite finished
  * by a rounding error stays where it fell, and a hit that doubled what was
  * left of it goes flying.
+ *
+ * `hold` is why the effect survives its own landing. Retiring on ground
+ * contact dropped the whole `vx·t` offset in the single frame the arc ended —
+ * a full-power throw teleported 6.78 m back onto the spot it died on at an
+ * apparent 407 m/s, while `deathDissolve` (0.85 s) was only 75 % through and
+ * the body was still on screen. So a landed launch keeps holding its landing
+ * offset with `y` collapsed to the ground, and only lets go at `hold`, by
+ * which time the dissolve has finished and there is nothing left to see move.
+ * `hold` sits between the dissolve (0.85 s) and `Enemy`'s `DEATH_TIME` (1.5 s,
+ * when the rig returns to its pool), so the offset is released while the
+ * corpse is invisible and long before the rig it writes to is recycled.
  * -------------------------------------------------------------------- */
-export const LAUNCH = { minOverkillFrac: 0.35, maxSpeed: 11, spin: 7, gravity: 22, dur: 1.5 };
+export const LAUNCH = { minOverkillFrac: 0.35, maxSpeed: 11, spin: 7, gravity: 22, dur: 1.5, hold: 1.05 };
 
 /**
  * How each read family dies.
@@ -817,6 +828,9 @@ export class VFX {
       // direction it is travelling, not around an arbitrary one.
       sx: (dirZ / len) * LAUNCH.spin * k,
       sz: -(dirX / len) * LAUNCH.spin * k,
+      // Filled in on ground contact: when it landed, the offset and the tumble
+      // it landed with. Zero until then, and `land` doubles as the phase flag.
+      land: 0, ox: 0, oz: 0, ax: 0, az: 0,
     });
   }
 
@@ -841,11 +855,46 @@ export class VFX {
       // on top of the owner's transform can never drift.
       const y = l.vy * t - 0.5 * LAUNCH.gravity * t * t;
       const o = l.obj;
-      if (t >= l.dur || y < 0) {
-        // Hand the rotation back exactly as it was found, then let go.
+
+      // Ground contact ends the *arc*, not the launch. Letting go here dropped
+      // the entire `vx·t` offset in one frame while the corpse was still three
+      // quarters visible, which undid the throw in the frame the throw
+      // finished. So the landing values are latched and then held: the body
+      // stays where it came to rest, on the ground, while the dissolve takes
+      // it. Latched from the first sub-zero sample rather than solved for the
+      // exact root because the difference is one frame of travel and the
+      // held value only has to be *a* resting place, not the analytic one.
+      if (!l.land && y < 0) {
+        l.land = t;
+        l.ox = l.vx * t;
+        l.oz = l.vz * t;
+        l.ax = l.sx * t;
+        l.az = l.sz * t;
+      }
+
+      if (t >= l.dur || (l.land && t >= LAUNCH.hold)) {
+        // Hand the rotation back exactly as it was found, then let go. On the
+        // landed path the ease below has already walked it here, so this is a
+        // no-op that stays in as the guarantee: whatever happened, the
+        // rotation this launch borrowed is returned unchanged.
         o.rotation.x = l.rx;
         o.rotation.z = l.rz;
         this._launches.splice(i, 1);
+        continue;
+      }
+
+      if (l.land) {
+        // Landed and holding: horizontal offset frozen at the landing values,
+        // vertical collapsed onto the ground the owner already writes, tumble
+        // eased out across the hold instead of snapped straight at the end of
+        // it. Still a pure function of t, still added rather than accumulated,
+        // so the composition invariant is exactly the one the arc had.
+        const u = clamp((t - l.land) / Math.max(1e-4, LAUNCH.hold - l.land), 0, 1);
+        const e = 1 - u * u * (3 - 2 * u);
+        o.position.x += l.ox;
+        o.position.z += l.oz;
+        o.rotation.x = l.rx + l.ax * e;
+        o.rotation.z = l.rz + l.az * e;
         continue;
       }
       // Position is added, because the owner rewrites it from `this.position`

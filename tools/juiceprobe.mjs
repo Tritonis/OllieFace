@@ -331,7 +331,8 @@ try {
    * The launch a kill fraction buys, in metres, from the game's own kinematics.
    *
    * `VFX.corpseLaunch` sets `speed = maxSpeed * k`, `vy = speed * 0.62`, and
-   * `_updateLaunches` retires the record when `y < 0` — so the flight time is
+   * `_updateLaunches` freezes the offset when `y < 0` (and holds it there
+   * until the dissolve is done) — so the flight time is
    * `2 * vy / gravity` and the horizontal reach is `speed * t`, capped by
    * `LAUNCH.dur`. Re-derived here rather than measured off a rig because the
    * probe is recording what the *tuning* buys, not what one corpse did.
