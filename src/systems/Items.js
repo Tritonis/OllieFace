@@ -114,6 +114,10 @@ const ORDINARY_TIERS = ['common', 'uncommon', 'legendary'];
  * Scaling by the card's credit cost is what makes a boss pay orders of
  * magnitude more than a beetle (420 credits vs 6) for free, and elites pay
  * their 4.5-5x affix surcharge back for the same reason.
+ *
+ * "difficulty" above is `Director.rewardCoefficient` — the time-and-stage curve
+ * only. The economy is closed against the *clean* director on purpose; see
+ * `killReward`.
  */
 const GOLD_PER_COST = 1.0;
 // Bosses also drop a guaranteed boss item, so their gold is discounted rather
@@ -487,7 +491,14 @@ export class Items {
     // used to be the fallback here; it is now the difficulty *selection* API,
     // and the director's coefficient — which is never absent — is the honest
     // single source anyway.)
-    const d = Math.max(1, this.ctx.director?.difficultyCoefficient ?? 1);
+    //
+    // `rewardCoefficient`, not `difficultyCoefficient`: the two differ only by
+    // the World Corruption pressure term, and gold is quadratic in this number
+    // while enemy stats are linear, so paying against the corrupted curve made
+    // greed the higher-EV line. The fallback keeps any tool holding an older
+    // Director-shaped stub alive, and at world 0 the two are the same float.
+    const d = Math.max(1, this.ctx.director?.rewardCoefficient
+      ?? this.ctx.director?.difficultyCoefficient ?? 1);
     const gold = this.ctx.artifacts?.runMods?.().gold ?? 1;
     return Math.max(1, Math.round(cost * GOLD_PER_COST * eliteMult * bossMult * voidMult * d * gold));
   }

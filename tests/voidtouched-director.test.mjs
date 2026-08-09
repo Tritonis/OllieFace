@@ -246,6 +246,30 @@ console.log('the world itself turns hostile as it rots');
   const timeFactor = (300 / 60) * 0.0506 * Math.pow(a.playerCount, 0.2) * scale;
   ok(a.difficultyCoefficient === (pf + timeFactor) * stageFactor,
     'a pristine world is byte-identical to the formula before this term existed');
+
+  // The other half of the same ledger: pressure buys threat, never gold. Gold is
+  // quadratic in the coefficient the payout reads (the director banks credits at
+  // 0.95 x coef and a corpse refunds cost x coef) while HP and damage are only
+  // linear in `level`, so a corrupted world that fed both ends paid 2.34x for
+  // 1.55x the HP. `rewardCoefficient` is the same curve minus the corruption
+  // term, and it is what `Items.killReward` pays against.
+  ok(b.difficultyCoefficient > a.difficultyCoefficient, 'world 400 moved the difficulty coefficient');
+  ok(b.rewardCoefficient === a.rewardCoefficient,
+    `and left the reward coefficient exactly where it was (${a.rewardCoefficient} vs ${b.rewardCoefficient})`);
+  ok(a.rewardCoefficient === a.difficultyCoefficient,
+    'at world 0 the two are the same float, so a pristine run is unchanged');
+
+  // Through the real `killReward`, not the formula: same victim, same clock,
+  // same stage — a rotted world must not raise the payout by one gold.
+  const { Items } = await import('../src/systems/Items.js');
+  const payout = (d) => {
+    const items = new Items();
+    items.init({ authority: true, events: { on() {}, emit() {} }, director: d });
+    return items.killReward({ def: { cost: 40 }, elite: null });
+  };
+  const goldClean = payout(a), goldRotten = payout(b);
+  ok(goldClean > 0 && goldClean === goldRotten,
+    `the same kill pays the same at world 0 and world 400 (${goldClean} vs ${goldRotten})`);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

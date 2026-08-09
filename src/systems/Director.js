@@ -84,6 +84,9 @@ export class Director {
     this.pool = new Map();
 
     this.difficultyCoefficient = 1;
+    // The same curve with the corruption term left out — what a kill is *paid*
+    // against. See `updateDifficulty`.
+    this.rewardCoefficient = 1;
     this.difficultyName = 'Easy';
     this.difficultyIndex = 0;
     this.level = 1;
@@ -275,6 +278,16 @@ export class Director {
     // this term exactly 0, so a pristine run keeps the pre-corruption curve.
     const corFactor = (ctx.corruption?.world ?? 0) * PRESSURE.perWorld;
     this.difficultyCoefficient = (pf + timeFactor + corFactor) * stageFactor;
+    // The same curve *without* the corruption term, and the one `Items.killReward`
+    // pays against. Corruption must never raise gold: the director banks credits
+    // at `0.95 x coefficient` and a corpse refunds `cost x coefficient`, so income
+    // is quadratic in whatever goes in here while enemy HP and damage are only
+    // linear in `level`. Feeding `corFactor` into both ends made rotting the world
+    // the higher-EV line (2.34x gold against 1.55x HP at world 400 / 20 min /
+    // stage 5) — the exact inversion of what the pressure term is for. The
+    // pressure stays in `difficultyCoefficient`, where it buys threat; it is the
+    // payout that has to stay blind to it. At world 0 the two are byte-identical.
+    this.rewardCoefficient = (pf + timeFactor) * stageFactor;
 
     this.level = 1 + Math.floor(Math.max(0, this.difficultyCoefficient - pf) / 0.33);
     this.healthMult = 1 + 0.30 * (this.level - 1);
