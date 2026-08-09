@@ -411,7 +411,11 @@ export class Combat {
         const d = Math.sqrt(e.position.distanceToSquared(point));
         amount *= Math.max(0.35, 1 - d / radius);
       }
-      this.applyDamage(e, amount, { source, procCoefficient: proc, procDepth, position: point, type });
+      // `status` rides along for presentation only — `applyStatus` below is
+      // still the thing that applies it. Without this the blast that lights a
+      // burn colours its own spark correctly (its `type` is real) but has no
+      // way to tell the tick sparks that follow what family they belong to.
+      this.applyDamage(e, amount, { source, procCoefficient: proc, procDepth, position: point, type, status });
       if (status) this.applyStatus(e, status, source, 1);
     }
     this._popScratch(targets);
@@ -537,6 +541,13 @@ export class Combat {
     ctx.events.emit('damage', {
       target, source, amount: incoming, toHealth: dealt, absorbed: incoming - dealt,
       crit, position: pos, proc: info.procCoefficient || 0,
+      // What the hit was, for presentation only. `'hit'` is the same default
+      // the proc dispatch below already uses, so an info with no type reads
+      // identically on both channels. Nothing in gameplay may key off this:
+      // the authority for what a hit *does* is `info`, and this is what it
+      // looks like. `status` rides along because most on-hit procs are plain
+      // bullets that light something — the colour is the status, not the gun.
+      type: info.type || 'hit', status: info.status || null,
     });
 
     if (target === ctx.player && dealt > 0) {
@@ -716,7 +727,11 @@ export class Combat {
             // procCoefficient 0 stops burns re-triggering the item that lit them.
             this.applyDamage(entity, s.damage, {
               source: s.source, isDot: true, crit: false,
-              procCoefficient: 0, procDepth: MAX_PROC_DEPTH, type: s.type,
+              // `type` stays the status name because items key off it. `status`
+              // is the same string on a channel only presentation reads, which
+              // is what lets `elementOf` resolve a burn tick to fire instead of
+              // falling through to kinetic. Two keys, one value, two audiences.
+              procCoefficient: 0, procDepth: MAX_PROC_DEPTH, type: s.type, status: s.type,
             });
             if (!entity.alive) break;
           }

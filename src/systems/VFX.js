@@ -5,6 +5,7 @@ import { Decals, DECAL } from '../fx/Decals.js';
 import { makeDissolvable } from '../shaders/DissolveShader.js';
 import { MAX_BLASTS } from '../shaders/DistortShader.js';
 import { clamp, lerp } from '../core/MathUtil.js';
+import { elementOf, sparkColour, ELEMENT_HUE } from '../data/damageTypes.js';
 import { isLocalVictim } from '../core/Engine.js';
 
 /**
@@ -1166,9 +1167,16 @@ export class VFX {
     }
     _h2.normalize();
 
-    this.hitSpark(_h1, p.crit ? 0xffd24a : 0xffe9b0, p.crit ? 1.35 : 1);
+    // The colour is the damage's own family, not the weapon's. A frost round
+    // and a fire round out of the same barrel have to look like two different
+    // things or the elemental items are invisible in the one place the player
+    // is actually looking. Untyped hits resolve to `kinetic`, whose hexes are
+    // the two literals this line used to carry.
+    const element = elementOf(p.type, p.status);
+    this.hitSpark(_h1, sparkColour(element, p.crit), p.crit ? 1.35 : 1);
     this.bloodHit(_h1, _h2, 0x9c0d18);
-    this.hitFlash(target, p.crit ? 0xffe0a0 : 0xffffff, p.crit ? 0.09 : 0.06);
+    this.hitFlash(target, p.crit ? ELEMENT_HUE[element].critTail : ELEMENT_HUE[element].core,
+                  p.crit ? 0.09 : 0.06);
     this.damageNumber(_h1, p.amount, p.crit, undefined, target);
 
     const shake = clamp((p.crit ? 0.026 : 0.011) + rel * 0.05, 0.008, 0.075);

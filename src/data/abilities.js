@@ -227,7 +227,9 @@ function damageGroup(ctx, player, group, damage, { proc = 1, status = null, type
     const e = group[i];
     if (!e?.alive) continue;
     if (c?.applyDamage) {
-      c.applyDamage(e, damage, { source: player, procCoefficient: proc, position: e.position, type });
+      // `status` travels on the info for presentation only; `applyStatus`
+      // below is still what applies it.
+      c.applyDamage(e, damage, { source: player, procCoefficient: proc, position: e.position, type, status });
       if (status) c.applyStatus?.(e, status, player, 1);
     } else {
       e.takeDamage?.(damage, { source: player, position: e.position });
