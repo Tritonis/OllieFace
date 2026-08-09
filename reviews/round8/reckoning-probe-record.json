@@ -1,0 +1,1102 @@
+{
+  "seed": 1337,
+  "at": "2026-08-09T01:55:24.799Z",
+  "out": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\shots-reckoning",
+  "constants": {
+    "acState": "running",
+    "ready": true,
+    "muted": false,
+    "hasVoidGain": true,
+    "tapped": true,
+    "VOID_LAYER": [
+      0,
+      0,
+      0.05,
+      0.1,
+      0.16
+    ],
+    "SNAP": {
+      "window": 1.6,
+      "rateMult": 5,
+      "vignette": 0.45,
+      "aberration": 0.0035,
+      "earlyMult": 0.5,
+      "decay": 0.99
+    },
+    "BAND_SKY": [
+      0,
+      0,
+      0.3,
+      0.6,
+      1
+    ],
+    "PRESSURE": {
+      "perWorld": 0.004
+    },
+    "CLEANSE": {
+      "gold": 60,
+      "goldGrowth": 1.25,
+      "amount": 30,
+      "fraction": 0.22,
+      "maxUses": 3,
+      "costClimb": 1.4,
+      "guaranteeBand": 2
+    },
+    "VOIDTOUCHED": {
+      "affix": "voidtouched",
+      "ratePerWorld": 0.02,
+      "bankBase": 90,
+      "bankPerWorld": 0.5,
+      "maxBank": 240,
+      "interval": 4,
+      "telegraph": 1.1,
+      "spawnRing": {
+        "min": 2.5,
+        "max": 6.5
+      },
+      "minPlayerDist": 12,
+      "refund": 0.08,
+      "rewardMult": 0.25
+    },
+    "BANDS": [
+      {
+        "id": 0,
+        "name": "Pristine",
+        "at": 0
+      },
+      {
+        "id": 1,
+        "name": "Seeded",
+        "at": 20
+      },
+      {
+        "id": 2,
+        "name": "Blighted",
+        "at": 55
+      },
+      {
+        "id": 3,
+        "name": "Overrun",
+        "at": 110
+      },
+      {
+        "id": 4,
+        "name": "Consumed",
+        "at": 190
+      }
+    ]
+  },
+  "arms": {
+    "escalate": {
+      "steps": [
+        {
+          "target": 25,
+          "world": 25,
+          "band": 1,
+          "crossings": [
+            {
+              "band": 1,
+              "prev": 0,
+              "world": 25
+            }
+          ],
+          "stings": [
+            {
+              "band": 1,
+              "prev": 0,
+              "oscillators": 3,
+              "at": 2.552,
+              "stingReadyWas": 0
+            }
+          ],
+          "snapTAtCrossing": 1.583,
+          "skyTarget": 0,
+          "skyReached09At": null,
+          "skyWAtWindowEnd": 0,
+          "vignetteBoost": 0.0004,
+          "trace": [
+            {
+              "t": 0.0167,
+              "snapT": 1.583,
+              "skyW": 0
+            },
+            {
+              "t": 0.2,
+              "snapT": 1.4,
+              "skyW": 0
+            },
+            {
+              "t": 0.4,
+              "snapT": 1.2,
+              "skyW": 0
+            },
+            {
+              "t": 0.6,
+              "snapT": 1,
+              "skyW": 0
+            },
+            {
+              "t": 0.8,
+              "snapT": 0.8,
+              "skyW": 0
+            },
+            {
+              "t": 1,
+              "snapT": 0.6,
+              "skyW": 0
+            },
+            {
+              "t": 1.2,
+              "snapT": 0.4,
+              "skyW": 0
+            },
+            {
+              "t": 1.4,
+              "snapT": 0.2,
+              "skyW": 0
+            },
+            {
+              "t": 1.6,
+              "snapT": 0,
+              "skyW": 0
+            }
+          ]
+        },
+        {
+          "target": 60,
+          "world": 60,
+          "band": 2,
+          "crossings": [
+            {
+              "band": 2,
+              "prev": 1,
+              "world": 60
+            }
+          ],
+          "stings": [
+            {
+              "band": 2,
+              "prev": 1,
+              "oscillators": 3,
+              "at": 5.4,
+              "stingReadyWas": 4.152
+            }
+          ],
+          "snapTAtCrossing": 1.583,
+          "skyTarget": 0.3,
+          "skyReached09At": null,
+          "skyWAtWindowEnd": 0.3,
+          "vignetteBoost": 0.0471,
+          "trace": [
+            {
+              "t": 0.0167,
+              "snapT": 1.583,
+              "skyW": 0.0331
+            },
+            {
+              "t": 0.2,
+              "snapT": 1.4,
+              "skyW": 0.2262
+            },
+            {
+              "t": 0.4,
+              "snapT": 1.2,
+              "skyW": 0.2819
+            },
+            {
+              "t": 0.6,
+              "snapT": 1,
+              "skyW": 0.2955
+            },
+            {
+              "t": 0.8,
+              "snapT": 0.8,
+              "skyW": 0.2989
+            },
+            {
+              "t": 1,
+              "snapT": 0.6,
+              "skyW": 0.2997
+            },
+            {
+              "t": 1.2,
+              "snapT": 0.4,
+              "skyW": 0.3
+            },
+            {
+              "t": 1.4,
+              "snapT": 0.2,
+              "skyW": 0.3
+            },
+            {
+              "t": 1.6,
+              "snapT": 0,
+              "skyW": 0.3
+            }
+          ]
+        },
+        {
+          "target": 115,
+          "world": 115,
+          "band": 3,
+          "crossings": [
+            {
+              "band": 3,
+              "prev": 2,
+              "world": 115
+            }
+          ],
+          "stings": [
+            {
+              "band": 3,
+              "prev": 2,
+              "oscillators": 3,
+              "at": 8.672,
+              "stingReadyWas": 7
+            }
+          ],
+          "snapTAtCrossing": 1.583,
+          "skyTarget": 0.6,
+          "skyReached09At": null,
+          "skyWAtWindowEnd": 0.6,
+          "vignetteBoost": 0.1033,
+          "trace": [
+            {
+              "t": 0.0167,
+              "snapT": 1.583,
+              "skyW": 0.3331
+            },
+            {
+              "t": 0.2,
+              "snapT": 1.4,
+              "skyW": 0.5262
+            },
+            {
+              "t": 0.4,
+              "snapT": 1.2,
+              "skyW": 0.5819
+            },
+            {
+              "t": 0.6,
+              "snapT": 1,
+              "skyW": 0.5955
+            },
+            {
+              "t": 0.8,
+              "snapT": 0.8,
+              "skyW": 0.5989
+            },
+            {
+              "t": 1,
+              "snapT": 0.6,
+              "skyW": 0.5997
+            },
+            {
+              "t": 1.2,
+              "snapT": 0.4,
+              "skyW": 0.6
+            },
+            {
+              "t": 1.4,
+              "snapT": 0.2,
+              "skyW": 0.6
+            },
+            {
+              "t": 1.6,
+              "snapT": 0,
+              "skyW": 0.6
+            }
+          ]
+        },
+        {
+          "target": 200,
+          "world": 200,
+          "band": 4,
+          "crossings": [
+            {
+              "band": 4,
+              "prev": 3,
+              "world": 200
+            }
+          ],
+          "stings": [
+            {
+              "band": 4,
+              "prev": 3,
+              "oscillators": 3,
+              "at": 11.941,
+              "stingReadyWas": 10.272
+            }
+          ],
+          "snapTAtCrossing": 1.583,
+          "skyTarget": 1,
+          "skyReached09At": 0.2,
+          "skyWAtWindowEnd": 1,
+          "vignetteBoost": 0.1876,
+          "trace": [
+            {
+              "t": 0.0167,
+              "snapT": 1.583,
+              "skyW": 0.6441
+            },
+            {
+              "t": 0.2,
+              "snapT": 1.4,
+              "skyW": 0.9016
+            },
+            {
+              "t": 0.4,
+              "snapT": 1.2,
+              "skyW": 0.9758
+            },
+            {
+              "t": 0.6,
+              "snapT": 1,
+              "skyW": 0.994
+            },
+            {
+              "t": 0.8,
+              "snapT": 0.8,
+              "skyW": 0.9985
+            },
+            {
+              "t": 1,
+              "snapT": 0.6,
+              "skyW": 0.9996
+            },
+            {
+              "t": 1.2,
+              "snapT": 0.4,
+              "skyW": 1
+            },
+            {
+              "t": 1.4,
+              "snapT": 0.2,
+              "skyW": 1
+            },
+            {
+              "t": 1.6,
+              "snapT": 0,
+              "skyW": 1
+            }
+          ]
+        }
+      ],
+      "crossings": [
+        {
+          "band": 1,
+          "prev": 0,
+          "world": 25
+        },
+        {
+          "band": 2,
+          "prev": 1,
+          "world": 60
+        },
+        {
+          "band": 3,
+          "prev": 2,
+          "world": 115
+        },
+        {
+          "band": 4,
+          "prev": 3,
+          "world": 200
+        }
+      ],
+      "stings": [
+        {
+          "band": 1,
+          "prev": 0,
+          "oscillators": 3,
+          "at": 2.552,
+          "stingReadyWas": 0
+        },
+        {
+          "band": 2,
+          "prev": 1,
+          "oscillators": 3,
+          "at": 5.4,
+          "stingReadyWas": 4.152
+        },
+        {
+          "band": 3,
+          "prev": 2,
+          "oscillators": 3,
+          "at": 8.672,
+          "stingReadyWas": 7
+        },
+        {
+          "band": 4,
+          "prev": 3,
+          "oscillators": 3,
+          "at": 11.941,
+          "stingReadyWas": 10.272
+        }
+      ],
+      "snapWindow": 1.6,
+      "winFrames": 96
+    },
+    "mix": {
+      "band": 4,
+      "nominalGain": 0.16,
+      "settledGain": 0.1598,
+      "quiet": {
+        "voidPeak": 0.10507,
+        "outPeak": 0.33445,
+        "samples": 97,
+        "enemiesAlive": 2
+      },
+      "fight": {
+        "voidPeak": 0.1079,
+        "outPeak": 0.85182,
+        "samples": 98,
+        "placed": 24,
+        "aliveDuring": 25,
+        "damageEvents": 4
+      },
+      "voidBelowOutputQuiet_dB": -10.06,
+      "voidBelowOutputFight_dB": -17.95,
+      "outputRiseInFight_dB": 8.12
+    },
+    "pressure": {
+      "world": 200,
+      "stagesCompleted": 0,
+      "stageFactor": 1,
+      "ctxTime": 35.62,
+      "playerFactor": 1,
+      "coefWithWorld": 1.860073,
+      "coefWithoutWorld": 1.060073,
+      "delta": 0.8,
+      "expectedDelta": 0.8,
+      "perWorld": 0.004,
+      "levelWith": 3,
+      "levelWithout": 1,
+      "nameWith": "Shifting",
+      "restored": 1.860073
+    },
+    "price": {
+      "card": "beetle",
+      "coefAtKill": 1.8602,
+      "sibling": {
+        "amount": 80,
+        "affix": "warded",
+        "def": "beetle",
+        "eliteCost": 7.2,
+        "coef": 1.8602
+      },
+      "hollow": {
+        "amount": 15,
+        "affix": "voidtouched",
+        "def": "beetle",
+        "eliteCost": 5.5,
+        "coef": 1.8602
+      },
+      "allRewards": [
+        {
+          "amount": 80,
+          "affix": "warded",
+          "def": "beetle",
+          "eliteCost": 7.2,
+          "coef": 1.8602
+        },
+        {
+          "amount": 15,
+          "affix": "voidtouched",
+          "def": "beetle",
+          "eliteCost": 5.5,
+          "coef": 1.8602
+        }
+      ],
+      "spawned": {
+        "sibling": {
+          "affix": "warded",
+          "isElite": true,
+          "survived": false
+        },
+        "hollow": {
+          "affix": "voidtouched",
+          "isElite": true,
+          "survived": false
+        }
+      },
+      "eliteCosts": {
+        "warded": 7.2,
+        "voidtouched": 5.5
+      },
+      "rewardMult": 0.25,
+      "expectedHollow": 15,
+      "hollowAtSiblingCost": 19.6,
+      "refund": {
+        "fraction": 0.08,
+        "worldBefore": 200,
+        "worldAfter": 184,
+        "bled": 16,
+        "expected": 16
+      }
+    },
+    "bank": {
+      "world": 184,
+      "seeds": 1,
+      "clamped": 182,
+      "cap": 182,
+      "maxBank": 240,
+      "filledInOneSecond": 3.68,
+      "simSeconds": 1,
+      "ratePerSecond": 3.68
+    },
+    "cleanse": {
+      "bandAtPopulate": 4,
+      "guaranteeBand": 2,
+      "stagesWithFont": 12,
+      "trials": 12,
+      "fontsSeen": 12,
+      "hadFont": true,
+      "firstUseAt400": 88,
+      "presses": [
+        {
+          "ok": true,
+          "worldBefore": 400,
+          "worldAfter": 312,
+          "bled": 88,
+          "expected": 88,
+          "cost": 117,
+          "goldPaid": 117
+        },
+        {
+          "ok": true,
+          "worldBefore": 312,
+          "worldAfter": 243,
+          "bled": 69,
+          "expected": 69,
+          "cost": 164,
+          "goldPaid": 164
+        },
+        {
+          "ok": true,
+          "worldBefore": 243,
+          "worldAfter": 190,
+          "bled": 53,
+          "expected": 53,
+          "cost": 230,
+          "goldPaid": 230
+        }
+      ],
+      "totalBled": 210,
+      "naiveThreeTimesFirst": 264,
+      "worldEnd": 190,
+      "bandEnd": 4
+    },
+    "feel": {
+      "world": 400,
+      "creditsPerSecond": 8,
+      "bankCap": 240,
+      "bankCapPristine": 90,
+      "refundPerKill": 32,
+      "rewardMult": 0.25,
+      "cleanseFirstUse": 88,
+      "cleanseSequence": [
+        {
+          "use": 1,
+          "worldBefore": 400,
+          "bleed": 88
+        },
+        {
+          "use": 2,
+          "worldBefore": 312,
+          "bleed": 69
+        },
+        {
+          "use": 3,
+          "worldBefore": 243,
+          "bleed": 53
+        }
+      ],
+      "cleanseTotal": 210,
+      "cleanseWorldAfter": 190,
+      "corruptionCoefficient": 1.6,
+      "bandOf400": 4
+    }
+  },
+  "checks": [
+    {
+      "name": "the AudioContext is running (the mix arm has something to measure)",
+      "pass": true,
+      "detail": {
+        "acState": "running",
+        "ready": true,
+        "muted": false,
+        "hasVoidGain": true,
+        "tapped": true,
+        "VOID_LAYER": [
+          0,
+          0,
+          0.05,
+          0.1,
+          0.16
+        ],
+        "SNAP": {
+          "window": 1.6,
+          "rateMult": 5,
+          "vignette": 0.45,
+          "aberration": 0.0035,
+          "earlyMult": 0.5,
+          "decay": 0.99
+        },
+        "BAND_SKY": [
+          0,
+          0,
+          0.3,
+          0.6,
+          1
+        ],
+        "PRESSURE": {
+          "perWorld": 0.004
+        },
+        "CLEANSE": {
+          "gold": 60,
+          "goldGrowth": 1.25,
+          "amount": 30,
+          "fraction": 0.22,
+          "maxUses": 3,
+          "costClimb": 1.4,
+          "guaranteeBand": 2
+        },
+        "VOIDTOUCHED": {
+          "affix": "voidtouched",
+          "ratePerWorld": 0.02,
+          "bankBase": 90,
+          "bankPerWorld": 0.5,
+          "maxBank": 240,
+          "interval": 4,
+          "telegraph": 1.1,
+          "spawnRing": {
+            "min": 2.5,
+            "max": 6.5
+          },
+          "minPlayerDist": 12,
+          "refund": 0.08,
+          "rewardMult": 0.25
+        },
+        "BANDS": [
+          {
+            "id": 0,
+            "name": "Pristine",
+            "at": 0
+          },
+          {
+            "id": 1,
+            "name": "Seeded",
+            "at": 20
+          },
+          {
+            "id": 2,
+            "name": "Blighted",
+            "at": 55
+          },
+          {
+            "id": 3,
+            "name": "Overrun",
+            "at": 110
+          },
+          {
+            "id": 4,
+            "name": "Consumed",
+            "at": 190
+          }
+        ]
+      }
+    },
+    {
+      "name": "both taps are on the real graph (void layer and the last node before the device)",
+      "pass": true,
+      "detail": {
+        "tapped": true,
+        "voidGain": true
+      }
+    },
+    {
+      "name": "every band crossing was announced (4 upward crossings)",
+      "pass": true,
+      "detail": [
+        {
+          "band": 1,
+          "prev": 0,
+          "world": 25
+        },
+        {
+          "band": 2,
+          "prev": 1,
+          "world": 60
+        },
+        {
+          "band": 3,
+          "prev": 2,
+          "world": 115
+        },
+        {
+          "band": 4,
+          "prev": 3,
+          "world": 200
+        }
+      ]
+    },
+    {
+      "name": "bandSting fired once per crossing",
+      "pass": true,
+      "detail": {
+        "crossings": 4,
+        "stings": 4
+      }
+    },
+    {
+      "name": "every sting minted real oscillator nodes (it is audio, not a no-op)",
+      "pass": true,
+      "detail": [
+        {
+          "band": 1,
+          "osc": 3
+        },
+        {
+          "band": 2,
+          "osc": 3
+        },
+        {
+          "band": 3,
+          "osc": 3
+        },
+        {
+          "band": 4,
+          "osc": 3
+        }
+      ]
+    },
+    {
+      "name": "every crossing opened the snap window",
+      "pass": true,
+      "detail": [
+        {
+          "band": 1,
+          "snapT": 1.583
+        },
+        {
+          "band": 2,
+          "snapT": 1.583
+        },
+        {
+          "band": 3,
+          "snapT": 1.583
+        },
+        {
+          "band": 4,
+          "snapT": 1.583
+        }
+      ]
+    },
+    {
+      "name": "the sky weight reached 0.9 inside SNAP.window (1.6s) wherever the band asks for it",
+      "pass": true,
+      "detail": [
+        {
+          "band": 4,
+          "target": 1,
+          "reached09At": 0.2
+        }
+      ]
+    },
+    {
+      "name": "and the bands whose target is below 0.9 got there instead",
+      "pass": true,
+      "detail": [
+        {
+          "band": 1,
+          "target": 0,
+          "end": 0
+        },
+        {
+          "band": 2,
+          "target": 0.3,
+          "end": 0.3
+        },
+        {
+          "band": 3,
+          "target": 0.6,
+          "end": 0.6
+        },
+        {
+          "band": 4,
+          "target": 1,
+          "end": 1
+        }
+      ]
+    },
+    {
+      "name": "the void layer settled on its band-4 gain",
+      "pass": true,
+      "detail": {
+        "band": 4,
+        "nominal": 0.16,
+        "settled": 0.1598
+      }
+    },
+    {
+      "name": "the void layer is not digital silence on a quiet stage",
+      "pass": true,
+      "detail": {
+        "voidPeak": 0.10507,
+        "outPeak": 0.33445,
+        "samples": 97,
+        "enemiesAlive": 2
+      }
+    },
+    {
+      "name": "the firefight arm was a real firefight (bodies alive, damage landing)",
+      "pass": true,
+      "detail": {
+        "placed": 24,
+        "alive": 25,
+        "damage": 4
+      }
+    },
+    {
+      "name": "the void layer survives the combat mix (still above -40 dB of the limiter output)",
+      "pass": true,
+      "detail": {
+        "quiet_dB": -10.06,
+        "fight_dB": -17.95,
+        "outputRise_dB": 8.12
+      }
+    },
+    {
+      "name": "difficultyCoefficient carries the corruption term",
+      "pass": true,
+      "detail": {
+        "world": 200,
+        "stagesCompleted": 0,
+        "stageFactor": 1,
+        "ctxTime": 35.62,
+        "playerFactor": 1,
+        "coefWithWorld": 1.860073,
+        "coefWithoutWorld": 1.060073,
+        "delta": 0.8,
+        "expectedDelta": 0.8,
+        "perWorld": 0.004,
+        "levelWith": 3,
+        "levelWithout": 1,
+        "nameWith": "Shifting",
+        "restored": 1.860073
+      }
+    },
+    {
+      "name": "and the term is PRESSURE.perWorld * world * the stage factor, exactly",
+      "pass": true,
+      "detail": {
+        "delta": 0.8,
+        "expected": 0.8
+      }
+    },
+    {
+      "name": "the world reads out as real Director levels, not just a number",
+      "pass": true,
+      "detail": {
+        "with": 3,
+        "without": 1
+      }
+    },
+    {
+      "name": "the differential put the coefficient back where it found it",
+      "pass": true,
+      "detail": {
+        "before": 1.860073,
+        "after": 1.860073
+      }
+    },
+    {
+      "name": "both kills paid through the goldReward event",
+      "pass": true,
+      "detail": {
+        "sibling": {
+          "amount": 80,
+          "affix": "warded",
+          "def": "beetle",
+          "eliteCost": 7.2,
+          "coef": 1.8602
+        },
+        "hollow": {
+          "amount": 15,
+          "affix": "voidtouched",
+          "def": "beetle",
+          "eliteCost": 5.5,
+          "coef": 1.8602
+        }
+      }
+    },
+    {
+      "name": "a Hollowed pays rewardMult (0.25) of a sibling elite off the same card",
+      "pass": true,
+      "detail": {
+        "hollow": 15,
+        "sibling": 80,
+        "expected": 15,
+        "eliteCosts": {
+          "warded": 7.2,
+          "voidtouched": 5.5
+        }
+      }
+    },
+    {
+      "name": "both were paid at the same difficulty coefficient",
+      "pass": true,
+      "detail": {
+        "sibling": 1.8602,
+        "hollow": 1.8602
+      }
+    },
+    {
+      "name": "the Hollowed kill bled 8.0% of the world",
+      "pass": true,
+      "detail": {
+        "fraction": 0.08,
+        "worldBefore": 200,
+        "worldAfter": 184,
+        "bled": 16,
+        "expected": 16
+      }
+    },
+    {
+      "name": "the void bank clamps to voidBankCap(world)",
+      "pass": true,
+      "detail": {
+        "world": 184,
+        "seeds": 1,
+        "clamped": 182,
+        "cap": 182,
+        "maxBank": 240,
+        "filledInOneSecond": 3.68,
+        "simSeconds": 1,
+        "ratePerSecond": 3.68
+      }
+    },
+    {
+      "name": "and it fills at voidCreditRate(world)",
+      "pass": true,
+      "detail": {
+        "measured": 3.68,
+        "expected": 3.68
+      }
+    },
+    {
+      "name": "every band >= 2 stage carried an Argent Font (12 populates)",
+      "pass": true,
+      "detail": {
+        "band": 4,
+        "withFont": 12,
+        "trials": 12,
+        "fonts": 12
+      }
+    },
+    {
+      "name": "every use bled exactly cleanseAmount(live world)",
+      "pass": true,
+      "detail": [
+        {
+          "ok": true,
+          "worldBefore": 400,
+          "worldAfter": 312,
+          "bled": 88,
+          "expected": 88,
+          "cost": 117,
+          "goldPaid": 117
+        },
+        {
+          "ok": true,
+          "worldBefore": 312,
+          "worldAfter": 243,
+          "bled": 69,
+          "expected": 69,
+          "cost": 164,
+          "goldPaid": 164
+        },
+        {
+          "ok": true,
+          "worldBefore": 243,
+          "worldAfter": 190,
+          "bled": 53,
+          "expected": 53,
+          "cost": 230,
+          "goldPaid": 230
+        }
+      ]
+    },
+    {
+      "name": "the price climbed on every use",
+      "pass": true,
+      "detail": [
+        117,
+        164,
+        230
+      ]
+    },
+    {
+      "name": "a font visit at world 400 is worth a whole band of the debt",
+      "pass": true,
+      "detail": {
+        "total": 210,
+        "from": 400,
+        "to": 190
+      }
+    },
+    {
+      "name": "world 400 pays the brief's 8.0 credits/s and banks 240",
+      "pass": true,
+      "detail": {
+        "world": 400,
+        "creditsPerSecond": 8,
+        "bankCap": 240,
+        "bankCapPristine": 90,
+        "refundPerKill": 32,
+        "rewardMult": 0.25,
+        "cleanseFirstUse": 88,
+        "cleanseSequence": [
+          {
+            "use": 1,
+            "worldBefore": 400,
+            "bleed": 88
+          },
+          {
+            "use": 2,
+            "worldBefore": 312,
+            "bleed": 69
+          },
+          {
+            "use": 3,
+            "worldBefore": 243,
+            "bleed": 53
+          }
+        ],
+        "cleanseTotal": 210,
+        "cleanseWorldAfter": 190,
+        "corruptionCoefficient": 1.6,
+        "bandOf400": 4
+      }
+    },
+    {
+      "name": "world 400 adds the brief's +1.6 coefficient before the stage multiplier",
+      "pass": true,
+      "detail": 1.6
+    },
+    {
+      "name": "no page errors across the session",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "no console errors across the session",
+      "pass": true,
+      "detail": []
+    }
+  ],
+  "pageErrors": [],
+  "consoleErrors": [],
+  "verdict": "PASSED"
+}
