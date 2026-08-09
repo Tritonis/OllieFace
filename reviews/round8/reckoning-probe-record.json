@@ -1,6 +1,6 @@
 {
   "seed": 1337,
-  "at": "2026-08-09T01:55:24.799Z",
+  "at": "2026-08-09T02:34:34.496Z",
   "out": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\shots-reckoning",
   "constants": {
     "acState": "running",
@@ -15,6 +15,7 @@
       0.1,
       0.16
     ],
+    "BAND_STING_WINDOW": 1.6,
     "SNAP": {
       "window": 1.6,
       "rateMult": 5,
@@ -40,6 +41,7 @@
       "fraction": 0.22,
       "maxUses": 3,
       "costClimb": 1.4,
+      "goldPerWorld": 1.5,
       "guaranteeBand": 2
     },
     "VOIDTOUCHED": {
@@ -105,7 +107,7 @@
               "band": 1,
               "prev": 0,
               "oscillators": 3,
-              "at": 2.552,
+              "at": 2.341,
               "stingReadyWas": 0
             }
           ],
@@ -178,8 +180,8 @@
               "band": 2,
               "prev": 1,
               "oscillators": 3,
-              "at": 5.4,
-              "stingReadyWas": 4.152
+              "at": 4.931,
+              "stingReadyWas": 3.941
             }
           ],
           "snapTAtCrossing": 1.583,
@@ -251,8 +253,8 @@
               "band": 3,
               "prev": 2,
               "oscillators": 3,
-              "at": 8.672,
-              "stingReadyWas": 7
+              "at": 7.741,
+              "stingReadyWas": 6.531
             }
           ],
           "snapTAtCrossing": 1.583,
@@ -324,8 +326,8 @@
               "band": 4,
               "prev": 3,
               "oscillators": 3,
-              "at": 11.941,
-              "stingReadyWas": 10.272
+              "at": 10.56,
+              "stingReadyWas": 9.341
             }
           ],
           "snapTAtCrossing": 1.583,
@@ -409,29 +411,29 @@
           "band": 1,
           "prev": 0,
           "oscillators": 3,
-          "at": 2.552,
+          "at": 2.341,
           "stingReadyWas": 0
         },
         {
           "band": 2,
           "prev": 1,
           "oscillators": 3,
-          "at": 5.4,
-          "stingReadyWas": 4.152
+          "at": 4.931,
+          "stingReadyWas": 3.941
         },
         {
           "band": 3,
           "prev": 2,
           "oscillators": 3,
-          "at": 8.672,
-          "stingReadyWas": 7
+          "at": 7.741,
+          "stingReadyWas": 6.531
         },
         {
           "band": 4,
           "prev": 3,
           "oscillators": 3,
-          "at": 11.941,
-          "stingReadyWas": 10.272
+          "at": 10.56,
+          "stingReadyWas": 9.341
         }
       ],
       "snapWindow": 1.6,
@@ -442,70 +444,76 @@
       "nominalGain": 0.16,
       "settledGain": 0.1598,
       "quiet": {
-        "voidPeak": 0.10507,
-        "outPeak": 0.33445,
-        "samples": 97,
-        "enemiesAlive": 2
+        "voidPeak": 0.10526,
+        "outPeak": 0.34908,
+        "samples": 114,
+        "enemiesAlive": 1
       },
       "fight": {
-        "voidPeak": 0.1079,
-        "outPeak": 0.85182,
-        "samples": 98,
+        "voidPeak": 0.10714,
+        "outPeak": 0.86071,
+        "samples": 119,
         "placed": 24,
-        "aliveDuring": 25,
-        "damageEvents": 4
+        "aliveDuring": 24,
+        "damageEvents": 13
       },
-      "voidBelowOutputQuiet_dB": -10.06,
-      "voidBelowOutputFight_dB": -17.95,
-      "outputRiseInFight_dB": 8.12
+      "voidBelowOutputQuiet_dB": -10.41,
+      "voidBelowOutputFight_dB": -18.1,
+      "outputRiseInFight_dB": 7.84
     },
     "pressure": {
       "world": 200,
       "stagesCompleted": 0,
       "stageFactor": 1,
-      "ctxTime": 35.62,
+      "ctxTime": 48.43,
       "playerFactor": 1,
-      "coefWithWorld": 1.860073,
-      "coefWithoutWorld": 1.060073,
+      "coefWithWorld": 1.881691,
+      "coefWithoutWorld": 1.081691,
+      "rewardWithWorld": 1.081691,
+      "rewardWithoutWorld": 1.081691,
       "delta": 0.8,
       "expectedDelta": 0.8,
       "perWorld": 0.004,
       "levelWith": 3,
       "levelWithout": 1,
       "nameWith": "Shifting",
-      "restored": 1.860073
+      "restored": 1.881691
     },
     "price": {
       "card": "beetle",
-      "coefAtKill": 1.8602,
+      "coefAtKill": 1.8818,
       "sibling": {
-        "amount": 80,
+        "amount": 47,
         "affix": "warded",
         "def": "beetle",
         "eliteCost": 7.2,
-        "coef": 1.8602
+        "coef": 1.0818,
+        "difficultyCoef": 1.8818
       },
       "hollow": {
-        "amount": 15,
+        "amount": 9,
         "affix": "voidtouched",
         "def": "beetle",
         "eliteCost": 5.5,
-        "coef": 1.8602
+        "coef": 1.0818,
+        "difficultyCoef": 1.8818
       },
       "allRewards": [
         {
-          "amount": 80,
+          "amount": 47,
           "affix": "warded",
           "def": "beetle",
           "eliteCost": 7.2,
-          "coef": 1.8602
+          "coef": 1.0818,
+          "difficultyCoef": 1.8818
         },
         {
-          "amount": 15,
+          "amount": 9,
           "affix": "voidtouched",
           "def": "beetle",
           "eliteCost": 5.5,
-          "coef": 1.8602
+          "coef": 1.0818,
+          "difficultyCoef": 1.8818
         }
       ],
       "spawned": {
@@ -525,8 +533,8 @@
         "voidtouched": 5.5
       },
       "rewardMult": 0.25,
-      "expectedHollow": 15,
-      "hollowAtSiblingCost": 19.6,
+      "expectedHollow": 9,
+      "hollowAtSiblingCost": 11.8,
       "refund": {
         "fraction": 0.08,
         "worldBefore": 200,
@@ -541,8 +549,8 @@
       "clamped": 182,
       "cap": 182,
       "maxBank": 240,
-      "filledInOneSecond": 3.68,
-      "simSeconds": 1,
+      "filledInOneSecond": 3.435,
+      "simSeconds": 0.933,
       "ratePerSecond": 3.68
     },
     "cleanse": {
@@ -552,6 +560,14 @@
       "trials": 12,
       "fontsSeen": 12,
       "hadFont": true,
+      "stageIndex": 3,
+      "costLadderAtFixedWorld": [
+        717,
+        764,
+        830
+      ],
+      "worldTermAt400": 600,
+      "goldPerWorld": 1.5,
       "firstUseAt400": 88,
       "presses": [
         {
@@ -560,8 +576,9 @@
           "worldAfter": 312,
           "bled": 88,
           "expected": 88,
-          "cost": 117,
-          "goldPaid": 117
+          "cost": 717,
+          "expectedCost": 717,
+          "goldPaid": 717
         },
         {
           "ok": true,
@@ -569,8 +586,9 @@
           "worldAfter": 243,
           "bled": 69,
           "expected": 69,
-          "cost": 164,
-          "goldPaid": 164
+          "cost": 632,
+          "expectedCost": 632,
+          "goldPaid": 632
         },
         {
           "ok": true,
@@ -578,8 +596,9 @@
           "worldAfter": 190,
           "bled": 53,
           "expected": 53,
-          "cost": 230,
-          "goldPaid": 230
+          "cost": 594,
+          "expectedCost": 594,
+          "goldPaid": 594
         }
       ],
       "totalBled": 210,
@@ -635,6 +654,7 @@
           0.1,
           0.16
         ],
+        "BAND_STING_WINDOW": 1.6,
         "SNAP": {
           "window": 1.6,
           "rateMult": 5,
@@ -660,6 +680,7 @@
           "fraction": 0.22,
           "maxUses": 3,
           "costClimb": 1.4,
+          "goldPerWorld": 1.5,
           "guaranteeBand": 2
         },
         "VOIDTOUCHED": {
@@ -843,10 +864,10 @@
       "name": "the void layer is not digital silence on a quiet stage",
       "pass": true,
       "detail": {
-        "voidPeak": 0.10507,
-        "outPeak": 0.33445,
-        "samples": 97,
-        "enemiesAlive": 2
+        "voidPeak": 0.10526,
+        "outPeak": 0.34908,
+        "samples": 114,
+        "enemiesAlive": 1
       }
     },
     {
@@ -854,17 +875,17 @@
       "pass": true,
       "detail": {
         "placed": 24,
-        "alive": 25,
-        "damage": 4
+        "alive": 24,
+        "damage": 13
       }
     },
     {
       "name": "the void layer survives the combat mix (still above -40 dB of the limiter output)",
       "pass": true,
       "detail": {
-        "quiet_dB": -10.06,
-        "fight_dB": -17.95,
-        "outputRise_dB": 8.12
+        "quiet_dB": -10.41,
+        "fight_dB": -18.1,
+        "outputRise_dB": 7.84
       }
     },
     {
@@ -874,17 +895,19 @@
         "world": 200,
         "stagesCompleted": 0,
         "stageFactor": 1,
-        "ctxTime": 35.62,
+        "ctxTime": 48.43,
         "playerFactor": 1,
-        "coefWithWorld": 1.860073,
-        "coefWithoutWorld": 1.060073,
+        "coefWithWorld": 1.881691,
+        "coefWithoutWorld": 1.081691,
+        "rewardWithWorld": 1.081691,
+        "rewardWithoutWorld": 1.081691,
         "delta": 0.8,
         "expectedDelta": 0.8,
         "perWorld": 0.004,
         "levelWith": 3,
         "levelWithout": 1,
         "nameWith": "Shifting",
-        "restored": 1.860073
+        "restored": 1.881691
       }
     },
     {
@@ -893,6 +916,15 @@
       "detail": {
         "delta": 0.8,
         "expected": 0.8
+      }
+    },
+    {
+      "name": "and the reward coefficient did NOT move: pressure is threat, never gold",
+      "pass": true,
+      "detail": {
+        "withWorld": 1.081691,
+        "withoutWorld": 1.081691,
+        "coefWithoutWorld": 1.081691
       }
     },
     {
@@ -907,8 +939,8 @@
       "name": "the differential put the coefficient back where it found it",
       "pass": true,
       "detail": {
-        "before": 1.860073,
-        "after": 1.860073
+        "before": 1.881691,
+        "after": 1.881691
       }
     },
     {
@@ -916,18 +948,20 @@
       "pass": true,
       "detail": {
         "sibling": {
-          "amount": 80,
+          "amount": 47,
           "affix": "warded",
           "def": "beetle",
           "eliteCost": 7.2,
-          "coef": 1.8602
+          "coef": 1.0818,
+          "difficultyCoef": 1.8818
         },
         "hollow": {
-          "amount": 15,
+          "amount": 9,
           "affix": "voidtouched",
           "def": "beetle",
           "eliteCost": 5.5,
-          "coef": 1.8602
+          "coef": 1.0818,
+          "difficultyCoef": 1.8818
         }
       }
     },
@@ -935,9 +969,9 @@
       "name": "a Hollowed pays rewardMult (0.25) of a sibling elite off the same card",
       "pass": true,
       "detail": {
-        "hollow": 15,
-        "sibling": 80,
-        "expected": 15,
+        "hollow": 9,
+        "sibling": 47,
+        "expected": 9,
         "eliteCosts": {
           "warded": 7.2,
           "voidtouched": 5.5
@@ -945,11 +979,11 @@
       }
     },
     {
-      "name": "both were paid at the same difficulty coefficient",
+      "name": "both were paid at the same reward coefficient",
       "pass": true,
       "detail": {
-        "sibling": 1.8602,
-        "hollow": 1.8602
+        "sibling": 1.0818,
+        "hollow": 1.0818
       }
     },
     {
@@ -972,8 +1006,8 @@
         "clamped": 182,
         "cap": 182,
         "maxBank": 240,
-        "filledInOneSecond": 3.68,
-        "simSeconds": 1,
+        "filledInOneSecond": 3.435,
+        "simSeconds": 0.933,
         "ratePerSecond": 3.68
       }
     },
@@ -981,7 +1015,7 @@
       "name": "and it fills at voidCreditRate(world)",
       "pass": true,
       "detail": {
-        "measured": 3.68,
+        "measured": 3.6817,
         "expected": 3.68
       }
     },
@@ -1005,8 +1039,9 @@
           "worldAfter": 312,
           "bled": 88,
           "expected": 88,
-          "cost": 117,
-          "goldPaid": 117
+          "cost": 717,
+          "expectedCost": 717,
+          "goldPaid": 717
         },
         {
           "ok": true,
@@ -1014,8 +1049,9 @@
           "worldAfter": 243,
           "bled": 69,
           "expected": 69,
-          "cost": 164,
-          "goldPaid": 164
+          "cost": 632,
+          "expectedCost": 632,
+          "goldPaid": 632
         },
         {
           "ok": true,
@@ -1023,19 +1059,49 @@
           "worldAfter": 190,
           "bled": 53,
           "expected": 53,
-          "cost": 230,
-          "goldPaid": 230
+          "cost": 594,
+          "expectedCost": 594,
+          "goldPaid": 594
         }
       ]
     },
     {
-      "name": "the price climbed on every use",
+      "name": "every press charged cleanseCost(stage, uses, live world)",
       "pass": true,
       "detail": [
-        117,
-        164,
-        230
+        {
+          "cost": 717,
+          "expected": 717,
+          "paid": 717
+        },
+        {
+          "cost": 632,
+          "expected": 632,
+          "paid": 632
+        },
+        {
+          "cost": 594,
+          "expected": 594,
+          "paid": 594
+        }
       ]
+    },
+    {
+      "name": "the price climbs per use at a world held still",
+      "pass": true,
+      "detail": [
+        717,
+        764,
+        830
+      ]
+    },
+    {
+      "name": "and a Consumed world puts world * 1.5 on the bill",
+      "pass": true,
+      "detail": {
+        "term": 600,
+        "expected": 600
+      }
     },
     {
       "name": "a font visit at world 400 is worth a whole band of the debt",

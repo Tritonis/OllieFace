@@ -188,7 +188,7 @@ try {
   // ---------------------------------------------------------------- arm 5
   const used = await page.evaluate(async () => {
     const G = globalThis.__GAME__, Ha = globalThis.__HARNESS__, ctx = G.ctx;
-    const { CLEANSE, cleanseAmount } = await import('/src/data/corruption.js');
+    const { CLEANSE, cleanseAmount, cleanseCost } = await import('/src/data/corruption.js');
     const font = globalThis.__FONT__;
     ctx.items.gold = 50000;
     Ha.thaw();
@@ -213,7 +213,15 @@ try {
       if (i === 0) fill1 = document.querySelector('.corruption-fill')?.style.width ?? null;
       presses.push({
         ok, w0, w1: ctx.corruption.world, g0, g1: ctx.items.gold, c0, c1: font.cost,
-        expectDrop, expectCost: Math.round(c0 * CLEANSE.costClimb),
+        expectDrop,
+        // The price is a function of stage, use count and the *live* world, so
+        // it is re-derived from the shipped curve at both ends of the press
+        // rather than assumed to be the last price times the per-use climb: the
+        // world just shrank, and the bill shrinks with it.
+        expectC0: cleanseCost(font.stageIndex, i, w0),
+        expectC1: cleanseCost(font.stageIndex, Math.min(i + 1, CLEANSE.maxUses), ctx.corruption.world),
+        // The per-use climb alone, with the world held at what it was.
+        climbOnly: cleanseCost(font.stageIndex, i + 1, w0) - cleanseCost(font.stageIndex, i, w0),
       });
     }
     Ha.freeze();
@@ -233,8 +241,14 @@ try {
     spent.map((p) => ({ from: p.w0, to: p.w1, expected: p.expectDrop })));
   check('exactly the prompted gold was taken, every use',
     spent.every((p) => p.g0 - p.g1 === p.c0), spent.map((p) => ({ paid: p.g0 - p.g1, prompted: p.c0 })));
-  check('the price climbed on every use',
-    spent.every((p) => p.c1 === p.expectCost), spent.map((p) => ({ from: p.c0, to: p.c1 })));
+  check('every price quoted was cleanseCost(stage, uses, live world)',
+    spent.every((p) => p.c0 === p.expectC0 && p.c1 === p.expectC1),
+    spent.map((p) => ({ quoted: p.c0, expected: p.expectC0, after: p.c1, expectedAfter: p.expectC1 })));
+  // Not "the price climbed": it does climb per use, but each press also retires
+  // part of the debt the price is charged against, so a real visit gets cheaper
+  // as the world gets cleaner. The climb is checked with the world held still.
+  check('the per-use climb is real with the world held still',
+    spent.every((p) => p.climbOnly > 0), spent.map((p) => p.climbOnly));
   check('the HUD gauge visibly narrowed', used.fill0 !== used.fill1, { before: used.fill0, after: used.fill1 });
   check('the font is spent after maxUses',
     spent.every((p) => p.ok === true) && extra.ok === false && used.available === false

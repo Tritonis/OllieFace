@@ -26,10 +26,13 @@
  *   4. pressure  `difficultyCoefficient` carries the corruption term, proved
  *                differentially: the same frame recomputed at world W and at
  *                world 0 must differ by exactly PRESSURE.perWorld * W * the
- *                stage factor.
+ *                stage factor — while `rewardCoefficient`, the one the gold
+ *                economy is paid against, does not move at all.
  *   5. font      a band >= 2 stage carries an Argent Font out of the real
- *                `populate`, and three uses bleed exactly what `cleanseAmount`
- *                says the live world is worth, use by use, at world 400.
+ *                `populate`; three uses bleed exactly what `cleanseAmount` says
+ *                the live world is worth, use by use, at world 400, and each
+ *                press charges exactly `cleanseCost(stage, uses, world)` — the
+ *                exit is priced against the debt it is retiring.
  *   6. price     a Hollowed kill and a sibling elite kill off the same card,
  *                compared through the `goldReward` event the HUD reads; the
  *                Hollowed pays `rewardMult` of the sibling (scaled by their
@@ -189,6 +192,7 @@ try {
       hasVoidGain: !!a?.voidGain,
       tapped: !!globalThis.__TAPS__.voidT && !!globalThis.__TAPS__.outT,
       VOID_LAYER: AU.VOID_LAYER,
+      BAND_STING_WINDOW: AU.BAND_STING_WINDOW,
       SNAP: BL.SNAP,
       BAND_SKY: BL.BAND_SKY,
       PRESSURE: COR.PRESSURE,
@@ -362,6 +366,7 @@ try {
     const world = ctx.corruption.world;
     d.updateDifficulty(ctx);
     const withWorld = d.difficultyCoefficient;
+    const rewardWith = d.rewardCoefficient;
     const levelWith = d.level, nameWith = d.difficultyName;
     // Same frame, world removed. `_world` is the private field the getter reads;
     // put it back before anything else runs.
@@ -369,6 +374,7 @@ try {
     ctx.corruption._world = 0;
     d.updateDifficulty(ctx);
     const without = d.difficultyCoefficient;
+    const rewardWithout = d.rewardCoefficient;
     const levelWithout = d.level;
     ctx.corruption._world = save;
     d.updateDifficulty(ctx);
@@ -381,6 +387,8 @@ try {
       playerFactor: +d.playerFactor.toFixed(4),
       coefWithWorld: +withWorld.toFixed(6),
       coefWithoutWorld: +without.toFixed(6),
+      rewardWithWorld: +rewardWith.toFixed(6),
+      rewardWithoutWorld: +rewardWithout.toFixed(6),
       delta: +(withWorld - without).toFixed(6),
       expectedDelta: +(world * COR.PRESSURE.perWorld * stageFactor).toFixed(6),
       perWorld: COR.PRESSURE.perWorld,
@@ -393,6 +401,11 @@ try {
   check('and the term is PRESSURE.perWorld * world * the stage factor, exactly',
     Math.abs(pressure.delta - pressure.expectedDelta) < 1e-9,
     { delta: pressure.delta, expected: pressure.expectedDelta });
+  check('and the reward coefficient did NOT move: pressure is threat, never gold',
+    Math.abs(pressure.rewardWithWorld - pressure.rewardWithoutWorld) < 1e-9
+      && Math.abs(pressure.rewardWithoutWorld - pressure.coefWithoutWorld) < 1e-9,
+    { withWorld: pressure.rewardWithWorld, withoutWorld: pressure.rewardWithoutWorld,
+      coefWithoutWorld: pressure.coefWithoutWorld });
   check('the world reads out as real Director levels, not just a number',
     pressure.levelWith >= pressure.levelWithout, { with: pressure.levelWith, without: pressure.levelWithout });
   check('the differential put the coefficient back where it found it',
@@ -413,7 +426,11 @@ try {
     const rewards = [];
     ctx.events.on('goldReward', (p) => rewards.push({
       amount: p.amount, affix: p.victim?.affix ?? null, def: p.victim?.def?.id ?? null,
-      eliteCost: p.victim?.elite?.cost ?? null, coef: +ctx.director.difficultyCoefficient.toFixed(4),
+      eliteCost: p.victim?.elite?.cost ?? null,
+      // The coefficient the payout is actually computed against, which is the
+      // clean one: corruption raises threat, never gold.
+      coef: +ctx.director.rewardCoefficient.toFixed(4),
+      difficultyCoef: +ctx.director.difficultyCoefficient.toFixed(4),
     }));
     const card = SPAWN_CARDS.find((c) => c.id === 'beetle') ?? SPAWN_CARDS[0];
     const spawn = (affix, dx) => {
@@ -482,7 +499,7 @@ try {
     price.hollow && price.expectedHollow != null && Math.abs(price.hollow.amount - price.expectedHollow) <= 1,
     { hollow: price.hollow?.amount, sibling: price.sibling?.amount, expected: price.expectedHollow,
       eliteCosts: price.eliteCosts });
-  check('both were paid at the same difficulty coefficient',
+  check('both were paid at the same reward coefficient',
     price.sibling && price.hollow && Math.abs(price.sibling.coef - price.hollow.coef) < 1e-9,
     { sibling: price.sibling?.coef, hollow: price.hollow?.coef });
   check(`the Hollowed kill bled ${(price.refund.fraction * 100).toFixed(1)}% of the world`,
@@ -576,12 +593,15 @@ try {
     for (let i = 0; i < COR.CLEANSE.maxUses; i++) {
       const w = ctx.corruption.world, g = ctx.items.gold, c = font?.cost ?? null;
       const expect = Math.min(w, COR.cleanseAmount(w));
+      // What the shipped curve says this press should cost, from the live
+      // module rather than a number written down here.
+      const expectCost = font ? COR.cleanseCost(font.stageIndex, font.uses, w) : null;
       const ok = ctx.interactables.requestInteract(ctx.player);
       await Ha.frames(6);
       presses.push({
         ok, worldBefore: +w.toFixed(2), worldAfter: +ctx.corruption.world.toFixed(2),
         bled: +(w - ctx.corruption.world).toFixed(2), expected: +expect.toFixed(2),
-        cost: c, goldPaid: g - ctx.items.gold,
+        cost: c, expectedCost: expectCost, goldPaid: g - ctx.items.gold,
       });
     }
     Ha.freeze();
@@ -591,6 +611,14 @@ try {
       guaranteeBand: COR.CLEANSE.guaranteeBand,
       stagesWithFont, trials, fontsSeen,
       hadFont: !!font,
+      stageIndex: font?.stageIndex ?? null,
+      // The price curve, read off the live module: what three presses cost at a
+      // world held still (the per-use climb alone), and what the world term
+      // itself is worth at 400. The measured prices above fall across a real
+      // visit because each press retires part of the debt being charged for.
+      costLadderAtFixedWorld: font ? [0, 1, 2].map((u) => COR.cleanseCost(font.stageIndex, u, 400)) : null,
+      worldTermAt400: COR.cleanseCost(0, 0, 400) - COR.cleanseCost(0, 0, 0),
+      goldPerWorld: COR.CLEANSE.goldPerWorld,
       firstUseAt400: COR.cleanseAmount(400),
       presses,
       totalBled: +total.toFixed(2),
@@ -605,8 +633,16 @@ try {
   check('every use bled exactly cleanseAmount(live world)',
     cleanse.presses.length > 0 && cleanse.presses.every((p) => p.ok && Math.abs(p.bled - p.expected) < 1e-6),
     cleanse.presses);
-  check('the price climbed on every use', cleanse.presses.every((p, i, all) => i === 0 || p.cost > all[i - 1].cost),
-    cleanse.presses.map((p) => p.cost));
+  check('every press charged cleanseCost(stage, uses, live world)',
+    cleanse.presses.length > 0 && cleanse.presses.every((p) => p.cost === p.expectedCost && p.goldPaid === p.cost),
+    cleanse.presses.map((p) => ({ cost: p.cost, expected: p.expectedCost, paid: p.goldPaid })));
+  check('the price climbs per use at a world held still',
+    !!cleanse.costLadderAtFixedWorld
+      && cleanse.costLadderAtFixedWorld.every((c, i, all) => i === 0 || c > all[i - 1]),
+    cleanse.costLadderAtFixedWorld);
+  check(`and a Consumed world puts world * ${cleanse.goldPerWorld} on the bill`,
+    Math.abs(cleanse.worldTermAt400 - 400 * cleanse.goldPerWorld) <= 1,
+    { term: cleanse.worldTermAt400, expected: 400 * cleanse.goldPerWorld });
   check('a font visit at world 400 is worth a whole band of the debt',
     cleanse.totalBled > 190, { total: cleanse.totalBled, from: 400, to: cleanse.worldEnd });
   await shot('02-font-visit-at-400');
@@ -651,7 +687,9 @@ try {
   console.log(`    refund per kill      ${feel.refundPerKill} world`);
   console.log(`    cleanse per visit    ${feel.cleanseSequence.map((s) => s.bleed).join(' + ')} = ${feel.cleanseTotal}`
     + `  (measured live: ${cleanse.presses.map((p) => p.bled).join(' + ')} = ${cleanse.totalBled})`);
-  console.log(`    corruption coef      +${feel.corruptionCoefficient} pre-stage-mult`);
+  console.log(`    corruption coef      +${feel.corruptionCoefficient} pre-stage-mult (threat only)`);
+  console.log(`    font prices paid     ${cleanse.presses.map((p) => '$' + p.cost).join(' + ')}`
+    + `  (stage ${cleanse.stageIndex}; world term at 400: $${cleanse.worldTermAt400})`);
 
   check('no page errors across the session', pageErrors.length === 0, pageErrors.slice(0, 3));
   check('no console errors across the session', consoleErrors.length === 0, consoleErrors.slice(0, 3));
