@@ -1,0 +1,4668 @@
+{
+  "tool": "tools/juiceprobe.mjs",
+  "mode": "cost",
+  "commit": "c363868e0bc8a325f80ef982708e6eeda1256e0b",
+  "seed": 1337,
+  "killTarget": 200,
+  "renderer": "d3d11",
+  "sharedStreamClaim": {
+    "note": "Not measured here. The no-new-draw claim is the sp-equivalence fingerprint, which is exact where a probe would be indicative.",
+    "command": "node tests/sp-equivalence.mjs --compare reviews/round8/baseline-HEAD.json",
+    "file": "reviews/round8/baseline-HEAD.json"
+  },
+  "arms": [
+    {
+      "arm": "cost",
+      "sample": 458,
+      "framesRun": 3000,
+      "fixture": {
+        "gameTimeSeconds": 1366,
+        "survivorLevel": 49,
+        "itemsHeld": 97,
+        "directorLevel": 43,
+        "difficultyCoefficient": 15.0358,
+        "healthMult": 13.6,
+        "peakAlive": 23
+      },
+      "overkill": {
+        "minOverkillFrac": null,
+        "launchedCount": 0,
+        "launchedFraction": 0,
+        "medianFrac": 0,
+        "p90Frac": 0,
+        "medianLaunchMetres": null,
+        "p90LaunchMetres": null,
+        "maxFrac": 0,
+        "maxLaunchMetres": null
+      },
+      "elements": {
+        "unmeasurable-on-this-tree": 458
+      },
+      "elementsAbsent": [],
+      "typeStatus": {
+        "null": 458
+      },
+      "cost": {
+        "start": {
+          "programs": 71,
+          "geometries": 418,
+          "textures": 53
+        },
+        "atPeak": {
+          "programs": 71,
+          "geometries": 418,
+          "textures": 53
+        },
+        "end": {
+          "programs": 71,
+          "geometries": 421,
+          "textures": 53
+        },
+        "note": "this arm's own counters, for the record only. `programs` counts what this page has compiled so far, so it is NOT comparable across trees from here — the cross-tree reading is `costComparison`, taken by two `--mode cost` runs that are each the first arm of a fresh page."
+      },
+      "particles": {
+        "note": "emission, not liveness: ParticleSystem has no live counter (`layers.*.live` is initialised at src/fx/ParticleSystem.js:141 and never written).",
+        "wrappedRealEmit": true,
+        "totalSpritesEmitted": 264915,
+        "peakSpritesPer30Frames": 5148
+      },
+      "corpseDissolve": {
+        "note": "why the program count is allowed to move by one: `deathDissolve` compiles a dissolve material variant, and before this slice `resolveObject` could not see an enemy rig, so the call did nothing. Calls vs starts separates \"asked\" from \"happened\".",
+        "calls": 0,
+        "started": 0
+      }
+    }
+  ],
+  "costComparison": null,
+  "raw": [
+    {
+      "arm": "cost",
+      "kills": [
+        {
+          "id": "acolyte",
+          "maxHealth": 672,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 280,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 308,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 840,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 1344,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 1176,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 406,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 129,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 364,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 420,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 588,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 252,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 294,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 728,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 0,
+          "frac": 0,
+          "type": null,
+          "status": null,
+          "element": "unmeasurable-on-this-tree",
+          "isElite": false
+        }
+      ]
+    }
+  ],
+  "pageErrors": [],
+  "consoleErrors": [
+    "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  ]
+}

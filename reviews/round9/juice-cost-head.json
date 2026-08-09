@@ -1,0 +1,4682 @@
+{
+  "tool": "tools/juiceprobe.mjs",
+  "mode": "cost",
+  "commit": "c6795cb5d6b7e57319b8b2bc85b96849caf63644",
+  "seed": 1337,
+  "killTarget": 200,
+  "renderer": "d3d11",
+  "sharedStreamClaim": {
+    "note": "Not measured here. The no-new-draw claim is the sp-equivalence fingerprint, which is exact where a probe would be indicative.",
+    "command": "node tests/sp-equivalence.mjs --compare reviews/round8/baseline-HEAD.json",
+    "file": "reviews/round8/baseline-HEAD.json"
+  },
+  "arms": [
+    {
+      "arm": "cost",
+      "sample": 458,
+      "framesRun": 3000,
+      "fixture": {
+        "gameTimeSeconds": 1366,
+        "survivorLevel": 49,
+        "itemsHeld": 97,
+        "directorLevel": 43,
+        "difficultyCoefficient": 15.0358,
+        "healthMult": 13.6,
+        "peakAlive": 23
+      },
+      "overkill": {
+        "minOverkillFrac": 0.35,
+        "launchedCount": 444,
+        "launchedFraction": 0.9694,
+        "medianFrac": 38.6022,
+        "p90Frac": 349.572,
+        "medianLaunchMetres": 6.82,
+        "p90LaunchMetres": 6.82,
+        "maxFrac": 9120.8378,
+        "maxLaunchMetres": 6.82
+      },
+      "elements": {
+        "blast": 10,
+        "ice": 19,
+        "nature": 54,
+        "shock": 36,
+        "fire": 283,
+        "kinetic": 56
+      },
+      "elementsAbsent": [
+        "void"
+      ],
+      "typeStatus": {
+        "sticky": 2,
+        "frost": 19,
+        "gravity": 5,
+        "swarm": 54,
+        "lightning": 36,
+        "missile": 3,
+        "fire": 283,
+        "spark": 38,
+        "dagger": 11,
+        "wind": 7
+      },
+      "cost": {
+        "start": {
+          "programs": 71,
+          "geometries": 418,
+          "textures": 53
+        },
+        "atPeak": {
+          "programs": 71,
+          "geometries": 418,
+          "textures": 53
+        },
+        "end": {
+          "programs": 72,
+          "geometries": 421,
+          "textures": 53
+        },
+        "note": "this arm's own counters, for the record only. `programs` counts what this page has compiled so far, so it is NOT comparable across trees from here — the cross-tree reading is `costComparison`, taken by two `--mode cost` runs that are each the first arm of a fresh page."
+      },
+      "particles": {
+        "note": "emission, not liveness: ParticleSystem has no live counter (`layers.*.live` is initialised at src/fx/ParticleSystem.js:141 and never written).",
+        "wrappedRealEmit": true,
+        "totalSpritesEmitted": 310715,
+        "peakSpritesPer30Frames": 6434
+      },
+      "corpseDissolve": {
+        "note": "why the program count is allowed to move by one: `deathDissolve` compiles a dissolve material variant, and before this slice `resolveObject` could not see an enemy rig, so the call did nothing. Calls vs starts separates \"asked\" from \"happened\".",
+        "calls": 458,
+        "started": 458
+      }
+    }
+  ],
+  "costComparison": null,
+  "raw": [
+    {
+      "arm": "cost",
+      "kills": [
+        {
+          "id": "acolyte",
+          "maxHealth": 672,
+          "overkill": 128.47,
+          "frac": 0.1912,
+          "type": "sticky",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 280,
+          "overkill": 629.17,
+          "frac": 2.247,
+          "type": "sticky",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 308,
+          "overkill": 89.54,
+          "frac": 0.2907,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 840,
+          "overkill": 104.28,
+          "frac": 0.1241,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 1344,
+          "overkill": 15696.42,
+          "frac": 11.6789,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 1176,
+          "overkill": 17302.6,
+          "frac": 14.7131,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 406,
+          "overkill": 180952.18,
+          "frac": 445.695,
+          "type": "gravity",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 129,
+          "overkill": 190326.22,
+          "frac": 1475.397,
+          "type": "gravity",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 364,
+          "overkill": 192130.21,
+          "frac": 527.8302,
+          "type": "gravity",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 420,
+          "overkill": 199602.79,
+          "frac": 475.2447,
+          "type": "gravity",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 588,
+          "overkill": 204924.38,
+          "frac": 348.5109,
+          "type": "gravity",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 252,
+          "overkill": 4640.77,
+          "frac": 18.4158,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 294,
+          "overkill": 4666.37,
+          "frac": 15.872,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 728,
+          "overkill": 4335.54,
+          "frac": 5.9554,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 22913.29,
+          "frac": 36.6027,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 22520.08,
+          "frac": 18.3988,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 22275.39,
+          "frac": 12.5992,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 22827.52,
+          "frac": 11.5758,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 17281.19,
+          "frac": 2.0495,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 26180.52,
+          "frac": 19.2504,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 26319.67,
+          "frac": 12.9018,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 21839.02,
+          "frac": 3.0881,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 29037.57,
+          "frac": 19.4101,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 26571.19,
+          "frac": 5.7464,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 26419.96,
+          "frac": 4.2231,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 32980.78,
+          "frac": 23.0958,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 3192.05,
+          "frac": 0.2608,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 15307.79,
+          "frac": 4.3291,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 1973.19,
+          "frac": 1.3818,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 26119.74,
+          "frac": 12.8038,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 21499.62,
+          "frac": 3.0401,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 23494.05,
+          "frac": 3.7554,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 29784.57,
+          "frac": 24.3338,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 28198.33,
+          "frac": 9.8734,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 22622.33,
+          "frac": 2.6829,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 26974.33,
+          "frac": 6.6114,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 15487.08,
+          "frac": 1.2653,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 12875.88,
+          "frac": 20.5685,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 383.89,
+          "frac": 0.1176,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 738775.92,
+          "frac": 113.1703,
+          "type": "dagger",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 739591.92,
+          "frac": 129.4804,
+          "type": "dagger",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 740679.92,
+          "frac": 160.1816,
+          "type": "dagger",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 87776.8,
+          "frac": 30.7342,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 2443.94,
+          "frac": 0.2898,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 84920.8,
+          "frac": 14.8671,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 88864.8,
+          "frac": 50.2629,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 87368.8,
+          "frac": 26.7674,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 86552.8,
+          "frac": 21.2139,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 83560.8,
+          "frac": 11.8157,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 84376.8,
+          "frac": 13.4873,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 87096.8,
+          "frac": 24.6314,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 6554.79,
+          "frac": 1.4176,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 440189.12,
+          "frac": 223.2196,
+          "type": "wind",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 73061,
+          "frac": 11.1919,
+          "type": "wind",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 2461.66,
+          "frac": 2.0112,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 17747.07,
+          "frac": 6.214,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 41675.06,
+          "frac": 7.2961,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 19175.07,
+          "frac": 13.4279,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 45347.06,
+          "frac": 22.229,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 45619.06,
+          "frac": 25.8026,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 46027.06,
+          "frac": 33.8434,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 46761.06,
+          "frac": 74.6982,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 45415.06,
+          "frac": 23.0299,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 17067.07,
+          "frac": 4.8267,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 173923.45,
+          "frac": 14.2094,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 1135793.43,
+          "frac": 759.2202,
+          "type": "dagger",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 1602.9,
+          "frac": 0.4911,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 61146.44,
+          "frac": 42.8196,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 60534.44,
+          "frac": 29.6737,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 55502.44,
+          "frac": 7.8482,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 56318.44,
+          "frac": 9.0023,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 61350.44,
+          "frac": 50.1229,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 54142.44,
+          "frac": 6.4211,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 124082.88,
+          "frac": 10.1375,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 61948.44,
+          "frac": 98.9592,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 270703.52,
+          "frac": 58.5431,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 919.63,
+          "frac": 0.2254,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 62785.01,
+          "frac": 41.9686,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 61017.01,
+          "frac": 18.6939,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 62921.01,
+          "frac": 46.2655,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 62309.01,
+          "frac": 31.5969,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 57753.01,
+          "frac": 8.847,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 62513.01,
+          "frac": 35.358,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 25092.27,
+          "frac": 8.7858,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 58569.01,
+          "frac": 10.2537,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 279300.45,
+          "frac": 78.9877,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 3092.37,
+          "frac": 1.5159,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 64491.59,
+          "frac": 43.1094,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 59731.59,
+          "frac": 9.5479,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 61363.59,
+          "frac": 13.2707,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 64559.59,
+          "frac": 45.2098,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 46677.49,
+          "frac": 3.8135,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 65361.59,
+          "frac": 104.4115,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 27466.26,
+          "frac": 22.4398,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 281913.39,
+          "frac": 33.4338,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 2351.2,
+          "frac": 0.5763,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 79422.83,
+          "frac": 24.333,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 81326.83,
+          "frac": 59.7991,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 33978.8,
+          "frac": 17.2306,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 76158.83,
+          "frac": 11.6665,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 80918.83,
+          "frac": 45.7686,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 79830.83,
+          "frac": 27.952,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 76974.83,
+          "frac": 13.476,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 360286.05,
+          "frac": 101.8909,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 5165.33,
+          "frac": 3.6172,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 82731.37,
+          "frac": 40.5546,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 77699.37,
+          "frac": 10.9869,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 78515.37,
+          "frac": 12.5504,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 83547.37,
+          "frac": 68.2577,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 76339.37,
+          "frac": 9.0535,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 63448.73,
+          "frac": 5.1837,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 84145.37,
+          "frac": 134.4175,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 368370.04,
+          "frac": 79.6648,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 1452.35,
+          "frac": 0.2225,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 98524.51,
+          "frac": 24.1482,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 43250.66,
+          "frac": 31.802,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 96892.51,
+          "frac": 16.963,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 99068.51,
+          "frac": 28.0171,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 100836.51,
+          "frac": 57.0342,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 41754.66,
+          "frac": 14.62,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 449487.86,
+          "frac": 227.935,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 7354.35,
+          "frac": 11.7482,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 101380.51,
+          "frac": 82.8272,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 99340.51,
+          "frac": 30.4352,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 79371.17,
+          "frac": 6.4846,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 96348.51,
+          "frac": 15.401,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 97980.51,
+          "frac": 21.1896,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 94172.51,
+          "frac": 11.1685,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 444387.86,
+          "frac": 62.8377,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 14391.15,
+          "frac": 8.1398,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 118337.59,
+          "frac": 41.4347,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 117657.59,
+          "frac": 33.2742,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 119697.59,
+          "frac": 80.0118,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 119833.59,
+          "frac": 88.1129,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 119221.59,
+          "frac": 60.4572,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 531211.79,
+          "frac": 260.3979,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 3391.09,
+          "frac": 0.5421,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 119410.06,
+          "frac": 25.824,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 116962.06,
+          "frac": 16.5388,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 117506.06,
+          "frac": 18.0003,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 49847.85,
+          "frac": 12.2176,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 120770.06,
+          "frac": 37.0006,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 540037.88,
+          "frac": 94.5444,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 8890.78,
+          "frac": 4.3582,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 139042.6,
+          "frac": 92.9429,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 139110.6,
+          "frac": 97.4164,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 113240.89,
+          "frac": 9.2517,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 139912.6,
+          "frac": 223.5025,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 139314.6,
+          "frac": 113.8191,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 616941.82,
+          "frac": 432.0321,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 616941.82,
+          "frac": 432.0321,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 4653.1,
+          "frac": 0.7128,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 139677.04,
+          "frac": 34.2346,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 142397.04,
+          "frac": 104.7037,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 138045.04,
+          "frac": 24.1675,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 140221.04,
+          "frac": 39.6553,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 141989.04,
+          "frac": 80.3105,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 140901.04,
+          "frac": 49.3351,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 630558.96,
+          "frac": 319.7561,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 1498645.43,
+          "frac": 1049.4716,
+          "type": "dagger",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 3448740.89,
+          "frac": 2415.0847,
+          "type": "dagger",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 3433.35,
+          "frac": 2.4043,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 141717.04,
+          "frac": 69.4691,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 136685.04,
+          "frac": 19.3276,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 137501.04,
+          "frac": 21.9791,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 142533.04,
+          "frac": 116.4486,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 135325.04,
+          "frac": 16.049,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 116114.5,
+          "frac": 9.4865,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 61877.06,
+          "frac": 98.8451,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 627906.96,
+          "frac": 135.793,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 6245.91,
+          "frac": 0.9568,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 160155.94,
+          "frac": 39.2539,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 162739.94,
+          "frac": 108.7834,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 162875.94,
+          "frac": 119.7617,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 158523.94,
+          "frac": 27.7528,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 160699.94,
+          "frac": 45.4468,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 162467.94,
+          "frac": 91.8936,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 161379.94,
+          "frac": 56.5056,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 720666.15,
+          "frac": 365.4494,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 3940234.64,
+          "frac": 2759.268,
+          "type": "dagger",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 11625.63,
+          "frac": 8.1412,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 165792.35,
+          "frac": 81.2708,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 161576.35,
+          "frac": 25.8274,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 71746.59,
+          "frac": 58.6165,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 159400.35,
+          "frac": 18.9042,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 137610.31,
+          "frac": 11.2427,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 167206.35,
+          "frac": 267.1028,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 733838.34,
+          "frac": 158.7021,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 8713.51,
+          "frac": 1.5255,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 178942.78,
+          "frac": 27.4116,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 183974.78,
+          "frac": 122.9778,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 182614.78,
+          "frac": 63.9408,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 183498.78,
+          "frac": 93.0521,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 181934.78,
+          "frac": 51.4521,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 183702.78,
+          "frac": 103.9043,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 814711.44,
+          "frac": 599.0525,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 4449870.79,
+          "frac": 3116.156,
+          "type": "dagger",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 14108.62,
+          "frac": 22.5377,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 188221.16,
+          "frac": 153.7755,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 185365.16,
+          "frac": 45.4326,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 186181.16,
+          "frac": 57.0408,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 61302.37,
+          "frac": 5.0084,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 183189.16,
+          "frac": 29.2822,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 184821.16,
+          "frac": 39.97,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 73935.46,
+          "frac": 8.7684,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 826486.69,
+          "frac": 116.8675,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 13279.9,
+          "frac": 4.6498,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 201749.55,
+          "frac": 35.3203,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 205421.55,
+          "frac": 100.6968,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 205693.55,
+          "frac": 116.3425,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 206101.55,
+          "frac": 151.5453,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 205489.55,
+          "frac": 104.2036,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 86664.68,
+          "frac": 24.5092,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 911334.84,
+          "frac": 609.181,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 8042.41,
+          "frac": 0.9538,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 176879.55,
+          "frac": 14.4509,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 205285.9,
+          "frac": 31.447,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 207189.9,
+          "frac": 44.8075,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 208549.9,
+          "frac": 63.894,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 204741.9,
+          "frac": 28.9511,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 205557.9,
+          "frac": 32.8577,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 927901.14,
+          "frac": 227.4267,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 26850.16,
+          "frac": 13.6157,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 90449.32,
+          "frac": 25.5796,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 214806.24,
+          "frac": 157.9458,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 214738.24,
+          "frac": 150.3769,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 214126.24,
+          "frac": 104.9638,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 214670.24,
+          "frac": 143.4961,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 949907.44,
+          "frac": 776.0682,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 13548.93,
+          "frac": 4.151,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 209094.24,
+          "frac": 29.5665,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 212086.24,
+          "frac": 51.9819,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 213310.24,
+          "frac": 74.6885,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 210454.24,
+          "frac": 36.8442,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 209638.24,
+          "frac": 32.1137,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 949363.44,
+          "frac": 536.9703,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 15588.93,
+          "frac": 12.7361,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 92557.32,
+          "frac": 64.8161,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 93359.32,
+          "frac": 149.1363,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 207734.24,
+          "frac": 24.6364,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 180765.57,
+          "frac": 14.7684,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 27430.48,
+          "frac": 13.91,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 216982.58,
+          "frac": 61.3639,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 219158.58,
+          "frac": 161.146,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 218478.58,
+          "frac": 107.0973,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 94381.64,
+          "frac": 63.0893,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 10623.44,
+          "frac": 1.6274,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 91797.64,
+          "frac": 22.4994,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 214806.58,
+          "frac": 37.6062,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 217662.58,
+          "frac": 76.2124,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 10895.44,
+          "frac": 1.7416,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 215894.58,
+          "frac": 46.69,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 213446.58,
+          "frac": 30.1819,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 217254.58,
+          "frac": 66.5608,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 16525.44,
+          "frac": 26.3985,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 219294.58,
+          "frac": 179.1622,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 184651.59,
+          "frac": 15.0859,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 212086.58,
+          "frac": 25.1526,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 28486.79,
+          "frac": 19.042,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 223510.92,
+          "frac": 164.3463,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 222830.92,
+          "frac": 109.2308,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 13953.96,
+          "frac": 3.9463,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 223102.92,
+          "frac": 126.1894,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 222898.92,
+          "frac": 113.0319,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 987392.03,
+          "frac": 484.0157,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 10961.96,
+          "frac": 1.6792,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 220790.92,
+          "frac": 54.1154,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 219158.92,
+          "frac": 38.3682,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 532.33,
+          "frac": 0.0753,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 218614.92,
+          "frac": 34.9448,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 221606.92,
+          "frac": 67.8943,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 455.4,
+          "frac": 0.2576,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 328042.68,
+          "frac": 185.5445,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 16863.96,
+          "frac": 26.9392,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 223646.92,
+          "frac": 182.7181,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 188537.6,
+          "frac": 15.4034,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 216438.92,
+          "frac": 25.6688,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 29067.1,
+          "frac": 19.4299,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 227863.26,
+          "frac": 167.5465,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 227183.26,
+          "frac": 111.3643,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 227795.26,
+          "frac": 159.5205,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 464.22,
+          "frac": 0.2626,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 14972.48,
+          "frac": 5.2425,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 223511.26,
+          "frac": 39.1301,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 11300.48,
+          "frac": 1.7311,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 225143.26,
+          "frac": 55.1822,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 464.22,
+          "frac": 0.2276,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 334698.11,
+          "frac": 223.7287,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 2199047.26,
+          "frac": 1469.9514,
+          "type": "wind",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 2198503.26,
+          "frac": 1077.6977,
+          "type": "wind",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 15048.48,
+          "frac": 1.2295,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 464.22,
+          "frac": 0.3103,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 334154.11,
+          "frac": 163.801,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 334154.11,
+          "frac": 163.801,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 2199319.26,
+          "frac": 1796.8295,
+          "type": "wind",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 2199319.26,
+          "frac": 1796.8295,
+          "type": "wind",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 2199047.26,
+          "frac": 1469.9514,
+          "type": "wind",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 29203.1,
+          "frac": 21.4729,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 227251.26,
+          "frac": 115.239,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 227727.26,
+          "frac": 152.2241,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 98438.29,
+          "frac": 80.4234,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 227795.26,
+          "frac": 159.5205,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 227183.26,
+          "frac": 111.3643,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 1007956.33,
+          "frac": 1610.1539,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 14086.99,
+          "frac": 3.4527,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 230311.6,
+          "frac": 70.5612,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 227047.6,
+          "frac": 34.7806,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 231807.6,
+          "frac": 131.1129,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 230719.6,
+          "frac": 80.7842,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 227863.6,
+          "frac": 39.8921,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 1024196.63,
+          "frac": 289.6484,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 17540.99,
+          "frac": 28.0208,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 232351.6,
+          "frac": 189.8297,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 196309.64,
+          "frac": 16.0384,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 228951.6,
+          "frac": 49.5138,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 225143.6,
+          "frac": 26.7011,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 29783.41,
+          "frac": 21.8996,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 231603.6,
+          "frac": 117.446,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 568428.46,
+          "frac": 379.9655,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 232147.6,
+          "frac": 162.5683,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 231535.6,
+          "frac": 113.4978,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 2186.69,
+          "frac": 0.3828,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 227047.6,
+          "frac": 34.7806,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 230719.6,
+          "frac": 80.7842,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 15241.51,
+          "frac": 4.6696,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 230855.94,
+          "frac": 32.6437,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 233847.94,
+          "frac": 57.3157,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 31097.72,
+          "frac": 49.6769,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 237301.94,
+          "frac": 379.0766,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 236703.94,
+          "frac": 193.3856,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 237301.94,
+          "frac": 379.0766,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 1045658.92,
+          "frac": 854.2965,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 5709046.49,
+          "frac": 4664.2537,
+          "type": "dagger",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 5709644.49,
+          "frac": 9120.8378,
+          "type": "dagger",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 1046256.92,
+          "frac": 1671.3369,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 31097.72,
+          "frac": 49.6769,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 237301.94,
+          "frac": 379.0766,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 102820.93,
+          "frac": 164.2507,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 237301.94,
+          "frac": 379.0766,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 236703.94,
+          "frac": 193.3856,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 237301.94,
+          "frac": 379.0766,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 1045658.92,
+          "frac": 854.2965,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 3965.87,
+          "frac": 0.972,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 234663.94,
+          "frac": 71.8946,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 231399.94,
+          "frac": 35.4473,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 235071.94,
+          "frac": 82.3081,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 232215.94,
+          "frac": 40.6541,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 1046256.92,
+          "frac": 1671.3369,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 5709644.49,
+          "frac": 9120.8378,
+          "type": "dagger",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 7419.87,
+          "frac": 11.8528,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 236703.94,
+          "frac": 193.3856,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 200195.66,
+          "frac": 16.3559,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 231671.94,
+          "frac": 37.032,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 233303.94,
+          "frac": 50.455,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 229495.94,
+          "frac": 27.2173,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 1039810.92,
+          "frac": 147.0321,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 15308.02,
+          "frac": 4.3292,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 240512.28,
+          "frac": 136.0364,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 240308.28,
+          "frac": 121.8602,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 103299.25,
+          "frac": 50.6369,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 103843.25,
+          "frac": 69.4139,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 240920.28,
+          "frac": 177.1473,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 1064605.22,
+          "frac": 745.5219,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 11772.02,
+          "frac": 1.6646,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 236024.28,
+          "frac": 37.7277,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 239016.28,
+          "frac": 73.228,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 236568.28,
+          "frac": 41.416,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 235752.28,
+          "frac": 36.114,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 238200.28,
+          "frac": 58.3824,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 17620.02,
+          "frac": 14.3954,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 240852.28,
+          "frac": 168.6641,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 241654.28,
+          "frac": 386.0292,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 237656.28,
+          "frac": 51.3963,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 233848.28,
+          "frac": 27.7334,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 204081.68,
+          "frac": 16.6733,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 15646.54,
+          "frac": 4.4249,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 244864.62,
+          "frac": 138.4981,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 244660.62,
+          "frac": 124.0673,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 244592.62,
+          "frac": 119.8983,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 245136.62,
+          "frac": 163.8614,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 105871.57,
+          "frac": 77.8467,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 15918.54,
+          "frac": 4.877,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 239560.62,
+          "frac": 33.8745,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 242552.62,
+          "frac": 59.4492,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 243776.62,
+          "frac": 85.356,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 240920.62,
+          "frac": 42.178,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 240104.62,
+          "frac": 36.7807,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 1083959.52,
+          "frac": 885.5878,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 499.47,
+          "frac": 0.4081,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 17754.54,
+          "frac": 12.4331,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 244592.62,
+          "frac": 119.8983,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 240376.62,
+          "frac": 38.4234,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 106007.57,
+          "frac": 86.6075,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 238200.62,
+          "frac": 28.2496,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 207967.69,
+          "frac": 16.9908,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 246006.62,
+          "frac": 392.9818,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 1080559.52,
+          "frac": 233.685,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 13809.05,
+          "frac": 2.4176,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 244456.96,
+          "frac": 37.4475,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 248128.96,
+          "frac": 86.8799,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 249012.96,
+          "frac": 126.2743,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 247448.96,
+          "frac": 69.9799,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 249216.96,
+          "frac": 140.9598,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 478785.14,
+          "frac": 352.0479,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 11089.05,
+          "frac": 1.3151,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 211853.71,
+          "frac": 17.3083,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 246360.96,
+          "frac": 53.2788,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 105859.89,
+          "frac": 32.4326,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 243912.96,
+          "frac": 34.49,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 244728.96,
+          "frac": 39.1191,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 1100253.82,
+          "frac": 269.6701,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 13189.85,
+          "frac": 9.6984,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 249012.96,
+          "frac": 126.2743,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "wisp",
+          "maxHealth": 1496,
+          "overkill": 249488.96,
+          "frac": 166.7707,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 249556.96,
+          "frac": 174.7598,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 248944.96,
+          "frac": 122.0318,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 2922.59,
+          "frac": 0.5117,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 248809.3,
+          "frac": 38.1142,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 252481.3,
+          "frac": 88.4038,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 251801.3,
+          "frac": 71.2108,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 253569.3,
+          "frac": 143.4215,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 6256,
+          "overkill": 13603.57,
+          "frac": 2.1745,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 4624,
+          "overkill": 250713.3,
+          "frac": 54.22,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 248265.3,
+          "frac": 35.1054,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 107752.22,
+          "frac": 33.0123,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 1119404.11,
+          "frac": 274.3638,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 18635.57,
+          "frac": 15.2251,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 253909.3,
+          "frac": 177.8076,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 254711.3,
+          "frac": 406.8871,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 102584.22,
+          "frac": 12.1661,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 215739.73,
+          "frac": 17.6258,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 1119404.11,
+          "frac": 274.3638,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 517.1,
+          "frac": 0.2535,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 32276.97,
+          "frac": 18.2562,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 2856,
+          "overkill": 252481.3,
+          "frac": 88.4038,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 251801.3,
+          "frac": 71.2108,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "pest",
+          "maxHealth": 1360,
+          "overkill": 253977.3,
+          "frac": 186.748,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 253365.3,
+          "frac": 128.4814,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3264,
+          "overkill": 16934.08,
+          "frac": 5.1881,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "golem",
+          "maxHealth": 7072,
+          "overkill": 252617.64,
+          "frac": 35.7208,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4080,
+          "overkill": 255609.64,
+          "frac": 62.6494,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 5712,
+          "overkill": 253977.64,
+          "frac": 44.4639,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 6528,
+          "overkill": 253161.64,
+          "frac": 38.7809,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 12240,
+          "overkill": 5794,
+          "frac": 0.4734,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 626,
+          "overkill": 112282.54,
+          "frac": 179.3651,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 8432,
+          "overkill": 104476.54,
+          "frac": 12.3905,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 18770.08,
+          "frac": 13.1443,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "lemurian",
+          "maxHealth": 2040,
+          "overkill": 631602.72,
+          "frac": 309.6092,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "beetle",
+          "maxHealth": 1224,
+          "overkill": 258465.64,
+          "frac": 211.1647,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 1972,
+          "overkill": 32653.29,
+          "frac": 16.5585,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 3536,
+          "overkill": 31089.29,
+          "frac": 8.7922,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 32857.29,
+          "frac": 18.5844,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 1014.67,
+          "frac": 0.5739,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 1768,
+          "overkill": 705792.17,
+          "frac": 399.2037,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 2333.75,
+          "frac": 1.6343,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 1688718.73,
+          "frac": 1182.5761,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 1688718.73,
+          "frac": 1182.5761,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1428,
+          "overkill": 1688718.73,
+          "frac": 1182.5761,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        }
+      ]
+    }
+  ],
+  "pageErrors": [],
+  "consoleErrors": []
+}
