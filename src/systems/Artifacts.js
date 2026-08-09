@@ -110,8 +110,9 @@ const ATONEMENT_FEED = 1.25;
 const ATONEMENT_REFUND = 1.875;   // 0.08 * 1.875 = 0.15 of the world per kill
 
 // The Vigil. One dial and no second one: every feed costs 35% less and the
-// refund is left exactly where it was. A card earned by finishing a run without
-// needing to bleed the gauge back down has no business selling a better bleed —
+// refund is left exactly where it was. A card earned by finishing a run whose
+// world never passed Seeded — the peak band, so bleeding the gauge back down at
+// a font cannot earn it — has no business selling a better bleed —
 // what it pays for is the restraint itself being cheaper to keep.
 // Multiplicative like the other two, so a player who takes it alongside the Maw
 // nets 1.3 rather than cancelling the Maw out.

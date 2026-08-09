@@ -99,6 +99,13 @@ export class Progression {
     // on. Null when nothing is committed.
     this.vault = null;
 
+    // The worst the world ever got this run, not the band it ended in. Run
+    // scoped like `level` above (every restart path is a reload), and it exists
+    // because the Vigil is awarded for restraint: a band read at the ending can
+    // be bought at the last font, a high-water mark cannot. Maintained by the
+    // `corruptionBand` listener in `init`.
+    this.corruptionPeakBand = 0;
+
     // Set by `finishRun` when the run ends on purpose rather than on a corpse.
     this.ending = null;
 
@@ -114,6 +121,14 @@ export class Progression {
     // in this order means the commit already sees the flag.
     this.profile.init(ctx);
     ctx.progression = this;
+
+    // The high-water mark. `corruptionBand` fires once per real crossing, in
+    // both directions, so watching it is the only way to know a world was ever
+    // Consumed after a font has walked it back down to Seeded.
+    ctx.events.on('corruptionBand', (e) => {
+      const b = e?.band;
+      if (Number.isInteger(b) && b > this.corruptionPeakBand) this.corruptionPeakBand = b;
+    });
 
     ctx.events.on('bossSpawn', () => { this.bossAlive = true; });
     ctx.events.on('bossDead', (e) => {
@@ -517,6 +532,10 @@ export class Progression {
       // if they do not.
       corruption: Math.round(this.ctx.corruption?.world ?? 0),
       corruptionBand: this.ctx.corruption?.band ?? 0,
+      // And the worst it ever got. The listener is the mechanism; the live band
+      // is folded in here only as a floor, for the case where a gauge existed
+      // before this system's listener did — it can never lower the mark.
+      corruptionPeakBand: Math.max(this.corruptionPeakBand, this.ctx.corruption?.band ?? 0),
       inventory: items,
       timeText: formatTime(this.stats.time),
       // Which ending this was, or null for the ordinary one (death). Read by

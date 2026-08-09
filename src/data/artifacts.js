@@ -152,8 +152,10 @@ export const ARTIFACTS = [
     flavour: 'Carried out of a world you did not spend. It remembers.',
     mark: 'vigil',
     color: '#cfe8c8',
-    // The one card that cannot be bought: the challenge is a *won* run ended at
-    // Seeded or cleaner, so the only way to earn it is to have not needed it.
+    // The one card that cannot be bought: the challenge is a *won* run whose
+    // world never passed Seeded — a peak, not an ending — so no amount of gold
+    // at a font late in the run can buy it back. The only way to earn it is to
+    // have not needed it.
     unlock: 'unbrokenSeal',
   },
 ];

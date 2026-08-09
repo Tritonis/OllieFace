@@ -215,15 +215,16 @@ export const CHALLENGES = [
     name: 'The Unbroken Seal',
     // Phrased in the band's own name because that is the word on the HUD; a
     // player reading this row has watched the gauge say "Seeded" all run.
-    description: 'Finish a run at the Fracture with the world no worse than Seeded.',
+    description: 'Finish a run at the Fracture without the world ever passing Seeded.',
     category: 'depth',
     hidden: false,
     goal: 1,
     // `cleanVictory` is written exactly once, by `Profile.commitRun`, on a run
-    // that ended in a Fracture finale victory whose final corruption band was
+    // that ended in a Fracture finale victory whose *peak* corruption band was
     // Seeded or cleaner — so this cannot be reached by dying clean, by winning
-    // dirty, or by stepping into the Obelisk on stage 1 (which is also a `won`
-    // ending, and is exactly what the wording above rules out). It is a run
+    // dirty, by rotting the world and laundering it at a font before the door
+    // (which is what "ever" rules out), or by stepping into the Obelisk on
+    // stage 1 (which is also a `won` ending). It is a run
     // field rather than a lifetime stat because the condition is a fact about
     // one run, and the
     // commit's final `_evaluate` pass is the last moment it exists.

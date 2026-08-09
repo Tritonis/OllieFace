@@ -1213,6 +1213,12 @@ export class Profile {
       gold: num(stats.gold, 0),
       level: num(this.ctx?.progression?.level, 1),
       outcome: won ? 'victory' : 'death',
+      // The run's corruption record, persisted rather than derived-and-dropped:
+      // `cleanVictory` below is decided from the peak band, and a granted (or
+      // refused) Vigil should leave the evidence behind it in the logbook.
+      corruption: num(stats?.corruption, 0),
+      corruptionBand: num(stats?.corruptionBand, 0),
+      corruptionPeakBand: num(stats?.corruptionPeakBand, 0),
       inventory: Array.isArray(stats.inventory)
         ? stats.inventory.map((i) => ({ id: str(i.id), count: num(i.count, 0) }))
         : [],
@@ -1254,8 +1260,8 @@ export class Profile {
     }
 
     // Restraint's proof, written onto the run block the instant before the last
-    // evaluation can read it: a Fracture finale carried home with the world at
-    // Seeded or cleaner. Three things must all hold, and each fails closed:
+    // evaluation can read it: a Fracture finale carried home by a world that
+    // never went past Seeded. Three things must all hold, and each fails closed:
     //
     //   * `won` — a defeat can never set it, however spotless.
     //   * the ending is a named Fracture finale (see FINALE_VICTORY_ENDINGS) —
@@ -1266,10 +1272,19 @@ export class Profile {
     //     because the failure direction for the game's one unbuyable card must
     //     be "not earned", not "handed out".
     //
+    // The band tested is the run's PEAK (`corruptionPeakBand`), not the one it
+    // ended in. Reading the ending band made the card buyable: rot the world all
+    // run for the loot and the mutations, then launder it back down at the
+    // guaranteed fonts on the way to the door and collect the artifact awarded
+    // for never having needed them. The peak is what "unbroken" means, and it
+    // leaves the redemption arc intact — laundering still buys the clean route,
+    // the easier Herald and the ending; it just no longer buys this card.
+    //
     // `stats` is Progression's snapshot at the ending (`runStats()`), which
-    // carries both `ending` and `corruptionBand`. This is the only writer, and
-    // the `unbrokenSeal` challenge (data/challenges.js) is the only reader.
-    const band = stats?.corruptionBand;
+    // carries `ending`, `corruptionBand` and `corruptionPeakBand`. This is the
+    // only writer, and the `unbrokenSeal` challenge (data/challenges.js) is the
+    // only reader.
+    const band = stats?.corruptionPeakBand;
     run.cleanVictory = won
       && FINALE_VICTORY_ENDINGS.has(stats?.ending)
       && Number.isInteger(band) && band >= 0 && band <= CLEAN_ENDING_BAND

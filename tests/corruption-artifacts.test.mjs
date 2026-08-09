@@ -227,7 +227,11 @@ console.log('the clean ending is what seals it — a real Profile, a real commit
    * `ending` is the id `Progression.runStats()` reports — `ENDINGS.victory` by
    * default, because that is the run the challenge's wording describes.
    */
-  function endRun(won, corruptionBand, ending = 'victory') {
+  // `peak` defaults to the ending band — a run that never moved — but an
+  // explicitly passed `undefined` must stay undefined, because "the field is
+  // missing" is one of the shapes the gate has to decline.
+  function endRun(won, corruptionBand, ending = 'victory', ...rest) {
+    const peak = rest.length ? rest[0] : corruptionBand;
     store.clear();
     const listeners = new Map();
     const ctx = {
@@ -241,7 +245,7 @@ console.log('the clean ending is what seals it — a real Profile, a real commit
     // The same shape `Progression.runStats()` hands `commitRun`.
     profile.commitRun(won, {
       stage: 1, stageName: 'Stage 1', time: 300, difficulty: 1, gold: 0,
-      corruption: 12, corruptionBand, inventory: [], ending,
+      corruption: 12, corruptionBand, corruptionPeakBand: peak, inventory: [], ending,
     });
     return profile;
   }
@@ -264,6 +268,62 @@ console.log('the clean ending is what seals it — a real Profile, a real commit
     'walking into the Obelisk on stage 1 with a spotless world does NOT seal it');
   ok(sealed(true, 0, null) === false,
     'and neither does a win with no named ending at all');
+
+  // The purity test. The laundering line the economy review walked: rot the
+  // world to Consumed for the loot and the gold, then buy it back down at the
+  // guaranteed fonts on the way to the Fracture and arrive at Seeded. That run
+  // still gets the clean route, the easier Herald and the ending — it does not
+  // get the card that says the seal was never broken.
+  ok(sealed(true, 1, 'victory', 4) === false,
+    'a run laundered from Consumed down to Seeded at the door does NOT seal the Vigil');
+  ok(sealed(true, 0, 'victory', 2) === false,
+    'not even one that ends Pristine, if it was ever Blighted');
+  ok(sealed(true, 1, 'victory', 1) === true,
+    'a run that genuinely never passed Seeded still does');
+  // Fails closed on the peak in the same seven ways the ending band did, and
+  // it is the peak that is read: a spotless ending band cannot stand in for it.
+  for (const [peak, label] of [[undefined, 'a missing peak'], [null, 'a null peak'], [NaN, 'NaN'],
+    [Infinity, 'Infinity'], ['0', 'the string "0"'], [-1, 'a negative peak'], [1.5, 'a fractional peak']]) {
+    ok(sealed(true, 0, 'victory', peak) === false, `${label} declines the seal rather than granting it`);
+  }
+
+  // Where the peak comes from: the real Progression, listening to the real
+  // Corruption's band events. A snapshot taken at the ending cannot see a world
+  // that was Consumed an hour ago and has since been bought back down, so the
+  // mark has to be kept as it happens.
+  {
+    const { Progression } = await import('../src/systems/Progression.js');
+    const { Corruption } = await import('../src/systems/Corruption.js');
+    const listeners = new Map();
+    const player = { isPlayer: true, alive: true, survivorId: null };
+    const ctx = {
+      authority: true, netRole: 'single', player, time: 0,
+      scene: { add() {} },
+      events: { on(n, f) { if (!listeners.has(n)) listeners.set(n, []); listeners.get(n).push(f); },
+        emit(n, p) { for (const f of listeners.get(n) || []) f(p); } },
+    };
+    const prog = new Progression();
+    prog.init(ctx);
+    const cor = new Corruption();
+    cor.init(ctx);
+
+    cor.feed(player, 400);
+    ok(cor.band === 4 && prog.corruptionPeakBand === 4, `the mark follows the world up (${prog.corruptionPeakBand})`);
+    cor.bleed(player, 390);
+    ok(cor.band < 4, 'and the world comes back down');
+    const stats = prog.runStats();
+    ok(stats.corruptionBand === cor.band && stats.corruptionPeakBand === 4,
+      `runStats reports both the ending band (${stats.corruptionBand}) and the peak (${stats.corruptionPeakBand})`);
+  }
+
+  // And the run record keeps the evidence, so a granted seal can be audited.
+  {
+    const p = endRun(true, 1, 'victory', 4);
+    const rec = p.data.runs[0];
+    ok(rec.corruptionBand === 1 && rec.corruptionPeakBand === 4 && rec.corruption === 12,
+      `the persisted run carries the corruption it was judged on (${JSON.stringify(
+        { c: rec.corruption, band: rec.corruptionBand, peak: rec.corruptionPeakBand })})`);
+  }
 
   // The band predicate fails closed: the one unbuyable card is never handed out
   // by a caller that simply forgot the field.
