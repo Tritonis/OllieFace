@@ -1,0 +1,42 @@
+{
+  "tool": "tools/desktopprobe.mjs",
+  "command": "node tools/desktopprobe.mjs",
+  "checks": [
+    {
+      "name": "boot 1: title screen over app://",
+      "pass": true
+    },
+    {
+      "name": "boot 1: page url is app://",
+      "pass": true,
+      "detail": "app://game/index.html"
+    },
+    {
+      "name": "boot 1: save.json written",
+      "pass": true
+    },
+    {
+      "name": "boot 1: no torn tmp left",
+      "pass": true
+    },
+    {
+      "name": "boot 1: the write is in the file",
+      "pass": true
+    },
+    {
+      "name": "boot 1: no page errors",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "boot 1: gpu-info.json written",
+      "pass": true
+    },
+    {
+      "name": "boot 2: the file hydrated localStorage over Chromium's own copy",
+      "pass": true,
+      "detail": "edited-on-disk"
+    }
+  ],
+  "ok": true
+}
