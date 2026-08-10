@@ -201,6 +201,17 @@ const SCENARIOS = [
     doc: 'A heavy monster killed with damage to spare, photographed with the corpse mid-launch and its element\'s kill burst live. Judges whether a kill reads as an event.',
     setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.overkill?.()),
   },
+  // Appended after `19-overkill` for the same reason `19-overkill` sits after
+  // `16-run-summary`: the shared RNG stream means any insertion above this
+  // point re-rolls every shot below it, and dead last costs nothing. Same
+  // trade-off too -- `16-run-summary` has already killed the player, so on a
+  // full run this scenario begins from a dead run; it is captured with
+  // `--only 20-blight-edge` against a fresh page, which is the supported path.
+  {
+    name: '20-blight-edge',
+    doc: 'The trailer thesis: the party fighting at a blight edge as it spreads toward camera. Judges whether the hook is photographable -- blight foreground, fight midground, deep-band sky.',
+    setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.blightEdge?.()),
+  },
 ];
 
 // A `settle(page, frames, maxMs)` helper used to live here, unreferenced since

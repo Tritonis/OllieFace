@@ -5428,6 +5428,126 @@ export function installHarness(ctx) {
       return { screen: ctx.hud?.menus?.screen ?? null, record };
     },
 
+    /**
+     * The trailer thesis (launch design section 3.4): the party fighting at a
+     * blight edge as it spreads toward camera. Composed from public seams only:
+     * corruption is driven through feed(), the patch through seed() + the growth
+     * Blight.update already runs, the fight through spawnRing. The camera sits
+     * low on the far side of the patch edge, shooting across it at the fight,
+     * so the crawling edge advances toward the lens.
+     */
+    async blightEdge({ world = 150, seedStrength = 3, settleFrames = 150, closeFrames = 45 } = {}) {
+      thaw();
+      await begin();
+      await frames(2);
+      // The loaded late-run STATE, minus the inventory. `lateRun`'s state half
+      // (Harness.js:2996-3005) is a clock, an item haul and a level; this shot
+      // takes the clock and the level and deliberately drops the haul. Measured
+      // both ways: with the 37-item grant the HUD paints its inventory grid over
+      // the left quarter of the landscape (exactly the reason `06-loaded-hud`
+      // and `10-inventory` were moved to the end of the run), and the passive
+      // item damage that comes with it wiped the ring down to one survivor
+      // before the shutter -- `a live fight` failed at 1 of 8. The difficulty
+      // meter, the band and the survivor's level are what "late run" has to read
+      // as here, and all three come from the clock and `seedLevel`.
+      attach();
+      invulnerable();
+      ctx.time = 22 * 60;
+      seedLevel(20, 0.42);
+      // This scenario shoots across open ground from 30 m out, which is the one
+      // composition a canyon spawn cannot survive: the first capture put the
+      // lens inside a rock face with the whole frame purple. `placeForOpenArena`
+      // is `lateRun`'s and `04-combat`'s answer to the same problem -- move the
+      // survivor to flat ground and turn him toward the open part of it -- and
+      // it must run BEFORE the bearing below is taken, since it sets the yaw
+      // everything here is placed off.
+      await placeForOpenArena();
+      // Plant the seed FIRST, while the world is still near zero. Blight builds
+      // a patch at full formula radius for the CURRENT world (Blight.js:502),
+      // so seeding after the feed would spawn the rim pre-grown at ~12.5 m and
+      // the spec's "spreads toward camera" motion would never happen on camera.
+      // Seeded now, the patch builds at radiusOf(3, ~0) = 6.5 m and GROWS at
+      // 1.2 m/s (Blight.js:19) as the feeds below raise the world -- the growth
+      // itself is the thesis, and Task 2 films this same arm.
+      const p = playerPos();
+      // Cloned, not held: `forward()` hands back one shared vector that every
+      // later `forward()` caller (spawnRing, among others) overwrites in place,
+      // and this bearing has to survive the settle to aim the lens.
+      const f = forward().clone();
+      const seedAt = new THREE.Vector3(p.x + f.x * 12, p.y, p.z + f.z * 12);
+      ctx.corruption.seed(seedAt, seedStrength);
+      // Drive the world to the target band through the two real levers.
+      const delta = world - (ctx.corruption?.world ?? 0);
+      if (delta > 0) ctx.corruption.feed(ctx.player, delta);
+      else if (delta < 0) ctx.corruption.bleed(ctx.player, -delta);
+      // The patch grows on its own first, with nothing else in the arena. The
+      // spread is the subject, and it is 1.2 m/s (Blight.js:19) from 6.5 m to
+      // the 12.5 m this world buys -- five seconds of crawl that the monsters
+      // have no reason to be standing around for.
+      await frames(settleFrames);
+      // The fight is spawned LATE, for the reason the item grant is gone: bodies
+      // put down at t=0 do not all survive to the shutter. `closeFrames` is the
+      // whole life of the fight on camera -- long enough for the ring to break
+      // formation and close on the survivor, short enough that it is still eight
+      // of them when the lens turns around.
+      // Chosen by silhouette, not by roster order. `SPAWN_CARDS.slice(0, 4)` is
+      // the small end of the deck -- mite, beetle, spitling -- and the lens for
+      // this shot stands ~26 m off, where a mite is a few pixels of orange on a
+      // purple field. These four are the largest bodies that neither submerge
+      // (burrower) nor blink out (stalker) mid-shutter.
+      const cards = ['charger', 'shriver', 'warden', 'golem']
+        .map((id) => SPAWN_CARDS.find((c) => c.id === id)).filter(Boolean);
+      spawnRing(8, cards.length ? cards : SPAWN_CARDS, 9, 4);
+      // The ring's own band reaches 42 m in front of the survivor, which on this
+      // bearing is behind the lens that is about to be planted at 26 m. Pull the
+      // fight into a band that is entirely on the near side of it, and onto the
+      // patch, which is where "fighting at a blight edge" has to happen.
+      declutter(9, { maxDist: 20 });
+      await frames(closeFrames);
+      // Low camera on the far side of the seed, shooting back across the edge
+      // toward the player: patch in the foreground, fight behind its rim. The
+      // standoff is read off the LIVE patch uniform, not recomputed arithmetic,
+      // so the lens sits relative to what actually rendered.
+      const patch = ctx.blight?.patches?.at?.(-1) ?? null;
+      const liveR = patch?.mesh?.material?.uniforms?.uRadius?.value ?? 0;
+      // 4 m off the rim, measured against 2 m: the tighter lens photographs
+      // bigger monsters and loses the survivor behind a Warden's shield, which
+      // is the one body in frame the pitch cannot do without.
+      const camX = seedAt.x + f.x * (liveR + 4), camZ = seedAt.z + f.z * (liveR + 4);
+      // Off the terrain under the lens, not off the survivor's own footing:
+      // 2.2 m above a player standing in a basin is underground on the ridge
+      // 30 m away, and the first capture proved it -- the frame came back as
+      // the inside of a rock.
+      H.freeCam(camX, groundY(camX, camZ, p.y) + 2.6, camZ, p.x, p.y + 1.4, p.z);
+      // Declutter AFTER the lens is planted, not before, and this is the one
+      // ordering decision in the shot that is worth a paragraph. `declutter`
+      // measures against the live `camera`, so run from the third-person rig it
+      // clears the survivor's silhouette as the RIG sees it -- and the shot that
+      // produced was eight monsters neatly stacked between the trailer lens and
+      // the survivor, who is the thing the pitch is about and was not in his own
+      // photograph. Run here, the swing-off-the-bearing pass (see `declutter`)
+      // is working in the frame that actually ships.
+      declutter(12, { maxDist: 26 });
+      await frames(12);
+      freeze();
+      const enemiesAlive = (ctx.director?.enemies ?? []).filter((e) => e.alive).length;
+      const camDistToEdge = Math.hypot(camera.position.x - seedAt.x, camera.position.z - seedAt.z) - liveR;
+      const record = {
+        world: +(ctx.corruption?.world ?? 0).toFixed(1),
+        band: ctx.corruption?.band ?? 0,
+        patchRadius: +liveR.toFixed(2),
+        enemiesAlive,
+        cameraDistToEdge: +camDistToEdge.toFixed(2),
+      };
+      mustContain('20-blight-edge', [
+        { subject: 'a deep-band world', dom: () => (ctx.corruption?.band ?? 0) >= 3, detail: () => record.band },
+        { subject: 'a blight patch in the world', dom: () => (ctx.blight?.patches?.length ?? 0) >= 1, detail: () => ctx.blight?.patches?.length ?? 0 },
+        { subject: 'a grown patch rim, measured off the live uniform', dom: () => liveR >= 6, detail: () => record.patchRadius },
+        { subject: 'a live fight', dom: () => enemiesAlive >= 4, detail: () => enemiesAlive },
+      ]);
+      return record;
+    },
+
     // Determinism controls. `tools/capture.mjs` pins the clock before the
     // first scenario; `tools/perf.mjs` deliberately does not, because it is
     // measuring the real one.
