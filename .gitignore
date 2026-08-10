@@ -24,3 +24,10 @@ reviews/round6/fix[A-D]/
 reviews/round6/diag-*.json
 reviews/round6/realms-w*/
 reviews/round6/vfx-t*/
+
+# The shot library's clips. The stills in `shotlib/` are committed on purpose
+# (see `shotlib/MANIFEST.md`); the clips are not — webm at 1600x900 does not
+# belong in git history, and every take is regenerable from the command its
+# manifest entry records. This is the directory `tools/clipshot.mjs` writes to,
+# so it covers the `.webm` and its record JSON both.
+shotlib/clips/
