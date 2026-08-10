@@ -21,6 +21,12 @@ import { HUD } from './ui/HUD.js';
 import { Coop } from './net/Coop.js';
 import { Lobby } from './net/Lobby.js';
 import { maybeShowGpuNotice } from './ui/GpuNotice.js';
+import { initDesktopStore } from './core/DesktopStore.js';
+
+// Before anything reads storage: under the Electron shell this hydrates
+// localStorage from the save file and installs the write mirror. In the
+// browser there is no bridge and it returns inert.
+initDesktopStore();
 
 const params = new URLSearchParams(location.search);
 const seed = Number(params.get('seed')) || (Math.random() * 0xffffffff) >>> 0;
