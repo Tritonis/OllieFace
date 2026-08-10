@@ -16,7 +16,7 @@
 - **No `npx`, ever** (memory: npx-destroys-rolldown-binding). Install with `npm install --save-dev --save-exact <pkg>@<version>`; run binaries via `npm run` scripts or `node_modules/.bin/` paths.
 - **Pin Electron exact.** Resolve the current stable with `npm view electron version`, install `--save-exact`, and record the version in `desktop/README.md`. Every future bump re-verifies the overlay (STEAM.md §5) — write that warning into the README.
 - **Renderer security posture:** `contextIsolation: true`, `nodeIntegration: false`, `sandbox` left at default, preload exposes only the functions this plan names. The game is a local single-page app but MP loads remote peers' data; do not widen the surface.
-- **Saves are a single JSON file, written atomically** (tmp + rename), covering exactly the keys prefixed `telluric.` and `net.` — the complete live set (`src/systems/Profile.js:75-78` single profile blob; `src/ui/GpuNotice.js:18`; `src/systems/Artifacts.js`; `src/net/NetConfig.js`; settings via `src/ui/Menus.js` / `src/core/LegacyStorage.js:26-47`).
+- **Saves are a single JSON file, written atomically** (tmp + rename), covering the keys prefixed `telluric.` — which is the complete live set (`src/systems/Profile.js:85` `telluric.profile.v1`; `src/ui/GpuNotice.js:18`; `src/systems/Artifacts.js:53` `telluric.run.v1`; `src/ui/Menus.js:46` `telluric.settings`; NetConfig's real prefix is `telluric.net.`, `src/net/NetConfig.js:37`). The bare `net.` prefix in `MIRROR_PREFIXES` matches no live key and is kept only as reserved-for-future headroom — comment it as such in the module.
 - **`desktop/main.mjs` honors `TELLURIC_USERDATA`** (env var -> `app.setPath('userData', ...)`) so probes and future tests never touch the real profile.
 - **Bash tool is ASCII-only**; non-ASCII content goes through Write/Edit. No report prose through heredocs.
 - **Line citations are signposts** — the live file wins; read before editing.
@@ -151,6 +151,9 @@ process.exit(failures ? 1 : 0);
  * without rewriting any of them. The wrap must survive future call sites too,
  * which per-site rewrites would not.
  */
+// 'telluric.' is the complete live key set (Profile, GpuNotice, Artifacts,
+// Menus settings, and NetConfig's telluric.net.*). Bare 'net.' matches no
+// live key today and is reserved headroom only.
 export const MIRROR_PREFIXES = ['telluric.', 'net.'];
 
 const mirrored = (k) => MIRROR_PREFIXES.some((p) => String(k).startsWith(p));
@@ -201,10 +204,32 @@ export function initDesktopStore(
     timer = setTimeout(flush, debounceMs);
   };
 
-  const rawSet = storage.setItem.bind(storage);
-  const rawRemove = storage.removeItem.bind(storage);
-  storage.setItem = (k, v) => { rawSet(k, v); if (mirrored(k)) schedule(); };
-  storage.removeItem = (k) => { rawRemove(k); if (mirrored(k)) schedule(); };
+  // Storage is a legacy platform object with a named setter: assigning
+  // `storage.setItem = fn` stores a phantom item named "setItem" and leaves
+  // the real prototype method in place -- the mirror would never install in
+  // a real renderer while plain-object test fakes pass green. So: patch own
+  // methods when they are own properties (test fakes), else patch the
+  // prototype (real Storage), guarded on `this` so sessionStorage never
+  // joins the mirror.
+  const wrap = (obj, name, guardThis) => {
+    const raw = obj[name];
+    obj[name] = function (...a) {
+      const out = raw.apply(this, a);
+      if ((!guardThis || this === storage) && mirrored(a[0])) schedule();
+      return out;
+    };
+  };
+  if (Object.prototype.hasOwnProperty.call(storage, 'setItem')) {
+    wrap(storage, 'setItem'); wrap(storage, 'removeItem');
+  } else {
+    const proto = Object.getPrototypeOf(storage);
+    wrap(proto, 'setItem', true); wrap(proto, 'removeItem', true);
+  }
+
+  // The debounce must never eat the last write of a session: flush on
+  // pagehide (fires on window close in Chromium/Electron; a no-op addend in
+  // headless node where addEventListener is absent).
+  globalThis.addEventListener?.('pagehide', flush);
 
   // First boot on desktop: nothing on disk yet -> migrate the browser-era
   // keys out immediately rather than waiting for the first gameplay write.
@@ -215,6 +240,8 @@ export function initDesktopStore(
 ```
 
 Note the `debounceMs: 0` tests still go through `setTimeout(0)`; the test calls `r.flush()` explicitly, which cancels the pending timer and writes synchronously — that is the behaviour the code above implements (flush clears the timer first). Keep it that way.
+
+**The prototype branch is only provable in a real renderer** — the headless fakes exercise the own-property branch; Task 3's probe (with its out-of-band save-file edit) is what proves the prototype patch against real Storage. Say so in the task report. Also add one more fake-driven test for the shutdown flush: schedule a write (do not flush), then call the function registered for `pagehide` (capture it via a fake `globalThis.addEventListener` shim or invoke `r.flush()` through the same path) and assert the snapshot landed.
 
 - [ ] **Step 4: Run the test.** `node tests/desktop-store.test.mjs` — expected: all PASS, exit 0.
 
@@ -258,7 +285,7 @@ npm view electron version
 npm install --save-dev --save-exact electron@<that version>
 ```
 
-(electron-builder waits for Task 4.) Verify `npm run build` still succeeds and `git diff package.json` shows only the intended lines. Record the Electron version in `desktop/README.md` along with the STEAM.md warning: overlay behaviour is not stable across Electron majors; re-test after every bump; never bump casually.
+(electron-builder waits for Task 4.) Verify `npm run build` still succeeds and `git diff package.json` shows only the intended lines. Record in `desktop/README.md`: the pinned Electron version, the Playwright version it was probed with (the `_electron` driver against latest-stable Electron is an unverified pair until Task 3 passes — if `_electron.launch` hangs there, the fix is environmental: step Electron down to the newest version Playwright supports, re-pin, and record why), and the STEAM.md warning: overlay behaviour is not stable across Electron majors; re-test after every bump; never bump casually.
 
 - [ ] **Step 2: `desktop/preload.cjs`.** CommonJS on purpose — preloads run in a hybrid context and CJS is the no-surprises path:
 
@@ -290,7 +317,7 @@ contextBridge.exposeInMainWorld('__DESKTOP__', {
  * atomically-written JSON under userData, and logs the GPU adapter so the
  * Optimus problem is diagnosable from a player report.
  */
-import { app, BrowserWindow, ipcMain, protocol, net, session } from 'electron';
+import { app, BrowserWindow, ipcMain, protocol, net } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import { pathToFileURL, fileURLToPath } from 'node:url';
@@ -331,7 +358,8 @@ app.whenReady().then(async () => {
     let rel = decodeURIComponent(url.pathname);
     if (rel === '/' || rel === '') rel = '/index.html';
     const target = path.normalize(path.join(DIST, rel));
-    if (!target.startsWith(DIST)) return new Response('forbidden', { status: 403 });
+    if (!target.startsWith(DIST + path.sep) && target !== path.join(DIST, 'index.html'))
+      return new Response('forbidden', { status: 403 });
     return net.fetch(pathToFileURL(target).toString());
   });
 
@@ -450,9 +478,25 @@ try {
   check('boot 1: no torn tmp left', !existsSync(`${savePath}.tmp`));
   const snap = existsSync(savePath) ? JSON.parse(readFileSync(savePath, 'utf8')) : {};
   check('boot 1: the write is in the file', snap['telluric.probeMark'] === 'boot1');
-  check('boot 1: gpu-info.json written', existsSync(path.join(userData, 'gpu-info.json')));
   check('boot 1: no page errors', errors.length === 0, errors);
 } finally { await app.close(); }
+// gpu-info is written from an awaited getGPUInfo after loadURL -- checking
+// it mid-session races a slow GPU-process boot. After close it must exist.
+check('boot 1: gpu-info.json written', existsSync(path.join(userData, 'gpu-info.json')));
+
+// ---- edit the save out-of-band ----
+// Boot 2's hydration check would be tautological otherwise: both boots share
+// the userData partition, so Chromium's own localStorage persistence would
+// carry probeMark across even with hydration deleted. Rewriting the file
+// between boots means boot 2 can only see the new value if the FILE
+// overwrote Chromium's persisted copy -- the file-is-source-of-truth
+// precedence DesktopStore claims.
+{
+  const savePath = path.join(userData, 'save.json');
+  const snap = JSON.parse(readFileSync(savePath, 'utf8'));
+  snap['telluric.probeMark'] = 'edited-on-disk';
+  writeFileSync(savePath, JSON.stringify(snap));
+}
 
 // ---- boot 2: warm ----
 app = await boot();
@@ -460,10 +504,12 @@ page = await app.firstWindow();
 try {
   await page.waitForSelector('[data-screen="title"]', { timeout: 60000 });
   const mark = await page.evaluate(() => localStorage.getItem('telluric.probeMark'));
-  check('boot 2: the file hydrated localStorage', mark === 'boot1', mark);
+  check('boot 2: the file hydrated localStorage over Chromium\'s own copy', mark === 'edited-on-disk', mark);
 } finally { await app.close(); }
 
-rmSync(userData, { recursive: true, force: true });
+// Scratch cleanup only -- on Windows the browser process can hold handles
+// briefly after close; a cleanup race must not fail a probe that passed.
+try { rmSync(userData, { recursive: true, force: true }); } catch {}
 
 const failed = checks.filter((c) => !c.pass).length;
 writeFileSync(RECORD, `${JSON.stringify({
@@ -507,8 +553,9 @@ git commit -m "The shell is probed like everything else: two boots, one file, ev
 "build": {
   "appId": "com.olliface.telluricvoid",
   "productName": "TELLURIC VOID",
+  "asar": false,
   "directories": { "output": "dist-desktop" },
-  "files": ["desktop/**", "dist/**", "package.json"],
+  "files": ["desktop/**", "dist/**", "!dist/**/*.map", "package.json"],
   "win": { "target": "dir", "signAndEditExecutable": false }
 },
 "scripts": {
@@ -516,7 +563,7 @@ git commit -m "The shell is probed like everything else: two boots, one file, ev
 }
 ```
 
-`"target": "dir"` only — no NSIS, no signing, per STEAM.md (Valve launches the exe itself; codesigning unnecessary for a Steam-only launch). Watch the STEAM.md §4 warning in reverse: `files` must NOT include `node_modules` (electron-builder excludes devDeps automatically, but confirm the packed folder holds no `three/` source — the game is inside `dist/`) and must not ship `dist/*.map` if present — check `ls dist/assets` after build; if sourcemaps exist, exclude them with `"!dist/**/*.map"` in `files` and note it in the README.
+`"target": "dir"` only — no NSIS, no signing, per STEAM.md (Valve launches the exe itself; codesigning unnecessary for a Steam-only launch). `"asar": false` is load-bearing: the `app://` handler serves via `net.fetch(pathToFileURL(...))`, and a `file://` URL pointing *inside* an asar archive goes through Chromium's URL loader whose asar support is not a contract — dev probe green, packed probe black window. A portable dir target gains nothing from asar anyway; note in `desktop/README.md` that turning asar on later requires re-proving the `app://` handler via the probe's `--exe` mode. `"!dist/**/*.map"` is unconditional because `vite.config.js:5` sets `sourcemap: true` — maps always exist and must not ship. Watch the STEAM.md §4 warning in reverse: confirm the packed folder holds no `node_modules`/`three/` source — the game is inside `dist/`.
 
 - [ ] **Step 3: Pack and probe the packed exe.** `npm run desktop:pack`, then re-run the probe against the packaged binary:
 

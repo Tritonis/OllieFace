@@ -6,7 +6,7 @@
 
 **Origin:** Launch design spec §3.4 (`docs/superpowers/specs/2026-08-07-hungry-void-launch-design.md:142-145`): *"Trailer-first development. Every feature milestone ends with its money shot captured via `tools/capture.mjs` into a running shot library. Trailer thesis shot: the party fighting at a blight edge as it spreads toward camera."* Plus workstream 2's sales unit (`:136-137`): *"Ten-second clips are the sales unit."* Nothing in the repo today is a library: money shots exist but are scattered across `reviews/round8/` and gitignored `shots-*/` directories, and no tool can capture motion at all.
 
-**Architecture:** One new harness arm (`__HARNESS__.blightEdge()`) composes the thesis scene using only seams that already exist — `ctx.corruption.feed`/`.seed` (`src/systems/Corruption.js:81,190`), the blight patch growth that `src/systems/Blight.js:510-521` already drives from `radiusOf(strength, world)` (`Blight.js:84`), the harness's own `spawnRing` (`src/core/Harness.js:712-753`) and `freeCam` (`Harness.js:5450-5454`). `tools/capture.mjs` gains one scenario entry (`20-blight-edge`) that calls it — the spec names `capture.mjs` as the shutter, and its manifest/subject-gate machinery is exactly what makes a money shot arguable. `tools/clipshot.mjs` is a new sibling of `tools/gaugeshot.mjs` (same vite+playwright skeleton, same record-JSON-with-checks discipline) that films N seconds of a live harness scenario via Playwright's `recordVideo` — zero new dependencies, playwright is already the capture stack. The library itself is a `shotlib/` directory: a committed `MANIFEST.md` cataloguing every entry (SHA, exact command, renderer, what the frame argues), committed PNG stills (force-added over `.gitignore`, the precedent `reviews/round8/UI-BASELINE.md` set and argued), and clips left on disk with their regeneration command in the manifest (webm at 1600x900x60s does not belong in git history).
+**Architecture:** One new harness arm (`__HARNESS__.blightEdge()`) composes the thesis scene using only seams that already exist — `ctx.corruption.feed`/`.seed` (`src/systems/Corruption.js:81,190`), the blight patch growth that `src/systems/Blight.js:510-521` already drives from `radiusOf(strength, world)` (`Blight.js:84`), the harness's own `spawnRing` (`src/core/Harness.js:712-753`) and `freeCam` (`Harness.js:5450-5454`). `tools/capture.mjs` gains one scenario entry (`20-blight-edge`) that calls it — the spec names `capture.mjs` as the shutter, and its manifest/subject-gate machinery is exactly what makes a money shot arguable. `tools/clipshot.mjs` is a new sibling of `tools/gaugeshot.mjs` (same vite+playwright skeleton, same record-JSON-with-checks discipline) that films N seconds of a live harness scenario via Playwright's `recordVideo` — zero new dependencies, playwright is already the capture stack. The library itself is a `shotlib/` directory: a committed `MANIFEST.md` cataloguing every entry (SHA, exact command, renderer, what the frame argues), committed PNG stills (nothing in the live `.gitignore` matches `shotlib/` — the patterns are `shots-*/` and `reviews/**/*.png` — so a plain `git add` suffices; the UI-BASELINE precedent is cited for the *decision* to commit curated frames, not for a force flag), and clips left on disk with their regeneration command in the manifest (webm at 1600x900x60s does not belong in git history).
 
 **Tech Stack:** Playwright (existing devDep) incl. `recordVideo`; vite dev server per capture tool convention; `__HARNESS__`/`__GAME__` page seams; node-only record JSONs.
 
@@ -16,9 +16,9 @@
 - **Port stagger.** Existing tools own 5199 (capture), 5207 (capture-realms), 5214 (gaugeshot). `clipshot.mjs` takes **5221**. Never share a port between concurrently running tools.
 - **Determinism per house rule:** seed 1337, viewport 1600x900, deviceScaleFactor 1, `pinClock(1/60)` before the first scenario, no wall-clock waits (`tools/capture.mjs:38-50`).
 - **sp-equivalence must show zero fields moved** (`node tests/sp-equivalence.mjs --compare reviews/round8/baseline-HEAD.json`). The harness arm runs only under `?harness=1`; no file this plan touches executes in a normal run. A moved field is a bug in the work, never a baseline to regenerate.
-- **No renames, no changes to existing scenarios.** `20-blight-edge` is appended; the 19 existing scenarios and their subject gates are untouched. Existing shot baselines stay bit-identical.
+- **No renames, no changes to existing scenarios.** `20-blight-edge` is appended dead last; the 22 existing scenario entries (13-biomes is a x4 spread) and their subject gates are untouched. Existing shot baselines stay bit-identical — the shared-RNG-stream rule at `capture.mjs:191-198` is why only a dead-last append is safe.
 - **No new runtime dependencies.** Playwright records webm natively; no ffmpeg, no encoder package.
-- **Committed binary budget:** the PNGs force-added to `shotlib/` in Task 3 must total under 10 MB (the UI-BASELINE precedent committed ~16 MB and flagged it; this library is smaller and curated). Clips (`.webm`) are **never** committed; `.gitignore` gets an explicit `shotlib/*.webm` line and the manifest records the exact regeneration command instead.
+- **Committed binary budget:** the PNGs committed to `shotlib/` in Task 3 must total under 10 MB (the UI-BASELINE precedent committed ~16 MB and flagged it; this library is smaller and curated). Clips (`.webm`) are **never** committed; `.gitignore` gets a `shotlib/clips/` line (the clip tool's output directory, record JSONs included — the manifest records the exact regeneration command instead).
 - **Bash tool is ASCII-only** in this environment; any non-ASCII content goes through Write/Edit, never a heredoc. No report prose through a heredoc (memory: no-report-prose-through-heredoc).
 - **Line citations are signposts, not addresses** — verified at authoring time; the live file wins. Read a cited range before editing it.
 
@@ -60,57 +60,75 @@ Expected: exit 0, `shots-canary/manifest.json` has `ready: true`. If it fails on
  */
 async blightEdge({ world = 150, seedStrength = 3, settleFrames = 150 } = {}) {
   thaw();
+  await begin();
   await frames(2);
-  // A loaded late-run frame, same arm 06-loaded-hud uses: real inventory,
-  // real difficulty. It also pays item tithes, so correct corruption AFTER.
-  await H.lateRun({ settleFrames: 30 });
-  thaw();
-  const ctx2 = ctx;
-  // Drive the world to the target band through the two real levers.
-  const delta = world - (ctx2.corruption?.world ?? 0);
-  if (delta > 0) ctx2.corruption.feed(ctx2.player, delta);
-  else if (delta < 0) ctx2.corruption.bleed(ctx2.player, -delta);
-  // Plant the seed a fixed bearing ahead of the player so the patch edge
-  // crosses the space between camera and fight.
+  // Plant the seed FIRST, while the world is still near zero. Blight builds
+  // a patch at full formula radius for the CURRENT world (Blight.js:502) --
+  // seeding after the feed would spawn the rim pre-grown at ~12.5 m and the
+  // spec's "spreads toward camera" motion would never happen on camera.
+  // Seeded now, the patch builds at radiusOf(3, ~0) ~= 6.5 m and GROWS at
+  // 1.2 m/s (Blight.js:19) as the feeds below raise the world -- the growth
+  // itself is the thesis, and Task 2 films this same arm.
   const p = playerPos();
   const f = forward();
   const seedAt = new THREE.Vector3(p.x + f.x * 14, p.y, p.z + f.z * 14);
-  ctx2.corruption.seed(seedAt, seedStrength);
+  ctx.corruption.seed(seedAt, seedStrength);
+  // The loaded late-run STATE, inlined from lateRun's state half
+  // (Harness.js:2996-3000) without its shot half: lateRun is a complete
+  // shot -- its own 10-monster ring, declutter, freeze() and the
+  // 06-loaded-hud subject gates whose "monsters under load" check is a
+  // documented open regression -- and nesting it would bill another shot's
+  // marginal gates to this scenario's frameErrors, plus paint its
+  // inventory panel over a quarter of the landscape.
+  attach();
+  invulnerable();
+  ctx.time = 22 * 60;
+  // -- transcribe the item give-loop + addGold(4200) verbatim from the
+  // live lateRun body at Harness.js:2996-3000 here --
+  seedLevel(20, 0.42);
+  // Drive the world to the target band through the two real levers, AFTER
+  // the item grant so its tithes are inside the correction.
+  const delta = world - (ctx.corruption?.world ?? 0);
+  if (delta > 0) ctx.corruption.feed(ctx.player, delta);
+  else if (delta < 0) ctx.corruption.bleed(ctx.player, -delta);
   // The fight: a ring of the roster's video-friendly bodies, one elite.
   spawnRing(8, SPAWN_CARDS.slice(0, 4), 10, 4);
   // Let the patch grow into frame and the fight close distance.
   await frames(settleFrames);
   // Low camera on the far side of the seed, shooting back across the edge
-  // toward the player: patch in the foreground, fight behind its rim.
-  const world2 = ctx2.corruption?.world ?? 0;
-  const r = radiusOf(seedStrength, world2);
-  camera; // (documented: freeCam detaches the chase rig)
+  // toward the player: patch in the foreground, fight behind its rim. The
+  // standoff is read off the LIVE patch uniform, not recomputed arithmetic,
+  // so the lens sits relative to what actually rendered.
+  const patch = ctx.blight?.patches?.at?.(-1) ?? null;
+  const liveR = patch?.mesh?.material?.uniforms?.uRadius?.value ?? 0;
   H.freeCam(
-    seedAt.x + f.x * (r + 8), p.y + 2.2, seedAt.z + f.z * (r + 8),
+    seedAt.x + f.x * (liveR + 8), p.y + 2.2, seedAt.z + f.z * (liveR + 8),
     p.x, p.y + 1.2, p.z,
   );
   await frames(12);
   freeze();
-  const enemiesAlive = (ctx2.director?.enemies ?? []).filter((e) => e.alive).length;
+  const enemiesAlive = (ctx.director?.enemies ?? []).filter((e) => e.alive).length;
+  const camDistToEdge = Math.hypot(camera.position.x - seedAt.x, camera.position.z - seedAt.z) - liveR;
   const record = {
-    world: +world2.toFixed(1),
-    band: ctx2.corruption?.band ?? 0,
-    patchRadius: +r.toFixed(2),
+    world: +(ctx.corruption?.world ?? 0).toFixed(1),
+    band: ctx.corruption?.band ?? 0,
+    patchRadius: +liveR.toFixed(2),
     enemiesAlive,
-    cameraDistToEdge: +Math.abs(8).toFixed(2),
+    cameraDistToEdge: +camDistToEdge.toFixed(2),
   };
   mustContain('20-blight-edge', [
-    { subject: 'a deep-band world', dom: () => (ctx2.corruption?.band ?? 0) >= 3, detail: () => record.band },
-    { subject: 'a grown blight patch', dom: () => r >= 6, detail: () => record.patchRadius },
+    { subject: 'a deep-band world', dom: () => (ctx.corruption?.band ?? 0) >= 3, detail: () => record.band },
+    { subject: 'a blight patch in the world', dom: () => (ctx.blight?.patches?.length ?? 0) >= 1, detail: () => ctx.blight?.patches?.length ?? 0 },
+    { subject: 'a grown patch rim, measured off the live uniform', dom: () => liveR >= 6, detail: () => record.patchRadius },
     { subject: 'a live fight', dom: () => enemiesAlive >= 4, detail: () => enemiesAlive },
   ]);
   return record;
 },
 ```
 
-**Transcribe the shape, not the letters:** the exact local helper names (`thaw`, `frames`, `playerPos`, `forward`, `mustContain`, `camera`, `spawnRing`) are all in scope inside `installHarness` — verify each against the live file (they are used by the existing scenarios at `:5256-5429`). If the fight ring reads better with different cards, choosing them is Task 1's judgment call; the subject gates are not negotiable. `radiusOf` needs importing from `../systems/Blight.js` at the top of the file (imports at `:1-10`). Delete the stray `camera;` expression statement if the implementer keeps `H.freeCam` (it is there to flag that `freeCam` already handles `detach()`).
+**Transcribe the shape, not the letters:** the exact local helper names (`thaw`, `begin`, `attach`, `invulnerable`, `seedLevel`, `frames`, `playerPos`, `forward`, `mustContain`, `camera`, `spawnRing`) are all in scope inside `installHarness` — verify each against the live file (`begin:86`, `seedLevel:128`, `attach:136`, `invulnerable:1341`; the rest are used by the existing scenarios at `:5256-5429`). The `-- transcribe --` marker is the one deliberate fill-from-live-source point: copy the give-loop and `addGold(4200)` exactly as `lateRun` does them at `Harness.js:2996-3000`. The item grant is itself a dial — if the inventory panel wrecks the photograph, shrinking or skipping the grant is in-scope iteration. If the fight ring reads better with different cards, choosing them is Task 1's judgment call; the subject gates are not negotiable. `radiusOf` is cited for the radius reasoning but the arm reads the live uniform instead — no new import is required unless the implementer wants the comment's numbers checked; if imported, it comes from `../systems/Blight.js` (imports at `:1-10`). Verify `ctx.blight.patches` is the real container (`Blight.js:427` puts the system on ctx, `:480` pushes patches) and adjust the property path to the live shape if it differs.
 
-- [ ] **Step 3: Register the shutter.** Append to `SCENARIOS` in `tools/capture.mjs` (after the last entry; keep `16-run-summary` dead last if the array order comment at `:97-103` demands it — read the tail of the array first and place `20-blight-edge` respecting any ordering constraint the comments state):
+- [ ] **Step 3: Register the shutter.** Append `20-blight-edge` **dead last** in `SCENARIOS` in `tools/capture.mjs` — AFTER `19-overkill`, which itself sits after `16-run-summary`. The comment at `capture.mjs:191-198` is the governing rule: every scenario draws from the shared RNG stream, so a new entry anywhere but dead last displaces every shot below it and breaks the bit-identical baseline constraint. Mirror `19-overkill`'s caveat in the new entry's comment: on a full run this scenario begins from a dead run (`16-run-summary` latches the death); it is captured with `--only 20-blight-edge` against a fresh page, which is the supported path:
 
 ```javascript
 {
@@ -126,7 +144,7 @@ async blightEdge({ world = 150, seedStrength = 3, settleFrames = 150 } = {}) {
 node tools/capture.mjs $CAPFLAG --out shots-trailer --only 20-blight-edge
 ```
 
-Expected: exit 0; `shots-trailer/manifest.json` shows `20-blight-edge` with `subjectsOk: true`, zero `frameErrors`. **Look at the PNG.** The frame must actually read as the pitch: blight edge in the lower third, survivors and enemies engaged behind it. If the composition fails as a photograph (fight occluded, edge out of frame, camera in the ground), tune the numeric dials in `blightEdge` (bearing distance 14, ring radius 10, camera height 2.2, standoff r+8) — dial changes are in-scope iteration, seam changes are not.
+Expected: exit 0; `shots-trailer/manifest.json` shows `20-blight-edge` with `subjectsOk: true`, zero `frameErrors`. **Look at the PNG.** The frame must actually read as the pitch: blight edge in the lower third, survivors and enemies engaged behind it. If the composition fails as a photograph (fight occluded, edge out of frame, camera in the ground), tune the numeric dials in `blightEdge` (bearing distance 14, ring radius 10, camera height 2.2, standoff liveR+8, the item grant) — dial changes are in-scope iteration, seam changes are not.
 
 - [ ] **Step 5: Gates.**
 
@@ -217,9 +235,14 @@ const browser = await chromium.launch({
   args: SOFTWARE
     ? ['--use-gl=swiftshader', `--window-size=${W},${H}`]
     : ['--use-angle=d3d11', '--ignore-gpu-blocklist', '--enable-gpu-rasterization',
-      '--disable-frame-rate-limit', '--force_high_performance_gpu',
+      '--force_high_performance_gpu',
       '--window-position=-2400,-2400', `--window-size=${W},${H}`],
 });
+// NB: capture.mjs's headed profile also passes --disable-frame-rate-limit,
+// because stills want speed. A CLIP must not: with rAF uncapped and the sim
+// pinned at 1/60, ten sim-seconds would fast-forward through however little
+// wall time the GPU allows. Vsync capping rAF at the display refresh is what
+// makes the recorded motion real; the wall-clock check below enforces it.
 const context = await browser.newContext({
   viewport: { width: W, height: H }, deviceScaleFactor: 1,
   recordVideo: { dir: OUTDIR, size: { width: W, height: H } },
@@ -230,22 +253,28 @@ page.on('pageerror', (e) => { pageErrors.push(e.message); console.error('PAGE ER
 
 let record = null, videoPath = null;
 try {
-  await page.goto(`http://127.0.0.1:${PORT}/?seed=${SEED}&quality=3&harness=1`, { waitUntil: 'load' });
+  // pinclock=1 in the URL, the capture.mjs way (capture.mjs:283-286, honored
+  // at Harness.js:2475): the clock is pinned before the FIRST frame, so no
+  // boot frame is ever wall-timed. No pinClock evaluate needed.
+  await page.goto(`http://127.0.0.1:${PORT}/?seed=${SEED}&quality=3&harness=1&pinclock=1`, { waitUntil: 'load' });
   await page.waitForFunction(() => globalThis.__GAME__?.ctx?.stage != null, null, { timeout: 60000 });
-  await page.evaluate(() => globalThis.__HARNESS__.pinClock(1 / 60));
   // The arm composes its scene and freezes; we thaw and let it play.
   const armRecord = await page.evaluate((arm) => globalThis.__HARNESS__?.[arm]?.(), ARM);
   check('the arm exists and composed a scene', armRecord != null, { arm: ARM });
+  const wall0 = Date.now();
   await page.evaluate(async (frames) => {
     const Hz = globalThis.__HARNESS__;
     Hz.thaw();
     await Hz.frames(frames, 300000);
     Hz.freeze();
   }, Math.round(SECS * 60));
+  const wallSecs = (Date.now() - wall0) / 1000;
   record = await page.evaluate(() => ({
     simTime: +(globalThis.__GAME__.ctx.time ?? 0).toFixed(3),
+    frameErrors: globalThis.__GAME__.ctx.frameErrors ?? 0,
     determinism: globalThis.__HARNESS__.determinism(),
   }));
+  record.wallSecs = +wallSecs.toFixed(2);
   videoPath = await page.video().path();
 } finally {
   await context.close();   // finalises the webm before browser.close
@@ -258,6 +287,13 @@ renameSync(videoPath, finalPath);
 const bytes = statSync(finalPath).size;
 check('the clip exists and has substance', bytes > 200000, { bytes, path: finalPath });
 check('the clock stayed pinned', record?.determinism?.clockPinned === true, record?.determinism);
+check('no frame errors (subject gates held)', record?.frameErrors === 0, record?.frameErrors);
+// mustContain never throws (Harness.js:2104-2107) -- it raises
+// ctx.frameErrors and returns. Without this check the tool is blind to the
+// one failure mode the arm was built to detect.
+check('the take ran at wall-clock rate (~60 Hz display assumed)',
+  record?.wallSecs >= SECS * 0.8 && record?.wallSecs <= SECS * 1.4,
+  { wallSecs: record?.wallSecs, secs: SECS });
 check('no page errors', pageErrors.length === 0, pageErrors);
 
 const failed = checks.filter((c) => !c.pass).length;
@@ -276,7 +312,7 @@ console.log(`${checks.length - failed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
 ```
 
-Two facts to verify against the live tree while writing (signposts, not gospel): (a) `page.video()` is available only when the page came from a `recordVideo` context — it did; (b) the arm freezes before resolving (Task 1 wrote it that way), so the thaw/frames/freeze sandwich is what turns the still into a take. If `blightEdge`'s `mustContain` throws inside `page.evaluate`, the check on `armRecord` fails and the tool exits 1 — that is the designed behaviour, not a bug to swallow.
+Two facts to verify against the live tree while writing (signposts, not gospel): (a) `page.video()` is available only when the page came from a `recordVideo` context — it did; (b) the arm freezes before resolving (Task 1 wrote it that way), so the thaw/frames/freeze sandwich is what turns the still into a take. Composition failures surface through `ctx.frameErrors` (`mustContain` raises the counter and returns, `Harness.js:2104-2107`), which is exactly what the `no frame errors` check reads — do not add a try/catch around the arm call expecting a throw.
 
 - [ ] **Step 2: Film the thesis.**
 
@@ -306,7 +342,7 @@ The spec's noun. One directory, one manifest, every money shot the project has e
 **Files:**
 - Create: `shotlib/MANIFEST.md`
 - Create: `shotlib/` PNG entries (copied from their current homes, force-added)
-- Modify: `.gitignore` — add `shotlib/*.webm` (and confirm `shotlib/` itself is NOT matched by the existing `shots-*/` pattern — `shotlib` does not match `shots-*`, verify with `git check-ignore -v shotlib/MANIFEST.md`, expect no match)
+- Modify: `.gitignore` — add `shotlib/clips/` (the clip output directory, `.webm` and record JSONs both; a bare `shotlib/*.webm` would miss `shotlib/clips/blightEdge-1337.webm`, which is where clipshot actually writes). Confirm `shotlib/` itself is NOT matched by the existing `shots-*/` pattern — `shotlib` does not match `shots-*`, verify with `git check-ignore -v shotlib/MANIFEST.md`, expect no match
 
 **Interfaces:**
 - Consumes: Task 1's `shots-trailer/20-blight-edge.png`, Task 2's clip record, plus the existing money shots: `reviews/round8/ui-money-shot.png` (+ its record `reviews/round8/ui-gauge-probe-record.json`), the blight-ceiling money shots in `shots-blight/` (pick the one the blight-ceiling slice named its money shot — check `docs/superpowers/plans/2026-08-08-blight-ceiling.md` and `reviews/round8/` records for which frame was published), and the juice slice's overkill/death shots if its plan published one (check `docs/superpowers/plans/2026-08-08-readability-juice.md` closing task).
@@ -321,9 +357,9 @@ The spec's noun. One directory, one manifest, every money shot the project has e
 
 The running money-shot library the launch design (section 3.4) requires. Every
 feature milestone lands its money shot here; the trailer is cut from this
-directory. Stills are committed (force-added over .gitignore, the
-reviews/round8/UI-BASELINE.md precedent); clips are regenerated from their
-recorded commands and never committed.
+directory. Stills are committed (curated frames belong in the tree, the
+reviews/round8/UI-BASELINE.md decision); clips are regenerated from their
+recorded commands and never committed (shotlib/clips/ is gitignored).
 
 Renderer for every entry below: <headed d3d11 | swiftshader>, chosen by the
 Task 1 canary of docs/superpowers/plans/2026-08-09-trailer-shot-library.md.
@@ -336,7 +372,7 @@ Task 1 canary of docs/superpowers/plans/2026-08-09-trailer-shot-library.md.
 | ... one row per curated entry ... |
 ```
 
-Each entry's paragraph states what the frame argues (the thesis it photographs) and what would invalidate it (the "re-shoot when" condition). Fill `<SHA>` with the commit each capture was actually taken at — `git log -1 --format=%h` at capture time for the new ones, the recorded SHA from the source record for inherited ones.
+Each entry's paragraph states what the frame argues (the thesis it photographs) and what would invalidate it (the "re-shoot when" condition). Fill `<SHA>` with the commit each capture was actually taken at — `git log -1 --format=%h` at capture time for the new ones, the recorded SHA from the source record for inherited ones. For inherited shots whose source file is gitignored-local-only (e.g. `reviews/round8/ui-money-shot.png`, `shots-blight/09-money-shot.png`), the entry must say the committed `shotlib/` copy is now the only tracked instance of that frame.
 
 - [ ] **Step 3: Land the git story.**
 
@@ -344,15 +380,14 @@ Each entry's paragraph states what the frame argues (the thesis it photographs) 
 git check-ignore -v shotlib/MANIFEST.md
 ```
 
-Expected: no output (not ignored). Then append to `.gitignore` the line `shotlib/*.webm`, and:
+Expected: no output (not ignored). Then append to `.gitignore` the line `shotlib/clips/`, and:
 
 ```bash
-git add .gitignore shotlib/MANIFEST.md
-git add -f shotlib/*.png
+git add .gitignore shotlib/MANIFEST.md shotlib/*.png
 git status --short
 ```
 
-Verify the status shows exactly the intended files, no `.webm`, nothing from `shots-trailer/`.
+(No `-f` needed — nothing in the live `.gitignore` matches `shotlib/*.png`; if `git add` reports an ignore, stop and find which pattern grew, do not reach for `-f`.) Verify the status shows exactly the intended files, nothing from `shotlib/clips/`, nothing from `shots-trailer/`.
 
 - [ ] **Step 4: Gates.** `node tests/run.mjs` passes (nothing in src/ changed this task); total added bytes under 10 MB (`git diff --cached --stat`).
 
