@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "test": "node tests/run.mjs",
+    "postinstall": "install-electron",
     "gate:elite": "node tests/sp-equivalence.mjs --mode elite-dps --compare reviews/round8/elite-baseline-HEAD.json",
     "build": "vite build",
     "preview": "vite preview",

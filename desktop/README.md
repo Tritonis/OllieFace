@@ -12,12 +12,29 @@ Two files do all of it:
 ## Running it
 
 ```
+npm install            # the postinstall fetches the Electron binary
 npm run desktop        # vite build, then electron .
 npm run desktop:run    # electron . against the existing dist/ (probe loops)
 ```
 
 Both call the local binary through npm scripts. Never `npx` — a bare `npx`
 run in this repo once destroyed a package binding.
+
+**The `postinstall` step is not optional.** Electron `43.3.0` ships no install
+script of its own — the download moved to an explicitly-invoked bin
+(`"bin": { "electron": "cli.js", "install-electron": "install.js" }`), so
+`npm ci` alone leaves `node_modules/electron/dist/` empty and every command
+above fails at `require('electron')`. `package.json` therefore carries
+`"postinstall": "install-electron"`. It is idempotent: `install.js` exits 0
+immediately when `dist/` already holds the pinned version. If a clean clone
+still has no `dist/`, run it directly:
+
+```
+node node_modules/electron/install.js
+```
+
+(`npm run desktop:pack` is unaffected either way — electron-builder fetches its
+own runtime through `@electron/get` into a separate cache.)
 
 ## Packing
 
@@ -78,7 +95,7 @@ A portable directory target gains nothing from asar anyway.
 
 If someone does enable it later, it is not done until
 `node tools/desktopprobe.mjs --exe "dist-desktop/win-unpacked/TELLURIC VOID.exe"`
-passes all eight checks against the packed build.
+passes all eleven checks against the packed build.
 
 ### If `desktop:pack` fails with `EPERM ... rename win-unpacked.tmp`
 
@@ -109,6 +126,29 @@ the filesystem: it calls `saveStore(json)` and the main process owns atomicity.
 preload time, because the game hydrates storage before its first system boots.
 Do not make it async.
 
+It answers `{ ok, raw }`, and the distinction is load-bearing:
+
+| answer | meaning | renderer does |
+|---|---|---|
+| `{ ok: true, raw: null }` | `ENOENT` — no save file at all | first boot: migrate the browser-era localStorage out |
+| `{ ok: true, raw: "…" }` | the file, read | hydrate from it |
+| `{ ok: false }` | the file is there and could not be read | **nothing** — log, mirror later writes, leave the bytes alone |
+
+Collapsing the last row into the first is how a save gets erased. `EBUSY` /
+`EACCES` from Steam Cloud, an antivirus scan, or a backup agent holding the
+handle is the ordinary case on Windows, and treating it as "first boot" writes
+a snapshot of an empty localStorage over a real profile. An unparseable file is
+the same story and takes the same path: no boot flush, so a human can still
+repair it. Two more guards back this up in `main.mjs`: `store:save` refuses to
+replace a non-empty `save.json` with an empty snapshot, and the once-per-session
+`.bak` copy never shrinks what the backup already holds.
+
+**One instance per userData.** `app.requestSingleInstanceLock()`; a second
+launch quits and focuses the first. Each renderer writes a snapshot of its own
+localStorage over the whole file, so two live instances clobber each other
+wholesale rather than merging. Steam's client blocks a double launch, but the
+deliverable is a double-clickable exe and that mitigation is not ours.
+
 Set `TELLURIC_USERDATA` to relocate userData (probes, packaging tests):
 
 ```
@@ -137,7 +177,7 @@ on alt-tab desyncs every client.
 **The pair is verified.** Playwright `1.62.1`'s `_electron` driver launches
 Electron `43.3.0` without hanging, in both probe modes: against
 `desktop/main.mjs` in dev, and against the packed `TELLURIC VOID.exe` via
-`--exe`. Eight of eight checks pass in each. No step-down was needed, and
+`--exe`. Eleven of eleven checks pass in each. No step-down was needed, and
 this paragraph is the record that none is warranted at these versions.
 
 Re-run both modes after any bump here — if `_electron.launch` ever hangs, the

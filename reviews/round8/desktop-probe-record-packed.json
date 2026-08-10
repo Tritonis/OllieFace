@@ -1,0 +1,73 @@
+{
+  "tool": "tools/desktopprobe.mjs",
+  "command": "node tools/desktopprobe.mjs --exe \"dist-desktop/win-unpacked/TELLURIC VOID.exe\"",
+  "mode": "packed",
+  "exe": "dist-desktop/win-unpacked/TELLURIC VOID.exe",
+  "when": "2026-08-10T06:42:17.954Z",
+  "sha": "66c62c3ba18f4b932e41a8151c93a0643f215406",
+  "electron": "43.3.0",
+  "playwright": "1.62.1",
+  "checks": [
+    {
+      "name": "boot 1: title screen over app://",
+      "pass": true
+    },
+    {
+      "name": "boot 1: page url is app://",
+      "pass": true,
+      "detail": "app://game/index.html"
+    },
+    {
+      "name": "boot 1: renderer has no node (require/process undefined)",
+      "pass": true,
+      "detail": {
+        "req": "undefined",
+        "proc": "undefined",
+        "keys": [
+          "loadStore",
+          "saveStore"
+        ]
+      }
+    },
+    {
+      "name": "boot 1: bridge exposes exactly loadStore + saveStore",
+      "pass": true,
+      "detail": [
+        "loadStore",
+        "saveStore"
+      ]
+    },
+    {
+      "name": "boot 1: save.json written",
+      "pass": true
+    },
+    {
+      "name": "boot 1: no torn tmp left",
+      "pass": true
+    },
+    {
+      "name": "boot 1: the write is in the file",
+      "pass": true
+    },
+    {
+      "name": "boot 1: no page errors",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "boot 1: gpu-info.json written",
+      "pass": true
+    },
+    {
+      "name": "boot 2: the file hydrated localStorage over Chromium's own copy",
+      "pass": true,
+      "detail": "edited-on-disk"
+    },
+    {
+      "name": "boot 2: no page errors",
+      "pass": true,
+      "detail": []
+    }
+  ],
+  "ok": true
+}

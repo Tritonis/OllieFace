@@ -5,7 +5,9 @@
  */
 const { contextBridge, ipcRenderer } = require('electron');
 
-const initial = ipcRenderer.sendSync('store:load');   // string | null, once, at boot
+// { ok, raw }: raw is the file text, or null. ok:false means the file exists
+// and could not be read -- the renderer must not treat that as a first boot.
+const initial = ipcRenderer.sendSync('store:load');   // once, at boot
 
 contextBridge.exposeInMainWorld('__DESKTOP__', {
   loadStore: () => initial,

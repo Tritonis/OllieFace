@@ -38,9 +38,18 @@ export function initDesktopStore(
   }
 
   let hydrated = false;
+  // Only a file that genuinely is not there earns the first-boot migration
+  // flush. An unreadable file (locked by Steam Cloud, antivirus, a backup
+  // agent) and a corrupt one both leave this false, so boot writes NOTHING
+  // and the bytes on disk survive until real gameplay produces a real save.
+  let firstBoot = false;
   try {
-    const raw = bridge.loadStore();
-    if (raw != null) {
+    const { ok, raw } = bridge.loadStore() ?? { ok: false, raw: null };
+    if (!ok) {
+      console.error('DesktopStore: save file could not be read; not migrating, leaving the file alone');
+    } else if (raw == null) {
+      firstBoot = true;
+    } else {
       const file = JSON.parse(raw);
       for (const [k, v] of Object.entries(file)) {
         if (mirrored(k) && typeof v === 'string') storage.setItem(k, v);
@@ -49,9 +58,10 @@ export function initDesktopStore(
     }
   } catch (e) {
     // A corrupt save file must never brick the boot: keep whatever
-    // localStorage has, mirror from here on, and let the next flush write a
-    // clean file. The old file is the shell's problem to back up (it does).
-    console.error('DesktopStore: save file unreadable, continuing from localStorage', e);
+    // localStorage has and mirror from here on. But do not schedule a flush --
+    // that would commit an empty snapshot over a file a human could still
+    // repair by hand. The next real write is what replaces it.
+    console.error('DesktopStore: save file unparseable, continuing from localStorage', e);
   }
 
   const snapshot = () => {
@@ -81,13 +91,18 @@ export function initDesktopStore(
   // methods when they are own properties (test fakes), else patch the
   // prototype (real Storage), guarded on `this` so sessionStorage never
   // joins the mirror.
+  // Idempotent: a second init on the same storage (or the same
+  // Storage.prototype) would stack a second wrapper, giving every write two
+  // schedules and two independent debounce timers.
   const wrap = (obj, name, guardThis) => {
     const raw = obj[name];
+    if (raw.__telluricMirror) return;
     obj[name] = function (...a) {
       const out = raw.apply(this, a);
       if ((!guardThis || this === storage) && mirrored(a[0])) schedule();
       return out;
     };
+    obj[name].__telluricMirror = true;
   };
   if (Object.prototype.hasOwnProperty.call(storage, 'setItem')) {
     wrap(storage, 'setItem'); wrap(storage, 'removeItem');
@@ -103,7 +118,7 @@ export function initDesktopStore(
 
   // First boot on desktop: nothing on disk yet -> migrate the browser-era
   // keys out immediately rather than waiting for the first gameplay write.
-  if (!hydrated) schedule();
+  if (firstBoot) schedule();
 
   return { active: true, hydrated, flush };
 }
