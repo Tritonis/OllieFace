@@ -6,9 +6,18 @@ directory. Stills are committed (curated frames belong in the tree, the
 `reviews/round8/UI-BASELINE.md` decision); clips are regenerated from their
 recorded commands and never committed (`shotlib/clips/` is gitignored).
 
-Renderer for every entry below: **headed d3d11** (`--use-angle=d3d11`, no
-`--software`), chosen by the Task 1 canary of
-`docs/superpowers/plans/2026-08-09-trailer-shot-library.md`. Every entry is
+Every entry argues from its own receipt, so the receipts are committed too.
+Three of the five capture into gitignored directories (`shots-*/`,
+`shotlib/clips/`), which would leave their records missing from a clean clone;
+`shotlib/records/` holds a copy of each. Every entry below cites the committed
+copy first and names the live path the tool writes to, so a re-shoot knows
+which file to refresh. These are KB-scale JSON and do not count against the
+PNG budget.
+
+Renderer: all five entries are **headed d3d11** (`--use-angle=d3d11`, no
+`--software`); this slice's two were fixed by the Task 1 canary of
+`docs/superpowers/plans/2026-08-09-trailer-shot-library.md`, and the inherited
+three were captured under the same adapter (records cited per entry). Every entry is
 1600x900, deviceScaleFactor 1, seed 1337, clock pinned at 1/60. The
 same-renderer rule is not optional — SwiftShader and d3d11 differ in AA and
 gradient banding across the whole frame, so a frame re-shot under the other
@@ -18,7 +27,7 @@ these.
 | Entry | File | Captured at | Command |
 |---|---|---|---|
 | The trailer thesis | `thesis-blight-edge.png` | `d156ecb` | `node tools/capture.mjs --out shots-trailer --only 20-blight-edge` |
-| The thesis, moving | `clips/blightEdge-1337.webm` (regenerate) | `463579d` | `node tools/clipshot.mjs --arm blightEdge --secs 10 --seed 1337` |
+| The thesis, moving | `clips/blightEdge-1337.webm` (regenerate) | `463579d` | `node tools/clipshot.mjs --arm blightEdge --secs 10 --seed 1337 --armopts '{"settleFrames":30}'` |
 | The ceiling | `blight-ceiling.png` | `463579d` | `node tools/blightprobe.mjs --seed 1337 --port 5212` |
 | The instrument panel | `instrument-panel.png` | `0587511` | `node tools/gaugeshot.mjs --seed 1337 --secs 75 --target 150` |
 | The kill that throws the body | `overkill-launch.png` | `54d7470` | `node tools/capture.mjs --out reviews/round9/money-shot --only 19-overkill --port 5203` |
@@ -33,8 +42,9 @@ arguing something no other frame here argues.
 
 **Captured at `d156ecb`** ("The thesis becomes photographable"), by
 `node tools/capture.mjs --out shots-trailer --only 20-blight-edge`. Record:
-`shots-trailer/manifest.json` (subject gates all green, `frameErrors: 0`,
-`audioOk: true`).
+`records/thesis-blight-edge.manifest.json` (committed copy; the live capture
+writes `shots-trailer/manifest.json`) — subject gates all green,
+`frameErrors: 0`, `audioOk: true`.
 
 **What it argues.** This is the sentence the spec wrote and the game had to
 learn to say: *the party fighting at a blight edge as it spreads toward
@@ -58,29 +68,51 @@ this frame.
 ## The thesis, moving — `clips/blightEdge-1337.webm`
 
 **Filmed at `463579d`** ("The sales unit learns to move"), by
-`node tools/clipshot.mjs --arm blightEdge --secs 10 --seed 1337`. Record:
-`shotlib/clips/blightEdge-1337.json` — 6/6 checks green, clock pinned at
-1/60, zero frame errors, 10.05 s wall for 10 s asked, 2,795,285 bytes.
+`node tools/clipshot.mjs --arm blightEdge --secs 10 --seed 1337 --armopts '{"settleFrames":30}'`.
+Record: `records/blightEdge-clip.record.json` (committed copy; the live tool
+writes `shotlib/clips/blightEdge-1337.json`) — 6/6 checks green, clock pinned
+at 1/60, zero frame errors, 10.01 s wall for 10 s asked, 2,481,608 bytes.
 
 **Not committed, by design.** The clip is regenerated from the command above;
 webm at 1600x900 does not belong in git history, and `shotlib/clips/` is
-gitignored for exactly that reason. The record JSON beside it is the receipt
-that the take held.
+gitignored for exactly that reason. The record JSON is the receipt that the
+take held, and a copy of it lives in `records/` so the receipt survives a
+clean clone.
 
 **What it argues.** The spec calls ten-second clips the sales unit, and a
-still cannot show the one thing the thesis is about: the edge *crawls*. Ten
-pinned seconds of the same arm as the still above, at wall-clock rate, is the
-smallest artifact that proves the frame is a moment in a running game rather
-than a composition.
+still cannot show the one thing the thesis is about: the edge *crawls*. So the
+take is framed to open before the crawl is finished. `--armopts` lowers the
+arm's settle from 150 frames to 30, and the record's `arm.patchRadius` says
+where that puts the shutter: the film opens on an **8.0 m rim** with the lens
+planted 4 m off it (`arm.cameraDistToEdge`), against the 12.5 m this world's
+band-3 corruption will grow the patch to. At 1.2 m/s that is **3.75 s of
+spread on camera**, and because the cap (12.5 m) is beyond the camera's own
+12.0 m standoff from the seed, the edge does not merely widen in frame — it
+crosses under the lens.
 
-**Re-shoot when** the still above is re-shot — they photograph the same arm
-and must stay in step — or when `tools/clipshot.mjs`'s determinism gates
-(pinned clock, wall-rate) change what a take means.
+Measured, not asserted: purple-blight pixel area over the lower two-thirds of
+the frame, sampled from the take's opening frame, runs 343,418 → 373,549 →
+410,741 → 445,182 → 505,055 over the first 2.6 s (**+47%**), then holds
+438k–492k for the remaining 7.7 s. Growth, then plateau — the crawl finishing
+on camera. The back half is the fight at the grown edge: a ten-body brawl on a
+lake that now reaches the bottom of the frame, HUD clock running 22:02 → 22:11,
+which is what proves the frame is a moment in a running game rather than a
+composition.
+
+**Re-shoot when** the still above is re-shot. The two deliberately sample
+different moments of the same arm — the still stops at settle 150 for the
+mid-growth composition, the clip starts at settle 30 to film the growth itself
+— so they are not required to match frame for frame; they are required to stay
+true to the same arm. If `blightEdge` changes what it composes, both are stale.
+Also re-shoot when blight growth rate or the band-3 radius changes (both
+numbers above are derived from them), or when `tools/clipshot.mjs`'s
+determinism gates (pinned clock, wall-rate) change what a take means.
 
 ## The ceiling — `blight-ceiling.png`
 
 **Captured at `463579d`**, by `node tools/blightprobe.mjs --seed 1337 --port 5212`.
-Record: `shots-blightceiling/record.json` — 37/37 checks green, zero page and
+Record: `records/blight-ceiling.record.json` (committed copy; the live probe
+writes `shots-blightceiling/record.json`) — 37/37 checks green, zero page and
 console errors. The frame gates on four subjects of its own: three live masked
 patches, shimmer in frame, the band on the sky (`band 2`, `skyW 0.30`), and
 **372 real scene meshes standing inside the corruption**.
@@ -192,7 +224,8 @@ Curation, per the plan's instruction not to hoard:
 
 A later slice's money shot joins this library by: copying the PNG in under a
 self-describing name, adding one table row (entry, file, the SHA it was
-captured at, the exact command), and adding one section that states what the
-frame argues and what would invalidate it. If the total committed PNG bytes
+captured at, the exact command), copying its record JSON into
+`shotlib/records/` if the tool writes it somewhere gitignored, and adding one
+section that states what the frame argues and what would invalidate it. If the total committed PNG bytes
 approach 10 MB, retire a superseded frame rather than raising the ceiling — a
 contact sheet that holds everything stops being a contact sheet.

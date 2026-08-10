@@ -15,6 +15,15 @@
  *
  *   node tools/clipshot.mjs [--arm blightEdge] [--secs 10] [--seed 1337]
  *                           [--port 5221] [--out shotlib/clips] [--software]
+ *                           [--armopts '{"settleFrames":30}']
+ *
+ * `--armopts` is a JSON object passed straight through as the arm's argument.
+ * Arms are tuned for a STILL's shutter -- `blightEdge` spends 150 settle frames
+ * letting the rim grow before it composes, which is right for a photograph and
+ * wrong for a clip, because the crawl the clip exists to show is then almost
+ * over when filming starts. Lowering `settleFrames` hands the growth to the
+ * camera. Default: no argument at all, so an unflagged run is byte-for-byte the
+ * old behaviour.
  */
 import { chromium } from 'playwright';
 import { createServer } from 'vite';
@@ -34,6 +43,18 @@ const SEED = Number(args.seed ?? 1337);
 const PORT = Number(args.port ?? 5221);
 const OUTDIR = path.resolve(String(args.out ?? 'shotlib/clips'));
 const SOFTWARE = 'software' in args;
+const ARMOPTS_RAW = typeof args.armopts === 'string' ? args.armopts : null;
+let ARMOPTS = null;
+if (ARMOPTS_RAW !== null) {
+  try { ARMOPTS = JSON.parse(ARMOPTS_RAW); } catch (e) {
+    console.error(`--armopts is not valid JSON: ${e.message}`);
+    process.exit(2);
+  }
+  if (ARMOPTS === null || typeof ARMOPTS !== 'object' || Array.isArray(ARMOPTS)) {
+    console.error('--armopts must be a JSON object, e.g. \'{"settleFrames":30}\'');
+    process.exit(2);
+  }
+}
 const W = 1600, H = 900;
 mkdirSync(OUTDIR, { recursive: true });
 
@@ -69,16 +90,20 @@ const page = await context.newPage();
 const pageErrors = [];
 page.on('pageerror', (e) => { pageErrors.push(e.message); console.error('PAGE ERROR', e.message); });
 
-let record = null, videoPath = null;
+let record = null, videoPath = null, armRecord = null;
 try {
-  // pinclock=1 in the URL, the capture.mjs way (capture.mjs:283-286, honored
+  // pinclock=1 in the URL, the capture.mjs way (capture.mjs:293-296, honored
   // at Harness.js:2475): the clock is pinned before the FIRST frame, so no
   // boot frame is ever wall-timed. No pinClock evaluate needed.
   await page.goto(`http://127.0.0.1:${PORT}/?seed=${SEED}&quality=3&harness=1&pinclock=1`, { waitUntil: 'load' });
   await page.waitForFunction(() => globalThis.__GAME__?.ctx?.stage != null, null, { timeout: 60000 });
   // The arm composes its scene and freezes; we thaw and let it play.
-  const armRecord = await page.evaluate((arm) => globalThis.__HARNESS__?.[arm]?.(), ARM);
-  check('the arm exists and composed a scene', armRecord != null, { arm: ARM });
+  armRecord = await page.evaluate(
+    ([arm, opts]) => (opts === null
+      ? globalThis.__HARNESS__?.[arm]?.()
+      : globalThis.__HARNESS__?.[arm]?.(opts)),
+    [ARM, ARMOPTS]);
+  check('the arm exists and composed a scene', armRecord != null, { arm: ARM, armopts: ARMOPTS });
   const wall0 = Date.now();
   await page.evaluate(async (frames) => {
     const Hz = globalThis.__HARNESS__;
@@ -117,11 +142,22 @@ check('no page errors', pageErrors.length === 0, pageErrors);
 const failed = checks.filter((c) => !c.pass).length;
 writeFileSync(path.join(OUTDIR, `${ARM}-${SEED}.json`), `${JSON.stringify({
   tool: 'tools/clipshot.mjs',
-  command: `node tools/clipshot.mjs --arm ${ARM} --secs ${SECS} --seed ${SEED}${SOFTWARE ? ' --software' : ''}`,
+  // The regeneration command has to carry the arm options, or the record
+  // documents a take nobody can reproduce. Single-quoted JSON: correct in
+  // bash and in PowerShell, both of which pass it through verbatim.
+  command: `node tools/clipshot.mjs --arm ${ARM} --secs ${SECS} --seed ${SEED}`
+    + (ARMOPTS ? ` --armopts '${JSON.stringify(ARMOPTS)}'` : '')
+    + (SOFTWARE ? ' --software' : ''),
+  armopts: ARMOPTS,
   renderer: SOFTWARE ? 'swiftshader (headless)' : 'd3d11 (headed)',
   viewport: { w: W, h: H },
   secs: SECS, seed: SEED,
   clip: finalPath, bytes,
+  // The arm's own return, verbatim and unread by this tool. It is the state
+  // the take OPENS on -- for `blightEdge`, the rim radius the camera starts
+  // filming at -- and without it the manifest's claim about the take's first
+  // second is unmeasurable after the fact.
+  arm: armRecord,
   sim: record, checks, pageErrors,
   ok: failed === 0,
 }, null, 2)}\n`);

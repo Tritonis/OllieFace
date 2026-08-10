@@ -1,0 +1,82 @@
+{
+  "tool": "tools/clipshot.mjs",
+  "command": "node tools/clipshot.mjs --arm blightEdge --secs 10 --seed 1337 --armopts '{\"settleFrames\":30}'",
+  "armopts": {
+    "settleFrames": 30
+  },
+  "renderer": "d3d11 (headed)",
+  "viewport": {
+    "w": 1600,
+    "h": 900
+  },
+  "secs": 10,
+  "seed": 1337,
+  "clip": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\shotlib\\clips\\blightEdge-1337.webm",
+  "bytes": 2481608,
+  "arm": {
+    "world": 150,
+    "band": 3,
+    "patchRadius": 8,
+    "enemiesAlive": 9,
+    "cameraDistToEdge": 4
+  },
+  "sim": {
+    "simTime": 1331.283,
+    "frameErrors": 0,
+    "determinism": {
+      "clockPinned": true,
+      "frameDt": 0.016666666666666666,
+      "frameTimeouts": 0
+    },
+    "wallSecs": 10.01
+  },
+  "checks": [
+    {
+      "name": "the arm exists and composed a scene",
+      "pass": true,
+      "detail": {
+        "arm": "blightEdge",
+        "armopts": {
+          "settleFrames": 30
+        }
+      }
+    },
+    {
+      "name": "the clip exists and has substance",
+      "pass": true,
+      "detail": {
+        "bytes": 2481608,
+        "path": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\shotlib\\clips\\blightEdge-1337.webm"
+      }
+    },
+    {
+      "name": "the clock stayed pinned",
+      "pass": true,
+      "detail": {
+        "clockPinned": true,
+        "frameDt": 0.016666666666666666,
+        "frameTimeouts": 0
+      }
+    },
+    {
+      "name": "no frame errors (subject gates held)",
+      "pass": true,
+      "detail": 0
+    },
+    {
+      "name": "the take ran at wall-clock rate (~60 Hz display assumed)",
+      "pass": true,
+      "detail": {
+        "wallSecs": 10.01,
+        "secs": 10
+      }
+    },
+    {
+      "name": "no page errors",
+      "pass": true,
+      "detail": []
+    }
+  ],
+  "pageErrors": [],
+  "ok": true
+}
