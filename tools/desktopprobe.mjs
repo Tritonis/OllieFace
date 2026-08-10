@@ -6,7 +6,12 @@
  * exists.
  * Boot 2: the save hydrates back into localStorage before the game reads it.
  *
+ * Two modes, same checks:
+ *   dev    -- launches the local electron binary on desktop/main.mjs
+ *   packed -- launches a packaged executable, which carries its own main
+ *
  *   node tools/desktopprobe.mjs [--record reviews/round8/desktop-probe-record.json]
+ *   node tools/desktopprobe.mjs --exe "dist-desktop/win-unpacked/TELLURIC VOID.exe"
  */
 import { _electron } from 'playwright';
 import { mkdtempSync, existsSync, readFileSync, rmSync } from 'node:fs';
@@ -22,6 +27,18 @@ for (let i = 2; i < process.argv.length; i++) {
   args[t.slice(2)] = n && !n.startsWith('--') ? (i++, n) : true;
 }
 const RECORD = String(args.record ?? 'reviews/round8/desktop-probe-record.json');
+// --exe takes a path; a bare --exe (parsed as `true`) is a typo, not a mode.
+if (args.exe === true) {
+  console.error('--exe needs a path to the packaged executable');
+  process.exit(2);
+}
+const EXE = args.exe ? String(args.exe) : null;
+if (EXE && !existsSync(EXE)) {
+  console.error(`--exe: no such file: ${EXE}`);
+  process.exit(2);
+}
+const MODE = EXE ? 'packed' : 'dev';
+console.log(`mode: ${MODE}${EXE ? `  -- ${EXE}` : ''}`);
 
 const checks = [];
 const check = (name, pass, detail) => {
@@ -31,7 +48,7 @@ const check = (name, pass, detail) => {
 
 const userData = mkdtempSync(path.join(tmpdir(), 'telluric-probe-'));
 const boot = () => _electron.launch({
-  args: ['desktop/main.mjs'],
+  ...(EXE ? { executablePath: EXE, args: [] } : { args: ['desktop/main.mjs'] }),
   env: { ...process.env, TELLURIC_USERDATA: userData },
 });
 
@@ -89,7 +106,9 @@ try { rmSync(userData, { recursive: true, force: true }); } catch {}
 const failed = checks.filter((c) => !c.pass).length;
 writeFileSync(RECORD, `${JSON.stringify({
   tool: 'tools/desktopprobe.mjs',
-  command: 'node tools/desktopprobe.mjs',
+  command: EXE ? `node tools/desktopprobe.mjs --exe ${JSON.stringify(EXE)}` : 'node tools/desktopprobe.mjs',
+  mode: MODE,
+  exe: EXE,
   checks, ok: failed === 0,
 }, null, 2)}\n`);
 console.log(`${checks.length - failed} passed, ${failed} failed`);

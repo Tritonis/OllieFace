@@ -1,6 +1,8 @@
 {
   "tool": "tools/desktopprobe.mjs",
-  "command": "node tools/desktopprobe.mjs",
+  "command": "node tools/desktopprobe.mjs --exe \"dist-desktop/win-unpacked/TELLURIC VOID.exe\"",
+  "mode": "packed",
+  "exe": "dist-desktop/win-unpacked/TELLURIC VOID.exe",
   "checks": [
     {
       "name": "boot 1: title screen over app://",

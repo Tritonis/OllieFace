@@ -1,5 +1,6 @@
 node_modules/
 dist/
+dist-desktop/
 
 # Local build config. `.env.example` is the committed template; a real `.env`
 # carries TURN credentials and must not be.

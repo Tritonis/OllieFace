@@ -13,7 +13,16 @@
     "dev:lan": "vite --host",
     "signal": "node tools/signal-server.mjs",
     "desktop": "npm run build && electron .",
-    "desktop:run": "electron ."
+    "desktop:run": "electron .",
+    "desktop:pack": "npm run build && electron-builder --win --dir"
+  },
+  "build": {
+    "appId": "com.olliface.telluricvoid",
+    "productName": "TELLURIC VOID",
+    "asar": false,
+    "directories": { "output": "dist-desktop" },
+    "files": ["desktop/**", "dist/**", "!dist/**/*.map", "package.json", "!node_modules/**"],
+    "win": { "target": "dir", "signAndEditExecutable": false }
   },
   "keywords": [],
   "author": "",
@@ -24,6 +33,7 @@
   },
   "devDependencies": {
     "electron": "43.3.0",
+    "electron-builder": "26.15.3",
     "playwright": "^1.62.1",
     "vite": "^8.2.0"
   },
