@@ -122,6 +122,14 @@ is ~900B/snapshot ≈ 18KB/s down per client. Input is 13 bytes at 60Hz ≈ 780B
 The world is never streamed — clients regenerate it from the host's seed, which
 is why `WELCOME` carries a seed instead of geometry.
 
+`PROTOCOL_VERSION` (`src/net/Protocol.js`) is bumped by a change in **either**
+the layout or the vocabulary. Layout is the obvious half. The vocabulary half is
+the content ids that ride the events channel as JSON — `itemPickup`'s item id,
+`realmEnter`'s realm id — because two peers that read every byte correctly and
+then disagree about what a name means produce a silently wrong session, which is
+worse than a garbled one. Ids that cross as an *index* (`typeId` for enemies,
+`WELCOME`'s difficulty) are exempt: renaming one moves nothing on the wire.
+
 ## Timing model
 
 - Client sends one input per 60Hz tick, tagged with a tick number.
