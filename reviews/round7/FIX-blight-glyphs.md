@@ -85,18 +85,22 @@ it. `(p95 - median) - (median - p5)` is positive for a bright emblem on a dark
 plate and negative for the old inversion.
 
 **The instrument is calibrated against a known input**, per the round-6 standing
-requirement: the same function is run over a photographic negative of the very
-same blight tile and must report the opposite sign. It does, exactly
-(`229.5 -> -229.5`). An instrument that cannot see the defect it was written to
-detect is not evidence, and this project has withdrawn three of those.
+requirement — but the first version of this gate did not meet that bar, and the
+correction is recorded in its own section below. As it now stands, the calibration
+input is a **rebuild of the historical `drawInverted` composite**, and both gates
+the shipped tile passes must fail on it.
 
 Run: `node tools/menuprobe.mjs --port 5306 --out reviews/round7/captures/fix-blight-glyphs`
 
 ```
 PASS  the blight tile was sampled (2398 px inside the plate)
 PASS  control tiers sampled for comparison (equipment, common, uncommon)
-PASS  calibration: the instrument flips sign on an inverted copy of the same tile
-        (shipped 229.5 -> negated -229.5)
+PASS  calibration: the instrument scores the historical drawInverted composite as
+        inverted (polarity -43.6 vs shipped 229.5)
+PASS  calibration: and scores its field as bright ground, failing the dark-plate
+        gate (median luma 88.6 vs shipped 16.8, gate is < 70)
+PASS  calibration is a rebuilt composite, not a negation of the shipped tile
+        (|-43.6 + 229.5| = 185.9, a negation would give 0)
 PASS  the blight tile is a bright emblem on a dark plate (polarity 229.5)
 PASS  every control tier has the same polarity
         (equipment 222.4, common 219.7, uncommon 203.1)
@@ -171,15 +175,88 @@ PASS  and sits on no chip of its own (background rgba(0, 0, 0, 0))
 PASS  no inverted chip styling survives inline (style="color: rgb(224, 90, 168);")
 ```
 
-`16/16` probe gates green overall, including all eleven from the first commit
-unchanged — the tile polarity numbers are bit-identical (blight 229.5, median
-16.8, hue rgb(215,81,159)), so this change did not disturb the first fix.
+All fourteen of the arm's gates green at this commit, including every one from
+the first commit unchanged — the tile polarity numbers are bit-identical (blight
+229.5, median 16.8, hue rgb(215,81,159)), so this change did not disturb the
+first fix. (An earlier draft of this section said "16/16" here; that was a
+miscount of my own and is corrected. The arm carried ten gates after the first
+commit and fourteen after the second. It carries sixteen now, after the third.)
 
 Capture: `reviews/round7/captures/fix-blight-glyphs/07-tooltip-blight.png` —
 `SPASM GLAND` in magenta over the dark card, structurally identical to the
 `AMBER CLASP` common card in `05-tooltip.png`. Confirmed by eye.
 
 `43/43` test files (`41 passed, 0 failed`) and the vite build both still green.
+
+## Third commit — the calibration gate was a tautology, and is now a real one
+
+Round-7 independent review (`reviews/round7/task-blight-review.md`, M1, Major)
+found that the calibration gate this report leaned on **could not fail**. The
+finding is correct. I verified the algebra rather than taking it on faith:
+
+`polarity = (p95 - median) - (median - p5) = p95 + p5 - 2·median`, and the luma
+weights `0.2126 + 0.7152 + 0.0722` sum to exactly 1, so negating every channel
+maps `L -> 255 - L`. That is a strictly decreasing affine map, so it reverses the
+percentile ordering of *any* image: `p95' = 255 - p5`, `p5' = 255 - p95`,
+`median' = 255 - median`. Substituting:
+
+```
+polarity' = (255-p5) + (255-p95) - 2(255-median) = -(p95 + p5 - 2·median) = -polarity
+```
+
+An identity for any input whatsoever. The gate reduced to `bl.polarity > 0`,
+which the very next line already asserted independently — so it added nothing and
+tested nothing. The exact `229.5 -> -229.5` symmetry was the tell, and I read it
+as a clean result instead of as the signature of an identity. **This is the fourth
+instrument this project has had to withdraw, and the first one where the report
+claimed the round-6 calibration bar while failing it.**
+
+Fixed by reconstruction rather than deletion, per the review's preferred option
+(the review offered deletion as the fallback; the rebuild came to ~30 lines of
+probe code, so the stronger option was affordable). The calibration input is now
+the **actual historical `drawInverted` composite**, rebuilt in the probe from the
+shipped tile's own glyph mask: every marked pixel flooded to the plate black
+`#05070a` as `source-in` did, everything else filled with the vertical field
+`mix('#e05aa8','#ffffff',0.10)` to `mix('#e05aa8', TIERS.blight.plate, 0.45)` as
+`destination-over` did. Those are the real colours, read out of
+`git show e3efe97^:src/ui/Icons.js` — the deleted function's own source — not
+re-derived from the description in this report.
+
+Both gates the shipped tile passes must now fail on that reconstruction, and do:
+
+```
+PASS  calibration: the instrument scores the historical drawInverted composite as
+        inverted (polarity -43.6 vs shipped 229.5)
+PASS  calibration: and scores its field as bright ground, failing the dark-plate
+        gate (median luma 88.6 vs shipped 16.8, gate is < 70)
+PASS  calibration is a rebuilt composite, not a negation of the shipped tile
+        (|-43.6 + 229.5| = 185.9, a negation would give 0)
+```
+
+The reconstruction scores **-43.6**, not -229.5. That asymmetry is the whole
+point: an identity would have forced the magnitudes to match exactly, and they do
+not. The third gate exists solely to pin that down — it fails if anyone ever
+reintroduces a negation here, which is the specific regression this section is
+about. The historical composite also fails the dark-plate gate at median 88.6
+against a threshold of 70, so two independent gates are shown to catch the real
+defect rather than one.
+
+Nothing about the fix itself changed, and no shipped-tile number moved: blight
+polarity 229.5, median 16.8, hue rgb(215,81,159), all bit-identical across all
+three commits. The scope of this commit is the instrument, not the code it
+measures.
+
+### The lesson worth keeping
+
+The round-6 handoff's rule was "calibrate against a known input before
+measuring". I followed the letter of it and missed the substance: I calibrated
+against *an* input with a known expected answer, but the transform producing that
+input was an involution on the metric, so the expected answer was guaranteed by
+algebra rather than by the instrument working. The sharper rule this earns:
+
+> A calibration input must be a reconstruction of the **defect**, not a
+> transform of the **fix**. If you can prove the expected result without
+> reference to what the instrument does, it is not a calibration.
 
 ## Residual
 

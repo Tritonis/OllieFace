@@ -132,17 +132,20 @@ const pol = await page.evaluate(async () => {
 
   // Luma stats over the plate interior only — the chamfered corners are outside
   // the plate and would drag transparent pixels into the distribution.
-  const stats = (px, negate) => {
+  const luma = (r, g2, b) => 0.2126 * r + 0.7152 * g2 + 0.0722 * b;
+  const inPlate = (x, y) => {
+    const fx = x / S, fy = y / S;
+    return fx >= 0.12 && fx <= 0.88 && fy >= 0.12 && fy <= 0.88;
+  };
+  const stats = (px) => {
     const lum = [], lit = [];
     for (let y = 0; y < S; y++) {
       for (let x = 0; x < S; x++) {
-        const fx = x / S, fy = y / S;
-        if (fx < 0.12 || fx > 0.88 || fy < 0.12 || fy > 0.88) continue;
+        if (!inPlate(x, y)) continue;
         const i = (y * S + x) * 4;
         if (px[i + 3] < 250) continue;
-        let r = px[i], gg = px[i + 1], b = px[i + 2];
-        if (negate) { r = 255 - r; gg = 255 - gg; b = 255 - b; }
-        const l = 0.2126 * r + 0.7152 * gg + 0.0722 * b;
+        const r = px[i], gg = px[i + 1], b = px[i + 2];
+        const l = luma(r, gg, b);
         lum.push(l); lit.push([l, r, gg, b]);
       }
     }
@@ -179,11 +182,48 @@ const pol = await page.evaluate(async () => {
     };
   };
 
-  const read = async (img, negate) => {
+  const read = async (img) => {
     if (!img.complete) await img.decode();
     g.clearRect(0, 0, S, S);
     g.drawImage(img, 0, 0, S, S);
-    return stats(g.getImageData(0, 0, S, S).data, negate);
+    return stats(g.getImageData(0, 0, S, S).data);
+  };
+
+  // The calibration input: the historical `drawInverted` composite, rebuilt.
+  // Deleted in e3efe97 — its source is `git show e3efe97^:src/ui/Icons.js`, and
+  // these are the two colours it actually mixed, `mix('#e05aa8','#ffffff',0.10)`
+  // at the top of the field and `mix('#e05aa8', TIERS.blight.plate, 0.45)` at the
+  // bottom, with every glyph pixel flooded to the plate black by `source-in`.
+  //
+  // Rebuilt from the shipped tile's *own* glyph mask, so it is the same eleven
+  // glyphs at the same geometry with only figure and ground exchanged, which is
+  // exactly the defect the round-4 critic scored. It is deliberately NOT a
+  // channel negation of the shipped tile: `L = 0.2126r + 0.7152g + 0.0722b` has
+  // weights summing to 1, so negation maps `L -> 255 - L`, reverses every
+  // percentile, and forces `polarity(negated) = -polarity(original)` as an
+  // algebraic identity — for any image whatsoever, including a photograph of a
+  // cat. A gate built on that cannot fail and proves nothing about whether this
+  // instrument can see the real composite. (It shipped that way once; the
+  // round-7 review caught it, and the assertion below now pins the difference.)
+  const HIST = { hole: [5, 7, 10], top: [227, 107, 177], bot: [140, 57, 105] };
+  const reconstruct = async (img) => {
+    if (!img.complete) await img.decode();
+    g.clearRect(0, 0, S, S);
+    g.drawImage(img, 0, 0, S, S);
+    const d = g.getImageData(0, 0, S, S), px = d.data;
+    const ground = stats(px).median;
+    for (let y = 0; y < S; y++) {
+      for (let x = 0; x < S; x++) {
+        const i = (y * S + x) * 4;
+        if (px[i + 3] < 250) continue;
+        const mark = luma(px[i], px[i + 1], px[i + 2]) > ground + 20;
+        const t = y / S;
+        for (let k = 0; k < 3; k++) {
+          px[i + k] = mark ? HIST.hole[k] : Math.round(HIST.top[k] + (HIST.bot[k] - HIST.top[k]) * t);
+        }
+      }
+    }
+    return stats(px);
   };
 
   const out = { tiers: {}, calib: null, rule: null };
@@ -191,10 +231,9 @@ const pol = await page.evaluate(async () => {
     const tier = [...el.classList].find((k) => k.startsWith('t-'))?.slice(2);
     const img = el.querySelector('img');
     if (!tier || !img || out.tiers[tier]) continue;
-    out.tiers[tier] = await read(img, false);
+    out.tiers[tier] = await read(img);
     if (tier === 'blight') {
-      // Same tile, figure and ground exchanged — the defect this arm exists for.
-      out.calib = await read(img, true);
+      out.calib = await reconstruct(img);
       out.rule = getComputedStyle(el).color;
     }
   }
@@ -205,9 +244,21 @@ const bl = pol.tiers.blight;
 const controls = Object.entries(pol.tiers).filter(([t]) => t !== 'blight');
 ok(!!bl && bl.n > 800, `the blight tile was sampled (${bl?.n} px inside the plate)`);
 ok(controls.length >= 2, `control tiers sampled for comparison (${controls.map(([t]) => t).join(', ')})`);
-ok(pol.calib && pol.calib.polarity < 0 && bl.polarity > 0,
-  `calibration: the instrument flips sign on an inverted copy of the same tile `
-  + `(shipped ${bl?.polarity} -> negated ${pol.calib?.polarity})`);
+// Calibration, against a rebuild of the defect this arm was written to catch —
+// not against a transform that flips sign on any input. Both gates the shipped
+// tile passes must FAIL on the historical composite, or they are not measuring
+// what they claim to.
+ok(pol.calib && pol.calib.polarity < 0,
+  `calibration: the instrument scores the historical drawInverted composite as inverted `
+  + `(polarity ${pol.calib?.polarity} vs shipped ${bl?.polarity})`);
+ok(pol.calib && pol.calib.median > 70,
+  `calibration: and scores its field as bright ground, failing the dark-plate gate `
+  + `(median luma ${pol.calib?.median} vs shipped ${bl?.median}, gate is < 70)`);
+// Guards the gate above against regressing to the tautology it replaced: a
+// channel negation would land the reconstruction at exactly -polarity.
+ok(Math.abs(pol.calib.polarity + bl.polarity) > 1,
+  `calibration is a rebuilt composite, not a negation of the shipped tile `
+  + `(|${pol.calib?.polarity} + ${bl?.polarity}| = ${Math.abs(pol.calib.polarity + bl.polarity).toFixed(1)}, a negation would give 0)`);
 ok(bl.polarity > 0, `the blight tile is a bright emblem on a dark plate (polarity ${bl.polarity})`);
 ok(controls.every(([, v]) => v.polarity > 0),
   `every control tier has the same polarity (${controls.map(([t, v]) => `${t} ${v.polarity}`).join(', ')})`);
