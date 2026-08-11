@@ -54,8 +54,20 @@ kill records   type "lightning", card text 46.2 damage, delivered as ret 86648.9
 ```
 
 One chain-lightning proc, 46.2 damage of card text arriving as **86,648.9** after the
-outgoing multipliers of a 97-item inventory, deletes the entire horde in a single frame
-about 0.9 s after it spawns — before the shutter, and before the composition pass.
+inventory's outgoing multipliers, deletes the entire horde in a single frame about 0.9 s
+after it spawns — before the shutter, and before the composition pass.
+
+Two numbers stated precisely, because both were cited loosely in the first version of
+this report and of the shipped comment:
+
+- **86,648.9 is what eight of the ten took** (harrier, wisp, spitling, mite, beetle,
+  pest, charger, lemurian, all identical). The burrower's own line is `ret 37673.5` —
+  still two and a half times the whole 14,280 health bar it took to zero.
+- **The haul is 108 grants and 97 held.** `lateRun`'s loop covers every entry of
+  `ITEMS`, which is 108 today; `a full inventory strip` reports `97` held cards in the
+  `after` manifest, and `DIAG blight` reports the same 97 four scenarios later. Where
+  this report or the code says 97, it means held cards; the older "37 items" prose in
+  the surrounding comments predates the content that caused all this and is stale.
 
 What that costs the photograph is not that the monsters are dead; corpses still draw.
 It is that `declutter` filters its candidate list on `e.alive`
@@ -94,8 +106,56 @@ Three endings were captured full:
 | ending | manifest | cost |
 |---|---|---|
 | release the pin, walk away | `fix-loaded-hud/after-alive/manifest.json` | `10-inventory` -> `monsters standing in it` 1078 -> **623 px, red** (object 4, `sepP50` 0.09) |
-| retire into the director's pools | `fix-loaded-hud/after-despawn/manifest.json` | the same 623 px red |
+| retire into the director's pools | `fix-loaded-hud/after-despawn/manifest.json` | the same 623 px red, **byte-identical** |
 | **kill them through `applyDamage`** | `fix-loaded-hud/after/manifest.json` | `10-inventory` 565 px, green |
+
+### Why the ending matters — corrected
+
+The first version of this report, and the comment it shipped, said the ending mattered
+because "the ten follow the survivor into `10-inventory` and crowd the pack it is graded
+on." **That is refuted, and the review that caught it is right.** Two independent
+reasons:
+
+1. `10-inventory`'s `begin()` calls `ctx.director.clear(ctx)`
+   (`src/core/Harness.js:114-117`), which despawns every enemy regardless of alive or
+   dead state before anything is placed, and no frame renders between `lateRun`'s
+   `freeze()` and that call (`begin()`'s frame-wait loop at line 99 is gated on
+   `!stageStarted`, already satisfied mid-run, so it runs zero iterations). The old
+   horde cannot physically be in `10-inventory`'s frame under any ending.
+2. The walk-away and despawn arms are **byte-identical to each other** on the shot in
+   question — `perPx [37,25,14,104,130,123,60,130]`,
+   `perSep [0.81,0.47,0.01,0.33,0.09,0.25,0.53,0.79]`, object 4 red at 0.09. Removing
+   ten bodies from the world moved nothing at all. If bodies were the mechanism, that
+   pair would differ.
+
+What the kill actually spends, measured by counting `ctx.rng.next` across the block on a
+full run (`fix-loaded-hud/diag-rng-critfalse`, probe since removed): **644 RNG draws,
+19,011 gold and 15.8 XP** of on-kill procs. So the discriminator is whether the ten
+kills happen at all — the shared stream and the survivor's ledger, not the bodies — and
+`10-inventory` is composed against the run in which they did.
+
+### The crit roll: built as an arm, adopted on evidence
+
+The review suggested pinning `crit: false` on the bookkeeping kill for
+determinism-by-intent, and warned it is itself a draw-count change. Built and measured
+rather than assumed:
+
+- `Combat.applyDamage` skips its crit roll only when `info.crit` is defined
+  (`src/systems/Combat.js:464-468`), and this survivor's `critChance` measures
+  **0.902**, so the unpinned version was rolling ten dice whose existence depends on
+  which items grant crit.
+- Pinned false and captured full **twice**:
+  `fix-loaded-hud/after-critfalse/manifest.json` and
+  `fix-loaded-hud/after-critfalse-repeat/manifest.json`. Both:
+  `06-loaded-hud` 2093 px 10/10 green, `10-inventory` 565 px green,
+  `20-blight-edge` `a live fight` 9 green, `subjectFailures` `19-overkill` alone —
+  identical to the unpinned `after` run on every one of those fields.
+
+**Adopted.** Ten of the 644 draws were removed and no verdict moved, which also puts a
+useful bound on the fragility the review flags: this boundary is coarse, not
+knife-edged. A ten-draw perturbation is free; the 0-versus-644 difference is what moves
+`10-inventory`. The dependency is now stated at the call site so a future red
+`10-inventory` points here.
 
 ### The second pin, and why it is not scope creep
 
@@ -127,8 +187,12 @@ is still 0.25, `a live fight` is still `>= 4`.
 | `20-blight-edge` / `a live fight` | 10 ok (luck) | 9 ok (pinned) |
 | `subjectFailures` | `06-loaded-hud`, `19-overkill` | `19-overkill` only |
 
-Confirmed on a second full run at the fixed tree:
-`reviews/round7/captures/fix-loaded-hud/after-repeat/manifest.json`.
+Confirmed on three further full runs at the fixed tree, all identical on those fields:
+`fix-loaded-hud/after-repeat/manifest.json` (before `crit: false`), and
+`fix-loaded-hud/after-critfalse/manifest.json` +
+`fix-loaded-hud/after-critfalse-repeat/manifest.json` (the shipped code). The shipped
+tree is the `after-critfalse*` pair; `after` and `after-repeat` differ from it only by
+the crit pin, which is measured to change nothing.
 
 `19-overkill` is untouched and still red. It is a different defect (the hulk is
 launched into the lake the full run's accumulated stage leaves under
@@ -139,7 +203,8 @@ here touches `faceOpenGround`, `groundAtScreen` or where anything is placed.
 ## 5. Left alone, deliberately, and worth someone's attention
 
 1. **A 46.2-damage proc arriving as 86,648.9.** That is a ~1875x outgoing multiplier
-   from 97 items, measured, and it is a balance question rather than a camera one. It
+   from 97 held cards, measured, and it is a balance question rather than a camera one.
+   The same survivor's `critChance` reads **0.902**, from the same roster. It
    is why three separate capture scenarios now need a pin to photograph a live monster
    at all. Evidence: `fix-loaded-hud/diag7-head/manifest.json`, `DIAG kill`.
 2. **`begin()` does not clear the inventory.** `20-blight-edge`'s "drops the haul"

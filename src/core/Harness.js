@@ -3041,9 +3041,13 @@ export function installHarness(ctx) {
        * Measured, at `1911d79`, on a full run: the ten spawn at full health,
        * stand for fifty frames, and are then deleted in a single frame by one
        * chain-lightning proc — 46.2 damage of card text arriving as **86,648.9**
-       * after the outgoing multipliers of 37 items at up to 12 stacks each
+       * after the outgoing multipliers of the haul above (the loop covers all
+       * 108 `ITEMS` at up to 12 stacks each; 97 of them land as held cards, the
+       * count `a full inventory strip` reports below)
        * (`reviews/round7/captures/fix-loaded-hud/diag7-head/manifest.json`,
-       * `DIAG kill`: `hp0 14280 -> hp1 0` on the burrower, `ret 86648.9`).
+       * `DIAG kill`: that 86,648.9 is what eight of the ten took, and the
+       * burrower's own line is `hp0 14280 -> hp1 0` on a `ret` of 37,673.5 —
+       * still two and a half times its whole health bar).
        *
        * What that costs the photograph is not "the monsters are dead" — corpses
        * still draw. It is that `declutter` filters on `e.alive`, so with the
@@ -3114,26 +3118,50 @@ export function installHarness(ctx) {
       /* Then hand the horde the death its own frame had already earned it.
        *
        * After the shutter, because `mustContain` re-renders the scene to build
-       * its per-object masks. And at all, because this scenario is the
-       * sixteenth of twenty and everything below it inherits whatever it leaves
-       * standing — the pin buys this frame and it is not allowed to buy
-       * anything else. Both other endings were captured full and both cost a
-       * shot that had been passing:
+       * its per-object masks. And at all, because a horde this scenario spawned
+       * and did not spend is a run the shots below were not composed against —
+       * which is a claim about the shared RNG stream and the survivor's ledger,
+       * NOT about bodies left standing. Bodies cannot leak from here: the next
+       * scenario's `begin()` calls `ctx.director.clear(ctx)` (line 114), which
+       * despawns every enemy alive or dead before anything is placed, and no
+       * frame renders between this `freeze()` and that call. Do not re-derive
+       * the old story from the numbers below.
+       *
+       * The numbers, three endings each captured full:
        *
        *  - release the pin and walk away
-       *    (`reviews/round7/captures/fix-loaded-hud/after-alive/manifest.json`):
-       *    the ten follow the survivor into `10-inventory` and crowd the pack
-       *    it is graded on — `monsters standing in it` 1078 -> 623 px, object 4
-       *    at `sepP50` 0.09.
-       *  - retire them into the director's pools instead
-       *    (`reviews/round7/captures/fix-loaded-hud/after-despawn/manifest.json`):
-       *    the same 623 px, because ten bodies that never die also never pay
-       *    the on-kill procs the following scenarios were composed against.
+       *    (`reviews/round7/captures/fix-loaded-hud/after-alive/manifest.json`)
+       *  - retire the bodies into the director's pools instead
+       *    (`reviews/round7/captures/fix-loaded-hud/after-despawn/manifest.json`)
        *
-       * So they die, through the real API, from the survivor who would have
-       * killed them: same ten bodies, same ten kills, a dozen frames late.
+       *    **byte-identical to each other** — `10-inventory` -> `monsters
+       *    standing in it` 623 px, `perPx [37,25,14,104,130,123,60,130]`,
+       *    `perSep [0.81,0.47,0.01,0.33,0.09,0.25,0.53,0.79]`, object 4 red at
+       *    `sepP50` 0.09. Despawning ten bodies moved nothing, which is the
+       *    measurement that kills the bodies-crowd-the-next-shot reading.
+       *
+       *  - kill them here (`.../after/manifest.json`): 565 px, green.
+       *
+       * What the kill actually spends, measured with `ctx.rng.next` counted
+       * across this block: **644 RNG draws**, 19,011 gold and 15.8 XP of
+       * on-kill procs. That is the difference — ten kills that happen against
+       * ten that never do — and it is coarse rather than knife-edged: the crit
+       * rolls below are worth 10 of those 644 and provably move nothing.
+       *
+       * `crit: false` for that reason, adopted on evidence rather than on
+       * principle. `Combat.applyDamage` only skips its crit roll when
+       * `info.crit` is defined (`src/systems/Combat.js:464-468`), and this
+       * survivor's `critChance` is 0.902, so leaving it unset rolled ten dice
+       * whose count depends on which items happen to grant crit. Pinned false,
+       * and captured twice to prove the pinning is free:
+       * `.../after-critfalse/manifest.json` and
+       * `.../after-critfalse-repeat/manifest.json` are identical to `after` on
+       * all three affected shots (2093 / 565 / 9).
+       *
        * `procCoefficient: 0` because this is bookkeeping and must not start a
-       * proc chain the frame never had.
+       * proc chain the frame never had. It does not gate `modifyOutgoing`
+       * (`Combat.js:472`), which is where most of the 644 live; that is
+       * deliberate — those are the survivor's own kills being paid for.
        */
       for (const p of hordePins) {
         p.e.maxHealth = p.maxHealth;
@@ -3141,7 +3169,7 @@ export function installHarness(ctx) {
         if (!p.e.alive) continue;
         ctx.combat?.applyDamage?.(p.e, p.maxHealth * 2, {
           source: ctx.player, position: p.e.position, type: 'lightning',
-          procCoefficient: 0, procDepth: 1,
+          procCoefficient: 0, procDepth: 1, crit: false,
         });
       }
     },
