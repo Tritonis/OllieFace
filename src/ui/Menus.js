@@ -58,6 +58,7 @@ const DEFAULTS = {
   music: 0.6,
   shake: 1.0,
   spawnRate: 1.0,
+  padSensitivity: 1.0,
 };
 
 const QUALITY_NAMES = ['Low', 'Medium', 'High', 'Ultra'];
@@ -71,6 +72,7 @@ const DEATH_ROW = 8;
 const SLIDERS = [
   { key: 'fov', label: 'Field of view', min: 60, max: 110, step: 1, fmt: (v) => `${v | 0}°` },
   { key: 'sensitivity', label: 'Mouse sensitivity', min: 0.2, max: 3, step: 0.05, fmt: (v) => v.toFixed(2) },
+  { key: 'padSensitivity', label: 'Gamepad look', min: 0.2, max: 3, step: 0.05, fmt: (v) => v.toFixed(2) },
   { key: 'master', label: 'Master volume', min: 0, max: 1, step: 0.01, fmt: pct },
   { key: 'sfx', label: 'SFX volume', min: 0, max: 1, step: 0.01, fmt: pct },
   { key: 'music', label: 'Music volume', min: 0, max: 1, step: 0.01, fmt: pct },
@@ -1722,7 +1724,17 @@ export class Menus {
     // Vertical is offered to the screen's scroller first; `navScroll` hands it
     // straight back at either end of the travel, and always on a screen with
     // nothing to scroll.
-    if (step && !(dy && this.navScroll(dy > 0 ? 1 : -1))) this.navMove(step > 0 ? 1 : -1);
+    const el = this.navTargets()[this.navIndex];
+    if (dx && el?.tagName === 'INPUT' && el.type === 'range') {
+      // Left/right adjust the focused slider — this is what navConfirm's
+      // "left/right already adjust it" comment always promised. stepUp/stepDown
+      // honor the input's min/max/step; the synthetic 'input' event runs the
+      // buildSettings listener, which applies and saves.
+      if (dx > 0) el.stepUp(); else el.stepDown();
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    } else if (step && !(dy && this.navScroll(dy > 0 ? 1 : -1))) {
+      this.navMove(step > 0 ? 1 : -1);
+    }
     if (confirm) this.navConfirm();
     if (back) this.escape();
   }

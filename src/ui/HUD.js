@@ -507,6 +507,10 @@ export class HUD {
     this.set('hidden', hidden, (v) => this.root.classList.toggle('is-hidden', v));
     if (hidden) { this.stripRect = null; return; }
 
+    this.set('padPrompt', !!ctx.input?.padActive, (pad) => {
+      if (this.refs.promptKey) this.refs.promptKey.textContent = pad ? 'X' : 'E';
+    });
+
     this.updateHealth(ctx, dt);
     this.updateExperience(ctx);
     this.updateMoney(ctx, dt);
@@ -1113,6 +1117,7 @@ function collectRefs(root) {
 
     prompt: q('.prompt'),
     promptLabel: q('.prompt-label'),
+    promptKey: q('.prompt-key'),
 
     bossBar: q('.bossbar'),
     bossName: q('.boss-name'),
