@@ -97,6 +97,17 @@ CAVEATS ON RECORD (pre-flight P2 / A)
     player's saved scale never leaked into a pinned capture. See
     diff-base-vs-after.json and diff-control.json in this directory.
 
+    The same is true of `ok(dyn.resScale === 1, 'Off resets the adaptive
+    term so the slider owns the buffer')` -- it is equally vacuous, because
+    `_adapt` returns immediately while `ctx.paused` (RenderPipeline.js:342)
+    and menuprobe runs the whole walk with a menu screen open, so `_resScale`
+    is 1 before and after the Off click regardless of whether the reset code
+    runs. The property is established out-of-harness instead, by seeding
+    `_resScale = 0.75` / `_failedAt = 0.8` and calling
+    `setRenderScale(0.9, false)` directly against the real prototype method,
+    which produced `_resScale = 1`, `_failedAt = Infinity`, ratio `0.9` -- see
+    the 2026-08-11 final review, finding C3.
+
 (b) Menu preview canvases are a documented non-goal. The survivor-select
     portrait preview and the Logbook's model viewer (src/ui/Logbook.js:68) each
     construct their own renderer and set their own pixel ratio. The Render

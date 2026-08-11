@@ -312,7 +312,15 @@ export class RenderPipeline {
    * 1080p native, and SMAA resolves the upscale cleanly.
    */
   _applyPixelRatio() {
-    const max = this.quality >= QUALITY.HIGH ? 2 : this.quality >= QUALITY.MEDIUM ? 1.5 : 1;
+    // While the capture harness holds the pin, the quality-tier cap is frozen
+    // at the value it had when `setAdaptive(false, ...)` ran, not re-derived
+    // from `this.quality`. `setQuality` legitimately keeps moving `this.quality`
+    // after the pin (capture needs to configure passes for a tier), and its
+    // `resize()` call reaches here too — without the freeze, that unguarded
+    // second path would still move the drawing-buffer scale post-pin.
+    const max = this._pinned
+      ? this._pinnedQualityCap
+      : (this.quality >= QUALITY.HIGH ? 2 : this.quality >= QUALITY.MEDIUM ? 1.5 : 1);
     this.renderer.setPixelRatio(effectivePixelRatio({
       dpr: devicePixelRatio, qualityCap: max, budget: PIXEL_BUDGET,
       width: innerWidth, height: innerHeight,
@@ -395,6 +403,12 @@ export class RenderPipeline {
     this._adaptOn = on;
     this._pinned = !on;
     if (!on) {
+      // Freeze the quality-tier cap in force right now. `setQuality` is not
+      // guarded by `_pinned` (capture legitimately needs it to configure
+      // passes after boot), so without this freeze a later quality change
+      // would still move the drawing-buffer scale through `_applyPixelRatio`.
+      this._pinnedQualityCap =
+        this.quality >= QUALITY.HIGH ? 2 : this.quality >= QUALITY.MEDIUM ? 1.5 : 1;
       this._userScale = 1;
       this._resScale = scale;
       this.resize();

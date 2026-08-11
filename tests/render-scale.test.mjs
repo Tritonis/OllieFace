@@ -1,4 +1,5 @@
 import { effectivePixelRatio } from '../src/core/ResolutionMath.js';
+import { RenderPipeline, QUALITY } from '../src/core/RenderPipeline.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
@@ -39,6 +40,43 @@ for (const [w, h, dpr, cap, adapt] of [[1600, 900, 1, 2, 1], [1920, 1080, 1.5, 1
   old *= adapt;
   const now = effectivePixelRatio({ dpr, qualityCap: cap, budget: 5.0e6, width: w, height: h, userScale: 1, adaptScale: adapt });
   ok(close(now, old), `userScale 1 reproduces the old formula at ${w}x${h} dpr ${dpr}`);
+}
+
+// 9. B1 regression: setQuality is the second, unguarded path to the
+//    drawing-buffer scale. Once setAdaptive(false, ...) has pinned the
+//    capture harness, a later setQuality must not move the ratio either —
+//    the quality-tier cap has to stay frozen at the value it had at pin
+//    time. Exercises the real prototype methods against a fake renderer,
+//    same shape as the final-review's state-machine probe.
+{
+  globalThis.devicePixelRatio = 2;
+  globalThis.innerWidth = 1600;
+  globalThis.innerHeight = 900;
+  const renderer = {
+    _ratio: 1,
+    setPixelRatio(r) { this._ratio = r; },
+    getPixelRatio() { return this._ratio; },
+    setSize() {},
+  };
+  const rp = Object.create(RenderPipeline.prototype);
+  rp.renderer = renderer;
+  rp.composer = null;
+  rp.passes = {};
+  rp.ctx = null;
+  rp.quality = QUALITY.ULTRA;
+  rp._userScale = 1;
+  rp._resScale = 1;
+  rp._adaptOn = true;
+  rp._pinned = false;
+  rp._frameMs = [];
+  rp._failedAt = Infinity;
+  rp._sinceFail = 0;
+
+  rp.setAdaptive(false, 1);
+  const pinnedRatio = renderer.getPixelRatio();
+  rp.setQuality(QUALITY.LOW);
+  ok(close(renderer.getPixelRatio(), pinnedRatio),
+    `setQuality after the pin does not move the drawing-buffer ratio (${pinnedRatio} -> ${renderer.getPixelRatio()})`);
 }
 
 console.log(fail ? `FAIL (${fail})` : `PASS (${pass})`);
