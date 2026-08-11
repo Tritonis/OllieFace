@@ -10,7 +10,7 @@
  */
 import { chromium } from 'playwright';
 import { createServer } from 'vite';
-import { mkdir, writeFile, rm, readdir, readFile } from 'node:fs/promises';
+import { mkdir, writeFile, rm, readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 // Walk argv token by token. An earlier version joined and split on '--', which
@@ -384,11 +384,18 @@ const bootMs = Date.now() - tBoot;
  * keeps its meaning over the merged set, because a carried failure is still a
  * failure and dropping it would be the same laundering pointed the other way.
  */
-const carried = ready && ONLY
-  ? await readFile(path.join(OUT, 'manifest.json'), 'utf8')
-      .then((t) => JSON.parse(t).shots?.filter((s) => !WANTED.has(`${s.name}.png`)) ?? [])
-      .catch(() => [])
-  : [];
+const prevManifest = ready && ONLY
+  ? await readFile(path.join(OUT, 'manifest.json'), 'utf8').then(JSON.parse).catch(() => null)
+  : null;
+// Date the source, falling back to the file's own mtime for manifests written
+// before `capturedAt` existed — an undated carry is only half a warning.
+const prevAt = prevManifest
+  ? prevManifest.capturedAt
+    ?? await stat(path.join(OUT, 'manifest.json')).then((s) => s.mtime.toISOString()).catch(() => null)
+  : null;
+const carried = (prevManifest?.shots ?? [])
+  .filter((s) => !WANTED.has(`${s.name}.png`))
+  .map((s) => ({ ...s, carried: true, carriedFrom: prevAt }));
 if (ready) {
   for (const f of await readdir(OUT).catch(() => [])) {
     if (WANTED.has(f) || f === 'manifest.json' || f === 'manifest.FAILED.json'
@@ -416,6 +423,9 @@ if (ready && !pinned) console.log('WARNING: capture clock not pinned — shots m
 
 const manifest = {
   seed: SEED, ready, clockPinned: pinned,
+  // Dated so the next `--only` run into this directory can say where its
+  // carried shots came from. See the note by `carried`.
+  capturedAt: new Date().toISOString(),
   ms: { boot: bootMs, bootTimeout: 60000 },
   shots: [], errors: [], partial: !!ONLY,
 };
@@ -488,6 +498,7 @@ if (!ready) {
     .filter((s) => s.subject && !s.subject.ok)
     .map((s) => ({
       name: s.name,
+      ...(s.carried ? { carried: true, carriedFrom: s.carriedFrom } : {}),
       failed: (s.subject.checks ?? []).filter((c) => !c.ok).map((c) => c.subject),
       detail: (s.subject.checks ?? []).filter((c) => !c.ok),
     }));
@@ -524,7 +535,8 @@ if (!ready) {
   manifest.toleratedAbsences = manifest.shots.flatMap((s) => (s.subject?.checks ?? [])
     .filter((c) => c.carriesAbsence)
     .map((c) => ({
-      name: s.name, subject: c.subject, checkOk: c.ok,
+      name: s.name, ...(s.carried ? { carried: true, carriedFrom: s.carriedFrom } : {}),
+      subject: c.subject, checkOk: c.ok,
       gate: c.crowd ? `crowd ${c.crowd.need}/${c.perPx?.length ?? '?'} individually gated`
         : 'aggregate: carriedPx only, no per-object gate',
       why: c.crowd?.why ?? c.aggregate ?? null,
@@ -772,7 +784,11 @@ console.log(JSON.stringify({
     : null,
   audioOk: manifest.audioOk ?? null,
   subjectsOk: manifest.subjectsOk ?? null,
-  subjectFailures: failures.map((f) => `${f.name}: ${f.failed.join(', ')}`),
+  // On a partial run this is the only one of the two that describes this run.
+  subjectsOkFresh: manifest.subjectsOkFresh ?? null,
+  carriedShots: manifest.carriedShots ?? [],
+  subjectFailures: failures.map(
+    (f) => `${f.name}${f.carried ? ` (CARRIED ${f.carriedFrom ?? 'undated'})` : ''}: ${f.failed.join(', ')}`),
   toleratedAbsences: (manifest.toleratedAbsences ?? []).map(
     (t) => `${t.name}: ${t.subject} [${t.gate}] carries ${t.absent.length} absent `
       + `— ${t.absent.map((o) => `#${o.i}@${o.px}px`).join(' ')}`),
