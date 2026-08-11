@@ -8,7 +8,7 @@ import {
 import { catalogueSizes, catalogueHas, unlockName } from './UnlockRegistry.js';
 import { isLocalVictim } from '../core/Engine.js';
 import { adoptLegacyKey } from '../core/LegacyStorage.js';
-import { renameItemId } from '../data/renamedItems.js';
+import { renameItemId, renameEnemyId } from '../data/renamedIds.js';
 
 /**
  * The persistent player profile — everything that outlives a run.
@@ -69,7 +69,7 @@ import { renameItemId } from '../data/renamedItems.js';
 
 // Bump this whenever the persisted shape changes, and add the matching entry to
 // MIGRATIONS below. Never reuse a number.
-export const PROFILE_VERSION = 3;
+export const PROFILE_VERSION = 4;
 
 /**
  * One key, one JSON blob, forever.
@@ -117,7 +117,7 @@ const CLEAN_ENDING_BAND = 1;
 // Which endings count as "finished a run at the Fracture" — the wording the
 // player is shown on the `unbrokenSeal` row. `ENDINGS` (data/realms.js) marks
 // three outcomes `won: true`, and the third is `obliterated`: the Obelisk of
-// Departure in the bazaar, reachable from stage 1, which ends the run on the
+// Departure in the market, reachable from stage 1, which ends the run on the
 // player's terms without ever seeing the Fracture. That is a win for every
 // other purpose and must not be one here, so this list is positive — a future
 // ending has to be named before it can seal the Vigil, rather than qualifying
@@ -202,7 +202,7 @@ const MIGRATIONS = {
    * v1 -> v2. Two real data moves, neither of which `_coerce` could do alone.
    *
    * **`discovered` -> `encounters`.** v1 stored `kind -> id -> timestamp`; v2
-   * stores `kind -> id -> { at, count }`, because "you have killed 412 Golems"
+   * stores `kind -> id -> { at, count }`, because "you have killed 412 Sentinels"
    * is the line that makes a bestiary read as a record of *your* play rather
    * than as a catalogue with some rows greyed out. Every first-seen stamp is
    * carried across verbatim; the count starts at zero and is honest about it —
@@ -254,13 +254,23 @@ const MIGRATIONS = {
   },
 
   /**
-   * v2 -> v3. Two item ids were renamed, so every record keyed by one moves.
+   * v2 -> v3, and v3 -> v4. Ids were renamed, so every record keyed by one
+   * moves. Both entries are `remapIds` and differ only in which kinds they
+   * carry; the shape of the work is identical and doing it twice is free.
    *
-   * `hopoo-feather` and `shatterspleen` were the last two ids that were
-   * themselves Risk of Rain 2 vocabulary rather than merely attached to it (see
-   * `data/renamedItems.js`). Their display names changed in round 6; the ids
-   * could not, because a profile records them in three places and a bare rename
-   * would have read as "the game forgot I ever found that item".
+   * v3 was `hopoo-feather` and `shatterspleen` — the two ids that were
+   * themselves Risk of Rain 2 vocabulary rather than merely attached to it.
+   * v4 is the rest of them (`reviews/round7/FIX-ror2-ids.md`): thirty-seven
+   * more item ids and the six enemy ids. A profile records an item id in three
+   * places and an enemy id in two, and a bare rename would have read as "the
+   * game forgot I ever found that" and "the game forgot I ever killed one".
+   *
+   * **The v2 entry now translates more than it did when it was written**, and
+   * that is deliberate rather than an oversight: it calls the shared table, the
+   * table has grown, and a v2 profile arriving today gets the round-7 item ids
+   * applied at step one and then again — idempotently — at step two. What
+   * matters is that no chain reaches v4 with an old id in it, and every chain
+   * ends in the v3 entry.
    *
    * Nothing here is a merge of *different* things, so every join is the one the
    * cross-tab merge already uses for that field: earliest wins for a first-seen
@@ -269,52 +279,85 @@ const MIGRATIONS = {
    * through this same path, and a collision that silently dropped one side
    * would be a data loss discovered months later.
    */
-  2: (p) => {
-    const out = { ...p, version: 3 };
-
-    if (isObj(p.unlocks) && isObj(p.unlocks.item)) {
-      const item = {};
-      for (const [id, at] of Object.entries(p.unlocks.item)) {
-        const k = renameItemId(id);
-        const prev = item[k];
-        // An unlock stamp is "when did I first earn this"; 0/absent must lose.
-        item[k] = prev > 0 ? Math.min(prev, num(at, 0) || prev) : num(at, 0);
-      }
-      out.unlocks = { ...p.unlocks, item };
-    }
-
-    if (isObj(p.encounters) && isObj(p.encounters.item)) {
-      const item = {};
-      for (const [id, rec] of Object.entries(p.encounters.item)) {
-        const k = renameItemId(id);
-        const at = num(rec?.at, 0);
-        const count = num(rec?.count, 0);
-        const prev = item[k];
-        item[k] = prev
-          ? { at: prev.at > 0 && at > 0 ? Math.min(prev.at, at) : Math.max(prev.at, at), count: prev.count + count }
-          : { at, count };
-      }
-      out.encounters = { ...p.encounters, item };
-    }
-
-    if (Array.isArray(p.runs)) {
-      out.runs = p.runs.map((r) => {
-        if (!isObj(r) || !Array.isArray(r.inventory)) return r;
-        // One row per id: two rows for the same item is not a shape the run
-        // report or the logbook's item strip knows how to draw.
-        const rows = new Map();
-        for (const entry of r.inventory) {
-          if (!isObj(entry)) continue;
-          const k = renameItemId(entry.id);
-          rows.set(k, { id: k, count: num(rows.get(k)?.count, 0) + num(entry.count, 0) });
-        }
-        return { ...r, inventory: [...rows.values()] };
-      });
-    }
-
-    return out;
-  },
+  2: (p) => remapIds(p, 3, { items: true }),
+  3: (p) => remapIds(p, 4, { items: true, enemies: true }),
 };
+
+/** Earliest non-zero stamp wins; an unset stamp is 0 and must not win. */
+const earlierStamp = (a, b) => (a > 0 && b > 0 ? Math.min(a, b) : Math.max(num(a, 0), num(b, 0)));
+
+/** Fold `{ at, count }` encounter rows that collided onto one id. */
+function mergeEncounters(src, rename) {
+  const out = {};
+  for (const [id, rec] of Object.entries(src)) {
+    const k = rename(id);
+    const at = num(rec?.at, 0);
+    const count = num(rec?.count, 0);
+    const prev = out[k];
+    out[k] = prev
+      ? { at: earlierStamp(prev.at, at), count: prev.count + count }
+      : { at, count };
+  }
+  return out;
+}
+
+/**
+ * Re-key every id-keyed record in a profile, and stamp it at `version`.
+ *
+ * `kinds` names which tables to consult, so a migration entry declares what its
+ * own step was for rather than translating everything by accident. Enemy ids
+ * reach the encounter log's `enemy` and `boss` kinds and nothing else — the
+ * per-survivor career table is keyed by survivor id, and no survivor was
+ * renamed.
+ */
+function remapIds(p, version, { items = false, enemies = false } = {}) {
+  const out = { ...p, version };
+
+  if (items && isObj(p.unlocks) && isObj(p.unlocks.item)) {
+    const item = {};
+    for (const [id, at] of Object.entries(p.unlocks.item)) {
+      const k = renameItemId(id);
+      // An unlock stamp is "when did I first earn this"; 0/absent must lose.
+      item[k] = earlierStamp(num(item[k], 0), num(at, 0));
+    }
+    out.unlocks = { ...p.unlocks, item };
+  }
+
+  if (isObj(p.encounters)) {
+    const encounters = { ...p.encounters };
+    if (items && isObj(p.encounters.item)) {
+      encounters.item = mergeEncounters(p.encounters.item, renameItemId);
+    }
+    if (enemies) {
+      // Both kinds, and for the same reason: a card that is a boss on one
+      // stage is an ordinary spawn on another, so the same id is filed under
+      // whichever role the player met it in.
+      for (const kind of ['enemy', 'boss']) {
+        if (isObj(p.encounters[kind])) {
+          encounters[kind] = mergeEncounters(p.encounters[kind], renameEnemyId);
+        }
+      }
+    }
+    out.encounters = encounters;
+  }
+
+  if (items && Array.isArray(p.runs)) {
+    out.runs = p.runs.map((r) => {
+      if (!isObj(r) || !Array.isArray(r.inventory)) return r;
+      // One row per id: two rows for the same item is not a shape the run
+      // report or the logbook's item strip knows how to draw.
+      const rows = new Map();
+      for (const entry of r.inventory) {
+        if (!isObj(entry)) continue;
+        const k = renameItemId(entry.id);
+        rows.set(k, { id: k, count: num(rows.get(k)?.count, 0) + num(entry.count, 0) });
+      }
+      return { ...r, inventory: [...rows.values()] };
+    });
+  }
+
+  return out;
+}
 
 /**
  * Lifetime totals that are *sums*, and so merge as deltas: whatever this tab
@@ -1465,7 +1508,7 @@ export class Profile {
     const run = this.run;
     if (!run || e?.victim?.isPlayer) return;
     // Discovery is a "have I seen this" fact and is credited on sight, host or
-    // client — a client that watched a Titan die has seen a Titan.
+    // client — a client that watched a Colossus die has seen a Colossus.
     const vid = e?.victim?.def?.id ?? e?.victim?.id;
     if (typeof vid === 'string') this._discoverMonster(e.isBoss ? 'boss' : 'enemy', vid);
 

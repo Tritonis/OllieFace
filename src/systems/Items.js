@@ -112,7 +112,7 @@ const ORDINARY_TIERS = ['common', 'uncommon', 'legendary'];
  * squared difficulty term outruns it.
  *
  * Scaling by the card's credit cost is what makes a boss pay orders of
- * magnitude more than a beetle (420 credits vs 6) for free, and elites pay
+ * magnitude more than a scarab (420 credits vs 6) for free, and elites pay
  * their 4.5-5x affix surcharge back for the same reason.
  *
  * "difficulty" above is `Director.rewardCoefficient` — the time-and-stage curve

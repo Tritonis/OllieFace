@@ -1,0 +1,4 @@
+fingerprint gate: 52 fields, 0 moved after re-keying the old baseline
+elite gate: 199 fields, 0 moved after re-keying the old baseline
+
+PROVEN: every number in both baselines is byte-identical once the ids are translated.

@@ -300,7 +300,7 @@ console.log('— the clean path is stocked, and stocking it costs a pristine run
       items: { gold: 0, spendGold: () => false },
       time: 0,
     };
-    ctx.items.rollItem = () => { ctx.rng.next(); return 'syringe'; };
+    ctx.items.rollItem = () => { ctx.rng.next(); return 'adrenal-syringe'; };
     if (corruption) ctx.corruption = corruption;
     const inter = new Interactables();
     inter.init(ctx);

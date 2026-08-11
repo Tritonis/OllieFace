@@ -1,14 +1,14 @@
 /**
  * A deterministic fingerprint of a single-player run.
  *
- *   node tests/sp-equivalence.mjs --out reviews/round8/baseline-HEAD.json
- *   node tests/sp-equivalence.mjs --compare reviews/round8/baseline-HEAD.json
+ *   node tests/sp-equivalence.mjs --out reviews/round7/baseline-00f8900.json
+ *   node tests/sp-equivalence.mjs --compare reviews/round7/baseline-00f8900.json
  *
  * and the affix gate, which is a separate baseline because this one is
  * structurally blind to `ELITE_STATS` (`npm run gate:elite`):
  *
- *   node tests/sp-equivalence.mjs --mode elite-dps --out reviews/round8/elite-baseline-HEAD.json
- *   node tests/sp-equivalence.mjs --mode elite-dps --compare reviews/round8/elite-baseline-HEAD.json
+ *   node tests/sp-equivalence.mjs --mode elite-dps --out reviews/round7/elite-baseline-00f8900.json
+ *   node tests/sp-equivalence.mjs --mode elite-dps --compare reviews/round7/elite-baseline-00f8900.json
  *
  * The roster migration's whole safety argument is that a roster of one behaves
  * exactly as `ctx.player` did. This is the instrument that decides it. Capture
@@ -80,6 +80,7 @@ import { chromium } from 'playwright';
 import { createServer } from 'vite';
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { execFileSync } from 'node:child_process';
 
 // Not a tuning range — a name for one arbitrary but *fixed* choice. Any value
 // works; changing it invalidates every baseline captured with the old one, so
@@ -175,7 +176,7 @@ const PORT = 5209;
  *
  * What it measures: how much damage one elite puts on one parked survivor per
  * second, split by damage *type*, at two standoffs. The split is the whole
- * point — a blazing elite's total is three separate riders (the aura's direct
+ * point — an emberclad elite's total is three separate riders (the aura's direct
  * tick, the burn DoT the aura and the melee rider light, and the melee hit
  * itself) and they answer to three different levers, so a single total cannot
  * tell you which one to move.
@@ -198,7 +199,7 @@ const PORT = 5209;
 const ARM_CARD = 'lasher';
 
 // The two standoffs, both reported, because a fix aimed at one end can overshoot
-// into the other. 2.5 m is inside blazing's 3.2 m `auraRadius` and is the worst
+// into the other. 2.5 m is inside emberclad's 3.2 m `auraRadius` and is the worst
 // case: the aura fires on every beat, `inAuraFraction` is 1, and AI variance in
 // whether the unit closed is removed entirely. 11 m is outside every aura and
 // outside the melee reach, so the unit has to choose and travel — that arm can
@@ -219,7 +220,7 @@ const ARM_SETTLE = 120;
 // 40 s held in contact. The floor is set by quantisation, not by the ramp: the
 // plain arm's whole damage is melee hits worth 21 each on a ~2.4 s cooldown, so
 // at 20 s a single hit landing either side of the window edge moved the plain
-// denominator by 14% and the blazing/plain ratio by 1.6x between two runs of an
+// denominator by 14% and the emberclad/plain ratio by 1.6x between two runs of an
 // unchanged tree. At 40 s that is ~6%. Too many and the six arms together push
 // `difficultyCoefficient` far enough that the later arms are measured on a
 // different curve from the earlier ones, and each capture costs minutes.
@@ -237,6 +238,31 @@ const arg = (name) => {
 };
 const outPath = arg('--out');
 const comparePath = arg('--compare');
+
+/**
+ * What produced this capture, written into every `--out` file.
+ *
+ * A baseline that does not name its own source is a number nobody can
+ * reproduce, and this repo has been burned by exactly that: four fix reports
+ * once quoted before/after figures no critic could re-derive. The commit is the
+ * point; `dirty` is the honest caveat, because a baseline captured over an
+ * uncommitted edit is not a baseline of the commit it names.
+ *
+ * Neither `--compare` view reads this key, so adding it moves no gate.
+ */
+function captureSource() {
+  const git = (a) => {
+    try { return execFileSync('git', a, { encoding: 'utf8' }).trim(); } catch { return null; }
+  };
+  return {
+    tool: 'tests/sp-equivalence.mjs',
+    mode: MODE,
+    seed: SEED,
+    commit: git(['rev-parse', 'HEAD']),
+    dirty: git(['status', '--porcelain']) !== '',
+    capturedAt: new Date().toISOString(),
+  };
+}
 const MODE = arg('--mode') || 'equivalence';
 if (MODE !== 'equivalence' && MODE !== 'elite-dps') {
   console.error(`unknown --mode ${MODE}; expected "equivalence" or "elite-dps"`);
@@ -661,11 +687,11 @@ try {
         };
 
         const errorsAtStart = ctx.frameErrors;
-        for (const affix of ['blazing', 'glacial', null]) {
+        for (const affix of ['emberclad', 'rimebound', null]) {
           runArm(affix, contactM, contactSteps, true);
           runArm(affix, freeM, freeSteps, false);
         }
-        const lethal = runLethal('blazing', contactM, contactSteps);
+        const lethal = runLethal('emberclad', contactM, contactSteps);
         ctx.combat.applyDamage = origApply;
 
         return {
@@ -864,7 +890,7 @@ try {
          * own hits, and `null` for environmental damage. `constructor.name` is
          * `'Enemy'` for every monster in the game and is degenerate for the same
          * reason `type` was; `def.id` is the spawn-card id from
-         * `data/enemies.js` ('mite', 'beetle', 'lemurian'...), which is stable
+         * `data/enemies.js` ('mite', 'scarab', 'skink'...), which is stable
          * across runs and is the granularity a targeting change shows up at. The
          * elite affix rides along because it multiplies damage, so folding it in
          * would hide an affix-only change.
@@ -1123,8 +1149,8 @@ if (MODE === 'elite-dps') {
     /* Keyed off the affix table, not off the observed fraction.
      *
      * The first version of this was `inAuraFraction > 0 && < 1`, where the `> 0`
-     * existed so glacial and plain — which have no aura — could pass. The cost
-     * was that the one failure it exists to catch walked through it: a blazing
+     * existed so rimebound and plain — which have no aura — could pass. The cost
+     * was that the one failure it exists to catch walked through it: an emberclad
      * arm whose aura had silently stopped existing (an `auraRadius` typo, or
      * `auraDps` falling to 0 and taking the whole gated block with it) records
      * `inAuraFraction` 0 and passed every gate, reporting a collapsed dps as a
@@ -1134,14 +1160,14 @@ if (MODE === 'elite-dps') {
     if (a.hold && a.hasAura && a.metres < a.auraRadius && a.inAuraFraction !== 1) {
       armFail.push(`${name}: inAuraFraction ${a.inAuraFraction} on a held arm ${a.metres} m inside a ${a.auraRadius} m aura, expected 1`);
     }
-    if (a.hold && a.affix === 'blazing' && !a.hasAura) {
-      armFail.push(`${name}: blazing recorded no aura at all — auraDps or auraRadius is 0 in ELITE_STATS`);
+    if (a.hold && a.affix === 'emberclad' && !a.hasAura) {
+      armFail.push(`${name}: emberclad recorded no aura at all — auraDps or auraRadius is 0 in ELITE_STATS`);
     }
   }
 
   /* The elite is actually in the window. Fail loudly rather than report clean.
    *
-   * `reviews/round8/baseline-HEAD.json` — the fingerprint mode's baseline —
+   * `reviews/round7/baseline-00f8900.json` — the fingerprint mode's baseline —
    * contains no `<id>+<affix>` source key anywhere, because its 60 s of stage 1
    * never banks enough credit for a 4.5-credit affix. So a change to
    * `ELITE_STATS` gets `no fields moved` from that gate and it means nothing.
@@ -1170,6 +1196,7 @@ if (MODE === 'elite-dps') {
 
   const eliteOut = {
     mode: 'elite-dps',
+    source: captureSource(),
     card: elite.card,
     arms: elite.arms,
     lethal: elite.lethal,
@@ -1193,7 +1220,7 @@ if (MODE === 'elite-dps') {
     console.log(`${name.padEnd(16)} dps ${String(a.dps).padStart(7)}  aura ${String(a.auraDirectDps).padStart(6)}  burnDot ${String(a.burnDotDps).padStart(6)}  melee ${String(a.meleeDps).padStart(6)}`);
   }
   if (plainContact > 0) {
-    for (const k of [`blazing@${CONTACT_M}`, `glacial@${CONTACT_M}`]) {
+    for (const k of [`emberclad@${CONTACT_M}`, `rimebound@${CONTACT_M}`]) {
       console.log(`${k} is ${(elite.arms[k].dps / plainContact).toFixed(2)}x plain@${CONTACT_M}`);
     }
   }
@@ -1206,7 +1233,7 @@ if (MODE === 'elite-dps') {
    * gate.
    *
    * Until this existed, `ELITE_STATS` was the largest measured behaviour change
-   * on the branch — blazing 100.7 -> 40.9 dps — with nothing that could fail on
+   * on the branch — emberclad 100.7 -> 40.9 dps — with nothing that could fail on
    * it. The default fingerprint is structurally blind to affixes (see the NOTE
    * it prints), this mode had no comparator at all, and there was no committed
    * baseline for one to read. A regression was caught by a human reading six
@@ -1280,6 +1307,7 @@ if (totalErrors > 0) {
 }
 
 const out = {
+  source: captureSource(),
   fingerprint: result.fingerprint,
   // Diagnostics, deliberately outside `fingerprint` so a diff of the thing this
   // instrument exists to compare is not polluted by wall-clock numbers. These
@@ -1306,7 +1334,7 @@ if (outPath) {
 /* What this fingerprint cannot see, said out loud every time it is taken.
  *
  * `sourceKey` files an elite as `<id>+<affix>`. Measured: no such key exists
- * anywhere in `reviews/round8/baseline-HEAD.json` — 10 s of settle plus 60 s of
+ * anywhere in `reviews/round7/baseline-00f8900.json` — 10 s of settle plus 60 s of
  * stage 1 never banks the 4.5 credits an affix costs, and `enemiesAliveMax` is
  * 6. So a change to `ELITE_STATS` moves nothing here and `--compare` reports
  * `no fields moved` for a change that halved an affix's damage.

@@ -37,7 +37,7 @@ async function run(label, rules, probeName) {
     // reaching past the gate.
     for (const a of ctx.artifacts.list()) ctx.profile.unlock('artifact', a.id, { silent: true });
 
-    ctx.difficulty.set(rules.difficulty || 'rainstorm');
+    ctx.difficulty.set(rules.difficulty || 'fracture');
     ctx.artifacts.setActive(rules.artifacts || []);
 
     await globalThis.__HARNESS__.gameplay({ settleFrames: 30 });
@@ -91,21 +91,21 @@ async function run(label, rules, probeName) {
     switch (probeName) {
       // ---- swarms: twice the bodies, half the health --------------------
       case 'swarms': {
-        const r = spawnBatch('beetle', 600, 600);
+        const r = spawnBatch('scarab', 600, 600);
         return { ...r, frameErrors: ctx.frameErrors };
       }
 
       // ---- honour: everything wears an affix ----------------------------
       case 'honour': {
-        const r = spawnBatch('beetle', 600, 600);
+        const r = spawnBatch('scarab', 600, 600);
         return { ...r, frameErrors: ctx.frameErrors };
       }
 
       // ---- evolution: monsters scale off your inventory ------------------
       case 'evolution': {
-        for (const id of ['syringe', 'crowbar', 'tougher-times']) ctx.items.give(id, 8);
+        for (const id of ['adrenal-syringe', 'pry-bar', 'dented-buckler']) ctx.items.give(id, 8);
         const held = ctx.items.inventory().reduce((a, b) => a + b.count, 0);
-        const r = spawnBatch('beetle', 300, 600);
+        const r = spawnBatch('scarab', 300, 600);
         return { ...r, itemsHeld: held, scale: { ...ctx.artifacts.monsterScale() }, frameErrors: ctx.frameErrors };
       }
 
@@ -125,7 +125,7 @@ async function run(label, rules, probeName) {
       case 'command': {
         // Hold three of one common item, so "what you already hold most of"
         // has an unambiguous answer the probe can name up front.
-        ctx.items.give('crowbar', 3);
+        ctx.items.give('pry-bar', 3);
         const ids = [];
         for (let i = 0; i < 60; i++) ids.push(ctx.items.rollItem('common'));
         const counts = tally(ids);
@@ -157,7 +157,7 @@ async function run(label, rules, probeName) {
         }
         // Drops: run a fixed number of kill payouts through the real path and
         // count the orbs it produced.
-        const r = spawnBatch('golem', 600, 600);
+        const r = spawnBatch('sentinel', 600, 600);
         const before = ctx.interactables.orbs.length;
         let paid = 0;
         for (let i = 0; i < 400; i++) {
@@ -192,7 +192,7 @@ async function run(label, rules, probeName) {
         const curve = [at(0), at(5), at(10), at(20), at(30)];
         // One species, one clock, so the health figure is not confounded by the
         // three difficulties buying different cards.
-        const sameCard = spawnBatch('beetle', 300, 600);
+        const sameCard = spawnBatch('scarab', 300, 600);
 
         // A real 60-second window of the director at minute 10, counting every
         // unit it decides to buy. `spawnOne` is wrapped rather than reading
@@ -256,9 +256,9 @@ const CASES = [
   ['caprice', { artifacts: ['caprice'] }, 'caprice', 'ON'],
   ['sacrifice', { artifacts: [] }, 'sacrifice', 'OFF'],
   ['sacrifice', { artifacts: ['sacrifice'] }, 'sacrifice', 'ON'],
-  ['difficulty', { difficulty: 'drizzle' }, 'difficulty', 'DRIZZLE'],
-  ['difficulty', { difficulty: 'rainstorm' }, 'difficulty', 'RAINSTORM'],
-  ['difficulty', { difficulty: 'monsoon' }, 'difficulty', 'MONSOON'],
+  ['difficulty', { difficulty: 'settling' }, 'difficulty', 'DRIZZLE'],
+  ['difficulty', { difficulty: 'fracture' }, 'difficulty', 'RAINSTORM'],
+  ['difficulty', { difficulty: 'cataclysm' }, 'difficulty', 'MONSOON'],
 ];
 
 // `node tools/artifactprobe.mjs swarms difficulty` runs only those cases.

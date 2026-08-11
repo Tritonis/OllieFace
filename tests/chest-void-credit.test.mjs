@@ -22,7 +22,7 @@ function makeCtx({ gold = 1000 } = {}) {
     items: {
       gold,
       spendGold(cost) { if (this.gold < cost) return false; this.gold -= cost; return true; },
-      rollItem() { return 'syringe'; },
+      rollItem() { return 'adrenal-syringe'; },
     },
     interactables: { orbs: [], spawnOrb(pos, id) { this.orbs.push(id); } },
     audio: null,

@@ -178,7 +178,7 @@ export const READABILITY = {
     // have literally none. This is not the instrument failing: thunderhead
     // reads 14.03%, acolyte 3.72%, vizier 2.12%, warden 1.95% on the same run,
     // so enclosed space is detected wherever it exists. It is also not a
-    // resolution artifact at the top of the list — titan (858x737 px of bbox),
+    // resolution artifact at the top of the list — colossus (858x737 px of bbox),
     // hulk (332x452) and wyrm (540x760) read exactly zero with tens of
     // thousands of pixels available to find a hole in.
     //
@@ -190,18 +190,18 @@ export const READABILITY = {
     // recorded here rather than dissolved by lowering `minHoles`.
     { id: 'mite',     kind: 'holes', value: 0.0002, note: 'closed outline: no enclosed negative space in the idle read' },
     { id: 'spitling', kind: 'holes', value: 0.0003, note: 'closed outline: no enclosed negative space in the idle read' },
-    { id: 'lemurian', kind: 'holes', value: 0,      note: 'closed outline: no enclosed negative space in the idle read' },
-    { id: 'wisp',     kind: 'holes', value: 0,      note: 'closed outline: no enclosed negative space in the idle read' },
-    { id: 'pest',     kind: 'holes', value: 0,      note: 'closed outline: no enclosed negative space in the idle read' },
+    { id: 'skink', kind: 'holes', value: 0,      note: 'closed outline: no enclosed negative space in the idle read' },
+    { id: 'mote',     kind: 'holes', value: 0,      note: 'closed outline: no enclosed negative space in the idle read' },
+    { id: 'shrike',     kind: 'holes', value: 0,      note: 'closed outline: no enclosed negative space in the idle read' },
     { id: 'harrier',  kind: 'holes', value: 0,      note: 'closed outline: no enclosed negative space in the idle read' },
     { id: 'burrower', kind: 'holes', value: 0.0001, note: 'closed outline: no enclosed negative space in the idle read' },
     { id: 'brood',    kind: 'holes', value: 0,      note: 'closed outline: no enclosed negative space in the idle read' },
-    { id: 'golem',    kind: 'holes', value: 0.0001, note: 'closed outline: no enclosed negative space in the idle read' },
+    { id: 'sentinel',    kind: 'holes', value: 0.0001, note: 'closed outline: no enclosed negative space in the idle read' },
     { id: 'mortar',   kind: 'holes', value: 0.0013, note: 'closed outline: no enclosed negative space in the idle read' },
     { id: 'lasher',   kind: 'holes', value: 0.0022, note: 'closed outline: no enclosed negative space in the idle read' },
     { id: 'redoubt',  kind: 'holes', value: 0.0015, note: 'closed outline: no enclosed negative space in the idle read' },
     { id: 'hulk',     kind: 'holes', value: 0,      note: 'closed outline: no enclosed negative space in the idle read' },
-    { id: 'titan',    kind: 'holes', value: 0,      note: 'closed outline: no enclosed negative space in the idle read' },
+    { id: 'colossus',    kind: 'holes', value: 0,      note: 'closed outline: no enclosed negative space in the idle read' },
     { id: 'wyrm',     kind: 'holes', value: 0,      note: 'closed outline: no enclosed negative space in the idle read' },
     { id: 'matron',   kind: 'holes', value: 0.0008, note: 'closed outline: no enclosed negative space in the idle read' },
     { id: 'maw',      kind: 'holes', value: 0.0029, note: 'closed outline: no enclosed negative space in the idle read' },

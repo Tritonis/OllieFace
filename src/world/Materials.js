@@ -47,7 +47,7 @@ export const PALETTE = {
   accent: {
     // Value, not hue. Measured at luma 224 in a mean-luma-62 combat frame the
     // accent was the brightest non-VFX object on screen — brighter than the
-    // golems that wear the same teal as their species colour, and brighter than
+    // sentinels that wear the same teal as their species colour, and brighter than
     // the subject of the prop shot. Scenery may not out-value the things the
     // player has to read. Same hue (178 / 185 deg), ~0.8x the albedo and a
     // dimmer glow; see `crystal`'s emissiveIntensity for the other half.

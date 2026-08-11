@@ -118,7 +118,7 @@ function statusPlayer(ctx, victim, source, type, count = 1, overrides = null) {
  *
  * `overrides.stackDamage` is a parameter `Combat.applyStatus` has always
  * accepted and that nothing in `src/` passed. The player DoT stack cap is
- * unaffected: it tests `def.stackDamage`, not the override, so a blazing burn is
+ * unaffected: it tests `def.stackDamage`, not the override, so an emberclad burn is
  * still capped at three stacks.
  */
 function eliteStatusOverride(em) {
@@ -307,7 +307,7 @@ export class Enemy {
     this.orbitSign = ctx.rng.next() < 0.5 ? -1 : 1;
     // Approach personality, rolled once per spawn: which way this unit swings
     // on the run-in, how hard, and how long it holds at the edge of reach
-    // before the first commit. Two beetles out of the same pack therefore take
+    // before the first commit. Two scarabs out of the same pack therefore take
     // two different paths to the same player.
     //
     // `melee` is the *prowl* flag, not "has a melee attack": a swarmer has one
@@ -524,7 +524,7 @@ export class Enemy {
     this.fsm.set(S.DIE, ctx);
 
     // Elite death effects. These are the reason you learn to kill an
-    // Overloading unit at range and never stand on a Glacial's corpse.
+    // Galvanic unit at range and never stand on a Rimebound's corpse.
     const em = this.elite;
     if (em && em.deathBlast) {
       spawnBlast(ctx, this, em.blastRadius, this.damage * em.deathBlast, 0x74a6ff, 'shock');
@@ -595,7 +595,7 @@ export class Enemy {
       this.hasLOS = this.checkLOS(ctx);
     }
 
-    // Blazing units cook anything standing next to them.
+    // Emberclad units cook anything standing next to them.
     const em = this.elite;
     if (em && em.auraDps && this.alive) {
       this.auraT -= h;
@@ -665,7 +665,7 @@ export class Enemy {
 
   /**
    * A pack must not all land at once. When one unit commits, its close
-   * neighbours push their own commit back, so five beetles strike as a
+   * neighbours push their own commit back, so five scarabs strike as a
    * readable sequence the player can react to instead of one instant burst.
    */
   staggerPack(ctx) {
@@ -815,7 +815,7 @@ export class Enemy {
      *
      * It is applied to the *whole* desired velocity and to the clamp above it,
      * not to `steer`'s `speed` argument alone. Scaling only that would leave
-     * separation, obstacle avoidance and the pest jitter running at full pace —
+     * separation, obstacle avoidance and the shrike jitter running at full pace —
      * so a frozen unit would still slide around the field under its neighbours,
      * which is the opposite of what a freeze reads as. The charge and the
      * burrow return before that point and are scaled where they integrate.
@@ -882,7 +882,7 @@ export class Enemy {
         d.z += this._avoid.z * k;
       }
 
-      // Pests jitter so a flight of them reads as a swarm, not a formation.
+      // Shrikes jitter so a flight of them reads as a swarm, not a formation.
       if (def.erratic) {
         const t = ctx.time * 3.1 + this.noise;
         d.x += Math.sin(t) * this.moveSpeed * 0.35;
@@ -998,7 +998,7 @@ export class Enemy {
     this.fsm.set(S.WINDUP, ctx);
   }
 
-  /** Scale every attack phase — phase-2 titans wind up noticeably faster. */
+  /** Scale every attack phase — phase-2 colossuss wind up noticeably faster. */
   get timeScale() { return this.isBoss && this.phase === 2 ? 0.72 : 1; }
 
   fireAttack(ctx) {
@@ -1016,7 +1016,7 @@ export class Enemy {
             hurtPlayer(ctx, p, this, this.damage, 'melee');
             // The affix's melee rider. `burn` is the gate and `burnTick` is the
             // rate, and they are deliberately independent: no shipping affix
-            // sets `burn` today (blazing's went to 0 — see `ELITE_STATS`), so
+            // sets `burn` today (emberclad's went to 0 — see `ELITE_STATS`), so
             // this arm is currently unreachable, and it carries the override so
             // that the next affix to switch it on gets the elite burn rate
             // rather than the 21-dps-per-stack player rate the last one did.
@@ -1327,10 +1327,10 @@ export class Enemy {
       const combat = ctx.combat;
       if (combat?.applyDamage) {
         // Credited to whoever it was attacking, not to `ctx.player` — on a host
-        // that read as the host's own survivor whichever player the pest
+        // that read as the host's own survivor whichever player the shrike
         // actually dived on. What the attribution buys is the `kill` event's
         // `source` and the `onKill` dispatch, which only fires for
-        // `source?.isPlayer`: a guest's on-kill items now proc off the pest
+        // `source?.isPlayer`: a guest's on-kill items now proc off the shrike
         // that killed itself on them. Not gold — `Items.rewardKill(victim)`
         // takes no source and pays the local inventory either way.
         // Health plus shield, and past armour — a suicide is a certainty, not
@@ -1511,7 +1511,7 @@ const STATES = {
       const i = e.pickAttack(ctx);
       if (i >= 0) { e.beginAttack(ctx, i); return; }
       // Ranged units that can't shoot yet go find a better angle instead of
-      // standing still — this is what stops golem/wisp clusters looking inert.
+      // standing still — this is what stops sentinel/mote clusters looking inert.
       const def = e.def;
       // `attacks` is empty for no shipping card, but a spawn card or a test
       // dummy written without one used to throw here *every frame* — thousands
@@ -1582,7 +1582,7 @@ const STATES = {
       if (a && (a.kind === 'beam' || a.kind === 'barrage')) {
         e.anim.beamOn = true;
         // Drawn length only. The hitscan still runs to `a.range` (55 m for the
-        // titan); the quad stops at BEAM_MAX_LEN so a distant shooter fires a
+        // colossus); the quad stops at BEAM_MAX_LEN so a distant shooter fires a
         // bolt out of its own muzzle instead of ruling a wire across the frame.
         e.anim.beamLen = Math.min(a.range, Math.max(4, e.distToPlayer), BEAM_MAX_LEN);
       }

@@ -256,9 +256,9 @@ export const ITEMS = [
   // on the HUD's append-only item strip in `Items._settleBlight`.
   {
     id: 'spasm-gland', name: 'Spasm Gland', tier: 'blight', glyph: 'spasmgland',
-    corrupts: 'syringe',
+    corrupts: 'adrenal-syringe',
     flavour: 'It fires whether or not you asked. The asking was always the slow part.',
-    description: (n) => `+${pct(linear(0.26, n))} attack speed. Your maximum health is reduced to ${pct(hyperbolicMult(0.15, n))}. Consumes every ${consumes('syringe')} you hold.`,
+    description: (n) => `+${pct(linear(0.26, n))} attack speed. Your maximum health is reduced to ${pct(hyperbolicMult(0.15, n))}. Consumes every ${consumes('adrenal-syringe')} you hold.`,
     stat: (n, s) => {
       s.attackSpeed += linear(0.26, n);
       s.healthMult *= hyperbolicMult(0.15, n);
@@ -266,9 +266,9 @@ export const ITEMS = [
   },
   {
     id: 'bloat-cyst', name: 'Bloat Cyst', tier: 'blight', glyph: 'bloatcyst',
-    corrupts: 'steak',
+    corrupts: 'cured-haunch',
     flavour: 'More of you to hit, and less of you willing to stop it.',
-    description: (n) => `+${linear(55, n)} maximum health. -${linear(9, n)} armor. Consumes every ${consumes('steak')} you hold.`,
+    description: (n) => `+${linear(55, n)} maximum health. -${linear(9, n)} armor. Consumes every ${consumes('cured-haunch')} you hold.`,
     stat: (n, s) => {
       s.maxHealth += linear(55, n);
       // Negative armor is asymptotic in Combat's mitigation curve, so no stack
@@ -279,9 +279,9 @@ export const ITEMS = [
   },
   {
     id: 'clouded-eye', name: 'Clouded Eye', tier: 'blight', glyph: 'cloudedeye',
-    corrupts: 'glasses',
+    corrupts: 'gunsmiths-loupe',
     flavour: 'You see the weak point in everything now. You just cannot see it well.',
-    description: (n) => `+${pct(hyperbolic(0.20, n))} critical strike chance. Critical strikes deal ${pct(1 - hyperbolicMult(0.30, n))} less bonus damage. Consumes every ${consumes('glasses')} you hold.`,
+    description: (n) => `+${pct(hyperbolic(0.20, n))} critical strike chance. Critical strikes deal ${pct(1 - hyperbolicMult(0.30, n))} less bonus damage. Consumes every ${consumes('gunsmiths-loupe')} you hold.`,
     stat: (n, s) => {
       s.critChance = 1 - (1 - s.critChance) * (1 - hyperbolic(0.20, n));
       // `critEdge` scales the *bonus* half of the multiplier and is applied once
@@ -292,9 +292,9 @@ export const ITEMS = [
   },
   {
     id: 'slag-ingot', name: 'Slag Ingot', tier: 'blight', glyph: 'slagingot',
-    corrupts: 'armor-plate',
+    corrupts: 'trauma-plate',
     flavour: 'Poured straight onto the plate carrier while it was still on him.',
-    description: (n) => `Reduce all incoming damage by ${linear(13, n)}. Your movement speed is reduced to ${pct(hyperbolicMult(0.20, n))}. Consumes every ${consumes('armor-plate')} you hold.`,
+    description: (n) => `Reduce all incoming damage by ${linear(13, n)}. Your movement speed is reduced to ${pct(hyperbolicMult(0.20, n))}. Consumes every ${consumes('trauma-plate')} you hold.`,
     stat: (n, s) => {
       s.flatReduction += linear(13, n);
       s.moveSpeed *= hyperbolicMult(0.20, n);
@@ -302,9 +302,9 @@ export const ITEMS = [
   },
   {
     id: 'arc-rot', name: 'Arc Rot', tier: 'blight', glyph: 'arcrot',
-    corrupts: 'ukulele',
+    corrupts: 'cracked-zither',
     flavour: 'The current has to come from somewhere, and you are the nearest wet thing.',
-    description: (n) => `${pct(hyperbolic(0.40, n))} chance on hit to arc for 110% damage across ${3 + linear(2, n)} targets. Every arc costs 1.5% of your current health, down to 30%. Consumes every ${consumes('ukulele')} you hold.`,
+    description: (n) => `${pct(hyperbolic(0.40, n))} chance on hit to arc for 110% damage across ${3 + linear(2, n)} targets. Every arc costs 1.5% of your current health, down to 30%. Consumes every ${consumes('cracked-zither')} you hold.`,
     hooks: {
       onHit: (e, api) => {
         if (!api.roll(hyperbolic(0.40, api.count))) return;
@@ -317,9 +317,9 @@ export const ITEMS = [
   },
   {
     id: 'bile-shell', name: 'Bile Shell', tier: 'blight', glyph: 'bileshell',
-    corrupts: 'atg',
+    corrupts: 'missile-rack',
     flavour: 'It was a warhead before something digested it.',
-    description: (n) => `${pct(hyperbolic(0.22, n))} chance on hit to fire a shell for ${pct(linear(4.5, n))} damage. All of your damage is reduced to ${pct(hyperbolicMult(0.20, n))}. Consumes every ${consumes('atg')} you hold.`,
+    description: (n) => `${pct(hyperbolic(0.22, n))} chance on hit to fire a shell for ${pct(linear(4.5, n))} damage. All of your damage is reduced to ${pct(hyperbolicMult(0.20, n))}. Consumes every ${consumes('missile-rack')} you hold.`,
     stat: (n, s) => { s.damageMult *= hyperbolicMult(0.20, n); },
     hooks: {
       onHit: (e, api) => {
@@ -333,9 +333,9 @@ export const ITEMS = [
   },
   {
     id: 'gristle-sickle', name: 'Gristle Sickle', tier: 'blight', glyph: 'gristlesickle',
-    corrupts: 'harvesters-scythe',
+    corrupts: 'reaping-hook',
     flavour: 'It will keep you alive exactly as long as you keep finding throats.',
-    description: (n) => `Critical strikes heal you for ${linear(24, n)}. You no longer regenerate health passively. Consumes every ${consumes('harvesters-scythe')} you hold.`,
+    description: (n) => `Critical strikes heal you for ${linear(24, n)}. You no longer regenerate health passively. Consumes every ${consumes('reaping-hook')} you hold.`,
     stat: (n, s) => { s.noRegen = true; },
     hooks: {
       onHit: (e, api) => { if (e.crit) api.combat.heal(api.player, linear(24, api.count)); },
@@ -343,9 +343,9 @@ export const ITEMS = [
   },
   {
     id: 'rupture-gall', name: 'Rupture Gall', tier: 'blight', glyph: 'rupturegall',
-    corrupts: 'behemoth',
+    corrupts: 'shrapnel-heart',
     flavour: 'A tumour that learned what a shaped charge is.',
-    description: (n) => `ALL of your attacks explode in a ${2.5 + linear(1, n)}m radius for an extra 105% damage. Your maximum health is reduced to ${pct(hyperbolicMult(0.35, n))}. Consumes every ${consumes('behemoth')} you hold.`,
+    description: (n) => `ALL of your attacks explode in a ${2.5 + linear(1, n)}m radius for an extra 105% damage. Your maximum health is reduced to ${pct(hyperbolicMult(0.35, n))}. Consumes every ${consumes('shrapnel-heart')} you hold.`,
     stat: (n, s) => { s.healthMult *= hyperbolicMult(0.35, n); },
     hooks: {
       onHit: (e, api) => {
@@ -359,9 +359,9 @@ export const ITEMS = [
   },
   {
     id: 'loaded-knucklebone', name: 'Loaded Knucklebone', tier: 'blight', glyph: 'knucklebone',
-    corrupts: 'clover',
+    corrupts: 'pressed-clover',
     flavour: 'Weighted on one face. Someone had to be hollowed out to do it.',
-    description: (n) => `All random effects are rolled +${linear(2, n)} extra times for a favourable outcome. You take ${pct(2 - 100 / (100 + linear(40, n)))} more damage. Consumes every ${consumes('clover')} you hold.`,
+    description: (n) => `All random effects are rolled +${linear(2, n)} extra times for a favourable outcome. You take ${pct(2 - 100 / (100 + linear(40, n)))} more damage. Consumes every ${consumes('pressed-clover')} you hold.`,
     stat: (n, s) => {
       s.luck += linear(2, n);
       s.armor -= linear(40, n);
@@ -370,9 +370,9 @@ export const ITEMS = [
 
   {
     id: 'gorge-tooth', name: 'Gorging Tooth', tier: 'blight', glyph: 'gorgetooth',
-    corrupts: 'monster-tooth',
+    corrupts: 'marrow-tooth',
     flavour: 'It does not chew. It only ever swallows, and it is always the wrong size for you.',
-    description: (n) => `Killing an enemy heals ${pct(linear(0.07, n))} of maximum health. Your maximum health is reduced to ${pct(hyperbolicMult(0.22, n))}. Consumes every ${consumes('monster-tooth')} you hold.`,
+    description: (n) => `Killing an enemy heals ${pct(linear(0.07, n))} of maximum health. Your maximum health is reduced to ${pct(hyperbolicMult(0.22, n))}. Consumes every ${consumes('marrow-tooth')} you hold.`,
     // The base heals a flat amount plus a small fraction; this heals a *large*
     // fraction of a bar it has also shrunk. The two halves fight each other on
     // purpose: the smaller the pool, the larger a percentage heal refills and
@@ -389,9 +389,9 @@ export const ITEMS = [
   },
   {
     id: 'splinter-bar', name: 'Splinter Bar', tier: 'blight', glyph: 'splinterbar',
-    corrupts: 'crowbar',
+    corrupts: 'pry-bar',
     flavour: 'Superb at opening things. Useless once they are open, and it knows it.',
-    description: (n) => `Deal +${pct(linear(1.3, n))} damage to enemies above 90% health. You deal ${pct(1 - hyperbolicMult(0.5, n))} less damage to enemies below 25% health. Consumes every ${consumes('crowbar')} you hold.`,
+    description: (n) => `Deal +${pct(linear(1.3, n))} damage to enemies above 90% health. You deal ${pct(1 - hyperbolicMult(0.5, n))} less damage to enemies below 25% health. Consumes every ${consumes('pry-bar')} you hold.`,
     // Both halves live in one `outgoing` and are therefore multiplicative and
     // order-independent by construction, which is the rule the tier is written
     // to. The cost is deliberately placed on the *other* end of the health bar
@@ -410,25 +410,25 @@ export const ITEMS = [
 
   // ------------------------------------------------------------------ COMMON
   {
-    id: 'syringe', name: 'Adrenal Syringe', tier: 'common', glyph: 'bars',
+    id: 'adrenal-syringe', name: 'Adrenal Syringe', tier: 'common', glyph: 'bars',
     flavour: 'Property of Dr. E. Fenwick. Do not remove from the medbay.',
     description: (n) => `+${pct(linear(0.15, n))} attack speed.`,
     stat: (n, s) => { s.attackSpeed += linear(0.15, n); },
   },
   {
-    id: 'hoof', name: 'Cloven Hoof', tier: 'common', glyph: 'arrow',
+    id: 'cloven-hoof', name: 'Cloven Hoof', tier: 'common', glyph: 'arrow',
     flavour: 'It still smells of the pasture.',
     description: (n) => `+${pct(linear(0.14, n))} movement speed.`,
     stat: (n, s) => { s.moveSpeed *= 1 + linear(0.14, n); },
   },
   {
-    id: 'steak', name: 'Cured Haunch', tier: 'common', glyph: 'drop',
+    id: 'cured-haunch', name: 'Cured Haunch', tier: 'common', glyph: 'drop',
     flavour: 'Salted three winters ago. It has outlasted the man who salted it.',
     description: (n) => `+${linear(25, n)} maximum health.`,
     stat: (n, s) => { s.maxHealth += linear(25, n); },
   },
   {
-    id: 'roll-of-pennies', name: 'Bruised Coinpurse', tier: 'common', glyph: 'circle',
+    id: 'bruised-coinpurse', name: 'Bruised Coinpurse', tier: 'common', glyph: 'circle',
     flavour: 'Found under the vending machine. Still counts.',
     description: (n) => `Gain ${linear(2, n)} gold whenever you are hurt.`,
     hooks: {
@@ -436,19 +436,19 @@ export const ITEMS = [
     },
   },
   {
-    id: 'tougher-times', name: 'Dented Buckler', tier: 'common', glyph: 'hex',
+    id: 'dented-buckler', name: 'Dented Buckler', tier: 'common', glyph: 'hex',
     flavour: 'Bounce, dodge, weave. Repeat.',
     description: (n) => `${pct(hyperbolic(0.15, n))} chance to block incoming damage.`,
     stat: (n, s) => { s.blockChance = 1 - (1 - (s.blockChance || 0)) * (1 - hyperbolic(0.15, n)); },
   },
   {
-    id: 'armor-plate', name: 'Trauma Plate', tier: 'common', glyph: 'shield',
+    id: 'trauma-plate', name: 'Trauma Plate', tier: 'common', glyph: 'shield',
     flavour: 'Rated for small-arms fire. Mostly.',
     description: (n) => `Reduce all incoming damage by ${linear(5, n)}.`,
     stat: (n, s) => { s.flatReduction += linear(5, n); },
   },
   {
-    id: 'crowbar', name: 'Pry Bar', tier: 'common', glyph: 'cross',
+    id: 'pry-bar', name: 'Pry Bar', tier: 'common', glyph: 'cross',
     flavour: 'It opens things. Some of them are people.',
     description: (n) => `Deal +${pct(linear(0.75, n))} damage to enemies above 90% health.`,
     hooks: {
@@ -459,7 +459,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'predatory', name: 'Bloodscent', tier: 'common', glyph: 'triangle',
+    id: 'bloodscent', name: 'Bloodscent', tier: 'common', glyph: 'triangle',
     flavour: 'Blood in the water.',
     description: (n) => `Critical strikes grant +${pct(linear(0.12, n))} attack speed for 3s, up to 3 stacks.`,
     hooks: {
@@ -470,13 +470,13 @@ export const ITEMS = [
     },
   },
   {
-    id: 'glasses', name: "Gunsmith's Loupe", tier: 'common', glyph: 'ring',
+    id: 'gunsmiths-loupe', name: "Gunsmith's Loupe", tier: 'common', glyph: 'ring',
     flavour: 'Perfect vision is a weapon.',
     description: (n) => `+${pct(hyperbolic(0.10, n))} critical strike chance.`,
     stat: (n, s) => { s.critChance = 1 - (1 - s.critChance) * (1 - hyperbolic(0.10, n)); },
   },
   {
-    id: 'sticky-bomb', name: 'Tar Charge', tier: 'common', glyph: 'diamond',
+    id: 'tar-charge', name: 'Tar Charge', tier: 'common', glyph: 'diamond',
     flavour: 'Warning: adhesive is permanent.',
     description: (n) => `${pct(hyperbolic(0.05, n))} chance on hit to attach a bomb for 180% damage.`,
     hooks: {
@@ -489,7 +489,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'gasoline', name: 'Leaking Jerrycan', tier: 'common', glyph: 'flame',
+    id: 'leaking-jerrycan', name: 'Leaking Jerrycan', tier: 'common', glyph: 'flame',
     flavour: 'Burn it all down.',
     description: (n) => `Killing an enemy ignites all enemies within ${linear(2, n) + 6}m for 75% damage.`,
     hooks: {
@@ -510,7 +510,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'monster-tooth', name: 'Marrow Tooth', tier: 'common', glyph: 'star',
+    id: 'marrow-tooth', name: 'Marrow Tooth', tier: 'common', glyph: 'star',
     flavour: 'Still warm.',
     description: (n) => `Killing an enemy heals you for ${linear(8, n)} plus ${pct(linear(0.02, n))} of max health.`,
     hooks: {
@@ -521,7 +521,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'topaz-brooch', name: 'Amber Clasp', tier: 'common', glyph: 'gem',
+    id: 'amber-clasp', name: 'Amber Clasp', tier: 'common', glyph: 'gem',
     flavour: 'A gift from someone who is now dead.',
     description: (n) => `Killing an enemy grants a temporary ${linear(15, n)} point barrier.`,
     hooks: {
@@ -529,12 +529,12 @@ export const ITEMS = [
     },
   },
   {
-    id: 'medkit', name: 'Stitch Kit', tier: 'common', glyph: 'plus',
+    id: 'stitch-kit', name: 'Stitch Kit', tier: 'common', glyph: 'plus',
     flavour: 'Standard issue. Rarely enough.',
     description: (n) => `After being hurt, heal for ${linear(10, n)} plus ${pct(linear(0.03, n))} of max health.`,
     hooks: {
       onDamaged: (e, api) => {
-        if (!api.items.cooldownReady('medkit', 1.2)) return;
+        if (!api.items.cooldownReady('stitch-kit', 1.2)) return;
         const p = api.player;
         api.combat.heal(p, linear(10, api.count) + (p.stats?.maxHealth || 100) * linear(0.03, api.count));
       },
@@ -765,7 +765,7 @@ export const ITEMS = [
 
   // ---------------------------------------------------------------- UNCOMMON
   {
-    id: 'ukulele', name: 'Cracked Zither', tier: 'uncommon', glyph: 'bolt',
+    id: 'cracked-zither', name: 'Cracked Zither', tier: 'uncommon', glyph: 'bolt',
     flavour: 'It only knows one chord and the chord is lightning.',
     description: (n) => `${pct(hyperbolic(0.25, n))} chance on hit to fire chain lightning for 80% damage, bouncing to ${2 + linear(2, n)} targets.`,
     hooks: {
@@ -776,7 +776,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'atg', name: 'Missile Rack Mk. I', tier: 'uncommon', glyph: 'rocket',
+    id: 'missile-rack', name: 'Missile Rack Mk. I', tier: 'uncommon', glyph: 'rocket',
     flavour: 'Fire and forget. Mostly forget.',
     description: (n) => `${pct(hyperbolic(0.10, n))} chance on hit to fire a missile for ${pct(linear(3, n))} damage.`,
     hooks: {
@@ -790,7 +790,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'tri-tip', name: 'Gutting Shiv', tier: 'uncommon', glyph: 'blade',
+    id: 'gutting-shiv', name: 'Gutting Shiv', tier: 'uncommon', glyph: 'blade',
     flavour: 'One edge, and it never lets the wound close.',
     description: (n) => `${pct(hyperbolic(0.15, n))} chance on hit to cause bleeding for 240% damage over 3s.`,
     hooks: {
@@ -801,7 +801,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'stun-grenade', name: 'Concussion Charge', tier: 'uncommon', glyph: 'burst',
+    id: 'concussion-charge', name: 'Concussion Charge', tier: 'uncommon', glyph: 'burst',
     flavour: 'Loud. Bright. Effective.',
     description: (n) => `${pct(hyperbolic(0.05, n))} chance on hit to stun enemies for 2s.`,
     hooks: {
@@ -827,7 +827,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'infusion', name: 'Feeding Vial', tier: 'uncommon', glyph: 'spiral',
+    id: 'feeding-vial', name: 'Feeding Vial', tier: 'uncommon', glyph: 'spiral',
     flavour: 'Every kill makes you a little more permanent.',
     description: (n) => `Killing an enemy permanently grants +1 max health, up to +${linear(100, n)}.`,
     hooks: {
@@ -835,7 +835,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'harvesters-scythe', name: 'Reaping Hook', tier: 'uncommon', glyph: 'scythe',
+    id: 'reaping-hook', name: 'Reaping Hook', tier: 'uncommon', glyph: 'scythe',
     flavour: 'It takes its cut on the way past.',
     description: (n) => `Critical strikes heal you for ${linear(8, n)}.`,
     hooks: {
@@ -843,7 +843,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'leeching-seed', name: 'Thirsting Burr', tier: 'uncommon', glyph: 'leaf',
+    id: 'thirsting-burr', name: 'Thirsting Burr', tier: 'uncommon', glyph: 'leaf',
     flavour: 'It drinks and it grows.',
     description: (n) => `Dealing damage heals you for ${linear(1, n)}.`,
     hooks: {
@@ -851,7 +851,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'afterburner', name: 'Bailout Thrusters', tier: 'uncommon', glyph: 'wing',
+    id: 'bailout-thrusters', name: 'Bailout Thrusters', tier: 'uncommon', glyph: 'wing',
     flavour: 'Two more chances to be somewhere else.',
     description: (n) => `+${linear(2, n)} utility charges and ${pct(1 - hyperbolicMult(0.15, n))} utility cooldown reduction.`,
     stat: (n, s) => {
@@ -860,7 +860,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'wax-quail', name: 'Waxed Wing', tier: 'uncommon', glyph: 'feather',
+    id: 'waxed-wing', name: 'Waxed Wing', tier: 'uncommon', glyph: 'feather',
     flavour: 'Up is a direction. Forward is a lifestyle.',
     // "While sprinting" was in this text and never in the hook, and until the
     // `jump` event existed nothing fired either way. Now that it does, the text
@@ -878,7 +878,7 @@ export const ITEMS = [
     stat: (n, s) => { s.jumpCount += linear(1, n); },
   },
   {
-    id: 'will-o-wisp', name: 'Corpse Flare', tier: 'uncommon', glyph: 'flamering',
+    id: 'corpse-flare', name: 'Corpse Flare', tier: 'uncommon', glyph: 'flamering',
     flavour: 'Follow the light. It is on fire.',
     description: (n) => `Killing an enemy detonates a ${pct(linear(3, n))} damage flame pillar.`,
     hooks: {
@@ -890,7 +890,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'fuel-cell', name: 'Dry Cell', tier: 'uncommon', glyph: 'cell',
+    id: 'dry-cell', name: 'Dry Cell', tier: 'uncommon', glyph: 'cell',
     flavour: 'Charged, sealed, and ready to be abused.',
     description: (n) => `+${linear(1, n)} equipment charge and ${pct(1 - hyperbolicMult(0.15, n))} equipment cooldown reduction.`,
     // The one item that pays into the equipment slot's own two dials. It writes
@@ -903,7 +903,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'berzerkers-pauldron', name: 'Red-Mist Pauldron', tier: 'uncommon', glyph: 'pauldron',
+    id: 'red-mist-pauldron', name: 'Red-Mist Pauldron', tier: 'uncommon', glyph: 'pauldron',
     flavour: 'Three at once and the world goes red.',
     description: (n) => `Killing 3 enemies within 1s sends you into frenzy: +${pct(0.3)} attack and move speed for ${linear(6, n)}s.`,
     hooks: {
@@ -915,12 +915,12 @@ export const ITEMS = [
   },
 
   {
-    id: 'razor-wire', name: 'Barb Snare', tier: 'uncommon', glyph: 'razor',
+    id: 'barb-snare', name: 'Barb Snare', tier: 'uncommon', glyph: 'razor',
     flavour: 'Strung at ankle height by someone who never came back for it.',
     description: (n) => `Being hurt lashes all enemies within ${6 + linear(2, n)}m for ${pct(linear(1.6, n))} damage.`,
     hooks: {
       onDamaged: (e, api) => {
-        if (!api.items.cooldownReady('razor-wire', 0.5)) return;
+        if (!api.items.cooldownReady('barb-snare', 0.5)) return;
         const radius = 6 + linear(2, api.count);
         for (const t of nearbyHostiles(api, api.player.position, radius)) {
           api.combat.applyDamage(t, api.items.baseDamage() * linear(1.6, api.count), {
@@ -1278,35 +1278,35 @@ export const ITEMS = [
 
   // --------------------------------------------------------------- LEGENDARY
   {
-    id: 'behemoth', name: 'Shrapnel Heart', tier: 'legendary', glyph: 'nova',
+    id: 'shrapnel-heart', name: 'Shrapnel Heart', tier: 'legendary', glyph: 'nova',
     flavour: 'Everything you touch detonates. Including the things you did not mean to touch.',
     description: (n) => `ALL of your attacks explode in a ${linear(1.5, n) + 2.5}m radius for an extra 60% damage.`,
     hooks: {
       // The build-definer: it converts every single-target proc into an AoE,
       // which is what turns a linear DPS curve into the minute-20 slot machine.
       onHit: (e, api) => {
-        if (e.type === 'behemoth') return; // never detonate our own detonation
+        if (e.type === 'shrapnel-heart') return; // never detonate our own detonation
         if (api.procDepth > api.combat.MAX_PROC_DEPTH - 1) return;
         api.combat.explode(e.position, 2.5 + linear(1.5, api.count), e.amount * 0.6, api.player, {
-          team: 'player', proc: 0, procDepth: api.procDepth, type: 'behemoth', falloff: false,
+          team: 'player', proc: 0, procDepth: api.procDepth, type: 'shrapnel-heart', falloff: false,
         });
       },
     },
   },
   {
-    id: 'clover', name: 'Pressed Clover', tier: 'legendary', glyph: 'clover',
+    id: 'pressed-clover', name: 'Pressed Clover', tier: 'legendary', glyph: 'clover',
     flavour: 'Luck is a statistic you can purchase.',
     description: (n) => `All random effects are rolled +${linear(1, n)} extra times for a favourable outcome.`,
     stat: (n, s) => { s.luck += linear(1, n); },
   },
   {
-    id: 'alien-head', name: 'Cortex Jar', tier: 'legendary', glyph: 'alien',
+    id: 'cortex-jar', name: 'Cortex Jar', tier: 'legendary', glyph: 'alien',
     flavour: 'It is still thinking.',
     description: (n) => `Reduce skill cooldowns by ${pct(1 - hyperbolicMult(0.25, n))}.`,
     stat: (n, s) => { s.cooldownMult *= hyperbolicMult(0.25, n); },
   },
   {
-    id: 'frost-relic', name: 'Killing Frost', tier: 'legendary', glyph: 'shard',
+    id: 'killing-frost', name: 'Killing Frost', tier: 'legendary', glyph: 'shard',
     flavour: 'The cold follows you now.',
     description: (n) => `Killing an enemy surrounds you with an icy storm dealing ${pct(linear(1.2, n))} damage per second, growing with each kill.`,
     hooks: {
@@ -1330,7 +1330,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'ceremonial-dagger', name: "Mourner's Dagger", tier: 'legendary', glyph: 'daggers',
+    id: 'mourners-dagger', name: "Mourner's Dagger", tier: 'legendary', glyph: 'daggers',
     flavour: 'The dead keep fighting for you.',
     description: (n) => `Killing an enemy releases ${linear(1, n) + 2} seeking daggers dealing ${pct(linear(1.5, n))} damage.`,
     hooks: {
@@ -1340,7 +1340,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'brainstalks', name: 'Whisper Stalks', tier: 'legendary', glyph: 'stalk',
+    id: 'whisper-stalks', name: 'Whisper Stalks', tier: 'legendary', glyph: 'stalk',
     flavour: 'It whispers cooldown numbers at you.',
     description: (n) => `Killing an elite removes all skill cooldowns for ${linear(4, n)}s.`,
     hooks: {
@@ -1557,7 +1557,7 @@ export const ITEMS = [
 
   // -------------------------------------------------------------------- BOSS
   {
-    id: 'titanic-knurl', name: 'Monolith Knuckle', tier: 'boss', glyph: 'monolith',
+    id: 'monolith-knuckle', name: 'Monolith Knuckle', tier: 'boss', glyph: 'monolith',
     flavour: 'A shard of something that used to walk.',
     description: (n) => `+${linear(40, n)} maximum health and +${linear(1.6, n)} health regeneration.`,
     stat: (n, s) => {
@@ -1566,7 +1566,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'planula', name: 'Grafted Polyp', tier: 'boss', glyph: 'polyp',
+    id: 'grafted-polyp', name: 'Grafted Polyp', tier: 'boss', glyph: 'polyp',
     flavour: 'It feeds on the pain of its host. Symbiotically.',
     description: (n) => `Heal for ${linear(15, n)} whenever you are hit.`,
     hooks: {
@@ -1574,7 +1574,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'queens-gland', name: 'Hive Gland', tier: 'boss', glyph: 'hive',
+    id: 'hive-gland', name: 'Hive Gland', tier: 'boss', glyph: 'hive',
     flavour: 'Something in here is still gestating.',
     description: (n) => `Every 10s, release a swarm striking ${linear(3, n)} enemies for ${pct(2)} damage.`,
     hooks: {
@@ -1725,7 +1725,7 @@ export const ITEMS = [
     },
   },
   {
-    id: 'corpse-bloom', name: 'Charnel Bloom', tier: 'lunar', glyph: 'bloom',
+    id: 'charnel-bloom', name: 'Charnel Bloom', tier: 'lunar', glyph: 'bloom',
     flavour: 'It only flowers where something stopped.',
     description: (n) => `Killing an enemy heals ${pct(linear(0.08, n))} of maximum health. You no longer regenerate health passively.`,
     // A flag rather than `s.healthRegen = 0`, for the same reason `noDefensive`

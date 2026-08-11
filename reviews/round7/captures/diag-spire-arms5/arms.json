@@ -1,0 +1,47 @@
+{
+  "seed": 1337,
+  "clockPinned": true,
+  "arms": [
+    [
+      "ctrl-a",
+      {}
+    ],
+    [
+      "ff110",
+      {
+        "fineFade": 110
+      }
+    ],
+    [
+      "ff160",
+      {
+        "fineFade": 160
+      }
+    ],
+    [
+      "ff110r082",
+      {
+        "fineFade": 110,
+        "rough": 0.82
+      }
+    ],
+    [
+      "ff160r082",
+      {
+        "fineFade": 160,
+        "rough": 0.82
+      }
+    ],
+    [
+      "ff220",
+      {
+        "fineFade": 220
+      }
+    ],
+    [
+      "ctrl-b",
+      {}
+    ]
+  ],
+  "errors": []
+}

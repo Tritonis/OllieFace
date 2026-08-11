@@ -107,7 +107,7 @@ console.log('an ordinary kill still refunds nothing');
   const { ctx, c } = makeCtx({ mods: { feed: 1, refund: 5 } });
   const p = P();
   c.feed(p, 100);
-  ctx.events.emit('kill', { victim: { affix: 'overloading' }, source: p });
+  ctx.events.emit('kill', { victim: { affix: 'galvanic' }, source: p });
   ok(c.world === 100, 'the multiplier gates on the Voidtouched affix as before');
 }
 
@@ -260,7 +260,7 @@ console.log('the clean ending is what seals it — a real Profile, a real commit
   ok(sealed(false, 0) === false,
     'and dying spotless does not — the seal is carried out, not died with');
 
-  // The Obelisk of Departure stands in the bazaar from stage 1 and its ending
+  // The Obelisk of Departure stands in the market from stage 1 and its ending
   // carries `won: true` (ENDINGS.obliterated, data/realms.js). Ending the run on
   // your own terms two minutes in is not "finishing a run at the Fracture", and
   // the row the player reads says so.

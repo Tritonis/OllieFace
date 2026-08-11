@@ -1,0 +1,58 @@
+{
+  "seed": 1337,
+  "clockPinned": true,
+  "arms": [
+    [
+      "ctrl-a",
+      {}
+    ],
+    [
+      "r074",
+      {
+        "rough": 0.74
+      }
+    ],
+    [
+      "fine0",
+      {
+        "fineAmp": 0
+      }
+    ],
+    [
+      "coarse0",
+      {
+        "coarseAmp": 0
+      }
+    ],
+    [
+      "cav0",
+      {
+        "cavity": 0
+      }
+    ],
+    [
+      "rmod0",
+      {
+        "roughMod": 0
+      }
+    ],
+    [
+      "rmod0r082",
+      {
+        "roughMod": 0,
+        "rough": 0.82
+      }
+    ],
+    [
+      "rmodNeg",
+      {
+        "roughMod": -0.2
+      }
+    ],
+    [
+      "ctrl-b",
+      {}
+    ]
+  ],
+  "errors": []
+}

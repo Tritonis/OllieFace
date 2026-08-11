@@ -1,0 +1,112 @@
+{
+  "seed": 1337,
+  "ready": true,
+  "clockPinned": true,
+  "roi": [
+    1000,
+    30,
+    1180,
+    260
+  ],
+  "arms": [
+    [
+      "ctrl-a",
+      "no change"
+    ],
+    [
+      "env0",
+      "envMapIntensity = 0 on the terrain material (removes the b09c3d4 probe reflection)"
+    ],
+    [
+      "rough1",
+      "roughness = 1.0 (round 6's decisive specular bisect)"
+    ],
+    [
+      "det0",
+      "detail-pass fine and coarse amplitudes = 0"
+    ],
+    [
+      "nmap0",
+      "normalMap detached"
+    ],
+    [
+      "ctrl-b",
+      "no change"
+    ]
+  ],
+  "facts": {
+    "camera": {
+      "pos": [
+        16.589,
+        8.227,
+        9.339
+      ],
+      "fov": 56,
+      "aspect": 1.7777777777777777,
+      "near": 0.1,
+      "far": 2000
+    },
+    "mPerPxPerM": 0.001181576514803286,
+    "terrain": {
+      "step": 1.375,
+      "segments": 160,
+      "half": 110,
+      "profile": "canyon",
+      "spires": 0
+    },
+    "terrainMat": {
+      "name": "",
+      "type": "MeshStandardMaterial",
+      "flatShading": false,
+      "roughness": 0.7,
+      "metalness": 0.03,
+      "envMapIntensity": 1.25,
+      "normalScale": [
+        1.15,
+        1.15
+      ],
+      "hasNormalMap": true,
+      "hasEnvMap": false,
+      "sceneEnvironment": true,
+      "mapRepeat": [
+        1,
+        1
+      ],
+      "detKind": "terrain",
+      "det": {
+        "uDetA": [
+          0.5434782608695652,
+          1.15,
+          0.11363636363636363,
+          0.78
+        ],
+        "uDetB": [
+          1,
+          0,
+          0.7,
+          0.2
+        ],
+        "uDetC": [
+          0,
+          1,
+          1,
+          0.05
+        ],
+        "uDetD": [
+          0.95,
+          55,
+          160,
+          400
+        ],
+        "uDetE": [
+          0.46,
+          2.2,
+          1,
+          0.3789205975877241
+        ]
+      }
+    },
+    "spireList": []
+  },
+  "errors": []
+}

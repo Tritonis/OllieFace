@@ -60,7 +60,7 @@ function air({ zenith, horizon, haze, ground, sun, cloud, cloudAmount = 0.2, haz
 
 export const REALMS = [
   {
-    id: 'bazaar',
+    id: 'market',
     name: 'The Hollow Market',
     kind: 'hub',
     // No director, no credits, no clock pressure. The whole point of the room
@@ -248,7 +248,7 @@ export const REALM_BY_ID = new Map(REALMS.map((r) => [r.id, r]));
  */
 export const GATEWAYS = [
   {
-    realm: 'bazaar',
+    realm: 'market',
     id: 'altar',
     name: 'Tithe Altar',
     // Armed rather than entered: pressing E here opens a second portal beside

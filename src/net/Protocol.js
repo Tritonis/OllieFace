@@ -59,7 +59,27 @@
 //     bumping is that a pre-round-5 build can no longer join a round-5 one —
 //     which is the correct outcome, told out loud on both machines, and it is
 //     free today because the co-op entry is held and no build is deployed.
-export const PROTOCOL_VERSION = 4;
+// 5 — the number again, not the bytes, for exactly the reason 4 was. No layout
+//     moved. What moved is the *vocabulary* two peers exchange over the events
+//     channel: `itemPickup` carries an item id and `realmEnter`/`realmExit`
+//     carry a realm id, both as JSON strings, and round 7 renamed thirty-nine
+//     item ids and the `bazaar` realm (`data/renamedIds.js`,
+//     `reviews/round7/FIX-ror2-ids.md`).
+//
+//     A 4-with-old-ids host paired with a 4-with-new-ids client does not
+//     garble a frame — it reads every byte correctly and then acts on a name
+//     the other end has never heard of. The client shows the wrong pickup and
+//     builds the wrong room, and every mechanism that would have complained is
+//     satisfied. That is the silently-wrong session this field exists to
+//     refuse, and it is the same argument the 4 bump made in words: a version
+//     that does not identify the protocol is worse than no version, because it
+//     is trusted.
+//
+//     The snapshot vocabulary did NOT move: an entity's `typeId` is its index
+//     in `ENEMIES`, so renaming six enemy ids changed no wire byte and no
+//     lookup on either end. Difficulty likewise crosses in `WELCOME` as
+//     `DIFFICULTIES` index, not as the rung's id.
+export const PROTOCOL_VERSION = 5;
 
 export const MSG = {
   HELLO: 1,       // client -> host

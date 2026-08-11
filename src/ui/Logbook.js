@@ -260,12 +260,12 @@ export function disposeTree(root) {
  */
 const BESTIARY_LORE = {
   mite: 'Never arrives alone and never intended to. Individually it is a nuisance with teeth; the ninth one is the problem.',
-  beetle: 'Armoured on exactly one side and it knows which. It will show you that side for two thirds of a second before it commits.',
+  scarab: 'Armoured on exactly one side and it knows which. It will show you that side for two thirds of a second before it commits.',
   spitling: 'A digestive system with legs. What it spits was, very recently, something else that lived here.',
-  lemurian: 'The first thing on the survey with a jaw. Everything after it is a variation on that idea.',
-  wisp: 'Burns at both ends and floats because there is not much left of it to hold down.',
-  pest: 'No eyes worth the name. It finds you by the noise you make solving its friends.',
-  golem: 'Quarry stone that stood up. Slow enough to walk away from, patient enough that walking away is only ever temporary.',
+  skink: 'The first thing on the survey with a jaw. Everything after it is a variation on that idea.',
+  mote: 'Burns at both ends and floats because there is not much left of it to hold down.',
+  shrike: 'No eyes worth the name. It finds you by the noise you make solving its friends.',
+  sentinel: 'Quarry stone that stood up. Slow enough to walk away from, patient enough that walking away is only ever temporary.',
   charger: 'Commits to a straight line and cannot be talked out of it. The line is the tell and the line is the danger.',
   burrower: 'Reads the ground you are standing on as a door.',
   brood: 'Not a monster. A delivery mechanism, and it is always already open.',
@@ -280,7 +280,7 @@ const BESTIARY_LORE = {
   matron: 'Whatever else is on this stage, she put it there.',
   vizier: 'Rewrites the local rules for as long as it is standing. Kill order is not a preference.',
   maw: 'A hole with a nervous system. There is no known second stage to being inside it.',
-  titan: 'The survey called this a landform. The survey was taken from orbit.',
+  colossus: 'The survey called this a landform. The survey was taken from orbit.',
 };
 
 // Covers `UNLOCK_TYPES` as well as the encounter kinds: the challenge detail's

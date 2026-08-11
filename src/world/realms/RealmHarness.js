@@ -211,9 +211,9 @@ export function installRealmHarness(ctx) {
     },
 
     /** The market: three stalls, the refinery, the obelisk, no combat. */
-    async realmBazaar({ settleFrames = 60 } = {}) {
+    async realmMarket({ settleFrames = 60 } = {}) {
       await begin();
-      await enterRealm('bazaar');
+      await enterRealm('market');
       placePlayer(0.62, 12.5, 3.8);
       // On the *stalls' own side* of the room, so they are the near third of
       // the frame rather than thirty metres across it, with the obelisk on the
@@ -228,7 +228,7 @@ export function installRealmHarness(ctx) {
       freeze();
       const stalls = ctx.realms.props.filter((p) => p.kind === 'stall');
       const obelisk = ctx.realms.props.find((p) => p.kind === 'obelisk');
-      mustContain('22-realm-bazaar', [
+      mustContain('22-realm-market', [
         { subject: 'the market stalls', objects: () => stalls.map((s) => s.group), perObject: true, minPixels: 900, minObjects: 2 },
         { subject: 'the Obelisk of Departure', objects: () => (obelisk ? [obelisk.group] : []), minPixels: 700 },
         { subject: 'no monsters in the hub', dom: () => (ctx.director?.enemies?.length ?? 0) === 0, detail: () => ctx.director?.enemies?.length ?? 0 },
@@ -455,7 +455,7 @@ export function installRealmHarness(ctx) {
      */
     async endingObliterate({ settleFrames = 40 } = {}) {
       await begin();
-      await enterRealm('bazaar');
+      await enterRealm('market');
       const ob = ctx.realms.props.find((p) => p.kind === 'obelisk');
       placePlayer(1.9, 8, 5.05);
       const o = ctx.stage.origin;

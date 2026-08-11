@@ -1,0 +1,288 @@
+{
+  "seed": 1337,
+  "ready": true,
+  "clockPinned": true,
+  "ms": {
+    "boot": 18902,
+    "bootTimeout": 60000
+  },
+  "shots": [
+    {
+      "name": "06-loaded-hud",
+      "doc": "Late-run HUD with a full inventory and high difficulty. Judges UI density and hierarchy.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round7\\captures\\diag-red-gates\\06-loaded-hud.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 1321.383333333332
+      },
+      "ms": {
+        "setup": 5166,
+        "screenshot": 482,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "survivor",
+            "kind": "pixels",
+            "ok": true,
+            "px": 986,
+            "frac": 0.00761,
+            "lum": 46.2,
+            "bgLum": 87.9,
+            "contrast": 0.312,
+            "sep": 0.471,
+            "sepP25": 0.21,
+            "sepP50": 0.45,
+            "legible": 0.797,
+            "at": [
+              0.42,
+              0.597
+            ],
+            "box": [
+              0.391,
+              0.443,
+              0.451,
+              0.717
+            ],
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 400,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 786,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true,
+            "carriesAbsence": false,
+            "gatedOn": [
+              "px >= minPx",
+              "sepP50 >= minSep"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "legible"
+            ]
+          },
+          {
+            "subject": "monsters under load",
+            "kind": "pixels",
+            "ok": true,
+            "px": 1213,
+            "frac": 0.00936,
+            "lum": 149.8,
+            "bgLum": 38.2,
+            "contrast": 0.593,
+            "sep": 0.54,
+            "sepP25": 0.31,
+            "sepP50": 0.57,
+            "legible": 0.934,
+            "at": [
+              0.453,
+              0.368
+            ],
+            "box": [
+              0.001,
+              0.15,
+              0.728,
+              0.535
+            ],
+            "objects": 10,
+            "visibleObjects": 8,
+            "perPx": [
+              6,
+              194,
+              1,
+              263,
+              72,
+              57,
+              215,
+              158,
+              151,
+              96
+            ],
+            "perSep": [
+              0.59,
+              0.63,
+              0.71,
+              0.67,
+              0.97,
+              0.83,
+              0.31,
+              0.55,
+              0.23,
+              0.67
+            ],
+            "minPx": 300,
+            "minObjects": 3,
+            "present": true,
+            "carriedPx": 1133,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "crowd": {
+              "need": 3,
+              "why": "director horde: an unbounded population, not a fixed cast",
+              "absentBeyondCrowd": [
+                {
+                  "i": 0,
+                  "px": 6,
+                  "sepP50": 0.59
+                },
+                {
+                  "i": 2,
+                  "px": 1,
+                  "sepP50": 0.71
+                }
+              ],
+              "carriesAbsence": true
+            },
+            "minPerPx": 100,
+            "absentObjects": [
+              {
+                "i": 0,
+                "px": 6,
+                "sepP50": 0.59
+              },
+              {
+                "i": 2,
+                "px": 1,
+                "sepP50": 0.71
+              }
+            ],
+            "objectFailures": [],
+            "ungatedAbsences": [
+              {
+                "i": 0,
+                "px": 6,
+                "sepP50": 0.59
+              },
+              {
+                "i": 2,
+                "px": 1,
+                "sepP50": 0.71
+              }
+            ],
+            "perObjectOk": true,
+            "carriesAbsence": true,
+            "gatedOn": [
+              "px >= minPx",
+              "visibleObjects >= minObjects",
+              "sepP50 >= minSep",
+              "perPx/perSep/absence over the 3 gated of 10"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "legible",
+              "crowd.absentBeyondCrowd"
+            ]
+          },
+          {
+            "subject": "a full inventory strip",
+            "kind": "dom",
+            "ok": true,
+            "detail": 97
+          }
+        ]
+      },
+      "newErrors": []
+    }
+  ],
+  "errors": [],
+  "partial": true,
+  "subjectFailures": [],
+  "subjectsOk": true,
+  "toleratedAbsences": [
+    {
+      "name": "06-loaded-hud",
+      "subject": "monsters under load",
+      "checkOk": true,
+      "gate": "crowd 3/10 individually gated",
+      "why": "director horde: an unbounded population, not a fixed cast",
+      "perPx": [
+        6,
+        194,
+        1,
+        263,
+        72,
+        57,
+        215,
+        158,
+        151,
+        96
+      ],
+      "absent": [
+        {
+          "i": 0,
+          "px": 6,
+          "sepP50": 0.59
+        },
+        {
+          "i": 2,
+          "px": 1,
+          "sepP50": 0.71
+        }
+      ]
+    }
+  ],
+  "determinism": {
+    "clockPinned": true,
+    "frameDt": 0.016666666666666666,
+    "frameTimeouts": 0
+  },
+  "perf": {
+    "programs": 72,
+    "geometries": 423,
+    "textures": 53,
+    "sceneObjects": 763
+  },
+  "audio": {
+    "ready": true,
+    "state": "running",
+    "stepsEmitted": 39,
+    "stopped": false,
+    "silent": false,
+    "muted": false,
+    "musicOff": false,
+    "musicGain": 0.47999998927116394,
+    "masterGain": 0.800000011920929,
+    "voices": 1,
+    "worldVoices": 1,
+    "musicPeak": 0.14415214955806732,
+    "outputPeak": 0.7971200942993164,
+    "samples": 110,
+    "armed": true,
+    "beforeGate": {
+      "ready": true,
+      "state": "running",
+      "stepsEmitted": 18,
+      "stopped": false,
+      "musicOff": false,
+      "musicGain": 0.47999998927116394,
+      "masterGain": 0.800000011920929
+    },
+    "stepsDelta": 21,
+    "newErrors": [],
+    "checks": {
+      "armed": true,
+      "graphBuilt": true,
+      "contextRunning": true,
+      "sequencerRunning": true,
+      "notSilenced": true,
+      "musicBusOpen": true,
+      "masterOpen": true,
+      "stepsAdvanced": true,
+      "musicAudible": true,
+      "outputAudible": true,
+      "sampled": true,
+      "noNewErrors": true
+    },
+    "failed": []
+  },
+  "audioOk": true
+}

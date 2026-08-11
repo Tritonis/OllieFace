@@ -1,0 +1,48 @@
+{
+  "seed": 1337,
+  "clockPinned": true,
+  "arms": [
+    [
+      "ctrl-a",
+      {}
+    ],
+    [
+      "fine050",
+      {
+        "fineAmp": 0.575
+      }
+    ],
+    [
+      "fine0",
+      {
+        "fineAmp": 0
+      }
+    ],
+    [
+      "fine0r082",
+      {
+        "fineAmp": 0,
+        "rough": 0.82
+      }
+    ],
+    [
+      "fine050r082",
+      {
+        "fineAmp": 0.575,
+        "rough": 0.82
+      }
+    ],
+    [
+      "fine0d050",
+      {
+        "fineAmp": 0,
+        "coarseAmp": 0.39
+      }
+    ],
+    [
+      "ctrl-b",
+      {}
+    ]
+  ],
+  "errors": []
+}

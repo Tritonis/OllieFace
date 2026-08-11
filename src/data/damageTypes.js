@@ -15,9 +15,9 @@
  * did, rather than looking wrong.
  *
  * The hues are not new paint. Each family borrows the colour its own affix
- * already owns in `EnemyMeshes.ELITE` — blazing's 0xff6a10, glacial's
- * 0x46c4f0, overloading's 0x2f5cff, withering's 0x2fbf6a, voidtouched's
- * 0x8a2fd0 — so a fire hit and a Blazing elite are the same fire, and the
+ * already owns in `EnemyMeshes.ELITE` — emberclad's 0xff6a10, rimebound's
+ * 0x46c4f0, galvanic's 0x2f5cff, withering's 0x2fbf6a, voidtouched's
+ * 0x8a2fd0 — so a fire hit and an Emberclad elite are the same fire, and the
  * game keeps one palette instead of growing a second one for damage.
  */
 
@@ -67,7 +67,7 @@ const TYPE_ELEMENT = {
   lightning: 'shock', overload: 'shock', resonance: 'shock',
   spore: 'nature', swarm: 'nature', thorns: 'nature',
   void: 'void',
-  blast: 'blast', missile: 'blast', behemoth: 'blast', sticky: 'blast', gravity: 'blast',
+  blast: 'blast', missile: 'blast', 'shrapnel-heart': 'blast', sticky: 'blast', gravity: 'blast',
 };
 
 /**

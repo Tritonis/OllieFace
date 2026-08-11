@@ -58,7 +58,7 @@ function makeWorld() {
 
 function galvanicEnemy(ctx) {
   const e = new Enemy();
-  e.spawn(ctx, byName('Blind Shrike'), new THREE.Vector3(2, 0, 0), { affix: 'overloading' });
+  e.spawn(ctx, byName('Blind Shrike'), new THREE.Vector3(2, 0, 0), { affix: 'galvanic' });
   return e;
 }
 

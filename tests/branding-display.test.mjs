@@ -8,9 +8,11 @@
  * found the strings it missed: the elite affixes render raw through
  * `prettify(enemy.affix)` in the HUD boss label, the item tier strip says
  * "Lunar", and the obelisk ending titles itself "Obliterated". This file pins
- * the display layer: ids stay (save data), display strings must be original.
- * It fails if a new elite ships without a label, or if any pinned string
- * regresses to the RoR2 vocabulary.
+ * the display layer: display strings must be original. The ids it once ruled
+ * out of scope went in round 7 (`reviews/round7/FIX-ror2-ids.md`), so the
+ * `if (ROR2_DISPLAY.has(key))` arm below no longer fires for any live key —
+ * it stays as the guard against one coming back. It fails if a new elite ships
+ * without a label, or if any pinned string regresses to the RoR2 vocabulary.
  */
 import { ELITE_STATS } from '../src/data/enemies.js';
 import { TIERS } from '../src/data/items.js';
@@ -19,8 +21,9 @@ import { ENDINGS } from '../src/data/realms.js';
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
 
-// RoR2's elite prefixes and tier vocabulary. Lower-cased for the comparison;
-// the ids on the left of each entry are ours and deliberately stay.
+// RoR2's elite prefixes and tier vocabulary. Lower-cased for the comparison.
+// This is the vocabulary itself, not our ids, and must be spelled out here
+// verbatim — it is the only place in the tree that still names them.
 const ROR2_DISPLAY = new Set(['blazing', 'glacial', 'overloading', 'malachite',
   'celestine', 'perfected', 'voidtouched', 'gilded', 'lunar', 'obliterated']);
 

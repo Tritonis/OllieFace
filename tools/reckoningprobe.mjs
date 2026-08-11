@@ -432,7 +432,7 @@ try {
       coef: +ctx.director.rewardCoefficient.toFixed(4),
       difficultyCoef: +ctx.director.difficultyCoefficient.toFixed(4),
     }));
-    const card = SPAWN_CARDS.find((c) => c.id === 'beetle') ?? SPAWN_CARDS[0];
+    const card = SPAWN_CARDS.find((c) => c.id === 'scarab') ?? SPAWN_CARDS[0];
     const spawn = (affix, dx) => {
       const x = ctx.player.position.x + dx, z = ctx.player.position.z + 14;
       const at = new THREE.Vector3(x, ctx.stage.sampleHeight(x, z), z);

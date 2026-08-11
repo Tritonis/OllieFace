@@ -100,9 +100,9 @@ const SLIDERS = [
  * lands, `ctx.difficulty.list()` wins and this table stops being consulted.
  */
 const FALLBACK_DIFFICULTIES = [
-  { id: 'drizzle', name: 'Settling', description: 'Fewer monsters, a gentler clock. For learning a survivor.', spawnRate: 0.65 },
-  { id: 'rainstorm', name: 'Fracture', description: 'The tuned curve. This is the game as it is balanced.', spawnRate: 1.0 },
-  { id: 'monsoon', name: 'Cataclysm', description: 'More of everything, sooner. Mistakes stop being survivable.', spawnRate: 1.6 },
+  { id: 'settling', name: 'Settling', description: 'Fewer monsters, a gentler clock. For learning a survivor.', spawnRate: 0.65 },
+  { id: 'fracture', name: 'Fracture', description: 'The tuned curve. This is the game as it is balanced.', spawnRate: 1.0 },
+  { id: 'cataclysm', name: 'Cataclysm', description: 'More of everything, sooner. Mistakes stop being survivable.', spawnRate: 1.6 },
 ];
 
 /**

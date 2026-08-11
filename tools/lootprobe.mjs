@@ -87,7 +87,7 @@ const out = await page.evaluate(async () => {
 
   // --- does giving an item actually land in the inventory? ---
   const invBefore = ctx.items?.inventory?.()?.length ?? -1;
-  ctx.items?.give?.('syringe', 1);
+  ctx.items?.give?.('adrenal-syringe', 1);
   r.giveItem = { invBefore, invAfter: ctx.items?.inventory?.()?.length ?? -1 };
 
   // --- is the interaction input path wired? ---

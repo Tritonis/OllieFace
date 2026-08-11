@@ -4,7 +4,7 @@ import {
 } from '../data/artifacts.js';
 import { CHALLENGE_BY_ID, UNLOCK_BINDINGS } from '../data/challenges.js';
 import { adoptLegacyKey } from '../core/LegacyStorage.js';
-import { renameItemId } from '../data/renamedItems.js';
+import { renameItemId, renameDifficultyId } from '../data/renamedIds.js';
 
 /**
  * Artifacts and difficulty — the run's rules.
@@ -514,9 +514,15 @@ export class Artifacts {
     let data = null;
     try { data = JSON.parse(raw); } catch { return; }
     if (!data || typeof data !== 'object') return;
-    if (typeof data.difficulty === 'string' && DIFFICULTY_BY_ID.has(data.difficulty)) {
-      this.difficultyId = data.difficulty;
-      if (this.ctx) this.ctx.difficultyId = data.difficulty;
+    // The rung is translated before it is validated. The three rung ids were
+    // renamed in round 7 (`data/renamedIds.js`), and this check is a silent
+    // one: an unrecognised rung is not reported, it is simply replaced by the
+    // default. Without the translation a returning player's Cataclysm run
+    // would quietly begin on Fracture.
+    const difficulty = renameDifficultyId(data.difficulty);
+    if (typeof difficulty === 'string' && DIFFICULTY_BY_ID.has(difficulty)) {
+      this.difficultyId = difficulty;
+      if (this.ctx) this.ctx.difficultyId = difficulty;
     }
     if (Array.isArray(data.artifacts)) {
       for (const id of data.artifacts) {
@@ -530,7 +536,7 @@ export class Artifacts {
     // does not import one — `commandPick` validates against the live pool.
     if (data.edict && typeof data.edict === 'object') {
       for (const [tier, id] of Object.entries(data.edict)) {
-        // Two ids were renamed after this store shipped (`data/renamedItems.js`).
+        // Item ids were renamed after this store shipped (`data/renamedIds.js`).
         // A stale one here is not a crash — `commandPick` validates against the
         // live pool — it is a Command pick that quietly stops being honoured,
         // which is the harder bug to notice.

@@ -189,7 +189,7 @@ export const SkyShader = {
       // The deck needs internal value contrast or it dissolves into the sky it
       // is mixed over — at 0.70 the cloud colour sat within a few percent of the
       // band behind it, which is why a 0.74 cloud amount produced one visible
-      // wisp. Wisps take the full body value and sit *above* the sky; the dense
+      // mote. Motes take the full body value and sit *above* the sky; the dense
       // cores fall toward the cool zenith so the deck has a shaded underside;
       // the sun-facing side still burns out warm.
       float dens = smoothstep(0.44, 0.86, n);

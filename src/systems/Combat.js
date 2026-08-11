@@ -32,7 +32,7 @@ const STATUS_DEFS = {
 
 // How many stacks of one damage-over-time type may sit on the survivor at
 // once. Monsters are uncapped. This is a balance number, not a correctness
-// one: at 8 (the steady state an aura reaches unaided) a blazing elite kills
+// one: at 8 (the steady state an aura reaches unaided) an emberclad elite kills
 // a full-health survivor through the rider alone.
 const PLAYER_DOT_STACK_CAP = 3;
 
@@ -664,10 +664,10 @@ export class Combat {
     const def = STATUS_DEFS[type];
     if (!def || !entity || !entity.alive) return;
     // Uncapped damage-over-time stacks are fine on a monster and a death
-    // spiral on the survivor. A blazing aura re-applies every 0.5 s and burn
+    // spiral on the survivor. A emberclad aura re-applies every 0.5 s and burn
     // lasts 4.0 s, so one elite parks eight stacks on the player and the
     // rider out-damages the hit that carries it — 73.95 dps against a 110 HP
-    // survivor, 5.3x the equal-cost `glacial` affix on the same card.
+    // survivor, 5.3x the equal-cost `rimebound` affix on the same card.
     // Monsters keep the uncapped RoR2 behaviour; only the player is capped,
     // for the same reason `speedMultiplier` refuses to hand the player a hard
     // zero: a survivor needs the debuff to be survivable and legible.

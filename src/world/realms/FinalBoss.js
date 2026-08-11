@@ -505,7 +505,7 @@ export class FinaleController {
     ctx.hitstop = 0.12;
     ctx.vfx?.explosion?.(this.boss.position, 18, 0xff4ad0);
     ctx.hud?.setObjective?.('The Herald falls');
-    // Anything still standing goes with it — the run is over and a stray wisp
+    // Anything still standing goes with it — the run is over and a stray mote
     // killing the player during the outro would flip a victory into a death.
     // Through Combat rather than by zeroing health, so each one plays its own
     // death and is reaped normally instead of standing there at 0 hp.

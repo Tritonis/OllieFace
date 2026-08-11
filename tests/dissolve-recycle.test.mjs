@@ -80,7 +80,7 @@ console.log('a kill on an Enemy-shaped victim actually starts a dissolve');
 console.log('the dissolve runs the corpse out and takes it');
 {
   const vfx = makeVfx();
-  const rig = acquireRig('beetle');
+  const rig = acquireRig('scarab');
   const victim = makeVictim(rig);
   const originals = [];
   rig.root.traverse((c) => { if (c.isMesh) originals.push([c, c.material]); });
@@ -111,7 +111,7 @@ console.log('a rig that changed hands mid-dissolve is never touched again');
   // The trap. Kill, transition inside the dissolve's 0.85 s, let the dissolve
   // finish, and check the monster now wearing that rig.
   const vfx = makeVfx();
-  const rig = acquireRig('lemurian');
+  const rig = acquireRig('skink');
   const originals = [];
   rig.root.traverse((c) => { if (c.isMesh) originals.push([c, c.material]); });
 
@@ -122,7 +122,7 @@ console.log('a rig that changed hands mid-dissolve is never touched again');
   // Exactly what `Director.clear` -> `Enemy.despawn` does, followed by the new
   // stage's first spawn: `Enemy.spawn` -> `acquireRig`.
   releaseRig(rig);
-  const reused = acquireRig('lemurian');
+  const reused = acquireRig('skink');
   ok(reused === rig, 'the pool handed the same rig to the next enemy');
   ok(reused.root.visible === true, 'which starts its life visible');
 
@@ -149,13 +149,13 @@ console.log('the recycled dissolve lets go at once, not at the end of its clock'
   // a stage that no longer exists, and keep the pooled material variants out
   // of circulation for the first second of the new fight.
   const vfx = makeVfx();
-  const rig = acquireRig('wisp');
+  const rig = acquireRig('mote');
   const originals = [];
   rig.root.traverse((c) => { if (c.isMesh) originals.push([c, c.material]); });
   kill(vfx, makeVictim(rig));
   run(vfx, 0.2);
   releaseRig(rig);
-  const reused = acquireRig('wisp');
+  const reused = acquireRig('mote');
   const before = vfx.particles.emitted;
   vfx._updateDissolves(1 / 60);
   ok(vfx._dissolving.length === 0, 'the entry is dropped on the first frame after the handover');
@@ -223,7 +223,7 @@ console.log('the dissolve survives the blow that caused it');
   roster.add(player);
   ctx.roster = roster;
 
-  const card = ENEMIES.find((e) => e.id === 'beetle') ?? ENEMIES[0];
+  const card = ENEMIES.find((e) => e.id === 'scarab') ?? ENEMIES[0];
   const e = new Enemy();
   e.spawn(ctx, card, new THREE.Vector3(0, 0, 6), {});
   const rig = e.rig;

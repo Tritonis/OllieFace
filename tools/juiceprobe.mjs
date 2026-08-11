@@ -28,7 +28,7 @@
  * of a probe run is exactly the move this record exists to make visible.
  *
  * (d) The no-shared-stream-draw claim is not restated here. It is
- * `node tests/sp-equivalence.mjs --compare reviews/round8/baseline-HEAD.json`
+ * `node tests/sp-equivalence.mjs --compare reviews/round7/baseline-00f8900.json`
  * reading `no fields moved`, and the file it compares against is committed:
  * see `reviews/round9/README.md`. A probe re-deriving that claim from its own
  * run would be a second, weaker instrument for a question the fingerprint
@@ -470,8 +470,8 @@ try {
     renderer: SOFTWARE ? 'swiftshader' : 'd3d11',
     sharedStreamClaim: {
       note: 'Not measured here. The no-new-draw claim is the sp-equivalence fingerprint, which is exact where a probe would be indicative.',
-      command: 'node tests/sp-equivalence.mjs --compare reviews/round8/baseline-HEAD.json',
-      file: 'reviews/round8/baseline-HEAD.json',
+      command: 'node tests/sp-equivalence.mjs --compare reviews/round7/baseline-00f8900.json',
+      file: 'reviews/round7/baseline-00f8900.json',
     },
     arms: summaries,
     costComparison: costDelta && { before: costBefore, after: costAfter, delta: costDelta },

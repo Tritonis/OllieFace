@@ -14,7 +14,7 @@
 //
 // The director banks credits, re-rolls a monster card on an interval, and
 // spends the bank on the most expensive card it can afford — so early waves are
-// beetles and, twenty minutes in, the same bank buys golems by the pair.
+// scarabs and, twenty minutes in, the same bank buys sentinels by the pair.
 //
 // It also owns the enemy pool and every enemy-side effect pool (projectiles,
 // shockwaves, beam trails) so nothing allocates once the fight is running.
@@ -169,12 +169,12 @@ export class Director {
     // alternative is paying for it on the frame the unit walks into the fight.
     for (const c of SPAWN_CARDS) prewarm(c.meshFactory, c.tier === 1 ? 4 : 2);
     prewarm('mite', 14);
-    prewarm('beetle', 12);
-    prewarm('lemurian', 8);
+    prewarm('scarab', 12);
+    prewarm('skink', 8);
     prewarm('spitling', 6);
-    prewarm('wisp', 5);
-    prewarm('pest', 5);
-    prewarm('golem', 3);
+    prewarm('mote', 5);
+    prewarm('shrike', 5);
+    prewarm('sentinel', 3);
 
     this.projectiles.init(ctx);
     this.waves.init(ctx);
@@ -324,7 +324,7 @@ export class Director {
    *
    * Short on purpose: the bank is spent on whatever it can afford (see
    * `spendCredits`), so a frequent, small spend is what produces a continuous
-   * trickle early instead of a 30-second lull followed by a six-beetle dump.
+   * trickle early instead of a 30-second lull followed by a six-scarab dump.
    */
   get spawnInterval() {
     const base = lerp(2.6, 1.0, clamp((this.difficultyCoefficient - 1) / 6, 0, 1));
@@ -539,7 +539,7 @@ export class Director {
     // director that only ever considered affordable cards had a bank that never
     // exceeded a few credits and could not reach a 34-credit bombard, let alone
     // a 46-credit hulk — measured over a 45 s window at minute 22, the entire
-    // field was mites and beetles. Selecting something it cannot yet afford is
+    // field was mites and scarabs. Selecting something it cannot yet afford is
     // how it saves: the spend is skipped and the bank grows until the card lands.
     //
     // `reach` keeps that from becoming a stall. A card at four times the bank is
@@ -646,7 +646,7 @@ export class Director {
 
     // Partial packs are deliberate. Holding the bank until a whole pack was
     // affordable meant 18-36 credits at 0.77/s — half a minute of nothing, then
-    // six beetles at once behind the player. Buying whatever the bank covers on
+    // six scarabs at once behind the player. Buying whatever the bank covers on
     // a short interval gives a thin, continuous trickle in the opening minute,
     // and once the credit rate outgrows the card the same code buys whole packs
     // on its own, so the escalation shape is unchanged.
@@ -779,7 +779,7 @@ export class Director {
    * but applied strictly it also means every monster is always behind you, and
    * a pack that only ever arrives from your blind side reads as an ambush. So a
    * candidate far enough away is allowed on screen some of the time: watching a
-   * beetle crest a ridge 55m out is a telegraph, not a pop-in.
+   * scarab crest a ridge 55m out is a telegraph, not a pop-in.
    */
   findSpawnPoint(ctx) {
     const cam = ctx.camera;
@@ -987,7 +987,7 @@ export class Director {
   /**
    * Stage transition. Progression calls this once the new world exists but
    * before it is populated, so nothing from the previous stage is left standing
-   * on terrain that no longer matches it — a golem left alive across a rebuild
+   * on terrain that no longer matches it — a sentinel left alive across a rebuild
    * would be pathing over a heightfield that had been replaced underneath it.
    *
    * Everything that carries stage-local state is reset: the live enemies, the
@@ -1299,7 +1299,7 @@ class Telegraphs {
 }
 
 // ---------------------------------------------------------------------------
-// fading beam trails left by golem / titan lasers
+// fading beam trails left by sentinel / colossus lasers
 // ---------------------------------------------------------------------------
 
 class Trails {

@@ -119,7 +119,7 @@ const _lit = [];
  * Everything hostile inside a cone from `origin` along `dir`.
  *
  * Tested against each body's *centre* rather than its feet, matching
- * `sphereOverlap`: a swing aimed at a Golem's chest that missed because the
+ * `sphereOverlap`: a swing aimed at a Sentinel's chest that missed because the
  * cone was measured to the ground under it is the melee equivalent of shooting
  * at the dirt.
  */

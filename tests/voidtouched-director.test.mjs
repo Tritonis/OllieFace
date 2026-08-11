@@ -176,16 +176,16 @@ console.log('the void pays its executioners a quarter');
   const { Enemy } = await import('../src/entities/Enemy.js');
   const { Items } = await import('../src/systems/Items.js');
   const { ENEMIES } = await import('../src/data/enemies.js');
-  const beetle = ENEMIES.find((e) => e.id === 'beetle');
+  const scarab = ENEMIES.find((e) => e.id === 'scarab');
   const { ctx } = makeWorld({ world: 150 });
   ctx.director = { difficultyCoefficient: 1 };
   const items = new Items();
   items.init(ctx);
 
   const plain = new Enemy();
-  plain.spawn(ctx, beetle, { x: 0, y: 0, z: 0 }, { affix: 'warded' });
+  plain.spawn(ctx, scarab, { x: 0, y: 0, z: 0 }, { affix: 'warded' });
   const hollow = new Enemy();
-  hollow.spawn(ctx, beetle, { x: 0, y: 0, z: 0 }, { affix: 'voidtouched' });
+  hollow.spawn(ctx, scarab, { x: 0, y: 0, z: 0 }, { affix: 'voidtouched' });
   // Equal `elite.cost` is what makes the comparison the multiplier alone.
   hollow.elite = plain.elite;
 

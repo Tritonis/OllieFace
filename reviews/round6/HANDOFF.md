@@ -184,6 +184,9 @@ downstream of a decision you intend to change.**
   gates its directory wipe on `ready` and writes `manifest.FAILED.json` on a failed
   boot — verified in the field twice this round, preserving captures it would previously
   have destroyed.
-- ~40 code identifiers still carry RoR2 names (`meshFactory: 'lemurian'`,
+- ~~~40 code identifiers still carry RoR2 names (`meshFactory: 'lemurian'`,
   `hopoo-feather` and `shatterspleen` as ids). Display text is clean; ids need a save
-  migration and a golden-hash re-baseline as one decision.
+  migration and a golden-hash re-baseline as one decision.~~
+  **Closed in round 7** — 50 ids renamed, `PROFILE_VERSION` 4, `PROTOCOL_VERSION` 5,
+  baselines re-taken at `reviews/round7/baseline-00f8900.json`. See
+  `reviews/round7/FIX-ror2-ids.md`.
