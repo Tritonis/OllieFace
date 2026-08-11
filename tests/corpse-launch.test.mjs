@@ -8,6 +8,7 @@
 // These assertions exist mostly to keep it that way.
 import * as THREE from 'three';
 import { VFX, LAUNCH } from '../src/systems/VFX.js';
+import { acquireRig, releaseRig } from '../src/entities/EnemyMeshes.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
@@ -243,6 +244,33 @@ console.log('a real kill event reaches the launch through _onKill');
     overkill: 1, type: 'hit', status: null,
   });
   ok(quiet._launches.length === 0, 'a kill with nothing left over leaves the body where it fell');
+}
+
+console.log('a corpse that changed hands mid-flight is dropped, not dragged');
+{
+  // The launch outlives the kill by up to `dur + hold`, and `Director.clear`
+  // (every stage change) hands the rig back to the pool immediately regardless
+  // of `finished`. Without the ownership token this loop keeps stamping a 6.8 m
+  // offset and a tumble onto whatever enemy inherited the rig — a living
+  // monster metres from where the simulation has it, spinning. Same token, same
+  // seam as the dissolve; `tests/dissolve-recycle.test.mjs` holds the other end.
+  const vfx = new VFX();
+  const rig = acquireRig('mite');
+  const home = rig.root.position.clone();
+  vfx.corpseLaunch(rig.root, 1, 0, 1);
+  for (let i = 0; i < 12; i++) { rig.root.position.copy(home); vfx._updateLaunches(1 / 60); }
+  ok(vfx._launches.length === 1 && rig.root.position.x > home.x, 'the throw is in flight');
+
+  releaseRig(rig);
+  const reused = acquireRig('mite');
+  ok(reused === rig, 'the pool handed the same rig to the next enemy');
+  const spawn = reused.root.position.clone();
+
+  vfx._updateLaunches(1 / 60);
+  ok(vfx._launches.length === 0, 'the launch let go on the first frame after the handover');
+  ok(reused.root.position.equals(spawn), 'and left the living monster where the simulation put it');
+  ok(reused.root.rotation.x === 0 && reused.root.rotation.z === 0, 'upright, with no tumble on it');
+  releaseRig(reused);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
