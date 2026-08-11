@@ -4063,6 +4063,79 @@ export function installHarness(ctx) {
       // before the nova arrives.
       spawnRing(8, SPAWN_CARDS, 12);
       const victims = (ctx.director?.enemies ?? []).slice(-8);
+      // Refilling the bar once a frame was never a pin, and this shot spent
+      // three merges finding that out the expensive way.
+      //
+      // `hold` runs at the top of the frame and skips anything already dead. A
+      // survivor holding one of every item in the game deals more than a
+      // monster's whole health bar *inside* one frame, so the pack died under
+      // the refill and every later `hold` passed over the corpses. It was never
+      // photographed as a failure because the death dissolve was running on the
+      // crumble debris instead of on the body (`4734ffd`): a corpse held full
+      // opacity for its whole 1.5 s, so a monster that died early was
+      // pixel-for-pixel a monster that never died. The subject was measuring
+      // "eight bodies are on screen", not "eight monsters are alive in the
+      // blast", and those had been different things for a long time.
+      //
+      // With the dissolve landing on the silhouette the corpse's age became the
+      // measurement, and the age is a function of *upstream RNG draw count* —
+      // which merge last touched the item roster or the bookkeeping kill. Three
+      // on-disk points, one mechanism, no game-code change between the last two:
+      //
+      //   base            death age at shutter   burn k   subject
+      //   825c4ce         0.583 s                (none)   1077 px  pass
+      //   ba17c90         0.583 s                0.686     90 px   fail
+      //   82508a7         0.783 s                0.922      0 px   fail
+      //
+      // (`reviews/round7/captures/fix-inventory/bisect-825c4ce`,
+      // `.../diag-victims`, `.../diag-master-nopin` — the last two publish the
+      // per-victim `deathT` the `DIAG victims` check below now carries in every
+      // manifest.) Chasing the commit that last moved that number is chasing the
+      // wrong thing: any draw-count change slides it again.
+      //
+      // So pin the composition instead of the pixels. Raise the ceiling the way
+      // `invulnerable` (Harness.js:1341) raises the player's, and keep refilling
+      // under it right up to the frame the equipment fires. Nothing the
+      // inventory does can then take the pack off the board early: the earliest
+      // any of them can die is the trigger, so the burn at the shutter is
+      // bounded by the shutter instead of by the draw count. Measured across the
+      // pack in `reviews/round7/captures/fix-inventory/master-after3`: `k` 0.137
+      // for five and 0.294 for three, against the 0.686 and 0.922 above. The
+      // pack still takes the nova, still dies to it, still throws the damage
+      // numbers this frame is graded on — it just cannot be a heap of ash by the
+      // time the shutter opens. No RNG is drawn either way.
+      //
+      // 1e6 and not `Infinity` on purpose: the nova is still allowed to finish
+      // them, which is the picture this shot is documented as taking. Pinned at
+      // 1e12 they survive it, and the frame measured *worse* — live monsters are
+      // knocked out of the composition by the blast they are supposed to be
+      // standing in (`.../master-after2`: five of eight visible, 2,256 px,
+      // against 4,257 px and eight of eight here).
+      for (const e of victims) e.maxHealth = 1e6;
+      // Refilling the bar once a frame is not a pin, and it never was one.
+      // `hold` runs at the top of the frame; with one of every item in the game
+      // the on-kill chain deals more than a monster's whole health bar *inside*
+      // that frame, so the pack died anyway and every later `hold` skipped it on
+      // `!e.alive`. Measured at the shutter in
+      // `reviews/round7/captures/fix-inventory/diag-victims/manifest.json`: all
+      // eight dead with `deathT: 0.583` — thirty-five frames, half a second
+      // before the nova they are documented as standing in.
+      //
+      // It photographed as a pass for as long as the death dissolve was running
+      // on the crumble debris instead of the body (`4734ffd`): a corpse held
+      // full opacity for its whole 1.5 s, so a monster that died early was
+      // pixel-for-pixel a monster that never died. With the dissolve landing on
+      // the silhouette the same corpse is 69% burned away when the shutter
+      // opens (`k: 0.686`) and the subject reads 90 px of eight bodies. The
+      // dissolve is right; the pin was always wrong.
+      //
+      // So pin it the way the player is pinned — raise the ceiling instead of
+      // refilling under it (`invulnerable`, Harness.js:1341). The pack still
+      // takes the nova, still flashes, still throws the damage numbers this
+      // frame is graded on; it just cannot be taken off the board by the
+      // inventory before the equipment fires. No RNG is drawn either way.
+      // DIAGARM
+      if (false) for (const e of victims) e.maxHealth = 1e6;
       const hold = () => {
         for (const e of victims) {
           if (!e.alive) continue;
@@ -4081,18 +4154,34 @@ export function installHarness(ctx) {
       // real API — driving the effect function directly would photograph a
       // frame the player can never produce, which is the failure mode this
       // whole file exists to prevent.
+      //
+      // The seat and the two frames after it are inside the pin, not outside it:
+      // a pin that ends before the trigger is a pin with a hole in it, so the
+      // refill runs once more on the frame the equipment fires.
+      //
+      // The ring is 0.26 x 0.11 of frame and was 0.16 x 0.07. That was drawn
+      // when the blast measured 17,954 px of particles and one pixel of
+      // everything else; it now carries a 52,129 px beam pool as well
+      // (`.../master-before` -> `the equipment blast`, perPx), and the old ring
+      // seated the pack inside the core of it. The bodies were *there* —
+      // 577 px on the second-largest — and unreadable against it, `sepP50` 0.15
+      // under a 0.25 floor, which fails as a separation defect and not as an
+      // absence (`.../master-after`). Widened, the same eight read at
+      // `sepP50` 0.33 with no object failing. Still inside the nova: its own
+      // radius grew with the effect.
       const p = playerPos();
       camera.updateMatrixWorld(true);
       const ps = screenOf(p.x, p.y + 1.0, p.z);
       victims.forEach((e, i) => {
         const a = (i / Math.max(1, victims.length)) * Math.PI * 2;
-        const g = groundAtScreen(ps.x + Math.cos(a) * 0.16, ps.y + Math.sin(a) * 0.07,
+        const g = groundAtScreen(ps.x + Math.cos(a) * 0.26, ps.y + Math.sin(a) * 0.11,
                                  { minDist: 6, maxDist: 30 });
         if (g) { _seat(e, g); return; }
         const x = p.x + Math.cos(a) * 9, z = p.z + Math.sin(a) * 9;
         _seat(e, _cc.set(x, groundY(x, z, p.y), z));
       });
       await frames(2);
+      hold();
 
       const fired = ctx.items?.useEquipment?.();
       if (!fired) console.warn('[harness] 10-inventory: equipment refused to fire');
@@ -4175,6 +4264,30 @@ export function installHarness(ctx) {
           crowd: 2, crowdWhy: 'blast victims: knockback removes members from frame by design',
         },
         { subject: 'shutter (effect seconds)', dom: () => shutter?.exact === true, detail: () => shutter },
+        /* How old each body in the subject is, and how far its dissolve has
+         * burned, at the instant the shutter opened.
+         *
+         * `info`, not a gate — the gate is the check above. This exists because
+         * a pixel count could not tell the two states apart that this shot has
+         * now been wrong about twice: eight monsters alive in a blast, and eight
+         * corpses that died before it and are most of the way through a 0.85 s
+         * burn. Both are "eight rigs on screen"; only one of them is the
+         * photograph. `alive: true` (or a `k` inside the shutter's own 0.14) is
+         * the shot doing what it says; anything larger means the pin leaked
+         * again and says so in the manifest, without a bisect. */
+        {
+          subject: 'DIAG victims (age at shutter)',
+          info: true,
+          detail: () => victims.map((e) => {
+            const root = e.rig?.root ?? null;
+            const d = (ctx.vfx?._dissolving ?? []).find((x) => x.mesh === root);
+            return {
+              alive: !!e.alive,
+              deathT: e.alive || e.deathT == null ? null : +e.deathT.toFixed(3),
+              k: d ? +Math.min(1, d.t / d.dur).toFixed(3) : null,
+            };
+          }),
+        },
       ]);
     },
 
