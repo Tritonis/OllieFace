@@ -221,6 +221,10 @@ export class Engine {
     const dt = Math.min(this.clock.getDelta(), 0.1);
     this.frame++;
 
+    // Before the fixed loop samples commands, and outside the pause gate — a
+    // paused game still needs Start/B to leave the menu.
+    this.ctx.input?.pollPad?.();
+
     let steps = 0;
     // Hitstop is a heavy slowdown, NOT a freeze.
     //

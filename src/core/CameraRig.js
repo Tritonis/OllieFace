@@ -57,6 +57,12 @@ const FOV_MAX = 96;
 
 const SENSITIVITY_BASE = 0.0022;   // scaled by `ctx.settings.sensitivity`
 
+// Full right-stick deflection in rad/s, scaled by the player's pad dial.
+// Yaw is faster than pitch on purpose — horizontal traversal is the common
+// case; full-rate pitch makes aim floaty.
+const PAD_YAW_RATE = 3.4;
+const PAD_PITCH_RATE = 2.2;
+
 const DIST = 7.1;
 const DIST_SPEED = 0.9;     // boom extension at full speed — leads the run
 const SHOULDER = 1.15;      // right-shoulder offset, keeps the crosshair clear
@@ -134,8 +140,14 @@ export class CameraRig {
     if (input && input.locked && input.enabled !== false) {
       this.yaw -= input.mouse.dx * this.sensitivity;
       this.pitch -= input.mouse.dy * this.sensitivity;
-      this.pitch = clamp(this.pitch, PITCH_MIN, PITCH_MAX);
     }
+    const pad = input?.pad;
+    if (pad?.active && input.enabled !== false) {
+      const padSens = clamp(settings?.padSensitivity ?? 1, 0.05, 8);
+      this.yaw -= pad.lookX * PAD_YAW_RATE * padSens * dt;
+      this.pitch -= pad.lookY * PAD_PITCH_RATE * padSens * dt;
+    }
+    this.pitch = clamp(this.pitch, PITCH_MIN, PITCH_MAX);
     if (this.yaw > Math.PI) this.yaw -= Math.PI * 2;
     else if (this.yaw < -Math.PI) this.yaw += Math.PI * 2;
 

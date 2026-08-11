@@ -14,6 +14,7 @@ import { Logbook, ModelPreview, disposeTree, renderRunReport } from './Logbook.j
 import { describeNet } from '../net/NetConfig.js';
 import { REFUSE } from '../net/Protocol.js';
 import { adoptLegacyKey } from '../core/LegacyStorage.js';
+import { PAD_BUTTON } from '../core/PadState.js';
 
 /**
  * A refused join, in the language of the person it happened to.
@@ -1214,7 +1215,9 @@ export class Menus {
         break;
       case 'resume':
         this.close();
-        this.ctx.input?.canvas?.requestPointerLock?.();
+        if (!this.ctx.input?.padActive) {
+          try { this.ctx.input?.canvas?.requestPointerLock?.()?.catch?.(() => {}); } catch { /* no lock, no problem */ }
+        }
         break;
       case 'settings':
       case 'logbook':
@@ -1800,6 +1803,20 @@ export class Menus {
     if (!this.screen && ctx.player?.alive !== false && this.commandActive()
         && ctx.input?.hit?.('KeyC')) {
       this.open('edict');
+    }
+    // Start on a pad is Escape: opens the pause screen from the world. With a
+    // screen open, navigate()'s B-button back already covers it.
+    if (!this.screen && ctx.player?.alive !== false
+        && ctx.input?.pad?.edges?.has?.(PAD_BUTTON.START)) {
+      // readPad's edge memory (this.pad.buttons) goes stale during gameplay.
+      // Seed it from the live pad before opening, or a held A/B (jump/sprint)
+      // reads as a fresh edge on the first menu frame and instant-closes the
+      // pause (pre-flight review I3).
+      for (const i of [PAD_BUTTON.A, PAD_BUTTON.B]) {
+        if (ctx.input.pad.held.has(i)) this.pad.buttons.add(i);
+        else this.pad.buttons.delete(i);
+      }
+      this.open('pause');
     }
     this.navigate(ctx);
     // Only the open screen's viewer is stepped; the other is disposed, not idle.
