@@ -298,8 +298,8 @@ export class ProjectilePool {
  * applies, lifted out whole so the hash path and the scan path cannot drift
  * into two subtly different overlaps. Capsule against sphere: XZ separation
  * only, with the vertical extent tested against the capsule's own half-height,
- * which is why a shot passing over a beetle misses and the same shot at a
- * golem's knee hits.
+ * which is why a shot passing over a scarab misses and the same shot at a
+ * sentinel's knee hits.
  */
 function hits(p, e) {
   if (!e || !e.alive || e === p.owner) return false;

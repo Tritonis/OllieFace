@@ -117,7 +117,7 @@ const CLEAN_ENDING_BAND = 1;
 // Which endings count as "finished a run at the Fracture" — the wording the
 // player is shown on the `unbrokenSeal` row. `ENDINGS` (data/realms.js) marks
 // three outcomes `won: true`, and the third is `obliterated`: the Obelisk of
-// Departure in the bazaar, reachable from stage 1, which ends the run on the
+// Departure in the market, reachable from stage 1, which ends the run on the
 // player's terms without ever seeing the Fracture. That is a win for every
 // other purpose and must not be one here, so this list is positive — a future
 // ending has to be named before it can seal the Vigil, rather than qualifying
@@ -202,7 +202,7 @@ const MIGRATIONS = {
    * v1 -> v2. Two real data moves, neither of which `_coerce` could do alone.
    *
    * **`discovered` -> `encounters`.** v1 stored `kind -> id -> timestamp`; v2
-   * stores `kind -> id -> { at, count }`, because "you have killed 412 Golems"
+   * stores `kind -> id -> { at, count }`, because "you have killed 412 Sentinels"
    * is the line that makes a bestiary read as a record of *your* play rather
    * than as a catalogue with some rows greyed out. Every first-seen stamp is
    * carried across verbatim; the count starts at zero and is honest about it —
@@ -1465,7 +1465,7 @@ export class Profile {
     const run = this.run;
     if (!run || e?.victim?.isPlayer) return;
     // Discovery is a "have I seen this" fact and is credited on sight, host or
-    // client — a client that watched a Titan die has seen a Titan.
+    // client — a client that watched a Colossus die has seen a Colossus.
     const vid = e?.victim?.def?.id ?? e?.victim?.id;
     if (typeof vid === 'string') this._discoverMonster(e.isBoss ? 'boss' : 'enemy', vid);
 

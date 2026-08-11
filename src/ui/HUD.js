@@ -202,8 +202,8 @@ export class HUD {
       //    counter, and without this a teammate's death flashed `is-kill` on
       //    your reticle.
       //  · the source test is HEAD `a43cc70`'s exact condition, restored. It
-      //    excludes kills whose source is an *enemy* — an Overloading death
-      //    blast, a Blazing aura, a stray mortar — which `isLocalKill`'s
+      //    excludes kills whose source is an *enemy* — a Galvanic death
+      //    blast, an Emberclad aura, a stray mortar — which `isLocalKill`'s
       //    authority branch admits (it only excludes *other players*), because
       //    that branch was written for the run summary where an environmental
       //    kill should still count. Dropping it added +1 per enemy-on-enemy

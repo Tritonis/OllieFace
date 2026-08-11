@@ -143,7 +143,7 @@ const roster = ENEMIES ? await page.evaluate(async ([w, h, range]) => {
   // whole cross product: the affix decoration is built from the same ELITE
   // table for every host, so nineteen hosts times six affixes measures the
   // table nineteen times and the roster once.
-  const ELITE_HOSTS = ['beetle', 'golem', 'hulk'];
+  const ELITE_HOSTS = ['scarab', 'sentinel', 'hulk'];
   const AFFIXES = Object.keys(ELITE);
 
   // One box for every unit, sized to the tallest thing in the roster so the

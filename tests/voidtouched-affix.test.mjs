@@ -40,7 +40,7 @@ function makeWorld(px, pz) {
   return { ctx, player };
 }
 
-const beetle = ENEMIES.find((e) => e.id === 'beetle');
+const scarab = ENEMIES.find((e) => e.id === 'scarab');
 const S = ELITE_STATS.voidtouched;
 const H = 1 / 60;
 
@@ -48,7 +48,7 @@ console.log('inside the ring, the siphon ticks and the unit feeds');
 {
   const { ctx, player } = makeWorld(2, 0);
   const e = new Enemy();
-  e.spawn(ctx, beetle, { x: 0, y: 0, z: 0 }, { affix: 'voidtouched' });
+  e.spawn(ctx, scarab, { x: 0, y: 0, z: 0 }, { affix: 'voidtouched' });
   ok(e.affix === 'voidtouched' && e.isElite, 'affix took');
   e.health = e.maxHealth * 0.5;
   const h0 = e.health;
@@ -64,7 +64,7 @@ console.log('outside the ring, nothing happens');
 {
   const { ctx, player } = makeWorld(S.siphonRadius + 3, 0);
   const e = new Enemy();
-  e.spawn(ctx, beetle, { x: 0, y: 0, z: 0 }, { affix: 'voidtouched' });
+  e.spawn(ctx, scarab, { x: 0, y: 0, z: 0 }, { affix: 'voidtouched' });
   e.health = e.maxHealth * 0.5;
   const h0 = e.health;
   for (let i = 0; i < 40; i++) e.fixedUpdate(ctx, H);
@@ -72,11 +72,11 @@ console.log('outside the ring, nothing happens');
   ok(e.health === h0, 'and no free healing');
 }
 
-console.log('a plain beetle is untouched by the new block');
+console.log('a plain scarab is untouched by the new block');
 {
   const { ctx, player } = makeWorld(2, 0);
   const e = new Enemy();
-  e.spawn(ctx, beetle, { x: 0, y: 0, z: 0 }, {});
+  e.spawn(ctx, scarab, { x: 0, y: 0, z: 0 }, {});
   for (let i = 0; i < 40; i++) e.fixedUpdate(ctx, H);
   ok(player.hits.filter((x) => x.type === 'void').length === 0, 'no affix, no siphon');
 }
@@ -85,7 +85,7 @@ console.log('submerged, the siphon goes quiet — and resumes when it surfaces')
 {
   const { ctx, player } = makeWorld(2, 0);
   const e = new Enemy();
-  e.spawn(ctx, beetle, { x: 0, y: 0, z: 0 }, { affix: 'voidtouched' });
+  e.spawn(ctx, scarab, { x: 0, y: 0, z: 0 }, { affix: 'voidtouched' });
   e.health = e.maxHealth * 0.5;
   const h0 = e.health;
   e.submerged = true;

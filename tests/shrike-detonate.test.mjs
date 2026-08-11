@@ -3,7 +3,7 @@
  *
  *   node tests/shrike-detonate.test.mjs
  *
- * The Blind Shrike (`pest`) is `eliteEligible`, and its dive resolves through
+ * The Blind Shrike (`shrike`) is `eliteEligible`, and its dive resolves through
  * `detonate()`, which self-kills via `Combat.applyDamage(this, this.health)`.
  * That routes the suicide through the full mitigation pipeline — armour curve,
  * then the elite shield pool absorbs first. A Warded elite carries a shield of
@@ -84,7 +84,7 @@ console.log('a plain Shrike dies to its own detonation (control arm)');
 console.log('a Galvanic elite Shrike dies to its own detonation despite its shield');
 {
   const { ctx, player } = makeWorld();
-  const e = detonatedShrike(ctx, player, 'overloading');
+  const e = detonatedShrike(ctx, player, 'galvanic');
   ok(e.maxShield > 0, `the affix really grants a shield (got ${e.maxShield})`);
   ok(!e.alive, `the diver is dead (health ${e.health}/${e.maxHealth}, shield ${e.shield})`);
 }

@@ -190,13 +190,13 @@ export const CAPRICE_TIERS = [
  * `coeff` multiplies the Director's existing time term — it does **not** replace
  * the curve. That is the same lever RoR2 pulls: the per-player and per-stage
  * factors are untouched, so the run still ramps for the same reasons, just
- * faster or slower on the clock. Downpour is 1.0 by definition, which is why
+ * faster or slower on the clock. Fracture is 1.0 by definition, which is why
  * `Director.DIFFICULTY_SCALE` is still the tuned constant it always was and
- * every existing pacing measurement remains the Downpour measurement.
+ * every existing pacing measurement remains the Fracture measurement.
  *
  * The other four numbers are the quality-of-life half. RoR2's easy mode is not
  * only a slower clock — monsters hit softer and you recover faster, which is
- * what makes it a different *game* rather than the same game later. Deluge
+ * what makes it a different *game* rather than the same game later. Cataclysm
  * takes the same three away.
  *
  * | | coeff | enemy hp | enemy dmg | gold | your regen |
@@ -207,7 +207,7 @@ export const CAPRICE_TIERS = [
  */
 export const DIFFICULTIES = [
   {
-    id: 'drizzle',
+    id: 'settling',
     name: 'Settling',
     index: 0,
     coeff: 0.5,
@@ -221,7 +221,7 @@ export const DIFFICULTIES = [
     regen: 2.0,
   },
   {
-    id: 'rainstorm',
+    id: 'fracture',
     name: 'Fracture',
     index: 1,
     coeff: 1.0,
@@ -234,7 +234,7 @@ export const DIFFICULTIES = [
     regen: 1,
   },
   {
-    id: 'monsoon',
+    id: 'cataclysm',
     name: 'Cataclysm',
     index: 2,
     coeff: 1.5,
@@ -250,4 +250,4 @@ export const DIFFICULTIES = [
 ];
 
 export const DIFFICULTY_BY_ID = new Map(DIFFICULTIES.map((d) => [d.id, d]));
-export const DEFAULT_DIFFICULTY = 'rainstorm';
+export const DEFAULT_DIFFICULTY = 'fracture';

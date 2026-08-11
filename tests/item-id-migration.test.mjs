@@ -58,7 +58,7 @@ console.log('the rename table');
   ok(RENAMED_ITEM_IDS[OLD_PLUME] === NEW_PLUME, `${OLD_PLUME} -> ${NEW_PLUME}`);
   ok(RENAMED_ITEM_IDS[OLD_BAND] === NEW_BAND, `${OLD_BAND} -> ${NEW_BAND}`);
   ok(renameItemId(OLD_PLUME) === NEW_PLUME, 'renameItemId translates a renamed id');
-  ok(renameItemId('infusion') === 'infusion', 'and passes an untouched id through');
+  ok(renameItemId('feeding-vial') === 'feeding-vial', 'and passes an untouched id through');
   ok(renameItemId(NEW_PLUME) === NEW_PLUME, 'and is idempotent on an already-new id');
   ok(renameItemId('') === '', 'an empty id is not invented into something');
   // Nothing may map onto a live id other than its own replacement, or the
@@ -87,7 +87,7 @@ const v2Blob = () => ({
   survivors: {},
   runs: [{
     at: 5000, survivorId: 'commando', outcome: 'victory',
-    inventory: [{ id: OLD_PLUME, count: 4 }, { id: 'infusion', count: 2 }, { id: OLD_BAND, count: 1 }],
+    inventory: [{ id: OLD_PLUME, count: 4 }, { id: 'feeding-vial', count: 2 }, { id: OLD_BAND, count: 1 }],
   }],
 });
 
@@ -112,7 +112,7 @@ console.log('a v2 profile is carried onto the new ids');
   const inv = p.runs[0].inventory;
   ok(inv.find((i) => i.id === NEW_PLUME)?.count === 4, 'the recorded run still shows 4 plumes');
   ok(inv.find((i) => i.id === NEW_BAND)?.count === 1, 'and 1 band');
-  ok(inv.find((i) => i.id === 'infusion')?.count === 2, 'and 2 of the untouched item');
+  ok(inv.find((i) => i.id === 'feeding-vial')?.count === 2, 'and 2 of the untouched item');
   ok(!inv.some((i) => i.id === OLD_PLUME || i.id === OLD_BAND), 'no old id is left in the inventory');
   ok(inv.length === 3, 'and no row was dropped or duplicated');
 }
@@ -159,7 +159,7 @@ console.log('the artifact store carries a Command edict onto the new id');
   const saved = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
   const map = new Map([['telluric.run.v1', JSON.stringify({
     artifacts: [], difficulty: 'normal',
-    edict: { uncommon: OLD_BAND, common: 'syringe', legendary: OLD_PLUME },
+    edict: { uncommon: OLD_BAND, common: 'adrenal-syringe', legendary: OLD_PLUME },
   })]]);
   globalThis.localStorage = {
     getItem: (k) => (map.has(k) ? map.get(k) : null),
@@ -171,7 +171,7 @@ console.log('the artifact store carries a Command edict onto the new id');
     a._load();
     ok(a.edictFor('uncommon') === NEW_BAND, 'the band edict moved to the new id');
     ok(a.edictFor('legendary') === NEW_PLUME, 'the plume edict moved to the new id');
-    ok(a.edictFor('common') === 'syringe', 'an untouched edict is untouched');
+    ok(a.edictFor('common') === 'adrenal-syringe', 'an untouched edict is untouched');
   } finally {
     if (saved) Object.defineProperty(globalThis, 'localStorage', saved);
     else delete globalThis.localStorage;

@@ -93,13 +93,13 @@ console.log('the gate grades a record and ratchets against its exemptions');
   const good = {
     units: [
       { id: 'mite',   tier: 1, px40: 260, holesFrac: 0.02, sig: null },
-      { id: 'golem',  tier: 2, px40: 900, holesFrac: 0.03, sig: null },
+      { id: 'sentinel',  tier: 2, px40: 900, holesFrac: 0.03, sig: null },
       { id: 'hulk',   tier: 3, px40: 1800, holesFrac: 0.03, sig: null },
     ],
-    familyPairs: [{ a: 'mite', b: 'golem', iou: 0.41 }],
+    familyPairs: [{ a: 'mite', b: 'sentinel', iou: 0.41 }],
     foeFriendPairs: [{ a: 'mite', b: 'ranger', iou: 0.38 }],
     tierMedianPx: { 1: 260, 2: 900, 3: 1800 },
-    elites: [{ id: 'golem', affix: 'blazing', delta: 0.21, chroma: 0.19 }],
+    elites: [{ id: 'sentinel', affix: 'emberclad', delta: 0.21, chroma: 0.19 }],
   };
   // Every call here passes its exemption list explicitly, including the empty
   // one. Defaulting to READABILITY.exemptions would couple this fixture to
@@ -156,13 +156,13 @@ console.log('the gate grades a record and ratchets against its exemptions');
   const collide = structuredClone(good);
   collide.familyPairs[0].iou = 0.91;
   ok(gradeRoster(collide, []).ok === false, 'two families that overlap too much fail');
-  ok(gradeRoster(collide, [{ id: 'mite/golem', kind: 'familyIoU', value: 0.91 }]).ok === true,
+  ok(gradeRoster(collide, [{ id: 'mite/sentinel', kind: 'familyIoU', value: 0.91 }]).ok === true,
      'exempted at 0.91 it passes');
   collide.familyPairs[0].iou = 0.9145;
-  ok(gradeRoster(collide, [{ id: 'mite/golem', kind: 'familyIoU', value: 0.91 }]).ok === true,
+  ok(gradeRoster(collide, [{ id: 'mite/sentinel', kind: 'familyIoU', value: 0.91 }]).ok === true,
      'and the ceiling carries the same slack the floor does');
   collide.familyPairs[0].iou = 0.93;
-  ok(gradeRoster(collide, [{ id: 'mite/golem', kind: 'familyIoU', value: 0.91 }]).ok === false,
+  ok(gradeRoster(collide, [{ id: 'mite/sentinel', kind: 'familyIoU', value: 0.91 }]).ok === false,
      'and 0.93 against a 0.91 exemption is a regression');
 }
 

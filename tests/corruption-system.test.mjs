@@ -172,7 +172,7 @@ console.log('the blight transform does not re-charge stacks already paid for');
   const c = new Corruption();
   c.init(ctx);
 
-  for (let i = 0; i < 5; i++) ctx.items.give('syringe', 1);
+  for (let i = 0; i < 5; i++) ctx.items.give('adrenal-syringe', 1);
   ok(c.world === SOURCES.itemFeed.common * 5, `five commons cost ${SOURCES.itemFeed.common * 5} (got ${c.world})`);
 
   // Spasm Gland eats every syringe held. The card's own pickup is the whole
@@ -180,7 +180,7 @@ console.log('the blight transform does not re-charge stacks already paid for');
   ctx.items.give('spasm-gland', 1);
   const expected = SOURCES.itemFeed.common * 5 + SOURCES.itemFeed.blight;
   ok(c.world === expected, `the transform costs only the card: ${expected} (got ${c.world})`);
-  ok(ctx.items.count('spasm-gland') === 6 && ctx.items.count('syringe') === 0,
+  ok(ctx.items.count('spasm-gland') === 6 && ctx.items.count('adrenal-syringe') === 0,
     'the inventory still converted all five stacks');
 
   // A genuine second copy of the same blight card is a real pickup and pays.
@@ -219,7 +219,7 @@ console.log('a Hollowed kill refunds a fraction of the world');
   ctx.events.emit('kill', { victim: { affix: 'voidtouched' }, source: ctx.player, position: null, isElite: true, isBoss: false });
   ok(Math.abs(c.world - 100 * (1 - VOIDTOUCHED.refund)) < 1e-9, 'refund is refund-fraction of current world');
   const w = c.world;
-  ctx.events.emit('kill', { victim: { affix: 'blazing' }, source: ctx.player, position: null, isElite: true, isBoss: false });
+  ctx.events.emit('kill', { victim: { affix: 'emberclad' }, source: ctx.player, position: null, isElite: true, isBoss: false });
   ctx.events.emit('kill', { victim: null, source: ctx.player, position: null, isElite: false, isBoss: false });
   ok(c.world === w, 'other kills refund nothing');
 }

@@ -241,7 +241,7 @@ export class Audio {
 
     // Most of these hooks do two things: play the sound, and feed the music's
     // fast intensity term. The impulse weights are what decide how a fight
-    // "feels" to the soundtrack — a swing at a lone beetle should not lift the
+    // "feels" to the soundtrack — a swing at a lone scarab should not lift the
     // track, twenty seconds of sustained trading should.
     const e = ctx.events;
     e.on('damage', (p) => {

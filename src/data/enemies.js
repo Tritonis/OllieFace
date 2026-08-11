@@ -72,7 +72,7 @@ export const ENEMIES = [
     ],
   },
   {
-    id: 'beetle',
+    id: 'scarab',
     maxAlive: 10,
     selectionWeight: 1.0,
     name: 'Plated Scarab',
@@ -91,7 +91,7 @@ export const ENEMIES = [
     eliteEligible: true,
     packMin: 3,
     packMax: 6,
-    meshFactory: 'beetle',
+    meshFactory: 'scarab',
     attacks: [
       // The scarab is the first thing anyone meets, so its tell is the longest
       // relative to its reach: it rears back for two thirds of a second before
@@ -133,7 +133,7 @@ export const ENEMIES = [
     ],
   },
   {
-    id: 'lemurian',
+    id: 'skink',
     maxAlive: 6,
     selectionWeight: 0.9,
     name: 'Emberjaw Skink',
@@ -152,7 +152,7 @@ export const ENEMIES = [
     eliteEligible: true,
     packMin: 2,
     packMax: 4,
-    meshFactory: 'lemurian',
+    meshFactory: 'skink',
     attacks: [
       { id: 'bite', kind: 'melee', range: 3.0, windup: 0.56, active: 0.12, recover: 0.5, cooldown: 1.4, damage: 1, arc: 0.9, lunge: 6 },
       {
@@ -163,7 +163,7 @@ export const ENEMIES = [
     ],
   },
   {
-    id: 'wisp',
+    id: 'mote',
     maxAlive: 5,
     selectionWeight: 0.8,
     name: 'Guttering Mote',
@@ -184,7 +184,7 @@ export const ENEMIES = [
     packMin: 1,
     packMax: 3,
     preferredRange: 16,
-    meshFactory: 'wisp',
+    meshFactory: 'mote',
     attacks: [
       {
         id: 'bolt', kind: 'projectile', range: 26, minRange: 0, windup: 0.72, active: 0.06, recover: 0.5,
@@ -194,7 +194,7 @@ export const ENEMIES = [
     ],
   },
   {
-    id: 'pest',
+    id: 'shrike',
     maxAlive: 5,
     selectionWeight: 0.7,
     name: 'Blind Shrike',
@@ -223,7 +223,7 @@ export const ENEMIES = [
     packMin: 2,
     packMax: 4,
     erratic: 1,
-    meshFactory: 'pest',
+    meshFactory: 'shrike',
     attacks: [
       // The dive keeps its bite — a longer `windup` is what buys the reaction,
       // not a weaker hit. The telegraph now runs 0.85s before the commit, and
@@ -526,7 +526,7 @@ export const ENEMIES = [
     ],
   },
   {
-    id: 'golem',
+    id: 'sentinel',
     maxAlive: 4,
     selectionWeight: 0.7,
     name: 'Basalt Sentinel',
@@ -546,7 +546,7 @@ export const ENEMIES = [
     packMin: 1,
     packMax: 2,
     preferredRange: 22,
-    meshFactory: 'golem',
+    meshFactory: 'sentinel',
     attacks: [
       {
         id: 'laser', kind: 'beam', range: 42, minRange: 0, windup: 1.55, active: 0.28, recover: 0.95,
@@ -867,7 +867,7 @@ export const ENEMIES = [
   // phase changes what the player has to *do*, not just how hard it hits.
   // -------------------------------------------------------------------------
   {
-    id: 'titan',
+    id: 'colossus',
     name: 'Basalt Colossus',
     tier: 4,
     cost: 420,
@@ -890,7 +890,7 @@ export const ENEMIES = [
     // burns from the inside and vents a nova between every other attack.
     phaseAt: [0.65, 0.28],
     phase2At: 0.65,
-    meshFactory: 'titan',
+    meshFactory: 'colossus',
     attacks: [
       {
         id: 'slam', kind: 'slam', range: 15, windup: 1.25, active: 0.2, recover: 0.9, cooldown: 6.0,
@@ -1267,7 +1267,7 @@ ENEMIES.push(
       },
       {
         id: 'riftlings', kind: 'summon', range: 60, windup: 1.5, active: 0.3, recover: 0.8,
-        cooldown: 13.0, damage: 0, summon: 'wisp', count: 3, spread: 6.0, color: 0xd050ff,
+        cooldown: 13.0, damage: 0, summon: 'mote', count: 3, spread: 6.0, color: 0xd050ff,
         phase: 2, weight: 3,
       },
       {
@@ -1325,7 +1325,7 @@ export const TIER_UNLOCK = { 1: 0, 2: 1.55, 3: 2.6, 4: Infinity };
  * rather than on wall time alone.
  */
 export const ELITE_TIERS = [
-  { tier: 1, unlock: 0, affixes: ['blazing', 'overloading', 'glacial'] },
+  { tier: 1, unlock: 0, affixes: ['emberclad', 'galvanic', 'rimebound'] },
   { tier: 2, unlock: 3.2, affixes: ['withering', 'warded'] },
 ];
 
@@ -1347,18 +1347,18 @@ export function eliteAffixesFor(difficulty) {
  * to trade damage with it from the front.
  */
 export const ELITE_STATS = {
-  /* Blazing, retuned against its own cost.
+  /* Emberclad, retuned against its own cost.
    *
    * Measured at 100.7 dps against a parked 110 HP survivor held inside the aura
-   * — 11.3x the same card without an affix and 5.6x `glacial`, which costs the
+   * — 11.3x the same card without an affix and 5.6x `rimebound`, which costs the
    * identical 4.5 credits and whose rider deals no damage at all. Raw arms and
    * the reachable-set probes are in `reviews/round8/balance/`.
    *
-   * Now 40.9 dps on the same fixture — 2.29x glacial, and 4.6x the *plain*
+   * Now 40.9 dps on the same fixture — 2.29x rimebound, and 4.6x the *plain*
    * (non-elite) card, which is the affix ratio times the elite damage
    * multiplier, not the affix in isolation; 2.29x is the affix-isolating
    * number, since the elite base with the rider removed is 17.85, identical to
-   * glacial (`probe-no-rider.json`) — and
+   * rimebound (`probe-no-rider.json`) — and
    * 22.3 dps at an 11 m free-roam stand against the old 48.5, so the point-blank
    * case was brought down without deleting the threat at range. The rider is
    * split so that contact is survivable and *staying* in contact is not: the
@@ -1376,7 +1376,7 @@ export const ELITE_STATS = {
    *
    * `auraDps` — the direct tick, `damage x auraDps` every 0.5 s. Also the gate
    * on the whole aura block (`Enemy.js:581`), so 0 deletes the ignition with it
-   * and blazing stops being a fire affix. Too high and standing next to one is
+   * and emberclad stops being a fire affix. Too high and standing next to one is
    * lethal before the survivor can react — at the old 0.35 the aura alone was
    * 27 dps and the survivor was dead in 1.57 s, which no stack cap could change
    * because stacks have not ramped that early. Too low and the aura is a
@@ -1396,7 +1396,7 @@ export const ELITE_STATS = {
    * `Enemy.js:990`, which appears in no design document and was 49.6 dps on its
    * own with the aura deleted entirely. Off. Non-zero and the affix has a second
    * ignition source that is invisible in this table, ramps to the cap on contact
-   * and is not scaled by anything above; zero, as now, and blazing has no on-hit
+   * and is not scaled by anything above; zero, as now, and emberclad has no on-hit
    * fire at all — every stack it applies comes from the aura, and the branch at
    * `Enemy.js:990` is dead code that no test covers. That is the cost of this
    * end, and it is accepted because the aura is the mechanic the card is about.
@@ -1405,9 +1405,9 @@ export const ELITE_STATS = {
   // ids and stay. The first three keys are Risk of Rain 2's elite prefixes
   // verbatim, which is why the HUD must never print a raw key —
   // tests/branding-display.test.mjs holds every affix to that.
-  blazing:     { label: 'Emberclad', health: 4.0, damage: 2.0, cost: 4.5, speed: 1.0,  burn: 0, burnTick: 0.075, auraRadius: 3.2, auraDps: 0.12 },
-  overloading: { label: 'Galvanic', health: 3.2, damage: 2.0, cost: 5.0, speed: 1.15, shield: 0.5, deathBlast: 3.0, blastRadius: 7 },
-  glacial:     { label: 'Rimebound', health: 4.0, damage: 2.0, cost: 4.5, speed: 0.92, slow: 0.5, slowTime: 2.0, novaRadius: 8, novaDamage: 1.5 },
+  emberclad:     { label: 'Emberclad', health: 4.0, damage: 2.0, cost: 4.5, speed: 1.0,  burn: 0, burnTick: 0.075, auraRadius: 3.2, auraDps: 0.12 },
+  galvanic: { label: 'Galvanic', health: 3.2, damage: 2.0, cost: 5.0, speed: 1.15, shield: 0.5, deathBlast: 3.0, blastRadius: 7 },
+  rimebound:     { label: 'Rimebound', health: 4.0, damage: 2.0, cost: 4.5, speed: 0.92, slow: 0.5, slowTime: 2.0, novaRadius: 8, novaDamage: 1.5 },
   // Malachite's role: while one of these has line of sight on you inside
   // `denyRadius`, healing does nothing. Every source — regen, item procs,
   // shrine drops — is nullified, so the answer is to kill it or break contact.

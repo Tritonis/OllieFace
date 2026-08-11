@@ -294,7 +294,7 @@ try {
   });
   await shot('03-hollowed-vs-warded-40m');
 
-  // The same pair at conversational range. At 40 m a beetle is a handful of
+  // The same pair at conversational range. At 40 m a scarab is a handful of
   // pixels whatever it is wearing, so the wide shot alone cannot carry the
   // family-separation claim; this one is what a human judges the two dressings
   // against, and the wide one is what tells you they are still separable when

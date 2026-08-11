@@ -31,7 +31,7 @@ console.log('an open vocabulary lands in a closed set');
      && elementOf('thorns') === 'nature', 'the nature family');
   ok(elementOf('void') === 'void', 'the void family');
   ok(elementOf('blast') === 'blast' && elementOf('missile') === 'blast'
-     && elementOf('behemoth') === 'blast', 'the blast family');
+     && elementOf('shrapnel-heart') === 'blast', 'the blast family');
   ok(elementOf('melee') === 'kinetic' && elementOf('hitscan') === 'kinetic'
      && elementOf('projectile') === 'kinetic' && elementOf('hit') === 'kinetic',
      'the ordinary hit is kinetic');

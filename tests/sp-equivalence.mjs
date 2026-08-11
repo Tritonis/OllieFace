@@ -175,7 +175,7 @@ const PORT = 5209;
  *
  * What it measures: how much damage one elite puts on one parked survivor per
  * second, split by damage *type*, at two standoffs. The split is the whole
- * point — a blazing elite's total is three separate riders (the aura's direct
+ * point — an emberclad elite's total is three separate riders (the aura's direct
  * tick, the burn DoT the aura and the melee rider light, and the melee hit
  * itself) and they answer to three different levers, so a single total cannot
  * tell you which one to move.
@@ -198,7 +198,7 @@ const PORT = 5209;
 const ARM_CARD = 'lasher';
 
 // The two standoffs, both reported, because a fix aimed at one end can overshoot
-// into the other. 2.5 m is inside blazing's 3.2 m `auraRadius` and is the worst
+// into the other. 2.5 m is inside emberclad's 3.2 m `auraRadius` and is the worst
 // case: the aura fires on every beat, `inAuraFraction` is 1, and AI variance in
 // whether the unit closed is removed entirely. 11 m is outside every aura and
 // outside the melee reach, so the unit has to choose and travel — that arm can
@@ -219,7 +219,7 @@ const ARM_SETTLE = 120;
 // 40 s held in contact. The floor is set by quantisation, not by the ramp: the
 // plain arm's whole damage is melee hits worth 21 each on a ~2.4 s cooldown, so
 // at 20 s a single hit landing either side of the window edge moved the plain
-// denominator by 14% and the blazing/plain ratio by 1.6x between two runs of an
+// denominator by 14% and the emberclad/plain ratio by 1.6x between two runs of an
 // unchanged tree. At 40 s that is ~6%. Too many and the six arms together push
 // `difficultyCoefficient` far enough that the later arms are measured on a
 // different curve from the earlier ones, and each capture costs minutes.
@@ -661,11 +661,11 @@ try {
         };
 
         const errorsAtStart = ctx.frameErrors;
-        for (const affix of ['blazing', 'glacial', null]) {
+        for (const affix of ['emberclad', 'rimebound', null]) {
           runArm(affix, contactM, contactSteps, true);
           runArm(affix, freeM, freeSteps, false);
         }
-        const lethal = runLethal('blazing', contactM, contactSteps);
+        const lethal = runLethal('emberclad', contactM, contactSteps);
         ctx.combat.applyDamage = origApply;
 
         return {
@@ -864,7 +864,7 @@ try {
          * own hits, and `null` for environmental damage. `constructor.name` is
          * `'Enemy'` for every monster in the game and is degenerate for the same
          * reason `type` was; `def.id` is the spawn-card id from
-         * `data/enemies.js` ('mite', 'beetle', 'lemurian'...), which is stable
+         * `data/enemies.js` ('mite', 'scarab', 'skink'...), which is stable
          * across runs and is the granularity a targeting change shows up at. The
          * elite affix rides along because it multiplies damage, so folding it in
          * would hide an affix-only change.
@@ -1123,8 +1123,8 @@ if (MODE === 'elite-dps') {
     /* Keyed off the affix table, not off the observed fraction.
      *
      * The first version of this was `inAuraFraction > 0 && < 1`, where the `> 0`
-     * existed so glacial and plain — which have no aura — could pass. The cost
-     * was that the one failure it exists to catch walked through it: a blazing
+     * existed so rimebound and plain — which have no aura — could pass. The cost
+     * was that the one failure it exists to catch walked through it: an emberclad
      * arm whose aura had silently stopped existing (an `auraRadius` typo, or
      * `auraDps` falling to 0 and taking the whole gated block with it) records
      * `inAuraFraction` 0 and passed every gate, reporting a collapsed dps as a
@@ -1134,8 +1134,8 @@ if (MODE === 'elite-dps') {
     if (a.hold && a.hasAura && a.metres < a.auraRadius && a.inAuraFraction !== 1) {
       armFail.push(`${name}: inAuraFraction ${a.inAuraFraction} on a held arm ${a.metres} m inside a ${a.auraRadius} m aura, expected 1`);
     }
-    if (a.hold && a.affix === 'blazing' && !a.hasAura) {
-      armFail.push(`${name}: blazing recorded no aura at all — auraDps or auraRadius is 0 in ELITE_STATS`);
+    if (a.hold && a.affix === 'emberclad' && !a.hasAura) {
+      armFail.push(`${name}: emberclad recorded no aura at all — auraDps or auraRadius is 0 in ELITE_STATS`);
     }
   }
 
@@ -1193,7 +1193,7 @@ if (MODE === 'elite-dps') {
     console.log(`${name.padEnd(16)} dps ${String(a.dps).padStart(7)}  aura ${String(a.auraDirectDps).padStart(6)}  burnDot ${String(a.burnDotDps).padStart(6)}  melee ${String(a.meleeDps).padStart(6)}`);
   }
   if (plainContact > 0) {
-    for (const k of [`blazing@${CONTACT_M}`, `glacial@${CONTACT_M}`]) {
+    for (const k of [`emberclad@${CONTACT_M}`, `rimebound@${CONTACT_M}`]) {
       console.log(`${k} is ${(elite.arms[k].dps / plainContact).toFixed(2)}x plain@${CONTACT_M}`);
     }
   }
@@ -1206,7 +1206,7 @@ if (MODE === 'elite-dps') {
    * gate.
    *
    * Until this existed, `ELITE_STATS` was the largest measured behaviour change
-   * on the branch — blazing 100.7 -> 40.9 dps — with nothing that could fail on
+   * on the branch — emberclad 100.7 -> 40.9 dps — with nothing that could fail on
    * it. The default fingerprint is structurally blind to affixes (see the NOTE
    * it prints), this mode had no comparator at all, and there was no committed
    * baseline for one to read. A regression was caught by a human reading six

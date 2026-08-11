@@ -144,9 +144,9 @@ const MAT_PRESETS = {
  * STATUS table below and the two must not be confused.)
  */
 const ELITE = {
-  blazing:     { color: 0xff5a10, tip: 0xffc060, frame: FRAME.EMBER, rate: 34, rise: 1.4, tipAlpha: 0.7 },
-  overloading: { color: 0x3f7bff, tip: 0xa9d4ff, frame: FRAME.SPARK, rate: 26, rise: 0.6, tipAlpha: 0.7 },
-  glacial:     { color: 0x59d6ff, tip: 0x9fd8f0, frame: FRAME.HEX,   rate: 22, rise: -0.6, tipAlpha: 0.55 },
+  emberclad:     { color: 0xff5a10, tip: 0xffc060, frame: FRAME.EMBER, rate: 34, rise: 1.4, tipAlpha: 0.7 },
+  galvanic: { color: 0x3f7bff, tip: 0xa9d4ff, frame: FRAME.SPARK, rate: 26, rise: 0.6, tipAlpha: 0.7 },
+  rimebound:     { color: 0x59d6ff, tip: 0x9fd8f0, frame: FRAME.HEX,   rate: 22, rise: -0.6, tipAlpha: 0.55 },
 };
 
 // Keyed to Combat's STATUS_DEFS so `ctx.vfx.status(entity, type, colour)` maps
@@ -1018,9 +1018,9 @@ export class VFX {
   }
 
   /** Persistent elite shell. Returns a handle with .stop(). */
-  eliteAura(mesh, type = 'blazing') {
+  eliteAura(mesh, type = 'emberclad') {
     if (!mesh) return null;
-    const def = ELITE[type] || ELITE.blazing;
+    const def = ELITE[type] || ELITE.emberclad;
     const h = { mesh, def, accum: 0, alive: true, stop() { this.alive = false; } };
     this._auras.push(h);
     return h;
@@ -1413,7 +1413,7 @@ export class VFX {
     this.particles.emit(e);
 
     // Elites keep their hotter ring regardless of element — the affix read has
-    // to survive the damage type that finished it, or a Blazing kill by a
+    // to survive the damage type that finished it, or an Emberclad kill by a
     // frost round stops looking like an elite kill. `p.isElite ||` on the gate
     // itself (not just the colour) because void.ring is false: without it, a
     // void weapon finishing a Hollowed elite would drop the amber affix ring

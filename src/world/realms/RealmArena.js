@@ -87,7 +87,7 @@ function floorDisc(stage, material, segments = 72) {
  * `roomWall` and `roomCeiling` need `BackSide` on their own shell, and both
  * used to get it by writing `mesh.material.side = BackSide` — on the object the
  * caller passed in. Every other mesh sharing that rung then rendered back-face
- * only: the bazaar's pale columns and its two-tier dais share `paleStone` with
+ * only: the market's pale columns and its two-tier dais share `paleStone` with
  * the ceiling, the crucible's cover blocks and brazier bowls share `iron` with
  * both. With `flatShading: true` a back face takes its normal from screen
  * derivatives, so those meshes lost their form shading entirely — measured on
@@ -190,7 +190,7 @@ function inlayRings(stage, radii, mat) {
 //  - **A lantern is a fixture, not a billboard.** Bracket, chain, housing
 //    cage, then the flame — the same four parts on all twenty of them.
 
-function buildBazaar(stage) {
+function buildMarket(stage) {
   const R = stage.floorRadius;
   // Three stone rungs instead of one, and they are two full stops apart. The
   // wall is the darkest, the columns are the brightest, the floor sits between.
@@ -857,7 +857,7 @@ export function spawnCollapseDebris(stage, fromR, toR, life = 3.4) {
 }
 
 const BUILDERS = {
-  bazaar: buildBazaar,
+  market: buildMarket,
   crucible: buildCrucible,
   vault: buildVault,
   fracture: buildFracture,

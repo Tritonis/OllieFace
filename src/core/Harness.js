@@ -90,7 +90,7 @@ export function installHarness(ctx) {
     // that inherits the previous one's aim is not the shot it documents:
     // `08-explosion` photographed a mountain horizon with the blast sliding off
     // the bottom of frame because `05-boss` had left the lens pitched up at a
-    // Titan's chest, and `02-vista` ran with the trigger still held from
+    // Colossus's chest, and `02-vista` ran with the trigger still held from
     // `04-combat`. Reset both before anything is placed — every scenario
     // derives its spawns from camera forward, so a stale pitch moves the
     // subject as well as the frame.
@@ -109,7 +109,7 @@ export function installHarness(ctx) {
     }
     // Every scenario shares one page, so without this each one inherits the
     // previous one's horde. `05-boss` was photographing twenty-four leftover
-    // golems from `04-combat` standing in front of the Titan, which is how a
+    // sentinels from `04-combat` standing in front of the Colossus, which is how a
     // shot ends up containing everything except its subject.
     if (ctx.director) {
       ctx.director.clear?.(ctx);
@@ -497,7 +497,7 @@ export function installHarness(ctx) {
       const ref = screenOf(reference.x, reference.y, reference.z);
       if (head.front <= 0 || ref.front <= 0) continue;
       // Subject's head just under the HUD's top strip (the boss bar and the
-      // objective banner own roughly the first 12% of frame height, and a Titan
+      // objective banner own roughly the first 12% of frame height, and a Colossus
       // whose head is behind the bar reads as a cropped subject), its feet clear
       // of the bottom, and the reference inside the lower safe area rather than
       // under the frame.
@@ -763,7 +763,7 @@ export function installHarness(ctx) {
    * Two separate pushes, because distance and framing are separate problems.
    * The radial one fixes depth. It cannot fix overlap: pushing an enemy out
    * along its own bearing from the lens preserves its screen position exactly,
-   * so a pest fused with the survivor's shoulder at 6 m is the same pest fused
+   * so a shrike fused with the survivor's shoulder at 6 m is the same shrike fused
    * with his shoulder at 12 m — which is what shipped, reading as an orange
    * growth on his arm rather than as a monster. Anything still sitting on the
    * player's silhouette is therefore also swung off the bearing.
@@ -2120,7 +2120,7 @@ export function installHarness(ctx) {
    *
    * Set from measurement, not from taste. Across the twenty shots the median
    * per-pixel separation of a subject a human can find in the frame runs
-   * 0.30–0.75 (`03-thirdperson` survivor 0.63, `05-boss` Titan 0.70,
+   * 0.30–0.75 (`03-thirdperson` survivor 0.63, `05-boss` Colossus 0.70,
    * `11-bestiary` roster 0.79, `09-survivors` 0.55). The one subject the round-2
    * critic independently measured as illegible — the `04-combat` survivor, whose
    * bbox median luminance is the *lowest of every named object in its own frame*
@@ -2228,7 +2228,7 @@ export function installHarness(ctx) {
             const gated = new Set(rank);
             /* An object that renders nothing is not a member of the subject.
              * This is where `04-combat` was hiding six zeros in twenty-four, one
-             * of them the `glacial` elite whose whole affix claim was then
+             * of them the `rimebound` elite whose whole affix claim was then
              * measured on a subject that contributes no pixels at all, and where
              * `23-realm-crucible` certified `perPx: [141, 0, 299]`.
              *
@@ -2664,7 +2664,7 @@ export function installHarness(ctx) {
        * On `reviews/round6/hdiag5/manifest.json` four of the twenty-four come
        * back at 0, 0, 1 and 0 px, and that file's `DIAG horde` dump says where
        * each of them is: object 0 is a mite at 27.1 m at screen (0.52, 0.63),
-       * which is where the lemurian 15 m in front of it is standing; object 14
+       * which is where the skink 15 m in front of it is standing; object 14
        * is a mortar at 29.7 m; and objects 7 and 23 are chargers at screen x
        * **-2.61** and **-1.38** — outside the frame altogether. That reads as
        * this pass running out of cells: it asks for `bad.length + 4` slots and
@@ -2770,15 +2770,15 @@ export function installHarness(ctx) {
     /**
      * Teleporter boss.
      *
-     * Three separate ways this shot used to end up without a Titan in it:
+     * Three separate ways this shot used to end up without a Colossus in it:
      *
      *  - it spawned the boss on a fixed world `+X/+Z` diagonal with no terrain
      *    sample, so on any slope it landed buried or off a ledge;
      *  - it called `beginTeleporterEvent` (which spawns the *tracked* boss at
      *    `findSpawnPoint`, deliberately outside the frustum) and then spawned a
-     *    second untracked Titan, so the HUD bar and the visible monster were
+     *    second untracked Colossus, so the HUD bar and the visible monster were
      *    different entities and only the invisible one had a health bar;
-     *  - it inherited two dozen golems from `04-combat`, which stood between the
+     *  - it inherited two dozen sentinels from `04-combat`, which stood between the
      *    lens and the boss.
      *
      * So the boss is spawned here, registered as `director.boss` before
@@ -2817,7 +2817,7 @@ export function installHarness(ctx) {
       const base = Math.atan2(f.x, f.z);
 
       // Stand off behind the player, on the player→boss line, so the 1.8 m
-      // survivor and the 7.6 m Titan are both in frame. Scale is the whole
+      // survivor and the 7.6 m Colossus are both in frame. Scale is the whole
       // point of this shot and scale only exists as a comparison — and a
       // comparison is destroyed by putting the two subjects at different
       // depths. Apparent height goes as height/distance, so the on-screen
@@ -2834,7 +2834,7 @@ export function installHarness(ctx) {
         const len = Math.hypot(dx, dz) || 1;
         dx /= len; dz /= len;
         // Swung off the boss→player axis rather than sitting on it. Directly
-        // behind the survivor the lens, the survivor and the Titan are
+        // behind the survivor the lens, the survivor and the Colossus are
         // collinear, so he lands on its chest and the two silhouettes fuse —
         // and sliding the camera sideways cannot fix that, because it moves
         // both subjects through nearly the same angle. Swinging the standoff
@@ -2843,7 +2843,7 @@ export function installHarness(ctx) {
         const ax = dx * c - dz * s, az2 = dx * s + dz * c;
         const cx = p.x + ax * STANDOFF, cz = p.z + az2 * STANDOFF;
         // High enough to shoot over the crest the survivor is standing behind:
-        // at 4 m the Titan's legs were cut off by near terrain and a 7.6 m
+        // at 4 m the Colossus's legs were cut off by near terrain and a 7.6 m
         // colossus photographed as a 145 px torso.
         return new THREE.Vector3(cx, Math.max(groundY(cx, cz, p.y), p.y) + LIFT, cz);
       };
@@ -2856,7 +2856,7 @@ export function installHarness(ctx) {
       // rays and, when every candidate failed — which is what a forest stage
       // does to ten rays — dropped through to `spot = ahead(23)` with the camera
       // derived from it and no visibility test of any kind. That is the branch
-      // `05-boss` shipped from: the Titan ended up 24 m past the survivor,
+      // `05-boss` shipped from: the Colossus ended up 24 m past the survivor,
       // behind a hillside, contributing exactly 0 of 360,000 pixels, under a
       // full STONE TITAN health bar.
       //
@@ -2883,7 +2883,7 @@ export function installHarness(ctx) {
               // The survivor has to be in it too: this shot is a scale
               // comparison and a comparison needs both terms.
               const pvis = visibleFraction(c, p, { height: 1.9, radius: 0.6, cols: 3, rows: 3, slack: 0.6 });
-              // The Titan is a grey stone figure; parked against a cliff face it
+              // The Colossus is a grey stone figure; parked against a cliff face it
               // is indistinguishable from the cliff. Open distance behind its
               // head gives the silhouette something to read against.
               const back = Math.min(backdropDepth(c, _probe.set(x, y + bh * 0.85, z)), 60);
@@ -2912,19 +2912,19 @@ export function installHarness(ctx) {
       // Shoot the boss. The frame is documented as judging the boss silhouette
       // and the boss HUD, and it shipped with a full health bar, a held trigger
       // and not one round connecting — no damage number, no hit flash. The
-      // Titan is pinned to `spot` for the duration so its readouts spawn where
+      // Colossus is pinned to `spot` for the duration so its readouts spawn where
       // the framing below expects it to be standing.
       if (boss) {
         await fireBurst(0.5, { pin: boss, at: spot });
         // Then let the trigger go. `Enemy.setFlash` is a boolean full-white
         // override held for 0.075 s after every hit, so shooting right up to
-        // the shutter photographs the Titan as a flat white cast — the exact
+        // the shutter photographs the Colossus as a flat white cast — the exact
         // silhouette this frame exists to judge, with the silhouette removed.
         // Damage numbers live about a second and survive the gap.
         await fireBurst(0.14, { pin: boss, at: spot, fire: false });
       }
 
-      // Face the camera. Nothing here ever set a yaw: the Titan kept whatever
+      // Face the camera. Nothing here ever set a yaw: the Colossus kept whatever
       // heading it had before it was teleported onto `spot`, which photographed
       // it ~80° off axis with its face, its core and both fists hidden. Three
       // quarters rather than dead-on — a flat front view loses the depth of the
@@ -2939,7 +2939,7 @@ export function installHarness(ctx) {
       camera.fov = 36;
       camera.updateProjectionMatrix();
       // Frame against the full capsule. This used to aim at `bh * 0.7` because
-      // the Titan's rig hung 1.25 m of each leg below the world and only ~0.7
+      // the Colossus's rig hung 1.25 m of each leg below the world and only ~0.7
       // of its 7.6 m capsule was ever drawn. The rig now fills 7.58 m of it, so
       // the fudge would crop the head it was invented to keep in frame.
       aimBetween(spot, bh, p);
@@ -2949,7 +2949,7 @@ export function installHarness(ctx) {
       // once the camera it measures against is the one being photographed.
       declutter(30);
       // The survivor is half of this shot. It is documented as judging *scale*,
-      // and scale is a comparison — a Titan photographed alone at an unknown
+      // and scale is a comparison — a Colossus photographed alone at an unknown
       // distance carries no scale information at all. The first run under the
       // new assertion measured him at 0 px: the framing search had put a crest
       // between the final lens and where he happened to be standing.
@@ -3534,7 +3534,7 @@ export function installHarness(ctx) {
      *
      * The shutter has to open a fixed number of frames after *the killing
      * blow*, and a held trigger cannot say when that was: the survivor's own
-     * fire rate, the beetles wandering into his line and the hulk's own
+     * fire rate, the scarabs wandering into his line and the hulk's own
      * approach all move it. `ctx.combat.applyDamage` is the same call the
      * player's weapon makes — same event, same `overkill`, same `type` on the
      * payload, `ctx.player` as the source so the body is thrown away from him —
@@ -3577,19 +3577,19 @@ export function installHarness(ctx) {
       }
 
       const hulkDef = SPAWN_CARDS.find((c) => c.id === 'hulk');
-      const beetleDef = SPAWN_CARDS.find((c) => c.id === 'beetle');
+      const scarabDef = SPAWN_CARDS.find((c) => c.id === 'scarab');
       const spawnAt = (def, at) => ctx.director?.spawnOne?.(ctx, def, at, null) ?? null;
 
       // Sited in screen space, like everything else this file places. ~9 m puts
       // a 4.2 m hulk large enough in frame that the launch is a visible
-      // displacement rather than a two-pixel hop, and leaves the four beetles
+      // displacement rather than a two-pixel hop, and leaves the four scarabs
       // room to flank without stacking on him.
       camera.updateMatrixWorld(true);
       const site = groundAtScreen(0.52, 0.62, { minDist: 8, maxDist: 11 })
         ?? groundAtScreen(0.52, 0.58, { minDist: 7, maxDist: 14 })
         ?? ahead(9, 0);
       const hulk = spawnAt(hulkDef, site);
-      const beetles = [];
+      const scarabs = [];
       for (let i = 0; i < 4; i++) {
         const a = (i - 1.5) * 0.42;
         const g = groundAtScreen(0.52 + Math.sin(a) * 0.20, 0.64 + (i % 2) * 0.05,
@@ -3597,8 +3597,8 @@ export function installHarness(ctx) {
         const at = g ?? _cc.set(site.x + Math.cos(a) * 4.5,
                                 groundY(site.x + Math.cos(a) * 4.5, site.z + Math.sin(a) * 4.5, site.y),
                                 site.z + Math.sin(a) * 4.5);
-        const b = spawnAt(beetleDef, at);
-        if (b) beetles.push(b);
+        const b = spawnAt(scarabDef, at);
+        if (b) scarabs.push(b);
       }
       if (!hulk) console.error('[harness] 19-overkill: the hulk refused to spawn');
       await frames(settleFrames);
@@ -3610,7 +3610,7 @@ export function installHarness(ctx) {
       camera.updateMatrixWorld(true);
       const reseat = groundAtScreen(0.52, 0.62, { minDist: 8, maxDist: 11 });
       if (hulk && reseat) _seat(hulk, reseat);
-      beetles.forEach((b, i) => {
+      scarabs.forEach((b, i) => {
         const a = (i - 1.5) * 0.42;
         const g = groundAtScreen(0.52 + Math.sin(a) * 0.20, 0.64 + (i % 2) * 0.05,
                                  { minDist: 7, maxDist: 15 });
@@ -4777,7 +4777,7 @@ export function installHarness(ctx) {
        * and already spent a staging decision on: a hovering card's ray clears
        * the ranks behind it at *every* lateral position. Hovering **and** on
        * the end is both at once, and it is measurable. Re-dividing 19 cards
-       * into four ranks of five moved the wisp — a near-black shell — from the
+       * into four ranks of five moved the mote — a near-black shell — from the
        * interior of a rank of seven to the outer slot of a rank of five, and it
        * came back at `sepP50` 0.13 against the 0.25 floor —
        * `reviews/round7/E-step-ranks/manifest.json` — while the same card sat
@@ -4824,7 +4824,7 @@ export function installHarness(ctx) {
         const x = c.x + ax * off + dx * fz, z = c.z + az * off + dz * fz;
         const y = groundY(x, z, c.y);
         // Two tier-2 elites, on cards big enough for the aura to read.
-        const affix = slotCards[i].id === 'golem' ? 'withering'
+        const affix = slotCards[i].id === 'sentinel' ? 'withering'
           : (slotCards[i].id === 'warden' ? 'warded' : null);
         const e = ctx.director?.spawnOne?.(ctx, slotCards[i], new THREE.Vector3(x, y, z), affix);
         if (e) placed.push({ e, x, y, z });
@@ -4834,7 +4834,7 @@ export function installHarness(ctx) {
       /* Flyers are photographed at `flyerHover`, not at their combat hover.
        *
        * This is a staging decision and it is stated as one. Three of the sixteen
-       * cards hover — pest, wisp and harrier at 3-4.2 m — and in the *near* rank
+       * cards hover — shrike, mote and harrier at 3-4.2 m — and in the *near* rank
        * that puts them 4-5 m above a lens solved for a block whose declared top
        * is the tallest card's 4.2 m crown at the *far* rank. Two things follow,
        * both measured on `reviews/round6/lastdiag2/manifest.json`, `11-bestiary`
@@ -4844,19 +4844,19 @@ export function installHarness(ctx) {
        *    other thirteen stand on. Their `bgLumP50` reads **19, 17 and 28**
        *    against **1-8** for every member on the ground, because at that
        *    elevation the ray behind them clears the far rank and runs to
-       *    fog-lifted distance. Object 4 (the wisp) is a near-black shell at
+       *    fog-lifted distance. Object 4 (the mote) is a near-black shell at
        *    `lumP50 19` in front of a backdrop at 17 — `sepP50 0.15` against the
        *    0.25 floor, the shot's one remaining failure.
        *  - the harrier is photographed at screen y **-0.022** with its mask box
        *    starting at y 0.002: it is already running off the top of the frame.
        *
-       * Repainting the wisp brighter was tried first, because it is the more
+       * Repainting the mote brighter was tried first, because it is the more
        * obvious fix and it is a defect on its own terms; it is **refuted** with
-       * two named regressions at `EnemyMeshes.js` `buildWisp`. The frame is what
+       * two named regressions at `EnemyMeshes.js` `buildMote`. The frame is what
        * is wrong here, not the rig.
        *
        * What this does *not* do: it does not hide that these three fly (at 1.5 m
-       * the wisp's tendril tips still clear the ground by 0.7 m), it does not
+       * the mote's tendril tips still clear the ground by 0.7 m), it does not
        * touch any rig, and it does not move a floor. What it does cost is honest:
        * the roster no longer shows their combat altitude. This shot is a specimen
        * board — positions, yaw, velocity and animation are all pinned already,
@@ -5212,7 +5212,7 @@ export function installHarness(ctx) {
      * `14-survivor-select`. The bestiary fills the index, carries a stat block
      * and a lore line, and is the tab the screen has to prove it can hold.
      */
-    async logbook({ tab = 'enemies', entry = 'golem', settleFrames = 90 } = {}) {
+    async logbook({ tab = 'enemies', entry = 'sentinel', settleFrames = 90 } = {}) {
       await begin();
       attach();
       invulnerable();
@@ -5283,8 +5283,8 @@ export function installHarness(ctx) {
       ]);
       // Put it back after the shutter — literally after it, not after the
       // assertion. `menus.setDifficulty` repaints the card grid, and this line
-      // used to run inline: the manifest asserted `monsoon` and the PNG showed
-      // `rainstorm` selected, because the screenshot is taken when this function
+      // used to run inline: the manifest asserted `cataclysm` and the PNG showed
+      // `fracture` selected, because the screenshot is taken when this function
       // returns. Deferred to the next scenario's `thaw()`.
       if (before) restoreAfterShutter(() => menus.setDifficulty(before));
       return { screen: menus.screen, difficulty: id, options: list.length };
@@ -5491,11 +5491,11 @@ export function installHarness(ctx) {
       // formation and close on the survivor, short enough that it is still eight
       // of them when the lens turns around.
       // Chosen by silhouette, not by roster order. `SPAWN_CARDS.slice(0, 4)` is
-      // the small end of the deck -- mite, beetle, spitling -- and the lens for
+      // the small end of the deck -- mite, scarab, spitling -- and the lens for
       // this shot stands ~26 m off, where a mite is a few pixels of orange on a
       // purple field. These four are the largest bodies that neither submerge
       // (burrower) nor blink out (stalker) mid-shutter.
-      const cards = ['charger', 'shriver', 'warden', 'golem']
+      const cards = ['charger', 'shriver', 'warden', 'sentinel']
         .map((id) => SPAWN_CARDS.find((c) => c.id === id)).filter(Boolean);
       spawnRing(8, cards.length ? cards : SPAWN_CARDS, 9, 4);
       // The ring's own band reaches 42 m in front of the survivor, which on this

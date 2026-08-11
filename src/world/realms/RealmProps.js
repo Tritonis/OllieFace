@@ -120,7 +120,7 @@ export class RealmGateway extends RealmProp {
     this.spin = 0;
     this.armed = false;
 
-    const tint = realm.id === 'bazaar' ? 0x9b5cff : realm.id === 'crucible' ? 0xff5a18 : 0xffc850;
+    const tint = realm.id === 'market' ? 0x9b5cff : realm.id === 'crucible' ? 0xff5a18 : 0xffc850;
     const base = new THREE.Mesh(merge([
       { g: new THREE.CylinderGeometry(1.7, 2.1, 0.34, 10), y: 0.17 },
       { g: new THREE.CylinderGeometry(1.35, 1.6, 0.26, 10), y: 0.46 },

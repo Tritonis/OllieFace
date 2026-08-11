@@ -8,7 +8,7 @@
  *   2. it must be identifiable from the other four affixes.
  *
  * Round 5's critic measured `warded` and `withering` at 0.91 IoU against a
- * *perfect circle* and 0.88 against each other, and `blazing`/`overloading` as
+ * *perfect circle* and 0.88 against each other, and `emberclad`/`galvanic` as
  * two ~150x140 px opaque balls with blown white cores. Its instrument was a
  * background model over the shipped PNG, which is the best you can do from
  * outside; from inside we can do better.
@@ -31,7 +31,7 @@
  *  - `formKeep`  standard deviation of luminance *inside the plain host's own
  *                mask*, affixed over unaffixed. This is requirement 1, and it
  *                is the measurement the round-5 failure actually needed: the
- *                glacial host in `04-combat` still had an outline, and what it
+ *                rimebound host in `04-combat` still had an outline, and what it
  *                had lost was every value break inside that outline — "a matte
  *                near-white mass with no internal structure". An affix that
  *                floods the body reads here as a collapse toward 0. Bar: 0.55.
@@ -71,7 +71,7 @@ const SEED = Number(args.seed ?? 1337);
 const PORT = Number(args.port ?? 5207);
 const OUT = path.resolve(args.out ?? 'shots-affix');
 const W = 1600, H = 900;
-const AFFIXES = ['blazing', 'overloading', 'glacial', 'withering', 'warded'];
+const AFFIXES = ['emberclad', 'galvanic', 'rimebound', 'withering', 'warded'];
 
 const server = await createServer({
   server: { port: PORT, strictPort: true, hmr: false, watch: null }, logLevel: 'error',

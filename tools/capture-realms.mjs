@@ -12,7 +12,7 @@
  * entirely inside the page, per-shot engine telemetry, and a `subjectsOk` gate
  * that fails the run when a frame does not contain what it claims to.
  *
- *   node tools/capture-realms.mjs [--out shots/realms] [--seed 1337] [--only bazaar]
+ *   node tools/capture-realms.mjs [--out shots/realms] [--seed 1337] [--only market]
  */
 import { chromium } from 'playwright';
 import { createServer } from 'vite';
@@ -47,9 +47,9 @@ const SCENARIOS = [
     setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.realmGateways?.()),
   },
   {
-    name: '22-realm-bazaar',
+    name: '22-realm-market',
     doc: 'The Hollow Market: a lantern-lit hub with three deterministic stalls, the refinery and the Obelisk of Departure. Judges whether a no-combat room reads as a different pace and a different place.',
-    setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.realmBazaar?.()),
+    setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.realmMarket?.()),
   },
   {
     name: '23-realm-crucible',
@@ -138,7 +138,7 @@ await page.goto(`http://127.0.0.1:${PORT}/?seed=${SEED}&quality=3&harness=1&pinc
                 { waitUntil: 'load' });
 
 const ready = await page
-  .waitForFunction(() => globalThis.__GAME__?.ctx?.stage != null && globalThis.__HARNESS__?.realmBazaar != null,
+  .waitForFunction(() => globalThis.__GAME__?.ctx?.stage != null && globalThis.__HARNESS__?.realmMarket != null,
                    null, { timeout: 60000 })
   .then(() => true)
   .catch(() => false);

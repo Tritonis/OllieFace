@@ -93,18 +93,18 @@ function mirror(pieces) {
 // emissive 1.1 survives tone-mapping and reads hotter than a clipped 2.4,
 // because the eye is then the only saturated thing in its neighbourhood.
 const PALETTE = {
-  lemurian: { body: 0x8a3f2c, dark: 0x38180f, accent: 0xff5a12, eye: 0xff8a00 },
-  beetle:   { body: 0x77705a, dark: 0x2b2820, accent: 0xc4d044, eye: 0xb4ff10 },
-  wisp:     { body: 0x2c1a34, dark: 0x120a18, accent: 0xff7a1e, eye: 0xff5a00 },
-  golem:    { body: 0x646b78, dark: 0x282c34, accent: 0x22d3ff, eye: 0x00d0ff },
-  pest:     { body: 0xa03f7e, dark: 0x3a1330, accent: 0xff3566, eye: 0xff2f7a },
+  skink: { body: 0x8a3f2c, dark: 0x38180f, accent: 0xff5a12, eye: 0xff8a00 },
+  scarab:   { body: 0x77705a, dark: 0x2b2820, accent: 0xc4d044, eye: 0xb4ff10 },
+  mote:     { body: 0x2c1a34, dark: 0x120a18, accent: 0xff7a1e, eye: 0xff5a00 },
+  sentinel:    { body: 0x646b78, dark: 0x282c34, accent: 0x22d3ff, eye: 0x00d0ff },
+  shrike:     { body: 0xa03f7e, dark: 0x3a1330, accent: 0xff3566, eye: 0xff2f7a },
   // Stone, not putty. 0x6d7480 was a near-neutral mid grey, and a near-neutral
   // mid grey has no pigment of its own to resist the stage light — under this
   // warm key the whole eight-metre boss rendered #905c71, a flat mauve. A
   // darker, distinctly cool slate keeps its hue under the same light, holds the
   // orange core as the only warm thing on the model, and gives the plates room
   // to be lighter than the joints instead of everything landing on one value.
-  titan:    { body: 0x424a58, dark: 0x1c2029, accent: 0xffa514, eye: 0xffb020 },
+  colossus:    { body: 0x424a58, dark: 0x1c2029, accent: 0xffa514, eye: 0xffb020 },
 
   // The expanded roster. Each species owns a hue no neighbour in its tier uses,
   // because at combat range colour is the second identifier after silhouette —
@@ -132,7 +132,7 @@ const PALETTE = {
   // other than damage, and it should not look like the things around it.
   shriver:  { body: 0x2e3560, dark: 0x11142a, accent: 0x6f8cff, eye: 0x9fb4ff },
   // Tier 2 had green (brood), blue (warden), violet (stalker), teal (acolyte),
-  // grey-blue (golem) and burnt orange (mortar) — no red at all. The Lasher's
+  // grey-blue (sentinel) and burnt orange (mortar) — no red at all. The Lasher's
   // own attack colours match this accent so the reel and the thorn volley are
   // legibly *its*.
   lasher:   { body: 0x5e2a34, dark: 0x1f0d12, accent: 0xff6a7a, eye: 0xff8a9a },
@@ -168,7 +168,7 @@ const PALETTE = {
  * (`ico(1,2)` at the unit's whole aura radius) as every affix's carrier, and
  * measurement killed it: `warded` and `withering` came back at 0.91 IoU against
  * a *perfect circle* and 0.88 against each other, and in `04-combat` the
- * blazing and overloading spheres photographed as ~150x140 px opaque balls with
+ * emberclad and galvanic spheres photographed as ~150x140 px opaque balls with
  * blown white cores covering half the host's torso. Not one of the five
  * declared orbiting bits was visible in either — additive bits drawn inside an
  * additive shell that is already at the clip point add nothing.
@@ -179,15 +179,15 @@ const PALETTE = {
  * information now passes *through* the affix instead of being replaced by it.
  *
  * The signature triple is bands x bits x orbit style, and no two rows share it:
- *   blazing      1 flat halo,  4 shards rising and recycling  (fire climbs)
- *   overloading  3 crossed,    6 icos on a fast flat ring     (a gyroscope)
- *   glacial      2 shallow,    6 shards nearly static         (a frozen orrery)
+ *   emberclad      1 flat halo,  4 shards rising and recycling  (fire climbs)
+ *   galvanic  3 crossed,    6 icos on a fast flat ring     (a gyroscope)
+ *   rimebound      2 shallow,    6 shards nearly static         (a frozen orrery)
  *   withering    0,            9 spikes on a slow helix       (infection spreads)
  *   warded       0,            0, a faceted barrier instead   (an actual shell)
  */
 export const ELITE = {
-  blazing:     { tint: 0xff3a08, aura: 0xff6a10, glow: 2.6, name: 'Blazing', bands: 1, tilt: 0, bits: 4, shape: 'shard', bitScale: 0.20, rise: 1, bandAlpha: 0.75 },
-  overloading: { tint: 0x2f5cff, aura: 0x74a6ff, glow: 2.8, name: 'Overloading', bands: 3, tilt: 1.15, bits: 6, shape: 'ico', bitScale: 0.14, spin: 3.4, bandAlpha: 0.55 },
+  emberclad:     { tint: 0xff3a08, aura: 0xff6a10, glow: 2.6, name: 'Emberclad', bands: 1, tilt: 0, bits: 4, shape: 'shard', bitScale: 0.20, rise: 1, bandAlpha: 0.75 },
+  galvanic: { tint: 0x2f5cff, aura: 0x74a6ff, glow: 2.8, name: 'Galvanic', bands: 3, tilt: 1.15, bits: 6, shape: 'ico', bitScale: 0.14, spin: 3.4, bandAlpha: 0.55 },
   // The one tint in the table pale enough to blow out: at the old 0xa8e6ff it
   // mixed 78% into the body albedo *and* drove a 0.5 emissive, which measured
   // as a 94x101 px matte lump at mean L 232 with no internal structure — the
@@ -197,7 +197,7 @@ export const ELITE = {
   // bands, the bits, the accents and the eyes, and at that value three of them
   // overlapping measured 24% of the host's own footprint as near-neutral white.
   // A saturated cyan additively stacked stays cyan; a pale one becomes paper.
-  glacial:     { tint: 0x4fb8e8, aura: 0x46c4f0, glow: 2.2, name: 'Glacial', bands: 2, tilt: 0.5, bits: 6, shape: 'shard', bitScale: 0.18, spin: 0.3, bandAlpha: 0.45 },
+  rimebound:     { tint: 0x4fb8e8, aura: 0x46c4f0, glow: 2.2, name: 'Rimebound', bands: 2, tilt: 0.5, bits: 6, shape: 'shard', bitScale: 0.18, spin: 0.3, bandAlpha: 0.45 },
   // A cloud of thorns on a sick green body. Nine bits in a slow vertical helix
   // rather than a ring: the read is "infected", and infection spreads
   // rather than orbiting.
@@ -227,7 +227,7 @@ function matsFor(id, affix) {
   const key = `${id}:${affix || '-'}`;
   let m = MATS.get(key);
   if (m) return m;
-  const p = PALETTE[id] || PALETTE.beetle;
+  const p = PALETTE[id] || PALETTE.scarab;
   const e = affix ? ELITE[affix] : null;
   // 0.78 / 0.45 flooded the whole unit with the affix tint and left no species
   // value range underneath it — a pale affix turned its host into one matte
@@ -328,7 +328,7 @@ const BEAM = new Map();
 // around its own axis in the vertex shader, and its half-width is clamped to a
 // fixed on-screen angle so the near end tapers instead of filling the frame.
 const BEAM_MAX_HALF_ANGLE = Math.tan(6 * Math.PI / 180);
-// ...and a FLOOR on the same angle. A golem tracking from 35 m drew its 0.06 m
+// ...and a FLOOR on the same angle. A sentinel tracking from 35 m drew its 0.06 m
 // charge line at ~1 px wide, which is not a beam, it is a hairline scratch
 // ruling the composition into wedges — 455 px of it crossed 04. Below ~4 px the
 // quad has no mass anywhere along its length and reads as a render artefact.
@@ -337,7 +337,7 @@ const BEAM_MIN_HALF_ANGLE = Math.tan(0.18 * Math.PI / 180);
 // and the visual should read thinner than its hitbox, never wider.
 const BEAM_MAX_WIDTH = 1.2;
 // Hard ceiling on drawn length. The gameplay ray still reaches `attackRange`
-// (55 m for the titan); the *visual* stops at 14 m so the shot reads as a bolt
+// (55 m for the colossus); the *visual* stops at 14 m so the shot reads as a bolt
 // leaving the muzzle rather than a wire spanning the frame.
 export const BEAM_MAX_LEN = 14;
 
@@ -390,7 +390,7 @@ void main() {
 export function beamMat(id) {
   let m = BEAM.get(id);
   if (m) return m;
-  const p = PALETTE[id] || PALETTE.golem;
+  const p = PALETTE[id] || PALETTE.sentinel;
   m = new THREE.ShaderMaterial({
     uniforms: {
       uColor: { value: new THREE.Color(p.accent) },
@@ -416,7 +416,7 @@ export function beamMat(id) {
 // The stage's shadow map is one cascade over a large arena, so under a horde it
 // resolves to nothing at the point that matters most — the few pixels where a
 // monster meets the ground. Without that cue you cannot depth-order a horde:
-// a hovering pest and a pest on the ridge behind it are the same picture.
+// a hovering shrike and a shrike on the ridge behind it are the same picture.
 //
 // So every rig gets a projected blob. The whole horde is ONE InstancedMesh and
 // therefore one draw call total, not one per enemy: slots are handed out for
@@ -688,7 +688,7 @@ function makeAura(rig, radius) {
   a.position.y = rig.centerY;
   a.visible = false;
   for (let i = 0; i < AURA_BANDS; i++) {
-    const b = new THREE.Mesh(BAND_GEO(), auraMat('blazing'));
+    const b = new THREE.Mesh(BAND_GEO(), auraMat('emberclad'));
     b.scale.setScalar(radius);
     b.frustumCulled = false;
     a.add(b);
@@ -700,7 +700,7 @@ function makeAura(rig, radius) {
   bits.position.y = rig.centerY;
   bits.visible = false;
   for (let i = 0; i < AURA_BITS; i++) {
-    const b = new THREE.Mesh(bitGeo('ico', radius * 0.14), bitMat('blazing'));
+    const b = new THREE.Mesh(bitGeo('ico', radius * 0.14), bitMat('emberclad'));
     const ang = (i / AURA_BITS) * Math.PI * 2;
     b.position.set(Math.cos(ang) * radius, 0, Math.sin(ang) * radius);
     bits.add(b);
@@ -893,7 +893,7 @@ function common(rig, a) {
       if (e.helix) {
         // Thorns climb a slow helix and point outward — a rising column of
         // spines rather than a ring of sparks, which is what separates a
-        // withering elite from a blazing one at fifty metres.
+        // withering elite from an emberclad one at fifty metres.
         const k = ((a.t * 0.22 + i / n) % 1);
         b.position.y = (k - 0.5) * rig.auraR * 2.1;
         b.rotation.z = -Math.PI * 0.5;
@@ -901,8 +901,8 @@ function common(rig, a) {
         b.scale.setScalar(0.6 + Math.sin(k * Math.PI) * 0.7);
       } else if (e.rise) {
         // Embers: shards climb the outside of the unit, taper as they go and
-        // recycle at the feet. Blazing is the only affix whose bits have a
-        // direction, which is what stops it reading as overloading in orange.
+        // recycle at the feet. Emberclad is the only affix whose bits have a
+        // direction, which is what stops it reading as galvanic in orange.
         const k = ((a.t * 0.55 + i / n) % 1);
         b.position.y = (k - 0.35) * rig.auraR * 1.9;
         b.position.x = Math.cos(a.t * 0.6 + (i / n) * Math.PI * 2) * rig.auraR * (1 - k * 0.35);
@@ -934,8 +934,8 @@ function common(rig, a) {
 
 const LEM_HIP = 1.0, LEM_L1 = 0.5, LEM_L2 = 0.5;
 
-function buildLemurian() {
-  const rig = newRig('lemurian');
+function buildSkink() {
+  const rig = newRig('skink');
   rig.centerY = 0.95;
   rig.height = 1.7;
   rig.auraR = 1.35;
@@ -944,8 +944,8 @@ function buildLemurian() {
   const spine = grp(rig.pivot, 0, LEM_HIP, 0);
   rig.parts.spine = spine;
 
-  // Narrow in X, long in Z, and crested: as a black shape the lemurian has to
-  // be the *lean* biped, distinct from the golem's slab at any distance. The
+  // Narrow in X, long in Z, and crested: as a black shape the skink has to
+  // be the *lean* biped, distinct from the sentinel's slab at any distance. The
   // dorsal blades are the cue that survives once the head is a few pixels.
   add(rig, spine, 'body', merged('lem.torso', [
     P(box(0.42, 0.5, 0.55), 0, 0, -0.14),
@@ -1037,11 +1037,11 @@ function buildLemurian() {
   }
 
   makeAura(rig, rig.auraR);
-  rig.animate = animLemurian;
+  rig.animate = animSkink;
   return rig;
 }
 
-function animLemurian(rig, a) {
+function animSkink(rig, a) {
   const p = rig.parts;
   const sp = a.speed;
   const w = a.windup;
@@ -1102,8 +1102,8 @@ function animLemurian(rig, a) {
 // the silhouette is short and horizontal: nothing else in the roster is.
 // ---------------------------------------------------------------------------
 
-function buildBeetle() {
-  const rig = newRig('beetle');
+function buildScarab() {
+  const rig = newRig('scarab');
   rig.centerY = 0.45;
   rig.height = 0.95;
   rig.auraR = 0.95;
@@ -1116,7 +1116,7 @@ function buildBeetle() {
     P(hemi(0.5, 12, 5), 0, -0.02, -0.06, 0, 0, 0, 1.42, 0.66, 1.5),
     P(box(0.08, 0.18, 1.12), 0, 0.3, -0.06),
     // Flared rear plates — the widest point is behind the middle, which is
-    // what makes the beetle read as a wedge rather than a lump.
+    // what makes the scarab read as a wedge rather than a lump.
     P(box(0.62, 0.11, 0.4), 0.34, 0.16, -0.52, 0, 0, -0.4),
     P(box(0.62, 0.11, 0.4), -0.34, 0.16, -0.52, 0, 0, 0.4),
   ]));
@@ -1128,7 +1128,7 @@ function buildBeetle() {
   rig.parts.head = head;
   crumbles(rig, head);
   // Rhino horn. It is the one vertical line on an otherwise entirely
-  // horizontal animal, so a beetle is identifiable as a black shape from any
+  // horizontal animal, so a scarab is identifiable as a black shape from any
   // angle — and it points where the headbutt is going.
   add(rig, head, 'dark', merged('bee.head', [
     P(box(0.36, 0.26, 0.3), 0, 0, 0.02),
@@ -1175,14 +1175,14 @@ function buildBeetle() {
   }
 
   makeAura(rig, rig.auraR);
-  rig.animate = animBeetle;
+  rig.animate = animScarab;
   return rig;
 }
 
 // Alternating tripod: {R-front, R-back, L-mid} vs {R-mid, L-front, L-back}.
 const BEE_PHASE = [0, Math.PI, 0, Math.PI, 0, Math.PI];
 
-function animBeetle(rig, a) {
+function animScarab(rig, a) {
   const p = rig.parts;
   const sp = a.speed;
   const w = anticipate(a.windup);
@@ -1219,8 +1219,8 @@ function animBeetle(rig, a) {
 // contact; the shell contracting is the entire attack tell.
 // ---------------------------------------------------------------------------
 
-function buildWisp() {
-  const rig = newRig('wisp');
+function buildMote() {
+  const rig = newRig('mote');
   rig.centerY = 0;
   rig.height = 1.1;
   rig.auraR = 1.0;
@@ -1230,7 +1230,7 @@ function buildWisp() {
   const core = add(rig, rig.pivot, 'accent', ico(0.32, 1), 0, 0, 0);
   rig.parts.core = core;
 
-  // Tall, narrow, spired — a vertical diamond. The pest is the other floating
+  // Tall, narrow, spired — a vertical diamond. The shrike is the other floating
   // ~1 m unit in the roster and it is a wide flat dome; these two must never
   // resolve to the same blob.
   const shell = grp(rig.pivot, 0, 0, 0);
@@ -1245,7 +1245,7 @@ function buildWisp() {
   /* `dark`, and it stays `dark` — **repainting this shell is REFUTED, do not
    * re-apply it.**
    *
-   * `wisp` is the only build in this file that never uses its own `body` colour
+   * `mote` is the only build in this file that never uses its own `body` colour
    * (`0x2c1a34` is declared and unreferenced), and the shell is the whole
    * silhouette, so `add(rig, shell, 'body', ...)` looks like an obvious repair —
    * especially against `11-bestiary`, where object 4's median masked pixel reads
@@ -1269,11 +1269,11 @@ function buildWisp() {
    * fixed instead — see the flyer-hover clamp in `Harness.js` `bestiary()`.
    *
    * Reverted. Three failing shots against a documented two. */
-  add(rig, shell, 'dark', merged('wisp.shell', plates));
+  add(rig, shell, 'dark', merged('mote.shell', plates));
 
   const emb = grp(rig.pivot, 0, 0, 0);
   rig.parts.embers = emb;
-  add(rig, emb, 'eye', merged('wisp.embers', [
+  add(rig, emb, 'eye', merged('mote.embers', [
     P(ico(0.085, 0), 0.78, 0.1, 0),
     P(ico(0.07, 0), -0.4, -0.14, 0.66),
     P(ico(0.06, 0), -0.38, 0.2, -0.66),
@@ -1283,18 +1283,18 @@ function buildWisp() {
   for (let i = 0; i < 4; i++) {
     const ang = (i / 4) * Math.PI * 2 + 0.4;
     const g = grp(rig.pivot, Math.cos(ang) * 0.2, -0.22, Math.sin(ang) * 0.2);
-    add(rig, g, 'dark', merged('wisp.tendril', [
+    add(rig, g, 'dark', merged('mote.tendril', [
       P(cone(0.07, 0.6, 5), 0, -0.3, 0, Math.PI),
     ]));
     rig.parts.tendril.push(g);
   }
 
   makeAura(rig, rig.auraR);
-  rig.animate = animWisp;
+  rig.animate = animMote;
   return rig;
 }
 
-function animWisp(rig, a) {
+function animMote(rig, a) {
   const p = rig.parts;
   const w = anticipate(a.windup);
   const fired = a.swing > 0 ? 1 - a.swing : 0;
@@ -1336,16 +1336,16 @@ function animWisp(rig, a) {
 
 const GOL_HIP = 1.9, GOL_L1 = 0.9, GOL_L2 = 0.9;
 
-function buildGolem() {
-  const rig = newRig('golem');
+function buildSentinel() {
+  const rig = newRig('sentinel');
   rig.centerY = 1.9;
   rig.height = 3.6;
   rig.auraR = 2.3;
   rig.shadowR = 1.35;
 
-  // Wide, shallow, top-heavy: the golem is a slab carried on stubby legs, and
+  // Wide, shallow, top-heavy: the sentinel is a slab carried on stubby legs, and
   // the shoulder line has to be the widest thing in the horde short of the
-  // titan. Deep-set head under an overhanging brow, no neck.
+  // colossus. Deep-set head under an overhanging brow, no neck.
   const spine = grp(rig.pivot, 0, GOL_HIP, 0);
   rig.parts.spine = spine;
   add(rig, spine, 'body', merged('gol.torso', [
@@ -1411,11 +1411,11 @@ function buildGolem() {
   }
 
   makeAura(rig, rig.auraR);
-  rig.animate = animGolem;
+  rig.animate = animSentinel;
   return rig;
 }
 
-function animGolem(rig, a) {
+function animSentinel(rig, a) {
   const p = rig.parts;
   const sp = a.speed;
   const w = anticipate(a.windup);
@@ -1459,20 +1459,20 @@ function animGolem(rig, a) {
 // and it broadcasts its suicide run by strobing and hauling its tentacles up.
 // ---------------------------------------------------------------------------
 
-function buildPest() {
-  const rig = newRig('pest');
+function buildShrike() {
+  const rig = newRig('shrike');
   rig.centerY = 0;
   rig.height = 1.0;
   rig.auraR = 0.95;
   rig.shadowR = 0.62;
   rig.flyer = true;
 
-  // Wide and flat — a parasol. Against the wisp's vertical spire this is the
+  // Wide and flat — a parasol. Against the mote's vertical spire this is the
   // horizontal floating shape, and the overhang is what the long tendrils hang
   // off so the whole thing reads top-heavy.
   const bell = grp(rig.pivot, 0, 0.06, 0);
   rig.parts.bell = bell;
-  add(rig, bell, 'body', merged('pest.bell', [
+  add(rig, bell, 'body', merged('shrike.bell', [
     P(hemi(0.5, 12, 6), 0, 0, 0, 0, 0, 0, 1.26, 0.62, 1.26),
     P(cyl(0.63, 0.46, 0.1, 12), 0, -0.04, 0),
     P(cone(0.08, 0.34), 0.4, 0.16, 0, 0, 0, -0.9),
@@ -1481,7 +1481,7 @@ function buildPest() {
   ]));
   rig.parts.sac = add(rig, rig.pivot, 'accent', ico(0.27, 1), 0, -0.02, 0);
   // A row of spots around the rim rather than a pair of headlights.
-  add(rig, bell, 'eye', merged('pest.spots', [
+  add(rig, bell, 'eye', merged('shrike.spots', [
     P(ico(0.05, 0), 0.2, 0.2, 0.44),
     P(ico(0.05, 0), -0.2, 0.2, 0.44),
     P(ico(0.04, 0), 0.44, 0.16, 0.24),
@@ -1493,7 +1493,7 @@ function buildPest() {
   for (let i = 0; i < 5; i++) {
     const ang = (i / 5) * Math.PI * 2;
     const g = grp(rig.pivot, Math.cos(ang) * 0.44, -0.08, Math.sin(ang) * 0.44);
-    add(rig, g, 'dark', merged('pest.tendril', [
+    add(rig, g, 'dark', merged('shrike.tendril', [
       P(cyl(0.05, 0.012, 1.05, 5), 0, -0.52, 0),
       P(ico(0.035, 0), 0, -1.05, 0),
     ]));
@@ -1501,11 +1501,11 @@ function buildPest() {
   }
 
   makeAura(rig, rig.auraR);
-  rig.animate = animPest;
+  rig.animate = animShrike;
   return rig;
 }
 
-function animPest(rig, a) {
+function animShrike(rig, a) {
   const p = rig.parts;
   const w = anticipate(a.windup);
   // Priming strobes faster and faster — the classic "get away from it" tell.
@@ -1537,7 +1537,7 @@ function animPest(rig, a) {
 // ---------------------------------------------------------------------------
 
 // Proportions. The old rig hung a 3.8 m leg chain off a 2.85 m hip, and the leg
-// IK only runs at `lod === 0` — so any titan the LOD system skipped stood on
+// IK only runs at `lod === 0` — so any colossus the LOD system skipped stood on
 // dead-straight legs with 1.25 m of shin and both feet buried under the world.
 // In the shot that exists to judge it, the body stopped 32 px above its own
 // contact shadow with nothing bridging the gap: a floating slab.
@@ -1551,8 +1551,8 @@ function animPest(rig, a) {
 const TIT_HIP = 3.6, TIT_L1 = 1.40, TIT_L2 = 1.32;
 const TIT_HIP_DROP = 0.95;   // hip joint below the spine origin
 
-function buildTitan() {
-  const rig = newRig('titan');
+function buildColossus() {
+  const rig = newRig('colossus');
   rig.centerY = 3.6;
   rig.height = 7.6;
   rig.auraR = 4.4;
@@ -1732,11 +1732,11 @@ function buildTitan() {
   }
 
   makeAura(rig, rig.auraR);
-  rig.animate = animTitan;
+  rig.animate = animColossus;
   return rig;
 }
 
-function animTitan(rig, a) {
+function animColossus(rig, a) {
   const p = rig.parts;
   const sp = a.speed;
   const w = anticipate(a.windup);
@@ -1847,7 +1847,7 @@ function buildMite() {
   ]));
 
   // Tail spike, carried up. It is the whole reason a mite is not just a small
-  // beetle as a black shape: a vertical line off a horizontal body.
+  // scarab as a black shape: a vertical line off a horizontal body.
   const tail = grp(body, 0, 0.04, -0.22);
   rig.parts.tail = tail;
   add(rig, tail, 'body', merged('mite.tail', [
@@ -2005,7 +2005,7 @@ function animSpitling(rig, a) {
 
 // ---------------------------------------------------------------------------
 // HARRIER — a swept delta with a beak and twin thrusters. The other flyers are
-// a vertical spire (wisp) and a flat parasol (pest); this one is an arrowhead
+// a vertical spire (mote) and a flat parasol (shrike); this one is an arrowhead
 // and it is the only flyer that reads as *pointing somewhere*.
 // ---------------------------------------------------------------------------
 
@@ -2023,7 +2023,7 @@ function buildHarrier() {
   add(rig, body, 'body', merged('har.fuselage', [
     P(cyl(0.13, 0.3, 1.5, 6), 0, 0, 0.1, Math.PI * 0.5),
     P(box(0.34, 0.3, 0.5), 0, 0.06, -0.42),
-    // Dorsal fin — the vertical the pest and wisp do not have.
+    // Dorsal fin — the vertical the shrike and mote do not have.
     P(cone(0.16, 0.72, 4), 0, 0.42, -0.5, -0.35, 0, 0, 0.28, 1, 1),
   ]));
   add(rig, body, 'dark', merged('har.keel', [
@@ -2911,7 +2911,7 @@ function animMortar(rig, a) {
 // ---------------------------------------------------------------------------
 // SLAG HULK — a hunched, asymmetric brute: one enormous molten forelimb it
 // walks on and one small one, with a vent stack down its back. Deliberately
-// lopsided, so it never reads as "a bigger golem".
+// lopsided, so it never reads as "a bigger sentinel".
 // ---------------------------------------------------------------------------
 
 const HLK_HIP = 2.15, HLK_L1 = 0.95, HLK_L2 = 0.95;
@@ -3465,7 +3465,7 @@ function animMatron(rig, a) {
 }
 
 // ---------------------------------------------------------------------------
-// IRON VIZIER — the armoured one. A tower shield taller than a Lemurian on one
+// IRON VIZIER — the armoured one. A tower shield taller than a Skink on one
 // side and a bladed haft on the other, under a crowned helm. Phase 1 fights
 // from behind the shield; the phase break drops it, and the pose change is the
 // most legible thing in the fight.
@@ -3845,7 +3845,7 @@ export function makeTelegraph(color) {
 // here is the one thing none of them can do: it *floats*, and the space under
 // it is empty. Vertically it reads top-heavy — a crown of shards over a broken
 // shell over a tapering mantle that comes to a point — which is the inverse of
-// the titan's wide-shouldered pyramid, and it is the only unit in the roster
+// the colossus's wide-shouldered pyramid, and it is the only unit in the roster
 // whose widest point is above its middle.
 //
 // The shell is the animated tell: it is *shut* at rest, cracks open on the
@@ -3995,8 +3995,8 @@ function animHerald(rig, a) {
 // ---------------------------------------------------------------------------
 // GLOOMSHRIVER — a suspended bell with a shroud and a clapper.
 //
-// The three tier-1 flyers already occupy a vertical spire (wisp), a wide flat
-// parasol (pest) and a horizontal arrowhead (harrier). A bell is the fourth
+// The three tier-1 flyers already occupy a vertical spire (mote), a wide flat
+// parasol (shrike) and a horizontal arrowhead (harrier). A bell is the fourth
 // shape none of them makes: narrow at the top, flared hard at the bottom, and
 // *hollow* — the only silhouette in the roster you can see through. The tell is
 // the flare, which opens and rings before every shot, so the wind-up is a change
@@ -4097,7 +4097,7 @@ function animShriver(rig, a) {
 // ---------------------------------------------------------------------------
 // BRAMBLE LASHER — a thin trunk carrying a wide crown of tendrils.
 //
-// Every other ground unit in tier 2 keeps its mass low or central (the golem's
+// Every other ground unit in tier 2 keeps its mass low or central (the sentinel's
 // slab, the warden's tower, the mortar's quadruped chassis, the acolyte's cone).
 // This one is almost all *crown*: a narrow stem with six long arms whipping off
 // the top, so it reads as a plant and its outline is mostly gaps. The reel is
@@ -4227,7 +4227,7 @@ function buildRedoubt() {
 
   const hull = grp(rig.pivot, 0, RDT_BODY, 0);
   rig.parts.hull = hull;
-  // Wide and shallow: 2.3 across, 0.9 deep. The golem is the other wide tier-2
+  // Wide and shallow: 2.3 across, 0.9 deep. The sentinel is the other wide tier-2
   // slab and it is a *tall* one on legs; this sits low and reads as a bunker.
   add(rig, hull, 'body', merged('rdt.drum', [
     P(cyl(0.78, 0.86, 1.0, 7), 0, 0, 0, Math.PI * 0.5, 0, 0, 1, 1.35, 1),
@@ -4343,12 +4343,12 @@ function animRedoubt(rig, a) {
 
 const BUILDERS = {
   herald: buildHerald,
-  lemurian: buildLemurian,
-  beetle: buildBeetle,
-  wisp: buildWisp,
-  golem: buildGolem,
-  pest: buildPest,
-  titan: buildTitan,
+  skink: buildSkink,
+  scarab: buildScarab,
+  mote: buildMote,
+  sentinel: buildSentinel,
+  shrike: buildShrike,
+  colossus: buildColossus,
   // Round 5 roster.
   mite: buildMite,
   spitling: buildSpitling,
