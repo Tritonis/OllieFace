@@ -551,6 +551,12 @@ export class Menus {
     this.buildSelect();
 
     this.root.addEventListener('click', (e) => {
+      // The overlay is not the canvas and the pointer is not locked here, so
+      // Input's own mouse listeners never see this. Without it a player who
+      // paused with Start and then clicked Resume with the mouse would stay
+      // flagged pad-active: `act('resume')` skips requestPointerLock and mouse
+      // look is dead until they click the canvas again.
+      this.ctx.input?.deviceUsed?.('mouse');
       const btn = e.target.closest('[data-act]');
       if (btn) { this.act(btn.dataset.act); return; }
       const diff = e.target.closest('[data-difficulty]');
@@ -1828,6 +1834,12 @@ export class Menus {
         if (ctx.input.pad.held.has(i)) this.pad.buttons.add(i);
         else this.pad.buttons.delete(i);
       }
+      // Seeding closes the readPad door; this closes the other one. pollPad
+      // pushes pad edges into input.pressed as virtual key codes, and
+      // navigate()'s confirm reads hit('Space') — so A and Start landing in the
+      // same 16 ms poll would open the pause and click Resume in this very
+      // call. The frame's pad edges are consumed by the screen opening.
+      ctx.input.clearPadEdges?.();
       this.open('pause');
     }
     this.navigate(ctx);

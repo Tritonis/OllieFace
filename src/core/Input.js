@@ -15,6 +15,7 @@ const PAD_KEYS = [
   [PAD_BUTTON.A, 'Space'],       // jump
   [PAD_BUTTON.B, 'ShiftLeft'],   // sprint
   [PAD_BUTTON.X, 'KeyE'],        // interact
+  [PAD_BUTTON.Y, 'KeyF'],        // equipment (Items.js EQUIP_KEY)
   [PAD_BUTTON.LB, 'KeyQ'],       // utility
   [PAD_BUTTON.RB, 'KeyR'],       // special
 ];
@@ -79,6 +80,20 @@ export class Input {
   }
 
   get padActive() { return this.pad.active; }
+
+  /** Another device spoke somewhere these listeners cannot see — a click on the
+   *  menu overlay, which is neither the canvas nor a pointer-locked move. Same
+   *  effect as a canvas mousedown: the pad stops being the glyph/look authority,
+   *  so a mouse-clicked Resume re-locks the pointer. */
+  deviceUsed(which) { this._padState.deviceUsed(which); }
+
+  /** Drop this frame's pad-mapped edges. For the one caller that consumes a pad
+   *  press by opening a screen (Menus' Start branch): the synthetic codes are
+   *  already in `pressed`, and the menu's own confirm reads `hit('Space')`, so a
+   *  same-frame A+Start would open the pause and instantly click Resume. */
+  clearPadEdges() {
+    for (const [, code] of PAD_KEYS) this.pressed.delete(code);
+  }
 
   down(code) { return this.keys.has(code) || this._padKeys.has(code); }
   hit(code) { return this.pressed.has(code); }

@@ -509,6 +509,10 @@ export class HUD {
 
     this.set('padPrompt', !!ctx.input?.padActive, (pad) => {
       if (this.refs.promptKey) this.refs.promptKey.textContent = pad ? 'X' : 'E';
+      // The equipment tile names its button the same way. Y is what the pad
+      // maps to KeyF (Input.js PAD_KEYS); printing F to a pad player is naming
+      // a key they do not have.
+      if (this.refs.equip?.key) this.refs.equip.key.textContent = pad ? 'Y' : EQUIPMENT_KEY_LABEL;
     });
 
     this.updateHealth(ctx, dt);
@@ -1167,6 +1171,7 @@ function slotRefs(el) {
     timer: el.querySelector('.slot-timer'),
     pips: el.querySelector('.slot-pips'),
     name: el.querySelector('.slot-name'),
+    key: el.querySelector('.slot-key'),
   };
 }
 

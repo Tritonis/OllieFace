@@ -222,8 +222,12 @@ export class Engine {
     this.frame++;
 
     // Before the fixed loop samples commands, and outside the pause gate — a
-    // paused game still needs Start/B to leave the menu.
-    this.ctx.input?.pollPad?.();
+    // paused game still needs Start/B to leave the menu. Through `_call` like
+    // every system phase: this is the first statement in the frame, and an
+    // unguarded throw here (a provider returning a non-iterable, a Gamepad
+    // without `buttons`) would abort the whole frame — no steps, no render —
+    // for as long as the condition lasts.
+    if (this.ctx.input?.pollPad) this._call(this.ctx.input, 'pollPad', ctx, dt);
 
     let steps = 0;
     // Hitstop is a heavy slowdown, NOT a freeze.

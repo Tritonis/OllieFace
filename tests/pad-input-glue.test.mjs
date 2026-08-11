@@ -39,11 +39,12 @@ check('no pad: mouse untouched', !input.mouse.left && !input.mouse.right);
 check('no pad: padActive false', input.padActive === false);
 
 // --- buttons map to the codes Player polls -----------------------------------
-padList = [pad([0, 0, 0, 0], [PAD_BUTTON.A, PAD_BUTTON.B, PAD_BUTTON.X, PAD_BUTTON.LB, PAD_BUTTON.RB])];
+padList = [pad([0, 0, 0, 0], [PAD_BUTTON.A, PAD_BUTTON.B, PAD_BUTTON.X, PAD_BUTTON.Y, PAD_BUTTON.LB, PAD_BUTTON.RB])];
 input.pollPad();
 check('A -> Space held + edge', input.down('Space') && input.hit('Space'));
 check('B -> ShiftLeft', input.down('ShiftLeft'));
 check('X -> KeyE', input.down('KeyE'));
+check('Y -> KeyF (equipment)', input.down('KeyF') && input.hit('KeyF'));
 check('LB -> KeyQ', input.down('KeyQ'));
 check('RB -> KeyR', input.down('KeyR'));
 input.endFrame();
@@ -104,5 +105,19 @@ padList = [pad([0, 0, 0.9, 0])];
 input.pollPad();
 check('right stick re-activates', input.padActive === true);
 check('look exposed on input.pad', input.pad.lookX > 0, input.pad.lookX);
+
+// --- Start consumes the frame's pad edges ------------------------------------
+// Menus' Start branch calls this when it opens the pause screen. Without it a
+// same-frame A+Start opens the pause and navigate()'s hit('Space') immediately
+// clicks Resume — the flicker pre-flight I3 was raised to kill, through the
+// second door I3 did not close.
+padList = [pad([0, 0, 0, 0], [PAD_BUTTON.A, PAD_BUTTON.START])];
+input.endFrame();
+input.pollPad();
+check('same-frame A+Start: the virtual Space edge is there to eat',
+  input.hit('Space') && input.pad.edges.has(PAD_BUTTON.START));
+input.clearPadEdges();
+check('clearPadEdges drops every pad-mapped edge', !input.hit('Space') && !input.hit('KeyF'));
+check('clearPadEdges leaves the held state alone', input.down('Space'));
 
 process.exit(failures ? 1 : 0);

@@ -94,6 +94,25 @@ const pad = (axes = [0, 0, 0, 0], pressed = []) => ({
   check('stick past deadzone re-activates', ps.snapshot.active === true);
 }
 
+// --- device selection --------------------------------------------------------
+// A wheel / flight stick / arcade board reports mapping '' and its indices bear
+// no relation to PAD_BUTTON, so a lower enumeration index must not let it win.
+{
+  const wheel = { ...pad([0, 0, 0, 0], [PAD_BUTTON.RT]), mapping: '' };
+  const real = { ...pad([0, 0, 0, 0], [PAD_BUTTON.A]), mapping: 'standard' };
+  const ps = new PadState(() => [wheel, real]);
+  ps.poll();
+  check('standard mapping wins over a lower-index non-standard device',
+    ps.snapshot.held.has(PAD_BUTTON.A) && !ps.snapshot.held.has(PAD_BUTTON.RT),
+    [...ps.snapshot.held]);
+
+  // ...but an unrecognised pad is still better than no pad.
+  const only = new PadState(() => [wheel]);
+  only.poll();
+  check('no standard pad: first connected is the fallback',
+    only.snapshot.present && only.snapshot.held.has(PAD_BUTTON.RT));
+}
+
 // --- disconnect --------------------------------------------------------------
 {
   let list = [pad([0, 0, 0, 0], [PAD_BUTTON.A])];

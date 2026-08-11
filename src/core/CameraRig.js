@@ -142,7 +142,14 @@ export class CameraRig {
       this.pitch -= input.mouse.dy * this.sensitivity;
     }
     const pad = input?.pad;
-    if (pad?.active && input.enabled !== false) {
+    // The mouse branch above stops when a menu opens because the browser drops
+    // pointer lock. The pad has no such accident, so it needs the gate spelled
+    // out: a thumb resting on the right stick behind the pause or death screen
+    // must not rotate the world the player comes back to. `ctx.paused` is not
+    // the question — the co-op host deliberately keeps the world unpaused while
+    // its own menu is up (NetHost._holdSession) — the open screen is.
+    const menuOpen = !!ctx.hud?.menus?.screen;
+    if (pad?.active && input.enabled !== false && !menuOpen) {
       const padSens = clamp(settings?.padSensitivity ?? 1, 0.05, 8);
       this.yaw -= pad.lookX * PAD_YAW_RATE * padSens * dt;
       this.pitch -= pad.lookY * PAD_PITCH_RATE * padSens * dt;

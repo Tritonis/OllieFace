@@ -264,6 +264,49 @@ await frames(4);
 ok('7 A jumps', (jumping & 1) === 1,
   `A held 6 frames -> lastCommand.buttons ${jumping} (BTN.JUMP=1 set)`);
 
+// ------------------------------------------------------------------ check 7b
+// The rest of the map, under the renderer rather than only in the glue test:
+// B, X, LB, RB and LT held together must pack every one of their BTN bits into
+// the sampled command. Held at once because the bits are independent and one
+// twenty-frame hold is cheaper than five.
+await setPad(pad([0, 0, 0, 0], [1, 2, 4, 5, 6]));
+await frames(20);
+const allBits = await page.evaluate(() => __GAME__.ctx.player.lastCommand?.buttons ?? 0);
+await idlePad();
+await frames(6);
+const clearedBits = await page.evaluate(() => __GAME__.ctx.player.lastCommand?.buttons ?? 0);
+// BTN: SPRINT 2, SECONDARY 8, UTILITY 16, SPECIAL 32, INTERACT 64.
+const WANT = 2 | 8 | 16 | 32 | 64;
+ok('7b B/X/LB/RB/LT pack their bits', (allBits & WANT) === WANT && (clearedBits & WANT) === 0,
+  `B,X,LB,RB,LT held -> lastCommand.buttons ${allBits} (want all of ${WANT}: sprint ${!!(allBits & 2)},`
+  + ` secondary ${!!(allBits & 8)}, utility ${!!(allBits & 16)}, special ${!!(allBits & 32)},`
+  + ` interact ${!!(allBits & 64)}) -> ${clearedBits} on release`);
+
+// ------------------------------------------------------------------ check 7c
+// EQUIPMENT: Y is the pad's KeyF. Asserted on Items' own state — a charge is
+// spent and the cooldown starts — because that is what "the equipment fired"
+// means. Combat Stim is the one equipment whose `use` cannot fail, so a false
+// here is the binding, never the world. The HUD tile's key legend goes with it:
+// printing F to a pad player names a key they do not have.
+await page.evaluate(() => __GAME__.ctx.items.setEquipment('stim-injector'));
+await frames(4);
+const eqBefore = await page.evaluate(() => ({
+  id: __GAME__.ctx.items.equipment?.id ?? null,
+  charges: __GAME__.ctx.items.equipment?.charges ?? -1,
+  key: document.querySelector('.slot--equip .slot-key')?.textContent ?? null,
+}));
+await tap(3);
+await frames(4);
+const eqAfter = await page.evaluate(() => ({
+  charges: __GAME__.ctx.items.equipment?.charges ?? -1,
+  cooldown: __GAME__.ctx.items.equipment?.cooldown ?? 0,
+  key: document.querySelector('.slot--equip .slot-key')?.textContent ?? null,
+}));
+ok('7c Y fires equipment', eqBefore.charges === 1 && eqAfter.charges === 0 && eqAfter.cooldown > 0
+  && eqBefore.key === 'Y' && eqAfter.key === 'Y',
+  `${eqBefore.id} charges ${eqBefore.charges} -> ${eqAfter.charges}, cooldown ${num(eqAfter.cooldown, 1)}s;`
+  + ` HUD .slot--equip .slot-key "${eqBefore.key}" with the pad active`);
+
 // ------------------------------------------------------------------- check 8
 // START opens pause; A confirms Resume, which proves the pad is still polled
 // while the fixed loop is frozen.

@@ -51,8 +51,20 @@ export class PadState {
 
   poll() {
     const s = this._snap;
+    // Prefer a standard-mapping device. A wheel, a flight stick or an arcade
+    // pad enumerated at a lower index than the real controller reports
+    // `mapping: ''`, and its button indices bear no relation to the layout
+    // PAD_BUTTON describes — a paddle would read as fire. Fall back to the
+    // first connected device only when nothing standard is plugged in, so a
+    // pad the browser fails to recognise is still better than no pad.
     let gp = null;
-    for (const p of this._getPads()) if (p?.connected) { gp = p; break; }
+    let fallback = null;
+    for (const p of this._getPads()) {
+      if (!p?.connected) continue;
+      if (p.mapping === 'standard') { gp = p; break; }
+      if (!fallback) fallback = p;
+    }
+    if (!gp) gp = fallback;
 
     if (!gp) {
       this._held.clear();
