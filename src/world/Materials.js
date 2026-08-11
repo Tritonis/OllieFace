@@ -305,9 +305,26 @@ const DETAIL_BASE = {
 
 const DETAIL = {
   // Ground. Broad, low, and the one surface the player is always inside the
-  // near band of — so its fine octave is nearly a metre and it survives far out.
+  // near band of — so its fine octave is nearly a metre and it survives the
+  // whole near field.
+  //
+  // fineFade was 400, which in a 220 m stage meant "never fades anywhere a
+  // player can look": `fineDist` holds full amplitude to 0.45*400 = 180 m. That
+  // is what left the canyon's wall fins at ~99 m carrying an unfaded 0.46 m
+  // octave into a tight specular lobe, and it is the whole of 13-biomes-2's
+  // residual aliasing — the detail pass's own resolution gate (`detRes`) reads
+  // those fins as *resolved* at head-on incidence, so the specular-AA term only
+  // charges the lobe for 17% of the octave's energy and cannot clean up after
+  // it. See reviews/round7/DIAG-biomes2-spire.md for the bisect.
+  //
+  // 110 retires the octave between 49.5 m and 110 m: gone by the fins, intact
+  // over every metre of ground the player is standing on, which was the only
+  // thing the 400 was ever buying. It is also `rock`'s value, so the ground and
+  // the boulders sitting on it now fade together. At 99 m the fine octave's
+  // 0.46 m relief spans 3.9 px, so what is given up is detail the frame was
+  // barely resolving.
   terrain:   { fine: 0.46, fineAmp: 1.15, coarse: 2.2, coarseAmp: 0.78, ridge: 0.0,
-               cavity: 0.70, rough: 0.20, uv: 0.95, uvFade: [55, 160], fineFade: 400 },
+               cavity: 0.70, rough: 0.20, uv: 0.95, uvFade: [55, 160], fineFade: 110 },
   // Natural rock: ridged, 30 cm pitting over a 1.6 m swell, no straight lines.
   rock:      { fine: 0.30, fineAmp: 1.20, coarse: 1.6, coarseAmp: 0.80, aniso: 1.25,
                ridge: 0.22, cavity: 0.55, rough: 0.14, uv: 0.90, uvFade: [40, 120], fineFade: 110 },
@@ -1291,10 +1308,19 @@ export const BIOMES = [
       beacon: 0x8ef0b4, // mint already belongs to this biome — see stage 1's note
     },
     matTune: {
-      // Everything is damp. The whole ladder shifts down a rung and the
-      // wetStone rung — which is the water surface as well as the streaked
-      // channel walls — goes to a near-mirror.
-      terrain:   { roughness: 0.70, metalness: 0.03, env: 1.25, normal: 1.15 },
+      // Everything is damp. The ladder shifts down a rung from the terrain
+      // down, and the wetStone rung — which is the water surface as well as
+      // the streaked channel walls — goes to a near-mirror.
+      // The terrain rung is the one that does not shift. 0.70 is a tighter lobe
+      // than the base 0.82, and on the canyon's tapered wall fins — the largest
+      // head-on terrain surface in the game — that tightening is what renders
+      // the fine detail octave as sparkle instead of damp stone. The shorter
+      // `fineFade` above removes the octave; this widens the lobe that was
+      // showing it. Measured together, ROI x240-560 y120-420 goes 0.203% ->
+      // 0.024% against a 0.03% line; neither half alone clears it (0.060% and
+      // 0.119%). The damp look is carried by the rungs below, which all stay
+      // shifted, and by `env` 1.25 which stays lifted here too.
+      terrain:   { roughness: 0.82, metalness: 0.03, env: 1.25, normal: 1.15 },
       rock:      { roughness: 0.58, metalness: 0.05, env: 1.50, normal: 1.30 },
       // 0.56, not the 0.46 this started at. The canyon's bounding massif is the
       // largest continuous steep surface in the game, and at 0.46 with a 1.75
