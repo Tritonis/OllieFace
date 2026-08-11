@@ -2864,11 +2864,12 @@ export function drawGlyph(g, glyph, r, hue) {
 
     // --- blight ---
     // Every glyph here is a *deformed echo* of the glyph it eats: the same
-    // count of the same primitive, slumped, split or overgrown. The tile art
-    // inverts figure and ground for this tier (`ui/Icons.js`), so these read as
-    // dark holes in a solid plate rather than as bright emblems on a dark one —
-    // which means they need chunkier masses and fewer hairlines than the rest of
-    // the set to survive the 33px inventory strip.
+    // count of the same primitive, slumped, split or overgrown. They are drawn
+    // chunkier than the rest of the set — heavier masses, fewer hairlines —
+    // because the deformations that make an echo legible (a split, a slump) are
+    // exactly what a 33px inventory strip eats first. That was authored when the
+    // tile art inverted figure and ground for this tier; the tiles now take the
+    // ordinary `ui/Icons.js` path, and the chunkiness earns its keep either way.
 
     // Spasm Gland (Adrenal Syringe): the three bars, seizing.
     case 'spasmgland':

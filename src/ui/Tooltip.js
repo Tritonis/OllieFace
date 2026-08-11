@@ -46,16 +46,15 @@ export class Tooltip {
       const meta = tierMeta(def?.tier || tier);
       const name = def?.name || prettify(id);
 
-      // The corruption tier reads inverted everywhere it is drawn: its tile is a
-      // dark glyph punched out of a solid field (`Icons.drawInverted`), and the
-      // card that opens off that tile says the same thing in the same way — the
-      // name sits *in* the tier colour instead of being written in it. One rule,
-      // no extra row, and it lands on the element the eye goes to first.
-      const inverted = (def?.tier || tier) === 'blight';
+      // Every tier writes its name in its own colour, corruption included. The
+      // blight card used to invert here — dark text on a magenta chip — to echo
+      // a tile that was itself inverted; the tiles now draw like everyone
+      // else's, and a lone reversed chip would have been the only place left in
+      // the build where a tier swapped figure and ground for no reason a player
+      // could see. The tier still reads as itself: `--t-blight` magenta is
+      // unique to it, on the name, the label and the card's own `--tier` edge.
       this.refs.name.textContent = name;
-      this.refs.name.style.color = inverted ? '#0b0409' : meta.color;
-      this.refs.name.style.background = inverted ? meta.color : '';
-      this.refs.name.style.padding = inverted ? '0.1em 0.42em' : '';
+      this.refs.name.style.color = meta.color;
       this.refs.tier.textContent = meta.label;
       this.refs.tier.style.color = meta.color;
       this.refs.body.innerHTML = describe(def, count);
