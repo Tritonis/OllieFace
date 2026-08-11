@@ -21,9 +21,10 @@ as a hole in the row rather than as an item. The half of the escalation that was
 never in dispute — a missing `--t-blight` drawing the tier's rule white — had
 already been fixed; that fix is untouched and is now the whole of the mechanism.
 
-## The change
+## The change — first commit
 
-Four files, and only the first is behaviour.
+Four files, and only the first is behaviour. (A second commit follows, removing
+the tooltip inversion as well; see below.)
 
 | file:line | change |
 |---|---|
@@ -31,21 +32,19 @@ Four files, and only the first is behaviour.
 | `src/ui/Icons.js:612` | deleted `drawInverted` (46 lines, now unreachable); left a comment in its place recording what it did and why it went, so it is not re-derived. |
 | `src/ui/Icons.js:36` | `TIERS.blight`'s comment claimed the hue "has to work as a *field* rather than as a stroke". It is now a stroke; comment corrected. The hex is unchanged. |
 | `src/data/items.js:2866` | the blight glyph set's authoring note asserted the tile "inverts figure and ground for this tier". Corrected; the note that these glyphs are drawn chunkier survives on its own merits (see residual below). |
-| `src/ui/Tooltip.js:49` | the tooltip's comment cited `Icons.drawInverted` as its justification. Rewritten — see the scope note below. |
+| `src/ui/Tooltip.js:49` | the tooltip's comment cited `Icons.drawInverted` as its justification. Rewritten — and superseded by the second commit below, which removes the chip it was justifying. |
 
 No `id` value was touched, so save data, `UNLOCK_BINDINGS` and the golden hashes
 are unaffected. `43/43` test files, `41 passed, 0 failed`, unchanged from before
 the edit. `node node_modules/vite/bin/vite.js build` is green.
 
-### Scope note: the tooltip name chip stays inverted
+### The tooltip name chip — raised as a scope question, then closed
 
-`Tooltip.js:56-58` still draws a blight item's *name* as dark text on a magenta
-chip. It is kept deliberately and is now the only place in the build where the
-tier reverses figure and ground. The decision covered tiles; a name chip is not a
-tile, it is not in a strip of eighty, and it has no silhouette to fail. Its
-comment no longer justifies itself by pointing at the tile, because that argument
-is now false. Flagging it so a later reviewer sees a choice rather than an
-oversight.
+The first commit deliberately left `Tooltip.js` drawing a blight item's *name* as
+dark text on a magenta chip, and flagged it: the decision covered tiles, and a
+name chip is not a tile, is not in a strip of eighty, and has no silhouette to
+fail. The user ruled the other way — **no inverted element remains anywhere** —
+and the second commit removes it. Recorded below.
 
 ## Surface enumeration
 
@@ -136,6 +135,51 @@ Recorded because both are the failure mode this repo keeps re-learning.
    deliberately near-neutral at chroma 14, so the floor computed to ~8 and would
    have passed a tile with no tier colour in it at all. It now measures against
    `TIERS.blight.color` directly. This is aggregate-hiding-an-absence #6.
+
+## Second commit — the name chip goes too
+
+User decision after the first commit: remove the tooltip inversion as well, so
+nothing in the build reverses figure and ground for this tier.
+
+| file:line | change |
+|---|---|
+| `src/ui/Tooltip.js:49` (`show`) | deleted the `inverted` branch and the three inline styles it drove (`color` to near-black, `background` to the tier colour, `padding` for the chip). The name is now written in `meta.color` unconditionally, which is exactly what the other six tiers already did. Comment replaced. |
+
+The tier still reads as itself on the card without the chip: the magenta is unique
+to blight and now appears three times on the same card — the name, the `BLIGHT`
+label, and the card's own `--tier` left edge.
+
+One thing worth naming, because it is the failure this shape usually ships: the
+tooltip element is **reused across hovers**. Setting `background` and `padding`
+inline only on the blight branch and clearing them with `''` on every other
+branch was correct but fragile — drop the clear and a magenta chip follows the
+player onto the next card they open. Deleting the branch removes the hazard
+rather than re-implementing it, and the probe now gates on the inline `style`
+attribute containing no `background` or `padding` at all, not merely on the
+computed colour looking right.
+
+### Evidence
+
+The probe already covered tooltips (it hovers a tile and asserts the card opens),
+so the arm was extended rather than replaced — it now hovers the **blight** tile
+specifically. Four new gates, all green:
+
+```
+PASS  hovering the blight tile opens its card
+PASS  the blight name is written in the tier magenta (rgb(224, 90, 168))
+PASS  and sits on no chip of its own (background rgba(0, 0, 0, 0))
+PASS  no inverted chip styling survives inline (style="color: rgb(224, 90, 168);")
+```
+
+`16/16` probe gates green overall, including all eleven from the first commit
+unchanged — the tile polarity numbers are bit-identical (blight 229.5, median
+16.8, hue rgb(215,81,159)), so this change did not disturb the first fix.
+
+Capture: `reviews/round7/captures/fix-blight-glyphs/07-tooltip-blight.png` —
+`SPASM GLAND` in magenta over the dark card, structurally identical to the
+`AMBER CLASP` common card in `05-tooltip.png`. Confirmed by eye.
+
+`43/43` test files (`41 passed, 0 failed`) and the vite build both still green.
 
 ## Residual
 

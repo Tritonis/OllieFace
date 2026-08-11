@@ -236,6 +236,26 @@ const sameArt = await page.evaluate(() => {
 });
 ok(sameArt.has && sameArt.same,
   `the HUD strip and the pause summary draw the identical blight art (${sameArt.len} chars)`);
+
+// The card that opens off a blight tile. It used to invert too — dark text on a
+// magenta chip — to echo the inverted tile. Nothing in the build reverses figure
+// and ground now, so the name is written in the tier colour like every other
+// tier's, and the chip's background must be genuinely absent rather than merely
+// dark: this element is reused across hovers, so a stale inline background would
+// follow the player onto the next card they opened.
+await page.hover('[data-pause-inv] .ditem.t-blight');
+await page.waitForTimeout(350);
+const tip = await page.evaluate(() => {
+  const n = document.querySelector('#overlay .tip.is-open .tip-name');
+  if (!n) return null;
+  const cs = getComputedStyle(n);
+  return { name: n.textContent.trim(), color: cs.color, bg: cs.backgroundColor, inline: n.getAttribute('style') || '' };
+});
+ok(!!tip, 'hovering the blight tile opens its card');
+ok(tip?.color === 'rgb(224, 90, 168)', `the blight name is written in the tier magenta (${tip?.color})`);
+ok(tip?.bg === 'rgba(0, 0, 0, 0)', `and sits on no chip of its own (background ${tip?.bg})`);
+ok(!/background|padding/.test(tip?.inline ?? ''), `no inverted chip styling survives inline (style="${tip?.inline}")`);
+await shot('07-tooltip-blight.png');
 console.log(`  polarity: ${Object.entries(pol.tiers).map(([t, v]) => `${t} ${v.polarity} (median ${v.median})`).join(' | ')}`);
 console.log(`  glyph hue: ${Object.entries(pol.tiers).map(([t, v]) => `${t} rgb(${v.hue.r},${v.hue.g},${v.hue.b}) chroma ${v.chroma}`).join(' | ')}`);
 

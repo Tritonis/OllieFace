@@ -46,18 +46,15 @@ export class Tooltip {
       const meta = tierMeta(def?.tier || tier);
       const name = def?.name || prettify(id);
 
-      // The corruption tier is the one tier that rewrites a build rather than
-      // adding to it, and the card is where a player finds that out. So the name
-      // sits *in* the tier colour instead of being written in it — one rule, no
-      // extra row, on the element the eye goes to first. This outlives the
-      // inverted tile it was first designed to echo: the tiles now draw like
-      // every other tier's, and this chip is deliberately the only place left
-      // where the tier reverses figure and ground.
-      const inverted = (def?.tier || tier) === 'blight';
+      // Every tier writes its name in its own colour, corruption included. The
+      // blight card used to invert here — dark text on a magenta chip — to echo
+      // a tile that was itself inverted; the tiles now draw like everyone
+      // else's, and a lone reversed chip would have been the only place left in
+      // the build where a tier swapped figure and ground for no reason a player
+      // could see. The tier still reads as itself: `--t-blight` magenta is
+      // unique to it, on the name, the label and the card's own `--tier` edge.
       this.refs.name.textContent = name;
-      this.refs.name.style.color = inverted ? '#0b0409' : meta.color;
-      this.refs.name.style.background = inverted ? meta.color : '';
-      this.refs.name.style.padding = inverted ? '0.1em 0.42em' : '';
+      this.refs.name.style.color = meta.color;
       this.refs.tier.textContent = meta.label;
       this.refs.tier.style.color = meta.color;
       this.refs.body.innerHTML = describe(def, count);
