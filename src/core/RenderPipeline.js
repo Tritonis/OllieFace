@@ -10,6 +10,7 @@ import { GradeShader } from '../shaders/GradeShader.js';
 import { detectGpu } from './GpuTier.js';
 import { prewarmShaders } from '../fx/Prewarm.js';
 import { clamp, damp } from './MathUtil.js';
+import { effectivePixelRatio } from './ResolutionMath.js';
 
 export const QUALITY = { LOW: 0, MEDIUM: 1, HIGH: 2, ULTRA: 3 };
 
@@ -165,6 +166,12 @@ export class RenderPipeline {
     this._failedAt = Infinity;
     this._sinceFail = 0;
 
+    // The player's Render scale setting — a ceiling multiplied in alongside
+    // the adaptive correction. `_pinned` is the capture harness's lock: while
+    // held, the settings screen cannot move the drawing-buffer scale at all.
+    this._userScale = 1;
+    this._pinned = false;
+
     // Filled in by `detect()` once there is a GL context to interrogate.
     this.gpu = null;
   }
@@ -306,15 +313,11 @@ export class RenderPipeline {
    */
   _applyPixelRatio() {
     const max = this.quality >= QUALITY.HIGH ? 2 : this.quality >= QUALITY.MEDIUM ? 1.5 : 1;
-    const w = innerWidth, h = innerHeight;
-    let ratio = Math.min(devicePixelRatio, max);
-    if (w > 0 && h > 0) {
-      const budget = Math.sqrt(PIXEL_BUDGET / (w * h));
-      ratio = Math.min(ratio, Math.max(1, budget));
-    }
-    // The adaptive scale is applied last and is allowed to go below 1: the
-    // clamps above exist to stop the ratio climbing, not to stop it falling.
-    this.renderer.setPixelRatio(ratio * this._resScale);
+    this.renderer.setPixelRatio(effectivePixelRatio({
+      dpr: devicePixelRatio, qualityCap: max, budget: PIXEL_BUDGET,
+      width: innerWidth, height: innerHeight,
+      userScale: this._userScale, adaptScale: this._resScale,
+    }));
   }
 
   /**
@@ -385,13 +388,39 @@ export class RenderPipeline {
   }
 
   /** Turn adaptive resolution off and pin the scale (used by the capture
-   *  harness — a screenshot tool must control its own resolution). */
+   *  harness — a screenshot tool must control its own resolution). Pinning
+   *  also locks out `setRenderScale` and clears any player Render scale, so
+   *  a capture can never inherit a saved 50% setting. */
   setAdaptive(on, scale = 1) {
     this._adaptOn = on;
+    this._pinned = !on;
     if (!on) {
+      this._userScale = 1;
       this._resScale = scale;
       this.resize();
     }
+  }
+
+  /** The player's knobs, pushed by `Menus.apply()` on every settings change.
+   *  `scale` (0.5..1) is a hard ceiling on the drawing-buffer scale; `dynamic`
+   *  arms or disarms the adaptive controller underneath it. No-ops entirely
+   *  while the capture harness holds the pin. */
+  setRenderScale(scale, dynamic = true) {
+    if (this._pinned) return;
+    const s = Math.min(1, Math.max(0.5, Number(scale) || 1));
+    const on = !!dynamic;
+    if (s === this._userScale && on === this._adaptOn) return;
+    this._userScale = s;
+    this._adaptOn = on;
+    // Disarming hands the whole scale to the player: the adaptive term resets
+    // so the buffer sits exactly where the slider says. Stale controller state
+    // goes with it — the frame samples and the remembered failure were both
+    // measured under a different userScale basis.
+    if (!on) this._resScale = 1;
+    this._frameMs.length = 0;
+    this._failedAt = Infinity;
+    this._sinceFail = 0;
+    this.resize();
   }
 
   /** The live settings object, if the game context has been published yet. */
