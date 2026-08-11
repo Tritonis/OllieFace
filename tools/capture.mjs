@@ -192,12 +192,32 @@ const SCENARIOS = [
   // matters rather than the number. Every scenario draws from the shared RNG
   // stream, so a new one inserted anywhere in the middle displaces every shot
   // below it — measured on this harness at 19,488 -> 57,049 px for a change
-  // that only re-seated `04-combat`'s monsters. Last costs nothing. The
-  // trade-off is that `16-run-summary` has already killed the player, so on a
-  // full run this scenario begins from a dead run; it is captured with
-  // `--only 19-overkill` against a fresh page, which is the supported path.
+  // that only re-seated `04-combat`'s monsters. Last costs nothing.
+  //
+  // `onlyPath` is the trade-off, and it is enforced now rather than merely
+  // documented. This comment used to say the scenario "is captured with
+  // `--only 19-overkill` against a fresh page, which is the supported path" and
+  // then let a full run gate it anyway — so every full run carried three
+  // subject failures describing an arrangement nobody supports, and the harness
+  // reported red for a shot it had itself set up to fail.
+  //
+  // The mechanism is siting, not the dead run the old comment blamed. On a full
+  // run the survivor is alive (20/20 health, LVL 28 in frame); what breaks is
+  // that fifteen scenarios of accumulated stage have left "open ground" as
+  // water, so `overkill`'s `groundAtScreen(0.52, 0.62)` sites the hulk on the
+  // water plane at `deathGroundY 19.475`, with `rootY` exactly equal to it —
+  // the rig root never moved because the body was launched into water. Measured
+  // identically in `reviews/round7/captures/fix-harness-base/manifest.json` and
+  // in `reviews/round9/shot-control-manifests/shots-after.manifest.json` two
+  // days earlier.
+  //
+  // So a full run skips it and says so in the manifest. Skipping is not
+  // hiding: a silently absent shot is the same class of lie as a green partial,
+  // which is why it lands as a `skipped` entry with its reason attached rather
+  // than as nothing at all.
   {
     name: '19-overkill',
+    onlyPath: true,
     doc: 'A heavy monster killed with damage to spare, photographed with the corpse mid-launch and its element\'s kill burst live. Judges whether a kill reads as an event.',
     setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.overkill?.()),
   },
@@ -207,8 +227,20 @@ const SCENARIOS = [
   // trade-off too -- `16-run-summary` has already killed the player, so on a
   // full run this scenario begins from a dead run; it is captured with
   // `--only 20-blight-edge` against a fresh page, which is the supported path.
+  //
+  // `onlyPath` for that stated reason, and it was load-bearing before anyone
+  // enforced it. This shot's full-run green was an accident of the scenario
+  // above it: with `19-overkill` skipped, `a live fight` went from 10 enemies
+  // alive to 0 and the shot went red, because by this point in a full run the
+  // survivor is still carrying `06-loaded-hud`'s 37-item haul and its passive
+  // damage wipes the ring before the shutter — the same failure this file
+  // already recorded at "1 of 8" when the grant was made here directly. So the
+  // scenario was never actually passing on its own terms; it was passing on
+  // `19-overkill`'s. On its documented path it is green, exit 0
+  // (`reviews/round7/captures/only-20/manifest.json`).
   {
     name: '20-blight-edge',
+    onlyPath: true,
     doc: 'The trailer thesis: the party fighting at a blight edge as it spreads toward camera. Judges whether the hook is photographable -- blight foreground, fight midground, deep-band sky.',
     setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.blightEdge?.()),
   },
@@ -283,8 +315,14 @@ page.on('pageerror', (e) => errors.push(`${e.message}\n${e.stack ?? ''}`));
 // images; the version after that respected non-PNGs but still deleted all eight
 // shots on an `--only combat` run, so a targeted re-shoot silently threw away
 // the seven frames the reviewers were mid-way through judging.
+/** Did `--only` ask for this scenario by name. */
+const named = (s) => !!ONLY && ONLY.some((o) => s.name.includes(o));
+// An `onlyPath` scenario a full run is about to skip is still `WANTED`, so its
+// stale PNG is cleared: a manifest saying `skipped` beside a leftover image
+// from an older run is exactly the mixed evidence this file keeps trying to
+// stamp out.
 const WANTED = new Set(
-  SCENARIOS.filter((s) => !ONLY || ONLY.some((o) => s.name.includes(o))).map((s) => `${s.name}.png`)
+  SCENARIOS.filter((s) => !ONLY || named(s)).map((s) => `${s.name}.png`)
 );
 await mkdir(OUT, { recursive: true });
 
@@ -325,6 +363,26 @@ const bootMs = Date.now() - tBoot;
  * `carried` is read here for the same reason: on an `--only` run it merges the
  * untouched shots forward out of the manifest that is about to be overwritten,
  * and reading it after the boot check keeps it paired with the delete.
+ *
+ * Every carried entry is stamped, and that stamp is the whole point.
+ *
+ * This merge is how "previously green" was manufactured. `06-loaded-hud` and
+ * `19-overkill` were believed to have regressed on 2026-08-11; the evidence was
+ * a set of `partial: true` manifests reading `subjectsOk: true`, compared
+ * against full runs reading false. The green ones were green because the shot
+ * in question had been *carried forward from an older manifest* and never
+ * re-taken — `shots-t7-dbg-after` (partial, green) and `shots-t7-before` (full,
+ * red) are twenty minutes apart on the same day and the same tree. A capture
+ * that never happened certified a gate, and the belief became a project memory
+ * note that was wrong in its date, its mechanism and its attribution.
+ *
+ * A carried shot is therefore distinguishable from a freshly shot one
+ * everywhere it can be read: on the shot itself (`carried`, `carriedFrom`), in
+ * `subjectFailures`, in `toleratedAbsences`, in the `carriedShots` /
+ * `freshShots` name lists, and in `subjectsOkFresh` — which is the only field
+ * on a partial manifest that is a statement about *this* run. `subjectsOk`
+ * keeps its meaning over the merged set, because a carried failure is still a
+ * failure and dropping it would be the same laundering pointed the other way.
  */
 const carried = ready && ONLY
   ? await readFile(path.join(OUT, 'manifest.json'), 'utf8')
@@ -367,7 +425,21 @@ if (!ready) {
   await page.screenshot({ path: path.join(OUT, '00-FAILED-TO-BOOT.png') });
 } else {
   for (const s of SCENARIOS) {
-    if (ONLY && !ONLY.some((o) => s.name.includes(o))) continue;
+    if (ONLY && !named(s)) continue;
+    // An `onlyPath` scenario is valid on its documented path and nowhere else,
+    // so a full run declines to photograph it instead of gating an arrangement
+    // it has itself invalidated. It leaves a record rather than a gap — see the
+    // note on `19-overkill`.
+    if (!ONLY && s.onlyPath) {
+      log(`scenario ${s.name}... SKIPPED (only-path-enforced)`);
+      manifest.shots.push({
+        name: s.name, doc: s.doc,
+        skipped: 'only-path-enforced',
+        why: `valid only under --only ${s.name} against a fresh page; a full run `
+          + 'leaves this scenario a stage it cannot be sited on',
+      });
+      continue;
+    }
     const before = errors.length;
     log(`scenario ${s.name}...`);
     try {
@@ -420,6 +492,18 @@ if (!ready) {
       detail: (s.subject.checks ?? []).filter((c) => !c.ok),
     }));
   manifest.subjectsOk = manifest.subjectFailures.length === 0;
+
+  // Which shots this run actually took, and which it merely inherited. On a
+  // full run `carriedShots` is empty and `subjectsOkFresh === subjectsOk`; on a
+  // partial one they are the difference between "these gates pass" and "these
+  // gates passed at some point, possibly days ago, on a tree nobody recorded".
+  // See the note by `carried` for the belief this exists to prevent.
+  manifest.skippedShots = manifest.shots.filter((s) => s.skipped)
+    .map((s) => ({ name: s.name, skipped: s.skipped, why: s.why }));
+  manifest.carriedShots = manifest.shots.filter((s) => s.carried).map((s) => s.name);
+  manifest.freshShots = manifest.shots.filter((s) => !s.carried).map((s) => s.name);
+  manifest.subjectsOkFresh = !manifest.shots
+    .some((s) => !s.carried && s.subject && !s.subject.ok);
 
   // Hoisted for the same reason `subjectFailures` is hoisted, and it is the
   // more important of the two: a failure is already loud, and this is the
@@ -671,7 +755,12 @@ console.log(JSON.stringify({
   ready,
   clockPinned: pinned,
   determinism: manifest.determinism ?? null,
-  shots: manifest.shots.map((s) => s.name),
+  // Carried shots are named in place rather than listed silently alongside the
+  // fresh ones: this line is what a reader skims, so it is where the difference
+  // has to be visible.
+  shots: manifest.shots.map((s) => (s.skipped ? `${s.name} (${s.skipped})`
+    : s.carried ? `${s.name} (carried ${s.carriedFrom ?? 'undated'})` : s.name)),
+  skippedShots: (manifest.skippedShots ?? []).map((s) => `${s.name}: ${s.skipped}`),
   errorCount: errors.length,
   audio: manifest.audio
     ? {
