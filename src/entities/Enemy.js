@@ -499,6 +499,25 @@ export class Enemy {
     } else {
       a.fallX = 1; a.fallZ = 0;
     }
+    // Put the hit flash away before anyone can see the corpse, and this is what
+    // makes the death dissolve exist at all.
+    //
+    // The killing blow sets `flashT = FLASH_TIME` like any other hit, so at this
+    // instant the body, dark, accent and eye meshes are all wearing the shared
+    // white `FLASH` material. `Combat._kill` calls this method and *then* emits
+    // `kill` (src/systems/Combat.js:608-610), which is what runs
+    // `VFX.deathDissolve` -> `makeDissolvable`. Left flashing, that swap
+    // captured `FLASH` as the material to hand back, and `FLASH_TIME` later
+    // `updateRig`'s `setFlash(false)` re-dressed those same meshes from
+    // `rig.mats` (src/entities/EnemyMeshes.js:735) -- pulling the dissolve
+    // variants off every mesh the silhouette is actually made of. Measured on a
+    // hulk at seed 1337: the corpse rendered an unchanging 2,081 px with
+    // `uDissolve` driven from 0 to 5, i.e. the effect was running on the crumble
+    // bits and nothing else. Clearing it here means the dissolve is built over
+    // the real materials, and `setFlash(this.flashT > 0)` is a no-op from now on
+    // because the rig is already unflashed.
+    this.flashT = 0;
+    this.rig?.setFlash(false);
     this.rig?.beginDeath(ctx.rng);
     this.deathT = 0;
     this.velocity.multiplyScalar(0.2);

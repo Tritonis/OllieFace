@@ -1,0 +1,59 @@
+{
+  "sweep": {
+    "steps": [
+      {
+        "k": 0,
+        "px": 1198
+      },
+      {
+        "k": 0.2,
+        "px": 1198
+      },
+      {
+        "k": 0.4,
+        "px": 1184
+      },
+      {
+        "k": 0.6,
+        "px": 27
+      },
+      {
+        "k": 0.8,
+        "px": 0
+      },
+      {
+        "k": 0.95,
+        "px": 0
+      }
+    ],
+    "bags": 29,
+    "owner": 4,
+    "t": 0.193,
+    "rigEpoch": 4,
+    "wearing": [
+      "variant"
+    ],
+    "drivenBags": 29,
+    "pxGone": 0,
+    "pxHidden": 0,
+    "shaderInfo": {
+      "cls": "RimStandardMaterial",
+      "isStandard": true,
+      "hasBag": true,
+      "sameBagObject": true,
+      "programIsPatched": true,
+      "progUniformIsOurs": true,
+      "progHasUDissolve": true
+    }
+  },
+  "handover": {
+    "sameRig": true,
+    "epochBefore": 4,
+    "epochAfter": 6,
+    "dissolvingLeft": 0,
+    "visible": true,
+    "px": 4364,
+    "alive": true
+  },
+  "pageErrors": []
+}
