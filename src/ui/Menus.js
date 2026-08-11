@@ -556,7 +556,10 @@ export class Menus {
       // paused with Start and then clicked Resume with the mouse would stay
       // flagged pad-active: `act('resume')` skips requestPointerLock and mouse
       // look is dead until they click the canvas again.
-      this.ctx.input?.deviceUsed?.('mouse');
+      // Only a real click counts: navConfirm() commits a pad-driven selection
+      // with el.click(), which bubbles here untrusted. Without this guard every
+      // pad-confirmed menu action would hand device authority to the mouse.
+      if (e.isTrusted) this.ctx.input?.deviceUsed?.('mouse');
       const btn = e.target.closest('[data-act]');
       if (btn) { this.act(btn.dataset.act); return; }
       const diff = e.target.closest('[data-difficulty]');

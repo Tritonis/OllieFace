@@ -175,12 +175,42 @@ ok('2a menu nav', navDown === 1 && navUp === 0,
   `stick down -> navIndex ${navDown} (want 1), stick up -> navIndex ${navUp} (want 0)`);
 
 const focusBeforeConfirm = await focused();
+// Device authority is watched across the confirm (check 2c). The spy delegates,
+// so the game behaves exactly as it would unwatched; it stays installed for the
+// rest of the run because a wrapper that only counts cannot change an outcome.
+await page.evaluate(() => {
+  window.__DEVUSED__ = [];
+  const input = __GAME__.ctx.input;
+  const real = input.deviceUsed.bind(input);
+  input.deviceUsed = (which) => {
+    window.__DEVUSED__.push({ which, frame: __GAME__.engine.frame });
+    return real(which);
+  };
+});
 await tap(0);
 await page.waitForFunction(() => __GAME__.ctx.hud.menus.screen === 'select', null, { timeout: 10000 })
   .catch(() => {});
 const screenAfterA = await page.evaluate(() => __GAME__.ctx.hud.menus.screen);
 ok('2b menu confirm', screenAfterA === 'select',
   `A on "${focusBeforeConfirm?.label}" (index ${focusBeforeConfirm?.index}) -> screen "${screenAfterA}"`);
+
+// ------------------------------------------------------------------ check 2c
+// A pad confirm must not hand device authority to the mouse. navConfirm commits
+// the selection with el.click(), which bubbles to the overlay's click listener
+// as an untrusted event; the listener's deviceUsed('mouse') is guarded on
+// e.isTrusted precisely so this path cannot clear padActive. Both halves are
+// asserted: no mouse claim was made during the confirm (timing-proof — a held
+// button re-arms padActive on the next poll and would otherwise hide the bug),
+// and padActive is still true some frames later with the pad sitting idle.
+await frames(8);
+const authority = await page.evaluate(() => ({
+  mouseClaims: window.__DEVUSED__.filter((c) => c.which === 'mouse').length,
+  claims: window.__DEVUSED__.map((c) => `${c.which}@${c.frame}`).join(',') || 'none',
+  padActive: !!__GAME__.ctx.input.padActive,
+}));
+ok('2c confirm keeps the pad in charge', authority.mouseClaims === 0 && authority.padActive,
+  `pad confirm produced ${authority.mouseClaims} deviceUsed('mouse') calls (want 0; saw ${authority.claims});`
+  + ` padActive ${authority.padActive} 8 idle frames later`);
 
 // ------------------------------------------------------------------- check 3
 // Into a run the way menuprobe does — clicks are fine for ground check 2 covers.
