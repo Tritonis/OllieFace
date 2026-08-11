@@ -3032,7 +3032,50 @@ export function installHarness(ctx) {
        * the places to look, not the camera. See `reviews/round6/FIX-harness.md`.
        */
       await faceOpenGround();
+      /* The horde has to survive its own settle, and since `cf7e63e` it does
+       * not. This is the same pin `invulnerable()` puts on the survivor, on the
+       * other side of the fight, and it is here for the same reason: this shot
+       * is graded on the HUD, and the loadout it needs to fill that HUD is one
+       * no player ever holds.
+       *
+       * Measured, at `1911d79`, on a full run: the ten spawn at full health,
+       * stand for fifty frames, and are then deleted in a single frame by one
+       * chain-lightning proc — 46.2 damage of card text arriving as **86,648.9**
+       * after the outgoing multipliers of 37 items at up to 12 stacks each
+       * (`reviews/round7/captures/fix-loaded-hud/diag7-head/manifest.json`,
+       * `DIAG kill`: `hp0 14280 -> hp1 0` on the burrower, `ret 86648.9`).
+       *
+       * What that costs the photograph is not "the monsters are dead" — corpses
+       * still draw. It is that `declutter` filters on `e.alive`, so with the
+       * whole cast dead it finds nothing to move, runs **zero** passes, and the
+       * caller's `maxDist: 28` below silently stops applying:
+       *
+       *   at `ddb1246` (alive)  before 21.6-46.5 m -> after 14.1-26.4 m, 8 moved, 2624 px, green
+       *   at `1911d79` (dead)   before 29.9-41.9 m -> after 29.9-41.9 m, 0 moved,  815 px, red
+       *
+       * (`fix-loaded-hud/diag4-ddb1246` and `fix-loaded-hud/diag4-head`,
+       * `DIAG declutter`.) So the subject is not mis-framed and it is not
+       * mis-lit: it is ten corpses photographed at the far edge of a band the
+       * composition pass was never given the chance to close.
+       *
+       * Health rather than `invuln`, because `invuln` is the burrower's — its
+       * SUBMERGED state owns that flag and clears it on exit
+       * (`src/entities/Enemy.js:1638,1666`) — and because pinning health is
+       * blind to which damage path arrives, which is the whole problem here.
+       * Restored at the shutter so nothing downstream inherits an unkillable
+       * horde; the 86,648 is left alone, because a proc multiplier three orders
+       * of magnitude over its card text is a balance question and this is a
+       * camera.
+       */
+      const pinned = new Set(ctx.director?.enemies ?? []);
       spawnRing(10, SPAWN_CARDS, 14, 3);
+      const hordePins = [];
+      for (const e of ctx.director?.enemies ?? []) {
+        if (pinned.has(e)) continue;
+        hordePins.push({ e, health: e.health, maxHealth: e.maxHealth });
+        e.maxHealth = 1e9;
+        e.health = 1e9;
+      }
       await frames(settleFrames);
       /* 28 m, not the default 46, and this is the fix for the regression above.
        *
@@ -3068,6 +3111,39 @@ export function installHarness(ctx) {
           detail: () => ctx.hud?.inv?.size ?? 0,
         },
       ]);
+      /* Then hand the horde the death its own frame had already earned it.
+       *
+       * After the shutter, because `mustContain` re-renders the scene to build
+       * its per-object masks. And at all, because this scenario is the
+       * sixteenth of twenty and everything below it inherits whatever it leaves
+       * standing — the pin buys this frame and it is not allowed to buy
+       * anything else. Both other endings were captured full and both cost a
+       * shot that had been passing:
+       *
+       *  - release the pin and walk away
+       *    (`reviews/round7/captures/fix-loaded-hud/after-alive/manifest.json`):
+       *    the ten follow the survivor into `10-inventory` and crowd the pack
+       *    it is graded on — `monsters standing in it` 1078 -> 623 px, object 4
+       *    at `sepP50` 0.09.
+       *  - retire them into the director's pools instead
+       *    (`reviews/round7/captures/fix-loaded-hud/after-despawn/manifest.json`):
+       *    the same 623 px, because ten bodies that never die also never pay
+       *    the on-kill procs the following scenarios were composed against.
+       *
+       * So they die, through the real API, from the survivor who would have
+       * killed them: same ten bodies, same ten kills, a dozen frames late.
+       * `procCoefficient: 0` because this is bookkeeping and must not start a
+       * proc chain the frame never had.
+       */
+      for (const p of hordePins) {
+        p.e.maxHealth = p.maxHealth;
+        p.e.health = Math.min(p.health, p.maxHealth);
+        if (!p.e.alive) continue;
+        ctx.combat?.applyDamage?.(p.e, p.maxHealth * 2, {
+          source: ctx.player, position: p.e.position, type: 'lightning',
+          procCoefficient: 0, procDepth: 1,
+        });
+      }
     },
 
     /**
@@ -5497,7 +5573,31 @@ export function installHarness(ctx) {
       // (burrower) nor blink out (stalker) mid-shutter.
       const cards = ['charger', 'shriver', 'warden', 'golem']
         .map((id) => SPAWN_CARDS.find((c) => c.id === id)).filter(Boolean);
+      const standing = new Set(ctx.director?.enemies ?? []);
       spawnRing(8, cards.length ? cards : SPAWN_CARDS, 9, 4);
+      /* And pin the ring, for the reason the comment above says the haul was
+       * dropped — except that the haul is not dropped and never was. `begin()`
+       * does not empty the inventory, so the survivor arrives here holding the
+       * 97 items `06-loaded-hud` and `10-inventory` gave him
+       * (`reviews/round7/captures/fix-loaded-hud/diag-blight-fixed/manifest.json`,
+       * `DIAG blight`: `items 97`, and all eight of the ring dead at the
+       * shutter). What that comment describes as a defence is a hope, and the
+       * shot has been passing on the timing of a proc rather than on anything
+       * it does: eight bodies at 442-3536 health against a chain that arrives
+       * at tens of thousands.
+       *
+       * Same pin `10-inventory` puts on its own pack for the same reason
+       * (`Harness.js`, "the pack is pinned at full health across the settle"),
+       * released at the shutter. Nothing runs after this scenario, so the
+       * release has nothing to hand on to.
+       */
+      const ringPins = [];
+      for (const e of ctx.director?.enemies ?? []) {
+        if (standing.has(e)) continue;
+        ringPins.push({ e, health: e.health, maxHealth: e.maxHealth });
+        e.maxHealth = 1e9;
+        e.health = 1e9;
+      }
       // The ring's own band reaches 42 m in front of the survivor, which on this
       // bearing is behind the lens that is about to be planted at 26 m. Pull the
       // fight into a band that is entirely on the near side of it, and onto the
@@ -5531,6 +5631,10 @@ export function installHarness(ctx) {
       await frames(12);
       freeze();
       const enemiesAlive = (ctx.director?.enemies ?? []).filter((e) => e.alive).length;
+      for (const p of ringPins) {
+        p.e.maxHealth = p.maxHealth;
+        p.e.health = Math.min(p.health, p.maxHealth);
+      }
       const camDistToEdge = Math.hypot(camera.position.x - seedAt.x, camera.position.z - seedAt.z) - liveR;
       const record = {
         world: +(ctx.corruption?.world ?? 0).toFixed(1),
