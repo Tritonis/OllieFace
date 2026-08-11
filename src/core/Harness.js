@@ -4112,30 +4112,6 @@ export function installHarness(ctx) {
       // standing in (`.../master-after2`: five of eight visible, 2,256 px,
       // against 4,257 px and eight of eight here).
       for (const e of victims) e.maxHealth = 1e6;
-      // Refilling the bar once a frame is not a pin, and it never was one.
-      // `hold` runs at the top of the frame; with one of every item in the game
-      // the on-kill chain deals more than a monster's whole health bar *inside*
-      // that frame, so the pack died anyway and every later `hold` skipped it on
-      // `!e.alive`. Measured at the shutter in
-      // `reviews/round7/captures/fix-inventory/diag-victims/manifest.json`: all
-      // eight dead with `deathT: 0.583` — thirty-five frames, half a second
-      // before the nova they are documented as standing in.
-      //
-      // It photographed as a pass for as long as the death dissolve was running
-      // on the crumble debris instead of the body (`4734ffd`): a corpse held
-      // full opacity for its whole 1.5 s, so a monster that died early was
-      // pixel-for-pixel a monster that never died. With the dissolve landing on
-      // the silhouette the same corpse is 69% burned away when the shutter
-      // opens (`k: 0.686`) and the subject reads 90 px of eight bodies. The
-      // dissolve is right; the pin was always wrong.
-      //
-      // So pin it the way the player is pinned — raise the ceiling instead of
-      // refilling under it (`invulnerable`, Harness.js:1341). The pack still
-      // takes the nova, still flashes, still throws the damage numbers this
-      // frame is graded on; it just cannot be taken off the board by the
-      // inventory before the equipment fires. No RNG is drawn either way.
-      // DIAGARM
-      if (false) for (const e of victims) e.maxHealth = 1e6;
       const hold = () => {
         for (const e of victims) {
           if (!e.alive) continue;
