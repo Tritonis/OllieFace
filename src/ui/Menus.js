@@ -59,6 +59,10 @@ const DEFAULTS = {
   shake: 1.0,
   spawnRate: 1.0,
   padSensitivity: 1.0,
+  renderScale: 1.0,
+  // 1 = Auto (adaptive controller live), 0 = Off (pinned at renderScale).
+  // A number, not a boolean: `load()` only adopts finite numbers.
+  dynamicRes: 1,
 };
 
 const QUALITY_NAMES = ['Low', 'Medium', 'High', 'Ultra'];
@@ -70,6 +74,7 @@ const QUALITY_NAMES = ['Low', 'Medium', 'High', 'Ultra'];
 const DEATH_ROW = 8;
 
 const SLIDERS = [
+  { key: 'renderScale', label: 'Render scale', min: 0.5, max: 1, step: 0.05, fmt: pct },
   { key: 'fov', label: 'Field of view', min: 60, max: 110, step: 1, fmt: (v) => `${v | 0}°` },
   { key: 'sensitivity', label: 'Mouse sensitivity', min: 0.2, max: 3, step: 0.05, fmt: (v) => v.toFixed(2) },
   { key: 'padSensitivity', label: 'Gamepad look', min: 0.2, max: 3, step: 0.05, fmt: (v) => v.toFixed(2) },
@@ -606,6 +611,12 @@ export class Menus {
         .map((n, i) => `<button class="segbtn" data-nav data-val="${i}">${n}</button>`)
         .join('')}</div>`);
 
+    html += row('Dynamic resolution',
+      `<div class="sseg" data-seg="dynamicRes">
+         <button class="segbtn" data-nav data-val="1">Auto</button>
+         <button class="segbtn" data-nav data-val="0">Off</button>
+       </div>`);
+
     for (const s of SLIDERS) {
       html += row(s.label,
         `<div class="sslider">
@@ -625,7 +636,9 @@ export class Menus {
     host.addEventListener('click', (e) => {
       const seg = e.target.closest('.segbtn');
       if (!seg) return;
-      this.settings.quality = Number(seg.dataset.val);
+      const key = seg.closest('[data-seg]')?.dataset.seg;
+      if (!key) return;
+      this.settings[key] = Number(seg.dataset.val);
       this.apply();
       save(this.settings);
     });
@@ -640,8 +653,11 @@ export class Menus {
       if (input) input.value = String(this.settings[s.key]);
       if (out) out.textContent = s.fmt(this.settings[s.key]);
     }
-    for (const b of this.root.querySelectorAll('[data-seg="quality"] .segbtn')) {
-      b.classList.toggle('is-on', Number(b.dataset.val) === this.settings.quality);
+    for (const wrap of this.root.querySelectorAll('[data-seg]')) {
+      const key = wrap.dataset.seg;
+      for (const b of wrap.querySelectorAll('.segbtn')) {
+        b.classList.toggle('is-on', Number(b.dataset.val) === this.settings[key]);
+      }
     }
   }
 
@@ -1145,6 +1161,10 @@ export class Menus {
     // unresponsive to the quality setting, and bypassed the pipeline's own
     // pixel budget on top.
     ctx.pipeline?.setQuality?.(settings.quality);
+
+    // Same single-hook rule as quality: one guarded call, the pipeline owns
+    // the clamp order and the capture pin. `dynamicRes` is numeric on disk.
+    ctx.pipeline?.setRenderScale?.(settings.renderScale, settings.dynamicRes !== 0);
 
     const a = ctx.audio;
     if (a) {
