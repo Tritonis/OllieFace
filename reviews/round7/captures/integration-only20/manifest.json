@@ -1,0 +1,123 @@
+{
+  "seed": 1337,
+  "ready": true,
+  "clockPinned": true,
+  "capturedAt": "2026-08-11T20:53:06.768Z",
+  "ms": {
+    "boot": 24554,
+    "bootTimeout": 60000
+  },
+  "shots": [
+    {
+      "name": "20-blight-edge",
+      "doc": "The trailer thesis: the party fighting at a blight edge as it spreads toward camera. Judges whether the hook is photographable -- blight foreground, fight midground, deep-band sky.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round7\\captures\\integration-only20\\20-blight-edge.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 1323.9999999999964
+      },
+      "ms": {
+        "setup": 7976,
+        "screenshot": 659,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "a deep-band world",
+            "kind": "dom",
+            "ok": true,
+            "detail": 3
+          },
+          {
+            "subject": "a blight patch in the world",
+            "kind": "dom",
+            "ok": true,
+            "detail": 1
+          },
+          {
+            "subject": "a grown patch rim, measured off the live uniform",
+            "kind": "dom",
+            "ok": true,
+            "detail": 10.4
+          },
+          {
+            "subject": "a live fight",
+            "kind": "dom",
+            "ok": true,
+            "detail": 10
+          }
+        ]
+      },
+      "newErrors": []
+    }
+  ],
+  "errors": [],
+  "partial": true,
+  "subjectFailures": [],
+  "subjectsOk": true,
+  "skippedShots": [],
+  "carriedShots": [],
+  "freshShots": [
+    "20-blight-edge"
+  ],
+  "subjectsOkFresh": true,
+  "toleratedAbsences": [],
+  "determinism": {
+    "clockPinned": true,
+    "frameDt": 0.016666666666666666,
+    "frameTimeouts": 0
+  },
+  "perf": {
+    "programs": 73,
+    "geometries": 423,
+    "textures": 52,
+    "sceneObjects": 775
+  },
+  "audio": {
+    "ready": true,
+    "state": "running",
+    "stepsEmitted": 61,
+    "stopped": false,
+    "silent": false,
+    "muted": false,
+    "musicOff": false,
+    "musicGain": 0.47999998927116394,
+    "masterGain": 0.800000011920929,
+    "voices": 26,
+    "worldVoices": 26,
+    "musicPeak": 0.1322120875120163,
+    "outputPeak": 0.788775622844696,
+    "samples": 113,
+    "armed": true,
+    "beforeGate": {
+      "ready": true,
+      "state": "running",
+      "stepsEmitted": 35,
+      "stopped": false,
+      "musicOff": false,
+      "musicGain": 0.47999998927116394,
+      "masterGain": 0.800000011920929
+    },
+    "stepsDelta": 26,
+    "newErrors": [],
+    "checks": {
+      "armed": true,
+      "graphBuilt": true,
+      "contextRunning": true,
+      "sequencerRunning": true,
+      "notSilenced": true,
+      "musicBusOpen": true,
+      "masterOpen": true,
+      "stepsAdvanced": true,
+      "musicAudible": true,
+      "outputAudible": true,
+      "sampled": true,
+      "noNewErrors": true
+    },
+    "failed": []
+  },
+  "audioOk": true
+}
