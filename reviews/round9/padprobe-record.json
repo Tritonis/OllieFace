@@ -1,0 +1,98 @@
+{
+  "when": "2026-08-11T04:14:14.097Z",
+  "probe": "tools/padprobe.mjs",
+  "url": "/?seed=1337&quality=2&harness=1",
+  "checks": [
+    {
+      "name": "1 boot",
+      "pass": true,
+      "detail": "title screen up in 11445 ms, 6 frames rendered, seed 1337, harness=1"
+    },
+    {
+      "name": "2a menu nav",
+      "pass": true,
+      "detail": "stick down -> navIndex 1 (want 1), stick up -> navIndex 0 (want 0)"
+    },
+    {
+      "name": "2b menu confirm",
+      "pass": true,
+      "detail": "A on \"Playchoose a survivor\" (index 0) -> screen \"select\""
+    },
+    {
+      "name": "3 in a run",
+      "pass": true,
+      "detail": "player alive at (0.00, 3.38, 0.00)"
+    },
+    {
+      "name": "4a pad move",
+      "pass": true,
+      "detail": "left stick forward for 40 frames moved 1.797 m (want > 1), speed 7.00 m/s"
+    },
+    {
+      "name": "4b release decays",
+      "pass": true,
+      "detail": "speed 7.00 -> 0.000 m/s 30 frames after release"
+    },
+    {
+      "name": "5a pad look yaw",
+      "pass": true,
+      "detail": "right stick +x for 30 frames turned yaw by -1.1203 rad (want < -0.3)"
+    },
+    {
+      "name": "5b pitch clamp",
+      "pass": true,
+      "detail": "stick full down for 120 frames left pitch at -1.1500 rad (PITCH_MIN -1.15)"
+    },
+    {
+      "name": "6 RT fires",
+      "pass": true,
+      "detail": "lastCommand.buttons 4 (BTN.FIRE=4 set, mouse.left true) -> 0 on release"
+    },
+    {
+      "name": "7 A jumps",
+      "pass": true,
+      "detail": "A held 6 frames -> lastCommand.buttons 1 (BTN.JUMP=1 set)"
+    },
+    {
+      "name": "8 Start pauses",
+      "pass": true,
+      "detail": "screen \"pause\", ctx.paused true, ring on \"resume\""
+    },
+    {
+      "name": "8 A resumes (pad polls while paused)",
+      "pass": true,
+      "detail": "A on Resume after 13 paused frames -> screen null, ctx.paused false"
+    },
+    {
+      "name": "8b Start with sprint held",
+      "pass": true,
+      "detail": "pause stayed open 17 frames (want >= 10) with B held (sprint true)"
+    },
+    {
+      "name": "11 focus ring photographed",
+      "pass": true,
+      "detail": "1 focus ring on the pause screen (\"Resume\"), shots-pad/01-pause-focus.png"
+    },
+    {
+      "name": "10b pad adjusts the slider",
+      "pass": true,
+      "detail": "4 steps to Settings, 6 steps to \"padSensitivity\"; dx right 1.000 -> 1.050 (saved 1.050)"
+    },
+    {
+      "name": "10 legacy settings merge",
+      "pass": true,
+      "detail": "telluric.settings seeded with 8 pre-slice keys and no padSensitivity -> ctx.settings.padSensitivity 1.000 at boot"
+    },
+    {
+      "name": "9 prompt glyph follows the device",
+      "pass": true,
+      "detail": "pad active true -> \".prompt-key\" \"X\"; after KeyW active false -> \"E\""
+    },
+    {
+      "name": "no page errors",
+      "pass": true,
+      "detail": "0 uncaught page errors across the run"
+    }
+  ],
+  "allPass": true
+}
