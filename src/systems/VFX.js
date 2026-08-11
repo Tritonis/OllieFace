@@ -784,6 +784,14 @@ export class VFX {
 
     this._dissolving.push({
       mesh, handle, bags, t: 0, dur: 0.85,
+      // Which life of this rig we are burning. `resetRig`
+      // (src/entities/EnemyMeshes.js:796) bumps the counter every time the rig
+      // changes hands, so a mismatch on any later frame means the corpse we
+      // were given is now a living monster and none of this effect's writes
+      // belong to it any more. `undefined` on both sides for anything that is
+      // not a pooled rig -- the player mesh, a prop -- which compares equal and
+      // leaves those paths exactly as they were.
+      owner: mesh.userData.rigEpoch,
       minY: _box.min.y, maxY: _box.max.y,
       cx: (_box.min.x + _box.max.x) * 0.5,
       cz: (_box.min.z + _box.max.z) * 0.5,
@@ -831,6 +839,11 @@ export class VFX {
       // Filled in on ground contact: when it landed, the offset and the tumble
       // it landed with. Zero until then, and `land` doubles as the phase flag.
       land: 0, ox: 0, oz: 0, ax: 0, az: 0,
+      // Same token, same reason as `deathDissolve`: this loop writes the rig
+      // root's transform for up to `dur + hold`, which outlives a stage change,
+      // and a throw re-applied to the enemy that inherited the rig would drag a
+      // live monster metres off the position the simulation has for it.
+      owner: obj.userData.rigEpoch,
     });
   }
 
@@ -848,6 +861,10 @@ export class VFX {
   _updateLaunches(dt) {
     for (let i = this._launches.length - 1; i >= 0; i--) {
       const l = this._launches[i];
+      // The corpse changed hands mid-flight. Drop the throw rather than apply
+      // it to whatever is wearing the rig now; the launch holds no state on the
+      // object, so letting go writes nothing and leaves no residue.
+      if (l.obj.userData.rigEpoch !== l.owner) { this._launches.splice(i, 1); continue; }
       l.t += dt;
       const t = l.t;
       // Closed form rather than an accumulator: the offset is a pure function
@@ -1642,6 +1659,23 @@ export class VFX {
   _updateDissolves(dt) {
     for (let i = this._dissolving.length - 1; i >= 0; i--) {
       const d = this._dissolving[i];
+
+      // The corpse changed hands. A stage transition inside the dissolve's
+      // 0.85 s puts this rig back in the pool and straight onto a new enemy, and
+      // from here every remaining write lands on something alive: the closing
+      // `visible = false` below would hide a live, damageable monster until it
+      // died, and the dissolve variants left on the meshes `resetRig` does not
+      // re-dress would `discard` those parts of it in the meantime. So let go at
+      // once. `release()` restores whatever is still wearing a variant (it
+      // checks identity, so the slots `applyMats` already reclaimed are left
+      // alone) and returns the pooled materials, and nothing touches
+      // `d.mesh.visible` -- the new owner's own visibility is its business.
+      if (d.mesh.userData.rigEpoch !== d.owner) {
+        d.handle.release();
+        this._dissolving.splice(i, 1);
+        continue;
+      }
+
       d.t += dt;
       const k = clamp(d.t / d.dur, 0, 1);
       for (const bag of d.bags) bag.uDissolve.value = k;

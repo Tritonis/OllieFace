@@ -794,6 +794,17 @@ function beginDeath(rng) {
 }
 
 function resetRig() {
+  // The rig is changing hands, so anything still holding it from its last life
+  // has to be able to find that out. Presentation effects outlive the kill they
+  // were fired by -- `deathDissolve` runs 0.85 s and ends by hiding what is
+  // left -- but `Director.clear` (src/systems/Director.js:966, every stage
+  // change) despawns immediately regardless of `finished`, which drops the rig
+  // straight back into `POOL` for the next stage's first spawn. An effect that
+  // could not tell those two lives apart finished by hiding a live, damageable
+  // monster that nothing would make visible again until it died. This counter
+  // is the only handle on that: capture it when you take the root, compare it
+  // before you write to the root, and drop yourself when it no longer matches.
+  this.root.userData.rigEpoch = (this.root.userData.rigEpoch | 0) + 1;
   this.pivot.position.set(0, 0, 0);
   this.pivot.rotation.set(0, 0, 0);
   this.pivot.scale.set(1, 1, 1);
