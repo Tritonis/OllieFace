@@ -80,6 +80,7 @@ import { chromium } from 'playwright';
 import { createServer } from 'vite';
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { execFileSync } from 'node:child_process';
 
 // Not a tuning range — a name for one arbitrary but *fixed* choice. Any value
 // works; changing it invalidates every baseline captured with the old one, so
@@ -237,6 +238,31 @@ const arg = (name) => {
 };
 const outPath = arg('--out');
 const comparePath = arg('--compare');
+
+/**
+ * What produced this capture, written into every `--out` file.
+ *
+ * A baseline that does not name its own source is a number nobody can
+ * reproduce, and this repo has been burned by exactly that: four fix reports
+ * once quoted before/after figures no critic could re-derive. The commit is the
+ * point; `dirty` is the honest caveat, because a baseline captured over an
+ * uncommitted edit is not a baseline of the commit it names.
+ *
+ * Neither `--compare` view reads this key, so adding it moves no gate.
+ */
+function captureSource() {
+  const git = (a) => {
+    try { return execFileSync('git', a, { encoding: 'utf8' }).trim(); } catch { return null; }
+  };
+  return {
+    tool: 'tests/sp-equivalence.mjs',
+    mode: MODE,
+    seed: SEED,
+    commit: git(['rev-parse', 'HEAD']),
+    dirty: git(['status', '--porcelain']) !== '',
+    capturedAt: new Date().toISOString(),
+  };
+}
 const MODE = arg('--mode') || 'equivalence';
 if (MODE !== 'equivalence' && MODE !== 'elite-dps') {
   console.error(`unknown --mode ${MODE}; expected "equivalence" or "elite-dps"`);
@@ -1170,6 +1196,7 @@ if (MODE === 'elite-dps') {
 
   const eliteOut = {
     mode: 'elite-dps',
+    source: captureSource(),
     card: elite.card,
     arms: elite.arms,
     lethal: elite.lethal,
@@ -1280,6 +1307,7 @@ if (totalErrors > 0) {
 }
 
 const out = {
+  source: captureSource(),
   fingerprint: result.fingerprint,
   // Diagnostics, deliberately outside `fingerprint` so a diff of the thing this
   // instrument exists to compare is not polluted by wall-clock numbers. These
