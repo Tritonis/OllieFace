@@ -99,7 +99,7 @@ CAVEATS ON RECORD (pre-flight P2 / A)
 
     The same is true of `ok(dyn.resScale === 1, 'Off resets the adaptive
     term so the slider owns the buffer')` -- it is equally vacuous, because
-    `_adapt` returns immediately while `ctx.paused` (RenderPipeline.js:342)
+    `_adapt` returns immediately while `ctx.paused` (RenderPipeline.js:350)
     and menuprobe runs the whole walk with a menu screen open, so `_resScale`
     is 1 before and after the Off click regardless of whether the reset code
     runs. The property is established out-of-harness instead, by seeding
