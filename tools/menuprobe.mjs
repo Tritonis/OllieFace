@@ -5,7 +5,10 @@
  *
  * Drives the real menus with real clicks — title, select, the Equipment
  * screen, a pick, launch — then asserts the run seeded the picked equipment,
- * opens pause, and hovers an inventory tile for the tooltip. PNGs land in
+ * opens pause, hovers an inventory tile for the tooltip, then walks into
+ * settings to prove the Render scale slider moves the drawing-buffer ratio,
+ * that Dynamic resolution Off disarms the adaptive controller, and that both
+ * survive a reload. PNGs land in
  * `shots-menu/`; exit 1 if any assertion fails.
  *
  * Same launch recipe as tools/affixprobe.mjs (headed d3d11, offscreen window).
@@ -96,8 +99,51 @@ const tipName = (await page.textContent('#overlay .tip .tip-name'))?.trim();
 ok(!!tipName, `the tooltip names the item (${tipName})`);
 await shot('05-tooltip.png');
 
+// ---------------------------------------------------------- render scale
+// From pause into settings, with the run live underneath: the menus are open,
+// so the adaptive controller is frozen (`_adapt` returns while paused) and
+// the pixel ratio can only move because the slider moved it.
+await page.click('.screen--pause [data-act="settings"]');  // scoped: the title screen carries the same data-act (pre-flight P1)
+await page.waitForFunction(() => __GAME__.ctx.hud.menus.screen === 'settings');
+ok(await page.locator('input[data-key="renderScale"]').count() === 1, 'the settings screen carries a Render scale slider');
+ok(await page.locator('[data-seg="dynamicRes"] .segbtn').count() === 2, 'the Dynamic resolution switch drew both positions');
+
+const ratioBefore = await page.evaluate(() => __GAME__.ctx.pipeline.renderer.getPixelRatio());
+await page.locator('input[data-key="renderScale"]').evaluate((el) => {
+  el.value = '0.5';
+  el.dispatchEvent(new Event('input', { bubbles: true }));
+});
+const ratioAfter = await page.evaluate(() => __GAME__.ctx.pipeline.renderer.getPixelRatio());
+ok(Math.abs(ratioAfter - ratioBefore * 0.5) < 1e-3,
+  `render scale 50% halves the drawing-buffer ratio (${ratioBefore.toFixed(3)} -> ${ratioAfter.toFixed(3)})`);
+ok((await page.textContent('output[data-out="renderScale"]')).trim() === '50%', 'the readout says 50%');
+
+await page.click('[data-seg="dynamicRes"] [data-val="0"]');
+const dyn = await page.evaluate(() => ({
+  adaptOn: __GAME__.ctx.pipeline._adaptOn,
+  resScale: __GAME__.ctx.pipeline._resScale,
+  stored: JSON.parse(localStorage.getItem('telluric.settings')),
+}));
+ok(dyn.adaptOn === false, 'Off disarms the adaptive controller');
+ok(dyn.resScale === 1, 'Off resets the adaptive term so the slider owns the buffer');
+ok(dyn.stored.renderScale === 0.5 && dyn.stored.dynamicRes === 0, 'both settings persisted to localStorage');
+await shot('06-render-scale.png');
+
+// Reload: the saved settings must come back and land on the pipeline at boot.
+await page.reload({ waitUntil: 'load' });
+await page.waitForFunction(() => globalThis.__GAME__?.ctx?.hud?.menus?.screen === 'title', null, { timeout: 60000 });
+const boot = await page.evaluate(() => ({
+  userScale: __GAME__.ctx.pipeline._userScale,
+  adaptOn: __GAME__.ctx.pipeline._adaptOn,
+  pinned: __GAME__.ctx.pipeline._pinned,
+}));
+ok(boot.pinned === false || (boot.userScale === 1),
+  'a pinned pipeline ignored the saved scale; an unpinned one may adopt it');
+ok(boot.pinned || (boot.userScale === 0.5 && boot.adaptOn === false),
+  `saved render scale survives a reload (userScale ${boot.userScale}, dynamic ${boot.adaptOn})`);
+
 await browser.close();
 await server.close();
-console.log(fail.length ? `\nFAIL - ${fail.join('; ')}` : '\nPASS - picker and pause summary verified');
+console.log(fail.length ? `\nFAIL - ${fail.join('; ')}` : '\nPASS - picker, pause summary and render scale verified');
 console.log(`PNGs in ${OUT}`);
 process.exit(fail.length ? 1 : 0);

@@ -1,0 +1,106 @@
+menuprobe record - render scale slice (2026-08-11)
+==================================================
+
+Command: node tools/menuprobe.mjs
+Tree:    master, slice tasks 1-2 applied (2fa1d77 + task 3 probe extension)
+Host:    headed Chromium, --use-angle=d3d11, offscreen window, 1600x900, dSF 1
+
+
+RUN 1 - POSITIVE (slider wired) - exit 0
+----------------------------------------
+  PASS  the select footer carries an Equipment chip
+  PASS  the chip defaults to Random
+  PASS  the grid drew Random plus the catalogue (15 cards)
+  PASS  the picked card lights up
+  PASS  the chip names the pick
+  PASS  the run seeded the pick (got aegis-emitter)
+  PASS  eight stat cells drew (8)
+  PASS  the haul drew (6 tiles, equipment first)
+  PASS  the equipment tile is the pick
+  PASS  hovering a tile opens the tooltip
+  PASS  the tooltip names the item (Amber Clasp)
+  PASS  the settings screen carries a Render scale slider
+  PASS  the Dynamic resolution switch drew both positions
+  PASS  render scale 50% halves the drawing-buffer ratio (1.000 -> 0.500)
+  PASS  the readout says 50%
+  PASS  Off disarms the adaptive controller
+  PASS  Off resets the adaptive term so the slider owns the buffer
+  PASS  both settings persisted to localStorage
+  PASS  a pinned pipeline ignored the saved scale; an unpinned one may adopt it
+  PASS  saved render scale survives a reload (userScale 0.5, dynamic false)
+
+PASS - picker, pause summary and render scale verified
+
+
+RUN 2 - NEGATIVE CONTROL - exit 1
+---------------------------------
+The one line that pushes the setting onto the pipeline was commented out in
+src/ui/Menus.js apply():
+
+    // ctx.pipeline?.setRenderScale?.(settings.renderScale, settings.dynamicRes !== 0);
+
+  PASS  the select footer carries an Equipment chip
+  PASS  the chip defaults to Random
+  PASS  the grid drew Random plus the catalogue (15 cards)
+  PASS  the picked card lights up
+  PASS  the chip names the pick
+  PASS  the run seeded the pick (got aegis-emitter)
+  PASS  eight stat cells drew (8)
+  PASS  the haul drew (6 tiles, equipment first)
+  PASS  the equipment tile is the pick
+  PASS  hovering a tile opens the tooltip
+  PASS  the tooltip names the item (Amber Clasp)
+  PASS  the settings screen carries a Render scale slider
+  PASS  the Dynamic resolution switch drew both positions
+  FAIL  render scale 50% halves the drawing-buffer ratio (1.000 -> 1.000)
+  PASS  the readout says 50%
+  FAIL  Off disarms the adaptive controller
+  PASS  Off resets the adaptive term so the slider owns the buffer
+  PASS  both settings persisted to localStorage
+  PASS  a pinned pipeline ignored the saved scale; an unpinned one may adopt it
+  FAIL  saved render scale survives a reload (userScale 1, dynamic true)
+
+FAIL - render scale 50% halves the drawing-buffer ratio (1.000 -> 1.000); Off
+disarms the adaptive controller; saved render scale survives a reload
+(userScale 1, dynamic true)
+
+Three of the new assertions are load-bearing on that single line. The two that
+stayed green under the cut are honest about what they cover: the readout is
+drawn by the settings screen itself and the localStorage write happens in the
+same handler, so neither depends on the pipeline hook. The three that flipped
+are the ones that claim the pipeline actually moved.
+
+
+RUN 3 - RESTORED - exit 0
+-------------------------
+The line was restored verbatim; `git diff --name-only src/ui/Menus.js` printed
+nothing (file byte-identical to the committed version). The re-run reproduced
+RUN 1 exactly, including `render scale 50% halves the drawing-buffer ratio
+(1.000 -> 0.500)` and `saved render scale survives a reload (userScale 0.5,
+dynamic false)`.
+
+
+CAVEATS ON RECORD (pre-flight P2 / A)
+-------------------------------------
+(a) Vacuous pin assertion. The reload block's first assertion --
+
+      ok(boot.pinned === false || (boot.userScale === 1),
+         'a pinned pipeline ignored the saved scale; ...')
+
+    -- is vacuous in menuprobe. menuprobe never pins the pipeline: nothing here
+    calls `setAdaptive(false, 1)`, so `_pinned` is always false at boot and the
+    left disjunct short-circuits to true regardless of the pipeline's state.
+    It cannot fail in this harness and must not be cited as proof of the pin.
+    The pin property is proven elsewhere -- by the capture harness, which does
+    call `setAdaptive(false, 1)`, and whose base-vs-after shotdiff aggregate
+    sitting inside the same-tree control envelope is the evidence that the
+    player's saved scale never leaked into a pinned capture. See
+    diff-base-vs-after.json and diff-control.json in this directory.
+
+(b) Menu preview canvases are a documented non-goal. The survivor-select
+    portrait preview and the Logbook's model viewer (src/ui/Logbook.js:68) each
+    construct their own renderer and set their own pixel ratio. The Render
+    scale slider drives `RenderPipeline` only and does not reach them; they are
+    small, static, off the frame budget, and deliberately left alone. A player
+    dropping to 50% will see the world buffer shrink and the portrait canvases
+    stay sharp. That is intended, not a leak.

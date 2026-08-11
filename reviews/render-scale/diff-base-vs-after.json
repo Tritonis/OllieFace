@@ -1,0 +1,175 @@
+{
+ "dirs": [
+  "shots-base-71a8d3b",
+  "shots-after"
+ ],
+ "files": 23,
+ "aggregate": {
+  "meanDiff": 1.805,
+  "pctOver8": 3.851,
+  "maxOfMax": 218
+ },
+ "rows": [
+  {
+   "file": "01-title.png",
+   "meanDiff": 0.555,
+   "maxDiff": 16,
+   "pctOver8": 0.203,
+   "pixels": 1440000
+  },
+  {
+   "file": "02-vista.png",
+   "meanDiff": 0.922,
+   "maxDiff": 75,
+   "pctOver8": 0.081,
+   "pixels": 1440000
+  },
+  {
+   "file": "03-thirdperson.png",
+   "meanDiff": 0.953,
+   "maxDiff": 137,
+   "pctOver8": 0.03,
+   "pixels": 1440000
+  },
+  {
+   "file": "04-combat.png",
+   "meanDiff": 5.053,
+   "maxDiff": 159,
+   "pctOver8": 15.332,
+   "pixels": 1440000
+  },
+  {
+   "file": "05-boss.png",
+   "meanDiff": 0.936,
+   "maxDiff": 137,
+   "pctOver8": 0.185,
+   "pixels": 1440000
+  },
+  {
+   "file": "06-loaded-hud.png",
+   "meanDiff": 4.978,
+   "maxDiff": 171,
+   "pctOver8": 15.199,
+   "pixels": 1440000
+  },
+  {
+   "file": "07-interactables.png",
+   "meanDiff": 0.896,
+   "maxDiff": 82,
+   "pctOver8": 0.04,
+   "pixels": 1440000
+  },
+  {
+   "file": "08-explosion.png",
+   "meanDiff": 11.778,
+   "maxDiff": 218,
+   "pctOver8": 33.012,
+   "pixels": 1440000
+  },
+  {
+   "file": "09-survivors.png",
+   "meanDiff": 0.966,
+   "maxDiff": 98,
+   "pctOver8": 0.204,
+   "pixels": 1440000
+  },
+  {
+   "file": "10-inventory.png",
+   "meanDiff": 3.953,
+   "maxDiff": 132,
+   "pctOver8": 12.225,
+   "pixels": 1440000
+  },
+  {
+   "file": "11-bestiary.png",
+   "meanDiff": 1.016,
+   "maxDiff": 103,
+   "pctOver8": 0.395,
+   "pixels": 1440000
+  },
+  {
+   "file": "12-boss-phases.png",
+   "meanDiff": 0.916,
+   "maxDiff": 91,
+   "pctOver8": 0.174,
+   "pixels": 1440000
+  },
+  {
+   "file": "13-biomes-1.png",
+   "meanDiff": 0.891,
+   "maxDiff": 71,
+   "pctOver8": 0.261,
+   "pixels": 1440000
+  },
+  {
+   "file": "13-biomes-2.png",
+   "meanDiff": 0.933,
+   "maxDiff": 66,
+   "pctOver8": 0.311,
+   "pixels": 1440000
+  },
+  {
+   "file": "13-biomes-3.png",
+   "meanDiff": 1.038,
+   "maxDiff": 111,
+   "pctOver8": 0.579,
+   "pixels": 1440000
+  },
+  {
+   "file": "13-biomes-4.png",
+   "meanDiff": 1.002,
+   "maxDiff": 91,
+   "pctOver8": 0.25,
+   "pixels": 1440000
+  },
+  {
+   "file": "14-survivor-select.png",
+   "meanDiff": 0.189,
+   "maxDiff": 11,
+   "pctOver8": 0.011,
+   "pixels": 1440000
+  },
+  {
+   "file": "15-logbook.png",
+   "meanDiff": 0.06,
+   "maxDiff": 1,
+   "pctOver8": 0,
+   "pixels": 1440000
+  },
+  {
+   "file": "16-run-summary.png",
+   "meanDiff": 0.035,
+   "maxDiff": 1,
+   "pctOver8": 0,
+   "pixels": 1440000
+  },
+  {
+   "file": "17-artifacts.png",
+   "meanDiff": 0.085,
+   "maxDiff": 1,
+   "pctOver8": 0,
+   "pixels": 1440000
+  },
+  {
+   "file": "18-difficulty.png",
+   "meanDiff": 0.119,
+   "maxDiff": 2,
+   "pctOver8": 0,
+   "pixels": 1440000
+  },
+  {
+   "file": "19-overkill.png",
+   "meanDiff": 3.14,
+   "maxDiff": 131,
+   "pctOver8": 9.197,
+   "pixels": 1440000
+  },
+  {
+   "file": "20-blight-edge.png",
+   "meanDiff": 1.107,
+   "maxDiff": 97,
+   "pctOver8": 0.886,
+   "pixels": 1440000
+  }
+ ]
+}

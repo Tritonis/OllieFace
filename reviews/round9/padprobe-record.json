@@ -1,12 +1,12 @@
 {
-  "when": "2026-08-11T05:08:56.151Z",
+  "when": "2026-08-11T11:58:17.410Z",
   "probe": "tools/padprobe.mjs",
   "url": "/?seed=1337&quality=2&harness=1",
   "checks": [
     {
       "name": "1 boot",
       "pass": true,
-      "detail": "title screen up in 11589 ms, 6 frames rendered, seed 1337, harness=1"
+      "detail": "title screen up in 11508 ms, 7 frames rendered, seed 1337, harness=1"
     },
     {
       "name": "2a menu nav",
@@ -31,7 +31,7 @@
     {
       "name": "4a pad move",
       "pass": true,
-      "detail": "left stick forward for 40 frames moved 1.913 m (want > 1), speed 7.00 m/s"
+      "detail": "left stick forward for 40 frames moved 1.797 m (want > 1), speed 7.00 m/s"
     },
     {
       "name": "4b release decays",
@@ -41,7 +41,7 @@
     {
       "name": "5a pad look yaw",
       "pass": true,
-      "detail": "right stick +x for 30 frames turned yaw by -1.0883 rad (want < -0.3)"
+      "detail": "right stick +x for 30 frames turned yaw by -1.0832 rad (want < -0.3)"
     },
     {
       "name": "5b pitch clamp",
@@ -91,7 +91,7 @@
     {
       "name": "10b pad adjusts the slider",
       "pass": true,
-      "detail": "4 steps to Settings, 6 steps to \"padSensitivity\"; dx right 1.000 -> 1.050 (saved 1.050)"
+      "detail": "4 steps to Settings, 9 steps to \"padSensitivity\"; dx right 1.000 -> 1.050 (saved 1.050)"
     },
     {
       "name": "10 legacy settings merge",
