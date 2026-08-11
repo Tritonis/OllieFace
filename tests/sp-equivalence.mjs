@@ -1,14 +1,14 @@
 /**
  * A deterministic fingerprint of a single-player run.
  *
- *   node tests/sp-equivalence.mjs --out reviews/round8/baseline-HEAD.json
- *   node tests/sp-equivalence.mjs --compare reviews/round8/baseline-HEAD.json
+ *   node tests/sp-equivalence.mjs --out reviews/round7/baseline-00f8900.json
+ *   node tests/sp-equivalence.mjs --compare reviews/round7/baseline-00f8900.json
  *
  * and the affix gate, which is a separate baseline because this one is
  * structurally blind to `ELITE_STATS` (`npm run gate:elite`):
  *
- *   node tests/sp-equivalence.mjs --mode elite-dps --out reviews/round8/elite-baseline-HEAD.json
- *   node tests/sp-equivalence.mjs --mode elite-dps --compare reviews/round8/elite-baseline-HEAD.json
+ *   node tests/sp-equivalence.mjs --mode elite-dps --out reviews/round7/elite-baseline-00f8900.json
+ *   node tests/sp-equivalence.mjs --mode elite-dps --compare reviews/round7/elite-baseline-00f8900.json
  *
  * The roster migration's whole safety argument is that a roster of one behaves
  * exactly as `ctx.player` did. This is the instrument that decides it. Capture
@@ -1167,7 +1167,7 @@ if (MODE === 'elite-dps') {
 
   /* The elite is actually in the window. Fail loudly rather than report clean.
    *
-   * `reviews/round8/baseline-HEAD.json` — the fingerprint mode's baseline —
+   * `reviews/round7/baseline-00f8900.json` — the fingerprint mode's baseline —
    * contains no `<id>+<affix>` source key anywhere, because its 60 s of stage 1
    * never banks enough credit for a 4.5-credit affix. So a change to
    * `ELITE_STATS` gets `no fields moved` from that gate and it means nothing.
@@ -1334,7 +1334,7 @@ if (outPath) {
 /* What this fingerprint cannot see, said out loud every time it is taken.
  *
  * `sourceKey` files an elite as `<id>+<affix>`. Measured: no such key exists
- * anywhere in `reviews/round8/baseline-HEAD.json` — 10 s of settle plus 60 s of
+ * anywhere in `reviews/round7/baseline-00f8900.json` — 10 s of settle plus 60 s of
  * stage 1 never banks the 4.5 credits an affix costs, and `enemiesAliveMax` is
  * 6. So a change to `ELITE_STATS` moves nothing here and `--compare` reports
  * `no fields moved` for a change that halved an affix's damage.
