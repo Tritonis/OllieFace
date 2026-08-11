@@ -1,0 +1,3164 @@
+{
+  "seed": 1337,
+  "ready": true,
+  "clockPinned": true,
+  "ms": {
+    "boot": 15457,
+    "bootTimeout": 60000
+  },
+  "shots": [
+    {
+      "name": "01-title",
+      "doc": "First frame the player sees. Menu framing and background composition.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\.claude\\worktrees\\agent-ae0a7e8f826a693e4\\reviews\\round7\\captures\\fix-loaded-hud\\diag-ddb1246\\01-title.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 0
+      },
+      "ms": {
+        "setup": 2484,
+        "screenshot": 1827,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "title screen",
+            "kind": "dom",
+            "ok": true,
+            "detail": "title"
+          },
+          {
+            "subject": "the menu itself",
+            "kind": "dom",
+            "ok": true,
+            "detail": 900
+          },
+          {
+            "subject": "a live stage behind it",
+            "kind": "dom",
+            "ok": true,
+            "detail": null
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "02-vista",
+      "doc": "Wide establishing shot of the stage. Judges terrain, lighting, fog, sky.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\.claude\\worktrees\\agent-ae0a7e8f826a693e4\\reviews\\round7\\captures\\fix-loaded-hud\\diag-ddb1246\\02-vista.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 1.5166666666666662
+      },
+      "ms": {
+        "setup": 3503,
+        "screenshot": 993,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "the stage the survivor is standing on",
+            "kind": "bounds",
+            "ok": true,
+            "vis": 0.7,
+            "screen": [
+              0.5,
+              0.699,
+              56.4
+            ],
+            "onScreen": true,
+            "minVis": 0.4
+          },
+          {
+            "subject": "sky",
+            "kind": "dom",
+            "ok": true,
+            "detail": 0.571
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "03-thirdperson",
+      "doc": "Default gameplay framing, player idle. Judges character read and camera.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\.claude\\worktrees\\agent-ae0a7e8f826a693e4\\reviews\\round7\\captures\\fix-loaded-hud\\diag-ddb1246\\03-thirdperson.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 3.016666666666661
+      },
+      "ms": {
+        "setup": 2750,
+        "screenshot": 721,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "survivor",
+            "kind": "pixels",
+            "ok": true,
+            "px": 975,
+            "frac": 0.00752,
+            "lum": 41.5,
+            "bgLum": 4.6,
+            "contrast": 0.801,
+            "sep": 0.489,
+            "sepP25": 0.19,
+            "sepP50": 0.51,
+            "legible": 0.812,
+            "at": [
+              0.421,
+              0.597
+            ],
+            "box": [
+              0.395,
+              0.443,
+              0.451,
+              0.717
+            ],
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 600,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 792,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true,
+            "carriesAbsence": false,
+            "gatedOn": [
+              "px >= minPx",
+              "sepP50 >= minSep"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "legible"
+            ]
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "04-combat",
+      "doc": "Mid-fight with a horde, firing. Judges VFX layering, enemy legibility, HUD under load.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\.claude\\worktrees\\agent-ae0a7e8f826a693e4\\reviews\\round7\\captures\\fix-loaded-hud\\diag-ddb1246\\04-combat.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 16.616666666667005
+      },
+      "ms": {
+        "setup": 9466,
+        "screenshot": 830,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "horde",
+            "kind": "pixels",
+            "ok": true,
+            "px": 8451,
+            "frac": 0.06521,
+            "lum": 81.2,
+            "bgLum": 29.7,
+            "contrast": 0.465,
+            "sep": 0.498,
+            "sepP25": 0.33,
+            "sepP50": 0.49,
+            "legible": 0.905,
+            "at": [
+              0.486,
+              0.516
+            ],
+            "box": [
+              0.001,
+              0.28,
+              0.991,
+              0.676
+            ],
+            "objects": 24,
+            "visibleObjects": 20,
+            "perPx": [
+              168,
+              0,
+              5,
+              50,
+              73,
+              73,
+              185,
+              211,
+              14,
+              1031,
+              254,
+              14,
+              1400,
+              2435,
+              48,
+              826,
+              0,
+              0,
+              276,
+              117,
+              470,
+              223,
+              83,
+              493
+            ],
+            "perSep": [
+              0.81,
+              0,
+              0.29,
+              0.57,
+              0.35,
+              0.19,
+              0.39,
+              0.53,
+              0.69,
+              0.49,
+              0.49,
+              0.85,
+              0.65,
+              0.45,
+              0.19,
+              0.49,
+              0,
+              0,
+              0.77,
+              0.39,
+              0.81,
+              0.33,
+              0.27,
+              0.47
+            ],
+            "minPx": 900,
+            "minObjects": 8,
+            "present": true,
+            "carriedPx": 7648,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "crowd": {
+              "need": 8,
+              "why": "director horde: an unbounded population, not a fixed cast",
+              "absentBeyondCrowd": [
+                {
+                  "i": 1,
+                  "px": 0,
+                  "sepP50": 0
+                },
+                {
+                  "i": 2,
+                  "px": 5,
+                  "sepP50": 0.29
+                },
+                {
+                  "i": 16,
+                  "px": 0,
+                  "sepP50": 0
+                },
+                {
+                  "i": 17,
+                  "px": 0,
+                  "sepP50": 0
+                }
+              ],
+              "carriesAbsence": true
+            },
+            "minPerPx": 113,
+            "absentObjects": [
+              {
+                "i": 1,
+                "px": 0,
+                "sepP50": 0
+              },
+              {
+                "i": 2,
+                "px": 5,
+                "sepP50": 0.29
+              },
+              {
+                "i": 16,
+                "px": 0,
+                "sepP50": 0
+              },
+              {
+                "i": 17,
+                "px": 0,
+                "sepP50": 0
+              }
+            ],
+            "objectFailures": [],
+            "ungatedAbsences": [
+              {
+                "i": 1,
+                "px": 0,
+                "sepP50": 0
+              },
+              {
+                "i": 2,
+                "px": 5,
+                "sepP50": 0.29
+              },
+              {
+                "i": 16,
+                "px": 0,
+                "sepP50": 0
+              },
+              {
+                "i": 17,
+                "px": 0,
+                "sepP50": 0
+              }
+            ],
+            "perObjectOk": true,
+            "carriesAbsence": true,
+            "gatedOn": [
+              "px >= minPx",
+              "visibleObjects >= minObjects",
+              "sepP50 >= minSep",
+              "perPx/perSep/absence over the 8 gated of 24"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "legible",
+              "crowd.absentBeyondCrowd"
+            ]
+          },
+          {
+            "subject": "DIAG declutter",
+            "kind": "info",
+            "ok": true,
+            "detail": [
+              {
+                "bad": 16,
+                "kept": 6,
+                "asked": 20,
+                "slots": 10,
+                "moved": 10,
+                "why": {
+                  "cells": 44,
+                  "band": 11,
+                  "noGround": 11,
+                  "player": 6,
+                  "avoid": 2,
+                  "dup": 15,
+                  "got": 10
+                },
+                "unplaced": [
+                  "beetle",
+                  "spitling",
+                  "harrier",
+                  "mortar",
+                  "beetle",
+                  "lemurian"
+                ]
+              },
+              {
+                "bad": 8,
+                "kept": 14,
+                "asked": 12,
+                "slots": 2,
+                "moved": 2,
+                "why": {
+                  "cells": 44,
+                  "band": 11,
+                  "noGround": 11,
+                  "player": 6,
+                  "avoid": 25,
+                  "dup": 0,
+                  "got": 2
+                },
+                "unplaced": [
+                  "beetle",
+                  "spitling",
+                  "harrier",
+                  "mortar",
+                  "beetle",
+                  "lemurian"
+                ]
+              }
+            ]
+          },
+          {
+            "subject": "DIAG horde",
+            "kind": "info",
+            "ok": true,
+            "detail": [
+              {
+                "i": 0,
+                "id": "mite",
+                "d": 12.4,
+                "sx": 0.963,
+                "sy": 0.64,
+                "front": 9.1,
+                "wy": 19.5,
+                "vis": 1,
+                "visRig": true,
+                "px": 168,
+                "sep": 0.779,
+                "sepP25": 0.73,
+                "sepP50": 0.81,
+                "legible": 0.988,
+                "lum": 71.8,
+                "bgLum": 5.5,
+                "lumP50": 55,
+                "bgLumP50": 1,
+                "at": [
+                  0.962,
+                  0.64
+                ],
+                "box": [
+                  0.941,
+                  0.602,
+                  0.991,
+                  0.669
+                ]
+              },
+              {
+                "i": 1,
+                "id": "beetle",
+                "d": 32.9,
+                "sx": 0.674,
+                "sy": 0.531,
+                "front": 31.1,
+                "wy": 19.5,
+                "vis": 0.67,
+                "visRig": true,
+                "px": 0
+              },
+              {
+                "i": 2,
+                "id": "spitling",
+                "d": 29.3,
+                "sx": 0.447,
+                "sy": 0.532,
+                "front": 29.2,
+                "wy": 19.5,
+                "vis": 1,
+                "visRig": true,
+                "px": 5,
+                "sep": 0.256,
+                "sepP25": 0.17,
+                "sepP50": 0.29,
+                "legible": 0.8,
+                "lum": 53.8,
+                "bgLum": 30.9,
+                "lumP50": 52,
+                "bgLumP50": 27,
+                "at": [
+                  0.448,
+                  0.538
+                ],
+                "box": [
+                  0.447,
+                  0.535,
+                  0.449,
+                  0.543
+                ]
+              },
+              {
+                "i": 3,
+                "id": "lemurian",
+                "d": 37.8,
+                "sx": 0.484,
+                "sy": 0.515,
+                "front": 37.8,
+                "wy": 19.5,
+                "vis": 0.67,
+                "visRig": true,
+                "px": 50,
+                "sep": 0.52,
+                "sepP25": 0.41,
+                "sepP50": 0.57,
+                "legible": 0.98,
+                "lum": 66.1,
+                "bgLum": 18.9,
+                "lumP50": 72,
+                "bgLumP50": 13,
+                "at": [
+                  0.48,
+                  0.51
+                ],
+                "box": [
+                  0.472,
+                  0.494,
+                  0.501,
+                  0.531
+                ]
+              },
+              {
+                "i": 4,
+                "id": "wisp",
+                "d": 28.2,
+                "sx": 0.386,
+                "sy": 0.414,
+                "front": 27.5,
+                "wy": 23.1,
+                "vis": 1,
+                "visRig": true,
+                "px": 73,
+                "sep": 0.315,
+                "sepP25": 0.23,
+                "sepP50": 0.35,
+                "legible": 0.959,
+                "lum": 129.3,
+                "bgLum": 65.4,
+                "lumP50": 144,
+                "bgLumP50": 69,
+                "at": [
+                  0.386,
+                  0.433
+                ],
+                "box": [
+                  0.378,
+                  0.409,
+                  0.395,
+                  0.454
+                ]
+              },
+              {
+                "i": 5,
+                "id": "pest",
+                "d": 10.5,
+                "sx": 0.41,
+                "sy": 0.575,
+                "front": 10.3,
+                "wy": 19.8,
+                "vis": 1,
+                "visRig": true,
+                "px": 73,
+                "sep": 0.19,
+                "sepP25": 0.17,
+                "sepP50": 0.19,
+                "legible": 0.795,
+                "lum": 147.9,
+                "bgLum": 121.3,
+                "lumP50": 146,
+                "bgLumP50": 99,
+                "at": [
+                  0.392,
+                  0.59
+                ],
+                "box": [
+                  0.38,
+                  0.569,
+                  0.434,
+                  0.631
+                ]
+              },
+              {
+                "i": 6,
+                "id": "harrier",
+                "d": 31,
+                "sx": 0.336,
+                "sy": 0.344,
+                "front": 29.5,
+                "wy": 25.5,
+                "vis": 1,
+                "visRig": true,
+                "px": 185,
+                "sep": 0.362,
+                "sepP25": 0.33,
+                "sepP50": 0.39,
+                "legible": 0.903,
+                "lum": 100.3,
+                "bgLum": 42.9,
+                "lumP50": 97,
+                "bgLumP50": 42,
+                "at": [
+                  0.337,
+                  0.364
+                ],
+                "box": [
+                  0.311,
+                  0.324,
+                  0.359,
+                  0.402
+                ]
+              },
+              {
+                "i": 7,
+                "id": "charger",
+                "d": 18.3,
+                "sx": 0.677,
+                "sy": 0.542,
+                "front": 17.3,
+                "wy": 19.5,
+                "vis": 0.44,
+                "visRig": true,
+                "px": 211,
+                "sep": 0.493,
+                "sepP25": 0.33,
+                "sepP50": 0.53,
+                "legible": 0.929,
+                "lum": 63.5,
+                "bgLum": 22,
+                "lumP50": 59,
+                "bgLumP50": 15,
+                "at": [
+                  0.667,
+                  0.544
+                ],
+                "box": [
+                  0.649,
+                  0.502,
+                  0.68,
+                  0.587
+                ]
+              },
+              {
+                "i": 8,
+                "id": "burrower",
+                "d": 19.6,
+                "sx": 0.2,
+                "sy": 0.549,
+                "front": 16.9,
+                "wy": 19.5,
+                "vis": 1,
+                "visRig": true,
+                "px": 14,
+                "sep": 0.672,
+                "sepP25": 0.57,
+                "sepP50": 0.69,
+                "legible": 1,
+                "lum": 113.6,
+                "bgLum": 17.5,
+                "lumP50": 97,
+                "bgLumP50": 13,
+                "at": [
+                  0.219,
+                  0.572
+                ],
+                "box": [
+                  0.216,
+                  0.565,
+                  0.222,
+                  0.58
+                ]
+              },
+              {
+                "i": 9,
+                "id": "brood",
+                "d": 12,
+                "sx": 0.533,
+                "sy": 0.534,
+                "front": 12,
+                "wy": 19.5,
+                "vis": 1,
+                "visRig": true,
+                "px": 1031,
+                "sep": 0.466,
+                "sepP25": 0.33,
+                "sepP50": 0.49,
+                "legible": 0.864,
+                "lum": 75.4,
+                "bgLum": 28.7,
+                "lumP50": 71,
+                "bgLumP50": 17,
+                "at": [
+                  0.531,
+                  0.54
+                ],
+                "box": [
+                  0.501,
+                  0.439,
+                  0.559,
+                  0.628
+                ]
+              },
+              {
+                "i": 10,
+                "id": "warden",
+                "d": 25.5,
+                "sx": 0.448,
+                "sy": 0.511,
+                "front": 25.3,
+                "wy": 19.5,
+                "vis": 1,
+                "visRig": true,
+                "px": 254,
+                "sep": 0.441,
+                "sepP25": 0.23,
+                "sepP50": 0.49,
+                "legible": 0.858,
+                "lum": 85.6,
+                "bgLum": 43.6,
+                "lumP50": 75,
+                "bgLumP50": 28,
+                "at": [
+                  0.45,
+                  0.508
+                ],
+                "box": [
+                  0.432,
+                  0.465,
+                  0.468,
+                  0.554
+                ]
+              },
+              {
+                "i": 11,
+                "id": "stalker",
+                "d": 24.7,
+                "sx": 0.924,
+                "sy": 0.556,
+                "front": 18.9,
+                "wy": 19,
+                "vis": 0.44,
+                "visRig": true,
+                "px": 14,
+                "sep": 0.686,
+                "sepP25": 0.43,
+                "sepP50": 0.85,
+                "legible": 1,
+                "lum": 117.5,
+                "bgLum": 6.5,
+                "lumP50": 125,
+                "bgLumP50": 6,
+                "at": [
+                  0.932,
+                  0.504
+                ],
+                "box": [
+                  0.918,
+                  0.491,
+                  0.943,
+                  0.517
+                ]
+              },
+              {
+                "i": 12,
+                "id": "acolyte",
+                "d": 12.4,
+                "sx": 0.89,
+                "sy": 0.561,
+                "front": 9.8,
+                "wy": 19.5,
+                "vis": 1,
+                "visRig": true,
+                "px": 1400,
+                "sep": 0.557,
+                "sepP25": 0.31,
+                "sepP50": 0.65,
+                "legible": 0.831,
+                "lum": 57.9,
+                "bgLum": 41,
+                "lumP50": 43,
+                "bgLumP50": 8,
+                "at": [
+                  0.889,
+                  0.575
+                ],
+                "box": [
+                  0.851,
+                  0.465,
+                  0.93,
+                  0.657
+                ]
+              },
+              {
+                "i": 13,
+                "id": "golem",
+                "d": 15,
+                "sx": 0.213,
+                "sy": 0.489,
+                "front": 13.1,
+                "wy": 19.5,
+                "vis": 1,
+                "visRig": true,
+                "px": 2435,
+                "sep": 0.446,
+                "sepP25": 0.35,
+                "sepP50": 0.45,
+                "legible": 0.945,
+                "lum": 85,
+                "bgLum": 40.7,
+                "lumP50": 79,
+                "bgLumP50": 30,
+                "at": [
+                  0.205,
+                  0.498
+                ],
+                "box": [
+                  0.153,
+                  0.38,
+                  0.257,
+                  0.617
+                ]
+              },
+              {
+                "i": 14,
+                "id": "mortar",
+                "d": 31.6,
+                "sx": 0.413,
+                "sy": 0.504,
+                "front": 31.1,
+                "wy": 19.5,
+                "vis": 0.56,
+                "visRig": true,
+                "px": 48,
+                "sep": 0.283,
+                "sepP25": 0.11,
+                "sepP50": 0.19,
+                "legible": 0.646,
+                "lum": 64,
+                "bgLum": 34.5,
+                "lumP50": 43,
+                "bgLumP50": 33,
+                "at": [
+                  0.411,
+                  0.489
+                ],
+                "box": [
+                  0.407,
+                  0.45,
+                  0.428,
+                  0.528
+                ]
+              },
+              {
+                "i": 15,
+                "id": "hulk",
+                "d": 19.8,
+                "sx": -0.053,
+                "sy": 0.484,
+                "front": 13.4,
+                "wy": 19.3,
+                "vis": 0.89,
+                "visRig": true,
+                "px": 826,
+                "sep": 0.477,
+                "sepP25": 0.29,
+                "sepP50": 0.49,
+                "legible": 0.961,
+                "lum": 50.8,
+                "bgLum": 23.8,
+                "lumP50": 38,
+                "bgLumP50": 17,
+                "at": [
+                  0.022,
+                  0.506
+                ],
+                "box": [
+                  0.001,
+                  0.398,
+                  0.066,
+                  0.583
+                ]
+              },
+              {
+                "i": 16,
+                "id": "mite",
+                "d": 24.1,
+                "sx": 0.279,
+                "sy": 0.554,
+                "front": 22.1,
+                "wy": 19.5,
+                "vis": 0,
+                "visRig": true,
+                "px": 0
+              },
+              {
+                "i": 17,
+                "id": "beetle",
+                "d": 28.3,
+                "sx": 2.464,
+                "sy": 2.002,
+                "front": 7.1,
+                "wy": 8.9,
+                "vis": 0,
+                "visRig": true,
+                "px": 0
+              },
+              {
+                "i": 18,
+                "id": "spitling",
+                "d": 16.7,
+                "sx": 0.932,
+                "sy": 0.581,
+                "front": 12.7,
+                "wy": 19.5,
+                "vis": 1,
+                "visRig": true,
+                "px": 276,
+                "sep": 0.649,
+                "sepP25": 0.49,
+                "sepP50": 0.77,
+                "legible": 0.935,
+                "lum": 131.5,
+                "bgLum": 18.6,
+                "lumP50": 89,
+                "bgLumP50": 14,
+                "at": [
+                  0.943,
+                  0.58
+                ],
+                "box": [
+                  0.895,
+                  0.543,
+                  0.986,
+                  0.62
+                ]
+              },
+              {
+                "i": 19,
+                "id": "lemurian",
+                "d": 21.1,
+                "sx": 0.93,
+                "sy": 0.543,
+                "front": 16.1,
+                "wy": 19.5,
+                "vis": 0.67,
+                "visRig": true,
+                "px": 117,
+                "sep": 0.44,
+                "sepP25": 0.27,
+                "sepP50": 0.39,
+                "legible": 0.863,
+                "lum": 46.9,
+                "bgLum": 24.6,
+                "lumP50": 28,
+                "bgLumP50": 13,
+                "at": [
+                  0.928,
+                  0.52
+                ],
+                "box": [
+                  0.911,
+                  0.498,
+                  0.945,
+                  0.539
+                ]
+              },
+              {
+                "i": 20,
+                "id": "wisp",
+                "d": 15,
+                "sx": 0.885,
+                "sy": 0.295,
+                "front": 11.9,
+                "wy": 23.3,
+                "vis": 1,
+                "visRig": true,
+                "px": 470,
+                "sep": 0.721,
+                "sepP25": 0.57,
+                "sepP50": 0.81,
+                "legible": 0.987,
+                "lum": 135.5,
+                "bgLum": 18,
+                "lumP50": 129,
+                "bgLumP50": 9,
+                "at": [
+                  0.886,
+                  0.332
+                ],
+                "box": [
+                  0.857,
+                  0.28,
+                  0.914,
+                  0.38
+                ]
+              },
+              {
+                "i": 21,
+                "id": "pest",
+                "d": 9.3,
+                "sx": 0.413,
+                "sy": 0.585,
+                "front": 9.2,
+                "wy": 19.8,
+                "vis": 1,
+                "visRig": true,
+                "px": 223,
+                "sep": 0.404,
+                "sepP25": 0.19,
+                "sepP50": 0.33,
+                "legible": 0.789,
+                "lum": 88.7,
+                "bgLum": 76.3,
+                "lumP50": 71,
+                "bgLumP50": 90,
+                "at": [
+                  0.407,
+                  0.63
+                ],
+                "box": [
+                  0.376,
+                  0.602,
+                  0.451,
+                  0.676
+                ]
+              },
+              {
+                "i": 22,
+                "id": "harrier",
+                "d": 27.7,
+                "sx": 0.231,
+                "sy": 0.306,
+                "front": 24.4,
+                "wy": 25.7,
+                "vis": 1,
+                "visRig": true,
+                "px": 83,
+                "sep": 0.263,
+                "sepP25": 0.15,
+                "sepP50": 0.27,
+                "legible": 0.735,
+                "lum": 92.7,
+                "bgLum": 51.3,
+                "lumP50": 87,
+                "bgLumP50": 44,
+                "at": [
+                  0.228,
+                  0.333
+                ],
+                "box": [
+                  0.201,
+                  0.317,
+                  0.259,
+                  0.346
+                ]
+              },
+              {
+                "i": 23,
+                "id": "charger",
+                "d": 17.6,
+                "sx": 0.605,
+                "sy": 0.543,
+                "front": 17.2,
+                "wy": 19.5,
+                "vis": 0.89,
+                "visRig": true,
+                "px": 493,
+                "sep": 0.432,
+                "sepP25": 0.19,
+                "sepP50": 0.47,
+                "legible": 0.803,
+                "lum": 100.4,
+                "bgLum": 44,
+                "lumP50": 115,
+                "bgLumP50": 31,
+                "at": [
+                  0.612,
+                  0.54
+                ],
+                "box": [
+                  0.576,
+                  0.498,
+                  0.657,
+                  0.587
+                ]
+              }
+            ]
+          },
+          {
+            "subject": "survivor",
+            "kind": "pixels",
+            "ok": true,
+            "px": 880,
+            "frac": 0.00679,
+            "lum": 41,
+            "bgLum": 40.9,
+            "contrast": 0.001,
+            "sep": 0.488,
+            "sepP25": 0.23,
+            "sepP50": 0.51,
+            "legible": 0.822,
+            "at": [
+              0.42,
+              0.588
+            ],
+            "box": [
+              0.397,
+              0.443,
+              0.449,
+              0.713
+            ],
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 400,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 723,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true,
+            "carriesAbsence": false,
+            "gatedOn": [
+              "px >= minPx",
+              "sepP50 >= minSep"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "legible"
+            ]
+          },
+          {
+            "subject": "open arena",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "openness": 0.89,
+              "need": 0.85,
+              "arena": {
+                "openness": 0.8888888888888888,
+                "moved": true,
+                "dist": 34,
+                "flatness": 0.531,
+                "tried": 6
+              }
+            }
+          },
+          {
+            "subject": "no monster hidden by its own attack",
+            "kind": "dom",
+            "ok": true,
+            "detail": []
+          },
+          {
+            "subject": "survivor unoccluded by the final lens",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "vis": 1,
+              "boom": 7.1,
+              "need": 0.6
+            }
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "05-boss",
+      "doc": "Teleporter event with the boss active. Judges scale, boss silhouette, boss HUD.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\.claude\\worktrees\\agent-ae0a7e8f826a693e4\\reviews\\round7\\captures\\fix-loaded-hud\\diag-ddb1246\\05-boss.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 19.033333333333534
+      },
+      "ms": {
+        "setup": 7998,
+        "screenshot": 560,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "the Basalt Colossus",
+            "kind": "pixels",
+            "ok": true,
+            "px": 8003,
+            "frac": 0.06175,
+            "lum": 64.6,
+            "bgLum": 13.5,
+            "contrast": 0.654,
+            "sep": 0.589,
+            "sepP25": 0.45,
+            "sepP50": 0.63,
+            "legible": 0.932,
+            "at": [
+              0.524,
+              0.407
+            ],
+            "box": [
+              0.334,
+              0.002,
+              0.705,
+              0.654
+            ],
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 2000,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 7459,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true,
+            "carriesAbsence": false,
+            "gatedOn": [
+              "px >= minPx",
+              "sepP50 >= minSep"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "legible"
+            ]
+          },
+          {
+            "subject": "survivor (for scale)",
+            "kind": "pixels",
+            "ok": true,
+            "px": 213,
+            "frac": 0.00164,
+            "lum": 46.6,
+            "bgLum": 2.2,
+            "contrast": 0.912,
+            "sep": 0.684,
+            "sepP25": 0.55,
+            "sepP50": 0.79,
+            "legible": 0.986,
+            "at": [
+              0.619,
+              0.664
+            ],
+            "box": [
+              0.601,
+              0.609,
+              0.636,
+              0.728
+            ],
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 150,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 210,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true,
+            "carriesAbsence": false,
+            "gatedOn": [
+              "px >= minPx",
+              "sepP50 >= minSep"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "legible"
+            ]
+          },
+          {
+            "subject": "boss health bar",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "vis": 1,
+              "pvis": 1
+            }
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "06-loaded-hud",
+      "doc": "Late-run HUD with a full inventory and high difficulty. Judges UI density and hierarchy.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\.claude\\worktrees\\agent-ae0a7e8f826a693e4\\reviews\\round7\\captures\\fix-loaded-hud\\diag-ddb1246\\06-loaded-hud.png",
+      "engine": {
+        "frameErrors": 1,
+        "lastFrameError": {
+          "who": "harness:11-bestiary",
+          "message": "[harness] 11-bestiary: subject missing or illegible — the whole spawn roster (pixels: {\"why\":\"object absent or illegible\",\"px\":15545,\"need\":3500,\"objs\":\"16/16\",\"need2\":16,\"sepP50\":0.55,\"needSep\":0.25,\"carriedPx\":15063,\"perPx\":[166,967,628,702,801,845,541,923,548,476,730,1096,2130,881,1908,2222],\"perSep\":[0.73,0.75,0.73,0.69,0.23,0.45,0.71,0.55,0.41,0.35,0.61,0.49,0.43,0.39,0.75,0.37],\"needPerPx\":219,\"badObjects\":[{\"i\":4,\"px\":801,\"sepP50\":0.23},{\"i\":0,\"px\":166,\"sepP50\":0.73}],\"lum\":52.2,\"bgLum\":6.1})",
+          "frame": -1
+        },
+        "time": 1321.2333333333322
+      },
+      "ms": {
+        "setup": 2707,
+        "screenshot": 604,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "survivor",
+            "kind": "pixels",
+            "ok": true,
+            "px": 780,
+            "frac": 0.00602,
+            "lum": 46.2,
+            "bgLum": 4.1,
+            "contrast": 0.838,
+            "sep": 0.624,
+            "sepP25": 0.39,
+            "sepP50": 0.73,
+            "legible": 0.959,
+            "at": [
+              0.419,
+              0.585
+            ],
+            "box": [
+              0.397,
+              0.443,
+              0.449,
+              0.709
+            ],
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 400,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 748,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true,
+            "carriesAbsence": false,
+            "gatedOn": [
+              "px >= minPx",
+              "sepP50 >= minSep"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "legible"
+            ]
+          },
+          {
+            "subject": "monsters under load",
+            "kind": "pixels",
+            "ok": true,
+            "px": 2624,
+            "frac": 0.02025,
+            "lum": 71.1,
+            "bgLum": 18.2,
+            "contrast": 0.592,
+            "sep": 0.599,
+            "sepP25": 0.45,
+            "sepP50": 0.63,
+            "legible": 0.941,
+            "at": [
+              0.501,
+              0.414
+            ],
+            "box": [
+              0.155,
+              0.065,
+              0.98,
+              0.587
+            ],
+            "objects": 10,
+            "visibleObjects": 10,
+            "perPx": [
+              25,
+              529,
+              199,
+              235,
+              236,
+              115,
+              511,
+              345,
+              333,
+              96
+            ],
+            "perSep": [
+              0.75,
+              0.85,
+              0.77,
+              0.65,
+              0.47,
+              0.23,
+              0.43,
+              0.51,
+              0.71,
+              0.61
+            ],
+            "minPx": 300,
+            "minObjects": 3,
+            "present": true,
+            "carriedPx": 2469,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "crowd": {
+              "need": 3,
+              "why": "director horde: an unbounded population, not a fixed cast",
+              "absentBeyondCrowd": [],
+              "carriesAbsence": false
+            },
+            "minPerPx": 100,
+            "absentObjects": [],
+            "objectFailures": [],
+            "ungatedAbsences": [],
+            "perObjectOk": true,
+            "carriesAbsence": false,
+            "gatedOn": [
+              "px >= minPx",
+              "visibleObjects >= minObjects",
+              "sepP50 >= minSep",
+              "perPx/perSep/absence over the 3 gated of 10"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "legible",
+              "crowd.absentBeyondCrowd"
+            ]
+          },
+          {
+            "subject": "a full inventory strip",
+            "kind": "dom",
+            "ok": true,
+            "detail": 83
+          },
+          {
+            "subject": "DIAG horde",
+            "kind": "dom",
+            "ok": true,
+            "detail": [
+              {
+                "id": "mite",
+                "d": 19.4,
+                "h": 0.5,
+                "r": 0.34,
+                "fly": false,
+                "x": 0.53,
+                "y": 0.5,
+                "front": true
+              },
+              {
+                "id": "beetle",
+                "d": 13.8,
+                "h": 0.95,
+                "r": 0.55,
+                "fly": false,
+                "x": 0.21,
+                "y": 0.54,
+                "front": true
+              },
+              {
+                "id": "spitling",
+                "d": 18.9,
+                "h": 1,
+                "r": 0.48,
+                "fly": false,
+                "x": 0.17,
+                "y": 0.51,
+                "front": true
+              },
+              {
+                "id": "lemurian",
+                "d": 24.6,
+                "h": 1.7,
+                "r": 0.5,
+                "fly": false,
+                "x": 0.64,
+                "y": 0.46,
+                "front": true
+              },
+              {
+                "id": "wisp",
+                "d": 17.6,
+                "h": 1.1,
+                "r": 0.5,
+                "fly": true,
+                "x": 0.31,
+                "y": 0.27,
+                "front": true
+              },
+              {
+                "id": "pest",
+                "d": 21.3,
+                "h": 1,
+                "r": 0.5,
+                "fly": true,
+                "x": 0.67,
+                "y": 0.3,
+                "front": true
+              },
+              {
+                "id": "harrier",
+                "d": 17.9,
+                "h": 1.3,
+                "r": 0.55,
+                "fly": true,
+                "x": 0.46,
+                "y": 0.19,
+                "front": true
+              },
+              {
+                "id": "charger",
+                "d": 23,
+                "h": 1.6,
+                "r": 0.75,
+                "fly": false,
+                "x": 0.74,
+                "y": 0.47,
+                "front": true
+              },
+              {
+                "id": "burrower",
+                "d": 25.3,
+                "h": 1.4,
+                "r": 0.7,
+                "fly": false,
+                "x": 0.93,
+                "y": 0.48,
+                "front": true
+              },
+              {
+                "id": "brood",
+                "d": 25.9,
+                "h": 2.4,
+                "r": 1.1,
+                "fly": false,
+                "x": 0.53,
+                "y": 0.44,
+                "front": true
+              }
+            ]
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "07-interactables",
+      "doc": "Chest / shrine / item pickup close-up. Judges prop modelling and pickup VFX.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\.claude\\worktrees\\agent-ae0a7e8f826a693e4\\reviews\\round7\\captures\\fix-loaded-hud\\diag-ddb1246\\07-interactables.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 20.53333333333345
+      },
+      "ms": {
+        "setup": 1492,
+        "screenshot": 675,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "the interactable",
+            "kind": "pixels",
+            "ok": true,
+            "px": 6494,
+            "frac": 0.05011,
+            "lum": 30.9,
+            "bgLum": 61.2,
+            "contrast": 0.329,
+            "sep": 0.706,
+            "sepP25": 0.57,
+            "sepP50": 0.83,
+            "legible": 0.94,
+            "at": [
+              0.51,
+              0.67
+            ],
+            "box": [
+              0.349,
+              0.439,
+              0.651,
+              0.95
+            ],
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 2000,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 6104,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true,
+            "carriesAbsence": false,
+            "gatedOn": [
+              "px >= minPx",
+              "sepP50 >= minSep"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "legible"
+            ]
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "08-explosion",
+      "doc": "Peak VFX moment: explosion + damage numbers + shake. Judges impact feedback.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\.claude\\worktrees\\agent-ae0a7e8f826a693e4\\reviews\\round7\\captures\\fix-loaded-hud\\diag-ddb1246\\08-explosion.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 759.4666666666653
+      },
+      "ms": {
+        "setup": 1612,
+        "screenshot": 626,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "the blast",
+            "kind": "pixels",
+            "ok": true,
+            "px": 17032,
+            "frac": 0.13142,
+            "lum": 44.3,
+            "bgLum": 27.5,
+            "contrast": 0.234,
+            "sep": 0.209,
+            "sepP25": 0.05,
+            "sepP50": 0.11,
+            "legible": 0.413,
+            "at": [
+              0.628,
+              0.318
+            ],
+            "box": [
+              0.324,
+              0.002,
+              0.999,
+              0.646
+            ],
+            "region": [
+              0.6834284944557102,
+              0.40558706277821077,
+              0.5343
+            ],
+            "objects": 4,
+            "visibleObjects": 2,
+            "perPx": [
+              16987,
+              0,
+              52,
+              0
+            ],
+            "perSep": [
+              0.11,
+              0,
+              0.45,
+              0
+            ],
+            "minPx": 1200,
+            "minObjects": 0,
+            "present": true,
+            "detail": {
+              "pools": [
+                "vfx.particles",
+                "vfx.trails",
+                "vfx.beams",
+                "vfx.rings"
+              ],
+              "distM": 11.6
+            },
+            "carriedPx": 7034,
+            "minCarried": 1200,
+            "legibleOk": true,
+            "aggregate": "VFX buffers: the meshes are shared particle/ring/trail pools, not nameable objects",
+            "absentObjects": [
+              {
+                "i": 1,
+                "px": 0,
+                "sepP50": 0
+              },
+              {
+                "i": 3,
+                "px": 0,
+                "sepP50": 0
+              }
+            ],
+            "ungatedAbsences": [
+              {
+                "i": 1,
+                "px": 0,
+                "sepP50": 0
+              },
+              {
+                "i": 3,
+                "px": 0,
+                "sepP50": 0
+              }
+            ],
+            "perObjectOk": true,
+            "carriesAbsence": true,
+            "gatedOn": [
+              "px >= minPx",
+              "carriedPx >= minCarried"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "perPx",
+              "perSep",
+              "absentObjects"
+            ]
+          },
+          {
+            "subject": "monsters standing in it",
+            "kind": "pixels",
+            "ok": true,
+            "px": 1846,
+            "frac": 0.01424,
+            "lum": 58.4,
+            "bgLum": 14.7,
+            "contrast": 0.597,
+            "sep": 0.643,
+            "sepP25": 0.51,
+            "sepP50": 0.73,
+            "legible": 0.951,
+            "at": [
+              0.646,
+              0.517
+            ],
+            "box": [
+              0.357,
+              0.231,
+              0.999,
+              0.743
+            ],
+            "objects": 7,
+            "visibleObjects": 6,
+            "perPx": [
+              144,
+              511,
+              50,
+              648,
+              309,
+              184,
+              0
+            ],
+            "perSep": [
+              0.83,
+              0.79,
+              0.25,
+              0.83,
+              0.33,
+              0.31,
+              0
+            ],
+            "minPx": 200,
+            "minObjects": 2,
+            "present": true,
+            "carriedPx": 1756,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "crowd": {
+              "need": 2,
+              "why": "blast victims: knockback removes members from frame by design",
+              "absentBeyondCrowd": [
+                {
+                  "i": 6,
+                  "px": 0,
+                  "sepP50": 0
+                }
+              ],
+              "carriesAbsence": true
+            },
+            "minPerPx": 100,
+            "absentObjects": [
+              {
+                "i": 6,
+                "px": 0,
+                "sepP50": 0
+              }
+            ],
+            "objectFailures": [],
+            "ungatedAbsences": [
+              {
+                "i": 6,
+                "px": 0,
+                "sepP50": 0
+              }
+            ],
+            "perObjectOk": true,
+            "carriesAbsence": true,
+            "gatedOn": [
+              "px >= minPx",
+              "visibleObjects >= minObjects",
+              "sepP50 >= minSep",
+              "perPx/perSep/absence over the 2 gated of 7"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "legible",
+              "crowd.absentBeyondCrowd"
+            ]
+          },
+          {
+            "subject": "damage numbers",
+            "kind": "pixels",
+            "ok": true,
+            "px": 269,
+            "frac": 0.00208,
+            "lum": 60.2,
+            "bgLum": 53.1,
+            "contrast": 0.063,
+            "sep": 0.28,
+            "sepP25": 0.13,
+            "sepP50": 0.25,
+            "legible": 0.695,
+            "at": [
+              0.689,
+              0.247
+            ],
+            "box": [
+              0.668,
+              0.143,
+              0.707,
+              0.339
+            ],
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 60,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 187,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true,
+            "carriesAbsence": false,
+            "gatedOn": [
+              "px >= minPx",
+              "sepP50 >= minSep"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "legible"
+            ]
+          },
+          {
+            "subject": "blast framed in the middle band",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "x": 0.683,
+              "y": 0.406,
+              "distM": 11.6,
+              "pass": 0
+            }
+          },
+          {
+            "subject": "shutter (effect seconds)",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "age": 0.1167,
+              "frames": 7,
+              "exact": true,
+              "sim": 0.1167
+            }
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "09-survivors",
+      "doc": "The full roster side by side. Judges silhouette read and how distinguishable the four survivors are from one another.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\.claude\\worktrees\\agent-ae0a7e8f826a693e4\\reviews\\round7\\captures\\fix-loaded-hud\\diag-ddb1246\\09-survivors.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 3.899999999999991
+      },
+      "ms": {
+        "setup": 1061,
+        "screenshot": 679,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "the four survivors",
+            "kind": "pixels",
+            "ok": true,
+            "px": 5637,
+            "frac": 0.0435,
+            "lum": 50.7,
+            "bgLum": 10.1,
+            "contrast": 0.669,
+            "sep": 0.472,
+            "sepP25": 0.19,
+            "sepP50": 0.47,
+            "legible": 0.821,
+            "at": [
+              0.503,
+              0.486
+            ],
+            "box": [
+              0.17,
+              0.239,
+              0.847,
+              0.643
+            ],
+            "objects": 4,
+            "visibleObjects": 4,
+            "perPx": [
+              1229,
+              1683,
+              1375,
+              1350
+            ],
+            "perSep": [
+              0.49,
+              0.45,
+              0.39,
+              0.61
+            ],
+            "minPx": 4000,
+            "minObjects": 4,
+            "present": true,
+            "carriedPx": 4628,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "minPerPx": 1000,
+            "absentObjects": [],
+            "objectFailures": [],
+            "ungatedAbsences": [],
+            "perObjectOk": true,
+            "carriesAbsence": false,
+            "gatedOn": [
+              "px >= minPx",
+              "visibleObjects >= minObjects",
+              "sepP50 >= minSep",
+              "perPx/perSep/absence over every declared object"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "legible"
+            ]
+          },
+          {
+            "subject": "all four on one footline",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "spreadPx": 0,
+              "footY": [
+                576,
+                576,
+                576,
+                576
+              ]
+            }
+          },
+          {
+            "subject": "no survivor occluded, ankles included",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "perSurvivor": [
+                1,
+                1,
+                1,
+                1
+              ],
+              "groundSpreadM": 0
+            }
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "11-bestiary",
+      "doc": "The whole spawn roster in one rank, small to large, with two tier-2 elites. Judges silhouette variety and scale spread.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\.claude\\worktrees\\agent-ae0a7e8f826a693e4\\reviews\\round7\\captures\\fix-loaded-hud\\diag-ddb1246\\11-bestiary.png",
+      "engine": {
+        "frameErrors": 1,
+        "lastFrameError": {
+          "who": "harness:11-bestiary",
+          "message": "[harness] 11-bestiary: subject missing or illegible — the whole spawn roster (pixels: {\"why\":\"object absent or illegible\",\"px\":15545,\"need\":3500,\"objs\":\"16/16\",\"need2\":16,\"sepP50\":0.55,\"needSep\":0.25,\"carriedPx\":15063,\"perPx\":[166,967,628,702,801,845,541,923,548,476,730,1096,2130,881,1908,2222],\"perSep\":[0.73,0.75,0.73,0.69,0.23,0.45,0.71,0.55,0.41,0.35,0.61,0.49,0.43,0.39,0.75,0.37],\"needPerPx\":219,\"badObjects\":[{\"i\":4,\"px\":801,\"sepP50\":0.23},{\"i\":0,\"px\":166,\"sepP50\":0.73}],\"lum\":52.2,\"bgLum\":6.1})",
+          "frame": -1
+        },
+        "time": 760.1833333333313
+      },
+      "ms": {
+        "setup": 36700,
+        "screenshot": 914,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": false,
+        "checks": [
+          {
+            "subject": "the whole spawn roster",
+            "kind": "pixels",
+            "ok": false,
+            "px": 15545,
+            "frac": 0.11995,
+            "lum": 52.2,
+            "bgLum": 6.1,
+            "contrast": 0.792,
+            "sep": 0.548,
+            "sepP25": 0.35,
+            "sepP50": 0.55,
+            "legible": 0.969,
+            "at": [
+              0.508,
+              0.466
+            ],
+            "box": [
+              0.147,
+              0.154,
+              0.907,
+              0.857
+            ],
+            "objects": 16,
+            "visibleObjects": 16,
+            "perPx": [
+              166,
+              967,
+              628,
+              702,
+              801,
+              845,
+              541,
+              923,
+              548,
+              476,
+              730,
+              1096,
+              2130,
+              881,
+              1908,
+              2222
+            ],
+            "perSep": [
+              0.73,
+              0.75,
+              0.73,
+              0.69,
+              0.23,
+              0.45,
+              0.71,
+              0.55,
+              0.41,
+              0.35,
+              0.61,
+              0.49,
+              0.43,
+              0.39,
+              0.75,
+              0.37
+            ],
+            "minPx": 3500,
+            "minObjects": 16,
+            "present": true,
+            "carriedPx": 15063,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "minPerPx": 219,
+            "absentObjects": [],
+            "objectFailures": [
+              {
+                "i": 4,
+                "px": 801,
+                "sepP50": 0.23
+              },
+              {
+                "i": 0,
+                "px": 166,
+                "sepP50": 0.73
+              }
+            ],
+            "ungatedAbsences": [],
+            "perObjectOk": false,
+            "carriesAbsence": false,
+            "gatedOn": [
+              "px >= minPx",
+              "visibleObjects >= minObjects",
+              "sepP50 >= minSep",
+              "perPx/perSep/absence over every declared object"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "legible"
+            ]
+          },
+          {
+            "subject": "DIAG roster",
+            "kind": "info",
+            "ok": true,
+            "detail": [
+              {
+                "i": 0,
+                "id": "mite",
+                "row": 0,
+                "d": 14.2,
+                "sx": 0.162,
+                "sy": 0.745,
+                "wy": 1.8,
+                "px": 166,
+                "sep": 0.732,
+                "sepP25": 0.65,
+                "sepP50": 0.73,
+                "legible": 1,
+                "lum": 79.1,
+                "bgLum": 5.4,
+                "lumP50": 49,
+                "bgLumP50": 5,
+                "at": [
+                  0.163,
+                  0.743
+                ],
+                "box": [
+                  0.147,
+                  0.698,
+                  0.182,
+                  0.769
+                ]
+              },
+              {
+                "i": 1,
+                "id": "beetle",
+                "row": 0,
+                "d": 13,
+                "sx": 0.29,
+                "sy": 0.772,
+                "wy": 1.5,
+                "px": 967,
+                "sep": 0.732,
+                "sepP25": 0.67,
+                "sepP50": 0.75,
+                "legible": 1,
+                "lum": 61.7,
+                "bgLum": 4.1,
+                "lumP50": 48,
+                "bgLumP50": 3,
+                "at": [
+                  0.291,
+                  0.773
+                ],
+                "box": [
+                  0.245,
+                  0.717,
+                  0.339,
+                  0.828
+                ]
+              },
+              {
+                "i": 2,
+                "id": "spitling",
+                "row": 0,
+                "d": 12.6,
+                "sx": 0.431,
+                "sy": 0.796,
+                "wy": 1.2,
+                "px": 628,
+                "sep": 0.73,
+                "sepP25": 0.57,
+                "sepP50": 0.73,
+                "legible": 1,
+                "lum": 101.9,
+                "bgLum": 4.2,
+                "lumP50": 51,
+                "bgLumP50": 3,
+                "at": [
+                  0.432,
+                  0.794
+                ],
+                "box": [
+                  0.403,
+                  0.739,
+                  0.459,
+                  0.857
+                ]
+              },
+              {
+                "i": 3,
+                "id": "pest",
+                "row": 0,
+                "d": 12.6,
+                "sx": 0.572,
+                "sy": 0.668,
+                "wy": 2.5,
+                "px": 702,
+                "sep": 0.615,
+                "sepP25": 0.49,
+                "sepP50": 0.69,
+                "legible": 0.93,
+                "lum": 43.3,
+                "bgLum": 3.6,
+                "lumP50": 32,
+                "bgLumP50": 2,
+                "at": [
+                  0.573,
+                  0.728
+                ],
+                "box": [
+                  0.536,
+                  0.665,
+                  0.607,
+                  0.854
+                ]
+              },
+              {
+                "i": 4,
+                "id": "wisp",
+                "row": 0,
+                "d": 13,
+                "sx": 0.715,
+                "sy": 0.666,
+                "wy": 2.5,
+                "px": 801,
+                "sep": 0.36,
+                "sepP25": 0.17,
+                "sepP50": 0.23,
+                "legible": 0.851,
+                "lum": 28,
+                "bgLum": 5.8,
+                "lumP50": 10,
+                "bgLumP50": 5,
+                "at": [
+                  0.713,
+                  0.726
+                ],
+                "box": [
+                  0.678,
+                  0.635,
+                  0.766,
+                  0.798
+                ]
+              },
+              {
+                "i": 5,
+                "id": "harrier",
+                "row": 0,
+                "d": 13.9,
+                "sx": 0.861,
+                "sy": 0.619,
+                "wy": 2.9,
+                "px": 845,
+                "sep": 0.481,
+                "sepP25": 0.41,
+                "sepP50": 0.45,
+                "legible": 1,
+                "lum": 30.8,
+                "bgLum": 6.8,
+                "lumP50": 22,
+                "bgLumP50": 6,
+                "at": [
+                  0.853,
+                  0.673
+                ],
+                "box": [
+                  0.816,
+                  0.58,
+                  0.907,
+                  0.75
+                ]
+              },
+              {
+                "i": 6,
+                "id": "burrower",
+                "row": 1,
+                "d": 19.1,
+                "sx": 0.302,
+                "sy": 0.525,
+                "wy": 2.1,
+                "px": 541,
+                "sep": 0.675,
+                "sepP25": 0.59,
+                "sepP50": 0.71,
+                "legible": 1,
+                "lum": 51.3,
+                "bgLum": 4.4,
+                "lumP50": 46,
+                "bgLumP50": 4,
+                "at": [
+                  0.309,
+                  0.541
+                ],
+                "box": [
+                  0.278,
+                  0.494,
+                  0.347,
+                  0.591
+                ]
+              },
+              {
+                "i": 7,
+                "id": "charger",
+                "row": 1,
+                "d": 18.7,
+                "sx": 0.401,
+                "sy": 0.522,
+                "wy": 2.1,
+                "px": 923,
+                "sep": 0.608,
+                "sepP25": 0.49,
+                "sepP50": 0.55,
+                "legible": 1,
+                "lum": 57.2,
+                "bgLum": 6,
+                "lumP50": 27,
+                "bgLumP50": 6,
+                "at": [
+                  0.407,
+                  0.525
+                ],
+                "box": [
+                  0.368,
+                  0.454,
+                  0.457,
+                  0.606
+                ]
+              },
+              {
+                "i": 8,
+                "id": "lemurian",
+                "row": 1,
+                "d": 18.5,
+                "sx": 0.5,
+                "sy": 0.502,
+                "wy": 2.3,
+                "px": 548,
+                "sep": 0.433,
+                "sepP25": 0.27,
+                "sepP50": 0.41,
+                "legible": 0.931,
+                "lum": 26.6,
+                "bgLum": 5.7,
+                "lumP50": 20,
+                "bgLumP50": 5,
+                "at": [
+                  0.513,
+                  0.499
+                ],
+                "box": [
+                  0.474,
+                  0.443,
+                  0.561,
+                  0.572
+                ]
+              },
+              {
+                "i": 9,
+                "id": "stalker",
+                "row": 1,
+                "d": 18.7,
+                "sx": 0.601,
+                "sy": 0.465,
+                "wy": 2.7,
+                "px": 476,
+                "sep": 0.422,
+                "sepP25": 0.25,
+                "sepP50": 0.35,
+                "legible": 0.952,
+                "lum": 38.6,
+                "bgLum": 6.1,
+                "lumP50": 16,
+                "bgLumP50": 6,
+                "at": [
+                  0.605,
+                  0.467
+                ],
+                "box": [
+                  0.58,
+                  0.365,
+                  0.639,
+                  0.557
+                ]
+              },
+              {
+                "i": 10,
+                "id": "acolyte",
+                "row": 1,
+                "d": 19.1,
+                "sx": 0.702,
+                "sy": 0.434,
+                "wy": 3.1,
+                "px": 730,
+                "sep": 0.629,
+                "sepP25": 0.53,
+                "sepP50": 0.61,
+                "legible": 1,
+                "lum": 47.1,
+                "bgLum": 5,
+                "lumP50": 33,
+                "bgLumP50": 4,
+                "at": [
+                  0.706,
+                  0.446
+                ],
+                "box": [
+                  0.676,
+                  0.357,
+                  0.732,
+                  0.513
+                ]
+              },
+              {
+                "i": 11,
+                "id": "brood",
+                "row": 1,
+                "d": 19.9,
+                "sx": 0.804,
+                "sy": 0.407,
+                "wy": 3.2,
+                "px": 1096,
+                "sep": 0.529,
+                "sepP25": 0.41,
+                "sepP50": 0.49,
+                "legible": 1,
+                "lum": 36.3,
+                "bgLum": 5.9,
+                "lumP50": 22,
+                "bgLumP50": 6,
+                "at": [
+                  0.806,
+                  0.413
+                ],
+                "box": [
+                  0.774,
+                  0.306,
+                  0.839,
+                  0.502
+                ]
+              },
+              {
+                "i": 12,
+                "id": "warden",
+                "row": 2,
+                "d": 25.2,
+                "sx": 0.307,
+                "sy": 0.331,
+                "wy": 3.5,
+                "px": 2130,
+                "sep": 0.484,
+                "sepP25": 0.21,
+                "sepP50": 0.43,
+                "legible": 0.999,
+                "lum": 66,
+                "bgLum": 7.3,
+                "lumP50": 22,
+                "bgLumP50": 7,
+                "at": [
+                  0.309,
+                  0.317
+                ],
+                "box": [
+                  0.253,
+                  0.209,
+                  0.359,
+                  0.413
+                ]
+              },
+              {
+                "i": 13,
+                "id": "mortar",
+                "row": 2,
+                "d": 24.8,
+                "sx": 0.384,
+                "sy": 0.322,
+                "wy": 3.5,
+                "px": 881,
+                "sep": 0.431,
+                "sepP25": 0.29,
+                "sepP50": 0.39,
+                "legible": 0.943,
+                "lum": 30.3,
+                "bgLum": 10.2,
+                "lumP50": 18,
+                "bgLumP50": 6,
+                "at": [
+                  0.386,
+                  0.327
+                ],
+                "box": [
+                  0.351,
+                  0.217,
+                  0.418,
+                  0.413
+                ]
+              },
+              {
+                "i": 14,
+                "id": "golem",
+                "row": 2,
+                "d": 24.5,
+                "sx": 0.461,
+                "sy": 0.294,
+                "wy": 3.5,
+                "px": 1908,
+                "sep": 0.734,
+                "sepP25": 0.69,
+                "sepP50": 0.75,
+                "legible": 0.999,
+                "lum": 95,
+                "bgLum": 7.1,
+                "lumP50": 75,
+                "bgLumP50": 7,
+                "at": [
+                  0.464,
+                  0.297
+                ],
+                "box": [
+                  0.391,
+                  0.154,
+                  0.549,
+                  0.406
+                ]
+              },
+              {
+                "i": 15,
+                "id": "hulk",
+                "row": 2,
+                "d": 24.5,
+                "sx": 0.539,
+                "sy": 0.273,
+                "wy": 3.6,
+                "px": 2222,
+                "sep": 0.42,
+                "sepP25": 0.27,
+                "sepP50": 0.37,
+                "legible": 0.909,
+                "lum": 28.3,
+                "bgLum": 15.2,
+                "lumP50": 15,
+                "bgLumP50": 5,
+                "at": [
+                  0.556,
+                  0.287
+                ],
+                "box": [
+                  0.503,
+                  0.157,
+                  0.614,
+                  0.391
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "newErrors": [
+        "[harness] 11-bestiary: subject missing or illegible — the whole spawn roster (pixels: {\"why\":\"object absent or illegible\",\"px\":15545,\"need\":3500,\"objs\":\"16/16\",\"need2\":16,\"sepP50\":0.55,\"needSep\":0.25,\"carriedPx\":15063,\"perPx\":[166,967,628,702,801,845,541,923,548,476,730,1096,2130,881,1908,2222],\"perSep\":[0.73,0.75,0.73,0.69,0.23,0.45,0.71,0.55,0.41,0.35,0.61,0.49,0.43,0.39,0.75,0.37],\"needPerPx\":219,\"badObjects\":[{\"i\":4,\"px\":801,\"sepP50\":0.23},{\"i\":0,\"px\":166,\"sepP50\":0.73}],\"lum\":52.2,\"bgLum\":6.1})"
+      ]
+    },
+    {
+      "name": "12-boss-phases",
+      "doc": "A late-phase boss frozen at 85% of a wind-up. Judges boss silhouette at scale and telegraph legibility.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\.claude\\worktrees\\agent-ae0a7e8f826a693e4\\reviews\\round7\\captures\\fix-loaded-hud\\diag-ddb1246\\12-boss-phases.png",
+      "engine": {
+        "frameErrors": 1,
+        "lastFrameError": {
+          "who": "harness:11-bestiary",
+          "message": "[harness] 11-bestiary: subject missing or illegible — the whole spawn roster (pixels: {\"why\":\"object absent or illegible\",\"px\":15545,\"need\":3500,\"objs\":\"16/16\",\"need2\":16,\"sepP50\":0.55,\"needSep\":0.25,\"carriedPx\":15063,\"perPx\":[166,967,628,702,801,845,541,923,548,476,730,1096,2130,881,1908,2222],\"perSep\":[0.73,0.75,0.73,0.69,0.23,0.45,0.71,0.55,0.41,0.35,0.61,0.49,0.43,0.39,0.75,0.37],\"needPerPx\":219,\"badObjects\":[{\"i\":4,\"px\":801,\"sepP50\":0.23},{\"i\":0,\"px\":166,\"sepP50\":0.73}],\"lum\":52.2,\"bgLum\":6.1})",
+          "frame": -1
+        },
+        "time": 761.9499999999964
+      },
+      "ms": {
+        "setup": 6154,
+        "screenshot": 550,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "vizier boss",
+            "kind": "pixels",
+            "ok": true,
+            "px": 2777,
+            "frac": 0.02143,
+            "lum": 55.1,
+            "bgLum": 18.6,
+            "contrast": 0.496,
+            "sep": 0.532,
+            "sepP25": 0.39,
+            "sepP50": 0.51,
+            "legible": 0.96,
+            "at": [
+              0.507,
+              0.45
+            ],
+            "box": [
+              0.439,
+              0.298,
+              0.578,
+              0.617
+            ],
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 2000,
+            "minObjects": 0,
+            "present": true,
+            "carriedPx": 2666,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "perObjectOk": true,
+            "carriesAbsence": false,
+            "gatedOn": [
+              "px >= minPx",
+              "sepP50 >= minSep"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "legible"
+            ]
+          },
+          {
+            "subject": "late phase",
+            "kind": "dom",
+            "ok": true,
+            "detail": 3
+          },
+          {
+            "subject": "mid wind-up",
+            "kind": "dom",
+            "ok": true,
+            "detail": 0.89
+          },
+          {
+            "subject": "framing",
+            "kind": "info",
+            "ok": true,
+            "detail": {
+              "pos": {
+                "x": -8.977352525442786,
+                "y": 26.475465774536133,
+                "z": -7.29133151644913
+              },
+              "vis": 1,
+              "occ": 0,
+              "back": 35.6,
+              "score": 12.8
+            }
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "13-biomes-1",
+      "doc": "Establishing shot of biome 1 of 4, framed on its primary landmark. Judges whether the four stages read as genuinely different places rather than as one generator recoloured.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\.claude\\worktrees\\agent-ae0a7e8f826a693e4\\reviews\\round7\\captures\\fix-loaded-hud\\diag-ddb1246\\13-biomes-1.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 6.16666666666665
+      },
+      "ms": {
+        "setup": 7239,
+        "screenshot": 1869,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "biome 1 landmark",
+            "kind": "bounds",
+            "ok": true,
+            "vis": 0.6,
+            "screen": [
+              0.5,
+              0.513,
+              70.3
+            ],
+            "onScreen": true,
+            "minVis": 0.5
+          },
+          {
+            "subject": "open depth",
+            "kind": "dom",
+            "ok": true,
+            "detail": 0.829
+          },
+          {
+            "subject": "sky",
+            "kind": "info",
+            "ok": true,
+            "detail": 0.929
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "13-biomes-2",
+      "doc": "Establishing shot of biome 2 of 4, framed on its primary landmark. Judges whether the four stages read as genuinely different places rather than as one generator recoloured.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\.claude\\worktrees\\agent-ae0a7e8f826a693e4\\reviews\\round7\\captures\\fix-loaded-hud\\diag-ddb1246\\13-biomes-2.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 7.766666666666644
+      },
+      "ms": {
+        "setup": 2198,
+        "screenshot": 1019,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "biome 2 landmark",
+            "kind": "bounds",
+            "ok": true,
+            "vis": 0.95,
+            "screen": [
+              0.5,
+              0.513,
+              70.3
+            ],
+            "onScreen": true,
+            "minVis": 0.5
+          },
+          {
+            "subject": "open depth",
+            "kind": "dom",
+            "ok": true,
+            "detail": 0.457
+          },
+          {
+            "subject": "sky",
+            "kind": "info",
+            "ok": true,
+            "detail": 0.143
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "13-biomes-3",
+      "doc": "Establishing shot of biome 3 of 4, framed on its primary landmark. Judges whether the four stages read as genuinely different places rather than as one generator recoloured.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\.claude\\worktrees\\agent-ae0a7e8f826a693e4\\reviews\\round7\\captures\\fix-loaded-hud\\diag-ddb1246\\13-biomes-3.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 9.366666666666712
+      },
+      "ms": {
+        "setup": 2616,
+        "screenshot": 1552,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "biome 3 landmark",
+            "kind": "bounds",
+            "ok": true,
+            "vis": 0.7,
+            "screen": [
+              0.5,
+              0.527,
+              33.5
+            ],
+            "onScreen": true,
+            "minVis": 0.5
+          },
+          {
+            "subject": "open depth",
+            "kind": "dom",
+            "ok": true,
+            "detail": 0.457
+          },
+          {
+            "subject": "sky",
+            "kind": "info",
+            "ok": true,
+            "detail": 0
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "13-biomes-4",
+      "doc": "Establishing shot of biome 4 of 4, framed on its primary landmark. Judges whether the four stages read as genuinely different places rather than as one generator recoloured.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\.claude\\worktrees\\agent-ae0a7e8f826a693e4\\reviews\\round7\\captures\\fix-loaded-hud\\diag-ddb1246\\13-biomes-4.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 10.966666666666791
+      },
+      "ms": {
+        "setup": 5061,
+        "screenshot": 936,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "biome 4 landmark",
+            "kind": "bounds",
+            "ok": true,
+            "vis": 0.95,
+            "screen": [
+              0.5,
+              0.513,
+              70.3
+            ],
+            "onScreen": true,
+            "minVis": 0.5
+          },
+          {
+            "subject": "open depth",
+            "kind": "dom",
+            "ok": true,
+            "detail": 0.8
+          },
+          {
+            "subject": "sky",
+            "kind": "info",
+            "ok": true,
+            "detail": 0.536
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "14-survivor-select",
+      "doc": "Survivor select: the four-strong roster, a rotating 3D portrait, the selected survivor's four abilities and roster-relative stat bars. Judges menu hierarchy, typography and whether the new content is legible before a run starts.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\.claude\\worktrees\\agent-ae0a7e8f826a693e4\\reviews\\round7\\captures\\fix-loaded-hud\\diag-ddb1246\\14-survivor-select.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 4.233333333333324
+      },
+      "ms": {
+        "setup": 3250,
+        "screenshot": 1175,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "select screen",
+            "kind": "dom",
+            "ok": true,
+            "detail": null
+          },
+          {
+            "subject": "the roster",
+            "kind": "dom",
+            "ok": true,
+            "detail": 4
+          },
+          {
+            "subject": "the 3D portrait",
+            "kind": "dom",
+            "ok": true,
+            "detail": null
+          },
+          {
+            "subject": "kestrel selected",
+            "kind": "dom",
+            "ok": true,
+            "detail": "kestrel"
+          }
+        ]
+      },
+      "newErrors": []
+    },
+    {
+      "name": "15-logbook",
+      "doc": "Logbook, survivors tab, with the 3D model viewer live. Judges the index/detail split, unlock and discovery states, and whether the browsing UI reads as the same product as the HUD.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\.claude\\worktrees\\agent-ae0a7e8f826a693e4\\reviews\\round7\\captures\\fix-loaded-hud\\diag-ddb1246\\15-logbook.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 4.566666666666656
+      },
+      "ms": {
+        "setup": 3126,
+        "screenshot": 1399,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "logbook screen",
+            "kind": "dom",
+            "ok": true,
+            "detail": null
+          },
+          {
+            "subject": "enemies index",
+            "kind": "dom",
+            "ok": true,
+            "detail": 16
+          },
+          {
+            "subject": "a selected entry",
+            "kind": "dom",
+            "ok": true,
+            "detail": "golem"
+          },
+          {
+            "subject": "the 3D model viewer",
+            "kind": "dom",
+            "ok": true,
+            "detail": null
+          }
+        ]
+      },
+      "newErrors": []
+    }
+  ],
+  "errors": [
+    "[harness] 11-bestiary: subject missing or illegible — the whole spawn roster (pixels: {\"why\":\"object absent or illegible\",\"px\":15545,\"need\":3500,\"objs\":\"16/16\",\"need2\":16,\"sepP50\":0.55,\"needSep\":0.25,\"carriedPx\":15063,\"perPx\":[166,967,628,702,801,845,541,923,548,476,730,1096,2130,881,1908,2222],\"perSep\":[0.73,0.75,0.73,0.69,0.23,0.45,0.71,0.55,0.41,0.35,0.61,0.49,0.43,0.39,0.75,0.37],\"needPerPx\":219,\"badObjects\":[{\"i\":4,\"px\":801,\"sepP50\":0.23},{\"i\":0,\"px\":166,\"sepP50\":0.73}],\"lum\":52.2,\"bgLum\":6.1})"
+  ],
+  "partial": true,
+  "subjectFailures": [
+    {
+      "name": "11-bestiary",
+      "failed": [
+        "the whole spawn roster"
+      ],
+      "detail": [
+        {
+          "subject": "the whole spawn roster",
+          "kind": "pixels",
+          "ok": false,
+          "px": 15545,
+          "frac": 0.11995,
+          "lum": 52.2,
+          "bgLum": 6.1,
+          "contrast": 0.792,
+          "sep": 0.548,
+          "sepP25": 0.35,
+          "sepP50": 0.55,
+          "legible": 0.969,
+          "at": [
+            0.508,
+            0.466
+          ],
+          "box": [
+            0.147,
+            0.154,
+            0.907,
+            0.857
+          ],
+          "objects": 16,
+          "visibleObjects": 16,
+          "perPx": [
+            166,
+            967,
+            628,
+            702,
+            801,
+            845,
+            541,
+            923,
+            548,
+            476,
+            730,
+            1096,
+            2130,
+            881,
+            1908,
+            2222
+          ],
+          "perSep": [
+            0.73,
+            0.75,
+            0.73,
+            0.69,
+            0.23,
+            0.45,
+            0.71,
+            0.55,
+            0.41,
+            0.35,
+            0.61,
+            0.49,
+            0.43,
+            0.39,
+            0.75,
+            0.37
+          ],
+          "minPx": 3500,
+          "minObjects": 16,
+          "present": true,
+          "carriedPx": 15063,
+          "minSep": 0.25,
+          "legibleOk": true,
+          "minPerPx": 219,
+          "absentObjects": [],
+          "objectFailures": [
+            {
+              "i": 4,
+              "px": 801,
+              "sepP50": 0.23
+            },
+            {
+              "i": 0,
+              "px": 166,
+              "sepP50": 0.73
+            }
+          ],
+          "ungatedAbsences": [],
+          "perObjectOk": false,
+          "carriesAbsence": false,
+          "gatedOn": [
+            "px >= minPx",
+            "visibleObjects >= minObjects",
+            "sepP50 >= minSep",
+            "perPx/perSep/absence over every declared object"
+          ],
+          "notGated": [
+            "contrast",
+            "sep",
+            "sepP25",
+            "legible"
+          ]
+        }
+      ]
+    }
+  ],
+  "subjectsOk": false,
+  "toleratedAbsences": [
+    {
+      "name": "04-combat",
+      "subject": "horde",
+      "checkOk": true,
+      "gate": "crowd 8/24 individually gated",
+      "why": "director horde: an unbounded population, not a fixed cast",
+      "perPx": [
+        168,
+        0,
+        5,
+        50,
+        73,
+        73,
+        185,
+        211,
+        14,
+        1031,
+        254,
+        14,
+        1400,
+        2435,
+        48,
+        826,
+        0,
+        0,
+        276,
+        117,
+        470,
+        223,
+        83,
+        493
+      ],
+      "absent": [
+        {
+          "i": 1,
+          "px": 0,
+          "sepP50": 0
+        },
+        {
+          "i": 2,
+          "px": 5,
+          "sepP50": 0.29
+        },
+        {
+          "i": 16,
+          "px": 0,
+          "sepP50": 0
+        },
+        {
+          "i": 17,
+          "px": 0,
+          "sepP50": 0
+        }
+      ]
+    },
+    {
+      "name": "08-explosion",
+      "subject": "the blast",
+      "checkOk": true,
+      "gate": "aggregate: carriedPx only, no per-object gate",
+      "why": "VFX buffers: the meshes are shared particle/ring/trail pools, not nameable objects",
+      "perPx": [
+        16987,
+        0,
+        52,
+        0
+      ],
+      "absent": [
+        {
+          "i": 1,
+          "px": 0,
+          "sepP50": 0
+        },
+        {
+          "i": 3,
+          "px": 0,
+          "sepP50": 0
+        }
+      ]
+    },
+    {
+      "name": "08-explosion",
+      "subject": "monsters standing in it",
+      "checkOk": true,
+      "gate": "crowd 2/7 individually gated",
+      "why": "blast victims: knockback removes members from frame by design",
+      "perPx": [
+        144,
+        511,
+        50,
+        648,
+        309,
+        184,
+        0
+      ],
+      "absent": [
+        {
+          "i": 6,
+          "px": 0,
+          "sepP50": 0
+        }
+      ]
+    }
+  ],
+  "determinism": {
+    "clockPinned": true,
+    "frameDt": 0.016666666666666666,
+    "frameTimeouts": 0
+  },
+  "perf": {
+    "programs": 86,
+    "geometries": 615,
+    "textures": 53,
+    "sceneObjects": 758
+  }
+}
