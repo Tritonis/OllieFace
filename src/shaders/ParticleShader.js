@@ -212,6 +212,7 @@ uniform vec2  uCamPlanes;
 uniform float uSoftEnabled;
 uniform float uIntensity;
 uniform float uMaxIntensity;
+uniform float uAlphaCut;
 
 varying vec4 vColor;
 varying vec2 vUv;
@@ -284,7 +285,11 @@ void main() {
     }
   }
 
-  if (c.a < 0.004) discard;
+  // Per layer, because on the alpha layer this is no longer only a "don't pay
+  // to blend nothing" cut: that layer writes depth, so the fragments this test
+  // keeps are exactly the fragments allowed to occlude the additive layer drawn
+  // after them. Values, and what bounds them, are in ALPHA_CUT below.
+  if (c.a < uAlphaCut) discard;
   gl_FragColor = c;
 }
 `;
@@ -326,10 +331,41 @@ void main() {
  */
 export const LENS_FLOOR = { add: 0.05, alpha: 1.0 };
 
+/**
+ * The fragment discard threshold, per blend layer.
+ *
+ * `add` keeps the value this test has always had: on a layer that does not
+ * write depth the cut only skips a blend that would deposit nothing.
+ *
+ * `alpha` is doing a second job, and it is the reason this became a uniform.
+ * That layer now writes depth, so the cut is also the occlusion threshold —
+ * every fragment it keeps stamps depth and z-rejects the additive layer behind
+ * it. Left at 0.004, a 0.4%-opacity dust fragment deletes the fireball it is
+ * standing in front of: `reviews/round7/DIAG-axis6-vfx.md` section 4 measured
+ * exactly that arm removing a mean 101.6 L from 979 core pixels, peak 161.1 L.
+ *
+ * **It is a visibility cut as well as a depth cut, and that is what bounds it.**
+ * A fragment below the threshold is not drawn dimmer, it is not drawn at all,
+ * so the value cannot be raised to wherever the depth job would like it: this
+ * shader's own quad-boundary fade exists to guarantee a sprite is transparent
+ * by the time it reaches its outline, and a high cut re-draws that outline as a
+ * hard circle where c.a crosses the threshold — the axis-6 "hard-clipped
+ * particle edges" marker, given back. It also deletes outright any sprite whose
+ * peak alpha never reaches it: `teleporterAura` spawns at alpha0 0.16
+ * (`src/systems/VFX.js:1026`), `missile` smoke at 0.3 (`:1249`), `muzzleFlash`
+ * smoke at 0.32 (`:324`).
+ *
+ * Measured on one frozen frame at a pinned 0.09 s blast phase
+ * (`reviews/round7/diag-axis6/layerarms5.mjs`, analysed by `analyse5.mjs`, PNGs
+ * in `reviews/round7/captures/fix-axis6-arms/`) — see `reviews/round7/FIX-axis6.md`.
+ */
+export const ALPHA_CUT = { add: 0.004, alpha: 0.35 };
+
 /** Builds the ShaderMaterial for one blend layer. */
 export function createParticleMaterial({
   map, additive, atlasCols = 4, intensity = 1, maxIntensity = 0.92,
   lensFloor = additive ? LENS_FLOOR.add : LENS_FLOOR.alpha,
+  alphaCut = additive ? ALPHA_CUT.add : ALPHA_CUT.alpha,
 }) {
   return new THREE.ShaderMaterial({
     uniforms: {
@@ -344,12 +380,31 @@ export function createParticleMaterial({
       uSoftEnabled: { value: 0 },
       uIntensity: { value: intensity },
       uMaxIntensity: { value: maxIntensity },
+      uAlphaCut: { value: alphaCut },
     },
     vertexShader: ParticleVertexShader,
     fragmentShader: ParticleFragmentShader,
     transparent: true,
     depthTest: true,
-    depthWrite: false,
+    // The alpha layer writes depth; the additive layer does not.
+    //
+    // With neither layer writing, there is no depth relationship between them
+    // at all: ordering is decided entirely by `mesh.renderOrder`
+    // (`ParticleSystem._makeLayer`, additive 12 after alpha 10), so the additive
+    // sum is added on top of whatever the opacity layer composited, from every
+    // camera, on every pixel — including where the opacity is physically in
+    // front. The dust skirt added "so the fireball has something dark to be read
+    // against" was drawn behind the fireball by construction.
+    //
+    // Measured on the frozen frame in `reviews/round7/DIAG-axis6-vfx.md`: the
+    // additive layer deposits +142.93 L at the blast core against 1.56 L of
+    // surviving opacity, 92:1, and the opacity layer's own effect on the scene
+    // loses 80% of itself in the composite. Draw order is deliberately left
+    // alone — swapping it was armed and measured to buy 1.3 L of radial step
+    // while occluding with dust that is behind the fireball. Writing depth
+    // instead lets the z-test decide, which is the only thing that can tell
+    // those two cases apart.
+    depthWrite: !additive,
     blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,
     side: THREE.DoubleSide,
     toneMapped: false,
