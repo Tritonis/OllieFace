@@ -603,6 +603,45 @@ export function installHarness(ctx) {
     return (r + 0.3) / Math.max(1e-3, 2 * Math.max(1, d) * tanH);
   };
 
+  /* The nearest horde member standing between a subject and the lens.
+   *
+   * Every `vis` in this file comes from `visibleFraction`, which casts through
+   * `seesTarget` -> `_rayHit` -> `ctx.stage.raycastDistance` — *stage geometry
+   * only*. The director's enemies are not in `ctx.stage`, so `vis` is
+   * structurally blind to the horde occluding itself, and it is published beside
+   * a pixel count with nothing saying so. That reads as a contradiction rather
+   * than as a gap in the instrument: `04-combat` object 2 came back `vis: 1,
+   * px: 1` — nominally unoccluded and yet invisible — while a mortar 11.3 m
+   * nearer the lens sat 0.011 frame-widths away
+   * (`reviews/round7/captures/diag-combat-bestiary/manifest.json`, `DIAG horde`).
+   * The reader who found that spent the single largest step of the diagnosis on
+   * it, and this project's recurring failure mode is an instrument that is wrong
+   * in the same direction as the bug.
+   *
+   * So `vis` now travels with the number it cannot see. `declutter` already
+   * computes exactly this pair at its third question; this is the same
+   * arithmetic over positions that have already been sampled — no raycast, no
+   * `ctx.rng`, no `fxRng`, no frame advanced. It is published in `detail` only
+   * and cannot move a verdict.
+   *
+   * Returns null when nothing is nearer, which is itself the useful answer.
+   */
+  const nearestNearer = (sx, sy, d, list, skip = null) => {
+    let best = null;
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!e || e === skip || !e.position) continue;
+      const ed = Math.hypot(e.position.x - camera.position.x, e.position.z - camera.position.z);
+      if (ed >= d) continue;
+      const h = e.def?.height ?? 2;
+      const es = screenOf(e.position.x, e.position.y + h * 0.5, e.position.z);
+      if (!(es.front > 0)) continue;
+      const gap = screenGap(sx, sy, es.x, es.y);
+      if (!best || gap < best.gap) best = { i, id: e.def?.id ?? '?', d: +ed.toFixed(1), gap: +gap.toFixed(3) };
+    }
+    return best;
+  };
+
   let _lastSlots = null;
   const screenSlots = (count, { minDist = 11, maxDist = 46, avoidPlayer = 0.075, avoid = [] } = {}) => {
     camera.updateMatrixWorld(true);
@@ -2719,8 +2758,13 @@ export function installHarness(ctx) {
                 i, id: e.def?.id, d: +d.toFixed(1),
                 sx: +s.x.toFixed(3), sy: +s.y.toFixed(3), front: +s.front.toFixed(1),
                 wy: +e.position.y.toFixed(1),
+                // Stage-geometry occlusion only — see `nearestNearer`. `vis: 1`
+                // is not "unoccluded", it is "unoccluded by terrain and props",
+                // and `nearer` is the half of the question it cannot ask.
                 vis: +visibleFraction(camera.position, _cc.set(e.position.x, e.position.y, e.position.z),
                                       { height: h, radius: (e.def?.radius ?? 0.5) + 0.2, cols: 3, rows: 3, slack: 0.3 }).toFixed(2),
+                visWhat: 'ctx.stage only; blind to the horde',
+                nearer: nearestNearer(s.x, s.y, d, list, e),
                 visRig: e.rig.root.visible !== false,
                 ...(per[i] ?? {}),
               };
@@ -2759,10 +2803,28 @@ export function installHarness(ctx) {
           dom: () => hidden.length === 0,
           detail: () => hidden,
         },
+        /* Same structural blindness as `DIAG horde`'s `vis`, and worth saying
+         * where it is *gated* rather than only where it is reported: `pvis`
+         * comes from `visibleFraction` too, so it certifies the survivor clear
+         * of terrain and props and cannot see a monster parked in front of him.
+         * Not a live failure — it reads 1 — but a reader is entitled to know
+         * which half of "unoccluded" this number bought. `nearer` is info; the
+         * floor is untouched and the verdict is the one it always was. */
         {
           subject: 'survivor unoccluded by the final lens',
           dom: () => (pvis?.vis ?? 0) >= MIN_VISIBLE,
-          detail: () => ({ ...pvis, need: MIN_VISIBLE }),
+          detail: () => {
+            const p = playerPos();
+            camera.updateMatrixWorld(true);
+            const s = screenOf(p.x, p.y + 0.95, p.z);
+            const d = Math.hypot(p.x - camera.position.x, p.z - camera.position.z);
+            return {
+              ...pvis, need: MIN_VISIBLE,
+              visWhat: 'ctx.stage only; blind to the horde',
+              nearer: nearestNearer(s.x, s.y, d,
+                (ctx.director?.enemies ?? []).filter((e) => e?.rig?.root?.parent)),
+            };
+          },
         },
       ]);
     },
