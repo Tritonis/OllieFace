@@ -1,6 +1,6 @@
 {
   "tool": "tools/silhouette.mjs --enemies",
-  "commit": "8ff3eb494dd515be762ddd648eb146db199d9b95",
+  "commit": "125eb19d912bd4e1b2341c1e2500b7dc1cefa3a6",
   "seed": 1337,
   "range": 40,
   "width": 1600,
@@ -832,61 +832,61 @@
       "name": "Grave Acolyte",
       "tier": 2,
       "height": 2,
-      "px40": 737,
-      "holesFrac": 0.0372,
-      "bbox": "121x201",
-      "fill": 0.6585,
-      "aspect": 0.602,
+      "px40": 883,
+      "holesFrac": 0.0323,
+      "bbox": "143x276",
+      "fill": 0.4872,
+      "aspect": 0.5181,
       "bands": [
         {
-          "w": 0.165,
-          "fill": 0.084,
-          "runs": 1
+          "w": 0.266,
+          "fill": 0.153,
+          "runs": 1.852
         },
         {
-          "w": 0.405,
-          "fill": 0.31,
-          "runs": 1.05
-        },
-        {
-          "w": 0.95,
-          "fill": 0.793,
-          "runs": 1
-        },
-        {
-          "w": 0.983,
-          "fill": 0.868,
+          "w": 0.273,
+          "fill": 0.155,
           "runs": 1.25
         },
         {
-          "w": 0.909,
-          "fill": 0.802,
-          "runs": 2.5
+          "w": 0.538,
+          "fill": 0.072,
+          "runs": 1.259
         },
         {
-          "w": 0.86,
-          "fill": 0.667,
-          "runs": 2.5
+          "w": 0.636,
+          "fill": 0.24,
+          "runs": 2.036
         },
         {
-          "w": 0.81,
-          "fill": 0.697,
+          "w": 0.874,
+          "fill": 0.691,
+          "runs": 1.75
+        },
+        {
+          "w": 0.846,
+          "fill": 0.766,
+          "runs": 2.074
+        },
+        {
+          "w": 0.783,
+          "fill": 0.644,
+          "runs": 2.643
+        },
+        {
+          "w": 0.741,
+          "fill": 0.657,
           "runs": 2
         },
         {
-          "w": 0.777,
-          "fill": 0.74,
-          "runs": 1.45
+          "w": 0.762,
+          "fill": 0.725,
+          "runs": 1.571
         },
         {
-          "w": 0.826,
-          "fill": 0.784,
-          "runs": 1
-        },
-        {
-          "w": 0.967,
-          "fill": 0.832,
-          "runs": 1
+          "w": 0.853,
+          "fill": 0.758,
+          "runs": 1.464
         }
       ]
     },
@@ -1648,7 +1648,7 @@
     {
       "a": "mite",
       "b": "acolyte",
-      "iou": 0.3979
+      "iou": 0.3863
     },
     {
       "a": "mite",
@@ -1763,7 +1763,7 @@
     {
       "a": "scarab",
       "b": "acolyte",
-      "iou": 0.4751
+      "iou": 0.2934
     },
     {
       "a": "scarab",
@@ -1873,7 +1873,7 @@
     {
       "a": "spitling",
       "b": "acolyte",
-      "iou": 0.5712
+      "iou": 0.3529
     },
     {
       "a": "spitling",
@@ -1978,7 +1978,7 @@
     {
       "a": "skink",
       "b": "acolyte",
-      "iou": 0.5529
+      "iou": 0.3774
     },
     {
       "a": "skink",
@@ -2078,7 +2078,7 @@
     {
       "a": "mote",
       "b": "acolyte",
-      "iou": 0.4602
+      "iou": 0.4398
     },
     {
       "a": "mote",
@@ -2173,7 +2173,7 @@
     {
       "a": "shrike",
       "b": "acolyte",
-      "iou": 0.3811
+      "iou": 0.2405
     },
     {
       "a": "shrike",
@@ -2263,7 +2263,7 @@
     {
       "a": "harrier",
       "b": "acolyte",
-      "iou": 0.2707
+      "iou": 0.3141
     },
     {
       "a": "harrier",
@@ -2348,7 +2348,7 @@
     {
       "a": "charger",
       "b": "acolyte",
-      "iou": 0.7001
+      "iou": 0.4704
     },
     {
       "a": "charger",
@@ -2428,7 +2428,7 @@
     {
       "a": "shriver",
       "b": "acolyte",
-      "iou": 0.6138
+      "iou": 0.3953
     },
     {
       "a": "shriver",
@@ -2503,7 +2503,7 @@
     {
       "a": "burrower",
       "b": "acolyte",
-      "iou": 0.6403
+      "iou": 0.4585
     },
     {
       "a": "burrower",
@@ -2573,7 +2573,7 @@
     {
       "a": "brood",
       "b": "acolyte",
-      "iou": 0.7966
+      "iou": 0.5551
     },
     {
       "a": "brood",
@@ -2638,7 +2638,7 @@
     {
       "a": "warden",
       "b": "acolyte",
-      "iou": 0.6606
+      "iou": 0.4745
     },
     {
       "a": "warden",
@@ -2698,7 +2698,7 @@
     {
       "a": "stalker",
       "b": "acolyte",
-      "iou": 0.3917
+      "iou": 0.2664
     },
     {
       "a": "stalker",
@@ -2758,57 +2758,57 @@
     {
       "a": "acolyte",
       "b": "sentinel",
-      "iou": 0.6202
+      "iou": 0.3761
     },
     {
       "a": "acolyte",
       "b": "mortar",
-      "iou": 0.5254
+      "iou": 0.5024
     },
     {
       "a": "acolyte",
       "b": "lasher",
-      "iou": 0.5653
+      "iou": 0.4106
     },
     {
       "a": "acolyte",
       "b": "redoubt",
-      "iou": 0.5334
+      "iou": 0.3803
     },
     {
       "a": "acolyte",
       "b": "hulk",
-      "iou": 0.6312
+      "iou": 0.4323
     },
     {
       "a": "acolyte",
       "b": "colossus",
-      "iou": 0.6043
+      "iou": 0.4012
     },
     {
       "a": "acolyte",
       "b": "wyrm",
-      "iou": 0.4862
+      "iou": 0.4357
     },
     {
       "a": "acolyte",
       "b": "thunderhead",
-      "iou": 0.5219
+      "iou": 0.48
     },
     {
       "a": "acolyte",
       "b": "matron",
-      "iou": 0.5808
+      "iou": 0.3965
     },
     {
       "a": "acolyte",
       "b": "vizier",
-      "iou": 0.6482
+      "iou": 0.4135
     },
     {
       "a": "acolyte",
       "b": "maw",
-      "iou": 0.6203
+      "iou": 0.4972
     },
     {
       "a": "sentinel",
@@ -3415,27 +3415,27 @@
     {
       "a": "acolyte",
       "b": "ranger",
-      "iou": 0.4493
+      "iou": 0.3503
     },
     {
       "a": "acolyte",
       "b": "anvil",
-      "iou": 0.4578
+      "iou": 0.3435
     },
     {
       "a": "acolyte",
       "b": "kestrel",
-      "iou": 0.5597
+      "iou": 0.4454
     },
     {
       "a": "acolyte",
       "b": "rook",
-      "iou": 0.5477
+      "iou": 0.4205
     },
     {
       "a": "acolyte",
       "b": "cinder",
-      "iou": 0.4751
+      "iou": 0.3146
     },
     {
       "a": "sentinel",
@@ -4042,7 +4042,7 @@
     {
       "id": "acolyte",
       "kind": "px40",
-      "value": 737,
+      "value": 883,
       "floor": 219,
       "ok": true,
       "exempt": false
@@ -4050,7 +4050,7 @@
     {
       "id": "acolyte",
       "kind": "holes",
-      "value": 0.0372,
+      "value": 0.0323,
       "floor": 0.004,
       "ok": true,
       "exempt": false
@@ -4330,7 +4330,7 @@
     {
       "id": "mite/acolyte",
       "kind": "familyIoU",
-      "value": 0.3979,
+      "value": 0.3863,
       "ceiling": 0.78,
       "ok": true,
       "exempt": false
@@ -4514,7 +4514,7 @@
     {
       "id": "scarab/acolyte",
       "kind": "familyIoU",
-      "value": 0.4751,
+      "value": 0.2934,
       "ceiling": 0.78,
       "ok": true,
       "exempt": false
@@ -4690,7 +4690,7 @@
     {
       "id": "spitling/acolyte",
       "kind": "familyIoU",
-      "value": 0.5712,
+      "value": 0.3529,
       "ceiling": 0.78,
       "ok": true,
       "exempt": false
@@ -4858,7 +4858,7 @@
     {
       "id": "skink/acolyte",
       "kind": "familyIoU",
-      "value": 0.5529,
+      "value": 0.3774,
       "ceiling": 0.78,
       "ok": true,
       "exempt": false
@@ -5018,7 +5018,7 @@
     {
       "id": "mote/acolyte",
       "kind": "familyIoU",
-      "value": 0.4602,
+      "value": 0.4398,
       "ceiling": 0.78,
       "ok": true,
       "exempt": false
@@ -5170,7 +5170,7 @@
     {
       "id": "shrike/acolyte",
       "kind": "familyIoU",
-      "value": 0.3811,
+      "value": 0.2405,
       "ceiling": 0.78,
       "ok": true,
       "exempt": false
@@ -5314,7 +5314,7 @@
     {
       "id": "harrier/acolyte",
       "kind": "familyIoU",
-      "value": 0.2707,
+      "value": 0.3141,
       "ceiling": 0.78,
       "ok": true,
       "exempt": false
@@ -5450,7 +5450,7 @@
     {
       "id": "charger/acolyte",
       "kind": "familyIoU",
-      "value": 0.7001,
+      "value": 0.4704,
       "ceiling": 0.78,
       "ok": true,
       "exempt": false
@@ -5578,7 +5578,7 @@
     {
       "id": "shriver/acolyte",
       "kind": "familyIoU",
-      "value": 0.6138,
+      "value": 0.3953,
       "ceiling": 0.78,
       "ok": true,
       "exempt": false
@@ -5698,7 +5698,7 @@
     {
       "id": "burrower/acolyte",
       "kind": "familyIoU",
-      "value": 0.6403,
+      "value": 0.4585,
       "ceiling": 0.78,
       "ok": true,
       "exempt": false
@@ -5810,10 +5810,10 @@
     {
       "id": "brood/acolyte",
       "kind": "familyIoU",
-      "value": 0.7966,
-      "ceiling": 0.804566,
+      "value": 0.5551,
+      "ceiling": 0.78,
       "ok": true,
-      "exempt": true
+      "exempt": false
     },
     {
       "id": "brood/sentinel",
@@ -5914,7 +5914,7 @@
     {
       "id": "warden/acolyte",
       "kind": "familyIoU",
-      "value": 0.6606,
+      "value": 0.4745,
       "ceiling": 0.78,
       "ok": true,
       "exempt": false
@@ -6010,7 +6010,7 @@
     {
       "id": "stalker/acolyte",
       "kind": "familyIoU",
-      "value": 0.3917,
+      "value": 0.2664,
       "ceiling": 0.78,
       "ok": true,
       "exempt": false
@@ -6106,7 +6106,7 @@
     {
       "id": "acolyte/sentinel",
       "kind": "familyIoU",
-      "value": 0.6202,
+      "value": 0.3761,
       "ceiling": 0.78,
       "ok": true,
       "exempt": false
@@ -6114,7 +6114,7 @@
     {
       "id": "acolyte/mortar",
       "kind": "familyIoU",
-      "value": 0.5254,
+      "value": 0.5024,
       "ceiling": 0.78,
       "ok": true,
       "exempt": false
@@ -6122,7 +6122,7 @@
     {
       "id": "acolyte/lasher",
       "kind": "familyIoU",
-      "value": 0.5653,
+      "value": 0.4106,
       "ceiling": 0.78,
       "ok": true,
       "exempt": false
@@ -6130,7 +6130,7 @@
     {
       "id": "acolyte/redoubt",
       "kind": "familyIoU",
-      "value": 0.5334,
+      "value": 0.3803,
       "ceiling": 0.78,
       "ok": true,
       "exempt": false
@@ -6138,7 +6138,7 @@
     {
       "id": "acolyte/hulk",
       "kind": "familyIoU",
-      "value": 0.6312,
+      "value": 0.4323,
       "ceiling": 0.78,
       "ok": true,
       "exempt": false
@@ -6146,7 +6146,7 @@
     {
       "id": "acolyte/colossus",
       "kind": "familyIoU",
-      "value": 0.6043,
+      "value": 0.4012,
       "ceiling": 0.78,
       "ok": true,
       "exempt": false
@@ -6154,7 +6154,7 @@
     {
       "id": "acolyte/wyrm",
       "kind": "familyIoU",
-      "value": 0.4862,
+      "value": 0.4357,
       "ceiling": 0.78,
       "ok": true,
       "exempt": false
@@ -6162,7 +6162,7 @@
     {
       "id": "acolyte/thunderhead",
       "kind": "familyIoU",
-      "value": 0.5219,
+      "value": 0.48,
       "ceiling": 0.78,
       "ok": true,
       "exempt": false
@@ -6170,7 +6170,7 @@
     {
       "id": "acolyte/matron",
       "kind": "familyIoU",
-      "value": 0.5808,
+      "value": 0.3965,
       "ceiling": 0.78,
       "ok": true,
       "exempt": false
@@ -6178,7 +6178,7 @@
     {
       "id": "acolyte/vizier",
       "kind": "familyIoU",
-      "value": 0.6482,
+      "value": 0.4135,
       "ceiling": 0.78,
       "ok": true,
       "exempt": false
@@ -6186,7 +6186,7 @@
     {
       "id": "acolyte/maw",
       "kind": "familyIoU",
-      "value": 0.6203,
+      "value": 0.4972,
       "ceiling": 0.78,
       "ok": true,
       "exempt": false
@@ -7154,7 +7154,7 @@
     {
       "id": "acolyte/ranger",
       "kind": "foeFriendIoU",
-      "value": 0.4493,
+      "value": 0.3503,
       "ceiling": 0.72,
       "ok": true,
       "exempt": false
@@ -7162,7 +7162,7 @@
     {
       "id": "acolyte/anvil",
       "kind": "foeFriendIoU",
-      "value": 0.4578,
+      "value": 0.3435,
       "ceiling": 0.72,
       "ok": true,
       "exempt": false
@@ -7170,7 +7170,7 @@
     {
       "id": "acolyte/kestrel",
       "kind": "foeFriendIoU",
-      "value": 0.5597,
+      "value": 0.4454,
       "ceiling": 0.72,
       "ok": true,
       "exempt": false
@@ -7178,7 +7178,7 @@
     {
       "id": "acolyte/rook",
       "kind": "foeFriendIoU",
-      "value": 0.5477,
+      "value": 0.4205,
       "ceiling": 0.72,
       "ok": true,
       "exempt": false
@@ -7186,7 +7186,7 @@
     {
       "id": "acolyte/cinder",
       "kind": "foeFriendIoU",
-      "value": 0.4751,
+      "value": 0.3146,
       "ceiling": 0.72,
       "ok": true,
       "exempt": false
@@ -7943,20 +7943,5 @@
       "ok": true,
       "exempt": false
     }
-  ],
-  "rekeyed": {
-    "reason": "RoR2-derived enemy and affix ids renamed; see reviews/round7/FIX-ror2-ids.md",
-    "map": {
-      "beetle": "scarab",
-      "lemurian": "skink",
-      "wisp": "mote",
-      "pest": "shrike",
-      "golem": "sentinel",
-      "titan": "colossus",
-      "blazing": "emberclad",
-      "overloading": "galvanic",
-      "glacial": "rimebound"
-    },
-    "note": "Ids only. Every measured number is the one `commit` produced — a silhouette is not a function of its id — and the verdicts below were re-derived from those same numbers, which only re-orders them by the new ids."
-  }
+  ]
 }

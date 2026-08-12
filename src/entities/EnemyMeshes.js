@@ -2738,6 +2738,15 @@ function buildAcolyte() {
     P(box(0.14, 1.3, 0.14), 0.42, 0.62, 0.3, 0, 0, -0.16),
     P(box(0.14, 1.3, 0.14), -0.42, 0.62, 0.3, 0, 0, 0.16),
     P(box(0.14, 1.2, 0.14), 0, 0.6, -0.48),
+    // The crook-staff is the acolyte's silhouette signature (round-9 Finding 3:
+    // at bbox-normalised scale the acolyte and the brood sac flattened to the
+    // same hunched mass, 0.7966 IoU against a 0.78 ceiling). A tall thin spike
+    // off one shoulder plus a hooked head is asymmetric mass the brood's radial
+    // body cannot mimic. Static in the robe merge: no new draw call, no new
+    // material, sways with the body.
+    P(cyl(0.05, 0.07, 2.6, 5), 0.66, 1.3, 0.12, 0, 0, -0.06),
+    P(ring(0.17, 0.05, 4, 10), 0.74, 2.62, 0.12, 0, 0, -0.4),
+    P(box(0.16, 0.1, 0.1), 0.6, 2.4, 0.12),
   ]));
   add(rig, robe, 'body', merged('aco.mantle', [
     P(cyl(0.4, 0.5, 0.34, 7), 0, 1.42, 0),

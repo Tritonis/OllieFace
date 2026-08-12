@@ -206,13 +206,11 @@ export const READABILITY = {
     { id: 'matron',   kind: 'holes', value: 0.0008, note: 'closed outline: no enclosed negative space in the idle read' },
     { id: 'maw',      kind: 'holes', value: 0.0029, note: 'closed outline: no enclosed negative space in the idle read' },
 
-    // The roster's one silhouette collision, and it is marginal: 0.0166 over
-    // the bar. Both are tall, narrow, hunched tier-2 casters — brood at aspect
-    // 0.500 and acolyte at 0.602 — and at bbox-normalised scale they are close
-    // to the same posture. The next-worst pair in the roster is charger/brood
-    // at 0.734, comfortably under. Slice-3 / content work: one of the two
-    // needs a distinguishing feature that survives being flattened.
-    { id: 'brood/acolyte', kind: 'familyIoU', value: 0.7966, note: 'two hunched tier-2 casters at near-identical normalised posture' },
+    // RETIRED: `brood/acolyte` familyIoU 0.7966. The roster's one silhouette
+    // collision — two hunched tier-2 casters that flattened to the same
+    // normalised posture — was paid off in art rather than exempted forever:
+    // the acolyte carries a crook-staff (`aco.robe`, EnemyMeshes.js), and the
+    // pair now clears the raw 0.78 ceiling with no exemption behind it.
   ],
 };
 
