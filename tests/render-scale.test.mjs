@@ -79,5 +79,42 @@ for (const [w, h, dpr, cap, adapt] of [[1600, 900, 1, 2, 1], [1920, 1080, 1.5, 1
     `setQuality after the pin does not move the drawing-buffer ratio (${pinnedRatio} -> ${renderer.getPixelRatio()})`);
 }
 
+// 10. B5 regression: `Number(scale) || 1` absorbed 0 along with NaN, so a
+//     caller passing a legitimate zero got FULL scale instead of the floor.
+//     Finite input clamps into [0.5, 1]; only non-finite input falls back to 1.
+{
+  globalThis.devicePixelRatio = 1;
+  globalThis.innerWidth = 1600;
+  globalThis.innerHeight = 900;
+  const renderer = {
+    _ratio: 1,
+    setPixelRatio(r) { this._ratio = r; },
+    getPixelRatio() { return this._ratio; },
+    setSize() {},
+  };
+  const rp = Object.create(RenderPipeline.prototype);
+  rp.renderer = renderer;
+  rp.composer = null;
+  rp.passes = {};
+  rp.ctx = null;
+  rp.quality = QUALITY.ULTRA;
+  rp._userScale = 1;
+  rp._resScale = 1;
+  rp._adaptOn = true;
+  rp._pinned = false;
+  rp._frameMs = [];
+  rp._failedAt = Infinity;
+  rp._sinceFail = 0;
+
+  rp.setRenderScale(0, false);
+  ok(close(rp._userScale, 0.5), `setRenderScale(0) clamps to the 0.5 floor, not full scale (${rp._userScale})`);
+
+  rp.setRenderScale(NaN, false);
+  ok(close(rp._userScale, 1), `setRenderScale(NaN) falls back to 1 (${rp._userScale})`);
+
+  rp.setRenderScale('0.7', false);
+  ok(close(rp._userScale, 0.7), `setRenderScale('0.7') coerces the numeric string (${rp._userScale})`);
+}
+
 console.log(fail ? `FAIL (${fail})` : `PASS (${pass})`);
 process.exit(fail ? 1 : 0);

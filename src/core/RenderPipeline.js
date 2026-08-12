@@ -421,7 +421,11 @@ export class RenderPipeline {
    *  while the capture harness holds the pin. */
   setRenderScale(scale, dynamic = true) {
     if (this._pinned) return;
-    const s = Math.min(1, Math.max(0.5, Number(scale) || 1));
+    // `|| 1` would absorb a legitimate 0 along with NaN and send a caller
+    // asking for the minimum to full scale instead. Only non-finite input
+    // falls back; every finite number takes the clamp.
+    const n = Number(scale);
+    const s = Math.min(1, Math.max(0.5, Number.isFinite(n) ? n : 1));
     const on = !!dynamic;
     if (s === this._userScale && on === this._adaptOn) return;
     this._userScale = s;
