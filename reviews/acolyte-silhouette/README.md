@@ -216,7 +216,11 @@ base runs equal, and the two differing — versus *within-tree wobble*:
 ```
 DETERMINISTIC CROSS-TREE : 63 leaves, in exactly three shots
 WITHIN-TREE WOBBLE       : 32 leaves
-06-loaded-hud, 08-explosion : ZERO leaves of either kind that differ cross-tree
+06-loaded-hud, 08-explosion : zero deterministic cross-tree leaves; 08 also zero
+                              within-tree wobble, 06 carries exactly one wobble leaf
+                              (subject.checks[1].perSep[5], 0.63 on one of three head
+                              runs vs 0.65 elsewhere) - more head-tree noise, which
+                              reinforces the variance verdict rather than weakening it
 ```
 
 The change's entire measurable footprint across the shot library is **the
