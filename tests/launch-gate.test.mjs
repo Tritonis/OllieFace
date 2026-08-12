@@ -46,14 +46,18 @@ console.log('shouldLaunch: the percentile is the reward');
   const mid = [0.05, 0.1, 0.1, 0.2, 0.2, 0.3, 0.4, 0.5, 0.6, 0.9];
   ok(shouldLaunch(0.9, mid, 0.35), 'a hot mid-run kill clears its window');
   ok(!shouldLaunch(0.36, mid, 0.35), 'a barely-over-floor kill in a hotter window does not');
+  // p70 of [1..11] sorted: idx = 0.7 * (11-1) = 7 -> sorted[7] = 8 exactly (no interpolation).
+  const boundary = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+  ok(shouldLaunch(8, boundary, 0.35), 'a kill exactly tying the quantile launches (>= boundary)');
 }
 
 console.log('determinism');
 {
-  const w = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  const w = [9, 8, 7, 6, 5, 4, 3, 2, 1];
+  const original = w.slice();
   const a = shouldLaunch(5, w, 0.35), b = shouldLaunch(5, w, 0.35);
   ok(a === b, 'same inputs, same answer');
-  ok(JSON.stringify(w) === '[1,2,3,4,5,6,7,8,9]', 'the window is not mutated');
+  ok(JSON.stringify(w) === JSON.stringify(original), 'the window is not mutated');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
