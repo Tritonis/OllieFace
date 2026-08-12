@@ -161,8 +161,12 @@ export const READABILITY = {
    *
    * Every value below was measured by
    * `node tools/silhouette.mjs --enemies --json reviews/round9/readability-gate.json`
-   * under d3d11, and is copied from that record. Nineteen entries, in three
-   * groups, and none of them is a threshold that was moved to fit the roster.
+   * under d3d11, and is copied from that record. Eighteen entries, in two
+   * groups — one `px40` and seventeen `holes` — and none of them is a threshold
+   * that was moved to fit the roster. There was a third group of one, the
+   * `brood/acolyte` familyIoU collision; it was paid off in art and retired,
+   * and the note at the foot of the list records what it read and why it is
+   * gone.
    */
   exemptions: [
     // The mite is 0.5 m tall and covers 74 px at 40 m against a 219 floor — a
@@ -206,13 +210,11 @@ export const READABILITY = {
     { id: 'matron',   kind: 'holes', value: 0.0008, note: 'closed outline: no enclosed negative space in the idle read' },
     { id: 'maw',      kind: 'holes', value: 0.0029, note: 'closed outline: no enclosed negative space in the idle read' },
 
-    // The roster's one silhouette collision, and it is marginal: 0.0166 over
-    // the bar. Both are tall, narrow, hunched tier-2 casters — brood at aspect
-    // 0.500 and acolyte at 0.602 — and at bbox-normalised scale they are close
-    // to the same posture. The next-worst pair in the roster is charger/brood
-    // at 0.734, comfortably under. Slice-3 / content work: one of the two
-    // needs a distinguishing feature that survives being flattened.
-    { id: 'brood/acolyte', kind: 'familyIoU', value: 0.7966, note: 'two hunched tier-2 casters at near-identical normalised posture' },
+    // RETIRED: `brood/acolyte` familyIoU 0.7966. The roster's one silhouette
+    // collision — two hunched tier-2 casters that flattened to the same
+    // normalised posture — was paid off in art rather than exempted forever:
+    // the acolyte carries a crook-staff (`aco.robe`, EnemyMeshes.js), and the
+    // pair now clears the raw 0.78 ceiling with no exemption behind it.
   ],
 };
 

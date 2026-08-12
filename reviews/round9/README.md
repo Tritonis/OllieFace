@@ -31,7 +31,9 @@ describe.
 with no GPU and no browser: `gradeRoster` over the stored units against the
 current `READABILITY`, asserting `ok === true` and that the stored `checks`
 array matches a fresh grade. So the nineteen hand-copied exemptions and the
-record they were copied from cannot drift apart unnoticed.
+record they were copied from cannot drift apart unnoticed. **Eighteen since
+`d546161`**: the `brood/acolyte` entry was paid off in art and deleted, and
+Finding 3 below carries the closure.
 
 Re-run the command after any change to `src/entities/EnemyMeshes.js`,
 `src/data/enemies.js` or the elite table.
@@ -42,9 +44,22 @@ Re-run the command after any change to `src/entities/EnemyMeshes.js`,
 |---|---|---|
 | `renderer` | `d3d11` | The real adapter, not SwiftShader. `tools/silhouette.mjs --software` produces a record marked `swiftshader`; two records from different renderers are not directly comparable and a reader diffing them needs to know that before concluding the roster moved. |
 | `units[].bands` | ten `{ w, fill, runs }` | Ten horizontal samples crown-to-feet. `runs` is the direct measure of *daylight through the outline* — a band at 1.00 run is a solid bar, arms welded to a torso or legs fused into one column — and it is the metric that can argue about Finding 2 below, where `minHoles` sees only *enclosed* space and reads zero across most of this roster. The record originally kept the widths alone and threw `fill` and `runs` away to the console, which meant the question the exemption note raises could not be answered from committed data without re-running the whole GPU pass. |
-| `commit` | `8ff3eb4` | The tree whose art was measured — the HEAD the tool ran against, recorded by the tool itself. **Re-run at the end of the slice** (Task 6 Step 2), and `git diff --stat` on the record showed *only this field moving*: all 514 checks, all 19 exemptions and every measured value are byte-identical to the run at `baa495c`. That is the gate doing its job — Tasks 3-5 are damage, launch and VFX changes, none of which may touch a rig or a mesh, and if one had, a check would have gone red here. The original run at `baa495c` is in this file's history; the commit that first added it (`4a88cfa`) changed only `tools/`, `tests/` and `reviews/`. The final re-run at `8ff3eb4` — the one that added `bands[].fill` and `bands[].runs` — moved `commit`, the band records, and the `floor`/`ceiling` bars of the nineteen exempted checks (the 1 % slack, above). **Every measured value and every check verdict is unchanged**: 25 units and 514 `{id, kind, value, ok, exempt}` tuples compare equal against the previous record, so no number in this README moved with it. |
+| `commit` | `8ff3eb4` | The tree whose art was measured — the HEAD the tool ran against, recorded by the tool itself. **Re-run at the end of the slice** (Task 6 Step 2), and `git diff --stat` on the record showed *only this field moving*: all 514 checks, all 19 exemptions and every measured value are byte-identical to the run at `baa495c`. That is the gate doing its job — Tasks 3-5 are damage, launch and VFX changes, none of which may touch a rig or a mesh, and if one had, a check would have gone red here. The original run at `baa495c` is in this file's history; the commit that first added it (`4a88cfa`) changed only `tools/`, `tests/` and `reviews/`. The final re-run at `8ff3eb4` — the one that added `bands[].fill` and `bands[].runs` — moved `commit`, the band records, and the `floor`/`ceiling` bars of the nineteen exempted checks (the 1 % slack, above). **Every measured value and every check verdict is unchanged**: 25 units and 514 `{id, kind, value, ok, exempt}` tuples compare equal against the previous record, so no number in this README moved with it. **Update (slice `2026-08-12-acolyte-silhouette`): this field now reads `d546161`.** The record was re-measured for the acolyte's crook-staff and re-run at the end of that slice, where `git diff --stat` again moved this field alone. The exemption count in this row is the run it describes; the live list is eighteen. See Finding 3. |
 | `seed` / `range` | `1337` / `40` | The `--seed` and `--range` the run used. |
 | `width` / `height` / `fov` | `1600` / `900` / `58` | The 40 m frame. 1600x900 is `tools/capture.mjs`'s own default (`:31`) and is the basis `READABILITY.minPx40` is defined against; `fov` is read off the live camera rather than written down, so the record measures this game's lens. |
+
+**The `rekeyed` block is gone, and it was not lost quietly.** Between `04421d2`
+and `d546161` this file carried a hand-added `rekeyed` object — the RoR2 id
+rename map (`beetle`→`scarab`, `lemurian`→`skink`, `wisp`→`mote`,
+`shrike`, `sentinel`, `colossus` and three affixes), with a note that the record
+had been re-keyed and not re-measured; `reviews/round7/FIX-ror2-ids.md` §5a is
+its argument. `tools/silhouette.mjs` writes this file from scratch and has never
+known how to emit that block, so the first regeneration after the rename dropped
+it, and every future regeneration would drop it again the same way. It is
+recorded here instead of re-pasted into the JSON, because a provenance note that
+only survives until the next GPU run is not provenance. The map itself is still
+in the history — `git show 04421d2:reviews/round9/readability-gate.json` — and
+the ids in this record have been the new ones since that commit.
 
 **It is deterministic.** Two consecutive runs of the same tree produced a
 byte-identical file, `commit` included — verified with `diff`. A gate that
@@ -85,6 +100,13 @@ collapsing the two loses the distinction the ratchet is made of.
 
 Every number in that table is recomputable from `readability-gate.json`; the
 `checks` array in the file is the source.
+
+**That table is the run this document reports, and one line of it has since been
+paid off.** The `familyIoU` exemption — `brood/acolyte` at 0.7966 — was deleted
+in slice `2026-08-12-acolyte-silhouette`; the current file grades **514 checks
+with 18 exemptions**, one `px40` and seventeen `holes`, and the `familyIoU` row
+now reads 300 checks, 0 exemptions, all 300 clearing the raw ceiling outright.
+Nothing else in the table moved.
 
 ### Finding 1 — the mite cannot be read at 40 m
 
@@ -133,6 +155,16 @@ alarming. Both are tall, narrow, hunched tier-2 casters (`brood` at aspect
 coincide. The next-worst pair in the whole roster is `charger/brood` at 0.734,
 comfortably under the bar. Content work: one of the two needs a distinguishing
 feature that survives being flattened.
+
+The feature landed as slice `2026-08-12-acolyte-silhouette` — a crook-staff on
+the acolyte, standing 0.6 m clear of its hood and offset to one side, which the
+brood's radial sac cannot answer — taking the pair from **0.7966 to 0.5551**
+against the same raw 0.78 ceiling, with the exemption **deleted** rather than
+loosened, so the roster's one silhouette collision is now clear with nothing
+behind it. The measurement, the six full-library captures — three per tree —
+whose whole cross-tree footprint is the acolyte and the two objects it now
+stands in front of, and the honest limitations live in
+`reviews/acolyte-silhouette/README.md`.
 
 ## Two things the gate does not cover
 
