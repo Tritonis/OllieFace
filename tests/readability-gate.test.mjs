@@ -180,7 +180,7 @@ console.log('the recorded roster covers every card the director can spawn');
   ok(typeof rec.commit === 'string' && rec.commit.length >= 7, 'the record names the commit it measured');
   ok(rec.seed === 1337 && rec.range === 40, 'and the seed and the range it measured at');
 
-  // Re-grade it. The nineteen exemptions in `silhouette-metrics.mjs` are
+  // Re-grade it. The eighteen exemptions in `silhouette-metrics.mjs` are
   // hand-copied from this record, and until this ran nothing checked that they
   // still describe it: a threshold could be tightened, or an exemption dropped
   // or mistyped, and the suite would stay green because it only ever asked

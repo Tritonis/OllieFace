@@ -30,10 +30,10 @@ describe.
 `tests/readability-gate.test.mjs` re-grades this file on every `npm test` run,
 with no GPU and no browser: `gradeRoster` over the stored units against the
 current `READABILITY`, asserting `ok === true` and that the stored `checks`
-array matches a fresh grade. So the hand-copied exemptions and the record they
-were copied from cannot drift apart unnoticed. **Nineteen of them when this was
-written; eighteen since `d546161`** — the `brood/acolyte` entry was paid off in
-art and deleted, and Finding 3 below carries the closure.
+array matches a fresh grade. So the nineteen hand-copied exemptions and the
+record they were copied from cannot drift apart unnoticed. **Eighteen since
+`d546161`**: the `brood/acolyte` entry was paid off in art and deleted, and
+Finding 3 below carries the closure.
 
 Re-run the command after any change to `src/entities/EnemyMeshes.js`,
 `src/data/enemies.js` or the elite table.
@@ -161,8 +161,9 @@ the acolyte, standing 0.6 m clear of its hood and offset to one side, which the
 brood's radial sac cannot answer — taking the pair from **0.7966 to 0.5551**
 against the same raw 0.78 ceiling, with the exemption **deleted** rather than
 loosened, so the roster's one silhouette collision is now clear with nothing
-behind it. The measurement, the full-library capture pair that shows nothing
-else in the shot library moved, and the honest limitations live in
+behind it. The measurement, the six full-library captures — three per tree —
+whose whole cross-tree footprint is the acolyte and the two objects it now
+stands in front of, and the honest limitations live in
 `reviews/acolyte-silhouette/README.md`.
 
 ## Two things the gate does not cover
