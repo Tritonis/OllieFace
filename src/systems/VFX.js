@@ -7,6 +7,7 @@ import { MAX_BLASTS } from '../shaders/DistortShader.js';
 import { clamp, lerp } from '../core/MathUtil.js';
 import { elementOf, sparkColour, ELEMENT_HUE } from '../data/damageTypes.js';
 import { isLocalVictim } from '../core/Engine.js';
+import { GATE, shouldLaunch } from './LaunchGate.js';
 
 /**
  * The impact layer.
@@ -197,6 +198,10 @@ export class VFX {
 
     this._dissolving = [];
     this._launches = [];
+    // The launch gate's window: the last `GATE.window` overkill fractions,
+    // oldest first. It lives here because the constructor IS the per-run reset
+    // — every restart in this game is a `location.reload()`.
+    this._overkillRecent = [];
     this._flashes = [];
     this._auras = [];
     // target -> (type -> entry). Keyed rather than a flat list because the
@@ -1399,7 +1404,19 @@ export class VFX {
     // on a mite as on a hulk.
     const pool = Math.max(1, p.victim?.maxHealth ?? 0);
     const over = (p.overkill ?? 0) / pool;
-    if (obj && over >= LAUNCH.minOverkillFrac) {
+    // The floor alone saturated the late run — 90.1% of kills launched at
+    // max power (reviews/round9/juice-probe.json). The gate also asks the
+    // kill to stand out against the run's own recent history; elites and
+    // bosses, rare by construction, keep the floor-only rule.
+    const launch = obj && shouldLaunch(
+      over, this._overkillRecent, LAUNCH.minOverkillFrac, !!(p.isElite || p.isBoss));
+    // Deliberately unconditional: every kill's fraction enters the window,
+    // launched or not, elite or not, rigless or not - the ring measures this
+    // run's damage profile, not the launchable subset, so a kill that never
+    // had a chance to launch still counts toward "what this run has been like".
+    this._overkillRecent.push(over);
+    if (this._overkillRecent.length > GATE.window) this._overkillRecent.shift();
+    if (launch) {
       const src = p.source?.position;
       let dx = 0, dz = 1;
       if (src) {

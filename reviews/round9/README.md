@@ -235,7 +235,10 @@ and becomes the ambient behaviour of dying.
 **This is recorded, not fixed.** Retuning `LAUNCH.minOverkillFrac` is the next
 slice's argument to have against this file. A quiet edit here, under cover of
 the run that discovered it, is exactly the move this record exists to make
-visible.
+visible. The retune landed as slice `2026-08-11-overkill-launch-retune` — a
+run-relative percentile gate rather than a moved constant, taking `late` from
+90.1% to 38.1% launched while leaving `mid` at 31.4% — and the argument and the
+after-record live in `reviews/launch-retune/README.md`.
 
 ### (b) Element coverage — `void` is a table entry with no consumer
 

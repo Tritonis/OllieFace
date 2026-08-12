@@ -201,6 +201,25 @@ try {
       };
     }
 
+    // How many kills the gate let through to a launch. Under the percentile
+    // gate the threshold-cleared count (kept below, denominated in the same
+    // minOverkillFrac as the c6795cb baseline) is the *eligible* population;
+    // this is the *launched* one. Both go in the record.
+    //
+    // Calls, not bodies in flight: `corpseLaunch` returns without registering
+    // on zero power and on a corpse already launched (src/systems/VFX.js:820-
+    // 821), the same "asked" vs "happened" split the dissolve wrap above makes
+    // explicit. `wrappedRealLaunch` is the disclosure the particle wrap carries
+    // as `emitReal` — on a tree with no `corpseLaunch` the count below would
+    // otherwise be a real-looking zero rather than a null.
+    J.launchCalls = null;
+    J.launchReal = !!vfx?.corpseLaunch;
+    if (vfx?.corpseLaunch) {
+      J.launchCalls = 0;
+      const innerL = vfx.corpseLaunch.bind(vfx);
+      vfx.corpseLaunch = (...a) => { J.launchCalls++; return innerL(...a); };
+    }
+
     // Every kill the game emits, recorded off the real event. `overkill`,
     // `type` and `status` are the three fields this slice added to the payload.
     ctx.events.on('kill', (p) => {
@@ -218,6 +237,7 @@ try {
         status: p.status ?? null,
         element: J.elementOf(p.type, p.status),
         isElite: !!p.isElite,
+        isBoss: !!p.isBoss,
       });
     });
 
@@ -286,6 +306,7 @@ try {
       J.kills.length = 0; J.listening = true;
       J.emitted = 0; J.emitPeak = 0;
       J.dissolveCalls = 0; J.dissolveStarted = 0;
+      J.launchCalls = J.launchReal ? 0 : null;
       const costStart = J.cost();
       let frames = 0, peakAlive = 0, cycles = 0;
       while (J.kills.length < kills && frames < frameBudget) {
@@ -316,6 +337,7 @@ try {
         kills: J.kills.slice(),
         emitted: J.emitted,
         dissolveCalls: J.dissolveCalls, dissolveStarted: J.dissolveStarted,
+        launchCalls: J.launchCalls, launchReal: J.launchReal,
         emitPeakPer30Frames: J.emitPeak,
         emitReal: J.emitReal,
         cost: { start: costStart, atPeak: J.costAtPeak ?? null, end: J.cost() },
@@ -356,7 +378,7 @@ try {
   const summarise = (a) => {
     const fr = a.kills.map((k) => k.frac).sort((x, y) => x - y);
     const minFrac = a.minOverkillFrac;
-    const launched = a.kills.filter((k) => k.frac >= minFrac);
+    const cleared = a.kills.filter((k) => k.frac >= minFrac);
     const hist = {};
     for (const k of a.kills) hist[k.element] = (hist[k.element] ?? 0) + 1;
     const types = {};
@@ -374,8 +396,19 @@ try {
       },
       overkill: {
         minOverkillFrac: minFrac,
-        launchedCount: launched.length,
-        launchedFraction: a.kills.length ? +(launched.length / a.kills.length).toFixed(4) : null,
+        // `cleared*` is the *eligible* population: kills whose fraction beats
+        // `minOverkillFrac`. It is what the c6795cb baseline called
+        // `launchedCount`/`launchedFraction`, because under the floor-only rule
+        // clearing the floor *was* launching. `launched*` below is the real
+        // thing, counted by wrapping `VFX.corpseLaunch`, and under the
+        // percentile gate it is a subset of the eligible population.
+        clearedNote: 'cleared = beat minOverkillFrac (the c6795cb baseline\'s `launchedFraction` is this field); launched = gate-passed `VFX.corpseLaunch` calls, counted through the real method (calls, not bodies in flight: zero power and an already-launched corpse return without registering).',
+        clearedCount: cleared.length,
+        clearedFraction: a.kills.length ? +(cleared.length / a.kills.length).toFixed(4) : null,
+        wrappedRealLaunch: !!a.launchReal,
+        launchedCount: a.launchCalls ?? null,
+        launchedFraction: a.kills.length && a.launchCalls != null
+          ? +(a.launchCalls / a.kills.length).toFixed(4) : null,
         medianFrac: med, p90Frac: p90,
         medianLaunchMetres: med == null ? null : reach(med, a.launch, minFrac),
         p90LaunchMetres: p90 == null ? null : reach(p90, a.launch, minFrac),
@@ -428,7 +461,7 @@ try {
 
   const summaries = arms.map((a) => summarise({ ...a, elementsAll: ELEMENTS }));
   for (const s of summaries) {
-    console.log(`\n[${s.arm}] n=${s.sample}  launched ${s.overkill.launchedCount} (${s.overkill.launchedFraction})  medianFrac ${s.overkill.medianFrac} -> ${s.overkill.medianLaunchMetres} m  p90 ${s.overkill.p90Frac} -> ${s.overkill.p90LaunchMetres} m`);
+    console.log(`\n[${s.arm}] n=${s.sample}  cleared ${s.overkill.clearedCount} (${s.overkill.clearedFraction})  launched ${s.overkill.launchedCount} (${s.overkill.launchedFraction})  medianFrac ${s.overkill.medianFrac} -> ${s.overkill.medianLaunchMetres} m  p90 ${s.overkill.p90Frac} -> ${s.overkill.p90LaunchMetres} m`);
     console.log(`         elements ${JSON.stringify(s.elements)}  absent ${JSON.stringify(s.elementsAbsent)}`);
     console.log(`         cost start ${JSON.stringify(s.cost.start)}  peak ${JSON.stringify(s.cost.atPeak)}`);
   }
