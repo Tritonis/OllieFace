@@ -357,6 +357,37 @@ ok(boot.pinned === false || (boot.userScale === 1),
 ok(boot.pinned || (boot.userScale === 0.5 && boot.adaptOn === false),
   `saved render scale survives a reload (userScale ${boot.userScale}, dynamic ${boot.adaptOn})`);
 
+// B4: hostile persisted values must be clamped by load(), not adopted.
+// A hand-edited renderScale of 7 used to render the thumb at the clamp while
+// the readout printed 700%, and dynamicRes 5 matched neither segment button.
+// This runs after the block above for the same reason that one runs last: it
+// reloads again, and the page it lands on has no run and no pause screen.
+await page.evaluate(() => {
+  const KEY = Object.keys(localStorage).find((k) => localStorage.getItem(k)?.includes('renderScale'));
+  const st = JSON.parse(localStorage.getItem(KEY));
+  st.renderScale = 7;
+  st.dynamicRes = 5;
+  st.fov = 9999;
+  localStorage.setItem(KEY, JSON.stringify(st));
+});
+await page.reload({ waitUntil: 'load' });
+await page.waitForFunction(() => globalThis.__GAME__?.ctx?.hud?.menus?.screen === 'title', null, { timeout: 60000 });
+await page.click('.screen--title [data-act="settings"]');
+await page.waitForFunction(() => __GAME__.ctx.hud.menus.screen === 'settings');
+const clamped = await page.evaluate(() => {
+  const input = document.querySelector('input[data-key="renderScale"]');
+  const out = document.querySelector('output[data-out="renderScale"]');
+  const fovOutEl = document.querySelector('output[data-out="fov"]');
+  const on = [...document.querySelectorAll('[data-seg="dynamicRes"] .segbtn')]
+    .filter((b) => b.classList.contains('is-on')).map((b) => b.dataset.val);
+  return { val: input.value, text: out.textContent.trim(), fovOut: fovOutEl.textContent.trim(), on };
+});
+ok(clamped.val === '1', `hostile renderScale 7 loads as the 1.0 ceiling (thumb ${clamped.val})`);
+ok(clamped.text.includes('100%'), `and the readout agrees with the thumb (${clamped.text})`);
+ok(clamped.fovOut.startsWith('110'), `hostile fov 9999 clamps to the slider max, readout included (${clamped.fovOut})`);
+ok(clamped.on.length === 1 && clamped.on[0] === '1', `hostile dynamicRes 5 lands on Auto, one segment lit (${clamped.on})`);
+await shot('08-hostile-store.png');
+
 await browser.close();
 await server.close();
 console.log(fail.length ? `\nFAIL - ${fail.join('; ')}` : '\nPASS - picker, pause summary and render scale verified');

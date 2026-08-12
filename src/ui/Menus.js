@@ -2156,6 +2156,15 @@ function load(fallbackQuality) {
     for (const k of Object.keys(DEFAULTS)) {
       if (typeof parsed[k] === 'number' && Number.isFinite(parsed[k])) out[k] = parsed[k];
     }
+    // Adopting any finite number lets a hand-edited or corrupted store desync
+    // the UI: a renderScale of 7 draws the thumb at the clamp while the
+    // readout prints 700%, and a dynamicRes of 5 lights neither segment.
+    // Clamp every value into its own control's range (final-review B4).
+    for (const s of SLIDERS) {
+      out[s.key] = Math.min(s.max, Math.max(s.min, out[s.key]));
+    }
+    out.quality = Math.min(3, Math.max(0, Math.round(out.quality)));
+    out.dynamicRes = out.dynamicRes === 0 ? 0 : 1;
     return out;
   } catch {
     return base;
