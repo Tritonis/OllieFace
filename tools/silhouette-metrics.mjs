@@ -161,8 +161,12 @@ export const READABILITY = {
    *
    * Every value below was measured by
    * `node tools/silhouette.mjs --enemies --json reviews/round9/readability-gate.json`
-   * under d3d11, and is copied from that record. Nineteen entries, in three
-   * groups, and none of them is a threshold that was moved to fit the roster.
+   * under d3d11, and is copied from that record. Eighteen entries, in two
+   * groups — one `px40` and seventeen `holes` — and none of them is a threshold
+   * that was moved to fit the roster. There was a third group of one, the
+   * `brood/acolyte` familyIoU collision; it was paid off in art and retired,
+   * and the note at the foot of the list records what it read and why it is
+   * gone.
    */
   exemptions: [
     // The mite is 0.5 m tall and covers 74 px at 40 m against a 219 floor — a

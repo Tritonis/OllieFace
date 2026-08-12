@@ -1,6 +1,6 @@
 {
   "tool": "tools/silhouette.mjs --enemies",
-  "commit": "125eb19d912bd4e1b2341c1e2500b7dc1cefa3a6",
+  "commit": "d54616170cf94662793f207eb32c5f1970d83da4",
   "seed": 1337,
   "range": 40,
   "width": 1600,
