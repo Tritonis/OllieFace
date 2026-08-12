@@ -1,0 +1,3384 @@
+{
+  "tool": "tools/juiceprobe.mjs",
+  "mode": "full",
+  "commit": "e595bc2a41b95f65ce1a1f7ec47e116722ad09b3",
+  "seed": 1337,
+  "killTarget": 200,
+  "renderer": "d3d11",
+  "sharedStreamClaim": {
+    "note": "Not measured here. The no-new-draw claim is the sp-equivalence fingerprint, which is exact where a probe would be indicative.",
+    "command": "node tests/sp-equivalence.mjs --compare reviews/round7/baseline-00f8900.json",
+    "file": "reviews/round7/baseline-00f8900.json"
+  },
+  "arms": [
+    {
+      "arm": "mid",
+      "sample": 118,
+      "framesRun": 18000,
+      "fixture": {
+        "gameTimeSeconds": 587,
+        "survivorLevel": 14,
+        "itemsHeld": 11,
+        "directorLevel": 11,
+        "difficultyCoefficient": 4.4858,
+        "healthMult": 4,
+        "peakAlive": 39
+      },
+      "overkill": {
+        "minOverkillFrac": 0.35,
+        "clearedNote": "cleared = beat minOverkillFrac (the c6795cb baseline's `launchedFraction` is this field); launched = real wrapped `VFX.corpseLaunch` calls.",
+        "clearedCount": 37,
+        "clearedFraction": 0.3136,
+        "launchedCount": 37,
+        "launchedFraction": 0.3136,
+        "medianFrac": 0.188,
+        "p90Frac": 0.9199,
+        "medianLaunchMetres": 0,
+        "p90LaunchMetres": 5.24,
+        "maxFrac": 45.1112,
+        "maxLaunchMetres": 6.82
+      },
+      "elements": {
+        "shock": 66,
+        "blast": 48,
+        "kinetic": 4
+      },
+      "elementsAbsent": [
+        "fire",
+        "ice",
+        "nature",
+        "void"
+      ],
+      "typeStatus": {
+        "lightning": 66,
+        "missile": 48,
+        "hit": 4
+      },
+      "cost": {
+        "start": {
+          "programs": 71,
+          "geometries": 418,
+          "textures": 53
+        },
+        "atPeak": {
+          "programs": 71,
+          "geometries": 421,
+          "textures": 53
+        },
+        "end": {
+          "programs": 71,
+          "geometries": 423,
+          "textures": 53
+        },
+        "note": "this arm's own counters, for the record only. `programs` counts what this page has compiled so far, so it is NOT comparable across trees from here — the cross-tree reading is `costComparison`, taken by two `--mode cost` runs that are each the first arm of a fresh page."
+      },
+      "particles": {
+        "note": "emission, not liveness: ParticleSystem has no live counter (`layers.*.live` is initialised at src/fx/ParticleSystem.js:141 and never written).",
+        "wrappedRealEmit": true,
+        "totalSpritesEmitted": 566068,
+        "peakSpritesPer30Frames": 12858
+      },
+      "corpseDissolve": {
+        "note": "why the program count is allowed to move by one: `deathDissolve` compiles a dissolve material variant, and before this slice `resolveObject` could not see an enemy rig, so the call did nothing. Calls vs starts separates \"asked\" from \"happened\".",
+        "calls": 118,
+        "started": 118
+      }
+    },
+    {
+      "arm": "late",
+      "sample": 202,
+      "framesRun": 840,
+      "fixture": {
+        "gameTimeSeconds": 1333,
+        "survivorLevel": 39,
+        "itemsHeld": 97,
+        "directorLevel": 50,
+        "difficultyCoefficient": 17.476,
+        "healthMult": 15.7,
+        "peakAlive": 12
+      },
+      "overkill": {
+        "minOverkillFrac": 0.35,
+        "clearedNote": "cleared = beat minOverkillFrac (the c6795cb baseline's `launchedFraction` is this field); launched = real wrapped `VFX.corpseLaunch` calls.",
+        "clearedCount": 182,
+        "clearedFraction": 0.901,
+        "launchedCount": 77,
+        "launchedFraction": 0.3812,
+        "medianFrac": 13.0795,
+        "p90Frac": 106.4859,
+        "medianLaunchMetres": 6.82,
+        "p90LaunchMetres": 6.82,
+        "maxFrac": 963.0127,
+        "maxLaunchMetres": 6.82
+      },
+      "elements": {
+        "shock": 26,
+        "blast": 3,
+        "kinetic": 23,
+        "nature": 11,
+        "fire": 123,
+        "ice": 16
+      },
+      "elementsAbsent": [
+        "void"
+      ],
+      "typeStatus": {
+        "lightning": 26,
+        "missile": 2,
+        "wind": 1,
+        "gravity": 1,
+        "swarm": 7,
+        "fire": 111,
+        "fire+burn": 12,
+        "dagger": 16,
+        "spore": 4,
+        "frost": 16,
+        "spark": 6
+      },
+      "cost": {
+        "start": {
+          "programs": 71,
+          "geometries": 423,
+          "textures": 53
+        },
+        "atPeak": {
+          "programs": 71,
+          "geometries": 423,
+          "textures": 53
+        },
+        "end": {
+          "programs": 71,
+          "geometries": 423,
+          "textures": 53
+        },
+        "note": "this arm's own counters, for the record only. `programs` counts what this page has compiled so far, so it is NOT comparable across trees from here — the cross-tree reading is `costComparison`, taken by two `--mode cost` runs that are each the first arm of a fresh page."
+      },
+      "particles": {
+        "note": "emission, not liveness: ParticleSystem has no live counter (`layers.*.live` is initialised at src/fx/ParticleSystem.js:141 and never written).",
+        "wrappedRealEmit": true,
+        "totalSpritesEmitted": 117712,
+        "peakSpritesPer30Frames": 6870
+      },
+      "corpseDissolve": {
+        "note": "why the program count is allowed to move by one: `deathDissolve` compiles a dissolve material variant, and before this slice `resolveObject` could not see an enemy rig, so the call did nothing. Calls vs starts separates \"asked\" from \"happened\".",
+        "calls": 202,
+        "started": 202
+      }
+    }
+  ],
+  "costComparison": null,
+  "raw": [
+    {
+      "arm": "mid",
+      "kills": [
+        {
+          "id": "shrike",
+          "maxHealth": 130,
+          "overkill": 2.19,
+          "frac": 0.0168,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "scarab",
+          "maxHealth": 117,
+          "overkill": 25.56,
+          "frac": 0.2185,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 60,
+          "overkill": 82.56,
+          "frac": 1.376,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "skink",
+          "maxHealth": 195,
+          "overkill": 22.59,
+          "frac": 0.1159,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 137,
+          "overkill": 5.56,
+          "frac": 0.0406,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mote",
+          "maxHealth": 143,
+          "overkill": 0.99,
+          "frac": 0.0069,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 273,
+          "overkill": 45.87,
+          "frac": 0.168,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 312,
+          "overkill": 303.66,
+          "frac": 0.9733,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 2294,
+          "overkill": 1662.21,
+          "frac": 0.7246,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 546,
+          "overkill": 22.58,
+          "frac": 0.0414,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 35.24,
+          "frac": 0.2073,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 169,
+          "overkill": 1.02,
+          "frac": 0.0061,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "scarab",
+          "maxHealth": 333,
+          "overkill": 26.7,
+          "frac": 0.0802,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "mote",
+          "maxHealth": 407,
+          "overkill": 3.45,
+          "frac": 0.0085,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 1702,
+          "overkill": 0.87,
+          "frac": 0.0005,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 624,
+          "overkill": 20.77,
+          "frac": 0.0333,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 189,
+          "overkill": 1.25,
+          "frac": 0.0066,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "skink",
+          "maxHealth": 555,
+          "overkill": 282.23,
+          "frac": 0.5085,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 389,
+          "overkill": 130.58,
+          "frac": 0.3357,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 3330,
+          "overkill": 34.39,
+          "frac": 0.0103,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 1258,
+          "overkill": 33.58,
+          "frac": 0.0267,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "shrike",
+          "maxHealth": 370,
+          "overkill": 11.55,
+          "frac": 0.0312,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 888,
+          "overkill": 6.17,
+          "frac": 0.007,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "sentinel",
+          "maxHealth": 1924,
+          "overkill": 80.47,
+          "frac": 0.0418,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 962,
+          "overkill": 2.23,
+          "frac": 0.0023,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 83.86,
+          "frac": 0.4933,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 25.05,
+          "frac": 0.1474,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 60.32,
+          "frac": 0.3548,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 86.06,
+          "frac": 0.5062,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 0.55,
+          "frac": 0.0032,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 390,
+          "overkill": 31.39,
+          "frac": 0.0805,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 1554,
+          "overkill": 39.28,
+          "frac": 0.0253,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 1258,
+          "overkill": 33.56,
+          "frac": 0.0267,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 1110,
+          "overkill": 6.54,
+          "frac": 0.0059,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 3330,
+          "overkill": 0.36,
+          "frac": 0.0001,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 1776,
+          "overkill": 13.18,
+          "frac": 0.0074,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 1702,
+          "overkill": 22.82,
+          "frac": 0.0134,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 1554,
+          "overkill": 97.85,
+          "frac": 0.063,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 537,
+          "overkill": 2.73,
+          "frac": 0.0051,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 962,
+          "overkill": 9.67,
+          "frac": 0.01,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 777,
+          "overkill": 107.21,
+          "frac": 0.138,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "sentinel",
+          "maxHealth": 1924,
+          "overkill": 21.42,
+          "frac": 0.0111,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 888,
+          "overkill": 26.72,
+          "frac": 0.0301,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 3330,
+          "overkill": 1379.77,
+          "frac": 0.4143,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 338,
+          "overkill": 0.52,
+          "frac": 0.0015,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 1110,
+          "overkill": 22.94,
+          "frac": 0.0207,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 1702,
+          "overkill": 59.28,
+          "frac": 0.0348,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 1258,
+          "overkill": 1.45,
+          "frac": 0.0012,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 2294,
+          "overkill": 116.02,
+          "frac": 0.0506,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "shrike",
+          "maxHealth": 370,
+          "overkill": 5306.3,
+          "frac": 14.3414,
+          "type": "hit",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "shrike",
+          "maxHealth": 370,
+          "overkill": 8293.83,
+          "frac": 22.4157,
+          "type": "hit",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 31.96,
+          "frac": 0.188,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "shrike",
+          "maxHealth": 370,
+          "overkill": 519.56,
+          "frac": 1.4042,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "scarab",
+          "maxHealth": 333,
+          "overkill": 109.66,
+          "frac": 0.3293,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "skink",
+          "maxHealth": 555,
+          "overkill": 16.98,
+          "frac": 0.0306,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 31.96,
+          "frac": 0.188,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 138.25,
+          "frac": 0.8133,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 138.25,
+          "frac": 0.8133,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 138.25,
+          "frac": 0.8133,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 777,
+          "overkill": 218.85,
+          "frac": 0.2817,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 2.03,
+          "frac": 0.0119,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 31.96,
+          "frac": 0.188,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 31.96,
+          "frac": 0.188,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 138.25,
+          "frac": 0.8133,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 31.96,
+          "frac": 0.188,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 31.96,
+          "frac": 0.188,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 138.25,
+          "frac": 0.8133,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "scarab",
+          "maxHealth": 333,
+          "overkill": 3137.04,
+          "frac": 9.4205,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "scarab",
+          "maxHealth": 333,
+          "overkill": 115.91,
+          "frac": 0.3481,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 1776,
+          "overkill": 1.12,
+          "frac": 0.0006,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "scarab",
+          "maxHealth": 333,
+          "overkill": 3.1,
+          "frac": 0.0093,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 31.96,
+          "frac": 0.188,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 31.96,
+          "frac": 0.188,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 138.25,
+          "frac": 0.8133,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 138.25,
+          "frac": 0.8133,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "scarab",
+          "maxHealth": 333,
+          "overkill": 45.83,
+          "frac": 0.1376,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 3.1,
+          "frac": 0.0182,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 138.25,
+          "frac": 0.8133,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 31.96,
+          "frac": 0.188,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 31.96,
+          "frac": 0.188,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 31.96,
+          "frac": 0.188,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 31.96,
+          "frac": 0.188,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 138.25,
+          "frac": 0.8133,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 31.96,
+          "frac": 0.188,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 138.25,
+          "frac": 0.8133,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 31.96,
+          "frac": 0.188,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 31.96,
+          "frac": 0.188,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 138.25,
+          "frac": 0.8133,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "scarab",
+          "maxHealth": 333,
+          "overkill": 707.32,
+          "frac": 2.1241,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "skink",
+          "maxHealth": 555,
+          "overkill": 6108.19,
+          "frac": 11.0058,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 7668.91,
+          "frac": 45.1112,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 138.25,
+          "frac": 0.8133,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 31.96,
+          "frac": 0.188,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 31.96,
+          "frac": 0.188,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 31.96,
+          "frac": 0.188,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 138.25,
+          "frac": 0.8133,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 138.25,
+          "frac": 0.8133,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 31.96,
+          "frac": 0.188,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 31.96,
+          "frac": 0.188,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 31.96,
+          "frac": 0.188,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 138.25,
+          "frac": 0.8133,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 962,
+          "overkill": 33.85,
+          "frac": 0.0352,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "skink",
+          "maxHealth": 555,
+          "overkill": 48.96,
+          "frac": 0.0882,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "shrike",
+          "maxHealth": 370,
+          "overkill": 8293.83,
+          "frac": 22.4157,
+          "type": "hit",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 3.28,
+          "frac": 0.0193,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 43.84,
+          "frac": 0.2579,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 156.39,
+          "frac": 0.9199,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 43.84,
+          "frac": 0.2579,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 156.39,
+          "frac": 0.9199,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 156.39,
+          "frac": 0.9199,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 43.84,
+          "frac": 0.2579,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 156.39,
+          "frac": 0.9199,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "scarab",
+          "maxHealth": 333,
+          "overkill": 313.37,
+          "frac": 0.9411,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 389,
+          "overkill": 0.33,
+          "frac": 0.0009,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 43.84,
+          "frac": 0.2579,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 170,
+          "overkill": 156.39,
+          "frac": 0.9199,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 1776,
+          "overkill": 8.96,
+          "frac": 0.005,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "shrike",
+          "maxHealth": 370,
+          "overkill": 0.31,
+          "frac": 0.0008,
+          "type": "hit",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        }
+      ]
+    },
+    {
+      "arm": "late",
+      "kills": [
+        {
+          "id": "acolyte",
+          "maxHealth": 1248,
+          "overkill": 6977.9,
+          "frac": 5.5913,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "shrike",
+          "maxHealth": 520,
+          "overkill": 7705.9,
+          "frac": 14.819,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mote",
+          "maxHealth": 572,
+          "overkill": 7653.9,
+          "frac": 13.381,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 2184,
+          "overkill": 6041.9,
+          "frac": 2.7664,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "skink",
+          "maxHealth": 780,
+          "overkill": 11775.33,
+          "frac": 15.0966,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 1092,
+          "overkill": 11463.33,
+          "frac": 10.4976,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 239,
+          "overkill": 7986.9,
+          "frac": 33.418,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 676,
+          "overkill": 11879.33,
+          "frac": 17.573,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "scarab",
+          "maxHealth": 468,
+          "overkill": 7757.9,
+          "frac": 16.5767,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 546,
+          "overkill": 7679.9,
+          "frac": 14.0658,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 1352,
+          "overkill": 6873.9,
+          "frac": 5.0842,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 1560,
+          "overkill": 3218.74,
+          "frac": 2.0633,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 2496,
+          "overkill": 6477.71,
+          "frac": 2.5952,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 754,
+          "overkill": 81426.33,
+          "frac": 107.9925,
+          "type": "wind",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 722,
+          "overkill": 31876.84,
+          "frac": 44.1507,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "scarab",
+          "maxHealth": 1413,
+          "overkill": 31185.84,
+          "frac": 22.0707,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 2041,
+          "overkill": 30557.84,
+          "frac": 14.972,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "shrike",
+          "maxHealth": 1570,
+          "overkill": 31028.84,
+          "frac": 19.7636,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 9734,
+          "overkill": 22864.84,
+          "frac": 2.349,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 2277,
+          "overkill": 30321.84,
+          "frac": 13.3166,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "skink",
+          "maxHealth": 2355,
+          "overkill": 30243.84,
+          "frac": 12.8424,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "sentinel",
+          "maxHealth": 8164,
+          "overkill": 24434.84,
+          "frac": 2.993,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 7222,
+          "overkill": 25376.84,
+          "frac": 3.5138,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "mote",
+          "maxHealth": 1727,
+          "overkill": 30871.84,
+          "frac": 17.876,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 5338,
+          "overkill": 27260.84,
+          "frac": 5.1069,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1649,
+          "overkill": 30949.84,
+          "frac": 18.7689,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 4082,
+          "overkill": 1558.76,
+          "frac": 0.3819,
+          "type": "missile",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 14130,
+          "overkill": 317.98,
+          "frac": 0.0225,
+          "type": "gravity",
+          "status": null,
+          "element": "blast",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1649,
+          "overkill": 94.22,
+          "frac": 0.0571,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "sentinel",
+          "maxHealth": 8164,
+          "overkill": 6098.67,
+          "frac": 0.747,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 7222,
+          "overkill": 7040.67,
+          "frac": 0.9749,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "scarab",
+          "maxHealth": 1413,
+          "overkill": 12849.67,
+          "frac": 9.0939,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "skink",
+          "maxHealth": 2355,
+          "overkill": 11907.67,
+          "frac": 5.0563,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 9734,
+          "overkill": 4528.67,
+          "frac": 0.4652,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4710,
+          "overkill": 9552.67,
+          "frac": 2.0282,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 722,
+          "overkill": 13540.67,
+          "frac": 18.7544,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3768,
+          "overkill": 5226.94,
+          "frac": 1.3872,
+          "type": "fire",
+          "status": "burn",
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 7536,
+          "overkill": 72334.95,
+          "frac": 9.5986,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 5338,
+          "overkill": 74532.95,
+          "frac": 13.9627,
+          "type": "lightning",
+          "status": null,
+          "element": "shock",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 14130,
+          "overkill": 298.8,
+          "frac": 0.0211,
+          "type": "dagger",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 2277,
+          "overkill": 16249.91,
+          "frac": 7.1365,
+          "type": "spore",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 4082,
+          "overkill": 3656.65,
+          "frac": 0.8958,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 2041,
+          "overkill": 13094.89,
+          "frac": 6.4159,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3768,
+          "overkill": 11367.89,
+          "frac": 3.017,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 7222,
+          "overkill": 516.65,
+          "frac": 0.0715,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 6594,
+          "overkill": 1144.65,
+          "frac": 0.1736,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "shrike",
+          "maxHealth": 1570,
+          "overkill": 13565.89,
+          "frac": 8.6407,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 7536,
+          "overkill": 7599.89,
+          "frac": 1.0085,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4710,
+          "overkill": 3028.65,
+          "frac": 0.643,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 3297,
+          "overkill": 359964.47,
+          "frac": 109.1794,
+          "type": "dagger",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "mote",
+          "maxHealth": 1727,
+          "overkill": 361534.47,
+          "frac": 209.3425,
+          "type": "dagger",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "sentinel",
+          "maxHealth": 8164,
+          "overkill": 33.05,
+          "frac": 0.004,
+          "type": "spore",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 722,
+          "overkill": 18602.14,
+          "frac": 25.7647,
+          "type": "spore",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "scarab",
+          "maxHealth": 1413,
+          "overkill": 25162.14,
+          "frac": 17.8076,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 2277,
+          "overkill": 24298.14,
+          "frac": 10.6711,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 2041,
+          "overkill": 24534.14,
+          "frac": 12.0206,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "skink",
+          "maxHealth": 2355,
+          "overkill": 24220.14,
+          "frac": 10.2846,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "shrike",
+          "maxHealth": 1570,
+          "overkill": 25005.14,
+          "frac": 15.9268,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 14130,
+          "overkill": 3558.11,
+          "frac": 0.2518,
+          "type": "fire",
+          "status": "burn",
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 4082,
+          "overkill": 2039.53,
+          "frac": 0.4996,
+          "type": "fire",
+          "status": "burn",
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mote",
+          "maxHealth": 1727,
+          "overkill": 636076.31,
+          "frac": 368.3129,
+          "type": "dagger",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1649,
+          "overkill": 636154.31,
+          "frac": 385.7819,
+          "type": "dagger",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 6594,
+          "overkill": 1413.97,
+          "frac": 0.2144,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 7536,
+          "overkill": 19763.91,
+          "frac": 2.6226,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 5338,
+          "overkill": 21961.91,
+          "frac": 4.1143,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 14130,
+          "overkill": 45344.81,
+          "frac": 3.2091,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3768,
+          "overkill": 23531.91,
+          "frac": 6.2452,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "sentinel",
+          "maxHealth": 8164,
+          "overkill": 19135.91,
+          "frac": 2.3439,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 7222,
+          "overkill": 6735.85,
+          "frac": 0.9327,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 3297,
+          "overkill": 507.63,
+          "frac": 0.154,
+          "type": "fire",
+          "status": "burn",
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 9734,
+          "overkill": 965.38,
+          "frac": 0.0992,
+          "type": "dagger",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4710,
+          "overkill": 650487.95,
+          "frac": 138.1078,
+          "type": "dagger",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "scarab",
+          "maxHealth": 1413,
+          "overkill": 3809.27,
+          "frac": 2.6959,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1649,
+          "overkill": 37518.04,
+          "frac": 22.752,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 4082,
+          "overkill": 35085.04,
+          "frac": 8.5951,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 2041,
+          "overkill": 17984.25,
+          "frac": 8.8115,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 3297,
+          "overkill": 35870.04,
+          "frac": 10.8796,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mote",
+          "maxHealth": 1727,
+          "overkill": 37440.04,
+          "frac": 21.6792,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "shrike",
+          "maxHealth": 1570,
+          "overkill": 37597.04,
+          "frac": 23.9472,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 2277,
+          "overkill": 36890.04,
+          "frac": 16.2012,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "skink",
+          "maxHealth": 2355,
+          "overkill": 169979.97,
+          "frac": 72.1783,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 7536,
+          "overkill": 21680.92,
+          "frac": 2.877,
+          "type": "spore",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 5338,
+          "overkill": 34841.98,
+          "frac": 6.5272,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3768,
+          "overkill": 36411.98,
+          "frac": 9.6635,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "sentinel",
+          "maxHealth": 8164,
+          "overkill": 32015.98,
+          "frac": 3.9216,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 7222,
+          "overkill": 32957.98,
+          "frac": 4.5636,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 6594,
+          "overkill": 828.22,
+          "frac": 0.1256,
+          "type": "fire",
+          "status": "burn",
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 9734,
+          "overkill": 947.29,
+          "frac": 0.0973,
+          "type": "fire",
+          "status": "burn",
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 14130,
+          "overkill": 1762.8,
+          "frac": 0.1248,
+          "type": "dagger",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4710,
+          "overkill": 959609.48,
+          "frac": 203.7387,
+          "type": "dagger",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "scarab",
+          "maxHealth": 1413,
+          "overkill": 4079.39,
+          "frac": 2.887,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 2277,
+          "overkill": 38915.92,
+          "frac": 17.0909,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 2041,
+          "overkill": 39151.92,
+          "frac": 19.1827,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "skink",
+          "maxHealth": 2355,
+          "overkill": 38837.92,
+          "frac": 16.4917,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mote",
+          "maxHealth": 1727,
+          "overkill": 39465.92,
+          "frac": 22.8523,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "shrike",
+          "maxHealth": 1570,
+          "overkill": 39622.92,
+          "frac": 25.2375,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 4082,
+          "overkill": 1009.4,
+          "frac": 0.2473,
+          "type": "fire",
+          "status": "burn",
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1649,
+          "overkill": 986981.06,
+          "frac": 598.5331,
+          "type": "dagger",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 3297,
+          "overkill": 398.7,
+          "frac": 0.1209,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "sentinel",
+          "maxHealth": 8164,
+          "overkill": 46048.7,
+          "frac": 5.6405,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 5338,
+          "overkill": 48874.7,
+          "frac": 9.156,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 7536,
+          "overkill": 46676.7,
+          "frac": 6.1938,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4710,
+          "overkill": 49502.7,
+          "frac": 10.5101,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3768,
+          "overkill": 50444.7,
+          "frac": 13.3877,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 7222,
+          "overkill": 1072.49,
+          "frac": 0.1485,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 6594,
+          "overkill": 1294510.78,
+          "frac": 196.3165,
+          "type": "dagger",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "skink",
+          "maxHealth": 2355,
+          "overkill": 5046.84,
+          "frac": 2.143,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "mote",
+          "maxHealth": 1727,
+          "overkill": 53786.8,
+          "frac": 31.1446,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "shrike",
+          "maxHealth": 1570,
+          "overkill": 26813,
+          "frac": 17.0783,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 722,
+          "overkill": 54791.8,
+          "frac": 75.8889,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "scarab",
+          "maxHealth": 1413,
+          "overkill": 54100.8,
+          "frac": 38.2879,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1649,
+          "overkill": 53864.8,
+          "frac": 32.6651,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 3297,
+          "overkill": 5744.17,
+          "frac": 1.7422,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 7536,
+          "overkill": 60272.81,
+          "frac": 7.998,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 4082,
+          "overkill": 63726.81,
+          "frac": 15.6117,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 2041,
+          "overkill": 65767.81,
+          "frac": 32.2233,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 6594,
+          "overkill": 3657.59,
+          "frac": 0.5547,
+          "type": "fire",
+          "status": "burn",
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 2277,
+          "overkill": 829782.95,
+          "frac": 364.4194,
+          "type": "dagger",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 7222,
+          "overkill": 1819.17,
+          "frac": 0.2519,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 9734,
+          "overkill": 58074.81,
+          "frac": 5.9662,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 5338,
+          "overkill": 124.93,
+          "frac": 0.0234,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4710,
+          "overkill": 63098.81,
+          "frac": 13.3968,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3768,
+          "overkill": 64040.81,
+          "frac": 16.996,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "sentinel",
+          "maxHealth": 8164,
+          "overkill": 59644.81,
+          "frac": 7.3058,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 11383,
+          "overkill": 286975.75,
+          "frac": 25.2109,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": true
+        },
+        {
+          "id": "skink",
+          "maxHealth": 2355,
+          "overkill": 8575.83,
+          "frac": 3.6415,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "mote",
+          "maxHealth": 1727,
+          "overkill": 80254.24,
+          "frac": 46.4703,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "shrike",
+          "maxHealth": 1570,
+          "overkill": 80411.24,
+          "frac": 51.2174,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 722,
+          "overkill": 81259.24,
+          "frac": 112.5474,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "scarab",
+          "maxHealth": 1413,
+          "overkill": 80568.24,
+          "frac": 57.0193,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1649,
+          "overkill": 80332.24,
+          "frac": 48.7157,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 11383,
+          "overkill": 349334.47,
+          "frac": 30.6891,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": true
+        },
+        {
+          "id": "brood",
+          "maxHealth": 6594,
+          "overkill": 4336.83,
+          "frac": 0.6577,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4710,
+          "overkill": 37205.22,
+          "frac": 7.8992,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 4082,
+          "overkill": 77899.24,
+          "frac": 19.0836,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 3297,
+          "overkill": 78684.24,
+          "frac": 23.8654,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 7536,
+          "overkill": 4858.23,
+          "frac": 0.6447,
+          "type": "fire",
+          "status": "burn",
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 2041,
+          "overkill": 1965508.86,
+          "frac": 963.0127,
+          "type": "dagger",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 2277,
+          "overkill": 1965272.86,
+          "frac": 863.0974,
+          "type": "dagger",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 2277,
+          "overkill": 1965272.86,
+          "frac": 863.0974,
+          "type": "dagger",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 2277,
+          "overkill": 1965272.86,
+          "frac": 863.0974,
+          "type": "dagger",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "scarab",
+          "maxHealth": 1413,
+          "overkill": 6110.45,
+          "frac": 4.3244,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 722,
+          "overkill": 96008.01,
+          "frac": 132.9751,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1649,
+          "overkill": 95081.01,
+          "frac": 57.6598,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 5338,
+          "overkill": 91392.01,
+          "frac": 17.121,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 9734,
+          "overkill": 86996.01,
+          "frac": 8.9373,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 14130,
+          "overkill": 30027.09,
+          "frac": 2.1251,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 7222,
+          "overkill": 418390.04,
+          "frac": 57.9327,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 4082,
+          "overkill": 9104.08,
+          "frac": 2.2303,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 2041,
+          "overkill": 96854.61,
+          "frac": 47.4545,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 3297,
+          "overkill": 95598.61,
+          "frac": 28.9956,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mote",
+          "maxHealth": 1727,
+          "overkill": 97168.61,
+          "frac": 56.2644,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "shrike",
+          "maxHealth": 1570,
+          "overkill": 97325.61,
+          "frac": 61.9908,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 2277,
+          "overkill": 96618.61,
+          "frac": 42.4324,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "skink",
+          "maxHealth": 2355,
+          "overkill": 432785.67,
+          "frac": 183.7731,
+          "type": "spark",
+          "status": null,
+          "element": "kinetic",
+          "isElite": false
+        },
+        {
+          "id": "sentinel",
+          "maxHealth": 8164,
+          "overkill": 5022.08,
+          "frac": 0.6151,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 5338,
+          "overkill": 45225.17,
+          "frac": 8.4723,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 7536,
+          "overkill": 91359.61,
+          "frac": 12.1231,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4710,
+          "overkill": 94185.61,
+          "frac": 19.9969,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3768,
+          "overkill": 95127.61,
+          "frac": 25.2462,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 7222,
+          "overkill": 5761.1,
+          "frac": 0.7977,
+          "type": "fire",
+          "status": "burn",
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1649,
+          "overkill": 7257.24,
+          "frac": 4.401,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "scarab",
+          "maxHealth": 1413,
+          "overkill": 113095.86,
+          "frac": 80.0395,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "skink",
+          "maxHealth": 2355,
+          "overkill": 112153.86,
+          "frac": 47.6237,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 9734,
+          "overkill": 104774.86,
+          "frac": 10.7638,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 14130,
+          "overkill": 88110.06,
+          "frac": 6.2357,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 722,
+          "overkill": 113786.86,
+          "frac": 157.5995,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 4082,
+          "overkill": 11185.85,
+          "frac": 2.7403,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 2041,
+          "overkill": 112467.86,
+          "frac": 55.1043,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 3297,
+          "overkill": 55248.89,
+          "frac": 16.7573,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "shrike",
+          "maxHealth": 1570,
+          "overkill": 112938.86,
+          "frac": 71.9356,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 2277,
+          "overkill": 112231.86,
+          "frac": 49.2894,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3768,
+          "overkill": 6397.43,
+          "frac": 1.6978,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4710,
+          "overkill": 125988.45,
+          "frac": 26.7491,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "sentinel",
+          "maxHealth": 8164,
+          "overkill": 122534.45,
+          "frac": 15.0091,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "brood",
+          "maxHealth": 6594,
+          "overkill": 124104.45,
+          "frac": 18.8208,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 7536,
+          "overkill": 123162.45,
+          "frac": 16.3432,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 9734,
+          "overkill": 7692.46,
+          "frac": 0.7903,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 722,
+          "overkill": 129976.45,
+          "frac": 180.0228,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 7222,
+          "overkill": 123476.45,
+          "frac": 17.0973,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 5338,
+          "overkill": 125360.45,
+          "frac": 23.4845,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 14130,
+          "overkill": 4714.34,
+          "frac": 0.3336,
+          "type": "fire",
+          "status": "burn",
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "skink",
+          "maxHealth": 2355,
+          "overkill": 17306.92,
+          "frac": 7.349,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "mote",
+          "maxHealth": 1727,
+          "overkill": 145737.36,
+          "frac": 84.3876,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "shrike",
+          "maxHealth": 1570,
+          "overkill": 145894.36,
+          "frac": 92.9263,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1649,
+          "overkill": 145815.36,
+          "frac": 88.4265,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "charger",
+          "maxHealth": 4082,
+          "overkill": 15579.92,
+          "frac": 3.8167,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "shriver",
+          "maxHealth": 2041,
+          "overkill": 145423.36,
+          "frac": 71.251,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "burrower",
+          "maxHealth": 3297,
+          "overkill": 144167.36,
+          "frac": 43.7268,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "harrier",
+          "maxHealth": 2277,
+          "overkill": 145187.36,
+          "frac": 63.7626,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "stalker",
+          "maxHealth": 4710,
+          "overkill": 7850.21,
+          "frac": 1.6667,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "warden",
+          "maxHealth": 7536,
+          "overkill": 153952.35,
+          "frac": 20.4289,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "acolyte",
+          "maxHealth": 3768,
+          "overkill": 157720.35,
+          "frac": 41.8578,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "mortar",
+          "maxHealth": 7222,
+          "overkill": 5338.21,
+          "frac": 0.7392,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "sentinel",
+          "maxHealth": 8164,
+          "overkill": 153324.35,
+          "frac": 18.7805,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "lasher",
+          "maxHealth": 5338,
+          "overkill": 156150.35,
+          "frac": 29.2526,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "redoubt",
+          "maxHealth": 9734,
+          "overkill": 1500.94,
+          "frac": 0.1542,
+          "type": "frost",
+          "status": null,
+          "element": "ice",
+          "isElite": false
+        },
+        {
+          "id": "mite",
+          "maxHealth": 722,
+          "overkill": 164084.61,
+          "frac": 227.264,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "hulk",
+          "maxHealth": 14130,
+          "overkill": 8116.5,
+          "frac": 0.5744,
+          "type": "fire",
+          "status": "burn",
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "spitling",
+          "maxHealth": 1649,
+          "overkill": 11169.29,
+          "frac": 6.7734,
+          "type": "swarm",
+          "status": null,
+          "element": "nature",
+          "isElite": false
+        },
+        {
+          "id": "scarab",
+          "maxHealth": 1413,
+          "overkill": 163393.61,
+          "frac": 115.636,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        },
+        {
+          "id": "skink",
+          "maxHealth": 2355,
+          "overkill": 162451.61,
+          "frac": 68.9816,
+          "type": "fire",
+          "status": null,
+          "element": "fire",
+          "isElite": false
+        }
+      ]
+    }
+  ],
+  "pageErrors": [],
+  "consoleErrors": []
+}
