@@ -198,7 +198,7 @@ git commit -m "The launch learns what the rest of the run has been like"
 
 Read `tests/corpse-launch.test.mjs` in full. It drives `VFX` instances through kill events (or calls `corpseLaunch` directly — follow whichever it does). Add a block that:
 
-1. Builds a `VFX` the same way the existing tests do, feeds it `GATE.warmup` kill payloads with `overkill` at 20× `maxHealth` each (via whatever entry point the file already uses for `_onKill` — the event or the method), then one more at 0.4× — and asserts the 0.4× kill does **not** start a launch while a 25× kill after the same history **does**. Count launches the way the file already observes them (number of active launch entries, or a wrapped `corpseLaunch`).
+1. Builds a `VFX` the same way the existing tests do, feeds it `GATE.warmup` kill payloads with `overkill` at 20× `maxHealth` each (via whatever entry point the file already uses for `_onKill` — the event or the method), then one more at 0.4× — and asserts the 0.4× kill does **not** start a launch while a 25× kill after the same history **does**. **Use a fresh victim object for every kill payload** — `corpseLaunch` dedupes per object (`src/systems/VFX.js:816`), so a reused fixture makes later launches fail for the wrong reason. Count launches the way the file already observes them (number of active launch entries, or a wrapped `corpseLaunch`).
 2. Asserts a payload with `isElite: true` and the same 0.4× fraction after the same hot history **does** launch.
 3. Asserts the first kill of a fresh `VFX` at 0.5× launches (warm-up preserved).
 
@@ -214,7 +214,7 @@ Expected: the saturation assertion fails (everything still launches).
 In `src/systems/VFX.js`:
 
 1. Import: `import { GATE, shouldLaunch } from './LaunchGate.js';`
-2. Where launch/dissolve state is initialised (constructor or `reset`), add `this._overkillRecent = [];` — if there is a run-reset path that clears `_dissolving`/`_launches`, clear the ring buffer there too (a new run should not inherit the last run's damage profile).
+2. In the constructor where launch/dissolve state is initialised (`src/systems/VFX.js:198-199`), add `this._overkillRecent = [];`. The constructor IS the per-run reset — every restart in this game is a `location.reload()` (pre-flight verified) — so no other reset path needs the clear.
 3. Replace the launch condition in `_onKill`:
 
 ```javascript
@@ -297,7 +297,7 @@ git commit -m "A body flies when the kill stood out, not whenever the run got st
     }
 ```
 
-Then thread `launchCalls` into each arm's summary next to wherever `minOverkillFrac`/cleared counts are reported (`:322`, `:358-376`): report `launched`, `launchedFrac = launched / kills`, and keep the existing cleared stat untouched for baseline comparability. Reset `J.launchCalls = 0` at the start of each arm (find where `J.kills` is reset per arm and reset beside it).
+**Naming trap (pre-flight I1):** the probe's existing threshold-cleared stat is already named `launchedCount` / `launchedFraction` (`tools/juiceprobe.mjs:377-378`) — under the old rule cleared WAS launched, so the name was honest; under the gate it is only the *eligible* population and keeping the name would poison every reader. In the arm summary, rename the eligible stat to `clearedCount` / `clearedFraction`, report the real wrap-counted numbers as `launchedCount` / `launchedFraction`, and put one sentence in the record and the README stating the mapping to the c6795cb baseline's field names (baseline `launchedFraction` ≙ this record's `clearedFraction`). Reset `J.launchCalls = 0` at the start of each arm (find where `J.kills` is reset per arm and reset beside it).
 
 - [ ] **Step 2: Run the two arms**
 
