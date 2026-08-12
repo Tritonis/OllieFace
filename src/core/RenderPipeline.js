@@ -412,6 +412,21 @@ export class RenderPipeline {
       this._userScale = 1;
       this._resScale = scale;
       this.resize();
+    } else {
+      // Unpinning hands control back to the player. Without this, the pin's
+      // forced userScale = 1 survives until the next Menus.apply() and a
+      // saved 50% silently renders at full scale (final-review B2 /
+      // pre-flight S2). No settings reachable -> nothing to restore.
+      const st = this.settings;
+      if (st && Number.isFinite(st.renderScale)) {
+        this._userScale = Math.min(1, Math.max(0.5, st.renderScale));
+        this._adaptOn = st.dynamicRes !== 0;
+        if (!this._adaptOn) this._resScale = 1;
+        this._frameMs.length = 0;
+        this._failedAt = Infinity;
+        this._sinceFail = 0;
+        this.resize();
+      }
     }
   }
 
