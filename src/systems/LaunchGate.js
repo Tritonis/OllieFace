@@ -10,9 +10,12 @@
  *
  * So the gate normalises against the run itself: a common kill launches only
  * if it also beats the `percentile` of the last `window` kills' fractions -
- * whatever the current damage profile, roughly the top third of kills throw
- * a body. Elites and bosses bypass the percentile (rare by construction,
- * and exactly the kills that should always pay off). Under `warmup` samples
+ * whatever the current damage profile, roughly the top third of *non-elite*
+ * kills throw a body (see reviews/launch-retune/README.md "Honest
+ * limitations" - the measured fixtures carry ~1% elite density against a
+ * real eliteChance of up to 0.38, so real play launches a substantially
+ * larger overall share). Elites and bosses bypass the percentile (rare by
+ * construction, and exactly the kills that should always pay off). Under `warmup` samples
  * the floor alone decides, which keeps the first kills of a run - and the
  * capture harness's single-kill scenarios - on the old, deterministic rule.
  *

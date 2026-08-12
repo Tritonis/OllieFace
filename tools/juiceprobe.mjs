@@ -237,6 +237,7 @@ try {
         status: p.status ?? null,
         element: J.elementOf(p.type, p.status),
         isElite: !!p.isElite,
+        isBoss: !!p.isBoss,
       });
     });
 

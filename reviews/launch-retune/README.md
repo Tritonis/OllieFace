@@ -91,6 +91,13 @@ body — which is what a run-relative percentile is *for*: the late run's median
 overkill is 13x the victim's entire health pool, and no fixed constant can be
 low enough for `mid` and high enough for `late` at the same time.
 
+**"roughly the top third" describes the non-elite population measured here,
+not the full run.** See Honest limitations below: this record's fixtures carry
+~1% elite density, so the 38.1 % figure is effectively a measurement of
+non-elite kills alone. A real run at this `difficultyCoefficient` would launch
+elites far more often, and the true launched share would sit noticeably above
+one third.
+
 The launch distances, the median and p90 fraction columns, and the element
 histogram are all unmoved from round 9 and are not re-tabulated here; the
 per-kill source for every number above is `raw.kills` in the record, as before.
@@ -211,3 +218,22 @@ chosen — long enough that one burst of trash does not redefine "standing out",
 short enough to track a damage profile that moves as fast as this one does.
 Neither is a tuned fit to these 320 kills, and neither should be re-tuned
 against them; the next reading that argues with this one should be a playtest.
+
+**The fixtures cannot produce elites, so the elite bypass is effectively
+unmeasured by this record.** The probe's field top-up (`tools/juiceprobe.mjs:264`)
+calls `Director.spawnOne(ctx, def, at, null)` directly, passing a hard-coded
+`null` affix — it never goes through the credit-spend path
+(`src/systems/Director.js:631`) where the elite roll actually happens. Every
+monster the probe adds to the field is therefore non-elite by construction;
+only the handful of organic director spawns can be elite at all. Against this
+record's own published `difficultyCoefficient` (17.476 in `late`), the
+Director's `eliteChance` formula (`src/systems/Director.js:317-320`) predicts
+0.380 — capped — while the record's own `raw.kills[].isElite` count is 0.010
+(2 of 202). That is roughly a 38x under-representation in the arm that carries
+the headline number. Because elites bypass the percentile entirely
+(`src/systems/LaunchGate.js:37`), and at this run's overkill levels almost
+every elite kill clears the 0.35 floor, real play at this difficulty should be
+expected to launch a noticeably larger fraction than measured here — nearer
+~0.55-0.65 than the recorded 0.381. The elite-bypass rule itself is proven
+correct by `tests/launch-gate.test.mjs`; it is simply **not exercised by this
+record**, which is a limitation of the fixture, not of the gate.

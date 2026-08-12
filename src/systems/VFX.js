@@ -1410,6 +1410,10 @@ export class VFX {
     // bosses, rare by construction, keep the floor-only rule.
     const launch = obj && shouldLaunch(
       over, this._overkillRecent, LAUNCH.minOverkillFrac, !!(p.isElite || p.isBoss));
+    // Deliberately unconditional: every kill's fraction enters the window,
+    // launched or not, elite or not, rigless or not - the ring measures this
+    // run's damage profile, not the launchable subset, so a kill that never
+    // had a chance to launch still counts toward "what this run has been like".
     this._overkillRecent.push(over);
     if (this._overkillRecent.length > GATE.window) this._overkillRecent.shift();
     if (launch) {

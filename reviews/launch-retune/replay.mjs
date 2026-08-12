@@ -23,6 +23,11 @@
  *   fresh    a ring per arm — what a single-fixture run, or a real session
  *            that only ever has one damage profile, would see.
  *
+ * Records written before `isBoss` was added to the probe's kill recorder
+ * (tools/juiceprobe.mjs) carry no `isBoss` field and replay every kill as a
+ * non-boss, ordinary kill — this does not affect either committed record,
+ * since both fixtures contain zero bosses.
+ *
  * Run: node reviews/launch-retune/replay.mjs
  */
 import { readFile } from 'node:fs/promises';
