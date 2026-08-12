@@ -331,9 +331,12 @@ await page.locator('input[data-key="renderScale"]').evaluate((el) => {
 const ratioAfter = await page.evaluate(() => __GAME__.ctx.pipeline.renderer.getPixelRatio());
 ok(Math.abs(ratioAfter - ratioBefore * 0.5) < 1e-3,
   `render scale 50% halves the drawing-buffer ratio (${ratioBefore.toFixed(3)} -> ${ratioAfter.toFixed(3)})`);
-ok((await page.textContent('output[data-out="renderScale"]')).trim() === '50%', 'the readout says 50%');
+ok((await page.textContent('output[data-out="renderScale"]')).trim() === 'up to 50%',
+  'while Auto is on, the readout admits the slider is a ceiling');
 
 await page.click('[data-seg="dynamicRes"] [data-val="0"]');
+ok((await page.textContent('output[data-out="renderScale"]')).trim() === '50%',
+  'with Dynamic resolution Off, the readout is the scale itself');
 const dyn = await page.evaluate(() => ({
   adaptOn: __GAME__.ctx.pipeline._adaptOn,
   resScale: __GAME__.ctx.pipeline._resScale,

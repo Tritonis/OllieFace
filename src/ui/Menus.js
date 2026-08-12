@@ -651,7 +651,15 @@ export class Menus {
       const input = this.root.querySelector(`input[data-key="${s.key}"]`);
       const out = this.root.querySelector(`output[data-out="${s.key}"]`);
       if (input) input.value = String(this.settings[s.key]);
-      if (out) out.textContent = s.fmt(this.settings[s.key]);
+      if (out) {
+        const v = s.fmt(this.settings[s.key]);
+        // The slider is a hard ceiling, not the live scale: under Auto the
+        // adaptive controller renders anywhere below it (a struggling GPU at
+        // "50%" may be at 27%). Say so, rather than presenting the ceiling
+        // as the value (final-review B7).
+        out.textContent = (s.key === 'renderScale' && this.settings.dynamicRes !== 0)
+          ? `up to ${v}` : v;
+      }
     }
     for (const wrap of this.root.querySelectorAll('[data-seg]')) {
       const key = wrap.dataset.seg;
