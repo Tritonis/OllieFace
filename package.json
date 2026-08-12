@@ -7,6 +7,7 @@
     "dev": "vite",
     "test": "node tests/run.mjs",
     "postinstall": "install-electron",
+    "gate:sp": "node tests/sp-equivalence.mjs --compare reviews/round7/baseline-00f8900.json",
     "gate:elite": "node tests/sp-equivalence.mjs --mode elite-dps --compare reviews/round7/elite-baseline-00f8900.json",
     "build": "vite build",
     "preview": "vite preview",
