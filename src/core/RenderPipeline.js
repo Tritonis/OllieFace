@@ -412,6 +412,21 @@ export class RenderPipeline {
       this._userScale = 1;
       this._resScale = scale;
       this.resize();
+    } else {
+      // Unpinning hands control back to the player. Without this, the pin's
+      // forced userScale = 1 survives until the next Menus.apply() and a
+      // saved 50% silently renders at full scale (final-review B2 /
+      // pre-flight S2). No settings reachable -> nothing to restore.
+      const st = this.settings;
+      if (st && Number.isFinite(st.renderScale)) {
+        this._userScale = Math.min(1, Math.max(0.5, st.renderScale));
+        this._adaptOn = st.dynamicRes !== 0;
+        if (!this._adaptOn) this._resScale = 1;
+        this._frameMs.length = 0;
+        this._failedAt = Infinity;
+        this._sinceFail = 0;
+        this.resize();
+      }
     }
   }
 
@@ -421,7 +436,11 @@ export class RenderPipeline {
    *  while the capture harness holds the pin. */
   setRenderScale(scale, dynamic = true) {
     if (this._pinned) return;
-    const s = Math.min(1, Math.max(0.5, Number(scale) || 1));
+    // `|| 1` would absorb a legitimate 0 along with NaN and send a caller
+    // asking for the minimum to full scale instead. Only non-finite input
+    // falls back; every finite number takes the clamp.
+    const n = Number(scale);
+    const s = Math.min(1, Math.max(0.5, Number.isFinite(n) ? n : 1));
     const on = !!dynamic;
     if (s === this._userScale && on === this._adaptOn) return;
     this._userScale = s;

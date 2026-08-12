@@ -79,5 +79,95 @@ for (const [w, h, dpr, cap, adapt] of [[1600, 900, 1, 2, 1], [1920, 1080, 1.5, 1
     `setQuality after the pin does not move the drawing-buffer ratio (${pinnedRatio} -> ${renderer.getPixelRatio()})`);
 }
 
+// 10. B5 regression: `Number(scale) || 1` absorbed 0 along with NaN, so a
+//     caller passing a legitimate zero got FULL scale instead of the floor.
+//     Finite input clamps into [0.5, 1]; only non-finite input falls back to 1.
+{
+  globalThis.devicePixelRatio = 1;
+  globalThis.innerWidth = 1600;
+  globalThis.innerHeight = 900;
+  const renderer = {
+    _ratio: 1,
+    setPixelRatio(r) { this._ratio = r; },
+    getPixelRatio() { return this._ratio; },
+    setSize() {},
+  };
+  const rp = Object.create(RenderPipeline.prototype);
+  rp.renderer = renderer;
+  rp.composer = null;
+  rp.passes = {};
+  rp.ctx = null;
+  rp.quality = QUALITY.ULTRA;
+  rp._userScale = 1;
+  rp._resScale = 1;
+  rp._adaptOn = true;
+  rp._pinned = false;
+  rp._frameMs = [];
+  rp._failedAt = Infinity;
+  rp._sinceFail = 0;
+
+  rp.setRenderScale(0, false);
+  ok(close(rp._userScale, 0.5), `setRenderScale(0) clamps to the 0.5 floor, not full scale (${rp._userScale})`);
+
+  rp.setRenderScale(NaN, false);
+  ok(close(rp._userScale, 1), `setRenderScale(NaN) falls back to 1 (${rp._userScale})`);
+
+  rp.setRenderScale('0.7', false);
+  ok(close(rp._userScale, 0.7), `setRenderScale('0.7') coerces the numeric string (${rp._userScale})`);
+}
+
+// 11. B2 regression: unpinning stranded the player's scale. After
+//     setAdaptive(true), the pipeline must re-adopt the saved knobs from
+//     ctx.settings rather than keep the pin's userScale = 1.
+{
+  globalThis.devicePixelRatio = 1;
+  globalThis.innerWidth = 1600;
+  globalThis.innerHeight = 900;
+  const renderer = {
+    _ratio: 1,
+    setPixelRatio(r) { this._ratio = r; },
+    getPixelRatio() { return this._ratio; },
+    setSize() {},
+  };
+  const rp = Object.create(RenderPipeline.prototype);
+  rp.renderer = renderer;
+  rp.composer = null;
+  rp.passes = {};
+  rp.ctx = { settings: { renderScale: 0.5, dynamicRes: 0 } };
+  rp.quality = QUALITY.ULTRA;
+  rp._userScale = 1;
+  rp._resScale = 1;
+  rp._adaptOn = true;
+  rp._pinned = false;
+  rp._frameMs = [];
+  rp._failedAt = Infinity;
+  rp._sinceFail = 0;
+
+  rp.setRenderScale(0.5, false);
+  rp.setAdaptive(false, 1);
+  ok(close(renderer.getPixelRatio(), 1) && rp._pinned === true,
+    'the pin still forces ratio 1 regardless of the saved 50%');
+
+  rp.setAdaptive(true);
+  ok(rp._pinned === false && close(rp._userScale, 0.5),
+    `unpinning restores the player's saved 50% (${rp._userScale})`);
+  ok(rp._adaptOn === false,
+    'unpinning also restores the saved Dynamic resolution Off');
+  ok(close(renderer.getPixelRatio(), 0.5),
+    `the restored scale reaches the drawing buffer (${renderer.getPixelRatio()})`);
+
+  // With no settings object reachable, today's behaviour is preserved.
+  const rp2 = Object.create(RenderPipeline.prototype);
+  rp2.renderer = { _ratio: 1, setPixelRatio(r) { this._ratio = r; }, getPixelRatio() { return this._ratio; }, setSize() {} };
+  rp2.composer = null; rp2.passes = {}; rp2.ctx = null;
+  rp2.quality = QUALITY.ULTRA;
+  rp2._userScale = 1; rp2._resScale = 1; rp2._adaptOn = true; rp2._pinned = false;
+  rp2._frameMs = []; rp2._failedAt = Infinity; rp2._sinceFail = 0;
+  rp2.setAdaptive(false, 1);
+  rp2.setAdaptive(true);
+  ok(rp2._pinned === false && close(rp2._userScale, 1) && rp2._adaptOn === true,
+    'with no settings reachable, unpin behaves exactly as before');
+}
+
 console.log(fail ? `FAIL (${fail})` : `PASS (${pass})`);
 process.exit(fail ? 1 : 0);

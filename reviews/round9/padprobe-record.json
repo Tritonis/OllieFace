@@ -1,12 +1,12 @@
 {
-  "when": "2026-08-11T11:58:17.410Z",
+  "when": "2026-08-12T03:43:53.169Z",
   "probe": "tools/padprobe.mjs",
   "url": "/?seed=1337&quality=2&harness=1",
   "checks": [
     {
       "name": "1 boot",
       "pass": true,
-      "detail": "title screen up in 11508 ms, 7 frames rendered, seed 1337, harness=1"
+      "detail": "title screen up in 14111 ms, 6 frames rendered, seed 1337, harness=1"
     },
     {
       "name": "2a menu nav",
@@ -41,7 +41,7 @@
     {
       "name": "5a pad look yaw",
       "pass": true,
-      "detail": "right stick +x for 30 frames turned yaw by -1.0832 rad (want < -0.3)"
+      "detail": "right stick +x for 30 frames turned yaw by -0.7177 rad (want < -0.3)"
     },
     {
       "name": "5b pitch clamp",
@@ -66,7 +66,7 @@
     {
       "name": "7c Y fires equipment",
       "pass": true,
-      "detail": "stim-injector charges 1 -> 0, cooldown 32.0s; HUD .slot--equip .slot-key \"Y\" with the pad active"
+      "detail": "stim-injector charges 1 -> 0, cooldown 31.9s; HUD .slot--equip .slot-key \"Y\" with the pad active"
     },
     {
       "name": "8 Start pauses",
