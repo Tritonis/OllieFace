@@ -2718,7 +2718,10 @@ function animStalker(rig, a) {
 // GRAVE ACOLYTE — a hooded cone with no legs at all. Its whole read is
 // "different species, do not treat this like the others": a smooth robe
 // silhouette in a roster of limbs and plates, with a halo of glyph plates that
-// only lights when it is actually channelling.
+// only lights when it is actually channelling — and, since
+// 2026-08-12-acolyte-silhouette, a crook-staff off the right shoulder that is
+// load-bearing silhouette separation from the brood — see the RETIRED note in
+// tools/silhouette-metrics.mjs.
 // ---------------------------------------------------------------------------
 
 function buildAcolyte() {

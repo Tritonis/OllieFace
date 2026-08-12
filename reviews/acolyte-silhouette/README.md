@@ -141,7 +141,7 @@ Identical on all six manifests, byte for byte including the reason strings:
 | `subjectsOk` / `subjectsOkFresh` | true / true |
 | `errorCount`, `errors`, `partial` | 0, `[]`, false |
 | `skippedShots` | `19-overkill: only-path-enforced`, `20-blight-edge: only-path-enforced` |
-| `toleratedAbsences` | the same three lines |
+| `toleratedAbsences` | the same three shot/reason lines; the embedded `perPx` arrays differ, see below |
 | `determinism` | `clockPinned: true`, `frameDt` 1/60, `frameTimeouts: 0` |
 | `perf` | 87 programs, 700 geometries, 53 textures, 395 scene objects |
 
@@ -247,8 +247,10 @@ here rather than left for a reader's own diff to find.
 
 **The acolyte's own bestiary legibility fell too**, 0.932 → 0.852, and that is
 not occlusion but the same overlap seen from the other side: the taller mask now
-reaches into its neighbours' backgrounds, so `sep` drops even as `px` rises. At
-19 m in a lineup this is the crowded end of the trade. The gate that grades this
+reaches into its neighbours' backgrounds, so `sep` drops even as `px` rises — and
+partly the staff's own pixels: it carries the `dark` slot, and the subject's
+median luminance fell 65 → 61 as its background's rose 14 → 17. At 19 m in a
+lineup this is the crowded end of the trade. The gate that grades this
 roster measures each unit alone in an orthographic box and reads the change the
 other way — `px40 acolyte` 737 → 883 — so both numbers are true and they answer
 different questions: *is there enough of it* versus *is it standing clear of the
