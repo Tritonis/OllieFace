@@ -8,6 +8,7 @@
 // These assertions exist mostly to keep it that way.
 import * as THREE from 'three';
 import { VFX, LAUNCH } from '../src/systems/VFX.js';
+import { GATE } from '../src/systems/LaunchGate.js';
 import { acquireRig, releaseRig } from '../src/entities/EnemyMeshes.js';
 
 let pass = 0, fail = 0;
@@ -271,6 +272,58 @@ console.log('a corpse that changed hands mid-flight is dropped, not dragged');
   ok(reused.root.position.equals(spawn), 'and left the living monster where the simulation put it');
   ok(reused.root.rotation.x === 0 && reused.root.rotation.z === 0, 'upright, with no tumble on it');
   releaseRig(reused);
+}
+
+console.log('the bar is the run, not a constant: a hot history raises it');
+{
+  // The floor alone made the launch the ambient behaviour of dying late in a
+  // run (90.1% of kills, reviews/round9/juice-probe.json), because late-run
+  // overkill sits an order of magnitude above the mid-run distribution. These
+  // assertions pin the shape of the fix: the same 0.4x kill that flies in a
+  // cold run stays down once the run's own recent kills are ten times bigger.
+  const makeEnemy = (maxHealth) => ({
+    position: new THREE.Vector3(4, 0, -3),
+    maxHealth, alive: false, isElite: false, isBoss: false,
+    rig: { root: makeCorpse() },
+  });
+  const makeVfx = () => {
+    const v = new VFX();
+    v.ctx = makeCtx();
+    v.rings = { spawn() {} };
+    v.lights = { flick() {} };
+    v._shakeAt = () => {};
+    v._hitstop = () => {};
+    return v;
+  };
+
+  // Every kill carries a *fresh* victim. `corpseLaunch` dedupes per object, so
+  // a reused fixture would stop launching for a reason that is not the gate,
+  // and this whole block would pass without a gate existing at all.
+  const kill = (v, frac, extra) => {
+    const victim = makeEnemy(100);
+    const before = v._launches.length;
+    v._onKill({
+      victim, source: { position: new THREE.Vector3(0, 0, -3) },
+      position: victim.position, isElite: false, isBoss: false,
+      overkill: 100 * frac, type: 'hit', status: null, ...extra,
+    });
+    return v._launches.length > before;
+  };
+  /** A run whose window is full of 20x kills — enough samples to leave warm-up. */
+  const hotRun = () => {
+    const v = makeVfx();
+    for (let i = 0; i < GATE.warmup; i++) kill(v, 20);
+    return v;
+  };
+
+  ok(!kill(hotRun(), 0.4),
+     'a 0.4x kill clears the floor but not the run it happened in, and stays put');
+  ok(kill(hotRun(), 25),
+     'a 25x kill stands out against that same history and flies');
+  ok(kill(hotRun(), 0.4, { isElite: true }),
+     'an elite at the same fraction bypasses the percentile');
+  ok(kill(makeVfx(), 0.5),
+     'and before warm-up the floor alone decides: the first kill of a run launches');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
