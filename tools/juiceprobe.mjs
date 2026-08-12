@@ -201,12 +201,21 @@ try {
       };
     }
 
-    // How many kills actually threw a body. Under the percentile gate the
-    // threshold-cleared count (kept below, denominated in the same
+    // How many kills the gate let through to a launch. Under the percentile
+    // gate the threshold-cleared count (kept below, denominated in the same
     // minOverkillFrac as the c6795cb baseline) is the *eligible* population;
     // this is the *launched* one. Both go in the record.
-    J.launchCalls = 0;
+    //
+    // Calls, not bodies in flight: `corpseLaunch` returns without registering
+    // on zero power and on a corpse already launched (src/systems/VFX.js:820-
+    // 821), the same "asked" vs "happened" split the dissolve wrap above makes
+    // explicit. `wrappedRealLaunch` is the disclosure the particle wrap carries
+    // as `emitReal` — on a tree with no `corpseLaunch` the count below would
+    // otherwise be a real-looking zero rather than a null.
+    J.launchCalls = null;
+    J.launchReal = !!vfx?.corpseLaunch;
     if (vfx?.corpseLaunch) {
+      J.launchCalls = 0;
       const innerL = vfx.corpseLaunch.bind(vfx);
       vfx.corpseLaunch = (...a) => { J.launchCalls++; return innerL(...a); };
     }
@@ -296,7 +305,7 @@ try {
       J.kills.length = 0; J.listening = true;
       J.emitted = 0; J.emitPeak = 0;
       J.dissolveCalls = 0; J.dissolveStarted = 0;
-      J.launchCalls = 0;
+      J.launchCalls = J.launchReal ? 0 : null;
       const costStart = J.cost();
       let frames = 0, peakAlive = 0, cycles = 0;
       while (J.kills.length < kills && frames < frameBudget) {
@@ -327,7 +336,7 @@ try {
         kills: J.kills.slice(),
         emitted: J.emitted,
         dissolveCalls: J.dissolveCalls, dissolveStarted: J.dissolveStarted,
-        launchCalls: J.launchCalls,
+        launchCalls: J.launchCalls, launchReal: J.launchReal,
         emitPeakPer30Frames: J.emitPeak,
         emitReal: J.emitReal,
         cost: { start: costStart, atPeak: J.costAtPeak ?? null, end: J.cost() },
@@ -392,9 +401,10 @@ try {
         // clearing the floor *was* launching. `launched*` below is the real
         // thing, counted by wrapping `VFX.corpseLaunch`, and under the
         // percentile gate it is a subset of the eligible population.
-        clearedNote: 'cleared = beat minOverkillFrac (the c6795cb baseline\'s `launchedFraction` is this field); launched = real wrapped `VFX.corpseLaunch` calls.',
+        clearedNote: 'cleared = beat minOverkillFrac (the c6795cb baseline\'s `launchedFraction` is this field); launched = gate-passed `VFX.corpseLaunch` calls, counted through the real method (calls, not bodies in flight: zero power and an already-launched corpse return without registering).',
         clearedCount: cleared.length,
         clearedFraction: a.kills.length ? +(cleared.length / a.kills.length).toFixed(4) : null,
+        wrappedRealLaunch: !!a.launchReal,
         launchedCount: a.launchCalls ?? null,
         launchedFraction: a.kills.length && a.launchCalls != null
           ? +(a.launchCalls / a.kills.length).toFixed(4) : null,

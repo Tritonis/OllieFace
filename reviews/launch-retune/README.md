@@ -23,7 +23,15 @@ Produced by:
       --out reviews/launch-retune/juice-probe-after.json
 
 Measures commit `e595bc2`, renderer **d3d11**, seed 1337, 0 page errors, 0
-console errors. The baseline it is read against is
+console errors. The record's `commit` field is a bare `git rev-parse HEAD` with
+no dirty flag, so it names the *game* tree only: the run was taken with the
+launch counter added to `tools/juiceprobe.mjs` but not yet committed, and the
+tool as it produced this record landed in `6b74643`. `src/` is byte-identical at
+`e595bc2` and `6b74643`, so **`6b74643` alone reproduces the record** — tool and
+game tree together. (A later commit on this branch added a `wrappedRealLaunch`
+disclosure flag to the probe's summary and reworded a comment; it changes
+nothing that is counted, so a re-run at branch HEAD reproduces every number
+here and adds that one field.) The baseline it is read against is
 `reviews/round9/juice-probe.json` at commit `c6795cb`, renderer **d3d11** —
 same tool, same two arms, same seed, same kill target. `--costBefore` /
 `--costAfter` are absent because this slice ships no shader and no geometry;
@@ -46,11 +54,16 @@ Under the gate those are two different populations, so this record splits them:
 - **`clearedFraction`** — kills that beat `minOverkillFrac` (0.35). The
   *eligible* population. **This field is what the c6795cb baseline called
   `launchedFraction`**; compare it to the baseline like-for-like.
-- **`launchedFraction`** — kills that actually threw a body, counted by
-  wrapping the real `VFX.corpseLaunch` on the live page (the same wrap-the-real-
-  call technique the probe already used for `deathDissolve` and `emit`), not
-  inferred from a re-implemented rule. The *launched* population, and a subset
-  of the eligible one.
+- **`launchedFraction`** — **gate-passed launch calls**: every kill on which
+  `VFX._onKill` decided to launch and called `corpseLaunch`, counted by wrapping
+  the real method on the live page (the same wrap-the-real-call technique the
+  probe already used for `deathDissolve` and `emit`), not inferred from a
+  re-implemented rule. The *launched* population, and a subset of the eligible
+  one. It is calls rather than bodies in flight by a hair: `corpseLaunch`
+  returns without registering on zero power and on a corpse already in flight
+  (`src/systems/VFX.js:820-821`). Neither path fired in this record — replaying
+  the gate with a `power > 0` guard gives the same 37 and 77 — but the field
+  name means "asked", the way the dissolve wrap's `calls` does.
 
 A record that had kept the old name for the eligible number would have reported
 "90.1 % unchanged" for a slice whose whole point is that the number moved.
@@ -63,7 +76,12 @@ A record that had kept the old name for the eligible number would have reported
 | `late` | 182 / 202 = 90.1 % (unmoved) | 182 / 202 = **90.1 %** | 77 / 202 = **38.1 %** |
 
 The floor is untouched, so the eligible column is byte-identical to the
-baseline in both arms — the gate did not move the threshold, it added a second
+baseline in both arms — every per-kill field the eligibility question reads
+(`frac`, `overkill`, `maxHealth`, `type`, `status`, `element`, `isElite`) is
+identical entry for entry, the sole exception being `raw.kills[].id`, where 79
+entries carry today's enemy-id migration (pest→shrike, beetle→scarab,
+lemurian→skink, wisp→mote, golem→sentinel) and nothing else moves. The gate did
+not move the threshold, it added a second
 question on top of it. The `mid` arm is unchanged end to end: its kill
 distribution is wide enough that the kills clearing 0.35 are already the kills
 that beat their own recent p70, so the gate is invisible where the launch was
@@ -80,26 +98,44 @@ per-kill source for every number above is `raw.kills` in the record, as before.
 ### Percentile sensitivity
 
 `GATE.percentile = 0.70` is a chosen constant, and the record owes the reader
-what the alternatives measure. Replaying the shipped gate over the baseline's
-`raw.kills` (same floor, same 32-kill window, same elite bypass) gives:
+what the alternatives measure. `reviews/launch-retune/replay.mjs` — committed
+beside this file, run it — replays the **shipped** `src/systems/LaunchGate.js`
+over the baseline's `raw.kills` in emission order (same floor, same 32-kill
+window, same elite bypass, decision taken before the push exactly as
+`src/systems/VFX.js:1411-1414` does). It reports the sweep under both
+**ring-reset conventions**, because that convention — not the percentile — is
+the assumption that changes the answer, and a table that leaves it unsaid is
+not reproducible:
 
-| `percentile` | `mid` launched | `late` launched |
-|---|---|---|
-| 0.60 | 31.4 % | 44.1 % |
-| 0.65 | 31.4 % | 38.6 % |
-| **0.70 (shipped)** | **31.4 %** | **36.6 %** (predicted) / **38.1 %** (measured) |
-| 0.75 | 31.4 % | 34.2 % |
-| 0.80 | 31.4 % | 28.7 % |
+- **carried**: one ring across both arms, which is what the probe ran (`VFX`
+  allocates `_overkillRecent` once, at `src/systems/VFX.js:204`, and the two
+  arms share one page). This is the column that is apples-to-apples with the
+  measurement.
+- **fresh**: a ring per arm — a single-fixture run, or a session that only ever
+  has one damage profile.
 
-Every candidate in that range clears the band, so the choice is not knife-edge
-and no knob was turned to make the numbers land: 0.70 was picked before the run
-and the run was taken once. The `mid` column does not move at all across the
-whole sweep, which is the strongest single piece of evidence that the gate is
-inert on a healthy damage profile. The measured late number sits 1.5 points
-above the replay because the replay reads the event stream (`overkill` per kill)
-while the game also requires a resolvable corpse rig and carries its ring buffer
-across the arm boundary — the replay is an estimate of the rule, the record is
-the game.
+| `percentile` | `mid` (both models) | `late` carried | `late` fresh |
+|---|---|---|---|
+| 0.60 | 31.4 % | 47.5 % | 44.1 % |
+| 0.65 | 31.4 % | 40.1 % | 38.6 % |
+| **0.70 (shipped)** | **31.4 %** | **38.1 %** — the measured value | 36.6 % |
+| 0.75 | 31.4 % | 35.2 % | 34.2 % |
+| 0.80 | 31.4 % | 30.7 % | 28.7 % |
+
+Every candidate in the range clears the band under **either** model, so the
+choice is not knife-edge and no knob was turned to make the numbers land: 0.70
+was picked before the run and the run was taken once. The `mid` column does not
+move at all across the whole sweep — and is identical under both models, `mid`
+being the first arm — which is the strongest single piece of evidence that the
+gate is inert on a healthy damage profile.
+
+The carried column at 0.70 reproduces the live counters **exactly** — 37 and
+77, to the integer, not within tolerance — because the record carries per-kill
+order and `isElite`, so the shipped rule can be re-run over the recorded stream.
+That exactness is also what makes the 38.1 %-vs-36.6 % gap a known quantity
+rather than instrument noise: it is three specific kills (`late` indices 9, 10
+and 16), and the mechanism is the shared ring, described as a fixture artefact
+under Honest limitations below.
 
 ## `19-overkill` — the money shot still fires
 
@@ -146,7 +182,29 @@ path, and hold the fire button down; a human moves, retreats, and picks
 different items, and their kill distribution will not be either of these two.
 What the fixtures do give is the two ends of the range the profile actually
 travels, measured the same way on both trees, which is what a before/after
-needs. The 70th percentile is a chosen constant: the sweep above is its
+needs.
+
+**Two arms on one page is a fixture artefact, and it is in the headline
+number.** `VFX` allocates its 32-slot ring once and never resets it, so when the
+`late` arm opens, the window is still full of `mid`'s fractions — a p70 of
+**0.888** against a late run whose median kill overkills by 13x its victim's
+whole pool, where a cold `late` window prices the same percentile in the tens.
+`late`'s early kills
+therefore face an artificially low bar until the window has refilled with
+late-run fractions. It is worth exactly three launches: kills at `late` indices
+9, 10 and 16 launch under the carried ring and would not under a fresh one, so
+the measured **77/202 = 38.1 %** would read **74/202 = 36.6 %** had the arm
+started cold. Both sit deep inside the band and neither changes any verdict, but
+the 38.1 % is a two-arms-one-page number, not a property of a late run in
+isolation. (A real session shares the artefact in kind — the ring genuinely does
+carry a run's whole history — but a real session arrives at its late profile
+gradually rather than in one step, so the effect there is smeared across
+minutes instead of concentrated in seventeen kills.) Nothing about a corpse rig
+is involved: the record's `corpseDissolve.calls` reads 118 and 202, equal to the
+sample in both arms, so `resolveObject` returned a rig for every kill and the
+`obj` guard never removed a launch.
+
+The 70th percentile is a chosen constant: the sweep above is its
 sensitivity, and it is a *shape* argument (roughly the top third of a run's own
 kills) rather than a number derived from anything. The window of 32 is likewise
 chosen — long enough that one burst of trash does not redefine "standing out",
