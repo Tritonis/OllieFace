@@ -12,6 +12,7 @@ import { Tooltip } from './Tooltip.js';
 import { SURVIVORS, getSurvivor, loadoutOf } from '../data/survivors.js';
 import { Logbook, ModelPreview, disposeTree, renderRunReport } from './Logbook.js';
 import { describeNet } from '../net/NetConfig.js';
+import { steamAvailable, hostViaSteam, joinViaSteam, onSteamInvite, openSteamInvite } from '../net/SteamLobby.js';
 import { REFUSE } from '../net/Protocol.js';
 import { adoptLegacyKey } from '../core/LegacyStorage.js';
 import { PAD_BUTTON } from '../core/PadState.js';
@@ -164,11 +165,16 @@ export class Menus {
     this.navRepeat = 0;
     this.pad = { axis: 0, buttons: new Set() };
     this.newChallenges = [];     // completed during the run in flight
+    this.steamLobbyId = null;    // the open Steam lobby, if this session hosts one
 
     this.build();
     this.apply();
     this.bindProgress(ctx);
     this.open('title');
+    // Not awaited and not conditional on the co-op screen ever being opened: a
+    // friend can accept a Steam invite while this player is on the title
+    // screen, and the handler has to already be there when they do.
+    this.bindSteam();
 
     // Losing pointer lock mid-run means the player hit Esc — pause for them.
     document.addEventListener('pointerlockchange', () => {
@@ -401,6 +407,16 @@ export class Menus {
 
           <div class="coop-status" data-coop-status>
             Up to 4 players. One player hosts and runs the game; everyone else joins them.
+          </div>
+
+          <div class="coop-room" data-coop-steam hidden>
+            <h3 class="coop-h">Steam</h3>
+            <p class="coop-hint">The easiest way, if you and your friend are both on Steam. Host,
+              then invite them from the Steam overlay — they join with one click, no codes.</p>
+            <nav class="menu-list menu-list--row">
+              <button class="mbtn mbtn--go" data-nav data-act="coop-steam-host"><span>Host via Steam</span></button>
+              <button class="mbtn" data-nav data-act="coop-steam-invite"><span>Invite friend</span></button>
+            </nav>
           </div>
 
           <div class="coop-room">
@@ -1312,6 +1328,8 @@ export class Menus {
       case 'coop-leave':
       case 'coop-room-host':
       case 'coop-room-join':
+      case 'coop-steam-host':
+      case 'coop-steam-invite':
         this.coopAction(action);
         break;
     }
@@ -1381,6 +1399,33 @@ export class Menus {
     el.classList.toggle('is-warn', net.signalIsLocal || !net.hasTurn);
   }
 
+  /**
+   * Reveal the Steam path, but only where there is one.
+   *
+   * `src/net/SteamLobby.js` reaches for `window.__STEAM__` and finds nothing in
+   * a browser, and `available: false` in a desktop shell whose Steam never
+   * answered — so both of those leave the block hidden and every other co-op
+   * path exactly as it was. Nothing here throws in either case, which is why it
+   * is safe to fire off the constructor unawaited.
+   */
+  async bindSteam() {
+    try {
+      if (!(await steamAvailable())) return;
+      const block = this.root.querySelector('[data-coop-steam]');
+      if (block) block.hidden = false;
+      // The join side needs no buttons at all: accepting an invite in the Steam
+      // friends list is the whole gesture.
+      onSteamInvite(async (lobbyId) => {
+        const lobby = this.ctx.lobby;
+        if (!lobby) return;
+        this.openCoop();
+        this.coopSay('Joining your friend through Steam…');
+        try { await joinViaSteam(lobby, lobbyId); }
+        catch (err) { this.coopSay(err?.message || 'That Steam invite did not work.'); }
+      });
+    } catch { /* the whole point of this path is that its absence is silent */ }
+  }
+
   /** All the co-op buttons. Every path here can fail, and every failure is
    *  something the player has to be told about in words. */
   async coopAction(action) {
@@ -1416,6 +1461,19 @@ export class Menus {
           this.coopSay('Send that reply code back to the host. The game starts when they accept it.');
           break;
         }
+        case 'coop-steam-host': {
+          this.coopSay('Opening a Steam lobby…');
+          const { lobbyId } = await hostViaSteam(lobby);
+          this.steamLobbyId = lobbyId;
+          this.coopSay('Steam lobby open. Press “Invite friend” and pick who joins you.');
+          break;
+        }
+        case 'coop-steam-invite': {
+          if (!this.steamLobbyId) return this.coopSay('Press “Host via Steam” first — the invite needs a lobby to point at.');
+          await openSteamInvite(this.steamLobbyId);
+          this.coopSay('Pick your friend in the Steam overlay. They join as soon as they accept.');
+          break;
+        }
         case 'coop-room-host': {
           this.coopSay('Opening a room…');
           const code = await lobby.hostViaRelay();
@@ -1438,7 +1496,10 @@ export class Menus {
           this.coopCopy(field('reply'));
           break;
         case 'coop-leave':
+          // `leave()` runs the Steam teardown that `hostViaSteam`/`joinViaSteam`
+          // parked on the lobby, so the id here is stale the moment it returns.
           lobby.leave();
+          this.steamLobbyId = null;
           for (const n of ['invite', 'answer', 'offer', 'reply', 'roomcode']) field(n).value = '';
           this.root.querySelector('[data-coop-code]').textContent = '----';
           break;

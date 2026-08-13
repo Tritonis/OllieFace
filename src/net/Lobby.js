@@ -345,6 +345,14 @@ export class Lobby {
   leave() {
     this.net?.close?.();
     this.ws?.close?.();
+    // The Steam path's counterpart to `ws.close()`. `src/net/SteamLobby.js`
+    // parks a teardown here when it opens a Steam lobby, because a Steam lobby
+    // is not a socket: nothing closes it when the page stops caring, and the
+    // player is left silently sitting in a lobby their friends can still join.
+    // Undefined in the browser and in any session that never touched Steam.
+    const steamCleanup = this._steamCleanup;
+    this._steamCleanup = null;
+    steamCleanup?.();
     // Dropping `this.net` was never enough. The system is registered with the
     // engine and publishes itself as `ctx.net` in `init`, so a closed `NetHost`
     // that is only forgotten here keeps being ticked every frame and stays the

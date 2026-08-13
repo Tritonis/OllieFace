@@ -3,8 +3,8 @@
   "command": "node tools/desktopprobe.mjs",
   "mode": "dev",
   "exe": null,
-  "when": "2026-08-13T15:37:47.993Z",
-  "sha": "b88889fa8b4b347cd97ba4da413818ffbe750639",
+  "when": "2026-08-13T16:22:11.751Z",
+  "sha": "e395c289e7d57e152c8c18851f6b53f192100314",
   "electron": "43.3.0",
   "playwright": "1.62.1",
   "checks": [

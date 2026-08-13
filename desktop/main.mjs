@@ -370,7 +370,12 @@ if (!app.requestSingleInstanceLock()) {
   // ONLY when Steam actually answered. A Steam-absent player gets zero appended
   // switches, zero repaint timers, and the same GPU path (and the same
   // `gpu-info.json` Optimus diagnostic) they had before this line existed.
-  if (steamStatus.available) overlayStatus = enableOverlay();
+  // `TELLURIC_NO_OVERLAY=1` skips only this line. It exists because the overlay's
+  // `in-process-gpu` switch blinds `getGPUInfo('complete')` — the Optimus
+  // diagnostic below reports nothing useful with the overlay on — so anyone
+  // gathering that diagnostic, or re-deriving the before/after pair in
+  // `desktop/README.md`, needs a way to boot without it that is not a hand edit.
+  if (steamStatus.available && !process.env.TELLURIC_NO_OVERLAY) overlayStatus = enableOverlay();
   registerSteamBridge();
 
   app.on('second-instance', () => {
