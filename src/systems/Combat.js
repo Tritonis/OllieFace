@@ -611,7 +611,15 @@ export class Combat {
       // survivor with nobody to lift them — takes the literal path it always
       // took. `roster?.count > 1` is what keeps single-player bit-identical:
       // with a roster of one the condition is false before it is interesting.
-      if (target.isPlayer && this.ctx.roster?.count > 1) {
+      //
+      // `!target.downed` is unreachable-false today — `applyDamage` returns
+      // above for a downed pawn, so nothing lethal gets this far. It stays
+      // because the fork must be self-sufficient: weaken or reorder that early
+      // return and lethal damage on an already-downed pawn walks back into
+      // `enterDowned` and refills `bleedout`, a body that can never finish
+      // bleeding out. The `_kill` dev-guard cannot see that one — `downed &&
+      // alive` is the legal state, so an endlessly reset clock is invisible.
+      if (target.isPlayer && !target.downed && this.ctx.roster?.count > 1) {
         this.enterDowned(target, source);
       } else {
         this._kill(target, source, pos, depth, info, Math.max(0, dealt - Math.max(0, hpBefore)));

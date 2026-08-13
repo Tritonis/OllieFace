@@ -148,6 +148,17 @@ console.log('a downed pawn is damage-proof: bleed-out is a timer, not damage');
   ok(named('damage').length === before, 'no damage event for the ignored hit');
   ok(named('playerDead').length === 0, 'still no playerDead');
   ok(named('playerDowned').length === 1, 'no second playerDowned');
+
+  // The hazard the fork's `!target.downed` clause exists for, asserted at the
+  // one place that can still be reached directly: re-entering the downed state
+  // must never refill the clock. A body whose `bleedout` is reset by every
+  // stray hit can never finish bleeding out, and no guard can see it — `downed
+  // && alive` is the legal state, so an endlessly reset timer looks like a
+  // teammate taking their time.
+  pawn.bleedout = 12;
+  combat.enterDowned(pawn, null);
+  ok(pawn.bleedout === 12, 'entering downed while already downed does not reset the bleed-out clock');
+  ok(named('playerDowned').length === 1, 'and does not re-announce the pawn going down');
 }
 
 console.log('finishDowned is the real death: the normal kill sequence, exactly once');
