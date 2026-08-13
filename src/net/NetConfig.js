@@ -171,11 +171,16 @@ export function describeNet() {
  *   ?netlag=40-90       uniform jitter between 40 and 90 ms
  *   ?netloss=2          2% loss, unreliable channel only
  *
+ * The page carrying the flag is the one whose *inbound* traffic is impaired:
+ * flight time is charged on arrival, not held back on send, because a send that
+ * waits on this page's frame loop is not a network. `Transport.js`'s
+ * `installSim` header has the measurement that settled it.
+ *
  * Loss is deliberately never applied to the reliable `events` channel: dropping
  * there would misrepresent a guarantee the transport actually provides, and
  * every conclusion drawn from it would be about a transport we do not ship.
  *
- * That is a property of the whole rig, not just of `?netloss=`. The delay queue
+ * That is a property of the whole rig, not just of `?netloss=`. The flight queue
  * both channels share is capped, and its overflow eviction is `state`-only for
  * the same reason (`Transport.js`, `MAX_SIM_QUEUE` / `_simEvict`); a reliable
  * backlog grows past the cap and warns instead. `tests/netlag.test.mjs` holds

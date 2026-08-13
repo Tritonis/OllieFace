@@ -203,16 +203,18 @@ function ingestBytes(buffer, bytes, recvTime) {
     if (label !== 'state') return;
     ingestBytes(lagged, bytes, t);
   };
-  host.installSim({ on: true, lagMs: 50, jitterMs: 0, lossPct: 0 }, () => t);
+  // The rig lives on the *receiving* peer: the host's send goes on the wire at
+  // once and the flight time is charged where it is felt. See `installSim`.
+  client.installSim({ on: true, lagMs: 50, jitterMs: 0, lossPct: 0 }, () => t);
 
   // Pump strictly past each due time — `due` is `_simClock() + lagMs/1000`,
   // and 0.1 + 0.05 lands one float ULP above 0.15, so pumping at exactly 0.15
   // would miss it. A small margin keeps this a test of the pipeline, not of
   // IEEE 754 addition.
   t = 0; host.sendState(bytesN_run1);
-  t = 0.06; host.pumpSim(); // tick N arrives, ~50ms later
+  t = 0.06; client.pumpSim(); // tick N arrives, ~50ms later
   t = 0.1; host.sendState(bytesN1_run1);
-  t = 0.16; host.pumpSim(); // tick N+1 arrives, ~50ms later
+  t = 0.16; client.pumpSim(); // tick N+1 arrives, ~50ms later
 
   const T0_LAGGED = 0.06, T1_LAGGED = 0.16;
   const renderTimeLagged = (T0_LAGGED + T1_LAGGED) / 2; // same 0.1s span, shifted by the 50ms lag
@@ -259,7 +261,8 @@ console.log('reliable-event ordering under sim — 20 jittered events, exactly o
   };
 
   let t = 0;
-  host.installSim({ on: true, lagMs: 20, jitterMs: 80, lossPct: 0 }, () => t);
+  // On the receiver, as above: the delay is flight time, not send-side holding.
+  client.installSim({ on: true, lagMs: 20, jitterMs: 80, lossPct: 0 }, () => t);
 
   // Fixed pseudo-random sequence so the jittered delays are reproducible.
   const realRandom = Math.random;
@@ -281,8 +284,8 @@ console.log('reliable-event ordering under sim — 20 jittered events, exactly o
   // Step the sim clock past the worst case (lag + jitter = 100ms), pumping
   // along the way — the queue is append-ordered, so a later-due packet under
   // jitter never jumps an earlier-sent one still in flight.
-  for (t = 0; t <= 0.2; t += 0.01) host.pumpSim();
-  t = 1; host.pumpSim();
+  for (t = 0; t <= 0.2; t += 0.01) client.pumpSim();
+  t = 1; client.pumpSim();
 
   ok(received.length === 20, `every event arrived exactly once (got ${received.length})`);
   let inOrder = true;

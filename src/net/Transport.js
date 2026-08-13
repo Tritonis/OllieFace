@@ -43,18 +43,22 @@ const decode = (s) => JSON.parse(atob(s));
 // immediate-send and delayed-release paths cannot silently diverge.
 const MAX_STATE_BUFFERED = 256 * 1024;
 
-// Caps the `?netlag=` delay queue. Sends that reach `_simSend` are driven by
-// message callbacks (hello/ping/refuse/forwarded events), not only by the
-// per-frame `pumpSim()` caller, so a stalled render/update loop could
-// otherwise grow this without bound while the data channel keeps delivering.
+// How often an unattended Peer drains its own inbound flight queue. Finer than
+// a frame, because the number being measured is the configured delay and not
+// the frame it happens to land in.
+const SIM_PUMP_MS = 4;
+
+// Caps the `?netlag=` flight queue. Arrivals that reach `_simRecv` are driven
+// by the data channel, which keeps delivering whatever the page is doing, so a
+// stalled render/update loop could otherwise grow this without bound.
 // Too low (below the packets a real probe legitimately has in flight at the
 // configured lag) would drop traffic a real network of that latency would
 // have delivered, contaminating the exact measurement this rig exists to
 // produce; too high defeats the point of capping a stall at all.
 //
 // The eviction policy is `state`-only, and that is not a nicety. This queue
-// is shared by both channels — `_simSend` is reached from `sendState` and
-// from `sendEvent` — so an unqualified `shift()` here could discard a queued
+// is shared by both channels — `_simRecv` is reached from both `_wire`d
+// `onmessage` handlers — so an unqualified `shift()` here could discard a held
 // `events` packet, which the transport declares `{ ordered: true }` and the
 // rig's own charter (`NetConfig.js`, `netSim`) promises never to drop. A
 // HELLO, a WELCOME or a forwarded event vanishing with no refusal and
@@ -119,27 +123,73 @@ export class Peer {
     this.closed = false;
     this._sim = null;
     this._simQueue = null;
+    this._simTimer = null;
   }
 
   _wire(ch, label) {
     ch.binaryType = 'arraybuffer';
-    ch.onmessage = (e) => this.onMessage?.(e.data, label, this);
+    // The rig, if armed, holds this arrival until it is due; `_simRecv` returns
+    // false whenever it does not consume the packet, so an unarmed Peer runs the
+    // original statement below and nothing else.
+    ch.onmessage = (e) => {
+      if (this._sim && this._simRecv(label, e.data)) return;
+      this.onMessage?.(e.data, label, this);
+    };
     ch.onclose = () => this.close();
     ch.onerror = () => {};
     return ch;
   }
 
   /**
-   * Arm the latency rig. `clock` returns seconds, monotonic; it is a parameter
-   * so tests can drive it. Called only when `netSim().on` — a Peer that is not
-   * armed has `_sim === null` and every send takes the original branch, so the
-   * shipped path costs one null check and allocates nothing.
+   * Arm the latency rig. Called only when `netSim().on` — a Peer that is not
+   * armed has `_sim === null`, so every send and every arrival takes the
+   * original branch and the shipped path costs one null check.
+   *
+   * ## The delay is on the *receive* side, and that is the whole point
+   *
+   * This rig used to hold outbound packets in a queue drained by `pumpSim()`
+   * once per rendered frame. That is not a network: it makes the wire wait on
+   * the *sender's* frame loop. Measured cost of the difference — a joining
+   * client's HELLO queued at 1542 ms, the host's WELCOME landing at 1580 ms,
+   * and the client's main thread then blocked for 3.9 s rebuilding the stage,
+   * so the HELLO did not leave until 5486 ms and the host had already refused
+   * the peer on its 2.5 s identity deadline. No co-op join could form at any
+   * configured delay of one frame or more, and no timer could have fixed it:
+   * a `setInterval` callback is a main-thread task and does not run during a
+   * synchronous block either.
+   *
+   * A real network takes the packet the moment `send()` is called and delivers
+   * it one flight time later, whatever the sender is doing. So sends are now
+   * immediate and unconditional, and the flight time is simulated where it
+   * actually lands: at the receiver, in `_wire`'s `onmessage`. A blocked
+   * receiver then delivers late — which is exactly what a blocked receiver
+   * does in reality, and is now the only stall the rig can express.
+   *
+   * The contract is otherwise unchanged, just inbound: `lagMs` plus a uniform
+   * `jitterMs`, loss on the unreliable `state` channel only, every surviving
+   * packet delivered exactly once, release strictly in arrival order, and
+   * `MAX_SIM_QUEUE` bounding the backlog by evicting the oldest `state` entry
+   * rather than ever dropping a reliable one.
+   *
+   * `clock` returns seconds, monotonic, and is optional: passing one means
+   * "this caller drives time and will call `pumpSim()` itself", which is what
+   * the tests do. Omitting it — the browser path, both call sites below — takes
+   * the real clock and a self-pump, so delivery does not depend on any
+   * particular caller remembering to pump.
    */
   installSim(sim, clock) {
     this._sim = sim;
-    this._simClock = clock;
+    this._simDriven = !clock;
+    this._simClock = clock ?? (() => performance.now() / 1000);
     this._simQueue = [];
     this._simOverflowWarned = false;
+    if (this._simDriven) {
+      // Finer than a frame so the configured delay is what is measured rather
+      // than the frame it lands in. `pumpSim` returns on an empty queue, so an
+      // idle peer pays a null check per tick. Cleared in `close()`.
+      this._simTimer = setInterval(() => this.pumpSim(), SIM_PUMP_MS);
+      this._simTimer?.unref?.();   // node: never hold the process open
+    }
   }
 
   /**
@@ -165,55 +215,50 @@ export class Peer {
     }
   }
 
-  /** Release anything whose delay has elapsed. Inert when not armed. */
+  /**
+   * Deliver anything whose flight time has elapsed. Inert when not armed.
+   *
+   * Called from `NetHost.update` / `NetClient.update` on every frame, and — on
+   * the browser path, where `installSim` was given no clock — from this Peer's
+   * own interval as well. Both are safe: the queue is spliced, so a packet is
+   * delivered exactly once regardless of how many callers pump.
+   */
   pumpSim() {
     const q = this._simQueue;
     if (!q || q.length === 0) return;
     const now = this._simClock();
     let i = 0;
     // The queue is append-ordered and delays are drawn per packet, so a later
-    // packet can come due first under jitter. Releasing strictly in queue order
-    // preserves the ordering the channel would have had; reordering here would
-    // be simulating a different network than the flag asks for.
+    // packet can come due first under jitter. Releasing strictly in arrival
+    // order preserves the ordering the channel would have had; reordering here
+    // would be simulating a different network than the flag asks for.
     while (i < q.length && q[i].due <= now) i++;
     if (i === 0) return;
     const due = q.splice(0, i);
-    for (const p of due) this._rawSend(p.ch, p.bytes);
+    for (const p of due) this.onMessage?.(p.data, p.ch, this);
   }
 
-  _rawSend(label, bytes) {
-    const ch = label === 'state' ? this.state : this.events;
-    if (ch?.readyState !== 'open') return;
-    if (label === 'state' && ch.bufferedAmount > MAX_STATE_BUFFERED) return;
-    ch.send(bytes);
-  }
-
-  /** Returns true when the rig consumed the packet (dropped or queued). */
-  _simSend(label, bytes) {
+  /**
+   * Returns true when the rig consumed the arrival (dropped in flight, or held
+   * until due). False means "not for me" and the caller delivers it as usual.
+   *
+   * Loss is `state`-only: the reliable channel is `{ ordered: true }` and the
+   * rig's charter is that it never drops what the transport guarantees. A lost
+   * `state` packet is simply never delivered, which is what loss is.
+   */
+  _simRecv(label, data) {
     const sim = this._sim;
     if (!sim) return false;
-    // The shipped transport drops when the channel is not open — `sendState` /
-    // `sendEvent` below both check, and so does `_rawSend` on release. The rig
-    // queued first and never consulted channel state, and a `Peer` enters
-    // `HostTransport.peers` at *invite* time, so `_forward`'s broadcast filled
-    // this queue for the whole pre-connect window and released the lot in one
-    // burst on the first pump after the channels opened: a purse jump,
-    // unearned level-ups and a stale realmEnter/realmExit pair the shipped
-    // game never delivers. Returning false hands the packet back to the
-    // caller's own open-check, so the drop is the same code either way.
-    const ch = label === 'state' ? this.state : this.events;
-    if (ch?.readyState !== 'open') return false;
     if (label === 'state' && sim.lossPct > 0 && Math.random() * 100 < sim.lossPct) return true;
     const delay = (sim.lagMs + (sim.jitterMs ? Math.random() * sim.jitterMs : 0)) / 1000;
     if (delay <= 0) return false;
     const q = this._simQueue;
     if (q.length >= MAX_SIM_QUEUE) this._simEvict();
-    q.push({ ch: label, bytes, due: this._simClock() + delay });
+    q.push({ ch: label, data, due: this._simClock() + delay });
     return true;
   }
 
   sendState(bytes) {
-    if (this._simSend('state', bytes)) return;
     if (this.state?.readyState === 'open') {
       // Drop rather than queue: a backed-up unreliable channel means we are
       // already behind, and stale snapshots are worse than none.
@@ -223,13 +268,13 @@ export class Peer {
   }
 
   sendEvent(bytes) {
-    if (this._simSend('events', bytes)) return;
     if (this.events?.readyState === 'open') this.events.send(bytes);
   }
 
   close() {
     if (this.closed) return;
     this.closed = true;
+    if (this._simTimer) { clearInterval(this._simTimer); this._simTimer = null; }
     try { this.pc.close(); } catch {}
     this.onClose?.(this);
   }
@@ -383,7 +428,7 @@ export class HostTransport {
     ice?.attach(pc);
     const peer = new Peer(pc, id);
     const sim = netSim();
-    if (sim.on) peer.installSim(sim, () => performance.now() / 1000);
+    if (sim.on) peer.installSim(sim);
 
     // Host creates both channels so ordering/ids are deterministic; the client
     // just picks them up via ondatachannel.
@@ -521,7 +566,7 @@ export class ClientTransport {
     if (trickle) this._ice.attach(pc); else this._ice.discard();
     const peer = new Peer(pc, msg.id);
     const sim = netSim();
-    if (sim.on) peer.installSim(sim, () => performance.now() / 1000);
+    if (sim.on) peer.installSim(sim);
     this.peer = peer;
 
     let opened = 0;
