@@ -199,5 +199,52 @@ console.log('an owner-less orb grants exactly as today — to ctx.items');
   ok(hostItems.count('adrenal-syringe') === 1, 'the owner-less orb still grants to the viewer, unchanged');
 }
 
+/**
+ * Drives an owned orb through the real arc -> hover -> seek -> claimed state
+ * machine (no manual `claimed`/`position` overrides) so the homing target and
+ * the grant recipient are exercised by the same code path a real pickup uses.
+ * Caps at 400 fixed steps (~6.7s of sim time) so a regression that never
+ * claims fails loudly instead of hanging the suite.
+ */
+function collectNaturally(interactables, ctx, orb) {
+  for (let i = 0; i < 400 && !orb.claimed; i++) interactables.fixedUpdate(ctx, 1 / 60);
+  return orb.claimed;
+}
+
+for (const [label, makeUntargetable] of [
+  ['alive:false', (p) => { p.alive = false; }],
+  ['downed:true', (p) => { p.downed = true; }],
+]) {
+  console.log(`an owner who goes untargetable mid-flight (${label}) pays the fallback, not the dead owner`);
+  {
+    const ctx = makeCtx();
+    ctx.fxRng = new RNG(1);
+    const host = { isPlayer: true, alive: true, position: new THREE.Vector3(0, 0, 0) };
+    const remote = { isPlayer: true, alive: true, downed: false, peerId: 2, position: new THREE.Vector3(0, 0, 0) };
+    ctx.player = host;
+
+    const hostItems = new Items();
+    hostItems.init(ctx);
+    const remoteItems = new Items(remote);
+    remoteItems.init(ctx);
+    remote.items = remoteItems;
+    ctx.roster = fakeRoster(host, remote);
+
+    const interactables = new Interactables();
+    interactables.ctx = ctx;
+    ctx.interactables = interactables;
+
+    // Owned by remote, but remote is untargetable from the moment it's
+    // tossed — homing must fall back to the local viewer (host) for the
+    // orb's entire flight, and the grant must follow the same pawn.
+    const orb = interactables.spawnOrb(host.position.clone(), 'adrenal-syringe', 1.5, remote);
+    makeUntargetable(remote);
+
+    ok(collectNaturally(interactables, ctx, orb), 'the orb was claimed within the step budget');
+    ok(hostItems.count('adrenal-syringe') === 1, 'the fallback pawn (host) received the item');
+    ok(remoteItems.count('adrenal-syringe') === 0, 'the untargetable owner\'s inventory is unchanged');
+  }
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

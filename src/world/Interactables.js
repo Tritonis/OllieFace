@@ -1741,15 +1741,23 @@ class ItemOrb {
     this.group.position.copy(this.position);
   }
 
+  /**
+   * The pawn this orb is currently homing to, and the pawn the collection
+   * grant must pay — the same expression, called from both places, so the
+   * two can never diverge again. An owner who is no longer a legal target
+   * (bled out or downed mid-flight) falls back to the local viewer rather
+   * than have the orb evaporate *or* pay a pawn that never touched it.
+   * Owner-less orbs (and every SP orb, where `ownerPawn === ctx.player`)
+   * resolve to exactly the pawn this always homed to and always paid.
+   */
+  recipient() {
+    return (this.ownerPawn && Roster.targetable(this.ownerPawn))
+      ? this.ownerPawn : this.ctx.player;
+  }
+
   fixedUpdate(h) {
     this.age += h;
-    // Homes to the pawn that earned it, so long as it's still a legal target;
-    // an owner who bled out mid-flight sees the loot fall back to the local
-    // viewer rather than evaporate. Owner-less orbs (and every SP orb, where
-    // `ownerPawn === ctx.player`) resolve to exactly the same target this
-    // always homed to.
-    const target = (this.ownerPawn && Roster.targetable(this.ownerPawn))
-      ? this.ownerPawn : this.ctx.player;
+    const target = this.recipient();
 
     if (this.state === 'arc') {
       this.velocity.y -= 26 * h;
@@ -2081,11 +2089,11 @@ export class Interactables {
       const orb = this.orbs[i];
       orb.fixedUpdate(h);
       if (!orb.claimed) continue;
-      // Grants to the orb's owner, not to whoever this machine happens to be
-      // rendering — `ownerPawn ?? ctx.player` is the same pawn the orb just
-      // homed to, so the grant always lands where the pickup animation says
-      // it did.
-      Items.of(ctx, orb.ownerPawn ?? ctx.player)?.give(orb.itemId, 1);
+      // `recipient()` is the exact same call the homing logic just used to
+      // decide where this orb flew — the grant always lands on the pawn the
+      // pickup animation says it did, never on an owner who stopped being a
+      // legal target mid-flight.
+      Items.of(ctx, orb.recipient())?.give(orb.itemId, 1);
       ctx.vfx?.burst?.(orb.position, TIERS[orb.def?.tier || 'common'].colour);
       this.root.remove(orb.group);
       orb.dispose();
