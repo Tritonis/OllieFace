@@ -608,19 +608,213 @@ console.log('-- FIX ROUND 2: mirror case -- a second Steam invite while already 
   delete globalThis.window;
 }
 
-console.log('-- FIX ROUND 2: double-host (the SAME gesture twice) still re-advertises -- Important 2 stays closed');
+console.log('-- FIX ROUND 3: double-host (the SAME gesture twice) re-advertises IN PLACE -- Important 2 stays closed');
 {
+  // Important 2 asked for one thing: a second "Host via Steam" must not leave an
+  // orphaned Steam lobby behind. Round 2 met that by opening a fresh lobby and
+  // releasing the old one. Round 3 meets it more strongly by not opening a second
+  // lobby at all -- see `hostViaSteam`'s re-advertise comment. Either way exactly
+  // one Steam lobby is open at the end and `Lobby.leave()` frees it; the
+  // difference is that a friend already inside the first lobby keeps their
+  // membership, and so keeps the only thing that makes their answer deliverable.
   const b = makeBridge();
   const opened = [];
   let n = 200;
-  b.hostLobby = async () => { const id = String(n++); opened.push(id); return { lobbyId: id }; };
+  b.hostLobby = async () => { const id = String(n++); opened.push(id); b.calls.push(['hostLobby']); return { lobbyId: id }; };
+  b.leaveLobby = async (id) => { b.calls.push(['leaveLobby', id]); opened.splice(opened.indexOf(id), 1); return { ok: true }; };
+  const lobby = makeLobby();
+  const first = await hostViaSteam(lobby);
+  lobby.mode = 'host';
+  const second = await hostViaSteam(lobby);
+
+  ok(opened.length === 1 && opened[0] === '200',
+    `exactly one Steam lobby is open, and it is the first one (${JSON.stringify(opened)})`);
+  ok(second.lobbyId === first.lobbyId, `the re-advertise keeps the friend's lobby id (${first.lobbyId} -> ${second.lobbyId})`);
+  ok(b.calls.filter(([n2]) => n2 === 'hostLobby').length === 1, 'no second Steam lobby was opened');
+  ok(!b.calls.some(([n2]) => n2 === 'leaveLobby'), 'and nothing was released out from under a friend who had already joined');
+  ok(b.calls.filter(([n2]) => n2 === 'writeLobbyData').length === 2, 'a freshly minted offer was written over the old one');
+  ok(b.calls.filter(([n2]) => n2 === 'startSignalListen').length === 2
+    && b.calls.filter(([n2, id]) => n2 === 'startSignalListen' && id === first.lobbyId).length === 2,
+    'and the host is still listening on the lobby the friend is a member of');
+  ok(b.listeners.signal.size === 1 && b.listeners.fail.size === 1,
+    `no listener accumulated across the two presses (${b.listeners.signal.size}/${b.listeners.fail.size})`);
+
+  lobby._steamCleanup();                       // this is what Lobby.leave() does
+  ok(opened.length === 0, `Lobby.leave() still frees the one lobby that is open (${JSON.stringify(opened)})`);
+  delete globalThis.window;
+}
+
+// -------------------------------------------------- FIX ROUND 3: in-flight
+//
+// The round-2 guards read `lobby.mode`, which is a COMPLETION signal. A
+// `joinViaSteam` can sit in its poll loop for a full minute with `mode` still
+// reading `'single'`, and every one of these blocks fires a second Steam
+// operation inside exactly that window. Each asserts the same invariant the two
+// previous rounds asserted only for settled state: no partial teardown -- decide,
+// and either complete or abort, BEFORE releasing any previous state.
+
+/** A bridge whose host never posts an offer, so a join stays in its poll loop. */
+function stallingBridge() {
+  const b = makeBridge();
+  b.getFullLobbyData = async (id) => { b.calls.push(['getFullLobbyData', id]); return { data: {} }; };
+  return b;
+}
+const settle = (p) => p.then(() => 'resolved', (e) => 'rejected: ' + e.message);
+const tick = (ms) => new Promise((r) => setTimeout(r, ms));
+
+console.log('-- FIX ROUND 3: a second invite arriving while the first join is still MID-POLL must not release the first');
+{
+  const b = stallingBridge();
+  const lobby = makeLobby({ mode: 'single' });
+  const firstId = '111';
+  const first = settle(joinViaSteam(lobby, firstId, { pollMs: 5, waitMs: 300 }));
+  await tick(30);
+  ok(lobby.mode === 'single',
+    'the first join is genuinely in flight and lobby.mode still reads "single" -- what the round-2 guards see');
+  const before = b.calls.length;
+
+  let threw = null;
+  try { await joinViaSteam(lobby, '222', { pollMs: 5, waitMs: 20 }); } catch (e) { threw = e; }
+  ok(threw instanceof Error, `the second invite is refused (${threw && threw.message})`);
+  ok(threw && /still joining/i.test(threw.message), `and names the cause and the remedy (${threw && threw.message})`);
+  ok(JSON.stringify(b.calls.slice(before).map(([n]) => n)) === JSON.stringify([]),
+    `nothing at all reached the bridge for the refused invite (${JSON.stringify(b.calls.slice(before))})`);
+  ok(!b.calls.some(([n, id]) => n === 'leaveLobby' && id === firstId),
+    `the first join's own Steam lobby (${firstId}) was never released`);
+  ok(!b.calls.some(([n, id]) => n === 'joinLobby' && id === '222'), 'and the second lobby was never joined');
+
+  const how = await first;
+  ok(/never posted/.test(how), `the first join ran on to its OWN outcome rather than being abandoned (${how})`);
+  delete globalThis.window;
+}
+
+console.log('-- FIX ROUND 3: "Host via Steam" pressed while a join is still MID-POLL must not release the join');
+{
+  const b = stallingBridge();
+  const lobby = makeLobby({ mode: 'single' });
+  const firstId = '111';
+  const first = settle(joinViaSteam(lobby, firstId, { pollMs: 5, waitMs: 300 }));
+  await tick(30);
+  const before = b.calls.length;
+
+  let threw = null;
+  try { await hostViaSteam(lobby); } catch (e) { threw = e; }
+  ok(threw instanceof Error, `the host press is refused rather than silently superseding the join (${threw && threw.message})`);
+  ok(threw && /still joining/i.test(threw.message), `and says why (${threw && threw.message})`);
+  ok(JSON.stringify(b.calls.slice(before).map(([n]) => n)) === JSON.stringify([]),
+    `nothing reached the bridge (${JSON.stringify(b.calls.slice(before))})`);
+  ok(!b.calls.some(([n, id]) => n === 'leaveLobby' && id === firstId), `the join's Steam lobby (${firstId}) was never released`);
+  ok(!b.calls.some(([n]) => n === 'hostLobby'), 'and no Steam lobby was opened for the refused host attempt');
+
+  const how = await first;
+  ok(/never posted/.test(how), `the join ran on to its own outcome (${how})`);
+  delete globalThis.window;
+}
+
+console.log('-- FIX ROUND 3: a second host press while the first is still opening is refused, and opens no second lobby');
+{
+  const b = makeBridge();
+  const opened = [];
+  let n = 300;
+  b.hostLobby = async () => { await tick(40); const id = String(n++); opened.push(id); return { lobbyId: id }; };
+  const lobby = makeLobby({ mode: 'single' });
+  const first = settle(hostViaSteam(lobby));
+  await tick(5);
+
+  let threw = null;
+  try { await hostViaSteam(lobby); } catch (e) { threw = e; }
+  ok(threw instanceof Error, `the impatient second press is refused (${threw && threw.message})`);
+  ok(threw && /still opening/i.test(threw.message), `and says what is already happening (${threw && threw.message})`);
+  ok(await first === 'resolved', 'the first press still completes on its own terms');
+  ok(opened.length === 1, `exactly one Steam lobby was ever opened (${JSON.stringify(opened)})`);
+  delete globalThis.window;
+}
+
+console.log('-- FIX ROUND 3: an invite arriving while a host press is still in flight is refused, host untouched');
+{
+  const b = makeBridge();
+  b.hostLobby = async (m) => { b.calls.push(['hostLobby', m]); await tick(40); return { lobbyId: '400' }; };
+  const lobby = makeLobby({ mode: 'single' });
+  const first = settle(hostViaSteam(lobby));
+  await tick(5);
+
+  let threw = null;
+  try { await joinViaSteam(lobby, '555', { pollMs: 5, waitMs: 20 }); } catch (e) { threw = e; }
+  ok(threw instanceof Error && /still opening/i.test(threw.message),
+    `the invite is refused while the host press is undecided (${threw && threw.message})`);
+  ok(await first === 'resolved', 'and the host press completes');
+  ok(!b.calls.some(([n, id]) => n === 'leaveLobby' && id === '400'), "the host's own Steam lobby was never released");
+  ok(!b.calls.some(([n]) => n === 'joinLobby'), 'and the invite never reached the bridge');
+  delete globalThis.window;
+}
+
+console.log('-- FIX ROUND 3: the in-flight latch clears on EVERY exit -- success, refusal, the wait bound, and teardown');
+{
+  // A latch that outlives its operation is a co-op screen that refuses every
+  // gesture for the rest of the process. Each arm below drives one exit path and
+  // then proves the very next Steam operation is accepted.
+  const b = stallingBridge();
+
+  const a = makeLobby({ mode: 'single' });
+  let threw = null;
+  try { await joinViaSteam(a, '111', { pollMs: 5, waitMs: 20 }); } catch (e) { threw = e; }
+  ok(threw && /never posted/.test(threw.message), 'arm 1: the join times out at its bound');
+  threw = null;
+  try { await joinViaSteam(a, '112', { pollMs: 5, waitMs: 20 }); } catch (e) { threw = e; }
+  ok(threw && /never posted/.test(threw.message), `arm 1: and the next invite is accepted, not refused as busy (${threw && threw.message})`);
+
+  const c = makeLobby({ mode: 'single' });
+  const pending = settle(joinViaSteam(c, '113', { pollMs: 5, waitMs: 5000 }));
+  await tick(20);
+  // The whole point of the round: "an operation is in progress on this Lobby" is
+  // observable SYNCHRONOUSLY, mid-poll, while `mode` still says 'single'.
+  ok(!!c._steamOp && c._steamOp.kind === 'join' && c.mode === 'single',
+    `arm 2: the in-flight latch is readable while the poll runs (${JSON.stringify(c._steamOp)}, mode ${c.mode})`);
+  c._steamCleanup();                              // Lobby.leave() mid-poll
+  ok(!c._steamOp, 'arm 2: teardown clears the in-flight latch at once, not a poll tick later');
+  threw = null;
+  try { await joinViaSteam(c, '114', { pollMs: 5, waitMs: 20 }); } catch (e) { threw = e; }
+  ok(threw && /never posted/.test(threw.message), `arm 2: so the next invite is accepted straight away (${threw && threw.message})`);
+  ok(/left before/.test(await pending), 'arm 2: and the abandoned join still rejects for its own reason');
+
+  const d = makeLobby({ mode: 'single' });
+  Object.assign(b.data, Object.fromEntries(chunkBlob('sdp.offer', 'AN-OFFER')));
+  b.getFullLobbyData = async (id) => { b.calls.push(['getFullLobbyData', id]); return { data: { ...b.data } }; };
+  await joinViaSteam(d, '115', { pollMs: 5, waitMs: 2000 });   // the offer is there, so this one succeeds
+  ok(!d._steamOp, 'arm 3: a join that succeeds leaves no latch behind either');
+  delete globalThis.window;
+
+  const e = makeBridge();
+  const f = makeLobby({ mode: 'single' });
+  await hostViaSteam(f);
+  ok(!f._steamOp, 'arm 4: nor does a host that succeeds');
+  e.hostLobby = async () => ({ error: 'steam-unavailable' });
+  const g = makeLobby({ mode: 'single' });
+  threw = null;
+  try { await hostViaSteam(g); } catch (err) { threw = err; }
+  ok(threw instanceof Error && !g._steamOp, 'arm 5: nor does a host that throws from the bridge');
+  delete globalThis.window;
+}
+
+console.log('-- FIX ROUND 3: a re-advertise that FAILS keeps the running session\'s Steam lobby, and leave() still frees it');
+{
+  const b = makeBridge();
+  const opened = [];
+  b.hostLobby = async () => { opened.push('500'); return { lobbyId: '500' }; };
   b.leaveLobby = async (id) => { b.calls.push(['leaveLobby', id]); opened.splice(opened.indexOf(id), 1); return { ok: true }; };
   const lobby = makeLobby();
   await hostViaSteam(lobby);
   lobby.mode = 'host';
-  await hostViaSteam(lobby);
-  ok(opened.length === 1 && opened[0] === '201',
-    `re-hosting still replaces the old Steam lobby with a new one, unaffected by the new guard (${JSON.stringify(opened)})`);
+
+  b.writeLobbyData = async () => ({ error: 'lobby-data-write-refused' });
+  let threw = null;
+  try { await hostViaSteam(lobby); } catch (e) { threw = e; }
+  ok(threw instanceof Error, `the failed re-advertise reports itself (${threw && threw.message})`);
+  ok(opened.length === 1 && opened[0] === '500',
+    `the running game's Steam lobby is still open -- a failed re-advertise costs nothing (${JSON.stringify(opened)})`);
+  ok(typeof lobby._steamCleanup === 'function', 'and a latch is still armed over it');
+  lobby._steamCleanup?.();
+  ok(opened.length === 0, 'so Lobby.leave() still frees it -- no orphan, Important 2 stays closed');
   delete globalThis.window;
 }
 

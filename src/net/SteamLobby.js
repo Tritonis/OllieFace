@@ -214,6 +214,58 @@ async function requireSteam() {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /**
+ * Claim this Lobby for one Steam operation, or refuse.
+ *
+ * ## Why `lobby.mode` was never enough (fix round 3)
+ *
+ * The round-2 guards below ask `lobby.mode` whether a session already exists.
+ * `mode` is a *completion* signal: `Lobby.startHost()` and `Lobby.joinManual()`
+ * set it, and `joinViaSteam` does not reach `joinManual` until its poll loop has
+ * found a complete offer — up to `OFFER_WAIT_MS`, a full minute. For that whole
+ * minute a join is unmistakably happening and `mode` still reads `'single'`,
+ * exactly as it reads when nothing is happening at all. A second Steam operation
+ * arriving inside that window — a second friend's "Join game", or the player
+ * pressing "Host via Steam" out of impatience — sailed past both guards and then
+ * released the first operation's Steam lobby through `armCleanup`'s previous-latch
+ * step, before the first operation's own outcome was known. That is the partial
+ * teardown the invariant forbids, and no completion-state check can see it.
+ *
+ * So this is an *in-flight* latch, and three properties make it one:
+ *
+ *  - It is read and written **synchronously**, before either function's first
+ *    `await`. `requireSteam()` alone is two awaits; a check that happens after
+ *    them is already a race.
+ *  - Any operation in flight refuses any new one. Uniformly — a join can never
+ *    supersede anything, and a *concurrent* host press is wave 1's impatient
+ *    double-press, which its UI guard already intended to make impossible and
+ *    which nothing downstream is prepared for. The deliberate asymmetry stays
+ *    exactly where round 2 put it: a **settled** `mode === 'host'` still passes
+ *    `hostViaSteam`, because that is the re-advertise gesture, and this latch is
+ *    empty by then.
+ *  - The releaser compares **identity**, not truthiness, so a latch released late
+ *    (a teardown, a rejected promise settling after the fact) can never clear a
+ *    newer operation's claim.
+ *
+ * Every exit path clears it: `finally` covers resolve, throw and the 60 s bound,
+ * and the releaser is also the first step of the operation's `armCleanup` list,
+ * so a `Lobby.leave()` mid-poll frees the latch at once rather than a poll tick
+ * later.
+ */
+function beginSteamOp(lobby, kind) {
+  const busy = lobby && lobby._steamOp;
+  if (busy) {
+    const doing = busy.kind === 'host'
+      ? "you're still opening your own Steam lobby"
+      : "you're still joining a friend's game";
+    const then = kind === 'host' ? 'then host your own.' : 'then try that invite again.';
+    throw new Error(`Steam lobby: ${doing}. Wait for that to finish, or leave, ${then}`);
+  }
+  const op = { kind };
+  if (lobby) lobby._steamOp = op;
+  return () => { if (lobby && lobby._steamOp === op) lobby._steamOp = null; };
+}
+
+/**
  * Hang a teardown on the Lobby's own dispose path.
  *
  * `Lobby.leave()` is the single place a co-op session ends — the Leave button,
@@ -237,7 +289,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  * tidying up. Confirming they succeeded would mean making `leave()` async, and
  * a teardown nobody can wait for is the honest shape of this.
  */
-function armCleanup(lobby, steps) {
+function armCleanup(lobby, steps, { holds = null, release = [] } = {}) {
   // A latch already parked here belongs to an EARLIER Steam session on this same
   // Lobby — a second "Host via Steam", or a Steam invite accepted while already
   // hosting. Overwriting it was the whole of Important 2: `leave()` can only ever
@@ -245,23 +297,35 @@ function armCleanup(lobby, steps) {
   // life of the process, still listed and still joinable by a friend whose answer
   // the host would then refuse. Run it first, and the older session is released
   // by exactly the code written to release it.
+  //
+  // `holds` names the Steam lobby this operation is taking responsibility for.
+  // When the previous latch held the SAME one, the new operation is not replacing
+  // that lobby, it is taking it over (fix round 3's re-advertise path), so the
+  // previous latch runs its listener teardown and skips its `release` group. The
+  // new latch inherits the duty of freeing the lobby, and it is the only latch
+  // that can — `done` has already fired on the old one.
   const previous = lobby && lobby._steamCleanup;
   if (typeof previous === 'function') {
     lobby._steamCleanup = null;      // cleared first: a latch must never re-enter itself
-    try { previous(); } catch { /* it swallows its own steps; this is belt and braces */ }
+    const keepLobby = holds != null && previous.holds != null && previous.holds === holds;
+    try { previous({ keepLobby }); } catch { /* it swallows its own steps; this is belt and braces */ }
   }
 
   let done = false;
-  const once = () => {
+  const once = (opts) => {
     if (done) return;
     done = true;
-    for (const step of steps) {
+    // `release` last and as a group: the listeners come down before the lobby
+    // they were listening on, and `Lobby.leave()` — which calls this with no
+    // argument at all — always gets the whole list.
+    for (const step of (opts && opts.keepLobby ? steps : [...steps, ...release])) {
       try {
         const r = step();
         if (r && typeof r.then === 'function') r.then(undefined, () => {});
       } catch { /* the next step still has to run */ }
     }
   };
+  once.holds = holds;
   if (lobby) lobby._steamCleanup = once;
   return once;
 }
@@ -281,6 +345,19 @@ function armCleanup(lobby, steps) {
  * have (`Lobby.js:261-272`).
  */
 export async function hostViaSteam(lobby, { maxMembers = 2 } = {}) {
+  // Synchronous, before the first `await`: see `beginSteamOp`. Nothing below
+  // this line can begin while another Steam operation on this Lobby is still
+  // undecided, which is what makes "decide, then release" true on every path
+  // rather than only on the ones `lobby.mode` can see.
+  const endOp = beginSteamOp(lobby, 'host');
+  try {
+    return await hostViaSteamBody(lobby, maxMembers, endOp);
+  } finally {
+    endOp();
+  }
+}
+
+async function hostViaSteamBody(lobby, maxMembers, endOp) {
   const b = await requireSteam();
 
   // FIX ROUND 2 (re-review, the host-then-accept-invite finding's mirror
@@ -289,27 +366,54 @@ export async function hostViaSteam(lobby, { maxMembers = 2 } = {}) {
   // someone else's game (accepted a Steam invite, or joined by room code)
   // cannot have that session's Steam membership released by a "Host via
   // Steam" press that was always going to fail. `mode === 'host'` is
-  // deliberately still allowed through: that is the double-host / re-host
-  // case Important 2 fixed, `Lobby.createInvite()` itself reuses the
-  // existing `NetHost` rather than starting a second one when already
-  // hosting, and the old Steam lobby's release there is the intended
-  // "re-advertise my running game" behaviour, not a bug.
+  // deliberately still allowed through — unchanged by fix round 3 — because
+  // that is the double-host / re-host case Important 2 fixed, and
+  // `Lobby.createInvite()` itself reuses the existing `NetHost` rather than
+  // starting a second one when already hosting. What round 3 changed is what
+  // that press then does to the Steam lobby: see "RE-ADVERTISE, NOT RE-OPEN"
+  // below.
   if (lobby && lobby.mode === 'client')
     throw new Error("Steam lobby: you're already in a game. Leave it first, then host your own.");
 
-  const { lobbyId } = unwrap(await b.hostLobby(maxMembers), 'Steam lobby');
-  if (typeof lobbyId !== 'string' || !lobbyId) throw new Error('Steam lobby: no lobby id came back.');
+  // RE-ADVERTISE, NOT RE-OPEN (fix round 3). Pressing "Host via Steam" while
+  // already hosting through Steam used to open a second Steam lobby and drop the
+  // first. That silently stranded any friend who had joined the first lobby and
+  // was mid-handshake: the main process gates every incoming P2P packet on
+  // membership of whichever lobby it is currently listening to
+  // (`desktop/main.mjs`, `isLobbyMember(signalListen.lobby, ...)`), so once the
+  // listener rebinds to the new lobby the friend's answer — which the host's own
+  // `pendingInvites` would still have matched — is dropped without a word to
+  // either player. It also invalidated the friends-list entry the friend was
+  // holding. Reusing the lobby is what "re-advertise my running game" actually
+  // means: same lobby, same membership, a freshly minted offer written over the
+  // old one. A `mode === 'host'` session with no Steam lobby of its own (hosted
+  // by room code or invite code) falls through and opens one, as before.
+  const reusing = !!(lobby && lobby.mode === 'host'
+    && typeof lobby._steamLobbyId === 'string' && lobby._steamLobbyId);
+
+  let lobbyId;
+  if (reusing) {
+    lobbyId = lobby._steamLobbyId;
+  } else {
+    ({ lobbyId } = unwrap(await b.hostLobby(maxMembers), 'Steam lobby'));
+    if (typeof lobbyId !== 'string' || !lobbyId) throw new Error('Steam lobby: no lobby id came back.');
+  }
 
   // Armed before anything else can fail, so every path below leaves nothing
   // behind: an abandoned Steam lobby is invisible to the player who abandoned it.
   let offSignal = null;
   let offFail = null;
-  const cleanup = armCleanup(lobby, [
-    () => offSignal?.(),
-    () => offFail?.(),
+  const release = [
     () => b.stopSignalListen?.(),
     () => b.leaveLobby?.(lobbyId),
-  ]);
+    () => { if (lobby && lobby._steamLobbyId === lobbyId) lobby._steamLobbyId = null; },
+  ];
+  const cleanup = armCleanup(lobby, [
+    () => endOp(),
+    () => offSignal?.(),
+    () => offFail?.(),
+  ], { holds: lobbyId, release });
+  if (lobby) lobby._steamLobbyId = lobbyId;
 
   try {
     const invite = await lobby.createInvite();
@@ -356,8 +460,14 @@ export async function hostViaSteam(lobby, { maxMembers = 2 } = {}) {
     lobby._set?.('roomOpen', { code: lobbyId, steam: true });
     return { lobbyId };
   } catch (err) {
-    cleanup();
-    if (lobby) lobby._steamCleanup = null;
+    // A failed re-advertise must not cost the player the session it was
+    // re-advertising: the lobby it reused is the one still carrying the running
+    // game, so its listeners come down and the lobby itself stays open — with a
+    // bare latch re-armed over it, because otherwise `Lobby.leave()` would have
+    // nothing left to free it with and Important 2's orphan would be back.
+    cleanup({ keepLobby: reusing });
+    if (reusing) armCleanup(lobby, [], { holds: lobbyId, release });
+    else if (lobby) lobby._steamCleanup = null;
     throw err;
   }
 }
@@ -370,6 +480,18 @@ export async function hostViaSteam(lobby, { maxMembers = 2 } = {}) {
  * `joinManual`, and a plain `Error` on failure.
  */
 export async function joinViaSteam(lobby, lobbyId, { pollMs = POLL_MS, waitMs = OFFER_WAIT_MS } = {}) {
+  // Synchronous, before the first `await`: see `beginSteamOp`. The poll loop
+  // below can run for a minute with `lobby.mode` still reading `'single'`, and
+  // this latch is the only thing that is true for the whole of it.
+  const endOp = beginSteamOp(lobby, 'join');
+  try {
+    return await joinViaSteamBody(lobby, lobbyId, pollMs, waitMs, endOp);
+  } finally {
+    endOp();
+  }
+}
+
+async function joinViaSteamBody(lobby, lobbyId, pollMs, waitMs, endOp) {
   const b = await requireSteam();
   const id = String(lobbyId ?? '');
   if (!/^\d+$/.test(id)) throw new Error('Steam lobby: that is not a lobby id.');
@@ -406,8 +528,11 @@ export async function joinViaSteam(lobby, lobbyId, { pollMs = POLL_MS, waitMs = 
     // in the list, and set synchronously, so it lands before anything else can
     // throw its way past it.
     () => { abandoned = true; },
-    () => b.leaveLobby?.(id),
-  ]);
+    // And the in-flight latch goes with it, at once rather than a poll tick
+    // later, so a teardown never leaves the Lobby looking busy to the next
+    // gesture the player makes.
+    () => endOp(),
+  ], { holds: id, release: [() => b.leaveLobby?.(id)] });
 
   try {
     const deadline = Date.now() + waitMs;
