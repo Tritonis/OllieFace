@@ -16,14 +16,20 @@ plain HTTP internally.
 
 ## Launch and deploy
 
-Run these from `deploy/signal/` (the build context resolves to the repo
-root via `fly.toml`'s `context = "../.."`, so the Dockerfile's `COPY
-tools/signal-server.mjs` still finds the real file):
+Run these from the **repo root** (not `deploy/signal/`). The Dockerfile
+`COPY`s `tools/signal-server.mjs` from outside `deploy/signal/`, and flyctl's
+build context is always the working directory `fly deploy`/`fly launch` is
+invoked from — there is no `context` key in `fly.toml` to redirect it. The
+`--config`/`--dockerfile` flags are resolved relative to that same working
+directory, so from the repo root they point in at `deploy/signal/`:
 
 ```
-flyctl launch --no-deploy --copy-config
-flyctl deploy
+flyctl launch --no-deploy --copy-config --config deploy/signal/fly.toml --dockerfile deploy/signal/Dockerfile
+flyctl deploy --config deploy/signal/fly.toml --dockerfile deploy/signal/Dockerfile
 ```
+
+A root-level `.dockerignore` keeps this context small (source and the two
+deploy files only — no `.git`, `node_modules`, `dist`, or capture output).
 
 `flyctl launch` will ask to confirm (or override) the app name and region
 from `fly.toml` — `primary_region = "ord"` is a placeholder; pick the region

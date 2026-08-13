@@ -2,8 +2,7 @@ app = "telluric-signal"
 primary_region = "ord"
 
 [build]
-  dockerfile = "Dockerfile"
-  context = "../.."
+  dockerfile = "deploy/signal/Dockerfile"
 
 [http_service]
   internal_port = 8080

@@ -1,0 +1,7 @@
+*
+!tools
+!tools/signal-server.mjs
+!deploy
+!deploy/signal
+!deploy/signal/package.json
+!deploy/signal/Dockerfile
