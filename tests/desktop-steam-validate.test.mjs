@@ -20,8 +20,11 @@
 import {
   parseSteamId, steamIdToString, validateMaxMembers, validateLobbyRecord,
   sanitizeLobbyData, encodeSignal, decodeSignal,
+  lobbyRecordBytes,
   MAX_LOBBY_VALUE_CHARS, MAX_LOBBY_KEYS, MAX_SIGNAL_PAYLOAD_BYTES, MAX_SIGNAL_FRAME_BYTES,
+  MAX_LOBBY_TOTAL_BYTES, STEAM_LOBBY_TOTAL_BYTES,
 } from '../desktop/steam-validate.mjs';
+import { MAX_LOBBY_TOTAL_BYTES as RENDERER_BUDGET } from '../src/net/SteamLobby.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
@@ -92,6 +95,36 @@ console.log('\n-- validateLobbyRecord: what the host is allowed to write');
     const many = {};
     for (let i = 0; i <= MAX_LOBBY_KEYS; i++) many[`sdp.k${i}`] = 'v';
     ok(validateLobbyRecord(many).ok === false, `more than ${MAX_LOBBY_KEYS} keys is rejected`);
+  }
+  {
+    // The budget, which is the limit Steam actually enforces. Measured live on
+    // appid 480: one ~8192-byte allowance for the whole lobby, keys charged like
+    // values. A record that clears every per-value rule above can still be over
+    // it, and a `mergeFullData` Steam refuses stores entries until it hits the
+    // wall rather than refusing cleanly -- so this is the check that keeps a
+    // half-written offer out of the lobby.
+    ok(MAX_LOBBY_TOTAL_BYTES < STEAM_LOBBY_TOTAL_BYTES, `the spend is under the measured ceiling (${MAX_LOBBY_TOTAL_BYTES} < ${STEAM_LOBBY_TOTAL_BYTES})`);
+    ok(RENDERER_BUDGET === MAX_LOBBY_TOTAL_BYTES,
+      `src/net/SteamLobby.js restates the same budget, so its pre-write guard and this one cannot disagree (${RENDERER_BUDGET})`);
+
+    // Two keys, because the budget is bigger than the structural per-value cap
+    // -- which is the relationship those two constants are meant to have.
+    const fill = (bytes) => {                                       // 'sdp.a' + 'sdp.b' is 10 key bytes
+      const v = bytes - 10;
+      return { 'sdp.a': 'a'.repeat(Math.ceil(v / 2)), 'sdp.b': 'a'.repeat(Math.floor(v / 2)) };
+    };
+    ok(lobbyRecordBytes(fill(100)) === 100, 'lobbyRecordBytes counts key bytes as well as value bytes');
+    ok(lobbyRecordBytes({ 'sdp.x': 'é' }) === 7, 'and counts UTF-8 bytes, not chars, because Steam does');
+    ok(validateLobbyRecord(fill(MAX_LOBBY_TOTAL_BYTES)).ok === true, 'a record at exactly the budget is accepted');
+    ok(validateLobbyRecord(fill(MAX_LOBBY_TOTAL_BYTES + 1)).error === 'lobby-data-over-budget', 'one byte over is refused, by name');
+    {
+      // Every value legal on its own, the record illegal together: the failure
+      // the old per-key reading of the limit could not see.
+      const spread = {};
+      for (let i = 0; i < 8; i++) spread[`sdp.offer.${i}`] = 'a'.repeat(1000);
+      ok(Object.values(spread).every((v) => v.length <= MAX_LOBBY_VALUE_CHARS), 'precondition: every value clears the per-value cap');
+      ok(validateLobbyRecord(spread).error === 'lobby-data-over-budget', 'and the record is still refused, because the budget is the whole lobby');
+    }
   }
   {
     const record = { 'sdp.x': 'a' };

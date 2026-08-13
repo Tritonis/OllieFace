@@ -5,10 +5,11 @@
  *
  * Two halves:
  *
- *  1. The chunk codec, pure. An SDP offer is a few kilobytes; a Steam lobby-data
- *     value is capped (the bridge enforces 7000 chars per value), so the offer
- *     travels as `sdp.offer.n` + `sdp.offer.0..k-1`. This half is the brief's
- *     specified test.
+ *  1. The chunk codec, pure. An SDP offer is a few kilobytes and a Steam lobby
+ *     holds ONE ~8192-byte budget across every key and value it carries (see
+ *     `MAX_LOBBY_TOTAL_BYTES`), so the offer travels as `sdp.offer.n` +
+ *     `sdp.offer.0..k-1` and the whole record is measured before it is written.
+ *     This half is the brief's specified test.
  *  2. The dance, against a fake `window.__STEAM__` that answers with the exact
  *     shapes task-2-report.md documents. The point of this half is the paths
  *     that are not the happy one: no bridge at all, `available: false`, a peer
@@ -17,7 +18,7 @@
  * Self-contained: no browser, no Electron, no Steam. `window` is created here,
  * which is exactly how the module's own guard is exercised rather than bypassed.
  */
-import { chunkBlob, assembleBlob, steamAvailable, hostViaSteam, joinViaSteam, onSteamInvite, openSteamInvite, CHUNK_CHARS } from '../src/net/SteamLobby.js';
+import { chunkBlob, assembleBlob, steamAvailable, hostViaSteam, joinViaSteam, onSteamInvite, openSteamInvite, CHUNK_CHARS, MAX_LOBBY_TOTAL_BYTES, recordBytes } from '../src/net/SteamLobby.js';
 import { Lobby } from '../src/net/Lobby.js';
 
 let pass = 0, fail = 0;
@@ -25,13 +26,27 @@ const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } e
 
 // ---------------------------------------------------------------- the codec
 
-console.log('-- chunkBlob / assembleBlob: a 20 kB blob survives the round trip');
+/**
+ * The largest blob `hostViaSteam` may post: grown until `chunkBlob`'s own record
+ * crosses the budget, so it tracks CHUNK_CHARS and the key framing rather than
+ * restating a number that could drift away from them.
+ */
+const BUDGET_FIT = (() => {
+  let lo = 0, hi = MAX_LOBBY_TOTAL_BYTES;
+  while (lo + 1 < hi) {
+    const mid = (lo + hi) >> 1;
+    if (recordBytes(chunkBlob('sdp.offer', 'q'.repeat(mid))) > MAX_LOBBY_TOTAL_BYTES) hi = mid; else lo = mid;
+  }
+  return lo;
+})();
+
+console.log('-- chunkBlob / assembleBlob: a budget-filling blob survives the round trip');
 {
   // Random-ish rather than random: the failure this guards against is an
   // off-by-one at a chunk boundary, and a fixed string makes that reproducible.
   let blob = '';
   let x = 123456789;
-  while (blob.length < 20000) {
+  while (blob.length < BUDGET_FIT) {
     x = (x * 1103515245 + 12345) & 0x7fffffff;
     blob += String.fromCharCode(33 + (x % 94));
   }
@@ -51,7 +66,7 @@ console.log('-- chunkBlob / assembleBlob: a 20 kB blob survives the round trip')
 
 console.log('-- assembleBlob is null until every chunk is present');
 {
-  const blob = 'A'.repeat(15000);
+  const blob = 'A'.repeat(3 * CHUNK_CHARS);
   const map = new Map(chunkBlob('sdp.offer', blob));
   const total = Number(map.get('sdp.offer.n'));
   ok(total >= 3, `precondition: the blob really is chunked (${total} parts)`);
@@ -160,6 +175,14 @@ function makeBridge(overrides = {}) {
   return b;
 }
 
+/**
+ * A stand-in offer blob at life size. Real ones measured out of Chromium with
+ * this build's `rtcConfig()` are 915 chars with no ICE servers and 1098 with the
+ * default STUN pair, so 1011 sits between them — and, unlike the 12 kB blob this
+ * fixture used to carry, it is a blob Steam would actually store.
+ */
+const OFFER_FIXTURE = 'OFFER-BLOB-' + 'z'.repeat(1000);
+
 /** Enough of `src/net/Lobby.js` to see what the dance does to it. */
 function makeLobby(over = {}) {
   return {
@@ -167,7 +190,7 @@ function makeLobby(over = {}) {
     accepted: [],
     joined: [],
     _set(s, d) { this.statuses.push([s, d]); },
-    async createInvite() { return { id: 1, blob: 'OFFER-BLOB-' + 'z'.repeat(12000) }; },
+    async createInvite() { return { id: 1, blob: OFFER_FIXTURE }; },
     async joinManual(blob) { this.joined.push(blob); return 'ANSWER-BLOB'; },
     async acceptAnswer(blob) { this.accepted.push(blob); },
     ...over,
@@ -201,7 +224,7 @@ console.log('-- hosting: lobby, offer, listener, and the answer that comes back 
 
   const written = b.calls.find(([n]) => n === 'writeLobbyData')[2];
   ok(Object.keys(written).every((k) => k.startsWith('sdp.offer.')), `only sdp.offer keys were written (${Object.keys(written).sort().join(',')})`);
-  ok(assembleBlob((k) => (k in written ? written[k] : null), 'sdp.offer') === 'OFFER-BLOB-' + 'z'.repeat(12000),
+  ok(assembleBlob((k) => (k in written ? written[k] : null), 'sdp.offer') === OFFER_FIXTURE,
     'the written chunks reassemble into exactly the invite blob');
   ok(lobby.statuses.some(([s]) => s === 'roomOpen'), 'the Lobby reached roomOpen, the same status hostViaRelay sets');
 
@@ -252,26 +275,104 @@ console.log('-- hosting: abandoned midway -- every failure point leaves no Steam
   }
 }
 
-console.log('-- hosting: an invite too large for lobby data is refused, and leaves nothing');
+console.log("-- hosting: the offer is measured against Steam's whole-lobby byte budget");
 {
+  // This block replaces one that asserted 63 parts of 6000 chars -- a 378 KB
+  // invite -- was accepted. It passed only because the fake bridge accepts
+  // anything; live Steam refuses it, and refuses it about 46x earlier than the
+  // constants claimed. The measurement (appid 480, this box): a single value of
+  // 8174 chars under an 11-byte key is stored and 8175 is refused, while 15
+  // separate 500-char values are stored and the 16th is refused at a raw total
+  // of 8182 -- one budget for the whole lobby, keys charged like values.
+  //
+  // So what is asserted here is the platform's real capacity, and every
+  // assertion below fails against the constants this branch shipped with.
+  ok(MAX_LOBBY_TOTAL_BYTES < 8192, `the budget is under Steam's measured ~8192-byte ceiling (${MAX_LOBBY_TOTAL_BYTES})`);
+  ok(BUDGET_FIT > 6000 && BUDGET_FIT < 8192,
+    `the largest postable invite is a single lobby's worth, not a part count (${BUDGET_FIT} chars)`);
+
+  // The old ceiling, in the flesh. 63 * CHUNK_CHARS was "accepted" before.
   const b = makeBridge();
-  // 63 parts is the ceiling (the bridge caps a record at 64 keys and one of
-  // ours is the count), so 64 parts' worth of blob is the first refusal.
-  const lobby = makeLobby({ async createInvite() { return { id: 1, blob: 'q'.repeat(64 * CHUNK_CHARS) }; } });
+  const huge = makeLobby({ async createInvite() { return { id: 1, blob: 'q'.repeat(63 * 6000) }; } });
   let threw = null;
-  try { await hostViaSteam(lobby); } catch (e) { threw = e; }
-  ok(threw instanceof Error && /too large/.test(threw.message), `it is refused before the write (${threw && threw.message})`);
+  try { await hostViaSteam(huge); } catch (e) { threw = e; }
+  ok(threw instanceof Error, `a 378 kB invite is refused, not written (${threw && threw.message})`);
   ok(!b.calls.some(([n]) => n === 'writeLobbyData'), 'nothing was written, so no half-blob sits in the lobby');
   ok(b.calls.some(([n]) => n === 'leaveLobby'), 'and the Steam lobby was left');
 
-  // One part under the ceiling still goes through -- the guard is a ceiling,
-  // not an off-by-one that rejects a legal invite.
+  // One byte over the budget is the first refusal, and the message is one a
+  // player can act on rather than a slug.
   const b2 = makeBridge();
-  const ok63 = makeLobby({ async createInvite() { return { id: 1, blob: 'q'.repeat(63 * CHUNK_CHARS) }; } });
+  const over = makeLobby({ async createInvite() { return { id: 1, blob: 'q'.repeat(BUDGET_FIT + 1) }; } });
   let threw2 = null;
-  try { await hostViaSteam(ok63); } catch (e) { threw2 = e; }
-  ok(threw2 === null, `exactly 63 parts is accepted (${threw2 && threw2.message})`);
-  ok(Object.keys(b2.calls.find(([n]) => n === 'writeLobbyData')[2]).length === 64, 'and writes 64 keys -- the bridge cap, exactly');
+  try { await hostViaSteam(over); } catch (e) { threw2 = e; }
+  ok(threw2 instanceof Error, `one char past the budget is refused (${BUDGET_FIT + 1} chars)`);
+  ok(threw2 && /\d+ bytes/.test(threw2.message) && /room code/.test(threw2.message),
+    `and says the size and what to do instead (${threw2 && threw2.message})`);
+  ok(!b2.calls.some(([n]) => n === 'writeLobbyData'), 'still nothing written');
+  delete globalThis.window;
+
+  // ...and the budget really is usable to its last byte: the guard is a ceiling,
+  // not an off-by-one that rejects a legal invite.
+  const b3 = makeBridge();
+  const atCap = makeLobby({ async createInvite() { return { id: 1, blob: 'q'.repeat(BUDGET_FIT) }; } });
+  let threw3 = null;
+  try { await hostViaSteam(atCap); } catch (e) { threw3 = e; }
+  ok(threw3 === null, `a blob of exactly ${BUDGET_FIT} chars is accepted (${threw3 && threw3.message})`);
+  const written = b3.calls.find(([n]) => n === 'writeLobbyData')[2];
+  ok(recordBytes(Object.entries(written)) <= MAX_LOBBY_TOTAL_BYTES,
+    `and the record it wrote fits the budget (${recordBytes(Object.entries(written))} <= ${MAX_LOBBY_TOTAL_BYTES})`);
+  delete globalThis.window;
+}
+
+console.log("-- hosting: a write Steam refuses reaches the player as a sentence, not a slug");
+{
+  // The exact symptom this kills: "Steam lobby: lobby-data-write-refused".
+  const b = makeBridge({ async writeLobbyData(id, r) { this.calls.push(['writeLobbyData', id, r]); return { error: 'lobby-data-write-refused' }; } });
+  const lobby = makeLobby();
+  let threw = null;
+  try { await hostViaSteam(lobby); } catch (e) { threw = e; }
+  ok(threw instanceof Error, 'the refusal is an Error');
+  ok(!/lobby-data-write-refused/.test(threw.message), `no slug survives into the message (${threw.message})`);
+  ok(/Steam refused/.test(threw.message) && /room code/.test(threw.message), 'and it carries both a cause and a remedy');
+  ok(b.calls.some(([n]) => n === 'leaveLobby'), 'and the Steam lobby was still left');
+  delete globalThis.window;
+
+  // A joiner reaching a lobby that has since closed gets the same treatment.
+  const b2 = makeBridge({ async getFullLobbyData(id) { this.calls.push(['getFullLobbyData', id]); return { error: 'unknown-lobby' }; } });
+  let threw2 = null;
+  try { await joinViaSteam(makeLobby(), '109775241996081388', { pollMs: 5, waitMs: 50 }); } catch (e) { threw2 = e; }
+  ok(threw2 instanceof Error && !/unknown-lobby/.test(threw2.message) && /host again/.test(threw2.message),
+    `and so does the joiner (${threw2 && threw2.message})`);
+  void b2;
+  delete globalThis.window;
+}
+
+console.log('-- hosting twice: the first Steam lobby is released rather than orphaned');
+{
+  // Important 2. `hostViaSteam` opens the Steam lobby before it waits out ICE
+  // gathering (up to 4 s), so a second press is an ordinary impatient gesture --
+  // and it used to park a second cleanup latch over the first, leaving the player
+  // a member of a lobby that `leave()` could never reach and that a friend could
+  // still accept an invite to.
+  const b = makeBridge();
+  const opened = [];
+  let n = 100;
+  b.hostLobby = async () => { const id = String(n++); opened.push(id); return { lobbyId: id }; };
+  b.leaveLobby = async (id) => { b.calls.push(['leaveLobby', id]); opened.splice(opened.indexOf(id), 1); return { ok: true }; };
+
+  const lobby = makeLobby();
+  await hostViaSteam(lobby);
+  await hostViaSteam(lobby);
+  ok(opened.length === 1 && opened[0] === '101',
+    `only the newest Steam lobby is still held (${JSON.stringify(opened)})`);
+  ok(b.calls.some(([nm, id]) => nm === 'leaveLobby' && id === '100'), 'the first was left, by its own latch');
+  ok(b.listeners.signal.size === 1 && b.listeners.fail.size === 1,
+    `and no listeners piled up (signal=${b.listeners.signal.size}, fail=${b.listeners.fail.size})`);
+
+  lobby._steamCleanup();
+  ok(opened.length === 0, 'and Leave releases the one that is left');
+  ok(b.listeners.signal.size === 0, 'along with its listeners');
   delete globalThis.window;
 }
 
@@ -338,7 +439,7 @@ console.log('-- joining: poll, assemble, answer back to the owner');
   const order = b.calls.slice(hostCalls).map(([n]) => n).filter((n) => n !== 'status');
   ok(JSON.stringify(order) === JSON.stringify(['joinLobby', 'getFullLobbyData', 'getLobbyOwner', 'sendSignal']),
     `join -> poll -> owner -> answer (${order.join(' -> ')})`);
-  ok(joiner.joined.length === 1 && joiner.joined[0] === 'OFFER-BLOB-' + 'z'.repeat(12000),
+  ok(joiner.joined.length === 1 && joiner.joined[0] === OFFER_FIXTURE,
     'joinManual got the reassembled offer, byte for byte');
   const sent = b.calls.find(([n]) => n === 'sendSignal');
   ok(sent[1] === '76561198037383365', `the answer is addressed to the lobby owner (${sent[1]})`);

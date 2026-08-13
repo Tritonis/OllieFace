@@ -31,14 +31,67 @@
  */
 
 /**
- * Chars per lobby-data value. The bridge rejects any value over 7000 (its
- * `validateLobbyRecord`); this leaves headroom so a cap change there cannot
- * silently start rejecting writes here.
+ * ## What a Steam lobby can actually hold
+ *
+ * Steam's lobby metadata is a single ~8192-byte budget for the WHOLE lobby —
+ * every key and every value, added together — not a per-key limit. Measured
+ * against the live client on appid 480 rather than inherited from a doc: one
+ * 8174-char value under an 11-byte key is accepted and 8175 is refused, but
+ * fifteen 500-char values under `sdp.offer.<i>` keys are accepted and the
+ * sixteenth is refused at a raw total of 8182, and key text is charged exactly
+ * as value text is. `desktop/steam-validate.mjs` carries the full measurement
+ * and the matching main-process guard.
+ *
+ * Everything below is derived from that one number.
  */
-export const CHUNK_CHARS = 6000;
 
-/** The bridge rejects a record of more than 64 keys, and one of ours is the count. */
-const MAX_PARTS = 63;
+/**
+ * What the offer may spend, in UTF-8 bytes across all keys and values.
+ *
+ * 8192 - 512, the same figure `MAX_LOBBY_TOTAL_BYTES` names in
+ * `desktop/steam-validate.mjs`. It is restated rather than imported because no
+ * `src/` file may reach into the desktop shell; the bridge enforces the same
+ * number in the main process, so a drift between the two is a refusal with a
+ * message, never a half-written lobby.
+ */
+export const MAX_LOBBY_TOTAL_BYTES = 7680;
+
+/**
+ * Chars per lobby-data value.
+ *
+ * Derived, not chosen for comfort: with a 7680-byte budget, framing costs
+ * `sdp.offer.n` plus its count (12 bytes) and 11 bytes per chunk key, so the
+ * budget carries 7624 chars of payload once four chunk keys are paid for. 2000
+ * is the largest round size that lets a blob use the whole budget — at 6000 a
+ * second chunk would already overflow it, which would have thrown away 22% of
+ * the capacity Steam does offer. It is also comfortably under the bridge's
+ * 7000-char structural per-value cap.
+ */
+export const CHUNK_CHARS = 2000;
+
+/**
+ * The structural ceiling on parts: `ceil(MAX_LOBBY_TOTAL_BYTES / CHUNK_CHARS)`.
+ * No record the byte budget permits can carry more, so this is the cheap bound
+ * `assembleBlob` applies to an untrusted part count before it starts making
+ * getter calls. The byte budget, not this, is what refuses a real oversize
+ * offer.
+ */
+const MAX_PARTS = Math.ceil(MAX_LOBBY_TOTAL_BYTES / CHUNK_CHARS);
+
+/**
+ * The UTF-8 cost of a pair list against the budget.
+ *
+ * `TextEncoder` rather than `.length`: Steam counts bytes, and an SDP blob that
+ * ever carried a non-ASCII byte would otherwise measure short here and be
+ * refused there — which is exactly the class of surprise this guard exists to
+ * remove.
+ */
+export function recordBytes(pairs) {
+  const enc = new TextEncoder();
+  let bytes = 0;
+  for (const [key, value] of pairs) bytes += enc.encode(key).length + enc.encode(String(value)).length;
+  return bytes;
+}
 
 const OFFER_PREFIX = 'sdp.offer';
 const POLL_MS = 1000;
@@ -114,10 +167,38 @@ export async function steamAvailable() {
   } catch { return false; }
 }
 
+/**
+ * The bridge's error slugs, in words a player can act on.
+ *
+ * A slug is a name for a condition, not an account of it: "Steam lobby:
+ * lobby-data-write-refused" told a player what our variable was called and
+ * nothing about what went wrong or what to do instead. Every slug the main
+ * process can hand back from a path a player can reach is answered here with a
+ * cause and a remedy. Slugs not listed still pass through verbatim — an
+ * unrecognised one is a bug report, and blanking it would cost more than it
+ * saves.
+ */
+const BRIDGE_REASONS = {
+  'steam-unavailable': 'Steam stopped answering. Use a room code or an invite code instead.',
+  'unknown-lobby': 'that Steam lobby is no longer open. Ask your friend to host again.',
+  'bad-lobby-id': 'that invite does not name a real Steam lobby.',
+  'lobby-id-unreadable': 'Steam opened a lobby but would not say which one. Try hosting again.',
+  'owner-unreadable': 'Steam would not say who owns that lobby, so there is nobody to answer.',
+  'lobby-data-over-budget':
+    'the invite is larger than a Steam lobby can hold. Use a room code or an invite code instead.',
+  'lobby-data-write-refused':
+    'Steam refused to store the invite in the lobby. That happens when the lobby is already full of data or somebody else owns it — leave the lobby and host again, or use a room code.',
+  'signal-send-refused': 'Steam would not deliver the reply to the host. Ask them to host again.',
+  'bad-steam-id': 'the host’s Steam account could not be identified, so the reply had nowhere to go.',
+};
+
 /** Every bridge call answers `{ ... }` or `{ error: '<slug>' }`. This is the door. */
 function unwrap(res, what) {
   if (!res || typeof res !== 'object') throw new Error(`${what}: the Steam bridge gave no answer.`);
-  if (res.error) throw new Error(`${what}: ${String(res.error)}`);
+  if (res.error) {
+    const slug = String(res.error);
+    throw new Error(`${what}: ${BRIDGE_REASONS[slug] || slug}`);
+  }
   return res;
 }
 
@@ -155,6 +236,19 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  * a teardown nobody can wait for is the honest shape of this.
  */
 function armCleanup(lobby, steps) {
+  // A latch already parked here belongs to an EARLIER Steam session on this same
+  // Lobby — a second "Host via Steam", or a Steam invite accepted while already
+  // hosting. Overwriting it was the whole of Important 2: `leave()` can only ever
+  // run the newest latch, so the older session's Steam lobby was orphaned for the
+  // life of the process, still listed and still joinable by a friend whose answer
+  // the host would then refuse. Run it first, and the older session is released
+  // by exactly the code written to release it.
+  const previous = lobby && lobby._steamCleanup;
+  if (typeof previous === 'function') {
+    lobby._steamCleanup = null;      // cleared first: a latch must never re-enter itself
+    try { previous(); } catch { /* it swallows its own steps; this is belt and braces */ }
+  }
+
   let done = false;
   const once = () => {
     if (done) return;
@@ -204,7 +298,17 @@ export async function hostViaSteam(lobby, { maxMembers = 2 } = {}) {
   try {
     const invite = await lobby.createInvite();
     const pairs = chunkBlob(OFFER_PREFIX, invite.blob);
-    if (pairs.length - 1 > MAX_PARTS) throw new Error('Steam lobby: this invite is too large for lobby data.');
+    // Measured before the write, not discovered by it. A `mergeFullData` Steam
+    // refuses does not refuse cleanly: it stores entries until it hits the wall,
+    // so `sdp.offer.n` can land without the chunks it counts and a joiner then
+    // spends its whole 60 s poll waiting for a part that is never coming. Asking
+    // first is the only way that state is never reached.
+    const bytes = recordBytes(pairs);
+    if (bytes > MAX_LOBBY_TOTAL_BYTES || pairs.length - 1 > MAX_PARTS)
+      throw new Error(
+        `Steam lobby: this invite needs ${bytes} bytes and a Steam lobby holds ${MAX_LOBBY_TOTAL_BYTES} in total, `
+        + 'so it cannot be posted. That usually means your network is offering an unusual number of connection routes — '
+        + 'use a room code or an invite code instead.');
     unwrap(await b.writeLobbyData(lobbyId, Object.fromEntries(pairs)), 'Steam lobby');
     unwrap(await b.startSignalListen(lobbyId), 'Steam lobby');
 

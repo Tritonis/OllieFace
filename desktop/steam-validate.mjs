@@ -20,12 +20,53 @@
  *  guard: `__proto__` and `constructor` cannot match it. */
 export const LOBBY_KEY_RE = /^sdp\./;
 
-/** Steam's own per-key lobby-data limit is 8192 bytes; the plan chunks at 7000
- *  so a chunk plus its framing never approaches it. */
+/**
+ * Steam's lobby metadata limit is ONE BUDGET FOR THE WHOLE LOBBY, not a per-key
+ * cap. This is measured, not read off a wiki: against the live client on
+ * appid 480, `Lobby.setData` accepts a single 8174-char value under an 11-byte
+ * key (8185 raw bytes of key + value) and refuses at 8175, while *multi-entry*
+ * lobbies refuse far earlier in raw bytes — 15 x 500-char values under
+ * `sdp.offer.<i>` keys were accepted (7670 raw bytes) and the 16th (which would
+ * have made 8182) was refused, 74 x 100-char values under 7-byte keys were
+ * accepted (7918 raw) and the 75th refused, 48 x 100-char values under 67-byte
+ * keys were accepted (8016 raw) and the 49th refused.
+ *
+ * Two things follow, and both were previously stated backwards here:
+ *
+ *  - key text counts against the budget exactly as value text does (the 7-byte
+ *    and 67-byte key runs stop at nearly the same key+value total, not at the
+ *    same value total), and
+ *  - Steam charges roughly 3-4 bytes of framing per entry on top, which is why
+ *    the raw ceiling falls as the key count rises.
+ *
+ * So the binding constraint is total bytes, ~8192, across every key and value
+ * in the lobby at once.
+ */
+export const STEAM_LOBBY_TOTAL_BYTES = 8192;
+
+/**
+ * What we will actually spend of that budget.
+ *
+ * 8192 - 512. The 512-byte reserve covers per-entry framing at the structural
+ * key ceiling below (64 keys x 4 bytes = 256) with 256 bytes still spare for
+ * any non-`sdp.` metadata Steam or a later feature parks in the same lobby.
+ * Deliberately a round number under a measured ceiling rather than the measured
+ * ceiling itself: the measurement is of one Steam client build, and a write that
+ * lands one byte inside the wall is a write that a patch can turn into a
+ * silently half-written lobby.
+ */
+export const MAX_LOBBY_TOTAL_BYTES = 7680;
+
+/**
+ * A structural per-value cap, NOT a Steam limit — Steam has no per-key limit,
+ * only the budget above. It survives as cheap bounds-checking on a value before
+ * anything measures or concatenates it; `MAX_LOBBY_TOTAL_BYTES` makes it
+ * unreachable in practice, and that is the intended relationship.
+ */
 export const MAX_LOBBY_VALUE_CHARS = 7000;
 export const MAX_LOBBY_KEY_CHARS = 128;
-/** A 2-seat SDP blob is 1-3 chunks. 64 is generous and still bounds the work a
- *  hostile owner can hand us per poll. */
+/** Likewise structural: a bound on the work a hostile lobby owner can hand us
+ *  per poll. The byte budget refuses long before this does. */
 export const MAX_LOBBY_KEYS = 64;
 
 /** An SDP answer is ~2-6 KB. Reliable P2P carries up to 1 MB, which is exactly
@@ -81,9 +122,14 @@ export function validateMaxMembers(raw) {
 
 /**
  * OUTBOUND lobby data: what the host is about to write with `mergeFullData`.
- * Every key must be an `sdp.` key and every value must fit the chunk cap — the
- * plan's rule, enforced in the MAIN process so a compromised renderer cannot
- * use the lobby as a scratch store or blow past Steam's own limits.
+ * Every key must be an `sdp.` key, every value must fit the structural cap, and
+ * the record as a whole must fit `MAX_LOBBY_TOTAL_BYTES` — the last of those is
+ * the one Steam actually enforces, and enforcing it here is what turns a
+ * half-written lobby into a refusal the renderer can explain.
+ *
+ * All three are checked in the MAIN process so a compromised renderer cannot use
+ * the lobby as a scratch store or spend the budget on something that is not an
+ * SDP offer.
  *
  * @returns {{ ok: true, record: Record<string,string> }|{ ok: false, error: string }}
  */
@@ -94,14 +140,35 @@ export function validateLobbyRecord(raw) {
   if (entries.length > MAX_LOBBY_KEYS) return { ok: false, error: 'lobby-data-too-many-keys' };
 
   const record = {};
+  let bytes = 0;
   for (const [key, value] of entries) {
     if (typeof key !== 'string' || key.length > MAX_LOBBY_KEY_CHARS || !LOBBY_KEY_RE.test(key))
       return { ok: false, error: 'lobby-data-bad-key' };
     if (typeof value !== 'string') return { ok: false, error: 'lobby-data-value-not-a-string' };
     if (value.length > MAX_LOBBY_VALUE_CHARS) return { ok: false, error: 'lobby-data-value-too-long' };
+    // Bytes, not chars: Steam counts UTF-8, and an SDP blob that ever carried a
+    // non-ASCII byte would otherwise measure short here and be refused there.
+    bytes += Buffer.byteLength(key, 'utf8') + Buffer.byteLength(value, 'utf8');
     record[key] = value;
   }
+  if (bytes > MAX_LOBBY_TOTAL_BYTES) return { ok: false, error: 'lobby-data-over-budget' };
   return { ok: true, record };
+}
+
+/**
+ * The byte cost of a record against `MAX_LOBBY_TOTAL_BYTES`, for a caller that
+ * wants to refuse *before* it asks. Keys and values both count; the per-entry
+ * framing Steam adds is what the budget's reserve is for.
+ *
+ * Pure and dependency-free so the renderer's own guard
+ * (`src/net/SteamLobby.js`) can compute the identical number without importing
+ * anything from the desktop shell.
+ */
+export function lobbyRecordBytes(record) {
+  let bytes = 0;
+  for (const [key, value] of Object.entries(record ?? {}))
+    bytes += Buffer.byteLength(key, 'utf8') + Buffer.byteLength(String(value), 'utf8');
+  return bytes;
 }
 
 /**

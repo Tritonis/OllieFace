@@ -338,6 +338,22 @@ What ships instead is asymmetric, and deliberately so:
   lobby, so it chunks the WebRTC offer blob across `sdp.offer.*` keys and writes
   them in one `mergeFullData` batch. The joiner polls `getFullData` once a
   second, bounded at 60 seconds, and reassembles.
+
+  **How much a lobby holds.** Steam's lobby metadata is ONE budget of about 8192
+  bytes for the whole lobby — every key and every value added together — not a
+  per-key limit. Measured against the live client on appid 480: a single value of
+  8174 chars under an 11-byte key is stored and 8175 is refused, while fifteen
+  separate 500-char values are stored and the sixteenth is refused at a raw total
+  of 8182; key text is charged exactly as value text is, plus a few bytes of
+  framing per entry. The build therefore spends at most `MAX_LOBBY_TOTAL_BYTES`
+  (7680, i.e. 8192 less a 512-byte reserve) and **measures the record before it
+  writes it** — a `mergeFullData` Steam refuses does not refuse cleanly, it
+  stores entries until it hits the wall, which would leave `sdp.offer.n` counting
+  chunks that are not there and a joiner burning its full 60 s poll on them.
+  Real offer blobs measure 915 chars with no ICE servers and 1098 with the
+  default STUN pair, so the budget currently runs about 7x over what the offer
+  needs; that margin is the thing to re-measure when Phase 4's TURN credentials
+  land and every interface starts contributing a relay candidate.
 - **Joiner to host (the answer):** one reliable
   `networking.sendP2PPacket(ownerSteamId, Reliable, blob)`. An SDP answer is a
   few kilobytes and the reliable path carries up to 1 MB, so the answer leg

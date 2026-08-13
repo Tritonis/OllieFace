@@ -1433,6 +1433,18 @@ export class Menus {
     if (!lobby) return this.coopSay('Networking is unavailable in this build.');
     const field = (name) => this.root.querySelector(`[data-coop-${name}]`);
 
+    // Hosting through Steam opens the Steam lobby first and only then waits out
+    // ICE gathering (up to 4 s), so for that whole window the button was live and
+    // the only feedback was "Opening a Steam lobby...". A second press there is an
+    // ordinary impatient gesture, and it used to open a second Steam lobby the
+    // player could never leave. The button goes dark for the duration, and the
+    // flag catches the routes that reach here without going through the button.
+    this._coopBusy ??= new Set();
+    if (this._coopBusy.has(action)) return;
+    this._coopBusy.add(action);
+    const button = this.root.querySelector(`[data-act="${action}"]`);
+    if (button) button.disabled = true;
+
     try {
       switch (action) {
         case 'coop-invite': {
@@ -1506,6 +1518,12 @@ export class Menus {
       }
     } catch (err) {
       this.coopSay(err?.message || 'That did not work.');
+    } finally {
+      // `finally`, not the end of `try`: every early `return this.coopSay(...)`
+      // above leaves through here too, and a button left dark by a validation
+      // message the player has already fixed is a dead co-op screen.
+      this._coopBusy.delete(action);
+      if (button) button.disabled = false;
     }
   }
 
