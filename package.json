@@ -17,6 +17,7 @@
     "probe:coop": "node tools/coopprobe.mjs",
     "dev:lan": "vite --host",
     "signal": "node tools/signal-server.mjs",
+    "signal:docker": "docker build -f deploy/signal/Dockerfile -t telluric-signal .",
     "desktop": "npm run build && electron .",
     "desktop:run": "electron .",
     "desktop:pack": "npm run build && electron-builder --win --dir"
