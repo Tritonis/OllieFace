@@ -57,6 +57,14 @@ const MODE = EXE ? 'packed' : 'dev';
 const RECORD = String(args.record ?? `reviews/round8/desktop-probe-record${EXE ? '-packed' : ''}.json`);
 console.log(`mode: ${MODE}${EXE ? `  -- ${EXE}` : ''}`);
 
+// The exact `window.__STEAM__` surface, sorted. Anything more is a widening of
+// the renderer's reach into the main process and must go red here.
+const STEAM_BRIDGE_KEYS = [
+  'getFullLobbyData', 'getLobbyOwner', 'hostLobby', 'joinLobby', 'leaveLobby',
+  'onJoinRequested', 'onSignal', 'onSignalFail', 'openInviteDialog', 'sendSignal',
+  'startSignalListen', 'status', 'stopSignalListen', 'writeLobbyData',
+].sort();
+
 const checks = [];
 const check = (name, pass, detail) => {
   checks.push({ name, pass: !!pass, detail });
@@ -84,11 +92,27 @@ try {
   const iso = await page.evaluate(() => ({
     req: typeof require, proc: typeof process,
     keys: Object.keys(globalThis.__DESKTOP__ ?? {}).sort(),
+    steamKeys: Object.keys(globalThis.__STEAM__ ?? {}).sort(),
   }));
   check('boot 1: renderer has no node (require/process undefined)',
     iso.req === 'undefined' && iso.proc === 'undefined', iso);
   check('boot 1: bridge exposes exactly loadStore + saveStore',
     JSON.stringify(iso.keys) === '["loadStore","saveStore"]', iso.keys);
+  // The Steam bridge is the second surface the isolation claim now rests on.
+  // Pinned as an exact set, not a subset: the danger is something ARRIVING
+  // here -- a client object, a getClient, a generic invoke -- and a
+  // "contains what we expect" check would never see it.
+  check('boot 1: the Steam bridge is exactly its named functions, nothing that reaches the native module',
+    JSON.stringify(iso.steamKeys) === JSON.stringify(STEAM_BRIDGE_KEYS), iso.steamKeys);
+
+  // One real round trip through the new bridge. Asserts only the invariant
+  // that holds on any box: a Steam-less machine answers available:false with a
+  // reason, a Steam-running one answers available:true with none.
+  const steam = await page.evaluate(() => globalThis.__STEAM__.status());
+  check('boot 1: __STEAM__.status() answers with the documented shape',
+    steam !== null && typeof steam === 'object' && typeof steam.available === 'boolean'
+      && (steam.available ? steam.reason === null : typeof steam.reason === 'string' && steam.reason.length > 0),
+    steam);
 
   // A prefixed write must reach the file through the mirror.
   await page.evaluate(() => localStorage.setItem('telluric.probeMark', 'boot1'));

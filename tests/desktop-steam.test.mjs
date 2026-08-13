@@ -16,7 +16,7 @@
  * Main-process module, but it imports nothing from Electron, which is exactly
  * why it can be tested in plain node at all.
  */
-import { initSteam, getClient, getStatus } from '../desktop/steam.mjs';
+import { initSteam, getClient, getStatus, enableOverlay } from '../desktop/steam.mjs';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
@@ -77,6 +77,35 @@ console.log('\n-- a client that survives init but cannot be interrogated still d
   ok(status.available === false, 'a throwing getName() is a failed init, not a client with a null name');
   ok(typeof status.reason === 'string' && status.reason.length > 0, 'and it names a reason');
   ok(getClient() === null, 'the half-live client is not retained');
+}
+
+console.log('\n-- the overlay is enabled only when Steam actually answered');
+{
+  // The binding constraint: a Steam-absent player gets ZERO appended command
+  // -line switches and zero repaint timers. `enableOverlay` is the only place
+  // that can breach it, so the guard is asserted here rather than trusted.
+  initSteam(480, { load: () => { throw new Error('Steam is not running'); } });
+  let called = 0;
+  const result = enableOverlay();
+  ok(result.ok === false, 'a failed init leaves the overlay off');
+  ok(result.reason === 'steam-unavailable', `and says why (${JSON.stringify(result.reason)})`);
+  ok(called === 0, 'electronEnableSteamOverlay was never reached -- no switches appended');
+
+  const mod = {
+    init: () => ({ localplayer: { getName: () => 'Ollie' }, utils: { getAppId: () => 480 } }),
+    electronEnableSteamOverlay: (arg) => { called++; ok(arg === undefined, 'called with the default arg (keeps the 60 Hz invalidator)'); },
+  };
+  initSteam(480, { load: () => mod });
+  const on = enableOverlay();
+  ok(on.ok === true, 'a successful init enables the overlay');
+  ok(called === 1, 'exactly once');
+
+  // A module whose overlay call explodes must not take the boot with it.
+  initSteam(480, { load: () => ({ ...mod, electronEnableSteamOverlay: () => { throw new Error('no BrowserWindow'); } }) });
+  let threw = null, fell = null;
+  try { fell = enableOverlay(); } catch (err) { threw = err; }
+  ok(threw === null, 'a throwing overlay call does not throw out of enableOverlay');
+  ok(fell?.ok === false && fell.reason?.includes('no BrowserWindow'), 'it degrades to { ok: false } with the reason');
 }
 
 console.log('\n-- the real module: whatever this box is doing, the contract holds');

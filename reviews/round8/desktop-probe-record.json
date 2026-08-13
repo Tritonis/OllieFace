@@ -3,8 +3,8 @@
   "command": "node tools/desktopprobe.mjs",
   "mode": "dev",
   "exe": null,
-  "when": "2026-08-10T06:41:32.271Z",
-  "sha": "66c62c3ba18f4b932e41a8151c93a0643f215406",
+  "when": "2026-08-13T15:37:47.993Z",
+  "sha": "b88889fa8b4b347cd97ba4da413818ffbe750639",
   "electron": "43.3.0",
   "playwright": "1.62.1",
   "checks": [
@@ -26,6 +26,22 @@
         "keys": [
           "loadStore",
           "saveStore"
+        ],
+        "steamKeys": [
+          "getFullLobbyData",
+          "getLobbyOwner",
+          "hostLobby",
+          "joinLobby",
+          "leaveLobby",
+          "onJoinRequested",
+          "onSignal",
+          "onSignalFail",
+          "openInviteDialog",
+          "sendSignal",
+          "startSignalListen",
+          "status",
+          "stopSignalListen",
+          "writeLobbyData"
         ]
       }
     },
@@ -36,6 +52,36 @@
         "loadStore",
         "saveStore"
       ]
+    },
+    {
+      "name": "boot 1: the Steam bridge is exactly its named functions, nothing that reaches the native module",
+      "pass": true,
+      "detail": [
+        "getFullLobbyData",
+        "getLobbyOwner",
+        "hostLobby",
+        "joinLobby",
+        "leaveLobby",
+        "onJoinRequested",
+        "onSignal",
+        "onSignalFail",
+        "openInviteDialog",
+        "sendSignal",
+        "startSignalListen",
+        "status",
+        "stopSignalListen",
+        "writeLobbyData"
+      ]
+    },
+    {
+      "name": "boot 1: __STEAM__.status() answers with the documented shape",
+      "pass": true,
+      "detail": {
+        "available": true,
+        "appId": 480,
+        "personaName": "Communism",
+        "reason": null
+      }
     },
     {
       "name": "boot 1: save.json written",

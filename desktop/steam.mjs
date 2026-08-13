@@ -31,6 +31,10 @@ const requireCjs = createRequire(import.meta.url);
 export const DEV_APP_ID = 480;
 
 let client = null;
+// The steamworks.js MODULE (not the client): `electronEnableSteamOverlay` hangs
+// off the module, not off the object `init()` returns, so `enableOverlay()`
+// needs the handle `initSteam` already resolved rather than a second require.
+let steamworksModule = null;
 let status = { available: false, appId: null, personaName: null, reason: 'initSteam has not run' };
 
 // A message that is always worth logging: `reason` is a diagnostic, so an empty
@@ -53,6 +57,7 @@ export function initSteam(appIdOverride, deps = {}) {
   const load = deps.load ?? (() => requireCjs('steamworks.js'));
 
   client = null;
+  steamworksModule = null;
   try {
     // Two separately fallible things — resolving a native binary, and Steam
     // itself answering — but the caller only ever needs one verdict.
@@ -69,12 +74,43 @@ export function initSteam(appIdOverride, deps = {}) {
     const runningAppId = c.utils.getAppId();
 
     client = c;
+    steamworksModule = steamworks;
     status = { available: true, appId: runningAppId, personaName, reason: null };
   } catch (err) {
     client = null;
+    steamworksModule = null;
     status = { available: false, appId: null, personaName: null, reason: describe(err) };
   }
   return { ...status };
+}
+
+/**
+ * Turn on the Steam overlay — the ONLY way an invite dialog can render, since
+ * this binding has no programmatic invite call.
+ *
+ * Must be called before `app.whenReady()`: it appends `in-process-gpu` and
+ * `disable-direct-composition` to the command line
+ * (`node_modules/steamworks.js/index.js:50-74`), and switches appended after
+ * ready are ignored. It also attaches a 60 Hz repaint invalidator to every
+ * window, which self-skips while the page is already painting.
+ *
+ * CALL THIS ONLY WHEN `initSteam()` REPORTED `available: true`. A Steam-absent
+ * player must get zero switches and zero timers — an unchanged GPU path is a
+ * binding constraint, and `gpu-info.json`'s Optimus diagnostic reads that path.
+ * The `available` guard is enforced here as well as at the call site, so a
+ * future caller cannot get it wrong by forgetting.
+ *
+ * @returns {{ ok: boolean, reason: string|null }}
+ */
+export function enableOverlay() {
+  if (!status.available || !steamworksModule) return { ok: false, reason: 'steam-unavailable' };
+  try {
+    steamworksModule.electronEnableSteamOverlay();
+    return { ok: true, reason: null };
+  } catch (err) {
+    // A failed overlay is a degraded invite button, not a failed boot.
+    return { ok: false, reason: describe(err) };
+  }
 }
 
 /** The live steamworks client, or null. MAIN-PROCESS ONLY — never send this over IPC. */
