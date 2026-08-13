@@ -73,8 +73,15 @@ These are the rules the gameplay systems follow. All of them are in place.
   health at all but its bleed-out clock as a fraction of `REVIVE.BLEEDOUT_S`
   (`NetHost._downedRecord`). A downed pawn's health is 0 for the whole state,
   so the field is spent on the number the rest of the party actually needs. The
-  other clock, `revive`, is host-side only — clients drive the revive ring from
-  the `playerDowned`/`playerRevived` events instead of a wider snapshot.
+  other clock, `revive`, is host-side only and crosses the wire nowhere at all.
+  A client's revive ring (`HUD.reviveFraction`) is therefore an avowed
+  approximation: it mirrors the host's eligibility test locally
+  (`Roster.targetable(viewer)` plus the body's replicated position inside
+  `REVIVE.REVIVE_RADIUS`), integrates the local `BTN.INTERACT` hold on
+  `Revive`'s own timing, drains when the viewer is ineligible, and is capped
+  below full so it can never render a completed revive the host did not grant.
+  The authoritative "done" is the pawn standing up — `downed` clearing in the
+  snapshot — which takes the whole prompt down with it.
 - **`Director`** — `fixedUpdate` early-returns unless `ctx.authority`. Clients
   create enemies only as snapshot views.
 - **`Items.roll` / `give` / drop tables** — host only. `give` is replicated via

@@ -227,6 +227,9 @@ console.log('a press buffered on the exact tick a pawn goes down dies with the t
     _refreshStats() {}, _harvestExternal() {}, _runSchedule() {}, _tickTimers() {},
     _tickCooldowns() {}, _resolve() {}, _land() {}, _aim() {}, _abilities() {},
     _move() {}, _regen() {},
+    // The downed branch pumps both pools (a downed pawn's shot still has to
+    // land); this case is about the input gate, so they are inert here.
+    projectiles: { fixedUpdate() {} }, placeables: { fixedUpdate() {} },
   });
   void bystander;
 
@@ -498,6 +501,108 @@ console.log('Interactables skips a pawn whose press is spent holding a teammate 
 
   ok(asked.length === 1, 'exactly one interact resolved');
   ok(asked[0] === opener, 'the pawn holding a teammate up does not also open the chest');
+}
+
+// ------------------------------------------------- a downed pawn's own pools
+//
+// Downing is not death: `Combat.enterDowned` runs none of `_kill`'s teardown,
+// so nothing clears the shot that is already in the air or the turret already
+// on the ground. Those two pools are pumped from exactly one place — the tail
+// of `Player.applyCommand` — and the downed branch used to return above it, so
+// a body on the floor froze its own projectiles mid-flight and stopped its
+// placeables expiring for the whole 40 s clock. Real pools here, real Combat,
+// so "lands and damages" is the pool's own arithmetic and not a spy.
+
+console.log('a downed pawn keeps ticking the shot already in the air and the turret already down');
+{
+  const { ProjectilePool } = await import('../src/entities/Projectile.js');
+  const { PlaceablePool } = await import('../src/entities/Placeables.js');
+
+  const w = makeReviveWorld(2, [0, 2]);
+  const ctx = w.ctx;
+  ctx.stage = { sampleHeight: () => 0, spawnPoint: () => new THREE.Vector3(), raycast: () => null };
+
+  const owner = Object.create(Player.prototype);
+  Object.assign(owner, makePawn(0), {
+    ctx, netId: 77, _prevButtons: 0, _lastCmdTick: 0,
+    _refreshStats() {}, _harvestExternal() {}, _tickTimers() {}, _tickCooldowns() {},
+    _resolve() {}, _land() {}, _aim() {}, _abilities() {}, _move() {}, _regen() {},
+    _commit() {},
+  });
+  owner._sched = new Array(32);
+  for (let i = 0; i < 32; i++) owner._sched[i] = { t: 0, fn: null };
+  owner.projectiles = new ProjectilePool(ctx);
+  owner.placeables = new PlaceablePool(ctx);
+
+  // A target 3 m down the +X axis, and a slow shot already travelling at it.
+  const victim = {
+    tag: 'victim', alive: true, team: 'monster', radius: 0.5, height: 1.6,
+    health: 100, maxHealth: 100, shield: 0, stats: { armor: 0 },
+    position: new THREE.Vector3(3, 0.8, 0), velocity: new THREE.Vector3(),
+  };
+  w.ctx.combat.register(victim);
+
+  owner.projectiles.spawn({
+    position: new THREE.Vector3(0, 0.8, 0), velocity: new THREE.Vector3(6, 0, 0),
+    kind: 'linear', damage: 25, radius: 0.22, life: 4, owner,
+  });
+  // A mine with a short fuse and no proximity trigger in reach: what is being
+  // asserted is that its lifetime runs out on schedule, not that it detonates.
+  owner.placeables.spawn({
+    kind: 'mine', position: new THREE.Vector3(-20, 0, 0), velocity: new THREE.Vector3(),
+    damage: 10, radius: 1, life: 0.5, armTime: 10, owner,
+  });
+
+  const shot = owner.projectiles.items.find((p) => p.alive);
+  const mine = owner.placeables.items.find((p) => p.alive);
+  ok(!!shot && !!mine, 'a shot is in the air and a mine is on the ground');
+
+  // Down the owner, then keep stepping its command exactly as the host does.
+  w.combat.applyDamage(owner, 500, {});
+  ok(owner.downed === true, 'the owner is downed with both still live');
+
+  const startX = shot.position.x;
+  const cmd = { tick: 1, buttons: 0 };
+  for (let i = 0; i < 30 && shot.alive; i++) { cmd.tick = i + 1; owner.applyCommand(cmd, H); }
+
+  ok(shot.position.x > startX, `the shot kept travelling while its owner was down (x ${startX.toFixed(2)} -> ${shot.position.x.toFixed(2)})`);
+  ok(shot.alive === false, 'and it landed rather than hanging in the air');
+  ok(victim.health < 100, `and it damaged what it hit (${victim.health})`);
+
+  const mineSteps = Math.round(0.5 / H) + 2;
+  for (let i = 0; i < mineSteps; i++) { cmd.tick = 100 + i; owner.applyCommand(cmd, H); }
+  ok(mine.alive === false, 'the mine expired on its own clock while its owner lay downed');
+}
+
+console.log('but nothing NEW spawns: a scheduled volley does not fire out of a body on the floor');
+{
+  const w = makeReviveWorld(2, [0, 2]);
+  const ctx = w.ctx;
+
+  const owner = Object.create(Player.prototype);
+  Object.assign(owner, makePawn(0), {
+    ctx, netId: 78, _prevButtons: 0, _lastCmdTick: 0,
+    _refreshStats() {}, _harvestExternal() {}, _tickTimers() {}, _tickCooldowns() {},
+    _resolve() {}, _land() {}, _aim() {}, _abilities() {}, _move() {}, _regen() {},
+    _commit() {},
+    projectiles: { fired: 0, fixedUpdate() {} },
+    placeables: { fixedUpdate() {} },
+  });
+  owner._sched = new Array(32);
+  for (let i = 0; i < 32; i++) owner._sched[i] = { t: 0, fn: null };
+
+  let fired = 0;
+  owner.schedule(0.2, () => { fired++; });
+  w.combat.applyDamage(owner, 500, {});
+
+  const cmd = { tick: 1, buttons: 0 };
+  for (let i = 0; i < 60; i++) { cmd.tick = i + 1; owner.applyCommand(cmd, H); }
+  ok(fired === 0, 'the queued volley did not fire while downed');
+
+  // And it is held, not thrown away: standing up hands the shot back.
+  owner.downed = false;
+  for (let i = 0; i < 60; i++) { cmd.tick = 100 + i; owner.applyCommand(cmd, H); }
+  ok(fired === 1, 'the same volley fires once the pawn is back on its feet');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

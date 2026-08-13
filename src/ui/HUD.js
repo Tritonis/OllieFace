@@ -20,6 +20,12 @@ import { routesFor } from '../data/realms.js';
 // a rebind ships a HUD that lies about its own controls. Nothing else about
 // Items is imported — the slot itself is read through `ctx.items`.
 import { EQUIPMENT_KEY_LABEL } from '../systems/Items.js';
+// The eligibility question the revive prompt asks about its own viewer, and
+// the button the hold is spelled with on the wire. Both are read here for the
+// same reason `EQUIPMENT_KEY_LABEL` is: the rule lives in one place (`Revive`,
+// through `Roster.targetable` and `BTN.INTERACT`) and is only *printed* here.
+import { Roster } from '../systems/Roster.js';
+import { BTN } from '../net/Protocol.js';
 import { abilityIcon, abilityArt, equipmentArt, itemArt, hexOf, TIER_ORDER, tracePathFrom } from './Icons.js';
 import { Tooltip, describeItem, prettify } from './Tooltip.js';
 import { Menus } from './Menus.js';
@@ -103,6 +109,13 @@ const REVIVE_ARC_C = 2 * Math.PI * 42;
 // flicker, but the brief asks for the ring to hold rather than to touch
 // `Snapshot.sample` if it ever does. Two frames at 60Hz.
 const REVIVE_HOLD_S = 0.09;
+// How far a *client's* ring is allowed to travel on its own evidence. The
+// fraction never crosses the wire, so the client integrates the local hold
+// against its own mirror of the host's eligibility test — an approximation
+// that may be wrong, and must therefore never render as a completed revive.
+// The pawn standing up is the only authoritative "done", and it takes the
+// whole prompt with it. See `reviveFraction`.
+const CLIENT_RING_CAP = 0.95;
 
 // Full-bleed screens own the frame outright. A pause or settings panel is a
 // sheet over a live run and the HUD behind it is still that run's state, but
@@ -1092,6 +1105,12 @@ export class HUD {
    * a `PlayerView` off `ctx.net.views` on a client.
    */
   reviveTarget(ctx, player) {
+    // The viewer has to be a legal reviver, not merely near a body. This is
+    // the host's own rule — `Revive._reviverFor` filters candidate revivers
+    // through `Roster.targetable` — and without it two downed teammates within
+    // four metres each read "HOLD E - REVIVE" across their own bleeding-out
+    // overlay while the host refuses both of them.
+    if (!Roster.targetable(player)) return null;
     const radius = REVIVE.REVIVE_RADIUS;
     let best = null, bestD = Infinity;
     if (ctx.authority) {
@@ -1117,22 +1136,38 @@ export class HUD {
 
   /**
    * The ring's fill fraction. Host-authoritative on a host — `pawn.revive` is
-   * `Revive.js`'s own clock. On a client the fraction never crosses the wire
-   * at all (`NetHost._downedRecord`'s own comment: the per-entity field it
-   * would ride is spent on the bleed-out clock instead), so this side runs a
-   * local approximation on `Revive.js`'s exact timing — `REVIVE.REVIVE_S` up,
-   * twice as fast down — keyed to the current target so switching bodies
-   * resets the ring instead of carrying a stale fraction onto someone else.
+   * `Revive.js`'s own clock.
+   *
+   * On a client it is an *approximation, and deliberately an honest one*.
+   * Revive progress does not cross the wire: the downed pawn's single health
+   * fraction is spent on the bleed-out clock (`NetHost._downedRecord`), the
+   * bleed-out does not stall while a revive accumulates (`Revive.js:110` — the
+   * clock "runs no matter who is standing over the body"), and there is no
+   * spare bit in the entity layout to carry a second one. The three ways to
+   * make the ring authoritative are therefore a protocol change, a new event
+   * channel, or a lie; this is none of them.
+   *
+   * So the client mirrors the host's *eligibility test* locally — `eligible`
+   * is `reviveTarget`'s verdict, which is `Roster.targetable(viewer)` plus the
+   * body's replicated position inside `REVIVE_RADIUS` — and integrates on
+   * `Revive.js`'s exact timing, `REVIVE_S` up and twice as fast down, keyed to
+   * the current target so switching bodies resets the ring. Two consequences
+   * are the point of the shape: an ineligible hold *drains* rather than
+   * filling, and the ring stops at `CLIENT_RING_CAP` instead of 100%, because
+   * the only thing that can honestly report a completed revive is the pawn
+   * standing up — which arrives as `downed` clearing on the wire and takes the
+   * whole prompt down with it.
    */
-  reviveFraction(ctx, target, dt) {
+  reviveFraction(ctx, target, dt, eligible) {
     if (ctx.authority) return target.revive ?? 0;
     if (this._reviveClientTarget !== target) {
       this._reviveClientTarget = target;
       this._reviveClientT = 0;
     }
-    const holding = !!ctx.input?.down?.('KeyE');
+    const holding = eligible && holdingInteract(ctx.player);
     this._reviveClientT = clamp(
-      this._reviveClientT + (holding ? dt / REVIVE.REVIVE_S : -2 * dt / REVIVE.REVIVE_S), 0, 1,
+      this._reviveClientT + (holding ? dt / REVIVE.REVIVE_S : -2 * dt / REVIVE.REVIVE_S),
+      0, CLIENT_RING_CAP,
     );
     return this._reviveClientT;
   }
@@ -1157,7 +1192,10 @@ export class HUD {
       return;
     }
 
-    const frac = clamp(this.reviveFraction(ctx, target, dt), 0, 1);
+    // `raw`, not `target`: inside the `REVIVE_HOLD_S` anti-flicker window the
+    // prompt is still drawn for a body the viewer has just stopped being a
+    // legal reviver for, and the ring must be draining for all of it.
+    const frac = clamp(this.reviveFraction(ctx, target, dt, raw === target), 0, 1);
     this.set('reviveFrac', round3(frac), (v) => {
       ref.reviveArc.style.strokeDashoffset = String(REVIVE_ARC_C * (1 - v));
     });
@@ -1267,6 +1305,21 @@ function renderPips(host, charges, max) {
   const pips = host.querySelectorAll('i');
   const lit = Math.min(charges, shown);
   for (let i = 0; i < pips.length; i++) pips[i].classList.toggle('is-on', i < lit);
+}
+
+/**
+ * Is the local pawn asking to pick someone up? `Revive.holdingInteract`'s
+ * question, asked of the same source: the command stream, not the keyboard.
+ *
+ * `ctx.input.down('KeyE')` would answer it for a keyboard *and* for a pad
+ * (`Input.PAD_KEYS` maps X onto `KeyE`), but it would answer it with a second
+ * copy of a binding that already exists twice — in `Player._sampleInput` and
+ * in `NetClient._sampleInput`, both of which fold it into `BTN.INTERACT`.
+ * Reading the bit those produce is what keeps the ring, the prompt's own
+ * pad/keyboard label and the host's revive scan describing one gesture.
+ */
+function holdingInteract(p) {
+  return p?.interactPressed === true || ((p?.lastCommand?.buttons | 0) & BTN.INTERACT) !== 0;
 }
 
 function formatTime(sec) {

@@ -455,7 +455,13 @@ export class Player {
 
     this._harvestExternal(dt);
 
-    if (!replay) this._runSchedule(dt);
+    // A body on the floor does not fire the volley it queued before it fell.
+    // The entries are *held*, not dropped — `_runSchedule` only ages what it is
+    // asked to age — so a pawn picked up mid-volley gets the rest of it. Gated
+    // here rather than in the downed branch below because this runs above both
+    // gates, and a shot that spawns motionless at a downed muzzle is the exact
+    // artefact the pumps at the tail of this method exist to prevent.
+    if (!replay && !this.downed) this._runSchedule(dt);
     this._tickTimers(dt);
     this._tickCooldowns(dt);
 
@@ -477,10 +483,22 @@ export class Player {
     // equipment either. Everything else here (external drift, collision,
     // grounding) keeps running so knockback settles and gravity pulls a
     // downed body to the floor like any other physics object.
+    //
+    // Both pools keep being pumped for the same reason. Downing is not death:
+    // `Combat.enterDowned` runs none of `_kill`'s teardown, so unlike the dead
+    // branch above — where `onDeath` has already called `clear()` on both —
+    // there is a shot in the air and a turret on the ground that nothing else
+    // will ever tick. Returning above the pumps froze them for the whole
+    // bleed-out. So the shot lands, the mine expires on its own clock, and
+    // nothing new joins them (`_runSchedule` is gated above).
     if (this.downed) {
       this.velocity.y -= GRAVITY * dt;
       this._resolve(ctx, dt);
       this._land(ctx);
+      if (!replay) {
+        this.projectiles.fixedUpdate(ctx, dt);
+        this.placeables.fixedUpdate(ctx, dt);
+      }
       this._commit(c, buttons, 0);
       return;
     }
