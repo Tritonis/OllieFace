@@ -2513,6 +2513,34 @@ export function installHarness(ctx) {
   // clock.
   if (globalThis.location && new URLSearchParams(location.search).has('pinclock')) pinClock(1 / 60);
 
+  // Hosting with nobody connected, asked for by URL — `?harness=1&coophost=1`.
+  //
+  // `tests/sp-equivalence.mjs --coop-host` (`npm run gate:mp1`) boots this to
+  // make roadmap rule 10 executable: a host whose roster is one must simulate
+  // exactly as single-player does, down to the `ctx.rng` draw. Installed here
+  // rather than by the probe, and next to `pinclock` for the same reason it is
+  // — this runs before the engine's first frame, so the host path is live for
+  // every simulation step the page ever takes rather than for all but the first
+  // few.
+  //
+  // `Lobby.startHost` is the layer directly beneath the co-op screen's host
+  // button: `Menus.coopAction('coop-invite')` calls `Lobby.createInvite`, whose
+  // own first line is `if (this.mode !== 'host') this.startHost()`. Stopping
+  // there is deliberate. `createInvite` goes on to open an RTCPeerConnection and
+  // gather ICE — network I/O a local gate must not depend on, and which adds no
+  // host-side simulation state, because a minted invite nobody accepts leaves
+  // `NetHost.clients` empty exactly as this does. `startHost` itself touches no
+  // network at all: it adds a `NetHost` system, and `HostTransport`'s
+  // constructor is three empty collections. So `ctx.authority`, `ctx.netRole`
+  // and the snapshot writer are all real here with no relay anywhere.
+  if (globalThis.location && new URLSearchParams(location.search).has('coophost')) {
+    // Loud rather than optional: this param exists so a gate can assert the
+    // host path was live, and a silent no-op would turn that gate into a
+    // single-player run wearing a multiplayer name.
+    if (!ctx.lobby) throw new Error('coophost: ctx.lobby does not exist in this build');
+    ctx.lobby.startHost();
+  }
+
   const H = {
     ctx,
     subjects,

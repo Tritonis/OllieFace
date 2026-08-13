@@ -75,6 +75,23 @@
  *     into a roster query, and window 1 pins the survivor alive so that branch
  *     never changes shape. Window 2 is where a bad empty-roster fallback shows
  *     up instead of shipping a green gate.
+ *
+ * `--coop-host` — the roster-of-one invariant, as a command (`npm run gate:mp1`).
+ *
+ * Appends `&coophost=1`, which makes the harness start hosting before the page
+ * has taken a single simulation step (`Harness.js`, next to the `pinclock`
+ * read). The host code path is then live for the whole measured window with
+ * nobody connected: `ctx.authority` through `NetHost.init`, `ctx.netRole` at
+ * `'host'`, the snapshot writer in the system list. The gate is that this moves
+ * *zero* fields against the same baseline `gate:sp` names — hosting alone must
+ * not displace one `ctx.rng` draw. Everything else about the run is untouched,
+ * and the flag's absence is the flag not existing: no param, no hook, the
+ * default path exactly as it was.
+ *
+ * The settle gate asserts the hosting actually happened (`netRole`,
+ * `netClients` in `diagnostics.settleGate`). Without that, a `startHost` that
+ * silently did nothing would produce a green gate measuring single-player
+ * against single-player and calling it a multiplayer guarantee.
  */
 import { chromium } from 'playwright';
 import { createServer } from 'vite';
@@ -238,6 +255,9 @@ const arg = (name) => {
 };
 const outPath = arg('--out');
 const comparePath = arg('--compare');
+// A switch, not a value — `arg` reads the next token, which this flag has none
+// of. See the `--coop-host` section of the header.
+const COOP_HOST = process.argv.includes('--coop-host');
 
 /**
  * What produced this capture, written into every `--out` file.
@@ -257,6 +277,7 @@ function captureSource() {
   return {
     tool: 'tests/sp-equivalence.mjs',
     mode: MODE,
+    coopHost: COOP_HOST,
     seed: SEED,
     commit: git(['rev-parse', 'HEAD']),
     dirty: git(['status', '--porcelain']) !== '',
@@ -322,7 +343,8 @@ try {
     args: ['--use-angle=d3d11', '--ignore-gpu-blocklist', '--disable-frame-rate-limit', ...OFFSCREEN],
   });
 
-  const url = `http://127.0.0.1:${PORT}/?seed=${SEED}&quality=1&harness=1`;
+  const url = `http://127.0.0.1:${PORT}/?seed=${SEED}&quality=1&harness=1`
+    + (COOP_HOST ? '&coophost=1' : '');
 
   const newPage = async () => {
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
@@ -717,7 +739,7 @@ try {
     // --- Phase B: the pinned fingerprint ------------------------------------
     const b = await newPage();
     result = await b.page.evaluate(
-      ({ preSteps, steps, deadSteps, r, defaultHeight }) => {
+      ({ preSteps, steps, deadSteps, r, defaultHeight, coopHost }) => {
         const { engine, ctx } = globalThis.__GAME__;
         const H = 1 / 60;
         const round = (n) => Math.round(n * r) / r;
@@ -865,6 +887,11 @@ try {
           playerAlive: !!ctx.player?.alive,
           enemiesAlive: ctx.director?.enemies?.length ?? -1,
           engineRunning: engine.running,
+          // Diagnostics, not fingerprint: `gate` is written to
+          // `diagnostics.settleGate`, which `--compare` never reads. Recorded on
+          // every run so a reader can see `single`/`host` next to the verdict.
+          netRole: ctx.netRole ?? null,
+          netClients: ctx.net?.clients?.size ?? null,
         };
         const gateFailures = [];
         if (gate.paused !== false) gateFailures.push('ctx.paused is not false');
@@ -874,6 +901,16 @@ try {
         if (!gate.playerAlive) gateFailures.push('player died during the settle window');
         if (gate.enemiesAlive <= 0) gateFailures.push('no enemies alive — the Director never spawned');
         if (gate.engineRunning) gateFailures.push('engine.stop() did not stop the frame loop');
+        // The whole meaning of `--coop-host` is that these two are true. A
+        // `startHost` that quietly did nothing would otherwise leave this gate
+        // comparing single-player to single-player and reporting it as proof
+        // that hosting changes nothing.
+        if (coopHost && gate.netRole !== 'host') {
+          gateFailures.push(`--coop-host did not start a host: ctx.netRole is ${gate.netRole}`);
+        }
+        if (coopHost && gate.netClients !== 0) {
+          gateFailures.push(`the host has ${gate.netClients} peer(s); this gate measures a roster of one`);
+        }
         if (gateFailures.length) return { gateFailures, gate, startState };
 
         /* What a `damage` event's source is bucketed by, and why it is not
@@ -1103,7 +1140,10 @@ try {
           rawCtxTime: ctx.time,
         };
       },
-      { preSteps: PRE_STEPS, steps: STEPS, deadSteps: DEAD_STEPS, r: R, defaultHeight: DEFAULT_ENEMY_HEIGHT },
+      {
+        preSteps: PRE_STEPS, steps: STEPS, deadSteps: DEAD_STEPS, r: R,
+        defaultHeight: DEFAULT_ENEMY_HEIGHT, coopHost: COOP_HOST,
+      },
     );
     pageErrors.push(...b.errs);
     await b.page.close();
