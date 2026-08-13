@@ -25,9 +25,21 @@
     "appId": "com.olliface.telluricvoid",
     "productName": "TELLURIC VOID",
     "asar": false,
-    "directories": { "output": "dist-desktop" },
-    "files": ["desktop/**", "dist/**", "!dist/**/*.map", "package.json", "!node_modules/**"],
-    "win": { "target": "dir", "signAndEditExecutable": false }
+    "directories": {
+      "output": "dist-desktop"
+    },
+    "files": [
+      "desktop/**",
+      "dist/**",
+      "!dist/**/*.map",
+      "package.json",
+      "!node_modules/**",
+      "!steam_appid.txt"
+    ],
+    "win": {
+      "target": "dir",
+      "signAndEditExecutable": false
+    }
   },
   "keywords": [],
   "author": "",
@@ -40,6 +52,7 @@
     "electron": "43.3.0",
     "electron-builder": "26.15.3",
     "playwright": "^1.62.1",
+    "steamworks.js": "0.4.0",
     "vite": "^8.2.0"
   },
   "type": "module",

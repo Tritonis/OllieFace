@@ -11,6 +11,7 @@ import { app, BrowserWindow, ipcMain, protocol, net } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import { pathToFileURL, fileURLToPath } from 'node:url';
+import { initSteam } from './steam.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.join(HERE, '..', 'dist');
@@ -83,6 +84,12 @@ ipcMain.on('store:save', (_e, json) => {
 // the last flush wins and the other run's progress is gone. Steam's client
 // blocks a double launch, but the deliverable is a double-clickable exe.
 let mainWindow = null;
+
+// The Steam verdict for this run, decided once on ready and never re-asked.
+// Held here so the IPC bridge a later task adds has one source of truth, and so
+// a Steam-absent boot is a recorded fact rather than a repeated failed call.
+let steamStatus = { available: false, appId: null, personaName: null, reason: 'not yet initialised' };
+
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
@@ -93,6 +100,15 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.whenReady().then(async () => {
+    // Steam first, but nothing waits on it: initSteam never throws and never
+    // blocks, and a false verdict is simply the shape every Steam path checks.
+    // No dialog, no retry, no slower boot for a player who has never opened
+    // Steam — the log line is the whole of the Steam-absent experience.
+    steamStatus = initSteam();
+    console.log('steam:', steamStatus.available
+      ? `available: true, appId: ${steamStatus.appId}, personaName: ${steamStatus.personaName}`
+      : `available: false, reason: ${steamStatus.reason}`);
+
     // app://game/<path> -> dist/<path>, default document index.html.
     protocol.handle('app', (request) => {
       const url = new URL(request.url);
