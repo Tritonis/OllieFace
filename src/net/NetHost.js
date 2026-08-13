@@ -98,7 +98,7 @@ export class NetHost {
     for (const name of ['kill', 'teleporterCharging', 'teleporterComplete',
                         'stageStart', 'bossSpawn', 'bossDead', 'playerDead', 'levelUp',
                         'realmEnter', 'realmExit',
-                        'playerDowned', 'playerRevived', 'playerBledOut']) {
+                        'playerDowned', 'playerRevived', 'playerBledOut', 'playerReturned']) {
       ctx.events.on(name, (payload) => this._forward(name, payload));
     }
 

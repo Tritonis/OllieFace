@@ -217,6 +217,18 @@ export class Progression {
     // own death, later, a no-op.
     ctx.events.on('playerDead', (p) => { if (isLocalVictim(ctx, p)) this._endRun(false); });
 
+    // The stage-end amnesty (`Revive._returnParty`) can hand this machine's
+    // own pawn back its legs after `_endRun` already committed the run as
+    // over. `_ended` is what makes `_endRun` idempotent against a second real
+    // death, so it has to come back down, not just the pawn's `alive` flag —
+    // otherwise a player who dies again after being returned would silently
+    // never end their (new) run a second time.
+    ctx.events.on('playerReturned', (e) => {
+      if (!this._ended || !isLocalVictim(ctx, { victim: e.player })) return;
+      this._ended = false;
+      this.ending = null;
+    });
+
     // A client never advances the run; it learns a stage happened and rebuilds
     // the same world from the host's seed. What sits *on* that world is
     // replicated rather than re-rolled, so it never populates.

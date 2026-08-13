@@ -306,6 +306,13 @@ export class HUD {
     // teammate's death left a co-op client alive and mobile behind a death
     // screen it could not dismiss.
     on('playerDead', (p) => { if (isLocalVictim(this.ctx, p)) this.onDeath(); });
+    // The other half of `onDeath`: the stage-end amnesty brought this
+    // machine's own pawn back, so the run summary it is still staring at is
+    // stale. Only closes the screen it opened — a player who backed out to
+    // the pause menu or settings on top of it is left alone.
+    on('playerReturned', (p) => {
+      if (isLocalVictim(this.ctx, { victim: p?.player }) && this.menus.screen === 'death') this.onReturn();
+    });
 
     // Hover tooltips only exist while the cursor is free — while pointer-locked
     // the HUD must not intercept anything.
@@ -475,6 +482,11 @@ export class HUD {
       difficulty: diff.name,
       items,
     });
+  }
+
+  /** The amnesty's other half: close a death screen this machine's own pawn no longer earns. */
+  onReturn() {
+    this.menus.close();
   }
 
   /**

@@ -171,6 +171,14 @@ export class Revive {
    * `Progression._applyStage` has already moved onto the new ground by the time
    * `stageStart` is emitted. The anchor is read once, before anyone moves, so a
    * party of four does not walk itself two metres further out per pawn.
+   *
+   * A pawn coming back from a real death (`alive` was `false`, not just
+   * `downed`) also gets `playerReturned` — broadcast, pawn by reference, the
+   * same idiom as `playerRevived`. `Progression`'s `_endRun` already ran for
+   * that pawn's own machine (`playerDead` -> `isLocalVictim`) and committed the
+   * run as over; nothing else in the build tells that machine its run is live
+   * again, so the event is what reopens the death screen and lets the pawn move.
+   * A pawn that was only downed never had its run end, so it needs no event.
    */
   _returnParty() {
     const ctx = this.ctx;
@@ -186,6 +194,7 @@ export class Revive {
     for (let i = 0; i < list.length; i++) {
       const p = list[i];
       if (!p || (p.alive !== false && p.downed !== true)) continue;
+      const wasDead = p.alive === false;
 
       p.alive = true;
       p.downed = false;
@@ -199,6 +208,8 @@ export class Revive {
         const y = ctx.stage?.sampleHeight?.(ax + 2, az + 2);
         p.position.set(ax + 2, typeof y === 'number' && isFinite(y) ? y + 0.2 : ay, az + 2);
       }
+
+      if (wasDead) ctx.events.emit('playerReturned', { player: p });
     }
   }
 }

@@ -60,6 +60,7 @@ import { spawn } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { REVIVE } from '../src/data/revive.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -476,6 +477,323 @@ const CHECKS = [
         detail: `granted item id ${setup.id} to the client's pawn; client pawn's own count`
           + ` (host's view) -> ${setup.remoteHasAfter}; client's own inventory count -> ${clientHas};`
           + ` host viewer's own count of the same id ${setup.hostHadBefore} -> ${hostHasAfter} (want unchanged)`,
+      };
+    },
+  },
+
+  // ------------------------------------------------------------- p3 check-set
+  //
+  // Downed/revive lifecycle (PROTOCOL_VERSION 7, docs/superpowers/plans/
+  // 2026-08-12-mp-p3-downed-revive.md): lethal damage on a pawn with a living
+  // teammate goes down instead of dying (`Combat.enterDowned`), `Revive.
+  // fixedUpdate` runs the bleed-out clock and the pick-up race, and
+  // `Progression.advanceStage`/`Revive._returnParty` hand a dead party back
+  // their legs. Six checks walk that lifecycle start to finish in one
+  // continuous session, in registration order, each numbered so the next
+  // starts from the state the last one left behind: downed -> (P1's targeting
+  // fix, re-verified while the body is still on the floor) -> revived ->
+  // downed again -> bled out dead -> stage-returned alive with its build
+  // intact -> wiped. Nothing here re-arms with a second down/kill of a pawn
+  // the previous check didn't leave in the right state; a check that finds
+  // the pawn in the wrong state fails loudly with what it expected instead of
+  // silently re-arming around a bug.
+  //
+  // P2's economy isolation (rule 4's other prior-fix) is NOT re-verified with
+  // a new check here: `p2-chest-charges-actor` (above) already drives a
+  // directed `goldChanged` end to end and asserts it lands on the owning peer
+  // alone, and `Revive.js`'s own header states the invariant that makes a
+  // second, post-revive version of that check redundant rather than merely
+  // convenient — "it never touches a pawn's build: `items` is not its
+  // business and is exactly what survives a death untouched." Run with
+  // `--checks base,p2,p3` and the p2 set proves the economy seam on the same
+  // pawn this set puts through downed/revive/death/return.
+  //
+  // The client's pawn is always the one put through the lifecycle
+  // (`ctx.coop.pawns[0]` on the host, the same administrative shortcut the p2
+  // set uses for setup that isn't the seam under test); the host's own
+  // survivor is the one real input drives, exactly once, for the one check
+  // where the seam under test — a teammate reviving another player — actually
+  // runs through it.
+  {
+    name: 'p3-downed-replicates',
+    set: 'p3',
+    async run({ host, client }) {
+      const setup = await host.evaluate(() => {
+        const ctx = globalThis.__GAME__?.ctx;
+        const remote = ctx?.coop?.pawns?.[0];
+        if (!remote) return { error: 'no remote pawn on host (ctx.coop.pawns is empty)' };
+        if (!ctx.player?.alive || !remote.alive || remote.downed) {
+          return { error: `both pawns must be alive and standing going in (host alive=${ctx.player?.alive},`
+            + ` remote alive=${remote.alive}, remote downed=${remote.downed})` };
+        }
+        ctx.combat.applyDamage(remote, (remote.maxHealth || 100) * 4 + 1000,
+          { source: null, ignoreArmor: true, type: 'p3-probe' });
+        return { downedOnHost: remote.downed === true };
+      });
+      if (setup.error) return { pass: false, detail: setup.error };
+
+      // "Within 1 s": poll at a fine grain rather than sleep-then-check-once,
+      // so a pass reports how much of the second it actually used.
+      let seenAt = null;
+      let last = null;
+      const start = Date.now();
+      const deadline = start + 1000;
+      while (Date.now() < deadline) {
+        last = await client.evaluate(() => {
+          const el = document.querySelector('.downed-overlay');
+          return {
+            downed: globalThis.__GAME__?.ctx?.player?.downed === true,
+            hudIsDowned: document.getElementById('hud')?.classList.contains('is-downed') ?? false,
+            overlayOpacity: el ? getComputedStyle(el).opacity : null,
+          };
+        });
+        if (last.downed && last.hudIsDowned) { seenAt = Date.now() - start; break; }
+        await sleep(50);
+      }
+
+      const pass = setup.downedOnHost === true && !!last?.downed && !!last?.hudIsDowned;
+      return {
+        pass,
+        detail: `host: remote pawn downed=${setup.downedOnHost}; client: ctx.player.downed=${last?.downed},`
+          + ` #hud.is-downed=${last?.hudIsDowned} (want both true within 1000 ms, seen at`
+          + ` ${seenAt === null ? 'not seen' : `${seenAt} ms`}); .downed-overlay computed opacity`
+          + ` at that read = ${last?.overlayOpacity} (CSS transitions this over 0.4 s, not gated on)`,
+      };
+    },
+  },
+  {
+    // Roadmap rule 4 re-verification: P1's 40 m acquisition slice claims a
+    // downed pawn is never a legal target via `Roster.targetable`, but that
+    // filter only runs where a caller asks it to. This reads the field every
+    // live enemy actually carries (`Enemy.js:569`, `acquireTarget`) rather
+    // than trusting the filter's own claim — runs immediately after the check
+    // above, while the client pawn from that check is still on the floor.
+    name: 'p3-downed-excluded-from-targeting',
+    set: 'p3',
+    async run({ host }) {
+      let r = null;
+      const deadline = Date.now() + 5000;
+      while (Date.now() < deadline) {
+        r = await host.evaluate(() => {
+          const ctx = globalThis.__GAME__.ctx;
+          const remote = ctx.coop.pawns[0];
+          if (!remote?.downed) return { error: 're-arm order broken: the client pawn is not downed' };
+          const enemies = (ctx.combat?.entities ?? []).filter((e) => e && 'targetPlayer' in e);
+          const holders = enemies.filter((e) => e.targetPlayer === remote).length;
+          return { holders, enemyCount: enemies.length };
+        });
+        if (r.error || r.enemyCount > 0) break;
+        await sleep(250);
+      }
+      if (r.error) return { pass: false, detail: r.error };
+      return {
+        pass: r.holders === 0,
+        detail: `${r.enemyCount} live enemies carry targetPlayer; ${r.holders} hold the downed client`
+          + ` pawn as their target (want 0)`
+          + (r.enemyCount === 0 ? ' — no enemy was on the stage to test against; assertion is vacuous' : ''),
+      };
+    },
+  },
+  {
+    name: 'p3-revive-completes',
+    set: 'p3',
+    async run({ host, client }) {
+      const setup = await host.evaluate(() => {
+        const ctx = globalThis.__GAME__.ctx;
+        const remote = ctx.coop.pawns[0];
+        if (!remote?.downed) return { error: 're-arm order broken: the client pawn is not downed' };
+        // Real input drives the hold below; this positions the reviver, which
+        // is administrative setup, the same distinction the p2 set draws.
+        ctx.player.position.set(remote.position.x, remote.position.y, remote.position.z);
+        return { ok: true };
+      });
+      if (setup.error) return { pass: false, detail: setup.error };
+
+      await host.bringToFront();
+      await host.keyboard.down('KeyE');
+      // REVIVE.REVIVE_S plus slack for the hold to register and for the
+      // snapshot carrying the result to reach the client.
+      await sleep(REVIVE.REVIVE_S * 1000 + 2500);
+      await host.keyboard.up('KeyE');
+
+      let h = null, c = null;
+      const deadline = Date.now() + 5000;
+      while (Date.now() < deadline) {
+        h = await host.evaluate(() => {
+          const remote = globalThis.__GAME__.ctx.coop.pawns[0];
+          return { downed: remote.downed === true, health: remote.health, maxHealth: remote.maxHealth || 100 };
+        });
+        c = await client.evaluate(() => {
+          const p = globalThis.__GAME__.ctx.player;
+          return { downed: p.downed === true, health: p.health, maxHealth: p.maxHealth || 100 };
+        });
+        if (h.downed === false && c.downed === false) break;
+        await sleep(200);
+      }
+
+      const wantFrac = REVIVE.REVIVE_HEALTH_FRAC;
+      const hFrac = h ? h.health / h.maxHealth : null;
+      const cFrac = c ? c.health / c.maxHealth : null;
+      const close = (f) => f !== null && Math.abs(f - wantFrac) < 0.05;
+      const pass = h?.downed === false && c?.downed === false && close(hFrac) && close(cFrac);
+      return {
+        pass,
+        detail: `host held KeyE at the body for ${REVIVE.REVIVE_S}s+slack; host view: downed=${h?.downed}`
+          + ` health ${h?.health?.toFixed?.(1)}/${h?.maxHealth} (${hFrac?.toFixed(2)}); client view:`
+          + ` downed=${c?.downed} health ${c?.health?.toFixed?.(1)}/${c?.maxHealth} (${cFrac?.toFixed(2)});`
+          + ` want both false, ~${wantFrac} of max`,
+      };
+    },
+  },
+  {
+    name: 'p3-bleedout-kills',
+    set: 'p3',
+    async run({ host, client }) {
+      const setup = await host.evaluate(() => {
+        const ctx = globalThis.__GAME__.ctx;
+        const remote = ctx.coop.pawns[0];
+        if (!remote?.alive || remote.downed) {
+          return { error: `client pawn must be alive and standing (check 3 must have revived it): alive=${remote?.alive}, downed=${remote?.downed}` };
+        }
+        // Granted before the down, through the same per-pawn `Items` instance
+        // `Items.of(ctx, remote)` produced (`remote.items`, the p2-inventory-
+        // isolated idiom) — check 5 (stage-return) compares this count against
+        // what the pawn is still holding after it dies and comes back.
+        const id = remote.items.rollItem(null, 'common') ?? remote.items.rollItem(null, 'uncommon');
+        if (!id) return { error: 'rollItem returned no id to grant' };
+        remote.items.give(id, 1);
+        ctx.__probeP3ItemId = id;
+        ctx.combat.applyDamage(remote, (remote.maxHealth || 100) * 4 + 1000,
+          { source: null, ignoreArmor: true, type: 'p3-probe' });
+        return { itemId: id, itemCountBefore: remote.items.count(id), downedOnHost: remote.downed === true };
+      });
+      if (setup.error) return { pass: false, detail: setup.error };
+
+      // Nobody revives: no key is held on either page for the whole window.
+      // The clock has to run out on its own — REVIVE.BLEEDOUT_S plus slack for
+      // the tick that crosses the epsilon in Revive.fixedUpdate and the
+      // snapshot/forwarded playerDead that carries the result to the client.
+      let hostDead = false, clientDead = false, clientScreen = null;
+      const deadline = Date.now() + (REVIVE.BLEEDOUT_S + 6) * 1000;
+      while (Date.now() < deadline) {
+        hostDead = await host.evaluate(() => globalThis.__GAME__.ctx.coop.pawns[0]?.alive === false);
+        const c = await client.evaluate(() => ({
+          alive: globalThis.__GAME__?.ctx?.player?.alive,
+          screen: globalThis.__GAME__?.ctx?.hud?.menus?.screen ?? null,
+        }));
+        clientDead = c.alive === false;
+        clientScreen = c.screen;
+        if (hostDead && clientDead) break;
+        await sleep(500);
+      }
+
+      const pass = setup.downedOnHost === true && hostDead === true && clientDead === true;
+      return {
+        pass,
+        detail: `granted item ${setup.itemId} (count ${setup.itemCountBefore}) before the down; downed on`
+          + ` the host=${setup.downedOnHost}; after up to ${REVIVE.BLEEDOUT_S + 6}s with nobody reviving:`
+          + ` host sees the client pawn alive===false -> ${hostDead}; client's own alive -> ${clientDead},`
+          + ` hud screen -> ${clientScreen} (want both dead — netState DEAD / playerDead observed on both)`,
+      };
+    },
+  },
+  {
+    name: 'p3-stage-return',
+    set: 'p3',
+    async run({ host, client }) {
+      const setup = await host.evaluate(() => {
+        const ctx = globalThis.__GAME__.ctx;
+        const remote = ctx.coop.pawns[0];
+        const id = ctx.__probeP3ItemId;
+        if (remote?.alive !== false || id == null) {
+          return { error: `client pawn must be dead with a tracked item id from check 4 (alive=${remote?.alive}, id=${id})` };
+        }
+        const before = remote.items.count(id);
+        // `Progression.advanceStage()` is the direct headless handle: no
+        // teleporter charge is walked to completion, which is recorded here
+        // as the bounded shortcut it is.
+        ctx.progression.advanceStage();
+        return { itemId: id, itemCountBefore: before };
+      });
+      if (setup.error) return { pass: false, detail: setup.error };
+
+      let h = null, c = null;
+      const deadline = Date.now() + 8000;
+      while (Date.now() < deadline) {
+        h = await host.evaluate((id) => {
+          const remote = globalThis.__GAME__.ctx.coop.pawns[0];
+          return { alive: remote.alive === true, health: remote.health, maxHealth: remote.maxHealth || 100, itemCount: remote.items.count(id) };
+        }, setup.itemId);
+        c = await client.evaluate((id) => {
+          const ctx = globalThis.__GAME__.ctx;
+          return { alive: ctx.player.alive === true, health: ctx.player.health, maxHealth: ctx.player.maxHealth || 100, itemCount: ctx.items.count(id) };
+        }, setup.itemId);
+        if (h.alive && c.alive) break;
+        await sleep(300);
+      }
+
+      const wantFrac = REVIVE.RETURN_HEALTH_FRAC;
+      const hFrac = h ? h.health / h.maxHealth : null;
+      const cFrac = c ? c.health / c.maxHealth : null;
+      const close = (f) => f !== null && Math.abs(f - wantFrac) < 0.05;
+      const pass = h?.alive === true && c?.alive === true && close(hFrac) && close(cFrac)
+        && setup.itemCountBefore > 0 && h?.itemCount === setup.itemCountBefore && c?.itemCount === setup.itemCountBefore;
+      return {
+        pass,
+        detail: `item ${setup.itemId} held count ${setup.itemCountBefore} going into the return; host view:`
+          + ` alive=${h?.alive} health ${h?.health?.toFixed?.(1)}/${h?.maxHealth} (${hFrac?.toFixed(2)})`
+          + ` itemCount=${h?.itemCount}; client view: alive=${c?.alive} health ${c?.health?.toFixed?.(1)}/`
+          + `${c?.maxHealth} (${cFrac?.toFixed(2)}) itemCount=${c?.itemCount}; want both alive, ~${wantFrac}`
+          + ` of max, and both item counts unchanged and > 0`,
+      };
+    },
+  },
+  {
+    name: 'p3-wipe-ends-run',
+    set: 'p3',
+    async run({ host, client }) {
+      const setup = await host.evaluate(() => {
+        const ctx = globalThis.__GAME__.ctx;
+        const remote = ctx.coop.pawns[0];
+        if (!remote?.alive || !ctx.player.alive) {
+          return { error: `both pawns must be alive going in (check 5 must have returned the party): remote=${remote?.alive}, host=${ctx.player.alive}` };
+        }
+        // Client pawn first, host pawn last, exactly as the brief orders it:
+        // the wipe fork (`Revive.fixedUpdate`'s `standing === 0` scan) only
+        // fires once nobody is left standing, so the second hit is the one
+        // that actually trips it.
+        ctx.combat.applyDamage(remote, (remote.maxHealth || 100) * 4 + 1000,
+          { source: null, ignoreArmor: true, type: 'p3-probe' });
+        const remoteDownedFirst = remote.downed === true;
+        ctx.combat.applyDamage(ctx.player, (ctx.player.maxHealth || 100) * 4 + 1000,
+          { source: null, ignoreArmor: true, type: 'p3-probe' });
+        return { remoteDownedFirst };
+      });
+      if (setup.error) return { pass: false, detail: setup.error };
+
+      let hostScreen = null, clientScreen = null, hostAlive = null, clientAlive = null;
+      const deadline = Date.now() + 8000;
+      while (Date.now() < deadline) {
+        const h = await host.evaluate(() => ({
+          screen: globalThis.__GAME__?.ctx?.hud?.menus?.screen ?? null,
+          alive: globalThis.__GAME__?.ctx?.player?.alive,
+        }));
+        const c = await client.evaluate(() => ({
+          screen: globalThis.__GAME__?.ctx?.hud?.menus?.screen ?? null,
+          alive: globalThis.__GAME__?.ctx?.player?.alive,
+        }));
+        hostScreen = h.screen; hostAlive = h.alive;
+        clientScreen = c.screen; clientAlive = c.alive;
+        if (hostScreen === 'death' && clientScreen === 'death') break;
+        await sleep(300);
+      }
+
+      const pass = hostScreen === 'death' && clientScreen === 'death' && hostAlive === false && clientAlive === false;
+      return {
+        pass,
+        detail: `client pawn downed first (downed=${setup.remoteDownedFirst}), host pawn downed last —`
+          + ` the wipe should finish both. host: screen -> ${hostScreen}, alive -> ${hostAlive}; client:`
+          + ` screen -> ${clientScreen}, alive -> ${clientAlive} (want both 'death' / false)`,
       };
     },
   },

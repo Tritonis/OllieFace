@@ -232,6 +232,24 @@ console.log('DEAD still dies');
   ok(p.downed === false, 'not downed');
 }
 
+console.log('a stage return (mp-p3 Revive._returnParty) stands the local survivor back up from real death');
+{
+  // DEAD -> ALIVE, not DOWNED -> ALIVE: `Revive._returnParty` hands a dead
+  // pawn its life back directly, and this is the one machine — the joining
+  // client's own predicted survivor — with no other path that ever clears
+  // `alive`. A remote `PlayerView` recomputes `alive` unconditionally from
+  // `state` every snapshot (`NetViews.js:102`); this asserts the local pawn
+  // now does the equivalent for its own `state === ESTATE.ALIVE`.
+  const client = new NetClient();
+  const p = localPlayer();
+  client._applyAuthoritativeHealth(p, { state: ESTATE.DEAD, healthFrac: 0, shieldFrac: 0 });
+  ok(p.alive === false, 'dead first');
+  client._applyAuthoritativeHealth(p, { state: ESTATE.ALIVE, healthFrac: 0.5, shieldFrac: 0 });
+  ok(p.alive === true, 'ALIVE after DEAD resurrects the local survivor');
+  ok(near(p.health, 50, 1e-6), `health is the returned fraction (got ${p.health})`);
+  ok(p.downed === false, 'not downed');
+}
+
 console.log('a remote PlayerView fed state 3 is downed and alive, and stands back up on state 0');
 {
   const factories = new Map();

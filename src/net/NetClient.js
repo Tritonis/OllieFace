@@ -438,6 +438,15 @@ export class NetClient {
     }
     if (e?.state === ESTATE.DEAD) {
       if (player.alive !== false) { player.health = 0; player.onDeath?.(); }
+    } else if (player.alive === false) {
+      // The stage-end amnesty (`Revive._returnParty`) hands a dead pawn back
+      // its legs without ever passing through `ESTATE.DOWNED` — the host
+      // writes `ALIVE` straight from `DEAD`, same as a fresh spawn. `onDeath`
+      // has a partner in `Player`'s prediction state (velocity, projectiles,
+      // buffs all cleared) with nothing left to undo here; the flag flip is
+      // the whole of it, and `playerReturned` (forwarded, `NetHost.js`) is
+      // what tells this machine's own run and HUD the death screen is stale.
+      player.alive = true;
     }
   }
 
