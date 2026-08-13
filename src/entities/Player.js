@@ -6,6 +6,7 @@ import { PlaceablePool } from './Placeables.js';
 import { SLOT_ORDER, effectiveCooldown } from '../data/abilities.js';
 import { getSurvivor, loadoutOf, DEFAULT_SURVIVOR } from '../data/survivors.js';
 import { BTN, ESTATE } from '../net/Protocol.js';
+import { DOWNED_PITCH, DOWNED_SINK } from '../net/NetViews.js';
 import { Items } from '../systems/Items.js';
 
 /**
@@ -1407,6 +1408,21 @@ export class Player {
     // Render offset is presentation only — the capsule the simulation resolves
     // against is still `position`.
     this.mesh.group.position.copy(this.position).add(this._renderOffset);
+    // Downed pose (mp-p3), after the position and before the animator, same
+    // order and same two constants `NetViews.PlayerView` applies to a remote
+    // client's interpolated view of this same state — see `NetViews.js` for
+    // why the pose is a transform and not an animation. This is the pose's
+    // other presentation path: every `Player` instance (the local pawn on any
+    // machine, and every remote pawn a *host* simulates as a full
+    // `Player`/`CharacterMesh` rather than a view) runs through here, so a
+    // downed teammate read as standing upright on the host's own screen until
+    // now.
+    if (this.downed) {
+      this.mesh.group.rotation.x = DOWNED_PITCH;
+      this.mesh.group.position.y -= DOWNED_SINK;
+    } else if (this.mesh.group.rotation.x !== 0) {
+      this.mesh.group.rotation.x = 0;
+    }
     this.mesh.update(dt, s);
 
     if (this._dashTrail) {

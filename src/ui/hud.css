@@ -417,6 +417,155 @@ body.menu-open { cursor: default; }
 #hud.is-low .reticle .ret-dot { background: var(--alert); }
 
 /* =====================================================================
+   DOWNED (mp-p3) — full-screen tint + a bleed-out bar draining over
+   REVIVE.BLEEDOUT_S. Same screen-tint idiom as `.low-edge`, mixed separately
+   so the two can layer (bleeding out at low health reads as both at once)
+   without either washing the other out.
+   ===================================================================== */
+
+.downed-overlay {
+  position: absolute;
+  inset: -2%;
+  opacity: 0;
+  pointer-events: none;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 14vh;
+  background:
+    radial-gradient(ellipse 82% 72% at 50% 50%, transparent 34%, rgba(120, 6, 4, 0.5) 80%, rgba(150, 8, 4, 0.85) 100%);
+  mix-blend-mode: screen;
+  transition: opacity 0.4s ease;
+}
+#hud.is-downed .downed-overlay { opacity: 1; }
+
+.downed-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4em;
+  mix-blend-mode: normal;
+}
+.downed-label {
+  font-size: 1.3em;
+  font-weight: 800;
+  letter-spacing: var(--track-eyebrow);
+  color: var(--alert);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95), 0 0 18px rgba(255, 59, 40, 0.6);
+}
+.downed-bar {
+  position: relative;
+  width: min(28vw, 26em);
+  height: 1.4em;
+  --core-band: 0.9em;
+}
+.downed-fill {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  background: linear-gradient(180deg, var(--hp-hot) 0%, var(--hp) 55%, #7a0f08 100%);
+  box-shadow: 0 0 16px rgba(255, 66, 48, 0.5);
+}
+.downed-time {
+  font-size: 1em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.95);
+}
+
+/* Revive prompt — the reviver's own readout, not the downed pawn's. Same
+   radial idiom as `.tp` (teleporter charge), sized down and parked where
+   `.prompt` sits because the two never show at once: a downed teammate is
+   never an `Interactable`. */
+.revive {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 3.2em);
+  transform: translate(-50%, 0.5em) scale(0.85);
+  width: 6.6em;
+  height: 6.6em;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.revive.is-on { opacity: 1; transform: translate(-50%, 0) scale(1); }
+.revive-svg { width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
+.revive-track {
+  fill: rgba(5, 9, 14, 0.6);
+  stroke: rgba(255, 120, 100, 0.28);
+  stroke-width: 6;
+}
+.revive-arc {
+  fill: none;
+  stroke: var(--alert);
+  stroke-width: 6;
+  stroke-linecap: butt;
+  stroke-dasharray: 263.89;
+  stroke-dashoffset: 263.89;
+  filter: drop-shadow(0 0 6px rgba(255, 59, 40, 0.85));
+}
+.revive-inner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15em;
+}
+.revive-key {
+  min-width: 1.6em;
+  padding: 0.05em 0.3em;
+  text-align: center;
+  font-size: 0.8em;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #0d1117;
+  background: var(--ink);
+  clip-path: polygon(0.22em 0, 100% 0, calc(100% - 0.22em) 100%, 0 100%);
+}
+.revive-label {
+  font-size: var(--fs-micro);
+  letter-spacing: var(--track-label);
+  color: var(--ink);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+  text-align: center;
+  line-height: 1.25;
+}
+
+/* Party readout — the floor for "a teammate went down": one chip per
+   teammate, pulsing red while down. No world-space projection; see the brief. */
+.party {
+  display: none;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3em;
+  margin-top: 0.5em;
+}
+.party.is-on { display: flex; }
+.party-chip {
+  padding: 0.22em 0.7em;
+  background: var(--panel-hard);
+  border: 1px solid var(--line);
+  border-right: 3px solid var(--line);
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  color: var(--ink-dim);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0.6em 100%);
+}
+.party-chip.is-down {
+  color: #fff;
+  border-right-color: var(--alert);
+  animation: partypulse 1s ease-in-out infinite;
+}
+@keyframes partypulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(255, 59, 40, 0); }
+  50%      { box-shadow: 0 0 14px rgba(255, 59, 40, 0.85); }
+}
+
+/* =====================================================================
    MONEY + INVENTORY  (top-left)
    ===================================================================== */
 

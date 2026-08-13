@@ -256,6 +256,12 @@ export class Audio {
       this.musicEngine?.bump(p?.isBoss ? 0.5 : p?.isElite ? 0.14 : 0.05);
     });
     e.on('playerHurt', (p) => this.playerHurt(p?.amount ?? 0));
+    // Downed & revive (mp-p3). Broadcast events, like `playerDead` forwarded
+    // to every client — every peer needs to hear a teammate go down or get
+    // back up, not just the pawn it happened to. Positional (`pos`), unlike
+    // `playerHurt`/`playerDead` which are always about the local survivor.
+    e.on('playerDowned', (p) => this.playerDowned(p?.position));
+    e.on('playerRevived', (p) => this.playerRevived(p?.position));
     // Both cues speak for the person holding the headphones. On a host the bus
     // carries every pawn's economy, so without the owner test a four-player
     // party gave the viewer a jingle for every teammate's pickup and a coin for
@@ -1007,6 +1013,38 @@ export class Audio {
     this._noise(t, 1.6, { type: 'lowpass', freq: 900, freqEnd: 120, q: 0.7, gain: 0.2, attack: 0.05 });
   }
 
+  /**
+   * Downed (mp-p3), placeholder pending the audio pass proper (memory: the
+   * audio graph carries a known flaw ticket, so this deliberately adds no new
+   * graph nodes — `_out`'s PannerNode is the same per-call, non-persistent
+   * node every positional sound already creates). The floor the brief sets:
+   * `playerDead`'s own descending tone, reused at a fraction of its gain, with
+   * none of `playerDead`'s choreography — no `_musicOff`, no bus fade,
+   * because a downed body has not ended anyone's run and the soundtrack has
+   * no business stopping for it.
+   */
+  playerDowned(pos) {
+    const ac = this._ensure();
+    if (!ac || !this._take(3, true)) return;
+    const t = ac.currentTime;
+    const out = this._out(pos, 10);
+    this._tone(t, 1.4, { type: 'sine', f0: ROOT, f1: ROOT * 0.55, gain: 0.12, out, attack: 0.02 });
+    this._noise(t, 0.9, { type: 'lowpass', freq: 800, freqEnd: 140, q: 0.6, gain: 0.06, out, attack: 0.04 });
+  }
+
+  /** Revived (mp-p3), same placeholder status as `playerDowned` — reuses `heal`'s rising arpeggio. */
+  playerRevived(pos) {
+    const ac = this._ensure();
+    if (!ac || !this._take(3, true)) return;
+    const t = ac.currentTime;
+    const out = this._out(pos, 10);
+    for (let i = 0; i < 3; i++) {
+      this._tone(t + i * 0.05, 0.3, {
+        type: 'sine', f0: ROOT * 4 * Math.pow(2, SCALE[i + 2] / 12), gain: 0.16, out, attack: 0.01,
+      });
+    }
+  }
+
   heal(pos) {
     const ac = this._ensure();
     if (!ac || !this._take(3, true)) return;
@@ -1461,6 +1499,8 @@ export class Audio {
       case 'stageStart': case 'teleporterComplete': return this.stageSting();
       case 'playerHurt': return this.playerHurt(arg ?? 0);
       case 'playerDead': return this.playerDead();
+      case 'playerDowned': return this.playerDowned(pos);
+      case 'playerRevived': return this.playerRevived(pos);
       // World interaction. Every name below was already being passed by
       // Interactables/RealmProps and was landing on the default case, i.e. a
       // chest, a purchase and a shrine payout all played the same UI blip.

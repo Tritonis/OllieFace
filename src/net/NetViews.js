@@ -39,8 +39,12 @@ const DEATH_TIME = 1.1;
 // whole rig forward onto its face and sink it toward the ground. Two writes a
 // frame, no new rig state, and `CharacterMesh.update` owns only `rotation.y`
 // on this group so nothing fights over the axis.
-const DOWNED_PITCH = 1.25;
-const DOWNED_SINK = 0.55;
+// Exported so the host's own remote-pawn presentation (`Player.update`) can
+// reuse the exact same pose rather than forking a second copy of these two
+// numbers — a downed body must read identically whether it is being watched
+// through a client's `PlayerView` or through the host's own `CharacterMesh`.
+export const DOWNED_PITCH = 1.25;
+export const DOWNED_SINK = 0.55;
 
 /** Shared: estimate planar speed from successive interpolated positions. */
 function trackVelocity(view, x, y, z, dt) {

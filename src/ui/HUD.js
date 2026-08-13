@@ -8,6 +8,10 @@ import { ELITE_STATS } from '../data/enemies.js';
 // from the same table `Corruption` bands against. The value itself is read
 // through `ctx.corruption`.
 import { BANDS } from '../data/corruption.js';
+// Downed & revive (mp-p3) tuning: the one table both `Revive` (host) and this
+// file read, so the client-side revive-ring approximation below times itself
+// off the same numbers the host's clock actually runs on.
+import { REVIVE } from '../data/revive.js';
 // The same routing table the finale portals are built from, read here only to
 // name the door the current band is buying. The HUD spawns nothing.
 import { routesFor } from '../data/realms.js';
@@ -90,6 +94,16 @@ const INV_ROW = 12;
 const TRACE_SAMPLES = 48;
 const TRACE_INTERVAL = 1.5;
 
+// Downed & revive (mp-p3). The revive ring's SVG circumference (radius 42 in
+// a 100x100 viewBox), matching `.tp-arc`'s own hardcoded-radius idiom.
+const REVIVE_ARC_C = 2 * Math.PI * 42;
+// A defensive margin against `Snapshot.sample`'s `healthFrac` lerp across the
+// DOWNED<->ALIVE boundary (progress.md, Task 4->5 carry): `state` itself snaps
+// to the newer record and never blends, so this has not been observed to
+// flicker, but the brief asks for the ring to hold rather than to touch
+// `Snapshot.sample` if it ever does. Two frames at 60Hz.
+const REVIVE_HOLD_S = 0.09;
+
 // Full-bleed screens own the frame outright. A pause or settings panel is a
 // sheet over a live run and the HUD behind it is still that run's state, but
 // the title, the survivor select, the logbook and the summary each fill the
@@ -134,6 +148,12 @@ export class HUD {
     this._stripHoldT = STRIP_HOLD_SEC;
     this.tmp = new THREE.Vector3();
     this.tmpF = new THREE.Vector3();
+
+    // Downed & revive (mp-p3) presentation state.
+    this._reviveHeld = null;      // last non-null revive target, held across REVIVE_HOLD_S
+    this._reviveMissT = 0;
+    this._reviveClientTarget = null;
+    this._reviveClientT = 0;      // client-side approximation of the downed pawn's `revive` fraction
 
     this.buildSlots();
     this.syncEquipment();
@@ -523,6 +543,7 @@ export class HUD {
       // maps to KeyF (Input.js PAD_KEYS); printing F to a pad player is naming
       // a key they do not have.
       if (this.refs.equip?.key) this.refs.equip.key.textContent = pad ? 'Y' : EQUIPMENT_KEY_LABEL;
+      if (this.refs.reviveKey) this.refs.reviveKey.textContent = pad ? 'X' : 'E';
     });
 
     this.updateHealth(ctx, dt);
@@ -533,6 +554,9 @@ export class HUD {
     this.updateEquipment(ctx);
     this.updateBoss(ctx);
     this.updateTeleporter(ctx);
+    this.updateDowned(ctx);
+    this.updateParty(ctx);
+    this.updateRevive(ctx, dt);
     this.updateObjectivePing(ctx);
     this.updateDirections(ctx, dt);
     this.updateToasts(dt);
@@ -972,6 +996,161 @@ export class HUD {
     });
   }
 
+  /**
+   * Own-downed overlay: full-screen tint + a bleed-out bar draining over
+   * `REVIVE.BLEEDOUT_S`, labelled "BLEEDING OUT".
+   *
+   * Bound to `ctx.player.downed`/`ctx.player.bleedout` — the local pawn's own
+   * flags — rather than to the `playerDowned` event's payload. On a host that
+   * payload always names the real pawn, but on a client it is `NetClient`'s
+   * generic `_resolve`, which maps a netId back to `ctx.player` only when the
+   * netId matches this machine's own; every other shape it might carry is a
+   * teammate's. Reading `ctx.player` directly sidesteps that resolution
+   * entirely — `NetClient._applyAuthoritativeHealth` already writes `downed`/
+   * `bleedout` onto this exact object every snapshot, on both roles, so this
+   * needs no event listener and cannot be fooled by a payload aimed at
+   * someone else's downing.
+   */
+  updateDowned(ctx) {
+    const p = ctx.player;
+    const downed = p?.downed === true;
+    this.set('downed', downed, (v) => this.root.classList.toggle('is-downed', v));
+    if (!downed) return;
+    const frac = clamp((p.bleedout ?? 0) / REVIVE.BLEEDOUT_S, 0, 1);
+    this.set('bleedFrac', round3(frac), (v) => {
+      this.refs.downedFill.style.transform = `scaleX(${v})`;
+    });
+    this.set('bleedTime', Math.ceil(p.bleedout ?? 0), (v) => {
+      this.refs.downedTime.textContent = `${v}s`;
+    });
+  }
+
+  /**
+   * Every teammate but the viewer, and whether each one is down. Roster.js
+   * documents this consumer as unbuilt ("there are no teammate bars in the
+   * HUD"); this is that consumer, at the floor the brief sets — a pulsing
+   * chip, not a new world-space projection.
+   *
+   * The two roles read from different places because `Roster.js` is
+   * host-only state: a client's teammates are `NetClient`'s interpolated
+   * `PlayerView`s (`ctx.net.views`), which never register with `ctx.roster`
+   * (the net layer "never mentions this file" — same source comment).
+   * `PlayerView.downed` is the same flag a host's own pawns carry.
+   */
+  partyMembers(ctx) {
+    if (ctx.authority) {
+      const list = ctx.roster?.all;
+      if (!list) return [];
+      const out = [];
+      for (let i = 0; i < list.length; i++) {
+        const p = list[i];
+        if (p && p !== ctx.player) out.push({ id: p.peerId ?? i, downed: p.downed === true });
+      }
+      return out;
+    }
+    const views = ctx.net?.views;
+    if (!views) return [];
+    const out = [];
+    for (const v of views.values()) {
+      if (v.isPlayer) out.push({ id: v.netId, downed: v.downed === true });
+    }
+    return out;
+  }
+
+  updateParty(ctx) {
+    const host = this.refs.party;
+    if (!host) return;
+    const mates = this.partyMembers(ctx);
+    // Rebuilt only when membership itself changes (a join, a leave) — a
+    // party's roster changes far less often than its downed state, and every
+    // per-frame write below is a class toggle already guarded by `set`.
+    const key = mates.map((m) => m.id).join(',');
+    if (this.c.partyKey !== key) {
+      this.c.partyKey = key;
+      host.innerHTML = mates.map((m, i) => `<div class="party-chip"><b>P${i + 2}</b></div>`).join('');
+    }
+    host.classList.toggle('is-on', mates.length > 0);
+    const chips = host.children;
+    for (let i = 0; i < mates.length; i++) chips[i]?.classList.toggle('is-down', mates[i].downed);
+  }
+
+  /**
+   * Nearest downed teammate within `REVIVE.REVIVE_RADIUS`, or null. Same
+   * role split as `partyMembers`: a real `Player` off `ctx.roster` on a host,
+   * a `PlayerView` off `ctx.net.views` on a client.
+   */
+  reviveTarget(ctx, player) {
+    const radius = REVIVE.REVIVE_RADIUS;
+    let best = null, bestD = Infinity;
+    if (ctx.authority) {
+      const list = ctx.roster?.all;
+      if (!list) return null;
+      for (let i = 0; i < list.length; i++) {
+        const p = list[i];
+        if (!p || p === player || p.downed !== true) continue;
+        const d = horizDist(p.position, player.position);
+        if (d <= radius && d < bestD) { bestD = d; best = p; }
+      }
+      return best;
+    }
+    const views = ctx.net?.views;
+    if (!views) return null;
+    for (const v of views.values()) {
+      if (!v.isPlayer || v.downed !== true) continue;
+      const d = horizDist(v.position, player.position);
+      if (d <= radius && d < bestD) { bestD = d; best = v; }
+    }
+    return best;
+  }
+
+  /**
+   * The ring's fill fraction. Host-authoritative on a host — `pawn.revive` is
+   * `Revive.js`'s own clock. On a client the fraction never crosses the wire
+   * at all (`NetHost._downedRecord`'s own comment: the per-entity field it
+   * would ride is spent on the bleed-out clock instead), so this side runs a
+   * local approximation on `Revive.js`'s exact timing — `REVIVE.REVIVE_S` up,
+   * twice as fast down — keyed to the current target so switching bodies
+   * resets the ring instead of carrying a stale fraction onto someone else.
+   */
+  reviveFraction(ctx, target, dt) {
+    if (ctx.authority) return target.revive ?? 0;
+    if (this._reviveClientTarget !== target) {
+      this._reviveClientTarget = target;
+      this._reviveClientT = 0;
+    }
+    const holding = !!ctx.input?.down?.('KeyE');
+    this._reviveClientT = clamp(
+      this._reviveClientT + (holding ? dt / REVIVE.REVIVE_S : -2 * dt / REVIVE.REVIVE_S), 0, 1,
+    );
+    return this._reviveClientT;
+  }
+
+  /** "HOLD E — REVIVE" + a progress ring, matching `.tp`'s own markup/update idiom. */
+  updateRevive(ctx, dt) {
+    const ref = this.refs;
+    if (!ref.revive) return;
+    const player = ctx.player;
+    const raw = player ? this.reviveTarget(ctx, player) : null;
+
+    if (raw) this._reviveMissT = 0;
+    else if (this._reviveHeld) this._reviveMissT += dt;
+    const target = raw || (this._reviveMissT < REVIVE_HOLD_S ? this._reviveHeld : null);
+    this._reviveHeld = target;
+
+    const on = !!target;
+    this.set('reviveOn', on, (v) => ref.revive.classList.toggle('is-on', v));
+    if (!on) {
+      this._reviveClientTarget = null;
+      this._reviveClientT = 0;
+      return;
+    }
+
+    const frac = clamp(this.reviveFraction(ctx, target, dt), 0, 1);
+    this.set('reviveFrac', round3(frac), (v) => {
+      ref.reviveArc.style.strokeDashoffset = String(REVIVE_ARC_C * (1 - v));
+    });
+  }
+
   updateDirections(ctx, dt) {
     // Prefer whatever VFX publishes; fall back to our own damage ledger.
     const external = ctx.vfx?.damageDirections;
@@ -1085,6 +1264,11 @@ function formatTime(sec) {
 
 const round3 = (v) => Math.round(v * 1000) / 1000;
 
+/** Horizontal distance, `Roster.horizDist`'s formula — see that file's note on why `hypot`. */
+function horizDist(a, b) {
+  return Math.hypot(a.x - b.x, a.z - b.z);
+}
+
 /**
  * Where each corruption band's threshold sits on the gauge, as a percentage of
  * the top of the scale. The gauge is an instrument reading the planet, so its
@@ -1132,6 +1316,16 @@ function collectRefs(root) {
     prompt: q('.prompt'),
     promptLabel: q('.prompt-label'),
     promptKey: q('.prompt-key'),
+
+    downedOverlay: q('.downed-overlay'),
+    downedFill: q('.downed-fill'),
+    downedTime: q('.downed-time'),
+
+    revive: q('.revive'),
+    reviveArc: q('.revive-arc'),
+    reviveKey: q('.revive-key'),
+
+    party: q('.party'),
 
     bossBar: q('.bossbar'),
     bossName: q('.boss-name'),
@@ -1190,6 +1384,14 @@ function slotRefs(el) {
 const TEMPLATE = (slots, notches, dirSlots) => `
 <div class="low-edge"></div>
 
+<div class="downed-overlay">
+  <div class="downed-panel">
+    <div class="downed-label">Bleeding Out</div>
+    <div class="downed-bar core"><div class="downed-fill"></div></div>
+    <div class="downed-time">0s</div>
+  </div>
+</div>
+
 <div class="reticle">
   <i class="ret-dot"></i>
   <i class="ret-arm ret-n"></i><i class="ret-arm ret-e"></i>
@@ -1206,6 +1408,17 @@ const TEMPLATE = (slots, notches, dirSlots) => `
 <div class="prompt">
   <b class="prompt-key">E</b>
   <span class="prompt-label"></span>
+</div>
+
+<div class="revive">
+  <svg viewBox="0 0 100 100" class="revive-svg" aria-hidden="true">
+    <circle class="revive-track" cx="50" cy="50" r="42" />
+    <circle class="revive-arc" cx="50" cy="50" r="42" />
+  </svg>
+  <div class="revive-inner">
+    <b class="revive-key">E</b>
+    <span class="revive-label">Hold<br>Revive</span>
+  </div>
 </div>
 
 <div class="zone zone--tl">
@@ -1272,6 +1485,7 @@ const TEMPLATE = (slots, notches, dirSlots) => `
       ${Array.from({ length: notches }, () => '<i class="notch"></i>').join('')}
     </div>
   </div>
+  <div class="party"></div>
 </div>
 
 <div class="zone zone--bl">
