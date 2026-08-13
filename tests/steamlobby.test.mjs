@@ -18,7 +18,10 @@
  * Self-contained: no browser, no Electron, no Steam. `window` is created here,
  * which is exactly how the module's own guard is exercised rather than bypassed.
  */
-import { chunkBlob, assembleBlob, steamAvailable, hostViaSteam, joinViaSteam, onSteamInvite, openSteamInvite, CHUNK_CHARS, MAX_LOBBY_TOTAL_BYTES, recordBytes } from '../src/net/SteamLobby.js';
+import {
+  chunkBlob, assembleBlob, steamAvailable, hostViaSteam, joinViaSteam, onSteamInvite, openSteamInvite,
+  CHUNK_CHARS, MAX_LOBBY_TOTAL_BYTES, recordBytes, steamInviteNeedsConfirm,
+} from '../src/net/SteamLobby.js';
 import { Lobby } from '../src/net/Lobby.js';
 
 let pass = 0, fail = 0;
@@ -493,6 +496,37 @@ console.log('-- joining: abandoned mid-poll stops the timer rather than being ig
   ok(b.calls.filter(([n]) => n === 'getFullLobbyData').length === pollsAfter, 'and the poll really stopped -- no further reads');
   ok(b.calls.some(([n]) => n === 'leaveLobby'), 'the Steam lobby was left');
   delete globalThis.window;
+}
+
+console.log('-- joining: an empty offer blob is "arrived", not "not yet" (Minor 2)');
+{
+  // chunkBlob('sdp.offer', '') is a legal write: sdp.offer.n = '0', no parts,
+  // and assembleBlob correctly returns '' for it. The old `if (offer) break`
+  // read that as "still arriving" and burned the whole wait bound on an
+  // invite that had, in fact, fully posted.
+  const b = makeBridge();
+  const emptyOffer = Object.fromEntries(chunkBlob('sdp.offer', ''));
+  b.getFullLobbyData = async (id) => { b.calls.push(['getFullLobbyData', id]); return { data: { ...emptyOffer } }; };
+  const joiner = makeLobby();
+  const start = Date.now();
+  let threw = null;
+  try { await joinViaSteam(joiner, '109775241996081388', { pollMs: 5, waitMs: 50 }); } catch (e) { threw = e; }
+  ok(threw === null, `an empty-but-complete offer resolves rather than timing out (${threw && threw.message})`);
+  ok(joiner.joined.length === 1 && joiner.joined[0] === '', `joinManual received the empty string, not undefined (${JSON.stringify(joiner.joined)})`);
+  ok(Date.now() - start < 50, 'it resolved on the first poll instead of waiting out the whole bound');
+  delete globalThis.window;
+}
+
+console.log('-- steamInviteNeedsConfirm: when a friend\'s "Join game" must ask before it acts (Important 4)');
+{
+  ok(steamInviteNeedsConfirm({ hasActiveRun: false, lobbyMode: 'single' }) === false,
+    'idle at a menu, nothing networked: the direct join the two-seat checkpoint exercises is unaffected');
+  ok(steamInviteNeedsConfirm({ hasActiveRun: false, lobbyMode: null }) === false, 'no lobby object at all needs no confirmation either');
+  ok(steamInviteNeedsConfirm({ hasActiveRun: false, lobbyMode: undefined }) === false, 'nor does an undefined mode');
+  ok(steamInviteNeedsConfirm({ hasActiveRun: true, lobbyMode: 'single' }) === true, 'a run in flight asks first, even with nothing networked yet');
+  ok(steamInviteNeedsConfirm({ hasActiveRun: false, lobbyMode: 'host' }) === true, 'already hosting a session asks first');
+  ok(steamInviteNeedsConfirm({ hasActiveRun: false, lobbyMode: 'client' }) === true, 'already joined a session asks first');
+  ok(steamInviteNeedsConfirm({ hasActiveRun: true, lobbyMode: 'client' }) === true, 'mid-run AND networked still asks -- one true is enough');
 }
 
 console.log('-- joining: a lobby id that is not one');

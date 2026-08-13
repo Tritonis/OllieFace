@@ -15,6 +15,7 @@ import { initSteam, getClient, getStatus, enableOverlay } from './steam.mjs';
 import {
   parseSteamId, steamIdToString, validateMaxMembers, validateLobbyRecord,
   sanitizeLobbyData, encodeSignal, decodeSignal, MAX_SIGNAL_FRAME_BYTES,
+  isAuthorizedSignalTarget,
 } from './steam-validate.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -212,6 +213,30 @@ function stopSignalListen() {
 }
 
 /**
+ * Release every Steam lobby this process still holds, and the pump/handles
+ * that feed them. (Important 3.) A renderer reload, a crashed renderer, the
+ * window closing and the app quitting all used to leave every one of those
+ * running against a page that no longer has any listener for them — the
+ * lobby stays open and joinable from a friend's list, the 100 ms pump keeps
+ * polling a queue nobody drains, and both callback `Handle`s keep firing into
+ * a closure over a `mainWindow` that may itself be gone.
+ *
+ * Idempotent, deliberately: every one of its four call sites can fire more
+ * than once in a session (a reload after a reload; `window-all-closed`
+ * racing `before-quit`), and `stopSignalListen` already tolerates being
+ * called with nothing armed. `steamLobbies.clear()` after the loop, not
+ * per-entry deletion during it, because a `Map` mutated while iterated is the
+ * kind of bug that only shows up the second time this runs.
+ */
+function releaseAllSteamState() {
+  stopSignalListen();
+  for (const lobby of steamLobbies.values()) {
+    try { lobby.leave(); } catch (err) { console.error('steam: lobby leave failed', steamError(err)); }
+  }
+  steamLobbies.clear();
+}
+
+/**
  * Register the IPC surface. Called exactly once, before `app.whenReady()` —
  * `ipcMain.handle` is legal that early, and registering there means a renderer
  * that races the first frame still finds every channel already listening.
@@ -301,6 +326,17 @@ function registerSteamBridge() {
     if (!client) return { error: 'steam-unavailable' };
     const target = parseSteamId(rawSteamId);
     if (target === null) return { error: 'bad-steam-id' };
+    // MINOR 1. This channel exists for exactly one purpose — the joiner's
+    // answer to the lobby it just joined, addressed to that lobby's owner —
+    // and until here the shape check let it address ANY Steam id. The receive
+    // side is already membership-gated (`isLobbyMember`, below); this is its
+    // asymmetric other half.
+    const owners = [];
+    for (const lobby of steamLobbies.values()) {
+      try { const o = lobby.getOwner(); if (o && typeof o.steamId64 === 'bigint') owners.push(o.steamId64); }
+      catch { /* an unreadable owner is not a match either way */ }
+    }
+    if (!isAuthorizedSignalTarget(target, owners)) return { error: 'signal-target-not-lobby-owner' };
     const framed = encodeSignal(payload);
     if (!framed.ok) return { error: framed.error };
 
@@ -420,6 +456,21 @@ if (!app.requestSingleInstanceLock()) {
     // two denials keep it that way without needing anyone to remember.
     win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     win.webContents.on('will-navigate', (e) => e.preventDefault());
+    // IMPORTANT 3. `will-navigate` never fires for a reload (Ctrl+R / the
+    // bound `reload`/`forcereload` accelerators on the default application
+    // menu `autoHideMenuBar` only hides, it does not remove), so a reload was
+    // the one path that left the Steam lobby, the 100 ms pump and both
+    // callback handles running against a renderer that had just been thrown
+    // away — invisible, and rearmed by every subsequent host/join, not just
+    // the first. `did-start-navigation` fires for every navigation INCLUDING
+    // reload; `isSameDocument` excludes hash changes and pushState, which
+    // never touch the renderer's Steam state and must not tear it down.
+    win.webContents.on('did-start-navigation', (details) => {
+      if (details?.isMainFrame && !details?.isSameDocument) releaseAllSteamState();
+    });
+    // A crashed or killed renderer is the same problem from the other side:
+    // nothing left to hear `steam:signal` or `steam:signal-fail` either way.
+    win.webContents.on('render-process-gone', () => releaseAllSteamState());
     win.loadURL('app://game/index.html');
 
     // The Optimus diagnostic (docs/STEAM.md section 1): which adapter Chromium
@@ -431,7 +482,12 @@ if (!app.requestSingleInstanceLock()) {
     } catch (err) { console.error('gpu-info failed', err); }
   });
 
-  // The pump holds two Steam callback handles; quitting without disconnecting
-  // them fires closures at a window that no longer exists.
-  app.on('window-all-closed', () => { stopSignalListen(); app.quit(); });
+  // The pump holds two Steam callback handles and a live Steam lobby
+  // membership; quitting without releasing them fires closures at a window
+  // that no longer exists and leaves the player sitting in a lobby their
+  // friends can still see and join after the process is gone. Both hooks call
+  // the same idempotent release, so whichever one Windows delivers first
+  // still gets it done.
+  app.on('window-all-closed', () => { releaseAllSteamState(); app.quit(); });
+  app.on('before-quit', releaseAllSteamState);
 }

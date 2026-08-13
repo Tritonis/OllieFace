@@ -12,7 +12,10 @@ import { Tooltip } from './Tooltip.js';
 import { SURVIVORS, getSurvivor, loadoutOf } from '../data/survivors.js';
 import { Logbook, ModelPreview, disposeTree, renderRunReport } from './Logbook.js';
 import { describeNet } from '../net/NetConfig.js';
-import { steamAvailable, hostViaSteam, joinViaSteam, onSteamInvite, openSteamInvite } from '../net/SteamLobby.js';
+import {
+  steamAvailable, hostViaSteam, joinViaSteam, onSteamInvite, openSteamInvite, steamInviteNeedsConfirm,
+} from '../net/SteamLobby.js';
+import { showSteamInviteNotice } from './SteamInviteNotice.js';
 import { REFUSE } from '../net/Protocol.js';
 import { adoptLegacyKey } from '../core/LegacyStorage.js';
 import { PAD_BUTTON } from '../core/PadState.js';
@@ -1414,14 +1417,21 @@ export class Menus {
       const block = this.root.querySelector('[data-coop-steam]');
       if (block) block.hidden = false;
       // The join side needs no buttons at all: accepting an invite in the Steam
-      // friends list is the whole gesture.
-      onSteamInvite(async (lobbyId) => {
+      // friends list is the whole gesture — PROVIDED nothing is already in
+      // flight (Important 4). Idle at a menu, that gesture is trusted outright,
+      // same as before. Mid-run or already networked, it must not tear either
+      // one down without the player saying so.
+      onSteamInvite((lobbyId) => {
         const lobby = this.ctx.lobby;
         if (!lobby) return;
-        this.openCoop();
-        this.coopSay('Joining your friend through Steam…');
-        try { await joinViaSteam(lobby, lobbyId); }
-        catch (err) { this.coopSay(err?.message || 'That Steam invite did not work.'); }
+        const join = async () => {
+          this.openCoop();
+          this.coopSay('Joining your friend through Steam…');
+          try { await joinViaSteam(lobby, lobbyId); }
+          catch (err) { this.coopSay(err?.message || 'That Steam invite did not work.'); }
+        };
+        if (!steamInviteNeedsConfirm({ hasActiveRun: !!this.ctx.player, lobbyMode: lobby.mode })) { join(); return; }
+        showSteamInviteNotice({ onAccept: join });
       });
     } catch { /* the whole point of this path is that its absence is silent */ }
   }

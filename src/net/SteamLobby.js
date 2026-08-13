@@ -190,6 +190,8 @@ const BRIDGE_REASONS = {
     'Steam refused to store the invite in the lobby. That happens when the lobby is already full of data or somebody else owns it — leave the lobby and host again, or use a room code.',
   'signal-send-refused': 'Steam would not deliver the reply to the host. Ask them to host again.',
   'bad-steam-id': 'the host’s Steam account could not be identified, so the reply had nowhere to go.',
+  'signal-target-not-lobby-owner':
+    'that Steam account is not the owner of a lobby you are in, so the reply was not sent. Ask your friend to host again.',
 };
 
 /** Every bridge call answers `{ ... }` or `{ error: '<slug>' }`. This is the door. */
@@ -378,7 +380,11 @@ export async function joinViaSteam(lobby, lobbyId, { pollMs = POLL_MS, waitMs = 
       const { data } = unwrap(await b.getFullLobbyData(id), 'Steam lobby');
       const record = data && typeof data === 'object' ? data : {};
       offer = assembleBlob((k) => (Object.prototype.hasOwnProperty.call(record, k) ? record[k] : null), OFFER_PREFIX);
-      if (offer) break;
+      // `!== null`, not truthy: `chunkBlob('sdp.offer', '')` is a legal write —
+      // `sdp.offer.n = '0'` and no parts — and `assembleBlob` correctly returns
+      // `''` for it. A bare `if (offer)` reads that as "not yet" and burns the
+      // whole 60 s bound on an invite that already fully arrived (Minor 2).
+      if (offer !== null) break;
       if (Date.now() >= deadline) throw new Error(`Steam lobby: the host never posted an invite (waited ${Math.round(waitMs / 1000)} s).`);
       await sleep(pollMs);
     }
@@ -398,6 +404,26 @@ export async function joinViaSteam(lobby, lobbyId, { pollMs = POLL_MS, waitMs = 
     if (lobby) lobby._steamCleanup = null;
     throw err;
   }
+}
+
+/**
+ * Should a friend's "Join game" click ask before it acts, rather than act?
+ *
+ * Important 4: this invite used to run unconditionally — mid single-player
+ * run or already networked, the session in flight was discarded with no
+ * confirmation and no way to say no. The two states that must not be torn
+ * down silently are a run in progress and an existing network session; idle
+ * at a menu with nothing networked is the only state a direct join is safe
+ * in, and it is the state the two-seat checkpoint actually exercises.
+ *
+ * Pure and UI-free on purpose — this is the one fact the caller has to get
+ * right, and it is exactly the fact a DOM-dependent test in this codebase
+ * cannot cheaply exercise (see `tests/steamlobby.test.mjs`).
+ *
+ * @param {{ hasActiveRun: boolean, lobbyMode: 'single'|'host'|'client'|null|undefined }} state
+ */
+export function steamInviteNeedsConfirm({ hasActiveRun, lobbyMode }) {
+  return !!hasActiveRun || (lobbyMode != null && lobbyMode !== 'single');
 }
 
 /**

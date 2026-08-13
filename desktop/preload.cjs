@@ -15,6 +15,18 @@
  */
 const { contextBridge, ipcRenderer } = require('electron');
 
+// A structural ceiling, tighter than Node's default warning of ten. (Minor
+// 4.) `ipcRenderer` is one EventEmitter and Node counts listeners per channel
+// name, so a bug that stops unsubscribing a Steam push channel used to climb
+// silently toward that default before anything said so. Three live
+// subscribers is already generous for this bridge -- `onJoinRequested` is one
+// permanent listener for the page's life, and `onSignal`/`onSignalFail` are at
+// most one live pair at a time now that a second "Host via Steam" runs the
+// previous latch before arming a new one -- so five is a ceiling a working
+// build can never approach and a regression trips loudly, well short of
+// Node's own default.
+ipcRenderer.setMaxListeners(5);
+
 // { ok, raw }: raw is the file text, or null. ok:false means the file exists
 // and could not be read -- the renderer must not treat that as a first boot.
 const initial = ipcRenderer.sendSync('store:load');   // once, at boot

@@ -355,11 +355,15 @@ What ships instead is asymmetric, and deliberately so:
   needs; that margin is the thing to re-measure when Phase 4's TURN credentials
   land and every interface starts contributing a relay candidate.
 - **Joiner to host (the answer):** one reliable
-  `networking.sendP2PPacket(ownerSteamId, Reliable, blob)`. An SDP answer is a
-  few kilobytes and the reliable path carries up to 1 MB, so the answer leg
-  needs no chunking at all. The host learns the sender's identity for free from
-  `readP2PPacket().steamId`, which is *better* collision behaviour than the
-  per-joiner key namespacing it replaces.
+  `networking.sendP2PPacket(ownerSteamId, Reliable, blob)`. Steam's own Reliable
+  ceiling is 1 MB, but this build does not use anywhere near it: the bridge caps
+  the packet at `MAX_SIGNAL_PAYLOAD_BYTES`, **32 KB**, well under Steam's limit
+  and well over what is ever sent — a real SDP answer measures ~918 chars, about
+  0.4% of the 32 KB the bridge actually allows. So the answer leg needs no
+  chunking at all, and 32 KB, not 1 MB, is the number to check against if this
+  leg is ever asked to carry more. The host learns the sender's identity for
+  free from `readP2PPacket().steamId`, which is *better* collision behaviour
+  than the per-joiner key namespacing it replaces.
 
 The host's main process accepts a P2P session **only** from a current member of
 its own lobby, length-caps the packet, and JSON-parses it defensively before

@@ -194,6 +194,32 @@ export function sanitizeLobbyData(raw) {
 }
 
 /**
+ * Is `targetId` the owner of a lobby we currently hold? (Minor 1.) The
+ * receive side of a P2P session is membership-gated (`isLobbyMember` in
+ * `desktop/main.mjs`) but the send side — `steam:send-signal` — used to
+ * address any Steam id the shape check let through, which matches the
+ * adjudication's literal spec but leaves an asymmetry: a compromised renderer
+ * could point a reliable 32 KB packet at an arbitrary Steam account instead
+ * of only the one channel this bridge exists for, the joiner's answer to its
+ * own lobby's owner.
+ *
+ * Pure and dependency-free, same reason `lobbyRecordBytes` is: the caller
+ * (`desktop/main.mjs`) owns the live `Lobby` objects and their `getOwner()`
+ * calls, which need Electron/steamworks and cannot be unit-tested here — this
+ * is the part of the check that can be, so it is split out rather than left
+ * buried in the handler.
+ *
+ * @param {bigint} targetId
+ * @param {bigint[]} ownerIds - the owners of every lobby this process holds
+ * @returns {boolean}
+ */
+export function isAuthorizedSignalTarget(targetId, ownerIds) {
+  if (typeof targetId !== 'bigint') return false;
+  if (!Array.isArray(ownerIds)) return false;
+  return ownerIds.some((id) => id === targetId);
+}
+
+/**
  * OUTBOUND signal: the renderer's answer blob -> the exact text that goes on
  * the wire.
  *

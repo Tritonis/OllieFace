@@ -20,7 +20,7 @@
 import {
   parseSteamId, steamIdToString, validateMaxMembers, validateLobbyRecord,
   sanitizeLobbyData, encodeSignal, decodeSignal,
-  lobbyRecordBytes,
+  lobbyRecordBytes, isAuthorizedSignalTarget,
   MAX_LOBBY_VALUE_CHARS, MAX_LOBBY_KEYS, MAX_SIGNAL_PAYLOAD_BYTES, MAX_SIGNAL_FRAME_BYTES,
   MAX_LOBBY_TOTAL_BYTES, STEAM_LOBBY_TOTAL_BYTES,
 } from '../desktop/steam-validate.mjs';
@@ -205,6 +205,34 @@ console.log('\n-- encodeSignal / decodeSignal: the packet boundary');
     } catch (err) { threw = err; }
     ok(threw === null, `200 random byte packets plus 8 hand-picked ones: nothing thrown (${threw ? threw.message : 'clean'})`);
   }
+}
+
+console.log('\n-- isAuthorizedSignalTarget: send-signal may only address a lobby owner (Minor 1)');
+{
+  // The gap the finding named: the shape check alone let this channel address
+  // ANY Steam id, not just the one it exists for -- the owner of a lobby we
+  // are actually in. This is the pure half of that check; `desktop/main.mjs`
+  // supplies the live owner list from `Lobby.getOwner()`.
+  const OWNER = 76561198037383365n;
+  const OTHER_OWNER = 1n;
+  const STRANGER = 999n;
+
+  ok(isAuthorizedSignalTarget(OWNER, [OWNER]) === true, 'the owner of the one lobby we hold is authorized');
+  ok(isAuthorizedSignalTarget(OWNER, [OTHER_OWNER, OWNER]) === true, 'and among several held lobbies, matching any one is enough');
+  ok(isAuthorizedSignalTarget(STRANGER, [OWNER]) === false, 'an id that owns nothing we hold is refused');
+  ok(isAuthorizedSignalTarget(OWNER, []) === false, 'no held lobbies means no authorized target at all');
+  ok(isAuthorizedSignalTarget(OWNER, [OTHER_OWNER]) === false, 'being a member is not enough -- it has to be the owner of a lobby we hold');
+
+  // The wire type is the contract everywhere else in this module; this check
+  // does not get an exception.
+  ok(isAuthorizedSignalTarget('76561198037383365', [OWNER]) === false, 'a string target is refused -- parseSteamId is the only door to a bigint');
+  ok(isAuthorizedSignalTarget(OWNER, null) === false, 'a non-array owner list is refused rather than thrown through');
+  ok(isAuthorizedSignalTarget(OWNER, ['76561198037383365']) === false, 'a string in the owner list cannot match a bigint target either');
+  ok(isAuthorizedSignalTarget(null, [OWNER]) === false, 'a null target is refused');
+
+  let threw = null;
+  try { isAuthorizedSignalTarget(undefined, undefined); } catch (err) { threw = err; }
+  ok(threw === null, 'garbage in either argument degrades to false, never throws');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
