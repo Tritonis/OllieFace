@@ -128,7 +128,15 @@ const BOSS_GOLD_MULT = 0.6;
 const DEFAULT_KILL_COST = 8;
 
 export class Items {
-  constructor() {
+  /**
+   * `owner === null` is the engine singleton — it adopts `ctx.player` and
+   * registers as `ctx.items`, exactly as before this class became
+   * instantiable. `owner !== null` is a satellite instance for a remote
+   * pawn (`Coop._spawnPawn`): it lives only on the host, mirrors nothing,
+   * and must never touch `ctx.items`.
+   */
+  constructor(owner = null) {
+    this.owner = owner;
     this.counts = new Map();
     this.gold = 0;
     this.permanentHealth = 0;
@@ -177,7 +185,16 @@ export class Items {
 
   init(ctx) {
     this.ctx = ctx;
-    ctx.items = this;
+    // The engine singleton (`owner === null`) is the one canonical viewer
+    // instance and registers as `ctx.items`, exactly as before this class
+    // became instantiable. A satellite (owned by a remote pawn) must never
+    // steal that slot — `Items.of` is how callers find it instead.
+    if (!this.owner) ctx.items = this;
+
+    // `on()` returns its own unsubscribe closure (`src/core/Engine.js`); kept
+    // here so `dispose()` can tear a satellite's subscriptions back down
+    // when its pawn despawns, without the singleton path changing at all.
+    this._unsub = [];
 
     this._api = {
       ctx, items: this, combat: null, player: null, rng: ctx.rng,
@@ -189,8 +206,18 @@ export class Items {
     // Player-driven hooks come off the bus; the proc-bearing hooks (onHit,
     // onKill, onDamaged) are called directly by Combat so they can carry
     // proc coefficient and chain depth.
-    ctx.events.on('jump', (e) => this.onJump(e));
-    ctx.events.on('stageStart', () => {
+    //
+    // Satellites (remote pawns' own `Items`) live only on the host and
+    // mirror nothing, so the client-mirror listeners below (itemPickup /
+    // goldChanged / equipmentChanged) would be pure dead weight — worse,
+    // subscribing them on the same shared bus the singleton listens on would
+    // make one instance's mutation bleed into another's through its own
+    // mirror branch. The simulation-driving listeners (jump, abilityUsed,
+    // playerHurt, corruptionBand) need per-owner filtering too, but that is
+    // Task 5's job; for now a satellite subscribes to `stageStart` only, so
+    // its equipment slot still seeds at the start of a stage.
+    if (!this.owner) this._unsub.push(ctx.events.on('jump', (e) => this.onJump(e)));
+    this._unsub.push(ctx.events.on('stageStart', () => {
       this.cooldowns.clear();
       this._marks.clear();
       this._clouds.length = 0;
@@ -208,97 +235,128 @@ export class Items {
       // (Menus.launch); absent — the Random card, or a run started before the
       // picker existed — the slot still seeds off the shared rng as before.
       if (!this.equipmentId) this.setEquipment(this.ctx.startEquipmentId || this.rollEquipment());
-    });
+    }));
 
-    // Lunar cooldown items charge the player for casting, so they need to know
-    // a cast happened. Player already announces every one of them on the bus —
-    // adding a second, item-specific channel for the same fact is how two
-    // systems end up disagreeing about what a "use" is.
-    ctx.events.on('abilityUsed', (e) => this.onAbility(e || {}));
+    // Everything below is per-owner filtered in Task 5 (the simulation
+    // listeners) and skipped outright on satellites (the client-mirror
+    // listeners) — a satellite has no client of its own to mirror for, and
+    // sharing a bus with the singleton means subscribing here would let one
+    // instance's mutation bleed into another's.
+    if (!this.owner) {
+      // Lunar cooldown items charge the player for casting, so they need to
+      // know a cast happened. Player already announces every one of them on
+      // the bus — adding a second, item-specific channel for the same fact
+      // is how two systems end up disagreeing about what a "use" is.
+      this._unsub.push(ctx.events.on('abilityUsed', (e) => this.onAbility(e || {})));
 
-    // "How long since I was last hit" backs three items (Field Dressing, Siege
-    // Battery, Mineral Lick). Tracked once here rather than each of them
-    // keeping its own timer and each of them being subtly wrong about DoTs.
-    ctx.events.on('playerHurt', (e) => {
-      this._lastHurt = ctx.time;
-      // On a client the hit was resolved on the host, so `Combat`'s local
-      // `onDamaged` dispatch (Combat.js:493) never ran here — this forwarded
-      // event is the only signal that arrives, and without dispatching from it
-      // every `onDamaged` card is dead in co-op. The hooks that deal damage
-      // no-op on a non-authority exactly as the rest of a client's combat does;
-      // the ones that grant barriers, buffs and heals are the point.
-      if (!ctx.authority) {
-        this.onDamaged({
-          target: ctx.player, source: e?.source ?? null, amount: e?.amount ?? 0,
-          position: ctx.player?.position, procDepth: 1,
-        });
-      }
-    });
+      // "How long since I was last hit" backs three items (Field Dressing,
+      // Siege Battery, Mineral Lick). Tracked once here rather than each of
+      // them keeping its own timer and each of them being subtly wrong about
+      // DoTs.
+      this._unsub.push(ctx.events.on('playerHurt', (e) => {
+        this._lastHurt = ctx.time;
+        // On a client the hit was resolved on the host, so `Combat`'s local
+        // `onDamaged` dispatch (Combat.js:493) never ran here — this forwarded
+        // event is the only signal that arrives, and without dispatching from it
+        // every `onDamaged` card is dead in co-op. The hooks that deal damage
+        // no-op on a non-authority exactly as the rest of a client's combat does;
+        // the ones that grant barriers, buffs and heals are the point.
+        if (!ctx.authority) {
+          this.onDamaged({
+            target: ctx.player, source: e?.source ?? null, amount: e?.amount ?? 0,
+            position: ctx.player?.position, procDepth: 1,
+          });
+        }
+      }));
 
-    // A client never rolls loot; it mirrors the host's inventory off the
-    // replicated `itemPickup`, whose `count` is the new total and so is safe to
-    // apply out of order or twice. Without this the HUD and the whole stat
-    // block would sit at zero items for the entire run.
-    ctx.events.on('itemPickup', (e) => {
-      if (ctx.authority || !e || !ITEM_BY_ID.has(e.id)) return;
-      // A count of zero is a real message on this channel — it is how the host
-      // reports a stack the corruption tier (or the refinery) took away — and
-      // storing it would leave a zero-count entry that `inventory()` and the
-      // stat loop would then have to defend against.
-      if (e.count > 0) this.counts.set(e.id, e.count); else this.counts.delete(e.id);
-      this._dirty = true;
-      this._rebuildHooks();
-      // No `play('pickup')` here. `Audio` subscribes to this same event and
-      // resolves the tier and the direction from the payload; a second direct
-      // call played a bit-identical tier-0 jingle a few milliseconds later and
-      // comb-filtered the pair. See `_set`.
-    });
+      // A client never rolls loot; it mirrors the host's inventory off the
+      // replicated `itemPickup`, whose `count` is the new total and so is safe
+      // to apply out of order or twice. Without this the HUD and the whole
+      // stat block would sit at zero items for the entire run.
+      this._unsub.push(ctx.events.on('itemPickup', (e) => {
+        if (ctx.authority || !e || !ITEM_BY_ID.has(e.id)) return;
+        // A count of zero is a real message on this channel — it is how the host
+        // reports a stack the corruption tier (or the refinery) took away — and
+        // storing it would leave a zero-count entry that `inventory()` and the
+        // stat loop would then have to defend against.
+        if (e.count > 0) this.counts.set(e.id, e.count); else this.counts.delete(e.id);
+        this._dirty = true;
+        this._rebuildHooks();
+        // No `play('pickup')` here. `Audio` subscribes to this same event and
+        // resolves the tier and the direction from the payload; a second direct
+        // call played a bit-identical tier-0 jingle a few milliseconds later and
+        // comb-filtered the pair. See `_set`.
+      }));
 
-    // Same story for the purse. Gold is host-authoritative and appears in no
-    // snapshot field, so a client mirrors the host's total off the forwarded
-    // `goldChanged`. The payload is an absolute value, not a delta, so a
-    // dropped or duplicated event self-corrects on the next one.
-    ctx.events.on('goldChanged', (e) => {
-      if (ctx.authority || !e || typeof e.gold !== 'number') return;
-      this.gold = e.gold;
-    });
+      // Same story for the purse. Gold is host-authoritative and appears in no
+      // snapshot field, so a client mirrors the host's total off the forwarded
+      // `goldChanged`. The payload is an absolute value, not a delta, so a
+      // dropped or duplicated event self-corrects on the next one.
+      this._unsub.push(ctx.events.on('goldChanged', (e) => {
+        if (ctx.authority || !e || typeof e.gold !== 'number') return;
+        this.gold = e.gold;
+      }));
 
-    // Equipment mirrors the same pattern: the host decides what is in the slot,
-    // the client adopts it so its HUD and its Q key describe the truth. The
-    // client's own press still resolves nowhere (see `useEquipment`) — this is
-    // display state, not permission.
-    ctx.events.on('equipmentChanged', (e) => {
-      if (ctx.authority || !e) return;
-      this.equipmentId = e.id && EQUIPMENT_BY_ID.has(e.id) ? e.id : null;
-      this.equipCharges = e.charges ?? 0;
-      this.equipTimer = e.cooldown ?? 0;
-    });
+      // Equipment mirrors the same pattern: the host decides what is in the slot,
+      // the client adopts it so its HUD and its Q key describe the truth. The
+      // client's own press still resolves nowhere (see `useEquipment`) — this is
+      // display state, not permission.
+      this._unsub.push(ctx.events.on('equipmentChanged', (e) => {
+        if (ctx.authority || !e) return;
+        this.equipmentId = e.id && EQUIPMENT_BY_ID.has(e.id) ? e.id : null;
+        this.equipCharges = e.charges ?? 0;
+        this.equipTimer = e.cooldown ?? 0;
+      }));
 
-    // The gauge reaching into the inventory (launch spec §1, expression 3).
-    // Upward crossings only, one stack per threshold, never the same band
-    // twice. The writes ride the 'corrupt' reason, so Corruption does not
-    // re-charge and a client mirrors them like any other inventory change.
-    //
-    // The crossing only *claims* its bands here; `fixedUpdate` collects them.
-    // Mutating inline would run the whole transform inside whatever emission
-    // caused the crossing, and item pickups are a primary corruption source —
-    // so a pickup big enough to tip the gauge dispatched its own `itemPickup`,
-    // and the mutation's `'corrupt'` writes reached listeners *before* the
-    // outer `'give'` did. The HUD then retired a tile it had not created yet
-    // and created it a moment later from the stale outer payload: a permanent
-    // ghost tile for an item the player holds none of, a pickup card for it,
-    // and the toasts in reverse causal order. `_mutePeak` still advances at
-    // claim time, so the one-mutation-per-band rule holds even if two crossings
-    // land in the same frame.
-    ctx.events.on('corruptionBand', ({ band, prev }) => {
-      if (!ctx.authority || band <= prev) return;
-      for (let b = Math.max(prev + 1, MUTATION.minBand, this._mutePeak + 1); b <= band; b++) {
-        this._mutePeak = b;
-        this._muteQueue.push(b);
-      }
-    });
+      // The gauge reaching into the inventory (launch spec §1, expression 3).
+      // Upward crossings only, one stack per threshold, never the same band
+      // twice. The writes ride the 'corrupt' reason, so Corruption does not
+      // re-charge and a client mirrors them like any other inventory change.
+      //
+      // The crossing only *claims* its bands here; `fixedUpdate` collects them.
+      // Mutating inline would run the whole transform inside whatever emission
+      // caused the crossing, and item pickups are a primary corruption source —
+      // so a pickup big enough to tip the gauge dispatched its own `itemPickup`,
+      // and the mutation's `'corrupt'` writes reached listeners *before* the
+      // outer `'give'` did. The HUD then retired a tile it had not created yet
+      // and created it a moment later from the stale outer payload: a permanent
+      // ghost tile for an item the player holds none of, a pickup card for it,
+      // and the toasts in reverse causal order. `_mutePeak` still advances at
+      // claim time, so the one-mutation-per-band rule holds even if two crossings
+      // land in the same frame.
+      this._unsub.push(ctx.events.on('corruptionBand', ({ band, prev }) => {
+        if (!ctx.authority || band <= prev) return;
+        for (let b = Math.max(prev + 1, MUTATION.minBand, this._mutePeak + 1); b <= band; b++) {
+          this._mutePeak = b;
+          this._muteQueue.push(b);
+        }
+      }));
+    }
 
     this._rebuildHooks();
+  }
+
+  /** Unsubscribes every bus listener this instance holds. Satellite instances
+   * are created per remote pawn (`Coop._spawnPawn`) and torn down with it
+   * (`_despawnPawn`) — without this their `stageStart` (and, for the
+   * singleton, every other) subscription would outlive the pawn and leak.
+   */
+  dispose() {
+    for (const off of this._unsub || []) off();
+    this._unsub = [];
+  }
+
+  /**
+   * The `Items` instance that owns `pawn` — the local viewer's `ctx.items`
+   * for `ctx.player` (and for `null`/absent, which is the "no specific pawn"
+   * shorthand every pre-co-op call site already uses), or a remote pawn's own
+   * satellite instance. Every economy action resolves through this and only
+   * this, so a client mirror and a host satellite can never be confused for
+   * each other.
+   */
+  static of(ctx, pawn) {
+    if (!pawn || pawn === ctx.player) return ctx.items ?? null;
+    return pawn.items ?? null;
   }
 
   // -------------------------------------------------------------- inventory

@@ -1,5 +1,6 @@
 import { Player } from '../entities/Player.js';
 import { installViewFactories } from './NetViews.js';
+import { Items } from '../systems/Items.js';
 
 /**
  * The seam between the netcode and the game.
@@ -46,6 +47,13 @@ export class Coop {
     pawn.init(ctx);
     pawn.peerId = peerId;
 
+    // Its own economy: a remote pawn's items and gold must never share the
+    // local viewer's `ctx.items`, or a joiner's pickup would show up in the
+    // host's own inventory. `Items.of` is how every later economy action
+    // finds this instance again.
+    pawn.items = new Items(pawn);
+    pawn.items.init(ctx);
+
     // Drop it on the local player rather than the origin, so a joiner lands in
     // the fight instead of walking in from spawn.
     const anchor = ctx.player?.position;
@@ -65,7 +73,9 @@ export class Coop {
     // Detaching the group is not releasing the pawn: `Player.init` subscribes
     // to `stageStart`, and a live bus subscription pins the whole object. This
     // list going empty while the listeners accumulated is exactly what made the
-    // leak invisible — `pawns.length` read zero and looked correct.
+    // leak invisible — `pawns.length` read zero and looked correct. The pawn's
+    // satellite `Items` has the same problem and the same fix.
+    pawn.items?.dispose?.();
     pawn.dispose?.();
   }
 
