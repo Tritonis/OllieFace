@@ -92,6 +92,13 @@
  * `netClients` in `diagnostics.settleGate`). Without that, a `startHost` that
  * silently did nothing would produce a green gate measuring single-player
  * against single-player and calling it a multiplayer guarantee.
+ *
+ * The flag is orthogonal to `--mode`, because it is a URL param and the page
+ * starts hosting before either arm runs — so *both* arms carry that assertion.
+ * `--coop-host --mode elite-dps` is therefore a real, self-checking combination
+ * (elite damage measured on a host with an empty roster) rather than a
+ * combination that hosts without noticing whether it did. No script names it
+ * yet; `gate:mp1` is the equivalence arm.
  */
 import { chromium } from 'playwright';
 import { createServer } from 'vite';
@@ -389,7 +396,7 @@ try {
     // --- Phase B': the elite-affix damage arm --------------------------------
     const e = await newPage();
     elite = await e.page.evaluate(
-      async ({ card, contactM, freeM, settle, contactSteps, freeSteps, r }) => {
+      async ({ card, contactM, freeM, settle, contactSteps, freeSteps, r, coopHost }) => {
         const { engine, ctx } = globalThis.__GAME__;
         const H = 1 / 60;
         const round = (n) => Math.round(n * r) / r;
@@ -450,6 +457,14 @@ try {
           playerMaxHealth: p.maxHealth,
           engineRunning: engine.running,
           authority: !!ctx.authority,
+          // The same two fields the equivalence arm's gate carries, for the same
+          // reason and in the same place — `gate` is diagnostics, never
+          // fingerprint. `--coop-host` is mode-agnostic by construction (it is a
+          // URL param, and the page hosts before either arm runs), so an arm
+          // that did not assert the hosting would accept a silently no-oped
+          // `startHost` as a measurement of hosting.
+          netRole: ctx.netRole ?? null,
+          netClients: ctx.net?.clients?.size ?? null,
           cardFound: null,
         };
         const gateFailures = [];
@@ -460,6 +475,12 @@ try {
         if (!gate.playerAlive) gateFailures.push('player died during the settle window');
         if (gate.engineRunning) gateFailures.push('engine.stop() did not stop the frame loop');
         if (!gate.authority) gateFailures.push('ctx.authority is false — applyDamage returns 0');
+        if (coopHost && gate.netRole !== 'host') {
+          gateFailures.push(`--coop-host did not start a host: ctx.netRole is ${gate.netRole}`);
+        }
+        if (coopHost && gate.netClients !== 0) {
+          gateFailures.push(`the host has ${gate.netClients} peer(s); this arm measures a roster of one`);
+        }
 
         gate.cardFound = !!def;
         if (!def) gateFailures.push(`spawn card "${card}" not found in ENEMY_BY_ID`);
@@ -730,7 +751,7 @@ try {
       },
       {
         card: ARM_CARD, contactM: CONTACT_M, freeM: FREE_M, settle: ARM_SETTLE,
-        contactSteps: CONTACT_STEPS, freeSteps: FREE_STEPS, r: R,
+        contactSteps: CONTACT_STEPS, freeSteps: FREE_STEPS, r: R, coopHost: COOP_HOST,
       },
     );
     pageErrors.push(...e.errs);
