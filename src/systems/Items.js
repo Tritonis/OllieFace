@@ -185,6 +185,16 @@ export class Items {
 
   init(ctx) {
     this.ctx = ctx;
+    // A satellite's own draw stream, seeded off the run seed and a per-pawn
+    // salt so two remote pawns never see the same sequence and neither one
+    // ever touches the shared gameplay stream the singleton (and every other
+    // client's mirror of it) depends on staying bit-identical. Same LCG shape
+    // as `_mutateAt`'s per-band stream and Director's per-stage void stream:
+    // `(seed ^ salt) >>> 0 || 1`. See `_rng()`.
+    if (this.owner) {
+      const salt = (this.owner.peerId * 2654435761) >>> 0;
+      this._ownRng = new RNG(((ctx.seed >>> 0) ^ salt) >>> 0 || 1);
+    }
     // The engine singleton (`owner === null`) is the one canonical viewer
     // instance and registers as `ctx.items`, exactly as before this class
     // became instantiable. A satellite (owned by a remote pawn) must never
@@ -197,7 +207,7 @@ export class Items {
     this._unsub = [];
 
     this._api = {
-      ctx, items: this, combat: null, player: null, rng: ctx.rng,
+      ctx, items: this, combat: null, player: null, rng: this._rng(),
       count: 0, procDepth: 0,
       roll: (p) => this.roll(p, this._api.procCoefficient),
       procCoefficient: 1,
@@ -353,6 +363,18 @@ export class Items {
   dispose() {
     for (const off of this._unsub || []) off();
     this._unsub = [];
+  }
+
+  /**
+   * Every draw in this class goes through here: `ctx.rng` — the shared
+   * gameplay stream — for the singleton, exactly as every call site read it
+   * before this indirection existed, so the singleton's sequence is
+   * unchanged and single-player stays bit-identical. A satellite draws off
+   * `_ownRng` instead (seeded in `init`), so a remote pawn's rolls never
+   * advance the stream the singleton and every other satellite depend on.
+   */
+  _rng() {
+    return this.owner ? this._ownRng : this.ctx.rng;
   }
 
   /**
@@ -584,7 +606,7 @@ export class Items {
     // Items owns the gameplay RNG draw and the drop table, and Artifacts only
     // answers what the odds are.
     const sacChance = this.ctx.artifacts?.sacrificeChance?.(victim) ?? 0;
-    if (sacChance > 0 && this.ctx.rng.next() < sacChance) {
+    if (sacChance > 0 && this._rng().next() < sacChance) {
       const id = this.rollItem(null, 'small');
       if (id) this.ctx.interactables?.spawnOrb?.(victim.position, id, 1.4);
     }
@@ -1064,7 +1086,8 @@ export class Items {
     const p = Math.min(1, chance * (procCoefficient ?? 1) * bonus);
     if (p <= 0) return false;
     const luck = Math.max(0, Math.floor(this.ctx.player?.stats?.luck || 0));
-    for (let i = 0; i <= luck; i++) if (this.ctx.rng.next() < p) return true;
+    const rng = this._rng();
+    for (let i = 0; i <= luck; i++) if (rng.next() < p) return true;
     return false;
   }
 
@@ -1165,7 +1188,7 @@ export class Items {
       // share = w / (total + w)  =>  w = total * share / (1 - share)
       entries.push({ tier: 'blight', weight: total * BLIGHT_SHARE / (1 - BLIGHT_SHARE) });
     }
-    return this.ctx.rng.weighted(entries).tier;
+    return this._rng().weighted(entries).tier;
   }
 
   /**
@@ -1189,13 +1212,13 @@ export class Items {
     // out of, which is why the choice is installed here and not in the six
     // callers that would otherwise each need to know about it.
     if (art?.has('command')) return art.commandPick(t, pool);
-    return this.ctx.rng.pick(pool).id;
+    return this._rng().pick(pool).id;
   }
 
   /** One equipment id off the equipment pool — what a barrel hands out. */
   rollEquipment() {
     if (!this.ctx.authority) return null;
-    return this.ctx.rng.pick(EQUIPMENT).id;
+    return this._rng().pick(EQUIPMENT).id;
   }
 
   /**

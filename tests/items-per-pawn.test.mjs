@@ -1,4 +1,5 @@
 import { Items } from '../src/systems/Items.js';
+import { RNG } from '../src/core/MathUtil.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
@@ -100,6 +101,47 @@ console.log('dispose() actually removes the satellite\'s bus subscriptions');
   ctx.events.emit('stageStart', { index: 2 });
 
   ok(remote.cooldowns.has('sentinel'), 'disposed satellite no longer reacts to stageStart');
+}
+
+console.log('satellite rolls come off a derived stream, never the singleton\'s');
+{
+  const ctx = makeCtx();
+  ctx.seed = 424242;
+  ctx.rng = new RNG(ctx.seed);
+  const localPawn = { isPlayer: true };
+  ctx.player = localPawn;
+
+  const local = new Items();
+  local.init(ctx);
+
+  const pawn2 = { isPlayer: true, peerId: 2 };
+  const pawn3 = { isPlayer: true, peerId: 3 };
+  const sat2 = new Items(pawn2);
+  sat2.init(ctx);
+  const sat3 = new Items(pawn3);
+  sat3.init(ctx);
+
+  // Peek what ctx.rng would yield next without consuming it — clone the
+  // xorshift's exact state into a scratch RNG and draw off the clone.
+  const peekNext = (rng) => new RNG(rng.s).next();
+  const before = peekNext(ctx.rng);
+
+  const roll = (items) => {
+    const out = [];
+    for (let i = 0; i < 5; i++) out.push(items.rollItem('common'));
+    return out;
+  };
+  const seq2 = roll(sat2);
+  const seq3 = roll(sat3);
+
+  const after = peekNext(ctx.rng);
+  ok(before === after, "constructing/rolling on satellites does not advance the singleton's next draw");
+
+  ok(JSON.stringify(seq2) !== JSON.stringify(seq3), 'the two satellites draw different sequences from each other');
+
+  const seqLocal = roll(local);
+  ok(JSON.stringify(seq2) !== JSON.stringify(seqLocal), "a satellite's sequence differs from the singleton's");
+  ok(JSON.stringify(seq3) !== JSON.stringify(seqLocal), "the other satellite's sequence also differs from the singleton's");
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
