@@ -1228,7 +1228,15 @@ export class Menus {
     if (prev === 'logbook' && name !== 'logbook') this.logbook.onClose();
     // The poller costs nothing while no lobby screen is open — detach the
     // moment the co-op screen is left, by any path (back, leave, launch).
-    if (prev === 'coop' && name !== 'coop') this._iceDiagDetach?.();
+    // `_iceDiagPeerRef` has to be cleared here too, not just the poller: it is
+    // `iceDiagSync`'s only change-detection, and "Back" leaves the lobby (and
+    // its Peer) alive — reopening onto the same still-live peer would
+    // otherwise read as "nothing changed" and the panel would stay hidden.
+    if (prev === 'coop' && name !== 'coop') {
+      this._iceDiagDetach?.();
+      this._iceDiagDetach = null;
+      this._iceDiagPeerRef = null;
+    }
 
     this.tooltip?.hide();
     this.syncEdictEntries();
@@ -1382,18 +1390,36 @@ export class Menus {
 
   /**
    * Keep the ICE diagnostics poller pointed at whichever peer currently
-   * exists. Called on every status change so a fresh peer (a new invite
-   * accepted, a room joined) is picked up without the player having to leave
-   * and reopen the screen — and so a peer that has closed is dropped rather
-   * than polled forever.
+   * exists. Called on every status change — including ones that fire while
+   * the co-op screen is not open, since `lobby.onStatus` is bound for the
+   * life of the lobby, not for the life of the screen (see the `open()`
+   * detach hook) — so a fresh peer (a new invite accepted, a room joined) is
+   * picked up without the player having to leave and reopen the screen, a
+   * peer that has closed is dropped rather than polled forever, and the
+   * poller never (re)attaches while some other screen is on top.
    */
   iceDiagSync() {
+    const el = this.root.querySelector('[data-icediag]');
+    if (this.screen !== 'coop') {
+      // Off the co-op screen: torn down regardless of what the lobby just
+      // did. `open()` already does this on the way out, but a status event
+      // can still land here later (e.g. from settings/pause), and this is
+      // the single place that must never leave a poller running off-screen.
+      this._iceDiagDetach?.();
+      this._iceDiagDetach = null;
+      this._iceDiagPeerRef = null;
+      if (el) el.hidden = true;
+      return;
+    }
     const peer = this._iceDiagPeer();
     if (peer === this._iceDiagPeerRef) return;
     this._iceDiagDetach?.();
     this._iceDiagPeerRef = peer;
-    const el = this.root.querySelector('[data-icediag]');
-    if (!peer) { if (el) el.hidden = true; return; }
+    if (!peer) {
+      this._iceDiagDetach = null;
+      if (el) el.hidden = true;
+      return;
+    }
     if (el) el.hidden = false;
     this._iceDiagDetach = attachIceDiag(peer, (summary) => this.renderIceDiag(summary), {
       turnConfigured: describeNet().hasTurn,
@@ -1422,7 +1448,7 @@ export class Menus {
       verdicts.push('No TURN configured - connections across strict NATs will fail. '
         + 'Set turn settings or ?turn=.');
     }
-    if (summary.gathering === 'complete' && !summary.selected && summary.elapsedMs >= 15000) {
+    if (summary.gathering === 'complete' && !summary.selected && summary.completeForMs >= 15000) {
       verdicts.push('No route found between peers. If both sides are behind strict NAT, TURN is required.');
     }
     q('[data-icediag-verdicts]').innerHTML = verdicts.map((v) => `<p class="coop-hint coop-wiring is-warn">${v}</p>`).join('');
