@@ -68,7 +68,13 @@ These are the rules the gameplay systems follow. All of them are in place.
 
 - **`Combat.applyDamage`** — early-return unless `ctx.authority`. Clients apply
   health purely from snapshot `healthFrac`. Damage numbers/hit sparks are
-  cosmetic and fire on both from the `damage` event.
+  cosmetic and fire on both from the `damage` event. One exception, and it is
+  the only one: while a pawn's state is `ESTATE.DOWNED` its `healthFrac` is not
+  health at all but its bleed-out clock as a fraction of `REVIVE.BLEEDOUT_S`
+  (`NetHost._downedRecord`). A downed pawn's health is 0 for the whole state,
+  so the field is spent on the number the rest of the party actually needs. The
+  other clock, `revive`, is host-side only — clients drive the revive ring from
+  the `playerDowned`/`playerRevived` events instead of a wider snapshot.
 - **`Director`** — `fixedUpdate` early-returns unless `ctx.authority`. Clients
   create enemies only as snapshot views.
 - **`Items.roll` / `give` / drop tables** — host only. `give` is replicated via

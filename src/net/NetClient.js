@@ -4,6 +4,7 @@ import {
 } from './Protocol.js';
 import { ClientTransport } from './Transport.js';
 import { SnapshotBuffer, ClockSync, INTERP_DELAY, lerpAngle } from './Snapshot.js';
+import { REVIVE } from '../data/revive.js';
 
 /**
  * Non-authoritative client.
@@ -372,6 +373,34 @@ export class NetClient {
    */
   _applyAuthoritativeHealth(player, e) {
     const frac = e?.healthFrac;
+    // Downed (PROTOCOL_VERSION 7) is read before anything touches health,
+    // because while it holds `healthFrac` is not health: the host has spent
+    // that field on the bleed-out clock (`NetHost._downedRecord`) and a pawn
+    // on the floor is at 0 by definition. Scaling the clock into the health
+    // bar would show a downed player a bar that *fills* as they bleed.
+    //
+    // `downed` is also a prediction input, not just a HUD flag:
+    // `Player.applyCommand` reads it (Player.js:479) and suppresses movement,
+    // abilities and interaction for the pawn, so writing it here is what keeps
+    // this machine's prediction agreeing with the host about a body that
+    // cannot move. `alive` stays true — the same invariant the host holds.
+    const downed = e?.state === ESTATE.DOWNED;
+    if (downed) {
+      player.downed = true;
+      player.alive = true;
+      player.health = 0;
+      if (typeof frac === 'number' && Number.isFinite(frac)) {
+        player.bleedout = Math.max(0, Math.min(1, frac)) * REVIVE.BLEEDOUT_S;
+      }
+      return;
+    }
+    if (player.downed) {
+      // Back on their feet, or dead. Either way both clocks stop here; the
+      // health the host handed back arrives in this same record's `healthFrac`.
+      player.downed = false;
+      player.bleedout = 0;
+      player.revive = 0;
+    }
     if (typeof frac === 'number' && Number.isFinite(frac)) {
       const max = player.maxHealth || 100;
       const next = Math.max(0, Math.min(max, frac * max));
@@ -452,6 +481,11 @@ export class NetClient {
         this.views.delete(netId);
         continue;
       }
+      // Strictly DEAD, and it must stay strict: DOWNED is not a death and a
+      // `state !== ALIVE` here would start the dying animation on a body that
+      // is about to be picked up — and never take it back, since `dying` is a
+      // latch. The downed pose is the view's own, applied every frame from the
+      // state below.
       if (s.state === ESTATE.DEAD && !view.dying) {
         view.dying = true;
         view.onDeath?.(ctx);

@@ -30,6 +30,18 @@ const LOD_DIST2 = 3200;
 // learns "this is dead" and plays it out locally over the same window.
 const DEATH_TIME = 1.1;
 
+// The downed pose (mp-p3). A teammate on the floor has to read as down from
+// across the arena, and this build has no player death animation to hold at
+// its first frames — `dead` is documented on CharacterMesh's state block
+// (CharacterMesh.js:1942) and read nowhere in it, so `PlayerView.onDeath` is
+// already only a flag. Rather than build animation machinery for a state
+// Task 5 is about to dress properly, the pose *is* the transform: pitch the
+// whole rig forward onto its face and sink it toward the ground. Two writes a
+// frame, no new rig state, and `CharacterMesh.update` owns only `rotation.y`
+// on this group so nothing fights over the axis.
+const DOWNED_PITCH = 1.25;
+const DOWNED_SINK = 0.55;
+
 /** Shared: estimate planar speed from successive interpolated positions. */
 function trackVelocity(view, x, y, z, dt) {
   const v = view.velocity;
@@ -150,6 +162,14 @@ class PlayerView {
     this.isPlayer = true;
     this.team = 'player';
     this.alive = true;
+    // Downed & revive (mp-p3). `downed` is the same flag the host's pawns
+    // carry, so anything reading a party member's state off a view — the HUD's
+    // teammate strip, the revive prompt — asks the same question of a remote
+    // player as of a local one. `bleedoutFrac` is the clock the wire carries in
+    // `healthFrac` while downed (see NetHost._downedRecord); it is 0..1 and
+    // not seconds, because the fraction is all that crossed.
+    this.downed = false;
+    this.bleedoutFrac = 0;
     this.maxHealth = 100;
     this.health = 100;
     this.radius = 0.45;
@@ -169,8 +189,20 @@ class PlayerView {
   applyNetState(s, dt) {
     trackVelocity(this, s.x, s.y, s.z, dt);
     this.yaw = s.yaw;
-    this.health = this.maxHealth * s.healthFrac;
     this.alive = s.state !== ESTATE.DEAD;
+
+    // While downed the wire's `healthFrac` is the bleed-out clock, not health
+    // — the host writes it that way (`NetHost._downedRecord`) because a downed
+    // pawn's health is 0 for the whole state. Reading it as health would draw
+    // a teammate's bar refilling while they bleed out.
+    this.downed = s.state === ESTATE.DOWNED;
+    if (this.downed) {
+      this.bleedoutFrac = s.healthFrac;
+      this.health = 0;
+    } else {
+      this.bleedoutFrac = 0;
+      this.health = this.maxHealth * s.healthFrac;
+    }
 
     const st = this._s;
     st.aimYaw = s.yaw;
@@ -183,6 +215,15 @@ class PlayerView {
     st.dead = !this.alive;
 
     this.group.position.copy(this.position);
+    // The pose, after the position and before the animator: `mesh.update`
+    // writes `rotation.y` from its own body yaw and leaves x alone, so the
+    // pitch survives it and the sink is applied to the copy just made.
+    if (this.downed) {
+      this.group.rotation.x = DOWNED_PITCH;
+      this.group.position.y -= DOWNED_SINK;
+    } else if (this.group.rotation.x !== 0) {
+      this.group.rotation.x = 0;
+    }
     this.mesh.update(dt, st);
   }
 

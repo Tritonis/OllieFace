@@ -46,6 +46,9 @@ Every system is a class with `init(ctx)` plus any of `fixedUpdate(ctx, h)`,
 | `stageStart` | `{ index, name }` | Progression |
 | `bossSpawn` / `bossDead` | `{ enemy }` | Director |
 | `playerDead` | `{}` | Combat |
+| `playerDowned` | `{ player, position, source }` — the co-op death fork; `player` is a live pawn on the host and `{ netId }` after the wire | Combat |
+| `playerRevived` | `{ player, by, position }` — picked up; `by` is the reviver, same live-pawn/netId rule | Revive |
+| `playerBledOut` | `{ player, position }` — announced just before the death it causes | Revive |
 | `corruptionChanged` | `{ world, band }` — fired on every non-zero feed | Corruption |
 | `corruptionBand` | `{ band, prev }` — only on a threshold crossing | Corruption |
 | `blightSeed` | `{ x, z, strength }` — where greed happened | Corruption |

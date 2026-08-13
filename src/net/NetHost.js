@@ -4,6 +4,7 @@ import {
 } from './Protocol.js';
 import { HostTransport } from './Transport.js';
 import { SURVIVOR_BY_ID } from '../data/survivors.js';
+import { REVIVE } from '../data/revive.js';
 
 /**
  * Authoritative host.
@@ -86,9 +87,18 @@ export class NetHost {
     // `stageStart` does: a client cannot derive "we are all somewhere else now"
     // from a snapshot, and the arenas are authored, so the realm id is the
     // whole of the state it needs to build the same room.
+    //
+    // The three downed-lifecycle events are broadcasts and not `_forwardOwned`
+    // sends, which is the opposite call from the economy's: a teammate going
+    // down is the one fact in this build that is *everybody's*, because going
+    // to them is the entire play. Addressed to the victim alone it would be a
+    // death screen nobody else could see coming. They carry live pawn refs
+    // (`Combat.enterDowned`, `Revive._stand`) and `sanitise` is what reduces
+    // those to `{ netId }` — the same translation `kill` and `playerDead` get.
     for (const name of ['kill', 'teleporterCharging', 'teleporterComplete',
                         'stageStart', 'bossSpawn', 'bossDead', 'playerDead', 'levelUp',
-                        'realmEnter', 'realmExit']) {
+                        'realmEnter', 'realmExit',
+                        'playerDowned', 'playerRevived', 'playerBledOut']) {
       ctx.events.on(name, (payload) => this._forward(name, payload));
     }
 
@@ -559,7 +569,9 @@ export class NetHost {
       if (!e.alive && e.netState !== ESTATE.DEAD) continue;
       this._netId(e);
       e.kind = e.isPlayer ? EKIND.PLAYER : (e.kind ?? EKIND.ENEMY);
-      writeEntity(w, e);
+      // A downed pawn spends `healthFrac` on its bleed-out clock instead of its
+      // health — see `_downedRecord`.
+      writeEntity(w, e.netState === ESTATE.DOWNED ? this._downedRecord(e) : e);
       count++;
     }
     for (const it of ctx.interactables?.replicable?.() ?? []) {
@@ -577,6 +589,41 @@ export class NetHost {
       w.view.setUint32(ackOffset, c.lastTick >>> 0, true);
       c.peer.sendState(w.bytes());
     }
+  }
+
+  /**
+   * The stand-in record a downed pawn is written from: everything is the
+   * pawn's own except the health fields, which carry its bleed-out clock as a
+   * fraction of `REVIVE.BLEEDOUT_S`.
+   *
+   * The field is free to take because a downed pawn's health is 0 for the
+   * whole of the state (`Combat.enterDowned` zeroes it and nothing but
+   * `Revive._stand` writes it again), so `healthFrac` would otherwise carry a
+   * constant zero on the one entity in the arena whose *remaining seconds*
+   * everybody else needs to read. `maxHealth` is 1 so `writeEntity`'s divide
+   * hands the fraction straight through.
+   *
+   * What does not fit: `revive` — the other clock, and the only per-entity
+   * field left is spoken for. The HUD's revive ring is fed from the
+   * `playerDowned`/`playerRevived` events and interpolated client-side rather
+   * than by widening the snapshot for it. The barrier goes with it: it shares
+   * `maxHealth` as its denominator, which the clock has borrowed, and a downed
+   * pawn has no barrier to spend anyway.
+   *
+   * One scratch record, reused — a snapshot at 20 Hz must allocate nothing.
+   */
+  _downedRecord(e) {
+    const rec = this._downedScratch || (this._downedScratch = {});
+    rec.netId = e.netId;
+    rec.kind = e.kind;
+    rec.typeId = e.typeId ?? 0;
+    rec.position = e.position;
+    rec.yaw = e.yaw ?? 0;
+    rec.health = Math.max(0, Math.min(1, (e.bleedout ?? 0) / REVIVE.BLEEDOUT_S));
+    rec.maxHealth = 1;
+    rec.shield = 0;
+    rec.netState = ESTATE.DOWNED;
+    return rec;
   }
 
   /**
