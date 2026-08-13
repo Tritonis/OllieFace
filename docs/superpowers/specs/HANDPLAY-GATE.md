@@ -17,9 +17,8 @@ user's dictated results — it may never tick a box itself, and it must say so
 plainly if asked to fill one in.
 
 **A checked box with no evidence line is void.** The evidence line is not
-decoration; it is the on-disk claim the box rests on (memory: name the
-baseline capture — claims need on-disk sources). A box checked without its
-evidence written in is treated as unchecked.
+decoration; it is the on-disk claim the box rests on. A box checked without
+its evidence written in is treated as unchecked.
 
 ---
 
@@ -38,10 +37,10 @@ evidence written in is treated as unchecked.
 |---|---|---|
 | 5 | One full run, start to ending, with 2 players | Run seed: __________ · Duration: __________ · Stages cleared: __________ |
 | 6 | Every interactable type touched by the **non-host** at least once (chests, shrines, pickups, terminals — whatever the build ships) | Interactable types touched by non-host: __________ |
-| 7 | One death → revive | Who died, who revived, at what stage: __________ |
-| 8 | One bleed-out → stage-end return (the downed player is *not* revived and returns at the next stage boundary) | Stage bled out at, stage returned at: __________ |
-| 9 | One deliberate wipe (both players down, run ends) | Stage wiped at: __________ |
-| 10 | Audio listened to, on both machines, for the entire run (rule 11 — audio is a gate, not a chore) | Any artifact noted against the known audio-graph flaw (playtest 2026-08-08): __________ |
+| 7 | One death → revive (P3 output — see `2026-08-12-mp-p3-downed-revive.md`; pending until that plan lands) | Who died, who revived, at what stage: __________ |
+| 8 | One bleed-out → stage-end return, the downed player *not* revived and returned at the next stage boundary (P3 output — see `2026-08-12-mp-p3-downed-revive.md`; pending until that plan lands) | Stage bled out at, stage returned at: __________ |
+| 9 | One deliberate wipe, both players down, run ends (P3 output — see `2026-08-12-mp-p3-downed-revive.md`; pending until that plan lands) | Stage wiped at: __________ |
+| 10 | Audio listened to, on both machines, for the entire run (rule 11 — audio is a gate, not a chore) | Note any audio artifacts; an audio-graph flaw was observed in the 2026-08-08 playtest and has no in-repo ticket yet — write down what you hear regardless: __________ |
 
 ## Defects
 
