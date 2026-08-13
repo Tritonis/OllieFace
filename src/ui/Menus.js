@@ -13,7 +13,8 @@ import { SURVIVORS, getSurvivor, loadoutOf } from '../data/survivors.js';
 import { Logbook, ModelPreview, disposeTree, renderRunReport } from './Logbook.js';
 import { describeNet } from '../net/NetConfig.js';
 import {
-  steamAvailable, hostViaSteam, joinViaSteam, onSteamInvite, openSteamInvite, steamInviteNeedsConfirm,
+  steamAvailable, hostViaSteam, joinViaSteam, onSteamInvite, openSteamInvite,
+  steamInviteNeedsConfirm, steamInviteBlocked,
 } from '../net/SteamLobby.js';
 import { showSteamInviteNotice } from './SteamInviteNotice.js';
 import { REFUSE } from '../net/Protocol.js';
@@ -1419,8 +1420,10 @@ export class Menus {
       // The join side needs no buttons at all: accepting an invite in the Steam
       // friends list is the whole gesture — PROVIDED nothing is already in
       // flight (Important 4). Idle at a menu, that gesture is trusted outright,
-      // same as before. Mid-run or already networked, it must not tear either
-      // one down without the player saying so.
+      // same as before. Mid-run, it must not tear the run down without the
+      // player saying so. Already networked, joining could never succeed
+      // (fix round 2 — `joinViaSteam` itself refuses that case now), so the
+      // blocked check runs FIRST and never offers an Accept that cannot work.
       onSteamInvite((lobbyId) => {
         const lobby = this.ctx.lobby;
         if (!lobby) return;
@@ -1430,6 +1433,15 @@ export class Menus {
           try { await joinViaSteam(lobby, lobbyId); }
           catch (err) { this.coopSay(err?.message || 'That Steam invite did not work.'); }
         };
+        if (steamInviteBlocked({ lobbyMode: lobby.mode })) {
+          showSteamInviteNotice({
+            body: lobby.mode === 'host'
+              ? "A friend's Steam invite arrived, but you're already hosting a game. Leave it first, then accept an invite."
+              : "A friend's Steam invite arrived, but you're already in a game. Leave it first, then accept another invite.",
+            actionable: false,
+          });
+          return;
+        }
         if (!steamInviteNeedsConfirm({ hasActiveRun: !!this.ctx.player, lobbyMode: lobby.mode })) { join(); return; }
         showSteamInviteNotice({ onAccept: join });
       });

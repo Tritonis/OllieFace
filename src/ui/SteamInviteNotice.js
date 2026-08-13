@@ -14,6 +14,13 @@
  * injected once. It differs only where the decision requires it to: two
  * buttons instead of a bare dismiss, because "do nothing" here must mean
  * Decline, not silently expire.
+ *
+ * FIX ROUND 2 (re-review): accepting is not always a real choice. When the
+ * player is already networked (`SteamLobby.steamInviteBlocked`), the join
+ * would refuse outright no matter what they click — there is no trade to
+ * confirm, only a fact to report. `actionable: false` swaps the two buttons
+ * for one dismiss, so the banner never dangles a "Join" button in front of a
+ * gesture that cannot succeed.
  */
 
 const CSS = `
@@ -37,7 +44,7 @@ const CSS = `
  color:#d8e2ea;cursor:pointer;font:inherit;line-height:1;padding:6px 12px}
 .steam-invite-notice__accept{border-color:#39d6d2;color:#39d6d2}
 .steam-invite-notice__accept:hover{background:rgba(57,214,210,.12)}
-.steam-invite-notice__decline:hover{border-color:#d8e2ea}
+.steam-invite-notice__decline:hover,.steam-invite-notice__ok:hover{border-color:#d8e2ea}
 `;
 
 let styleInjected = false;
@@ -45,11 +52,20 @@ let styleInjected = false;
 // it rather than stacking banners the player has to clear one at a time.
 let current = null;
 
+const DEFAULT_BODY = "A friend wants you to join their game. Joining leaves what you're doing now.";
+
 /**
- * @param {{ onAccept: () => void, onDecline?: () => void }} handlers
+ * @param {{
+ *   body?: string,
+ *   actionable?: boolean,
+ *   onAccept?: () => void,
+ *   onDecline?: () => void,
+ * }} opts - `actionable: false` renders a single dismiss button (no Accept
+ *   semantics) for the case where accepting cannot succeed; `onDecline` still
+ *   fires on dismiss either way, so a caller can treat both uniformly.
  * @returns {HTMLElement}
  */
-export function showSteamInviteNotice({ onAccept, onDecline } = {}) {
+export function showSteamInviteNotice({ body = DEFAULT_BODY, actionable = true, onAccept, onDecline } = {}) {
   current?.remove();
 
   if (!styleInjected) {
@@ -61,19 +77,28 @@ export function showSteamInviteNotice({ onAccept, onDecline } = {}) {
 
   const el = document.createElement('div');
   el.className = 'steam-invite-notice';
+  const actionsHtml = actionable
+    ? `<button class="steam-invite-notice__decline" type="button">Decline</button>
+       <button class="steam-invite-notice__accept" type="button">Join</button>`
+    : `<button class="steam-invite-notice__ok" type="button">OK</button>`;
   el.innerHTML = `
     <div class="steam-invite-notice__body">
       <p class="steam-invite-notice__title">Steam invite</p>
-      <p>A friend wants you to join their game. Joining leaves what you're doing now.</p>
+      <p></p>
     </div>
-    <div class="steam-invite-notice__actions">
-      <button class="steam-invite-notice__decline" type="button">Decline</button>
-      <button class="steam-invite-notice__accept" type="button">Join</button>
-    </div>`;
+    <div class="steam-invite-notice__actions">${actionsHtml}</div>`;
+  // textContent, not interpolation: same discipline as `GpuNotice.js` even
+  // though every caller today passes a literal -- the field exists so a
+  // future caller cannot turn it into an innerHTML hole by accident.
+  el.querySelector('.steam-invite-notice__body p:last-child').textContent = body;
 
   const dismiss = () => { el.remove(); if (current === el) current = null; };
-  el.querySelector('.steam-invite-notice__accept').addEventListener('click', () => { dismiss(); onAccept?.(); });
-  el.querySelector('.steam-invite-notice__decline').addEventListener('click', () => { dismiss(); onDecline?.(); });
+  if (actionable) {
+    el.querySelector('.steam-invite-notice__accept').addEventListener('click', () => { dismiss(); onAccept?.(); });
+    el.querySelector('.steam-invite-notice__decline').addEventListener('click', () => { dismiss(); onDecline?.(); });
+  } else {
+    el.querySelector('.steam-invite-notice__ok').addEventListener('click', () => { dismiss(); onDecline?.(); });
+  }
 
   document.body.appendChild(el);
   current = el;

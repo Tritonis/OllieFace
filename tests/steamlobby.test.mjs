@@ -20,7 +20,7 @@
  */
 import {
   chunkBlob, assembleBlob, steamAvailable, hostViaSteam, joinViaSteam, onSteamInvite, openSteamInvite,
-  CHUNK_CHARS, MAX_LOBBY_TOTAL_BYTES, recordBytes, steamInviteNeedsConfirm,
+  CHUNK_CHARS, MAX_LOBBY_TOTAL_BYTES, recordBytes, steamInviteNeedsConfirm, steamInviteBlocked,
 } from '../src/net/SteamLobby.js';
 import { Lobby } from '../src/net/Lobby.js';
 
@@ -527,6 +527,110 @@ console.log('-- steamInviteNeedsConfirm: when a friend\'s "Join game" must ask b
   ok(steamInviteNeedsConfirm({ hasActiveRun: false, lobbyMode: 'host' }) === true, 'already hosting a session asks first');
   ok(steamInviteNeedsConfirm({ hasActiveRun: false, lobbyMode: 'client' }) === true, 'already joined a session asks first');
   ok(steamInviteNeedsConfirm({ hasActiveRun: true, lobbyMode: 'client' }) === true, 'mid-run AND networked still asks -- one true is enough');
+}
+
+console.log('-- FIX ROUND 2 (re-review): host-then-accept-invite must not release the host\'s own Steam lobby');
+{
+  // The exact finding: `armCleanup`'s "run the previous latch" step used to
+  // fire as an UNCONDITIONAL FIRST STEP of joinViaSteam -- releasing the
+  // host's own, currently-working Steam lobby -- before the new invite's
+  // outcome (success, "Already networked", or a timeout) was even known.
+  // The invariant: no partial teardown, ever. Decide and refuse completely
+  // BEFORE releasing anything.
+  const b = makeBridge();
+  const lobby = makeLobby();
+  const hostRes = await hostViaSteam(lobby);
+  lobby.mode = 'host';   // what real Lobby.createInvite() -> startHost() sets
+  const callsBeforeInvite = b.calls.length;
+
+  let threw = null;
+  try { await joinViaSteam(lobby, '999999999999999999', { pollMs: 5, waitMs: 20 }); }
+  catch (e) { threw = e; }
+  ok(threw instanceof Error, `accepting an invite while hosting refuses (${threw && threw.message})`);
+  ok(threw && !/Already networked/.test(threw.message),
+    `the raw Lobby.js throw text never reaches the player (${threw && threw.message})`);
+  ok(threw && /already hosting/i.test(threw.message), `and says why, in words a player can act on (${threw && threw.message})`);
+  // `status()` is the one call `requireSteam()` always makes before the new
+  // guard is even reached -- everything Steam-lobby-specific (joinLobby,
+  // getFullLobbyData, leaveLobby) must be absent.
+  const newCalls = b.calls.slice(callsBeforeInvite).map(([n]) => n);
+  ok(JSON.stringify(newCalls) === JSON.stringify(['status']),
+    `nothing but the status check reached the bridge for the doomed join (${JSON.stringify(newCalls)})`);
+  ok(!b.calls.some(([n, id]) => n === 'leaveLobby' && id === hostRes.lobbyId),
+    `the host's own Steam lobby (${hostRes.lobbyId}) was never released`);
+  ok(typeof lobby._steamCleanup === 'function', 'the hosting session\'s own teardown latch is still armed, untouched');
+  delete globalThis.window;
+}
+
+console.log('-- FIX ROUND 2: mirror case -- hosting after already accepting an invite must not release the joined lobby');
+{
+  const b = makeBridge();
+  // Seed b.data with a real offer the way a live host's lobby would, via a
+  // throwaway host object -- the same trick "-- joining: poll, assemble,
+  // answer back to the owner" above uses -- so the join under test actually
+  // succeeds and reaches `mode = 'client'`, rather than timing out for an
+  // unrelated reason.
+  await hostViaSteam(makeLobby());
+  const joinId = '109775241996081388';
+  const lobby = makeLobby();
+  await joinViaSteam(lobby, joinId, { pollMs: 5, waitMs: 2000 });
+  lobby.mode = 'client';   // what real Lobby.joinManual() sets
+  const callsBeforeHost = b.calls.length;
+
+  let threw = null;
+  try { await hostViaSteam(lobby); } catch (e) { threw = e; }
+  ok(threw instanceof Error, `hosting while already a client refuses (${threw && threw.message})`);
+  ok(threw && /already in a game/i.test(threw.message), `and says why (${threw && threw.message})`);
+  const newCalls = b.calls.slice(callsBeforeHost).map(([n]) => n);
+  ok(JSON.stringify(newCalls) === JSON.stringify(['status']),
+    `nothing but the status check reached the bridge for the doomed host attempt (${JSON.stringify(newCalls)})`);
+  ok(!b.calls.some(([n, id]) => n === 'leaveLobby' && id === joinId), `the joined lobby (${joinId}) was never released`);
+  delete globalThis.window;
+}
+
+console.log('-- FIX ROUND 2: mirror case -- a second Steam invite while already joined must not release the first');
+{
+  const b = makeBridge();
+  await hostViaSteam(makeLobby());   // seeds b.data so the first join below succeeds
+  const firstJoinId = '109775241996081388';
+  const lobby = makeLobby();
+  await joinViaSteam(lobby, firstJoinId, { pollMs: 5, waitMs: 2000 });
+  lobby.mode = 'client';
+  const callsBefore = b.calls.length;
+
+  let threw = null;
+  try { await joinViaSteam(lobby, '5', { pollMs: 5, waitMs: 20 }); } catch (e) { threw = e; }
+  ok(threw instanceof Error, `a second invite while already joined refuses (${threw && threw.message})`);
+  const newCalls = b.calls.slice(callsBefore).map(([n]) => n);
+  ok(JSON.stringify(newCalls) === JSON.stringify(['status']),
+    `nothing but the status check reached the bridge for the second invite (${JSON.stringify(newCalls)})`);
+  ok(!b.calls.some(([n, id]) => n === 'leaveLobby' && id === firstJoinId), `the first joined lobby (${firstJoinId}) was never released`);
+  delete globalThis.window;
+}
+
+console.log('-- FIX ROUND 2: double-host (the SAME gesture twice) still re-advertises -- Important 2 stays closed');
+{
+  const b = makeBridge();
+  const opened = [];
+  let n = 200;
+  b.hostLobby = async () => { const id = String(n++); opened.push(id); return { lobbyId: id }; };
+  b.leaveLobby = async (id) => { b.calls.push(['leaveLobby', id]); opened.splice(opened.indexOf(id), 1); return { ok: true }; };
+  const lobby = makeLobby();
+  await hostViaSteam(lobby);
+  lobby.mode = 'host';
+  await hostViaSteam(lobby);
+  ok(opened.length === 1 && opened[0] === '201',
+    `re-hosting still replaces the old Steam lobby with a new one, unaffected by the new guard (${JSON.stringify(opened)})`);
+  delete globalThis.window;
+}
+
+console.log('-- steamInviteBlocked: when an invite cannot possibly succeed (fix round 2)');
+{
+  ok(steamInviteBlocked({ lobbyMode: 'single' }) === false, 'idle, nothing networked: not blocked');
+  ok(steamInviteBlocked({ lobbyMode: null }) === false, 'no lobby mode at all: not blocked');
+  ok(steamInviteBlocked({ lobbyMode: undefined }) === false, 'undefined mode: not blocked');
+  ok(steamInviteBlocked({ lobbyMode: 'host' }) === true, 'already hosting: blocked');
+  ok(steamInviteBlocked({ lobbyMode: 'client' }) === true, 'already a client: blocked');
 }
 
 console.log('-- joining: a lobby id that is not one');

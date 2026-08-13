@@ -283,6 +283,20 @@ function armCleanup(lobby, steps) {
 export async function hostViaSteam(lobby, { maxMembers = 2 } = {}) {
   const b = await requireSteam();
 
+  // FIX ROUND 2 (re-review, the host-then-accept-invite finding's mirror
+  // case). Checked before anything below touches the bridge — no new Steam
+  // lobby is created, no latch runs — so a player who is already a CLIENT of
+  // someone else's game (accepted a Steam invite, or joined by room code)
+  // cannot have that session's Steam membership released by a "Host via
+  // Steam" press that was always going to fail. `mode === 'host'` is
+  // deliberately still allowed through: that is the double-host / re-host
+  // case Important 2 fixed, `Lobby.createInvite()` itself reuses the
+  // existing `NetHost` rather than starting a second one when already
+  // hosting, and the old Steam lobby's release there is the intended
+  // "re-advertise my running game" behaviour, not a bug.
+  if (lobby && lobby.mode === 'client')
+    throw new Error("Steam lobby: you're already in a game. Leave it first, then host your own.");
+
   const { lobbyId } = unwrap(await b.hostLobby(maxMembers), 'Steam lobby');
   if (typeof lobbyId !== 'string' || !lobbyId) throw new Error('Steam lobby: no lobby id came back.');
 
@@ -360,6 +374,29 @@ export async function joinViaSteam(lobby, lobbyId, { pollMs = POLL_MS, waitMs = 
   const id = String(lobbyId ?? '');
   if (!/^\d+$/.test(id)) throw new Error('Steam lobby: that is not a lobby id.');
 
+  // FIX ROUND 2 (re-review Important, host-then-accept-invite). Checked
+  // BEFORE `armCleanup` ever runs the previous latch, and before the new
+  // Steam lobby is even joined: `Lobby.joinManual` (below, `:401` area)
+  // would refuse this exact join with `this.net` already set — this attempt
+  // was always going to fail — so the only question was whether reaching
+  // that failure took the CURRENT session's Steam lobby down with it first.
+  // `armCleanup`'s "run the previous latch" step is what did that: it fires
+  // synchronously, before the new invite's outcome is known at all. No
+  // partial teardown: decide, and refuse completely, BEFORE releasing
+  // anything. This also closes the accept-invite-while-already-joined
+  // mirror case (`mode === 'client'` here too) — a second invite must not
+  // cost the player the first one they already accepted.
+  // `lobby.mode != null`, not a bare inequality: the real `Lobby` always
+  // initialises `mode = 'single'` in its constructor (`Lobby.js:52`), so this
+  // never differs in production, but a `null`/`undefined` mode reads as "not
+  // networked" rather than "blocked" for any caller that has not threaded one
+  // through — the same defensive shape `steamInviteBlocked` uses.
+  if (lobby && lobby.mode != null && lobby.mode !== 'single') {
+    throw new Error(lobby.mode === 'host'
+      ? "Steam lobby: you're already hosting a game. Leave it first, then accept a Steam invite."
+      : "Steam lobby: you're already in a game. Leave it first, then accept another Steam invite.");
+  }
+
   unwrap(await b.joinLobby(id), 'Steam lobby');
 
   let abandoned = false;
@@ -424,6 +461,24 @@ export async function joinViaSteam(lobby, lobbyId, { pollMs = POLL_MS, waitMs = 
  */
 export function steamInviteNeedsConfirm({ hasActiveRun, lobbyMode }) {
   return !!hasActiveRun || (lobbyMode != null && lobbyMode !== 'single');
+}
+
+/**
+ * Would accepting this invite fail outright, no matter what the player
+ * chooses? (Fix round 2, re-review.) `joinViaSteam` now refuses up front
+ * whenever `lobbyMode !== 'single'` — the player is already hosting or
+ * already a client of some other session, and `Lobby.joinManual`'s own
+ * `this.net` guard means the join could never have succeeded anyway. That
+ * case is not a confirmation ("do you want to trade session A for session
+ * B?") because there is no trade on offer — it is a plain refusal, and an
+ * Accept/Decline prompt is the wrong affordance for a choice that is not
+ * actually a choice. `Menus.bindSteam` checks this FIRST, before
+ * `steamInviteNeedsConfirm`, so the accept/decline banner is only ever shown
+ * for the one case where accepting can genuinely succeed: idle at a menu, or
+ * mid a single-player run with nothing networked yet.
+ */
+export function steamInviteBlocked({ lobbyMode }) {
+  return lobbyMode != null && lobbyMode !== 'single';
 }
 
 /**
