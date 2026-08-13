@@ -8,6 +8,9 @@
  *     [--seed 1337]
  *     [--netlag 40-90]       optional: appended as ?netlag= to the CLIENT page only
  *     [--netloss 2]          optional: ?netloss= on the client page
+ *
+ * --netlag/--netloss impair the client's inbound traffic, i.e. host->client
+ * one-way; for symmetric RTT flag both pages — not yet implemented
  *     [--run-s 60]           scripted play window after formation
  *     [--checks base]        comma-separated check-set names
  *     [--label base]         names the record file when --record is omitted
@@ -648,6 +651,7 @@ await writeFile(RECORD, `${JSON.stringify({
     checksSkipped: SKIPPED,
     runWindowEndedEarly,
     settingsSeeded: { spawnRate: SPAWN_RATE, master: 0, music: 0, sfx: 0 },
+    ...(NETLAG || NETLOSS ? { netlagDirection: 'host->client inbound' } : {}),
     stubbed: ['Element.prototype.requestPointerLock', 'document.exitPointerLock'],
     note: 'every wait in this probe is capped; the caps above are the only ones there are',
   },

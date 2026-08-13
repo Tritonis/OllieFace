@@ -1,5 +1,5 @@
 {
-  "when": "2026-08-13T01:31:30.462Z",
+  "when": "2026-08-13T02:23:19.490Z",
   "probe": "tools/coopprobe.mjs",
   "label": "fix-lag4090",
   "flags": {
@@ -42,82 +42,83 @@
       "music": 0,
       "sfx": 0
     },
+    "netlagDirection": "host->client inbound",
     "stubbed": [
       "Element.prototype.requestPointerLock",
       "document.exitPointerLock"
     ],
     "note": "every wait in this probe is capped; the caps above are the only ones there are"
   },
-  "roomCode": "CBVG",
-  "formationMs": 4787,
+  "roomCode": "U2QY",
+  "formationMs": 5197,
   "phases": [
     {
       "name": "relay",
-      "ms": 103,
+      "ms": 99,
       "ok": true,
       "detail": "ws://127.0.0.1:5215"
     },
     {
       "name": "vite",
-      "ms": 100,
+      "ms": 99,
       "ok": true,
       "detail": "http://127.0.0.1:5214"
     },
     {
       "name": "host-boot",
-      "ms": 15957,
+      "ms": 15876,
       "ok": true,
       "detail": "title screen up, seed 1337"
     },
     {
       "name": "host-room",
-      "ms": 1287,
+      "ms": 1228,
       "ok": true,
-      "detail": "CBVG"
+      "detail": "U2QY"
     },
     {
       "name": "host-launch",
-      "ms": 2547,
+      "ms": 2609,
       "ok": true,
-      "detail": "hosting room CBVG with the world running"
+      "detail": "hosting room U2QY with the world running"
     },
     {
       "name": "client-boot",
-      "ms": 2211,
+      "ms": 2562,
       "ok": true,
       "detail": "title screen up, netlag=40-90, netloss=2"
     },
     {
       "name": "formation",
-      "ms": 5472,
+      "ms": 5686,
       "ok": true,
-      "detail": "4787 ms from the Join click to two open channels and a host roster of 2"
+      "detail": "5197 ms from the Join click to two open channels and a host roster of 2"
     },
     {
       "name": "client-launch",
-      "ms": 1743,
+      "ms": 1676,
       "ok": true,
       "detail": "joined and running"
     },
     {
       "name": "run-window",
-      "ms": 60030,
+      "ms": 60020,
       "ok": true,
       "detail": "60 s of scripted play, 81 alternating key holds, both survivors alive"
     }
   ],
   "timings": {
-    "totalMs": 96849,
+    "totalMs": 97352,
     "byPhase": {
-      "relay": 103,
-      "vite": 100,
-      "host-boot": 15957,
-      "host-room": 1287,
-      "host-launch": 2547,
-      "client-boot": 2211,
-      "formation": 5472,
-      "client-launch": 1743,
-      "run-window": 60030
+      "relay": 99,
+      "vite": 99,
+      "host-boot": 15876,
+      "host-room": 1228,
+      "host-launch": 2609,
+      "client-boot": 2562,
+      "formation": 5686,
+      "client-launch": 1676,
+      "run-window": 60020
     }
   },
   "consoleErrors": {
@@ -129,13 +130,13 @@
       "name": "host-running",
       "set": "base",
       "pass": true,
-      "detail": "host paused=false NetHost.tick=3866 (want > 60) screen=null role=host"
+      "detail": "host paused=false NetHost.tick=3865 (want > 60) screen=null role=host"
     },
     {
       "name": "client-running",
       "set": "base",
       "pass": true,
-      "detail": "client paused=false NetClient.tick=3594 (want > 60) screen=null role=client connected=true myNetId=1"
+      "detail": "client paused=false NetClient.tick=3595 (want > 60) screen=null role=client connected=true myNetId=1"
     },
     {
       "name": "roster-2-both",
@@ -147,7 +148,7 @@
       "name": "ticks-advance",
       "set": "base",
       "pass": true,
-      "detail": "over 5000 ms: host tick 3867 -> 4158 (+291), client tick 3596 -> 3896 (+300); want both strictly increasing"
+      "detail": "over 5000 ms: host tick 3867 -> 4159 (+292), client tick 3596 -> 3898 (+302); want both strictly increasing"
     },
     {
       "name": "both-alive",
