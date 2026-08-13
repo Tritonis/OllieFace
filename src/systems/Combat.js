@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Items } from './Items.js';
+import { REVIVE } from '../data/revive.js';
 
 /**
  * Combat is the single damage authority. Every point of damage in the game —
@@ -443,6 +444,16 @@ export class Combat {
    */
   applyDamage(target, amount, info = {}) {
     if (!target || !target.alive || amount <= 0) return 0;
+
+    // A downed pawn is out of the damage economy entirely: its clock is
+    // `bleedout`, counted in seconds by `Revive`, and nothing may shorten it.
+    // Enemies already refuse to aim at a downed body (`Roster.targetable`), so
+    // what reaches here is stray area damage — a burn already on the pawn, an
+    // explosion that caught it on the floor — and none of it may land. The
+    // real death does not come through here at all: `finishDowned` clears
+    // `downed` and calls `_kill` directly.
+    if (target.downed) return 0;
+
     const ctx = this.ctx;
 
     // Damage is resolved in exactly one place across the whole session: the
@@ -595,14 +606,83 @@ export class Combat {
     }
 
     if (target.health <= 0 && target.alive) {
-      this._kill(target, source, pos, depth, info, Math.max(0, dealt - Math.max(0, hpBefore)));
+      // The co-op fork. A survivor with someone left to come for them goes
+      // down instead of dying; everything else — every monster, and a solo
+      // survivor with nobody to lift them — takes the literal path it always
+      // took. `roster?.count > 1` is what keeps single-player bit-identical:
+      // with a roster of one the condition is false before it is interesting.
+      if (target.isPlayer && this.ctx.roster?.count > 1) {
+        this.enterDowned(target, source);
+      } else {
+        this._kill(target, source, pos, depth, info, Math.max(0, dealt - Math.max(0, hpBefore)));
+      }
     }
 
     return incoming;
   }
 
+  /**
+   * Lethal damage on a survivor who has teammates. The pawn keeps `alive` —
+   * that is the invariant the whole downed state rests on, because `netState`
+   * checks `downed` first and `NetHost`'s snapshot loop skips anything that is
+   * `!alive` and not `DEAD`. A pawn that were both downed and dead would
+   * simply stop existing on every client.
+   *
+   * This is not a kill and must never be mistaken for one: no `kill` event, no
+   * `playerDead`, no `onKill` hooks, and no payout — `Items.rewardKillAll`
+   * lives inside `_kill`, past the `isPlayer` return, and this path does not
+   * enter `_kill` at all. The only ending that pays anything is the real one,
+   * through `finishDowned`.
+   */
+  enterDowned(pawn, source) {
+    const ctx = this.ctx;
+    if (!ctx.authority || !pawn || pawn.downed) return;
+
+    pawn.downed = true;
+    pawn.health = 0;
+    pawn.bleedout = REVIVE.BLEEDOUT_S;
+    pawn.revive = 0;
+
+    // Broadcast, not directed: every peer needs to see a teammate go down,
+    // because going to them is the entire play.
+    ctx.events.emit('playerDowned', { player: pawn, position: pawn.position, source: source || null });
+  }
+
+  /**
+   * The downed pawn's clock ran out (or the party wiped). Clear `downed`
+   * *first*, then die: for the one instant `_kill` takes, a pawn that still
+   * carried the flag would be `downed && !alive`, the one state the snapshot
+   * path cannot represent. After this the death is the ordinary one — same
+   * event, same `playerDead`, same everything today's solo death does.
+   */
+  finishDowned(pawn) {
+    const ctx = this.ctx;
+    if (!ctx.authority || !pawn || !pawn.downed) return;
+
+    pawn.downed = false;
+    pawn.bleedout = 0;
+    pawn.revive = 0;
+    this._kill(pawn, null, pawn.position, 0, null, 0);
+  }
+
   _kill(victim, source, position, depth, info = null, overkill = 0) {
     const ctx = this.ctx;
+
+    // `downed && !alive` is the one combination the wire cannot carry: the
+    // `netState` getter answers DOWNED before it ever looks at `alive`, so
+    // `NetHost`'s "skip anything dead that does not read DEAD" line drops the
+    // pawn from every snapshot and it vanishes mid-air on all clients. The
+    // only legal way here from a downed pawn is `finishDowned`, which clears
+    // the flag first. Anything else is a bug, so say so once and put the pawn
+    // back into a state the snapshot can describe rather than lose it quietly.
+    if (victim.downed) {
+      victim.downed = false;
+      if (!Combat._warnedDownedKill) {
+        Combat._warnedDownedKill = true;
+        console.warn(`Combat._kill: pawn ${victim.netId} was killed while still downed — use finishDowned()`);
+      }
+    }
+
     victim.alive = false;
     victim.health = 0;
     this.statuses.delete(victim);
