@@ -1,0 +1,159 @@
+{
+  "when": "2026-08-13T01:04:55.816Z",
+  "probe": "tools/coopprobe.mjs",
+  "label": "lag",
+  "flags": {
+    "port": 5214,
+    "signalPort": 5215,
+    "seed": 1337,
+    "netlag": "40-90",
+    "netloss": "2",
+    "runS": 60,
+    "checks": [
+      "base"
+    ],
+    "record": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round9\\coopprobe-lag.json",
+    "out": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round9\\coopprobe-shots",
+    "signalServerSpawned": true,
+    "spawnRate": 0.12
+  },
+  "urls": {
+    "host": "/index.html?seed=1337&quality=2&harness=1&signal=ws://127.0.0.1:5215",
+    "client": "/index.html?seed=1337&quality=2&harness=1&signal=ws://127.0.0.1:5215&netlag=40-90&netloss=2"
+  },
+  "bounded": {
+    "bootMs": 120000,
+    "navMs": 30000,
+    "roomCodeMs": 20000,
+    "formationMs": 30000,
+    "tickWindowMs": 5000,
+    "runS": 60,
+    "checkSetsRequested": [
+      "base"
+    ],
+    "checkSetsKnown": [
+      "base"
+    ],
+    "checksSkipped": [],
+    "runWindowEndedEarly": null,
+    "settingsSeeded": {
+      "spawnRate": 0.12,
+      "master": 0,
+      "music": 0,
+      "sfx": 0
+    },
+    "stubbed": [
+      "Element.prototype.requestPointerLock",
+      "document.exitPointerLock"
+    ],
+    "note": "every wait in this probe is capped; the caps above are the only ones there are"
+  },
+  "roomCode": "MV6E",
+  "formationMs": null,
+  "phases": [
+    {
+      "name": "relay",
+      "ms": 101,
+      "ok": true,
+      "detail": "ws://127.0.0.1:5215"
+    },
+    {
+      "name": "vite",
+      "ms": 96,
+      "ok": true,
+      "detail": "http://127.0.0.1:5214"
+    },
+    {
+      "name": "host-boot",
+      "ms": 16277,
+      "ok": true,
+      "detail": "title screen up, seed 1337"
+    },
+    {
+      "name": "host-room",
+      "ms": 1137,
+      "ok": true,
+      "detail": "MV6E"
+    },
+    {
+      "name": "host-launch",
+      "ms": 2638,
+      "ok": true,
+      "detail": "hosting room MV6E with the world running"
+    },
+    {
+      "name": "client-boot",
+      "ms": 2546,
+      "ok": true,
+      "detail": "title screen up, netlag=40-90, netloss=2"
+    },
+    {
+      "name": "formation",
+      "ms": 35441,
+      "ok": false,
+      "detail": "the session never formed inside 30000 ms. CLIENT: {\"frame\":3254,\"engineRunning\":true,\"simQueue\":0,\"lobbyMode\":\"client\",\"lobbyStatus\":\"refused\",\"coopStatus\":\"The host refused the join. Try joining again.\",\"roomCode\":\"----\",\"wiring\":\"Signalling: ws://127.0.0.1:5215 — local only, room codes will not work for remote players. · TURN relay: none — players behind strict NAT may fail to connect.\",\"connect"
+    }
+  ],
+  "timings": {
+    "totalMs": 59427,
+    "byPhase": {
+      "relay": 101,
+      "vite": 96,
+      "host-boot": 16277,
+      "host-room": 1137,
+      "host-launch": 2638,
+      "client-boot": 2546,
+      "formation": 35441
+    }
+  },
+  "consoleErrors": {
+    "host": [],
+    "client": []
+  },
+  "checks": [
+    {
+      "name": "phase:formation",
+      "set": "base",
+      "pass": false,
+      "detail": "the session never formed inside 30000 ms. CLIENT: {\"frame\":3254,\"engineRunning\":true,\"simQueue\":0,\"lobbyMode\":\"client\",\"lobbyStatus\":\"refused\",\"coopStatus\":\"The host refused the join. Try joining again.\",\"roomCode\":\"----\",\"wiring\":\"Signalling: ws://127.0.0.1:5215 — local only, room codes will not work for remote players. · TURN relay: none — players behind strict NAT may fail to connect.\",\"connected\":false,\"myNetId\":1,\"trickle\":true,\"iceConnectionState\":null,\"connectionState\":null,\"channels\":{\"state\":\"closed\",\"events\":\"closed\"},\"hostPeers\":[]} HOST: {\"frame\":2286,\"engineRunning\":true,\"simQueue\":null,\"lobbyMode\":\"host\",\"lobbyStatus\":\"peerRefused\",\"coopStatus\":\"Turned a player away: their join did not make sense (it never sent an identity message).\",\"roomCode\":\"MV6E\",\"wiring\":\"Signalling: ws://127.0.0.1:5215 — local only, room codes will not work for remote players. · TURN relay: none — players behind strict NAT may fail to connect.\",\"connected\":false,\"myNetId\":null,\"trickle\":true,\"iceConnectionState\":null,\"connectionState\":null,\"channels\":{\"state\":null,\"events\":null},\"hostPeers\":[]}"
+    },
+    {
+      "name": "host-running",
+      "set": "base",
+      "pass": false,
+      "detail": "not run — the probe failed at phase \"formation\""
+    },
+    {
+      "name": "client-running",
+      "set": "base",
+      "pass": false,
+      "detail": "not run — the probe failed at phase \"formation\""
+    },
+    {
+      "name": "roster-2-both",
+      "set": "base",
+      "pass": false,
+      "detail": "not run — the probe failed at phase \"formation\""
+    },
+    {
+      "name": "ticks-advance",
+      "set": "base",
+      "pass": false,
+      "detail": "not run — the probe failed at phase \"formation\""
+    },
+    {
+      "name": "both-alive",
+      "set": "base",
+      "pass": false,
+      "detail": "not run — the probe failed at phase \"formation\""
+    },
+    {
+      "name": "shared-world",
+      "set": "base",
+      "pass": false,
+      "detail": "not run — the probe failed at phase \"formation\""
+    }
+  ],
+  "fatal": "the session never formed inside 30000 ms. CLIENT: {\"frame\":3254,\"engineRunning\":true,\"simQueue\":0,\"lobbyMode\":\"client\",\"lobbyStatus\":\"refused\",\"coopStatus\":\"The host refused the join. Try joining again.\",\"roomCode\":\"----\",\"wiring\":\"Signalling: ws://127.0.0.1:5215 — local only, room codes will not work for remote players. · TURN relay: none — players behind strict NAT may fail to connect.\",\"connected\":false,\"myNetId\":1,\"trickle\":true,\"iceConnectionState\":null,\"connectionState\":null,\"channels\":{\"state\":\"closed\",\"events\":\"closed\"},\"hostPeers\":[]} HOST: {\"frame\":2286,\"engineRunning\":true,\"simQueue\":null,\"lobbyMode\":\"host\",\"lobbyStatus\":\"peerRefused\",\"coopStatus\":\"Turned a player away: their join did not make sense (it never sent an identity message).\",\"roomCode\":\"MV6E\",\"wiring\":\"Signalling: ws://127.0.0.1:5215 — local only, room codes will not work for remote players. · TURN relay: none — players behind strict NAT may fail to connect.\",\"connected\":false,\"myNetId\":null,\"trickle\":true,\"iceConnectionState\":null,\"connectionState\":null,\"channels\":{\"state\":null,\"events\":null},\"hostPeers\":[]}",
+  "allPass": false
+}

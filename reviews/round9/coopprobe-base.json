@@ -1,0 +1,173 @@
+{
+  "when": "2026-08-13T01:03:50.779Z",
+  "probe": "tools/coopprobe.mjs",
+  "label": "base",
+  "flags": {
+    "port": 5214,
+    "signalPort": 5215,
+    "seed": 1337,
+    "netlag": null,
+    "netloss": null,
+    "runS": 60,
+    "checks": [
+      "base"
+    ],
+    "record": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round9\\coopprobe-base.json",
+    "out": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round9\\coopprobe-shots",
+    "signalServerSpawned": true,
+    "spawnRate": 0.12
+  },
+  "urls": {
+    "host": "/index.html?seed=1337&quality=2&harness=1&signal=ws://127.0.0.1:5215",
+    "client": "/index.html?seed=1337&quality=2&harness=1&signal=ws://127.0.0.1:5215"
+  },
+  "bounded": {
+    "bootMs": 120000,
+    "navMs": 30000,
+    "roomCodeMs": 20000,
+    "formationMs": 30000,
+    "tickWindowMs": 5000,
+    "runS": 60,
+    "checkSetsRequested": [
+      "base"
+    ],
+    "checkSetsKnown": [
+      "base"
+    ],
+    "checksSkipped": [],
+    "runWindowEndedEarly": null,
+    "settingsSeeded": {
+      "spawnRate": 0.12,
+      "master": 0,
+      "music": 0,
+      "sfx": 0
+    },
+    "stubbed": [
+      "Element.prototype.requestPointerLock",
+      "document.exitPointerLock"
+    ],
+    "note": "every wait in this probe is capped; the caps above are the only ones there are"
+  },
+  "roomCode": "C7W9",
+  "formationMs": 4636,
+  "phases": [
+    {
+      "name": "relay",
+      "ms": 107,
+      "ok": true,
+      "detail": "ws://127.0.0.1:5215"
+    },
+    {
+      "name": "vite",
+      "ms": 96,
+      "ok": true,
+      "detail": "http://127.0.0.1:5214"
+    },
+    {
+      "name": "host-boot",
+      "ms": 16129,
+      "ok": true,
+      "detail": "title screen up, seed 1337"
+    },
+    {
+      "name": "host-room",
+      "ms": 1164,
+      "ok": true,
+      "detail": "C7W9"
+    },
+    {
+      "name": "host-launch",
+      "ms": 2568,
+      "ok": true,
+      "detail": "hosting room C7W9 with the world running"
+    },
+    {
+      "name": "client-boot",
+      "ms": 2481,
+      "ok": true,
+      "detail": "title screen up"
+    },
+    {
+      "name": "formation",
+      "ms": 5140,
+      "ok": true,
+      "detail": "4636 ms from the Join click to two open channels and a host roster of 2"
+    },
+    {
+      "name": "client-launch",
+      "ms": 1808,
+      "ok": true,
+      "detail": "joined and running"
+    },
+    {
+      "name": "run-window",
+      "ms": 60034,
+      "ok": true,
+      "detail": "60 s of scripted play, 81 alternating key holds, both survivors alive"
+    }
+  ],
+  "timings": {
+    "totalMs": 96918,
+    "byPhase": {
+      "relay": 107,
+      "vite": 96,
+      "host-boot": 16129,
+      "host-room": 1164,
+      "host-launch": 2568,
+      "client-boot": 2481,
+      "formation": 5140,
+      "client-launch": 1808,
+      "run-window": 60034
+    }
+  },
+  "consoleErrors": {
+    "host": [],
+    "client": []
+  },
+  "checks": [
+    {
+      "name": "host-running",
+      "set": "base",
+      "pass": true,
+      "detail": "host paused=false NetHost.tick=3845 (want > 60) screen=null role=host"
+    },
+    {
+      "name": "client-running",
+      "set": "base",
+      "pass": true,
+      "detail": "client paused=false NetClient.tick=3591 (want > 60) screen=null role=client connected=true myNetId=1"
+    },
+    {
+      "name": "roster-2-both",
+      "set": "base",
+      "pass": true,
+      "detail": "host roster 2 (NetHost.playerCount), client roster 2 (PLAYER-kind entities in the newest snapshot); want 2 and 2"
+    },
+    {
+      "name": "ticks-advance",
+      "set": "base",
+      "pass": true,
+      "detail": "over 5000 ms: host tick 3847 -> 4138 (+291), client tick 3593 -> 3894 (+301); want both strictly increasing"
+    },
+    {
+      "name": "both-alive",
+      "set": "base",
+      "pass": true,
+      "detail": "host alive=true screen=null; client alive=true screen=null"
+    },
+    {
+      "name": "shared-world",
+      "set": "base",
+      "pass": true,
+      "detail": "host has 28 replicated netIds, client sees 28; intersection 28 [2,1,27,28,3,4,5,6,...]"
+    },
+    {
+      "name": "no page errors",
+      "set": "base",
+      "pass": true,
+      "detail": "0 uncaught page errors and 0 console errors across both pages"
+    }
+  ],
+  "fatal": null,
+  "allPass": true
+}

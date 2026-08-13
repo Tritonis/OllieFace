@@ -13,6 +13,7 @@
     "preview": "vite preview",
     "shots": "node tools/capture.mjs",
     "padprobe": "node tools/padprobe.mjs",
+    "probe:coop": "node tools/coopprobe.mjs",
     "dev:lan": "vite --host",
     "signal": "node tools/signal-server.mjs",
     "desktop": "npm run build && electron .",

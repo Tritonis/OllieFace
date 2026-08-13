@@ -1,0 +1,140 @@
+{
+  "when": "2026-08-13T01:05:33.896Z",
+  "probe": "tools/coopprobe.mjs",
+  "label": "deadsignal",
+  "flags": {
+    "port": 5214,
+    "signalPort": 5215,
+    "seed": 1337,
+    "netlag": null,
+    "netloss": null,
+    "runS": 60,
+    "checks": [
+      "base"
+    ],
+    "record": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round9\\coopprobe-deadsignal.json",
+    "out": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round9\\coopprobe-shots",
+    "signalServerSpawned": false,
+    "spawnRate": 0.12
+  },
+  "urls": {
+    "host": "/index.html?seed=1337&quality=2&harness=1&signal=ws://127.0.0.1:5215",
+    "client": "/index.html?seed=1337&quality=2&harness=1&signal=ws://127.0.0.1:5215"
+  },
+  "bounded": {
+    "bootMs": 120000,
+    "navMs": 30000,
+    "roomCodeMs": 20000,
+    "formationMs": 30000,
+    "tickWindowMs": 5000,
+    "runS": 60,
+    "checkSetsRequested": [
+      "base"
+    ],
+    "checkSetsKnown": [
+      "base"
+    ],
+    "checksSkipped": [],
+    "runWindowEndedEarly": null,
+    "settingsSeeded": {
+      "spawnRate": 0.12,
+      "master": 0,
+      "music": 0,
+      "sfx": 0
+    },
+    "stubbed": [
+      "Element.prototype.requestPointerLock",
+      "document.exitPointerLock"
+    ],
+    "note": "every wait in this probe is capped; the caps above are the only ones there are"
+  },
+  "roomCode": null,
+  "formationMs": null,
+  "phases": [
+    {
+      "name": "relay",
+      "ms": 0,
+      "ok": true,
+      "detail": "skipped (--no-signal): port 5215 is dead on purpose"
+    },
+    {
+      "name": "vite",
+      "ms": 113,
+      "ok": true,
+      "detail": "http://127.0.0.1:5214"
+    },
+    {
+      "name": "host-boot",
+      "ms": 15026,
+      "ok": true,
+      "detail": "title screen up, seed 1337"
+    },
+    {
+      "name": "host-room",
+      "ms": 21290,
+      "ok": false,
+      "detail": "no room code inside 20000 ms — the co-op screen says \"Could not reach the signalling server. This build is still pointed at ws://127.0.0.1:5215 — that only works if the relay is running on this machine. Build with VITE_SIGNAL_URL set, or add ?signal=wss://your-relay to the URL.\" (lobby host/hosting; wiring: Signalling: ws://127.0.0.1:5215 — local only, room codes will not work for remote players. "
+    }
+  ],
+  "timings": {
+    "totalMs": 37509,
+    "byPhase": {
+      "relay": 0,
+      "vite": 113,
+      "host-boot": 15026,
+      "host-room": 21290
+    }
+  },
+  "consoleErrors": {
+    "host": [
+      "console: WebSocket connection to 'ws://127.0.0.1:5215/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED"
+    ],
+    "client": []
+  },
+  "checks": [
+    {
+      "name": "phase:host-room",
+      "set": "base",
+      "pass": false,
+      "detail": "no room code inside 20000 ms — the co-op screen says \"Could not reach the signalling server. This build is still pointed at ws://127.0.0.1:5215 — that only works if the relay is running on this machine. Build with VITE_SIGNAL_URL set, or add ?signal=wss://your-relay to the URL.\" (lobby host/hosting; wiring: Signalling: ws://127.0.0.1:5215 — local only, room codes will not work for remote players. · TURN relay: none — players behind strict NAT may fail to connect.)"
+    },
+    {
+      "name": "host-running",
+      "set": "base",
+      "pass": false,
+      "detail": "not run — the probe failed at phase \"host-room\""
+    },
+    {
+      "name": "client-running",
+      "set": "base",
+      "pass": false,
+      "detail": "not run — the probe failed at phase \"host-room\""
+    },
+    {
+      "name": "roster-2-both",
+      "set": "base",
+      "pass": false,
+      "detail": "not run — the probe failed at phase \"host-room\""
+    },
+    {
+      "name": "ticks-advance",
+      "set": "base",
+      "pass": false,
+      "detail": "not run — the probe failed at phase \"host-room\""
+    },
+    {
+      "name": "both-alive",
+      "set": "base",
+      "pass": false,
+      "detail": "not run — the probe failed at phase \"host-room\""
+    },
+    {
+      "name": "shared-world",
+      "set": "base",
+      "pass": false,
+      "detail": "not run — the probe failed at phase \"host-room\""
+    }
+  ],
+  "fatal": "no room code inside 20000 ms — the co-op screen says \"Could not reach the signalling server. This build is still pointed at ws://127.0.0.1:5215 — that only works if the relay is running on this machine. Build with VITE_SIGNAL_URL set, or add ?signal=wss://your-relay to the URL.\" (lobby host/hosting; wiring: Signalling: ws://127.0.0.1:5215 — local only, room codes will not work for remote players. · TURN relay: none — players behind strict NAT may fail to connect.)",
+  "allPass": false
+}
