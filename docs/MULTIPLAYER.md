@@ -206,6 +206,17 @@ with no host migration; the host runs the simulation. See `NETCODE.md`.
 
 ---
 
+## Verification
+
+Automated: `node tests/run.mjs`, `npm run gate:sp`, `npm run gate:mp1`,
+`node tools/coopprobe.mjs`. None of it substitutes for playing the game.
+
+Before the Co-op menu label drops "(beta)", a human runs the hand-played
+gate: [`HANDPLAY-GATE.md`](superpowers/specs/HANDPLAY-GATE.md). It is
+USER-ONLY — an agent never checks its boxes.
+
+---
+
 ## What this costs
 
 Playtesting with friends: **nothing.** Static hosting free, relay on a free
