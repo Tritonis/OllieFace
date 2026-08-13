@@ -83,7 +83,10 @@
 //    `goldReward`/`itemMutated` are addressed to one peer instead of broadcast,
 //    so a v5 client joined to a v6 host would sit at zero gold all run and a v6
 //    client on a v5 host would adopt the host's purse as its own.
-export const PROTOCOL_VERSION = 6;
+// 7: downed & revive (mp-p3). `ESTATE.DOWNED` joins the snapshot vocabulary —
+//    a v6 peer reading a v7 host's `netState` byte would see an unrecognised
+//    value where it expected ALIVE/DEAD/SPAWNING.
+export const PROTOCOL_VERSION = 7;
 
 export const MSG = {
   HELLO: 1,       // client -> host
@@ -152,7 +155,7 @@ export const EKIND = {
   INTERACTABLE: 4,
 };
 
-export const ESTATE = { ALIVE: 0, DEAD: 1, SPAWNING: 2 };
+export const ESTATE = { ALIVE: 0, DEAD: 1, SPAWNING: 2, DOWNED: 3 };
 
 // --- quantisation -----------------------------------------------------------
 // Stage is ~220 units across; ±512 with 1/64 unit precision fits i16 exactly and

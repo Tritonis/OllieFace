@@ -152,6 +152,12 @@ export class Player {
     this.isPlayer = true;
     this.team = 'player';
     this.alive = true;
+    // Downed & revive (mp-p3). A downed pawn stays `alive === true` — see the
+    // invariant comment on the netState getter and NetHost's snapshot skip —
+    // and only `bleedout` counts it toward an actual death.
+    this.downed = false;
+    this.bleedout = 0; // seconds remaining before a downed pawn dies, 0 when not downed
+    this.revive = 0; // host-side revive progress, 0..1
     this.radius = RADIUS;
     this.height = HEIGHT;
     this.position = new THREE.Vector3(0, 2, 0);
@@ -458,6 +464,22 @@ export class Player {
     if (!this.alive) {
       this.velocity.y -= GRAVITY * dt;
       this._resolve(ctx, dt);
+      this._commit(c, buttons, 0);
+      return;
+    }
+
+    // Downed: movement, abilities and jump are ignored — `_move` is what
+    // applies gravity for a standing pawn, so a downed pawn gets it applied
+    // directly instead, the same way a dead one does above. `interactPressed`
+    // and `equipPressed` are edges computed from `pressed` in `_commit`, so
+    // passing 0 there suppresses both: a downed pawn cannot interact or fire
+    // equipment either. Everything else here (external drift, collision,
+    // grounding) keeps running so knockback settles and gravity pulls a
+    // downed body to the floor like any other physics object.
+    if (this.downed) {
+      this.velocity.y -= GRAVITY * dt;
+      this._resolve(ctx, dt);
+      this._land(ctx);
       this._commit(c, buttons, 0);
       return;
     }
@@ -1315,8 +1337,15 @@ export class Player {
     this._renderOffset.set(x, y, z);
   }
 
-  /** Snapshot lifecycle flag — see the matching getter on Enemy. */
+  /**
+   * Snapshot lifecycle flag — see the matching getter on Enemy.
+   *
+   * A downed pawn keeps `alive === true` (it has not died — see NetHost's
+   * snapshot skip) so `downed` is checked first, ahead of the alive/dead
+   * split.
+   */
   get netState() {
+    if (this.downed) return ESTATE.DOWNED;
     return this.alive ? ESTATE.ALIVE : ESTATE.DEAD;
   }
 

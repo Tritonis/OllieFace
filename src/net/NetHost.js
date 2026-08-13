@@ -554,6 +554,8 @@ export class NetHost {
       if (!e || e.replicated === false) continue;
       // Dead entities stay in one final snapshot so clients can play the death
       // effect, then drop out.
+      // Invariant: a downed pawn keeps `alive === true` (see Player.netState),
+      // so it never hits this skip and keeps replicating normally as DOWNED.
       if (!e.alive && e.netState !== ESTATE.DEAD) continue;
       this._netId(e);
       e.kind = e.isPlayer ? EKIND.PLAYER : (e.kind ?? EKIND.ENEMY);
