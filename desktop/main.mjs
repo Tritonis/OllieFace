@@ -11,6 +11,12 @@ import { app, BrowserWindow, ipcMain, protocol, net } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import { pathToFileURL, fileURLToPath } from 'node:url';
+import { initSteam, getClient, getStatus, enableOverlay } from './steam.mjs';
+import {
+  parseSteamId, steamIdToString, validateMaxMembers, validateLobbyRecord,
+  sanitizeLobbyData, encodeSignal, decodeSignal, MAX_SIGNAL_FRAME_BYTES,
+  isAuthorizedSignalTarget,
+} from './steam-validate.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.join(HERE, '..', 'dist');
@@ -83,9 +89,331 @@ ipcMain.on('store:save', (_e, json) => {
 // the last flush wins and the other run's progress is gone. Steam's client
 // blocks a double launch, but the deliverable is a double-clickable exe.
 let mainWindow = null;
+
+// The Steam verdict for this run, decided once before ready and never re-asked.
+// Held here so the IPC bridge has one source of truth, and so a Steam-absent
+// boot is a recorded fact rather than a repeated failed call.
+let steamStatus = { available: false, appId: null, personaName: null, reason: 'not yet initialised' };
+let overlayStatus = { ok: false, reason: 'not attempted' };
+
+// ---------------------------------------------------------------------------
+// The Steam bridge (window.__STEAM__)
+//
+// Every Steam call lives here, in the main process; the renderer gets the
+// fourteen functions `preload.cjs` names and nothing else — no client object,
+// no module handle, no ipcRenderer pass-through. Two rules run through all of
+// it:
+//
+//   1. IDS ARE STRINGS ACROSS IPC. Lobby ids and Steam ids are `bigint`,
+//      `JSON.stringify` throws on one, and a renderer handed a bigint explodes
+//      the first time it serialises anything containing it. Ids become decimal
+//      strings on the way out (`steamIdToString`) and bigints again on the way
+//      in (`parseSteamId`) — including in error paths and log lines, which is
+//      why nothing below interpolates a raw callback payload.
+//   2. EVERYTHING FROM A PEER IS UNTRUSTED. Lobby data is written by whoever
+//      owns the lobby; P2P packets by whoever is on the wire. Both are capped
+//      and shape-checked in `steam-validate.mjs` before they cross to the
+//      renderer, and a hostile or malformed one is dropped, never thrown.
+// ---------------------------------------------------------------------------
+
+/** Lobby handles by decimal id string. The steamworks API is instance methods
+ *  on a `Lobby`, but only an id can cross IPC — this is the join between them. */
+const steamLobbies = new Map();
+
+/** The active P2P signal listener, or null. At most one at a time: the slice is
+ *  two-seat, and a second listener would double-read the same packet queue. */
+let signalListen = null;
+
+/** A cap on how many packets one tick may drain, so a flood cannot starve the
+ *  main loop. Anything beyond it waits 100 ms for the next tick. */
+const MAX_PACKETS_PER_TICK = 16;
+
+/** A message for the renderer that is a string and only a string. `err` may
+ *  carry a bigint somewhere in it, so it is never spread, serialised, or
+ *  returned — only its message is. */
+const steamError = (err) => {
+  const m = err && typeof err === 'object' && typeof err.message === 'string' ? err.message : String(err);
+  return m && m.trim() ? m.trim() : 'steam-call-failed';
+};
+
+/** The live client, or null when Steam never came up. Every handler starts here
+ *  so a Steam-absent renderer gets a shape it can branch on, not a throw. */
+const steamClient = () => (steamStatus.available ? getClient() : null);
+
+const lobbyFor = (rawId) => (typeof rawId === 'string' ? steamLobbies.get(rawId) ?? null : null);
+
+const pushToRenderer = (channel, payload) => {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  mainWindow.webContents.send(channel, payload);
+};
+
+/** Is this Steam id currently in this lobby? The gate on accepting a P2P
+ *  session and on believing a packet — blanket-accepting sessions would let any
+ *  Steam user on the internet open a channel into the main process. */
+const isLobbyMember = (lobby, steamId64) => {
+  try {
+    return lobby.getMembers().some((m) => m && m.steamId64 === steamId64);
+  } catch { return false; }
+};
+
+/** Drain the P2P queue, validate, forward. Total by construction: one bad
+ *  packet is skipped, and a throwing native call ends the tick rather than the
+ *  process. */
+function pumpSignals() {
+  const client = steamClient();
+  if (!client || !signalListen) return;
+  try {
+    for (let i = 0; i < MAX_PACKETS_PER_TICK; i++) {
+      const size = client.networking.isP2PPacketAvailable();
+      if (!Number.isInteger(size) || size <= 0) return;
+
+      // Read it at its FULL size even when it is far too big to be one of ours.
+      // An undrained packet blocks every packet behind it, so a single 100 KB
+      // packet from a hostile member would otherwise wedge the handshake
+      // permanently; Steam's own 1 MB Reliable ceiling is what bounds the cost
+      // of draining it. The oversize check then drops it before it is decoded.
+      const packet = client.networking.readP2PPacket(size);
+      if (!packet || !packet.data) continue;
+      if (size > MAX_SIGNAL_FRAME_BYTES) {
+        console.error(`steam: dropped an oversized P2P packet (${size} bytes)`);
+        continue;
+      }
+
+      const from = packet.steamId && packet.steamId.steamId64;
+      if (typeof from !== 'bigint') continue;
+      if (!isLobbyMember(signalListen.lobby, from)) continue;   // non-members are silent drops
+
+      const len = Number.isInteger(packet.size) && packet.size >= 0 && packet.size <= packet.data.length
+        ? packet.size : packet.data.length;
+      const decoded = decodeSignal(packet.data.subarray(0, len));
+      if (!decoded.ok) {
+        // `from` is interpolated through .toString() deliberately — a template
+        // literal on the bigint itself is fine, but the packet object is not.
+        console.error(`steam: dropped a signal packet from ${from.toString()} (${decoded.error})`);
+        continue;
+      }
+      pushToRenderer('steam:signal', { fromSteamId: from.toString(), payload: decoded.payload });
+    }
+  } catch (err) {
+    console.error('steam: signal pump failed', steamError(err));
+  }
+}
+
+/** Tear the listener down: the interval, and BOTH callback handles. A
+ *  `Handle` that is never `.disconnect()`ed keeps firing into a closure that
+ *  outlives the lobby it was registered for. */
+function stopSignalListen() {
+  if (!signalListen) return { ok: true };
+  clearInterval(signalListen.timer);
+  for (const handle of [signalListen.sessionHandle, signalListen.failHandle]) {
+    try { handle?.disconnect(); } catch (err) { console.error('steam: callback disconnect failed', steamError(err)); }
+  }
+  signalListen = null;
+  return { ok: true };
+}
+
+/**
+ * Release every Steam lobby this process still holds, and the pump/handles
+ * that feed them. (Important 3.) A renderer reload, a crashed renderer, the
+ * window closing and the app quitting all used to leave every one of those
+ * running against a page that no longer has any listener for them — the
+ * lobby stays open and joinable from a friend's list, the 100 ms pump keeps
+ * polling a queue nobody drains, and both callback `Handle`s keep firing into
+ * a closure over a `mainWindow` that may itself be gone.
+ *
+ * Idempotent, deliberately: every one of its four call sites can fire more
+ * than once in a session (a reload after a reload; `window-all-closed`
+ * racing `before-quit`), and `stopSignalListen` already tolerates being
+ * called with nothing armed. `steamLobbies.clear()` after the loop, not
+ * per-entry deletion during it, because a `Map` mutated while iterated is the
+ * kind of bug that only shows up the second time this runs.
+ */
+function releaseAllSteamState() {
+  stopSignalListen();
+  for (const lobby of steamLobbies.values()) {
+    try { lobby.leave(); } catch (err) { console.error('steam: lobby leave failed', steamError(err)); }
+  }
+  steamLobbies.clear();
+}
+
+/**
+ * Register the IPC surface. Called exactly once, before `app.whenReady()` —
+ * `ipcMain.handle` is legal that early, and registering there means a renderer
+ * that races the first frame still finds every channel already listening.
+ */
+function registerSteamBridge() {
+  // Every handler is `async` and every one of them returns a plain object with
+  // string/boolean/number fields only. No handler ever returns a bigint, a
+  // Lobby, a Buffer, or an Error.
+  const handle = (channel, fn) => ipcMain.handle(channel, async (_event, ...args) => {
+    try { return await fn(...args); }
+    catch (err) { return { error: steamError(err) }; }
+  });
+
+  handle('steam:status', async () => getStatus());
+
+  handle('steam:host-lobby', async (maxMembers) => {
+    const client = steamClient();
+    if (!client) return { error: 'steam-unavailable' };
+    const size = validateMaxMembers(maxMembers);
+    if (!size.ok) return { error: size.error };
+
+    const lobby = await client.matchmaking.createLobby(client.matchmaking.LobbyType.FriendsOnly, size.value);
+    const lobbyId = steamIdToString(lobby.id);
+    if (!lobbyId) return { error: 'lobby-id-unreadable' };
+    steamLobbies.set(lobbyId, lobby);
+    return { lobbyId };
+  });
+
+  handle('steam:join-lobby', async (rawLobbyId) => {
+    const client = steamClient();
+    if (!client) return { error: 'steam-unavailable' };
+    const id = parseSteamId(rawLobbyId);
+    if (id === null) return { error: 'bad-lobby-id' };
+
+    const lobby = await client.matchmaking.joinLobby(id);
+    // Key it under both the id we were given and the id the handle reports.
+    // They are the same number today; keying both means a normalisation we did
+    // not predict cannot orphan the handle the renderer is about to address.
+    const reported = steamIdToString(lobby.id);
+    steamLobbies.set(rawLobbyId, lobby);
+    if (reported && reported !== rawLobbyId) steamLobbies.set(reported, lobby);
+    return { ok: true, lobbyId: reported ?? rawLobbyId };
+  });
+
+  handle('steam:leave-lobby', async (rawLobbyId) => {
+    const lobby = lobbyFor(rawLobbyId);
+    if (!lobby) return { ok: true };   // leaving a lobby we do not hold is done, not an error
+    if (signalListen && signalListen.lobby === lobby) stopSignalListen();
+    for (const [key, held] of steamLobbies) if (held === lobby) steamLobbies.delete(key);
+    lobby.leave();
+    return { ok: true };
+  });
+
+  handle('steam:open-invite', async (rawLobbyId) => {
+    const lobby = lobbyFor(rawLobbyId);
+    if (!lobby) return { error: 'unknown-lobby' };
+    // The overlay is the only invite path this binding has; if it did not come
+    // up, this is a silent no-op rather than a dialog.
+    lobby.openInviteDialog();
+    return { ok: true, overlay: overlayStatus.ok };
+  });
+
+  handle('steam:write-lobby-data', async (rawLobbyId, record) => {
+    const lobby = lobbyFor(rawLobbyId);
+    if (!lobby) return { error: 'unknown-lobby' };
+    const checked = validateLobbyRecord(record);
+    if (!checked.ok) return { error: checked.error };
+    // Owner-only in Steam; a joiner calling this simply gets false back.
+    return lobby.mergeFullData(checked.record) ? { ok: true } : { error: 'lobby-data-write-refused' };
+  });
+
+  handle('steam:get-full-lobby-data', async (rawLobbyId) => {
+    const lobby = lobbyFor(rawLobbyId);
+    if (!lobby) return { error: 'unknown-lobby' };
+    return { data: sanitizeLobbyData(lobby.getFullData()) };
+  });
+
+  handle('steam:get-lobby-owner', async (rawLobbyId) => {
+    const lobby = lobbyFor(rawLobbyId);
+    if (!lobby) return { error: 'unknown-lobby' };
+    const steamId = steamIdToString(lobby.getOwner());
+    return steamId ? { steamId } : { error: 'owner-unreadable' };
+  });
+
+  handle('steam:send-signal', async (rawSteamId, payload) => {
+    const client = steamClient();
+    if (!client) return { error: 'steam-unavailable' };
+    const target = parseSteamId(rawSteamId);
+    if (target === null) return { error: 'bad-steam-id' };
+    // MINOR 1. This channel exists for exactly one purpose — the joiner's
+    // answer to the lobby it just joined, addressed to that lobby's owner —
+    // and until here the shape check let it address ANY Steam id. The receive
+    // side is already membership-gated (`isLobbyMember`, below); this is its
+    // asymmetric other half.
+    const owners = [];
+    for (const lobby of steamLobbies.values()) {
+      try { const o = lobby.getOwner(); if (o && typeof o.steamId64 === 'bigint') owners.push(o.steamId64); }
+      catch { /* an unreadable owner is not a match either way */ }
+    }
+    if (!isAuthorizedSignalTarget(target, owners)) return { error: 'signal-target-not-lobby-owner' };
+    const framed = encodeSignal(payload);
+    if (!framed.ok) return { error: framed.error };
+
+    const sent = client.networking.sendP2PPacket(
+      target, client.networking.SendType.Reliable, Buffer.from(framed.frame, 'utf8'));
+    return sent ? { ok: true } : { error: 'signal-send-refused' };
+  });
+
+  handle('steam:start-signal-listen', async (rawLobbyId) => {
+    const client = steamClient();
+    if (!client) return { error: 'steam-unavailable' };
+    const lobby = lobbyFor(rawLobbyId);
+    if (!lobby) return { error: 'unknown-lobby' };
+    stopSignalListen();   // idempotent restart; never two pumps on one queue
+
+    const { SteamCallback } = client.callback;
+    const sessionHandle = client.callback.register(SteamCallback.P2PSessionRequest, (event) => {
+      try {
+        const remote = event && event.remote;
+        if (typeof remote !== 'bigint') return;
+        // MEMBERS ONLY. Accepting every session request would open a channel
+        // from any Steam user who learns our id.
+        if (!isLobbyMember(lobby, remote)) {
+          console.error(`steam: refused a P2P session from a non-member (${remote.toString()})`);
+          return;
+        }
+        client.networking.acceptP2PSession(remote);
+      } catch (err) { console.error('steam: P2P session request failed', steamError(err)); }
+    });
+    const failHandle = client.callback.register(SteamCallback.P2PSessionConnectFail, (event) => {
+      const remote = steamIdToString(event && event.remote);
+      const code = event && typeof event.error === 'number' ? event.error : null;
+      pushToRenderer('steam:signal-fail', { fromSteamId: remote, error: code });
+    });
+
+    const timer = setInterval(pumpSignals, 100);
+    // Unref'd: the pump is a listener, not a reason for the process to live.
+    if (typeof timer.unref === 'function') timer.unref();
+    signalListen = { lobby, timer, sessionHandle, failHandle };
+    return { ok: true };
+  });
+
+  handle('steam:stop-signal-listen', async () => stopSignalListen());
+
+  // Push-only: a friend clicking "Join game" in the Steam client. The payload's
+  // fields are snake_case bigints (`callbacks.d.ts:47-50`) — the lobby id is
+  // stringified here and the rest is discarded.
+  const client = steamClient();
+  if (client) {
+    client.callback.register(client.callback.SteamCallback.GameLobbyJoinRequested, (event) => {
+      const lobbyId = steamIdToString(event && event.lobby_steam_id);
+      if (!lobbyId) return;
+      pushToRenderer('steam:join-requested', { lobbyId });
+    });
+  }
+}
+
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
+  // Steam BEFORE ready, deliberately (adjudication 2026-08-13 section 4).
+  // `steamworks.init()` is a plain native call with no dependency on Electron
+  // readiness, and the overlay's two command-line switches are ignored if they
+  // are appended after ready — so an overlay that works at all has to be
+  // decided here. Nothing waits on it: initSteam never throws and never blocks.
+  steamStatus = initSteam();
+  // ONLY when Steam actually answered. A Steam-absent player gets zero appended
+  // switches, zero repaint timers, and the same GPU path (and the same
+  // `gpu-info.json` Optimus diagnostic) they had before this line existed.
+  // `TELLURIC_NO_OVERLAY=1` skips only this line. It exists because the overlay's
+  // `in-process-gpu` switch blinds `getGPUInfo('complete')` — the Optimus
+  // diagnostic below reports nothing useful with the overlay on — so anyone
+  // gathering that diagnostic, or re-deriving the before/after pair in
+  // `desktop/README.md`, needs a way to boot without it that is not a hand edit.
+  if (steamStatus.available && !process.env.TELLURIC_NO_OVERLAY) overlayStatus = enableOverlay();
+  registerSteamBridge();
+
   app.on('second-instance', () => {
     if (!mainWindow) return;
     if (mainWindow.isMinimized()) mainWindow.restore();
@@ -93,6 +421,13 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.whenReady().then(async () => {
+    // The verdict was reached before ready; this is only the report of it. No
+    // dialog, no retry, no slower boot for a player who has never opened Steam
+    // — the log line is the whole of the Steam-absent experience.
+    console.log('steam:', steamStatus.available
+      ? `available: true, appId: ${steamStatus.appId}, personaName: ${steamStatus.personaName}, overlay: ${overlayStatus.ok}`
+      : `available: false, reason: ${steamStatus.reason}`);
+
     // app://game/<path> -> dist/<path>, default document index.html.
     protocol.handle('app', (request) => {
       const url = new URL(request.url);
@@ -121,6 +456,21 @@ if (!app.requestSingleInstanceLock()) {
     // two denials keep it that way without needing anyone to remember.
     win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     win.webContents.on('will-navigate', (e) => e.preventDefault());
+    // IMPORTANT 3. `will-navigate` never fires for a reload (Ctrl+R / the
+    // bound `reload`/`forcereload` accelerators on the default application
+    // menu `autoHideMenuBar` only hides, it does not remove), so a reload was
+    // the one path that left the Steam lobby, the 100 ms pump and both
+    // callback handles running against a renderer that had just been thrown
+    // away — invisible, and rearmed by every subsequent host/join, not just
+    // the first. `did-start-navigation` fires for every navigation INCLUDING
+    // reload; `isSameDocument` excludes hash changes and pushState, which
+    // never touch the renderer's Steam state and must not tear it down.
+    win.webContents.on('did-start-navigation', (details) => {
+      if (details?.isMainFrame && !details?.isSameDocument) releaseAllSteamState();
+    });
+    // A crashed or killed renderer is the same problem from the other side:
+    // nothing left to hear `steam:signal` or `steam:signal-fail` either way.
+    win.webContents.on('render-process-gone', () => releaseAllSteamState());
     win.loadURL('app://game/index.html');
 
     // The Optimus diagnostic (docs/STEAM.md section 1): which adapter Chromium
@@ -132,5 +482,12 @@ if (!app.requestSingleInstanceLock()) {
     } catch (err) { console.error('gpu-info failed', err); }
   });
 
-  app.on('window-all-closed', () => app.quit());
+  // The pump holds two Steam callback handles and a live Steam lobby
+  // membership; quitting without releasing them fires closures at a window
+  // that no longer exists and leaves the player sitting in a lobby their
+  // friends can still see and join after the process is gone. Both hooks call
+  // the same idempotent release, so whichever one Windows delivers first
+  // still gets it done.
+  app.on('window-all-closed', () => { releaseAllSteamState(); app.quit(); });
+  app.on('before-quit', releaseAllSteamState);
 }

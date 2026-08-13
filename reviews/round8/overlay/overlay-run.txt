@@ -1,0 +1,9 @@
+electron main pid: 37628
+steam status: {"available":true,"appId":480,"personaName":"Communism","reason":null}
+webgl: {"ok":true,"renderer":"ANGLE (NVIDIA, NVIDIA GeForce RTX 2070 (0x00001F07) Direct3D11 vs_5_0 ps_5_0, D3D11)"}
+game canvas: {"w":1584,"h":861}
+steam block revealed in the co-op screen: true
+overlay modules in the electron processes: 17884:gameoverlayrenderer64.dll
+after "Host via Steam": "Steam lobby open. Press “Invite friend” and pick who joins you."
+after "Invite friend": "Pick your friend in the Steam overlay. They join as soon as they accept."
+overlay modules after the invite dialog: 17884:gameoverlayrenderer64.dll

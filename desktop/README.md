@@ -55,6 +55,8 @@ dist-desktop/win-unpacked/
   resources/app/
     desktop/main.mjs         the shell
     desktop/preload.cjs      the bridge
+    desktop/steam.mjs        guarded steamworks.js init
+    desktop/steam-validate.mjs   input validation for the Steam IPC surface
     dist/                    the built game (index.html + assets/)
     package.json             for `main` and metadata
 ```
@@ -71,11 +73,45 @@ every pack:
   `electron` and node builtins. Packed folder must contain **no**
   `node_modules/` at all. (This is docs/STEAM.md section 4's warning read in
   reverse: the source tree must not ride along.)
+- **`!steam_appid.txt`** — the repo root carries `steam_appid.txt` for the dev
+  loop, and it must never ship. A stray appid file inside a packaged build
+  overrides what Steam tells the process and breaks release-build detection.
+  Packed folder must contain **no** `steam_appid.txt` anywhere, not just under
+  `resources/app/`. Verified after every pack, same as the two above.
+
+### Consequence: the packed build carries no Steam (open gap)
+
+`steamworks.js` is a `devDependency` *and* lives under `node_modules/`, so both
+of the first two rules above exclude it. The packed app therefore reports
+
+```
+{"available":false,"appId":null,"personaName":null,
+ "reason":"Cannot find module 'steamworks.js' ..."}
+```
+
+That is the degradation contract behaving exactly as designed — the packed app
+boots, plays, and saves identically without Steam, and the probe passes 13/13 on
+it. But it also means **every packaged launch is a Steam-absent launch**: no
+lobbies, no invite button, no co-op over Steam. The packed folder is not
+shippable to Steam as-is.
+
+Do the two-seat Steam checkpoint with `npm run desktop`, not against the packed
+exe. Closing the gap means promoting `steamworks.js` to a runtime `dependency`
+and admitting exactly `node_modules/steamworks.js/**` back into `build.files`
+(the prebuilt `win32-x64` `.node` and its wrapper, nothing more) so the
+`!node_modules/**` rule keeps doing the job it was written for. That is a
+deliberate packaging change against a documented exclusion; it has not been
+made.
 
 ### What is deliberately absent
 
-- **No Steam SDK / greenworks.** Achievements, cloud saves, and the overlay's
-  API side are a later phase; this shell knows nothing about Steam.
+- **No achievements, stats, rich presence, Steam Input, or Deck detection.**
+  Each needs partner-site configuration against a real appid, which does not
+  exist yet. What the shell *does* know about Steam is init, the overlay, and
+  lobby signalling — `desktop/steam.mjs` plus the `window.__STEAM__` bridge; see
+  docs/STEAM.md section 7.
+- **No Steam Cloud wiring.** Nothing to code: saves are already one JSON file
+  under `userData`, and Auto-Cloud is partner-site configuration.
 - **No code signing.** `signAndEditExecutable: false`. Valve launches the exe
   itself, so an Authenticode certificate buys nothing for a Steam-only launch.
   It also means the exe carries no icon or version metadata yet.
@@ -95,7 +131,7 @@ A portable directory target gains nothing from asar anyway.
 
 If someone does enable it later, it is not done until
 `node tools/desktopprobe.mjs --exe "dist-desktop/win-unpacked/TELLURIC VOID.exe"`
-passes all eleven checks against the packed build.
+passes all thirteen checks against the packed build.
 
 ### If `desktop:pack` fails with `EPERM ... rename win-unpacked.tmp`
 
@@ -173,12 +209,42 @@ on alt-tab desyncs every client.
 - **Electron `43.3.0`** — pinned exact (`--save-exact`), not a range.
 - **Playwright `1.62.1`** — the version `tools/desktopprobe.mjs` drives it with.
 - **electron-builder `26.15.3`** — pinned exact.
+- **steamworks.js `0.4.0`** — pinned exact. A native N-API module with prebuilt
+  binaries, so the pin is a pin to a *compiled ABI*, not just to an API.
+
+**steamworks.js `0.4.0` is bound to this Electron pin, and the binding runs
+both ways.** It supplies the prebuilt `steamworksjs.win32-x64-msvc.node` that
+the main process loads, and `electronEnableSteamOverlay()` — the call the entire
+invite path depends on, because this binding ships no programmatic invite. So
+the overlay warning above applies to a bump on *either* side:
+
+**Re-verify the overlay after any bump to Electron `43.3.0` or to
+steamworks.js `0.4.0`.** Overlay behaviour is not stable across Electron
+majors, and a native module's prebuilt binary is compiled against a particular
+Node ABI. Neither is a dependency refresh; both are changes to a shipped
+compatibility surface. Re-verification means the checkpoint below — eyes on the
+screen — not a green test run.
+
+Note also that `0.4.0` binds the **deprecated** `ISteamNetworking` P2P
+interface rather than `NetworkingSockets`/`NetworkingMessages`, and the co-op
+answer leg rides it. Accepted debt with a bounded life: docs/STEAM.md section 3
+Phase 2 replaces the transport wholesale. A future steamworks.js release that
+binds the modern interface is the trigger to revisit, not an incidental upgrade.
 
 **The pair is verified.** Playwright `1.62.1`'s `_electron` driver launches
 Electron `43.3.0` without hanging, in both probe modes: against
 `desktop/main.mjs` in dev, and against the packed `TELLURIC VOID.exe` via
-`--exe`. Eleven of eleven checks pass in each. No step-down was needed, and
-this paragraph is the record that none is warranted at these versions.
+`--exe`. Thirteen of thirteen checks pass in each — re-run on
+2026-08-13 with the Steam bridge in place, both modes, both records committed
+(`reviews/round8/desktop-probe-record.json` and `-packed.json`). No step-down
+was needed, and this paragraph is the record that none is warranted at these
+versions.
+
+The two runs also cover **both arms of the Steam status contract** on one box in
+one session, which is the point of asserting a shape rather than a value: dev
+answers `{"available":true,"appId":480,"personaName":...,"reason":null}` against
+the live Steam client, and packed answers `{"available":false, ..., "reason":
+"Cannot find module 'steamworks.js' ..."}`. Both satisfy the same check.
 
 Re-run both modes after any bump here — if `_electron.launch` ever hangs, the
 fix is environmental, not code: step Electron down to the newest major
@@ -188,3 +254,97 @@ Playwright supports, re-pin exact, and record the reason here.
 across Electron majors. Re-test the overlay after every bump. Never bump
 casually — a version change here is a change to a shipped compatibility
 surface, not a dependency refresh.
+
+### Overlay verification, Electron 43.3.0 (2026-08-13)
+
+`desktop/main.mjs` calls `electronEnableSteamOverlay()` before `app.whenReady()`,
+and **only** when `initSteam()` reported `available: true`. That call appends
+`in-process-gpu` and `disable-direct-composition` and attaches a 60 Hz repaint
+timer.
+
+**VERDICT: PROVISIONAL — no capability failure *detected*, and the one
+determinative check is still open.** Nothing found so far argues for an Electron
+bump, and on that basis the invite path ships. But the fact the slice's STOP
+clause actually turns on — whether the overlay *paints on screen* — was not
+verified, and neither piece of evidence below is capable of falsifying it. Read
+this section as "nothing is wrong yet", not as "the overlay works".
+
+**To close it,** somebody with eyes on this machine must observe both of these
+in one sitting of `npm run desktop`:
+
+> Pressing **Shift+Tab** visibly draws the Steam overlay over the running game,
+> and **Host via Steam -> Invite friend** on the co-op screen visibly opens
+> Steam's friend-picker dialog on top of the game.
+
+Task 4's two-seat checkpoint performs that exact gesture for real, so it costs
+no extra sitting. **If either fails to appear, that is the capability failure
+`docs/superpowers/plans/2026-08-12-steamworks-wiring.md`'s Global Constraints
+call a STOP: do not ship the invite button, and put the Electron-bump decision
+to the user.**
+
+What the run on this box (RTX 2070, driver 32.0.15.9174) did establish:
+
+- **The overlay hook injects.** `gameoverlayrenderer64.dll` is resident in the
+  Electron renderer process with Steam running, so Electron 43.3.0 does not
+  block the injection. Evidence: `reviews/round8/overlay/overlay-run.txt`.
+  **This proves the hook loaded, not that it painted** — a fully non-compositing
+  overlay would load the same DLL.
+- **Rendering does not regress.** WebGL still reaches the discrete GPU:
+  `ANGLE (NVIDIA, NVIDIA GeForce RTX 2070 (0x00001F07) Direct3D11 vs_5_0 ps_5_0,
+  D3D11)`, canvas 1584x861, title screen and the whole co-op screen render. The
+  `electronEnableSteamOverlay(true)` fallback (which skips only the repaint
+  timer) was therefore **not** needed.
+- **`openInviteDialog()` returns success**, and the co-op screen advances through
+  `Host via Steam` -> `Invite friend` against live Steam. **This is a bridge call
+  that did not throw**; `overlayStatus.ok` only records that
+  `electronEnableSteamOverlay()` itself did not throw. Neither says anything
+  about a dialog appearing.
+- **Why no screenshot settles it:** a background process cannot take the Windows
+  foreground, so a screen grab captures whichever window is on top instead — on
+  this box, during the attempt, the user's browser. It needs a human, not a
+  better script.
+
+**The cost: the support artifact, not the player-facing protection.** Be precise
+about which of the two Optimus mitigations `in-process-gpu` affects, because
+they are not the same mechanism and only one is hurt.
+
+- **The in-game detect-and-warn path is UNAFFECTED.** `docs/STEAM.md` section 1
+  names the mitigation as "log `WEBGL_debug_renderer_info` at startup and warn
+  in-game", which is `src/core/GpuTier.js`'s `probeRenderer()` feeding
+  `src/ui/GpuNotice.js`. That reads the string off the **live WebGL context in
+  the renderer**, which `in-process-gpu` does not touch. Proven by this run's own
+  capture, taken *with the overlay on*: `"renderer": "ANGLE (NVIDIA, NVIDIA
+  GeForce RTX 2070 ...)"` (`reviews/round8/overlay/overlay-run.txt`). A
+  Steam-present player on an Optimus laptop still gets the correct detection and
+  the same warning as anybody else.
+- **The `gpu-info.json` support dump is DEGRADED.** With the overlay off it is
+  7049 bytes and names the adapter, driver version, GL/D3D strings and overlay
+  support. With the overlay on it is 1248 bytes: `"glImplementationParts":
+  "(gl=none,angle=none)"`, `"inProcessGpu": true`, `"initializationTime": 0`, and
+  **the NVIDIA adapter entry is gone entirely**. That is `getGPUInfo('complete')`
+  being unable to report on a GPU that is no longer in its own process. Rendering
+  is unaffected.
+
+So the real cost is: **a support engineer triaging a Steam player's GPU report
+gets a near-empty `gpu-info.json`** and has to lean on the in-game notice and the
+player's own description instead. It is not a loss of Optimus protection for
+Steam players.
+
+`TELLURIC_NO_OVERLAY=1` skips the `enableOverlay()` call and nothing else. It
+exists so the pair of captures below stays re-derivable from this tree rather
+than from a hand edit somebody made once, and it is a **developer tool, not a
+field-recovery mechanism** — nobody sets an environment variable before
+double-clicking a game in their Steam library, so do not offer it to a customer
+as a way to produce a usable `gpu-info.json`. It cannot affect a real player
+either way: the condition is `steamStatus.available && !TELLURIC_NO_OVERLAY`, so
+with the variable unset (always, for a Steam Store launch) both the Steam-present
+and Steam-absent paths are exactly what they were before the line existed. Both
+captures are on disk: `reviews/round8/overlay/gpu-info-before.json`
+(`TELLURIC_NO_OVERLAY=1`) and `reviews/round8/overlay/gpu-info-after.json`
+(overlay on), same tree, same box, minutes apart, Steam running for both.
+
+**Steam-absent `init()` costs 26 ms** (25.89 / 27.07 / 27.32 ms across three
+runs with the Steam client actually shut down; ~110-157 ms when Steam is
+running, 78 ms while Steam is starting but not yet signed in). Moving the call
+before `app.whenReady()` therefore costs a Steam-less player about a fortieth of
+a second, and no registry fast-path guard is warranted.

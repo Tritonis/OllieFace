@@ -2149,6 +2149,11 @@ body.menu-open { cursor: default; }
   border-bottom: 1px solid var(--line);
 }
 
+/* Same trap as `.mbtn[hidden]` above: a class rule that sets `display` beats the
+   UA stylesheet's `[hidden] { display: none }`, so the Steam block would show in
+   every browser build if this were left out. */
+.coop-room[hidden] { display: none; }
+
 .coop-code {
   align-self: center;
   min-width: 5.2em;
