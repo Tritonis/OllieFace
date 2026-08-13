@@ -79,6 +79,15 @@ console.log('-- assembleBlob treats lobby data as untrusted');
   ok(bad('999999') === null, 'an absurd count is refused rather than driving a million getter calls');
   ok(assembleBlob(() => { throw new Error('bridge blew up'); }, 'sdp.offer') === null, 'a throwing getter is null, not an exception out of the poll');
   ok(bad('0') === '', 'a zero count is the empty blob, which is the honest round trip of one');
+
+  // The count guard has seven assertions above; the *part* guard had none. A
+  // getter is only ever fed `getFullLobbyData`'s output today, but this is the
+  // line that stops a loosened main-side contract turning a non-string into
+  // "undefined" spliced into the middle of an SDP blob.
+  for (const junk of [42, null, undefined, {}, ['x'], true]) {
+    const got = assembleBlob((k) => (k === 'sdp.offer.n' ? '2' : (k === 'sdp.offer.0' ? 'A' : junk)), 'sdp.offer');
+    ok(got === null, `a ${junk === null ? 'null' : typeof junk} part yields null rather than being stringified into the blob`);
+  }
 }
 
 console.log('-- the two prefixes do not read each other');
@@ -241,6 +250,63 @@ console.log('-- hosting: abandoned midway -- every failure point leaves no Steam
     ok(lobby._steamCleanup === null, `${name}: the dispose hook is cleared, so leave() will not double-fire`);
     delete globalThis.window;
   }
+}
+
+console.log('-- hosting: an invite too large for lobby data is refused, and leaves nothing');
+{
+  const b = makeBridge();
+  // 63 parts is the ceiling (the bridge caps a record at 64 keys and one of
+  // ours is the count), so 64 parts' worth of blob is the first refusal.
+  const lobby = makeLobby({ async createInvite() { return { id: 1, blob: 'q'.repeat(64 * CHUNK_CHARS) }; } });
+  let threw = null;
+  try { await hostViaSteam(lobby); } catch (e) { threw = e; }
+  ok(threw instanceof Error && /too large/.test(threw.message), `it is refused before the write (${threw && threw.message})`);
+  ok(!b.calls.some(([n]) => n === 'writeLobbyData'), 'nothing was written, so no half-blob sits in the lobby');
+  ok(b.calls.some(([n]) => n === 'leaveLobby'), 'and the Steam lobby was left');
+
+  // One part under the ceiling still goes through -- the guard is a ceiling,
+  // not an off-by-one that rejects a legal invite.
+  const b2 = makeBridge();
+  const ok63 = makeLobby({ async createInvite() { return { id: 1, blob: 'q'.repeat(63 * CHUNK_CHARS) }; } });
+  let threw2 = null;
+  try { await hostViaSteam(ok63); } catch (e) { threw2 = e; }
+  ok(threw2 === null, `exactly 63 parts is accepted (${threw2 && threw2.message})`);
+  ok(Object.keys(b2.calls.find(([n]) => n === 'writeLobbyData')[2]).length === 64, 'and writes 64 keys -- the bridge cap, exactly');
+  delete globalThis.window;
+}
+
+console.log('-- teardown: one failing step does not cancel the step that matters');
+{
+  // Minor-1's case: the unsubscribe closures are the bridge's own synchronous
+  // functions, and if the first one throws, `leaveLobby` must still run --
+  // otherwise the latch is set, nothing retries, and the lobby leaks.
+  const b = makeBridge({ onSignal() { return () => { throw new Error('removeListener blew up'); }; } });
+  const lobby = makeLobby();
+  await hostViaSteam(lobby);
+  let threw = null;
+  try { lobby._steamCleanup(); } catch (e) { threw = e; }
+  ok(threw === null, `the teardown did not throw at its caller (${threw && threw.message})`);
+  ok(b.calls.some(([n]) => n === 'stopSignalListen'), 'the step after the throwing one still ran');
+  ok(b.calls.some(([n, id]) => n === 'leaveLobby' && id === '109775241996081388'), 'and the Steam lobby was still left');
+  delete globalThis.window;
+}
+
+console.log('-- teardown: a rejecting bridge call is absorbed, not left unhandled');
+{
+  const b = makeBridge({ async leaveLobby() { throw new Error('IPC died'); } });
+  const lobby = makeLobby();
+  await hostViaSteam(lobby);
+  const unhandled = [];
+  const onUnhandled = (e) => unhandled.push(e);
+  process.on('unhandledRejection', onUnhandled);
+  lobby._steamCleanup();
+  // An unhandled rejection is reported at the end of the microtask checkpoint,
+  // so give it a real turn of the loop to be reported in.
+  await new Promise((r) => setTimeout(r, 50));
+  process.off('unhandledRejection', onUnhandled);
+  ok(unhandled.length === 0, `no unhandled rejection escaped the teardown (${unhandled.length})`);
+  void b;
+  delete globalThis.window;
 }
 
 console.log('-- hosting: a lobby with no id, and a Steam that refuses outright');

@@ -136,15 +136,35 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  * `Lobby.leave()` is the single place a co-op session ends — the Leave button,
  * a failed join, a new session — and a Steam lobby that outlives it is a lobby
  * the player is silently still sitting in, still joinable from their friends
- * list. `leave()` calls `_steamCleanup` and clears the slot; the function is
+ * list. `leave()` calls `_steamCleanup` and clears the slot; the whole thing is
  * idempotent, so calling it from a `catch` as well costs nothing.
+ *
+ * The steps are a list rather than one function body, and that is the whole
+ * point: each runs inside its own `try/catch`, so an earlier one failing cannot
+ * cancel a later one. Written as a single body, a throw from the first
+ * unsubscribe closure would skip `leaveLobby` — and because the latch is
+ * already set, nothing would ever retry it, leaking exactly the lobby this hook
+ * exists to release.
+ *
+ * Steps are *started* synchronously and in order, because the joiner's first
+ * step sets the flag its poll loop reads and that cannot wait for a microtask.
+ * The bridge calls are `ipcRenderer.invoke` promises and nothing awaits them —
+ * `Lobby.leave()` is synchronous and cannot — so their rejections are absorbed
+ * here rather than left to become unhandled rejections on a page that is only
+ * tidying up. Confirming they succeeded would mean making `leave()` async, and
+ * a teardown nobody can wait for is the honest shape of this.
  */
-function armCleanup(lobby, fn) {
+function armCleanup(lobby, steps) {
   let done = false;
   const once = () => {
     if (done) return;
     done = true;
-    try { fn(); } catch { /* teardown is best-effort by definition */ }
+    for (const step of steps) {
+      try {
+        const r = step();
+        if (r && typeof r.then === 'function') r.then(undefined, () => {});
+      } catch { /* the next step still has to run */ }
+    }
   };
   if (lobby) lobby._steamCleanup = once;
   return once;
@@ -174,12 +194,12 @@ export async function hostViaSteam(lobby, { maxMembers = 2 } = {}) {
   // behind: an abandoned Steam lobby is invisible to the player who abandoned it.
   let offSignal = null;
   let offFail = null;
-  const cleanup = armCleanup(lobby, () => {
-    offSignal?.();
-    offFail?.();
-    b.stopSignalListen?.();
-    b.leaveLobby?.(lobbyId);
-  });
+  const cleanup = armCleanup(lobby, [
+    () => offSignal?.(),
+    () => offFail?.(),
+    () => b.stopSignalListen?.(),
+    () => b.leaveLobby?.(lobbyId),
+  ]);
 
   try {
     const invite = await lobby.createInvite();
@@ -237,12 +257,14 @@ export async function joinViaSteam(lobby, lobbyId, { pollMs = POLL_MS, waitMs = 
   unwrap(await b.joinLobby(id), 'Steam lobby');
 
   let abandoned = false;
-  const cleanup = armCleanup(lobby, () => {
+  const cleanup = armCleanup(lobby, [
     // Read by the poll loop below: a player who pressed Leave while waiting for
-    // the host's offer must stop the timer, not merely be ignored by it.
-    abandoned = true;
-    b.leaveLobby?.(id);
-  });
+    // the host's offer must stop the timer, not merely be ignored by it. First
+    // in the list, and set synchronously, so it lands before anything else can
+    // throw its way past it.
+    () => { abandoned = true; },
+    () => b.leaveLobby?.(id),
+  ]);
 
   try {
     const deadline = Date.now() + waitMs;

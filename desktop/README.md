@@ -194,42 +194,88 @@ surface, not a dependency refresh.
 `desktop/main.mjs` calls `electronEnableSteamOverlay()` before `app.whenReady()`,
 and **only** when `initSteam()` reported `available: true`. That call appends
 `in-process-gpu` and `disable-direct-composition` and attaches a 60 Hz repaint
-timer. What the run on this box (RTX 2070, driver 32.0.15.9174) found:
+timer.
+
+**VERDICT: PROVISIONAL — no capability failure *detected*, and the one
+determinative check is still open.** Nothing found so far argues for an Electron
+bump, and on that basis the invite path ships. But the fact the slice's STOP
+clause actually turns on — whether the overlay *paints on screen* — was not
+verified, and neither piece of evidence below is capable of falsifying it. Read
+this section as "nothing is wrong yet", not as "the overlay works".
+
+**To close it,** somebody with eyes on this machine must observe both of these
+in one sitting of `npm run desktop`:
+
+> Pressing **Shift+Tab** visibly draws the Steam overlay over the running game,
+> and **Host via Steam -> Invite friend** on the co-op screen visibly opens
+> Steam's friend-picker dialog on top of the game.
+
+Task 4's two-seat checkpoint performs that exact gesture for real, so it costs
+no extra sitting. **If either fails to appear, that is the capability failure
+`docs/superpowers/plans/2026-08-12-steamworks-wiring.md`'s Global Constraints
+call a STOP: do not ship the invite button, and put the Electron-bump decision
+to the user.**
+
+What the run on this box (RTX 2070, driver 32.0.15.9174) did establish:
 
 - **The overlay hook injects.** `gameoverlayrenderer64.dll` is resident in the
-  Electron renderer process with Steam running. Electron 43.3.0 does not block
-  the injection, so the invite path is not dead and no version bump is called
-  for. Evidence: `reviews/round8/overlay/overlay-run.txt`.
+  Electron renderer process with Steam running, so Electron 43.3.0 does not
+  block the injection. Evidence: `reviews/round8/overlay/overlay-run.txt`.
+  **This proves the hook loaded, not that it painted** — a fully non-compositing
+  overlay would load the same DLL.
 - **Rendering does not regress.** WebGL still reaches the discrete GPU:
   `ANGLE (NVIDIA, NVIDIA GeForce RTX 2070 (0x00001F07) Direct3D11 vs_5_0 ps_5_0,
   D3D11)`, canvas 1584x861, title screen and the whole co-op screen render. The
   `electronEnableSteamOverlay(true)` fallback (which skips only the repaint
   timer) was therefore **not** needed.
-- **`openInviteDialog()` reports success** and the co-op screen advances through
-  `Host via Steam` -> `Invite friend` against live Steam.
-- **UNVERIFIED, needs one human minute:** that the overlay *visibly* composites
-  (Shift+Tab, and the invite dialog actually appearing). That needs eyes on the
-  screen; it cannot be screenshotted from here, because a background process
-  cannot take the Windows foreground and a screen grab then captures whatever
-  window is on top instead. The dll-injection evidence above is the strongest
-  proxy, not a substitute.
+- **`openInviteDialog()` returns success**, and the co-op screen advances through
+  `Host via Steam` -> `Invite friend` against live Steam. **This is a bridge call
+  that did not throw**; `overlayStatus.ok` only records that
+  `electronEnableSteamOverlay()` itself did not throw. Neither says anything
+  about a dialog appearing.
+- **Why no screenshot settles it:** a background process cannot take the Windows
+  foreground, so a screen grab captures whichever window is on top instead — on
+  this box, during the attempt, the user's browser. It needs a human, not a
+  better script.
 
-**The one real cost, and it is not free:** `in-process-gpu` guts the Optimus
-diagnostic this shell writes. With Steam absent (overlay off) `gpu-info.json` is
-7049 bytes and names the adapter, driver version, GL/D3D strings and overlay
-support. With the overlay on it is 1248 bytes: `"glImplementationParts":
-"(gl=none,angle=none)"`, `"inProcessGpu": true`, `"initializationTime": 0`, and
-**the NVIDIA adapter entry is gone entirely**. Rendering is unaffected — this is
-`getGPUInfo('complete')` being unable to report on a GPU that is no longer in
-its own process — but the diagnostic that `docs/STEAM.md` section 1 relies on to
-catch the Optimus wrong-adapter problem is worthless in a Steam-present session.
-A player report that needs it must be gathered with the overlay off — set
-`TELLURIC_NO_OVERLAY=1`, which skips the `enableOverlay()` call and nothing
-else, and exists so that the pair of captures below stays reproducible from this
-tree rather than from a hand edit somebody made once. Both are on disk:
-`reviews/round8/overlay/gpu-info-before.json` (`TELLURIC_NO_OVERLAY=1`) and
-`reviews/round8/overlay/gpu-info-after.json` (overlay on), same tree, same box,
-minutes apart, Steam running for both.
+**The cost: the support artifact, not the player-facing protection.** Be precise
+about which of the two Optimus mitigations `in-process-gpu` affects, because
+they are not the same mechanism and only one is hurt.
+
+- **The in-game detect-and-warn path is UNAFFECTED.** `docs/STEAM.md` section 1
+  names the mitigation as "log `WEBGL_debug_renderer_info` at startup and warn
+  in-game", which is `src/core/GpuTier.js`'s `probeRenderer()` feeding
+  `src/ui/GpuNotice.js`. That reads the string off the **live WebGL context in
+  the renderer**, which `in-process-gpu` does not touch. Proven by this run's own
+  capture, taken *with the overlay on*: `"renderer": "ANGLE (NVIDIA, NVIDIA
+  GeForce RTX 2070 ...)"` (`reviews/round8/overlay/overlay-run.txt`). A
+  Steam-present player on an Optimus laptop still gets the correct detection and
+  the same warning as anybody else.
+- **The `gpu-info.json` support dump is DEGRADED.** With the overlay off it is
+  7049 bytes and names the adapter, driver version, GL/D3D strings and overlay
+  support. With the overlay on it is 1248 bytes: `"glImplementationParts":
+  "(gl=none,angle=none)"`, `"inProcessGpu": true`, `"initializationTime": 0`, and
+  **the NVIDIA adapter entry is gone entirely**. That is `getGPUInfo('complete')`
+  being unable to report on a GPU that is no longer in its own process. Rendering
+  is unaffected.
+
+So the real cost is: **a support engineer triaging a Steam player's GPU report
+gets a near-empty `gpu-info.json`** and has to lean on the in-game notice and the
+player's own description instead. It is not a loss of Optimus protection for
+Steam players.
+
+`TELLURIC_NO_OVERLAY=1` skips the `enableOverlay()` call and nothing else. It
+exists so the pair of captures below stays re-derivable from this tree rather
+than from a hand edit somebody made once, and it is a **developer tool, not a
+field-recovery mechanism** — nobody sets an environment variable before
+double-clicking a game in their Steam library, so do not offer it to a customer
+as a way to produce a usable `gpu-info.json`. It cannot affect a real player
+either way: the condition is `steamStatus.available && !TELLURIC_NO_OVERLAY`, so
+with the variable unset (always, for a Steam Store launch) both the Steam-present
+and Steam-absent paths are exactly what they were before the line existed. Both
+captures are on disk: `reviews/round8/overlay/gpu-info-before.json`
+(`TELLURIC_NO_OVERLAY=1`) and `reviews/round8/overlay/gpu-info-after.json`
+(overlay on), same tree, same box, minutes apart, Steam running for both.
 
 **Steam-absent `init()` costs 26 ms** (25.89 / 27.07 / 27.32 ms across three
 runs with the Steam client actually shut down; ~110-157 ms when Steam is
