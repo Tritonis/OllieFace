@@ -4,6 +4,7 @@ import { ITEM_BY_ID, TIERS } from '../data/items.js';
 import { eliteAffixesFor } from '../data/enemies.js';
 import { SOURCES, CLEANSE, PACT, cleanseAmount, cleanseCost } from '../data/corruption.js';
 import { RNG } from '../core/MathUtil.js';
+import { Items } from '../systems/Items.js';
 import { getTextureSets, withRepeat, attachWorldSurface } from './Materials.js';
 
 /**
@@ -207,7 +208,18 @@ class Interactable {
    * a mark left after the teleporter has finished is automatically deeper.
    */
   markGreed(strength = 1) { this.ctx.corruption?.seed(this.position, strength); }
-  interact() {}
+  /**
+   * Resolve a press by `pawn` — the survivor who actually walked up and hit E,
+   * which on a host is not necessarily the survivor this machine is rendering.
+   * Every cost, every corruption debt and every payout inside an `interact`
+   * must resolve through this parameter (`Items.of(this.ctx, pawn)` for the
+   * purse), never through `ctx.player`.
+   *
+   * It defaults to the local viewer so the whole single-player surface — and
+   * every bare `interact()` in the tests, probes and realm harness — keeps
+   * meaning exactly what it meant before the parameter existed.
+   */
+  interact(pawn = this.ctx.player) {}
   update(dt) {}
   dispose() {
     this.group.traverse((o) => {
@@ -339,30 +351,33 @@ export class Chest extends Interactable {
     return `${name} ($${this.cost})`;
   }
 
-  interact() {
+  interact(pawn = this.ctx.player) {
     // No item system, no chest — every open ends in `rollItem` below, so the
     // void-credit branch must not become a path that reaches it without one.
     // (Unreachable from `main.js`, where Items is always registered and
     // registered before Corruption, but the old code returned `false` here and
     // this keeps that true.)
-    if (!this.ctx.items) return false;
+    const items = Items.of(this.ctx, pawn);
+    if (!items) return false;
     const cor = this.ctx.corruption;
-    if (this.ctx.items?.spendGold(this.cost)) {
+    if (items.spendGold(this.cost)) {
       // Paid open: gold as before, plus the tithe — and the mark. Every greed
       // act plants a seed (spec §1); paying in gold only makes it gentler.
-      cor?.feed(this.ctx.player, SOURCES.chestTithe[this.size] ?? SOURCES.chestTithe.small, this.position);
+      cor?.feed(pawn, SOURCES.chestTithe[this.size] ?? SOURCES.chestTithe.small, this.position);
       cor?.seed(this.position, 1);
     } else if (cor) {
       // Void credit: the most deliberate corruption choice in the game. Steep
-      // lump, and a seed planted where it happened.
-      cor.feed(this.ctx.player, SOURCES.voidCredit[this.size] ?? SOURCES.voidCredit.small, this.position);
+      // lump, and a seed planted where it happened. The debt is the opener's:
+      // a teammate's full purse must never pay, nor be billed for, a lid this
+      // pawn chose to force.
+      cor.feed(pawn, SOURCES.voidCredit[this.size] ?? SOURCES.voidCredit.small, this.position);
       cor.seed(this.position, this.size === 'legendary' ? 3 : this.size === 'large' ? 2 : 1);
     } else {
       return false;
     }
     this.used = true;
     this.openT = 0;
-    const id = this.ctx.items.rollItem(null, TIER_BIAS[this.size]);
+    const id = items.rollItem(null, TIER_BIAS[this.size]);
     this.ctx.interactables.spawnOrb(this.position, id, 1.2 * this._scale);
     this.ctx.audio?.play?.('chest', this.position);
     return true;
@@ -430,8 +445,8 @@ export class MultishopTerminal extends Interactable {
 
   prompt() { return `${ITEM_BY_ID.get(this.itemId)?.name || 'Item'} ($${this.cost})`; }
 
-  interact() {
-    if (!this.ctx.items?.spendGold(this.cost)) return false;
+  interact(pawn = this.ctx.player) {
+    if (!Items.of(this.ctx, pawn)?.spendGold(this.cost)) return false;
     this.used = true;
     this.markGreed();
     this.ctx.interactables.spawnOrb(this.position, this.itemId, 1.6);
@@ -629,15 +644,18 @@ export class AuricCairn extends Interactable {
   available() { return this.enabled && this.uses < this.maxUses; }
   prompt() { return `Auric Cairn ($${this.cost})`; }
 
-  interact() {
-    if (!this.ctx.items?.spendGold(this.cost)) return false;
+  interact(pawn = this.ctx.player) {
+    // One purse pays and the same purse rolls: the gamble is the payer's, so
+    // the luck applied to it is the payer's luck, off the payer's stream.
+    const items = Items.of(this.ctx, pawn);
+    if (!items?.spendGold(this.cost)) return false;
     this.uses++;
     this.markGreed();
     // 1-in-4 base; luck grants extra rolls exactly like a chance-on-hit item,
     // which is what makes Clover a shrine item as well as a combat item.
-    const win = this.ctx.items.roll(0.25, 1);
+    const win = items.roll(0.25, 1);
     if (win) {
-      const id = this.ctx.items.rollItem(null, TIER_BIAS.small);
+      const id = items.rollItem(null, TIER_BIAS.small);
       this.ctx.interactables.spawnOrb(this.position, id, 2.0);
       this.ctx.vfx?.burst?.(this.position, 0xffd23f);
       this.ctx.audio?.play?.('shrineWin', this.position);
@@ -732,8 +750,10 @@ export class IchorFont extends Interactable {
   available() { return this.enabled && this.uses < this.maxUses; }
   prompt() { return 'Ichor Font (pay 40% health)'; }
 
-  interact() {
-    const p = this.ctx.player;
+  interact(pawn = this.ctx.player) {
+    // The blood and the gold come from the same survivor — the font is a
+    // trade, and a trade with two different counterparties is a gift.
+    const p = pawn;
     if (!p?.alive) return false;
     const max = p.stats?.maxHealth || p.maxHealth || 100;
     const cost = max * 0.4;
@@ -746,7 +766,7 @@ export class IchorFont extends Interactable {
       position: this.position,
     });
     const payout = Math.round((cost * 1.2 + 25) * Math.pow(1.2, this.stageIndex));
-    this.ctx.items?.addGold(payout);
+    Items.of(this.ctx, p)?.addGold(payout);
     this.ctx.vfx?.burst?.(this.position, 0xd0203a);
     this.ctx.audio?.play?.('shrineBlood', this.position);
     if (this.uses >= this.maxUses) {
@@ -1050,13 +1070,13 @@ class GildedSnare extends Interactable {
   available() { return this.enabled && this.uses < this.maxUses; }
   prompt() { return 'Gilded Snare (take it — something answers)'; }
 
-  interact() {
+  interact(pawn = this.ctx.player) {
     const ctx = this.ctx;
     // The item is unconditional and it lands first. That ordering is the shrine:
     // the player is holding the reward before the cost arrives, which is a
     // different decision from earning it and a different one from gambling for
     // it, even though all three can pay the same item.
-    const id = ctx.items?.rollItem?.(null, { common: 0, uncommon: 46, legendary: 16 });
+    const id = Items.of(ctx, pawn)?.rollItem?.(null, { common: 0, uncommon: 46, legendary: 16 });
     if (!id) return false;
     this.uses++;
     this.markGreed();
@@ -1069,7 +1089,9 @@ class GildedSnare extends Interactable {
     const affixes = eliteAffixesFor(ctx.director?.difficultyCoefficient ?? 1);
     const affix = affixes.length ? ctx.rng.pick(affixes) : null;
     const hunters = summonRing(ctx, this.position, this.uses, 5.5, affix, 0xff3fa0);
-    const home = ctx.player?.position;
+    // Pointed at whoever took the offering — the cost has to follow the pawn
+    // that earned it off the site.
+    const home = pawn?.position;
     if (home) for (const h of hunters) h.e.home?.copy?.(home);
 
     if (this.uses >= this.maxUses) this.orb.material.emissiveIntensity = 0.05;
@@ -1168,7 +1190,14 @@ export class FallowVault extends Interactable {
       : `Fallow Vault (needs $${VAULT_MIN})`;
   }
 
-  interact() {
+  // NOT per-pawn, deliberately: the stake leaves via `commitToVault` and comes
+  // back next stage out of Progression, which has no owner for the carry — a
+  // remote pawn would pay in and watch the host get paid out. Rather than ship
+  // that, a non-viewer press is refused outright, which is exactly the
+  // reachability this shrine had before the roster scan existed. Lifting the
+  // refusal needs a per-pawn carry on Progression, not a change here.
+  interact(pawn = this.ctx.player) {
+    if (pawn !== this.ctx.player) return false;
     const stake = this._stake();
     if (stake < VAULT_MIN) return false;
     if (!this.ctx.items?.spendGold(stake)) return false;
@@ -1263,8 +1292,8 @@ export class MarrowKiln extends Interactable {
    * id — a total order, so the prompt and the burn can never disagree and two
    * peers looking at the same inventory name the same item.
    */
-  _fuel() {
-    const inv = this.ctx.items?.inventory?.() || [];
+  _fuel(pawn = this.ctx.player) {
+    const inv = Items.of(this.ctx, pawn)?.inventory?.() || [];
     let best = null;
     for (const e of inv) {
       const rank = KILN_TIER_ORDER.indexOf(e.def.tier);
@@ -1289,13 +1318,16 @@ export class MarrowKiln extends Interactable {
       : 'Marrow Kiln (nothing to burn)';
   }
 
-  interact() {
-    const f = this._fuel();
-    if (!f) return false;
+  interact(pawn = this.ctx.player) {
+    // The kiln burns what the presser is carrying and pays the presser: both
+    // halves of the trade come off one inventory, so they resolve together.
+    const items = Items.of(this.ctx, pawn);
+    const f = this._fuel(pawn);
+    if (!f || !items) return false;
     this.uses++;
     this.markGreed();
-    this.ctx.items.take(f.id, 1);
-    this.ctx.items.addGold(this._payout(f.def));
+    items.take(f.id, 1);
+    items.addGold(this._payout(f.def));
     this.ctx.vfx?.burst?.(this.position, 0xff5a12);
     this.ctx.audio?.play?.('shrineBlood', this.position);
     if (this.uses >= this.maxUses) this.fire.material.emissiveIntensity = 0.08;
@@ -1378,13 +1410,15 @@ export class ArgentFont extends Interactable {
   // net-layer change and deliberately not made here.
   prompt() { return `Argent Font — bleed ${this.yield()} corruption ($${this.cost})`; }
 
-  interact() {
+  interact(pawn = this.ctx.player) {
     const cor = this.ctx.corruption;
     // Nothing to bleed means nothing to sell; refuse before taking the gold.
     if (!cor || !(cor.world > 0)) { this.ctx.audio?.play?.('deny'); return false; }
-    if (!this.ctx.items?.spendGold(this.cost)) { this.ctx.audio?.play?.('deny'); return false; }
+    if (!Items.of(this.ctx, pawn)?.spendGold(this.cost)) { this.ctx.audio?.play?.('deny'); return false; }
     this.uses++;
-    cor.bleed(this.ctx.player, this.yield());
+    // Whoever paid gets their own ledger cleared first — `bleed` spends the
+    // buyer's own corruption before it spreads the remainder.
+    cor.bleed(pawn, this.yield());
     this.ctx.vfx?.burst?.(this.position, 0x9fd4ff);
     this.ctx.audio?.play?.('shrineWin', this.position);
     if (this.uses >= this.maxUses) this.water.material.emissiveIntensity = 0.05;
@@ -1402,20 +1436,14 @@ export class ArgentFont extends Interactable {
  * share of the most-corrupted teammate's ledger onto their own; world
  * corruption does not move. Solo runs are refused, not punished: the stone
  * only spawns for parties, and a party with clean teammates gets its use back.
- * The volunteer is `ctx.player` — the same host-resolution rule every shrine
- * already follows.
+ * The volunteer is whoever pressed E: the host scans the whole roster for the
+ * interact bit and hands the acting pawn to `interact`, so a client really can
+ * shoulder a share.
  *
- * KNOWN LIMIT, host-only for now: today only the host's pawn can volunteer.
- * Interactables resolve an interact request for `ctx.player` and nothing else
- * (see `Interactables.fixedUpdate`), and a remote pawn's BTN.INTERACT is
- * decoded but never read (Player.js:536) — so a client standing here gets the
- * prompt and pressing E does nothing, and the volunteer is always the host.
- * Every other shrine and chest shares that gap, but this is the first
- * mechanic whose whole point is the negotiation between two players, so the
- * pact's full value waits on the co-op interact / corruption-replication
- * plan (per-pawn interact routing, plus a chosen rather than auto-selected
- * donor). Until then read a client's dead E press as the missing subsystem,
- * not a broken shrine.
+ * REMAINING LIMIT: the donor is still auto-selected — the heaviest ledger that
+ * is not the volunteer's own — rather than chosen. A negotiated pact needs a
+ * selection UI and corruption replication (a client's gauge never leaves 0,
+ * see the Argent Font note above), and both wait on a later round.
  */
 export class CovenantStone extends Interactable {
   constructor(ctx, position) {
@@ -1454,9 +1482,9 @@ export class CovenantStone extends Interactable {
   available() { return this.enabled && this.uses < this.maxUses; }
   prompt() { return 'Covenant Stone — shoulder a share of the party\'s corruption'; }
 
-  interact() {
+  interact(pawn = this.ctx.player) {
     const cor = this.ctx.corruption;
-    const me = this.ctx.player;
+    const me = pawn;
     if (!cor || !me) { this.ctx.audio?.play?.('deny'); return false; }
     // The heaviest ledger that is not the volunteer's own.
     let donor = null, worst = 0;
@@ -2055,8 +2083,14 @@ export class Interactables {
 
     this._updateFocus(ctx);
     // Pressing E is a *request*: it rides the command stream as BTN.INTERACT
-    // and only the host turns it into an opened chest.
-    if (ctx.player?.interactPressed) this.requestInteract(ctx.player);
+    // and only the host turns it into an opened chest. The host answers the
+    // whole roster — a remote pawn's bit arrives through `applyCommand` and
+    // lands on its own `interactPressed` — while a client keeps asking only
+    // for itself (and `requestInteract` refuses it anyway). A solo host has a
+    // roster of one, so this is the same single call it always was.
+    if (ctx.authority && ctx.roster) {
+      for (const p of ctx.roster.all) if (p?.interactPressed) this.requestInteract(p);
+    } else if (ctx.player?.interactPressed) this.requestInteract(ctx.player);
   }
 
   /**
@@ -2068,7 +2102,10 @@ export class Interactables {
     if (!this.ctx.authority || !pawn) return false;
     const target = this._nearest(pawn);
     if (!target) return false;
-    return !!target.interact();
+    // The pawn goes with the request: every cost, debt and payout inside
+    // `interact` is charged to the survivor who pressed, not to the one this
+    // machine is rendering.
+    return !!target.interact(pawn);
   }
 
   /** Nearest available interactable within prompt range of `entity`. */

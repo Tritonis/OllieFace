@@ -390,6 +390,25 @@ export class Items {
     return pawn.items ?? null;
   }
 
+  /**
+   * Pay a kill out to the whole party. **Every registered pawn receives the
+   * full reward** — no split, no last-hit bonus. A shared purse would make
+   * co-op a poorer run than solo, and a split (or a last-hit rule) would make
+   * kill-stealing the optimal play against your own teammates; paying everyone
+   * in full keeps the only competition the one with the monsters.
+   *
+   * A roster of one takes the `else` branch, which is the literal call this
+   * replaced — single-player draws and emits exactly what it always did.
+   */
+  static rewardKillAll(ctx, victim) {
+    const roster = ctx.roster;
+    if (roster && roster.count > 1) {
+      for (const p of roster.all) Items.of(ctx, p)?.rewardKill(victim);
+    } else {
+      ctx.items?.rewardKill?.(victim);
+    }
+  }
+
   // -------------------------------------------------------------- inventory
 
   give(id, count = 1) {

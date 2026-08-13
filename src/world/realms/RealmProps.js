@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { ITEM_BY_ID, ITEMS_BY_TIER, TIERS } from '../../data/items.js';
+import { Items } from '../../systems/Items.js';
 import { getTextureSets, withRepeat, attachWorldSurface } from '../Materials.js';
 
 /**
@@ -159,8 +160,10 @@ export class RealmGateway extends RealmProp {
 
   available() { return this.enabled && !this.used; }
 
-  interact() {
-    if (this.cost > 0 && !this.ctx.items?.spendGold(this.cost)) return false;
+  // Realm props sit in `Interactables.list`, so the host hands them the acting
+  // pawn exactly like a chest — the toll comes off whoever opened the way.
+  interact(pawn = this.ctx.player) {
+    if (this.cost > 0 && !Items.of(this.ctx, pawn)?.spendGold(this.cost)) return false;
     this.used = true;
     this.ctx.audio?.play?.('shrineWin', this.position);
     this.ctx.vfx?.burst?.(this.position, 0x9b5cff);
@@ -292,8 +295,8 @@ export class MarketStall extends RealmProp {
     return `${def?.name || 'Item'} — ${def?.tier || 'common'} ($${this.cost})`;
   }
 
-  interact() {
-    if (!this.ctx.items?.spendGold(this.cost)) return false;
+  interact(pawn = this.ctx.player) {
+    if (!Items.of(this.ctx, pawn)?.spendGold(this.cost)) return false;
     this.used = true;
     this.ctx.interactables.spawnOrb(this.position, this.itemId, 1.6);
     this.screen.material.emissiveIntensity = 0.05;
@@ -345,8 +348,11 @@ export class Refinery extends RealmProp {
   available() { return this.enabled && this.uses < this.maxUses; }
   prompt() { return `Refinery — upgrade one item a tier ($${this.cost})`; }
 
-  interact() {
-    const inv = this.ctx.items?.inventory?.() || [];
+  interact(pawn = this.ctx.player) {
+    // One purse: the stack burned, the gold paid and the upgrade granted all
+    // belong to the survivor at the bowl.
+    const items = Items.of(this.ctx, pawn);
+    const inv = items?.inventory?.() || [];
     // Only ever consumes something it can actually improve, and says so by
     // simply refusing rather than by taking the gold and doing nothing.
     const pool = inv.filter((e) => {
@@ -354,13 +360,13 @@ export class Refinery extends RealmProp {
       return d && (d.tier === 'common' || d.tier === 'uncommon');
     });
     if (!pool.length) return false;
-    if (!this.ctx.items.spendGold(this.cost)) return false;
+    if (!items.spendGold(this.cost)) return false;
     this.uses++;
     const from = this.ctx.rng.pick(pool);
     const fromDef = ITEM_BY_ID.get(from.id);
     const toTier = fromDef.tier === 'common' ? 'uncommon' : 'legendary';
-    const id = this.ctx.items.rollItem(toTier);
-    this.ctx.items.take?.(from.id, 1);
+    const id = items.rollItem(toTier);
+    items.take?.(from.id, 1);
     this.ctx.interactables.spawnOrb(this.position, id, 1.8);
     this.ctx.vfx?.burst?.(this.position, 0x74d0ff);
     this.ctx.audio?.play?.('shrineWin', this.position);

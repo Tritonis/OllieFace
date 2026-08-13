@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { Items } from './Items.js';
 
 /**
  * Combat is the single damage authority. Every point of damage in the game —
@@ -633,7 +634,11 @@ export class Combat {
     // and an income that quietly skipped them would read as the drop table
     // being broken. This is only reachable on the host: applyDamage early-
     // returns for clients, so no client ever mints its own gold.
-    ctx.items?.rewardKill?.(victim);
+    //
+    // Every pawn in the roster is paid the full amount — see `rewardKillAll`
+    // for why co-op does not split the purse. A solo run has a roster of one
+    // and takes the same single call it always did.
+    Items.rewardKillAll(ctx, victim);
 
     if (source?.isPlayer && depth < MAX_PROC_DEPTH) {
       this._dispatch('onKill', { victim, source, position, procDepth: depth + 1, procCoefficient: 1 });
