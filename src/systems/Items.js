@@ -234,7 +234,16 @@ export class Items {
       // `startEquipmentId` is the pre-run pick from the equipment screen
       // (Menus.launch); absent — the Random card, or a run started before the
       // picker existed — the slot still seeds off the shared rng as before.
-      if (!this.equipmentId) this.setEquipment(this.ctx.startEquipmentId || this.rollEquipment());
+      //
+      // Owner-gated: `setEquipment` has no owner-scoping of its own — it
+      // unconditionally emits `equipmentChanged` on the shared bus and plays
+      // the pickup SFX, and unfiltered consumers (`Profile.discover`, HUD's
+      // resync) cannot tell a satellite's roll from the local viewer's. A
+      // satellite seeding here would attribute its equipment to the local
+      // player's persistent profile and double the pickup jingle on every
+      // stage transition. Real per-owner directed replication is Task 5's
+      // job; until then a satellite's slot simply stays unseeded.
+      if (!this.owner && !this.equipmentId) this.setEquipment(this.ctx.startEquipmentId || this.rollEquipment());
     }));
 
     // Everything below is per-owner filtered in Task 5 (the simulation
