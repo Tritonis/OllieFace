@@ -157,12 +157,63 @@ function bridge() {
   } catch { return null; }
 }
 
+/**
+ * How long a bridge call taken BEFORE a teardown latch exists may go unanswered.
+ *
+ * Generous by an order of magnitude — opening a Steam lobby is a sub-second
+ * round trip in the field — because this bound is not a performance budget, it
+ * is the difference between a hung Steam client costing one dead button press
+ * and costing the whole co-op feature for the life of the page.
+ */
+const BRIDGE_TIMEOUT_MS = 15000;
+
+/**
+ * A bridge call that never answers, bounded (fix round 4).
+ *
+ * `ipcRenderer.invoke` rejects when the main handler throws, but *hangs* when
+ * the handler awaits something that never settles — and every Steam call in
+ * `desktop/main.mjs` awaits a steamworks.js promise that a Steam callback
+ * resolves, with no timeout anywhere in that chain. A Steam client that is hung,
+ * updating, or mid-restart simply never fires the callback.
+ *
+ * That matters in exactly one window: between `beginSteamOp` taking the
+ * in-flight claim and `armCleanup` parking a latch on the Lobby. Past
+ * `armCleanup` the Leave button is the recovery and it works, by design. Before
+ * it there is no latch for `Lobby.leave()` to run, so the claim is held forever
+ * and every subsequent "Host via Steam" and every accepted invite is refused as
+ * busy, permanently, with no player-visible way back. A stuck latch is as bad as
+ * the race it fixes, so every call in that window is bounded here.
+ *
+ * The bound is a rejection with an actionable sentence, and the operation's own
+ * `finally` releases the claim on the way out — the ordinary failure path, not a
+ * new one. The main process may still finish the call afterwards and be left
+ * holding a lobby the renderer forgot; `releaseAllSteamState()` frees it on
+ * window teardown, and that is strictly less bad than a permanent denial.
+ *
+ * `ms` is the same kind of seam `joinViaSteam`'s `pollMs`/`waitMs` already are:
+ * both entry points take `bridgeMs` so a test can drive the unanswered-call path
+ * in milliseconds instead of a quarter of a minute. Nothing in the app passes it.
+ */
+function withTimeout(promise, what, ms = BRIDGE_TIMEOUT_MS) {
+  let timer = null;
+  const bound = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(
+      `${what}: Steam did not answer in time. `
+      + 'It may be busy or updating — try again in a moment, or use a room code or an invite code.',
+    )), ms);
+  });
+  // `race` attaches a handler to both, so a late rejection from `promise` is
+  // absorbed rather than surfacing as an unhandled rejection; `finally` clears
+  // the timer on either outcome, so no bound outlives the call it bounds.
+  return Promise.race([Promise.resolve(promise), bound]).finally(() => clearTimeout(timer));
+}
+
 /** True only inside the Electron shell, with Steam running and answering. */
-export async function steamAvailable() {
+export async function steamAvailable(bridgeMs = BRIDGE_TIMEOUT_MS) {
   const b = bridge();
   if (!b || typeof b.status !== 'function') return false;
   try {
-    const s = await b.status();
+    const s = await withTimeout(b.status(), 'Steam', bridgeMs);
     return s?.available === true;
   } catch { return false; }
 }
@@ -204,10 +255,10 @@ function unwrap(res, what) {
   return res;
 }
 
-async function requireSteam() {
+async function requireSteam(bridgeMs) {
   const b = bridge();
   if (!b) throw new Error('This build has no Steam bridge — use a room code or an invite code.');
-  if (!(await steamAvailable())) throw new Error('Steam is not running, or did not answer. Use a room code or an invite code.');
+  if (!(await steamAvailable(bridgeMs))) throw new Error('Steam is not running, or did not answer. Use a room code or an invite code.');
   return b;
 }
 
@@ -246,10 +297,15 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  *    (a teardown, a rejected promise settling after the fact) can never clear a
  *    newer operation's claim.
  *
- * Every exit path clears it: `finally` covers resolve, throw and the 60 s bound,
- * and the releaser is also the first step of the operation's `armCleanup` list,
- * so a `Lobby.leave()` mid-poll frees the latch at once rather than a poll tick
- * later.
+ * Every exit path clears it, and fix round 4 is what makes that true rather than
+ * nearly true. `finally` covers resolve, throw and the 60 s bound; the releaser
+ * is also the first step of the operation's `armCleanup` list, so a
+ * `Lobby.leave()` mid-poll frees the latch at once rather than a poll tick later.
+ * The gap was the window *before* `armCleanup` is armed — `requireSteam()` and
+ * the opening `hostLobby`/`joinLobby` — where there is no latch for `leave()` to
+ * run and a bridge call that never answers held the claim for the life of the
+ * page. Those calls are now bounded (`withTimeout`), so that window ends in a
+ * rejection and a released claim like every other.
  */
 function beginSteamOp(lobby, kind) {
   const busy = lobby && lobby._steamOp;
@@ -304,6 +360,13 @@ function armCleanup(lobby, steps, { holds = null, release = [] } = {}) {
   // previous latch runs its listener teardown and skips its `release` group. The
   // new latch inherits the duty of freeing the lobby, and it is the only latch
   // that can — `done` has already fired on the old one.
+  //
+  // Fix round 4 moved the re-advertise path off this branch: it lifts the previous
+  // latch off the slot itself and runs it only once the replacement listeners are
+  // live, because running it *here* tore the running session's ears off at the top
+  // of an attempt that might still fail. This same-`holds` case is kept as the
+  // backstop for any future caller that takes a lobby over without doing that —
+  // skipping the release group is the correct answer for one either way.
   const previous = lobby && lobby._steamCleanup;
   if (typeof previous === 'function') {
     lobby._steamCleanup = null;      // cleared first: a latch must never re-enter itself
@@ -344,21 +407,21 @@ function armCleanup(lobby, steps, { holds = null, release = [] } = {}) {
  * two-seat feature, and re-minting per joiner is the relay path's problem to
  * have (`Lobby.js:261-272`).
  */
-export async function hostViaSteam(lobby, { maxMembers = 2 } = {}) {
+export async function hostViaSteam(lobby, { maxMembers = 2, bridgeMs = BRIDGE_TIMEOUT_MS } = {}) {
   // Synchronous, before the first `await`: see `beginSteamOp`. Nothing below
   // this line can begin while another Steam operation on this Lobby is still
   // undecided, which is what makes "decide, then release" true on every path
   // rather than only on the ones `lobby.mode` can see.
   const endOp = beginSteamOp(lobby, 'host');
   try {
-    return await hostViaSteamBody(lobby, maxMembers, endOp);
+    return await hostViaSteamBody(lobby, maxMembers, endOp, bridgeMs);
   } finally {
     endOp();
   }
 }
 
-async function hostViaSteamBody(lobby, maxMembers, endOp) {
-  const b = await requireSteam();
+async function hostViaSteamBody(lobby, maxMembers, endOp, bridgeMs) {
+  const b = await requireSteam(bridgeMs);
 
   // FIX ROUND 2 (re-review, the host-then-accept-invite finding's mirror
   // case). Checked before anything below touches the bridge — no new Steam
@@ -395,9 +458,41 @@ async function hostViaSteamBody(lobby, maxMembers, endOp) {
   if (reusing) {
     lobbyId = lobby._steamLobbyId;
   } else {
-    ({ lobbyId } = unwrap(await b.hostLobby(maxMembers), 'Steam lobby'));
+    ({ lobbyId } = unwrap(await withTimeout(b.hostLobby(maxMembers), 'Steam lobby', bridgeMs), 'Steam lobby'));
     if (typeof lobbyId !== 'string' || !lobbyId) throw new Error('Steam lobby: no lobby id came back.');
   }
+
+  // HOLD THE OLD SESSION'S LISTENERS UNTIL THEIR REPLACEMENTS EXIST (fix round 4).
+  //
+  // On a re-advertise the running session's latch is parked on this same Lobby
+  // holding this same lobby id, and its steps ARE that session's `onSignal` and
+  // `onSignalFail` subscriptions. Round 3 let `armCleanup` run it here, at the top
+  // of the attempt, so those subscriptions came down before `createInvite()` — an
+  // ICE gather capped at 4 s — and their replacements were not registered until
+  // after `writeLobbyData` and `startSignalListen`. On the success path that is
+  // seconds in which an answer arriving is dropped on the floor (`preload.cjs`
+  // does not buffer). On the failure path there is no replacement at all: the
+  // catch keeps the lobby, `stopSignalListen` sits in the skipped `release` group,
+  // and the session is left open, still listed in the friends list, still offering
+  // an offer a friend can read and answer, and structurally unable to hear that
+  // answer. Advertised-but-deaf is worse than not advertising.
+  //
+  // So the previous latch is lifted off the slot here — synchronously, in the
+  // same turn `reusing` was decided, with no await in between — held in this
+  // closure, and run only by `handOver()` once the new listen and both new
+  // subscriptions are live. If the attempt fails first it goes straight back onto
+  // the slot, and the running session is exactly as it was found: session, Steam
+  // lobby AND listeners.
+  let inherited = null;
+  if (reusing && lobby && typeof lobby._steamCleanup === 'function'
+    && lobby._steamCleanup.holds === lobbyId) {
+    inherited = lobby._steamCleanup;
+    lobby._steamCleanup = null;
+  }
+  // Always `{ keepLobby: true }`: the inherited latch holds the very lobby this
+  // operation is taking over, so it runs its listener teardown and never its
+  // release group — freeing that lobby is this operation's duty now.
+  const handOver = () => { const prev = inherited; inherited = null; prev?.({ keepLobby: true }); };
 
   // Armed before anything else can fail, so every path below leaves nothing
   // behind: an abandoned Steam lobby is invisible to the player who abandoned it.
@@ -410,6 +505,10 @@ async function hostViaSteamBody(lobby, maxMembers, endOp) {
   ];
   const cleanup = armCleanup(lobby, [
     () => endOp(),
+    // A `Lobby.leave()` landing before the hand-over still has to take the old
+    // session's subscriptions down: this operation picked them up off the slot,
+    // so nobody else can reach them any more.
+    () => handOver(),
     () => offSignal?.(),
     () => offFail?.(),
   ], { holds: lobbyId, release });
@@ -458,16 +557,49 @@ async function hostViaSteamBody(lobby, maxMembers, endOp) {
     }) || null;
 
     lobby._set?.('roomOpen', { code: lobbyId, steam: true });
+    // Last, after every statement that can throw. The replacement listen and both
+    // replacement subscriptions are live, and nothing above has awaited since
+    // `startSignalListen` returned, so the old subscriptions come down in the same
+    // synchronous turn the new ones went up: no packet can fall between them, and
+    // none can arrive twice.
+    handOver();
     return { lobbyId };
   } catch (err) {
+    // NOTHING HERE MAY TOUCH THE LATCH SLOT UNLESS IT IS STILL OURS (fix round 4).
+    //
+    // `endOp` is a teardown step, so a `Lobby.leave()` frees the in-flight claim
+    // the instant it is pressed while this operation is still parked in an await
+    // — `createInvite`'s ICE gather alone runs up to 4 s. The next gesture the
+    // player makes is therefore accepted, arms its own latch, and this stale catch
+    // then arrives to find a slot it does not own. Running that latch (round 3 ran
+    // it through `armCleanup`) releases a Steam lobby whose operation has not
+    // finished deciding — the round-2 defect with the direction of time reversed.
+    // Blanking it (round 2's line, inherited unchanged) orphans that lobby and
+    // turns the player's next Leave into a no-op, so the abandoned operation runs
+    // on and can drop them into a game they said no to.
+    //
+    // `cleanup` itself is always safe to call: it is `once`, so if the slot has
+    // moved on it has already run and this is a no-op.
+    const ours = !!(lobby && lobby._steamCleanup === cleanup);
+    // Reclaim the inherited latch before our own teardown can spend it — on a
+    // failure the old session keeps its listeners, so the hand-over must not fire.
+    const previous = inherited;
+    inherited = null;
     // A failed re-advertise must not cost the player the session it was
     // re-advertising: the lobby it reused is the one still carrying the running
-    // game, so its listeners come down and the lobby itself stays open — with a
-    // bare latch re-armed over it, because otherwise `Lobby.leave()` would have
-    // nothing left to free it with and Important 2's orphan would be back.
+    // game, so the lobby itself stays open.
     cleanup({ keepLobby: reusing });
-    if (reusing) armCleanup(lobby, [], { holds: lobbyId, release });
-    else if (lobby) lobby._steamCleanup = null;
+    if (ours) {
+      lobby._steamCleanup = null;
+      // Put the running session back exactly as it was found: this is the latch
+      // that still owns its listeners and still frees its lobby.
+      if (previous) lobby._steamCleanup = previous;
+      // Reusing with no inherited latch — a `leave()` took it, or this session
+      // never armed one. The lobby is kept, so something must still be able to
+      // free it or Important 2's orphan comes back through the failure path. The
+      // slot is null above, so this arms over nothing and runs nothing.
+      else if (reusing) armCleanup(lobby, [], { holds: lobbyId, release });
+    }
     throw err;
   }
 }
@@ -479,20 +611,20 @@ async function hostViaSteamBody(lobby, maxMembers, endOp) {
  * `undefined`, the same `joining`/`answerReady`/`connected` statuses from
  * `joinManual`, and a plain `Error` on failure.
  */
-export async function joinViaSteam(lobby, lobbyId, { pollMs = POLL_MS, waitMs = OFFER_WAIT_MS } = {}) {
+export async function joinViaSteam(lobby, lobbyId, { pollMs = POLL_MS, waitMs = OFFER_WAIT_MS, bridgeMs = BRIDGE_TIMEOUT_MS } = {}) {
   // Synchronous, before the first `await`: see `beginSteamOp`. The poll loop
   // below can run for a minute with `lobby.mode` still reading `'single'`, and
   // this latch is the only thing that is true for the whole of it.
   const endOp = beginSteamOp(lobby, 'join');
   try {
-    return await joinViaSteamBody(lobby, lobbyId, pollMs, waitMs, endOp);
+    return await joinViaSteamBody(lobby, lobbyId, pollMs, waitMs, endOp, bridgeMs);
   } finally {
     endOp();
   }
 }
 
-async function joinViaSteamBody(lobby, lobbyId, pollMs, waitMs, endOp) {
-  const b = await requireSteam();
+async function joinViaSteamBody(lobby, lobbyId, pollMs, waitMs, endOp, bridgeMs) {
+  const b = await requireSteam(bridgeMs);
   const id = String(lobbyId ?? '');
   if (!/^\d+$/.test(id)) throw new Error('Steam lobby: that is not a lobby id.');
 
@@ -519,7 +651,7 @@ async function joinViaSteamBody(lobby, lobbyId, pollMs, waitMs, endOp) {
       : "Steam lobby: you're already in a game. Leave it first, then accept another Steam invite.");
   }
 
-  unwrap(await b.joinLobby(id), 'Steam lobby');
+  unwrap(await withTimeout(b.joinLobby(id), 'Steam lobby', bridgeMs), 'Steam lobby');
 
   let abandoned = false;
   const cleanup = armCleanup(lobby, [
@@ -563,7 +695,14 @@ async function joinViaSteamBody(lobby, lobbyId, pollMs, waitMs, endOp) {
     // `Lobby.leave()` like the host's.
   } catch (err) {
     cleanup();
-    if (lobby) lobby._steamCleanup = null;
+    // Only ever clear a slot this operation still owns — the same rule, and the
+    // same reasons, as `hostViaSteamBody`'s catch. A join abandoned by
+    // `Lobby.leave()` settles up to a poll tick (1 s) later, and the invite the
+    // player accepted instead has already armed its own latch by then. Blanking it
+    // orphaned that Steam lobby for the life of the page AND made the player's
+    // next Leave a no-op, so the new join's poll loop ran on and dropped them into
+    // a game they had just declined.
+    if (lobby && lobby._steamCleanup === cleanup) lobby._steamCleanup = null;
     throw err;
   }
 }
