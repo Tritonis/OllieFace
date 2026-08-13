@@ -10,6 +10,7 @@ import { Combat } from './systems/Combat.js';
 import { Corruption } from './systems/Corruption.js';
 import { Blight } from './systems/Blight.js';
 import { Roster } from './systems/Roster.js';
+import { Revive } from './systems/Revive.js';
 import { Items } from './systems/Items.js';
 import { Artifacts } from './systems/Artifacts.js';
 import { Director } from './systems/Director.js';
@@ -70,6 +71,11 @@ engine.add(new Blight());
 // ordering reason Combat sits above.
 engine.add(new Roster());
 engine.add(new Player());
+// After Player, whose `fixedUpdate` writes this tick's command onto every pawn
+// the host simulates (the hold Revive's scan reads) and moves them to the
+// positions it measures. Before Progression, which pumps `Interactables` — the
+// interact press has to be claimed as a revive before a chest can spend it.
+engine.add(new Revive());
 engine.add(new Director());
 engine.add(new Progression());
 // After Progression, which owns the stage flow it hooks into and the

@@ -2114,8 +2114,11 @@ export class Interactables {
     // lands on its own `interactPressed` — while a client keeps asking only
     // for itself (and `requestInteract` refuses it anyway). A solo host has a
     // roster of one, so this is the same single call it always was.
+    // `reviving` is `Revive`'s flag, written earlier this tick: that pawn's E is
+    // already spent holding a teammate up, and must not also open the chest it
+    // happens to be standing next to.
     if (ctx.authority && ctx.roster) {
-      for (const p of ctx.roster.all) if (p?.interactPressed) this.requestInteract(p);
+      for (const p of ctx.roster.all) if (p?.interactPressed && p.reviving !== true) this.requestInteract(p);
     } else if (ctx.player?.interactPressed) this.requestInteract(ctx.player);
   }
 

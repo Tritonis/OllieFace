@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { Player } from '../src/entities/Player.js';
 import { Combat } from '../src/systems/Combat.js';
+import { Roster } from '../src/systems/Roster.js';
+import { Revive } from '../src/systems/Revive.js';
+import { Interactables } from '../src/world/Interactables.js';
 import { REVIVE } from '../src/data/revive.js';
 import { ESTATE, BTN } from '../src/net/Protocol.js';
 
@@ -236,6 +239,265 @@ console.log('a press buffered on the exact tick a pawn goes down dies with the t
   p.applyCommand(cmd, 1 / 60);
   ok(p.interactPressed === false, 'the buffered interact press does not act');
   ok(p.equipPressed === false, 'the buffered equip press does not act');
+}
+
+// -------------------------------------------------------------- Revive system
+//
+// Real `Revive`, real `Roster`, real `Combat`, fake world — the same hand-built
+// ctx the Combat fork above uses, with a real roster of plain pawns so the
+// targetable filter and the wipe count are the shipping ones. Every clock is
+// stepped at the engine's fixed `h`, so a step count in a test is the number of
+// frames a player would actually stand there.
+
+const H = 1 / 60;
+const BLEED_STEPS = Math.round(REVIVE.BLEEDOUT_S / H);
+const REVIVE_STEPS = Math.round(REVIVE.REVIVE_S / H);
+
+function makeBus(log) {
+  const map = new Map();
+  return {
+    emit(name, payload) {
+      log.push({ name, payload });
+      for (const fn of [...(map.get(name) || [])]) fn(payload);
+    },
+    on(name, fn) {
+      if (!map.has(name)) map.set(name, []);
+      map.get(name).push(fn);
+    },
+  };
+}
+
+function makeRosterPawn(x, netId) {
+  return {
+    isPlayer: true, alive: true, downed: false, bleedout: 0, revive: 0,
+    team: 'player', radius: 0.45, health: 100, maxHealth: 100, shield: 0,
+    netId, stats: { armor: 0, maxHealth: 100 },
+    // Identity carrier for the P2 seam: a pawn's build is never torn down, so
+    // this exact object must survive death and stage return.
+    items: { tag: 'items-' + netId },
+    position: new THREE.Vector3(x, 0, 0), velocity: new THREE.Vector3(),
+    interactPressed: false,
+  };
+}
+
+/** `count` pawns in the roster at 10 m spacing; pawn 0 is `ctx.player`. */
+function makeReviveWorld(count, xs = null) {
+  const log = [];
+  const ctx = {
+    rng: makeRng(), time: 10, authority: true, scene: new THREE.Scene(),
+    events: makeBus(log),
+    stage: { sampleHeight: () => 0, spawnPoint: () => new THREE.Vector3() },
+  };
+  const roster = new Roster();
+  roster.init(ctx);
+  const combat = new Combat();
+  combat.init(ctx);
+  const pawns = [];
+  for (let i = 0; i < count; i++) pawns.push(roster.add(makeRosterPawn(xs ? xs[i] : i * 10, 30 + i)));
+  ctx.player = pawns[0];
+  const revive = new Revive();
+  revive.init(ctx);
+  return {
+    ctx, combat, roster, revive, pawns, log,
+    step(n = 1) { for (let i = 0; i < n; i++) revive.fixedUpdate(ctx, H); },
+    named(n) { return log.filter((e) => e.name === n); },
+  };
+}
+
+console.log('a downed pawn nobody comes for bleeds out on the exact tick its clock runs out');
+{
+  const w = makeReviveWorld(2);
+  const [down, mate] = w.pawns;
+  w.combat.applyDamage(down, 500, {});
+  ok(down.downed === true, 'the pawn is downed');
+  void mate;
+
+  w.step(BLEED_STEPS - 1);
+  ok(down.downed === true, `still downed after ${BLEED_STEPS - 1} steps`);
+  ok(w.named('playerBledOut').length === 0, 'no playerBledOut yet');
+
+  w.step(1);
+  ok(down.downed === false, `downed cleared on step ${BLEED_STEPS}`);
+  ok(down.alive === false, 'and the pawn is dead');
+  ok(w.named('playerBledOut').length === 1, 'exactly one playerBledOut');
+  ok(w.named('playerBledOut')[0]?.payload.player === down, 'playerBledOut names the pawn');
+  ok(w.named('playerDead').length === 1, 'exactly one playerDead');
+  const iBled = w.log.findIndex((e) => e.name === 'playerBledOut');
+  const iDead = w.log.findIndex((e) => e.name === 'playerDead');
+  ok(iBled >= 0 && iDead > iBled, 'playerBledOut is announced before playerDead');
+}
+
+console.log('a teammate standing over the body picks it up in exactly REVIVE_S of frames');
+{
+  const w = makeReviveWorld(2, [0, 2]);
+  const [down, mate] = w.pawns;
+  w.combat.applyDamage(down, 500, {});
+  mate.interactPressed = true;
+
+  w.step(REVIVE_STEPS - 1);
+  ok(down.downed === true, `still downed after ${REVIVE_STEPS - 1} steps`);
+  ok(mate.reviving === true, 'the reviver is flagged `reviving` while the scan holds them');
+
+  w.step(1);
+  ok(down.downed === false, `revived on step ${REVIVE_STEPS}`);
+  ok(down.alive === true, 'and never died');
+  ok(down.health === REVIVE.REVIVE_HEALTH_FRAC * down.maxHealth,
+    `stands up at ${REVIVE.REVIVE_HEALTH_FRAC * 100}% max health`);
+  ok(down.bleedout === 0 && down.revive === 0, 'both clocks are cleared');
+  ok(w.named('playerRevived').length === 1, 'exactly one playerRevived');
+  ok(w.named('playerRevived')[0]?.payload.player === down, 'playerRevived names the pawn, by reference');
+  ok(w.named('playerRevived')[0]?.payload.by === mate, 'and names the reviver');
+  ok(w.named('playerDead').length === 0, 'no playerDead');
+
+  w.step(1);
+  ok(mate.reviving !== true, 'the flag is cleared once there is nobody left to pick up');
+}
+
+console.log('a reviver who walks away loses the progress at twice the speed they made it');
+{
+  const w = makeReviveWorld(2, [0, 2]);
+  const [down, mate] = w.pawns;
+  w.combat.applyDamage(down, 500, {});
+  mate.interactPressed = true;
+  w.step(REVIVE_STEPS / 2);
+  ok(Math.abs(down.revive - 0.5) < 1e-6, 'half-way there');
+
+  // Interrupted two ways at once, because both must stop the scan: the press
+  // is released and the reviver steps out of the radius.
+  mate.interactPressed = false;
+  mate.position.x = REVIVE.REVIVE_RADIUS + 5;
+  w.step(REVIVE_STEPS / 4);
+  ok(Math.abs(down.revive) < 1e-9, `drained in ${REVIVE_STEPS / 4} steps — twice as fast as it filled`);
+  ok(down.downed === true, 'and the pawn is still downed');
+  ok(down.alive === true, 'still not dead — the bleed-out clock is the only thing that kills');
+
+  w.step(30);
+  ok(down.revive === 0, 'progress never goes negative');
+}
+
+console.log('two clocks run independently: reviving one body does not touch the other');
+{
+  const w = makeReviveWorld(3, [0, 30, 2]);
+  const [a, b, c] = w.pawns;
+  w.combat.applyDamage(a, 500, {});
+  w.step(60);
+  w.combat.applyDamage(b, 500, {});
+  ok(a.downed && b.downed && Roster.targetable(c), 'two down, one still standing');
+
+  c.interactPressed = true;
+  w.step(REVIVE_STEPS);
+  ok(a.downed === false && a.alive === true, 'the reachable body is up');
+  ok(a.health === REVIVE.REVIVE_HEALTH_FRAC * a.maxHealth, 'at the revive fraction');
+  ok(b.downed === true, 'the far body is still down');
+  ok(b.revive === 0, 'and made no progress of its own');
+  // b went down 60 steps after a and has been bleeding for REVIVE_STEPS since.
+  const expected = REVIVE.BLEEDOUT_S - REVIVE_STEPS * H;
+  ok(Math.abs(b.bleedout - expected) < 1e-6, `the far body's own clock reads ${expected.toFixed(2)}s`);
+}
+
+console.log('a downed pawn cannot pick anyone up — the reviver must be a legal target');
+{
+  const w = makeReviveWorld(3, [0, 2, 30]);
+  const [a, b, c] = w.pawns;
+  w.combat.applyDamage(a, 500, {});
+  w.combat.applyDamage(b, 500, {});
+  b.interactPressed = true;
+  void c;
+
+  w.step(REVIVE_STEPS + 10);
+  ok(a.revive === 0, 'no progress from a downed neighbour');
+  ok(a.downed === true && b.downed === true, 'both are still down');
+  ok(w.named('playerRevived').length === 0, 'no playerRevived');
+}
+
+console.log('a wipe is one tick: nobody left standing finishes every body at once');
+{
+  const w = makeReviveWorld(2, [0, 2]);
+  const [a, b] = w.pawns;
+  w.combat.applyDamage(a, 500, {});
+  w.combat.applyDamage(b, 500, {});
+  ok(a.downed && b.downed, 'both down, nobody targetable');
+  const before = w.log.length;
+
+  w.step(1);
+  ok(a.alive === false && b.alive === false, 'both dead');
+  ok(a.downed === false && b.downed === false, 'and neither is left carrying the flag');
+  ok(w.named('playerDead').length === 2, 'two playerDead');
+  ok(w.named('playerBledOut').length === 0, 'a wipe is not a bleed-out');
+  const deaths = w.log.slice(before).filter((e) => e.name === 'playerDead');
+  ok(deaths.length === 2, 'both deaths landed in the same step');
+}
+
+console.log('a new stage brings the whole party back, at half health, with their builds intact');
+{
+  const w = makeReviveWorld(3, [0, 30, 60]);
+  const [a, b, c] = w.pawns;
+  const items = w.pawns.map((p) => p.items);
+  // One really dead (bled out), one still down, one untouched.
+  w.combat.applyDamage(a, 500, {});
+  w.combat.finishDowned(a);
+  w.combat.applyDamage(b, 500, {});
+  ok(a.alive === false && b.downed === true, 'one corpse, one body');
+  c.position.set(0, 0, 0);
+  w.ctx.player = c;
+  const anchor = c.position.clone();
+
+  w.ctx.events.emit('stageStart', { index: 1, name: 'Stage 2' });
+
+  ok(a.alive === true && a.downed === false, 'the corpse is back');
+  ok(b.alive === true && b.downed === false, 'the body is back');
+  ok(a.health === REVIVE.RETURN_HEALTH_FRAC * a.maxHealth, `corpse returns at ${REVIVE.RETURN_HEALTH_FRAC * 100}%`);
+  ok(b.health === REVIVE.RETURN_HEALTH_FRAC * b.maxHealth, `body returns at ${REVIVE.RETURN_HEALTH_FRAC * 100}%`);
+  ok(a.bleedout === 0 && a.revive === 0 && b.bleedout === 0 && b.revive === 0, 'no clock survives the stage');
+  ok(c.health === 100, 'a pawn who never went down is not touched');
+  ok(a.items === items[0] && b.items === items[1], 'their builds are the same objects they died with');
+  ok(a.position.distanceTo(anchor) < 4 && b.position.distanceTo(anchor) < 4,
+    'both are parked on the local player, where a joining pawn lands');
+}
+
+console.log('single-player: a roster of one with nobody down is a no-op scan');
+{
+  const w = makeReviveWorld(1);
+  const [solo] = w.pawns;
+  const before = { ...solo, position: solo.position.clone() };
+  w.step(600);
+  ok(w.log.length === 0, 'ten seconds of stepping emits nothing');
+  ok(solo.alive === true && solo.downed === false, 'the pawn is untouched');
+  ok(solo.health === before.health && solo.position.equals(before.position), 'health and position unchanged');
+}
+
+console.log('the last survivor of a pair going down does not wipe alone... but a solo roster never downs');
+{
+  // Wipe needs 2+ pawns. A roster of one that somehow carried the flag must not
+  // be finished by this system — solo lethal damage is a plain death and never
+  // reaches here (see the Combat fork above).
+  const w = makeReviveWorld(1);
+  const [solo] = w.pawns;
+  solo.downed = true;
+  solo.bleedout = REVIVE.BLEEDOUT_S;
+  w.step(1);
+  ok(solo.alive === true, 'no wipe on a roster of one');
+  ok(w.named('playerDead').length === 0, 'and no death');
+}
+
+console.log('Interactables skips a pawn whose press is spent holding a teammate up');
+{
+  // The real roster scan, without the world it normally sits in: `Object.create`
+  // on the prototype (the render-scale.test.mjs idiom) with the orb sweep and
+  // the focus update stubbed, so the branch under test is the roster loop.
+  const asked = [];
+  const inter = Object.create(Interactables.prototype);
+  inter.orbs = [];
+  inter._updateFocus = () => {};
+  inter.requestInteract = (p) => { asked.push(p); return true; };
+
+  const reviver = { interactPressed: true, reviving: true };
+  const opener = { interactPressed: true, reviving: false };
+  const ctx = { authority: true, roster: { all: [reviver, opener] } };
+  inter.fixedUpdate(ctx, H);
+
+  ok(asked.length === 1, 'exactly one interact resolved');
+  ok(asked[0] === opener, 'the pawn holding a teammate up does not also open the chest');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
