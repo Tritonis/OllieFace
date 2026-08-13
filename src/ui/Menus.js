@@ -12,6 +12,7 @@ import { Tooltip } from './Tooltip.js';
 import { SURVIVORS, getSurvivor, loadoutOf } from '../data/survivors.js';
 import { Logbook, ModelPreview, disposeTree, renderRunReport } from './Logbook.js';
 import { describeNet } from '../net/NetConfig.js';
+import { attachIceDiag } from '../net/IceDiag.js';
 import { REFUSE } from '../net/Protocol.js';
 import { adoptLegacyKey } from '../core/LegacyStorage.js';
 import { PAD_BUTTON } from '../core/PadState.js';
@@ -458,6 +459,17 @@ export class Menus {
           </div>
 
           <div class="coop-players" data-coop-players></div>
+
+          <div class="icediag" data-icediag hidden>
+            <h3 class="coop-h">Connection</h3>
+            <div class="icediag-grid">
+              <span class="icediag-label">Gathering</span><span data-icediag-gathering>—</span>
+              <span class="icediag-label">Local</span><span class="icediag-tags" data-icediag-local></span>
+              <span class="icediag-label">Remote</span><span class="icediag-tags" data-icediag-remote></span>
+              <span class="icediag-label">Selected</span><span data-icediag-selected>—</span>
+            </div>
+            <div class="icediag-verdicts" data-icediag-verdicts></div>
+          </div>
 
           <nav class="menu-list menu-list--row">
             <button class="mbtn" data-nav data-act="coop-leave"><span>Leave co-op</span></button>
@@ -1214,6 +1226,9 @@ export class Menus {
     // the single place that happens, so no exit path can miss it.
     if (prev === 'select' && name !== 'select') this.unmountPreview();
     if (prev === 'logbook' && name !== 'logbook') this.logbook.onClose();
+    // The poller costs nothing while no lobby screen is open — detach the
+    // moment the co-op screen is left, by any path (back, leave, launch).
+    if (prev === 'coop' && name !== 'coop') this._iceDiagDetach?.();
 
     this.tooltip?.hide();
     this.syncEdictEntries();
@@ -1355,6 +1370,64 @@ export class Menus {
     this.coopWiring();
   }
 
+  /** Any one live `Peer` this lobby currently holds — host or client side. */
+  _iceDiagPeer() {
+    const net = this.ctx.lobby?.net;
+    const transport = net?.transport;
+    if (!transport) return null;
+    if (transport.peer) return transport.peer;               // client
+    if (transport.peers?.size) return [...transport.peers.values()][0]; // host
+    return null;
+  }
+
+  /**
+   * Keep the ICE diagnostics poller pointed at whichever peer currently
+   * exists. Called on every status change so a fresh peer (a new invite
+   * accepted, a room joined) is picked up without the player having to leave
+   * and reopen the screen — and so a peer that has closed is dropped rather
+   * than polled forever.
+   */
+  iceDiagSync() {
+    const peer = this._iceDiagPeer();
+    if (peer === this._iceDiagPeerRef) return;
+    this._iceDiagDetach?.();
+    this._iceDiagPeerRef = peer;
+    const el = this.root.querySelector('[data-icediag]');
+    if (!peer) { if (el) el.hidden = true; return; }
+    if (el) el.hidden = false;
+    this._iceDiagDetach = attachIceDiag(peer, (summary) => this.renderIceDiag(summary), {
+      turnConfigured: describeNet().hasTurn,
+    });
+  }
+
+  /** Render one `summarizeStats` result into the connection instrument panel. */
+  renderIceDiag(summary) {
+    const root = this.root.querySelector('[data-icediag]');
+    if (!root) return;
+    const q = (sel) => root.querySelector(sel);
+    q('[data-icediag-gathering]').textContent = summary.gathering;
+    const tag = (t) => `<span class="icediag-tag">${t}</span>`;
+    q('[data-icediag-local]').innerHTML = summary.localTypes.length
+      ? summary.localTypes.map(tag).join('') : '—';
+    q('[data-icediag-remote]').innerHTML = summary.remoteTypes.length
+      ? summary.remoteTypes.map(tag).join('') : '—';
+    q('[data-icediag-selected]').textContent = summary.selected
+      ? `${summary.selected.local} / ${summary.selected.remote}` + (summary.selected.rttMs != null
+        ? ` — ${summary.selected.rttMs} ms` : '')
+      : 'none yet';
+
+    // The two actionable verdicts a silent NAT failure otherwise never says.
+    const verdicts = [];
+    if (!summary.localTypes.includes('relay') && !summary.turnConfigured) {
+      verdicts.push('No TURN configured - connections across strict NATs will fail. '
+        + 'Set turn settings or ?turn=.');
+    }
+    if (summary.gathering === 'complete' && !summary.selected && summary.elapsedMs >= 15000) {
+      verdicts.push('No route found between peers. If both sides are behind strict NAT, TURN is required.');
+    }
+    q('[data-icediag-verdicts]').innerHTML = verdicts.map((v) => `<p class="coop-hint coop-wiring is-warn">${v}</p>`).join('');
+  }
+
   /**
    * Say out loud what this build is actually wired to.
    *
@@ -1491,6 +1564,8 @@ export class Menus {
     list.innerHTML = lobby && lobby.mode !== 'single'
       ? players.map((p) => `<div class="coop-player${p.local ? ' is-you' : ''}">${p.name}</div>`).join('')
       : '';
+
+    this.iceDiagSync();
   }
 
   coopSay(text) {

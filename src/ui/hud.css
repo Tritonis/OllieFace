@@ -2224,6 +2224,43 @@ body.menu-open { cursor: default; }
 .coop-field textarea::placeholder { color: var(--ink-faint); }
 .coop-field textarea[readonly] { color: var(--ink-dim); }
 
+/* Live ICE diagnostics — the connection's own instrument readout. Monospace
+   like the invite/reply blobs, quiet like `.coop-wiring` until it has to say
+   something a silent NAT failure would otherwise never say. */
+.icediag {
+  margin: 1.3em 0 0.2em;
+  padding: 0.7em 0.9em;
+  background: rgba(255, 255, 255, 0.025);
+  border-left: 2px solid var(--line);
+}
+.icediag .coop-h { margin-bottom: 0.5em; }
+.icediag-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.3em 0.9em;
+  align-items: center;
+  font: 0.82em/1.4 ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  color: var(--ink-dim);
+}
+.icediag-label {
+  font: inherit;
+  font-size: 0.85em;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.icediag-tags { display: flex; flex-wrap: wrap; gap: 0.35em; }
+.icediag-tag {
+  padding: 0.1em 0.5em;
+  font-size: 0.9em;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
+}
+.icediag-verdicts { margin-top: 0.5em; }
+.icediag-verdicts p { margin: 0.3em 0 0; }
+
 .coop-players { display: flex; flex-wrap: wrap; gap: 0.5em; margin: 1.3em 0 0.2em; }
 .coop-player {
   padding: 0.35em 0.9em;
