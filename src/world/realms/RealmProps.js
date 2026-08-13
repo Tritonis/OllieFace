@@ -298,7 +298,7 @@ export class MarketStall extends RealmProp {
   interact(pawn = this.ctx.player) {
     if (!Items.of(this.ctx, pawn)?.spendGold(this.cost)) return false;
     this.used = true;
-    this.ctx.interactables.spawnOrb(this.position, this.itemId, 1.6);
+    this.ctx.interactables.spawnOrb(this.position, this.itemId, 1.6, pawn);
     this.screen.material.emissiveIntensity = 0.05;
     this.token.visible = false;
     this.ctx.audio?.play?.('purchase', this.position);
@@ -367,7 +367,7 @@ export class Refinery extends RealmProp {
     const toTier = fromDef.tier === 'common' ? 'uncommon' : 'legendary';
     const id = items.rollItem(toTier);
     items.take?.(from.id, 1);
-    this.ctx.interactables.spawnOrb(this.position, id, 1.8);
+    this.ctx.interactables.spawnOrb(this.position, id, 1.8, pawn);
     this.ctx.vfx?.burst?.(this.position, 0x74d0ff);
     this.ctx.audio?.play?.('shrineWin', this.position);
     this.cost = Math.round(this.cost * 1.5);

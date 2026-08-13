@@ -5,6 +5,7 @@ import { eliteAffixesFor } from '../data/enemies.js';
 import { SOURCES, CLEANSE, PACT, cleanseAmount, cleanseCost } from '../data/corruption.js';
 import { RNG } from '../core/MathUtil.js';
 import { Items } from '../systems/Items.js';
+import { Roster } from '../systems/Roster.js';
 import { getTextureSets, withRepeat, attachWorldSurface } from './Materials.js';
 
 /**
@@ -378,7 +379,7 @@ export class Chest extends Interactable {
     this.used = true;
     this.openT = 0;
     const id = items.rollItem(null, TIER_BIAS[this.size]);
-    this.ctx.interactables.spawnOrb(this.position, id, 1.2 * this._scale);
+    this.ctx.interactables.spawnOrb(this.position, id, 1.2 * this._scale, pawn);
     this.ctx.audio?.play?.('chest', this.position);
     return true;
   }
@@ -449,7 +450,7 @@ export class MultishopTerminal extends Interactable {
     if (!Items.of(this.ctx, pawn)?.spendGold(this.cost)) return false;
     this.used = true;
     this.markGreed();
-    this.ctx.interactables.spawnOrb(this.position, this.itemId, 1.6);
+    this.ctx.interactables.spawnOrb(this.position, this.itemId, 1.6, pawn);
     // Buying one terminal closes the others: the choice has to cost something.
     for (const t of this.shopGroup) {
       if (t === this) continue;
@@ -656,7 +657,7 @@ export class AuricCairn extends Interactable {
     const win = items.roll(0.25, 1);
     if (win) {
       const id = items.rollItem(null, TIER_BIAS.small);
-      this.ctx.interactables.spawnOrb(this.position, id, 2.0);
+      this.ctx.interactables.spawnOrb(this.position, id, 2.0, pawn);
       this.ctx.vfx?.burst?.(this.position, 0xffd23f);
       this.ctx.audio?.play?.('shrineWin', this.position);
     } else {
@@ -1080,7 +1081,7 @@ class GildedSnare extends Interactable {
     if (!id) return false;
     this.uses++;
     this.markGreed();
-    ctx.interactables.spawnOrb(this.position, id, 2.2);
+    ctx.interactables.spawnOrb(this.position, id, 2.2, pawn);
 
     // …and now the hunter. An elite, legal at the current difficulty, placed
     // close and pointed at the player rather than at the shrine — it follows
@@ -1690,9 +1691,10 @@ class Portal extends Interactable {
 // ------------------------------------------------------------------ item orb
 
 class ItemOrb {
-  constructor(ctx, position, itemId, arc) {
+  constructor(ctx, position, itemId, arc, ownerPawn = null) {
     this.ctx = ctx;
     this.itemId = itemId;
+    this.ownerPawn = ownerPawn;
     this.def = ITEM_BY_ID.get(itemId);
     this.position = position.clone().add(new THREE.Vector3(0, 1.2, 0));
     // Which way the orb is tossed is decoration — the item it carries was
@@ -1741,7 +1743,13 @@ class ItemOrb {
 
   fixedUpdate(h) {
     this.age += h;
-    const player = this.ctx.player;
+    // Homes to the pawn that earned it, so long as it's still a legal target;
+    // an owner who bled out mid-flight sees the loot fall back to the local
+    // viewer rather than evaporate. Owner-less orbs (and every SP orb, where
+    // `ownerPawn === ctx.player`) resolve to exactly the same target this
+    // always homed to.
+    const target = (this.ownerPawn && Roster.targetable(this.ownerPawn))
+      ? this.ownerPawn : this.ctx.player;
 
     if (this.state === 'arc') {
       this.velocity.y -= 26 * h;
@@ -1755,10 +1763,10 @@ class ItemOrb {
     } else if (this.state === 'hover') {
       this.hover += h;
       this.position.y = this.hoverBase + Math.sin(this.hover * 2.2) * 0.18;
-      if (player?.alive && player.position.distanceToSquared(this.position) < ORB_SEEK_RANGE * ORB_SEEK_RANGE) this.state = 'seek';
-    } else if (this.state === 'seek' && player) {
+      if (target?.alive && target.position.distanceToSquared(this.position) < ORB_SEEK_RANGE * ORB_SEEK_RANGE) this.state = 'seek';
+    } else if (this.state === 'seek' && target) {
       // Accelerating homing so the pickup reads as being *pulled* in.
-      const dir = TMP.copy(player.position).setY(player.position.y + 1).sub(this.position);
+      const dir = TMP.copy(target.position).setY(target.position.y + 1).sub(this.position);
       const dist = dir.length();
       if (dist < 0.7) { this.claimed = true; return; }
       dir.multiplyScalar(1 / dist);
@@ -2056,13 +2064,13 @@ export class Interactables {
     return this.add(new Portal(this.ctx, position, onEnter));
   }
 
-  spawnOrb(position, itemId, arc = 1.5) {
+  spawnOrb(position, itemId, arc = 1.5, ownerPawn = null) {
     // A dud orb is worse than no orb: it plays the whole pop-and-fly animation
     // and then gives nothing, which reads exactly like "the chest ate my gold".
     // The only way to get here with a bad id is a roll that had no pool, so
     // fail visibly at the source instead.
     if (!itemId || !ITEM_BY_ID.has(itemId)) return null;
-    const orb = new ItemOrb(this.ctx, position, itemId, arc);
+    const orb = new ItemOrb(this.ctx, position, itemId, arc, ownerPawn);
     this.orbs.push(orb);
     this.root.add(orb.group);
     return orb;
@@ -2073,7 +2081,11 @@ export class Interactables {
       const orb = this.orbs[i];
       orb.fixedUpdate(h);
       if (!orb.claimed) continue;
-      ctx.items?.give(orb.itemId, 1);
+      // Grants to the orb's owner, not to whoever this machine happens to be
+      // rendering — `ownerPawn ?? ctx.player` is the same pawn the orb just
+      // homed to, so the grant always lands where the pickup animation says
+      // it did.
+      Items.of(ctx, orb.ownerPawn ?? ctx.player)?.give(orb.itemId, 1);
       ctx.vfx?.burst?.(orb.position, TIERS[orb.def?.tier || 'common'].colour);
       this.root.remove(orb.group);
       orb.dispose();

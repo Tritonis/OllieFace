@@ -10,7 +10,7 @@
 import * as THREE from 'three';
 import { Items } from '../src/systems/Items.js';
 import { Corruption } from '../src/systems/Corruption.js';
-import { Chest } from '../src/world/Interactables.js';
+import { Chest, Interactables } from '../src/world/Interactables.js';
 import { SOURCES } from '../src/data/corruption.js';
 import { RNG } from '../src/core/MathUtil.js';
 
@@ -146,6 +146,57 @@ console.log('a bare interact() still means the local viewer');
   const chest = new Chest(ctx, new THREE.Vector3(1, 0, 1), 'small', 25);
   ok(chest.interact() === true, 'the void opens it');
   ok(corruption.corruptionOf(host) === SOURCES.voidCredit.small, 'the debt lands on ctx.player');
+}
+
+console.log('an owned orb grants to its owner, even collected at another pawn\'s position');
+{
+  const ctx = makeCtx();
+  ctx.fxRng = new RNG(1);
+  const host = { isPlayer: true, alive: true, position: new THREE.Vector3(0, 0, 0) };
+  const remote = { isPlayer: true, alive: true, peerId: 2, position: new THREE.Vector3(50, 0, 50) };
+  ctx.player = host;
+
+  const hostItems = new Items();
+  hostItems.init(ctx);
+  const remoteItems = new Items(remote);
+  remoteItems.init(ctx);
+  remote.items = remoteItems;
+  ctx.roster = fakeRoster(host, remote);
+
+  const interactables = new Interactables();
+  interactables.ctx = ctx;
+  ctx.interactables = interactables;
+
+  const orb = interactables.spawnOrb(host.position.clone(), 'adrenal-syringe', 1.5, remote);
+  // The fixture "collects" it at the local pawn's position — ownership, not
+  // position, decides who gets paid.
+  orb.position.copy(host.position);
+  orb.claimed = true;
+  interactables.fixedUpdate(ctx, 1 / 60);
+
+  ok(remoteItems.count('adrenal-syringe') === 1, 'the owning pawn received the item');
+  ok(hostItems.count('adrenal-syringe') === 0, 'the local viewer got nothing — it was never their orb');
+}
+
+console.log('an owner-less orb grants exactly as today — to ctx.items');
+{
+  const ctx = makeCtx();
+  ctx.fxRng = new RNG(1);
+  const host = { isPlayer: true, alive: true, position: new THREE.Vector3(0, 0, 0) };
+  ctx.player = host;
+
+  const hostItems = new Items();
+  hostItems.init(ctx);
+
+  const interactables = new Interactables();
+  interactables.ctx = ctx;
+  ctx.interactables = interactables;
+
+  const orb = interactables.spawnOrb(host.position.clone(), 'adrenal-syringe', 1.5);
+  orb.claimed = true;
+  interactables.fixedUpdate(ctx, 1 / 60);
+
+  ok(hostItems.count('adrenal-syringe') === 1, 'the owner-less orb still grants to the viewer, unchanged');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
