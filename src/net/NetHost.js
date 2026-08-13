@@ -82,17 +82,27 @@ export class NetHost {
     // Forward one-shot facts clients can't derive from snapshots. Cosmetic
     // events are deliberately excluded — clients generate their own VFX from
     // the events they do receive, which avoids paying bandwidth for particles.
-    // `goldChanged` matters as much as `itemPickup`: gold is host-authoritative
-    // and carried in no snapshot field, so without forwarding it a client's
-    // purse sits at 0 forever and it can never buy anything.
     // `realmEnter`/`realmExit` belong on this list for the same reason
     // `stageStart` does: a client cannot derive "we are all somewhere else now"
     // from a snapshot, and the arenas are authored, so the realm id is the
     // whole of the state it needs to build the same room.
-    for (const name of ['kill', 'itemPickup', 'goldChanged', 'teleporterCharging', 'teleporterComplete',
+    for (const name of ['kill', 'teleporterCharging', 'teleporterComplete',
                         'stageStart', 'bossSpawn', 'bossDead', 'playerDead', 'levelUp',
                         'realmEnter', 'realmExit']) {
       ctx.events.on(name, (payload) => this._forward(name, payload));
+    }
+
+    // The economy is per player, so its events are addressed, not announced.
+    //
+    // `goldChanged` and `itemPickup` used to be on the broadcast list above,
+    // back when one purse and one pack were the whole party's: every client
+    // adopted the host's inventory as its own. Each pawn now owns an `Items`
+    // instance of its own (`Items.of`), every event it emits names the pawn it
+    // belongs to, and this table sends each one to the single peer holding that
+    // pawn. Broadcasting them now would hand every joiner a copy of somebody
+    // else's purse — which is the shared-economy bug in a louder key.
+    for (const name of ['itemPickup', 'goldChanged', 'equipmentChanged', 'goldReward', 'itemMutated']) {
+      ctx.events.on(name, (payload) => this._forwardOwned(name, payload));
     }
 
     // Damage feedback for a remote player's *own* survivor.
@@ -595,12 +605,35 @@ export class NetHost {
     }
   }
 
+  /**
+   * One economy event to the one peer whose pawn it belongs to.
+   *
+   * `owner` is the live pawn (`Items._owner`), so the peer resolution is the
+   * same scan `_forwardHurt` does over `clients` — the pairing between a peer
+   * and its pawn lives there and nowhere else, and a second lookup would be a
+   * second thing to keep true. An owner with no peer is the host's own player:
+   * its purse is nobody else's business and nothing is sent at all.
+   */
+  _forwardOwned(name, payload) {
+    const owner = payload?.owner;
+    if (!owner || this.clients.size === 0) return;
+    let client = null;
+    for (const c of this.clients.values()) if (c.pawn === owner) { client = c; break; }
+    if (!client) return;   // the host's own player, or a pawn with no peer
+    this._send(client.peer, name, payload);
+  }
+
   /** One event, one peer. `_forward`'s body without the broadcast. */
   _send(peer, name, payload) {
     const w = this.eventWriter.reset();
     w.u8(MSG.EVENT);
     w.str(name);
-    w.json(sanitise(payload));
+    // `owner` is a host-side routing reference and stops here. It has already
+    // chosen this peer, and the far side needs no copy of it: a client only
+    // ever receives events about itself, so an untagged payload *means* "yours"
+    // — which is exactly what every mirror and every consumer over there
+    // already assumes (`isLocalOwner`).
+    w.json(sanitise(payload?.owner ? { ...payload, owner: null } : payload));
     peer.sendEvent(w.bytes());
   }
 

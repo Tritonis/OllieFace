@@ -79,7 +79,11 @@
 //     in `ENEMIES`, so renaming six enemy ids changed no wire byte and no
 //     lookup on either end. Difficulty likewise crosses in `WELCOME` as
 //     `DIFFICULTIES` index, not as the rung's id.
-export const PROTOCOL_VERSION = 5;
+// 6: per-player economy. `itemPickup`/`goldChanged`/`equipmentChanged`/
+//    `goldReward`/`itemMutated` are addressed to one peer instead of broadcast,
+//    so a v5 client joined to a v6 host would sit at zero gold all run and a v6
+//    client on a v5 host would adopt the host's purse as its own.
+export const PROTOCOL_VERSION = 6;
 
 export const MSG = {
   HELLO: 1,       // client -> host

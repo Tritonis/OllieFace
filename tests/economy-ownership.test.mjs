@@ -4,6 +4,8 @@
 //   1. A kill pays every registered pawn the full reward (no split).
 //   2. An interact spends the acting pawn's purse.
 //   3. A void-credit open attributes the corruption to the acting pawn.
+//   4. Every economy event names its owner, host-local consumers act only on
+//      the viewer's own, and the wire carries each one to one peer.
 //
 // Real Items and real Corruption; the world around them is stubbed, because
 // the axis under test is ownership, not the loot table.
@@ -13,6 +15,9 @@ import { Corruption } from '../src/systems/Corruption.js';
 import { Chest, Interactables } from '../src/world/Interactables.js';
 import { SOURCES } from '../src/data/corruption.js';
 import { RNG } from '../src/core/MathUtil.js';
+import { NetHost } from '../src/net/NetHost.js';
+import { Reader } from '../src/net/Protocol.js';
+import { isLocalOwner } from '../src/core/Engine.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
@@ -244,6 +249,182 @@ for (const [label, makeUntargetable] of [
     ok(hostItems.count('adrenal-syringe') === 1, 'the fallback pawn (host) received the item');
     ok(remoteItems.count('adrenal-syringe') === 0, 'the untargetable owner\'s inventory is unchanged');
   }
+}
+
+// --------------------------------------------------------------- owner tags
+//
+// From here down: the tag itself, the host-local consumers that must read it,
+// and the wire that routes on it.
+
+/** Records every economy event the bus carries, in order. */
+function watchEconomy(ctx) {
+  const seen = [];
+  for (const name of ['itemPickup', 'goldChanged', 'goldReward', 'equipmentChanged', 'itemMutated']) {
+    ctx.events.on(name, (p) => seen.push({ name, p }));
+  }
+  seen.last = (name) => [...seen].reverse().find((e) => e.name === name)?.p;
+  return seen;
+}
+
+console.log('every economy event names the pawn it belongs to');
+{
+  const ctx = makeCtx();
+  const host = { isPlayer: true, alive: true };
+  const remote = { isPlayer: true, alive: true, peerId: 2 };
+  ctx.player = host;
+  const seen = watchEconomy(ctx);
+
+  const hostItems = new Items();
+  hostItems.init(ctx);
+  const remoteItems = new Items(remote);
+  remoteItems.init(ctx);
+  remote.items = remoteItems;
+
+  remoteItems.addGold(10);
+  ok(seen.last('goldChanged')?.owner === remote, 'a satellite tags goldChanged with its own pawn');
+
+  remoteItems.give('adrenal-syringe', 1);
+  ok(seen.last('itemPickup')?.owner === remote, 'itemPickup carries the owner');
+
+  remoteItems.setEquipment(remoteItems.rollEquipment());
+  ok(seen.last('equipmentChanged')?.owner === remote, 'equipmentChanged carries the owner');
+
+  remoteItems.rewardKill({ def: { cost: 100 }, position: new THREE.Vector3() });
+  ok(seen.last('goldReward')?.owner === remote, 'goldReward carries the owner');
+
+  hostItems.addGold(5);
+  ok(seen.last('goldChanged')?.owner === host, 'the viewer\'s own instance tags ctx.player, never null');
+}
+
+console.log('a satellite acts on its own pawn\'s signals only');
+{
+  const ctx = makeCtx();
+  ctx.time = 12;
+  const host = { isPlayer: true, alive: true };
+  const remote = { isPlayer: true, alive: true, peerId: 2 };
+  ctx.player = host;
+
+  const hostItems = new Items();
+  hostItems.init(ctx);
+  const remoteItems = new Items(remote);
+  remoteItems.init(ctx);
+
+  ctx.events.emit('playerHurt', { target: host, amount: 5 });
+  ok(remoteItems._lastHurt < 0, 'the satellite ignored a hit on the other pawn');
+
+  ok(hostItems._lastHurt === 12, 'the viewer felt its own');
+
+  hostItems._lastHurt = -999;
+  ctx.events.emit('playerHurt', { target: remote, amount: 5 });
+  ok(remoteItems._lastHurt === 12, 'its own pawn\'s hit lands');
+  ok(hostItems._lastHurt < 0, 'and the viewer never felt the remote pawn\'s hit');
+}
+
+/** One EVENT frame off a fake peer's outbox, decoded. `Writer.bytes()` hands
+ * out an `ArrayBuffer`, which is exactly what a `Reader` takes. */
+function decodeEvent(frame) {
+  const r = new Reader(frame);
+  r.u8();
+  return { name: r.str(), payload: r.json() };
+}
+
+const fakePeer = (id) => ({ id, sent: [], sendEvent(b) { this.sent.push(b); } });
+
+console.log('an owned economy event reaches exactly the peer that owns it');
+{
+  const ctx = makeCtx();
+  const host = { isPlayer: true, alive: true };
+  const pawnA = { isPlayer: true, alive: true, peerId: 1, netId: 11 };
+  const pawnB = { isPlayer: true, alive: true, peerId: 2, netId: 12 };
+  ctx.player = host;
+
+  const net = new NetHost();
+  net.init(ctx);
+  const peerA = fakePeer(1), peerB = fakePeer(2);
+  net.clients.set(1, { peer: peerA, pawn: pawnA });
+  net.clients.set(2, { peer: peerB, pawn: pawnB });
+
+  const itemsB = new Items(pawnB);
+  itemsB.init(ctx);
+  pawnB.items = itemsB;
+
+  itemsB.addGold(40);
+  ok(peerB.sent.length === 1 && peerA.sent.length === 0, 'only the owning peer was told');
+  const msg = decodeEvent(peerB.sent[0]);
+  ok(msg.name === 'goldChanged' && msg.payload.gold === 40, `the frame is the purse (${msg.name})`);
+  ok(!('owner' in msg.payload), 'the host-side owner ref never reaches the wire');
+
+  peerA.sent.length = 0; peerB.sent.length = 0;
+  itemsB.give('adrenal-syringe', 1);
+  ok(peerB.sent.length === 1 && peerA.sent.length === 0, 'a pickup is directed the same way');
+  ok(decodeEvent(peerB.sent[0]).name === 'itemPickup', 'and it is the pickup');
+
+  peerA.sent.length = 0; peerB.sent.length = 0;
+  const hostItems = new Items();
+  hostItems.init(ctx);
+  hostItems.addGold(7);
+  ok(peerA.sent.length === 0 && peerB.sent.length === 0,
+    'the host player\'s own economy is replicated to nobody');
+}
+
+console.log('one kill, one reward on the viewer\'s screen');
+{
+  const ctx = makeCtx();
+  const host = { isPlayer: true, alive: true };
+  const remote = { isPlayer: true, alive: true, peerId: 2 };
+  ctx.player = host;
+
+  const hostItems = new Items();
+  hostItems.init(ctx);
+  const remoteItems = new Items(remote);
+  remoteItems.init(ctx);
+  remote.items = remoteItems;
+  ctx.roster = fakeRoster(host, remote);
+
+  let all = 0, mine = 0;
+  ctx.events.on('goldReward', (e) => { all++; if (isLocalOwner(ctx, e)) mine++; });
+  Items.rewardKillAll(ctx, { def: { cost: 100 }, position: new THREE.Vector3() });
+
+  ok(all === 2, 'both pawns were paid — the full-payout rule is untouched');
+  ok(mine === 1, 'exactly one reward belongs to the viewer, so exactly one popup');
+}
+
+console.log('a satellite\'s equipment never enters the viewer\'s logbook');
+{
+  const store = new Map();
+  globalThis.localStorage = {
+    getItem: (k) => (store.has(k) ? store.get(k) : null),
+    setItem: (k, v) => store.set(k, String(v)),
+    removeItem: (k) => store.delete(k),
+    clear: () => store.clear(),
+  };
+  const { Profile } = await import('../src/systems/Profile.js');
+
+  const ctx = makeCtx();
+  ctx.netRole = 'host';
+  const host = { isPlayer: true, alive: true, survivorId: null };
+  const remote = { isPlayer: true, alive: true, peerId: 2 };
+  ctx.player = host;
+
+  const profile = new Profile();
+  profile.init(ctx);
+
+  const remoteItems = new Items(remote);
+  remoteItems.init(ctx);
+  const rolled = remoteItems.rollEquipment();
+  remoteItems.setEquipment(rolled);
+  ok(profile.isDiscovered('equipment', rolled) === false,
+    'the remote pawn\'s equipment is not something this profile has met');
+
+  remoteItems.give('adrenal-syringe', 1);
+  ok(profile.isDiscovered('item', 'adrenal-syringe') === false,
+    'nor is the remote pawn\'s loot');
+
+  const hostItems = new Items();
+  hostItems.init(ctx);
+  hostItems.setEquipment('blink-anchor');
+  ok(profile.isDiscovered('equipment', 'blink-anchor') === true,
+    'the viewer\'s own equipment still records, exactly as in single-player');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

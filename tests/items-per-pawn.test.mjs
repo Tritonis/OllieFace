@@ -50,7 +50,12 @@ console.log('Items is instantiable per pawn, and Items.of() resolves owner -> in
   ok(local.gold === 0 && remote.gold === 25, 'gold mutations stay on the owning instance');
 }
 
-console.log('satellite stageStart is inert: no equipmentChanged, no audio, no equipment adopted');
+// Task 1 left this arm asserting the *interim* rule — a satellite's slot stayed
+// empty because `setEquipment` had no owner-scoping and its jingle and its
+// logbook write would have been attributed to the viewer. Task 5 gave the event
+// an owner and the seeding is live, so the arm now asserts what replaced that
+// rule: the slot fills, silently, in the satellite's own name.
+console.log('satellite stageStart seeds its own slot — owner-tagged, and silent on this machine');
 {
   const ctx = makeCtx();
   const localPawn = { isPlayer: true };
@@ -64,18 +69,22 @@ console.log('satellite stageStart is inert: no equipmentChanged, no audio, no eq
   ctx.events.emit('stageStart', { index: 0 });
   const localEquipAfterFirstStage = local.equipmentId;
   ctx._audioCalls.length = 0;
-  let equipmentChangedCount = 0;
-  ctx.events.on('equipmentChanged', () => { equipmentChangedCount++; });
+  const equipmentChanged = [];
+  ctx.events.on('equipmentChanged', (e) => equipmentChanged.push(e));
 
+  ctx.startEquipmentId = 'blink-anchor';   // the *viewer's* pre-run pick
   const remote = new Items(remotePawn);
   remote.init(ctx);
   remotePawn.items = remote;
 
   ctx.events.emit('stageStart', { index: 1 });
 
-  ok(remote.equipmentId === null, 'satellite equipment slot stays unseeded on stageStart');
-  ok(equipmentChangedCount === 0, 'satellite stageStart emits no equipmentChanged');
-  ok(ctx._audioCalls.length === 0, 'satellite stageStart plays no audio');
+  ok(typeof remote.equipmentId === 'string', 'the satellite seeded a slot of its own');
+  ok(remote.equipmentId !== ctx.startEquipmentId,
+    'and rolled for it — the equipment screen\'s pick belongs to the viewer alone');
+  ok(equipmentChanged.length === 1 && equipmentChanged[0].owner === remotePawn,
+    'one equipmentChanged, named for the pawn whose slot filled');
+  ok(ctx._audioCalls.length === 0, 'satellite stageStart plays no audio on this machine');
   ok(local.equipmentId === localEquipAfterFirstStage, 'the local viewer is unaffected by the satellite stageStart');
 }
 

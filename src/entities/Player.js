@@ -960,7 +960,12 @@ export class Player {
       s.ability.fire(ctx, this);
     }
     if (slot === 'primary' || slot === 'secondary') this.fireLock = FIRE_LOCK;
-    if (!this._replaying) ctx.events.emit('abilityUsed', { slot, ability: s.ability });
+    // `player` names the caster, exactly as `jump` already does. On a host the
+    // bus carries every pawn's casts, and the Lunar cooldown items that listen
+    // (`Items.onAbility`) must charge the caster's own inventory and nobody
+    // else's — without an identity on the payload a teammate's press paid out
+    // of the viewer's pack.
+    if (!this._replaying) ctx.events.emit('abilityUsed', { slot, ability: s.ability, player: this });
     return true;
   }
 

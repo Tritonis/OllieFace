@@ -386,6 +386,26 @@ export function isLocalKill(ctx, payload) {
   return !(source?.isPlayer && ctx?.player && source !== ctx.player);
 }
 
+/**
+ * Is this economy event *this machine's own*?
+ *
+ * Every economy event (`itemPickup`, `goldChanged`, `equipmentChanged`,
+ * `goldReward`, `itemMutated`) is tagged at its emit site with the pawn whose
+ * purse or pack moved (`Items._owner()`). On a host that bus carries every
+ * pawn's transactions, the viewer's and every satellite's alike, so a consumer
+ * that speaks for the viewer — a jingle, a toast, the logbook, a popup — has to
+ * ask whose event it is before it acts.
+ *
+ * `owner` absent means "the viewer's", which is what a client always sees (the
+ * host strips the tag on the way out, because a client only ever receives
+ * events about itself) and what every pre-co-op emitter and synthetic payload
+ * produces. So in single-player this is `true` for everything, unchanged.
+ */
+export function isLocalOwner(ctx, payload) {
+  const owner = payload?.owner;
+  return !owner || owner === ctx?.player;
+}
+
 export function isLocalVictim(ctx, payload) {
   const victim = payload?.victim;
   if (!victim) return ctx?.netRole !== 'client';

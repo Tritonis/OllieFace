@@ -255,7 +255,13 @@ function bindHud(ctx, makeEl) {
   self.toast = (text, tier, id) => toasts.push({ text, tier, id });
 
   const listeners = new Map();
-  self.bind({ events: { on(name, fn) { if (!listeners.has(name)) listeners.set(name, []); listeners.get(name).push(fn); } } });
+  // `player` rides along because the inventory listeners are owner-filtered
+  // (`isLocalOwner`): the strip paints the viewer's pack, and the events the
+  // real bus carries name the pawn they belong to.
+  self.bind({
+    player: ctx.player,
+    events: { on(name, fn) { if (!listeners.has(name)) listeners.set(name, []); listeners.get(name).push(fn); } },
+  });
   for (const name of ['itemPickup', 'itemMutated']) {
     for (const fn of listeners.get(name) || []) ctx.events.on(name, fn);
   }

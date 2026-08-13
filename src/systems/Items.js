@@ -222,11 +222,11 @@ export class Items {
     // goldChanged / equipmentChanged) would be pure dead weight — worse,
     // subscribing them on the same shared bus the singleton listens on would
     // make one instance's mutation bleed into another's through its own
-    // mirror branch. The simulation-driving listeners (jump, abilityUsed,
-    // playerHurt, corruptionBand) need per-owner filtering too, but that is
-    // Task 5's job; for now a satellite subscribes to `stageStart` only, so
-    // its equipment slot still seeds at the start of a stage.
-    if (!this.owner) this._unsub.push(ctx.events.on('jump', (e) => this.onJump(e)));
+    // mirror branch. The simulation-driving listeners are shared, and every
+    // one of them passes the event's identity through `_mine` first: one bus
+    // now carries every pawn's jumps and casts, and an unfiltered hook would
+    // pay the viewer's inventory for a teammate's button press.
+    this._unsub.push(ctx.events.on('jump', (e) => { if (this._mine(e?.player)) this.onJump(e); }));
     this._unsub.push(ctx.events.on('stageStart', () => {
       this.cooldowns.clear();
       this._marks.clear();
@@ -245,34 +245,58 @@ export class Items {
       // (Menus.launch); absent — the Random card, or a run started before the
       // picker existed — the slot still seeds off the shared rng as before.
       //
-      // Owner-gated: `setEquipment` has no owner-scoping of its own — it
-      // unconditionally emits `equipmentChanged` on the shared bus and plays
-      // the pickup SFX, and unfiltered consumers (`Profile.discover`, HUD's
-      // resync) cannot tell a satellite's roll from the local viewer's. A
-      // satellite seeding here would attribute its equipment to the local
-      // player's persistent profile and double the pickup jingle on every
-      // stage transition. Real per-owner directed replication is Task 5's
-      // job; until then a satellite's slot simply stays unseeded.
-      if (!this.owner && !this.equipmentId) this.setEquipment(this.ctx.startEquipmentId || this.rollEquipment());
+      // Every pawn seeds, satellites included: `equipmentChanged` now names
+      // its owner, so the jingle, the logbook and the HUD all pass it through
+      // `isLocalOwner` and a satellite's roll is silent here and replicated to
+      // exactly the peer holding that pawn. `startEquipmentId` is the *local*
+      // viewer's pre-run pick off the equipment screen and belongs to nobody
+      // else, so a satellite rolls instead — on its own derived stream (see
+      // `_rng`), which is why seeding a joiner cannot move the shared sequence.
+      if (!this.equipmentId) {
+        this.setEquipment(this.owner ? this.rollEquipment()
+          : (this.ctx.startEquipmentId || this.rollEquipment()));
+      }
     }));
 
-    // Everything below is per-owner filtered in Task 5 (the simulation
-    // listeners) and skipped outright on satellites (the client-mirror
-    // listeners) — a satellite has no client of its own to mirror for, and
-    // sharing a bus with the singleton means subscribing here would let one
-    // instance's mutation bleed into another's.
-    if (!this.owner) {
-      // Lunar cooldown items charge the player for casting, so they need to
-      // know a cast happened. Player already announces every one of them on
-      // the bus — adding a second, item-specific channel for the same fact
-      // is how two systems end up disagreeing about what a "use" is.
-      this._unsub.push(ctx.events.on('abilityUsed', (e) => this.onAbility(e || {})));
+    // Lunar cooldown items charge the player for casting, so they need to
+    // know a cast happened. Player already announces every one of them on
+    // the bus — adding a second, item-specific channel for the same fact
+    // is how two systems end up disagreeing about what a "use" is. The cast
+    // carries the caster (`Player._fire`), so a satellite pays only for its
+    // own pawn's presses and the viewer pays for none of a teammate's.
+    this._unsub.push(ctx.events.on('abilityUsed', (e) => {
+      if (this._mine(e?.player)) this.onAbility(e || {});
+    }));
 
+    // The gauge reaching into the inventory (launch spec §1, expression 3) is
+    // a *world* fact with no owner: every pawn in the party holds items and
+    // every pawn's pack pays the toll, so each instance claims the crossing
+    // for itself. See the singleton branch below for the deferral rule.
+    // (A satellite's collected mutation emits an owner-tagged `itemMutated`,
+    // so only its own peer is told its pack festered.)
+    if (this.owner) {
       // "How long since I was last hit" backs three items (Field Dressing,
-      // Siege Battery, Mineral Lick). Tracked once here rather than each of
-      // them keeping its own timer and each of them being subtly wrong about
-      // DoTs.
+      // Siege Battery, Mineral Lick). On the host `playerHurt` is emitted for
+      // `ctx.player` alone (Combat.js:565), so this fires for a satellite only
+      // where something re-emits a pawn's hit — and then only for its own pawn.
       this._unsub.push(ctx.events.on('playerHurt', (e) => {
+        if (e?.target === this.owner) this._lastHurt = ctx.time;
+      }));
+    }
+
+    // Everything below is the viewer's instance alone: the client-mirror
+    // listeners are skipped outright on satellites — a satellite has no client
+    // of its own to mirror for, and sharing a bus with the singleton means
+    // subscribing here would let one instance's mutation bleed into another's.
+    if (!this.owner) {
+      this._unsub.push(ctx.events.on('playerHurt', (e) => {
+        // Whose blood this is, on both roles. On a host the event is only ever
+        // emitted for `ctx.player` — but a satellite's re-emission (above) and
+        // any synthetic payload share this bus, and a teammate's hit must not
+        // reset the viewer's hurt timer. On a client the forwarded event's
+        // `target` resolves back to `ctx.player` (`NetClient._resolve`), so the
+        // one hit a client ever hears about still passes.
+        if (e?.target && e.target !== ctx.player) return;
         this._lastHurt = ctx.time;
         // On a client the hit was resolved on the host, so `Combat`'s local
         // `onDamaged` dispatch (Combat.js:493) never ran here — this forwarded
@@ -292,8 +316,15 @@ export class Items {
       // replicated `itemPickup`, whose `count` is the new total and so is safe
       // to apply out of order or twice. Without this the HUD and the whole
       // stat block would sit at zero items for the entire run.
+      // The three mirrors below carry one line of armour each: `owner`, when
+      // present, must be this machine's own player. The host strips the tag on
+      // the way out (`NetHost._forwardOwned`) precisely because a client only
+      // ever receives events about itself, so a foreign identity arriving here
+      // means the routing lied — and a mirror that believed it would hand this
+      // client a teammate's purse and pack.
       this._unsub.push(ctx.events.on('itemPickup', (e) => {
         if (ctx.authority || !e || !ITEM_BY_ID.has(e.id)) return;
+        if (e.owner && e.owner !== ctx.player) return;
         // A count of zero is a real message on this channel — it is how the host
         // reports a stack the corruption tier (or the refinery) took away — and
         // storing it would leave a zero-count entry that `inventory()` and the
@@ -313,6 +344,7 @@ export class Items {
       // dropped or duplicated event self-corrects on the next one.
       this._unsub.push(ctx.events.on('goldChanged', (e) => {
         if (ctx.authority || !e || typeof e.gold !== 'number') return;
+        if (e.owner && e.owner !== ctx.player) return;
         this.gold = e.gold;
       }));
 
@@ -322,14 +354,17 @@ export class Items {
       // display state, not permission.
       this._unsub.push(ctx.events.on('equipmentChanged', (e) => {
         if (ctx.authority || !e) return;
+        if (e.owner && e.owner !== ctx.player) return;
         this.equipmentId = e.id && EQUIPMENT_BY_ID.has(e.id) ? e.id : null;
         this.equipCharges = e.charges ?? 0;
         this.equipTimer = e.cooldown ?? 0;
       }));
 
-      // The gauge reaching into the inventory (launch spec §1, expression 3).
-      // Upward crossings only, one stack per threshold, never the same band
-      // twice. The writes ride the 'corrupt' reason, so Corruption does not
+    }
+
+    // The gauge reaching into the inventory (launch spec §1, expression 3).
+    // Upward crossings only, one stack per threshold, never the same band
+    // twice. The writes ride the 'corrupt' reason, so Corruption does not
       // re-charge and a client mirrors them like any other inventory change.
       //
       // The crossing only *claims* its bands here; `fixedUpdate` collects them.
@@ -341,16 +376,20 @@ export class Items {
       // and created it a moment later from the stale outer payload: a permanent
       // ghost tile for an item the player holds none of, a pickup card for it,
       // and the toasts in reverse causal order. `_mutePeak` still advances at
-      // claim time, so the one-mutation-per-band rule holds even if two crossings
-      // land in the same frame.
-      this._unsub.push(ctx.events.on('corruptionBand', ({ band, prev }) => {
-        if (!ctx.authority || band <= prev) return;
-        for (let b = Math.max(prev + 1, MUTATION.minBand, this._mutePeak + 1); b <= band; b++) {
-          this._mutePeak = b;
-          this._muteQueue.push(b);
-        }
-      }));
-    }
+    // claim time, so the one-mutation-per-band rule holds even if two crossings
+    // land in the same frame.
+    //
+    // Unfiltered on purpose, and shared by every instance: the band is a world
+    // fact, not one pawn's, and every pack in the party festers when the world
+    // does. Each instance claims the crossing into its own queue and mutates
+    // its own inventory, and the resulting `itemMutated` names its owner.
+    this._unsub.push(ctx.events.on('corruptionBand', ({ band, prev }) => {
+      if (!ctx.authority || band <= prev) return;
+      for (let b = Math.max(prev + 1, MUTATION.minBand, this._mutePeak + 1); b <= band; b++) {
+        this._mutePeak = b;
+        this._muteQueue.push(b);
+      }
+    }));
 
     this._rebuildHooks();
   }
@@ -375,6 +414,28 @@ export class Items {
    */
   _rng() {
     return this.owner ? this._ownRng : this.ctx.rng;
+  }
+
+  /**
+   * The pawn every event this instance emits belongs to. A satellite says its
+   * own pawn; the viewer's instance says `ctx.player` rather than `null`, so
+   * "whose is this" is one comparison at every consumer instead of two, and so
+   * `NetHost` can route on the field alone. Host-side only — the reference is
+   * stripped before an event goes on the wire (`NetHost._forwardOwned`).
+   */
+  _owner() {
+    return this.owner || this.ctx.player;
+  }
+
+  /**
+   * Does an event naming `pawn` belong to this instance? The mirror image of
+   * `_owner`, for the simulation listeners: a satellite wants its own pawn's
+   * signal and nothing else, and the viewer's instance wants the local
+   * player's — including every payload that names nobody, which is what
+   * single-player and the harness emit, so nothing there changes.
+   */
+  _mine(pawn) {
+    return this.owner ? pawn === this.owner : (!pawn || pawn === this.ctx.player);
   }
 
   /**
@@ -463,6 +524,7 @@ export class Items {
     this._rebuildHooks();
     this.ctx.events.emit('itemPickup', {
       id, count: next, tier: ITEM_BY_ID.get(id)?.tier, delta: next - prev, reason,
+      owner: this._owner(),
     });
     return next;
   }
@@ -534,7 +596,9 @@ export class Items {
     const held = this.count(baseId);
     this._set(baseId, 0, 'corrupt');
     this._set(blight.id, this.count(blight.id) + held, 'corrupt');
-    this.ctx.events.emit('itemMutated', { baseId, blightId: blight.id, count: held, band });
+    this.ctx.events.emit('itemMutated', {
+      baseId, blightId: blight.id, count: held, band, owner: this._owner(),
+    });
     return true;
   }
 
@@ -584,7 +648,7 @@ export class Items {
   addGold(amount) {
     if (amount <= 0) return this.gold;
     this.gold += Math.round(amount);
-    this.ctx.events.emit('goldChanged', { gold: this.gold });
+    this.ctx.events.emit('goldChanged', { gold: this.gold, owner: this._owner() });
     return this.gold;
   }
 
@@ -633,14 +697,19 @@ export class Items {
     const amount = this.killReward(victim);
     if (amount <= 0) return 0;
     this.addGold(amount);
-    this.ctx.events.emit('goldReward', { amount, victim, position: victim.position });
+    // One kill now pays every pawn in the party (`rewardKillAll`), so this
+    // channel carries N events per death on a host. The owner is what collapses
+    // that back to one popup per machine: the viewer's.
+    this.ctx.events.emit('goldReward', {
+      amount, victim, position: victim.position, owner: this._owner(),
+    });
     return amount;
   }
 
   spendGold(amount) {
     if (this.gold < amount) return false;
     this.gold -= amount;
-    this.ctx.events.emit('goldChanged', { gold: this.gold });
+    this.ctx.events.emit('goldChanged', { gold: this.gold, owner: this._owner() });
     return true;
   }
 
@@ -1031,12 +1100,19 @@ export class Items {
     this.equipCharges = next ? 1 : 0;
     this.equipTimer = 0;
     this.ctx.events.emit('equipmentChanged', {
-      id: next, previous, charges: this.equipCharges, cooldown: 0,
+      id: next, previous, charges: this.equipCharges, cooldown: 0, owner: this._owner(),
     });
     // The tier goes over as its *name*, not as a raw ladder index: `2` used to
     // be written here, which is the legendary rung, and it bypassed the tier
     // map that every other pickup goes through.
-    if (next) this.ctx.audio?.play?.('pickup', null, 'equipment');
+    //
+    // A satellite is silent: the cue belongs to the machine whose slot filled,
+    // and this host is not it. (Nothing plays it on the owning peer either —
+    // `Audio` subscribes to `itemPickup`, not to `equipmentChanged`, and a
+    // client's own `setEquipment` returns at the authority gate above. That gap
+    // predates per-pawn economy and is left where it is rather than widened
+    // into a cue this host plays on a teammate's behalf.)
+    if (next && !this.owner) this.ctx.audio?.play?.('pickup', null, 'equipment');
     return previous;
   }
 

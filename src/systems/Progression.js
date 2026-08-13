@@ -3,7 +3,7 @@ import { Interactables } from '../world/Interactables.js';
 import { ITEMS_BY_TIER } from '../data/items.js';
 import { BIOMES, stageNameFor } from '../world/Materials.js';
 import { Profile } from './Profile.js';
-import { isLocalVictim, isLocalKill } from '../core/Engine.js';
+import { isLocalVictim, isLocalKill, isLocalOwner } from '../core/Engine.js';
 import { VOIDTOUCHED, isVoidtouched } from '../data/corruption.js';
 
 /**
@@ -194,11 +194,19 @@ export class Progression {
     // already owns between two ids — the emptied base and the arriving card are
     // one event, not two acquisitions. Counting them inflated the run summary
     // by two items every time the corruption gauge crossed a band.
+    //
+    // Owner-filtered, both of them. These two are the *local* survivor's run
+    // summary — the one `_endRun` files when this machine's player dies — and
+    // on a host the bus now carries every pawn's economy. `goldEarned` is the
+    // sharper of the two: it is a delta against `_lastGold`, so two purses
+    // interleaving on one channel do not merely inflate the number, they
+    // produce a figure that belongs to no one.
     ctx.events.on('itemPickup', (e) => {
-      if (e?.reason === 'corrupt') return;
+      if (e?.reason === 'corrupt' || !isLocalOwner(ctx, e)) return;
       this.stats.items++;
     });
     ctx.events.on('goldChanged', (e) => {
+      if (!isLocalOwner(ctx, e)) return;
       const delta = e.gold - (this._lastGold || 0);
       if (delta > 0) this.stats.goldEarned += delta;
       this._lastGold = e.gold;

@@ -19,7 +19,7 @@ import { EQUIPMENT_KEY_LABEL } from '../systems/Items.js';
 import { abilityIcon, abilityArt, equipmentArt, itemArt, hexOf, TIER_ORDER, tracePathFrom } from './Icons.js';
 import { Tooltip, describeItem, prettify } from './Tooltip.js';
 import { Menus } from './Menus.js';
-import { isLocalVictim, isLocalKill } from '../core/Engine.js';
+import { isLocalVictim, isLocalKill, isLocalOwner } from '../core/Engine.js';
 
 /**
  * The HUD. DOM + CSS rather than canvas so text stays crisp at any DPI.
@@ -224,21 +224,31 @@ export class HUD {
     // icons describing a survivor who is no longer on the drop pod.
     on('survivorChanged', () => this.buildSlots());
 
-    on('equipmentChanged', () => this.syncEquipment());
+    // The Q tile, the item strip and the blight toast all describe *this*
+    // player's loadout. On a host every pawn's economy shares the bus, so each
+    // one asks whose event it is first; in single-player they all pass.
+    on('equipmentChanged', (e) => { if (isLocalOwner(ctx, e)) this.syncEquipment(); });
     on('equipmentUsed', () => {
       this.pulse(this.refs.equip.el, 'is-fire');
       this.equipReady = false;
     });
 
-    on('itemPickup', ({ id, count, reason }) => this.onItemPickup(id, count, reason));
+    on('itemPickup', (e) => {
+      if (!isLocalOwner(ctx, e)) return;
+      this.onItemPickup(e.id, e.count, e.reason);
+    });
     // The strip already repaints itself off the two `itemPickup` writes the
     // conversion rides, so this line exists only to say *why* the pack changed
     // — otherwise a stack silently vanishes and an unfamiliar one appears.
-    on('itemMutated', ({ baseId, blightId, count }) => {
-      const base = ITEM_BY_ID.get(baseId), blight = ITEM_BY_ID.get(blightId);
+    on('itemMutated', (e) => {
+      if (!isLocalOwner(ctx, e)) return;
+      const base = ITEM_BY_ID.get(e.baseId), blight = ITEM_BY_ID.get(e.blightId);
       if (!blight) return;
-      this.toast(`${base?.name || prettify(baseId)} festers — ${count}x ${blight.name}`, 'blight', blightId);
+      this.toast(`${base?.name || prettify(e.baseId)} festers — ${e.count}x ${blight.name}`, 'blight', e.blightId);
     });
+    // No owner test needed: the body is empty. The gold readout is polled off
+    // `ctx.items` — the viewer's own instance — in `update`, so a teammate's
+    // purse cannot reach it however loud this channel gets.
     on('goldChanged', () => { /* value polled in update; event kept for parity */ });
     on('abilityUsed', ({ slot }) => {
       const i = slotIndex(slot);

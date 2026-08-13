@@ -51,12 +51,19 @@ export class Corruption {
     // 8 each, an unprompted 40-point spike the player never chose. A later,
     // genuine pickup of another copy of the same blight card still arrives as
     // 'give' and still pays.
-    ctx.events.on('itemPickup', ({ id, count = 1, delta, reason }) => {
+    //
+    // Not owner-*filtered* — owner-*attributed*. Corruption is the world's
+    // number and every hand that takes loot raises it, so a teammate's pickup
+    // still feeds; what `owner` decides is whose ledger the greed is written
+    // against (`corruptionOf`), the same rule the void-credit charge follows.
+    // An untagged payload still means the local player, so single-player is the
+    // call it always was.
+    ctx.events.on('itemPickup', ({ id, count = 1, delta, reason, owner }) => {
       if (reason === 'corrupt') return;
       const change = delta === undefined ? count : delta;
       if (!(change > 0)) return;
       const tier = ITEM_BY_ID.get(id)?.tier;
-      this.feed(ctx.player, (SOURCES.itemFeed[tier] ?? 1) * change);
+      this.feed(owner || ctx.player, (SOURCES.itemFeed[tier] ?? 1) * change);
     });
     // Counterplay: a Voidtouched kill bleeds a fraction of the world's
     // corruption back to whoever landed it. Riding the kill event keeps

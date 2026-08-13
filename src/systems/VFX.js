@@ -6,7 +6,7 @@ import { makeDissolvable } from '../shaders/DissolveShader.js';
 import { MAX_BLASTS } from '../shaders/DistortShader.js';
 import { clamp, lerp } from '../core/MathUtil.js';
 import { elementOf, sparkColour, ELEMENT_HUE } from '../data/damageTypes.js';
-import { isLocalVictim } from '../core/Engine.js';
+import { isLocalVictim, isLocalOwner } from '../core/Engine.js';
 import { GATE, shouldLaunch } from './LaunchGate.js';
 
 /**
@@ -249,7 +249,10 @@ export class VFX {
     e.on('kill', (p) => this._onKill(p));
     e.on('playerHurt', (p) => this._onPlayerHurt(p));
     e.on('shieldBroken', (p) => this._onShieldAbsorb(p));
-    e.on('itemPickup', () => {
+    // The burst fires at the *viewer's* feet, so it has to be the viewer's
+    // pickup: a teammate's loot 40 m away used to flash on this player's body.
+    e.on('itemPickup', (p) => {
+      if (!isLocalOwner(ctx, p)) return;
       const pp = ctx.player?.position;
       if (pp) this.itemPickupBurst(pp, 0xffffff);
     });

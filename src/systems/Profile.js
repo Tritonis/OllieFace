@@ -6,7 +6,7 @@ import {
 // per-survivor mastery challenges, and it has to have run before the first gate
 // question. See the header of that file for why it is not an `init` hook.
 import { catalogueSizes, catalogueHas, unlockName } from './UnlockRegistry.js';
-import { isLocalVictim } from '../core/Engine.js';
+import { isLocalVictim, isLocalOwner } from '../core/Engine.js';
 import { adoptLegacyKey } from '../core/LegacyStorage.js';
 import { renameItemId, renameEnemyId } from '../data/renamedIds.js';
 
@@ -559,16 +559,21 @@ export class Profile {
     on('stageStart', (e) => this._onStageStart(e));
     on('kill', (e) => this._onKill(e));
     on('damage', (e) => this._onDamage(e));
-    on('itemPickup', (e) => this._onItemPickup(e));
+    // The logbook is a record of what *this player* has met and carried, so
+    // every economy channel it reads is owner-filtered. On a host the same bus
+    // carries each remote pawn's satellite economy (`Items.of`), and without
+    // the test a teammate's loot and a teammate's equipment were written into
+    // this machine's permanent profile — unlocks earned by somebody else's run.
+    on('itemPickup', (e) => { if (isLocalOwner(ctx, e)) this._onItemPickup(e); });
     // Equipment is a slot, not a stack, so it has no `itemPickup` of its own and
     // was the one catalogue the logbook could never mark as met. `equipmentChanged`
-    // is this client's own slot changing (`Items.setEquipment`), the same
-    // replication story `itemPickup` has, so there is no witness filter here
-    // either. `previous` is ignored: putting one down is not meeting it.
+    // is a slot changing (`Items.setEquipment`); which slot is what `owner`
+    // answers. `previous` is ignored: putting one down is not meeting it.
     on('equipmentChanged', (e) => {
+      if (!isLocalOwner(ctx, e)) return;
       if (typeof e?.id === 'string' && e.id) this.discover('equipment', e.id, 1);
     });
-    on('goldChanged', (e) => this._onGold(e));
+    on('goldChanged', (e) => { if (isLocalOwner(ctx, e)) this._onGold(e); });
     on('bossDead', (e) => this._onBossDead(e));
     on('teleporterComplete', () => this._onTeleporterComplete());
     // A teammate's death is not this run's death; see `isLocalVictim`.

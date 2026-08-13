@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { clamp } from '../core/MathUtil.js';
+import { isLocalOwner } from '../core/Engine.js';
 import { MusicEngine } from './Music.js';
 
 /**
@@ -255,8 +256,13 @@ export class Audio {
       this.musicEngine?.bump(p?.isBoss ? 0.5 : p?.isElite ? 0.14 : 0.05);
     });
     e.on('playerHurt', (p) => this.playerHurt(p?.amount ?? 0));
-    e.on('itemPickup', (p) => this.itemChanged(p));
-    e.on('goldChanged', () => this.coin());
+    // Both cues speak for the person holding the headphones. On a host the bus
+    // carries every pawn's economy, so without the owner test a four-player
+    // party gave the viewer a jingle for every teammate's pickup and a coin for
+    // every teammate's kill. In single-player every event is the viewer's and
+    // both fire exactly as before.
+    e.on('itemPickup', (p) => { if (isLocalOwner(ctx, p)) this.itemChanged(p); });
+    e.on('goldChanged', (p) => { if (isLocalOwner(ctx, p)) this.coin(); });
     e.on('abilityUsed', (p) => this.ability(p?.slot ?? 0));
     e.on('levelUp', () => this.musicEngine?.bump(0.22));
     e.on('stageStart', (p) => {
