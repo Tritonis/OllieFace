@@ -18,7 +18,7 @@ import { RNG } from '../src/core/MathUtil.js';
 import { NetHost } from '../src/net/NetHost.js';
 import { Coop } from '../src/net/Coop.js';
 import { Player } from '../src/entities/Player.js';
-import { Reader } from '../src/net/Protocol.js';
+import { Reader, BTN } from '../src/net/Protocol.js';
 import { BLIGHT_BY_BASE } from '../src/data/items.js';
 import { MUTATION } from '../src/data/corruption.js';
 import { isLocalOwner } from '../src/core/Engine.js';
@@ -36,7 +36,10 @@ function makeCtx() {
       emit(name, p) { for (const fn of listeners.get(name) || []) fn(p); },
       on(name, fn) { if (!listeners.has(name)) listeners.set(name, []); listeners.get(name).push(fn); return () => {}; },
     },
-    interactables: { orbs: [], spawnOrb(pos, id) { this.orbs.push(id); } },
+    interactables: {
+      orbs: [], owners: [],
+      spawnOrb(pos, id, arc = 1.5, ownerPawn = null) { this.orbs.push(id); this.owners.push(ownerPawn); },
+    },
     audio: null,
   };
 }
@@ -68,6 +71,66 @@ console.log('a kill pays every registered pawn the full reward');
   ok(expected > 0, 'the fixture victim is actually worth something');
   ok(hostItems.gold === expected, 'the host pawn was paid in full');
   ok(remoteItems.gold === expected, 'the remote pawn was paid in full too — no split, no kill steal');
+}
+
+// Sacrifice's corpse-drop is the *kill's*, not each payee's. Task 3 put
+// `rewardKill` inside a per-pawn loop and carried the roll in with it, so an
+// N-player roster rolled the world's drop chance N times off N streams — the
+// drop rate scaled with party size — and every copy spawned owner-less, which
+// homes it to the viewer. One roll, off the shared stream, owned by the killer.
+console.log('the Sacrifice drop is rolled once per kill and belongs to the killer');
+{
+  const ctx = makeCtx();
+  const host = { isPlayer: true, alive: true };
+  const remote = { isPlayer: true, alive: true, peerId: 2 };
+  ctx.player = host;
+  // Certainty, so the count below is the number of rolls and not a coin flip.
+  ctx.artifacts = { sacrificeChance: () => 1, has: () => false, runMods: () => ({ gold: 1 }) };
+
+  const hostItems = new Items();
+  hostItems.init(ctx);
+  const remoteItems = new Items(remote);
+  remoteItems.init(ctx);
+  remote.items = remoteItems;
+  ctx.roster = fakeRoster(host, remote);
+
+  const victim = { def: { cost: 100 }, position: new THREE.Vector3() };
+  Items.rewardKillAll(ctx, victim, remote);
+
+  ok(ctx.interactables.orbs.length === 1,
+    `one corpse, one drop, whatever the party size (${ctx.interactables.orbs.length})`);
+  ok(ctx.interactables.owners[0] === remote,
+    'and it belongs to the pawn that landed the kill, not to whoever this machine renders');
+
+  // A kill nobody landed (a burn, an elite death nova) still drops — owner-less,
+  // which is the pre-branch free-for-all and the only honest answer available.
+  ctx.interactables.orbs.length = 0; ctx.interactables.owners.length = 0;
+  Items.rewardKillAll(ctx, victim, null);
+  ok(ctx.interactables.orbs.length === 1 && ctx.interactables.owners[0] === null,
+    'a sourceless kill still pays a drop, owner-less');
+}
+
+// The roll must come off the shared stream, exactly where the singleton drew it
+// before this branch existed — a satellite's derived stream would make the
+// world's loot depend on which pawn happened to be iterated first.
+console.log('the Sacrifice roll draws on ctx.rng, never a satellite\'s stream');
+{
+  const ctx = makeCtx();
+  const host = { isPlayer: true, alive: true };
+  const remote = { isPlayer: true, alive: true, peerId: 2 };
+  ctx.player = host;
+  ctx.artifacts = { sacrificeChance: () => 1, has: () => false, runMods: () => ({ gold: 1 }) };
+
+  const hostItems = new Items();
+  hostItems.init(ctx);
+  const remoteItems = new Items(remote);
+  remoteItems.init(ctx);
+  remote.items = remoteItems;
+  ctx.roster = fakeRoster(host, remote);
+
+  const before = ctx.rng.s;
+  Items.rewardKillAll(ctx, { def: { cost: 100 }, position: new THREE.Vector3() }, remote);
+  ok(ctx.rng.s !== before, 'the shared stream advanced — the singleton did the drawing');
 }
 
 console.log('a roster of one is the single-player call, unchanged');
@@ -324,6 +387,19 @@ console.log('a teammate\'s blood is not the viewer\'s hurt timer');
   hostItems._lastHurt = -999;
   ctx.events.emit('playerHurt', { target: remote, amount: 5 });
   ok(hostItems._lastHurt < 0, 'and never felt the remote pawn\'s');
+
+  // The satellite's own half of the same filter. Inert today — nothing puts a
+  // remote pawn's hit on the host bus — but P3 makes the channel live, and an
+  // owner filter is exactly the thing that must already be pinned when it does.
+  const remoteItems = new Items(remote);
+  remoteItems.init(ctx);
+  remote.items = remoteItems;
+
+  remoteItems._lastHurt = -999;
+  ctx.events.emit('playerHurt', { target: host, amount: 5 });
+  ok(remoteItems._lastHurt < 0, 'and a satellite does not feel the viewer\'s either');
+  ctx.events.emit('playerHurt', { target: remote, amount: 5 });
+  ok(remoteItems._lastHurt === 12, 'it acts on its own pawn\'s signal alone');
 }
 
 console.log('a satellite\'s item hooks act on its own pawn, never on the viewer\'s body');
@@ -398,6 +474,54 @@ console.log('a satellite is stepped by Coop, so its corruption toll is actually 
   ok(mutated.length === 2, 'the queue drained — a second step mutates nothing again');
 }
 
+// Task 5 seeded a joiner's equipment slot and replicated it, and the joiner's
+// HUD painted a live, charged tile — for an equipment with no wire
+// representation and no host-side activation, i.e. permanently dead. The bit,
+// the command edge and the host-side fire, end to end.
+console.log('a joiner\'s equipment press crosses the wire and fires the joiner\'s own slot');
+{
+  const ctx = makeCtx();
+  const host = { isPlayer: true, alive: true };
+  ctx.player = host;
+  const hostItems = new Items();
+  hostItems.init(ctx);
+  hostItems.setEquipment('stim-injector');
+
+  // The command edge, off the real `_commit`.
+  const remote = {
+    isPlayer: true, alive: true, peerId: 2, local: false,
+    velocity: new THREE.Vector3(), _prevButtons: 0, _lastCmdTick: 0,
+  };
+  const cmd = { tick: 1, buttons: BTN.EQUIP };
+  Player.prototype._commit.call(remote, cmd, BTN.EQUIP, BTN.EQUIP);
+  ok(remote.equipPressed === true, 'the EQUIP bit becomes an edge on the pawn');
+  Player.prototype._commit.call(remote, cmd, BTN.EQUIP, 0);
+  ok(remote.equipPressed === false, 'a held key does not re-fire, and a starved repeat cannot either');
+
+  const remoteItems = new Items(remote);
+  remoteItems.init(ctx);
+  remote.items = remoteItems;
+  remoteItems.setEquipment('stim-injector');
+  remoteItems.equipCharges = 1;
+  hostItems.equipCharges = 1;
+
+  const used = [];
+  ctx.events.on('equipmentUsed', (e) => used.push(e));
+
+  const coop = new Coop();
+  coop.ctx = ctx;
+  coop.pawns = [remote];
+
+  coop.fixedUpdate(ctx, 1 / 60);
+  ok(used.length === 0, 'no press, no fire');
+
+  Player.prototype._commit.call(remote, cmd, BTN.EQUIP, BTN.EQUIP);
+  coop.fixedUpdate(ctx, 1 / 60);
+  ok(used.length === 1, `the joiner's press fired the joiner's equipment (${used.length})`);
+  ok(remoteItems.equipCharges === 0, 'and spent the joiner\'s charge');
+  ok(hostItems.equipCharges === 1, 'never the host\'s');
+}
+
 console.log('a remote pawn\'s jump launches the remote pawn');
 {
   const ctx = makeCtx();
@@ -431,6 +555,76 @@ console.log('a remote pawn\'s jump launches the remote pawn');
   ok(remote.velocity.x > 0, `the remote pawn was launched (${remote.velocity.x.toFixed(2)} m/s)`);
   ok(remoteItems.consumeImpulse() === 0, 'its bank was spent, not left sitting');
   ok(hostItems.consumeImpulse() === 0, 'and the viewer\'s bank was never touched');
+}
+
+// The stat block is the other half of "whose economy is this". `applyCommand`
+// is the one 60 Hz step every pawn takes, local and remote, and on a host it is
+// driven for a joiner's pawn too — so a stat read that goes to `ctx.items`
+// simulates the joiner's body with the *host's* build while the joiner's own
+// client predicts with its own inventory, and the two sides disagree forever.
+console.log('a remote pawn\'s stat block is computed from the remote pawn\'s inventory');
+{
+  const ctx = makeCtx();
+  const host = { isPlayer: true, alive: true };
+  ctx.player = host;
+
+  const hostItems = new Items();
+  hostItems.init(ctx);
+
+  // A pawn shaped exactly as much as `Player._refreshStats` reads, so the real
+  // method runs. The base block is the survivor's, before any item touches it.
+  const BASE = {
+    maxHealth: 100, healthRegen: 1, moveSpeed: 7, attackSpeed: 1, damage: 12,
+    critChance: 1, critMult: 2, armor: 0, cooldownMult: 1, jumpCount: 1,
+  };
+  const shell = () => ({
+    isPlayer: true, alive: true, ctx, health: 100,
+    _effectiveBase: () => ({ ...BASE }),
+  });
+
+  const hostPawn = Object.assign(shell(), { isLocal: true });
+  ctx.player = hostPawn;
+  const remote = Object.assign(shell(), { peerId: 2, local: false });
+  const remoteItems = new Items(remote);
+  remoteItems.init(ctx);
+  remote.items = remoteItems;
+
+  // The host's private build: six Cloven Hoof, +14% move speed each.
+  hostItems.give('cloven-hoof', 6);
+  // The joiner's: none of that, one Spasm Gland instead.
+  remoteItems.give('spasm-gland', 1);
+
+  Player.prototype._refreshStats.call(hostPawn);
+  Player.prototype._refreshStats.call(remote);
+
+  ok(hostPawn.stats.moveSpeed > BASE.moveSpeed * 1.5,
+    `the host's own pawn wears the host's hooves (${hostPawn.stats.moveSpeed.toFixed(2)} m/s)`);
+  ok(remote.stats.moveSpeed === BASE.moveSpeed,
+    `the remote pawn does not (${remote.stats.moveSpeed.toFixed(2)} m/s, want ${BASE.moveSpeed})`);
+  ok(remote.stats.attackSpeed > BASE.attackSpeed,
+    'and the remote pawn does wear its own Spasm Gland');
+  ok(hostPawn.stats.attackSpeed === BASE.attackSpeed,
+    'which the host never borrowed back');
+  ok(remote.maxHealth === remote.stats.maxHealth,
+    'the derived pools follow the block the pawn actually got');
+
+  // The second half of the equipment-recharge item the ledger carried.
+  // `equipmentCooldownMax`/`equipmentMaxCharges` already read `_owner()?.stats`
+  // rather than the viewer's — but until the line above, the object they read
+  // was itself built from the viewer's inventory, so a satellite's slot still
+  // recharged on the host's Dry Cell. Both halves are closed only together.
+  hostItems.give('dry-cell', 1);
+  remoteItems.setEquipment('blink-anchor');
+  hostItems.setEquipment('blink-anchor');
+  Player.prototype._refreshStats.call(hostPawn);
+  Player.prototype._refreshStats.call(remote);
+
+  ok(hostItems.equipmentMaxCharges() === 2, 'the host\'s own Dry Cell banks the host a second charge');
+  ok(remoteItems.equipmentMaxCharges() === 1,
+    `the joiner, who owns no Dry Cell, gets one (${remoteItems.equipmentMaxCharges()})`);
+  ok(remoteItems.equipmentCooldownMax() > hostItems.equipmentCooldownMax(),
+    'and waits the undiscounted cooldown the joiner actually paid for'
+    + ` (${remoteItems.equipmentCooldownMax().toFixed(1)}s vs the host's ${hostItems.equipmentCooldownMax().toFixed(1)}s)`);
 }
 
 /** One EVENT frame off a fake peer's outbox, decoded. `Writer.bytes()` hands

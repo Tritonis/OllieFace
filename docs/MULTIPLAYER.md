@@ -206,6 +206,60 @@ with no host migration; the host runs the simulation. See `NETCODE.md`.
 
 ---
 
+## Known co-op gaps after P2
+
+P2 gave every pawn its own `Items` — inventory, gold, equipment and stat block
+all resolve through `Items.of(ctx, pawn)`. Two consumers were never in that
+slice's file list and still resolve through the *viewer's* singleton. Both are
+reachable in any live co-op game today. They are written down here rather than
+discovered in a playtest, and both belong to P3.
+
+**1. Combat hooks and outgoing-damage modifiers dispatch to `ctx.items`.**
+`Combat._dispatch` (`src/systems/Combat.js:653`) sends every `onHit` and
+`onKill` to `this.ctx.items`, and `modifyOutgoing` (`src/systems/Combat.js:474`)
+applies `ctx.items`' conditional multipliers to any `source.isPlayer` — remote
+pawns included. So on a host:
+
+- a joiner's on-hit / on-kill items **never fire**; their whole proc build is
+  dead weight;
+- the **host's** items proc off the joiner's bullets, and since `api.player` is
+  bound to `_owner()` (`src/systems/Items.js:1182`) the singleton's owner is
+  `ctx.player` — the host takes the barrier, the heal, the launched projectile
+  from a teammate's kill across the map;
+- "vs full health / airborne / stunned" multipliers apply the host's item set to
+  the joiner's damage.
+
+This is not a one-line routing swap: `_dispatch` pays into one shared proc
+budget (`Combat.js:654-655`), so per-source routing needs a budget decision, and it
+sits alongside the deliberately parked `onDamaged` (gated on `target ===
+ctx.player` at `src/systems/Combat.js:565`, correct as written). The parking
+note now covers all four: `onDamaged`, `onHit`, `onKill`, `modifyOutgoing`.
+
+**2. Shared-objective payouts pay the host alone.** None of these are
+pawn-driven interacts, so the per-pawn ownership work never reached them:
+
+- realm trial completion — three owner-less orbs plus a direct
+  `ctx.items.addGold` (`src/world/realms/Realms.js:588-593`);
+- bell shrine ring-clear — two owner-less orbs
+  (`src/world/Interactables.js:989-992`);
+- the sealed cache (`src/world/realms/RealmProps.js:555`) and the final boss
+  void-loot ring (`src/world/realms/FinalBoss.js:212`), same owner-less
+  `spawnOrb` shape.
+
+An owner-less orb homes to `ItemOrb.recipient()`'s fallback, `ctx.player`
+(`src/world/Interactables.js:1759-1761`), i.e. the host. A joiner who fights the
+whole trial or clears the whole bell ring receives nothing from it. The gold at
+`Realms.js:593` is the sharper half: an orb could at least be made a race, but
+gold has no orb to race for and must be paid out per pawn.
+
+Neither gap is a regression — pre-P2 there was one shared purse mirrored to
+every client, so neither was visible. Both are consequences of splitting the
+purse, and P2's headline rule ("a kill pays every pawn in full, no
+kill-stealing") is contradicted by the largest single payouts in the game until
+they are closed.
+
+---
+
 ## Verification
 
 Automated: `node tests/run.mjs`, `npm run gate:sp`, `npm run gate:mp1`,

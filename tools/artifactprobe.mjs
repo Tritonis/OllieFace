@@ -163,6 +163,11 @@ async function run(label, rules, probeName) {
         for (let i = 0; i < 400; i++) {
           const victim = d.enemies[i % Math.max(1, d.enemies.length)];
           if (!victim) break;
+          // Both halves of one death's payout. The corpse-drop moved out of
+          // `rewardKill` (which is now per-payee) and onto `rollSacrifice`,
+          // which `Items.rewardKillAll` calls once per kill; this is that pair
+          // for the roster of one this probe runs.
+          ctx.items.rollSacrifice(victim, null);
           ctx.items.rewardKill(victim);
           paid++;
         }

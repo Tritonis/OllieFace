@@ -638,7 +638,9 @@ export class Combat {
     // Every pawn in the roster is paid the full amount — see `rewardKillAll`
     // for why co-op does not split the purse. A solo run has a roster of one
     // and takes the same single call it always did.
-    Items.rewardKillAll(ctx, victim);
+    // `source` so Sacrifice's corpse-drop can be credited to the pawn that
+    // landed the blow rather than spawned owner-less and homed to the viewer.
+    Items.rewardKillAll(ctx, victim, source);
 
     if (source?.isPlayer && depth < MAX_PROC_DEPTH) {
       this._dispatch('onKill', { victim, source, position, procDepth: depth + 1, procCoefficient: 1 });

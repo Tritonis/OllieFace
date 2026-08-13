@@ -122,10 +122,27 @@ export class Coop {
    * reorder the whole simulation mid-run. This is one call in a slot that
    * already exists, and the pawn list is empty in single-player.
    *
+   * This is also where a joiner's equipment press is resolved. `Items.update`
+   * reads `ctx.input` directly, which is the *host's* keyboard — pumping it for
+   * a satellite would let the host's F fire every teammate's slot. So the press
+   * arrives the way every other client action does, as a command bit
+   * (`BTN.EQUIP` -> `Player._commit` -> `equipPressed`), and is spent here
+   * against that pawn's own `Items`. Without it Task 5's seeded, replicated
+   * equipment painted a live tile on a joiner's HUD that could never fire.
+   *
+   * One tick of latency: `Lobby` registers `NetHost` after this system, so the
+   * edge this reads was written by the previous tick's `applyCommand`. The edge
+   * is rewritten every tick regardless, so it is still exactly one fire per
+   * press — 16 ms behind a press that already crossed a network.
+   *
    * Host-only, like every other satellite: a client owns no pawns.
    */
   fixedUpdate(ctx, h) {
     if (!ctx.authority) return;
-    for (let i = 0; i < this.pawns.length; i++) this.pawns[i].items?.fixedUpdate?.(ctx, h);
+    for (let i = 0; i < this.pawns.length; i++) {
+      const pawn = this.pawns[i];
+      pawn.items?.fixedUpdate?.(ctx, h);
+      if (pawn.equipPressed) pawn.items?.useEquipment?.();
+    }
   }
 }

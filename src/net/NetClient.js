@@ -280,6 +280,7 @@ export class NetClient {
     if (i.down('KeyQ')) buttons |= BTN.UTILITY;
     if (i.down('KeyR')) buttons |= BTN.SPECIAL;
     if (i.down('KeyE')) buttons |= BTN.INTERACT;
+    if (i.down('KeyF')) buttons |= BTN.EQUIP;
     return {
       tick: 0, moveX: m.x, moveZ: m.z, buttons,
       yaw: ctx.cameraRig?.yaw ?? 0,

@@ -23,8 +23,9 @@ import { Items } from '../systems/Items.js';
  * than where it originally predicted — permanent jitter.
  *
  * Every number that an item could plausibly modify is read out of
- * `ctx.items.stats(base)` each step — nothing downstream reads the base block
- * directly.
+ * `Items.of(ctx, this).stats(base)` each step — this pawn's own inventory, not
+ * the viewer's, because a host steps every pawn in the party — and nothing
+ * downstream reads the base block directly.
  *
  * ## Survivors
  *
@@ -228,6 +229,7 @@ export class Player {
     this._cmdTick = 0;
     this._jumpImpulses = new Map();
     this.interactPressed = false;
+    this.equipPressed = false;
     this._renderOffset = new THREE.Vector3();
 
     // Fixed-size deferred-call ring: multi-shot abilities need sub-step timing
@@ -394,6 +396,7 @@ export class Player {
       if (input.down('KeyQ')) b |= BTN.UTILITY;
       if (input.down('KeyR')) b |= BTN.SPECIAL;
       if (input.down('KeyE')) b |= BTN.INTERACT;
+      if (input.down('KeyF')) b |= BTN.EQUIP;
       cmd.buttons = b;
     } else {
       cmd.moveX = 0;
@@ -441,10 +444,7 @@ export class Player {
     this._replaying = replay;
     this._cmdTick = c.tick | 0;
 
-    this.stats = ctx.items?.stats?.(this._effectiveBase()) || { ...this._effectiveBase() };
-    this.maxHealth = this.stats.maxHealth;
-    this.maxShield = this.maxHealth * 0.5;
-    if (this.health > this.maxHealth) this.health = this.maxHealth;
+    this._refreshStats();
 
     this._harvestExternal(dt);
 
@@ -476,6 +476,34 @@ export class Player {
     }
 
     this._commit(c, buttons, pressed);
+  }
+
+  /**
+   * This pawn's stat block, off *this pawn's own* inventory, plus the two pools
+   * derived from it.
+   *
+   * `Items.of(ctx, this)`, never `ctx.items`. `applyCommand` is the single 60 Hz
+   * step every pawn in the party takes, and on a host `NetHost.fixedUpdate`
+   * drives it for the joiners' pawns too — so reading the viewer's singleton
+   * here simulated a joiner's body with the *host's* build, while that joiner's
+   * own client predicted the same body with its own inventory. Six Cloven Hoof
+   * on the host put authority at 12.88 m/s against a prediction of 7.00:
+   * permanent rubber-banding, plus a joiner whose entire build was inert on the
+   * only machine that decides anything.
+   *
+   * `Items.of` returns `ctx.items` for the local player on both roles, so
+   * single-player and a client's prediction of its own pawn are the exact call
+   * this replaced; only the host's remote-pawn path changes.
+   *
+   * A method rather than four lines inline because it is the seam the co-op
+   * stat test drives directly — `applyCommand` needs a whole world around it.
+   */
+  _refreshStats() {
+    const base = this._effectiveBase();
+    this.stats = Items.of(this.ctx, this)?.stats?.(base) || { ...base };
+    this.maxHealth = this.stats.maxHealth;
+    this.maxShield = this.maxHealth * 0.5;
+    if (this.health > this.maxHealth) this.health = this.maxHealth;
   }
 
   /**
@@ -533,8 +561,14 @@ export class Player {
     this._extVZ = this.velocity.z;
 
     // The interact bit is a request, not an action — Interactables resolves it,
-    // and only where authority allows.
+    // and only where authority allows. The equipment bit is the same shape,
+    // resolved by `Coop.fixedUpdate` against this pawn's own `Items`.
+    //
+    // Both are edges, not levels, and both are computed from `pressed` — which
+    // a starved command repeat sets to 0 (`NetHost.fixedUpdate`) — so a held key
+    // fires once and a dropped packet cannot re-fire anything.
     this.interactPressed = (pressed & BTN.INTERACT) !== 0;
+    this.equipPressed = (pressed & BTN.EQUIP) !== 0;
     this._prevButtons = buttons;
     if (cmd.tick > this._lastCmdTick) this._lastCmdTick = cmd.tick;
     this.lastCommand = cmd;

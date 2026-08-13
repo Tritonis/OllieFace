@@ -286,6 +286,15 @@ export class Items {
       // widening the `=== ctx.player` gate, which is out of this slice's scope
       // and belongs with P3's per-pawn combat feedback. The filter is kept here
       // so that whatever channel arrives is already owner-correct on day one.
+      //
+      // `onDamaged` is not the only combat hook parked on that work, and it is
+      // the only one parked *safely*. `onHit`, `onKill` and `modifyOutgoing`
+      // are dispatched today for any `source.isPlayer` — remote pawns included
+      // — and all three go to `ctx.items` (`Combat._dispatch`, `:653`;
+      // `modifyOutgoing`, `:474`), so a joiner's procs never fire and the
+      // host's fire off the joiner's bullets. Routing them per source needs a
+      // decision about the shared proc budget; both gaps are written up in
+      // `docs/MULTIPLAYER.md` under "Known co-op gaps after P2".
       this._unsub.push(ctx.events.on('playerHurt', (e) => {
         if (e?.target === this.owner) this._lastHurt = ctx.time;
       }));
@@ -356,9 +365,9 @@ export class Items {
       }));
 
       // Equipment mirrors the same pattern: the host decides what is in the slot,
-      // the client adopts it so its HUD and its Q key describe the truth. The
-      // client's own press still resolves nowhere (see `useEquipment`) — this is
-      // display state, not permission.
+      // the client adopts it so its HUD and its F key describe the truth. The
+      // press itself resolves on the host, off `BTN.EQUIP` (see `useEquipment`)
+      // — this is display state, not permission.
       this._unsub.push(ctx.events.on('equipmentChanged', (e) => {
         if (ctx.authority || !e) return;
         if (e.owner && e.owner !== ctx.player) return;
@@ -478,7 +487,20 @@ export class Items {
    * A roster of one takes the `else` branch, which is the literal call this
    * replaced — single-player draws and emits exactly what it always did.
    */
-  static rewardKillAll(ctx, victim) {
+  static rewardKillAll(ctx, victim, source = null) {
+    // Sacrifice's corpse-drop is a property of the *kill*, not of each payee, so
+    // it is rolled here — once — and not inside `rewardKill`, which this branch
+    // turned into a per-pawn loop body. Left there, an N-player roster rolled
+    // the world's drop chance N times off N independent streams and the
+    // effective drop rate scaled with party size, which is exactly the kind of
+    // unplanned economy scaling the plan deferred chest pricing to avoid.
+    //
+    // On the singleton (`ctx.items`), so the draw comes off `ctx.rng` — the same
+    // shared stream, at the same point in the sequence, as before this branch
+    // existed. A satellite would draw off its own derived stream and make the
+    // world's loot depend on roster iteration order.
+    ctx.items?.rollSacrifice?.(victim, source?.isPlayer ? source : null);
+
     const roster = ctx.roster;
     if (roster && roster.count > 1) {
       for (const p of roster.all) Items.of(ctx, p)?.rewardKill(victim);
@@ -699,18 +721,31 @@ export class Items {
    * Pay out a kill. Host only — gold is game state, and a client's purse comes
    * from its own host-authored events, never from a locally observed death.
    */
+  /**
+   * Sacrifice: the loot the stage no longer carries comes off the corpses.
+   *
+   * The roll and the orb are both here rather than in Artifacts — Items owns the
+   * gameplay RNG draw and the drop table, and Artifacts only answers what the
+   * odds are. Called once per death by `rewardKillAll`, never from `rewardKill`,
+   * which is per-payee; see the note there.
+   *
+   * `killer` is the pawn that landed the blow, or null when nothing did (a burn
+   * finishing, an elite death nova). A named killer owns the orb, so a joiner's
+   * kill drops for the joiner instead of homing to whoever this machine happens
+   * to render; an unowned kill keeps the pre-branch free-for-all, which is the
+   * only honest answer when there is nobody to credit.
+   */
+  rollSacrifice(victim, killer = null) {
+    if (!this.ctx.authority) return null;
+    const chance = this.ctx.artifacts?.sacrificeChance?.(victim) ?? 0;
+    if (!(chance > 0) || this._rng().next() >= chance) return null;
+    const id = this.rollItem(null, 'small');
+    if (id) this.ctx.interactables?.spawnOrb?.(victim.position, id, 1.4, killer);
+    return id;
+  }
+
   rewardKill(victim) {
     if (!this.ctx.authority) return 0;
-    // Sacrifice: the loot the stage no longer carries comes off the corpses.
-    // The roll and the orb are both done here rather than in Artifacts —
-    // Items owns the gameplay RNG draw and the drop table, and Artifacts only
-    // answers what the odds are.
-    const sacChance = this.ctx.artifacts?.sacrificeChance?.(victim) ?? 0;
-    if (sacChance > 0 && this._rng().next() < sacChance) {
-      const id = this.rollItem(null, 'small');
-      if (id) this.ctx.interactables?.spawnOrb?.(victim.position, id, 1.4);
-    }
-
     const amount = this.killReward(victim);
     if (amount <= 0) return 0;
     this.addGold(amount);
@@ -1137,12 +1172,10 @@ export class Items {
    * Fire the held equipment.
    *
    * Host only: an equipment use spends a charge, deals damage and rolls procs,
-   * all of which are game state. A client pressing Q therefore does nothing
-   * locally and does not desync — the honest gap is that, absent a protocol bit
-   * for it, a client's press does not reach the host either. That is the same
-   * shape as the interact path before it got `BTN.INTERACT`, and it is recorded
-   * as a known limitation rather than papered over with a client-side effect
-   * that would have to be retracted.
+   * all of which are game state. A client pressing F therefore does nothing
+   * locally and does not desync; the press reaches the host as `BTN.EQUIP` on
+   * the command stream and is spent there, against this pawn's own instance,
+   * by `Coop.fixedUpdate` — the same request-not-action shape as `BTN.INTERACT`.
    *
    * A `use` that returns `false` (nothing in range, nowhere to blink) refunds
    * the charge. Burning a 60s cooldown on a mis-press with no feedback is the
@@ -1396,7 +1429,10 @@ export class Items {
     this.equipCharges++;
     this.equipTimer = this.equipCharges < this.equipmentMaxCharges()
       ? this.equipmentCooldownMax() : 0;
-    this.ctx.audio?.play?.('coin');
+    // The viewer's own recharge only. `Coop.fixedUpdate` pumps this for every
+    // satellite, and a teammate's slot coming back is not a cue this machine's
+    // speakers owe anyone — the same guard `setEquipment` already carries.
+    if (!this.owner) this.ctx.audio?.play?.('coin');
   }
 
   /** Timed equipment effects (drone, meteor storm, crown). */
@@ -1495,6 +1531,11 @@ export class Items {
    * survivor is being replaced this round anyway. `update` rather than
    * `fixedUpdate` so a press is never swallowed by a frame that ran zero fixed
    * steps.
+   *
+   * The *local viewer's* press only. `ctx.input` is this machine's keyboard, so
+   * a satellite must never be pumped through here — that would let the host's F
+   * fire every teammate's slot. A remote pawn's press arrives as `BTN.EQUIP` and
+   * is resolved by `Coop.fixedUpdate`.
    */
   update(ctx) {
     if (ctx.paused) return;

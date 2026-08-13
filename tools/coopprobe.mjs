@@ -216,14 +216,17 @@ const CHECKS = [
   // one side of the wire (the forwarded `goldChanged`/`itemPickup` routing)
   // cannot hide behind a host-only assertion.
   //
-  // The client pawn is driven by the fallback the brief accepts rather than
-  // real WASD + E input: two headed pages sharing one focused OS cursor
-  // cannot both walk a pawn to a chest and press E on it, so the host page —
-  // which is authoritative for both pawns' positions and every economy call
-  // — parks `ctx.coop.pawns[0]` (the client's pawn, from the host's side of
-  // the wire) on a chest and calls `requestInteract` directly. Recorded here,
-  // not hidden: this is a shortcut around real input, not around the
-  // authority path an interaction actually resolves through.
+  // The first three drive the client pawn through the host page: two headed
+  // pages sharing one focused OS cursor cannot both *walk* a pawn to a chest,
+  // so the host — authoritative for both pawns' positions and every economy
+  // call — parks `ctx.coop.pawns[0]` (the client's pawn, from the host's side
+  // of the wire) where it needs to be and calls the authority path directly.
+  // Recorded, not hidden: that is a shortcut around real input.
+  //
+  // The two arms after them are not: they start at a real key press on the
+  // client page, because a key can be sent to an unfocused page even when a
+  // mouse cannot, and they are what proves the client->host input seams
+  // (`BTN.INTERACT`, `BTN.EQUIP`) exist outside of unit tests.
   {
     name: 'p2-chest-charges-actor',
     set: 'p2',
@@ -331,6 +334,113 @@ const CHECKS = [
         detail: `host player's gold ${before.hostGold} -> ${after.hostGold} (+${hostDelta});`
           + ` client pawn's gold (host's view) ${before.remoteGold} -> ${after.remoteGold} (+${remoteDelta});`
           + ` client's own view of its gold -> ${clientGold}; want two equal, positive deltas`,
+      };
+    },
+  },
+  // The two arms below are the ones the earlier p2 set stepped over: they start
+  // at a REAL key press on the client page and end at host state. Nothing in
+  // between is stubbed — `NetClient._sampleInput` packs the bit, the wire
+  // carries it, `NetHost.fixedUpdate` feeds it to `applyCommand`, and the host
+  // resolves it against the pressing pawn. A key is held for 200 ms rather than
+  // tapped because the client samples input once per fixed step.
+  {
+    name: 'p2-client-interact-opens-chest',
+    set: 'p2',
+    async run({ host, client }) {
+      const GRANT = 5000;
+      const setup = await host.evaluate((grant) => {
+        const ctx = globalThis.__GAME__?.ctx;
+        const remote = ctx?.coop?.pawns?.[0];
+        if (!remote) return { error: 'no remote pawn on host (ctx.coop.pawns is empty)' };
+        const chest = (ctx.interactables?.list ?? []).find((it) => it.cost > 0 && it.available());
+        if (!chest) return { error: 'no available chest with cost > 0 on the stage' };
+        remote.items.addGold(grant);
+        remote.position.set(chest.position.x, chest.position.y, chest.position.z);
+        ctx.__probeChest = chest;
+        return { chestCost: chest.cost, remoteGoldBefore: remote.items.gold, hostGoldBefore: ctx.items.gold };
+      }, GRANT);
+      if (setup.error) return { pass: false, detail: setup.error };
+
+      await client.bringToFront();
+      await client.keyboard.down('KeyE');
+      await sleep(200);
+      await client.keyboard.up('KeyE');
+
+      let after = null;
+      const deadline = Date.now() + 6000;
+      while (Date.now() < deadline) {
+        after = await host.evaluate(() => {
+          const ctx = globalThis.__GAME__.ctx;
+          return {
+            opened: ctx.__probeChest.available() === false,
+            remoteGold: ctx.coop.pawns[0].items.gold,
+            hostGold: ctx.items.gold,
+          };
+        });
+        if (after.opened) break;
+        await sleep(200);
+      }
+
+      const want = setup.remoteGoldBefore - setup.chestCost;
+      const pass = !!after && after.opened && after.remoteGold === want
+        && after.hostGold === setup.hostGoldBefore;
+      return {
+        pass,
+        detail: `a real E on the client page: chest cost $${setup.chestCost}, opened=${after?.opened};`
+          + ` client pawn's gold (host's view) ${setup.remoteGoldBefore} -> ${after?.remoteGold} (want ${want});`
+          + ` host player's own gold ${setup.hostGoldBefore} -> ${after?.hostGold} (want unchanged).`
+          + ' This is the whole BTN.INTERACT path — client input, wire, host roster scan, Items.of',
+      };
+    },
+  },
+  {
+    name: 'p2-equipment-fires',
+    set: 'p2',
+    async run({ host, client }) {
+      // Combat Stim: no aim ray, no target search, so "did it fire" is a clean
+      // question. Both slots are loaded so the check can prove the host's own
+      // charge was NOT the one spent.
+      const setup = await host.evaluate(() => {
+        const ctx = globalThis.__GAME__?.ctx;
+        const remote = ctx?.coop?.pawns?.[0];
+        if (!remote) return { error: 'no remote pawn on host (ctx.coop.pawns is empty)' };
+        for (const items of [remote.items, ctx.items]) {
+          items.setEquipment('stim-injector');
+          items.equipCharges = 1;
+          items.equipTimer = 0;
+        }
+        return { remoteCharges: remote.items.equipCharges, hostCharges: ctx.items.equipCharges };
+      });
+      if (setup.error) return { pass: false, detail: setup.error };
+
+      await client.bringToFront();
+      await client.keyboard.down('KeyF');
+      await sleep(200);
+      await client.keyboard.up('KeyF');
+
+      let after = null;
+      const deadline = Date.now() + 6000;
+      while (Date.now() < deadline) {
+        after = await host.evaluate(() => {
+          const ctx = globalThis.__GAME__.ctx;
+          return {
+            remoteCharges: ctx.coop.pawns[0].items.equipCharges,
+            hostCharges: ctx.items.equipCharges,
+            remoteBuff: !!ctx.coop.pawns[0].items.buffs?.has?.('berzerk'),
+          };
+        });
+        if (after.remoteCharges === 0) break;
+        await sleep(150);
+      }
+
+      const pass = !!after && after.remoteCharges === 0 && after.remoteBuff
+        && after.hostCharges === setup.hostCharges;
+      return {
+        pass,
+        detail: `a real F on the client page: client pawn's equipment charges (host's view)`
+          + ` ${setup.remoteCharges} -> ${after?.remoteCharges} (want 0), its stim buff live=${after?.remoteBuff};`
+          + ` host player's own charges ${setup.hostCharges} -> ${after?.hostCharges} (want unchanged).`
+          + ' BTN.EQUIP end to end, resolved on the joiner\'s own Items',
       };
     },
   },

@@ -39,7 +39,7 @@ import { renameItemId, renameDifficultyId } from '../data/renamedIds.js';
  * the same pawn.
  *
  * Nothing here draws from `ctx.rng` except on paths a host-only caller already
- * gated (`Items.rollItem`, `Items.rewardKill`), for the reason in NETCODE.md: a
+ * gated (`Items.rollItem`, `Items.rollSacrifice`), for the reason in NETCODE.md: a
  * client that advanced the gameplay stream would desync every later loot roll.
  *
  * ## Pre-run only
@@ -314,7 +314,7 @@ export class Artifacts {
 
   /**
    * Chance in 0..1 that this corpse pays an item under Sacrifice, or 0.
-   * `Items.rewardKill` does the roll and the drop — it owns both the RNG stream
+   * `Items.rollSacrifice` does the roll and the drop — it owns both the RNG stream
    * and the orb, and this system owns neither.
    */
   sacrificeChance(victim) {

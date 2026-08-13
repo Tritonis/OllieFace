@@ -136,6 +136,10 @@ export const BTN = {
   UTILITY: 1 << 4,
   SPECIAL: 1 << 5,
   INTERACT: 1 << 6,
+  // The equipment slot (F). Like INTERACT it is a *request*, resolved on the
+  // host against the pressing pawn's own `Items` — without it a joiner's slot
+  // was seeded, replicated and painted on their HUD with no way to fire it.
+  EQUIP: 1 << 7,
 };
 
 // Entity kinds that appear in snapshots. Anything purely cosmetic (particles,

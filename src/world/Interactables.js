@@ -1184,7 +1184,13 @@ export class FallowVault extends Interactable {
   _stake() { return Math.max(0, Math.round(this.ctx.items?.gold ?? 0)); }
 
   available() { return this.enabled && !this.used; }
+  // The prompt has to tell a joiner the truth `interact` is about to enforce.
+  // Every press from a client resolves on the host against a pawn that is not
+  // the host's viewer, so the refusal below is unconditional for a client — and
+  // a prompt quoting the joiner's own purse, followed by an E that does nothing
+  // and says nothing, reads as a broken shrine rather than as a rule.
   prompt() {
+    if (!this.ctx.authority) return 'Fallow Vault (the host\'s alone this run)';
     const s = this._stake();
     return s >= VAULT_MIN
       ? `Fallow Vault (commit $${s} — returns $${Math.round(s * VAULT_YIELD)} next stage)`
