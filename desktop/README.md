@@ -55,6 +55,8 @@ dist-desktop/win-unpacked/
   resources/app/
     desktop/main.mjs         the shell
     desktop/preload.cjs      the bridge
+    desktop/steam.mjs        guarded steamworks.js init
+    desktop/steam-validate.mjs   input validation for the Steam IPC surface
     dist/                    the built game (index.html + assets/)
     package.json             for `main` and metadata
 ```
@@ -71,11 +73,45 @@ every pack:
   `electron` and node builtins. Packed folder must contain **no**
   `node_modules/` at all. (This is docs/STEAM.md section 4's warning read in
   reverse: the source tree must not ride along.)
+- **`!steam_appid.txt`** — the repo root carries `steam_appid.txt` for the dev
+  loop, and it must never ship. A stray appid file inside a packaged build
+  overrides what Steam tells the process and breaks release-build detection.
+  Packed folder must contain **no** `steam_appid.txt` anywhere, not just under
+  `resources/app/`. Verified after every pack, same as the two above.
+
+### Consequence: the packed build carries no Steam (open gap)
+
+`steamworks.js` is a `devDependency` *and* lives under `node_modules/`, so both
+of the first two rules above exclude it. The packed app therefore reports
+
+```
+{"available":false,"appId":null,"personaName":null,
+ "reason":"Cannot find module 'steamworks.js' ..."}
+```
+
+That is the degradation contract behaving exactly as designed — the packed app
+boots, plays, and saves identically without Steam, and the probe passes 13/13 on
+it. But it also means **every packaged launch is a Steam-absent launch**: no
+lobbies, no invite button, no co-op over Steam. The packed folder is not
+shippable to Steam as-is.
+
+Do the two-seat Steam checkpoint with `npm run desktop`, not against the packed
+exe. Closing the gap means promoting `steamworks.js` to a runtime `dependency`
+and admitting exactly `node_modules/steamworks.js/**` back into `build.files`
+(the prebuilt `win32-x64` `.node` and its wrapper, nothing more) so the
+`!node_modules/**` rule keeps doing the job it was written for. That is a
+deliberate packaging change against a documented exclusion; it has not been
+made.
 
 ### What is deliberately absent
 
-- **No Steam SDK / greenworks.** Achievements, cloud saves, and the overlay's
-  API side are a later phase; this shell knows nothing about Steam.
+- **No achievements, stats, rich presence, Steam Input, or Deck detection.**
+  Each needs partner-site configuration against a real appid, which does not
+  exist yet. What the shell *does* know about Steam is init, the overlay, and
+  lobby signalling — `desktop/steam.mjs` plus the `window.__STEAM__` bridge; see
+  docs/STEAM.md section 7.
+- **No Steam Cloud wiring.** Nothing to code: saves are already one JSON file
+  under `userData`, and Auto-Cloud is partner-site configuration.
 - **No code signing.** `signAndEditExecutable: false`. Valve launches the exe
   itself, so an Authenticode certificate buys nothing for a Steam-only launch.
   It also means the exe carries no icon or version metadata yet.
@@ -95,7 +131,7 @@ A portable directory target gains nothing from asar anyway.
 
 If someone does enable it later, it is not done until
 `node tools/desktopprobe.mjs --exe "dist-desktop/win-unpacked/TELLURIC VOID.exe"`
-passes all eleven checks against the packed build.
+passes all thirteen checks against the packed build.
 
 ### If `desktop:pack` fails with `EPERM ... rename win-unpacked.tmp`
 
@@ -173,12 +209,42 @@ on alt-tab desyncs every client.
 - **Electron `43.3.0`** — pinned exact (`--save-exact`), not a range.
 - **Playwright `1.62.1`** — the version `tools/desktopprobe.mjs` drives it with.
 - **electron-builder `26.15.3`** — pinned exact.
+- **steamworks.js `0.4.0`** — pinned exact. A native N-API module with prebuilt
+  binaries, so the pin is a pin to a *compiled ABI*, not just to an API.
+
+**steamworks.js `0.4.0` is bound to this Electron pin, and the binding runs
+both ways.** It supplies the prebuilt `steamworksjs.win32-x64-msvc.node` that
+the main process loads, and `electronEnableSteamOverlay()` — the call the entire
+invite path depends on, because this binding ships no programmatic invite. So
+the overlay warning above applies to a bump on *either* side:
+
+**Re-verify the overlay after any bump to Electron `43.3.0` or to
+steamworks.js `0.4.0`.** Overlay behaviour is not stable across Electron
+majors, and a native module's prebuilt binary is compiled against a particular
+Node ABI. Neither is a dependency refresh; both are changes to a shipped
+compatibility surface. Re-verification means the checkpoint below — eyes on the
+screen — not a green test run.
+
+Note also that `0.4.0` binds the **deprecated** `ISteamNetworking` P2P
+interface rather than `NetworkingSockets`/`NetworkingMessages`, and the co-op
+answer leg rides it. Accepted debt with a bounded life: docs/STEAM.md section 3
+Phase 2 replaces the transport wholesale. A future steamworks.js release that
+binds the modern interface is the trigger to revisit, not an incidental upgrade.
 
 **The pair is verified.** Playwright `1.62.1`'s `_electron` driver launches
 Electron `43.3.0` without hanging, in both probe modes: against
 `desktop/main.mjs` in dev, and against the packed `TELLURIC VOID.exe` via
-`--exe`. Eleven of eleven checks pass in each. No step-down was needed, and
-this paragraph is the record that none is warranted at these versions.
+`--exe`. Thirteen of thirteen checks pass in each — re-run on
+2026-08-13 with the Steam bridge in place, both modes, both records committed
+(`reviews/round8/desktop-probe-record.json` and `-packed.json`). No step-down
+was needed, and this paragraph is the record that none is warranted at these
+versions.
+
+The two runs also cover **both arms of the Steam status contract** on one box in
+one session, which is the point of asserting a shape rather than a value: dev
+answers `{"available":true,"appId":480,"personaName":...,"reason":null}` against
+the live Steam client, and packed answers `{"available":false, ..., "reason":
+"Cannot find module 'steamworks.js' ..."}`. Both satisfy the same check.
 
 Re-run both modes after any bump here — if `_electron.launch` ever hangs, the
 fix is environmental, not code: step Electron down to the newest major

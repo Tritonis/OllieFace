@@ -126,6 +126,13 @@ it and there is no benchmark of Koffi FFI overhead at 60 Hz × 3 peers
 `tools/signal-server.mjs` and the copy-paste flow entirely and gives players the
 native Steam invite they expect. Still needs TURN — see below.
 
+> **Superseded in one detail — see section 7.** Phase 1 is now built, and
+> `Lobby.setData/getData` could not carry the SDP blobs in *both* directions:
+> `SetLobbyData` is owner-only and `steamworks.js@0.4.0` binds no member-data
+> and no lobby-chat API at all. The offer goes host to joiner over lobby data
+> as described; the answer comes back as a Steam P2P packet. Section 7 records
+> what was actually wired.
+
 **Phase 2 — post-launch, optional.** Swap the transport for Steam sockets, then
 delete TURN and STUN too.
 
@@ -292,3 +299,186 @@ copy and surveys (2–3 days).
 matters; the laptop GPU problem if it turns out to be open-ended rather than
 bounded; and capsule art, which is the most common cause of a delayed indie
 launch.
+
+---
+
+## 7. What is wired today
+
+Everything above from section 2 onward was research. This section is the
+as-built record of the *Steamworks wiring* slice (branch
+`slice/steamworks-wiring`, plan
+`docs/superpowers/plans/2026-08-12-steamworks-wiring.md`, August 2026) and it
+takes precedence over the research above wherever the two disagree.
+
+Read the status column literally. "Wired" means the code exists and is proven
+by tests and by an instrumented run on one machine. It does **not** mean two
+humans have played a game through it, because none have.
+
+| Piece | Status | What that means, precisely |
+|---|---|---|
+| **Init** | **Wired** | `desktop/steam.mjs` `initSteam()` runs at module scope in `desktop/main.mjs`, before `app.whenReady()`. Every failure — Steam not running, missing native binary, missing `steam_appid.txt` — collapses to `{ available: false, reason }`. It throws nothing and blocks on nothing; Steam-absent init measures 26 ms. |
+| **Bridge** | **Wired** | `window.__STEAM__`, fourteen named functions over named IPC channels, `contextIsolation: true`. No client object, no generic pass-through. The exact key set is pinned by `tools/desktopprobe.mjs`, which goes red if anything is *added*. All Steam ids cross as decimal strings (they are `bigint` natively and `JSON.stringify` throws on those). |
+| **Lobby signalling** | **Wired, never run between two machines** | `src/net/SteamLobby.js`. Host and join paths are complete and covered by 105 assertions against a fake bridge; the host half additionally ran against live Steam through the real UI. The joiner half **has never met a real host.** See "the warm path" below. |
+| **Overlay** | **PROVISIONAL — pending human confirmation** | `electronEnableSteamOverlay()` is called pre-ready, only when `available: true`. `gameoverlayrenderer64.dll` is resident in the Electron 43.3.0 renderer, so the hook injects and nothing detected a capability failure. **Injection is not painting.** The determinative check is still open — see "the overlay" below. Do not record this row as done. |
+| **Appid swap** | **Pending Valve** | `steam_appid.txt` is `480` (Spacewar) and `DEV_APP_ID` in `desktop/steam.mjs` is `480`. The real id does not exist yet. Procedure below. |
+| **Packaged build carries Steam** | **NOT wired** | The packed deliverable contains no `steamworks.js` at all, so a packaged launch always reports `available: false`. See "the packaged build" below. This is a gap, not a decision. |
+
+### The signalling design as built (not as originally planned)
+
+The plan called for the SDP blobs to travel both ways through lobby data. They
+cannot. `steamworks.js@0.4.0` was read against its own shipped native binary,
+not just its typings, and it binds **no `setLobbyMemberData`/`getLobbyMemberData`,
+no lobby chat messages, no ownership transfer, and no programmatic invite**;
+Valve's own documentation confirms `SetLobbyData` is settable **only by the
+lobby owner**. So the joiner has no way to write anything into lobby data.
+
+What ships instead is asymmetric, and deliberately so:
+
+- **Host to joiner (the offer):** unchanged from the plan. The host owns the
+  lobby, so it chunks the WebRTC offer blob across `sdp.offer.*` keys and writes
+  them in one `mergeFullData` batch. The joiner polls `getFullData` once a
+  second, bounded at 60 seconds, and reassembles.
+- **Joiner to host (the answer):** one reliable
+  `networking.sendP2PPacket(ownerSteamId, Reliable, blob)`. An SDP answer is a
+  few kilobytes and the reliable path carries up to 1 MB, so the answer leg
+  needs no chunking at all. The host learns the sender's identity for free from
+  `readP2PPacket().steamId`, which is *better* collision behaviour than the
+  per-joiner key namespacing it replaces.
+
+The host's main process accepts a P2P session **only** from a current member of
+its own lobby, length-caps the packet, and JSON-parses it defensively before
+anything crosses back to the renderer. The joiner deliberately stays in the
+Steam lobby after sending, because leaving would race the packet against that
+membership check.
+
+**Accepted debt, carried openly:** the answer leg rides `ISteamNetworking`,
+which **Valve has deprecated** in favour of `ISteamNetworkingMessages` /
+`NetworkingSockets`. It is nonetheless what `steamworks.js@0.4.0` binds, it is
+live infrastructure that Valve's own Spacewar sample exercises, and section 3's
+Phase 2 (swap the transport for Steam sockets) replaces it wholesale. The debt
+is bounded by a change already on the roadmap.
+
+### The warm path is UNVERIFIED-BY-HUMAN
+
+The full warm path — **invite, join, co-op forms** — has never been observed.
+No two-machine test has been run. Nobody has accepted a Steam invite from
+another account and watched a game start.
+
+What *has* been observed, on one machine: a real Steam lobby opening against
+live Steam, the chunked offer being written into it, the signal listener
+starting, and `openInviteDialog()` returning without throwing. What has **not**
+been observed: a second Steam account receiving that invite, joining, reading
+the offer, sending an answer back, and the WebRTC connection forming.
+
+Everything in between is proven only against a fake bridge in tests. That is
+real coverage of the logic and it is not evidence that co-op works. Until two
+seats have played, this feature is code that has never done its job.
+
+### The overlay: what is still open
+
+**PROVISIONAL — no capability failure detected; the determinative check is
+still open.** The evidence gathered so far is positive and none of it argues
+for an Electron bump, but none of it can falsify the failure it matters most to
+rule out: a fully non-compositing overlay would load the same DLL and return
+success from the same API calls.
+
+To close it, somebody with eyes on the machine must observe both halves in one
+sitting of `npm run desktop`:
+
+> Pressing **Shift+Tab** visibly draws the Steam overlay over the running game,
+> and **Host via Steam -> Invite friend** on the co-op screen visibly opens
+> Steam's friend-picker dialog on top of the game.
+
+**If either does not appear, that is the STOP condition** in the plan's Global
+Constraints: do not ship a dead invite button, and the Electron-bump decision
+goes to the user. The overlay is not optional politeness here — this binding
+has no programmatic invite call, so the overlay dialog is the *only* invite
+path that exists.
+
+### The Optimus trade-off, at its true severity
+
+Enabling the overlay appends `in-process-gpu`, and that has exactly one cost.
+Two mitigations for the hybrid-GPU problem in section 1 are easy to confuse;
+only one of them is affected.
+
+- **The player-facing detect-and-warn path is UNAFFECTED.** Section 1's
+  mitigation — "log `WEBGL_debug_renderer_info` at startup and warn in-game" —
+  is `src/core/GpuTier.js` `probeRenderer()` feeding `src/ui/GpuNotice.js`. It
+  reads `UNMASKED_RENDERER_WEBGL` off the **live renderer WebGL context**, which
+  `in-process-gpu` does not touch. Measured with the overlay **on**, it still
+  reports the correct discrete adapter. A Steam player on an Optimus laptop
+  keeps the correct detection and the same in-game warning as anybody else.
+- **The secondary `gpu-info.json` support dump is DEGRADED.** With the overlay
+  on, `app.getGPUInfo('complete')` collapses from 7049 bytes to 1248: the NVIDIA
+  adapter entry is gone entirely, `glImplementationParts` reads
+  `(gl=none,angle=none)`, `inProcessGpu` is true. `getGPUInfo` cannot report on
+  a GPU that is no longer in its own process. Rendering itself is unaffected.
+
+The real cost, stated plainly: **a support engineer triaging a Steam player's
+GPU report gets a near-empty file** and must lean on the in-game notice and the
+player's own description. That is a smaller cost than "Steam players lose
+Optimus protection", which is not true. Captures on disk:
+`reviews/round8/overlay/gpu-info-before.json` and `gpu-info-after.json`, same
+tree, same box, minutes apart, differing only in that switch.
+
+`TELLURIC_NO_OVERLAY=1` skips the overlay call and exists so that pair of
+captures stays re-derivable from this tree. It is a **developer tool and
+explicitly not a field-recovery mechanism** — nobody sets an environment
+variable before double-clicking a game in their Steam library, so it must never
+be offered to a customer as a way to produce a usable `gpu-info.json`.
+
+### The packaged build does not carry Steam yet
+
+`npm run desktop:pack` produces `dist-desktop/win-unpacked/`, and that folder is
+the deliverable SteamPipe will be pointed at. It was probed and boots correctly:
+thirteen of thirteen checks, `app://` serving the game, the renderer isolated,
+the bridge surface exact. Its `__STEAM__.status()` answers
+
+```
+{"available":false,"appId":null,"personaName":null,
+ "reason":"Cannot find module 'steamworks.js' ..."}
+```
+
+which is the degradation contract working exactly as designed — but it means
+**every packaged launch is a Steam-absent launch.** `build.files` carries
+`!node_modules/**` (deliberately, to keep `three`'s source tree out) and
+`steamworks.js` is a `devDependency`, so the native module is excluded twice
+over. Nothing in the packaged app can reach Steam.
+
+Consequences, all of them:
+
+- The two-seat checkpoint must be run with `npm run desktop`, not against the
+  packed exe. The packed exe cannot host or join.
+- The packaged build is **not shippable to Steam as-is**, whatever the appid
+  says.
+- Fixing it means promoting `steamworks.js` to a runtime `dependency` and
+  admitting exactly `node_modules/steamworks.js/**` back into `build.files`
+  (its prebuilt `.node` binary for `win32-x64` and nothing else) — narrowly, so
+  the `!node_modules/**` exclusion keeps doing the job it was written for. That
+  is a packaging change against a documented exclusion and it is not part of
+  this slice.
+
+### Swapping in the real appid
+
+`480` is Spacewar, Valve's public test app. Invites and FriendsOnly lobbies do
+behave on it, which is why it is a usable stand-in. When Valve issues the real
+appid, change **both** numbers **in one commit**:
+
+1. `steam_appid.txt` at the repo root — the dev-loop id. Steam reads this file
+   when the game is launched outside the Steam client.
+2. `DEV_APP_ID` in `desktop/steam.mjs` — the default `initSteam()` inits
+   against.
+
+They must not drift apart. `initSteam()` reads the running appid back from
+`utils.getAppId()` rather than trusting what it passed in, so a mismatch shows
+up in the status record instead of hiding, but a mismatch is still a bug.
+
+`steam_appid.txt` must **stay excluded from packaged builds** — `build.files`
+carries `!steam_appid.txt`, and the exclusion is verified after every pack. A
+stray appid file inside a shipped build overrides what Steam tells the process
+and breaks release-build detection. It is absent from the current packed output;
+keep it that way.
+
+**Then re-run this task**: the packaged smoke, and the two-seat checkpoint with
+the real appid. The Spacewar result does not transfer — appid is what Steam
+matches lobbies and invites on.
