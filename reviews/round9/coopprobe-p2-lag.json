@@ -1,0 +1,195 @@
+{
+  "when": "2026-08-13T04:39:24.819Z",
+  "probe": "tools/coopprobe.mjs",
+  "label": "p2-lag",
+  "flags": {
+    "port": 5216,
+    "signalPort": 5219,
+    "seed": 1337,
+    "netlag": "40-90",
+    "netloss": "2",
+    "runS": 60,
+    "checks": [
+      "base",
+      "p2"
+    ],
+    "record": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round9\\coopprobe-p2-lag.json",
+    "out": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round9\\coopprobe-shots",
+    "signalServerSpawned": true,
+    "spawnRate": 0.12
+  },
+  "urls": {
+    "host": "/index.html?seed=1337&quality=2&harness=1&signal=ws://127.0.0.1:5219",
+    "client": "/index.html?seed=1337&quality=2&harness=1&signal=ws://127.0.0.1:5219&netlag=40-90&netloss=2"
+  },
+  "bounded": {
+    "bootMs": 120000,
+    "navMs": 30000,
+    "roomCodeMs": 20000,
+    "formationMs": 30000,
+    "tickWindowMs": 5000,
+    "runS": 60,
+    "checkSetsRequested": [
+      "base",
+      "p2"
+    ],
+    "checkSetsKnown": [
+      "base",
+      "p2"
+    ],
+    "checksSkipped": [],
+    "runWindowEndedEarly": null,
+    "settingsSeeded": {
+      "spawnRate": 0.12,
+      "master": 0,
+      "music": 0,
+      "sfx": 0
+    },
+    "netlagDirection": "host->client inbound",
+    "stubbed": [
+      "Element.prototype.requestPointerLock",
+      "document.exitPointerLock"
+    ],
+    "note": "every wait in this probe is capped; the caps above are the only ones there are"
+  },
+  "roomCode": "C5NC",
+  "formationMs": 4862,
+  "phases": [
+    {
+      "name": "relay",
+      "ms": 100,
+      "ok": true,
+      "detail": "ws://127.0.0.1:5219"
+    },
+    {
+      "name": "vite",
+      "ms": 96,
+      "ok": true,
+      "detail": "http://127.0.0.1:5216"
+    },
+    {
+      "name": "host-boot",
+      "ms": 15723,
+      "ok": true,
+      "detail": "title screen up, seed 1337"
+    },
+    {
+      "name": "host-room",
+      "ms": 1183,
+      "ok": true,
+      "detail": "C5NC"
+    },
+    {
+      "name": "host-launch",
+      "ms": 2492,
+      "ok": true,
+      "detail": "hosting room C5NC with the world running"
+    },
+    {
+      "name": "client-boot",
+      "ms": 2490,
+      "ok": true,
+      "detail": "title screen up, netlag=40-90, netloss=2"
+    },
+    {
+      "name": "formation",
+      "ms": 5380,
+      "ok": true,
+      "detail": "4862 ms from the Join click to two open channels and a host roster of 2"
+    },
+    {
+      "name": "client-launch",
+      "ms": 1732,
+      "ok": true,
+      "detail": "joined and running"
+    },
+    {
+      "name": "run-window",
+      "ms": 60020,
+      "ok": true,
+      "detail": "60 s of scripted play, 81 alternating key holds, both survivors alive"
+    }
+  ],
+  "timings": {
+    "totalMs": 97657,
+    "byPhase": {
+      "relay": 100,
+      "vite": 96,
+      "host-boot": 15723,
+      "host-room": 1183,
+      "host-launch": 2492,
+      "client-boot": 2490,
+      "formation": 5380,
+      "client-launch": 1732,
+      "run-window": 60020
+    }
+  },
+  "consoleErrors": {
+    "host": [],
+    "client": []
+  },
+  "checks": [
+    {
+      "name": "host-running",
+      "set": "base",
+      "pass": true,
+      "detail": "host paused=false NetHost.tick=3858 (want > 60) screen=null role=host"
+    },
+    {
+      "name": "client-running",
+      "set": "base",
+      "pass": true,
+      "detail": "client paused=false NetClient.tick=3594 (want > 60) screen=null role=client connected=true myNetId=1"
+    },
+    {
+      "name": "roster-2-both",
+      "set": "base",
+      "pass": true,
+      "detail": "host roster 2 (NetHost.playerCount), client roster 2 (PLAYER-kind entities in the newest snapshot); want 2 and 2"
+    },
+    {
+      "name": "ticks-advance",
+      "set": "base",
+      "pass": true,
+      "detail": "over 5000 ms: host tick 3860 -> 4156 (+296), client tick 3595 -> 3895 (+300); want both strictly increasing"
+    },
+    {
+      "name": "both-alive",
+      "set": "base",
+      "pass": true,
+      "detail": "host alive=true screen=null; client alive=true screen=null"
+    },
+    {
+      "name": "shared-world",
+      "set": "base",
+      "pass": true,
+      "detail": "host has 28 replicated netIds, client sees 28; intersection 28 [2,1,27,28,3,4,5,6,...]"
+    },
+    {
+      "name": "p2-chest-charges-actor",
+      "set": "p2",
+      "pass": true,
+      "detail": "chest cost $25, opened=true; client pawn's gold (host's view) 5000 -> 4975 (want 4975); client's own view of its gold -> 4975 (want 4975); host player's own gold 0 -> 0 (want unchanged)"
+    },
+    {
+      "name": "p2-kill-pays-all",
+      "set": "p2",
+      "pass": true,
+      "detail": "host player's gold 0 -> 10 (+10); client pawn's gold (host's view) 4975 -> 4985 (+10); client's own view of its gold -> 4985; want two equal, positive deltas"
+    },
+    {
+      "name": "p2-inventory-isolated",
+      "set": "p2",
+      "pass": true,
+      "detail": "granted item id ration-pack to the client's pawn; client pawn's own count (host's view) -> 1; client's own inventory count -> 1; host viewer's own count of the same id 0 -> 0 (want unchanged)"
+    },
+    {
+      "name": "no page errors",
+      "set": "base",
+      "pass": true,
+      "detail": "0 uncaught page errors and 0 console errors across both pages"
+    }
+  ],
+  "fatal": null,
+  "allPass": true
+}

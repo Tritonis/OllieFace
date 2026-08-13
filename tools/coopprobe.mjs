@@ -203,6 +203,172 @@ const CHECKS = [
       };
     },
   },
+
+  // ------------------------------------------------------------- p2 check-set
+  //
+  // Per-pawn economy (PROTOCOL_VERSION 6, `docs/superpowers/plans/2026-08-12-
+  // mp-p2-per-player-economy.md`): every pawn owns its own `Items` instance
+  // (`Items.of`), a host resolves an interaction against the pawn that
+  // pressed (`Interactables.requestInteract(pawn)`), and a kill pays every
+  // registered pawn in full (`Items.rewardKillAll`). These three checks drive
+  // the client's pawn — never a shared purse — through those exact seams and
+  // read the result back from *both* machines, so a bug that only shows up on
+  // one side of the wire (the forwarded `goldChanged`/`itemPickup` routing)
+  // cannot hide behind a host-only assertion.
+  //
+  // The client pawn is driven by the fallback the brief accepts rather than
+  // real WASD + E input: two headed pages sharing one focused OS cursor
+  // cannot both walk a pawn to a chest and press E on it, so the host page —
+  // which is authoritative for both pawns' positions and every economy call
+  // — parks `ctx.coop.pawns[0]` (the client's pawn, from the host's side of
+  // the wire) on a chest and calls `requestInteract` directly. Recorded here,
+  // not hidden: this is a shortcut around real input, not around the
+  // authority path an interaction actually resolves through.
+  {
+    name: 'p2-chest-charges-actor',
+    set: 'p2',
+    async run({ host, client }) {
+      const GRANT = 5000; // clears the most expensive chest on the stage (legendary, ~400 * 1.25^stage)
+      const setup = await host.evaluate((grant) => {
+        const ctx = globalThis.__GAME__?.ctx;
+        const remote = ctx?.coop?.pawns?.[0];
+        if (!remote) return { error: 'no remote pawn on host (ctx.coop.pawns is empty)' };
+        const chest = (ctx.interactables?.list ?? []).find((it) => it.cost > 0 && it.available());
+        if (!chest) return { error: 'no available chest with cost > 0 on the stage' };
+        remote.items.addGold(grant);
+        remote.position.set(chest.position.x, chest.position.y, chest.position.z);
+        return {
+          chestCost: chest.cost,
+          remoteGoldBefore: remote.items.gold,
+          hostGoldBefore: ctx.items.gold,
+        };
+      }, GRANT);
+      if (setup.error) return { pass: false, detail: setup.error };
+
+      const result = await host.evaluate(() => {
+        const ctx = globalThis.__GAME__.ctx;
+        const remote = ctx.coop.pawns[0];
+        const opened = ctx.interactables.requestInteract(remote);
+        return { opened, remoteGoldAfter: remote.items.gold, hostGoldAfter: ctx.items.gold };
+      });
+
+      const want = setup.remoteGoldBefore - setup.chestCost;
+      // The forwarded `goldChanged` crosses a real data channel; give it a
+      // bounded window to land rather than reading a stale mirror.
+      let clientGold = null;
+      const deadline = Date.now() + 5000;
+      while (Date.now() < deadline) {
+        clientGold = await client.evaluate(() => globalThis.__GAME__?.ctx?.items?.gold ?? null);
+        if (clientGold === want) break;
+        await sleep(200);
+      }
+
+      const pass = result.opened === true
+        && result.remoteGoldAfter === want
+        && clientGold === want
+        && result.hostGoldAfter === setup.hostGoldBefore;
+      return {
+        pass,
+        detail: `chest cost $${setup.chestCost}, opened=${result.opened};`
+          + ` client pawn's gold (host's view) ${setup.remoteGoldBefore} -> ${result.remoteGoldAfter}`
+          + ` (want ${want}); client's own view of its gold -> ${clientGold} (want ${want});`
+          + ` host player's own gold ${setup.hostGoldBefore} -> ${result.hostGoldAfter} (want unchanged)`,
+      };
+    },
+  },
+  {
+    name: 'p2-kill-pays-all',
+    set: 'p2',
+    async run({ host, client }) {
+      const before = await host.evaluate(() => {
+        const ctx = globalThis.__GAME__?.ctx;
+        const remote = ctx?.coop?.pawns?.[0];
+        if (!remote) return { error: 'no remote pawn on host (ctx.coop.pawns is empty)' };
+        return { hostGold: ctx.items.gold, remoteGold: remote.items.gold };
+      });
+      if (before.error) return { pass: false, detail: before.error };
+
+      // A live target is not guaranteed the instant the checks start (the
+      // scripted run window drives movement, not combat) — poll for one
+      // inside a bound rather than assume the stage still has a corpse to
+      // make.
+      let found = false;
+      const findDeadline = Date.now() + 8000;
+      while (Date.now() < findDeadline) {
+        found = await host.evaluate(() => {
+          const ctx = globalThis.__GAME__.ctx;
+          const e = (ctx.director?.enemies ?? []).find((u) => u?.alive);
+          if (!e) return false;
+          ctx.combat.applyDamage(e, (e.maxHealth || e.health || 100) * 4 + (e.shield || 0) + 1000,
+            { source: null, ignoreArmor: true, type: 'p2-probe' });
+          return true;
+        });
+        if (found) break;
+        await sleep(300);
+      }
+      if (!found) return { pass: false, detail: 'no live enemy appeared within 8000 ms to kill' };
+
+      await sleep(400); // let rewardKillAll and the forwarded goldChanged settle
+      const after = await host.evaluate(() => {
+        const ctx = globalThis.__GAME__.ctx;
+        const remote = ctx.coop.pawns[0];
+        return { hostGold: ctx.items.gold, remoteGold: remote.items.gold };
+      });
+
+      let clientGold = null;
+      const deadline = Date.now() + 3000;
+      while (Date.now() < deadline) {
+        clientGold = await client.evaluate(() => globalThis.__GAME__?.ctx?.items?.gold ?? null);
+        if (clientGold === after.remoteGold) break;
+        await sleep(150);
+      }
+
+      const hostDelta = after.hostGold - before.hostGold;
+      const remoteDelta = after.remoteGold - before.remoteGold;
+      const pass = hostDelta > 0 && hostDelta === remoteDelta && clientGold === after.remoteGold;
+      return {
+        pass,
+        detail: `host player's gold ${before.hostGold} -> ${after.hostGold} (+${hostDelta});`
+          + ` client pawn's gold (host's view) ${before.remoteGold} -> ${after.remoteGold} (+${remoteDelta});`
+          + ` client's own view of its gold -> ${clientGold}; want two equal, positive deltas`,
+      };
+    },
+  },
+  {
+    name: 'p2-inventory-isolated',
+    set: 'p2',
+    async run({ host, client }) {
+      const setup = await host.evaluate(() => {
+        const ctx = globalThis.__GAME__?.ctx;
+        const remote = ctx?.coop?.pawns?.[0];
+        if (!remote) return { error: 'no remote pawn on host (ctx.coop.pawns is empty)' };
+        const id = remote.items.rollItem(null, 'common') ?? remote.items.rollItem(null, 'uncommon');
+        if (!id) return { error: 'rollItem returned no id to grant' };
+        const hostHadBefore = ctx.items.count(id);
+        remote.items.give(id, 1);
+        return { id, hostHadBefore, remoteHasAfter: remote.items.count(id) };
+      });
+      if (setup.error) return { pass: false, detail: setup.error };
+
+      let clientHas = 0;
+      const deadline = Date.now() + 5000;
+      while (Date.now() < deadline) {
+        clientHas = await client.evaluate((id) => globalThis.__GAME__?.ctx?.items?.count?.(id) ?? 0, setup.id);
+        if (clientHas > 0) break;
+        await sleep(200);
+      }
+
+      const hostHasAfter = await host.evaluate((id) => globalThis.__GAME__.ctx.items.count(id), setup.id);
+
+      const pass = setup.remoteHasAfter >= 1 && clientHas >= 1 && hostHasAfter === setup.hostHadBefore;
+      return {
+        pass,
+        detail: `granted item id ${setup.id} to the client's pawn; client pawn's own count`
+          + ` (host's view) -> ${setup.remoteHasAfter}; client's own inventory count -> ${clientHas};`
+          + ` host viewer's own count of the same id ${setup.hostHadBefore} -> ${hostHasAfter} (want unchanged)`,
+      };
+    },
+  },
 ];
 
 const KNOWN_SETS = [...new Set(CHECKS.map((c) => c.set))];
