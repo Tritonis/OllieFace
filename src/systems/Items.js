@@ -268,17 +268,24 @@ export class Items {
       if (this._mine(e?.player)) this.onAbility(e || {});
     }));
 
-    // The gauge reaching into the inventory (launch spec §1, expression 3) is
-    // a *world* fact with no owner: every pawn in the party holds items and
-    // every pawn's pack pays the toll, so each instance claims the crossing
-    // for itself. See the singleton branch below for the deferral rule.
-    // (A satellite's collected mutation emits an owner-tagged `itemMutated`,
-    // so only its own peer is told its pack festered.)
     if (this.owner) {
       // "How long since I was last hit" backs three items (Field Dressing,
-      // Siege Battery, Mineral Lick). On the host `playerHurt` is emitted for
-      // `ctx.player` alone (Combat.js:565), so this fires for a satellite only
-      // where something re-emits a pawn's hit — and then only for its own pawn.
+      // Siege Battery, Mineral Lick).
+      //
+      // KNOWN GAP, and this subscription is inert until it closes: nothing
+      // emits `playerHurt` for a remote pawn. `Combat.js:565` gates the emit on
+      // `target === ctx.player` — deliberately, and with the reasoning written
+      // out there: it is the round-5 fix that stopped a teammate 40 m away
+      // resetting this player's hurt timer, ducking their music and flashing
+      // their HUD. `NetHost._forwardHurt` reconstructs a pawn's hit from
+      // `damage` and sends it over the wire; it never re-emits on the host bus.
+      // So a remote pawn's `_lastHurt` never moves and those three cards stay
+      // inert for a joiner.
+      //
+      // Closing it means giving a pawn's hit a channel of its own rather than
+      // widening the `=== ctx.player` gate, which is out of this slice's scope
+      // and belongs with P3's per-pawn combat feedback. The filter is kept here
+      // so that whatever channel arrives is already owner-correct on day one.
       this._unsub.push(ctx.events.on('playerHurt', (e) => {
         if (e?.target === this.owner) this._lastHurt = ctx.time;
       }));
@@ -359,25 +366,25 @@ export class Items {
         this.equipCharges = e.charges ?? 0;
         this.equipTimer = e.cooldown ?? 0;
       }));
-
     }
 
     // The gauge reaching into the inventory (launch spec §1, expression 3).
     // Upward crossings only, one stack per threshold, never the same band
     // twice. The writes ride the 'corrupt' reason, so Corruption does not
-      // re-charge and a client mirrors them like any other inventory change.
-      //
-      // The crossing only *claims* its bands here; `fixedUpdate` collects them.
-      // Mutating inline would run the whole transform inside whatever emission
-      // caused the crossing, and item pickups are a primary corruption source —
-      // so a pickup big enough to tip the gauge dispatched its own `itemPickup`,
-      // and the mutation's `'corrupt'` writes reached listeners *before* the
-      // outer `'give'` did. The HUD then retired a tile it had not created yet
-      // and created it a moment later from the stale outer payload: a permanent
-      // ghost tile for an item the player holds none of, a pickup card for it,
-      // and the toasts in reverse causal order. `_mutePeak` still advances at
-    // claim time, so the one-mutation-per-band rule holds even if two crossings
-    // land in the same frame.
+    // re-charge and a client mirrors them like any other inventory change.
+    //
+    // The crossing only *claims* its bands here; `fixedUpdate` collects them
+    // (a satellite's is pumped by `Coop.fixedUpdate`). Mutating inline would run
+    // the whole transform inside whatever emission caused the crossing, and item
+    // pickups are a primary corruption source — so a pickup big enough to tip
+    // the gauge dispatched its own `itemPickup`, and the mutation's `'corrupt'`
+    // writes reached listeners *before* the outer `'give'` did. The HUD then
+    // retired a tile it had not created yet and created it a moment later from
+    // the stale outer payload: a permanent ghost tile for an item the player
+    // holds none of, a pickup card for it, and the toasts in reverse causal
+    // order. `_mutePeak` still advances at claim time, so the
+    // one-mutation-per-band rule holds even if two crossings land in the same
+    // frame.
     //
     // Unfiltered on purpose, and shared by every instance: the band is a world
     // fact, not one pawn's, and every pack in the party festers when the world
@@ -417,11 +424,21 @@ export class Items {
   }
 
   /**
-   * The pawn every event this instance emits belongs to. A satellite says its
-   * own pawn; the viewer's instance says `ctx.player` rather than `null`, so
-   * "whose is this" is one comparison at every consumer instead of two, and so
-   * `NetHost` can route on the field alone. Host-side only — the reference is
-   * stripped before an event goes on the wire (`NetHost._forwardOwned`).
+   * The pawn this instance belongs to — the subject of every event it emits
+   * *and the body every hook it fires acts on*. A satellite says its own pawn;
+   * the viewer's instance says `ctx.player` rather than `null`, so "whose is
+   * this" is one comparison at every consumer instead of two, and so `NetHost`
+   * can route on the field alone. Host-side only — the reference is stripped
+   * before an event goes on the wire (`NetHost._forwardOwned`).
+   *
+   * Every `ctx.player` read on the hook-execution path goes through here. That
+   * is not tidiness: an item hook is arbitrary code from `data/items.js` that
+   * reads `api.player` and then damages, heals, launches or schedules against
+   * it. Bound to `ctx.player` on a satellite, a *client's* inventory would act
+   * on the *host's* survivor — `gale-reliquary` billing the host's health for a
+   * remote cast, `temporal-echo` making the host's body fire a client's
+   * ability. In single-player `owner` is null and every one of these reads is
+   * `ctx.player`, exactly as it was.
    */
   _owner() {
     return this.owner || this.ctx.player;
@@ -851,7 +868,7 @@ export class Items {
     for (let i = 0; i < BASE_KEYS.length; i++) this._base[BASE_KEYS[i]] = base[BASE_KEYS[i]];
   }
 
-  baseDamage() { return this.ctx.player?.stats?.damage || 12; }
+  baseDamage() { return this._owner()?.stats?.damage || 12; }
 
   addPermanentHealth(amount, cap) {
     if (this.permanentHealth >= cap) return;
@@ -979,7 +996,7 @@ export class Items {
   }
 
   addBarrier(amount) {
-    const p = this.ctx.player;
+    const p = this._owner();
     if (!p) return;
     // Barrier is a decaying overshield, capped so on-kill stacking can't turn
     // into permanent invulnerability during a horde.
@@ -1058,7 +1075,7 @@ export class Items {
   equipmentCooldownMax() {
     const def = EQUIPMENT_BY_ID.get(this.equipmentId);
     if (!def) return 0;
-    const mult = this.ctx.player?.stats?.equipCooldownMult ?? 1;
+    const mult = this._owner()?.stats?.equipCooldownMult ?? 1;
     // Floored well above zero: an equipment that comes back instantly is a
     // fifth ability, and the tier's identity is that it is a decision.
     return Math.max(2, def.cooldown * mult);
@@ -1066,7 +1083,7 @@ export class Items {
 
   equipmentMaxCharges() {
     if (!this.equipmentId) return 0;
-    return 1 + Math.max(0, Math.round(this.ctx.player?.stats?.equipCharges || 0));
+    return 1 + Math.max(0, Math.round(this._owner()?.stats?.equipCharges || 0));
   }
 
   /**
@@ -1138,7 +1155,7 @@ export class Items {
 
     const api = this._api;
     api.combat = this.ctx.combat;
-    api.player = this.ctx.player;
+    api.player = this._owner();
     api.count = 1;
     api.procCoefficient = 1;
     api.procDepth = 1;
@@ -1177,10 +1194,10 @@ export class Items {
     if (!this.ctx.authority) return false;
     // Star Chart lifts every chance in the game at once, which is why it is
     // folded in here rather than into thirty separate `hyperbolic` calls.
-    const bonus = 1 + (this.ctx.player?.stats?.procBonus || 0);
+    const bonus = 1 + (this._owner()?.stats?.procBonus || 0);
     const p = Math.min(1, chance * (procCoefficient ?? 1) * bonus);
     if (p <= 0) return false;
-    const luck = Math.max(0, Math.floor(this.ctx.player?.stats?.luck || 0));
+    const luck = Math.max(0, Math.floor(this._owner()?.stats?.luck || 0));
     const rng = this._rng();
     for (let i = 0; i <= luck; i++) if (rng.next() < p) return true;
     return false;
@@ -1193,7 +1210,7 @@ export class Items {
     if (!list.length) return;
     const api = this._api;
     api.combat = this.ctx.combat;
-    api.player = this.ctx.player;
+    api.player = this._owner();
     api.procCoefficient = procCoefficient;
     api.procDepth = procDepth;
     for (let i = 0; i < list.length; i++) {
@@ -1229,7 +1246,7 @@ export class Items {
     if (!list.length) return amount;
     const api = this._api;
     api.combat = combat;
-    api.player = this.ctx.player;
+    api.player = this._owner();
     api.procDepth = info.procDepth || 0;
     for (let i = 0; i < list.length; i++) {
       api.count = list[i].count;
@@ -1345,7 +1362,9 @@ export class Items {
     }
 
     // Barrier decays so it reads as a temporary reward, not a second health bar.
-    const p = ctx.player;
+    // The owner's barrier: a satellite grants onto its own pawn (`addBarrier`),
+    // so it must decay the same shield rather than shaving the viewer's.
+    const p = this._owner();
     if (p && p.shield > 0) {
       p.shield = Math.max(0, p.shield - (p.stats?.maxHealth || 100) * 0.05 * h);
     }
@@ -1385,7 +1404,7 @@ export class Items {
     if (!this._effects.length) return;
     const api = this._api;
     api.combat = ctx.combat;
-    api.player = ctx.player;
+    api.player = this._owner();
     api.count = 1;
     api.procCoefficient = 1;
     api.procDepth = 1;
@@ -1393,7 +1412,7 @@ export class Items {
       const e = this._effects[i];
       e.remaining -= h;
       e.t -= h;
-      if (e.t <= 0 && ctx.player?.alive) {
+      if (e.t <= 0 && api.player?.alive) {
         e.t = e.interval;
         try { e.fn(api); } catch (err) { console.error(`[items] effect ${e.key} threw:`, err); e.remaining = 0; }
       }
@@ -1407,6 +1426,9 @@ export class Items {
   _tickClouds(ctx, h) {
     if (!this._clouds.length) return;
     const combat = ctx.combat;
+    // Whose cloud this is. `source` decides who the kill is credited to and who
+    // a retaliation hook answers, so a satellite's flask must name its own pawn.
+    const owner = this._owner();
     for (let i = this._clouds.length - 1; i >= 0; i--) {
       const c = this._clouds[i];
       c.remaining -= h;
@@ -1420,7 +1442,7 @@ export class Items {
         for (let k = 0; k < n; k++) targets.push(combat.overlapAt(k));
         for (const t of targets) {
           combat.applyDamage(t, this.baseDamage() * c.dps * CLOUD_TICK, {
-            source: ctx.player, position: t.position, type: c.type,
+            source: owner, position: t.position, type: c.type,
             procCoefficient: 0, procDepth: 2, isDot: true,
           });
           // Two overlapping clouds do each pay their own damage tick, so a body
@@ -1438,7 +1460,7 @@ export class Items {
           // burning" is the contract the ability describes and the one
           // Conflagration and Afflictor's Index need — one live stack does it.
           if (c.status && t.alive && !combat.hasStatus(t, c.status)) {
-            combat.applyStatus(t, c.status, ctx.player, 1);
+            combat.applyStatus(t, c.status, owner, 1);
           }
         }
         // Purely cosmetic — never draws off `ctx.rng`, so it cannot desync.

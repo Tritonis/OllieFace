@@ -551,10 +551,17 @@ export class Profile {
 
     // ---- run-scoped counters ------------------------------------------------
     //
-    // These duplicate a few of Progression's own `stats` fields on purpose. The
-    // profile needs the co-op witness filter applied (Progression's stats are
-    // the *run's* numbers and correctly count the whole team's work), and it
-    // needs per-stage counters Progression has no use for.
+    // These duplicate a few of Progression's own `stats` fields on purpose: the
+    // profile needs per-stage counters Progression has no use for, and it keeps
+    // lifetime totals Progression's per-run object cannot hold.
+    //
+    // The old reason given here — that Progression's numbers "correctly count
+    // the whole team's work" and only the profile needs a witness filter — is no
+    // longer true and was never a rule worth keeping. Progression's `stats` are
+    // the *local* survivor's run summary (`_endRun` files it when this machine's
+    // player dies), and `goldEarned` is a delta against `_lastGold`, so two
+    // purses interleaving on one bus produced a figure belonging to nobody. Both
+    // sides now filter on the same predicate (`isLocalOwner`).
 
     on('stageStart', (e) => this._onStageStart(e));
     on('kill', (e) => this._onKill(e));

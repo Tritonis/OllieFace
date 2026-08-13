@@ -106,4 +106,26 @@ export class Coop {
   update(ctx, dt) {
     for (let i = 0; i < this.pawns.length; i++) this.pawns[i].update(ctx, dt);
   }
+
+  /**
+   * The same gap on the simulation side, for the same reason: a remote pawn's
+   * `Items` is not an engine system either, so nothing stepped it. Everything
+   * `Items.fixedUpdate` owns was therefore dead for a joiner — the corruption
+   * tolls the band claimed never drained (its pack never festered, so the
+   * directed `itemMutated` could never fire), buffs never expired, the barrier
+   * never decayed, `onInterval` cards never ticked and the equipment slot never
+   * recharged.
+   *
+   * Driven from here rather than by registering satellites with the Engine:
+   * `Engine.fixedUpdate` iterates `this.systems` in registration order, and
+   * splicing pawns in and out of that list as players join and leave would
+   * reorder the whole simulation mid-run. This is one call in a slot that
+   * already exists, and the pawn list is empty in single-player.
+   *
+   * Host-only, like every other satellite: a client owns no pawns.
+   */
+  fixedUpdate(ctx, h) {
+    if (!ctx.authority) return;
+    for (let i = 0; i < this.pawns.length; i++) this.pawns[i].items?.fixedUpdate?.(ctx, h);
+  }
 }

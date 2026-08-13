@@ -310,6 +310,32 @@ console.log('a corrupt write is not an acquisition — the mutation speaks once'
   ok(self.inv.get(blightOf(baseA))?.count === 3, 'while the strip still repainted the arriving stack');
 }
 
+// The other side of the owner filter the strip listeners now carry. On a host
+// this bus also carries every remote pawn's economy (`Items.of`), and the strip
+// paints one pack: the viewer's.
+console.log('a teammate\'s pack never reaches the viewer\'s strip');
+{
+  const makeEl = fakeDom();
+  const { ctx, items } = makeCtx();
+  const { self, toasts, cards } = bindHud(ctx, makeEl);
+  const remote = { isPlayer: true, alive: true, peerId: 2 };
+  const remoteItems = new Items(remote);
+  remoteItems.init(ctx);
+
+  remoteItems.give(baseA, 4);
+  ok(!self.inv.has(baseA), 'no tile for a stack the viewer does not hold');
+  ok(toasts.length === 0 && cards.length === 0, 'no toast and no pickup card for a teammate\'s loot');
+
+  ctx.events.emit('itemMutated', {
+    baseId: baseA, blightId: blightOf(baseA), count: 4, band: MUTATION.minBand, owner: remote,
+  });
+  ok(toasts.length === 0, 'nor for a teammate\'s pack festering');
+
+  // …and the viewer's own writes still land, so the filter is not simply off.
+  items.give(baseA, 1);
+  ok(self.inv.get(baseA)?.count === 1 && toasts.length === 1, 'the viewer\'s own pickup still paints and toasts');
+}
+
 console.log('a give still toasts and still cards — non-corrupt writes are untouched');
 {
   const makeEl = fakeDom();

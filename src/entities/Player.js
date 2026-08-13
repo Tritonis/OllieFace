@@ -6,6 +6,7 @@ import { PlaceablePool } from './Placeables.js';
 import { SLOT_ORDER, effectiveCooldown } from '../data/abilities.js';
 import { getSurvivor, loadoutOf, DEFAULT_SURVIVOR } from '../data/survivors.js';
 import { BTN, ESTATE } from '../net/Protocol.js';
+import { Items } from '../systems/Items.js';
 
 /**
  * The survivor: kinematic capsule + loadout + the damageable entity.
@@ -711,12 +712,16 @@ export class Player {
      * trajectory over about five snapshots. Waxed Wing, Updraft Vents and
      * Tectonic Heart were inert for every non-host player.
      *
-     * `local` on the *hooks*, not on the impulse. There is one `Items` per
-     * client and its hook API hard-binds the local survivor, so a remote pawn's
-     * jump must not pay the local player's Rubber Soles barrier, advance the
-     * local Tectonic Heart tally or detonate its quake at the local player's
-     * feet. That is the half worth gating, and it is gated where the effect
-     * lands — the two cards read `e.local` (`data/items.js`). The launch itself
+     * `local` on the *hooks*, not on the impulse. This was written when there
+     * was one `Items` per client whose hook API hard-bound the local survivor,
+     * so a remote pawn's jump had to be kept away from the local player's Rubber
+     * Soles barrier, Tectonic Heart tally and quake. Both halves of that have
+     * since moved: each pawn owns an `Items` (`Items.of`), the `jump` event names
+     * its jumper and is filtered per owner (`Items._mine`), and the hook API
+     * binds the owner rather than the viewer (`Items._owner`). The two cards
+     * still read `e.local` — belt and braces, and the field still means what it
+     * says — but it is no longer the thing standing between a teammate's jump
+     * and this player's body. The launch itself
      * is movement belonging to the jumper, and a client's inventory is a mirror
      * of the host's (`Items.js:251-252`, `Items.js:211-215`), so both ends
      * compute the same number from the same stacks and agree without a protocol
@@ -735,7 +740,13 @@ export class Player {
       ctx.events?.emit?.('jump', {
         player: this, local: this.local, air: !canGround, jumps: this.jumpsUsed,
       });
-      impulse = ctx.items?.consumeImpulse?.() || 0;
+      // Out of *this* pawn's bank. The `jump` above is what fills it, and it is
+      // filtered per owner (`Items._mine`), so a remote pawn's Waxed Wing banks
+      // its launch on that pawn's own instance — reading `ctx.items` here left
+      // it there forever and asked the viewer's bank for a launch nobody paid
+      // into. `Items.of` returns `ctx.items` for the local player, which is the
+      // call this replaced.
+      impulse = Items.of(ctx, this)?.consumeImpulse?.() || 0;
       this._recordJumpImpulse(this._cmdTick, impulse);
     }
     if (impulse > 0) {

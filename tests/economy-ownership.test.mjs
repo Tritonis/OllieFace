@@ -16,7 +16,11 @@ import { Chest, Interactables } from '../src/world/Interactables.js';
 import { SOURCES } from '../src/data/corruption.js';
 import { RNG } from '../src/core/MathUtil.js';
 import { NetHost } from '../src/net/NetHost.js';
+import { Coop } from '../src/net/Coop.js';
+import { Player } from '../src/entities/Player.js';
 import { Reader } from '../src/net/Protocol.js';
+import { BLIGHT_BY_BASE } from '../src/data/items.js';
+import { MUTATION } from '../src/data/corruption.js';
 import { isLocalOwner } from '../src/core/Engine.js';
 
 let pass = 0, fail = 0;
@@ -296,7 +300,14 @@ console.log('every economy event names the pawn it belongs to');
   ok(seen.last('goldChanged')?.owner === host, 'the viewer\'s own instance tags ctx.player, never null');
 }
 
-console.log('a satellite acts on its own pawn\'s signals only');
+// `playerHurt` is deliberately NOT exercised for a satellite here. `Combat.js:565`
+// emits it for `ctx.player` alone and nothing re-emits a remote pawn's hit onto
+// the host bus, so a satellite's subscription is inert by construction — see the
+// KNOWN GAP note at its subscription. Asserting on a payload production never
+// produces would be assurance about a path that does not exist. What is real, and
+// is what this arm keeps, is the *viewer's* side: a teammate's hit must not reset
+// the viewer's hurt timer, whatever puts one on the bus.
+console.log('a teammate\'s blood is not the viewer\'s hurt timer');
 {
   const ctx = makeCtx();
   ctx.time = 12;
@@ -306,18 +317,120 @@ console.log('a satellite acts on its own pawn\'s signals only');
 
   const hostItems = new Items();
   hostItems.init(ctx);
-  const remoteItems = new Items(remote);
-  remoteItems.init(ctx);
 
   ctx.events.emit('playerHurt', { target: host, amount: 5 });
-  ok(remoteItems._lastHurt < 0, 'the satellite ignored a hit on the other pawn');
-
   ok(hostItems._lastHurt === 12, 'the viewer felt its own');
 
   hostItems._lastHurt = -999;
   ctx.events.emit('playerHurt', { target: remote, amount: 5 });
-  ok(remoteItems._lastHurt === 12, 'its own pawn\'s hit lands');
-  ok(hostItems._lastHurt < 0, 'and the viewer never felt the remote pawn\'s hit');
+  ok(hostItems._lastHurt < 0, 'and never felt the remote pawn\'s');
+}
+
+console.log('a satellite\'s item hooks act on its own pawn, never on the viewer\'s body');
+{
+  const ctx = makeCtx();
+  const host = { isPlayer: true, alive: true, health: 200, shield: 0, stats: { maxHealth: 200 } };
+  const remote = { isPlayer: true, alive: true, peerId: 2, health: 200, shield: 0, stats: { maxHealth: 200 } };
+  ctx.player = host;
+
+  const hostItems = new Items();
+  hostItems.init(ctx);
+  const remoteItems = new Items(remote);
+  remoteItems.init(ctx);
+  remote.items = remoteItems;
+
+  // The lunar is held by the satellite alone — the viewer's pack is empty. Its
+  // `onAbility` hook bills `api.player`'s health for every cast.
+  remoteItems.give('gale-reliquary', 1);
+  ctx.events.emit('abilityUsed', { slot: 'special', ability: { slot: 'special' }, player: remote });
+
+  ok(remote.health < 200, `the caster paid for its own cast (${remote.health})`);
+  ok(host.health === 200,
+    'the viewer paid nothing — a client\'s inventory cannot bill the host\'s health');
+
+  // The other half of the same binding: everything the hook API writes onto a
+  // body goes to the owner, and decays there.
+  remoteItems.addBarrier(40);
+  ok(remote.shield === 40 && host.shield === 0, 'a satellite\'s barrier lands on its own pawn');
+  remoteItems.fixedUpdate(ctx, 1 / 60);
+  ok(remote.shield < 40 && host.shield === 0, 'and decays there, not on the viewer');
+}
+
+console.log('a satellite is stepped by Coop, so its corruption toll is actually paid');
+{
+  const ctx = makeCtx();
+  const host = { isPlayer: true, alive: true };
+  const remote = { isPlayer: true, alive: true, peerId: 2 };
+  ctx.player = host;
+
+  const hostItems = new Items();
+  hostItems.init(ctx);
+  const remoteItems = new Items(remote);
+  remoteItems.init(ctx);
+  remote.items = remoteItems;
+
+  const base = [...BLIGHT_BY_BASE.keys()].sort()[0];
+  const blight = BLIGHT_BY_BASE.get(base).id;
+  hostItems.give(base, 5);
+  remoteItems.give(base, 5);
+
+  const mutated = [];
+  ctx.events.on('itemMutated', (e) => mutated.push(e));
+  ctx.events.emit('corruptionBand', { band: MUTATION.minBand, prev: 0 });
+
+  // The engine steps exactly one `Items` — the registered singleton.
+  hostItems.fixedUpdate(ctx, 1 / 60);
+  ok(hostItems.count(blight) === 5, 'the viewer\'s pack festered on the engine\'s own step');
+  ok(remoteItems.count(base) === 5, 'the satellite\'s has not — nothing has stepped it yet');
+
+  // Coop is the seam that steps a satellite: it owns the pawn's whole lifecycle.
+  const coop = new Coop();
+  coop.ctx = ctx;
+  coop.pawns = [remote];
+  coop.fixedUpdate(ctx, 1 / 60);
+
+  ok(remoteItems.count(base) === 0 && remoteItems.count(blight) === 5,
+    'once Coop steps it, the satellite pays the same toll');
+  ok(mutated.length === 2 && mutated.some((e) => e.owner === remote),
+    'and its itemMutated names the pawn whose pack festered');
+
+  coop.fixedUpdate(ctx, 1 / 60);
+  ok(mutated.length === 2, 'the queue drained — a second step mutates nothing again');
+}
+
+console.log('a remote pawn\'s jump launches the remote pawn');
+{
+  const ctx = makeCtx();
+  const host = { isPlayer: true, alive: true };
+  ctx.player = host;
+
+  const hostItems = new Items();
+  hostItems.init(ctx);
+
+  // A pawn shaped exactly as much as `Player._jump` reads, so the real method
+  // runs: the launch has to come out of the *jumper's* bank.
+  const remote = {
+    isPlayer: true, alive: true, peerId: 2, local: false,
+    jumpBuffer: 0, jumpsUsed: 0, grounded: true, coyote: 0, moving: true,
+    stats: { jumpCount: 1, moveSpeed: 8 },
+    velocity: new THREE.Vector3(), position: new THREE.Vector3(),
+    groundNormal: new THREE.Vector3(0, 1, 0),
+    _wish: new THREE.Vector3(1, 0, 0), _fwd: new THREE.Vector3(1, 0, 0),
+    _replaying: false, _cmdTick: 1, _jumpImpulses: new Map(),
+    _recordJumpImpulse: Player.prototype._recordJumpImpulse,
+  };
+  const remoteItems = new Items(remote);
+  remoteItems.init(ctx);
+  remote.items = remoteItems;
+
+  // Waxed Wing: `onJump` banks a horizontal launch through `applyImpulse`.
+  remoteItems.give('waxed-wing', 1);
+
+  Player.prototype._jump.call(remote, ctx, 1 / 60, true);
+
+  ok(remote.velocity.x > 0, `the remote pawn was launched (${remote.velocity.x.toFixed(2)} m/s)`);
+  ok(remoteItems.consumeImpulse() === 0, 'its bank was spent, not left sitting');
+  ok(hostItems.consumeImpulse() === 0, 'and the viewer\'s bank was never touched');
 }
 
 /** One EVENT frame off a fake peer's outbox, decoded. `Writer.bytes()` hands
@@ -425,6 +538,56 @@ console.log('a satellite\'s equipment never enters the viewer\'s logbook');
   hostItems.setEquipment('blink-anchor');
   ok(profile.isDiscovered('equipment', 'blink-anchor') === true,
     'the viewer\'s own equipment still records, exactly as in single-player');
+}
+
+// The reject path at the real consumers. `Audio` and `Progression` both stand up
+// in node behind small stubs (a no-op DOM for the unlock listeners, a scene stub
+// for Interactables), so these are the live subscriptions, not copies of them.
+// HUD's reject path is covered against a real `HUD.bind` in
+// `tests/item-mutation.test.mjs`. `VFX` is the one filter with no test: its
+// `init` builds a particle atlas through a real 2D canvas (`ParticleSystem.js:400`
+// reads back `ImageData`), which node has no way to provide.
+console.log('a foreign-owned event moves nothing at the real consumers');
+{
+  globalThis.addEventListener ??= () => {};
+  globalThis.removeEventListener ??= () => {};
+  globalThis.localStorage ??= {
+    getItem: () => null, setItem: () => {}, removeItem: () => {}, clear: () => {},
+  };
+  const { Audio } = await import('../src/systems/Audio.js');
+  const { Progression } = await import('../src/systems/Progression.js');
+
+  const ctx = makeCtx();
+  ctx.scene = { add() {}, remove() {} };
+  const host = { isPlayer: true, alive: true, position: new THREE.Vector3() };
+  const foreign = { isPlayer: true, alive: true, peerId: 2 };
+  ctx.player = host;
+
+  const audio = new Audio();
+  audio.init(ctx);
+  const progression = new Progression();
+  progression.init(ctx);
+  // The two cues, counted at the method the subscription calls — the WebAudio
+  // graph below them needs a browser and is not what is under test.
+  let cues = 0;
+  audio.itemChanged = () => { cues++; };
+  audio.coin = () => { cues++; };
+
+  const pickup = (owner) => ({ id: 'adrenal-syringe', count: 1, delta: 1, reason: 'give', owner });
+  ctx.events.emit('itemPickup', pickup(foreign));
+  ctx.events.emit('goldChanged', { gold: 100, owner: foreign });
+
+  ok(cues === 0, 'a teammate\'s pickup and purse are silent on this machine');
+  ok(progression.stats.items === 0, 'and score no item on the viewer\'s run summary');
+  ok(progression.stats.goldEarned === 0, 'and no gold on it either');
+
+  ctx.events.emit('itemPickup', pickup(host));
+  ctx.events.emit('goldChanged', { gold: 40, owner: host });
+
+  ok(cues === 2, 'the viewer\'s own pickup and purse still speak');
+  ok(progression.stats.items === 1, 'and count once on the run summary');
+  ok(progression.stats.goldEarned === 40,
+    `and bank the viewer's gain alone, not the teammate's 100 (${progression.stats.goldEarned})`);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
