@@ -461,7 +461,7 @@ console.log('T5 — signal-server relays ice both ways, and says what version it
     host.send(JSON.stringify({ type: 'ping-nobody-implements' }));
     host.send(JSON.stringify({ type: 'host' }));
     const rehost = await await1(host, 'hosting');
-    ok(rehost.code.length === 4, 'the relay is still answering after all of that');
+    ok(rehost.code.length === 8, 'the relay is still answering after all of that');
 
     host.close(); client.close();
   } finally {
