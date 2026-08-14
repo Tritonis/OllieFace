@@ -218,7 +218,7 @@ process.exit(fail ? 1 : 0);
 - [ ] **Step 2: Run it and confirm it fails**
 
 Run: `node tests/signal-hardening.test.mjs`
-Expected: FAIL — the import throws `SyntaxError: The requested module '../tools/signal-server.mjs' does not provide an export named 'LIMITS'` (and, before this task's guard exists, importing would also try to bind a port).
+Expected: FAIL — the import throws `SyntaxError: The requested module '../tools/signal-server.mjs' does not provide an export named 'LIMITS'`. (That is an ESM *link* error, so it precedes module evaluation and no port is bound either way. The guard in Step 3 is still required: once the exports exist, evaluation runs and today's top-level `http.listen` would seize port 8787 on every import.)
 
 - [ ] **Step 3: Add the run-directly guard so the module can be imported**
 
@@ -444,18 +444,32 @@ function reject(ws, reason) {
 }
 ```
 
-- [ ] **Step 6: Run the new test and the suite**
+- [ ] **Step 6: Follow the minted length into the one existing test that asserts it**
+
+The relay now mints 8 characters, so `tests/trickle-ice.test.mjs:464` is wrong the moment Step 4 lands. It travels with the commit that changed the minting, not with Task 2 — every task ends green. Change:
+
+```js
+    ok(rehost.code.length === 4, 'the relay is still answering after all of that');
+```
+
+to
+
+```js
+    ok(rehost.code.length === 8, 'the relay is still answering after all of that');
+```
+
+- [ ] **Step 7: Run the new test and the suite**
 
 Run: `node tests/signal-hardening.test.mjs`
 Expected: PASS on every line, `0 failed`.
 
 Run: `npm test`
-Expected: all files pass except `trickle-ice.test.mjs`, which fails one assertion at `:464` (`the relay is still answering after all of that`) because it asserts `rehost.code.length === 4`. That failure is expected and is fixed in Task 2 along with the rest of the length surface. If ANY other file fails, stop and report.
+Expected: 58/58 test files pass — green, with no exceptions. If any file fails, stop and report.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add tools/signal-server.mjs tests/signal-hardening.test.mjs
+git add tools/signal-server.mjs tests/signal-hardening.test.mjs tests/trickle-ice.test.mjs
 git commit -m "The relay stops believing whatever it is told, and mints a code no one can predict"
 ```
 
@@ -466,10 +480,11 @@ git commit -m "The relay stops believing whatever it is told, and mints a code n
 Task 1 made the server mint 8 characters. Three other places still assume 4, and one of them (`tools/coopprobe.mjs`) fails as a timeout with a misleading message rather than an assertion. This task closes the length surface in one sweep so no consumer is left disagreeing with the server.
 
 **Files:**
-- Modify: `tools/coopprobe.mjs:1083`
-- Modify: `tests/trickle-ice.test.mjs:464`
-- Modify: `src/ui/Menus.js:426-437` and `:1519`
-- Modify: `src/net/Lobby.js:292-297`
+- Modify: `tools/coopprobe.mjs:108` (comment) and `:1083` (regex)
+- Modify: `src/ui/Menus.js:426-437`, `:1514-1515`, `:1519`, `:1538`
+- Modify: `src/ui/hud.css:2172-2173`
+- Modify: `src/net/Lobby.js:35` (new export) and `:292-297`
+- Modify: `docs/MULTIPLAYER.md:160-162`
 - Test: `tests/signal-hardening.test.mjs` (append)
 
 **Interfaces:**
@@ -495,7 +510,24 @@ console.log('T3 — Lobby normalises a typed code to exactly what the relay woul
      'and it is the same string the relay derives');
   ok(normalizeRoomCode('!!') === '', 'junk normalises to nothing rather than to a lookup');
 }
+
+console.log('T3 — a code that could never be real is refused here, where there is someone to tell');
+{
+  const { Lobby } = await import('../src/net/Lobby.js');
+  const lobby = Object.create(Lobby.prototype);
+  // `ABCD0I45` is the transcription error the alphabet predicts: a code read
+  // aloud, written down with a zero for O and a one for I. The relay would drop
+  // it as malformed and answer nothing at all, and `joinViaRelay` has no
+  // timeout — so a join that never resolves would leave the co-op screen saying
+  // "Joining room…" for ever. It has to fail here, out loud.
+  let message = null;
+  await lobby.joinViaRelay('ABCD0I45', 'ws://relay.test').catch((e) => { message = e.message; });
+  ok(typeof message === 'string' && /room code/i.test(message),
+     `a malformed code rejects with something a player can act on (got ${JSON.stringify(message)})`);
+}
 ```
+
+Note the test never opens a socket: the guard must reject *before* `new WebSocket(url)`, which is also what makes this assertion meaningful.
 
 - [ ] **Step 2: Run it and confirm it fails**
 
@@ -523,19 +555,32 @@ export function normalizeRoomCode(raw) {
 }
 ```
 
-and change the join send at `:297` from
+and change `joinViaRelay` (`:292-297`) so a code that cannot be real never reaches the wire:
 
 ```js
-      ws.onopen = () => ws.send(JSON.stringify({ type: 'join', code: String(code || '').toUpperCase() }));
+  joinViaRelay(code, url = signalUrl()) {
+    const norm = normalizeRoomCode(code);
+    // The relay refuses a malformed code by dropping it, silently and by
+    // design — a hardened relay does not narrate its own validation to whoever
+    // is probing it. Nothing below settles this promise on its own, so a code
+    // that could never have been minted has to fail here, where there is
+    // someone to tell.
+    if (!norm) {
+      return Promise.reject(new Error(
+        'That is not a room code — it is 8 letters and digits, and never O, 0, I or 1.'));
+    }
+    return new Promise((resolve, reject) => {
+      const ws = new WebSocket(url);
+      this.ws = ws;
+      ws.onerror = () => reject(new Error(relayError(url)));
+      ws.onopen = () => ws.send(JSON.stringify({ type: 'join', code: norm }));
 ```
 
-to
+the rest of the method is unchanged.
 
-```js
-      ws.onopen = () => ws.send(JSON.stringify({ type: 'join', code: normalizeRoomCode(code) }));
-```
+- [ ] **Step 4: Widen the probe**
 
-- [ ] **Step 4: Widen the probe and the relay integration assertion**
+`tools/coopprobe.mjs:108` — the cap comment says `Create room → four letters in [data-coop-code]`. Reword it to say the grouped code, so the next reader of the timeout is not told to expect four characters.
 
 `tools/coopprobe.mjs:1083` — change the regex:
 
@@ -549,19 +594,7 @@ becomes
         () => /^[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(document.querySelector('[data-coop-code]')?.textContent?.trim() ?? ''),
 ```
 
-and the value the probe carries forward is typed straight back into the join field, so it must keep the separator it read — the input strips it. No other probe change.
-
-`tests/trickle-ice.test.mjs:464` — change:
-
-```js
-    ok(rehost.code.length === 4, 'the relay is still answering after all of that');
-```
-
-to
-
-```js
-    ok(rehost.code.length === 8, 'the relay is still answering after all of that');
-```
+and the value the probe carries forward is typed straight back into the join field, so it must keep the separator it read — the input strips it. No other probe change. (`tools/coopprobe.mjs:914`'s `wireState` reads the code length-agnostically and needs nothing.)
 
 - [ ] **Step 5: Widen the UI**
 
@@ -586,7 +619,7 @@ becomes
               only there to read by — typing it is optional.</p>
             <nav class="menu-list menu-list--row">
               <button class="mbtn mbtn--go" data-nav data-act="coop-room-host"><span>Create room</span></button>
-              <output class="coop-code" data-coop-code>----&#8209;----</output>
+              <output class="coop-code" data-coop-code>${CODE_PLACEHOLDER}</output>
               <input class="coop-input" data-coop-roomcode maxlength="9" placeholder="CODE" aria-label="Room code" />
 ```
 
@@ -617,18 +650,81 @@ becomes
     const code = field('roomcode').value;
 ```
 
-- [ ] **Step 6: Run the tests**
+At `:1515`, the confirmation still says "letters" for something that now contains digits and a dash:
+
+```js
+          this.coopSay(`Room ${code} is open. Give those letters to your friends — they join with them.`);
+```
+
+becomes
+
+```js
+          this.coopSay(`Room ${code} is open. Give that code to your friends — they join with it.`);
+```
+
+At `:1538`, leaving a room resets the display to the old four-dash placeholder, which would silently shrink after every leave. It must use the same string as the markup in Step 5's `<output>` — define it once at the top of the class file and use it in both places:
+
+```js
+/** The empty room-code display: the grouped shape of a real code, in dashes. */
+const CODE_PLACEHOLDER = '---------';
+```
+
+```js
+          this.root.querySelector('[data-coop-code]').textContent = CODE_PLACEHOLDER;
+```
+
+and the markup's `<output class="coop-code" data-coop-code>` uses `${CODE_PLACEHOLDER}` rather than a literal — **but only if that markup is inside a template literal**. Check it before you write it: if the co-op markup is an ordinary string, write the nine dashes literally in the HTML and keep the constant for `:1538` alone, and say so in your report.
+
+- [ ] **Step 6: Widen the box the code has to fit in**
+
+`src/ui/hud.css:2172-2173` — `.coop-input` is `width: 6.4em` with `letter-spacing: 0.28em`, sized for six characters. Nine will pan and clip inside the field, and **no gate can see this**: `tools/coopprobe.mjs` reads `textContent`, not pixels. Change:
+
+```css
+.coop-input {
+  width: 6.4em;
+```
+
+to
+
+```css
+.coop-input {
+  /* Nine characters at 0.28em tracking — the grouped code plus the separator a
+     player may or may not type. Sized in em so it tracks the menu type scale. */
+  width: 9.6em;
+```
+
+`.coop-code` (`:2159`) has `min-width: 5.2em` and grows, so it needs no change — but open the co-op screen at its narrowest layout and confirm `.menu-list--row` does not wrap or overflow with both the wider input and the longer output on it.
+
+- [ ] **Step 7: Fix the player-facing instruction**
+
+`docs/MULTIPLAYER.md:160-162`:
+
+```markdown
+1. Host: Co-op → **Create room** → four letters appear.
+2. Read the letters out.
+3. Everyone else: Co-op → type them into the code box → **Join room**.
+```
+
+becomes
+
+```markdown
+1. Host: Co-op → **Create room** → an eight-character code appears, grouped as `ABCD-2345`.
+2. Read it out. The alphabet has no O, 0, I or 1 in it, so nothing in it can be misheard for something else.
+3. Everyone else: Co-op → type it into the code box → **Join room**. The dash is optional.
+```
+
+- [ ] **Step 8: Run the tests**
 
 Run: `node tests/signal-hardening.test.mjs`
 Expected: PASS, `0 failed`.
 
 Run: `npm test`
-Expected: every file passes — `trickle-ice.test.mjs` included this time. 58/58 files.
+Expected: 58/58 files pass.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
-git add tools/coopprobe.mjs tests/trickle-ice.test.mjs tests/signal-hardening.test.mjs src/ui/Menus.js src/net/Lobby.js
+git add tools/coopprobe.mjs tests/signal-hardening.test.mjs src/ui/Menus.js src/ui/hud.css src/net/Lobby.js docs/MULTIPLAYER.md
 git commit -m "A room code long enough to be worth guarding is one every part of the game can still read out loud"
 ```
 
@@ -644,7 +740,7 @@ The relay will take every connection offered, hold every room for ever, and let 
 
 **Interfaces:**
 - Consumes: `LIMITS` (Task 1) — extended here with `MAX_CONNS_PER_IP`, `MAX_MSGS_PER_SEC`, `MSG_BURST`, `MAX_ROOMS`, `MAX_CLIENTS_PER_ROOM`, `ROOM_TTL_MS`, `HEARTBEAT_MS`.
-- Produces: `export class TokenBucket` with `constructor(ratePerSec, burst)` and `take(now)` → boolean.
+- Produces: `export class TokenBucket` with `constructor(ratePerSec, burst)` and `take(now)` → boolean; `export function log(event, fields)`, which Task 4 then builds on. The logger lands **here**, not in Task 4, because this task's own code calls it from `verifyClient` and from the sweep timer — a `log` that arrives one task later is a `ReferenceError` thrown inside an upgrade handler and an uncaught exception inside a `setInterval`, which kills the relay child mid-test.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -791,7 +887,36 @@ const ALLOWED_ORIGINS = (process.env.SIGNAL_ALLOWED_ORIGINS ?? '')
   .split(',').map((s) => s.trim()).filter(Boolean);
 ```
 
-- [ ] **Step 4: Add the token bucket**
+- [ ] **Step 4: Add the redacting logger, then the token bucket**
+
+The logger has to exist before anything in this task calls it, and it has to redact from its first line — a room code printed "just for now, until Task 4 adds redaction" is a room code in a commit.
+
+```js
+/**
+ * The fields a log line must never carry, whatever a caller passes.
+ *
+ * A room code is a bearer token for the life of the room — anyone holding it
+ * can walk into it — so it belongs in a log no more than a password does. That
+ * it is also read aloud is not a counter-argument: saying it discloses it to
+ * the people in the room for half an hour, while logging it discloses it to
+ * whoever reads the logs, for ever.
+ *
+ * The contract is deliberately flat and by field NAME: `{ code }` is redacted,
+ * `{ roomCode }` and `{ room: { code } }` are not. If you add a call site,
+ * name your fields from this list or add to it.
+ */
+const SECRET_FIELDS = new Set(['code', 'blob', 'candidate', 'credential', 'password', 'username']);
+
+export function log(event, fields = {}) {
+  const safe = {};
+  for (const [k, v] of Object.entries(fields)) {
+    safe[k] = SECRET_FIELDS.has(k) ? `[${k}]` : v;
+  }
+  console.log(JSON.stringify({ at: new Date().toISOString(), event, ...safe }));
+}
+```
+
+Then the bucket:
 
 ```js
 /**
@@ -828,9 +953,15 @@ Change `start()`'s `WebSocketServer` construction to carry a handshake gate, and
     server: http,
     maxPayload: LIMITS.MAX_PAYLOAD_BYTES,
     verifyClient: ({ origin, req }) => {
-      // A client with no Origin is not a browser. Only a browser is bound by
-      // this header, so refusing an absent one would cost the desktop shell and
-      // every probe while costing an attacker nothing.
+      // A client that sends no Origin is not a browser, and only a browser is
+      // bound by this header — so refusing an absent one costs the probes and
+      // any non-browser client while costing an attacker nothing.
+      //
+      // Note what this does NOT cover: the desktop shell is Chromium and its
+      // page DOES send an Origin (`file://` or `null`), which is in nobody's
+      // allowlist. A deployment that sets this variable and also serves desktop
+      // players must name that value explicitly — see the operations section in
+      // docs/MULTIPLAYER.md, and verify it empirically rather than assuming it.
       if (ALLOWED_ORIGINS.length && origin && !ALLOWED_ORIGINS.includes(origin)) {
         log('refused', { reason: 'origin', origin });
         return false;
@@ -973,8 +1104,8 @@ The relay logs one line at startup and nothing else, so an operator cannot tell 
 - Test: `tests/signal-hardening.test.mjs` (append)
 
 **Interfaces:**
-- Consumes: `LIMITS`, `rooms`, `connsByIp`.
-- Produces: `export function log(event, fields)` — writes one JSON line to stdout; `export const metrics` — a counter object.
+- Consumes: `LIMITS`, `rooms`, `connsByIp`, and `log` (already defined in Task 3).
+- Produces: `export const metrics` — a counter object.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1028,31 +1159,12 @@ console.log('T5 — a log line never carries a code, a blob or a candidate');
 - [ ] **Step 2: Run it and confirm it fails**
 
 Run: `node tests/signal-hardening.test.mjs`
-Expected: FAIL — `log` is not exported, and `/healthz` answers only `{ok, rooms}`.
+Expected: FAIL — `/healthz` answers only `{ok, rooms}`, so the `conns`/`rejected`/`uptimeMs` assertions fail. The T5 logging assertions should already PASS: `log` and its redaction landed in Task 3, and this task's test is what pins them.
 
-- [ ] **Step 3: Add the logger and the metrics counter**
+- [ ] **Step 3: Add the metrics counter**
 
 ```js
 export const metrics = { conns: 0, rooms: 0, rejected: 0, expired: 0, startedAt: Date.now() };
-
-/**
- * The fields a log line must never carry, whatever a caller passes.
- *
- * A room code is a bearer token for the duration of a join — anyone holding it
- * can walk into the room — so it belongs in a log no more than a password does.
- * Blobs and candidates carry the players' own addresses. Redacting by field
- * name at the sink rather than at each call site is what makes the guarantee
- * hold for the next call site somebody adds.
- */
-const SECRET_FIELDS = new Set(['code', 'blob', 'candidate', 'credential', 'password', 'username']);
-
-export function log(event, fields = {}) {
-  const safe = {};
-  for (const [k, v] of Object.entries(fields)) {
-    safe[k] = SECRET_FIELDS.has(k) ? `[${k}]` : v;
-  }
-  console.log(JSON.stringify({ at: new Date().toISOString(), event, ...safe }));
-}
 ```
 
 Increment the counters where the events already happen: `metrics.conns++` in `onConnection`, `metrics.rejected++` inside `reject`, `metrics.expired++` in the sweep, `metrics.rooms++` in the `host` case.
@@ -1077,8 +1189,12 @@ function health() {
 
 Replace the `http.listen` callback:
 
+The human-readable line is **not** decoration and must not be replaced by the JSON one: `tests/trickle-ice.test.mjs:409`, `tools/verify-trickle.mjs:67`, `tools/coopprobe.mjs:960` and the new test's own `startRelay` all parse the port out of it with `/ws:\/\/0\.0\.0\.0:(\d+)/`, which no JSON line can satisfy. Keep both:
+
 ```js
   http.listen(port, () => {
+    // Four spawners parse this exact line for the port. It stays, verbatim.
+    console.log(`signalling on ws://0.0.0.0:${http.address().port} (health: /healthz)`);
     log('listening', { port: http.address().port });
     if (!ALLOWED_ORIGINS.length) {
       console.log('[signal] SIGNAL_ALLOWED_ORIGINS is unset — any web origin may open this relay.'
@@ -1093,13 +1209,7 @@ Run: `node tests/signal-hardening.test.mjs`
 Expected: PASS, `0 failed`.
 
 Run: `npm test`
-Expected: 58/58 files pass. Note `tests/trickle-ice.test.mjs` parses the relay's stdout for its port with `/ws:\/\/0\.0\.0\.0:(\d+)/` — the startup line is now JSON, so **check that regex still matches**. If it does not, keep the human-readable line as well as the JSON one:
-
-```js
-    console.log(`signalling on ws://0.0.0.0:${http.address().port} (health: /healthz)`);
-```
-
-This is not optional politeness: both `tests/trickle-ice.test.mjs:403-413`, `tools/verify-trickle.mjs:61` and the new test's `startRelay` read the port from that exact line.
+Expected: 58/58 files pass. If `trickle-ice.test.mjs` times out waiting for the relay, the `ws://0.0.0.0:PORT` line from Step 5 was dropped — restore it.
 
 - [ ] **Step 7: Commit**
 
@@ -1285,7 +1395,18 @@ becomes
   if (turn) {
 ```
 
-Note the two credential reads move **above** the `if (turn)` guard deliberately: the purge in `setting()` must run on every load, including the loads where no TURN endpoint is configured at all. Those are exactly the sessions that would otherwise keep an old credential in storage for ever.
+Note the two credential reads move **above** the `if (turn)` guard deliberately: the purge must also happen in sessions with no TURN endpoint configured, which are exactly the ones that would otherwise keep an old credential for ever.
+
+That is still not early enough to match the claim. `iceServers()` runs when the co-op screen opens or a connection forms — a player who never touches co-op would keep a stored credential indefinitely. Purge at module scope so the guarantee is "on load", as documented, rather than "on first co-op":
+
+```js
+// A credential stored by an older build is deleted when this module loads, not
+// when co-op is next opened — a player who never opens the co-op screen is
+// precisely the one whose stale credential would otherwise sit there for ever.
+for (const k of ['turnuser', 'turnpass']) store.del(k);
+```
+
+Place it immediately after the `store` definition (`:61`). `store.del` clears both the current and the legacy prefix, which is why it is the right call here.
 
 Update the resolution-order comment at `:26-30` to record the exception:
 
@@ -1313,7 +1434,11 @@ Expected: 59/59 files pass.
 
 - [ ] **Step 6: Document the environment surface**
 
-In `docs/MULTIPLAYER.md`, in the configuration matrix around `:177-183`, add a row noting that `?turnuser=`/`?turnpass=` are session-only and do not persist, and add a relay-operations section listing every `SIGNAL_*` variable from `LIMITS` with its default and one line on what it protects: `SIGNAL_ALLOWED_ORIGINS`, `SIGNAL_MAX_CLIENTS_PER_ROOM`, `SIGNAL_MAX_ROOMS`, `SIGNAL_MAX_CONNS_PER_IP`, `SIGNAL_MAX_MSGS_PER_SEC`, `SIGNAL_MSG_BURST`, `SIGNAL_ROOM_TTL_MS`, `SIGNAL_HEARTBEAT_MS`. State plainly that a public deployment must set `SIGNAL_ALLOWED_ORIGINS`.
+In `docs/MULTIPLAYER.md`, in the configuration matrix around `:177-183`, note in the `?turnuser=`/`?turnpass=` rows that they are session-only and do not persist (the table's own caption at `:172-173` says "Query wins, and persists" — amend it so it is not contradicted by its own rows).
+
+Then add a relay-operations section listing every `SIGNAL_*` variable from `LIMITS` with its default and one line on what it protects: `SIGNAL_ALLOWED_ORIGINS`, `SIGNAL_MAX_CLIENTS_PER_ROOM`, `SIGNAL_MAX_ROOMS`, `SIGNAL_MAX_CONNS_PER_IP`, `SIGNAL_MAX_MSGS_PER_SEC`, `SIGNAL_MSG_BURST`, `SIGNAL_ROOM_TTL_MS`, `SIGNAL_HEARTBEAT_MS`. State plainly that a public deployment must set `SIGNAL_ALLOWED_ORIGINS`, and add this warning verbatim in substance:
+
+> An allowlist names **browser** origins. The desktop build is Chromium too, and its page sends an Origin of its own (`file://` or `null`) that appears in no allowlist — so a deployment that serves desktop players and sets this variable must include that value. Find out what it actually sends by reading the relay's `refused` log line while a desktop build connects. Do not assume it.
 
 In `.env.example`, add a comment above the `VITE_TURN_*` block: build-time credentials are baked into the bundle and are invisible to `tools/coopprobe.mjs`'s redactor, so for probe runs pass them as `--turn/--turnuser/--turnpass` instead.
 
