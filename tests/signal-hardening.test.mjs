@@ -10,6 +10,7 @@
  */
 import { spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
+import net from 'node:net';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocket } from 'ws';
@@ -661,6 +662,155 @@ console.log('T4 — a socket error is counted, without the frame that caused it'
   server.kill();
 }
 
+console.log('T4 — a socket that has stopped reading is dropped, not buffered for');
+{
+  // The defect no unit test on a mock can see. `send` used to consult nothing
+  // but `readyState`, so a peer that stops reading its TCP socket turns the
+  // relay's heap into that peer's receive buffer: measured out of process
+  // against this relay at shipped defaults, 12 sockets from ONE address inside
+  // every declared ceiling grew it by 257 MB in 24 s with `rejectedTotal` at 0
+  // and all 12 still open. The ceiling below is per-socket and the sender of
+  // the traffic is never the socket that pays for it — which is why the
+  // message-per-second bucket, which is charged to the sender, could not see it.
+  //
+  // The SENDER's rate ceiling is raised here and nothing else is: the defect is
+  // on the recipient's side of the relay, and at 40 msg/s it takes half a minute
+  // of real time to push enough bytes past the operating system's own socket
+  // buffers to see it. The out-of-process measurement above was taken at the
+  // shipped rate; this asserts the ceiling, quickly.
+  const { server, port } = await startRelay({
+    SIGNAL_MAX_BUFFERED_BYTES: String(64 * 1024),
+    SIGNAL_MAX_MSGS_PER_SEC: '600', SIGNAL_MSG_BURST: '600',
+  });
+  const health = () => fetch(`http://127.0.0.1:${port}/healthz`).then((r) => r.json());
+  const host = connect(port); await host.opened;
+  host.send(JSON.stringify({ type: 'host' }));
+  const hosting = await host.recv('hosting');
+  const joiner = connect(port); await joiner.opened;
+  joiner.send(JSON.stringify({ type: 'join', code: hosting.code }));
+  const req = await host.recv('joinRequest');
+
+  joiner._socket.pause(); // stop reading, and never start again
+  const blob = 'z'.repeat(LIMITS.MAX_BLOB_CHARS);
+  for (let i = 0; i < 400; i++) { // 12.8 MB, far past any kernel buffer in the way
+    host.send(JSON.stringify({ type: 'offer', clientId: req.clientId, blob }));
+    if (i % 20 === 19) await new Promise((r) => setTimeout(r, 10));
+  }
+
+  const dropped = await eventually(async () => (await health()).conns === 1, 4000);
+  ok(dropped, `the relay lets go of a socket it cannot write to (conns=${(await health()).conns}, expected 1)`);
+  const h = await health();
+  ok(h.stalledTotal >= 1, `and counts having done so (stalledTotal=${h.stalledTotal})`);
+  ok(host.readyState === 1,
+     `while the socket that was reading normally is untouched (readyState ${host.readyState})`);
+
+  try { joiner._socket.resume(); } catch { /* already gone, which is the point */ }
+  joiner.terminate(); host.close(); server.kill();
+}
+
+console.log('T4 — only a host may offer, and only a joiner may answer');
+{
+  const { server, port } = await startRelay();
+  const host = connect(port); await host.opened;
+  host.send(JSON.stringify({ type: 'host' }));
+  const hosting = await host.recv('hosting');
+  const a = connect(port); await a.opened;
+  a.send(JSON.stringify({ type: 'join', code: hosting.code }));
+  const reqA = await host.recv('joinRequest');
+  const b = connect(port); await b.opened;
+  b.send(JSON.stringify({ type: 'join', code: hosting.code }));
+  const reqB = await host.recv('joinRequest');
+
+  // The handshake the roles exist for runs first, in both directions, because a
+  // `recv` that times out leaves its waiter behind and would swallow the next
+  // message of that type on the same socket.
+  host.send(JSON.stringify({ type: 'offer', clientId: reqB.clientId, blob: 'v=0 real', trickle: true }));
+  const real = await b.recv('offer', 2000).catch(() => null);
+  ok(real?.blob === 'v=0 real' && real.trickle === true,
+     `the host's own offer still reaches its joiner, trickle flag and all (got ${JSON.stringify(real)})`);
+  b.send(JSON.stringify({ type: 'answer', blob: 'v=0 back' }));
+  const back = await host.recv('answer', 2000).catch(() => null);
+  ok(back?.blob === 'v=0 back' && back.clientId === reqB.clientId,
+     `and the joiner's answer still reaches the host, stamped with which joiner (got ${JSON.stringify(back)})`);
+
+  // `b` is a joiner, and a joiner's `joinViaRelay` treats EVERY offer it
+  // receives as the host's. So an offer `b` addresses at `a` is not a stray
+  // message: it is `a`'s WebRTC connection, captured by whoever else holds the
+  // room code. Anyone invited into a room can do this to anyone else in it.
+  b.send(JSON.stringify({ type: 'offer', clientId: reqA.clientId, blob: 'v=0 impostor' }));
+  const impostor = await a.recv('offer', 800).catch(() => null);
+  ok(impostor === null, `a joiner's offer to another joiner is not forwarded (got ${JSON.stringify(impostor)})`);
+
+  host.send(JSON.stringify({ type: 'answer', blob: 'v=0 impostor' }));
+  const selfAnswer = await host.recv('answer', 800).catch(() => null);
+  ok(selfAnswer === null, `nor a host's answer into its own room (got ${JSON.stringify(selfAnswer)})`);
+
+  host.close(); a.close(); b.close(); server.kill();
+}
+
+console.log('T4 — a socket refused a room is not left pointing at the one it left on the way');
+{
+  const { server, port } = await startRelay({ SIGNAL_MAX_ROOMS: '1' });
+  const host = connect(port); await host.opened;
+  host.send(JSON.stringify({ type: 'host' }));
+  const hosting = await host.recv('hosting');
+  const ghost = connect(port); await ghost.opened;
+  ghost.send(JSON.stringify({ type: 'join', code: hosting.code }));
+  await host.recv('joinRequest');
+
+  // `host` runs `leaveCurrentRoom` BEFORE the room cap, so this socket gives up
+  // its membership and is then refused a room of its own. It is now a member of
+  // nothing — and it must not still be holding the code and the role of the room
+  // it walked out of, because that is a pointer at somebody else's room.
+  ghost.send(JSON.stringify({ type: 'host' }));
+  const full = await ghost.recv('error');
+  ok(full.error === 'Relay is full', `the room past the cap is refused (got ${full.error})`);
+
+  ghost.send(JSON.stringify({ type: 'answer', blob: 'v=0 ghost' }));
+  const leaked = await host.recv('answer', 800).catch(() => null);
+  ok(leaked === null,
+     `and the socket that left cannot still speak into that room (got ${JSON.stringify(leaked)})`);
+
+  host.close(); ghost.close(); server.kill();
+}
+
+console.log('T4 — a whole IPv6 /64 is one address, because that is what one household is');
+{
+  const { ipBucketKey } = await import('../tools/signal-server.mjs');
+  // A residential IPv6 allocation is a /64 or larger. Keyed on the exact
+  // address, MAX_CONNS_PER_IP is 2^64 buckets wide for one attacker, at no cost
+  // and with no spoofing — and MAX_ROOMS and the buffered-bytes ceiling are only
+  // as strong as the connection cap underneath them.
+  ok(ipBucketKey('2001:db8:1:2:3:4:5:6') === ipBucketKey('2001:db8:1:2:ffff:ffff:ffff:ffff'),
+     'two addresses inside one /64 share one bucket');
+  ok(ipBucketKey('2001:db8:1:2::1') === ipBucketKey('2001:DB8:1:2::9'),
+     'however either of them is spelled');
+  ok(ipBucketKey('2001:db8:1:2::1') !== ipBucketKey('2001:db8:1:3::1'),
+     'and two different /64s are two different buckets');
+  // The trap in the other direction, and it is the expensive one: every
+  // IPv4-mapped address (`::ffff:a.b.c.d`) shares the same all-zero /64, so
+  // truncating one would put every IPv4 player on a dual-stack listener into a
+  // single 12-connection bucket — the whole service, not the household.
+  ok(ipBucketKey('::ffff:203.0.113.9') !== ipBucketKey('::ffff:203.0.113.10'),
+     'while two IPv4-mapped addresses are still two addresses');
+  ok(ipBucketKey('203.0.113.9') === '203.0.113.9', 'and a plain IPv4 address is itself');
+
+  const relay = await startRelay({ SIGNAL_MAX_CONNS_PER_IP: '2', SIGNAL_TRUST_PROXY: '1' });
+  const mk = (xff) => connect(relay.port, { headers: { 'x-forwarded-for': xff } });
+  const c1 = mk('2001:db8:abcd:1234::1'); await c1.opened;
+  const c2 = mk('2001:db8:abcd:1234::2'); await c2.opened;
+  const c3 = mk('2001:db8:abcd:1234:ffff:ffff:ffff:ffff');
+  let capped = false;
+  try { await c3.opened; } catch { capped = true; }
+  ok(capped, 'a third address out of the same /64 is refused like a third connection from one address');
+  const elsewhere = mk('2001:db8:abcd:9999::1');
+  let wrongly = false;
+  try { await elsewhere.opened; } catch { wrongly = true; }
+  ok(!wrongly, 'while a different /64 still has its own allowance');
+
+  c1.close(); c2.close(); elsewhere.close(); relay.server.kill();
+}
+
 /* ==========================================================================
  * 5 — observability that leaks nothing
  * ======================================================================= */
@@ -828,6 +978,106 @@ console.log('T5 — a log line never carries a code, a blob or a candidate');
      'a room code handed to the logger is redacted, not printed');
   ok(parsed[0].code === '[code]', `and is replaced by a marker (got ${parsed[0].code})`);
   ok(parsed[1].origin === 'https://evil.example', 'while a non-secret field is kept, because it is the point of the line');
+}
+
+console.log('T5 — a room TTL below the beat that renews it is announced as the regression it is');
+{
+  // The page renews a live session's room every 5 minutes and nothing else does.
+  // Any TTL under that reintroduces, in full, the defect the keepalive exists to
+  // close — a live room reclaimed under a live game — and the setting reads as
+  // freely tunable. An operator is reliably looking exactly once: at startup.
+  const { server, port } = await startRelay({ SIGNAL_ROOM_TTL_MS: '600' });
+  await new Promise((r) => setTimeout(r, 250));
+  const warn = server.logs.find((l) => l.includes('"setting":"SIGNAL_ROOM_TTL_MS"'));
+  ok(!!warn, `a TTL under the floor is announced at startup (got ${JSON.stringify(server.logs)})`);
+  ok(!!warn && warn.includes('"event":"config-warning"'),
+     `as a config-warning, structured, so an aggregator keeps it (got ${warn})`);
+  ok(!!warn && /keepalive/i.test(warn), `and it names the beat it is under (got ${warn})`);
+  server.kill();
+
+  const quiet = await startRelay({ SIGNAL_ROOM_TTL_MS: String(30 * 60 * 1000) });
+  await new Promise((r) => setTimeout(r, 250));
+  ok(!quiet.server.logs.some((l) => l.includes('"setting":"SIGNAL_ROOM_TTL_MS"')),
+     `and a TTL above it says nothing (got ${JSON.stringify(quiet.server.logs)})`);
+  quiet.server.kill();
+}
+
+/* ==========================================================================
+ * 6 — the surface below the protocol
+ *
+ * Everything above this point is about sockets that completed a WebSocket
+ * handshake, which is where every ceiling in this relay used to begin. An
+ * attacker does not have to get that far to cost the process a file descriptor.
+ * ======================================================================= */
+
+/** A raw TCP socket to the relay. No HTTP, no upgrade — just an accepted connection. */
+function rawSocket(port) {
+  const s = net.connect(port, '127.0.0.1');
+  s.on('error', () => {}); // a refused or destroyed socket is the expected outcome here
+  // Flowing, or this end never reads the 408 the relay sends before hanging up
+  // and so never emits 'close' — the socket would look held open when it is the
+  // test that is not looking.
+  s.resume();
+  return s;
+}
+
+console.log('T6 — a request that never finishes is not held open for a minute');
+{
+  const { server, port } = await startRelay({ SIGNAL_HEADERS_TIMEOUT_MS: '600' });
+  const s = rawSocket(port);
+  await new Promise((r) => s.on('connect', r));
+  // Headers deliberately unterminated: no blank line, so this request is never
+  // complete. Node's default holds it for 60 s, which is 60 s of a file
+  // descriptor bought with one packet.
+  s.write('GET /healthz HTTP/1.1\r\nHost: localhost\r\n');
+  const at = Date.now();
+  const shut = await Promise.race([
+    new Promise((r) => s.on('close', () => r(true))),
+    new Promise((r) => setTimeout(() => r(false), 3000)),
+  ]);
+  ok(shut, `an unfinished request is dropped rather than held (waited ${Date.now() - at} ms)`);
+  server.kill();
+}
+
+console.log('T6 — one address cannot hold more raw sockets than the relay declared');
+{
+  // Measured before this ceiling existed: 200 raw sockets accepted from one
+  // address against a per-IP WebSocket cap of 2, because that cap is only
+  // charged on a COMPLETED upgrade. Nothing below the upgrade was counted at all.
+  const { server, port } = await startRelay({ SIGNAL_MAX_SOCKETS: '8', SIGNAL_MAX_CONNS_PER_IP: '2' });
+  const socks = [];
+  for (let i = 0; i < 60; i++) socks.push(rawSocket(port));
+  await new Promise((r) => setTimeout(r, 800));
+  const alive = socks.filter((s) => !s.destroyed).length;
+  ok(alive <= 8, `60 raw sockets from one address leave at most the declared 8 (got ${alive})`);
+  ok(alive > 0, 'and the cap is a cap, not a closed door');
+  for (const s of socks) s.destroy();
+  server.kill();
+}
+
+console.log('T6 — the request timeouts do not evict a player who is merely quiet');
+{
+  // A guard on the fix above rather than on a defect: `headersTimeout` and
+  // `requestTimeout` are properties of the HTTP server that the WebSocket
+  // upgrade was born from, and a signalling socket is silent for the whole game
+  // once the peers are connected. If either timeout survived the upgrade, every
+  // co-op session would die on the clock — so this asserts the thing that would
+  // be broken, at timeouts short enough to prove it inside a test.
+  const { server, port } = await startRelay({
+    SIGNAL_HEADERS_TIMEOUT_MS: '400', SIGNAL_REQUEST_TIMEOUT_MS: '700', SIGNAL_ROOM_TTL_MS: '600000',
+  });
+  const host = connect(port); await host.opened;
+  host.send(JSON.stringify({ type: 'host' }));
+  const hosting = await host.recv('hosting');
+  await new Promise((r) => setTimeout(r, 2000)); // several timeouts' worth of silence
+  ok(host.readyState === 1,
+     `an upgraded socket outlives the HTTP request timeouts (readyState ${host.readyState})`);
+  const joiner = connect(port); await joiner.opened;
+  joiner.send(JSON.stringify({ type: 'join', code: hosting.code }));
+  const req = await host.recv('joinRequest', 2000).catch(() => null);
+  ok(typeof req?.clientId === 'number',
+     `and is still signalling for its room afterwards (got ${JSON.stringify(req)})`);
+  host.close(); joiner.close(); server.kill();
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

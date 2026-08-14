@@ -86,8 +86,57 @@ export const metrics = {
   refusedTotal: 0,  // upgrades refused at the handshake, before any message
   expiredTotal: 0,  // rooms swept by the TTL
   errorsTotal: 0,   // socket errors absorbed (a protocol violation ws already answered)
+  stalledTotal: 0,  // sockets dropped for not reading what was addressed to them
   startedAt: Date.now(),
 };
+
+/**
+ * How often the host page says its room is still in use.
+ *
+ * A copy of `RELAY_KEEPALIVE_MS` in `src/net/Lobby.js`, which the page owns and
+ * this file cannot import — `tools/` is not part of the bundle. It is here for
+ * one reason: it is the floor under ROOM_TTL_MS, and an operator tuning the TTL
+ * has no way to know that from the TTL alone. See the startup `config-warning`.
+ */
+const PAGE_KEEPALIVE_MS = 5 * 60 * 1000;
+
+/**
+ * The key MAX_CONNS_PER_IP is counted against: an IPv4 address as itself, an
+ * IPv6 address as the /64 it sits in.
+ *
+ * A residential IPv6 allocation is a /64 at minimum and routinely a /56 or /48.
+ * Every address in it is the subscriber's to use, costs nothing and needs no
+ * spoofing — so a cap keyed on the exact address is 2^64 buckets wide for one
+ * attacker, which is not a cap, and MAX_ROOMS and MAX_BUFFERED_BYTES are each
+ * only as strong as the connection cap underneath them. A /64 is the smallest
+ * unit that is reliably one subscriber.
+ *
+ * The trap is in the other direction and it is the expensive one: an IPv4 peer
+ * arriving on a dual-stack listener is `::ffff:203.0.113.9`, and EVERY such
+ * address shares the same all-zero /64. Truncating those would put every IPv4
+ * player into one twelve-connection bucket — the whole service, not the
+ * household — so they are keyed whole, as the IPv4 addresses they are.
+ *
+ * Anything this does not recognise as an address is keyed whole, which is what
+ * the map did before this function existed.
+ */
+export function ipBucketKey(addr) {
+  if (typeof addr !== 'string') return String(addr);
+  const bare = addr.split('%')[0]; // a link-local scope id is not part of the address
+  if (!bare.includes(':') || bare.includes('.')) return addr; // IPv4, or IPv4-mapped IPv6
+  const halves = bare.split('::');
+  if (halves.length > 2) return addr; // '::' appears at most once in a legal address
+  const head = halves[0] ? halves[0].split(':') : [];
+  const tail = halves[1] ? halves[1].split(':') : [];
+  const groups = halves.length === 2
+    ? [...head, ...Array(Math.max(0, 8 - head.length - tail.length)).fill('0'), ...tail]
+    : head;
+  if (groups.length !== 8 || !groups.every((g) => /^[0-9a-fA-F]{1,4}$/.test(g))) return addr;
+  // Re-spelled from the parsed groups rather than sliced from the text, so every
+  // spelling of one prefix — leading zeroes, upper case, an elided run — is one
+  // key. Two spellings of one subscriber would be two allowances.
+  return `${groups.slice(0, 4).map((g) => parseInt(g, 16).toString(16)).join(':')}::/64`;
+}
 
 /**
  * The peer address, preferring the proxy's account of it ONLY where the
@@ -116,7 +165,16 @@ function addressOf(req) {
 }
 
 export function start({ port = defaultPort() } = {}) {
-  const http = createServer((req, res) => {
+  const http = createServer({
+    // Node does not arm a timer per socket for the two timeouts set below: it
+    // sweeps the connection list on this interval, so an unfinished request
+    // lives for its timeout PLUS up to one interval, and the default interval
+    // is 30 s. Setting a 5 s headers timeout and leaving this at its default
+    // would have bought about 25 s of the 55 s it looks like it buys — which is
+    // the sort of ceiling that passes its own test and does nothing.
+    connectionsCheckingInterval: Math.max(250,
+      Math.min(LIMITS.HEADERS_TIMEOUT_MS, LIMITS.REQUEST_TIMEOUT_MS)),
+  }, (req, res) => {
     if (req.url === '/healthz' || req.url === '/') {
       res.writeHead(200, { 'content-type': 'application/json' });
       // `wss` is declared below but only read when a request arrives, which is
@@ -126,6 +184,38 @@ export function start({ port = defaultPort() } = {}) {
     }
     res.writeHead(404).end();
   });
+
+  // The ceilings BELOW the WebSocket handshake.
+  //
+  // MAX_CONNS_PER_IP is charged in `onConnection` — that is, only once an
+  // upgrade has COMPLETED — so until this, nothing counted a raw TCP
+  // connection, an HTTP request, or a half-finished upgrade at all. Measured
+  // against the per-IP cap set to 2: 200 sockets accepted from one address,
+  // each holding an incomplete `GET /healthz` open for Node's default 60 s
+  // headers timeout. That is file-descriptor exhaustion for the price of a
+  // packet each, and it never reaches the code that would have counted it.
+  //
+  // Node clears both timeouts when a request completes or upgrades, so a
+  // signalling socket that is silent for a whole game — which is every socket
+  // here, once the peers are connected — is not subject to either. That is
+  // asserted on the wire rather than assumed: if it were untrue, every co-op
+  // session in the world would die on this clock. An upgraded socket does still
+  // count against `maxConnections` (also asserted), so this ceiling is every
+  // socket the process holds, not only the ones still speaking HTTP.
+  //
+  // GLOBAL rather than per-address, and that is not an oversight. At accept
+  // time there is no `x-forwarded-for` to read — the header arrives with the
+  // request, one round trip later — so behind the edge proxy this relay is
+  // meant to be deployed behind, every player's TCP connection comes from the
+  // same place and a per-address accept cap would cap the whole service at N.
+  // The cost of a global cap is honest and bounded: one address filling it with
+  // raw sockets refuses everyone until it lets go, instead of exhausting the
+  // process's file descriptors, and the headers timeout above reaps whatever it
+  // is holding within seconds. Per-address remains what it always was — a
+  // ceiling on COMPLETED upgrades, where the address is finally knowable.
+  http.maxConnections = LIMITS.MAX_SOCKETS;
+  http.headersTimeout = LIMITS.HEADERS_TIMEOUT_MS;
+  http.requestTimeout = LIMITS.REQUEST_TIMEOUT_MS;
 
   const wss = new WebSocketServer({
     server: http,
@@ -146,7 +236,10 @@ export function start({ port = defaultPort() } = {}) {
         return false;
       }
       const ip = addressOf(req);
-      if ((connsByIp.get(ip) ?? 0) >= LIMITS.MAX_CONNS_PER_IP) {
+      // Counted against the /64 for IPv6, the address itself for IPv4 — see
+      // `ipBucketKey`. The log field stays the address, because a prefix is not
+      // what an operator is looking at when they read this line.
+      if ((connsByIp.get(ipBucketKey(ip)) ?? 0) >= LIMITS.MAX_CONNS_PER_IP) {
         metrics.refusedTotal += 1;
         logSampled('refused', { reason: 'conns-per-ip', ip });
         return false;
@@ -183,6 +276,23 @@ export function start({ port = defaultPort() } = {}) {
         setting: 'SIGNAL_ALLOWED_ORIGINS',
         detail: 'unset — any web origin may open this relay.'
           + ' That is right for a laptop and wrong for a public deployment.',
+      });
+    }
+    // The TTL has a floor, and nothing about the setting says so. The only
+    // thing that keeps a LIVE session's room alive is the host page's
+    // keepalive; under that beat, a room is reclaimed out from under a game in
+    // progress and the friend who arrives at minute 90 is told 'No such room',
+    // which is exactly what a typo looks like. That is the whole regression the
+    // keepalive was added to close, reintroduced by a number an operator has
+    // every reason to think is free to tune. Twice the beat, not once: a room
+    // that expires between two beats is expired.
+    if (LIMITS.ROOM_TTL_MS < 2 * PAGE_KEEPALIVE_MS) {
+      log('config-warning', {
+        setting: 'SIGNAL_ROOM_TTL_MS',
+        roomTtlMs: LIMITS.ROOM_TTL_MS,
+        floorMs: 2 * PAGE_KEEPALIVE_MS,
+        detail: 'a live session keeps its room with a keepalive every'
+          + ` ${PAGE_KEEPALIVE_MS} ms; under the floor a room expires under a live game.`,
       });
     }
   });
@@ -263,11 +373,55 @@ function health(wss) {
     refusedTotal: metrics.refusedTotal,
     expiredTotal: metrics.expiredTotal,
     errorsTotal: metrics.errorsTotal,
+    stalledTotal: metrics.stalledTotal,
     uptimeMs: Date.now() - metrics.startedAt,
   };
 }
 
-const send = (ws, msg) => { if (ws?.readyState === 1) ws.send(JSON.stringify(msg)); };
+/**
+ * Hand a message to a socket — unless that socket has stopped taking them.
+ *
+ * The rate limiter charges the SENDER, in messages. What it cannot see is that
+ * the bytes pile up on the RECIPIENT: a peer that simply stops reading its TCP
+ * socket turns this process's heap into that peer's receive buffer, and every
+ * declared ceiling is respected the whole way down. Measured out of process at
+ * shipped defaults, 12 sockets from one address — exactly MAX_CONNS_PER_IP —
+ * grew the relay by 257 MB in 24 s with `rejectedTotal` at 0 and all 12 still
+ * open. A 512 MB container dies in well under a minute, unauthenticated, from
+ * one laptop.
+ *
+ * So the ceiling is per-socket and on bytes already owed rather than on bytes
+ * about to be sent: `bufferedAmount` is what `ws` has queued and the kernel has
+ * not taken. A socket over it is not slow, it is gone.
+ */
+function send(ws, msg) {
+  if (ws?.readyState !== 1) return;
+  if (ws.bufferedAmount > LIMITS.MAX_BUFFERED_BYTES) return stalled(ws);
+  ws.send(JSON.stringify(msg));
+}
+
+/**
+ * How long a socket over the buffer ceiling is given before it is destroyed.
+ *
+ * `close()` alone is not enough here, and the reason is the defect itself: the
+ * close frame queues BEHIND the megabyte this peer has not read, so against the
+ * exact peer this exists to stop it never leaves the process — `ws` then waits
+ * out its own 30 s close timer holding every buffered byte the whole time.
+ * The grace is for the peer that is merely slow and drains promptly, and is the
+ * only window in which it can learn why it was dropped.
+ */
+const CLOSE_GRACE_MS = 1000;
+
+function stalled(ws) {
+  metrics.stalledTotal += 1;
+  // Sampled like every other line a stranger can cause on demand, and carrying
+  // a count rather than anything that was in the queue.
+  logSampled('stalled', { ip: ws.ip, bufferedBytes: ws.bufferedAmount });
+  // Once this returns, `readyState` is CLOSING, so `send` above refuses this
+  // socket from here on and nothing more is queued for it.
+  ws.close(1008, 'not reading');
+  setTimeout(() => ws.terminate(), CLOSE_GRACE_MS).unref?.();
+}
 
 /** One environment override, parsed as a positive number or ignored. */
 function envNum(name, fallback) {
@@ -275,14 +429,30 @@ function envNum(name, fallback) {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
+// Read out here rather than inline below, because two other ceilings are
+// derived from it and a deployment that raises one has to raise those with it.
+const MAX_CONNS_PER_IP = envNum('SIGNAL_MAX_CONNS_PER_IP', 12);
+
 /**
  * Every ceiling this relay enforces, in one object so a deployment can see the
  * whole policy at once and a test can assert against the same numbers the
  * server uses rather than a copy of them.
  *
- * The sizes are generous on purpose. An SDP offer carrying a dozen candidates
- * is a few kilobytes; 32 KiB is roughly an order of magnitude of headroom, and
- * the 64 KiB frame ceiling above it is what `ws` enforces for us before a byte
+ * The sizes are generous on purpose, and the blob ceiling is now measured
+ * rather than argued. A real offer from this game's transport, out of Chromium
+ * on this machine: 458 characters trickling, 722 with ICE gathering complete
+ * and its candidates inline, at about 132 characters per further candidate. So
+ * 32 KiB is around 240 inline candidates. Cutting it to 8 KiB was considered as
+ * a second front against the buffering defect and rejected: the memory ceiling
+ * is now MAX_BUFFERED_BYTES and does not depend on this number (it changes the
+ * single-message overshoot by 24 KiB on a 1 MiB ceiling — 2%), while 58 inline
+ * candidates is a real ceiling for a NON-trickle host with several interfaces
+ * and a TURN server offering udp/tcp/tls relay candidates on each — which is
+ * the deployment this branch is preparing. The failure mode there is
+ * `blob-too-big`: a co-op session that never forms, for the same
+ * many-interfaces host the rate limiter already had to be widened for.
+ *
+ * The 64 KiB frame ceiling above it is what `ws` enforces for us before a byte
  * is ever buffered into this process.
  *
  * The abuse ceilings below are overridable from the environment because they
@@ -294,12 +464,36 @@ export const LIMITS = Object.freeze({
   MAX_BLOB_CHARS: 32 * 1024,
   MAX_CANDIDATE_CHARS: 1024,
   CODE_LEN: 8,
+  // What this relay will hold for ONE socket that is not reading. About 30
+  // pending offers at the blob ceiling and some 1400 at the size a real offer
+  // actually is, against a worst legitimate backlog — a 160-candidate trickle
+  // burst at the candidate ceiling — of about 160 KB. Far above anything a
+  // handshake owes; far below what a peer can weaponise. See `send`.
+  //
+  // Read this WITH `MAX_SOCKETS`, because the two multiply: the worst case is
+  // no longer unbounded, but it is (sockets x this), and at the defaults that
+  // is 768 MiB. That is bounded and survivable on a machine with memory, and
+  // still over the head of a 512 MB container — so a small container should
+  // lower SIGNAL_MAX_SOCKETS or SIGNAL_MAX_BUFFERED_BYTES rather than read
+  // "1 MiB per socket" as the whole story.
+  MAX_BUFFERED_BYTES: envNum('SIGNAL_MAX_BUFFERED_BYTES', 1024 * 1024),
+  // Every socket the process holds, upgraded or not — see `start`. 64 sockets
+  // per allowed connection is enough slack that the WebSocket cap above is
+  // always the limit a real player meets, while still being a number a small
+  // container can hold file descriptors for.
+  MAX_SOCKETS: envNum('SIGNAL_MAX_SOCKETS', MAX_CONNS_PER_IP * 64),
+  // How long an unfinished HTTP request may hold a socket. Node's defaults are
+  // 60 s and 300 s; nothing legitimate here — a health check, a WebSocket
+  // upgrade — takes longer than one round trip.
+  HEADERS_TIMEOUT_MS: envNum('SIGNAL_HEADERS_TIMEOUT_MS', 5000),
+  REQUEST_TIMEOUT_MS: envNum('SIGNAL_REQUEST_TIMEOUT_MS', 10_000),
   // Sized for a co-op game, not a public chat service. Four players is the
   // designed party; the slack above it absorbs a joiner whose socket has not
   // been swept yet, so a legitimate rejoin is never the one that is refused.
   MAX_CLIENTS_PER_ROOM: envNum('SIGNAL_MAX_CLIENTS_PER_ROOM', 8),
   MAX_ROOMS: envNum('SIGNAL_MAX_ROOMS', 500),
-  MAX_CONNS_PER_IP: envNum('SIGNAL_MAX_CONNS_PER_IP', 12),
+  // Counted per /64 for IPv6, per address for IPv4 — see `ipBucketKey`.
+  MAX_CONNS_PER_IP,
   // Trickle ICE is bursty by nature — a host gathering against several
   // interfaces emits a dozen candidates in a few milliseconds — so the burst is
   // deliberately much larger than the sustained rate.
@@ -574,13 +768,16 @@ function onConnection(ws, req) {
   ws.room = null;
   ws.role = null;
   ws.ip = addressOf(req);
+  // Two fields on purpose: `ip` is who this is, for a log line; `ipKey` is what
+  // the connection cap is counted against, which for IPv6 is the whole /64.
+  ws.ipKey = ipBucketKey(ws.ip);
   ws.bucket = new TokenBucket(LIMITS.MAX_MSGS_PER_SEC, LIMITS.MSG_BURST);
   // The allowance for messages this socket sends past `bucket` — see `overRate`.
   // A second bucket rather than a counter, because forgiveness is the whole
   // point and a bucket already knows how to refill on the clock.
   ws.dropBudget = new TokenBucket(LIMITS.RATE_DROPS_FORGIVEN_PER_SEC, LIMITS.MAX_RATE_DROPS);
   ws.alive = true;
-  connsByIp.set(ws.ip, (connsByIp.get(ws.ip) ?? 0) + 1);
+  connsByIp.set(ws.ipKey, (connsByIp.get(ws.ipKey) ?? 0) + 1);
   metrics.connsTotal += 1;
   ws.on('pong', () => { ws.alive = true; });
 
@@ -643,6 +840,12 @@ function onConnection(ws, req) {
         // in the first five minutes looks exactly like an abandoned one, and the
         // TTL reclaims a code the session is still handing out. No reply: there
         // is nothing to say, and a room the sender is not in is nobody's error.
+        //
+        // This beat is therefore the floor under ROOM_TTL_MS, and the coupling
+        // runs the other way too: the page beats every PAGE_KEEPALIVE_MS, so a
+        // TTL below twice that expires live rooms no matter how busy they are.
+        // The startup `config-warning` in `start` says so out loud, because
+        // nothing about the TTL setting hints that this message exists.
         touch(rooms.get(ws.room));
         break;
       }
@@ -673,6 +876,14 @@ function onConnection(ws, req) {
         // Host -> a specific joiner. `trickle` rides along untouched: it is the
         // host telling that joiner "candidates will follow over this relay", and
         // forwarding it is exactly what makes this server a v2 one.
+        //
+        // Only the host, and the check is not a formality: a joiner's
+        // `joinViaRelay` treats EVERY offer it receives as the host's, so an
+        // offer forwarded from one joiner to another is not a stray message —
+        // it is that joiner's WebRTC connection, captured by whoever else holds
+        // the room code. `ice` has always been keyed on the role; these two were
+        // not, and the room code is a bearer token every invited friend holds.
+        if (ws.role !== 'host') return reject(ws, 'wrong-role');
         const room = rooms.get(ws.room);
         touch(room);
         const target = [...(room?.clients ?? [])].find((c) => c.id === msg.clientId);
@@ -680,7 +891,10 @@ function onConnection(ws, req) {
         break;
       }
       case 'answer': {
-        // Joiner -> host.
+        // Joiner -> host, and only a joiner: the mirror of the check above, and
+        // the reason a socket that has left a room must not still be wearing its
+        // role — see `leaveCurrentRoom`.
+        if (ws.role !== 'client') return reject(ws, 'wrong-role');
         const room = rooms.get(ws.room);
         touch(room);
         send(room?.host, { type: 'answer', blob: msg.blob, clientId: ws.id });
@@ -708,8 +922,8 @@ function onConnection(ws, req) {
   });
 
   ws.on('close', () => {
-    connsByIp.set(ws.ip, (connsByIp.get(ws.ip) ?? 1) - 1);
-    if (connsByIp.get(ws.ip) <= 0) connsByIp.delete(ws.ip);
+    connsByIp.set(ws.ipKey, (connsByIp.get(ws.ipKey) ?? 1) - 1);
+    if (connsByIp.get(ws.ipKey) <= 0) connsByIp.delete(ws.ipKey);
     leaveCurrentRoom(ws);
   });
 }
@@ -721,16 +935,27 @@ function onConnection(ws, req) {
  * joining somewhere else — and one place to be right, because every one of
  * those paths used to be able to leave a room in the map with nobody in it or
  * a departed socket still listed as a member.
+ *
+ * Detaching means BOTH directions. The room stops pointing at the socket, and
+ * the socket stops pointing at the room — because a caller that leaves and is
+ * then refused what it left for (`host` runs this BEFORE the MAX_ROOMS check)
+ * would otherwise still be holding the code and the role of a room it is no
+ * longer a member of, and `answer` and `keepalive` are routed from exactly
+ * those two fields. Every handler that re-establishes a membership sets them
+ * again immediately after calling this.
  */
 function leaveCurrentRoom(ws) {
   const room = rooms.get(ws.room);
-  if (!room) return;
-  if (ws.role === 'host') {
-    for (const c of room.clients) send(c, { type: 'error', error: 'Host left' });
-    rooms.delete(ws.room);
-  } else {
-    room.clients.delete(ws);
+  if (room) {
+    if (ws.role === 'host') {
+      for (const c of room.clients) send(c, { type: 'error', error: 'Host left' });
+      rooms.delete(ws.room);
+    } else {
+      room.clients.delete(ws);
+    }
   }
+  ws.room = null;
+  ws.role = null;
 }
 
 let idSeq = 0;
