@@ -15,7 +15,9 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocket } from 'ws';
 
-import { LIMITS, validate, normalizeCode } from '../tools/signal-server.mjs';
+import { LIMITS, ALPHABET, validate, normalizeCode } from '../tools/signal-server.mjs';
+
+const CODE_RE = new RegExp(`^[${ALPHABET}]{${LIMITS.CODE_LEN}}$`);
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
@@ -138,7 +140,7 @@ console.log('T2 — a junk frame does not disturb a live room');
   await host.opened;
   host.send(JSON.stringify({ type: 'host' }));
   const hosting = await host.recv('hosting');
-  ok(/^[A-Z2-9]{8}$/.test(hosting.code), `the relay mints an 8-character code (got ${hosting.code})`);
+  ok(CODE_RE.test(hosting.code), `the relay mints a code from its own alphabet (got ${hosting.code})`);
 
   host.send('{not json');
   host.send(JSON.stringify({ type: 'nonsense' }));
@@ -161,7 +163,7 @@ console.log('T2 — a client cannot name its own room');
   host.send(JSON.stringify({ type: 'host', code: 'AAAAAAAA' }));
   const hosting = await host.recv('hosting');
   ok(hosting.code !== 'AAAAAAAA', `the relay ignores a client-chosen code (got ${hosting.code})`);
-  ok(/^[A-Z2-9]{8}$/.test(hosting.code), 'and mints its own');
+  ok(CODE_RE.test(hosting.code), 'and mints its own');
   host.close(); server.kill();
 }
 
@@ -285,7 +287,48 @@ console.log('T4 — the token bucket spends a burst, refuses, then refills on th
   ok(b.take(t + 100) === false, 'but only one');
 }
 
-console.log('T4 — a room dies when its host does, and when nobody comes back for it');
+console.log("T4 — the rate-drop budget forgives, unlike MAX_REJECTS's disconnect budget");
+{
+  // Wave A's central claim: unlike MAX_REJECTS (fixed, never refills), the
+  // rate-drop budget a well-formed-but-too-fast message spends is a TokenBucket
+  // like any other — it earns tokens back on the clock instead of only ever
+  // draining. Driven directly, at the shape (`SIGNAL_MAX_RATE_DROPS`,
+  // `SIGNAL_RATE_DROPS_FORGIVEN_PER_SEC`) `overRate` actually constructs it
+  // with, not a copy of the numbers.
+  const { TokenBucket } = await import('../tools/signal-server.mjs');
+  const dropBudget = new TokenBucket(20, 10); // 20/s forgiven, 10 in hand
+  let spent = 0;
+  for (let i = 0; i < 10; i++) if (dropBudget.take(1_000_000)) spent++;
+  ok(spent === 10, `the burst is exactly the burst (got ${spent})`);
+  ok(dropBudget.take(1_000_000) === false, 'the 11th drop over budget is refused');
+  ok(dropBudget.take(1_000_000 + 1000) === true,
+     'but a socket that stops flooding earns its budget back a second later — it forgives');
+}
+
+console.log('T4 — a room dies when its host does');
+{
+  const { server, port } = await startRelay();
+  const host = connect(port);
+  await host.opened;
+  host.send(JSON.stringify({ type: 'host' }));
+  const hosting = await host.recv('hosting');
+
+  const joiner = connect(port);
+  await joiner.opened;
+  joiner.send(JSON.stringify({ type: 'join', code: hosting.code }));
+  await host.recv('joinRequest');
+
+  host.close();
+  const err = await joiner.recv('error');
+  ok(err.error === 'Host left', `the joiner is told the host left (got ${JSON.stringify(err)})`);
+
+  const after = await (await fetch(`http://127.0.0.1:${port}/healthz`)).json();
+  ok(after.rooms === 0, `and the room is gone from /healthz (got ${after.rooms})`);
+
+  joiner.close(); server.kill();
+}
+
+console.log('T4 — and when nobody comes back for it');
 {
   const { server, port } = await startRelay({ SIGNAL_ROOM_TTL_MS: '600' });
   const host = connect(port);
@@ -415,7 +458,7 @@ console.log('T4 — an Origin allowlist admits what it names and refuses what it
   const good = connect(port, { origin: 'https://play.example' });
   await good.opened;
   good.send(JSON.stringify({ type: 'host' }));
-  ok((await good.recv('hosting')).code.length === 8, 'a named origin hosts normally');
+  ok((await good.recv('hosting')).code.length === LIMITS.CODE_LEN, 'a named origin hosts normally');
 
   const bad = connect(port, { origin: 'https://evil.example' });
   let refused = false;
@@ -428,7 +471,7 @@ console.log('T4 — an Origin allowlist admits what it names and refuses what it
   const headless = connect(port);
   await headless.opened;
   headless.send(JSON.stringify({ type: 'host' }));
-  ok((await headless.recv('hosting')).code.length === 8, 'and a client with no Origin is still served');
+  ok((await headless.recv('hosting')).code.length === LIMITS.CODE_LEN, 'and a client with no Origin is still served');
 
   good.close(); headless.close(); server.kill();
 }

@@ -8,14 +8,27 @@
  *
  *   node tools/signal-server.mjs --port 8787
  *
- * Deliberately stateless beyond a room map, and rooms are dropped as soon as
- * both sides disconnect.
+ * No longer stateless beyond a room map: a per-address connection count, a
+ * running metrics object, and three per-socket token buckets (message rate,
+ * join rate, and a forgiving rate-drop budget) live alongside it. And a room
+ * is no longer dropped "as soon as both sides disconnect" in either direction
+ * — a client leaving does not drop the room it left, and an idle room is
+ * reclaimed on a TTL sweep even while both sides are still connected, if
+ * neither side has sent anything (including the host's `keepalive`, below) in
+ * that long. Losing the host DOES still drop the room immediately, on its
+ * socket's `close`.
  *
  * ## Protocol version
  *
  * `hosting` carries `v`. Version 2 is "this relay forwards `ice` messages and
  * preserves the `trickle` flag on an offer", which is what lets a host skip the
  * non-trickle gathering wait (`Transport.js`, `waitForIce`).
+ *
+ * A `keepalive` message (added after `v` was last bumped, so it is not itself
+ * versioned) is the host page's way of saying a live session is still in use
+ * once every peer is connected and the relay would otherwise see no traffic
+ * to renew the room's TTL on. An old relay that has never heard of it ignores
+ * the unknown type, which is why it stays ungated.
  *
  * The version is advertised rather than required, and the degrade is by
  * omission in both directions:
@@ -665,7 +678,10 @@ export class TokenBucket {
   }
 }
 
-const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no I/O/0/1 — misread over voice
+// Exported so tests/signal-hardening.test.mjs can build its own code-shape regex
+// from this exact alphabet instead of a hand-copied one — a hand-copied
+// `[A-Z2-9]` admits I and O, the two letters this alphabet exists to exclude.
+export const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no I/O/0/1 — misread over voice
 const CODE_RE = new RegExp(`^[${ALPHABET}]{${LIMITS.CODE_LEN}}$`);
 
 /**
