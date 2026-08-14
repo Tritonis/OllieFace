@@ -48,7 +48,7 @@ The relay currently `JSON.parse`s anything, forwards `msg.blob` and `msg.candida
 - Consumes: nothing from earlier tasks.
 - Produces, all named exports from `tools/signal-server.mjs`:
   - `export const LIMITS` — a frozen object of numeric policy values; Tasks 2–4 add keys to it.
-  - `export function validate(msg)` → `{ ok: true, msg }` on success, `{ ok: false, reason: string }` on rejection. `reason` is a short stable slug (`'not-object'`, `'bad-type'`, `'bad-code'`, `'blob-too-big'`, `'candidate-too-big'`, `'bad-client-id'`).
+  - `export function validate(msg)` → `{ ok: true, msg }` on success, `{ ok: false, reason: string }` on rejection. `reason` is a short stable slug — the full set is `'not-object'`, `'bad-type'`, `'bad-code'`, `'bad-blob'`, `'blob-too-big'`, `'bad-candidate'`, `'candidate-too-big'`, `'bad-client-id'`.
   - `export function normalizeCode(raw)` → uppercase A–Z/2–9 string with every other character stripped, or `''`.
 
 - [ ] **Step 1: Write the failing test**
