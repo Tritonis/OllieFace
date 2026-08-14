@@ -29,7 +29,11 @@
  *   4. the localhost default
  *
  * Query params persist to `localStorage` on read, so a tester follows a link
- * once and every later plain visit keeps the same configuration.
+ * once and every later plain visit keeps the same configuration — with one
+ * exception. `?turnuser=` and `?turnpass=` are credentials: they are read from
+ * the URL, never written to storage, and any copy an older build left behind is
+ * deleted on load. A tester carrying credentials therefore carries the whole
+ * link every time, which is the intended cost.
  */
 
 import { adoptLegacyKey } from '../core/LegacyStorage.js';
@@ -60,25 +64,62 @@ const store = {
   },
 };
 
+/**
+ * The settings that are secrets, and are therefore never written down.
+ *
+ * A TURN username and credential are bearer secrets for a relay somebody pays
+ * for, and `localStorage` is the wrong shape for one in three separate ways: it
+ * outlives the session that needed it, it is readable by every other script on
+ * the origin, and it survives into screenshots and support dumps taken long
+ * afterwards. So a credential is read from the URL of the session that is using
+ * it and from nowhere else.
+ *
+ * One list, rather than a flag passed at each call site: a `persist: false` that
+ * a future caller forgets to pass is a credential silently persisted again, and
+ * nothing anywhere would fail to say so. Naming the key here is the whole of the
+ * opt-out, and the purge below reads the same list.
+ */
+const NEVER_PERSIST = new Set(['turnuser', 'turnpass']);
+
+// Deleted when this module loads, not when the co-op screen is next opened: a
+// player who never opens co-op is precisely the one whose credential — stored
+// by a build that did persist it — would otherwise sit there for ever. A value
+// left behind is a value that leaks later, so it is removed rather than merely
+// ignored. `store.del` clears `LEGACY_LS_PREFIX` too, which is why it is the
+// right call here: a credential left under the pre-rename prefix would be
+// adopted forward by the next `store.get` and written straight back out under
+// the current name.
+for (const k of NEVER_PERSIST) store.del(k);
+
 /** Build-time env, guarded: `import.meta.env` is absent outside a Vite build. */
 function env(name) {
   try { return import.meta.env?.[name] || ''; } catch { return ''; }
 }
 
 /**
- * One setting, resolved and (if it came from the query string) remembered.
+ * One setting, resolved and — unless it is a secret — remembered.
  *
  * An explicitly empty query param (`?turn=`) clears the stored value rather
  * than being ignored, so a tester can turn TURN back off without clearing site
  * data by hand.
+ *
+ * A `NEVER_PERSIST` key is read from the query and from the build-time env, and
+ * never from or to storage. The clear at the top is not redundant with the
+ * load-time purge: the purge cannot see a write that happens after it, and an
+ * older build of the game left open in a second tab is exactly that — it still
+ * persists credentials, into the same origin this page reads. Clearing on every
+ * read bounds the exposure to the gap between two reads rather than to the next
+ * reload.
  */
 function setting(queryKey, envKey, fallback = '') {
+  const persist = !NEVER_PERSIST.has(queryKey);
+  if (!persist) store.del(queryKey);
   if (params.has(queryKey)) {
     const v = params.get(queryKey).trim();
-    if (v) store.set(queryKey, v); else store.del(queryKey);
+    if (persist) { if (v) store.set(queryKey, v); else store.del(queryKey); }
     return v || env(envKey) || fallback;
   }
-  return store.get(queryKey) || env(envKey) || fallback;
+  return (persist ? store.get(queryKey) : '') || env(envKey) || fallback;
 }
 
 /**
@@ -122,9 +163,13 @@ export function iceServers() {
   ];
 
   const turn = setting('turn', 'VITE_TURN_URLS');
+  // Read above the `if`, not inside it: these two are `NEVER_PERSIST` keys, and
+  // reading one is also what clears any copy of it in storage. A session with no
+  // TURN endpoint configured is exactly the session that would otherwise keep an
+  // old credential for ever.
+  const username = setting('turnuser', 'VITE_TURN_USERNAME');
+  const credential = setting('turnpass', 'VITE_TURN_CREDENTIAL');
   if (turn) {
-    const username = setting('turnuser', 'VITE_TURN_USERNAME');
-    const credential = setting('turnpass', 'VITE_TURN_CREDENTIAL');
     const urls = turn.split(',').map((s) => s.trim()).filter(Boolean);
     if (urls.length) servers.push(username ? { urls, username, credential } : { urls });
   }
