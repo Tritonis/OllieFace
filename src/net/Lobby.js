@@ -85,6 +85,29 @@ export function normalizeRoomCode(raw) {
 }
 
 /**
+ * What the room-code field keeps while the player is still typing.
+ *
+ * `normalizeRoomCode` is the authority on what a code *is*, but it only runs
+ * when the player presses Join — by which point the field has already applied
+ * its own `maxlength` and thrown characters away. A code read aloud as "ABCD,
+ * dash, 2345" is typed with spaces around the dash often enough that it matters:
+ * eleven characters in a nine-character box arrive as `ABCD - 2`, which is five
+ * real characters and is refused for being too short. The message was right and
+ * the field had already eaten the code.
+ *
+ * So keep exactly what a code is read as — its letters and digits, and the one
+ * dash it is grouped by — and drop the rest at the keystroke, where there is
+ * still something to keep. The dash survives because a player who typed it
+ * should see it; a run of them collapses because two dashes are nobody's
+ * spelling of one. Nine characters is the most this can ever return for input
+ * that contains a whole code, which is exactly what the field holds.
+ */
+export function tidyRoomCode(raw) {
+  if (typeof raw !== 'string') return '';
+  return raw.toUpperCase().replace(/[^A-Z0-9-]/g, '').replace(/-{2,}/g, '-');
+}
+
+/**
  * A room code as it is meant to be read aloud: one dash down the middle.
  *
  * It lives beside `normalizeRoomCode` rather than in the UI because the two are
@@ -318,7 +341,33 @@ export class Lobby {
       // Whether the room code has arrived, which is what settles this promise —
       // see the `error` branch below for the two sides of that moment.
       let open = false;
-      ws.onerror = () => reject(new Error(relayError(url)));
+      /**
+       * Leave nothing behind on a host attempt that never became a room.
+       *
+       * Rejecting was not enough on either count. `ws.onopen` starts the
+       * keepalive before the relay has said whether there is a room to keep
+       * alive, so a 'Relay is full' arriving after the socket opened left a
+       * five-minute timer writing to an open socket for the rest of the page's
+       * life. And `startHost()` ran at the top of this method, so the lobby was
+       * left in `host` mode holding a live `NetHost` — which is why the player
+       * had no way to recover: pressing Create room again died on 'Already
+       * networked' until they pressed Leave. This is `leave()`'s teardown minus
+       * the parts that belong to a session that actually started.
+       */
+      const fail = (err) => {
+        this._stopKeepalive();
+        try { ws.close(); } catch { /* a socket that never opened */ }
+        this._release();
+        this.mode = 'single';
+        // `NetHost.init` published 'host' on the way in, and every reader of
+        // `ctx.netRole` — input sampling, the damage filters, profile recording
+        // — has to be handed its single-player answer back, exactly as
+        // `joinManual`'s own failure path does.
+        this.ctx.authority = true;
+        this.ctx.netRole = 'single';
+        reject(err);
+      };
+      ws.onerror = () => fail(new Error(relayError(url)));
       ws.onopen = () => {
         ws.send(JSON.stringify({ type: 'host' }));
         this._startKeepalive(ws);
@@ -335,7 +384,7 @@ export class Lobby {
           // how a host came to sit on the co-op screen believing it was still
           // hosting a room this relay had already forgotten. After the code, the
           // only thing left to tell is the screen.
-          if (!open) reject(new Error(msg.error));
+          if (!open) fail(new Error(msg.error));
           else this._set('relayError', { error: msg.error });
         } else if (msg.type === 'hosting') {
           open = true;
@@ -417,11 +466,45 @@ export class Lobby {
     return new Promise((resolve, reject) => {
       const ws = new WebSocket(url);
       this.ws = ws;
-      ws.onerror = () => reject(new Error(relayError(url)));
+      // Whether this join has connected, which is what settles the promise. The
+      // `error` branch below reads it for the same reason `hostViaRelay` reads
+      // `open`: the relay speaks on both sides of that moment and the two sides
+      // want opposite things done to the socket.
+      let joined = false;
+      /**
+       * Give the connection back on a join that failed.
+       *
+       * Every terminal answer a joiner can get — 'No such room', 'Room is
+       * full', 'Relay is full', a host that left before the offer — used to
+       * reject and leave the socket connected, answering the relay's heartbeat
+       * for ever; a retry simply assigned a new socket to `this.ws` and orphaned
+       * the last one. Against a relay that now caps connections per address,
+       * that made every mistyped code cost a permanent slot out of the
+       * household's allowance, and the attempt that finally hit the cap was
+       * refused at the handshake and shown `relayError()`'s localhost branch —
+       * telling the player the relay was not running, the one explanation that
+       * is certainly wrong.
+       */
+      const fail = (err) => {
+        try { ws.close(); } catch { /* a socket that never opened */ }
+        reject(err);
+      };
+      ws.onerror = () => fail(new Error(relayError(url)));
       ws.onopen = () => ws.send(JSON.stringify({ type: 'join', code: norm }));
       ws.onmessage = async (e) => {
         const msg = JSON.parse(e.data);
-        if (msg.type === 'error') return reject(new Error(msg.error));
+        if (msg.type === 'error') {
+          // Before the offer there is still a promise to fail and a player
+          // waiting on it. After it, this join is peer-to-peer and the relay is
+          // no longer part of it — but the socket is: it is still carrying
+          // trickled candidates for a connection that may still be forming, so
+          // closing it here would break the very thing the error is about to be
+          // irrelevant to. Rejecting a settled promise says nothing to anybody
+          // either, and a host that really left tears the data channel down
+          // too, which reaches the screen as `netDisconnected`.
+          if (!joined) fail(new Error(msg.error));
+          return;
+        }
         if (msg.type === 'ice') {
           // The host trickles from the moment it has an offer, and this page
           // only has a transport once `joinManual` has built one. The window is
@@ -433,17 +516,33 @@ export class Lobby {
           return;
         }
         if (msg.type === 'offer') {
-          // `msg.trickle` is the host's claim *through this relay*: the host
-          // only sets it against a v2 relay, and only a v2 relay preserves the
-          // field. Either being old leaves it undefined and this join is the
-          // one that ships today.
-          const answer = await this.joinManual(msg.blob, {
-            trickle: !!msg.trickle,
-            onIceCandidate: (candidate) => ws.send(JSON.stringify({ type: 'ice', candidate })),
-          });
-          ws.send(JSON.stringify({ type: 'answer', blob: answer }));
-          for (const c of this._earlyIce.splice(0)) this.net?.transport?.addIceCandidate?.(c);
-          resolve();
+          // The relay puts no role check on `offer`, so a second one can arrive
+          // from anyone else holding the code. This page already has its
+          // connection: answering again would throw 'Already networked' out of
+          // an async handler nobody awaits, which is an unhandled rejection in
+          // the page and, worse, would take the teardown below with it.
+          if (joined) return;
+          try {
+            // `msg.trickle` is the host's claim *through this relay*: the host
+            // only sets it against a v2 relay, and only a v2 relay preserves the
+            // field. Either being old leaves it undefined and this join is the
+            // one that ships today.
+            const answer = await this.joinManual(msg.blob, {
+              trickle: !!msg.trickle,
+              onIceCandidate: (candidate) => ws.send(JSON.stringify({ type: 'ice', candidate })),
+            });
+            ws.send(JSON.stringify({ type: 'answer', blob: answer }));
+            for (const c of this._earlyIce.splice(0)) this.net?.transport?.addIceCandidate?.(c);
+            joined = true;
+            resolve();
+          } catch (err) {
+            // An offer this page cannot answer — a blob it cannot parse, a
+            // connection that never lands — is the same failed attempt as a
+            // refusal from the relay, and left the same socket behind plus a
+            // promise that never settled at all, so the co-op button stayed dark
+            // and the player was told nothing.
+            fail(err);
+          }
         }
       };
     });

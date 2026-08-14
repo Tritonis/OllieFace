@@ -12,7 +12,7 @@ import { Tooltip } from './Tooltip.js';
 import { SURVIVORS, getSurvivor, loadoutOf } from '../data/survivors.js';
 import { Logbook, ModelPreview, disposeTree, renderRunReport } from './Logbook.js';
 import { describeNet } from '../net/NetConfig.js';
-import { formatRoomCode } from '../net/Lobby.js';
+import { formatRoomCode, normalizeRoomCode, tidyRoomCode } from '../net/Lobby.js';
 import {
   steamAvailable, hostViaSteam, joinViaSteam, onSteamInvite, openSteamInvite,
   steamInviteNeedsConfirm, steamInviteBlocked,
@@ -608,6 +608,27 @@ export class Menus {
       if (tierTab) { this.edictTier = tierTab.dataset.edictTier; this.renderEdict(); return; }
       const order = e.target.closest('[data-edict-item]');
       if (order) this.fileEdict(order.dataset.edictItem);
+    });
+    // The room-code field, held to what a room code is actually read as while
+    // the player is still typing it. `maxlength` counts every character in the
+    // box, so `ABCD - 2345` reached the join handler as `ABCD - 2` — five real
+    // characters — and was refused for being too short by a message that was
+    // right about a code the field had already eaten. `tidyRoomCode` keeps the
+    // letters, the digits and the one dash, which always fits.
+    this.root.addEventListener('input', (e) => {
+      const el = e.target.closest?.('[data-coop-roomcode]');
+      if (el) el.value = tidyRoomCode(el.value);
+    });
+    // Paste needs its own handler and not just the `input` above: the field
+    // truncates a pasted string to `maxlength` before any listener sees it, so
+    // the characters are gone by then. A pasted code replaces rather than
+    // inserts — nobody assembles one room code out of two pastes.
+    this.root.addEventListener('paste', (e) => {
+      const el = e.target.closest?.('[data-coop-roomcode]');
+      const text = e.clipboardData?.getData('text');
+      if (!el || text == null) return;
+      e.preventDefault();
+      el.value = tidyRoomCode(text);
     });
     // The pause summary's hover card. Its own instance rather than the HUD's:
     // the HUD's tooltip lives inside #hud, which is hidden behind the overlay
@@ -1540,7 +1561,13 @@ export class Menus {
           // asks whether the player has typed anything at all.
           const code = field('roomcode').value.trim();
           if (!code) return this.coopSay('Type the room code the host gave you first.');
-          this.coopSay(`Joining room ${code}…`);
+          // Said in the one spelling every other surface uses — the box, the
+          // host's own sentence — rather than in whatever the player typed, so
+          // `abcd 2345` is not read back at them as a third version of a code
+          // there is only one of. A code too broken to group is said verbatim,
+          // because a player comparing it to the paper needs to see what they
+          // actually typed.
+          this.coopSay(`Joining room ${formatRoomCode(normalizeRoomCode(code)) || code}…`);
           await lobby.joinViaRelay(code);
           this.coopSay('Connecting to the host…');
           break;

@@ -26,12 +26,13 @@
  * promise/event wiring, so the wiring is what has to be driven.
  */
 import { spawn } from 'node:child_process';
+import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocket } from 'ws';
 
 import { HostTransport, ClientTransport } from '../src/net/Transport.js';
-import { Lobby } from '../src/net/Lobby.js';
+import { Lobby, normalizeRoomCode, tidyRoomCode } from '../src/net/Lobby.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
@@ -547,6 +548,165 @@ console.log('T5 — signal-server relays ice both ways, and says what version it
   } finally {
     server.kill();
   }
+}
+
+/* ==========================================================================
+ * 6 — a connection attempt that fails leaves nothing behind
+ *
+ * One bug in four costumes: an orphaned socket, a firing timer, and a lobby
+ * stuck in `host` mode. Each of these asserts on the leak itself — a live
+ * interval, `ws.closed`, `lobby.net` — and not on the rejection message, which
+ * the broken code produces perfectly well.
+ * ======================================================================= */
+
+console.log('T6 — a host the relay refuses leaves no timer, no socket and no half-lobby');
+{
+  const lobby = mkLobby();
+  lobby._keepaliveMs = () => 20;
+  const p = lobby.hostViaRelay('ws://relay.test');
+  const ws = FakeWS.last;
+  ws.open();                                   // onopen has started the beat
+  ok(lobby._keepalive !== null, 'the beat is running before the refusal — the precondition for the leak');
+
+  // 'Relay is full' arrives instead of a code: MAX_ROOMS at capacity, which is
+  // ordinary relay behaviour and not an error condition anyone can prevent.
+  await ws.recv({ type: 'error', error: 'Relay is full' });
+  ok(await p.then(() => null, (e) => e.message) === 'Relay is full', 'the hosting call fails, as it already did');
+
+  const atFail = ws.ofType('keepalive').length;
+  await turn(70);
+  ok(lobby._keepalive === null, `the interval is cleared rather than left firing for the life of the page (got ${lobby._keepalive})`);
+  ok(ws.ofType('keepalive').length === atFail,
+     `and stops beating (got ${ws.ofType('keepalive').length} after ${atFail})`);
+  ok(ws.closed === true, 'the socket is closed rather than left answering the relay for ever');
+  ok(lobby.net === null && lobby.mode === 'single',
+     `the lobby is back where it started (net=${lobby.net}, mode=${lobby.mode})`);
+  ok(lobby.ctx.netRole === 'single', `and so is the role every ctx.netRole reader sees (got ${lobby.ctx.netRole})`);
+
+  // The whole point of releasing: the player can press Create room again.
+  let threw = null;
+  try { lobby.startHost(); } catch (e) { threw = e; }
+  ok(threw === null, `a second Create room is not refused with 'Already networked' (got ${threw?.message})`);
+}
+
+console.log('T6 — a host whose socket never reaches the relay leaves nothing either');
+{
+  const lobby = mkLobby();
+  const p = lobby.hostViaRelay('ws://relay.test');
+  const ws = FakeWS.last;
+  ws.onerror();                                // the socket failed before it opened
+  await p.catch(() => {});
+  ok(ws.closed === true, 'the dead socket is closed');
+  ok(lobby.net === null && lobby.mode === 'single',
+     `and the lobby is not left hosting a room that never opened (net=${lobby.net}, mode=${lobby.mode})`);
+}
+
+console.log('T6 — every mistyped room code gives its connection back');
+{
+  // The relay caps connections per address, so a join that rejects without
+  // closing spends one for ever: four mistypes against a cap of four locked the
+  // household out, and the fifth attempt was refused at the handshake and told
+  // the relay was not running — the one diagnosis that is definitely wrong.
+  const sockets = [];
+  for (const code of ['ABCD2345', 'BCDE3456', 'CDEF4567', 'DEFG5678']) {
+    const lobby = mkLobby();
+    const p = lobby.joinViaRelay(code, 'ws://relay.test');
+    const ws = FakeWS.last;
+    sockets.push(ws);
+    ws.open();
+    await ws.recv({ type: 'error', error: 'No such room' });
+    ok(await p.then(() => null, (e) => e.message) === 'No such room', `attempt on ${code} failed with the relay's reason`);
+  }
+  const leaked = sockets.filter((s) => !s.closed).length;
+  ok(leaked === 0, `four mistypes left ${leaked} sockets connected to the relay (expected 0)`);
+}
+
+console.log('T6 — a join whose socket never reaches the relay closes it too');
+{
+  const lobby = mkLobby();
+  const p = lobby.joinViaRelay('ABCD2345', 'ws://relay.test');
+  const ws = FakeWS.last;
+  ws.onerror();
+  await p.catch(() => {});
+  ok(ws.closed === true, 'the socket is closed on the unreachable-relay path as well');
+}
+
+console.log('T6 — but a joiner already connected keeps the socket its candidates ride');
+{
+  const lobby = mkLobby();
+  const p = lobby.joinViaRelay('ABCD2345', 'ws://relay.test');
+  const ws = FakeWS.last;
+  ws.open();
+  await ws.recv({ type: 'offer', blob: offerBlob(21), trickle: true });
+  await p;
+  const before = ws.ofType('ice').length;
+
+  let threw = null;
+  // 'Host left'/'Room expired' after the offer: this promise is settled and the
+  // join is peer-to-peer. Closing here would cut the trickle still in flight.
+  try { await ws.recv({ type: 'error', error: 'Host left' }); } catch (e) { threw = e; }
+  ok(threw === null, `an error after connecting does not throw (got ${threw?.message})`);
+  ok(ws.closed !== true, 'and does not close the socket out from under a connection that is still forming');
+  lastPc().emitCandidate({ candidate: 'candidate:late' });
+  ok(ws.ofType('ice').length === before + 1,
+     `a candidate gathered afterwards still reaches the host (got ${ws.ofType('ice').length} after ${before})`);
+}
+
+console.log('T6 — a second offer to a connected joiner is dropped, not thrown');
+{
+  const unhandled = [];
+  const onUnhandled = (e) => unhandled.push(String(e?.message ?? e));
+  process.on('unhandledRejection', onUnhandled);
+  try {
+    const lobby = mkLobby();
+    const p = lobby.joinViaRelay('ABCD2345', 'ws://relay.test');
+    const ws = FakeWS.last;
+    ws.open();
+    await ws.recv({ type: 'offer', blob: offerBlob(22), trickle: true });
+    await p;
+    const answers = ws.ofType('answer').length;
+    // The relay puts no role check on `offer`, so anyone holding the code can
+    // send a second one. `joinManual` would throw 'Already networked' inside an
+    // async onmessage nobody awaits.
+    await ws.recv({ type: 'offer', blob: offerBlob(23), trickle: true });
+    await turn(20);
+    ok(unhandled.length === 0, `nothing left unhandled (got ${JSON.stringify(unhandled)})`);
+    ok(ws.ofType('answer').length === answers, `and no second answer was sent (got ${ws.ofType('answer').length} after ${answers})`);
+    ok(ws.closed !== true, 'and the live connection kept its socket');
+  } finally {
+    process.off('unhandledRejection', onUnhandled);
+  }
+}
+
+/* ==========================================================================
+ * 7 — the co-op field: what the player types survives being typed
+ * ======================================================================= */
+
+console.log('T7 — a code typed with spaces around the dash is not eaten by the field');
+{
+  ok(tidyRoomCode('abcd - 2345') === 'ABCD-2345',
+     `the field keeps the code and drops the spaces (got ${JSON.stringify(tidyRoomCode('abcd - 2345'))})`);
+  // The whole defect in one number: eleven characters in a nine-character box.
+  ok(tidyRoomCode('ABCD - 2345').length <= 9,
+     `and what it keeps fits the field's maxlength (got ${tidyRoomCode('ABCD - 2345').length})`);
+  ok(normalizeRoomCode(tidyRoomCode('abcd - 2345')) === 'ABCD2345',
+     'so the code the join handler reads still normalises to a whole code');
+  ok(tidyRoomCode('ABCD--2345') === 'ABCD-2345', 'a run of dashes is nobody\'s spelling of one');
+  ok(tidyRoomCode('abcd2345') === 'ABCD2345' && tidyRoomCode('ABCD-2345') === 'ABCD-2345',
+     'and the two spellings that already worked are untouched');
+  ok(tidyRoomCode(null) === '', 'a non-string is not a code');
+}
+
+console.log('T7 — and the joiner is told the same spelling of the code as everyone else');
+{
+  const menus = await readFile(join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'ui', 'Menus.js'), 'utf8');
+  const from = menus.indexOf("case 'coop-room-join': {");
+  const block = menus.slice(from, menus.indexOf("case 'coop-copy':", from));
+  // Without this the two assertions below pass vacuously on an empty string.
+  ok(from > 0 && block.length > 40, `found the join handler to read (${block.length} chars)`);
+  ok(!/Joining room \$\{code\}/.test(block),
+     'the status line does not echo the raw field, which a player typed as `abcd 2345`');
+  ok(/formatRoomCode\(/.test(block), 'it groups the code the way the box and the host both do');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
