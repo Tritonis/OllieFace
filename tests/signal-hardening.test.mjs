@@ -400,6 +400,159 @@ console.log('T4 — a socket that sends past its allowance is refused, not obeye
   host.close(); server.kill();
 }
 
+console.log('T4 — a burst past the bucket is throttled, and the player is still there afterwards');
+{
+  // Shipped defaults on purpose (burst 120, 40/s): this is the case a real host
+  // gathering against several interfaces reaches, and the measured trigger was
+  // 140 candidates in one burst — 130 survived, 140 closed with 1008. A message
+  // that arrives too fast is back-pressure, not garbage: it is already dropped
+  // on the wire, and it must not also spend the disconnect budget that exists
+  // for malformed input.
+  const { server, port } = await startRelay();
+  const host = connect(port);
+  await host.opened;
+  host.send(JSON.stringify({ type: 'host' }));
+  const hosting = await host.recv('hosting');
+
+  for (let i = 0; i < 160; i++) {
+    host.send(JSON.stringify({ type: 'ice', clientId: 1, candidate: { candidate: `a=${i}` } }));
+    await new Promise((r) => setImmediate(r)); // real pacing, not one synchronous flush
+  }
+  await new Promise((r) => setTimeout(r, 300));
+  ok(host.readyState === 1,
+     `a 160-candidate burst does not close the socket (readyState ${host.readyState})`);
+
+  // Open is not enough: the room it was mid-handshake in has to still work.
+  const joiner = connect(port);
+  await joiner.opened;
+  joiner.send(JSON.stringify({ type: 'join', code: hosting.code }));
+  const req = await host.recv('joinRequest', 2000).catch(() => null);
+  ok(typeof req?.clientId === 'number',
+     `and the room it was signalling for still takes a joiner (got ${JSON.stringify(req)})`);
+
+  host.close(); joiner.close(); server.kill();
+}
+
+console.log('T4 — a stream of genuinely malformed frames still spends the disconnect budget');
+{
+  const { server, port } = await startRelay();
+  const junk = connect(port);
+  await junk.opened;
+  // Twenty-five, well inside the burst, so not one of them is a rate drop —
+  // every one of them is garbage, which is what MAX_REJECTS is for.
+  for (let i = 0; i < 25; i++) {
+    junk.send(JSON.stringify({ type: 'nonsense' }));
+    await new Promise((r) => setImmediate(r));
+  }
+  const code = await Promise.race([closed(junk), new Promise((r) => setTimeout(() => r(0), 3000))]);
+  ok(code === 1008, `junk frames still close the socket with 1008 (got ${code})`);
+  server.kill();
+}
+
+console.log('T4 — a sustained flood still loses its socket, on its own budget');
+{
+  // Not the same budget as the junk above, and much larger in production — but a
+  // socket that spends the whole drop allowance is flooding, not gathering, and
+  // the relay stops reading it.
+  const { server, port } = await startRelay({
+    SIGNAL_MSG_BURST: '5', SIGNAL_MAX_MSGS_PER_SEC: '1', SIGNAL_MAX_RATE_DROPS: '10',
+  });
+  const flood = connect(port);
+  await flood.opened;
+  for (let i = 0; i < 60; i++) {
+    flood.send(JSON.stringify({ type: 'join', code: 'ZZZZ2345' })); // well-formed, just far too many
+    await new Promise((r) => setImmediate(r));
+  }
+  const code = await Promise.race([closed(flood), new Promise((r) => setTimeout(() => r(0), 3000))]);
+  ok(code === 1008, `a socket past its drop allowance is closed with 1008 (got ${code})`);
+  server.kill();
+}
+
+console.log('T4 — a room with live traffic outlives its TTL, and an abandoned one is still reclaimed');
+{
+  const { server, port } = await startRelay({ SIGNAL_ROOM_TTL_MS: '600' });
+  const host = connect(port);
+  await host.opened;
+  host.send(JSON.stringify({ type: 'host' }));
+  const hosting = await host.recv('hosting');
+  const joiner = connect(port);
+  await joiner.opened;
+  joiner.send(JSON.stringify({ type: 'join', code: hosting.code }));
+  const req = await host.recv('joinRequest');
+
+  // 1.65 s of real signalling against a 600 ms TTL. Age-based expiry sweeps this
+  // room while its host and its player are both connected and talking through
+  // it; the player-facing consequence is that the next friend to try the code is
+  // told 'No such room', which is what a typo looks like.
+  for (let i = 0; i < 11; i++) {
+    host.send(JSON.stringify({ type: 'ice', clientId: req.clientId, candidate: { candidate: `a=${i}` } }));
+    await new Promise((r) => setTimeout(r, 150));
+  }
+  const busy = await (await fetch(`http://127.0.0.1:${port}/healthz`)).json();
+  ok(busy.rooms === 1, `a room carrying continuous signalling is not swept (got ${busy.rooms})`);
+
+  const late = connect(port);
+  await late.opened;
+  late.send(JSON.stringify({ type: 'join', code: hosting.code }));
+  const lateReq = await host.recv('joinRequest', 2000).catch(() => null);
+  ok(typeof lateReq?.clientId === 'number',
+     `and a friend arriving after the old TTL still gets in (got ${JSON.stringify(lateReq)})`);
+
+  // Now let it go quiet. The TTL still means something — it means abandoned —
+  // and the host is the one person who could otherwise sit on a co-op screen
+  // believing they are still hosting, so the host is told too.
+  const told = host.recv('error', 4000).catch(() => null);
+  const swept = await eventually(
+    async () => (await (await fetch(`http://127.0.0.1:${port}/healthz`)).json()).rooms === 0, 4000);
+  ok(swept, 'a room nobody has touched for a whole TTL is still reclaimed');
+  const notice = await told;
+  ok(notice?.error === 'Room expired',
+     `and its host is told, not only its clients (got ${JSON.stringify(notice)})`);
+
+  host.close(); joiner.close(); late.close(); server.kill();
+}
+
+console.log('T4 — a heartbeat is not activity');
+{
+  // The sweep pings every socket it finds and `ws` answers at the transport
+  // layer without the application seeing anything. If liveness counted as
+  // activity, an idle relay would never reclaim a single code.
+  const { server, port } = await startRelay({ SIGNAL_ROOM_TTL_MS: '600', SIGNAL_HEARTBEAT_MS: '100' });
+  const host = connect(port);
+  await host.opened;
+  host.send(JSON.stringify({ type: 'host' }));
+  await host.recv('hosting');
+  const gone = await eventually(
+    async () => (await (await fetch(`http://127.0.0.1:${port}/healthz`)).json()).rooms === 0, 4000);
+  ok(gone, 'a room held open by nothing but pings still expires');
+  host.close(); server.kill();
+}
+
+console.log('T4 — a socket already in a full room is not turned away from the room it is in');
+{
+  const { server, port } = await startRelay({ SIGNAL_MAX_CLIENTS_PER_ROOM: '1' });
+  const host = connect(port);
+  await host.opened;
+  host.send(JSON.stringify({ type: 'host' }));
+  const hosting = await host.recv('hosting');
+  const joiner = connect(port);
+  await joiner.opened;
+  joiner.send(JSON.stringify({ type: 'join', code: hosting.code }));
+  await host.recv('joinRequest');
+
+  // The room is now exactly at capacity and the only member re-sends its join.
+  // Admitting it changes no membership at all; refusing it says 'Room is full'
+  // to the socket occupying the seat.
+  joiner.send(JSON.stringify({ type: 'join', code: hosting.code }));
+  const outcome = await Promise.race([
+    host.recv('joinRequest', 2000).then(() => 'joinRequest').catch(() => 'nothing'),
+    joiner.recv('error', 2000).then((e) => e.error).catch(() => 'nothing'),
+  ]);
+  ok(outcome === 'joinRequest', `a member re-joining the room it holds is admitted (got ${outcome})`);
+
+  host.close(); joiner.close(); server.kill();
+}
+
 console.log('T4 — a socket error is counted, without the frame that caused it');
 {
   const { server, port } = await startRelay();

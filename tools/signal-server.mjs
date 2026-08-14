@@ -62,7 +62,7 @@ const RUN_DIRECTLY = process.argv[1]
 // offer's `trickle` flag; see the header for how each mismatch degrades.
 const PROTOCOL_VERSION = 2;
 
-const rooms = new Map(); // code -> { host, clients:Set, created }
+const rooms = new Map(); // code -> { host, clients:Set, created, lastActivity }
 const connsByIp = new Map(); // ip -> live socket count
 
 /**
@@ -196,12 +196,23 @@ export function start({ port = defaultPort() } = {}) {
   // The period is the smaller of the heartbeat and half the room TTL: a sweep
   // that runs less often than the TTL it enforces would let a room outlive its
   // own expiry by up to a whole period.
+  //
+  // The TTL is measured from the room's last ACTIVITY, not from its birth.
+  // Measured from birth it expired rooms whose host and players were connected
+  // and signalling through them — the host was never told, its socket stayed
+  // open, and the only symptom was that the next friend to type the code was
+  // told 'No such room', which is exactly what a typo looks like. Idle is the
+  // thing worth reclaiming; old is not. See `touch`.
   const sweep = setInterval(() => {
     const now = Date.now();
     for (const [code, room] of rooms) {
-      if (now - room.created > LIMITS.ROOM_TTL_MS) {
+      if (now - room.lastActivity > LIMITS.ROOM_TTL_MS) {
+        // The host too, not only the clients. The host is the one person who
+        // would otherwise sit on a co-op screen believing they are still
+        // hosting a room this process has already forgotten.
         for (const c of room.clients) send(c, { type: 'error', error: 'Room expired' });
-        log('room-expired', { code, ageMs: now - room.created });
+        send(room.host, { type: 'error', error: 'Room expired' });
+        log('room-expired', { code, ageMs: now - room.created, idleMs: now - room.lastActivity });
         metrics.expiredTotal += 1;
         rooms.delete(code);
       }
@@ -294,6 +305,13 @@ export const LIMITS = Object.freeze({
   // deliberately much larger than the sustained rate.
   MAX_MSGS_PER_SEC: envNum('SIGNAL_MAX_MSGS_PER_SEC', 40),
   MSG_BURST: envNum('SIGNAL_MSG_BURST', 120),
+  // What happens to a socket that keeps sending past the bucket. Its own
+  // allowance, deliberately far larger than MAX_REJECTS and — unlike
+  // MAX_REJECTS — it forgives: an overshoot is spent and earned back, so a
+  // finite burst is throttled and a genuine flood still runs out. See
+  // `overRate`.
+  MAX_RATE_DROPS: envNum('SIGNAL_MAX_RATE_DROPS', 600),
+  RATE_DROPS_FORGIVEN_PER_SEC: envNum('SIGNAL_RATE_DROPS_FORGIVEN_PER_SEC', 20),
   ROOM_TTL_MS: envNum('SIGNAL_ROOM_TTL_MS', 30 * 60 * 1000),
   HEARTBEAT_MS: envNum('SIGNAL_HEARTBEAT_MS', 30 * 1000),
 });
@@ -503,11 +521,53 @@ function reject(ws, reason) {
   if (ws.rejects >= MAX_REJECTS) ws.close(1008, 'too many invalid messages');
 }
 
+/**
+ * A message that arrived too fast, dropped.
+ *
+ * Deliberately NOT `reject`. A well-formed frame arriving over the bucket is
+ * back-pressure, not garbage: the sender is a real player whose machine gathered
+ * more candidates than this relay wants in one second, and it is already dropped
+ * on the wire. Spending the same twenty-strong, never-decaying budget that
+ * exists for malicious input meant a single trickle burst that overshot the
+ * 120-token bucket by twenty messages — measured: 140 candidates closes, 130
+ * does not — disconnected that player mid-handshake with 1008. A host with a
+ * VPN adapter, a Hyper-V switch and two real NICs reaches that in one gather.
+ *
+ * The socket still cannot flood for ever, because a flood is not a burst: the
+ * drops are counted against their own allowance, which is an order of magnitude
+ * larger than MAX_REJECTS and, unlike MAX_REJECTS, refills. A finite overshoot
+ * costs a few tokens and is forgiven; a sender that holds the throttle down
+ * spends the whole allowance faster than it earns it back and loses the socket.
+ * Either way `rejectedTotal` counts every dropped message, so /healthz sees the
+ * throttling whether or not it ends in a close.
+ */
+function overRate(ws, now) {
+  metrics.rejectedTotal += 1;
+  if (!ws.dropBudget.take(now)) ws.close(1008, 'sustained flood');
+}
+
+/**
+ * A room is still in use, as of now.
+ *
+ * Called for every message the relay routes through a room — a join, an offer,
+ * an answer, a candidate. A heartbeat is pointedly not one of them: `ws` answers
+ * a protocol ping at the transport layer without this file seeing anything, so
+ * liveness alone can never renew a room, and a code whose players have gone is
+ * still reclaimed on schedule.
+ */
+function touch(room) {
+  if (room) room.lastActivity = Date.now();
+}
+
 function onConnection(ws, req) {
   ws.room = null;
   ws.role = null;
   ws.ip = addressOf(req);
   ws.bucket = new TokenBucket(LIMITS.MAX_MSGS_PER_SEC, LIMITS.MSG_BURST);
+  // The allowance for messages this socket sends past `bucket` — see `overRate`.
+  // A second bucket rather than a counter, because forgiveness is the whole
+  // point and a bucket already knows how to refill on the clock.
+  ws.dropBudget = new TokenBucket(LIMITS.RATE_DROPS_FORGIVEN_PER_SEC, LIMITS.MAX_RATE_DROPS);
   ws.alive = true;
   connsByIp.set(ws.ip, (connsByIp.get(ws.ip) ?? 0) + 1);
   metrics.connsTotal += 1;
@@ -536,7 +596,8 @@ function onConnection(ws, req) {
 
   ws.on('message', (raw) => {
     // Before the parse, because parsing is itself work a flood is trying to buy.
-    if (!ws.bucket.take(Date.now())) return reject(ws, 'rate');
+    const now = Date.now();
+    if (!ws.bucket.take(now)) return overRate(ws, now);
 
     let parsed;
     try { parsed = JSON.parse(raw); } catch { return reject(ws, 'bad-json'); }
@@ -558,7 +619,7 @@ function onConnection(ws, req) {
         leaveCurrentRoom(ws);
         if (rooms.size >= LIMITS.MAX_ROOMS) return send(ws, { type: 'error', error: 'Relay is full' });
         const code = newCode();
-        rooms.set(code, { host: ws, clients: new Set(), created: Date.now() });
+        rooms.set(code, { host: ws, clients: new Set(), created: now, lastActivity: now });
         metrics.roomsTotal += 1;
         ws.room = code; ws.role = 'host';
         send(ws, { type: 'hosting', code, v: PROTOCOL_VERSION });
@@ -567,7 +628,13 @@ function onConnection(ws, req) {
       case 'join': {
         const room = rooms.get(msg.code);
         if (!room) return send(ws, { type: 'error', error: 'No such room' });
-        if (room.clients.size >= LIMITS.MAX_CLIENTS_PER_ROOM) {
+        // A socket already in this room is exempt from the capacity check: it
+        // occupies one of the seats being counted, so admitting it again changes
+        // no membership at all, and refusing it told the sitting member the room
+        // it is in is 'Room is full'. The check stays BEFORE `leaveCurrentRoom`
+        // for everyone else on purpose — a join that is going to fail must not
+        // first cost the socket the room it already has.
+        if (room.clients.size >= LIMITS.MAX_CLIENTS_PER_ROOM && !room.clients.has(ws)) {
           return send(ws, { type: 'error', error: 'Room is full' });
         }
         // Same one-room rule as `host`: a socket that joins a second room must
@@ -575,6 +642,7 @@ function onConnection(ws, req) {
         // reference until its own host disconnects.
         leaveCurrentRoom(ws);
         room.clients.add(ws);
+        touch(room);
         ws.room = msg.code; ws.role = 'client';
         // Ask the host to mint an invite for this specific joiner.
         send(room.host, { type: 'joinRequest', clientId: (ws.id = ++idSeq) });
@@ -585,6 +653,7 @@ function onConnection(ws, req) {
         // host telling that joiner "candidates will follow over this relay", and
         // forwarding it is exactly what makes this server a v2 one.
         const room = rooms.get(ws.room);
+        touch(room);
         const target = [...(room?.clients ?? [])].find((c) => c.id === msg.clientId);
         send(target, { type: 'offer', blob: msg.blob, trickle: !!msg.trickle });
         break;
@@ -592,6 +661,7 @@ function onConnection(ws, req) {
       case 'answer': {
         // Joiner -> host.
         const room = rooms.get(ws.room);
+        touch(room);
         send(room?.host, { type: 'answer', blob: msg.blob, clientId: ws.id });
         break;
       }
@@ -604,6 +674,7 @@ function onConnection(ws, req) {
         // the normal end of a join, not an error worth a reply.
         const room = rooms.get(ws.room);
         if (!room) break;
+        touch(room);
         if (ws.role === 'host') {
           const target = [...room.clients].find((c) => c.id === msg.clientId);
           send(target, { type: 'ice', candidate: msg.candidate });
