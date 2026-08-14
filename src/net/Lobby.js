@@ -96,6 +96,36 @@ const CODE_LEN = 8;
 const MAX_PENDING_INVITES = 8;
 
 /**
+ * How long a joiner waits for the host's offer before giving up on it.
+ *
+ * `joinViaRelay` settles on the `offer` message and on nothing else, so every
+ * way a host can fail to send one is a joiner sitting on 'Joining room…' for
+ * the rest of the page's life with no error and no way back but Leave. The
+ * host page closed, froze or lost its network between the relay forwarding the
+ * join and the invite being minted; its `createInvite` threw; or — the one
+ * `MAX_PENDING_INVITES` made reachable — eight further joins arrived and
+ * `_admitJoiner` evicted this joiner's invite, which cancels its peer
+ * connection and tells it nothing, because the relay carries no message for
+ * that. The clock on this side is the only thing that can end any of them.
+ *
+ * Twenty seconds, and it is deliberately generous. What it bounds is only the
+ * first leg of a join — socket, relay round trip, the host's `createInvite`,
+ * the offer coming back — and the whole join, all the way to a formed
+ * connection, measured 5808 ms end to end against a real relay. So this is
+ * over three times the complete measurement for a leg that is a fraction of
+ * it, which leaves room for the things that legitimately stretch it: a cold
+ * WebSocket handshake on a poor mobile link, and an old relay that cannot
+ * carry candidates, where the host pays `waitForIce`'s 4 s cap inside
+ * `createInvite` before the offer can even be sent. Too short is the failure
+ * that matters here — a slow but perfectly healthy join refused on the clock
+ * is a worse bug than the hang, because it is indistinguishable from a broken
+ * relay. It is the same number `Transport.js` argued its way to for
+ * `CONNECT_TIMEOUT_MS`, so a join has one span of patience rather than two
+ * that disagree.
+ */
+const RELAY_OFFER_TIMEOUT_MS = 20000;
+
+/**
  * A typed room code, reduced to the one spelling the relay keys its room map by.
  *
  * The relay does the same reduction on receipt (`tools/signal-server.mjs`,
@@ -556,6 +586,14 @@ export class Lobby {
   /** Overridable so a test can drive the beat rather than wait five minutes for one. */
   _keepaliveMs() { return RELAY_KEEPALIVE_MS; }
 
+  /**
+   * Overridable for the same reason `_keepaliveMs` and `Transport`'s own
+   * `_connectTimeoutMs` are: the behaviour under test is that this wait ENDS,
+   * which is answerable in milliseconds, and a test that slept through the real
+   * deadline would be twenty seconds of nothing.
+   */
+  _offerTimeoutMs() { return RELAY_OFFER_TIMEOUT_MS; }
+
   /** Join through the relay with a room code. */
   joinViaRelay(code, url = signalUrl()) {
     const norm = normalizeRoomCode(code);
@@ -576,6 +614,13 @@ export class Lobby {
       // `open`: the relay speaks on both sides of that moment and the two sides
       // want opposite things done to the socket.
       let joined = false;
+      // The deadline on the wait for the host's offer, while there is one. See
+      // `RELAY_OFFER_TIMEOUT_MS`. Armed here rather than in `ws.onopen`,
+      // because a socket that neither opens nor errors — a relay host that
+      // black-holes the SYN, which is minutes of TCP retry with no event — is
+      // one of the silent waits this exists to end.
+      let offerTimer = null;
+      const disarm = () => { if (offerTimer) { clearTimeout(offerTimer); offerTimer = null; } };
       /**
        * Give the connection back on a join that failed.
        *
@@ -591,9 +636,17 @@ export class Lobby {
        * is certainly wrong.
        */
       const fail = (err) => {
+        disarm();
         try { ws.close(); } catch { /* a socket that never opened */ }
         reject(err);
       };
+      offerTimer = setTimeout(() => fail(new Error(
+        'The host never sent an invite. They may have closed the game or lost their connection, '
+        + 'or too many other joins arrived at once — try the code again.')), this._offerTimeoutMs());
+      // Node only, and a no-op in a browser: the same reason `_startKeepalive`
+      // unrefs its interval. A headless Lobby must not be held open for twenty
+      // seconds by a deadline that is going to be disarmed anyway.
+      offerTimer.unref?.();
       ws.onerror = () => fail(new Error(relayError(url)));
       ws.onopen = () => ws.send(JSON.stringify({ type: 'join', code: norm }));
       ws.onmessage = async (e) => {
@@ -627,6 +680,13 @@ export class Lobby {
           // an async handler nobody awaits, which is an unhandled rejection in
           // the page and, worse, would take the teardown below with it.
           if (joined) return;
+          // The offer is exactly what the deadline was waiting for, so it stops
+          // counting here and not when this promise settles. Everything below
+          // is bounded on its own account — `waitForIce`'s cap, then the
+          // transport's connect deadline — and a timer still armed across it
+          // would eventually close the socket this joiner's trickled candidates
+          // are riding, out from under a connection that is still forming.
+          disarm();
           try {
             // `msg.trickle` is the host's claim *through this relay*: the host
             // only sets it against a v2 relay, and only a v2 relay preserves the

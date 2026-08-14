@@ -760,6 +760,61 @@ console.log('T6 — a second offer to a connected joiner is dropped, not thrown'
   }
 }
 
+console.log('T6 — a joiner the host never answers is told so, instead of waiting for ever');
+{
+  // The relay accepts the join and then nothing comes back. Every way that
+  // happens leaves the same joiner in the same place: the host page was closed
+  // or froze between the join being forwarded and the invite being minted, its
+  // `createInvite` threw, or — the one this branch made reachable — eight
+  // further joins arrived and `_admitJoiner` evicted this joiner's invite. The
+  // host cancels the connection and says nothing over the relay, so the only
+  // thing that can end this wait is the joiner's own clock.
+  const lobby = mkLobby();
+  lobby._offerTimeoutMs = () => 60;          // the seam, not a 20 s test
+  const p = lobby.joinViaRelay('ABCD2345', 'ws://relay.test');
+  const ws = FakeWS.last;
+  ws.open();
+  ok(ws.ofType('join').length === 1, 'the join reached the relay — the precondition for the hang');
+
+  // The assertion is on the promise settling at all. Before the deadline
+  // existed this raced a 400 ms timer and lost, for ever: no error, no
+  // recovery, and a co-op screen stuck on 'Joining room…'.
+  const settled = await Promise.race([
+    p.then(() => 'RESOLVED', (e) => e.message),
+    turn(400).then(() => 'STILL WAITING'),
+  ]);
+  ok(settled !== 'STILL WAITING', `the join settles rather than hanging for ever (got '${settled}')`);
+  ok(/never sent an invite/.test(settled), `and with something a player can act on (got '${settled}')`);
+  ok(ws.closed === true, 'the socket is given back rather than left answering the relay for ever');
+  ok(lobby.net === null && lobby.mode === 'single',
+     `and the lobby is clean enough to try again (net=${lobby.net}, mode=${lobby.mode})`);
+}
+
+console.log('T6 — but a slow host that does answer is not refused, and the clock stops when it does');
+{
+  // The other half, and the one that decides whether the number above is safe:
+  // a deadline that fires on a join which was merely slow turns a working
+  // co-op session into a failure, which is the whole class of bug this branch
+  // has been removing. It must also stop counting the moment the offer lands —
+  // a timer left armed past that would close the socket the trickled
+  // candidates are still riding, out from under a connection that is forming.
+  const lobby = mkLobby();
+  lobby._offerTimeoutMs = () => 400;
+  const p = lobby.joinViaRelay('ABCD2345', 'ws://relay.test');
+  const ws = FakeWS.last;
+  ws.open();
+  await turn(120);                            // slower than a healthy join, well inside the deadline
+  await ws.recv({ type: 'offer', blob: offerBlob(31), trickle: true });
+  ok(await p.then(() => 'joined', (e) => e.message) === 'joined', 'a late-but-real offer still joins');
+
+  const before = ws.ofType('ice').length;
+  await turn(450);                            // past where the deadline would have fired
+  ok(ws.closed !== true, 'and the deadline does not come back later and close a connected joiner\'s socket');
+  lastPc().emitCandidate({ candidate: 'candidate:after-deadline' });
+  ok(ws.ofType('ice').length === before + 1,
+     `whose candidates still reach the host (got ${ws.ofType('ice').length} after ${before})`);
+}
+
 /* ==========================================================================
  * 7 — the co-op field: what the player types survives being typed
  * ======================================================================= */
