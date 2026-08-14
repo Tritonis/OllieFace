@@ -66,6 +66,30 @@ const rooms = new Map(); // code -> { host, clients:Set, created }
 const connsByIp = new Map(); // ip -> live socket count
 
 /**
+ * What has happened since this process started, as counters.
+ *
+ * Every name here ends in `Total` and every one of them only ever goes up.
+ * That is not decoration: `/healthz` reports these beside the *live* figures
+ * (`rooms`, `conns`), and the two are different quantities — `rooms` is how
+ * many rooms are open at this instant, `roomsTotal` is how many have ever been
+ * minted. Whoever reads this at 3am, or graphs it, must not be able to mistake
+ * one for the other from the field name alone, so the two families are spelled
+ * apart and neither is ever called just `conns` in here.
+ *
+ * Counts only. Nothing in this object may name a room, an address, or a
+ * player — see `health()`.
+ */
+export const metrics = {
+  connsTotal: 0,    // sockets accepted
+  roomsTotal: 0,    // rooms minted
+  rejectedTotal: 0, // messages refused by validate/rate, after the handshake
+  refusedTotal: 0,  // upgrades refused at the handshake, before any message
+  expiredTotal: 0,  // rooms swept by the TTL
+  errorsTotal: 0,   // socket errors absorbed (a protocol violation ws already answered)
+  startedAt: Date.now(),
+};
+
+/**
  * The peer address, preferring the proxy's account of it ONLY where the
  * deployment says a proxy it controls is in front.
  *
@@ -95,7 +119,9 @@ export function start({ port = defaultPort() } = {}) {
   const http = createServer((req, res) => {
     if (req.url === '/healthz' || req.url === '/') {
       res.writeHead(200, { 'content-type': 'application/json' });
-      res.end(JSON.stringify(health()));
+      // `wss` is declared below but only read when a request arrives, which is
+      // after this whole function has run.
+      res.end(JSON.stringify(health(wss)));
       return;
     }
     res.writeHead(404).end();
@@ -115,12 +141,14 @@ export function start({ port = defaultPort() } = {}) {
       // players must name that value explicitly — see the operations section in
       // docs/MULTIPLAYER.md, and verify it empirically rather than assuming it.
       if (ALLOWED_ORIGINS.length && origin && !ALLOWED_ORIGINS.includes(origin)) {
-        log('refused', { reason: 'origin', origin });
+        metrics.refusedTotal += 1;
+        logSampled('refused', { reason: 'origin', origin });
         return false;
       }
       const ip = addressOf(req);
       if ((connsByIp.get(ip) ?? 0) >= LIMITS.MAX_CONNS_PER_IP) {
-        log('refused', { reason: 'conns-per-ip', ip });
+        metrics.refusedTotal += 1;
+        logSampled('refused', { reason: 'conns-per-ip', ip });
         return false;
       }
       return true;
@@ -130,7 +158,34 @@ export function start({ port = defaultPort() } = {}) {
   // one, which is how a test or a local driver runs a relay without colliding
   // with whatever is already on 8787 — and the number it got is only knowable
   // here.
-  http.listen(port, () => console.log(`signalling on ws://0.0.0.0:${http.address().port} (health: /healthz)`));
+  http.listen(port, () => {
+    // Four spawners parse this exact line for the port with
+    // /ws:\/\/0\.0\.0\.0:(\d+)/ — tests/trickle-ice.test.mjs,
+    // tools/verify-trickle.mjs, tools/coopprobe.mjs and
+    // tests/signal-hardening.test.mjs. It stays, verbatim, and the structured
+    // line goes beside it rather than instead of it: dropping it does not fail
+    // loudly, it hangs all four of them for their whole timeout.
+    console.log(`signalling on ws://0.0.0.0:${http.address().port} (health: /healthz)`);
+    log('listening', {
+      port: http.address().port,
+      // Named rather than counted: the misconfiguration this exists to catch is
+      // a typo in an origin, and a count cannot show one. These are the
+      // operator's own non-secret settings, echoed back.
+      allowedOrigins: ALLOWED_ORIGINS,
+      trustProxy: TRUST_PROXY,
+    });
+    if (!ALLOWED_ORIGINS.length) {
+      // Structured rather than a bare sentence, because the deployment where
+      // this matters is the one whose logs go to an aggregator that keeps JSON
+      // and drops everything else — a warning only a terminal can see is a
+      // warning the public deployment never gets.
+      log('config-warning', {
+        setting: 'SIGNAL_ALLOWED_ORIGINS',
+        detail: 'unset — any web origin may open this relay.'
+          + ' That is right for a laptop and wrong for a public deployment.',
+      });
+    }
+  });
   wss.on('connection', onConnection);
 
   // One timer for both jobs, because they answer the same question — is anything
@@ -147,6 +202,7 @@ export function start({ port = defaultPort() } = {}) {
       if (now - room.created > LIMITS.ROOM_TTL_MS) {
         for (const c of room.clients) send(c, { type: 'error', error: 'Room expired' });
         log('room-expired', { code, ageMs: now - room.created });
+        metrics.expiredTotal += 1;
         rooms.delete(code);
       }
     }
@@ -168,8 +224,37 @@ function defaultPort() {
   return Number(argPort ?? process.env.PORT ?? 8787);
 }
 
-/** What `/healthz` answers. Task 4 widens this. */
-function health() { return { ok: true, rooms: rooms.size }; }
+/**
+ * What `/healthz` answers.
+ *
+ * This endpoint is unauthenticated and cannot be otherwise — a platform health
+ * check carries no credential — so everything in it is public. It is therefore
+ * counts and flags ONLY: an unsuffixed name is how many there are right now, a
+ * `Total` name is how many there have been since startup, and nothing here
+ * names a room, an address, a client id, or an origin. A stranger polling it
+ * learns that the relay is busy, which is the point of a health check, and
+ * nothing whatever about who is connected to what.
+ *
+ * `wss.clients.size` rather than a sum over `connsByIp`: it is the count `ws`
+ * already maintains, so there is no second tally to drift, and it is O(1) on an
+ * endpoint anyone on the internet may call as often as they like.
+ */
+function health(wss) {
+  return {
+    ok: true,
+    // now
+    rooms: rooms.size,
+    conns: wss.clients.size,
+    // since start
+    roomsTotal: metrics.roomsTotal,
+    connsTotal: metrics.connsTotal,
+    rejectedTotal: metrics.rejectedTotal,
+    refusedTotal: metrics.refusedTotal,
+    expiredTotal: metrics.expiredTotal,
+    errorsTotal: metrics.errorsTotal,
+    uptimeMs: Date.now() - metrics.startedAt,
+  };
+}
 
 const send = (ws, msg) => { if (ws?.readyState === 1) ws.send(JSON.stringify(msg)); };
 
@@ -245,12 +330,67 @@ const TRUST_PROXY = /^(1|true|yes|on)$/i.test((process.env.SIGNAL_TRUST_PROXY ??
  */
 const SECRET_FIELDS = new Set(['code', 'blob', 'candidate', 'credential', 'password', 'username']);
 
+/**
+ * How much of a string field survives into a log line.
+ *
+ * Several of the fields logged here arrive from the other end of a socket — an
+ * `Origin` header, an `x-forwarded-for` value where a proxy is trusted — and a
+ * header may be kilobytes long. Without a ceiling the sender chooses the size
+ * of every line the relay writes, which is a write amplification bought with
+ * one TCP connection. 128 characters is far more than any real origin or
+ * address and far less than a header.
+ */
+const MAX_LOG_FIELD_CHARS = 128;
+
 export function log(event, fields = {}) {
   const safe = {};
   for (const [k, v] of Object.entries(fields)) {
-    safe[k] = SECRET_FIELDS.has(k) ? `[${k}]` : v;
+    if (SECRET_FIELDS.has(k)) { safe[k] = `[${k}]`; continue; }
+    safe[k] = typeof v === 'string' && v.length > MAX_LOG_FIELD_CHARS
+      ? `${v.slice(0, MAX_LOG_FIELD_CHARS)}…`
+      : v;
   }
   console.log(JSON.stringify({ at: new Date().toISOString(), event, ...safe }));
+}
+
+/**
+ * A log line for something a stranger can cause on demand.
+ *
+ * A refused handshake and an absorbed socket error are both events an attacker
+ * triggers at whatever rate it likes, and one line each means one attacker
+ * decides how much this relay writes to disk — the log bill, and eventually the
+ * disk, are the denial of service. So these events are SAMPLED: a few lines per
+ * window, then a running tally that rides out on the next line that is written.
+ *
+ * Nothing is lost by it. The counter behind each sampled event (`refusedTotal`,
+ * `errorsTotal`) is incremented on every occurrence regardless and reported by
+ * `/healthz`, so the *volume* is always exact; what is sampled is the detail —
+ * which address, which origin — and one line of that is as good as a thousand
+ * identical ones. The
+ * budget is global rather than per-address on purpose: a map keyed by something
+ * the sender chooses is itself unbounded memory, which is the same bug wearing
+ * a different hat.
+ */
+const LOG_SAMPLE_WINDOW_MS = 10_000;
+const LOG_SAMPLE_PER_WINDOW = 5;
+let sampleWindowAt = 0;
+let sampledInWindow = 0;
+let sampleSuppressed = 0;
+
+function logSampled(event, fields = {}) {
+  const now = Date.now();
+  if (now - sampleWindowAt >= LOG_SAMPLE_WINDOW_MS) {
+    sampleWindowAt = now;
+    sampledInWindow = 0;
+  }
+  if (sampledInWindow >= LOG_SAMPLE_PER_WINDOW) { sampleSuppressed += 1; return; }
+  sampledInWindow += 1;
+  // `suppressedSince` is how many sampled lines — of any event — were dropped
+  // between the last one written and this one, so a reader can tell a quiet
+  // relay from a loud one that is being sampled.
+  const line = sampleSuppressed ? { ...fields, suppressedSince: sampleSuppressed } : fields;
+  sampleSuppressed = 0;
+  log(event, line);
 }
 
 /**
@@ -358,6 +498,7 @@ export function validate(msg) {
  */
 const MAX_REJECTS = 20;
 function reject(ws, reason) {
+  metrics.rejectedTotal += 1;
   ws.rejects = (ws.rejects ?? 0) + 1;
   if (ws.rejects >= MAX_REJECTS) ws.close(1008, 'too many invalid messages');
 }
@@ -369,6 +510,7 @@ function onConnection(ws, req) {
   ws.bucket = new TokenBucket(LIMITS.MAX_MSGS_PER_SEC, LIMITS.MSG_BURST);
   ws.alive = true;
   connsByIp.set(ws.ip, (connsByIp.get(ws.ip) ?? 0) + 1);
+  metrics.connsTotal += 1;
   ws.on('pong', () => { ws.alive = true; });
 
   // `ws` reports a protocol violation it has ALREADY answered — an
@@ -383,7 +525,14 @@ function onConnection(ws, req) {
   // handler that swallowed them without a word made that invisible. The error
   // OBJECT is deliberately not logged — its message can quote the frame that
   // caused it, which is the blob this relay is not allowed to write down.
-  ws.on('error', () => log('socket-error', { ip: ws.ip }));
+  //
+  // Sampled, for the same reason the refusals are: an oversized frame is one
+  // line, and a stranger can send oversized frames as fast as it can open
+  // sockets.
+  ws.on('error', () => {
+    metrics.errorsTotal += 1;
+    logSampled('socket-error', { ip: ws.ip });
+  });
 
   ws.on('message', (raw) => {
     // Before the parse, because parsing is itself work a flood is trying to buy.
@@ -410,6 +559,7 @@ function onConnection(ws, req) {
         if (rooms.size >= LIMITS.MAX_ROOMS) return send(ws, { type: 'error', error: 'Relay is full' });
         const code = newCode();
         rooms.set(code, { host: ws, clients: new Set(), created: Date.now() });
+        metrics.roomsTotal += 1;
         ws.room = code; ws.role = 'host';
         send(ws, { type: 'hosting', code, v: PROTOCOL_VERSION });
         break;

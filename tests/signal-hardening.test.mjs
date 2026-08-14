@@ -419,5 +419,174 @@ console.log('T4 — a socket error is counted, without the frame that caused it'
   server.kill();
 }
 
+/* ==========================================================================
+ * 5 — observability that leaks nothing
+ * ======================================================================= */
+
+/** The health document, parsed. */
+const healthOf = (port) => fetch(`http://127.0.0.1:${port}/healthz`).then((r) => r.json());
+
+/** Poll until `fn()` is true, or give up — a close is processed asynchronously. */
+async function eventually(fn, ms = 2000) {
+  const stop = Date.now() + ms;
+  for (;;) {
+    if (await fn()) return true;
+    if (Date.now() > stop) return false;
+    await new Promise((r) => setTimeout(r, 25));
+  }
+}
+
+console.log('T5 — /healthz reports load without naming a single room');
+{
+  const { server, port } = await startRelay();
+  const host = connect(port);
+  await host.opened;
+  host.send(JSON.stringify({ type: 'host' }));
+  const hosting = await host.recv('hosting');
+
+  const body = await (await fetch(`http://127.0.0.1:${port}/healthz`)).text();
+  const h = JSON.parse(body);
+  ok(h.ok === true, 'it still answers the platform health check');
+  ok(h.rooms === 1 && typeof h.conns === 'number', `it reports rooms and connections (got ${body})`);
+  ok(typeof h.rejectedTotal === 'number' && typeof h.uptimeMs === 'number', 'and refusals and uptime');
+  ok(!body.includes(hosting.code), 'and no room code appears anywhere in it');
+
+  // This endpoint is unauthenticated — a platform health check cannot carry a
+  // credential — so what it may contain is a security question, not a
+  // formatting one. A count describes load; anything else (a code, an address,
+  // a client id) names somebody. Asserting the *shape* rather than the current
+  // field list is what keeps the next field added here honest.
+  ok(Object.values(h).every((v) => typeof v === 'number' || typeof v === 'boolean'),
+     `every field is a count or a flag, so nothing in it can identify anyone (got ${body})`);
+  ok(!/\d{1,3}(\.\d{1,3}){3}/.test(body) && !body.includes('::1'),
+     `and no address of anyone connected to it (got ${body})`);
+
+  host.close(); server.kill();
+}
+
+console.log('T5 — "how many now" and "how many since start" are two quantities with two names');
+{
+  const { server, port } = await startRelay();
+  const host = connect(port); await host.opened;
+  const other = connect(port); await other.opened;
+  host.send(JSON.stringify({ type: 'host' }));
+  await host.recv('hosting');
+
+  const live = await healthOf(port);
+  ok(live.conns === 2 && live.rooms === 1, `two sockets and one room are open (got ${JSON.stringify(live)})`);
+  ok(live.connsTotal === 2 && live.roomsTotal === 1, 'and the same counts have accrued since start');
+
+  other.close(); host.close();
+  const emptied = await eventually(async () => {
+    const h = await healthOf(port);
+    return h.conns === 0 && h.rooms === 0;
+  });
+  ok(emptied, 'when everyone goes, the live counts fall to nothing');
+
+  // The failure this guards against is nobody's bug and everybody's 3am
+  // misreading: a dashboard that plots `conns` as a total, or `connsTotal` as
+  // current load, is wrong in a direction that looks plausible. The names have
+  // to make the two impossible to confuse from the field alone.
+  const after = await healthOf(port);
+  ok(after.connsTotal === 2 && after.roomsTotal === 1,
+     `while the lifetime totals do not move (got ${JSON.stringify(after)})`);
+
+  server.kill();
+}
+
+console.log('T5 — a refused connection is always counted and only sometimes written down');
+{
+  const { server, port } = await startRelay({ SIGNAL_MAX_CONNS_PER_IP: '1' });
+  const held = connect(port);
+  await held.opened;
+
+  // Every one of these is refused at the handshake, and every one of them used
+  // to write a log line naming an address. One attacker therefore chose how
+  // much this relay wrote to disk — an unbounded write amplification bought
+  // with a TCP connection each.
+  const FLOOD = 30;
+  for (let i = 0; i < FLOOD; i++) {
+    const s = connect(port);
+    try { await s.opened; } catch { /* refused, which is the point */ }
+  }
+
+  const h = await healthOf(port);
+  ok(h.refusedTotal === FLOOD, `every refusal is counted (got ${h.refusedTotal} of ${FLOOD})`);
+
+  await new Promise((r) => setTimeout(r, 200));
+  const written = server.logs.filter((l) => l.includes('"event":"refused"'));
+  ok(written.length > 0, 'an operator can still see that refusals are happening');
+  ok(written.length < FLOOD,
+     `but the sender does not choose how much the relay writes (got ${written.length} lines for ${FLOOD} refusals)`);
+
+  held.close(); server.kill();
+}
+
+console.log('T5 — nor how long a line is');
+{
+  const { server, port } = await startRelay({ SIGNAL_ALLOWED_ORIGINS: 'https://play.example' });
+  const bad = connect(port, { origin: `https://evil.example/${'a'.repeat(4000)}` });
+  try { await bad.opened; } catch { /* refused, which is the point */ }
+  await new Promise((r) => setTimeout(r, 200));
+
+  const line = server.logs.find((l) => l.includes('"event":"refused"'));
+  ok(!!line, `the refusal is logged (got ${JSON.stringify(server.logs)})`);
+  ok(!!line && line.length < 400,
+     `and a 4 KB Origin header does not become a 4 KB log line (got ${line?.length} chars)`);
+
+  server.kill();
+}
+
+console.log('T5 — the volume of a sampled event is still exact, because the counter is not sampled');
+{
+  const { server, port } = await startRelay();
+  for (let i = 0; i < 3; i++) {
+    const s = connect(port);
+    await s.opened;
+    s.send(JSON.stringify({ type: 'offer', clientId: 1, blob: 'z'.repeat(LIMITS.MAX_PAYLOAD_BYTES + 1024) }));
+    await closed(s);
+  }
+  const counted = await eventually(async () => (await healthOf(port)).errorsTotal === 3);
+  ok(counted, `all three absorbed socket errors are counted (got ${(await healthOf(port)).errorsTotal} of 3)`);
+  server.kill();
+}
+
+console.log('T5 — the startup line four spawners parse for a port is still there, beside the JSON one');
+{
+  const { server, port } = await startRelay();
+  await new Promise((r) => setTimeout(r, 200));
+  ok(server.logs.some((l) => l.includes(`signalling on ws://0.0.0.0:${port} (health: /healthz)`)),
+     `the human line survives verbatim (got ${JSON.stringify(server.logs)})`);
+  const listening = server.logs.find((l) => l.includes('"event":"listening"'));
+  ok(!!listening && JSON.parse(listening).port === port, 'and a structured one says the same thing');
+  // Nothing sets SIGNAL_ALLOWED_ORIGINS here, which is right for a laptop and
+  // wrong for a public deployment. Saying so at startup is the only moment an
+  // operator is reliably looking.
+  ok(server.logs.some((l) => l.includes('SIGNAL_ALLOWED_ORIGINS')),
+     'and an unset origin allowlist is announced as the open door it is');
+  server.kill();
+}
+
+console.log('T5 — a log line never carries a code, a blob or a candidate');
+{
+  const { log } = await import('../tools/signal-server.mjs');
+  const lines = [];
+  const real = console.log;
+  console.log = (s) => lines.push(String(s));
+  try {
+    log('room-expired', { code: 'ABCD2345', ageMs: 10 });
+    log('refused', { reason: 'origin', origin: 'https://evil.example' });
+  } finally { console.log = real; }
+
+  ok(lines.length === 2, `both lines were written (got ${lines.length})`);
+  const parsed = lines.map((l) => JSON.parse(l));
+  ok(parsed.every((p) => typeof p.at === 'string' && typeof p.event === 'string'),
+     'each is one JSON object with a timestamp and an event');
+  ok(!lines.join(' ').includes('ABCD2345'),
+     'a room code handed to the logger is redacted, not printed');
+  ok(parsed[0].code === '[code]', `and is replaced by a marker (got ${parsed[0].code})`);
+  ok(parsed[1].origin === 'https://evil.example', 'while a non-secret field is kept, because it is the point of the line');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
