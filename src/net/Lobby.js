@@ -35,6 +35,41 @@ function relayError(url) {
 const RELAY_TRICKLE_VERSION = 2;
 
 /**
+ * How often a host tells the relay that its room is still being hosted.
+ *
+ * The relay sees traffic only while peers are still handshaking: once everybody
+ * has connected the game runs peer-to-peer and this socket goes silent for the
+ * rest of the session. So the relay's idle room TTL — 30 minutes by default —
+ * reclaimed the room out from under a live two-hour game whose players had all
+ * joined in the first five minutes, and the friend who typed the code at minute
+ * 90 was told 'No such room', which is indistinguishable from a typo. This
+ * message is the only thing that can tell the relay the difference between a
+ * quiet room and an abandoned one.
+ *
+ * Five minutes is well inside that TTL and is a few dozen bytes an hour, so it
+ * is invisible on both ends. Only the host sends it, because the host is who
+ * holds the room.
+ *
+ * No version gate, deliberately: an older relay's message switch has no default
+ * case, so a `keepalive` it has never heard of is ignored and that host simply
+ * gets the never-expiring room such a relay always gave it. The degrade is free
+ * and stays free.
+ */
+const RELAY_KEEPALIVE_MS = 5 * 60 * 1000;
+
+/**
+ * How long a room code is, page-side.
+ *
+ * The relay's `LIMITS.CODE_LEN` is the authority and this is its copy, because
+ * `tools/` is not part of the bundle and the page cannot import it. Nothing at
+ * runtime holds the two together, so a test does:
+ * `tests/signal-hardening.test.mjs` drives the page's normaliser, its grouping
+ * and the two literals in the markup from the relay's own number, and fails if
+ * either side moves alone.
+ */
+const CODE_LEN = 8;
+
+/**
  * A typed room code, reduced to the one spelling the relay keys its room map by.
  *
  * The relay does the same reduction on receipt (`tools/signal-server.mjs`,
@@ -46,7 +81,24 @@ const RELAY_TRICKLE_VERSION = 2;
 export function normalizeRoomCode(raw) {
   if (typeof raw !== 'string') return '';
   const up = raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
-  return /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$/.test(up) ? up : '';
+  return new RegExp(`^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{${CODE_LEN}}$`).test(up) ? up : '';
+}
+
+/**
+ * A room code as it is meant to be read aloud: one dash down the middle.
+ *
+ * It lives beside `normalizeRoomCode` rather than in the UI because the two are
+ * one decision seen from either end — this is the spelling a host says, that is
+ * every spelling a friend might type back. The co-op screen used to group the
+ * code in the box and interpolate it ungrouped into the sentence beside it, so
+ * two hosts reading one screen told their friend two different things.
+ *
+ * Anything that is not a whole code comes back untouched: there is no grouping
+ * of half a code that helps anybody.
+ */
+export function formatRoomCode(code) {
+  if (typeof code !== 'string' || code.length !== CODE_LEN) return code ?? '';
+  return `${code.slice(0, CODE_LEN / 2)}-${code.slice(CODE_LEN / 2)}`;
 }
 
 /**
@@ -80,6 +132,8 @@ export class Lobby {
     // reason with a generic one. Cleared as each leave arrives.
     this._refusedPeers = new Set();
     this._refused = false;
+    // The host's "this room is still in use" timer, while there is one.
+    this._keepalive = null;
   }
 
   _set(status, detail) {
@@ -261,11 +315,30 @@ export class Lobby {
     return new Promise((resolve, reject) => {
       const ws = new WebSocket(url);
       this.ws = ws;
+      // Whether the room code has arrived, which is what settles this promise —
+      // see the `error` branch below for the two sides of that moment.
+      let open = false;
       ws.onerror = () => reject(new Error(relayError(url)));
-      ws.onopen = () => ws.send(JSON.stringify({ type: 'host' }));
+      ws.onopen = () => {
+        ws.send(JSON.stringify({ type: 'host' }));
+        this._startKeepalive(ws);
+      };
+      ws.onclose = () => this._stopKeepalive();
       ws.onmessage = async (e) => {
         const msg = JSON.parse(e.data);
-        if (msg.type === 'hosting') {
+        if (msg.type === 'error') {
+          // The relay narrates its own failures, and they land on either side of
+          // the room opening. 'Relay is full' arrives *instead of* a code, where
+          // there is still a promise to fail and a caller waiting on it. 'Room
+          // expired' arrives half an hour later, where that promise is long
+          // settled — and rejecting a settled promise is a silent no-op, which is
+          // how a host came to sit on the co-op screen believing it was still
+          // hosting a room this relay had already forgotten. After the code, the
+          // only thing left to tell is the screen.
+          if (!open) reject(new Error(msg.error));
+          else this._set('relayError', { error: msg.error });
+        } else if (msg.type === 'hosting') {
+          open = true;
           // A relay too old to say what it is cannot carry a candidate, so the
           // invites this session mints keep waiting for gathering — today's
           // behaviour, which works. `hosting` always precedes `joinRequest`, so
@@ -303,6 +376,32 @@ export class Lobby {
     });
   }
 
+  /**
+   * Start telling the relay, on a timer, that this room is still in use.
+   *
+   * See `RELAY_KEEPALIVE_MS` for why a live session needs to say so at all.
+   * Started when the host's socket opens and stopped when it closes or the lobby
+   * leaves: a timer that outlives its socket is a leak, and a page that hosts
+   * twice would otherwise beat twice for one room.
+   */
+  _startKeepalive(ws) {
+    this._stopKeepalive();
+    this._keepalive = setInterval(
+      () => ws.send(JSON.stringify({ type: 'keepalive' })), this._keepaliveMs());
+    // Node only, and a no-op in a browser: a headless Lobby — the tests, the
+    // probes, the desktop shell's own harnesses — must not be held open for five
+    // minutes by a timer whose whole job is to be invisible.
+    this._keepalive.unref?.();
+  }
+
+  _stopKeepalive() {
+    if (this._keepalive) clearInterval(this._keepalive);
+    this._keepalive = null;
+  }
+
+  /** Overridable so a test can drive the beat rather than wait five minutes for one. */
+  _keepaliveMs() { return RELAY_KEEPALIVE_MS; }
+
   /** Join through the relay with a room code. */
   joinViaRelay(code, url = signalUrl()) {
     const norm = normalizeRoomCode(code);
@@ -313,7 +412,7 @@ export class Lobby {
     // someone to tell.
     if (!norm) {
       return Promise.reject(new Error(
-        'That is not a room code — it is 8 letters and digits, and never O, 0, I or 1.'));
+        `That is not a room code — it is ${CODE_LEN} letters and digits, and never O, 0, I or 1.`));
     }
     return new Promise((resolve, reject) => {
       const ws = new WebSocket(url);
@@ -369,6 +468,11 @@ export class Lobby {
    */
   leave() {
     this.net?.close?.();
+    // Before the close and not only in `ws.onclose`: a close event is delivered
+    // a turn later at best, and on a socket that never opened it is not
+    // delivered at all — either way the interval must not survive the session
+    // that started it.
+    this._stopKeepalive();
     this.ws?.close?.();
     // The Steam path's counterpart to `ws.close()`. `src/net/SteamLobby.js`
     // parks a teardown here when it opens a Steam lobby, because a Steam lobby

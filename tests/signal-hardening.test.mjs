@@ -9,6 +9,7 @@
  * the wire, because a policy that is only true in a unit test is not a defence.
  */
 import { spawn } from 'node:child_process';
+import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocket } from 'ws';
@@ -31,6 +32,15 @@ console.log('T1 — a message that is not a recognised shape is rejected with a 
   ok(validate({ type: 'nonsense' }).reason === 'bad-type', 'an unknown type is bad-type');
   ok(validate({ type: 'host' }).ok === true, 'a bare host is valid');
   ok(validate({ type: 'join', code: 'ABCD2345' }).ok === true, 'a join with a well-formed code is valid');
+}
+
+console.log('T1 — a keepalive is a bare fact, and carries nothing else');
+{
+  const bare = validate({ type: 'keepalive' });
+  ok(bare.ok === true, 'a keepalive is a message this relay knows');
+  const stuffed = validate({ type: 'keepalive', code: 'ABCD2345', blob: 'x'.repeat(4000) });
+  ok(stuffed.ok === true && JSON.stringify(stuffed.msg) === '{"type":"keepalive"}',
+     `and whatever a sender bolts onto one is dropped rather than sized (got ${JSON.stringify(stuffed.msg)})`);
 }
 
 console.log('T1 — a code that could not have been minted here is refused before any lookup');
@@ -209,6 +219,52 @@ console.log('T3 — a code that could never be real is refused here, where there
   await lobby.joinViaRelay('ABCD0I45', 'ws://relay.test').catch((e) => { message = e.message; });
   ok(typeof message === 'string' && /room code/i.test(message),
      `a malformed code rejects with something a player can act on (got ${JSON.stringify(message)})`);
+}
+
+console.log('T3 — the room code is one length, and every page-side copy of it says so');
+{
+  const { normalizeRoomCode, formatRoomCode } = await import('../src/net/Lobby.js');
+  const { newCode } = await import('../tools/signal-server.mjs');
+
+  // The page cannot import LIMITS — `tools/` is not part of the bundle — so the
+  // length lives on both sides of the wire and nothing but this test holds the
+  // two together. Every assertion below is driven from LIMITS.CODE_LEN or from a
+  // code the relay actually minted, so moving either side fails here rather than
+  // in a friend's hands.
+  const minted = newCode();
+  ok(minted.length === LIMITS.CODE_LEN, `the relay mints ${LIMITS.CODE_LEN} characters (got ${minted})`);
+  ok(normalizeRoomCode(minted) === minted, 'and the page accepts what the relay mints');
+  ok(normalizeRoomCode(minted.slice(1)) === '' && normalizeRoomCode(minted + minted[0]) === '',
+     'one character either way is not a room code, so the page agrees on the length exactly');
+
+  const half = LIMITS.CODE_LEN / 2;
+  ok(formatRoomCode(minted) === `${minted.slice(0, half)}-${minted.slice(half)}`,
+     `the spoken spelling is the code split down the middle (got ${formatRoomCode(minted)})`);
+
+  const menus = await readFile(join(here, '..', 'src', 'ui', 'Menus.js'), 'utf8');
+  const maxlen = Number(menus.match(/data-coop-roomcode maxlength="(\d+)"/)?.[1]);
+  ok(maxlen === LIMITS.CODE_LEN + 1,
+     `the room-code field takes the grouped code and no more (maxlength=${maxlen}, expected ${LIMITS.CODE_LEN + 1})`);
+  const placeholder = menus.match(/const CODE_PLACEHOLDER = '(-+)'/)?.[1];
+  ok(placeholder?.length === LIMITS.CODE_LEN + 1,
+     `and the empty code box is exactly that wide (got ${placeholder?.length})`);
+}
+
+console.log('T3 — a host reads out the same code the screen is showing');
+{
+  const menus = await readFile(join(here, '..', 'src', 'ui', 'Menus.js'), 'utf8');
+  // The braced form: `coopAction`'s handler, not the bare label in the
+  // button-dispatch switch above it.
+  const from = menus.indexOf("case 'coop-room-host': {");
+  const block = menus.slice(from, menus.indexOf("case 'coop-room-join': {"));
+  ok(from > 0 && block.length > 40, 'the co-op screen still has a create-room action');
+
+  // The box beside the button showed XXXX-XXXX while the sentence under it
+  // interpolated the same code ungrouped, so two hosts reading one screen said
+  // two different things to their friend. One grouping, used twice.
+  ok(!/slice\(/.test(block), `the action does not spell the code itself (got ${block})`);
+  ok((block.match(/formatRoomCode\(/g) ?? []).length === 1,
+     'it groups the code exactly once, so the box and the sentence cannot disagree');
 }
 
 /* ==========================================================================
@@ -510,6 +566,39 @@ console.log('T4 — a room with live traffic outlives its TTL, and an abandoned 
      `and its host is told, not only its clients (got ${JSON.stringify(notice)})`);
 
   host.close(); joiner.close(); late.close(); server.kill();
+}
+
+console.log('T4 — a quiet session keeps its room, because the host says it is still there');
+{
+  const { server, port } = await startRelay({ SIGNAL_ROOM_TTL_MS: '600' });
+  const host = connect(port);
+  await host.opened;
+  host.send(JSON.stringify({ type: 'host' }));
+  const hosting = await host.recv('hosting');
+
+  // The relay only ever sees a handshake. Once every peer is connected the game
+  // runs peer-to-peer and this socket falls silent for the rest of the session,
+  // so an idle TTL reclaims the room out from under a live game — and the friend
+  // who tries the code at minute 90 is told 'No such room', which is exactly what
+  // a typo looks like. 1.65 s of NOTHING BUT keepalive against a 600 ms TTL is
+  // that two-hour session, in miniature.
+  for (let i = 0; i < 11; i++) {
+    host.send(JSON.stringify({ type: 'keepalive' }));
+    await new Promise((r) => setTimeout(r, 150));
+  }
+  const still = await (await fetch(`http://127.0.0.1:${port}/healthz`)).json();
+  ok(still.rooms === 1, `a room carrying only keepalives is not swept (got ${still.rooms})`);
+  ok(host.queue.length === 0,
+     `and the relay answers a keepalive with nothing at all (got ${JSON.stringify(host.queue)})`);
+
+  const late = connect(port);
+  await late.opened;
+  late.send(JSON.stringify({ type: 'join', code: hosting.code }));
+  const req = await host.recv('joinRequest', 2000).catch(() => null);
+  ok(typeof req?.clientId === 'number',
+     `and the friend who arrives long after the TTL still gets in (got ${JSON.stringify(req)})`);
+
+  host.close(); late.close(); server.kill();
 }
 
 console.log('T4 — a heartbeat is not activity');

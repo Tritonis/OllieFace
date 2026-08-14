@@ -476,6 +476,13 @@ export function validate(msg) {
       // attacker squats on a code a friend is still typing.
       return { ok: true, msg: { type: 'host' } };
 
+    case 'keepalive':
+      // A host saying its room is still in use, and nothing else — it carries no
+      // fields, so there is nothing here to size-check and nothing to leak. It
+      // costs a token from the sender's bucket like every other message, which is
+      // the only limit it needs.
+      return { ok: true, msg: { type: 'keepalive' } };
+
     case 'join': {
       const code = normalizeCode(msg.code);
       return code ? { ok: true, msg: { type: 'join', code } } : bad('bad-code');
@@ -550,10 +557,14 @@ function overRate(ws, now) {
  * A room is still in use, as of now.
  *
  * Called for every message the relay routes through a room — a join, an offer,
- * an answer, a candidate. A heartbeat is pointedly not one of them: `ws` answers
- * a protocol ping at the transport layer without this file seeing anything, so
- * liveness alone can never renew a room, and a code whose players have gone is
- * still reclaimed on schedule.
+ * an answer, a candidate — and for the one message that exists only to say this,
+ * `keepalive`, because once every peer is connected a live session routes nothing
+ * at all and would otherwise be indistinguishable from an abandoned room.
+ *
+ * A transport heartbeat is pointedly NOT one of them: `ws` answers a protocol
+ * ping without this file seeing anything, so liveness alone can never renew a
+ * room, and a code whose players have gone is still reclaimed on schedule. That
+ * is the line — a socket being open is not a session; a page saying so is.
  */
 function touch(room) {
   if (room) room.lastActivity = Date.now();
@@ -623,6 +634,16 @@ function onConnection(ws, req) {
         metrics.roomsTotal += 1;
         ws.room = code; ws.role = 'host';
         send(ws, { type: 'hosting', code, v: PROTOCOL_VERSION });
+        break;
+      }
+      case 'keepalive': {
+        // The one message whose entire purpose is `touch`. Everything else this
+        // relay routes is a handshake, and a handshake stops the moment the peers
+        // are connected — so without this, a room full of players who all joined
+        // in the first five minutes looks exactly like an abandoned one, and the
+        // TTL reclaims a code the session is still handing out. No reply: there
+        // is nothing to say, and a room the sender is not in is nobody's error.
+        touch(rooms.get(ws.room));
         break;
       }
       case 'join': {

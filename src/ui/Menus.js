@@ -12,6 +12,7 @@ import { Tooltip } from './Tooltip.js';
 import { SURVIVORS, getSurvivor, loadoutOf } from '../data/survivors.js';
 import { Logbook, ModelPreview, disposeTree, renderRunReport } from './Logbook.js';
 import { describeNet } from '../net/NetConfig.js';
+import { formatRoomCode } from '../net/Lobby.js';
 import {
   steamAvailable, hostViaSteam, joinViaSteam, onSteamInvite, openSteamInvite,
   steamInviteNeedsConfirm, steamInviteBlocked,
@@ -1521,15 +1522,23 @@ export class Menus {
         case 'coop-room-host': {
           this.coopSay('Opening a room…');
           const code = await lobby.hostViaRelay();
-          // Grouped for the half of this feature that happens out loud. The input
-          // strips the separator again, and the relay never sees it either way.
-          this.root.querySelector('[data-coop-code]').textContent =
-            code.length === 8 ? `${code.slice(0, 4)}-${code.slice(4)}` : code;
-          this.coopSay(`Room ${code} is open. Give that code to your friends — they join with it.`);
+          // One grouping, shown and said. Grouped at all for the half of this
+          // feature that happens out loud — the input strips the separator again
+          // and the relay never sees it either way — and grouped ONCE because a
+          // box reading XXXX-XXXX beside a sentence reading XXXXXXXX is two
+          // hosts telling one friend two different things.
+          const shown = formatRoomCode(code);
+          this.root.querySelector('[data-coop-code]').textContent = shown;
+          this.coopSay(`Room ${shown} is open. Give that code to your friends — they join with it.`);
           break;
         }
         case 'coop-room-join': {
-          const code = field('roomcode').value;
+          // Trimmed before the emptiness check, so a field holding nothing but
+          // spaces gets the answer that helps ("type the code") rather than the
+          // one that is technically true ("that is not a room code"). What a code
+          // *is* stays `Lobby.normalizeRoomCode`'s decision alone — this only
+          // asks whether the player has typed anything at all.
+          const code = field('roomcode').value.trim();
           if (!code) return this.coopSay('Type the room code the host gave you first.');
           this.coopSay(`Joining room ${code}…`);
           await lobby.joinViaRelay(code);
@@ -1593,6 +1602,13 @@ export class Menus {
       answerReady: 'Send your reply code back to the host.',
       connected: 'Connected. Rebuilding the host\'s world…',
       disconnected: 'Disconnected from the host.',
+      // The relay speaking after the room opened, which in practice is
+      // 'Room expired'. Players already in the game are unaffected — they are
+      // connected peer-to-peer and the relay is irrelevant to them — so the loss
+      // is precisely that the code no longer admits anybody, and that is what
+      // this says rather than announcing a disconnection that has not happened.
+      relayError: `${detail?.error ?? 'The relay dropped this room'} — that code no longer lets anyone in. `
+        + 'Players already with you are unaffected; create a room again for a new code.',
       refused: refusalText(detail, false),
       peerRefused: refusalText(detail, true),
       idle: 'Up to 4 players. One player hosts and runs the game; everyone else joins them.',

@@ -278,7 +278,7 @@ console.log('T3 — a rejected candidate does not become an unhandled rejection'
 class FakeWS {
   constructor(url) { this.url = url; this.sent = []; FakeWS.last = this; }
   send(s) { this.sent.push(JSON.parse(s)); }
-  close() { this.closed = true; }
+  close() { this.closed = true; this.onclose?.(); }
   open() { this.onopen?.(); }
   /** Deliver a server message; returns the handler's promise so tests can await it. */
   recv(obj) { return this.onmessage?.({ data: JSON.stringify(obj) }); }
@@ -394,6 +394,83 @@ console.log('T4 — DEGRADE GATE: an offer with no trickle flag joins the old wa
   await done;
   ok(ws.ofType('answer').length === 1, 'and still answers');
   ok(ws.ofType('ice').length === 0, 'without ever sending a candidate to a relay that would drop it');
+}
+
+console.log('T4 — a host keeps telling the relay its room is still there, and stops when its socket goes');
+{
+  const lobby = mkLobby();
+  // The shipped beat is five minutes; the behaviour under test is that there IS
+  // one and that it dies with its socket, which is answerable in milliseconds.
+  lobby._keepaliveMs = () => 20;
+  const p = lobby.hostViaRelay('ws://relay.test');
+  const ws = FakeWS.last;
+  ws.open();
+  await ws.recv({ type: 'hosting', code: 'ABCD2345', v: 2 });
+  await p;
+
+  await turn(70);
+  const beats = ws.ofType('keepalive').length;
+  // Without this the relay sees nothing at all from a session whose peers have
+  // all connected, and its idle TTL reclaims the room out from under a live
+  // game — the friend who tries the code at minute 90 is told 'No such room'.
+  ok(beats >= 2, `a live host tells the relay the room is still in use (got ${beats})`);
+
+  ws.close();
+  const atClose = ws.ofType('keepalive').length;
+  await turn(70);
+  ok(ws.ofType('keepalive').length === atClose,
+     `nothing is sent to a closed socket (got ${ws.ofType('keepalive').length} after ${atClose})`);
+  ok(lobby._keepalive === null, 'and the interval itself is cleared rather than left running for ever');
+}
+
+console.log('T4 — leave() takes the keepalive with it');
+{
+  const lobby = mkLobby();
+  lobby._keepaliveMs = () => 20;
+  const p = lobby.hostViaRelay('ws://relay.test');
+  const ws = FakeWS.last;
+  ws.open();
+  await ws.recv({ type: 'hosting', code: 'ABCD2345', v: 2 });
+  await p;
+  await turn(50);
+  ok(ws.ofType('keepalive').length > 0, 'the session was beating');
+
+  lobby.leave();
+  const atLeave = ws.ofType('keepalive').length;
+  await turn(70);
+  ok(ws.ofType('keepalive').length === atLeave,
+     `a lobby that has left holds no timer (got ${ws.ofType('keepalive').length} after ${atLeave})`);
+  ok(lobby._keepalive === null, 'and says so');
+}
+
+console.log('T4 — the host is told when the relay closes its room, on either side of the room opening');
+{
+  const lobby = mkLobby();
+  const full = lobby.hostViaRelay('ws://relay.test');
+  const busy = FakeWS.last;
+  busy.open();
+  // Before the code: there is still a promise waiting for one, and the caller
+  // that is awaiting it is the co-op button.
+  await busy.recv({ type: 'error', error: 'Relay is full' });
+  ok(await full.then(() => null, (e) => e.message) === 'Relay is full',
+     'a relay that refuses to open the room fails the hosting call');
+
+  const live = mkLobby();
+  const p = live.hostViaRelay('ws://relay.test');
+  const ws = FakeWS.last;
+  ws.open();
+  await ws.recv({ type: 'hosting', code: 'ABCD2345', v: 2 });
+  await p;
+  const seen = [];
+  live.onStatus = (status, detail) => seen.push([status, detail?.error]);
+  let threw = null;
+  // After the code, that promise is long settled — rejecting it again is a
+  // silent no-op, which is how a host came to sit on the co-op screen believing
+  // it was still hosting a room the relay had already forgotten.
+  try { await ws.recv({ type: 'error', error: 'Room expired' }); } catch (e) { threw = e; }
+  ok(threw === null, `an error after the room opened does not throw (got ${threw?.message})`);
+  ok(seen.some(([s, e]) => s === 'relayError' && e === 'Room expired'),
+     `and the screen is told which one it was (got ${JSON.stringify(seen)})`);
 }
 
 /* ==========================================================================
