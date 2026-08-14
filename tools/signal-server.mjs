@@ -63,6 +63,33 @@ const RUN_DIRECTLY = process.argv[1]
 const PROTOCOL_VERSION = 2;
 
 const rooms = new Map(); // code -> { host, clients:Set, created }
+const connsByIp = new Map(); // ip -> live socket count
+
+/**
+ * The peer address, preferring the proxy's account of it ONLY where the
+ * deployment says a proxy it controls is in front.
+ *
+ * Every platform this deploys to (Fly, Render, Railway, Cloud Run) terminates
+ * TLS at its edge and forwards inward, so `socket.remoteAddress` is the edge,
+ * not the player — every connection would share one bucket, and the first
+ * twelve players would lock everyone else out. The left-most `x-forwarded-for`
+ * entry is the original client where a trusted proxy sets it.
+ *
+ * But `x-forwarded-for` is written by whoever is talking to us. On a relay
+ * reachable directly — which is `npm run signal`, every test, and any VM
+ * deployment without a proxy — believing it makes MAX_CONNS_PER_IP a
+ * formality: a fresh value on every connection buys a fresh allowance, so the
+ * cap costs an attacker one header and stops nobody. Hence the default is to
+ * disbelieve it, and a deployment behind an edge that rewrites the header
+ * opts in with SIGNAL_TRUST_PROXY=1.
+ */
+function addressOf(req) {
+  if (TRUST_PROXY) {
+    const fwd = req.headers['x-forwarded-for'];
+    if (typeof fwd === 'string' && fwd) return fwd.split(',')[0].trim();
+  }
+  return req.socket?.remoteAddress ?? 'unknown';
+}
 
 export function start({ port = defaultPort() } = {}) {
   const http = createServer((req, res) => {
@@ -74,14 +101,64 @@ export function start({ port = defaultPort() } = {}) {
     res.writeHead(404).end();
   });
 
-  const wss = new WebSocketServer({ server: http, maxPayload: LIMITS.MAX_PAYLOAD_BYTES });
+  const wss = new WebSocketServer({
+    server: http,
+    maxPayload: LIMITS.MAX_PAYLOAD_BYTES,
+    verifyClient: ({ origin, req }) => {
+      // A client that sends no Origin is not a browser, and only a browser is
+      // bound by this header — so refusing an absent one costs the probes and
+      // any non-browser client while costing an attacker nothing.
+      //
+      // Note what this does NOT cover: the desktop shell is Chromium and its
+      // page DOES send an Origin (`file://` or `null`), which is in nobody's
+      // allowlist. A deployment that sets this variable and also serves desktop
+      // players must name that value explicitly — see the operations section in
+      // docs/MULTIPLAYER.md, and verify it empirically rather than assuming it.
+      if (ALLOWED_ORIGINS.length && origin && !ALLOWED_ORIGINS.includes(origin)) {
+        log('refused', { reason: 'origin', origin });
+        return false;
+      }
+      const ip = addressOf(req);
+      if ((connsByIp.get(ip) ?? 0) >= LIMITS.MAX_CONNS_PER_IP) {
+        log('refused', { reason: 'conns-per-ip', ip });
+        return false;
+      }
+      return true;
+    },
+  });
   // `http.address().port` rather than `port`: `--port 0` asks the OS for a free
   // one, which is how a test or a local driver runs a relay without colliding
   // with whatever is already on 8787 — and the number it got is only knowable
   // here.
   http.listen(port, () => console.log(`signalling on ws://0.0.0.0:${http.address().port} (health: /healthz)`));
   wss.on('connection', onConnection);
-  return { http, wss };
+
+  // One timer for both jobs, because they answer the same question — is anything
+  // here still real? A socket that stopped answering holds a room open; a room
+  // whose players wandered off holds a code out of circulation. `unref` so the
+  // timer never keeps a test's relay process alive past its kill.
+  //
+  // The period is the smaller of the heartbeat and half the room TTL: a sweep
+  // that runs less often than the TTL it enforces would let a room outlive its
+  // own expiry by up to a whole period.
+  const sweep = setInterval(() => {
+    const now = Date.now();
+    for (const [code, room] of rooms) {
+      if (now - room.created > LIMITS.ROOM_TTL_MS) {
+        for (const c of room.clients) send(c, { type: 'error', error: 'Room expired' });
+        log('room-expired', { code, ageMs: now - room.created });
+        rooms.delete(code);
+      }
+    }
+    for (const ws of wss.clients) {
+      if (!ws.alive) { ws.terminate(); continue; }
+      ws.alive = false;
+      ws.ping();
+    }
+  }, Math.min(LIMITS.HEARTBEAT_MS, Math.max(250, LIMITS.ROOM_TTL_MS / 2)));
+  sweep.unref();
+
+  return { http, wss, sweep };
 }
 
 function defaultPort() {
@@ -96,6 +173,12 @@ function health() { return { ok: true, rooms: rooms.size }; }
 
 const send = (ws, msg) => { if (ws?.readyState === 1) ws.send(JSON.stringify(msg)); };
 
+/** One environment override, parsed as a positive number or ignored. */
+function envNum(name, fallback) {
+  const n = Number(process.env[name]);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
 /**
  * Every ceiling this relay enforces, in one object so a deployment can see the
  * whole policy at once and a test can assert against the same numbers the
@@ -105,13 +188,94 @@ const send = (ws, msg) => { if (ws?.readyState === 1) ws.send(JSON.stringify(msg
  * is a few kilobytes; 32 KiB is roughly an order of magnitude of headroom, and
  * the 64 KiB frame ceiling above it is what `ws` enforces for us before a byte
  * is ever buffered into this process.
+ *
+ * The abuse ceilings below are overridable from the environment because they
+ * are the numbers a deployment has to tune against real traffic, and a relay
+ * that needs a code change to raise a limit gets its limit removed instead.
  */
 export const LIMITS = Object.freeze({
   MAX_PAYLOAD_BYTES: 64 * 1024,
   MAX_BLOB_CHARS: 32 * 1024,
   MAX_CANDIDATE_CHARS: 1024,
   CODE_LEN: 8,
+  // Sized for a co-op game, not a public chat service. Four players is the
+  // designed party; the slack above it absorbs a joiner whose socket has not
+  // been swept yet, so a legitimate rejoin is never the one that is refused.
+  MAX_CLIENTS_PER_ROOM: envNum('SIGNAL_MAX_CLIENTS_PER_ROOM', 8),
+  MAX_ROOMS: envNum('SIGNAL_MAX_ROOMS', 500),
+  MAX_CONNS_PER_IP: envNum('SIGNAL_MAX_CONNS_PER_IP', 12),
+  // Trickle ICE is bursty by nature — a host gathering against several
+  // interfaces emits a dozen candidates in a few milliseconds — so the burst is
+  // deliberately much larger than the sustained rate.
+  MAX_MSGS_PER_SEC: envNum('SIGNAL_MAX_MSGS_PER_SEC', 40),
+  MSG_BURST: envNum('SIGNAL_MSG_BURST', 120),
+  ROOM_TTL_MS: envNum('SIGNAL_ROOM_TTL_MS', 30 * 60 * 1000),
+  HEARTBEAT_MS: envNum('SIGNAL_HEARTBEAT_MS', 30 * 1000),
 });
+
+/**
+ * The origins a browser may open this relay from, or empty for "any".
+ *
+ * Empty is the default because the relay is also run on a laptop by `npm run
+ * signal`, where there is no origin worth naming and a refusal would only ever
+ * be self-inflicted. A public deployment is expected to set the variable.
+ */
+const ALLOWED_ORIGINS = (process.env.SIGNAL_ALLOWED_ORIGINS ?? '')
+  .split(',').map((s) => s.trim()).filter(Boolean);
+
+/**
+ * Whether `x-forwarded-for` is believed. Off unless a deployment says a proxy
+ * it controls rewrites the header — see `addressOf` for why the default is
+ * disbelief.
+ */
+const TRUST_PROXY = /^(1|true|yes|on)$/i.test((process.env.SIGNAL_TRUST_PROXY ?? '').trim());
+
+/**
+ * The fields a log line must never carry, whatever a caller passes.
+ *
+ * A room code is a bearer token for the life of the room — anyone holding it
+ * can walk into it — so it belongs in a log no more than a password does. That
+ * it is also read aloud is not a counter-argument: saying it discloses it to
+ * the people in the room for half an hour, while logging it discloses it to
+ * whoever reads the logs, for ever.
+ *
+ * The contract is deliberately flat and by field NAME: `{ code }` is redacted,
+ * `{ roomCode }` and `{ room: { code } }` are not. If you add a call site,
+ * name your fields from this list or add to it.
+ */
+const SECRET_FIELDS = new Set(['code', 'blob', 'candidate', 'credential', 'password', 'username']);
+
+export function log(event, fields = {}) {
+  const safe = {};
+  for (const [k, v] of Object.entries(fields)) {
+    safe[k] = SECRET_FIELDS.has(k) ? `[${k}]` : v;
+  }
+  console.log(JSON.stringify({ at: new Date().toISOString(), event, ...safe }));
+}
+
+/**
+ * A message allowance that refills on the clock.
+ *
+ * Counting messages per fixed window would let a sender spend a whole window's
+ * worth on each side of the boundary and get double the rate it was granted;
+ * a bucket has no boundary to sit astride. `now` is passed in rather than read
+ * so the test drives the clock instead of sleeping through it.
+ */
+export class TokenBucket {
+  constructor(ratePerSec, burst) {
+    this.rate = ratePerSec; this.burst = burst;
+    this.tokens = burst; this.last = null;
+  }
+
+  take(now) {
+    if (this.last === null) this.last = now;
+    this.tokens = Math.min(this.burst, this.tokens + ((now - this.last) / 1000) * this.rate);
+    this.last = now;
+    if (this.tokens < 1) return false;
+    this.tokens -= 1;
+    return true;
+  }
+}
 
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no I/O/0/1 — misread over voice
 const CODE_RE = new RegExp(`^[${ALPHABET}]{${LIMITS.CODE_LEN}}$`);
@@ -198,9 +362,14 @@ function reject(ws, reason) {
   if (ws.rejects >= MAX_REJECTS) ws.close(1008, 'too many invalid messages');
 }
 
-function onConnection(ws) {
+function onConnection(ws, req) {
   ws.room = null;
   ws.role = null;
+  ws.ip = addressOf(req);
+  ws.bucket = new TokenBucket(LIMITS.MAX_MSGS_PER_SEC, LIMITS.MSG_BURST);
+  ws.alive = true;
+  connsByIp.set(ws.ip, (connsByIp.get(ws.ip) ?? 0) + 1);
+  ws.on('pong', () => { ws.alive = true; });
 
   // `ws` reports a protocol violation it has ALREADY answered — an
   // over-maxPayload frame is closed with 1009 and then raised here — and an
@@ -208,9 +377,18 @@ function onConnection(ws) {
   // every other room in it. One stranger's oversized frame must not be able to
   // close everybody else's session, and there is nothing left to do about the
   // socket itself, so the report is absorbed on purpose.
-  ws.on('error', () => {});
+  //
+  // Absorbed, but not silent: repeated max-payload violations from one address
+  // across many sockets are exactly the pattern an operator needs to see, and a
+  // handler that swallowed them without a word made that invisible. The error
+  // OBJECT is deliberately not logged — its message can quote the frame that
+  // caused it, which is the blob this relay is not allowed to write down.
+  ws.on('error', () => log('socket-error', { ip: ws.ip }));
 
   ws.on('message', (raw) => {
+    // Before the parse, because parsing is itself work a flood is trying to buy.
+    if (!ws.bucket.take(Date.now())) return reject(ws, 'rate');
+
     let parsed;
     try { parsed = JSON.parse(raw); } catch { return reject(ws, 'bad-json'); }
 
@@ -220,6 +398,16 @@ function onConnection(ws) {
 
     switch (msg.type) {
       case 'host': {
+        // A socket holds at most one room. Without this, `host` sent twice
+        // mints a second code and orphans the first: nothing points at the old
+        // room any more, but it is still in the map and still counted, and only
+        // the TTL sweep releases it half an hour later. With MAX_ROOMS in force
+        // that turns a loop of `host` frames from a slow memory leak into a
+        // denial of service — one socket spends the relay's whole room budget
+        // inside a single burst allowance and every real host is then told
+        // 'Relay is full' until the rooms age out.
+        leaveCurrentRoom(ws);
+        if (rooms.size >= LIMITS.MAX_ROOMS) return send(ws, { type: 'error', error: 'Relay is full' });
         const code = newCode();
         rooms.set(code, { host: ws, clients: new Set(), created: Date.now() });
         ws.room = code; ws.role = 'host';
@@ -229,6 +417,13 @@ function onConnection(ws) {
       case 'join': {
         const room = rooms.get(msg.code);
         if (!room) return send(ws, { type: 'error', error: 'No such room' });
+        if (room.clients.size >= LIMITS.MAX_CLIENTS_PER_ROOM) {
+          return send(ws, { type: 'error', error: 'Room is full' });
+        }
+        // Same one-room rule as `host`: a socket that joins a second room must
+        // not stay listed in the first, or the room it left keeps a dead
+        // reference until its own host disconnects.
+        leaveCurrentRoom(ws);
         room.clients.add(ws);
         ws.room = msg.code; ws.role = 'client';
         // Ask the host to mint an invite for this specific joiner.
@@ -271,15 +466,29 @@ function onConnection(ws) {
   });
 
   ws.on('close', () => {
-    const room = rooms.get(ws.room);
-    if (!room) return;
-    if (ws.role === 'host') {
-      for (const c of room.clients) send(c, { type: 'error', error: 'Host left' });
-      rooms.delete(ws.room);
-    } else {
-      room.clients.delete(ws);
-    }
+    connsByIp.set(ws.ip, (connsByIp.get(ws.ip) ?? 1) - 1);
+    if (connsByIp.get(ws.ip) <= 0) connsByIp.delete(ws.ip);
+    leaveCurrentRoom(ws);
   });
+}
+
+/**
+ * Detach a socket from whatever room it is currently in.
+ *
+ * The same three lines whether the socket is closing, hosting again, or
+ * joining somewhere else — and one place to be right, because every one of
+ * those paths used to be able to leave a room in the map with nobody in it or
+ * a departed socket still listed as a member.
+ */
+function leaveCurrentRoom(ws) {
+  const room = rooms.get(ws.room);
+  if (!room) return;
+  if (ws.role === 'host') {
+    for (const c of room.clients) send(c, { type: 'error', error: 'Host left' });
+    rooms.delete(ws.room);
+  } else {
+    room.clients.delete(ws);
+  }
 }
 
 let idSeq = 0;

@@ -69,17 +69,31 @@ console.log('T1 — normalizeCode is total: anything in, a legal code or nothing
  * 2 — the same rules, on the wire
  * ======================================================================= */
 
-/** Spawn the relay on an ephemeral port; resolves with its port. */
+/**
+ * Spawn the relay on an ephemeral port; resolves with its port.
+ *
+ * Every complete stdout line is also kept on `server.logs`, because from Task 3
+ * onwards the relay's structured log IS part of its behaviour — a defence that
+ * fires without saying so is one an operator cannot tell from one that never
+ * fired, and a log line that says too much is its own defect.
+ */
 function startRelay(env = {}) {
   const server = spawn(process.execPath, [join(here, '..', 'tools', 'signal-server.mjs'), '--port', '0'],
     { stdio: ['ignore', 'pipe', 'inherit'], env: { ...process.env, ...env } });
+  server.logs = [];
   return new Promise((resolve, reject) => {
     const t = setTimeout(() => reject(new Error('relay never announced a port')), 5000);
     let buf = '';
+    let announced = false;
     server.stdout.on('data', (d) => {
       buf += String(d);
-      const m = buf.match(/ws:\/\/0\.0\.0\.0:(\d+)/);
-      if (m) { clearTimeout(t); resolve({ server, port: Number(m[1]) }); }
+      const lines = buf.split('\n');
+      buf = lines.pop() ?? '';
+      for (const line of lines) {
+        server.logs.push(line);
+        const m = announced ? null : line.match(/ws:\/\/0\.0\.0\.0:(\d+)/);
+        if (m) { announced = true; clearTimeout(t); resolve({ server, port: Number(m[1]) }); }
+      }
     });
   });
 }
@@ -195,6 +209,214 @@ console.log('T3 — a code that could never be real is refused here, where there
   await lobby.joinViaRelay('ABCD0I45', 'ws://relay.test').catch((e) => { message = e.message; });
   ok(typeof message === 'string' && /room code/i.test(message),
      `a malformed code rejects with something a player can act on (got ${JSON.stringify(message)})`);
+}
+
+/* ==========================================================================
+ * 4 — the ceilings
+ * ======================================================================= */
+
+console.log('T4 — the token bucket spends a burst, refuses, then refills on the clock');
+{
+  const { TokenBucket } = await import('../tools/signal-server.mjs');
+  const b = new TokenBucket(10, 5);          // 10/s sustained, 5 in hand
+  let t = 1_000_000;
+  const spent = [];
+  for (let i = 0; i < 6; i++) spent.push(b.take(t));
+  ok(spent.filter(Boolean).length === 5, `the burst is exactly the burst (got ${spent.filter(Boolean).length})`);
+  ok(spent[5] === false, 'and the one after it is refused');
+  ok(b.take(t + 100) === true, '100 ms later one token has refilled');
+  ok(b.take(t + 100) === false, 'but only one');
+}
+
+console.log('T4 — a room dies when its host does, and when nobody comes back for it');
+{
+  const { server, port } = await startRelay({ SIGNAL_ROOM_TTL_MS: '600' });
+  const host = connect(port);
+  await host.opened;
+  host.send(JSON.stringify({ type: 'host' }));
+  const hosting = await host.recv('hosting');
+
+  const res = await fetch(`http://127.0.0.1:${port}/healthz`);
+  ok((await res.json()).rooms === 1, 'the room is counted while it is live');
+
+  await new Promise((r) => setTimeout(r, 1400));
+  const after = await (await fetch(`http://127.0.0.1:${port}/healthz`)).json();
+  ok(after.rooms === 0, `an expired room is swept (got ${after.rooms})`);
+
+  const late = connect(port);
+  await late.opened;
+  late.send(JSON.stringify({ type: 'join', code: hosting.code }));
+  const err = await late.recv('error');
+  ok(err.error === 'No such room', 'and joining it afterwards is an honest miss');
+
+  // The sweep is the one place the relay names a room out loud, and it must not.
+  const expiry = server.logs.find((l) => l.includes('"event":"room-expired"'));
+  ok(!!expiry, `the sweep says it swept something (got ${JSON.stringify(server.logs)})`);
+  ok(!!expiry && !expiry.includes(hosting.code),
+     `and does not print the code it swept (got ${expiry})`);
+
+  host.close(); late.close(); server.kill();
+}
+
+console.log('T4 — a room takes its declared number of joiners and no more');
+{
+  const { server, port } = await startRelay({ SIGNAL_MAX_CLIENTS_PER_ROOM: '2' });
+  const host = connect(port);
+  await host.opened;
+  host.send(JSON.stringify({ type: 'host' }));
+  const hosting = await host.recv('hosting');
+
+  const joiners = [];
+  for (let i = 0; i < 2; i++) {
+    const j = connect(port);
+    await j.opened;
+    j.send(JSON.stringify({ type: 'join', code: hosting.code }));
+    await host.recv('joinRequest');
+    joiners.push(j);
+  }
+  const third = connect(port);
+  await third.opened;
+  third.send(JSON.stringify({ type: 'join', code: hosting.code }));
+  const err = await third.recv('error');
+  ok(err.error === 'Room is full', `the third joiner is turned away (got ${err.error})`);
+
+  for (const j of joiners) j.close();
+  host.close(); third.close(); server.kill();
+}
+
+console.log('T4 — the relay holds no more rooms than it declared, and a re-host spends no extra one');
+{
+  const { server, port } = await startRelay({ SIGNAL_MAX_ROOMS: '1' });
+  const host = connect(port);
+  await host.opened;
+  host.send(JSON.stringify({ type: 'host' }));
+  const first = await host.recv('hosting');
+
+  const other = connect(port);
+  await other.opened;
+  other.send(JSON.stringify({ type: 'host' }));
+  const err = await other.recv('error');
+  ok(err.error === 'Relay is full', `a room past the cap is refused (got ${err.error})`);
+
+  // A socket that hosts again must release the room it already held rather than
+  // orphan it. An orphaned room is unreachable — nothing points at it — but it
+  // is still counted, and it is only released by the TTL sweep half an hour
+  // later. With MAX_ROOMS in force that turns `host` sent in a loop from a
+  // memory leak into a denial of service: one socket spends the whole relay's
+  // room budget in a single burst and every real host is told 'Relay is full'.
+  host.send(JSON.stringify({ type: 'host' }));
+  const second = await host.recv('hosting');
+  ok(second.code !== first.code, `a re-host mints a new code (got ${second.code})`);
+  const health = await (await fetch(`http://127.0.0.1:${port}/healthz`)).json();
+  ok(health.rooms === 1, `and the relay still holds exactly one room (got ${health.rooms})`);
+
+  host.close(); other.close(); server.kill();
+}
+
+console.log('T4 — a per-IP connection cap that a forged header cannot walk past');
+{
+  const { server, port } = await startRelay({ SIGNAL_MAX_CONNS_PER_IP: '2' });
+  const a = connect(port); await a.opened;
+  const b = connect(port); await b.opened;
+
+  const third = connect(port);
+  let refused = false;
+  try { await third.opened; } catch { refused = true; }
+  ok(refused, 'the third connection from one address never completes the handshake');
+
+  // `x-forwarded-for` is written by whoever is talking to us. Believing it
+  // unconditionally makes the cap above a formality — a fresh value on every
+  // connection buys a fresh allowance — so it is trusted only where the
+  // deployment states that a proxy it controls rewrites the header.
+  const forged = connect(port, { headers: { 'x-forwarded-for': '9.9.9.9' } });
+  let forgedRefused = false;
+  try { await forged.opened; } catch { forgedRefused = true; }
+  ok(forgedRefused, 'and a forged x-forwarded-for does not buy a fresh allowance');
+
+  // Turning the trust on is what a real deployment behind Fly or Render does,
+  // and then the header is the only thing that tells two players apart.
+  const trusting = await startRelay({ SIGNAL_MAX_CONNS_PER_IP: '1', SIGNAL_TRUST_PROXY: '1' });
+  const p1 = connect(trusting.port, { headers: { 'x-forwarded-for': '203.0.113.1' } });
+  await p1.opened;
+  const p2 = connect(trusting.port, { headers: { 'x-forwarded-for': '203.0.113.2' } });
+  let secondRefused = false;
+  try { await p2.opened; } catch { secondRefused = true; }
+  ok(!secondRefused, 'behind a trusted proxy two forwarded addresses are two players');
+  const p3 = connect(trusting.port, { headers: { 'x-forwarded-for': '203.0.113.1' } });
+  let sameRefused = false;
+  try { await p3.opened; } catch { sameRefused = true; }
+  ok(sameRefused, 'and the same forwarded address is still one');
+
+  p1.close(); p2.close(); trusting.server.kill();
+  a.close(); b.close(); server.kill();
+}
+
+console.log('T4 — an Origin allowlist admits what it names and refuses what it does not');
+{
+  const { server, port } = await startRelay({ SIGNAL_ALLOWED_ORIGINS: 'https://play.example' });
+
+  const good = connect(port, { origin: 'https://play.example' });
+  await good.opened;
+  good.send(JSON.stringify({ type: 'host' }));
+  ok((await good.recv('hosting')).code.length === 8, 'a named origin hosts normally');
+
+  const bad = connect(port, { origin: 'https://evil.example' });
+  let refused = false;
+  try { await bad.opened; } catch { refused = true; }
+  ok(refused, 'an unnamed browser origin never completes the handshake');
+
+  // A non-browser client sends no Origin at all. Refusing it would break the
+  // desktop shell and every probe while stopping no attacker — anything that is
+  // not a browser can put whatever it likes in the header.
+  const headless = connect(port);
+  await headless.opened;
+  headless.send(JSON.stringify({ type: 'host' }));
+  ok((await headless.recv('hosting')).code.length === 8, 'and a client with no Origin is still served');
+
+  good.close(); headless.close(); server.kill();
+}
+
+console.log('T4 — a socket that sends past its allowance is refused, not obeyed');
+{
+  const { server, port } = await startRelay({ SIGNAL_MSG_BURST: '5', SIGNAL_MAX_MSGS_PER_SEC: '1' });
+  const host = connect(port);
+  await host.opened;
+  // One frame mints the room; the rest of the burst is spent on well-formed
+  // `join`s for rooms that do not exist, which the pre-Task-3 relay would answer
+  // one-for-one for ever. That is the room-guessing oracle the bucket is here to
+  // make expensive.
+  host.send(JSON.stringify({ type: 'host' }));
+  await host.recv('hosting');
+  for (let i = 0; i < 40; i++) host.send(JSON.stringify({ type: 'join', code: 'ZZZZ2345' }));
+
+  let errors = 0;
+  const stop = Date.now() + 1500;
+  while (Date.now() < stop) {
+    try { await host.recv('error', 300); errors++; } catch { break; }
+  }
+  ok(errors > 0 && errors < 40,
+     `only part of an over-budget flood is answered (got ${errors} of 40)`);
+
+  host.close(); server.kill();
+}
+
+console.log('T4 — a socket error is counted, without the frame that caused it');
+{
+  const { server, port } = await startRelay();
+  const host = connect(port);
+  await host.opened;
+  host.send(JSON.stringify({ type: 'host' }));
+  await host.recv('hosting');
+  host.send(JSON.stringify({ type: 'offer', clientId: 1, blob: 'z'.repeat(LIMITS.MAX_PAYLOAD_BYTES + 1024) }));
+  await closed(host);
+  await new Promise((r) => setTimeout(r, 300));
+
+  const line = server.logs.find((l) => l.includes('"event":"socket-error"'));
+  ok(!!line, `an absorbed socket error still leaves a trace (got ${JSON.stringify(server.logs)})`);
+  ok(!!line && !line.includes('zzz'),
+     `and the trace does not carry the frame that caused it (got ${line})`);
+
+  server.kill();
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
