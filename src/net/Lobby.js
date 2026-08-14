@@ -35,6 +35,21 @@ function relayError(url) {
 const RELAY_TRICKLE_VERSION = 2;
 
 /**
+ * A typed room code, reduced to the one spelling the relay keys its room map by.
+ *
+ * The relay does the same reduction on receipt (`tools/signal-server.mjs`,
+ * `normalizeCode`) and would refuse anything else, so this is not the security
+ * boundary — it is the difference between a friend who typed `abcd-2345` being
+ * let in and being told there is no such room. The page cannot import the
+ * server's copy: `tools/` is not part of the bundle.
+ */
+export function normalizeRoomCode(raw) {
+  if (typeof raw !== 'string') return '';
+  const up = raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$/.test(up) ? up : '';
+}
+
+/**
  * Headless lobby controller.
  *
  * Owns the whole "get two browsers talking" flow and exposes it as plain
@@ -290,11 +305,21 @@ export class Lobby {
 
   /** Join through the relay with a room code. */
   joinViaRelay(code, url = signalUrl()) {
+    const norm = normalizeRoomCode(code);
+    // The relay refuses a malformed code by dropping it, silently and by
+    // design — a hardened relay does not narrate its own validation to whoever
+    // is probing it. Nothing below settles this promise on its own, so a code
+    // that could never have been minted has to fail here, where there is
+    // someone to tell.
+    if (!norm) {
+      return Promise.reject(new Error(
+        'That is not a room code — it is 8 letters and digits, and never O, 0, I or 1.'));
+    }
     return new Promise((resolve, reject) => {
       const ws = new WebSocket(url);
       this.ws = ws;
       ws.onerror = () => reject(new Error(relayError(url)));
-      ws.onopen = () => ws.send(JSON.stringify({ type: 'join', code: String(code || '').toUpperCase() }));
+      ws.onopen = () => ws.send(JSON.stringify({ type: 'join', code: norm }));
       ws.onmessage = async (e) => {
         const msg = JSON.parse(e.data);
         if (msg.type === 'error') return reject(new Error(msg.error));

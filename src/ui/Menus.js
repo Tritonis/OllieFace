@@ -72,6 +72,15 @@ const DEFAULTS = {
 
 const QUALITY_NAMES = ['Low', 'Medium', 'High', 'Ultra'];
 
+/**
+ * The empty room-code display: the grouped shape of a real code, in dashes.
+ *
+ * One constant for both the markup and the reset on leave, because the two
+ * drifting apart is invisible until a player leaves a room and the box quietly
+ * shrinks to a shape no code will ever fill.
+ */
+const CODE_PLACEHOLDER = '---------';
+
 // Tiles per row inside one tier block on the run summary. Narrow on purpose:
 // the blocks wrap as units, so 8 lets two small tiers share a line instead of
 // each taking one of its own. At 16 the grouped grid was two rows taller than
@@ -426,11 +435,12 @@ export class Menus {
           <div class="coop-room">
             <h3 class="coop-h">Room code</h3>
             <p class="coop-hint">The easy way, if a signalling server is configured. The host
-              creates a room and reads out the four letters; everyone else types them in.</p>
+              creates a room and reads out the code; everyone else types it in. The dash is
+              only there to read by — typing it is optional.</p>
             <nav class="menu-list menu-list--row">
               <button class="mbtn mbtn--go" data-nav data-act="coop-room-host"><span>Create room</span></button>
-              <output class="coop-code" data-coop-code>----</output>
-              <input class="coop-input" data-coop-roomcode maxlength="6" placeholder="CODE" aria-label="Room code" />
+              <output class="coop-code" data-coop-code>${CODE_PLACEHOLDER}</output>
+              <input class="coop-input" data-coop-roomcode maxlength="9" placeholder="CODE" aria-label="Room code" />
               <button class="mbtn mbtn--go" data-nav data-act="coop-room-join"><span>Join room</span></button>
             </nav>
             <p class="coop-hint coop-wiring" data-coop-wiring></p>
@@ -1511,12 +1521,15 @@ export class Menus {
         case 'coop-room-host': {
           this.coopSay('Opening a room…');
           const code = await lobby.hostViaRelay();
-          this.root.querySelector('[data-coop-code]').textContent = code;
-          this.coopSay(`Room ${code} is open. Give those letters to your friends — they join with them.`);
+          // Grouped for the half of this feature that happens out loud. The input
+          // strips the separator again, and the relay never sees it either way.
+          this.root.querySelector('[data-coop-code]').textContent =
+            code.length === 8 ? `${code.slice(0, 4)}-${code.slice(4)}` : code;
+          this.coopSay(`Room ${code} is open. Give that code to your friends — they join with it.`);
           break;
         }
         case 'coop-room-join': {
-          const code = field('roomcode').value.trim().toUpperCase();
+          const code = field('roomcode').value;
           if (!code) return this.coopSay('Type the room code the host gave you first.');
           this.coopSay(`Joining room ${code}…`);
           await lobby.joinViaRelay(code);
@@ -1535,7 +1548,7 @@ export class Menus {
           lobby.leave();
           this.steamLobbyId = null;
           for (const n of ['invite', 'answer', 'offer', 'reply', 'roomcode']) field(n).value = '';
-          this.root.querySelector('[data-coop-code]').textContent = '----';
+          this.root.querySelector('[data-coop-code]').textContent = CODE_PLACEHOLDER;
           break;
       }
     } catch (err) {

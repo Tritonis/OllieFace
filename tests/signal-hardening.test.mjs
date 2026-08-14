@@ -167,5 +167,35 @@ console.log('T2 — an oversized frame is dropped by the socket, not buffered by
   survivor.close(); server.kill();
 }
 
+/* ==========================================================================
+ * 3 — the page's own normaliser agrees with the relay's
+ * ======================================================================= */
+
+console.log('T3 — Lobby normalises a typed code to exactly what the relay would key on');
+{
+  const { normalizeRoomCode } = await import('../src/net/Lobby.js');
+  const cases = ['abcd2345', 'ABCD-2345', ' abcd 2345 ', 'AbCd2345'];
+  ok(cases.every((c) => normalizeRoomCode(c) === 'ABCD2345'),
+     'every spelling of one code collapses to one string');
+  ok(normalizeRoomCode('abcd2345') === normalizeCode('abcd2345'),
+     'and it is the same string the relay derives');
+  ok(normalizeRoomCode('!!') === '', 'junk normalises to nothing rather than to a lookup');
+}
+
+console.log('T3 — a code that could never be real is refused here, where there is someone to tell');
+{
+  const { Lobby } = await import('../src/net/Lobby.js');
+  const lobby = Object.create(Lobby.prototype);
+  // `ABCD0I45` is the transcription error the alphabet predicts: a code read
+  // aloud, written down with a zero for O and a one for I. The relay would drop
+  // it as malformed and answer nothing at all, and `joinViaRelay` has no
+  // timeout — so a join that never resolves would leave the co-op screen saying
+  // "Joining room…" for ever. It has to fail here, out loud.
+  let message = null;
+  await lobby.joinViaRelay('ABCD0I45', 'ws://relay.test').catch((e) => { message = e.message; });
+  ok(typeof message === 'string' && /room code/i.test(message),
+     `a malformed code rejects with something a player can act on (got ${JSON.stringify(message)})`);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

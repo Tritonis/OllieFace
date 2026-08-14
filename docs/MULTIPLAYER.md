@@ -157,9 +157,9 @@ Then drop the parameter (`?ice=` clears it) and play normally.
 
 ### Step 5 — play
 
-1. Host: Co-op → **Create room** → four letters appear.
-2. Read the letters out.
-3. Everyone else: Co-op → type them into the code box → **Join room**.
+1. Host: Co-op → **Create room** → an eight-character code appears, grouped as `ABCD-2345`.
+2. Read it out. The alphabet has no O, 0, I or 1 in it, so nothing in it can be misheard for something else.
+3. Everyone else: Co-op → type it into the code box → **Join room**. The dash is optional.
 
 The co-op screen prints what the build is wired to underneath. If it says
 *"local only"* or *"TURN relay: none"* in amber, that's the bug, before anyone

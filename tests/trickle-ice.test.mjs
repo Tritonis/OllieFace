@@ -360,7 +360,10 @@ console.log('T4 — a candidate for an unknown or spent invite is dropped, not t
 console.log('T4 — the joiner trickles only when the offer says the relay will carry it');
 {
   const lobby = mkLobby();
-  lobby.joinViaRelay('ABCD', 'ws://relay.test').catch(() => {});
+  // A code the relay could actually have minted: `joinViaRelay` refuses a
+  // malformed one before it opens a socket, so a short fixture code would leave
+  // `FakeWS.last` pointing at the previous block's socket.
+  lobby.joinViaRelay('ABCD2345', 'ws://relay.test').catch(() => {});
   const ws = FakeWS.last;
   ws.open();
   const done = ws.recv({ type: 'offer', blob: offerBlob(2), trickle: true });
@@ -379,7 +382,7 @@ console.log('T4 — the joiner trickles only when the offer says the relay will 
 console.log('T4 — DEGRADE GATE: an offer with no trickle flag joins the old way');
 {
   const lobby = mkLobby();
-  lobby.joinViaRelay('ABCD', 'ws://old-relay.test').catch(() => {});
+  lobby.joinViaRelay('ABCD2345', 'ws://old-relay.test').catch(() => {});
   const ws = FakeWS.last;
   ws.open();
   // An old relay forwards `{type:'offer', blob}` and drops every field it does

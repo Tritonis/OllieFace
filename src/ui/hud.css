@@ -2157,6 +2157,13 @@ body.menu-open { cursor: default; }
 .coop-code {
   align-self: center;
   min-width: 5.2em;
+  /* The code is read out loud, so it must never break across two lines: at four
+     characters it never did, and at nine this box is the item flex chose to
+     shrink, which split `V29L-` from `N2KK` in the middle of the thing a player
+     is dictating. `flex-shrink: 0` keeps it whole and `nowrap` stops the split
+     if anything ever squeezes the row anyway. */
+  flex-shrink: 0;
+  white-space: nowrap;
   padding: 0.5em 0.8em;
   font: inherit;
   font-size: 1.3em;
@@ -2170,7 +2177,13 @@ body.menu-open { cursor: default; }
 }
 
 .coop-input {
-  width: 6.4em;
+  /* Nine characters at 0.28em tracking — the grouped code plus the separator a
+     player may or may not type. Sized in em so it tracks the menu type scale.
+     Measured against `WWWW-WWWW`, not against an average code: the face is
+     proportional, W and M are the widest glyphs in the alphabet, and a code that
+     happens to draw several of them is as likely as any other. Nine average
+     characters fit in 9.6em and nine W's do not. */
+  width: 11.8em;
   padding: 0.72em 0.6em;
   font: inherit;
   font-weight: 700;
