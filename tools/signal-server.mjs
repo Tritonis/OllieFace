@@ -247,6 +247,24 @@ export function start({ port = defaultPort() } = {}) {
       return true;
     },
   });
+  // `ws` registers `error: wss.emit.bind(wss, 'error')` on the HTTP server it is
+  // given, so anything that server raises arrives HERE — and an 'error' event
+  // with no listener ends this process and every room in it. That is the same
+  // shape as the socket-level one Task 1 had to absorb, one layer up, and this
+  // branch has already been bitten once by it.
+  //
+  // The line is drawn at `http.listening` and not at "is there a listener",
+  // because a BIND failure must stay fatal: a relay that never got its port has
+  // nothing to serve, and absorbing that would leave a process alive, healthy to
+  // any supervisor watching it, and answering nobody. Re-throwing here reaches
+  // the same uncaught exception it always did.
+  wss.on('error', (err) => {
+    if (!http.listening) throw err;
+    // The error OBJECT is not logged, for the same reason the socket-level
+    // handler does not log its own: its message can quote what caused it.
+    log('server-error', { detail: String(err?.code ?? err?.name ?? 'error') });
+  });
+
   // `http.address().port` rather than `port`: `--port 0` asks the OS for a free
   // one, which is how a test or a local driver runs a relay without colliding
   // with whatever is already on 8787 — and the number it got is only knowable
@@ -499,6 +517,24 @@ export const LIMITS = Object.freeze({
   // deliberately much larger than the sustained rate.
   MAX_MSGS_PER_SEC: envNum('SIGNAL_MAX_MSGS_PER_SEC', 40),
   MSG_BURST: envNum('SIGNAL_MSG_BURST', 120),
+  // `join` gets a second, far tighter bucket of its own, because it is the one
+  // message a stranger sends that spends somebody ELSE'S resources: each one
+  // asks the HOST'S page for an invite, and an invite is an RTCPeerConnection
+  // (`src/net/Lobby.js`, `hostViaRelay`). Under the general 40/s allowance alone
+  // — every relay ceiling respected, the socket never closed, not one drop token
+  // spent — one joiner holding nothing but the room code made a host page build
+  // 317 peer connections in ten seconds and hold all 317 open. The relay was
+  // unharmed throughout, which is exactly why nothing here could see it.
+  //
+  // This is half the fix and cannot be the whole of it: 1/s sustained is still
+  // 3600 peer connections an hour. The page bounds what it will hold; this
+  // bounds how fast it can be asked. Neither alone is a defence.
+  //
+  // A real page sends exactly ONE `join` per socket, so a burst of five is five
+  // times any client that exists, and the sustained rate only ever meets a
+  // socket that is re-joining every second for minutes.
+  MAX_JOINS_PER_SEC: envNum('SIGNAL_MAX_JOINS_PER_SEC', 1),
+  JOIN_BURST: envNum('SIGNAL_JOIN_BURST', 5),
   // What happens to a socket that keeps sending past the bucket. Its own
   // allowance, deliberately far larger than MAX_REJECTS and — unlike
   // MAX_REJECTS — it forgives: an overshoot is spent and earned back, so a
@@ -776,6 +812,10 @@ function onConnection(ws, req) {
   // A second bucket rather than a counter, because forgiveness is the whole
   // point and a bucket already knows how to refill on the clock.
   ws.dropBudget = new TokenBucket(LIMITS.RATE_DROPS_FORGIVEN_PER_SEC, LIMITS.MAX_RATE_DROPS);
+  // The allowance for `join` alone, and per SOCKET like the others — so the
+  // sender pays, and a friend arriving in the middle of somebody else's flood is
+  // not throttled by traffic that is not theirs. See `LIMITS.MAX_JOINS_PER_SEC`.
+  ws.joinBucket = new TokenBucket(LIMITS.MAX_JOINS_PER_SEC, LIMITS.JOIN_BURST);
   ws.alive = true;
   connsByIp.set(ws.ipKey, (connsByIp.get(ws.ipKey) ?? 0) + 1);
   metrics.connsTotal += 1;
@@ -850,6 +890,19 @@ function onConnection(ws, req) {
         break;
       }
       case 'join': {
+        // Before the room lookup, so a throttled join costs this relay nothing
+        // and tells its sender nothing — 'No such room' is an oracle, and the
+        // socket that is sending faster than any real page is the one asking.
+        //
+        // `overRate` and not `reject`, for the reason `overRate` documents: a
+        // well-formed join arriving too fast is back-pressure, not garbage. It
+        // is dropped, counted in `rejectedTotal`, and charged to the forgiving
+        // drop budget — so a page that retried a few times keeps its socket and
+        // a sender holding the throttle down still loses one. Deduplication is
+        // deliberately NOT the answer here: a member's re-join must still reach
+        // its host (`tests/signal-hardening.test.mjs`, 'a socket already in a
+        // full room'), so the fix is rate and bound, not suppression.
+        if (!ws.joinBucket.take(now)) return overRate(ws, now);
         const room = rooms.get(msg.code);
         if (!room) return send(ws, { type: 'error', error: 'No such room' });
         // A socket already in this room is exempt from the capacity check: it

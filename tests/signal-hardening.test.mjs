@@ -643,6 +643,94 @@ console.log('T4 — a socket already in a full room is not turned away from the 
   host.close(); joiner.close(); server.kill();
 }
 
+console.log('T4 — one socket cannot make a host mint a peer connection per frame');
+{
+  // The one message a stranger sends that spends somebody ELSE'S resources.
+  // Every ceiling in this file holds throughout and the relay is unharmed; the
+  // victim is the host player's browser, which mints an RTCPeerConnection per
+  // `joinRequest` (`src/net/Lobby.js`, `hostViaRelay`). Measured end to end
+  // before this bucket existed, from one socket holding nothing but the room
+  // code: 317 joins paced at ~32/s — under the 40/s sustained allowance, socket
+  // never closed, not one drop token spent — became 317 peer connections on the
+  // host page, all still open. Unpaced it was 121 in 43 ms before the existing
+  // flood budget closed the sender, and those 121 stayed open too.
+  //
+  // A real page sends exactly ONE `join` per socket, so a burst of five is five
+  // times any client that exists.
+  const { server, port } = await startRelay();
+  const host = connect(port); await host.opened;
+  host.send(JSON.stringify({ type: 'host' }));
+  const hosting = await host.recv('hosting');
+  const joiner = connect(port); await joiner.opened;
+
+  const SENT = 100;
+  for (let i = 0; i < SENT; i++) {
+    joiner.send(JSON.stringify({ type: 'join', code: hosting.code }));
+    await new Promise((r) => setImmediate(r)); // real pacing, not one synchronous flush
+  }
+  await new Promise((r) => setTimeout(r, 500));
+
+  const asked = host.queue.filter((m) => m.type === 'joinRequest').length;
+  ok(asked < SENT / 4,
+     `${SENT} joins from one socket ask the host for ${asked} invites, not one each`);
+  ok(asked <= LIMITS.JOIN_BURST + 2,
+     `and no more than the declared burst (ceiling ${LIMITS.JOIN_BURST}, got ${asked})`);
+  ok(asked >= 1, 'while the first join of a socket is still answered at once');
+  // Back-pressure, not garbage: the same distinction `overRate` already draws.
+  // A joiner whose page retried is not a protocol violation and must not lose
+  // the socket its whole join is riding.
+  ok(joiner.readyState === 1,
+     `a throttled join is a dropped message, not a disconnect (readyState ${joiner.readyState})`);
+
+  // Per SOCKET, and that is the whole shape of it: the sender pays, so a real
+  // friend arriving mid-flood is not throttled by somebody else's traffic.
+  const before = host.queue.filter((m) => m.type === 'joinRequest').length;
+  const other = connect(port); await other.opened;
+  other.send(JSON.stringify({ type: 'join', code: hosting.code }));
+  await new Promise((r) => setTimeout(r, 400));
+  const after = host.queue.filter((m) => m.type === 'joinRequest').length;
+  ok(after === before + 1,
+     `a different joiner's single join is not caught by the flooder's bucket (got ${after - before})`);
+
+  host.close(); joiner.close(); other.close(); server.kill();
+}
+
+console.log('T4 — an error the listening relay raises does not end every room on it');
+{
+  // `ws` registers `error: wss.emit.bind(wss, 'error')` on the HTTP server it is
+  // given, so anything that server raises arrives on the WebSocketServer — and
+  // an 'error' event with no listener ends this process and every room in it.
+  // That is the exact shape Task 1 had to absorb one layer down, at the socket.
+  const { start } = await import('../tools/signal-server.mjs');
+  const { http, wss, sweep } = start({ port: 0 });
+  await new Promise((r) => http.once('listening', r));
+  const port = http.address().port;
+
+  let survived = true;
+  try { http.emit('error', Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' })); }
+  catch { survived = false; }
+  ok(survived, 'an error raised on a listening server is absorbed rather than thrown');
+  const h = await (await fetch(`http://127.0.0.1:${port}/healthz`)).json();
+  ok(h.ok === true, `and the relay is still serving afterwards (got ${JSON.stringify(h)})`);
+
+  clearInterval(sweep); wss.close(); http.close();
+}
+
+console.log('T4 — but a port it cannot have is still fatal, loudly');
+{
+  // The other half of the line above, and the reason it is drawn at
+  // `http.listening` rather than at "is there a listener": a relay that never
+  // got its port has nothing to serve, and absorbing THAT would leave a process
+  // alive, healthy-looking to a supervisor, and answering nobody.
+  const held = await startRelay();
+  const clash = spawn(process.execPath,
+    [join(here, '..', 'tools', 'signal-server.mjs'), '--port', String(held.port)],
+    { stdio: ['ignore', 'pipe', 'pipe'] });
+  const code = await new Promise((r) => clash.on('exit', (c) => r(c)));
+  ok(code !== 0, `a relay that cannot bind its port exits non-zero (got ${code})`);
+  held.server.kill();
+}
+
 console.log('T4 — a socket error is counted, without the frame that caused it');
 {
   const { server, port } = await startRelay();

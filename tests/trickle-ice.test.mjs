@@ -474,6 +474,88 @@ console.log('T4 — the host is told when the relay closes its room, on either s
      `and the screen is told which one it was (got ${JSON.stringify(seen)})`);
 }
 
+console.log('T4 — a flood of joinRequests does not become a peer connection each');
+{
+  // The relay is never the victim here. Every ceiling it declares holds, and it
+  // is the HOST'S BROWSER that pays: `joinRequest` mints an RTCPeerConnection
+  // per message into `pendingInvites` and `_invitesByClient`, neither of which
+  // was bounded and neither of which was ever pruned for a joiner that never
+  // answers. Measured end to end against a real relay and a real Lobby, from one
+  // socket holding nothing but the room code: 317 joins at ~32/s became 317 peer
+  // connections, all still open, with all three maps — those two and the
+  // transport's own `peers` — sitting at 317.
+  //
+  // The burst is delivered WITHOUT awaiting each handler, and that is the whole
+  // reason a size check has to be taken before the await rather than after it:
+  // `ws.onmessage` is async and nothing serialises it, so a real burst arrives
+  // as concurrent `createInvite()` calls, none of which has written to any map
+  // yet. A ceiling read after that await sees an empty map for every one of them.
+  const lobby = mkLobby();
+  const p = lobby.hostViaRelay('ws://relay.test');
+  const ws = FakeWS.last;
+  ws.open();
+  await ws.recv({ type: 'hosting', code: 'ABCD2345', v: 2 });
+  await p;
+
+  const before = pcs.length;
+  const FLOOD = 200;
+  await Promise.all(
+    Array.from({ length: FLOOD }, (_, i) => ws.recv({ type: 'joinRequest', clientId: 1000 + i })));
+  const minted = pcs.length - before;
+  const open = pcs.slice(before).filter((c) => c.connectionState !== 'closed').length;
+
+  ok(minted <= 8,
+     `${FLOOD} joinRequests mint at most 8 peer connections on the host page (got ${minted})`);
+  ok(open <= 8, `and leave at most 8 of them open (got ${open})`);
+  ok(lobby.pendingInvites.size <= 8,
+     `pendingInvites stops growing (got ${lobby.pendingInvites.size})`);
+  ok(lobby._invitesByClient.size <= 8,
+     `and so does _invitesByClient (got ${lobby._invitesByClient.size})`);
+  // The map that actually holds the connections. Bounding the Lobby's two while
+  // this one grew would be a ceiling in one place and the leak in another.
+  ok(lobby.net.transport.peers.size <= 8,
+     `and the transport's own peer map, which is what holds them (got ${lobby.net.transport.peers.size})`);
+}
+
+console.log('T4 — and the room stays open to the next real friend, for ever');
+{
+  // Refusing past the ceiling would make eight silent joiners a permanent lock
+  // on the host's own room: eight frames, and no friend can ever be let in
+  // again until the host presses Leave. The oldest invite nobody answered is
+  // given up instead — and given up means CLOSED, not merely forgotten, because
+  // an RTCPeerConnection dropped from a map is still an open connection.
+  const lobby = mkLobby();
+  const p = lobby.hostViaRelay('ws://relay.test');
+  const ws = FakeWS.last;
+  ws.open();
+  await ws.recv({ type: 'hosting', code: 'ABCD2345', v: 2 });
+  await p;
+
+  const before = pcs.length;
+  for (let i = 0; i < 12; i++) await ws.recv({ type: 'joinRequest', clientId: 200 + i });
+
+  const offers = ws.ofType('offer');
+  ok(offers.length === 12,
+     `all twelve joiners in turn are offered a connection (got ${offers.length})`);
+  ok(offers[offers.length - 1]?.clientId === 211,
+     `including the twelfth (got ${JSON.stringify(offers[offers.length - 1]?.clientId)})`);
+  ok(lobby.pendingInvites.size <= 8, `while the map stays bounded (got ${lobby.pendingInvites.size})`);
+  ok(lobby._invitesByClient.size <= 8, `and so does the client index (got ${lobby._invitesByClient.size})`);
+  const closed = pcs.slice(before).filter((c) => c.connectionState === 'closed').length;
+  ok(closed === 4, `and the four it gave up were closed, not just dropped (got ${closed})`);
+
+  // `leave()` cleared `_invitesByClient` and never `pendingInvites`, so a page
+  // that hosted and left carried every invite of the last session into the next.
+  // The warning is `NetHost`'s own narration of peers whose channels never
+  // opened, which is every unanswered invite by definition.
+  const realWarn = console.warn;
+  console.warn = () => {};
+  try { lobby.leave(); } finally { console.warn = realWarn; }
+  ok(lobby.pendingInvites.size === 0,
+     `leaving gives up every invite the session was still holding (got ${lobby.pendingInvites.size})`);
+  ok(lobby._invitesByClient.size === 0, 'and every client it was indexed by');
+}
+
 /* ==========================================================================
  * 5 — the relay itself, as a process
  * ======================================================================= */

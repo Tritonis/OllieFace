@@ -70,6 +70,32 @@ const RELAY_KEEPALIVE_MS = 5 * 60 * 1000;
 const CODE_LEN = 8;
 
 /**
+ * How many unanswered invites this page will hold at once.
+ *
+ * Every `joinRequest` the relay forwards makes this page build an
+ * RTCPeerConnection — see `hostViaRelay` — and until this ceiling existed
+ * `pendingInvites`, `_invitesByClient` and the transport's own `peers` were
+ * three unbounded maps that were never pruned for a joiner who never answered.
+ * Measured end to end against a real relay: one socket holding nothing but the
+ * room code, pacing itself under every ceiling that relay declares, made a host
+ * page build 317 peer connections in ten seconds and hold all 317 open. The
+ * relay was unharmed the whole way; the victim is the other player's browser,
+ * and Chromium stops handing out peer connections long before a page has
+ * hundreds of them.
+ *
+ * The relay's `LIMITS.MAX_CLIENTS_PER_ROOM` is the number it mirrors, because a
+ * room admits at most that many joiners at once and an invite exists to answer
+ * one of them. It is deliberately not the relay's copy — `tools/` is not part of
+ * the bundle — and it does not have to be: this is a page-side ceiling on the
+ * page's own memory, and it is safe whatever the relay's number is.
+ *
+ * The relay's `join` rate limit is the other half and neither is sufficient
+ * alone: a rate limit alone still permits one connection a second for ever, and
+ * a bound alone lets a burst arrive as fast as a socket can write.
+ */
+const MAX_PENDING_INVITES = 8;
+
+/**
  * A typed room code, reduced to the one spelling the relay keys its room map by.
  *
  * The relay does the same reduction on receipt (`tools/signal-server.mjs`,
@@ -157,6 +183,10 @@ export class Lobby {
     this._refused = false;
     // The host's "this room is still in use" timer, while there is one.
     this._keepalive = null;
+    // Invites whose `createInvite()` has been called and has not resolved yet.
+    // Counted against MAX_PENDING_INVITES beside the maps themselves — see
+    // `_admitJoiner` for why a ceiling that reads only the maps is no ceiling.
+    this._minting = 0;
   }
 
   _set(status, detail) {
@@ -397,7 +427,16 @@ export class Lobby {
           resolve(msg.code);
         } else if (msg.type === 'joinRequest') {
           const trickle = this.net.transport.trickle === true;
-          const invite = await this.net.createInvite();
+          // Synchronously, and before the await below. Anyone holding the room
+          // code can make the relay send these, and this page answers each one
+          // with a peer connection — see `MAX_PENDING_INVITES`.
+          if (!this._admitJoiner()) return;
+          this._minting += 1;
+          let invite;
+          // `finally` and not `catch`: a `createInvite` that throws — 'Lobby is
+          // full' from `NetHost` — fails exactly as it did before this ceiling
+          // existed. What must not change is the claim being released.
+          try { invite = await this.net.createInvite(); } finally { this._minting -= 1; }
           this.pendingInvites.set(invite.id, invite);
           this._invitesByClient.set(msg.clientId, invite);
           // Registered before the offer goes out, so a candidate gathered while
@@ -423,6 +462,72 @@ export class Lobby {
         }
       };
     });
+  }
+
+  /**
+   * Make room for one more joiner, and say whether there is any.
+   *
+   * Two things this has to get right, and the second is the one that decides
+   * whether any of it works.
+   *
+   * **It counts invites that do not exist yet.** `ws.onmessage` is an async
+   * function and nothing serialises it, so a burst of `joinRequest`s arrives as
+   * a burst of *concurrent* `createInvite()` calls — every one of them awaiting,
+   * none of them having written to any map. A ceiling that read
+   * `pendingInvites.size` alone would see an empty map for all two hundred of
+   * them and admit every one. `_minting` is the claim taken before the await,
+   * which is the only place the claim can be taken.
+   *
+   * **It evicts rather than refuses.** Refusing at the ceiling would let eight
+   * silent joiners lock a host out of their own room permanently: eight frames,
+   * and no friend can ever be admitted again until the host presses Leave. The
+   * oldest invite nobody has answered is given up instead, so the room stays
+   * open to whoever knocks next and the cost of the attack decays to nothing the
+   * moment the attacker stops. The window it opens is the other side of that
+   * trade and is honest: a real joiner who is mid-handshake when eight further
+   * joins arrive loses its invite. Against the relay's one-join-a-second that is
+   * eight seconds of sustained flooding to displace a join that normally takes
+   * one or two — and the joiner can simply try again, which the alternative
+   * would not allow.
+   *
+   * Returns false only when there is nothing left to evict, i.e. when the whole
+   * ceiling is in-flight mints — which is the flood itself.
+   */
+  _admitJoiner() {
+    while (this.pendingInvites.size + this._minting >= MAX_PENDING_INVITES
+           && this.pendingInvites.size > 0) {
+      this._dropInvite(this.pendingInvites.keys().next().value);
+    }
+    // Bounded on its own account and not by implication. Every write to it is
+    // paired with one to `pendingInvites`, but the two are emptied at different
+    // moments (`acceptAnswer` clears one, the `answer` branch the other), and a
+    // map that is only bounded by an invariant somebody else maintains is a map
+    // waiting for that invariant to move.
+    while (this._invitesByClient.size >= MAX_PENDING_INVITES) {
+      const clientId = this._invitesByClient.keys().next().value;
+      const stale = this._invitesByClient.get(clientId);
+      this._invitesByClient.delete(clientId);
+      if (stale) this._dropInvite(stale.id);
+    }
+    return this.pendingInvites.size + this._minting < MAX_PENDING_INVITES;
+  }
+
+  /**
+   * Give up one invite, everywhere it is held.
+   *
+   * Three places, and the third is the one that matters: dropping an invite from
+   * this object's two maps leaves its RTCPeerConnection open and referenced by
+   * `HostTransport.peers`, so a bound enforced here alone would bound two maps
+   * and leak every connection they ever held. `cancelInvite` closes it.
+   */
+  _dropInvite(id) {
+    this.pendingInvites.delete(id);
+    // Keyed the other way round, so this is a scan — over at most
+    // MAX_PENDING_INVITES entries. Deleting while iterating a Map is defined.
+    for (const [clientId, held] of this._invitesByClient) {
+      if (held?.id === id) this._invitesByClient.delete(clientId);
+    }
+    this.net?.transport?.cancelInvite?.(id);
   }
 
   /**
@@ -602,6 +707,13 @@ export class Lobby {
     // fresh session reissues from the start, so anything left behind belongs to
     // a joiner who no longer exists and would answer for the next one.
     this._invitesByClient.clear();
+    // `_invitesByClient` was cleared here and `pendingInvites` was not, so a page
+    // that hosted, left and hosted again carried every unanswered invite of the
+    // last session — and its peer connection — into the next one for the life of
+    // the page. `net.close()` above has already closed the connections
+    // themselves; this is the references to them.
+    this.pendingInvites.clear();
+    this._minting = 0;
     this._earlyIce.length = 0;
     this.players = [{ id: 0, name: 'You', local: true }];
     this._set('idle');
