@@ -212,6 +212,7 @@ uniform vec2  uCamPlanes;
 uniform float uSoftEnabled;
 uniform float uIntensity;
 uniform float uMaxIntensity;
+uniform float uAlphaCut;
 
 varying vec4 vColor;
 varying vec2 vUv;
@@ -284,7 +285,11 @@ void main() {
     }
   }
 
-  if (c.a < 0.004) discard;
+  // A uniform because this shader is compiled into two kinds of pass that need
+  // two different answers: a colour pass, where the cut only skips a blend that
+  // would deposit nothing, and the alpha layer's depth-only pass, where it
+  // decides which fragments are solid enough to occlude. Values in ALPHA_CUT.
+  if (c.a < uAlphaCut) discard;
   gl_FragColor = c;
 }
 `;
@@ -326,10 +331,48 @@ void main() {
  */
 export const LENS_FLOOR = { add: 0.05, alpha: 1.0 };
 
+/**
+ * The fragment discard threshold, per kind of pass.
+ *
+ * `colour` is the value this test has always had, and every colour pass keeps
+ * it: on a pass that does not write depth the cut only skips a blend that would
+ * deposit nothing.
+ *
+ * `occlusion` belongs to the alpha layer's depth-only pass
+ * (`createParticleDepthMaterial`), where the question is not "is this worth
+ * blending" but "is this solid enough to hide what is behind it". 0.004 there
+ * would let a 0.4%-opacity dust fragment stamp depth and delete the fireball it
+ * is standing in front of — `reviews/round7/DIAG-axis6-vfx.md` section 4
+ * measured that arm removing a mean 101.6 L from 979 core pixels, peak 161.1 L.
+ * At 0.35 that artifact is gone (300 px, and those are opaque dust genuinely in
+ * front) while the largest radial luminance step about the blast centre still
+ * goes 7.4 L to 14.4 L.
+ *
+ * **The two numbers are separate because one constant cannot do both jobs, and
+ * a version of this shipped briefly that tried.** The test is a `discard`, so
+ * raising it on a *colour* pass does not make a fragment occlude — it makes the
+ * fragment disappear. A sprite's peak alpha is its emitter's `alpha0`
+ * (`ParticleSystem.emit` writes it straight into `aCol0.w`) and everything
+ * downstream multiplies by factors <= 1, so at 0.35 on the colour pass three
+ * emitters can never draw a single fragment — `teleporterAura` at alpha0 0.16
+ * (`src/systems/VFX.js:1026`), `missile` smoke at 0.30 (`:1249`), `muzzleFlash`
+ * smoke at 0.32 (`:324`) — and every surviving sprite ends at a hard circle
+ * where `c.a` crosses the cut, which is the quad-boundary fade's guarantee
+ * twenty lines above (and the axis-6 "hard-clipped particle edges" marker)
+ * handed straight back. Splitting the constant costs one extra depth-only draw
+ * and keeps both.
+ *
+ * Measured on one frozen frame at a pinned 0.09 s blast phase
+ * (`reviews/round7/diag-axis6/layerarms5.mjs`, analysed by `analyse5.mjs`, PNGs
+ * in `reviews/round7/captures/fix-axis6-arms/`) — see `reviews/round7/FIX-axis6.md`.
+ */
+export const ALPHA_CUT = { colour: 0.004, occlusion: 0.35 };
+
 /** Builds the ShaderMaterial for one blend layer. */
 export function createParticleMaterial({
   map, additive, atlasCols = 4, intensity = 1, maxIntensity = 0.92,
   lensFloor = additive ? LENS_FLOOR.add : LENS_FLOOR.alpha,
+  alphaCut = ALPHA_CUT.colour,
 }) {
   return new THREE.ShaderMaterial({
     uniforms: {
@@ -344,13 +387,69 @@ export function createParticleMaterial({
       uSoftEnabled: { value: 0 },
       uIntensity: { value: intensity },
       uMaxIntensity: { value: maxIntensity },
+      uAlphaCut: { value: alphaCut },
     },
     vertexShader: ParticleVertexShader,
     fragmentShader: ParticleFragmentShader,
     transparent: true,
     depthTest: true,
+    // No colour pass writes depth. What gives the alpha layer a depth
+    // relationship with the additive one is a separate depth-only pass between
+    // them — see `createParticleDepthMaterial`.
     depthWrite: false,
     blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,
+    side: THREE.DoubleSide,
+    toneMapped: false,
+  });
+}
+
+/**
+ * The alpha layer's depth-only pass: same geometry, same shader, no colour.
+ *
+ * Neither particle layer used to write depth, so there was no depth
+ * relationship between them at all — ordering was decided entirely by
+ * `mesh.renderOrder` (`ParticleSystem._makeLayer`, additive 12 after alpha 10)
+ * and the additive layer always won it. Whatever the opacity layer composited,
+ * the additive sum was then added on top, from every camera, on every pixel,
+ * including where the opacity was physically in front. The dust skirt added "so
+ * the fireball has something dark to be read against" was drawn *behind* the
+ * fireball by construction. `reviews/round7/DIAG-axis6-vfx.md` measured the
+ * result: the additive layer deposits +142.93 L at the blast core against
+ * 1.56 L of surviving opacity, 92:1, and the opacity layer loses 80% of its own
+ * effect in the composite.
+ *
+ * This pass runs at `renderOrder` 11 — after the alpha colour pass, before the
+ * additive layer — and writes depth wherever the dust is opaque
+ * (`ALPHA_CUT.occlusion`). Additive fragments behind opaque dust are then
+ * z-rejected and fragments in front of it are untouched, which is the only
+ * thing that can tell those two cases apart. Draw order is deliberately left
+ * alone: reordering the layers was armed on a frozen frame and measured to buy
+ * 1.3 L of radial step while occluding with dust that is behind the fireball.
+ *
+ * **Sitting after the colour pass is not an implementation detail.** At
+ * `renderOrder` 9 the same depth would also z-reject the alpha layer's own
+ * sprites against each other, so the smoke column would self-occlude in ring
+ * buffer order — an ordering artifact in place of the one being fixed. At 11 it
+ * separates "which fragments are drawn" (all of them, unchanged) from "which
+ * fragments occlude" (the opaque ones), which is exactly the distinction a
+ * single-pass discard cannot express.
+ *
+ * The uniform objects are shared with the colour material by reference, not
+ * copied: `ParticleSystem.update` writes `uTime`, `uDepth`, `uResolution` and
+ * `uSoftEnabled` once per frame to the colour material, and this pass has to
+ * see the same values or its depth would be stamped from sprites at a different
+ * time than the ones on screen. Only `uAlphaCut` is its own.
+ */
+export function createParticleDepthMaterial(source) {
+  return new THREE.ShaderMaterial({
+    uniforms: { ...source.uniforms, uAlphaCut: { value: ALPHA_CUT.occlusion } },
+    vertexShader: ParticleVertexShader,
+    fragmentShader: ParticleFragmentShader,
+    transparent: false,
+    depthTest: true,
+    depthWrite: true,
+    colorWrite: false,
+    blending: THREE.NoBlending,
     side: THREE.DoubleSide,
     toneMapped: false,
   });
