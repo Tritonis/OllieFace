@@ -2,12 +2,14 @@ import * as THREE from 'three';
 import {
   PARTICLE_ATTRIBUTES,
   createParticleMaterial,
+  createParticleDepthMaterial,
 } from '../shaders/ParticleShader.js';
 
 /**
  * Pooled GPU particle system.
  *
- * Two draw calls total (one additive layer, one alpha layer). Each layer is a
+ * Three draw calls total: one additive layer, one alpha layer, and the alpha
+ * layer's colour-less depth pass between them. Each layer is a
  * fixed-capacity ring buffer of instanced quads; spawning writes attributes and
  * nothing else, and the shader derives the whole trajectory from those. That
  * means 20k live particles cost one uniform upload per frame plus whatever was
@@ -137,8 +139,27 @@ export class ParticleSystem {
     mesh.matrixAutoUpdate = false;
     this.root.add(mesh);
 
+    // The opacity layer draws twice: once for colour, and once for depth only,
+    // between its own colour pass and the additive layer. That second pass is
+    // what lets opaque dust occlude the fireball instead of being composited
+    // underneath it — see `createParticleDepthMaterial` for the measurement and
+    // for why 11 is the only render order that works.
+    //
+    // Same geometry object, so the instanced attributes `_flush` uploads are
+    // shared and there is nothing to keep in sync; it is one extra draw call
+    // for the layer, with no colour write.
+    let depthMesh = null, depthMat = null;
+    if (!additive) {
+      depthMat = createParticleDepthMaterial(mat);
+      depthMesh = new THREE.Mesh(geo, depthMat);
+      depthMesh.frustumCulled = false;
+      depthMesh.renderOrder = 11;
+      depthMesh.matrixAutoUpdate = false;
+      this.root.add(depthMesh);
+    }
+
     this.layers[name] = {
-      capacity, head: 0, live: 0, mesh, geo, mat, attrs,
+      capacity, head: 0, live: 0, mesh, geo, mat, attrs, depthMesh, depthMat,
       dirtyMin: Infinity, dirtyMax: -Infinity, wrapped: false,
     };
   }

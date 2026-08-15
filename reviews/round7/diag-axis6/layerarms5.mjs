@@ -15,14 +15,16 @@
  * documented in DIAG-axis6-vfx.md section 0.2 cannot enter the comparison.
  *
  * Arms:
- *   p5-pre / p5-pre2  alpha layer depthWrite false, cut 0.004  (pre-fix; twice, for calibration A)
- *   p5-post           shipped fixed state, untouched            (depthWrite true, cut 0.35)
- *   p5-cut15/25/45    the same, with the alpha cut swept
- *   p5-prepass        pre-fix colour pass + a colour-less depth-only pass of the
- *                     same geometry at cut 0.35, renderOrder 11 (after the alpha
- *                     colour pass, before the additive layer). Separates "which
- *                     fragments are drawn" from "which fragments occlude", which
- *                     a single-pass discard cannot.
+ *   p5-pre / p5-pre2  the alpha layer's depth pass hidden — no depth relationship
+ *                     between the layers at all, i.e. the pre-fix engine (twice,
+ *                     for calibration A)
+ *   p5-post           shipped state, untouched: colour pass at cut 0.004 with no
+ *                     depth write, depth-only pass at renderOrder 11, cut 0.35
+ *   p5-cut15/25/45    the same, with the *occlusion* cut swept
+ *   p5-discard        the mechanism this branch abandoned, kept as an arm so its
+ *                     cost stays on the record from the same boot: no depth pass,
+ *                     the alpha colour pass writing depth with its own cut raised
+ *                     to 0.35 — one constant doing both jobs.
  *
  * node layerarms5.mjs [--port 5371] [--out <dir>] [--phase 0.09]
  */
@@ -41,6 +43,7 @@ for (let i = 2; i < process.argv.length; i++) {
 const SEED = Number(args.seed ?? 1337);
 const PORT = Number(args.port ?? 5371);
 const PHASE = Number(args.phase ?? 0.09);
+const AGE = Number(args.age ?? 4.0);
 const OUT = path.resolve(args.out ?? 'shots-layerarms5');
 const W = 1600, H = 900;
 
@@ -60,10 +63,17 @@ await page.goto(`http://127.0.0.1:${PORT}/?seed=${SEED}&quality=3&harness=1`, { 
 await page.waitForFunction(() => globalThis.__GAME__?.ctx?.stage != null, null, { timeout: 60000 });
 await page.evaluate(() => globalThis.__HARNESS__.explosion());
 
-const info = await page.evaluate((phase) => {
+const info = await page.evaluate(([phase, age]) => {
   const G = globalThis.__GAME__, ctx = G.ctx;
   const b = ctx.vfx._blasts.reduce((a, x) => (a && a.radius >= x.radius ? a : x), null);
   const p = new G.THREE.Vector3(b.x, b.y, b.z);
+  // Age the scenario's own blast out of the frame before emitting the measured
+  // one. Pass 4 left it in, and it is a second particle field sitting on top of
+  // the controlled one at a phase the shutter lottery picks: across two boots of
+  // this script with it present, the largest radial step about the same centre
+  // came out 7.6 -> 29.7 L and 9.2 -> 9.7 L. The controlled phase is only a
+  // constant of the measurement if nothing *else* in the frame is still moving.
+  ctx.vfx.particles.update(ctx, age);
   ctx.vfx.explosion(p, 6, 0xff8a20);
   ctx.vfx.particles.update(ctx, phase);
   const v = p.clone().project(ctx.camera);
@@ -74,11 +84,15 @@ const info = await page.evaluate((phase) => {
     let n = 0;
     for (let i = 0; i < l.capacity; i++) if (t[i * 2 + 1] > 0) n++;
     alive[nm] = { alive: n, renderOrder: l.mesh.renderOrder, depthWrite: l.mat.depthWrite,
-      alphaCut: l.mat.uniforms.uAlphaCut?.value ?? null };
+      alphaCut: l.mat.uniforms.uAlphaCut?.value ?? null,
+      depthPass: l.depthMesh
+        ? { renderOrder: l.depthMesh.renderOrder, depthWrite: l.depthMat.depthWrite,
+          colorWrite: l.depthMat.colorWrite, cut: l.depthMat.uniforms.uAlphaCut.value }
+        : null };
   }
-  return { world: [b.x, b.y, b.z], radius: b.radius, phase, layers: alive,
+  return { world: [b.x, b.y, b.z], radius: b.radius, phase, age, layers: alive,
     x: Math.round((v.x + 1) * 0.5 * innerWidth), y: Math.round((1 - v.y) * 0.5 * innerHeight) };
-}, PHASE);
+}, [PHASE, AGE]);
 console.log('probe', JSON.stringify(info, null, 1));
 
 await mkdir(OUT, { recursive: true });
@@ -99,39 +113,30 @@ async function shoot(name, src) {
   console.log(`rendered ${name}`);
 }
 
-// Restore the pre-fix alpha layer: no depth write, and the old fixed 0.004 cut.
+// Pre-fix engine: hide the depth-only pass and nothing else. The colour passes
+// are already exactly what they were before this branch.
 const PRE = `
-const dw=L.alpha.mat.depthWrite, cut=L.alpha.mat.uniforms.uAlphaCut.value;
-L.alpha.mat.depthWrite=false; L.alpha.mat.uniforms.uAlphaCut.value=0.004;
-L.alpha.mat.needsUpdate=true;
-undo.push(()=>{L.alpha.mat.depthWrite=dw; L.alpha.mat.uniforms.uAlphaCut.value=cut; L.alpha.mat.needsUpdate=true;});
+L.alpha.depthMesh.visible=false;
+undo.push(()=>{L.alpha.depthMesh.visible=true;});
 `;
 const cutTo = (v) => `
-const cut=L.alpha.mat.uniforms.uAlphaCut.value;
-L.alpha.mat.uniforms.uAlphaCut.value=${v};
-undo.push(()=>{L.alpha.mat.uniforms.uAlphaCut.value=cut;});
+const cut=L.alpha.depthMat.uniforms.uAlphaCut.value;
+L.alpha.depthMat.uniforms.uAlphaCut.value=${v};
+undo.push(()=>{L.alpha.depthMat.uniforms.uAlphaCut.value=cut;});
 `;
-// Depth-only pass: the alpha layer's own geometry drawn a second time with no
-// colour write, after its colour pass and before the additive layer.
-const PREPASS = PRE + `
-const src=L.alpha.mat;
-const dm=src.clone();
-dm.uniforms=THREE.UniformsUtils.clone(src.uniforms);
-for (const k in src.uniforms) dm.uniforms[k].value=src.uniforms[k].value;
-dm.uniforms.uAlphaCut={value:0.35};
-dm.colorWrite=false; dm.depthWrite=true; dm.depthTest=true; dm.transparent=false; dm.blending=THREE.NoBlending;
-dm.needsUpdate=true;
-const dmesh=new THREE.Mesh(L.alpha.geo, dm);
-dmesh.frustumCulled=false; dmesh.renderOrder=11; dmesh.matrixAutoUpdate=false;
-ctx.vfx.particles.root.add(dmesh);
-undo.push(()=>{ ctx.vfx.particles.root.remove(dmesh); dm.dispose(); });
+// The abandoned mechanism: one constant deciding visibility and occlusion both.
+const DISCARD = PRE + `
+const cut=L.alpha.mat.uniforms.uAlphaCut.value;
+L.alpha.mat.uniforms.uAlphaCut.value=0.35;
+L.alpha.mat.depthWrite=true; L.alpha.mat.needsUpdate=true;
+undo.push(()=>{L.alpha.mat.uniforms.uAlphaCut.value=cut; L.alpha.mat.depthWrite=false; L.alpha.mat.needsUpdate=true;});
 `;
 
 for (const [name, src] of [
   ['p5-pre', PRE], ['p5-pre2', PRE],
   ['p5-post', ''],
   ['p5-cut15', cutTo(0.15)], ['p5-cut25', cutTo(0.25)], ['p5-cut45', cutTo(0.45)],
-  ['p5-prepass', PREPASS],
+  ['p5-discard', DISCARD],
 ]) await shoot(name, src);
 
 await browser.close();

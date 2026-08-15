@@ -18,7 +18,7 @@ import path from 'node:path';
 
 const DIR = path.resolve(process.argv[2] ?? '.');
 const CX = Number(process.argv[3] ?? 568), CY = Number(process.argv[4] ?? 326);
-const KEYS = ['p5-pre', 'p5-pre2', 'p5-post', 'p5-cut15', 'p5-cut25', 'p5-cut45', 'p5-prepass'];
+const KEYS = ['p5-pre', 'p5-pre2', 'p5-post', 'p5-cut15', 'p5-cut25', 'p5-cut45', 'p5-discard'];
 
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage();
@@ -74,9 +74,18 @@ const stepOf = (k) => {
       if (b >= NB) continue;
       acc[b].n++; acc[b].l += L(px[k], i);
     }
+  // A ring of width 4 px at radius r holds about 2*pi*r*4 pixels, so the
+  // innermost bins hold a dozen and their mean is noise. Taking the max over
+  // all of them lets the smallest sample in the frame win it: on two boots with
+  // *identical* particle state (1112 additive / 480 alpha sprites alive, both),
+  // the unguarded statistic returned 38.0 L @ r=4 and 14.6 L @ r=4 for the same
+  // arm. Requiring 200 px in both bins of a pair starts the search at r~12 and
+  // costs nothing real -- the fireball's rim, which is what this statistic
+  // exists to find, sits at r=20-32.
+  const MINN = 200;
   let best = 0, at = 0;
   for (let b = 1; b < NB; b++) {
-    if (!acc[b].n || !acc[b - 1].n) continue;
+    if (acc[b].n < MINN || acc[b - 1].n < MINN) continue;
     const d = Math.abs(acc[b].l / acc[b].n - acc[b - 1].l / acc[b - 1].n);
     if (d > best) { best = d; at = b * BW; }
   }
