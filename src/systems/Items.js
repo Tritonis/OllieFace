@@ -403,7 +403,7 @@ export class Items {
     // its own inventory, and the resulting `itemMutated` names its owner.
     this._unsub.push(ctx.events.on('corruptionBand', ({ band, prev }) => {
       if (!ctx.authority || band <= prev) return;
-      for (let b = Math.max(prev + 1, MUTATION.minBand, this._mutePeak + 1); b <= band; b++) {
+      for (let b = Math.max(prev + 1, this.nextTollBand()); b <= band; b++) {
         this._mutePeak = b;
         this._muteQueue.push(b);
       }
@@ -644,6 +644,27 @@ export class Items {
   }
 
   /**
+   * The lowest band whose blight toll is still owed — the mutation floor until
+   * a crossing has been paid, and one above the deepest band paid after that.
+   * Can exceed the last band, which is how a caller learns nothing is left to
+   * pay; the crossing listener simply runs no iterations in that case.
+   *
+   * The `corruptionBand` listener reads this for its loop bound and the Argent
+   * Font's disclosure reads it for its toll clock, for the same reason
+   * `stabilisable` is shared: the line that promises a threat and the code that
+   * collects it must agree. The disclosure derived its own answer from world
+   * corruption alone once, and told a party that had already spiked into a band
+   * and bled back down that the toll it had paid was still coming.
+   *
+   * `_mutePeak` only advances on the host, so a client reads the floor rather
+   * than the truth; the caller there is a prompt, and it also floors the answer
+   * at the band above the live world so the number it prints stays forward.
+   */
+  nextTollBand() {
+    return Math.max(MUTATION.minBand, this._mutePeak + 1);
+  }
+
+  /**
    * The blight stacks a cleansing could hand back, sorted. A query, not a side
    * effect, because the Argent Font's prompt has to be able to promise the
    * reward *before* the player pays for it (issue #32) — and the caller that
@@ -674,7 +695,13 @@ export class Items {
    *   relative to a run whose inventory happened to differ — the sp-equivalence
    *   hazard, and `gate:sp` is what finds out. The salt is the font's stage and
    *   press index (`ArgentFont.interact`), so successive presses at one font
-   *   pick different stacks without anything being rolled.
+   *   pick different stacks without anything being rolled. That pair is unique
+   *   across the whole run, and not because presses are rare: `_populateShrines`
+   *   draws shrine types out of its bag without replacement and gates the
+   *   guaranteed font on the stage not already holding one, so a stage carries
+   *   at most one Argent Font, ever. Two fonts sharing a salt is not an
+   *   improbable collision to be tolerated — it is a state the placement code
+   *   cannot produce.
    * - Eligible ids are sorted, so the pick cannot depend on Map insertion order.
    * - Host only. A client adopts the two `'corrupt'` writes off the wire like
    *   any other inventory change.

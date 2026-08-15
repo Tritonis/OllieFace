@@ -1419,10 +1419,15 @@ export function gaugeGradations(bands = BANDS) {
  * The last band has nothing above it. Rather than invent a threshold it names
  * the band the party is in and says the truth about the top of the scale: the
  * gauge stops having lines to cross, the pressure does not stop climbing.
+ *
+ * Both arguments degrade rather than throw: a missing or non-finite `world` or
+ * `band` reads as 0. This is exported as a pure function, so its contract is
+ * owed to callers that are not the gauge, and a `NaN` band used to index off
+ * the end of `bands` and crash rather than say something honest.
  */
 export function nextThresholdLine(world, band, bands = BANDS) {
   const w = Number.isFinite(world) ? Math.max(0, world) : 0;
-  const i = Math.min(bands.length - 1, Math.max(0, Math.floor(band ?? 0)));
+  const i = Math.min(bands.length - 1, Math.max(0, Number.isFinite(band) ? Math.floor(band) : 0));
   const next = bands[i + 1];
   if (!next) return `${bands[i].name} - last band, feeds still scale enemies`;
   // At least 1: `band` is the system's own reading and can sit a frame behind a

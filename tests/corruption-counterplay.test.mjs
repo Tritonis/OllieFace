@@ -436,6 +436,18 @@ function makeFontCtx({ gold = 100000, seed = 424242, authority = true } = {}) {
 /** Corruption straight onto the gauge, with no pickup and no ledger noise. */
 const setWorld = (w, to) => w.corruption.feed(w.ctx.player, to - w.corruption.world);
 
+/**
+ * Spike the gauge to `peak`, then bleed it back to `to`. `feed` refuses a
+ * non-positive delta, so `setWorld` can only ever push the world *up* — which
+ * is precisely why every original toll-clock assertion was blind to the state
+ * this file's C1 regression lives in. A run reaches it by the ordinary route:
+ * a Voidtouched kill refunds corruption, or a font is pressed at all.
+ */
+const spikeThenBleed = (w, peak, to) => {
+  setWorld(w, peak);
+  w.corruption.bleed(w.ctx.player, peak - to);
+};
+
 console.log('all five facts, on three lines, off the live world');
 {
   // 120 is chosen so every disclosed number moves: Overrun -> Blighted, a bank
@@ -458,7 +470,12 @@ console.log('all five facts, on three lines, off the live world');
   ok(lines[1].includes((-cleanseAmount(120) * PRESSURE.perWorld).toFixed(2)),
     `fact 4b — the Director pressure that comes off (${lines[1]})`);
 
-  ok(lines[2].includes(`${BANDS[3].at - 90} to the next blight toll`),
+  // Climbing to 120 crossed Blighted and Overrun, so both of those tolls are
+  // already paid and Consumed is the only one left to be kept away from. This
+  // assertion used to read `BANDS[3].at - 90` — the distance back up to a
+  // threshold this very fixture had already crossed and settled — which is the
+  // bug it was meant to be pinning down.
+  ok(lines[2].includes(`${BANDS[4].at - 90} to the next blight toll`),
     `fact 5 — the toll headroom the press buys back (${lines[2]})`);
   ok(!/[^\x20-\x7e—]/.test(font.prompt().replace(/\n/g, '')),
     'ASCII plus the em dash this prompt already used — no glyphs the HUD cannot set');
@@ -491,6 +508,65 @@ console.log('the toll clock knows the mutation floor, and knows when there is no
   ok(bandOf(4000 - cleanseAmount(4000)) === BANDS.length - 1, 'the fixture really is pinned in the top band');
   ok(f2.prompt().includes('no further blight toll'),
     `nothing above the last band to promise (${f2.prompt().split('\n')[2]})`);
+}
+
+console.log('the toll clock never counts down to a toll that has already been paid');
+{
+  // The whole point of the line is "what does pressing now keep me away from".
+  // A party that spiked to Overrun paid Blighted's toll and Overrun's on the
+  // way up, and `_mutePeak` does not rewind when the gauge falls — so quoting
+  // the distance back up to Blighted names a threat that already fired and can
+  // never fire again. Derived from world corruption alone, that is exactly what
+  // the line said.
+  const w = makeFontCtx();
+  spikeThenBleed(w, 150, 30);                            // Overrun, then back to Seeded
+  ok(w.corruption.band === 1 && w.items._mutePeak === 3,
+    `the fixture is the reachable state: band ${w.corruption.band}, tolls paid to ${w.items._mutePeak}`);
+
+  const font = new ArgentFont(w.ctx, new THREE.Vector3(), 0);
+  const clock = font.prompt().split('\n')[2];
+  const after = 30 - cleanseAmount(30);
+  ok(!clock.includes(`${BANDS[2].at - after} to the next blight toll`),
+    `the paid Blighted toll is not quoted as pending (${clock})`);
+  ok(clock.includes(`${BANDS[4].at - after} to the next blight toll`),
+    `the next *unpaid* toll is the one named (${clock})`);
+
+  // And the honest degradation: every toll paid means there is none to promise,
+  // however far below the top band the gauge has fallen back.
+  const spent = makeFontCtx();
+  spikeThenBleed(spent, 400, 30);
+  ok(spent.items._mutePeak === BANDS.length - 1, 'the deep spike claimed every band');
+  ok(spent.corruption.band === 1, 'and the gauge really did fall back out of it');
+  ok(new ArgentFont(spent.ctx, new THREE.Vector3(), 0).prompt().includes('no further blight toll'),
+    'a run that has paid every toll is told so, not given a stale number');
+}
+
+console.log('the prompt and the crossing listener read one shared answer');
+{
+  // `stabilisable` set the precedent: the caller that promises a thing and the
+  // caller that does it read the same query. `nextTollBand` is the same
+  // contract for the toll — a second derivation beside the listener's loop
+  // bound is how the clock came to disagree with the collector in the first
+  // place.
+  const w = makeFontCtx();
+  ok(w.items.nextTollBand() === MUTATION.minBand,
+    `a fresh run owes the mutation floor first (${w.items.nextTollBand()})`);
+
+  spikeThenBleed(w, 150, 30);
+  ok(w.items.nextTollBand() === w.items._mutePeak + 1,
+    'after a spike the query names the band above the deepest one paid');
+
+  // Re-crossing a paid band collects nothing: the listener's loop bound is the
+  // same query the prompt just read, so the two cannot disagree.
+  w.items._muteQueue.length = 0;
+  setWorld(w, 100);                                      // back up through Blighted
+  ok(w.items._muteQueue.length === 0,
+    'the re-crossing queued no mutation — the prompt was right to promise none');
+
+  const top = makeFontCtx();
+  spikeThenBleed(top, 400, 0);
+  ok(top.items.nextTollBand() >= BANDS.length,
+    `past the last band the query says so rather than clamping (${top.items.nextTollBand()})`);
 }
 
 console.log('the disclosure promises the freed stack only when there is one to free');
