@@ -117,6 +117,23 @@ corruption."
 - three.js wants glTF/GLB; kits commonly ship FBX. Budget a conversion pass, and verify
   that generated normals and material bindings survive the conversion before counting an
   asset as usable.
+- **A mesh import seam now exists: `src/world/ModelKit.js` (#59).** Two things a mesh
+  search must now screen for, because they are what the seam needs and nothing else is:
+  **glTF/GLB natively**, and a **regular swatch grid** in the palette atlas. The seam reads
+  a face's UV as an index into that grid — `atlasCell` — and binds one `Materials.js`
+  material per swatch through `attachWorldSurface`, so the pack's own per-part material
+  split survives without any re-UVing. A pack whose atlas is *not* a regular grid has no
+  route through the seam today and must be reported as such rather than assumed convertible.
+- **The bookkeeping per model is smaller than `model-kits.md` estimated, and the loader
+  leg is spent.** Measured on KayKit `chest.glb`: one glTF material, 728 faces, exactly two
+  swatch cells, so the whole manifest for the model is two lines. `surveyKitGeometry`
+  reports the cells; an unmapped cell throws rather than defaulting, which is rule 1's
+  "name which `PALETTE` entry each colour maps to" enforced mechanically.
+- **Authored textures are never fetched, decoded or uploaded**, so a pack's atlas does not
+  enter the download budget at all — the loader answers glTF's `loadMaterial` hook before
+  the parser can resolve a texture. The seam also drops `uv` and `tangent` once the faces
+  are classified (28,896 bytes on that one chest), because no kit material samples them.
+  For #28 this means a mesh pack's payload is **geometry only**.
 - Textures: prefer PNG source, note KTX2/Basis as the shipping target.
 - **Download/VRAM budget: PLACEHOLDER, pending issue #28 (open as of this writing).**
   The game currently carries essentially zero asset payload. No numeric ceiling exists
