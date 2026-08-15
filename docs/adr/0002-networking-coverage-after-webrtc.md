@@ -52,6 +52,18 @@ test-only Koffi module declaring four exported symbols the Binding does not bind
 and a running Steam client. It is optional, and it is the only arm that can watch
 the shipping library carry the shipping protocol without a second machine.
 
+**Paid, and built, 2026-08-15 (#64).** `npm run smoke:steam` —
+`tools/steamsmoke.mjs` over `tools/steamnet.mjs`. Cheaper than the estimate: two
+of the four entry points are bound (`CreateSocketPair`,
+`SetGlobalConfigValueInt32`), the other two belong to the two-process arm and are
+existence-checked only, and no package was patched. Three green runs at 3 peers / 60 Hz / 30 s:
+1080 of 1080 reliable messages delivered exactly once in order, p99 0.21-0.28 ms
+against a 5.0 ms limit — **8-14x cheaper than the WebRTC baseline**, not the 2.5x
+more expensive the criterion allowed for. Impairment ported and verified biting:
+25 ms of `FakePacketLag_Recv` lands as 25.9 ms, 5% of `FakePacketLoss_Recv` drops
+5.2% of snapshots while reliable delivery survives it intact. Evidence:
+`reviews/net-baseline/STEAM-SOCKETPAIR.md`.
+
 **C. A scripted two-machine run** for what remains: identity, the Introduction,
 SDR, NAT. Scripted so the human cost is *start it on both boxes and read the
 record*, not *drive the menus*. This is issue #13, promoted from a manual
@@ -90,11 +102,14 @@ checkpoint to a scripted one.
 - Arm B, if declined, is not a small loss: without it nothing automated ever
   exercises the real Steam library, and arm C becomes the *only* evidence that
   the shipping Conversation works. Declining it should be a decision, not a
-  drift.
+  drift. **It was not declined — see above.**
 - Impairment coverage moves libraries. `?netlag=` / `?netloss=`
   (`src/net/NetConfig.js`) belongs to the WebRTC transport and dies with it; the
   Steam equivalent is `k_ESteamNetworkingConfig_FakePacketLag_Recv`, reachable
   only through arm B's module. Same shape — receive-side, one-directional — so
-  the arm is a port rather than a redesign.
+  the arm is a port rather than a redesign. **Ported and verified biting**
+  (`--lag-ms`, `--loss-pct` on `tools/steamsmoke.mjs`), so `NetConfig.js` can die
+  with the transport it belongs to rather than outliving it as the only
+  impairment rig we have.
 - `tools/coopprobe.mjs` and `tools/signal-server.mjs` still go. Nothing here
   argues for keeping them; the point is only what must exist first.

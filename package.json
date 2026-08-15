@@ -21,7 +21,8 @@
     "desktop": "npm run build && electron .",
     "desktop:run": "electron .",
     "desktop:pack": "npm run build && electron-builder --win --dir",
-    "steamsdk": "node tools/steamsdk.mjs"
+    "steamsdk": "node tools/steamsdk.mjs",
+    "smoke:steam": "node tools/steamsmoke.mjs --peers 3 --hz 60 --entities 60 --run-s 30 --warmup-s 3 --label steam-socketpair-3peer-60hz"
   },
   "build": {
     "appId": "com.olliface.telluricvoid",
@@ -53,6 +54,7 @@
   "devDependencies": {
     "electron": "43.3.0",
     "electron-builder": "26.15.3",
+    "koffi": "^3.1.5",
     "playwright": "^1.62.1",
     "steamworks.js": "0.4.0",
     "vite": "^8.2.0"
