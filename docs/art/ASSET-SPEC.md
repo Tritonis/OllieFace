@@ -11,7 +11,7 @@ names buying five unrelated packs as "the fastest way to score badly there."
 Ratified 2026-08-15. Where this spec and `docs/ART-STYLE-GUIDE.md` disagree, **this
 document wins** and the guide is corrected to match. Source still outranks both on any
 transcribed fact — the palette at `src/world/Materials.js:23-69`, the Void constants at
-`src/shaders/BlightMask.js:88-89` — and a document disagreeing with those is wrong,
+`src/shaders/BlightMask.js:152-153` — and a document disagreeing with those is wrong,
 whichever document it is.
 
 **When a decision is made, it is written here first**, then reconciled into the guide in
@@ -67,7 +67,7 @@ those drive lighting and environment, not the material/prop palette above.
 
 ## The Void overlay
 
-Source of truth: `src/shaders/BlightMask.js:88-89` (`MASK_APPLY`), linear-space GLSL
+Source of truth: `src/shaders/BlightMask.js:152-153` (`MASK_APPLY`), linear-space GLSL
 constants. Verified against that file as of this writing:
 
 ```glsl
@@ -80,10 +80,10 @@ fill) and `#6d48bc` (saturated violet, vein glow), applying the sRGB transfer fu
 each linear component. These are **derived sRGB values for search guidance only** — the
 shader constants above are authoritative.
 
-> Do not take these from the comment at `BlightMask.js:87`, which states `#2b1340` and
-> `#7a46c8`. Neither is reachable from the constants under the sRGB transfer function or
-> under a plain 2.2 gamma; that comment is stale and is tracked at #58. The values in this
-> section are the computed conversion.
+> The comment beside those constants used to state `#2b1340` and `#7a46c8`, neither of
+> which is reachable from the constants under the sRGB transfer function or under a plain
+> 2.2 gamma. That comment (`BlightMask.js:146-151`) has since been corrected and now names
+> the same `#3a2349` / `#6d48bc` this section computes, so the two no longer disagree.
 Nothing should be colour-matched against the hex approximations in any code path; they
 exist purely so a human or agent can recognize "is this roughly the right family of
 violet" while browsing a marketplace thumbnail.
