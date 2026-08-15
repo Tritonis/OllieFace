@@ -163,3 +163,25 @@ called from `applyBiome` alongside a full terrain rebuild.
 
 Both critics reached FAIL on axis 5 and both called it blocked. They were right that
 it is blocked and wrong about what blocks it.
+
+### THAT FIX LANDED THE SAME DAY. This section is history, not a work item.
+
+**`b09c3d4` — "World: reflections finally contain the world", 2026-08-01.** `bakeProbe`
+photographs `ctx.scene` from `Stage.build`; the one-mesh probe scene above is described
+in the past tense at `src/world/Environment.js:524`. The code excerpt at lines 145-147
+of this file is **pre-fix** and its line numbers no longer resolve.
+
+This note exists because the omission cost real work. Issue #19 was written from the
+unamended text above, quoted the pre-fix line numbers as a live defect, and an agent
+was dispatched in 2026-08 to implement a fix that already existed. It found the staleness
+only by enumerating the callers instead of trusting the framing.
+
+**What was still broken, and was fixed in 2026-08:** the *realm* path. Realms are built
+4 km out and never received a scene bake at all, and a realm **return trip** silently
+stripped the standing overworld back to a sky-only probe. So the defect this section
+describes was real in realms long after it was fixed in the overworld — which is why the
+symptom kept being reported after `b09c3d4`.
+
+Rule this earns: **when an adjudication in this file is acted on, amend the adjudication
+to name the commit.** A refutation that does not record its own resolution reads as an
+open work item forever.
