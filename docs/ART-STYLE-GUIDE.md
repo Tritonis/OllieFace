@@ -208,6 +208,40 @@ texture sets via `getTextureSets()` / `withRepeat` (`src/world/Materials.js:1092
 hands the result to `attachWorldSurface`. New content joins that pattern or it does not
 land.
 
+### An externally-authored mesh joins it through `ModelKit.js`
+
+Added by #59. Until then there was no import path at all, and the reason the obvious one
+does not work is UV semantics rather than taste: every CC0 kit worth having UV-maps its
+models into a **palette atlas**, where a face's UV is a point sample into a swatch and not
+a parameterisation of the surface. Binding a repeating procedural texture to coordinates
+like that produces garbage, and re-UVing is per-model work across 200-330 models.
+
+`src/world/ModelKit.js` reads the atlas cell as what it already is — a per-face material
+index the pack ships — and binds one `Materials.js` material per swatch, through
+`attachWorldSurface`, from the `KIT_SURFACES` ladder whose colours are `PALETTE` entries
+verbatim. Three consequences that bear on what may be shortlisted:
+
+- **No authored texture is fetched, decoded or uploaded.** The loader answers glTF's
+  `loadMaterial` hook before the parser resolves a texture dependency, so rule 3 is enforced
+  structurally rather than cleaned up afterwards.
+- **An imported mesh is not a flat-shaded silhouette.** It takes the metre-scale detail
+  field and the corruption mask like any other world surface, and since #60 both are
+  sampled in world space, neither imposes any UV contract on it. Measured through one
+  identical crop by `tools/kitprobe.mjs` (`shots-modelkit/record.json`, `pair`): the
+  palette-rebound KayKit chest carries **209** unique luma values over 27,885 px against
+  the same mesh's **195** with its authored atlas intact, and the authored copy arrives at
+  mean luma **93.8** against the rebind's **67.0**. The rebind costs no surface detail,
+  because a gradient atlas has none to lose; what it removes is a value problem. Both
+  counts move by a value or two between runs — the grade's animated grain is inside them.
+  Near-field only: these detail classes retire by 22-50 m by design, so past that band an
+  imported prop *is* a silhouette in the palette.
+- **What is lost is the near-field UV map**, the authored texel variation `ART-ASSETS.md`
+  names as the fix for axis 5's detail-starvation half. That, and only that, needs re-UVing.
+
+**Check before it lands.** For an imported mesh, point at the manifest: every atlas cell
+named, every name resolving to a `KIT_SURFACES` entry. An unnamed cell is a throw, not a
+default colour. `tools/kitprobe.mjs` produces the rule-2 and rule-4 renders in one run.
+
 **Check before it lands.** Point at the line where the new content calls
 `attachWorldSurface`. If there is no such line, the content is not in the pipeline.
 

@@ -2,6 +2,13 @@ node_modules/
 dist/
 dist-desktop/
 
+# Externally-authored mesh kits, fetched by hand for the #59 import seam and
+# read by `tools/kitprobe.mjs`. Nothing binary is committed until issue #26
+# closes and a pack is actually chosen; `src/world/ModelKit.js` takes the model
+# URL as an argument precisely so no asset has to live in the tree to test it.
+# The fetch command for the one model the probe expects is in kitprobe's header.
+assets/kit/
+
 # Local build config. `.env.example` is the committed template; a real `.env`
 # carries TURN credentials and must not be.
 .env
