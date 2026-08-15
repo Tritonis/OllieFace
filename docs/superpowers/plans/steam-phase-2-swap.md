@@ -89,9 +89,11 @@ in [ADR 0002](../../adr/0002-networking-coverage-after-webrtc.md). The coverage
 splits three ways:
 
 - **A. A transport conformance suite**, in process, no Steam and no browser,
-  against the seam (`sendState`, `sendEvent`, `onMessage`, `onPeer`,
-  `onPeerLeave`, `close`, `broadcastState`, `broadcastEvent`) — one suite that
-  both transports pass. Rendezvous is outside the contract.
+  against the seam **as enumerated in `docs/STEAM.md` section 8.5** — one suite
+  that both transports pass. The Introduction is outside the contract. Note the
+  enumeration corrects section 3's long-standing "exactly three methods": the
+  peer surface is eight members, including `pumpSim()` and a raw
+  `RTCDataChannel` read inside `NetHost`, and step 5 below inherits that as work.
 - **B. Optional: a Steam-layer smoke on one box** via `CreateSocketPair` with
   network loopback, which costs a test-only Koffi module for four symbols the
   Binding does not bind, plus a running Steam client.
@@ -111,7 +113,7 @@ qualify.
 **A prerequisite found during #53:** unlike `steamworks.js`, `steamworks-ffi-node`
 ships no Steam redistributable — it loads `steam_api64.dll` from a
 `steamworks_sdk/` tree we must acquire from partner.steamgames.com and vendor
-ourselves, and carry into step 7's packaging. See `docs/STEAM.md` section 8.5;
+ourselves, and carry into step 7's packaging. See `docs/STEAM.md` section 8.6;
 **[uncertain]** whether that download needs an approved partner account, which
 would put it back on Valve's clock.
 
@@ -121,9 +123,20 @@ owner-only `SetLobbyData` is what forced the joiner's answer through a P2P packe
 
 ### 5. Swap the Conversation
 
-WebRTC -> `NetworkingSockets`, implemented against the existing seam. Per
-`docs/STEAM.md:139-144`, `NetHost` and `NetClient` touch a peer through exactly three
-methods plus three transport lifecycle hooks, so **no gameplay code is touched**.
+WebRTC -> `NetworkingSockets`, implemented against the existing seam, enumerated
+in `docs/STEAM.md` section 8.5. The claim this step used to rest on — three peer
+methods plus three transport hooks, so **no gameplay code is touched** — was
+checked during #53 and is wrong in two places that cost work here:
+
+- `NetHost.js:532` calls `peer.pumpSim()` unconditionally every frame. A Steam
+  peer must implement it, if only as a no-op.
+- `NetHost.js:404-405` reads `peer.events.readyState` and `.bufferedAmount` —
+  raw `RTCDataChannel` — to decide whether a refusal has drained. Replace with a
+  transport-neutral `drained()` on the peer **before** the Steam transport
+  arrives, not around it.
+
+Everything else about the claim holds: gameplay code proper is untouched, and the
+two repairs above are both inside `NetHost`.
 
 ### 6. Delete the WebRTC era
 
@@ -161,7 +174,7 @@ folder.
 Both halves, one sitting, eyes on the screen. If either does not appear, the invite
 path is dead and no dead invite button ships.
 
-### 9. Two-seat invite test (#13), two machines
+### 9. Two-seat invite test (#13), two machines, scripted
 
 Against the packed artifact, on the shipping architecture. The joiner half has never
 met a real host.

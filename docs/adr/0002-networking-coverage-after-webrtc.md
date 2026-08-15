@@ -24,13 +24,21 @@ is the half that no single box can run.
 
 **A. A transport conformance suite — in process, no Steam, no browser.**
 One suite, run twice: once against the WebRTC transport and once against the
-Steam one, driving real `NetHost` and `NetClient` through the seam
-`docs/STEAM.md` section 3 already names — `sendState`, `sendEvent`, `onMessage`
-on a peer, `onPeer` / `onPeerLeave` / `close` on the transport, plus
-`broadcastState` / `broadcastEvent`. Rendezvous (`createInvite` / `join`) is
-deliberately **outside** the contract: it is the part that is genuinely different
-between the two, and pretending otherwise is how a portable suite quietly stops
-being portable.
+Steam one, driving real `NetHost` and `NetClient` through the seam **as
+enumerated in `docs/STEAM.md` section 8.5** — which is not the seam
+section 3 has claimed since it was written. Section 3 says three peer methods;
+the real number is eight, and the two extra ones are the whole problem:
+`pumpSim()`, which `NetHost.js:532` calls unconditionally every frame, and
+`peer.events.readyState` / `.bufferedAmount`, which `NetHost.js:404-405` reads
+straight off an `RTCDataChannel`. A Steam transport built to satisfy section 3's
+sentence throws on its first frame with a connected client. Section 3 now carries
+that correction; the enumeration, not the count, is the contract.
+
+The Introduction (`createInvite` / `join`) is deliberately **outside** the
+contract: it is the part that is genuinely different between the two transports,
+and pretending otherwise is how a portable suite quietly stops being portable.
+`broadcastState` is outside it too, for the opposite reason — it has no caller
+anywhere in the tree.
 
 This is the parachute. It is authored while WebRTC still exists and must pass
 against WebRTC before anything is deleted.
@@ -44,10 +52,10 @@ test-only Koffi module declaring four exported symbols the Binding does not bind
 and a running Steam client. It is optional, and it is the only arm that can watch
 the shipping library carry the shipping protocol without a second machine.
 
-**C. A scripted two-machine run** for what remains: identity, rendezvous, SDR,
-NAT. Scripted so the human cost is *start it on both boxes and read the record*,
-not *drive the menus*. This is issue #13, promoted from a manual checkpoint to a
-scripted one.
+**C. A scripted two-machine run** for what remains: identity, the Introduction,
+SDR, NAT. Scripted so the human cost is *start it on both boxes and read the
+record*, not *drive the menus*. This is issue #13, promoted from a manual
+checkpoint to a scripted one.
 
 ## Considered options
 
@@ -71,6 +79,14 @@ scripted one.
 - Arm A is written against a seam, so it is also the specification the Steam
   transport in #55 is implemented against. The suite comes first and the
   transport is written to pass it.
+- **#55 acquires a prerequisite of its own:** `NetHost._closeWhenFlushed` reads
+  `RTCDataChannel`'s `readyState` and `bufferedAmount` through the peer
+  (`NetHost.js:404-405`). That is WebRTC vocabulary inside host logic, and the
+  contract cannot be transport-neutral while it stands. It wants a `drained()`
+  predicate on the peer, changed *before* the Steam transport exists rather than
+  worked around inside it. `pumpSim` is the milder twin of the same problem: a
+  Steam peer must implement it as a no-op purely because `NetHost.js:532` calls
+  it unguarded.
 - Arm B, if declined, is not a small loss: without it nothing automated ever
   exercises the real Steam library, and arm C becomes the *only* evidence that
   the shipping Conversation works. Declining it should be a decision, not a

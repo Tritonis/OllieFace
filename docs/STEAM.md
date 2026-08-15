@@ -143,6 +143,14 @@ the transport. A Steam-backed transport implementing that same shape drops in
 without touching a line of gameplay code. The refactor the research recommends
 doing first has, in effect, already been done.
 
+> **Corrected — see section 8.5.** "Exactly three methods" is wrong, and it was
+> wrong when written. The real peer surface is eight members, one of which
+> (`peer.events.readyState` / `.bufferedAmount`) is a raw `RTCDataChannel` read
+> from inside `NetHost`. The paragraph's conclusion survives — the seam is still
+> narrow and no gameplay code is touched — but a Steam transport built to satisfy
+> the sentence above would throw on its first frame. Section 8.5 enumerates the
+> surface instead of counting it.
+
 ### Do you still need TURN?
 
 - **Full Steam networking** → no TURN, no STUN, no signalling server. Ever.
@@ -532,7 +540,7 @@ foreground process.
 each other at all is untested here. It does not change the answer: `ConnectP2P`
 "uses the default rendezvous service ... on Steam, it goes through the steam
 backend"
-([isteamnetworkingsockets.h:116-127](https://github.com/ValveSoftware/GameNetworkingSockets/blob/master/include/steam/isteamnetworkingsockets.h)),
+([isteamnetworkingsockets.h:116-127](https://github.com/ValveSoftware/GameNetworkingSockets/blob/e707b3a6b638f4de31ee3e13a64284bd9abfa98e/include/steam/isteamnetworkingsockets.h)),
 so even a positive result buys a gate that needs a live login and a reachable
 Valve backend.
 
@@ -546,11 +554,11 @@ communicating over the network"*. Passing `bUseNetworkLoopback = true` sends the
 packets through 127.0.0.1 on ephemeral ports, which restores packetisation,
 encryption **and fake lag and loss** — the default in-memory mode has none of
 those
-([isteamnetworkingsockets.h:392-417](https://github.com/ValveSoftware/GameNetworkingSockets/blob/master/include/steam/isteamnetworkingsockets.h)).
+([isteamnetworkingsockets.h:392-417](https://github.com/ValveSoftware/GameNetworkingSockets/blob/e707b3a6b638f4de31ee3e13a64284bd9abfa98e/include/steam/isteamnetworkingsockets.h)).
 
 Fake impairment is configured through `k_ESteamNetworkingConfig_FakePacketLag_Recv`
 and friends
-([steamnetworkingtypes.h:1419-1478](https://github.com/ValveSoftware/GameNetworkingSockets/blob/master/include/steam/steamnetworkingtypes.h)),
+([steamnetworkingtypes.h:1419-1478](https://github.com/ValveSoftware/GameNetworkingSockets/blob/e707b3a6b638f4de31ee3e13a64284bd9abfa98e/include/steam/steamnetworkingtypes.h)),
 which are receive-side and one-directional — the same shape as this repo's own
 `?netlag=` rig, so `coopprobe`'s impaired arm is reproducible in principle.
 
@@ -562,7 +570,13 @@ running Steam client.
 ### 8.3 ...and no, not through either candidate Binding
 
 This is the finding that decides it. Read against the published packages, not
-their prose:
+their prose — `steamworks-ffi-node` is not installed in this tree, so its rows
+come from the npm tarball
+([`steamworks-ffi-node@0.10.4`](https://www.npmjs.com/package/steamworks-ffi-node/v/0.10.4),
+downloaded and unpacked 2026-08-15; `package/dist/internal/SteamLibraryLoader.js`
+is where every Koffi declaration lives, and it agrees with
+[`src/internal/SteamLibraryLoader.ts`](https://github.com/ArtyProf/steamworks-ffi-node/blob/main/src/internal/SteamLibraryLoader.ts)
+at that version):
 
 | Binding | Conversation surface it actually exposes |
 |---|---|
@@ -587,7 +601,7 @@ fork of native code involved. It obtains its interface pointers from
 of ours can call the same way.
 
 Four exported symbols, all present in Valve's flat header
-([steamnetworkingsockets_flat.h:25-26, 44, 84](https://github.com/ValveSoftware/GameNetworkingSockets/blob/master/include/steam/steamnetworkingsockets_flat.h)):
+([steamnetworkingsockets_flat.h:25-26, 44, 84](https://github.com/ValveSoftware/GameNetworkingSockets/blob/e707b3a6b638f4de31ee3e13a64284bd9abfa98e/include/steam/steamnetworkingsockets_flat.h)):
 
 - `SteamAPI_ISteamNetworkingSockets_CreateSocketPair`
 - `SteamAPI_ISteamNetworkingUtils_SetGlobalConfigValueInt32` (fake lag / loss)
@@ -598,14 +612,59 @@ Four exported symbols, all present in Valve's flat header
 Cost: a small Koffi module under `tools/`, plus a running Steam client on the box.
 It is a test-only surface and must never be reachable from shipping code.
 
-### 8.5 A prerequisite discovered on the way, wider than #53
+### 8.5 The seam, enumerated
+
+Arm A is only as good as this list, so it is enumerated from what `NetHost`,
+`NetClient` and `Lobby` actually reach for, not from what section 3 claims. Every
+row is a member a Steam-backed transport must provide.
+
+**On a peer:**
+
+| Member | Where it is required | Note |
+|---|---|---|
+| `id` | `NetHost.js:152` and throughout | Stable, and the key of `HostTransport.peers`. |
+| `sendState(bytes)` | `NetHost.js:590`, `NetClient.js:270` | Unreliable channel. |
+| `sendEvent(bytes)` | `NetHost.js:181`, `NetClient.js:125` | Reliable channel. |
+| `onMessage = (data, label, peer)` | `NetHost.js:146`, `NetClient.js:103` | `label` is `'state'` or `'events'`. |
+| `onClose = () => {}` | `NetHost.js:147`, `NetClient.js:104` | Per-peer, and *distinct* from the transport's `onPeerLeave`. |
+| `pumpSim()` | **`NetHost.js:532`** | Called unconditionally, every frame, with no optional chaining. A transport that omits it makes `NetHost.update` throw on the first frame with a connected client. `NetClient.js:456` guards it; the host does not. |
+| `close()` | `NetHost.js:406`, `NetClient.js:236` | |
+| `events.readyState` / `events.bufferedAmount` | **`NetHost.js:404-405`** | The one genuine leak. `_closeWhenFlushed` reads the raw `RTCDataChannel` to decide whether a refusal has drained before it hangs up. |
+
+The last two rows are why "no gameplay code is touched" needs qualifying.
+`pumpSim` exists only for the WebRTC `?netlag=` rig and is meaningless on a Steam
+connection, yet it is on the contract because `NetHost` calls it — so a Steam peer
+either implements it as a no-op or `NetHost.js:532` changes. The `events` read is
+worse: it is `RTCDataChannel`'s vocabulary, in `NetHost`, and it needs a
+transport-neutral replacement (a `drained()` predicate on the peer is the obvious
+one) before #55 rather than after.
+
+**On the host transport:** `onPeer`, `onPeerLeave`, `peers` (a `Map`, whose size
+`Lobby` bounds), `broadcastEvent(bytes, except)`, `close()`.
+`createInvite` / `cancelInvite` are rendezvous and therefore out of the portable
+contract. Note `broadcastState` **has no caller anywhere in the tree** — `NetHost`
+sends snapshots per peer at `NetHost.js:590` — so it is dead code today and does
+not belong on the contract.
+
+**On the client transport:** `join(inviteBlob)` (rendezvous), `onConnected`,
+`onDisconnected`, `peer`.
+
+**Dying with WebRTC, not portable:** `trickle`, `onIceCandidate`,
+`addIceCandidate` on both transports. `Lobby` uses all three
+(`Lobby.js:338-339, 497, 694, 722`) and they have no Steam analogue — Steam does
+its own route-finding.
+
+### 8.6 A prerequisite discovered on the way, wider than #53
 
 `steamworks-ffi-node` **does not bundle the Steamworks redistributable.** Its
 loader looks for `steamworks_sdk/redistributable_bin/win64/steam_api64.dll`
-relative to the project root and fails with a setup message if it is absent; its
+relative to the project root and fails with a setup message if it is absent
+(`package/dist/internal/SteamLibraryLoader.js:135` in the 0.10.4 tarball); its
 postinstall says outright that *"due to Valve's licensing terms, the Steamworks
 SDK redistributables cannot be bundled with this package and must be downloaded
-separately"* from partner.steamgames.com. `steamworks.js` ships a prebuilt binary
+separately"* from partner.steamgames.com (`package/postinstall.js`). The tarball
+ships `prebuilds/{win32-x64,linux-x64,darwin-x64,darwin-arm64}/steam-overlay.node`
+and no `steam_api64.dll` at all. `steamworks.js` ships a prebuilt binary
 and needs no such step, so this is a new obligation that arrives with the Binding
 swap: acquire the DLL, vendor it, and admit it to `build.files` alongside the
 Binding in step 7. **[uncertain]** whether that download requires an approved
