@@ -502,3 +502,113 @@ keep it that way.
 **Then re-run this task**: the packaged smoke, and the two-seat checkpoint with
 the real appid. The Spacewar result does not transfer — appid is what Steam
 matches lobbies and invites on.
+
+---
+
+## 8. Can one box test the Conversation automatically?
+
+Investigated 2026-08-15 for issue #53, because deleting the WebRTC Conversation
+deletes `npm run probe:coop` — the project's only automated proof that two peers
+ever meet. The decision this produced is
+[ADR 0002](adr/0002-networking-coverage-after-webrtc.md). This section is the
+evidence behind it.
+
+The question splits into three, and they have three different answers.
+
+### 8.1 Two Steam identities on one box: no
+
+A Steam identity is an account, one Steam client runs per machine, and one
+account plays one session at a time. Two peers on one box therefore means a
+second Windows user session, a second Steam install, a second account and a
+second interactive Steam Guard login that has to survive reboots. That is the
+"human login for every gate" #53 rules out, and it would put Valve's backend on
+the critical path of a test run.
+
+Ownership is *not* the obstacle — Spacewar (appid 480) is free to every account.
+The obstacle is that the Steam client is a single-session, interactive,
+foreground process.
+
+**[uncertain]** Whether two processes under *one* account can `ConnectP2P` to
+each other at all is untested here. It does not change the answer: `ConnectP2P`
+"uses the default rendezvous service ... on Steam, it goes through the steam
+backend"
+([isteamnetworkingsockets.h:116-127](https://github.com/ValveSoftware/GameNetworkingSockets/blob/master/include/steam/isteamnetworkingsockets.h)),
+so even a positive result buys a gate that needs a live login and a reachable
+Valve backend.
+
+### 8.2 Two real Steam connections inside one process: yes in the SDK
+
+`ISteamNetworkingSockets::CreateSocketPair` exists precisely for this — Valve's
+own words are *"very useful for testing, or so that our client/server code can be
+compiled in a single process"*. Two connection handles, immediately connected,
+closing either one posts the peer callback on the other *"exactly as if they were
+communicating over the network"*. Passing `bUseNetworkLoopback = true` sends the
+packets through 127.0.0.1 on ephemeral ports, which restores packetisation,
+encryption **and fake lag and loss** — the default in-memory mode has none of
+those
+([isteamnetworkingsockets.h:392-417](https://github.com/ValveSoftware/GameNetworkingSockets/blob/master/include/steam/isteamnetworkingsockets.h)).
+
+Fake impairment is configured through `k_ESteamNetworkingConfig_FakePacketLag_Recv`
+and friends
+([steamnetworkingtypes.h:1419-1478](https://github.com/ValveSoftware/GameNetworkingSockets/blob/master/include/steam/steamnetworkingtypes.h)),
+which are receive-side and one-directional — the same shape as this repo's own
+`?netlag=` rig, so `coopprobe`'s impaired arm is reproducible in principle.
+
+`CreateListenSocketIP` / `ConnectByIPAddress` are the two-*process* version of the
+same idea: ordinary UDP, no Steam identity in the path, so two Node processes on
+one box can hold a real connection. Both still need `SteamAPI_Init`, hence a
+running Steam client.
+
+### 8.3 ...and no, not through either candidate Binding
+
+This is the finding that decides it. Read against the published packages, not
+their prose:
+
+| Binding | Conversation surface it actually exposes |
+|---|---|
+| `steamworks.js@0.4.0` (installed) | Four functions, all legacy `ISteamNetworking`: `sendP2PPacket`, `isP2PPacketAvailable`, `readP2PPacket`, `acceptP2PSession` — every one addressed by SteamID64. `node_modules/steamworks.js/client.d.ts`. |
+| `steamworks-ffi-node@0.10.4` (the candidate) | 24 `NetworkingSockets` entry points. The only two that create anything are `CreateListenSocketP2P` and `ConnectP2P` — both identity-addressed. |
+
+Neither package contains the string `CreateSocketPair`, `CreateListenSocketIP`,
+`ConnectByIPAddress` or `SetGlobalConfigValue` anywhere. So on both the Phase 2
+path and its `ISteamNetworking` fallback, **every way of opening a Conversation
+is addressed by Steam identity**, and 8.1 applies to all of them. The loopback
+facility that would make a single-box gate possible exists in Valve's library and
+is not reachable from JavaScript today.
+
+### 8.4 What it would take to reach it
+
+Less than it sounds, and this is why the socket-pair arm is worth costing rather
+than dismissing. `steamworks-ffi-node` is Koffi FFI over the flat C API in
+`steam_api64.dll` — declarations are data, not C++, so there is no compiler and no
+fork of native code involved. It obtains its interface pointers from
+`SteamAPI_SteamNetworkingSockets_SteamAPI_v012()` and
+`SteamAPI_SteamNetworkingUtils_SteamAPI_v004()`, both of which a test-only module
+of ours can call the same way.
+
+Four exported symbols, all present in Valve's flat header
+([steamnetworkingsockets_flat.h:25-26, 44, 84](https://github.com/ValveSoftware/GameNetworkingSockets/blob/master/include/steam/steamnetworkingsockets_flat.h)):
+
+- `SteamAPI_ISteamNetworkingSockets_CreateSocketPair`
+- `SteamAPI_ISteamNetworkingUtils_SetGlobalConfigValueInt32` (fake lag / loss)
+- `SteamAPI_ISteamNetworkingSockets_CreateListenSocketIP` (only if two processes
+  are wanted as well)
+- `SteamAPI_ISteamNetworkingSockets_ConnectByIPAddress` (likewise)
+
+Cost: a small Koffi module under `tools/`, plus a running Steam client on the box.
+It is a test-only surface and must never be reachable from shipping code.
+
+### 8.5 A prerequisite discovered on the way, wider than #53
+
+`steamworks-ffi-node` **does not bundle the Steamworks redistributable.** Its
+loader looks for `steamworks_sdk/redistributable_bin/win64/steam_api64.dll`
+relative to the project root and fails with a setup message if it is absent; its
+postinstall says outright that *"due to Valve's licensing terms, the Steamworks
+SDK redistributables cannot be bundled with this package and must be downloaded
+separately"* from partner.steamgames.com. `steamworks.js` ships a prebuilt binary
+and needs no such step, so this is a new obligation that arrives with the Binding
+swap: acquire the DLL, vendor it, and admit it to `build.files` alongside the
+Binding in step 7. **[uncertain]** whether that download requires an approved
+partner account — if it does, it lands on the same Valve clock the plan currently
+treats as off the critical path. Tracked separately, because it blocks the swap
+(#54) rather than the coverage question.

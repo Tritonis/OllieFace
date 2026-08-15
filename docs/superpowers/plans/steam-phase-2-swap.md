@@ -82,18 +82,38 @@ pages forming a co-op session — which is the project's *only* automated
 connection-formation coverage. `gate:mp1` measures gameplay equivalence, not two
 peers meeting.
 
-- Investigate whether single-box automated networking testing is achievable at all
-  on Steam. Requiring two machines and a human login for every gate is not a gate.
-- Expected landing point if it is not: **split the coverage** — contract tests
-  against the transport seam (`sendState`, `sendEvent`, `onMessage`, `onPeer`,
-  `onPeerLeave`, `close`) for the logic, plus a scripted two-machine run for the
-  real Steam path.
+**Resolved 2026-08-15 (#53).** It is not achievable end to end: every way either
+candidate Binding can open a Conversation is addressed by Steam identity, and a
+machine holds one Steam identity. Evidence in `docs/STEAM.md` section 8, decision
+in [ADR 0002](../../adr/0002-networking-coverage-after-webrtc.md). The coverage
+splits three ways:
+
+- **A. A transport conformance suite**, in process, no Steam and no browser,
+  against the seam (`sendState`, `sendEvent`, `onMessage`, `onPeer`,
+  `onPeerLeave`, `close`, `broadcastState`, `broadcastEvent`) — one suite that
+  both transports pass. Rendezvous is outside the contract.
+- **B. Optional: a Steam-layer smoke on one box** via `CreateSocketPair` with
+  network loopback, which costs a test-only Koffi module for four symbols the
+  Binding does not bind, plus a running Steam client.
+- **C. A scripted two-machine run** (#13, promoted from manual) for identity,
+  rendezvous and SDR — the half no single box can run.
+
+**This changes step 6's entry condition.** The deletion may not proceed until
+arm A is green *against the WebRTC transport*. Written-but-unrun does not
+qualify.
 
 ### 4. Replace the Binding
 
 `steamworks.js` -> `steamworks-ffi-node` across the Introduction: lobby create/join,
 `openInviteDialog`, the `GameLobbyJoinRequested` callback, and the overlay. Everything
 `docs/STEAM.md` section 7 marks *Wired* reverts to unverified at this step.
+
+**A prerequisite found during #53:** unlike `steamworks.js`, `steamworks-ffi-node`
+ships no Steam redistributable — it loads `steam_api64.dll` from a
+`steamworks_sdk/` tree we must acquire from partner.steamgames.com and vendor
+ourselves, and carry into step 7's packaging. See `docs/STEAM.md` section 8.5;
+**[uncertain]** whether that download needs an approved partner account, which
+would put it back on Valve's clock.
 
 One thing to watch for as an improvement rather than a risk: `steamworks.js@0.4.0`'s
 owner-only `SetLobbyData` is what forced the joiner's answer through a P2P packet
@@ -106,6 +126,9 @@ WebRTC -> `NetworkingSockets`, implemented against the existing seam. Per
 methods plus three transport lifecycle hooks, so **no gameplay code is touched**.
 
 ### 6. Delete the WebRTC era
+
+**Entry condition, from step 3:** the transport conformance suite passes against
+the WebRTC transport. Not before.
 
 Code and docs both, cleanly — not marked superseded in place. This repo already
 carries the cost of documents whose later halves overturn their earlier ones, and
