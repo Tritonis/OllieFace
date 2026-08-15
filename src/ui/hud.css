@@ -2299,6 +2299,19 @@ body.menu-open { cursor: default; }
   display: flex;
   align-items: center;
   gap: 0.55em;
+  /* The bar states a whole transaction now — the priced feeders' longest line
+     measures 130 characters (issue #30) and the Argent Font writes three lines
+     (#32) — so it needs a stated width rather than an inherited one.
+     `left: 50%` with no `right` was already shrink-to-fitting the box to 50vw,
+     which is why nothing ever ran off the edge; but that cap is a side effect
+     of the centring technique, not a decision, and it left the worst line at
+     three rows on a 1024-wide window while spanning half of a 2560 one.
+     `max-content` asks for the width the text actually wants and the `max`
+     caps it: 48em keeps the measure readable, 86vw keeps a margin at any
+     window. Measured in chromium against this file, 640 to 2560 wide — worst
+     case two rows, nothing clipped, short prompts unchanged. */
+  width: max-content;
+  max-width: min(48em, 86vw);
   padding: 0.3em 1.1em 0.3em 0.5em;
   background: var(--panel);
   border-top: 1px solid var(--line);

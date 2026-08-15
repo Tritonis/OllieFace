@@ -69,6 +69,13 @@ console.log('it survives a re-tune, and a band that ran ahead of the world');
   ok(nextThresholdLine(9999, 0).includes('in 1'),
      'a world that has outrun its own band label still counts at least one point, never a negative one');
   ok(nextThresholdLine(NaN, 0) === nextThresholdLine(0, 0), 'a non-finite world reads as pristine, the corruption.js idiom');
+  // The band argument used to be defended with `?? 0`, which lets NaN straight
+  // through to index off the end of the table. `Corruption.band` can never be
+  // NaN, so nothing shipped was ever going to hit it — but this is exported as
+  // a pure function, and a pure function that crashes on one of its two
+  // arguments while degrading on the other has an inconsistent contract.
+  ok(nextThresholdLine(0, NaN) === nextThresholdLine(0, 0), 'a non-finite band degrades the same way, rather than throwing');
+  ok(nextThresholdLine(0, undefined) === nextThresholdLine(0, 0), 'and the missing-band case it always handled still holds');
 }
 
 console.log("every band's line is plain ASCII - this project renders no glyphs");

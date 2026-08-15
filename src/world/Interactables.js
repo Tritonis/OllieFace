@@ -1504,13 +1504,17 @@ export class ArgentFont extends Interactable {
       pressure <= -0.005 ? `pressure ${pressure.toFixed(2)}` : 'pressure held',
     ];
 
-    // The toll clock. `Items._mutePeak` never rewinds, so no cleansing can
-    // re-arm a threshold already paid — what this press buys is distance to the
-    // *next* one, and below `MUTATION.minBand` that is Blighted rather than the
-    // band immediately above.
-    const tollBand = Math.max(bandOf(after) + 1, MUTATION.minBand);
+    // The toll clock. A paid threshold never re-arms, so what this press buys
+    // is distance to the *next unpaid* one — and which band that is belongs to
+    // `Items`, not to a second derivation here: a party that spiked into Overrun
+    // and bled back down owes Consumed, not the Blighted mark it can see itself
+    // sitting below. The world-side floor stays as the outer `max` because a
+    // client's `_mutePeak` never advances, and a toll clock that reads behind
+    // the live gauge would count down to a line already crossed.
+    const items = Items.of(this.ctx, this.ctx.player);
+    const tollBand = Math.max(bandOf(after) + 1, items?.nextTollBand?.() ?? MUTATION.minBand);
     const gain = [];
-    if (Items.of(this.ctx, this.ctx.player)?.stabilisable?.().length) gain.push('frees 1 blight stack');
+    if (items?.stabilisable?.().length) gain.push('frees 1 blight stack');
     gain.push(tollBand < BANDS.length
       ? `${Math.round(BANDS[tollBand].at - after)} to the next blight toll`
       : 'no further blight toll');
