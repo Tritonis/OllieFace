@@ -116,12 +116,13 @@ from a `steamworks_sdk/` tree we acquire from partner.steamgames.com and vendor
 ourselves, and carry into step 7's packaging. The download needs a Steam login but
 **not** partner approval, so it is off Valve's clock as this plan assumes.
 
-**It also cost this step an assumption.** The SDK to hand is 1.65; the Binding
-targets 1.64 and declares four symbols 1.65 does not export, one of them the
-accessor every `NetworkingSockets` call goes through — and it binds lazily, so
-`init()` reports healthy and the *first Conversation* is where it dies. Pair the
-Binding with SDK 1.64 and let `npm run steamsdk` prove the pairing before any
-behaviour is measured against it. See `docs/STEAM.md` section 8.6.
+**It also cost this step an assumption, now repaired.** SDK 1.65 was downloaded
+first; the Binding targets 1.64 and declares four symbols 1.65 does not export,
+one of them the accessor every `NetworkingSockets` call goes through — and it
+binds lazily, so `init()` reports healthy and the *first Conversation* is where it
+dies. **SDK 1.64 is now vendored and verified: 377 of 377 symbols resolve.** Run
+`npm run steamsdk` after any SDK or Binding bump, before behaviour is measured
+against the pair. See `docs/STEAM.md` section 8.6.
 
 One thing to watch for as an improvement rather than a risk: `steamworks.js@0.4.0`'s
 owner-only `SetLobbyData` is what forced the joiner's answer through a P2P packet

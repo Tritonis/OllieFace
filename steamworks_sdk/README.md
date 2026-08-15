@@ -8,10 +8,10 @@ root and fails if it is absent. This directory is that path. See
 
 | | |
 |---|---|
-| Source | `steamworks_sdk_165.zip`, downloaded 2026-08-15 from partner.steamgames.com |
-| SDK version | **1.65** |
-| File | `redistributable_bin/win64/steam_api64.dll`, 319 128 bytes |
-| SHA-256 | `E6D9BAFB9A41E42FBA7B21553DB49F8719027AF3F0DEB23FF86CFC44D60E776D` |
+| Source | `steamworks_sdk_164.zip`, downloaded 2026-08-15 from partner.steamgames.com |
+| SDK version | **1.64** — chosen to match `steamworks-ffi-node@0.10.4`, not because it is newest |
+| File | `redistributable_bin/win64/steam_api64.dll`, 317 080 bytes |
+| SHA-256 | `EB17909A76668CF9AE0B92A618A34A50F6C73D3A6787CB4DD8CE36A8B10BFB75` |
 
 ## Why only this file
 
@@ -34,15 +34,24 @@ SDK itself is not. **This repository is private, and that is load-bearing for th
 directory** — if it is ever made public, this file needs a decision rather than a
 default.
 
-## Version warning
+## Why not the newest SDK
 
-SDK 1.65 does **not** match what `steamworks-ffi-node@0.10.4` targets, and four of
-its declared symbols do not exist in this DLL — including
-`SteamAPI_SteamNetworkingSockets_SteamAPI_v012`, the accessor every
-`NetworkingSockets` call goes through. **The decision is to replace this file with
-SDK 1.64's**, which is what the Binding targets; 1.65 is what was to hand.
+Because newest is the wrong axis. SDK **1.65** was downloaded first and does not
+pair with the Binding: four of the 377 symbols `steamworks-ffi-node@0.10.4`
+declares are absent from its DLL, including
+`SteamAPI_SteamNetworkingSockets_SteamAPI_v012` — the accessor every
+`NetworkingSockets` call goes through. 1.65 exports `_v013` and nothing older.
+`SteamUtils_v010` → `_v011` and `SteamInput_v006` → `_v007` moved the same way,
+and `IsSteamRunningOnSteamDeck` is gone entirely.
 
-Do not take that on trust:
+1.64 carries exactly the versions the Binding names, verified rather than assumed:
+
+```
+SteamNetworkingSockets_SteamAPI -> v012      SteamUtils -> v010
+SteamNetworkingUtils_SteamAPI   -> v004      SteamInput -> v006
+```
+
+**Re-check this on every SDK bump — it is one command:**
 
 ```
 npm run steamsdk                          # verify what is vendored
@@ -50,6 +59,10 @@ node tools/steamsdk.mjs --zip <sdk.zip>   # adopt a different SDK, then verify
 ```
 
 It exits non-zero if any symbol the installed Binding declares is absent from the
-DLL. That check matters because the Binding resolves symbols **lazily** — a
+DLL, naming the version the DLL carries instead. Against 1.64 with the Binding
+present: **377 of 377 present**. Against 1.65: four missing.
+
+That check earns its keep because the Binding resolves symbols **lazily** — a
 missing export does not fail at `init()`, it fails the first time a Conversation
-is opened. Then update the table above with the new hash and version.
+is opened. Whenever this file changes, update the table above with the new hash
+and version.

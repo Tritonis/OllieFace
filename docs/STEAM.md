@@ -670,11 +670,12 @@ swap: acquire the DLL, vendor it, and admit it to `build.files` alongside the
 Binding in step 7. Tracked separately, because it blocks the swap (#54) rather
 than the coverage question.
 
-**Acquired 2026-08-15.** `steamworks_sdk_165.zip`, SDK **1.65**. One file is
-vendored — `steamworks_sdk/redistributable_bin/win64/steam_api64.dll` — with
-provenance and the licence position in `steamworks_sdk/README.md`. The zip is
-gitignored: 269 of its 270 entries are headers, samples and build tooling, and it
-carries six stray `steam_appid.txt` files that must never reach a packed build.
+**Acquired and settled 2026-08-15.** SDK **1.64** is vendored, at
+`steamworks_sdk/redistributable_bin/win64/steam_api64.dll`, with provenance, hash
+and the licence position in `steamworks_sdk/README.md`. 1.65 was downloaded first
+and rejected — see below. The zips are gitignored: 269 of 1.65's 270 entries are
+headers, samples and build tooling, and six of them are stray `steam_appid.txt`
+files that must never reach a packed build.
 
 **The partner-account question is settled, and favourably: no partner approval was
 required.** A Steam login is — `https://partner.steamgames.com/downloads/steamworks_sdk_165.zip`
@@ -687,9 +688,10 @@ put partner processing off the critical path survives this.
 
 #### And the SDK immediately falsified an assumption
 
-`steamworks-ffi-node@0.10.4` targets SDK **1.64**. Every symbol it declares in
-`package/dist/internal/SteamLibraryLoader.js` was diffed against the exports of
-the 1.65 DLL above. 373 of 377 resolve. **Four do not:**
+`steamworks-ffi-node@0.10.4` targets SDK **1.64**, and 1.65 was what got
+downloaded first. Every symbol the Binding declares in
+`dist/internal/SteamLibraryLoader.js` was diffed against the 1.65 DLL's exports.
+373 of 377 resolve. **Four do not:**
 
 | Declared by the Binding | Present in SDK 1.65 | Cost if unfixed |
 |---|---|---|
@@ -705,19 +707,23 @@ comment says so, deferring `koffi.func()` symbol lookup to first call to save
 first attempt to open a Conversation is where it dies. That is the worst available
 failure shape and it is worth knowing before #52's spike, not during it.
 
-**Decided 2026-08-15: pair the Binding with SDK 1.64**, which is what it targets.
-The alternative — patching the four version strings to v013 / v011 / v007 — is a
-four-string change, but it assumes the flat functions kept their signatures across
-an interface bump, and nothing available here can check that assumption. Getting
-the matching SDK asks nothing of us but a second download. **[uncertain]** that
-1.64 resolves all four cleanly: no 1.64 zip is on this box yet, so it is expected
-rather than verified. `npm run steamsdk` is the thing that will verify it, and it
-exits non-zero if it does not.
+**Decided and verified 2026-08-15: pair the Binding with SDK 1.64**, which is what
+it targets. The alternative — patching the four version strings to v013 / v011 /
+v007 — was rejected: it is a four-string change, but it assumes the flat functions
+kept their signatures across an interface bump, and nothing available here can
+check that assumption. Getting the matching SDK cost one more download.
 
-Until that zip lands, what is vendored is 1.65 — usable for the socket-pair gate
-below and **not** usable for the Binding.
+**377 of 377 symbols resolve against 1.64**, measured by `npm run steamsdk` with
+the Binding's loader in place. The accessor versions line up exactly —
+`SteamNetworkingSockets_SteamAPI_v012`, `SteamNetworkingUtils_SteamAPI_v004`,
+`SteamUtils_v010`, `SteamInput_v006` — and `IsSteamRunningOnSteamDeck` is present.
+This is no longer an expectation.
 
-Note this cuts the other way for arm B: **all four symbols #64 wants —
+**Re-run that check on every SDK bump.** It is the only thing standing between a
+version bump and a Conversation that dies on first use, and it is one command.
+
+None of this touches arm B: **all four symbols #64 wants —
 `CreateSocketPair`, `SetGlobalConfigValueInt32`, `CreateListenSocketIP`,
-`ConnectByIPAddress` — are exported by the 1.65 DLL**, confirmed by the same scan.
-The socket-pair arm is reachable against the SDK now sitting in the tree.
+`ConnectByIPAddress` — are exported by both 1.64 and 1.65**, confirmed by the same
+scan. The socket-pair arm is reachable against the SDK now sitting in the tree,
+and it was never the part at risk here.
