@@ -84,7 +84,13 @@ export const MASK_APPLY = /* glsl */ `
 if (uBlightCount > 0) {
   float bm = blightMask(vBlightWorld);
   if (bm > 0.001) {
-    // Linear-space void family (see file header): fill #2b1340, vein #7a46c8.
+    // Linear-space void family (see file header). As sRGB, the two constants
+    // below are fill #3a2349 and vein #6d48bc - which is what a human or an
+    // agent asked "what colour is the Void" should read off this file.
+    // docs/art/ASSET-SPEC.md quotes #3c284a / #6e4aba, eyeballed approximations
+    // that land within a couple of levels; the spec is right. The values this
+    // comment used to name (#2b1340 / #7a46c8) were reachable from neither the
+    // sRGB transfer function nor a plain 2.2 gamma, and were simply stale.
     const vec3 BM_TINT = vec3(0.0419, 0.0166, 0.0665);
     const vec3 BM_VEIN = vec3(0.1522, 0.0640, 0.5040);
     vec2 bp = vBlightWorld.xz;
