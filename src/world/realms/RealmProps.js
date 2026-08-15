@@ -5,7 +5,7 @@ import { Items } from '../../systems/Items.js';
 import { getTextureSets, withRepeat, attachWorldSurface } from '../Materials.js';
 // A realm's goods feed the void exactly as a stage's do, so its prompts wear
 // the same three-part price tag (issue #30).
-import { pricedPrompt, tierFeed, idsFeed } from '../corruptionPrice.js';
+import { pricedPrompt, tierFeedRange, idsFeed } from '../corruptionPrice.js';
 
 /**
  * Everything in a realm the player can press E on, plus the three gateways that
@@ -354,10 +354,14 @@ export class Refinery extends RealmProp {
   available() { return this.enabled && this.uses < this.maxUses; }
   // A step lands on uncommon or on legendary depending on what the bowl picks,
   // and the burned stack refunds nothing — so the debt is the span between the
-  // two tiers a step can produce, never zero.
+  // two tiers a step can produce, never zero. Through `tierFeedRange` rather
+  // than two bare `tierFeed`s because `interact` below rolls through
+  // `rollItem`, and Caprice replaces the tier it is handed: the bowl really can
+  // pay a lunar at 8, and a flat +2-5 under-quoted its own worst case.
   prompt() {
+    const step = tierFeedRange(['uncommon', 'legendary'], this.ctx);
     return pricedPrompt(this.ctx, `Refinery — upgrade one item a tier ($${this.cost})`,
-      tierFeed('uncommon'), tierFeed('legendary'));
+      step.min, step.max);
   }
 
   interact(pawn = this.ctx.player) {

@@ -178,6 +178,18 @@ export const PACT = { share: 0.35, maxUses: 1 };
  */
 export const PRESSURE = { perWorld: 0.004 };
 
+/**
+ * The Director coefficient a world this deep is already buying — the one thing
+ * every band charges, including the bands whose blight toll has already been
+ * paid. Lives here, beside the dial, because two surfaces quote it (the gauge's
+ * forecast line and every priced prompt's third clause) and a coefficient
+ * derived twice is a coefficient that drifts.
+ */
+export function pressureAt(world) {
+  const w = Number.isFinite(world) ? Math.max(0, world) : 0;
+  return PRESSURE.perWorld * w;
+}
+
 export function voidCreditRate(world) {
   return VOIDTOUCHED.ratePerWorld * Math.max(0, world);
 }

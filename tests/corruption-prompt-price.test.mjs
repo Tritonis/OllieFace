@@ -18,6 +18,7 @@ import { MarketStall, Refinery, VaultChest } from '../src/world/realms/RealmProp
 import { Corruption } from '../src/systems/Corruption.js';
 import { BANDS, SOURCES } from '../src/data/corruption.js';
 import { ITEM_BY_ID, ITEMS_BY_TIER } from '../src/data/items.js';
+import { CAPRICE_TIERS } from '../src/data/artifacts.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
@@ -255,6 +256,93 @@ console.log('interactables that feed nothing are left alone');
     'the Fallow Vault moves gold only');
   eq(new MarrowKiln(ctx, new THREE.Vector3(), 0).prompt(), 'Marrow Kiln (nothing to burn)',
     'the kiln takes an item away, so nothing lands in a pack');
+}
+
+// -------------------------------------------- the third clause reads the run
+//
+// The third part is the one that describes a *future* crossing, so unlike the
+// first two it depends on what the run has already paid. Every upward crossing
+// at or above the live toll floor blights a stack; a threshold once paid never
+// re-arms. Deriving the clause from world corruption alone made every priced
+// prompt promise a mutation the game would refuse to collect, from the first
+// press of the guaranteed Argent Font onward.
+console.log('a priced prompt asks Items what toll is still owed');
+{
+  const toll = (n) => {
+    const ctx = makeCtx({ gold: 100, world: 30 });
+    ctx.items.nextTollBand = () => n;
+    return new Chest(ctx, new THREE.Vector3(), 'small', 25).prompt().split(' | ')[2];
+  };
+  // Composed from the tuning, not from the helper under test.
+  const PRESSURE_AT_BLIGHTED = `enemy scale +${(0.004 * BANDS[2].at).toFixed(2)}`;
+
+  eq(toll(2), `Blighted in ${BANDS[2].at - 30}: an item mutates`,
+    'a run that still owes the Blighted toll is warned about it, exactly as before');
+  eq(toll(3), `Blighted in ${BANDS[2].at - 30}: ${PRESSURE_AT_BLIGHTED}`,
+    'a run that has paid it is told what the crossing does charge instead — pressure, not a mutation');
+  ok(toll(3).includes(`in ${BANDS[2].at - 30}`),
+    'the distance clause is unchanged: the line is still exactly where the band table puts it');
+
+  // Overrun shuts the ordinary Fracture whether or not a stack blights on the
+  // way through, so that clause survives a paid toll and the mutation does not.
+  const deep = (n) => {
+    const ctx = makeCtx({ gold: 100, world: 60 });
+    ctx.items.nextTollBand = () => n;
+    return new Chest(ctx, new THREE.Vector3(), 'small', 25).prompt().split(' | ')[2];
+  };
+  eq(deep(3), `Overrun in ${BANDS[3].at - 60}: an item mutates, clean route closes`, 'an owed Overrun toll states both consequences');
+  eq(deep(4), `Overrun in ${BANDS[3].at - 60}: clean route closes`,
+    'a paid one drops the mutation and keeps the route fact, which was never about the toll');
+
+  const bare = makeCtx({ gold: 100, world: 30 });
+  ok(new Chest(bare, new THREE.Vector3(), 'small', 25).prompt().includes('an item mutates'),
+    'a context whose items cannot answer falls back to the tuning floor rather than going silent');
+}
+
+// ------------------------------------------------------------------ Caprice
+//
+// `Items.rollItem` is `rollTier` *then* Caprice, and the quote only mirrored
+// the first half. Caprice throws the chosen tier away and draws off
+// CAPRICE_TIERS instead, which reaches lunar at 8 — so the Refinery, which
+// passes an explicit tier and got no range at all, advertised a flat +2-5 for
+// a bowl that could hand back 8.
+console.log('the quote models the whole roll pipeline, Caprice included');
+{
+  const caprice = (ctx) => {
+    ctx.artifacts = { has: (id) => id === 'caprice', capriceTier: () => 'lunar' };
+    return ctx;
+  };
+  const CAP = CAPRICE_TIERS.map((e) => FEED[e.tier] ?? 1);
+  const capLo = Math.min(...CAP), capHi = Math.max(...CAP);
+  ok(capHi === FEED.lunar && capLo === FEED.common,
+    `the artifact's shelf spans ${capLo} to ${capHi} — common to lunar`);
+
+  const plain = makeCtx({ gold: 1000 });
+  const held = caprice(makeCtx({ gold: 1000 }));
+
+  eq(new Refinery(plain, new THREE.Vector3(), 120).prompt(),
+    priced('Refinery — upgrade one item a tier ($120)', FEED.uncommon, FEED.legendary),
+    'without the artifact the refinery quotes the two tiers a step can land on, unchanged');
+  eq(new Refinery(held, new THREE.Vector3(), 120).prompt(),
+    priced('Refinery — upgrade one item a tier ($120)', capLo, capHi),
+    'with it the bowl quotes the shelf it will actually draw from — the under-quoted ceiling is the point');
+
+  // The bias-table feeders kept their ceiling only by coincidence (the folded
+  // blight share is 8 and lunar is also 8); their floors were breached in
+  // every case, because `TIER_BIAS.large` and `.legendary` carry `common: 0`.
+  const tl = SOURCES.chestTithe.large;
+  eq(new Chest(held, new THREE.Vector3(), 'large', 60).prompt(),
+    priced('Large Chest ($60)', tl + capLo, tl + Math.max(capHi, LARGE_ITEM.max)),
+    'a large chest can pay a common while the artifact is held, so its floor comes down to it');
+  eq(new Chest(caprice(makeCtx({ gold: 1000 })), new THREE.Vector3(), 'small', 25).prompt(),
+    priced('Chest ($25)', SOURCES.chestTithe.small + SMALL_ITEM.min, SOURCES.chestTithe.small + SMALL_ITEM.max),
+    'a small chest already spanned common to blight, so the artifact moves nothing');
+
+  // A fixed id is spawned directly and never goes near `rollItem`, so Caprice
+  // cannot reach it and the quote must not pretend otherwise.
+  eq(new MarketStall(caprice(makeCtx({ gold: 1000 })), new THREE.Vector3(), SHOP_ITEM, 90, 0).prompt(),
+    new MarketStall(makeCtx({ gold: 1000 }), new THREE.Vector3(), SHOP_ITEM, 90, 0).prompt(),
+    'a stall selling one named item quotes that item, artifact or no artifact');
 }
 
 console.log('without a corruption system the prompts are exactly what they were');

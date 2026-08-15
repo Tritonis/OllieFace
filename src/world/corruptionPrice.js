@@ -1,6 +1,7 @@
 // src/world/corruptionPrice.js
-import { BANDS, SOURCES, bandOf } from '../data/corruption.js';
+import { BANDS, MUTATION, SOURCES, bandOf, pressureAt } from '../data/corruption.js';
 import { ITEM_BY_ID, ITEMS_BY_TIER } from '../data/items.js';
+import { CAPRICE_TIERS } from '../data/artifacts.js';
 import { ORDINARY_TIERS } from '../systems/Items.js';
 
 /**
@@ -23,6 +24,17 @@ import { ORDINARY_TIERS } from '../systems/Items.js';
  * are in the number rather than in a footnote, and the quote cannot disagree
  * with the transaction.
  *
+ * That identity is only as good as the pipeline the range models, and the range
+ * has to model *all* of it: `Items.rollItem` is `rollTier` followed by Caprice,
+ * and quoting only the first half let the Refinery advertise +2-5 while the
+ * bowl handed out lunars at 8. `feedRangeOf` folds the second half in.
+ *
+ * The third clause is the other place the quote can drift from the transaction,
+ * and for the opposite reason: it describes a *future* crossing, and whether
+ * that crossing charges a blight toll depends on what the run has already paid.
+ * It reads `Items.nextTollBand()` rather than the world, for which see
+ * `bandEffect`.
+ *
  * Co-op caveat, the same one `ArgentFont.prompt` already carries: `Corruption`
  * is not replicated and `feed` is authority-gated, so a client's world reads 0
  * and its distance-to-the-next-band is the host's, stale. That is stale
@@ -43,6 +55,41 @@ export function idsFeed(ids) {
 }
 
 /**
+ * The face-value range a set of candidate tiers can feed, once the *rest* of
+ * the roll pipeline has had its say.
+ *
+ * `Items.rollTier` is only the first half of `Items.rollItem`. The second half
+ * is Caprice, which — while the artifact is held — throws away whatever tier
+ * was chosen and draws a fresh one off `CAPRICE_TIERS` instead, for every roll
+ * that did not come up blight. A quote that stopped at `rollTier` was quoting a
+ * pipeline the game does not run: the Refinery, which passes an explicit tier
+ * and therefore never even reaches `rollTier`, quoted a flat +2-5 while Caprice
+ * handed out lunars at 8. Modelling `CAPRICE_TIERS` rather than widening to the
+ * whole `itemFeed` table keeps the mirror a mirror — re-tune the artifact's
+ * shelf and the quote moves with it, and a shelf that dropped lunar would stop
+ * quoting lunar instead of over-quoting it forever.
+ */
+function feedRangeOf(tiers, ctx) {
+  let rolled = tiers;
+  if (ctx?.artifacts?.has?.('caprice')) {
+    // A corruption already rolled survives Caprice (`Items.rollItem`); every
+    // other outcome is replaced wholesale, so the pre-Caprice tiers are gone.
+    rolled = [...(tiers.includes('blight') ? ['blight'] : []), ...CAPRICE_TIERS.map((e) => e.tier)];
+  }
+  const feeds = rolled.map(tierFeed);
+  return { min: Math.min(...feeds), max: Math.max(...feeds) };
+}
+
+/**
+ * The face-value range one roll off an explicit tier list can feed — the
+ * Refinery's shape, where the caller names the tiers rather than a table.
+ */
+export function tierFeedRange(tiers, ctx = null) {
+  if (!tiers?.length) return { min: 0, max: 0 };
+  return feedRangeOf(tiers, ctx);
+}
+
+/**
  * The face-value range one roll off a `TIER_BIAS`-shaped table can feed.
  *
  * Mirrors `Items.rollTier` deliberately, in both of its rules: a zero weight
@@ -50,45 +97,67 @@ export function idsFeed(ids) {
  * carries corruption's blight share. Blight is the joint most expensive tier
  * there is, so a range that omitted it would under-quote the worst case the
  * player is actually buying — which is the one they need before pressing E.
+ *
+ * An empty table rolls nothing at all, so it short-circuits before the Caprice
+ * fold: an artifact cannot re-roll a draw that never happened.
  */
-export function biasFeedRange(bias) {
+export function biasFeedRange(bias, ctx = null) {
   const tiers = [];
   for (const tier in bias) if (bias[tier] > 0) tiers.push(tier);
   if (tiers.some((t) => ORDINARY_TIERS.includes(t)) && ITEMS_BY_TIER.blight?.length) tiers.push('blight');
   if (!tiers.length) return { min: 0, max: 0 };
-  const feeds = tiers.map(tierFeed);
-  return { min: Math.min(...feeds), max: Math.max(...feeds) };
+  return feedRangeOf(tiers, ctx);
 }
 
 /**
- * What crossing into each band actually does, in the fewest words that stay
- * true. Every upward crossing at or above `MUTATION.minBand` (2) converts one
- * held stack into its blight counterpart; band 3 additionally shuts the
- * ordinary Fracture, because `data/realms.js` caps that route at band 2 — so
- * Overrun is the line past which the clean ending is no longer on offer.
+ * What crossing into each band does *besides* charging its blight toll, in the
+ * fewest words that stay true. Band 1 is the warning and takes nothing; band 3
+ * additionally shuts the ordinary Fracture, because `data/realms.js` caps that
+ * route at band 2 — so Overrun is the line past which the clean ending is no
+ * longer on offer, whether or not a stack blights on the way through. Bands 2
+ * and 4 have nothing standing of their own: strip the toll and what is left is
+ * the Director pressure every point of world is buying anyway.
+ *
+ * The toll clause is deliberately *not* in this table, because it is not a
+ * property of the band. A paid threshold never re-arms, so whether crossing
+ * band 2 mutates an item is a fact about the run, not about band 2.
  */
-const BAND_EFFECT = [
-  '',
-  'blight takes root',
-  'an item mutates',
-  'an item mutates, clean route closes',
-  'an item mutates',
-];
+const BAND_STANDING = ['', 'blight takes root', '', 'clean route closes', ''];
 
 /** Prompt numbers are read at a glance: whole where possible, one place otherwise. */
 const fmt = (n) => (Number.isInteger(n) ? String(n) : String(Math.round(n * 10) / 10));
 
+/**
+ * What crossing into `band` costs, given the lowest band that still owes a
+ * blight toll.
+ *
+ * `tollBand` comes from `Items.nextTollBand()` — the same number the
+ * `corruptionBand` listener uses for its loop bound and the Argent Font for its
+ * toll clock, so the line that promises a mutation and the code that collects
+ * it read one authority. A party that spiked into Blighted and bled back down
+ * with a font is looking up at a mark it has already paid; promising it a
+ * mutation there is a falsehood the font, correctly, contradicts on the same
+ * frame. Where nothing is owed the clause states what the crossing *does*
+ * charge rather than going silent.
+ */
+function bandEffect(band, tollBand) {
+  const standing = BAND_STANDING[band] || '';
+  if (band >= tollBand) return standing ? `an item mutates, ${standing}` : 'an item mutates';
+  return standing || `enemy scale +${pressureAt(BANDS[band].at).toFixed(2)}`;
+}
+
 /** Distance to the next threshold, and what that threshold does. */
-function nextLine(world, added) {
+function nextLine(world, added, tollBand) {
   const deepest = BANDS[BANDS.length - 1];
   const next = BANDS[bandOf(world) + 1];
   if (!next) return `${deepest.name} - no line left to cross`;
   const gap = next.at - world;
+  const effect = bandEffect(next.id, tollBand);
   // When even the cheapest outcome already clears the gap, the crossing is not
   // a risk being quoted — it is a thing about to happen, and it says so.
   return added >= gap
-    ? `${next.name} now: ${BAND_EFFECT[next.id]}`
-    : `${next.name} in ${fmt(gap)}: ${BAND_EFFECT[next.id]}`;
+    ? `${next.name} now: ${effect}`
+    : `${next.name} in ${fmt(gap)}: ${effect}`;
 }
 
 /**
@@ -113,5 +182,9 @@ export function pricedPrompt(ctx, gain, min, max = min, qualifier = '') {
   let debt = `${lo === hi ? `+${fmt(lo)}` : `+${fmt(lo)}-${fmt(hi)}`} corruption`;
   if (qualifier) debt += ` ${qualifier}`;
   if (cor.greed) debt += ` (x${fmt(SOURCES.greedMult)} greed time)`;
-  return `${gain} | ${debt} | ${nextLine(cor.world ?? 0, lo)}`;
+  // The toll floor is `Items`' answer, never a second derivation here. Absent
+  // an item system (stub contexts) it degrades to `MUTATION.minBand`, which is
+  // the right answer for a run that has crossed nothing.
+  const toll = ctx?.items?.nextTollBand?.() ?? MUTATION.minBand;
+  return `${gain} | ${debt} | ${nextLine(cor.world ?? 0, lo, Number.isFinite(toll) ? toll : MUTATION.minBand)}`;
 }

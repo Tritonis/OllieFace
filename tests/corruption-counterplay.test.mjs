@@ -681,6 +681,98 @@ console.log('a client never stabilises anything');
   ok(!w.emitted.some((e) => e.name === 'itemStabilised'), 'and nothing was announced');
 }
 
+// -------------------------------------------------- one toll, three surfaces
+//
+// The programme built three places that answer "what does crossing the next
+// line cost you": the gauge's forecast legend, every priced prompt's third
+// clause, and the font's own toll clock. Only the third consulted
+// `Items.nextTollBand()`; the other two derived the answer from world
+// corruption alone, so a party that bled below a band whose mutation had
+// already fired read a promised blight on two surfaces and a different band on
+// the third, simultaneously, a few centimetres apart on the same screen.
+//
+// The state is the feature's own main line, not an edge case: `guaranteeBand`
+// is 2, so from Blighted up every stage places a font, and one press of it
+// lands the party below the mark it just paid.
+{
+  const { nextThresholdLine } = await import('../src/ui/HUD.js');
+  const { Chest } = await import('../src/world/Interactables.js');
+  const { BANDS: B, MUTATION, PRESSURE, bandOf: bandAt } = await import('../src/data/corruption.js');
+
+  /** The three sentences, read off one frame. */
+  const surfaces = (w) => ({
+    gauge: nextThresholdLine(w.corruption.world, w.corruption.band, B, w.items.nextTollBand()),
+    font: new ArgentFont(w.ctx, new THREE.Vector3(1, 0, 1), 4).prompt().split('\n')[2],
+    chest: new Chest(w.ctx, new THREE.Vector3(2, 0, 2), 'small', 25).prompt().split(' | ')[2],
+  });
+
+  console.log('a band whose toll is already paid is not promised again — on any of the three surfaces');
+  {
+    const w = makeFontCtx();
+    setWorld(w, 60);                       // Blighted: the crossing mutates, and is claimed
+    ok(w.items.nextTollBand() === 3, `the Blighted toll was collected, so band 3 is next (${w.items.nextTollBand()})`);
+    w.corruption.bleed(w.ctx.player, cleanseAmount(60));   // exactly one font press
+    ok(w.corruption.band === 1 && w.items.nextTollBand() === 3,
+      `the party is back in Seeded looking up at a mark it has paid (band ${w.corruption.band}, toll band ${w.items.nextTollBand()})`);
+
+    const s = surfaces(w);
+    // Composed from the tuning, not from the code under test: crossing 55 now
+    // charges only the Director pressure the world is already buying.
+    const pressure = `enemy scale +${(PRESSURE.perWorld * B[2].at).toFixed(2)}`;
+    ok(!s.gauge.includes('blights') && s.gauge.includes(pressure),
+      `the gauge names what the crossing does charge ("${s.gauge}")`);
+    ok(!s.chest.includes('mutates') && s.chest.includes(pressure),
+      `and so does every priced chest prompt ("${s.chest}")`);
+    // The font quotes the world its own press would leave behind, not the live
+    // one — that is its whole job — so its distance is measured from `after`.
+    const after = Math.max(0, w.corruption.world - cleanseAmount(w.corruption.world));
+    ok(s.font.includes(`${Math.round(B[3].at - after)} to the next blight toll`),
+      `while the font still counts down to the band that is genuinely owed ("${s.font}")`);
+
+    // The distance clause is a different question from the effect clause, and
+    // it was never wrong: Blighted really is 25 away.
+    ok(s.gauge.includes(`in ${Math.ceil(B[2].at - w.corruption.world)}`) && s.chest.includes(`in ${B[2].at - w.corruption.world}`),
+      `both still say how far the line is — only what it costs changed ("${s.chest}")`);
+  }
+
+  console.log('and the promise they used to make was false: re-crossing collects nothing');
+  {
+    const w = makeFontCtx();
+    setWorld(w, 60);
+    w.corruption.bleed(w.ctx.player, cleanseAmount(60));
+    const before = w.emitted.length;
+    setWorld(w, 60);                       // back up across BANDS[2].at
+    ok(w.corruption.band === 2, 'the party re-crossed the Blighted mark');
+    ok(!w.emitted.slice(before).some((e) => e.name === 'itemMutated'),
+      'and nothing blighted — a paid threshold never re-arms, which is why quoting one was a lie');
+  }
+
+  console.log('the Voidtouched refund route reads the same way');
+  {
+    const w = makeFontCtx();
+    spikeThenBleed(w, 150, 30);
+    ok(w.items.nextTollBand() === 4, `Overrun was paid on the way up, so Consumed is next (${w.items.nextTollBand()})`);
+    const s = surfaces(w);
+    ok(!s.gauge.includes('blights') && !s.chest.includes('mutates'),
+      `neither surface promises a blight at a mark below the peak ("${s.gauge}")`);
+    const after = Math.max(0, 30 - cleanseAmount(30));
+    ok(s.font.includes(`${Math.round(B[4].at - after)} to the next blight toll`),
+      `and the font names Consumed, ${B[4].at - after} away from where the press lands ("${s.font}")`);
+  }
+
+  console.log('a run that has paid nothing still reads exactly as it did before');
+  {
+    const w = makeFontCtx();
+    setWorld(w, 30);
+    ok(w.items.nextTollBand() === MUTATION.minBand,
+      'nothing crossed, so the toll floor is the tuning floor and no behaviour changed');
+    const s = surfaces(w);
+    ok(s.gauge === 'Next: Blighted in 25 - one held item blights', `the gauge warns as it always did ("${s.gauge}")`);
+    ok(s.chest.includes('an item mutates'), `and so does the chest ("${s.chest}")`);
+    ok(bandAt(30) === 1, 'sanity: world 30 is Seeded');
+  }
+}
+
 console.log('the announcement is on the wire');
 {
   const { readFileSync } = await import('node:fs');

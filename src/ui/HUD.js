@@ -7,10 +7,10 @@ import { ELITE_STATS } from '../data/enemies.js';
 // Tuning data, not the system: the band names and the top of the gauge come
 // from the same table `Corruption` bands against. The value itself is read
 // through `ctx.corruption`.
-// `MUTATION` and `PRESSURE` join them for the gauge's forecast line: what a
+// `MUTATION` and `pressureAt` join them for the gauge's forecast line: what a
 // crossing *does* has to be read off the same tuning the systems obey, or the
 // gauge is a second copy of the rules that can drift from the first.
-import { BANDS, MUTATION, PRESSURE } from '../data/corruption.js';
+import { BANDS, MUTATION, pressureAt } from '../data/corruption.js';
 // Downed & revive (mp-p3) tuning: the one table both `Revive` (host) and this
 // file read, so the client-side revive-ring approximation below times itself
 // off the same numbers the host's clock actually runs on.
@@ -803,7 +803,27 @@ export class HUD {
       // The legend the instrument never had (#31): the gauge moved, and the
       // only way to learn where the lines were was to have already crossed one.
       // `nextThresholdLine` names the next band, the distance to it and its
-      // price, all read off the same tuning the systems obey.
+      // price, all read off the same tuning the systems obey — including the
+      // blight toll, which is `Items`' to answer and not the gauge's to
+      // re-derive. `ctx.items` is the local pawn's own instance, and the
+      // crossing listener advances `_mutePeak` on every instance, so any of
+      // them gives the same world-level answer.
+      //
+      // Co-op caveat, the same one `ArgentFont.prompt` and `corruptionPrice`
+      // already carry: `Corruption` is not replicated (nothing in src/net/
+      // carries it) and `feed` is authority-gated, so a client's `_world` never
+      // leaves 0 and this whole sentence describes a pristine world for the
+      // entire run — "Next: Seeded in 20" while the host sits in Consumed.
+      // `_mutePeak` does not replicate either, so the toll floor a client reads
+      // is `MUTATION.minBand` rather than the truth. That is stale display, not
+      // a stale transaction, and it is the widest of the three stale surfaces
+      // because the gauge is on screen always rather than only at a prop.
+      // Replicating the gauge is a net-layer change and deliberately not made
+      // here. Two consequences worth knowing before anyone "fixes" it: the
+      // primer below never fires on a client (it is gated on `world > 0`), so
+      // the false sentence is never even highlighted; and greed time *does*
+      // track correctly, because `teleporterComplete` and `stageStart` are both
+      // broadcast and `Corruption.init` subscribes to both.
       //
       // The hold is the subtle half. On the *first* feed of a run — the moment
       // the player first sees the needle move and first wonders what it costs —
@@ -823,7 +843,8 @@ export class HUD {
       }
       if (crossed && bandMoved) this._corPrimerT = 0;
       const holding = this._corPrimerT > 0 && this.c.corruptionNext !== undefined;
-      this.set('corruptionNext', holding ? this.c.corruptionNext : nextThresholdLine(cor.world ?? 0, cor.band ?? 0), (v) => {
+      this.set('corruptionNext', holding ? this.c.corruptionNext
+        : nextThresholdLine(cor.world ?? 0, cor.band ?? 0, BANDS, ctx.items?.nextTollBand?.()), (v) => {
         this.refs.corruptionNext.textContent = v;
       });
       this.set('corruptionPrimer', this._corPrimerT > 0, (v) => {
@@ -1404,28 +1425,40 @@ export function gaugeGradations(bands = BANDS) {
  * corruption away it is, and — in one clause — what crossing it does.
  *
  * Every part is derived. The name and the distance come from `BANDS`; the
- * consequence is `MUTATION.minBand` and `PRESSURE.perWorld` read straight, so a
+ * consequence is the live blight toll and `pressureAt` read straight, so a
  * re-tune of either moves the sentence with the rule instead of leaving the
  * gauge quoting last month's economy. That is the whole reason this is a
  * function over the tuning tables rather than a table of strings beside them.
  *
  * Only two consequences are quoted, and deliberately: item mutation, which is
- * the one thing a crossing *takes* from you (`MUTATION`: every upward crossing
- * at or above `minBand` blights a held stack), and below that band the Director
- * pressure the world is already buying. The finale route a band opens is real
- * too, but it is on its own line two rows down from stage 3 — one line means
- * one clause, and the clause is the one with a price.
+ * the one thing a crossing *takes* from you, and where no mutation is owed the
+ * Director pressure the world is buying anyway. The finale route a band opens
+ * is real too, but it is on its own line two rows down from stage 3 — one line
+ * means one clause, and the clause is the one with a price.
+ *
+ * The distance clause and the effect clause answer different questions, and
+ * this is the whole of the bug they were written to close. *How far* to the
+ * next line is honestly `band + 1` — that line is where it is. *What it costs*
+ * is not: a paid threshold never re-arms, so a party that spiked into Blighted
+ * and bled back to Seeded is looking up at a mark whose blight toll it already
+ * paid. `tollBand` is the lowest band that still owes one, and it belongs to
+ * `Items.nextTollBand()` — the same number the crossing listener uses for its
+ * loop bound and the Argent Font for its toll clock. Three readers, one
+ * authority: the line that promises a threat and the code that collects it
+ * cannot disagree. Absent it (a stub context, a caller with no item system) the
+ * floor is `MUTATION.minBand`, which is exactly the pre-`_mutePeak` answer.
  *
  * The last band has nothing above it. Rather than invent a threshold it names
  * the band the party is in and says the truth about the top of the scale: the
  * gauge stops having lines to cross, the pressure does not stop climbing.
  *
- * Both arguments degrade rather than throw: a missing or non-finite `world` or
- * `band` reads as 0. This is exported as a pure function, so its contract is
- * owed to callers that are not the gauge, and a `NaN` band used to index off
- * the end of `bands` and crash rather than say something honest.
+ * Every argument degrades rather than throws: a missing or non-finite `world`,
+ * `band` or `tollBand` reads as its floor. This is exported as a pure function,
+ * so its contract is owed to callers that are not the gauge, and a `NaN` band
+ * used to index off the end of `bands` and crash rather than say something
+ * honest.
  */
-export function nextThresholdLine(world, band, bands = BANDS) {
+export function nextThresholdLine(world, band, bands = BANDS, tollBand = MUTATION.minBand) {
   const w = Number.isFinite(world) ? Math.max(0, world) : 0;
   const i = Math.min(bands.length - 1, Math.max(0, Number.isFinite(band) ? Math.floor(band) : 0));
   const next = bands[i + 1];
@@ -1434,9 +1467,10 @@ export function nextThresholdLine(world, band, bands = BANDS) {
   // world that has already passed the mark, and "in 0" or "in -3" is worse than
   // rounding the last point up.
   const gap = Math.max(1, Math.ceil(next.at - w));
-  const effect = i + 1 >= MUTATION.minBand
+  const toll = Number.isFinite(tollBand) ? tollBand : MUTATION.minBand;
+  const effect = i + 1 >= toll
     ? 'one held item blights'
-    : `enemy scale +${(PRESSURE.perWorld * next.at).toFixed(2)}`;
+    : `enemy scale +${pressureAt(next.at).toFixed(2)}`;
   return `Next: ${next.name} in ${gap} - ${effect}`;
 }
 
