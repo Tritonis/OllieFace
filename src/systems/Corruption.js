@@ -78,7 +78,24 @@ export class Corruption {
 
   get world() { return this._world; }
   get band() { return this._band; }
+  /** Is looting currently on greed time? Read by the prompt price tags. */
+  get greed() { return this._greed; }
   corruptionOf(player) { return this._byPlayer.get(player) || 0; }
+
+  /**
+   * What `feed` would add for a face-value `amount` right now — greed time and
+   * the artifact economy folded in. Pure: it moves nothing.
+   *
+   * It exists so a prompt can quote the price it is about to charge (issue
+   * #30) without restating the formula. `feed` runs through the same
+   * expression, so the number on the screen and the number in the ledger
+   * cannot drift apart the way two copies of an arithmetic would.
+   */
+  priceOf(amount) {
+    if (!(amount > 0)) return 0;
+    const mult = this.ctx?.artifacts?.corruptionMods?.().feed ?? 1;
+    return (this._greed ? amount * SOURCES.greedMult : amount) * mult;
+  }
 
   /**
    * Add corruption, attributed to `player`. Returns the amount actually added
@@ -88,10 +105,10 @@ export class Corruption {
   feed(player, amount, position = null) {
     if (!this.ctx?.authority) return 0;
     if (!player || !(amount > 0)) return 0;   // rejects 0, negatives and NaN in one test
-    // The artifact economy question (data/artifacts.js: the Maw, Atonement).
-    // Optional-chained: a fixture without an artifacts system pays face value.
-    const mult = this.ctx.artifacts?.corruptionMods?.().feed ?? 1;
-    const added = (this._greed ? amount * SOURCES.greedMult : amount) * mult;
+    // The artifact economy question (data/artifacts.js: the Maw, Atonement)
+    // and greed time both live in `priceOf`, which is also what the prompts
+    // quote — one expression, so the quote and the charge agree by construction.
+    const added = this.priceOf(amount);
     this._byPlayer.set(player, (this._byPlayer.get(player) || 0) + added);
     this._world += added;
     const prev = this._band;

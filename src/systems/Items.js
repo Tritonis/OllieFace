@@ -100,7 +100,9 @@ const BLIGHT_SHARE = 0.04;
 // The tiers whose presence in a table means the table is an ordinary world drop
 // and may therefore pay a corruption instead. A boss or lunar pool names its one
 // tier and gets nothing added: a teleporter boss must always pay a boss item.
-const ORDINARY_TIERS = ['common', 'uncommon', 'legendary'];
+// Exported so the prompt price tags (world/corruptionPrice.js) can mirror
+// `rollTier`'s blight share off the same list rather than a second copy of it.
+export const ORDINARY_TIERS = ['common', 'uncommon', 'legendary'];
 
 /**
  * Kill gold. The economy is deliberately *closed* against the director: a
