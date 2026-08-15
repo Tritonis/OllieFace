@@ -32,3 +32,11 @@ reviews/round6/vfx-t*/
 # manifest entry records. This is the directory `tools/clipshot.mjs` writes to,
 # so it covers the `.webm` and its record JSON both.
 shotlib/clips/
+
+# The Steamworks SDK download itself — 24 MB, and 269 of its 270 entries are
+# headers, samples and content-builder tools we never use. Only the one file the
+# Binding actually loads is vendored, under `steamworks_sdk/`, which IS committed
+# (see `docs/STEAM.md` section 8.6). Note the SDK zip also carries six stray
+# `steam_appid.txt` files under `sdk/steamworksexample/`, which is a second reason
+# not to unpack it into the tree wholesale.
+steamworks_sdk_*.zip

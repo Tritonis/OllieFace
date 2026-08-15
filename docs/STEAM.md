@@ -667,7 +667,42 @@ ships `prebuilds/{win32-x64,linux-x64,darwin-x64,darwin-arm64}/steam-overlay.nod
 and no `steam_api64.dll` at all. `steamworks.js` ships a prebuilt binary
 and needs no such step, so this is a new obligation that arrives with the Binding
 swap: acquire the DLL, vendor it, and admit it to `build.files` alongside the
-Binding in step 7. **[uncertain]** whether that download requires an approved
-partner account — if it does, it lands on the same Valve clock the plan currently
-treats as off the critical path. Tracked separately, because it blocks the swap
-(#54) rather than the coverage question.
+Binding in step 7. Tracked separately, because it blocks the swap (#54) rather
+than the coverage question.
+
+**Acquired 2026-08-15.** `steamworks_sdk_165.zip`, SDK **1.65**. One file is
+vendored — `steamworks_sdk/redistributable_bin/win64/steam_api64.dll` — with
+provenance and the licence position in `steamworks_sdk/README.md`. The zip is
+gitignored: 269 of its 270 entries are headers, samples and build tooling, and it
+carries six stray `steam_appid.txt` files that must never reach a packed build.
+
+#### And the SDK immediately falsified an assumption
+
+`steamworks-ffi-node@0.10.4` targets SDK **1.64**. Every symbol it declares in
+`package/dist/internal/SteamLibraryLoader.js` was diffed against the exports of
+the 1.65 DLL above. 373 of 377 resolve. **Four do not:**
+
+| Declared by the Binding | Present in SDK 1.65 | Cost if unfixed |
+|---|---|---|
+| `SteamAPI_SteamNetworkingSockets_SteamAPI_v012` | only `..._v013` | **The entire Conversation.** This is the accessor every `NetworkingSockets` call goes through. |
+| `SteamAPI_SteamUtils_v010` | only `..._v011` | `utils.*` — including `getAppId()`, which `desktop/steam.mjs` reads back to detect an appid mismatch. |
+| `SteamAPI_SteamInput_v006` | only `..._v007` | Steam Input, i.e. section 5's highest-risk item. |
+| `SteamAPI_ISteamUtils_IsSteamRunningOnSteamDeck` | absent entirely | Deck detection. |
+
+**And it fails late, not loudly.** The loader binds lazily by design — its own
+comment says so, deferring `koffi.func()` symbol lookup to first call to save
+"hundreds of ms" across ~200 functions. So a missing export does not fail at
+`init()`. `initSteam()` reports `available: true`, the Introduction works, and the
+first attempt to open a Conversation is where it dies. That is the worst available
+failure shape and it is worth knowing before #52's spike, not during it.
+
+Three ways out, in ascending cost: pair the Binding with SDK **1.64**, which is
+what it targets **[uncertain — not verified, no 1.64 zip on this box]**; patch the
+four version strings, which is a four-string change but assumes the flat functions
+did not change signature across the interface bump; or fix it upstream. The choice
+belongs to #52 and #54, not here.
+
+Note this cuts the other way for arm B: **all four symbols #64 wants —
+`CreateSocketPair`, `SetGlobalConfigValueInt32`, `CreateListenSocketIP`,
+`ConnectByIPAddress` — are exported by the 1.65 DLL**, confirmed by the same scan.
+The socket-pair arm is reachable against the SDK now sitting in the tree.
