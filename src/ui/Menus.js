@@ -12,6 +12,7 @@ import { Tooltip } from './Tooltip.js';
 import { SURVIVORS, getSurvivor, loadoutOf } from '../data/survivors.js';
 import { Logbook, ModelPreview, disposeTree, renderRunReport } from './Logbook.js';
 import { describeNet } from '../net/NetConfig.js';
+import { formatRoomCode, normalizeRoomCode, tidyRoomCode } from '../net/Lobby.js';
 import {
   steamAvailable, hostViaSteam, joinViaSteam, onSteamInvite, openSteamInvite,
   steamInviteNeedsConfirm, steamInviteBlocked,
@@ -71,6 +72,15 @@ const DEFAULTS = {
 };
 
 const QUALITY_NAMES = ['Low', 'Medium', 'High', 'Ultra'];
+
+/**
+ * The empty room-code display: the grouped shape of a real code, in dashes.
+ *
+ * One constant for both the markup and the reset on leave, because the two
+ * drifting apart is invisible until a player leaves a room and the box quietly
+ * shrinks to a shape no code will ever fill.
+ */
+const CODE_PLACEHOLDER = '---------';
 
 // Tiles per row inside one tier block on the run summary. Narrow on purpose:
 // the blocks wrap as units, so 8 lets two small tiers share a line instead of
@@ -426,11 +436,12 @@ export class Menus {
           <div class="coop-room">
             <h3 class="coop-h">Room code</h3>
             <p class="coop-hint">The easy way, if a signalling server is configured. The host
-              creates a room and reads out the four letters; everyone else types them in.</p>
+              creates a room and reads out the code; everyone else types it in. The dash is
+              only there to read by — typing it is optional.</p>
             <nav class="menu-list menu-list--row">
               <button class="mbtn mbtn--go" data-nav data-act="coop-room-host"><span>Create room</span></button>
-              <output class="coop-code" data-coop-code>----</output>
-              <input class="coop-input" data-coop-roomcode maxlength="6" placeholder="CODE" aria-label="Room code" />
+              <output class="coop-code" data-coop-code>${CODE_PLACEHOLDER}</output>
+              <input class="coop-input" data-coop-roomcode maxlength="9" placeholder="CODE" aria-label="Room code" />
               <button class="mbtn mbtn--go" data-nav data-act="coop-room-join"><span>Join room</span></button>
             </nav>
             <p class="coop-hint coop-wiring" data-coop-wiring></p>
@@ -597,6 +608,27 @@ export class Menus {
       if (tierTab) { this.edictTier = tierTab.dataset.edictTier; this.renderEdict(); return; }
       const order = e.target.closest('[data-edict-item]');
       if (order) this.fileEdict(order.dataset.edictItem);
+    });
+    // The room-code field, held to what a room code is actually read as while
+    // the player is still typing it. `maxlength` counts every character in the
+    // box, so `ABCD - 2345` reached the join handler as `ABCD - 2` — five real
+    // characters — and was refused for being too short by a message that was
+    // right about a code the field had already eaten. `tidyRoomCode` keeps the
+    // letters, the digits and the one dash, which always fits.
+    this.root.addEventListener('input', (e) => {
+      const el = e.target.closest?.('[data-coop-roomcode]');
+      if (el) el.value = tidyRoomCode(el.value);
+    });
+    // Paste needs its own handler and not just the `input` above: the field
+    // truncates a pasted string to `maxlength` before any listener sees it, so
+    // the characters are gone by then. A pasted code replaces rather than
+    // inserts — nobody assembles one room code out of two pastes.
+    this.root.addEventListener('paste', (e) => {
+      const el = e.target.closest?.('[data-coop-roomcode]');
+      const text = e.clipboardData?.getData('text');
+      if (!el || text == null) return;
+      e.preventDefault();
+      el.value = tidyRoomCode(text);
     });
     // The pause summary's hover card. Its own instance rather than the HUD's:
     // the HUD's tooltip lives inside #hud, which is hidden behind the overlay
@@ -1511,14 +1543,31 @@ export class Menus {
         case 'coop-room-host': {
           this.coopSay('Opening a room…');
           const code = await lobby.hostViaRelay();
-          this.root.querySelector('[data-coop-code]').textContent = code;
-          this.coopSay(`Room ${code} is open. Give those letters to your friends — they join with them.`);
+          // One grouping, shown and said. Grouped at all for the half of this
+          // feature that happens out loud — the input strips the separator again
+          // and the relay never sees it either way — and grouped ONCE because a
+          // box reading XXXX-XXXX beside a sentence reading XXXXXXXX is two
+          // hosts telling one friend two different things.
+          const shown = formatRoomCode(code);
+          this.root.querySelector('[data-coop-code]').textContent = shown;
+          this.coopSay(`Room ${shown} is open. Give that code to your friends — they join with it.`);
           break;
         }
         case 'coop-room-join': {
-          const code = field('roomcode').value.trim().toUpperCase();
+          // Trimmed before the emptiness check, so a field holding nothing but
+          // spaces gets the answer that helps ("type the code") rather than the
+          // one that is technically true ("that is not a room code"). What a code
+          // *is* stays `Lobby.normalizeRoomCode`'s decision alone — this only
+          // asks whether the player has typed anything at all.
+          const code = field('roomcode').value.trim();
           if (!code) return this.coopSay('Type the room code the host gave you first.');
-          this.coopSay(`Joining room ${code}…`);
+          // Said in the one spelling every other surface uses — the box, the
+          // host's own sentence — rather than in whatever the player typed, so
+          // `abcd 2345` is not read back at them as a third version of a code
+          // there is only one of. A code too broken to group is said verbatim,
+          // because a player comparing it to the paper needs to see what they
+          // actually typed.
+          this.coopSay(`Joining room ${formatRoomCode(normalizeRoomCode(code)) || code}…`);
           await lobby.joinViaRelay(code);
           this.coopSay('Connecting to the host…');
           break;
@@ -1535,7 +1584,7 @@ export class Menus {
           lobby.leave();
           this.steamLobbyId = null;
           for (const n of ['invite', 'answer', 'offer', 'reply', 'roomcode']) field(n).value = '';
-          this.root.querySelector('[data-coop-code]').textContent = '----';
+          this.root.querySelector('[data-coop-code]').textContent = CODE_PLACEHOLDER;
           break;
       }
     } catch (err) {
@@ -1580,6 +1629,13 @@ export class Menus {
       answerReady: 'Send your reply code back to the host.',
       connected: 'Connected. Rebuilding the host\'s world…',
       disconnected: 'Disconnected from the host.',
+      // The relay speaking after the room opened, which in practice is
+      // 'Room expired'. Players already in the game are unaffected — they are
+      // connected peer-to-peer and the relay is irrelevant to them — so the loss
+      // is precisely that the code no longer admits anybody, and that is what
+      // this says rather than announcing a disconnection that has not happened.
+      relayError: `${detail?.error ?? 'The relay dropped this room'} — that code no longer lets anyone in. `
+        + 'Players already with you are unaffected; create a room again for a new code.',
       refused: refusalText(detail, false),
       peerRefused: refusalText(detail, true),
       idle: 'Up to 4 players. One player hosts and runs the game; everyone else joins them.',

@@ -29,7 +29,7 @@
  * running world together — and nothing at all has done it at nonzero RTT.
  *
  * So this probe touches no internal networking API. It clicks Co-op, clicks
- * Create room, reads the four letters out of the DOM, types them into the other
+ * Create room, reads the room code out of the DOM, types it into the other
  * page's box, clicks Join room, and only then starts asking questions. If the
  * co-op screen's markup changes this fails, which is the point: that screen is
  * the contract a player uses.
@@ -105,7 +105,7 @@ const W = 1280, H = 720;
 const CAP = {
   bootMs: 120000,          // page load -> title screen
   navMs: 30000,            // one menu transition
-  roomCodeMs: 20000,       // Create room -> four letters in [data-coop-code]
+  roomCodeMs: 20000,       // Create room -> the grouped code (XXXX-XXXX) in [data-coop-code]
   formationMs: 30000,      // Join room -> both channels open and the host sees 2
   tickWindowMs: 5000,      // the window 'ticks-advance' measures over
   runS: RUN_S,             // scripted play after formation
@@ -1080,7 +1080,7 @@ try {
     await hostPage.click('[data-act="coop-room-host"]');
     try {
       await hostPage.waitForFunction(
-        () => /^[A-Z0-9]{4}$/.test(document.querySelector('[data-coop-code]')?.textContent?.trim() ?? ''),
+        () => /^[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(document.querySelector('[data-coop-code]')?.textContent?.trim() ?? ''),
         null, { timeout: CAP.roomCodeMs });
     } catch {
       const w = await wireState(hostPage);

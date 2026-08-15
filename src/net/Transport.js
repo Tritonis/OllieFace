@@ -519,6 +519,33 @@ export class HostTransport {
     };
   }
 
+  /**
+   * Give up an invite nobody answered: close its connection and forget it.
+   *
+   * `peers` is where an invite's RTCPeerConnection actually lives, from the
+   * moment `createInvite` returns until somebody drops it — so a caller that
+   * bounds its own map of invites and stops there has bounded a map and leaked
+   * every connection in it. This is the other end of that bound, and it is why
+   * the ceiling in `Lobby` reaches through to here rather than deleting a
+   * reference and hoping.
+   *
+   * Delete BEFORE `close()`, exactly as `_drop` does: `pc.close()` re-enters
+   * `onconnectionstatechange` with `closed`, which calls `_drop`, which then
+   * returns on its own `peers.has` guard.
+   *
+   * Deliberately NOT `_drop`: that fires `onPeerLeave`, and `NetHost`'s handler
+   * for a peer whose channels never opened writes `[net] peer N dropped before
+   * its channels opened` — true of a connection that failed, and wrong for one
+   * this host chose to give up. Returns whether there was anything to give up.
+   */
+  cancelInvite(id) {
+    const peer = this.peers.get(id);
+    if (!peer) return false;
+    this.peers.delete(id);
+    peer.close();
+    return true;
+  }
+
   _drop(peer) {
     if (!this.peers.has(peer.id)) return;
     this.peers.delete(peer.id);
