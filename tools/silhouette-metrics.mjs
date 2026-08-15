@@ -116,6 +116,115 @@ export function shapeIoU(a, b) {
   return uni === 0 ? 0 : inter / uni;
 }
 
+/* -------------------------------------------------------------------------- */
+/* The survivor metric (ART-STYLE-GUIDE.md Rule 5, ratified 2026-08-15 q1)     */
+/*                                                                            */
+/* `sig` above squashes every mask into a square, which discards aspect ratio  */
+/* — and for two survivors, proportion is often the whole separation. The      */
+/* ratified metric therefore normalises by the LONGER side, so a 0.31-aspect   */
+/* Kestrel and a 0.77-aspect Anvil stay a sliver and a slab instead of both    */
+/* becoming squares. Everything below is aspect-preserving.                    */
+/* -------------------------------------------------------------------------- */
+
+export const ASIG = 64;
+
+/**
+ * An aspect-preserving normalised signature: the mask scaled by its longer side
+ * to fit an ASIG x ASIG canvas and centred in it. Same size for every subject,
+ * so two of them are directly comparable, but a tall thin rig stays tall and
+ * thin.
+ */
+export function aspectSig(m) {
+  const out = new Uint8Array(ASIG * ASIG);
+  if (!m || !m.bw || !m.bh || !m.sig) return out;
+  // `sig` is the square-normalised mask, so it is already a faithful resample of
+  // the bbox — un-squashing it back to the true aspect costs no second render.
+  const long = Math.max(m.bw, m.bh);
+  const tw = Math.max(1, Math.round(ASIG * m.bw / long));
+  const th = Math.max(1, Math.round(ASIG * m.bh / long));
+  const ox = (ASIG - tw) >> 1, oy = (ASIG - th) >> 1;
+  for (let y = 0; y < th; y++) for (let x = 0; x < tw; x++) {
+    const sx = Math.min(63, Math.floor(x * 64 / tw));
+    const sy = Math.min(63, Math.floor(y * 64 / th));
+    if (m.sig[sy * 64 + sx]) out[(oy + y) * ASIG + (ox + x)] = 1;
+  }
+  return out;
+}
+
+/** The outline of a normalised signature: set pixels with an unset 4-neighbour. */
+function outline(s) {
+  const pts = [];
+  const at = (x, y) => (x < 0 || y < 0 || x >= ASIG || y >= ASIG ? 0 : s[y * ASIG + x]);
+  for (let y = 0; y < ASIG; y++) for (let x = 0; x < ASIG; x++) {
+    if (!s[y * ASIG + x]) continue;
+    if (!at(x - 1, y) || !at(x + 1, y) || !at(x, y - 1) || !at(x, y + 1)) pts.push(x, y);
+  }
+  return pts;
+}
+
+/**
+ * Chamfer distance transform of an outline: for every cell, the distance to the
+ * nearest outline pixel. Two-pass 3-4 chamfer, scaled back to whole pixels — an
+ * exact Euclidean transform is not worth it when the result is divided by a
+ * 90-pixel diagonal.
+ */
+function distanceField(pts) {
+  const INF = 1e6;
+  const d = new Float32Array(ASIG * ASIG).fill(INF);
+  for (let i = 0; i < pts.length; i += 2) d[pts[i + 1] * ASIG + pts[i]] = 0;
+  const rel = (x, y, i, dx, dy, c) => {
+    const nx = x + dx, ny = y + dy;
+    if (nx < 0 || ny < 0 || nx >= ASIG || ny >= ASIG) return;
+    const v = d[ny * ASIG + nx] + c;
+    if (v < d[i]) d[i] = v;
+  };
+  for (let y = 0; y < ASIG; y++) for (let x = 0; x < ASIG; x++) {
+    const i = y * ASIG + x;
+    rel(x, y, i, -1, 0, 3); rel(x, y, i, 0, -1, 3);
+    rel(x, y, i, -1, -1, 4); rel(x, y, i, 1, -1, 4);
+  }
+  for (let y = ASIG - 1; y >= 0; y--) for (let x = ASIG - 1; x >= 0; x--) {
+    const i = y * ASIG + x;
+    rel(x, y, i, 1, 0, 3); rel(x, y, i, 0, 1, 3);
+    rel(x, y, i, 1, 1, 4); rel(x, y, i, -1, 1, 4);
+  }
+  for (let i = 0; i < d.length; i++) d[i] /= 3;
+  return d;
+}
+
+/**
+ * `max(0, 1 - d_chamfer / D)` over the two outlines, bidirectional, with `D` the
+ * diagonal of the normalisation canvas. 1.0 means the outlines lie on top of
+ * each other; 0 means they are a canvas apart.
+ */
+export function contourSimilarity(a, b) {
+  const pa = outline(a), pb = outline(b);
+  if (!pa.length || !pb.length) return 0;
+  const da = distanceField(pa), db = distanceField(pb);
+  let sum = 0;
+  for (let i = 0; i < pb.length; i += 2) sum += da[pb[i + 1] * ASIG + pb[i]];
+  for (let i = 0; i < pa.length; i += 2) sum += db[pa[i + 1] * ASIG + pa[i]];
+  const mean = sum / ((pa.length + pb.length) / 2);
+  return Math.max(0, 1 - mean / (ASIG * Math.SQRT2));
+}
+
+/**
+ * The ratified survivor score: `0.6 * IoU + 0.4 * ContourSimilarity`, both taken
+ * on the aspect-preserving signatures. Returns the parts as well as the total,
+ * because #61 asks whether the contour term carries any spread of its own and
+ * that question can only be answered from a record that kept both.
+ */
+export function silhouetteSimilarity(ma, mb) {
+  const a = aspectSig(ma), b = aspectSig(mb);
+  const iou = shapeIoU(a, b);
+  const contour = contourSimilarity(a, b);
+  return {
+    iou: +iou.toFixed(4),
+    contour: +contour.toFixed(4),
+    similarity: +(0.6 * iou + 0.4 * contour).toFixed(4),
+  };
+}
+
 /**
  * The gate's thresholds. Task 2 defines what each one is measured against;
  * every value here is either sourced from an existing measurement in this
@@ -136,6 +245,38 @@ export const READABILITY = {
   // than the family bar: mistaking a monster for a monster costs a beat,
   // mistaking one for a teammate costs the fight.
   maxFoeFriendIoU: 0.72,
+  // Survivor vs survivor, on the ratified aspect-preserving `Similarity`
+  // (0.6 IoU + 0.4 contour) rather than on `sig` — see ART-STYLE-GUIDE.md
+  // Rule 5. This is the row the rule was written for and the one nothing
+  // graded until #20.
+  //
+  // CALIBRATION, per Rule 5 step 6 — "above the highest-scoring pair currently
+  // considered acceptably distinct, below the known-bad pair". Both ends are
+  // measured, not invented:
+  //
+  //   reviews/silhouette-axis4/before-d54e4ba-survivorpairs.json
+  //     anvil/cinder 0.7352  <- the collision, and the only pair over any bar
+  //     anvil/rook   0.7006  <- the worst pair nobody disputes
+  //   reviews/silhouette-axis4/after-anvil-squat.json (this tree)
+  //     rook/cinder  0.6904  <- the roster's worst, all ten pairs now under
+  //
+  // So the window is (0.6904, 0.7352) and 0.72 sits near its centre, clearing
+  // the worst acceptable pair by 0.0296 and catching the collision by 0.0152.
+  // It is also, independently, the friend/foe bar — in four-player co-op,
+  // telling two survivors apart IS the identification problem, and mistaking a
+  // teammate for a teammate costs the same beat as mistaking one for a monster.
+  //
+  // NOTE, and it is the honest weakness of this bar: the window is 0.045 wide,
+  // where the enemy bars sit in far roomier ones. That is a property of the
+  // ratified metric rather than of the roster — the contour term measured
+  // 0.947-0.981 across all ten pairs, a spread of 0.034 against IoU's 0.26, so
+  // 40% of the score is very nearly a constant 0.39 and the whole scale is
+  // compressed into its upper half. #61 asks exactly this question; the record
+  // above answers it, and the answer is that the contour term earns little.
+  //
+  // Held with NO exemptions. The whole point of grading this row is that it is
+  // clean as it lands.
+  maxSurvivorSimilarity: 0.72,
   // Median silhouette area at 40 m, tier n+1 against tier n. Area, not height:
   // it is what the eye integrates. 1.6 is comfortably under the roster's own
   // spread (tier-1 median height 1.1 m, tier-2 2.6 m, tier-3 3.4 m) and well
@@ -275,6 +416,9 @@ export function gradeRoster(record, exemptions = READABILITY.exemptions) {
   }
   for (const p of record.foeFriendPairs || []) {
     ceiling(`${p.a}/${p.b}`, 'foeFriendIoU', p.iou, READABILITY.maxFoeFriendIoU);
+  }
+  for (const p of record.survivorPairs || []) {
+    ceiling(`${p.a}/${p.b}`, 'survivorSimilarity', p.similarity, READABILITY.maxSurvivorSimilarity);
   }
   // Tier separation is a property of consecutive tiers, so it is graded on the
   // pairs that exist in the record rather than on a fixed 1..4.

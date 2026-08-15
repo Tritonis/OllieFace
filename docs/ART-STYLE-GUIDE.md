@@ -261,10 +261,21 @@ brightest non-VFX object in that frame.
 
 ## Rule 5 — A silhouette rule
 
-Round 5 scored `RUBRIC.md` axis 4 at 3/10: RANGER (`src/data/survivors.js:35-42`) and
-ANVIL (`src/data/survivors.js:70`, mesh at `src/entities/CharacterMesh.js:550`, geometry
-at `:881`) thresholded to the same shape. `ART-ASSETS.md` states the consequence: "No
-texture fixes that; only structural difference does."
+Round 5 scored `RUBRIC.md` axis 4 at 3/10: RANGER and ANVIL thresholded to the same shape.
+`ART-ASSETS.md` states the consequence: "No texture fixes that; only structural difference
+does."
+
+**RANGER/ANVIL is fixed, and it was not the pair that mattered by the time anyone
+measured.** The body-kit work of rounds 6-9 separated it: at `d54e4ba` that pair scored
+**0.6220**, the third *lowest* of the ten survivor pairs. The live collision was
+**ANVIL/CINDER at 0.7352** — two rigs independently authored as wide-crowned inverted
+triangles of the same height, Anvil's from pauldrons and Cinder's from tanks, which
+normalise to one silhouette. Nobody had seen it because survivor pairs were the one class
+the gate never constructed.
+
+The lesson is the rule below, not the pair: **a named defect is not the defect set.**
+Fixing the pair a critic happened to name, without enumerating the rest, would have shipped
+axis 4 red with a green report behind it.
 
 **Rule.** Any new character, enemy, or gameplay-critical prop must be distinguishable from
 every existing member of its comparison set **as a pure black silhouette**, at the
@@ -289,13 +300,19 @@ roster apart when choosing or when watching a teammate. A survivor and an enemy 
 one costs the fight — which is why the shipped friend/foe bar (`maxFoeFriendIoU: 0.72`) is
 held tighter than the family bar (`maxFamilyIoU: 0.78`).
 
-Note that of the three rows above, only enemy-vs-enemy and enemy-vs-player are gated in
-code today. Player-vs-player is the row this rule was written for and the row nothing
-enforces; see *The measure* below and **#61**.
+**All three rows are gated in code as of #20.** Player-vs-player — the row this rule was
+written for, and the row that went ungated for four rounds — is now
+`maxSurvivorSimilarity: 0.72`, graded on every survivor pair by the same run that grades
+the other two. There are no exemptions behind it.
 
-The structural work of fixing the existing roster is issue #20's, not this document's.
-This rule governs what is allowed to *arrive* while that work happens: nothing may be
-added that makes axis 4 worse.
+| Row | Threshold | Pairs graded |
+|---|---|---|
+| Enemy vs enemy | `maxFamilyIoU: 0.78` | 300 |
+| Enemy vs survivor | `maxFoeFriendIoU: 0.72` | 125 |
+| Survivor vs survivor | `maxSurvivorSimilarity: 0.72` | 10 |
+
+This rule governs what is allowed to *arrive*: nothing may be added that makes axis 4
+worse, and the gate is what says so.
 
 ### The measure
 
@@ -311,18 +328,20 @@ it is a gate, and it already ratchets:
 - `tests/readability-gate.test.mjs` pins the arithmetic against masks it draws itself, so
   the measurement is exercised without a GPU.
 
-Two thresholds already ship: `maxFamilyIoU: 0.78` (enemy vs enemy) and
-`maxFoeFriendIoU: 0.72` (enemy vs survivor), with an 18-entry exemption ratchet.
+Three thresholds now ship: `maxFamilyIoU: 0.78` (enemy vs enemy), `maxFoeFriendIoU: 0.72`
+(enemy vs survivor) and `maxSurvivorSimilarity: 0.72` (survivor vs survivor), the first two
+with an 18-entry exemption ratchet and the third with none.
 
-**The gap this rule actually has** is narrower and worse than "no test exists":
-`tools/silhouette.mjs:356-366` builds `familyPairs` (enemy x enemy) and `foeFriendPairs`
-(enemy x survivor). **Survivor-versus-survivor pairs are never constructed at all**, and
-the file's own header calls the survivor pass "a report" rather than a gate. RANGER and
-ANVIL are both survivors — so the exact defect this rule exists for is the one case the
-gate structurally cannot see.
+**The gap this rule had** was narrower and worse than "no test exists":
+`tools/silhouette.mjs` built `familyPairs` (enemy x enemy) and `foeFriendPairs` (enemy x
+survivor) and **never constructed a survivor-versus-survivor pair at all**, while the
+file's own header called the survivor pass "a report" rather than a gate. 425 pairs were
+graded and the 10 that this rule exists for were not among them — which is why the roster's
+only silhouette collision sat unseen through four rounds of critics.
 
-**The ratified metric**, to be added as a survivor threshold rather than built as a
-parallel system:
+Closed by #20: `survivorPairs` is built alongside the other two and graded on the same run.
+
+**The ratified metric**, added as a survivor threshold rather than as a parallel system:
 
 1. Render both subjects as solid black binary masks, same canonical gameplay camera angle
    and standardized pose. Centre each and scale to the same bounding-box height,
@@ -344,16 +363,28 @@ RANGER/ANVIL specifically, proportion may be the main separating feature, so the
 normalisation throws away exactly the axis in question. The new threshold uses the
 aspect-preserving form.
 
-Two things to establish during implementation rather than assume, tracked in **#61**:
-whether the Chamfer term retains useful spread after normalisation
-(it may compress toward 1.0 and leave the score mostly IoU), and whether the calibration
-window in step 6 exists at all — if an acceptable pair scores above RANGER/ANVIL, no
-threshold separates them and the answer is geometry work (#20), not a number.
+Both questions #61 raised are now answered from a record rather than assumed:
 
-**Check before it lands.** Until the survivor threshold ships, render the candidate and
-each member of its comparison set above filled solid black at gameplay framing and compare
-pairwise;
-a pair a reader cannot tell apart is a rejection. Once it ships, the gate is the check.
+- **Does the Chamfer term retain useful spread?** *Largely no.* Across all ten survivor
+  pairs it measured **0.947 to 0.981** — a spread of 0.034, against IoU's 0.26 over the
+  same pairs. Forty per cent of the score is very nearly the constant 0.39, so `Similarity`
+  is IoU compressed into its upper half. The term is kept because it is the ratified
+  formula and it does order pairs consistently with IoU, but the interpretation bands in
+  step 5 above (`>= 0.85` fail) are calibrated for a metric with far more spread than this
+  one has: **no pair on this roster, including the known collision, ever reached 0.75.**
+  Use the shipped `maxSurvivorSimilarity` bar, not the step-5 bands. Re-opening the weights
+  belongs to #61.
+- **Does the step-6 calibration window exist?** *Yes, and it is narrow.* The worst
+  undisputed pair scored 0.7006 and the collision 0.7352, leaving a 0.045-wide window; the
+  bar sits at 0.72. Step 6's escape hatch — "if an acceptable pair scores above the known-bad
+  pair, the answer is geometry work (#20), not a number" — did not have to be taken, but the
+  margin is thin enough that the *next* collision may take it.
+
+**Check before it lands.** Run
+`node tools/silhouette.mjs --enemies --json <record>` and read the exit code: it grades all
+three rows of the comparison table and exits non-zero on any non-exempt failure. That run
+needs a GPU; `npm test` exercises the arithmetic without one. A candidate that cannot clear
+the bar is rejected on geometry, and no shader, palette or texture work appeals it.
 
 ---
 
@@ -412,7 +443,9 @@ New art content lands only when all six answers exist in writing:
 3. The line where it calls `attachWorldSurface`.
 4. A screenshot through the shipping post chain, not a viewer.
 5. A pairwise black-silhouette comparison against its comparison set — for a player
-   character, that means every other player character.
+   character, that means every other player character. This one is executable:
+   `node tools/silhouette.mjs --enemies --json <record>` grades all three rows of the
+   Rule 5 table and exits non-zero on a failure. Commit the record.
 6. No text glyph, no font dependency, no character above U+007F used as a picture.
 
 ---
