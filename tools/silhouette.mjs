@@ -20,7 +20,7 @@
  */
 import { chromium } from 'playwright';
 import { createServer } from 'vite';
-import { measureMask, shapeIoU, gradeRoster } from './silhouette-metrics.mjs';
+import { measureMask, shapeIoU, gradeRoster, silhouetteSimilarity, READABILITY } from './silhouette-metrics.mjs';
 
 // Walk argv token by token, same shape as tools/capture.mjs's parser.
 const args = {};
@@ -365,6 +365,18 @@ if (roster) {
   for (const e of measured) for (const sid of Object.keys(M)) {
     foeFriendPairs.push({ a: e.id, b: sid, iou: +shapeIoU(e.m.sig, M[sid].sig).toFixed(4) });
   }
+  // Survivor vs survivor — the row Rule 5 was written for, and the one class of
+  // pair this record did not carry until #20. Scored with the ratified
+  // aspect-preserving metric rather than `sig`, and the square-normalised `iou`
+  // is kept alongside it so the two are comparable on one record.
+  const survivorPairs = [];
+  for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) {
+    const s = silhouetteSimilarity(M[ids[i]], M[ids[j]]);
+    survivorPairs.push({
+      a: ids[i], b: ids[j], ...s,
+      squareIoU: +shapeIoU(M[ids[i]].sig, M[ids[j]].sig).toFixed(4),
+    });
+  }
 
   const tierMedianPx = {};
   for (const t of [...new Set(measured.map((u) => u.tier))].sort((a, b) => a - b)) {
@@ -404,7 +416,7 @@ if (roster) {
       // recovering the answer cost a whole GPU pass.
       bands: m.bands.map((b) => ({ w: +b.w.toFixed(3), fill: +b.fill.toFixed(3), runs: +b.runs.toFixed(3) })),
     })),
-    familyPairs, foeFriendPairs, tierMedianPx, elites,
+    familyPairs, foeFriendPairs, survivorPairs, tierMedianPx, elites,
   };
   const graded = gradeRoster(record);
   record.ok = graded.ok;
@@ -418,6 +430,15 @@ if (roster) {
     console.log(`${u.id.padEnd(13)} ${String(u.tier).padStart(2)}   ${String(u.px40).padStart(6)}`
       + `  ${(u.holesFrac * 100).toFixed(2).padStart(6)}  ${worst.iou.toFixed(3)} (${worst.a}/${worst.b})`);
   }
+  console.log('\nsurvivor pairs (aspect-preserving; ceiling '
+    + `${READABILITY.maxSurvivorSimilarity} on similarity)`);
+  console.log('pair                similarity   IoU  contour  squareIoU');
+  for (const p of survivorPairs.slice().sort((x, y) => y.similarity - x.similarity)) {
+    console.log(`${`${p.a}/${p.b}`.padEnd(20)}${p.similarity.toFixed(4).padStart(9)}`
+      + `${p.iou.toFixed(4).padStart(7)}${p.contour.toFixed(4).padStart(8)}`
+      + `${p.squareIoU.toFixed(4).padStart(10)}`);
+  }
+
   const bad = graded.checks.filter((c) => !c.ok);
   console.log(`\n${graded.checks.length - bad.length}/${graded.checks.length} checks passed`);
   for (const c of bad) {

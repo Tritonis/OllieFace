@@ -901,7 +901,20 @@ export class CharacterMesh {
 
     // Low pelvis: the legs are a third of this character rather than half of
     // one. Everything above it is torso and armour.
-    const pelvis = pivot(rig, 0, 0.80, 0);
+    //
+    // 0.80 -> 0.60, with the legs shortened by the same 0.20 so the boots stay
+    // planted. The claim on the line above was not true of the geometry: at
+    // 0.80 the legs were 0.70 of a 1.88 m rig — a bit over a third, and near
+    // enough Cinder's proportion that the two rigs measured the same shape
+    // (`survivorSimilarity anvil/cinder 0.7352` against a 0.72 ceiling,
+    // reviews/silhouette-axis4/before-d54e4ba-survivorpairs.json). Both were
+    // authored as inverted triangles of the same height — Anvil's from
+    // pauldrons, Cinder's from tanks — and normalised for scale that is one
+    // silhouette. Making Anvil genuinely squat is the separation, because it
+    // moves the one axis Cinder cannot follow: aspect. The feet deliberately do
+    // NOT get wider; that would walk this rig into Rook, which is the
+    // wide-based one.
+    const pelvis = pivot(rig, 0, 0.60, 0);
     this.pelvis = pelvis;
     const hipBlock = boxMesh(0.46, 0.24, 0.30, M.coatDark);
     hipBlock.position.y = -0.04;
@@ -1102,16 +1115,27 @@ export class CharacterMesh {
       // Narrower than Rook's on purpose. Anvil is a triangle standing on its
       // point: the mass belongs at the pauldrons and the feet have to be the
       // narrow end for that to read.
+      //
+      // Short and thick, which is what the comment above this loop always
+      // claimed and the numbers never did: 0.36+0.34 of leg under a 0.80 pelvis
+      // was the same leg-to-body ratio as Cinder's, on a rig of the same height,
+      // and the pair thresholded together. 0.26+0.24 drops the crown by 0.20 m
+      // against an unchanged 0.46-wide hip block and 0.9-wide pauldron span, so
+      // the bbox goes from 462x602 to roughly 462x535 and the aspect ratio —
+      // the axis the ratified survivor metric preserves — separates the two.
+      // The radii come up with the shortening: a leg that loses a fifth of its
+      // length and keeps its old thickness reads as a stump rather than as
+      // heavy.
       const hip = pivot(pelvis, 0.145 * side, -0.08, 0);
-      const thigh = limb(0.36, 0.135, 0.11, M.coatDark);
+      const thigh = limb(0.26, 0.16, 0.135, M.coatDark);
       hip.add(thigh);
-      const knee = pivot(hip, 0, -0.36, 0);
-      const shin = limb(0.34, 0.12, 0.10, M.plate);
+      const knee = pivot(hip, 0, -0.26, 0);
+      const shin = limb(0.24, 0.14, 0.12, M.plate);
       knee.add(shin);
-      const greave = boxMesh(0.17, 0.16, 0.13, M.plateMid);
-      greave.position.set(0, -0.10, 0.03);
+      const greave = boxMesh(0.19, 0.15, 0.14, M.plateMid);
+      greave.position.set(0, -0.08, 0.03);
       knee.add(greave);
-      const ankle = pivot(knee, 0, -0.34, 0);
+      const ankle = pivot(knee, 0, -0.24, 0);
       const boot = boxMesh(0.20, 0.13, 0.34, M.coatDark);
       boot.position.set(0, -0.04, 0.05);
       ankle.add(boot);

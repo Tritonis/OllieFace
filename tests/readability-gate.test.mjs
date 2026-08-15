@@ -206,5 +206,87 @@ console.log('the recorded roster covers every card the director can spawn');
      'every unit records ten bands of width, fill and runs');
 }
 
+console.log('the survivor metric preserves the aspect ratio that shapeIoU discards');
+{
+  const { aspectSig, contourSimilarity, silhouetteSimilarity } =
+    await import('../tools/silhouette-metrics.mjs');
+  const square = measureMask(synth((x, y) => x >= 14 && x < 18 && y >= 14 && y < 18), W, H);
+  const bar = measureMask(synth((x, y) => y >= 14 && y < 18 && x >= 2 && x < 30), W, H);
+  // This is the whole reason the survivor row does not reuse `sig`: the two
+  // masks above are indistinguishable to shapeIoU (pinned at >0.99 above) and
+  // must not be to this one.
+  ok(shapeIoU(square.sig, bar.sig) > 0.99, 'square and bar are one shape to the square signature');
+  ok(silhouetteSimilarity(square, bar).iou < 0.4,
+     'and two different shapes to the aspect-preserving one');
+
+  const tall = measureMask(synth((x, y) => x >= 14 && x < 18 && y >= 2 && y < 30), W, H);
+  ok(silhouetteSimilarity(bar, tall).iou < 0.4, 'a bar is not its own transpose');
+  ok(silhouetteSimilarity(square, square).similarity > 0.99, 'a shape against itself is 1');
+
+  // Scale-blindness is retained deliberately — normalising by the LONGER side
+  // removes size while keeping proportion, so a big square is still a square.
+  const bigSquare = measureMask(synth((x, y) => x >= 4 && x < 28 && y >= 4 && y < 28), W, H);
+  ok(silhouetteSimilarity(square, bigSquare).iou > 0.9,
+     'normalising by the longer side removes scale but not aspect');
+
+  ok(aspectSig(measureMask(synth(() => false), W, H)).every((v) => v === 0),
+     'an empty mask normalises to an empty signature rather than throwing');
+  ok(contourSimilarity(new Uint8Array(64 * 64), new Uint8Array(64 * 64)) === 0,
+     'and an empty contour pair is zero, not NaN');
+
+  const s = silhouetteSimilarity(square, bar);
+  ok(Math.abs(s.similarity - (0.6 * s.iou + 0.4 * s.contour)) < 1e-3,
+     'similarity is the ratified 0.6 IoU + 0.4 contour');
+}
+
+console.log('survivor pairs are graded, which is the row that went unmeasured');
+{
+  const { gradeRoster } = await import('../tools/silhouette-metrics.mjs');
+  const base = { units: [], familyPairs: [], foeFriendPairs: [], tierMedianPx: {}, elites: [] };
+
+  const clean = gradeRoster({ ...base, survivorPairs: [{ a: 'anvil', b: 'cinder', similarity: 0.68 }] }, []);
+  ok(clean.ok === true, 'a distinct survivor pair passes');
+  ok(clean.checks.some((c) => c.kind === 'survivorSimilarity'), 'and it is graded as its own kind');
+
+  const collide = gradeRoster({ ...base, survivorPairs: [{ a: 'anvil', b: 'cinder', similarity: 0.7352 }] }, []);
+  ok(collide.ok === false, 'the collision this row was built to catch fails');
+  ok(collide.checks.some((c) => c.kind === 'survivorSimilarity' && c.id === 'anvil/cinder' && !c.ok),
+     'and the failure names the pair');
+
+  // The bar carries no exemptions in READABILITY, but the ratchet must still
+  // work on this kind or a future admission would be silently ignored.
+  ok(gradeRoster({ ...base, survivorPairs: [{ a: 'anvil', b: 'cinder', similarity: 0.7352 }] },
+                 [{ id: 'anvil/cinder', kind: 'survivorSimilarity', value: 0.7352 }]).ok === true,
+     'the ratchet works on this kind too');
+  ok(READABILITY.exemptions.every((e) => e.kind !== 'survivorSimilarity'),
+     'but nothing ships exempted on it');
+
+  // A record without the key grades exactly as it did before the row existed —
+  // which is what lets the committed round9 record above still re-grade clean.
+  ok(gradeRoster(base, []).checks.every((c) => c.kind !== 'survivorSimilarity'),
+     'a record with no survivorPairs grades no survivor checks');
+}
+
+console.log('the survivor roster is measured, and every pair of it');
+{
+  const { readFileSync, existsSync } = await import('node:fs');
+  const { SURVIVORS } = await import('../src/data/survivors.js');
+  const path = new URL('../reviews/silhouette-axis4/after-anvil-squat.json', import.meta.url);
+  ok(existsSync(path), 'the survivor record is committed');
+  const rec = JSON.parse(readFileSync(path, 'utf8'));
+  // The completeness check, and the point of the whole slice: not "the named
+  // pair was fixed" but "every pair was measured". n choose 2, enumerated.
+  const want = SURVIVORS.length * (SURVIVORS.length - 1) / 2;
+  ok(rec.survivorPairs?.length === want,
+     `all ${want} survivor pairs are in the record (found ${rec.survivorPairs?.length})`);
+  const seen = new Set(rec.survivorPairs.map((p) => `${p.a}/${p.b}`));
+  for (let i = 0; i < SURVIVORS.length; i++) for (let j = i + 1; j < SURVIVORS.length; j++) {
+    const a = SURVIVORS[i].id, b = SURVIVORS[j].id;
+    ok(seen.has(`${a}/${b}`) || seen.has(`${b}/${a}`), `${a}/${b} was measured`);
+  }
+  const { gradeRoster: grade } = await import('../tools/silhouette-metrics.mjs');
+  ok(grade(rec).ok === true, 'and the record passes its own thresholds');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
