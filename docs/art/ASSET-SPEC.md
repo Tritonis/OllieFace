@@ -38,6 +38,17 @@ before the palette rather than after it.
 - **Bought vector icon sets are admissible**, redrawn or imported as paths. Text glyphs,
   dingbats, emoji and icon fonts remain forbidden. An imported set must not introduce a
   font dependency to render.
+- **The corruption layer costs zero maps per asset and imposes no UV contract (#60).**
+  This is stated here because it is the decision most likely to be mis-priced into a
+  purchase. A bought asset does **not** need to ship, and must not be shortlisted for, a
+  blight mask, a corruption variant, a second UV set, a spare texture channel, or any
+  authored allowance for the Void at all. The overlay is generated at runtime from the
+  fragment's world position — see *The Void overlay* below for the mechanism — so it
+  applies to any surface bound through `attachWorldSurface` regardless of how, or whether,
+  that surface is unwrapped. **Do not pay for corruption-ready anything**, and do not
+  reject a pack for lacking it. The same is true of the metre-scale detail field.
+  The counterweight, which belongs to the *same* decision and must be read with it: what
+  the mesh seam does not deliver is the **near-field UV map**. See *Format and budget*.
 
 Two decisions that deliberately do **not** change search: whether corruption should extend
 over character and enemy models is an open engineering question (#62), and the survivor
@@ -88,6 +99,28 @@ Nothing should be colour-matched against the hex approximations in any code path
 exist purely so a human or agent can recognize "is this roughly the right family of
 violet" while browsing a marketplace thumbnail.
 
+**How it is sampled, and what that costs a bought asset: nothing (#60).** The coverage
+term `claim` is sampled **triplanar, in world-space metres** — `bmTri`,
+`src/shaders/BlightMask.js:81-90`, whose blend weights come from the fragment's world
+normal and whose three lookups are keyed on world position. It never reads the material's
+UVs, and `attachBlightMask` binds no texture: the field is arithmetic noise octaves, not a
+fetch. Two consequences a purchase decision depends on, and neither is a promise about
+future work — both are properties of the shipped shader:
+
+- **Zero maps per asset.** No blight texture, no mask channel, no lightmap-style second UV
+  set, no per-asset authoring of any kind. The corruption's whole cost is already paid, once,
+  in the shader.
+- **No UV contract.** A pack's unwrap can be anything, including nothing. The mesh seam
+  (`src/world/ModelKit.js`) in fact deletes `uv` and `tangent` outright once faces are
+  classified, and the corruption is unaffected — which is the strongest available statement
+  of the claim, since a mask with any UV dependency would break on a mesh that has no UVs left.
+
+The route was chosen over a UV-locked mask for a reason that also survives distance: the
+near-field detail pass fades out by 20-60 m (`uv` 0.5, `uvFade`, `src/world/Materials.js:303`),
+so a UV-locked corruption would strand a blighted object past 60 m as a flat violet
+silhouette — exactly what rule 2 forbids. A world-space field shrinks on screen instead and
+is still legible at 200 m.
+
 **Consequence for search strategy, stated explicitly because it inverts the obvious
 approach:** the Void is applied *over* the base palette (the terrain/accent table
 above), not searched for separately. `BlightMask.js`'s `MASK_APPLY` mixes `BM_TINT` into
@@ -134,6 +167,24 @@ corruption."
   the parser can resolve a texture. The seam also drops `uv` and `tangent` once the faces
   are classified (28,896 bytes on that one chest), because no kit material samples them.
   For #28 this means a mesh pack's payload is **geometry only**.
+- **What the seam does not deliver: the near-field UV map.** Read this bullet with the one
+  above, never on its own — together they are the whole trade, and the one above alone reads
+  as "the seam is complete and free", which it is not. Dropping the authored atlas costs no
+  *luma spread* — measured through one identical 195x143 crop, 27,885 px, the palette-rebound
+  KayKit chest carries **209** unique luma values against the same mesh's **195** with its
+  atlas intact, and the authored copy arrives at mean luma **93.8** against the rebind's
+  **67.0** (`reviews/modelkit-seam/record.json`, key `pair`; crops beside it). A gradient
+  atlas has no surface detail to lose, so what the rebind removes is a value problem, not
+  information. But it also means the bought pack's **authored texel variation is discarded,
+  not adapted** — and that variation is precisely what `ART-ASSETS.md` names as the fix for
+  axis 5's detail-starvation half. The metre-scale detail field and the corruption both
+  reach an imported mesh for free; near-field texel detail does not, and is the one thing
+  that would need re-UVing on top of the purchase.
+  **What this changes about shortlisting:** judge a mesh pack on **silhouette, proportion
+  and topology**, because that is what actually arrives. Do not pay a premium for the
+  quality of a pack's texture work on meshes routed through this seam — it is answered away
+  before the parser resolves it. A pack whose value is mostly in its atlas is worth less
+  here than its price implies.
 - Textures: prefer PNG source, note KTX2/Basis as the shipping target.
 - **Download/VRAM budget: PLACEHOLDER, pending issue #28 (open as of this writing).**
   The game currently carries essentially zero asset payload. No numeric ceiling exists

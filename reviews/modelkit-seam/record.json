@@ -1,0 +1,489 @@
+{
+  "seed": 1337,
+  "model": "/assets/kit/chest.glb",
+  "manifest": {
+    "route": "atlas",
+    "atlas": {
+      "cols": 8,
+      "rows": 4,
+      "cells": {
+        "1,0": "kitIron",
+        "4,0": "kitWood"
+      }
+    }
+  },
+  "framing": {
+    "eye": [
+      18.43,
+      22.88,
+      30.93
+    ],
+    "mid": [
+      11.01,
+      19.48,
+      32.76
+    ]
+  },
+  "import": {
+    "report": {
+      "route": "atlas",
+      "meshes": [
+        {
+          "mesh": "chest",
+          "faces": 266,
+          "route": "atlas",
+          "surfaces": [
+            "kitWood",
+            "kitIron"
+          ],
+          "groups": [
+            {
+              "surface": "kitWood",
+              "count": 336
+            },
+            {
+              "surface": "kitIron",
+              "count": 462
+            }
+          ],
+          "attributeBytesDropped": 11520
+        },
+        {
+          "mesh": "chest_lid",
+          "faces": 462,
+          "route": "atlas",
+          "surfaces": [
+            "kitWood",
+            "kitIron"
+          ],
+          "groups": [
+            {
+              "surface": "kitWood",
+              "count": 600
+            },
+            {
+              "surface": "kitIron",
+              "count": 786
+            }
+          ],
+          "attributeBytesDropped": 17376
+        }
+      ],
+      "faces": 728,
+      "attributeBytesDropped": 28896,
+      "surfaces": [
+        "kitIron",
+        "kitWood"
+      ]
+    },
+    "seamMaterials": [
+      {
+        "name": "kitWood",
+        "colour": "#33272f",
+        "hasMap": false,
+        "detail": "woodPart",
+        "blight": true
+      },
+      {
+        "name": "kitIron",
+        "colour": "#8d9199",
+        "hasMap": false,
+        "detail": "ironPart",
+        "blight": true
+      },
+      {
+        "name": "kitWood",
+        "colour": "#33272f",
+        "hasMap": false,
+        "detail": "woodPart",
+        "blight": true
+      },
+      {
+        "name": "kitIron",
+        "colour": "#8d9199",
+        "hasMap": false,
+        "detail": "ironPart",
+        "blight": true
+      }
+    ],
+    "seamHasUV": false,
+    "rawMaterials": [
+      {
+        "name": "texture",
+        "hasMap": true,
+        "image": [
+          1024,
+          1024
+        ]
+      },
+      {
+        "name": "texture",
+        "hasMap": true,
+        "image": [
+          1024,
+          1024
+        ]
+      }
+    ],
+    "subject": {
+      "typeId": 1,
+      "pos": [
+        11.01,
+        19.48,
+        32.76
+      ]
+    }
+  },
+  "blight": {
+    "patches": 1,
+    "radius": 12.5,
+    "band": 4
+  },
+  "pair": {
+    "rect": {
+      "x": 1043.5587752645051,
+      "y": 334.62360075030017,
+      "width": 348.97434797357744,
+      "height": 255.4286024408561
+    },
+    "seam": {
+      "name": "pair-seam",
+      "rect": {
+        "x": 1120,
+        "y": 391,
+        "width": 195,
+        "height": 143
+      },
+      "unique": 209,
+      "pixels": 27885,
+      "meanLuma": 67
+    },
+    "authored": {
+      "name": "pair-authored",
+      "rect": {
+        "x": 1120,
+        "y": 391,
+        "width": 195,
+        "height": 143
+      },
+      "unique": 195,
+      "pixels": 27885,
+      "meanLuma": 93.8
+    }
+  },
+  "measures": {
+    "clean": [
+      {
+        "name": "clean-handbuilt",
+        "rect": {
+          "x": 727,
+          "y": 379,
+          "width": 129,
+          "height": 164
+        },
+        "unique": 249,
+        "pixels": 21156,
+        "meanLuma": 81.5
+      },
+      {
+        "name": "clean-seam",
+        "rect": {
+          "x": 1120,
+          "y": 391,
+          "width": 195,
+          "height": 143
+        },
+        "unique": 211,
+        "pixels": 27885,
+        "meanLuma": 67
+      },
+      {
+        "name": "clean-authored",
+        "rect": {
+          "x": 284,
+          "y": 391,
+          "width": 195,
+          "height": 143
+        },
+        "unique": 202,
+        "pixels": 27885,
+        "meanLuma": 133.8
+      }
+    ],
+    "far": [
+      {
+        "name": "far-handbuilt",
+        "rect": {
+          "x": 777,
+          "y": 418,
+          "width": 46,
+          "height": 51
+        },
+        "unique": 51,
+        "pixels": 2346,
+        "meanLuma": 42.3
+      },
+      {
+        "name": "far-seam",
+        "rect": {
+          "x": 916,
+          "y": 423,
+          "width": 55,
+          "height": 46
+        },
+        "unique": 12,
+        "pixels": 2530,
+        "meanLuma": 37
+      },
+      {
+        "name": "far-authored",
+        "rect": {
+          "x": 629,
+          "y": 423,
+          "width": 55,
+          "height": 46
+        },
+        "unique": 16,
+        "pixels": 2530,
+        "meanLuma": 35.3
+      }
+    ],
+    "blighted": [
+      {
+        "name": "blight-handbuilt",
+        "rect": {
+          "x": 736,
+          "y": 387,
+          "width": 115,
+          "height": 144
+        },
+        "unique": 240,
+        "pixels": 16560,
+        "meanLuma": 72.7
+      },
+      {
+        "name": "blight-seam",
+        "rect": {
+          "x": 1088,
+          "y": 398,
+          "width": 170,
+          "height": 126
+        },
+        "unique": 172,
+        "pixels": 21420,
+        "meanLuma": 53.6
+      },
+      {
+        "name": "blight-authored",
+        "rect": {
+          "x": 342,
+          "y": 398,
+          "width": 170,
+          "height": 126
+        },
+        "unique": 202,
+        "pixels": 21420,
+        "meanLuma": 133.7
+      }
+    ]
+  },
+  "checks": [
+    {
+      "name": "the seam bound both authored swatches to PALETTE surfaces",
+      "pass": true,
+      "detail": [
+        "kitIron",
+        "kitWood"
+      ]
+    },
+    {
+      "name": "every face in the model is grouped",
+      "pass": true,
+      "detail": 728
+    },
+    {
+      "name": "no kit material carries a UV-space map",
+      "pass": true,
+      "detail": [
+        {
+          "name": "kitWood",
+          "colour": "#33272f",
+          "hasMap": false,
+          "detail": "woodPart",
+          "blight": true
+        },
+        {
+          "name": "kitIron",
+          "colour": "#8d9199",
+          "hasMap": false,
+          "detail": "ironPart",
+          "blight": true
+        },
+        {
+          "name": "kitWood",
+          "colour": "#33272f",
+          "hasMap": false,
+          "detail": "woodPart",
+          "blight": true
+        },
+        {
+          "name": "kitIron",
+          "colour": "#8d9199",
+          "hasMap": false,
+          "detail": "ironPart",
+          "blight": true
+        }
+      ]
+    },
+    {
+      "name": "every kit material carries the metre-scale detail pass",
+      "pass": true,
+      "detail": [
+        "woodPart",
+        "ironPart",
+        "woodPart",
+        "ironPart"
+      ]
+    },
+    {
+      "name": "every kit material carries the corruption mask",
+      "pass": true
+    },
+    {
+      "name": "the placeholder material never reaches the scene",
+      "pass": true
+    },
+    {
+      "name": "uv and tangent are gone, and the report says how many bytes",
+      "pass": true,
+      "detail": 28896
+    },
+    {
+      "name": "the control loader does fetch and decode the authored atlas",
+      "pass": true,
+      "detail": [
+        {
+          "name": "texture",
+          "hasMap": true,
+          "image": [
+            1024,
+            1024
+          ]
+        },
+        {
+          "name": "texture",
+          "hasMap": true,
+          "image": [
+            1024,
+            1024
+          ]
+        }
+      ]
+    },
+    {
+      "name": "the imported mesh is not a flat silhouette: it carries a real luma spread",
+      "pass": true,
+      "detail": {
+        "name": "clean-seam",
+        "rect": {
+          "x": 1120,
+          "y": 391,
+          "width": 195,
+          "height": 143
+        },
+        "unique": 211,
+        "pixels": 27885,
+        "meanLuma": 67
+      }
+    },
+    {
+      "name": "and it is in the same detail class as the hand-built prop beside it",
+      "pass": true,
+      "detail": {
+        "seam": 211,
+        "handbuilt": 249
+      }
+    },
+    {
+      "name": "through one identical crop, discarding the authored atlas does not cost luma spread",
+      "pass": true,
+      "detail": {
+        "seam": 209,
+        "authored": 195
+      }
+    },
+    {
+      "name": "the authored atlas arrives brighter than the palette rebind",
+      "pass": true,
+      "detail": {
+        "seam": 67,
+        "authored": 93.8
+      }
+    },
+    {
+      "name": "a patch grew over the trio",
+      "pass": true,
+      "detail": {
+        "patches": 1,
+        "radius": 12.5,
+        "band": 4
+      }
+    },
+    {
+      "name": "the imported mesh is re-shaded by the corruption, not replaced by it",
+      "pass": true,
+      "detail": {
+        "clean": {
+          "name": "clean-seam",
+          "rect": {
+            "x": 1120,
+            "y": 391,
+            "width": 195,
+            "height": 143
+          },
+          "unique": 211,
+          "pixels": 27885,
+          "meanLuma": 67
+        },
+        "blighted": {
+          "name": "blight-seam",
+          "rect": {
+            "x": 1088,
+            "y": 398,
+            "width": 170,
+            "height": 126
+          },
+          "unique": 172,
+          "pixels": 21420,
+          "meanLuma": 53.6
+        }
+      }
+    },
+    {
+      "name": "the control is untouched by the corruption, having never gone through the seam",
+      "pass": true,
+      "detail": {
+        "clean": 133.8,
+        "blighted": 133.7
+      }
+    },
+    {
+      "name": "while the seam copy moves under it",
+      "pass": true,
+      "detail": {
+        "clean": 67,
+        "blighted": 53.6
+      }
+    },
+    {
+      "name": "no page errors across the session",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "no console errors across the session",
+      "pass": true,
+      "detail": []
+    }
+  ]
+}

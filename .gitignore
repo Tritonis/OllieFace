@@ -26,6 +26,15 @@ dist/
 reviews/**/*.png
 reviews/**/*.jpg
 
+# Exception: the #59 mesh-import seam's measured crops. Two ratified documents
+# (`docs/ART-STYLE-GUIDE.md`, `docs/art/ASSET-SPEC.md`) quote numbers read off
+# these exact pixels, and the rule above is why the evidence was left in a
+# disposable agent worktree instead. The crops are ~265 KB in total and are NOT
+# regenerable without first re-downloading a third-party asset (#26), which is
+# the difference from every other capture this rule covers. The full 1600x900
+# frames they were cut from are still ignored — those are the megabytes.
+!reviews/modelkit-seam/crop-*.png
+
 # Round-6 scratch captures (intermediate agent runs; manifests are committed)
 reviews/round6/dbg*/
 reviews/round6/fix[A-D]/
