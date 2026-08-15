@@ -49,7 +49,12 @@ Commit style: a single evocative sentence describing what changed in the world, 
 
 ## Verification
 
-- `npm test` — the full suite, ~1 minute. Currently **59/59 test files**.
+- `npm test` — the full suite, ~1 minute. Currently **61/61 test files**.
+- `npm run smoke:steam` — the Steam socket-pair gate (ADR 0002 arm B), ~35 s. Needs a **running,
+  logged-in Steam client**, so it is a local gate and never a CI one. Writes
+  `reviews/net-baseline/steam-socketpair-3peer-60hz.json`; the write-up beside it is
+  `STEAM-SOCKETPAIR.md`. Its impairment settings are global to the Steam library, so never run
+  two at once.
 - `npm run probe:coop` — two real browser pages forming a co-op session, several minutes. **Binds
   fixed ports 5214/5215**, so never run two at once. Required for any change to the signalling,
   formation, or connection-lifecycle path.

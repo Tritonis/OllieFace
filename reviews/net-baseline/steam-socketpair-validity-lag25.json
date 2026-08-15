@@ -1,0 +1,257 @@
+{
+  "when": "2026-08-15T16:11:39.668Z",
+  "tool": "tools/steamsmoke.mjs",
+  "label": "steam-socketpair-validity-lag25",
+  "transport": "Steam ISteamNetworkingSockets::CreateSocketPair (tools/steamnet.mjs, test-only Koffi)",
+  "measuredAt": "SendMessageToConnection -> ReceiveMessagesOnConnection",
+  "meaning": "transport and binding cost over loopback - encode, FFI, Steam packetisation and encryption, 127.0.0.1, decode. Both endpoints are in one process sharing one performance.now(), so there is no clock-sync error in these figures and no internet flight time in them either. Not a player-facing latency number.",
+  "bounded": {
+    "drainMs": 1000,
+    "totalMs": 48000,
+    "warmupDiscardedS": 2,
+    "recvDrainBatchesPerCall": 64,
+    "note": "every wait in this tool is capped; the caps above are the only ones there are"
+  },
+  "impairment": {
+    "fakePacketLagRecvMs": 25,
+    "fakePacketLossRecvPct": 0,
+    "armed": true,
+    "note": "receive-side and one-directional, the same shape as the ?netlag= rig it replaces"
+  },
+  "capture": {
+    "argv": [
+      ".\\tools\\steamsmoke.mjs",
+      "--run-s",
+      "10",
+      "--warmup-s",
+      "2",
+      "--lag-ms",
+      "25",
+      "--label",
+      "steam-socketpair-validity-lag25"
+    ],
+    "command": "node tools/steamsmoke.mjs --run-s 10 --warmup-s 2 --lag-ms 25 --label steam-socketpair-validity-lag25"
+  },
+  "gate": {
+    "ok": false,
+    "checks": [
+      {
+        "name": "traffic",
+        "ok": true,
+        "detail": "state sent 1800, events sent 120"
+      },
+      {
+        "name": "reliable delivery",
+        "ok": true,
+        "detail": "120/120 received, 0 lost, 0 duplicated, 0 out of order"
+      },
+      {
+        "name": "state p99",
+        "ok": false,
+        "detail": "27.159 ms (limit 5 ms)"
+      },
+      {
+        "name": "events p99",
+        "ok": false,
+        "detail": "27.188 ms (limit 7.5 ms)"
+      }
+    ],
+    "limits": {
+      "stateP99Ms": 5,
+      "eventsP99Ms": 7.5
+    }
+  },
+  "comparison": {
+    "baseline": "reviews/net-baseline/webrtc-3peer-60hz.json",
+    "state": {
+      "steamP99Ms": 27.159,
+      "webrtcP99Ms": 2,
+      "ratio": 13.58
+    },
+    "events": {
+      "steamP99Ms": 27.188,
+      "webrtcP99Ms": 3,
+      "ratio": 9.06
+    }
+  },
+  "ok": false,
+  "steam": {
+    "dll": "steamworks_sdk/redistributable_bin/win64/steam_api64.dll",
+    "bytes": 317080,
+    "accessors": {
+      "sockets": "SteamAPI_SteamNetworkingSockets_SteamAPI_v012",
+      "utils": "SteamAPI_SteamNetworkingUtils_SteamAPI_v004"
+    },
+    "appId": 480,
+    "koffi": "3.1.5"
+  },
+  "config": {
+    "peers": 3,
+    "hz": 60,
+    "entities": 60,
+    "runS": 10,
+    "warmupS": 2,
+    "eventHz": 4,
+    "snapshotBytes": 1031,
+    "eventBytes": 64,
+    "offeredBytesPerSecond": 185580,
+    "useNetworkLoopback": true,
+    "sendFlags": {
+      "state": "UnreliableNoNagle",
+      "events": "ReliableNoNagle"
+    }
+  },
+  "totals": {
+    "state": {
+      "sent": 1800,
+      "received": 1800,
+      "lost": 0,
+      "duplicates": 0,
+      "outOfOrder": 0,
+      "latencyMs": {
+        "n": 1800,
+        "p50": 25.945,
+        "p95": 27.029,
+        "p99": 27.159,
+        "max": 27.392,
+        "mean": 26.026
+      }
+    },
+    "events": {
+      "sent": 120,
+      "received": 120,
+      "lost": 0,
+      "duplicates": 0,
+      "outOfOrder": 0,
+      "latencyMs": {
+        "n": 120,
+        "p50": 25.884,
+        "p95": 26.859,
+        "p99": 27.188,
+        "max": 27.192,
+        "mean": 25.964
+      }
+    }
+  },
+  "perPeer": [
+    {
+      "peer": 1,
+      "state": {
+        "sent": 600,
+        "received": 600,
+        "lost": 0,
+        "duplicates": 0,
+        "outOfOrder": 0,
+        "arrivedOutsideWindow": 120,
+        "latencyMs": {
+          "n": 600,
+          "p50": 25.94,
+          "p95": 27.024,
+          "p99": 27.156,
+          "max": 27.373,
+          "mean": 26.022
+        }
+      },
+      "events": {
+        "sent": 40,
+        "received": 40,
+        "lost": 0,
+        "duplicates": 0,
+        "outOfOrder": 0,
+        "arrivedOutsideWindow": 8,
+        "latencyMs": {
+          "n": 40,
+          "p50": 25.87,
+          "p95": 26.847,
+          "p99": 27.181,
+          "max": 27.181,
+          "mean": 25.955
+        }
+      },
+      "unknownTag": 0
+    },
+    {
+      "peer": 2,
+      "state": {
+        "sent": 600,
+        "received": 600,
+        "lost": 0,
+        "duplicates": 0,
+        "outOfOrder": 0,
+        "arrivedOutsideWindow": 120,
+        "latencyMs": {
+          "n": 600,
+          "p50": 25.939,
+          "p95": 27.027,
+          "p99": 27.158,
+          "max": 27.379,
+          "mean": 26.025
+        }
+      },
+      "events": {
+        "sent": 40,
+        "received": 40,
+        "lost": 0,
+        "duplicates": 0,
+        "outOfOrder": 0,
+        "arrivedOutsideWindow": 8,
+        "latencyMs": {
+          "n": 40,
+          "p50": 25.876,
+          "p95": 26.853,
+          "p99": 27.188,
+          "max": 27.188,
+          "mean": 25.965
+        }
+      },
+      "unknownTag": 0
+    },
+    {
+      "peer": 3,
+      "state": {
+        "sent": 600,
+        "received": 600,
+        "lost": 0,
+        "duplicates": 0,
+        "outOfOrder": 0,
+        "arrivedOutsideWindow": 120,
+        "latencyMs": {
+          "n": 600,
+          "p50": 25.945,
+          "p95": 27.035,
+          "p99": 27.162,
+          "max": 27.392,
+          "mean": 26.031
+        }
+      },
+      "events": {
+        "sent": 40,
+        "received": 40,
+        "lost": 0,
+        "duplicates": 0,
+        "outOfOrder": 0,
+        "arrivedOutsideWindow": 8,
+        "latencyMs": {
+          "n": 40,
+          "p50": 25.884,
+          "p95": 26.859,
+          "p99": 27.192,
+          "max": 27.192,
+          "mean": 25.972
+        }
+      },
+      "unknownTag": 0
+    }
+  ],
+  "sendLoop": {
+    "ticks": 720,
+    "maxSendGapMs": 16.767,
+    "nominalStepMs": 16.667,
+    "wallMs": 12983,
+    "drainMs": 1000,
+    "loopIterations": 3675942,
+    "unknownTagTotal": 0
+  },
+  "fatal": null,
+  "totalMs": 13157
+}

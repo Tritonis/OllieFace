@@ -612,6 +612,18 @@ Four exported symbols, all present in Valve's flat header
 Cost: a small Koffi module under `tools/`, plus a running Steam client on the box.
 It is a test-only surface and must never be reachable from shipping code.
 
+**Built 2026-08-15 (#64): `tools/steamnet.mjs`, and the estimate held.** No
+compiler, no patched package, no fork. Of the four entry points listed above,
+**two are bound** — `CreateSocketPair` and `SetGlobalConfigValueInt32` — plus ten
+support symbols it takes to carry a message. The other two are the two-process
+arm, which this list already marks conditional and which nobody has asked for:
+they are checked to exist in the DLL and deliberately not bound, so an SDK swap
+that dropped one is still caught on the day of the swap. Section 8.7 has what it
+measured. The test-only constraint is asserted
+rather than remembered: `tests/steam-smoke.test.mjs` fails if anything under
+`src/` or `desktop/` reaches for `koffi` or for that module, if `koffi` stops
+being a devDependency, or if `build.files` starts packing `tools/`.
+
 ### 8.5 The seam, enumerated
 
 Arm A is only as good as this list, so it is enumerated from what `NetHost`,
@@ -756,3 +768,55 @@ None of this touches arm B: **all four symbols #64 wants —
 `ConnectByIPAddress` — are exported by both 1.64 and 1.65**, confirmed by the same
 scan. The socket-pair arm is reachable against the SDK now sitting in the tree,
 and it was never the part at risk here.
+
+### 8.7 Arm B, built: what the real Steam library actually costs
+
+`npm run smoke:steam` (`tools/steamsmoke.mjs`). Captured 2026-08-15 against SDK
+1.64 with a running Steam client on appid 480. Full write-up, including the
+validity arms, in `reviews/net-baseline/STEAM-SOCKETPAIR.md`.
+
+| | p50 | p95 | **p99** | max |
+|---|---|---|---|---|
+| `state` (unreliable, snapshots) | 0.147-0.151 ms | 0.195-0.199 ms | **0.23-0.24 ms** | 0.30-5.67 ms |
+| `events` (reliable, ordered) | 0.154-0.156 ms | 0.193-0.196 ms | **0.21-0.28 ms** | 0.22-0.32 ms |
+
+Three runs, 3 peers at 60 Hz for 30 s each, 1031-byte snapshots through the
+shipped `writeEntity`. **1080 of 1080 reliable messages delivered exactly once,
+in order; 16 200 of 16 200 snapshots delivered.**
+
+**The FFI is not the cost anyone expected it to be.** The criterion agreed on #52
+allowed 2.5x over WebRTC for "FFI and Steam-side overhead" — p99 5.0 ms for
+`state`, 7.5 ms for `events`. The measurement came in 8-14x *below* the WebRTC
+baseline rather than above it (p99 0.24 ms vs 2.0 ms; 0.26 ms vs 2.9-3.0 ms).
+Chrome's SCTP data channels are the expensive part, not Koffi.
+
+That is a fact about the *core loop*, not about Steam as a whole: a socket pair
+has no Introduction, no identity, no SDR and no internet in it. It bounds what
+the transport swap can cost per message; it says nothing about what forming a
+session costs, which is arm C's question.
+
+**Three things this arm proves that no other gate in this repo can:**
+
+1. **The library carries this protocol.** Not a mock of it — the shipped
+   `Protocol.js` byte layout through the shipped `steam_api64.dll`.
+2. **Reliable means reliable, under loss.** With
+   `k_ESteamNetworkingConfig_FakePacketLoss_Recv` at 5%, 5.2% of snapshots were
+   dropped on the unreliable channel and every reliable message still arrived
+   exactly once, in order, at a p99 of 61.2 ms as Steam retransmitted. That
+   retransmission is the behaviour the whole arm was bought to watch.
+3. **Loopback is genuinely on.** `--no-loopback` (the in-memory socket pair) is a
+   further 4x faster at 0.037 ms p50, so the gate figure really is paying for
+   packetisation, encryption and 127.0.0.1 — the thing section 8.2 says
+   `bUseNetworkLoopback` buys.
+
+**And the version discipline of 8.6 is built into the module rather than
+documented next to it.** `tools/steamnet.mjs` discovers the interface accessor
+from the DLL's exports (`SteamAPI_SteamNetworkingSockets_SteamAPI_v012` on 1.64,
+`_v013` on 1.65) instead of naming a version, checks every symbol it declares
+before `koffi.load`, and asks the library for each `ESteamNetworkingConfigValue`'s
+real name before using its number. An SDK bump does not edit that file, and the
+failure shape 8.6 warns about — lazy binding turning a missing export into a
+first-call crash — cannot happen here.
+
+**Still not a CI gate (#47).** `SteamAPI_Init` needs a running, logged-in Steam
+client. That is the one part of the cost estimate no amount of care removes.
