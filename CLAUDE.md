@@ -56,3 +56,22 @@ Commit style: a single evocative sentence describing what changed in the world, 
 - `npm run gate:sp` / `gate:mp1` — single-player equivalence baselines, ~2 min each.
 - Probe and gate runs must be **foreground** (timeout up to 600000 ms). An agent that backgrounds one
   and polls for it has zombied here before.
+
+## Agent skills
+
+Per-repo configuration for the `mattpocock-skills` engineering skills.
+
+### Issue tracker
+
+GitHub Issues on `Tritonis/OllieFace`, via `gh` — consistent with *Where work is tracked* above.
+See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Mapped onto this repo's existing vocabulary (`ready`, `blocked:user`, `wontfix`) rather than
+duplicating it. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` + `docs/adr/` at the repo root, both created lazily.
+See `docs/agents/domain.md`.
