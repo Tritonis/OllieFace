@@ -37,5 +37,19 @@ default.
 ## Version warning
 
 SDK 1.65 does **not** match what `steamworks-ffi-node@0.10.4` targets, and four of
-its declared symbols do not exist in this DLL. Read section 8.6 before assuming
-the Binding works against it.
+its declared symbols do not exist in this DLL — including
+`SteamAPI_SteamNetworkingSockets_SteamAPI_v012`, the accessor every
+`NetworkingSockets` call goes through. **The decision is to replace this file with
+SDK 1.64's**, which is what the Binding targets; 1.65 is what was to hand.
+
+Do not take that on trust:
+
+```
+npm run steamsdk                          # verify what is vendored
+node tools/steamsdk.mjs --zip <sdk.zip>   # adopt a different SDK, then verify
+```
+
+It exits non-zero if any symbol the installed Binding declares is absent from the
+DLL. That check matters because the Binding resolves symbols **lazily** — a
+missing export does not fail at `init()`, it fails the first time a Conversation
+is opened. Then update the table above with the new hash and version.

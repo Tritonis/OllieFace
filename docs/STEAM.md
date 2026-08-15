@@ -676,6 +676,15 @@ provenance and the licence position in `steamworks_sdk/README.md`. The zip is
 gitignored: 269 of its 270 entries are headers, samples and build tooling, and it
 carries six stray `steam_appid.txt` files that must never reach a packed build.
 
+**The partner-account question is settled, and favourably: no partner approval was
+required.** A Steam login is — `https://partner.steamgames.com/downloads/steamworks_sdk_165.zip`
+answers `302` to a sign-in page for an unauthenticated client — but approval as a
+partner is not, so the SDK is *not* on the Valve clock and the plan's decision to
+put partner processing off the critical path survives this.
+
+`npm run steamsdk` adopts an SDK zip and verifies what is vendored;
+`node tools/steamsdk.mjs --zip <path>` swaps the DLL for a different SDK version.
+
 #### And the SDK immediately falsified an assumption
 
 `steamworks-ffi-node@0.10.4` targets SDK **1.64**. Every symbol it declares in
@@ -696,11 +705,17 @@ comment says so, deferring `koffi.func()` symbol lookup to first call to save
 first attempt to open a Conversation is where it dies. That is the worst available
 failure shape and it is worth knowing before #52's spike, not during it.
 
-Three ways out, in ascending cost: pair the Binding with SDK **1.64**, which is
-what it targets **[uncertain — not verified, no 1.64 zip on this box]**; patch the
-four version strings, which is a four-string change but assumes the flat functions
-did not change signature across the interface bump; or fix it upstream. The choice
-belongs to #52 and #54, not here.
+**Decided 2026-08-15: pair the Binding with SDK 1.64**, which is what it targets.
+The alternative — patching the four version strings to v013 / v011 / v007 — is a
+four-string change, but it assumes the flat functions kept their signatures across
+an interface bump, and nothing available here can check that assumption. Getting
+the matching SDK asks nothing of us but a second download. **[uncertain]** that
+1.64 resolves all four cleanly: no 1.64 zip is on this box yet, so it is expected
+rather than verified. `npm run steamsdk` is the thing that will verify it, and it
+exits non-zero if it does not.
+
+Until that zip lands, what is vendored is 1.65 — usable for the socket-pair gate
+below and **not** usable for the Binding.
 
 Note this cuts the other way for arm B: **all four symbols #64 wants —
 `CreateSocketPair`, `SetGlobalConfigValueInt32`, `CreateListenSocketIP`,

@@ -20,7 +20,8 @@
     "signal": "node tools/signal-server.mjs",
     "desktop": "npm run build && electron .",
     "desktop:run": "electron .",
-    "desktop:pack": "npm run build && electron-builder --win --dir"
+    "desktop:pack": "npm run build && electron-builder --win --dir",
+    "steamsdk": "node tools/steamsdk.mjs"
   },
   "build": {
     "appId": "com.olliface.telluricvoid",

@@ -110,12 +110,18 @@ qualify.
 `openInviteDialog`, the `GameLobbyJoinRequested` callback, and the overlay. Everything
 `docs/STEAM.md` section 7 marks *Wired* reverts to unverified at this step.
 
-**A prerequisite found during #53:** unlike `steamworks.js`, `steamworks-ffi-node`
-ships no Steam redistributable — it loads `steam_api64.dll` from a
-`steamworks_sdk/` tree we must acquire from partner.steamgames.com and vendor
-ourselves, and carry into step 7's packaging. See `docs/STEAM.md` section 8.6;
-**[uncertain]** whether that download needs an approved partner account, which
-would put it back on Valve's clock.
+**A prerequisite found during #53, now half-met:** unlike `steamworks.js`,
+`steamworks-ffi-node` ships no Steam redistributable — it loads `steam_api64.dll`
+from a `steamworks_sdk/` tree we acquire from partner.steamgames.com and vendor
+ourselves, and carry into step 7's packaging. The download needs a Steam login but
+**not** partner approval, so it is off Valve's clock as this plan assumes.
+
+**It also cost this step an assumption.** The SDK to hand is 1.65; the Binding
+targets 1.64 and declares four symbols 1.65 does not export, one of them the
+accessor every `NetworkingSockets` call goes through — and it binds lazily, so
+`init()` reports healthy and the *first Conversation* is where it dies. Pair the
+Binding with SDK 1.64 and let `npm run steamsdk` prove the pairing before any
+behaviour is measured against it. See `docs/STEAM.md` section 8.6.
 
 One thing to watch for as an improvement rather than a risk: `steamworks.js@0.4.0`'s
 owner-only `SetLobbyData` is what forced the joiner's answer through a P2P packet
