@@ -56,9 +56,16 @@ const REFUSE_FLUSH_MS = 16;
 const REFUSE_FLUSH_TRIES = 8;
 
 export class NetHost {
-  constructor({ maxPlayers = 4 } = {}) {
+  /**
+   * `transport` is a seam, not a setting. Everything this class needs from one
+   * is enumerated in `docs/STEAM.md` section 8.5, and taking it as an argument
+   * is what lets `tests/transport-contract.mjs` run the same assertions against
+   * every transport we ship — WebRTC today, Steam at #55. The default keeps
+   * every existing caller (`Lobby.js:237`) unchanged.
+   */
+  constructor({ maxPlayers = 4, transport = new HostTransport() } = {}) {
     this.maxPlayers = maxPlayers;
-    this.transport = new HostTransport();
+    this.transport = transport;
     this.clients = new Map();   // peerId -> { peer, pawn, inputs[], lastTick, name }
     this.writer = new Writer(16384);
     this.eventWriter = new Writer(4096);
@@ -69,6 +76,17 @@ export class NetHost {
     // Whether `_holdSession` is currently keeping the world running under a
     // local menu. Only used to know when to hand `ctx.paused` back.
     this._holding = false;
+    // Peer ids this host has already released, so the "never joined" warning in
+    // `_onPeerLeave` stays true. `HostTransport._nextId` only ever increments,
+    // so an id is never reused and this can never misattribute an old peer.
+    //
+    // Never pruned, so state it honestly: bounded in *rate*, not in session
+    // length. One entry per peer that completed a handshake and then left, which
+    // costs a full connection each and is not cheap to spam — but a host left up
+    // for weeks with heavy churn does grow this without limit. If that ever
+    // matters, the fix is to drop the id when the transport forgets the peer,
+    // not to make the warning lie again.
+    this._admitted = new Set();
   }
 
   init(ctx) {
@@ -192,9 +210,21 @@ export class NetHost {
       // failure silent: no `netPlayerLeft`, no `netPeerRefused`, no status
       // change, nothing in the console. This line is the only record that the
       // peer existed at all, and it is what a bug report can be written from.
-      console.warn(`[net] peer ${peer?.id} dropped before its channels opened — it never joined the session.`);
+      //
+      // `_admitted` is what keeps it a record of that failure rather than noise.
+      // This handler is wired to *both* `peer.onClose` and the transport's
+      // `onPeerLeave` — correctly, because either can fire without the other —
+      // and `HostTransport._drop` fires both, so every ordinary disconnect
+      // reaches here a second time with the record already gone. Without the
+      // check, the diagnostic for "never joined" printed on every clean leave,
+      // which is the way a true warning stops being read. Found by
+      // `tests/transport-contract.mjs`, which now pins it.
+      if (!this._admitted.has(peer?.id)) {
+        console.warn(`[net] peer ${peer?.id} dropped before its channels opened — it never joined the session.`);
+      }
       return;
     }
+    this._admitted.add(peer.id);
     this.clients.delete(peer.id);
     if (c.pawn) this.ctx.despawnRemotePlayer?.(c.pawn);
     this.ctx.events.emit('netPlayerLeft', { id: peer.id });

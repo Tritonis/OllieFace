@@ -147,8 +147,9 @@ two repairs above are both inside `NetHost`.
 
 ### 6. Delete the WebRTC era
 
-**Entry condition, from step 3:** the transport conformance suite passes against
-the WebRTC transport. Not before.
+**Entry condition, from step 3: MET 2026-08-15.** `npm test` runs
+`tests/transport-conformance.test.mjs`, 36 assertions green against the WebRTC
+transport (#63). The parachute is packed; the altimeter may now be removed.
 
 Code and docs both, cleanly — not marked superseded in place. This repo already
 carries the cost of documents whose later halves overturn their earlier ones, and
