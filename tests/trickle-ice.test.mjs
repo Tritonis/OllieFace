@@ -683,6 +683,49 @@ console.log('T6 — a host whose socket never reaches the relay leaves nothing e
      `and the lobby is not left hosting a room that never opened (net=${lobby.net}, mode=${lobby.mode})`);
 }
 
+console.log('T6 — a relay error for a socket the lobby has moved on from cannot close the room it is hosting now');
+{
+  // The sequence a flaky relay produces: a host attempt that opens but goes
+  // quiet, a player who presses Leave and hosts again, and then the first
+  // socket's error arriving late — into a closure holding a `ws` this lobby
+  // replaced two steps ago. Every line of `fail()` is a teardown, and none of
+  // them can tell one host from another: `_release()` only knows there is one.
+  const lobby = mkLobby();
+  lobby._keepaliveMs = () => 20;
+  const first = lobby.hostViaRelay('ws://relay.test').catch((e) => e.message);
+  const wsA = FakeWS.last;
+  wsA.open();
+
+  lobby.leave();
+  const second = lobby.hostViaRelay('ws://relay.test');
+  const wsB = FakeWS.last;
+  wsB.open();
+  await wsB.recv({ type: 'hosting', code: 'ABCD2345', v: 2 });
+  ok(await second === 'ABCD2345', 'the second room is open — the session that must survive');
+  ok(lobby._keepalive !== null, 'and beating');
+  // Captured rather than asserted against a literal: what this test pins is
+  // that a dead socket changes *nothing* here, whatever the values happen to be.
+  const before = { role: lobby.ctx.netRole, authority: lobby.ctx.authority, beats: wsB.ofType('keepalive').length };
+
+  wsA.onerror();                                 // the ghost speaks
+  // Settled, not abandoned: the first attempt's caller is still inside
+  // `await hostViaRelay(...)` in the co-op action handler, and a promise left
+  // pending there holds the action's busy latch for the rest of the session.
+  const raced = await Promise.race([first, turn(50).then(() => 'NEVER SETTLED')]);
+  ok(raced !== 'NEVER SETTLED', `the superseded attempt is still told it failed (got ${raced})`);
+  ok(wsA.closed === true, 'and its dead socket is given back');
+
+  ok(lobby.net !== null && lobby.mode === 'host',
+     `the live session is still hosting (net=${lobby.net}, mode=${lobby.mode})`);
+  ok(lobby.ctx.netRole === before.role && lobby.ctx.authority === before.authority,
+     `and the ctx the whole game reads is untouched (role=${lobby.ctx.netRole}, authority=${lobby.ctx.authority})`);
+  ok(lobby._keepalive !== null, 'the beat keeping the live room alive was not stopped by a dead socket');
+  await turn(50);        // long enough for the 20 ms beat to prove it is still running
+  ok(wsB.ofType('keepalive').length > before.beats,
+     `and it is still actually beating, not merely non-null (${before.beats} -> ${wsB.ofType('keepalive').length})`);
+  ok(wsB.closed !== true, 'and the live socket was not closed under it');
+}
+
 console.log('T6 — every mistyped room code gives its connection back');
 {
   // The relay caps connections per address, so a join that rejects without

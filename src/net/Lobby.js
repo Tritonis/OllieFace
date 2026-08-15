@@ -415,6 +415,24 @@ export class Lobby {
        * the parts that belong to a session that actually started.
        */
       const fail = (err) => {
+        // A relay that errors late — a flaky connection the player answered by
+        // pressing Leave and hosting again — delivers that error to a closure
+        // whose `ws` this lobby replaced two steps ago. The teardown below
+        // cannot tell one host from another (`_release()` only knows there is
+        // one), so running it here would drop the *live* second room silently
+        // to single-player. Identity is settled at the socket, because this is
+        // the only place that still knows which socket asked.
+        //
+        // The attempt is still failed rather than abandoned: its caller is
+        // inside `await hostViaRelay(...)` in the co-op screen's action
+        // handler, and a promise that never settles leaves that handler's
+        // `finally` unreached — which holds the action's busy latch and makes
+        // the button dead for the rest of the session. Close the dead socket,
+        // tell the caller, touch nothing that belongs to the live session.
+        if (this.ws !== ws) {
+          try { ws.close(); } catch { /* a socket that never opened */ }
+          return reject(err);
+        }
         this._stopKeepalive();
         try { ws.close(); } catch { /* a socket that never opened */ }
         this._release();
@@ -432,7 +450,11 @@ export class Lobby {
         ws.send(JSON.stringify({ type: 'host' }));
         this._startKeepalive(ws);
       };
-      ws.onclose = () => this._stopKeepalive();
+      // Guarded for the same reason `fail` is, and it is not hypothetical: the
+      // close *this* attempt performs on its own dead socket delivers an
+      // `onclose` here, and an unguarded `_stopKeepalive()` would then silence
+      // the beat belonging to the room the lobby is hosting now.
+      ws.onclose = () => { if (this.ws === ws) this._stopKeepalive(); };
       ws.onmessage = async (e) => {
         const msg = JSON.parse(e.data);
         if (msg.type === 'error') {
