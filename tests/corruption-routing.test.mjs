@@ -211,7 +211,8 @@ console.log('the gauge previews the route from stage 3');
     self.moneyShown = 0;
     const refs = {
       money: el(), moneyVal: el(),
-      corruption: el(), corruptionFill: el(), corruptionBand: el(), corruptionRoute: el(),
+      corruption: el(), corruptionFill: el(), corruptionBand: el(),
+      corruptionNext: el(), corruptionRoute: el(),
     };
     self.refs = refs;
     self.updateMoney({ items: { gold: 0 }, corruption: { world: 0, band }, progression: { stageIndex } }, 0.016);

@@ -7,7 +7,10 @@ import { ELITE_STATS } from '../data/enemies.js';
 // Tuning data, not the system: the band names and the top of the gauge come
 // from the same table `Corruption` bands against. The value itself is read
 // through `ctx.corruption`.
-import { BANDS } from '../data/corruption.js';
+// `MUTATION` and `PRESSURE` join them for the gauge's forecast line: what a
+// crossing *does* has to be read off the same tuning the systems obey, or the
+// gauge is a second copy of the rules that can drift from the first.
+import { BANDS, MUTATION, PRESSURE } from '../data/corruption.js';
 // Downed & revive (mp-p3) tuning: the one table both `Revive` (host) and this
 // file read, so the client-side revive-ring approximation below times itself
 // off the same numbers the host's clock actually runs on.
@@ -99,6 +102,13 @@ const INV_ROW = 12;
    a step, short enough that the pen keeps moving. */
 const TRACE_SAMPLES = 48;
 const TRACE_INTERVAL = 1.5;
+
+/* How long the gauge's forecast line is held still after the first feed of a
+   run. It is a reading hold, not a pause: the fill, the pen and the band label
+   all keep running underneath it, and the number in the sentence stops chasing
+   itself for exactly as long as it takes to read one line. Six seconds is two
+   unhurried reads at the pace the rest of the HUD's toasts live at (5 s). */
+export const CORRUPTION_PRIMER_S = 6;
 
 // Downed & revive (mp-p3). The revive ring's SVG circumference (radius 42 in
 // a 100x100 viewBox), matching `.tp-arc`'s own hardcoded-radius idiom.
@@ -769,7 +779,7 @@ export class HUD {
       // not fire for the line nobody crossed.
       const crossed = this.c.corruptionBand !== undefined;
       const wasBand = this.c.corruptionBand;
-      this.set('corruptionBand', cor.band ?? 0, (v) => {
+      const bandMoved = this.set('corruptionBand', cor.band ?? 0, (v) => {
         this.refs.corruption.dataset.band = String(v);
         this.refs.corruptionBand.textContent = BANDS[v].name;
         // Direction matters, and the other two channels already say so: Blight
@@ -779,6 +789,36 @@ export class HUD {
         // is actually looking at, so it must not fire the warning pink for the
         // $746 they just spent making things better.
         if (crossed) this.pulse(this.refs.corruption, v > wasBand ? 'is-tick' : 'is-tick-down', v > wasBand ? ['is-tick-down'] : ['is-tick']);
+      });
+
+      // The legend the instrument never had (#31): the gauge moved, and the
+      // only way to learn where the lines were was to have already crossed one.
+      // `nextThresholdLine` names the next band, the distance to it and its
+      // price, all read off the same tuning the systems obey.
+      //
+      // The hold is the subtle half. On the *first* feed of a run — the moment
+      // the player first sees the needle move and first wonders what it costs —
+      // the sentence latches for `CORRUPTION_PRIMER_S` and lights up. Only the
+      // sentence: the fill, the pen, the band label and the route line all keep
+      // running underneath, nothing is paused, and there is no modal to
+      // dismiss. Freezing it is what makes it readable — an unfrozen line
+      // recomputes its own countdown under the eye that is reading it.
+      //
+      // A band crossing cancels the hold on the frame it happens, because a
+      // sentence held about a line the party has already crossed is not a
+      // steady explanation, it is a wrong one.
+      this._corPrimerT = Math.max(0, (this._corPrimerT ?? 0) - dt);
+      if (this._corFed === undefined && (cor.world ?? 0) > 0) {
+        this._corFed = true;
+        this._corPrimerT = CORRUPTION_PRIMER_S;
+      }
+      if (crossed && bandMoved) this._corPrimerT = 0;
+      const holding = this._corPrimerT > 0 && this.c.corruptionNext !== undefined;
+      this.set('corruptionNext', holding ? this.c.corruptionNext : nextThresholdLine(cor.world ?? 0, cor.band ?? 0), (v) => {
+        this.refs.corruptionNext.textContent = v;
+      });
+      this.set('corruptionPrimer', this._corPrimerT > 0, (v) => {
+        this.refs.corruption.classList.toggle('is-primer', v);
       });
 
       // Route preview, not surprise (launch spec §2): from stage 3 the party
@@ -1350,6 +1390,42 @@ export function gaugeGradations(bands = BANDS) {
   }));
 }
 
+/**
+ * The gauge's forecast line: which band is next, how many points of world
+ * corruption away it is, and — in one clause — what crossing it does.
+ *
+ * Every part is derived. The name and the distance come from `BANDS`; the
+ * consequence is `MUTATION.minBand` and `PRESSURE.perWorld` read straight, so a
+ * re-tune of either moves the sentence with the rule instead of leaving the
+ * gauge quoting last month's economy. That is the whole reason this is a
+ * function over the tuning tables rather than a table of strings beside them.
+ *
+ * Only two consequences are quoted, and deliberately: item mutation, which is
+ * the one thing a crossing *takes* from you (`MUTATION`: every upward crossing
+ * at or above `minBand` blights a held stack), and below that band the Director
+ * pressure the world is already buying. The finale route a band opens is real
+ * too, but it is on its own line two rows down from stage 3 — one line means
+ * one clause, and the clause is the one with a price.
+ *
+ * The last band has nothing above it. Rather than invent a threshold it names
+ * the band the party is in and says the truth about the top of the scale: the
+ * gauge stops having lines to cross, the pressure does not stop climbing.
+ */
+export function nextThresholdLine(world, band, bands = BANDS) {
+  const w = Number.isFinite(world) ? Math.max(0, world) : 0;
+  const i = Math.min(bands.length - 1, Math.max(0, Math.floor(band ?? 0)));
+  const next = bands[i + 1];
+  if (!next) return `${bands[i].name} - last band, feeds still scale enemies`;
+  // At least 1: `band` is the system's own reading and can sit a frame behind a
+  // world that has already passed the mark, and "in 0" or "in -3" is worse than
+  // rounding the last point up.
+  const gap = Math.max(1, Math.ceil(next.at - w));
+  const effect = i + 1 >= MUTATION.minBand
+    ? 'one held item blights'
+    : `enemy scale +${(PRESSURE.perWorld * next.at).toFixed(2)}`;
+  return `Next: ${next.name} in ${gap} - ${effect}`;
+}
+
 function escapeHtml(s) {
   return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }
@@ -1368,6 +1444,7 @@ function collectRefs(root) {
     corruptionTrack: q('.corruption-track'),
     corruptionTrace: q('.corruption-trace path'),
     corruptionBand: q('.corruption-band'),
+    corruptionNext: q('.corruption-next'),
     corruptionRoute: q('.corruption-route'),
     inventory: q('.inventory'),
     tierGroups: Object.fromEntries(
@@ -1501,6 +1578,7 @@ const TEMPLATE = (slots, notches, dirSlots) => `
       <path d="M 0.00 5.00 L 100.00 5.00" />
     </svg>
     <b class="corruption-band">Pristine</b>
+    <i class="corruption-next"></i>
     <i class="corruption-route"></i>
   </div>
   <div class="inventory">

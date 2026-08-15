@@ -77,6 +77,7 @@ console.log('the gauge trace is a ring buffer written through the diff cache');
     corruption: { dataset: {}, classList: noop },
     corruptionFill: { style: {} },
     corruptionBand: { textContent: '' },
+    corruptionNext: { textContent: '' },
     corruptionRoute: { textContent: '', classList: noop },
     corruptionTrace: { setAttribute: (k, v) => { writes++; lastD = v; } },
   };
