@@ -60,7 +60,7 @@ for (const f of files) {
 }
 
 // --- boot the real game and introspect the live systems ---------------------
-const server = await createServer({ server: { port: 5205, hmr: false, watch: null }, logLevel: 'error' });
+const server = await createServer({ server: { port: 5217, hmr: false, watch: null }, logLevel: 'error' });
 await server.listen();
 const OFFSCREEN = process.env.CAPTURE_VISIBLE
   ? [] : ['--window-position=-2400,-2400', '--window-size=1280,720'];
@@ -70,7 +70,7 @@ const browser = await chromium.launch({
 });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 page.on('pageerror', (e) => console.log('PAGE ERROR:', e.message));
-await page.goto('http://127.0.0.1:5205/?seed=1337&quality=1&harness=1', { waitUntil: 'load' });
+await page.goto('http://127.0.0.1:5217/?seed=1337&quality=1&harness=1', { waitUntil: 'load' });
 await page.waitForFunction(() => globalThis.__GAME__?.ctx?.stage != null, null, { timeout: 60000 });
 // Let every system finish init and publish itself onto ctx.
 await page.evaluate(() => globalThis.__HARNESS__.gameplay());

@@ -12,6 +12,7 @@ import { chromium } from 'playwright';
 import { createServer } from 'vite';
 import { mkdir, writeFile, rm, readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
+import { resolveOutDir } from './lib/evidence.mjs';
 
 // Walk argv token by token. An earlier version joined and split on '--', which
 // silently mangled any value containing a double dash — including Windows paths
@@ -25,7 +26,9 @@ for (let i = 2; i < process.argv.length; i++) {
   const next = process.argv[i + 1];
   args[tok.slice(2)] = next && !next.startsWith('--') ? (i++, next) : true;
 }
-const OUT = path.resolve(args.out ?? 'shots');
+// `shots` itself is gitignored wholesale; go through the helper so that is
+// stated at the moment the run writes rather than assumed by whoever reads it later (#71).
+const OUT = resolveOutDir(args.out ?? 'shots', { tool: 'capture' });
 const SEED = Number(args.seed ?? 1337);
 const ONLY = args.only ? String(args.only).split(',') : null;
 const W = Number(args.width ?? 1600), H = Number(args.height ?? 900);

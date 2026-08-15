@@ -60,7 +60,7 @@ const BOX = { halfW: 0.8, halfH: 1.2, cy: 1.15 };
 // enemy mask taken at 1600x900 are still directly comparable.
 const EW = 1600, EH = 900;
 
-const server = await createServer({ server: { port: 5201, hmr: false, watch: null }, logLevel: 'error' });
+const server = await createServer({ server: { port: 5226, hmr: false, watch: null }, logLevel: 'error' });
 await server.listen();
 const browser = await chromium.launch({
   timeout: 120000,
@@ -71,7 +71,7 @@ const browser = await chromium.launch({
        '--window-position=-2400,-2400', '--window-size=800,600'],
 });
 const page = await browser.newPage({ viewport: { width: 800, height: 600 } });
-await page.goto(`http://127.0.0.1:5201/?seed=${SEED}&quality=3&harness=1`, { waitUntil: 'load' });
+await page.goto(`http://127.0.0.1:5226/?seed=${SEED}&quality=3&harness=1`, { waitUntil: 'load' });
 await page.waitForFunction(() => globalThis.__GAME__?.ctx?.stage != null, null, { timeout: 60000 });
 
 const masks = await page.evaluate(async ([w, h, box]) => {

@@ -59,6 +59,7 @@ import { chromium } from 'playwright';
 import { createServer } from 'vite';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { resolveOutDir } from './lib/evidence.mjs';
 
 const args = {};
 for (let i = 2; i < process.argv.length; i++) {
@@ -69,7 +70,9 @@ for (let i = 2; i < process.argv.length; i++) {
 }
 const SEED = Number(args.seed ?? 1337);
 const PORT = Number(args.port ?? 5207);
-const OUT = path.resolve(args.out ?? 'shots-affix');
+// `shots-affix` matches the `shots-` wildcard in .gitignore; a number quoted
+// out of a run that landed there would not survive a clean checkout (#71).
+const OUT = resolveOutDir(args.out ?? 'shots-affix', { tool: 'affixprobe' });
 const W = 1600, H = 900;
 const AFFIXES = ['emberclad', 'galvanic', 'rimebound', 'withering', 'warded'];
 

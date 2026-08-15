@@ -183,11 +183,35 @@ const DRIFT_TOLERANCE = 1e-9;
 // future card that forgets to, not a value in live use.
 const DEFAULT_ENEMY_HEIGHT = 1.6;
 
-// The dev-server port. Not a range: it only has to be free and it only has to
-// differ from the ports the probes in `tools/` use (5202, 5203, …) so a probe
-// and a capture can run at once. Reusing one of theirs is the only way to get
-// this wrong.
-const PORT = 5209;
+// The dev-server port, overridable — `--port 5300`, or `SP_PORT=5300`.
+//
+// The default only has to be free and to differ from every port the scripts in
+// `tools/` claim. It did not: `tools/menuprobe.mjs` and `tools/voidprobe.mjs`
+// both defaulted to 5209 as well, so the property the previous comment here
+// claimed was never true. `tests/probe-ports.test.mjs` now asserts it instead
+// of asserting it in prose, and it is what stops the next default from
+// colliding.
+//
+// The override matters more than the default. All three gates — `gate:sp`,
+// `gate:mp1`, `gate:elite` — run through this one file, so a single hardcoded
+// port meant no two could run at once, *including from separate git
+// worktrees*. That became the throughput ceiling for parallel work on
+// 2026-08-15, and it cost two diagnosis cycles because a lost race surfaces as
+// ERR_CONNECTION_REFUSED or a vite bind error inside the losing run, which
+// reads as a defect in the branch under test. See issue #68.
+//
+// The port is internal to this file's own vite dev server. It is not part of
+// any baseline fingerprint, so moving it cannot change a comparison result.
+const PORT = Number(
+  (() => {
+    const i = process.argv.indexOf('--port');
+    return i >= 0 ? process.argv[i + 1] : process.env.SP_PORT;
+  })() ?? 5209,
+);
+if (!Number.isInteger(PORT) || PORT < 1024 || PORT > 65535) {
+  console.error(`sp-equivalence: --port/SP_PORT must be an integer in 1024-65535, got ${PORT}`);
+  process.exit(2);
+}
 
 /* ---------------------------------------------------------------------------
  * `--mode elite-dps` — the elite-affix damage arm.
@@ -334,10 +358,19 @@ let pageErrors = [];
 
 // Everything below runs inside try/finally: when the in-page fixture throws —
 // which is what happens when this file is wrong — the top-level await used to
-// reject with chromium still up and port 5209 still held, and the *next* run
+// reject with chromium still up and the port still held, and the *next* run
 // then failed with a port-in-use error that reads as a different bug entirely.
 try {
-  server = await createServer({ server: { port: PORT, hmr: false, watch: null }, logLevel: 'error' });
+  // `strictPort` is the half of issue #68 that made the collision so expensive
+  // to read. Without it vite does not fail on a held port: it quietly binds the
+  // *next* free one and returns a healthy server. The run then navigates to
+  // PORT, which belongs to the other process, and dies with
+  // ERR_CONNECTION_REFUSED several seconds later and a long way from the cause
+  // — which is verbatim what one of the two implementers reported. Failing at
+  // bind, loudly, turns a mystery into a sentence.
+  server = await createServer({
+    server: { port: PORT, strictPort: true, hmr: false, watch: null }, logLevel: 'error',
+  });
   await server.listen();
 
   // Headed for the real GPU path, parked off the visible desktop so probe runs
@@ -1169,6 +1202,45 @@ try {
     pageErrors.push(...b.errs);
     await b.page.close();
   }
+} catch (e) {
+  // A held port is not a defect in the code under test, but it presents as one.
+  // Naming it here is the whole of issue #68's third item: two implementers
+  // spent a diagnosis cycle each on this exact failure in one day, one of them
+  // chasing a branch that was fine.
+  // Three spellings, because the one that actually happens is the least
+  // obvious. Node raises `EADDRINUSE`, but vite catches that and rethrows its
+  // own plain `Error: Port 5251 is already in use` with no `code` — so a
+  // handler matching only the node spelling looks right, passes review, and
+  // does nothing. Verified against a held port rather than assumed.
+  if (e?.code === 'EADDRINUSE'
+    || /EADDRINUSE|(?:address|port \d+) (?:is )?already in use/i.test(String(e?.message ?? ''))) {
+    console.error(
+      `\nPORT ${PORT} IS HELD — this is not a failure in the code under test.\n`
+      + (PORT === 5209
+        // Only true of the default. Saying it of an explicit --port would be
+        // the same species of confidently-wrong diagnostic this exists to end.
+        ? '  5209 is the shared default for all three gates (gate:sp, gate:mp1,\n'
+          + '  gate:elite), including across separate git worktrees, so another gate is\n'
+          + '  the likeliest holder.\n'
+        : '  Something else is already listening there.\n')
+      + '  A previously failed run can also leave chromium up still holding it.\n'
+      + `  Wait for the other run, or give this one its own port:  --port ${PORT + 40}\n`
+      + `  (or SP_PORT=${PORT + 40})\n`,
+    );
+    // `process.exit` does not run the `finally` below, and leaking a chromium
+    // is how the *next* run fails differently. Close here, and null the handles
+    // so the finally cannot double-close them. Each close is guarded on its
+    // own: a `close()` that throws while we are already handling a bind failure
+    // would otherwise escape before its handle was nulled, and the finally
+    // would then close the same broken handle a second time — a diagnostic
+    // turning back into a stack trace at the worst moment.
+    try { await browser?.close(); } catch { /* already gone */ }
+    browser = null;
+    try { await server?.close(); } catch { /* already gone */ }
+    server = null;
+    process.exit(3);
+  }
+  throw e;
 } finally {
   await browser?.close();
   await server?.close();

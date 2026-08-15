@@ -53,6 +53,7 @@ import { chromium } from 'playwright';
 import { createServer } from 'vite';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { resolveOutDir } from './lib/evidence.mjs';
 
 const args = {};
 for (let i = 2; i < process.argv.length; i++) {
@@ -63,7 +64,9 @@ for (let i = 2; i < process.argv.length; i++) {
 }
 const SEED = Number(args.seed ?? 1337);
 const PORT = Number(args.port ?? 5213);
-const OUT = path.resolve(args.out ?? 'shots-reckoning');
+// shots-reckoning is caught by the `shots-` ignore rule; the helper surfaces
+// that so a number pulled from the record here doesn't get treated as fact (#71).
+const OUT = resolveOutDir(args.out ?? 'shots-reckoning', { tool: 'reckoningprobe' });
 const RECORD = args.record ? path.resolve(args.record) : null;
 const W = 1600, H = 900;
 

@@ -18,6 +18,7 @@ import { chromium } from 'playwright';
 import { createServer } from 'vite';
 import { mkdir, writeFile, rm, readdir } from 'node:fs/promises';
 import path from 'node:path';
+import { resolveOutDir } from './lib/evidence.mjs';
 
 const args = {};
 for (let i = 2; i < process.argv.length; i++) {
@@ -28,7 +29,9 @@ for (let i = 2; i < process.argv.length; i++) {
   const next = process.argv[i + 1];
   args[tok.slice(2)] = next && !next.startsWith('--') ? (i++, next) : true;
 }
-const OUT = path.resolve(args.out ?? path.join('shots', 'realms'));
+// shots/realms lives under the blanket `shots` ignore; the helper says so at
+// write time instead of leaving that to be rediscovered later (issue #71).
+const OUT = resolveOutDir(args.out ?? path.join('shots', 'realms'), { tool: 'capture-realms' });
 const SEED = Number(args.seed ?? 1337);
 const ONLY = args.only ? String(args.only).split(',') : null;
 const W = Number(args.width ?? 1600), H = Number(args.height ?? 900);
@@ -101,7 +104,7 @@ const OFFSCREEN = process.env.CAPTURE_VISIBLE
   ? []
   : ['--window-position=-2400,-2400', `--window-size=${W},${H}`];
 
-const PORT = Number(args.port ?? 5207);
+const PORT = Number(args.port ?? 5220);
 log('starting vite...');
 const server = await createServer({
   server: { port: PORT, strictPort: true, hmr: false, watch: null },

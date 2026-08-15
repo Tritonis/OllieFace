@@ -23,12 +23,19 @@
  * which puts both imported copies at one world transform and toggles them one at
  * a time, so the two crops differ in the material and in nothing else.
  *
- * Shots land in `--out` (default `shots-modelkit`), with a JSON record beside
- * them carrying the per-subject unique-luma counts — the same measure
+ * Shots land in `--out` (default `reviews/modelkit-seam`), with a JSON record
+ * beside them carrying the per-subject unique-luma counts — the same measure
  * `ART-ASSETS.md` used to state the detail-starvation defect ("the chest in
  * 07-interactables carries 67 unique luma values over 117,000 px").
  *
- *   node tools/kitprobe.mjs [--seed 1337] [--port 5233] [--out shots-modelkit]
+ * That default is a committed directory on purpose. The record is cited by two
+ * ratified documents, and it used to be written to `shots-modelkit`, which git
+ * ignores — see `tools/lib/evidence.mjs` and issue #71. The full 1600x900 frames
+ * are still ignored even there; the crops and the record are not, and the run
+ * prints which is which when it finishes.
+ *
+ *   node tools/kitprobe.mjs [--seed 1337] [--port 5233]
+ *                           [--out reviews/modelkit-seam]
  *                           [--model /assets/kit/chest.glb]
  *
  * The model is NOT in git (see `.gitignore`); issue #26 forbids committing any
@@ -43,8 +50,9 @@
  */
 import { chromium } from 'playwright';
 import { createServer } from 'vite';
-import { mkdir, writeFile, access } from 'node:fs/promises';
+import { mkdir, writeFile, access, readdir } from 'node:fs/promises';
 import path from 'node:path';
+import { resolveOutDir, reportSurvival } from './lib/evidence.mjs';
 
 const args = {};
 for (let i = 2; i < process.argv.length; i++) {
@@ -55,7 +63,16 @@ for (let i = 2; i < process.argv.length; i++) {
 }
 const SEED = Number(args.seed ?? 1337);
 const PORT = Number(args.port ?? 5233);
-const OUT = path.resolve(args.out ?? 'shots-modelkit');
+// `reviews/modelkit-seam`, not `shots-modelkit`. This probe's record is quoted
+// by `docs/ART-STYLE-GUIDE.md` and `docs/art/ASSET-SPEC.md`, and the old default
+// matched the `shots-` wildcard rule in `.gitignore` — so the numbers those two
+// ratified documents rest on were written straight into a path git discards, and
+// survived only because they were recovered by hand out of an agent worktree
+// before it was pruned (issue #71). `citable: true` means an `--out` override
+// gets the same check rather than reopening the hole from the command line.
+const OUT = resolveOutDir(args.out ?? 'reviews/modelkit-seam', {
+  tool: 'kitprobe', citable: true, suggest: 'reviews/modelkit-seam',
+});
 const MODEL = String(args.model ?? '/assets/kit/chest.glb');
 const W = 1600, H = 900;
 
@@ -474,4 +491,15 @@ try {
 
 const failed = checks.filter((c) => !c.pass).length;
 console.log(`\n${checks.length - failed}/${checks.length} checks passed  ->  ${OUT}`);
+
+// Which of the files just written can actually be quoted. A committed --out is
+// not the whole answer: `reviews` ignores captures by extension, with a scoped
+// negation for the crops, so the frames and the crops land in the same
+// directory with opposite fates. Printing it here is cheaper than discovering
+// it from a document that cites the wrong one (issue #71).
+try {
+  const written = (await readdir(OUT)).sort();
+  reportSurvival(OUT, written, { tool: 'kitprobe' });
+} catch { /* the report is a courtesy; never fail a run over it */ }
+
 process.exit(failed ? 1 : 0);

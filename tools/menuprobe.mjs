@@ -1,7 +1,7 @@
 /**
  * Menu probe: the pre-run equipment picker and the pause run summary.
  *
- *   node tools/menuprobe.mjs [--port 5209] [--seed 1337] [--out shots-menu]
+ *   node tools/menuprobe.mjs [--port 5222] [--seed 1337] [--out shots-menu]
  *
  * Drives the real menus with real clicks — title, select, the Equipment
  * screen, a pick, launch — then asserts the run seeded the picked equipment,
@@ -17,6 +17,7 @@ import { chromium } from 'playwright';
 import { createServer } from 'vite';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
+import { resolveOutDir } from './lib/evidence.mjs';
 
 const args = {};
 for (let i = 2; i < process.argv.length; i++) {
@@ -24,8 +25,10 @@ for (let i = 2; i < process.argv.length; i++) {
   if (m) args[m[1]] = process.argv[++i];
 }
 const SEED = Number(args.seed ?? 1337);
-const PORT = Number(args.port ?? 5209);
-const OUT = path.resolve(args.out ?? 'shots-menu');
+const PORT = Number(args.port ?? 5222);
+// `shots-menu` is a git-ignored default; the helper flags it so nobody quotes
+// one of these PNGs as if it were still there after a clean checkout (#71).
+const OUT = resolveOutDir(args.out ?? 'shots-menu', { tool: 'menuprobe' });
 const W = 1600, H = 900;
 const PICK = 'aegis-emitter';
 

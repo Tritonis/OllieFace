@@ -61,6 +61,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { REVIVE } from '../src/data/revive.js';
+import { resolveOutDir } from './lib/evidence.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -96,7 +97,10 @@ const SPAWN_SIGNAL = args.noSignal !== true;
 const LABEL = typeof args.label === 'string' ? args.label
   : !SPAWN_SIGNAL ? 'deadsignal' : (NETLAG || NETLOSS) ? 'lag' : 'base';
 const RECORD = path.resolve(args.record ?? `reviews/round9/coopprobe-${LABEL}.json`);
-const OUT = path.resolve(args.out ?? 'reviews/round9/coopprobe-shots');
+// The directory itself isn't caught by a `shots-` rule, but every file it
+// writes is a .png and `.gitignore` discards those under reviews/** anyway —
+// route through the helper regardless, so the next reader finds it here (#71).
+const OUT = resolveOutDir(args.out ?? 'reviews/round9/coopprobe-shots', { tool: 'coopprobe' });
 const SETS = String(args.checks ?? 'base').split(',').map((s) => s.trim()).filter(Boolean);
 
 const W = 1280, H = 720;

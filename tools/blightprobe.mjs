@@ -40,6 +40,7 @@ import { chromium } from 'playwright';
 import { createServer } from 'vite';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { resolveOutDir } from './lib/evidence.mjs';
 
 const args = {};
 for (let i = 2; i < process.argv.length; i++) {
@@ -50,7 +51,9 @@ for (let i = 2; i < process.argv.length; i++) {
 }
 const SEED = Number(args.seed ?? 1337);
 const PORT = Number(args.port ?? 5212);
-const OUT = path.resolve(args.out ?? 'shots-blightceiling');
+// shots-blightceiling is gitignored; route through the helper so a citation
+// off this run gets warned about, not silently promised (issue #71).
+const OUT = resolveOutDir(args.out ?? 'shots-blightceiling', { tool: 'blightprobe' });
 const W = 1600, H = 900;
 
 const checks = [];

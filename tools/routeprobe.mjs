@@ -12,7 +12,7 @@
  *                 collide with the band label or the inventory below it.
  *   5. console    zero page errors across the session.
  *
- *   node tools/routeprobe.mjs [--seed 1337] [--port 5211]
+ *   node tools/routeprobe.mjs [--seed 1337] [--port 5224]
  */
 import { chromium } from 'playwright';
 import { createServer } from 'vite';
@@ -25,7 +25,7 @@ for (let i = 2; i < process.argv.length; i++) {
   args[t.slice(2)] = n && !n.startsWith('--') ? (i++, n) : true;
 }
 const SEED = Number(args.seed ?? 1337);
-const PORT = Number(args.port ?? 5211);
+const PORT = Number(args.port ?? 5224);
 const W = 1600, H = 900;
 
 const checks = [];

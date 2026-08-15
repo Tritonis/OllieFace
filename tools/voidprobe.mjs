@@ -29,7 +29,7 @@
  * blight patch, the unit mid-surface, a 40 m read against a Warded elite for
  * the family-separation claim, and the gauge before/after the refund.
  *
- *   node tools/voidprobe.mjs [--seed 1337] [--port 5209] [--out shots-voidtouched]
+ *   node tools/voidprobe.mjs [--seed 1337] [--port 5223] [--out shots-voidtouched]
  *
  * Exit 1 if any check fails; the JSON record is written beside the PNGs either
  * way, because a failed arm is evidence too.
@@ -38,6 +38,7 @@ import { chromium } from 'playwright';
 import { createServer } from 'vite';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { resolveOutDir } from './lib/evidence.mjs';
 
 const args = {};
 for (let i = 2; i < process.argv.length; i++) {
@@ -47,8 +48,10 @@ for (let i = 2; i < process.argv.length; i++) {
   args[t.slice(2)] = n && !n.startsWith('--') ? (i++, n) : true;
 }
 const SEED = Number(args.seed ?? 1337);
-const PORT = Number(args.port ?? 5209);
-const OUT = path.resolve(args.out ?? 'shots-voidtouched');
+const PORT = Number(args.port ?? 5223);
+// shots-voidtouched sits under the `shots-` ignore rule; go through the
+// helper so this run's evidence status is stated, not assumed (issue #71).
+const OUT = resolveOutDir(args.out ?? 'shots-voidtouched', { tool: 'voidprobe' });
 const W = 1600, H = 900;
 
 const checks = [];

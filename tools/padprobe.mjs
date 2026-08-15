@@ -19,6 +19,7 @@ import { chromium } from 'playwright';
 import { createServer } from 'vite';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { resolveOutDir } from './lib/evidence.mjs';
 
 const args = {};
 for (let i = 2; i < process.argv.length; i++) {
@@ -27,7 +28,9 @@ for (let i = 2; i < process.argv.length; i++) {
 }
 const SEED = Number(args.seed ?? 1337);
 const PORT = Number(args.port ?? 5210);
-const OUT = path.resolve(args.out ?? 'shots-pad');
+// shots-pad matches the ignored `shots-*` prefix; the helper notes that at
+// write time instead of leaving it to whoever tries to cite a frame (#71).
+const OUT = resolveOutDir(args.out ?? 'shots-pad', { tool: 'padprobe' });
 const RECORD = path.resolve(args.record ?? 'reviews/round9/padprobe-record.json');
 const W = 1600, H = 900;
 

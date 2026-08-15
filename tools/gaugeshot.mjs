@@ -29,7 +29,7 @@
  * money shot is compared by eye against ui-shots-after/, so it is taken on the
  * same adapter.
  *
- *   node tools/gaugeshot.mjs [--seed 1337] [--port 5214] [--secs 66]
+ *   node tools/gaugeshot.mjs [--seed 1337] [--port 5225] [--secs 66]
  *                            [--target 150] [--out reviews/round8/ui-money-shot.png]
  *                            [--record reviews/round8/ui-gauge-probe-record.json]
  *                            [--software]
@@ -46,7 +46,7 @@ for (let i = 2; i < process.argv.length; i++) {
   args[t.slice(2)] = n && !n.startsWith('--') ? (i++, n) : true;
 }
 const SEED = Number(args.seed ?? 1337);
-const PORT = Number(args.port ?? 5214);
+const PORT = Number(args.port ?? 5225);
 // 75 s is not a round number by accident: the pen's ring buffer holds 48
 // samples at 1.5 s each, so 50 steps turns it over completely and nothing
 // `lateRun` did to the gauge before the climb started survives into the frame.

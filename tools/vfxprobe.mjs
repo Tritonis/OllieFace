@@ -28,12 +28,13 @@
  * Everything else — camera, geometry, monsters, every other particle — is bit
  * identical between variants, so a diff is the layer and nothing else.
  *
- *   node tools/vfxprobe.mjs [--seed 1337] [--port 5205] [--out shots-vfxprobe]
+ *   node tools/vfxprobe.mjs [--seed 1337] [--port 5218] [--out shots-vfxprobe]
  */
 import { chromium } from 'playwright';
 import { createServer } from 'vite';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { resolveOutDir } from './lib/evidence.mjs';
 
 const args = {};
 for (let i = 2; i < process.argv.length; i++) {
@@ -43,8 +44,10 @@ for (let i = 2; i < process.argv.length; i++) {
   args[t.slice(2)] = n && !n.startsWith('--') ? (i++, n) : true;
 }
 const SEED = Number(args.seed ?? 1337);
-const PORT = Number(args.port ?? 5205);
-const OUT = path.resolve(args.out ?? 'shots-vfxprobe');
+const PORT = Number(args.port ?? 5218);
+// shots-vfxprobe is git-ignored by the `shots-` rule; route through the helper
+// so that fact is announced instead of discovered after the fact (#71).
+const OUT = resolveOutDir(args.out ?? 'shots-vfxprobe', { tool: 'vfxprobe' });
 const W = 1600, H = 900;
 const KEYS = ['full', 'no-flash', 'no-light', 'no-distort', 'no-soft'];
 

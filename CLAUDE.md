@@ -49,22 +49,27 @@ Commit style: a single evocative sentence describing what changed in the world, 
 
 ## Verification
 
-- `npm test` — the full suite, ~1 minute. Currently **61/61 test files**.
+- `npm test` — the full suite, ~1 minute. Currently **67/67 test files**.
 - `npm run smoke:steam` — the Steam socket-pair gate (ADR 0002 arm B), ~35 s. Needs a **running,
   logged-in Steam client**, so it is a local gate and never a CI one. Writes
   `reviews/net-baseline/steam-socketpair-3peer-60hz.json`; the write-up beside it is
   `STEAM-SOCKETPAIR.md`. Its impairment settings are global to the Steam library, so never run
   two at once.
-- `npm run probe:coop` — two real browser pages forming a co-op session, several minutes. **Binds
-  fixed ports 5214/5215**, so never run two at once. Required for any change to the signalling,
-  formation, or connection-lifecycle path.
+- `npm run probe:coop` — two real browser pages forming a co-op session, several minutes. Defaults to
+  ports 5214/5215, overridable with `--port` / `--signal-port`. Required for any change to the
+  signalling, formation, or connection-lifecycle path.
 - `npm run gate:sp` / `gate:mp1` / `gate:elite` — single-player equivalence baselines, ~2 min each.
-  All three **bind port 5209**, hardcoded at `tests/sp-equivalence.mjs:190` with no override, so
-  **never run two at once — including from two different worktrees.** Two parallel agents hit this
-  on 2026-08-15 and both read the collision as a code failure first. It also collides with
-  `tools/menuprobe.mjs` and `tools/voidprobe.mjs`, which default to 5209 as well — despite the
-  comment at `sp-equivalence.mjs:186` claiming the port was chosen to differ from the `tools/`
-  probes. A failed run can leave chromium up and 5209 held, so the *next* run fails differently.
+  All three run through `tests/sp-equivalence.mjs`, which defaults to port 5209. **To run two at
+  once — including from two different worktrees — give each its own port:**
+  `npm run gate:sp -- --port 5249`, or `SP_PORT=5249 npm run gate:sp`. The port is internal to the
+  gate's own dev server and is not part of any baseline fingerprint, so moving it cannot change a
+  result.
+- **Probe and gate ports are unique by test, not by convention.** `tests/probe-ports.test.mjs` scans
+  every script in `tools/` plus `sp-equivalence.mjs` and fails if two claim the same default. It was
+  added after a day on which six separate collisions existed at once and two agents each burned a
+  diagnosis cycle reading one as a bug in their own branch. If you add a probe, pick a free port and
+  the test will tell you if you did not. A held port now fails at bind with a message naming it,
+  rather than surfacing later as `ERR_CONNECTION_REFUSED`.
 - Probe and gate runs must be **foreground** (timeout up to 600000 ms). An agent that backgrounds one
   and polls for it has zombied here before.
 
