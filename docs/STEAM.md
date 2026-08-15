@@ -619,12 +619,24 @@ Arm A is only as good as this list, so it is enumerated from what `NetHost`,
 row is a member a Steam-backed transport must provide.
 
 **The list is now machine-checked.** `tests/transport-contract.mjs` carries it as
-data and ends with an assertion that it is *sufficient*: a peer built from
-exactly these members, and nothing else, is driven through the real host loop
-behind a `Proxy` that records any read outside the list. If `NetHost` grows a
-reach the table does not have, that test fails and this table is what gets fixed.
-Verified to bite, not just to pass — removing `pumpSim` from either the peer or
-the list is caught.
+data and ends with an assertion that it is *sufficient*: a peer **generated from**
+the list — never hand-written alongside it, or the two drift — is driven through
+the real host loop behind a `Proxy` that records any read outside it. The `events`
+row gets a nested `Proxy` of its own against `CONTRACT.eventsChannel`, because
+that is the one member the host reaches *through*, and an unguarded object handed
+back by the outer trap would leave the riskiest row checked in name only. The
+refusal path is driven too, so those reads actually happen.
+
+Verified to bite rather than merely to pass. Three mutations, each caught:
+
+| Mutation | Caught as |
+|---|---|
+| `NetHost` reaches for a fourth channel member (`peer.events.label`) | `saw events.label` |
+| `pumpSim` dropped from the list alone | throw, **and** `saw pumpSim` |
+| `bufferedAmount` dropped from the channel list | `saw events.bufferedAmount` |
+
+So if `NetHost` grows a reach this table does not have — at either level — that
+test fails, and this table is what gets fixed.
 
 **On a peer:**
 

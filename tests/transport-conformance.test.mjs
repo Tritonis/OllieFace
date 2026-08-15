@@ -20,7 +20,7 @@ import { loopbackAdapter } from './transport-loopback.mjs';
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
 
-runTransportContract(loopbackAdapter, ok);
+await runTransportContract(loopbackAdapter, ok);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

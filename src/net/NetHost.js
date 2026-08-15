@@ -77,8 +77,15 @@ export class NetHost {
     // local menu. Only used to know when to hand `ctx.paused` back.
     this._holding = false;
     // Peer ids this host has already released, so the "never joined" warning in
-    // `_onPeerLeave` stays true. Bounded by peers seen this session, and peer
-    // ids are minted once each by `HostTransport`, so it never reuses one.
+    // `_onPeerLeave` stays true. `HostTransport._nextId` only ever increments,
+    // so an id is never reused and this can never misattribute an old peer.
+    //
+    // Never pruned, so state it honestly: bounded in *rate*, not in session
+    // length. One entry per peer that completed a handshake and then left, which
+    // costs a full connection each and is not cheap to spam — but a host left up
+    // for weeks with heavy churn does grow this without limit. If that ever
+    // matters, the fix is to drop the id when the transport forgets the peer,
+    // not to make the warning lie again.
     this._admitted = new Set();
   }
 

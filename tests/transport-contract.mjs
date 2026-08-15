@@ -105,7 +105,7 @@ const emittedNames = (ctx) => ctx.emitted.map(([n]) => n);
 const lastEmit = (ctx, name) => [...ctx.emitted].reverse().find(([n]) => n === name)?.[1];
 
 // ============================================================================
-export function runTransportContract(adapter, ok) {
+export async function runTransportContract(adapter, ok) {
   const t = (msg) => `[${adapter.name}] ${msg}`;
 
   /** A host with the adapter's transport in place of the one it builds itself. */
@@ -377,6 +377,56 @@ export function runTransportContract(adapter, ok) {
   }
 
   // ==========================================================================
+  console.log(`\n${adapter.name} — a refusal waits for a backed-up channel, but not for ever`);
+  // ==========================================================================
+  //
+  // `_closeWhenFlushed` retries while the reliable channel still holds bytes,
+  // capped at `REFUSE_FLUSH_TRIES`. Nothing in this repository had ever driven
+  // that retry: every fixture in `tests/` sets `bufferedAmount: 0` and never
+  // moves it, so `drained` was always true on the first check and the peer
+  // always closed immediately. The point of the cap is a peer that stops
+  // reading, and that peer had never existed in a test.
+  {
+    const { host } = makeHost();
+    const wire = adapter.connectPeer(host, 1);
+    const chan = wire.hostPeer.events;
+
+    // A peer that is not draining: the refusal goes into the channel and stays
+    // there.
+    chan.bufferedAmount = 4096;
+    host.setNow(99);
+    host._checkHelloDeadlines();
+
+    ok(wire.hostPeer.closed === false,
+      t('the host held the connection open while the refusal was still buffered'));
+
+    // Now it drains. The retry is on a 16 ms timer, so this is the one place the
+    // suite waits on real time — bounded well under the 8-try cap.
+    chan.bufferedAmount = 0;
+    await new Promise((r) => setTimeout(r, 60));
+
+    ok(wire.hostPeer.closed === true, t('and closed it once the channel drained'));
+  }
+
+  // ==========================================================================
+  console.log(`\n${adapter.name} — ...and gives up on a peer that never drains`);
+  // ==========================================================================
+  {
+    const { host } = makeHost();
+    const wire = adapter.connectPeer(host, 1);
+
+    // Never drains, ever. The cap is what stops this peer holding a connection
+    // open by doing nothing: 8 tries at 16 ms.
+    wire.hostPeer.events.bufferedAmount = 4096;
+    host.setNow(99);
+    host._checkHelloDeadlines();
+
+    await new Promise((r) => setTimeout(r, 250));
+
+    ok(wire.hostPeer.closed === true, t('the cap closed a peer that stopped reading'));
+  }
+
+  // ==========================================================================
   console.log(`\n${adapter.name} — the enumerated contract is SUFFICIENT`);
   // ==========================================================================
   //
@@ -390,23 +440,52 @@ export function runTransportContract(adapter, ok) {
     const touched = new Set();
     const missing = [];
 
-    const bare = {
-      id: 7,
-      onMessage: null,
-      onClose: null,
-      events: { readyState: 'open', bufferedAmount: 0 },
-      sendState() { touched.add('sendState'); },
-      sendEvent() { touched.add('sendEvent'); },
-      pumpSim() { touched.add('pumpSim'); },
-      close() { touched.add('close'); },
+    /**
+     * The `events` channel gets a `Proxy` of its own, against
+     * `CONTRACT.eventsChannel`.
+     *
+     * Without this the check has a hole exactly where the risk is. `peer.events`
+     * is the one member the host reaches *through* — `_closeWhenFlushed` reads
+     * `readyState` and `bufferedAmount` off the raw channel — and a plain object
+     * handed back by the outer trap is unguarded from there down, so a future
+     * reach for a third `RTCDataChannel` member (`label`, `id`, `send`) would be
+     * invisible. That is the same class of omission this section exists to
+     * catch, one level lower.
+     */
+    function guardedChannel() {
+      const chan = {};
+      for (const m of CONTRACT.eventsChannel) chan[m] = m === 'readyState' ? 'open' : 0;
+      return new Proxy(chan, {
+        get(target, prop) {
+          if (typeof prop === 'string' && !(prop in target)) missing.push(`events.${prop}`);
+          return target[prop];
+        },
+      });
+    }
+
+    // Built *from* `CONTRACT`, never alongside it. A hand-written fixture is a
+    // second copy of the list, and two copies drift: drop a member from
+    // `CONTRACT` while the fixture still implements it and this check goes on
+    // passing while the document it polices has already gone wrong. Generating
+    // the peer means removing a row from `CONTRACT` removes it from the peer,
+    // and the host loop throws.
+    const value = (member) => {
+      if (member === 'id') return 7;
+      // Assigned by `_onPeer`, not called by it.
+      if (member === 'onMessage' || member === 'onClose') return null;
+      if (member === 'events') return guardedChannel();
+      return () => { touched.add(member); };
     };
+
+    const bare = {};
+    for (const m of CONTRACT.peer) bare[m] = value(m);
+
     // Anything read that is not on the contract is recorded rather than thrown,
-    // so one run names every omission instead of only the first.
+    // so one run names every omission instead of only the first. `bare` is
+    // generated from the contract, so `prop in target` *is* the membership test.
     const guarded = new Proxy(bare, {
       get(target, prop) {
-        if (typeof prop === 'string' && !(prop in target) && !CONTRACT.peer.includes(prop)) {
-          missing.push(prop);
-        }
+        if (typeof prop === 'string' && !(prop in target)) missing.push(prop);
         return target[prop];
       },
     });
@@ -422,8 +501,13 @@ export function runTransportContract(adapter, ok) {
         host.update(ctx, 1 / 60);
         host.fixedUpdate(ctx, 1 / 60);
       }
-      host._forward('kill', { });
+      host._forward('kill', {});
       host.update(ctx, 1);
+      // And the refusal path, which is the only thing that reaches *through* the
+      // peer into its channel. Without it the nested guard above would never be
+      // exercised and the row it protects would be checked in theory only.
+      host.setNow(99);
+      host._checkHelloDeadlines();
     } catch (err) {
       threw = err;
     }
@@ -433,5 +517,7 @@ export function runTransportContract(adapter, ok) {
     ok(touched.has('pumpSim'),
       t('and it did reach for pumpSim — the member section 3 of docs/STEAM.md omitted'));
     ok(touched.has('sendState'), t('and sendState, so the loop really ran'));
+    ok(touched.has('sendEvent') && touched.has('close'),
+      t('and the refusal path ran, so peer.events was read through the nested guard'));
   }
 }
