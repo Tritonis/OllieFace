@@ -289,6 +289,15 @@ export class HUD {
       if (!blight) return;
       this.toast(`${base?.name || prettify(e.baseId)} festers — ${e.count}x ${blight.name}`, 'blight', e.blightId);
     });
+    // The same line, run backwards: the Argent Font's reward moves a stack out
+    // of the blight tier and back into its own, and without this the strip just
+    // silently reshuffles itself while the player is looking at the font.
+    on('itemStabilised', (e) => {
+      if (!isLocalOwner(ctx, e)) return;
+      const base = ITEM_BY_ID.get(e.baseId), blight = ITEM_BY_ID.get(e.blightId);
+      if (!base) return;
+      this.toast(`${blight?.name || prettify(e.blightId)} settles — ${e.count}x ${base.name}`, base.tier, e.baseId);
+    });
     // No owner test needed: the body is empty. The gold readout is polled off
     // `ctx.items` — the viewer's own instance — in `update`, so a teammate's
     // purse cannot reach it however loud this channel gets.

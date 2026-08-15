@@ -644,6 +644,66 @@ export class Items {
   }
 
   /**
+   * The blight stacks a cleansing could hand back, sorted. A query, not a side
+   * effect, because the Argent Font's prompt has to be able to promise the
+   * reward *before* the player pays for it (issue #32) — and the caller that
+   * promises it and the caller that pays it must agree, which is why they read
+   * the same list rather than two filters that could drift.
+   */
+  stabilisable() {
+    const out = [];
+    for (const [id, count] of this.counts) {
+      const def = ITEM_BY_ID.get(id);
+      if (count > 0 && def?.tier === 'blight' && def.corrupts) out.push(id);
+    }
+    out.sort();
+    return out;
+  }
+
+  /**
+   * `_mutateAt` run backwards: one held blight stack becomes its base again.
+   * The Argent Font's reward — cleansing gives something back rather than only
+   * taking something away, which is what makes it an investment instead of a
+   * refund.
+   *
+   * Everything hazardous about `_mutateAt` is hazardous here, for the same
+   * reasons and with the same answers:
+   *
+   * - The pick comes off a derived stream seeded per (run seed, `salt`), never
+   *   off `ctx.rng`. One shared draw here would displace every later roll
+   *   relative to a run whose inventory happened to differ — the sp-equivalence
+   *   hazard, and `gate:sp` is what finds out. The salt is the font's stage and
+   *   press index (`ArgentFont.interact`), so successive presses at one font
+   *   pick different stacks without anything being rolled.
+   * - Eligible ids are sorted, so the pick cannot depend on Map insertion order.
+   * - Host only. A client adopts the two `'corrupt'` writes off the wire like
+   *   any other inventory change.
+   *
+   * The *whole* stack moves, exactly as the toll took the whole stack. It also
+   * avoids a state the rest of this class does not otherwise produce: a base
+   * and its blight card held at once, which the next blight-card pickup would
+   * silently re-absorb through `_settleBlight`.
+   */
+  stabilise(salt = 0) {
+    if (!this.ctx.authority) return null;
+    const eligible = this.stabilisable();
+    if (!eligible.length) return null;
+    const rng = new RNG(((this.ctx.seed >>> 0) ^ (0x27d4eb2f * ((salt | 0) + 1))) >>> 0 || 1);
+    const blightId = rng.pick(eligible);
+    const baseId = ITEM_BY_ID.get(blightId).corrupts;
+    const held = this.count(blightId);
+    // Zero the card first, then land the base — the same order `_mutateAt`
+    // writes in, so the HUD strip retires a tile before it creates one and the
+    // toasts stay in causal order.
+    this._set(blightId, 0, 'corrupt');
+    this._set(baseId, this.count(baseId) + held, 'corrupt');
+    this.ctx.events.emit('itemStabilised', {
+      blightId, baseId, count: held, owner: this._owner(),
+    });
+    return { blightId, baseId, count: held };
+  }
+
+  /**
    * Remove stacks. Host only, and the mirror of `give` in every respect —
    * including the `itemPickup` event, which carries an absolute count rather
    * than a delta precisely so a removal is representable on it and a client's

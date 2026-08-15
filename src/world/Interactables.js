@@ -2,7 +2,10 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { ITEM_BY_ID, TIERS } from '../data/items.js';
 import { eliteAffixesFor } from '../data/enemies.js';
-import { SOURCES, CLEANSE, PACT, cleanseAmount, cleanseCost } from '../data/corruption.js';
+import {
+  SOURCES, CLEANSE, PACT, BANDS, MUTATION, PRESSURE,
+  bandOf, voidBankCap, cleanseAmount, cleanseCost,
+} from '../data/corruption.js';
 // Every prompt that feeds the void is priced through one formatter, so the
 // three parts of the decision cannot drift apart between shrines (issue #30).
 import { pricedPrompt, biasFeedRange, idsFeed } from './corruptionPrice.js';
@@ -1458,18 +1461,80 @@ export class ArgentFont extends Interactable {
   // read the world, so both are stale on a client, and by the same mechanism:
   // the press still resolves on the host at the host's numbers, so this is
   // stale display, not a stale transaction. Replicating the gauge is a
-  // net-layer change and deliberately not made here.
-  prompt() { return `Argent Font — bleed ${this.yield()} corruption ($${this.cost})`; }
+  // net-layer change and deliberately not made here. Issue #32 widens the
+  // stale surface rather than changing its shape: every line below reads the
+  // same `_world`, so on a client the whole ledger describes a pristine world.
+  // The one clause that is *not* stale there is the freed stack — a client's
+  // inventory mirror is real.
+  /**
+   * The whole projected transaction, before the player pays for it (issue #32).
+   * Two of these six numbers were on the prompt; the four that were not are
+   * exactly the ones that make cleansing an investment rather than a refund —
+   * the band you land in, the war chest the void loses, the Director pressure
+   * that comes off, the toll headroom you buy back, and the stack the press
+   * hands you.
+   *
+   * Line 1 is the bill. Everything below it is the *projection* — what the
+   * world looks like once the press resolves — which is why the band reads as
+   * an arrow. Three lines is the budget: the prompt sits under the reticle in
+   * the flow of play, and a fourth would be a document rather than a decision.
+   *
+   * All of it is recomputed per frame off the live world, for the reason
+   * `cleanseCost` documents: a Voidtouched refund landing mid-approach
+   * re-prices the font, and a disclosure frozen at prompt-open would then be
+   * describing a transaction that no longer exists.
+   */
+  prompt() {
+    const world = this.ctx.corruption?.world ?? 0;
+    const amount = this.yield();
+    const after = Math.max(0, world - amount);
+    const removed = world - after;
+
+    const from = BANDS[bandOf(world)].name;
+    const to = BANDS[bandOf(after)].name;
+    const bank = Math.round(voidBankCap(after) - voidBankCap(world));
+    const pressure = -removed * PRESSURE.perWorld;
+    // Each clause states a change or says plainly that there is none: a bleed
+    // inside one band, or against a void bank already pinned at `maxBank`,
+    // really does move nothing, and quoting "-0" for it would be the same kind
+    // of half-truth this prompt exists to retire.
+    const ledger = [
+      from === to ? `${to} holds` : `${from} -> ${to}`,
+      bank < 0 ? `void bank ${bank}` : 'void bank held',
+      pressure <= -0.005 ? `pressure ${pressure.toFixed(2)}` : 'pressure held',
+    ];
+
+    // The toll clock. `Items._mutePeak` never rewinds, so no cleansing can
+    // re-arm a threshold already paid — what this press buys is distance to the
+    // *next* one, and below `MUTATION.minBand` that is Blighted rather than the
+    // band immediately above.
+    const tollBand = Math.max(bandOf(after) + 1, MUTATION.minBand);
+    const gain = [];
+    if (Items.of(this.ctx, this.ctx.player)?.stabilisable?.().length) gain.push('frees 1 blight stack');
+    gain.push(tollBand < BANDS.length
+      ? `${Math.round(BANDS[tollBand].at - after)} to the next blight toll`
+      : 'no further blight toll');
+
+    return `Argent Font — bleed ${amount} corruption ($${this.cost})\n`
+      + `${ledger.join(', ')}\n${gain.join(', ')}`;
+  }
 
   interact(pawn = this.ctx.player) {
     const cor = this.ctx.corruption;
     // Nothing to bleed means nothing to sell; refuse before taking the gold.
     if (!cor || !(cor.world > 0)) { this.ctx.audio?.play?.('deny'); return false; }
     if (!Items.of(this.ctx, pawn)?.spendGold(this.cost)) { this.ctx.audio?.play?.('deny'); return false; }
+    const press = this.uses;
     this.uses++;
     // Whoever paid gets their own ledger cleared first — `bleed` spends the
     // buyer's own corruption before it spreads the remainder.
     cor.bleed(pawn, this.yield());
+    // The investment half (issue #32): one corrupted stack comes back. After
+    // the bleed, so the band listeners have settled before the inventory moves;
+    // into the payer's own pack, because every economy action resolves through
+    // `Items.of`. The salt is derived, never drawn — see `Items.stabilise` for
+    // why one `ctx.rng` draw here would be an sp-equivalence break.
+    Items.of(this.ctx, pawn)?.stabilise?.(this.stageIndex * CLEANSE.maxUses + press);
     this.ctx.vfx?.burst?.(this.position, 0x9fd4ff);
     this.ctx.audio?.play?.('shrineWin', this.position);
     if (this.uses >= this.maxUses) this.water.material.emissiveIntensity = 0.05;
