@@ -1,6 +1,8 @@
 # Art style guide
 
-**Status:** draft, awaiting ratification by the author.
+**Status:** ratified by the author, 2026-08-15. The seven questions this document was
+drafted with are settled; the answers and what each one changed are recorded in
+*Ratified decisions* at the end.
 
 `RUBRIC.md` grades output after the fact. This document constrains input: it is the gate
 every asset search, every generated mesh and every new icon in the art milestone is
@@ -9,12 +11,19 @@ style guide that new content is checked against before it lands" — and this is
 
 Everything below is a rule the code already implies. Each rule carries the `file:line`
 it was verified against, so a reader can refute it against source rather than believe it.
-Where the code is silent, nothing is decided here; those questions are collected in
-*Open questions* at the end and are the author's to settle.
 
-`docs/art/ASSET-SPEC.md` is the searching agent's brief and restates parts of rules 1 and
-2 in shortlist-friendly form. This document is the constraint; the asset spec is the
-procedure. Where the two disagree, source wins and both documents are wrong.
+## Precedence
+
+**`docs/art/ASSET-SPEC.md` governs.** Where this guide and the asset spec disagree, the
+asset spec wins, and this document is the one that gets corrected. Ratified 2026-08-15
+(question 7).
+
+Two things that does *not* mean. Source still outranks both on any transcribed fact: the
+palette lives at `src/world/Materials.js:23-69` and the Void constants at
+`src/shaders/BlightMask.js:88-89`, and a document disagreeing with those is simply wrong,
+whichever document it is. And precedence is not licence to let the two drift — **when a
+decision is made, the agent updates `ASSET-SPEC.md` first**, then reconciles this guide to
+it in the same change.
 
 ---
 
@@ -151,11 +160,24 @@ blight patch. Both must read. Neither may be the asset's only good look.
 
 ## Rule 3 — One shader treatment
 
-**Rule.** Incoming assets never ship their authored materials. Every world surface —
+**Rule.** Incoming assets never ship their authored **materials**. Every world surface —
 ground, rock, iron, brass, anything the player reads as part of the place they are
 standing in — is bound to a material built by `src/world/Materials.js` and passed through
 `attachWorldSurface(material, kind)` (`src/world/Materials.js:846-849`). Importing a mesh
 whose material came with it is a rejection, not a follow-up cleanup.
+
+**Maps are not materials, and maps are allowed** (ratified 2026-08-15, question 2). A
+purchased or downloaded **texture map** — albedo, normal, roughness, AO, height — may be
+bound into a material that `Materials.js` builds. What is forbidden is an asset arriving
+with its own *material*: its own shader, its own grade, its own emissive decisions, its own
+bloom. The distinction is the whole rule, because `ART-ASSETS.md` names authored texel
+variation as the fix for the detail-starvation half of axis 5, and that fix is
+unreachable if maps are banned along with materials.
+
+A bound map is still subject to every other rule: its dominant colour maps to a `PALETTE`
+entry (rule 1), it must survive being re-shaded violet (rule 2), and it is judged through
+the shipping post chain (rule 4). Binding a map does not exempt content from the seam —
+it still passes through `attachWorldSurface`.
 
 **The seam is named**, and it is `attachWorldSurface`. It exists precisely because the
 world's surfaces are built in four files rather than one, and its doc comment states the
@@ -211,8 +233,29 @@ Two consequences for incoming content:
 - **Bloom is a threshold, not a style.** Content only blooms by exceeding 1.25 in linear
   HDR. An asset that looks correct only with a bloom it brought with it is rejected.
 
+### Emissive and accent hues — permitted, under one cap
+
+Ratified 2026-08-15 (questions 4 and 5). **New content may self-light, and may use the
+accent hue or introduce further accent hues, as the content warrants.** The accent is no
+longer exclusive and self-illumination is no longer implicitly reserved to it.
+
+**The cap that survives, because it was measured rather than preferred:** no scenery,
+emissive or otherwise, may **out-value the objects the player has to read**. The existing
+accent is held at emissive 0.85, under the 1.25 bloom knee
+(`src/world/Materials.js:1040-1043`, `src/core/RenderPipeline.js:23`), and the `PALETTE`
+comment records why: measured at **luma 224 in a mean-luma-62 combat frame**, the accent
+was the brightest non-VFX object on screen — brighter than the sentinels wearing the same
+teal as their species colour, and brighter than the subject of the prop shot
+(`src/world/Materials.js:47-55`).
+
+So the permission is on hue and on self-illumination; the constraint is on **value**, and
+it is the same constraint that pulled the accent down in the first place. A second accent
+that repeats that defect is rejected under this rule, not admitted under question 5.
+
 **Check before it lands.** Screenshot the asset through the shipping pipeline, not through
-a viewer. A marketplace render is not evidence about this game.
+a viewer. A marketplace render is not evidence about this game. For anything emissive,
+capture it in a **combat frame** rather than in isolation, and confirm it is not the
+brightest non-VFX object in that frame.
 
 ---
 
@@ -234,13 +277,62 @@ The structural work of fixing the existing roster is issue #20's, not this docum
 This rule governs what is allowed to *arrive* while that work happens: nothing may be
 added that makes axis 4 worse.
 
-**Check before it lands.** Render the candidate and each existing roster member filled
-solid black on a flat background, at gameplay framing, and compare pairwise. A pair that
-a reader cannot tell apart is a rejection.
+### The measure
 
-Open question 1 below records what this rule does *not* fix: the code contains no
-silhouette test, so there is no numeric acceptance threshold and this check is a
-judgement call until the author sets one.
+Ratified 2026-08-15 (question 1). **Correction to this document's first draft:** it
+claimed there is no silhouette test anywhere in the codebase. That is wrong. There is one,
+it is a gate, and it already ratchets:
+
+- `tools/silhouette.mjs` renders every rig in `CharacterMesh` alone, in its idle pose,
+  flat black on white, through one shared orthographic box, so masks come back at true
+  relative scale.
+- `tools/silhouette-metrics.mjs` is the pure arithmetic half — `shapeIoU` at `:113`,
+  thresholds in `READABILITY` at `:124`, grading in `gradeRoster` at `:254`.
+- `tests/readability-gate.test.mjs` pins the arithmetic against masks it draws itself, so
+  the measurement is exercised without a GPU.
+
+Two thresholds already ship: `maxFamilyIoU: 0.78` (enemy vs enemy) and
+`maxFoeFriendIoU: 0.72` (enemy vs survivor), with an 18-entry exemption ratchet.
+
+**The gap this rule actually has** is narrower and worse than "no test exists":
+`tools/silhouette.mjs:356-366` builds `familyPairs` (enemy x enemy) and `foeFriendPairs`
+(enemy x survivor). **Survivor-versus-survivor pairs are never constructed at all**, and
+the file's own header calls the survivor pass "a report" rather than a gate. RANGER and
+ANVIL are both survivors — so the exact defect this rule exists for is the one case the
+gate structurally cannot see.
+
+**The ratified metric**, to be added as a survivor threshold rather than built as a
+parallel system:
+
+1. Render both subjects as solid black binary masks, same canonical gameplay camera angle
+   and standardized pose. Centre each and scale to the same bounding-box height,
+   **preserving aspect ratio**.
+2. `IoU = |A n B| / |A u B|`.
+3. Contour term: average bidirectional Chamfer distance between the outlines, normalised
+   by the bounding-box diagonal `D`, as `ContourSimilarity = max(0, 1 - d_chamfer / D)`.
+4. `Similarity = 0.6 * IoU + 0.4 * ContourSimilarity`.
+5. Interpretation: `>= 0.85` fail; `0.75-0.85` fail or review; `0.60-0.75` meaningfully
+   distinct; `< 0.60` strongly distinct.
+6. **Calibrate the pass threshold against the existing roster** — above the highest-scoring
+   pair currently considered acceptably distinct, below the known-bad RANGER/ANVIL pair.
+7. With multiple canonical views, take the **worst case**:
+   `FinalSimilarity = max(Similarity_view1, ...)`.
+
+Note that step 1 deliberately **preserves aspect ratio**, where the existing `sig` is
+normalised to a square 64x64 (`tools/silhouette.mjs:59`) and therefore discards it. For
+RANGER/ANVIL specifically, proportion may be the main separating feature, so the existing
+normalisation throws away exactly the axis in question. The new threshold uses the
+aspect-preserving form.
+
+Two things to establish during implementation rather than assume, tracked in **#61**:
+whether the Chamfer term retains useful spread after normalisation
+(it may compress toward 1.0 and leave the score mostly IoU), and whether the calibration
+window in step 6 exists at all — if an acceptable pair scores above RANGER/ANVIL, no
+threshold separates them and the answer is geometry work (#20), not a number.
+
+**Check before it lands.** Until the survivor threshold ships, render the candidate and
+each existing roster member filled solid black at gameplay framing and compare pairwise;
+a pair a reader cannot tell apart is a rejection. Once it ships, the gate is the check.
 
 ---
 
@@ -273,6 +365,16 @@ why the rule is absolute rather than a preference.
 - Tier colour comes from the icon module's own table (`src/ui/Icons.js:30-44`), so an icon
   cannot introduce a colour by accident.
 
+**Bought vector icons are admissible** (ratified 2026-08-15, question 6). "Every icon is
+drawn in `src/ui/Icons.js`" is not a permanent architectural commitment. A purchased or
+downloaded vector set may be brought in, redrawn or imported **as paths**.
+
+This changes nothing about the rule itself, because a vector path was never a text glyph.
+The rule's target is content whose appearance is chosen by the platform's font stack, and
+a path is not that. An imported set still has to satisfy rule 1 (its colours map to
+`PALETTE`, and tier colour keeps coming from `src/ui/Icons.js:30-44` rather than from the
+set) and must not reintroduce a font dependency to render.
+
 **Check before it lands.** Search the diff for string literals passed to `fillText` /
 `strokeText`, for characters above U+007F in any UI data table, and for any new font
 dependency. Any hit is a rejection. Text remains text — labels, numbers and names are not
@@ -293,50 +395,50 @@ New art content lands only when all six answers exist in writing:
 
 ---
 
-## Open questions for the author
+## Ratified decisions
 
-Nothing below is decided. The code is silent on each, and this document deliberately does
-not invent an answer.
+Settled by the author on 2026-08-15. These are the seven questions this document was
+drafted with; each entry records the answer and what it changed, so a later reader can
+tell which rules are measured findings and which are decisions.
 
-1. **What makes two silhouettes "different enough"?** There is no silhouette test anywhere
-   in the codebase — no threshold render, no comparison metric, no fixture. Rule 5 is a
-   judgement call until a measurable criterion exists. If one is wanted, it needs a fixed
-   framing distance, a comparison measure, and a pass number, and it probably belongs
-   alongside the existing capture harness rather than in this document.
+**1. What makes two silhouettes "different enough"?** A combined score,
+`0.6 * IoU + 0.4 * ContourSimilarity`, on aspect-ratio-preserving masks, worst case across
+canonical views, with the pass threshold calibrated against the existing roster. Written
+into rule 5. The draft's claim that no silhouette test exists anywhere in the codebase was
+**wrong** and is corrected there: `tools/silhouette.mjs` and `tools/silhouette-metrics.mjs`
+already gate enemy-vs-enemy and enemy-vs-survivor. The real gap is that
+survivor-vs-survivor pairs are never constructed, which is why RANGER/ANVIL is ungated.
+Implementation is **#61**.
 
-2. **May a purchased asset supply texture maps?** Rule 3 forbids shipping an authored
-   *material*, and the shipping ladders build every material from the shared procedural
-   texture sets (`src/world/Materials.js:1092`). But `ART-ASSETS.md` names authored texel
-   variation as the fix for the detail-starvation half of axis 5, which implies binding
-   purchased maps into a `Materials.js`-built material. Whether that is permitted, and
-   under what constraint on the maps' own colour, is undecided.
+**2. May a purchased asset supply texture maps?** Yes. Rule 3 now distinguishes a **map**
+(permitted, bound into a `Materials.js`-built material) from a **material** (still
+rejected). This turned out to be an ambiguity in one word rather than a conflict between
+rules.
 
-3. **Does rule 3 extend past world surfaces?** `attachWorldSurface` is scoped by its own
-   doc comment to "a material that renders a *world surface*"
-   (`src/world/Materials.js:830-834`). Characters and enemies
-   (`src/entities/CharacterMesh.js`, `src/entities/EnemyMeshes.js`) do not go through it,
-   so today a character standing in a blight patch does not take the mask. Whether an
-   incoming character asset must take the same treatment as terrain is a decision, not a
-   fact about the code.
+**3. Does rule 3 extend past world surfaces?** Corruption should visibly affect characters
+and enemies; whether that means extending the shader over those models is undecided and is
+an engineering question rather than a style rule. Deliberately **not** written into rule 3
+— it is tracked at **#62**, and rule 3 stays scoped to world surfaces until that lands.
 
-4. **What may new content be emissive?** Bloom triggers above 1.25 in linear HDR
-   (`src/core/RenderPipeline.js:23`), and the accent's emissive is deliberately held at
-   0.85 so it sits under the bloom knee (`src/world/Materials.js:1040-1043`). No rule
-   states whether new content may be emissive at all, or whether the crystal accent
-   remains the stage's only self-lit surface.
+**4. What may new content be emissive?** New content may self-light. The **value cap
+survives**: no scenery may out-value what the player has to read. Written into rule 4.
 
-5. **Is the accent exclusive?** The `PALETTE` comment caps the accent on value and calls
-   it "the one accent" (`src/world/Materials.js:47-55`). Whether new content may use the
-   accent hue at all, and whether a second accent could ever be introduced, is the
-   author's call.
+**5. Is the accent exclusive?** No. New content may use the accent hue, and further accent
+hues may exist as the content warrants — under the same value cap as question 4. Written
+into rule 4 alongside it, because the two answers share one constraint.
 
-6. **Must icons stay procedural forever?** Rule 6 forbids text glyphs, which is what the
-   round-5 defects actually were. It does not decide whether a *bought* vector icon set,
-   redrawn or imported as paths, is admissible — or whether "every icon is drawn in
-   `src/ui/Icons.js`" is a permanent architectural commitment (`src/ui/Icons.js:1-9`).
+**6. Must icons stay procedural forever?** No. A bought vector set, redrawn or imported as
+paths, is admissible. Rule 6 is materially unchanged, because a path was never a text
+glyph — the rule targets content whose appearance the platform's font stack chooses.
 
-7. **Which document governs a divergence?** This guide and `docs/art/ASSET-SPEC.md` both
-   transcribe from `src/world/Materials.js:23-69` and `src/shaders/BlightMask.js:88-89`.
-   Source is authoritative over both, but no rule says which document a searching agent
-   reads first, or who is responsible for re-verifying the transcriptions when the palette
-   moves.
+**7. Which document governs a divergence?** `docs/art/ASSET-SPEC.md` governs, and the
+agent updates it when decisions are made. Written into *Precedence* at the top.
+
+### On questions 4 and 5
+
+Both loosen rules that came from a measured defect rather than from taste, so the
+reasoning is recorded rather than left implicit. The author's answers granted the
+permission; the value cap was retained on the recommendation that "as appropriate" is not
+a checkable criterion, and that the accent's cap exists because it was **measured** — luma
+224 in a mean-luma-62 combat frame, the brightest non-VFX object on screen. The permission
+is therefore on **hue and self-illumination**; the constraint is on **value**.

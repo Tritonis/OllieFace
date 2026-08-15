@@ -6,6 +6,44 @@ shortlist rather than five internally-fine ones. `RUBRIC.md` axis 10 (cohesion)
 penalises exactly the failure mode of independent, uncoordinated shortlists; `ART-ASSETS.md`
 names buying five unrelated packs as "the fastest way to score badly there."
 
+## This document governs
+
+Ratified 2026-08-15. Where this spec and `docs/ART-STYLE-GUIDE.md` disagree, **this
+document wins** and the guide is corrected to match. Source still outranks both on any
+transcribed fact — the palette at `src/world/Materials.js:23-69`, the Void constants at
+`src/shaders/BlightMask.js:88-89` — and a document disagreeing with those is wrong,
+whichever document it is.
+
+**When a decision is made, it is written here first**, then reconciled into the guide in
+the same change. That is what stops the two drifting.
+
+## Ratified decisions bearing on search
+
+Settled 2026-08-15. These change what a searching agent may shortlist, so they are stated
+before the palette rather than after it.
+
+- **Purchased and downloaded texture maps are permitted.** A **map** (albedo, normal,
+  roughness, AO, height) may be bound into a material built by `src/world/Materials.js`.
+  What remains forbidden is an asset shipping its own **material** — its own shader,
+  grade, emissive decisions or bloom. This was the question that gated whether any texture
+  shortlist was usable at all; the answer is yes.
+- **Emissive content is permitted, and the accent is not exclusive.** New content may
+  self-light, may use the accent hue `#2fb3af`, and may introduce further accent hues.
+  **One cap survives, and it is a hard filter on shortlists:** nothing may out-value the
+  objects the player has to read. The existing accent is held under the bloom knee because
+  it was measured at luma 224 in a mean-luma-62 combat frame as the brightest non-VFX
+  object on screen. **Do not shortlist bright polished or strongly self-lit material sets**
+  — a candidate that is the brightest thing in a combat frame fails on value regardless of
+  its hue.
+- **Bought vector icon sets are admissible**, redrawn or imported as paths. Text glyphs,
+  dingbats, emoji and icon fonts remain forbidden. An imported set must not introduce a
+  font dependency to render.
+
+Two decisions that deliberately do **not** change search: whether corruption should extend
+over character and enemy models is an open engineering question (#62), and the survivor
+silhouette threshold is being implemented rather than applied by hand (#61). Neither gates
+a texture or audio shortlist.
+
 ## The palette agents match against
 
 Source of truth: `src/world/Materials.js:23-69` (`PALETTE`). Verified against that file
