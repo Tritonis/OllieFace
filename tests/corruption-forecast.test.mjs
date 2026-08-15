@@ -34,6 +34,9 @@ console.log('the line names the next band, the distance to it, and what it costs
      'the distance counts down as the world rots');
   ok(nextThresholdLine(19.2, 0).includes('in 1'),
      'a fractional remainder rounds up, so the line never promises a threshold it has not reached');
+  // With no toll argument the floor is `MUTATION.minBand`, which is the honest
+  // answer for a run that has crossed nothing — see the toll-floor section
+  // below for the state where it is not.
   ok(nextThresholdLine(30, 1) === 'Next: Blighted in 25 - one held item blights',
      `Seeded looks up at the band where the world starts taking ("${nextThresholdLine(30, 1)}")`);
   ok(nextThresholdLine(120, 3) === 'Next: Consumed in 70 - one held item blights',
@@ -76,6 +79,33 @@ console.log('it survives a re-tune, and a band that ran ahead of the world');
   // arguments while degrading on the other has an inconsistent contract.
   ok(nextThresholdLine(0, NaN) === nextThresholdLine(0, 0), 'a non-finite band degrades the same way, rather than throwing');
   ok(nextThresholdLine(0, undefined) === nextThresholdLine(0, 0), 'and the missing-band case it always handled still holds');
+}
+
+// The distance clause and the effect clause answer different questions, and
+// only the second one depends on the run's history. `bandOf(world) + 1` is
+// always where the next line *is*; whether crossing it charges a blight toll
+// depends on what has already been collected, which is `Items.nextTollBand()`'s
+// answer and not the gauge's to guess. The gauge guessed, and after one press
+// of the guaranteed Argent Font it promised a mutation the game would not
+// collect — while the font, three centimetres away, named a different band.
+console.log('what a crossing costs is read off the live toll floor, not off the world');
+{
+  const paidPressure = `enemy scale +${(PRESSURE.perWorld * BANDS[2].at).toFixed(2)}`;
+  ok(nextThresholdLine(30, 1, BANDS, 3) === `Next: Blighted in 25 - ${paidPressure}`,
+     `a Blighted toll already paid is not promised again ("${nextThresholdLine(30, 1, BANDS, 3)}")`);
+  ok(nextThresholdLine(30, 1, BANDS, 3).includes('in 25'),
+     'and the distance is untouched — the line really is 25 away, it just costs something else');
+  ok(nextThresholdLine(30, 1, BANDS, 4) === nextThresholdLine(30, 1, BANDS, 3),
+     'a deeper floor reads the same: anything above the next band leaves it charging pressure only');
+  ok(nextThresholdLine(120, 3, BANDS, 4) === 'Next: Consumed in 70 - one held item blights',
+     'a floor the next band reaches still promises the blight it is going to collect');
+  ok(nextThresholdLine(30, 1, BANDS, MUTATION.minBand) === nextThresholdLine(30, 1),
+     'the tuning floor is the default, so a run that has paid nothing is byte-identical to before');
+  ok(nextThresholdLine(30, 1, BANDS, NaN) === nextThresholdLine(30, 1)
+     && nextThresholdLine(30, 1, BANDS, undefined) === nextThresholdLine(30, 1),
+     'a non-finite or missing floor degrades to the tuning floor rather than throwing');
+  ok(!/NaN|undefined|Infinity/.test(nextThresholdLine(30, 1, BANDS, 3)), 'and no arithmetic leaks through the pressure clause');
+  ok(/^[\x20-\x7e]+$/.test(nextThresholdLine(30, 1, BANDS, 3)), 'the paid-toll line is plain ASCII too');
 }
 
 console.log("every band's line is plain ASCII - this project renders no glyphs");
@@ -168,6 +198,38 @@ console.log('a crossing during the hold ends it: a frozen sentence about a line 
   ok(self.refs.corruptionNext.textContent === nextThresholdLine(20, 1),
      `the line re-points at the band above ("${self.refs.corruptionNext.textContent}")`);
   ok(!self.refs.corruption.classList.contains('is-primer'), 'and the hold is over');
+}
+
+console.log('the gauge asks Items what is still owed rather than deriving it a second time');
+{
+  // The wiring, not the formatter: `nextThresholdLine` is pinned above, so what
+  // is under test here is that `updateMoney` actually hands it the live floor.
+  const withToll = (w, band, toll) => ({ ...world(w, band), items: { gold: 0, nextTollBand: () => toll } });
+
+  const paid = fakeHUD();
+  run(paid, withToll(30, 1, 3), 1);
+  ok(paid.refs.corruptionNext.textContent === nextThresholdLine(30, 1, BANDS, 3),
+     `the gauge shows the paid-toll reading ("${paid.refs.corruptionNext.textContent}")`);
+  ok(!paid.refs.corruptionNext.textContent.includes('blights'),
+     'so the permanent HUD furniture stops promising a blight the run has already bought');
+
+  const owing = fakeHUD();
+  run(owing, withToll(30, 1, MUTATION.minBand), 1);
+  ok(owing.refs.corruptionNext.textContent === nextThresholdLine(30, 1),
+     'and a run that owes the toll reads exactly as it always did');
+
+  // `ctx.items` is a bare stub in most fixtures and is absent entirely on some
+  // menu contexts; neither may take the gauge down.
+  const bare = fakeHUD();
+  run(bare, world(30, 1), 1);
+  ok(bare.refs.corruptionNext.textContent === nextThresholdLine(30, 1),
+     'an items object with no toll query degrades to the tuning floor');
+  const none = fakeHUD();
+  const ctxNoItems = world(30, 1);
+  delete ctxNoItems.items;
+  run(none, ctxNoItems, 1);
+  ok(none.refs.corruptionNext.textContent === nextThresholdLine(30, 1),
+     'and so does no item system at all');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

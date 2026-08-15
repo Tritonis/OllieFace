@@ -368,7 +368,7 @@ export class Chest extends Interactable {
     const gain = forced ? `${name} — pay in corruption` : `${name} ($${this.cost})`;
     const table = forced ? SOURCES.voidCredit : SOURCES.chestTithe;
     const tithe = table[this.size] ?? table.small;
-    const item = biasFeedRange(TIER_BIAS[this.size]);
+    const item = biasFeedRange(TIER_BIAS[this.size], this.ctx);
     return pricedPrompt(this.ctx, gain, tithe + item.min, tithe + item.max);
   }
 
@@ -466,9 +466,19 @@ export class MultishopTerminal extends Interactable {
 
   // The one feeder that knows exactly what it is selling, so it quotes one
   // number rather than a span: the item was rolled in the constructor.
+  //
+  // Unless it does not know. `rollItem` is authority-gated, so a terminal built
+  // through VIEW_BUILDERS on a client holds `itemId === null` — and an unknown
+  // tier falls through `tierFeed` to 1, which is a *fabricated* number rather
+  // than a stale one: the real item behind that screen could be a legendary at
+  // 5. The `$0` and the generic name beside it are the pre-existing view gap
+  // documented on VIEW_BUILDERS, and a wrong price is honest about being a
+  // placeholder in a way that "+2 corruption" is not. Quote nothing instead:
+  // `pricedPrompt` returns the bare gain line for a zero feed.
   prompt() {
-    return pricedPrompt(this.ctx, `${ITEM_BY_ID.get(this.itemId)?.name || 'Item'} ($${this.cost})`,
-      idsFeed([this.itemId]));
+    const known = ITEM_BY_ID.get(this.itemId);
+    return pricedPrompt(this.ctx, `${known?.name || 'Item'} ($${this.cost})`,
+      known ? idsFeed([this.itemId]) : 0);
   }
 
   interact(pawn = this.ctx.player) {
@@ -671,7 +681,7 @@ export class AuricCairn extends Interactable {
   // Three rolls in four pay nothing and cost nothing but the gold, so the debt
   // is quoted as conditional. A gamble priced as a certainty is its own lie.
   prompt() {
-    const item = biasFeedRange(TIER_BIAS.small);
+    const item = biasFeedRange(TIER_BIAS.small, this.ctx);
     return pricedPrompt(this.ctx, `Auric Cairn ($${this.cost})`, item.min, item.max, 'if it pays');
   }
 
@@ -983,7 +993,7 @@ export class HollowChime extends Interactable {
   // Mid-fight it is an instruction rather than an offer, and stays unpriced.
   prompt() {
     if (this.state === 'ringing') return 'Hollow Chime — answer it';
-    const item = biasFeedRange(TIER_BIAS.large);
+    const item = biasFeedRange(TIER_BIAS.large, this.ctx);
     return pricedPrompt(this.ctx, `Hollow Chime (free — ${this.maxUses - this.uses} left)`,
       item.min * 2, item.max * 2, 'when cleared');
   }
@@ -1114,7 +1124,7 @@ export class GildedSnare extends Interactable {
   // The item is unconditional here — the hunter is the *other* cost — so the
   // debt is quoted flat, with no "if it pays".
   prompt() {
-    const item = biasFeedRange(SNARE_BIAS);
+    const item = biasFeedRange(SNARE_BIAS, this.ctx);
     return pricedPrompt(this.ctx, 'Gilded Snare (take it — something answers)', item.min, item.max);
   }
 
