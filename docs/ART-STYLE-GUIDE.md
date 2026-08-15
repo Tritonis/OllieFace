@@ -267,11 +267,31 @@ at `:881`) thresholded to the same shape. `ART-ASSETS.md` states the consequence
 texture fixes that; only structural difference does."
 
 **Rule.** Any new character, enemy, or gameplay-critical prop must be distinguishable from
-every existing member of its roster **as a pure black silhouette**, at the distance the
-player actually reads it. The distinguishing feature must be structural — an outline,
-a proportion, a protrusion, a stance — never colour, never texture, never an emissive
-marking. If an asset needs its albedo to be told apart from something already in the game,
-it fails this rule and no shader or palette work rescues it.
+every existing member of its comparison set **as a pure black silhouette**, at the
+distance the player actually reads it. The distinguishing feature must be structural — an
+outline, a proportion, a protrusion, a stance — never colour, never texture, never an
+emissive marking. If an asset needs its albedo to be told apart from something already in
+the game, it fails this rule and no shader or palette work rescues it.
+
+**The comparison set, stated explicitly**, because "its roster" was ambiguous in the first
+draft and both thresholds that ship today are enemy-centric — which is the wrong way to be
+vague about a rule that exists because two *survivors* share a shape:
+
+| New content | Compared against |
+|---|---|
+| A player character (survivor) | **Every other player character**, and every enemy |
+| An enemy | Every other enemy, and every player character |
+| A gameplay-critical prop | Every other gameplay-critical prop |
+
+Both directions of the character/enemy comparison are required, and they fail for
+different reasons. Two survivors that share a shape means the player cannot tell their own
+roster apart when choosing or when watching a teammate. A survivor and an enemy that share
+one costs the fight — which is why the shipped friend/foe bar (`maxFoeFriendIoU: 0.72`) is
+held tighter than the family bar (`maxFamilyIoU: 0.78`).
+
+Note that of the three rows above, only enemy-vs-enemy and enemy-vs-player are gated in
+code today. Player-vs-player is the row this rule was written for and the row nothing
+enforces; see *The measure* below and **#61**.
 
 The structural work of fixing the existing roster is issue #20's, not this document's.
 This rule governs what is allowed to *arrive* while that work happens: nothing may be
@@ -331,7 +351,8 @@ window in step 6 exists at all — if an acceptable pair scores above RANGER/ANV
 threshold separates them and the answer is geometry work (#20), not a number.
 
 **Check before it lands.** Until the survivor threshold ships, render the candidate and
-each existing roster member filled solid black at gameplay framing and compare pairwise;
+each member of its comparison set above filled solid black at gameplay framing and compare
+pairwise;
 a pair a reader cannot tell apart is a rejection. Once it ships, the gate is the check.
 
 ---
@@ -390,7 +411,8 @@ New art content lands only when all six answers exist in writing:
 2. Renders proving it reads both clean and blighted.
 3. The line where it calls `attachWorldSurface`.
 4. A screenshot through the shipping post chain, not a viewer.
-5. A pairwise black-silhouette comparison against its roster.
+5. A pairwise black-silhouette comparison against its comparison set — for a player
+   character, that means every other player character.
 6. No text glyph, no font dependency, no character above U+007F used as a picture.
 
 ---
