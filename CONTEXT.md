@@ -30,6 +30,21 @@ A check that, if it fails, refutes the design rather than revealing a bug. Its
 purpose is to be run early, before further investment.
 _Avoid_: acceptance criterion, gate
 
+## The queue
+
+**Decision Block**:
+Work that is stopped because a human owes a judgement no agent can make —
+money, licence terms, taste, or a call the project has deliberately reserved.
+Nothing proceeds until it is answered, and silence is itself a decision.
+_Avoid_: blocked, waiting on user
+
+**Keyboard Block**:
+Work that is stopped only because a human must be present at a machine — eyes
+on a screen, two accounts, a second box. The decision is already made; what
+remains is scheduling. Distinct from a Decision Block in that it is never
+*stuck*, only *unscheduled*.
+_Avoid_: blocked, manual test, user-only
+
 ## Networking
 
 The two halves below are independent, and conflating them is the single most

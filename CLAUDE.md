@@ -58,7 +58,13 @@ Commit style: a single evocative sentence describing what changed in the world, 
 - `npm run probe:coop` — two real browser pages forming a co-op session, several minutes. **Binds
   fixed ports 5214/5215**, so never run two at once. Required for any change to the signalling,
   formation, or connection-lifecycle path.
-- `npm run gate:sp` / `gate:mp1` — single-player equivalence baselines, ~2 min each.
+- `npm run gate:sp` / `gate:mp1` / `gate:elite` — single-player equivalence baselines, ~2 min each.
+  All three **bind port 5209**, hardcoded at `tests/sp-equivalence.mjs:190` with no override, so
+  **never run two at once — including from two different worktrees.** Two parallel agents hit this
+  on 2026-08-15 and both read the collision as a code failure first. It also collides with
+  `tools/menuprobe.mjs` and `tools/voidprobe.mjs`, which default to 5209 as well — despite the
+  comment at `sp-equivalence.mjs:186` claiming the port was chosen to differ from the `tools/`
+  probes. A failed run can leave chromium up and 5209 held, so the *next* run fails differently.
 - Probe and gate runs must be **foreground** (timeout up to 600000 ms). An agent that backgrounds one
   and polls for it has zombied here before.
 
