@@ -28,8 +28,9 @@ const INPUT_HISTORY = 128;
 const SNAP_THRESHOLD = 2.0;
 
 export class NetClient {
-  constructor() {
-    this.transport = new ClientTransport();
+  /** The client half of `NetHost`'s transport seam — see its constructor. */
+  constructor({ transport = new ClientTransport() } = {}) {
+    this.transport = transport;
     this.buffer = new SnapshotBuffer();
     this.clock = new ClockSync();
     this.writer = new Writer(256);
@@ -88,25 +89,38 @@ export class NetClient {
     this.ctx.events.emit('netDisconnected', {});
   }
 
+  /**
+   * Take up a connected peer: everything that happens the instant a transport
+   * says "you are through", and nothing about how it got there.
+   *
+   * Split out of `join` so the Introduction and the Conversation stop being one
+   * method. `join` is offer/answer/ICE — WebRTC-shaped, with no Steam analogue —
+   * while this is the transport-independent half, and it is the seam
+   * `tests/transport-contract.mjs` hands a peer to. Duplicating these four
+   * statements in a test instead would mean the suite kept passing after `join`
+   * changed underneath it.
+   */
+  attach(peer) {
+    this.peer = peer;
+    this.connected = true;
+    // Say who we are before anything else. The host has already built this
+    // peer's pawn out of its *own* survivor by the time this lands — it spawns
+    // on channel open, which is strictly before the first byte — so this is
+    // what re-stats it. Reliable channel: a dropped HELLO would leave the peer
+    // playing the host's survivor for the whole session, silently.
+    this._sendHello();
+    peer.onMessage = (data) => this._onMessage(data);
+    peer.onClose = () => this._reportDisconnect();
+  }
+
   async join(inviteBlob) {
     this.transport.onDisconnected = () => this._reportDisconnect();
     const { blob, connected } = await this.transport.join(inviteBlob);
-    connected.then((peer) => {
-      this.peer = peer;
-      this.connected = true;
-      // Say who we are before anything else. The host has already built this
-      // peer's pawn out of its *own* survivor by the time this lands — it spawns
-      // on channel open, which is strictly before the first byte — so this is
-      // what re-stats it. Reliable channel: a dropped HELLO would leave the peer
-      // playing the host's survivor for the whole session, silently.
-      this._sendHello();
-      peer.onMessage = (data) => this._onMessage(data);
-      peer.onClose = () => this._reportDisconnect();
     // The rejection handler is not decoration: `connected` now rejects when the
     // connection fails before the channels open, and without one here this
     // chain is an unhandled rejection. The failure itself is already reported
     // through `onDisconnected` above.
-    }, () => {});
+    connected.then((peer) => this.attach(peer), () => {});
     return blob; // caller shows this to the player to send back to the host
   }
 

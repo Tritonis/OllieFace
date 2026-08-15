@@ -618,6 +618,14 @@ Arm A is only as good as this list, so it is enumerated from what `NetHost`,
 `NetClient` and `Lobby` actually reach for, not from what section 3 claims. Every
 row is a member a Steam-backed transport must provide.
 
+**The list is now machine-checked.** `tests/transport-contract.mjs` carries it as
+data and ends with an assertion that it is *sufficient*: a peer built from
+exactly these members, and nothing else, is driven through the real host loop
+behind a `Proxy` that records any read outside the list. If `NetHost` grows a
+reach the table does not have, that test fails and this table is what gets fixed.
+Verified to bite, not just to pass — removing `pumpSim` from either the peer or
+the list is caught.
+
 **On a peer:**
 
 | Member | Where it is required | Note |
@@ -648,6 +656,15 @@ not belong on the contract.
 
 **On the client transport:** `join(inviteBlob)` (rendezvous), `onConnected`,
 `onDisconnected`, `peer`.
+
+**Where a transport is handed in.** `NetHost` and `NetClient` used to construct
+their own (`new HostTransport()` / `new ClientTransport()` in the constructor),
+which made "run the same assertions against both transports" impossible without
+editing them. Both now take `{ transport }`, defaulted, so no existing caller
+changed. `NetClient.attach(peer)` is the other half: the four statements that run
+the instant a transport says "you are through" — adopt the peer, mark connected,
+send HELLO, wire `onMessage`/`onClose` — split out of `join`, which is otherwise
+pure Introduction. #55 implements against these two seams.
 
 **Dying with WebRTC, not portable:** `trickle`, `onIceCandidate`,
 `addIceCandidate` on both transports. `Lobby` uses all three
