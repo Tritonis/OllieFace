@@ -129,7 +129,7 @@ totalEmissiveRadiance += BM_VEIN * vein * (0.35 + 0.10 * uBlightBand);
 ```
 
 `claim` is the corruption's own field, sampled **triplanar in metres**
-(`bmTri`, `src/shaders/BlightMask.js:75-90`) rather than off the material's UVs. That is
+(`bmTri`, `src/shaders/BlightMask.js:81-90`) rather than off the material's UVs. That is
 what makes this rule survive distance: a UV-locked mask is retired by the near-field fade
 (`uv` 0.5, `uvFade` 20-60 m, `src/world/Materials.js:303`), so past 60 m a blighted object
 would lose all its structure and resolve to exactly the violet silhouette this rule
@@ -227,7 +227,8 @@ verbatim. Three consequences that bear on what may be shortlisted:
 - **An imported mesh is not a flat-shaded silhouette.** It takes the metre-scale detail
   field and the corruption mask like any other world surface, and since #60 both are
   sampled in world space, neither imposes any UV contract on it. Measured through one
-  identical crop by `tools/kitprobe.mjs` (`shots-modelkit/record.json`, `pair`): the
+  identical crop by `tools/kitprobe.mjs` (`reviews/modelkit-seam/record.json`, `pair`, with
+  the measured crops committed beside it): the
   palette-rebound KayKit chest carries **209** unique luma values over 27,885 px against
   the same mesh's **195** with its authored atlas intact, and the authored copy arrives at
   mean luma **93.8** against the rebind's **67.0**. The rebind costs no surface detail,
