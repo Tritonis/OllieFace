@@ -1,0 +1,266 @@
+{
+  "seed": 1337,
+  "generatedAt": "2026-08-15T17:56:43.389Z",
+  "places": {
+    "world": {
+      "probeCentre": {
+        "y": 15.382030487060547,
+        "x": 0,
+        "z": 0,
+        "realm": false
+      },
+      "arms": {
+        "sky": [
+          {
+            "target": "floor",
+            "sunAngleDeg": 105,
+            "meanLuma012": 5.37,
+            "meanLuma090": 53.03,
+            "rmse": 48.61,
+            "detail012": 0.038,
+            "detail090": 0.437,
+            "detailRatio": 0.09,
+            "sd012": 1.06,
+            "sd090": 10.58
+          },
+          {
+            "target": "antisun-horizon",
+            "sunAngleDeg": 165,
+            "meanLuma012": 46.54,
+            "meanLuma090": 41.48,
+            "rmse": 17.94,
+            "detail012": 1.326,
+            "detail090": 0.854,
+            "detailRatio": 1.55,
+            "sd012": 36.54,
+            "sd090": 28.79
+          },
+          {
+            "target": "perp-horizon",
+            "sunAngleDeg": 90,
+            "meanLuma012": 70,
+            "meanLuma090": 75.22,
+            "rmse": 21.36,
+            "detail012": 0.591,
+            "detail090": 0.055,
+            "detailRatio": 10.68,
+            "sd012": 20.97,
+            "sd090": 0.93
+          },
+          {
+            "target": "antisun-below",
+            "sunAngleDeg": 165,
+            "meanLuma012": 11.81,
+            "meanLuma090": 33.84,
+            "rmse": 27.52,
+            "detail012": 0.749,
+            "detail090": 0.898,
+            "detailRatio": 0.83,
+            "sd012": 13.45,
+            "sd090": 18.76
+          }
+        ],
+        "scene": [
+          {
+            "target": "floor",
+            "sunAngleDeg": 105,
+            "meanLuma012": 23.82,
+            "meanLuma090": 27.26,
+            "rmse": 9.41,
+            "detail012": 0.708,
+            "detail090": 0.212,
+            "detailRatio": 3.34,
+            "sd012": 9.98,
+            "sd090": 5.4
+          },
+          {
+            "target": "antisun-horizon",
+            "sunAngleDeg": 165,
+            "meanLuma012": 42.89,
+            "meanLuma090": 32.5,
+            "rmse": 16.49,
+            "detail012": 1.35,
+            "detail090": 0.686,
+            "detailRatio": 1.97,
+            "sd012": 31.66,
+            "sd090": 22.57
+          },
+          {
+            "target": "perp-horizon",
+            "sunAngleDeg": 90,
+            "meanLuma012": 38.18,
+            "meanLuma090": 48.47,
+            "rmse": 24.31,
+            "detail012": 0.728,
+            "detail090": 0.031,
+            "detailRatio": 23.2,
+            "sd012": 22.48,
+            "sd090": 0.62
+          },
+          {
+            "target": "antisun-below",
+            "sunAngleDeg": 165,
+            "meanLuma012": 17.82,
+            "meanLuma090": 25.02,
+            "rmse": 14.25,
+            "detail012": 0.967,
+            "detail090": 0.672,
+            "detailRatio": 1.44,
+            "sd012": 15.54,
+            "sd090": 13.86
+          }
+        ]
+      }
+    },
+    "realm-market": {
+      "probeCentre": {
+        "y": 12,
+        "x": 4096,
+        "z": 0,
+        "realm": true
+      },
+      "arms": {
+        "sky": [
+          {
+            "target": "floor",
+            "sunAngleDeg": 164,
+            "meanLuma012": 7.02,
+            "meanLuma090": 20.29,
+            "rmse": 13.53,
+            "detail012": 0.049,
+            "detail090": 0.158,
+            "detailRatio": 0.31,
+            "sd012": 1.39,
+            "sd090": 4.03
+          },
+          {
+            "target": "antisun-horizon",
+            "sunAngleDeg": 106,
+            "meanLuma012": 39.15,
+            "meanLuma090": 35.02,
+            "rmse": 14.53,
+            "detail012": 0.451,
+            "detail090": 0.015,
+            "detailRatio": 29.71,
+            "sd012": 13.96,
+            "sd090": 0.42
+          },
+          {
+            "target": "perp-horizon",
+            "sunAngleDeg": 90,
+            "meanLuma012": 31.86,
+            "meanLuma090": 28.88,
+            "rmse": 12.92,
+            "detail012": 0.944,
+            "detail090": 0.512,
+            "detailRatio": 1.84,
+            "sd012": 20.12,
+            "sd090": 14.17
+          },
+          {
+            "target": "antisun-below",
+            "sunAngleDeg": 136,
+            "meanLuma012": 12.29,
+            "meanLuma090": 30.27,
+            "rmse": 18.85,
+            "detail012": 0.247,
+            "detail090": 0.019,
+            "detailRatio": 12.73,
+            "sd012": 6.08,
+            "sd090": 0.47
+          }
+        ],
+        "scene": [
+          {
+            "target": "floor",
+            "sunAngleDeg": 164,
+            "meanLuma012": 197.89,
+            "meanLuma090": 143.37,
+            "rmse": 71,
+            "detail012": 2.456,
+            "detail090": 1.106,
+            "detailRatio": 2.22,
+            "sd012": 59.07,
+            "sd090": 28.34
+          },
+          {
+            "target": "antisun-horizon",
+            "sunAngleDeg": 106,
+            "meanLuma012": 80.29,
+            "meanLuma090": 114.55,
+            "rmse": 36.96,
+            "detail012": 0.612,
+            "detail090": 0.033,
+            "detailRatio": 18.54,
+            "sd012": 14.28,
+            "sd090": 0.64
+          },
+          {
+            "target": "perp-horizon",
+            "sunAngleDeg": 90,
+            "meanLuma012": 54.62,
+            "meanLuma090": 90.15,
+            "rmse": 40.23,
+            "detail012": 1.379,
+            "detail090": 1.542,
+            "detailRatio": 0.89,
+            "sd012": 27.72,
+            "sd090": 44.2
+          },
+          {
+            "target": "antisun-below",
+            "sunAngleDeg": 136,
+            "meanLuma012": 128.04,
+            "meanLuma090": 123.8,
+            "rmse": 26.94,
+            "detail012": 0.731,
+            "detail090": 0.062,
+            "detailRatio": 11.88,
+            "sd012": 27.73,
+            "sd090": 1.3
+          }
+        ]
+      }
+    }
+  },
+  "costs": {
+    "world-sceneBake": {
+      "median": 11.5,
+      "min": 8.7,
+      "max": 13.6
+    },
+    "world-skyOnlyBake": {
+      "median": 0.9,
+      "min": 0.7,
+      "max": 1.3
+    },
+    "realm-market-sceneBake": {
+      "median": 5.5,
+      "min": 5.1,
+      "max": 7.2
+    },
+    "realm-market-skyOnlyBake": {
+      "median": 0.7,
+      "min": 0.7,
+      "max": 0.9
+    },
+    "skyOnlyBake": {
+      "median": 1,
+      "min": 0.6,
+      "max": 1.1
+    },
+    "sceneBake": {
+      "median": 10.6,
+      "min": 6.4,
+      "max": 381.6
+    },
+    "stageBuild": {
+      "median": 117.9,
+      "min": 97,
+      "max": 131
+    }
+  },
+  "errors": [
+    "[harness] 22-realm-market: subject missing or illegible — the survivor (pixels: {\"why\":\"illegible\",\"px\":683,\"need\":250,\"objs\":\"1/1\",\"need2\":0,\"sepP50\":0.23,\"needSep\":0.25,\"carriedPx\":409,\"lum\":92.1,\"bgLum\":101.8})"
+  ]
+}

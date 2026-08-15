@@ -538,19 +538,38 @@ export class Environment {
    * — it is what the first compile reads. This one is called at the *end* of
    * `Stage.build`, in the same frame as a full terrain rebuild, and it is the
    * only place the scene is complete enough to be worth photographing.
+   *
+   * `x`/`z` exist because the world basin is not the only place a stage stands.
+   * A realm is built four kilometres out on +X (`REALM_ORIGIN_X`), so a probe
+   * pinned to the world origin would photograph the empty air the arena is not
+   * in. Every caller passes the centre of the thing it just built.
+   *
+   * What is deliberately *not* in the photograph: the dust motes and the sky
+   * dome's camera-space placement (both below), and every moving actor. The
+   * bake is per stage build, not per frame, so a player or an enemy in it would
+   * be a smear frozen at whatever position it held during one build — a
+   * reflection that no longer corresponds to anything a frame later. Static
+   * scene content is the only content a per-build probe can honestly carry.
    */
-  bakeProbe(y = 12) {
+  bakeProbe(y = 12, x = 0, z = 0) {
     if (!this._pmrem) return;
     const scene = this.ctx.scene;
     // The probe must not photograph the environment it is replacing, or each
     // stage's reflections would compound the previous stage's.
     const prevEnv = scene.environment;
     scene.environment = null;
+    const center = new THREE.Vector3(x, y, z);
     // Camera-space furniture would be photographed from the wrong place: the
     // dome follows the camera and the motes wrap around it, but the cube camera
-    // sits over the basin.
+    // sits over the stage.
+    //
+    // The dome is re-centred on the *probe*, not on the world origin. It has a
+    // radius of 900 and the cube camera's far plane is 2000, so a probe baked
+    // at the realm origin with the dome left at (0,0,0) would sit 3196 units
+    // outside it and clip the sky away entirely — the arena would reflect
+    // black. Concentric is also simply what an infinitely distant sky means.
     const skyPos = this.sky.position.clone();
-    this.sky.position.set(0, 0, 0);
+    this.sky.position.copy(center);
     const dustVis = this.dust ? this.dust.visible : false;
     if (this.dust) this.dust.visible = false;
 
@@ -559,8 +578,7 @@ export class Environment {
     // the probe would be clipped away and leave a hole rather than a
     // reflection. The probe sits over the basin centre because that is where
     // the play surface is; at y = 0 it can be inside the terrain.
-    const rt = this._pmrem.fromScene(scene, 0.05, 0.5, 2000,
-                                     { position: new THREE.Vector3(0, y, 0) });
+    const rt = this._pmrem.fromScene(scene, 0.05, 0.5, 2000, { position: center });
 
     if (this.dust) this.dust.visible = dustVis;
     this.sky.position.copy(skyPos);

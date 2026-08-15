@@ -305,6 +305,15 @@ export class Realms {
     ctx.hud?.setPrompt?.(null);
 
     ctx.environment?.applyBiome?.(def.air);
+    // `applyBiome` re-bakes the reflection probe from the sky sphere alone, so
+    // it has to come first and this has to come after it, or the arena would be
+    // photographed and then immediately painted over. A realm is the place the
+    // probe matters most: `RealmArena` is where the roughness ladder runs to its
+    // ends — gold at roughness 0.15 and envMapIntensity 3.4 against wall stone
+    // at 0.88 — and against a sky-only probe those two rungs resolve to the same
+    // pixel everywhere the sun is not. The arena stands at its own origin four
+    // kilometres out, not at the world's. See `Environment.bakeProbe`.
+    ctx.environment?.bakeProbe?.(12, stage.origin.x, stage.origin.z);
 
     const spawn = stage.spawnPoint();
     const p = ctx.player;
@@ -349,8 +358,20 @@ export class Realms {
     a.stage.dispose();
 
     if (advance) {
+      // No re-bake here: this path regenerates the world outright —
+      // `advanceStage` -> `_beginStage` -> `Stage.build`, on the host and on a
+      // client adopting the replicated `stageStart` alike — and `build` ends
+      // with a bake of its own.
       if (ctx.authority) ctx.progression?.advanceStage?.();
     } else {
+      // The world was left standing rather than regenerated, so nothing else is
+      // going to re-photograph it: without this, one round trip through a realm
+      // would strip the world's reflections back to the bare sky sphere for the
+      // rest of the stage. It sits after `dispose()` above, or the arena we
+      // just tore down would be in the picture.
+      const y = s.stage?.terrain?.sampleHeight?.(0, 0);
+      ctx.environment?.bakeProbe?.((y ?? 0) + 12);
+
       const p = ctx.player;
       if (p) {
         if (p.respawnAt) p.respawnAt(s.position);
