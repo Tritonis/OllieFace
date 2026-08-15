@@ -3,6 +3,9 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { ITEM_BY_ID, ITEMS_BY_TIER, TIERS } from '../../data/items.js';
 import { Items } from '../../systems/Items.js';
 import { getTextureSets, withRepeat, attachWorldSurface } from '../Materials.js';
+// A realm's goods feed the void exactly as a stage's do, so its prompts wear
+// the same three-part price tag (issue #30).
+import { pricedPrompt, tierFeed, idsFeed } from '../corruptionPrice.js';
 
 /**
  * Everything in a realm the player can press E on, plus the three gateways that
@@ -290,9 +293,12 @@ export class MarketStall extends RealmProp {
     this.spin = 0;
   }
 
+  // The stall names its tier already; what it did not name is what that tier
+  // costs the world. Deterministic stock, so the debt is one exact number.
   prompt() {
     const def = ITEM_BY_ID.get(this.itemId);
-    return `${def?.name || 'Item'} — ${def?.tier || 'common'} ($${this.cost})`;
+    return pricedPrompt(this.ctx, `${def?.name || 'Item'} — ${def?.tier || 'common'} ($${this.cost})`,
+      idsFeed([this.itemId]));
   }
 
   interact(pawn = this.ctx.player) {
@@ -346,7 +352,13 @@ export class Refinery extends RealmProp {
   }
 
   available() { return this.enabled && this.uses < this.maxUses; }
-  prompt() { return `Refinery — upgrade one item a tier ($${this.cost})`; }
+  // A step lands on uncommon or on legendary depending on what the bowl picks,
+  // and the burned stack refunds nothing — so the debt is the span between the
+  // two tiers a step can produce, never zero.
+  prompt() {
+    return pricedPrompt(this.ctx, `Refinery — upgrade one item a tier ($${this.cost})`,
+      tierFeed('uncommon'), tierFeed('legendary'));
+  }
 
   interact(pawn = this.ctx.player) {
     // One purse: the stack burned, the gold paid and the upgrade granted all
@@ -541,7 +553,12 @@ export class VaultChest extends RealmProp {
   }
 
   available() { return this.enabled && !this.used; }
-  prompt() { return this.sealed ? 'Sealed — the warden holds the key' : 'Open the vault'; }
+  // A sealed vault offers nothing, so it prices nothing. An unsealed one knows
+  // its whole payload by id, so it sums the feed of every drop it owes.
+  prompt() {
+    if (this.sealed) return 'Sealed — the warden holds the key';
+    return pricedPrompt(this.ctx, 'Open the vault', idsFeed(this.drops));
+  }
 
   unseal() {
     this.sealed = false;

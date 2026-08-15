@@ -3,6 +3,9 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { ITEM_BY_ID, TIERS } from '../data/items.js';
 import { eliteAffixesFor } from '../data/enemies.js';
 import { SOURCES, CLEANSE, PACT, cleanseAmount, cleanseCost } from '../data/corruption.js';
+// Every prompt that feeds the void is priced through one formatter, so the
+// three parts of the decision cannot drift apart between shrines (issue #30).
+import { pricedPrompt, biasFeedRange, idsFeed } from './corruptionPrice.js';
 import { RNG } from '../core/MathUtil.js';
 import { Items } from '../systems/Items.js';
 import { Roster } from '../systems/Roster.js';
@@ -342,14 +345,28 @@ export class Chest extends Interactable {
     this._scale = scale;
   }
 
+  /**
+   * The informed-consent line, in three parts: the chest and its gold price,
+   * the debt this open adds, and the threshold that debt walks toward.
+   *
+   * The debt is a range because it has two halves and only one of them is
+   * known before the lid moves: the tithe (or, when the gold isn't there, the
+   * void's much steeper credit) is exact, and the item that comes out feeds by
+   * a tier rolled off the very table `interact` rolls on. Quoting the span of
+   * that table is the honest reading — the floor is what the player is
+   * certainly buying, the ceiling is what they might be.
+   *
+   * `gold` may be undefined on stub contexts — treat as broke, as before.
+   */
   prompt() {
     const name = this.size === 'legendary' ? 'Legendary Chest' : this.size === 'large' ? 'Large Chest' : 'Chest';
-    // When the gold isn't there and the void will extend credit, the prompt is
-    // the informed-consent line: the player must know which price they are
-    // about to pay. `gold` may be undefined on stub contexts — treat as broke.
     const gold = this.ctx.items?.gold ?? 0;
-    if (this.ctx.corruption && gold < this.cost) return `${name} — pay in corruption`;
-    return `${name} ($${this.cost})`;
+    const forced = !!this.ctx.corruption && gold < this.cost;
+    const gain = forced ? `${name} — pay in corruption` : `${name} ($${this.cost})`;
+    const table = forced ? SOURCES.voidCredit : SOURCES.chestTithe;
+    const tithe = table[this.size] ?? table.small;
+    const item = biasFeedRange(TIER_BIAS[this.size]);
+    return pricedPrompt(this.ctx, gain, tithe + item.min, tithe + item.max);
   }
 
   interact(pawn = this.ctx.player) {
@@ -444,7 +461,12 @@ export class MultishopTerminal extends Interactable {
     this.group.rotation.y = (index / 3) * Math.PI * 2;
   }
 
-  prompt() { return `${ITEM_BY_ID.get(this.itemId)?.name || 'Item'} ($${this.cost})`; }
+  // The one feeder that knows exactly what it is selling, so it quotes one
+  // number rather than a span: the item was rolled in the constructor.
+  prompt() {
+    return pricedPrompt(this.ctx, `${ITEM_BY_ID.get(this.itemId)?.name || 'Item'} ($${this.cost})`,
+      idsFeed([this.itemId]));
+  }
 
   interact(pawn = this.ctx.player) {
     if (!Items.of(this.ctx, pawn)?.spendGold(this.cost)) return false;
@@ -643,7 +665,12 @@ export class AuricCairn extends Interactable {
   }
 
   available() { return this.enabled && this.uses < this.maxUses; }
-  prompt() { return `Auric Cairn ($${this.cost})`; }
+  // Three rolls in four pay nothing and cost nothing but the gold, so the debt
+  // is quoted as conditional. A gamble priced as a certainty is its own lie.
+  prompt() {
+    const item = biasFeedRange(TIER_BIAS.small);
+    return pricedPrompt(this.ctx, `Auric Cairn ($${this.cost})`, item.min, item.max, 'if it pays');
+  }
 
   interact(pawn = this.ctx.player) {
     // One purse pays and the same purse rolls: the gamble is the payer's, so
@@ -912,7 +939,7 @@ function chimeBellGeo() {
   return g;
 }
 
-class HollowChime extends Interactable {
+export class HollowChime extends Interactable {
   constructor(ctx, position, stageIndex) {
     super(ctx, position);
     this.stageIndex = stageIndex || 0;
@@ -947,10 +974,15 @@ class HollowChime extends Interactable {
   }
 
   available() { return this.enabled && this.state === 'ready' && this.uses < this.maxUses; }
+  // "Free" is the gold price, and it was the whole prompt. The chime owes two
+  // drops off the large-chest ladder once the ring is dead, so what it costs
+  // is two item feeds — the largest unpriced debt in the shrine set until now.
+  // Mid-fight it is an instruction rather than an offer, and stays unpriced.
   prompt() {
-    return this.state === 'ringing'
-      ? 'Hollow Chime — answer it'
-      : `Hollow Chime (free — ${this.maxUses - this.uses} left)`;
+    if (this.state === 'ringing') return 'Hollow Chime — answer it';
+    const item = biasFeedRange(TIER_BIAS.large);
+    return pricedPrompt(this.ctx, `Hollow Chime (free — ${this.maxUses - this.uses} left)`,
+      item.min * 2, item.max * 2, 'when cleared');
   }
 
   interact() {
@@ -1034,7 +1066,14 @@ function snareCageGeo() {
   return g;
 }
 
-class GildedSnare extends Interactable {
+/**
+ * The Snare's own ladder — no commons, and a real legendary share. Hoisted out
+ * of `interact` so the prompt prices the table the press actually rolls on:
+ * two copies of a loot table is how a quote starts lying.
+ */
+const SNARE_BIAS = { common: 0, uncommon: 46, legendary: 16 };
+
+export class GildedSnare extends Interactable {
   constructor(ctx, position, stageIndex) {
     super(ctx, position);
     this.stageIndex = stageIndex || 0;
@@ -1069,7 +1108,12 @@ class GildedSnare extends Interactable {
   }
 
   available() { return this.enabled && this.uses < this.maxUses; }
-  prompt() { return 'Gilded Snare (take it — something answers)'; }
+  // The item is unconditional here — the hunter is the *other* cost — so the
+  // debt is quoted flat, with no "if it pays".
+  prompt() {
+    const item = biasFeedRange(SNARE_BIAS);
+    return pricedPrompt(this.ctx, 'Gilded Snare (take it — something answers)', item.min, item.max);
+  }
 
   interact(pawn = this.ctx.player) {
     const ctx = this.ctx;
@@ -1077,7 +1121,7 @@ class GildedSnare extends Interactable {
     // the player is holding the reward before the cost arrives, which is a
     // different decision from earning it and a different one from gambling for
     // it, even though all three can pay the same item.
-    const id = Items.of(ctx, pawn)?.rollItem?.(null, { common: 0, uncommon: 46, legendary: 16 });
+    const id = Items.of(ctx, pawn)?.rollItem?.(null, SNARE_BIAS);
     if (!id) return false;
     this.uses++;
     this.markGreed();
