@@ -20,7 +20,7 @@ asset spec wins, and this document is the one that gets corrected. Ratified 2026
 
 Two things that does *not* mean. Source still outranks both on any transcribed fact: the
 palette lives at `src/world/Materials.js:23-69` and the Void constants at
-`src/shaders/BlightMask.js:88-89`, and a document disagreeing with those is simply wrong,
+`src/shaders/BlightMask.js:152-153`, and a document disagreeing with those is simply wrong,
 whichever document it is. And precedence is not licence to let the two drift — **when a
 decision is made, the agent updates `ASSET-SPEC.md` first**, then reconciles this guide to
 it in the same change.
@@ -119,16 +119,26 @@ rule 1 **and** survive being re-shaded violet on top of that. An asset whose own
 colour is already violet or magenta doubles up under the overlay and reads as mud.
 
 **Why, in source.** `attachBlightMask` injects one shader chunk into an existing material
-rather than swapping the material (`src/shaders/BlightMask.js:131-152`). The chunk mixes a
+rather than swapping the material (`src/shaders/BlightMask.js:213-234`). The chunk mixes a
 tint into the diffuse colour the material already computed and *adds* a vein emissive on
-top of it (`src/shaders/BlightMask.js:98-99`):
+top of it (`src/shaders/BlightMask.js:180-181`):
 
 ```glsl
-diffuseColor.rgb = mix(diffuseColor.rgb, BM_TINT, bm * 0.80);
+diffuseColor.rgb = mix(diffuseColor.rgb, BM_TINT, bm * mix(0.64, 0.96, claim));
 totalEmissiveRadiance += BM_VEIN * vein * (0.35 + 0.10 * uBlightBand);
 ```
 
-The constants, in linear space, at `src/shaders/BlightMask.js:88-89`:
+`claim` is the corruption's own field, sampled **triplanar in metres**
+(`bmTri`, `src/shaders/BlightMask.js:75-90`) rather than off the material's UVs. That is
+what makes this rule survive distance: a UV-locked mask is retired by the near-field fade
+(`uv` 0.5, `uvFade` 20-60 m, `src/world/Materials.js:303`), so past 60 m a blighted object
+would lose all its structure and resolve to exactly the violet silhouette this rule
+forbids. A field with its own world-space scale shrinks on screen as you walk away and is
+still there at 200 m. The 0.64-0.96 band is centred on the flat 0.80 it replaced, so the
+corruption's mean strength is unchanged, and it stops short of 1.0 so the base material is
+never fully erased anywhere.
+
+The constants, in linear space, at `src/shaders/BlightMask.js:152-153`:
 
 ```glsl
 const vec3 BM_TINT = vec3(0.0419, 0.0166, 0.0665);
@@ -147,7 +157,7 @@ detail pass and then the mask, in that order and for that reason
 whose comment says "After attachDetail, so the hook chain runs detail first and corruption
 last — the mask re-shades the detailed fragment, not the other way round."
 `attachBlightMask` chains rather than clobbers whatever hook is already installed
-(`src/shaders/BlightMask.js:137-139`), which is the mechanism that keeps the order true.
+(`src/shaders/BlightMask.js:219-221`), which is the mechanism that keeps the order true.
 
 So a chest standing in a blight patch is the ochre chest with the void's claim over it —
 not a second, purple chest. Any asset that only works when it *is* the corruption has
