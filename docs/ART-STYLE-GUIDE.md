@@ -1,0 +1,342 @@
+# Art style guide
+
+**Status:** draft, awaiting ratification by the author.
+
+`RUBRIC.md` grades output after the fact. This document constrains input: it is the gate
+every asset search, every generated mesh and every new icon in the art milestone is
+checked against **before** the content lands. `ART-ASSETS.md` names the artefact — "a
+style guide that new content is checked against before it lands" — and this is it.
+
+Everything below is a rule the code already implies. Each rule carries the `file:line`
+it was verified against, so a reader can refute it against source rather than believe it.
+Where the code is silent, nothing is decided here; those questions are collected in
+*Open questions* at the end and are the author's to settle.
+
+`docs/art/ASSET-SPEC.md` is the searching agent's brief and restates parts of rules 1 and
+2 in shortlist-friendly form. This document is the constraint; the asset spec is the
+procedure. Where the two disagree, source wins and both documents are wrong.
+
+---
+
+## Rule 1 — One palette
+
+**Rule.** Every colour in new content comes from `PALETTE` in `src/world/Materials.js`,
+or is derived from a `PALETTE` entry by a stated relationship (a shade, a tint, a
+roughness sibling). No new content introduces a hue that is not already in the table
+below, and no content is colour-matched against a hex copied from any other document —
+`src/world/Materials.js:23-69` is the only source of truth, and a transcription anywhere
+else, including this one, is a convenience that can go stale.
+
+Verified verbatim at `src/world/Materials.js:23-69`, with the file header's colour-script
+statement at `src/world/Materials.js:4-22`:
+
+```js
+export const PALETTE = {
+  sky: {
+    zenith: 0x2f7fb2,   // 203°  saturated, so the mix toward the horizon reads
+    horizon: 0xf2a44f,  //  31°  as blue->amber and not as grey
+    haze: 0xffd08a,     //  35°  hot band hugging the horizon line itself
+    ground: 0x39344a,   // 254°  below the horizon goes cool, never brown
+    sun: 0xffe0ad,
+    cloud: 0xb9bed8,    // 231°  cloud bodies are cool; only their lit tops warm
+  },
+  // 214°, the sky's own blue, and deliberately *light* (V 78%). Aerial
+  // perspective goes pale and cool, never dark: this is the value the far
+  // massif resolves to, and it has to sit above the terrain's mid-tones so the
+  // background separates upward while the foreground stays dark and warm.
+  fog: 0x9fb0c6,
+  terrain: {
+    rock: 0xb58248,     //  32°
+    // 275°, but at 12% saturation rather than 17%. Vertical faces still read
+    // as shadow-side by hue; they just stop *shouting* it. At the old
+    // saturation a single mis-classified facet in an ochre field was a 245°
+    // hue jump, which is why the foreground measured as warm/cool confetti.
+    cliff: 0x5b5460,
+    moss: 0x6f8f43,     //  85°
+    sand: 0xead093,     //  42°
+  },
+  accent: {
+    // Value, not hue. Measured at luma 224 in a mean-luma-62 combat frame the
+    // accent was the brightest non-VFX object on screen — brighter than the
+    // sentinels that wear the same teal as their species colour, and brighter than
+    // the subject of the prop shot. Scenery may not out-value the things the
+    // player has to read. Same hue (178 / 185 deg), ~0.8x the albedo and a
+    // dimmer glow; see `crystal`'s emissiveIntensity for the other half.
+    crystal: 0x2fb3af,
+    crystalGlow: 0x17828c,
+    metal: 0x8d9199,    // cool metal so it catches the blue sky as specular
+    wood: 0x33272f,
+    wet: 0x43555f,
+  },
+  light: {
+    key: 0xffd2a0,
+    // The key is the only warm light. Everything filling the shadow side is
+    // cool, so a shadow is a hue change and not just a darker version of the
+    // lit colour — which is the whole point of the complementary split.
+    hemiSky: 0x79aeeb,
+    hemiGround: 0x6b4638, // a little warm bounce off the ground, kept dim
+    rim: 0x9a86f0,
+  },
+};
+```
+
+The comments are load-bearing and are transcribed with the hexes for that reason. Three
+decisions that a bare hex list destroys, and that new content must not undo:
+
+- **`cliff` sits at 12% saturation, not 17%** (`src/world/Materials.js:39-43`). The
+  shadow-side hue is deliberately quiet. New content that reintroduces a strongly
+  saturated cool at 275° puts the warm/cool confetti back.
+- **The accent is capped on *value*, not on hue** (`src/world/Materials.js:48-53`, with
+  the other half at `src/world/Materials.js:1040-1043` where `emissiveIntensity` is held
+  at 0.85). Scenery may not out-value what the player has to read. An asset that arrives
+  with a bright emissive is a readability regression regardless of its hue.
+- **`fog` is deliberately *light* at V 78%** (`src/world/Materials.js:32-36`). Aerial
+  perspective in this game goes pale and cool, never dark. Content authored to read
+  against a dark haze will read wrong in the far band.
+
+**Check before it lands.** Name, for each colour in the asset, which `PALETTE` entry it
+maps to. An asset whose dominant colour maps to no entry is rejected, not adjusted later.
+
+---
+
+## Rule 2 — The Void is an overlay, not a palette
+
+This is the single most misunderstandable thing about the look, and until now it was
+legible only from shader source.
+
+**Rule.** Corruption does not replace the biome's colours; it re-shades them. Nothing is
+authored "in Void colours." Every asset must read correctly in the warm ochre palette of
+rule 1 **and** survive being re-shaded violet on top of that. An asset whose own baked-in
+colour is already violet or magenta doubles up under the overlay and reads as mud.
+
+**Why, in source.** `attachBlightMask` injects one shader chunk into an existing material
+rather than swapping the material (`src/shaders/BlightMask.js:131-152`). The chunk mixes a
+tint into the diffuse colour the material already computed and *adds* a vein emissive on
+top of it (`src/shaders/BlightMask.js:98-99`):
+
+```glsl
+diffuseColor.rgb = mix(diffuseColor.rgb, BM_TINT, bm * 0.80);
+totalEmissiveRadiance += BM_VEIN * vein * (0.35 + 0.10 * uBlightBand);
+```
+
+The constants, in linear space, at `src/shaders/BlightMask.js:88-89`:
+
+```glsl
+const vec3 BM_TINT = vec3(0.0419, 0.0166, 0.0665);
+const vec3 BM_VEIN = vec3(0.1522, 0.0640, 0.5040);
+```
+
+The file header states the intent directly — "nothing is duplicated, the biome palette
+stays the base layer, and the corruption is a function applied on top of whatever the
+biome put there" (`src/shaders/BlightMask.js:1-17`).
+
+**The order is fixed: detail first, corruption last.** `attachWorldSurface` runs the
+detail pass and then the mask, in that order and for that reason
+(`src/world/Materials.js:830-849`, the doc comment at `:833-834` and the body at
+`:846-849`). The material library applies the same ordering in bulk — the detail loop at
+`src/world/Materials.js:1060-1065`, then the mask loop at `src/world/Materials.js:1067-1071`
+whose comment says "After attachDetail, so the hook chain runs detail first and corruption
+last — the mask re-shades the detailed fragment, not the other way round."
+`attachBlightMask` chains rather than clobbers whatever hook is already installed
+(`src/shaders/BlightMask.js:137-139`), which is the mechanism that keeps the order true.
+
+So a chest standing in a blight patch is the ochre chest with the void's claim over it —
+not a second, purple chest. Any asset that only works when it *is* the corruption has
+misread the look.
+
+**Check before it lands.** Two renders: the asset in a clean biome, and the asset inside a
+blight patch. Both must read. Neither may be the asset's only good look.
+
+---
+
+## Rule 3 — One shader treatment
+
+**Rule.** Incoming assets never ship their authored materials. Every world surface —
+ground, rock, iron, brass, anything the player reads as part of the place they are
+standing in — is bound to a material built by `src/world/Materials.js` and passed through
+`attachWorldSurface(material, kind)` (`src/world/Materials.js:846-849`). Importing a mesh
+whose material came with it is a rejection, not a follow-up cleanup.
+
+**The seam is named**, and it is `attachWorldSurface`. It exists precisely because the
+world's surfaces are built in four files rather than one, and its doc comment states the
+failure it prevents: "A chest standing inside a blight patch in untouched ochre iron while
+the ground under it shades violet is the 'assets from visibly different styles' failure
+arriving from the other direction, and the only durable fix is that every one of those
+ladders calls the same function" (`src/world/Materials.js:830-845`). That is `RUBRIC.md`
+axis 10 stated as a code rule.
+
+The existing ladders that already obey it, and that a new one must look like:
+
+- `src/world/Interactables.js:129`, `:134`, `:146`, `:151`, `:163`, `:168`
+- `src/world/realms/RealmArena.js:36`
+- `src/world/realms/RealmProps.js:37`, `:41`
+
+Each of those constructs a plain `MeshStandardMaterial`, pulls its maps from the shared
+texture sets via `getTextureSets()` / `withRepeat` (`src/world/Materials.js:1092`), and
+hands the result to `attachWorldSurface`. New content joins that pattern or it does not
+land.
+
+**Check before it lands.** Point at the line where the new content calls
+`attachWorldSurface`. If there is no such line, the content is not in the pipeline.
+
+---
+
+## Rule 4 — One post stack
+
+**Rule.** Nothing is authored to look right on its own. Every asset is judged in a frame
+that has been through the one post chain, and no content ships its own grade, its own
+bloom, or its own grain. There is exactly one composer and it is built in
+`src/core/RenderPipeline.js`.
+
+**The chain**, stated in the class doc comment at `src/core/RenderPipeline.js:108-117`:
+
+> scene -> GTAO -> bloom -> output(ACES + sRGB) -> grade -> SMAA
+
+Built pass by pass in `RenderPipeline.build()` (`src/core/RenderPipeline.js:217-294`):
+
+| Pass | Built at | What it fixes about incoming content |
+|---|---|---|
+| `RenderPass` | `:231-233` | Draws into a HalfFloat linear-sRGB target (`:221-228`); scene colour is HDR until `output`. |
+| `GTAOPass` | `:243-259` | Contact darkening at radius 2.6 on a ~220-unit stage. Always constructed, toggled by quality (`:244`). |
+| `UnrealBloomPass` | `:262-276` | Threshold 1.25 on genuinely HDR input, so bloom means "only emissives" (`src/core/RenderPipeline.js:17-23`). Bright-pass input is clamped at 8.0 (`:98-106`, `:265`) and `strength` is write-capped at 0.34 (`:269-274`). |
+| `OutputPass` | `:279-281` | ACES tonemap plus sRGB encode; the only tonemapper. Everything after it is LDR (`:278`). Exposure is 1.10 (`:142`). |
+| `GradeShader` `ShaderPass` | `:283-285` | Shake offset, chromatic aberration, filmic grade, vignette and grain (`src/shaders/GradeShader.js:5-14`), with the animated grain at `src/shaders/GradeShader.js:158`. Resting vignette 0.16 (`src/core/RenderPipeline.js:30`); aberration base 0.00042 (`:54`). |
+| `SMAAPass` | `:288-291` | Last, so it antialiases the final graded image (`:116`). |
+
+Two consequences for incoming content:
+
+- **The grade already carries the mood.** Cool lift in the shadows and warm gain in the
+  highlights are applied globally (`src/shaders/GradeShader.js:26-27`). An asset authored
+  with its own cool shadows arrives pre-graded and doubles.
+- **Bloom is a threshold, not a style.** Content only blooms by exceeding 1.25 in linear
+  HDR. An asset that looks correct only with a bloom it brought with it is rejected.
+
+**Check before it lands.** Screenshot the asset through the shipping pipeline, not through
+a viewer. A marketplace render is not evidence about this game.
+
+---
+
+## Rule 5 — A silhouette rule
+
+Round 5 scored `RUBRIC.md` axis 4 at 3/10: RANGER (`src/data/survivors.js:35-42`) and
+ANVIL (`src/data/survivors.js:70`, mesh at `src/entities/CharacterMesh.js:550`, geometry
+at `:881`) thresholded to the same shape. `ART-ASSETS.md` states the consequence: "No
+texture fixes that; only structural difference does."
+
+**Rule.** Any new character, enemy, or gameplay-critical prop must be distinguishable from
+every existing member of its roster **as a pure black silhouette**, at the distance the
+player actually reads it. The distinguishing feature must be structural — an outline,
+a proportion, a protrusion, a stance — never colour, never texture, never an emissive
+marking. If an asset needs its albedo to be told apart from something already in the game,
+it fails this rule and no shader or palette work rescues it.
+
+The structural work of fixing the existing roster is issue #20's, not this document's.
+This rule governs what is allowed to *arrive* while that work happens: nothing may be
+added that makes axis 4 worse.
+
+**Check before it lands.** Render the candidate and each existing roster member filled
+solid black on a flat background, at gameplay framing, and compare pairwise. A pair that
+a reader cannot tell apart is a rejection.
+
+Open question 1 below records what this rule does *not* fix: the code contains no
+silhouette test, so there is no numeric acceptance threshold and this check is a
+judgement call until the author sets one.
+
+---
+
+## Rule 6 — No text glyph is ever an icon
+
+Round-5 critics caught two failures of the same kind: a Unicode-dingbat icon set, and an
+emoji-presentation difficulty icon that Windows renders in colour, breaking the palette
+outright (`ART-ASSETS.md`, "The actual answer on 'a defined feel'").
+
+**Rule.** No icon is ever a character drawn by a font. Not a dingbat, not an emoji, not a
+symbol from an icon font, not a letterform standing in for a picture. Every icon in the
+game is drawn as vector geometry in `src/ui/Icons.js`, into an offscreen canvas, and
+cached — "the build ships zero image assets and makes zero network requests"
+(`src/ui/Icons.js:1-9`).
+
+Both failures come from the same root: a text glyph's appearance is chosen by the
+platform's font stack, not by us. It is therefore outside the palette (rule 1), outside
+the shader treatment (rule 3), and outside the post stack (rule 4) simultaneously. That is
+why the rule is absolute rather than a preference.
+
+**What the code already looks like**, and what a new icon must match:
+
+- Glyph bodies are drawing functions taking a canvas context, not strings:
+  `src/ui/Icons.js:166-188` (`GLYPHS`), `:304` (`ABILITY_GLYPHS`), and the rule marks at
+  `:846-857` (`markIcon`).
+- Where an item declares a `glyph`, the value is a **name key** selecting a drawing
+  routine, never a character to render: `src/data/items.js:258`, `:268`, `:281`, and the
+  routine it selects at `src/data/items.js:1961` (`drawGlyph`), called from
+  `src/data/items.js:1905`.
+- Tier colour comes from the icon module's own table (`src/ui/Icons.js:30-44`), so an icon
+  cannot introduce a colour by accident.
+
+**Check before it lands.** Search the diff for string literals passed to `fillText` /
+`strokeText`, for characters above U+007F in any UI data table, and for any new font
+dependency. Any hit is a rejection. Text remains text — labels, numbers and names are not
+covered by this rule; pictures are.
+
+---
+
+## The gate, in short
+
+New art content lands only when all six answers exist in writing:
+
+1. Which `PALETTE` entry each colour maps to.
+2. Renders proving it reads both clean and blighted.
+3. The line where it calls `attachWorldSurface`.
+4. A screenshot through the shipping post chain, not a viewer.
+5. A pairwise black-silhouette comparison against its roster.
+6. No text glyph, no font dependency, no character above U+007F used as a picture.
+
+---
+
+## Open questions for the author
+
+Nothing below is decided. The code is silent on each, and this document deliberately does
+not invent an answer.
+
+1. **What makes two silhouettes "different enough"?** There is no silhouette test anywhere
+   in the codebase — no threshold render, no comparison metric, no fixture. Rule 5 is a
+   judgement call until a measurable criterion exists. If one is wanted, it needs a fixed
+   framing distance, a comparison measure, and a pass number, and it probably belongs
+   alongside the existing capture harness rather than in this document.
+
+2. **May a purchased asset supply texture maps?** Rule 3 forbids shipping an authored
+   *material*, and the shipping ladders build every material from the shared procedural
+   texture sets (`src/world/Materials.js:1092`). But `ART-ASSETS.md` names authored texel
+   variation as the fix for the detail-starvation half of axis 5, which implies binding
+   purchased maps into a `Materials.js`-built material. Whether that is permitted, and
+   under what constraint on the maps' own colour, is undecided.
+
+3. **Does rule 3 extend past world surfaces?** `attachWorldSurface` is scoped by its own
+   doc comment to "a material that renders a *world surface*"
+   (`src/world/Materials.js:830-834`). Characters and enemies
+   (`src/entities/CharacterMesh.js`, `src/entities/EnemyMeshes.js`) do not go through it,
+   so today a character standing in a blight patch does not take the mask. Whether an
+   incoming character asset must take the same treatment as terrain is a decision, not a
+   fact about the code.
+
+4. **What may new content be emissive?** Bloom triggers above 1.25 in linear HDR
+   (`src/core/RenderPipeline.js:23`), and the accent's emissive is deliberately held at
+   0.85 so it sits under the bloom knee (`src/world/Materials.js:1040-1043`). No rule
+   states whether new content may be emissive at all, or whether the crystal accent
+   remains the stage's only self-lit surface.
+
+5. **Is the accent exclusive?** The `PALETTE` comment caps the accent on value and calls
+   it "the one accent" (`src/world/Materials.js:47-55`). Whether new content may use the
+   accent hue at all, and whether a second accent could ever be introduced, is the
+   author's call.
+
+6. **Must icons stay procedural forever?** Rule 6 forbids text glyphs, which is what the
+   round-5 defects actually were. It does not decide whether a *bought* vector icon set,
+   redrawn or imported as paths, is admissible — or whether "every icon is drawn in
+   `src/ui/Icons.js`" is a permanent architectural commitment (`src/ui/Icons.js:1-9`).
+
+7. **Which document governs a divergence?** This guide and `docs/art/ASSET-SPEC.md` both
+   transcribe from `src/world/Materials.js:23-69` and `src/shaders/BlightMask.js:88-89`.
+   Source is authoritative over both, but no rule says which document a searching agent
+   reads first, or who is responsible for re-verifying the transcriptions when the palette
+   moves.

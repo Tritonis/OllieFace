@@ -15,6 +15,7 @@
     "shots": "node tools/capture.mjs",
     "padprobe": "node tools/padprobe.mjs",
     "probe:coop": "node tools/coopprobe.mjs",
+    "baseline:net": "node tools/netbaseline.mjs --peers 3 --hz 60 --entities 60 --run-s 30 --warmup-s 3 --label webrtc-3peer-60hz",
     "dev:lan": "vite --host",
     "signal": "node tools/signal-server.mjs",
     "desktop": "npm run build && electron .",
