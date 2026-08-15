@@ -129,7 +129,8 @@ export class NetHost {
     // belongs to, and this table sends each one to the single peer holding that
     // pawn. Broadcasting them now would hand every joiner a copy of somebody
     // else's purse — which is the shared-economy bug in a louder key.
-    for (const name of ['itemPickup', 'goldChanged', 'equipmentChanged', 'goldReward', 'itemMutated']) {
+    for (const name of ['itemPickup', 'goldChanged', 'equipmentChanged', 'goldReward',
+                        'itemMutated', 'itemStabilised']) {
       ctx.events.on(name, (payload) => this._forwardOwned(name, payload));
     }
 

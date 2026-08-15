@@ -380,5 +380,239 @@ console.log('— the clean path is stocked, and stocking it costs a pristine run
   ok(moved === 0, `and the teleporter never moved, nor the draw count (${cases} cases) — nothing was taken off ctx.rng`);
 }
 
+// ---------------------------------------------------------------------------
+// Issue #32. Two halves, and the first is the reason for the second: the font
+// used to quote two numbers out of six, so cleansing read as "pay gold to undo
+// fun" and nothing in the prompt argued otherwise. The disclosure states the
+// whole projected transaction before the press; the reward gives one corrupted
+// stack back, so the press is an investment rather than a refund.
+//
+// Real Items and real Corruption from here down — the reward moves inventory,
+// and the whole hazard is *which stream* the pick comes off.
+console.log('— the font states the whole transaction before the press —');
+
+const { Items } = await import('../src/systems/Items.js');
+const { BLIGHT_BY_BASE, ITEM_BY_ID } = await import('../src/data/items.js');
+const { BANDS, MUTATION, PRESSURE, bandOf, voidBankCap } = await import('../src/data/corruption.js');
+const { RNG: RNG2 } = await import('../src/core/MathUtil.js');
+
+const blightBases = [...BLIGHT_BY_BASE.keys()].sort();
+const blightOf = (id) => BLIGHT_BY_BASE.get(id).id;
+
+/**
+ * A font standing in a real economy. `draws()` counts every touch of the shared
+ * `ctx.rng`, because "the reward never displaces a shared roll" is the arm that
+ * `gate:sp` would otherwise be the first thing to notice.
+ */
+function makeFontCtx({ gold = 100000, seed = 424242, authority = true } = {}) {
+  const listeners = new Map();
+  const emitted = [];
+  const raw = new RNG2(777);
+  let draws = 0;
+  const ctx = {
+    authority, seed, time: 0,
+    rng: {
+      next: () => (draws++, raw.next()),
+      range: (a, b) => (draws++, raw.range(a, b)),
+      int: (a, b) => (draws++, raw.int(a, b)),
+      pick: (a) => (draws++, raw.pick(a)),
+      weighted: (a, w) => (draws++, raw.weighted(a, w)),
+    },
+    scene: { add() {}, remove() {} },
+    player: { isPlayer: true, alive: true, health: 100, maxHealth: 100 },
+    events: {
+      emit(name, p) { emitted.push({ name, payload: p }); for (const fn of listeners.get(name) || []) fn(p); },
+      on(name, fn) { if (!listeners.has(name)) listeners.set(name, []); listeners.get(name).push(fn); },
+    },
+  };
+  const items = new Items();
+  items.init(ctx);
+  items.gold = gold;
+  const corruption = new Corruption();
+  corruption.init(ctx);
+  return { ctx, items, corruption, emitted, draws: () => draws };
+}
+
+/** Corruption straight onto the gauge, with no pickup and no ledger noise. */
+const setWorld = (w, to) => w.corruption.feed(w.ctx.player, to - w.corruption.world);
+
+console.log('all five facts, on three lines, off the live world');
+{
+  // 120 is chosen so every disclosed number moves: Overrun -> Blighted, a bank
+  // that is still below its ceiling, and a toll clock that is not saturated.
+  const w = makeFontCtx();
+  setWorld(w, 120);
+  const font = new ArgentFont(w.ctx, new THREE.Vector3(1, 0, 1), 4);
+  const lines = font.prompt().split('\n');
+  ok(lines.length === 3, `three lines, not a wall of text (got ${lines.length})`);
+
+  ok(lines[0].includes('Argent Font'), 'the object still names itself first');
+  ok(lines[0].includes(`$${font.cost}`), `fact 1 — the gold cost (${lines[0]})`);
+  ok(lines[0].includes(String(cleanseAmount(120))), `fact 2 — the corruption removed (${lines[0]})`);
+
+  ok(lines[1].includes(`${BANDS[3].name} -> ${BANDS[2].name}`),
+    `fact 3 — the destination band, as an arrow (${lines[1]})`);
+  const bank = Math.round(voidBankCap(90) - voidBankCap(120));
+  ok(bank < 0 && lines[1].includes(`void bank ${bank}`),
+    `fact 4a — what the void's war chest loses (${lines[1]})`);
+  ok(lines[1].includes((-cleanseAmount(120) * PRESSURE.perWorld).toFixed(2)),
+    `fact 4b — the Director pressure that comes off (${lines[1]})`);
+
+  ok(lines[2].includes(`${BANDS[3].at - 90} to the next blight toll`),
+    `fact 5 — the toll headroom the press buys back (${lines[2]})`);
+  ok(!/[^\x20-\x7e—]/.test(font.prompt().replace(/\n/g, '')),
+    'ASCII plus the em dash this prompt already used — no glyphs the HUD cannot set');
+}
+
+console.log('the ledger line never quotes a change that is not happening');
+{
+  // Deep enough that the bleed does not leave the band, and deep enough that
+  // the void bank is pinned at its ceiling on both sides of the press.
+  const w = makeFontCtx();
+  setWorld(w, 400);
+  const font = new ArgentFont(w.ctx, new THREE.Vector3(), 0);
+  const line = font.prompt().split('\n')[1];
+  ok(line.includes(`${BANDS[4].name} holds`), `a bleed that does not leave the band says so (${line})`);
+  ok(line.includes('void bank held'), `and a bank already at its ceiling loses nothing (${line})`);
+}
+
+console.log('the toll clock knows the mutation floor, and knows when there is no toll left');
+{
+  const clean = makeFontCtx();
+  setWorld(clean, 40);                                   // band 1 — below MUTATION.minBand
+  const f1 = new ArgentFont(clean.ctx, new THREE.Vector3(), 0);
+  const after1 = 40 - cleanseAmount(40);
+  ok(f1.prompt().includes(`${BANDS[MUTATION.minBand].at - after1} to the next blight toll`),
+    `band 1's next toll is the mutation floor, not the band above (${f1.prompt().split('\n')[2]})`);
+
+  const deep = makeFontCtx();
+  setWorld(deep, 4000);                                  // stays in the top band after a press
+  const f2 = new ArgentFont(deep.ctx, new THREE.Vector3(), 0);
+  ok(bandOf(4000 - cleanseAmount(4000)) === BANDS.length - 1, 'the fixture really is pinned in the top band');
+  ok(f2.prompt().includes('no further blight toll'),
+    `nothing above the last band to promise (${f2.prompt().split('\n')[2]})`);
+}
+
+console.log('the disclosure promises the freed stack only when there is one to free');
+{
+  const w = makeFontCtx();
+  setWorld(w, 120);
+  const font = new ArgentFont(w.ctx, new THREE.Vector3(), 0);
+  ok(!font.prompt().includes('blight stack'), 'an uncorrupted pack is promised nothing');
+  w.items.give(blightOf(blightBases[0]), 2);
+  ok(font.prompt().includes('frees 1 blight stack'), `a corrupted pack is (${font.prompt().split('\n')[2]})`);
+}
+
+console.log('— and the press pays it —');
+
+console.log('a cleansing hands one corrupted stack back, whole');
+{
+  const w = makeFontCtx();
+  setWorld(w, 200);
+  const blightA = blightOf(blightBases[0]);
+  w.items.give(blightA, 3);
+  ok(w.items.count(blightA) === 3 && w.items.count(blightBases[0]) === 0, 'the pack starts corrupted');
+
+  const font = new ArgentFont(w.ctx, new THREE.Vector3(), 0);
+  ok(font.interact() === true, 'the press resolves');
+  ok(w.items.count(blightA) === 0, 'the blight stack is gone');
+  ok(w.items.count(blightBases[0]) === 3, 'and every copy came back as its base — the exact inverse of _mutateAt');
+
+  const ev = w.emitted.filter((e) => e.name === 'itemStabilised');
+  ok(ev.length === 1, 'one itemStabilised for one press');
+  ok(ev[0].payload.blightId === blightA && ev[0].payload.baseId === blightBases[0] && ev[0].payload.count === 3,
+    'the event names both ids and the stack it moved');
+  ok(ev[0].payload.owner === w.ctx.player, 'and whose pack it was — the economy is per pawn');
+}
+
+console.log('a clean pack is not a refusal — the cleansing still sells the world');
+{
+  const w = makeFontCtx();
+  setWorld(w, 200);
+  const font = new ArgentFont(w.ctx, new THREE.Vector3(), 0);
+  ok(font.interact() === true, 'nothing to stabilise does not block the bleed');
+  ok(w.corruption.world === 200 - cleanseAmount(200), 'the world still bled');
+  ok(!w.emitted.some((e) => e.name === 'itemStabilised'), 'and no event claiming a stack came back');
+}
+
+console.log('the stabilise write is not an acquisition — it charges nothing');
+{
+  const w = makeFontCtx();
+  const blightA = blightOf(blightBases[0]);
+  w.items.give(blightA, 3);
+  setWorld(w, 200);
+  const font = new ArgentFont(w.ctx, new THREE.Vector3(), 0);
+  font.interact();
+  ok(Math.abs(w.corruption.world - (200 - cleanseAmount(200))) < 1e-9,
+    `the world is the bleed and nothing else — the returned stack was not re-billed (${w.corruption.world})`);
+  ok(w.corruption.seeds.length === 0, 'and still not a greed act');
+}
+
+console.log('the pick is deterministic and never touches the shared stream');
+{
+  // Two identical runs, one with its shared stream displaced. `_mutateAt`'s
+  // hazard exactly: a draw here would move every later shared roll relative to
+  // a run whose inventory happened to differ, and gate:sp is what finds out.
+  const run = (displace) => {
+    const w = makeFontCtx();
+    for (let i = 0; i < displace; i++) w.ctx.rng.next();
+    for (const b of blightBases.slice(0, 4)) w.items.give(blightOf(b), 2);
+    setWorld(w, 200);
+    const before = w.draws();
+    const font = new ArgentFont(w.ctx, new THREE.Vector3(), 3);
+    font.interact();
+    const ev = w.emitted.find((e) => e.name === 'itemStabilised');
+    return { picked: ev?.payload.blightId, spent: w.draws() - before };
+  };
+  const a = run(0), b = run(11);
+  ok(a.picked !== undefined, 'a stack was picked');
+  ok(a.picked === b.picked, `identical pick despite a displaced ctx.rng (${a.picked} vs ${b.picked})`);
+  ok(a.spent === 0 && b.spent === 0, `and the press took zero draws off ctx.rng (${a.spent}, ${b.spent})`);
+}
+
+console.log('the pick cannot depend on Map insertion order');
+{
+  const order = (ids) => {
+    const w = makeFontCtx();
+    for (const b of ids) w.items.give(blightOf(b), 1);
+    setWorld(w, 200);
+    new ArgentFont(w.ctx, new THREE.Vector3(), 3).interact();
+    return w.emitted.find((e) => e.name === 'itemStabilised')?.payload.blightId;
+  };
+  const four = blightBases.slice(0, 4);
+  ok(order(four) === order([...four].reverse()), 'the same pack picked up backwards yields the same stack');
+}
+
+console.log('successive presses at one font do not re-pick the same salt');
+{
+  const w = makeFontCtx();
+  for (const b of blightBases.slice(0, 5)) w.items.give(blightOf(b), 1);
+  setWorld(w, 4000);
+  const font = new ArgentFont(w.ctx, new THREE.Vector3(), 2);
+  for (let i = 0; i < CLEANSE.maxUses; i++) font.interact();
+  const picks = w.emitted.filter((e) => e.name === 'itemStabilised').map((e) => e.payload.blightId);
+  ok(picks.length === CLEANSE.maxUses, `every press paid its reward (${picks.length})`);
+  ok(new Set(picks).size === picks.length, `and each press freed a different stack (${picks.join(', ')})`);
+}
+
+console.log('a client never stabilises anything');
+{
+  const w = makeFontCtx({ authority: false });
+  const blightA = blightOf(blightBases[0]);
+  w.items.counts.set(blightA, 2);                        // mirror state, set directly
+  ok(w.items.stabilise(0) === null, 'stabilise is authority-gated like every other inventory write');
+  ok(w.items.counts.get(blightA) === 2, 'the mirror is untouched');
+  ok(!w.emitted.some((e) => e.name === 'itemStabilised'), 'and nothing was announced');
+}
+
+console.log('the announcement is on the wire');
+{
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../src/net/NetHost.js', import.meta.url), 'utf8');
+  const owned = src.match(/for \(const name of \[([^\]]*)\]\) \{\s*\n\s*ctx\.events\.on\(name, \(payload\) => this\._forwardOwned/);
+  ok(!!owned && owned[1].includes("'itemStabilised'"),
+    'itemStabilised rides the per-owner forward, beside itemMutated — a reward nobody is told about is not a reward');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
