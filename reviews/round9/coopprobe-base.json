@@ -1,5 +1,5 @@
 {
-  "when": "2026-08-13T01:03:50.779Z",
+  "when": "2026-08-15T00:18:38.514Z",
   "probe": "tools/coopprobe.mjs",
   "label": "base",
   "flags": {
@@ -32,9 +32,23 @@
       "base"
     ],
     "checkSetsKnown": [
-      "base"
+      "base",
+      "p2",
+      "p3"
     ],
-    "checksSkipped": [],
+    "checksSkipped": [
+      "p2-chest-charges-actor (set \"p2\")",
+      "p2-kill-pays-all (set \"p2\")",
+      "p2-client-interact-opens-chest (set \"p2\")",
+      "p2-equipment-fires (set \"p2\")",
+      "p2-inventory-isolated (set \"p2\")",
+      "p3-downed-replicates (set \"p3\")",
+      "p3-downed-excluded-from-targeting (set \"p3\")",
+      "p3-revive-completes (set \"p3\")",
+      "p3-bleedout-kills (set \"p3\")",
+      "p3-stage-return (set \"p3\")",
+      "p3-wipe-ends-run (set \"p3\")"
+    ],
     "runWindowEndedEarly": null,
     "settingsSeeded": {
       "spawnRate": 0.12,
@@ -48,76 +62,76 @@
     ],
     "note": "every wait in this probe is capped; the caps above are the only ones there are"
   },
-  "roomCode": "C7W9",
-  "formationMs": 4636,
+  "roomCode": "ZDNS-97AA",
+  "formationMs": 4988,
   "phases": [
     {
       "name": "relay",
-      "ms": 107,
+      "ms": 104,
       "ok": true,
       "detail": "ws://127.0.0.1:5215"
     },
     {
       "name": "vite",
-      "ms": 96,
+      "ms": 98,
       "ok": true,
       "detail": "http://127.0.0.1:5214"
     },
     {
       "name": "host-boot",
-      "ms": 16129,
+      "ms": 16162,
       "ok": true,
       "detail": "title screen up, seed 1337"
     },
     {
       "name": "host-room",
-      "ms": 1164,
+      "ms": 1358,
       "ok": true,
-      "detail": "C7W9"
+      "detail": "ZDNS-97AA"
     },
     {
       "name": "host-launch",
-      "ms": 2568,
+      "ms": 2580,
       "ok": true,
-      "detail": "hosting room C7W9 with the world running"
+      "detail": "hosting room ZDNS-97AA with the world running"
     },
     {
       "name": "client-boot",
-      "ms": 2481,
+      "ms": 2453,
       "ok": true,
       "detail": "title screen up"
     },
     {
       "name": "formation",
-      "ms": 5140,
+      "ms": 5612,
       "ok": true,
-      "detail": "4636 ms from the Join click to two open channels and a host roster of 2"
+      "detail": "4988 ms from the Join click to two open channels and a host roster of 2"
     },
     {
       "name": "client-launch",
-      "ms": 1808,
+      "ms": 2235,
       "ok": true,
       "detail": "joined and running"
     },
     {
       "name": "run-window",
-      "ms": 60034,
+      "ms": 60027,
       "ok": true,
       "detail": "60 s of scripted play, 81 alternating key holds, both survivors alive"
     }
   ],
   "timings": {
-    "totalMs": 96918,
+    "totalMs": 98295,
     "byPhase": {
-      "relay": 107,
-      "vite": 96,
-      "host-boot": 16129,
-      "host-room": 1164,
-      "host-launch": 2568,
-      "client-boot": 2481,
-      "formation": 5140,
-      "client-launch": 1808,
-      "run-window": 60034
+      "relay": 104,
+      "vite": 98,
+      "host-boot": 16162,
+      "host-room": 1358,
+      "host-launch": 2580,
+      "client-boot": 2453,
+      "formation": 5612,
+      "client-launch": 2235,
+      "run-window": 60027
     }
   },
   "consoleErrors": {
@@ -129,13 +143,13 @@
       "name": "host-running",
       "set": "base",
       "pass": true,
-      "detail": "host paused=false NetHost.tick=3845 (want > 60) screen=null role=host"
+      "detail": "host paused=false NetHost.tick=3883 (want > 60) screen=null role=host"
     },
     {
       "name": "client-running",
       "set": "base",
       "pass": true,
-      "detail": "client paused=false NetClient.tick=3591 (want > 60) screen=null role=client connected=true myNetId=1"
+      "detail": "client paused=false NetClient.tick=3615 (want > 60) screen=null role=client connected=true myNetId=1"
     },
     {
       "name": "roster-2-both",
@@ -147,7 +161,7 @@
       "name": "ticks-advance",
       "set": "base",
       "pass": true,
-      "detail": "over 5000 ms: host tick 3847 -> 4138 (+291), client tick 3593 -> 3894 (+301); want both strictly increasing"
+      "detail": "over 5000 ms: host tick 3886 -> 4188 (+302), client tick 3618 -> 3919 (+301); want both strictly increasing"
     },
     {
       "name": "both-alive",
