@@ -28,18 +28,26 @@
  * pool explicitly, which is what stops a white chest from occasionally handing
  * out a Lunar drawback the player never opted into.
  */
+/*
+ * The colours here used to be a near-miss of the HUD's: 0xd8dde6 against the
+ * HUD's #e6ecf4, 0x49d67a against #63e06a, and so on down the table. Two
+ * palettes for one concept is how one of them silently stops being safe, so
+ * they are now the same seven values, and `tests/readability-gate.test.mjs`
+ * fails if they diverge again. The rationale for each colour lives with the
+ * table it is measured against, above `TIERS` in `src/ui/Icons.js`.
+ */
 export const TIERS = {
-  common: { name: 'Common', colour: 0xd8dde6, css: '#d8dde6', weight: 80 },
-  uncommon: { name: 'Uncommon', colour: 0x49d67a, css: '#49d67a', weight: 20 },
-  legendary: { name: 'Legendary', colour: 0xf0453f, css: '#f0453f', weight: 1 },
-  boss: { name: 'Boss', colour: 0xffd23f, css: '#ffd23f', weight: 0 },
-  lunar: { name: 'Umbral', colour: 0x5fd9f7, css: '#5fd9f7', weight: 0 },
+  common: { name: 'Common', colour: 0xe6ecf4, css: '#e6ecf4', weight: 80 },
+  uncommon: { name: 'Uncommon', colour: 0x009932, css: '#009932', weight: 20 },
+  legendary: { name: 'Legendary', colour: 0xff5554, css: '#ff5554', weight: 1 },
+  boss: { name: 'Boss', colour: 0xfdd249, css: '#fdd249', weight: 0 },
+  lunar: { name: 'Umbral', colour: 0x00caff, css: '#00caff', weight: 0 },
   // Blight sits at weight 0 for the same reason boss and lunar do: it is never
   // reached by multiplying the generic ladder. `Items.rollTier` adds it as an
   // explicit share of whatever table it was handed, so one constant sets the
   // rate for every chest in the game at once — see BLIGHT_SHARE there.
-  blight: { name: 'Blight', colour: 0xd8479b, css: '#d8479b', weight: 0 },
-  equipment: { name: 'Equipment', colour: 0xff9a3c, css: '#ff9a3c', weight: 0 },
+  blight: { name: 'Blight', colour: 0xf869cd, css: '#f869cd', weight: 0 },
+  equipment: { name: 'Equipment', colour: 0xaa6400, css: '#aa6400', weight: 0 },
 };
 
 /** Chance stacking. k is the first-stack value; the curve never reaches 1. */

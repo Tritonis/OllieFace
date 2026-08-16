@@ -22,6 +22,40 @@ export function maskReader(b64, w) {
   };
 }
 
+/**
+ * Pack a set of unit-space polygons into that same mask format.
+ *
+ * The masks everything else here measures come off a GPU. Some shapes in the
+ * build are authored as geometry rather than photographed — the tier marks in
+ * `src/ui/Icons.js` are polygons in a 0..1 box — and those can be measured
+ * exactly, with no browser and no rasteriser noise, by filling them here. That
+ * makes their separation a property of the committed source rather than of a
+ * capture, which is the strongest form the gate takes.
+ *
+ * Filled even-odd, sampling pixel centres, unioned across the list. Even-odd is
+ * what makes a single out-and-back path — rim one way, bore the other — come out
+ * as an annulus, matching what canvas's nonzero fill does with the same points.
+ */
+export function rasterisePolys(polys, w, h) {
+  const bits = new Uint8Array(Math.ceil((w * h) / 8));
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const px = (x + 0.5) / w, py = (y + 0.5) / h;
+      let covered = false;
+      for (const poly of polys) {
+        let inside = false;
+        for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+          const [xi, yi] = poly[i], [xj, yj] = poly[j];
+          if ((yi > py) !== (yj > py) && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) inside = !inside;
+        }
+        if (inside) { covered = true; break; }
+      }
+      if (covered) { const i = y * w + x; bits[i >> 3] |= 1 << (i & 7); }
+    }
+  }
+  return Buffer.from(bits).toString('base64');
+}
+
 const EMPTY_BANDS = () => Array.from({ length: 10 }, () => ({ w: 0, fill: 0, runs: 0 }));
 
 /**

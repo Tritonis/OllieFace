@@ -288,5 +288,170 @@ console.log('the survivor roster is measured, and every pair of it');
   ok(grade(rec).ok === true, 'and the record passes its own thresholds');
 }
 
+/* ------------------------------------------------------------ colour vision
+ *
+ * The other way a silhouette gate can be complete and still be blind. Everything
+ * above measures shape and nothing measured colour, and rarity and threat — the
+ * two things a player has to read fastest — were carried by hue alone.
+ *
+ * Same discipline as the rest of the file: the arithmetic lives in
+ * `tools/colour-vision.mjs`, is pure, and is pinned here against constants this
+ * file states outright, including the ones that must fail.
+ */
+
+console.log('the simulator does what its name says');
+{
+  const { simulate, deltaE, deltaEUnder } = await import('../tools/colour-vision.mjs');
+  ok(deltaE('#ff0000', '#ff0000') === 0, 'a colour against itself is zero');
+  ok(Math.abs(deltaE('#ff0000', '#00ff00') - deltaE('#00ff00', '#ff0000')) < 1e-9, 'and the metric is symmetric');
+
+  // The load-bearing property. The pair is a red and a green of *similar
+  // lightness* on purpose: a dichromat loses hue, not brightness, so a bright
+  // green against a dark red stays perfectly separable and would prove nothing.
+  // Matched for lightness, 57 points of ordinary difference come down to 13.
+  // If this ever stopped holding, the matrices would have quietly become an
+  // identity and every grade below would be passing for the wrong reason.
+  ok(deltaE('#e05a45', '#63a04a') > 50, 'an equiluminant red and green are far apart in ordinary vision');
+  ok(deltaEUnder('#e05a45', '#63a04a', 'deutan') < 15, 'and nearly the same colour under deuteranopia');
+  ok(deltaEUnder('#e05a45', '#4a6ea0', 'deutan') > 25, 'while red against blue survives it');
+
+  // Tritanopia loses blue-yellow instead, so it must fail on a different pair.
+  ok(deltaEUnder('#20a0e0', '#20e0a0', 'tritan') < deltaE('#20a0e0', '#20e0a0'),
+     'tritanopia collapses a cyan-to-spring-green pair that ordinary vision separates');
+
+  // `mono` is a luminance grey, so it must be neutral and must order by
+  // luminance: pure green is far brighter than pure blue.
+  const g = simulate('#00ff00', 'mono'), b = simulate('#0000ff', 'mono');
+  ok(/^#(\w\w)\1\1$/.test(g), `mono returns a neutral grey (${g})`);
+  ok(parseInt(g.slice(1, 3), 16) > parseInt(b.slice(1, 3), 16), 'and green is brighter than blue');
+}
+
+console.log('the palette bars are ones the old palettes could not clear');
+{
+  const { gradePalette, PALETTE } = await import('../tools/colour-vision.mjs');
+  // The palettes as they shipped before this gate existed, quoted verbatim.
+  // Their job here is to prove the grade can go red: a check that has only ever
+  // been shown green is not evidence that it measures anything.
+  const wasTiers = {
+    common: '#e6ecf4', uncommon: '#63e06a', legendary: '#ff5b45', boss: '#ffd44f',
+    lunar: '#5fd9f7', blight: '#e05aa8', equipment: '#ff9a3c',
+  };
+  const wasElite = {
+    emberclad: 0xff3a08, galvanic: 0x2f5cff, rimebound: 0x4fb8e8,
+    withering: 0x2fbf6a, warded: 0x6a4ad0, voidtouched: 0x8a2fd0,
+  };
+  const gt = gradePalette(wasTiers, PALETTE);
+  ok(gt.ok === false, 'the old tier palette fails the gate');
+  ok(gt.checks.some((c) => c.id === 'uncommon/lunar' && c.vision === 'mono' && c.delta < 1),
+     'desaturated, Uncommon and Umbral were the same grey');
+  ok(gt.checks.some((c) => c.id === 'uncommon/boss' && c.vision === 'protan' && !c.ok),
+     'and a protanope could not separate Uncommon from Boss');
+
+  const ge = gradePalette(wasElite, PALETTE);
+  ok(ge.ok === false, 'the old elite tints fail it too');
+  ok(ge.checks.some((c) => c.id === 'warded/voidtouched' && c.vision === 'deutan' && c.delta < 3),
+     'Warded and Hollowed were one violet for a deuteranope');
+}
+
+console.log('the shipped palettes clear them');
+{
+  const { gradePalette, PALETTE } = await import('../tools/colour-vision.mjs');
+  const { TIERS, TIER_ORDER } = await import('../src/ui/Icons.js');
+  const { ELITE } = await import('../src/entities/EnemyMeshes.js');
+
+  const tiers = Object.fromEntries(TIER_ORDER.map((k) => [k, TIERS[k].color]));
+  const gt = gradePalette(tiers, PALETTE);
+  const worstT = gt.checks[0];
+  ok(gt.ok === true, `every tier pair clears every vision (worst ${worstT.id} ${worstT.vision} ${worstT.delta.toFixed(1)} vs ${worstT.min})`);
+
+  const tints = Object.fromEntries(Object.entries(ELITE).map(([k, v]) => [k, v.tint]));
+  const ge = gradePalette(tints, PALETTE);
+  const worstE = ge.checks[0];
+  ok(ge.ok === true, `every elite tint pair does too (worst ${worstE.id} ${worstE.vision} ${worstE.delta.toFixed(1)} vs ${worstE.min})`);
+
+  // Every tier is graded, not just the ones that happened to be in the object.
+  ok(gt.checks.length === (TIER_ORDER.length * (TIER_ORDER.length - 1) / 2) * 5,
+     'all 21 tier pairs, all five visions');
+}
+
+console.log('one palette, three tables');
+{
+  const { readFileSync } = await import('node:fs');
+  const { TIERS, TIER_ORDER } = await import('../src/ui/Icons.js');
+  const { TIERS: DATA_TIERS } = await import('../src/data/items.js');
+  const css = readFileSync(new URL('../src/ui/hud.css', import.meta.url), 'utf8');
+  // Rarity is stated in three places — the HUD's icon factory, the data layer
+  // that colours world-space drops, and the stylesheet — and before this check
+  // they were three near-misses of each other. A tier that is safe in one table
+  // and not in the next is the failure this gate exists to make impossible.
+  for (const tier of TIER_ORDER) {
+    const want = TIERS[tier].color;
+    ok(DATA_TIERS[tier]?.css === want, `data/items.js agrees on ${tier} (${DATA_TIERS[tier]?.css})`);
+    ok(DATA_TIERS[tier]?.colour === parseInt(want.slice(1), 16), `and its numeric form matches for ${tier}`);
+    const m = css.match(new RegExp(`--t-${tier}:\\s*(#[0-9a-f]{6})`, 'i'));
+    ok(m?.[1]?.toLowerCase() === want, `hud.css --t-${tier} agrees (${m?.[1]})`);
+  }
+}
+
+console.log('and a shape under it, so none of that is load-bearing on its own');
+{
+  const { MARK_SIMILARITY } = await import('../tools/colour-vision.mjs');
+  const { TIER_MARKS, TIER_ORDER } = await import('../src/ui/Icons.js');
+  const { rasterisePolys, silhouetteSimilarity } = await import('../tools/silhouette-metrics.mjs');
+  const R = 64;
+
+  const masks = {};
+  for (const tier of TIER_ORDER) {
+    const polys = TIER_MARKS[tier];
+    ok(Array.isArray(polys) && polys.length > 0, `${tier} has a mark`);
+    masks[tier] = measureMask(rasterisePolys(polys, R, R), R, R);
+    // A mark small enough to vanish is the same as no mark. The floor is a
+    // tenth of its own box, which the thinnest of them — Common's single
+    // stroke — clears at 0.13.
+    ok(masks[tier].area / (R * R) > 0.10, `${tier}'s mark fills enough of its box (${(masks[tier].area / (R * R)).toFixed(2)})`);
+  }
+
+  let worst = { similarity: 0, pair: '' };
+  for (let i = 0; i < TIER_ORDER.length; i++) {
+    for (let j = i + 1; j < TIER_ORDER.length; j++) {
+      const a = TIER_ORDER[i], b = TIER_ORDER[j];
+      const s = silhouetteSimilarity(masks[a], masks[b]).similarity;
+      if (s > worst.similarity) worst = { similarity: s, pair: `${a}/${b}` };
+    }
+  }
+  ok(worst.similarity < MARK_SIMILARITY,
+     `no two tier marks read as one another (worst ${worst.pair} ${worst.similarity.toFixed(3)} vs ${MARK_SIMILARITY})`);
+
+  // The Umbral ring is the only mark with negative space in it, and that hole is
+  // the whole of what separates it from a disc. It comes from a single
+  // out-and-back path, so an editor who "tidied" that into one loop would lose
+  // it silently.
+  ok(masks.lunar.holes > 0, "Umbral's ring still has a bore");
+
+  // The ordinary tiers are a tally and have to count: one stroke, two, three.
+  const runs = (m) => Math.max(...m.bands.map((band) => band.runs));
+  ok(Math.round(runs(masks.common)) === 1 && Math.round(runs(masks.uncommon)) === 2
+     && Math.round(runs(masks.legendary)) === 3,
+     'Common, Uncommon and Legendary read as one, two and three strokes');
+}
+
+console.log('the elite affixes carry their own redundancy, and no two share it');
+{
+  const { ELITE } = await import('../src/entities/EnemyMeshes.js');
+  // Threat's shape channel is not a glyph but the aura's geometry: how many
+  // bands, how many bits, what the bits are, how they move, and whether the unit
+  // wears a barrier. The table has always claimed this signature is unique per
+  // affix; nothing checked it, and a sixth affix was added after the claim was
+  // written.
+  const seen = new Map();
+  for (const [id, a] of Object.entries(ELITE)) {
+    const sig = [a.bands ?? 0, a.bits ?? 0, a.shape ?? '-', a.ward ?? 0,
+                 a.helix ?? 0, a.rise ?? 0, a.spin ?? 0, a.tilt ?? 0].join('/');
+    ok(!seen.has(sig), `${id}'s aura signature is its own (${sig}${seen.has(sig) ? `, shared with ${seen.get(sig)}` : ''})`);
+    seen.set(sig, id);
+  }
+  ok(seen.size === Object.keys(ELITE).length, 'every affix is distinguishable with colour removed entirely');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
