@@ -272,11 +272,33 @@ export class MarketStall extends RealmProp {
       { g: new THREE.BoxGeometry(1.3, 0.16, 0.36), y: 1.4, z: 0.02 },
       { g: new THREE.BoxGeometry(0.16, 1.2, 0.3), x: -0.58, y: 2.0 },
       { g: new THREE.BoxGeometry(0.16, 1.2, 0.3), x: 0.58, y: 2.0 },
-      { g: new THREE.BoxGeometry(1.32, 0.18, 0.5), y: 2.55, z: 0.11 },
-      { g: new THREE.BoxGeometry(1.18, 1.05, 0.09), y: 2.0, z: -0.11 },
-      { g: new THREE.BoxGeometry(1.4, 0.06, 0.08), y: 2.44, z: 0.35 },
     ]), metalMat(0x6a6152));
     frame.castShadow = frame.receiveShadow = true;
+
+    // The backboard is the stall's dark value — the shaded recess the tier
+    // screen hangs in. Mid metal on all three rungs is what left the stall with
+    // one value to offer, and one value only ever reads against half a room.
+    const backboard = new THREE.Mesh(
+      new THREE.BoxGeometry(1.18, 1.05, 0.09), metalMat(0x2a2822, { roughness: 0.8 }));
+    backboard.position.set(0, 2.0, -0.11);
+    backboard.castShadow = backboard.receiveShadow = true;
+    this.group.add(backboard);
+
+    // **A prop needs a light half and a dark half, or it only reads against
+    // half the room.** The stall was one mid-value metal from the ground up.
+    // Against the market's old near-white flagstone that was legible; against
+    // the dark flagstone the room has now it was a mid grey object on a mid
+    // grey field, and the stall standing furthest from the columns measured
+    // 0.23 separation while its two neighbours — backed by the pale arcade —
+    // read fine. Painting the canopy and its rail in the hall's own limestone
+    // gives every stall its own value break, so it separates whether it is
+    // standing against the bright columns or against the dark floor.
+    const canopy = new THREE.Mesh(merge([
+      { g: new THREE.BoxGeometry(1.32, 0.18, 0.5), y: 2.55, z: 0.11 },
+      { g: new THREE.BoxGeometry(1.4, 0.06, 0.08), y: 2.44, z: 0.35 },
+    ]), stoneMat(0xb4bcbc, { roughness: 0.7 }));
+    canopy.castShadow = canopy.receiveShadow = true;
+    this.group.add(canopy);
 
     this.screen = new THREE.Mesh(
       new THREE.BoxGeometry(0.94, 0.98, 0.10),

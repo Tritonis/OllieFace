@@ -196,9 +196,18 @@ function buildMarket(stage) {
   // wall is the darkest, the columns are the brightest, the floor sits between.
   const wallStone = rung('stone', 3.2, { color: 0x3f5058, roughness: 0.88, metalness: 0.03, envMapIntensity: 0.7 });
   const paleStone = rung('stone', 2.4, { color: 0xb9c6c8, roughness: 0.76, metalness: 0.02, envMapIntensity: 1.0 });
-  // Cool polished flagstone. Light enough to bounce, matte enough not to mirror
-  // the ceiling back at the camera.
-  const polish = rung('stone', 4.0, { color: 0x64777d, roughness: 0.62, metalness: 0.05, envMapIntensity: 0.8 });
+  // Cool polished flagstone, and the darkest large surface a body ever stands
+  // in front of. It was authored at 0x64777d — a mid value — on the reasoning
+  // that the floor sits *between* the wall and the columns. Under a 74 deg key
+  // that reads as an ice rink: the floor is the one surface square to the sun,
+  // so a mid albedo comes back at 102 luma and the whole lower half of the
+  // frame is one blown sheet. A survivor standing on it measured 91 luma
+  // against 102 and vanished. The rung order the room is built around is kept
+  // — wall, then floor, then columns — the floor is simply taken down to where
+  // a mid albedo under a vertical key belongs, so that anything upright on it
+  // reads as a shape on a ground rather than a shape in a field of the same
+  // value. The hall loses none of its light; it gains a floor.
+  const polish = rung('stone', 4.0, { color: 0x1b2226, roughness: 0.62, metalness: 0.05, envMapIntensity: 0.8 });
   // Contact/plinth rung: the dark value that puts the columns on the ground.
   const plinth = rung('stone', 2.0, { color: 0x2e393e, roughness: 0.9, metalness: 0.02, envMapIntensity: 0.4 });
   const brass = rung('metal', 2.6, { color: 0xb98a4a, roughness: 0.26, metalness: 0.78, envMapIntensity: 2.2 });

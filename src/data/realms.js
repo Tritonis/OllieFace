@@ -92,9 +92,21 @@ export const REALMS = [
       ceiling: 0x46606a, ceilingAmount: 0.92,
       fogColor: 0x3d545c, fogDensity: 0.011,
       sunEl: 74, sunAz: 210, sunColor: 0xe8f6fa, sunIntensity: 3.2,
-      hemiSky: 0x86a8b6, hemiGround: 0x4a575c, hemiIntensity: 1.55,
-      // The one warm channel, and it comes from behind: lantern bounce.
-      rim: 0xffb070, rimIntensity: 1.2, envIntensity: 1.3,
+      // **The light comes off the walls, not off the floor.**
+      //
+      // With the flagstone taken down to a real dark value (`RealmArena`'s
+      // `polish`), the room's fill has to do the job the floor used to do by
+      // being pale: lift every *vertical* surface — bodies, stalls, columns —
+      // clear of the ground they stand on. `hemiGround` and the bounce
+      // directional it colours land almost entirely on verticals, because the
+      // key sits at 74 deg and anything facing up already has it. So the ground
+      // channel goes *up* while the floor goes down, and the two together are
+      // the whole silhouette fix: a survivor now measures 83+ luma against a
+      // 42 luma floor where he used to measure 91 against 102 and disappear.
+      hemiSky: 0x86a8b6, hemiGround: 0x66757c, hemiIntensity: 1.55,
+      // The one warm channel, and it comes from behind: lantern bounce. Lifted
+      // with the fill, so the shape the fill separates is warm-edged.
+      rim: 0xffb070, rimIntensity: 1.5, envIntensity: 1.3,
       dustColor: 0xffd8a0, dustOpacity: 0.28,
     }),
   },
