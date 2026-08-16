@@ -2239,14 +2239,15 @@ export function installHarness(ctx) {
    * `reviews/gate-margin/baseline/manifest.json`.
    */
   const SEP_MARGIN_EXEMPTIONS = [
-    // Floating combat text over the blast. It is the one gated subject in the
-    // set that is not a mesh with a silhouette: glyphs are thin, they are drawn
-    // *into* the explosion's own light, and their median pixel is competing
-    // with the brightest background in any shot. Raising it is a legibility
-    // change to the damage-number layer — colour, outline weight or draw order
-    // — not a lighting tweak, so it is content work rather than this ticket's.
-    { id: '08-explosion::damage numbers', kind: 'sepP50', value: 0.25,
-      note: 'thin glyphs read against the blast\'s own light; needs an outline/contrast pass on the damage-number layer' },
+    // `08-explosion::damage numbers` was here at 0.25 — the floor exactly, which
+    // is to say no margin at all. Retired by #85: the plate that carries that
+    // readout's separation is specified in atlas texels and was 3 px wide at the
+    // glyph's floor, i.e. under one pixel of the 480x270 mask these numbers are
+    // measured on, so ink and plate averaged back to the background inside a
+    // single sample. Doubling the plate (`NUM_HALO_PX`, `src/systems/VFX.js`)
+    // took the subject to 0.33 without changing the type's on-screen size. The
+    // entry is deleted rather than raised: an exemption around a subject that
+    // now clears its own margin is a silence, not a record.
 
     // The 30 m arena's horde gates its best 8 of 24, and the weakest of those 8
     // lands on the floor exactly. This is a framing/lighting property of the far

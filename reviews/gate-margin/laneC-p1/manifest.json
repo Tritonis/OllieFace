@@ -1,0 +1,379 @@
+{
+  "seed": 1337,
+  "ready": true,
+  "clockPinned": true,
+  "capturedAt": "2026-08-16T17:49:19.554Z",
+  "ms": {
+    "boot": 14301,
+    "bootTimeout": 60000
+  },
+  "shots": [
+    {
+      "name": "08-explosion",
+      "doc": "Peak VFX moment: explosion + damage numbers + shake. Judges impact feedback.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\.claude\\worktrees\\agent-a71801833fe35b1a1\\reviews\\gate-margin\\laneC-p1\\08-explosion.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 759.4666666666653
+      },
+      "ms": {
+        "setup": 4255,
+        "screenshot": 509,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "the blast",
+            "kind": "pixels",
+            "ok": true,
+            "px": 38255,
+            "frac": 0.29518,
+            "lum": 38.5,
+            "bgLum": 18.1,
+            "contrast": 0.359,
+            "sep": 0.327,
+            "sepP25": 0.15,
+            "sepP50": 0.29,
+            "legible": 0.762,
+            "at": [
+              0.393,
+              0.261
+            ],
+            "box": [
+              0.001,
+              0.002,
+              0.93,
+              0.817
+            ],
+            "region": [
+              0.3539939696423153,
+              0.34569536189997113,
+              0.5763
+            ],
+            "objects": 4,
+            "visibleObjects": 2,
+            "perPx": [
+              18491,
+              0,
+              7,
+              24402
+            ],
+            "perSep": [
+              0.19,
+              0,
+              0.37,
+              0.25
+            ],
+            "minPx": 1200,
+            "minObjects": 0,
+            "marginOk": true,
+            "present": true,
+            "detail": {
+              "pools": [
+                "vfx.particles",
+                "vfx.trails",
+                "vfx.beams",
+                "vfx.rings"
+              ],
+              "distM": 10.8
+            },
+            "carriedPx": 29150,
+            "minCarried": 1200,
+            "legibleOk": true,
+            "aggregate": "VFX buffers: the meshes are shared particle/ring/trail pools, not nameable objects",
+            "absentObjects": [
+              {
+                "i": 1,
+                "px": 0,
+                "sepP50": 0
+              },
+              {
+                "i": 2,
+                "px": 7,
+                "sepP50": 0.37
+              }
+            ],
+            "ungatedAbsences": [
+              {
+                "i": 1,
+                "px": 0,
+                "sepP50": 0
+              },
+              {
+                "i": 2,
+                "px": 7,
+                "sepP50": 0.37
+              }
+            ],
+            "perObjectOk": true,
+            "carriesAbsence": true,
+            "gatedOn": [
+              "px >= minPx",
+              "carriedPx >= minCarried"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "perPx",
+              "perSep",
+              "absentObjects"
+            ]
+          },
+          {
+            "subject": "monsters standing in it",
+            "kind": "pixels",
+            "ok": true,
+            "px": 3258,
+            "frac": 0.02514,
+            "lum": 79.4,
+            "bgLum": 8.8,
+            "contrast": 0.801,
+            "sep": 0.669,
+            "sepP25": 0.57,
+            "sepP50": 0.69,
+            "legible": 0.995,
+            "at": [
+              0.442,
+              0.612
+            ],
+            "box": [
+              0.028,
+              0.209,
+              0.641,
+              0.857
+            ],
+            "objects": 7,
+            "visibleObjects": 7,
+            "perPx": [
+              116,
+              2048,
+              168,
+              86,
+              359,
+              192,
+              289
+            ],
+            "perSep": [
+              0.91,
+              0.71,
+              0.93,
+              0.73,
+              0.47,
+              0.49,
+              0.69
+            ],
+            "minPx": 200,
+            "minObjects": 2,
+            "marginOk": true,
+            "present": true,
+            "carriedPx": 3242,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "marginSep": 0.27,
+            "crowd": {
+              "need": 2,
+              "why": "blast victims: knockback removes members from frame by design",
+              "absentBeyondCrowd": [],
+              "carriesAbsence": false
+            },
+            "minPerPx": 100,
+            "absentObjects": [],
+            "objectFailures": [],
+            "ungatedAbsences": [],
+            "perObjectOk": true,
+            "marginPerSep": 0.27,
+            "worstGatedSep": 0.47,
+            "marginObjectFailures": [],
+            "carriesAbsence": false,
+            "gatedOn": [
+              "px >= minPx",
+              "visibleObjects >= minObjects",
+              "sepP50 >= minSep",
+              "sepP50 >= marginSep (0.27)",
+              "perPx/perSep/absence over the 2 gated of 7",
+              "perSep >= marginPerSep (0.27) over the gated set"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "legible",
+              "crowd.absentBeyondCrowd"
+            ]
+          },
+          {
+            "subject": "damage numbers",
+            "kind": "pixels",
+            "ok": true,
+            "px": 368,
+            "frac": 0.00284,
+            "lum": 45.8,
+            "bgLum": 57.7,
+            "contrast": 0.115,
+            "sep": 0.349,
+            "sepP25": 0.15,
+            "sepP50": 0.33,
+            "legible": 0.755,
+            "at": [
+              0.354,
+              0.171
+            ],
+            "box": [
+              0.334,
+              0.069,
+              0.372,
+              0.276
+            ],
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 60,
+            "minObjects": 0,
+            "marginOk": true,
+            "present": true,
+            "carriedPx": 278,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "marginSep": 0.25,
+            "marginExempt": {
+              "kind": "sepP50",
+              "value": 0.25,
+              "note": "thin glyphs read against the blast's own light; needs an outline/contrast pass on the damage-number layer"
+            },
+            "perObjectOk": true,
+            "carriesAbsence": false,
+            "gatedOn": [
+              "px >= minPx",
+              "sepP50 >= minSep",
+              "sepP50 >= marginSep (0.25) [exempt]"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "legible"
+            ]
+          },
+          {
+            "subject": "blast framed in the middle band",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "x": 0.354,
+              "y": 0.346,
+              "distM": 10.7,
+              "pass": 0
+            }
+          },
+          {
+            "subject": "shutter (effect seconds)",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "age": 0.1167,
+              "frames": 7,
+              "exact": true,
+              "sim": 0.1167
+            }
+          }
+        ]
+      },
+      "newErrors": []
+    }
+  ],
+  "errors": [],
+  "partial": true,
+  "subjectFailures": [],
+  "subjectsOk": true,
+  "skippedShots": [],
+  "carriedShots": [],
+  "freshShots": [
+    "08-explosion"
+  ],
+  "subjectsOkFresh": true,
+  "toleratedAbsences": [
+    {
+      "name": "08-explosion",
+      "subject": "the blast",
+      "checkOk": true,
+      "gate": "aggregate: carriedPx only, no per-object gate",
+      "why": "VFX buffers: the meshes are shared particle/ring/trail pools, not nameable objects",
+      "perPx": [
+        18491,
+        0,
+        7,
+        24402
+      ],
+      "absent": [
+        {
+          "i": 1,
+          "px": 0,
+          "sepP50": 0
+        },
+        {
+          "i": 2,
+          "px": 7,
+          "sepP50": 0.37
+        }
+      ]
+    }
+  ],
+  "determinism": {
+    "clockPinned": true,
+    "frameDt": 0.016666666666666666,
+    "frameTimeouts": 0
+  },
+  "perf": {
+    "programs": 71,
+    "geometries": 419,
+    "textures": 53,
+    "sceneObjects": 838
+  },
+  "audio": {
+    "ready": true,
+    "state": "running",
+    "stepsEmitted": 37,
+    "stopped": false,
+    "silent": false,
+    "muted": false,
+    "musicOff": false,
+    "musicGain": 0.47999998927116394,
+    "masterGain": 0.800000011920929,
+    "voices": 47,
+    "worldVoices": 42,
+    "musicPeak": 0.1448548138141632,
+    "outputPeak": 0.8041933178901672,
+    "samples": 117,
+    "armed": true,
+    "beforeGate": {
+      "ready": true,
+      "state": "running",
+      "stepsEmitted": 18,
+      "stopped": false,
+      "musicOff": false,
+      "musicGain": 0.47999998927116394,
+      "masterGain": 0.800000011920929
+    },
+    "stepsDelta": 19,
+    "newErrors": [],
+    "checks": {
+      "armed": true,
+      "graphBuilt": true,
+      "contextRunning": true,
+      "sequencerRunning": true,
+      "notSilenced": true,
+      "musicBusOpen": true,
+      "masterOpen": true,
+      "stepsAdvanced": true,
+      "musicAudible": true,
+      "outputAudible": true,
+      "sampled": true,
+      "noNewErrors": true
+    },
+    "failed": []
+  },
+  "audioOk": true
+}
