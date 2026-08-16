@@ -163,6 +163,51 @@ function sources(dir = SRC, out = []) {
 }
 
 /**
+ * The same source with every comment body and string body blanked to spaces,
+ * newlines and length preserved so offsets and line numbers still line up.
+ *
+ * Scanning for call sites has to happen on this rather than on the raw text.
+ * A first attempt skipped a matched site when the *preceding line* looked like
+ * prose, which caught `Player.js`'s JSDoc example but missed a single-line
+ * block comment mentioning the same call outright: that manufactured a phantom
+ * registration which then resolved happily against a class the file already
+ * imported, and the suite went green over a call site that does not exist. A
+ * completeness guard that can be fooled into counting imaginary entries is no
+ * better than one that misses real ones.
+ *
+ * Known limit, stated rather than papered over: a regex literal containing an
+ * odd quote is read as a string here. Nothing in `src/` does that today, and
+ * the exact site count below is what would notice if something started.
+ */
+function scannable(src) {
+  const out = src.split('');
+  const blank = (i) => { if (src[i] !== '\n') out[i] = ' '; };
+  let i = 0;
+  while (i < src.length) {
+    const c = src[i], d = src[i + 1];
+    if (c === '/' && d === '/') { while (i < src.length && src[i] !== '\n') blank(i++); continue; }
+    if (c === '/' && d === '*') {
+      const end = src.indexOf('*/', i + 2);
+      const stop = end < 0 ? src.length : end + 2;
+      while (i < stop) blank(i++);
+      continue;
+    }
+    if (c === '"' || c === "'" || c === '`') {
+      const q = c;
+      i++;
+      while (i < src.length && src[i] !== q) {
+        if (src[i] === '\\') { blank(i++); if (i < src.length) blank(i++); continue; }
+        blank(i++);
+      }
+      i++;
+      continue;
+    }
+    i++;
+  }
+  return out.join('');
+}
+
+/**
  * The source text of the argument at `open` (the index of a `(`), brackets
  * balanced. Comments are skipped rather than scanned, because an apostrophe in
  * one — "this frame's input edges", in the very object literal this has to
@@ -216,15 +261,20 @@ console.log('every registered system has an answer on file');
   // exactly the case it now fails on rather than passes.
   let sites = 0;
   for (const file of sources()) {
-    const src = readFileSync(file, 'utf8');
+    // Two views of the same bytes, and the distinction matters both ways.
+    // `src` has comment and string bodies blanked, so prose that merely
+    // *mentions* a registration cannot be counted as one and an apostrophe
+    // cannot swallow a real argument; offsets are preserved, so line numbers
+    // and `argumentAt` address the same characters. But resolution has to read
+    // `raw`, because an import specifier lives inside a string literal — the
+    // first attempt at this blanked those too and sent `readFileSync` a path
+    // made of spaces.
+    const raw = readFileSync(file, 'utf8');
+    const src = scannable(raw);
     const rel = file.slice(SRC.length + 1).replace(/\\/g, '/');
     for (const m of src.matchAll(/(?:^|[^\w.])(?:this\.)?engine\.add\(/g)) {
       const open = m.index + m[0].length - 1;
-      const before = src.slice(0, open).split('\n');
-      const line = before.length;
-      // Prose, not a call site: `Player.js` explains itself with an
-      // `engine.add(new Player())` example inside a doc block.
-      if (/^\s*(\*|\/\/)/.test(before[line - 1])) continue;
+      const line = src.slice(0, open).split('\n').length;
       const where = `${rel}:${line}`;
       const arg = (argumentAt(src, open) || '').trim();
       sites++;
@@ -232,7 +282,7 @@ console.log('every registered system has an answer on file');
       const asClass = arg.match(/^new (\w+)\(/);
       if (asClass) {
         const name = asClass[1];
-        const home = fileDeclaring(file, src, name);
+        const home = fileDeclaring(file, raw, name);
         if (!home) { ok(false, `${where}: cannot find where ${name} is declared`); continue; }
         const declared = declaresCriticality(readFileSync(home, 'utf8'), name);
         ok(declared !== null, `${where}: ${name} declares static critical${declared ? ` = ${declared}` : ''}`);
@@ -255,7 +305,7 @@ console.log('every registered system has an answer on file');
         : null;
       const name = local ? local.match(/new (\w+)\(/)[1] : null;
       if (name) {
-        const home = fileDeclaring(file, src, name);
+        const home = fileDeclaring(file, raw, name);
         const declared = home && declaresCriticality(readFileSync(home, 'utf8'), name);
         ok(!!declared, `${where}: \`${arg}\` is a ${name}, which declares static critical${declared ? ` = ${declared}` : ''}`);
         continue;
@@ -264,7 +314,12 @@ console.log('every registered system has an answer on file');
       ok(false, `${where}: cannot resolve \`engine.add(${arg})\` to a class — classify it, or teach this test the shape`);
     }
   }
-  ok(sites >= 20, `found every engine.add() call site in src/ (${sites})`);
+  // Pinned exactly, not as a floor. A floor only notices sites appearing; the
+  // failure this guard exists for is one going *missing* — a registration the
+  // scanner stopped being able to see would sail under `>= 20` while the system
+  // it registers goes unclassified. Moving this number is fine and expected;
+  // moving it without noticing is not.
+  ok(sites === 21, `every engine.add() call site in src/ is accounted for (${sites}, expected 21)`);
 
   // Input is not registered at all: its `pollPad` is called through the
   // Engine's `_call` from inside the frame, so it needs the same declaration
