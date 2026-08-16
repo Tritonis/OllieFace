@@ -12,6 +12,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { initSteam, getClient, getStatus, enableOverlay } from './steam.mjs';
+import { createSaveWriter, createQuitGuard } from './save-writer.mjs';
 import {
   parseSteamId, steamIdToString, validateMaxMembers, validateLobbyRecord,
   sanitizeLobbyData, encodeSignal, decodeSignal, MAX_SIGNAL_FRAME_BYTES,
@@ -30,10 +31,6 @@ protocol.registerSchemesAsPrivileged([
 
 const savePath = () => path.join(app.getPath('userData'), 'save.json');
 
-// One backup per session: the first write of a run preserves the file the
-// player launched with, and later writes do not churn over it.
-let backedUp = false;
-
 // The renderer must be able to tell "no save yet" from "there is a save and I
 // could not read it". Collapsing both to null makes an EBUSY from Steam Cloud
 // or an antivirus scan look like a first boot, and the renderer then migrates
@@ -50,38 +47,27 @@ ipcMain.on('store:load', (e) => {
   }
 });
 
-// An empty snapshot over a non-empty save is data loss, never intent: no
-// gameplay path clears every mirrored key at once. The renderer already
-// refuses to migrate after a failed read; this is the second half of the
-// chain, so a future renderer bug cannot erase the file either.
-const isEmptySnapshot = (json) => {
-  try { return Object.keys(JSON.parse(json)).length === 0; }
-  catch { return false; }
-};
+// The whole of the write side. Every acceptance rule, the backup generation
+// and the durability ordering live in `save-writer.mjs`; what remains here is
+// the wire between the IPC channel and the writer, and the wire between the
+// writer's verdict and the player.
+//
+// The verdict is pushed rather than returned because a save is fire-and-forget
+// by design (the renderer must never block a frame on a disk), and because the
+// interesting failure is the one that happens on the *fourth* save of a run —
+// long after whatever call would have carried a return value.
+const saveWriter = createSaveWriter({
+  savePath,
+  onStatus: (status) => pushToRenderer('store:save-status', status),
+});
 
+// The `.catch()` is belt to the writer's braces. `drain` cannot reject as it
+// stands, but this is a fire-and-forget call in the main process, where an
+// unhandled rejection is a crash dialog rather than a log line — and the thing
+// that would produce one is a renderer-supplied callback misbehaving, which is
+// not a class of bug worth trusting a single guard with.
 ipcMain.on('store:save', (_e, json) => {
-  try {
-    const p = savePath();
-    if (isEmptySnapshot(json) && fs.existsSync(p) && fs.statSync(p).size > 2) {
-      console.error('store:save refused: empty snapshot over a non-empty save.json');
-      return;
-    }
-    fs.mkdirSync(path.dirname(p), { recursive: true });
-    // Back up the previous good file once per session, then tmp+rename so a
-    // crash mid-write can never leave a half save as the only copy. A backup
-    // is only worth taking if it does not shrink: one generation of grace is
-    // all there is, and overwriting it with less than it holds spends it.
-    if (!backedUp && fs.existsSync(p)) {
-      const bak = `${p}.bak`;
-      const prev = fs.existsSync(bak) ? fs.statSync(bak).size : -1;
-      if (fs.statSync(p).size >= prev) fs.copyFileSync(p, bak);
-      else console.error('store:save: kept the larger save.json.bak');
-      backedUp = true;
-    }
-    const tmp = `${p}.tmp`;
-    fs.writeFileSync(tmp, json);
-    fs.renameSync(tmp, p);
-  } catch (err) { console.error('store:save failed', err); }
+  saveWriter.save(json).catch((err) => { console.error('store:save: the writer rejected', err); });
 });
 
 // Two instances against one userData clobber each other's saves wholesale:
@@ -489,5 +475,24 @@ if (!app.requestSingleInstanceLock()) {
   // the same idempotent release, so whichever one Windows delivers first
   // still gets it done.
   app.on('window-all-closed', () => { releaseAllSteamState(); app.quit(); });
-  app.on('before-quit', releaseAllSteamState);
+
+  // ...and quitting also has to let the last save finish.
+  //
+  // The renderer's `pagehide` flush hands over one final snapshot and does not
+  // wait for it; before this hook, nor did the process. Crash-atomicity is not
+  // an answer to that — tmp/fsync/rename guarantees the file is never corrupt
+  // and says nothing about the last write being *there* — and the async
+  // writer's retry budget made the window wider than the old synchronous
+  // handler's under exactly the contended-disk conditions it was built for.
+  //
+  // The latch lives in `createQuitGuard` and has three states, not two: a
+  // second quit request arriving mid-drain has to be REFUSED, not waved past.
+  // Electron clears its own `is_quitting_` the moment the first handler calls
+  // `preventDefault()`, so Alt+F4 or a second Quit re-emits this event, and a
+  // boolean latch would let it terminate the process mid-write.
+  //
+  // `releaseAllSteamState` stays outside the guard: it is idempotent and must
+  // run on every pass, whether or not this one is allowed to quit.
+  const guardQuit = createQuitGuard(saveWriter, { quit: () => app.quit() });
+  app.on('before-quit', (event) => { releaseAllSteamState(); guardQuit(event); });
 }

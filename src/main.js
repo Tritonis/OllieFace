@@ -24,11 +24,18 @@ import { Lobby } from './net/Lobby.js';
 import { maybeShowGpuNotice } from './ui/GpuNotice.js';
 import { installFatalOverlay } from './ui/FatalOverlay.js';
 import { initDesktopStore } from './core/DesktopStore.js';
+import { showSaveFailure, clearSaveFailure } from './ui/SaveIndicator.js';
 
 // Before anything reads storage: under the Electron shell this hydrates
 // localStorage from the save file and installs the write mirror. In the
 // browser there is no bridge and it returns inert.
-initDesktopStore();
+//
+// The status callback is the whole of the save-failure UI's wiring: the store
+// knows when a write did not land, and the indicator is the only thing that
+// tells the player. In the browser neither ever runs.
+initDesktopStore(undefined, undefined, {
+  onSaveStatus: ({ ok, reason }) => { if (ok) clearSaveFailure(); else showSaveFailure(reason); },
+});
 
 const params = new URLSearchParams(location.search);
 const seed = Number(params.get('seed')) || (Math.random() * 0xffffffff) >>> 0;
