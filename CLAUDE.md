@@ -105,8 +105,9 @@ dispatch and removes it if unchanged. Do **not** hand-create or hand-name lane w
 an accounting unit for *ports*, not a directory you manage.
 
 Every lane gets its own port block, assigned in the brief rather than discovered at runtime. Nothing
-in `tools/` or `tests/` claims above 5233 (plus `verify-trickle` on 5599), and
-`tests/probe-ports.test.mjs` enforces that, so the 5240+ range is free by construction:
+in `tools/` or `tests/` claims above 5236 — 5233 and below, plus `gates.mjs`'s heavy tier on
+5234-5236 and `verify-trickle` on 5599 — and `tests/probe-ports.test.mjs` enforces that, so the
+5240+ range is free by construction:
 
 | Lane | Port block | Pass as |
 |---|---|---|
