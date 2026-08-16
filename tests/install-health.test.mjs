@@ -26,6 +26,9 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = process.env.INSTALL_HEALTH_TEST_ROOT
   ? resolvePath(process.env.INSTALL_HEALTH_TEST_ROOT)
   : join(here, '..');
+if (process.env.INSTALL_HEALTH_TEST_ROOT) {
+  console.log(`install-health: OVERRIDE ACTIVE — checking ${root}, NOT the real install`);
+}
 
 /**
  * A linked worktree (git worktree add ...) has its own `.git` *file* pointing
@@ -43,9 +46,10 @@ const root = process.env.INSTALL_HEALTH_TEST_ROOT
  * `node_modules/.bin` to look at, and the main checkout's is exactly that).
  *
  * A worktree WITH a junctioned node_modules (how lanes actually run
- * vite/captures) must not be double-resolved into a false failure: junction
- * and git-common-dir resolution land on the same real directory, so realpath
- * comparison of directories rather than string paths keeps that safe.
+ * vite/captures) must not be double-resolved into a false failure: this
+ * resolver never looks at the worktree's own node_modules at all — it goes
+ * straight to git-common-dir's parent — so whether that junction exists is
+ * irrelevant to the path computed here.
  */
 function resolveBinDir(startDir) {
   let gitDir, commonDir;
