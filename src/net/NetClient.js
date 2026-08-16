@@ -30,6 +30,12 @@ const SNAP_THRESHOLD = 2.0;
 export class NetClient {
   // Applies the host's world to this one. A throw here leaves the player
   // looking at a state the host never sent and acting on it.
+  //
+  // Keep `init` infallible. `Engine.add` routes an `init` throw through the
+  // same halt this flag selects, so fallible work moved into it (I/O, a
+  // transport handshake) would turn a join failure the Lobby can recover from
+  // into an unrecoverable stop of the whole run. Everything that can fail
+  // belongs in `join` and the async methods beside it, where it already lives.
   static critical = true;
 
   /** The client half of `NetHost`'s transport seam — see its constructor. */

@@ -70,6 +70,30 @@ class CosmeticInit {
   init() { throw new Error('boom in init'); }
   update() { this.ticked = true; }
 }
+/**
+ * Publishes itself onto the context and *then* fails — the shape `VFX.init`
+ * has, which assigns `ctx.vfx = this` before building its particle, trail and
+ * decal pools. Dropping the system from `systems` is not enough on its own:
+ * whatever it already wrote onto `ctx` outlives it.
+ */
+class Publisher {
+  static critical = false;
+  init(ctx) {
+    ctx.gizmo = this;
+    ctx.alias = this;
+    throw new Error('boom after publishing');
+  }
+  // A *prototype* method, and that is the whole trap: `ctx.gizmo && ctx.gizmo.burst`
+  // is truthy on a half-built instance, so the guard `Director` writes around
+  // `ctx.vfx.explosion` reads as satisfied and the call then dies on the state
+  // `init` never got to assign.
+  burst() { this.parts.push(1); }
+}
+/** A critical consumer guarding exactly as `Director.js:1143` does. */
+class Consumer {
+  static critical = true;
+  update(ctx) { if (ctx.gizmo && ctx.gizmo.burst) ctx.gizmo.burst(); }
+}
 /** Registered after the thrower, so "did the rest of the frame run" is answerable. */
 class Witness {
   static critical = false;
@@ -232,6 +256,44 @@ console.log('a noncritical system that throws in init is dropped and boot contin
   engine._frame();
   ok(w.updates === 1, 'later registrations still happen and the run carries on');
   ok(bad.ticked !== true, 'the dropped system is never ticked');
+}
+
+console.log('a dropped system does not go on speaking for itself through the context');
+{
+  // The failure this closes: `VFX` (noncritical) publishes `ctx.vfx = this`
+  // and then throws building its pools. `Director` (critical) calls
+  // `ctx.vfx.explosion(...)` behind a truthy guard that a half-built instance
+  // passes, so the run halts on the first explosion-driven death — an
+  // arbitrary later frame, naming Director rather than VFX. Before init throws
+  // were caught at all this was unreachable, because boot simply aborted.
+  const engine = fresh();
+  const realErr = console.error;
+  console.error = () => {};
+  engine.add(new Publisher());
+  console.error = realErr;
+
+  ok(!engine.ctx.gizmo, 'the half-built system was taken off the context');
+  ok(!engine.ctx.alias, 'under every key that named it, not just the first');
+
+  engine.add(new Consumer());
+  engine._frame();
+  ok(engine.fatal === null, 'a critical consumer did not halt the run on a later frame');
+  ok(engine.ctx.frameErrors === 1, 'and only the original init failure was ever counted');
+}
+
+console.log('remove() clears the context, not just the systems list');
+{
+  const engine = fresh();
+  class Owner {
+    static critical = false;
+    init(ctx) { ctx.owner = this; }
+  }
+  const o = engine.add(new Owner());
+  ok(engine.ctx.owner === o, 'init published it');
+  engine.remove(o);
+  ok(engine.ctx.owner === null, 'removal took it back off');
+  ok(engine.ctx.engine === engine, 'and left everything that is not the removed system alone');
+  ok(engine.ctx.events && engine.ctx.scene, 'including the context furniture');
 }
 
 /** Every .js file under src/, depth-first. */

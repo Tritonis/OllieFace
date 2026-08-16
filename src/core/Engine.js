@@ -284,11 +284,16 @@ export class Engine {
    *    it, which is the same trade the frame path makes for presentation.
    *
    * Dropping is not cosmetic: a system whose `init` threw is half-built, and
-   * ticking half of it every frame is strictly worse than not having it. What
-   * this cannot undo is whatever that half already wrote onto `ctx` — a
-   * noncritical system that assigns `ctx.vfx = this` and then throws leaves the
-   * reference behind. The alternative is a transactional context nothing else
-   * here wants, so it is named as held rather than closed.
+   * ticking half of it every frame is strictly worse than not having it. It
+   * goes out through `remove()` rather than a bare `splice` precisely so the
+   * context is cleared with it — a system that published `ctx.vfx = this`
+   * before failing would otherwise still be reachable by every consumer, and
+   * a critical one calling into it halts the run minutes later naming the
+   * wrong system. See `remove()`.
+   *
+   * What this still cannot undo is anything else `init` wrote before it threw:
+   * a listener it subscribed, a mesh it added to the scene. Those need a
+   * transactional context nothing here wants, so they are named as held.
    */
   add(system) {
     // A halted engine registers nobody. Boot is a straight line of `add()`
@@ -338,10 +343,38 @@ export class Engine {
    * Removing a system that was never added is a no-op rather than an error —
    * teardown paths run on both the "we registered it" and "we failed before we
    * did" branches, and neither should have to know which one it is on.
+   *
+   * **The context is cleared too, and that is not tidiness.** Systems publish
+   * themselves onto `ctx` from inside `init` — `ctx.vfx`, `ctx.player`,
+   * `ctx.director`, `ctx.coop`, `ctx.net` — and their consumers guard on
+   * nothing more than "is it there": `Director` calls `ctx.vfx.explosion(...)`
+   * behind `if (ctx.vfx && ctx.vfx.explosion)`. `explosion` is a prototype
+   * method, so that guard is satisfied by an instance whose `init` published
+   * itself and *then* threw, and the call dies on the fields `init` never
+   * reached. Since `add()` now drops such a system rather than aborting boot,
+   * a reference left on `ctx` is a critical consumer halting the run several
+   * minutes later, naming the consumer instead of the system that failed.
+   *
+   * Generic rather than a `ready` flag per publisher, because the rule is
+   * "removed means gone" and every future system that publishes itself gets it
+   * without knowing this exists. `Object.keys` on every removal is affordable:
+   * removals are rare (a co-op session ending, a failed `init`) and `ctx` holds
+   * a couple of dozen keys.
+   *
+   * `null`, not `delete`: the `ctx` literal declares these keys as `null` up
+   * front ("filled in by the systems that own them"), so nulling restores
+   * exactly the value they held before `init` ran, and `Lobby._release` already
+   * hand-wrote `this.ctx.net = null` on this same path. `delete` would instead
+   * take a documented key out of the context's shape.
    */
   remove(system) {
     const i = this.systems.indexOf(system);
     if (i >= 0) this.systems.splice(i, 1);
+    // Guarded on `system` so a null/undefined argument cannot match — and blank
+    // — every context key that happens to be null already.
+    if (system) {
+      for (const k of Object.keys(this.ctx)) if (this.ctx[k] === system) this.ctx[k] = null;
+    }
     return system;
   }
 

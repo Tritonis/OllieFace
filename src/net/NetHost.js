@@ -59,6 +59,12 @@ export class NetHost {
   // The authority on the wire, and the exact failure this rule was written for:
   // a throw part-way through a snapshot ships a partial world to every peer as
   // truth, and they have no way to know it was partial.
+  //
+  // Keep `init` infallible. `Engine.add` routes an `init` throw through the
+  // same halt this flag selects, so fallible work moved into it (I/O, a
+  // transport handshake) would turn a co-op failure the Lobby can recover from
+  // into an unrecoverable stop of the whole run. Everything that can fail
+  // belongs in the async methods, where it already lives.
   static critical = true;
 
   /**
