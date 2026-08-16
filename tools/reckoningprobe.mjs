@@ -102,7 +102,7 @@ const shot = (name) => page.screenshot({ path: path.join(OUT, `${name}.png`) });
 let record = null;
 try {
   await page.goto(`http://127.0.0.1:${PORT}/?seed=${SEED}&quality=3&harness=1`, { waitUntil: 'load' });
-  await page.waitForFunction(() => globalThis.__GAME__?.ctx?.stage != null, null, { timeout: 60000 });
+  await page.waitForFunction(() => globalThis.__GAME__?.ctx?.stage != null && globalThis.__HARNESS__ != null, null, { timeout: 60000 });
   await page.evaluate(() => globalThis.__HARNESS__.pinClock(1 / 60));
   await page.evaluate(() => globalThis.__HARNESS__.gameplay({ settleFrames: 60 }));
   // A real gesture, for the autoplay policy and for the same reason capture.mjs

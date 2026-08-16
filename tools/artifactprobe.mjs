@@ -28,7 +28,7 @@ page.on('pageerror', (e) => pageErrors.push(e.message));
 /** Fresh load, choose the rules, start the run, then run `probe` in the page. */
 async function run(label, rules, probeName) {
   await page.goto('http://127.0.0.1:5219/?seed=4242&quality=1&harness=1', { waitUntil: 'load', timeout: 90000 });
-  await page.waitForFunction(() => globalThis.__GAME__?.ctx?.artifacts != null, null, { timeout: 60000 });
+  await page.waitForFunction(() => globalThis.__GAME__?.ctx?.artifacts != null && globalThis.__HARNESS__ != null, null, { timeout: 60000 });
   const out = await page.evaluate(async ({ rules, probeName }) => {
     const { ctx } = globalThis.__GAME__;
 

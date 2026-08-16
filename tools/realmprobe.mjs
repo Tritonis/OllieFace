@@ -45,7 +45,7 @@ page.on('pageerror', (e) => errors.push(e.message));
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 
 await page.goto(`http://127.0.0.1:${PORT}/?seed=${SEED}&quality=1&harness=1`, { waitUntil: 'load' });
-await page.waitForFunction(() => globalThis.__GAME__?.ctx?.stage != null, null, { timeout: 60000 });
+await page.waitForFunction(() => globalThis.__GAME__?.ctx?.stage != null && globalThis.__HARNESS__ != null, null, { timeout: 60000 });
 
 const out = await page.evaluate(async () => {
   const ctx = globalThis.__GAME__.ctx;

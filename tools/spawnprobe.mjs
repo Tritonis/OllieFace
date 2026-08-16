@@ -24,7 +24,7 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, dev
 page.on('pageerror', (e) => console.log('PAGE ERROR:', e.message));
 
 await page.goto('http://127.0.0.1:5202/?seed=1337&quality=1&harness=1', { waitUntil: 'load' });
-await page.waitForFunction(() => globalThis.__GAME__?.ctx?.stage != null, null, { timeout: 60000 });
+await page.waitForFunction(() => globalThis.__GAME__?.ctx?.stage != null && globalThis.__HARNESS__ != null, null, { timeout: 60000 });
 
 // Normal play: dismiss the menu, then leave the game entirely alone.
 await page.evaluate(() => globalThis.__HARNESS__.gameplay());

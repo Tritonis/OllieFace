@@ -96,7 +96,7 @@ try {
   // at Harness.js:2475): the clock is pinned before the FIRST frame, so no
   // boot frame is ever wall-timed. No pinClock evaluate needed.
   await page.goto(`http://127.0.0.1:${PORT}/?seed=${SEED}&quality=3&harness=1&pinclock=1`, { waitUntil: 'load' });
-  await page.waitForFunction(() => globalThis.__GAME__?.ctx?.stage != null, null, { timeout: 60000 });
+  await page.waitForFunction(() => globalThis.__GAME__?.ctx?.stage != null && globalThis.__HARNESS__ != null, null, { timeout: 60000 });
   // The arm composes its scene and freezes; we thaw and let it play.
   armRecord = await page.evaluate(
     ([arm, opts]) => (opts === null

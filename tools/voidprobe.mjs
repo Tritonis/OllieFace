@@ -81,7 +81,7 @@ const shot = (name) => page.screenshot({ path: path.join(OUT, `${name}.png`) });
 
 try {
   await page.goto(`http://127.0.0.1:${PORT}/?seed=${SEED}&quality=3&harness=1`, { waitUntil: 'load' });
-  await page.waitForFunction(() => globalThis.__GAME__?.ctx?.stage != null, null, { timeout: 60000 });
+  await page.waitForFunction(() => globalThis.__GAME__?.ctx?.stage != null && globalThis.__HARNESS__ != null, null, { timeout: 60000 });
 
   // One pinned frame is one fixed step of simulation, so every "seconds" figure
   // below is frames/60 and does not depend on how fast this machine renders.

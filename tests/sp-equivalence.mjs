@@ -392,7 +392,7 @@ try {
     const errs = [];
     page.on('pageerror', (e) => errs.push(e.message));
     await page.goto(url, { waitUntil: 'load' });
-    await page.waitForFunction(() => globalThis.__GAME__?.ctx?.stage != null, null, { timeout: STAGE_TIMEOUT_MS });
+    await page.waitForFunction(() => globalThis.__GAME__?.ctx?.stage != null && globalThis.__HARNESS__ != null, null, { timeout: STAGE_TIMEOUT_MS });
     return { page, errs };
   };
 

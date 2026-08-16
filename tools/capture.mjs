@@ -342,7 +342,7 @@ log('loaded; waiting for stage...');
 // The 60 s budget is a boot guard, not a wait: measured 8.7 s from navigate to
 // a live stage on this machine's GPU path.
 const ready = await page
-  .waitForFunction(() => globalThis.__GAME__?.ctx?.stage != null, null, { timeout: 60000 })
+  .waitForFunction(() => globalThis.__GAME__?.ctx?.stage != null && globalThis.__HARNESS__ != null, null, { timeout: 60000 })
   .then(() => true)
   .catch(() => false);
 const bootMs = Date.now() - tBoot;
