@@ -112,8 +112,9 @@ export function assertNoSteam(arm) {
 // for Steam (nobody should mistake it for a thing this file schedules), but
 // it is the wrong shape for `npm run shots` (the capture/silhouette gate,
 // `tools/capture.mjs`) — that one SHOULD be able to go OVERDUE, because
-// nothing else exercises `installHarness` or the separation/margin logic in
-// `src/core/Harness.js`. A gate nobody is ever told is stale is a gate people
+// nothing else exercises the separation/margin logic in `src/core/Harness.js`
+// (installHarness itself is also exercised by sp-equivalence's `?harness=1`
+// boot and by `tools/verify-trickle.mjs`). A gate nobody is ever told is stale is a gate people
 // learn to ignore.
 //
 // So a manual arm is a full member of ARMS — it appears in the staleness
@@ -202,6 +203,14 @@ function armsFor(portBase) {
       label: 'headed GPU silhouette/separation capture (npm run shots) — run by hand, tracked so it can go OVERDUE',
       argv: ['npm', 'run', 'shots'],
       paths: ['src/core/Harness.js', 'tools/capture.mjs', 'tools/lib/evidence.mjs'],
+    },
+    {
+      id: 'trickle',
+      tier: 'manual',
+      manual: true,
+      label: 'trickle-ICE real-join timing probe (npm run probe:trickle) — run by hand, tracked so it can go OVERDUE',
+      argv: ['npm', 'run', 'probe:trickle'],
+      paths: ['tools/verify-trickle.mjs', 'src/net', 'src/core/Harness.js'],
     },
   ]);
 }

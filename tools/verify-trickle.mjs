@@ -136,10 +136,28 @@ try {
     // A live rAF loop on the host is what has starved a second page's load
     // past 180 s before now; park it across the load and thaw it before the
     // join, so the measurement covers a running host, not a frozen one.
-    await A.evaluate(() => globalThis.__HARNESS__?.freeze?.());
+    await A.evaluate(() => globalThis.__HARNESS__.freeze());
+    const runningAfterFreeze = await A.evaluate(() => globalThis.__GAME__.engine.running);
+    if (runningAfterFreeze !== false) {
+      log('FATAL: __HARNESS__.freeze() did not stop the host engine — engine.running is', runningAfterFreeze);
+      failed++;
+      throw new Error('freeze() did not stop the host engine (engine.running !== false)');
+    }
     const B = await mkPage(`CLIENT${n + 1}`);
-    await A.evaluate(() => globalThis.__HARNESS__?.thaw?.());
-    await B.evaluate(() => globalThis.__HARNESS__?.thaw?.());
+    await A.evaluate(() => globalThis.__HARNESS__.thaw());
+    const hostRunningAfterThaw = await A.evaluate(() => globalThis.__GAME__.engine.running);
+    if (hostRunningAfterThaw !== true) {
+      log('FATAL: __HARNESS__.thaw() on host did not resume the engine — engine.running is', hostRunningAfterThaw);
+      failed++;
+      throw new Error('thaw() did not resume the host engine (engine.running !== true)');
+    }
+    await B.evaluate(() => globalThis.__HARNESS__.thaw());
+    const clientRunningAfterThaw = await B.evaluate(() => globalThis.__GAME__.engine.running);
+    if (clientRunningAfterThaw !== true) {
+      log('FATAL: __HARNESS__.thaw() on client did not resume the engine — engine.running is', clientRunningAfterThaw);
+      failed++;
+      throw new Error('thaw() did not resume the client engine (engine.running !== true)');
+    }
     log(`client ${n + 1} booted (mode: ${wantTrickle ? 'trickle' : 'control'})`);
 
     const t0 = Date.now();
@@ -190,6 +208,12 @@ try {
     out.joins.push({ n: n + 1, mode: wantTrickle ? 'trickle' : 'control', ms, err, bothOpen, client: clientView, host: hostView });
     log(`join ${n + 1} (${wantTrickle ? 'trickle' : 'control'}): ${ms ?? 'FAILED'} ms | trickle=${clientView.trickle}`
       + ` | channels ${clientView.state}/${clientView.events} | host sees ${hostView.playerCount} players${err ? ' | ' + err : ''}`);
+    // The docstring's own criterion: a run whose slowest join is still
+    // multi-second has NOT reproduced the fix, whatever its average says.
+    if (ms != null && ms > 2000) {
+      log(`WARNING: join ${n + 1} took ${ms} ms (>2000 ms) — per this file's docstring, a slow join`
+        + ' has NOT reproduced the fix regardless of the average across the run');
+    }
 
     // Close the joiner so its lobby slot frees: the lobby caps at 4 players,
     // so a run that keeps every joiner connected refuses its 4th join — the

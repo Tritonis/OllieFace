@@ -11,8 +11,17 @@
 import { chromium } from 'playwright';
 import { createServer } from 'vite';
 import { mkdir, writeFile, rm, readdir, readFile, stat } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { resolveOutDir } from './lib/evidence.mjs';
+
+// Stamped onto every manifest so a baseline is attributable to the tree that
+// produced it, not just to a timestamp. Falls back to null rather than
+// throwing if run outside a git checkout.
+const COMMIT = (() => {
+  try { return execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(); }
+  catch { return null; }
+})();
 
 // Walk argv token by token. An earlier version joined and split on '--', which
 // silently mangled any value containing a double dash — including Windows paths
@@ -425,7 +434,7 @@ const pinned = ready
 if (ready && !pinned) console.log('WARNING: capture clock not pinned — shots may vary run to run');
 
 const manifest = {
-  seed: SEED, ready, clockPinned: pinned,
+  seed: SEED, ready, clockPinned: pinned, commit: COMMIT,
   // Dated so the next `--only` run into this directory can say where its
   // carried shots came from. See the note by `carried`.
   capturedAt: new Date().toISOString(),

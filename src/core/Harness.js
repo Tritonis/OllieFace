@@ -1867,7 +1867,11 @@ export function installHarness(ctx) {
       let p = o.parent;
       for (let up = 0; up < 3 && p && p !== ctx.scene && !solid; up++, p = p.parent) {
         p.traverse((q) => {
-          if (solid || q === o || !q.visible || !q.material) return;
+          if (solid || !q.visible || !q.material) return;
+          // Company must be outside o's own subtree: a solid child of the veil
+          // both authorizes hiding it and would be hidden along with it, which
+          // is exactly the case this walk exists to refuse.
+          if (q === o || o.getObjectById(q.id)) return;
           if (!_matsOf(q).every(_isVeil)) solid = true;
         });
       }
@@ -1877,7 +1881,7 @@ export function installHarness(ctx) {
     });
     return hidden;
   };
-  const _showVeils = (hidden) => { for (const o of hidden) o.visible = true; };
+  const _showVeils = (hidden) => { for (const o of hidden ?? []) o.visible = true; };
 
   /**
    * Retarget every soft-particle depth lookup at the buffer we are about to
@@ -1994,18 +1998,21 @@ export function installHarness(ctx) {
     r.setRenderTarget(_maskRT);
     camera.updateMatrixWorld(true);
     const softSaved = _pinSoftResolution(MASK_W, MASK_H);
-    const veiled = _hideVeils();
     /* Restored through `finally`, unlike the two saves above it, because this
      * one leaks *into the photograph*. A throw mid-measurement leaves the render
      * target and the shadow flag wrong for the next report, which the next report
      * sets again; it would leave the veils `visible = false` for the rest of the
      * page load, so every later shot would be composed with the warden's barrier
-     * simply gone. The body below keeps its original indentation on purpose — the
-     * `try` guards the block, and re-indenting 140 lines to announce that would
-     * bury the change it is guarding.
+     * simply gone. `_hideVeils()` itself now runs inside this same try, since a
+     * throw during hiding would otherwise skip the finally that undoes it. The
+     * body below keeps its original indentation on purpose — the `try` guards
+     * the block, and re-indenting 140 lines to announce that would bury the
+     * change it is guarding.
      */
+    let veiled = null;
     try {
 
+    veiled = _hideVeils();
     maskPass(r, null);
     r.readRenderTargetPixels(_maskRT, 0, 0, MASK_W, MASK_H, _maskA);
 

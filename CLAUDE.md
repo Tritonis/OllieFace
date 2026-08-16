@@ -66,8 +66,10 @@ that matter are Windows/GPU/Steam-bound, so a hosted Linux runner could run almo
   since the last commit that touched their inputs. State lives in the gitignored `.gates/`.
 - The **capture gate** (`npm run shots`, `tools/capture.mjs`) is a **manual arm**: tracked in
   `gates:status` — it can read OVERDUE like any other arm — but never invoked by either tier. It is
-  the only thing that calls `installHarness` and exercises the separation/margin logic in
-  `src/core/Harness.js`, and it is a slow, headed GPU run, so `gates:cheap`/`gates:heavy` must never
+  the only thing that exercises the separation/margin logic in `src/core/Harness.js` (other things
+  call `installHarness` itself — `gate:sp`/`gate:mp1`/`gate:elite` boot with `?harness=1`, and so does
+  `tools/verify-trickle.mjs` — but none of them measure separation/margin), and it is a slow, headed
+  GPU run, so `gates:cheap`/`gates:heavy` must never
   run it by accident. This is a different exclusion shape than `smoke:steam`'s (below): `smoke:steam`
   names no arm at all and so is invisible to the staleness report by design, while the capture gate
   is a full arm marked `manual: true` so it CAN go OVERDUE. Record a hand-run with
