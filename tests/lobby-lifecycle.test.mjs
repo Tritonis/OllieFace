@@ -135,6 +135,154 @@ console.log('a join that fails after registering its client releases it');
   ok(ctx.netRole === 'single' && ctx.authority === true, `role restored (got '${ctx.netRole}')`);
 }
 
+/* ==========================================================================
+ * leave() racing an in-flight createInvite (#10)
+ *
+ * `createInvite()` is a long await — an offer, and on a non-trickle relay a
+ * full ICE gather — and Leave is a button the player can press in the middle of
+ * one. Everything below drives that window directly: the mint is held open by a
+ * promise the test resolves by hand, so the interleaving is exact rather than
+ * hoped for.
+ * ======================================================================= */
+
+class FakeWS {
+  constructor(url) { this.url = url; this.sent = []; FakeWS.last = this; }
+  send(s) { this.sent.push(JSON.parse(s)); }
+  close() { this.closed = true; this.onclose?.(); }
+  open() { this.onopen?.(); }
+  /** Deliver a server message; returns the handler's promise so tests can await it. */
+  recv(obj) { return this.onmessage?.({ data: JSON.stringify(obj) }); }
+  ofType(t) { return this.sent.filter((m) => m.type === t); }
+}
+globalThis.WebSocket = FakeWS;
+
+/**
+ * The live session's count of invites being minted right now.
+ *
+ * Read through a helper because the count moved when this bug was fixed: it was
+ * a field on the Lobby, which is precisely what let `leave()` reset it out from
+ * under a mint that was still going to decrement it. Reading both shapes is
+ * what makes these assertions *fail* against the unfixed code rather than throw
+ * on a missing property, and a guard that has never been seen red is not
+ * evidence of anything.
+ */
+const minting = (l) => (l._session ? l._session.minting : l._minting);
+
+/** A relay-hosting lobby, parked at roomOpen with its minting under test control. */
+async function hostingLobby() {
+  const ctx = makeCtx();
+  const lobby = new Lobby(makeEngine(ctx), ctx);
+  const open = lobby.hostViaRelay('ws://relay.test');
+  const ws = FakeWS.last;
+  ws.open();
+  await ws.recv({ type: 'hosting', code: 'ABCD', v: 2 });
+  await open;
+
+  // Stand in for `HostTransport.createInvite`, which is the only part of the
+  // real transport this race is about: a promise the test decides when to
+  // settle, over a `peers` map the test can inspect for what was left in it.
+  const cancelled = [];
+  const pending = [];
+  lobby.net.createInvite = () => new Promise((resolve) => pending.push(resolve));
+  lobby.net.transport.cancelInvite = (id) => { cancelled.push(id); return true; };
+  return { ctx, lobby, ws, cancelled, pending };
+}
+
+const anInvite = (id) => ({ id, blob: `blob-${id}`, onIceCandidate() {}, addIceCandidate() {} });
+
+console.log('#10 — a mint that resolves after leave() is discarded, and the count comes back to zero');
+{
+  const { lobby, ws, cancelled, pending } = await hostingLobby();
+
+  const inFlight = ws.recv({ type: 'joinRequest', clientId: 3 });
+  ok(minting(lobby) === 1, `the claim is taken before the await (got ${minting(lobby)})`);
+
+  lobby.leave();
+  pending[0](anInvite('late'));
+  await inFlight;
+
+  ok(minting(lobby) === 0, `the ceiling is back where it started, not below it (got ${minting(lobby)})`);
+  ok(lobby.pendingInvites.size === 0,
+     `the late invite was not written into the cleared map (got ${lobby.pendingInvites.size})`);
+  ok(lobby._invitesByClient.size === 0,
+     `nor into the client index (got ${lobby._invitesByClient.size})`);
+  ok(ws.ofType('offer').length === 0,
+     `nor sent down a socket this lobby has closed (got ${ws.ofType('offer').length})`);
+  ok(cancelled.includes('late'),
+     `and its peer connection was given up rather than left in the closed transport (got ${JSON.stringify(cancelled)})`);
+}
+
+console.log('#10 — the ceiling still holds after a leave lands mid-flood');
+{
+  const { lobby, ws, pending } = await hostingLobby();
+
+  // Three at once, which is what an unserialised `ws.onmessage` delivers, and a
+  // Leave landing in the middle of all three.
+  const flight = [0, 1, 2].map((i) => ws.recv({ type: 'joinRequest', clientId: i }));
+  ok(minting(lobby) === 3, `three concurrent claims (got ${minting(lobby)})`);
+
+  lobby.leave();
+  ok(minting(lobby) === 0, `leave() starts the next session at zero (got ${minting(lobby)})`);
+
+  pending.forEach((resolve, i) => resolve(anInvite(`stale-${i}`)));
+  await Promise.all(flight);
+
+  ok(minting(lobby) === 0,
+     `three stale releases did not drive it to -3 (got ${minting(lobby)})`);
+  ok(lobby._admitJoiner() === true,
+     'and the next session can still admit a joiner');
+}
+
+console.log('#10 — the manual createInvite path discards the same way');
+{
+  const { lobby, cancelled, pending } = await hostingLobby();
+
+  const p = lobby.createInvite();
+  lobby.leave();
+  pending[0](anInvite('manual-late'));
+
+  let threw = null;
+  await p.catch((e) => { threw = e; });
+
+  ok(threw !== null, 'the caller is told there is no invite rather than handed a dead one');
+  ok(lobby.pendingInvites.size === 0,
+     `nothing written into the cleared map (got ${lobby.pendingInvites.size})`);
+  ok(cancelled.includes('manual-late'), `its connection was given up (got ${JSON.stringify(cancelled)})`);
+}
+
+console.log('#10 — an ordinary mint, with no leave, still counts and still lands');
+{
+  const { lobby, ws, cancelled, pending } = await hostingLobby();
+
+  const inFlight = ws.recv({ type: 'joinRequest', clientId: 8 });
+  pending[0](anInvite('good'));
+  await inFlight;
+
+  ok(minting(lobby) === 0, `the claim was released (got ${minting(lobby)})`);
+  ok(lobby.pendingInvites.get('good') !== undefined, 'the invite is pending');
+  ok(lobby._invitesByClient.get(8)?.id === 'good', 'and indexed by the joiner it was minted for');
+  ok(ws.ofType('offer').length === 1, `the offer went out (got ${ws.ofType('offer').length})`);
+  ok(cancelled.length === 0, `and nothing was cancelled (got ${JSON.stringify(cancelled)})`);
+}
+
+console.log('#10 — a mint that throws releases its claim, before and after a leave');
+{
+  const { lobby, ws } = await hostingLobby();
+  lobby.net.createInvite = async () => { throw new Error('Lobby is full'); };
+
+  await ws.recv({ type: 'joinRequest', clientId: 1 }).catch(() => {});
+  ok(minting(lobby) === 0, `a throw inside the session releases (got ${minting(lobby)})`);
+
+  const net = lobby.net;
+  let release;
+  net.createInvite = () => new Promise((_, reject) => { release = reject; });
+  const inFlight = ws.recv({ type: 'joinRequest', clientId: 2 });
+  lobby.leave();
+  release(new Error('transport closed'));
+  await inFlight.catch(() => {});
+  ok(minting(lobby) === 0, `and a throw after a leave leaves the new session at zero (got ${minting(lobby)})`);
+}
+
 console.log('Engine.remove — the deregistration half of add()');
 {
   const engine = new Engine({ canvas: null, seed: 1 });
