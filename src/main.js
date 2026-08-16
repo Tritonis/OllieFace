@@ -23,6 +23,7 @@ import { Coop } from './net/Coop.js';
 import { Lobby } from './net/Lobby.js';
 import { maybeShowGpuNotice } from './ui/GpuNotice.js';
 import { installFatalOverlay } from './ui/FatalOverlay.js';
+import { installTelemetry } from './systems/Telemetry.js';
 import { initDesktopStore } from './core/DesktopStore.js';
 import { showSaveFailure, clearSaveFailure } from './ui/SaveIndicator.js';
 
@@ -129,6 +130,13 @@ ctx.camera.updateProjectionMatrix();
 // Before the first frame: the overlay has to already be listening when the
 // system that fails is one that fails during the very first update.
 installFatalOverlay(ctx);
+
+// The run record (issue #29). Deliberately not `engine.add`ed: it owns no frame
+// time and, more to the point, a system is a thing `Engine._call` can halt the
+// run over. As a plain event subscriber it stands nowhere that path can reach.
+// Off unless the player has turned it on in Settings, in which case this
+// returns having subscribed to nothing at all.
+installTelemetry(ctx);
 
 engine.start();
 

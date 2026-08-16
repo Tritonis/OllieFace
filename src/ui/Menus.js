@@ -21,6 +21,7 @@ import { showSteamInviteNotice } from './SteamInviteNotice.js';
 import { REFUSE } from '../net/Protocol.js';
 import { adoptLegacyKey } from '../core/LegacyStorage.js';
 import { PAD_BUTTON } from '../core/PadState.js';
+import { telemetryEnabled, setTelemetryEnabled, readRuns, downloadRuns, clearRuns } from '../systems/Telemetry.js';
 
 /**
  * A refused join, in the language of the person it happened to.
@@ -676,6 +677,24 @@ export class Menus {
            <output data-out="${s.key}"></output>
          </div>`);
     }
+    // The run record (issue #29). It lives in Settings rather than behind a
+    // launch flag because opt-in has to be a thing a player can find, read and
+    // undo — and because the one thing that would make it not worth having is a
+    // player who does not know it is on. The buttons carry `data-act` rather
+    // than `data-seg`: the segment handler below writes into the numeric
+    // settings blob, and this flag is deliberately not part of it — it is read
+    // at boot by `Telemetry.installTelemetry`, long before `Menus` exists.
+    html += row('Run telemetry',
+      `<div class="sseg" data-tseg>
+         <button class="segbtn" data-nav data-act="telemetry-on">On</button>
+         <button class="segbtn" data-nav data-act="telemetry-off">Off</button>
+       </div>`);
+    html += row('Recorded runs',
+      `<div class="sseg">
+         <button class="segbtn" data-nav data-act="telemetry-export" data-telemetry-count>Export</button>
+         <button class="segbtn" data-nav data-act="telemetry-clear">Clear</button>
+       </div>`);
+
     host.innerHTML = html;
 
     host.addEventListener('input', (e) => {
@@ -718,6 +737,27 @@ export class Menus {
       for (const b of wrap.querySelectorAll('.segbtn')) {
         b.classList.toggle('is-on', Number(b.dataset.val) === this.settings[key]);
       }
+    }
+    this.syncTelemetry();
+  }
+
+  /**
+   * Paint the telemetry row off the flag and the buffer, both of which live
+   * outside `this.settings`. The count is on the button because "Export"
+   * against an empty buffer is the one thing here that could look broken.
+   */
+  syncTelemetry() {
+    const on = telemetryEnabled();
+    for (const b of this.root.querySelectorAll('[data-tseg] .segbtn')) {
+      b.classList.toggle('is-on', (b.dataset.act === 'telemetry-on') === on);
+    }
+    const btn = this.root.querySelector('[data-telemetry-count]');
+    if (btn) {
+      const n = readRuns().length;
+      // Left enabled at zero rather than disabled: `navTargets` walks
+      // `[data-nav]`, and a disabled button in that list is a dead stop for the
+      // gamepad. `downloadRuns` refuses an empty buffer on its own.
+      btn.textContent = n ? `Export (${n})` : 'Export';
     }
   }
 
@@ -1345,6 +1385,21 @@ export class Menus {
         Object.assign(this.settings, DEFAULTS);
         save(this.settings);
         this.apply();
+        break;
+      // Deliberately outside `reset`: Defaults restores the video and audio
+      // knobs, and silently revoking a consent the player gave — or worse,
+      // silently granting one — is not a default anybody asked for.
+      case 'telemetry-on':
+      case 'telemetry-off':
+        setTelemetryEnabled(action === 'telemetry-on');
+        this.syncTelemetry();
+        break;
+      case 'telemetry-export':
+        downloadRuns();
+        break;
+      case 'telemetry-clear':
+        clearRuns();
+        this.syncTelemetry();
         break;
       case 'quit':
         if (this.screen === 'pause') { location.reload(); }

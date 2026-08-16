@@ -1537,12 +1537,20 @@ export class ArgentFont extends Interactable {
     const cor = this.ctx.corruption;
     // Nothing to bleed means nothing to sell; refuse before taking the gold.
     if (!cor || !(cor.world > 0)) { this.ctx.audio?.play?.('deny'); return false; }
-    if (!Items.of(this.ctx, pawn)?.spendGold(this.cost)) { this.ctx.audio?.play?.('deny'); return false; }
+    // One evaluation of a live price for one transaction. `cost` is a getter
+    // over `cleanseCost(stage, uses, world)` and both of its moving terms are
+    // about to move underneath it, so the number charged and the number
+    // reported have to be the same read or the record would quote a price
+    // nobody paid.
+    const cost = this.cost;
+    const worldBefore = cor.world;
+    const bandBefore = cor.band;
+    if (!Items.of(this.ctx, pawn)?.spendGold(cost)) { this.ctx.audio?.play?.('deny'); return false; }
     const press = this.uses;
     this.uses++;
     // Whoever paid gets their own ledger cleared first — `bleed` spends the
     // buyer's own corruption before it spreads the remainder.
-    cor.bleed(pawn, this.yield());
+    const removed = cor.bleed(pawn, this.yield());
     // The investment half (issue #32): one corrupted stack comes back. After
     // the bleed, so the band listeners have settled before the inventory moves;
     // into the payer's own pack, because every economy action resolves through
@@ -1552,6 +1560,17 @@ export class ArgentFont extends Interactable {
     this.ctx.vfx?.burst?.(this.position, 0x9fd4ff);
     this.ctx.audio?.play?.('shrineWin', this.position);
     if (this.uses >= this.maxUses) this.water.material.emissiveIntensity = 0.05;
+    // The counterplay valve is the one corruption transaction with a price on
+    // both sides, and issue #29 asks the record for all four numbers. Emitted
+    // last, so it describes a press that actually completed — the two refusals
+    // above return before reaching here — and after the bleed, so the band it
+    // reports is the band the listeners have already settled on. Nothing in the
+    // game subscribes; a bus event rather than a call into a recorder is what
+    // keeps this class ignorant of whether anyone is listening.
+    this.ctx.events.emit('fontUse', {
+      stage: this.stageIndex, press, cost, removed,
+      worldBefore, worldAfter: cor.world, bandBefore, bandAfter: cor.band,
+    });
     return true;
   }
 

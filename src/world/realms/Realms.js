@@ -131,9 +131,14 @@ export class Realms {
       const at = ctx.interactables._sited
         ? ctx.interactables._sited(m, (m?.r ?? 0) + 8, (m?.r ?? 0) + 26, ctx.player?.position)
         : ctx.stage.randomWalkablePoint(ctx.rng, { minDistFrom: ctx.player?.position, minDist: 24 });
-      const g = new RealmGateway(ctx, at, gate, realm, gate.cost(stageIndex));
+      const cost = gate.cost(stageIndex);
+      const g = new RealmGateway(ctx, at, gate, realm, cost);
       ctx.interactables.add(g);
       this.gateways.push(g);
+      // Say that a door was *offered*, not only that one was taken. Issue #38
+      // has to divide acceptances by offers to know whether a side realm is a
+      // choice at all, and `realmEnter` alone is only ever the numerator.
+      ctx.events.emit('realmOffer', { id: realm.id, kind: 'gateway', stage: stageIndex, cost });
       i++;
     }
   }
@@ -167,6 +172,10 @@ export class Realms {
         onEnter: () => this.requestEnter(id),
       });
       ctx.interactables.add(p);
+      // The altar was already paid for, so this door costs nothing further —
+      // but it is still an offer the player may walk past, and the offer rate
+      // #38 measures has to include the ones that were bought in advance.
+      ctx.events.emit('realmOffer', { id, kind: 'altar', stage: stageIndex, cost: 0 });
     }
 
     if (stageIndex >= FINALE_STAGE) {
@@ -197,6 +206,12 @@ export class Realms {
     });
     ctx.interactables.add(p);
     this._finaleOpen.add(route.realm);
+    // Which endings the run was ever *given*. #37 asks what corruption changed
+    // about the ending, and the answer is unreadable without knowing whether
+    // the other door was standing there unopened or was never open at all.
+    ctx.events.emit('realmOffer', {
+      id: route.realm, kind: 'finale', stage: ctx.progression?.stageIndex ?? null, cost: 0,
+    });
     return p;
   }
 
