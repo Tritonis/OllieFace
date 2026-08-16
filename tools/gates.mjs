@@ -105,6 +105,40 @@ export function assertNoSteam(arm) {
 }
 
 // ---------------------------------------------------------------------------
+// Manual arms — tracked, never runnable by a tier
+//
+// `smoke:steam` is invisible to `gates:status` by construction: it names no
+// arm at all, so the staleness report can never ask about it. That is right
+// for Steam (nobody should mistake it for a thing this file schedules), but
+// it is the wrong shape for `npm run shots` (the capture/silhouette gate,
+// `tools/capture.mjs`) — that one SHOULD be able to go OVERDUE, because
+// nothing else exercises `installHarness` or the separation/margin logic in
+// `src/core/Harness.js`. A gate nobody is ever told is stale is a gate people
+// learn to ignore.
+//
+// So a manual arm is a full member of ARMS — it appears in the staleness
+// report and can read OVERDUE — but is marked `manual: true` in its own
+// definition, which is the single source of truth two things read:
+//
+//   1. `armsFor(tier)`'s filter (`a.tier === tier`) already excludes it,
+//      since its tier is `'manual'`, not `'cheap'` or `'heavy'`.
+//   2. `assertManual`, mirroring `assertNoSteam`, runs immediately before
+//      every spawn in `runArm` and throws on any arm carrying `manual: true`
+//      — so a future edit that mis-tiers a manual arm into `'cheap'` or
+//      `'heavy'` still cannot spawn it. Two independent reasons it cannot
+//      run, exactly the "not sufficient alone" shape `assertNoSteam` uses.
+export function assertManual(arm) {
+  if (arm.manual) {
+    throw new Error(
+      `gates: refusing to run arm "${arm.id}" — it is a manual-only arm.\n`
+      + '  It is tracked for staleness but never invoked by a tier: run it by hand\n'
+      + `  (${arm.argv.join(' ')}), then record it with:\n`
+      + `    node tools/gates.mjs status --record ${arm.id}`,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // The arm table
 
 /**
@@ -160,6 +194,14 @@ function armsFor(portBase) {
       label: `elite-dps equivalence baseline (port ${elite})`,
       argv: ['npm', 'run', 'gate:elite', '--', '--port', String(elite)],
       paths: ['src', 'tests/sp-equivalence.mjs'],
+    },
+    {
+      id: 'capture',
+      tier: 'manual',
+      manual: true,
+      label: 'headed GPU silhouette/separation capture (npm run shots) — run by hand, tracked so it can go OVERDUE',
+      argv: ['npm', 'run', 'shots'],
+      paths: ['src/core/Harness.js', 'tools/capture.mjs', 'tools/lib/evidence.mjs'],
     },
   ]);
 }
@@ -239,13 +281,24 @@ export function stalenessReport(arms, state = readState()) {
 }
 
 function printStaleness(arms) {
+  const manualIds = new Set(arms.filter((a) => a.manual).map((a) => a.id));
   console.log('\n--- gate staleness -------------------------------------------------');
   for (const r of stalenessReport(arms)) {
     const mark = r.stale ? 'OVERDUE' : r.verdict === 'pass' ? 'ok     ' : r.verdict === 'fail' ? 'RED    ' : '?      ';
-    console.log(`  ${mark} ${r.id.padEnd(10)} ${r.reason}`);
+    const tag = manualIds.has(r.id) ? ' (manual — run by hand, then: gates.mjs status --record ' + r.id + ')' : '';
+    console.log(`  ${mark} ${r.id.padEnd(10)} ${r.reason}${tag}`);
   }
   console.log('  (not run by any tier: smoke:steam — needs a live Steam client, run it by hand)');
   console.log('--------------------------------------------------------------------\n');
+}
+
+/** Records a hand-run of a manual arm. Refuses anything not marked `manual`. */
+export function recordManualRun(arms, armId) {
+  const arm = arms.find((a) => a.id === armId);
+  if (!arm) throw new Error(`gates: unknown arm "${armId}"`);
+  if (!arm.manual) throw new Error(`gates: "${armId}" is not a manual arm — it is run (and recorded) by its own tier.`);
+  recordRun(arm.id, 'pass', 0);
+  return arm;
 }
 
 // ---------------------------------------------------------------------------
@@ -309,6 +362,7 @@ function auditArm() {
 
 function runArm(arm) {
   assertNoSteam(arm);                       // (2) above — every arm, every time.
+  assertManual(arm);                        // manual arms are tracked, never spawned.
   console.log(`\n=== ${arm.id} — ${arm.label}`);
   console.log(`    ${arm.argv.join(' ')}`);
   const started = Date.now();
@@ -373,6 +427,7 @@ function main(argv) {
   const tier = argv[0];
   if (!['cheap', 'heavy', 'status'].includes(tier)) {
     console.error('usage: node tools/gates.mjs <cheap|heavy|status> [--port-base N]');
+    console.error('       node tools/gates.mjs status --record <armId>   (record a hand-run of a manual arm)');
     return 64;
   }
   const i = argv.indexOf('--port-base');
@@ -383,6 +438,23 @@ function main(argv) {
   }
 
   const all = armsFor(portBase);
+
+  const recordIdx = argv.indexOf('--record');
+  if (recordIdx >= 0) {
+    if (tier !== 'status') {
+      console.error('gates: --record is only valid with the "status" command');
+      return 64;
+    }
+    const armId = argv[recordIdx + 1];
+    try {
+      const arm = recordManualRun(all, armId);
+      console.log(`gates: recorded a manual run of "${arm.id}" at ${new Date().toISOString()}`);
+    } catch (e) {
+      console.error(e.message);
+      return 64;
+    }
+  }
+
   printStaleness(all);
   if (tier === 'status') return 0;
 

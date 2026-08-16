@@ -63,6 +63,14 @@ that matter are Windows/GPU/Steam-bound, so a hosted Linux runner could run almo
   and sets library-global impairment — so run it by hand.
 - `npm run gates:status` — the staleness record alone, runs nothing. Says which gates have not run
   since the last commit that touched their inputs. State lives in the gitignored `.gates/`.
+- The **capture gate** (`npm run shots`, `tools/capture.mjs`) is a **manual arm**: tracked in
+  `gates:status` — it can read OVERDUE like any other arm — but never invoked by either tier. It is
+  the only thing that calls `installHarness` and exercises the separation/margin logic in
+  `src/core/Harness.js`, and it is a slow, headed GPU run, so `gates:cheap`/`gates:heavy` must never
+  run it by accident. This is a different exclusion shape than `smoke:steam`'s (below): `smoke:steam`
+  names no arm at all and so is invisible to the staleness report by design, while the capture gate
+  is a full arm marked `manual: true` so it CAN go OVERDUE. Record a hand-run with
+  `node tools/gates.mjs status --record capture`.
 - `npm test` — the full suite, ~1 minute. Currently **74/74 test files**.
 - `npm run smoke:steam` — the Steam socket-pair gate (ADR 0002 arm B), ~35 s. Needs a **running,
   logged-in Steam client**, so it is a local gate and never a CI one. Writes
