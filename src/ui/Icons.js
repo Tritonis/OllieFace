@@ -38,19 +38,36 @@ const SIZE = 64;
  * two tiers, one grey. Under protanopia Uncommon and Boss came back at 3.3,
  * which is "a slightly different shade of the same colour".
  *
- * So lightness now does the work hue cannot. Each colour was moved to the
- * lightness at which its own hue is still fully saturated in sRGB *and* it
- * clears every other tier by CIEDE2000 12 in normal, protanopic, deuteranopic
- * and tritanopic vision, and by 4 with colour removed entirely. Two of them
- * moved a long way to get there and it is worth saying which and why:
+ * So lightness now does the work hue cannot. But lightness is also the whole of
+ * a colour's contrast against the near-black it is painted on, and those two
+ * demands pull in opposite directions — which is the mistake this table made
+ * once already. An earlier pass solved for separation alone and walked Uncommon
+ * to 4.36:1 against its own plate and Equipment to 3.77:1, from 8-10:1, with
+ * Equipment used as literal text. Winning one axis by quietly losing the other
+ * is not winning.
  *
- * - **Uncommon** is a deep emerald rather than a mint. Green and gold collapse
- *   onto each other for a protanope, and green is the one of the pair that can
- *   afford to go dark while staying saturated — a dark gold is a brown.
- * - **Equipment** is bronze rather than orange. Orange sits between Legendary's
- *   red and Boss's gold, and for a deuteranope all three are one hue; it is the
- *   only member of that trio with no third neighbour to lean away from, so it
- *   takes the lightness separation instead.
+ * Every colour here therefore satisfies both at once:
+ *
+ * - CIEDE2000 **12** against every other tier in normal, protanopic,
+ *   deuteranopic and tritanopic vision, and **4** with colour removed;
+ * - WCAG **4.5:1** against every surface where a tier colour becomes text and
+ *   **3:1** against every surface where it becomes a graphic — enumerated, not
+ *   assumed, in `SURFACES` in `tools/colour-vision.mjs`.
+ *
+ * The feasible region for seven saturated hues under both is very nearly a
+ * point, and the two constraints decide the lightnesses between them: saturated
+ * red, magenta and amber exist only low in sRGB, the contrast floor puts a hard
+ * bottom at L* 52, and gold only exists high. Two colours still moved a long
+ * way and it is worth saying which and why:
+ *
+ * - **Equipment** is amber-bronze rather than orange. Orange sits between
+ *   Legendary's red and Boss's gold, and for a deuteranope all three are one
+ *   hue; it is the only member of that trio with no third neighbour to lean
+ *   away from, so it takes the lightness separation instead. The alternative
+ *   the search kept offering was an olive Boss, which is the worse trade — the
+ *   gold is the rarest drop in the game and the most recognisable thing here.
+ * - **Umbral** is a deeper teal-cyan. Cyan cannot be saturated and bright at
+ *   once, and it needed to clear both Common above it and Uncommon beside it.
  *
  * None of this is sufficient on its own — see `TIER_MARKS`. Seven bright
  * colours cannot be told apart by lightness alone without one of them being
@@ -58,17 +75,19 @@ const SIZE = 64;
  * a shape.
  */
 export const TIERS = {
-  common:    { label: 'Common',    color: '#e6ecf4', dim: '#8b95a3', plate: '#1b1f26' },
-  uncommon:  { label: 'Uncommon',  color: '#009932', dim: '#00531b', plate: '#14231a' },
-  legendary: { label: 'Legendary', color: '#ff5554', dim: '#8a2e2d', plate: '#26120f' },
-  boss:      { label: 'Boss',      color: '#fdd249', dim: '#94742a', plate: '#241d0c' },
-  lunar:     { label: 'Umbral',    color: '#00caff', dim: '#006d8a', plate: '#0e2029' },
+  common:    { label: 'Common',    color: '#e6ecf4', dim: '#7c7f84', plate: '#1b1f26' },
+  uncommon:  { label: 'Uncommon',  color: '#3bf695', dim: '#208550', plate: '#14231a' },
+  legendary: { label: 'Legendary', color: '#ff6472', dim: '#8a363e', plate: '#26120f' },
+  boss:      { label: 'Boss',      color: '#d9bf30', dim: '#75671a', plate: '#241d0c' },
+  lunar:     { label: 'Umbral',    color: '#00c2d0', dim: '#006970', plate: '#0e2029' },
   // Blight draws like every other tier (see `itemArt`), and it keeps the
   // magenta no other tier is using. What changed is its lightness: at L* 58 it
-  // was 2.7 from Legendary once desaturated and 10.4 under tritanopia, where
-  // red and magenta are the same colour. At L* 65 it clears both.
-  blight:    { label: 'Blight',    color: '#f869cd', dim: '#86396f', plate: '#26101c' },
-  equipment: { label: 'Equipment', color: '#aa6400', dim: '#5c3600', plate: '#26160b' },
+  // was 2.7 from Legendary once desaturated and, under a tritan projection that
+  // actually discards a dimension, the two were 4.0 apart — red and magenta are
+  // one colour without the S cone. It is also the tier that binds the contrast
+  // floor, at 4.59:1 on the logbook's hover row.
+  blight:    { label: 'Blight',    color: '#c44fbc', dim: '#6a2b66', plate: '#26101c' },
+  equipment: { label: 'Equipment', color: '#bb7e00', dim: '#654400', plate: '#26160b' },
 };
 
 // Each entry carries its own id, so a `tierMeta` result is self-describing and

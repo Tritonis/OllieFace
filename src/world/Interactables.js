@@ -324,7 +324,7 @@ export class Chest extends Interactable {
     // them — they moved when that table was rebuilt for colour vision, and a
     // chest that kept the old red would be promising a rarity the drop no
     // longer wears.
-    const tint = size === 'legendary' ? 0xff5554 : size === 'large' ? 0x009932 : 0xc0c8d4;
+    const tint = size === 'legendary' ? 0xff6472 : size === 'large' ? 0x3bf695 : 0xc0c8d4;
     const scale = size === 'small' ? 1 : size === 'large' ? 1.35 : 1.5;
 
     const body = new THREE.Mesh(sharedGeo(`chestBody${size}`, () => chestBodyGeo(scale)),

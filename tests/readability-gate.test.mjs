@@ -299,6 +299,68 @@ console.log('the survivor roster is measured, and every pair of it');
  * file states outright, including the ones that must fail.
  */
 
+console.log('each simulated dichromacy actually destroys a dimension');
+{
+  // The structural check, and the one that would have caught what shipped here
+  // first: a matrix claiming to model a missing cone must be rank 2, must be a
+  // projection, and must leave greys alone. The tritan matrix originally in
+  // this file was full rank — determinant 0.122 — so it discarded nothing at
+  // all, and roughly a fifth of this gate's verdicts were resting on it.
+  const { simulate, VISIONS } = await import('../tools/colour-vision.mjs');
+  for (const vision of VISIONS) {
+    if (vision === 'normal') continue;
+
+    // Recover the map from its action on the basis. Working through the public
+    // `simulate` is deliberate: it is what the grades actually call, so a
+    // matrix that were right in the table and wrong in the plumbing still fails.
+    const lin = (hex) => {
+      const n = parseInt(hex.slice(1), 16);
+      return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+        .map((v) => v / 255)
+        .map((c) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)));
+    };
+    // Mid-grey basis probes keep every result inside the sRGB gamut, so nothing
+    // below is measuring a clamp.
+    const probe = ['#800000', '#008000', '#000080'];
+    const cols = probe.map((p) => lin(simulate(p, vision)));
+    const scale = lin('#800000')[0];
+    const M = [0, 1, 2].map((r) => [0, 1, 2].map((c) => cols[c][r] / scale));
+
+    const det = M[0][0] * (M[1][1] * M[2][2] - M[1][2] * M[2][1])
+      - M[0][1] * (M[1][0] * M[2][2] - M[1][2] * M[2][0])
+      + M[0][2] * (M[1][0] * M[2][1] - M[1][1] * M[2][0]);
+    ok(Math.abs(det) < 0.02, `${vision} is rank-deficient — it loses a dimension (det ${det.toFixed(4)})`);
+
+    const grey = simulate('#808080', vision);
+    ok(/^#(\w\w)\1\1$/.test(grey), `${vision} leaves a neutral grey neutral (${grey})`);
+
+    // A projection: simulating an already-simulated colour changes nothing.
+    // This is what "these people see exactly this" means, and an approximation
+    // that is not idempotent is claiming the eye keeps losing more information
+    // every time you look.
+    const drift = ['#c03040', '#2090d0', '#70b040', '#d0c020'].map((c) => {
+      const once = simulate(c, vision);
+      const twice = simulate(once, vision);
+      return Math.max(...lin(once).map((v, i) => Math.abs(v - lin(twice)[i])));
+    });
+    ok(Math.max(...drift) < 0.005, `${vision} is idempotent, so it is a projection (max drift ${Math.max(...drift).toExponential(1)})`);
+  }
+}
+
+console.log('and the tritan projection is the one this file derives, with its stated losses');
+{
+  const { simulate, deltaEUnder } = await import('../tools/colour-vision.mjs');
+  // The three statements the tritan matrix is derived from, asserted as three
+  // facts, because it is the one simulation here with no paper behind it.
+  ok(simulate('#808080', 'tritan') === '#808080', 'greys are unchanged');
+  ok(simulate('#c00000', 'tritan') === '#c00000', 'red is unchanged — L and M are intact');
+  ok(simulate('#0000c0', 'tritan') === '#000000', 'and blue carries nothing, which is the approximation');
+  // Its consequence, and the reason it is described as harsh rather than
+  // lenient: a pair separated only by blue collapses completely.
+  ok(deltaEUnder('#3080c0', '#308000', 'tritan') < 0.01,
+     'two colours differing only in blue are one colour to it');
+}
+
 console.log('the simulator does what its name says');
 {
   const { simulate, deltaE, deltaEUnder } = await import('../tools/colour-vision.mjs');
@@ -372,6 +434,56 @@ console.log('the shipped palettes clear them');
   // Every tier is graded, not just the ones that happened to be in the object.
   ok(gt.checks.length === (TIER_ORDER.length * (TIER_ORDER.length - 1) / 2) * 5,
      'all 21 tier pairs, all five visions');
+}
+
+console.log('the contrast floor catches what separating the palette cost it');
+{
+  const { gradeContrast, contrastRatio, over, SURFACES, CONTRAST } =
+    await import('../tools/colour-vision.mjs');
+  const { TIERS, TIER_ORDER } = await import('../src/ui/Icons.js');
+  const plates = Object.fromEntries(TIER_ORDER.map((k) => [k, TIERS[k].plate]));
+
+  // The instrument first. CSS and canvas composite in gamma-encoded sRGB, and
+  // getting that wrong is not a rounding error: a 5% white wash over the
+  // logbook's panel resolves to #111318 encoded and #404041 in linear light,
+  // which is a surface four times brighter than the browser paints and would
+  // fail colours that are fine.
+  ok(over('#ffffff', 0.05, '#04070c') === '#111318',
+     `a 5% white wash composites in sRGB, not linear (${over('#ffffff', 0.05, '#04070c')})`);
+  ok(Math.abs(contrastRatio('#ffffff', '#000000') - 21) < 0.01, 'white on black is 21:1');
+  ok(Math.abs(contrastRatio('#777777', '#777777') - 1) < 1e-9, 'a colour on itself is 1:1');
+  ok(Math.abs(contrastRatio('#ff0000', '#0000ff') - contrastRatio('#0000ff', '#ff0000')) < 1e-9,
+     'and the ratio does not care which is the foreground');
+
+  // Red. This is the palette this lane shipped an hour ago, which cleared every
+  // separation bar and quietly took Equipment to 4.35:1 on a surface it is used
+  // as text on. Separation alone could not see it; that is the whole reason
+  // this section exists.
+  const separationOnly = {
+    common: '#e6ecf4', uncommon: '#009932', legendary: '#ff5554', boss: '#fdd249',
+    lunar: '#00caff', blight: '#f869cd', equipment: '#aa6400',
+  };
+  const gs = gradeContrast(separationOnly, plates);
+  ok(gs.ok === false, 'a palette solved for separation alone fails the contrast floor');
+  const eq = gs.checks.filter((c) => c.id === 'equipment' && c.kind === 'text' && !c.ok);
+  ok(eq.length === 4, `and Equipment fails it as text on all four DOM surfaces (${eq.length})`);
+  ok(eq.every((c) => c.ratio > 3.9 && c.ratio < 4.4),
+     `each between 3.9 and 4.4 against a floor of 4.5 (${eq.map((c) => c.ratio.toFixed(2)).join(', ')})`);
+
+  // Green.
+  const shipped = Object.fromEntries(TIER_ORDER.map((k) => [k, TIERS[k].color]));
+  const g = gradeContrast(shipped, plates);
+  const worst = g.checks[0];
+  ok(g.ok === true,
+     `the shipped palette clears every surface (worst ${worst.id} on ${worst.surface} ${worst.ratio.toFixed(2)}:1 vs ${worst.min})`);
+
+  // Completeness, in the shape this repo has learned to ask for: every tier
+  // against every surface, counted, rather than "the ones we thought of".
+  const textSurfaces = SURFACES.filter((s) => s.kind === 'text').length;
+  const graphicSurfaces = SURFACES.filter((s) => s.kind === 'graphic').length;
+  ok(g.checks.length === TIER_ORDER.length * (textSurfaces + graphicSurfaces),
+     `all ${TIER_ORDER.length} tiers against all ${textSurfaces + graphicSurfaces} surfaces`);
+  ok(CONTRAST.text === 4.5 && CONTRAST.graphic === 3.0, 'at the WCAG AA floors, unmodified');
 }
 
 console.log('one palette, three tables');

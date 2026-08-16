@@ -38,16 +38,16 @@
  */
 export const TIERS = {
   common: { name: 'Common', colour: 0xe6ecf4, css: '#e6ecf4', weight: 80 },
-  uncommon: { name: 'Uncommon', colour: 0x009932, css: '#009932', weight: 20 },
-  legendary: { name: 'Legendary', colour: 0xff5554, css: '#ff5554', weight: 1 },
-  boss: { name: 'Boss', colour: 0xfdd249, css: '#fdd249', weight: 0 },
-  lunar: { name: 'Umbral', colour: 0x00caff, css: '#00caff', weight: 0 },
+  uncommon: { name: 'Uncommon', colour: 0x3bf695, css: '#3bf695', weight: 20 },
+  legendary: { name: 'Legendary', colour: 0xff6472, css: '#ff6472', weight: 1 },
+  boss: { name: 'Boss', colour: 0xd9bf30, css: '#d9bf30', weight: 0 },
+  lunar: { name: 'Umbral', colour: 0x00c2d0, css: '#00c2d0', weight: 0 },
   // Blight sits at weight 0 for the same reason boss and lunar do: it is never
   // reached by multiplying the generic ladder. `Items.rollTier` adds it as an
   // explicit share of whatever table it was handed, so one constant sets the
   // rate for every chest in the game at once — see BLIGHT_SHARE there.
-  blight: { name: 'Blight', colour: 0xf869cd, css: '#f869cd', weight: 0 },
-  equipment: { name: 'Equipment', colour: 0xaa6400, css: '#aa6400', weight: 0 },
+  blight: { name: 'Blight', colour: 0xc44fbc, css: '#c44fbc', weight: 0 },
+  equipment: { name: 'Equipment', colour: 0xbb7e00, css: '#bb7e00', weight: 0 },
 };
 
 /** Chance stacking. k is the first-stack value; the curve never reaches 1. */
