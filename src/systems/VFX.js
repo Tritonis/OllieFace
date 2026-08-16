@@ -2657,7 +2657,6 @@ void main() {
 }
 `;
 
-
 /**
  * World-space damage readout. Text is a 4x4 canvas atlas of glyphs and each
  * digit is one instance, so a number costs a handful of float writes and the

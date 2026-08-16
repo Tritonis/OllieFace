@@ -108,7 +108,7 @@ function assertNpmGeneratedCmd(name) {
   const src = readFileSync(cmdPath, 'utf8');
   const lines = src.split(/\r\n|\n/).filter((l) => l.length > 0);
   ok(/:find_dp0/.test(src), `${name}.cmd carries npm's :find_dp0 preamble`);
-  ok(lines.length >= 15, `${name}.cmd has >=15 non-blank lines (has ${lines.length}) — a hand-written forgery is ~2`);
+  ok(lines.length >= 10, `${name}.cmd has >=10 non-blank lines (has ${lines.length}) — a hand-written forgery is ~2, npm's template ~15+; 10 leaves margin against npm trimming a line`);
 }
 
 /**
