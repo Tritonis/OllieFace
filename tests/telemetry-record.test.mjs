@@ -54,7 +54,7 @@ const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } e
  * `setItem` does — the only way to reach the failure path that matters, since a
  * browser's quota cannot be exhausted on demand.
  */
-function fakeStorage(seed = {}, { refuse = [] } = {}) {
+function fakeStorage(seed = {}, { refuse = [], undeletable = false } = {}) {
   const m = new Map(Object.entries(seed));
   return {
     getItem: (k) => (m.has(k) ? m.get(k) : null),
@@ -66,7 +66,12 @@ function fakeStorage(seed = {}, { refuse = [] } = {}) {
       }
       m.set(k, String(v));
     },
-    removeItem: (k) => { m.delete(k); },
+    // `undeletable` is the other half of a storage fault, and the half that
+    // append-then-delete is blind to on its own: writes land, deletes do not.
+    removeItem: (k) => {
+      if (undeletable) throw new Error('removeItem refused');
+      m.delete(k);
+    },
     get size() { return m.size; },
   };
 }
@@ -384,6 +389,43 @@ console.log('a storage failure at run end keeps the checkpoint rather than eatin
   ok(promoted?.stats?.kills === 3, 'and so did the summary snapshot');
 }
 
+/**
+ * The same failure on the other entry into `commit`. `onFatalError` and
+ * `onRunEnd` share the commit path, so the risk is low — but "shares a path" is
+ * an argument, and the engine halting while storage is failing is exactly the
+ * compound bad day where an untested combination surfaces.
+ */
+console.log('an engine halt during a storage failure also keeps its checkpoint');
+{
+  const storage = fakeStorage({}, { refuse: [RUNS_KEY] });
+  setTelemetryEnabled(true, storage);
+  const engine = fresh();
+  const ctx = engine.ctx;
+  ctx.corruption = { world: 0, band: 0 };
+  installTelemetry(ctx, { storage });
+  ctx.time = 0;
+  ctx.events.emit('stageStart', { index: 0, name: 'Ashen Shelf' });
+
+  class Doomed {
+    static critical = true;
+    fixedUpdate() { throw new Error('the run is over'); }
+  }
+  engine.add(new Doomed());
+  const realError = console.error;
+  console.error = () => {};
+  try { ctx.time = 12; engine.accumulator = 0.02; engine._frame(); } finally { console.error = realError; }
+
+  ok(engine.fatal !== null, 'the engine halted');
+  ok(readRuns(storage).length === 0, 'the runs list could not be written');
+  ok(storage.getItem(PARTIAL_KEY) !== null, 'and the checkpoint survived');
+
+  const healthy = fakeStorage({ [PARTIAL_KEY]: storage.getItem(PARTIAL_KEY) });
+  const promoted = promotePartial(healthy);
+  ok(promoted?.fatal?.who?.startsWith('Doomed'), 'the recovered record still names what killed the engine');
+  ok(promoted?.complete === false, 'and is not claiming the run finished');
+  ok(promotePartial(healthy) === null, 'and it cannot be promoted a second time');
+}
+
 console.log('a checkpoint that cannot be parsed is cleared, not retried forever');
 {
   const storage = fakeStorage({ [PARTIAL_KEY]: '{"stages":[' });
@@ -395,6 +437,68 @@ console.log('a checkpoint that cannot be parsed is cleared, not retried forever'
   const notObject = fakeStorage({ [PARTIAL_KEY]: '"a string"' });
   ok(promotePartial(notObject) === null, 'a non-object is not filed');
   ok(notObject.getItem(PARTIAL_KEY) === null, 'and is cleared too');
+}
+
+/**
+ * The other half of a storage fault: writes land, deletes do not.
+ *
+ * Append-then-delete is the right order for the append failing and says nothing
+ * about the delete failing — a checkpoint that has already been filed survives,
+ * and the next boot files it again. Identity is what closes that, so the same
+ * run cannot enter the buffer twice however many times it is promoted.
+ */
+console.log('a checkpoint that cannot be deleted is still only ever filed once');
+{
+  const storage = fakeStorage({}, { undeletable: true });
+  setTelemetryEnabled(true, storage);
+  const engine = fresh();
+  const ctx = engine.ctx;
+  ctx.corruption = { world: 0, band: 0 };
+  installTelemetry(ctx, { storage });
+  ctx.time = 0;
+  ctx.events.emit('stageStart', { index: 0, name: 'Ashen Shelf' });
+  ctx.time = 40;
+  ctx.events.emit('stageStart', { index: 1, name: 'Sunken Reach' });
+
+  const first = promotePartial(storage);
+  ok(first?.stages?.length === 1, 'the first promotion filed the run');
+  ok(storage.getItem(PARTIAL_KEY) !== null, 'the checkpoint could not be deleted');
+  ok(readRuns(storage).length === 1, 'one run in the buffer');
+
+  const second = promotePartial(storage);
+  ok(second === null, 'the second promotion recognised it and filed nothing');
+  ok(readRuns(storage).length === 1, 'still one run in the buffer, not two');
+
+  // And it keeps refusing, however many boots the delete keeps failing for.
+  promotePartial(storage);
+  promotePartial(storage);
+  ok(readRuns(storage).length === 1, 'and it stays at one');
+
+  // Once storage is healthy again, the stale checkpoint is cleared rather than
+  // filed — the wasted read costs one boot, not every boot.
+  const healthy = fakeStorage({
+    [PARTIAL_KEY]: storage.getItem(PARTIAL_KEY),
+    [RUNS_KEY]: storage.getItem(RUNS_KEY),
+  });
+  ok(promotePartial(healthy) === null, 'a healthy boot files nothing new');
+  ok(healthy.getItem(PARTIAL_KEY) === null, 'and clears the stale checkpoint');
+  ok(readRuns(healthy).length === 1, 'leaving exactly one copy of the run');
+}
+
+console.log('every record carries an identity of its own');
+{
+  const ids = new Set();
+  for (let i = 0; i < 5; i++) {
+    const storage = fakeStorage();
+    setTelemetryEnabled(true, storage);
+    const engine = fresh();                       // the same seed every time
+    engine.ctx.corruption = { world: 0, band: 0 };
+    installTelemetry(engine.ctx, { storage });
+    engine.ctx.events.emit('runEnd', { won: true, stats: {} });
+    ids.add(readRuns(storage)[0]?.id);
+  }
+  ok(ids.size === 5, `five runs on one seed produced five identities (got ${ids.size})`);
+  ok([...ids].every((v) => typeof v === 'string' && v.length > 0), 'each is a non-empty string');
 }
 
 console.log('a checkpoint that cannot be re-filed is kept for the boot after');

@@ -179,6 +179,11 @@ class RunRecorder {
     this.broken = false;
     this.record = {
       version: RECORD_VERSION,
+      // Minted once, here, and never rewritten — including by the second
+      // checkpoint write in `commit`. It is what lets `promotePartial`
+      // recognise a run it has already filed, which is the only thing standing
+      // between a failed `removeItem` and the same run appearing twice.
+      id: mintId(ctx.seed),
       complete: false,
       truncated: false,
       startedAt: new Date().toISOString(),
@@ -488,9 +493,11 @@ class RunRecorder {
    * `broken`: the flag is also raised by hook throws, and "did *this* write
    * succeed" is the only question the `removeItem` actually depends on.
    *
-   * A checkpoint left behind is never a duplicate: the next boot promotes it
-   * and deletes it, and the finished record it duplicates was, by construction,
-   * never written.
+   * A checkpoint left behind is never filed twice, and that is now a property
+   * of the record's `id` rather than of this `removeItem` succeeding — see
+   * `promotePartial`, which refuses an identity the buffer already holds. So
+   * the `removeItem` throwing here costs one wasted read on the next boot and
+   * nothing more.
    */
   commit() {
     const runs = readRuns(this.storage);
@@ -547,19 +554,44 @@ class RunRecorder {
  * before giving up. Both are recovered; only the reader can tell them apart,
  * and the flag is how.
  *
- * The three outcomes are deliberately distinct, and the middle one is the one
- * that used to be wrong:
+ * The four outcomes are deliberately distinct:
  *
- *  · **Filed.** The checkpoint is appended and then deleted, in that order —
- *    the same rule `commit` follows, so a write that does not land never costs
- *    the copy it was going to replace.
+ *  · **Already filed.** The buffer holds a record with this one's `id`. Drop
+ *    the checkpoint and file nothing. This is what makes "a run cannot be filed
+ *    twice" a property of identity rather than a property of a `removeItem`
+ *    happening to succeed — see below.
+ *  · **Filed.** Appended, then deleted.
  *  · **Unparseable.** Cleared, and not filed. A half-written or hand-mangled
- *    checkpoint is unrecoverable by definition, and the old ordering — parse
+ *    checkpoint is unrecoverable by definition, and an earlier ordering — parse
  *    inside the same `try` as the delete — meant the throw jumped over the
  *    delete and the same junk was re-read, and re-thrown over, on every
  *    subsequent boot. Permanently stuck, permanently silent.
  *  · **Unwritable.** Kept. Storage is full or refusing writes; the checkpoint is
  *    the only copy and the next boot may have room.
+ *
+ * ## Why append-then-delete needs the identity check to be safe
+ *
+ * Append-then-delete is the right order for the *append* failing: the copy is
+ * never spent before its replacement is good. But it says nothing about the
+ * *delete* failing, and a `removeItem` that throws after a successful append
+ * leaves a checkpoint that has already been filed — which the next boot files
+ * again. Delete-first trades that for the Unparseable bug above, so neither
+ * ordering is safe on its own.
+ *
+ * Identity breaks the trade. Every record carries an `id` minted once at
+ * creation, so a re-read is recognised and refused. The delete failing then
+ * costs one wasted read on the next boot and nothing else, which is the right
+ * price for a rare storage fault:
+ *
+ *   append  delete  ->  outcome
+ *   ok      ok          filed once, checkpoint gone
+ *   ok      throws      filed once, checkpoint survives, next boot recognises
+ *                       and clears it
+ *   throws  --          not filed, checkpoint survives, next boot retries
+ *
+ * A record with neither an `id` nor a `startedAt` cannot be recognised, and is
+ * filed on a best-effort basis. No build produces one; the fallback exists so a
+ * hand-edited store degrades to the old behaviour instead of being dropped.
  */
 export function promotePartial(storage = globalThis.localStorage) {
   let raw = null;
@@ -573,14 +605,48 @@ export function promotePartial(storage = globalThis.localStorage) {
     return null;
   }
 
+  const runs = readRuns(storage);
+  const id = identityOf(record);
+  if (id !== null && runs.some((r) => identityOf(r) === id)) {
+    // A previous boot filed this and could not clear it. Clearing it is all
+    // that is left to do, and if that throws again the next boot lands here
+    // again and files nothing again — wasteful, never wrong.
+    try { storage.removeItem(PARTIAL_KEY); } catch { /* private mode */ }
+    return null;
+  }
+
   try {
-    const runs = readRuns(storage);
     runs.push(record);
     while (runs.length > MAX_RUNS) runs.shift();
     storage.setItem(RUNS_KEY, JSON.stringify(runs));
   } catch { return null; }
   try { storage.removeItem(PARTIAL_KEY); } catch { /* private mode */ }
   return record;
+}
+
+/**
+ * A record's identity, or null when it has none to offer.
+ *
+ * `id` is what every record this build writes carries. The `seed`/`startedAt`
+ * pair is the fallback for a record from before ids existed: a run is one page
+ * load, and two page loads cannot share both a seed and a millisecond.
+ */
+function identityOf(record) {
+  if (typeof record?.id === 'string' && record.id) return record.id;
+  if (record?.startedAt) return `${record.seed ?? '?'}@${record.startedAt}`;
+  return null;
+}
+
+/**
+ * A run's identity, minted once when the record is created and never rewritten.
+ * `randomUUID` where the platform has it; a seed-and-clock composite where it
+ * does not, which is every path this game actually runs on plus the tests.
+ */
+function mintId(seed) {
+  try {
+    if (typeof crypto?.randomUUID === 'function') return crypto.randomUUID();
+  } catch { /* locked-down crypto; the composite below is enough */ }
+  return `${seed ?? '?'}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 /**
