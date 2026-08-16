@@ -138,5 +138,43 @@ const settle = () => new Promise((res) => setTimeout(res, 10));
   check('pagehide flushes the pending write', b._saves.length === 1 && snap['telluric.profile'] === '{"v":9}');
 }
 
+// 6. `onSaveStatus` is foreign code, and `initDesktopStore` is the first
+// executable statement of main.js — before the Engine exists, before the fatal
+// overlay is listening. A throw from the status callback that escapes this
+// module aborts module evaluation and leaves the player on a blank page with no
+// account of itself. The main-process half already wraps the identical callback
+// (`safely()` in desktop/save-writer.mjs); this side, where the blast radius is
+// the whole boot, must too. Both call sites are exercised: the bridge's push,
+// and the local report from a `saveStore` that threw.
+{
+  const s = fakeStorage();
+  const b = fakeBridge(JSON.stringify({}));
+  let push = null;
+  b.onSaveStatus = (fn) => { push = fn; };
+  b.saveStore = () => { throw new Error('the bridge is gone'); };
+
+  const errs = [];
+  const realErr = console.error;
+  console.error = (...a) => errs.push(a.map(String).join(' '));
+  let escaped = null;
+  try {
+    const r = initDesktopStore(s, b, {
+      debounceMs: 0,
+      onSaveStatus: () => { throw new Error('the save indicator threw'); },
+    });
+    check('the bridge push path is wired', typeof push === 'function');
+    push?.({ ok: false, reason: 'disk full' });
+    r.flush();
+  } catch (e) {
+    escaped = e;
+  } finally {
+    console.error = realErr;
+  }
+
+  check('a throwing onSaveStatus never escapes initDesktopStore', escaped === null, escaped && escaped.message);
+  check('and the callback failure is reported rather than swallowed',
+    errs.filter((e) => e.includes('save-status callback threw')).length === 2, errs);
+}
+
 check('prefixes are the documented pair', JSON.stringify(MIRROR_PREFIXES) === '["telluric.","net."]');
 process.exit(failures ? 1 : 0);

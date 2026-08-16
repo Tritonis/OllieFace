@@ -47,6 +47,14 @@ const canvas = document.getElementById('viewport');
 const engine = new Engine({ canvas, seed });
 const ctx = engine.ctx;
 
+// First thing after the bus exists, and before anything that can fail is asked
+// to run. This used to sit below the registrations, which made it true but
+// useless for the failure it most needed to catch: a system throwing in `init`
+// aborted module evaluation right here, so the subscription was never made and
+// the player got a blank page rather than an account of it. Everything below is
+// now inside the overlay's reach.
+installFatalOverlay(ctx);
+
 ctx.input = new Input(canvas);
 ctx.pipeline = new RenderPipeline(canvas, quality);
 // The pipeline reads `settings` and, on a quality change, reaches Environment
@@ -103,7 +111,15 @@ engine.add(new HUD());
 // has something to drive. Single-player never touches it.
 ctx.lobby = new Lobby(engine, ctx);
 
-ctx.pipeline.build(ctx.scene, ctx.camera);
+// Assembling the passes is boot work that belongs to no system, so neither
+// `Engine.add` nor `_call` covers it — but it fails in the same window as an
+// `init` does and deserves the same account of itself. Critical: a pipeline
+// that never assembled draws nothing, ever, which is not a degraded frame.
+try {
+  ctx.pipeline.build(ctx.scene, ctx.camera);
+} catch (e) {
+  engine.fail('RenderPipeline.build', e);
+}
 
 // Renderer runs as the final "system" so it sees the fully updated frame.
 engine.add({
@@ -130,10 +146,6 @@ addEventListener('resize', () => {
 });
 ctx.camera.aspect = innerWidth / innerHeight;
 ctx.camera.updateProjectionMatrix();
-
-// Before the first frame: the overlay has to already be listening when the
-// system that fails is one that fails during the very first update.
-installFatalOverlay(ctx);
 
 // The run record (issue #29). Deliberately not `engine.add`ed: it owns no frame
 // time and, more to the point, a system is a thing `Engine._call` can halt the

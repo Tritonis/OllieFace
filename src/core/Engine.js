@@ -151,9 +151,22 @@ export class Engine {
    */
   _onFrameError(err, system, phase) {
     const who = system ? `${system.constructor?.name || 'system'}.${phase}` : 'frame';
+    this.fail(who, err, isCriticalSystem(system));
+  }
+
+  /**
+   * Report a failure that is not a frame phase, and so has no system object to
+   * read a criticality off — today that is `ctx.pipeline.build()` in `main.js`,
+   * the one piece of boot work that runs through neither `_call` nor `add`.
+   *
+   * It exists so such a caller does not have to reach for `_halt` and silently
+   * skip the telemetry beside it. Criticality is the caller's to state,
+   * defaulting to the same strict answer `isCriticalSystem` gives an omission.
+   */
+  fail(who, err, critical = true) {
     this.ctx.frameErrors++;
     this.ctx.lastFrameError = { who, message: String(err && err.message || err), frame: this.frame };
-    if (isCriticalSystem(system)) { this._halt(who, err); return; }
+    if (critical) { this._halt(who, err); return; }
     if (this._reported.has(who)) return;
     this._reported.add(who);
     console.error(`[engine] error in ${who} (frame ${this.frame}) — continuing:`, err);
@@ -252,7 +265,40 @@ export class Engine {
     };
   }
 
+  /**
+   * Register a system and run its `init`.
+   *
+   * `init` is the second place a system's own code runs, and unlike the first
+   * it runs at boot — before `start()`, before the first frame, before anything
+   * the frame loop guards. It used to run unguarded, so a throw propagated out
+   * of `add()` and, in `main.js`, out of module evaluation: `engine.start()`
+   * never ran and the fatal overlay was never reached. The failure class the
+   * criticality split exists to surface was the one class it could not surface,
+   * and the player got a blank page instead of an explanation.
+   *
+   * So an `init` throw goes through the same two answers a frame throw gets:
+   *  · **critical** — halt, exactly as a throw on frame 900 would. A system
+   *    that cannot even construct itself is not less serious than one that
+   *    fails later, and the halt is what raises the overlay.
+   *  · **noncritical** — report it and drop the system. Boot carries on without
+   *    it, which is the same trade the frame path makes for presentation.
+   *
+   * Dropping is not cosmetic: a system whose `init` threw is half-built, and
+   * ticking half of it every frame is strictly worse than not having it. What
+   * this cannot undo is whatever that half already wrote onto `ctx` — a
+   * noncritical system that assigns `ctx.vfx = this` and then throws leaves the
+   * reference behind. The alternative is a transactional context nothing else
+   * here wants, so it is named as held rather than closed.
+   */
   add(system) {
+    // A halted engine registers nobody. Boot is a straight line of `add()`
+    // calls, so the first critical failure is followed by a dozen more
+    // registrations whose `init`s would run against the half-built context that
+    // failure left — each throwing into a `_halt` that has already fired. Same
+    // rule `_call` states for frame phases, applied to the only other place a
+    // system's code runs.
+    if (this.fatal) return system;
+
     // Say out loud which answer an undeclared system was given. The default is
     // deliberately the strict one, so a system that never states its case is a
     // system whose first throw ends the run — that must not be discovered for
@@ -266,8 +312,20 @@ export class Engine {
     if (typeof (system?.constructor?.critical ?? system?.critical) !== 'boolean') {
       console.warn(`[engine] ${system?.constructor?.name || 'system'} declares no boolean \`static critical\` — treating it as critical.`);
     }
+    // Pushed before `init` runs, deliberately: a system that looks itself up
+    // through `engine.get()` from inside its own `init` — or that registers a
+    // second system which does — has to find it there.
     this.systems.push(system);
-    if (system.init) system.init(this.ctx);
+    if (system.init) {
+      try {
+        system.init(this.ctx);
+      } catch (e) {
+        // Taken back out before the failure is reported, so anything listening
+        // for `fatalError` sees a `systems` list that no longer claims it.
+        this.remove(system);
+        this._onFrameError(e, system, 'init');
+      }
+    }
     return system;
   }
 

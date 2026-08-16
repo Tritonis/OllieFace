@@ -52,6 +52,24 @@ class AuthoritativeFixed {
 class Undeclared {
   update() { boom('update').call(this); }
 }
+/**
+ * Failures during registration rather than during a frame.
+ *
+ * `init` is the other place a system's own code runs, and it runs at boot —
+ * before the first frame, before anything the frame loop guards. A throw here
+ * used to propagate straight out of `add()`, which in `main.js` means out of
+ * module evaluation: no `engine.start()`, no fatal overlay, a blank page.
+ */
+class CriticalInit {
+  static critical = true;
+  init() { throw new Error('boom in init'); }
+  update() { this.ticked = true; }
+}
+class CosmeticInit {
+  static critical = false;
+  init() { throw new Error('boom in init'); }
+  update() { this.ticked = true; }
+}
 /** Registered after the thrower, so "did the rest of the frame run" is answerable. */
 class Witness {
   static critical = false;
@@ -150,6 +168,70 @@ console.log('omission gets the strict answer, and says so');
   ok(engine.running === false, 'an undeclared system is treated as critical');
   ok(isCriticalSystem({}) === true, 'so is a bare object');
   ok(isCriticalSystem(undefined) === true, 'and so is a frame-level throw with no system');
+}
+
+console.log('a critical system that throws in init halts instead of aborting boot');
+{
+  const engine = fresh();
+  const seen = [];
+  // Stands in for `installFatalOverlay(ctx)`, which in main.js now subscribes
+  // before the first registration. The point of the whole fix is that this
+  // listener exists and gets to hear about a boot-time failure.
+  engine.ctx.events.on('fatalError', (e) => seen.push(e));
+  const bad = new CriticalInit();
+  let escaped = null;
+  const realErr = console.error;
+  console.error = () => {};
+  try { engine.add(bad); } catch (e) { escaped = e; } finally { console.error = realErr; }
+
+  ok(escaped === null, 'add() did not propagate the throw out to module evaluation');
+  ok(engine.fatal?.who === 'CriticalInit.init', 'the failure names the system and the phase');
+  ok(engine.ctx.fatalError === engine.fatal, 'ctx carries the same record');
+  ok(engine.ctx.authority === false, 'authority was surrendered');
+  ok(engine.ctx.frameErrors === 1, 'the existing telemetry moved, exactly as for a frame throw');
+  ok(engine.ctx.lastFrameError?.who === 'CriticalInit.init', 'lastFrameError names the offender');
+  ok(seen.length === 1 && seen[0].who === 'CriticalInit.init', 'fatalError was emitted, so the overlay can raise itself');
+  ok(engine.running === false, 'the loop is stopped');
+  ok(!engine.systems.includes(bad), 'the system that could not construct itself is not registered');
+  engine.start();
+  ok(engine.running === false, 'start() will not run a boot that already failed');
+}
+
+console.log('a halted boot registers nobody after the failure');
+{
+  const engine = fresh();
+  const realErr = console.error;
+  console.error = () => {};
+  engine.add(new CriticalInit());
+  console.error = realErr;
+  // main.js is a straight line of fifteen further `add()` calls after most
+  // systems. None of their `init`s may run against the half-built context the
+  // failure left behind — the same rule `_call` enforces for frame phases.
+  const late = engine.add(new Witness());
+  ok(!engine.systems.includes(late), 'a later registration was refused');
+  ok(engine.fatal?.who === 'CriticalInit.init', 'and the original failure still stands as the cause');
+}
+
+console.log('a noncritical system that throws in init is dropped and boot continues');
+{
+  const engine = fresh();
+  const bad = new CosmeticInit();
+  const errs = [];
+  const realErr = console.error;
+  console.error = (...a) => errs.push(a.join(' '));
+  engine.add(bad);
+  console.error = realErr;
+
+  ok(engine.fatal === null && engine.ctx.fatalError === null, 'nothing fatal');
+  ok(engine.ctx.authority === true, 'authority was not surrendered');
+  ok(engine.ctx.frameErrors === 1, 'but the failure was still counted');
+  ok(errs.some((e) => e.includes('CosmeticInit.init')), 'and reported on the console by name');
+  ok(!engine.systems.includes(bad), 'the half-constructed system was not registered');
+
+  const w = engine.add(new Witness());
+  engine._frame();
+  ok(w.updates === 1, 'later registrations still happen and the run carries on');
+  ok(bad.ticked !== true, 'the dropped system is never ticked');
 }
 
 /** Every .js file under src/, depth-first. */
