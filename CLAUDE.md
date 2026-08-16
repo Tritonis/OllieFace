@@ -63,7 +63,7 @@ that matter are Windows/GPU/Steam-bound, so a hosted Linux runner could run almo
   and sets library-global impairment — so run it by hand.
 - `npm run gates:status` — the staleness record alone, runs nothing. Says which gates have not run
   since the last commit that touched their inputs. State lives in the gitignored `.gates/`.
-- `npm test` — the full suite, ~1 minute. Currently **73/73 test files**.
+- `npm test` — the full suite, ~1 minute. Currently **74/74 test files**.
 - `npm run smoke:steam` — the Steam socket-pair gate (ADR 0002 arm B), ~35 s. Needs a **running,
   logged-in Steam client**, so it is a local gate and never a CI one. Writes
   `reviews/net-baseline/steam-socketpair-3peer-60hz.json`; the write-up beside it is
