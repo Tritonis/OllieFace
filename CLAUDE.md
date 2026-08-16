@@ -118,9 +118,8 @@ an accounting unit for *ports*, not a directory you manage.
 accumulates across a session unless something sweeps it. 28 stale worktrees once did exactly this and
 made vite serve a single CSS file in 79.9s, which blew `npm run shots`'s goto timeout 3/3 (issue #90).
 **The controller sweeps merged worktrees at batch close** rather than leaving that to auto-cleanup.
-A worktree given a junction into the main install's `node_modules` (see Install health, and the
-per-lane setup a brief may specify) must have that junction **unlinked before the worktree itself is
-removed** — `rmdir` the junction path only, never a recursive delete of the worktree directory while
+A worktree given a junction into the main install's `node_modules` (per-lane setup a brief may
+specify) must have that junction **unlinked before the worktree itself is removed** — `rmdir` the junction path only, never a recursive delete of the worktree directory while
 the junction is still live, since a recursive delete walks the junction and deletes the main tree's
 packages (the best explanation on record for issues #67 and #83).
 **Decision (adjudicated):** junctions into the main install are permitted for a lane's lifetime; they

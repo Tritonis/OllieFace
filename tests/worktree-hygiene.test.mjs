@@ -12,13 +12,19 @@
 // caused that incident:
 //
 //   (a) too many entries under .claude/worktrees/ — a raw count, not
-//       correctness of each one. Three parallel lanes plus a verifier that
-//       spins up its own worktree is the normal ceiling in this repo's
-//       working mode (see CLAUDE.md "Parallel lanes"); with churn across a
-//       batch (a lane finishing and a new one starting before the old one is
-//       swept) that can transiently touch ~5-6. 8 gives that headroom without
-//       being loose enough to miss real accumulation — the incident this
-//       guards against was 28.
+//       correctness of each one. Verifiers run without their own worktree, so
+//       the realistic peak is 3 live lanes plus whatever prior-batch leftovers
+//       haven't been swept yet — and in practice that peak has been observed
+//       at 10 (7 unswept-stale + 3 live) mid-batch, which is documented normal
+//       operation, not a bug. A hard FAIL threshold of 8 was originally tried
+//       here and adjudicated too tight after that observation (issue #90
+//       review). FAIL is now 12 — still far below the 28-worktree incident —
+//       with a loud WARN (non-failing) above 6 so accumulation is visible on
+//       its way up rather than only once it's already a problem. Repo-root
+//       capture breakage (the vite-slowdown failure mode this guards against)
+//       has been observed starting around ~10 worktrees; tools/capture.mjs's
+//       own goto-timeout diagnostic is what names the cause first if this
+//       guard doesn't catch it in time.
 //
 //   (b) an ORPHANED node_modules junction: a directory under
 //       .claude/worktrees/ that (i) is not a registered git worktree
@@ -68,14 +74,22 @@ function registeredWorktrees(cwd) {
 }
 
 /**
- * Core of check (a): does `worktreesDir` hold more than `limit` entries.
- * Takes a plain directory path so it can be pointed at a scratch fixture.
+ * Core of check (a): does `worktreesDir` hold more than `limit` entries
+ * (fails), or more than `warnAt` (loud but non-failing WARN). `warnAt` is
+ * optional; omit it to get count-only behavior.
  */
-function countCheck(worktreesDir, limit) {
-  if (!existsSync(worktreesDir)) return { count: 0, over: false, entries: [] };
+function countCheck(worktreesDir, limit, warnAt) {
+  if (!existsSync(worktreesDir)) return { count: 0, over: false, warn: false, entries: [] };
   const entries = readdirSync(worktreesDir);
-  return { count: entries.length, over: entries.length > limit, entries };
+  const count = entries.length;
+  return { count, over: count > limit, warn: warnAt != null && count > warnAt, entries };
 }
+
+/** Case-insensitive path resolve, so a differently-cased path git reports
+ *  (or a differently-cased mount) can't false-flag a live worktree as an
+ *  orphan on win32, where the filesystem itself is case-insensitive but
+ *  string comparison is not. */
+const norm = (p) => resolve(p).toLowerCase();
 
 /**
  * Core of check (b): scan `worktreesDir` for entries that are NOT in
@@ -87,20 +101,34 @@ function countCheck(worktreesDir, limit) {
 function orphanJunctionCheck(worktreesDir, registeredDirs, mainNodeModules) {
   const orphans = [];
   if (!existsSync(worktreesDir)) return orphans;
-  const registered = new Set(registeredDirs.map((d) => resolve(d)));
-  const mainTarget = existsSync(mainNodeModules) ? resolve(realpathSync(mainNodeModules)) : resolve(mainNodeModules);
+  const registered = new Set(registeredDirs.map(norm));
+  const mainTarget = existsSync(mainNodeModules) ? norm(realpathSync(mainNodeModules)) : norm(mainNodeModules);
   for (const entry of readdirSync(worktreesDir)) {
     const dir = resolve(join(worktreesDir, entry));
-    if (registered.has(dir)) continue; // live, registered worktree: expected to hold a junction
+    if (registered.has(norm(dir))) continue; // live, registered worktree: expected to hold a junction
     const nm = join(dir, 'node_modules');
     let st;
     try { st = lstatSync(nm); } catch { continue; } // no node_modules at all: not this bug
     if (!st.isSymbolicLink()) continue; // a real installed node_modules, not a junction: not this bug
     let target;
-    try { target = resolve(readlinkSync(nm)); } catch { continue; }
-    if (target === mainTarget) orphans.push({ dir, target });
+    try { target = readlinkSync(nm); } catch { continue; }
+    if (norm(target) === mainTarget) orphans.push({ dir, target: resolve(target) });
   }
   return orphans;
+}
+
+/**
+ * registeredWorktrees(), but never throws: a corrupted git worktree admin
+ * state (e.g. a `.git/worktrees/<name>` entry with no matching directory)
+ * should read as a clean, named FAIL in the guard, not an uncaught crash of
+ * the whole test file.
+ */
+function safeRegisteredWorktrees(cwd) {
+  try {
+    return { ok: true, dirs: registeredWorktrees(cwd) };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
 }
 
 // --- Unit tests against a scratch fixture (RED/GREEN proof) ----------------
@@ -152,8 +180,9 @@ console.log('orphanJunctionCheck: unit fixture');
   ok(!orphans.some((o) => o.dir === resolve(cleanDir)), 'a worktree dir with no node_modules junction is never flagged');
 
   console.log('countCheck: unit fixture');
-  ok(countCheck(worktreesDir, 8).count === 3 && !countCheck(worktreesDir, 8).over, '3 entries under an 8 limit does not trip the count check');
-  ok(countCheck(worktreesDir, 2).over, '3 entries over a 2 limit does trip the count check');
+  ok(countCheck(worktreesDir, 12, 6).count === 3 && !countCheck(worktreesDir, 12, 6).over, '3 entries under a 12 limit does not trip the fail check');
+  ok(!countCheck(worktreesDir, 12, 2).over && countCheck(worktreesDir, 12, 2).warn, '3 entries over a warnAt of 2 (but under the fail limit) warns without failing');
+  ok(countCheck(worktreesDir, 2).over, '3 entries over a 2 limit does trip the fail check');
 
   rmSync(fixtureRoot, { recursive: true, force: true });
 }
@@ -169,19 +198,25 @@ console.log('live check against the real .claude/worktrees/');
     console.log('  SKIP  running from a worktree, not the main checkout — inspecting', mainRoot, 'instead would not reflect this run; skipped by design');
   } else {
     const worktreesDir = join(mainRoot, '.claude', 'worktrees');
-    const COUNT_LIMIT = 8;
-    const { count, over, entries } = countCheck(worktreesDir, COUNT_LIMIT);
+    const COUNT_LIMIT = 12;
+    const COUNT_WARN_AT = 6;
+    const { count, over, warn, entries } = countCheck(worktreesDir, COUNT_LIMIT, COUNT_WARN_AT);
     if (over) console.log(`    entries under .claude/worktrees/: ${entries.join(', ')}`);
+    if (warn && !over) console.log(`    WARN: .claude/worktrees/ holds ${count} entries (warn threshold ${COUNT_WARN_AT}) — accumulating, not yet failing: ${entries.join(', ')}`);
     ok(!over, `.claude/worktrees/ holds ${count} entries (limit ${COUNT_LIMIT}) — accumulation guard`);
 
-    const registered = registeredWorktrees(mainRoot);
-    const mainNodeModules = join(mainRoot, 'node_modules');
-    const orphans = orphanJunctionCheck(worktreesDir, registered, mainNodeModules);
-    if (orphans.length) {
-      console.log('    orphaned node_modules junctions found:');
-      for (const o of orphans) console.log(`      ${o.dir} -> ${o.target}`);
+    const reg = safeRegisteredWorktrees(mainRoot);
+    if (!reg.ok) {
+      ok(false, `git worktree list failed, cannot verify orphaned junctions: ${reg.error}`);
+    } else {
+      const mainNodeModules = join(mainRoot, 'node_modules');
+      const orphans = orphanJunctionCheck(worktreesDir, reg.dirs, mainNodeModules);
+      if (orphans.length) {
+        console.log('    orphaned node_modules junctions found:');
+        for (const o of orphans) console.log(`      ${o.dir} -> ${o.target}`);
+      }
+      ok(orphans.length === 0, 'no orphaned node_modules junctions under .claude/worktrees/');
     }
-    ok(orphans.length === 0, 'no orphaned node_modules junctions under .claude/worktrees/');
   }
 }
 
