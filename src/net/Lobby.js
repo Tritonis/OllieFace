@@ -181,6 +181,37 @@ export function formatRoomCode(code) {
 }
 
 /**
+ * One of these per lobby session — per `startHost`/`joinViaRelay` up to the
+ * `leave()` that ends it — and it is the thing an in-flight mint holds on to.
+ *
+ * `minting` counts invites whose `createInvite()` has been called and has not
+ * resolved yet. They are counted against MAX_PENDING_INVITES beside the maps
+ * themselves; see `_admitJoiner` for why a ceiling that reads only the maps is
+ * no ceiling at all.
+ *
+ * The reason the count lives out here rather than on the Lobby is the race
+ * between it and `leave()`. `createInvite()` is a long await — an offer, and on
+ * a non-trickle relay a full ICE gather — and the player can press Leave in the
+ * middle of one. A count that belonged to the Lobby had to be *reset* by
+ * `leave()`, and the in-flight mint's `finally` then decremented the reset
+ * count to -1: the ceiling that is this page's only defence against join
+ * amplification became one invite taller for the rest of the page's life, and
+ * one more with every leave that landed in that window.
+ *
+ * Handing out a fresh session instead of resetting a field makes the counting
+ * balanced by construction. A mint claims from the session it was admitted by
+ * and releases to that same session, so the arithmetic on any one session is
+ * strictly paired: it cannot go negative, and it cannot be stranded above zero
+ * either, because the session a stranded claim is stranded on is one nothing
+ * reads any more. Identity does double duty — a mint whose captured session is
+ * no longer `this._session` has resolved into a lobby that has moved on, and
+ * everything it produced belongs to the dead session, not this one.
+ */
+function newSession() {
+  return { minting: 0 };
+}
+
+/**
  * Headless lobby controller.
  *
  * Owns the whole "get two browsers talking" flow and exposes it as plain
@@ -213,10 +244,7 @@ export class Lobby {
     this._refused = false;
     // The host's "this room is still in use" timer, while there is one.
     this._keepalive = null;
-    // Invites whose `createInvite()` has been called and has not resolved yet.
-    // Counted against MAX_PENDING_INVITES beside the maps themselves — see
-    // `_admitJoiner` for why a ceiling that reads only the maps is no ceiling.
-    this._minting = 0;
+    this._session = newSession();
   }
 
   _set(status, detail) {
@@ -278,7 +306,19 @@ export class Lobby {
    */
   async createInvite() {
     if (this.mode !== 'host') this.startHost();
-    const invite = await this.net.createInvite();
+    const session = this._session;
+    const net = this.net;
+    const invite = await net.createInvite();
+    // The player can press Leave while the offer is still gathering. What comes
+    // back then is a peer connection belonging to a transport that has already
+    // been closed, and writing it into `pendingInvites` would republish it into
+    // whatever session is running now — so it is given up on the transport that
+    // made it, and the caller is told there is no invite rather than shown a
+    // blob nobody can answer.
+    if (session !== this._session) {
+      net.transport?.cancelInvite?.(invite.id);
+      throw new Error('You left the lobby before the invite was ready');
+    }
     this.pendingInvites.set(invite.id, invite);
     this._set('inviteReady', { id: invite.id, blob: invite.blob });
     return invite;
@@ -483,12 +523,24 @@ export class Lobby {
           // code can make the relay send these, and this page answers each one
           // with a peer connection — see `MAX_PENDING_INVITES`.
           if (!this._admitJoiner()) return;
-          this._minting += 1;
+          // Both captured before the await, because both can be replaced during
+          // it: `leave()` hands the lobby a new session and a new `NetHost`, and
+          // the claim below has to be released to — and the connection given up
+          // on — the ones this mint was admitted by.
+          const session = this._session;
+          const net = this.net;
+          session.minting += 1;
           let invite;
           // `finally` and not `catch`: a `createInvite` that throws — 'Lobby is
           // full' from `NetHost` — fails exactly as it did before this ceiling
           // existed. What must not change is the claim being released.
-          try { invite = await this.net.createInvite(); } finally { this._minting -= 1; }
+          try { invite = await net.createInvite(); } finally { session.minting -= 1; }
+          // The lobby left while this offer was being made. `HostTransport`
+          // registers the peer only after its own awaits, so the connection is
+          // sitting in a closed transport's map with nothing left to close it;
+          // and the maps and the socket below belong to a session that no longer
+          // wants this joiner. Give the connection up and say nothing.
+          if (session !== this._session) { net.transport?.cancelInvite?.(invite.id); return; }
           this.pendingInvites.set(invite.id, invite);
           this._invitesByClient.set(msg.clientId, invite);
           // Registered before the offer goes out, so a candidate gathered while
@@ -527,7 +579,7 @@ export class Lobby {
    * a burst of *concurrent* `createInvite()` calls — every one of them awaiting,
    * none of them having written to any map. A ceiling that read
    * `pendingInvites.size` alone would see an empty map for all two hundred of
-   * them and admit every one. `_minting` is the claim taken before the await,
+   * them and admit every one. `_session.minting` is the claim taken before the await,
    * which is the only place the claim can be taken.
    *
    * **It evicts rather than refuses.** Refusing at the ceiling would let eight
@@ -546,7 +598,7 @@ export class Lobby {
    * ceiling is in-flight mints — which is the flood itself.
    */
   _admitJoiner() {
-    while (this.pendingInvites.size + this._minting >= MAX_PENDING_INVITES
+    while (this.pendingInvites.size + this._session.minting >= MAX_PENDING_INVITES
            && this.pendingInvites.size > 0) {
       this._dropInvite(this.pendingInvites.keys().next().value);
     }
@@ -561,7 +613,7 @@ export class Lobby {
       this._invitesByClient.delete(clientId);
       if (stale) this._dropInvite(stale.id);
     }
-    return this.pendingInvites.size + this._minting < MAX_PENDING_INVITES;
+    return this.pendingInvites.size + this._session.minting < MAX_PENDING_INVITES;
   }
 
   /**
@@ -795,7 +847,11 @@ export class Lobby {
     // the page. `net.close()` above has already closed the connections
     // themselves; this is the references to them.
     this.pendingInvites.clear();
-    this._minting = 0;
+    // A new session rather than a reset counter, and that distinction is the
+    // whole of `newSession`'s reason to exist: an invite still being minted for
+    // the session that is ending must not be able to reach in and count against
+    // the one that starts next, nor be written into the maps just cleared above.
+    this._session = newSession();
     this._earlyIce.length = 0;
     this.players = [{ id: 0, name: 'You', local: true }];
     this._set('idle');
