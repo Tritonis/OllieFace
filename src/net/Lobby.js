@@ -201,11 +201,19 @@ export function formatRoomCode(code) {
  * Handing out a fresh session instead of resetting a field makes the counting
  * balanced by construction. A mint claims from the session it was admitted by
  * and releases to that same session, so the arithmetic on any one session is
- * strictly paired: it cannot go negative, and it cannot be stranded above zero
- * either, because the session a stranded claim is stranded on is one nothing
- * reads any more. Identity does double duty — a mint whose captured session is
- * no longer `this._session` has resolved into a lobby that has moved on, and
- * everything it produced belongs to the dead session, not this one.
+ * strictly paired and cannot go negative, and a claim cannot leak across a
+ * `leave()` into the next session's ceiling — a stranded claim is stranded on a
+ * session nothing reads any more. Identity does double duty: a mint whose
+ * captured session is no longer `this._session` has resolved into a lobby that
+ * has moved on, and everything it produced belongs to the dead session.
+ *
+ * What this does *not* buy is a claim that can never sit above zero on the
+ * *live* session. A mint that never settles — a `createInvite` that neither
+ * resolves nor rejects — holds its claim for as long as that session lasts, and
+ * pairing cannot help with a `finally` that never runs. That is theoretical
+ * today, since every await inside `HostTransport.createInvite` either settles or
+ * is the hard-capped `waitForIce`, and closing it needs a timeout there rather
+ * than anything here.
  */
 function newSession() {
   return { minting: 0 };
