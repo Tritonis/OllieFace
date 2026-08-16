@@ -406,6 +406,24 @@ export class Engine {
    * removal reverts those keys as well — but only where the value is still the
    * one that `init` left, so a key a later system took over stays with it.
    *
+   * **Known limitation, deliberately not closed: a post-`init` republish is
+   * invisible here.** The record is a diff taken across `init` and nothing
+   * else, so a system that writes `ctx.stage` again from a method mid-run
+   * leaves a value the map never saw; the identity check below then matches
+   * nothing and that value survives removal — the very shape this whole
+   * mechanism exists to prevent, reached by a different door. The pattern
+   * exists in this codebase (`world/realms/Realms.js:313`/`:369` reassign
+   * `ctx.stage`; `systems/Artifacts.js:251`/`:490`/`:530` reassign
+   * `ctx.difficultyId`) but is unreachable as a bug today: the only two callers
+   * of `remove()` are `add()`'s own failure rollback — which runs before any
+   * runtime write could have happened — and `Lobby`'s teardown of `NetHost`,
+   * which self-publishes and is covered by the identity sweep regardless.
+   * Closing it means tracking every `ctx` write a system makes, which is a
+   * proxy on the context and a cost on a hot object, paid for a hazard nothing
+   * can currently reach. `tests/engine-criticality.test.mjs` pins the boundary
+   * so that anyone who adds a `remove()` call site — or extends this mechanism
+   * — trips over the decision rather than rediscovering the hole.
+   *
    * `null`, not `delete`: the `ctx` literal declares these keys as `null` up
    * front ("filled in by the systems that own them"), so nulling restores
    * exactly the value they held before `init` ran, and `Lobby._release` already
@@ -444,6 +462,11 @@ export class Engine {
    * Record every `ctx` key `system.init` created or changed, minus the ones an
    * inner `add()` already claimed. Credits the key to the enclosing
    * registration too, so an outer `init` cannot re-claim it on the way out.
+   *
+   * **`init` is the only window this watches.** A system that republishes the
+   * same key later — at runtime, from a method rather than from `init` — writes
+   * a value this map has never seen, and `remove()`'s identity check therefore
+   * never matches it. See the limitation stated on `remove()`.
    */
   _recordPublications(system, before, claimedByInner) {
     const owned = new Map();

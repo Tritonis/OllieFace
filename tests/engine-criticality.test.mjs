@@ -400,6 +400,35 @@ console.log('an init that registers another system is not credited with its cont
   ok(engine.ctx.hud === null, 'and the inner system still owns it when its own turn comes');
 }
 
+console.log('a post-init republish outlives removal — the pinned boundary, not the wanted behaviour');
+{
+  // NOT desired behaviour. This asserts the documented limit of the mechanism:
+  // ownership is a diff taken across `init` and nothing else, so a value a
+  // system writes onto ctx *later*, from a method, is one the record never saw
+  // and removal cannot recognise. `Realms.js:313` reassigns `ctx.stage` exactly
+  // this way, and `Artifacts.js:251` does it to `ctx.difficultyId`.
+  //
+  // Unreachable today — the only callers of `remove()` are `add()`'s failure
+  // rollback (before any runtime write can have happened) and Lobby's teardown
+  // of a self-publishing NetHost. This test exists so that whoever makes it
+  // reachable, by adding a third `remove()` call site or by extending the
+  // mechanism, fails here and reads the decision in `Engine.remove`'s docstring
+  // instead of rediscovering the hole in a live run. If you are here because
+  // this went red: that is the signal to track runtime writes, and this block
+  // is what you delete.
+  const engine = fresh();
+  class Republisher {
+    static critical = false;
+    init(ctx) { this.ctx = ctx; ctx.stage = { owner: this, tag: 'init' }; }
+    advance() { this.ctx.stage = { owner: this, tag: 'runtime' }; }
+  }
+  const r = engine.add(new Republisher());
+  r.advance();
+  engine.remove(r);
+  ok(engine.ctx.stage?.tag === 'runtime', 'a value republished after init survives removal (documented limitation)');
+  ok(engine.ctx.stage?.owner === r, 'and it still points at the system that is gone');
+}
+
 /** Every .js file under src/, depth-first. */
 function sources(dir = SRC, out = []) {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
