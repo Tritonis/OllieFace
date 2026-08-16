@@ -113,6 +113,21 @@ Isolation comes from the Agent tool's `isolation: "worktree"`, which provisions 
 dispatch and removes it if unchanged. Do **not** hand-create or hand-name lane worktrees; the lane is
 an accounting unit for *ports*, not a directory you manage.
 
+**Worktree hygiene.** The Agent tool's auto-cleanup only removes a worktree that ended up *unchanged*
+— any lane that actually wrote something persists after its agent exits, so `.claude/worktrees/`
+accumulates across a session unless something sweeps it. 28 stale worktrees once did exactly this and
+made vite serve a single CSS file in 79.9s, which blew `npm run shots`'s goto timeout 3/3 (issue #90).
+**The controller sweeps merged worktrees at batch close** rather than leaving that to auto-cleanup.
+A worktree given a junction into the main install's `node_modules` (see Install health, and the
+per-lane setup a brief may specify) must have that junction **unlinked before the worktree itself is
+removed** — `rmdir` the junction path only, never a recursive delete of the worktree directory while
+the junction is still live, since a recursive delete walks the junction and deletes the main tree's
+packages (the best explanation on record for issues #67 and #83).
+**Decision (adjudicated):** junctions into the main install are permitted for a lane's lifetime; they
+must be unlinked before the worktree is removed; `tests/worktree-hygiene.test.mjs` (part of
+`gates:cheap`) makes an orphaned one — a junction left behind in a directory that is no longer a
+registered git worktree — loudly visible instead of silently accumulating.
+
 Every lane gets its own port block, assigned in the brief rather than discovered at runtime. Nothing
 in `tools/` or `tests/` claims above 5236 — 5233 and below, plus `gates.mjs`'s heavy tier on
 5234-5236 and `verify-trickle` on 5599 — and `tests/probe-ports.test.mjs` enforces that, so the

@@ -343,8 +343,25 @@ const tBoot = Date.now();
 // `pinclock` is read by `installHarness`, which runs before the engine's first
 // frame. Pinning from here instead would leave every frame between page load
 // and stage-ready timed by the wall clock, and a variable number of them.
-await page.goto(`http://127.0.0.1:${PORT}/?seed=${SEED}&quality=3&harness=1&pinclock=1`,
-                { waitUntil: 'load' });
+// Playwright's own default goto timeout is 30s. A crowded repo root — many
+// stale worktrees under .claude/worktrees/, each a vite watch target — has
+// been observed serving a single CSS file in 79.9s, which blows that default
+// on a page that hasn't even started booting the game. GOTO_TIMEOUT_MS gives
+// real headroom and, on expiry, a message that names the likely cause instead
+// of leaving the next person to rediscover it from a bare TimeoutError.
+const GOTO_TIMEOUT_MS = 120000;
+try {
+  await page.goto(`http://127.0.0.1:${PORT}/?seed=${SEED}&quality=3&harness=1&pinclock=1`,
+                  { waitUntil: 'load', timeout: GOTO_TIMEOUT_MS });
+} catch (err) {
+  throw new Error(
+    `page.goto timed out after ${GOTO_TIMEOUT_MS}ms navigating to the dev server. ` +
+    `This has previously been caused by a crowded repo root (stale worktrees under ` +
+    `.claude/worktrees/ each keeping vite busy watching their own tree) slowing the ` +
+    `dev server's response to a crawl — check for and remove stale worktrees before ` +
+    `assuming this is a real regression. Original error: ${err.message}`
+  );
+}
 log('loaded; waiting for stage...');
 
 // The game signals readiness itself; a fixed sleep would race stage generation.
