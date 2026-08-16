@@ -312,6 +312,16 @@ export class Player {
   _applyCard(card) {
     this.survivor = card;
     this.survivorId = card.id;
+    // The hurtbox follows the rig (#70). `Projectile.hits` builds its capsule
+    // from `e.height`, and so do the splash queries in `data/abilities.js`, so
+    // this one field is what makes a tall survivor's head shootable and stops a
+    // short one being hit above its own silhouette.
+    //
+    // The movement capsule is deliberately NOT this: `_resolve` still passes the
+    // shared HEIGHT, so every survivor traverses terrain identically and no
+    // single-player baseline moves for a reason that has nothing to do with
+    // being shot at.
+    this.height = card.hurtHeight ?? HEIGHT;
     // Copied, never referenced: `_levelBase` writes into its block every time
     // the level changes, and the card is shared module data.
     this.base = { ...card.baseStats };
@@ -851,6 +861,11 @@ export class Player {
   }
 
   _resolve(ctx, h) {
+    // HEIGHT, not `this.height`, and on purpose. #70 made the *hurtbox*
+    // per-survivor; the movement capsule stays shared so that every survivor
+    // fits through the same gaps, steps the same ledges and walks the same
+    // world. Making traversal depend on the rig is a far wider blast radius
+    // than hit registration and would put every single-player baseline in play.
     const res = ctx.stage?.capsuleResolve?.(this.position, RADIUS, HEIGHT, this.velocity, h);
     if (res && res.position) {
       this.position.copy(res.position);
@@ -1254,9 +1269,23 @@ export class Player {
     return this._muzzle.copy(this.position).setY(this.position.y + EYE);
   }
 
-  /** Centre of mass — what enemies and splash should aim at. */
+  /**
+   * Mid-height of this pawn's own capsule.
+   *
+   * The previous line here read "what enemies and splash should aim at", which
+   * was not true of the code: both live callers are the dash trail
+   * (`beginDash`, and the follow in `update`), and nothing aiming at this pawn
+   * goes through here. Corrected rather than deleted because the aspiration is
+   * reasonable and someone may yet route aiming through it — but a comment
+   * naming consumers it does not have is how #70's own hurtbox drifted out of
+   * true unnoticed.
+   *
+   * `this.height`, not HEIGHT, since #70: the trail should hang at the middle
+   * of the rig actually on screen, so it sits at the chest on every survivor
+   * rather than at Anvil's throat and Kestrel's waist.
+   */
   center(out) {
-    return out.copy(this.position).setY(this.position.y + HEIGHT * 0.5);
+    return out.copy(this.position).setY(this.position.y + this.height * 0.5);
   }
 
   // -------------------------------------------------------------- networking

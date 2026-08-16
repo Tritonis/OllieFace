@@ -28,6 +28,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { CharacterMesh } from '../src/entities/CharacterMesh.js';
 import { SURVIVORS } from '../src/data/survivors.js';
+import { Player } from '../src/entities/Player.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -121,29 +122,69 @@ console.log('the aim origin stays near the engine\'s own mesh-less fallback');
   }
 }
 
-console.log('no rig strays too far from the shared hurtbox it is drawn around');
+console.log('every survivor is hittable exactly where it is drawn');
 {
-  // All survivors share one capsule (`Player.js:54`, `HEIGHT = 1.8`), and none
-  // of them matches it: the authored rest crowns run 1.4931 (Anvil) to 2.1989
-  // (Kestrel). This is pre-existing and roster-wide, not something #20 created —
-  // the *default* survivor, Ranger at 2.1300, overshoots the capsule by 0.330 m,
-  // more than Anvil now undershoots it by 0.307 m. So "inside the hurtbox" is
-  // not an invariant this roster has ever held and asserting it would just be
-  // red on arrival.
+  // This block used to assert the opposite — a 0.45 m *band* around a shared
+  // 1.8 m hurtbox, with a comment explaining that no rig matched it and that
+  // asserting a match "would just be red on arrival". That was true, and it was
+  // the defect: Kestrel and Ranger carried a third of a metre of head and
+  // shoulders above the capsule, visible and aimed at and unhittable, and this
+  // test documented that rather than forbidding it (#70).
   //
-  // What is worth holding is the band. A rig is drawn around that capsule even
-  // if it does not fill it, and one that walked far outside would be shooting
-  // and being shot at visibly wrong places. The bound below fits all five with
-  // Anvil the tightest at 0.143 m of margin, so a second 0.20 m squat on Anvil
-  // trips it. Rest pose only: the aim pose lifts Kestrel's weapon to 2.7139 and
-  // a crown bound there measures the animation, not the body.
-  const BAND = 0.45;
+  // Now the hurtbox is the rig. Each card's `hurtHeight` must equal the crown
+  // measured off the rig this same file builds, at the same 1e-3 as the other
+  // pins — so the claim is not "these five numbers are still these five
+  // numbers" but "the number the game shoots at is the number the artist
+  // authored". A re-rig that moves a crown now fails here until the hurtbox
+  // follows it, which is the property the old band could never have had.
+  //
+  // Rest pose, not aim: the aim pose lifts Kestrel's weapon to 2.7139, and a
+  // hurtbox bound there would measure the animation rather than the body.
   for (const s of SURVIVORS) {
     const rest = measure(s.meshKey, false);
-    ok(Math.abs(rest.crown - HEIGHT) <= BAND,
-      `${s.meshKey} rest crown ${rest.crown.toFixed(4)} within ${BAND} m of HEIGHT ${HEIGHT} ` +
-      `(off by ${(rest.crown - HEIGHT).toFixed(4)})`);
+    ok(typeof s.hurtHeight === 'number', `${s.meshKey} card declares a hurtHeight`);
+    near(s.hurtHeight, rest.crown, TOL, `${s.meshKey} hurtHeight tracks its measured crown`);
   }
+}
+
+console.log('and the number actually reaches a pawn');
+{
+  // The card carrying the right number proves nothing on its own — the card is
+  // only correct if `_applyCard` copies it onto the pawn that `Projectile.hits`
+  // and the splash queries in `data/abilities.js` read `height` from. Asserting
+  // the data and assuming the wiring is how a change becomes a no-op that reads
+  // as a pass; this repo has been fooled that way before.
+  //
+  // Constructed the way the other Player tests do it (`revive-system.test.mjs`):
+  // a real `Player` needs a live THREE/ctx world, so the prototype method is
+  // called against a bare object. That is the real `_applyCard`, not a copy.
+  for (const s of SURVIVORS) {
+    const pawn = Object.create(Player.prototype);
+    Player.prototype._applyCard.call(pawn, s);
+    near(pawn.height, s.hurtHeight, 1e-9,
+      `a ${s.meshKey} pawn carries its own hurtbox`);
+  }
+  // And the roster is not accidentally uniform — if every card had ended up the
+  // same value, every assertion above would still pass while the feature did
+  // nothing at all.
+  const distinct = new Set(SURVIVORS.map((s) => s.hurtHeight));
+  ok(distinct.size >= 4, `the roster carries ${distinct.size} distinct hurtboxes, not one shared value`);
+}
+
+console.log('the shared capsule is still the shared capsule');
+{
+  // #70 split one constant into two ideas, and the split is the whole point:
+  // the hurtbox became per-survivor, the *movement* capsule did not. If a later
+  // change quietly points `_resolve` at `this.height`, every survivor starts
+  // traversing the world differently and every single-player baseline is in
+  // play — a much wider blast radius, and one no fingerprint would attribute to
+  // this. Pinned as source text because it is a claim about which value is
+  // passed, which no runtime assertion on a built rig can see.
+  const src = readFileSync(join(here, '..', 'src', 'entities', 'Player.js'), 'utf8');
+  ok(/capsuleResolve\?\.\(this\.position, RADIUS, HEIGHT,/.test(src),
+    '_resolve still passes the shared HEIGHT, not the per-survivor hurtbox');
+  ok(/setY\(this\.position\.y \+ this\.height \* 0\.5\)/.test(src),
+    'center() uses the per-survivor capsule, not the shared HEIGHT');
 }
 
 console.log('the transcribed Player constants still match source');

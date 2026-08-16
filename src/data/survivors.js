@@ -40,6 +40,26 @@ export const SURVIVORS = [
       + 'are gone. Nothing in the loadout is the best tool for anything on this planet, '
       + 'and all of it is good enough — which, so far, is the same thing.',
     meshKey: 'ranger',
+    // What can be shot, in metres — the rig's own crown height, not a shared
+    // constant (#70).
+    //
+    // Every survivor used to share one 1.8 m hurtbox and no rig matched it.
+    // Ranger and Kestrel overshot by 0.330 and 0.399 m, so both carried a third
+    // of a metre of head and shoulders that was drawn, aimed at, and could not
+    // be hit; a player who landed a shot on a visible head saw no damage and
+    // read it as a hit-registration bug, which is the worst way for a design
+    // decision to present itself. Anvil undershot by 0.307 and could be hit
+    // slightly above its own silhouette.
+    //
+    // These numbers are measured from the built rig rather than chosen, and
+    // `tests/survivor-rig-metrics.test.mjs` rebuilds every rig and asserts the
+    // two still agree. That is the part that makes this durable: a future re-rig
+    // that moves a crown fails until the hurtbox moves with it, so the gap
+    // cannot silently reopen the way it did here.
+    //
+    // This is the hurtbox only. The movement capsule stays shared at
+    // `Player.js`'s HEIGHT, so no survivor traverses the world differently.
+    hurtHeight: 2.1300,
     accentColor: 0xff7a3d,
     // The dash ribbon is the one colour that is deliberately *not* the accent:
     // the Ranger's roll has always been cold cyan against his warm kit, and
@@ -75,6 +95,10 @@ export const SURVIVORS = [
       + 'weighs as much as the rest of the suit and is the reason the suit exists. '
       + 'There is no ranged option. There was never meant to be one.',
     meshKey: 'anvil',
+    // Measured crown. The shortest on the roster, and the only one that used to
+    // sit *inside* the shared 1.8 m box — #20 squatted it for silhouette
+    // separation and took the hurtbox nowhere. See Ranger's card for the rule.
+    hurtHeight: 1.4931,
     accentColor: 0xff5a2a,
     trailColor: 0xff8a3d,
     unlock: null,
@@ -110,6 +134,9 @@ export const SURVIVORS = [
       + 'and take one shot. The training holds. The six hours do not — down here '
       + 'things close, and everything about the rifle is built for them not to.',
     meshKey: 'kestrel',
+    // Measured crown. The largest old mismatch on the roster at +0.399 m — the
+    // head that could be seen and not shot. See Ranger's card for the rule.
+    hurtHeight: 2.1989,
     accentColor: 0xc9a4ff,
     trailColor: 0xd6b4ff,
     unlock: null,
@@ -147,6 +174,8 @@ export const SURVIVORS = [
       + 'and two sentry guns inside a week. Holds ground better than anything else '
       + 'that walked off the ship, and cannot take any.',
     meshKey: 'rook',
+    // Measured crown. See Ranger's card for the rule.
+    hurtHeight: 1.6175,
     accentColor: 0x9dff5a,
     trailColor: 0xbfff7a,
     unlock: null,
@@ -184,6 +213,9 @@ export const SURVIVORS = [
       + 'what fire does when you stop asking it to stay in the furnace. Kills nothing '
       + 'quickly. Has never needed to.',
     meshKey: 'cinder',
+    // Measured crown, and the only one that already agreed with the old shared
+    // box to four places. See Ranger's card for the rule.
+    hurtHeight: 1.8000,
     accentColor: 0xff8a20,
     // Warmer and paler than the accent, because the dash ribbon on this rig is
     // vented gas rather than a coloured streak — the same reasoning as the

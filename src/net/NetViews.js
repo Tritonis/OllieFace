@@ -22,6 +22,7 @@ import { EKIND, ESTATE } from './Protocol.js';
 import { ENEMY_BY_TYPE } from '../data/enemies.js';
 import { acquireRig, releaseRig, configureShadows, makeAnim } from '../entities/EnemyMeshes.js';
 import { CharacterMesh } from '../entities/CharacterMesh.js';
+import { getSurvivor, DEFAULT_SURVIVOR } from '../data/survivors.js';
 import { createInteractableView } from '../world/Interactables.js';
 
 // Matches Enemy's own LOD cut (57m²·, i.e. ~56 units out).
@@ -177,7 +178,17 @@ class PlayerView {
     this.maxHealth = 100;
     this.health = 100;
     this.radius = 0.45;
-    this.height = 1.8;
+    // Matched to the rig this view actually draws, not to the old shared 1.8
+    // (#70). `this.mesh = new CharacterMesh()` above takes no mesh key, because
+    // the wire carries no survivor id — so every remote player is *rendered*
+    // with the default survivor's rig whichever one they picked. The hurtbox has
+    // to agree with what is on screen, so it reads the same card, and "what you
+    // see is what is hittable" holds for a teammate too.
+    //
+    // The real gap here is the missing survivor id on the wire, which makes a
+    // remote Anvil look like a Ranger. That predates this change and is tracked
+    // separately; when it is fixed, this should read the peer's own card.
+    this.height = getSurvivor(DEFAULT_SURVIVOR).hurtHeight;
 
     // The state block CharacterMesh animates from. Reused — a remote player
     // must not allocate one of these every frame.
