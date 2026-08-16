@@ -643,7 +643,12 @@ export class Items {
     this._set(baseId, 0, 'corrupt');
     this._set(blight.id, this.count(blight.id) + held, 'corrupt');
     this.ctx.events.emit('itemMutated', {
-      baseId, blightId: blight.id, count: held, band, owner: this._owner(),
+      // `eligible` is the field of stacks the toll could have taken, and it is
+      // carried for the run record (issue #29) rather than for any listener in
+      // the game: what a mutation cost is only legible against what it might
+      // have cost. It rides the wire like the rest of this payload — a handful
+      // of short ids, at most once per band crossing, which is a few times a run.
+      baseId, blightId: blight.id, count: held, band, owner: this._owner(), eligible,
     });
     return true;
   }
