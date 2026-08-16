@@ -49,7 +49,21 @@ Commit style: a single evocative sentence describing what changed in the world, 
 
 ## Verification
 
-- `npm test` — the full suite, ~1 minute. Currently **72/72 test files**.
+Two of these are now bundled, so the cheap set is one command rather than a remembered list
+(`tools/gates.mjs`, issue #82). There is deliberately **no CI**: the repo is private and the gates
+that matter are Windows/GPU/Steam-bound, so a hosted Linux runner could run almost none of them.
+
+- `npm run gates:cheap` — the per-commit tier, fail-fast: `npm test`, a production build,
+  `npm audit`. ~1 min. Names the failing arm rather than leaving you with the last tool's stderr.
+  The audit arm fails on **high and critical** only, minus dated entries in
+  `gates.audit-allow.json` — and an entry whose `reviewBy` has passed is itself a failure.
+- `npm run gates:heavy` — `gate:sp`, `gate:mp1`, `gate:elite`, strictly serial, each on its own
+  explicit port (5234-5236 by default; `--port-base 5260` for a lane). Two runs sharing a port base
+  refuse rather than collide. `smoke:steam` is excluded by construction — it needs a live client
+  and sets library-global impairment — so run it by hand.
+- `npm run gates:status` — the staleness record alone, runs nothing. Says which gates have not run
+  since the last commit that touched their inputs. State lives in the gitignored `.gates/`.
+- `npm test` — the full suite, ~1 minute. Currently **73/73 test files**.
 - `npm run smoke:steam` — the Steam socket-pair gate (ADR 0002 arm B), ~35 s. Needs a **running,
   logged-in Steam client**, so it is a local gate and never a CI one. Writes
   `reviews/net-baseline/steam-socketpair-3peer-60hz.json`; the write-up beside it is

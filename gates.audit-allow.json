@@ -1,0 +1,19 @@
+{
+  "_comment": [
+    "Advisories the `audit` arm of `npm run gates:cheap` suppresses. Keyed by GHSA id",
+    "(or by the full advisory URL). Threshold and rationale are documented at the top",
+    "of tools/gates.mjs: the arm fails on high and critical, and IGNORES this file's",
+    "entry once its reviewBy date has passed — an expired entry is a failure, not a",
+    "suppression. An allowlist without an expiry is a mute button, and the point of the",
+    "gate runner is that nothing important goes quiet.",
+    "",
+    "To add an entry you must say why the advisory does not reach this product, not",
+    "merely that it is inconvenient, and pick a date by which someone re-checks."
+  ],
+  "advisories": {
+    "GHSA-2v37-7h3g-55p8": {
+      "reviewBy": "2026-11-16",
+      "reason": "nanoid <3.3.18, reached only as postcss's dependency inside vite — a devDependency used at build time and never shipped in dist/. The advisory is an infinite loop when a CUSTOM generator is called with size zero; nothing in this repo calls nanoid at all, let alone with a custom alphabet. Fix is available (`npm audit fix` bumps postcss's nanoid), but the lockfile bump is its own change with its own verification, tracked separately."
+    }
+  }
+}
