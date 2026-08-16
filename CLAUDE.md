@@ -78,15 +78,22 @@ Commit style: a single evocative sentence describing what changed in the world, 
 Default working mode is **three work items at once**, one git worktree each, with the controller
 merging. Two writers in one tree nearly collided on master once; isolation is not optional.
 
+Isolation comes from the Agent tool's `isolation: "worktree"`, which provisions a worktree per
+dispatch and removes it if unchanged. Do **not** hand-create or hand-name lane worktrees; the lane is
+an accounting unit for *ports*, not a directory you manage.
+
 Every lane gets its own port block, assigned in the brief rather than discovered at runtime. Nothing
 in `tools/` or `tests/` claims above 5233 (plus `verify-trickle` on 5599), and
 `tests/probe-ports.test.mjs` enforces that, so the 5240+ range is free by construction:
 
-| Lane | Worktree | Port block | Pass as |
-|---|---|---|---|
-| A | `wt/lane-a` | 5240-5249 | `SP_PORT=5240`, `--port 5241`, `--signal-port 5242` |
-| B | `wt/lane-b` | 5250-5259 | `SP_PORT=5250`, `--port 5251`, `--signal-port 5252` |
-| C | `wt/lane-c` | 5260-5269 | `SP_PORT=5260`, `--port 5261`, `--signal-port 5262` |
+| Lane | Port block | Pass as |
+|---|---|---|
+| A | 5240-5249 | `SP_PORT=5240`, `--port 5241`, `--signal-port 5242` |
+| B | 5250-5259 | `SP_PORT=5250`, `--port 5251`, `--signal-port 5252` |
+| C | 5260-5269 | `SP_PORT=5260`, `--port 5261`, `--signal-port 5262` |
+
+A brief must state its lane's ports explicitly. An agent that defaults to 5209 has silently joined
+whichever other lane is already there.
 
 **Never laned — these serialise across the whole machine:**
 
