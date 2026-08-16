@@ -71,7 +71,7 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 page.on('pageerror', (e) => console.log('PAGE ERROR:', e.message));
 await page.goto('http://127.0.0.1:5217/?seed=1337&quality=1&harness=1', { waitUntil: 'load' });
-await page.waitForFunction(() => globalThis.__GAME__?.ctx?.stage != null, null, { timeout: 60000 });
+await page.waitForFunction(() => globalThis.__GAME__?.ctx?.stage != null && globalThis.__HARNESS__ != null, null, { timeout: 60000 });
 // Let every system finish init and publish itself onto ctx.
 await page.evaluate(() => globalThis.__HARNESS__.gameplay());
 await page.waitForTimeout(1500);

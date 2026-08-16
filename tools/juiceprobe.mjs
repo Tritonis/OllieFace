@@ -127,7 +127,7 @@ page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(m.text(
 let record = null;
 try {
   await page.goto(`http://127.0.0.1:${PORT}/?harness=1&pinclock=1&seed=${SEED}`, { waitUntil: 'load' });
-  await page.waitForFunction(() => globalThis.__GAME__?.ctx?.stage != null, null, { timeout: 60000 });
+  await page.waitForFunction(() => globalThis.__GAME__?.ctx?.stage != null && globalThis.__HARNESS__ != null, null, { timeout: 60000 });
 
   // Everything the arms share, installed once. `__JUICE__` hangs off the page
   // so each arm is a small `evaluate` rather than one enormous one.

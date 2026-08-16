@@ -50,7 +50,7 @@ const page = await browser.newPage({ viewport: { width: 1600, height: 900 }, dev
 page.on('pageerror', (e) => console.log('PAGE ERROR:', e.message));
 
 await page.goto(`http://127.0.0.1:5201/?seed=1337&quality=${QUALITY}&harness=1`, { waitUntil: 'load' });
-await page.waitForFunction(() => globalThis.__GAME__?.ctx?.stage != null, null, { timeout: 60000 });
+await page.waitForFunction(() => globalThis.__GAME__?.ctx?.stage != null && globalThis.__HARNESS__ != null, null, { timeout: 60000 });
 
 const env = await page.evaluate(() => {
   const g = globalThis.__GAME__;
