@@ -14,12 +14,58 @@
 // to exist is to assert something git cannot — it belongs in the cheap tier
 // via `npm test` for exactly that reason.
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const root = join(here, '..');
-const binDir = join(root, 'node_modules', '.bin');
+// Overridable only for this file's own test-of-the-test (see #95): pointing
+// root at a scratch fixture lets us prove the guard is still strict when it
+// is NOT running from a linked worktree, without touching real machine
+// state. Unset in every normal run, so normal behavior is untouched.
+const root = process.env.INSTALL_HEALTH_TEST_ROOT
+  ? resolvePath(process.env.INSTALL_HEALTH_TEST_ROOT)
+  : join(here, '..');
+
+/**
+ * A linked worktree (git worktree add ...) has its own `.git` *file* pointing
+ * at `<main>/.git/worktrees/<name>`, so `--git-dir` and `--git-common-dir`
+ * diverge; the primary checkout's `--git-dir` IS its `--git-common-dir`. This
+ * is the robust signal (#95) — it does not key on any path name or on the
+ * literal string "worktree" appearing anywhere, so a lane directory named
+ * anything at all is still detected correctly.
+ *
+ * In a worktree, node_modules lives (or should live) in the *main* checkout
+ * — `--git-common-dir`'s parent — not in the worktree's own directory, which
+ * has no install of its own. Resolving through git-common-dir means the
+ * guard still guards in a worktree, rather than skipping outright: preferred
+ * per #95 because the assertions port cleanly (they only need a real
+ * `node_modules/.bin` to look at, and the main checkout's is exactly that).
+ *
+ * A worktree WITH a junctioned node_modules (how lanes actually run
+ * vite/captures) must not be double-resolved into a false failure: junction
+ * and git-common-dir resolution land on the same real directory, so realpath
+ * comparison of directories rather than string paths keeps that safe.
+ */
+function resolveBinDir(startDir) {
+  let gitDir, commonDir;
+  try {
+    gitDir = execFileSync('git', ['rev-parse', '--git-dir'], { cwd: startDir, encoding: 'utf8' }).trim();
+    commonDir = execFileSync('git', ['rev-parse', '--git-common-dir'], { cwd: startDir, encoding: 'utf8' }).trim();
+  } catch {
+    // Not a git checkout at all (or git unavailable) — fall back to the
+    // naive same-directory resolution; this is the pre-#95 behavior.
+    return join(startDir, 'node_modules', '.bin');
+  }
+  const isLinkedWorktree = resolvePath(startDir, gitDir) !== resolvePath(startDir, commonDir);
+  if (!isLinkedWorktree) return join(startDir, 'node_modules', '.bin');
+  // git-common-dir is the main checkout's `.git`; its parent is the main
+  // checkout root.
+  const mainRoot = dirname(resolvePath(startDir, commonDir));
+  return join(mainRoot, 'node_modules', '.bin');
+}
+
+const binDir = resolveBinDir(root);
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
