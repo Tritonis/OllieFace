@@ -1805,6 +1805,76 @@ export function installHarness(ctx) {
   };
 
   /**
+   * Near-transparent overlays are not subject material.
+   *
+   * The mask counts a pixel as the subject's when the two renders differ by more
+   * than 6 levels of summed channel distance, and that test is opacity-blind. A
+   * deliberately near-invisible wash passes it everywhere it is drawn: the
+   * warden's barrier (`wardMat`, opacity 0.05, additive) moves every pixel it
+   * covers by d ~= 31, so all 3,329 px of it enter the mask — and each one
+   * carries a separation bounded by its own alpha (~0.08 over its own backdrop,
+   * ~0.23 over near-black). The wash therefore outvotes the monster inside it and
+   * drags `11-bestiary` object 13 to `sepP50 0.17` while the monster reads
+   * `legible 0.515`. No art change can lift it, because the number it produces is
+   * a property of the opacity the art deliberately chose.
+   *
+   * So the mask stops asking "did this pixel move" and starts asking "did
+   * anything a viewer can see put it there". A mesh whose material is transparent
+   * below `VEIL_OPACITY` is a veil: hidden in *both* renders of the pair, so it
+   * neither contributes pixels of its own nor tints the backdrop the subject is
+   * measured against. Hiding it on only one side would be worse than counting it.
+   *
+   * The threshold is set against **live** opacity ranges, not against authored
+   * literals, because that is what `_isVeil` reads. An audit of construction
+   * sites alone would have missed the ward dome, which is built at 0.14
+   * (`src/entities/Placeables.js:211`) and then animated every frame to
+   * `0.10 + (1 - phase) * 0.10` (`Placeables.js:407`) — so it breathes across
+   * 0.10-0.20 and spends part of every pulse below any ceiling of 0.12. The dome
+   * is a gameplay-readable shape with solid siblings on its rig, so a 0.12
+   * threshold would not merely have counted it, it would have *hidden* it,
+   * flickering in and out of the mask on the pulse. No current shot stages it,
+   * which is precisely why the number has to be argued rather than measured.
+   *
+   * So: 0.08, with a clear gap on both sides of every live range in `src/` — the
+   * warden's wash sits at a constant 0.05 below it, the dome's animated minimum
+   * at 0.10 above it, and the wireframe that actually says "barrier" at 0.85.
+   * Read live, so a material genuinely fading out leaves the mask exactly when it
+   * stops being visible; raising this ceiling means re-auditing what animates
+   * opacity, not what declares it.
+   *
+   * Refused for a veil that is the whole of what it hangs on: an object with no
+   * other material is *made* of its veil, and blanking it would report the
+   * subject missing rather than the subject faint. Only a veil with visible
+   * company is dropped.
+   */
+  const VEIL_OPACITY = 0.08;
+  const _isVeil = (m) => m && m.transparent === true && m.opacity < VEIL_OPACITY;
+  const _matsOf = (o) => (Array.isArray(o.material) ? o.material : [o.material]);
+  const _hideVeils = () => {
+    const hidden = [];
+    ctx.scene.traverse((o) => {
+      if (!o.visible || !o.material) return;
+      if (!_matsOf(o).every(_isVeil)) return;
+      // Does anything else on the same rig still draw? Walk up a bounded number
+      // of ancestors — never as far as the scene, where "something else draws"
+      // is true of every frame and would mean nothing.
+      let solid = false;
+      let p = o.parent;
+      for (let up = 0; up < 3 && p && p !== ctx.scene && !solid; up++, p = p.parent) {
+        p.traverse((q) => {
+          if (solid || q === o || !q.visible || !q.material) return;
+          if (!_matsOf(q).every(_isVeil)) solid = true;
+        });
+      }
+      if (!solid) return;
+      o.visible = false;
+      hidden.push(o);
+    });
+    return hidden;
+  };
+  const _showVeils = (hidden) => { for (const o of hidden) o.visible = true; };
+
+  /**
    * Retarget every soft-particle depth lookup at the buffer we are about to
    * render into. **This is what made `08-explosion`'s blast gate stop observing
    * the blast**, and it would have done the same to any future effect subject.
@@ -1919,6 +1989,17 @@ export function installHarness(ctx) {
     r.setRenderTarget(_maskRT);
     camera.updateMatrixWorld(true);
     const softSaved = _pinSoftResolution(MASK_W, MASK_H);
+    const veiled = _hideVeils();
+    /* Restored through `finally`, unlike the two saves above it, because this
+     * one leaks *into the photograph*. A throw mid-measurement leaves the render
+     * target and the shadow flag wrong for the next report, which the next report
+     * sets again; it would leave the veils `visible = false` for the rest of the
+     * page load, so every later shot would be composed with the warden's barrier
+     * simply gone. The body below keeps its original indentation on purpose — the
+     * `try` guards the block, and re-indenting 140 lines to announce that would
+     * bury the change it is guarding.
+     */
+    try {
 
     maskPass(r, null);
     r.readRenderTargetPixels(_maskRT, 0, 0, MASK_W, MASK_H, _maskA);
@@ -2085,6 +2166,8 @@ export function installHarness(ctx) {
       perPx: perPx && perPx.length <= 64 ? perPx : undefined,
       perSep: perSep && perSep.length <= 64 ? perSep : undefined,
     };
+
+    } finally { _showVeils(veiled); }
   };
 
   /**
