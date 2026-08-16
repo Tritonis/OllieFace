@@ -18,7 +18,7 @@
 // mistake rather than a stale expectation. Adding a module never touches this
 // file; adding a module that reaches the wrong way does.
 //
-// Three of the rules currently have violations. They are named exemptions with
+// Two of the rules currently have violations. They are named exemptions with
 // the debt spelled out, not softened rules: an exemption list that says what it
 // owes is the useful artefact, and a rule quietly narrowed until it is green is
 // the thing this file exists to prevent.
@@ -103,8 +103,25 @@ const EDGE_PATTERNS = [
   // inventing an edge that is not in the source.
   /(?:^|[\s;}])(?:import|export)\s[^'";]*?from\s*['"]([^'"]+)['"]/g,
   /(?:^|[\s;}])import\s*['"]([^'"]+)['"]/g,
-  /\bimport\(\s*['"]([^'"]+)['"]\s*\)/g,
+  // Backticks included. A template literal is a perfectly ordinary way to write
+  // a dynamic import, and a version of this that only understood quotes read
+  // `import(`../ui/HUD.js`)` as no edge at all — not as an edge it could not
+  // resolve, simply as nothing. That is the one outcome this file is built to
+  // never produce, so the quote class is widened here and the unreadable case
+  // is caught below.
+  /\bimport\(\s*['"`]([^'"`]+)['"`]\s*\)/g,
 ];
+
+/**
+ * A dynamic import whose argument this cannot read as a plain literal.
+ *
+ * Interpolation, a variable, a concatenation: all legitimate JavaScript, none
+ * of it something a static sweep can follow. The honest answer is to fail and
+ * say which line, because the alternative is a module quietly exempting itself
+ * from every rule in this file by building its specifier at runtime. "I could
+ * not tell" is a FAIL here, exactly as it is everywhere else in this sweep.
+ */
+const OPAQUE_DYNAMIC_IMPORT = /\bimport\(\s*(?!['"`][^'"`]+['"`]\s*\))([^)]*)\)/g;
 
 /** Specifiers named by one module, in source order, deduplicated. */
 function specifiersIn(source) {
@@ -137,9 +154,17 @@ const edges = [];
 const unresolvable = [];
 const escaping = [];
 const foreignPackages = [];
+const opaque = [];
 
 for (const file of modules) {
   const source = readFileSync(join(srcRoot, file), 'utf8');
+  const text = stripComments(source);
+  OPAQUE_DYNAMIC_IMPORT.lastIndex = 0;
+  let dyn;
+  while ((dyn = OPAQUE_DYNAMIC_IMPORT.exec(text)) !== null) {
+    const line = text.slice(0, dyn.index).split('\n').length;
+    opaque.push(`${file}:${line} -> import(${dyn[1].trim().slice(0, 40)})`);
+  }
   for (const spec of specifiersIn(source)) {
     if (!spec.startsWith('.')) {
       if (isThree(spec)) edges.push({ from: file, spec, to: null });
@@ -162,6 +187,9 @@ for (const file of modules) {
 
 ok(unresolvable.length === 0,
   `every relative import inside src/ resolves to a file that exists${unresolvable.length ? ` — dangling: ${unresolvable.join(', ')}` : ''}`);
+
+ok(opaque.length === 0,
+  `every dynamic import names a literal path this sweep can follow${opaque.length ? ` — opaque: ${opaque.join(', ')}` : ''}`);
 
 /* ------------------------------------------------------------------ *
  * Areas
