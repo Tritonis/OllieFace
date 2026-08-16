@@ -472,15 +472,41 @@ class RunRecorder {
   }
 
   /**
-   * Append the record to the buffer and drop the partial. Both writes happen
-   * here so the two can never disagree — a boot that finds a partial beside a
-   * finished record of the same run would file the run twice.
+   * Append the record to the buffer, and drop the checkpoint only once it is
+   * genuinely filed.
+   *
+   * The ordering is the whole of this function. Dropping the checkpoint
+   * unconditionally made a *detected* failure destroy more than an undetected
+   * one: `onRunEnd` closes the last stage first, which writes a good
+   * checkpoint, and a quota-exhausted `setItem` on the runs list would then be
+   * followed by a `removeItem` that erased the one copy `promotePartial` could
+   * have recovered on the next boot. A run was lost precisely because the
+   * failure was caught.
+   *
+   * So `save` reports rather than only recording, and the checkpoint outlives a
+   * commit that did not land. Reading `save`'s own answer beats consulting
+   * `broken`: the flag is also raised by hook throws, and "did *this* write
+   * succeed" is the only question the `removeItem` actually depends on.
+   *
+   * A checkpoint left behind is never a duplicate: the next boot promotes it
+   * and deletes it, and the finished record it duplicates was, by construction,
+   * never written.
    */
   commit() {
     const runs = readRuns(this.storage);
     runs.push(this.record);
     while (runs.length > MAX_RUNS) runs.shift();
-    this.save(RUNS_KEY, runs);
+    if (!this.save(RUNS_KEY, runs)) {
+      // Upgrade the checkpoint to the finished record before giving up. The
+      // copy `closeStage` left is the last *stage boundary*, so it predates the
+      // outcome, the death cause and the summary snapshot — the half of the
+      // record the balance questions are actually asked of. Writing one record
+      // is a far smaller ask than writing the whole buffer, so this frequently
+      // succeeds where the line above did not; when it does not, the older
+      // checkpoint is still standing and nothing has been made worse.
+      this.save(PARTIAL_KEY, this.record);
+      return;
+    }
     try { this.storage.removeItem(PARTIAL_KEY); } catch { /* private mode */ }
   }
 
@@ -495,14 +521,17 @@ class RunRecorder {
     list.push(entry);
   }
 
+  /** Write one key. Returns whether the bytes actually landed — see `commit`. */
   save(key, value) {
     try {
       this.storage.setItem(key, JSON.stringify(value));
+      return true;
     } catch (err) {
       // Quota exhausted, or private mode. Recording on is a favour the player
       // is doing us; it may not cost them the ability to save their profile.
       this.broken = true;
       console.error('[telemetry] recording stopped — the record could not be stored', err);
+      return false;
     }
   }
 }
@@ -511,24 +540,46 @@ class RunRecorder {
  * Promote a record left behind by a run that never reached its end — a crash,
  * an alt-F4, a closed tab. Called at boot, before the new run opens its own.
  *
- * It is filed exactly as it was found, `complete: false` intact, so nothing
- * downstream can mistake a partial for a run that finished.
+ * A record that parses is filed exactly as it was found, `complete` flag and
+ * all, so nothing downstream has to guess. Usually that flag is false — the
+ * checkpoint is a stage boundary. It is true in one case: a run that reached
+ * its end and could not be filed, which `commit` writes here as its last act
+ * before giving up. Both are recovered; only the reader can tell them apart,
+ * and the flag is how.
+ *
+ * The three outcomes are deliberately distinct, and the middle one is the one
+ * that used to be wrong:
+ *
+ *  · **Filed.** The checkpoint is appended and then deleted, in that order —
+ *    the same rule `commit` follows, so a write that does not land never costs
+ *    the copy it was going to replace.
+ *  · **Unparseable.** Cleared, and not filed. A half-written or hand-mangled
+ *    checkpoint is unrecoverable by definition, and the old ordering — parse
+ *    inside the same `try` as the delete — meant the throw jumped over the
+ *    delete and the same junk was re-read, and re-thrown over, on every
+ *    subsequent boot. Permanently stuck, permanently silent.
+ *  · **Unwritable.** Kept. Storage is full or refusing writes; the checkpoint is
+ *    the only copy and the next boot may have room.
  */
 export function promotePartial(storage = globalThis.localStorage) {
+  let raw = null;
+  try { raw = storage?.getItem(PARTIAL_KEY); } catch { return null; }
+  if (!raw) return null;
+
   let record = null;
-  try {
-    const raw = storage?.getItem(PARTIAL_KEY);
-    if (!raw) return null;
-    record = JSON.parse(raw);
-    storage.removeItem(PARTIAL_KEY);
-  } catch { return null; }
-  if (!record || typeof record !== 'object') return null;
+  try { record = JSON.parse(raw); } catch { /* junk; cleared below */ }
+  if (!record || typeof record !== 'object') {
+    try { storage.removeItem(PARTIAL_KEY); } catch { /* private mode */ }
+    return null;
+  }
+
   try {
     const runs = readRuns(storage);
     runs.push(record);
     while (runs.length > MAX_RUNS) runs.shift();
     storage.setItem(RUNS_KEY, JSON.stringify(runs));
   } catch { return null; }
+  try { storage.removeItem(PARTIAL_KEY); } catch { /* private mode */ }
   return record;
 }
 

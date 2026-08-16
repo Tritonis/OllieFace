@@ -47,12 +47,25 @@ const SRC = join(here, '..', 'src');
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
 
-/** A localStorage stand-in. Node has no web storage, and the module takes one. */
-function fakeStorage(seed = {}) {
+/**
+ * A localStorage stand-in. Node has no web storage, and the module takes one.
+ *
+ * `refuse` names keys whose writes throw the way a real quota-exhausted
+ * `setItem` does — the only way to reach the failure path that matters, since a
+ * browser's quota cannot be exhausted on demand.
+ */
+function fakeStorage(seed = {}, { refuse = [] } = {}) {
   const m = new Map(Object.entries(seed));
   return {
     getItem: (k) => (m.has(k) ? m.get(k) : null),
-    setItem: (k, v) => { m.set(k, String(v)); },
+    setItem: (k, v) => {
+      if (refuse.includes(k)) {
+        const e = new Error('quota exceeded');
+        e.name = 'QuotaExceededError';
+        throw e;
+      }
+      m.set(k, String(v));
+    },
     removeItem: (k) => { m.delete(k); },
     get size() { return m.size; },
   };
@@ -324,6 +337,71 @@ console.log('a run that crashes keeps everything up to the last stage boundary')
   ok(readRuns(storage).length === 1, 'it is now in the buffer');
   ok(storage.getItem(PARTIAL_KEY) === null, 'and the partial is gone, so it cannot be filed twice');
   ok(rec.active === true, 'the recorder that wrote it was live');
+}
+
+/**
+ * The failure that used to cost more than the crash it was guarding against.
+ *
+ * `onRunEnd` closes the last stage first, which writes a good checkpoint, and
+ * `commit` then dropped that checkpoint whether or not the runs-list write
+ * landed. A quota failure therefore destroyed the one copy `promotePartial`
+ * could have recovered — a detected failure losing more than an undetected one,
+ * which inverts the whole point of checkpointing.
+ */
+console.log('a storage failure at run end keeps the checkpoint rather than eating it');
+{
+  const storage = fakeStorage({}, { refuse: [RUNS_KEY] });
+  setTelemetryEnabled(true, storage);
+  const engine = fresh();
+  const ctx = engine.ctx;
+  ctx.corruption = { world: 0, band: 0 };
+  installTelemetry(ctx, { storage });
+
+  ctx.time = 0;
+  ctx.events.emit('stageStart', { index: 0, name: 'Ashen Shelf' });
+  ctx.time = 40;
+  ctx.events.emit('stageStart', { index: 1, name: 'Sunken Reach' });
+  ok(storage.getItem(PARTIAL_KEY) !== null, 'the stage boundary checkpointed the run');
+
+  const realError = console.error;
+  console.error = () => {};
+  try { ctx.time = 90; ctx.events.emit('runEnd', { won: false, stats: { kills: 3 } }); }
+  finally { console.error = realError; }
+
+  ok(readRuns(storage).length === 0, 'the runs list genuinely could not be written');
+  ok(storage.getItem(PARTIAL_KEY) !== null, 'and the checkpoint survived the failed commit');
+
+  // Which is the whole point: the next boot recovers it. Storage is healthy
+  // again by then — a full disk is not usually full forever.
+  const healthy = fakeStorage({ [PARTIAL_KEY]: storage.getItem(PARTIAL_KEY) });
+  const promoted = promotePartial(healthy);
+  ok(promoted?.stages?.length === 2, `the next boot promoted the recovered run (${promoted?.stages?.length} stages)`);
+  ok(readRuns(healthy).length === 1, 'and it is in the buffer');
+  // The checkpoint was upgraded to the finished record before `commit` gave
+  // up, so the recovery keeps the half a stage-boundary copy would have lost.
+  ok(promoted?.complete === true, 'the run is known to have reached its end');
+  ok(promoted?.outcome?.won === false, 'the outcome survived');
+  ok(promoted?.stats?.kills === 3, 'and so did the summary snapshot');
+}
+
+console.log('a checkpoint that cannot be parsed is cleared, not retried forever');
+{
+  const storage = fakeStorage({ [PARTIAL_KEY]: '{"stages":[' });
+  ok(promotePartial(storage) === null, 'nothing is filed from junk');
+  ok(storage.getItem(PARTIAL_KEY) === null, 'and the junk is gone, so the next boot is not stuck on it');
+  ok(readRuns(storage).length === 0, 'no half-record was invented');
+
+  // A checkpoint that parses but is not a record is the same case.
+  const notObject = fakeStorage({ [PARTIAL_KEY]: '"a string"' });
+  ok(promotePartial(notObject) === null, 'a non-object is not filed');
+  ok(notObject.getItem(PARTIAL_KEY) === null, 'and is cleared too');
+}
+
+console.log('a checkpoint that cannot be re-filed is kept for the boot after');
+{
+  const storage = fakeStorage({ [PARTIAL_KEY]: '{"complete":false,"stages":[]}' }, { refuse: [RUNS_KEY] });
+  ok(promotePartial(storage) === null, 'promotion reports that it did not happen');
+  ok(storage.getItem(PARTIAL_KEY) !== null, 'and the only copy is still there');
 }
 
 console.log('a halted engine still files what it had');
