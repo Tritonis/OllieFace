@@ -12,7 +12,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { initSteam, getClient, getStatus, enableOverlay } from './steam.mjs';
-import { createSaveWriter, drainBeforeQuit } from './save-writer.mjs';
+import { createSaveWriter, createQuitGuard } from './save-writer.mjs';
 import {
   parseSteamId, steamIdToString, validateMaxMembers, validateLobbyRecord,
   sanitizeLobbyData, encodeSignal, decodeSignal, MAX_SIGNAL_FRAME_BYTES,
@@ -485,17 +485,14 @@ if (!app.requestSingleInstanceLock()) {
   // writer's retry budget made the window wider than the old synchronous
   // handler's under exactly the contended-disk conditions it was built for.
   //
-  // Latched, because `app.quit()` below re-enters this handler; on the second
-  // pass there is nothing left to wait for and the quit is allowed through.
-  let draining = false;
-  app.on('before-quit', (event) => {
-    releaseAllSteamState();
-    if (draining || !saveWriter.busy) return;
-    draining = true;
-    event.preventDefault();
-    drainBeforeQuit(saveWriter).then((outcome) => {
-      if (outcome === 'timeout') console.error('store:save: quitting without waiting further for the save');
-      app.quit();
-    });
-  });
+  // The latch lives in `createQuitGuard` and has three states, not two: a
+  // second quit request arriving mid-drain has to be REFUSED, not waved past.
+  // Electron clears its own `is_quitting_` the moment the first handler calls
+  // `preventDefault()`, so Alt+F4 or a second Quit re-emits this event, and a
+  // boolean latch would let it terminate the process mid-write.
+  //
+  // `releaseAllSteamState` stays outside the guard: it is idempotent and must
+  // run on every pass, whether or not this one is allowed to quit.
+  const guardQuit = createQuitGuard(saveWriter, { quit: () => app.quit() });
+  app.on('before-quit', (event) => { releaseAllSteamState(); guardQuit(event); });
 }

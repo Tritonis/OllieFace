@@ -28,7 +28,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  createSaveWriter, checkSnapshot, drainBeforeQuit,
+  createSaveWriter, checkSnapshot, drainBeforeQuit, createQuitGuard,
   MAX_SNAPSHOT_BYTES, QUIT_DRAIN_CEILING_MS,
 } from '../desktop/save-writer.mjs';
 
@@ -308,6 +308,59 @@ console.log('\n-- quitting waits for a write already in flight, but only so long
   ok(await drainBeforeQuit(broken) === 'idle', 'a rejected drain releases the quit rather than holding it open');
 }
 
+console.log('\n-- a second quit request mid-drain is refused, not waved past');
+{
+  // Electron clears `is_quitting_` as soon as the first handler calls
+  // `preventDefault()` (`shell/browser/browser.cc`, `Browser::Quit`), so Quit
+  // again / Alt+F4 / a second `app.quit()` re-emits `before-quit` while the
+  // drain is still going. A two-state latch returns without preventing on that
+  // pass, Electron reads "not prevented", and the process terminates mid-write
+  // -- losing precisely the save the hook exists to keep.
+  const fakeEvent = () => { const e = { prevented: 0, preventDefault() { e.prevented++; } }; return e; };
+
+  let release;
+  let drains = 0, quits = 0;
+  const writer = { busy: true, idle: () => new Promise((r) => { release = r; }) };
+  const guard = createQuitGuard(writer, {
+    quit: () => { quits++; },
+    drain: () => { drains++; return new Promise((r) => { release = () => r('idle'); }); },
+  });
+
+  const first = fakeEvent();
+  guard(first);
+  ok(first.prevented === 1, 'the first quit is held open');
+  ok(drains === 1 && quits === 0, 'and starts exactly one drain, quitting nothing yet');
+
+  const second = fakeEvent();
+  guard(second);
+  ok(second.prevented === 1, 'a SECOND quit request arriving mid-drain is prevented too');
+  ok(drains === 1, 'it does not start a second drain');
+  ok(quits === 0, 'and the process has still not been allowed to go');
+
+  const third = fakeEvent();
+  guard(third);
+  ok(third.prevented === 1 && drains === 1 && quits === 0, 'a third is refused on the same terms');
+
+  release();
+  await Promise.resolve(); await Promise.resolve();
+  ok(quits === 1, 'when the drain settles it quits, exactly once, however many requests arrived');
+
+  // The drain's own `app.quit()` comes back round through this handler; that
+  // is the one pass that must be let through.
+  const reentrant = fakeEvent();
+  guard(reentrant);
+  ok(reentrant.prevented === 0, "the drain's own follow-up quit is not prevented");
+
+  // Nothing in flight: never hold a quit open only to re-issue it.
+  let idleDrains = 0, idleQuits = 0;
+  const idleGuard = createQuitGuard({ busy: false }, {
+    quit: () => { idleQuits++; }, drain: () => { idleDrains++; return Promise.resolve('nothing-pending'); },
+  });
+  const clean = fakeEvent();
+  idleGuard(clean);
+  ok(clean.prevented === 0 && idleDrains === 0 && idleQuits === 0, 'an idle writer does not delay the quit at all');
+}
+
 console.log('\n-- no synchronous filesystem write is left anywhere on the save path');
 {
   const writer = readFileSync(join(here, '..', 'desktop', 'save-writer.mjs'), 'utf8');
@@ -325,10 +378,11 @@ console.log('\n-- no synchronous filesystem write is left anywhere on the save p
   ok(/ipcMain\.on\('store:save',[\s\S]{0,200}?saveWriter\.save\(json\)\.catch\(/.test(main),
     'the store:save handler delegates to the writer, and catches so a rejection is not a main-process crash');
 
+  ok(/createQuitGuard\(saveWriter, \{ quit: \(\) => app\.quit\(\) \}\)/.test(main),
+    'the quit latch is the three-state guard, not a boolean in main.mjs');
   const beforeQuit = main.slice(main.indexOf("app.on('before-quit'"));
-  ok(/event\.preventDefault\(\)/.test(beforeQuit), 'before-quit holds the quit open');
-  ok(/drainBeforeQuit\(saveWriter\)/.test(beforeQuit), 'to wait, bounded, for the writer');
-  ok(/app\.quit\(\)/.test(beforeQuit), 'and quits afterwards either way');
+  ok(/guardQuit\(event\)/.test(beforeQuit), 'before-quit routes the event through it');
+  ok(/releaseAllSteamState\(\);/.test(beforeQuit), 'and still releases the Steam state on every pass');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

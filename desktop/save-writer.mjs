@@ -124,9 +124,9 @@ export function createSaveWriter({
   /**
    * Run one of the two injected callbacks and swallow whatever it does.
    *
-   * `onStatus` and `log` are foreign code — `onStatus` reaches a `webContents`
-   * that may have been destroyed a millisecond ago — and both are called from
-   * inside `writeOnce`'s `catch`, where a throw has nothing above it to land
+   * `onStatus` and `log` are foreign code — whatever the caller passed, doing
+   * whatever it does — and both are called from inside `writeOnce`'s `catch`,
+   * where a throw has nothing above it to land
    * on. It would reject the drain promise, skip the `draining = null` that
    * lets the next drain start, and leave `save()` accepting snapshots into a
    * `pending` nobody will ever read: every save for the life of the process,
@@ -144,8 +144,11 @@ export function createSaveWriter({
 
   const report = (ok, reason) => {
     if (!ok) safely(() => log(`store:save failed: ${reason}`));
-    // Latched BEFORE the callback runs, so a throwing subscriber cannot make
-    // the next identical verdict look like a change and re-fire forever.
+    // The latch is assigned before the callback runs, but do not read that as
+    // load-bearing: `safely` already returns control whatever the subscriber
+    // does, so moving this below the call would behave identically today. It
+    // is belt-and-braces, and it is where it is only because a latch that is
+    // set before the thing it guards needs one less argument to be sure of.
     if (lastOk === ok) return;
     lastOk = ok;
     safely(() => onStatus({ ok, reason: ok ? null : reason }));
@@ -313,4 +316,49 @@ export function drainBeforeQuit(writer, {
     const done = () => { clearTimer(timer); resolve('idle'); };
     Promise.resolve(writer.idle()).then(done, done);
   });
+}
+
+/**
+ * The `before-quit` handler, as a state machine, because a boolean is not
+ * enough and the way it is not enough is invisible from the call site.
+ *
+ * Electron resets its own `is_quitting_` the instant a handler calls
+ * `preventDefault()` (`shell/browser/browser.cc`, `Browser::Quit`), so a
+ * SECOND quit request — the player hitting Quit again, Alt+F4, the task
+ * manager — re-emits `before-quit` while the first drain is still going. A
+ * two-state latch that says "I have already started draining, let this one
+ * through" reads that as permission to shut down mid-write, which loses
+ * exactly the save this whole hook exists to keep. The middle state has to
+ * refuse the quit, not wave it past.
+ *
+ *   idle     -> prevent, start the one drain, become draining
+ *   draining -> prevent AGAIN and do nothing else; the running drain owns the
+ *               eventual quit, so a second request cannot start a second drain
+ *               nor extend the wait past the single ceiling
+ *   done     -> let it go; this is the drain's own `quit()` coming back round
+ *
+ * An idle writer never reaches the machine at all: with nothing in flight
+ * there is nothing to wait for, and preventing a quit only to re-issue it is a
+ * needless trip through the event loop.
+ *
+ * @returns {(event: { preventDefault: () => void }) => void}
+ */
+export function createQuitGuard(writer, {
+  quit,
+  drain = drainBeforeQuit,
+  log = (message) => { console.error(message); },
+} = {}) {
+  let state = 'idle';
+  return (event) => {
+    if (state === 'done') return;
+    if (state === 'idle' && !writer.busy) return;
+    event.preventDefault();
+    if (state === 'draining') return;
+    state = 'draining';
+    drain(writer).then((outcome) => {
+      if (outcome === 'timeout') log('store:save: quitting without waiting further for the save');
+      state = 'done';
+      quit();
+    });
+  };
 }
