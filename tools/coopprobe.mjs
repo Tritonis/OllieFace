@@ -1033,7 +1033,8 @@ try {
       try { localStorage.setItem('telluric.settings', JSON.stringify(blob)); } catch { /* private mode */ }
     }, { spawnRate: SPAWN_RATE, master: 0, music: 0, sfx: 0 });
     await page.goto(`http://127.0.0.1:${PORT}/index.html?${query}`, { waitUntil: 'load', timeout: CAP.bootMs });
-    await page.waitForFunction(() => globalThis.__GAME__?.ctx?.hud?.menus?.screen === 'title',
+    await page.waitForFunction(() => globalThis.__GAME__?.ctx?.hud?.menus?.screen === 'title'
+      && globalThis.__HARNESS__ != null,
       null, { timeout: CAP.bootMs });
     return page;
   };

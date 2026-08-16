@@ -104,9 +104,9 @@ try {
     // `?signal=` is the runtime override NetConfig reads (and persists), so the
     // pages point at the relay this process just started rather than at
     // whatever the build was configured with.
-    await p.goto(`http://127.0.0.1:${PORT}/index.html?signal=${encodeURIComponent(SIGNAL_URL)}`,
+    await p.goto(`http://127.0.0.1:${PORT}/index.html?signal=${encodeURIComponent(SIGNAL_URL)}&harness=1`,
       { waitUntil: 'load', timeout: 180000 });
-    await p.waitForFunction(() => globalThis.__GAME__?.ctx?.stage != null, null, { timeout: 120000 });
+    await p.waitForFunction(() => globalThis.__GAME__?.ctx?.stage != null && globalThis.__HARNESS__ != null, null, { timeout: 120000 });
     await p.mouse.move(400, 300); await p.mouse.down(); await p.mouse.up();
     return p;
   };
