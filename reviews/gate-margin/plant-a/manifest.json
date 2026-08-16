@@ -1,0 +1,210 @@
+{
+  "seed": 1337,
+  "ready": true,
+  "clockPinned": true,
+  "capturedAt": "2026-08-16T16:46:42.147Z",
+  "ms": {
+    "boot": 14097,
+    "bootTimeout": 60000
+  },
+  "shots": [
+    {
+      "name": "03-thirdperson",
+      "doc": "Default gameplay framing, player idle. Judges character read and camera.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\.claude\\worktrees\\agent-a405f6c4b7350086e\\reviews\\gate-margin\\plant-a\\03-thirdperson.png",
+      "engine": {
+        "frameErrors": 1,
+        "lastFrameError": {
+          "who": "harness:03-thirdperson",
+          "message": "[harness] 03-thirdperson: subject missing or illegible — survivor (pixels: {\"why\":\"illegible\",\"px\":980,\"need\":600,\"objs\":\"1/1\",\"need2\":0,\"sepP50\":0.15,\"needSep\":0.25,\"needSepWithMargin\":0.27,\"carriedPx\":794,\"lum\":41.9,\"bgLum\":4.6})",
+          "frame": -1
+        },
+        "time": 1.5166666666666662
+      },
+      "ms": {
+        "setup": 3994,
+        "screenshot": 624,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": false,
+        "checks": [
+          {
+            "subject": "survivor",
+            "kind": "pixels",
+            "ok": false,
+            "px": 980,
+            "frac": 0.00756,
+            "lum": 41.9,
+            "bgLum": 4.6,
+            "contrast": 0.801,
+            "sep": 0.138,
+            "sepP25": 0.15,
+            "sepP50": 0.15,
+            "legible": 0.81,
+            "at": [
+              0.421,
+              0.597
+            ],
+            "box": [
+              0.395,
+              0.443,
+              0.451,
+              0.717
+            ],
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 600,
+            "minObjects": 0,
+            "marginOk": false,
+            "present": true,
+            "carriedPx": 794,
+            "minSep": 0.25,
+            "legibleOk": false,
+            "marginSep": 0.27,
+            "perObjectOk": true,
+            "carriesAbsence": false,
+            "gatedOn": [
+              "px >= minPx",
+              "sepP50 >= minSep",
+              "sepP50 >= marginSep (0.27)"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "legible"
+            ]
+          }
+        ]
+      },
+      "newErrors": [
+        "[harness] 03-thirdperson: subject missing or illegible — survivor (pixels: {\"why\":\"illegible\",\"px\":980,\"need\":600,\"objs\":\"1/1\",\"need2\":0,\"sepP50\":0.15,\"needSep\":0.25,\"needSepWithMargin\":0.27,\"carriedPx\":794,\"lum\":41.9,\"bgLum\":4.6})"
+      ]
+    }
+  ],
+  "errors": [
+    "[harness] 03-thirdperson: subject missing or illegible — survivor (pixels: {\"why\":\"illegible\",\"px\":980,\"need\":600,\"objs\":\"1/1\",\"need2\":0,\"sepP50\":0.15,\"needSep\":0.25,\"needSepWithMargin\":0.27,\"carriedPx\":794,\"lum\":41.9,\"bgLum\":4.6})"
+  ],
+  "partial": true,
+  "subjectFailures": [
+    {
+      "name": "03-thirdperson",
+      "failed": [
+        "survivor"
+      ],
+      "detail": [
+        {
+          "subject": "survivor",
+          "kind": "pixels",
+          "ok": false,
+          "px": 980,
+          "frac": 0.00756,
+          "lum": 41.9,
+          "bgLum": 4.6,
+          "contrast": 0.801,
+          "sep": 0.138,
+          "sepP25": 0.15,
+          "sepP50": 0.15,
+          "legible": 0.81,
+          "at": [
+            0.421,
+            0.597
+          ],
+          "box": [
+            0.395,
+            0.443,
+            0.451,
+            0.717
+          ],
+          "objects": 1,
+          "visibleObjects": 1,
+          "minPx": 600,
+          "minObjects": 0,
+          "marginOk": false,
+          "present": true,
+          "carriedPx": 794,
+          "minSep": 0.25,
+          "legibleOk": false,
+          "marginSep": 0.27,
+          "perObjectOk": true,
+          "carriesAbsence": false,
+          "gatedOn": [
+            "px >= minPx",
+            "sepP50 >= minSep",
+            "sepP50 >= marginSep (0.27)"
+          ],
+          "notGated": [
+            "contrast",
+            "sep",
+            "sepP25",
+            "legible"
+          ]
+        }
+      ]
+    }
+  ],
+  "subjectsOk": false,
+  "skippedShots": [],
+  "carriedShots": [],
+  "freshShots": [
+    "03-thirdperson"
+  ],
+  "subjectsOkFresh": false,
+  "toleratedAbsences": [],
+  "determinism": {
+    "clockPinned": true,
+    "frameDt": 0.016666666666666666,
+    "frameTimeouts": 0
+  },
+  "perf": {
+    "programs": 71,
+    "geometries": 418,
+    "textures": 53,
+    "sceneObjects": 400
+  },
+  "audio": {
+    "ready": true,
+    "state": "running",
+    "stepsEmitted": 28,
+    "stopped": false,
+    "silent": false,
+    "muted": false,
+    "musicOff": false,
+    "musicGain": 0.47999998927116394,
+    "masterGain": 0.800000011920929,
+    "voices": 0,
+    "worldVoices": 0,
+    "musicPeak": 0.04885674640536308,
+    "outputPeak": 0.050022635608911514,
+    "samples": 85,
+    "armed": true,
+    "beforeGate": {
+      "ready": true,
+      "state": "running",
+      "stepsEmitted": 14,
+      "stopped": false,
+      "musicOff": false,
+      "musicGain": 0.47999998927116394,
+      "masterGain": 0.800000011920929
+    },
+    "stepsDelta": 14,
+    "newErrors": [],
+    "checks": {
+      "armed": true,
+      "graphBuilt": true,
+      "contextRunning": true,
+      "sequencerRunning": true,
+      "notSilenced": true,
+      "musicBusOpen": true,
+      "masterOpen": true,
+      "stepsAdvanced": true,
+      "musicAudible": true,
+      "outputAudible": true,
+      "sampled": true,
+      "noNewErrors": true
+    },
+    "failed": []
+  },
+  "audioOk": true
+}

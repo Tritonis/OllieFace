@@ -2173,6 +2173,108 @@ export function installHarness(ctx) {
    */
   const MIN_SEPARATION = 0.25;
 
+  /**
+   * The margin a gated subject must hold *above* its separation floor.
+   *
+   * Ratified 2026-08-16. A subject sitting exactly on its floor is a gate that
+   * has stopped being an instrument: it cannot detect a regression in one
+   * direction, and it fails on any change in the other. Issue #69 is the live
+   * proof — `22-realm-market` -> `the survivor` was passing at exactly
+   * `sepP50 0.25` against a 0.25 floor, and any correct lighting change was
+   * going to tip it.
+   *
+   * **0.02 is not a taste number: it is exactly one bin of the instrument.**
+   * `sepP50` is read off a 50-bin histogram (`SEP_BINS`, ~line 1944) and
+   * reported at bin centres, so the only values it can ever produce are the odd
+   * hundredths — 0.23, 0.25, 0.27. There is no representable value between
+   * "on the floor" and "one step clear of it". A subject reading 0.25 is
+   * therefore not measured at 0.25; it is measured as *somewhere in [0.24,
+   * 0.26)*, which straddles the floor it is being gated on. Requiring the next
+   * bin up is the smallest demand that puts the whole measurement interval on
+   * the passing side, and it is why this number cannot be tuned down: 0.01 of
+   * margin is unrepresentable and 0 is the defect.
+   *
+   * The floor itself does not move. `MIN_SEPARATION` stays where measurement
+   * put it; this rides on top of it, and an exemption below can only ever pull
+   * the bar back down *to* the floor, never under it.
+   */
+  const SEP_MARGIN = 0.02;
+
+  /**
+   * The ratchet, in the shape `tools/silhouette-metrics.mjs` uses (see the
+   * `exemptions` list there, and `gradeRoster` below it).
+   *
+   * Each entry is a gated check that cannot meet `SEP_MARGIN` *as the game
+   * currently renders*, with the value measured at the moment it was admitted
+   * and the run that measured it. An exempted check passes only while it is no
+   * worse than the recorded value: a new margin failure is red immediately, and
+   * an exempted one that degrades is red. So the climb to full margin stays
+   * tracked work instead of a standing red, and nothing in the list is silent —
+   * every entry carries a written `note`, and every entry is republished into
+   * the manifest on the check it exempts.
+   *
+   * `id` is `<shot>::<subject>` and `kind` is one of:
+   *
+   *  - `sepP50` — the subject-level median over the union mask.
+   *  - `perSep` — the *weakest gated object*'s median. Deliberately keyed on the
+   *    subject rather than on an object index: the gated set of a `crowd` is
+   *    ranked by pixel count and reorders between runs, so an exemption keyed
+   *    `horde#5` would be keyed on a name that does not stay put. "The worst of
+   *    the ones we look at must not get worse" is the same ratchet and it is
+   *    index-free.
+   *
+   * **No exemption may lower a bar below `MIN_SEPARATION`.** The exemption
+   * mechanism exists to hold ground that is already held, not to open a door
+   * under the floor.
+   *
+   * There is no slack term here, and `silhouette-metrics.mjs` needs one only
+   * because its metrics are continuous. `sepP50` is quantised at 0.02, so any
+   * tolerance smaller than a bin can never change a verdict, and a tolerance of
+   * one bin would be the entire margin this rule is about. The recorded value
+   * is used as it stands.
+   *
+   * Both values below were measured by
+   * `node tools/capture.mjs --out reviews/gate-margin/baseline --port 5251`
+   * under d3d11 and are copied from
+   * `reviews/gate-margin/baseline/manifest.json`.
+   */
+  const SEP_MARGIN_EXEMPTIONS = [
+    // Floating combat text over the blast. It is the one gated subject in the
+    // set that is not a mesh with a silhouette: glyphs are thin, they are drawn
+    // *into* the explosion's own light, and their median pixel is competing
+    // with the brightest background in any shot. Raising it is a legibility
+    // change to the damage-number layer — colour, outline weight or draw order
+    // — not a lighting tweak, so it is content work rather than this ticket's.
+    { id: '08-explosion::damage numbers', kind: 'sepP50', value: 0.25,
+      note: 'thin glyphs read against the blast\'s own light; needs an outline/contrast pass on the damage-number layer' },
+
+    // The 30 m arena's horde gates its best 8 of 24, and the weakest of those 8
+    // lands on the floor exactly. This is a framing/lighting property of the far
+    // half of that arena rather than of any one monster — the same slot is a
+    // different creature run to run — so it is fixed by lifting the arena's fill
+    // or tightening the shot, not by anything a subject can declare.
+    //
+    // It is also the one entry here that is *boundary-flaky* rather than
+    // steadily short, which is the strongest argument for it existing: the two
+    // runs recorded above read `worstGatedSep` 0.25 (`baseline`) and 0.29
+    // (`rule-on`) on an unchanged tree. Without the exemption the horde would
+    // have gone red on roughly every other run, which is how a gate gets
+    // switched off. The recorded value is the worse of the two.
+    { id: '04-combat::horde', kind: 'perSep', value: 0.25,
+      note: 'weakest of the 8 gated horde members straddles the floor (0.25 / 0.29 on two unchanged runs); wants arena fill or framing, not a per-subject change' },
+  ];
+
+  const marginExemption = (shot, subject, kind) => SEP_MARGIN_EXEMPTIONS.find(
+    (e) => e.id === `${shot}::${subject}` && e.kind === kind) ?? null;
+
+  /**
+   * The bar a check is actually held to: floor + margin, pulled back to the
+   * exempted value where one is recorded, and never below the floor itself.
+   */
+  const marginBar = (minSep, exempt) => +(exempt
+    ? Math.max(minSep, Math.min(minSep + SEP_MARGIN, exempt.value))
+    : minSep + SEP_MARGIN).toFixed(4);
+
   const mustContain = (shot, specs) => {
     const checks = [];
     for (const s of specs) {
@@ -2196,6 +2298,10 @@ export function installHarness(ctx) {
           Object.assign(c, rep);
           c.minPx = s.minPixels ?? 250;
           c.minObjects = s.minObjects ?? 0;
+          // Default true so the `minCarriedPx` aggregates — gated on carried
+          // area rather than on separation, and so having no floor for a margin
+          // to sit above — are unaffected rather than accidentally red.
+          c.marginOk = true;
           // Two independent questions, and until now only the first was asked:
           // is the subject *there*, and can it be *told apart from what is
           // behind it*. A subject that is present and indistinguishable is a
@@ -2230,7 +2336,20 @@ export function installHarness(ctx) {
               ?? 'VFX buffers: the meshes are shared particle/ring/trail pools, not nameable objects';
           } else {
             c.minSep = s.minSeparation ?? MIN_SEPARATION;
+            /* Two bars, published separately on purpose. `legibleOk` is still
+             * "is this subject over the legibility floor", unchanged and
+             * unweakened; `marginOk` is "does it clear that floor by enough for
+             * the gate to be able to see a regression". A reader who finds a red
+             * shot needs to know which of the two it is, because they are
+             * different work: the first is a subject a human cannot find, the
+             * second is a subject a human can find and an instrument cannot
+             * vouch for. Both fail the shot (see `c.ok`).
+             */
             c.legibleOk = rep.sepP50 >= c.minSep;
+            const sepEx = marginExemption(shot, s.subject, 'sepP50');
+            c.marginSep = marginBar(c.minSep, sepEx);
+            c.marginOk = rep.sepP50 >= c.marginSep;
+            if (sepEx) c.marginExempt = { kind: 'sepP50', value: sepEx.value, note: sepEx.note };
           }
           /* Per object, because an aggregate hides an absence.
            *
@@ -2330,6 +2449,23 @@ export function installHarness(ctx) {
             // construction: everything it declares is gated.
             c.ungatedAbsences = c.crowd ? c.crowd.absentBeyondCrowd : [];
             c.perObjectOk = c.objectFailures.length === 0;
+            /* The same margin, over the same gated set the line above gates.
+             * A crowd's ranked N and a fixed cast's whole roster are both "what
+             * this gate is looking at", and a gated object resting on the floor
+             * is as blind as a subject resting on it. Keyed on the subject, not
+             * on the object index — see `SEP_MARGIN_EXEMPTIONS`. The recorded
+             * quantity is the *weakest* gated object, so "no worse than when we
+             * admitted it" means the floor of the gated set has not sunk.
+             */
+            const perEx = marginExemption(shot, s.subject, 'perSep');
+            c.marginPerSep = marginBar(c.minSep, perEx);
+            c.worstGatedSep = rank.length
+              ? Math.min(...rank.map((i) => rep.perSep[i])) : null;
+            c.marginObjectFailures = rank
+              .filter((i) => rep.perSep[i] < c.marginPerSep)
+              .map((i) => ({ i, px: rep.perPx[i], sepP50: rep.perSep[i] }));
+            if (perEx) c.marginExemptPerSep = { kind: 'perSep', value: perEx.value, note: perEx.note };
+            if (c.marginObjectFailures.length) c.marginOk = false;
           } else {
             /* The aggregate opt-out published nothing at all, and that is the
              * sixth instance of this round's defect class.
@@ -2426,11 +2562,15 @@ export function installHarness(ctx) {
            */
           c.gatedOn = ['px >= minPx']
             .concat(c.minObjects ? ['visibleObjects >= minObjects'] : [])
-            .concat(s.minCarriedPx ? ['carriedPx >= minCarried'] : ['sepP50 >= minSep'])
+            .concat(s.minCarriedPx ? ['carriedPx >= minCarried']
+              : ['sepP50 >= minSep',
+                `sepP50 >= marginSep (${c.marginSep})${c.marginExempt ? ' [exempt]' : ''}`])
             .concat(rep.perPx && !s.minCarriedPx
               ? [c.crowd
                 ? `perPx/perSep/absence over the ${c.crowd.need} gated of ${rep.perPx.length}`
-                : 'perPx/perSep/absence over every declared object']
+                : 'perPx/perSep/absence over every declared object',
+              `perSep >= marginPerSep (${c.marginPerSep}) over the gated set`
+                + `${c.marginExemptPerSep ? ' [exempt]' : ''}`]
               : []);
           c.notGated = ['contrast', 'sep', 'sepP25']
             .concat(s.minCarriedPx ? [] : ['legible'])
@@ -2440,7 +2580,7 @@ export function installHarness(ctx) {
             // ungated, and saying so is the point: this check reads a sum.
             .concat(c.crowd ? ['crowd.absentBeyondCrowd'] : [])
             .concat(s.minCarriedPx && rep.perPx ? ['perPx', 'perSep', 'absentObjects'] : []);
-          c.ok = c.present && c.legibleOk && c.perObjectOk;
+          c.ok = c.present && c.legibleOk && c.perObjectOk && c.marginOk;
         } else if (s.point) {
           c.kind = 'bounds';
           const p = s.point();
@@ -2485,9 +2625,19 @@ export function installHarness(ctx) {
       const msg = `[harness] ${shot}: subject missing or illegible — `
         + failed.map((c) => `${c.subject} (${c.kind}: ${JSON.stringify(
           c.kind === 'pixels' ? {
-            why: !c.present ? 'absent' : c.legibleOk ? 'object absent or illegible' : 'illegible',
+            // `no margin` is called out ahead of the older reasons because it is
+            // the one a reader will not otherwise recognise: the subject is over
+            // its floor and the shot is still red, which reads as a bug until
+            // you know the rule. Say the rule, in the message, every time.
+            why: !c.present ? 'absent'
+              : !c.legibleOk ? 'illegible'
+                : !c.perObjectOk ? 'object absent or illegible'
+                  : 'no margin: over the floor but not clear of it by SEP_MARGIN',
             px: c.px, need: c.minPx, objs: `${c.visibleObjects}/${c.objects}`, need2: c.minObjects,
             sepP50: c.sepP50, needSep: c.minSep,
+            needSepWithMargin: c.marginSep, marginExempt: c.marginExempt,
+            needPerSepWithMargin: c.marginPerSep, marginExemptPerSep: c.marginExemptPerSep,
+            worstGatedSep: c.worstGatedSep, thinObjects: c.marginObjectFailures,
             carriedPx: c.carriedPx, needCarried: c.minCarried,
             perPx: c.perPx, perSep: c.perSep,
             needPerPx: c.minPerPx, badObjects: c.objectFailures,
