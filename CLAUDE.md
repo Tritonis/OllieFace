@@ -108,6 +108,12 @@ whichever other lane is already there.
 port they still collide on 5209, and the loser fails in a way that reads as a bug in its own branch —
 that cost two agents a diagnosis cycle each on 2026-08-15 (#68).
 
+**Overnight autonomous runs** follow the `parallel-lanes` skill's *Autonomous Overnight Mode*:
+park-don't-ask (label `blocked:user` with the decision written out, leave the branch unmerged, pull
+the next ticket), mandatory iteration budgets in every brief, serialization constraints stated in the
+run plan, and state persisted to issue #16 at every batch close. Launch only against a queue triaged
+and batch-approved the same evening.
+
 **Merging:** check merge-base before merging (an agent worktree has branched 15 commits stale),
 `--no-ff`, then re-run the gates on the *integrated* result. Three green branches are not a green
 master. One opus review runs across the merged result, not per lane.
