@@ -210,6 +210,11 @@ land.
 
 ### An externally-authored mesh joins it through `ModelKit.js`
 
+**Whether a downloaded mesh may enter this codebase at all is no longer open** (ratified by
+the author, 2026-08-16): yes — through this seam exclusively, authored materials stripped as
+rule 3 requires. The commercial-asset issues carried this as "assumed yes, has not been
+answered"; it is now answered, and the seam below is the whole of the permission.
+
 Added by #59. Until then there was no import path at all, and the reason the obvious one
 does not work is UV semantics rather than taste: every CC0 kit worth having UV-maps its
 models into a **palette atlas**, where a face's UV is a point sample into a swatch and not
