@@ -2374,8 +2374,16 @@ class RingPool {
 // the crosshair. A damage readout is feedback, not a headline. Both classes are
 // pulled ~30% and the minimum-pixel floor with them, which is what actually
 // sets the size at combat range.
-const NUM_SCALE = 0.30;
-const CRIT_SCALE = 0.49;
+//
+// Round 7 (#85): all three size constants are 1.25x their round-6 values, and
+// this is NOT a size increase. `NUM_TILE` went 128 -> 160 to buy padding for a
+// wider halo (see `NUM_HALO_PX`), which makes the glyph a smaller fraction of
+// its own quad; scaling the quad by the same 1.25 leaves the *ink* at the
+// identical on-screen height it had before (88/128 * 30 == 88/160 * 37.5 ==
+// 20.6 px at the floor). What grows is the dark plate around the ink, not the
+// type.
+const NUM_SCALE = 0.375;
+const CRIT_SCALE = 0.6125;
 // Half-extents, in NDC, of the rect the reticle owns. Nothing this layer draws
 // is allowed to settle inside it; see the deflection in NumberVert.
 const NUM_RETICLE_X = 0.115;
@@ -2426,9 +2434,22 @@ const _numBoxB = { cx: 0, cy: 0, hx: 0, hy: 0 };
 // then measured at a 27 px cap in `10-inventory`, above every other numeral in
 // the product. 26 keeps ~13 px of ink inside a ~21 px mark, which still clears
 // the halo's own 3 px plate and no longer outranks the clock.
-const NUM_MIN_PX = 30;
+// (1.25x its round-6 value of 30, for the tile change described at NUM_SCALE;
+// the ink height at the floor is unchanged.)
+const NUM_MIN_PX = 37.5;
+// Horizontal advance between glyph centres, in quad widths. Specified in *quad*
+// units, so it has to move with `NUM_TILE`: at 128 the quad was the glyph plus
+// ~30% padding and 0.62 was right; at 160 the same ink sits in a quad 1.25x
+// wider, so the advance is 0.62 / 1.25. Mirrored by `_box`, which projects the
+// same rectangle on the CPU — change one without the other and the collision
+// reservation stops describing the numerals it is reserving space for.
+const NUM_ADVANCE = 0.496;
 // Glyph atlas geometry, shared by the drawer and the halo dilation in NumberFrag.
-const NUM_TILE = 128;
+// The tile is 160 rather than 128 purely for padding: the halo is a ring of taps
+// at a fixed atlas-texel radius, so its ceiling is whatever room is left between
+// the ink and the tile edge, and at 128 that ceiling was ~14 texels with 13
+// already spent. See NUM_HALO_PX.
+const NUM_TILE = 160;
 const NUM_COLS = 4;
 const NUM_FONT_PX = 88;
 const NUM_STROKE_PX = 20;
@@ -2446,7 +2467,27 @@ const NUM_STROKE_PX = 20;
 // (`sepP50 >= 0.25`) sits close enough to the bar that the size cut alone put
 // it at 0.23. 13 is still inside the tile's ~14.4 texel padding, so no tap can
 // reach the next glyph.
-const NUM_HALO_PX = 13;
+//
+// Round 7 (#85). 13 texels of a 128 tile is a 3.05 px plate at the 30 px floor,
+// and the harness measures legibility on a 480x270 mask — 30% of the drawing
+// buffer — where 3.05 px is 0.9 px. At that scale the plate and the ink average
+// back to the background inside a single mask pixel: `08-explosion` -> `damage
+// numbers` read `lum 58.9` against `bgLum 58.6` on
+// `reviews/gate-margin/laneC-p0/manifest.json`, i.e. a mark with no net local
+// value at all, sitting exactly on its own 0.25 floor.
+//
+// Two things this is NOT, both measured and both refuted before this landed:
+// it is not exposure (swept 1.00 -> 0.26 on #69, sepP50 pinned throughout), and
+// it is not the fade — deleting the fade-out term outright left the subject
+// bit-identical at `sepP50 0.25` (`reviews/gate-margin/laneC-diag-alpha/`). The
+// readout is photographed at full opacity; it is simply too thin to survive
+// being minified.
+//
+// So the plate doubles: 26 texels of a 160 tile is 6.09 px at the floor. That is
+// two mask pixels of solid dark, which is the smallest plate that can carry a
+// median. It stays inside the enlarged tile's ~30 texel padding, so the no-tap-
+// crosses-a-tile contract above still holds with room to spare.
+const NUM_HALO_PX = 26;
 // Beyond this the readout is chip damage on something the player is not
 // fighting; spending instances on it only adds noise.
 const NUM_MAX_DIST = 45;
@@ -2513,7 +2554,7 @@ void main() {
   float ay = smoothstep(-${NUM_RETICLE_Y.toFixed(3)}, -${NUM_RETICLE_Y.toFixed(3)} * 0.35, ndc.y);
   mv.y += max(0.0, ${NUM_RETICLE_Y.toFixed(3)} - ndc.y) * ax * ay * dist / p11;
 
-  float cw = 0.62;
+  float cw = ${NUM_ADVANCE.toFixed(3)};
   vec2 corner = vec2(
     (position.x + (aGlyph.y - aGlyph.z) * cw) * scale,
     position.y * scale
@@ -2843,7 +2884,7 @@ class DamageNumbers {
     const h = Math.max(scale, dist * minPx * this.mat.uniforms.uPxToWorld.value);
     out.cx = (p00 * s.x) / dist;
     out.cy = (p11 * s.y) / dist;
-    out.hx = (((len - 1) * 0.62 + 1) * h * 0.5 * p00) / dist;
+    out.hx = (((len - 1) * NUM_ADVANCE + 1) * h * 0.5 * p00) / dist;
     out.hy = (h * 0.5 * p11) / dist;
     return true;
   }
