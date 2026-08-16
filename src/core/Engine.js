@@ -84,6 +84,26 @@ export class Engine {
     this.running = false;
     this.frame = 0;
 
+    /**
+     * What each system's `init` wrote onto `ctx`, as `system -> Map(key ->
+     * value it left there)`. Recorded by `add()` and spent by `remove()`.
+     *
+     * The direct sweep in `remove()` — null every key whose value *is* the
+     * system — only ever reached self-publication (`ctx.vfx = this`). Most
+     * publications are derived: `Menus` writes `ctx.settings`, `Player` writes
+     * `ctx.setSurvivor`, `Artifacts` writes `ctx.difficulty`, and none of those
+     * values is the system, so a half-built system's furniture outlived it and
+     * consumers went on calling into it.
+     *
+     * A diff of `ctx` across `init` is an exact record rather than a heuristic:
+     * it is literally the set of keys that system's own `init` changed. Removal
+     * only reverts a key whose value is *still* the one `init` left, so a later
+     * owner that overwrote it keeps what it wrote.
+     */
+    this._published = new Map();
+    /** Frames of the `add()` stack, innermost last — see `_snapshotCtx`. */
+    this._addStack = [];
+
     this.ctx = {
       engine: this,
       scene: new THREE.Scene(),
@@ -322,13 +342,28 @@ export class Engine {
     // second system which does — has to find it there.
     this.systems.push(system);
     if (system.init) {
+      // Attributed to the innermost registration: a system whose `init`
+      // registers another must not be credited with what the inner one
+      // published, or removing the outer would take the inner's context with it.
+      const before = this._snapshotCtx();
+      const frame = { claimed: new Set() };
+      this._addStack.push(frame);
+      let failure = null;
       try {
         system.init(this.ctx);
       } catch (e) {
+        failure = e;
+      } finally {
+        this._addStack.pop();
+        // Recorded even when `init` threw — especially then. A half-built
+        // system's publications are exactly the ones that must not outlive it.
+        this._recordPublications(system, before, frame.claimed);
+      }
+      if (failure) {
         // Taken back out before the failure is reported, so anything listening
         // for `fatalError` sees a `systems` list that no longer claims it.
         this.remove(system);
-        this._onFrameError(e, system, 'init');
+        this._onFrameError(failure, system, 'init');
       }
     }
     return system;
@@ -361,6 +396,34 @@ export class Engine {
    * removals are rare (a co-op session ending, a failed `init`) and `ctx` holds
    * a couple of dozen keys.
    *
+   * **Derived publications go too.** Identity alone only ever caught
+   * `ctx.vfx = this`; the commoner shape is a system publishing something it
+   * *owns* — `Menus` writes `ctx.settings`, `Player` writes `ctx.setSurvivor`,
+   * `Artifacts` writes a `ctx.difficulty` facade of closures over itself. None
+   * of those values is the system, so all three survived removal and went on
+   * answering calls on behalf of a system that is gone. `add()` therefore
+   * records what each `init` changed on `ctx` (see `_recordPublications`) and
+   * removal reverts those keys as well — but only where the value is still the
+   * one that `init` left, so a key a later system took over stays with it.
+   *
+   * **Known limitation, deliberately not closed: a post-`init` republish is
+   * invisible here.** The record is a diff taken across `init` and nothing
+   * else, so a system that writes `ctx.stage` again from a method mid-run
+   * leaves a value the map never saw; the identity check below then matches
+   * nothing and that value survives removal — the very shape this whole
+   * mechanism exists to prevent, reached by a different door. The pattern
+   * exists in this codebase (`world/realms/Realms.js:313`/`:369` reassign
+   * `ctx.stage`; `systems/Artifacts.js:251`/`:490`/`:530` reassign
+   * `ctx.difficultyId`) but is unreachable as a bug today: the only two callers
+   * of `remove()` are `add()`'s own failure rollback — which runs before any
+   * runtime write could have happened — and `Lobby`'s teardown of `NetHost`,
+   * which self-publishes and is covered by the identity sweep regardless.
+   * Closing it means tracking every `ctx` write a system makes, which is a
+   * proxy on the context and a cost on a hot object, paid for a hazard nothing
+   * can currently reach. `tests/engine-criticality.test.mjs` pins the boundary
+   * so that anyone who adds a `remove()` call site — or extends this mechanism
+   * — trips over the decision rather than rediscovering the hole.
+   *
    * `null`, not `delete`: the `ctx` literal declares these keys as `null` up
    * front ("filled in by the systems that own them"), so nulling restores
    * exactly the value they held before `init` ran, and `Lobby._release` already
@@ -374,8 +437,54 @@ export class Engine {
     // — every context key that happens to be null already.
     if (system) {
       for (const k of Object.keys(this.ctx)) if (this.ctx[k] === system) this.ctx[k] = null;
+      const owned = this._published.get(system);
+      if (owned) {
+        for (const [k, v] of owned) {
+          // Only what this system left and nothing has replaced since. A later
+          // owner of the same key wrote a value that is still good; blanking it
+          // would break a live system to tidy up after a dead one.
+          if (this.ctx[k] === v) this.ctx[k] = null;
+        }
+        this._published.delete(system);
+      }
     }
     return system;
+  }
+
+  /** `ctx` as `key -> value`, for diffing across an `init`. */
+  _snapshotCtx() {
+    const snap = new Map();
+    for (const k of Object.keys(this.ctx)) snap.set(k, this.ctx[k]);
+    return snap;
+  }
+
+  /**
+   * Record every `ctx` key `system.init` created or changed, minus the ones an
+   * inner `add()` already claimed. Credits the key to the enclosing
+   * registration too, so an outer `init` cannot re-claim it on the way out.
+   *
+   * **`init` is the only window this watches.** A system that republishes the
+   * same key later — at runtime, from a method rather than from `init` — writes
+   * a value this map has never seen, and `remove()`'s identity check therefore
+   * never matches it. See the limitation stated on `remove()`.
+   */
+  _recordPublications(system, before, claimedByInner) {
+    const owned = new Map();
+    for (const k of Object.keys(this.ctx)) {
+      const v = this.ctx[k];
+      if (claimedByInner.has(k)) continue;
+      if (before.has(k) && before.get(k) === v) continue;
+      // The engine's own furniture is never a system's to publish or to take
+      // away; `ctx.engine` is the whole of it and it never changes anyway.
+      if (k === 'engine') continue;
+      owned.set(k, v);
+    }
+    if (owned.size) this._published.set(system, owned);
+    const outer = this._addStack[this._addStack.length - 1];
+    if (outer) {
+      for (const k of owned.keys()) outer.claimed.add(k);
+      for (const k of claimedByInner) outer.claimed.add(k);
+    }
   }
 
   get(name) {

@@ -296,6 +296,139 @@ console.log('remove() clears the context, not just the systems list');
   ok(engine.ctx.events && engine.ctx.scene, 'including the context furniture');
 }
 
+console.log('removal reaches what a system published, not only the system itself');
+{
+  // The shape identity-matching could never see. `Menus` publishes
+  // `ctx.settings` (an object it owns), `Player` publishes `ctx.setSurvivor`
+  // (a closure over itself), `Artifacts` publishes a `ctx.difficulty` facade of
+  // three closures. None of those values IS the system, so before ownership was
+  // recorded they all survived `remove()` — a half-built system still answering
+  // for itself through furniture nothing could tell apart from a live one's.
+  const engine = fresh();
+  class Derived {
+    static critical = false;
+    init(ctx) {
+      this.settings = { quality: 'high' };
+      ctx.settings = this.settings;                       // an object it owns
+      ctx.setSurvivor = (id) => { this.picked = id; };    // a closure over it
+      ctx.difficulty = { current: () => this.card };      // a facade
+      ctx.selfRef = this;                                 // the old case, still covered
+    }
+  }
+  const d = engine.add(new Derived());
+  ok(engine.ctx.settings === d.settings, 'init published the derived object');
+  engine.remove(d);
+  ok(engine.ctx.selfRef === null, 'self-publication is still cleared');
+  ok(engine.ctx.settings === null, 'a published object it owns is cleared too');
+  ok(engine.ctx.setSurvivor === null, 'so is a published closure');
+  ok(engine.ctx.difficulty === null, 'so is a published facade');
+  ok(engine.ctx.engine === engine, 'and the engine itself is never a publication');
+  ok(engine.ctx.events && engine.ctx.scene, 'nor is the context furniture');
+}
+
+console.log('a derived publication does not outlive an init that threw');
+{
+  // The live failure: the same publication shapes, but the system dies
+  // half-built. A consumer guarding on nothing more than "is it there" then
+  // calls into a system the Engine has already dropped.
+  const engine = fresh();
+  class HalfBuilt {
+    static critical = false;
+    init(ctx) {
+      ctx.settings = { quality: 'high' };
+      ctx.setSurvivor = (id) => this.roster.pick(id);  // `this.roster` never gets assigned
+      throw new Error('boom after publishing derived state');
+    }
+  }
+  class SettingsConsumer {
+    static critical = true;
+    update(ctx) { if (ctx.setSurvivor) ctx.setSurvivor('ranger'); }
+  }
+  const realErr = console.error;
+  console.error = () => {};
+  engine.add(new HalfBuilt());
+  console.error = realErr;
+
+  ok(engine.ctx.settings === null, 'the dead system\'s settings went with it');
+  ok(engine.ctx.setSurvivor === null, 'and so did the hook that would have died on its half-built state');
+
+  engine.add(new SettingsConsumer());
+  engine._frame();
+  ok(engine.fatal === null, 'a critical consumer did not halt the run several minutes later');
+  ok(engine.ctx.frameErrors === 1, 'only the original init failure was ever counted');
+}
+
+console.log('ownership is per-system, and a key handed on stays with its new owner');
+{
+  const engine = fresh();
+  class First {
+    static critical = false;
+    init(ctx) { ctx.settings = { from: 'first' }; }
+  }
+  class Second {
+    static critical = false;
+    init(ctx) { ctx.settings = { from: 'second' }; }
+  }
+  const a = engine.add(new First());
+  const b = engine.add(new Second());
+  engine.remove(a);
+  ok(engine.ctx.settings?.from === 'second', 'removing the earlier owner left the later one\'s value alone');
+  engine.remove(b);
+  ok(engine.ctx.settings === null, 'and removing the owner that actually wrote it cleared it');
+}
+
+console.log('an init that registers another system is not credited with its context');
+{
+  // `Stage` and `Lobby` both register systems from inside their own `init`.
+  // Attributing the inner system's publications to the outer one would mean
+  // removing the outer silently unpublishes a live inner system.
+  const engine = fresh();
+  class Inner {
+    static critical = false;
+    init(ctx) { ctx.hud = { owner: 'inner' }; }
+  }
+  let inner = null;
+  class Outer {
+    static critical = false;
+    init(ctx) { ctx.stage = { owner: 'outer' }; inner = ctx.engine.add(new Inner()); }
+  }
+  const outer = engine.add(new Outer());
+  engine.remove(outer);
+  ok(engine.ctx.stage === null, 'the outer system\'s own publication went');
+  ok(engine.ctx.hud?.owner === 'inner', 'the inner system\'s did not');
+  engine.remove(inner);
+  ok(engine.ctx.hud === null, 'and the inner system still owns it when its own turn comes');
+}
+
+console.log('a post-init republish outlives removal — the pinned boundary, not the wanted behaviour');
+{
+  // NOT desired behaviour. This asserts the documented limit of the mechanism:
+  // ownership is a diff taken across `init` and nothing else, so a value a
+  // system writes onto ctx *later*, from a method, is one the record never saw
+  // and removal cannot recognise. `Realms.js:313` reassigns `ctx.stage` exactly
+  // this way, and `Artifacts.js:251` does it to `ctx.difficultyId`.
+  //
+  // Unreachable today — the only callers of `remove()` are `add()`'s failure
+  // rollback (before any runtime write can have happened) and Lobby's teardown
+  // of a self-publishing NetHost. This test exists so that whoever makes it
+  // reachable, by adding a third `remove()` call site or by extending the
+  // mechanism, fails here and reads the decision in `Engine.remove`'s docstring
+  // instead of rediscovering the hole in a live run. If you are here because
+  // this went red: that is the signal to track runtime writes, and this block
+  // is what you delete.
+  const engine = fresh();
+  class Republisher {
+    static critical = false;
+    init(ctx) { this.ctx = ctx; ctx.stage = { owner: this, tag: 'init' }; }
+    advance() { this.ctx.stage = { owner: this, tag: 'runtime' }; }
+  }
+  const r = engine.add(new Republisher());
+  r.advance();
+  engine.remove(r);
+  ok(engine.ctx.stage?.tag === 'runtime', 'a value republished after init survives removal (documented limitation)');
+  ok(engine.ctx.stage?.owner === r, 'and it still points at the system that is gone');
+}
+
 /** Every .js file under src/, depth-first. */
 function sources(dir = SRC, out = []) {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
