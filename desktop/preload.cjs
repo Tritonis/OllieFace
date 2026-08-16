@@ -18,23 +18,14 @@ const { contextBridge, ipcRenderer } = require('electron');
 // A structural ceiling, tighter than Node's default warning of ten. (Minor
 // 4.) `ipcRenderer` is one EventEmitter and Node counts listeners per channel
 // name, so a bug that stops unsubscribing a Steam push channel used to climb
-// silently toward that default before anything said so. Three live
-// subscribers is already generous for this bridge -- `onJoinRequested` is one
-// permanent listener for the page's life, and `onSignal`/`onSignalFail` are at
-// most one live pair at a time now that a second "Host via Steam" runs the
-// previous latch before arming a new one -- so five is a ceiling a working
-// build can never approach and a regression trips loudly, well short of
-// Node's own default.
-ipcRenderer.setMaxListeners(5);
-
-// { ok, raw }: raw is the file text, or null. ok:false means the file exists
-// and could not be read -- the renderer must not treat that as a first boot.
-const initial = ipcRenderer.sendSync('store:load');   // once, at boot
-
-contextBridge.exposeInMainWorld('__DESKTOP__', {
-  loadStore: () => initial,
-  saveStore: (json) => { ipcRenderer.send('store:save', String(json)); },
-});
+// silently toward that default before anything said so. Four live subscribers
+// is already generous for this bridge -- `onJoinRequested` and the save-status
+// listener are one permanent listener each for the page's life, and
+// `onSignal`/`onSignalFail` are at most one live pair at a time now that a
+// second "Host via Steam" runs the previous latch before arming a new one --
+// so six is a ceiling a working build can never approach and a regression
+// trips loudly, well short of Node's own default.
+ipcRenderer.setMaxListeners(6);
 
 // Push channels hand the renderer the payload only -- never the IpcRendererEvent,
 // which carries `sender` and would be a hole straight back through the bridge.
@@ -44,6 +35,30 @@ const subscribe = (channel, cb) => {
   ipcRenderer.on(channel, listener);
   return () => { ipcRenderer.removeListener(channel, listener); };
 };
+
+// { ok, raw }: raw is the file text, or null. ok:false means the file exists
+// and could not be read -- the renderer must not treat that as a first boot.
+const initial = ipcRenderer.sendSync('store:load');   // once, at boot
+
+// The last save verdict main has pushed, latched here so it survives the gap
+// between it being sent and the renderer subscribing. Without the latch a save
+// that fails during the first frames -- exactly when the first-boot migration
+// flush runs -- lands on nobody and the player is told nothing.
+let lastSaveStatus = null;
+ipcRenderer.on('store:save-status', (_event, status) => { lastSaveStatus = status; });
+
+contextBridge.exposeInMainWorld('__DESKTOP__', {
+  loadStore: () => initial,
+  saveStore: (json) => { ipcRenderer.send('store:save', String(json)); },
+  // cb({ ok: boolean, reason: string|null }) -- pushed on every CHANGE of
+  // verdict, not on every save. A subscriber is handed the latched verdict
+  // immediately if one has already arrived.
+  onSaveStatus: (cb) => {
+    const off = subscribe('store:save-status', cb);
+    if (lastSaveStatus && typeof cb === 'function') cb(lastSaveStatus);
+    return off;
+  },
+});
 
 contextBridge.exposeInMainWorld('__STEAM__', {
   // -> { available, appId, personaName, reason }

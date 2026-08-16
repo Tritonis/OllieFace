@@ -31,10 +31,19 @@ const mirrored = (k) => MIRROR_PREFIXES.some((p) => String(k).startsWith(p));
 export function initDesktopStore(
   storage = globalThis.localStorage,
   bridge = globalThis.__DESKTOP__,
-  { debounceMs = 250 } = {},
+  { debounceMs = 250, onSaveStatus = null } = {},
 ) {
   if (!bridge || typeof bridge.loadStore !== 'function' || typeof bridge.saveStore !== 'function' || !storage) {
     return { active: false, hydrated: false, flush: () => {} };
+  }
+
+  // Both halves of "did the save land" report through one callback, because
+  // from the player's side they are one fact. The main process pushes its
+  // verdict over the bridge; a `saveStore` that throws here never reached the
+  // main process at all, which is the same news arriving one step earlier.
+  const report = (ok, reason) => { onSaveStatus?.({ ok, reason: ok ? null : reason }); };
+  if (onSaveStatus && typeof bridge.onSaveStatus === 'function') {
+    bridge.onSaveStatus((status) => { report(status?.ok === true, status?.reason ?? 'the save could not be written'); });
   }
 
   let hydrated = false;
@@ -77,7 +86,10 @@ export function initDesktopStore(
   const flush = () => {
     if (timer) { clearTimeout(timer); timer = 0; }
     try { bridge.saveStore(JSON.stringify(snapshot())); }
-    catch (e) { console.error('DesktopStore: saveStore failed', e); }
+    catch (e) {
+      console.error('DesktopStore: saveStore failed', e);
+      report(false, e && e.message ? String(e.message) : 'the save bridge threw');
+    }
   };
   const schedule = () => {
     if (timer) return;
