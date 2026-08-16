@@ -10,12 +10,14 @@
  *
  * Two halves are tested here, and the second is the one that will age. The
  * behaviour half proves a critical throw halts and a noncritical throw still
- * does exactly what it did before. The enumeration half reads `main.js` for the
- * systems actually registered and insists each one has an answer on file — a
- * classification that silently omits a system is the failure mode of this whole
- * change, and only a test that goes and looks can catch it.
+ * does exactly what it did before. The enumeration half walks every
+ * `engine.add(` call site in `src/` and insists each one resolves to a class
+ * that declares its criticality — failing, loudly and by name, on any call site
+ * it cannot resolve. A classification that silently omits a system is the
+ * failure mode of this whole change, so the guard is written to fail closed:
+ * "I could not tell" is a FAIL, never a skip.
  */
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Engine, isCriticalSystem } from '../src/core/Engine.js';
@@ -108,6 +110,22 @@ console.log('a critical throw stops the run');
   ok(engine.running === false, 'start() will not restart a halted engine');
 }
 
+console.log('a halted engine calls nobody, however the frame was driven');
+{
+  // Not reachable through `start()`, which stops the loop on the way into
+  // `_halt`. It is reachable by anything holding the Engine and calling
+  // `_frame()` itself, and "a halted engine calls no more systems" is stated
+  // without qualification, so it has to hold there too.
+  const engine = fresh();
+  const w = engine.add(new Witness());
+  engine.fatal = { who: 'Elsewhere.update', message: 'halted on an earlier frame', frame: 0 };
+  engine.accumulator = 0.2;
+  const before = engine.frame;
+  engine._frame();
+  ok(w.updates === 0 && w.fixed === 0, 'a healthy noncritical system did not run');
+  ok(engine.frame === before, 'the frame counter did not advance');
+}
+
 console.log('a critical throw in the fixed step abandons the substep loop too');
 {
   const engine = fresh();
@@ -134,42 +152,125 @@ console.log('omission gets the strict answer, and says so');
   ok(isCriticalSystem(undefined) === true, 'and so is a frame-level throw with no system');
 }
 
+/** Every .js file under src/, depth-first. */
+function sources(dir = SRC, out = []) {
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    const p = join(dir, e.name);
+    if (e.isDirectory()) sources(p, out);
+    else if (e.name.endsWith('.js')) out.push(p);
+  }
+  return out;
+}
+
+/**
+ * The source text of the argument at `open` (the index of a `(`), brackets
+ * balanced. Comments are skipped rather than scanned, because an apostrophe in
+ * one — "this frame's input edges", in the very object literal this has to
+ * read — otherwise opens a string that swallows the rest of the argument.
+ */
+function argumentAt(src, open) {
+  let depth = 0, quote = null;
+  for (let i = open; i < src.length; i++) {
+    const c = src[i];
+    if (quote) { if (c === '\\') i++; else if (c === quote) quote = null; continue; }
+    if (c === '/' && src[i + 1] === '/') { i = src.indexOf('\n', i); if (i < 0) return null; continue; }
+    if (c === '/' && src[i + 1] === '*') { i = src.indexOf('*/', i) + 1; if (i < 1) return null; continue; }
+    if (c === '"' || c === "'" || c === '`') { quote = c; continue; }
+    if (c === '(' || c === '[' || c === '{') depth++;
+    else if (c === ')' || c === ']' || c === '}') { depth--; if (depth === 0) return src.slice(open + 1, i); }
+  }
+  return null;
+}
+
+/**
+ * Does the class `name`, declared in `src`, carry a boolean `static critical`?
+ * Read from the class's opening block, where the convention puts it.
+ */
+function declaresCriticality(src, name) {
+  const at = src.search(new RegExp(`(^|\\n)(export )?class ${name} \\{`));
+  if (at < 0) return null;
+  const m = src.slice(at, at + 1500).match(/\n\s*static critical = (true|false);/);
+  return m ? m[1] : null;
+}
+
+/** Resolve a class name used in `file` to the file that declares it. */
+function fileDeclaring(file, src, name) {
+  if (new RegExp(`(^|\\n)(export )?class ${name} \\{`).test(src)) return file;
+  const m = src.match(new RegExp(`import \\{[^}]*\\b${name}\\b[^}]*\\} from '([^']+)'`));
+  return m ? resolve(dirname(file), m[1]) : null;
+}
+
 console.log('every registered system has an answer on file');
 {
-  const main = readFileSync(join(SRC, 'main.js'), 'utf8');
-
-  // The classes handed to `engine.add(new X())` in main.js, resolved back to
-  // their files through main.js's own import list. Reading the registrations
-  // rather than listing them here is the whole point: a system added tomorrow
-  // is in this set the moment it is registered, without anyone remembering to
-  // come and add it.
-  const registered = [...main.matchAll(/engine\.add\(new (\w+)\(/g)].map((m) => m[1]);
-  ok(registered.length >= 18, `found the registrations in main.js (${registered.length})`);
-
-  const importOf = (name) => {
-    const m = main.match(new RegExp(`import \\{[^}]*\\b${name}\\b[^}]*\\} from '([^']+)'`));
-    return m ? resolve(SRC, m[1]) : null;
-  };
-
-  for (const name of registered) {
-    const file = importOf(name);
-    if (!file) { ok(false, `${name}: could not resolve its import in main.js`); continue; }
+  // Every `engine.add(` call site in src/, whatever shape its argument takes,
+  // each one resolved to a declaration or else reported. The guard is written
+  // to fail closed: a registration whose argument this cannot follow is a FAIL
+  // naming the call site, never a quiet skip. That distinction is the whole
+  // value of the test — an earlier version only recognised the literal
+  // `engine.add(new Thing())` shape, so `engine.add(makeThing())` registered an
+  // unclassified system and the suite stayed green.
+  //
+  // What it therefore guarantees: every *statically written* registration in
+  // src/ either points at a declared class or fails. What it cannot see: a
+  // registration built somewhere this cannot read it back to a class — which is
+  // exactly the case it now fails on rather than passes.
+  let sites = 0;
+  for (const file of sources()) {
     const src = readFileSync(file, 'utf8');
-    const decl = src.match(new RegExp(`class ${name} \\{\\s*(?:\\n\\s*//[^\\n]*)*\\n\\s*static critical = (true|false);`));
-    ok(!!decl, `${name} declares static critical${decl ? ` = ${decl[1]}` : ''}`);
-  }
+    const rel = file.slice(SRC.length + 1).replace(/\\/g, '/');
+    for (const m of src.matchAll(/(?:^|[^\w.])(?:this\.)?engine\.add\(/g)) {
+      const open = m.index + m[0].length - 1;
+      const before = src.slice(0, open).split('\n');
+      const line = before.length;
+      // Prose, not a call site: `Player.js` explains itself with an
+      // `engine.add(new Player())` example inside a doc block.
+      if (/^\s*(\*|\/\/)/.test(before[line - 1])) continue;
+      const where = `${rel}:${line}`;
+      const arg = (argumentAt(src, open) || '').trim();
+      sites++;
 
-  // The renderer is a plain object rather than a class, so it carries the flag
-  // as an own property instead.
-  ok(/engine\.add\(\{[\s\S]{0,600}?critical: false,/.test(main), 'the renderer object declares critical: false');
+      const asClass = arg.match(/^new (\w+)\(/);
+      if (asClass) {
+        const name = asClass[1];
+        const home = fileDeclaring(file, src, name);
+        if (!home) { ok(false, `${where}: cannot find where ${name} is declared`); continue; }
+        const declared = declaresCriticality(readFileSync(home, 'utf8'), name);
+        ok(declared !== null, `${where}: ${name} declares static critical${declared ? ` = ${declared}` : ''}`);
+        continue;
+      }
 
-  // Three more go through the same machinery without appearing in main.js:
-  // Lobby registers the two net systems at runtime, and Input's pad poll is
-  // called through `_call` from inside the frame.
-  for (const [label, rel] of [['NetHost', 'net/NetHost.js'], ['NetClient', 'net/NetClient.js'], ['Input', 'core/Input.js']]) {
-    const src = readFileSync(join(SRC, rel), 'utf8');
-    ok(/\n  static critical = (true|false);/.test(src), `${label} declares static critical`);
+      if (arg.startsWith('{')) {
+        // A plain-object system carries the flag as an own property. The
+        // renderer in main.js is the only one.
+        const declared = arg.match(/(^|\n)\s*critical: (true|false),/);
+        ok(!!declared, `${where}: object-literal system declares critical${declared ? `: ${declared[2]}` : ''}`);
+        continue;
+      }
+
+      // A local binding. Follow it to the `new X()` that produced it, in the
+      // same function, and no further — anything cleverer than that is a shape
+      // this test is honestly telling you it cannot read.
+      const local = /^\w+$/.test(arg)
+        ? src.slice(0, open).match(new RegExp(`(?:const|let|var) ${arg} = new (\\w+)\\(`, 'g'))?.pop()
+        : null;
+      const name = local ? local.match(/new (\w+)\(/)[1] : null;
+      if (name) {
+        const home = fileDeclaring(file, src, name);
+        const declared = home && declaresCriticality(readFileSync(home, 'utf8'), name);
+        ok(!!declared, `${where}: \`${arg}\` is a ${name}, which declares static critical${declared ? ` = ${declared}` : ''}`);
+        continue;
+      }
+
+      ok(false, `${where}: cannot resolve \`engine.add(${arg})\` to a class — classify it, or teach this test the shape`);
+    }
   }
+  ok(sites >= 20, `found every engine.add() call site in src/ (${sites})`);
+
+  // Input is not registered at all: its `pollPad` is called through the
+  // Engine's `_call` from inside the frame, so it needs the same declaration
+  // and no `engine.add(` scan will ever find it.
+  const input = readFileSync(join(SRC, 'core/Input.js'), 'utf8');
+  ok(declaresCriticality(input, 'Input') !== null, 'Input declares static critical');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -31,7 +31,7 @@ const HITSTOP_BUDGET_MAX = 0.12;
  *
  * A system declares it with `static critical = true` or `static critical =
  * false` on its class (a plain-object system — the renderer in `main.js` is the
- * only one — carries the same flag as an own property). Two answers, and the
+ * only one today — carries the same flag as an own property). Two answers, and the
  * distinction is not "how visible is it" but "does the game still mean what it
  * says afterwards":
  *
@@ -47,8 +47,8 @@ const HITSTOP_BUDGET_MAX = 0.12;
  *
  * **The default is critical**, and that is the whole point of the default: a
  * system nobody has thought about is a system nobody has argued is safe to lose.
- * Omission therefore fails loudly rather than silently, and `add()` says so on
- * the console the moment an undeclared system registers, so its author finds out
+ * Omission therefore fails loudly rather than silently, and `add()` warns on the
+ * console for anything that does not declare a boolean, so its author finds out
  * which answer they were given without having to read this file.
  *
  * Called for a bare frame-level throw too (no system), where `system` is
@@ -166,9 +166,13 @@ export class Engine {
    *  · the loop stops, and `start()` will not restart it — a critical system
    *    that threw once throws again on the state it left behind;
    *  · `ctx.authority` goes false, because nothing may keep speaking for a
-   *    simulation that has stopped simulating. In co-op that is the difference
-   *    between a peer seeing the session end and a peer being fed snapshots of
-   *    a corpse;
+   *    simulation that has stopped simulating. What that buys is narrow and
+   *    worth stating exactly: every system that gates a state change on it —
+   *    `Combat`, `Corruption`, `Director`, `Progression` — refuses from here on
+   *    even if something outside the loop pokes it. It sends no message, so a
+   *    peer learns only by the snapshots stopping and timing out, and
+   *    `NetHost`'s event-driven `_send` calls are not gated on it either; those
+   *    go quiet because the systems that emit their events no longer run;
    *  · the console gets the whole error, unconditionally — this fires once by
    *    construction, so the once-per-system throttle above does not apply;
    *  · `fatalError` is emitted so the page can put something in front of the
@@ -201,8 +205,14 @@ export class Engine {
       system[phase](ctx, dt);
     } catch (e) {
       this._onFrameError(e, system, phase);
-      if (this.fatal) throw new FrameHalt(this.fatal.who);
     }
+    // Outside the catch, and deliberately: "a halted engine calls no more
+    // systems" has to hold for *every* call, not only for the one that threw.
+    // Inside the catch it held only on the failing call, so a frame driven
+    // directly on an already-halted engine would go on ticking healthy systems
+    // — unreachable through `start()`, which stops the loop, but the rule this
+    // enforces is stated absolutely and so it must be enforced absolutely.
+    if (this.fatal) throw new FrameHalt(this.fatal.who);
   }
 
   /**
@@ -247,8 +257,14 @@ export class Engine {
     // deliberately the strict one, so a system that never states its case is a
     // system whose first throw ends the run — that must not be discovered for
     // the first time by a player.
-    if ((system?.constructor?.critical ?? system?.critical) === undefined) {
-      console.warn(`[engine] ${system?.constructor?.name || 'system'} declares no \`static critical\` — treating it as critical.`);
+    //
+    // The test is "not a boolean" rather than "undefined", so it agrees with
+    // `isCriticalSystem` on every input it can be handed. That predicate treats
+    // anything but `false` as critical, which means a `static critical = 0`, a
+    // string, or a mistyped property name all silently land on the strict side
+    // — the same place omission lands, and deserving of the same warning.
+    if (typeof (system?.constructor?.critical ?? system?.critical) !== 'boolean') {
+      console.warn(`[engine] ${system?.constructor?.name || 'system'} declares no boolean \`static critical\` — treating it as critical.`);
     }
     this.systems.push(system);
     if (system.init) system.init(this.ctx);
@@ -322,10 +338,13 @@ export class Engine {
    *
    * `_halt` has already stopped the loop and told the page by the time the
    * `FrameHalt` arrives, so there is nothing left to do but abandon the rest of
-   * the frame quietly. It is caught at this boundary rather than in the rAF
-   * chain because `_frame` is also hand-driven — by the harness, by
-   * `sp-equivalence`, by the probes in `tools/` — and none of those callers
-   * should have to learn a new exception to keep working.
+   * the frame quietly. It is caught here rather than in the rAF chain so that
+   * the sentinel never escapes the Engine at all: `_frame` is also called
+   * directly — `tests/lobby-lifecycle.test.mjs` and
+   * `tests/engine-criticality.test.mjs` both drive frames by hand, and anything
+   * that wants a single deterministic step in future will do the same — and
+   * `_frame` throwing a private exception type at those callers would make the
+   * unwind their problem rather than ours.
    */
   _frame() {
     try {
@@ -336,6 +355,12 @@ export class Engine {
   }
 
   _runFrame() {
+    // A halted engine runs no frames, including hand-driven ones. The rAF chain
+    // already cannot get here — `_halt` stopped it — but "stopped" has to mean
+    // the same thing to a caller holding the Engine directly, or the guarantee
+    // is only a property of one call path.
+    if (this.fatal) return;
+
     const ctx = this.ctx;
     const t0 = this.profiling ? performance.now() : 0;
     // Clamp so a backgrounded tab doesn't fire hundreds of catch-up steps.
