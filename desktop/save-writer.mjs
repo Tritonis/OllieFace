@@ -121,11 +121,34 @@ export function createSaveWriter({
    *  the first result of either polarity is reported. */
   let lastOk = null;
 
+  /**
+   * Run one of the two injected callbacks and swallow whatever it does.
+   *
+   * `onStatus` and `log` are foreign code — `onStatus` reaches a `webContents`
+   * that may have been destroyed a millisecond ago — and both are called from
+   * inside `writeOnce`'s `catch`, where a throw has nothing above it to land
+   * on. It would reject the drain promise, skip the `draining = null` that
+   * lets the next drain start, and leave `save()` accepting snapshots into a
+   * `pending` nobody will ever read: every save for the life of the process,
+   * lost in silence. The `finally` in `drain` is the structural guard against
+   * that; this is the one that stops it happening in the first place.
+   */
+  const safely = (fn) => {
+    try { fn(); }
+    catch (err) {
+      // Last resort, and never `log` — `log` is one of the two things that may
+      // just have thrown.
+      try { console.error('store:save: a save-status callback threw', err); } catch { /* nothing left */ }
+    }
+  };
+
   const report = (ok, reason) => {
-    if (!ok) log(`store:save failed: ${reason}`);
+    if (!ok) safely(() => log(`store:save failed: ${reason}`));
+    // Latched BEFORE the callback runs, so a throwing subscriber cannot make
+    // the next identical verdict look like a change and re-fire forever.
     if (lastOk === ok) return;
     lastOk = ok;
-    onStatus({ ok, reason: ok ? null : reason });
+    safely(() => onStatus({ ok, reason: ok ? null : reason }));
   };
 
   const sizeOf = async (file) => {
@@ -197,17 +220,34 @@ export function createSaveWriter({
   }
 
   async function drain() {
-    while (pending !== null) {
-      const json = pending;
-      pending = null;
-      await writeOnce(json);
+    try {
+      while (pending !== null) {
+        const json = pending;
+        pending = null;
+        // `pending` is already cleared, so this loop cannot spin on a snapshot
+        // that keeps throwing: it turns over only when a genuinely new save
+        // has arrived. Catching here rather than letting the drain reject
+        // means one unforeseen throw costs one snapshot, not the session.
+        try { await writeOnce(json); }
+        catch (err) { safely(() => log(`store:save: the writer itself threw: ${describe(err)}`)); }
+      }
+    } finally {
+      // In a `finally`, and inside `drain` rather than on the caller's side.
+      //
+      // Inside, because it must run in the same tick as the loop's last
+      // condition check: a `.finally()` chained onto the promise clears one
+      // microtask late, and a `save()` landing in that window would set
+      // `pending`, find `draining` still truthy, and never be written.
+      //
+      // A `finally`, because before this was one it was a plain statement
+      // after the loop — and a throw from the injected `onStatus` on the
+      // refusal or retry-exhausted paths skipped straight past it. `draining`
+      // stayed set to a rejected promise, which is still truthy, so `save()`
+      // never started another drain and every subsequent save in the process
+      // was accepted and silently dropped. The guard is structural on purpose:
+      // it holds for whatever the next unforeseen throw turns out to be.
+      draining = null;
     }
-    // Cleared here rather than in a `.finally` on the caller's side: this
-    // assignment runs in the same tick as the loop's last condition check, so
-    // there is no window in which `pending` is set and no drain will pick it
-    // up. Nothing awaits after it, so a `save` racing this line starts a drain
-    // that cannot overlap a write with the one finishing.
-    draining = null;
   }
 
   return {
@@ -226,4 +266,51 @@ export function createSaveWriter({
     /** True while a write is in flight or a snapshot is waiting behind one. */
     get busy() { return draining !== null; },
   };
+}
+
+/**
+ * How long quitting waits for a write that is already going.
+ *
+ * The write path's own worst case is bounded and known: three attempts with
+ * 150 ms and 300 ms of backoff between them, so 450 ms of waiting plus three
+ * disk round-trips. Two seconds covers that with room for a slow platter and
+ * still reads as a shutdown rather than a hang.
+ *
+ * It is a CEILING and not a wait, because the failure this exists for is a
+ * contended disk, and a disk contended enough to lose a save is exactly the
+ * one that can leave a handle wedged. A player must always be able to quit. So
+ * the bad case costs two seconds and loses the last write — precisely what
+ * happened before, unbounded — and the ordinary case costs nothing at all.
+ */
+export const QUIT_DRAIN_CEILING_MS = 2000;
+
+/**
+ * Wait, bounded, for the writer to settle before the process goes.
+ *
+ * The `pagehide` flush in `DesktopStore` hands the main process one last
+ * snapshot and does not wait for it, and quitting used to not wait either.
+ * Crash-atomicity does not cover this: `tmp -> fsync -> rename` guarantees the
+ * file is never *corrupt*, and says nothing about the last write being
+ * *present*. Under the disk contention this whole feature exists for, the
+ * retry budget made that window wider than the old synchronous handler's — a
+ * player quitting just after a notable event lost it, silently.
+ *
+ * Timers are injected so the ceiling is testable without spending it.
+ *
+ * @returns {Promise<'nothing-pending'|'idle'|'timeout'>} never rejects.
+ */
+export function drainBeforeQuit(writer, {
+  ceilingMs = QUIT_DRAIN_CEILING_MS,
+  setTimer = setTimeout,
+  clearTimer = clearTimeout,
+} = {}) {
+  if (!writer || !writer.busy) return Promise.resolve('nothing-pending');
+  return new Promise((resolve) => {
+    const timer = setTimer(() => resolve('timeout'), ceilingMs);
+    // Settled either way: a drain that rejected still means nothing more is
+    // going to be written, and holding the quit open for it would be the same
+    // hang from a different direction.
+    const done = () => { clearTimer(timer); resolve('idle'); };
+    Promise.resolve(writer.idle()).then(done, done);
+  });
 }

@@ -12,7 +12,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { initSteam, getClient, getStatus, enableOverlay } from './steam.mjs';
-import { createSaveWriter } from './save-writer.mjs';
+import { createSaveWriter, drainBeforeQuit } from './save-writer.mjs';
 import {
   parseSteamId, steamIdToString, validateMaxMembers, validateLobbyRecord,
   sanitizeLobbyData, encodeSignal, decodeSignal, MAX_SIGNAL_FRAME_BYTES,
@@ -61,7 +61,14 @@ const saveWriter = createSaveWriter({
   onStatus: (status) => pushToRenderer('store:save-status', status),
 });
 
-ipcMain.on('store:save', (_e, json) => { saveWriter.save(json); });
+// The `.catch()` is belt to the writer's braces. `drain` cannot reject as it
+// stands, but this is a fire-and-forget call in the main process, where an
+// unhandled rejection is a crash dialog rather than a log line — and the thing
+// that would produce one is a renderer-supplied callback misbehaving, which is
+// not a class of bug worth trusting a single guard with.
+ipcMain.on('store:save', (_e, json) => {
+  saveWriter.save(json).catch((err) => { console.error('store:save: the writer rejected', err); });
+});
 
 // Two instances against one userData clobber each other's saves wholesale:
 // each renderer snapshots ITS OWN localStorage and writes the whole file, so
@@ -468,5 +475,27 @@ if (!app.requestSingleInstanceLock()) {
   // the same idempotent release, so whichever one Windows delivers first
   // still gets it done.
   app.on('window-all-closed', () => { releaseAllSteamState(); app.quit(); });
-  app.on('before-quit', releaseAllSteamState);
+
+  // ...and quitting also has to let the last save finish.
+  //
+  // The renderer's `pagehide` flush hands over one final snapshot and does not
+  // wait for it; before this hook, nor did the process. Crash-atomicity is not
+  // an answer to that — tmp/fsync/rename guarantees the file is never corrupt
+  // and says nothing about the last write being *there* — and the async
+  // writer's retry budget made the window wider than the old synchronous
+  // handler's under exactly the contended-disk conditions it was built for.
+  //
+  // Latched, because `app.quit()` below re-enters this handler; on the second
+  // pass there is nothing left to wait for and the quit is allowed through.
+  let draining = false;
+  app.on('before-quit', (event) => {
+    releaseAllSteamState();
+    if (draining || !saveWriter.busy) return;
+    draining = true;
+    event.preventDefault();
+    drainBeforeQuit(saveWriter).then((outcome) => {
+      if (outcome === 'timeout') console.error('store:save: quitting without waiting further for the save');
+      app.quit();
+    });
+  });
 }

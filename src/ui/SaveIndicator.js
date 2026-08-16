@@ -56,6 +56,11 @@ let styleInjected = false;
 /** The live element, or null. At most one: repeated failures update the reason
  *  line in place rather than stacking a strip per failed write. */
 let current = null;
+/** The reason line inside `current`, held directly. The alternative is finding
+ *  it again on each update — by selector, which would widen what this module
+ *  needs from a document, or by child index, which is a silent breakage the
+ *  first time anyone adds a paragraph above it. A reference is neither. */
+let reasonNode = null;
 
 const el = (tag, className, text) => {
   const node = document.createElement(tag);
@@ -83,17 +88,12 @@ export function showSaveFailure(reason = null) {
     const box = el('div', 'save-indicator');
     box.appendChild(el('p', 'save-indicator__title', TITLE));
     const body = el('p', 'save-indicator__body', BODY);
-    body.appendChild(el('span', 'save-indicator__reason', ''));
+    reasonNode = body.appendChild(el('span', 'save-indicator__reason', ''));
     box.appendChild(body);
     document.body.appendChild(box);
     current = box;
   }
-  // `children[1]` is the body paragraph, whose last child is the reason span.
-  // Reached positionally rather than by selector so this module needs nothing
-  // from a document beyond createElement and appendChild -- which is what lets
-  // the whole behaviour be tested without a browser.
-  const span = current.children[1].children[0];
-  span.textContent = reason ? String(reason) : '';
+  reasonNode.textContent = reason ? String(reason) : '';
   return current;
 }
 
@@ -101,6 +101,7 @@ export function showSaveFailure(reason = null) {
 export function clearSaveFailure() {
   current?.remove();
   current = null;
+  reasonNode = null;
 }
 
 /** The live element, or null. For tests and for anything that needs to know

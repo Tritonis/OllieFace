@@ -27,7 +27,10 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createSaveWriter, checkSnapshot, MAX_SNAPSHOT_BYTES } from '../desktop/save-writer.mjs';
+import {
+  createSaveWriter, checkSnapshot, drainBeforeQuit,
+  MAX_SNAPSHOT_BYTES, QUIT_DRAIN_CEILING_MS,
+} from '../desktop/save-writer.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 let pass = 0, fail = 0;
@@ -228,6 +231,83 @@ console.log('\n-- one backup generation per session, and it never shrinks');
   ok(fs2.store.get(BAK) === snap('a much longer previous save'), 'a smaller current file does not spend the backup generation');
 }
 
+console.log('\n-- a throwing status callback cannot wedge the writer for the life of the process');
+{
+  // The exact shape of the bug this replaces. `onStatus` and `log` are called
+  // from INSIDE `writeOnce`'s catch on the refusal and retry-exhausted paths,
+  // where a throw has nothing above it: it rejected the drain, skipped the
+  // `draining = null`, and left `save()` for the rest of the session accepting
+  // snapshots into a `pending` that no drain would ever pick up. Note the
+  // asymmetry that hid it -- a throw from the SUCCESS-path report is caught by
+  // the surrounding catch and merely causes a redundant commit.
+  const paths = [
+    // A refusal thrown from commit: empty snapshot over a non-empty save.
+    { name: 'the refusal path', files: { [TARGET]: snap('precious') }, first: '{}' },
+    // Retry exhaustion: `checkSnapshot` rejects before any disk contact.
+    { name: 'the rejected-snapshot path', files: {}, first: '{"telluric.x": 42}' },
+  ];
+  // The guard's last resort is a `console.error`, which it is supposed to
+  // reach here. Captured rather than printed: seven stack traces in the middle
+  // of a green suite read as a failure, and the count is a better assertion
+  // than the noise anyway.
+  const realError = console.error;
+  const swallowed = [];
+  console.error = (...a) => { swallowed.push(a); };
+  try {
+    for (const { name, files, first } of paths) {
+      for (const victim of ['onStatus', 'log']) {
+        const fs = fakeFs({ files });
+        const boom = () => { throw new Error('the renderer went away'); };
+        const w = createSaveWriter({
+          savePath: () => TARGET, fs, sleep: quiet,
+          onStatus: victim === 'onStatus' ? boom : () => {},
+          log: victim === 'log' ? boom : quiet,
+        });
+
+        let rejected = null;
+        try { await w.save(first); } catch (err) { rejected = err; }
+        ok(rejected === null, `${name}, throwing ${victim}: save() does not reject into a fire-and-forget caller`);
+        ok(w.busy === false, `${name}, throwing ${victim}: the writer is not left permanently busy`);
+
+        await w.save(snap('after')).catch(() => {});
+        ok(fs.store.get(TARGET) === snap('after'), `${name}, throwing ${victim}: a later valid save still reaches the disk`);
+      }
+    }
+  } finally { console.error = realError; }
+  ok(swallowed.length > 0, `the guard's last-resort log fired rather than the throw escaping (${swallowed.length} times)`);
+}
+
+console.log('\n-- quitting waits for a write already in flight, but only so long');
+{
+  ok(QUIT_DRAIN_CEILING_MS > 150 + 300,
+    `the ceiling (${QUIT_DRAIN_CEILING_MS} ms) covers the writer's own 450 ms retry budget`);
+
+  const idleWriter = { busy: false, idle: () => new Promise(() => {}) };
+  ok(await drainBeforeQuit(idleWriter) === 'nothing-pending', 'an idle writer does not delay the quit at all');
+
+  // The case that loses data today: the pagehide flush is still on the disk
+  // when the player quits.
+  const fs = fakeFs();
+  const w = createSaveWriter({ savePath: () => TARGET, fs, log: quiet, sleep: quiet });
+  w.save(snap('the last thing that happened'));
+  ok(w.busy === true, 'the write is genuinely still in flight when the quit arrives');
+  ok(await drainBeforeQuit(w) === 'idle', 'the quit waits for it');
+  ok(fs.store.get(TARGET) === snap('the last thing that happened'), 'and the last write is on disk, not lost');
+
+  // ...and a wedged handle must not make the game unquittable.
+  let fired = null;
+  const timers = { setTimer: (fn) => { fired = fn; return 1; }, clearTimer: () => { fired = null; } };
+  const stuck = { busy: true, idle: () => new Promise(() => {}) };
+  const raced = drainBeforeQuit(stuck, { ceilingMs: 2000, ...timers });
+  ok(typeof fired === 'function', 'a ceiling timer is armed against a writer that never settles');
+  fired();
+  ok(await raced === 'timeout', 'the ceiling expires and the quit proceeds anyway');
+
+  // A drain that rejected is still a drain nothing more will come out of.
+  const broken = { busy: true, idle: () => Promise.reject(new Error('drain blew up')) };
+  ok(await drainBeforeQuit(broken) === 'idle', 'a rejected drain releases the quit rather than holding it open');
+}
+
 console.log('\n-- no synchronous filesystem write is left anywhere on the save path');
 {
   const writer = readFileSync(join(here, '..', 'desktop', 'save-writer.mjs'), 'utf8');
@@ -242,8 +322,13 @@ console.log('\n-- no synchronous filesystem write is left anywhere on the save p
   for (const call of ['renameSync', 'copyFileSync', 'statSync', 'existsSync']) {
     ok(!main.includes(call), `main.mjs no longer calls ${call}`);
   }
-  ok(/ipcMain\.on\('store:save',[^\n]*saveWriter\.save/.test(main),
-    'the store:save handler delegates to the writer and does nothing else');
+  ok(/ipcMain\.on\('store:save',[\s\S]{0,200}?saveWriter\.save\(json\)\.catch\(/.test(main),
+    'the store:save handler delegates to the writer, and catches so a rejection is not a main-process crash');
+
+  const beforeQuit = main.slice(main.indexOf("app.on('before-quit'"));
+  ok(/event\.preventDefault\(\)/.test(beforeQuit), 'before-quit holds the quit open');
+  ok(/drainBeforeQuit\(saveWriter\)/.test(beforeQuit), 'to wait, bounded, for the writer');
+  ok(/app\.quit\(\)/.test(beforeQuit), 'and quits afterwards either way');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
