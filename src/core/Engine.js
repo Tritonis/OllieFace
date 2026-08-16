@@ -151,9 +151,22 @@ export class Engine {
    */
   _onFrameError(err, system, phase) {
     const who = system ? `${system.constructor?.name || 'system'}.${phase}` : 'frame';
+    this.fail(who, err, isCriticalSystem(system));
+  }
+
+  /**
+   * Report a failure that is not a frame phase, and so has no system object to
+   * read a criticality off — today that is `ctx.pipeline.build()` in `main.js`,
+   * the one piece of boot work that runs through neither `_call` nor `add`.
+   *
+   * It exists so such a caller does not have to reach for `_halt` and silently
+   * skip the telemetry beside it. Criticality is the caller's to state,
+   * defaulting to the same strict answer `isCriticalSystem` gives an omission.
+   */
+  fail(who, err, critical = true) {
     this.ctx.frameErrors++;
     this.ctx.lastFrameError = { who, message: String(err && err.message || err), frame: this.frame };
-    if (isCriticalSystem(system)) { this._halt(who, err); return; }
+    if (critical) { this._halt(who, err); return; }
     if (this._reported.has(who)) return;
     this._reported.add(who);
     console.error(`[engine] error in ${who} (frame ${this.frame}) — continuing:`, err);
@@ -252,7 +265,45 @@ export class Engine {
     };
   }
 
+  /**
+   * Register a system and run its `init`.
+   *
+   * `init` is the second place a system's own code runs, and unlike the first
+   * it runs at boot — before `start()`, before the first frame, before anything
+   * the frame loop guards. It used to run unguarded, so a throw propagated out
+   * of `add()` and, in `main.js`, out of module evaluation: `engine.start()`
+   * never ran and the fatal overlay was never reached. The failure class the
+   * criticality split exists to surface was the one class it could not surface,
+   * and the player got a blank page instead of an explanation.
+   *
+   * So an `init` throw goes through the same two answers a frame throw gets:
+   *  · **critical** — halt, exactly as a throw on frame 900 would. A system
+   *    that cannot even construct itself is not less serious than one that
+   *    fails later, and the halt is what raises the overlay.
+   *  · **noncritical** — report it and drop the system. Boot carries on without
+   *    it, which is the same trade the frame path makes for presentation.
+   *
+   * Dropping is not cosmetic: a system whose `init` threw is half-built, and
+   * ticking half of it every frame is strictly worse than not having it. It
+   * goes out through `remove()` rather than a bare `splice` precisely so the
+   * context is cleared with it — a system that published `ctx.vfx = this`
+   * before failing would otherwise still be reachable by every consumer, and
+   * a critical one calling into it halts the run minutes later naming the
+   * wrong system. See `remove()`.
+   *
+   * What this still cannot undo is anything else `init` wrote before it threw:
+   * a listener it subscribed, a mesh it added to the scene. Those need a
+   * transactional context nothing here wants, so they are named as held.
+   */
   add(system) {
+    // A halted engine registers nobody. Boot is a straight line of `add()`
+    // calls, so the first critical failure is followed by a dozen more
+    // registrations whose `init`s would run against the half-built context that
+    // failure left — each throwing into a `_halt` that has already fired. Same
+    // rule `_call` states for frame phases, applied to the only other place a
+    // system's code runs.
+    if (this.fatal) return system;
+
     // Say out loud which answer an undeclared system was given. The default is
     // deliberately the strict one, so a system that never states its case is a
     // system whose first throw ends the run — that must not be discovered for
@@ -266,8 +317,20 @@ export class Engine {
     if (typeof (system?.constructor?.critical ?? system?.critical) !== 'boolean') {
       console.warn(`[engine] ${system?.constructor?.name || 'system'} declares no boolean \`static critical\` — treating it as critical.`);
     }
+    // Pushed before `init` runs, deliberately: a system that looks itself up
+    // through `engine.get()` from inside its own `init` — or that registers a
+    // second system which does — has to find it there.
     this.systems.push(system);
-    if (system.init) system.init(this.ctx);
+    if (system.init) {
+      try {
+        system.init(this.ctx);
+      } catch (e) {
+        // Taken back out before the failure is reported, so anything listening
+        // for `fatalError` sees a `systems` list that no longer claims it.
+        this.remove(system);
+        this._onFrameError(e, system, 'init');
+      }
+    }
     return system;
   }
 
@@ -280,10 +343,38 @@ export class Engine {
    * Removing a system that was never added is a no-op rather than an error —
    * teardown paths run on both the "we registered it" and "we failed before we
    * did" branches, and neither should have to know which one it is on.
+   *
+   * **The context is cleared too, and that is not tidiness.** Systems publish
+   * themselves onto `ctx` from inside `init` — `ctx.vfx`, `ctx.player`,
+   * `ctx.director`, `ctx.coop`, `ctx.net` — and their consumers guard on
+   * nothing more than "is it there": `Director` calls `ctx.vfx.explosion(...)`
+   * behind `if (ctx.vfx && ctx.vfx.explosion)`. `explosion` is a prototype
+   * method, so that guard is satisfied by an instance whose `init` published
+   * itself and *then* threw, and the call dies on the fields `init` never
+   * reached. Since `add()` now drops such a system rather than aborting boot,
+   * a reference left on `ctx` is a critical consumer halting the run several
+   * minutes later, naming the consumer instead of the system that failed.
+   *
+   * Generic rather than a `ready` flag per publisher, because the rule is
+   * "removed means gone" and every future system that publishes itself gets it
+   * without knowing this exists. `Object.keys` on every removal is affordable:
+   * removals are rare (a co-op session ending, a failed `init`) and `ctx` holds
+   * a couple of dozen keys.
+   *
+   * `null`, not `delete`: the `ctx` literal declares these keys as `null` up
+   * front ("filled in by the systems that own them"), so nulling restores
+   * exactly the value they held before `init` ran, and `Lobby._release` already
+   * hand-wrote `this.ctx.net = null` on this same path. `delete` would instead
+   * take a documented key out of the context's shape.
    */
   remove(system) {
     const i = this.systems.indexOf(system);
     if (i >= 0) this.systems.splice(i, 1);
+    // Guarded on `system` so a null/undefined argument cannot match — and blank
+    // — every context key that happens to be null already.
+    if (system) {
+      for (const k of Object.keys(this.ctx)) if (this.ctx[k] === system) this.ctx[k] = null;
+    }
     return system;
   }
 

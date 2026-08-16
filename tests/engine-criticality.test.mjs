@@ -52,6 +52,48 @@ class AuthoritativeFixed {
 class Undeclared {
   update() { boom('update').call(this); }
 }
+/**
+ * Failures during registration rather than during a frame.
+ *
+ * `init` is the other place a system's own code runs, and it runs at boot —
+ * before the first frame, before anything the frame loop guards. A throw here
+ * used to propagate straight out of `add()`, which in `main.js` means out of
+ * module evaluation: no `engine.start()`, no fatal overlay, a blank page.
+ */
+class CriticalInit {
+  static critical = true;
+  init() { throw new Error('boom in init'); }
+  update() { this.ticked = true; }
+}
+class CosmeticInit {
+  static critical = false;
+  init() { throw new Error('boom in init'); }
+  update() { this.ticked = true; }
+}
+/**
+ * Publishes itself onto the context and *then* fails — the shape `VFX.init`
+ * has, which assigns `ctx.vfx = this` before building its particle, trail and
+ * decal pools. Dropping the system from `systems` is not enough on its own:
+ * whatever it already wrote onto `ctx` outlives it.
+ */
+class Publisher {
+  static critical = false;
+  init(ctx) {
+    ctx.gizmo = this;
+    ctx.alias = this;
+    throw new Error('boom after publishing');
+  }
+  // A *prototype* method, and that is the whole trap: `ctx.gizmo && ctx.gizmo.burst`
+  // is truthy on a half-built instance, so the guard `Director` writes around
+  // `ctx.vfx.explosion` reads as satisfied and the call then dies on the state
+  // `init` never got to assign.
+  burst() { this.parts.push(1); }
+}
+/** A critical consumer guarding exactly as `Director.js:1143` does. */
+class Consumer {
+  static critical = true;
+  update(ctx) { if (ctx.gizmo && ctx.gizmo.burst) ctx.gizmo.burst(); }
+}
 /** Registered after the thrower, so "did the rest of the frame run" is answerable. */
 class Witness {
   static critical = false;
@@ -150,6 +192,108 @@ console.log('omission gets the strict answer, and says so');
   ok(engine.running === false, 'an undeclared system is treated as critical');
   ok(isCriticalSystem({}) === true, 'so is a bare object');
   ok(isCriticalSystem(undefined) === true, 'and so is a frame-level throw with no system');
+}
+
+console.log('a critical system that throws in init halts instead of aborting boot');
+{
+  const engine = fresh();
+  const seen = [];
+  // Stands in for `installFatalOverlay(ctx)`, which in main.js now subscribes
+  // before the first registration. The point of the whole fix is that this
+  // listener exists and gets to hear about a boot-time failure.
+  engine.ctx.events.on('fatalError', (e) => seen.push(e));
+  const bad = new CriticalInit();
+  let escaped = null;
+  const realErr = console.error;
+  console.error = () => {};
+  try { engine.add(bad); } catch (e) { escaped = e; } finally { console.error = realErr; }
+
+  ok(escaped === null, 'add() did not propagate the throw out to module evaluation');
+  ok(engine.fatal?.who === 'CriticalInit.init', 'the failure names the system and the phase');
+  ok(engine.ctx.fatalError === engine.fatal, 'ctx carries the same record');
+  ok(engine.ctx.authority === false, 'authority was surrendered');
+  ok(engine.ctx.frameErrors === 1, 'the existing telemetry moved, exactly as for a frame throw');
+  ok(engine.ctx.lastFrameError?.who === 'CriticalInit.init', 'lastFrameError names the offender');
+  ok(seen.length === 1 && seen[0].who === 'CriticalInit.init', 'fatalError was emitted, so the overlay can raise itself');
+  ok(engine.running === false, 'the loop is stopped');
+  ok(!engine.systems.includes(bad), 'the system that could not construct itself is not registered');
+  engine.start();
+  ok(engine.running === false, 'start() will not run a boot that already failed');
+}
+
+console.log('a halted boot registers nobody after the failure');
+{
+  const engine = fresh();
+  const realErr = console.error;
+  console.error = () => {};
+  engine.add(new CriticalInit());
+  console.error = realErr;
+  // main.js is a straight line of fifteen further `add()` calls after most
+  // systems. None of their `init`s may run against the half-built context the
+  // failure left behind — the same rule `_call` enforces for frame phases.
+  const late = engine.add(new Witness());
+  ok(!engine.systems.includes(late), 'a later registration was refused');
+  ok(engine.fatal?.who === 'CriticalInit.init', 'and the original failure still stands as the cause');
+}
+
+console.log('a noncritical system that throws in init is dropped and boot continues');
+{
+  const engine = fresh();
+  const bad = new CosmeticInit();
+  const errs = [];
+  const realErr = console.error;
+  console.error = (...a) => errs.push(a.join(' '));
+  engine.add(bad);
+  console.error = realErr;
+
+  ok(engine.fatal === null && engine.ctx.fatalError === null, 'nothing fatal');
+  ok(engine.ctx.authority === true, 'authority was not surrendered');
+  ok(engine.ctx.frameErrors === 1, 'but the failure was still counted');
+  ok(errs.some((e) => e.includes('CosmeticInit.init')), 'and reported on the console by name');
+  ok(!engine.systems.includes(bad), 'the half-constructed system was not registered');
+
+  const w = engine.add(new Witness());
+  engine._frame();
+  ok(w.updates === 1, 'later registrations still happen and the run carries on');
+  ok(bad.ticked !== true, 'the dropped system is never ticked');
+}
+
+console.log('a dropped system does not go on speaking for itself through the context');
+{
+  // The failure this closes: `VFX` (noncritical) publishes `ctx.vfx = this`
+  // and then throws building its pools. `Director` (critical) calls
+  // `ctx.vfx.explosion(...)` behind a truthy guard that a half-built instance
+  // passes, so the run halts on the first explosion-driven death — an
+  // arbitrary later frame, naming Director rather than VFX. Before init throws
+  // were caught at all this was unreachable, because boot simply aborted.
+  const engine = fresh();
+  const realErr = console.error;
+  console.error = () => {};
+  engine.add(new Publisher());
+  console.error = realErr;
+
+  ok(!engine.ctx.gizmo, 'the half-built system was taken off the context');
+  ok(!engine.ctx.alias, 'under every key that named it, not just the first');
+
+  engine.add(new Consumer());
+  engine._frame();
+  ok(engine.fatal === null, 'a critical consumer did not halt the run on a later frame');
+  ok(engine.ctx.frameErrors === 1, 'and only the original init failure was ever counted');
+}
+
+console.log('remove() clears the context, not just the systems list');
+{
+  const engine = fresh();
+  class Owner {
+    static critical = false;
+    init(ctx) { ctx.owner = this; }
+  }
+  const o = engine.add(new Owner());
+  ok(engine.ctx.owner === o, 'init published it');
+  engine.remove(o);
+  ok(engine.ctx.owner === null, 'removal took it back off');
+  ok(engine.ctx.engine === engine, 'and left everything that is not the removed system alone');
+  ok(engine.ctx.events && engine.ctx.scene, 'including the context furniture');
 }
 
 /** Every .js file under src/, depth-first. */

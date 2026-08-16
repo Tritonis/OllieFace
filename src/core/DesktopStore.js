@@ -41,7 +41,22 @@ export function initDesktopStore(
   // from the player's side they are one fact. The main process pushes its
   // verdict over the bridge; a `saveStore` that throws here never reached the
   // main process at all, which is the same news arriving one step earlier.
-  const report = (ok, reason) => { onSaveStatus?.({ ok, reason: ok ? null : reason }); };
+  //
+  // `onSaveStatus` is foreign code — whatever the caller passed, doing whatever
+  // it does — and both of its call sites are places a throw has nothing above
+  // it to land on. The main-process half of this pair already wraps the
+  // identical callback (`safely()` in desktop/save-writer.mjs), where the cost
+  // of not doing so was every save of the session lost in silence. The cost
+  // here is larger: `initDesktopStore` is the first executable statement of
+  // main.js, before the Engine and before the fatal overlay is listening, so a
+  // throw escaping this module aborts boot and leaves a blank page.
+  const report = (ok, reason) => {
+    try { onSaveStatus?.({ ok, reason: ok ? null : reason }); }
+    catch (err) {
+      try { console.error('DesktopStore: a save-status callback threw', err); }
+      catch { /* nothing left */ }
+    }
+  };
   if (onSaveStatus && typeof bridge.onSaveStatus === 'function') {
     bridge.onSaveStatus((status) => { report(status?.ok === true, status?.reason ?? 'the save could not be written'); });
   }
