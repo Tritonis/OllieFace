@@ -108,14 +108,18 @@ ctx.pipeline.build(ctx.scene, ctx.camera);
 // Renderer runs as the final "system" so it sees the fully updated frame.
 engine.add({
   // Drawing the frame and closing out input. A lost frame is not a lost run, so
-  // this stays on the continue-through-it side of the rule. Worth knowing that a
-  // throw inside `render` skips `endFrame()`, which leaves this frame's input
-  // edges set for the next one — a real consequence, but a smaller one than
-  // ending the run over a shader.
+  // this stays on the continue-through-it side of the rule. `endFrame()` runs in
+  // a `finally` so a throw inside `render` still propagates to the Engine's
+  // noncritical handling — this system stays degraded, not reclassified — while
+  // this frame's input edges are cleared regardless, rather than bleeding into
+  // the next one.
   critical: false,
   lateUpdate(c, dt) {
-    ctx.pipeline.render(c.scene, c.camera, dt);
-    c.input.endFrame();
+    try {
+      ctx.pipeline.render(c.scene, c.camera, dt);
+    } finally {
+      c.input.endFrame();
+    }
   },
 });
 
