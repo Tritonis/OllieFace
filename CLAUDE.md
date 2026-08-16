@@ -49,7 +49,7 @@ Commit style: a single evocative sentence describing what changed in the world, 
 
 ## Verification
 
-- `npm test` — the full suite, ~1 minute. Currently **67/67 test files**.
+- `npm test` — the full suite, ~1 minute. Currently **70/70 test files**.
 - `npm run smoke:steam` — the Steam socket-pair gate (ADR 0002 arm B), ~35 s. Needs a **running,
   logged-in Steam client**, so it is a local gate and never a CI one. Writes
   `reviews/net-baseline/steam-socketpair-3peer-60hz.json`; the write-up beside it is
