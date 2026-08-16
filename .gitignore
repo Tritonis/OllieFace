@@ -1,5 +1,10 @@
 node_modules/
 dist/
+
+# The gate runner's staleness record (`npm run gates:status`). A fact about this
+# machine and this checkout — when each arm last ran here and what it said — not
+# a fact about the code, so it would conflict on every merge if committed.
+.gates/
 dist-desktop/
 
 # Externally-authored mesh kits, fetched by hand for the #59 import seam and
