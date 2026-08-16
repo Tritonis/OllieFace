@@ -64,6 +64,45 @@ const shaderCw = (() => {
 /** `const half = len * 0.5 - 0.5;` in the spawn path, as a function. */
 const shaderHalfMatch = /const\s+half\s*=\s*len\s*\*\s*0\.5\s*-\s*0\.5\s*;/.test(vfx);
 
+/**
+ * NumberVert's `vec2 corner = vec2(...)` body, whitespace-normalised.
+ *
+ * Extracting only the scalar `cw` and then re-typing the layout *formula* into
+ * this test is not a derivation — it is a second copy of the thing under test,
+ * and it is blind by construction. Verified the expensive way: mutating the
+ * shader to `(position.x + (aGlyph.y - aGlyph.z) * cw * 2.0) * scale` doubles
+ * the drawn advance with every constant untouched, and a scalar-only test
+ * passed it 20/20.
+ *
+ * So the formula's *shape* is pinned too. `CORNER_FORMS` maps each exact
+ * accepted spelling to the layout function this test may then assume; anything
+ * else — a new term, a different factor, a restructure — is not in the table,
+ * yields null, and trips the loud extractor guard rather than silently
+ * licensing the width sweep's assumptions. Widening the table is a deliberate
+ * act: add a spelling only alongside the layout function that matches it.
+ */
+const CORNER_FORMS = new Map([
+  [
+    '(position.x + (aGlyph.y - aGlyph.z) * cw) * scale, position.y * scale',
+    /** @returns the glyph-space x of a quad corner, in quad widths. */
+    (px, col, half, cw) => px + (col - half) * cw,
+  ],
+]);
+
+const cornerXForm = (() => {
+  const m = /vec2\s+corner\s*=\s*vec2\(([\s\S]*?)\)\s*;/.exec(vfx);
+  if (!m) return null;
+  const normalised = m[1].replace(/\s+/g, ' ').trim().replace(/,\s*$/, '');
+  return CORNER_FORMS.get(normalised) ?? null;
+})();
+
+/**
+ * The layout the sweeps below use. An unrecognised formula has already failed
+ * the extractor guard, and yields NaN here so every downstream comparison fails
+ * too — a blind sweep must not go quiet, and must not throw either.
+ */
+const cornerX = cornerXForm ?? (() => NaN);
+
 console.log('the extractors still see what they are checking');
 {
   ok(vfx.length > 50000, `VFX.js read (${vfx.length} chars)`);
@@ -73,6 +112,8 @@ console.log('the extractors still see what they are checking');
     'NumberVert still declares `float cw = <number>;` — if this fails the shader was restructured and every cw assertion below is blind');
   ok(shaderHalfMatch,
     'the spawn path still writes aGlyph.z as `len * 0.5 - 0.5`');
+  ok(cornerXForm !== null,
+    'NumberVert lays the glyph out with a corner formula this test recognises -- if this fails the formula was restructured (a new term, a different factor) and the width sweep below is asserting against a layout the shader no longer performs');
   ok(!/^\s*const\s+NUM_(ADVANCE|TILE|COLS|HALO_PX|FONT_PX|STROKE_PX)\s*=/m.test(vfx),
     'no glyph-geometry constant has been re-declared locally in VFX.js, shadowing the import');
 }
@@ -89,21 +130,26 @@ console.log('the shader and the CPU reservation share one advance');
   ok(/out\.hx\s*=\s*\(glyphRunWidthChars\(len\)\s*\*\s*h\s*\*\s*0\.5\s*\*\s*p00\)\s*\/\s*dist\s*;/.test(vfx),
     '_box derives its half-width from glyphRunWidthChars() rather than re-inlining the formula');
 
-  // An independent derivation of the run width, straight from NumberVert's own
-  // layout rule rather than from the helper under test:
+  // The run width the shader actually draws, swept over every glyph in a run,
+  // and compared against what `_box` reserves.
   //
-  //   corner.x = (position.x + (aGlyph.y - aGlyph.z) * cw) * scale
+  // What is taken from VFX.js: the advance (`shaderCw`), the aGlyph.z spelling
+  // (`shaderHalfMatch`), and the corner.x formula itself — `cornerX` is one of
+  // the accepted spellings in CORNER_FORMS, so a shader whose layout expression
+  // changes shape is not silently modelled by the old one.
   //
-  // with position.x over a unit quad's [-0.5, 0.5], aGlyph.y the glyph's column
-  // index and aGlyph.z = len * 0.5 - 0.5. Sweeping every glyph in the run gives
-  // the drawn extent; glyphRunWidthChars must reproduce it.
+  // What this test still assumes rather than reads: that `position.x` spans a
+  // unit quad's [-0.5, 0.5] (PlaneGeometry(1, 1) upstream), that `aGlyph.y` is
+  // the glyph's column index within the run, and that `scale` is a uniform
+  // positive factor and so cannot change the ratio of drawn width to reserved
+  // width. Those three are the residual blind spots here.
   let widthsAgree = true, firstBad = '';
   for (let len = 1; len <= 8; len++) {
     const half = len * 0.5 - 0.5;
     let lo = Infinity, hi = -Infinity;
     for (let i = 0; i < len; i++) {
-      lo = Math.min(lo, -0.5 + (i - half) * shaderCw);
-      hi = Math.max(hi, 0.5 + (i - half) * shaderCw);
+      lo = Math.min(lo, cornerX(-0.5, i, half, shaderCw));
+      hi = Math.max(hi, cornerX(0.5, i, half, shaderCw));
     }
     const drawn = hi - lo;
     if (!near(drawn, glyphRunWidthChars(len), 1e-12)) {
@@ -120,7 +166,7 @@ console.log('the shader and the CPU reservation share one advance');
   // symmetric, which is what lets _box report a centre plus a half-extent at
   // all. A change to `half` that breaks this leaves the box off to one side.
   const len = 5, half = len * 0.5 - 0.5;
-  const lo = -0.5 + (0 - half) * shaderCw, hi = 0.5 + (len - 1 - half) * shaderCw;
+  const lo = cornerX(-0.5, 0, half, shaderCw), hi = cornerX(0.5, len - 1, half, shaderCw);
   ok(near(lo, -hi, 1e-12), `a ${len}-glyph run is centred on its origin (${lo} .. ${hi})`);
 }
 
