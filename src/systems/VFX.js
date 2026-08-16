@@ -8,6 +8,10 @@ import { clamp, lerp } from '../core/MathUtil.js';
 import { elementOf, sparkColour, ELEMENT_HUE } from '../data/damageTypes.js';
 import { isLocalVictim, isLocalOwner } from '../core/Engine.js';
 import { GATE, shouldLaunch } from './LaunchGate.js';
+import {
+  GLYPHS, NUM_ADVANCE, NUM_TILE, NUM_COLS, NUM_FONT_PX, NUM_STROKE_PX, NUM_HALO_PX,
+  haloUv, glyphRunWidthChars,
+} from './GlyphAtlasLayout.js';
 
 /**
  * The impact layer.
@@ -2443,16 +2447,14 @@ const NUM_MIN_PX = 37.5;
 // wider, so the advance is 0.62 / 1.25. Mirrored by `_box`, which projects the
 // same rectangle on the CPU — change one without the other and the collision
 // reservation stops describing the numerals it is reserving space for.
-const NUM_ADVANCE = 0.496;
+// Value lives in `./GlyphAtlasLayout.js`, with the mirror asserted by
+// `tests/glyph-atlas-layout.test.mjs`.
 // Glyph atlas geometry, shared by the drawer and the halo dilation in NumberFrag.
 // The tile is 160 rather than 128 purely for padding: the halo is a ring of taps
 // at a fixed atlas-texel radius, so its ceiling is whatever room is left between
 // the ink and the tile edge, and at 128 that ceiling was ~14 texels with 13
 // already spent. See NUM_HALO_PX.
-const NUM_TILE = 160;
-const NUM_COLS = 4;
-const NUM_FONT_PX = 88;
-const NUM_STROKE_PX = 20;
+// Values live in `./GlyphAtlasLayout.js`.
 // Halo radius in atlas texels. Must stay inside the tile's padding
 // (tile/2 - (font*0.9 + stroke)/2 ≈ 14 texels) or a tap reads the next glyph.
 // Raised with the size reduction above and for the same reason: the halo is the
@@ -2487,7 +2489,8 @@ const NUM_STROKE_PX = 20;
 // two mask pixels of solid dark, which is the smallest plate that can carry a
 // median. It stays inside the enlarged tile's ~30 texel padding, so the no-tap-
 // crosses-a-tile contract above still holds with room to spare.
-const NUM_HALO_PX = 26;
+// Value lives in `./GlyphAtlasLayout.js`; `tilePaddingPx()` there is the
+// no-tap-crosses-a-tile bound, asserted by the layout test.
 // Beyond this the readout is chip damage on something the player is not
 // fighting; spending instances on it only adds noise.
 const NUM_MAX_DIST = 45;
@@ -2654,7 +2657,6 @@ void main() {
 }
 `;
 
-const GLYPHS = '0123456789!+-x%';
 
 /**
  * World-space damage readout. Text is a 4x4 canvas atlas of glyphs and each
@@ -2699,7 +2701,7 @@ class DamageNumbers {
         uMap: { value: map },
         uTime: { value: 0 },
         uAtlasCols: { value: NUM_COLS },
-        uHaloUv: { value: NUM_HALO_PX / (NUM_TILE * NUM_COLS) },
+        uHaloUv: { value: haloUv() },
         uMinPx: { value: NUM_MIN_PX },
         uPxToWorld: { value: 0 },
         uHudRect: { value: new THREE.Vector4(0, 0, 0, 0) },
@@ -2884,7 +2886,7 @@ class DamageNumbers {
     const h = Math.max(scale, dist * minPx * this.mat.uniforms.uPxToWorld.value);
     out.cx = (p00 * s.x) / dist;
     out.cy = (p11 * s.y) / dist;
-    out.hx = (((len - 1) * NUM_ADVANCE + 1) * h * 0.5 * p00) / dist;
+    out.hx = (glyphRunWidthChars(len) * h * 0.5 * p00) / dist;
     out.hy = (h * 0.5 * p11) / dist;
     return true;
   }
