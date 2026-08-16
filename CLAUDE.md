@@ -23,7 +23,7 @@ shells** — if `gh` is not found, invoke it as `& "C:\Program Files\GitHub CLI\
 |---|---|---|
 | Anything with an open/closed lifecycle | **Issue** | Carry-forwards, deferred fixes, user checkpoints, deploy prerequisites. |
 | Implementation plans | `docs/superpowers/plans/` **in git** | Versioned with the code they describe; in an issue they drift silently. |
-| Briefs, task reports, review reports | `.superpowers/sdd/<slice>/` (gitignored) | Evidence and working material. Agents read files deterministically and offline. |
+| Briefs, task reports, review reports | `.superpowers/sdd/<slice>/` (gitignored) | Evidence and working material. The controller writes them (subagent returns are text-only); agents read files deterministically and offline. |
 | A slice's live ledger | `.superpowers/sdd/<slice>/progress.md` | Edited dozens of times per slice — cheap on a file, noisy on an issue. **Demote it at merge**: mark it closed, point it at the issues, keep it as the evidence trail. |
 
 Long-form content stays in files for a practical reason: a file can be `Grep`ed and range-`Read`;
@@ -31,7 +31,8 @@ an issue body is all-or-nothing, so a 40 KB review in an issue costs context for
 
 ### Rules
 
-- **Subagents never call `gh`.** They write report files; the controller distils those into issues at
+- **Subagents never call `gh`.** They return findings as text (the Agent tool refuses subagent-written
+  report files); the controller persists what must outlive the turn and distils it into issues at
   task boundaries. This keeps agents offline and deterministic, and keeps issue quality under one editor.
 - **Milestones are gates, not folders.** *Public relay exposure* being empty is the precondition for
   exposing the relay — a checkable claim rather than a remembered one.
@@ -71,7 +72,7 @@ that matter are Windows/GPU/Steam-bound, so a hosted Linux runner could run almo
   names no arm at all and so is invisible to the staleness report by design, while the capture gate
   is a full arm marked `manual: true` so it CAN go OVERDUE. Record a hand-run with
   `node tools/gates.mjs status --record capture`.
-- `npm test` — the full suite, ~1 minute. Currently **74/74 test files**.
+- `npm test` — the full suite, ~1 minute.
 - `npm run smoke:steam` — the Steam socket-pair gate (ADR 0002 arm B), ~35 s. Needs a **running,
   logged-in Steam client**, so it is a local gate and never a CI one. Writes
   `reviews/net-baseline/steam-socketpair-3peer-60hz.json`; the write-up beside it is
@@ -97,30 +98,9 @@ that matter are Windows/GPU/Steam-bound, so a hosted Linux runner could run almo
 
 ## Install health
 
-`node_modules/.bin` is the thing to check when a local binary "isn't found". A healthy tree here has
-**~87 entries**; anything in the single digits means an `npm install` aborted partway, because npm
-links bins at the *end* of reify. On 2026-08-16 (#83) it held exactly two — hand-written `vite`
-shims an agent had added to unblock the build arm — which meant `gates:cheap`'s build arm had only
-ever been observed green against a fake binding, and `npm run desktop` / `desktop:pack` were broken
-outright. **Never hand-write a `.bin` shim.** npm's are ~14 lines with a `find_dp0` preamble; a
-two-line `exec node ../vite/bin/vite.js` is a forgery, and it hides the real fault.
-
-Two failure modes abort install here, both seen in the same session:
-
-- **koffi builds from source and dies on missing CMake.** `koffi` ships its native binary as an
-  optional per-platform package (`@koromix/koffi-win32-x64`). If that package is absent,
-  `cnoke.cjs` falls back to a source build, cannot find CMake, and takes the whole install down
-  before any bin is linked. Check `node_modules/@koromix/` exists; there is no CMake on this box and
-  there does not need to be.
-- **A zombie Electron holds `dist/resources/default_app.asar`,** and install fails `EBUSY` renaming
-  it. The one on 2026-08-16 was three days old, orphaned from a Playwright desktop run. It is
-  properly dead — `Get-Process` lists it but both `Stop-Process` and `taskkill /F` report *"no
-  running instance of the task"*. What actually clears it is CIM:
-  `Get-CimInstance Win32_Process -Filter "ProcessId=<pid>" | Invoke-CimMethod -MethodName Terminate`.
-
-Repair is plain `npm install` once both are cleared — `npm rebuild` is not enough, since it hits the
-same koffi wall. Confirm afterwards that the postinstall line (`> install-electron`) appeared in the
-output, and that `@rolldown/binding-win32-x64-msvc/package.json` still exists.
+**Never hand-write a `node_modules/.bin` shim** — npm's are ~14 lines with a `find_dp0` preamble; a
+two-line forgery hides the real fault. When a local binary "isn't found", `.bin` is nearly empty, or
+`npm install` aborts (koffi/CMake, EBUSY on a zombie Electron), use the **`install-repair` skill**.
 
 ## Parallel lanes
 
@@ -158,7 +138,8 @@ whichever other lane is already there.
 port they still collide on 5209, and the loser fails in a way that reads as a bug in its own branch —
 that cost two agents a diagnosis cycle each on 2026-08-15 (#68).
 
-**Overnight autonomous runs** follow the `parallel-lanes` skill's *Autonomous Overnight Mode*:
+**Autonomous unattended runs** (overnight or any window away) follow the `parallel-lanes` skill's
+*Autonomous Mode*:
 park-don't-ask (label `blocked:user` with the decision written out, leave the branch unmerged, pull
 the next ticket), mandatory iteration budgets in every brief, serialization constraints stated in the
 run plan, and state persisted to issue #16 at every batch close. Launch only against a queue triaged
