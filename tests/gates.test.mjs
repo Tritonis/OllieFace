@@ -11,7 +11,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ARMS, assertNoSteam, stalenessReport } from '../tools/gates.mjs';
+import { ARMS, assertNoSteam, assertManual, recordManualRun, stalenessReport } from '../tools/gates.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
@@ -94,6 +94,53 @@ console.log('the staleness report answers the question it exists for');
   ok(old.some((r) => r.stale), 'a run predating the last commit to its paths is overdue');
   ok(fresh.every((r) => !r.stale), 'a run made after the last such commit is not');
   ok(old.every((r) => r.ageDays > 89), 'the record reports the age in days');
+}
+
+console.log('the capture gate is a tracked-but-manual arm');
+{
+  const manual = ARMS.filter((a) => a.manual);
+  ok(manual.length > 0 && manual.every((a) => a.id === 'capture' || a.manual), 'at least one manual arm exists');
+  const capture = ARMS.find((a) => a.id === 'capture');
+  ok(!!capture, 'a "capture" arm is present in ARMS');
+
+  // 1. Absent from both tiers' runnable arm lists.
+  const cheap = ARMS.filter((a) => a.tier === 'cheap').map((a) => a.id);
+  const heavy = ARMS.filter((a) => a.tier === 'heavy').map((a) => a.id);
+  ok(!cheap.includes('capture'), 'capture does not appear in the cheap tier');
+  ok(!heavy.includes('capture'), 'capture does not appear in the heavy tier');
+
+  // 2. assertManual throws on it (mirrors assertNoSteam's own-arm guard) and
+  // does not throw on a non-manual arm — demonstrating the guard CAN fail.
+  let threwOnManual = false;
+  try { assertManual(capture); } catch (e) { threwOnManual = /manual-only/.test(e.message); }
+  ok(threwOnManual, 'assertManual throws on the manual capture arm');
+  let cleanOnRunnable = true;
+  for (const a of ARMS.filter((a) => !a.manual)) { try { assertManual(a); } catch { cleanOnRunnable = false; } }
+  ok(cleanOnRunnable, 'assertManual passes every runnable (non-manual) arm');
+
+  // 3. It still appears in the staleness report and CAN report OVERDUE.
+  const neverRun = stalenessReport(ARMS, { arms: {} });
+  const captureRow = neverRun.find((r) => r.id === 'capture');
+  ok(!!captureRow, 'capture appears in the staleness report');
+  ok(captureRow.stale === true, 'capture reads OVERDUE with no recorded run');
+
+  // 4. Recording a manual run clears its OVERDUE, and a later commit to its
+  // paths restores it — using the same before/after synthetic state the
+  // rest of this file uses for stalenessReport.
+  const justNow = new Date().toISOString();
+  const freshState = { arms: { capture: { at: justNow, verdict: 'pass' } } };
+  const freshRow = stalenessReport(ARMS, freshState).find((r) => r.id === 'capture');
+  ok(freshRow.stale === false, 'a manual run recorded after the last touching commit clears OVERDUE');
+
+  const longAgo = new Date(Date.now() - 90 * 86_400_000).toISOString();
+  const staleAgainState = { arms: { capture: { at: longAgo, verdict: 'pass' } } };
+  const staleAgainRow = stalenessReport(ARMS, staleAgainState).find((r) => r.id === 'capture');
+  ok(staleAgainRow.stale === true, 'a run predating a later commit to its paths goes OVERDUE again');
+
+  // recordManualRun itself: refuses a non-manual arm, accepts the manual one.
+  let refusedNonManual = false;
+  try { recordManualRun(ARMS, 'test'); } catch { refusedNonManual = true; }
+  ok(refusedNonManual, 'recordManualRun refuses to record a non-manual (tier-run) arm');
 }
 
 console.log('the audit allowlist is dated and reasoned');
