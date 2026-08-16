@@ -79,6 +79,11 @@ const _m4 = new THREE.Matrix4();
 const _q = new THREE.Quaternion();
 
 export class Director {
+  // Spawning and the escalation curve. A throw mid-spawn leaves an enemy half
+  // registered, and a throw anywhere quietly flattens the pressure the run is
+  // supposed to be applying.
+  static critical = true;
+
   constructor() {
     this.enemies = [];
     this.pool = new Map();

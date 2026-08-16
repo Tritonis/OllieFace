@@ -12,6 +12,8 @@ import { RNG } from './MathUtil.js';
  * Gameplay (physics, AI, projectiles) belongs in fixedUpdate so behaviour is
  * framerate-independent. Presentation (cameras, VFX lerps, HUD) belongs in
  * update/lateUpdate so it stays smooth on high-refresh displays.
+ *
+ * Every system also declares whether it is critical — see `isCriticalSystem`.
  */
 const FIXED = 1 / 60;
 const MAX_SUBSTEPS = 5;
@@ -23,6 +25,55 @@ const HITSTOP_SCALE = 0.15;
 // bank before the ceiling engages.
 const HITSTOP_DUTY = 0.15;
 const HITSTOP_BUDGET_MAX = 0.12;
+
+/**
+ * Is this system one whose failure the run cannot be trusted to survive?
+ *
+ * A system declares it with `static critical = true` or `static critical =
+ * false` on its class (a plain-object system — the renderer in `main.js` is the
+ * only one — carries the same flag as an own property). Two answers, and the
+ * distinction is not "how visible is it" but "does the game still mean what it
+ * says afterwards":
+ *
+ *  · **noncritical** — presentation. VFX, audio, blight, the camera, the HUD,
+ *    the renderer. A dead one of these makes the run uglier or harder to read,
+ *    and continuing is strictly better than stopping: nobody wants their run
+ *    ended by a shader.
+ *  · **critical** — anything the run's truth is made of: damage, items, the
+ *    world's collision, spawning, progression, the corruption economy, net
+ *    authority. A system that throws halfway through its update has left
+ *    partial state behind, and in co-op that partial state is then snapshotted
+ *    to peers as truth. Playing on is not resilience, it is a quiet lie.
+ *
+ * **The default is critical**, and that is the whole point of the default: a
+ * system nobody has thought about is a system nobody has argued is safe to lose.
+ * Omission therefore fails loudly rather than silently, and `add()` says so on
+ * the console the moment an undeclared system registers, so its author finds out
+ * which answer they were given without having to read this file.
+ *
+ * Called for a bare frame-level throw too (no system), where `system` is
+ * undefined and the default applies: a throw in the Engine's own frame code is
+ * as authoritative as a failure gets.
+ */
+export function isCriticalSystem(system) {
+  const declared = system?.constructor?.critical ?? system?.critical;
+  return declared !== false;
+}
+
+/**
+ * Thrown to unwind the remainder of a frame after a critical failure.
+ *
+ * Stopping the loop is not enough on its own: the throw happened inside one
+ * system's phase, and every loop in `_frame` would otherwise carry on calling
+ * the systems that follow it — a whole frame of them running against the
+ * half-written state the failure just left. `_frame` catches this and returns.
+ */
+export class FrameHalt extends Error {
+  constructor(who) {
+    super(`engine halted after a critical failure in ${who}`);
+    this.name = 'FrameHalt';
+  }
+}
 
 export class Engine {
   constructor({ canvas, seed = Date.now() }) {
@@ -74,9 +125,15 @@ export class Engine {
       // only way anyone (harness included) learns about it is this counter.
       frameErrors: 0,
       lastFrameError: null,
+      // Set once, by the first critical failure, and never cleared. Anything
+      // that wants to know why the world stopped reads it here; the UI hears
+      // about it through the `fatalError` event at the same moment.
+      fatalError: null,
     };
     // Keyed by "System.phase" so a system that throws every frame logs once.
     this._reported = new Set();
+    // The failure that stopped this engine, or null. Mirrors ctx.fatalError.
+    this.fatal = null;
     // Rolling credit for the hitstop duty-cycle ceiling.
     this._stopBudget = 0;
     // Identity of the live frame loop. See `start()`.
@@ -84,17 +141,51 @@ export class Engine {
   }
 
   /**
-   * One system throwing must degrade that system, never the frame. Log the
-   * first occurrence per system+phase with the offender named, then stay quiet
-   * so a per-frame throw can't drown the console.
+   * A noncritical system throwing must degrade that system, never the frame.
+   * Log the first occurrence per system+phase with the offender named, then
+   * stay quiet so a per-frame throw can't drown the console.
+   *
+   * A critical one ends the run instead — see `_halt`. Both paths keep the
+   * `frameErrors` / `lastFrameError` telemetry the harness reads: criticality
+   * is a severity dimension added beside that counter, not a replacement for it.
    */
   _onFrameError(err, system, phase) {
     const who = system ? `${system.constructor?.name || 'system'}.${phase}` : 'frame';
     this.ctx.frameErrors++;
     this.ctx.lastFrameError = { who, message: String(err && err.message || err), frame: this.frame };
+    if (isCriticalSystem(system)) { this._halt(who, err); return; }
     if (this._reported.has(who)) return;
     this._reported.add(who);
     console.error(`[engine] error in ${who} (frame ${this.frame}) — continuing:`, err);
+  }
+
+  /**
+   * End the run, once, and say why.
+   *
+   * Four things happen together, and each of them is load-bearing:
+   *  · the loop stops, and `start()` will not restart it — a critical system
+   *    that threw once throws again on the state it left behind;
+   *  · `ctx.authority` goes false, because nothing may keep speaking for a
+   *    simulation that has stopped simulating. In co-op that is the difference
+   *    between a peer seeing the session end and a peer being fed snapshots of
+   *    a corpse;
+   *  · the console gets the whole error, unconditionally — this fires once by
+   *    construction, so the once-per-system throttle above does not apply;
+   *  · `fatalError` is emitted so the page can put something in front of the
+   *    player. A frozen canvas with no explanation is not an improvement on
+   *    playing a broken run, and the overlay is what makes stopping the better
+   *    of the two. The Engine owns no DOM, so it says what happened and lets
+   *    `ui/FatalOverlay.js` decide how it looks.
+   */
+  _halt(who, err) {
+    if (this.fatal) return;
+    const entry = { who, message: String(err && err.message || err), frame: this.frame };
+    this.fatal = entry;
+    this.ctx.fatalError = entry;
+    this.stop();
+    this.ctx.authority = false;
+    console.error(`[engine] critical failure in ${who} (frame ${this.frame}) — stopping the run:`, err);
+    this.ctx.events.emit('fatalError', entry);
   }
 
   _call(system, phase, ctx, dt) {
@@ -103,12 +194,14 @@ export class Engine {
       try { system[phase](ctx, dt); } catch (e) { this._onFrameError(e, system, phase); }
       const key = `${system.constructor?.name || 'system'}.${phase}`;
       this.profile[key] = (this.profile[key] || 0) + (performance.now() - t);
+      if (this.fatal) throw new FrameHalt(this.fatal.who);
       return;
     }
     try {
       system[phase](ctx, dt);
     } catch (e) {
       this._onFrameError(e, system, phase);
+      if (this.fatal) throw new FrameHalt(this.fatal.who);
     }
   }
 
@@ -150,6 +243,13 @@ export class Engine {
   }
 
   add(system) {
+    // Say out loud which answer an undeclared system was given. The default is
+    // deliberately the strict one, so a system that never states its case is a
+    // system whose first throw ends the run — that must not be discovered for
+    // the first time by a player.
+    if ((system?.constructor?.critical ?? system?.critical) === undefined) {
+      console.warn(`[engine] ${system?.constructor?.name || 'system'} declares no \`static critical\` — treating it as critical.`);
+    }
     this.systems.push(system);
     if (system.init) system.init(this.ctx);
     return system;
@@ -195,6 +295,9 @@ export class Engine {
    */
   start() {
     if (this.running) return;
+    // A halted engine stays halted. Restarting one only re-runs the critical
+    // system that failed, against the state its failure left behind.
+    if (this.fatal) return;
     this.running = true;
     this.clock.start();
     const gen = ++this._loopGen;
@@ -214,7 +317,25 @@ export class Engine {
 
   stop() { this.running = false; }
 
+  /**
+   * One frame, with the critical-failure unwind absorbed here.
+   *
+   * `_halt` has already stopped the loop and told the page by the time the
+   * `FrameHalt` arrives, so there is nothing left to do but abandon the rest of
+   * the frame quietly. It is caught at this boundary rather than in the rAF
+   * chain because `_frame` is also hand-driven — by the harness, by
+   * `sp-equivalence`, by the probes in `tools/` — and none of those callers
+   * should have to learn a new exception to keep working.
+   */
   _frame() {
+    try {
+      this._runFrame();
+    } catch (e) {
+      if (!(e instanceof FrameHalt)) throw e;
+    }
+  }
+
+  _runFrame() {
     const ctx = this.ctx;
     const t0 = this.profiling ? performance.now() : 0;
     // Clamp so a backgrounded tab doesn't fire hundreds of catch-up steps.

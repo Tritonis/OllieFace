@@ -21,6 +21,12 @@ const PAD_KEYS = [
 ];
 
 export class Input {
+  // Not a registered system, but `pollPad` runs through the Engine's `_call`
+  // and so needs the same declaration. Only the pad poll goes through there:
+  // keyboard and mouse arrive on their own listeners, and a failed poll starves
+  // input rather than corrupting anything.
+  static critical = false;
+
   constructor(canvas, opts = {}) {
     this.canvas = canvas;
     this.keys = new Set();

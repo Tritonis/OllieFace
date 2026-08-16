@@ -182,6 +182,10 @@ const _proj = new THREE.Vector3();
 const UP = new THREE.Vector3(0, 1, 0);
 
 export class VFX {
+  // The impact layer. Nothing reads it back, and a run without sparks is still
+  // the same run — this is the case the noncritical half of the rule exists for.
+  static critical = false;
+
   constructor() {
     this.particles = new ParticleSystem({ capacityAdditive: 20480, capacityAlpha: 10240 });
     this.trails = new Trails({ capacity: 40 });

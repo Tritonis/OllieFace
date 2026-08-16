@@ -130,6 +130,11 @@ const BOSS_GOLD_MULT = 0.6;
 const DEFAULT_KILL_COST = 8;
 
 export class Items {
+  // The inventory and the stat pipeline. Every number in the run is computed
+  // off the block this system rebuilds, so a throw mid-rebuild is a run played
+  // on stats nobody chose.
+  static critical = true;
+
   /**
    * `owner === null` is the engine singleton — it adopts `ctx.player` and
    * registers as `ctx.items`, exactly as before this class became

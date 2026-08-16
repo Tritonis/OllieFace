@@ -45,6 +45,10 @@ import { isLocalVictim } from '../../core/Engine.js';
 const _v = new THREE.Vector3();
 
 export class Realms {
+  // Route choice, the gateways and the finale. A throw mid-transition leaves
+  // the run between stages, in a world nobody finished building.
+  static critical = true;
+
   constructor() {
     this.active = null;         // { def, stage, controller }
     this.armedRealm = null;     // realm id armed by a Tithe Altar this stage

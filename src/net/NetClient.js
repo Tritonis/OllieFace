@@ -28,6 +28,10 @@ const INPUT_HISTORY = 128;
 const SNAP_THRESHOLD = 2.0;
 
 export class NetClient {
+  // Applies the host's world to this one. A throw here leaves the player
+  // looking at a state the host never sent and acting on it.
+  static critical = true;
+
   /** The client half of `NetHost`'s transport seam — see its constructor. */
   constructor({ transport = new ClientTransport() } = {}) {
     this.transport = transport;
