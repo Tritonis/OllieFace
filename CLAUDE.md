@@ -73,6 +73,38 @@ Commit style: a single evocative sentence describing what changed in the world, 
 - Probe and gate runs must be **foreground** (timeout up to 600000 ms). An agent that backgrounds one
   and polls for it has zombied here before.
 
+## Parallel lanes
+
+Default working mode is **three work items at once**, one git worktree each, with the controller
+merging. Two writers in one tree nearly collided on master once; isolation is not optional.
+
+Every lane gets its own port block, assigned in the brief rather than discovered at runtime. Nothing
+in `tools/` or `tests/` claims above 5233 (plus `verify-trickle` on 5599), and
+`tests/probe-ports.test.mjs` enforces that, so the 5240+ range is free by construction:
+
+| Lane | Worktree | Port block | Pass as |
+|---|---|---|---|
+| A | `wt/lane-a` | 5240-5249 | `SP_PORT=5240`, `--port 5241`, `--signal-port 5242` |
+| B | `wt/lane-b` | 5250-5259 | `SP_PORT=5250`, `--port 5251`, `--signal-port 5252` |
+| C | `wt/lane-c` | 5260-5269 | `SP_PORT=5260`, `--port 5261`, `--signal-port 5262` |
+
+**Never laned — these serialise across the whole machine:**
+
+- `npm run smoke:steam` — its impairment settings are global to the Steam library, so a second run
+  corrupts the first regardless of ports or worktrees.
+- Anything driving the Steam client (one logged-in client exists).
+- Heavy GPU capture runs are not *forbidden* in parallel, but three headed chromiums contend; stagger
+  them rather than starting three at once.
+
+**Gates are now parallel-safe** and were not before `d58366d`: all three run through
+`tests/sp-equivalence.mjs`, which takes `--port` / `SP_PORT` and binds strictly. Without a per-lane
+port they still collide on 5209, and the loser fails in a way that reads as a bug in its own branch —
+that cost two agents a diagnosis cycle each on 2026-08-15 (#68).
+
+**Merging:** check merge-base before merging (an agent worktree has branched 15 commits stale),
+`--no-ff`, then re-run the gates on the *integrated* result. Three green branches are not a green
+master. One opus review runs across the merged result, not per lane.
+
 ## Agent skills
 
 Per-repo configuration for the `mattpocock-skills` engineering skills.
