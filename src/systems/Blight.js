@@ -395,6 +395,10 @@ export function makeBlightMaterial() {
 }
 
 export class Blight {
+  // Strictly presentation, as the note above says: gameplay never reads blight
+  // and Corruption never learns it is drawn.
+  static critical = false;
+
   constructor() {
     this.patches = [];
     this.band = 0;

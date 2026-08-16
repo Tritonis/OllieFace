@@ -63,6 +63,10 @@ function horizDist(a, b) {
 }
 
 export class Roster {
+  // The registry every targeting query in the game reads. A throw here leaves
+  // enemies choosing between the wrong players, or between none.
+  static critical = true;
+
   constructor() {
     this.all = [];
   }

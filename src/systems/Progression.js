@@ -58,6 +58,10 @@ export function xpForLevel(level) {
 const XP_PER_MONSTER_LEVEL = 0.2;
 
 export class Progression {
+  // Stage flow, the teleporter event, and the numbers the run record is written
+  // from. A throw here can end a run that should have continued, or the reverse.
+  static critical = true;
+
   constructor() {
     this.stageIndex = 0;
     this.stageName = stageNameFor(0);

@@ -262,6 +262,10 @@ const DUST_COUNT = 1400;
 const DUST_BOX = 90; // motes wrap inside this cube around the camera
 
 export class Environment {
+  // Lighting, sky and fog. Nothing in gameplay reads any of it; a dead sky is
+  // ugly, not wrong.
+  static critical = false;
+
   init(ctx) {
     const scene = ctx.scene;
     this.ctx = ctx;

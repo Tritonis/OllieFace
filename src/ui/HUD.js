@@ -135,6 +135,11 @@ const CLIENT_RING_CAP = 0.95;
 const FULL_SCREENS = new Set(['title', 'death', 'select', 'logbook', 'difficulty', 'artifacts']);
 
 export class HUD {
+  // Reads state and draws it, and owns none of it. A blind player is a degraded
+  // player, not a desynced one, and ending their run over a gauge would be the
+  // worse trade.
+  static critical = false;
+
   init(ctx) {
     this.ctx = ctx;
     ctx.hud = this;

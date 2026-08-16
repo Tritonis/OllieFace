@@ -76,6 +76,11 @@ const LOOK_TAU = 0.105;     // look-at target — longer, so framing lags the bo
 const OCCLUDE_OUT_TAU = 0.30;
 
 export class CameraRig {
+  // Pure presentation. The one thing gameplay reads back is the aim basis, and
+  // a rig that stopped updating makes aim stale rather than wrong — the player
+  // can see that happen and stop shooting.
+  static critical = false;
+
   init(ctx) {
     ctx.cameraRig = this;
     this.ctx = ctx;

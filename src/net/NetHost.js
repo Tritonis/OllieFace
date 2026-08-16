@@ -56,6 +56,11 @@ const REFUSE_FLUSH_MS = 16;
 const REFUSE_FLUSH_TRIES = 8;
 
 export class NetHost {
+  // The authority on the wire, and the exact failure this rule was written for:
+  // a throw part-way through a snapshot ships a partial world to every peer as
+  // truth, and they have no way to know it was partial.
+  static critical = true;
+
   /**
    * `transport` is a seam, not a setting. Everything this class needs from one
    * is enumerated in `docs/STEAM.md` section 8.5, and taking it as an argument

@@ -39,6 +39,10 @@ const STATUS_DEFS = {
 const PLAYER_DOT_STACK_CAP = 3;
 
 export class Combat {
+  // The single damage authority. A throw part-way through `applyDamage` leaves
+  // a hit half-resolved: shields spent, health untouched, procs unfired.
+  static critical = true;
+
   constructor() {
     this.entities = [];
     this.cells = new Map();          // hash key -> array of entities

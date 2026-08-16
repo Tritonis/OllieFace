@@ -119,6 +119,11 @@ const ATONEMENT_REFUND = 1.875;   // 0.08 * 1.875 = 0.15 of the world per kill
 const VIGIL_FEED = 0.65;
 
 export class Artifacts {
+  // Owns the run's rules — difficulty, artifacts, unlocks — and Items, Director
+  // and every interactable ask it questions. A throw here changes what the run
+  // *is* without anyone being told.
+  static critical = true;
+
   constructor() {
     this.set = new Set();
     this.difficultyId = DEFAULT_DIFFICULTY;

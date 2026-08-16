@@ -186,6 +186,10 @@ const _camUp = new THREE.Vector3();
 const _mat = new THREE.Matrix4();
 
 export class Audio {
+  // Procedural sound, and the first thing anyone would choose to lose. A muted
+  // run is a worse run, never a wrong one.
+  static critical = false;
+
   constructor() {
     this.ac = null;
     this.ready = false;

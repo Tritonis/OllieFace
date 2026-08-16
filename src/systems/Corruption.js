@@ -17,6 +17,10 @@ import { ITEM_BY_ID } from '../data/items.js';
 const MAX_SEEDS = 64;
 
 export class Corruption {
+  // The run's second economy, host-authoritative. A throw mid-`feed` leaves the
+  // world value and the band it is supposed to have crossed disagreeing.
+  static critical = true;
+
   constructor() {
     this._byPlayer = new Map();   // player entity -> corruption
     this._world = 0;

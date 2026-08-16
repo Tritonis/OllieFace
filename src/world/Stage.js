@@ -122,6 +122,10 @@ const SALT_PROPS = 0x2c1b5de7;
 const SALT_SPAWN = 0x51ed270b;
 
 export class Stage {
+  // Owns the terrain and every collision query the game makes. A throw here
+  // drops entities through the world.
+  static critical = true;
+
   init(ctx) {
     this.ctx = ctx;
     this.half = STAGE_HALF;

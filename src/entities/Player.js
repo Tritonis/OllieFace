@@ -130,6 +130,10 @@ function releaseSubtree(root) {
 let NEXT_ID = 1;
 
 export class Player {
+  // The survivor simulation: movement, the sampled command, abilities, and the
+  // pawn every peer in the session is shown as truth.
+  static critical = true;
+
   /**
    * `local: false` builds a pawn for a remote co-op player. It is the same
    * class doing the same simulation — the only differences are that it never

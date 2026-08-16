@@ -60,6 +60,10 @@ function holdingInteract(p) {
 }
 
 export class Revive {
+  // Owns every transition out of the downed state. A throw here strands a body
+  // under a clock that never finishes, and the wipe never lands.
+  static critical = true;
+
   init(ctx) {
     this.ctx = ctx;
     ctx.revive = this;

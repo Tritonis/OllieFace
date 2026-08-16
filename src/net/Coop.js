@@ -14,6 +14,11 @@ import { Items } from '../systems/Items.js';
  * single-player, where `pawns` is empty and no client exists.
  */
 export class Coop {
+  // Answers NetHost's pawn request and NetClient's view request. A throw here
+  // leaves a peer inside the session with nothing to be, and the host's idea of
+  // the party stops matching everyone else's.
+  static critical = true;
+
   constructor() {
     this.pawns = [];
   }

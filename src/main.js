@@ -22,6 +22,7 @@ import { HUD } from './ui/HUD.js';
 import { Coop } from './net/Coop.js';
 import { Lobby } from './net/Lobby.js';
 import { maybeShowGpuNotice } from './ui/GpuNotice.js';
+import { installFatalOverlay } from './ui/FatalOverlay.js';
 import { initDesktopStore } from './core/DesktopStore.js';
 
 // Before anything reads storage: under the Electron shell this hydrates
@@ -98,6 +99,12 @@ ctx.pipeline.build(ctx.scene, ctx.camera);
 
 // Renderer runs as the final "system" so it sees the fully updated frame.
 engine.add({
+  // Drawing the frame and closing out input. A lost frame is not a lost run, so
+  // this stays on the continue-through-it side of the rule. Worth knowing that a
+  // throw inside `render` skips `endFrame()`, which leaves this frame's input
+  // edges set for the next one — a real consequence, but a smaller one than
+  // ending the run over a shader.
+  critical: false,
   lateUpdate(c, dt) {
     ctx.pipeline.render(c.scene, c.camera, dt);
     c.input.endFrame();
@@ -111,6 +118,10 @@ addEventListener('resize', () => {
 });
 ctx.camera.aspect = innerWidth / innerHeight;
 ctx.camera.updateProjectionMatrix();
+
+// Before the first frame: the overlay has to already be listening when the
+// system that fails is one that fails during the very first update.
+installFatalOverlay(ctx);
 
 engine.start();
 
