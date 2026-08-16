@@ -704,7 +704,9 @@ export class Director {
     const at = this.findVoidPoint(ctx, seed);
     if (!at) return;
     this.voidCredits -= unit;
-    this.spawnTelegraph(at.x, at.z, 2.2, VOIDTOUCHED.telegraph, 0xd8479b);
+    // The Blight tier's own magenta (`TIERS.blight` in `src/data/items.js`), so
+    // the warning on the ground and the drop it heralds are one colour.
+    this.spawnTelegraph(at.x, at.z, 2.2, VOIDTOUCHED.telegraph, 0xc44fbc);
     this._voidPending.push({ t: VOIDTOUCHED.telegraph, x: at.x, y: at.y, z: at.z, card });
   }
 

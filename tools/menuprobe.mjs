@@ -274,11 +274,11 @@ ok(bl.hue.r > bl.hue.g + 25 && bl.hue.b > bl.hue.g + 15,
 // Against the tier's declared colour, not against the other tiers: `common` is
 // deliberately near-neutral (chroma 14), so a floor derived from the controls
 // would be ~8 and would pass a tile with no tier colour in it at all.
-const TIER_RGB = { r: 224, g: 90, b: 168 };   // TIERS.blight.color, #e05aa8
+const TIER_RGB = { r: 196, g: 79, b: 188 };   // TIERS.blight.color, #c44fbc
 ok(bl.chroma > 80 && ['r', 'g', 'b'].every((k) => Math.abs(bl.hue[k] - TIER_RGB[k]) <= 40),
-  `and it is the declared tier colour, saturated (chroma ${bl.chroma}, off #e05aa8 by `
+  `and it is the declared tier colour, saturated (chroma ${bl.chroma}, off #c44fbc by `
   + `${Math.max(...['r', 'g', 'b'].map((k) => Math.abs(bl.hue[k] - TIER_RGB[k])))})`);
-ok(pol.rule === 'rgb(224, 90, 168)', `the magenta tier rule survives (.t-blight color ${pol.rule})`);
+ok(pol.rule === 'rgb(196, 79, 188)', `the magenta tier rule survives (.t-blight color ${pol.rule})`);
 
 // The measurement above is of one surface. It generalises to the other eight
 // only because all nine call sites (HUD strip, pickup toast, pickup banner,
@@ -309,7 +309,7 @@ const tip = await page.evaluate(() => {
   return { name: n.textContent.trim(), color: cs.color, bg: cs.backgroundColor, inline: n.getAttribute('style') || '' };
 });
 ok(!!tip, 'hovering the blight tile opens its card');
-ok(tip?.color === 'rgb(224, 90, 168)', `the blight name is written in the tier magenta (${tip?.color})`);
+ok(tip?.color === 'rgb(196, 79, 188)', `the blight name is written in the tier magenta (${tip?.color})`);
 ok(tip?.bg === 'rgba(0, 0, 0, 0)', `and sits on no chip of its own (background ${tip?.bg})`);
 ok(!/background|padding/.test(tip?.inline ?? ''), `no inverted chip styling survives inline (style="${tip?.inline}")`);
 await shot('07-tooltip-blight.png');

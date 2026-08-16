@@ -185,9 +185,40 @@ const PALETTE = {
  *   withering    0,            9 spikes on a slow helix       (infection spreads)
  *   warded       0,            0, a faceted barrier instead   (an actual shell)
  */
+/*
+ * Round-6, colour vision. The signature triple above is what makes this table
+ * survivable at all for the roughly one player in twelve who is dichromatic,
+ * and it was already doing that work — but the tints themselves were not
+ * helping. Measured with `tools/colour-vision.mjs`, `warded` and `voidtouched`
+ * came back **1.3** apart under deuteranopia and **0.7** apart desaturated:
+ * one violet body, twice, distinguished only by whether it wore a barrier.
+ *
+ * The fire red and the electric blue are untouched — they are the affix, and
+ * moving them would be repainting the game to fix a table. `rimebound` gained
+ * lightness and lost its residual green, which pulls it clear of `galvanic`
+ * without touching the round-5 blow-out ceiling that sent it here in the first
+ * place (it is more saturated, not paler); `withering` deepened slightly for
+ * the same reason. `warded` and `voidtouched` are the pair that had to move,
+ * and they moved apart along lightness rather than hue, so a Warded is still a
+ * violet and a Hollowed is still void magenta.
+ *
+ * Every pair now clears CIEDE2000 12 in normal, protanopic, deuteranopic and
+ * tritanopic vision and 4 desaturated. Two things are deliberately *not* graded
+ * here, and both are worth naming rather than leaving to be discovered:
+ *
+ * - The `aura` column. An aura is a handful of thin additive rings and bits
+ *   over a body that already carries its tint, so what has to separate is the
+ *   pair, and the tint is the half with the area to do it.
+ * - Contrast. The tier palette is held to a WCAG floor because it is painted on
+ *   surfaces this repo defines; these are painted on monsters, lit, in a scene
+ *   whose luminance nothing here can measure. A floor against an unknown ground
+ *   would be a number with no meaning behind it.
+ *
+ * `tests/readability-gate` grades the tints.
+ */
 export const ELITE = {
   emberclad:     { tint: 0xff3a08, aura: 0xff6a10, glow: 2.6, name: 'Emberclad', bands: 1, tilt: 0, bits: 4, shape: 'shard', bitScale: 0.20, rise: 1, bandAlpha: 0.75 },
-  galvanic: { tint: 0x2f5cff, aura: 0x74a6ff, glow: 2.8, name: 'Galvanic', bands: 3, tilt: 1.15, bits: 6, shape: 'ico', bitScale: 0.14, spin: 3.4, bandAlpha: 0.55 },
+  galvanic: { tint: 0x325cff, aura: 0x74a6ff, glow: 2.8, name: 'Galvanic', bands: 3, tilt: 1.15, bits: 6, shape: 'ico', bitScale: 0.14, spin: 3.4, bandAlpha: 0.55 },
   // The one tint in the table pale enough to blow out: at the old 0xa8e6ff it
   // mixed 78% into the body albedo *and* drove a 0.5 emissive, which measured
   // as a 94x101 px matte lump at mean L 232 with no internal structure — the
@@ -197,21 +228,23 @@ export const ELITE = {
   // bands, the bits, the accents and the eyes, and at that value three of them
   // overlapping measured 24% of the host's own footprint as near-neutral white.
   // A saturated cyan additively stacked stays cyan; a pale one becomes paper.
-  rimebound:     { tint: 0x4fb8e8, aura: 0x46c4f0, glow: 2.2, name: 'Rimebound', bands: 2, tilt: 0.5, bits: 6, shape: 'shard', bitScale: 0.18, spin: 0.3, bandAlpha: 0.45 },
+  rimebound:     { tint: 0x00e9ff, aura: 0x46c4f0, glow: 2.2, name: 'Rimebound', bands: 2, tilt: 0.5, bits: 6, shape: 'shard', bitScale: 0.18, spin: 0.3, bandAlpha: 0.45 },
   // A cloud of thorns on a sick green body. Nine bits in a slow vertical helix
   // rather than a ring: the read is "infected", and infection spreads
   // rather than orbiting.
-  withering:   { tint: 0x2fbf6a, aura: 0x86ffb4, glow: 2.4, name: 'Withering', tier: 2, bands: 0, bits: 9, shape: 'spike', bitScale: 0.15, helix: 1 },
+  withering:   { tint: 0x00ad5d, aura: 0x86ffb4, glow: 2.4, name: 'Withering', tier: 2, bands: 0, bits: 9, shape: 'spike', bitScale: 0.15, helix: 1 },
   // No bits at all — a hard faceted barrier instead, which is the one
   // silhouette change in the table that alters the unit's actual outline. It is
   // allowed to, but it is now a wireframe crystal rather than a filled sphere,
   // so what it adds is facets and not a disc.
-  warded:      { tint: 0x6a4ad0, aura: 0xc9a8ff, glow: 3.0, name: 'Warded', tier: 2, bands: 0, bits: 0, ward: 1 },
+  warded:      { tint: 0xb291ff, aura: 0xc9a8ff, glow: 3.0, name: 'Warded', tier: 2, bands: 0, bits: 0, ward: 1 },
   // The void's family. Blight-ramp magenta pulled toward black: the read is
   // "eaten", not "empowered". Two slow bands plus seven shards — ringed like
   // the tier-1s so it still reads elite at 40 m, but in the one hue family no
   // other affix owns, which is what lets the ground and the monster agree.
-  voidtouched: { tint: 0x8a2fd0, aura: 0xff2fb0, glow: 2.7, name: 'Hollowed', bands: 2, tilt: 0.9, bits: 7, shape: 'shard', bitScale: 0.16, spin: 1.1, bandAlpha: 0.6 },
+  // Pushed from violet into that magenta, and darker, which is the whole of the
+  // separation from `warded` above.
+  voidtouched: { tint: 0xab00ac, aura: 0xff2fb0, glow: 2.7, name: 'Hollowed', bands: 2, tilt: 0.9, bits: 7, shape: 'shard', bitScale: 0.16, spin: 1.1, bandAlpha: 0.6 },
 };
 
 const _c1 = new THREE.Color();

@@ -33,19 +33,25 @@
   --boss-hot:   #e79bff;
   --boss-deep:  #6c2a8c;
 
+  /* The tier ladder. These seven must stay byte-identical to `TIERS` in
+     `src/ui/Icons.js` and to `TIERS` in `src/data/items.js` — three tables, one
+     palette — and `tests/readability-gate.test.mjs` fails if they drift apart
+     or if any pair stops clearing the colour-vision bars. The lightness spread
+     across them is deliberate and load-bearing; see the note above `TIERS` in
+     `Icons.js` for why each colour sits where it does. */
   --t-common:    #e6ecf4;
-  --t-uncommon:  #63e06a;
-  --t-legendary: #ff5b45;
-  --t-boss:      #ffd44f;
-  --t-lunar:     #5fd9f7;
+  --t-uncommon:  #3bf695;
+  --t-legendary: #ff6472;
+  --t-boss:      #d9bf30;
+  --t-lunar:     #00c2d0;
   /* Blight shipped without a variable of its own, so `.t-blight` fell through
      to the inherited near-white and the tier drew a `currentColor` rule at
      (234,241,249) — within 5 of the common tier's (230,236,244). Two tiers,
      one rule colour, in a strip whose entire job is tier legibility; measured
      off `reviews/round6/FINAL/10-inventory.png` and reproduced independently
-     in `16-run-summary`. Matches `TIERS.blight.color` in `Icons.js`. */
-  --t-blight:    #e05aa8;
-  --t-equipment: #ff9a3c;
+     in `16-run-summary`. */
+  --t-blight:    #c44fbc;
+  --t-equipment: #bb7e00;
 
   --panel:      rgba(6, 10, 16, 0.58);
   --panel-hard: rgba(4, 7, 12, 0.86);

@@ -5,8 +5,9 @@
 // build ships zero image assets and makes zero network requests.
 //
 // Art direction: two-tone geometry. A dark angular plate, a single bright
-// tier-coloured silhouette, one accent highlight. No gradients inside the
-// glyph itself so it stays legible down to 32px.
+// tier-coloured silhouette, one accent highlight, and a small tier mark in the
+// top-right corner. No gradients inside the glyph itself so it stays legible
+// down to 32px.
 
 import { ITEM_BY_ID, drawGlyph } from '../data/items.js';
 import { EQUIPMENT_BY_ID } from '../data/equipment.js';
@@ -27,23 +28,138 @@ export function cardDef(id) {
 
 const SIZE = 64;
 
+/*
+ * Tier colours, rebuilt against `tools/colour-vision.mjs`.
+ *
+ * The seven hues are the ones the game has always used — white, green, red,
+ * gold, cyan, magenta, amber — but their *lightnesses* are no longer whatever
+ * each one happened to be. The previous table put Uncommon at L* 80 and Umbral
+ * at L* 81, which is a measured CIEDE2000 of **0.7** once colour is taken away:
+ * two tiers, one grey. Under protanopia Uncommon and Boss came back at 3.3,
+ * which is "a slightly different shade of the same colour".
+ *
+ * So lightness now does the work hue cannot. But lightness is also the whole of
+ * a colour's contrast against the near-black it is painted on, and those two
+ * demands pull in opposite directions — which is the mistake this table made
+ * once already. An earlier pass solved for separation alone and walked Uncommon
+ * to 4.36:1 against its own plate and Equipment to 3.77:1, from 8-10:1, with
+ * Equipment used as literal text. Winning one axis by quietly losing the other
+ * is not winning.
+ *
+ * Every colour here therefore satisfies both at once:
+ *
+ * - CIEDE2000 **12** against every other tier in normal, protanopic,
+ *   deuteranopic and tritanopic vision, and **4** with colour removed;
+ * - WCAG **4.5:1** against every surface where a tier colour becomes text and
+ *   **3:1** against every surface where it becomes a graphic — enumerated, not
+ *   assumed, in `SURFACES` in `tools/colour-vision.mjs`.
+ *
+ * The feasible region for seven saturated hues under both is very nearly a
+ * point, and the two constraints decide the lightnesses between them: saturated
+ * red, magenta and amber exist only low in sRGB, the contrast floor puts a hard
+ * bottom at L* 52, and gold only exists high. Two colours still moved a long
+ * way and it is worth saying which and why:
+ *
+ * - **Equipment** is amber-bronze rather than orange. Orange sits between
+ *   Legendary's red and Boss's gold, and for a deuteranope all three are one
+ *   hue; it is the only member of that trio with no third neighbour to lean
+ *   away from, so it takes the lightness separation instead. The alternative
+ *   the search kept offering was an olive Boss, which is the worse trade — the
+ *   gold is the rarest drop in the game and the most recognisable thing here.
+ * - **Umbral** is a deeper teal-cyan. Cyan cannot be saturated and bright at
+ *   once, and it needed to clear both Common above it and Uncommon beside it.
+ *
+ * None of this is sufficient on its own — see `TIER_MARKS`. Seven bright
+ * colours cannot be told apart by lightness alone without one of them being
+ * nearly invisible on a near-black plate, which is why every plate also carries
+ * a shape.
+ */
 export const TIERS = {
-  common:    { label: 'Common',    color: '#e6ecf4', dim: '#8b95a3', plate: '#1b1f26' },
-  uncommon:  { label: 'Uncommon',  color: '#63e06a', dim: '#2f7a37', plate: '#14231a' },
-  legendary: { label: 'Legendary', color: '#ff5b45', dim: '#8a2b20', plate: '#26120f' },
-  boss:      { label: 'Boss',      color: '#ffd44f', dim: '#94742a', plate: '#241d0c' },
-  lunar:     { label: 'Umbral',    color: '#5fd9f7', dim: '#2b7d92', plate: '#0e2029' },
-  // Blight draws like every other tier (see `itemArt`); the hue is the whole of
-  // its findability. This magenta is the only one left that no other tier is
-  // using — the six above occupy white, green, red, yellow, cyan and orange, and
-  // a seventh rule that read as "a slightly different green" would be worse than
-  // no colour at all. It carries as a stroke at 33px, which is what the ordinary
-  // path asks of a tier colour.
-  blight:    { label: 'Blight',    color: '#e05aa8', dim: '#7d2a5f', plate: '#26101c' },
-  equipment: { label: 'Equipment', color: '#ff9a3c', dim: '#94551c', plate: '#26160b' },
+  common:    { label: 'Common',    color: '#e6ecf4', dim: '#7c7f84', plate: '#1b1f26' },
+  uncommon:  { label: 'Uncommon',  color: '#3bf695', dim: '#208550', plate: '#14231a' },
+  legendary: { label: 'Legendary', color: '#ff6472', dim: '#8a363e', plate: '#26120f' },
+  boss:      { label: 'Boss',      color: '#d9bf30', dim: '#75671a', plate: '#241d0c' },
+  lunar:     { label: 'Umbral',    color: '#00c2d0', dim: '#006970', plate: '#0e2029' },
+  // Blight draws like every other tier (see `itemArt`), and it keeps the
+  // magenta no other tier is using. What changed is its lightness: at L* 58 it
+  // was 2.7 from Legendary once desaturated and, under a tritan projection that
+  // actually discards a dimension, the two were 4.0 apart — red and magenta are
+  // one colour without the S cone. It is also the tier that binds the contrast
+  // floor, at 4.59:1 on the logbook's hover row.
+  blight:    { label: 'Blight',    color: '#c44fbc', dim: '#6a2b66', plate: '#26101c' },
+  equipment: { label: 'Equipment', color: '#bb7e00', dim: '#654400', plate: '#26160b' },
 };
 
+// Each entry carries its own id, so a `tierMeta` result is self-describing and
+// the draw path can reach its mark without the caller passing the tier twice.
+for (const [key, meta] of Object.entries(TIERS)) meta.key = key;
+
 export const TIER_ORDER = ['common', 'uncommon', 'legendary', 'boss', 'lunar', 'blight', 'equipment'];
+
+/* --------------------------------------------------------------- tier marks
+ *
+ * The half of tier legibility that does not depend on colour at all.
+ *
+ * A plate used to say its tier with one thing: the hue of its 3px rule. That is
+ * the single worst channel to put a seven-way distinction in — it is what a
+ * dichromat has least of, and it is also the first thing a bad monitor, a dark
+ * room or a compressed stream takes away. So every plate now also carries a
+ * small mark in its top-right corner, and the mark is the tier.
+ *
+ * The three ordinary tiers are a tally, because they are a ladder and a ladder
+ * should count: one stroke, two, three. The four that are not on that ladder are
+ * emblems instead, because they are categories rather than rungs — a star for a
+ * boss drop, a ring for the Umbral pool, a saltire for Blight, a chevron for the
+ * Q-slot hardware. Reading "three strokes" is a different act from reading "a
+ * star", which is the point: nothing in the set has to be told apart from
+ * anything else by a judgement of degree.
+ *
+ * Stored as polygons in a 0..1 box rather than as canvas calls, for the same
+ * reason `tools/silhouette-metrics.mjs` exists: geometry that can be measured
+ * without a GPU is geometry a test can hold to a bar. `tests/readability-gate`
+ * rasterises these directly and grades every pair, so a mark that drifted into
+ * looking like another one would go red rather than merely look wrong.
+ *
+ * Multiple polygons in one mark are unioned. `lunar` is a single path that runs
+ * out along its rim and back along its bore — the same out-and-back the `vigil`
+ * artifact mark uses — so its hole is negative space under both the nonzero fill
+ * canvas performs and the even-odd test the gate performs, and the two agree.
+ */
+const markBar = (x0, x1) => [[x0, 0.10], [x1, 0.10], [x1, 0.92], [x0, 0.92]];
+
+function markStar(points, outer, inner) {
+  const pts = [];
+  for (let i = 0; i < points * 2; i++) {
+    const r = i % 2 ? inner : outer;
+    const a = -Math.PI / 2 + (i / (points * 2)) * Math.PI * 2;
+    pts.push([0.5 + Math.cos(a) * r, 0.5 + Math.sin(a) * r]);
+  }
+  return pts;
+}
+
+function markRing(outer, width, n = 24) {
+  const at = (i, r) => {
+    const a = -Math.PI / 2 + (i / n) * Math.PI * 2;
+    return [0.5 + Math.cos(a) * r, 0.5 + Math.sin(a) * r];
+  };
+  const pts = [];
+  for (let i = 0; i <= n; i++) pts.push(at(i, outer));
+  for (let i = n; i >= 0; i--) pts.push(at(i, outer - width));
+  return pts;
+}
+
+export const TIER_MARKS = {
+  common:    [markBar(0.42, 0.58)],
+  uncommon:  [markBar(0.24, 0.40), markBar(0.60, 0.76)],
+  legendary: [markBar(0.10, 0.24), markBar(0.43, 0.57), markBar(0.76, 0.90)],
+  boss:      [markStar(5, 0.48, 0.16)],
+  lunar:     [markRing(0.44, 0.16)],
+  blight: [
+    [[0.10, 0.24], [0.24, 0.10], [0.90, 0.76], [0.76, 0.90]],
+    [[0.76, 0.10], [0.90, 0.24], [0.24, 0.90], [0.10, 0.76]],
+  ],
+  equipment: [[[0.50, 0.10], [0.95, 0.72], [0.95, 0.90], [0.50, 0.42], [0.05, 0.90], [0.05, 0.72]]],
+};
 
 export function tierMeta(tier) {
   return TIERS[tier] || TIERS.common;
@@ -236,7 +352,7 @@ const GLYPHS = [
 /** The angular tier plate on its own — used as the ability-slot backdrop. */
 export function tierFrame(tier) {
   const t = tierMeta(tier);
-  return cached(`frame:${tier}`, (g, s) => drawPlate(g, s, t));
+  return cached(`frame:${tier}`, (g, s) => { drawPlate(g, s, t); drawTierMark(g, s, t); });
 }
 
 const PLATE_CUT = 0.22;
@@ -257,6 +373,48 @@ function plateEdge(g, s, t) {
   g.moveTo(s * 0.08, s * 0.32); g.lineTo(s * 0.08, s * 0.2);
   g.moveTo(s * 0.92, s * 0.68); g.lineTo(s * 0.92, s * 0.8);
   g.stroke();
+}
+
+/* Where the mark sits, as fractions of the tile.
+ *
+ * Top-right, because it is the one corner nothing else claims: the plate's own
+ * chamfers are top-left and bottom-right, and the stack count lives in the
+ * bottom-right (`.item-stack`). The item glyph mostly stops short of here — it
+ * is centred at `ART_CENTRE_Y` 0.38 with radius `ART_RADIUS` 0.27 — but the
+ * widest emblems and the rotated fallback glyphs do reach into it. Hence the
+ * opaque chip, and hence every caller drawing the mark *last*: a tally with a
+ * stroke hidden under a glyph is a different tally.
+ */
+// Sized so the chip clears the plate's own 0.045 stroke rather than tucking
+// under it: at 64px the stroke's outer edge is 3.4px from the top and 3.4px
+// from the right, and the chip starts at 4.8 and ends at 58.9.
+const MARK_BOX = { x: 0.655, y: 0.105, size: 0.235 };
+const MARK_CHIP_PAD = 0.030;
+
+function drawTierMark(g, s, t) {
+  const polys = TIER_MARKS[t.key];
+  if (!polys) return;
+  const { x, y, size } = MARK_BOX;
+
+  g.save();
+  // The chip reads as part of the plate rather than as a sticker on it: the
+  // plate's own gradient bottoms out at #05070a, so this is that black, and it
+  // is opaque because the whole job is to give the mark a clean ground.
+  g.fillStyle = '#05070a';
+  const p = MARK_CHIP_PAD;
+  g.fillRect(s * (x - p), s * (y - p), s * (size + p * 2), s * (size + p * 2));
+
+  g.fillStyle = t.color;
+  for (const poly of polys) {
+    g.beginPath();
+    g.moveTo(s * (x + poly[0][0] * size), s * (y + poly[0][1] * size));
+    for (let i = 1; i < poly.length; i++) {
+      g.lineTo(s * (x + poly[i][0] * size), s * (y + poly[i][1] * size));
+    }
+    g.closePath();
+    g.fill();
+  }
+  g.restore();
 }
 
 function drawPlate(g, s, t) {
@@ -298,6 +456,7 @@ export function itemIcon(id, tier = 'common') {
     g.lineCap = 'butt';
     glyph(g, s, colors);
     g.restore();
+    drawTierMark(g, s, t);
   });
 }
 
@@ -606,6 +765,7 @@ export function itemArt(id, tier = 'common') {
     g.restore();
 
     plateEdge(g, s, t);
+    drawTierMark(g, s, t);
   });
 }
 

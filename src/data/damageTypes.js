@@ -15,10 +15,13 @@
  * did, rather than looking wrong.
  *
  * The hues are not new paint. Each family borrows the colour its own affix
- * already owns in `EnemyMeshes.ELITE` — emberclad's 0xff6a10, rimebound's
- * 0x46c4f0, galvanic's 0x2f5cff, withering's 0x2fbf6a, voidtouched's
- * 0x8a2fd0 — so a fire hit and an Emberclad elite are the same fire, and the
- * game keeps one palette instead of growing a second one for damage.
+ * already owns in `EnemyMeshes.ELITE` — emberclad's aura 0xff6a10, rimebound's
+ * aura 0x46c4f0, galvanic's tint 0x325cff, withering's tint 0x00ad5d,
+ * voidtouched's tint 0xab00ac — so a fire hit and an Emberclad elite are the
+ * same fire, and the game keeps one palette instead of growing a second one for
+ * damage. The three tints moved when the affix table was rebuilt for colour
+ * vision; these moved with them, because a borrowed colour that stops matching
+ * its source is worse than never having borrowed it.
  */
 
 /** The closed set. `kinetic` is first because it is the default. */
@@ -44,9 +47,9 @@ export const ELEMENT_HUE = {
   },
   fire:    { core: 0xffe0a8, tail: 0xff6a10, critTail: 0xff3a08, ring: 0xff4a10 },
   ice:     { core: 0xe4f8ff, tail: 0x46c4f0, critTail: 0x8ae8ff, ring: 0x4fb8e8 },
-  shock:   { core: 0xe0e8ff, tail: 0x2f5cff, critTail: 0x74a6ff, ring: 0x4a78ff },
-  nature:  { core: 0xe4ffe8, tail: 0x2fbf6a, critTail: 0x86ffb4, ring: 0x3fd07a },
-  void:    { core: 0xffd0f0, tail: 0x8a2fd0, critTail: 0xff2fb0, ring: 0xb64ad0 },
+  shock:   { core: 0xe0e8ff, tail: 0x325cff, critTail: 0x74a6ff, ring: 0x4a78ff },
+  nature:  { core: 0xe4ffe8, tail: 0x00ad5d, critTail: 0x86ffb4, ring: 0x3fd07a },
+  void:    { core: 0xffd0f0, tail: 0xab00ac, critTail: 0xff2fb0, ring: 0xb64ad0 },
   blast:   { core: 0xfff4d0, tail: 0xff9a30, critTail: 0xffc450, ring: 0xffb040 },
 };
 

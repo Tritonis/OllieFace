@@ -319,7 +319,12 @@ export class Chest extends Interactable {
     this.openT = -1;
     this.typeId = CHEST_TYPE[size] || TYPE_ID.chest;
 
-    const tint = size === 'legendary' ? 0xf0453f : size === 'large' ? 0x49d67a : 0xc0c8d4;
+    // A chest advertises the tier it pays out, so these are the tier colours
+    // themselves (`TIERS` in `src/data/items.js`) rather than approximations of
+    // them — they moved when that table was rebuilt for colour vision, and a
+    // chest that kept the old red would be promising a rarity the drop no
+    // longer wears.
+    const tint = size === 'legendary' ? 0xff6472 : size === 'large' ? 0x3bf695 : 0xc0c8d4;
     const scale = size === 'small' ? 1 : size === 'large' ? 1.35 : 1.5;
 
     const body = new THREE.Mesh(sharedGeo(`chestBody${size}`, () => chestBodyGeo(scale)),

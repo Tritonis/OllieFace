@@ -412,7 +412,7 @@ export class FinaleController {
     g.add(core);
 
     // The shell. The anchor's body is an ordinary `warded` elite and wears that
-    // affix's tint (0x6a4ad0, hue 256) — which is the ground's hue, not the
+    // affix's tint (0xb291ff, hue 258) — which is the ground's hue, not the
     // boss's. This is a faceted additive cage at the Herald's own hue drawn
     // over that body, so the pixels the anchor occupies carry the boss's colour
     // instead of the floor's without repainting the shared elite materials that
