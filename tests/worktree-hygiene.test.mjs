@@ -192,7 +192,7 @@ console.log('live check against the real .claude/worktrees/');
 {
   const gitCommonDir = execFileSync('git', ['rev-parse', '--git-common-dir'], { cwd: repoRoot, encoding: 'utf8' }).trim();
   const mainRoot = resolve(gitCommonDir, '..');
-  const isMainCheckout = resolve(mainRoot) === resolve(repoRoot);
+  const isMainCheckout = norm(mainRoot) === norm(repoRoot);
 
   if (!isMainCheckout) {
     console.log('  SKIP  running from a worktree, not the main checkout — inspecting', mainRoot, 'instead would not reflect this run; skipped by design');
