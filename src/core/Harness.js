@@ -1835,12 +1835,17 @@ export function installHarness(ctx) {
    * flickering in and out of the mask on the pulse. No current shot stages it,
    * which is precisely why the number has to be argued rather than measured.
    *
-   * So: 0.08, with a clear gap on both sides of every live range in `src/` — the
+   * So: 0.08, with a clear gap on both sides of every *steady* live range — the
    * warden's wash sits at a constant 0.05 below it, the dome's animated minimum
    * at 0.10 above it, and the wireframe that actually says "barrier" at 0.85.
-   * Read live, so a material genuinely fading out leaves the mask exactly when it
-   * stops being visible; raising this ceiling means re-auditing what animates
-   * opacity, not what declares it.
+   * Three transient fades do pass through (0.05, 0.08) live — shockwave rings
+   * (`Director.js:1225`) and trails (`Director.js:1348`), both parentless in the
+   * scene so the solid-company rule below refuses to hide them, and the arena
+   * dust plane (`RealmArena.js:846`), a monotonic fade-to-invisible, which is
+   * the intended case: a material genuinely fading out leaves the mask exactly
+   * when it stops being visible. The bug class this ceiling guards against is
+   * *periodic oscillation* through the threshold, like the dome's pulse; raising
+   * it means re-auditing what animates opacity, not what declares it.
    *
    * Refused for a veil that is the whole of what it hangs on: an object with no
    * other material is *made* of its veil, and blanking it would report the
