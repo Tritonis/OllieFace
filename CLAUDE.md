@@ -112,6 +112,15 @@ that cost two agents a diagnosis cycle each on 2026-08-15 (#68).
 `--no-ff`, then re-run the gates on the *integrated* result. Three green branches are not a green
 master. One opus review runs across the merged result, not per lane.
 
+**Always merge a lane with an explicit `-m`**, carrying the house commit style and the `Fixes #N`
+trailer. A bare `git merge --no-ff` takes git's default subject, which both breaks the style and
+silently fails to close the issue — and a pushed merge is not worth rewriting to add a trailer, so
+the issue then has to be closed by hand. Happened on 2026-08-15 with #50.
+
+**Watch the shell's working directory when merging.** A `Push-Location` into a worktree that outlives
+its block leaves `git merge` running with HEAD on the lane's own branch, where it reports "Already up
+to date" and does nothing. Confirm `git rev-parse --abbrev-ref HEAD` is `master` before merging.
+
 ## Agent skills
 
 Per-repo configuration for the `mattpocock-skills` engineering skills.
