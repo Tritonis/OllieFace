@@ -16,9 +16,11 @@
  *   1. an evicted joiner is told, and fails in milliseconds;
  *   2. a joiner that has already connected IGNORES the message. The room code
  *      is a bearer token every invited friend holds, so a message that can end
- *      a join must never be able to end a *session*;
+ *      a join must never be able to end a *session* — and the same holds in the
+ *      window where the join is neither waiting nor finished, with `joinManual`
+ *      mid-await, which is where `joined` alone cannot see;
  *   3. a halted host sends no such message, like every other send in `Lobby`
- *      (issue #75).
+ *      (issue #75), and neither does one at a relay too old to carry it.
  *
  * Everything is asserted on the wire or on the joiner's own promise — which
  * frames reached the socket, whether the join settled and with what. A flag
@@ -71,6 +73,9 @@ function fakeChannel(label) {
   };
 }
 
+/** ms of delay inside `setRemoteDescription`, for the interleaving block only. */
+let slowSetRemote = 0;
+
 const pcs = [];
 globalThis.RTCPeerConnection = function RTCPeerConnectionStub() {
   const listeners = new Map();
@@ -82,7 +87,11 @@ globalThis.RTCPeerConnection = function RTCPeerConnectionStub() {
     async createOffer() { return { type: 'offer', sdp: 'v=0 offer' }; },
     async createAnswer() { return { type: 'answer', sdp: 'v=0 answer' }; },
     async setLocalDescription(d) { pc.localDescription = d ?? { type: 'answer', sdp: 'v=0 answer' }; },
-    async setRemoteDescription(d) { pc.remoteDescription = d; },
+    // Widened on demand. `joinManual`'s await chain always yields the event loop
+    // — that is what opens the interleaving window at all — but a microtask-only
+    // gap is a fragile thing to time a test against, so the race block gives
+    // this one step a real duration and drives the ordering by hand.
+    async setRemoteDescription(d) { if (slowSetRemote) await turn(slowSetRemote); pc.remoteDescription = d; },
     async addIceCandidate() {},
     addEventListener(t, fn) { (listeners.get(t) ?? listeners.set(t, new Set()).get(t)).add(fn); },
     removeEventListener(t, fn) { listeners.get(t)?.delete(fn); },
@@ -116,11 +125,11 @@ const anInvite = (id) => ({ id, blob: `blob-${id}`, onIceCandidate() {}, addIceC
  * A relay-hosting lobby parked at roomOpen, with minting under test control so
  * a burst of joinRequests is a burst rather than a real ICE gather.
  */
-async function hostingLobby(lobby = mkLobby()) {
+async function hostingLobby(lobby = mkLobby(), v = 3) {
   const open = lobby.hostViaRelay('ws://relay.test');
   const ws = FakeWS.last;
   ws.open();
-  await ws.recv({ type: 'hosting', code: 'ABCD2345', v: 2 });
+  await ws.recv({ type: 'hosting', code: 'ABCD2345', v });
   await open;
   let n = 0;
   lobby.net.createInvite = async () => anInvite(`inv-${++n}`);
@@ -148,6 +157,21 @@ console.log('#8 — evicting a joiner puts its name on the wire');
      `every join still got its offer — this adds a message, it does not remove one (got ${ws.ofType('offer').length})`);
   ok(lobby.pendingInvites.size === 8,
      `and the ceiling still holds (got ${lobby.pendingInvites.size})`);
+}
+
+console.log('#8 — and nothing at all at a relay too old to carry it');
+{
+  // Not politeness. An unknown type is `bad-type` at the relay, and `reject`
+  // charges that to the SENDER: twenty of them close the host's own socket with
+  // 1008 and the room goes with it. Evictions arrive in exactly the sustained
+  // flood the ceiling exists to survive, so twenty is reachable. The joiner
+  // keeps its 20 s wait against an old relay, which is what shipped before this
+  // message existed and is worth far less than the host's room.
+  const { lobby, ws } = await hostingLobby(mkLobby(), 2);
+  for (let i = 1; i <= 9; i++) await ws.recv({ type: 'joinRequest', clientId: i });
+  ok(lobby.pendingInvites.size === 8, 'the eviction still happened (the precondition)');
+  ok(ws.triedOfType('evicted').length === 0,
+     `and a v2 relay was never even asked to forward it (got ${ws.triedOfType('evicted').length})`);
 }
 
 console.log('#8 — a host with nothing to evict says nothing (the control)');
@@ -231,6 +255,63 @@ console.log('#8 — a connected joiner IGNORES an evicted message');
        `and candidates still reach the host afterwards (got ${ws.ofType('ice').length} after ${iceBefore})`);
   } finally {
     process.off('unhandledRejection', onUnhandled);
+  }
+}
+
+console.log('#8 — an eviction landing DURING joinManual leaves no half-connected lobby');
+{
+  // The window `joined` cannot see. `joined` flips only after `joinManual`
+  // resolves, and that await chain yields the event loop several times over
+  // (`setRemoteDescription`, `createAnswer`, `setLocalDescription`, `waitForIce`).
+  // `ws.onmessage` is async and nothing serialises it, so a second message
+  // delivered in that gap runs to completion while the first is parked — with
+  // `joined` still false.
+  //
+  // A benign host cannot produce this pair: `_admitJoiner` only ever evicts
+  // OTHER, older invites, never the one it is answering. A hostile one can, and
+  // a hostile host is the threat model this message's own guard names. So the
+  // messages are interleaved directly, without awaiting the offer — awaiting it
+  // is what makes the post-connect case a different case.
+  slowSetRemote = 20;
+  try {
+    const lobby = mkLobby();
+    const p = lobby.joinViaRelay('ABCD2345', 'ws://relay.test');
+    // Attached NOW, not after the interleaving: the rejection lands mid-block
+    // and an unhandled one takes the whole process down before any assertion
+    // runs, which reads as a crash rather than as the failure it is.
+    const outcome = p.then(() => 'RESOLVED', (e) => e.message);
+    const ws = FakeWS.last;
+    ws.open();
+
+    const offering = ws.recv({ type: 'offer', blob: offerBlob(99), trickle: true });
+    await turn(0);                       // the offer handler is now parked inside joinManual
+    await ws.recv({ type: 'evicted' });  // and this one runs to completion in that gap
+    await offering;
+    await turn(30);
+
+    const settled = await outcome;
+    ok(/too many joins/.test(settled), `the caller is told the join failed (got '${settled}')`);
+    // The invariant: the Lobby's state and the promise's answer must agree.
+    // Publishing `net`/`mode` on top of a rejected attempt leaves the co-op
+    // screen saying it failed while the Lobby believes it is connected over the
+    // socket the rejection already closed — and the retry the player is invited
+    // to make then dies on 'Already networked' until a reload.
+    ok(lobby.net === null,
+       `and the lobby holds no connection built after that answer (net=${!!lobby.net})`);
+    ok(lobby.mode === 'single',
+       `nor is it left in client mode over a closed socket (mode=${lobby.mode})`);
+    ok(ws.closed === true, 'the socket is closed, as the rejection says it is');
+    ok(ws.ofType('answer').length === 0,
+       `and no answer was sent for an attempt that had already been given up (got ${ws.ofType('answer').length})`);
+
+    // The retry that the old behaviour locked out. This is the player-visible
+    // cost, so it is asserted rather than argued.
+    let retryThrew = null;
+    await lobby.joinManual(offerBlob(100), { trickle: true }).catch((e) => { retryThrew = e; });
+    ok(!/Already networked/.test(retryThrew?.message ?? ""),
+       `a retry is not locked out by the abandoned attempt (got '${retryThrew?.message}')`);
+  } finally {
+    slowSetRemote = 0;
   }
 }
 

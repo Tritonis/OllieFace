@@ -73,7 +73,17 @@ const RUN_DIRECTLY = process.argv[1]
 
 // Bumped when a page can tell the difference. 2 = relays `ice` and preserves an
 // offer's `trickle` flag; see the header for how each mismatch degrades.
-const PROTOCOL_VERSION = 2;
+//
+// 3 = forwards `evicted` (issue #8). Unlike 2, this one has to be advertised
+// rather than merely tried, and the reason is asymmetric: an unknown type is
+// `bad-type` here, and `reject` charges that against the SENDER — so a host
+// sending `evicted` at a v2 relay is not simply ignored, it spends one of its
+// own twenty rejects and loses its room on the twentieth with a 1008. Eviction
+// happens exactly under the sustained flood `MAX_PENDING_INVITES` exists to
+// survive, which is precisely when twenty is reachable, so the page checks this
+// number before it sends (`RELAY_EVICTED_VERSION` in src/net/Lobby.js) and an
+// old relay costs a joiner its 20 s wait instead of costing the host its room.
+const PROTOCOL_VERSION = 3;
 
 const rooms = new Map(); // code -> { host, clients:Set, created, lastActivity }
 const connsByIp = new Map(); // ip -> live socket count
