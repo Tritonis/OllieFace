@@ -2359,6 +2359,24 @@ export function installHarness(ctx) {
     { id: '04-combat::horde', kind: 'perSep', value: 0.25,
       note: 'weakest of the 8 gated horde members straddles the floor (0.25 / 0.29 on two unchanged runs); wants arena fill or framing, not a per-subject change' },
 
+    // The market's second stall is the horde's shape in the realm roster: an
+    // entry admitted for boundary-flake, not for steady shortfall. It was
+    // added once for the wrong reason ("sits on the bar exactly" — but a value
+    // AT the bar passes the strict-< comparison, so that entry loosened the
+    // gate for nothing) and deleted on that argument. Then cross-BOOT runs on
+    // unchanged trees read its perSep at 0.25, 0.27 and 0.31
+    // (`reviews/crucible-absence/red|fix1|final` at 0.25;
+    // `reviews/survivor-sep/integrated` at 0.27; `survivor-sep/post-exemption`
+    // at 0.31), which is the horde's straddle exactly: byte-deterministic
+    // within a boot, +/-0.03 across boots. Without the entry the shot goes red
+    // on roughly every other boot, which is how a gate gets switched off. The
+    // recorded value is the worst observed; the 0.25 floor still binds through
+    // `marginBar`'s Math.max. Retire it the way #85 retired the damage
+    // numbers: by art that clears 0.27 on its bad boots, not by deletion on a
+    // good one.
+    { id: '22-realm-market::the market stalls', kind: 'perSep', value: 0.25,
+      note: 'second stall straddles the margin bar across boots (0.25 / 0.27 / 0.31 on unchanged trees); boundary-flake like the horde, wants art with real headroom, not deletion on a lucky boot' },
+
   ];
 
   const marginExemption = (shot, subject, kind) => SEP_MARGIN_EXEMPTIONS.find(
