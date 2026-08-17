@@ -2247,10 +2247,11 @@ export class Menus {
 
     // COUPLING: the arrows, Enter, NumpadEnter, Backspace and Escape below are
     // read as RAW physical codes — they are not in the binding map — so
-    // `Bindings.RESERVED_KEYS` refuses them at the capture dialog. WASD and
-    // Space are the opposite case: those are virtual codes the map produces, so
-    // rebinding movement or jump moves the menu control with it. Adding a raw
-    // code here means adding it to RESERVED_KEYS.
+    // `Bindings.RESERVED_KEYS` refuses them at the capture dialog. The
+    // `.mutate-choice` window below (Digit1-3) is the same party to this
+    // invariant. WASD and Space are the opposite case: those are virtual codes
+    // the map produces, so rebinding movement or jump moves the menu control
+    // with it. Adding a raw code here means adding it to RESERVED_KEYS.
     let dy = 0, dx = 0, confirm = false, back = false;
     if (hit('ArrowDown') || hit('KeyS')) dy++;
     if (hit('ArrowUp') || hit('KeyW')) dy--;
@@ -2359,12 +2360,16 @@ export class Menus {
     }
     // The offer's clock is display only — `Items` owns the real one and will
     // close this panel through `hideMutationChoice` when it lapses, so the two
-    // can never disagree about whether the window is still open. Keys 1-3 are
-    // read through `ctx.input` like the Edict's C, so the choice is answerable
-    // without letting go of the world.
+    // can never disagree about whether the window is still open. Read the
+    // remaining seconds straight off `Items`' own state (`mutationChoice()`)
+    // rather than ticking a second clock here: that state is written in
+    // `fixedUpdate`, which does not run while `ctx.paused`, so a paused game
+    // shows a frozen, truthful number instead of a display that keeps
+    // counting down on its own. Keys 1-3 are read through `ctx.input` like the
+    // Edict's C, so the choice is answerable without letting go of the world.
     if (this.mutate) {
-      this.mutate.remaining -= dt;
-      this.mutateRefs.clock.textContent = `${Math.max(0, Math.ceil(this.mutate.remaining))}s`;
+      const remaining = ctx.items?.mutationChoice?.()?.remaining ?? this.mutate.remaining;
+      this.mutateRefs.clock.textContent = `${Math.max(0, Math.ceil(remaining))}s`;
       if (!this.screen) {
         for (let i = 0; i < 3; i++) {
           if (!ctx.input?.hit?.(`Digit${i + 1}`)) continue;

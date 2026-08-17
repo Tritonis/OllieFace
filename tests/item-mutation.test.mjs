@@ -521,6 +521,21 @@ console.log('refusal, lapse and interruption are all the old random path');
   for (let t = 0; t < MUTATION.choiceSeconds * 60 - 2; t++) step(held.ctx, held.items);
   ok(!!held.items.mutationChoice(), 'and it does not close before its stated duration');
 
+  // Pause-honest display clock: `Menus`' countdown reads `remaining` straight
+  // off `mutationChoice()` rather than ticking its own clock, so the number a
+  // paused game shows must be exactly the window's own, unmoving. `Engine`
+  // gates every `fixedUpdate` call behind `!ctx.paused` (src/core/Engine.js);
+  // mirror that gate here rather than calling `step` unconditionally, since a
+  // direct `items.fixedUpdate` call has no opinion about pause on its own.
+  const pausedW = atThreshold(4);
+  const remainingAtPause = pausedW.items.mutationChoice().remaining;
+  pausedW.ctx.paused = true;
+  for (let t = 0; t < 30; t++) {
+    if (!pausedW.ctx.paused) step(pausedW.ctx, pausedW.items);
+  }
+  ok(pausedW.items.mutationChoice().remaining === remainingAtPause,
+    'remaining does not move across 30 paused fixed steps');
+
   // A fresh threshold on top of an open one pays the older band the void's way
   // rather than stranding it in the queue forever.
   const spiked = atThreshold(4);

@@ -176,13 +176,20 @@ input.pollPad();
   // Every code `Menus.navigate`/`update` reads raw must be refused, or a player
   // can bind an action onto it and lose the way back to this screen.
   const rawReads = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter',
-    'NumpadEnter', 'Backspace', 'Escape', 'KeyC'];
+    'NumpadEnter', 'Backspace', 'Escape', 'KeyC', 'Digit1', 'Digit2', 'Digit3'];
   check('every raw-read menu code is reserved', rawReads.every((c) => isReserved(c)),
     rawReads.filter((c) => !isReserved(c)));
   check('ordinary and default keys are not reserved',
     !isReserved('KeyM') && !isReserved('Space') && !isReserved('KeyW'));
   const b = new Bindings({ jump: { key: 'ArrowUp' } });
   check('a stored blob cannot claim a reserved code', b.keyOf('jump') === 'Space');
+  // The `.mutate-choice` window's only input path — a capture dialog must
+  // refuse Digit1 exactly as it refuses ArrowUp, or a rebind can steal a
+  // player's only way to answer the blight-toll offer.
+  const b2 = new Bindings({ jump: { key: 'Digit1' } });
+  check('a stored blob cannot claim Digit1 either', b2.keyOf('jump') === 'Space');
+  check('isReserved refuses Digit1 the same way it refuses ArrowUp',
+    isReserved('Digit1') === isReserved('ArrowUp') && isReserved('Digit1') === true);
 }
 
 // --- reset -------------------------------------------------------------------
