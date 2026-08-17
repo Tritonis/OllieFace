@@ -62,8 +62,15 @@ export const ENABLED_KEY = 'telluric.telemetry.enabled';
 export const RUNS_KEY = 'telluric.telemetry.runs';
 export const PARTIAL_KEY = 'telluric.telemetry.partial';
 
-/** Bumped whenever the record's shape changes, so old exports stay readable. */
-export const RECORD_VERSION = 1;
+/**
+ * Bumped whenever the record's shape changes, so old exports stay readable.
+ *
+ * 2 — realm offers carry `gold`, `goldMax` and `band`. Version 1 records cannot
+ *     say whether a priced gateway was affordable, which is half of #38's
+ *     denominator, and `tools/realmstats.mjs` refuses a verdict on them rather
+ *     than approximating one.
+ */
+export const RECORD_VERSION = 2;
 
 /**
  * How many finished runs are kept. Fifty is roughly a fortnight of playtesting
@@ -213,6 +220,11 @@ class RunRecorder {
     this._realm = null;      // the open realm visit, or null outside one
     this._lastWorld = 0;     // previous corruption world value, for feed/bleed direction
     this._lastKill = null;   // the most recent kill of this machine's survivor
+    // Offers whose door is still standing, so `goldChanged` can raise their
+    // high-water purse. Emptied at `stageStart`, because that is where `Realms`
+    // clears its gateways and drops the armed realm — every door in the list
+    // ceases to exist at exactly that moment.
+    this._openOffers = [];
   }
 
   // ------------------------------------------------------------------ wiring
@@ -245,6 +257,7 @@ class RunRecorder {
     on('itemMutated', this.onItemMutated);
     on('itemStabilised', this.onItemStabilised);
     on('fontUse', this.onFontUse);
+    on('goldChanged', this.onGoldChanged);
     on('realmOffer', this.onRealmOffer);
     on('realmEnter', this.onRealmEnter);
     on('realmExit', this.onRealmExit);
@@ -258,6 +271,7 @@ class RunRecorder {
 
   onStageStart(e) {
     this.closeStage();
+    this._openOffers.length = 0;
     this._stage = {
       index: e?.index ?? 0,
       name: e?.name ?? null,
@@ -347,12 +361,31 @@ class RunRecorder {
     });
   }
 
+  /**
+   * A door was offered, and — since #38's decided denominator is offers the
+   * player could *actually take* — what the purse could answer it with.
+   *
+   * `gold` is the purse at the instant the door appeared; `goldMax` is the most
+   * gold held while it still stood, and it is the one affordability should be
+   * read off. A gateway stands for a whole stage, so a player who walks past a
+   * 120g door with 60g, kills for ninety seconds and comes back was never
+   * priced out of it — scoring that offer as unaffordable would shrink the
+   * denominator with exactly the offers that were live choices. `band` is the
+   * run state the same decision was made under, which is the other half of the
+   * "regardless of build or run state" the >75% rule is written against.
+   */
   onRealmOffer(e) {
     const entry = {
       t: this.t(), stage: e?.stage ?? null, id: e?.id ?? null,
       kind: e?.kind ?? null, cost: e?.cost ?? 0,
+      gold: this.gold(), goldMax: this.gold(), band: this.band(),
     };
     this.push(this.record.realmOffers, entry);
+    // Only offers that made it past `push`'s cap are tracked: an entry dropped
+    // for truncation is not in the record to be updated.
+    if (this.record.realmOffers[this.record.realmOffers.length - 1] === entry) {
+      this._openOffers.push(entry);
+    }
     // A finale door is an offer like any other, and also the run's route
     // question (#37). Recorded in both places on purpose: the offer list is
     // what #38's offer-rate denominator counts, and `route.offered` is what
@@ -361,6 +394,17 @@ class RunRecorder {
     if (entry.kind === 'finale' && !this.record.route.offered.includes(entry.id)) {
       this.record.route.offered.push(entry.id);
     }
+  }
+
+  /**
+   * Raise the high-water purse on every door still standing. Absolute value,
+   * not a delta — `Items.addGold`/`spend` both emit the total.
+   */
+  onGoldChanged(e) {
+    if (!isLocalOwner(this.ctx, e)) return;
+    const gold = Number(e?.gold);
+    if (!Number.isFinite(gold)) return;
+    for (const o of this._openOffers) if (gold > o.goldMax) o.goldMax = gold;
   }
 
   onRealmEnter(e) {
@@ -460,6 +504,7 @@ class RunRecorder {
   t() { return round(this.ctx.time ?? 0); }
   world() { return round(this.ctx.corruption?.world ?? 0); }
   band() { return this.ctx.corruption?.band ?? 0; }
+  gold() { return Math.round(this.ctx.items?.gold ?? 0); }
 
   closeStage() {
     const s = this._stage;
