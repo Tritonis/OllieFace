@@ -1,0 +1,1304 @@
+{
+  "seed": 1337,
+  "ready": true,
+  "clockPinned": true,
+  "commit": "35b5e111b263324f0dd4fae245846d38315776ca",
+  "capturedAt": "2026-08-17T04:34:05.339Z",
+  "ms": {
+    "boot": 12092,
+    "bootTimeout": 60000
+  },
+  "shots": [
+    {
+      "name": "04-combat",
+      "doc": "Mid-fight with a horde, firing. Judges VFX layering, enemy legibility, HUD under load.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\.claude\\worktrees\\agent-aa7ddbfc2a81513b4\\reviews\\issue86\\d25b\\04-combat.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 2.6833333333333287
+      },
+      "ms": {
+        "setup": 5448,
+        "screenshot": 470,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "horde",
+            "kind": "pixels",
+            "ok": true,
+            "px": 10679,
+            "frac": 0.0824,
+            "lum": 103.5,
+            "bgLum": 29.2,
+            "contrast": 0.56,
+            "sep": 0.57,
+            "sepP25": 0.39,
+            "sepP50": 0.63,
+            "legible": 0.909,
+            "at": [
+              0.52,
+              0.493
+            ],
+            "box": [
+              0.001,
+              0.002,
+              0.939,
+              0.924
+            ],
+            "objects": 24,
+            "visibleObjects": 21,
+            "perPx": [
+              0,
+              0,
+              72,
+              54,
+              127,
+              400,
+              302,
+              264,
+              56,
+              59,
+              637,
+              1075,
+              1085,
+              557,
+              1285,
+              128,
+              152,
+              3322,
+              742,
+              30,
+              267,
+              123,
+              92,
+              0
+            ],
+            "perSep": [
+              0,
+              0,
+              0.63,
+              0.37,
+              0.21,
+              0.49,
+              0.75,
+              0.53,
+              0.05,
+              0.59,
+              0.57,
+              0.49,
+              0.69,
+              0.53,
+              0.59,
+              0.29,
+              0.17,
+              0.69,
+              0.65,
+              0.51,
+              0.15,
+              0.63,
+              0.05,
+              0
+            ],
+            "minPx": 900,
+            "minObjects": 8,
+            "marginOk": true,
+            "present": true,
+            "carriedPx": 9707,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "marginSep": 0.27,
+            "crowd": {
+              "need": 8,
+              "why": "director horde: an unbounded population, not a fixed cast",
+              "absentBeyondCrowd": [
+                {
+                  "i": 0,
+                  "px": 0,
+                  "sepP50": 0
+                },
+                {
+                  "i": 1,
+                  "px": 0,
+                  "sepP50": 0
+                },
+                {
+                  "i": 23,
+                  "px": 0,
+                  "sepP50": 0
+                }
+              ],
+              "carriesAbsence": true
+            },
+            "minPerPx": 113,
+            "absentObjects": [
+              {
+                "i": 0,
+                "px": 0,
+                "sepP50": 0
+              },
+              {
+                "i": 1,
+                "px": 0,
+                "sepP50": 0
+              },
+              {
+                "i": 23,
+                "px": 0,
+                "sepP50": 0
+              }
+            ],
+            "objectFailures": [],
+            "ungatedAbsences": [
+              {
+                "i": 0,
+                "px": 0,
+                "sepP50": 0
+              },
+              {
+                "i": 1,
+                "px": 0,
+                "sepP50": 0
+              },
+              {
+                "i": 23,
+                "px": 0,
+                "sepP50": 0
+              }
+            ],
+            "perObjectOk": true,
+            "marginPerSep": 0.25,
+            "worstGatedSep": 0.49,
+            "marginObjectFailures": [],
+            "marginExemptPerSep": {
+              "kind": "perSep",
+              "value": 0.25,
+              "note": "weakest of the 8 gated horde members straddles the floor (0.25 / 0.29 on two unchanged runs); wants arena fill or framing, not a per-subject change"
+            },
+            "carriesAbsence": true,
+            "gatedOn": [
+              "px >= minPx",
+              "visibleObjects >= minObjects",
+              "sepP50 >= minSep",
+              "sepP50 >= marginSep (0.27)",
+              "perPx/perSep/absence over the 8 gated of 24",
+              "perSep >= marginPerSep (0.25) over the gated set [exempt]"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "legible",
+              "crowd.absentBeyondCrowd"
+            ]
+          },
+          {
+            "subject": "DIAG declutter",
+            "kind": "info",
+            "ok": true,
+            "detail": [
+              {
+                "bad": 19,
+                "kept": 5,
+                "asked": 23,
+                "slots": 9,
+                "moved": 9,
+                "why": {
+                  "cells": 52,
+                  "band": 13,
+                  "noGround": 24,
+                  "player": 5,
+                  "avoid": 6,
+                  "dup": 8,
+                  "got": 9
+                },
+                "unplaced": [
+                  "shriver",
+                  "scarab",
+                  "harrier",
+                  "spitling",
+                  "skink",
+                  "hulk",
+                  "mortar",
+                  "mote",
+                  "mite",
+                  "skink"
+                ]
+              },
+              {
+                "bad": 12,
+                "kept": 12,
+                "asked": 16,
+                "slots": 2,
+                "moved": 2,
+                "why": {
+                  "cells": 52,
+                  "band": 13,
+                  "noGround": 24,
+                  "player": 5,
+                  "avoid": 21,
+                  "dup": 0,
+                  "got": 2
+                },
+                "unplaced": [
+                  "shriver",
+                  "scarab",
+                  "harrier",
+                  "spitling",
+                  "skink",
+                  "hulk",
+                  "mortar",
+                  "mote",
+                  "mite",
+                  "skink"
+                ]
+              }
+            ]
+          },
+          {
+            "subject": "DIAG horde",
+            "kind": "info",
+            "ok": true,
+            "detail": [
+              {
+                "i": 0,
+                "id": "mite",
+                "d": 32.1,
+                "sx": 0.59,
+                "sy": 0.451,
+                "front": 31.5,
+                "wy": 3.8,
+                "vis": 1,
+                "visWhat": "ctx.stage only; blind to the horde",
+                "nearer": {
+                  "i": 14,
+                  "id": "sentinel",
+                  "d": 19.9,
+                  "gap": 0.014
+                },
+                "visRig": true,
+                "px": 0
+              },
+              {
+                "i": 1,
+                "id": "scarab",
+                "d": 25.5,
+                "sx": 1.012,
+                "sy": 0.419,
+                "front": 17.8,
+                "wy": 4.9,
+                "vis": 0,
+                "visWhat": "ctx.stage only; blind to the horde",
+                "nearer": {
+                  "i": 21,
+                  "id": "spitling",
+                  "d": 23.6,
+                  "gap": 0.082
+                },
+                "visRig": true,
+                "px": 0
+              },
+              {
+                "i": 2,
+                "id": "spitling",
+                "d": 26.6,
+                "sx": 0.341,
+                "sy": 0.527,
+                "front": 25.6,
+                "wy": 1.7,
+                "vis": 1,
+                "visWhat": "ctx.stage only; blind to the horde",
+                "nearer": {
+                  "i": 7,
+                  "id": "charger",
+                  "d": 21.4,
+                  "gap": 0.037
+                },
+                "visRig": true,
+                "px": 72,
+                "sep": 0.648,
+                "sepP25": 0.43,
+                "sepP50": 0.63,
+                "legible": 1,
+                "lum": 111.9,
+                "bgLum": 10.5,
+                "lumP50": 51,
+                "bgLumP50": 9,
+                "at": [
+                  0.34,
+                  0.527
+                ],
+                "box": [
+                  0.33,
+                  0.509,
+                  0.351,
+                  0.546
+                ]
+              },
+              {
+                "i": 3,
+                "id": "skink",
+                "d": 39.8,
+                "sx": 0.319,
+                "sy": 0.45,
+                "front": 37.4,
+                "wy": 2.9,
+                "vis": 1,
+                "visWhat": "ctx.stage only; blind to the horde",
+                "nearer": {
+                  "i": 2,
+                  "id": "spitling",
+                  "d": 26.6,
+                  "gap": 0.049
+                },
+                "visRig": true,
+                "px": 54,
+                "sep": 0.373,
+                "sepP25": 0.27,
+                "sepP50": 0.37,
+                "legible": 0.907,
+                "lum": 71.1,
+                "bgLum": 31.6,
+                "lumP50": 71,
+                "bgLumP50": 25,
+                "at": [
+                  0.317,
+                  0.446
+                ],
+                "box": [
+                  0.309,
+                  0.431,
+                  0.33,
+                  0.469
+                ]
+              },
+              {
+                "i": 4,
+                "id": "mote",
+                "d": 23.3,
+                "sx": 0.7,
+                "sy": 0.264,
+                "front": 21.3,
+                "wy": 8.4,
+                "vis": 1,
+                "visWhat": "ctx.stage only; blind to the horde",
+                "nearer": {
+                  "i": 17,
+                  "id": "redoubt",
+                  "d": 12.4,
+                  "gap": 0.09
+                },
+                "visRig": true,
+                "px": 127,
+                "sep": 0.243,
+                "sepP25": 0.11,
+                "sepP50": 0.21,
+                "legible": 0.598,
+                "lum": 53.8,
+                "bgLum": 27.8,
+                "lumP50": 44,
+                "bgLumP50": 28,
+                "at": [
+                  0.699,
+                  0.29
+                ],
+                "box": [
+                  0.68,
+                  0.257,
+                  0.714,
+                  0.313
+                ]
+              },
+              {
+                "i": 5,
+                "id": "shrike",
+                "d": 13.2,
+                "sx": 0.832,
+                "sy": 0.232,
+                "front": 10.8,
+                "wy": 7.2,
+                "vis": 1,
+                "visWhat": "ctx.stage only; blind to the horde",
+                "nearer": {
+                  "i": 17,
+                  "id": "redoubt",
+                  "d": 12.4,
+                  "gap": 0.125
+                },
+                "visRig": true,
+                "px": 400,
+                "sep": 0.47,
+                "sepP25": 0.33,
+                "sepP50": 0.49,
+                "legible": 0.912,
+                "lum": 45.2,
+                "bgLum": 13.9,
+                "lumP50": 35,
+                "bgLumP50": 11,
+                "at": [
+                  0.831,
+                  0.274
+                ],
+                "box": [
+                  0.799,
+                  0.239,
+                  0.864,
+                  0.35
+                ]
+              },
+              {
+                "i": 6,
+                "id": "harrier",
+                "d": 26.4,
+                "sx": 0.487,
+                "sy": 0.282,
+                "front": 25.9,
+                "wy": 8.5,
+                "vis": 1,
+                "visWhat": "ctx.stage only; blind to the horde",
+                "nearer": {
+                  "i": 16,
+                  "id": "lasher",
+                  "d": 19.2,
+                  "gap": 0.117
+                },
+                "visRig": true,
+                "px": 302,
+                "sep": 0.707,
+                "sepP25": 0.67,
+                "sepP50": 0.75,
+                "legible": 0.99,
+                "lum": 80,
+                "bgLum": 10.1,
+                "lumP50": 64,
+                "bgLumP50": 5,
+                "at": [
+                  0.487,
+                  0.303
+                ],
+                "box": [
+                  0.459,
+                  0.254,
+                  0.516,
+                  0.354
+                ]
+              },
+              {
+                "i": 7,
+                "id": "charger",
+                "d": 21.4,
+                "sx": 0.317,
+                "sy": 0.575,
+                "front": 20.4,
+                "wy": 1,
+                "vis": 1,
+                "visWhat": "ctx.stage only; blind to the horde",
+                "nearer": {
+                  "i": 20,
+                  "id": "scarab",
+                  "d": 17.8,
+                  "gap": 0.092
+                },
+                "visRig": true,
+                "px": 264,
+                "sep": 0.507,
+                "sepP25": 0.23,
+                "sepP50": 0.53,
+                "legible": 0.875,
+                "lum": 123.7,
+                "bgLum": 48.1,
+                "lumP50": 113,
+                "bgLumP50": 30,
+                "at": [
+                  0.317,
+                  0.575
+                ],
+                "box": [
+                  0.299,
+                  0.539,
+                  0.334,
+                  0.62
+                ]
+              },
+              {
+                "i": 8,
+                "id": "shriver",
+                "d": 25.4,
+                "sx": 0.36,
+                "sy": 0.295,
+                "front": 24.1,
+                "wy": 8,
+                "vis": 1,
+                "visWhat": "ctx.stage only; blind to the horde",
+                "nearer": {
+                  "i": 7,
+                  "id": "charger",
+                  "d": 21.4,
+                  "gap": 0.163
+                },
+                "visRig": true,
+                "px": 56,
+                "sep": 0.105,
+                "sepP25": 0.01,
+                "sepP50": 0.05,
+                "legible": 0.125,
+                "lum": 65.4,
+                "bgLum": 51.4,
+                "lumP50": 47,
+                "bgLumP50": 46,
+                "at": [
+                  0.36,
+                  0.311
+                ],
+                "box": [
+                  0.351,
+                  0.294,
+                  0.37,
+                  0.328
+                ]
+              },
+              {
+                "i": 9,
+                "id": "burrower",
+                "d": 23.1,
+                "sx": 0.87,
+                "sy": 0.438,
+                "front": 18.6,
+                "wy": 4.3,
+                "vis": 0.78,
+                "visWhat": "ctx.stage only; blind to the horde",
+                "nearer": {
+                  "i": 13,
+                  "id": "acolyte",
+                  "d": 16.8,
+                  "gap": 0.023
+                },
+                "visRig": true,
+                "px": 59,
+                "sep": 0.45,
+                "sepP25": 0.15,
+                "sepP50": 0.59,
+                "legible": 0.746,
+                "lum": 33.5,
+                "bgLum": 11.4,
+                "lumP50": 30,
+                "bgLumP50": 6,
+                "at": [
+                  0.865,
+                  0.427
+                ],
+                "box": [
+                  0.857,
+                  0.417,
+                  0.88,
+                  0.461
+                ]
+              },
+              {
+                "i": 10,
+                "id": "brood",
+                "d": 20.5,
+                "sx": 0.099,
+                "sy": 0.77,
+                "front": 16.4,
+                "wy": -2.2,
+                "vis": 0.89,
+                "visWhat": "ctx.stage only; blind to the horde",
+                "nearer": {
+                  "i": 12,
+                  "id": "stalker",
+                  "d": 17.4,
+                  "gap": 0.046
+                },
+                "visRig": true,
+                "px": 637,
+                "sep": 0.499,
+                "sepP25": 0.27,
+                "sepP50": 0.57,
+                "legible": 0.906,
+                "lum": 89.3,
+                "bgLum": 39.1,
+                "lumP50": 71,
+                "bgLumP50": 12,
+                "at": [
+                  0.097,
+                  0.769
+                ],
+                "box": [
+                  0.072,
+                  0.687,
+                  0.12,
+                  0.846
+                ]
+              },
+              {
+                "i": 11,
+                "id": "warden",
+                "d": 17.5,
+                "sx": 0.171,
+                "sy": 0.707,
+                "front": 14.9,
+                "wy": -0.6,
+                "vis": 0.89,
+                "visWhat": "ctx.stage only; blind to the horde",
+                "nearer": {
+                  "i": 12,
+                  "id": "stalker",
+                  "d": 17.4,
+                  "gap": 0.125
+                },
+                "visRig": true,
+                "px": 1075,
+                "sep": 0.468,
+                "sepP25": 0.23,
+                "sepP50": 0.49,
+                "legible": 0.823,
+                "lum": 95.8,
+                "bgLum": 44.9,
+                "lumP50": 69,
+                "bgLumP50": 16,
+                "at": [
+                  0.176,
+                  0.711
+                ],
+                "box": [
+                  0.136,
+                  0.631,
+                  0.218,
+                  0.794
+                ]
+              },
+              {
+                "i": 12,
+                "id": "stalker",
+                "d": 17.4,
+                "sx": 0.065,
+                "sy": 0.825,
+                "front": 13.5,
+                "wy": -1.6,
+                "vis": 0.89,
+                "visWhat": "ctx.stage only; blind to the horde",
+                "nearer": {
+                  "i": 19,
+                  "id": "mite",
+                  "d": 16.8,
+                  "gap": 0.607
+                },
+                "visRig": true,
+                "px": 1085,
+                "sep": 0.625,
+                "sepP25": 0.43,
+                "sepP50": 0.69,
+                "legible": 0.983,
+                "lum": 130.6,
+                "bgLum": 33.8,
+                "lumP50": 123,
+                "bgLumP50": 10,
+                "at": [
+                  0.063,
+                  0.816
+                ],
+                "box": [
+                  0.001,
+                  0.731,
+                  0.132,
+                  0.924
+                ]
+              },
+              {
+                "i": 13,
+                "id": "acolyte",
+                "d": 16.8,
+                "sx": 0.883,
+                "sy": 0.471,
+                "front": 13.4,
+                "wy": 3.7,
+                "vis": 0.78,
+                "visWhat": "ctx.stage only; blind to the horde",
+                "nearer": {
+                  "i": 17,
+                  "id": "redoubt",
+                  "d": 12.4,
+                  "gap": 0.141
+                },
+                "visRig": true,
+                "px": 557,
+                "sep": 0.502,
+                "sepP25": 0.29,
+                "sepP50": 0.53,
+                "legible": 0.876,
+                "lum": 62.1,
+                "bgLum": 19.6,
+                "lumP50": 30,
+                "bgLumP50": 12,
+                "at": [
+                  0.89,
+                  0.451
+                ],
+                "box": [
+                  0.855,
+                  0.35,
+                  0.922,
+                  0.524
+                ]
+              },
+              {
+                "i": 14,
+                "id": "sentinel",
+                "d": 19.9,
+                "sx": 0.582,
+                "sy": 0.43,
+                "front": 19.6,
+                "wy": 3.3,
+                "vis": 1,
+                "visWhat": "ctx.stage only; blind to the horde",
+                "nearer": {
+                  "i": 19,
+                  "id": "mite",
+                  "d": 16.8,
+                  "gap": 0.07
+                },
+                "visRig": true,
+                "px": 1285,
+                "sep": 0.527,
+                "sepP25": 0.29,
+                "sepP50": 0.59,
+                "legible": 0.869,
+                "lum": 101.1,
+                "bgLum": 32.8,
+                "lumP50": 79,
+                "bgLumP50": 16,
+                "at": [
+                  0.576,
+                  0.396
+                ],
+                "box": [
+                  0.511,
+                  0.002,
+                  0.645,
+                  0.517
+                ]
+              },
+              {
+                "i": 15,
+                "id": "mortar",
+                "d": 31,
+                "sx": 0.552,
+                "sy": 0.427,
+                "front": 30.8,
+                "wy": 3.5,
+                "vis": 1,
+                "visWhat": "ctx.stage only; blind to the horde",
+                "nearer": {
+                  "i": 14,
+                  "id": "sentinel",
+                  "d": 19.9,
+                  "gap": 0.03
+                },
+                "visRig": true,
+                "px": 128,
+                "sep": 0.412,
+                "sepP25": 0.17,
+                "sepP50": 0.29,
+                "legible": 0.797,
+                "lum": 103.2,
+                "bgLum": 41.4,
+                "lumP50": 61,
+                "bgLumP50": 19,
+                "at": [
+                  0.547,
+                  0.425
+                ],
+                "box": [
+                  0.534,
+                  0.365,
+                  0.561,
+                  0.469
+                ]
+              },
+              {
+                "i": 16,
+                "id": "lasher",
+                "d": 19.2,
+                "sx": 0.505,
+                "sy": 0.487,
+                "front": 19.3,
+                "wy": 2.6,
+                "vis": 0.67,
+                "visWhat": "ctx.stage only; blind to the horde",
+                "nearer": {
+                  "i": 19,
+                  "id": "mite",
+                  "d": 16.8,
+                  "gap": 0.138
+                },
+                "visRig": true,
+                "px": 152,
+                "sep": 0.232,
+                "sepP25": 0.07,
+                "sepP50": 0.17,
+                "legible": 0.566,
+                "lum": 112.7,
+                "bgLum": 68.5,
+                "lumP50": 108,
+                "bgLumP50": 66,
+                "at": [
+                  0.502,
+                  0.482
+                ],
+                "box": [
+                  0.486,
+                  0.45,
+                  0.514,
+                  0.513
+                ]
+              },
+              {
+                "i": 17,
+                "id": "redoubt",
+                "d": 12.4,
+                "sx": 0.748,
+                "sy": 0.399,
+                "front": 11,
+                "wy": 4.3,
+                "vis": 1,
+                "visWhat": "ctx.stage only; blind to the horde",
+                "nearer": null,
+                "visRig": true,
+                "px": 3322,
+                "sep": 0.66,
+                "sepP25": 0.57,
+                "sepP50": 0.69,
+                "legible": 0.983,
+                "lum": 104.6,
+                "bgLum": 15,
+                "lumP50": 87,
+                "bgLumP50": 12,
+                "at": [
+                  0.761,
+                  0.37
+                ],
+                "box": [
+                  0.686,
+                  0.002,
+                  0.891,
+                  0.535
+                ]
+              },
+              {
+                "i": 18,
+                "id": "hulk",
+                "d": 27.1,
+                "sx": 0.449,
+                "sy": 0.456,
+                "front": 27,
+                "wy": 2,
+                "vis": 0.78,
+                "visWhat": "ctx.stage only; blind to the horde",
+                "nearer": {
+                  "i": 16,
+                  "id": "lasher",
+                  "d": 19.2,
+                  "gap": 0.058
+                },
+                "visRig": true,
+                "px": 742,
+                "sep": 0.582,
+                "sepP25": 0.41,
+                "sepP50": 0.65,
+                "legible": 0.922,
+                "lum": 137.7,
+                "bgLum": 43.9,
+                "lumP50": 116,
+                "bgLumP50": 17,
+                "at": [
+                  0.455,
+                  0.451
+                ],
+                "box": [
+                  0.405,
+                  0.38,
+                  0.509,
+                  0.509
+                ]
+              },
+              {
+                "i": 19,
+                "id": "mite",
+                "d": 16.8,
+                "sx": 0.643,
+                "sy": 0.492,
+                "front": 16.2,
+                "wy": 3.8,
+                "vis": 0.78,
+                "visWhat": "ctx.stage only; blind to the horde",
+                "nearer": {
+                  "i": 17,
+                  "id": "redoubt",
+                  "d": 12.4,
+                  "gap": 0.118
+                },
+                "visRig": true,
+                "px": 30,
+                "sep": 0.541,
+                "sepP25": 0.35,
+                "sepP50": 0.51,
+                "legible": 1,
+                "lum": 98.8,
+                "bgLum": 25.2,
+                "lumP50": 95,
+                "bgLumP50": 13,
+                "at": [
+                  0.642,
+                  0.493
+                ],
+                "box": [
+                  0.634,
+                  0.48,
+                  0.651,
+                  0.506
+                ]
+              },
+              {
+                "i": 20,
+                "id": "scarab",
+                "d": 17.8,
+                "sx": 0.245,
+                "sy": 0.677,
+                "front": 16.2,
+                "wy": 0.3,
+                "vis": 0.89,
+                "visWhat": "ctx.stage only; blind to the horde",
+                "nearer": {
+                  "i": 11,
+                  "id": "warden",
+                  "d": 17.5,
+                  "gap": 0.076
+                },
+                "visRig": true,
+                "px": 267,
+                "sep": 0.126,
+                "sepP25": 0.07,
+                "sepP50": 0.15,
+                "legible": 0.464,
+                "lum": 198,
+                "bgLum": 156.7,
+                "lumP50": 196,
+                "bgLumP50": 146,
+                "at": [
+                  0.243,
+                  0.68
+                ],
+                "box": [
+                  0.214,
+                  0.657,
+                  0.276,
+                  0.72
+                ]
+              },
+              {
+                "i": 21,
+                "id": "spitling",
+                "d": 23.6,
+                "sx": 0.931,
+                "sy": 0.442,
+                "front": 17.9,
+                "wy": 4.4,
+                "vis": 0.67,
+                "visWhat": "ctx.stage only; blind to the horde",
+                "nearer": {
+                  "i": 13,
+                  "id": "acolyte",
+                  "d": 16.8,
+                  "gap": 0.051
+                },
+                "visRig": true,
+                "px": 123,
+                "sep": 0.656,
+                "sepP25": 0.51,
+                "sepP50": 0.63,
+                "legible": 1,
+                "lum": 110,
+                "bgLum": 11,
+                "lumP50": 41,
+                "bgLumP50": 5,
+                "at": [
+                  0.926,
+                  0.438
+                ],
+                "box": [
+                  0.914,
+                  0.417,
+                  0.939,
+                  0.469
+                ]
+              },
+              {
+                "i": 22,
+                "id": "skink",
+                "d": 26.7,
+                "sx": 0.366,
+                "sy": 0.509,
+                "front": 26,
+                "wy": 1.8,
+                "vis": 1,
+                "visWhat": "ctx.stage only; blind to the horde",
+                "nearer": {
+                  "i": 2,
+                  "id": "spitling",
+                  "d": 26.6,
+                  "gap": 0.027
+                },
+                "visRig": true,
+                "px": 92,
+                "sep": 0.179,
+                "sepP25": 0.03,
+                "sepP50": 0.05,
+                "legible": 0.304,
+                "lum": 150.8,
+                "bgLum": 128.6,
+                "lumP50": 187,
+                "bgLumP50": 176,
+                "at": [
+                  0.365,
+                  0.509
+                ],
+                "box": [
+                  0.353,
+                  0.48,
+                  0.38,
+                  0.539
+                ]
+              },
+              {
+                "i": 23,
+                "id": "mote",
+                "d": 31.3,
+                "sx": 0.319,
+                "sy": 0.349,
+                "front": 29.1,
+                "wy": 6.9,
+                "vis": 0.11,
+                "visWhat": "ctx.stage only; blind to the horde",
+                "nearer": {
+                  "i": 8,
+                  "id": "shriver",
+                  "d": 25.4,
+                  "gap": 0.051
+                },
+                "visRig": true,
+                "px": 0
+              }
+            ]
+          },
+          {
+            "subject": "survivor",
+            "kind": "pixels",
+            "ok": true,
+            "px": 938,
+            "frac": 0.00724,
+            "lum": 50,
+            "bgLum": 55.6,
+            "contrast": 0.053,
+            "sep": 0.45,
+            "sepP25": 0.19,
+            "sepP50": 0.43,
+            "legible": 0.801,
+            "at": [
+              0.419,
+              0.594
+            ],
+            "box": [
+              0.386,
+              0.446,
+              0.449,
+              0.724
+            ],
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 400,
+            "minObjects": 0,
+            "marginOk": true,
+            "present": true,
+            "carriedPx": 751,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "marginSep": 0.27,
+            "perObjectOk": true,
+            "carriesAbsence": false,
+            "gatedOn": [
+              "px >= minPx",
+              "sepP50 >= minSep",
+              "sepP50 >= marginSep (0.27)"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "legible"
+            ]
+          },
+          {
+            "subject": "open arena",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "openness": 1,
+              "need": 0.85,
+              "arena": {
+                "openness": 1,
+                "moved": false,
+                "dist": 0,
+                "flatness": 0.203,
+                "tried": 6
+              }
+            }
+          },
+          {
+            "subject": "no monster hidden by its own attack",
+            "kind": "dom",
+            "ok": true,
+            "detail": []
+          },
+          {
+            "subject": "survivor unoccluded by the final lens",
+            "kind": "dom",
+            "ok": true,
+            "detail": {
+              "vis": 1,
+              "boom": 6.28,
+              "need": 0.6,
+              "visWhat": "ctx.stage only; blind to the horde",
+              "nearer": null
+            }
+          }
+        ]
+      },
+      "newErrors": []
+    }
+  ],
+  "errors": [],
+  "partial": true,
+  "subjectFailures": [],
+  "subjectsOk": true,
+  "skippedShots": [],
+  "carriedShots": [],
+  "freshShots": [
+    "04-combat"
+  ],
+  "subjectsOkFresh": true,
+  "toleratedAbsences": [
+    {
+      "name": "04-combat",
+      "subject": "horde",
+      "checkOk": true,
+      "gate": "crowd 8/24 individually gated",
+      "why": "director horde: an unbounded population, not a fixed cast",
+      "perPx": [
+        0,
+        0,
+        72,
+        54,
+        127,
+        400,
+        302,
+        264,
+        56,
+        59,
+        637,
+        1075,
+        1085,
+        557,
+        1285,
+        128,
+        152,
+        3322,
+        742,
+        30,
+        267,
+        123,
+        92,
+        0
+      ],
+      "absent": [
+        {
+          "i": 0,
+          "px": 0,
+          "sepP50": 0
+        },
+        {
+          "i": 1,
+          "px": 0,
+          "sepP50": 0
+        },
+        {
+          "i": 23,
+          "px": 0,
+          "sepP50": 0
+        }
+      ]
+    }
+  ],
+  "determinism": {
+    "clockPinned": true,
+    "frameDt": 0.016666666666666666,
+    "frameTimeouts": 0
+  },
+  "perf": {
+    "programs": 72,
+    "geometries": 423,
+    "textures": 53,
+    "sceneObjects": 1379
+  },
+  "audio": {
+    "ready": true,
+    "state": "running",
+    "stepsEmitted": 76,
+    "stopped": false,
+    "silent": false,
+    "muted": false,
+    "musicOff": false,
+    "musicGain": 0.47999998927116394,
+    "masterGain": 0.800000011920929,
+    "voices": 43,
+    "worldVoices": 40,
+    "musicPeak": 0.14024238288402557,
+    "outputPeak": 0.821469783782959,
+    "samples": 117,
+    "settlePeak": 0.17426665127277374,
+    "settleSamples": 136,
+    "windowS": 5.778666666666666,
+    "armed": true,
+    "beforeGate": {
+      "ready": true,
+      "state": "running",
+      "stepsEmitted": 27,
+      "stopped": false,
+      "musicOff": false,
+      "musicGain": 0.47999998927116394,
+      "masterGain": 0.800000011920929
+    },
+    "stepsDelta": 49,
+    "newErrors": [],
+    "gateFrames": 330,
+    "checks": {
+      "armed": true,
+      "graphBuilt": true,
+      "contextRunning": true,
+      "sequencerRunning": true,
+      "notSilenced": true,
+      "musicBusOpen": true,
+      "masterOpen": true,
+      "stepsAdvanced": true,
+      "musicAudible": true,
+      "outputAudible": true,
+      "sampled": true,
+      "noNewErrors": true
+    },
+    "failed": []
+  },
+  "audioOk": true
+}
