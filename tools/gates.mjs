@@ -212,6 +212,14 @@ function armsFor(portBase) {
       argv: ['npm', 'run', 'probe:trickle'],
       paths: ['tools/verify-trickle.mjs', 'src/net', 'src/core/Harness.js'],
     },
+    {
+      id: 'perf',
+      tier: 'manual',
+      manual: true,
+      label: 'headed GPU combat-24 frame-time record (node tools/perf.mjs --out reviews/asset-budget/perf-combat24.json) — run by hand, tracked so it can go OVERDUE',
+      argv: ['node', 'tools/perf.mjs', '--out', 'reviews/asset-budget/perf-combat24.json'],
+      paths: ['src', 'tools/perf.mjs'],
+    },
   ]);
 }
 

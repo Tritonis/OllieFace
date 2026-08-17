@@ -1,0 +1,49 @@
+{
+  "issue": 28,
+  "note": "The machine-readable half of docs/art/ASSET-SPEC.md's budget section. Every number here is either measured from a named on-disk source or explicitly marked provisional. tests/asset-budget.test.mjs enforces it and fails when the prose and this file disagree.",
+
+  "baseline": {
+    "commit": "e702ba4",
+    "measuredBy": "npm run build, then tools/asset-budget.mjs measure",
+    "shippedBytes": 1936493,
+    "codeBytes": 1936493,
+    "assetBytes": 0,
+    "sourcemapBytes": 7675936,
+    "distTotalBytes": 9612429,
+    "sourcemapNote": "package.json build.files excludes dist/**/*.map, so sourcemaps are built but never shipped and are excluded from every ceiling below.",
+    "gpuResources": {
+      "source": "reviews/survivor-sep/integrated-shots/manifest.json, key perf (full 23-shot run, commit-stamped bbe3294)",
+      "textures": 53,
+      "geometries": 700,
+      "programs": 87,
+      "sceneObjects": 396
+    }
+  },
+
+  "ceilings": {
+    "shippedTotalBytes": 25165824,
+    "shippedTotalWhy": "24 MiB = the 1.85 MiB code baseline plus the 20 MiB asset allowance plus ~2 MiB of slack; a 24 MiB cold download is ~20 s on a 10 Mbit line, which is the largest first-launch wait this game's scope justifies.",
+
+    "codeBytes": 2359296,
+    "codeWhy": "2.25 MiB = the 1.85 MiB measured code baseline plus ~22% growth headroom: ordinary feature work will not trip it, a doubling or an accidentally-bundled dependency will.",
+
+    "assetBytes": 20971520,
+    "assetWhy": "20 MiB is the ceiling on the TOTAL shortlist across all art-search issues combined, not a per-asset allowance: one 2K HDRI (~4 MB KTX2), a small PBR set (~8 x 1K, ~8 MB), and a few meshes (~4 MB) fit with room, and anything larger is a decision rather than a purchase.",
+
+    "vramBytes": 536870912,
+    "vramWhy": "PROVISIONAL. No atlas-scale VRAM reasoning exists in this repo to derive from, so 512 MiB is set as the resident-texture headroom that keeps the game inside a 2 GB shared-memory integrated adapter alongside the framebuffer and post stack. Replace it with a measured figure when one exists. The two checkable proxies below stand in for it meanwhile.",
+    "gpuTextures": 96,
+    "gpuGeometries": 900,
+    "gpuProxyWhy": "Texture and geometry counts from the capture manifest's perf block are the only committed VRAM-adjacent measurements that exist; 96/900 is roughly +80%/+29% over the 53/700 baseline, sized so an asset pack landing wholesale is visible before a VRAM measurement exists.",
+
+    "frameTime": {
+      "scenario": "combat-24",
+      "medianMs": 26.0,
+      "p95Ms": 32.0,
+      "why": "A CEILING, not a band. The documented '21-26 ms band' does not survive contact with the record: the committed perf runs report combat-24 medians of 16.9, 18.6, 20.0, 20.5, 21.8, 20.5 and 24.5 ms, so five of seven sit below the band's lower bound and a lower bound would fail runs that got faster. 26.0 ms keeps the documented upper bound; p95 32.0 ms sits just above the worst recorded p95 (27.1 ms) plus the run-to-run spread the same record shows.",
+      "toleranceWhy": "The record's own medians span 16.9-24.5 ms on one machine across one tree family — roughly +/-19% around the midpoint — so any ceiling tighter than about +25% over the latest recorded median (20.5 ms) would flap on run noise rather than on regressions. 26.0 ms is +27%."
+    }
+  },
+
+  "frameTimeRecord": "reviews/asset-budget/perf-combat24.json"
+}

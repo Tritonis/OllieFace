@@ -1,0 +1,19 @@
+{
+  "scenario": "combat-24",
+  "medianFrameMs": 20.5,
+  "p95FrameMs": 27.1,
+  "quality": 3,
+  "gpu": "RTX 2070 (as reported in the source write-up)",
+  "transcribed": true,
+  "source": "reviews/round6/FIX-world.md:137",
+  "sourceQuote": "node tools/perf.mjs, final tree: combat-24 median 20.5 ms, p95 27.1 ms",
+  "note": "TRANSCRIBED, not measured here. tools/perf.mjs has only ever printed to stdout, so no machine-written perf record was ever committed; this file transcribes the most recent one that a review wrote down, so the gate has something real to check instead of skipping forever. A hand-run of `node tools/perf.mjs --out reviews/asset-budget/perf-combat24.json` overwrites it with a measured record (transcribed drops to false) — do that at the first opportunity a GPU is free.",
+  "otherRecordedMedians": [
+    { "ms": 16.9, "source": "reviews/round5/FIX-stages.md:124" },
+    { "ms": 18.6, "source": "reviews/round5/FIX-materials.md:316" },
+    { "ms": 20.0, "source": "reviews/round5/FIX-vfx2.md:288" },
+    { "ms": 20.5, "source": "reviews/round5/FIX-character.md:337" },
+    { "ms": 21.8, "source": "reviews/round5/FIX-character.md:337" },
+    { "ms": 24.5, "source": "reviews/round5/FIX-harness2.md:9" }
+  ]
+}
