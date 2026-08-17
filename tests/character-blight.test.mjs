@@ -114,6 +114,29 @@ console.log('all four enemy materials carry the pass, on a real rig');
      'an enemy body compiles with both hooks present');
 }
 
+console.log('the rig-footprint number the pass reasons from is real');
+{
+  // CharacterBlight.js's header justifies per-vertex world coverage with a
+  // measured footprint range. An earlier draft asserted "~0.6 m across" from no
+  // measurement at all and was wrong by up to 2.4x, so the number now lives
+  // here, where it fails loudly if a body kit changes it. It is deliberately
+  // NOT a "this is safe" assertion — the comment states the opposite, that the
+  // coverage band can be narrower than the figure (issue #101).
+  const { CharacterMesh } = await import('../src/entities/CharacterMesh.js');
+  const { RADIUS } = await import('../src/systems/Blight.js');
+  let lo = Infinity, hi = 0;
+  for (const key of ['ranger', 'anvil', 'kestrel', 'rook', 'cinder']) {
+    const rig = new CharacterMesh(key);
+    rig.group.updateMatrixWorld(true);
+    const s = new THREE.Box3().setFromObject(rig.group).getSize(new THREE.Vector3());
+    lo = Math.min(lo, s.x, s.z); hi = Math.max(hi, s.x, s.z);
+  }
+  ok(lo >= 0.75 && hi <= 1.60, `survivor XZ footprints span ${lo.toFixed(2)}-${hi.toFixed(2)} m (header says 0.82-1.49)`);
+  // The band `blightMask` feathers over at the smallest patch: edge -> 0.72*edge.
+  const band = RADIUS.base * (1 - 0.72);
+  ok(band < hi, `the coverage band at the smallest patch (${band.toFixed(2)} m) is NARROWER than the widest rig — the split the header warns about is real`);
+}
+
 console.log('world surfaces keep the world pass and never take both');
 {
   const { getMaterials } = await import('../src/world/Materials.js');

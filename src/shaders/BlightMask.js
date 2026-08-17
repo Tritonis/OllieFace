@@ -123,7 +123,12 @@ float blightMask(vec3 wp) {
 }
 `;
 
-/** Fragment declarations for the world pass — goes after `#include <common>`. */
+/** Fragment declarations for the world pass — goes after `#include <common>`.
+ *  Composed from the split above rather than written out: the emitted text is
+ *  *functionally* equivalent to the single block this used to be, not
+ *  byte-identical — the varying now precedes the uniforms. Nothing in GLSL
+ *  depends on that order, but do not build a diff or a hash on the assumption
+ *  that it is unchanged text. */
 export const MASK_DECL = /* glsl */ `
 varying vec3 vBlightWorld;
 ${MASK_FIELD}`;

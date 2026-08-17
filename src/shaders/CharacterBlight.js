@@ -19,12 +19,20 @@
  * it is `blightMask()` evaluated per vertex at the world position, computed in
  * the vertex shader and interpolated. Two consequences worth stating, because
  * both were deliberate:
- *   - `blightMask` reads only `wp.xz`, and a rig is at most ~0.6 m across in
- *     that plane, so the coverage gradient over one figure is negligible: the
- *     whole creature takes the claim together, which is the per-rig scalar the
- *     design asks for, without any per-rig uniform plumbing (enemy materials
- *     are cached per species+affix and shared across the whole horde, so a
- *     per-material uniform could not have been per-rig anyway).
+ *   - `blightMask` reads only `wp.xz`, so the gradient over one figure is
+ *     bounded by that figure's horizontal footprint. **Measured, not assumed:**
+ *     the five survivor rigs span 0.82 m to 1.49 m in XZ (asserted by
+ *     tests/character-blight.test.mjs so this number cannot drift), while the
+ *     coverage transition band at the smallest patch — `RADIUS.base = 2.0` in
+ *     src/systems/Blight.js, feathered from `edge` to `edge * 0.72` — is only
+ *     about 0.56 m wide. **The band can therefore be narrower than the figure**,
+ *     and a survivor standing on a small patch's rim can show a partial-coverage
+ *     split across their own body rather than taking the claim as one creature.
+ *     That is a real defect, not a rounding error, and issue #101 tracks the
+ *     fix. It is accepted here rather than solved because the alternative
+ *     available at this seam is worse: enemy materials are cached per
+ *     species+affix and shared across the whole horde, so a per-material
+ *     uniform could not have been per-rig at all.
  *   - it is evaluated per vertex rather than per draw call, because a rig is
  *     many meshes: a per-draw scalar would pop limb by limb as a figure crossed
  *     a patch edge, where an interpolated one creeps continuously up the body.
