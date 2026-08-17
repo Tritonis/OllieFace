@@ -52,10 +52,6 @@ export const DEFAULT_BINDINGS = Object.freeze(
   Object.fromEntries(ACTIONS.map((a) => [a.id, Object.freeze({ key: a.key, pad: a.pad })])),
 );
 
-const PAD_NAMES = Object.fromEntries(
-  Object.entries(PAD_BUTTON).map(([name, i]) => [i, name]),
-);
-
 /**
  * Codes no action may be bound to, because something reads them RAW.
  *
@@ -98,12 +94,6 @@ export function keyLabel(code) {
   if (code.endsWith('Left')) return code.slice(0, -4);
   if (code.endsWith('Right')) return `Right ${code.slice(0, -5)}`;
   return code;
-}
-
-/** Human label for a pad button index. */
-export function padLabel(btn) {
-  if (btn == null) return '--';
-  return PAD_NAMES[btn] ?? `Button ${btn}`;
 }
 
 /** Is this a code `Input` must route onto the mouse flags rather than keys? */

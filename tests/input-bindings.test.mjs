@@ -41,7 +41,7 @@ globalThis.localStorage = {
 const { Input } = await import('../src/core/Input.js');
 const { PAD_BUTTON } = await import('../src/core/PadState.js');
 const {
-  Bindings, ACTIONS, DEFAULT_BINDINGS, VIRTUAL, isReserved, keyLabel, padLabel,
+  Bindings, ACTIONS, DEFAULT_BINDINGS, VIRTUAL, isReserved, keyLabel,
 } = await import('../src/core/Bindings.js');
 
 let failures = 0;
@@ -75,7 +75,7 @@ const LEGACY_PAD_KEYS = [
     ACTIONS.every((a) => DEFAULT_BINDINGS[a.id].key === b.keyOf(a.id)
       && DEFAULT_BINDINGS[a.id].pad === b.padOf(a.id)));
   check('labels read for humans', keyLabel('KeyE') === 'E' && keyLabel('ShiftLeft') === 'Shift'
-    && keyLabel('Mouse0') === 'LMB' && padLabel(PAD_BUTTON.Y) === 'Y');
+    && keyLabel('Mouse0') === 'LMB');
 }
 
 // --- a rebind changes what the game reads ------------------------------------
@@ -260,6 +260,60 @@ input.pollPad();
   live.bindKey('utility', 'KeyB');
   loadSettings();
   check('unparseable store falls back to defaults', live.keyOf('utility') === 'KeyQ');
+}
+
+// --- controller glyph sets (#42 part 2) ---------------------------------------
+{
+  const { GLYPH_SETS, DEFAULT_GLYPH_SET, isGlyphSet, glyphLabel } = await import('../src/data/glyphs.js');
+  const { PAD_BUTTON: PB } = await import('../src/core/PadState.js');
+
+  check('four glyph sets are offered', GLYPH_SETS.map((g) => g.id).sort()
+    .join(',') === 'generic,playstation,switch,xbox');
+  check('default glyph set is xbox', DEFAULT_GLYPH_SET === 'xbox');
+  // Drift guard: `glyphs.js` hand-copies PAD_BUTTON's index->name table rather
+  // than importing it (the import-boundaries rule forbids data/ -> core/), so
+  // nothing enforces the copy stays in step except this check. Walking ALL 10
+  // PAD_BUTTON entries against the xbox glyph naming (an identity map on the
+  // face/shoulder buttons, 'View'/'Menu' on BACK/START) catches a drift on
+  // any one of them, not just a sampled few.
+  const XBOX_NAME = { A: 'A', B: 'B', X: 'X', Y: 'Y', LB: 'LB', RB: 'RB', LT: 'LT', RT: 'RT', BACK: 'View', START: 'Menu' };
+  check('xbox glyphs match every PAD_BUTTON entry, not just a sample',
+    Object.entries(PB).every(([name, idx]) => glyphLabel(idx, 'xbox') === XBOX_NAME[name]),
+    Object.entries(PB).filter(([name, idx]) => glyphLabel(idx, 'xbox') !== XBOX_NAME[name]));
+  check('playstation glyphs differ', glyphLabel(PB.A, 'playstation') === 'Cross'
+    && glyphLabel(PB.B, 'playstation') === 'Circle' && glyphLabel(PB.LT, 'playstation') === 'L2');
+  check('switch glyphs differ', glyphLabel(PB.A, 'switch') === 'B' && glyphLabel(PB.RB, 'switch') === 'R');
+  check('generic glyphs differ', glyphLabel(PB.X, 'generic') === 'Button 3');
+  check('unbound pad still prints the placeholder', glyphLabel(null, 'playstation') === '--');
+  check('an unknown set id falls back to the default naming',
+    glyphLabel(PB.A, 'nonsense') === glyphLabel(PB.A, DEFAULT_GLYPH_SET));
+  check('isGlyphSet accepts every listed id and rejects junk',
+    GLYPH_SETS.every((g) => isGlyphSet(g.id)) && !isGlyphSet('nonsense') && !isGlyphSet(undefined));
+}
+
+// --- the settings store carries the glyph set --------------------------------
+{
+  const { loadSettings, saveSettings, DEFAULTS } = await import('../src/ui/Menus.js');
+
+  check('the default set is xbox', DEFAULTS.controllerGlyphs === 'xbox');
+
+  store.delete('telluric.settings');
+  saveSettings({ ...DEFAULTS, controllerGlyphs: 'switch' });
+  const raw = store.get('telluric.settings');
+  check('save writes the glyph set', /"controllerGlyphs":"switch"/.test(raw));
+
+  const loaded = loadSettings();
+  check('load restores a valid glyph set', loaded.controllerGlyphs === 'switch');
+
+  store.set('telluric.settings', '{"master":0.5,"controllerGlyphs":"snes"}');
+  const l2 = loadSettings();
+  check('an unrecognised stored glyph set falls back to the default',
+    l2.controllerGlyphs === DEFAULTS.controllerGlyphs);
+
+  store.set('telluric.settings', '{"master":0.5}');
+  const l3 = loadSettings();
+  check('a store predating this feature also falls back to the default',
+    l3.controllerGlyphs === DEFAULTS.controllerGlyphs);
 }
 
 console.log(failures ? `\n${failures} FAILED` : '\nall bindings checks passed');

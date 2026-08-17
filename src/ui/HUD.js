@@ -24,7 +24,8 @@ import { routesFor } from '../data/realms.js';
 // Items is imported — the slot itself is read through `ctx.items`.
 import { EQUIPMENT_KEY_LABEL } from '../systems/Items.js';
 // ...and the live map that says which key that actually is right now.
-import { bindings, keyLabel, padLabel } from '../core/Bindings.js';
+import { bindings, keyLabel } from '../core/Bindings.js';
+import { glyphLabel, DEFAULT_GLYPH_SET } from '../data/glyphs.js';
 // The eligibility question the revive prompt asks about its own viewer, and
 // the button the hold is spelled with on the wire. Both are read here for the
 // same reason `EQUIPMENT_KEY_LABEL` is: the rule lives in one place (`Revive`,
@@ -622,10 +623,11 @@ export class HUD {
     // carries the labels as well as the device, or a rebind made while the HUD
     // is up would not repaint. `EQUIPMENT_KEY_LABEL` remains the static markup's
     // default; this is the live one.
+    const glyphSet = ctx.settings?.controllerGlyphs ?? DEFAULT_GLYPH_SET;
     const interactKey = keyLabel(bindings.keyOf('interact'));
-    const interactPad = padLabel(bindings.padOf('interact'));
+    const interactPad = glyphLabel(bindings.padOf('interact'), glyphSet);
     const equipKey = keyLabel(bindings.keyOf('equipment'));
-    const equipPad = padLabel(bindings.padOf('equipment'));
+    const equipPad = glyphLabel(bindings.padOf('equipment'), glyphSet);
     const padOn = !!ctx.input?.padActive;
     this.set('padPrompt', `${padOn}|${interactKey}|${interactPad}|${equipKey}|${equipPad}`, () => {
       if (this.refs.promptKey) this.refs.promptKey.textContent = padOn ? interactPad : interactKey;

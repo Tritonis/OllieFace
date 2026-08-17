@@ -21,7 +21,8 @@ import { showSteamInviteNotice } from './SteamInviteNotice.js';
 import { REFUSE } from '../net/Protocol.js';
 import { adoptLegacyKey } from '../core/LegacyStorage.js';
 import { PAD_BUTTON } from '../core/PadState.js';
-import { ACTIONS, bindings, isReserved, keyLabel, padLabel } from '../core/Bindings.js';
+import { ACTIONS, bindings, isReserved, keyLabel } from '../core/Bindings.js';
+import { GLYPH_SETS, DEFAULT_GLYPH_SET, isGlyphSet, glyphLabel } from '../data/glyphs.js';
 import { telemetryEnabled, setTelemetryEnabled, readRuns, downloadRuns, clearRuns } from '../systems/Telemetry.js';
 import { markDialog, focusablesIn, installFocusTrap } from './Dialogs.js';
 
@@ -93,6 +94,10 @@ export const DEFAULTS = {
   // would be guessing. Captions are opt-in by convention in games, and this is
   // a documented, findable setting rather than a hidden one.
   captions: 0,
+  // Which pad-button names on-screen prompts print (#42). A string, not a
+  // number, so it rides its own branch in `load` the way `bindings` does —
+  // the generic DEFAULTS loop there only adopts finite numbers.
+  controllerGlyphs: DEFAULT_GLYPH_SET,
 };
 
 const QUALITY_NAMES = ['Low', 'Medium', 'High', 'Ultra'];
@@ -755,6 +760,15 @@ export class Menus {
          <button class="segbtn" data-nav data-val="0">Off</button>
        </div>`);
 
+    // Controller layout glyphs (#42): which pad-button names the HUD prompts
+    // and the gamepad rebind column print. `data-strseg` rather than
+    // `data-seg` — the ids are strings ('xbox', not a segment index), and the
+    // generic `data-seg` handlers below compare `Number(dataset.val)`.
+    html += row('Controller glyphs',
+      `<div class="sseg" data-strseg="controllerGlyphs">${GLYPH_SETS
+        .map((g) => `<button class="segbtn" data-nav data-val="${g.id}">${g.label}</button>`)
+        .join('')}</div>`);
+
     for (const s of SLIDERS) {
       html += row(s.label,
         `<div class="sslider">
@@ -815,6 +829,13 @@ export class Menus {
       const seg = e.target.closest('.segbtn');
       if (!seg) return;
       if (seg.dataset.bind) { this.beginCapture(seg.dataset.action, seg.dataset.bind); return; }
+      const strKey = seg.closest('[data-strseg]')?.dataset.strseg;
+      if (strKey) {
+        this.settings[strKey] = seg.dataset.val;
+        this.apply();
+        save(this.settings);
+        return;
+      }
       const key = seg.closest('[data-seg]')?.dataset.seg;
       if (!key) return;
       this.settings[key] = Number(seg.dataset.val);
@@ -844,6 +865,12 @@ export class Menus {
       const key = wrap.dataset.seg;
       for (const b of wrap.querySelectorAll('.segbtn')) {
         b.classList.toggle('is-on', Number(b.dataset.val) === this.settings[key]);
+      }
+    }
+    for (const wrap of this.root.querySelectorAll('[data-strseg]')) {
+      const key = wrap.dataset.strseg;
+      for (const b of wrap.querySelectorAll('.segbtn')) {
+        b.classList.toggle('is-on', b.dataset.val === this.settings[key]);
       }
     }
     this.syncTelemetry();
@@ -882,8 +909,9 @@ export class Menus {
         kb.setAttribute('aria-label', `${a.label}, keyboard: ${keyLabel(bindings.keyOf(a.id))}. Activate to rebind.`);
       }
       if (pd) {
-        pd.textContent = padLabel(bindings.padOf(a.id));
-        pd.setAttribute('aria-label', `${a.label}, gamepad: ${padLabel(bindings.padOf(a.id))}. Activate to rebind.`);
+        const label = glyphLabel(bindings.padOf(a.id), this.settings.controllerGlyphs);
+        pd.textContent = label;
+        pd.setAttribute('aria-label', `${a.label}, gamepad: ${label}. Activate to rebind.`);
       }
     }
   }
@@ -965,7 +993,7 @@ export class Menus {
     const swapped = device === 'pad'
       ? bindings.bindPad(actionId, value)
       : bindings.bindKey(actionId, value);
-    const shown = device === 'pad' ? padLabel(value) : keyLabel(value);
+    const shown = device === 'pad' ? glyphLabel(value, this.settings.controllerGlyphs) : keyLabel(value);
     const other = swapped && ACTIONS.find((a) => a.id === swapped);
     save(this.settings);
     this.endCapture(other
@@ -2723,6 +2751,10 @@ function load(fallbackQuality) {
     }
     out.quality = Math.min(3, Math.max(0, Math.round(out.quality)));
     out.dynamicRes = out.dynamicRes === 0 ? 0 : 1;
+    // Same defensive posture as everything above: an unrecognised or missing
+    // id leaves the default already sitting on `out` from the DEFAULTS spread
+    // rather than adopting garbage.
+    if (isGlyphSet(parsed.controllerGlyphs)) out.controllerGlyphs = parsed.controllerGlyphs;
     // Same normalisation, opposite bias: anything that is not an explicit 1 is
     // off, so a corrupted store cannot switch captions on for somebody.
     out.captions = out.captions === 1 ? 1 : 0;
