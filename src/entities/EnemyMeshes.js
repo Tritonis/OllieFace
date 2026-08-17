@@ -23,6 +23,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RimStandardMaterial } from './CharacterMesh.js';
 import { clamp, lerp } from '../core/MathUtil.js';
+import { attachCharacterBlight } from '../shaders/CharacterBlight.js';
 
 // ---------------------------------------------------------------------------
 // geometry cache
@@ -312,6 +313,10 @@ function matsFor(id, affix) {
       emissiveIntensity: e ? e.glow * 0.5 : 1.1,
     }),
   };
+  // All four surfaces take the figure-space corruption pass — a monster inside
+  // a blight patch is claimed by it, eyes and accents included, or the void
+  // stops at the creature's outline and reads as ground decoration.
+  for (const k of ['body', 'dark', 'accent', 'eye']) attachCharacterBlight(m[k]);
   MATS.set(key, m);
   return m;
 }

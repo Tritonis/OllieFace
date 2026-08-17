@@ -26,13 +26,18 @@ export const MASK_UNIFORMS = {
   uBlightBand: { value: 0 },
 };
 
-/** Fragment declarations — goes after `#include <common>`. */
-export const MASK_DECL = /* glsl */ `
+/**
+ * The field itself — uniforms, noise, and the coverage function — with no
+ * varying of its own. Split out so a second hook (the character pass, which
+ * carries different interpolators and samples in object space) can reuse this
+ * one copy of the noise family rather than forking it; two divergent copies of
+ * `bmFbm` would be two different Voids.
+ */
+export const MASK_FIELD = /* glsl */ `
 uniform int uBlightCount;
 uniform vec4 uBlightPatches[${MAX_MASK}];
 uniform float uBlightTime;
 uniform float uBlightBand;
-varying vec3 vBlightWorld;
 
 // Same hash/noise family as the patch shader, prefixed to dodge collisions
 // with chunks other hooks may have injected into this program.
@@ -117,6 +122,16 @@ float blightMask(vec3 wp) {
   return m;
 }
 `;
+
+/** Fragment declarations for the world pass — goes after `#include <common>`.
+ *  Composed from the split above rather than written out: the emitted text is
+ *  *functionally* equivalent to the single block this used to be, not
+ *  byte-identical — the varying now precedes the uniforms. Nothing in GLSL
+ *  depends on that order, but do not build a diff or a hash on the assumption
+ *  that it is unchanged text. */
+export const MASK_DECL = /* glsl */ `
+varying vec3 vBlightWorld;
+${MASK_FIELD}`;
 
 /** Fragment application — goes after `#include <emissivemap_fragment>`,
  *  where `diffuseColor` and `totalEmissiveRadiance` both exist and lighting
