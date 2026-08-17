@@ -85,7 +85,17 @@ export function isVoidtouched(victim) {
  * the same reason band 1 has no screen grade: Seeded is the warning, Blighted
  * is when the world starts taking.
  */
-export const MUTATION = { minBand: 2 };
+export const MUTATION = {
+  minBand: 2,
+  // The lever (issue #33). At a threshold the toll offers the local player a
+  // short, non-blocking choice of which stack festers; refusing it, or letting
+  // it lapse, is exactly the old random path. `choiceSeconds` sits between the
+  // pickup card's 4.2 s dwell and the ~8 s a player needs to read three cards,
+  // so the window is legible without becoming a pause; `choiceOffers` is three
+  // because a fourth card no longer fits beside the banner at 720p.
+  choiceSeconds: 6,
+  choiceOffers: 3,
+};
 
 /**
  * The cleansing font (Argent Font) — counterplay, costly, never free. One use

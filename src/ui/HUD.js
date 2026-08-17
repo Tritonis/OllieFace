@@ -296,7 +296,28 @@ export class HUD {
       if (!isLocalOwner(ctx, e)) return;
       const base = ITEM_BY_ID.get(e.baseId), blight = ITEM_BY_ID.get(e.blightId);
       if (!blight) return;
-      this.toast(`${base?.name || prettify(e.baseId)} festers — ${e.count}x ${blight.name}`, 'blight', e.blightId);
+      // The mutation says what the pack *became*, not only what it lost: the
+      // catalogue's own effect line rides on the event, so a chosen loss reads
+      // as the trade the player made and an unchosen one still names its prize.
+      const why = e.blightDescription ? ` — ${e.blightDescription}` : '';
+      const verb = e.chosen ? 'you feed the blight' : 'festers';
+      this.toast(`${base?.name || prettify(e.baseId)} ${verb} — ${e.count}x ${blight.name}${why}`, 'blight', e.blightId);
+    });
+    // The lever on that toll (issue #33). Host-seat only by construction —
+    // `Items` opens a window for the local instance alone — but the owner test
+    // is kept anyway so a future satellite offer cannot paint over this pack's.
+    on('mutationChoiceOffered', (e) => {
+      if (!isLocalOwner(ctx, e)) return;
+      this.menus.showMutationChoice({
+        offers: e.offers,
+        seconds: e.seconds,
+        onPick: (id) => ctx.items?.chooseMutation?.(id),
+        onRefuse: () => ctx.items?.refuseMutation?.(),
+      });
+    });
+    on('mutationChoiceClosed', (e) => {
+      if (!isLocalOwner(ctx, e)) return;
+      this.menus.hideMutationChoice();
     });
     // The same line, run backwards: the Argent Font's reward moves a stack out
     // of the blight tier and back into its own, and without this the strip just

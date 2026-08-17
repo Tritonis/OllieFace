@@ -4,6 +4,19 @@ import { MUTATION, VOIDTOUCHED, isVoidtouched } from '../data/corruption.js';
 import { RNG } from '../core/MathUtil.js';
 
 /**
+ * A blight card's own effect text at a given stack size, for the toll's choice
+ * card and its announcement (issue #33): the loss has to read as a
+ * transformation into something with a use, and only the catalogue knows what
+ * that use is. Catalogue descriptions are functions of stack size and are
+ * authored data, so a throwing one degrades to silence rather than taking the
+ * fixed step down with it — the same contract `ui/Tooltip.js` keeps.
+ */
+function describeBlight(def, count) {
+  if (typeof def?.description !== 'function') return typeof def?.description === 'string' ? def.description : '';
+  try { return String(def.description(Math.max(1, count | 0))); } catch { return ''; }
+}
+
+/**
  * Items owns the inventory, the stat pipeline, the item hook dispatch, the
  * equipment slot and the drop tables.
  *
@@ -188,6 +201,9 @@ export class Items {
     // Bands whose toll has been claimed but not yet collected. See the
     // `corruptionBand` listener for why the collection is deferred.
     this._muteQueue = [];
+    // The open choice window, or null: `{ band, offers, remaining }`. The lever
+    // (issue #33) — see `_openMutationChoice`.
+    this._muteChoice = null;
   }
 
   init(ctx) {
@@ -414,6 +430,17 @@ export class Items {
       }
     }));
 
+    // A window nobody can still answer is a refusal. The run ending or this
+    // instance's own pawn dying both leave the offer unanswerable, and an
+    // unresolved offer would strand its band's toll in the queue forever —
+    // `_mutePeak` has already advanced, so the crossing would never be
+    // reclaimed. Both resolve down the ordinary refusal path, so the void
+    // takes what it always would have.
+    this._unsub.push(ctx.events.on('runEnd', () => this.refuseMutation('runEnd')));
+    this._unsub.push(ctx.events.on('playerDead', (e) => {
+      if (!e?.victim || e.victim === this._owner()) this.refuseMutation('death');
+    }));
+
     this._rebuildHooks();
   }
 
@@ -629,15 +656,15 @@ export class Items {
    * hazard the shrine-type roll already documents. Eligible ids are sorted so
    * the pick cannot depend on Map insertion order.
    */
-  _mutateAt(band) {
-    const eligible = [];
-    for (const [id, count] of this.counts) {
-      if (count > 0 && BLIGHT_BY_BASE.has(id)) eligible.push(id);
-    }
+  _mutateAt(band, chosenId = null) {
+    const eligible = this._eligibleBases();
     if (!eligible.length) return false;
-    eligible.sort();
     const rng = new RNG(((this.ctx.seed >>> 0) ^ (0x6b2f8d43 * (band + 1))) >>> 0 || 1);
-    const baseId = rng.pick(eligible);
+    // A chosen stack skips the draw entirely rather than drawing and
+    // discarding: the stream is per-band and derived, so nothing downstream
+    // depends on how many times it was pulled, and skipping keeps the void's
+    // pick identical whether or not a window was ever opened.
+    const baseId = chosenId && eligible.includes(chosenId) ? chosenId : rng.pick(eligible);
     const blight = BLIGHT_BY_BASE.get(baseId);
     const held = this.count(baseId);
     this._set(baseId, 0, 'corrupt');
@@ -649,8 +676,118 @@ export class Items {
       // have cost. It rides the wire like the rest of this payload — a handful
       // of short ids, at most once per band crossing, which is a few times a run.
       baseId, blightId: blight.id, count: held, band, owner: this._owner(), eligible,
+      // Whether the player owned this loss or the void did. Additive: every
+      // existing listener (Codex, Telemetry, HUD, the wire) reads the fields
+      // above and is untouched by it.
+      chosen: baseId === chosenId,
+      // What the pack gained, in the catalogue's own words. The toast that
+      // reads it is the only place a mutation gets to say why the new stack is
+      // worth holding rather than only what the old one cost.
+      blightDescription: describeBlight(blight, held),
     });
     return true;
+  }
+
+  /** Held stacks with a blight counterpart, sorted — the toll's whole field. */
+  _eligibleBases() {
+    const out = [];
+    for (const [id, count] of this.counts) {
+      if (count > 0 && BLIGHT_BY_BASE.has(id)) out.push(id);
+    }
+    out.sort();
+    return out;
+  }
+
+  /**
+   * The lever on the toll (issue #33): at a threshold, name two or three of
+   * the stacks the void is reaching for and give the player a short window to
+   * decide which one goes. The scar is preserved exactly — something festers
+   * either way, and refusing or ignoring the window falls through to the same
+   * random pick the toll always made.
+   *
+   * **Local seat only.** A satellite (`this.owner` — an `Items` instance for a
+   * remote pawn, host-side) never opens a window, because there is no wire for
+   * a remote player's answer to come back on: their toll keeps the
+   * void-chooses path unchanged, and extending the lever over the wire is a
+   * later ticket's protocol work, not a silent side effect of this one.
+   *
+   * A field of one is no choice, so a single eligible stack mutates outright
+   * rather than opening a window whose only button is the inevitable.
+   *
+   * The offers come off a stream derived from (run seed, band) — never
+   * `ctx.rng`, for the reason `_mutateAt` documents at length — under a salt
+   * of its own, so which stacks are *offered* cannot perturb which stack the
+   * void takes when the window lapses.
+   */
+  _openMutationChoice(band) {
+    if (this.owner) return false;
+    const eligible = this._eligibleBases();
+    if (eligible.length < 2) return false;
+    const rng = new RNG(((this.ctx.seed >>> 0) ^ (0x27d4eb2f * (band + 1))) >>> 0 || 1);
+    const pool = eligible.slice();
+    const offers = [];
+    const want = Math.min(MUTATION.choiceOffers, pool.length);
+    while (offers.length < want) offers.push(pool.splice(Math.floor(rng.next() * pool.length), 1)[0]);
+    offers.sort();
+    this._muteChoice = { band, offers, remaining: MUTATION.choiceSeconds };
+    this.ctx.events.emit('mutationChoiceOffered', {
+      band, seconds: MUTATION.choiceSeconds, owner: this._owner(),
+      // The card has to say what the transformation *is*, not only what it
+      // costs, so each offer carries the counterpart's own catalogue entry.
+      offers: offers.map((id) => {
+        const blight = BLIGHT_BY_BASE.get(id);
+        const count = this.count(id);
+        return {
+          baseId: id,
+          baseName: ITEM_BY_ID.get(id)?.name || id,
+          blightId: blight.id,
+          blightName: blight.name || blight.id,
+          // `description` in the catalogue is a function of stack size, so the
+          // card quotes the effect the player would actually get for the
+          // copies they actually hold, not a generic line.
+          blightDescription: describeBlight(blight, count),
+          count,
+        };
+      }),
+    });
+    return true;
+  }
+
+  /** The open offer, for the UI that paints it. Null when no window is open. */
+  mutationChoice() {
+    return this._muteChoice;
+  }
+
+  /**
+   * The player's answer. Converts the named stack and only it; anything not on
+   * the table is refused outright rather than quietly re-rolled.
+   */
+  chooseMutation(baseId) {
+    const c = this._muteChoice;
+    if (!c || !c.offers.includes(baseId) || !(this.count(baseId) > 0)) return false;
+    this._closeMutationChoice(c, 'chosen', baseId);
+    return true;
+  }
+
+  /**
+   * Declining, by button or by silence. Every non-choice resolution lands here
+   * — the lapsed window, a fresh threshold arriving on top of this one, the run
+   * ending, the player dying — and every one of them is exactly the toll the
+   * game collected before the lever existed.
+   */
+  refuseMutation(reason = 'refused') {
+    const c = this._muteChoice;
+    if (!c) return false;
+    this._closeMutationChoice(c, reason, null);
+    return true;
+  }
+
+  _closeMutationChoice(c, reason, baseId) {
+    this._muteChoice = null;
+    this.ctx.events.emit('mutationChoiceClosed', {
+      band: c.band, reason, baseId, owner: this._owner(),
+    });
+    this._mutateAt(c.band, baseId);
   }
 
   /**
@@ -1486,7 +1623,24 @@ export class Items {
     // the queue is FIFO and each band's pick comes off its own derived stream.
     // `_mutateAt`'s writes are all `'corrupt'`, which Corruption ignores, so
     // nothing can re-enter this queue while it drains.
-    while (this._muteQueue.length) this._mutateAt(this._muteQueue.shift());
+    //
+    // The lever (issue #33) sits in front of that drain: a threshold with a
+    // field worth choosing from opens a window instead of paying immediately,
+    // and the queue stalls behind it — one open offer at a time, so a two-band
+    // jump asks twice rather than stacking two cards. The window resolves on
+    // its own clock (real seconds off the fixed step, the same clock the
+    // pickup banner runs on) and a fresh threshold arriving on top of an open
+    // one closes it as a refusal, which pays the older band exactly as the
+    // void would have.
+    if (this._muteChoice) {
+      this._muteChoice.remaining -= h;
+      if (this._muteChoice.remaining <= 0) this.refuseMutation('timeout');
+      else if (this._muteQueue.length) this.refuseMutation('superseded');
+    }
+    while (!this._muteChoice && this._muteQueue.length) {
+      const band = this._muteQueue.shift();
+      if (!this._openMutationChoice(band)) this._mutateAt(band);
+    }
 
     for (const [name, b] of this.buffs) {
       b.remaining -= h;
