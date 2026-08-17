@@ -186,15 +186,44 @@ corruption."
   before the parser resolves it. A pack whose value is mostly in its atlas is worth less
   here than its price implies.
 - Textures: prefer PNG source, note KTX2/Basis as the shipping target.
-- **Download/VRAM budget: PLACEHOLDER, pending issue #28 (open as of this writing).**
-  The game currently carries essentially zero asset payload. No numeric ceiling exists
-  yet — do not invent one. Issue #28 will set it as a ceiling on the **total shortlist**
-  across all search issues combined, not a per-asset allowance. No search issue may be
-  closed out against an unset budget; note the placeholder in the search report and move
-  on rather than blocking on it.
-- Performance: `combat-24`'s frame-time median sits in a **21-26 ms band**; any change
-  that pushes it above that band is a regression. This bears on poly count / texture
-  resolution choices, not just download size.
+- **Download/VRAM budget: SET (issue #28).** See *The budget* below. The numbers live
+  machine-readably in `docs/art/asset-budget.json` and are enforced by
+  `tests/asset-budget.test.mjs` in the cheap tier; this prose and that file are checked
+  against each other, so neither can drift alone.
+
+## The budget
+
+Measured at commit `e702ba4` with `npm run build` (`node tools/asset-budget.mjs` reproduces
+it): `dist/` totals 9.17 MiB, of which **7.32 MiB is sourcemaps that are never shipped**
+(`package.json` `build.files` carries `!dist/**/*.map`). The shipped payload is
+**1.85 MiB, all of it code** — 1.79 MiB JS, 59 KiB CSS, 1.6 KiB HTML — and **zero bytes of
+art assets**, which is the "essentially zero asset payload" claim made numeric.
+
+| Ceiling | Value | Why |
+|---|---|---|
+| Total shipped | **24 MiB** | The 1.85 MiB code baseline plus the asset allowance plus slack; a 24 MiB cold download is ~20 s on a 10 Mbit line, the longest first-launch wait this game's scope justifies. |
+| Code | **2.25 MiB** | Baseline plus ~22% growth headroom: feature work will not trip it, a doubling or an accidentally-bundled dependency will. |
+| Assets | **20 MiB** | A ceiling on the **total shortlist across all search issues combined**, not a per-asset allowance: one 2K HDRI (~4 MB KTX2), a small PBR set (~8 MB), and a few meshes (~4 MB) fit with room. |
+| VRAM | **512 MiB, provisional** | No atlas-scale VRAM reasoning exists in this repo to derive from. 512 MiB is the resident-texture headroom that keeps the game inside a 2 GB shared-memory integrated adapter alongside the framebuffer and post stack. Replace it with a measured figure when one exists. |
+| GPU proxies | **96 textures, 900 geometries** | The only committed VRAM-adjacent measurements that exist are the capture manifest's `perf` block (baseline 53 / 700, `reviews/survivor-sep/integrated-shots/manifest.json`). +80% / +29% makes an asset pack landing wholesale visible before a VRAM measurement exists. |
+| `combat-24` frame time | **median 26.0 ms, p95 32.0 ms** | See below. |
+
+- Performance: the frame-time budget is a **ceiling, not a band**. The older "21-26 ms band"
+  does not survive contact with the record — the committed perf write-ups report `combat-24`
+  medians of 16.9 (`reviews/round5/FIX-stages.md:124`), 18.6 (`FIX-materials.md:316`), 20.0
+  (`FIX-vfx2.md:288`), 20.5 and 21.8 (`FIX-character.md:337`), 24.5 (`FIX-harness2.md:9`) and
+  20.5 ms (`reviews/round6/FIX-world.md:137`). Five of the seven sit *below* the band's lower
+  bound, and a lower bound would fail a change that made the game faster. So: **median at or
+  under 26.0 ms, p95 at or under 32.0 ms**. Those medians span 16.9-24.5 ms on one machine
+  across one tree family (about +/-19% around the midpoint), so a ceiling tighter than roughly
+  +25% over the latest recorded median would flap on run noise instead of catching regressions;
+  26.0 ms is +27%. This bears on poly count and texture resolution, not just download size.
+- The frame-time record the gate reads is `reviews/asset-budget/perf-combat24.json`. It is
+  currently **transcribed from `reviews/round6/FIX-world.md:137`**, because `tools/perf.mjs`
+  only ever printed to stdout and no machine-written perf record was ever committed. Refresh
+  it with a hand-run: `node tools/perf.mjs --out reviews/asset-budget/perf-combat24.json`,
+  then `node tools/gates.mjs status --record perf`. It is a headed GPU run and never part of
+  a tier.
 
 ## Report format every search issue must follow
 

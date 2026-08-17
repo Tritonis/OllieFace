@@ -95,5 +95,26 @@ results.push(await measure(`combat-${ENEMIES}`, () => {
 
 console.log(JSON.stringify({ env, quality: QUALITY, results }, null, 2));
 
+// `--out <path>` writes the record the payload/frame-time gate reads (issue
+// #28). Until this existed the only frame-time numbers on record lived in
+// review prose, which no gate can check.
+if (typeof args.out === 'string') {
+  const { writeFileSync } = await import('node:fs');
+  const combat = results.find((r) => r.label.startsWith('combat-'));
+  if (!combat) throw new Error('perf: no combat arm in results — nothing to record');
+  writeFileSync(args.out, JSON.stringify({
+    scenario: combat.label,
+    // Engine.stopProfile() names these; see src/core/Engine.js:273-278.
+    medianFrameMs: combat.medianFrameMs,
+    p95FrameMs: combat.p95FrameMs,
+    quality: QUALITY,
+    gpu: env.gpu,
+    transcribed: false,
+    capturedAt: new Date().toISOString(),
+    raw: { env, quality: QUALITY, results },
+  }, null, 2) + '\n');
+  console.error(`perf: wrote ${args.out}`);
+}
+
 await browser.close();
 await server.close();
