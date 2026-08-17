@@ -253,6 +253,73 @@ export class Lobby {
     // The host's "this room is still in use" timer, while there is one.
     this._keepalive = null;
     this._session = newSession();
+    // A halt is not a frame phase, and neither is anything below it. The Lobby
+    // is driven by socket callbacks that keep firing after the loop has stopped,
+    // so the halt has to reach this object directly or it does not reach it at
+    // all — see `_quiet` and issue #75.
+    this.ctx.events?.on?.('fatalError', () => this._quiet());
+  }
+
+  /**
+   * Has the run stopped? Every send, every re-arm and every authority restore
+   * below is gated on this.
+   *
+   * Read from both the engine and the context because they are set by the same
+   * statement pair in `Engine._halt` but reached by different owners: a Lobby
+   * built over a bare ctx (the co-op probe's shells, some tests) has no engine
+   * with a `fatal` field, and a Lobby whose engine was replaced still shares the
+   * ctx every system publishes through.
+   */
+  _halted() { return !!(this.engine?.fatal || this.ctx?.fatalError); }
+
+  /**
+   * Hand back single-player authority — unless the run is over.
+   *
+   * `joinManual`'s failure path, `hostViaRelay`'s and `leave()` all owe every
+   * `ctx.authority` reader its single-player answer, because a session that
+   * ended must not leave the machine believing it is somebody's client. But
+   * after a halt that debt is already settled the other way: `Engine._halt`
+   * surrendered authority deliberately, and a teardown that sets it back to true
+   * undoes the halt's central act on behalf of a session that no longer exists.
+   * `netRole` is restored either way — it says who is speaking, not whether
+   * anyone may.
+   */
+  _restoreSolo() {
+    if (!this._halted()) this.ctx.authority = true;
+    this.ctx.netRole = 'single';
+  }
+
+  /**
+   * Close the room without claiming anything back.
+   *
+   * `leave()` is the player's teardown and ends with `ctx.authority = true`;
+   * running it from a halt would re-arm the very flag the halt just surrendered
+   * (issue #75's own warning). This is that teardown's quiet half: the socket
+   * closes, the keepalive stops, the host system is released, and nothing is
+   * asserted about authority at all. Idempotent, because `fatalError` is emitted
+   * once but `leave()` may still be pressed afterwards.
+   */
+  _quiet() {
+    if (this._quieted) return;
+    this._quieted = true;
+    this._stopKeepalive();
+    // Nulled before the close so the `fail`/`onclose` guards below read this
+    // socket as no longer ours and touch nothing on the way out.
+    const ws = this.ws;
+    this.ws = null;
+    try { ws?.close?.(); } catch { /* a socket that never opened */ }
+    const steamCleanup = this._steamCleanup;
+    this._steamCleanup = null;
+    steamCleanup?.();
+    this.net?.close?.();
+    this._release();
+    this.mode = 'single';
+    this._invitesByClient.clear();
+    this.pendingInvites.clear();
+    this._session = newSession();
+    this._earlyIce.length = 0;
+    this.players = [{ id: 0, name: 'You', local: true }];
+    this._set('halted');
   }
 
   _set(status, detail) {
@@ -401,9 +468,9 @@ export class Lobby {
       this.mode = 'single';
       // `NetClient.init` already dropped this machine to non-authoritative, and
       // C-2's reasons for restoring both fields on `leave()` apply verbatim to a
-      // session that failed before it began.
-      this.ctx.authority = true;
-      this.ctx.netRole = 'single';
+      // session that failed before it began — with the halt exception `_restoreSolo`
+      // carries.
+      this._restoreSolo();
       throw err;
     }
     this._set('answerReady', { blob: answerBlob });
@@ -489,8 +556,7 @@ export class Lobby {
         // `ctx.netRole` — input sampling, the damage filters, profile recording
         // — has to be handed its single-player answer back, exactly as
         // `joinManual`'s own failure path does.
-        this.ctx.authority = true;
-        this.ctx.netRole = 'single';
+        this._restoreSolo();
         reject(err);
       };
       ws.onerror = () => fail(new Error(relayError(url)));
@@ -504,6 +570,12 @@ export class Lobby {
       // the beat belonging to the room the lobby is hosting now.
       ws.onclose = () => { if (this.ws === ws) this._stopKeepalive(); };
       ws.onmessage = async (e) => {
+        // The run is over. This handler mints invites and answers offers, and
+        // it is a socket callback, so nothing else stops it: the relay goes on
+        // delivering messages and this page would go on negotiating a session
+        // that has stopped simulating. Still true after `_quiet` closed the
+        // socket — a message already in flight arrives anyway.
+        if (this._halted()) return;
         const msg = JSON.parse(e.data);
         if (msg.type === 'error') {
           // The relay narrates its own failures, and they land on either side of
@@ -652,6 +724,10 @@ export class Lobby {
    */
   _startKeepalive(ws) {
     this._stopKeepalive();
+    // A halted page holds no room. `_quiet` stops the beat that was already
+    // running; this refuses to start one afterwards, because the socket that
+    // opens a beat opens it from a callback that does not know the run ended.
+    if (this._halted()) return;
     this._keepalive = setInterval(
       () => ws.send(JSON.stringify({ type: 'keepalive' })), this._keepaliveMs());
     // Node only, and a no-op in a browser: a headless Lobby — the tests, the
@@ -732,6 +808,12 @@ export class Lobby {
       ws.onerror = () => fail(new Error(relayError(url)));
       ws.onopen = () => ws.send(JSON.stringify({ type: 'join', code: norm }));
       ws.onmessage = async (e) => {
+        // The run is over. This handler mints invites and answers offers, and
+        // it is a socket callback, so nothing else stops it: the relay goes on
+        // delivering messages and this page would go on negotiating a session
+        // that has stopped simulating. Still true after `_quiet` closed the
+        // socket — a message already in flight arrives anyway.
+        if (this._halted()) return;
         const msg = JSON.parse(e.data);
         if (msg.type === 'error') {
           // Before the offer there is still a promise to fail and a player
@@ -835,14 +917,13 @@ export class Lobby {
     // live host beside the dead one.
     this._release();
     this.mode = 'single';
-    this.ctx.authority = true;
     // Every consumer of `netRole` has to be handed back its single-player
     // answer, not just `authority`. A stale 'client' stops
     // `Player.fixedUpdate` sampling input at all (Player.js:366 — the measured
     // 0.000 units of movement after leaving), re-points two damage filters
     // (Engine.js:357, :363) and silently disables profile and achievement
     // recording for the rest of the page's life (Profile.js:1272, :1369).
-    this.ctx.netRole = 'single';
+    this._restoreSolo();
     this._refused = false;
     this._refusedPeers.clear();
     // Same reason `_refusedPeers` is cleared here: both are keyed by ids that a

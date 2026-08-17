@@ -203,12 +203,15 @@ export class Engine {
    *    worth stating exactly: every system that gates a state change on it —
    *    `Combat`, `Corruption`, `Director`, `Progression` — refuses for as long
    *    as the flag stays false, and frame-phase emitters go quiet because the
-   *    loop no longer runs them. That is all it buys. The flag is not
-   *    latched: `Lobby`'s socket callbacks set it back to true and keep
-   *    firing after a halt, transport-driven sends (`Lobby`'s offers,
-   *    `NetHost`'s `WELCOME`) are not frame phases and are not gated on it,
-   *    and the room keepalive survives. A halted host can therefore still
-   *    talk to peers — issue #75 tracks closing that;
+   *    loop no longer runs them. The flag is still not
+   *    latched in this method, so what makes the surrender hold is that the
+   *    writers who used to undo it now refuse: `Lobby._restoreSolo` is the one
+   *    door all three of its teardowns go through, and it declines to hand
+   *    authority back while `ctx.fatalError` is set. The sends that are not
+   *    frame phases at all - `Lobby`'s relay offers, `NetHost`'s `WELCOME` and
+   *    `PONG` - are gated on that same latch rather than on the loop, and the
+   *    `fatalError` event below is what tells `Lobby` to stop its keepalive and
+   *    close the room. A halted host holds no room and says nothing — issue #75 tracks closing that;
    *  · the console gets the whole error, unconditionally — this fires once by
    *    construction, so the once-per-system throttle above does not apply;
    *  · `fatalError` is emitted so the page can put something in front of the
