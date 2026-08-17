@@ -70,7 +70,12 @@
  * The unlock namespaces. `Profile` builds one map per entry, so adding a type
  * here is all it takes for the profile to persist it.
  */
-export const UNLOCK_TYPES = ['survivor', 'item', 'equipment', 'artifact', 'skin'];
+// `codex` is the odd one: nothing gates it behind a challenge, so `isUnlocked`
+// answers true for a codex id the player has never earned (the default is
+// unlocked — see `Profile.isUnlocked`). It is a type here for the *storage* the
+// type brings — the persisted, merged, first-seen-stamped map — and readers ask
+// `Profile.unlockedAt('codex', id)` for the earned/not-earned question instead.
+export const UNLOCK_TYPES = ['survivor', 'item', 'equipment', 'artifact', 'skin', 'codex'];
 
 /**
  * Grouping for the logbook's challenge index, in display order.

@@ -24,6 +24,7 @@ import { ITEMS } from '../data/items.js';
 import { EQUIPMENT } from '../data/equipment.js';
 import { SPAWN_CARDS, BOSS_CARDS } from '../data/enemies.js';
 import { CHALLENGE_CATEGORIES } from '../data/challenges.js';
+import { CODEX } from '../data/codex.js';
 import { itemArt, abilityArt, tierMeta, hexOf, cardDef, tracePath } from './Icons.js';
 
 // ---------------------------------------------------------------- 3D preview
@@ -288,7 +289,7 @@ const BESTIARY_LORE = {
 // lowercase type because `artifact` was not in the table.
 const KIND_LABEL = {
   survivor: 'Survivor', item: 'Item', equipment: 'Equipment', enemy: 'Monster', boss: 'Boss',
-  artifact: 'Artifact', skin: 'Skin',
+  artifact: 'Artifact', skin: 'Skin', codex: 'Codex',
 };
 
 const TABS = [
@@ -297,6 +298,9 @@ const TABS = [
   { id: 'equipment', label: 'Equipment' },
   { id: 'enemies', label: 'Monsters' },
   { id: 'bosses', label: 'Bosses' },
+  // The corruption codex sits before Challenges because it is about the run
+  // that is happening, not the career around it.
+  { id: 'codex', label: 'Corruption' },
   { id: 'challenges', label: 'Challenges' },
   { id: 'records', label: 'Records' },
 ];
@@ -459,6 +463,17 @@ export class Logbook {
           id: d.id, kind: 'boss', name: d.name, sub: 'Teleporter Boss', card: d,
           tier: 'boss', locked: false, seen: seen('boss', d.id),
         }));
+      case 'codex':
+        // `isUnlocked` is the wrong question here and would answer "yes" to
+        // every page: its default is unlocked and nothing gates a codex id
+        // behind a challenge. `unlockedAt` is the earned/not-earned one.
+        return CODEX.map((c) => {
+          const at = profile?.unlockedAt?.('codex', c.id) ?? 0;
+          return {
+            id: c.id, kind: 'codex', name: c.name, sub: at ? c.sub : 'Not yet recorded',
+            card: c, tier: at ? 'boss' : 'common', locked: !at, seen: true, at,
+          };
+        });
       case 'challenges': {
         // Grouped by category, categories in `CHALLENGE_CATEGORIES` order and
         // anything with an unrecognised category swept into a trailing "Other"
@@ -534,7 +549,11 @@ export class Logbook {
       // a bestiary, on the one tab that has no catalogue. The tag says what the
       // tab is about instead.
       ? this.recordsTag()
-      : `${this.entries.length} catalogued · ${known} encountered`;
+      // The codex is not a catalogue of things met — it is a page count, and
+      // "5 catalogued · 2 encountered" would be describing a bestiary again.
+      : this.tab === 'codex'
+        ? `${known} of ${this.entries.length} recorded`
+        : `${this.entries.length} catalogued · ${known} encountered`;
     // Section headers are emitted between rows rather than being entries of
     // their own: `setTab` selects `entries[0]` and the keyboard navigator walks
     // `[data-nav]`, and a header in either of those is a focusable heading that
@@ -597,6 +616,7 @@ export class Logbook {
       enemy: () => this.monsterDetail(entry),
       boss: () => this.monsterDetail(entry),
       challenge: () => this.challengeDetail(entry),
+      codex: () => this.codexDetail(entry),
       career: () => this.careerDetail(),
       run: () => this.runDetail(entry),
     }[entry.kind];
@@ -607,6 +627,9 @@ export class Logbook {
   }
 
   unlockHint(entry) {
+    // A codex page is not earned by a challenge; it is earned by living
+    // through the moment it describes, and its own `hint` names that moment.
+    if (entry.kind === 'codex') return entry.card?.hint || 'Keep playing.';
     const challenge = entry.card?.unlock;
     const st = challenge ? this.ctx.profile?.challengeState?.(challenge) : null;
     if (!st) return 'Keep playing. This entry unlocks itself.';
@@ -784,6 +807,37 @@ export class Logbook {
         <div class="book-haul">${inv.map(({ i, d }) => `
           <div class="ditem t-${d.tier}"><img src="${itemArt(d.id, d.tier)}" alt="${escapeHtml(d.name)}" />
             ${i.count > 1 ? `<b>x${i.count}</b>` : ''}</div>`).join('')}</div>` : ''}`;
+  }
+
+  /**
+   * One corruption codex page (issue #34).
+   *
+   * The body is rendered from the entry's own `lines(facts)`, which reads every
+   * tuning number live off `data/corruption.js` and takes only the run-specific
+   * ones from the profile. A page that threw — a facts blob from an older build
+   * missing a field its copy assumed — would take the whole logbook detail pane
+   * with it, so the render is guarded and degrades to the sealed hint.
+   */
+  codexDetail(entry) {
+    const c = entry.card;
+    const facts = this.ctx.profile?.codexFacts?.(c.id) || {};
+    let lines = [];
+    try {
+      lines = c.lines(facts) || [];
+    } catch (e) {
+      console.warn(`[logbook] codex page "${c.id}" failed to render:`, e);
+      lines = [c.hint];
+    }
+    return `
+      <div class="book-head" style="--accent:var(--t-boss)">
+        <div class="book-title">${escapeHtml(c.name)}</div>
+        <div class="book-sub">${escapeHtml(c.sub)}</div>
+        <svg class="trace book-rule" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
+          <path d="${tracePath(c.name, { points: 44, amp: 0.6 })}" />
+        </svg>
+      </div>
+      ${entry.at ? `<div class="book-note">Recorded ${escapeHtml(shortDate(entry.at))}</div>` : ''}
+      ${lines.map((l) => `<p class="book-lore book-lore--plain">${escapeHtml(String(l))}</p>`).join('')}`;
   }
 
   challengeDetail(entry) {

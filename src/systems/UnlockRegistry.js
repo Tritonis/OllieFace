@@ -52,6 +52,7 @@ import { ITEMS } from '../data/items.js';
 import { EQUIPMENT } from '../data/equipment.js';
 import { ARTIFACTS } from '../data/artifacts.js';
 import { SPAWN_CARDS, BOSS_CARDS } from '../data/enemies.js';
+import { CODEX } from '../data/codex.js';
 
 /**
  * Every catalogue this build knows about, keyed by the name the profile files
@@ -73,6 +74,11 @@ const CATALOGUES = [
   // one — but they are the catalogue that carries every reward in the game
   // today, so they are scanned for `unlock` like everything else.
   { kind: null, unlockType: 'artifact', cards: ARTIFACTS },
+  // The corruption codex. No `kind` — a codex page is not content you "meet",
+  // and it must not size a survey challenge. It is scanned purely so
+  // `unlockName('codex', id)` reads as the page's title rather than as its id
+  // in the unlock toast, and no entry carries `unlock`, so nothing is gated.
+  { kind: null, unlockType: 'codex', cards: CODEX },
 ];
 
 /** kind -> how many ids exist. Read by the survey challenges' dynamic goals. */

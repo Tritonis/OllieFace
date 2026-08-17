@@ -596,7 +596,7 @@ console.log('every registered system has an answer on file');
   // scanner stopped being able to see would sail under `>= 20` while the system
   // it registers goes unclassified. Moving this number is fine and expected;
   // moving it without noticing is not.
-  ok(sites === 21, `every engine.add() call site in src/ is accounted for (${sites}, expected 21)`);
+  ok(sites === 22, `every engine.add() call site in src/ is accounted for (${sites}, expected 22)`);
 
   // Input is not registered at all: its `pollPad` is called through the
   // Engine's `_call` from inside the frame, so it needs the same declaration
