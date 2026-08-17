@@ -266,25 +266,48 @@ export function installRealmHarness(ctx) {
       // at 0.34% of frame. This is the same set of monsters, spawned by the
       // same controller on the same budget; only where they are standing when
       // the shutter opens is staged, which is what a screenshot scenario is for.
-      {
+      // Stand the wave up in front of the lens, on the lens's own arc.
+      //
+      // The previous staging laid the wave out in straight Z lanes that widened
+      // by 3.6 m a pair — fine for the three monsters a fourth wave used to
+      // field, fatal for nine. Members 6, 7 and 8 landed at |z| of 15.8, 15.5
+      // and 19.1 while standing only 8 m from the lens, which is outside the
+      // frustum: `perPx [943,419,414,227,0,389,0,0,0]`, with the measured NDC x
+      // of those three at 1.18, -1.03 and 1.23. A lane width that ignores how
+      // far away the member is standing cannot be right at two counts of wave.
+      //
+      // So: spread by *angle* around the lens, which is the quantity the frame
+      // is actually made of, and let depth do the rest. Every member lands
+      // inside |ndc.x| ~ 0.55 whatever the count, and the ring stagger keeps
+      // neighbours off each other's silhouette. Smallest first, because the
+      // wave contains half-metre mites and a mite on the far ring is 84 px.
+      const stageWave = () => {
         const o = ctx.stage.origin;
-        // The lens is at +17 on X aimed at the middle and the survivor is at
-        // +7, so "in front of the survivor, still this side of the middle" is
-        // x in +1..+5 with a spread across Z.
-        const live = c.live.filter((e) => e && e.alive);
-        for (let i = 0; i < live.length; i++) {
-          // Z offsets deliberately skip zero: the survivor stands on the camera
-          // axis at +7, and the first staging put one wave member directly
-          // behind it at 6 px.
-          // Z offsets deliberately skip zero and X is kept inside 8-12 m of the
-          // lens: the wave contains mites at half a metre tall, and one of them
-          // at 15 m measured 84 px.
-          const lane = (i % 2 ? 1 : -1) * (5.0 + Math.floor(i / 2) * 3.6);
-          live[i].position.set(o.x + 9.0 - Math.min(i, 3) * 2.0, 0, o.z + lane);
-          live[i].velocity?.set(0, 0, 0);
+        const lensX = o.x + 17, lensZ = o.z;
+        const box = new THREE.Box3();
+        const cast = c.live
+          .filter((e) => e && e.alive && e.rig?.root)
+          .map((e) => {
+            box.setFromObject(e.rig.root);
+            return { e, h: Math.max(0.2, box.max.y - box.min.y) };
+          })
+          .sort((a, b) => a.h - b.h);
+        const n = cast.length;
+        const perRing = Math.max(1, Math.ceil(n / 3));
+        for (let i = 0; i < n; i++) {
+          const t = n === 1 ? 0.5 : i / (n - 1);
+          const th = -0.58 + 1.16 * t;
+          const d = 8.5 + Math.min(2, Math.floor(i / perRing)) * 3.0;
+          const e = cast[i].e;
+          // Fliers hold their own altitude and re-lift within a frame or two of
+          // being put on the floor, so their y is left where the sim has it.
+          e.position.set(lensX - Math.cos(th) * d, e.position.y, lensZ + Math.sin(th) * d);
+          e.velocity?.set(0, 0, 0);
         }
-        await frames(2);
-      }
+        return n;
+      };
+      stageWave();
+      await frames(2);
       // Behind the survivor, looking into the arena: the wave steers at the
       // player, so this is the one framing that puts monsters at 5-15 m rather
       // than scattered across a 25 m room.
@@ -293,6 +316,12 @@ export function installRealmHarness(ctx) {
       await wait(settleFrames);
       if (ctx.input) ctx.input.mouse.left = false;
       await frames(4);
+      // Re-form on the same arc immediately before the shutter. The settle is
+      // half a second of a wave steering at the survivor under fire, and a
+      // harrier crosses several metres in it — staging only before the settle
+      // photographs where the wave *was*.
+      stageWave();
+      await frames(2);
       freeze();
       mustContain('23-realm-crucible', [
         // Two of three, not three of three: the arena has four cover blocks in
