@@ -9,6 +9,8 @@ import {
 // Every prompt that feeds the void is priced through one formatter, so the
 // three parts of the decision cannot drift apart between shrines (issue #30).
 import { pricedPrompt, biasFeedRange, idsFeed } from './corruptionPrice.js';
+// What each band gives back, and the currency it is bought with (issue #36).
+import { BOON, PACTS, RUIN, synergyPlan } from '../data/bandBoons.js';
 import { RNG } from '../core/MathUtil.js';
 import { Items } from '../systems/Items.js';
 import { Roster } from '../systems/Roster.js';
@@ -50,6 +52,8 @@ const TYPE_ID = {
   hollowChime: 9, gildedSnare: 10, fallowVault: 11, marrowKiln: 12,
   // Counterplay shrines, round 7.
   argentFont: 13, covenantStone: 14,
+  // The band upsides' altar, round 8.
+  voidBargain: 15,
 };
 
 const CHEST_TYPE = { small: TYPE_ID.chest, large: TYPE_ID.chestLarge, legendary: TYPE_ID.chestLegendary };
@@ -484,6 +488,30 @@ export class MultishopTerminal extends Interactable {
     const known = ITEM_BY_ID.get(this.itemId);
     return pricedPrompt(this.ctx, `${known?.name || 'Item'} ($${this.cost})`,
       known ? idsFeed([this.itemId]) : 0);
+  }
+
+  /**
+   * Re-draw what is behind the screen — the Seeded band's bargain (issue #36),
+   * bought with a void mark rather than with gold. The draw goes through
+   * `rollItem` with the same table the constructor used, so a rerolled terminal
+   * is indistinguishable from one that rolled that item in the first place and
+   * the two cannot drift.
+   *
+   * It therefore draws on the shared gameplay stream exactly as building a
+   * terminal does. That is deliberate and safe for `gate:sp`: the bargain is not
+   * placed below Seeded and nothing presses it in a pristine run, so the
+   * baseline never reaches this line.
+   */
+  reroll() {
+    if (this.used || !this.enabled) return false;
+    const id = this.ctx.items?.rollItem?.(null, TIER_BIAS.small);
+    if (!id) return false;
+    this.itemId = id;
+    const tint = TIERS[ITEM_BY_ID.get(id)?.tier || 'common'].colour;
+    this.screen.material.color.setHex(0x0d1118);
+    this.screen.material.emissive.setHex(tint);
+    this.screen.material.emissiveIntensity = 0.9;
+    return true;
   }
 
   interact(pawn = this.ctx.player) {
@@ -1456,7 +1484,11 @@ export class ArgentFont extends Interactable {
     this.group.add(base, rim, this.water);
   }
 
-  available() { return this.enabled && this.uses < this.maxUses; }
+  // A ruined run has no font. That is the irreversible half of Consumed's
+  // bargain (issue #36, `VoidBargain`): the last-chance state is not a buff
+  // with a drawback, it is the clean exit ceasing to exist — and this is where
+  // that stops being a line of prompt text and starts being true.
+  available() { return this.enabled && !this.ctx.corruption?.ruined && this.uses < this.maxUses; }
 
   /** What this use is worth *right now* — the bleed scales with the debt. */
   yield() { return cleanseAmount(this.ctx.corruption?.world ?? 0); }
@@ -1541,7 +1573,10 @@ export class ArgentFont extends Interactable {
   interact(pawn = this.ctx.player) {
     const cor = this.ctx.corruption;
     // Nothing to bleed means nothing to sell; refuse before taking the gold.
-    if (!cor || !(cor.world > 0)) { this.ctx.audio?.play?.('deny'); return false; }
+    // Or nothing left that *can* be bled: a ruined run is
+    // refused here and not only greyed out in `available`, because the press
+    // path is what a probe and a co-op client actually reach.
+    if (!cor || !(cor.world > 0) || cor.ruined) { this.ctx.audio?.play?.('deny'); return false; }
     // One evaluation of a live price for one transaction. `cost` is a getter
     // over `cleanseCost(stage, uses, world)` and both of its moving terms are
     // about to move underneath it, so the number charged and the number
@@ -1677,6 +1712,193 @@ export class CovenantStone extends Interactable {
 function beaconTint(ctx) {
   const m = ctx.stage?.biome?.mats;
   return m?.beacon ?? m?.crystal ?? 0x2ad0ff;
+}
+
+/**
+ * The Void Bargain — where corruption buys something back (issue #36).
+ *
+ * One altar, four offers, and which one it is making is decided entirely by the
+ * band the world is in. That is the shape the issue asks for and the reason it
+ * is one prop rather than four: a deeper band *replaces* the shallower offer
+ * rather than adding to a menu, so descending is a series of trades and a
+ * Consumed party genuinely cannot go back for the Seeded reroll.
+ *
+ *   Seeded    spend 1 mark, re-draw every terminal on the stage
+ *   Blighted  spend 2 marks, buy the corrupted synergy the prompt names first
+ *   Overrun   spend 3 marks and fresh debt, take a pact for twenty seconds
+ *   Consumed  spend nothing, and lose the exit — see `RUIN`
+ *
+ * Everything above the last line is repeatable while marks last; the last line
+ * happens once and spends the altar, because the whole point of a last chance
+ * is that there is not another one.
+ *
+ * The prompt states the price, the effect and the consequence before the press,
+ * on the `ArgentFont` principle: a bargain the player cannot read is a trap,
+ * and a trap teaches the same lesson pure pressure did.
+ *
+ * Co-op caveat, the shared one: `Corruption` is not replicated, so a client
+ * reads zero marks and a Pristine band and its prompt says the altar is
+ * dormant. Stale display, not a stale transaction — `spendMarks`, `feed` and
+ * `ruin` are all authority-gated and the press resolves on the host.
+ */
+export class VoidBargain extends Interactable {
+  constructor(ctx, position, stageIndex = 0) {
+    super(ctx, position);
+    this.stageIndex = stageIndex || 0;
+    this.typeId = TYPE_ID.voidBargain;
+    this.radius = 2.2;
+    this.spent = false;
+    // Which pact this altar is offering, fixed for its life and derived from
+    // (run seed, stage) rather than drawn: a pact the player can see coming is
+    // a decision, and `ctx.rng` is not touched anywhere in this class.
+    this.pact = PACTS[(((ctx.seed >>> 0) ^ (0x85ebca6b * (this.stageIndex + 1))) >>> 0) % PACTS.length];
+
+    const base = new THREE.Mesh(sharedGeo('bargainBase', () => plinthGeo(0.9, 6)), STONE());
+    // An inverted cone standing point-down in the plinth: the one shape on the
+    // stage that reads as something being *taken* rather than offered, which is
+    // the only honest silhouette for this prop.
+    this.maw = new THREE.Mesh(
+      sharedGeo('bargainMaw', () => new THREE.ConeGeometry(0.62, 1.1, 6).rotateX(Math.PI).translate(0, 1.35, 0)),
+      new THREE.MeshStandardMaterial({
+        color: 0x1a0f24, emissive: 0x7a2fae, emissiveIntensity: 0.7,
+        roughness: 0.35, metalness: 0.1, envMapIntensity: 2.0,
+      })
+    );
+    base.castShadow = this.maw.castShadow = true;
+    base.receiveShadow = true;
+    this.group.add(base, this.maw);
+  }
+
+  available() { return this.enabled && !this.spent && !!this.offer(); }
+
+  _band() { return this.ctx.corruption?.band ?? 0; }
+  _marks() { return this.ctx.corruption?.marks ?? 0; }
+
+  /**
+   * What the altar is offering *right now*, or null when it is offering
+   * nothing. Recomputed per read rather than stored, for `ArgentFont`'s reason:
+   * both terms move under the player while they stand here — the band, and the
+   * purse — and a stored offer would describe a bargain that no longer exists.
+   *
+   * A band whose price the player cannot meet returns null rather than falling
+   * through to a shallower offer. Quoting the Seeded reroll to an Overrun party
+   * that is one mark short of a pact would be the altar arguing them *down* a
+   * band, which is precisely backwards.
+   */
+  offer() {
+    const band = this._band();
+    const marks = this._marks();
+    const cor = this.ctx.corruption;
+    if (band >= BOON.ruin.band) return cor?.ruined ? null : { kind: 'ruin', marks: 0 };
+    if (band >= BOON.pact.band) {
+      return marks >= BOON.pact.marks ? { kind: 'pact', marks: BOON.pact.marks, pact: this.pact } : null;
+    }
+    if (band >= BOON.synergy.band) {
+      if (marks < BOON.synergy.marks) return null;
+      const items = Items.of(this.ctx, this.ctx.player);
+      const plan = items && synergyPlan(items.blightHeld(), items.convertibleStacks());
+      return plan ? { kind: 'synergy', marks: BOON.synergy.marks, plan } : null;
+    }
+    if (band >= BOON.reroll.band) {
+      if (marks < BOON.reroll.marks) return null;
+      const shops = this._terminals();
+      return shops.length ? { kind: 'reroll', marks: BOON.reroll.marks, shops } : null;
+    }
+    return null;
+  }
+
+  /** Every terminal on the stage that is still selling something. */
+  _terminals() {
+    return (this.ctx.interactables?.list || [])
+      .filter((i) => i instanceof MultishopTerminal && !i.used && i.enabled);
+  }
+
+  prompt() {
+    const marks = this._marks();
+    const purse = `${marks} mark${marks === 1 ? '' : 's'}`;
+    const offer = this.offer();
+    if (!offer) {
+      if (this.ctx.corruption?.ruined) return 'Void Bargain - the bargain is struck; nothing is left to trade';
+      const band = this._band();
+      if (band < BOON.reroll.band) return `Void Bargain - dormant until Seeded (${purse})`;
+      return `Void Bargain - ${BANDS[band].name} wants more than you hold (${purse})`;
+    }
+    const price = `${offer.marks} of ${purse}`;
+    switch (offer.kind) {
+      case 'reroll':
+        return `Void Bargain - re-draw ${offer.shops.length} terminal${offer.shops.length === 1 ? '' : 's'} (${price})`;
+      case 'synergy': {
+        const { synergy, baseId } = offer.plan;
+        const name = ITEM_BY_ID.get(baseId)?.name || baseId;
+        return `Void Bargain - complete ${synergy.name} (${price})\n`
+          + `corrupts your ${name}, permanently\n${synergy.blurb}`;
+      }
+      case 'pact':
+        return `Void Bargain - ${offer.pact.name} (${price} and +${BOON.pact.debt} corruption)\n`
+          + `${offer.pact.line} for ${BOON.pact.seconds}s`;
+      case 'ruin':
+        return 'Void Bargain - let it all the way in (free, and final)\n'
+          + 'every skill, every swing, for the rest of the run\n'
+          + 'the Argent Font goes silent - there is no cleansing after this';
+      default:
+        return 'Void Bargain';
+    }
+  }
+
+  interact(pawn = this.ctx.player) {
+    const offer = this.offer();
+    if (!offer || this.spent) return false;
+    const items = Items.of(this.ctx, pawn);
+    const cor = this.ctx.corruption;
+    if (!items || !cor) return false;
+
+    // Ruin is free of marks and charged in the run instead, so it is settled
+    // before the purse is ever touched.
+    if (offer.kind === 'ruin') {
+      if (!cor.ruin()) return false;
+      for (const b of RUIN.buffs) items.addBuff(b.buff, RUIN.seconds, b.maxStacks, b.magnitude);
+      this.spent = true;
+      this.maw.material.emissiveIntensity = 2.4;
+      this.ctx.audio?.play?.('shrineBlood', this.position);
+      return true;
+    }
+
+    // Everything else is paid first and delivered second: a bargain that could
+    // fail after taking the marks would be the one dishonest thing here.
+    if (!cor.spendMarks(offer.marks)) return false;
+
+    if (offer.kind === 'reroll') {
+      let n = 0;
+      for (const t of offer.shops) if (t.reroll()) n++;
+      this.ctx.events.emit('voidBargain', { kind: 'reroll', marks: offer.marks, count: n, owner: pawn });
+    } else if (offer.kind === 'synergy') {
+      const { synergy, baseId } = offer.plan;
+      items.corruptStack(baseId);
+      const g = synergy.grant;
+      items.addBuff(g.buff, RUIN.seconds, g.maxStacks, g.magnitude);
+      this.ctx.events.emit('voidBargain', { kind: 'synergy', marks: offer.marks, id: synergy.id, baseId, owner: pawn });
+    } else {
+      const p = offer.pact;
+      items.addBuff(p.buff, BOON.pact.seconds, 1, p.magnitude);
+      // The debt is the second half of the price and goes through `feed`, so
+      // greed time and the artifact economy apply to a pact exactly as they do
+      // to a chest — and a pact taken at the wrong moment can carry the party
+      // into Consumed, which is the decision the band exists to pose.
+      cor.feed(pawn, BOON.pact.debt, this.position);
+      this.markGreed();
+      this.ctx.events.emit('voidBargain', { kind: 'pact', marks: offer.marks, id: p.id, owner: pawn });
+    }
+    this.ctx.audio?.play?.('shrineWin', this.position);
+    return true;
+  }
+
+  update(dt) {
+    // The maw brightens with the purse: an altar you can afford is the only
+    // lit thing on the stage, and one you cannot is a rock.
+    const want = this.spent ? 2.4 : (this.offer() ? 1.6 : 0.35);
+    const m = this.maw.material;
+    m.emissiveIntensity += (want - m.emissiveIntensity) * Math.min(1, dt * 3);
+  }
 }
 
 class Teleporter extends Interactable {
@@ -2192,6 +2414,20 @@ export class Interactables {
       const m = mark(1 + grng.int(0, 2));
       this.add(new ArgentFont(ctx, this._sited(m, (m?.r ?? 0) + 3.5, (m?.r ?? 0) + 11, spawn, grng), stageIndex));
     }
+
+    // And the other exit from the same bargain: from Seeded up, every stage
+    // carries the altar that sells the band's upside (issue #36). Guaranteed
+    // rather than bagged for the reason the upsides exist at all — an upside
+    // the layout can forget to place is one the player never learns about, and
+    // the whole problem was that corruption only ever took. Same construction
+    // as the font block above and for the same reasons: after every `ctx.rng`
+    // draw, off a salted local stream, so a pristine run reaches this line and
+    // draws nothing and `gate:sp` cannot move.
+    if (band >= BOON.reroll.band) {
+      const brng = new RNG(((ctx.seed >>> 0) ^ (0x2545f491 * (stageIndex + 1))) >>> 0 || 1);
+      const m = mark(1 + brng.int(0, 2));
+      this.add(new VoidBargain(ctx, this._sited(m, (m?.r ?? 0) + 3.5, (m?.r ?? 0) + 11, spawn, brng), stageIndex));
+    }
   }
 
   /**
@@ -2355,6 +2591,7 @@ const VIEW_BUILDERS = {
   // The stone only exists in co-op, so a client with no view for it would be
   // the one player guaranteed to be looking for it.
   [TYPE_ID.covenantStone]: (ctx, p) => new CovenantStone(ctx, p),
+  [TYPE_ID.voidBargain]: (ctx, p) => new VoidBargain(ctx, p, 0),
   [TYPE_ID.teleporter]: (ctx, p) => new Teleporter(ctx, p),
   [TYPE_ID.portal]: (ctx, p) => new Portal(ctx, p, null),
 };
