@@ -16,6 +16,7 @@ import { HUD } from '../src/ui/HUD.js';
 import { TIER_ORDER } from '../src/ui/Icons.js';
 import { MUTATION, BANDS, SOURCES } from '../src/data/corruption.js';
 import { RNG } from '../src/core/MathUtil.js';
+import { Engine } from '../src/core/Engine.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
@@ -523,18 +524,31 @@ console.log('refusal, lapse and interruption are all the old random path');
 
   // Pause-honest display clock: `Menus`' countdown reads `remaining` straight
   // off `mutationChoice()` rather than ticking its own clock, so the number a
-  // paused game shows must be exactly the window's own, unmoving. `Engine`
-  // gates every `fixedUpdate` call behind `!ctx.paused` (src/core/Engine.js);
-  // mirror that gate here rather than calling `step` unconditionally, since a
-  // direct `items.fixedUpdate` call has no opinion about pause on its own.
-  const pausedW = atThreshold(4);
-  const remainingAtPause = pausedW.items.mutationChoice().remaining;
-  pausedW.ctx.paused = true;
-  for (let t = 0; t < 30; t++) {
-    if (!pausedW.ctx.paused) step(pausedW.ctx, pausedW.items);
-  }
-  ok(pausedW.items.mutationChoice().remaining === remainingAtPause,
-    'remaining does not move across 30 paused fixed steps');
+  // paused game shows must be exactly the window's own, unmoving. The real
+  // protection lives in `Engine`'s own fixed-step gate (`if (!ctx.paused)`,
+  // src/core/Engine.js:603) — `Items.fixedUpdate` has no pause opinion of its
+  // own — so drive a real `Engine` through real frames rather than mirroring
+  // that gate with a hand-rolled `if` the test controls itself.
+  const engine = new Engine({ canvas: null, seed: 424242 });
+  engine.running = true;
+  engine.ctx.player = { isPlayer: true, alive: true };
+  const pausedItems = engine.add(new Items());
+  const pausedCorruption = engine.add(new Corruption());
+  const pausedHeld = bases.slice(0, 4);
+  for (const id of pausedHeld) pausedItems.give(id, 2);
+  pausedCorruption.feed(engine.ctx.player, BANDS[MUTATION.minBand].at + 1 - pausedCorruption.world);
+  const engineStep = () => { engine.accumulator = 1 / 60; engine._frame(); };
+  engineStep();
+  ok(!!pausedItems.mutationChoice(), 'the threshold opened a window on the real engine too');
+  const remainingAtPause = pausedItems.mutationChoice().remaining;
+  engine.ctx.paused = true;
+  for (let t = 0; t < 30; t++) engineStep();
+  ok(pausedItems.mutationChoice().remaining === remainingAtPause,
+    'remaining does not move across 30 paused engine frames');
+  engine.ctx.paused = false;
+  engineStep();
+  ok(pausedItems.mutationChoice().remaining < remainingAtPause,
+    'and resumes ticking once the engine unpauses');
 
   // A fresh threshold on top of an open one pays the older band the void's way
   // rather than stranding it in the queue forever.
