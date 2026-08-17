@@ -23,6 +23,8 @@ import { routesFor } from '../data/realms.js';
 // a rebind ships a HUD that lies about its own controls. Nothing else about
 // Items is imported — the slot itself is read through `ctx.items`.
 import { EQUIPMENT_KEY_LABEL } from '../systems/Items.js';
+// ...and the live map that says which key that actually is right now.
+import { bindings, keyLabel, padLabel } from '../core/Bindings.js';
 // The eligibility question the revive prompt asks about its own viewer, and
 // the button the hold is spelled with on the wire. Both are read here for the
 // same reason `EQUIPMENT_KEY_LABEL` is: the rule lives in one place (`Revive`,
@@ -594,13 +596,22 @@ export class HUD {
     this.set('hidden', hidden, (v) => this.root.classList.toggle('is-hidden', v));
     if (hidden) { this.stripRect = null; return; }
 
-    this.set('padPrompt', !!ctx.input?.padActive, (pad) => {
-      if (this.refs.promptKey) this.refs.promptKey.textContent = pad ? 'X' : 'E';
-      // The equipment tile names its button the same way. Y is what the pad
-      // maps to KeyF (Input.js PAD_KEYS); printing F to a pad player is naming
-      // a key they do not have.
-      if (this.refs.equip?.key) this.refs.equip.key.textContent = pad ? 'Y' : EQUIPMENT_KEY_LABEL;
-      if (this.refs.reviveKey) this.refs.reviveKey.textContent = pad ? 'X' : 'E';
+    // The labels come off the live binding map, so a rebound interact or
+    // equipment key names the key the player actually holds. The memo key
+    // carries the labels as well as the device, or a rebind made while the HUD
+    // is up would not repaint. `EQUIPMENT_KEY_LABEL` remains the static markup's
+    // default; this is the live one.
+    const interactKey = keyLabel(bindings.keyOf('interact'));
+    const interactPad = padLabel(bindings.padOf('interact'));
+    const equipKey = keyLabel(bindings.keyOf('equipment'));
+    const equipPad = padLabel(bindings.padOf('equipment'));
+    const padOn = !!ctx.input?.padActive;
+    this.set('padPrompt', `${padOn}|${interactKey}|${interactPad}|${equipKey}|${equipPad}`, () => {
+      if (this.refs.promptKey) this.refs.promptKey.textContent = padOn ? interactPad : interactKey;
+      // The equipment tile names its button the same way. Printing F to a pad
+      // player is naming a key they do not have.
+      if (this.refs.equip?.key) this.refs.equip.key.textContent = padOn ? equipPad : equipKey;
+      if (this.refs.reviveKey) this.refs.reviveKey.textContent = padOn ? interactPad : interactKey;
     });
 
     this.updateHealth(ctx, dt);
