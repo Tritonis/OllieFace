@@ -207,19 +207,47 @@ const PALETTE = {
  * tritanopic vision and 4 desaturated. Two things are deliberately *not* graded
  * here, and both are worth naming rather than leaving to be discovered:
  *
- * - The `aura` column. An aura is a handful of thin additive rings and bits
- *   over a body that already carries its tint, so what has to separate is the
- *   pair, and the tint is the half with the area to do it.
  * - Contrast. The tier palette is held to a WCAG floor because it is painted on
  *   surfaces this repo defines; these are painted on monsters, lit, in a scene
  *   whose luminance nothing here can measure. A floor against an unknown ground
  *   would be a number with no meaning behind it.
  *
- * `tests/readability-gate` grades the tints.
+ * Round-7 (#77) then closed the aura column, which round 6 had argued out of
+ * scope on the grounds that the tint is the half with the area. True of area,
+ * but it left `rimebound`'s aura and `warded`'s **0.27** apart desaturated and
+ * **2.4** apart deuteranopic: the aura was dead redundancy for exactly the
+ * player it exists to help.
+ *
+ * Two values moved, and four were pinned. Round 5's blow-out tuning is a
+ * ceiling on *paleness* for anything that stacks additively over a lit body, so
+ * `rimebound`'s aura is held exactly where round 5 pulled it — 0x46c4f0, a
+ * saturated cyan and not the pale 0x8fe4ff that measured as paper. `emberclad`,
+ * `withering` and `voidtouched` are held because their hue is the affix, and
+ * they are the values the #44 search kept dragging toward peach and pale pink.
+ *
+ * That leaves `galvanic` and `warded`, the two rows nothing had constrained.
+ * `galvanic` went from a washed 0x74a6ff to a vivid 0x1a2ef5 — the same
+ * electric blue, saturated rather than pale, which is the direction the
+ * blow-out ceiling points anyway. `warded` went *down* off 0xc9a8ff to a deep
+ * violet 0x3f1c5e; its aura is neither a ring nor a bit cloud but the ward
+ * crystal alone (`bands: 0, bits: 0`), and the table's highest `glow` (3.0) is
+ * what keeps it a bright barrier at a darker base.
+ *
+ * Auras are graded against `AURA` rather than `PALETTE` — colour 10, mono
+ * unchanged at 4 — and that lower colour arm is a measured ceiling, not a
+ * concession: with the four pinned values held, `emberclad` against
+ * `voidtouched` is 10.8 tritanopic no matter what the free two become. The
+ * argument is written out at `tools/colour-vision.mjs`'s `AURA`, and the
+ * ceiling itself is pinned by a test, so it cannot be quietly inherited.
+ *
+ * The worst pair is now 10.8 (tritan) and 4.0 desaturated, against 0.27
+ * desaturated before.
+ *
+ * `tests/readability-gate` grades the tints and, since #77, the auras.
  */
 export const ELITE = {
   emberclad:     { tint: 0xff3a08, aura: 0xff6a10, glow: 2.6, name: 'Emberclad', bands: 1, tilt: 0, bits: 4, shape: 'shard', bitScale: 0.20, rise: 1, bandAlpha: 0.75 },
-  galvanic: { tint: 0x325cff, aura: 0x74a6ff, glow: 2.8, name: 'Galvanic', bands: 3, tilt: 1.15, bits: 6, shape: 'ico', bitScale: 0.14, spin: 3.4, bandAlpha: 0.55 },
+  galvanic: { tint: 0x325cff, aura: 0x1a2ef5, glow: 2.8, name: 'Galvanic', bands: 3, tilt: 1.15, bits: 6, shape: 'ico', bitScale: 0.14, spin: 3.4, bandAlpha: 0.55 },
   // The one tint in the table pale enough to blow out: at the old 0xa8e6ff it
   // mixed 78% into the body albedo *and* drove a 0.5 emissive, which measured
   // as a 94x101 px matte lump at mean L 232 with no internal structure — the
@@ -238,7 +266,7 @@ export const ELITE = {
   // silhouette change in the table that alters the unit's actual outline. It is
   // allowed to, but it is now a wireframe crystal rather than a filled sphere,
   // so what it adds is facets and not a disc.
-  warded:      { tint: 0xb291ff, aura: 0xc9a8ff, glow: 3.0, name: 'Warded', tier: 2, bands: 0, bits: 0, ward: 1 },
+  warded:      { tint: 0xb291ff, aura: 0x3f1c5e, glow: 3.0, name: 'Warded', tier: 2, bands: 0, bits: 0, ward: 1 },
   // The void's family. Blight-ramp magenta pulled toward black: the read is
   // "eaten", not "empowered". Two slow bands plus seven shards — ringed like
   // the tier-1s so it still reads elite at 40 m, but in the one hue family no

@@ -413,6 +413,21 @@ console.log('the palette bars are ones the old palettes could not clear');
   ok(ge.ok === false, 'the old elite tints fail it too');
   ok(ge.checks.some((c) => c.id === 'warded/voidtouched' && c.vision === 'deutan' && c.delta < 3),
      'Warded and Hollowed were one violet for a deuteranope');
+
+  // The aura palette as #44 left it, quoted verbatim: graded here so the aura
+  // arm below is a measurement and not a formality. #77 is the ticket that
+  // moved `warded` off 0xc9a8ff.
+  const wasAuras = {
+    emberclad: 0xff6a10, galvanic: 0x74a6ff, rimebound: 0x46c4f0,
+    withering: 0x86ffb4, warded: 0xc9a8ff, voidtouched: 0xff2fb0,
+  };
+  const { AURA } = await import('../tools/colour-vision.mjs');
+  const ga = gradePalette(wasAuras, AURA);
+  ok(ga.ok === false, 'the ungated aura palette fails the gate');
+  ok(ga.checks.some((c) => c.id === 'rimebound/warded' && c.vision === 'mono' && c.delta < 1),
+     'desaturated, a Rimebound aura and a Warded aura were the same grey');
+  ok(ga.checks.some((c) => c.id === 'rimebound/warded' && c.vision === 'deutan' && !c.ok),
+     'and a deuteranope could not separate them either');
 }
 
 console.log('the shipped palettes clear them');
@@ -430,6 +445,28 @@ console.log('the shipped palettes clear them');
   const ge = gradePalette(tints, PALETTE);
   const worstE = ge.checks[0];
   ok(ge.ok === true, `every elite tint pair does too (worst ${worstE.id} ${worstE.vision} ${worstE.delta.toFixed(1)} vs ${worstE.min})`);
+
+  // The auras are graded to the same bars as the tints (#77). They were left
+  // ungated by #44 on the argument that the tint carries the pair, which is
+  // true of area but leaves the aura as dead redundancy in greyscale.
+  const auras = Object.fromEntries(Object.entries(ELITE).map(([k, v]) => [k, v.aura]));
+  ok(Object.keys(auras).length === Object.keys(ELITE).length
+     && Object.values(auras).every((v) => typeof v === 'number'),
+     'every affix in the table has an aura colour to grade');
+  const { AURA, deltaEUnder } = await import('../tools/colour-vision.mjs');
+  const gaNow = gradePalette(auras, AURA);
+  const worstA = gaNow.checks[0];
+  ok(gaNow.ok === true, `every elite aura pair clears every vision (worst ${worstA.id} ${worstA.vision} ${worstA.delta.toFixed(1)} vs ${worstA.min})`);
+
+  // AURA.colour is 10 rather than PALETTE's 12 because of a ceiling, and the
+  // ceiling is this pair: emberclad and voidtouched are both pinned — one by
+  // the affix's fire hue, one by the void's magenta — and tritanopia collapses
+  // the channel between orange and magenta. If a future change moves either and
+  // this rises past 12, the relaxed bar has lost its justification and AURA
+  // should go back to PALETTE rather than sit at 10 out of habit.
+  const pinned = deltaEUnder(ELITE.emberclad.aura, ELITE.voidtouched.aura, 'tritan');
+  ok(pinned < PALETTE.colour && pinned >= AURA.colour,
+     `the pinned pair sits between the two bars at ${pinned.toFixed(1)} — this is why AURA.colour is ${AURA.colour}`);
 
   // Every tier is graded, not just the ones that happened to be in the object.
   ok(gt.checks.length === (TIER_ORDER.length * (TIER_ORDER.length - 1) / 2) * 5,

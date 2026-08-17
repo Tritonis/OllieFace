@@ -416,6 +416,37 @@ export const PALETTE = {
 };
 
 /**
+ * The same bars for the elite **aura** column, with the colour arm at 10 (#77).
+ *
+ * This is a lower bar than `PALETTE` and the reason is a ceiling, not a
+ * preference. Four of the six aura colours are pinned: `rimebound` by round-5's
+ * blow-out tuning, which caps how pale a value that stacks additively over a lit
+ * body may be, and `emberclad`, `withering` and `voidtouched` because their hue
+ * *is* the affix — fire, rot and the void's magenta — and every search that
+ * moved them dragged emberclad toward peach or voidtouched toward pale pink.
+ * With those four held and the remaining two free to be anything at all, the
+ * best reachable worst pair over all five visions is **emberclad/voidtouched at
+ * 10.8 tritanopic** — orange against magenta, and tritanopia collapses the blue
+ * channel that separates them. No choice of the free values can lift it, so a
+ * bar of 12 here would be a number that cannot be met rather than a standard.
+ *
+ * `mono` is *not* relaxed. Greyscale collapse is the failure #77 was opened
+ * for — `rimebound` and `warded` measured 0.27 apart, one grey wearing two
+ * names — and it is the arm a low-vision player actually feels.
+ *
+ * The aura is also redundancy rather than the primary channel: it is thin
+ * additive strokes over a body whose tint already clears the full `PALETTE`
+ * bars, and `ELITE`'s bands x bits x orbit signature separates the affixes with
+ * no colour at all. `tests/readability-gate` pins the 10.8 ceiling directly, so
+ * if the pinned pair ever moves this bar has to be re-argued rather than
+ * inherited.
+ */
+export const AURA = {
+  colour: 10,
+  mono: 4,
+};
+
+/**
  * The ceiling on how alike two tier marks may be, under the same
  * aspect-preserving silhouette metric `tools/silhouette-metrics.mjs` uses to
  * keep two survivors from reading as one another.
