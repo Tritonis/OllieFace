@@ -187,13 +187,13 @@ try {
   const shipped = Object.fromEntries(TIER_ORDER.map((k) => [k, TIERS[k].color]));
   const grade = (scene) => {
     const g = gradeContrast(shipped, plates, undefined, scene);
-    const translucent = g.checks.filter((c) => ['panel', 'panel-hard', 'book-row', 'book-row-hover'].includes(c.surface));
+    const tierText = g.checks.filter((c) => ['panel', 'panel-hard', 'book-row', 'book-row-hover'].includes(c.surface));
     return {
       scene,
       ok: g.ok,
       worst: g.checks[0],
       failures: g.checks.filter((c) => !c.ok).map((c) => ({ id: c.id, surface: c.surface, ground: c.ground, ratio: +c.ratio.toFixed(2), min: c.min })),
-      worstTranslucent: translucent.sort((a, b) => a.ratio - b.ratio)[0],
+      worstTierText: tierText.sort((a, b) => a.ratio - b.ratio)[0],
     };
   };
 
@@ -202,13 +202,13 @@ try {
   const worst = grade(worstP95.colour);
 
   console.log('');
-  console.log('  ground                       worst translucent surface        verdict');
+  console.log('  ground                       worst tier-text surface          verdict');
   for (const [label, r, src] of [
     ['stylesheet black (the gate today)', best, '#05070a'],
     ['brightest scene mean', mean, `${worstMean.colour} (${worstMean.scene} ${worstMean.selector})`],
     ['brightest scene p95', worst, `${worstP95.colour} (${worstP95.scene} ${worstP95.selector})`],
   ]) {
-    const w = r.worstTranslucent;
+    const w = r.worstTierText;
     console.log(`  ${label.padEnd(34)} ${w.id}/${w.surface} ${w.ratio.toFixed(2)}:1 vs ${w.min}   ${r.ok ? 'PASS' : `FAIL (${r.failures.length} checks)`}`);
     console.log(`    ground sampled from ${src}`);
   }

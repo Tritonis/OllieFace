@@ -53,6 +53,21 @@
   --t-blight:    #c44fbc;
   --t-equipment: #bb7e00;
 
+  /* The ground tier-coloured *type* is graded against, and the reason it is
+     opaque (#104). Every panel that carries a tier name is `rgba()` over the
+     live 3D frame, so the text's contrast used to be a function of whatever the
+     camera was pointing at: measured against the brightest ground the harness
+     could find (`#ffe662`, combat, `.prompt` — `reviews/panel-ground/panel-ground.json`)
+     Blight read 1.43:1 against a 4.5 floor, and fourteen checks were under it.
+     No tier palette clears that ground at 58% alpha, so the fix is to stop the
+     scene reaching the type at all rather than to search for an eighth palette.
+
+     This is the same near-black the stylesheet already uses for its hardest
+     surfaces (`#hud` itself, the item-count outline, inverted chips). Opaque, so
+     the number below is arithmetic and not an estimate: the worst tier on it is
+     Blight at 4.99:1, half a point clear of the floor. */
+  --tier-bg:    #05070a;
+
   --panel:      rgba(6, 10, 16, 0.58);
   --panel-hard: rgba(4, 7, 12, 0.86);
   --line:       rgba(148, 182, 214, 0.30);
@@ -798,6 +813,30 @@ body.menu-open { cursor: default; }
 .t-lunar     { --tc: var(--t-lunar);     color: var(--tc); }
 .t-blight    { --tc: var(--t-blight);    color: var(--tc); }
 .t-equipment { --tc: var(--t-equipment); color: var(--tc); }
+
+/* Every place a tier colour is painted as *type* — and only those places, which
+   is why this is an explicit list rather than a rule on `.t-*` (those classes
+   sit on containers: icon tiles, toast rows, inventory groups, whose background
+   is the artwork). The chip hugs the text, carries the panel's own corner
+   radius, and is the stylesheet's near-black, so over a dark scene it is
+   invisible and over a lit one it reads as a deliberate label plate. That
+   asymmetry is the point: the type stops brightening with the scene.
+
+   `tools/colour-vision.mjs` models these four surfaces on `--tier-bg` and
+   `tests/readability-gate.test.mjs` asserts the literal fill is in this file,
+   so changing the colour here without changing it there fails the gate. */
+.tip-name,
+.tip-tier,
+.pickup-tier,
+.book-row-name {
+  display: inline-block;
+  background-color: var(--tier-bg);
+  padding: 0.04em 0.32em 0.08em;
+  margin-left: -0.32em;
+  border-radius: 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
 
 .item {
   position: relative;
@@ -3019,7 +3058,9 @@ body.menu-open { cursor: default; }
 /* Uppercase, like the tabs above it and the header above those. The index used
    to be the only Title Case type on a screen whose every other label is caps —
    two casings inside one panel is the axis-7 "inconsistent" marker. */
-.book-row-name { display: block; font-size: 0.9em; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: inherit; }
+/* No `display` here: the tier-type rule above sets `inline-block` so the opaque
+   backing hugs the name instead of banding the whole row (#104). */
+.book-row-name { font-size: 0.9em; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: inherit; }
 .book-row-sub {
   display: block;
   font-size: var(--fs-micro);

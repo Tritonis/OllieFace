@@ -303,54 +303,85 @@ const UI_BLACK = '#05070a';
  * has to be legible against.
  */
 /**
- * The third argument to `of` is the ground the translucent surfaces composite
- * onto, and it exists because four of these are `rgba()` over the live 3D
- * frame rather than over anything a stylesheet names (#78). It defaults to
- * `UI_BLACK` — the darkest the stylesheet specifies, and therefore the best
- * case — so every existing caller keeps the numbers it had. Pass a measured
- * scene colour (`tools/panel-ground.mjs`, from the harness's `panelGround`)
- * and the same four surfaces are graded against the lit case instead.
+ * The third argument to `of` is the measured scene ground (#78,
+ * `tools/panel-ground.mjs`, from the harness's `panelGround`). It defaults to
+ * `UI_BLACK`.
  *
- * The four opaque surfaces ignore it, because they are opaque; that is the
- * whole distinction the ticket turns on, and it is expressed here as which
- * entries read the argument rather than stated in prose.
+ * **No surface in this list reads it any more, and that is the fix for #104
+ * rather than an oversight.** Four of these were `rgba()` over the live 3D
+ * frame and moved with the camera; they now sit on `--tier-bg`, which is
+ * opaque. The other four always were opaque. So the tier palette's contrast is
+ * now independent of the scene entirely, and the test pins exactly that — a
+ * surface that started reading the argument again would have gone back to
+ * being lit by the game.
+ *
+ * The parameter stays because it is the instrument, not the verdict:
+ * `panel-ground.mjs` still measures the lit grounds and still grades against
+ * them, and if a future surface is translucent it plugs in here.
  */
+/**
+ * The opaque backing every tier-coloured *type* now sits on (`--tier-bg`,
+ * `src/ui/hud.css`), and the whole of #104's fix.
+ *
+ * Until this existed the four DOM surfaces below were `rgba()` fills over the
+ * live 3D frame, so a tier name's contrast was a function of the camera. The
+ * harness measured the real grounds (`reviews/panel-ground/panel-ground.json`):
+ * over the brightest, `#ffe662`, Blight read 1.43:1 against a floor of 4.5 and
+ * fourteen checks were under it. That is not a palette that can be searched out
+ * of — at 58% alpha no tier colour clears that ground — so the type was given a
+ * ground of its own instead.
+ *
+ * It is deliberately opaque. An opaque backing makes the ratio arithmetic
+ * rather than an estimate, which matters here because the measured grounds are
+ * a *lower* bound: `panelGround` renders through `r.render(scene, camera)` and
+ * bypasses the composer, so bloom and tonemapping are excluded and the real lit
+ * frame is brighter than anything that file records. A fix with thin margin
+ * over a lower bound is not a fix.
+ */
+const TIER_BG = '#05070a';
+
 export const SURFACES = [
   // --- DOM, tier-coloured text -------------------------------------------
-  // `.plate`, `.objective`, the inventory strip: `--panel` over the scene.
-  { id: 'panel', kind: 'text', translucent: true,
+  //
+  // All four resolve to the same ground now, and keeping them as four entries
+  // is not redundancy: they are the four *places* tier type is painted, they
+  // are what `src/core/Harness.js` samples and what `tools/panel-ground.mjs`
+  // reports coverage for, and if any one of them ever loses its backing this
+  // list is where that divergence has somewhere to be expressed.
+  //
+  // `base` still records which panel each sits *on*, because that panel is
+  // still translucent and still lit by the scene — it just no longer reaches
+  // the type. The test asserts each literal fill is in hud.css, so the model
+  // cannot drift from the stylesheet the way `book-row` did (#78 review).
+
+  // `.pickup-tier` on the pickup banner; `.plate` / `.objective` / the
+  // inventory strip carry `--panel` around it.
+  { id: 'panel', kind: 'text', backing: TIER_BG,
     base: { rgba: 'rgba(6, 10, 16, 0.58)', from: '--panel' },
-    of: (_p, _c, ground = UI_BLACK) => over('#060a10', 0.58, ground) },
-  // `.tip` (the tooltip name is the tier colour) and `.party-chip`.
-  { id: 'panel-hard', kind: 'text', translucent: true,
+    of: () => TIER_BG },
+  // `.tip-name` and `.tip-tier` in the tooltip; `.party-chip` in co-op.
+  { id: 'panel-hard', kind: 'text', backing: TIER_BG,
     base: { rgba: 'rgba(4, 7, 12, 0.86)', from: '--panel-hard' },
-    of: (_p, _c, ground = UI_BLACK) => over('#04070c', 0.86, ground) },
-  // `.book-row` in the logbook index, whose name inherits the tier colour, and
-  // its hover wash — the lightest ground any tier-coloured type sits on.
+    of: () => TIER_BG },
+  // `.book-row-name` in the logbook index, and the same name under the row's
+  // hover wash.
   //
   // The base is `.panel` (`rgba(6, 11, 18, 0.82)`, hud.css), not `--panel-hard`.
   // It was modelled as `--panel-hard` from #44 until #78's review, and that was
   // simply the wrong surface: `src/ui/Logbook.js` builds the modal as
   // `<div class="panel panel--book">`, and `.panel--book` sets width only. The
-  // error mattered — the lighter, less opaque base lifts the ground, and
-  // `blight/book-row-hover` goes from 4.59:1 to 4.48:1. The "0.09 of headroom on
-  // the binding case" that #44 and #78 both reason from never existed; the
-  // shipped palette was already 0.02 under the 4.5 floor on that surface,
-  // before any lit scene is considered at all.
-  {
-    id: 'book-row',
-    kind: 'text',
-    translucent: true,
+  // error mattered — the lighter, less opaque base lifted the ground, and
+  // `blight/book-row-hover` went from 4.59:1 to 4.48:1, which is to say the
+  // shipped palette was already under the floor there in the *best* case. The
+  // "0.09 of headroom on the binding case" that #44 and #78 both reason from
+  // never existed. Recorded here because it is the finding that killed the
+  // fourth-palette-search option; the backing is what replaced it.
+  { id: 'book-row', kind: 'text', backing: TIER_BG,
     base: { rgba: 'rgba(6, 11, 18, 0.82)', from: '.panel' },
-    of: (_p, _c, ground = UI_BLACK) => over('#ffffff', 0.018, over('#060b12', 0.82, ground)),
-  },
-  {
-    id: 'book-row-hover',
-    kind: 'text',
-    translucent: true,
+    of: () => TIER_BG },
+  { id: 'book-row-hover', kind: 'text', backing: TIER_BG,
     base: { rgba: 'rgba(6, 11, 18, 0.82)', from: '.panel' },
-    of: (_p, _c, ground = UI_BLACK) => over('#ffffff', 0.05, over('#060b12', 0.82, ground)),
-  },
+    of: () => TIER_BG },
 
   // --- canvas, tier-coloured graphics ------------------------------------
   // The icon plate's gradient runs from `mix(plate, #000, 0.15)` at the top to
@@ -386,9 +417,9 @@ export const CONTRAST = { text: 4.5, graphic: 3.0 };
  * surfaces that need one; an entry without one is graded on the DOM surfaces
  * alone.
  *
- * `scene` is the ground the four translucent surfaces composite onto. It
- * defaults to `UI_BLACK`, which is the best case; pass a measured scene colour
- * to grade the lit case.
+ * `scene` is the measured ground behind the HUD. Since #104 no surface reads
+ * it — the tier type sits on an opaque backing — so the result is identical for
+ * every value, which is the property `tests/readability-gate.test.mjs` asserts.
  *
  * This is for the tier palette. The elite tints are not passed to it at all —
  * they are painted on lit monsters, not on any surface this repo defines, and
