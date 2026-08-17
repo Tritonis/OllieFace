@@ -17,6 +17,7 @@ import {
   steamAvailable, hostViaSteam, joinViaSteam, onSteamInvite, openSteamInvite,
   steamInviteNeedsConfirm, steamInviteBlocked,
 } from '../net/SteamLobby.js';
+import { shouldArmTutorial } from '../systems/Tutorial.js';
 import { showSteamInviteNotice } from './SteamInviteNotice.js';
 import { REFUSE } from '../net/Protocol.js';
 import { adoptLegacyKey } from '../core/LegacyStorage.js';
