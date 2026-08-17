@@ -36,9 +36,19 @@ additive / 10240 alpha) plus `Trails`, `Decals`, `LightPool`, `BeamPool`, `RingP
 
 ### The actual gaps
 
-1. **Projectile/spell body art beyond a tracer streak and a lightning bolt.** There is no arcing
-   fireball/orb-projectile mesh or a shaped beam/bolt sprite set — `tracer()` is a thin core+glow
-   streak tuned for hitscan weapons, not a travelling spell projectile with its own silhouette.
+1. **Corrected — a shaped spell projectile already ships, outside `VFX.js`.**
+   `src/entities/Projectile.js:27-30` builds two shared geometries — a cone `body` and an
+   icosahedron `orb` — with an emissive `MeshStandardMaterial` and a ribbon trail, spawned by
+   `src/data/abilities.js:1117-1129` (`kind:'arc'`, the fireball-flask splash spell) and
+   `:384-389` (`kind:'homing'`). The original survey read only `VFX.js` and concluded a
+   whole-codebase absence from a single-file read — wrong. **The real, narrower gap:** the
+   `orb` geometry is dead code — no ability spawn site passes `orb:true`, every projectile in
+   the game currently renders as the same cone regardless of spell school — and projectile art
+   is otherwise undifferentiated: one shape, one material bucket per colour, no per-element
+   silhouette (contrast `KILL_SIGNATURE`'s deliberate per-element *death* differentiation with
+   projectile *flight*, which has none). A shortlist for "spell/projectile art" should target
+   this gap — activating/varying the existing `orb` and adding shape variety around it — not a
+   from-scratch projectile mesh, which would duplicate what already ships.
 2. **Rarity/proc feedback beyond one burst-and-ring.** `itemPickupBurst` is a single shape for
    every tier, distinguished only by `tierColour`. There is no escalating flipbook/shape language
    for higher-rarity procs (RoR2-style "this is a big deal" reads).
@@ -71,16 +81,18 @@ licence that forbids commercial use is disqualifying outright, not a matrix cell
 
 | Candidate | Spells/projectiles | Pickup/rarity/proc | Impacts/explosions | Corruption feedback | Type |
 |---|---|---|---|---|---|
-| Kenney Particle Pack | Yes (flares, streaks, magic) | Yes (stars/sparkles) | Yes (smoke/explosion) | No | Sprite/flipbook |
-| Brackeys' VFX Bundle | Yes (magic swirls, beams) | Yes (sparkle/star sheets) | Yes (fire/explosion flipbooks) | Partial (has purple/dark sheets, must be re-checked per rule 2) | Sprite/flipbook |
-| CC0 Special Effects (Ragnar Random) | Yes (spell/magic-flame animations) | No | Yes (explosions, hit/blood) | Partial (disintegration/aura effects, generic — not blight-specific) | Sprite/flipbook |
+| Kenney Particle Pack | Yes (flares, streaks, magic — as glow/trail dressing for `Projectile.js`) | Yes (stars/sparkles) | Yes (smoke/explosion) | No | Sprite/flipbook |
+| Brackeys' VFX Bundle | Yes (magic swirls, beams — same role) | Yes (sparkle/star sheets) | Yes (fire/explosion flipbooks) | Partial (has purple/dark sheets, must be re-checked per rule 2) | Sprite/flipbook — **26 MB wholesale, over budget; subset only** |
+| CC0 Special Effects (curated, 31 items) | Yes (spell/magic-flame animations) | No | Yes (explosions, hit/blood) | Partial (disintegration/aura effects, generic — not blight-specific) | Sprite/flipbook — **licence per-item, not blanket** |
 | Curl-noise FBO technique (mattdesl / al-ro) | Yes (organic trail/aura shape) | No | No | Possible (world-space noise field could echo `BlightMask`'s triplanar approach for a corruption *VFX* companion, not a replacement) | Shader / source technique |
 
 None of these fill gap 3 (corruption-specific gameplay feedback) directly — the closest is the
 curl-noise technique repurposed, not an off-the-shelf asset. That gap is better closed by
 hand-authoring inside `VFX.js`'s existing `STATUS`/`KILL_SIGNATURE` pattern than by an external
 pack, since any purple/violet-toned bought asset risks the Void double-up `ASSET-SPEC.md`
-explicitly warns against (own baked-in colour already violet -> mud under the overlay).
+explicitly warns against (own baked-in colour already violet -> mud under the overlay). Likewise
+none replaces `Projectile.js`'s mesh — they would dress the shape that already exists (glow
+billboards, trail textures) rather than provide a new one.
 
 ## Per-candidate assessment
 
@@ -101,8 +113,10 @@ explicitly warns against (own baked-in colour already violet -> mud under the ov
   match how `VFX.js` starts hot-tinted, not white, cores (see `impact()`'s comment on this).
 - **Customization**: High — raw greyscale-ish alpha shapes are colour-multiplied at runtime
   exactly like `FRAME.SPARK`/`FRAME.SMOKE` already are, so no re-authoring needed to retint.
-- **What it fills**: Gap 1 partially (generic magic-swirl/flare/beam sprites, not shaped spell
-  projectiles) and could refresh/extend the existing `FRAME` atlas rather than add a new system.
+- **What it fills**: Gap 1 as corrected — generic magic-swirl/flare sprites could supply the
+  per-element visual variety `Projectile.js` currently lacks (attached to the mesh as a glow
+  billboard or trail texture, alongside activating the existing unused `orb` geometry), not a
+  from-scratch projectile.
 
 ### 2. Brackeys' VFX Bundle — sprite/flipbook
 - **Link**: https://brackeysgames.itch.io/brackeys-vfx-bundle
@@ -112,9 +126,13 @@ explicitly warns against (own baked-in colour already violet -> mud under the ov
 - **Three.js/WebGL fit**: Same shape as Kenney's pack — flipbook PNG sheets, drop-in as sprite
   textures or atlas tiles.
 - **Licensing**: Clean, commercial-safe.
-- **Performance/payload**: Name-your-own-price download; size not stated on the page, budget as
-  comparable to the Kenney pack (tens of KB-few MB range for a sprite sheet set) — must be
-  measured against the 20 MiB shortlist-wide ceiling before any subset is imported.
+- **Performance/payload**: Page states **"Brackeys VFX Bundle v1  26 MB"** explicitly — the
+  original document's "size not stated" was wrong. 26 MB is over the entire **20 MiB**
+  shortlist-wide asset ceiling (`ASSET-SPEC.md`) on its own, before any other candidate is
+  counted. Not usable wholesale; only a hand-picked subset (re-exported at reduced resolution
+  and re-packed to a smaller atlas, as already recommended below) can fit, and that subset's
+  own size must be measured before it is counted against the ceiling — no number for it exists
+  yet.
 - **Art-style cohesion/readability**: Broader stylistic range than Kenney alone (multiple original
   authors) — more variance to screen per rule 1/rule 4 (palette mapping, value cap) before use.
   Some magic/aura sheets in this bundle read dark-purple by design; per rule 2, anything with a
@@ -124,12 +142,23 @@ explicitly warns against (own baked-in colour already violet -> mud under the ov
 - **What it fills**: Gap 1 (magic beams/swirls) and gap 2 (star/sparkle sheets for proc escalation)
   best of the four, precisely because it aggregates several CC0 sources into one broader set.
 
-### 3. "CC0 Special Effects" by Ragnar Random — sprite/flipbook
+### 3. "CC0 Special Effects" — curated OpenGameArt collection — sprite/flipbook
 - **Link**: https://opengameart.org/content/cc0-special-effects
-- **Licence**: CC0, checked 2026-08-17 on the OpenGameArt page.
-- **Three.js/WebGL fit**: Same as above — flat PNG animation sheets, drop-in sprite/flipbook use.
-- **Licensing**: Clean, commercial-safe.
-- **Performance/payload**: 29 assets; size not confirmed on the page — must be measured, not
+- **Licence**: **Corrected.** This is an OpenGameArt *Collection* page, not a licensable asset in
+  its own right — it has no licence field of its own. It aggregates **31** (not 29) separately
+  authored OpenGameArt submissions from multiple creators (CodeManu, Mikodrak, rubberduck,
+  Cethiel, and others); Ragnar Random curated the collection but authored none of it. A 4-of-31
+  spot check found every sampled sub-item independently marked "License(s): CC0" on its own
+  page, so the practical conclusion likely holds, but the collection page itself cannot be
+  licence-checked and this document previously claimed it had been. **Treat as: curated
+  aggregate, licence must be confirmed per sub-item before use, 4/31 spot-checked CC0 as of
+  2026-08-17** — not a blanket CC0 grant.
+- **Three.js/WebGL fit**: Same as above — flat PNG animation sheets, drop-in sprite/flipbook use,
+  per sub-item.
+- **Licensing**: Provisionally clean per the spot check, but each of the 31 items needs its own
+  licence line recorded before any one of them is used — do not import the collection wholesale
+  on the strength of four checks.
+- **Performance/payload**: 31 assets; size not confirmed on the page — must be measured, not
   assumed, before counting toward the 20 MiB ceiling.
 - **Art-style cohesion/readability**: Pixel-art-leaning per the page description, which is a
   stylistic mismatch with this project's rendered-3D, post-processed look (rule 4's shipping post
@@ -145,9 +174,11 @@ explicitly warns against (own baked-in colour already violet -> mud under the ov
 - **Links** (two references, cross-checked):
   - GLSL/JS gist: https://gist.github.com/mattdesl/2cd4e19150862dd5d923f4456fd245e1 — states MIT
     licence in the gist header, verified 2026-08-17.
-  - Write-up/live demo: https://al-ro.github.io/projects/embers/ ("3D Curl Noise", cites
-    Bridson et al.'s "Curl-Noise for Procedural Fluid Flow") — a technique article, not a
-    redistributable package; treat as reading material, not an importable asset.
+  - Write-up/live demo: https://al-ro.github.io/projects/particles/ ("3D Curl Noise", cites
+    Bridson et al.'s "Curl-Noise for Procedural Fluid Flow"; the originally-cited
+    `/projects/embers/` meta-refresh-redirects here — corrected to the destination URL) — a
+    technique article, not a redistributable package; treat as reading material, not an
+    importable asset.
   - **Not shortlisted**: https://github.com/juniorxsound/Particle-Curl-Noise — no LICENSE file
     found in the repository as of 2026-08-17 (checked `LICENSE` at the default branch path,
     404). Code with no stated licence is not agent-usable per `ASSET-SPEC.md`'s CC0-only rule,
@@ -158,9 +189,11 @@ explicitly warns against (own baked-in colour already violet -> mud under the ov
   velocity field sampled per-particle). `VFX.js`'s current particles are CPU-updated through
   `ParticleSystem`'s shared ring buffer; adopting this would be a second, GPU-resident particle
   path alongside it, not a drop-in extension of the existing one.
-  - **Licensing**: MIT gist is clean; the al-ro write-up is a technique description with demo
-    source visible in-browser but no explicit repo/licence link was found — treat as reference
-    only, re-derive rather than copy.
+  - **Licensing**: MIT gist is clean. **Corrected**: the al-ro write-up itself states no
+    licence, but the destination page *does* link a GitHub source
+    (`github.com/al-ro/al-ro.github.io/tree/master/projects/particles`) — that repo was checked
+    and carries no LICENSE file (404 on both `master` and `main`), so the reference-only
+    conclusion holds, but "no repo link was found" was imprecise; a link exists and was checked.
 - **Performance/payload**: Zero download payload (it is code, not an asset) but a real cost in
   build/runtime complexity — a second GPUComputationRenderer-style pass, extra render targets,
   and a shader author's time. Runs against the `combat-24` frame-time ceiling
@@ -189,16 +222,25 @@ explicitly warns against (own baked-in colour already violet -> mud under the ov
 
 For the two gaps worth spending budget on now:
 
-1. **Spell/projectile shape** (gap 1): pull a small, palette-remapped subset of Brackeys' VFX
-   Bundle (CC0) for magic-beam/orb sprite tiles, added to `VFX.js`'s `FRAME` atlas the same way
-   `FRAME.SPARK`/`FRAME.SHOCK` already work — no new rendering path needed.
+1. **Spell/projectile shape** (gap 1, corrected): the mesh already exists —
+   `src/entities/Projectile.js:27-30`. The actionable work is (a) wire `orb:true` into a subset
+   of `abilities.js` spawn sites so the geometry that already ships actually renders, and
+   (b) pull a **small, individually-sized and palette-remapped** subset of Brackeys' VFX Bundle
+   (CC0) for magic-beam/glow sprite tiles applied to the projectile mesh/trail, added to
+   `VFX.js`'s `FRAME` atlas the same way `FRAME.SPARK`/`FRAME.SHOCK` already work. **Not the
+   26 MB bundle wholesale** — it alone exceeds the 20 MiB shortlist ceiling; budget a specific
+   handful of exported/re-compressed tiles (target: comparable to the ~80-tile Kenney pack's
+   footprint) and measure the actual export size before committing it.
 2. **Rarity/proc escalation** (gap 2): same source, its star/sparkle sheets, layered into
    `itemPickupBurst`'s existing two-emitter shape as a third, tier-gated emitter rather than a
-   new system.
+   new system. Counts against the same trimmed-subset budget as (1) above, not an additional
+   26 MB.
 3. **Corruption feedback** (gap 3) and **denser spell trails** (gap 4): no external asset closes
    these safely — recommend hand-authoring inside `VFX.js` using the curl-noise technique as
    read-only reference, keeping full control over palette/Void-overlay compliance (rule 2) rather
    than importing anything with baked-in violet.
 - Flag **Magic Spell Effects 15**'s licence to the user explicitly; if they can clear it
-  (e.g. contacting the author for a broader grant), it is otherwise the strongest content match
-  found for gap 1.
+  (e.g. contacting the author for a broader grant), it remains the strongest content match found
+  for dressing spell projectiles, though it is now secondary to activating the existing `orb`.
+- Flag the **CC0 Special Effects** collection's per-item licence status to whoever picks specific
+  assets from it — do not treat the 4/31 spot check as a blanket clearance for all 31.
