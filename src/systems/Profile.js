@@ -147,6 +147,13 @@ function freshProfile() {
     // Populated from play, so it needs no id list of its own and cannot drift
     // from the content data.
     encounters: emptyByKind(),
+    // Corruption codex: id -> the numbers the moment that earned the page was
+    // worth. Separate from `unlocks.codex`, which is the lifecycle (and a
+    // timestamp, like every other unlock row). These are history rather than
+    // tuning — what a first font press actually cost is not derivable from
+    // `data/corruption.js` afterwards — so they are stored, shallow and scalar,
+    // and every page renders without them if they are missing.
+    codex: {},
     // Per-survivor career: id -> { runs, wins, deaths, kills, time, bestStage,
     // bestTime }. Keyed by id and never enumerated against a roster, so a
     // survivor added or removed by another agent costs nothing here.
@@ -174,6 +181,34 @@ function emptyByType() {
   const out = {};
   for (const t of UNLOCK_TYPES) out[t] = {};
   return out;
+}
+
+/**
+ * A codex facts blob, reduced to what may safely be stored and rendered.
+ *
+ * Shallow, and scalars only: finite numbers, strings, and arrays of strings.
+ * Anything else is dropped rather than repaired, because the consumer is a
+ * paragraph of prose — a nested object here would render as `[object Object]`
+ * in a sentence about the player's own run, and a hand-edited store must not be
+ * able to put arbitrary structure in front of the escaper.
+ *
+ * Returns null for a blob with nothing usable, so the caller can tell "no facts
+ * recorded" from "facts recorded and all of them junk" by storing neither.
+ */
+function coerceFacts(src) {
+  if (!isObj(src)) return null;
+  const out = {};
+  let kept = 0;
+  for (const k of Object.keys(src)) {
+    const v = src[k];
+    if (typeof v === 'number' && Number.isFinite(v)) { out[k] = v; kept++; }
+    else if (typeof v === 'string') { out[k] = v.slice(0, 200); kept++; }
+    else if (Array.isArray(v)) {
+      out[k] = v.filter((x) => typeof x === 'string').slice(0, 24).map((x) => x.slice(0, 60));
+      kept++;
+    }
+  }
+  return kept ? out : null;
 }
 
 function emptyByKind() {
@@ -439,6 +474,17 @@ function mergeProfiles(base, remote, mine) {
     for (const id of new Set([...Object.keys(r), ...Object.keys(m)])) {
       out.unlocks[type][id] = pick(earliest(num(r[id], 0), num(m[id], 0)), r[id]);
     }
+  }
+
+  // Codex facts follow their unlock: the earliest recording is the true one,
+  // and there is no arithmetic to reconcile. Whoever has the row keeps it; when
+  // both tabs recorded the same page, the remote copy wins so a tab with
+  // nothing new to say still goes quiet.
+  for (const id of new Set([...Object.keys(remote.codex || {}), ...Object.keys(mine.codex || {})])) {
+    const r = coerceFacts(remote.codex?.[id]);
+    const m = coerceFacts(mine.codex?.[id]);
+    if (r) out.codex[id] = r;
+    else if (m) { out.codex[id] = m; tookLocal = true; }
   }
 
   for (const id of new Set([...Object.keys(remote.challenges), ...Object.keys(mine.challenges)])) {
@@ -780,6 +826,13 @@ export class Profile {
       }
     }
 
+    if (isObj(p.codex)) {
+      for (const id of Object.keys(p.codex)) {
+        const facts = coerceFacts(p.codex[id]);
+        if (facts) out.codex[id] = facts;
+      }
+    }
+
     if (isObj(p.survivors)) {
       for (const id of Object.keys(p.survivors)) {
         const s = p.survivors[id];
@@ -932,6 +985,40 @@ export class Profile {
     if (this.data.unlocks[type]?.[id]) return true;
     const gate = gateFor(type, id);
     return !gate;
+  }
+
+  /**
+   * When the player explicitly earned this, or 0 if they never did.
+   *
+   * The question `isUnlocked` deliberately cannot answer: its default is
+   * *unlocked*, which is right for content (a survivor nobody gated is
+   * playable) and wrong for a record of something that happened (a codex page
+   * nobody has earned has nothing to show). Two questions, two methods, so
+   * neither surface has to remember which rule its type plays by.
+   */
+  unlockedAt(type, id) {
+    if (!id) return 0;
+    return num(this.data.unlocks[type]?.[id], 0);
+  }
+
+  /** What the moment that earned a codex page was worth, or null. */
+  codexFacts(id) {
+    return (id && this.data.codex[id]) || null;
+  }
+
+  /**
+   * Record the numbers behind a codex page. First write wins — a page is a
+   * record of the *first* time the player met the mechanic, so a second font
+   * press must not overwrite the first one's ledger. Returns true when it
+   * stored something.
+   */
+  noteCodex(id, facts) {
+    if (!id || this.data.codex[id]) return false;
+    const clean = coerceFacts(facts);
+    if (!clean) return false;
+    this.data.codex[id] = clean;
+    this._touch();
+    return true;
   }
 
   /** Every id the player has explicitly earned in `type`, oldest first. */

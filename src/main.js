@@ -15,6 +15,7 @@ import { Items } from './systems/Items.js';
 import { Artifacts } from './systems/Artifacts.js';
 import { Director } from './systems/Director.js';
 import { Progression } from './systems/Progression.js';
+import { Codex } from './systems/Codex.js';
 import { Realms } from './world/realms/Realms.js';
 import { VFX } from './systems/VFX.js';
 import { Audio } from './systems/Audio.js';
@@ -95,6 +96,11 @@ engine.add(new Player());
 engine.add(new Revive());
 engine.add(new Director());
 engine.add(new Progression());
+// After Progression, which owns `ctx.profile` — the codex writes its pages
+// there and has nowhere to put them until it exists. Owns no frame time and
+// changes nothing about the run: it only watches the bus and records what the
+// player has already been shown.
+engine.add(new Codex());
 // After Progression, which owns the stage flow it hooks into and the
 // Interactables list its gateways and market stalls live in.
 engine.add(new Realms());
