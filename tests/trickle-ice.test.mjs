@@ -807,11 +807,12 @@ console.log('T6 — a joiner the host never answers is told so, instead of waiti
 {
   // The relay accepts the join and then nothing comes back. Every way that
   // happens leaves the same joiner in the same place: the host page was closed
-  // or froze between the join being forwarded and the invite being minted, its
-  // `createInvite` threw, or — the one this branch made reachable — eight
-  // further joins arrived and `_admitJoiner` evicted this joiner's invite. The
-  // host cancels the connection and says nothing over the relay, so the only
-  // thing that can end this wait is the joiner's own clock.
+  // or froze between the join being forwarded and the invite being minted, or
+  // its `createInvite` threw. Nothing reaches this joiner from any of them, so
+  // the only thing that can end the wait is its own clock — which is what this
+  // block pins. (Eviction USED to belong on that list and no longer does: since
+  // #8 the host names the joiner whose invite it gave up, and that joiner fails
+  // in milliseconds rather than out here. See tests/evicted-notice.test.mjs.)
   const lobby = mkLobby();
   lobby._offerTimeoutMs = () => 60;          // the seam, not a 20 s test
   const p = lobby.joinViaRelay('ABCD2345', 'ws://relay.test');

@@ -876,6 +876,19 @@ console.log('T4 — only a host may offer, and only a joiner may answer');
   const selfAnswer = await host.recv('answer', 800).catch(() => null);
   ok(selfAnswer === null, `nor a host's answer into its own room (got ${JSON.stringify(selfAnswer)})`);
 
+  // #8 — `evicted` is held to the same rule, and needs it more than the others.
+  // The message exists to END a join: the host says "I gave your invite up" and
+  // the joiner stops waiting at once. A joiner allowed to send it could end any
+  // other joiner's handshake in the room with a single frame, using nothing but
+  // the room code every invited friend already holds.
+  host.send(JSON.stringify({ type: 'evicted', clientId: reqB.clientId }));
+  const notice = await b.recv('evicted', 2000).catch(() => null);
+  ok(notice !== null, `the host's own eviction notice reaches the joiner it names (got ${JSON.stringify(notice)})`);
+
+  b.send(JSON.stringify({ type: 'evicted', clientId: reqA.clientId }));
+  const forged = await a.recv('evicted', 800).catch(() => null);
+  ok(forged === null, `but a joiner cannot evict another joiner (got ${JSON.stringify(forged)})`);
+
   host.close(); a.close(); b.close(); server.kill();
 }
 

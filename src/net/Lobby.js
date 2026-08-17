@@ -712,7 +712,11 @@ export class Lobby {
       const clientId = this._invitesByClient.keys().next().value;
       const stale = this._invitesByClient.get(clientId);
       this._invitesByClient.delete(clientId);
-      if (stale) this._dropInvite(stale.id);
+      // Named explicitly, because the delete above has already taken this
+      // joiner out of the index `_dropInvite` would otherwise scan to find it —
+      // and a joiner evicted through this loop deserves the same news as one
+      // evicted through the other.
+      if (stale) this._dropInvite(stale.id, clientId);
     }
     return this.pendingInvites.size + this._session.minting < MAX_PENDING_INVITES;
   }
@@ -725,14 +729,41 @@ export class Lobby {
    * `HostTransport.peers`, so a bound enforced here alone would bound two maps
    * and leak every connection they ever held. `cancelInvite` closes it.
    */
-  _dropInvite(id) {
+  _dropInvite(id, clientId) {
     this.pendingInvites.delete(id);
+    const told = new Set();
     // Keyed the other way round, so this is a scan — over at most
     // MAX_PENDING_INVITES entries. Deleting while iterating a Map is defined.
-    for (const [clientId, held] of this._invitesByClient) {
-      if (held?.id === id) this._invitesByClient.delete(clientId);
+    for (const [heldClient, held] of this._invitesByClient) {
+      if (held?.id === id) { this._invitesByClient.delete(heldClient); told.add(heldClient); }
     }
+    if (clientId !== undefined) told.add(clientId);
+    for (const c of told) this._tellEvicted(c);
     this.net?.transport?.cancelInvite?.(id);
+  }
+
+  /**
+   * Tell one joiner its invite is gone.
+   *
+   * Eviction is the only outcome of a join in which the host knows the joiner is
+   * finished and the joiner does not: the connection is cancelled here and
+   * nothing crosses it, so the far end sits on `RELAY_OFFER_TIMEOUT_MS` of
+   * silence and is then told, wrongly, that the host never sent an invite. One
+   * frame back down the relay socket turns twenty seconds of nothing into an
+   * immediate, truthful answer — see the `evicted` branch of `joinViaRelay` for
+   * the other half, including why that branch refuses the message once the join
+   * has connected.
+   *
+   * Best-effort by construction. A host whose socket has already gone, or one
+   * whose run has halted, sends nothing: `_halted` is the same gate the offer
+   * and candidate sends carry, and for the same reason — a dead engine attempts
+   * no send, and a rule that holds only because the socket below swallows it is
+   * not a rule. The eviction itself is not conditional on any of that; only the
+   * telling is.
+   */
+  _tellEvicted(clientId) {
+    if (this._halted() || clientId === undefined) return;
+    try { this.ws?.send(JSON.stringify({ type: 'evicted', clientId })); } catch { /* a socket already gone */ }
   }
 
   /**
@@ -846,6 +877,26 @@ export class Lobby {
           // either, and a host that really left tears the data channel down
           // too, which reaches the screen as `netDisconnected`.
           if (!joined) fail(new Error(msg.error));
+          return;
+        }
+        if (msg.type === 'evicted') {
+          // The host gave this joiner's invite up to make room under a burst of
+          // joins. Before the offer this is the truest thing anyone can say —
+          // the alternative is the deadline's guess twenty seconds later — and
+          // it costs milliseconds instead.
+          //
+          // After the offer it is refused, and this guard is the whole reason
+          // the message is safe to have at all. The relay only forwards it from
+          // the host, but the room code is a bearer token every invited friend
+          // holds, and a host that has evicted one joiner can be a host that
+          // wants to end a connected one's session. Once `joined` is set this
+          // page's connection is peer-to-peer and no longer the relay's
+          // business, so an `evicted` arriving here is either stale or hostile
+          // and is dropped either way — same discipline as `offer` above.
+          if (joined) return;
+          fail(new Error(
+            'The host is handling too many joins right now, so they gave up your invite. '
+            + 'Try the code again in a moment.'));
           return;
         }
         if (msg.type === 'ice') {
