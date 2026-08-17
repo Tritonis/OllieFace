@@ -10,7 +10,23 @@
     <link rel="stylesheet" href="/src/ui/hud.css" />
   </head>
   <body>
-    <canvas id="viewport"></canvas>
+    <!-- The canvas is the game. Unnamed it is announced as "canvas", with no
+         hint that it is interactive or how; the description carries the short
+         version of the controls so an assistive-technology user is not obliged
+         to find the settings screen to learn that WASD moves. -->
+    <canvas
+      id="viewport"
+      tabindex="0"
+      role="application"
+      aria-label="Telluric Void — game viewport"
+      aria-describedby="viewport-help"
+    ></canvas>
+    <p id="viewport-help" class="a11y-only">
+      Move with W, A, S and D. Aim with the mouse, fire with the left button.
+      Q, E, Shift and Space use your abilities and equipment. Press Escape to
+      pause and open the menus, where every screen is navigable with the
+      arrow keys, Enter and Escape, or with a gamepad.
+    </p>
     <div id="hud"></div>
     <div id="overlay"></div>
     <script type="module" src="/src/main.js"></script>

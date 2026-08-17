@@ -32,6 +32,7 @@ import { BTN } from '../net/Protocol.js';
 import { abilityIcon, abilityArt, equipmentArt, itemArt, hexOf, TIER_ORDER, tracePathFrom } from './Icons.js';
 import { Tooltip, describeItem, prettify } from './Tooltip.js';
 import { Menus } from './Menus.js';
+import { Announcer } from './Announcer.js';
 import { isLocalVictim, isLocalKill, isLocalOwner } from '../core/Engine.js';
 
 /**
@@ -151,6 +152,9 @@ export class HUD {
 
     this.tooltip = new Tooltip(ctx, this.root);
     this.menus = new Menus(ctx);
+    // After `Menus`, which is what publishes `ctx.settings` — the announcer
+    // reads `settings.captions` off it live.
+    this.announcer = new Announcer(ctx, { live: this.refs.live, caption: this.refs.caption });
 
     // Cached DOM values — the diff target for every write below.
     this.c = {};
@@ -577,6 +581,10 @@ export class HUD {
 
   update(ctx, dt) {
     this.menus.update(ctx, dt);
+    // Ahead of the `hidden` early-return below: a caption must still expire
+    // while a full-bleed screen is up, or it is waiting on screen when the
+    // player comes back.
+    this.announcer.update(dt);
 
     const cursor = !document.pointerLockElement;
     this.set('cursor', cursor, (v) => this.root.classList.toggle('has-cursor', v));
@@ -1556,6 +1564,9 @@ function collectRefs(root) {
 
     log: q('.log'),
 
+    live: q('.a11y-live'),
+    caption: q('.caption'),
+
     slots: SLOTS.map((s) => slotRefs(root.querySelector(`[data-slot="${s.id}"]`))),
     equip: slotRefs(q('.slot--equip')),
   };
@@ -1578,6 +1589,13 @@ function slotRefs(el) {
 
 const TEMPLATE = (slots, notches, dirSlots) => `
 <div class="low-edge"></div>
+
+<!-- The two sinks of the announcer (#45, #46). The live region is visually
+     hidden and always written; the caption line is visible only while the
+     player has turned captions on, so it costs a sighted, hearing player
+     nothing. -->
+<div class="a11y-live a11y-only" role="status" aria-live="polite" aria-atomic="true"></div>
+<div class="caption" aria-hidden="true"></div>
 
 <div class="downed-overlay">
   <div class="downed-panel">
