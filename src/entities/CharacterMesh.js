@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { clamp, lerp } from '../core/MathUtil.js';
+import { attachCharacterBlight } from '../shaders/CharacterBlight.js';
 
 /**
  * Procedural survivor: a bone-like Group hierarchy built from primitives plus
@@ -333,11 +334,15 @@ export class RimStandardMaterial extends THREE.MeshStandardMaterial {
 
 function mat(color, { rough = 0.72, metal = 0.05, emissive = 0, emissiveIntensity = 1,
   rimColor, rimStrength, rimPower, hemiStrength, side } = {}) {
-  return new RimStandardMaterial({
+  // Every survivor surface takes the figure-space corruption pass, so a
+  // survivor standing in a blight patch is claimed by it the way the ground
+  // under them is. Chains under the rim/hemi hook above rather than replacing
+  // it (src/shaders/CharacterBlight.js).
+  return attachCharacterBlight(new RimStandardMaterial({
     color, roughness: rough, metalness: metal, flatShading: true,
     emissive, emissiveIntensity, rimColor, rimStrength, rimPower, hemiStrength,
     ...(side ? { side } : null),
-  });
+  }));
 }
 
 // A tapered faceted box — the workhorse limb shape. Low segment counts keep
