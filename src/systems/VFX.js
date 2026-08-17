@@ -152,12 +152,6 @@ const MAT_PRESETS = {
  * (`tipAlpha`, not `alpha`: `alpha` already means "use the alpha layer" in the
  * STATUS table below and the two must not be confused.)
  */
-const ELITE = {
-  emberclad:     { color: 0xff5a10, tip: 0xffc060, frame: FRAME.EMBER, rate: 34, rise: 1.4, tipAlpha: 0.7 },
-  galvanic: { color: 0x3f7bff, tip: 0xa9d4ff, frame: FRAME.SPARK, rate: 26, rise: 0.6, tipAlpha: 0.7 },
-  rimebound:     { color: 0x59d6ff, tip: 0x9fd8f0, frame: FRAME.HEX,   rate: 22, rise: -0.6, tipAlpha: 0.55 },
-};
-
 // Keyed to Combat's STATUS_DEFS so `ctx.vfx.status(entity, type, colour)` maps
 // straight through with no translation table on the gameplay side.
 const STATUS = {
@@ -215,7 +209,6 @@ export class VFX {
     // — every restart in this game is a `location.reload()`.
     this._overkillRecent = [];
     this._flashes = [];
-    this._auras = [];
     // target -> (type -> entry). Keyed rather than a flat list because the
     // dedup below runs on every proc; see `statusApplied`. Both levels are
     // Maps, so iteration in `_updateStatuses` stays in application order and
@@ -1054,15 +1047,6 @@ export class VFX {
     }
   }
 
-  /** Persistent elite shell. Returns a handle with .stop(). */
-  eliteAura(mesh, type = 'emberclad') {
-    if (!mesh) return null;
-    const def = ELITE[type] || ELITE.emberclad;
-    const h = { mesh, def, accum: 0, alive: true, stop() { this.alive = false; } };
-    this._auras.push(h);
-    return h;
-  }
-
   /** Jagged chained bolt: segments + branch sparks + a light + a crackle. */
   lightning(from, to, colour = 0x9fd4ff) {
     const rng = this.ctx.fxRng ?? this.ctx.rng;
@@ -1598,7 +1582,6 @@ export class VFX {
     this._updateFlashes(dt);
     this._updateDissolves(dt);
     this._updateLaunches(dt);
-    this._updateAuras(dt);
     this._updateStatuses(dt);
     this._updateDamageDirections(dt);
 
@@ -1769,38 +1752,6 @@ export class VFX {
         d.handle.release();
         this._dissolving.splice(i, 1);
       }
-    }
-  }
-
-  _updateAuras(dt) {
-    for (let i = this._auras.length - 1; i >= 0; i--) {
-      const a = this._auras[i];
-      const m = a.mesh;
-      if (!a.alive || !m || !m.parent || m.visible === false) {
-        this._auras.splice(i, 1);
-        continue;
-      }
-      a.accum += dt;
-      const interval = 1 / a.def.rate;
-      if (a.accum < interval) continue;
-      const bursts = Math.min(4, Math.floor(a.accum / interval));
-      a.accum -= bursts * interval;
-
-      m.getWorldPosition(_v1);
-      const e = this._ep();
-      e.count = bursts * 2;
-      e.position.copy(_v1); e.shell = 0.55;
-      e.dir.set(0, a.def.rise >= 0 ? 1 : -1, 0); e.spread = 1.1;
-      e.speed = Math.abs(a.def.rise) * 2.2 + 0.6; e.speedVar = 0.7;
-      e.life = 0.8; e.lifeVar = 0.5;
-      e.size0 = 0.15; e.size1 = 0.02;
-      e.color0.set(a.def.tip); e.color1.set(a.def.color);
-      e.alpha0 = a.def.tipAlpha ?? 0.7;
-      e.frame = a.def.frame;
-      e.stretch = a.def.frame === FRAME.SPARK ? 1.1 : 0;
-      e.spin = 5;
-      e.gravity = -a.def.rise * 0.6; e.drag = 1.5; e.turbulence = 0.45;
-      this.particles.emit(e);
     }
   }
 
