@@ -98,6 +98,14 @@ export const DEFAULTS = {
   // number, so it rides its own branch in `load` the way `bindings` does —
   // the generic DEFAULTS loop there only adopts finite numbers.
   controllerGlyphs: DEFAULT_GLYPH_SET,
+  // Has this install ever launched a run (#41)? 0 until the first `launch`,
+  // and the only reason it exists: the first-run scenario is armed for a
+  // player who has never played and never again unless they ask for it from
+  // the title. A number and normalised like `captions`, for the same reason --
+  // `load` only adopts finite numbers, and a corrupted store must fail toward
+  // the harmless side, which here is "you have played before" rather than
+  // ambushing a veteran with a tutorial.
+  firstRunSeen: 0,
 };
 
 const QUALITY_NAMES = ['Low', 'Medium', 'High', 'Ultra'];
@@ -271,6 +279,10 @@ export class Menus {
                demoted, and the subtitles give each plate's empty right-hand
                three quarters something to do. -->
           <button class="mbtn mbtn--go" data-nav data-act="play"><span>Play</span><em class="mbtn-sub">choose a survivor</em></button>
+          <!-- The first-run scenario (#41). Always present, not just on a
+               first run: it is armed automatically the first time and this is
+               the only way back to it afterwards. -->
+          <button class="mbtn" data-nav data-act="tutorial"><span>How to play</span><em class="mbtn-sub">a short guided run</em></button>
           <button class="mbtn" data-nav data-act="logbook"><span>Logbook</span><em class="mbtn-sub">roster &amp; bestiary</em></button>
           <!-- "(beta)" is load-bearing, not decoration: co-op has never been
                played end to end by two people on a real remote network, only
@@ -424,6 +436,11 @@ export class Menus {
             <nav class="menu-list">
               <button class="mbtn mbtn--go" data-nav data-act="resume"><span>Resume</span></button>
               <button class="mbtn" data-nav data-act="edict" data-edict-entry hidden disabled><span>The Edict</span><em class="mbtn-sub">standing order — C</em></button>
+              <!-- Shown only while the scenario is running -- see renderPause.
+                   The pause screen is where the skip lives rather than a key of
+                   its own: it is reachable from pad, mouse and keyboard already,
+                   and it costs the run no binding. -->
+              <button class="mbtn" data-nav data-act="tutorial-skip" data-tut-skip hidden disabled><span>Skip the tutorial</span></button>
               <button class="mbtn" data-nav data-act="logbook"><span>Logbook</span></button>
               <!-- Same caveat as the title-screen entry above; both say it. -->
               <button class="mbtn" data-nav data-act="coop"><span>Co-op (beta)</span></button>
@@ -1343,6 +1360,12 @@ export class Menus {
    * per-frame.
    */
   renderPause() {
+    const skip = this.root.querySelector('[data-tut-skip]');
+    if (skip) {
+      const on = !!this.ctx.tutorial?.active;
+      skip.hidden = !on;
+      skip.disabled = !on;
+    }
     const host = this.root.querySelector('[data-pause-stats]');
     const inv = this.root.querySelector('[data-pause-inv]');
     if (!host || !inv) return;
@@ -1620,6 +1643,17 @@ export class Menus {
       case 'play':
         this.push('select');
         break;
+      // Same road as Play -- survivor select, then a normal run. The scenario
+      // is not a mode; it is a coach riding along with an ordinary stage 0.
+      case 'tutorial':
+        this.tutorialNext = true;
+        this.push('select');
+        break;
+      case 'tutorial-skip':
+        this.ctx.tutorial?.skip();
+        this.renderPause();
+        this.act('resume');
+        break;
       case 'launch':
         this.launch();
         break;
@@ -1661,7 +1695,11 @@ export class Menus {
         this.back();
         break;
       case 'reset':
-        Object.assign(this.settings, DEFAULTS);
+        // `firstRunSeen` survives Defaults deliberately: it is a record of
+        // something that happened, not a knob. Restoring the video and audio
+        // sliders must not re-arm a tutorial at a player who has already
+        // played, the same reason telemetry consent sits outside this case.
+        Object.assign(this.settings, DEFAULTS, { firstRunSeen: this.settings.firstRunSeen });
         save(this.settings);
         this.apply();
         break;
@@ -1729,6 +1767,12 @@ export class Menus {
     this.ctx.startEquipmentId = this.equipmentId;
     if (!this.ctx.difficultyId) this.setDifficulty(this.currentDifficulty()?.id);
     this.newChallenges.length = 0;
+    // Armed either because they asked from the title or because this install
+    // has never launched a run at all. Read by `systems/Tutorial.js` on the
+    // stage-0 `stageStart` and cleared by it when the scenario ends.
+    this.ctx.tutorialArmed = shouldArmTutorial(this.settings, this.tutorialNext);
+    this.tutorialNext = false;
+    if (this.settings.firstRunSeen !== 1) { this.settings.firstRunSeen = 1; save(this.settings); }
     this.close();
     this.ctx.input?.canvas?.requestPointerLock?.();
   }
@@ -2758,6 +2802,7 @@ function load(fallbackQuality) {
     // Same normalisation, opposite bias: anything that is not an explicit 1 is
     // off, so a corrupted store cannot switch captions on for somebody.
     out.captions = out.captions === 1 ? 1 : 0;
+    out.firstRunSeen = out.firstRunSeen === 1 ? 1 : 0;
     // The binding map is not a number and so is deliberately outside the loop
     // above and outside `this.settings`: it lives on the live `bindings`
     // object every consumer already reads. `adopt` is defensive in the same
