@@ -36,6 +36,7 @@ import { abilityIcon, abilityArt, equipmentArt, itemArt, hexOf, TIER_ORDER, trac
 import { Tooltip, describeItem, prettify } from './Tooltip.js';
 import { Menus } from './Menus.js';
 import { Announcer } from './Announcer.js';
+import { Tutorial } from '../systems/Tutorial.js';
 import { isLocalVictim, isLocalKill, isLocalOwner } from '../core/Engine.js';
 
 /**
@@ -158,6 +159,11 @@ export class HUD {
     // After `Menus`, which is what publishes `ctx.settings` — the announcer
     // reads `settings.captions` off it live.
     this.announcer = new Announcer(ctx, { live: this.refs.live, caption: this.refs.caption });
+    // After `Menus` for the same reason: the prompts name the player's chosen
+    // glyph set, which lives on `ctx.settings`. Published on `ctx` so the pause
+    // screen's Skip has something to call.
+    this.tutorial = new Tutorial(ctx, { line: this.refs.tutorial });
+    ctx.tutorial = this.tutorial;
 
     // Cached DOM values — the diff target for every write below.
     this.c = {};
@@ -609,6 +615,9 @@ export class HUD {
     // while a full-bleed screen is up, or it is waiting on screen when the
     // player comes back.
     this.announcer.update(dt);
+    // Beside the announcer and ahead of the same early-return: a prompt naming
+    // a rebound key has to catch up even while a menu is up.
+    this.tutorial.update(dt);
 
     const cursor = !document.pointerLockElement;
     this.set('cursor', cursor, (v) => this.root.classList.toggle('has-cursor', v));
@@ -1600,6 +1609,7 @@ function collectRefs(root) {
 
     live: q('.a11y-live'),
     caption: q('.caption'),
+    tutorial: q('.tutorial-line'),
 
     slots: SLOTS.map((s) => slotRefs(root.querySelector(`[data-slot="${s.id}"]`))),
     equip: slotRefs(q('.slot--equip')),
@@ -1630,6 +1640,12 @@ const TEMPLATE = (slots, notches, dirSlots) => `
      nothing. -->
 <div class="a11y-live a11y-only" role="status" aria-live="polite" aria-atomic="true"></div>
 <div class="caption" aria-hidden="true"></div>
+
+<!-- The first-run scenario's one line (#41). Same sink shape as the caption
+     above and deliberately a second element, not a share of one: a caption and
+     a coaching prompt can be live in the same second and neither may overwrite
+     the other. -->
+<div class="tutorial-line" role="status" aria-live="polite"></div>
 
 <div class="downed-overlay">
   <div class="downed-panel">

@@ -3431,3 +3431,25 @@ body.menu-open { cursor: default; }
   transition: opacity 0.18s ease;
 }
 .caption.is-on { opacity: 1; }
+
+/* The first-run scenario's single coaching line (#41). Sits above the caption
+   line rather than sharing its slot -- both can be live in the same second --
+   and is styled quieter than a caption because it is standing advice, not an
+   event. */
+.tutorial-line {
+  position: absolute;
+  left: 50%;
+  bottom: 26%;
+  transform: translateX(-50%);
+  max-width: min(56vw, 44em);
+  padding: 0.3em 0.9em;
+  text-align: center;
+  letter-spacing: 0.02em;
+  color: #dfe8f2;
+  background: rgba(6, 10, 16, 0.68);
+  border-left: 3px solid var(--accent, #39d6d2);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+}
+.tutorial-line.is-on { opacity: 1; }
