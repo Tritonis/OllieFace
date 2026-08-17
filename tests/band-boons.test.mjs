@@ -190,7 +190,9 @@ console.log('Consumed: the last chance is free, total, and one-way');
   ok(a.interact(ctx.player) === true, 'the press succeeds');
   ok(ctx.corruption.marks === marks, 'ruin costs no marks - it is charged in the run');
   for (const b of RUIN.buffs) ok(items.buffs.get(b.buff)?.magnitude === b.magnitude, `${b.buff} is live`);
-  ok(events.some((e) => e.name === 'voidRuin'), 'the finale is told (issue #37 reads this)');
+  // Emission only. Nothing subscribes to voidRuin yet, so this asserts the
+  // signal exists, NOT that the finale behaves differently - see issue #99.
+  ok(events.some((e) => e.name === 'voidRuin'), 'the ruin signal is emitted (no finale consumer yet - #99)');
   ok(a.interact(ctx.player) === false && a.available() === false, 'and it happens exactly once');
 
   // The consequence, where it stops being prompt text.

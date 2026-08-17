@@ -125,8 +125,14 @@ export const PACTS = [
 /**
  * Consumed's last-chance state. Deliberately broken — that is the brief — and
  * deliberately one-way: `Corruption.ruined` never clears, the Argent Font stops
- * answering (the clean exit is not merely priced out, it is gone), and the
- * finale is told about it through the `voidRuin` event.
+ * answering (the clean exit is not merely priced out, it is gone).
+ *
+ * A `voidRuin` event is emitted for a finale consumer that DOES NOT EXIST YET:
+ * nothing subscribes to it, and a ruined run's finale rite is currently
+ * identical to an unruined one. The irreversible consequences that have
+ * actually shipped are the two above, both of which land before the finale.
+ * Wiring the rite to it is issue #99 - do not read this event's existence as
+ * evidence that the finale diverges.
  *
  * The duration is the rest of the run rather than a window, because a
  * last-chance power that lapses is a window, not a last chance.
