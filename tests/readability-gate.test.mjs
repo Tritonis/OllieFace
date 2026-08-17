@@ -546,8 +546,15 @@ console.log('the contrast floor catches what separating the palette cost it');
   ok(textChecks.every((c) => c.ground === '#05070a'),
      'every tier-text check is graded on the opaque --tier-bg, not on a panel fill');
 
-  // Completeness, in the shape this repo has learned to ask for: every tier
-  // against every surface, counted, rather than "the ones we thought of".
+  // Model-internal completeness: every tier against every surface, counted.
+  //
+  // This is NOT the completeness check for "is every tier-text site backed",
+  // and saying so is the point. It derives its expectation from `SURFACES`,
+  // which is the thing under test, so adding a fifth tier-text site to hud.css
+  // moves neither this number nor the `text.length === 4` below. Three unbacked
+  // sites lived at HEAD while both were green (#104 integration review, MAJOR
+  // 2). The check that can see them enumerates the stylesheet itself and lives
+  // in the block "and no tier colour is painted as type without one" below.
   const textSurfaces = SURFACES.filter((s) => s.kind === 'text').length;
   const graphicSurfaces = SURFACES.filter((s) => s.kind === 'graphic').length;
   ok(g.checks.length === TIER_ORDER.length * (textSurfaces + graphicSurfaces),
@@ -646,6 +653,105 @@ console.log('and the tier type no longer answers to the scene behind it');
   const badText = bad.checks.filter((c) => c.kind === 'text' && !c.ok);
   ok(bad.ok === false && badText.length === 4 && badText.every((c) => c.id === 'blight'),
      `a dimmed Blight fails all four text surfaces on the backing (${badText.length})`);
+}
+
+console.log('and no tier colour is painted as type without one');
+{
+  // The completeness check that can actually fail, grounded in an independent
+  // enumeration of `src/ui/hud.css` rather than in `SURFACES`.
+  //
+  // Why it exists: every other completeness assertion in this file counts the
+  // model against itself, so a new rule painting a tier colour as type moves
+  // none of them. Three such rules — `.objective-dist`, `.tp-label`,
+  // `.mutate-head` — sat in the stylesheet failing the 4.5 floor at 2.66, 2.87
+  // and 2.91 over the measured ground while the gate reported 232/232 green.
+  // Two more, `.title-kicker` and `.mbtn--go .mbtn-sub`, were not in that
+  // review's list at all and this enumeration is what found them: the title
+  // scrim falls to rgba(2,4,7,0.16) at its right edge over a live orbit, so
+  // they are over the lit frame like the rest.
+  //
+  // The rule is binary and needs no per-site ground model, which is the whole
+  // reason it can be trusted: if a `color` declaration resolves to a tier
+  // variable, that rule is either in the `--tier-bg` backing list or it is a
+  // container that only hands the colour to descendants. A new site is red by
+  // default and someone has to make a decision about it.
+  const { readFileSync } = await import('node:fs');
+  const raw = readFileSync(new URL('../src/ui/hud.css', import.meta.url), 'utf8');
+  const css = raw.replace(/\/\*[\s\S]*?\*\//g, '');
+
+  // Leaf rules only, walked brace-aware so `@media`/`@supports` wrappers are
+  // descended into rather than swallowed whole.
+  const rules = [];
+  const walk = (start, end) => {
+    let j = start, selStart = start;
+    while (j < end) {
+      if (css[j] !== '{') { j++; continue; }
+      let depth = 1, k = j + 1;
+      while (k < end && depth) { if (css[k] === '{') depth++; else if (css[k] === '}') depth--; k++; }
+      const sel = css.slice(selStart, j).replace(/\s+/g, ' ').trim();
+      const body = css.slice(j + 1, k - 1);
+      if (body.includes('{')) walk(j + 1, k - 1);
+      else rules.push({ sel, body });
+      j = k; selStart = k;
+    }
+  };
+  walk(0, css.length);
+  ok(rules.length > 400, `the stylesheet parsed into ${rules.length} leaf rules`);
+
+  // A `color` whose value reaches the tier ladder: the seven `--t-*` variables,
+  // the `--tc` and `--tier` relays that carry one, or `inherit` inside a tier
+  // container. `--tier-bg` must not match `--tier`, hence the delimiter.
+  const TIER_VAR = /var\(\s*--t-(?:common|uncommon|legendary|boss|lunar|blight|equipment)\s*[,)]/;
+  const RELAY = /var\(\s*(?:--tc|--tier)\s*[,)]/;
+  const paintsTier = (body) => body.split(';').some((d) => {
+    const m = /^\s*color\s*:\s*([\s\S]+)$/.exec(d);
+    return !!m && (TIER_VAR.test(m[1]) || RELAY.test(m[1]) || m[1].trim() === 'inherit');
+  });
+  const sites = rules.filter((r) => paintsTier(r.body)).map((r) => r.sel);
+
+  // The backed set, read out of the stylesheet's own backing rule.
+  const backingRule = rules.find((r) => /background-color:\s*var\(--tier-bg\)/.test(r.body));
+  ok(!!backingRule, 'a rule paints background-color: var(--tier-bg)');
+  const backed = backingRule.sel.split(',').map((s) => s.replace(/\s+/g, ' ').trim());
+
+  // Containers: they set the tier colour so descendants can inherit it, and
+  // paint no type of their own. Every descendant that does render type either
+  // overrides `color` (`.toast span` to --ink, `.book-row-sub` to --ink-faint,
+  // `.ditem b` to #05070a on an opaque tier fill) or is in the backed set
+  // (`.book-row-name`). This list is explicit and short on purpose — it is the
+  // only escape hatch, and a stale entry fails below.
+  const CONTAINERS = ['.t-common', '.t-uncommon', '.t-legendary', '.t-boss',
+                      '.t-lunar', '.t-blight', '.t-equipment'];
+
+  const unbacked = sites.filter((s) => !backed.includes(s) && !CONTAINERS.includes(s));
+  ok(unbacked.length === 0,
+     `every rule painting a tier colour as type has an opaque backing (unbacked: ${
+       unbacked.join(' | ') || 'none'})`);
+
+  // The guard has to be able to see anything at all. A regex that stopped
+  // matching, or a parser that returned nothing, would satisfy the assertion
+  // above vacuously — which is precisely the failure this whole block exists to
+  // close one level up.
+  ok(sites.length >= CONTAINERS.length + 5,
+     `and it found ${sites.length} such rules, not zero`);
+
+  // No stale entries either way. Two of the backed selectors take their tier
+  // colour from JavaScript rather than from a `color` declaration, so they are
+  // not in `sites` and must be justified against the file that colours them —
+  // an inline `color` does not remove the CSS background, so they stay backed.
+  const JS_COLOURED = { '.tip-name': 'name', '.tip-tier': 'tier' };
+  const tooltip = readFileSync(new URL('../src/ui/Tooltip.js', import.meta.url), 'utf8');
+  for (const [sel, ref] of Object.entries(JS_COLOURED)) {
+    ok(tooltip.includes(`this.refs.${ref}.style.color = meta.color`),
+       `${sel} is coloured from Tooltip.js (refs.${ref}), which is why it is not a CSS site`);
+  }
+  for (const sel of backed) {
+    ok(sites.includes(sel) || sel in JS_COLOURED,
+       `${sel} still receives a tier colour — no stale entry in the backing rule`);
+  }
+  for (const sel of CONTAINERS) {
+    ok(sites.includes(sel), `${sel} still relays a tier colour — no stale entry in the container list`);
+  }
 }
 
 console.log('one palette, three tables');
