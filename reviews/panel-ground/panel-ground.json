@@ -1,0 +1,1097 @@
+{
+  "commit": "b101d1c40d65aaa6eaa3063666372896cfcf8480",
+  "seed": 1337,
+  "viewport": [
+    1600,
+    900
+  ],
+  "capturedAt": "2026-08-17T16:55:45.140Z",
+  "samples": [
+    {
+      "scene": "biome-1",
+      "ok": true,
+      "mask": [
+        480,
+        270
+      ],
+      "panels": [
+        {
+          "selector": ".objective",
+          "surface": "panel",
+          "present": true,
+          "px": 1280,
+          "rect": [
+            588,
+            87,
+            424,
+            27
+          ],
+          "mean": "#171129",
+          "p95": "#18132c"
+        },
+        {
+          "selector": ".prompt",
+          "surface": "panel",
+          "present": true,
+          "px": 3570,
+          "rect": [
+            452,
+            496,
+            695,
+            52
+          ],
+          "mean": "#3a2614",
+          "p95": "#756210"
+        },
+        {
+          "selector": ".tip",
+          "surface": "panel-hard",
+          "present": true,
+          "px": 1365,
+          "rect": [
+            0,
+            0,
+            348,
+            42
+          ],
+          "mean": "#17112b",
+          "p95": "#191228"
+        },
+        {
+          "selector": ".party-chip",
+          "surface": "panel-hard",
+          "present": false
+        },
+        {
+          "selector": ".book-list",
+          "surface": "book-row",
+          "present": false
+        },
+        {
+          "selector": ".panel--book",
+          "surface": "book-row",
+          "present": false
+        }
+      ]
+    },
+    {
+      "scene": "biome-2",
+      "ok": true,
+      "mask": [
+        480,
+        270
+      ],
+      "panels": [
+        {
+          "selector": ".objective",
+          "surface": "panel",
+          "present": true,
+          "px": 1280,
+          "rect": [
+            588,
+            87,
+            424,
+            27
+          ],
+          "mean": "#23271c",
+          "p95": "#4a522c"
+        },
+        {
+          "selector": ".prompt",
+          "surface": "panel",
+          "present": true,
+          "px": 3360,
+          "rect": [
+            452,
+            504,
+            695,
+            52
+          ],
+          "mean": "#151a0e",
+          "p95": "#354217"
+        },
+        {
+          "selector": ".tip",
+          "surface": "panel-hard",
+          "present": true,
+          "px": 1365,
+          "rect": [
+            0,
+            0,
+            348,
+            42
+          ],
+          "mean": "#181c15",
+          "p95": "#36392c"
+        },
+        {
+          "selector": ".party-chip",
+          "surface": "panel-hard",
+          "present": false
+        },
+        {
+          "selector": ".book-list",
+          "surface": "book-row",
+          "present": false
+        },
+        {
+          "selector": ".panel--book",
+          "surface": "book-row",
+          "present": false
+        }
+      ]
+    },
+    {
+      "scene": "biome-3",
+      "ok": true,
+      "mask": [
+        480,
+        270
+      ],
+      "panels": [
+        {
+          "selector": ".objective",
+          "surface": "panel",
+          "present": true,
+          "px": 1280,
+          "rect": [
+            588,
+            87,
+            424,
+            27
+          ],
+          "mean": "#0d0a13",
+          "p95": "#31191a"
+        },
+        {
+          "selector": ".prompt",
+          "surface": "panel",
+          "present": true,
+          "px": 3360,
+          "rect": [
+            452,
+            504,
+            695,
+            52
+          ],
+          "mean": "#390f36",
+          "p95": "#81506c"
+        },
+        {
+          "selector": ".tip",
+          "surface": "panel-hard",
+          "present": true,
+          "px": 1365,
+          "rect": [
+            0,
+            0,
+            348,
+            42
+          ],
+          "mean": "#221626",
+          "p95": "#60395a"
+        },
+        {
+          "selector": ".party-chip",
+          "surface": "panel-hard",
+          "present": false
+        },
+        {
+          "selector": ".book-list",
+          "surface": "book-row",
+          "present": false
+        },
+        {
+          "selector": ".panel--book",
+          "surface": "book-row",
+          "present": false
+        }
+      ]
+    },
+    {
+      "scene": "biome-4",
+      "ok": true,
+      "mask": [
+        480,
+        270
+      ],
+      "panels": [
+        {
+          "selector": ".objective",
+          "surface": "panel",
+          "present": true,
+          "px": 1280,
+          "rect": [
+            588,
+            87,
+            424,
+            27
+          ],
+          "mean": "#1b1010",
+          "p95": "#69413b"
+        },
+        {
+          "selector": ".prompt",
+          "surface": "panel",
+          "present": true,
+          "px": 3360,
+          "rect": [
+            452,
+            504,
+            695,
+            52
+          ],
+          "mean": "#040203",
+          "p95": "#0a0405"
+        },
+        {
+          "selector": ".tip",
+          "surface": "panel-hard",
+          "present": true,
+          "px": 1365,
+          "rect": [
+            0,
+            0,
+            348,
+            42
+          ],
+          "mean": "#110806",
+          "p95": "#5e2d17"
+        },
+        {
+          "selector": ".party-chip",
+          "surface": "panel-hard",
+          "present": false
+        },
+        {
+          "selector": ".book-list",
+          "surface": "book-row",
+          "present": false
+        },
+        {
+          "selector": ".panel--book",
+          "surface": "book-row",
+          "present": false
+        }
+      ]
+    },
+    {
+      "scene": "vista",
+      "ok": true,
+      "mask": [
+        480,
+        270
+      ],
+      "panels": [
+        {
+          "selector": ".objective",
+          "surface": "panel",
+          "present": true,
+          "px": 1280,
+          "rect": [
+            588,
+            87,
+            424,
+            27
+          ],
+          "mean": "#151129",
+          "p95": "#17132e"
+        },
+        {
+          "selector": ".prompt",
+          "surface": "panel",
+          "present": true,
+          "px": 3360,
+          "rect": [
+            452,
+            504,
+            695,
+            52
+          ],
+          "mean": "#261d0a",
+          "p95": "#66550e"
+        },
+        {
+          "selector": ".tip",
+          "surface": "panel-hard",
+          "present": true,
+          "px": 1365,
+          "rect": [
+            0,
+            0,
+            348,
+            42
+          ],
+          "mean": "#151028",
+          "p95": "#141029"
+        },
+        {
+          "selector": ".party-chip",
+          "surface": "panel-hard",
+          "present": false
+        },
+        {
+          "selector": ".book-list",
+          "surface": "book-row",
+          "present": false
+        },
+        {
+          "selector": ".panel--book",
+          "surface": "book-row",
+          "present": false
+        }
+      ]
+    },
+    {
+      "scene": "gameplay",
+      "ok": true,
+      "mask": [
+        480,
+        270
+      ],
+      "panels": [
+        {
+          "selector": ".objective",
+          "surface": "panel",
+          "present": true,
+          "px": 1280,
+          "rect": [
+            588,
+            87,
+            424,
+            27
+          ],
+          "mean": "#020100",
+          "p95": "#050301"
+        },
+        {
+          "selector": ".prompt",
+          "surface": "panel",
+          "present": true,
+          "px": 3360,
+          "rect": [
+            452,
+            504,
+            695,
+            52
+          ],
+          "mean": "#0b080c",
+          "p95": "#443b6e"
+        },
+        {
+          "selector": ".tip",
+          "surface": "panel-hard",
+          "present": true,
+          "px": 1365,
+          "rect": [
+            0,
+            0,
+            348,
+            42
+          ],
+          "mean": "#020201",
+          "p95": "#050402"
+        },
+        {
+          "selector": ".party-chip",
+          "surface": "panel-hard",
+          "present": false
+        },
+        {
+          "selector": ".book-list",
+          "surface": "book-row",
+          "present": false
+        },
+        {
+          "selector": ".panel--book",
+          "surface": "book-row",
+          "present": false
+        }
+      ]
+    },
+    {
+      "scene": "combat",
+      "ok": true,
+      "mask": [
+        480,
+        270
+      ],
+      "panels": [
+        {
+          "selector": ".objective",
+          "surface": "panel",
+          "present": true,
+          "px": 1280,
+          "rect": [
+            588,
+            87,
+            424,
+            27
+          ],
+          "mean": "#421e22",
+          "p95": "#ff5d18"
+        },
+        {
+          "selector": ".prompt",
+          "surface": "panel",
+          "present": true,
+          "px": 3360,
+          "rect": [
+            452,
+            504,
+            695,
+            52
+          ],
+          "mean": "#674426",
+          "p95": "#ffe662"
+        },
+        {
+          "selector": ".tip",
+          "surface": "panel-hard",
+          "present": true,
+          "px": 1365,
+          "rect": [
+            0,
+            0,
+            348,
+            42
+          ],
+          "mean": "#151028",
+          "p95": "#161028"
+        },
+        {
+          "selector": ".party-chip",
+          "surface": "panel-hard",
+          "present": false
+        },
+        {
+          "selector": ".book-list",
+          "surface": "book-row",
+          "present": false
+        },
+        {
+          "selector": ".panel--book",
+          "surface": "book-row",
+          "present": false
+        }
+      ]
+    },
+    {
+      "scene": "boss",
+      "ok": true,
+      "mask": [
+        480,
+        270
+      ],
+      "panels": [
+        {
+          "selector": ".objective",
+          "surface": "panel",
+          "present": true,
+          "px": 1000,
+          "rect": [
+            635,
+            87,
+            329,
+            27
+          ],
+          "mean": "#562b10",
+          "p95": "#e57326"
+        },
+        {
+          "selector": ".prompt",
+          "surface": "panel",
+          "present": true,
+          "px": 3360,
+          "rect": [
+            452,
+            504,
+            695,
+            52
+          ],
+          "mean": "#1d0f0a",
+          "p95": "#664128"
+        },
+        {
+          "selector": ".tip",
+          "surface": "panel-hard",
+          "present": true,
+          "px": 1365,
+          "rect": [
+            0,
+            0,
+            348,
+            42
+          ],
+          "mean": "#de440d",
+          "p95": "#ff500d"
+        },
+        {
+          "selector": ".party-chip",
+          "surface": "panel-hard",
+          "present": false
+        },
+        {
+          "selector": ".book-list",
+          "surface": "book-row",
+          "present": false
+        },
+        {
+          "selector": ".panel--book",
+          "surface": "book-row",
+          "present": false
+        }
+      ]
+    },
+    {
+      "scene": "explosion",
+      "ok": true,
+      "mask": [
+        480,
+        270
+      ],
+      "panels": [
+        {
+          "selector": ".objective",
+          "surface": "panel",
+          "present": true,
+          "px": 1280,
+          "rect": [
+            588,
+            87,
+            424,
+            27
+          ],
+          "mean": "#291718",
+          "p95": "#683519"
+        },
+        {
+          "selector": ".prompt",
+          "surface": "panel",
+          "present": true,
+          "px": 3360,
+          "rect": [
+            452,
+            504,
+            695,
+            52
+          ],
+          "mean": "#110807",
+          "p95": "#111c2e"
+        },
+        {
+          "selector": ".tip",
+          "surface": "panel-hard",
+          "present": true,
+          "px": 1365,
+          "rect": [
+            0,
+            0,
+            348,
+            42
+          ],
+          "mean": "#5a251c",
+          "p95": "#ff5d15"
+        },
+        {
+          "selector": ".party-chip",
+          "surface": "panel-hard",
+          "present": false
+        },
+        {
+          "selector": ".book-list",
+          "surface": "book-row",
+          "present": false
+        },
+        {
+          "selector": ".panel--book",
+          "surface": "book-row",
+          "present": false
+        }
+      ]
+    },
+    {
+      "scene": "loaded-hud",
+      "ok": true,
+      "mask": [
+        480,
+        270
+      ],
+      "panels": [
+        {
+          "selector": ".objective",
+          "surface": "panel",
+          "present": true,
+          "px": 1280,
+          "rect": [
+            588,
+            87,
+            424,
+            27
+          ],
+          "mean": "#080713",
+          "p95": "#0d0a14"
+        },
+        {
+          "selector": ".prompt",
+          "surface": "panel",
+          "present": true,
+          "px": 3360,
+          "rect": [
+            452,
+            504,
+            695,
+            52
+          ],
+          "mean": "#2d0e10",
+          "p95": "#b3262b"
+        },
+        {
+          "selector": ".tip",
+          "surface": "panel-hard",
+          "present": true,
+          "px": 1365,
+          "rect": [
+            0,
+            0,
+            348,
+            42
+          ],
+          "mean": "#2b1309",
+          "p95": "#97310b"
+        },
+        {
+          "selector": ".party-chip",
+          "surface": "panel-hard",
+          "present": false
+        },
+        {
+          "selector": ".book-list",
+          "surface": "book-row",
+          "present": false
+        },
+        {
+          "selector": ".panel--book",
+          "surface": "book-row",
+          "present": false
+        }
+      ]
+    },
+    {
+      "scene": "inventory",
+      "ok": true,
+      "mask": [
+        480,
+        270
+      ],
+      "panels": [
+        {
+          "selector": ".objective",
+          "surface": "panel",
+          "present": true,
+          "px": 1280,
+          "rect": [
+            588,
+            87,
+            424,
+            27
+          ],
+          "mean": "#060613",
+          "p95": "#090814"
+        },
+        {
+          "selector": ".prompt",
+          "surface": "panel",
+          "present": true,
+          "px": 3360,
+          "rect": [
+            452,
+            504,
+            695,
+            52
+          ],
+          "mean": "#583b1e",
+          "p95": "#ffba66"
+        },
+        {
+          "selector": ".tip",
+          "surface": "panel-hard",
+          "present": true,
+          "px": 1365,
+          "rect": [
+            0,
+            0,
+            348,
+            42
+          ],
+          "mean": "#180e15",
+          "p95": "#933813"
+        },
+        {
+          "selector": ".party-chip",
+          "surface": "panel-hard",
+          "present": false
+        },
+        {
+          "selector": ".book-list",
+          "surface": "book-row",
+          "present": false
+        },
+        {
+          "selector": ".panel--book",
+          "surface": "book-row",
+          "present": false
+        }
+      ]
+    },
+    {
+      "scene": "logbook",
+      "ok": true,
+      "mask": [
+        480,
+        270
+      ],
+      "panels": [
+        {
+          "selector": ".objective",
+          "surface": "panel",
+          "present": true,
+          "px": 1280,
+          "rect": [
+            588,
+            87,
+            424,
+            27
+          ],
+          "mean": "#080713",
+          "p95": "#110b15"
+        },
+        {
+          "selector": ".prompt",
+          "surface": "panel",
+          "present": true,
+          "px": 3360,
+          "rect": [
+            452,
+            504,
+            695,
+            52
+          ],
+          "mean": "#070405",
+          "p95": "#060910"
+        },
+        {
+          "selector": ".tip",
+          "surface": "panel-hard",
+          "present": true,
+          "px": 1365,
+          "rect": [
+            0,
+            0,
+            348,
+            42
+          ],
+          "mean": "#2b1309",
+          "p95": "#94320b"
+        },
+        {
+          "selector": ".party-chip",
+          "surface": "panel-hard",
+          "present": false
+        },
+        {
+          "selector": ".book-list",
+          "surface": "book-row",
+          "present": true,
+          "px": 12090,
+          "rect": [
+            147,
+            258,
+            304,
+            432
+          ],
+          "mean": "#0f0804",
+          "p95": "#3e2211"
+        },
+        {
+          "selector": ".panel--book",
+          "surface": "book-row",
+          "present": true,
+          "px": 81180,
+          "rect": [
+            119,
+            121,
+            1361,
+            658
+          ],
+          "mean": "#0c0707",
+          "p95": "#261f32"
+        }
+      ]
+    }
+  ],
+  "worstMean": {
+    "scene": "boss",
+    "selector": ".tip",
+    "colour": "#de440d",
+    "kind": "mean"
+  },
+  "worstP95": {
+    "scene": "combat",
+    "selector": ".prompt",
+    "colour": "#ffe662",
+    "kind": "p95"
+  },
+  "coverage": [
+    {
+      "surface": "panel",
+      "samples": 24,
+      "via": [
+        ".objective",
+        ".prompt"
+      ],
+      "neverPresent": []
+    },
+    {
+      "surface": "panel-hard",
+      "samples": 12,
+      "via": [
+        ".tip"
+      ],
+      "neverPresent": [
+        ".party-chip"
+      ]
+    },
+    {
+      "surface": "book-row",
+      "samples": 2,
+      "via": [
+        ".book-list",
+        ".panel--book"
+      ],
+      "neverPresent": []
+    }
+  ],
+  "grades": {
+    "best": {
+      "scene": "#05070a",
+      "ok": false,
+      "worst": {
+        "id": "blight",
+        "surface": "book-row-hover",
+        "kind": "text",
+        "ground": "#12161d",
+        "ratio": 4.48247365498051,
+        "min": 4.5,
+        "ok": false
+      },
+      "failures": [
+        {
+          "id": "blight",
+          "surface": "book-row-hover",
+          "ground": "#12161d",
+          "ratio": 4.48,
+          "min": 4.5
+        }
+      ],
+      "worstTranslucent": {
+        "id": "blight",
+        "surface": "book-row-hover",
+        "kind": "text",
+        "ground": "#12161d",
+        "ratio": 4.48247365498051,
+        "min": 4.5,
+        "ok": false
+      }
+    },
+    "mean": {
+      "scene": "#de440d",
+      "ok": false,
+      "worst": {
+        "id": "blight",
+        "surface": "panel",
+        "kind": "text",
+        "ground": "#61220f",
+        "ratio": 2.976923279305696,
+        "min": 4.5,
+        "ok": false
+      },
+      "failures": [
+        {
+          "id": "blight",
+          "surface": "panel",
+          "ground": "#61220f",
+          "ratio": 2.98,
+          "min": 4.5
+        },
+        {
+          "id": "equipment",
+          "surface": "panel",
+          "ground": "#61220f",
+          "ratio": 3.5,
+          "min": 4.5
+        },
+        {
+          "id": "blight",
+          "surface": "book-row-hover",
+          "ground": "#38211d",
+          "ratio": 3.7,
+          "min": 4.5
+        },
+        {
+          "id": "blight",
+          "surface": "book-row",
+          "ground": "#311915",
+          "ratio": 4.05,
+          "min": 4.5
+        },
+        {
+          "id": "legendary",
+          "surface": "panel",
+          "ground": "#61220f",
+          "ratio": 4.2,
+          "min": 4.5
+        },
+        {
+          "id": "equipment",
+          "surface": "book-row-hover",
+          "ground": "#38211d",
+          "ratio": 4.34,
+          "min": 4.5
+        }
+      ],
+      "worstTranslucent": {
+        "id": "blight",
+        "surface": "panel",
+        "kind": "text",
+        "ground": "#61220f",
+        "ratio": 2.976923279305696,
+        "min": 4.5,
+        "ok": false
+      }
+    },
+    "worst": {
+      "scene": "#ffe662",
+      "ok": false,
+      "worst": {
+        "id": "blight",
+        "surface": "panel",
+        "kind": "text",
+        "ground": "#6f6632",
+        "ratio": 1.4331821138239826,
+        "min": 4.5,
+        "ok": false
+      },
+      "failures": [
+        {
+          "id": "blight",
+          "surface": "panel",
+          "ground": "#6f6632",
+          "ratio": 1.43,
+          "min": 4.5
+        },
+        {
+          "id": "equipment",
+          "surface": "panel",
+          "ground": "#6f6632",
+          "ratio": 1.68,
+          "min": 4.5
+        },
+        {
+          "id": "legendary",
+          "surface": "panel",
+          "ground": "#6f6632",
+          "ratio": 2.02,
+          "min": 4.5
+        },
+        {
+          "id": "lunar",
+          "surface": "panel",
+          "ground": "#6f6632",
+          "ratio": 2.66,
+          "min": 4.5
+        },
+        {
+          "id": "blight",
+          "surface": "book-row-hover",
+          "ground": "#3d3c2b",
+          "ratio": 2.76,
+          "min": 4.5
+        },
+        {
+          "id": "blight",
+          "surface": "book-row",
+          "ground": "#373624",
+          "ratio": 3.03,
+          "min": 4.5
+        },
+        {
+          "id": "boss",
+          "surface": "panel",
+          "ground": "#6f6632",
+          "ratio": 3.16,
+          "min": 4.5
+        },
+        {
+          "id": "equipment",
+          "surface": "book-row-hover",
+          "ground": "#3d3c2b",
+          "ratio": 3.24,
+          "min": 4.5
+        },
+        {
+          "id": "equipment",
+          "surface": "book-row",
+          "ground": "#373624",
+          "ratio": 3.55,
+          "min": 4.5
+        },
+        {
+          "id": "blight",
+          "surface": "panel-hard",
+          "ground": "#272618",
+          "ratio": 3.77,
+          "min": 4.5
+        },
+        {
+          "id": "legendary",
+          "surface": "book-row-hover",
+          "ground": "#3d3c2b",
+          "ratio": 3.89,
+          "min": 4.5
+        },
+        {
+          "id": "uncommon",
+          "surface": "panel",
+          "ground": "#6f6632",
+          "ratio": 4.09,
+          "min": 4.5
+        },
+        {
+          "id": "legendary",
+          "surface": "book-row",
+          "ground": "#373624",
+          "ratio": 4.27,
+          "min": 4.5
+        },
+        {
+          "id": "equipment",
+          "surface": "panel-hard",
+          "ground": "#272618",
+          "ratio": 4.43,
+          "min": 4.5
+        }
+      ],
+      "worstTranslucent": {
+        "id": "blight",
+        "surface": "panel",
+        "kind": "text",
+        "ground": "#6f6632",
+        "ratio": 1.4331821138239826,
+        "min": 4.5,
+        "ok": false
+      }
+    }
+  },
+  "pageErrors": []
+}

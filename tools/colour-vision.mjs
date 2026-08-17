@@ -302,23 +302,54 @@ const UI_BLACK = '#05070a';
  * plate, which differs per tier — a colour partly lighting the surface it then
  * has to be legible against.
  */
+/**
+ * The third argument to `of` is the ground the translucent surfaces composite
+ * onto, and it exists because four of these are `rgba()` over the live 3D
+ * frame rather than over anything a stylesheet names (#78). It defaults to
+ * `UI_BLACK` — the darkest the stylesheet specifies, and therefore the best
+ * case — so every existing caller keeps the numbers it had. Pass a measured
+ * scene colour (`tools/panel-ground.mjs`, from the harness's `panelGround`)
+ * and the same four surfaces are graded against the lit case instead.
+ *
+ * The four opaque surfaces ignore it, because they are opaque; that is the
+ * whole distinction the ticket turns on, and it is expressed here as which
+ * entries read the argument rather than stated in prose.
+ */
 export const SURFACES = [
   // --- DOM, tier-coloured text -------------------------------------------
   // `.plate`, `.objective`, the inventory strip: `--panel` over the scene.
-  { id: 'panel', kind: 'text', of: () => over('#060a10', 0.58, UI_BLACK) },
+  { id: 'panel', kind: 'text', translucent: true,
+    base: { rgba: 'rgba(6, 10, 16, 0.58)', from: '--panel' },
+    of: (_p, _c, ground = UI_BLACK) => over('#060a10', 0.58, ground) },
   // `.tip` (the tooltip name is the tier colour) and `.party-chip`.
-  { id: 'panel-hard', kind: 'text', of: () => over('#04070c', 0.86, UI_BLACK) },
+  { id: 'panel-hard', kind: 'text', translucent: true,
+    base: { rgba: 'rgba(4, 7, 12, 0.86)', from: '--panel-hard' },
+    of: (_p, _c, ground = UI_BLACK) => over('#04070c', 0.86, ground) },
   // `.book-row` in the logbook index, whose name inherits the tier colour, and
   // its hover wash — the lightest ground any tier-coloured type sits on.
+  //
+  // The base is `.panel` (`rgba(6, 11, 18, 0.82)`, hud.css), not `--panel-hard`.
+  // It was modelled as `--panel-hard` from #44 until #78's review, and that was
+  // simply the wrong surface: `src/ui/Logbook.js` builds the modal as
+  // `<div class="panel panel--book">`, and `.panel--book` sets width only. The
+  // error mattered — the lighter, less opaque base lifts the ground, and
+  // `blight/book-row-hover` goes from 4.59:1 to 4.48:1. The "0.09 of headroom on
+  // the binding case" that #44 and #78 both reason from never existed; the
+  // shipped palette was already 0.02 under the 4.5 floor on that surface,
+  // before any lit scene is considered at all.
   {
     id: 'book-row',
     kind: 'text',
-    of: () => over('#ffffff', 0.018, over('#04070c', 0.86, UI_BLACK)),
+    translucent: true,
+    base: { rgba: 'rgba(6, 11, 18, 0.82)', from: '.panel' },
+    of: (_p, _c, ground = UI_BLACK) => over('#ffffff', 0.018, over('#060b12', 0.82, ground)),
   },
   {
     id: 'book-row-hover',
     kind: 'text',
-    of: () => over('#ffffff', 0.05, over('#04070c', 0.86, UI_BLACK)),
+    translucent: true,
+    base: { rgba: 'rgba(6, 11, 18, 0.82)', from: '.panel' },
+    of: (_p, _c, ground = UI_BLACK) => over('#ffffff', 0.05, over('#060b12', 0.82, ground)),
   },
 
   // --- canvas, tier-coloured graphics ------------------------------------
@@ -355,18 +386,22 @@ export const CONTRAST = { text: 4.5, graphic: 3.0 };
  * surfaces that need one; an entry without one is graded on the DOM surfaces
  * alone.
  *
+ * `scene` is the ground the four translucent surfaces composite onto. It
+ * defaults to `UI_BLACK`, which is the best case; pass a measured scene colour
+ * to grade the lit case.
+ *
  * This is for the tier palette. The elite tints are not passed to it at all —
  * they are painted on lit monsters, not on any surface this repo defines, and
  * a contrast floor against a ground nobody can measure would be a number with
  * nothing behind it.
  */
-export function gradeContrast(set, plates = {}, floors = CONTRAST) {
+export function gradeContrast(set, plates = {}, floors = CONTRAST, scene = UI_BLACK) {
   const checks = [];
   for (const [id, colour] of Object.entries(set)) {
     for (const surface of SURFACES) {
       const plate = plates[id];
       if (surface.kind === 'graphic' && !plate) continue;
-      const ground = surface.of(plate, colour);
+      const ground = surface.of(plate, colour, scene);
       const ratio = contrastRatio(colour, ground);
       const min = floors[surface.kind];
       checks.push({ id, surface: surface.id, kind: surface.kind, ground, ratio, min, ok: ratio >= min });
