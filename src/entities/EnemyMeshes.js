@@ -243,6 +243,27 @@ const PALETTE = {
  * The worst pair is now 10.8 (tritan) and 4.0 desaturated, against 0.27
  * desaturated before.
  *
+ * What the capture measured, and what it cost. `11-bestiary` spawns a `warded`
+ * Warden on a body sized for the aura to read, so it is the one shot that can
+ * see this change. Against `reviews/preserved-0816/verify-master-capture`
+ * (master, 08-16) the Warden's footprint **halved**, 3329 px to 1647, which at
+ * 50% is far outside this harness's sub-percent run noise — a darker aura is
+ * genuinely a dimmer one. Two things make that acceptable rather than a
+ * regression: 1647 px is still 7.5x the 220 px per-object floor, and the pale
+ * aura had been lighting its own backdrop (bgLum 53.3), so separation actually
+ * *improved*, 0.17 to 0.19. The shot fails on that object in both runs and
+ * failed before this change; it is not this change's doing.
+ *
+ * Do not reach for `eliteChroma` to check this. It averages `meanColour` over
+ * the whole mesh, and `warded` tints only the ward crystal (`bands: 0,
+ * bits: 0`), so the tint swamps it: it returns byte-identical numbers to four
+ * decimals for the pale and the dark value alike. It cannot see this column.
+ *
+ * If the Warden ever needs its brightness back, 0x542680 clears the same bars
+ * at margin 1.54 and is the ready-made lighter candidate — but it is unmeasured,
+ * and swapping a captured value for an uncaptured one is how this comment got
+ * its correction in the first place.
+ *
  * `tests/readability-gate` grades the tints and, since #77, the auras.
  */
 export const ELITE = {
