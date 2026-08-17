@@ -2995,22 +2995,7 @@ export function installHarness(ctx) {
       // pixels. Waited out before the re-space, because these frames let the
       // crowd charge back in and undo it.
       const hidden = await awaitVisibleHorde();
-      // 25 m rather than the default 46, and 25 rather than the 30 this shipped
-      // with. Issue #86: at 30 the weakest of the eight gated members straddled
-      // the 0.25 floor — 0.25 and 0.29 on two unchanged trees, 0.37 on the
-      // baseline boot measured in `reviews/issue86/base1` — because the objects
-      // sitting on the top-8 pixel cut are the back rank, and the back rank is
-      // where the fog is. Pulling the band in to 25 lifts `worstGatedSep` to
-      // **0.49**, reproduced on three consecutive boots
-      // (`reviews/issue86/d25a|d25b|d25c`), with subject `px` up 9492 -> 10679.
-      // Aggregate `sepP50` pays for it: 0.65 -> 0.63, a ~3% drop, well clear of
-      // its own 0.27 bar and the trade this change is making — the union median
-      // gives up a little so the weakest individual gains a lot.
-      // `visibleObjects` goes 22 -> 21 against a floor of 8, and no object
-      // failure appears in any run. Only the four `manifest.json` files are
-      // committed; their `04-combat.png` siblings are ~2.1 MB each and were left
-      // out of the tree.
-      // Past about 30 m on this stage the fog
+      // 30 m rather than the default 46. Past about 30 m on this stage the fog
       // has taken enough of a monster that it stops standing off what is behind
       // it: measured in `reviews/round6/diag-combat4.json`, the hulk — the
       // largest card in the deck — came back at 32.6 m with sepP50 0.23 against
@@ -3042,7 +3027,7 @@ export function installHarness(ctx) {
        * lever that has ever moved object 7 off the frame edge — and it is
        * REFUTED: it took the capture to four failing shots.
        * `reviews/round6/cfit3/manifest.json`, and see the seat loop. */
-      declutter(12, { keep: mark, maxDist: 25, avoidFit: true });
+      declutter(12, { keep: mark, maxDist: 30, avoidFit: true });
       if (mark && markAt) mark.position.copy(markAt);
       await frames(2);
       freeze();
