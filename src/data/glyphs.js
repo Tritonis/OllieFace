@@ -1,7 +1,7 @@
 // Controller layout glyph sets (#42) — the names on-screen prompts print for
-// pad buttons. `Bindings.padLabel` always prints the Xbox-face names because
-// that is what `PAD_BUTTON` is keyed on; a PlayStation or Switch player
-// reading "Press A" for a button their pad does not have is exactly the
+// pad buttons. Before this file, prompts always printed the Xbox-face names
+// because that is what `PAD_BUTTON` is keyed on; a PlayStation or Switch
+// player reading "Press A" for a button their pad does not have is exactly the
 // mismatch this file exists to close. Selection is manual (Settings), never
 // auto-detected — no gamepad-vendor sniffing exists anywhere in this repo to
 // default it from, so inventing one would be guessing, the same posture the
@@ -20,7 +20,8 @@ export const GLYPH_SETS = [
   { id: 'generic', label: 'Generic' },
 ];
 
-/** The shipped default — identical to `Bindings.padLabel`'s own naming. */
+/** The shipped default — the historical Xbox-face naming every prompt used
+ *  to print unconditionally. */
 export const DEFAULT_GLYPH_SET = 'xbox';
 
 const NAMES = {
