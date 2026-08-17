@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { cloneCharacterBlightMaterial } from './CharacterBlight.js';
 
 /**
  * Noise dissolve, applied by patching an existing material rather than
@@ -143,10 +144,12 @@ function acquireVariant(source) {
   let free = _pool.get(source);
   if (!free) { free = []; _pool.set(source, free); }
   if (free.length) return free.pop();
-  const m = source.clone();
-  // `Material.copy` round-trips userData through JSON, so a clone of an
-  // already-patched material inherits a dead uniform bag that would make
-  // `applyDissolve` bail out. Drop it and build a live one.
+  // `Material.copy` round-trips userData through JSON and copies no
+  // own-property hook, so a clone of an already-patched material inherits dead
+  // uniform bags. The corruption pass has the same problem and its own repair
+  // (a live per-rig anchor is not optional — the binder writes into it every
+  // frame), so a blighted source is re-cloned through that instead.
+  const m = source.userData.charBlight ? cloneCharacterBlightMaterial(source) : source.clone();
   delete m.userData.dissolveUniforms;
   applyDissolve(m);
   return m;

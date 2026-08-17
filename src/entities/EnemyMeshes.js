@@ -23,7 +23,8 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RimStandardMaterial } from './CharacterMesh.js';
 import { clamp, lerp } from '../core/MathUtil.js';
-import { attachCharacterBlight } from '../shaders/CharacterBlight.js';
+import { attachCharacterBlight, cloneCharacterBlightMaterial, bindCharacterBlightAnchor }
+  from '../shaders/CharacterBlight.js';
 
 // ---------------------------------------------------------------------------
 // geometry cache
@@ -305,6 +306,12 @@ function mixHex(a, b, t) {
   return _c1.lerp(_c2, t).getHex();
 }
 
+// Species+affix TEMPLATES, not the materials that render. Every rig clones its
+// four out of here (`rigMats` below) because the blight pass needs a per-rig
+// anchor uniform, and a uniform on a shared material is shared with the whole
+// horde. See src/shaders/CharacterBlight.js's header for why nothing cheaper
+// works. The clones share the template's program cache key, so the extra cost
+// is material objects — bounded by the rig POOL — and not shader compiles.
 const MATS = new Map();
 function matsFor(id, affix) {
   const key = `${id}:${affix || '-'}`;
@@ -367,6 +374,25 @@ function matsFor(id, affix) {
   // stops at the creature's outline and reads as ground decoration.
   for (const k of ['body', 'dark', 'accent', 'eye']) attachCharacterBlight(m[k]);
   MATS.set(key, m);
+  return m;
+}
+
+const MAT_SLOTS = ['body', 'dark', 'accent', 'eye'];
+
+/**
+ * This rig's own four materials for a species+affix. Cached ON THE RIG, so the
+ * count is bounded by (pool size x affixes a rig has actually worn) and never
+ * by spawn count: a pooled rig re-acquired for a new enemy reuses the set it
+ * already built.
+ */
+function rigMats(rig, affix) {
+  const key = affix || '-';
+  let m = rig.matCache.get(key);
+  if (m) return m;
+  const t = matsFor(rig.id, affix);
+  m = {};
+  for (const k of MAT_SLOTS) m[k] = cloneCharacterBlightMaterial(t[k]);
+  rig.matCache.set(key, m);
   return m;
 }
 
@@ -676,13 +702,14 @@ function newRig(id) {
     crumble: [],
     aura: null, auraBits: null,
     affix: null, flashing: false,
-    mats: matsFor(id, null),
+    matCache: new Map(), mats: null,
     centerY: 1, height: 2, animate: null,
     // Contact shadow: slot in the shared instanced pool, footprint radius, and
     // whether this species ever touches the ground at all.
     shadow: acquireShadowSlot(), shadowR: 0.7, flyer: false,
     setAffix, setFlash, beginDeath, resetRig,
   };
+  rig.mats = rigMats(rig, null);
   return rig;
 }
 
@@ -818,7 +845,7 @@ function applyMats(rig, m) {
 
 function setAffix(affix) {
   this.affix = affix && ELITE[affix] ? affix : null;
-  this.mats = matsFor(this.id, this.affix);
+  this.mats = rigMats(this, this.affix);
   if (!this.flashing) applyMats(this, this.mats);
   if (this.aura) {
     const e = this.affix ? ELITE[this.affix] : null;
@@ -4489,11 +4516,24 @@ export const ENEMY_IDS = Object.keys(BUILDERS);
 
 const POOL = new Map();
 
+/**
+ * Build one pool entry. Every surface of the finished rig is pointed at the rig
+ * ROOT for blight coverage, so a monster crossing a patch rim is claimed as one
+ * creature rather than splitting across its own body (#101). Done as one sweep
+ * after the builder rather than inside `add`, because two body kits (stalker
+ * shards, acolyte glyphs) construct meshes directly.
+ */
+function buildRig(id) {
+  const rig = BUILDERS[id]();
+  rig.root.traverse((o) => { if (o.isMesh) bindCharacterBlightAnchor(o, rig.root); });
+  return rig;
+}
+
 /** Take a rig from the pool (or build one). Always returns it in a clean pose. */
 export function acquireRig(id) {
   let list = POOL.get(id);
   if (!list) { list = []; POOL.set(id, list); }
-  const rig = list.length ? list.pop() : BUILDERS[id]();
+  const rig = list.length ? list.pop() : buildRig(id);
   rig.resetRig();
   return rig;
 }
@@ -4510,7 +4550,7 @@ export function releaseRig(rig) {
 export function prewarm(id, count) {
   const list = POOL.get(id) || [];
   while (list.length < count) {
-    const rig = BUILDERS[id]();
+    const rig = buildRig(id);
     rig.resetRig();
     list.push(rig);
   }

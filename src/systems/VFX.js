@@ -3,6 +3,7 @@ import { ParticleSystem, FRAME } from '../fx/ParticleSystem.js';
 import { Trails } from '../fx/Trails.js';
 import { Decals, DECAL } from '../fx/Decals.js';
 import { makeDissolvable } from '../shaders/DissolveShader.js';
+import { cloneCharacterBlightMaterial } from '../shaders/CharacterBlight.js';
 import { MAX_BLASTS } from '../shaders/DistortShader.js';
 import { clamp, lerp } from '../core/MathUtil.js';
 import { elementOf, sparkColour, ELEMENT_HUE } from '../data/damageTypes.js';
@@ -1335,8 +1336,13 @@ export class VFX {
           const m = list[i];
           if (!m.emissive) continue;
           // Clone once so flashing one enemy never lights up every enemy that
-          // happens to share the prefab material.
-          const cl = m.clone();
+          // happens to share the prefab material. This clone REPLACES the
+          // mesh's material for the rest of the rig's life, so it has to carry
+          // everything the original did: `Material.copy` drops own-property
+          // hooks and JSON-flattens userData, which silently stripped the
+          // corruption pass off any figure that had ever been hit, and now
+          // would also leave it with a dead blight anchor.
+          const cl = m.userData.charBlight ? cloneCharacterBlightMaterial(m) : m.clone();
           if (Array.isArray(c.material)) c.material[i] = cl; else c.material = cl;
           rec.mats.push(cl);
           rec.base.push(cl.emissive.clone(), cl.emissiveIntensity ?? 1);
