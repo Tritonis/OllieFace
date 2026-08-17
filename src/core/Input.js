@@ -51,8 +51,13 @@ export class Input {
     // never eat a really-held mouse button.
     this._kbLeft = false;
     this._kbRight = false;
-    // physical code -> the virtual code its still-held press was translated to.
-    this._pressedVirtual = new Map();
+    // virtual code -> the set of physical codes whose still-held presses were
+    // translated to it. Two facts in one structure: what a given press applied
+    // (so its release undoes THAT, never what the current map would say), and
+    // how many sources are holding a virtual code (so it clears only when the
+    // last one lets go). Both mattered: a mid-hold rebind used to strand a
+    // flag, and then to drop one a second physical key was still holding.
+    this._holders = new Map();
 
     // The live map by default; injectable so tests (and any future per-profile
     // input) can hand in their own without touching module state.
@@ -63,27 +68,12 @@ export class Input {
       this._padState.deviceUsed('kb');
       const code = this._virtual(e.code);
       if (!code) return;
-      // Remember the translation this press was given. A rebind between the
-      // press and the release would otherwise resolve keyup against the NEW
-      // map, leaving the pressed state — a held key, or worse a held fire flag
-      // — with nothing that will ever undo it (review Critical).
-      this._pressedVirtual.set(e.code, code);
-      if (isMouseCode(code)) { this._setKbMouse(code, true); return; }
-      this.keys.add(code);
-      this.pressed.add(code);
+      this._applyPress(e.code, code);
     });
-    addEventListener('keyup', (e) => {
-      // The release undoes what the press did, not what the current map says
-      // that key would do now.
-      const code = this._pressedVirtual.get(e.code) ?? this._virtual(e.code);
-      this._pressedVirtual.delete(e.code);
-      if (!code) return;
-      if (isMouseCode(code)) { this._setKbMouse(code, false); return; }
-      this.keys.delete(code);
-    });
+    addEventListener('keyup', (e) => this._applyRelease(e.code));
     addEventListener('blur', () => {
       this.keys.clear();
-      this._pressedVirtual.clear();
+      this._holders.clear();
       this._domLeft = this._domRight = false;
       this._kbLeft = this._kbRight = false;
       this.mouse.left = this._padRT;
@@ -97,19 +87,24 @@ export class Input {
       // same lookup: unbound (or bound to a gameplay key) it stops driving fire.
       const physical = `Mouse${e.button}`;
       const code = this.bindings.virtualForKey(physical);
-      if (code) this._pressedVirtual.set(physical, code);
+      if (!code) return;
+      // The physical mouse buttons keep their own held flags (`_domLeft`/
+      // `_domRight`), which the screenshot harness and the pad path both read,
+      // so fire stays on those rather than going through `_holders`.
       if (code === MOUSE_LEFT) { this._domLeft = true; this.mouse.left = true; this.mouse.leftEdge = true; }
       else if (code === MOUSE_RIGHT) { this._domRight = true; this.mouse.right = true; this.mouse.rightEdge = true; }
-      else if (code) { this.keys.add(code); this.pressed.add(code); }
+      else this._applyPress(physical, code);
     });
     addEventListener('mouseup', (e) => {
-      // Same rule as keyup: the release follows the press's own translation.
+      // Same rule as keyup: the release follows the press's own translation,
+      // and a mouse button that was driving fire is released as fire.
       const physical = `Mouse${e.button}`;
-      const code = this._pressedVirtual.get(physical) ?? this.bindings.virtualForKey(physical);
-      this._pressedVirtual.delete(physical);
+      if (this._holders.size && this._releaseHeld(physical)) return;
+      const code = this.bindings.virtualForKey(physical);
       if (code === MOUSE_LEFT) { this._domLeft = false; this.mouse.left = this._padRT || this._kbLeft; }
       else if (code === MOUSE_RIGHT) { this._domRight = false; this.mouse.right = this._padLT || this._kbRight; }
-      else if (code) this.keys.delete(code);
+      else if (this._domLeft && physical === 'Mouse0') { this._domLeft = false; this.mouse.left = this._padRT || this._kbLeft; }
+      else if (this._domRight && physical === 'Mouse2') { this._domRight = false; this.mouse.right = this._padLT || this._kbRight; }
     });
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     addEventListener('mousemove', (e) => {
@@ -152,6 +147,36 @@ export class Input {
     const mapped = this.bindings.virtualForKey(physical);
     if (mapped) return mapped;
     return this.bindings.isVirtual(physical) ? null : physical;
+  }
+
+  /** Record a press and, if it is the first source, apply its virtual state. */
+  _applyPress(physical, virtual) {
+    let set = this._holders.get(virtual);
+    if (!set) { set = new Set(); this._holders.set(virtual, set); }
+    const first = set.size === 0;
+    set.add(physical);
+    if (isMouseCode(virtual)) { if (first) this._setKbMouse(virtual, true); return; }
+    this.keys.add(virtual);
+    // The edge fires per press even when a second source already holds the
+    // code: an edge is "somebody pressed", not "the state changed".
+    this.pressed.add(virtual);
+  }
+
+  /** Release whatever this physical code applied. */
+  _applyRelease(physical) { this._releaseHeld(physical); }
+
+  /** @returns true if this physical code was holding something. */
+  _releaseHeld(physical) {
+    for (const [virtual, set] of this._holders) {
+      if (!set.delete(physical)) continue;
+      if (set.size === 0) {
+        this._holders.delete(virtual);
+        if (isMouseCode(virtual)) this._setKbMouse(virtual, false);
+        else this.keys.delete(virtual);
+      }
+      return true;
+    }
+    return false;
   }
 
   /** Transition-only write, matching the pad triggers above. */

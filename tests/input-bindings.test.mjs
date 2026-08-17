@@ -122,8 +122,30 @@ fire('keydown', { code: 'KeyG' });
 bindings.bindKey('sprint', 'KeyH');
 fire('keyup', { code: 'KeyG' });
 check('mid-hold rebind releases a held key', !input.down('ShiftLeft'));
+// ...and while a SECOND physical source still holds the same action, the first
+// one letting go must not clear it. The state is per virtual code, refcounted
+// by the physical presses holding it.
+bindings.bindKey('primary', 'KeyM');
+fire('keydown', { code: 'KeyM' });
+bindings.bindKey('primary', 'KeyN');
+fire('keydown', { code: 'KeyN' });
+fire('keyup', { code: 'KeyM' });
+check('fire survives releasing one of two holders', input.mouse.left === true, input.mouse.left);
+fire('keyup', { code: 'KeyN' });
+check('fire clears when the last holder lets go', input.mouse.left === false);
+
+bindings.bindKey('utility', 'KeyM');
+fire('keydown', { code: 'KeyM' });
+bindings.bindKey('utility', 'KeyJ');
+fire('keydown', { code: 'KeyJ' });
+fire('keyup', { code: 'KeyM' });
+check('a key survives releasing one of two holders', input.actionDown('utility') === true);
+fire('keyup', { code: 'KeyJ' });
+check('the key clears when the last holder lets go', input.actionDown('utility') === false);
+
 bindings.bindKey('primary', 'Mouse0');
 bindings.bindKey('sprint', 'ShiftLeft');
+bindings.bindKey('utility', 'KeyQ');
 
 // A rebound PAD button reaches the same virtual code.
 bindings.bindPad('utility', PAD_BUTTON.RB);   // swaps with `special`
