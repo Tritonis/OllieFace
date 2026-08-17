@@ -19,10 +19,10 @@ import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 
 const here = dirname(fileURLToPath(import.meta.url));
-// Overridable only for this file's own test-of-the-test (see #95): pointing
-// root at a scratch fixture lets us prove the guard is still strict when it
-// is NOT running from a linked worktree, without touching real machine
-// state. Unset in every normal run, so normal behavior is untouched.
+// Manual diagnostic override, not consumed by any automated run: pointing
+// root at a scratch fixture lets a human fixture-test these checks against
+// arbitrary machine state without touching the real install. Unset in every
+// normal run (including `npm test`), so normal behavior is untouched.
 const root = process.env.INSTALL_HEALTH_TEST_ROOT
   ? resolvePath(process.env.INSTALL_HEALTH_TEST_ROOT)
   : join(here, '..');

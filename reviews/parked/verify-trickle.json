@@ -3,7 +3,7 @@
     {
       "n": 1,
       "mode": "trickle",
-      "ms": 6540,
+      "ms": 6786,
       "err": null,
       "bothOpen": true,
       "client": {
@@ -27,182 +27,31 @@
           }
         ]
       }
-    },
-    {
-      "n": 2,
-      "mode": "control",
-      "ms": 2632,
-      "err": null,
-      "bothOpen": true,
-      "client": {
-        "connected": true,
-        "myNetId": 28,
-        "role": "client",
-        "authority": false,
-        "trickle": false,
-        "state": "open",
-        "events": "open",
-        "status": "connected"
-      },
-      "host": {
-        "playerCount": 2,
-        "peers": [
-          {
-            "id": 2,
-            "pawn": true,
-            "state": "open",
-            "events": "open"
-          }
-        ]
-      }
-    },
-    {
-      "n": 3,
-      "mode": "trickle",
-      "ms": 1155,
-      "err": null,
-      "bothOpen": true,
-      "client": {
-        "connected": true,
-        "myNetId": 31,
-        "role": "client",
-        "authority": false,
-        "trickle": true,
-        "state": "open",
-        "events": "open",
-        "status": "connected"
-      },
-      "host": {
-        "playerCount": 2,
-        "peers": [
-          {
-            "id": 3,
-            "pawn": true,
-            "state": "open",
-            "events": "open"
-          }
-        ]
-      }
-    },
-    {
-      "n": 4,
-      "mode": "control",
-      "ms": 2773,
-      "err": null,
-      "bothOpen": true,
-      "client": {
-        "connected": true,
-        "myNetId": 33,
-        "role": "client",
-        "authority": false,
-        "trickle": false,
-        "state": "open",
-        "events": "open",
-        "status": "connected"
-      },
-      "host": {
-        "playerCount": 2,
-        "peers": [
-          {
-            "id": 4,
-            "pawn": true,
-            "state": "open",
-            "events": "open"
-          }
-        ]
-      }
-    },
-    {
-      "n": 5,
-      "mode": "trickle",
-      "ms": 993,
-      "err": null,
-      "bothOpen": true,
-      "client": {
-        "connected": true,
-        "myNetId": 36,
-        "role": "client",
-        "authority": false,
-        "trickle": true,
-        "state": "open",
-        "events": "open",
-        "status": "connected"
-      },
-      "host": {
-        "playerCount": 2,
-        "peers": [
-          {
-            "id": 5,
-            "pawn": true,
-            "state": "open",
-            "events": "open"
-          }
-        ]
-      }
-    },
-    {
-      "n": 6,
-      "mode": "control",
-      "ms": 2145,
-      "err": null,
-      "bothOpen": true,
-      "client": {
-        "connected": true,
-        "myNetId": 38,
-        "role": "client",
-        "authority": false,
-        "trickle": false,
-        "state": "open",
-        "events": "open",
-        "status": "connected"
-      },
-      "host": {
-        "playerCount": 2,
-        "peers": [
-          {
-            "id": 6,
-            "pawn": true,
-            "state": "open",
-            "events": "open"
-          }
-        ]
-      }
     }
   ],
   "steps": [
-    "relay up on ws://localhost:49986",
+    "relay up on ws://localhost:57209",
     "host booted",
-    "room U66L | host negotiated trickle = true",
+    "room U9KZ2RUZ | host negotiated trickle = true",
     "client 1 booted (mode: trickle)",
-    "join 1 (trickle): 6540 ms | trickle=true | channels open/open | host sees 2 players",
-    "client 2 booted (mode: control)",
-    "join 2 (control): 2632 ms | trickle=false | channels open/open | host sees 2 players",
-    "client 3 booted (mode: trickle)",
-    "join 3 (trickle): 1155 ms | trickle=true | channels open/open | host sees 2 players",
-    "client 4 booted (mode: control)",
-    "join 4 (control): 2773 ms | trickle=false | channels open/open | host sees 2 players",
-    "client 5 booted (mode: trickle)",
-    "join 5 (trickle): 993 ms | trickle=true | channels open/open | host sees 2 players",
-    "client 6 booted (mode: control)",
-    "join 6 (control): 2145 ms | trickle=false | channels open/open | host sees 2 players",
-    "SUMMARY {\"joins\":6,\"connected\":6,\"trickleNegotiated\":true,\"trickle\":{\"n\":3,\"minMs\":993,\"maxMs\":6540},\"control\":{\"n\":3,\"minMs\":2145,\"maxMs\":2773},\"manualPathBaseline\":\"0.6-1.2 s fast / 3.3-10.9 s when a side ate the 4 s cap (reviews/audit-fixes/ice-quiescence-refuted.md)\"}"
+    "join 1 (trickle): 6786 ms | trickle=true | channels open/open | host sees 2 players",
+    "WARNING: join 1 took 6786 ms (>2000 ms) — per this file's docstring, a slow join has NOT reproduced the fix regardless of the average across the run",
+    "SUMMARY {\"joins\":1,\"connected\":1,\"trickleNegotiated\":true,\"trickle\":{\"n\":1,\"minMs\":6786,\"maxMs\":6786},\"control\":{\"n\":0},\"manualPathBaseline\":\"0.6-1.2 s fast / 3.3-10.9 s when a side ate the 4 s cap (reviews/audit-fixes/ice-quiescence-refuted.md)\"}"
   ],
-  "signalUrl": "ws://localhost:49986",
-  "code": "U66L",
+  "signalUrl": "ws://localhost:57209",
+  "code": "U9KZ2RUZ",
   "hostTrickle": true,
   "summary": {
-    "joins": 6,
-    "connected": 6,
+    "joins": 1,
+    "connected": 1,
     "trickleNegotiated": true,
     "trickle": {
-      "n": 3,
-      "minMs": 993,
-      "maxMs": 6540
+      "n": 1,
+      "minMs": 6786,
+      "maxMs": 6786
     },
     "control": {
-      "n": 3,
-      "minMs": 2145,
-      "maxMs": 2773
+      "n": 0
     },
     "manualPathBaseline": "0.6-1.2 s fast / 3.3-10.9 s when a side ate the 4 s cap (reviews/audit-fixes/ice-quiescence-refuted.md)"
   }

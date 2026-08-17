@@ -190,8 +190,14 @@ console.log('orphanJunctionCheck: unit fixture');
 // --- Live check against the real repo ---------------------------------------
 console.log('live check against the real .claude/worktrees/');
 {
+  // `git rev-parse --git-common-dir` returns a path RELATIVE to the cwd it was
+  // run in (for a main checkout, typically just `.git`). Resolving it against
+  // process.cwd() rather than repoRoot makes this arm's outcome depend on the
+  // shell's cwd at invocation time, not on which checkout is actually being
+  // tested: run from a foreign cwd and it silently SKIPs with a false message
+  // and exit 0. Anchoring on repoRoot instead makes this cwd-independent.
   const gitCommonDir = execFileSync('git', ['rev-parse', '--git-common-dir'], { cwd: repoRoot, encoding: 'utf8' }).trim();
-  const mainRoot = resolve(gitCommonDir, '..');
+  const mainRoot = resolve(repoRoot, gitCommonDir, '..');
   const isMainCheckout = norm(mainRoot) === norm(repoRoot);
 
   if (!isMainCheckout) {

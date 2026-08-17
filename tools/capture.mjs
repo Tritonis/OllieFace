@@ -354,13 +354,17 @@ try {
   await page.goto(`http://127.0.0.1:${PORT}/?seed=${SEED}&quality=3&harness=1&pinclock=1`,
                   { waitUntil: 'load', timeout: GOTO_TIMEOUT_MS });
 } catch (err) {
-  throw new Error(
-    `page.goto timed out after ${GOTO_TIMEOUT_MS}ms navigating to the dev server. ` +
-    `This has previously been caused by a crowded repo root (stale worktrees under ` +
-    `.claude/worktrees/ each keeping vite busy watching their own tree) slowing the ` +
-    `dev server's response to a crawl — check for and remove stale worktrees before ` +
-    `assuming this is a real regression. Original error: ${err.message}`
-  );
+  const isTimeout = err?.name === 'TimeoutError' || /timeout/i.test(err?.message ?? '');
+  if (isTimeout) {
+    throw new Error(
+      `page.goto timed out after ${GOTO_TIMEOUT_MS}ms navigating to the dev server. ` +
+      `This has previously been caused by a crowded repo root (stale worktrees under ` +
+      `.claude/worktrees/ each keeping vite busy watching their own tree) slowing the ` +
+      `dev server's response to a crawl — check for and remove stale worktrees before ` +
+      `assuming this is a real regression. Original error: ${err.message}`
+    );
+  }
+  throw err;
 }
 log('loaded; waiting for stage...');
 

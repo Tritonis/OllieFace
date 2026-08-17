@@ -2359,19 +2359,6 @@ export function installHarness(ctx) {
     { id: '04-combat::horde', kind: 'perSep', value: 0.25,
       note: 'weakest of the 8 gated horde members straddles the floor (0.25 / 0.29 on two unchanged runs); wants arena fill or framing, not a per-subject change' },
 
-    // The market's second stall sits on the margin bar exactly — 0.27 against a
-    // 0.27 marginPerSep — after #69 took the Hollow Market's flagstone down to a
-    // real dark value. That change is what let the survivor read at all (0.23 ->
-    // 0.31), and the stall was carried back over the floor with it by giving the
-    // prop its own light and dark rungs (`MarketStall`, `RealmProps.js`): it went
-    // 0.23 -> 0.25 -> 0.27 across the fix. It lands on the bar rather than short
-    // of it, which is the boundary-flaky shape the `04-combat` entry above is
-    // about, not a subject that is failing. `MIN_SEPARATION` still binds through
-    // `marginBar`'s `Math.max`, so this holds the ground the fix won at 0.25 and
-    // opens no door under the floor. Wants the stall's own value ladder widened
-    // again if it ever slips, not a floor move.
-    { id: '22-realm-market::the market stalls', kind: 'perSep', value: 0.25,
-      note: 'second stall sits on the margin bar exactly after the #69 floor darkening; floor 0.25 still binds' },
   ];
 
   const marginExemption = (shot, subject, kind) => SEP_MARGIN_EXEMPTIONS.find(
