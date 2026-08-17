@@ -24,6 +24,12 @@ let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// An abandoned mint throws inside a promise chain whose caller has already
+// settled, which is exactly the shape that leaks an unhandled rejection if the
+// wiring is wrong. Collected rather than fatal so the assertion can name it.
+const unhandled = [];
+process.on('unhandledRejection', (e) => unhandled.push(e));
+
 /* A peer connection whose `setLocalDescription` never comes back. */
 function hungPc() {
   const pc = {
@@ -127,6 +133,49 @@ console.log('#73 — a mint that never settles releases its claim at the cap');
   ok(lastPc().closed === true, 'the half-built peer connection was given up rather than leaked');
   ok(lobby.net.transport.peers.size === 0,
      `nothing was left in the transport's peer map (got ${lobby.net.transport.peers.size})`);
+}
+
+console.log('#73 — a mint that answers AFTER its deadline is abandoned, not registered');
+{
+  // The race the never-settling case above cannot reach: the browser does come
+  // back, just too late. By then the caller has been told the mint failed and
+  // has released its claim, so the peer must not be registered — `peers` is
+  // where an invite's connection lives and nothing would ever close it again.
+  const late = hungPc();
+  late.iceGatheringState = 'complete';                  // so waitForIce is not the wait
+  late.setLocalDescription = (d) => new Promise((resolve) => setTimeout(() => {
+    late.localDescription = d ?? { type: 'offer', sdp: 'v=0 offer' };
+    resolve();
+  }, CAP * 3));                                         // resolves well after the deadline
+  globalThis.RTCPeerConnection = function () { return late; };
+
+  const ctx = makeCtx();
+  const lobby = new Lobby(makeEngine(ctx), ctx);
+  const open = lobby.hostViaRelay('ws://relay.test');
+  const ws = FakeWS.last;
+  ws.open();
+  await ws.recv({ type: 'hosting', code: 'ABCD', v: 2 });
+  await open;
+  lobby.net.transport._mintTimeoutMs = () => CAP;
+
+  const inFlight = ws.recv({ type: 'joinRequest', clientId: 5 }).catch(() => {});
+  ok(minting(lobby) === 1, `the claim is taken (got ${minting(lobby)})`);
+
+  await wait(CAP * 8);                                  // past both the deadline and the late answer
+  await inFlight;
+
+  ok(minting(lobby) === 0, `the claim was released at the deadline (got ${minting(lobby)})`);
+  ok(lobby.net.transport.peers.size === 0,
+     `the late answer did not register a peer nobody would ever close (got ${lobby.net.transport.peers.size})`);
+  ok(late.closed === true, 'and its connection is closed rather than leaked');
+  ok(lobby.pendingInvites.size === 0,
+     `nor did a dead invite reach the pending map (got ${lobby.pendingInvites.size})`);
+  ok(unhandled.length === 0,
+     `no unhandled rejection escaped the abandoned mint (got ${unhandled.map((e) => e?.message).join('; ')})`);
+
+  globalThis.RTCPeerConnection = function RTCPeerConnectionStub() {
+    const pc = hungPc(); pcs.push(pc); return pc;
+  };
 }
 
 /* ==========================================================================
