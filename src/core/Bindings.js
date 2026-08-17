@@ -67,6 +67,10 @@ const PAD_NAMES = Object.fromEntries(
  * that would undo it. Reserving them is the small correct fix; virtualizing the
  * menu's own navigation is a much larger change for no player-facing gain.
  *
+ * Digit1-3 join them for the same reason: the `.mutate-choice` window reads
+ * them raw off `ctx.input` in `Menus.update` while the pointer is locked, and
+ * they are its only input path — no pad or virtual-code fallback exists.
+ *
  * Space and the WASD codes are deliberately NOT here: they are shipped
  * defaults, and `navigate` reads them as the VIRTUAL codes this map produces,
  * so a rebind carries the menu with it instead of breaking it.
@@ -74,7 +78,7 @@ const PAD_NAMES = Object.fromEntries(
 export const RESERVED_KEYS = Object.freeze([
   'Escape', 'Enter', 'NumpadEnter', 'Backspace', 'Tab',
   'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
-  'KeyC',
+  'KeyC', 'Digit1', 'Digit2', 'Digit3',
 ]);
 
 /** Would binding this code steal a raw-read menu control? */
