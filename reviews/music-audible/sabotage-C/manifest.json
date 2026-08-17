@@ -1,0 +1,125 @@
+{
+  "seed": 1337,
+  "ready": true,
+  "clockPinned": true,
+  "commit": "4cfd4427e83d59950846c4d5e5a0c4df3c338fcc",
+  "capturedAt": "2026-08-17T03:15:45.455Z",
+  "ms": {
+    "boot": 12031,
+    "bootTimeout": 60000
+  },
+  "shots": [
+    {
+      "name": "01-title",
+      "doc": "First frame the player sees. Menu framing and background composition.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\.claude\\worktrees\\agent-a19d611463c3a936f\\reviews\\music-audible\\sabotage-C\\01-title.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 0
+      },
+      "ms": {
+        "setup": 1213,
+        "screenshot": 961,
+        "shotTimeout": 30000
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "title screen",
+            "kind": "dom",
+            "ok": true,
+            "detail": "title"
+          },
+          {
+            "subject": "the menu itself",
+            "kind": "dom",
+            "ok": true,
+            "detail": 900
+          },
+          {
+            "subject": "a live stage behind it",
+            "kind": "dom",
+            "ok": true,
+            "detail": null
+          }
+        ]
+      },
+      "newErrors": []
+    }
+  ],
+  "errors": [],
+  "partial": true,
+  "subjectFailures": [],
+  "subjectsOk": true,
+  "skippedShots": [],
+  "carriedShots": [],
+  "freshShots": [
+    "01-title"
+  ],
+  "subjectsOkFresh": true,
+  "toleratedAbsences": [],
+  "determinism": {
+    "clockPinned": true,
+    "frameDt": 0.016666666666666666,
+    "frameTimeouts": 0
+  },
+  "perf": {
+    "programs": 68,
+    "geometries": 392,
+    "textures": 52,
+    "sceneObjects": 289
+  },
+  "audio": {
+    "ready": true,
+    "state": "running",
+    "stepsEmitted": 50,
+    "stopped": false,
+    "silent": false,
+    "muted": false,
+    "musicOff": false,
+    "musicGain": 0,
+    "masterGain": 0.800000011920929,
+    "voices": 0,
+    "worldVoices": 0,
+    "musicPeak": 0,
+    "outputPeak": 0.026102326810359955,
+    "samples": 151,
+    "settlePeak": 0,
+    "settleSamples": 164,
+    "windowS": 6.0906666666666665,
+    "armed": true,
+    "beforeGate": {
+      "ready": true,
+      "state": "running",
+      "stepsEmitted": 0,
+      "stopped": false,
+      "musicOff": false,
+      "musicGain": 0.47999998927116394,
+      "masterGain": 0.800000011920929
+    },
+    "stepsDelta": 50,
+    "newErrors": [],
+    "gateFrames": 450,
+    "checks": {
+      "armed": true,
+      "graphBuilt": true,
+      "contextRunning": true,
+      "sequencerRunning": true,
+      "notSilenced": true,
+      "musicBusOpen": false,
+      "masterOpen": true,
+      "stepsAdvanced": true,
+      "musicAudible": false,
+      "outputAudible": true,
+      "sampled": true,
+      "noNewErrors": true
+    },
+    "failed": [
+      "musicBusOpen",
+      "musicAudible"
+    ]
+  },
+  "audioOk": false
+}

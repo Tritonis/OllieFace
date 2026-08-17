@@ -623,7 +623,9 @@ if (!ready) {
    *     of which a step counter can see.
    *  3. **Audibility**, from two `AnalyserNode`s: one on the music bus, one on
    *     the *last node before the device* (the master limiter). Peak-sampled
-   *     across the whole window and asserted above a floor 23 dB under the
+   *     across the measure window — which starts after the arrangement has had
+   *     time to come up from the restart, see `GATE_SETTLE_S` — and asserted
+   *     above a floor 23 dB under the
    *     quietest arrangement this gate ever sees. This is the check a step
    *     counter can never be: a graph that schedules everything correctly and
    *     never starts a source reads as digital silence here, and so does one
@@ -675,10 +677,58 @@ if (!ready) {
    * as unacceptable.
    */
   const errorsBeforeAudio = errors.length;
-  // 3 s of real time. The arrangement commits layer levels on bar boundaries
-  // and a bar at the opening tempo is 2.03 s, so a 90-frame window could open
-  // and close inside one bar with the layer gains still ramping up from zero.
-  const GATE_FRAMES = 180;
+  // The window is measured on the *audio* clock and aligned to the arrangement,
+  // not counted in rendered frames. `GATE_FRAMES = 180` used to stand in for
+  // "3 s of real time" and did not: under a pinned clock the harness renders as
+  // fast as the GPU will go, and 180 frames measured 86-88 sampler ticks — about
+  // 1.4 s. That is less than one bar (2.03 s at the opening tempo), and it was
+  // being spent on precisely the part of the restart where there is nothing to
+  // hear yet:
+  //
+  //   `beginRun()` -> `reset()` re-seeds the sequencer cursor and clears the
+  //   `stop()` latch, but layer levels only change on a bar boundary, and
+  //   `_onBar` ramps them in over *half a bar* from there. The next downbeat is
+  //   0-2.03 s away depending on where `_step` happened to be, so the bed can
+  //   be at zero gain for up to 3.05 s after the gate opens.
+  //
+  // A 1.4 s window therefore sampled a random slice of that silence-then-ramp,
+  // which is the whole of issue #96: identical trees read musicPeak 0.00038 and
+  // 0.0056 on consecutive runs, and green runs on record span 25x. The gate was
+  // measuring the restart, not the music.
+  //
+  // So: let the arrangement get up, then measure. The settle is *derived* from
+  // the arrangement's own numbers rather than typed as a literal, because a
+  // literal is exactly how this gap would quietly reopen: drop the opening tempo
+  // to 90 bpm, or widen the commit ramp to a whole bar, and 3.2 s stops covering
+  // the silence without anything saying so. Each value below is restated from
+  // `src/systems/Music.js` and `tests/audio-gate-window.test.mjs` fails if the
+  // source drifts from the restatement:
+  //
+  //   OPENING_BPM     Music.js `this.bpm = 118` in the constructor — the tempo
+  //                   at intensity 0, which is where a `beginRun()` restart is.
+  //   BAR_SIXTEENTHS  Music.js `_onBar`: `const bar = 16 * stepDur`, and
+  //                   `_schedule`: `stepDur = 60 / this.bpm / 4`.
+  //   RAMP_BARS       Music.js `_onBar`: `this._apply(next, t, bar * 0.5)`.
+  //
+  // Worst case = a full bar of waiting for the downbeat that commits the levels,
+  // plus the ramp that follows it. The margin is a named allowance for the
+  // sequencer's own `_musicTime` lead and analyser latency, not slack for a
+  // number nobody re-derived.
+  const OPENING_BPM = 118;
+  const BAR_SIXTEENTHS = 16;
+  const RAMP_BARS = 0.5;
+  const SETTLE_MARGIN_S = 0.15;
+  const GATE_BAR_S = BAR_SIXTEENTHS * (60 / OPENING_BPM / 4);
+  // ~3.2 s for today's music, which is what it measured as a literal.
+  const GATE_SETTLE_S = GATE_BAR_S * (1 + RAMP_BARS) + SETTLE_MARGIN_S;
+  // The measure window is longer than a full bar so it cannot land between the
+  // sub pulses of the intensity-0 bed. Peaks are accumulated only after the
+  // settle, and `samples` counts only those, so `sampled` stays a real check.
+  const GATE_MEASURE_S = 2.5;
+  // Frames are how the sequencer gets to emit at all (`_schedule` runs per
+  // frame), so they still drive the window — they just no longer define it.
+  const GATE_FRAME_CHUNK = 30;
+  const GATE_MAX_FRAMES = 3000;
   // -60 dBFS. Calibrated against the sparsest configuration this gate ever
   // sees — `--only 01-title`, where the run clock never advanced, the opening
   // ceiling holds intensity at 0.10 and the arrangement is a sub pulse and a
@@ -686,9 +736,15 @@ if (!ready) {
   // 0.0139 and 0.0558, limiter output 0.0174 and 0.0538. The floor sits 23 dB
   // under the quieter of those and 60 dB over digital silence, which is the
   // gap that matters — every sabotage arm that should fail it reads 0.000.
+  //
+  // Deliberately NOT lowered in the #96 fix. Dropping the floor under the
+  // observed 0.00038 would have made the flake go away by making the check
+  // unable to tell a quiet bed from a dead one — 0.00038 *is* what a broken
+  // music bus looks like, and the fix is to stop sampling the moment when the
+  // bus is legitimately at zero rather than to accept that reading as music.
   const PEAK_FLOOR = 1e-3;
   await page.keyboard.press('KeyZ');
-  const gateArm = await page.evaluate(() => {
+  const gateArm = await page.evaluate(([settleS, measureS]) => {
     const a = globalThis.__GAME__?.ctx?.audio;
     if (!a) return { armed: false, why: 'no audio system on ctx' };
     const before = {
@@ -715,7 +771,14 @@ if (!ready) {
     // and so would stay green with the master disconnected from everything
     // downstream of it. One node further along is one more edge covered.
     const out = tap(a.limiter ?? a.master);
-    const state = { musicPeak: 0, outputPeak: 0, samples: 0 };
+    const state = {
+      musicPeak: 0, outputPeak: 0, samples: 0,
+      // Sampled but discarded, so a run can be read afterwards for how much of
+      // the settle really was silence rather than only asserted about.
+      settlePeak: 0, settleSamples: 0,
+      t0: ac.currentTime, settleUntil: ac.currentTime + settleS, needS: measureS,
+      elapsed: 0,
+    };
     const peak = ({ an, buf }) => {
       an.getFloatTimeDomainData(buf);
       let p = 0;
@@ -725,15 +788,37 @@ if (!ready) {
     // A 2048-sample analyser window is ~43 ms at 48 kHz, so sampling every
     // 16 ms cannot miss a transient between reads.
     state.timer = setInterval(() => {
+      const m = peak(music);
+      const o = peak(out);
+      state.elapsed = ac.currentTime - state.t0;
+      if (ac.currentTime < state.settleUntil) {
+        state.settleSamples++;
+        state.settlePeak = Math.max(state.settlePeak, m);
+        return;
+      }
       state.samples++;
-      state.musicPeak = Math.max(state.musicPeak, peak(music));
-      state.outputPeak = Math.max(state.outputPeak, peak(out));
+      state.musicPeak = Math.max(state.musicPeak, m);
+      state.outputPeak = Math.max(state.outputPeak, o);
     }, 16);
     globalThis.__AUDIOGATE__ = { state, music, out, audio: a };
     return { armed: true, before };
-  });
+  }, [GATE_SETTLE_S, GATE_MEASURE_S]);
   await page.evaluate(() => globalThis.__HARNESS__?.thaw?.());
-  await page.evaluate((n) => globalThis.__HARNESS__?.frames?.(n), GATE_FRAMES);
+  // Pump frames until the audio clock says the window is done. The frame cap is
+  // a hang guard, not the window: reaching it leaves `sampled` short and the
+  // gate fails rather than passing on a truncated measurement.
+  let gateFrames = 0;
+  if (gateArm.armed) {
+    for (;;) {
+      const done = await page.evaluate(() => {
+        const G = globalThis.__AUDIOGATE__;
+        return !G || G.audio.ac.currentTime >= G.state.settleUntil + G.state.needS;
+      });
+      if (done || gateFrames >= GATE_MAX_FRAMES) break;
+      await page.evaluate((n) => globalThis.__HARNESS__?.frames?.(n), GATE_FRAME_CHUNK);
+      gateFrames += GATE_FRAME_CHUNK;
+    }
+  }
   manifest.audio = await page.evaluate(() => {
     const a = globalThis.__GAME__?.ctx?.audio;
     const G = globalThis.__AUDIOGATE__;
@@ -757,6 +842,9 @@ if (!ready) {
       musicPeak: G?.state.musicPeak ?? 0,
       outputPeak: G?.state.outputPeak ?? 0,
       samples: G?.state.samples ?? 0,
+      settlePeak: G?.state.settlePeak ?? 0,
+      settleSamples: G?.state.settleSamples ?? 0,
+      windowS: G?.state.elapsed ?? 0,
     };
   });
   const A = manifest.audio;
@@ -764,6 +852,7 @@ if (!ready) {
   A.beforeGate = gateArm.before ?? null;
   A.stepsDelta = A.stepsEmitted - (gateArm.before?.stepsEmitted ?? 0);
   A.newErrors = errors.slice(errorsBeforeAudio);
+  A.gateFrames = gateFrames;
   A.checks = {
     armed: A.armed,
     graphBuilt: A.ready === true,
@@ -781,7 +870,12 @@ if (!ready) {
     musicAudible: A.musicPeak >= PEAK_FLOOR,
     outputAudible: A.outputPeak >= PEAK_FLOOR,
     // If the sampler never ran, the two above are vacuous rather than passing.
-    sampled: A.samples >= 20,
+    // A 2.5 s measure window at 16 ms is ~155 ticks and measured 129 on this
+    // box (a busy page throttles the interval to ~19 ms); 80 tolerates a stalled
+    // renderer while still failing a window cut short by `GATE_MAX_FRAMES`,
+    // which would otherwise pass on a fraction of a bar — the exact fault this
+    // gate was just fixed for.
+    sampled: A.samples >= 80,
     noNewErrors: A.newErrors.length === 0,
   };
   A.failed = Object.entries(A.checks).filter(([, v]) => !v).map(([k]) => k);
@@ -811,6 +905,7 @@ console.log(JSON.stringify({
     ? {
         stepsDelta: manifest.audio.stepsDelta, musicPeak: manifest.audio.musicPeak,
         outputPeak: manifest.audio.outputPeak, samples: manifest.audio.samples,
+        settlePeak: manifest.audio.settlePeak, windowS: manifest.audio.windowS,
         stopped: manifest.audio.stopped, musicGain: manifest.audio.musicGain,
         failed: manifest.audio.failed, newErrors: manifest.audio.newErrors.length,
       }
