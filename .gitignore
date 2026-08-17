@@ -61,3 +61,6 @@ shotlib/clips/
 # `steam_appid.txt` files under `sdk/steamworksexample/`, which is a second reason
 # not to unpack it into the tree wholesale.
 steamworks_sdk_*.zip
+
+# Staging for the #109 art evaluation set. Nothing binary enters git until #26 closes.
+assets-staging/
