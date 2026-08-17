@@ -57,6 +57,16 @@ export function installHarness(ctx) {
   // makes a screenshot non-reproducible and a benchmark meaningless.
   ctx.pipeline?.setAdaptive?.(false, 1);
 
+  // Same principle for the #43 sliders: a capture can never inherit a saved
+  // reduced setting from localStorage, so pin the live object (not persisted)
+  // to full intensity for flash/aberration/bloom/motion.
+  if (ctx.settings) {
+    ctx.settings.flash = 1;
+    ctx.settings.aberration = 1;
+    ctx.settings.bloom = 1;
+    ctx.settings.motion = 1;
+  }
+
   // Menus live inside HUD rather than on ctx, and every gameplay scenario needs
   // the title screen gone first — it pauses the sim and blurs the whole frame.
   const dismiss = () => {

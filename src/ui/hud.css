@@ -1812,7 +1812,44 @@ body.menu-open { cursor: default; }
 .panel-tag { font-size: 0.8em; letter-spacing: var(--track-eyebrow); color: var(--ink-faint); }
 
 /* Settings */
-.settings-grid { display: flex; flex-direction: column; gap: 0.55em; margin-bottom: 1.4em; }
+/* Same reasoning as `.screen--death .panel--wide` above: the settings-grid
+   grew a fourth row of sliders (#43) and now clips 2.3px of the panel past
+   768px-tall viewports with no way to reach Back. Bounded the same way —
+   panel flexes to a max-height, the grid (not the whole panel) scrolls, and
+   `min-height: 0` is the flex-child escape hatch that lets the scroller
+   actually engage instead of the panel just growing past it. */
+.screen--settings .panel--wide {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  /* `.screen--settings` is itself a flex container (`.screen`), and without
+     this the panel is a shrinkable flex *item* there too: `min-height: 0`
+     above (needed so the grid's own overflow can engage) also removes the
+     panel's automatic min-height floor at that outer level, so `.screen`
+     was quietly squeezing the whole panel down to its padded box even when
+     max-height left headroom to spare — the exact "scrolls when it fits"
+     regression this comment is here to keep from coming back. */
+  flex-shrink: 0;
+  /* Death's report panel budgets 12em of chrome above/below because a long
+     report is expected to scroll regardless of viewport. Settings' content
+     is fixed-size and fits comfortably above 768px tall, so a narrower
+     3em margin is enough to stop the low-viewport clip without forcing an
+     unnecessary scrollbar at 1080p and up, where nothing was clipping. */
+  max-height: calc(100vh - 3em);
+}
+.settings-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55em;
+  margin-bottom: 1.4em;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.screen--settings .panel--wide > .menu-list {
+  flex: 0 0 auto;
+}
 .srow {
   display: grid;
   grid-template-columns: minmax(9em, 14em) 1fr;

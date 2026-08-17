@@ -22,6 +22,22 @@ const QUALITY = Number(args.quality ?? 3);
 const ENEMIES = Number(args.enemies ?? 24);
 const SECONDS = Number(args.seconds ?? 8);
 
+// A bare `--out` with no path parses to `true` and would otherwise fall
+// through the `typeof args.out === 'string'` check below and silently skip
+// the write after a full headed GPU run. Fail fast instead.
+if ('out' in args && typeof args.out !== 'string') {
+  console.error('perf: --out requires a path argument, e.g. --out reviews/perf/run.json');
+  process.exit(1);
+}
+// Same reasoning: create the output directory before the measurement runs,
+// not after, so a missing/unwritable dir fails in seconds rather than after
+// the full GPU run below.
+if (typeof args.out === 'string') {
+  const { mkdirSync } = await import('node:fs');
+  const { dirname } = await import('node:path');
+  mkdirSync(dirname(args.out), { recursive: true });
+}
+
 const server = await createServer({ server: { port: 5201, hmr: false, watch: null }, logLevel: 'error' });
 await server.listen();
 
@@ -100,6 +116,7 @@ console.log(JSON.stringify({ env, quality: QUALITY, results }, null, 2));
 // review prose, which no gate can check.
 if (typeof args.out === 'string') {
   const { writeFileSync } = await import('node:fs');
+  // Directory already created above, before the GPU run.
   const combat = results.find((r) => r.label.startsWith('combat-'));
   if (!combat) throw new Error('perf: no combat arm in results — nothing to record');
   writeFileSync(args.out, JSON.stringify({
