@@ -60,7 +60,7 @@ const LEGACY_STORE_KEY = 'petrichor.settings';
  * Every accessibility knob defaults to 1 — "the effect exactly as authored" —
  * so a player who never opens this screen sees the build the rubric was scored
  * against. Only `motion` is ever seeded differently, and only from an explicit
- * OS-level reduced-motion preference on a first run. See `load`.
+ * OS-level reduced-motion preference. See `load`.
  */
 export const DEFAULTS = {
   quality: 2,
@@ -117,8 +117,9 @@ export const SLIDERS = [
   { key: 'aberration', label: 'Chromatic aberration', min: 0, max: 1, step: 0.05, fmt: pct },
   { key: 'bloom', label: 'Bloom', min: 0, max: 1, step: 0.05, fmt: pct },
   // Reduces the *reactive* camera motion — shake, the aberration kick and the
-  // vignette pulse — without touching the resting look. Seeded from the OS
-  // reduced-motion preference on a first run, matching the CSS in index.html.
+  // vignette pulse — without touching the resting look. Re-seeded from the OS
+  // reduced-motion preference on every load until the stored blob carries a
+  // `motion` of its own, matching the CSS in index.html.
   { key: 'motion', label: 'Screen motion', min: 0, max: 1, step: 0.05, fmt: pct },
   // Gameplay pacing rather than presentation, but it lives here because this is
   // the screen players look in for knobs. The Director reads it straight off
@@ -2401,7 +2402,9 @@ function load(fallbackQuality) {
   const base = { ...DEFAULTS };
   if (Number.isFinite(fallbackQuality)) base.quality = fallbackQuality;
   // A stored value is an explicit choice and wins below, exactly as it does for
-  // `quality` — this only seeds a player who has never touched the slider.
+  // `quality`. Absent one the OS preference is re-read on every load, not just
+  // the first: the store only gains a `motion` once the player saves settings,
+  // and until then the accessibility flag should keep being honoured.
   if (prefersReducedMotion()) base.motion = 0;
   try {
     const raw = adoptLegacyKey(STORE_KEY, LEGACY_STORE_KEY, localStorage);

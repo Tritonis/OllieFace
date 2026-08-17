@@ -55,6 +55,44 @@ ok(flashHalf.intensity < flashFull.intensity && flashHalf.intensity > 1,
 ok(flashOff.intensity === 1 && !flashOff.cloned,
   'flash 0% produces no flash at all (no material clone, resting intensity)');
 
+/* -- 2b. the flash is re-driven EVERY FRAME by _updateFlashes ---------- */
+
+// The first cut of this file only ever called `hitFlash`, and was blind to the
+// decay loop overwriting the scaled value one frame later with a hardcoded
+// peak. A one-shot assertion is not evidence for an effect that lives for 60ms.
+function flashCurve(strength, frames = 3, dt = 0.02) {
+  const mat = new THREE.MeshStandardMaterial({ emissiveIntensity: 1 });
+  const mesh = new THREE.Mesh(new THREE.BufferGeometry(), mat);
+  const self = { ctx: { settings: { flash: strength } }, _flashes: [] };
+  VFX.prototype.hitFlash.call(self, mesh, 0xffffff, 0.06);
+  const out = [mesh.material.emissiveIntensity];
+  for (let i = 0; i < frames; i++) {
+    VFX.prototype._updateFlashes.call(self, dt);
+    out.push(mesh.material.emissiveIntensity);
+  }
+  return out;
+}
+
+// master's line, verbatim: `lerp(rec.base[j*2+1], 3.2, 1 - k*k)` off a resting
+// intensity of 1, sampled at the same t the loop above reaches.
+const masterCurve = [1 + 2.2];
+for (let i = 1; i <= 3; i++) {
+  const k = (i * 0.02) / 0.06;
+  masterCurve.push(k >= 1 ? 1 : 1 + 2.2 * (1 - k * k));
+}
+
+const curveFull = flashCurve(1);
+ok(curveFull.every((v, i) => close(v, masterCurve[i])),
+  `flash 100% reproduces master's decay curve exactly [${curveFull.map((v) => v.toFixed(3))}]`);
+
+const curveLow = flashCurve(0.1);
+ok(curveLow.every((v) => v <= 1 + 2.2 * 0.1 + 1e-9),
+  `flash 10% never approaches 3.2 across the whole flash [${curveLow.map((v) => v.toFixed(3))}]`);
+ok(curveLow[1] < curveFull[1] * 0.5,
+  'flash 10% is far dimmer than 100% on the frame AFTER the hit, not just at spawn');
+ok(close(curveLow[curveLow.length - 1], 1),
+  'flash 10% still restores the resting intensity when the flash expires');
+
 /* -- 3. consumption: aberration, bloom, motion, read by RenderPipeline - */
 
 const BLOOM_STRENGTH = 0.34;   // RenderPipeline's authored BLOOM.strength

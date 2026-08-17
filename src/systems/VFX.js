@@ -1359,6 +1359,11 @@ export class VFX {
     }
     rec.t = 0;
     rec.dur = duration;
+    // The record outlives this call: `_updateFlashes` re-drives the intensity
+    // every frame for the whole 60ms, so the preference has to travel WITH the
+    // flash. Setting it only here would be overwritten on the very next frame
+    // by the decay's own target.
+    rec.strength = strength;
     if (this._flashes.indexOf(rec) < 0) this._flashes.push(rec);
   }
 
@@ -1693,7 +1698,12 @@ export class VFX {
       const f = 1 - k * k;
       for (let j = 0; j < rec.mats.length; j++) {
         rec.mats[j].emissive.lerpColors(rec.base[j * 2], rec.colour, f);
-        rec.mats[j].emissiveIntensity = lerp(rec.base[j * 2 + 1], 3.2, f);
+        // Decay toward the peak this flash was SPAWNED with, not toward the
+        // authored maximum. `rec.strength` is the player's `flash` preference
+        // captured in `hitFlash`; at 100% the target is FLASH_INTENSITY and the
+        // curve is exactly what it has always been.
+        const peak = lerp(rec.base[j * 2 + 1], FLASH_INTENSITY, rec.strength ?? 1);
+        rec.mats[j].emissiveIntensity = lerp(rec.base[j * 2 + 1], peak, f);
       }
     }
   }
