@@ -82,9 +82,12 @@ async function hostingLobby() {
   // wants an `RTCPeerConnection` node has never heard of. Stubbed so a host that
   // wrongly answers a post-halt `joinRequest` produces a visible offer rather
   // than a ReferenceError, i.e. so the guard fails as an assertion.
-  lobby.net.createInvite = async () => ({ id: 1, blob: 'offer-blob', onIceCandidate() {} });
+  const ice = {};
+  lobby.net.createInvite = async () => ({
+    id: 1, blob: 'offer-blob', onIceCandidate(cb) { ice.fire = cb; },
+  });
   lobby.net.transport.cancelInvite = () => true;
-  return { engine, lobby, ws };
+  return { engine, lobby, ws, ice };
 }
 
 console.log('the room is genuinely open before the halt (the control)');
@@ -137,6 +140,39 @@ console.log('#75 break 1 — a relay failure on a halted page does not restore a
   FakeWS.last.onerror?.();
   ok(await attempt === 'rejected', 'the host attempt failed rather than hanging');
   ok(engine.ctx.authority === false, 'authority did not come back through hostViaRelay fail()');
+}
+
+console.log('#75 break 2 — a candidate gathered before the halt is not sent after it');
+{
+  // The window the `joinRequest` gate cannot cover: the offer shipped while the
+  // run was alive, ICE gathering is still going, and the halt lands in between.
+  // The candidate callback is registered on the invite, not on the socket, so
+  // nothing between it and `ws.send` knows the session ended.
+  const { engine, ws, ice } = await hostingLobby();
+  await ws.recv({ type: 'joinRequest', clientId: 'c9' });
+  await sleep(0);
+  ok(typeof ice.fire === 'function', 'the host registered an ICE sink (the control)');
+  ice.fire({ candidate: 'pre-halt' });
+  ok(ws.ofType('ice').length === 1, 'a live host does relay a candidate (the control)');
+
+  ok(haltFor(engine), 'the engine halted');
+  ice.fire({ candidate: 'post-halt' });
+  ok(ws.ofType('ice').length === 1,
+     `no candidate relayed after the halt (${ws.ofType('ice').length - 1} were)`);
+}
+
+console.log('#75 break 1 — a late relay error on a halted page still hands netRole back');
+{
+  // `_quiet()` nulls `this.ws`, so a genuine `onerror` arriving afterwards takes
+  // `fail()`'s "superseded session, touch nothing" branch. Authority must stay
+  // surrendered — but `netRole` says who is speaking, not whether anyone may,
+  // and every reader of it is owed its single-player answer either way.
+  const { engine, ws } = await hostingLobby();
+  ok(haltFor(engine), 'the engine halted');
+  ws.onerror?.();
+  await sleep(0);
+  ok(engine.ctx.netRole === 'single', `netRole handed back (got ${JSON.stringify(engine.ctx.netRole)})`);
+  ok(engine.ctx.authority === false, 'authority still surrendered');
 }
 
 console.log('#75 break 2 — a halted NetHost greets nobody');

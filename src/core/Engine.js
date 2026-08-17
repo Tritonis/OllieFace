@@ -211,7 +211,9 @@ export class Engine {
    *    frame phases at all - `Lobby`'s relay offers, `NetHost`'s `WELCOME` and
    *    `PONG` - are gated on that same latch rather than on the loop, and the
    *    `fatalError` event below is what tells `Lobby` to stop its keepalive and
-   *    close the room. A halted host holds no room and says nothing — issue #75 tracks closing that;
+   *    close the room. A halted host holds no room and says nothing; issue #75
+   *    is what closed that gap, and `tests/halt-hosting.test.mjs` is what keeps
+   *    it closed against a real `Engine`, `Lobby` and `NetHost`;
    *  · the console gets the whole error, unconditionally — this fires once by
    *    construction, so the once-per-system throttle above does not apply;
    *  · `fatalError` is emitted so the page can put something in front of the

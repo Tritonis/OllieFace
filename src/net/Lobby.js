@@ -314,6 +314,17 @@ export class Lobby {
     this.net?.close?.();
     this._release();
     this.mode = 'single';
+    // After `_release()`, because `Engine.remove` reverts what the system's
+    // `init` published and `NetHost.init` published `netRole` — so a `_quiet`
+    // that restored it first would leave `ctx.netRole` null.
+    //
+    // Restored here rather than left to whichever callback arrives next, which
+    // is the difference between the guarantee being true and being usually
+    // true: once this method nulls `this.ws`, a genuine late `ws.onerror` takes
+    // `fail()`'s "superseded session, touch nothing" branch and never reaches
+    // `_restoreSolo`. `authority` is untouched by that call while halted, which
+    // is the whole point of routing through it.
+    this._restoreSolo();
     this._invitesByClient.clear();
     this.pendingInvites.clear();
     this._session = newSession();
@@ -626,8 +637,18 @@ export class Lobby {
           // Registered before the offer goes out, so a candidate gathered while
           // the joiner is still reading the offer has somewhere to go.
           if (trickle) {
-            invite.onIceCandidate((candidate) =>
-              ws.send(JSON.stringify({ type: 'ice', clientId: msg.clientId, candidate })));
+            invite.onIceCandidate((candidate) => {
+              // Re-checked, and not covered by the gate at the top of this
+              // handler: the offer ships while the run is alive and gathering
+              // goes on afterwards, so a halt can land in between and this
+              // callback hangs off the invite rather than off the socket. The
+              // send would be a spec no-op on the socket `_quiet` has already
+              // closed, but "a halted host attempts no send" is the rule, and a
+              // rule that holds only because the layer below swallows it is not
+              // one this file gets to rely on.
+              if (this._halted()) return;
+              ws.send(JSON.stringify({ type: 'ice', clientId: msg.clientId, candidate }));
+            });
           }
           ws.send(JSON.stringify({ type: 'offer', clientId: msg.clientId, blob: invite.blob, trickle }));
         } else if (msg.type === 'answer') {
