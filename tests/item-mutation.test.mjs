@@ -57,6 +57,11 @@ console.log('crossing into minBand mutates exactly one eligible stack');
   const worldBefore = corruption.world;
   corruption.feed(ctx.player, BANDS[MUTATION.minBand].at + 1 - worldBefore);  // cross into minBand once
   step(ctx, items);
+  // Two eligible stacks is a field worth choosing from, so the toll offers the
+  // lever first (issue #33); refusing it is the void's own path, which is what
+  // every assertion below is about.
+  ok(!!items.mutationChoice(), 'the threshold offered the choice window');
+  items.refuseMutation();
   const mut = emitted.filter((e) => e.name === 'itemMutated');
   ok(mut.length === 1, 'one mutation for one threshold');
   const { baseId, blightId, count, band } = mut[0].payload;
@@ -77,6 +82,7 @@ console.log('the pick ignores the shared rng stream');
     w.items.give(baseB, 2);
     w.corruption.feed(w.ctx.player, BANDS[MUTATION.minBand].at + 1);
     step(w.ctx, w.items);
+    w.items.refuseMutation();                             // the void's own pick
   }
   const pick = (w) => w.emitted.find((e) => e.name === 'itemMutated')?.payload.baseId;
   ok(pick(a) !== undefined && pick(a) === pick(b), 'identical pick despite displaced ctx.rng');
@@ -120,7 +126,12 @@ console.log('a band jump crosses two thresholds and mutates twice');
   items.give(baseA, 3);
   items.give(baseB, 2);
   corruption.feed(ctx.player, BANDS[3].at + 1);           // 0 -> band 3 in one lump
+  // One open offer at a time: band 2 asks, and band 3 waits in the queue until
+  // that answer lands rather than stacking a second card on top of it.
   step(ctx, items);
+  ok(!!items.mutationChoice() && items.mutationChoice().band === 2, 'band 2 asked first');
+  items.refuseMutation();
+  step(ctx, items);                                       // band 3, now a field of one
   const mut = emitted.filter((e) => e.name === 'itemMutated');
   ok(mut.length === 2, 'bands 2 and 3 each took a stack');
   ok(mut[0].payload.band === 2 && mut[1].payload.band === 3, 'in threshold order');
@@ -403,6 +414,220 @@ console.log('the run item counter does not score a mutation as an acquisition');
   ok(items.count(baseA) === 0, 'the mutation ran');
   ok(prog.stats.items === afterGive,
     `the two 'corrupt' writes added nothing to the run's item count (got ${prog.stats.items})`);
+}
+
+// ---------------------------------------------------------------- the lever
+// Issue #33. The scar is unchanged — something festers at every threshold —
+// but at a threshold with a field worth choosing from the local player is
+// offered two or three of the stacks and a short window to name one. Refusing
+// it, ignoring it, dying inside it or crossing another band on top of it all
+// fall through to exactly the pick the void made before the lever existed,
+// which is what the determinism arms below pin down.
+
+/** The pick `_mutateAt` makes when nobody chooses — recomputed, not observed. */
+const voidPick = (seed, band, eligible) =>
+  new RNG(((seed >>> 0) ^ (0x6b2f8d43 * (band + 1))) >>> 0 || 1).pick([...eligible].sort());
+
+/** A world holding `n` distinct eligible stacks, parked one crossing from the toll. */
+function atThreshold(n = 4) {
+  const w = makeCtx();
+  const held = bases.slice(0, n);
+  for (const id of held) w.items.give(id, 2);
+  w.corruption.feed(w.ctx.player, BANDS[MUTATION.minBand].at + 1 - w.corruption.world);
+  step(w.ctx, w.items);
+  return { ...w, held };
+}
+
+console.log('the threshold offers a choice: eligible only, at most three');
+{
+  ok(bases.length >= 4, `the catalogue has more eligible bases than the offer cap (${bases.length})`);
+  const { items, emitted, held } = atThreshold(4);
+  const offer = emitted.find((e) => e.name === 'mutationChoiceOffered');
+  ok(!!offer, 'the window opened instead of paying immediately');
+  const ids = offer.payload.offers.map((o) => o.baseId);
+  ok(ids.length === MUTATION.choiceOffers, `capped at ${MUTATION.choiceOffers} (got ${ids.length})`);
+  ok(new Set(ids).size === ids.length, 'no stack offered twice');
+  ok(ids.every((id) => held.includes(id) && items.count(id) > 0), 'every offer is a held, eligible stack');
+  ok(ids.every((id) => BLIGHT_BY_BASE.has(id)), 'and every one of them has a counterpart to become');
+  ok(offer.payload.seconds === MUTATION.choiceSeconds, 'the window carries its own duration');
+  ok(!emitted.some((e) => e.name === 'itemMutated'), 'nothing has festered while the offer stands');
+  // The card must say what the stack *becomes*: the counterpart's own effect
+  // text at the stack size the player is actually holding.
+  const first = offer.payload.offers[0];
+  const blight = ITEM_BY_ID.get(first.blightId);
+  ok(first.blightName === blight.name, 'the offer names the card it would become');
+  ok(first.blightDescription && first.blightDescription === blight.description(first.count),
+    `and quotes its live effect text ("${first.blightDescription}")`);
+}
+
+console.log('a field of one is no choice — a lone stack festers outright');
+{
+  const { items, emitted } = atThreshold(1);
+  ok(!emitted.some((e) => e.name === 'mutationChoiceOffered'), 'no window for an inevitability');
+  ok(emitted.some((e) => e.name === 'itemMutated'), 'the toll was paid on the spot');
+  ok(!items.mutationChoice(), 'and nothing is left open');
+}
+
+console.log('choosing converts the chosen stack and only it');
+{
+  const { items, emitted, held } = atThreshold(4);
+  const offered = emitted.find((e) => e.name === 'mutationChoiceOffered').payload.offers.map((o) => o.baseId);
+  // Choose something the void would not have taken, so "the chosen stack" and
+  // "the random stack" cannot be the same answer by luck.
+  const dice = voidPick(424242, MUTATION.minBand, held);
+  const mine = offered.find((id) => id !== dice) ?? offered[0];
+  ok(mine !== dice, `the chosen stack is not the one the void wanted (${mine} vs ${dice})`);
+  ok(items.chooseMutation(mine) === true, 'the choice was accepted');
+  const mut = emitted.filter((e) => e.name === 'itemMutated');
+  ok(mut.length === 1 && mut[0].payload.baseId === mine, 'the chosen stack is the one that festered');
+  ok(mut[0].payload.chosen === true, 'and the event says the player owned it');
+  ok(items.count(mine) === 0 && items.count(BLIGHT_BY_BASE.get(mine).id) === 2, 'the chosen stack moved whole');
+  for (const id of held) if (id !== mine) ok(items.count(id) === 2, `${id} was left alone`);
+  ok(!items.mutationChoice(), 'the window closed on the answer');
+  ok(items.chooseMutation(offered[0]) === false, 'and a second answer changes nothing');
+}
+
+console.log('an offer the window never made is refused, not honoured');
+{
+  const { items, emitted, held } = atThreshold(4);
+  const offered = emitted.find((e) => e.name === 'mutationChoiceOffered').payload.offers.map((o) => o.baseId);
+  const notOffered = held.find((id) => !offered.includes(id));
+  ok(items.chooseMutation(notOffered) === false, `a stack that was not on the table (${notOffered}) is refused`);
+  ok(items.count(notOffered) === 2 && !!items.mutationChoice(), 'the stack survives and the window stands');
+}
+
+console.log('refusal, lapse and interruption are all the old random path');
+{
+  const expected = (w) => voidPick(424242, MUTATION.minBand, w.held);
+
+  const refused = atThreshold(4);
+  refused.items.refuseMutation();
+  const a = refused.emitted.find((e) => e.name === 'itemMutated').payload;
+  ok(a.baseId === expected(refused), `refusing takes the void's own pick (${a.baseId})`);
+  ok(a.chosen === false, 'and says the player did not own it');
+
+  // The lapse: fixed steps until the clock runs out, with nobody answering.
+  const lapsed = atThreshold(4);
+  for (let t = 0; t < MUTATION.choiceSeconds * 60 + 2 && lapsed.items.mutationChoice(); t++) {
+    step(lapsed.ctx, lapsed.items);
+  }
+  ok(!lapsed.items.mutationChoice(), 'the window lapsed on its own clock');
+  const b = lapsed.emitted.find((e) => e.name === 'itemMutated').payload;
+  ok(b.baseId === expected(lapsed), `a lapsed window takes the same pick (${b.baseId})`);
+  const closed = lapsed.emitted.find((e) => e.name === 'mutationChoiceClosed');
+  ok(closed?.payload.reason === 'timeout', `and says why it closed (${closed?.payload.reason})`);
+  // Not one frame early: the offer must survive the second-to-last step.
+  const held = atThreshold(4);
+  for (let t = 0; t < MUTATION.choiceSeconds * 60 - 2; t++) step(held.ctx, held.items);
+  ok(!!held.items.mutationChoice(), 'and it does not close before its stated duration');
+
+  // A fresh threshold on top of an open one pays the older band the void's way
+  // rather than stranding it in the queue forever.
+  const spiked = atThreshold(4);
+  spiked.corruption.feed(spiked.ctx.player, BANDS[3].at + 1 - spiked.corruption.world);
+  step(spiked.ctx, spiked.items);
+  const c = spiked.emitted.filter((e) => e.name === 'itemMutated').map((e) => e.payload);
+  ok(c[0]?.band === MUTATION.minBand && c[0].baseId === expected(spiked),
+    'the superseded band was paid the void\'s way');
+  ok(spiked.emitted.some((e) => e.name === 'mutationChoiceClosed' && e.payload.reason === 'superseded'),
+    'and said so');
+
+  // Death and the run's end both leave the offer unanswerable.
+  for (const [name, payload, reason] of [['playerDead', {}, 'death'], ['runEnd', { won: false }, 'runEnd']]) {
+    const w = atThreshold(4);
+    w.ctx.events.emit(name, payload);
+    ok(!w.items.mutationChoice(), `${name} closes the window`);
+    const d = w.emitted.find((e) => e.name === 'itemMutated')?.payload;
+    ok(d?.baseId === expected(w), `${name} pays the void's pick (${d?.baseId})`);
+    ok(w.emitted.some((e) => e.name === 'mutationChoiceClosed' && e.payload.reason === reason),
+      `${name} closed for the stated reason`);
+  }
+}
+
+console.log('a client is never asked, and neither is a teammate\'s pack');
+{
+  const { ctx, items, emitted } = makeCtx({ authority: false });
+  items.counts.set(baseA, 3);
+  items.counts.set(baseB, 2);
+  ctx.events.emit('corruptionBand', { band: MUTATION.minBand, prev: 0 });
+  step(ctx, items);
+  ok(!emitted.some((e) => e.name === 'mutationChoiceOffered'), 'a client opens no window');
+  ok(!items.mutationChoice() && items.chooseMutation(baseA) === false, 'and has nothing to answer');
+
+  // Host-side satellite: a remote pawn's toll keeps the void-chooses path,
+  // because there is no wire for a remote answer to come back on.
+  const host = makeCtx();
+  const remote = { isPlayer: true, alive: true, peerId: 2 };
+  const sat = new Items(remote);
+  sat.init(host.ctx);
+  sat.give(baseA, 3);
+  sat.give(baseB, 2);
+  host.ctx.events.emit('corruptionBand', { band: MUTATION.minBand, prev: 0 });
+  step(host.ctx, sat);
+  ok(!host.emitted.some((e) => e.name === 'mutationChoiceOffered'), 'no window for a remote pawn');
+  const m = host.emitted.find((e) => e.name === 'itemMutated' && e.payload.owner === remote);
+  ok(!!m && m.payload.chosen === false, 'the remote toll was paid the void\'s way, and says so');
+}
+
+console.log('the HUD raises and drops the panel on the local seat only');
+{
+  const shown = [], hidden = [];
+  const self = Object.create(HUD.prototype);
+  self.toast = () => {};
+  self.refs = { inventory: { addEventListener() {} } };
+  self.menus = {
+    showMutationChoice: (c) => shown.push(c),
+    hideMutationChoice: () => hidden.push(true),
+  };
+  globalThis.addEventListener ??= () => {};
+
+  const chosen = [];
+  const player = { isPlayer: true };
+  const listeners = new Map();
+  self.bind({
+    player,
+    items: { chooseMutation: (id) => chosen.push(id), refuseMutation: () => chosen.push(null) },
+    events: { on(name, fn) { if (!listeners.has(name)) listeners.set(name, []); listeners.get(name).push(fn); } },
+  });
+  const fire = (name, p) => { for (const fn of listeners.get(name) || []) fn(p); };
+
+  fire('mutationChoiceOffered', {
+    owner: { isPlayer: true, peerId: 9 }, seconds: 6,
+    offers: [{ baseId: baseA, blightId: blightOf(baseA) }],
+  });
+  ok(shown.length === 0, 'a teammate\'s offer never reaches this screen');
+
+  fire('mutationChoiceOffered', {
+    owner: player, seconds: MUTATION.choiceSeconds,
+    offers: [{ baseId: baseA, blightId: blightOf(baseA), blightName: 'x', blightDescription: 'y', count: 2 }],
+  });
+  ok(shown.length === 1 && shown[0].seconds === MUTATION.choiceSeconds, 'the local offer raises the panel');
+  shown[0].onPick(baseA);
+  shown[0].onRefuse();
+  ok(chosen[0] === baseA && chosen[1] === null, 'its buttons speak to Items, not to the panel');
+
+  fire('mutationChoiceClosed', { owner: player, reason: 'timeout' });
+  ok(hidden.length === 1, 'and the system that owns the decision closes it');
+}
+
+console.log('the mutation toast says what the pack became, not only what it lost');
+{
+  const toasts = [];
+  const self = Object.create(HUD.prototype);
+  self.toast = (text, tier, id) => toasts.push({ text, tier, id });
+  self.refs = { inventory: { addEventListener() {} } };
+  self.menus = { showMutationChoice() {}, hideMutationChoice() {} };
+  globalThis.addEventListener ??= () => {};
+  const listeners = new Map();
+  self.bind({ events: { on(name, fn) { if (!listeners.has(name)) listeners.set(name, []); listeners.get(name).push(fn); } } });
+
+  const blightId = blightOf(baseA);
+  const why = ITEM_BY_ID.get(blightId).description(3);
+  for (const fn of listeners.get('itemMutated') || []) {
+    fn({ baseId: baseA, blightId, count: 3, band: 2, chosen: true, blightDescription: why });
+  }
+  ok(toasts.length === 1 && toasts[0].text.includes(why), `the toast carries the effect text ("${toasts[0].text}")`);
+  ok(toasts[0].text.includes('you feed the blight'), 'and reads as a decision the player made');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

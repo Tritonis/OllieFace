@@ -2114,6 +2114,57 @@ body.menu-open { cursor: default; }
 .ditem-empty { font-size: 0.9em; color: var(--ink-faint); letter-spacing: 0.2em; }
 
 /* Pickup banner */
+/* The blight toll's choice window (issue #33). Same corner grammar as the
+   pickup card and deliberately not centred: the run continues behind it, so it
+   must never sit where the player is aiming. `pointer-events` are live on the
+   panel alone — everything around it stays the world. */
+.mutate-choice {
+  position: absolute;
+  right: 2.2em;
+  bottom: 8.5em;
+  display: none;
+  flex-direction: column;
+  gap: 0.5em;
+  width: min(26em, 44vw);
+  padding: 0.9em 1em;
+  background: linear-gradient(180deg, rgba(10, 6, 14, 0.94), rgba(10, 6, 14, 0.78));
+  border: 1px solid color-mix(in srgb, var(--t-blight, #b45cff) 45%, transparent);
+  border-left: 4px solid var(--t-blight, #b45cff);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  pointer-events: auto;
+}
+.mutate-choice.is-on { display: flex; }
+#overlay.is-open .mutate-choice { display: none; }
+.mutate-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--fs-micro);
+  letter-spacing: var(--track-eyebrow);
+  color: var(--t-blight, #b45cff);
+}
+.mutate-offers { display: flex; flex-direction: column; gap: 0.35em; }
+.mutate-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6em;
+  padding: 0.45em 0.6em;
+  text-align: left;
+  color: #dfe8f2;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(148, 182, 214, 0.18);
+  cursor: pointer;
+}
+.mutate-card:hover, .mutate-card.is-focus { background: rgba(180, 92, 255, 0.16); }
+.mutate-art { width: 2.4em; height: 2.4em; flex: none; }
+.mutate-art img { width: 100%; height: 100%; display: block; }
+.mutate-key { font-size: var(--fs-micro); opacity: 0.6; }
+.mutate-body { display: flex; flex-direction: column; min-width: 0; }
+.mutate-name { font-weight: 600; letter-spacing: 0.06em; }
+.mutate-desc { font-size: var(--fs-micro); opacity: 0.85; font-style: normal; }
+.mutate-from { font-size: var(--fs-micro); opacity: 0.55; }
+.mutate-refuse { align-self: flex-end; }
+
 .pickup-banner {
   --tier: var(--t-common);
   position: absolute;

@@ -562,6 +562,10 @@ console.log('the real mutation toll carries what it could have taken');
   items.give(bases[1], 2);
   corruption.feed(ctx.player, BANDS[MUTATION.minBand].at + 1 - corruption.world);
   items.fixedUpdate(ctx, 1 / 60);
+  // Two eligible stacks is a field worth choosing from, so the threshold
+  // offers the lever first (issue #33). The record is about what the *toll*
+  // carried, so this arm declines and takes the void's own pick.
+  items.refuseMutation();
 
   const mut = emitted.find((e) => e.name === 'itemMutated');
   ok(!!mut, 'the toll fired');

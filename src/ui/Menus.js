@@ -195,6 +195,8 @@ export class Menus {
     // the player ever sees. Start cross-lit instead.
     this.orbitAngle = 2.2;
     this.bannerTimer = 0;
+    // The open blight-toll offer, or null. See `showMutationChoice`.
+    this.mutate = null;
 
     this.settings = load(ctx.pipeline?.quality);
     ctx.settings = this.settings;
@@ -602,6 +604,19 @@ export class Menus {
           <div class="pickup-name"></div>
           <div class="pickup-desc"></div>
         </div>
+      </div>
+
+      <!-- The blight toll's choice window (issue #33). Deliberately *not* a
+           [data-screen]: the run keeps running behind it, so this is the
+           pickup card's grammar — a corner panel with its own clock — rather
+           than a dialog that stops the world to ask a question. -->
+      <div class="mutate-choice" data-mutate-choice>
+        <div class="mutate-head">
+          <span>The blight chooses a stack</span>
+          <span class="mutate-clock" data-mutate-clock></span>
+        </div>
+        <div class="mutate-offers" data-mutate-offers></div>
+        <button class="mbtn mutate-refuse" data-mutate-refuse><span>Let the void choose</span></button>
       </div>`;
 
     injectEdictStyles();
@@ -621,6 +636,19 @@ export class Menus {
       markDialog(el);
     }
     this.banner = this.root.querySelector('[data-banner]');
+    this.mutateEl = this.root.querySelector('[data-mutate-choice]');
+    this.mutateRefs = {
+      offers: this.mutateEl.querySelector('[data-mutate-offers]'),
+      clock: this.mutateEl.querySelector('[data-mutate-clock]'),
+    };
+    // Its own listener rather than the overlay's `data-act` router: these
+    // buttons are built and thrown away per offer, and routing them through
+    // the router would put a gameplay decision in the same switch as "resume".
+    this.mutateEl.addEventListener('click', (e) => {
+      const pick = e.target.closest?.('[data-mutate-pick]');
+      if (pick) { this.mutate?.onPick?.(pick.dataset.mutatePick); return; }
+      if (e.target.closest?.('[data-mutate-refuse]')) this.mutate?.onRefuse?.();
+    });
     this.bannerRefs = {
       img: this.banner.querySelector('img'),
       tier: this.banner.querySelector('.pickup-tier'),
@@ -1944,6 +1972,39 @@ export class Menus {
     this.bannerTimer = 4.2;
   }
 
+  /**
+   * The blight toll's choice window (issue #33). Non-blocking by construction:
+   * nothing here pauses, nothing here grabs focus, and the run continues
+   * behind it — the panel simply offers the stacks and counts down.
+   *
+   * Each card leads with what the stack *becomes*, not with what is lost: the
+   * blight counterpart's own catalogue description rides in the payload, so
+   * the player is choosing between two transformations rather than picking a
+   * casualty.
+   */
+  showMutationChoice({ offers, seconds, onPick, onRefuse }) {
+    if (!offers?.length) return;
+    this.mutate = { onPick, onRefuse, remaining: seconds };
+    this.mutateRefs.offers.innerHTML = offers.map((o, i) => `
+      <button class="mutate-card" data-mutate-pick="${escapeHtml(o.baseId)}">
+        <i class="mutate-art"><img alt="" src="${escapeHtml(itemArt(o.blightId, 'blight'))}"></i>
+        <span class="mutate-key">${i + 1}</span>
+        <span class="mutate-body">
+          <span class="mutate-name">${escapeHtml(o.blightName)}</span>
+          <em class="mutate-desc">${escapeHtml(o.blightDescription || '')}</em>
+          <span class="mutate-from">from ${escapeHtml(o.count > 1 ? `${o.count}x ` : '')}${escapeHtml(o.baseName)}</span>
+        </span>
+      </button>`).join('');
+    this.mutateRefs.clock.textContent = `${Math.ceil(seconds)}s`;
+    this.mutateEl.classList.add('is-on');
+  }
+
+  /** Closed by the system that owns the decision, never by this panel. */
+  hideMutationChoice() {
+    this.mutate = null;
+    this.mutateEl.classList.remove('is-on');
+  }
+
   // ------------------------------------------------------- keyboard / gamepad
 
   /** Every focusable control on the open screen, in DOM order. */
@@ -2136,6 +2197,23 @@ export class Menus {
     if (this.bannerTimer > 0) {
       this.bannerTimer -= dt;
       if (this.bannerTimer <= 0) this.banner.classList.remove('is-on');
+    }
+    // The offer's clock is display only — `Items` owns the real one and will
+    // close this panel through `hideMutationChoice` when it lapses, so the two
+    // can never disagree about whether the window is still open. Keys 1-3 are
+    // read through `ctx.input` like the Edict's C, so the choice is answerable
+    // without letting go of the world.
+    if (this.mutate) {
+      this.mutate.remaining -= dt;
+      this.mutateRefs.clock.textContent = `${Math.max(0, Math.ceil(this.mutate.remaining))}s`;
+      if (!this.screen) {
+        for (let i = 0; i < 3; i++) {
+          if (!ctx.input?.hit?.(`Digit${i + 1}`)) continue;
+          const el = this.mutateRefs.offers.children[i];
+          if (el) this.mutate.onPick?.(el.dataset.mutatePick);
+          break;
+        }
+      }
     }
     // C opens the Edict straight from the world. Command's whole interface is
     // this screen, and three clicks through a pause menu to re-aim a drop you
