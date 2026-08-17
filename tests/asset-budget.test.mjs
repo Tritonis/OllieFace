@@ -43,15 +43,69 @@ console.log('the budget prose and the machine-readable budget agree');
   // A ceiling nobody can find is a ceiling nobody honours, and a ceiling that
   // disagrees with itself is worse than none. ASSET-SPEC.md is where a human
   // looks; asset-budget.json is what the gate reads.
+  //
+  // This arm was first written as `spec.includes(value)` over the whole
+  // document, and that is exactly the guard-passes-while-blind shape this repo
+  // keeps producing: every ceiling is stated in the table AND restated in the
+  // prose beside it, so editing only the table cell — the one place a human
+  // reads — left a correct mention elsewhere and the substring search still
+  // found it. A review demonstrated it for both the 24 MiB and the 26.0 ms
+  // ceiling. So the check is now anchored two ways:
+  //
+  //   1. every KNOWN statement site is matched by its own regex, must appear
+  //      exactly once, and must carry the JSON's value — so moving the table
+  //      cell alone fails, and moving a prose restatement alone fails naming
+  //      the site;
+  //   2. every `N MiB` / `N ms` figure anywhere in the budget section must be
+  //      a value the JSON actually documents — so a *newly written* stale
+  //      restatement, in wording no site regex anticipated, still fails.
   const spec = readFileSync(join(root, 'docs', 'art', 'ASSET-SPEC.md'), 'utf8');
   ok(!/Download\/VRAM budget: PLACEHOLDER/.test(spec),
     'ASSET-SPEC.md no longer carries the #28 placeholder');
-  ok(spec.includes(`${(c.assetBytes / 1048576).toFixed(0)} MiB`),
-    `ASSET-SPEC.md states the asset ceiling (${MiB(c.assetBytes)})`);
-  ok(spec.includes(`${(c.shippedTotalBytes / 1048576).toFixed(0)} MiB`),
-    `ASSET-SPEC.md states the total shipped ceiling (${MiB(c.shippedTotalBytes)})`);
-  ok(spec.includes(c.frameTime.medianMs.toFixed(1)),
-    `ASSET-SPEC.md states the combat-24 median ceiling (${c.frameTime.medianMs} ms)`);
+
+  const section = spec.slice(spec.indexOf('\n## The budget')).split(/\n## (?!The budget)/)[0];
+  ok(section.length > 500, 'the budget section exists and is where the sites below are looked for');
+
+  const mib = (b) => +(b / 1048576).toFixed(2);
+  const ft = c.frameTime;
+  // site: [label, regex with one capture per expected value, expected values]
+  const sites = [
+    ['total-shipped table cell', /\| Total shipped \| \*\*([\d.]+) MiB\*\*/g, [mib(c.shippedTotalBytes)]],
+    ['total-shipped download-time prose', /a ([\d.]+) MiB cold download/g, [mib(c.shippedTotalBytes)]],
+    ['code table cell', /\| Code \| \*\*([\d.]+) MiB\*\*/g, [mib(c.codeBytes)]],
+    ['assets table cell', /\| Assets \| \*\*([\d.]+) MiB\*\*/g, [mib(c.assetBytes)]],
+    ['VRAM table cell', /\| VRAM \| \*\*([\d.]+) MiB, provisional\*\*/g, [mib(c.vramBytes)]],
+    ['VRAM headroom prose', /([\d.]+) MiB is the resident-texture headroom/g, [mib(c.vramBytes)]],
+    ['GPU-proxy table cell', /\| \*\*(\d+) textures, (\d+) geometries\*\*/g, [c.gpuTextures, c.gpuGeometries]],
+    ['frame-time table cell', /frame time \| \*\*median ([\d.]+) ms, p95 ([\d.]+) ms\*\*/g, [ft.medianMs, ft.p95Ms]],
+    ['frame-time ceiling prose', /median at or\s+under ([\d.]+) ms, p95 at or under ([\d.]+) ms/g, [ft.medianMs, ft.p95Ms]],
+    ['frame-time tolerance prose', /([\d.]+) ms is \+\d+%/g, [ft.medianMs]],
+  ];
+  for (const [label, re, expected] of sites) {
+    const hits = [...section.matchAll(re)];
+    if (hits.length !== 1) {
+      ok(false, `${label}: found ${hits.length} matches, expected exactly 1 — the site moved or was reworded, so it is no longer checked`);
+      continue;
+    }
+    const got = hits[0].slice(1).map(Number);
+    ok(got.every((v, i) => v === expected[i]),
+      `${label} states ${expected.join(' / ')} (found ${got.join(' / ')})`);
+  }
+
+  // The second net. Everything the JSON legitimately documents, in the two
+  // units the section quotes; anything else with those units is drift.
+  const b = budget.baseline, rec = JSON.parse(readFileSync(join(root, budget.frameTimeRecord), 'utf8'));
+  const okMiB = new Set([c.shippedTotalBytes, c.codeBytes, c.assetBytes, c.vramBytes,
+    b.shippedBytes, b.distTotalBytes, b.sourcemapBytes, b.jsBytes].map(mib));
+  const okMs = new Set([ft.medianMs, ft.p95Ms, rec.medianFrameMs, rec.p95FrameMs,
+    ...rec.otherRecordedMedians.map((m) => m.ms)]);
+  const strays = [];
+  for (const [, n, unit] of section.matchAll(/([\d.]+)\s*(MiB|ms)\b/g)) {
+    const set = unit === 'MiB' ? okMiB : okMs;
+    if (!set.has(Number(n))) strays.push(`${n} ${unit}`);
+  }
+  ok(strays.length === 0,
+    `every MiB/ms figure in the budget section is one the JSON documents${strays.length ? ` — stray: ${strays.join(', ')}` : ''}`);
 }
 
 console.log('GPU resource proxies stay inside their ceilings');
