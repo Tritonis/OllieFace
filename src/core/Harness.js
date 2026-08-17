@@ -3002,9 +3002,14 @@ export function installHarness(ctx) {
       // sitting on the top-8 pixel cut are the back rank, and the back rank is
       // where the fog is. Pulling the band in to 25 lifts `worstGatedSep` to
       // **0.49**, reproduced on three consecutive boots
-      // (`reviews/issue86/d25a|d25b|d25c`), with subject `px` up 9492 -> 10679
-      // and aggregate `sepP50` flat at 0.63 vs 0.65. `visibleObjects` goes 22 ->
-      // 21 against a floor of 8, and no object failure appears in any run.
+      // (`reviews/issue86/d25a|d25b|d25c`), with subject `px` up 9492 -> 10679.
+      // Aggregate `sepP50` pays for it: 0.65 -> 0.63, a ~3% drop, well clear of
+      // its own 0.27 bar and the trade this change is making — the union median
+      // gives up a little so the weakest individual gains a lot.
+      // `visibleObjects` goes 22 -> 21 against a floor of 8, and no object
+      // failure appears in any run. Only the four `manifest.json` files are
+      // committed; their `04-combat.png` siblings are ~2.1 MB each and were left
+      // out of the tree.
       // Past about 30 m on this stage the fog
       // has taken enough of a monster that it stops standing off what is behind
       // it: measured in `reviews/round6/diag-combat4.json`, the hulk — the
