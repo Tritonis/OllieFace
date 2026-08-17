@@ -523,6 +523,48 @@ console.log('the contrast floor catches what separating the palette cost it');
   ok(CONTRAST.text === 4.5 && CONTRAST.graphic === 3.0, 'at the WCAG AA floors, unmodified');
 }
 
+console.log('and the four translucent surfaces answer to the scene behind them');
+{
+  const { gradeContrast, SURFACES, over } = await import('../tools/colour-vision.mjs');
+  const { TIERS, TIER_ORDER } = await import('../src/ui/Icons.js');
+  const plates = Object.fromEntries(TIER_ORDER.map((k) => [k, TIERS[k].plate]));
+  const shipped = Object.fromEntries(TIER_ORDER.map((k) => [k, TIERS[k].color]));
+
+  // Exactly four surfaces are `rgba()` over the live frame, and the other four
+  // are opaque. Counted, because "the ones we thought of" is how a surface goes
+  // ungraded — the same completeness shape the block above uses.
+  const translucent = SURFACES.filter((s) => s.translucent);
+  ok(translucent.length === 4,
+     `four surfaces composite onto the scene (${translucent.map((s) => s.id).join(', ')})`);
+  ok(SURFACES.filter((s) => !s.translucent).length === 4, 'and four are opaque');
+
+  // The instrument has to *move* when the ground moves, or feeding it a
+  // measured scene changes nothing and the gate is still reporting the best
+  // case under a new name. Grading against a mid-grey ground must lift every
+  // translucent surface's ground and lower nothing.
+  const dark = gradeContrast(shipped, plates);
+  const lit = gradeContrast(shipped, plates, undefined, '#808080');
+  const key = (c) => `${c.id}/${c.surface}`;
+  const byKey = Object.fromEntries(dark.checks.map((c) => [key(c), c]));
+  const moved = lit.checks.filter((c) => c.ground !== byKey[key(c)].ground);
+  ok(moved.length === TIER_ORDER.length * 4,
+     `a lit ground moves exactly the ${TIER_ORDER.length * 4} translucent checks (${moved.length})`);
+  ok(moved.every((c) => c.surface !== 'plate-top' && c.surface !== 'mark-chip'),
+     'and never an opaque one');
+
+  // The composite is the browser's: 58% of #060a10 over a #808080 scene is a
+  // ground the panel genuinely paints, and it is far above UI_BLACK.
+  ok(over('#060a10', 0.58, '#808080') === '#393c3f',
+     `--panel over mid-grey resolves to #393c3f (${over('#060a10', 0.58, '#808080')})`);
+
+  // And the verdict has to be able to flip. If a scene bright enough to fail
+  // the palette still reports ok, this measurement can never return an
+  // uncomfortable number and is decoration.
+  ok(dark.ok === true, 'the shipped palette clears the stylesheet-black best case');
+  ok(gradeContrast(shipped, plates, undefined, '#ffffff').ok === false,
+     'and fails over a white scene, so the lit ground can actually change the verdict');
+}
+
 console.log('one palette, three tables');
 {
   const { readFileSync } = await import('node:fs');

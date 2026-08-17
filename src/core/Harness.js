@@ -2193,6 +2193,116 @@ export function installHarness(ctx) {
   };
 
   /**
+   * The scene luminance actually behind the HUD's translucent panels.
+   *
+   * `tools/colour-vision.mjs` grades every tier colour against eight surfaces,
+   * and four of them — `--panel`, `--panel-hard` and the two logbook row washes
+   * built on it — are `rgba()` fills over the live 3D frame. The gate composites
+   * them onto `#05070a`, the darkest ground the stylesheet names, because a
+   * stylesheet is the only thing that file can read. That makes those four
+   * ratios a best case: over a lit realm the panel composites *lighter* and the
+   * real ratio falls. The shipped palette's worst surface clears the 4.5 floor
+   * by 0.09, so the best case and the real case are not obviously the same
+   * verdict (#78).
+   *
+   * This is the measurement that file cannot take. It renders the scene into the
+   * same offscreen target the subject mask uses — normal materials, no override,
+   * so it is colour-aware — and reports, per panel element, the scene colour
+   * under that element's screen rect. Two numbers per panel, because the mean is
+   * the wrong one to gate on: `mean` is what a viewer sees most of, and `p95` is
+   * the bright tail — a shaft of sun, a bloom-lit boss, the one corner of the
+   * panel that sits over sky — which is the case the ratio has to survive.
+   *
+   * Caveats, stated rather than buried. The offscreen render bypasses the
+   * composer, so bloom and tonemapping are not in these numbers; that makes them
+   * a *lower* bound on the lit ground, which is the safe direction for a floor.
+   * And the mask frame is the camera's frame, so this assumes the canvas fills
+   * the window — it does, but a letterboxed canvas would need the rect mapped
+   * through the canvas box instead.
+   */
+  const panelGround = (selectors) => {
+    const r = ctx.pipeline?.renderer;
+    const sel = selectors ?? PANEL_SELECTORS;
+    if (!r || typeof document === 'undefined') return { ok: false, panels: [] };
+    if (!_maskRT) {
+      _maskRT = new THREE.WebGLRenderTarget(MASK_W, MASK_H);
+      _maskA = new Uint8Array(MASK_PX * 4);
+      _maskB = new Uint8Array(MASK_PX * 4);
+    }
+    const prevRT = r.getRenderTarget();
+    const prevShadow = r.shadowMap.autoUpdate;
+    r.shadowMap.autoUpdate = false;
+    r.setRenderTarget(_maskRT);
+    camera.updateMatrixWorld(true);
+    const softSaved = _pinSoftResolution(MASK_W, MASK_H);
+    try {
+      maskPass(r, null);
+      r.readRenderTargetPixels(_maskRT, 0, 0, MASK_W, MASK_H, _maskA);
+    } finally {
+      _restoreSoftResolution(softSaved);
+      r.setRenderTarget(prevRT);
+      r.shadowMap.autoUpdate = prevShadow;
+    }
+
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const panels = [];
+    for (const s of sel) {
+      const el = document.querySelector(s);
+      if (!el) { panels.push({ selector: s, present: false }); continue; }
+      const b = el.getBoundingClientRect();
+      if (!(b.width > 0 && b.height > 0)) { panels.push({ selector: s, present: false }); continue; }
+      // Viewport fractions, clamped, then mask pixels. `readRenderTargetPixels`
+      // hands rows back bottom-up while a client rect is top-down, so y flips.
+      const x0 = Math.max(0, Math.min(MASK_W - 1, Math.floor((b.left / vw) * MASK_W)));
+      const x1 = Math.max(x0 + 1, Math.min(MASK_W, Math.ceil((b.right / vw) * MASK_W)));
+      const yTop = Math.max(0, Math.min(MASK_H - 1, Math.floor(((vh - b.bottom) / vh) * MASK_H)));
+      const yBot = Math.max(yTop + 1, Math.min(MASK_H, Math.ceil(((vh - b.top) / vh) * MASK_H)));
+      let n = 0, sr = 0, sg = 0, sb = 0;
+      const lums = [];
+      for (let y = yTop; y < yBot; y++) {
+        for (let x = x0; x < x1; x++) {
+          const i = (y * MASK_W + x) * 4;
+          const R = _maskA[i], G = _maskA[i + 1], B = _maskA[i + 2];
+          sr += R; sg += G; sb += B; n++;
+          // sRGB-byte luminance weights, matching how `over()` composites: the
+          // browser blends encoded bytes, so the ground handed to the gate must
+          // be an encoded colour too.
+          lums.push({ l: 0.2126 * R + 0.7152 * G + 0.0722 * B, R, G, B });
+        }
+      }
+      if (!n) { panels.push({ selector: s, present: false }); continue; }
+      lums.sort((a, c) => a.l - c.l);
+      const hi = lums[Math.min(lums.length - 1, Math.round(0.95 * (lums.length - 1)))];
+      panels.push({
+        selector: s,
+        present: true,
+        px: n,
+        rect: [Math.round(b.left), Math.round(b.top), Math.round(b.width), Math.round(b.height)],
+        mean: _hex(sr / n, sg / n, sb / n),
+        p95: _hex(hi.R, hi.G, hi.B),
+      });
+    }
+    return { ok: true, mask: [MASK_W, MASK_H], panels };
+  };
+
+  const _hex = (r, g, b) => '#' + [r, g, b]
+    .map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
+
+  /**
+   * The HUD elements whose background is a translucent fill over the scene,
+   * enumerated from `src/ui/hud.css` rather than assumed — one per `SURFACES`
+   * entry in `tools/colour-vision.mjs` that composites onto `UI_BLACK`.
+   */
+  const PANEL_SELECTORS = [
+    '.plate',       // --panel: the HUD plates, the inventory strip
+    '.objective',   // --panel, top-centre
+    '.tip',         // --panel-hard: the tooltip, whose name is the tier colour
+    '.party-chip',  // --panel-hard
+    '.book-list',   // the logbook index: .book-row and its hover wash live here
+    '.panel--book', // the logbook's own panel, over the scrim, over the stage
+  ];
+
+  /**
    * Fraction of the frame that is open sky.
    *
    * `02-vista` and the four biome frames are documented as judging "terrain,
@@ -6141,6 +6251,12 @@ export function installHarness(ctx) {
     unpinClock,
     /** Everything a caller needs to tell a deterministic run from a lucky one. */
     determinism: () => ({ clockPinned: _pinnedDt > 0, frameDt: frameDt(), frameTimeouts }),
+
+    // The lit ground behind the HUD's translucent panels (#78). Read by
+    // `tools/panel-ground.mjs`, which feeds it to `gradeContrast` as the
+    // composite ground the stylesheet cannot supply.
+    panelGround,
+    panelSelectors: () => PANEL_SELECTORS.slice(),
 
     // Escape hatches for ad-hoc inspection during the critic loop.
     dismiss,
