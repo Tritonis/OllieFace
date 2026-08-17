@@ -97,8 +97,13 @@ console.log('the budget prose and the machine-readable budget agree');
   const b = budget.baseline, rec = JSON.parse(readFileSync(join(root, budget.frameTimeRecord), 'utf8'));
   const okMiB = new Set([c.shippedTotalBytes, c.codeBytes, c.assetBytes, c.vramBytes,
     b.shippedBytes, b.distTotalBytes, b.sourcemapBytes, b.jsBytes].map(mib));
+  // Historical citations come from the JSON, not the live record: the record is
+  // re-measured (perf.mjs --out) and its numbers move, while the spec's prose
+  // cites fixed history. The transcribed seed record carried the history
+  // inline; a live record does not, hence the guard.
   const okMs = new Set([ft.medianMs, ft.p95Ms, rec.medianFrameMs, rec.p95FrameMs,
-    ...rec.otherRecordedMedians.map((m) => m.ms)]);
+    ...(ft.historicalMediansMs ?? []), ...(ft.historicalP95Ms != null ? [ft.historicalP95Ms] : []),
+    ...(rec.otherRecordedMedians ?? []).map((m) => m.ms)]);
   const strays = [];
   for (const [, n, unit] of section.matchAll(/([\d.]+)\s*(MiB|ms)\b/g)) {
     const set = unit === 'MiB' ? okMiB : okMs;

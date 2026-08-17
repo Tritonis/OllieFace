@@ -1,19 +1,84 @@
 {
   "scenario": "combat-24",
-  "medianFrameMs": 20.5,
-  "p95FrameMs": 27.1,
+  "medianFrameMs": 10.3,
+  "p95FrameMs": 24.5,
   "quality": 3,
-  "gpu": "RTX 2070 (as reported in the source write-up)",
-  "transcribed": true,
-  "source": "reviews/round6/FIX-world.md:137",
-  "sourceQuote": "node tools/perf.mjs, final tree: combat-24 median 20.5 ms, p95 27.1 ms",
-  "note": "TRANSCRIBED, not measured here. tools/perf.mjs has only ever printed to stdout, so no machine-written perf record was ever committed; this file transcribes the most recent one that a review wrote down, so the gate has something real to check instead of skipping forever. A hand-run of `node tools/perf.mjs --out reviews/asset-budget/perf-combat24.json` overwrites it with a measured record (transcribed drops to false) — do that at the first opportunity a GPU is free.",
-  "otherRecordedMedians": [
-    { "ms": 16.9, "source": "reviews/round5/FIX-stages.md:124" },
-    { "ms": 18.6, "source": "reviews/round5/FIX-materials.md:316" },
-    { "ms": 20.0, "source": "reviews/round5/FIX-vfx2.md:288" },
-    { "ms": 20.5, "source": "reviews/round5/FIX-character.md:337" },
-    { "ms": 21.8, "source": "reviews/round5/FIX-character.md:337" },
-    { "ms": 24.5, "source": "reviews/round5/FIX-harness2.md:9" }
-  ]
+  "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 2070 (0x00001F07) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "transcribed": false,
+  "capturedAt": "2026-08-17T03:00:12.685Z",
+  "raw": {
+    "env": {
+      "devicePixelRatio": 1,
+      "rendererPixelRatio": 1,
+      "drawingBuffer": [
+        1600,
+        900
+      ],
+      "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 2070 (0x00001F07) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "shadowMapSize": [
+        "4096x4096",
+        "512x512",
+        "512x512"
+      ],
+      "gtaoSamples": "on"
+    },
+    "quality": 3,
+    "results": [
+      {
+        "label": "idle",
+        "frames": 1,
+        "avgFrameMs": 0,
+        "medianFrameMs": 0,
+        "p95FrameMs": 0,
+        "worstFrameMs": 0,
+        "maxSubsteps": 0,
+        "saturatedFrames": 0,
+        "hitstopFrames": 0,
+        "perSystemMs": {},
+        "geometries": 413,
+        "textures": 53,
+        "programs": 71
+      },
+      {
+        "label": "combat-24",
+        "frames": 141,
+        "avgFrameMs": 12.47,
+        "medianFrameMs": 10.3,
+        "p95FrameMs": 24.5,
+        "worstFrameMs": 26.1,
+        "maxSubsteps": 5,
+        "saturatedFrames": 2,
+        "hitstopFrames": 31,
+        "perSystemMs": {
+          "Object.lateUpdate": 8.152,
+          "VFX.lateUpdate": 2.3,
+          "Director.fixedUpdate": 0.625,
+          "CameraRig.lateUpdate": 0.448,
+          "Director.update": 0.263,
+          "Player.fixedUpdate": 0.176,
+          "HUD.update": 0.174,
+          "Environment.update": 0.167,
+          "Audio.update": 0.028,
+          "VFX.update": 0.025,
+          "Input.pollPad": 0.016,
+          "Player.update": 0.016,
+          "Progression.fixedUpdate": 0.012,
+          "Blight.update": 0.012,
+          "Progression.update": 0.009,
+          "Combat.fixedUpdate": 0.007,
+          "Revive.fixedUpdate": 0.003,
+          "Items.fixedUpdate": 0.002,
+          "Items.update": 0.002,
+          "Coop.fixedUpdate": 0.001,
+          "Realms.update": 0.001,
+          "Coop.update": 0.001,
+          "HUD.lateUpdate": 0.001,
+          "Realms.fixedUpdate": 0
+        },
+        "geometries": 427,
+        "textures": 53,
+        "programs": 72
+      }
+    ]
+  }
 }
