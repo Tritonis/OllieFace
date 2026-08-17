@@ -94,6 +94,29 @@ export const MAX_SIM_QUEUE = 2048;
 // concluding the game is broken.
 const CONNECT_TIMEOUT_MS = 20000;
 
+// How long `createInvite` itself may take before it gives up on minting.
+//
+// Nothing in the mint waits on a person: it is `createOffer`,
+// `setLocalDescription`, and — on the manual path — `waitForIce`. So unlike the
+// connect deadline above there is no human leg to be generous about, and the
+// only question is how much room the machine work needs.
+//
+// It MUST sit above `waitForIce`'s own `capMs` of 4000, or that cap becomes dead
+// code: a mint cancelled at 4 s or less could never reach the point where
+// gathering has legitimately used its full allowance and the offer is about to
+// be handed over complete. 10 s is that 4 s plus room for a slow `createOffer`
+// on a machine gathering interfaces, and still an order of magnitude below "the
+// rest of the session", which is what an unbounded mint costs the
+// join-amplification ceiling in `Lobby` — every mint in flight holds a claim
+// against it, and a claim is only as bounded as the promise it is paired to.
+const MINT_TIMEOUT_MS = 10000;
+
+// Carried on the error rather than only in its text, so a caller — and the log
+// line below — can tell "the mint timed out" from a mint that rejected on its
+// own (a full lobby, a browser that refused the peer connection). Message text
+// is a UI string and can be reworded; this is the wire.
+const MINT_TIMEOUT_NAME = 'InviteMintTimeout';
+
 /**
  * Settle `promise` one way or the other within `ms`.
  *
@@ -421,12 +444,64 @@ export class HostTransport {
    */
   _connectTimeoutMs() { return CONNECT_TIMEOUT_MS; }
 
-  async createInvite({ trickle = this.trickle } = {}) {
+  /** The mint deadline, as a seam. Same shape and reason as `_connectTimeoutMs`. */
+  _mintTimeoutMs() { return MINT_TIMEOUT_MS; }
+
+  /**
+   * Mint an invite, or reject trying.
+   *
+   * The bound is the whole point of this wrapper: `_mintInvite` awaits browser
+   * calls, and a browser call that hangs rather than rejecting leaves the
+   * promise pending for ever. Every caller of this method pairs a claim against
+   * its own ceiling with the promise's settlement — `Lobby` counts mints in
+   * flight against `MAX_PENDING_INVITES` and releases in a `finally` — and a
+   * `finally` on a promise that never settles never runs. So the counter is
+   * only as bounded as this promise is, and this is where that bound has to
+   * live: no amount of work in `Lobby` can bound a promise it does not own.
+   *
+   * It rejects rather than resolving with nothing, because rejection is what
+   * runs those `finally`s and what the callers already handle — a mint that
+   * throws is an ordinary, already-tested outcome ('Lobby is full'), and a
+   * resolve-with-null would be a new shape every caller would have to learn.
+   *
+   * The half-built connection is given up here too. On timeout the peer may or
+   * may not have reached `this.peers` — that write happens after the ICE wait —
+   * so both are covered: `cancelInvite` if it landed, a direct close if not.
+   * Otherwise a hung mint would swap an unbounded counter for an unbounded set
+   * of live RTCPeerConnections, which is the worse of the two.
+   */
+  createInvite(opts = {}) {
+    // Not `withDeadline`: this one owns the error it throws (so the failure is
+    // named, not just worded) and has cleanup to do when it fires.
+    const held = {};
+    let timer = null;
+    return new Promise((resolve, reject) => {
+      const ms = this._mintTimeoutMs();
+      timer = setTimeout(() => {
+        const err = new Error(
+          'That invite could not be created — your browser never finished setting '
+          + 'up the connection. Try again, and see the connection note on this screen.'
+        );
+        err.name = MINT_TIMEOUT_NAME;
+        console.warn(`[net] ${MINT_TIMEOUT_NAME}: createInvite got no answer from the browser `
+          + `within ${ms}ms; giving up the half-built connection and releasing the invite slot.`);
+        held.abandoned = true;
+        if (held.peer && !this.cancelInvite(held.peer.id)) held.peer.close();
+        reject(err);
+      }, ms);
+      this._mintInvite(opts, held).then(resolve, reject);
+    }).finally(() => clearTimeout(timer));
+  }
+
+  async _mintInvite({ trickle = this.trickle } = {}, held = {}) {
     const id = this._nextId++;
     const pc = new RTCPeerConnection(rtcConfig());
     const ice = trickle ? new TrickleIce() : null;
     ice?.attach(pc);
     const peer = new Peer(pc, id);
+    // Published to the caller's deadline before the first await, so a timeout
+    // has something to close rather than leaking whatever this got as far as.
+    held.peer = peer;
     const sim = netSim();
     if (sim.on) peer.installSim(sim);
 
@@ -447,6 +522,13 @@ export class HostTransport {
       peer.state.onopen = tick;
       peer.events.onopen = tick;
     });
+    // The swallow that used to live on line ~490's `ready.then` has to be here
+    // instead, because the mint deadline can close this peer *before* that line
+    // is reached: closing re-enters `onconnectionstatechange`, which rejects
+    // `ready`, and a rejection with no handler yet is an unhandled rejection on
+    // a machine that has done nothing wrong. Attaching one here is harmless to
+    // the later chain — a promise takes any number of handlers.
+    ready.catch(() => {});
 
     pc.onconnectionstatechange = () => {
       if (['failed', 'closed', 'disconnected'].includes(pc.connectionState)) {
@@ -478,6 +560,13 @@ export class HostTransport {
     // over the relay; under manual signalling the blob must be complete, so the
     // call is byte-identical to what it has always been.
     if (!trickle) await waitForIce(pc);
+
+    // The deadline fired while the browser was working, and then the browser
+    // came back. Its answer is no longer wanted: the caller has already been
+    // told this mint failed and has released whatever it was holding, so
+    // registering the peer now would put a connection nobody will ever close
+    // into `peers`. It was closed when the deadline fired; say so and stop.
+    if (held.abandoned) throw new Error('Invite mint was abandoned after its deadline');
 
     this.peers.set(id, peer);
     // The rejection handler is not decoration, and it becomes required the
