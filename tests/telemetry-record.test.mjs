@@ -219,6 +219,11 @@ console.log('a whole run produces a readable record');
   bus.emit('stageStart', { index: 0, name: 'Ashen Shelf' });
   bus.emit('realmOffer', { id: 'market', kind: 'gateway', stage: 0, cost: 120 });
   bus.emit('realmOffer', { id: 'crucible', kind: 'gateway', stage: 0, cost: 0 });
+  // Both doors appeared with an empty purse, and the purse then filled while
+  // they stood. #38's denominator is offers the player could actually take, so
+  // what matters is the high-water mark, not the instant of the offer.
+  bus.emit('goldChanged', { gold: 200 });
+  bus.emit('goldChanged', { gold: 140 });
   at(30);
   setCor(24, 1);                                        // crossed into Seeded
   bus.emit('itemPickup', { id: 'syringe', delta: 2, tier: 'common' });
@@ -297,6 +302,16 @@ console.log('a whole run produces a readable record');
 
   ok(r.realmOffers?.length === 4, `every offer counted (got ${r.realmOffers?.length})`);
   ok(r.realmVisits?.length === 2, `both visits recorded (got ${r.realmVisits?.length})`);
+  // Record version 2: what the purse could have answered the door with. Without
+  // these, #38's decided denominator is not reconstructible from an export at all.
+  const marketOffer = r.realmOffers?.find((o) => o.id === 'market');
+  ok(marketOffer?.gold === 0, `gold at the instant of the offer (got ${marketOffer?.gold})`);
+  ok(marketOffer?.goldMax === 200, `the high-water purse while the door stood (got ${marketOffer?.goldMax})`);
+  ok(marketOffer?.band === 0, `corruption band the offer was made under (got ${marketOffer?.band})`);
+  // Stage 1's doors must not inherit stage 0's purse: `stageStart` clears the
+  // gateways, so nothing from the old stage is still standing to be raised.
+  const finaleOffer = r.realmOffers?.find((o) => o.id === 'fracture');
+  ok(finaleOffer?.goldMax === 0, `a new stage's offers start their own purse watch (got ${finaleOffer?.goldMax})`);
   const market = r.realmVisits?.find((v) => v.id === 'market');
   ok(market?.duration === 35, `realm duration (got ${market?.duration})`);
   ok(market?.items === 1, 'items gained inside the realm');
