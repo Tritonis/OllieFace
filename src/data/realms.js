@@ -193,6 +193,8 @@ export const REALMS = [
     wallRadius: 62,
     objective: 'Destroy the Herald',
     toast: 'The Fracture',
+    // The clean route's last-phase verb (see `FINALE_RITES`).
+    rite: 'containment',
     air: air({
       zenith: 0x0a0618, horizon: 0x3d1a5e, haze: 0x8a3fd0, ground: 0x060410,
       sun: 0xd9b0ff, cloud: 0x18102a, cloudAmount: 0.55, hazePow: 4.0,
@@ -230,6 +232,8 @@ export const REALMS = [
     // game, paid on arrival — you already paid for it all run.
     bossScale: { health: 1.5, damage: 1.35 },
     voidLoot: 4,
+    // The void route's last-phase verb (see `FINALE_RITES`).
+    rite: 'consumption',
     air: air({
       // The Fracture's palette dragged all the way into the blight ramp
       // (hud.css: #7a4fd0 -> #ff2fb0): denser dust, magenta haze, and the rim
@@ -352,6 +356,128 @@ export const FINALE_PHASES = [
 ];
 
 /**
+ * The last phase's *verb*, one per route (#37).
+ *
+ * Phases 1 and 2 are shared: the same Herald, the same collapse, the same ward.
+ * What the two routes could not previously answer is what the whole run's
+ * corruption decision actually bought at the climax — the void door was the
+ * same fight with a bigger health bar and better loot, which is a number, not a
+ * verb. Phase 3 is where they part, and they part on the same axis the run has
+ * been arguing about all along: **whether ground can be won back**.
+ *
+ *  - **Containment** (clean). Three breaches tear open and the floor is eaten
+ *    for as long as any of them is still open. Nothing about this phase is a
+ *    damage race: the Herald is not the problem, the holes are, and the floor
+ *    you save is the floor you get to finish the fight on. Seal all three and
+ *    the arena *grows back* to the phase radius. Precision and target priority,
+ *    and a mistake that is recoverable.
+ *  - **Consumption** (void). No breaches, because nothing on the ground can be
+ *    killed to stop this: the blight the party spent the run accumulating eats
+ *    the floor at a steady rate and none of it ever comes back. What the route
+ *    offers instead is the bargain it has been offering all along — the world's
+ *    accumulated corruption is *spent*, drained out of the ledger for good, and
+ *    paid back as damage; and every add consumed while the rite runs adds more.
+ *    Permanent arena loss, bought power, and a fight that gets stronger the
+ *    hungrier you were.
+ *
+ * A tester who has seen both can answer audit question 7 without reading a
+ * number: on one route you fight to keep the room, on the other you sell the
+ * room for teeth.
+ */
+export const FINALE_RITES = {
+  containment: {
+    id: 'containment',
+    realm: 'fracture',
+    /** Breaches to open. Non-zero means the erosion has something to kill. */
+    breaches: 3,
+    /** Metres of floor radius per second, per open breach. */
+    erosionRate: 1.6,
+    /** Metres per second won back once every breach is sealed. */
+    recoverRate: 3.2,
+    /** The floor never erodes past this, on either route. */
+    minRadius: 8,
+    permanentLoss: false,
+    objective: 'Seal the three breaches — the Fracture is eating the floor',
+    doneObjective: 'The breaches are sealed — end it',
+  },
+  consumption: {
+    id: 'consumption',
+    realm: 'fracture-void',
+    breaches: 0,
+    /** Unconditional: no breach to kill, so nothing switches this off. */
+    erosionRate: 1.1,
+    recoverRate: 0,
+    minRadius: 8,
+    permanentLoss: true,
+    /** Fraction of world corruption drained from the ledger and spent. */
+    debtFraction: 0.6,
+    /** Damage multiplier bonus per point of debt spent. */
+    powerPerDebt: 0.006,
+    /**
+     * And what the debt half alone may buy. Capped *separately* from the total
+     * so that a deeply corrupt run does not arrive at the ceiling on arrival —
+     * if it did, the consuming half of the verb would be worth nothing to
+     * exactly the players who took the route hardest.
+     */
+    debtCap: 0.9,
+    /** Bonus per add consumed while the rite runs. */
+    powerPerConsumed: 0.05,
+    /** Ceiling on the total, so a hoarded ledger is not an instant win. */
+    powerCap: 1.5,
+    objective: 'Spend what you owe — consume the swarm and finish it',
+    doneObjective: 'Spend what you owe — consume the swarm and finish it',
+  },
+};
+
+/** The rite a finale realm runs, or `null` for a realm that has none. */
+export function riteFor(realmId) {
+  const key = REALM_BY_ID.get(realmId)?.rite;
+  return key ? (FINALE_RITES[key] ?? null) : null;
+}
+
+/**
+ * Metres of floor radius the rite eats per second right now.
+ *
+ * The two routes differ here and nowhere else in this function, which is the
+ * point: a breach-driven rite stops when its breaches are sealed, and a
+ * blight-driven one has nothing to seal.
+ */
+export function riteErosion(rite, breachesAlive) {
+  if (!rite) return 0;
+  return rite.breaches > 0 ? rite.erosionRate * Math.max(0, breachesAlive) : rite.erosionRate;
+}
+
+/**
+ * Where the floor stands after `dt` of the rite. Pure — the controller owns the
+ * stage, this owns the rule.
+ *
+ * `ceiling` is the phase's own radius: containment wins ground back up to it and
+ * no further, and a permanent-loss rite never recovers at all.
+ */
+export function riteRadius(radius, rite, breachesAlive, dt, ceiling) {
+  if (!rite) return radius;
+  const eat = riteErosion(rite, breachesAlive);
+  if (eat > 0) return Math.max(rite.minRadius, radius - eat * dt);
+  if (rite.permanentLoss) return radius;
+  return Math.min(ceiling, radius + rite.recoverRate * dt);
+}
+
+/**
+ * What the void route's bargain pays: how much corruption leaves the world
+ * ledger, and the damage multiplier bonus it buys. Pure.
+ *
+ * A rite with no `debtFraction` — containment — buys nothing and spends
+ * nothing, so the clean route cannot accidentally acquire the void's verb.
+ */
+export function ritePower(rite, world, consumed = 0) {
+  if (!rite?.debtFraction) return { spent: 0, bonus: 0 };
+  const spent = Math.max(0, world || 0) * rite.debtFraction;
+  const debt = Math.min(rite.debtCap, spent * rite.powerPerDebt);
+  const bonus = Math.min(rite.powerCap, debt + Math.max(0, consumed) * rite.powerPerConsumed);
+  return { spent, bonus };
+}
+
+/**
  * Corruption is the router (launch spec §2). At the finale-gate stage the
  * party's corruption band decides which Fracture opens: Pristine/Seeded see
  * the clean route, Overrun/Consumed see the void-saturated one, and Blighted
@@ -366,13 +492,13 @@ export const FINALE_PHASES = [
 export const FINALE_ROUTES = [
   {
     realm: 'fracture',
-    label: 'Enter The Fracture — this ends the run',
+    label: 'Hold The Fracture — contain it, and this ends the run',
     tint: 0xff4ad0,
     bands: { min: 0, max: 2 },
   },
   {
     realm: 'fracture-void',
-    label: 'Enter The Hungering Fracture — this ends the run',
+    label: 'Feed The Hungering Fracture — spend it all, and this ends the run',
     tint: 0xc72fd6,
     bands: { min: 2, max: 4 },
   },

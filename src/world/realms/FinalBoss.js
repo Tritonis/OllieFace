@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { FINALE_PHASES } from '../../data/realms.js';
+import { FINALE_PHASES, riteFor, riteRadius, ritePower } from '../../data/realms.js';
 import { ENEMY_BY_ID } from '../../data/enemies.js';
 import { raiseIslands, spawnCollapseDebris } from './RealmArena.js';
 import { pullToFloor } from './RealmStage.js';
@@ -31,6 +31,14 @@ import { ITEMS_BY_TIER } from '../../data/items.js';
  */
 
 const COLLAPSE_TIME = 2.2;
+/** The rite's phase. Phases 1 and 2 are shared; this is where the routes part. */
+const RITE_PHASE = 3;
+/**
+ * Longer than any remaining fight, so the void route's bought power never
+ * expires mid-rite. `Player.grantBuff` multiplies, so each grant carries the
+ * *incremental* factor rather than the total (see `_payDebt`).
+ */
+const RITE_BUFF_TIME = 900;
 const VICTORY_HOLD = 6.0;     // beat between the last hit and the summary screen
 const ANCHOR_HEALTH_FRAC = 0.10;
 
@@ -71,6 +79,25 @@ export class FinaleController {
     /** The boss's orbiting regalia, and the two lights that model it. */
     this.regalia = null;
     this._t = 0;
+
+    // ---- the route's own last phase (#37). Null for anything without a rite.
+    this.rite = riteFor(def.id);
+    /** Running from the moment phase 3's collapse settles until the boss dies. */
+    this.riteRunning = false;
+    /** Breaches still open. Containment only; the void has nothing to seal. */
+    this.breaches = [];
+    /** Live floor radius under the rite, and the ceiling it may recover to. */
+    this.riteRadius = 0;
+    this.riteCeiling = 0;
+    /** Adds consumed while the rite runs. Void route only. */
+    this.consumed = 0;
+    /** Corruption drained from the world ledger, and the multiplier it bought. */
+    this.debtSpent = 0;
+    this.ritePowerBonus = 0;
+    this._powerApplied = 1;
+    this._sealed = false;
+    this._onKill = null;
+    this._offKill = null;
   }
 
   // ------------------------------------------------------------- boss dressing
@@ -191,6 +218,13 @@ export class FinaleController {
     ctx.director.boss = boss;
     ctx.events.emit('bossSpawn', { enemy: boss });
 
+    // The void route feeds on the swarm, so it has to know when the swarm dies.
+    // Subscribed even on the clean route so the two paths differ in the *rite
+    // table* rather than in the wiring — `_consume` is a no-op without a
+    // `powerPerConsumed`.
+    this._onKill = (e) => this._consume(ctx, e);
+    this._offKill = ctx.events.on?.('kill', this._onKill);
+
     // The void route's teeth and its pay (launch spec §2). Both are def-driven
     // so the clean Fracture — with neither field — is byte-identical to before.
     const scale = this.def.bossScale;
@@ -258,6 +292,7 @@ export class FinaleController {
 
     if (boss.phase !== this.phase) this._enterPhase(ctx, stage, boss.phase);
     if (this.warded) this._tickWard(ctx, stage, boss);
+    this._tickRite(ctx, stage, h);
 
     // A boss that flew out over the void while the floor was shrinking has to
     // come back: the Herald hovers, so nothing else would ever bring it in.
@@ -307,8 +342,126 @@ export class FinaleController {
       });
     }
 
+    if (phase >= RITE_PHASE && this.rite && !this.riteRunning) this._beginRite(ctx, stage, spec);
+
     if (!this.warded) {
-      ctx.hud?.setObjective?.(phase >= 3 ? 'No quarter — end it' : 'Destroy the Herald');
+      ctx.hud?.setObjective?.(phase >= RITE_PHASE
+        ? (this.rite?.objective ?? 'No quarter — end it')
+        : 'Destroy the Herald');
+    }
+  }
+
+  // ---------------------------------------------------------------- the rite
+
+  /**
+   * Phase 3, and the only part of the finale the two routes do not share.
+   *
+   * Both rites eat the floor; what differs is whether anything can be done
+   * about it. Containment opens breaches and the erosion is *theirs* — seal
+   * them and the arena grows back. Consumption opens nothing, because the thing
+   * eating the floor is the corruption the party chose to carry, and the trade
+   * on offer is to spend that ledger for damage instead of ground.
+   */
+  _beginRite(ctx, stage, spec) {
+    const rite = this.rite;
+    this.riteRunning = true;
+    // The ceiling is the phase's own radius, not the current one: the collapse
+    // into phase 3 is still animating, and containment recovers to where the
+    // phase meant the floor to be rather than to wherever it was caught.
+    this.riteCeiling = spec.floorRadius;
+    this.riteRadius = spec.floorRadius;
+    if (rite.breaches > 0) this._openBreaches(ctx, stage, rite.breaches);
+    else this._payDebt(ctx);
+    ctx.pipeline?.addShake?.(0.6);
+  }
+
+  /**
+   * Containment's targets. Deliberately *not* `_raiseAnchors`: these do not ward
+   * the boss and killing them is not a gate on damage. They are a second clock
+   * running against the floor, so the choice they pose is "shoot the Herald or
+   * keep the room", which is a priority problem the ward never was.
+   */
+  _openBreaches(ctx, stage, count) {
+    const card = ENEMY_BY_ID.get('anchor');
+    const sites = stage.anchorSites ?? [];
+    const hp = Math.max(150, Math.round((this.boss?.maxHealth ?? 4000) * ANCHOR_HEALTH_FRAC * 0.7));
+    for (let i = 0; i < count; i++) {
+      const at = sites[i % Math.max(1, sites.length)]?.clone()
+        ?? stage.origin.clone().add(_v.set(Math.cos(i) * 11, 0, Math.sin(i) * 11).clone());
+      const e = ctx.director?.spawnOne?.(ctx, card, at, null);
+      if (!e) continue;
+      e.maxHealth = hp;
+      e.health = hp;
+      this.breaches.push(e);
+      this.wardArt.push(this._buildWardArt(stage, e));
+      ctx.vfx?.burst?.(at, HERALD_HUE);
+    }
+  }
+
+  /**
+   * Consumption's bargain, taken once when the rite opens: a fixed fraction of
+   * the world's corruption leaves the ledger for good and comes back as damage.
+   *
+   * `bleed` is the same drain a Voidtouched kill uses, so the ending genuinely
+   * *un-corrupts the world* on the way out — the void route is the only place
+   * in the game where the debt is ever settled rather than carried.
+   */
+  _payDebt(ctx) {
+    const world = ctx.corruption?.world ?? 0;
+    const { spent } = ritePower(this.rite, world, 0);
+    if (spent > 0) ctx.corruption?.bleed?.(ctx.roster?.local ?? ctx.player, spent);
+    this.debtSpent = spent;
+    this._applyPower(ctx);
+  }
+
+  /** An add died while the rite ran. Void route only, by the rite's own table. */
+  _consume(ctx, e) {
+    if (!this.riteRunning || !this.rite?.powerPerConsumed) return;
+    const v = e?.victim;
+    if (!v || v === this.boss || v.isBoss) return;
+    this.consumed++;
+    this._applyPower(ctx);
+  }
+
+  /**
+   * Push the bought multiplier onto the player.
+   *
+   * `grantBuff` *multiplies* and never replaces, so each grant carries the
+   * incremental factor needed to reach the new total rather than the total
+   * itself; the product across every grant is exactly `1 + bonus`. All of them
+   * share `RITE_BUFF_TIME`, which outlasts the fight, so none expires early and
+   * unwinds the product.
+   */
+  _applyPower(ctx) {
+    // Priced off `debtSpent` rather than off `corruption.world`, because by now
+    // `bleed` has already taken that spend back out of the ledger: re-reading
+    // the world here would price the bargain off what was *left*.
+    const { bonus: total } = ritePower(
+      this.rite, this.debtSpent / (this.rite.debtFraction || 1), this.consumed);
+    this.ritePowerBonus = total;
+    const target = 1 + total;
+    const factor = target / this._powerApplied;
+    if (factor === 1) return;
+    this._powerApplied = target;
+    (ctx.roster?.local ?? ctx.player)?.grantBuff?.({ damageMult: factor }, RITE_BUFF_TIME);
+  }
+
+  /** One step of the rite's argument with the floor. */
+  _tickRite(ctx, stage, h) {
+    if (!this.riteRunning || this.collapseT > 0) return;
+    for (let i = this.breaches.length - 1; i >= 0; i--) {
+      if (!this.breaches[i].alive) this.breaches.splice(i, 1);
+    }
+    const next = riteRadius(this.riteRadius, this.rite, this.breaches.length, h, this.riteCeiling);
+    if (next !== this.riteRadius) {
+      this.riteRadius = next;
+      stage.setFloorRadius?.(next);
+    }
+    if (this.rite.breaches > 0 && !this.breaches.length && !this._sealed) {
+      this._sealed = true;
+      ctx.vfx?.burst?.(stage.origin, HERALD_HUE);
+      ctx.audio?.play?.('explosion', stage.origin);
+      if (!this.warded) ctx.hud?.setObjective?.(this.rite.doneObjective);
     }
   }
 
@@ -501,6 +654,9 @@ export class FinaleController {
   // ------------------------------------------------------------------ the end
 
   _onKilled(ctx, stage) {
+    // The rite ends with the Herald: the sweep below kills everything standing,
+    // and a route that fed on adds must not be paid for its own outro.
+    this.riteRunning = false;
     ctx.pipeline?.addShake?.(1.0);
     ctx.hitstop = 0.12;
     ctx.vfx?.explosion?.(this.boss.position, 18, 0xff4ad0);
@@ -522,6 +678,10 @@ export class FinaleController {
   abort() { this.done = true; }
 
   exit(ctx) {
+    this.riteRunning = false;
+    if (this._offKill) this._offKill();
+    else if (this._onKill) ctx.events?.off?.('kill', this._onKill);
+    this._onKill = this._offKill = null;
     ctx.hud?.clearBoss?.();
     if (ctx.director) ctx.director.boss = null;
     // Everything this controller allocated is its own to release. `RealmStage`
