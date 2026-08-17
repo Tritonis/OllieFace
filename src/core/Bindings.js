@@ -56,6 +56,30 @@ const PAD_NAMES = Object.fromEntries(
   Object.entries(PAD_BUTTON).map(([name, i]) => [i, name]),
 );
 
+/**
+ * Codes no action may be bound to, because something reads them RAW.
+ *
+ * `Menus.navigate` polls ArrowUp/Down/Left/Right, Enter, NumpadEnter, Space,
+ * Escape and Backspace directly, and `Menus.update` polls KeyC for the Edict.
+ * Those never go through this map, so binding an action onto one of them would
+ * hand the key to the action and silently take menu movement, confirm, back or
+ * the Edict away from the player — with no way to reach the settings screen
+ * that would undo it. Reserving them is the small correct fix; virtualizing the
+ * menu's own navigation is a much larger change for no player-facing gain.
+ *
+ * Space and the WASD codes are deliberately NOT here: they are shipped
+ * defaults, and `navigate` reads them as the VIRTUAL codes this map produces,
+ * so a rebind carries the menu with it instead of breaking it.
+ */
+export const RESERVED_KEYS = Object.freeze([
+  'Escape', 'Enter', 'NumpadEnter', 'Backspace', 'Tab',
+  'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+  'KeyC',
+]);
+
+/** Would binding this code steal a raw-read menu control? */
+export function isReserved(code) { return RESERVED_KEYS.includes(code); }
+
 /** Human label for a physical key/mouse code, for prompts and the bind list. */
 export function keyLabel(code) {
   if (code == null) return '--';
@@ -107,7 +131,8 @@ export class Bindings {
     for (const a of ACTIONS) {
       const b = stored[a.id];
       if (!b || typeof b !== 'object') continue;
-      if (typeof b.key === 'string' && b.key && !this._keyTaken(b.key, a.id)) {
+      if (typeof b.key === 'string' && b.key && !isReserved(b.key)
+          && !this._keyTaken(b.key, a.id)) {
         this.keys[a.id] = b.key;
       }
       if (b.pad === null) this.pads[a.id] = null;

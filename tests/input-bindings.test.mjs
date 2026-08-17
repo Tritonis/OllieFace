@@ -9,9 +9,14 @@
  * on stub listeners (the idiom from tests/pad-input-glue.test.mjs) rather than
  * inspecting the map it was given.
  *
- * The guard that earns its keep is `remap changes moveAxis`: with the binding
- * lookup in Input's keydown bypassed (`this.keys.add(e.code)` straight, as the
- * pre-#42 code did), it fails — verified by hand before this file was finished.
+ * Two guards were shown to be capable of failing, by cutting the code under
+ * them and watching them go red:
+ *   - bypass the binding lookup in Input's keydown (`const code = e.code`) and
+ *     'after remap, old key is inert', 'rebound interact reads as KeyE' and
+ *     'key bound to primary fires' all fail;
+ *   - resolve keyup against the live map instead of `_pressedVirtual` and both
+ *     'mid-hold rebind ...' checks fail — the review Critical this file now
+ *     covers.
  */
 const listeners = {};
 globalThis.addEventListener = (t, fn) => { (listeners[t] ??= []).push(fn); };
@@ -36,7 +41,7 @@ globalThis.localStorage = {
 const { Input } = await import('../src/core/Input.js');
 const { PAD_BUTTON } = await import('../src/core/PadState.js');
 const {
-  Bindings, ACTIONS, DEFAULT_BINDINGS, VIRTUAL, keyLabel, padLabel,
+  Bindings, ACTIONS, DEFAULT_BINDINGS, VIRTUAL, isReserved, keyLabel, padLabel,
 } = await import('../src/core/Bindings.js');
 
 let failures = 0;
@@ -105,6 +110,21 @@ check('key bound to primary fires', input.mouse.left === true && input.mouse.lef
 fire('keyup', { code: 'KeyM' });
 check('key bound to primary releases', input.mouse.left === false);
 
+// A rebind BETWEEN a press and its release must not strand the press. The
+// release follows the translation the press was given, not the current map.
+bindings.bindKey('primary', 'KeyM');
+fire('keydown', { code: 'KeyM' });
+bindings.bindKey('primary', 'KeyN');            // rebound mid-hold
+fire('keyup', { code: 'KeyM' });
+check('mid-hold rebind releases the fire flag', input.mouse.left === false, input.mouse.left);
+bindings.bindKey('sprint', 'KeyG');
+fire('keydown', { code: 'KeyG' });
+bindings.bindKey('sprint', 'KeyH');
+fire('keyup', { code: 'KeyG' });
+check('mid-hold rebind releases a held key', !input.down('ShiftLeft'));
+bindings.bindKey('primary', 'Mouse0');
+bindings.bindKey('sprint', 'ShiftLeft');
+
 // A rebound PAD button reaches the same virtual code.
 bindings.bindPad('utility', PAD_BUTTON.RB);   // swaps with `special`
 padList = [{
@@ -129,6 +149,20 @@ input.pollPad();
   check('pad conflict swaps too', p === 'interact' && b.padOf('interact') === PAD_BUTTON.A);
 }
 
+// --- reserved codes ----------------------------------------------------------
+{
+  // Every code `Menus.navigate`/`update` reads raw must be refused, or a player
+  // can bind an action onto it and lose the way back to this screen.
+  const rawReads = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter',
+    'NumpadEnter', 'Backspace', 'Escape', 'KeyC'];
+  check('every raw-read menu code is reserved', rawReads.every((c) => isReserved(c)),
+    rawReads.filter((c) => !isReserved(c)));
+  check('ordinary and default keys are not reserved',
+    !isReserved('KeyM') && !isReserved('Space') && !isReserved('KeyW'));
+  const b = new Bindings({ jump: { key: 'ArrowUp' } });
+  check('a stored blob cannot claim a reserved code', b.keyOf('jump') === 'Space');
+}
+
 // --- reset -------------------------------------------------------------------
 {
   const b = new Bindings();
@@ -143,10 +177,10 @@ input.pollPad();
 // --- persistence round-trip and corrupt blobs --------------------------------
 {
   const a = new Bindings();
-  a.bindKey('sprint', 'KeyC');
+  a.bindKey('sprint', 'KeyV');
   a.bindPad('special', PAD_BUTTON.BACK);
   const b = new Bindings(JSON.parse(JSON.stringify(a.toJSON())));
-  check('round-trip keeps the rebind', b.keyOf('sprint') === 'KeyC' && b.padOf('special') === PAD_BUTTON.BACK);
+  check('round-trip keeps the rebind', b.keyOf('sprint') === 'KeyV' && b.padOf('special') === PAD_BUTTON.BACK);
   check('round-trip keeps the rest at default', b.keyOf('jump') === 'Space');
 
   const corrupt = [

@@ -21,7 +21,7 @@ import { showSteamInviteNotice } from './SteamInviteNotice.js';
 import { REFUSE } from '../net/Protocol.js';
 import { adoptLegacyKey } from '../core/LegacyStorage.js';
 import { PAD_BUTTON } from '../core/PadState.js';
-import { ACTIONS, bindings, keyLabel, padLabel } from '../core/Bindings.js';
+import { ACTIONS, bindings, isReserved, keyLabel, padLabel } from '../core/Bindings.js';
 import { telemetryEnabled, setTelemetryEnabled, readRuns, downloadRuns, clearRuns } from '../systems/Telemetry.js';
 import { markDialog, focusablesIn, installFocusTrap } from './Dialogs.js';
 
@@ -900,6 +900,13 @@ export class Menus {
       e.stopPropagation();
       if (e.code === 'Escape') { this.endCapture('Rebinding cancelled.'); return; }
       if (device === 'pad') return;   // a key cannot fill a pad slot
+      // The menu reads a handful of codes raw (see `navigate`). Binding an
+      // action onto one would take menu movement, confirm, back or the Edict
+      // away with no way left to reach this screen and undo it.
+      if (isReserved(e.code)) {
+        this.endCapture(`${keyLabel(e.code)} is reserved for menu navigation. Nothing was changed.`);
+        return;
+      }
       this.applyBind(actionId, 'key', e.code);
     };
     const onMouse = (e) => {
@@ -2177,6 +2184,12 @@ export class Menus {
     const input = ctx.input;
     const hit = (c) => input?.hit?.(c);
 
+    // COUPLING: the arrows, Enter, NumpadEnter, Backspace and Escape below are
+    // read as RAW physical codes — they are not in the binding map — so
+    // `Bindings.RESERVED_KEYS` refuses them at the capture dialog. WASD and
+    // Space are the opposite case: those are virtual codes the map produces, so
+    // rebinding movement or jump moves the menu control with it. Adding a raw
+    // code here means adding it to RESERVED_KEYS.
     let dy = 0, dx = 0, confirm = false, back = false;
     if (hit('ArrowDown') || hit('KeyS')) dy++;
     if (hit('ArrowUp') || hit('KeyW')) dy--;

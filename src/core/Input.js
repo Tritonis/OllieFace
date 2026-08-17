@@ -51,6 +51,8 @@ export class Input {
     // never eat a really-held mouse button.
     this._kbLeft = false;
     this._kbRight = false;
+    // physical code -> the virtual code its still-held press was translated to.
+    this._pressedVirtual = new Map();
 
     // The live map by default; injectable so tests (and any future per-profile
     // input) can hand in their own without touching module state.
@@ -61,18 +63,27 @@ export class Input {
       this._padState.deviceUsed('kb');
       const code = this._virtual(e.code);
       if (!code) return;
+      // Remember the translation this press was given. A rebind between the
+      // press and the release would otherwise resolve keyup against the NEW
+      // map, leaving the pressed state — a held key, or worse a held fire flag
+      // — with nothing that will ever undo it (review Critical).
+      this._pressedVirtual.set(e.code, code);
       if (isMouseCode(code)) { this._setKbMouse(code, true); return; }
       this.keys.add(code);
       this.pressed.add(code);
     });
     addEventListener('keyup', (e) => {
-      const code = this._virtual(e.code);
+      // The release undoes what the press did, not what the current map says
+      // that key would do now.
+      const code = this._pressedVirtual.get(e.code) ?? this._virtual(e.code);
+      this._pressedVirtual.delete(e.code);
       if (!code) return;
       if (isMouseCode(code)) { this._setKbMouse(code, false); return; }
       this.keys.delete(code);
     });
     addEventListener('blur', () => {
       this.keys.clear();
+      this._pressedVirtual.clear();
       this._domLeft = this._domRight = false;
       this._kbLeft = this._kbRight = false;
       this.mouse.left = this._padRT;
@@ -84,13 +95,18 @@ export class Input {
       this._padState.deviceUsed('mouse');
       // A mouse button is a bindable physical code too, so it goes through the
       // same lookup: unbound (or bound to a gameplay key) it stops driving fire.
-      const code = this.bindings.virtualForKey(`Mouse${e.button}`);
+      const physical = `Mouse${e.button}`;
+      const code = this.bindings.virtualForKey(physical);
+      if (code) this._pressedVirtual.set(physical, code);
       if (code === MOUSE_LEFT) { this._domLeft = true; this.mouse.left = true; this.mouse.leftEdge = true; }
       else if (code === MOUSE_RIGHT) { this._domRight = true; this.mouse.right = true; this.mouse.rightEdge = true; }
       else if (code) { this.keys.add(code); this.pressed.add(code); }
     });
     addEventListener('mouseup', (e) => {
-      const code = this.bindings.virtualForKey(`Mouse${e.button}`);
+      // Same rule as keyup: the release follows the press's own translation.
+      const physical = `Mouse${e.button}`;
+      const code = this._pressedVirtual.get(physical) ?? this.bindings.virtualForKey(physical);
+      this._pressedVirtual.delete(physical);
       if (code === MOUSE_LEFT) { this._domLeft = false; this.mouse.left = this._padRT || this._kbLeft; }
       else if (code === MOUSE_RIGHT) { this._domRight = false; this.mouse.right = this._padLT || this._kbRight; }
       else if (code) this.keys.delete(code);
