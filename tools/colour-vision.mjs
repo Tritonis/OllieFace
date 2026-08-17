@@ -319,23 +319,37 @@ export const SURFACES = [
   // --- DOM, tier-coloured text -------------------------------------------
   // `.plate`, `.objective`, the inventory strip: `--panel` over the scene.
   { id: 'panel', kind: 'text', translucent: true,
+    base: { rgba: 'rgba(6, 10, 16, 0.58)', from: '--panel' },
     of: (_p, _c, ground = UI_BLACK) => over('#060a10', 0.58, ground) },
   // `.tip` (the tooltip name is the tier colour) and `.party-chip`.
   { id: 'panel-hard', kind: 'text', translucent: true,
+    base: { rgba: 'rgba(4, 7, 12, 0.86)', from: '--panel-hard' },
     of: (_p, _c, ground = UI_BLACK) => over('#04070c', 0.86, ground) },
   // `.book-row` in the logbook index, whose name inherits the tier colour, and
   // its hover wash — the lightest ground any tier-coloured type sits on.
+  //
+  // The base is `.panel` (`rgba(6, 11, 18, 0.82)`, hud.css), not `--panel-hard`.
+  // It was modelled as `--panel-hard` from #44 until #78's review, and that was
+  // simply the wrong surface: `src/ui/Logbook.js` builds the modal as
+  // `<div class="panel panel--book">`, and `.panel--book` sets width only. The
+  // error mattered — the lighter, less opaque base lifts the ground, and
+  // `blight/book-row-hover` goes from 4.59:1 to 4.48:1. The "0.09 of headroom on
+  // the binding case" that #44 and #78 both reason from never existed; the
+  // shipped palette was already 0.02 under the 4.5 floor on that surface,
+  // before any lit scene is considered at all.
   {
     id: 'book-row',
     kind: 'text',
     translucent: true,
-    of: (_p, _c, ground = UI_BLACK) => over('#ffffff', 0.018, over('#04070c', 0.86, ground)),
+    base: { rgba: 'rgba(6, 11, 18, 0.82)', from: '.panel' },
+    of: (_p, _c, ground = UI_BLACK) => over('#ffffff', 0.018, over('#060b12', 0.82, ground)),
   },
   {
     id: 'book-row-hover',
     kind: 'text',
     translucent: true,
-    of: (_p, _c, ground = UI_BLACK) => over('#ffffff', 0.05, over('#04070c', 0.86, ground)),
+    base: { rgba: 'rgba(6, 11, 18, 0.82)', from: '.panel' },
+    of: (_p, _c, ground = UI_BLACK) => over('#ffffff', 0.05, over('#060b12', 0.82, ground)),
   },
 
   // --- canvas, tier-coloured graphics ------------------------------------

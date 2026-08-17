@@ -1,11 +1,11 @@
 {
-  "commit": "a556cf68b7f89be89f36ca5d25fc560a791044c5",
+  "commit": "b101d1c40d65aaa6eaa3063666372896cfcf8480",
   "seed": 1337,
   "viewport": [
     1600,
     900
   ],
-  "capturedAt": "2026-08-17T16:40:13.937Z",
+  "capturedAt": "2026-08-17T16:55:45.140Z",
   "samples": [
     {
       "scene": "biome-1",
@@ -16,11 +16,8 @@
       ],
       "panels": [
         {
-          "selector": ".plate",
-          "present": false
-        },
-        {
           "selector": ".objective",
+          "surface": "panel",
           "present": true,
           "px": 1280,
           "rect": [
@@ -33,7 +30,22 @@
           "p95": "#18132c"
         },
         {
+          "selector": ".prompt",
+          "surface": "panel",
+          "present": true,
+          "px": 3570,
+          "rect": [
+            452,
+            496,
+            695,
+            52
+          ],
+          "mean": "#3a2614",
+          "p95": "#756210"
+        },
+        {
           "selector": ".tip",
+          "surface": "panel-hard",
           "present": true,
           "px": 1365,
           "rect": [
@@ -47,14 +59,17 @@
         },
         {
           "selector": ".party-chip",
+          "surface": "panel-hard",
           "present": false
         },
         {
           "selector": ".book-list",
+          "surface": "book-row",
           "present": false
         },
         {
           "selector": ".panel--book",
+          "surface": "book-row",
           "present": false
         }
       ]
@@ -68,11 +83,8 @@
       ],
       "panels": [
         {
-          "selector": ".plate",
-          "present": false
-        },
-        {
           "selector": ".objective",
+          "surface": "panel",
           "present": true,
           "px": 1280,
           "rect": [
@@ -82,10 +94,25 @@
             27
           ],
           "mean": "#23271c",
-          "p95": "#4c512f"
+          "p95": "#4a522c"
+        },
+        {
+          "selector": ".prompt",
+          "surface": "panel",
+          "present": true,
+          "px": 3360,
+          "rect": [
+            452,
+            504,
+            695,
+            52
+          ],
+          "mean": "#151a0e",
+          "p95": "#354217"
         },
         {
           "selector": ".tip",
+          "surface": "panel-hard",
           "present": true,
           "px": 1365,
           "rect": [
@@ -99,14 +126,17 @@
         },
         {
           "selector": ".party-chip",
+          "surface": "panel-hard",
           "present": false
         },
         {
           "selector": ".book-list",
+          "surface": "book-row",
           "present": false
         },
         {
           "selector": ".panel--book",
+          "surface": "book-row",
           "present": false
         }
       ]
@@ -120,11 +150,8 @@
       ],
       "panels": [
         {
-          "selector": ".plate",
-          "present": false
-        },
-        {
           "selector": ".objective",
+          "surface": "panel",
           "present": true,
           "px": 1280,
           "rect": [
@@ -134,10 +161,25 @@
             27
           ],
           "mean": "#0d0a13",
-          "p95": "#2a1a25"
+          "p95": "#31191a"
+        },
+        {
+          "selector": ".prompt",
+          "surface": "panel",
+          "present": true,
+          "px": 3360,
+          "rect": [
+            452,
+            504,
+            695,
+            52
+          ],
+          "mean": "#390f36",
+          "p95": "#81506c"
         },
         {
           "selector": ".tip",
+          "surface": "panel-hard",
           "present": true,
           "px": 1365,
           "rect": [
@@ -151,14 +193,17 @@
         },
         {
           "selector": ".party-chip",
+          "surface": "panel-hard",
           "present": false
         },
         {
           "selector": ".book-list",
+          "surface": "book-row",
           "present": false
         },
         {
           "selector": ".panel--book",
+          "surface": "book-row",
           "present": false
         }
       ]
@@ -172,11 +217,8 @@
       ],
       "panels": [
         {
-          "selector": ".plate",
-          "present": false
-        },
-        {
           "selector": ".objective",
+          "surface": "panel",
           "present": true,
           "px": 1280,
           "rect": [
@@ -189,7 +231,22 @@
           "p95": "#69413b"
         },
         {
+          "selector": ".prompt",
+          "surface": "panel",
+          "present": true,
+          "px": 3360,
+          "rect": [
+            452,
+            504,
+            695,
+            52
+          ],
+          "mean": "#040203",
+          "p95": "#0a0405"
+        },
+        {
           "selector": ".tip",
+          "surface": "panel-hard",
           "present": true,
           "px": 1365,
           "rect": [
@@ -203,14 +260,17 @@
         },
         {
           "selector": ".party-chip",
+          "surface": "panel-hard",
           "present": false
         },
         {
           "selector": ".book-list",
+          "surface": "book-row",
           "present": false
         },
         {
           "selector": ".panel--book",
+          "surface": "book-row",
           "present": false
         }
       ]
@@ -224,11 +284,8 @@
       ],
       "panels": [
         {
-          "selector": ".plate",
-          "present": false
-        },
-        {
           "selector": ".objective",
+          "surface": "panel",
           "present": true,
           "px": 1280,
           "rect": [
@@ -241,7 +298,22 @@
           "p95": "#17132e"
         },
         {
+          "selector": ".prompt",
+          "surface": "panel",
+          "present": true,
+          "px": 3360,
+          "rect": [
+            452,
+            504,
+            695,
+            52
+          ],
+          "mean": "#261d0a",
+          "p95": "#66550e"
+        },
+        {
           "selector": ".tip",
+          "surface": "panel-hard",
           "present": true,
           "px": 1365,
           "rect": [
@@ -255,14 +327,17 @@
         },
         {
           "selector": ".party-chip",
+          "surface": "panel-hard",
           "present": false
         },
         {
           "selector": ".book-list",
+          "surface": "book-row",
           "present": false
         },
         {
           "selector": ".panel--book",
+          "surface": "book-row",
           "present": false
         }
       ]
@@ -276,11 +351,8 @@
       ],
       "panels": [
         {
-          "selector": ".plate",
-          "present": false
-        },
-        {
           "selector": ".objective",
+          "surface": "panel",
           "present": true,
           "px": 1280,
           "rect": [
@@ -293,7 +365,22 @@
           "p95": "#050301"
         },
         {
+          "selector": ".prompt",
+          "surface": "panel",
+          "present": true,
+          "px": 3360,
+          "rect": [
+            452,
+            504,
+            695,
+            52
+          ],
+          "mean": "#0b080c",
+          "p95": "#443b6e"
+        },
+        {
           "selector": ".tip",
+          "surface": "panel-hard",
           "present": true,
           "px": 1365,
           "rect": [
@@ -307,14 +394,17 @@
         },
         {
           "selector": ".party-chip",
+          "surface": "panel-hard",
           "present": false
         },
         {
           "selector": ".book-list",
+          "surface": "book-row",
           "present": false
         },
         {
           "selector": ".panel--book",
+          "surface": "book-row",
           "present": false
         }
       ]
@@ -328,11 +418,8 @@
       ],
       "panels": [
         {
-          "selector": ".plate",
-          "present": false
-        },
-        {
           "selector": ".objective",
+          "surface": "panel",
           "present": true,
           "px": 1280,
           "rect": [
@@ -345,7 +432,22 @@
           "p95": "#ff5d18"
         },
         {
+          "selector": ".prompt",
+          "surface": "panel",
+          "present": true,
+          "px": 3360,
+          "rect": [
+            452,
+            504,
+            695,
+            52
+          ],
+          "mean": "#674426",
+          "p95": "#ffe662"
+        },
+        {
           "selector": ".tip",
+          "surface": "panel-hard",
           "present": true,
           "px": 1365,
           "rect": [
@@ -359,14 +461,17 @@
         },
         {
           "selector": ".party-chip",
+          "surface": "panel-hard",
           "present": false
         },
         {
           "selector": ".book-list",
+          "surface": "book-row",
           "present": false
         },
         {
           "selector": ".panel--book",
+          "surface": "book-row",
           "present": false
         }
       ]
@@ -380,11 +485,8 @@
       ],
       "panels": [
         {
-          "selector": ".plate",
-          "present": false
-        },
-        {
           "selector": ".objective",
+          "surface": "panel",
           "present": true,
           "px": 1000,
           "rect": [
@@ -397,7 +499,22 @@
           "p95": "#e57326"
         },
         {
+          "selector": ".prompt",
+          "surface": "panel",
+          "present": true,
+          "px": 3360,
+          "rect": [
+            452,
+            504,
+            695,
+            52
+          ],
+          "mean": "#1d0f0a",
+          "p95": "#664128"
+        },
+        {
           "selector": ".tip",
+          "surface": "panel-hard",
           "present": true,
           "px": 1365,
           "rect": [
@@ -411,14 +528,17 @@
         },
         {
           "selector": ".party-chip",
+          "surface": "panel-hard",
           "present": false
         },
         {
           "selector": ".book-list",
+          "surface": "book-row",
           "present": false
         },
         {
           "selector": ".panel--book",
+          "surface": "book-row",
           "present": false
         }
       ]
@@ -432,11 +552,8 @@
       ],
       "panels": [
         {
-          "selector": ".plate",
-          "present": false
-        },
-        {
           "selector": ".objective",
+          "surface": "panel",
           "present": true,
           "px": 1280,
           "rect": [
@@ -449,7 +566,22 @@
           "p95": "#683519"
         },
         {
+          "selector": ".prompt",
+          "surface": "panel",
+          "present": true,
+          "px": 3360,
+          "rect": [
+            452,
+            504,
+            695,
+            52
+          ],
+          "mean": "#110807",
+          "p95": "#111c2e"
+        },
+        {
           "selector": ".tip",
+          "surface": "panel-hard",
           "present": true,
           "px": 1365,
           "rect": [
@@ -463,14 +595,17 @@
         },
         {
           "selector": ".party-chip",
+          "surface": "panel-hard",
           "present": false
         },
         {
           "selector": ".book-list",
+          "surface": "book-row",
           "present": false
         },
         {
           "selector": ".panel--book",
+          "surface": "book-row",
           "present": false
         }
       ]
@@ -484,11 +619,8 @@
       ],
       "panels": [
         {
-          "selector": ".plate",
-          "present": false
-        },
-        {
           "selector": ".objective",
+          "surface": "panel",
           "present": true,
           "px": 1280,
           "rect": [
@@ -501,7 +633,22 @@
           "p95": "#0d0a14"
         },
         {
+          "selector": ".prompt",
+          "surface": "panel",
+          "present": true,
+          "px": 3360,
+          "rect": [
+            452,
+            504,
+            695,
+            52
+          ],
+          "mean": "#2d0e10",
+          "p95": "#b3262b"
+        },
+        {
           "selector": ".tip",
+          "surface": "panel-hard",
           "present": true,
           "px": 1365,
           "rect": [
@@ -515,14 +662,17 @@
         },
         {
           "selector": ".party-chip",
+          "surface": "panel-hard",
           "present": false
         },
         {
           "selector": ".book-list",
+          "surface": "book-row",
           "present": false
         },
         {
           "selector": ".panel--book",
+          "surface": "book-row",
           "present": false
         }
       ]
@@ -536,11 +686,8 @@
       ],
       "panels": [
         {
-          "selector": ".plate",
-          "present": false
-        },
-        {
           "selector": ".objective",
+          "surface": "panel",
           "present": true,
           "px": 1280,
           "rect": [
@@ -553,7 +700,22 @@
           "p95": "#090814"
         },
         {
+          "selector": ".prompt",
+          "surface": "panel",
+          "present": true,
+          "px": 3360,
+          "rect": [
+            452,
+            504,
+            695,
+            52
+          ],
+          "mean": "#583b1e",
+          "p95": "#ffba66"
+        },
+        {
           "selector": ".tip",
+          "surface": "panel-hard",
           "present": true,
           "px": 1365,
           "rect": [
@@ -567,14 +729,17 @@
         },
         {
           "selector": ".party-chip",
+          "surface": "panel-hard",
           "present": false
         },
         {
           "selector": ".book-list",
+          "surface": "book-row",
           "present": false
         },
         {
           "selector": ".panel--book",
+          "surface": "book-row",
           "present": false
         }
       ]
@@ -588,11 +753,8 @@
       ],
       "panels": [
         {
-          "selector": ".plate",
-          "present": false
-        },
-        {
           "selector": ".objective",
+          "surface": "panel",
           "present": true,
           "px": 1280,
           "rect": [
@@ -605,7 +767,22 @@
           "p95": "#110b15"
         },
         {
+          "selector": ".prompt",
+          "surface": "panel",
+          "present": true,
+          "px": 3360,
+          "rect": [
+            452,
+            504,
+            695,
+            52
+          ],
+          "mean": "#070405",
+          "p95": "#060910"
+        },
+        {
           "selector": ".tip",
+          "surface": "panel-hard",
           "present": true,
           "px": 1365,
           "rect": [
@@ -619,10 +796,12 @@
         },
         {
           "selector": ".party-chip",
+          "surface": "panel-hard",
           "present": false
         },
         {
           "selector": ".book-list",
+          "surface": "book-row",
           "present": true,
           "px": 12090,
           "rect": [
@@ -636,6 +815,7 @@
         },
         {
           "selector": ".panel--book",
+          "surface": "book-row",
           "present": true,
           "px": 81180,
           "rect": [
@@ -645,7 +825,7 @@
             658
           ],
           "mean": "#0c0707",
-          "p95": "#341c27"
+          "p95": "#261f32"
         }
       ]
     }
@@ -658,32 +838,70 @@
   },
   "worstP95": {
     "scene": "combat",
-    "selector": ".objective",
-    "colour": "#ff5d18",
+    "selector": ".prompt",
+    "colour": "#ffe662",
     "kind": "p95"
   },
+  "coverage": [
+    {
+      "surface": "panel",
+      "samples": 24,
+      "via": [
+        ".objective",
+        ".prompt"
+      ],
+      "neverPresent": []
+    },
+    {
+      "surface": "panel-hard",
+      "samples": 12,
+      "via": [
+        ".tip"
+      ],
+      "neverPresent": [
+        ".party-chip"
+      ]
+    },
+    {
+      "surface": "book-row",
+      "samples": 2,
+      "via": [
+        ".book-list",
+        ".panel--book"
+      ],
+      "neverPresent": []
+    }
+  ],
   "grades": {
     "best": {
       "scene": "#05070a",
-      "ok": true,
+      "ok": false,
       "worst": {
         "id": "blight",
         "surface": "book-row-hover",
         "kind": "text",
-        "ground": "#111318",
-        "ratio": 4.593734766063267,
+        "ground": "#12161d",
+        "ratio": 4.48247365498051,
         "min": 4.5,
-        "ok": true
+        "ok": false
       },
-      "failures": [],
+      "failures": [
+        {
+          "id": "blight",
+          "surface": "book-row-hover",
+          "ground": "#12161d",
+          "ratio": 4.48,
+          "min": 4.5
+        }
+      ],
       "worstTranslucent": {
         "id": "blight",
         "surface": "book-row-hover",
         "kind": "text",
-        "ground": "#111318",
-        "ratio": 4.593734766063267,
+        "ground": "#12161d",
+        "ratio": 4.48247365498051,
         "min": 4.5,
-        "ok": true
+        "ok": false
       }
     },
     "mean": {
@@ -716,8 +934,15 @@
         {
           "id": "blight",
           "surface": "book-row-hover",
-          "ground": "#2e1c18",
-          "ratio": 4.01,
+          "ground": "#38211d",
+          "ratio": 3.7,
+          "min": 4.5
+        },
+        {
+          "id": "blight",
+          "surface": "book-row",
+          "ground": "#311915",
+          "ratio": 4.05,
           "min": 4.5
         },
         {
@@ -728,10 +953,10 @@
           "min": 4.5
         },
         {
-          "id": "blight",
-          "surface": "book-row",
-          "ground": "#271410",
-          "ratio": 4.35,
+          "id": "equipment",
+          "surface": "book-row-hover",
+          "ground": "#38211d",
+          "ratio": 4.34,
           "min": 4.5
         }
       ],
@@ -746,14 +971,14 @@
       }
     },
     "worst": {
-      "scene": "#ff5d18",
+      "scene": "#ffe662",
       "ok": false,
       "worst": {
         "id": "blight",
         "surface": "panel",
         "kind": "text",
-        "ground": "#6f2d13",
-        "ratio": 2.519442799396094,
+        "ground": "#6f6632",
+        "ratio": 1.4331821138239826,
         "min": 4.5,
         "ok": false
       },
@@ -761,43 +986,99 @@
         {
           "id": "blight",
           "surface": "panel",
-          "ground": "#6f2d13",
-          "ratio": 2.52,
+          "ground": "#6f6632",
+          "ratio": 1.43,
           "min": 4.5
         },
         {
           "id": "equipment",
           "surface": "panel",
-          "ground": "#6f2d13",
-          "ratio": 2.96,
+          "ground": "#6f6632",
+          "ratio": 1.68,
           "min": 4.5
         },
         {
           "id": "legendary",
           "surface": "panel",
-          "ground": "#6f2d13",
-          "ratio": 3.55,
+          "ground": "#6f6632",
+          "ratio": 2.02,
+          "min": 4.5
+        },
+        {
+          "id": "lunar",
+          "surface": "panel",
+          "ground": "#6f6632",
+          "ratio": 2.66,
           "min": 4.5
         },
         {
           "id": "blight",
           "surface": "book-row-hover",
-          "ground": "#321f1a",
-          "ratio": 3.86,
+          "ground": "#3d3c2b",
+          "ratio": 2.76,
           "min": 4.5
         },
         {
           "id": "blight",
           "surface": "book-row",
-          "ground": "#2b1712",
-          "ratio": 4.21,
+          "ground": "#373624",
+          "ratio": 3.03,
+          "min": 4.5
+        },
+        {
+          "id": "boss",
+          "surface": "panel",
+          "ground": "#6f6632",
+          "ratio": 3.16,
+          "min": 4.5
+        },
+        {
+          "id": "equipment",
+          "surface": "book-row-hover",
+          "ground": "#3d3c2b",
+          "ratio": 3.24,
+          "min": 4.5
+        },
+        {
+          "id": "equipment",
+          "surface": "book-row",
+          "ground": "#373624",
+          "ratio": 3.55,
           "min": 4.5
         },
         {
           "id": "blight",
           "surface": "panel-hard",
-          "ground": "#27130e",
-          "ratio": 4.38,
+          "ground": "#272618",
+          "ratio": 3.77,
+          "min": 4.5
+        },
+        {
+          "id": "legendary",
+          "surface": "book-row-hover",
+          "ground": "#3d3c2b",
+          "ratio": 3.89,
+          "min": 4.5
+        },
+        {
+          "id": "uncommon",
+          "surface": "panel",
+          "ground": "#6f6632",
+          "ratio": 4.09,
+          "min": 4.5
+        },
+        {
+          "id": "legendary",
+          "surface": "book-row",
+          "ground": "#373624",
+          "ratio": 4.27,
+          "min": 4.5
+        },
+        {
+          "id": "equipment",
+          "surface": "panel-hard",
+          "ground": "#272618",
+          "ratio": 4.43,
           "min": 4.5
         }
       ],
@@ -805,8 +1086,8 @@
         "id": "blight",
         "surface": "panel",
         "kind": "text",
-        "ground": "#6f2d13",
-        "ratio": 2.519442799396094,
+        "ground": "#6f6632",
+        "ratio": 1.4331821138239826,
         "min": 4.5,
         "ok": false
       }

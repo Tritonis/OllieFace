@@ -2245,12 +2245,19 @@ export function installHarness(ctx) {
     }
 
     const vw = window.innerWidth, vh = window.innerHeight;
+    const surfaceOf = (q) => PANEL_SURFACES.find((p) => p.selectors.includes(q))?.surface ?? null;
     const panels = [];
     for (const s of sel) {
+      const surface = surfaceOf(s);
       const el = document.querySelector(s);
-      if (!el) { panels.push({ selector: s, present: false }); continue; }
+      if (!el) { panels.push({ selector: s, surface, present: false }); continue; }
       const b = el.getBoundingClientRect();
-      if (!(b.width > 0 && b.height > 0)) { panels.push({ selector: s, present: false }); continue; }
+      // An element in the DOM but collapsed, or scrolled fully out of the
+      // viewport, is not a sample — it is an absence wearing a rect.
+      const onScreen = b.right > 0 && b.bottom > 0 && b.left < vw && b.top < vh;
+      if (!(b.width > 0 && b.height > 0 && onScreen)) {
+        panels.push({ selector: s, surface, present: false }); continue;
+      }
       // Viewport fractions, clamped, then mask pixels. `readRenderTargetPixels`
       // hands rows back bottom-up while a client rect is top-down, so y flips.
       const x0 = Math.max(0, Math.min(MASK_W - 1, Math.floor((b.left / vw) * MASK_W)));
@@ -2270,11 +2277,12 @@ export function installHarness(ctx) {
           lums.push({ l: 0.2126 * R + 0.7152 * G + 0.0722 * B, R, G, B });
         }
       }
-      if (!n) { panels.push({ selector: s, present: false }); continue; }
+      if (!n) { panels.push({ selector: s, surface, present: false }); continue; }
       lums.sort((a, c) => a.l - c.l);
       const hi = lums[Math.min(lums.length - 1, Math.round(0.95 * (lums.length - 1)))];
       panels.push({
         selector: s,
+        surface,
         present: true,
         px: n,
         rect: [Math.round(b.left), Math.round(b.top), Math.round(b.width), Math.round(b.height)],
@@ -2290,17 +2298,31 @@ export function installHarness(ctx) {
 
   /**
    * The HUD elements whose background is a translucent fill over the scene,
-   * enumerated from `src/ui/hud.css` rather than assumed — one per `SURFACES`
-   * entry in `tools/colour-vision.mjs` that composites onto `UI_BLACK`.
+   * grouped by the `SURFACES` entry in `tools/colour-vision.mjs` that models
+   * them, so a caller can tell "this surface was never on screen" from "this
+   * surface was measured and is fine". Those are opposite results, and a flat
+   * list of selectors cannot distinguish them — which is how a measurement
+   * becomes a guard that passes while blind.
+   *
+   * Enumerated from `src/ui/hud.css` **and checked against the DOM**. The first
+   * version of this list carried `.plate`, on the strength of `hud.css:153`
+   * defining a `.plate` rule; nothing in `src/ui` ever applies that class, and
+   * the rule's own neighbour at `:759` records why — the inventory strip's
+   * translucent fill was deliberately dropped ("Dropping the fill and the blur
+   * ended the occlusion"). It is dead CSS, it sampled `present: 0` in all 12
+   * scenes, and it would have gone on looking like coverage forever.
    */
-  const PANEL_SELECTORS = [
-    '.plate',       // --panel: the HUD plates, the inventory strip
-    '.objective',   // --panel, top-centre
-    '.tip',         // --panel-hard: the tooltip, whose name is the tier colour
-    '.party-chip',  // --panel-hard
-    '.book-list',   // the logbook index: .book-row and its hover wash live here
-    '.panel--book', // the logbook's own panel, over the scrim, over the stage
+  const PANEL_SURFACES = [
+    // `--panel`, rgba(6, 10, 16, 0.58).
+    { surface: 'panel', selectors: ['.objective', '.prompt'] },
+    // `--panel-hard`, rgba(4, 7, 12, 0.86). `.party-chip` only exists in a
+    // co-op party, so a single-player run measures this through `.tip` alone.
+    { surface: 'panel-hard', selectors: ['.tip', '.party-chip'] },
+    // `.panel` rgba(6, 11, 18, 0.82) — the logbook modal is
+    // `<div class="panel panel--book">`, and the rows sit inside `.book-list`.
+    { surface: 'book-row', selectors: ['.book-list', '.panel--book'] },
   ];
+  const PANEL_SELECTORS = PANEL_SURFACES.flatMap((s) => s.selectors);
 
   /**
    * Fraction of the frame that is open sky.
@@ -6256,7 +6278,7 @@ export function installHarness(ctx) {
     // `tools/panel-ground.mjs`, which feeds it to `gradeContrast` as the
     // composite ground the stylesheet cannot supply.
     panelGround,
-    panelSelectors: () => PANEL_SELECTORS.slice(),
+    panelSurfaces: () => PANEL_SURFACES.map((s) => ({ ...s, selectors: s.selectors.slice() })),
 
     // Escape hatches for ad-hoc inspection during the critic loop.
     dismiss,

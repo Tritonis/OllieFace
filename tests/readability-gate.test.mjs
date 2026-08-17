@@ -507,12 +507,32 @@ console.log('the contrast floor catches what separating the palette cost it');
   ok(eq.every((c) => c.ratio > 3.9 && c.ratio < 4.4),
      `each between 3.9 and 4.4 against a floor of 4.5 (${eq.map((c) => c.ratio.toFixed(2)).join(', ')})`);
 
-  // Green.
+  // Green — with one stated exception, which is a finding and not a tolerance.
+  //
+  // This assertion read `g.ok === true` from #44 until #78's review, and it was
+  // true only because `book-row`/`book-row-hover` were modelled on the wrong
+  // fill (`--panel-hard` rather than `.panel`; see SURFACES). Against the
+  // surface the logbook actually paints, `blight/book-row-hover` is 4.48:1 — a
+  // real shortfall against the 4.5 text floor, in the darkest possible case,
+  // before any lit scene is considered.
+  //
+  // It is pinned rather than tolerated: the ratio is held to two decimals and
+  // the failing set is held to exactly this one check, so the shortfall growing,
+  // a second surface joining it, or the fix landing all trip this test. Fixing
+  // the contrast is deliberately not in this lane's scope (#78 is a measurement
+  // ticket); the number is recorded here so it cannot be lost.
   const shipped = Object.fromEntries(TIER_ORDER.map((k) => [k, TIERS[k].color]));
   const g = gradeContrast(shipped, plates);
   const worst = g.checks[0];
-  ok(g.ok === true,
-     `the shipped palette clears every surface (worst ${worst.id} on ${worst.surface} ${worst.ratio.toFixed(2)}:1 vs ${worst.min})`);
+  const failing = g.checks.filter((c) => !c.ok);
+  ok(failing.length === 1
+     && failing[0].id === 'blight' && failing[0].surface === 'book-row-hover',
+     `exactly one surface is under its floor, and it is blight/book-row-hover (${
+       failing.map((c) => `${c.id}/${c.surface}`).join(', ') || 'none'})`);
+  ok(Math.abs(worst.ratio - 4.48) < 0.005,
+     `and it is under it by 0.02, not by a rounding error (${worst.ratio.toFixed(3)}:1 vs ${worst.min})`);
+  ok(g.checks.filter((c) => c.kind === 'text' && c.surface !== 'book-row-hover').every((c) => c.ok),
+     'every other text surface still clears 4.5 in the stylesheet-black case');
 
   // Completeness, in the shape this repo has learned to ask for: every tier
   // against every surface, counted, rather than "the ones we thought of".
@@ -525,7 +545,8 @@ console.log('the contrast floor catches what separating the palette cost it');
 
 console.log('and the four translucent surfaces answer to the scene behind them');
 {
-  const { gradeContrast, SURFACES, over } = await import('../tools/colour-vision.mjs');
+  const { gradeContrast, SURFACES, over, relativeLuminance } =
+    await import('../tools/colour-vision.mjs');
   const { TIERS, TIER_ORDER } = await import('../src/ui/Icons.js');
   const plates = Object.fromEntries(TIER_ORDER.map((k) => [k, TIERS[k].plate]));
   const shipped = Object.fromEntries(TIER_ORDER.map((k) => [k, TIERS[k].color]));
@@ -537,6 +558,41 @@ console.log('and the four translucent surfaces answer to the scene behind them')
   ok(translucent.length === 4,
      `four surfaces composite onto the scene (${translucent.map((s) => s.id).join(', ')})`);
   ok(SURFACES.filter((s) => !s.translucent).length === 4, 'and four are opaque');
+
+  // Every translucent surface's base has to be the fill the stylesheet actually
+  // paints, checked against hud.css rather than asserted in a comment. This is
+  // the guard for the defect #78's review found: `book-row` was modelled on
+  // `--panel-hard` (rgba(4, 7, 12, 0.86)) while the logbook modal is built as
+  // `<div class="panel panel--book">` and `.panel` is rgba(6, 11, 18, 0.82).
+  // The wrong base was 0.11 of contrast on the binding case — enough to turn a
+  // pass into a fail — and nothing in the gate could see it, because the model
+  // was only ever compared against itself.
+  const { readFileSync: rf } = await import('node:fs');
+  const css = rf(new URL('../src/ui/hud.css', import.meta.url), 'utf8');
+  for (const s of translucent) {
+    ok(!!s.base, `${s.id} declares which CSS fill it models`);
+    ok(css.includes(s.base.rgba),
+       `${s.id}'s base ${s.base.rgba} (${s.base.from}) is literally in hud.css`);
+    // And the declared rgba has to be the one `of()` actually composites, or
+    // the provenance is a label on the wrong box. The base fill is the bottom
+    // of every one of these stacks, so `of()` over a ground is that base over
+    // that ground, plus zero or more white washes on top — never darker.
+    const [r, g, b, a] = s.base.rgba.match(/[\d.]+/g).map(Number);
+    const hex = '#' + [r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('');
+    for (const scene of ['#000000', '#808080', '#ffffff']) {
+      const declared = over(hex, a, scene);
+      const actual = s.of(null, null, scene);
+      ok(relativeLuminance(actual) >= relativeLuminance(declared) - 1e-9,
+         `${s.id} over ${scene} (${actual}) is its declared base ${declared} or a wash above it`);
+    }
+    ok(relativeLuminance(s.of(null, null, '#ffffff')) > relativeLuminance(s.of(null, null, '#000000')),
+       `${s.id} is genuinely translucent — a lit scene raises its ground`);
+  }
+  // `.panel` and `--panel-hard` are different fills, and the whole finding was
+  // that they had been conflated. Pin them apart.
+  ok(SURFACES.find((s) => s.id === 'book-row').base.rgba
+     !== SURFACES.find((s) => s.id === 'panel-hard').base.rgba,
+     'the logbook rows are not modelled on --panel-hard (#78 review, MAJOR 2)');
 
   // The instrument has to *move* when the ground moves, or feeding it a
   // measured scene changes nothing and the gate is still reporting the best
@@ -560,9 +616,12 @@ console.log('and the four translucent surfaces answer to the scene behind them')
   // And the verdict has to be able to flip. If a scene bright enough to fail
   // the palette still reports ok, this measurement can never return an
   // uncomfortable number and is decoration.
-  ok(dark.ok === true, 'the shipped palette clears the stylesheet-black best case');
-  ok(gradeContrast(shipped, plates, undefined, '#ffffff').ok === false,
-     'and fails over a white scene, so the lit ground can actually change the verdict');
+  ok(dark.checks.filter((c) => !c.ok).length === 1,
+     'the shipped palette is one check short even in the stylesheet-black best case');
+  const white = gradeContrast(shipped, plates, undefined, '#ffffff');
+  ok(white.checks.filter((c) => !c.ok).length > dark.checks.filter((c) => !c.ok).length,
+     `and a lit scene makes it strictly worse (${dark.checks.filter((c) => !c.ok).length} -> ${
+       white.checks.filter((c) => !c.ok).length} failing), so the ground can change the verdict`);
 }
 
 console.log('one palette, three tables');

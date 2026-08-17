@@ -136,6 +136,49 @@ try {
   const allMean = samples.flatMap((s) => (s.panels ?? []).filter((p) => p.present)
     .map((p) => ({ scene: s.scene, selector: p.selector, colour: p.mean, kind: 'mean' })));
   if (!all.length) throw new Error('no translucent panel was on screen in any scene; nothing was measured');
+
+  /* Every modelled surface has to have been *seen*, or this run measured
+   * whatever happened to be on screen and reported it as coverage.
+   *
+   * This is the guard for the defect #78's review found: the first version of
+   * the selector list carried `.plate`, which no DOM node ever carries, and it
+   * sampled zero in all twelve scenes without a word. The numbers happened to
+   * survive because `.objective` covers the same `--panel` fill — but a future
+   * run that drove a scene set without `.objective` on screen would have
+   * reported a clean pass for a surface it never looked at. An instrument that
+   * cannot tell "fine" from "never measured" is not an instrument.
+   *
+   * Fail, loudly, naming the surface and every selector that came back absent,
+   * rather than exiting 0 on partial coverage. */
+  const declared = await page.evaluate(() => globalThis.__HARNESS__?.panelSurfaces?.() ?? []);
+  const seen = new Map();
+  for (const s of samples) for (const p of s.panels ?? []) {
+    if (!p.surface) continue;
+    const e = seen.get(p.surface) ?? { n: 0, selectors: new Set() };
+    if (p.present) { e.n++; e.selectors.add(p.selector); }
+    seen.set(p.surface, e);
+  }
+  const unseen = declared.filter((d) => !(seen.get(d.surface)?.n > 0));
+  const coverage = declared.map((d) => ({
+    surface: d.surface,
+    samples: seen.get(d.surface)?.n ?? 0,
+    via: [...(seen.get(d.surface)?.selectors ?? [])],
+    neverPresent: d.selectors.filter((q) =>
+      !samples.some((s) => (s.panels ?? []).some((p) => p.selector === q && p.present))),
+  }));
+  console.log('\n  coverage — every modelled translucent surface, and what actually sampled it:');
+  for (const c of coverage) {
+    console.log(`    ${c.surface.padEnd(11)} ${String(c.samples).padStart(3)} samples via ${c.via.join(', ') || '(none)'}${
+      c.neverPresent.length ? `   never on screen: ${c.neverPresent.join(', ')}` : ''}`);
+  }
+  if (unseen.length) {
+    throw new Error(
+      `these modelled surfaces were never on screen in any driven scene, so nothing was ` +
+      `measured for them and this run cannot speak to their contrast: ` +
+      unseen.map((d) => `${d.surface} (${d.selectors.join(', ')})`).join('; ') +
+      `. Either drive a scene that shows them, or remove them from PANEL_SURFACES ` +
+      `in src/core/Harness.js — do not read this run as coverage.`);
+  }
   const rank = (xs) => xs.slice().sort((a, b) => relativeLuminance(b.colour) - relativeLuminance(a.colour));
   const worstP95 = rank(all)[0];
   const worstMean = rank(allMean)[0];
@@ -176,7 +219,7 @@ try {
 
   out = {
     commit: COMMIT, seed: SEED, viewport: [W, H], capturedAt: new Date().toISOString(),
-    samples, worstMean, worstP95,
+    samples, worstMean, worstP95, coverage,
     grades: { best, mean, worst },
     pageErrors: errors,
   };
