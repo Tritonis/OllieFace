@@ -812,6 +812,53 @@ export class Items {
   }
 
   /**
+   * The blight ids currently held, as a set — what a corrupted synergy is
+   * checked against (data/bandBoons.js). A query; it moves nothing.
+   */
+  blightHeld() {
+    const out = new Set();
+    for (const [id, count] of this.counts) {
+      if (count > 0 && ITEM_BY_ID.get(id)?.tier === 'blight') out.add(id);
+    }
+    return out;
+  }
+
+  /**
+   * Held base stack -> the blight id it would become, sorted by base id. The
+   * field a *bought* conversion can draw from, and the same `BLIGHT_BY_BASE`
+   * pairing the toll uses — one table, so the bargain cannot offer a conversion
+   * the toll would not make.
+   */
+  convertibleStacks() {
+    const out = new Map();
+    for (const id of this._eligibleBases()) out.set(id, BLIGHT_BY_BASE.get(id).id);
+    return out;
+  }
+
+  /**
+   * Convert one held stack on purpose — the Blighted band's bargain (issue
+   * #36), where the player buys the conversion the toll would otherwise have
+   * taken at random. Same transform as `_mutateAt`, and deliberately *not* the
+   * same event: `itemMutated` means "the void took one", and a Codex entry or a
+   * telemetry row that read a purchase as a toll would misreport the run.
+   *
+   * `reason: 'corrupt'` on both `_set` calls is load-bearing, for the reason
+   * `Corruption.init` documents at length: the re-stack is not a pickup, and
+   * billing it would charge the player corruption for spending corruption.
+   */
+  corruptStack(baseId) {
+    const blight = BLIGHT_BY_BASE.get(baseId);
+    const held = this.count(baseId);
+    if (!blight || !(held > 0)) return false;
+    this._set(baseId, 0, 'corrupt');
+    this._set(blight.id, this.count(blight.id) + held, 'corrupt');
+    this.ctx.events.emit('itemCorrupted', {
+      baseId, blightId: blight.id, count: held, owner: this._owner(),
+    });
+    return true;
+  }
+
+  /**
    * The blight stacks a cleansing could hand back, sorted. A query, not a side
    * effect, because the Argent Font's prompt has to be able to promise the
    * reward *before* the player pays for it (issue #32) — and the caller that

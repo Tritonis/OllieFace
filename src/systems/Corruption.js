@@ -1,5 +1,6 @@
 // src/systems/Corruption.js
 import { bandOf, isVoidtouched, SOURCES, VOIDTOUCHED } from '../data/corruption.js';
+import { marksMinted } from '../data/bandBoons.js';
 import { ITEM_BY_ID } from '../data/items.js';
 
 /**
@@ -27,6 +28,17 @@ export class Corruption {
     this._band = 0;
     this._greed = false;
     this.seeds = [];              // { x, z, strength }, oldest first
+    // The band upsides' currency (issue #36). `_peak` is the deepest this run
+    // has *ever* been, and it only climbs: marks are minted by having gone
+    // there, so a font can buy the gauge back down without refunding what the
+    // descent already paid for. `_spent` is the other half of that honesty —
+    // bleeding cannot un-spend a mark either.
+    this._peak = 0;
+    this._spent = 0;
+    // Consumed's one-way door (data/bandBoons.js RUIN). Set by `ruin()`, never
+    // cleared, and read by the Argent Font: once the void has been let all the
+    // way in, cleansing is not expensive, it is over.
+    this.ruined = false;
   }
 
   init(ctx) {
@@ -86,6 +98,37 @@ export class Corruption {
   get greed() { return this._greed; }
   corruptionOf(player) { return this._byPlayer.get(player) || 0; }
 
+  /** The deepest this run has been. Monotonic — the mint reads it, not `world`. */
+  get peak() { return this._peak; }
+
+  /** Void marks in hand: what the descent minted, less what has been spent. */
+  get marks() { return Math.max(0, marksMinted(this._peak) - this._spent); }
+
+  /**
+   * Spend `n` marks, all or nothing. Authority-gated like every other state
+   * change here, so a client's press resolves on the host at the host's purse
+   * rather than half-charging two ledgers.
+   */
+  spendMarks(n) {
+    if (!this.ctx?.authority || !(n > 0) || this.marks < n) return false;
+    this._spent += n;
+    this.ctx.events.emit('voidMarksChanged', { marks: this.marks, spent: n });
+    return true;
+  }
+
+  /**
+   * Let the void all the way in — Consumed's last-chance state, and the only
+   * irreversible thing in this system. The band gate lives in the caller
+   * (`VoidBargain`), because the band is a property of the world and the door
+   * is a property of the run.
+   */
+  ruin() {
+    if (!this.ctx?.authority || this.ruined) return false;
+    this.ruined = true;
+    this.ctx.events.emit('voidRuin', { world: this._world, band: this._band });
+    return true;
+  }
+
   /**
    * What `feed` would add for a face-value `amount` right now — greed time and
    * the artifact economy folded in. Pure: it moves nothing.
@@ -115,6 +158,14 @@ export class Corruption {
     const added = this.priceOf(amount);
     this._byPlayer.set(player, (this._byPlayer.get(player) || 0) + added);
     this._world += added;
+    // The mark mint (issue #36) rides the same line the debt does, so a feed
+    // and the currency it earns cannot disagree — and it is a high-water mark,
+    // which is the whole reason the upsides survive a cleansing.
+    if (this._world > this._peak) {
+      const before = this.marks;
+      this._peak = this._world;
+      if (this.marks !== before) this.ctx.events.emit('voidMarksChanged', { marks: this.marks, spent: 0 });
+    }
     const prev = this._band;
     this._band = bandOf(this._world);
     this.ctx.events.emit('corruptionChanged', { world: this._world, band: this._band });
