@@ -465,7 +465,8 @@ export class RenderPipeline {
    *  Scaled by the player's screen-shake preference, so the UI can set the
    *  setting and leave this method alone. */
   addShake(amount) {
-    const scale = this.shakeScale * (this.settings?.shake ?? 1);
+    const s = this.settings;
+    const scale = this.shakeScale * (s?.shake ?? 1) * (s?.motion ?? 1);
     this.shake = clamp(this.shake + amount * scale, 0, 1);
   }
 
@@ -478,14 +479,32 @@ export class RenderPipeline {
     this.aberration = clamp(damp(this.aberration, 0, 0.99, dt), 0, 0.004);
     this.vignetteBoost = damp(this.vignetteBoost, 0, 0.98, dt);
 
+    // The player's presentation knobs, read here at the point the values are
+    // produced rather than filtered off the finished frame. All default to 1,
+    // so an untouched settings blob reproduces the authored look exactly.
+    const st = this.settings;
+    // Reactive motion only: the resting aberration and vignette are part of the
+    // look, the kicks on top of them are what makes a screen move.
+    const motion = st?.motion ?? 1;
+    const aberrationScale = st?.aberration ?? 1;
+
+    const b = this.passes.bloom;
+    if (b) {
+      const want = BLOOM.strength * (st?.bloom ?? 1);
+      // The `strength` setter treats any write as a ceiling request, so this can
+      // only ever lower the bloom — which is exactly what the slider means.
+      if (b.strength !== want) b.strength = want;
+    }
+
     const g = this.passes.grade;
     if (g) {
       const u = g.uniforms;
       u.uTime.value = this.shakeTime;
       u.uShake.value = this.shake;
-      u.uAberration.value = ABERRATION.base + ABERRATION.boost
-        * Math.min((this.aberration + this.shake * 0.004) / ABERRATION.drive, 1);
-      u.uVignette.value = VIGNETTE_BASE + this.vignetteBoost;
+      u.uAberration.value = (ABERRATION.base + ABERRATION.boost * motion
+        * Math.min((this.aberration + this.shake * 0.004) / ABERRATION.drive, 1))
+        * aberrationScale;
+      u.uVignette.value = VIGNETTE_BASE + this.vignetteBoost * motion;
     }
   }
 

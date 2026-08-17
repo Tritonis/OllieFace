@@ -56,7 +56,13 @@ const STORE_KEY = 'telluric.settings';
 /** The pre-rename key, adopted once in `load`. See `core/LegacyStorage.js`. */
 const LEGACY_STORE_KEY = 'petrichor.settings';
 
-const DEFAULTS = {
+/**
+ * Every accessibility knob defaults to 1 — "the effect exactly as authored" —
+ * so a player who never opens this screen sees the build the rubric was scored
+ * against. Only `motion` is ever seeded differently, and only from an explicit
+ * OS-level reduced-motion preference. See `load`.
+ */
+export const DEFAULTS = {
   quality: 2,
   fov: 70,
   sensitivity: 1.0,
@@ -64,6 +70,10 @@ const DEFAULTS = {
   sfx: 0.9,
   music: 0.6,
   shake: 1.0,
+  flash: 1.0,
+  aberration: 1.0,
+  bloom: 1.0,
+  motion: 1.0,
   spawnRate: 1.0,
   padSensitivity: 1.0,
   renderScale: 1.0,
@@ -89,7 +99,7 @@ const CODE_PLACEHOLDER = '---------';
 // the ungrouped one and pushed the headline and both buttons off the card.
 const DEATH_ROW = 8;
 
-const SLIDERS = [
+export const SLIDERS = [
   { key: 'renderScale', label: 'Render scale', min: 0.5, max: 1, step: 0.05, fmt: pct },
   { key: 'fov', label: 'Field of view', min: 60, max: 110, step: 1, fmt: (v) => `${v | 0}°` },
   { key: 'sensitivity', label: 'Mouse sensitivity', min: 0.2, max: 3, step: 0.05, fmt: (v) => v.toFixed(2) },
@@ -98,6 +108,19 @@ const SLIDERS = [
   { key: 'sfx', label: 'SFX volume', min: 0, max: 1, step: 0.01, fmt: pct },
   { key: 'music', label: 'Music volume', min: 0, max: 1, step: 0.01, fmt: pct },
   { key: 'shake', label: 'Screen shake', min: 0, max: 2, step: 0.05, fmt: pct },
+  // The four accessibility knobs below follow `shake` exactly: a plain number
+  // on `ctx.settings`, read by the system that PRODUCES the effect rather than
+  // filtered out of the finished frame. `flash` is read by `VFX.hitFlash`;
+  // `aberration`, `bloom` and `motion` by `RenderPipeline.update` (and `motion`
+  // again by `addShake`). At 0% each effect is genuinely not produced.
+  { key: 'flash', label: 'Hit flash', min: 0, max: 1, step: 0.05, fmt: pct },
+  { key: 'aberration', label: 'Chromatic aberration', min: 0, max: 1, step: 0.05, fmt: pct },
+  { key: 'bloom', label: 'Bloom', min: 0, max: 1, step: 0.05, fmt: pct },
+  // Reduces the *reactive* camera motion — shake, the aberration kick and the
+  // vignette pulse — without touching the resting look. Re-seeded from the OS
+  // reduced-motion preference on every load until the stored blob carries a
+  // `motion` of its own, matching the CSS in index.html.
+  { key: 'motion', label: 'Screen motion', min: 0, max: 1, step: 0.05, fmt: pct },
   // Gameplay pacing rather than presentation, but it lives here because this is
   // the screen players look in for knobs. The Director reads it straight off
   // `ctx.settings`; 0% means no ambient spawns at all (the teleporter boss
@@ -2365,9 +2388,24 @@ function markImg(key, color) {
  * choice and detection must not overrule it, but shipping a hardcoded "High"
  * default to an integrated GPU is how a machine ends up at 5fps on first run.
  */
+/**
+ * The OS-level `prefers-reduced-motion` flag, the same one `index.html` already
+ * honours in CSS. Guarded because this module is imported by node tests that
+ * have no `matchMedia` at all.
+ */
+function prefersReducedMotion() {
+  try { return !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches; }
+  catch { return false; }
+}
+
 function load(fallbackQuality) {
   const base = { ...DEFAULTS };
   if (Number.isFinite(fallbackQuality)) base.quality = fallbackQuality;
+  // A stored value is an explicit choice and wins below, exactly as it does for
+  // `quality`. Absent one the OS preference is re-read on every load, not just
+  // the first: the store only gains a `motion` once the player saves settings,
+  // and until then the accessibility flag should keep being honoured.
+  if (prefersReducedMotion()) base.motion = 0;
   try {
     const raw = adoptLegacyKey(STORE_KEY, LEGACY_STORE_KEY, localStorage);
     if (!raw) return base;

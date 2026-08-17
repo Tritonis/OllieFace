@@ -125,6 +125,9 @@ export const KILL_SIGNATURE = {
 // hard and a fight across the arena barely registers.
 const SHAKE_HALF_DIST = 18;
 
+/** Emissive intensity a hit flash drives a struck material to at 100%. */
+const FLASH_INTENSITY = 3.2;
+
 // Metres of tracer actually drawn, measured back from the impact point.
 const TRACER_LENGTH = 8;
 
@@ -1313,6 +1316,12 @@ export class VFX {
 
   /** Flash the struck entity's emissive white for ~60ms. */
   hitFlash(entity, colour = 0xffffff, duration = 0.06) {
+    // The player's hit-flash preference, read where the flash is produced: at 0
+    // no material is ever cloned or brightened, so the effect does not exist
+    // rather than being dimmed out of a finished frame. Defaults to 1.
+    const strength = this.ctx?.settings?.flash ?? 1;
+    if (!(strength > 0)) return;
+
     const obj = resolveObject(entity);
     if (!obj) return;
 
@@ -1341,10 +1350,20 @@ export class VFX {
     for (let i = 0; i < rec.mats.length; i++) {
       const m = rec.mats[i];
       m.emissive.copy(rec.colour);
-      m.emissiveIntensity = 3.2;
+      // `rec.base` is interleaved [colour, intensity] per material, so the
+      // material's own resting intensity is the far end of the ramp: at 100%
+      // this is the historical flat 3.2, and below it the flash reads as a
+      // lighter lift off the material instead of a full-brightness pop.
+      const rest = rec.base[i * 2 + 1] ?? 1;
+      m.emissiveIntensity = rest + (FLASH_INTENSITY - rest) * strength;
     }
     rec.t = 0;
     rec.dur = duration;
+    // The record outlives this call: `_updateFlashes` re-drives the intensity
+    // every frame for the whole 60ms, so the preference has to travel WITH the
+    // flash. Setting it only here would be overwritten on the very next frame
+    // by the decay's own target.
+    rec.strength = strength;
     if (this._flashes.indexOf(rec) < 0) this._flashes.push(rec);
   }
 
@@ -1679,7 +1698,12 @@ export class VFX {
       const f = 1 - k * k;
       for (let j = 0; j < rec.mats.length; j++) {
         rec.mats[j].emissive.lerpColors(rec.base[j * 2], rec.colour, f);
-        rec.mats[j].emissiveIntensity = lerp(rec.base[j * 2 + 1], 3.2, f);
+        // Decay toward the peak this flash was SPAWNED with, not toward the
+        // authored maximum. `rec.strength` is the player's `flash` preference
+        // captured in `hitFlash`; at 100% the target is FLASH_INTENSITY and the
+        // curve is exactly what it has always been.
+        const peak = lerp(rec.base[j * 2 + 1], FLASH_INTENSITY, rec.strength ?? 1);
+        rec.mats[j].emissiveIntensity = lerp(rec.base[j * 2 + 1], peak, f);
       }
     }
   }
