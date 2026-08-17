@@ -119,9 +119,19 @@ accumulates across a session unless something sweeps it. 28 stale worktrees once
 made vite serve a single CSS file in 79.9s, which blew `npm run shots`'s goto timeout 3/3 (issue #90).
 **The controller sweeps merged worktrees at batch close** rather than leaving that to auto-cleanup.
 A worktree given a junction into the main install's `node_modules` (per-lane setup a brief may
-specify) must have that junction **unlinked before the worktree itself is removed** — `rmdir` the junction path only, never a recursive delete of the worktree directory while
-the junction is still live, since a recursive delete walks the junction and deletes the main tree's
-packages (the best explanation on record for issues #67 and #83).
+specify) must have that junction **unlinked before the worktree itself is removed** — `rmdir` the
+junction path only, and never tear down the worktree while the junction is still live.
+
+**The dangerous actor is `git`, not your recursive delete** — corrected 2026-08-17 against the
+earlier claim here, by direct experiment recorded in #67. With a junction inside a *registered*
+worktree, `git worktree remove --force` and `git clean -xfd` both **walk the junction and empty the
+main tree's packages**; PowerShell `-Recurse`, `rm -rf` and `fs.rmSync` all refuse to walk it and
+leave the target intact. The junction's top directory survives while its contents do not, which is
+exactly the observed signature — `node_modules` at zero directories with `node_modules` itself still
+present. So the rule is not "avoid recursive deletes", it is **check for a live reparse point before
+any `git worktree remove` or `git clean`**, which is what the controller's sweep now does. Best
+explanation on record for #67 and #83; a specific historical incident has not been tied to a specific
+invocation, since no shell history is retained.
 **Decision (adjudicated):** junctions into the main install are permitted for a lane's lifetime; they
 must be unlinked before the worktree is removed; `tests/worktree-hygiene.test.mjs` (part of
 `gates:cheap`) makes an orphaned one — a junction left behind in a directory that is no longer a
