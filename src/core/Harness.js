@@ -2354,20 +2354,20 @@ export function installHarness(ctx) {
     // entry is deleted rather than raised: an exemption around a subject that
     // now clears its own margin is a silence, not a record.
 
-    // The 30 m arena's horde gates its best 8 of 24, and the weakest of those 8
-    // lands on the floor exactly. This is a framing/lighting property of the far
-    // half of that arena rather than of any one monster — the same slot is a
-    // different creature run to run — so it is fixed by lifting the arena's fill
-    // or tightening the shot, not by anything a subject can declare.
-    //
-    // It is also the one entry here that is *boundary-flaky* rather than
-    // steadily short, which is the strongest argument for it existing: the two
+    // `04-combat::horde` was here at 0.25, admitted as boundary-flake: the two
     // runs recorded above read `worstGatedSep` 0.25 (`baseline`) and 0.29
-    // (`rule-on`) on an unchanged tree. Without the exemption the horde would
-    // have gone red on roughly every other run, which is how a gate gets
-    // switched off. The recorded value is the worse of the two.
-    { id: '04-combat::horde', kind: 'perSep', value: 0.25,
-      note: 'weakest of the 8 gated horde members straddles the floor (0.25 / 0.29 on two unchanged runs); wants arena fill or framing, not a per-subject change' },
+    // (`rule-on`), which looked like the market stalls' cross-boot straddle.
+    // Retired by #86: it wasn't flake. Ten full runs across days and commits —
+    // `reviews/issue86-attempt2/pre1..4` plus six historical full manifests —
+    // all read 0.29, byte-identical on the gated top-8, clearing the 0.27 bar
+    // by exactly the margin #81 mandates. The lone 0.25 came from
+    // `reviews/gate-margin/baseline`, a run from a tree where 19-overkill and
+    // 20-blight-edge still executed before this shot, so its arena fill is not
+    // this tree's arena fill. Unlike the stalls below, whose bad readings
+    // reproduce across boots on unchanged trees, the horde's bad reading
+    // belonged to a different tree shape — deletion on that evidence is a
+    // record, not a lucky boot. If the horde reds here again, read the
+    // manifests above before re-admitting it.
 
     // The market's second stall is the horde's shape in the realm roster: an
     // entry admitted for boundary-flake, not for steady shortfall. It was
