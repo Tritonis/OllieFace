@@ -1,0 +1,203 @@
+{
+  "seed": 1337,
+  "ready": true,
+  "clockPinned": true,
+  "shots": [
+    {
+      "name": "22-realm-market",
+      "doc": "The Hollow Market: a lantern-lit hub with three deterministic stalls, the refinery and the Obelisk of Departure. Judges whether a no-combat room reads as a different pace and a different place.",
+      "file": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\survivor-sep\\post-exemption\\22-realm-market.png",
+      "engine": {
+        "frameErrors": 0,
+        "lastFrameError": null,
+        "time": 1.2166666666666672
+      },
+      "result": {
+        "stalls": 3,
+        "obelisk": true
+      },
+      "subject": {
+        "ok": true,
+        "checks": [
+          {
+            "subject": "the market stalls",
+            "kind": "pixels",
+            "ok": true,
+            "px": 3922,
+            "frac": 0.03026,
+            "lum": 62.9,
+            "bgLum": 18.3,
+            "contrast": 0.549,
+            "sep": 0.432,
+            "sepP25": 0.23,
+            "sepP50": 0.39,
+            "legible": 0.87,
+            "at": [
+              0.544,
+              0.8
+            ],
+            "box": [
+              0.234,
+              0.517,
+              0.891,
+              0.998
+            ],
+            "objects": 3,
+            "visibleObjects": 3,
+            "perPx": [
+              456,
+              1325,
+              2141
+            ],
+            "perSep": [
+              0.41,
+              0.31,
+              0.43
+            ],
+            "minPx": 900,
+            "minObjects": 2,
+            "marginOk": true,
+            "present": true,
+            "carriedPx": 3412,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "marginSep": 0.27,
+            "minPerPx": 300,
+            "absentObjects": [],
+            "objectFailures": [],
+            "ungatedAbsences": [],
+            "perObjectOk": true,
+            "marginPerSep": 0.27,
+            "worstGatedSep": 0.31,
+            "marginObjectFailures": [],
+            "carriesAbsence": false,
+            "gatedOn": [
+              "px >= minPx",
+              "visibleObjects >= minObjects",
+              "sepP50 >= minSep",
+              "sepP50 >= marginSep (0.27)",
+              "perPx/perSep/absence over every declared object",
+              "perSep >= marginPerSep (0.27) over the gated set"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "legible"
+            ]
+          },
+          {
+            "subject": "the Obelisk of Departure",
+            "kind": "pixels",
+            "ok": true,
+            "px": 1797,
+            "frac": 0.01387,
+            "lum": 27.7,
+            "bgLum": 90.6,
+            "contrast": 0.532,
+            "sep": 0.492,
+            "sepP25": 0.31,
+            "sepP50": 0.53,
+            "legible": 0.865,
+            "at": [
+              0.5,
+              0.538
+            ],
+            "box": [
+              0.436,
+              0.306,
+              0.566,
+              0.635
+            ],
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 700,
+            "minObjects": 0,
+            "marginOk": true,
+            "present": true,
+            "carriedPx": 1554,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "marginSep": 0.27,
+            "perObjectOk": true,
+            "carriesAbsence": false,
+            "gatedOn": [
+              "px >= minPx",
+              "sepP50 >= minSep",
+              "sepP50 >= marginSep (0.27)"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "legible"
+            ]
+          },
+          {
+            "subject": "no monsters in the hub",
+            "kind": "dom",
+            "ok": true,
+            "detail": 0
+          },
+          {
+            "subject": "the survivor",
+            "kind": "pixels",
+            "ok": true,
+            "px": 674,
+            "frac": 0.0052,
+            "lum": 89.2,
+            "bgLum": 40.1,
+            "contrast": 0.38,
+            "sep": 0.338,
+            "sepP25": 0.13,
+            "sepP50": 0.31,
+            "legible": 0.709,
+            "at": [
+              0.499,
+              0.919
+            ],
+            "box": [
+              0.474,
+              0.798,
+              0.526,
+              0.998
+            ],
+            "objects": 1,
+            "visibleObjects": 1,
+            "minPx": 250,
+            "minObjects": 0,
+            "marginOk": true,
+            "present": true,
+            "carriedPx": 478,
+            "minSep": 0.25,
+            "legibleOk": true,
+            "marginSep": 0.27,
+            "perObjectOk": true,
+            "carriesAbsence": false,
+            "gatedOn": [
+              "px >= minPx",
+              "sepP50 >= minSep",
+              "sepP50 >= marginSep (0.27)"
+            ],
+            "notGated": [
+              "contrast",
+              "sep",
+              "sepP25",
+              "legible"
+            ]
+          }
+        ]
+      },
+      "newErrors": []
+    }
+  ],
+  "errors": [],
+  "subjectFailures": [],
+  "subjectsOk": true,
+  "perf": {
+    "programs": 88,
+    "geometries": 414,
+    "textures": 53,
+    "sceneObjects": 425
+  }
+}
