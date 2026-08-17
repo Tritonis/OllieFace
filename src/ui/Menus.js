@@ -22,6 +22,7 @@ import { REFUSE } from '../net/Protocol.js';
 import { adoptLegacyKey } from '../core/LegacyStorage.js';
 import { PAD_BUTTON } from '../core/PadState.js';
 import { telemetryEnabled, setTelemetryEnabled, readRuns, downloadRuns, clearRuns } from '../systems/Telemetry.js';
+import { markDialog, focusablesIn, installFocusTrap } from './Dialogs.js';
 
 /**
  * A refused join, in the language of the person it happened to.
@@ -80,6 +81,17 @@ export const DEFAULTS = {
   // 1 = Auto (adaptive controller live), 0 = Off (pinned at renderScale).
   // A number, not a boolean: `load()` only adopts finite numbers.
   dynamicRes: 1,
+  // On-screen captions for the critical audio cues (#46). 1 = on, 0 = off, a
+  // number for the same reason `dynamicRes` is one: `load()` only adopts
+  // finite numbers off the stored blob.
+  //
+  // Default OFF, and — unlike `motion` — never seeded from an OS preference.
+  // Reduced motion is a real platform-level flag that a player has already
+  // set somewhere else and should not have to set again; there is no
+  // equivalent "I want captions" signal, so inventing one from a related flag
+  // would be guessing. Captions are opt-in by convention in games, and this is
+  // a documented, findable setting rather than a hidden one.
+  captions: 0,
 };
 
 const QUALITY_NAMES = ['Low', 'Medium', 'High', 'Ultra'];
@@ -213,6 +225,11 @@ export class Menus {
     // friend can accept a Steam invite while this player is on the title
     // screen, and the handler has to already be there when they do.
     this.bindSteam();
+
+    // Tab must not walk out of an open panel into the game behind it. The
+    // painted ring never could, because it is a class; real focus always
+    // could, and did.
+    installFocusTrap(this, document);
 
     // Losing pointer lock mid-run means the player hit Esc — pause for them.
     document.addEventListener('pointerlockchange', () => {
@@ -596,6 +613,12 @@ export class Menus {
     this.screens = {};
     for (const el of this.root.querySelectorAll('[data-screen]')) {
       this.screens[el.dataset.screen] = el;
+      // Every one of these panels is modal in fact — it pauses the run and the
+      // game behind it takes no input — and said so to nobody. `markDialog`
+      // makes that fact legible to a screen reader; it is inert to sighted
+      // play, which is why it can be applied unconditionally here rather than
+      // toggled as screens open.
+      markDialog(el);
     }
     this.banner = this.root.querySelector('[data-banner]');
     this.bannerRefs = {
@@ -690,6 +713,16 @@ export class Menus {
     html += row('Dynamic resolution',
       `<div class="sseg" data-seg="dynamicRes">
          <button class="segbtn" data-nav data-val="1">Auto</button>
+         <button class="segbtn" data-nav data-val="0">Off</button>
+       </div>`);
+
+    // Captions (#46). A `data-seg` row, so the click handler below writes it
+    // into the settings blob and `save`s it exactly like `dynamicRes` — it is
+    // read live by `Announcer.captionsOn` off `ctx.settings`, which is this
+    // same object.
+    html += row('Audio captions',
+      `<div class="sseg" data-seg="captions">
+         <button class="segbtn" data-nav data-val="1">On</button>
          <button class="segbtn" data-nav data-val="0">Off</button>
        </div>`);
 
@@ -1342,6 +1375,31 @@ export class Menus {
 
     this.navIndex = 0;
     this.paintFocus();
+    this.moveFocus(prev, name);
+  }
+
+  /**
+   * Real DOM focus follows the open panel (#45).
+   *
+   * The painted ring `paintFocus` draws is a class, invisible to assistive
+   * technology and unrelated to `document.activeElement` — so opening the pause
+   * menu left the browser's focus wherever it was, usually the canvas, and a
+   * screen-reader user was told nothing had happened. The element focused on
+   * the way in is the panel's first control; the element restored on the way
+   * out is whatever held focus when the first panel of the journey opened,
+   * which for a run in flight is the canvas.
+   */
+  moveFocus(prev, name) {
+    const doc = globalThis.document;
+    if (!doc) return;
+    if (name) {
+      if (!prev) this._focusReturn = doc.activeElement || null;
+      focusablesIn(this.screens[name])[0]?.focus?.();
+      return;
+    }
+    const back = this._focusReturn;
+    this._focusReturn = null;
+    (back || doc.getElementById?.('viewport'))?.focus?.();
   }
 
   close() {
@@ -2423,6 +2481,9 @@ function load(fallbackQuality) {
     }
     out.quality = Math.min(3, Math.max(0, Math.round(out.quality)));
     out.dynamicRes = out.dynamicRes === 0 ? 0 : 1;
+    // Same normalisation, opposite bias: anything that is not an explicit 1 is
+    // off, so a corrupted store cannot switch captions on for somebody.
+    out.captions = out.captions === 1 ? 1 : 0;
     return out;
   } catch {
     return base;
