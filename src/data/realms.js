@@ -429,6 +429,50 @@ export const FINALE_RITES = {
   },
 };
 
+/**
+ * What ruin does to a rite (#99).
+ *
+ * A run that struck the Consumed bargain (`bandBoons.js` RUIN, `Corruption.ruin`)
+ * arrives at the finale having already sold the world. The arena answers in the
+ * only currency phase 3 has: **the floor is simply lost**. No recovery on any
+ * route, and it goes faster.
+ *
+ * This is a modifier over the existing table rather than a third rite, because
+ * ruin is not a route — it is a state a run can be in on *either* route. A
+ * Blighted party that ruins itself and then takes the clean door must not be
+ * able to buy containment's forgiveness back by choosing a door; on the clean
+ * route the bite is precisely that sealing the breaches now only *stops the
+ * bleeding* instead of growing the arena back.
+ */
+export const RUINED_RITE = {
+  /** Multiplier on the rite's own erosion rate. */
+  erosionScale: 1.75,
+  /** The floor still never erodes past the rite's `minRadius`. A lost arena is
+   *  not an unwinnable one — the fight has to remain finishable. */
+  suffix: ' — the ground you sold is not coming back',
+};
+
+/**
+ * The rite a ruined run actually runs. Pure, and derived from the authored
+ * entry so a change to either route's tuning carries through.
+ *
+ * `recoverRate` goes to zero and `permanentLoss` to true on both routes, which
+ * is the whole consequence: `riteRadius` then refuses to grow the floor back
+ * even once containment's breaches are all sealed.
+ */
+export function ruinedRite(rite) {
+  if (!rite || rite.ruined) return rite;
+  return {
+    ...rite,
+    ruined: true,
+    erosionRate: rite.erosionRate * RUINED_RITE.erosionScale,
+    recoverRate: 0,
+    permanentLoss: true,
+    objective: rite.objective + RUINED_RITE.suffix,
+    doneObjective: rite.doneObjective + RUINED_RITE.suffix,
+  };
+}
+
 /** The rite a finale realm runs, or `null` for a realm that has none. */
 export function riteFor(realmId) {
   const key = REALM_BY_ID.get(realmId)?.rite;
