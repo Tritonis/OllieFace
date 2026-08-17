@@ -201,11 +201,14 @@ export class Engine {
    *  · `ctx.authority` goes false, because nothing may keep speaking for a
    *    simulation that has stopped simulating. What that buys is narrow and
    *    worth stating exactly: every system that gates a state change on it —
-   *    `Combat`, `Corruption`, `Director`, `Progression` — refuses from here on
-   *    even if something outside the loop pokes it. It sends no message, so a
-   *    peer learns only by the snapshots stopping and timing out, and
-   *    `NetHost`'s event-driven `_send` calls are not gated on it either; those
-   *    go quiet because the systems that emit their events no longer run;
+   *    `Combat`, `Corruption`, `Director`, `Progression` — refuses for as long
+   *    as the flag stays false, and frame-phase emitters go quiet because the
+   *    loop no longer runs them. That is all it buys. The flag is not
+   *    latched: `Lobby`'s socket callbacks set it back to true and keep
+   *    firing after a halt, transport-driven sends (`Lobby`'s offers,
+   *    `NetHost`'s `WELCOME`) are not frame phases and are not gated on it,
+   *    and the room keepalive survives. A halted host can therefore still
+   *    talk to peers — issue #75 tracks closing that;
    *  · the console gets the whole error, unconditionally — this fires once by
    *    construction, so the once-per-system throttle above does not apply;
    *  · `fatalError` is emitted so the page can put something in front of the
