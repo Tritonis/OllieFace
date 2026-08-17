@@ -21,6 +21,7 @@ import { showSteamInviteNotice } from './SteamInviteNotice.js';
 import { REFUSE } from '../net/Protocol.js';
 import { adoptLegacyKey } from '../core/LegacyStorage.js';
 import { PAD_BUTTON } from '../core/PadState.js';
+import { ACTIONS, bindings, isReserved, keyLabel, padLabel } from '../core/Bindings.js';
 import { telemetryEnabled, setTelemetryEnabled, readRuns, downloadRuns, clearRuns } from '../systems/Telemetry.js';
 import { markDialog, focusablesIn, installFocusTrap } from './Dialogs.js';
 
@@ -779,6 +780,28 @@ export class Menus {
          <button class="segbtn" data-nav data-act="telemetry-clear">Clear</button>
        </div>`);
 
+    // ------------------------------------------------------------- rebinding
+    // Two columns, one per device. Each cell is a button that opens the capture
+    // dialog; the label it carries is the live binding, repainted by
+    // `syncBindings`.
+    html += `<div class="srow srow--binds"><div class="slabel">Controls</div>
+        <div class="sbind sbind-head"><span>Keyboard / mouse</span><span>Gamepad</span></div>
+      </div>`;
+    for (const a of ACTIONS) {
+      html += `<div class="srow" data-bindrow="${a.id}">
+          <div class="slabel">${escapeHtml(a.label)}</div>
+          <div class="sbind">
+            <button class="segbtn" data-nav data-bind="key" data-action="${a.id}"></button>
+            <button class="segbtn" data-nav data-bind="pad" data-action="${a.id}"></button>
+          </div>
+        </div>`;
+    }
+    html += row('Restore controls',
+      `<div class="sseg">
+         <button class="segbtn" data-nav data-act="binds-reset">Reset to defaults</button>
+       </div>`);
+    html += `<p class="sbind-note" data-bind-note role="status" aria-live="polite"></p>`;
+
     host.innerHTML = html;
 
     host.addEventListener('input', (e) => {
@@ -791,6 +814,7 @@ export class Menus {
     host.addEventListener('click', (e) => {
       const seg = e.target.closest('.segbtn');
       if (!seg) return;
+      if (seg.dataset.bind) { this.beginCapture(seg.dataset.action, seg.dataset.bind); return; }
       const key = seg.closest('[data-seg]')?.dataset.seg;
       if (!key) return;
       this.settings[key] = Number(seg.dataset.val);
@@ -823,6 +847,7 @@ export class Menus {
       }
     }
     this.syncTelemetry();
+    this.syncBindings();
   }
 
   /**
@@ -842,6 +867,123 @@ export class Menus {
       // `[data-nav]`, and a disabled button in that list is a dead stop for the
       // gamepad. `downloadRuns` refuses an empty buffer on its own.
       btn.textContent = n ? `Export (${n})` : 'Export';
+    }
+  }
+
+  /** Paint every bind cell off the live map. */
+  syncBindings() {
+    for (const a of ACTIONS) {
+      const rowEl = this.root.querySelector(`[data-bindrow="${a.id}"]`);
+      if (!rowEl) continue;
+      const kb = rowEl.querySelector('[data-bind="key"]');
+      const pd = rowEl.querySelector('[data-bind="pad"]');
+      if (kb) {
+        kb.textContent = keyLabel(bindings.keyOf(a.id));
+        kb.setAttribute('aria-label', `${a.label}, keyboard: ${keyLabel(bindings.keyOf(a.id))}. Activate to rebind.`);
+      }
+      if (pd) {
+        pd.textContent = padLabel(bindings.padOf(a.id));
+        pd.setAttribute('aria-label', `${a.label}, gamepad: ${padLabel(bindings.padOf(a.id))}. Activate to rebind.`);
+      }
+    }
+  }
+
+  bindNote(text) {
+    const el = this.root.querySelector('[data-bind-note]');
+    if (el) el.textContent = text;
+  }
+
+  // --------------------------------------------------------------- rebinding
+  //
+  // CONFLICT RULE: swap. Assigning a key another action already holds hands
+  // that action the key being displaced, and the status line says so. Blocking
+  // is simpler but can strand a player mid-layout with an action they cannot
+  // reach; a swap always leaves every action bound to something.
+
+  /** Open the capture dialog for one action on one device. */
+  beginCapture(actionId, device) {
+    if (this.capture) return;
+    const action = ACTIONS.find((a) => a.id === actionId);
+    if (!action) return;
+
+    const el = document.createElement('div');
+    el.className = 'bind-capture';
+    el.innerHTML = `<div class="panel bind-capture-panel">
+        <h2>${escapeHtml(action.label)}</h2>
+        <p>${device === 'pad'
+          ? 'Press a gamepad button. Escape or B cancels.'
+          : 'Press a key or mouse button. Escape cancels.'}</p>
+      </div>`;
+    const panel = el.firstElementChild;
+    markDialog(panel);
+    panel.setAttribute('aria-live', 'assertive');
+    panel.setAttribute('tabindex', '-1');
+    this.root.appendChild(el);
+    panel.focus?.();
+
+    // Capture phase, so the game's own window-level keydown never sees the
+    // press that is being captured — Escape must not also close the screen.
+    const onKey = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.code === 'Escape') { this.endCapture('Rebinding cancelled.'); return; }
+      if (device === 'pad') return;   // a key cannot fill a pad slot
+      // The menu reads a handful of codes raw (see `navigate`). Binding an
+      // action onto one would take menu movement, confirm, back or the Edict
+      // away with no way left to reach this screen and undo it.
+      if (isReserved(e.code)) {
+        this.endCapture(`${keyLabel(e.code)} is reserved for menu navigation. Nothing was changed.`);
+        return;
+      }
+      this.applyBind(actionId, 'key', e.code);
+    };
+    const onMouse = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (device === 'pad') return;
+      this.applyBind(actionId, 'key', `Mouse${e.button}`);
+    };
+    addEventListener('keydown', onKey, true);
+    addEventListener('mousedown', onMouse, true);
+    this.capture = { actionId, device, el, onKey, onMouse };
+  }
+
+  /** Close the dialog and say what happened — to the screen reader too. */
+  endCapture(note) {
+    const c = this.capture;
+    if (!c) return;
+    this.capture = null;
+    removeEventListener('keydown', c.onKey, true);
+    removeEventListener('mousedown', c.onMouse, true);
+    c.el.remove();
+    this.syncBindings();
+    if (note) this.bindNote(note);
+  }
+
+  applyBind(actionId, device, value) {
+    const label = ACTIONS.find((a) => a.id === actionId)?.label ?? actionId;
+    const swapped = device === 'pad'
+      ? bindings.bindPad(actionId, value)
+      : bindings.bindKey(actionId, value);
+    const shown = device === 'pad' ? padLabel(value) : keyLabel(value);
+    const other = swapped && ACTIONS.find((a) => a.id === swapped);
+    save(this.settings);
+    this.endCapture(other
+      ? `${label} is now ${shown}. ${other.label} took the binding it displaced.`
+      : `${label} is now ${shown}.`);
+  }
+
+  /** While the dialog is open, a pad press is read off the live pad edges. */
+  pollCapture(ctx) {
+    const c = this.capture;
+    if (!c || c.device !== 'pad') return;
+    const edges = ctx.input?.pad?.edges;
+    if (!edges?.size) return;
+    for (const btn of edges) {
+      ctx.input.clearPadEdges?.();
+      if (btn === PAD_BUTTON.B) this.endCapture('Rebinding cancelled.');
+      else this.applyBind(c.actionId, 'pad', btn);
+      return;
     }
   }
 
@@ -1495,6 +1637,14 @@ export class Menus {
         save(this.settings);
         this.apply();
         break;
+      // Controls have their own Defaults, next to the list they restore: a
+      // player fixing one bad binding should not have to lose their volumes.
+      case 'binds-reset':
+        bindings.reset();
+        save(this.settings);
+        this.syncBindings();
+        this.bindNote('Controls restored to defaults.');
+        break;
       // Deliberately outside `reset`: Defaults restores the video and audio
       // knobs, and silently revoking a consent the player gave — or worse,
       // silently granting one — is not a default anybody asked for.
@@ -2095,6 +2245,12 @@ export class Menus {
     const input = ctx.input;
     const hit = (c) => input?.hit?.(c);
 
+    // COUPLING: the arrows, Enter, NumpadEnter, Backspace and Escape below are
+    // read as RAW physical codes — they are not in the binding map — so
+    // `Bindings.RESERVED_KEYS` refuses them at the capture dialog. WASD and
+    // Space are the opposite case: those are virtual codes the map produces, so
+    // rebinding movement or jump moves the menu control with it. Adding a raw
+    // code here means adding it to RESERVED_KEYS.
     let dy = 0, dx = 0, confirm = false, back = false;
     if (hit('ArrowDown') || hit('KeyS')) dy++;
     if (hit('ArrowUp') || hit('KeyW')) dy--;
@@ -2194,6 +2350,9 @@ export class Menus {
   }
 
   update(ctx, dt) {
+    // A capture dialog owns every input while it is up: navigate() must not
+    // read the press being bound as a menu move.
+    if (this.capture) { this.pollCapture(ctx); return; }
     if (this.bannerTimer > 0) {
       this.bannerTimer -= dt;
       if (this.bannerTimer <= 0) this.banner.classList.remove('is-on');
@@ -2562,12 +2721,26 @@ function load(fallbackQuality) {
     // Same normalisation, opposite bias: anything that is not an explicit 1 is
     // off, so a corrupted store cannot switch captions on for somebody.
     out.captions = out.captions === 1 ? 1 : 0;
+    // The binding map is not a number and so is deliberately outside the loop
+    // above and outside `this.settings`: it lives on the live `bindings`
+    // object every consumer already reads. `adopt` is defensive in the same
+    // spirit as the clamps — anything malformed leaves that action at its
+    // shipped default rather than unbinding it.
+    bindings.reset();
+    bindings.adopt(parsed.bindings);
     return out;
   } catch {
+    bindings.reset();
     return base;
   }
 }
 
 function save(settings) {
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(settings)); } catch { /* private mode */ }
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify({ ...settings, bindings: bindings.toJSON() }));
+  } catch { /* private mode */ }
 }
+
+// The settings store's two ends, named for the tests that exercise the
+// round-trip. Nothing in `src` imports these — `Menus` calls them directly.
+export { load as loadSettings, save as saveSettings };
