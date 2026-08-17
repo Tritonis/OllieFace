@@ -201,13 +201,28 @@ art assets**, which is the "essentially zero asset payload" claim made numeric.
 
 | Ceiling | Value | Why |
 |---|---|---|
-| Total shipped | **24 MiB** | The 1.85 MiB code baseline plus the asset allowance plus slack; a 24 MiB cold download is ~20 s on a 10 Mbit line, the longest first-launch wait this game's scope justifies. |
-| Code | **2.25 MiB** | Baseline plus ~22% growth headroom: feature work will not trip it, a doubling or an accidentally-bundled dependency will. |
-| Assets | **20 MiB** | A ceiling on the **total shortlist across all search issues combined**, not a per-asset allowance: one 2K HDRI (~4 MB KTX2), a small PBR set (~8 MB), and a few meshes (~4 MB) fit with room. |
+| Total shipped | **205 MiB** | The 2.25 MiB code ceiling plus the asset allowance plus slack. Arithmetically downstream of the asset number and re-derived with it. |
+| Code | **2.25 MiB** | Baseline plus ~22% growth headroom: feature work will not trip it, a doubling or an accidentally-bundled dependency will. Unchanged by the Steam re-derivation — dependency creep is not a distribution question. |
+| Assets | **200 MiB** | The **hard** ceiling on the total selection across all search issues combined. Sized against the Electron runtime it ships beside — see below. |
+| Asset review threshold | **25 MiB** | **Soft. Warns, never fails.** Past this, adopting requires a written note on the issue doing the adopting. This is the number that carries the original budget's actual job. |
 | VRAM | **512 MiB, provisional** | No atlas-scale VRAM reasoning exists in this repo to derive from. 512 MiB is the resident-texture headroom that keeps the game inside a 2 GB shared-memory integrated adapter alongside the framebuffer and post stack. Replace it with a measured figure when one exists. |
 | GPU proxies | **96 textures, 900 geometries** | The only committed VRAM-adjacent measurements that exist are the capture manifest's `perf` block (baseline 53 / 700, `reviews/survivor-sep/integrated-shots/manifest.json`). +80% / +29% makes an asset pack landing wholesale visible before a VRAM measurement exists. |
 | `combat-24` frame time | **median 26.0 ms, p95 32.0 ms** | See below. |
 
+- **Why two asset numbers, and why they moved.** The original 20 MiB was justified by a ~20 s cold
+  download on a 10 Mbit line. That is a web-delivery argument, and distribution was settled as
+  **Steam-only** on 2026-08-14: the game is packaged unpacked by electron-builder (`asar: false`,
+  `win`/`dir`) and ships through SteamPipe alongside a 348 MiB Electron runtime, measured at
+  `node_modules/electron/dist`. `tools/asset-budget.mjs` measures only `dist/` minus sourcemaps, so
+  the gated number was a single-digit percentage of the real download, defended by a rationale that
+  no longer described anything. The hard ceiling is now set about half an order of magnitude below
+  that runtime. It was derived **blind** — by an agent barred from the shortlists and the issues, and
+  reporting no contamination — because a ceiling chosen after reading what the candidates weigh is a
+  rationalisation of whatever happened to be shortlisted, which is precisely what #28 was built to
+  prevent. But a correct hard ceiling that nothing plausible can trip stops doing the job the budget
+  was actually for: its own text says the point is to make a large pack "a decision rather than a
+  purchase," and that is review policy, not physics. Two jobs, two numbers — the soft threshold
+  warns and requires a written note, the hard ceiling fails the build.
 - Performance: the frame-time budget is a **ceiling, not a band**. The older "21-26 ms band"
   does not survive contact with the record — the committed perf write-ups report `combat-24`
   medians of 16.9 (`reviews/round5/FIX-stages.md:124`), 18.6 (`FIX-materials.md:316`), 20.0
@@ -230,6 +245,14 @@ art assets**, which is the "essentially zero asset payload" claim made numeric.
 Reports land in `.superpowers/sdd/art-assets/<topic>.md` (gitignored working material,
 per `CLAUDE.md`). Searching agents write files only — **no downloads, no commits of
 binary assets, no `gh` calls.**
+
+**A shortlist has two states, and the second one is earned.** While it is search output it is
+gitignored working material at the path above. Once a *selection has been made against it*, it is
+promoted to a committed record under `docs/art/` — the evidence trail for a decision that outlives
+the search. Skipping to the second state before a decision exists commits an argument as though it
+were a conclusion, and puts the file where nobody looking for shortlists will find it. `#105` did
+exactly that with `docs/art/VFX-SHORTLIST.md`; the file is correct, its location ran ahead of its
+status. The controller promotes; a searching agent never does.
 
 Each candidate entry must carry all of the following fields, so five independent search
 issues produce directly comparable files:

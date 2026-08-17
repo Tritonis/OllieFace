@@ -86,6 +86,9 @@ export function checkPayload(measured, budget = loadBudget()) {
     { name: 'shipped total', actual: measured.shipped, ceiling: c.shippedTotalBytes },
     { name: 'code', actual: measured.code, ceiling: c.codeBytes },
     { name: 'assets', actual: measured.assets, ceiling: c.assetBytes },
+    // Soft: the review tripwire, not a technical limit. Callers must not fail on
+    // it — see assetReviewWhy in the budget file for why the two are separate.
+    { name: 'asset review', actual: measured.assets, ceiling: c.assetReviewBytes, soft: true },
   ].map((r) => ({ ...r, ok: r.actual <= r.ceiling }));
 }
 
@@ -102,7 +105,8 @@ if (process.argv[1] && import.meta.url === `file://${process.argv[1].replace(/\\
     const s = buildStaleness(m);
     console.log(`dist/ total ${MiB(m.total)} (sourcemaps ${MiB(m.sourcemaps)}, never shipped)`);
     for (const r of checkPayload(m, budget)) {
-      console.log(`  ${r.ok ? 'OK  ' : 'OVER'} ${r.name.padEnd(14)} ${MiB(r.actual).padStart(10)} / ${MiB(r.ceiling)}`);
+      const mark = r.ok ? 'OK  ' : (r.soft ? 'NOTE' : 'OVER');
+      console.log(`  ${mark} ${r.name.padEnd(14)} ${MiB(r.actual).padStart(10)} / ${MiB(r.ceiling)}${r.soft ? ' (soft: write a note on the adopting issue)' : ''}`);
     }
     if (s.stale) console.log(`  NOTE this build predates ${s.newestFile} — rebuild for a current number.`);
   }

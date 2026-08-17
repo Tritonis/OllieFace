@@ -71,9 +71,13 @@ console.log('the budget prose and the machine-readable budget agree');
   // site: [label, regex with one capture per expected value, expected values]
   const sites = [
     ['total-shipped table cell', /\| Total shipped \| \*\*([\d.]+) MiB\*\*/g, [mib(c.shippedTotalBytes)]],
-    ['total-shipped download-time prose', /a ([\d.]+) MiB cold download/g, [mib(c.shippedTotalBytes)]],
     ['code table cell', /\| Code \| \*\*([\d.]+) MiB\*\*/g, [mib(c.codeBytes)]],
     ['assets table cell', /\| Assets \| \*\*([\d.]+) MiB\*\*/g, [mib(c.assetBytes)]],
+    ['asset-review table cell', /\| Asset review threshold \| \*\*([\d.]+) MiB\*\*/g, [mib(c.assetReviewBytes)]],
+    // Replaces the old 'cold download' prose site, which stated a rationale that
+    // Steam-only distribution retired. The runtime figure is what the hard
+    // ceiling is now sized against, so it is the figure worth anchoring.
+    ['electron-runtime prose', /alongside a ([\d.]+) MiB Electron runtime/g, [mib(c.electronRuntimeBytes)]],
     ['VRAM table cell', /\| VRAM \| \*\*([\d.]+) MiB, provisional\*\*/g, [mib(c.vramBytes)]],
     ['VRAM headroom prose', /([\d.]+) MiB is the resident-texture headroom/g, [mib(c.vramBytes)]],
     ['GPU-proxy table cell', /\| \*\*(\d+) textures, (\d+) geometries\*\*/g, [c.gpuTextures, c.gpuGeometries]],
@@ -95,7 +99,8 @@ console.log('the budget prose and the machine-readable budget agree');
   // The second net. Everything the JSON legitimately documents, in the two
   // units the section quotes; anything else with those units is drift.
   const b = budget.baseline, rec = JSON.parse(readFileSync(join(root, budget.frameTimeRecord), 'utf8'));
-  const okMiB = new Set([c.shippedTotalBytes, c.codeBytes, c.assetBytes, c.vramBytes,
+  const okMiB = new Set([c.shippedTotalBytes, c.codeBytes, c.assetBytes, c.assetReviewBytes,
+    c.electronRuntimeBytes, c.formerAssetBytes, c.vramBytes,
     b.shippedBytes, b.distTotalBytes, b.sourcemapBytes, b.jsBytes].map(mib));
   // Historical citations come from the JSON, not the live record: the record is
   // re-measured (perf.mjs --out) and its numbers move, while the spec's prose
@@ -165,6 +170,16 @@ console.log('a built dist/ stays inside the payload ceilings');
       console.log(`  NOTE  this dist/ predates ${s.newestFile} — the payload below is the previous build's.`);
     }
     for (const r of checkPayload(m, budget)) {
+      if (r.soft) {
+        // The review tripwire. It must never redden the suite — if it did, it
+        // would be a second hard ceiling wearing a softer word, and the whole
+        // point of splitting the two numbers is that one of them is policy.
+        if (!r.ok) {
+          console.log(`  NOTE  ${r.name} ${MiB(r.actual)} exceeds the ${MiB(r.ceiling)} soft threshold`);
+          console.log('        Not a failure. Write a note on the issue adopting this payload.');
+        }
+        continue;
+      }
       ok(r.ok, `${r.name} ${MiB(r.actual)} <= ${MiB(r.ceiling)}`);
     }
     if (m.assets > 0) {

@@ -36,6 +36,12 @@ an issue body is all-or-nothing, so a 40 KB review in an issue costs context for
   task boundaries. This keeps agents offline and deterministic, and keeps issue quality under one editor.
 - **Milestones are gates, not folders.** *Public relay exposure* being empty is the precondition for
   exposing the relay — a checkable claim rather than a remembered one.
+- **Closing a research issue requires a comment naming its output path.** A search or research
+  ticket's deliverable is a file, and the issue is the only index anyone searches. #105 closed with
+  no comment and its shortlist in a non-conventional directory, and the file was unfindable until
+  someone asked for it by hand — the file was never lost, the pointer was never written. An audit of
+  the sibling `asset-search` issues (#21-#25, #66) found every other one correct, so this is a rule
+  against a known lapse rather than a pattern.
 - Close issues from commit messages (`Fixes #9`) rather than by hand.
 - Labels: `blocked:user`, `ready`, `deploy-blocker`, `carry-forward:p4`, `follow-up`, `security`,
   `area:relay`, `area:steam`, `tracking`.

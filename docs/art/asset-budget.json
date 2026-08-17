@@ -24,14 +24,23 @@
   },
 
   "ceilings": {
-    "shippedTotalBytes": 25165824,
-    "shippedTotalWhy": "24 MiB = the 1.85 MiB code baseline plus the 20 MiB asset allowance plus ~2 MiB of slack; a 24 MiB cold download is ~20 s on a 10 Mbit line, which is the largest first-launch wait this game's scope justifies.",
+    "shippedTotalBytes": 214958080,
+    "shippedTotalWhy": "205 MiB = the 2.25 MiB code ceiling plus the 200 MiB asset allowance plus slack. Arithmetically downstream of assetBytes, and re-derived with it: the original 24 MiB was justified by a cold-download time that Steam-only distribution retired.",
 
     "codeBytes": 2359296,
-    "codeWhy": "2.25 MiB = the 1.85 MiB measured code baseline plus ~22% growth headroom: ordinary feature work will not trip it, a doubling or an accidentally-bundled dependency will.",
+    "codeWhy": "2.25 MiB = the 1.85 MiB measured code baseline plus ~22% growth headroom: ordinary feature work will not trip it, a doubling or an accidentally-bundled dependency will. UNCHANGED by the Steam re-derivation — bundle bloat and dependency creep have nothing to do with the distribution channel.",
 
-    "assetBytes": 20971520,
-    "assetWhy": "20 MiB is the ceiling on the TOTAL shortlist across all art-search issues combined, not a per-asset allowance: one 2K HDRI (~4 MB KTX2), a small PBR set (~8 x 1K, ~8 MB), and a few meshes (~4 MB) fit with room, and anything larger is a decision rather than a purchase.",
+    "electronRuntimeBytes": 364904448,
+    "electronRuntimeWhy": "348 MiB, measured at node_modules/electron/dist for the pinned Electron 43.3.0. Not a ceiling — the reference magnitude the asset ceiling is set against, since electron-builder ships this unpacked (asar: false, win/dir) and it dominates what a player actually downloads from Steam. tools/asset-budget.mjs never measures it.",
+
+    "assetBytes": 209715200,
+    "assetWhy": "200 MiB, the HARD ceiling under Steam-only distribution (settled 2026-08-14). The former 20 MiB defended a ~20 s cold download on a 10 Mbit line — a web-delivery argument that does not survive shipping through SteamPipe beside a 348 MiB Electron runtime. 200 MiB sits about half an order of magnitude below that runtime: large enough that ordinary PBR/mesh/HDRI work never trips it, small enough that a wholesale pack forces a re-chunking conversation. Derived blind (no knowledge of any candidate's weight) so the number is not a rationalisation of what happened to be shortlisted.",
+
+    "formerAssetBytes": 20971520,
+    "formerAssetWhy": "The pre-Steam 20 MiB ceiling, kept so the spec's prose can cite the number it replaced without the stray-figure sweep reading the citation as drift. Not enforced.",
+
+    "assetReviewBytes": 26214400,
+    "assetReviewWhy": "25 MiB, the SOFT review threshold. Warns, never fails. The original 20 MiB ceiling's real job was stated in its own text — to make adopting a large pack 'a decision rather than a purchase' — and that is a review policy, not a technical limit. A correct hard ceiling that nothing plausible can trip would silently stop doing that job, which is this repo's characteristic guard-passes-while-blind shape. So the two jobs get two numbers: 200 MiB breaks the build, 25 MiB requires a written note on the adopting issue.",
 
     "vramBytes": 536870912,
     "vramWhy": "PROVISIONAL. No atlas-scale VRAM reasoning exists in this repo to derive from, so 512 MiB is set as the resident-texture headroom that keeps the game inside a 2 GB shared-memory integrated adapter alongside the framebuffer and post stack. Replace it with a measured figure when one exists. The two checkable proxies below stand in for it meanwhile.",
