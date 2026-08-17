@@ -35,6 +35,21 @@ function relayError(url) {
 const RELAY_TRICKLE_VERSION = 2;
 
 /**
+ * The `hosting.v` at which a relay forwards `evicted` (issue #8).
+ *
+ * Checked before the send rather than after, which is the opposite of how
+ * `trickle` degrades and is not a style choice. An older relay does not drop an
+ * unknown type quietly: it is `bad-type`, and `reject` charges it to the sender,
+ * so twenty of them close the HOST's socket with 1008 and take the room with it.
+ * Evictions come in exactly the sustained flood `MAX_PENDING_INVITES` exists to
+ * survive, so twenty is reachable. Against a relay too old to carry the news,
+ * the joiner keeps the twenty-second wait this message exists to remove — which
+ * is the behaviour that shipped before it existed, and is worth vastly less than
+ * the host's room.
+ */
+const RELAY_EVICTED_VERSION = 3;
+
+/**
  * How often a host tells the relay that its room is still being hosted.
  *
  * The relay sees traffic only while peers are still handshaking: once everybody
@@ -606,6 +621,11 @@ export class Lobby {
           // behaviour, which works. `hosting` always precedes `joinRequest`, so
           // the decision is made before the first invite exists.
           this.net.transport.trickle = Number(msg.v) >= RELAY_TRICKLE_VERSION;
+          // Recorded on the session rather than on the Lobby, so a rehost onto
+          // an older relay cannot inherit the last one's capabilities. `hosting`
+          // always precedes `joinRequest`, so this is known before any invite
+          // exists to evict.
+          this._session.relayV = Number(msg.v) || 0;
           this._set('roomOpen', { code: msg.code });
           resolve(msg.code);
         } else if (msg.type === 'joinRequest') {
@@ -712,7 +732,11 @@ export class Lobby {
       const clientId = this._invitesByClient.keys().next().value;
       const stale = this._invitesByClient.get(clientId);
       this._invitesByClient.delete(clientId);
-      if (stale) this._dropInvite(stale.id);
+      // Named explicitly, because the delete above has already taken this
+      // joiner out of the index `_dropInvite` would otherwise scan to find it —
+      // and a joiner evicted through this loop deserves the same news as one
+      // evicted through the other.
+      if (stale) this._dropInvite(stale.id, clientId);
     }
     return this.pendingInvites.size + this._session.minting < MAX_PENDING_INVITES;
   }
@@ -725,14 +749,45 @@ export class Lobby {
    * `HostTransport.peers`, so a bound enforced here alone would bound two maps
    * and leak every connection they ever held. `cancelInvite` closes it.
    */
-  _dropInvite(id) {
+  _dropInvite(id, clientId) {
     this.pendingInvites.delete(id);
+    const told = new Set();
     // Keyed the other way round, so this is a scan — over at most
     // MAX_PENDING_INVITES entries. Deleting while iterating a Map is defined.
-    for (const [clientId, held] of this._invitesByClient) {
-      if (held?.id === id) this._invitesByClient.delete(clientId);
+    for (const [heldClient, held] of this._invitesByClient) {
+      if (held?.id === id) { this._invitesByClient.delete(heldClient); told.add(heldClient); }
     }
+    if (clientId !== undefined) told.add(clientId);
+    for (const c of told) this._tellEvicted(c);
     this.net?.transport?.cancelInvite?.(id);
+  }
+
+  /**
+   * Tell one joiner its invite is gone.
+   *
+   * Eviction is the only outcome of a join in which the host knows the joiner is
+   * finished and the joiner does not: the connection is cancelled here and
+   * nothing crosses it, so the far end sits on `RELAY_OFFER_TIMEOUT_MS` of
+   * silence and is then told, wrongly, that the host never sent an invite. One
+   * frame back down the relay socket turns twenty seconds of nothing into an
+   * immediate, truthful answer — see the `evicted` branch of `joinViaRelay` for
+   * the other half, including why that branch refuses the message once the join
+   * has connected.
+   *
+   * Best-effort by construction. A host whose socket has already gone, or one
+   * whose run has halted, sends nothing: `_halted` is the same gate the offer
+   * and candidate sends carry, and for the same reason — a dead engine attempts
+   * no send, and a rule that holds only because the socket below swallows it is
+   * not a rule. The eviction itself is not conditional on any of that; only the
+   * telling is.
+   */
+  _tellEvicted(clientId) {
+    if (this._halted() || clientId === undefined) return;
+    // See `RELAY_EVICTED_VERSION`: against an older relay this frame costs the
+    // host a reject rather than costing it nothing, and twenty of them cost it
+    // the room.
+    if ((this._session?.relayV ?? 0) < RELAY_EVICTED_VERSION) return;
+    try { this.ws?.send(JSON.stringify({ type: 'evicted', clientId })); } catch { /* a socket already gone */ }
   }
 
   /**
@@ -793,6 +848,13 @@ export class Lobby {
       // `open`: the relay speaks on both sides of that moment and the two sides
       // want opposite things done to the socket.
       let joined = false;
+      // This attempt was ended by something else while an offer was still being
+      // answered. Distinct from `joined` on purpose: `joined` says the join
+      // finished, this says it must not be allowed to. See the `evicted` branch,
+      // which is the only thing that can settle this promise from underneath an
+      // in-flight `joinManual` — the shape #73 met from the other end, where a
+      // mint that resolves too late has to be given up rather than published.
+      let abandoned = false;
       // The deadline on the wait for the host's offer, while there is one. See
       // `RELAY_OFFER_TIMEOUT_MS`. Armed here rather than in `ws.onopen`,
       // because a socket that neither opens nor errors — a relay host that
@@ -848,6 +910,34 @@ export class Lobby {
           if (!joined) fail(new Error(msg.error));
           return;
         }
+        if (msg.type === 'evicted') {
+          // The host gave this joiner's invite up to make room under a burst of
+          // joins. Before the offer this is the truest thing anyone can say —
+          // the alternative is the deadline's guess twenty seconds later — and
+          // it costs milliseconds instead.
+          //
+          // After the offer it is refused, and this guard is the whole reason
+          // the message is safe to have at all. The relay only forwards it from
+          // the host, but the room code is a bearer token every invited friend
+          // holds, and a host that has evicted one joiner can be a host that
+          // wants to end a connected one's session. Once `joined` is set this
+          // page's connection is peer-to-peer and no longer the relay's
+          // business, so an `evicted` arriving here is either stale or hostile
+          // and is dropped either way — same discipline as `offer` above.
+          if (joined) return;
+          // `joined` is not the whole guard, because there is a third state
+          // between "waiting" and "connected": an offer whose `joinManual` is
+          // mid-await. `ws.onmessage` is async and nothing serialises it, so
+          // this handler runs to completion while that one is parked — and it is
+          // about to settle the promise the parked one still intends to resolve.
+          // Saying so is the only thing that lets the offer path find out; see
+          // where this is read, after its awaits.
+          abandoned = true;
+          fail(new Error(
+            'The host is handling too many joins right now, so they gave up your invite. '
+            + 'Try the code again in a moment.'));
+          return;
+        }
         if (msg.type === 'ice') {
           // The host trickles from the moment it has an offer, and this page
           // only has a transport once `joinManual` has built one. The window is
@@ -881,6 +971,21 @@ export class Lobby {
               trickle: !!msg.trickle,
               onIceCandidate: (candidate) => ws.send(JSON.stringify({ type: 'ice', candidate })),
             });
+            // Read AFTER the await, which is the only place it can be read
+            // usefully: every check before this one was made in a different turn
+            // of the event loop, and the eviction is delivered during the await.
+            //
+            // What is being prevented is a page whose state and whose promise
+            // disagree. `joinManual` has already published `this.net`,
+            // `ctx.netRole` and `mode = 'client'`; the eviction has already
+            // rejected the caller and closed the socket. Publishing on top of
+            // that leaves the co-op screen told the join failed while the Lobby
+            // believes it is connected over a dead socket — and the retry the
+            // player is invited to make then throws 'Already networked' out of
+            // `joinManual`, locking them out until a reload. So the connection
+            // this attempt just built is given back, exactly as the failure path
+            // below gives one back, and the promise's answer is left standing.
+            if (abandoned) { if (this.ws === ws) this.leave(); return; }
             ws.send(JSON.stringify({ type: 'answer', blob: answer }));
             for (const c of this._earlyIce.splice(0)) this.net?.transport?.addIceCandidate?.(c);
             joined = true;

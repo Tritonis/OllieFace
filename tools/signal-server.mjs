@@ -73,7 +73,17 @@ const RUN_DIRECTLY = process.argv[1]
 
 // Bumped when a page can tell the difference. 2 = relays `ice` and preserves an
 // offer's `trickle` flag; see the header for how each mismatch degrades.
-const PROTOCOL_VERSION = 2;
+//
+// 3 = forwards `evicted` (issue #8). Unlike 2, this one has to be advertised
+// rather than merely tried, and the reason is asymmetric: an unknown type is
+// `bad-type` here, and `reject` charges that against the SENDER — so a host
+// sending `evicted` at a v2 relay is not simply ignored, it spends one of its
+// own twenty rejects and loses its room on the twentieth with a 1008. Eviction
+// happens exactly under the sustained flood `MAX_PENDING_INVITES` exists to
+// survive, which is precisely when twenty is reachable, so the page checks this
+// number before it sends (`RELAY_EVICTED_VERSION` in src/net/Lobby.js) and an
+// old relay costs a joiner its 20 s wait instead of costing the host its room.
+const PROTOCOL_VERSION = 3;
 
 const rooms = new Map(); // code -> { host, clients:Set, created, lastActivity }
 const connsByIp = new Map(); // ip -> live socket count
@@ -747,6 +757,14 @@ export function validate(msg) {
       return { ok: true, msg: { type: 'answer', blob: msg.blob } };
     }
 
+    case 'evicted': {
+      // Host -> one joiner, and it carries nothing but which joiner. The whole
+      // message is the news that an invite was given up, so there is no blob to
+      // size and no field an attacker could stuff.
+      if (!Number.isInteger(msg.clientId)) return bad('bad-client-id');
+      return { ok: true, msg: { type: 'evicted', clientId: msg.clientId } };
+    }
+
     case 'ice': {
       if (msg.clientId !== undefined && !Number.isInteger(msg.clientId)) return bad('bad-client-id');
       if (!msg.candidate || typeof msg.candidate !== 'object') return bad('bad-candidate');
@@ -967,6 +985,22 @@ function onConnection(ws, req) {
         const room = rooms.get(ws.room);
         touch(room);
         send(room?.host, { type: 'answer', blob: msg.blob, clientId: ws.id });
+        break;
+      }
+      case 'evicted': {
+        // Host -> a specific joiner: "the invite I minted for you is gone, stop
+        // waiting". Forwarded exactly as `offer` is, role check and all — and
+        // the role check is the load-bearing half. This message ends a join, so
+        // a joiner allowed to send it could end any other joiner's handshake in
+        // the room with one frame, using nothing but the room code every invited
+        // friend already holds. The page refuses it a second time once it has
+        // connected (`joinViaRelay`), because a relay is not the only thing that
+        // can put a frame on this socket.
+        if (ws.role !== 'host') return reject(ws, 'wrong-role');
+        const room = rooms.get(ws.room);
+        touch(room);
+        const target = [...(room?.clients ?? [])].find((c) => c.id === msg.clientId);
+        send(target, { type: 'evicted' });
         break;
       }
       case 'ice': {
