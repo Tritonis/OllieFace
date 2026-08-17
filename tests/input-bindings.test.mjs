@@ -262,5 +262,50 @@ input.pollPad();
   check('unparseable store falls back to defaults', live.keyOf('utility') === 'KeyQ');
 }
 
+// --- controller glyph sets (#42 part 2) ---------------------------------------
+{
+  const { GLYPH_SETS, DEFAULT_GLYPH_SET, isGlyphSet, glyphLabel } = await import('../src/data/glyphs.js');
+  const { PAD_BUTTON: PB } = await import('../src/core/PadState.js');
+
+  check('four glyph sets are offered', GLYPH_SETS.map((g) => g.id).sort()
+    .join(',') === 'generic,playstation,switch,xbox');
+  check('default glyph set matches the historical padLabel names', DEFAULT_GLYPH_SET === 'xbox');
+  check('xbox glyphs match padLabel', glyphLabel(PB.A, 'xbox') === 'A' && glyphLabel(PB.RB, 'xbox') === 'RB');
+  check('playstation glyphs differ', glyphLabel(PB.A, 'playstation') === 'Cross'
+    && glyphLabel(PB.B, 'playstation') === 'Circle' && glyphLabel(PB.LT, 'playstation') === 'L2');
+  check('switch glyphs differ', glyphLabel(PB.A, 'switch') === 'B' && glyphLabel(PB.RB, 'switch') === 'R');
+  check('generic glyphs differ', glyphLabel(PB.X, 'generic') === 'Button 3');
+  check('unbound pad still prints the placeholder', glyphLabel(null, 'playstation') === '--');
+  check('an unknown set id falls back to the default naming',
+    glyphLabel(PB.A, 'nonsense') === glyphLabel(PB.A, DEFAULT_GLYPH_SET));
+  check('isGlyphSet accepts every listed id and rejects junk',
+    GLYPH_SETS.every((g) => isGlyphSet(g.id)) && !isGlyphSet('nonsense') && !isGlyphSet(undefined));
+}
+
+// --- the settings store carries the glyph set --------------------------------
+{
+  const { loadSettings, saveSettings, DEFAULTS } = await import('../src/ui/Menus.js');
+
+  check('the default set is xbox', DEFAULTS.controllerGlyphs === 'xbox');
+
+  store.delete('telluric.settings');
+  saveSettings({ ...DEFAULTS, controllerGlyphs: 'switch' });
+  const raw = store.get('telluric.settings');
+  check('save writes the glyph set', /"controllerGlyphs":"switch"/.test(raw));
+
+  const loaded = loadSettings();
+  check('load restores a valid glyph set', loaded.controllerGlyphs === 'switch');
+
+  store.set('telluric.settings', '{"master":0.5,"controllerGlyphs":"snes"}');
+  const l2 = loadSettings();
+  check('an unrecognised stored glyph set falls back to the default',
+    l2.controllerGlyphs === DEFAULTS.controllerGlyphs);
+
+  store.set('telluric.settings', '{"master":0.5}');
+  const l3 = loadSettings();
+  check('a store predating this feature also falls back to the default',
+    l3.controllerGlyphs === DEFAULTS.controllerGlyphs);
+}
+
 console.log(failures ? `\n${failures} FAILED` : '\nall bindings checks passed');
 process.exit(failures ? 1 : 0);
