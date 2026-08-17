@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { FINALE_PHASES, riteFor, riteRadius, ritePower } from '../../data/realms.js';
+import { FINALE_PHASES, riteFor, riteRadius, ritePower, ruinedRite } from '../../data/realms.js';
 import { ENEMY_BY_ID } from '../../data/enemies.js';
 import { raiseIslands, spawnCollapseDebris } from './RealmArena.js';
 import { pullToFloor } from './RealmStage.js';
@@ -363,6 +363,13 @@ export class FinaleController {
    * on offer is to spend that ledger for damage instead of ground.
    */
   _beginRite(ctx, stage, spec) {
+    // Ruin resolves *here* rather than in the constructor: `Corruption.ruined`
+    // is one-way but can be struck at any point before phase 3, and the
+    // controller is built when the realm loads. Reading it at the moment the
+    // rite opens is the latest point that is still before any erosion, so a
+    // bargain struck on the way in is honoured. Applies to both routes — see
+    // `ruinedRite`.
+    if (ctx.corruption?.ruined) this.rite = ruinedRite(this.rite);
     const rite = this.rite;
     this.riteRunning = true;
     // The ceiling is the phase's own radius, not the current one: the collapse

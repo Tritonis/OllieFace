@@ -80,7 +80,7 @@ console.log('the void route spends the debt; the clean route has no debt to spen
 
 // ------------------------------------------------------------ the controller
 
-const stub = (realmId, { world = 800 } = {}) => {
+const stub = (realmId, { world = 800, ruined = false } = {}) => {
   const def = REALM_BY_ID.get(realmId);
   const spawned = [], objectives = [], buffs = [], bled = [];
   const boss = {
@@ -104,7 +104,7 @@ const stub = (realmId, { world = 800 } = {}) => {
       emit(k, e) { for (const f of subs.get(k) ?? []) f(e); },
     },
     corruption: {
-      world,
+      world, ruined,
       bleed(p, amount) { bled.push(amount); this.world = Math.max(0, this.world - amount); },
     },
     player: { alive: true, position: new THREE.Vector3(), grantBuff: (b, d) => buffs.push(b) },
@@ -188,6 +188,71 @@ console.log('the void route feeds on the swarm');
   const c = stub('fracture');
   for (let i = 0; i < 5; i++) c.ctx.events.emit('kill', { victim: { alive: false } });
   ok(c.fc.consumed === 0 && c.buffs.length === 0, 'the clean route eats nothing and is paid nothing');
+}
+
+// ------------------------------------------------------ #99: the ruined run
+//
+// Every arm here measures the FLOOR, through the real controller, over real
+// steps. Nothing below asserts that `voidRuin` fired or that `ruined` is set:
+// a test of the emission rather than the consumption is exactly what let a
+// ruined finale ship byte-identical to a clean one.
+console.log('a ruined run is eaten faster, on both routes');
+{
+  // Per-route step counts, chosen so neither run has reached `minRadius` by the
+  // end: three breaches eat the clean arena roughly five times faster than the
+  // void's steady bleed, so one shared window would either clamp the clean pair
+  // together or leave the void pair indistinguishable. The comparison has to be
+  // of rates, not of a shared floor.
+  for (const [realm, steps] of [['fracture', 30], ['fracture-void', 120]]) {
+    const fair = stub(realm);
+    const lost = stub(realm, { ruined: true });
+    for (let i = 0; i < steps; i++) {
+      fair.fc.fixedUpdate(fair.ctx, 1 / 60);
+      lost.fc.fixedUpdate(lost.ctx, 1 / 60);
+    }
+    const eatenFair = fair.stage.floorRadius, eatenLost = lost.stage.floorRadius;
+    ok(eatenLost < eatenFair - 0.5,
+       `${realm}: after ${(steps / 60).toFixed(1)} s the ruined arena is measurably smaller ` +
+       `(${eatenLost.toFixed(2)} m vs ${eatenFair.toFixed(2)} m)`);
+    ok(eatenLost > lost.fc.rite.minRadius,
+       `${realm}: and neither has bottomed out yet, so that was a rate and not a floor`);
+  }
+}
+
+console.log('a ruined run never gets the ground back — including on the clean route');
+{
+  const fair = stub('fracture');
+  const lost = stub('fracture', { ruined: true });
+  for (let i = 0; i < 30; i++) {
+    fair.fc.fixedUpdate(fair.ctx, 1 / 60);
+    lost.fc.fixedUpdate(lost.ctx, 1 / 60);
+  }
+  // Seal every breach on both. This is containment's whole promise.
+  for (const e of fair.spawned) e.alive = false;
+  for (const e of lost.spawned) e.alive = false;
+  const fairSealed = fair.stage.floorRadius, lostSealed = lost.stage.floorRadius;
+  for (let i = 0; i < 120; i++) {
+    fair.fc.fixedUpdate(fair.ctx, 1 / 60);
+    lost.fc.fixedUpdate(lost.ctx, 1 / 60);
+  }
+  ok(fair.stage.floorRadius > fairSealed + 1,
+     'an unruined containment still wins its arena back after sealing');
+  ok(lost.stage.floorRadius === lostSealed,
+     'a ruined one holds exactly where it stopped — the sealing bought silence, not ground');
+  ok(lost.spawned.length === CLEAN.breaches,
+     'and it was a real containment run: the breaches were there to seal');
+}
+
+console.log('ruin costs the arena and nothing else');
+{
+  const fair = stub('fracture-void');
+  const lost = stub('fracture-void', { ruined: true });
+  ok(Math.abs(fair.fc.debtSpent - lost.fc.debtSpent) < 1e-9,
+     'the void bargain still pays a ruined run exactly what it pays anyone');
+  ok(lost.fc.rite.minRadius === VOID.minRadius && lost.stage.floorRadius > 0,
+     'the arena bottoms out at the same real ground — lost, not unwinnable');
+  ok(riteFor('fracture').recoverRate > 0 && riteFor('fracture-void').permanentLoss === true,
+     'and the authored table is untouched: ruin is a modifier over it, not an edit to it');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

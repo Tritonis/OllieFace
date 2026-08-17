@@ -127,12 +127,13 @@ export const PACTS = [
  * deliberately one-way: `Corruption.ruined` never clears, the Argent Font stops
  * answering (the clean exit is not merely priced out, it is gone).
  *
- * A `voidRuin` event is emitted for a finale consumer that DOES NOT EXIST YET:
- * nothing subscribes to it, and a ruined run's finale rite is currently
- * identical to an unruined one. The irreversible consequences that have
- * actually shipped are the two above, both of which land before the finale.
- * Wiring the rite to it is issue #99 - do not read this event's existence as
- * evidence that the finale diverges.
+ * The third consequence lands at the finale (#99): phase 3 reads
+ * `Corruption.ruined` when the rite opens and runs `ruinedRite` instead
+ * (`data/realms.js`) - erosion 1.75x, and no floor recovery on either route.
+ * The arena a ruined run fights the Herald on only ever gets smaller. A
+ * `voidRuin` event is still emitted for anything that wants the moment itself;
+ * the rite does not use it, because the rite needs the *state* at phase 3 and
+ * not a notification that may have fired forty minutes earlier.
  *
  * The duration is the rest of the run rather than a window, because a
  * last-chance power that lapses is a window, not a last chance.
