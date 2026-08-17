@@ -172,7 +172,21 @@ export class NetHost {
   /** Seconds, monotonic. A seam so the age gates are testable. */
   _now() { return performance.now() / 1000; }
 
+  /**
+   * Has the run this host speaks for stopped?
+   *
+   * `_onPeer` and `_onMessage` are *transport* callbacks, not frame phases, so
+   * "the loop no longer runs them" is not true of either: a halted host greeted
+   * a joiner with a WELCOME and then starved it with no explanation, which is
+   * issue #75's second break. `ctx.fatalError` is set by `Engine._halt` and
+   * never cleared, which is exactly the latch this needs.
+   */
+  _silenced() { return !!this.ctx?.fatalError; }
+
   _onPeer(peer) {
+    // No WELCOME, no pawn, no `netPlayerJoined`. Being told nothing and finding
+    // the door shut is a better answer than being greeted into a dead session.
+    if (this._silenced()) { try { peer.close?.(); } catch { /* already gone */ } return; }
     peer.onMessage = (data, channel) => this._onMessage(peer, data, channel);
     peer.onClose = () => this._onPeerLeave(peer);
 
@@ -256,6 +270,10 @@ export class NetHost {
    * finds it.
    */
   _onMessage(peer, data) {
+    // A halted host answers no PING and acknowledges no HELLO — both are sends
+    // from a transport callback, and both would tell a peer this session is
+    // alive when it is not.
+    if (this._silenced()) return;
     try {
       this._handleMessage(peer, data);
     } catch (err) {
@@ -592,6 +610,7 @@ export class NetHost {
   }
 
   _broadcastSnapshot(ctx) {
+    if (this._silenced()) return;
     const entities = ctx.combat?.entities ?? [];
     const w = this.writer.reset();
     w.u8(MSG.SNAPSHOT);
@@ -716,6 +735,7 @@ export class NetHost {
 
   /** One event, one peer. `_forward`'s body without the broadcast. */
   _send(peer, name, payload) {
+    if (this._silenced()) return;
     const w = this.eventWriter.reset();
     w.u8(MSG.EVENT);
     w.str(name);
@@ -729,6 +749,9 @@ export class NetHost {
   }
 
   _forward(name, payload) {
+    // Event-bus driven, and the bus is not a frame phase either: a `fatalError`
+    // listener that emits anything would broadcast it from a dead host.
+    if (this._silenced()) return;
     if (this.clients.size === 0) return;
     const w = this.eventWriter.reset();
     w.u8(MSG.EVENT);
