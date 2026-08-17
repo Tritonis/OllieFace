@@ -167,7 +167,7 @@ function atLoot() {
   const r = atLoot();
   r.events.emit('itemPickup', { owner: r.ctx.player });
   r.events.emit('teleporterComplete', {});
-  r.events.emit('corruptionPact', { from: 'a', to: 'b' });
+  r.events.emit('corruptionPact', { from: r.ctx.player, to: { isPlayer: true } });
   ok(r.line.textContent === '',
     'a pact counts as the first corruption choice too');
 }
@@ -233,6 +233,77 @@ for (const stopAt of ['open', 'skills', 'loot']) {
   ok(/ G/.test(after), `rebinding interact mid-scenario renames the prompt (got "${after}")`);
 }
 
+/* -- the corruption beat belongs to the local player too ----------------- */
+
+function atCorruption() {
+  const r = atLoot();
+  r.events.emit('itemPickup', { owner: r.ctx.player });
+  r.events.emit('teleporterComplete', {});
+  return r;
+}
+
+{
+  const r = atCorruption();
+  r.events.emit('voidBargain', { kind: 'reroll', marks: 2, count: 1, owner: { name: 'a teammate' } });
+  ok(/void will trade/.test(r.line.textContent),
+    'CONTROL: a teammate taking a bargain does not end the local scenario');
+  r.events.emit('corruptionPact', { from: { isPlayer: true }, to: { isPlayer: true }, amount: 3 });
+  ok(/void will trade/.test(r.line.textContent),
+    'CONTROL: a pact between two other players does not end the local scenario');
+  r.events.emit('voidBargain', { kind: 'reroll', marks: 2, count: 1, owner: r.ctx.player });
+  ok(r.line.textContent === '', 'the local player takes the bargain and it does end');
+}
+{
+  const r = atCorruption();
+  r.events.emit('corruptionPact', { from: { isPlayer: true }, to: r.ctx.player, amount: 3 });
+  ok(r.line.textContent === '',
+    'a pact that moves attribution ONTO the local player is their corruption choice too');
+}
+{
+  // The teleporter is a shared objective with no actor on its payload
+  // (Progression.js emits `teleporterComplete` bare), so it stays unfiltered on
+  // purpose. Asserted so a later owner-filter sweep cannot quietly break co-op.
+  const r = atLoot();
+  r.events.emit('itemPickup', { owner: r.ctx.player });
+  r.events.emit('teleporterComplete', {});
+  ok(/void will trade/.test(r.line.textContent),
+    'a teammate charging the teleporter still advances the shared objective beat');
+}
+
+/* -- a store written before this feature is not a first run -------------- */
+
+{
+  const store = new Map();
+  globalThis.localStorage = {
+    getItem: (k) => (store.has(k) ? store.get(k) : null),
+    setItem: (k, v) => store.set(k, String(v)),
+    removeItem: (k) => store.delete(k),
+  };
+  const { loadSettings } = await import('../src/ui/Menus.js');
+
+  store.clear();
+  ok(shouldArmTutorial(loadSettings(), false) === true,
+    'no settings store at all is a genuine first run and arms the scenario');
+
+  // A blob in exactly the shape this repo shipped before #41: real settings,
+  // no `firstRunSeen` key anywhere in it.
+  store.clear();
+  store.set('telluric.settings', JSON.stringify({ quality: 2, master: 0.8, captions: 0, controllerGlyphs: 'xbox' }));
+  const legacy = loadSettings();
+  ok(legacy.firstRunSeen === 1,
+    `a settings blob predating this feature reads as already played (got ${legacy.firstRunSeen})`);
+  ok(shouldArmTutorial(legacy, false) === false,
+    'an existing player is not ambushed with a tutorial by upgrading');
+  ok(shouldArmTutorial(legacy, true) === true,
+    'and they can still ask for it from the title');
+
+  store.clear();
+  store.set('telluric.settings', JSON.stringify({ quality: 2, firstRunSeen: 0 }));
+  ok(shouldArmTutorial(loadSettings(), false) === true,
+    'a stored explicit 0 still means never played');
+  delete globalThis.localStorage;
+}
+
 /* -- the wiring, which no unit test above can see ------------------------ */
 
 {
@@ -247,10 +318,12 @@ for (const stopAt of ['open', 'skills', 'loot']) {
   ok(/data-act="tutorial-skip"/.test(menus), 'the pause screen offers the skip');
   ok(/ctx\.tutorial\?\.skip\(\)/.test(menus), 'the pause skip calls into the live scenario');
   ok(/shouldArmTutorial\(this\.settings, this\.tutorialNext\)/.test(menus), 'launch arms from the shared rule');
-  ok(/firstRunSeen: 0,/.test(menus) && /out\.firstRunSeen = out\.firstRunSeen === 1 \? 1 : 0;/.test(menus),
-    'firstRunSeen rides the existing settings store, normalised like captions');
+  ok(/firstRunSeen: 0,/.test(menus) && /out\.firstRunSeen = parsed\.firstRunSeen === 0 \? 0 : 1;/.test(menus),
+    'firstRunSeen rides the existing settings store, and a missing key means already played');
   ok(/DEFAULTS, \{ firstRunSeen: this\.settings\.firstRunSeen \}/.test(menus),
     'restoring Defaults does not re-arm a tutorial at a player who has played');
+  ok(/this\.tutorialNext = false;\s*this\.push\('select'\);/.test(menus),
+    'Play clears an arming left behind by a How to play the player backed out of');
 }
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

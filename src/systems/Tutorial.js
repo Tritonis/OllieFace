@@ -146,11 +146,19 @@ export class Tutorial {
       else this.render();
     });
     on('itemPickup', (e) => { if (this.isAt('loot') && this.isLocal(e?.owner ?? e?.player)) this.next(); });
+    // Deliberately NOT owner-filtered, unlike everything around it: the
+    // teleporter is one shared objective with no actor on its payload, and a
+    // stage that has already ended cannot still be teaching this beat.
     on('teleporterComplete', () => { if (this.isAt('teleporter')) this.next(); });
-    // Either shape of the first corruption choice: the altar's bargains and a
-    // pact moved onto the world both are one.
-    on('voidBargain', () => { if (this.isAt('corruption')) this.next(); });
-    on('corruptionPact', () => { if (this.isAt('corruption')) this.next(); });
+    // Either shape of the first corruption choice -- the altar's bargains and
+    // the pact shrine -- and both owner-filtered, for the same reason `loot` is:
+    // a teammate dealing with the void taught this player nothing. `voidBargain`
+    // names the dealer in `owner`; `transfer` names both parties, and either end
+    // of a pact is the local player's own choice about their own ledger.
+    on('voidBargain', (e) => { if (this.isAt('corruption') && this.isLocal(e?.owner)) this.next(); });
+    on('corruptionPact', (e) => {
+      if (this.isAt('corruption') && (this.isLocal(e?.from) || this.isLocal(e?.to))) this.next();
+    });
     // A run that ends takes the scenario with it, however far it got.
     on('runEnd', () => this.stop());
   }

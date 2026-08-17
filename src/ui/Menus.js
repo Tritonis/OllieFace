@@ -1641,6 +1641,10 @@ export class Menus {
   act(action) {
     switch (action) {
       case 'play':
+        // Clears an arming left behind by a How to play the player backed out
+        // of: `tutorialNext` is otherwise only cleared in `launch`, so that
+        // journey would put a coach on a run nobody asked to be coached on.
+        this.tutorialNext = false;
         this.push('select');
         break;
       // Same road as Play -- survivor select, then a normal run. The scenario
@@ -2802,7 +2806,15 @@ function load(fallbackQuality) {
     // Same normalisation, opposite bias: anything that is not an explicit 1 is
     // off, so a corrupted store cannot switch captions on for somebody.
     out.captions = out.captions === 1 ? 1 : 0;
-    out.firstRunSeen = out.firstRunSeen === 1 ? 1 : 0;
+    // NOT the `=== 1 ? 1 : 0` shape its neighbours use, and the asymmetry is
+    // the whole point: every settings blob written before #41 existed carries
+    // no `firstRunSeen` at all, so adopting the DEFAULTS 0 would tell this
+    // module that every existing player has never played and ambush all of
+    // them with a tutorial on upgrade. Reaching this line at all means a store
+    // EXISTS -- the no-store case returned `base` above, and that one really
+    // is a first run. So a missing key reads as 1, and only an explicit
+    // stored 0 means never played.
+    out.firstRunSeen = parsed.firstRunSeen === 0 ? 0 : 1;
     // The binding map is not a number and so is deliberately outside the loop
     // above and outside `this.settings`: it lives on the live `bindings`
     // object every consumer already reads. `adopt` is defensive in the same
