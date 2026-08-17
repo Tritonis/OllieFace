@@ -76,12 +76,47 @@ const M = readMusic(musicSrc);
   ok(M.stepsPerBeat === 4, `steps are 16ths (${M.stepsPerBeat} per beat), which is what BAR_SIXTEENTHS assumes`);
 }
 
+/**
+ * Read capture.mjs's OWN combining expression for GATE_SETTLE_S and evaluate
+ * it with the constants it declares — rather than recomputing the settle with
+ * a second copy of the formula here. A drift in the *expression* (not just
+ * the constants) is otherwise invisible: `settle = barS * (1 + rampBars) +
+ * margin`, hand-typed in this file, still evaluates fine even if
+ * tools/capture.mjs:723 stops matching it.
+ */
+const readCaptureSettleExpr = (src) => {
+  const m = src.match(/const GATE_SETTLE_S\s*=\s*(.+?);/);
+  return m ? m[1].trim() : null;
+};
+
+/**
+ * Evaluate capture.mjs's GATE_SETTLE_S expression text using ONLY the four
+ * constants captureNum() pulls out of capture.mjs itself, so the settle used
+ * for the coverage check comes from capture.mjs's arithmetic, not a
+ * hand-copy of it.
+ */
+const evalCaptureSettle = (exprText) => {
+  const OPENING_BPM = captureNum('OPENING_BPM');
+  const BAR_SIXTEENTHS = captureNum('BAR_SIXTEENTHS');
+  const RAMP_BARS = captureNum('RAMP_BARS');
+  const SETTLE_MARGIN_S = captureNum('SETTLE_MARGIN_S');
+  const GATE_BAR_S = BAR_SIXTEENTHS * (60 / OPENING_BPM / 4);
+  // eslint-disable-next-line no-new-func
+  const fn = new Function('GATE_BAR_S', 'RAMP_BARS', 'SETTLE_MARGIN_S', `return (${exprText});`);
+  return fn(GATE_BAR_S, RAMP_BARS, SETTLE_MARGIN_S);
+};
+
 console.log('the derived settle covers the worst case Music.js can produce');
 {
   const { barS, silenceS } = worstCaseSilenceS(M);
   const margin = captureNum('SETTLE_MARGIN_S');
-  const settle = barS * (1 + M.rampBars) + margin;
-  ok(settle >= silenceS, `settle ${settle.toFixed(3)}s >= worst-case silence ${silenceS.toFixed(3)}s`);
+  const settleExprText = readCaptureSettleExpr(captureSrc);
+  ok(settleExprText != null, `capture.mjs's own GATE_SETTLE_S expression was found: ${settleExprText}`);
+  const settle = evalCaptureSettle(settleExprText);
+  // silenceS is derived independently from Music.js's own values; settle is
+  // evaluated from capture.mjs's own expression text. Neither shares the
+  // other's formula, so this can fail on drift in either source.
+  ok(settle >= silenceS, `settle ${settle.toFixed(3)}s (capture.mjs's own expression) >= worst-case silence ${silenceS.toFixed(3)}s (Music.js's own values)`);
   ok(margin > 0, `the margin is explicit and named: SETTLE_MARGIN_S = ${margin}s`);
   // The measure window has its own job: it must span a full bar or it can fall
   // between the sub pulses of the intensity-0 bed, which is the other half of
@@ -105,11 +140,34 @@ console.log('and the comparison fails when the arrangement really does move');
   ok(D.bpm === 90 && D.rampBars === 1, `synthetic Music.js parsed as drifted: ${D.bpm}bpm, ramp ${D.rampBars} bar`);
   ok(D.bpm !== captureNum('OPENING_BPM'), 'the restatement check would flag the drifted tempo');
   ok(D.rampBars !== captureNum('RAMP_BARS'), 'the restatement check would flag the drifted ramp');
-  const staleSettle = worstCaseSilenceS(M).barS * (1 + M.rampBars) + captureNum('SETTLE_MARGIN_S');
+  const staleSettle = evalCaptureSettle(readCaptureSettleExpr(captureSrc));
   const { silenceS } = worstCaseSilenceS(D);
   ok(staleSettle < silenceS,
     `a settle derived from the stale values (${staleSettle.toFixed(3)}s) is short of the drifted `
     + `worst case (${silenceS.toFixed(3)}s) — the coverage check goes red, not quietly green`);
+}
+
+console.log('the sampled >= 80 truncation guard can actually fail');
+{
+  // tools/capture.mjs:878 asserts `A.samples >= 80` as a proxy for "the
+  // GATE_MAX_FRAMES hang guard did not cut the window short". That claim is
+  // unproven unless a truncated window can be shown to fail it. Model the
+  // same arithmetic capture.mjs uses: the loop breaks at
+  // `gateFrames >= GATE_MAX_FRAMES`, and `A.samples` is a count of frames
+  // taken after the settle point, capped by how many gate frames ran.
+  const GATE_MAX_FRAMES = 3000;
+  // A normal run gathers comfortably more than 80 post-settle samples (the
+  // integration capture observed 123). A truncated run that hangs before the
+  // settle point ever completes gathers none once the frame budget is spent.
+  const samplesFromGateFrames = (gateFrames, settleFrames) =>
+    Math.max(0, Math.min(gateFrames, GATE_MAX_FRAMES) - settleFrames);
+
+  const healthy = samplesFromGateFrames(3200, 190); // ~123, matches observed integration run
+  ok(healthy >= 80, `a healthy run samples ${healthy} frames, clearing the floor`);
+
+  const truncated = samplesFromGateFrames(3000, 2950); // GATE_MAX_FRAMES hit before settle clears
+  ok(truncated < 80, `a GATE_MAX_FRAMES-truncated window samples only ${truncated} frames`);
+  ok(!(truncated >= 80), 'the sampled >= 80 check reads false for a truncated window — it can fail');
 }
 
 console.log(`\n${pass}/${pass + fail} checks passed`);

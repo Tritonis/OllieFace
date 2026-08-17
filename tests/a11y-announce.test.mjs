@@ -262,11 +262,12 @@ ok(/out\.captions = out\.captions === 1 \? 1 : 0/.test(menusSrc),
     `captions on renders the cue ("${on.caption.textContent}")`);
 
   // The same rig, setting flipped live off the shared settings object — this
-  // is how the settings screen turns it off mid-run.
+  // is how the settings screen turns it off mid-run. No further cue is
+  // emitted: the toggle alone, on the next update tick, must clear it.
   on.a.ctx.settings.captions = 0;
-  on.events.emit('playerRevived', {});
+  on.a.update(0.016);
   ok(on.caption.textContent === '' && !on.caption.classList.contains('is-on'),
-    'turning captions off clears a standing caption and renders no new one');
+    'turning captions off alone clears a standing caption on the next update tick');
 }
 
 {

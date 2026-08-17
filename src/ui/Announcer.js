@@ -111,6 +111,16 @@ export class Announcer {
 
   update(dt) {
     if (this.captionT <= 0) return;
+    if (!this.captionsOn) {
+      // The setting was turned off mid-hold: don't wait out the remaining
+      // CAPTION_HOLD_S, clear now.
+      this.captionT = 0;
+      if (this.caption) {
+        this.caption.textContent = '';
+        this.caption.classList?.toggle('is-on', false);
+      }
+      return;
+    }
     this.captionT -= dt;
     if (this.captionT > 0) return;
     this.captionT = 0;
