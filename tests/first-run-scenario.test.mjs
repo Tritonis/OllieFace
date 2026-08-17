@@ -167,7 +167,7 @@ function atLoot() {
   const r = atLoot();
   r.events.emit('itemPickup', { owner: r.ctx.player });
   r.events.emit('teleporterComplete', {});
-  r.events.emit('corruptionPact', { from: r.ctx.player, to: { isPlayer: true } });
+  r.events.emit('corruptionPact', { from: { isPlayer: true }, to: r.ctx.player });
   ok(r.line.textContent === '',
     'a pact counts as the first corruption choice too');
 }
@@ -254,10 +254,17 @@ function atCorruption() {
   ok(r.line.textContent === '', 'the local player takes the bargain and it does end');
 }
 {
+  // Only `to` chose. `Corruption.transfer` has exactly one caller --
+  // `CovenantStone.interact` (Interactables.js:1686) -- where `to` is the pawn
+  // who pressed and `from` is auto-selected as the heaviest OTHER ledger. A
+  // donor made no decision at all, so crediting them taught them nothing.
   const r = atCorruption();
+  r.events.emit('corruptionPact', { from: r.ctx.player, to: { isPlayer: true }, amount: 3 });
+  ok(/void will trade/.test(r.line.textContent),
+    'CONTROL: a teammate draining the local ledger is not the local player choosing');
   r.events.emit('corruptionPact', { from: { isPlayer: true }, to: r.ctx.player, amount: 3 });
   ok(r.line.textContent === '',
-    'a pact that moves attribution ONTO the local player is their corruption choice too');
+    'shouldering a share at the Covenant Stone IS a local corruption choice');
 }
 {
   // The teleporter is a shared objective with no actor on its payload

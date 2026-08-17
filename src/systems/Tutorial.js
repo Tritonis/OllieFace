@@ -151,14 +151,18 @@ export class Tutorial {
     // stage that has already ended cannot still be teaching this beat.
     on('teleporterComplete', () => { if (this.isAt('teleporter')) this.next(); });
     // Either shape of the first corruption choice -- the altar's bargains and
-    // the pact shrine -- and both owner-filtered, for the same reason `loot` is:
-    // a teammate dealing with the void taught this player nothing. `voidBargain`
-    // names the dealer in `owner`; `transfer` names both parties, and either end
-    // of a pact is the local player's own choice about their own ledger.
+    // the Covenant Stone -- and both filtered to the party who CHOSE, for the
+    // same reason `loot` is: a teammate dealing with the void taught this
+    // player nothing. `voidBargain` names the dealer in `owner`.
+    //
+    // `corruptionPact` carries both parties and only `to` is one of them.
+    // `Corruption.transfer` has exactly one caller, `CovenantStone.interact`
+    // (Interactables.js:1686), where `to` is the pawn who pressed and `from` is
+    // auto-selected as the heaviest OTHER ledger -- a limit that file documents
+    // itself. So a donor made no decision at all, and crediting them would mark
+    // this beat complete for a player who never interacted with anything.
     on('voidBargain', (e) => { if (this.isAt('corruption') && this.isLocal(e?.owner)) this.next(); });
-    on('corruptionPact', (e) => {
-      if (this.isAt('corruption') && (this.isLocal(e?.from) || this.isLocal(e?.to))) this.next();
-    });
+    on('corruptionPact', (e) => { if (this.isAt('corruption') && this.isLocal(e?.to)) this.next(); });
     // A run that ends takes the scenario with it, however far it got.
     on('runEnd', () => this.stop());
   }
