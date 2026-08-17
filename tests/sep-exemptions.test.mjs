@@ -58,7 +58,15 @@ const matchBracket = (src, open) => {
   return -1;
 };
 
-/** A shot name literal, possibly a template (`13-biomes-${i + 1}`), as a matcher. */
+/**
+ * A *declaration-side* shot name as a matcher. `mustContain` is called from
+ * inside a loop for the biome family (`13-biomes-${index + 1}`, Harness.js),
+ * and `index` there has no statically knowable bound, so a declaration
+ * template matches its whole family. This direction may be loose: it only
+ * decides which declaration block a subject came from, never whether a shot
+ * exists. Shot existence is settled by the roster, which is expanded to exact
+ * member names below.
+ */
 const nameMatcher = (raw) => {
   if (!raw.includes('${')) return (s) => s === raw;
   const rx = new RegExp(`^${raw.split(/\$\{[^}]*\}/).map(
@@ -66,10 +74,37 @@ const nameMatcher = (raw) => {
   return (s) => rx.test(s);
 };
 
-/** Scenario names declared by a capture tool's SCENARIOS array. */
-const shotsOf = (src) => [...src.matchAll(/^\s*name: (?:'([^']*)'|`([^`]*)`),/gm)]
-  .map((m) => m[1] ?? m[2])
-  .filter((n) => !n.startsWith('__'));
+/**
+ * Expand `...[0, 1, 2, 3].map((i) => ({ name: `13-biomes-${i + 1}` ... }))`
+ * into its four real member names. A wildcard here would admit `13-biomes-9`,
+ * which no run ever produces — the exemption would be inert in exactly the way
+ * this guard exists to catch. The template's interpolations are evaluated
+ * against the array's literal values; anything that is not a plain arithmetic
+ * expression over the loop variable is rejected rather than guessed at, so an
+ * unexpandable family shows up as a missing shot (fails closed).
+ */
+const expandFamily = (values, param, tpl) => {
+  const parts = [...tpl.matchAll(/\$\{([^}]*)\}/g)].map((m) => m[1]);
+  if (!parts.every((e) => /^[\s\w+\-*/().]+$/.test(e) && new RegExp(`\\b${param}\\b`).test(e))) return [];
+  const build = new Function(param, `return \`${tpl}\`;`);
+  return values.map((v) => build(v));
+};
+
+/**
+ * Scenario names declared by a capture tool's SCENARIOS array: standalone
+ * `name:` literals plus every member of a spread-mapped family.
+ */
+const shotsOf = (src) => {
+  const families = new Map();
+  for (const m of src.matchAll(
+    /\.\.\.\[([\d,\s]+)\]\.map\(\(\s*(\w+)\s*\)\s*=>\s*\(\{\s*name: `([^`]*)`/g)) {
+    const values = m[1].split(',').map((v) => Number(v.trim())).filter((v) => Number.isFinite(v));
+    families.set(m[3], values.length ? expandFamily(values, m[2], m[3]) : []);
+  }
+  return [...src.matchAll(/^\s*name: (?:'([^']*)'|`([^`]*)`),/gm)]
+    .flatMap((m) => (m[1] !== undefined ? [m[1]] : families.get(m[2]) ?? []))
+    .filter((n) => !n.startsWith('__'));
+};
 
 /** shot-name-literal -> Set(subject literals) from every `mustContain` call. */
 const subjectsOf = (src) => {
@@ -91,16 +126,16 @@ const rosters = {
   main: {
     shots: shotsOf(read('tools', 'capture.mjs')),
     decls: subjectsOf(read('src', 'core', 'Harness.js')),
-    // Floors chosen well under the current counts (21 shots, 22 declaration
-    // blocks) but far above zero: a refactor that moves these declarations
-    // out from under the regex trips this instead of quietly exempting
-    // everything.
-    minShots: 15, minDecls: 15,
+    // EXACT current counts, not floors with slack: a partial blinding — a
+    // refactor that moves half the declarations out from under the regex —
+    // has to be as loud as a total one. Raise these by hand when you add a
+    // shot or a mustContain block.
+    minShots: 23, minDecls: 21,
   },
   realm: {
     shots: shotsOf(read('tools', 'capture-realms.mjs')),
     decls: subjectsOf(read('src', 'world', 'realms', 'RealmHarness.js')),
-    minShots: 6, minDecls: 6,
+    minShots: 9, minDecls: 9,
   },
 };
 
@@ -117,7 +152,7 @@ for (const [name, r] of Object.entries(rosters)) {
   // capture tool drives. This is the roster-split claim itself: if it ever
   // stops holding, the mapping below is validating against the wrong table.
   const orphan = r.decls.map((d) => d.shot)
-    .filter((s) => !r.shots.some((n) => nameMatcher(n)(s)));
+    .filter((s) => !r.shots.some((n) => nameMatcher(s)(n)));
   ok(orphan.length === 0,
     `${name}: every mustContain shot is in its own capture roster${orphan.length ? ` (orphans: ${orphan.join(', ')})` : ''}`);
 }
@@ -157,6 +192,11 @@ console.log('every SEP_MARGIN_EXEMPTIONS id names a real shot and a real subject
       ok(false, `'${id}': the ${owning[0]} harness declares no subjects for '${shot}' - the entry is inert`);
       continue;
     }
+    // Asymmetry, deliberate: shot names are expanded to exact members, but
+    // subject names declared through a template (`biome ${index + 1}
+    // landmark`, Harness.js) are compared as exact strings, so an exemption on
+    // one would false-fail. That fails closed — it demands a human look, it
+    // cannot make an inert entry look live — and no such exemption exists.
     const known = declared.some((d) => d.subjects.includes(subject));
     ok(known, `'${id}': subject '${subject}' is declared by ${owning[0]} shot '${shot}'${known ? ''
       : ` - the entry is inert (declared there: ${declared.flatMap((d) => d.subjects).join(', ')})`}`);
