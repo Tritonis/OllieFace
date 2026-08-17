@@ -696,12 +696,34 @@ if (!ready) {
   // 0.0056 on consecutive runs, and green runs on record span 25x. The gate was
   // measuring the restart, not the music.
   //
-  // So: let the arrangement get up, then measure. `SETTLE_S` covers the worst
-  // case above (2.03 s to the downbeat + 1.02 s of ramp) with margin; the
-  // measure window is longer than a full bar so it cannot land between the sub
-  // pulses of the intensity-0 bed. Peaks are accumulated only after the settle,
-  // and `samples` counts only those, so `sampled` stays a real check.
-  const GATE_SETTLE_S = 3.2;
+  // So: let the arrangement get up, then measure. The settle is *derived* from
+  // the arrangement's own numbers rather than typed as a literal, because a
+  // literal is exactly how this gap would quietly reopen: drop the opening tempo
+  // to 90 bpm, or widen the commit ramp to a whole bar, and 3.2 s stops covering
+  // the silence without anything saying so. Each value below is restated from
+  // `src/systems/Music.js` and `tests/audio-gate-window.test.mjs` fails if the
+  // source drifts from the restatement:
+  //
+  //   OPENING_BPM     Music.js `this.bpm = 118` in the constructor — the tempo
+  //                   at intensity 0, which is where a `beginRun()` restart is.
+  //   BAR_SIXTEENTHS  Music.js `_onBar`: `const bar = 16 * stepDur`, and
+  //                   `_schedule`: `stepDur = 60 / this.bpm / 4`.
+  //   RAMP_BARS       Music.js `_onBar`: `this._apply(next, t, bar * 0.5)`.
+  //
+  // Worst case = a full bar of waiting for the downbeat that commits the levels,
+  // plus the ramp that follows it. The margin is a named allowance for the
+  // sequencer's own `_musicTime` lead and analyser latency, not slack for a
+  // number nobody re-derived.
+  const OPENING_BPM = 118;
+  const BAR_SIXTEENTHS = 16;
+  const RAMP_BARS = 0.5;
+  const SETTLE_MARGIN_S = 0.15;
+  const GATE_BAR_S = BAR_SIXTEENTHS * (60 / OPENING_BPM / 4);
+  // ~3.2 s for today's music, which is what it measured as a literal.
+  const GATE_SETTLE_S = GATE_BAR_S * (1 + RAMP_BARS) + SETTLE_MARGIN_S;
+  // The measure window is longer than a full bar so it cannot land between the
+  // sub pulses of the intensity-0 bed. Peaks are accumulated only after the
+  // settle, and `samples` counts only those, so `sampled` stays a real check.
   const GATE_MEASURE_S = 2.5;
   // Frames are how the sequencer gets to emit at all (`_schedule` runs per
   // frame), so they still drive the window — they just no longer define it.
