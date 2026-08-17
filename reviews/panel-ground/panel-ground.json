@@ -1,11 +1,11 @@
 {
-  "commit": "56b9a707d3ef0a51d59c46eec375f8b2999a902a",
+  "commit": "a58d006540328c76cf4f6d18d492650060024c3b",
   "seed": 1337,
   "viewport": [
     1600,
     900
   ],
-  "capturedAt": "2026-08-17T18:41:10.718Z",
+  "capturedAt": "2026-08-17T19:48:26.097Z",
   "samples": [
     {
       "scene": "biome-1",
@@ -19,11 +19,11 @@
           "selector": ".objective",
           "surface": "panel",
           "present": true,
-          "px": 1280,
+          "px": 1300,
           "rect": [
-            588,
+            586,
             87,
-            424,
+            429,
             27
           ],
           "mean": "#171129",
@@ -86,14 +86,14 @@
           "selector": ".objective",
           "surface": "panel",
           "present": true,
-          "px": 1280,
+          "px": 1300,
           "rect": [
-            588,
+            586,
             87,
-            424,
+            429,
             27
           ],
-          "mean": "#23271c",
+          "mean": "#23281c",
           "p95": "#4c512f"
         },
         {
@@ -153,15 +153,15 @@
           "selector": ".objective",
           "surface": "panel",
           "present": true,
-          "px": 1280,
+          "px": 1300,
           "rect": [
-            588,
+            586,
             87,
-            424,
+            429,
             27
           ],
           "mean": "#0d0a13",
-          "p95": "#2a1a25"
+          "p95": "#2e191b"
         },
         {
           "selector": ".prompt",
@@ -220,15 +220,15 @@
           "selector": ".objective",
           "surface": "panel",
           "present": true,
-          "px": 1280,
+          "px": 1300,
           "rect": [
-            588,
+            586,
             87,
-            424,
+            429,
             27
           ],
           "mean": "#1b1010",
-          "p95": "#69413b"
+          "p95": "#68413c"
         },
         {
           "selector": ".prompt",
@@ -287,11 +287,11 @@
           "selector": ".objective",
           "surface": "panel",
           "present": true,
-          "px": 1280,
+          "px": 1300,
           "rect": [
-            588,
+            586,
             87,
-            424,
+            429,
             27
           ],
           "mean": "#151129",
@@ -354,11 +354,11 @@
           "selector": ".objective",
           "surface": "panel",
           "present": true,
-          "px": 1280,
+          "px": 1300,
           "rect": [
-            588,
+            586,
             87,
-            424,
+            429,
             27
           ],
           "mean": "#020100",
@@ -421,15 +421,15 @@
           "selector": ".objective",
           "surface": "panel",
           "present": true,
-          "px": 1280,
+          "px": 1300,
           "rect": [
-            588,
+            586,
             87,
-            424,
+            429,
             27
           ],
-          "mean": "#421e22",
-          "p95": "#ff5d18"
+          "mean": "#411e22",
+          "p95": "#ff5d16"
         },
         {
           "selector": ".prompt",
@@ -555,15 +555,15 @@
           "selector": ".objective",
           "surface": "panel",
           "present": true,
-          "px": 1280,
+          "px": 1300,
           "rect": [
-            588,
+            586,
             87,
-            424,
+            429,
             27
           ],
           "mean": "#291718",
-          "p95": "#683519"
+          "p95": "#67351a"
         },
         {
           "selector": ".prompt",
@@ -622,14 +622,14 @@
           "selector": ".objective",
           "surface": "panel",
           "present": true,
-          "px": 1280,
+          "px": 1300,
           "rect": [
-            588,
+            586,
             87,
-            424,
+            429,
             27
           ],
-          "mean": "#080713",
+          "mean": "#080613",
           "p95": "#0d0914"
         },
         {
@@ -689,11 +689,11 @@
           "selector": ".objective",
           "surface": "panel",
           "present": true,
-          "px": 1280,
+          "px": 1300,
           "rect": [
-            588,
+            586,
             87,
-            424,
+            429,
             27
           ],
           "mean": "#060613",
@@ -756,15 +756,15 @@
           "selector": ".objective",
           "surface": "panel",
           "present": true,
-          "px": 1280,
+          "px": 1300,
           "rect": [
-            588,
+            586,
             87,
-            424,
+            429,
             27
           ],
           "mean": "#080713",
-          "p95": "#110b15"
+          "p95": "#100b14"
         },
         {
           "selector": ".prompt",

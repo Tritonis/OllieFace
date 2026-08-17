@@ -814,29 +814,61 @@ body.menu-open { cursor: default; }
 .t-blight    { --tc: var(--t-blight);    color: var(--tc); }
 .t-equipment { --tc: var(--t-equipment); color: var(--tc); }
 
-/* Every place a tier colour is painted as *type* — and only those places, which
-   is why this is an explicit list rather than a rule on `.t-*` (those classes
-   sit on containers: icon tiles, toast rows, inventory groups, whose background
-   is the artwork). The chip hugs the text, carries the panel's own corner
-   radius, and is the stylesheet's near-black, so over a dark scene it is
-   invisible and over a lit one it reads as a deliberate label plate. That
-   asymmetry is the point: the type stops brightening with the scene.
+/* Every place a tier colour is painted as *type* — and this list is no longer
+   maintained by hand-remembering. `tests/readability-gate.test.mjs` enumerates
+   this stylesheet independently, finds every rule whose `color` resolves to the
+   tier ladder, and fails on any that is neither in this selector list nor one
+   of the seven `.t-*` containers above. A new tier-coloured label is red by
+   default. The first four entries here were the ones a human remembered; the
+   other seven arrived because that enumeration found them.
 
-   `tools/colour-vision.mjs` models these four surfaces on `--tier-bg` and
-   `tests/readability-gate.test.mjs` asserts the literal fill is in this file,
-   so changing the colour here without changing it there fails the gate. */
+   `.t-*` themselves stay out on purpose: they sit on containers — icon tiles,
+   toast rows, inventory groups — whose background is artwork, and every
+   descendant of theirs that renders type either overrides `color` or is listed
+   here.
+
+   The chip is the stylesheet's near-black, so over a dark scene it is invisible
+   and over a lit one it reads as a deliberate label plate. That asymmetry is
+   the point: the type stops brightening with the scene.
+
+   `tools/colour-vision.mjs` models the tier-text ground on `--tier-bg` and the
+   gate asserts the literal fill is in this file, so changing the colour here
+   without changing it there fails. */
 .tip-name,
 .tip-tier,
 .pickup-tier,
-.book-row-name {
-  display: inline-block;
+.book-row-name,
+.objective-dist,
+.tp-label,
+.title-kicker,
+.mbtn--go .mbtn-sub,
+.mutate-head,
+.book-reward,
+.run-best-v {
   background-color: var(--tier-bg);
   padding: 0.04em 0.32em 0.08em;
-  margin-left: -0.32em;
   border-radius: 2px;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }
+/* Most of them should hug their own text. `.mutate-head` is the exception: it
+   is a `space-between` flex row with the tier colour on the row itself, so it
+   takes the backing as a header band rather than a chip — blockifying it would
+   collapse the layout. `.mbtn--go .mbtn-sub` keeps its natural offset inside
+   the button instead of the negative pull the free-standing labels use. */
+.tip-name,
+.tip-tier,
+.pickup-tier,
+.book-row-name,
+.objective-dist,
+.tp-label,
+.title-kicker,
+.book-reward,
+.run-best-v {
+  display: inline-block;
+  margin-left: -0.32em;
+}
+.mbtn--go .mbtn-sub { display: inline-block; }
 
 .item {
   position: relative;
@@ -2864,7 +2896,16 @@ body.menu-open { cursor: default; }
 .sel-foot .mbtn--go::before {
   background: linear-gradient(90deg, rgba(255, 255, 255, 0.5), transparent 72%);
 }
-.sel-foot .mbtn--go .mbtn-sub { color: rgba(5, 8, 13, 0.62); }
+/* The survivor screen's go-button is inverted — a bright plate with dark type —
+   so it is the one place the tier backing must be taken back off: a near-black
+   chip behind rgba(5,8,13,0.62) would be dark on dark. It carries no tier
+   colour here either, which is why the gate's enumeration does not claim it. */
+.sel-foot .mbtn--go .mbtn-sub {
+  color: rgba(5, 8, 13, 0.62);
+  background-color: transparent;
+  padding: 0;
+  margin-left: 0;
+}
 .sel-foot .mbtn--go:hover, .sel-foot .mbtn--go:focus-visible { color: #05080d; }
 .sel-foot .mbtn--go:hover .mbtn-sub, .sel-foot .mbtn--go:focus-visible .mbtn-sub {
   color: rgba(5, 8, 13, 0.8);
