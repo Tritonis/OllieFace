@@ -9,7 +9,7 @@
 // rather than mere attachment.
 import * as THREE from 'three';
 import { MASK_UNIFORMS } from '../src/shaders/BlightMask.js';
-import { attachCharacterBlight } from '../src/shaders/CharacterBlight.js';
+import { attachCharacterBlight, cloneCharacterBlightMaterial, characterBlightAnchor } from '../src/shaders/CharacterBlight.js';
 import { makeCharacterMats } from '../src/entities/CharacterMesh.js';
 
 let pass = 0, fail = 0;
@@ -58,8 +58,11 @@ console.log('coverage and the object-space field are CONSUMED, not merely declar
 
   // Coverage: computed from the world position of the vertex, and it must
   // actually gate both the diffuse claim and the vein.
-  ok(/vCbCover\s*=\s*blightMask\(/.test(v), 'coverage is the blight field evaluated in the vertex shader');
-  ok(/modelMatrix \* cbw/.test(v), 'coverage is evaluated at the WORLD position (patches live in world space)');
+  ok(/vCbCover\s*=\s*blightMask\(uCbAnchor\)/.test(v),
+     'coverage is the blight field evaluated at the rig anchor, one world point per figure');
+  ok(/uniform vec3 uCbAnchor;/.test(v), 'the anchor is a uniform, so every vertex of a rig reads the same one');
+  ok(!/modelMatrix \* cbw/.test(v),
+     'coverage is NOT rebuilt per vertex from the world position — that was the #101 split');
   const diffuse = f.match(/diffuseColor\.rgb = mix\(diffuseColor\.rgb, CB_TINT[^;]*;/)?.[0] ?? '';
   ok(diffuse.includes('vCbCover'), 'the diffuse claim is scaled by coverage — outside a patch the write is a no-op');
   const vein = f.match(/totalEmissiveRadiance \+= CB_VEIN[^;]*;/)?.[0] ?? '';
@@ -114,6 +117,67 @@ console.log('all four enemy materials carry the pass, on a real rig');
      'an enemy body compiles with both hooks present');
 }
 
+console.log('the anchor is per RIG, which no shader-text assertion can see');
+{
+  // The failure this guards is invisible to a compile-text check and invisible
+  // to a single-rig check: with materials SHARED across the horde, every rig
+  // writes the one anchor uniform and the whole horde renders with whichever
+  // rig drew last. So the assertion is made against two rigs at once, in the
+  // order three would draw them.
+  const { acquireRig, ENEMY_IDS } = await import('../src/entities/EnemyMeshes.js');
+  const id = ENEMY_IDS[0];
+  const rigs = [acquireRig(id), acquireRig(id)];
+  rigs[0].root.position.set(-30, 0, -30);
+  rigs[1].root.position.set(40, 0, 12);
+
+  const meshesOf = (rig) => { const out = []; rig.root.traverse((o) => { if (o.isMesh && characterBlightAnchor(o.material)) out.push(o); }); return out; };
+  const wp = (m) => m.getWorldPosition(new THREE.Vector3());
+  const anchorOf = (m) => characterBlightAnchor(m.material).value.clone();
+
+  const sets = rigs.map((r) => { r.root.updateMatrixWorld(true); return meshesOf(r); });
+  ok(sets[0].length > 1 && sets[1].length > 1, `both rigs expose blighted meshes (${sets[0].length}, ${sets[1].length})`);
+  // Draw the horde: every mesh of rig 0, then every mesh of rig 1.
+  for (const set of sets) for (const m of set) m.onBeforeRender();
+
+  const a0 = anchorOf(sets[0][0]);
+  const b0 = anchorOf(sets[1][0]);
+  ok(a0.distanceTo(b0) > 1,
+     `two rigs 78 m apart resolve DIFFERENT anchors (${a0.distanceTo(b0).toFixed(1)} m apart)`);
+  ok(a0.distanceTo(rigs[0].root.position) < 1e-6 && b0.distanceTo(rigs[1].root.position) < 1e-6,
+     'and each anchor is its own rig root, not the other rig\'s');
+
+  // The other half: one rig is one claim. Pick the two meshes of rig 0 that sit
+  // furthest apart in the world and require them to agree exactly.
+  const s = sets[0];
+  let far = [s[0], s[0]], d = 0;
+  for (const m of s) for (const n of s) { const e = wp(m).distanceTo(wp(n)); if (e > d) { d = e; far = [m, n]; } }
+  ok(d > 0.3, `the two chosen surfaces are ${d.toFixed(2)} m apart on the same body`);
+  ok(anchorOf(far[0]).equals(anchorOf(far[1])),
+     'two surfaces far apart on ONE rig resolve the SAME anchor — no limb-by-limb split');
+}
+
+console.log('a re-cloned material is still a working one');
+{
+  // VFX.hitFlash clones every material on a rig and keeps the clone forever.
+  // `Material.copy` JSON-flattens userData and copies no own-property hook, so
+  // a bare clone arrives with the pass stripped and the anchor turned into a
+  // plain {x,y,z} — which the capture run caught as a thrown frame and five
+  // shots with no monsters in them.
+  const src = attachCharacterBlight(new THREE.MeshStandardMaterial());
+  const bare = src.clone();
+  ok(characterBlightAnchor(bare) === undefined,
+     'a BARE clone loses the anchor — this is the trap, asserted so it stays known');
+
+  const good = cloneCharacterBlightMaterial(src);
+  ok(good !== src && good.userData.charBlight === true, 'the re-clone carries the pass');
+  ok(characterBlightAnchor(good)?.value instanceof THREE.Vector3, 'and a live anchor of its own');
+  ok(characterBlightAnchor(good) !== characterBlightAnchor(src), 'which is NOT the template\'s');
+  ok(good.customProgramCacheKey() === src.customProgramCacheKey(),
+     'same cache key as its template, so the clones share one compiled program');
+  const s = compile(good);
+  ok(s.uniforms.uCbAnchor === characterBlightAnchor(good), 'and the program reads that anchor');
+}
+
 console.log('the rig-footprint number the pass reasons from is real');
 {
   // CharacterBlight.js's header justifies per-vertex world coverage with a
@@ -134,7 +198,22 @@ console.log('the rig-footprint number the pass reasons from is real');
   ok(lo >= 0.75 && hi <= 1.60, `survivor XZ footprints span ${lo.toFixed(2)}-${hi.toFixed(2)} m (header says 0.82-1.49)`);
   // The band `blightMask` feathers over at the smallest patch: edge -> 0.72*edge.
   const band = RADIUS.base * (1 - 0.72);
-  ok(band < hi, `the coverage band at the smallest patch (${band.toFixed(2)} m) is NARROWER than the widest rig — the split the header warns about is real`);
+  ok(band < hi, `the coverage band at the smallest patch (${band.toFixed(2)} m) is NARROWER than the widest rig — which is why coverage cannot be per-vertex (#101)`);
+
+  // Survivors get the same anchoring, and by a different route: their material
+  // sets are already per-CharacterMesh, so only the binding in `_finish` stands
+  // between them and the horde bug.
+  const one = new CharacterMesh('ranger'), two = new CharacterMesh('ranger');
+  one.group.position.set(-8, 0, 3); two.group.position.set(17, 0, -9);
+  const firstBlighted = (c) => {
+    c.group.updateMatrixWorld(true);
+    let hit = null;
+    c.group.traverse((o) => { if (!hit && o.isMesh && characterBlightAnchor(o.material)) hit = o; });
+    hit.onBeforeRender();
+    return characterBlightAnchor(hit.material).value.clone();
+  };
+  const pa = firstBlighted(one), pb = firstBlighted(two);
+  ok(pa.distanceTo(pb) > 1, `two survivors resolve DIFFERENT anchors (${pa.distanceTo(pb).toFixed(1)} m apart)`);
 }
 
 console.log('world surfaces keep the world pass and never take both');

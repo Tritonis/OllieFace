@@ -15,34 +15,47 @@
  * `transformed` before `modelMatrix` ever touches it. The claim is authored on
  * the rig, walks with the rig, and turns when the rig turns.
  *
- * COVERAGE — *how much* of the figure is claimed — still comes from the world:
- * it is `blightMask()` evaluated per vertex at the world position, computed in
- * the vertex shader and interpolated. Two consequences worth stating, because
- * both were deliberate:
- *   - `blightMask` reads only `wp.xz`, so the gradient over one figure is
- *     bounded by that figure's horizontal footprint. **Measured, not assumed:**
- *     the five survivor rigs span 0.82 m to 1.49 m in XZ (asserted by
- *     tests/character-blight.test.mjs so this number cannot drift), while the
- *     coverage transition band at the smallest patch — `RADIUS.base = 2.0` in
- *     src/systems/Blight.js, feathered from `edge` to `edge * 0.72` — is only
- *     about 0.56 m wide. **The band can therefore be narrower than the figure**,
- *     and a survivor standing on a small patch's rim can show a partial-coverage
- *     split across their own body rather than taking the claim as one creature.
- *     That is a real defect, not a rounding error, and issue #101 tracks the
- *     fix. It is accepted here rather than solved because the alternative
- *     available at this seam is worse: enemy materials are cached per
- *     species+affix and shared across the whole horde, so a per-material
- *     uniform could not have been per-rig at all.
- *   - it is evaluated per vertex rather than per draw call, because a rig is
- *     many meshes: a per-draw scalar would pop limb by limb as a figure crossed
- *     a patch edge, where an interpolated one creeps continuously up the body.
+ * COVERAGE — *how much* of the figure is claimed — still comes from the world,
+ * but from ONE world point per figure: `uCbAnchor`, the rig root, evaluated
+ * once through `blightMask()`. A creature is claimed as a creature.
+ *
+ * It used to be evaluated per vertex at each vertex's own world position, and
+ * that was a real defect (#101). `blightMask` reads only `wp.xz`, so the
+ * gradient over one figure was bounded by that figure's horizontal footprint —
+ * the five survivor rigs span 0.82 m to 1.49 m in XZ (asserted by
+ * tests/character-blight.test.mjs so the number cannot drift) — while the
+ * coverage transition band at the smallest patch (`RADIUS.base = 2.0` in
+ * src/systems/Blight.js, feathered from `edge` to `edge * 0.72`) is only about
+ * 0.56 m wide. The band was narrower than *every* rig, so a figure on a patch
+ * rim split across its own body.
+ *
+ * A single anchor is only possible because the anchor uniform is genuinely
+ * per-rig. Three uploads `onBeforeCompile` uniforms only under `refreshMaterial`
+ * (three.module.js:18701-18745), which fires on a material-id change
+ * (:18530-18536), and both `onBeforeRender` hooks run before `setProgram`
+ * (:18120, :18125) — so pushing an anchor onto a material SHARED across the
+ * horde would render the whole horde with whichever rig wrote last. The fix is
+ * therefore per-rig material *instances*: `EnemyMeshes.matsFor` is a template
+ * and each rig clones its four materials once (bounded by the rig pool, not by
+ * spawn count); survivors already build their own set per CharacterMesh.
+ * `cloneCharacterBlightMaterial` and `bindCharacterBlightAnchor` below are the
+ * two halves of that. An identical `customProgramCacheKey` keeps one compiled
+ * program shared across every clone.
+ *
+ * Anchoring per rig also removes the limb-popping the per-vertex form was
+ * chosen to avoid: every limb of a rig reads the same anchor, so nothing pops
+ * limb by limb, and the anchor itself moves continuously as the figure walks.
  *
  * NOTHING HERE ADDS GEOMETRY, GLOW-AROUND-THE-EDGE, OR AN OUTLINE. The pass
  * only rewrites `diffuseColor` and adds a vein emissive strictly inside the
  * existing surface, so a black-thresholded silhouette is bit-identical to what
  * it was — the readability work of #20 and style-guide rule 5 is untouched.
  */
+import * as THREE from 'three';
 import { MASK_UNIFORMS, MASK_FIELD } from './BlightMask.js';
+
+/** material -> its private rig-anchor uniform. See `attachCharacterBlight`. */
+const ANCHORS = new WeakMap();
 
 /** Declarations shared by both stages, plus this pass's own interpolators. */
 const CB_VARYING = /* glsl */ `
@@ -51,20 +64,18 @@ varying float vCbCover;`;
 
 const CB_VERT_DECL = /* glsl */ `#include <common>
 ${CB_VARYING}
+uniform vec3 uCbAnchor;
 ${MASK_FIELD}`;
 
 // `transformed` is the object-space vertex after begin_vertex/morph/skinning,
 // which is what makes the pattern follow a deforming rig instead of sliding
-// over it. Coverage needs the world position, so it is rebuilt here for that
-// one purpose only.
+// over it. Coverage is read at the rig's own anchor instead — one world point
+// for the whole figure — so it stays constant across the interpolation and the
+// creature is claimed as one thing.
 const CB_VERT = /* glsl */ `#include <project_vertex>
 {
   vCbObj = transformed;
-  vec4 cbw = vec4(transformed, 1.0);
-  #ifdef USE_INSTANCING
-    cbw = instanceMatrix * cbw;
-  #endif
-  vCbCover = blightMask((modelMatrix * cbw).xyz);
+  vCbCover = blightMask(uCbAnchor);
 }`;
 
 const CB_FRAG_DECL = /* glsl */ `#include <common>
@@ -123,10 +134,19 @@ export function attachCharacterBlight(material) {
   // pass; figures take this one.
   if (!material || material.userData.charBlight || material.userData.blightMask) return material;
   material.userData.charBlight = true;
+  // The one uniform that must NOT be shared: this material instance's rig
+  // anchor. Held in a WeakMap and deliberately NOT on `userData`, because
+  // `Material.copy` round-trips userData through JSON — a bare `clone()` would
+  // otherwise hand the binder a Vector3 flattened to a plain {x,y,z} and throw
+  // on the first frame. Off the material, a clone that lost the hook loses the
+  // anchor with it, which is the only consistent pair.
+  const anchor = { value: new THREE.Vector3() };
+  ANCHORS.set(material, anchor);
   const prev = material.onBeforeCompile;
   material.onBeforeCompile = function (shader, renderer) {
     if (prev) prev.call(this, shader, renderer);
     Object.assign(shader.uniforms, MASK_UNIFORMS);
+    shader.uniforms.uCbAnchor = anchor;
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', CB_VERT_DECL)
       .replace('#include <project_vertex>', CB_VERT);
@@ -138,4 +158,51 @@ export function attachCharacterBlight(material) {
     ? material.customProgramCacheKey.bind(material) : null;
   material.customProgramCacheKey = () => (prevKey ? prevKey() : '') + '|charblight';
   return material;
+}
+
+/**
+ * A private copy of a blighted material, for one rig.
+ *
+ * `Material.copy` deep-copies `userData` through JSON (Material.js:1172) and
+ * copies neither `onBeforeCompile` nor `customProgramCacheKey`, so a bare
+ * `clone()` arrives carrying a dead `charBlight: true` flag, a Vector3 flattened
+ * to `{x,y,z}`, and no hook at all. Both stale entries are dropped and the pass
+ * is re-attached, which also mints this copy its own anchor. Any hook living on
+ * the material's *prototype* (RimStandardMaterial's rim/hemi terms) is untouched
+ * by the clone and gets chained under again.
+ *
+ * The cache key is identical to the template's, so every clone shares one
+ * compiled program — this costs material objects, not shader compiles.
+ */
+export function cloneCharacterBlightMaterial(material) {
+  const copy = material.clone();
+  delete copy.userData.charBlight;
+  return attachCharacterBlight(copy);
+}
+
+/** This material's anchor uniform, or undefined if it does not carry the pass. */
+export function characterBlightAnchor(material) {
+  return material ? ANCHORS.get(material) : undefined;
+}
+
+/**
+ * Point one mesh's coverage at the rig it belongs to.
+ *
+ * The write happens in `onBeforeRender`, which is legal here for exactly one
+ * reason: the material is the rig's own. Three refreshes a material's custom
+ * uniforms when `material.id` changes, so each rig's clone gets its own upload
+ * carrying its own anchor. On a SHARED material the same hook would be a bug —
+ * every rig would write the one uniform and the horde would render with
+ * whichever wrote last (see the file header).
+ *
+ * The material is read at call time rather than captured, so a reference swap
+ * (the hit FLASH, an affix change) is followed. A material with no anchor —
+ * FLASH, auras, wards — is simply skipped.
+ */
+export function bindCharacterBlightAnchor(mesh, root) {
+  mesh.onBeforeRender = function () {
+    const u = ANCHORS.get(this.material);
+    if (u) u.value.setFromMatrixPosition(root.matrixWorld);
+  };
+  return mesh;
 }

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { clamp, lerp } from '../core/MathUtil.js';
-import { attachCharacterBlight } from '../shaders/CharacterBlight.js';
+import { attachCharacterBlight, bindCharacterBlightAnchor } from '../shaders/CharacterBlight.js';
 
 /**
  * Procedural survivor: a bone-like Group hierarchy built from primitives plus
@@ -1897,7 +1897,16 @@ export class CharacterMesh {
    */
   _finish() {
     const root = this.group;
-    root.traverse((o) => { if (o.isMesh) o.receiveShadow = true; });
+    // Blight coverage is read at this survivor's root, not per vertex, so a
+    // figure standing on a patch rim takes the claim whole instead of splitting
+    // across their own body (#101). Legal because `makeCharacterMats` already
+    // builds one material set per CharacterMesh — the anchor uniform is private
+    // to this rig.
+    root.traverse((o) => {
+      if (!o.isMesh) return;
+      o.receiveShadow = true;
+      bindCharacterBlightAnchor(o, root);
+    });
 
     // Contact shadow. The stage's shadow map is one cascade over a big stage,
     // so the survivor's own cast shadow is soft to the point of absence right
