@@ -205,6 +205,39 @@ const STAT_BARS = [
 function pct(v) { return `${Math.round(v * 100)}%`; }
 
 export class Menus {
+  // Its own system since #118, not a limb of the HUD. Menus was constructed by
+  // `HUD.init` and pumped from the first line of `HUD.update`, so the Engine
+  // billed every throw from a menu, the pause screen, the settings screen or
+  // the mutation window to `HUD.update` — and six of those in a row took the
+  // whole UI out, including the screens a player would use to recover.
+  // Noncritical for the same reason the HUD is: a broken menu is a degraded
+  // player, not a desynced one.
+  static critical = false;
+
+  /**
+   * Publishes `ctx.menus`, which is what `remove()` blanks when this system is
+   * given up on — the HUD reads its menus back off `ctx` for exactly that reason.
+   *
+   * `ctx.settings` is deliberately *not* published here: the constructor writes
+   * it, so the Engine's `init` diff never claims it and a disabled Menus leaves
+   * the settings object behind. The Announcer and the Tutorial hold live
+   * references to it and read `captions` and the glyph set off it every frame;
+   * blanking it would break two working things to tidy up after a dead one.
+   */
+  init(ctx) {
+    ctx.menus = this;
+  }
+
+  /**
+   * The title orbit, run after `CameraRig` so what it writes is what ships to
+   * the renderer. It used to be called from `HUD.lateUpdate` for that ordering;
+   * registration order — Menus is added well after CameraRig — buys the same
+   * thing now, and a throw out of it is billed to Menus.
+   */
+  lateUpdate(ctx, dt) {
+    this.orbit(ctx, dt);
+  }
+
   constructor(ctx) {
     this.ctx = ctx;
     this.root = document.getElementById('overlay');

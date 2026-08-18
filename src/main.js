@@ -20,6 +20,7 @@ import { Realms } from './world/realms/Realms.js';
 import { VFX } from './systems/VFX.js';
 import { Audio } from './systems/Audio.js';
 import { HUD } from './ui/HUD.js';
+import { Menus } from './ui/Menus.js';
 import { Coop } from './net/Coop.js';
 import { Lobby } from './net/Lobby.js';
 import { maybeShowGpuNotice } from './ui/GpuNotice.js';
@@ -117,6 +118,14 @@ engine.add(new CameraRig());
 // the co-op screen, and Coop must be able to answer NetHost's pawn request
 // from the first peer that connects.
 engine.add(new Coop());
+// Before HUD, and that ordering is load-bearing in both directions. The Menus
+// *constructor* publishes `ctx.settings`, which HUD's Announcer and Tutorial
+// read during HUD's own `init` — so Menus has to be built first. It reaches no
+// further forward than that: it owns `#overlay` rather than anything HUD's init
+// writes, and it consults `ctx.lobby` (created below) only when someone opens
+// the co-op screen. Registered rather than owned by HUD since #118, so a menu
+// that throws is billed to Menus and disabling it leaves the HUD drawing.
+engine.add(new Menus(ctx));
 engine.add(new HUD());
 
 // The lobby is not a system — it owns no frame time and only exists so the UI

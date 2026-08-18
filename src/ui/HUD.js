@@ -34,7 +34,6 @@ import { Roster } from '../systems/Roster.js';
 import { BTN } from '../net/Protocol.js';
 import { abilityIcon, abilityArt, equipmentArt, itemArt, hexOf, TIER_ORDER, tracePathFrom } from './Icons.js';
 import { Tooltip, describeItem, prettify } from './Tooltip.js';
-import { Menus } from './Menus.js';
 import { Announcer } from './Announcer.js';
 import { Tutorial } from '../systems/Tutorial.js';
 import { isLocalVictim, isLocalKill, isLocalOwner } from '../core/Engine.js';
@@ -145,6 +144,20 @@ export class HUD {
   // worse trade.
   static critical = false;
 
+  /**
+   * The menus, read off `ctx` rather than held — so that when the Engine gives
+   * up on `Menus` and `remove()` blanks `ctx.menus`, this goes null with it and
+   * the HUD stops calling into a system nobody is running any more. Every use
+   * below is `?.`-guarded for that window.
+   *
+   * The setter exists for tests that build a HUD off the prototype and hand it
+   * a stub; a getter alone would make `hud.menus = stub` a TypeError in strict
+   * mode. A stub set that way keeps winning only while there is no live
+   * `ctx.menus` to prefer.
+   */
+  get menus() { return this.ctx?.menus ?? this._menus ?? null; }
+  set menus(m) { this._menus = m; }
+
   init(ctx) {
     this.ctx = ctx;
     ctx.hud = this;
@@ -155,7 +168,8 @@ export class HUD {
     this.refs = collectRefs(this.root);
 
     this.tooltip = new Tooltip(ctx, this.root);
-    this.menus = new Menus(ctx);
+    // `Menus` is registered ahead of this system in `main.js` and is no longer
+    // constructed here (#118): it is billed for its own throws now.
     // After `Menus`, which is what publishes `ctx.settings` — the announcer
     // reads `settings.captions` off it live.
     this.announcer = new Announcer(ctx, { live: this.refs.live, caption: this.refs.caption });
@@ -317,7 +331,7 @@ export class HUD {
     // is kept anyway so a future satellite offer cannot paint over this pack's.
     on('mutationChoiceOffered', (e) => {
       if (!isLocalOwner(ctx, e)) return;
-      this.menus.showMutationChoice({
+      this.menus?.showMutationChoice({
         offers: e.offers,
         seconds: e.seconds,
         onPick: (id) => ctx.items?.chooseMutation?.(id),
@@ -326,7 +340,7 @@ export class HUD {
     });
     on('mutationChoiceClosed', (e) => {
       if (!isLocalOwner(ctx, e)) return;
-      this.menus.hideMutationChoice();
+      this.menus?.hideMutationChoice();
     });
     // The same line, run backwards: the Argent Font's reward moves a stack out
     // of the blight tier and back into its own, and without this the strip just
@@ -382,7 +396,7 @@ export class HUD {
     // stale. Only closes the screen it opened — a player who backed out to
     // the pause menu or settings on top of it is left alone.
     on('playerReturned', (p) => {
-      if (isLocalVictim(this.ctx, { victim: p?.player }) && this.menus.screen === 'death') this.onReturn();
+      if (isLocalVictim(this.ctx, { victim: p?.player }) && this.menus?.screen === 'death') this.onReturn();
     });
 
     // Hover tooltips only exist while the cursor is free — while pointer-locked
@@ -468,7 +482,7 @@ export class HUD {
 
     const name = def?.name || prettify(id);
     this.toast(name, tier, id);
-    this.menus.showPickup({
+    this.menus?.showPickup({
       id,
       tier,
       name,
@@ -542,7 +556,7 @@ export class HUD {
   onDeath() {
     const items = [...this.inv.entries()].map(([id, e]) => ({ id, tier: e.tier, count: e.count }));
     const diff = this.difficultyOf(this.ctx.director?.difficultyCoefficient ?? 1);
-    this.menus.showDeath({
+    this.menus?.showDeath({
       time: formatTime(this.ctx.time ?? 0),
       stage: String(this.stageIndex),
       stageName: this.stageName,
@@ -557,7 +571,7 @@ export class HUD {
 
   /** The amnesty's other half: close a death screen this machine's own pawn no longer earns. */
   onReturn() {
-    this.menus.close();
+    this.menus?.close();
   }
 
   /**
@@ -610,7 +624,9 @@ export class HUD {
   // ---------------------------------------------------------------- update
 
   update(ctx, dt) {
-    this.menus.update(ctx, dt);
+    // `Menus` pumps itself — it is a registered system since #118. Calling it
+    // from here as well would update it twice a frame, and billing its throws
+    // to `HUD.update` is the whole thing that ticket removed.
     // Ahead of the `hidden` early-return below: a caption must still expire
     // while a full-bleed screen is up, or it is waiting on screen when the
     // player comes back.
@@ -623,7 +639,7 @@ export class HUD {
     this.set('cursor', cursor, (v) => this.root.classList.toggle('has-cursor', v));
     if (!cursor && this.hoverId) { this.hoverId = null; this.tooltip.hide(); }
 
-    const hidden = FULL_SCREENS.has(this.menus.screen);
+    const hidden = FULL_SCREENS.has(this.menus?.screen);
     this.set('hidden', hidden, (v) => this.root.classList.toggle('is-hidden', v));
     if (hidden) { this.stripRect = null; return; }
 
@@ -697,11 +713,9 @@ export class HUD {
   /** Re-measure the strip for the next second. */
   markStripDirty() { this._stripHoldT = STRIP_HOLD_SEC; }
 
-  lateUpdate(ctx, dt) {
-    // Runs after CameraRig, so the title orbit is what actually ships to the
-    // renderer while the menu is up.
-    this.menus.orbit(ctx, dt);
-  }
+  // No `lateUpdate`: the title orbit it used to run is `Menus.lateUpdate`'s
+  // now, and it still lands after CameraRig because Menus is registered after
+  // it.
 
   set(key, value, apply) {
     if (this.c[key] === value) return false;
