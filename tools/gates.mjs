@@ -55,9 +55,11 @@ const say = (...a) => { if (!quiet) console.log(...a); };
 // relies on sp-equivalence's own default.
 //
 // These are the SHIPPED defaults, claimed by this file and enforced unique by
-// `tests/probe-ports.test.mjs`. Nothing else in `tools/` or `tests/` claims
-// above 5233, and the 5240-5269 lane blocks in CLAUDE.md are reserved for
-// parallel agent lanes, so 5234-5236 is the free window between them.
+// `tests/probe-ports.test.mjs`. Every other default in `tools/` and `tests/` is
+// 5233 or below, except `tools/verify-trickle.mjs` on 5599 — which is well clear
+// of everything here. The 5240-5269 lane blocks in CLAUDE.md are reserved for
+// parallel agent lanes, so 5234-5236 is the free window between them, and
+// probe-ports fails if anything lands inside a lane block.
 // `--port-base N` shifts all three: a lane C agent runs `--port-base 5260`.
 const GATE_SP_PORT = 5234;
 const GATE_MP1_PORT = 5235;
@@ -220,7 +222,16 @@ export function armsFor(portBase) {
       manual: true,
       label: 'headed GPU silhouette/separation capture (npm run shots) — run by hand, tracked so it can go OVERDUE',
       argv: ['npm', 'run', 'shots'],
-      paths: ['src/core/Harness.js', 'tools/capture.mjs', 'tools/lib/evidence.mjs'],
+      // `src` entire, not `src/core/Harness.js` alone. `tools/capture.mjs`
+      // navigates the real dev server with `?harness=1` and photographs the
+      // whole scene, so any change to what is drawn changes what it measures —
+      // an `EquipmentBarrel` placed on every stage moved every silhouette while
+      // this arm said SKIP. `perf` is the same shape (manual, headed, GPU) and
+      // already carries `src`; capture's narrower list was the odd one out.
+      // Widening `paths` changes only what `advise` and `status` SAY: the arm is
+      // `tier: 'manual'`, the tiers filter on `tier === 'cheap'|'heavy'`, and
+      // `assertManual` throws before any spawn.
+      paths: ['src', 'tools/capture.mjs', 'tools/lib/evidence.mjs'],
     },
     {
       id: 'trickle',
@@ -271,10 +282,27 @@ function recordRun(armId, verdict, durationMs) {
   writeState(state);
 }
 
-function gitOut(args) {
+/**
+ * `git`, with the failure kept. `{ ok, out, err }`.
+ *
+ * The swallowing version below is fine where an empty answer is a real answer
+ * (no commit touches these paths yet), and actively dangerous where it is not:
+ * `advise --since not-a-ref..also-fake` used to print "0 changed file(s)", skip
+ * every arm with a reason, and exit 0. That is this runner's own stated failure
+ * mode — a silent skip reading as coverage — pointed at the one caller that
+ * cannot tell "resolved, and nothing changed" from "could not resolve".
+ */
+function gitTry(args) {
   try {
-    return execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
-  } catch { return ''; }
+    const out = execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    return { ok: true, out: out.trim(), err: '' };
+  } catch (e) {
+    return { ok: false, out: '', err: String(e?.stderr ?? e?.message ?? '').trim() };
+  }
+}
+
+function gitOut(args) {
+  return gitTry(args).out;
 }
 
 /** ISO time of the newest commit touching any of `paths`, or '' if none. */
@@ -420,15 +448,24 @@ function runArm(arm) {
       ok: r.status === 0,
       detail: `exit code ${r.status ?? 'signal ' + r.signal}`,
       output: quiet ? `${r.stdout ?? ''}${r.stderr ?? ''}` : null,
+      stderr: quiet ? Boolean(r.stderr) : false,
     };
   }
   const durationMs = Date.now() - started;
   recordRun(arm.id, result.ok ? 'pass' : 'fail', durationMs);
   if (quiet && !result.ok) {
-    // The failure path is verbose by construction — same header, same stream
-    // contents, in the same order as a non-quiet run.
+    // The failure path is verbose by construction — same header, and every byte
+    // of both streams. NOT in the same order as a non-quiet run, and the claim
+    // that it was has been withdrawn rather than implemented: `spawnSync`
+    // returns stdout and stderr as two finished buffers with no interleaving
+    // information, so the real order is not recoverable afterwards, and getting
+    // it would take a pty or a shared fd this runner has no other use for.
+    // Stdout is replayed first, then stderr — so a stack trace lands after the
+    // arm's normal output rather than beside the line that produced it. Say so,
+    // because someone reading a failure will otherwise date the trace wrongly.
     console.log(header);
     if (result.output) console.log(result.output.replace(/\s+$/, ''));
+    if (result.stderr) console.log('    (above: the arm\'s stdout, then its stderr — captured separately, not interleaved)');
   }
   const verdictLine = `--- ${arm.id}: ${result.ok ? 'PASS' : 'FAIL'} (${(durationMs / 1000).toFixed(1)}s) — ${result.detail}`;
   if (result.ok) say(verdictLine); else console.log(verdictLine);
@@ -496,7 +533,21 @@ function acquireHeavyLock(portBase) {
 /** Files changed by `range`, or by the working tree (staged + unstaged + untracked). */
 function changedFiles(range) {
   const norm = (s) => s.split('\n').map((l) => l.trim()).filter(Boolean).map((p) => p.replace(/\\/g, '/'));
-  if (range) return [...new Set(norm(gitOut(['diff', '--name-only', range])))];
+  if (range) {
+    const r = gitTry(['diff', '--name-only', range]);
+    if (!r.ok) {
+      // Loud and non-zero, naming the ref. An agent in a fresh worktree whose
+      // base ref is absent was previously told, authoritatively, that nothing
+      // needed running.
+      throw new Error(
+        `gates: cannot resolve ${JSON.stringify(range)} — git could not diff it.\n`
+        + (r.err ? `${r.err.split('\n').map((l) => `  git: ${l}`).join('\n')}\n` : '')
+        + '  This is refused rather than reported as "0 changed files", because an\n'
+        + '  unresolvable ref and a genuinely empty diff advise the opposite things.',
+      );
+    }
+    return [...new Set(norm(r.out))];
+  }
   const tracked = norm(gitOut(['diff', '--name-only', 'HEAD']));
   const untracked = norm(gitOut(['ls-files', '--others', '--exclude-standard']));
   return [...new Set([...tracked, ...untracked])];
@@ -516,7 +567,9 @@ export function adviseFor(arms, files) {
 }
 
 function printAdvice(all, range) {
-  const files = changedFiles(range);
+  let files;
+  try { files = changedFiles(range); }
+  catch (e) { console.error(`\n${e.message}\n`); return 2; }
   const scope = range ? `commit range ${range}` : 'the working tree vs HEAD';
   console.log(`\n--- gate advice for ${scope} — ${files.length} changed file(s)`);
   if (!files.length) {
@@ -589,9 +642,15 @@ function main(argv) {
     console.error(`       --lane B is exactly --port-base ${LANE_BASES.B}.`);
     return 64;
   }
-  if (li >= 0 && process.env.GATES_PORT_BASE) {
-    console.error('gates: --lane was given but GATES_PORT_BASE is also set in the environment.');
-    console.error('       Unset GATES_PORT_BASE, or drop --lane. Refusing to guess.');
+  // Both flags refuse an environment override rather than one refusing and the
+  // other silently winning. The reason is the same for both: the heavy-tier
+  // lock is keyed by port base, so a run whose base was picked by an unnoticed
+  // environment variable is a run that believes it holds a lock it does not.
+  if ((li >= 0 || i >= 0) && process.env.GATES_PORT_BASE) {
+    const flag = li >= 0 ? '--lane' : '--port-base';
+    console.error(`gates: ${flag} was given but GATES_PORT_BASE is also set in the environment `
+      + `(=${process.env.GATES_PORT_BASE}).`);
+    console.error(`       Unset GATES_PORT_BASE, or drop ${flag}. Refusing to guess.`);
     return 64;
   }
   let portBase;
@@ -610,7 +669,18 @@ function main(argv) {
 
   if (tier === 'advise') {
     const si = argv.indexOf('--since');
-    return printAdvice(all, si >= 0 ? argv[si + 1] : null);
+    if (si >= 0) {
+      // `--since` with nothing after it used to fall through to working-tree
+      // mode, silently answering a different question than the one asked.
+      const value = argv[si + 1];
+      if (value === undefined || value.startsWith('--')) {
+        console.error('gates: --since needs a commit range, e.g. --since HEAD~3..HEAD or --since master..');
+        console.error('       Omit --since entirely to advise on the working tree instead.');
+        return 64;
+      }
+      return printAdvice(all, value);
+    }
+    return printAdvice(all, null);
   }
 
   const recordIdx = argv.indexOf('--record');

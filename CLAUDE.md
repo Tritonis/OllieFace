@@ -156,10 +156,9 @@ must be unlinked before the worktree is removed; `tests/worktree-hygiene.test.mj
 `gates:cheap`) makes an orphaned one — a junction left behind in a directory that is no longer a
 registered git worktree — loudly visible instead of silently accumulating.
 
-Every lane gets its own port block, assigned in the brief rather than discovered at runtime. Nothing
-in `tools/` or `tests/` claims above 5236 — 5233 and below, plus `gates.mjs`'s heavy tier on
-5234-5236 and `verify-trickle` on 5599 — and `tests/probe-ports.test.mjs` enforces that, so the
-5240+ range is free by construction:
+Every lane gets its own port block, assigned in the brief rather than discovered at runtime. The
+shipped defaults sit at 5233 and below, plus `gates.mjs`'s heavy tier on 5234-5236 and
+`tools/verify-trickle.mjs` on 5599, which leaves 5240-5269 free for lanes:
 
 | Lane | Port block | Pass as |
 |---|---|---|
@@ -167,12 +166,26 @@ in `tools/` or `tests/` claims above 5236 — 5233 and below, plus `gates.mjs`'s
 | B | 5250-5259 | `SP_PORT=5250`, `--port 5251`, `--signal-port 5252` |
 | C | 5260-5269 | `SP_PORT=5260`, `--port 5261`, `--signal-port 5262` |
 
-The table is now also *data*, in `tools/lib/lanes.mjs`, and `tests/probe-ports.test.mjs` imports it:
-alongside the existing "no two scripts claim the same default" check it asserts that **no script's
-default port falls inside a lane block**. The prose claim "nothing claims above 5236" was false when
-that check was first written — `tools/panel-ground.mjs` sat on 5251, inside lane B — and it has been
-moved to 5227. Lane ports were previously invisible to the collision detector because the mapping
-was runtime arithmetic; importing the table is what keeps the guard able to ask the question.
+The table is also *data*, in `tools/lib/lanes.mjs`, which `tools/gates.mjs`, `tests/sp-equivalence.mjs`
+and `tests/probe-ports.test.mjs` all import rather than restating the numbers.
+
+**What the test actually enforces**, stated exactly, because a looser summary of it stood here for a
+while and was believed:
+
+- No two scanned scripts claim the same default port.
+- No scanned script's default port falls **inside a lane block** (5240-5269).
+
+It does **not** enforce "nothing claims above 5236" — that sentence used to appear here and was never
+true (`verify-trickle` is on 5599, in the same breath that named it). A probe on 5300 passes, and
+should: it collides with nothing. The scan covers every `.mjs` under `tools/` recursively, plus
+`tests/sp-equivalence.mjs`, and it counts a port wherever an identifier or object key **named** port
+is bound to a literal — `const PORT = N`, `{ port: N }`, `Number(x ?? N)`, `Number(x || N)`,
+`num('port', N)`. `lanes.mjs` itself contributes nothing because its keys are lane names, not port
+names; a genuine bind written there would still be caught.
+
+Do not treat the free range as free by assertion — it is free because the test can go red, and it
+has: `tools/panel-ground.mjs` sat on 5251 inside lane B when this check was first written, and moved
+to 5227.
 
 A brief must state its lane's ports explicitly, or pass `--lane`. An agent that defaults to 5209 has silently joined
 whichever other lane is already there.

@@ -35,7 +35,16 @@ for (const f of files) {
     failed++;
     if (quiet) {
       console.log(`\n=== ${f} ===`);
-      console.log(`${r.stdout ?? ''}${r.stderr ?? ''}`.replace(/\s+$/, ''));
+      // Stdout in full, then stderr in full. `spawnSync` hands back two
+      // finished buffers with no interleaving information, so a thrown stack
+      // trace appears BELOW the PASS/FAIL lines rather than at the point it
+      // interrupted them. Labelled, because an unlabelled trace at the bottom
+      // reads as if it came after the last check rather than during one.
+      console.log(`${r.stdout ?? ''}`.replace(/\s+$/, ''));
+      if (r.stderr?.trim()) {
+        console.log('--- stderr (captured separately; not interleaved with the above) ---');
+        console.log(r.stderr.replace(/\s+$/, ''));
+      }
     }
     console.log(`--- ${f} FAILED ---`);
   }

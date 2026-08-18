@@ -19,9 +19,17 @@
 // states in prose — "nothing in tools/ or tests/ claims above 5236, so 5240+ is
 // free by construction" — is now a check that can go red.
 //
-// This directory is deliberately outside probe-ports' scan (it reads only the
-// top level of `tools/`), so these numbers are not double-counted as claims by
-// a fourth script.
+// THIS DIRECTORY IS SCANNED. It was not when this file was written, and the
+// note that used to sit here said so — which stopped being true at `5eb0b17`,
+// when the scan became recursive. Anyone who trusted the old note and put a
+// port default under `tools/lib/` would now meet a red test and read it as
+// somebody else's bug.
+//
+// The table below still contributes no claims, but by naming rather than by
+// location: probe-ports counts a port only where the identifier or object key
+// says "port", and `LANE_BASES` is keyed by lane name. A real bind written in
+// this file — `const PORT = 5240`, or `{ port: 5240 }` — is caught here exactly
+// as it would be anywhere else, and probe-ports asserts both halves.
 
 /** How many ports one lane owns: base .. base + SIZE - 1. */
 export const LANE_BLOCK_SIZE = 10;
