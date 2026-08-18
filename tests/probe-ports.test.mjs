@@ -123,8 +123,34 @@ function portsIn(source) {
   return found;
 }
 
+/**
+ * Every `.mjs` under `tools/`, RECURSIVELY.
+ *
+ * It used to be the top level only, and that was a hole with the same shape as
+ * the netbaseline one above: `tools/lib/` was never read, so a port declared
+ * there was invisible and the collision arm reported green over it. A planted
+ * `const PORT = 5209;` in a new `tools/lib/` file — a genuine collision with
+ * sp-equivalence — passed 16/16. The directory stopped being incidental the
+ * moment the lane port table moved into it.
+ *
+ * `lanes.mjs` needs no exemption and deliberately gets none. It holds its
+ * numbers as an object literal (`LANE_BASES = { A: 5240, ... }`), which is not
+ * one of the four *binding* idioms the extractor recognises — declaring a block
+ * is not claiming a port, and the difference is already encoded in the shapes.
+ * A real bind written there in any of those idioms is caught like anywhere
+ * else, which a special case keyed on the filename could not promise.
+ */
+function mjsUnder(dir) {
+  const out = [];
+  for (const e of readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+    if (e.isDirectory()) out.push(...mjsUnder(join(dir, e.name)));
+    else if (e.name.endsWith('.mjs')) out.push(join(dir, e.name));
+  }
+  return out;
+}
+
 const files = [
-  ...readdirSync(toolsDir).filter((f) => f.endsWith('.mjs')).sort().map((f) => join(toolsDir, f)),
+  ...mjsUnder(toolsDir),
   join(here, 'sp-equivalence.mjs'),
 ];
 
@@ -155,6 +181,11 @@ console.log('the scan finds something to check');
   // green test sitting on top of a live collision.
   ok(claims.get(5216)?.includes('tools/netbaseline.mjs'),
     'the extractor still sees netbaseline on 5216, via the num(name, fallback) idiom');
+  // The scan is recursive, and this is the assertion that keeps it so: a
+  // top-level-only readdir passed 16/16 over a planted `const PORT = 5209;` in
+  // `tools/lib/`, because that directory was simply never opened.
+  ok(files.some((f) => /[\\/]tools[\\/]lib[\\/]/.test(f)),
+    'the scan descends into tools/lib/ rather than reading only the top level');
 }
 
 console.log('no two scripts claim the same default port');
