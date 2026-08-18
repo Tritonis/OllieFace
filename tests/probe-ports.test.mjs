@@ -112,17 +112,34 @@ const PORT_LOOKALIKE_WORDS = new Set([
  * so `port2`/`PORT2` reduce to `port`.
  *
  * KNOWN GAP, stated rather than left implicit (this file's third widening
- * after two that shipped a comment ahead of what the code did): the
- * prefix/suffix rule is guarded only by `PORT_LOOKALIKE_WORDS` above, a finite
- * denylist, not a lexical rule. A genuine English word ending or starting in
- * "port" that is NOT on that list (e.g. "seaport", "portfolio", "portable")
- * WILL be misread as a port claim if it is ever used as a bare identifier
- * name in scanned source — the loud, safe-to-notice direction, but still a
- * false positive the denylist does not cover. Conversely, a real port
- * identifier built from an English word not obviously about ports would slip
- * through only if it also happened to collide with an entry on the denylist,
- * which is not a realistic naming choice. Extend the denylist rather than
- * abandoning the prefix/suffix rule if a new lookalike surfaces.
+ * after two that shipped a comment ahead of what the code did):
+ *
+ * SILENT (dangerous) — there is no mid-word case. Only whole-word,
+ * prefix-of-word, and suffix-of-word are checked, so "port" occurring as a
+ * true substring in the MIDDLE of an otherwise-unsplit word is missed
+ * entirely: `myportnum`, `theportvalue`, `xportx`, `aportvalueb` are NOT
+ * recognised as port claims, and a real collision hiding behind such a name
+ * passes silently. This is a deliberate choice, not an oversight rediscovered
+ * later: a true substring rule would also flag `important`, `transportation`,
+ * `supporting`, `portfolio`, and every inflection of every denylisted word
+ * below, which makes the denylist unmaintainable and makes the loud direction
+ * far worse. Prefix/suffix already covers the compound shapes someone
+ * actually writes for a port (`gameport`, `portnum`, `httpport`); a
+ * mid-word-only name like `myportnum` is contrived by comparison. Accepted
+ * and left unfixed on that basis — revisit only with a substring rule that
+ * demonstrably keeps the denylist small and the false-positive rate bounded.
+ *
+ * LOUD (safe to notice, still worth knowing) — the prefix/suffix rule is
+ * guarded only by `PORT_LOOKALIKE_WORDS` above, a finite denylist, not a
+ * lexical rule. A genuine English word ending or starting in "port" that is
+ * NOT on that list (e.g. "seaport", "portfolio", "portable") WILL be misread
+ * as a port claim if used as a bare identifier name in scanned source. This
+ * widening introduced one such case directly: `sport` now trips the suffix
+ * rule (`"sport".endsWith("port")`, and `sport` is not denylisted), so a bare
+ * `const sport = 5209` or `sportEvent` registers as a claim. Left off the
+ * denylist deliberately — a literal identifier named "sport" in this repo is
+ * about as contrived as `myportnum` is on the silent side, and the loud
+ * direction merely blocks an innocent lane rather than hiding a real one.
  *
  * Asymmetry worth naming, since it looks like an inconsistency otherwise:
  * `viewport` (one unsplit word) is excluded via the denylist, but `view_port`,
