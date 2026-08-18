@@ -229,10 +229,12 @@ const PALETTE = {
  * That leaves `galvanic` and `warded`, the two rows nothing had constrained.
  * `galvanic` went from a washed 0x74a6ff to a vivid 0x1a2ef5 — the same
  * electric blue, saturated rather than pale, which is the direction the
- * blow-out ceiling points anyway. `warded` went *down* off 0xc9a8ff to a deep
- * violet 0x3f1c5e; its aura is neither a ring nor a bit cloud but the ward
- * crystal alone (`bands: 0, bits: 0`), and the table's highest `glow` (3.0) is
- * what keeps it a bright barrier at a darker base.
+ * blow-out ceiling points anyway. `warded` was taken *down* off 0xc9a8ff to a
+ * deep violet 0x3f1c5e. Its aura is neither a ring nor a bit cloud but the ward
+ * crystal alone (`bands: 0, bits: 0`), and the table's highest `glow` (3.0) was
+ * supposed to keep it a bright barrier at a darker base. Measured, it does not
+ * — see the correction below. The value is still 0x3f1c5e because #112 found no
+ * candidate that satisfies both gates at once; it is knowingly red on capture.
  *
  * Auras are graded against `AURA` rather than `PALETTE` — colour 10, mono
  * unchanged at 4 — and that lower colour arm is a measured ceiling, not a
@@ -244,26 +246,62 @@ const PALETTE = {
  * The worst pair is now 10.8 (tritan) and 4.0 desaturated, against 0.27
  * desaturated before.
  *
- * What the capture measured, and what it cost. `11-bestiary` spawns a `warded`
- * Warden on a body sized for the aura to read, so it is the one shot that can
- * see this change. Against `reviews/preserved-0816/verify-master-capture`
- * (master, 08-16) the Warden's footprint **halved**, 3329 px to 1647, which at
- * 50% is far outside this harness's sub-percent run noise — a darker aura is
- * genuinely a dimmer one. Two things make that acceptable rather than a
- * regression: 1647 px is still 7.5x the 220 px per-object floor, and the pale
- * aura had been lighting its own backdrop (bgLum 53.3), so separation actually
- * *improved*, 0.17 to 0.19. The shot fails on that object in both runs and
- * failed before this change; it is not this change's doing.
+ * What the capture measured — corrected (#112), because the paragraph that
+ * stood here read the wrong baseline and cleared a change that was in fact red.
+ * `11-bestiary` spawns a `warded` Warden on a body sized for the aura to read,
+ * so it is the one shot that can see this column. The Warden is object 13, and
+ * it is the only roster member standing against a bright backdrop (`bgLumP50`
+ * 94, next-worst 53) because row 2's warden sits directly in front of row 3's
+ * redoubt. It therefore has no separation headroom to spend.
+ *
+ * The two claims that justified 0x3f1c5e were both wrong:
+ *
+ * - "separation improved, 0.17 to 0.19" compared against
+ *   `reviews/preserved-0816/verify-master-capture`, a **pre-veil-fix** run whose
+ *   backdrop reads bg 51. Against the contemporaneous baseline
+ *   (`reviews/axis5-specular/after`, `f3edf7f`, same bg 94) separation went
+ *   0.45 to **0.19** — a ~30% shortfall under the 0.27 `marginSep`, far outside
+ *   the harness's sub-percent run noise, and the sole `subjectFailures` entry on
+ *   master. The change caused the failure; it did not inherit it.
+ * - "footprint halved, 3329 px to 1647" is misattributed. `f3edf7f` already
+ *   reads 1647 px **with the pale aura**, so the halving was the veil-mask
+ *   change, not this one. The Warden's px did not move at all; only its
+ *   luminance did, 124 to 81 against an unchanged bg 94.
+ *
+ * Note that an `--only 11-bestiary` run reports this shot GREEN (sepP50 0.43)
+ * even on the red commit — the partial regime cannot see this failure. Only a
+ * FULL run can accept or reject an aura value here.
+ *
+ * Two candidates were then measured under FULL capture, and the two gates
+ * disagree — which is why the literal above is unchanged rather than fixed:
+ *
+ * | aura      | capture, object 13 sepP50 (bar 0.27) | `readability-gate` AURA |
+ * |-----------|--------------------------------------|-------------------------|
+ * | 0x3f1c5e  | 0.19  RED                            | passes                  |
+ * | 0x542680  | 0.23  RED (first measurement)        | passes                  |
+ * | 0xc9a8ff  | 0.45  GREEN, `subjectFailures: []`   | **fails**, rimebound/warded deutan 2.4 vs the 10 ceiling |
+ *
+ * So the pre-regression colour is the only one that clears the capture gate and
+ * it is the one the colour-vision ceiling was raised to exclude; every colour
+ * dark enough to separate `warded` from `rimebound` for a deutan viewer is too
+ * dark to separate the Warden from the redoubt behind it. Picking a third
+ * colour is a search across two objectives, and the resolution more likely
+ * belongs to the `halfW` grid bug noted at the end of this comment than to the
+ * palette. Parked on #112.
  *
  * Do not reach for `eliteChroma` to check this. It averages `meanColour` over
  * the whole mesh, and `warded` tints only the ward crystal (`bands: 0,
  * bits: 0`), so the tint swamps it: it returns byte-identical numbers to four
  * decimals for the pale and the dark value alike. It cannot see this column.
  *
- * If the Warden ever needs its brightness back, 0x542680 clears the same bars
- * at margin 1.54 and is the ready-made lighter candidate — but it is unmeasured,
- * and swapping a captured value for an uncaptured one is how this comment got
- * its correction in the first place.
+ * 0x542680 clears the contrast bars at margin 1.54 and was the ready-made
+ * lighter candidate — but the FULL capture above put it at 0.23, under the
+ * gate. Nothing darker than 0xc9a8ff has yet measured green on this shot, and
+ * swapping a captured value for an uncaptured one is exactly how the paragraph
+ * above earned its correction.
+ * The underlying reason the Warden has no headroom is latent and separate: the
+ * roster grid in `src/core/Harness.js` shares `halfW` across ranks, which
+ * column-locks row 2's warden behind row 3's redoubt.
  *
  * `tests/readability-gate` grades the tints and, since #77, the auras.
  */
