@@ -117,6 +117,31 @@ console.log('nor can a throw mid-frame skip it');
   ok(input.pressed.size === 0 && input.mouse.dx === 0, 'and cleared the frame despite the throw');
 }
 
+console.log('nor can a genuine exception that escapes _runFrame entirely');
+{
+  // `_call` swallows an ordinary system throw, and a `FrameHalt` is already
+  // handled by `_frame`'s own catch — neither exercises what `finally` is for.
+  // The one place `_runFrame` touches something outside a `_call`-wrapped
+  // invocation is its own guard on input polling: `if (this.ctx.input?.pollPad)`
+  // reads `pollPad` directly. A throwing getter there escapes uncaught, is not
+  // a `FrameHalt`, and so is rethrown out of `_frame` after its `finally` runs —
+  // exactly the case a bare trailing statement (no `finally`) would skip.
+  const engine = fresh();
+  const input = fakeInput();
+  Object.defineProperty(input, 'pollPad', {
+    get() { throw new Error('pad enumeration blew up'); },
+  });
+  engine.ctx.input = input;
+  input.press();
+  let threw = null;
+  quietly(() => {
+    try { engine._frame(); } catch (e) { threw = e; }
+  });
+  ok(threw !== null && threw.message === 'pad enumeration blew up', 'the genuine exception escaped _frame uncaught');
+  ok(input.ends === 1, 'and the epilogue still ran on the way out');
+  ok(input.pressed.size === 0 && input.mouse.dx === 0, 'clearing input even though the frame never reached the update list');
+}
+
 console.log('nor can a critical halt, which abandons the rest of the frame');
 {
   class Authoritative {

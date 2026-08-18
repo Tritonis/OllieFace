@@ -238,8 +238,9 @@ export class Engine {
    * **Only a registered system can be disabled.** `Input.pollPad` runs through
    * `_call` without ever being `add`ed, and "dropped from the update list" says
    * nothing about something that was never in it; removing it would instead
-   * blank `ctx.input`, which the renderer's `endFrame()` calls unguarded. It
-   * keeps the log-once behaviour, which is all it ever had.
+   * blank `ctx.input`, which the frame epilogue's `_endFrame` calls through an
+   * `input?.endFrame` guard rather than assuming it is there. It keeps the
+   * log-once behaviour, which is all it ever had.
    */
   _noteFailure(system, phase, who, err) {
     if (!this.systems.includes(system)) return;
