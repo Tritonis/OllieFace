@@ -140,6 +140,15 @@ export class CameraRig {
     this.camPos = new THREE.Vector3();
     this.distance = DIST;
     this.targetDistance = DIST;
+    // The occlusion fan's verdict for the frame: the longest boom that stays
+    // clear of geometry. `distance` is derived from this and must never exceed
+    // it — a boom sitting longer than `allowedDistance` is a camera inside
+    // rock. It is published beside the two values it constrains rather than
+    // handed out through a debug hook, because it is the same kind of thing
+    // they are: a per-frame output of lateUpdate, meaningful to anything that
+    // reads `distance` at all. Nothing in the rig reads it back, so it cannot
+    // change behaviour.
+    this.allowedDistance = DIST;
 
     this.fov = FOV_BASE;
     this.fovPunch = 0;
@@ -277,6 +286,7 @@ export class CameraRig {
         allowed = Math.min(allowed, pull);
       }
     }
+    this.allowedDistance = allowed;
     // Snap in, ease out — clipping through geometry for even one frame is far
     // more offensive than a slightly slow recovery.
     this.targetDistance = allowed < this.distance
