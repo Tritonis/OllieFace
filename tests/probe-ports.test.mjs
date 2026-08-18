@@ -34,20 +34,36 @@ let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
 
 /**
- * The three shapes a dev-server port default is written in across this repo:
+ * The shapes a dev-server port default is written in across this repo:
  *
  *   const PORT = Number(args.port ?? 5205);        the idiom in `tools/`
+ *   const PORT = Number(process.env.X || 5209);    the same, with `||`
  *   const PORT = 5209;                             a bare constant
  *   server: { port: 5207, hmr: false, ... }        inlined into createServer
+ *   Object.freeze({ port: 5251 })                  any object-literal port key
  *
- * Anything in the 5000-5999 band reached through one of these is treated as a
- * claim on that port. A number that appears only inside a URL template or a
- * doc comment is not a claim — it is an echo of one of the above — so those are
- * not matched.
+ * THE UNIFYING RULE, and it is worth stating because the previous version of
+ * this comment enumerated shapes instead: a claim is a *port-named binding of a
+ * numeric literal*. Either a `const`/`let` whose name contains PORT, or an
+ * object key whose name ends in `port`, bound to a 4-digit literal — directly,
+ * or as the fallback arm of `??`/`||` inside a `Number(...)`.
+ *
+ * Naming is what makes this a rule rather than a shape list: a port only
+ * reaches a bind by travelling through an identifier or a key that says "port",
+ * because that is what `createServer`, `listen` and every flag parser here take.
+ * A number under any other name is not reaching a socket in this repo.
+ *
+ * Anything in the 5000-5999 band reached that way is treated as a claim. A
+ * number that appears only inside a URL template or a doc comment is not a
+ * claim — it is an echo of one of the above — so those are not matched.
  */
 const PATTERNS = [
-  /\b(?:const|let)\s+[A-Z_0-9]*PORT[A-Z_0-9]*\s*=\s*(\d{4})\s*;/g,
-  /\bserver\s*:\s*\{[^}]*?\bport\s*:\s*(\d{4})/g,
+  /\b(?:const|let)\s+[A-Z_0-9]*PORT[A-Z_0-9]*\s*=\s*(\d{4})\b/g,
+  // ANY object-literal `port:` / `signalPort:` / `SIGNAL_PORT:` key, not only
+  // one nested inside `server: { ... }`. The narrower form was a hole: a real
+  // bind written `createServer(Object.freeze({ port: 5251 }))` passed the whole
+  // suite while genuinely sitting inside lane B's block.
+  /\b[\w$]*port\s*:\s*(\d{4})/gi,
   // A helper call naming the flag: `num('port', 5216)` in `tools/netbaseline.mjs`,
   // and it would equally catch `flag('signal-port', 5215)`.
   //
@@ -85,7 +101,7 @@ const PATTERNS = [
  * cheaper than either.
  */
 const NUMBER_DECL = /\b(?:const|let)\s+[A-Z_0-9]*PORT[A-Z_0-9]*\s*=\s*Number\(/g;
-const DEFAULTED = /\?\?\s*(\d{4})\b/g;
+const DEFAULTED = /(?:\?\?|\|\|)\s*(\d{4})\b/g;
 
 /** The text between `Number(` at `open` and its matching close paren. */
 function balancedArgs(source, open) {
@@ -98,8 +114,28 @@ function balancedArgs(source, open) {
   return source.slice(open);
 }
 
+/**
+ * Comments removed, so that *describing* an idiom is not *using* it.
+ *
+ * This became load-bearing the moment the extractor learned to read a bare
+ * `{ port: N }`: `tools/lib/lanes.mjs` explains, in prose, that a bind written
+ * there would be caught — and naming the example made the file claim 5240
+ * inside lane A. The header above has always said a number in a doc comment is
+ * an echo of a claim rather than a claim; this is that sentence made true.
+ *
+ * `//` is only treated as a comment when it is not preceded by `:`, so the
+ * `http://localhost:5205` templates that appear all over `tools/` keep their
+ * line intact instead of being truncated at the scheme separator.
+ */
+function stripComments(source) {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/(^|[^:])\/\/.*$/gm, '$1');
+}
+
 /** Ports claimed by one file, deduplicated: a file may name its own port twice. */
-function portsIn(source) {
+function portsIn(raw) {
+  const source = stripComments(raw);
   const found = new Set();
   for (const re of PATTERNS) {
     re.lastIndex = 0;
@@ -133,12 +169,23 @@ function portsIn(source) {
  * sp-equivalence — passed 16/16. The directory stopped being incidental the
  * moment the lane port table moved into it.
  *
- * `lanes.mjs` needs no exemption and deliberately gets none. It holds its
- * numbers as an object literal (`LANE_BASES = { A: 5240, ... }`), which is not
- * one of the four *binding* idioms the extractor recognises — declaring a block
- * is not claiming a port, and the difference is already encoded in the shapes.
- * A real bind written there in any of those idioms is caught like anywhere
- * else, which a special case keyed on the filename could not promise.
+ * `lanes.mjs` needs no exemption and deliberately gets none — but the earlier
+ * justification for that was wrong and is worth correcting in place, because it
+ * described a hole as a safety property. It said the lane table is invisible
+ * "because it is an object literal, and object literals are not a binding
+ * idiom". Object literals ARE a binding idiom, and now the extractor reads them.
+ *
+ * The real reason is the naming rule stated above: the extractor claims a port
+ * only where the *identifier or key* says port. `LANE_BASES = { A: 5240, B:
+ * 5250, C: 5260 }` is keyed by lane name, and a lane name is not a port name —
+ * it maps a lane to the base of a block that nothing in this file binds. So the
+ * table contributes zero claims by what it is, not by which numbers happen to
+ * be in it. Rename a key to `port` and it would be a claim, correctly.
+ *
+ * And a genuine bind written in this same file is still caught: `const PORT =
+ * 5240` or `{ port: 5240 }` here reads exactly as it would anywhere else, which
+ * is what an exemption keyed on the filename could not promise. The assertion
+ * below pins both halves.
  */
 function mjsUnder(dir) {
   const out = [];
@@ -186,6 +233,26 @@ console.log('the scan finds something to check');
   // `tools/lib/`, because that directory was simply never opened.
   ok(files.some((f) => /[\\/]tools[\\/]lib[\\/]/.test(f)),
     'the scan descends into tools/lib/ rather than reading only the top level');
+
+  // Positive controls on the extractor itself, on synthetic source. Both of
+  // these shapes were planted in a real `tools/lib/` file and passed 17/17
+  // while genuinely colliding — the first with sp-equivalence on 5209, the
+  // second sitting inside lane B's block. A guard that cannot see the idiom
+  // reports green on the collision it exists to find.
+  ok(portsIn('const PORT = Number(process.env.PROBE_PORT || 5209);').has(5209),
+    'the extractor reads a `||` fallback, not only `??`');
+  ok(portsIn('const OPTS = Object.freeze({ port: 5251 });\ncreateServer({ server: OPTS });').has(5251),
+    'the extractor reads an object-literal `port:` key outside a `server: { ... }` block');
+  ok(portsIn('const SIGNAL_PORT = 5215;').has(5215),
+    'the extractor reads a bare constant with no trailing semicolon dependency');
+
+  // The lane table's own honesty, both directions (see the comment on mjsUnder).
+  const lanesSrc = readFileSync(join(toolsDir, 'lib', 'lanes.mjs'), 'utf8');
+  ok(portsIn(lanesSrc).size === 0,
+    'tools/lib/lanes.mjs contributes zero claims — its keys are lane names, not port names');
+  ok(portsIn(`${lanesSrc}\nconst PORT = 5240;`).has(5240)
+    && portsIn(`${lanesSrc}\ncreateServer({ port: 5240 });`).has(5240),
+    'a real bind added to lanes.mjs would still be caught, in either idiom');
 }
 
 console.log('no two scripts claim the same default port');
