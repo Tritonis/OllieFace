@@ -28,7 +28,7 @@
  * the ticket asks it to inform, and bundling a fix with its own measurement
  * would make neither independently checkable.
  *
- *   node tools/panel-ground.mjs [--port 5251] [--seed 1337] [--out reviews/...]
+ *   node tools/panel-ground.mjs [--port 5227] [--seed 1337] [--out reviews/...]
  */
 import { chromium } from 'playwright';
 import { createServer } from 'vite';
@@ -53,9 +53,14 @@ for (let i = 2; i < process.argv.length; i++) {
   args[tok.slice(2)] = next && !next.startsWith('--') ? (i++, next) : true;
 }
 
-// 5251 by default. Unique by test, not by convention — `tests/probe-ports.test.mjs`
+// 5227 by default. Unique by test, not by convention — `tests/probe-ports.test.mjs`
 // scans this file and fails if another tool claims the same number.
-const PORT = Number(args.port ?? 5251);
+//
+// Moved off 5251 when that test learned about the lane blocks (#108): 5251 sits
+// inside lane B's 5250-5259 range, so a lane B agent and this probe would have
+// fought for it — the collision CLAUDE.md's "nothing claims above 5236" was
+// asserting could not happen. It could; it was just nobody had asked.
+const PORT = Number(args.port ?? 5227);
 const SEED = Number(args.seed ?? 1337);
 const W = Number(args.width ?? 1600), H = Number(args.height ?? 900);
 const OUT = args.out ? String(args.out) : null;

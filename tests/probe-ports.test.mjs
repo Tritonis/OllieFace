@@ -24,6 +24,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { LANE_NAMES, laneBlock, laneOwning } from '../tools/lib/lanes.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
@@ -122,8 +123,34 @@ function portsIn(source) {
   return found;
 }
 
+/**
+ * Every `.mjs` under `tools/`, RECURSIVELY.
+ *
+ * It used to be the top level only, and that was a hole with the same shape as
+ * the netbaseline one above: `tools/lib/` was never read, so a port declared
+ * there was invisible and the collision arm reported green over it. A planted
+ * `const PORT = 5209;` in a new `tools/lib/` file — a genuine collision with
+ * sp-equivalence — passed 16/16. The directory stopped being incidental the
+ * moment the lane port table moved into it.
+ *
+ * `lanes.mjs` needs no exemption and deliberately gets none. It holds its
+ * numbers as an object literal (`LANE_BASES = { A: 5240, ... }`), which is not
+ * one of the four *binding* idioms the extractor recognises — declaring a block
+ * is not claiming a port, and the difference is already encoded in the shapes.
+ * A real bind written there in any of those idioms is caught like anywhere
+ * else, which a special case keyed on the filename could not promise.
+ */
+function mjsUnder(dir) {
+  const out = [];
+  for (const e of readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+    if (e.isDirectory()) out.push(...mjsUnder(join(dir, e.name)));
+    else if (e.name.endsWith('.mjs')) out.push(join(dir, e.name));
+  }
+  return out;
+}
+
 const files = [
-  ...readdirSync(toolsDir).filter((f) => f.endsWith('.mjs')).sort().map((f) => join(toolsDir, f)),
+  ...mjsUnder(toolsDir),
   join(here, 'sp-equivalence.mjs'),
 ];
 
@@ -154,6 +181,11 @@ console.log('the scan finds something to check');
   // green test sitting on top of a live collision.
   ok(claims.get(5216)?.includes('tools/netbaseline.mjs'),
     'the extractor still sees netbaseline on 5216, via the num(name, fallback) idiom');
+  // The scan is recursive, and this is the assertion that keeps it so: a
+  // top-level-only readdir passed 16/16 over a planted `const PORT = 5209;` in
+  // `tools/lib/`, because that directory was simply never opened.
+  ok(files.some((f) => /[\\/]tools[\\/]lib[\\/]/.test(f)),
+    'the scan descends into tools/lib/ rather than reading only the top level');
 }
 
 console.log('no two scripts claim the same default port');
@@ -168,6 +200,76 @@ console.log('no two scripts claim the same default port');
     collisions.length === 0
       ? 'every default port is claimed by exactly one script'
       : `${collisions.length} port(s) claimed by more than one script`);
+}
+
+// ---------------------------------------------------------------------------
+// The lane blocks
+//
+// `--lane A|B|C` derives a whole port block from one flag. That mapping is
+// runtime arithmetic, so the regex scan above cannot see the ports a lane
+// actually binds — and a collision detector that cannot see half the ports in
+// play is the "green on a question it can no longer ask" shape this repo keeps
+// paying for. So the lane table is imported as data and checked directly: the
+// scan owns the fixed defaults, this section owns the ranges, and together they
+// still cover every port anything here can bind.
+//
+// The invariant CLAUDE.md asserts in prose — "nothing in tools/ or tests/
+// claims above 5236, so the 5240+ lane range is free by construction" — becomes
+// a check that can go red the moment someone picks 5251 for a new probe.
+
+/** Claims that fall inside some lane's block: [port, lane, owners]. */
+function laneTrespasses(claimMap) {
+  const out = [];
+  for (const [port, owners] of claimMap) {
+    const lane = laneOwning(port);
+    if (lane) out.push([port, lane, owners]);
+  }
+  return out.sort((a, b) => a[0] - b[0]);
+}
+
+console.log('the lane port blocks are disjoint and unclaimed');
+{
+  const blocks = LANE_NAMES.map((n) => [n, laneBlock(n)]);
+  let overlap = null;
+  for (let a = 0; a < blocks.length; a++) {
+    for (let b = a + 1; b < blocks.length; b++) {
+      const [na, ba] = blocks[a], [nb, bb] = blocks[b];
+      if (ba.from < bb.to && bb.from < ba.to) overlap = `${na} and ${nb}`;
+    }
+  }
+  ok(overlap === null,
+    overlap === null
+      ? `lanes are disjoint: ${blocks.map(([n, b]) => `${n}=${b.from}-${b.to - 1}`).join(', ')}`
+      : `lane blocks overlap: ${overlap}`);
+
+  const trespass = laneTrespasses(claims);
+  for (const [port, lane, owners] of trespass) {
+    console.log(`    ${port} is inside lane ${lane}'s block but claimed by ${owners.join(', ')}`);
+  }
+  ok(trespass.length === 0,
+    trespass.length === 0
+      ? 'no script hardcodes a default inside a lane block'
+      : `${trespass.length} default port(s) sit inside a lane block`);
+
+  // Positive control: the same function, on a synthetic claim, must report the
+  // trespass. Without this the check above passes just as happily if
+  // `laneOwning` starts returning null for everything.
+  const synthetic = laneTrespasses(new Map([[5251, ['tools/imaginary.mjs']]]));
+  ok(synthetic.length === 1 && synthetic[0][1] === 'B',
+    'the lane check catches a synthetic probe planted on 5251 (lane B)');
+  ok(laneOwning(5209) === null && laneOwning(5234) === null,
+    'the shipped defaults 5209 and 5234 are outside every lane block');
+}
+
+console.log('both lane-aware entry points take --lane');
+{
+  const gates = readFileSync(join(root, 'tools', 'gates.mjs'), 'utf8');
+  const sp = readFileSync(join(here, 'sp-equivalence.mjs'), 'utf8');
+  ok(/--lane/.test(gates), 'tools/gates.mjs parses --lane');
+  ok(/--lane/.test(sp), 'tests/sp-equivalence.mjs parses --lane');
+  // Both must read the SAME table, or "lane B" means two things.
+  ok(/lib\/lanes\.mjs/.test(gates) && /lib\/lanes\.mjs/.test(sp),
+    'both import the lane block table rather than restating the numbers');
 }
 
 console.log('sp-equivalence takes a port override');
