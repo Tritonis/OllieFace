@@ -43,12 +43,35 @@ Stage name read from the running build: **Cindergrass Flats**. `baseline-start` 
 | `rock` `#b58248` r0.70 m0.04 env1.35 | 1.538% | -0.063pp |
 | `#d9dfe8` r0.42 m0.28 (interactables) | 1.569% | -0.031pp |
 | `BRASS` `#a8794a` r0.22 m0.72 env2.8 | 1.573% | -0.028pp |
-| `terrain` `#ffffff` r0.90 m0.01 env0.85 | 1.576% | -0.024pp (mean luma 82.3 -> 70.0) |
+| `terrain` `#ffffff` r0.90 m0.01 env0.85 | 1.576% | -0.024pp (mean luma 82.3 -> 70.0) [1] |
 | `IRON` `#4c545f` r0.24 m0.62 env2.6 | 1.580% | -0.021pp |
 | `cliff` `#6c5a4c` r0.66 m0.03 env1.22 | 1.594% | -0.007pp |
 | ...41 further rungs | 1.538%-1.608% | within +-0.07pp |
 
 Within-boot noise floor: baseline start 1.601% -> end 1.594%, |d| **0.007pp**.
+
+[1] This row is a **full material blackout** of the terrain rung, not #102's `rMin` = 0.90
+roughness-floor probe. They are different interventions and must not be read as one number
+measured twice: the blackout moves ROI mean luma 82.3 -> 70.0, where the roughness probe moved it
+82.2 -> 80.2, roughly 6x less aggressive. Both agree terrain does not own the pixels, which is the
+only claim either supports.
+
+## Reproduced in a separate boot
+
+The single-boot construction is what makes the sweep internally comparable, so the decisive
+comparison was re-run independently — a different script, a fresh boot, port 5241:
+
+| | ROI clip255 |
+|---|---|
+| baseline start | 1.622% |
+| `sand` blacked | 0.042% |
+| `sand` restored | 1.625% |
+| baseline end | 1.635% |
+
+Delta **-1.580pp** against a within-boot floor of 0.014pp, versus **-1.563pp** in the original run.
+The attribution does not rest on the single-boot construction. A counter-check blacking the far
+shinier `wetStone` rung (r0.12 / env2.4, in frame) moved the ROI by **0.000pp** — ruled out by
+measurement rather than by argument.
 
 The winning delta is **22x** the next largest and **223x** the measured noise floor. It is
 also larger than the ~0.68% cross-boot drift by a factor of 2.3, so the attribution does
@@ -68,6 +91,17 @@ There is no off-by-one to fix. `13-biomes-N` photographs `BIOMES[N-1]`, which is
 the scenario's own doc string says ("biome N of 4"), and the running build confirms it.
 #102's error was assuming the opposite. Documented at `tools/capture.mjs` beside the
 mapping rather than renamed, since the names are correct.
+
+Confirmed independently, two ways: traced `capture.mjs:136-140` -> `biomeVista` ->
+`goTo(index)` -> `Stage.build(stageIndex)` -> `biomeFor` (`Materials.js:1533`,
+`BIOMES[stageIndex]`) with no offset anywhere on the path, then booted the build and read
+`ctx.stage.stageName` live: `13-biomes-1` -> "Cindergrass Flats" (`ochre`), `13-biomes-2` ->
+"Drowned Aqueduct" (`verdant`).
+
+**Do not "fix" this by renaming the shots.** The names are already right, and #107's own
+framing that a mismatch exists is wrong. The `src/core/Harness.js:4971` citation in that
+issue is also stale — at HEAD that line is inside an unrelated `survivors()` scenario, not
+biome logic.
 
 ## Not done here
 
