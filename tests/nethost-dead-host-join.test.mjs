@@ -40,7 +40,7 @@ function makePawn() {
 function makeCtx({ pawns = true } = {}) {
   const ctx = {
     authority: true, netRole: 'host', time: 0, seed: 1, paused: false,
-    hud: { menus: { screen: null } },
+    hud: {}, menus: { screen: null },
     input: { enabled: true },
     events: { on() {}, emit() {} },
     combat: { entities: [] },
@@ -101,7 +101,7 @@ function frame(host, ctx, dt = 1 / 60) {
 
 /** The host died. `Menus.open` (Menus.js:993) is the only writer of this pair. */
 function hostDies(ctx) {
-  ctx.hud.menus.screen = 'death';
+  ctx.menus.screen = 'death';
   ctx.paused = true;
 }
 

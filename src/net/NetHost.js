@@ -529,7 +529,7 @@ export class NetHost {
    * death screen pauses the world on the next frame, exactly as single-player.
    */
   _holdSession(ctx) {
-    const screen = ctx.hud?.menus?.screen ?? null;
+    const screen = ctx.menus?.screen ?? null;
     // Through the same seam as every other age gate in this file. It used to
     // read `performance.now()` directly — identical arithmetic, but it put the
     // one number this method turns on (HOLD_GRACE) out of reach of a unit test,

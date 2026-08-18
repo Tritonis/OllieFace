@@ -522,7 +522,7 @@ export class Progression {
     // guarded text writes rather than a new screen: everything else on that
     // panel — the run identity, the stat grid, the item haul, the unlock
     // ribbons — is already exactly what a finished run wants to show.
-    const root = this.ctx.hud?.menus?.root;
+    const root = this.ctx.menus?.root;
     const word = root?.querySelector('.screen--death .death-word');
     const sub = root?.querySelector('.screen--death [data-death-sub]');
     if (word && this.ending) word.textContent = this.ending.title;
