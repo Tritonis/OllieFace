@@ -70,6 +70,45 @@ const LEAD_STRAFE = 0.055;  // lateral look-ahead per m/s of strafe
 const LEAD_MAX = 0.5;
 const PIVOT_HEIGHT = 1.68;  // aims at the head, so the body hangs below centre
 const CAM_RADIUS = 0.34;    // approximated sphere-cast radius
+const MIN_DIST = 0.7;       // the boom never pulls in past this
+
+// Obstruction thickness, measured along the boom, at or under which the camera
+// may simply sit behind the thing rather than pull in. Chosen from the measured
+// distribution over 16 sprints across stage 2: every spire responsible for a
+// boom collapse came in between 0.01 and 0.22 m, and the next thing up in the
+// same sample was 0.83 m. See _sliver().
+//
+// The works biome was checked against this number too, because it is the one
+// place where a *whole* prop lands on the threshold rather than an edge of one:
+// `barrierGeo` is 0.44 m deep and instanced at 0.90-1.60, so a head-on crossing
+// measures 0.397-0.703 m and the lower half of that range reads as a sliver.
+// Three things make that the right answer rather than a hole:
+//  - Only the shallow half of the range is skipped, and the deep half is what
+//    the guard pins. Sprinting past barriers does not reach the rule at all —
+//    43,200 frames of it produce identical tracks with the rule on and off,
+//    but that is because the boom is grazing downslope terrain rather than
+//    meeting a barrier, so it is not evidence of anything. Standing a metre off
+//    one and facing it does reach the rule, which is how the arm below tests it.
+//  - A skip cannot put the camera inside anything. The reverse cast only
+//    reports a thickness when it found a *front* face from the boom end, which
+//    means the boom end is outside the solid.
+//  - A barrier tops out 1.07 m above its own ground against a 1.68 m pivot, so
+//    a skip leaves a knee-high slab in the lower frame. Be clear about the size
+//    of that: with two overlapping thin hits and no other ray constraining the
+//    boom, the skip is not a smaller pull-in but *no* pull-in — the boom holds
+//    its full 7.1 m. That is still the right trade against yanking it to 0.7 m,
+//    which would be the #110 pathology in a new biome, but it is the whole boom
+//    riding on this number.
+// Which is why the number is guarded rather than merely reasoned about: the
+// works arm of tests/camera-occlusion.test.mjs parks the survivor facing six
+// specific barrier instances 0.58-0.70 m deep, and every one of them goes from
+// a clamped boom to the full 7.1 m the moment this constant reaches 0.8.
+const SLIVER_MAX = 0.5;
+
+// How far the boom may be pulled in by one frame's cast before that cast is
+// asked to justify itself. Free flight moves the camera ~0.2 m per frame at
+// full speed, so anything past a metre already reads as a lurch.
+const SNAP_MAX = 1.0;
 
 const POS_TAU = 0.055;      // camera position follow — short, stays responsive
 const LOOK_TAU = 0.105;     // look-at target — longer, so framing lags the body
@@ -116,6 +155,8 @@ export class CameraRig {
     this._up = new THREE.Vector3(0, 1, 0);
     this._tmp = new THREE.Vector3();
     this._origin = new THREE.Vector3();
+    this._far = new THREE.Vector3();
+    this._fwd = new THREE.Vector3();
     this._q = new THREE.Quaternion();
     this._m = new THREE.Matrix4();
 
@@ -223,8 +264,17 @@ export class CameraRig {
           this._origin.addScaledVector(this._right, Math.cos(a) * CAM_RADIUS);
           this._origin.y += Math.sin(a) * CAM_RADIUS;
         }
-        const d = ctx.stage.raycastDistance(this._origin, back, boom + CAM_RADIUS);
-        if (d >= 0) allowed = Math.min(allowed, Math.max(0.7, d - CAM_RADIUS));
+        const reach = boom + CAM_RADIUS;
+        const d = ctx.stage.raycastDistance(this._origin, back, reach);
+        if (d < 0) continue;
+        const pull = Math.max(MIN_DIST, d - CAM_RADIUS);
+        // Only hits that would yank the boom in by more than SNAP_MAX in a
+        // single frame are worth a second question. Asking it of *every* hit
+        // was measured worse, not better: ignoring far slivers lets the boom
+        // stay long for a frame or two and then snap when the sliver widens,
+        // which trades one lurch for several.
+        if (pull < this.distance - SNAP_MAX && this._sliver(ctx, this._origin, back, reach, d)) continue;
+        allowed = Math.min(allowed, pull);
       }
     }
     // Snap in, ease out — clipping through geometry for even one frame is far
@@ -266,6 +316,39 @@ export class CameraRig {
     this._q.setFromRotationMatrix(this._m);
     ctx.camera.quaternion.copy(this._q);
     ctx.camera.rotateZ(this.roll);
+  }
+
+  /**
+   * Is the obstruction `d` metres back along this ray thin enough that the
+   * camera can just sit behind it?
+   *
+   * The near hit alone cannot tell a stalagmite the survivor is standing inside
+   * from a wall he is pressed against — both report a tiny `d`. What separates
+   * them is what lies *beyond*: a second cast, fired from the far end of the
+   * boom back toward the pivot, finds the obstruction's other face and so
+   * measures its thickness along the boom axis.
+   *
+   * That reverse cast is the load-bearing part, and it is safe precisely
+   * because the stage raycaster is front-face only:
+   *  - Thin spire: the boom end stands in open air behind it, the reverse cast
+   *    hits its far face, and the thickness comes back a handful of
+   *    centimetres. Ignoring the ray leaves a sliver of rock crossing the
+   *    frame for a few frames, which is nothing next to a 7 m lurch.
+   *  - Wall or cliff: the boom end is *inside* the rock, so the reverse cast
+   *    sees only back faces and reports nothing at all. Thickness is infinite,
+   *    the ray is honoured, and the boom clamps exactly as it always has. This
+   *    is the case a bare `d > CAM_RADIUS` guard throws away, and why that
+   *    guard clips through walls where this does not.
+   *  - Anything else in the way of the reverse cast only shortens it, which
+   *    reads as thicker, which keeps the clamp. The failure direction is the
+   *    conservative one.
+   */
+  _sliver(ctx, origin, back, reach, d) {
+    this._far.copy(origin).addScaledVector(back, reach);
+    this._fwd.copy(back).negate();
+    const e = ctx.stage.raycastDistance(this._far, this._fwd, reach - d);
+    if (e < 0) return false;
+    return reach - e - d <= SLIVER_MAX;
   }
 
   /** Aim basis for gameplay: camera forward through screen centre. */
