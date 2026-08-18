@@ -53,7 +53,11 @@ const WORKS = 3;   // Ferrous Muster, the only biome with precast barriers
 // covers the remaining way to see zero frames — a replay loop that never ran.
 const PEN_EPS = 1e-9;
 
-const probe = (label) => ({ label, worst: 0, at: null, frames: 0 });
+// A probe belongs to exactly one replay and counts as one. A tally is an
+// arm-level accumulator that replays are folded into and has none of its own,
+// so an arm that folds nothing still reads as zero replays rather than one.
+const probe = (label) => ({ label, worst: 0, at: null, frames: 0, replays: 1, blind: [] });
+const tally = (label) => ({ label, worst: 0, at: null, frames: 0, replays: 0, blind: [] });
 
 function watch(p, rig, where) {
   p.frames++;
@@ -61,15 +65,37 @@ function watch(p, rig, where) {
   if (pen > p.worst) { p.worst = pen; p.at = where; }
 }
 
-/** Fold one replay's probe into an arm-level total. */
+/**
+ * Fold one replay's probe into an arm-level total.
+ *
+ * The two fields fold differently on purpose, and the asymmetry is the whole
+ * point. `worst` is a max, and a max cannot be masked: fold a clean replay into
+ * a penetrating one and the penetration survives. `frames` is a sum, and a sum
+ * destroys exactly the evidence we care about — fifteen honest headings hide a
+ * sixteenth that watched nothing, and the arm reports a total that is merely
+ * *smaller* than it should be, which nothing was comparing against anything.
+ *
+ * So the emptiness is recorded here, at the fold, before the addition can bury
+ * it. An empty replay names itself in `blind` and no later arithmetic can
+ * un-name it.
+ */
 function absorb(p, q) {
+  if (q.frames === 0) p.blind.push(q.label);
+  p.blind.push(...q.blind);
   p.frames += q.frames;
+  p.replays += q.replays;
   if (q.worst > p.worst) { p.worst = q.worst; p.at = q.at; }
   return p;
 }
 
 function okClear(p) {
-  console.log(`    penetration: worst=${p.worst.toExponential(2)} m over ${p.frames} frames${p.at ? ` (${p.at})` : ''}`);
+  console.log(`    penetration: worst=${p.worst.toExponential(2)} m over ${p.frames} frames in ${p.replays} replay(s)${p.at ? ` (${p.at})` : ''}`);
+  // Two guards, because there are two ways to see nothing. `blind` catches a
+  // replay that watched no frames while its siblings did — the partial
+  // blinding the sum would otherwise absorb. `frames > 0` catches the arm that
+  // is empty all the way down, where there is no sibling to give it away.
+  ok(p.blind.length === 0,
+     `${p.label}: every replay watched frames (blind: ${p.blind.join('; ') || 'none'})`);
   ok(p.frames > 0, `${p.label}: the penetration probe actually observed frames (${p.frames})`);
   ok(p.worst <= PEN_EPS,
      `${p.label}: camera never sits closer than its allowed reach (worst ${p.worst.toExponential(2)} m)`);
@@ -148,7 +174,7 @@ console.log('#110 repro: straight-line sprint through uncollidered stalagmites')
 
 console.log('sixteen headings across the same stage');
 {
-  const pen = probe('sixteen headings');
+  const pen = tally('sixteen headings');
   let worst = 0, worstA = -1;
   for (let a = 0; a < 16; a++) {
     const run = sprint(ctx, stage, start(a));
@@ -258,7 +284,7 @@ const BARRIERS = [
 console.log('works biome: barriers thicker than SLIVER_MAX still clamp the boom');
 {
   const w = buildStage(WORKS);
-  const pen = probe('works biome barriers');
+  const pen = tally('works biome barriers');
   let clamped = 0;
   for (const b of BARRIERS) {
     const run = stand(w.ctx, w.stage, b);
