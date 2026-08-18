@@ -183,6 +183,9 @@ export class Items {
     this.equipmentId = null;
     this.equipCharges = 0;
     this.equipTimer = 0;
+    // Latched by the first `stageStart` (see `init`). The run's opening seed is
+    // a one-off; after it, only a barrel fills this slot.
+    this._equipmentSeeded = false;
 
     // Counters for `tally` (every-Nth-hit items) and the Hunter's Tag marks.
     this._tallies = new Map();
@@ -255,29 +258,37 @@ export class Items {
       this._marks.clear();
       this._clouds.length = 0;
       this._effects.length = 0;
-      // Interim source for the Q slot.
+      // The Q slot is seeded exactly ONCE per run, at its first stage — never
+      // again. The in-run source of equipment is the barrel
+      // (`EquipmentBarrel` in `world/Interactables.js`), which is a place you
+      // walk to and a commitment you make; a slot that quietly refilled itself
+      // at every stage transition made the whole tier automatic and turned a
+      // spent equipment into a two-minute wait rather than a decision.
       //
-      // Equipment is meant to come out of an equipment barrel, and the barrel
-      // lives in `world/Interactables.js` — a file another agent owns this
-      // round, so it cannot be added from here. Without *some* source the whole
-      // tier is unreachable in a real run and the twelve cards below are dead
-      // code, so a stage that starts with an empty slot seeds one. Delete this
-      // block the moment the barrel exists; `setEquipment` is the same call it
-      // will make.
-      // `startEquipmentId` is the pre-run pick from the equipment screen
-      // (Menus.launch); absent — the Random card, or a run started before the
-      // picker existed — the slot still seeds off the shared rng as before.
+      // What this seeding still owes is the *pre-run* pick: `startEquipmentId`
+      // is what `Menus.launch` writes from the equipment screen, and it has to
+      // apply before the player can reach any barrel, so it applies here and
+      // this is the only place that reads it. Absent — the Random card, or a
+      // run started before the picker existed — the slot rolls off the shared
+      // rng as before.
       //
-      // Every pawn seeds, satellites included: `equipmentChanged` now names
-      // its owner, so the jingle, the logbook and the HUD all pass it through
+      // Every pawn seeds, satellites included: `equipmentChanged` names its
+      // owner, so the jingle, the logbook and the HUD all pass it through
       // `isLocalOwner` and a satellite's roll is silent here and replicated to
       // exactly the peer holding that pawn. `startEquipmentId` is the *local*
-      // viewer's pre-run pick off the equipment screen and belongs to nobody
-      // else, so a satellite rolls instead — on its own derived stream (see
-      // `_rng`), which is why seeding a joiner cannot move the shared sequence.
-      if (!this.equipmentId) {
-        this.setEquipment(this.owner ? this.rollEquipment()
-          : (this.ctx.startEquipmentId || this.rollEquipment()));
+      // viewer's pre-run pick and belongs to nobody else, so a satellite rolls
+      // instead — on its own derived stream (see `_rng`), which is why seeding
+      // a joiner cannot move the shared sequence.
+      //
+      // The latch is per-`Items`, and an `Items` is per-run: every restart in
+      // this game is a `location.reload()` (see `Menus`), and a satellite is
+      // built with its pawn.
+      if (!this._equipmentSeeded) {
+        this._equipmentSeeded = true;
+        if (!this.equipmentId) {
+          this.setEquipment(this.owner ? this.rollEquipment()
+            : (this.ctx.startEquipmentId || this.rollEquipment()));
+        }
       }
     }));
 

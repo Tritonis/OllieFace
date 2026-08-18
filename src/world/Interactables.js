@@ -54,6 +54,8 @@ const TYPE_ID = {
   argentFont: 13, covenantStone: 14,
   // The band upsides' altar, round 8.
   voidBargain: 15,
+  // The equipment barrel — the only in-run source of the Q slot (issue #39).
+  equipmentBarrel: 16,
 };
 
 const CHEST_TYPE = { small: TYPE_ID.chest, large: TYPE_ID.chestLarge, legendary: TYPE_ID.chestLegendary };
@@ -421,6 +423,92 @@ export class Chest extends Interactable {
     const eased = 1 - Math.pow(1 - t, 3);
     this.lidPivot.rotation.x = -eased * 2.0 + Math.sin(t * Math.PI) * 0.35;
   }
+}
+
+// ------------------------------------------------------------ equipment barrel
+
+/**
+ * Staved drum, two hoops, a lid ring — one merged buffer, two draw groups
+ * (carcass under banding), exactly as the chest is built. It is deliberately
+ * the plainest silhouette on the stage: no plinth, no columns, no animated
+ * offering. A barrel is a thing found lying about, and the drama belongs to
+ * what comes out of it rather than to the object.
+ */
+function equipmentBarrelGeo() {
+  const carcass = [
+    new THREE.CylinderGeometry(0.50, 0.44, 1.06, 12, 1, false).translate(0, 0.58, 0),
+    box(1.02, 0.09, 1.02, 0, 0.045, 0),                                  // footing
+  ];
+  const band = [
+    new THREE.CylinderGeometry(0.53, 0.53, 0.10, 12).translate(0, 0.32, 0),  // lower hoop
+    new THREE.CylinderGeometry(0.53, 0.53, 0.10, 12).translate(0, 0.92, 0),  // upper hoop
+    new THREE.CylinderGeometry(0.49, 0.49, 0.07, 12).translate(0, 1.14, 0),  // lid ring
+  ];
+  return twoGroup(carcass, band);
+}
+
+/**
+ * The equipment barrel — the run's only in-run source of the Q slot.
+ *
+ * Free, single use, and it *replaces*: whatever is held is gone. That is the
+ * whole design of the thing (issue #39). Equipment used to refill itself at
+ * every stage start, which made the tier automatic and made a spent charge a
+ * wait rather than a cost; a barrel makes taking one a place you walked to and
+ * a commitment you made. The displaced equipment is discarded rather than
+ * dropped — orbs carry inventory ids through `Items.give` and cannot hold an
+ * equipment id, and a barrel that let you shuffle two equipments back and forth
+ * would be the swap station this is deliberately not.
+ *
+ * The roll is the taker's, off the taker's own stream, like every other payout
+ * here: `Items.of(ctx, pawn)`, never `ctx.player`.
+ */
+export class EquipmentBarrel extends Interactable {
+  constructor(ctx, position) {
+    super(ctx, position);
+    this.typeId = TYPE_ID.equipmentBarrel;
+    this.cost = 0;
+
+    const body = new THREE.Mesh(sharedGeo('equipBarrel', equipmentBarrelGeo), [IRON(), BRASS()]);
+    body.castShadow = true;
+    body.receiveShadow = true;
+
+    // The one lit part, and the only thing that says the barrel is still full:
+    // a disc seated in the lid ring, in the equipment tier's amber. Hidden on
+    // use rather than dimmed, because the material is shared across every
+    // barrel on the stage and mutating it would empty all of them.
+    this.glow = new THREE.Mesh(
+      sharedGeo('equipBarrelGlow', () => new THREE.CylinderGeometry(0.36, 0.36, 0.04, 12).translate(0, 1.18, 0)),
+      glowMat(0xff9a3c)
+    );
+
+    this.group.add(body, this.glow);
+    this.radius = 2.2;
+  }
+
+  prompt() { return this.available() ? 'Equipment Barrel' : 'Equipment Barrel (empty)'; }
+
+  interact(pawn = this.ctx.player) {
+    const items = Items.of(this.ctx, pawn);
+    if (!items) return false;
+    const id = items.rollEquipment();
+    // A client reaches this only through the host (`requestInteract` is gated
+    // on authority), and `rollEquipment` returns null off-authority.
+    if (!id) return false;
+    items.grant(id);
+    this.used = true;
+    // Every greed act plants a seed (spec §1). The barrel costs no gold, so it
+    // only seeds — it takes no corruption feed.
+    this.markGreed(1);
+    this.ctx.vfx?.burst?.(this.position, 0xff9a3c);
+    this.ctx.audio?.play?.('chest', this.position);
+    return true;
+  }
+
+  // Availability is the whole of the replicated state, and a client's copy
+  // arrives by having `used` written on it (`NetViews.applyNetState`) — so the
+  // lamp reads off `available()` here rather than being switched in `interact`,
+  // which never runs on a client.
+  update() { this.glow.visible = this.available(); }
 }
 
 // -------------------------------------------------------- multishop terminal
@@ -2306,6 +2394,26 @@ export class Interactables {
 
     this._populateShrines(stageIndex, scale, mark, spawn);
 
+    // Exactly one equipment barrel per stage. Against 14-plus chests it is the
+    // sparsest thing on the map, which is the point: equipment is a run-long
+    // commitment and finding the barrel should be an event, not a stop on a
+    // circuit. One is also the floor — the Q slot's only in-run source cannot
+    // be allowed to roll a zero, or a run that spends its starting equipment on
+    // stage one has lost the tier for good.
+    //
+    // Sited off a private, seed-and-stage-derived stream, never `ctx.rng`, for
+    // the reason `_populateShrines` documents at length: a single draw taken
+    // from the shared sequence displaces every director spawn after it and
+    // moves harness captures that have nothing to do with barrels.
+    {
+      const brng = new RNG(((ctx.seed >>> 0) ^ (0x2545f491 * (stageIndex + 1))) >>> 0 || 1);
+      // Landmark 2 upward: 0 is the teleporter's backdrop and 1 is where the
+      // first shrine goes, so the barrel is somewhere you have not already been
+      // sent.
+      const m = mark(2 + brng.int(0, 1));
+      this.add(new EquipmentBarrel(ctx, this._sited(m, (m?.r ?? 0) + 4, (m?.r ?? 0) + 16, spawn, brng)));
+    }
+
     this.teleporter = new Teleporter(ctx, this._teleporterSite(marks, spawn));
     this.add(this.teleporter);
     return this.teleporter;
@@ -2592,6 +2700,7 @@ const VIEW_BUILDERS = {
   // the one player guaranteed to be looking for it.
   [TYPE_ID.covenantStone]: (ctx, p) => new CovenantStone(ctx, p),
   [TYPE_ID.voidBargain]: (ctx, p) => new VoidBargain(ctx, p, 0),
+  [TYPE_ID.equipmentBarrel]: (ctx, p) => new EquipmentBarrel(ctx, p),
   [TYPE_ID.teleporter]: (ctx, p) => new Teleporter(ctx, p),
   [TYPE_ID.portal]: (ctx, p) => new Portal(ctx, p, null),
 };
