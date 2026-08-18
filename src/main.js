@@ -24,6 +24,7 @@ import { Coop } from './net/Coop.js';
 import { Lobby } from './net/Lobby.js';
 import { maybeShowGpuNotice } from './ui/GpuNotice.js';
 import { installFatalOverlay } from './ui/FatalOverlay.js';
+import { installSystemNotice } from './ui/SystemNotice.js';
 import { installTelemetry } from './systems/Telemetry.js';
 import { initDesktopStore } from './core/DesktopStore.js';
 import { showSaveFailure, clearSaveFailure } from './ui/SaveIndicator.js';
@@ -55,6 +56,11 @@ const ctx = engine.ctx;
 // the player got a blank page rather than an account of it. Everything below is
 // now inside the overlay's reach.
 installFatalOverlay(ctx);
+// Its noncritical counterpart, and subscribed in the same breath for the same
+// reason: a system whose `init` fails repeatedly, or which wedges on frame one,
+// must find a listener already there. A disabled system is survivable but never
+// invisible — the player is told which one went and that the run continues.
+installSystemNotice(ctx);
 
 ctx.input = new Input(canvas);
 ctx.pipeline = new RenderPipeline(canvas, quality);

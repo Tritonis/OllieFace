@@ -27,6 +27,17 @@ const HITSTOP_DUTY = 0.15;
 const HITSTOP_BUDGET_MAX = 0.12;
 
 /**
+ * How many *consecutive* failed calls disable a noncritical system.
+ *
+ * Six, and the number is derived rather than picked: one bad frame can call a
+ * `fixedUpdate` up to `MAX_SUBSTEPS` (5) times, so anything at or below five
+ * could disable a system over a single frame's worth of trouble. Six is the
+ * smallest count that a single frame cannot reach, and at 60Hz it is a tenth of
+ * a second — a system that is wedged, not one that stumbled.
+ */
+export const DISABLE_AFTER = 6;
+
+/**
  * Is this system one whose failure the run cannot be trusted to survive?
  *
  * A system declares it with `static critical = true` or `static critical =
@@ -152,6 +163,11 @@ export class Engine {
     };
     // Keyed by "System.phase" so a system that throws every frame logs once.
     this._reported = new Set();
+    /**
+     * Consecutive failed calls per system, `system -> count`. Cleared the
+     * moment any of that system's phases returns normally — see `_call`.
+     */
+    this._streak = new Map();
     // The failure that stopped this engine, or null. Mirrors ctx.fatalError.
     this.fatal = null;
     // Rolling credit for the hitstop duty-cycle ceiling.
@@ -171,7 +187,64 @@ export class Engine {
    */
   _onFrameError(err, system, phase) {
     const who = system ? `${system.constructor?.name || 'system'}.${phase}` : 'frame';
-    this.fail(who, err, isCriticalSystem(system));
+    const critical = isCriticalSystem(system);
+    this.fail(who, err, critical);
+    if (!critical && system) this._noteFailure(system, who, err);
+  }
+
+  /**
+   * Count a noncritical system's failure, and drop it if it has now failed
+   * `DISABLE_AFTER` calls in a row.
+   *
+   * The once-per-system console throttle was the whole of the old answer, and it
+   * only fixed the console: a system wedged in `update` went on being called
+   * sixty times a second for the rest of the run, throwing and unwinding every
+   * time, silently. Logging once and then doing nothing about it is a decision
+   * to keep paying for a system that has stopped working.
+   *
+   * **Consecutive, not "N in a window".** The target is a system that is stuck —
+   * a shader that will not compile, a null the frame will hand it again next
+   * frame. A system that throws once per stage transition is working; it is not
+   * what this is for, and `_call` clearing the streak on any successful phase is
+   * what keeps it out of reach. The counter is per *system* rather than per
+   * system+phase, so a system whose `fixedUpdate` and `update` are both wedged
+   * converges on the same answer either way.
+   *
+   * **Disabled means dropped from the update list, and nothing more.** It goes
+   * out through `remove()`, so the context stops naming it for the same reason a
+   * failed `init` does — a consumer guarding on "is it there" must not go on
+   * reaching a system the Engine has given up on. Whatever it left in the scene
+   * or audio graph stays: a generic teardown across systems this differently
+   * shaped is a larger question than this, and half of one is worse than none.
+   * There is no re-arm. A system that failed six frames running is not expected
+   * to be well on the seventh.
+   *
+   * **Only a registered system can be disabled.** `Input.pollPad` runs through
+   * `_call` without ever being `add`ed, and "dropped from the update list" says
+   * nothing about something that was never in it; removing it would instead
+   * blank `ctx.input`, which the renderer's `endFrame()` calls unguarded. It
+   * keeps the log-once behaviour, which is all it ever had.
+   */
+  _noteFailure(system, who, err) {
+    if (!this.systems.includes(system)) return;
+    const n = (this._streak.get(system) || 0) + 1;
+    this._streak.set(system, n);
+    if (n < DISABLE_AFTER) return;
+    this._streak.delete(system);
+    this.remove(system);
+    const entry = {
+      who,
+      name: system.constructor?.name || 'system',
+      message: String(err && err.message || err),
+      frame: this.frame,
+      failures: n,
+    };
+    console.error(`[engine] ${who} failed ${n} calls in a row (frame ${this.frame}) — disabling it for the rest of the run:`, err);
+    // The Engine owns no DOM. It says which system it gave up on and lets
+    // `ui/SystemNotice.js` decide what the player is shown — a game that has
+    // quietly gone mute because `Audio` was dropped is not an improvement on
+    // one that was throwing.
+    this.ctx.events.emit('systemDisabled', entry);
   }
 
   /**
@@ -236,7 +309,7 @@ export class Engine {
   _call(system, phase, ctx, dt) {
     if (this.profiling) {
       const t = performance.now();
-      try { system[phase](ctx, dt); } catch (e) { this._onFrameError(e, system, phase); }
+      try { system[phase](ctx, dt); this._streak.delete(system); } catch (e) { this._onFrameError(e, system, phase); }
       const key = `${system.constructor?.name || 'system'}.${phase}`;
       this.profile[key] = (this.profile[key] || 0) + (performance.now() - t);
       if (this.fatal) throw new FrameHalt(this.fatal.who);
@@ -244,6 +317,10 @@ export class Engine {
     }
     try {
       system[phase](ctx, dt);
+      // A call that returned is the end of any run of failures. This is what
+      // makes the disable rule "six in a row" rather than "six ever", and so
+      // what keeps a system that throws once per stage transition alive.
+      this._streak.delete(system);
     } catch (e) {
       this._onFrameError(e, system, phase);
     }

@@ -9,8 +9,10 @@
  * Engine stops for the second kind.
  *
  * Two halves are tested here, and the second is the one that will age. The
- * behaviour half proves a critical throw halts and a noncritical throw still
- * does exactly what it did before. The enumeration half walks every
+ * behaviour half proves a critical throw halts and a noncritical throw degrades
+ * only the system that threw. (What happens when a noncritical system throws on
+ * every frame for long enough to be given up on is issue #72's, and lives in
+ * `tests/engine-disable.test.mjs`.) The enumeration half walks every
  * `engine.add(` call site in `src/` and insists each one resolves to a class
  * that declares its criticality — failing, loudly and by name, on any call site
  * it cannot resolve. A classification that silently omits a system is the
@@ -114,7 +116,12 @@ console.log('a quiet frame is untouched');
   ok(engine.running === true, 'the loop is still running');
 }
 
-console.log('a noncritical throw logs and continues, exactly as before');
+// Behaviour change, issue #72: this block used to encode "a noncritical system
+// throws forever and is called forever". It now encodes the surviving half of
+// that — a noncritical throw degrades only the thrower, and the system keeps
+// being called for as long as its run of consecutive failures is short of
+// `DISABLE_AFTER`. What happens when it is not short is `tests/engine-disable.test.mjs`.
+console.log('a noncritical throw logs and continues, short of the disable threshold');
 {
   const engine = fresh();
   engine.add(new Cosmetic());
@@ -130,6 +137,7 @@ console.log('a noncritical throw logs and continues, exactly as before');
   engine._frame();
   ok(w.updates === 2, 'and it keeps running on later frames');
   ok(engine.ctx.frameErrors === 2, 'each throw counts');
+  ok(engine.systems.some((s) => s instanceof Cosmetic), 'two failures is not yet a wedge, so the thrower is still registered');
 }
 
 console.log('a critical throw stops the run');
