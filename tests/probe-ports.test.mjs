@@ -44,9 +44,23 @@ const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } e
  *
  * THE UNIFYING RULE, and it is worth stating because the previous version of
  * this comment enumerated shapes instead: a claim is a *port-named binding of a
- * numeric literal*. Either a `const`/`let` whose name contains PORT, or an
- * object key whose name ends in `port`, bound to a 4-digit literal — directly,
- * or as the fallback arm of `??`/`||` inside a `Number(...)`.
+ * numeric literal*. Either a `const`/`let`, or an object key, or a flag-string
+ * argument, whose name has "port" as one of its **words** — case-insensitively
+ * — bound to a 4-digit literal — directly, or as the fallback arm of `??`/`||`
+ * inside a `Number(...)`.
+ *
+ * "Has PORT as a word" is deliberately not "contains the substring port".
+ * `port`, `PORT`, `signalPort`, `SIGNAL_PORT` and `signal-port` all have it as
+ * a word — the identifier splits (on `_`, `-`, and lower-to-upper case
+ * transitions) into segments, and one segment is exactly "port". `support`,
+ * `report`, `transport`, `viewport`, `export`, `passport` do NOT: each is one
+ * unbroken lowercase run that happens to end in the letters p-o-r-t, not a
+ * "port" segment. `hasPortWord()` below implements the split-and-compare
+ * rather than a regex, on purpose: the substring shape (`/port/i`) is exactly
+ * what over-matched `passport`/`support` before, and a case-blind identifier
+ * regex (`PORT` with no `i`) is exactly what missed lowercase `const port`
+ * before. A word split sidesteps both failure modes at once instead of adding
+ * a flag to either.
  *
  * Naming is what makes this a rule rather than a shape list: a port only
  * reaches a bind by travelling through an identifier or a key that says "port",
@@ -57,13 +71,39 @@ const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } e
  * number that appears only inside a URL template or a doc comment is not a
  * claim — it is an echo of one of the above — so those are not matched.
  */
+
+/**
+ * Split an identifier or flag string into lowercase words, on `_`, `-`, and
+ * every lower-to-upper case transition (the camelCase boundary). `PORT` and
+ * `SIGNAL_PORT` have no such transition and split on `_` alone; `signalPort`
+ * has no `_` and splits on the transition alone; `signal-port` (a CLI flag
+ * string) splits on `-`. A plain lowercase run like `support` has none of
+ * these and stays one word, which is exactly why it never contains a "port"
+ * word even though it contains the substring.
+ */
+function wordsOf(name) {
+  return name
+    .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+    .split(/[_-]/)
+    .filter(Boolean)
+    .map((w) => w.toLowerCase());
+}
+
+/** True if `name` has "port" as one of its words — see `wordsOf` above. */
+function hasPortWord(name) {
+  return wordsOf(name).includes('port');
+}
+
+// Captures the *name* (identifier, object key, or flag string) alongside the
+// literal, so `portsIn` can filter with `hasPortWord` instead of baking the
+// word-boundary logic into the regex itself.
 const PATTERNS = [
-  /\b(?:const|let)\s+[A-Z_0-9]*PORT[A-Z_0-9]*\s*=\s*(\d{4})\b/g,
+  /\b(?:const|let)\s+([A-Za-z_$][\w$]*)\s*=\s*(\d{4})\b/g,
   // ANY object-literal `port:` / `signalPort:` / `SIGNAL_PORT:` key, not only
   // one nested inside `server: { ... }`. The narrower form was a hole: a real
   // bind written `createServer(Object.freeze({ port: 5251 }))` passed the whole
   // suite while genuinely sitting inside lane B's block.
-  /\b[\w$]*port\s*:\s*(\d{4})/gi,
+  /\b([A-Za-z_$][\w$]*)\s*:\s*(\d{4})/g,
   // A helper call naming the flag: `num('port', 5216)` in `tools/netbaseline.mjs`,
   // and it would equally catch `flag('signal-port', 5215)`.
   //
@@ -80,7 +120,7 @@ const PATTERNS = [
   // like success. The two guard assertions below pin the idioms we know about
   // and structurally cannot cover the one we do not, so a new probe using a
   // fifth shape is still a gap. Prefer an existing idiom when adding a probe.
-  /\b[A-Za-z_$][\w$]*\(\s*['"][a-z-]*port['"]\s*,\s*(\d{4})\s*\)/gi,
+  /\b[A-Za-z_$][\w$]*\(\s*['"]([a-z][a-z-]*)['"]\s*,\s*(\d{4})\s*\)/g,
 ];
 
 /**
@@ -100,7 +140,7 @@ const PATTERNS = [
  * claim on a port the file never uses. Balancing the parens is exact, and
  * cheaper than either.
  */
-const NUMBER_DECL = /\b(?:const|let)\s+[A-Z_0-9]*PORT[A-Z_0-9]*\s*=\s*Number\(/g;
+const NUMBER_DECL = /\b(?:const|let)\s+([A-Za-z_$][\w$]*)\s*=\s*Number\(/g;
 const DEFAULTED = /(?:\?\?|\|\|)\s*(\d{4})\b/g;
 
 /** The text between `Number(` at `open` and its matching close paren. */
@@ -123,14 +163,19 @@ function balancedArgs(source, open) {
  * inside lane A. The header above has always said a number in a doc comment is
  * an echo of a claim rather than a claim; this is that sentence made true.
  *
- * `//` is only treated as a comment when it is not preceded by `:`, so the
- * `http://localhost:5205` templates that appear all over `tools/` keep their
- * line intact instead of being truncated at the scheme separator.
+ * `//` is only treated as a comment when it is not preceded by `:` or `\`, so
+ * the `http://localhost:5205` templates that appear all over `tools/` keep
+ * their line intact instead of being truncated at the scheme separator — and
+ * so does an escaped-slash regex literal like `/https?:\/\//`. Without the
+ * `\` guard, that literal's *closing* `\/` followed by the final `/` reads as
+ * a bare `//` preceded by `\` (not `:`), and everything after it on the line
+ * — a `const PORT = ...` sharing the line — was stripped as a comment along
+ * with it.
  */
 function stripComments(source) {
   return source
     .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .replace(/(^|[^:])\/\/.*$/gm, '$1');
+    .replace(/(^|[^:\\])\/\/.*$/gm, '$1');
 }
 
 /** Ports claimed by one file, deduplicated: a file may name its own port twice. */
@@ -141,13 +186,15 @@ function portsIn(raw) {
     re.lastIndex = 0;
     let m;
     while ((m = re.exec(source)) !== null) {
-      const p = Number(m[1]);
+      if (!hasPortWord(m[1])) continue;
+      const p = Number(m[2]);
       if (p >= 5000 && p <= 5999) found.add(p);
     }
   }
   NUMBER_DECL.lastIndex = 0;
   let decl;
   while ((decl = NUMBER_DECL.exec(source)) !== null) {
+    if (!hasPortWord(decl[1])) continue;
     const argText = balancedArgs(source, NUMBER_DECL.lastIndex);
     DEFAULTED.lastIndex = 0;
     let d;
@@ -245,6 +292,41 @@ console.log('the scan finds something to check');
     'the extractor reads an object-literal `port:` key outside a `server: { ... }` block');
   ok(portsIn('const SIGNAL_PORT = 5215;').has(5215),
     'the extractor reads a bare constant with no trailing semicolon dependency');
+
+  // Item 1 (the Major): lowercase `const port` was silently invisible, because
+  // PATTERNS[0]/NUMBER_DECL required an uppercase PORT in the name while the
+  // comment claimed no such qualifier. A real collision passing unseen is the
+  // dangerous direction, so this must be caught.
+  ok(portsIn('const port = 5209;').has(5209),
+    'a lowercase `const port` is caught, matching the documented case-insensitive rule');
+  ok(portsIn('const port = Number(args.port ?? 5209);').has(5209),
+    'a lowercase `const port = Number(...)` is caught too');
+
+  // Item 2: the object-key pattern matched any key merely ENDING in "port",
+  // not a key whose name has "port" as its own word. False claims block an
+  // innocent lane, which is the loud-failure direction — still wrong, but
+  // less dangerous than item 1's silence.
+  ok(!portsIn('const x = { export: 5209 };').has(5209),
+    '`export:` is not a port claim');
+  ok(!portsIn('const x = { support: 5209 };').has(5209),
+    '`support:` is not a port claim');
+  ok(!portsIn('const x = { report: 5209 };').has(5209),
+    '`report:` is not a port claim');
+  ok(!portsIn('const x = { transport: 5209 };').has(5209),
+    '`transport:` is not a port claim');
+  ok(!portsIn('const x = { viewport: 5209 };').has(5209),
+    '`viewport:` is not a port claim');
+  ok(!portsIn('const passport = 5209;').has(5209),
+    '`const passport` is not a port claim');
+  ok(portsIn('const x = { signalPort: 5209 };').has(5209),
+    '`signalPort:` is still a port claim');
+  ok(portsIn('const x = { port: 5209 };').has(5209),
+    '`port:` is still a port claim');
+
+  // Item 3: an escaped-slash regex literal earlier on the same line as a real
+  // PORT declaration used to eat the rest of the line as a false comment.
+  ok(portsIn('const RE = /https?:\\/\\//; const PORT = 5209;').has(5209),
+    'a same-line escaped-slash regex literal does not swallow a trailing PORT declaration');
 
   // The lane table's own honesty, both directions (see the comment on mjsUnder).
   const lanesSrc = readFileSync(join(toolsDir, 'lib', 'lanes.mjs'), 'utf8');
