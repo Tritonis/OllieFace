@@ -220,9 +220,11 @@ export class Menus {
    *
    * `ctx.settings` is deliberately *not* published here: the constructor writes
    * it, so the Engine's `init` diff never claims it and a disabled Menus leaves
-   * the settings object behind. The Announcer and the Tutorial hold live
-   * references to it and read `captions` and the glyph set off it every frame;
-   * blanking it would break two working things to tidy up after a dead one.
+   * the settings object behind. The Announcer and the Tutorial read `captions`
+   * and the glyph set back off `ctx.settings` every frame — freshly and
+   * optionally, so they would degrade to their defaults rather than throw — and
+   * blanking it would quietly change two working things to tidy up after a dead
+   * one.
    */
   init(ctx) {
     ctx.menus = this;
