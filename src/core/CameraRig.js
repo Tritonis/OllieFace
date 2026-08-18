@@ -83,19 +83,26 @@ const MIN_DIST = 0.7;       // the boom never pulls in past this
 // `barrierGeo` is 0.44 m deep and instanced at 0.90-1.60, so a head-on crossing
 // measures 0.397-0.703 m and the lower half of that range reads as a sliver.
 // Three things make that the right answer rather than a hole:
-//  - It never comes up in play. 16 headings x 900 frames x three pitches of
-//    sprinting through Ferrous Muster produce byte-identical camera tracks with
-//    the rule on and off; the works biome's own boom collapses are 0.88 m thick
-//    or solid past the boom end, and are honoured. The barrier case only
-//    appears when the survivor is parked a metre from one at a forced pitch.
+//  - Only the shallow half of the range is skipped, and the deep half is what
+//    the guard pins. Sprinting past barriers does not reach the rule at all —
+//    43,200 frames of it produce identical tracks with the rule on and off,
+//    but that is because the boom is grazing downslope terrain rather than
+//    meeting a barrier, so it is not evidence of anything. Standing a metre off
+//    one and facing it does reach the rule, which is how the arm below tests it.
 //  - A skip cannot put the camera inside anything. The reverse cast only
 //    reports a thickness when it found a *front* face from the boom end, which
 //    means the boom end is outside the solid.
 //  - A barrier tops out 1.07 m above its own ground against a 1.68 m pivot, so
-//    what a skip costs is a knee-high slab crossing the bottom of frame. Yanking
-//    the boom to 0.7 m for that would be the #110 pathology in a new biome.
-// Raising this past ~0.7 would swallow barriers whole, and the works arm of
-// tests/camera-occlusion.test.mjs is there to say so.
+//    a skip leaves a knee-high slab in the lower frame. Be clear about the size
+//    of that: with two overlapping thin hits and no other ray constraining the
+//    boom, the skip is not a smaller pull-in but *no* pull-in — the boom holds
+//    its full 7.1 m. That is still the right trade against yanking it to 0.7 m,
+//    which would be the #110 pathology in a new biome, but it is the whole boom
+//    riding on this number.
+// Which is why the number is guarded rather than merely reasoned about: the
+// works arm of tests/camera-occlusion.test.mjs parks the survivor facing six
+// specific barrier instances 0.58-0.70 m deep, and every one of them goes from
+// a clamped boom to the full 7.1 m the moment this constant reaches 0.8.
 const SLIVER_MAX = 0.5;
 
 // How far the boom may be pulled in by one frame's cast before that cast is
