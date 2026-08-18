@@ -133,6 +133,15 @@ const SCENARIOS = [
   // behind an item grid grades nothing. Each of these rebuilds the stage, and
   // the last one puts it back on stage 1 *after* its own shutter, so nothing
   // downstream is shot against the wrong world.
+  //
+  // The name is 1-based and the index is 0-based, and that pairing is exact:
+  // `13-biomes-N` photographs `BIOMES[N-1]` (`biomeFor` at Materials.js:1533 is
+  // a pure 0-indexed lookup). So `13-biomes-1` is Cindergrass Flats and
+  // `13-biomes-2` is the Drowned Aqueduct — verified from a running build in
+  // reviews/axis5-attribution (`ctx.stage.stageName` reads "Cindergrass Flats"
+  // for `index: 0`). Written down because issue #102 assumed the opposite,
+  // attributed the Aqueduct's `wetStone` rung to shot 1, and spent three
+  // measured interventions on a biome that was never in the frame.
   ...[0, 1, 2, 3].map((i) => ({
     name: `13-biomes-${i + 1}`,
     doc: `Establishing shot of biome ${i + 1} of 4, framed on its primary landmark. Judges whether the four stages read as genuinely different places rather than as one generator recoloured.`,
