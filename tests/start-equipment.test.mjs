@@ -55,5 +55,37 @@ console.log('the pick only fills an empty slot — a held equipment survives sta
   ok(items.equipmentId === other, `the held equipment stays (got ${items.equipmentId})`);
 }
 
+// The interim stage-start source is gone (issue #39): the run seeds the slot
+// once, at its first stage, and after that the only source is a barrel. An
+// emptied slot must therefore stay empty across a stage transition — if it
+// silently refilled, spending an equipment would cost nothing but a wait.
+console.log('the slot is seeded once per run — stage 2 does not refill an emptied one');
+{
+  const { ctx, items } = makeCtx({ startEquipmentId: chosen });
+  ctx.events.emit('stageStart', {});
+  ok(items.equipmentId === chosen, 'stage 1 seeded the pick');
+  items.setEquipment(null);
+  ok(items.equipmentId === null, 'the slot was emptied');
+  ctx.events.emit('stageStart', {});
+  ok(items.equipmentId === null, `stage 2 left it empty (got ${items.equipmentId})`);
+  ctx.events.emit('stageStart', {});
+  ok(items.equipmentId === null, `stage 3 left it empty too (got ${items.equipmentId})`);
+}
+
+// The pre-run pick is the load-bearing half of that one seeding, and it is the
+// ONLY read of `ctx.startEquipmentId` in the codebase. This arm exists so that
+// deleting or bypassing that read fails loudly: it pins the exact id, on a
+// context whose rng would pick something else.
+console.log('the pre-run pick is honoured specifically, not merely "something was seeded"');
+{
+  const { ctx, items } = makeCtx({ startEquipmentId: chosen });
+  const { ctx: cctx, items: control } = makeCtx();
+  ctx.events.emit('stageStart', {});
+  cctx.events.emit('stageStart', {});
+  ok(items.equipmentId === chosen, `the picked id and no other (got ${items.equipmentId})`);
+  ok(control.equipmentId !== chosen || EQUIPMENT.length === 1,
+    'and the unpicked control does not happen to roll the same id, so the arm can fail');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -308,8 +308,16 @@ console.log('— the clean path is stocked, and stocking it costs a pristine run
     return { inter, draws: () => draws };
   }
   // Positions to 6dp plus type, in placement order: the whole draw sequence.
-  const layout = (p) => p.inter.list.map((i) =>
-    `${i.constructor.name}@${i.position.x.toFixed(6)},${i.position.z.toFixed(6)}`).join('|');
+  // The equipment barrel (issue #39) is a later, deliberate addition to every
+  // stage and is excluded from the hash rather than being allowed to invalidate
+  // the b1979c3 golden below — the subject of that golden is the ArgentFont
+  // guarantee, not the census of props. What still pins the barrel is the *draw
+  // count* arm: it is sited off a private seed-derived stream, so if it ever
+  // took a single draw from `ctx.rng` the counts below move and this block goes
+  // red. Excluding it from the hash does not soften that.
+  const layout = (p) => p.inter.list
+    .filter((i) => i.constructor.name !== 'EquipmentBarrel')
+    .map((i) => `${i.constructor.name}@${i.position.x.toFixed(6)},${i.position.z.toFixed(6)}`).join('|');
   const fnv = (s) => {
     let h = 0x811c9dc5;
     for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
