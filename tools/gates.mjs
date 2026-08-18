@@ -22,9 +22,27 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from '
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { tmpdir } from 'node:os';
+import { LANE_BASES, LANE_BLOCK_SIZE, LANE_NAMES, laneBase } from './lib/lanes.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
+
+// ---------------------------------------------------------------------------
+// Quiet mode
+//
+// A passing run has nothing to say. The vite build prints a manifest line per
+// chunk with gzip and map sizes plus a >500 kB advisory, and `npm test` prints
+// a line per test file — hundreds of lines that are read by nobody when the
+// verdict is PASS, and that cost real context when an agent runs the tier.
+//
+// The rule quiet mode must not break is the one this runner was written for:
+// **a failure is never quieter than it is today**. So `quiet` only suppresses
+// output it has already captured — on any failure the arm's own stdout and
+// stderr are replayed in full, under the same header, alongside the FAILING
+// ARM block. `say()` is for the narration; `console.error` and the summary
+// block are never routed through it.
+let quiet = false;
+const say = (...a) => { if (!quiet) console.log(...a); };
 
 // ---------------------------------------------------------------------------
 // Ports
@@ -148,7 +166,7 @@ export function assertManual(arm) {
  * (package.json) and cannot drift out of sync with what a human runs by hand.
  * `--` forwards the port through npm to sp-equivalence's own `--port` flag.
  */
-function armsFor(portBase) {
+export function armsFor(portBase) {
   const sp = portBase;
   const mp1 = portBase + (GATE_MP1_PORT - GATE_SP_PORT);
   const elite = portBase + (GATE_ELITE_PORT - GATE_SP_PORT);
@@ -299,14 +317,14 @@ export function stalenessReport(arms, state = readState()) {
 
 function printStaleness(arms) {
   const manualIds = new Set(arms.filter((a) => a.manual).map((a) => a.id));
-  console.log('\n--- gate staleness -------------------------------------------------');
+  say('\n--- gate staleness -------------------------------------------------');
   for (const r of stalenessReport(arms)) {
     const mark = r.stale ? 'OVERDUE' : r.verdict === 'pass' ? 'ok     ' : r.verdict === 'fail' ? 'RED    ' : '?      ';
     const tag = manualIds.has(r.id) ? ' (manual — run by hand, then: gates.mjs status --record ' + r.id + ')' : '';
-    console.log(`  ${mark} ${r.id.padEnd(10)} ${r.reason}${tag}`);
+    say(`  ${mark} ${r.id.padEnd(10)} ${r.reason}${tag}`);
   }
-  console.log('  (not run by any tier: smoke:steam — needs a live Steam client, run it by hand)');
-  console.log('--------------------------------------------------------------------\n');
+  say('  (not run by any tier: smoke:steam — needs a live Steam client, run it by hand)');
+  say('--------------------------------------------------------------------\n');
 }
 
 /** Records a hand-run of a manual arm. Refuses anything not marked `manual`. */
@@ -358,20 +376,25 @@ function auditArm() {
   }
 
   const m = report.metadata?.vulnerabilities ?? {};
-  console.log(`  npm audit: ${m.critical ?? 0} critical, ${m.high ?? 0} high, ${m.moderate ?? 0} moderate, ${m.low ?? 0} low`);
-  for (const s of suppressed) console.log(`  allowlisted: ${s}`);
-  for (const b of blocking) console.log(`  BLOCKING:    ${b}`);
-  for (const e of expired) console.log(`  EXPIRED:     ${e}`);
+  // Captured as well as printed: in quiet mode nothing above is shown on a
+  // pass, and every line of it is replayed on a fail.
+  const out = [];
+  const log = (s) => { out.push(s); say(s); };
+  log(`  npm audit: ${m.critical ?? 0} critical, ${m.high ?? 0} high, ${m.moderate ?? 0} moderate, ${m.low ?? 0} low`);
+  for (const s of suppressed) log(`  allowlisted: ${s}`);
+  for (const b of blocking) log(`  BLOCKING:    ${b}`);
+  for (const e of expired) log(`  EXPIRED:     ${e}`);
 
   if (blocking.length || expired.length) {
     return {
       ok: false,
+      output: out.join('\n'),
       detail: expired.length
         ? `${expired.length} allowlist entr${expired.length === 1 ? 'y has' : 'ies have'} expired and must be re-reviewed`
         : `${blocking.length} unallowlisted high/critical advisor${blocking.length === 1 ? 'y' : 'ies'}`,
     };
   }
-  return { ok: true, detail: `no unallowlisted high/critical advisories (${suppressed.length} allowlisted)` };
+  return { ok: true, output: out.join('\n'), detail: `no unallowlisted high/critical advisories (${suppressed.length} allowlisted)` };
 }
 
 // ---------------------------------------------------------------------------
@@ -380,20 +403,35 @@ function auditArm() {
 function runArm(arm) {
   assertNoSteam(arm);                       // (2) above — every arm, every time.
   assertManual(arm);                        // manual arms are tracked, never spawned.
-  console.log(`\n=== ${arm.id} — ${arm.label}`);
-  console.log(`    ${arm.argv.join(' ')}`);
+  const header = `\n=== ${arm.id} — ${arm.label}\n    ${arm.argv.join(' ')}`;
+  say(header);
   const started = Date.now();
   let result;
   if (arm.custom) {
     result = arm.custom();
   } else {
     const [cmd, ...args] = arm.argv;
-    const r = spawnSync(cmd, args, { cwd: root, stdio: 'inherit', shell: true });
-    result = { ok: r.status === 0, detail: `exit code ${r.status ?? 'signal ' + r.signal}` };
+    // Quiet captures rather than discards, so a failing arm can still show
+    // every byte the verbose run would have shown.
+    const r = quiet
+      ? spawnSync(cmd, args, { cwd: root, encoding: 'utf8', shell: true })
+      : spawnSync(cmd, args, { cwd: root, stdio: 'inherit', shell: true });
+    result = {
+      ok: r.status === 0,
+      detail: `exit code ${r.status ?? 'signal ' + r.signal}`,
+      output: quiet ? `${r.stdout ?? ''}${r.stderr ?? ''}` : null,
+    };
   }
   const durationMs = Date.now() - started;
   recordRun(arm.id, result.ok ? 'pass' : 'fail', durationMs);
-  console.log(`--- ${arm.id}: ${result.ok ? 'PASS' : 'FAIL'} (${(durationMs / 1000).toFixed(1)}s) — ${result.detail}`);
+  if (quiet && !result.ok) {
+    // The failure path is verbose by construction — same header, same stream
+    // contents, in the same order as a non-quiet run.
+    console.log(header);
+    if (result.output) console.log(result.output.replace(/\s+$/, ''));
+  }
+  const verdictLine = `--- ${arm.id}: ${result.ok ? 'PASS' : 'FAIL'} (${(durationMs / 1000).toFixed(1)}s) — ${result.detail}`;
+  if (result.ok) say(verdictLine); else console.log(verdictLine);
   return { ...result, durationMs };
 }
 
@@ -439,22 +477,141 @@ function acquireHeavyLock(portBase) {
 }
 
 // ---------------------------------------------------------------------------
+// advise — which arms this change actually needs, and which it does not
+//
+// Every arm already carries `paths`: the inputs whose movement makes its last
+// result untrue. That is the same mapping the staleness report reasons over,
+// so advise is that mapping asked a different question — not "has the code
+// moved since this ran" but "does *this* diff touch it".
+//
+// It prints the skips WITH THEIR REASON, and that is the whole design. A tool
+// that silently lists three arms reads as "three arms is the coverage"; a tool
+// that says `SKIP gate:elite — no changed file under src, tests/sp-equivalence.mjs`
+// lets you see the claim it is making and disagree with it. A silent skip is
+// indistinguishable from coverage, which is how a gate stops being run without
+// anyone deciding to stop running it.
+//
+// It recommends and never runs: nothing here spawns a child process.
+
+/** Files changed by `range`, or by the working tree (staged + unstaged + untracked). */
+function changedFiles(range) {
+  const norm = (s) => s.split('\n').map((l) => l.trim()).filter(Boolean).map((p) => p.replace(/\\/g, '/'));
+  if (range) return [...new Set(norm(gitOut(['diff', '--name-only', range])))];
+  const tracked = norm(gitOut(['diff', '--name-only', 'HEAD']));
+  const untracked = norm(gitOut(['ls-files', '--others', '--exclude-standard']));
+  return [...new Set([...tracked, ...untracked])];
+}
+
+/** True when `file` is `p` itself or lives under it. */
+function under(file, p) {
+  const q = p.replace(/\\/g, '/');
+  return file === q || file.startsWith(`${q}/`);
+}
+
+export function adviseFor(arms, files) {
+  return arms.map((arm) => {
+    const hits = files.filter((f) => arm.paths.some((p) => under(f, p)));
+    return { arm, hits };
+  });
+}
+
+function printAdvice(all, range) {
+  const files = changedFiles(range);
+  const scope = range ? `commit range ${range}` : 'the working tree vs HEAD';
+  console.log(`\n--- gate advice for ${scope} — ${files.length} changed file(s)`);
+  if (!files.length) {
+    console.log('  (no changes — nothing needs to run)');
+  } else {
+    for (const f of files.slice(0, 20)) console.log(`    ${f}`);
+    if (files.length > 20) console.log(`    ... and ${files.length - 20} more`);
+  }
+  console.log('');
+
+  const advice = adviseFor(all, files);
+  const run = advice.filter((a) => a.hits.length);
+  for (const { arm, hits } of advice) {
+    if (hits.length) {
+      const why = hits.slice(0, 3).join(', ') + (hits.length > 3 ? `, +${hits.length - 3} more` : '');
+      console.log(`  RUN   ${arm.id.padEnd(10)} ${arm.manual ? '(manual — by hand) ' : ''}changed: ${why}`);
+    } else {
+      console.log(`  SKIP  ${arm.id.padEnd(10)} no changed file under ${arm.paths.join(', ')}`);
+    }
+  }
+  console.log('\n  SKIP  smoke:steam  never advised — needs a live logged-in Steam client and sets');
+  console.log('                     library-global impairment, so it is excluded from every tier');
+  console.log('                     by construction (assertNoSteam). Run it by hand when the');
+  console.log('                     Steam transport changes.');
+
+  const tiers = [...new Set(run.filter((a) => a.arm.tier !== 'manual').map((a) => a.arm.tier))];
+  const manual = run.filter((a) => a.arm.manual).map((a) => a.arm.id);
+  console.log('');
+  console.log(tiers.length
+    ? `  suggested: ${tiers.map((t) => `npm run gates:${t}`).join(' && ')}`
+    : '  suggested: nothing — no tier arm has an input in this diff');
+  if (manual.length) console.log(`  by hand:   ${manual.join(', ')} (manual arms are never run by a tier)`);
+  console.log('');
+  return 0;
+}
+
+// ---------------------------------------------------------------------------
+
+const USAGE = [
+  'usage: node tools/gates.mjs <cheap|heavy|status|advise> [--lane A|B|C | --port-base N] [--quiet]',
+  '       node tools/gates.mjs status --record <armId>   (record a hand-run of a manual arm)',
+  '       node tools/gates.mjs advise [--since <range>]  (which arms this diff needs, and what it skips)',
+  '',
+  `  --lane      one flag for a whole port block: ${LANE_NAMES.map((n) => `${n}=${LANE_BASES[n]}-${LANE_BASES[n] + LANE_BLOCK_SIZE - 1}`).join(', ')}`,
+  '  --quiet     (alias --summary) on a PASS print only the arm verdicts and timings.',
+  '              A FAILURE stays fully verbose, including the failing arm\'s stderr.',
+].join('\n');
 
 function main(argv) {
   const tier = argv[0];
-  if (!['cheap', 'heavy', 'status'].includes(tier)) {
-    console.error('usage: node tools/gates.mjs <cheap|heavy|status> [--port-base N]');
-    console.error('       node tools/gates.mjs status --record <armId>   (record a hand-run of a manual arm)');
+  if (!['cheap', 'heavy', 'status', 'advise'].includes(tier)) {
+    console.error(USAGE);
     return 64;
   }
+  quiet = argv.includes('--quiet') || argv.includes('--summary');
+  // `status` IS the staleness report; quieting it would leave it with nothing
+  // to print, so the flag is a no-op there rather than a footgun.
+  if (tier === 'status') quiet = false;
+
+  // --lane and --port-base are MUTUALLY EXCLUSIVE, and deliberately so. Both
+  // set the same thing, and the heavy-tier lock is keyed by port base — so if
+  // last-flag-wins silently decided between them, two runs that each believe
+  // they are lane B could end up on different bases and defeat the lock that
+  // exists to stop exactly that. An error costs one line; a defeated lock cost
+  // two diagnosis cycles (#68).
   const i = argv.indexOf('--port-base');
-  const portBase = Number(i >= 0 ? argv[i + 1] : (process.env.GATES_PORT_BASE ?? DEFAULT_PORT_BASE));
+  const li = argv.indexOf('--lane');
+  if (i >= 0 && li >= 0) {
+    console.error('gates: --lane and --port-base both set the port block — pass one, not both.');
+    console.error(`       --lane B is exactly --port-base ${LANE_BASES.B}.`);
+    return 64;
+  }
+  if (li >= 0 && process.env.GATES_PORT_BASE) {
+    console.error('gates: --lane was given but GATES_PORT_BASE is also set in the environment.');
+    console.error('       Unset GATES_PORT_BASE, or drop --lane. Refusing to guess.');
+    return 64;
+  }
+  let portBase;
+  if (li >= 0) {
+    try { portBase = laneBase(argv[li + 1]); }
+    catch (e) { console.error(`gates: ${e.message}`); return 64; }
+  } else {
+    portBase = Number(i >= 0 ? argv[i + 1] : (process.env.GATES_PORT_BASE ?? DEFAULT_PORT_BASE));
+  }
   if (!Number.isInteger(portBase) || portBase < 1024 || portBase > 65_530) {
     console.error(`gates: --port-base must be an integer in 1024-65530, got ${portBase}`);
     return 64;
   }
 
   const all = armsFor(portBase);
+
+  if (tier === 'advise') {
+    const si = argv.indexOf('--since');
+    return printAdvice(all, si >= 0 ? argv[si + 1] : null);
+  }
 
   const recordIdx = argv.indexOf('--record');
   if (recordIdx >= 0) {
@@ -486,13 +643,17 @@ function main(argv) {
     for (const arm of arms) {
       if (failed) { results.push({ id: arm.id, status: 'SKIPPED' }); continue; }
       const r = runArm(arm);
-      results.push({ id: arm.id, status: r.ok ? 'PASS' : 'FAIL', detail: r.detail });
+      results.push({ id: arm.id, status: r.ok ? 'PASS' : 'FAIL', detail: r.detail, durationMs: r.durationMs });
       if (!r.ok) failed = { arm, detail: r.detail };
     }
   } finally { release(); }
 
   console.log(`\n====================================================================`);
-  for (const r of results) console.log(`  ${r.status.padEnd(8)} ${r.id}${r.detail ? ` — ${r.detail}` : ''}`);
+  for (const r of results) {
+    // The timing is what a quiet run has instead of the arm's own narration.
+    const t = r.durationMs === undefined ? '' : ` (${(r.durationMs / 1000).toFixed(1)}s)`;
+    console.log(`  ${r.status.padEnd(8)} ${r.id}${t}${r.detail ? ` — ${r.detail}` : ''}`);
+  }
   if (failed) {
     // The point of this line: the last tool's stderr tells you a test failed,
     // not which ARM of which tier owns it.

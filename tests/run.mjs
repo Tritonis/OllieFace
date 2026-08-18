@@ -19,11 +19,26 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const files = readdirSync(here).filter((f) => f.endsWith('.test.mjs')).sort();
 
+// `npm test -- --quiet` prints only the closing tally on a green run. A FAILING
+// file is still shown in full, under the same header, because the output that
+// matters is the output nobody reads until something breaks — quiet captures it
+// rather than discarding it.
+const quiet = process.argv.includes('--quiet') || process.argv.includes('--summary');
+
 let failed = 0;
 for (const f of files) {
-  console.log(`\n=== ${f} ===`);
-  const r = spawnSync(process.execPath, [join(here, f)], { stdio: 'inherit' });
-  if (r.status !== 0) { failed++; console.log(`--- ${f} FAILED ---`); }
+  if (!quiet) console.log(`\n=== ${f} ===`);
+  const r = quiet
+    ? spawnSync(process.execPath, [join(here, f)], { encoding: 'utf8' })
+    : spawnSync(process.execPath, [join(here, f)], { stdio: 'inherit' });
+  if (r.status !== 0) {
+    failed++;
+    if (quiet) {
+      console.log(`\n=== ${f} ===`);
+      console.log(`${r.stdout ?? ''}${r.stderr ?? ''}`.replace(/\s+$/, ''));
+    }
+    console.log(`--- ${f} FAILED ---`);
+  }
 }
 
 console.log(`\n${files.length - failed}/${files.length} test files passed`);

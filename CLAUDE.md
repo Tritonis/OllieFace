@@ -68,6 +68,19 @@ that matter are Windows/GPU/Steam-bound, so a hosted Linux runner could run almo
   explicit port (5234-5236 by default; `--port-base 5260` for a lane). Two runs sharing a port base
   refuse rather than collide. `smoke:steam` is excluded by construction — it needs a live client
   and sets library-global impairment — so run it by hand.
+- `--quiet` (alias `--summary`) on either tier: a **passing** run prints only the arm verdicts and
+  their timings — six lines instead of several thousand, since the vite chunk manifest and `npm
+  test`'s per-file lines say nothing when the verdict is PASS. A **failing** run is untouched: the
+  failing arm's stdout and stderr are replayed in full under the same header, above the same
+  `FAILING ARM` block. `npm test -- --quiet` does the same for the suite on its own.
+- `node tools/gates.mjs advise [--since <range>]` — reads the working-tree diff (or a commit range)
+  and says which arms its inputs are in, **and which it is skipping with the reason**. It recommends
+  and never runs. A skip prints its reason because a silent skip reads as coverage.
+- `--lane A|B|C` on `tools/gates.mjs` and `tests/sp-equivalence.mjs` derives the whole port block
+  from one flag (the table below), so a brief says "you are lane B" once instead of restating three
+  numbers per command. `--lane` and `--port-base`/`SP_PORT` are **mutually exclusive** and error
+  rather than letting flag order silently pick — the heavy-tier lock is keyed by port base, so two
+  runs that both believe they are lane B must land on the same base or the lock stops locking.
 - `npm run gates:status` — the staleness record alone, runs nothing. Says which gates have not run
   since the last commit that touched their inputs. State lives in the gitignored `.gates/`.
 - The **capture gate** (`npm run shots`, `tools/capture.mjs`) is a **manual arm**: tracked in
@@ -154,7 +167,14 @@ in `tools/` or `tests/` claims above 5236 — 5233 and below, plus `gates.mjs`'s
 | B | 5250-5259 | `SP_PORT=5250`, `--port 5251`, `--signal-port 5252` |
 | C | 5260-5269 | `SP_PORT=5260`, `--port 5261`, `--signal-port 5262` |
 
-A brief must state its lane's ports explicitly. An agent that defaults to 5209 has silently joined
+The table is now also *data*, in `tools/lib/lanes.mjs`, and `tests/probe-ports.test.mjs` imports it:
+alongside the existing "no two scripts claim the same default" check it asserts that **no script's
+default port falls inside a lane block**. The prose claim "nothing claims above 5236" was false when
+that check was first written — `tools/panel-ground.mjs` sat on 5251, inside lane B — and it has been
+moved to 5227. Lane ports were previously invisible to the collision detector because the mapping
+was runtime arithmetic; importing the table is what keeps the guard able to ask the question.
+
+A brief must state its lane's ports explicitly, or pass `--lane`. An agent that defaults to 5209 has silently joined
 whichever other lane is already there.
 
 **Never laned — these serialise across the whole machine:**
