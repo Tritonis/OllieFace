@@ -89,9 +89,56 @@ function wordsOf(name) {
     .map((w) => w.toLowerCase());
 }
 
-/** True if `name` has "port" as one of its words — see `wordsOf` above. */
+/**
+ * English words that end in the letters "port" but are not port names — the
+ * denylist that makes the prefix/suffix rule below safe. Without it, matching
+ * "port" as a suffix (needed to catch `gameport`, `myport`, `httpport`, which
+ * have no split boundary for `wordsOf` to find) would resurrect exactly the
+ * over-match this file shipped once already (`export`, `support`, `passport`
+ * as claims). There is no lexical rule that tells `gameport` apart from
+ * `support` — both are one unbroken lowercase run ending in "port" — so this
+ * is a named list of the ones we know are prose, not a device.
+ */
+const PORT_LOOKALIKE_WORDS = new Set([
+  'export', 'import', 'support', 'report', 'transport', 'passport',
+  'viewport', 'airport', 'deport', 'purport', 'comport', 'rapport',
+]);
+
+/**
+ * True if `name` has "port" as one of its words, per `wordsOf` above, OR as a
+ * prefix/suffix of an otherwise-unsplit word (`gameport`, `myport`, `port2`),
+ * which `wordsOf` alone cannot find because there is no `_`/`-`/case-transition
+ * boundary for it to split on. Trailing digits are stripped before comparing,
+ * so `port2`/`PORT2` reduce to `port`.
+ *
+ * KNOWN GAP, stated rather than left implicit (this file's third widening
+ * after two that shipped a comment ahead of what the code did): the
+ * prefix/suffix rule is guarded only by `PORT_LOOKALIKE_WORDS` above, a finite
+ * denylist, not a lexical rule. A genuine English word ending or starting in
+ * "port" that is NOT on that list (e.g. "seaport", "portfolio", "portable")
+ * WILL be misread as a port claim if it is ever used as a bare identifier
+ * name in scanned source — the loud, safe-to-notice direction, but still a
+ * false positive the denylist does not cover. Conversely, a real port
+ * identifier built from an English word not obviously about ports would slip
+ * through only if it also happened to collide with an entry on the denylist,
+ * which is not a realistic naming choice. Extend the denylist rather than
+ * abandoning the prefix/suffix rule if a new lookalike surfaces.
+ *
+ * Asymmetry worth naming, since it looks like an inconsistency otherwise:
+ * `viewport` (one unsplit word) is excluded via the denylist, but `view_port`,
+ * `viewPort`, `air-port` (words that DO split, giving an exact "port" word) are
+ * still claims. That is intentional — the denylist exists only to rescue the
+ * unsplit suffix/prefix case, and a name that explicitly separates "port" as
+ * its own word segment is treated as meaning it.
+ */
 function hasPortWord(name) {
-  return wordsOf(name).includes('port');
+  for (const raw of wordsOf(name)) {
+    const w = raw.replace(/\d+$/, '');
+    if (!w) continue;
+    if (w === 'port') return true;
+    if ((w.startsWith('port') || w.endsWith('port')) && !PORT_LOOKALIKE_WORDS.has(w)) return true;
+  }
+  return false;
 }
 
 // Captures the *name* (identifier, object key, or flag string) alongside the
@@ -327,6 +374,26 @@ console.log('the scan finds something to check');
   // PORT declaration used to eat the rest of the line as a false comment.
   ok(portsIn('const RE = /https?:\\/\\//; const PORT = 5209;').has(5209),
     'a same-line escaped-slash regex literal does not swallow a trailing PORT declaration');
+
+  // Item (the fix-wave Critical): a boundaryless port identifier — no `_`,
+  // `-`, or case transition for `wordsOf` to split on — used to be invisible
+  // because `hasPortWord` only ever checked for a whole "port" word.
+  for (const name of ['myport', 'gameport', 'httpport', 'serverport', 'SIGNALPORT', 'HTTPPORT', 'GAMEPORT']) {
+    ok(portsIn(`const ${name} = Number(process.env.X ?? 5209);`).has(5209),
+      `a boundaryless port identifier \`${name}\` is caught`);
+  }
+  ok(portsIn('const port2 = 5209;').has(5209), '`port2` is caught');
+  ok(portsIn('const PORT2 = 5209;').has(5209), '`PORT2` is caught');
+  ok(portsIn('const port_2 = 5209;').has(5209), '`port_2` is still caught');
+  ok(portsIn('const port = 5209;').has(5209), '`port` is still caught');
+  // The denylist rescues the exact English words known to false-positive on
+  // the prefix/suffix rule above.
+  for (const word of ['export', 'support', 'report', 'transport', 'passport', 'viewport']) {
+    ok(!portsIn(`const ${word} = 5209;`).has(5209),
+      `\`const ${word}\` stays excluded by the denylist`);
+  }
+  ok(portsIn('const x = { signalPort: 5209 };').has(5209) && portsIn('const x = { port: 5209 };').has(5209),
+    '`signalPort:` and `port:` remain claims after the denylist change');
 
   // The lane table's own honesty, both directions (see the comment on mjsUnder).
   const lanesSrc = readFileSync(join(toolsDir, 'lib', 'lanes.mjs'), 'utf8');
