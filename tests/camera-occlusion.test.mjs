@@ -25,6 +25,37 @@ const SEED = 1234;
 const STAGE = 2;
 const WORKS = 3;   // Ferrous Muster, the only biome with precast barriers
 
+// --- the penetration instrument -------------------------------------------
+//
+// Every arm below measures *motion* — per-frame translation, settle distance,
+// whether a boom clamped. None of them measured whether the camera was inside
+// rock while it did so, which is how #115 shipped a tree that held the camera
+// 4.16 m inside solid stone for three frames with the suite fully green.
+//
+// The rig resolves, each frame, the longest boom that stays clear of geometry
+// (`allowedDistance`) and then the boom it actually uses (`distance`). The
+// second must never exceed the first: every metre it does is a metre the
+// camera sits past the obstruction, inside it. That is the assertion.
+//
+// The float slack is genuine slack, not a fudge: on the ease-out path
+// `distance` is an exponential blend that approaches `allowedDistance` from
+// below and can land a few ulps over it.
+const PEN_EPS = 1e-9;
+
+const probe = (label) => ({ label, worst: 0, at: null, frames: 0 });
+
+function watch(p, rig, where) {
+  p.frames++;
+  const pen = rig.distance - rig.allowedDistance;
+  if (pen > p.worst) { p.worst = pen; p.at = where; }
+}
+
+function okClear(p) {
+  console.log(`    penetration: worst=${p.worst.toExponential(2)} m over ${p.frames} frames${p.at ? ` (${p.at})` : ''}`);
+  ok(p.worst <= PEN_EPS,
+     `${p.label}: camera never sits closer than its allowed reach (worst ${p.worst.toExponential(2)} m)`);
+}
+
 function buildStage(index = STAGE) {
   const ctx = {
     scene: new THREE.Scene(), seed: SEED, settings: {},
@@ -40,7 +71,7 @@ function buildStage(index = STAGE) {
  * Run `frames` of lateUpdate with the survivor travelling in a straight line at
  * `speed`, and return every per-frame camera translation.
  */
-function sprint(ctx, stage, { x, z, yaw, frames = 900, speed = 9 }) {
+function sprint(ctx, stage, { x, z, yaw, frames = 900, speed = 9 }, pen = null) {
   const dx = Math.sin(yaw), dz = Math.cos(yaw);
   const rig = new CameraRig();
   rig.init(ctx);
@@ -60,6 +91,7 @@ function sprint(ctx, stage, { x, z, yaw, frames = 900, speed = 9 }) {
     player.position.z += dz * speed * dt;
     player.position.y = stage.sampleHeight(player.position.x, player.position.z);
     rig.lateUpdate(ctx, dt);
+    if (pen) watch(pen, rig, `yaw ${yaw.toFixed(3)} frame ${f}`);
     if (prev) deltas.push(rig.camPos.distanceTo(prev));
     prev = rig.camPos.clone();
   }
@@ -80,7 +112,8 @@ console.log('#110 repro: straight-line sprint through uncollidered stalagmites')
 {
   // Heading 0 is the frame-302 collapse from the issue: 6.85 m in one frame,
   // 40x the free-flight mean, boom pinned at its 0.700 floor.
-  const d = sprint(ctx, stage, start(0));
+  const pen = probe('#110 repro');
+  const d = sprint(ctx, stage, start(0), pen);
   const mean = d.reduce((s, x) => s + x, 0) / d.length;
   const max = Math.max(...d);
   console.log(`    mean=${mean.toFixed(4)} max=${max.toFixed(3)} ratio=${(max / mean).toFixed(1)}`);
@@ -89,13 +122,15 @@ console.log('#110 repro: straight-line sprint through uncollidered stalagmites')
   // guarantee — but not by the whole boom length.
   ok(max <= 2.0, `no frame translates the camera more than 2 m (was ${max.toFixed(3)})`);
   ok(max / mean <= 10, `worst frame within 10x the free-flight mean (${(max / mean).toFixed(1)}x)`);
+  okClear(pen);
 }
 
 console.log('sixteen headings across the same stage');
 {
+  const pen = probe('sixteen headings');
   let worst = 0, worstA = -1;
   for (let a = 0; a < 16; a++) {
-    const d = sprint(ctx, stage, start(a));
+    const d = sprint(ctx, stage, start(a), pen);
     const max = Math.max(...d);
     if (max > worst) { worst = max; worstA = a; }
   }
@@ -104,6 +139,7 @@ console.log('sixteen headings across the same stage');
   // along the boom, or solid past the boom end) clamping the camera to a normal
   // 3.5-4.8 m boom, which is the rig working as designed.
   ok(worst <= 4.5, `no heading collapses the boom to its floor (worst ${worst.toFixed(3)})`);
+  okClear(pen);
 }
 
 // --- the rejected fix ------------------------------------------------------
@@ -114,7 +150,7 @@ console.log('sixteen headings across the same stage');
 const WALL = { x: -100, z: -4, yaw: 1.309 };
 
 /** Hold still at `spot` for 30 frames and return the settled camera position. */
-function stand(ctx, stage, spot) {
+function stand(ctx, stage, spot, pen = null) {
   const rig = new CameraRig();
   rig.init(ctx);
   rig.yaw = spot.yaw;
@@ -124,17 +160,22 @@ function stand(ctx, stage, spot) {
     velocity: new THREE.Vector3(), horizontalSpeed: 0, sprintBlend: 0, dashT: 0, dashRoll: 0,
   };
   ctx.input = null;
-  for (let f = 0; f < 30; f++) rig.lateUpdate(ctx, 1 / 60);
+  for (let f = 0; f < 30; f++) {
+    rig.lateUpdate(ctx, 1 / 60);
+    if (pen) watch(pen, rig, `(${spot.x.toFixed(1)}, ${spot.z.toFixed(1)}) frame ${f}`);
+  }
   return { pos: rig.camPos.clone(), distance: rig.distance };
 }
 
 const buried = (p) => stage.sampleHeight(p.x, p.z) - p.y;
 
 console.log('pressed against a wall: the shipped rule still clamps');
-const shipped = stand(ctx, stage, WALL);
+const wallPen = probe('pressed against a wall');
+const shipped = stand(ctx, stage, WALL, wallPen);
 {
   console.log(`    distance=${shipped.distance.toFixed(3)} buriedBy=${buried(shipped.pos).toFixed(3)}`);
   ok(shipped.distance <= 1.5, `boom clamps hard against the wall (${shipped.distance.toFixed(3)} m)`);
+  okClear(wallPen);
 }
 
 console.log('pressed against a wall: `if (d > CAM_RADIUS)` clips through it');
@@ -143,7 +184,8 @@ console.log('pressed against a wall: `if (d > CAM_RADIUS)` clips through it');
   // cast sphere is discarded before CameraRig ever sees it.
   const real = stage.raycastDistance.bind(stage);
   stage.raycastDistance = (o, d, m) => { const r = real(o, d, m); return r > CAM_RADIUS ? r : -1; };
-  const rejected = stand(ctx, stage, WALL);
+  const pen = probe('rejected fix');
+  const rejected = stand(ctx, stage, WALL, pen);
   stage.raycastDistance = real;
   console.log(`    distance=${rejected.distance.toFixed(3)} buriedBy=${buried(rejected.pos).toFixed(3)}`);
   ok(rejected.distance > 6.5, 'the boom never pulls in — every hit was thrown away');
@@ -154,6 +196,12 @@ console.log('pressed against a wall: `if (d > CAM_RADIUS)` clips through it');
   // rejected one is most of a boom deep in solid rock.
   ok(buried(rejected.pos) > buried(shipped.pos) * 10,
      `rejected fix buries the camera ${(buried(rejected.pos) / buried(shipped.pos)).toFixed(0)}x deeper`);
+  // The penetration assertion holds here too, and that is the honest reading
+  // of its scope: it says the rig obeys the reach it computed, not that the
+  // reach was right. This arm hides the geometry from the rig entirely, so the
+  // rig's own books balance while the camera is 2 m of rock deep — which is
+  // exactly why `buried()` above stays the assertion for *this* failure shape.
+  okClear(pen);
 }
 
 // --- the works biome, where SLIVER_MAX is closest to real geometry ---------
@@ -184,9 +232,10 @@ const BARRIERS = [
 console.log('works biome: barriers thicker than SLIVER_MAX still clamp the boom');
 {
   const w = buildStage(WORKS);
+  const pen = probe('works biome barriers');
   let clamped = 0;
   for (const b of BARRIERS) {
-    const { distance } = stand(w.ctx, w.stage, b);
+    const { distance } = stand(w.ctx, w.stage, b, pen);
     if (distance < 7.0) clamped++;
     console.log(`    depth=${b.depth.toFixed(3)} distance=${distance.toFixed(3)}`);
   }
@@ -196,6 +245,7 @@ console.log('works biome: barriers thicker than SLIVER_MAX still clamp the boom'
   // go red on a mis-calibration rather than merely describe one.
   ok(clamped === BARRIERS.length,
      `all ${BARRIERS.length} above-threshold barriers constrain the boom (${clamped} did)`);
+  okClear(pen);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
