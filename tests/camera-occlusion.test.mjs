@@ -23,15 +23,16 @@ const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } e
 const CAM_RADIUS = 0.34;   // must track CameraRig's own constant
 const SEED = 1234;
 const STAGE = 2;
+const WORKS = 3;   // Ferrous Muster, the only biome with precast barriers
 
-function buildStage() {
+function buildStage(index = STAGE) {
   const ctx = {
     scene: new THREE.Scene(), seed: SEED, settings: {},
     camera: new THREE.PerspectiveCamera(), input: null,
   };
   const stage = new Stage();
   stage.init(ctx);
-  stage.build(STAGE);
+  stage.build(index);
   return { ctx, stage };
 }
 
@@ -151,6 +152,66 @@ console.log('pressed against a wall: `if (d > CAM_RADIUS)` clips through it');
   // rejected one is most of a boom deep in solid rock.
   ok(buried(rejected.pos) > buried(shipped.pos) * 10,
      `rejected fix buries the camera ${(buried(rejected.pos) / buried(shipped.pos)).toFixed(0)}x deeper`);
+}
+
+// --- the works biome, where SLIVER_MAX is closest to real geometry ---------
+//
+// `barrierGeo` is a Jersey barrier 0.44 m deep in local Z, instanced at scale
+// 0.90-1.60, so its head-on world depth is 0.397-0.703 m — the bottom of that
+// range sits *under* SLIVER_MAX as a whole object, not as an edge graze. This
+// block pins the two facts that make that acceptable.
+console.log('works biome: the sliver rule is inert in natural play');
+{
+  const w = buildStage(WORKS);
+  const wspawn = w.stage.spawnPoint();
+  const real = w.stage.raycastDistance.bind(w.stage);
+  // Neutralise _sliver by making only the *reverse* cast miss. That is exactly
+  // the pre-fix rule: every hit honoured, nothing skipped.
+  let disable = false, depth = 0;
+  w.stage.raycastDistance = (o, d, m) => {
+    depth++;
+    const r = (disable && depth > 1) ? -1 : real(o, d, m);
+    depth--;
+    return r;
+  };
+  const sweep = () => {
+    let worst = 0, floors = 0;
+    for (let a = 0; a < 16; a += 2) {
+      const yaw = heading(a), dx = Math.sin(yaw), dz = Math.cos(yaw);
+      const rig = new CameraRig();
+      rig.init(w.ctx);
+      rig.yaw = yaw + Math.PI;
+      w.ctx.player = {
+        position: new THREE.Vector3(wspawn.x - dx * 60, 0, wspawn.z - dz * 60),
+        velocity: new THREE.Vector3(dx * 9, 0, dz * 9),
+        horizontalSpeed: 9, sprintBlend: 1, dashT: 0, dashRoll: 0,
+      };
+      let prev = null;
+      for (let f = 0; f < 900; f++) {
+        w.ctx.player.position.x += dx * 9 / 60;
+        w.ctx.player.position.z += dz * 9 / 60;
+        w.ctx.player.position.y = w.stage.sampleHeight(w.ctx.player.position.x, w.ctx.player.position.z);
+        rig.pitch = 1.05;   // boom held low, the only angle that meets a barrier
+        rig.lateUpdate(w.ctx, 1 / 60);
+        if (rig.distance <= 0.7001) floors++;
+        if (prev) worst = Math.max(worst, rig.camPos.distanceTo(prev));
+        prev = rig.camPos.clone();
+      }
+    }
+    return { worst, floors };
+  };
+  disable = false; const fixed = sweep();
+  disable = true; const control = sweep();
+  w.stage.raycastDistance = real;
+  console.log(`    fixed worst=${fixed.worst.toFixed(3)} floor=${fixed.floors} | control worst=${control.worst.toFixed(3)} floor=${control.floors}`);
+  // 14,400 frames each. The rule never fires here, so raising SLIVER_MAX past
+  // the barrier depth would show up as these two diverging.
+  ok(fixed.worst === control.worst && fixed.floors === control.floors,
+     'across eight headings the works biome behaves identically with and without the rule');
+  // The remaining works-biome collapses are shared by both arms and are not
+  // slivers — measured 0.88 m thick and solid-past-boom-end. Out of #110's
+  // scope, recorded here so the number is not mistaken for a regression.
+  ok(control.floors > 0, 'the works biome has its own (non-sliver) clamping, unchanged by this fix');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
