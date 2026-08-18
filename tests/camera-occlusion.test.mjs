@@ -40,6 +40,17 @@ const WORKS = 3;   // Ferrous Muster, the only biome with precast barriers
 // The float slack is genuine slack, not a fudge: on the ease-out path
 // `distance` is an exponential blend that approaches `allowedDistance` from
 // below and can land a few ulps over it.
+
+// A probe that watched nothing reads exactly like a clean one — `worst` stays
+// 0 either way — so the instrument has to prove it looked. The first version of
+// this file made the probe an optional argument to `sprint`/`stand`, and an
+// integration review blinded it by deleting that argument from two call sites:
+// an ordinary refactor slip, and the suite stayed at 13/13 while reporting
+// `worst=0.00e+0 over 0 frames`. That is the same shape #117 exists to close,
+// so the probe is no longer something a call site can forget to pass: the
+// replay helpers own one, feed it unconditionally, and hand it back with their
+// results. `okClear` then asserts the frame count as well as the depth, which
+// covers the remaining way to see zero frames — a replay loop that never ran.
 const PEN_EPS = 1e-9;
 
 const probe = (label) => ({ label, worst: 0, at: null, frames: 0 });
@@ -50,8 +61,16 @@ function watch(p, rig, where) {
   if (pen > p.worst) { p.worst = pen; p.at = where; }
 }
 
+/** Fold one replay's probe into an arm-level total. */
+function absorb(p, q) {
+  p.frames += q.frames;
+  if (q.worst > p.worst) { p.worst = q.worst; p.at = q.at; }
+  return p;
+}
+
 function okClear(p) {
   console.log(`    penetration: worst=${p.worst.toExponential(2)} m over ${p.frames} frames${p.at ? ` (${p.at})` : ''}`);
+  ok(p.frames > 0, `${p.label}: the penetration probe actually observed frames (${p.frames})`);
   ok(p.worst <= PEN_EPS,
      `${p.label}: camera never sits closer than its allowed reach (worst ${p.worst.toExponential(2)} m)`);
 }
@@ -69,9 +88,11 @@ function buildStage(index = STAGE) {
 
 /**
  * Run `frames` of lateUpdate with the survivor travelling in a straight line at
- * `speed`, and return every per-frame camera translation.
+ * `speed`, and return every per-frame camera translation alongside the
+ * penetration probe that watched the same frames.
  */
-function sprint(ctx, stage, { x, z, yaw, frames = 900, speed = 9 }, pen = null) {
+function sprint(ctx, stage, { x, z, yaw, frames = 900, speed = 9 }) {
+  const pen = probe(`sprint yaw ${yaw.toFixed(3)}`);
   const dx = Math.sin(yaw), dz = Math.cos(yaw);
   const rig = new CameraRig();
   rig.init(ctx);
@@ -91,11 +112,11 @@ function sprint(ctx, stage, { x, z, yaw, frames = 900, speed = 9 }, pen = null) 
     player.position.z += dz * speed * dt;
     player.position.y = stage.sampleHeight(player.position.x, player.position.z);
     rig.lateUpdate(ctx, dt);
-    if (pen) watch(pen, rig, `yaw ${yaw.toFixed(3)} frame ${f}`);
+    watch(pen, rig, `yaw ${yaw.toFixed(3)} frame ${f}`);
     if (prev) deltas.push(rig.camPos.distanceTo(prev));
     prev = rig.camPos.clone();
   }
-  return deltas;
+  return { deltas, pen };
 }
 
 const { ctx, stage } = buildStage();
@@ -112,8 +133,8 @@ console.log('#110 repro: straight-line sprint through uncollidered stalagmites')
 {
   // Heading 0 is the frame-302 collapse from the issue: 6.85 m in one frame,
   // 40x the free-flight mean, boom pinned at its 0.700 floor.
-  const pen = probe('#110 repro');
-  const d = sprint(ctx, stage, start(0), pen);
+  const { deltas: d, pen } = sprint(ctx, stage, start(0));
+  pen.label = '#110 repro';
   const mean = d.reduce((s, x) => s + x, 0) / d.length;
   const max = Math.max(...d);
   console.log(`    mean=${mean.toFixed(4)} max=${max.toFixed(3)} ratio=${(max / mean).toFixed(1)}`);
@@ -130,7 +151,9 @@ console.log('sixteen headings across the same stage');
   const pen = probe('sixteen headings');
   let worst = 0, worstA = -1;
   for (let a = 0; a < 16; a++) {
-    const d = sprint(ctx, stage, start(a), pen);
+    const run = sprint(ctx, stage, start(a));
+    absorb(pen, run.pen);
+    const d = run.deltas;
     const max = Math.max(...d);
     if (max > worst) { worst = max; worstA = a; }
   }
@@ -150,7 +173,8 @@ console.log('sixteen headings across the same stage');
 const WALL = { x: -100, z: -4, yaw: 1.309 };
 
 /** Hold still at `spot` for 30 frames and return the settled camera position. */
-function stand(ctx, stage, spot, pen = null) {
+function stand(ctx, stage, spot) {
+  const pen = probe(`stand (${spot.x.toFixed(1)}, ${spot.z.toFixed(1)})`);
   const rig = new CameraRig();
   rig.init(ctx);
   rig.yaw = spot.yaw;
@@ -162,16 +186,17 @@ function stand(ctx, stage, spot, pen = null) {
   ctx.input = null;
   for (let f = 0; f < 30; f++) {
     rig.lateUpdate(ctx, 1 / 60);
-    if (pen) watch(pen, rig, `(${spot.x.toFixed(1)}, ${spot.z.toFixed(1)}) frame ${f}`);
+    watch(pen, rig, `(${spot.x.toFixed(1)}, ${spot.z.toFixed(1)}) frame ${f}`);
   }
-  return { pos: rig.camPos.clone(), distance: rig.distance };
+  return { pos: rig.camPos.clone(), distance: rig.distance, pen };
 }
 
 const buried = (p) => stage.sampleHeight(p.x, p.z) - p.y;
 
 console.log('pressed against a wall: the shipped rule still clamps');
-const wallPen = probe('pressed against a wall');
-const shipped = stand(ctx, stage, WALL, wallPen);
+const shipped = stand(ctx, stage, WALL);
+const wallPen = shipped.pen;
+wallPen.label = 'pressed against a wall';
 {
   console.log(`    distance=${shipped.distance.toFixed(3)} buriedBy=${buried(shipped.pos).toFixed(3)}`);
   ok(shipped.distance <= 1.5, `boom clamps hard against the wall (${shipped.distance.toFixed(3)} m)`);
@@ -184,8 +209,9 @@ console.log('pressed against a wall: `if (d > CAM_RADIUS)` clips through it');
   // cast sphere is discarded before CameraRig ever sees it.
   const real = stage.raycastDistance.bind(stage);
   stage.raycastDistance = (o, d, m) => { const r = real(o, d, m); return r > CAM_RADIUS ? r : -1; };
-  const pen = probe('rejected fix');
-  const rejected = stand(ctx, stage, WALL, pen);
+  const rejected = stand(ctx, stage, WALL);
+  const pen = rejected.pen;
+  pen.label = 'rejected fix';
   stage.raycastDistance = real;
   console.log(`    distance=${rejected.distance.toFixed(3)} buriedBy=${buried(rejected.pos).toFixed(3)}`);
   ok(rejected.distance > 6.5, 'the boom never pulls in — every hit was thrown away');
@@ -235,7 +261,9 @@ console.log('works biome: barriers thicker than SLIVER_MAX still clamp the boom'
   const pen = probe('works biome barriers');
   let clamped = 0;
   for (const b of BARRIERS) {
-    const { distance } = stand(w.ctx, w.stage, b, pen);
+    const run = stand(w.ctx, w.stage, b);
+    absorb(pen, run.pen);
+    const { distance } = run;
     if (distance < 7.0) clamped++;
     console.log(`    depth=${b.depth.toFixed(3)} distance=${distance.toFixed(3)}`);
   }
