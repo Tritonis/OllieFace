@@ -29,11 +29,13 @@ const NAMES = {
     A: 'A', B: 'B', X: 'X', Y: 'Y',
     LB: 'LB', RB: 'RB', LT: 'LT', RT: 'RT',
     BACK: 'View', START: 'Menu',
+    DUP: 'D-Pad Up', DDOWN: 'D-Pad Down', DLEFT: 'D-Pad Left', DRIGHT: 'D-Pad Right',
   },
   playstation: {
     A: 'Cross', B: 'Circle', X: 'Square', Y: 'Triangle',
     LB: 'L1', RB: 'R1', LT: 'L2', RT: 'R2',
     BACK: 'Share', START: 'Options',
+    DUP: 'Up', DDOWN: 'Down', DLEFT: 'Left', DRIGHT: 'Right',
   },
   switch: {
     // Nintendo's face buttons sit in the Xbox layout's mirror image (A/B and
@@ -41,11 +43,13 @@ const NAMES = {
     A: 'B', B: 'A', X: 'Y', Y: 'X',
     LB: 'L', RB: 'R', LT: 'ZL', RT: 'ZR',
     BACK: '-', START: '+',
+    DUP: 'Up', DDOWN: 'Down', DLEFT: 'Left', DRIGHT: 'Right',
   },
   generic: {
     A: 'Button 1', B: 'Button 2', X: 'Button 3', Y: 'Button 4',
     LB: 'LB', RB: 'RB', LT: 'LT', RT: 'RT',
     BACK: 'Back', START: 'Start',
+    DUP: 'D-Pad Up', DDOWN: 'D-Pad Down', DLEFT: 'D-Pad Left', DRIGHT: 'D-Pad Right',
   },
 };
 
@@ -53,6 +57,9 @@ const PAD_NAMES = {
   0: 'A', 1: 'B', 2: 'X', 3: 'Y',
   4: 'LB', 5: 'RB', 6: 'LT', 7: 'RT',
   8: 'BACK', 9: 'START',
+  // The D-pad is not in `PAD_BUTTON` (it binds no gameplay action), but the
+  // mutation window answers on 14/12/15 and its cards print these names.
+  12: 'DUP', 13: 'DDOWN', 14: 'DLEFT', 15: 'DRIGHT',
 };
 
 /** Is this a glyph set id `Menus`/`HUD` may store and select? */

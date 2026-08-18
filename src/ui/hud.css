@@ -2252,7 +2252,9 @@ body.menu-open { cursor: default; }
 .mutate-card:hover, .mutate-card.is-focus { background: rgba(180, 92, 255, 0.16); }
 .mutate-art { width: 2.4em; height: 2.4em; flex: none; }
 .mutate-art img { width: 100%; height: 100%; display: block; }
-.mutate-key { font-size: var(--fs-micro); opacity: 0.6; }
+/* Holds a pad glyph name ("D-Pad Left") as readily as a digit, so it must not
+   wrap to two lines or steal width from the card body. */
+.mutate-key { font-size: var(--fs-micro); opacity: 0.6; flex: none; white-space: nowrap; }
 .mutate-body { display: flex; flex-direction: column; min-width: 0; }
 .mutate-name { font-weight: 600; letter-spacing: 0.06em; }
 .mutate-desc { font-size: var(--fs-micro); opacity: 0.85; font-style: normal; }
