@@ -24,6 +24,15 @@ import { adoptLegacyKey } from '../core/LegacyStorage.js';
 import { PAD_BUTTON } from '../core/PadState.js';
 import { ACTIONS, bindings, isReserved, keyLabel } from '../core/Bindings.js';
 import { GLYPH_SETS, DEFAULT_GLYPH_SET, isGlyphSet, glyphLabel } from '../data/glyphs.js';
+
+/**
+ * The pad buttons that answer the mutation window's three offers, in card
+ * order: D-pad LEFT, UP, RIGHT (#98). Three directions for three offers, so
+ * there is no chord to teach and nothing to rebind. These indices are not in
+ * `PAD_BUTTON` because the D-pad binds no gameplay action anywhere -- it is
+ * hardcoded menu navigation and now, here, hardcoded offer selection.
+ */
+const MUTATE_PAD = [14, 12, 15];
 import { telemetryEnabled, setTelemetryEnabled, readRuns, downloadRuns, clearRuns } from '../systems/Telemetry.js';
 import { markDialog, focusablesIn, installFocusTrap } from './Dialogs.js';
 
@@ -2215,7 +2224,7 @@ export class Menus {
     this.mutateRefs.offers.innerHTML = offers.map((o, i) => `
       <button class="mutate-card" data-mutate-pick="${escapeHtml(o.baseId)}">
         <i class="mutate-art"><img alt="" src="${escapeHtml(itemArt(o.blightId, 'blight'))}"></i>
-        <span class="mutate-key">${i + 1}</span>
+        <span class="mutate-key" data-mutate-key="${i}">${escapeHtml(this.mutateKeyLabel(i, false))}</span>
         <span class="mutate-body">
           <span class="mutate-name">${escapeHtml(o.blightName)}</span>
           <em class="mutate-desc">${escapeHtml(o.blightDescription || '')}</em>
@@ -2224,6 +2233,24 @@ export class Menus {
       </button>`).join('');
     this.mutateRefs.clock.textContent = `${Math.ceil(seconds)}s`;
     this.mutateEl.classList.add('is-on');
+  }
+
+  /**
+   * The label the nth offer's card prints: the keyboard digit, or the pad
+   * glyph for the D-pad direction that answers it, through `glyphLabel` -- the
+   * same #42 path the bindings screen prints, so a PlayStation player reads
+   * "Left" and an Xbox player "D-Pad Left" without a second table existing.
+   */
+  mutateKeyLabel(i, padActive) {
+    if (!padActive) return String(i + 1);
+    return glyphLabel(MUTATE_PAD[i], this.settings.controllerGlyphs);
+  }
+
+  /** Repaint the cards' prompts for whichever device the player is holding. */
+  syncMutateKeys(padActive) {
+    if (!this.mutate) return;
+    const keys = this.mutateRefs.offers.querySelectorAll('[data-mutate-key]');
+    for (const el of keys) el.textContent = this.mutateKeyLabel(Number(el.dataset.mutateKey), !!padActive);
   }
 
   /** Closed by the system that owns the decision, never by this panel. */
@@ -2447,11 +2474,33 @@ export class Menus {
     if (this.mutate) {
       const remaining = ctx.items?.mutationChoice?.()?.remaining ?? this.mutate.remaining;
       this.mutateRefs.clock.textContent = `${Math.max(0, Math.ceil(remaining))}s`;
+      this.syncMutateKeys(ctx.input?.padActive);
+      // `!this.screen` is what keeps the D-pad from being an offer answer and
+      // a menu cursor in the same frame, and it needs nothing added to it:
+      // `navigate` returns before it reaches `readPad` unless a screen is
+      // open, and this branch is off exactly when one is. The two handlers are
+      // mutually exclusive by state, not by a suppression flag -- an earlier
+      // draft added one inside `readPad` and it was unreachable.
       if (!this.screen) {
         for (let i = 0; i < 3; i++) {
-          if (!ctx.input?.hit?.(`Digit${i + 1}`)) continue;
+          // D-pad left / up / right answer the three offers (#98). A pad
+          // player had no lever at all before this: pointer lock swallows the
+          // click and a pad has no Digit1. Read off `input.pad.edges` -- raw
+          // button indices, the same surface the Start-opens-pause check
+          // below uses -- because the D-pad binds no action and so produces
+          // no virtual key code to `hit()`.
+          const picked = ctx.input?.hit?.(`Digit${i + 1}`)
+            || ctx.input?.pad?.edges?.has?.(MUTATE_PAD[i]);
+          if (!picked) continue;
           const el = this.mutateRefs.offers.children[i];
           if (el) this.mutate.onPick?.(el.dataset.mutatePick);
+          // The press is spent -- this one press, and nothing else. Without
+          // it the same edge survives into the frame's remaining consumers
+          // (Start's pad read, and a screen opened later this frame). The
+          // blanket `clearPadEdges` would also do that, and would additionally
+          // eat every other pad-bound action's edge for the frame, which is
+          // not this window's to take.
+          ctx.input?.consumePadEdge?.(MUTATE_PAD[i]);
           break;
         }
       }
