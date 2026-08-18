@@ -105,6 +105,48 @@ console.log('it takes more than one frame of trouble, however many substeps that
   quietly(() => engine._frame());
   ok(bad.calls === 5, 'one saturated frame called it five times');
   ok(engine.systems.includes(bad), 'and did not disable it');
+
+  // The trap that a per-SYSTEM counter fell into: one frame calls fixedUpdate
+  // up to five times and *then* update and lateUpdate on the same system, so a
+  // system with two throwing phases reached six inside a single frame. Counting
+  // per phase is what makes "more than one frame" true of every system shape
+  // rather than only of the single-phase ones.
+  class WedgedBoth {
+    static critical = false;
+    constructor() { this.fixed = 0; this.updates = 0; }
+    fixedUpdate() { this.fixed++; throw new Error('wedged in the fixed step'); }
+    update() { this.updates++; throw new Error('wedged in update'); }
+  }
+  const two = fresh();
+  const both = two.add(new WedgedBoth());
+  two.accumulator = 1;
+  quietly(() => two._frame());
+  ok(both.fixed + both.updates === 6, 'a two-phase system took six failed calls in that one frame');
+  ok(two.systems.includes(both), 'and is still registered, because no single phase failed six times');
+}
+
+console.log('a phase that is wedged is not rescued by a phase that works');
+{
+  // The other half of per-phase counting, and a defect in its own right: with
+  // one counter per system, a system whose `fixedUpdate` threw on every substep
+  // of every frame was resurrected by its own `update` returning normally
+  // moments later, and so ran wedged forever.
+  class HalfWedged {
+    static critical = false;
+    constructor() { this.fixed = 0; this.updates = 0; }
+    fixedUpdate() { this.fixed++; throw new Error('wedged in the fixed step'); }
+    update() { this.updates++; }
+  }
+  const engine = fresh();
+  const s = engine.add(new HalfWedged());
+  quietly(() => {
+    for (let i = 0; i < 10 && engine.systems.includes(s); i++) {
+      engine.accumulator = 0.02;       // one substep per frame
+      engine._frame();
+    }
+  });
+  ok(!engine.systems.includes(s), 'the wedged fixed step disabled it despite a healthy update');
+  ok(s.fixed === DISABLE_AFTER, `it took exactly ${DISABLE_AFTER} failed fixed steps (${s.fixed})`);
 }
 
 console.log('a system that throws intermittently is never disabled');

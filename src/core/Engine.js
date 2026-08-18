@@ -27,13 +27,20 @@ const HITSTOP_DUTY = 0.15;
 const HITSTOP_BUDGET_MAX = 0.12;
 
 /**
- * How many *consecutive* failed calls disable a noncritical system.
+ * How many *consecutive* failed calls to one phase disable a noncritical system.
  *
- * Six, and the number is derived rather than picked: one bad frame can call a
- * `fixedUpdate` up to `MAX_SUBSTEPS` (5) times, so anything at or below five
- * could disable a system over a single frame's worth of trouble. Six is the
- * smallest count that a single frame cannot reach, and at 60Hz it is a tenth of
- * a second — a system that is wedged, not one that stumbled.
+ * Six, and the number is derived from what a single frame can do to a single
+ * phase. Per frame a phase is entered at most `MAX_SUBSTEPS` (5) times for
+ * `fixedUpdate` and exactly once for `update` and `lateUpdate`, so five is the
+ * most any phase can accumulate over one frame's worth of trouble and six is
+ * the smallest threshold no single frame can reach. At 60Hz that is two frames
+ * for a wedged fixed step and a tenth of a second for a wedged `update` — a
+ * system that is stuck, not one that stumbled.
+ *
+ * The per-phase scoping is load-bearing to that derivation and was got wrong
+ * once: counted per *system*, one frame runs `fixedUpdate` five times and then
+ * `update` and `lateUpdate`, so a system with two throwing phases reached six
+ * before the frame was out.
  */
 export const DISABLE_AFTER = 6;
 
@@ -164,8 +171,8 @@ export class Engine {
     // Keyed by "System.phase" so a system that throws every frame logs once.
     this._reported = new Set();
     /**
-     * Consecutive failed calls per system, `system -> count`. Cleared the
-     * moment any of that system's phases returns normally — see `_call`.
+     * Consecutive failed calls, `system -> Map(phase -> count)`. A phase's
+     * count is cleared the moment *that* phase returns normally — see `_call`.
      */
     this._streak = new Map();
     // The failure that stopped this engine, or null. Mirrors ctx.fatalError.
@@ -189,7 +196,7 @@ export class Engine {
     const who = system ? `${system.constructor?.name || 'system'}.${phase}` : 'frame';
     const critical = isCriticalSystem(system);
     this.fail(who, err, critical);
-    if (!critical && system) this._noteFailure(system, who, err);
+    if (!critical && system) this._noteFailure(system, phase, who, err);
   }
 
   /**
@@ -205,10 +212,19 @@ export class Engine {
    * **Consecutive, not "N in a window".** The target is a system that is stuck —
    * a shader that will not compile, a null the frame will hand it again next
    * frame. A system that throws once per stage transition is working; it is not
-   * what this is for, and `_call` clearing the streak on any successful phase is
-   * what keeps it out of reach. The counter is per *system* rather than per
-   * system+phase, so a system whose `fixedUpdate` and `update` are both wedged
-   * converges on the same answer either way.
+   * what this is for, and `_call` clearing that phase's streak whenever it
+   * returns is what keeps it out of reach.
+   *
+   * **Counting is per system+phase; disabling is per system.** The asymmetry is
+   * deliberate and both halves earn their place. Counting per phase because a
+   * frame enters the phases in sequence, so one counter per system mixed five
+   * `fixedUpdate` failures with an `update` failure and hit the threshold inside
+   * a single frame — and because a `fixedUpdate` wedged on every substep of
+   * every frame was resurrected forever by the same system's `update` returning
+   * normally moments later. Disabling per system because the only lever there is
+   * is `remove()`, which takes the whole system out of the update list: there is
+   * no way to drop one phase, and a system whose fixed step throws on every
+   * frame is not a system whose `update` is worth keeping.
    *
    * **Disabled means dropped from the update list, and nothing more.** It goes
    * out through `remove()`, so the context stops naming it for the same reason a
@@ -225,10 +241,12 @@ export class Engine {
    * blank `ctx.input`, which the renderer's `endFrame()` calls unguarded. It
    * keeps the log-once behaviour, which is all it ever had.
    */
-  _noteFailure(system, who, err) {
+  _noteFailure(system, phase, who, err) {
     if (!this.systems.includes(system)) return;
-    const n = (this._streak.get(system) || 0) + 1;
-    this._streak.set(system, n);
+    let phases = this._streak.get(system);
+    if (!phases) this._streak.set(system, phases = new Map());
+    const n = (phases.get(phase) || 0) + 1;
+    phases.set(phase, n);
     if (n < DISABLE_AFTER) return;
     this._streak.delete(system);
     this.remove(system);
@@ -309,7 +327,7 @@ export class Engine {
   _call(system, phase, ctx, dt) {
     if (this.profiling) {
       const t = performance.now();
-      try { system[phase](ctx, dt); this._streak.delete(system); } catch (e) { this._onFrameError(e, system, phase); }
+      try { system[phase](ctx, dt); this._streak.get(system)?.delete(phase); } catch (e) { this._onFrameError(e, system, phase); }
       const key = `${system.constructor?.name || 'system'}.${phase}`;
       this.profile[key] = (this.profile[key] || 0) + (performance.now() - t);
       if (this.fatal) throw new FrameHalt(this.fatal.who);
@@ -317,10 +335,12 @@ export class Engine {
     }
     try {
       system[phase](ctx, dt);
-      // A call that returned is the end of any run of failures. This is what
-      // makes the disable rule "six in a row" rather than "six ever", and so
-      // what keeps a system that throws once per stage transition alive.
-      this._streak.delete(system);
+      // A call that returned is the end of any run of failures *for this
+      // phase*. That is what makes the disable rule "six in a row" rather than
+      // "six ever", and so what keeps a system that throws once per stage
+      // transition alive — while a sibling phase that is genuinely wedged keeps
+      // its own count and is not rescued by this one working.
+      this._streak.get(system)?.delete(phase);
     } catch (e) {
       this._onFrameError(e, system, phase);
     }
