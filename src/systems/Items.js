@@ -280,9 +280,13 @@ export class Items {
       // instead — on its own derived stream (see `_rng`), which is why seeding
       // a joiner cannot move the shared sequence.
       //
-      // The latch is per-`Items`, and an `Items` is per-run: every restart in
-      // this game is a `location.reload()` (see `Menus`), and a satellite is
-      // built with its pawn.
+      // The latch is per-`Items`, which is not quite per-run: `Coop` builds a
+      // fresh `Items` per pawn (`new Items(pawn)`), so a satellite reconnecting
+      // mid-session gets a new instance and a new latch. That is still correct,
+      // because each instance seeds once over its own lifetime and a satellite
+      // takes the `owner` branch — it rolls, and never reads the local viewer's
+      // `startEquipmentId`. The host's own `Items` *is* one per run: every
+      // restart here is a `location.reload()` (see `Menus`).
       if (!this._equipmentSeeded) {
         this._equipmentSeeded = true;
         if (!this.equipmentId) {
