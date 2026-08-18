@@ -656,6 +656,47 @@ export class Engine {
       this._runFrame();
     } catch (e) {
       if (!(e instanceof FrameHalt)) throw e;
+    } finally {
+      this._endFrame();
+    }
+  }
+
+  /**
+   * Close out the frame's input, whatever else happened during it.
+   *
+   * `Input.endFrame` is the only thing that clears `pressed` and zeroes the
+   * mouse deltas, so a frame that does not reach it leaves every key held since
+   * reading as pressed forever — `hit('Digit1')` firing a pick every frame —
+   * and `mouse.dx` accumulating unbounded under pointer lock while the camera
+   * applies it. It used to live at the end of the renderer's `lateUpdate`, in a
+   * `finally` so a throw from `render()` could not skip it. That was exactly
+   * enough protection until systems became droppable: the renderer is
+   * noncritical and registered, so six wedged frames disabled it and took the
+   * only call to `endFrame` in `src/` out of the game with it — input latched
+   * for the rest of the run.
+   *
+   * So it moves here, where nothing a system does can reach it: the epilogue of
+   * a `finally` on the whole frame, above the update list rather than inside it.
+   * It runs when a system threw, when the frame unwound on a `FrameHalt`, when
+   * an exception is on its way out to the rAF chain, and when the engine has
+   * already halted — clearing input on a stopped engine costs nothing and is
+   * the price of the guarantee being unconditional. The next system that gets
+   * disabled cannot recreate this trap, because there is no longer a system to
+   * put it in.
+   *
+   * `ctx.input` is optional: most tests and every headless driver run without
+   * one, and the epilogue must not be the thing that introduces a throw. Its
+   * own failure goes through the ordinary noncritical path — `Input` declares
+   * itself noncritical, and `_noteFailure` will not disable it because it is
+   * not in the update list.
+   */
+  _endFrame() {
+    const input = this.ctx.input;
+    if (!input?.endFrame) return;
+    try {
+      input.endFrame();
+    } catch (e) {
+      this._onFrameError(e, input, 'endFrame');
     }
   }
 

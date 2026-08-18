@@ -1,27 +1,39 @@
 /**
- * The renderer's lateUpdate closes out input even when render() throws.
+ * Input is closed out every frame, whatever else the frame did.
  *
  *   node tests/endframe-finally.test.mjs
  *
- * `main.js` registers the renderer as a noncritical system whose lateUpdate
- * calls `pipeline.render` then `input.endFrame()`. If render throws, the
- * Engine's noncritical handling logs and continues the run (see
- * engine-criticality.test.mjs) — but a throw between those two calls must not
- * skip endFrame(), or this frame's pressed keys and mouse edges bleed into
- * the next frame and a single input reads as pressed twice.
+ * `Input.endFrame` clears `pressed` and zeroes the mouse deltas, and it is the
+ * only thing that does. A frame that does not reach it leaves every key held
+ * since reading as pressed forever — `Menus.update`'s `hit('Digit1')` firing a
+ * pick on every frame — and `mouse.dx` accumulating unbounded under pointer
+ * lock while `CameraRig` applies it.
  *
- * `main.js` is a top-level bootstrap script (reads `location`, touches the
- * DOM on import) and cannot be imported directly in a headless test, so this
- * pulls the actual `lateUpdate` function body out of its source text and runs
- * it against a mock ctx/pipeline/input — the same idiom as
- * engine-criticality.test.mjs's source-scanning half, applied to exercise
- * real behaviour instead of just checking a declaration is present. This is
- * deliberately NOT a hand-written reimplementation of the fix: if `src/main.js`
- * regresses, this test breaks with it.
+ * This file used to state that invariant against the renderer's `lateUpdate`,
+ * which called `endFrame` in a `finally`, and it drove exactly one frame. That
+ * made it a guard that could not fail at the thing it guarded: a `finally`
+ * protects `endFrame` from an exception, and the failure that actually arrived
+ * was the whole renderer being DISABLED — noncritical, registered, dropped
+ * after `DISABLE_AFTER` wedged frames (issue #72), taking the only `endFrame`
+ * call in `src/` with it. One frame never reaches that threshold, so the test
+ * stayed green while the invariant it names was broken.
+ *
+ * So it now asserts the invariant where the invariant lives — the Engine's
+ * frame epilogue — and drives well past the disable threshold. Three ways a
+ * frame can fail to reach the end of the update list, all of which must still
+ * clear input:
+ *
+ *   1. the renderer disabled outright;
+ *   2. a system throwing mid-frame;
+ *   3. a critical system halting the run.
+ *
+ * The last check keeps `src/main.js` honest about the move: the renderer must
+ * NOT call `endFrame` itself any more, or a frame closes input twice.
  */
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { Engine, DISABLE_AFTER } from '../src/core/Engine.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
@@ -29,28 +41,34 @@ const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } e
 const here = dirname(fileURLToPath(import.meta.url));
 const mainSrc = readFileSync(join(here, '..', 'src', 'main.js'), 'utf8');
 
-// Pull the renderer's registration block: `engine.add({ ... critical: false ...
-// lateUpdate(c, dt) { ... } ... });` — the only object-literal system in
-// main.js (engine-criticality.test.mjs's completeness scan relies on that too).
-const addAt = mainSrc.indexOf('engine.add({');
-const criticalAt = addAt >= 0 ? mainSrc.indexOf('critical: false,', addAt) : -1;
-const lateUpdateAt = criticalAt >= 0 ? mainSrc.indexOf('lateUpdate(c, dt) {', criticalAt) : -1;
-const bodyStart = lateUpdateAt >= 0 ? mainSrc.indexOf('{', lateUpdateAt) + 1 : -1;
-const closeMatch = bodyStart >= 0 ? mainSrc.slice(bodyStart).match(/\},\r?\n\}\);/) : null;
-const bodyEnd = closeMatch ? bodyStart + closeMatch.index : -1;
-ok(bodyStart >= 0 && bodyEnd > bodyStart, 'found the renderer registration block in src/main.js');
-const lateUpdateBody = mainSrc.slice(bodyStart, bodyEnd);
+function fresh() {
+  const engine = new Engine({ canvas: null, seed: 1 });
+  engine.running = true;
+  return engine;
+}
 
-// Run the extracted body as a real function, closing over a mock module-level
-// `ctx` the same way main.js's lateUpdate does (it reads `ctx.pipeline`
-// directly, not through its own `c` parameter).
-const runLateUpdate = new Function('ctx', 'c', 'dt', lateUpdateBody);
+function quietly(fn) {
+  const real = console.error;
+  console.error = () => {};
+  try { return fn(); } finally { console.error = real; }
+}
 
+/** The two things `Input.endFrame` exists to do, and a count of the doing. */
 function fakeInput() {
   return {
-    pressed: new Set(['Space']),
-    mouse: { dx: 5, dy: 7, leftEdge: true, rightEdge: true },
+    critical: false,
+    ends: 0,
+    pressed: new Set(),
+    mouse: { dx: 0, dy: 0, leftEdge: false, rightEdge: false },
+    /** What a real frame's worth of events would have left behind. */
+    press() {
+      this.pressed.add('Digit1');
+      this.mouse.dx += 5;
+      this.mouse.dy += 7;
+      this.mouse.leftEdge = true;
+    },
     endFrame() {
+      this.ends++;
       this.pressed.clear();
       this.mouse.dx = 0;
       this.mouse.dy = 0;
@@ -60,44 +78,104 @@ function fakeInput() {
   };
 }
 
-console.log('a throw between render and endFrame still clears input edges');
-{
-  const input = fakeInput();
-  const mockCtx = {
-    pipeline: { render() { throw new Error('boom in render'); } },
-    scene: {},
-    camera: {},
-    input,
-  };
-
-  let threw = null;
-  try {
-    runLateUpdate(mockCtx, mockCtx, 0.016);
-  } catch (e) {
-    threw = e;
-  }
-
-  ok(threw !== null && threw.message === 'boom in render', 'the render throw still propagates');
-  ok(input.pressed.size === 0, 'pressed keys were cleared despite the throw');
-  ok(input.mouse.dx === 0 && input.mouse.dy === 0, 'mouse deltas were cleared despite the throw');
-  ok(input.mouse.leftEdge === false && input.mouse.rightEdge === false, 'mouse edges were cleared despite the throw');
+/** The shape `main.js` registers: noncritical, and the frame's last system. */
+class Renderer {
+  static critical = false;
+  constructor(render) { this.render = render; this.frames = 0; }
+  lateUpdate() { this.frames++; this.render(); }
 }
 
-console.log('the clean path is unchanged: render runs, then endFrame, no throw');
+console.log('input is still closed out after the renderer has been disabled');
 {
+  // The live regression. Six wedged frames drop the renderer; from the seventh
+  // on, nothing in the update list touches input at all.
+  const engine = fresh();
   const input = fakeInput();
-  let rendered = false;
-  const mockCtx = {
-    pipeline: { render() { rendered = true; } },
-    scene: {},
-    camera: {},
-    input,
-  };
+  engine.ctx.input = input;
+  const renderer = engine.add(new Renderer(() => { throw new Error('device lost'); }));
 
-  runLateUpdate(mockCtx, mockCtx, 0.016);
+  quietly(() => { for (let i = 0; i < DISABLE_AFTER; i++) { input.press(); engine._frame(); } });
+  ok(!engine.systems.includes(renderer), 'the renderer was disabled, as a wedged noncritical system must be');
 
-  ok(rendered === true, 'render still runs on the clean path');
-  ok(input.pressed.size === 0, 'endFrame still clears input on the clean path');
+  const endsAtDisable = input.ends;
+  for (let i = 0; i < 5; i++) { input.press(); engine._frame(); }
+  ok(input.ends === endsAtDisable + 5, `endFrame still ran on all five later frames (${input.ends - endsAtDisable})`);
+  ok(input.pressed.size === 0, 'pressed keys are cleared, so hit() cannot latch true forever');
+  ok(input.mouse.dx === 0 && input.mouse.dy === 0, 'mouse deltas are zeroed, so the camera cannot spin on a stale delta');
+  ok(input.mouse.leftEdge === false, 'and the click edges go with them');
+}
+
+console.log('nor can a throw mid-frame skip it');
+{
+  const engine = fresh();
+  const input = fakeInput();
+  engine.ctx.input = input;
+  engine.add({ critical: false, update() { throw new Error('boom in update'); } });
+  input.press();
+  quietly(() => engine._frame());
+  ok(input.ends === 1, 'the epilogue ran');
+  ok(input.pressed.size === 0 && input.mouse.dx === 0, 'and cleared the frame despite the throw');
+}
+
+console.log('nor can a critical halt, which abandons the rest of the frame');
+{
+  class Authoritative {
+    static critical = true;
+    update() { throw new Error('the damage authority died'); }
+  }
+  const engine = fresh();
+  const input = fakeInput();
+  engine.ctx.input = input;
+  engine.add(new Authoritative());
+  const w = engine.add({ critical: false, updates: 0, update() { this.updates++; } });
+  input.press();
+  quietly(() => engine._frame());
+  ok(engine.fatal !== null && w.updates === 0, 'the frame was abandoned at the halt');
+  ok(input.ends === 1, 'and input was closed out anyway, on the way out');
+}
+
+console.log('a frame with no input at all does not throw');
+{
+  // Headless drivers and most of this suite run without an Input. The epilogue
+  // must not be the thing that introduces a failure.
+  const engine = fresh();
+  engine._frame();
+  ok(engine.ctx.frameErrors === 0, 'no input, no error');
+  engine.ctx.input = { critical: false };            // present, but no endFrame
+  engine._frame();
+  ok(engine.ctx.frameErrors === 0, 'an input without an endFrame is left alone');
+}
+
+console.log('an endFrame that throws is degraded, not fatal');
+{
+  const engine = fresh();
+  engine.ctx.input = { critical: false, endFrame() { throw new Error('boom closing out'); } };
+  quietly(() => engine._frame());
+  ok(engine.fatal === null, 'the run was not halted');
+  ok(engine.ctx.lastFrameError?.who === 'Object.endFrame', 'and the failure was reported by name');
+}
+
+console.log('the clean path still renders, exactly once per frame');
+{
+  const engine = fresh();
+  const input = fakeInput();
+  engine.ctx.input = input;
+  const renderer = engine.add(new Renderer(() => {}));
+  engine._frame();
+  ok(renderer.frames === 1, 'the renderer drew the frame');
+  ok(input.ends === 1, 'and input was closed out once, not twice');
+}
+
+console.log('src/main.js leaves closing-out to the Engine');
+{
+  // The move only holds if the renderer stopped doing it too — otherwise a
+  // frame calls endFrame twice, and the second call clears edges that the
+  // epilogue had already cleared for a frame that has not happened yet.
+  const addAt = mainSrc.indexOf('engine.add({');
+  const block = addAt >= 0 ? mainSrc.slice(addAt, mainSrc.indexOf('});', addAt)) : '';
+  ok(addAt >= 0 && block.includes('pipeline.render('), 'found the renderer registration block');
+  ok(!/endFrame\(/.test(block), 'and it no longer closes out input itself');
+  ok(!/endFrame\(/.test(mainSrc), 'nothing else in main.js does either');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

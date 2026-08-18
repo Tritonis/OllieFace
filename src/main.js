@@ -135,19 +135,19 @@ try {
 
 // Renderer runs as the final "system" so it sees the fully updated frame.
 engine.add({
-  // Drawing the frame and closing out input. A lost frame is not a lost run, so
-  // this stays on the continue-through-it side of the rule. `endFrame()` runs in
-  // a `finally` so a throw inside `render` still propagates to the Engine's
-  // noncritical handling — this system stays degraded, not reclassified — while
-  // this frame's input edges are cleared regardless, rather than bleeding into
-  // the next one.
+  // Drawing the frame, and only that. A lost frame is not a lost run, so this
+  // stays on the continue-through-it side of the rule.
+  //
+  // Closing out input used to happen here too, in a `finally` so a throw from
+  // `render` could not skip it. It now belongs to the Engine's frame epilogue
+  // (`Engine._endFrame`), because a `finally` only protects `endFrame` from an
+  // exception and not from this whole system being dropped: the renderer is
+  // noncritical and registered, so six wedged frames disable it, and the only
+  // call to `endFrame` in `src/` went with it — every key held since reading as
+  // pressed for the rest of the run.
   critical: false,
   lateUpdate(c, dt) {
-    try {
-      ctx.pipeline.render(c.scene, c.camera, dt);
-    } finally {
-      c.input.endFrame();
-    }
+    ctx.pipeline.render(c.scene, c.camera, dt);
   },
 });
 
