@@ -110,6 +110,22 @@ const SLIVER_MAX = 0.5;
 // full speed, so anything past a metre already reads as a lurch.
 const SNAP_MAX = 1.0;
 
+// The same metre, used a second time: a pull-in at or under SNAP_MAX lands in
+// one frame exactly as it always has, because that is the size at which the
+// camera is genuinely about to clip and nobody can see the step anyway. Past
+// it, the *excess* is paid down exponentially on this time constant rather
+// than all at once — a 6.4 m clamp becomes a 1.8 m first frame and settles
+// inside a fifth of a second instead of expressing as a teleport.
+//
+// A flat per-frame cap was considered and rejected (#110's lane, stage 2): it
+// compresses legitimate two- and three-metre clamps just as hard as the
+// pathological ones, so the rig stops feeling responsive everywhere in order
+// to fix the place it lurched. Making the allowance grow with the distance
+// leaves every clamp that already looked right untouched.
+//
+// Only the pull-*in* is rated. Easing back out already has OCCLUDE_OUT_TAU.
+const SNAP_IN_TAU = 0.10;
+
 const POS_TAU = 0.055;      // camera position follow — short, stays responsive
 const LOOK_TAU = 0.105;     // look-at target — longer, so framing lags the body
 const OCCLUDE_OUT_TAU = 0.30;
@@ -280,7 +296,7 @@ export class CameraRig {
     // Snap in, ease out — clipping through geometry for even one frame is far
     // more offensive than a slightly slow recovery.
     this.targetDistance = allowed < this.distance
-      ? allowed
+      ? this.distance - this._rateLimitedPull(this.distance - allowed, dt)
       : smooth(this.distance, allowed, OCCLUDE_OUT_TAU, dt);
     this.distance = this.targetDistance;
 
@@ -316,6 +332,24 @@ export class CameraRig {
     this._q.setFromRotationMatrix(this._m);
     ctx.camera.quaternion.copy(this._q);
     ctx.camera.rotateZ(this.roll);
+  }
+
+  /**
+   * How much of a requested `drop` in boom length this frame may actually
+   * spend. Distance-dependent by construction: the first SNAP_MAX of it is
+   * free, and only the excess above that is rated, so the clamps that protect
+   * against clipping — which are small, because the camera is nearly touching
+   * the thing — are still instant, while the ones large enough to read as a
+   * cut are spread over a few frames.
+   *
+   * Frame-rate independent: the excess decays on SNAP_IN_TAU, so a run at 30
+   * or 144 fps resolves the same clamp over the same wall-clock interval
+   * rather than the same number of frames.
+   */
+  _rateLimitedPull(drop, dt) {
+    if (drop <= SNAP_MAX) return drop;
+    const excess = drop - SNAP_MAX;
+    return SNAP_MAX + excess * (1 - Math.exp(-dt / SNAP_IN_TAU));
   }
 
   /**

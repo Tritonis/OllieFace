@@ -40,12 +40,13 @@ function buildStage(index = STAGE) {
  * Run `frames` of lateUpdate with the survivor travelling in a straight line at
  * `speed`, and return every per-frame camera translation.
  */
-function sprint(ctx, stage, { x, z, yaw, frames = 900, speed = 9 }) {
+function sprint(ctx, stage, { x, z, yaw, pitch, frames = 900, speed = 9 }) {
   const dx = Math.sin(yaw), dz = Math.cos(yaw);
   const rig = new CameraRig();
   rig.init(ctx);
   // Facing along travel: the boom trails behind, which is the #106 repro.
   rig.yaw = yaw + Math.PI;
+  if (pitch !== undefined) rig.pitch = pitch;
   const player = {
     position: new THREE.Vector3(x, 0, z),
     velocity: new THREE.Vector3(dx * speed, 0, dz * speed),
@@ -196,6 +197,48 @@ console.log('works biome: barriers thicker than SLIVER_MAX still clamp the boom'
   // go red on a mis-calibration rather than merely describe one.
   ok(clamped === BARRIERS.length,
      `all ${BARRIERS.length} above-threshold barriers constrain the boom (${clamped} did)`);
+}
+
+// --- #115: a correct clamp is still a teleport if it lands in one frame -----
+//
+// Ferrous Muster is thick-geometry country: unlike stage 2's spires, the things
+// that cross the boom here are ~0.88 m through and frequently solid past the
+// boom end, so _sliver() correctly refuses to skip them and the clamp is the
+// right answer. The clamp was nonetheless arriving whole in a single 16 ms
+// frame — worst 6.834 m against a free-flight mean of 0.213, ~32x — which is a
+// cut, not a camera move.
+//
+// This arm is the same replay that produced the issue's number, at the three
+// pitches the rig actually ships with (the initial declination, a mid look-up,
+// and PITCH_MAX). On an unrated snap-in it reads 6.834 / 5.994 / 6.158.
+console.log('#115: works-biome clamps arrive over frames, not in one');
+{
+  const w = buildStage(WORKS);
+  const wSpawn = w.stage.spawnPoint();
+  let worst = 0, worstAt = '', sum = 0, n = 0;
+  for (const pitch of [-0.17, 0.5, 1.05]) {
+    // Every other heading of the same sixteen — the pathological crossings sit
+    // at 8 and 14, both even, and halving the count keeps the arm inside the
+    // suite's time budget.
+    for (let a = 0; a < 16; a += 2) {
+      const h = heading(a);
+      const d = sprint(w.ctx, w.stage, {
+        x: wSpawn.x - Math.sin(h) * 60, z: wSpawn.z - Math.cos(h) * 60, yaw: h, pitch,
+      });
+      const max = Math.max(...d);
+      sum += d.reduce((s, x) => s + x, 0); n += d.length;
+      if (max > worst) { worst = max; worstAt = `pitch ${pitch} heading ${a}`; }
+    }
+  }
+  const mean = sum / n;
+  console.log(`    mean=${mean.toFixed(4)} worst=${worst.toFixed(3)} (${worstAt}) ratio=${(worst / mean).toFixed(1)}`);
+  // 2.5 m is deliberately loose against the ~2.08 the rate cap actually
+  // produces: the per-frame delta measured here is the whole camera position,
+  // so it carries pivot travel and boom extension as well as the clamp, and
+  // the first rated frame is allowed SNAP_MAX plus a share of the excess by
+  // design. An unrated snap-in fails this by nearly three metres.
+  ok(worst <= 2.5, `no works-biome frame translates the camera more than 2.5 m (was ${worst.toFixed(3)})`);
+  ok(worst / mean <= 12, `worst frame within 12x the free-flight mean (${(worst / mean).toFixed(1)}x)`);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
