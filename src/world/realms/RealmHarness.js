@@ -464,12 +464,12 @@ export function installRealmHarness(ctx) {
       }
       // The outro hold, then the summary. Six seconds of frames rather than a
       // wall-clock wait, so a slow machine sees the same sequence.
-      for (let i = 0; i < 900 && ctx.hud?.menus?.screen !== 'death'; i++) await frames(1);
+      for (let i = 0; i < 900 && ctx.menus?.screen !== 'death'; i++) await frames(1);
       await wait(settleFrames);
       freeze();
       const record = ctx.profile?.runHistory?.()[0] ?? null;
       mustContain('28-finale-victory', [
-        { subject: 'the run-summary screen', dom: () => ctx.hud?.menus?.screen === 'death', detail: () => ctx.hud?.menus?.screen },
+        { subject: 'the run-summary screen', dom: () => ctx.menus?.screen === 'death', detail: () => ctx.menus?.screen },
         { subject: 'a victory record in the profile', dom: () => record?.outcome === 'victory', detail: () => record && { outcome: record.outcome, stage: record.stage, time: Math.round(record.time) } },
         { subject: 'the ending is named', dom: () => ctx.progression?.ending?.id === ENDINGS.victory.id, detail: () => ctx.progression?.ending?.id ?? null },
       ]);
@@ -494,12 +494,12 @@ export function installRealmHarness(ctx) {
       ob?.interact();
       await frames(6);
       ob?.interact();
-      for (let i = 0; i < 600 && ctx.hud?.menus?.screen !== 'death'; i++) await frames(1);
+      for (let i = 0; i < 600 && ctx.menus?.screen !== 'death'; i++) await frames(1);
       await wait(settleFrames);
       freeze();
       const record = ctx.profile?.runHistory?.()[0] ?? null;
       mustContain('29-ending-obliterate', [
-        { subject: 'the run-summary screen', dom: () => ctx.hud?.menus?.screen === 'death', detail: () => ctx.hud?.menus?.screen },
+        { subject: 'the run-summary screen', dom: () => ctx.menus?.screen === 'death', detail: () => ctx.menus?.screen },
         { subject: 'an obliterated record in the profile', dom: () => record?.outcome === 'victory', detail: () => record && { outcome: record.outcome, stage: record.stage } },
         { subject: 'the ending is named', dom: () => ctx.progression?.ending?.id === ENDINGS.obliterated.id, detail: () => ctx.progression?.ending?.id ?? null },
       ]);
@@ -522,7 +522,7 @@ export function installRealmHarness(ctx) {
       }
       if (ctx.director) ctx.director.enabled = true;
       if (ctx.realms?.inRealm) ctx.realms._exit();
-      ctx.hud?.menus?.close?.();
+      ctx.menus?.close?.();
       ctx.paused = false;
       return { ended: ctx.progression?._ended ?? null };
     },

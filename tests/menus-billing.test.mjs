@@ -28,10 +28,12 @@
  * the `constructor.name` the Engine reports are the shipped ones. Their bodies
  * are stubbed because there is no jsdom here and both classes want a document.
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import * as THREE from 'three';
 import { Engine, DISABLE_AFTER } from '../src/core/Engine.js';
+import { CameraRig } from '../src/core/CameraRig.js';
 import { HUD } from '../src/ui/HUD.js';
 import { Menus } from '../src/ui/Menus.js';
 
@@ -67,6 +69,13 @@ console.log('the wiring says who owns the menus');
   ok(HUD.prototype.lateUpdate === undefined, 'and the HUD no longer carries the lateUpdate that used to run that orbit');
   ok(mainSrc.indexOf('engine.add(new Menus(') < mainSrc.indexOf('engine.add(new HUD())'),
     'Menus is registered before HUD, which needs the ctx.settings its constructor publishes');
+  // Pinned because deleting `HUD.lateUpdate` made `main.js`'s line order the
+  // only thing keeping the title orbit after the rig — the rig used to be the
+  // reason that call sat in a *late* phase at all, and nothing but this line
+  // now records it. Cheap to state, and an ordering nobody can see is an
+  // ordering somebody reshuffles.
+  ok(mainSrc.indexOf('engine.add(new CameraRig())') < mainSrc.indexOf('engine.add(new Menus('),
+    'CameraRig is registered before Menus, so the title orbit still writes last');
 }
 
 // -------------------------------------------------- what a wedged menu costs
@@ -129,6 +138,92 @@ console.log('the HUD stops reaching for a system nobody is running');
   ok(engine.ctx.menus === null, 'ctx.menus was blanked when Menus was dropped');
   ok(hud.menus === null, 'so the HUD sees no menus rather than a dead one');
   ok(!/this\.menus\.[a-zA-Z]/.test(hudSrc), 'and no unguarded `this.menus.` call survives in HUD.js');
+}
+
+// ------------------------------------------- the other half of the new state
+
+/**
+ * Splitting the two systems created a state that could not exist before: the
+ * HUD dead and the menus alive. They used to die together — the menus were
+ * pumped from `HUD.update`, so `remove()` blanking `ctx.hud` stopped them being
+ * run at all and "no menu is open" was true by construction. Now six *HUD*
+ * throws blank `ctx.hud` while Menus goes on running its own `update`, so
+ * anything that asked `ctx.hud?.menus?.screen` began answering "no menu open"
+ * with the pause screen up and taking input.
+ *
+ * Every reader in `src/` therefore asks the owner. That is not merely a
+ * fallback ordering: since `HUD.menus` is itself `ctx.menus`, going through the
+ * HUD is `ctx.menus` behind a liveness test on an unrelated system, and can
+ * only ever answer with less.
+ */
+console.log('nothing in src/ asks the HUD about the menus');
+{
+  const offenders = [];
+  const walk = (dir) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, e.name);
+      if (e.isDirectory()) { walk(p); continue; }
+      if (!e.name.endsWith('.js')) continue;
+      // HUD.js is the one file allowed to say it: `hud.menus` is its own
+      // accessor, and what that accessor reads is `ctx.menus`.
+      if (p.endsWith(join('ui', 'HUD.js'))) continue;
+      const src = readFileSync(p, 'utf8');
+      for (const [i, line] of src.split(/\r?\n/).entries()) {
+        // Comments talk about the old path — that is what the comments are
+        // for. Only code counts.
+        if (/^\s*(\/\/|\*|\/\*)/.test(line)) continue;
+        if (/\bhud\s*\??\.\s*menus/.test(line)) offenders.push(`${p}:${i + 1}`);
+      }
+    }
+  };
+  walk(SRC);
+  ok(offenders.length === 0, `no src/ file routes menu state through ctx.hud (${offenders.join(', ') || 'none'})`);
+}
+
+console.log('a dead HUD does not hand the world to a stick behind the pause screen');
+{
+  const engine = new Engine({ canvas: null, seed: 1 });
+  engine.running = true;
+
+  const menus = Object.create(Menus.prototype);
+  menus.screen = null;
+  menus.update = () => {};
+  menus.lateUpdate = () => {};
+  menus.init = (ctx) => { ctx.menus = menus; };
+
+  const hud = Object.create(HUD.prototype);
+  hud.init = (ctx) => { ctx.hud = hud; };
+  hud.update = () => { throw new Error('the item strip threw'); };
+
+  engine.add(menus);
+  engine.add(hud);
+  quietly(() => { for (let i = 0; i < DISABLE_AFTER; i++) engine._frame(); });
+
+  const ctx = engine.ctx;
+  ok(ctx.hud === null, 'the HUD was given up on and ctx.hud is blank');
+  ok(ctx.menus === menus && engine.systems.includes(menus),
+    'the menus survived it — the state this whole block exists for');
+
+  // The player pauses a run whose HUD is already gone, and rests a thumb on
+  // the right stick. Real CameraRig: the gate under test is its own line.
+  const rig = new CameraRig();
+  rig.init(ctx);
+  ctx.player = {
+    position: new THREE.Vector3(), velocity: new THREE.Vector3(),
+    horizontalSpeed: 0, sprintBlend: 0, dashT: 0, dashRoll: 0,
+  };
+  ctx.input = { locked: false, enabled: true, mouse: { dx: 0, dy: 0 }, pad: { active: true, lookX: 1, lookY: 0 } };
+
+  menus.screen = 'pause';
+  const yawPaused = rig.yaw;
+  rig.lateUpdate(ctx, 1 / 60);
+  ok(rig.yaw === yawPaused, 'the stick does not rotate the world behind the pause screen');
+
+  // And the guard can fail: with no screen open the same stick does turn, so a
+  // pass above is the gate working rather than the pad being ignored outright.
+  menus.screen = null;
+  rig.lateUpdate(ctx, 1 / 60);
+  ok(rig.yaw !== yawPaused, 'and the same stick does turn it once the screen is closed');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

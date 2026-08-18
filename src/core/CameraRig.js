@@ -203,7 +203,15 @@ export class CameraRig {
     // must not rotate the world the player comes back to. `ctx.paused` is not
     // the question — the co-op host deliberately keeps the world unpaused while
     // its own menu is up (NetHost._holdSession) — the open screen is.
-    const menuOpen = !!ctx.hud?.menus?.screen;
+    //
+    // Asked of `ctx.menus`, never of `ctx.hud.menus`. Menus became a system of
+    // its own in #118, so "the HUD is gone" and "the menus are gone" are now
+    // separate facts: six HUD throws blank `ctx.hud` while Menus keeps running
+    // its own update, and routing through the dead one answered "no menu open"
+    // with the pause screen up and taking input. Reading the owner directly is
+    // also strictly stronger — `HUD.menus` is `ctx.menus` behind a liveness
+    // test it has no business applying to somebody else's system.
+    const menuOpen = !!ctx.menus?.screen;
     if (pad?.active && input.enabled !== false && !menuOpen) {
       const padSens = clamp(settings?.padSensitivity ?? 1, 0.05, 8);
       this.yaw -= pad.lookX * PAD_YAW_RATE * padSens * dt;

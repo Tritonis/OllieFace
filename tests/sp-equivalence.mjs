@@ -437,7 +437,7 @@ try {
         gate: 'fired',
         paused: ctx.paused,
         localTick: ctx.player?._localTick ?? null,
-        menuScreen: ctx.hud?.menus?.screen ?? null,
+        menuScreen: ctx.menus?.screen ?? null,
         time: +ctx.time.toFixed(3),
         engineRunning: globalThis.__GAME__.engine.running,
         stageIndex: ctx.progression?.stageIndex ?? null,
@@ -506,7 +506,7 @@ try {
 
         const gate = {
           paused: ctx.paused,
-          menuScreen: ctx.hud?.menus?.screen ?? null,
+          menuScreen: ctx.menus?.screen ?? null,
           localTick: p._localTick ?? null,
           expectedLocalTick: settle,
           progressionStarted: !!ctx.progression?._started,
@@ -957,7 +957,7 @@ try {
         // still on survivor-select fails every one of them.
         const gate = {
           paused: ctx.paused,
-          menuScreen: ctx.hud?.menus?.screen ?? null,
+          menuScreen: ctx.menus?.screen ?? null,
           localTick: ctx.player?._localTick ?? null,
           expectedLocalTick: preSteps,
           progressionStarted: !!ctx.progression?._started,

@@ -71,7 +71,7 @@ export function installHarness(ctx) {
   // the title screen gone first — it pauses the sim and blurs the whole frame.
   const dismiss = () => {
     thaw();
-    ctx.hud?.menus?.close?.();
+    ctx.menus?.close?.();
     ctx.paused = false;
   };
 
@@ -2965,7 +2965,7 @@ export function installHarness(ctx) {
       thaw();
       await frames(settleFrames);
       freeze();
-      const menus = ctx.hud?.menus;
+      const menus = ctx.menus;
       mustContain('01-title', [
         { subject: 'title screen', dom: () => menus?.screen === 'title', detail: () => menus?.screen ?? null },
         {
@@ -5863,7 +5863,7 @@ export function installHarness(ctx) {
       // translucent, so what is behind it is part of the composition.
       await frames(20);
 
-      const menus = ctx.hud?.menus;
+      const menus = ctx.menus;
       if (!menus) throw new Error('[harness] 14-survivor-select: no menus');
       menus.open('title');
       menus.act('play');
@@ -5908,7 +5908,7 @@ export function installHarness(ctx) {
       invulnerable();
       await frames(20);
 
-      const menus = ctx.hud?.menus;
+      const menus = ctx.menus;
       const book = menus?.logbook;
       if (!book) throw new Error('[harness] 15-logbook: no logbook');
       menus.open('title');
@@ -5944,7 +5944,7 @@ export function installHarness(ctx) {
      */
     async difficulty({ settleFrames = 30, pick = null } = {}) {
       thaw();
-      const menus = ctx.hud?.menus;
+      const menus = ctx.menus;
       if (!menus) throw new Error('[harness] 18-difficulty: no menus');
       const before = menus.currentDifficulty?.()?.id ?? menus.difficultyId ?? null;
       menus.open('title');
@@ -5999,7 +5999,7 @@ export function installHarness(ctx) {
      */
     async artifacts({ settleFrames = 30 } = {}) {
       thaw();
-      const menus = ctx.hud?.menus;
+      const menus = ctx.menus;
       if (!menus) throw new Error('[harness] 17-artifacts: no menus');
       menus.open('title');
       menus.act('play');
@@ -6111,11 +6111,11 @@ export function installHarness(ctx) {
       freeze();
       const record = ctx.profile?.runHistory?.()[0] ?? null;
       mustContain('16-run-summary', [
-        { subject: 'the summary screen', dom: () => ctx.hud?.menus?.screen === 'death', detail: () => ctx.hud?.menus?.screen },
+        { subject: 'the summary screen', dom: () => ctx.menus?.screen === 'death', detail: () => ctx.menus?.screen },
         { subject: 'a committed run record', dom: () => !!record, detail: () => record && { time: record.time, stage: record.stage } },
         { subject: 'the run\'s item haul', dom: () => (ctx.hud?.inv?.size ?? 0) >= 10, detail: () => ctx.hud?.inv?.size ?? 0 },
       ]);
-      return { screen: ctx.hud?.menus?.screen ?? null, record };
+      return { screen: ctx.menus?.screen ?? null, record };
     },
 
     /**
