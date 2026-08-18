@@ -44,6 +44,15 @@ function stubCanvas() {
   };
 }
 
+globalThis.addEventListener = () => {};
+globalThis.removeEventListener = () => {};
+const lsStore = new Map();
+globalThis.localStorage = {
+  getItem: (k) => (lsStore.has(k) ? lsStore.get(k) : null),
+  setItem: (k, v) => lsStore.set(k, String(v)),
+  removeItem: (k) => lsStore.delete(k),
+};
+
 globalThis.document = {
   createElement: (tag) => (tag === 'canvas' ? stubCanvas() : { style: {}, setAttribute() {} }),
   activeElement: null,
@@ -99,6 +108,7 @@ function fakeInput() {
     pad: { edges, held: new Set() },
     hit: (c) => keys.has(c),
     clearPadEdges() { edges.clear(); },
+    consumePadEdge(btn) { edges.delete(btn); },
   };
 }
 
@@ -170,9 +180,17 @@ for (const [btn, dir, want] of [[DPAD.LEFT, 'left', 'alpha'], [DPAD.UP, 'up', 'b
   ok(picked.length === 0, 'with a screen open the d-pad belongs to the menu, not the offer', picked);
 }
 
-/* -- 2. the same press must not also drive menu navigation ------------- */
+/* -- 2. offer answer and menu cursor are mutually exclusive by state ---- */
 
-console.log('the window suppresses the d-pad as a menu cursor while it owns it');
+// The honest claim, narrowed after review. There is no suppression flag and
+// there must not be one: `navigate` returns before it reaches `readPad` unless
+// a screen is open, and the pick branch runs only when one is NOT. So the two
+// handlers can never both see a press. What follows tests exactly that -- the
+// state exclusion through the real `navigate`/`update` -- and no longer claims
+// to prevent a defect that the early return already makes impossible. An
+// earlier draft asserted a guard inside `readPad`; that guard was unreachable
+// in production and its test only proved that `readPad` had been edited.
+console.log('a d-pad press reaches the offer or the menu, never both');
 
 // Node ships a read-only `navigator`, so the gamepad source is installed once
 // as a redefined property and swapped through `padSource`.
@@ -188,45 +206,102 @@ function padHeld(...btns) {
   return { connected: true, axes: [0, 0], buttons };
 }
 
-{
+/** A `Menus` whose `navigate` is the real one, so the exclusion is tested and
+ *  not stubbed over. `navMove` records rather than touching the DOM. */
+function navMenus() {
   const m = fakeMenus();
-  padSource = () => [padHeld(DPAD.LEFT)];
-  // Baseline: with no window up, d-pad left is a menu move. If this ever goes
-  // red the suppression below has swallowed navigation outright.
-  m.screen = 'pause';
-  const before = m.readPad();
-  ok(before.dx === -1, 'with no offer up, d-pad left still moves the menu cursor', before);
+  delete m.navigate;
+  m.moves = [];
+  m.navMove = (d) => m.moves.push(d);
+  m.navTargets = () => [];
+  m.navScroll = () => false;
+  m.navConfirm = () => {};
+  m.escape = () => {};
+  return m;
 }
 
 {
-  const m = fakeMenus();
+  // With the offer up and no screen, a held D-pad answers the offer and the
+  // navigator never runs at all.
+  const m = navMenus();
   const picked = [];
   open(m, picked);
   padSource = () => [padHeld(DPAD.LEFT)];
-  const out = m.readPad();
-  ok(out.dx === 0 && out.dy === 0,
-    'the same press does not also move the menu cursor while the window is up', out);
+  const ctx = { input: fakeInput(), player: { alive: true } };
+  ctx.input.pad.edges.add(DPAD.LEFT);
+  m.update(ctx, 1 / 60);
+  ok(picked.length === 1 && m.moves.length === 0,
+    'answering an offer moves no menu cursor', { picked, moves: m.moves });
 }
 
 {
-  const m = fakeMenus();
+  // With a screen open the same held D-pad is a menu cursor and nothing else:
+  // the pick branch is off, so there is nothing to double-handle.
+  const m = navMenus();
   const picked = [];
   open(m, picked);
   m.screen = 'pause';
-  padSource = () => [padHeld(DPAD.UP)];
-  const out = m.readPad();
-  ok(out.dy === -1, 'suppression lifts once a screen owns the d-pad instead', out);
+  padSource = () => [padHeld(DPAD.LEFT)];
+  const ctx = { input: fakeInput(), player: { alive: true } };
+  ctx.input.pad.edges.add(DPAD.LEFT);
+  m.update(ctx, 1 / 60);
+  ok(picked.length === 0 && m.moves.length === 1,
+    'with a screen open the press is a menu move and answers no offer', { picked, moves: m.moves });
 }
 
 {
+  // The exclusion is a property of `navigate` itself, stated directly: with no
+  // screen it consults no pad at all. If this ever goes red, the pick branch
+  // needs a real suppression and the comment above stops being true.
+  const m = navMenus();
+  open(m, []);
+  let read = 0;
+  m.readPad = () => { read++; return { dx: 0, dy: 0, confirm: false, back: false }; };
+  m.navigate({ input: fakeInput() });
+  ok(read === 0, 'navigate reads no pad while no screen is open', read);
+}
+
+/* -- 2b. the consume is scoped: other pad edges survive ---------------- */
+
+// Review Major 1. This runs a REAL `Input` rather than the stub above, because
+// the claim is about the input layer's own bookkeeping. Answering an offer
+// used to call the blanket `clearPadEdges`, which drops EVERY pad-bound
+// action's edge for the frame -- invisible today only because gameplay polls
+// `down()` rather than `hit()`, and a trap for the first consumer that does
+// not. Fails on cfacb1f.
+console.log('answering an offer spends one edge, not the frame');
+{
+  const { Input } = await import('../src/core/Input.js');
+  const { PAD_BUTTON } = await import('../src/core/PadState.js');
+  const { VIRTUAL } = await import('../src/core/Bindings.js');
+
+  const canvasEl = { addEventListener() {}, requestPointerLock() {} };
+  const gp = padHeld(PAD_BUTTON.A, DPAD.LEFT);
+  const input = new Input(canvasEl, { getPads: () => [gp] });
+  input.pollPad();
+  ok(input.hit(VIRTUAL.jump) && input.pad.edges.has(DPAD.LEFT),
+    'setup: jump (pad A) and d-pad left both register an edge this frame');
+
   const m = fakeMenus();
   const picked = [];
   open(m, picked);
-  const gp = padHeld();
-  gp.axes = [-1, 0];
-  padSource = () => [gp];
-  const out = m.readPad();
-  ok(out.dx === -1, 'only the hat is suppressed -- the stick still navigates', out);
+  m.update({ input, player: { alive: true } }, 1 / 60);
+
+  ok(picked.length === 1 && picked[0] === 'alpha', 'the offer is still answered', picked);
+  ok(!input.pad.edges.has(DPAD.LEFT), 'the answering edge is spent');
+  ok(input.hit(VIRTUAL.jump), 'an unrelated pad-bound action keeps its edge');
+  ok(input.pad.edges.has(PAD_BUTTON.A), 'and keeps its raw edge too');
+}
+
+/* -- 2c. Digit1-3 stay out of the rebinder ----------------------------- */
+
+console.log('the keyboard lever cannot be rebound away');
+{
+  const { RESERVED_KEYS, isReserved } = await import('../src/core/Bindings.js');
+  for (const code of ['Digit1', 'Digit2', 'Digit3']) {
+    ok(isReserved(code) && RESERVED_KEYS.includes(code),
+      `${code} is reserved from rebinding, so the offer lever cannot be taken`);
+  }
 }
 
 /* -- 3. the keyboard lever and the timeout are untouched --------------- */

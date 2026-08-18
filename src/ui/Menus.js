@@ -2427,13 +2427,8 @@ export class Menus {
     for (const p of pads) if (p?.connected) { gp = p; break; }
     if (!gp) return out;
 
-    // While the mutation window owns the D-pad (#98) it is not also a menu
-    // cursor. The sticks still navigate; only the four hat buttons drop out,
-    // and only for as long as a press of them means "take this offer".
-    const dpad = !(this.mutate && !this.screen);
-    const hat = (i) => (dpad && gp.buttons[i]?.pressed ? 1 : 0);
-    const ax = (gp.axes[0] || 0) + hat(15) - hat(14);
-    const ay = (gp.axes[1] || 0) + hat(13) - hat(12);
+    const ax = (gp.axes[0] || 0) + (gp.buttons[15]?.pressed ? 1 : 0) - (gp.buttons[14]?.pressed ? 1 : 0);
+    const ay = (gp.axes[1] || 0) + (gp.buttons[13]?.pressed ? 1 : 0) - (gp.buttons[12]?.pressed ? 1 : 0);
     const now = performance.now();
     const live = Math.abs(ax) > 0.55 || Math.abs(ay) > 0.55;
     if (live && now >= (this._padNext ?? 0)) {
@@ -2480,6 +2475,12 @@ export class Menus {
       const remaining = ctx.items?.mutationChoice?.()?.remaining ?? this.mutate.remaining;
       this.mutateRefs.clock.textContent = `${Math.max(0, Math.ceil(remaining))}s`;
       this.syncMutateKeys(ctx.input?.padActive);
+      // `!this.screen` is what keeps the D-pad from being an offer answer and
+      // a menu cursor in the same frame, and it needs nothing added to it:
+      // `navigate` returns before it reaches `readPad` unless a screen is
+      // open, and this branch is off exactly when one is. The two handlers are
+      // mutually exclusive by state, not by a suppression flag -- an earlier
+      // draft added one inside `readPad` and it was unreachable.
       if (!this.screen) {
         for (let i = 0; i < 3; i++) {
           // D-pad left / up / right answer the three offers (#98). A pad
@@ -2493,11 +2494,13 @@ export class Menus {
           if (!picked) continue;
           const el = this.mutateRefs.offers.children[i];
           if (el) this.mutate.onPick?.(el.dataset.mutatePick);
-          // The press is spent. Without this the same edge survives into the
-          // frame's remaining consumers (Start's pad read, and a screen
-          // opened later this frame), which is the double-handling this
-          // window is most likely to ship.
-          ctx.input?.clearPadEdges?.();
+          // The press is spent -- this one press, and nothing else. Without
+          // it the same edge survives into the frame's remaining consumers
+          // (Start's pad read, and a screen opened later this frame). The
+          // blanket `clearPadEdges` would also do that, and would additionally
+          // eat every other pad-bound action's edge for the frame, which is
+          // not this window's to take.
+          ctx.input?.consumePadEdge?.(MUTATE_PAD[i]);
           break;
         }
       }

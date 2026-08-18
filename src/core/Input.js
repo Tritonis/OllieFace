@@ -135,6 +135,24 @@ export class Input {
   }
 
   /**
+   * Spend ONE pad button's edge — the narrow counterpart to `clearPadEdges`,
+   * for a consumer that answers a single press and must leave the rest of the
+   * frame's pad input alone (Menus' mutation window, #98). The blanket clear
+   * is wrong there: it drops every pad-bound action's edge, which is harmless
+   * only for as long as nothing polls a pad action through `hit`/`actionHit`,
+   * and is a trap for the first thing that does.
+   *
+   * Both halves matter: the raw index leaves `pad.edges` so another raw reader
+   * (the Start-opens-pause branch) cannot see it again, and the virtual code
+   * leaves `pressed` so an action bound to that same button cannot fire twice.
+   */
+  consumePadEdge(btn) {
+    this.pad.edges.delete(btn);
+    const code = this.bindings.virtualForPad(btn);
+    if (code) this.pressed.delete(code);
+  }
+
+  /**
    * Physical key code -> the code to record, or null to drop it.
    *
    * An unbound key passes through under its own name so Escape, Enter and the
