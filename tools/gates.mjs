@@ -154,7 +154,7 @@ export function assertManual(arm) {
       `gates: refusing to run arm "${arm.id}" — it is a manual-only arm.\n`
       + '  It is tracked for staleness but never invoked by a tier: run it by hand\n'
       + `  (${arm.argv.join(' ')}), then record it with:\n`
-      + `    node tools/gates.mjs status --record ${arm.id}`,
+      + `    node tools/gates.mjs status --record  --verdict pass|fail${arm.id}`,
     );
   }
 }
@@ -348,19 +348,34 @@ function printStaleness(arms) {
   say('\n--- gate staleness -------------------------------------------------');
   for (const r of stalenessReport(arms)) {
     const mark = r.stale ? 'OVERDUE' : r.verdict === 'pass' ? 'ok     ' : r.verdict === 'fail' ? 'RED    ' : '?      ';
-    const tag = manualIds.has(r.id) ? ' (manual — run by hand, then: gates.mjs status --record ' + r.id + ')' : '';
+    const tag = manualIds.has(r.id) ? ' (manual — run by hand, then: gates.mjs status --record ' + r.id + ' --verdict pass|fail)' : '';
     say(`  ${mark} ${r.id.padEnd(10)} ${r.reason}${tag}`);
   }
   say('  (not run by any tier: smoke:steam — needs a live Steam client, run it by hand)');
   say('--------------------------------------------------------------------\n');
 }
 
-/** Records a hand-run of a manual arm. Refuses anything not marked `manual`. */
-export function recordManualRun(arms, armId) {
+/**
+ * Records a hand-run of a manual arm. Refuses anything not marked `manual`.
+ *
+ * The verdict is REQUIRED to be stated by the caller and is not defaulted. It used
+ * to be hardcoded `'pass'`, which meant a manual arm could only ever be recorded as
+ * passing: a red capture run recorded itself green, and `gates:status` then printed
+ * `ok` for a gate that had just failed. A staleness record that cannot express a
+ * failure is worse than no record, because it reads as evidence.
+ */
+export function recordManualRun(arms, armId, verdict) {
   const arm = arms.find((a) => a.id === armId);
   if (!arm) throw new Error(`gates: unknown arm "${armId}"`);
   if (!arm.manual) throw new Error(`gates: "${armId}" is not a manual arm — it is run (and recorded) by its own tier.`);
-  recordRun(arm.id, 'pass', 0);
+  if (verdict !== 'pass' && verdict !== 'fail') {
+    throw new Error(
+      `gates: --record needs a verdict: --record ${armId} --verdict pass|fail\n`
+      + '  State what the run actually did. There is no default: a hand-run that is\n'
+      + '  recorded without saying whether it passed is not a record, it is a guess.',
+    );
+  }
+  recordRun(arm.id, verdict, 0);
   return arm;
 }
 
@@ -610,7 +625,7 @@ function printAdvice(all, range) {
 
 const USAGE = [
   'usage: node tools/gates.mjs <cheap|heavy|status|advise> [--lane A|B|C | --port-base N] [--quiet]',
-  '       node tools/gates.mjs status --record <armId>   (record a hand-run of a manual arm)',
+  '       node tools/gates.mjs status --record  --verdict pass|fail<armId>   (record a hand-run of a manual arm)',
   '       node tools/gates.mjs advise [--since <range>]  (which arms this diff needs, and what it skips)',
   '',
   `  --lane      one flag for a whole port block: ${LANE_NAMES.map((n) => `${n}=${LANE_BASES[n]}-${LANE_BASES[n] + LANE_BLOCK_SIZE - 1}`).join(', ')}`,
@@ -690,9 +705,11 @@ function main(argv) {
       return 64;
     }
     const armId = argv[recordIdx + 1];
+    const verdictIdx = argv.indexOf('--verdict');
+    const verdict = verdictIdx >= 0 ? argv[verdictIdx + 1] : undefined;
     try {
-      const arm = recordManualRun(all, armId);
-      console.log(`gates: recorded a manual run of "${arm.id}" at ${new Date().toISOString()}`);
+      const arm = recordManualRun(all, armId, verdict);
+      console.log(`gates: recorded a ${verdict.toUpperCase()} hand-run of "${arm.id}" at ${new Date().toISOString()}`);
     } catch (e) {
       console.error(e.message);
       return 64;

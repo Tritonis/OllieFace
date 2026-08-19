@@ -141,6 +141,24 @@ console.log('the capture gate is a tracked-but-manual arm');
   let refusedNonManual = false;
   try { recordManualRun(ARMS, 'test'); } catch { refusedNonManual = true; }
   ok(refusedNonManual, 'recordManualRun refuses to record a non-manual (tier-run) arm');
+
+  // 5. The verdict must be STATED. This used to be hardcoded 'pass', so a red
+  // capture run recorded itself green and `gates:status` printed `ok` for a gate
+  // that had just failed — a staleness record that could not express a failure,
+  // which reads as evidence while carrying none. A missing or bogus verdict is a
+  // refusal, not a default.
+  for (const bogus of [undefined, '', 'ok', 'PASS', true]) {
+    let refused = false;
+    try { recordManualRun(ARMS, 'capture', bogus); } catch { refused = true; }
+    ok(refused, `recordManualRun refuses the verdict ${JSON.stringify(bogus)} rather than defaulting it`);
+  }
+
+  // And a stated 'fail' must survive into the report as RED — not merely be
+  // accepted and then rendered as though it had passed.
+  const failedRow = stalenessReport(ARMS, { arms: { capture: { at: justNow, verdict: 'fail' } } })
+    .find((r) => r.id === 'capture');
+  ok(failedRow.verdict === 'fail', 'a recorded FAIL is reported as fail, not as pass');
+  ok(failedRow.stale === false, 'a recorded FAIL is still a run: it clears OVERDUE while reading RED');
 }
 
 console.log('the audit allowlist is dated and reasoned');
