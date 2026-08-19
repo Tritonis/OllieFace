@@ -60,6 +60,14 @@ const SHOT_TIMEOUT = Number(args.shotTimeout ?? (SOFTWARE ? 180000 : 30000));
 // and hands it to every `update()`, which is where every VFX lifetime is spent.
 // So a shutter counted in rendered frames still landed at a different point in
 // an effect's life on every run. See the `pinClock` call below.
+// Execution order is ARRAY order, not the numeric prefix on `name`. The
+// manifest sorts shots alphabetically by name once capture finishes (see the
+// `.sort()` below), which hides that — e.g. `11-bestiary` runs before
+// `10-inventory` if it is spliced earlier in this array, and every scenario
+// after a splice inherits whatever world state the earlier one left behind.
+// Reordering entries below silently perturbs every later scenario's staging;
+// each shot's manifest entry now carries `execIndex` (this array's index at
+// capture time) so that perturbation is visible after the alphabetical sort.
 const SCENARIOS = [
   {
     name: '01-title',
@@ -476,7 +484,7 @@ if (!ready) {
   manifest.errors = errors;
   await page.screenshot({ path: path.join(OUT, '00-FAILED-TO-BOOT.png') });
 } else {
-  for (const s of SCENARIOS) {
+  for (const [execIndex, s] of SCENARIOS.entries()) {
     if (ONLY && !named(s)) continue;
     // An `onlyPath` scenario is valid on its documented path and nowhere else,
     // so a full run declines to photograph it instead of gating an arrangement
@@ -485,7 +493,7 @@ if (!ready) {
     if (!ONLY && s.onlyPath) {
       log(`scenario ${s.name}... SKIPPED (only-path-enforced)`);
       manifest.shots.push({
-        name: s.name, doc: s.doc,
+        name: s.name, doc: s.doc, execIndex,
         skipped: 'only-path-enforced',
         why: `valid only under --only ${s.name} against a fresh page; a full run `
           + 'leaves this scenario a stage it cannot be sited on',
@@ -521,13 +529,13 @@ if (!ready) {
       const subject = await page.evaluate(
         (name) => globalThis.__GAME__?.ctx?.harness?.subjects?.[name] ?? null, s.name);
       manifest.shots.push({
-        name: s.name, doc: s.doc, file, engine,
+        name: s.name, doc: s.doc, execIndex, file, engine,
         ms: { setup: setupMs, screenshot: shotMs, shotTimeout: SHOT_TIMEOUT },
         subject: subject ?? { ok: false, checks: [], note: 'scenario declared no subject' },
         newErrors: errors.slice(before),
       });
     } catch (e) {
-      manifest.shots.push({ name: s.name, doc: s.doc, error: String(e) });
+      manifest.shots.push({ name: s.name, doc: s.doc, execIndex, error: String(e) });
     }
   }
   // Fold the untouched shots back in and restore capture order.
