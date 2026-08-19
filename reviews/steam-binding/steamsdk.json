@@ -1,0 +1,8 @@
+{
+  "vendored": "steamworks_sdk/redistributable_bin/win64/steam_api64.dll",
+  "bytes": 317080,
+  "sha256": "EB17909A76668CF9AE0B92A618A34A50F6C73D3A6787CB4DD8CE36A8B10BFB75",
+  "bindingDeclared": 377,
+  "checked": 381,
+  "missing": []
+}
