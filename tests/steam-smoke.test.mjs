@@ -156,14 +156,29 @@ console.log('\n-- the accessor version is discovered, never assumed');
 console.log('\n-- test-only: the gate is not reachable from shipping code');
 {
   const pkg = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
-  ok(!('koffi' in (pkg.dependencies ?? {})), 'koffi is not a runtime dependency');
+  const lock = JSON.parse(readFileSync(path.join(root, 'package-lock.json'), 'utf8'));
+
+  // steamworks-ffi-node (a direct dependency, issue #116) declares koffi as a hard,
+  // non-optional dependency, so koffi sits in the PRODUCTION closure regardless of
+  // where it is listed at the top level of package.json. `koffi in pkg.dependencies`
+  // is therefore the wrong question - it stays false forever while koffi ships
+  // anyway. What actually decides whether koffi reaches a built app is `build.files`:
+  // assert on that.
+  const koffiInLock = lock.packages?.['node_modules/koffi'];
+  ok(koffiInLock !== undefined, 'koffi is present in the production dependency closure (transitively, via steamworks-ffi-node)');
   ok('koffi' in (pkg.devDependencies ?? {}), 'koffi is a devDependency');
 
   // `build.files` is what electron-builder packs. `tools/` is absent from it and
   // must stay absent: an FFI module that can open raw sockets has no business in
-  // a shipped build, however inert it is.
+  // a shipped build, however inert it is. Since koffi is now unavoidably in the
+  // production closure, it must instead be excluded by name - as must the package
+  // that pulls it in - or electron-builder will pack the whole closure it finds.
   const files = pkg.build?.files ?? [];
   ok(!files.some((f) => String(f).startsWith('tools')), 'build.files does not pack tools/');
+  ok(files.includes('!node_modules/koffi/**'),
+    'build.files excludes node_modules/koffi from the shipped build, even though koffi is a production dependency');
+  ok(files.includes('!node_modules/steamworks-ffi-node/**'),
+    'build.files excludes node_modules/steamworks-ffi-node from the shipped build');
 
   const shipping = [];
   const walk = (dir) => {
@@ -177,7 +192,8 @@ console.log('\n-- test-only: the gate is not reachable from shipping code');
 
   const offenders = shipping.filter((rel) => {
     const src = readFileSync(path.join(root, rel), 'utf8');
-    return /['"]koffi['"]/.test(src) || /steamnet\.mjs/.test(src) || /steamsmoke\.mjs/.test(src);
+    return /['"]koffi['"]/.test(src) || /['"]steamworks-ffi-node['"]/.test(src)
+      || /steamnet\.mjs/.test(src) || /steamsmoke\.mjs/.test(src);
   });
   ok(offenders.length === 0,
     `no file under src/ or desktop/ reaches for koffi or the gate's modules${offenders.length ? `: ${offenders.join(', ')}` : ` (${shipping.length} files scanned)`}`);

@@ -621,8 +621,20 @@ they are checked to exist in the DLL and deliberately not bound, so an SDK swap
 that dropped one is still caught on the day of the swap. Section 8.7 has what it
 measured. The test-only constraint is asserted
 rather than remembered: `tests/steam-smoke.test.mjs` fails if anything under
-`src/` or `desktop/` reaches for `koffi` or for that module, if `koffi` stops
-being a devDependency, or if `build.files` starts packing `tools/`.
+`src/` or `desktop/` reaches for `koffi`, `steamworks-ffi-node`, or for that
+module, or if `build.files` starts packing `tools/`.
+
+**Since #116 (2026-08-18), koffi sits in the production dependency closure
+whether anyone likes it or not.** `steamworks-ffi-node` is a direct
+`dependencies` entry (added for its API surface, not for FFI use — the
+migration onto it is #54/#55 and has not happened) and it declares `koffi` as
+a hard, non-optional dependency of its own. `koffi in package.json`'s
+top-level `dependencies` is therefore not the question that matters — that
+stays false forever regardless of what actually ships. What keeps koffi (and
+`steamworks-ffi-node` itself) out of a built app is two `build.files`
+negations, `!node_modules/koffi/**` and `!node_modules/steamworks-ffi-node/**`,
+and the smoke test now asserts on those directly rather than on the
+unreachable top-level key.
 
 ### 8.5 The seam, enumerated
 

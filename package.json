@@ -43,6 +43,8 @@
       "package.json",
       "!node_modules/three/**",
       "!node_modules/ws/**",
+      "!node_modules/koffi/**",
+      "!node_modules/steamworks-ffi-node/**",
       "!steam_appid.txt"
     ],
     "win": {
