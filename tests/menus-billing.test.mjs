@@ -36,6 +36,8 @@ import { Engine, DISABLE_AFTER } from '../src/core/Engine.js';
 import { CameraRig } from '../src/core/CameraRig.js';
 import { HUD } from '../src/ui/HUD.js';
 import { Menus } from '../src/ui/Menus.js';
+import { NetHost } from '../src/net/NetHost.js';
+import { Progression } from '../src/systems/Progression.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const SRC = join(here, '..', 'src');
@@ -180,8 +182,14 @@ console.log('nothing in src/ asks the HUD about the menus');
   ok(offenders.length === 0, `no src/ file routes menu state through ctx.hud (${offenders.join(', ') || 'none'})`);
 }
 
-console.log('a dead HUD does not hand the world to a stick behind the pause screen');
-{
+/**
+ * Kill the HUD and leave the menus running — the state the split created.
+ *
+ * Six HUD throws blank `ctx.hud` while Menus goes on running its own `update`.
+ * Every arm below starts here, because each hazard it guards is a reader that
+ * must ask `ctx.menus` rather than the corpse at `ctx.hud`.
+ */
+function deadHudLiveMenus() {
   const engine = new Engine({ canvas: null, seed: 1 });
   engine.running = true;
 
@@ -198,8 +206,12 @@ console.log('a dead HUD does not hand the world to a stick behind the pause scre
   engine.add(menus);
   engine.add(hud);
   quietly(() => { for (let i = 0; i < DISABLE_AFTER; i++) engine._frame(); });
+  return { engine, menus, ctx: engine.ctx };
+}
 
-  const ctx = engine.ctx;
+console.log('a dead HUD does not hand the world to a stick behind the pause screen');
+{
+  const { engine, menus, ctx } = deadHudLiveMenus();
   ok(ctx.hud === null, 'the HUD was given up on and ctx.hud is blank');
   ok(ctx.menus === menus && engine.systems.includes(menus),
     'the menus survived it — the state this whole block exists for');
@@ -224,6 +236,94 @@ console.log('a dead HUD does not hand the world to a stick behind the pause scre
   menus.screen = null;
   rig.lateUpdate(ctx, 1 / 60);
   ok(rig.yaw !== yawPaused, 'and the same stick does turn it once the screen is closed');
+}
+
+// -------------------------------------------------- NetHost.js:532 — the mute
+
+/**
+ * A networked host's pause-menu keystrokes must not drive its survivor.
+ *
+ * `_holdSession` releases `ctx.paused` while a peer is still playing, so the
+ * host's own frame keeps running behind its overlay, and the mute at :568 is
+ * the only thing stopping those keystrokes reaching `Player._sampleCommand`.
+ * The comment at :562-567 records that as a fixed regression; until now the
+ * only thing holding it was the source scan above, which any spelling of
+ * `ctx.menus.screen` satisfies whatever the method then does with it. So run
+ * the real method, against the state the scan cannot see.
+ */
+console.log('a networked host behind a pause screen does not drive its survivor');
+{
+  const { ctx } = deadHudLiveMenus();
+  ctx.input = { enabled: true };
+
+  const host = new NetHost({ maxPlayers: 4 });
+  let clock = 0;
+  host._now = () => clock;
+  // A peer still playing. The real `hasLivePeer()` reads this map.
+  host.clients.set(1, { peer: { id: 1 }, pawn: { alive: true }, inputs: [], lastTick: 0 });
+
+  ctx.menus.screen = 'pause';
+  host._holdSession(ctx);
+  ok(ctx.paused === false, 'the world is not paused — somebody else is still playing in it');
+  ok(ctx.input.enabled === false,
+    'and the host’s own input is muted while its own pause screen is up');
+
+  // Not a blanket mute: same host, same live peer, screen closed, and the
+  // stick comes back. So a pass above is the screen being seen rather than
+  // input being off for some unrelated reason.
+  ctx.menus.screen = null;
+  host._holdSession(ctx);
+  ok(ctx.input.enabled === true, 'and it comes back the moment the screen closes');
+
+  // The peer dies inside the grace window with the screen still up: no pause
+  // yet (the dying peer is owed one more snapshot), and still no input,
+  // because the host is standing in a menu.
+  ctx.menus.screen = 'pause';
+  host._holdSession(ctx);
+  host.clients.get(1).pawn.alive = false;
+  clock += 0.5;
+  host._holdSession(ctx);
+  ok(ctx.paused === false && ctx.input.enabled === false,
+    'a peer dying inside the grace window does not hand the stick back mid-menu');
+}
+
+// -------------------------------------------- Progression.js:525 — the headline
+
+/**
+ * The victory headline must not read "You Died".
+ *
+ * `finishRun` rewrites the death panel's authored markup, and it can only
+ * reach that markup through `ctx.menus.root`. With the HUD dropped, a reader
+ * routed via `ctx.hud` finds nothing, writes nothing, and the winning player
+ * is told they died. The DOM here is two nodes and a `querySelector` because
+ * there is no jsdom; the method under test is the shipped one.
+ */
+console.log('a winning player is not told they died by a HUD that is already gone');
+{
+  const { ctx } = deadHudLiveMenus();
+
+  const word = { textContent: 'You Died' };
+  const sub = { textContent: 'The void keeps what it takes.' };
+  ctx.menus.root = {
+    querySelector: (sel) => (sel.includes('death-word') ? word
+      : sel.includes('data-death-sub') ? sub : null),
+  };
+
+  const prog = Object.create(Progression.prototype);
+  prog.ctx = ctx;
+  prog._ended = false;
+  // `_endRun` commits a profile record and raises `runEnd`; neither is what
+  // this arm is about, and both want the whole run's accumulated state.
+  let committed = null;
+  prog._endRun = (won) => { committed = won; };
+
+  prog.finishRun({ won: true, title: 'You Left', line: 'The Obelisk closes behind you.' });
+
+  ok(committed === true, 'the run was committed as won');
+  ok(word.textContent === 'You Left',
+    `the headline names the ending rather than a death (${word.textContent})`);
+  ok(sub.textContent === 'The Obelisk closes behind you.',
+    'and the sub-line is the ending’s own');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
