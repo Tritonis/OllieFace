@@ -110,6 +110,104 @@ const SLIVER_MAX = 0.5;
 // full speed, so anything past a metre already reads as a lurch.
 const SNAP_MAX = 1.0;
 
+// --- anticipation and the snap-in rate cap (#115) ---------------------------
+//
+// The works biome produces boom collapses of 6.8 m in a single frame — 32x the
+// 0.213 m free-flight mean — and unlike #110 they are not misattributed
+// slivers: a paired sweep with _sliver enabled and neutralised returns
+// identical numbers. They are clamps the rule *correctly* leaves alone. The
+// camera is where it belongs; it simply arrived there faster than anyone can
+// read.
+//
+// The obvious fix — rate-limit the pull-in — is not available on its own, and
+// the measurement says so plainly: at every one of those frames `distance`
+// equals `allowedDistance` exactly. The fan's verdict is what teleports, so
+// any lag between the boom and that verdict is a boom sitting past the
+// obstruction, i.e. a camera inside rock. That is the #110 rejected fix
+// wearing a different hat, and tests/camera-occlusion.test.mjs pins it.
+//
+// So the rate cap needs something to spend, and the only thing that can pay for
+// it without clipping is *lead time*: a second, softer reach that is only ever
+// shorter than the hard one. The boom is driven toward the soft reach under the
+// cap and then clamped to the hard reach last, so the cap can delay a pull-in
+// the fan has not demanded yet and never one it has. When the anticipation
+// lands, the pull-in is already underway before the obstruction reaches the
+// hard clamp. When it misses, the clamp still applies at full force: the
+// smoothing is forfeited, the correctness is not.
+//
+// The lead signal is the fan's own discarded work, and finding that took one
+// refuted attempt worth recording. The first version cast a second fan from the
+// pivot extrapolated 0.22 s along the survivor's velocity. It bought nothing —
+// worst frame 6.834 -> 6.830 — and cost a great deal: frames with the boom on
+// its 0.7 m floor went 2433 -> 4461 at pitch 0.5, because leading uphill finds
+// the slope early everywhere. Obstructions here do not arrive from ahead of the
+// pivot; they rise behind it.
+//
+// What the fan already knows is better. At the frames that collapse, one ray
+// has been closing smoothly for several frames — 1.46, 1.28, 1.11, 0.94 m — and
+// `allowed` sits at its full 7.679 throughout, because _sliver is skipping that
+// hit. The skip then stops applying and the whole accumulated pull-in arrives
+// at once. The rig had three frames of monotone warning and threw every one of
+// them away.
+//
+// So a skipped hit is no longer discarded silently: it is remembered as a
+// *soft* reach. The boom eases toward the soft reach at the capped rate while
+// the hard reach still clamps, and because a soft reach is only ever shorter
+// than the hard one, moving toward it cannot put the camera inside anything.
+// The skip keeps its #110 meaning exactly — the boom is not *clamped* to a
+// sliver, so a Jersey barrier is still no reason to yank to the floor — it
+// simply stops being invisible.
+
+// Pull-ins at or under this are simply taken. A third of a metre is inside the
+// noise of an ordinary frame's boom adjustment; rate-limiting it would add
+// mush to the common case to buy nothing.
+const SNAP_INSTANT = 0.35;
+
+// Anything longer approaches at this constant speed instead. A *rate*, not the
+// exponential the rest of this file smooths with, and the difference is not
+// cosmetic. Warning is scarce here: a fan ray typically reports an obstruction
+// three or four frames before the clamp lands, so the entire budget is that
+// handful of frames and the cap has to spend it evenly. An exponential spends
+// it backwards — it moves fastest while the gap is largest and slowest as it
+// closes, so it covered 1.16, 0.93 and 0.75 m of a 6.4 m collapse on heading 0
+// and left 3.48 m for the clamp. A flat rate over the same three frames leaves
+// roughly a third of that.
+//
+// 100 m/s is 1.67 m per frame at 60 Hz, which is about eight times free flight
+// — fast enough to consume three frames of warning almost completely, slow
+// enough that the eye tracks the boom instead of being cut to its far end.
+const SNAP_IN_RATE = 100;
+
+// How long a soft reach is remembered once the ray that raised it stops
+// reporting. This is the expensive dial, and it is expensive in the one
+// currency the rig cannot print: boom length. A remembered warning holds the
+// boom shorter, so smoothing here is bought directly out of framing, and the
+// exchange rate is steep. Measured over the same 14,400-frame works sweep
+// (reviews/camera-115/sweep-tau*.json), worst single-frame camera translation
+// against mean boom length at pitch -0.17:
+//
+//   tau    worst @ -0.17 / 0.5 / 1.05      mean boom @ -0.17
+//   off        6.834 / 5.994 / 6.158           5.206     sweep-before.json
+//   0.30       6.417 / 4.109 / 4.273           4.484     sweep-hold030.json
+//   0.55       6.012 / 2.930 / 3.092           4.089     sweep-after.json
+//   1.10       4.948 / 1.773 / 1.930           3.511     sweep-hold110.json
+//
+// 0.55 is the knee. It halves the worst frame at the two pitches where the
+// warning exists to be remembered, for a fifth of the boom; going on to 1.10
+// buys another third of a metre of worst-case at the cost of another tenth of
+// the frame, which is the wrong side of the trade for a camera whose whole
+// framing argument is a long lens on a long boom.
+//
+// It does almost nothing at pitch -0.17, and that is not a tuning failure. The
+// residual collapses there have no warning to remember: heading 5 frame 253
+// reports -1 on every one of the five rays for the five preceding frames and
+// then 1.33 m, because the boom is trailing back and *down* into a slope the
+// survivor is descending and the cast is near-tangent to it. A ray at grazing
+// incidence has a genuinely discontinuous intersection distance, and no amount
+// of memory anticipates a discontinuity. Smoothing those would mean holding the
+// boom out past the fan's verdict, which is a camera inside the hill.
+const SOFT_HOLD_TAU = 0.55;
+
 const POS_TAU = 0.055;      // camera position follow — short, stays responsive
 const LOOK_TAU = 0.105;     // look-at target — longer, so framing lags the body
 const OCCLUDE_OUT_TAU = 0.30;
@@ -149,6 +247,10 @@ export class CameraRig {
     // reads `distance` at all. Nothing in the rig reads it back, so it cannot
     // change behaviour.
     this.allowedDistance = DIST;
+    // The lead fan's verdict, always <= allowedDistance. Published for the same
+    // reason: it is what the boom is aiming at, and a test that wants to know
+    // whether the rate cap had anything to spend has to be able to see it.
+    this.anticipatedDistance = DIST;
 
     this.fov = FOV_BASE;
     this.fovPunch = 0;
@@ -164,6 +266,11 @@ export class CameraRig {
     this._up = new THREE.Vector3(0, 1, 0);
     this._tmp = new THREE.Vector3();
     this._origin = new THREE.Vector3();
+    this._back = new THREE.Vector3();
+    // Per-frame scratch: the shortest reach any ray asked for, skipped or not.
+    this._soft = DIST;
+    // The same, held across frames so a flickering graze is not forgotten.
+    this._softHold = DIST;
     this._far = new THREE.Vector3();
     this._fwd = new THREE.Vector3();
     this._q = new THREE.Quaternion();
@@ -271,35 +378,46 @@ export class CameraRig {
     const boom = DIST + speedT * DIST_SPEED;
 
     this._desired.copy(this.pivot).addScaledVector(this._dir, -boom);
-    let allowed = boom;
-    if (ctx.stage?.raycastDistance) {
-      const back = this._tmp.copy(this._dir).negate();
-      for (let i = 0; i < 5; i++) {
-        this._origin.copy(this.pivot);
-        if (i > 0) {
-          const a = (i - 1) * (Math.PI / 2);
-          this._origin.addScaledVector(this._right, Math.cos(a) * CAM_RADIUS);
-          this._origin.y += Math.sin(a) * CAM_RADIUS;
-        }
-        const reach = boom + CAM_RADIUS;
-        const d = ctx.stage.raycastDistance(this._origin, back, reach);
-        if (d < 0) continue;
-        const pull = Math.max(MIN_DIST, d - CAM_RADIUS);
-        // Only hits that would yank the boom in by more than SNAP_MAX in a
-        // single frame are worth a second question. Asking it of *every* hit
-        // was measured worse, not better: ignoring far slivers lets the boom
-        // stay long for a frame or two and then snap when the sliver widens,
-        // which trades one lurch for several.
-        if (pull < this.distance - SNAP_MAX && this._sliver(ctx, this._origin, back, reach, d)) continue;
-        allowed = Math.min(allowed, pull);
-      }
-    }
+    this._soft = boom;
+    const allowed = this._fan(ctx, this.pivot, boom);
     this.allowedDistance = allowed;
-    // Snap in, ease out — clipping through geometry for even one frame is far
-    // more offensive than a slightly slow recovery.
-    this.targetDistance = allowed < this.distance
-      ? allowed
-      : smooth(this.distance, allowed, OCCLUDE_OUT_TAU, dt);
+
+    // The soft reach is held rather than re-read, because the warning it is
+    // built from flickers. At grazing incidence — the boom trailing back and
+    // down into a slope the survivor is descending, which is what the works
+    // biome is full of — a fan ray crosses the surface on some frames and
+    // misses on the next: heading 14 reports 0.10 m on frame 226, nothing at
+    // all on 227-230, 0.94 m on 231, and then the clamp lands on 232. Read
+    // fresh each frame, the boom eases in on 226 and spends the next four
+    // frames easing back out again, so it arrives at the clamp having made no
+    // progress at all.
+    //
+    // So the shortest reach any ray asked for is taken instantly and released
+    // on the same time constant the boom's own recovery uses. Memory of a
+    // warning costs a slightly shorter boom for a few tenths of a second after
+    // a graze; forgetting it costs the teleport.
+    this._softHold = Math.min(this._soft, smooth(this._softHold, boom, SOFT_HOLD_TAU, dt));
+    // The rate cap's entire budget.
+    const anticipated = Math.min(allowed, this._softHold);
+    this.anticipatedDistance = anticipated;
+
+    // Snap in, ease out. The asymmetry is unchanged and deliberate — clipping
+    // through geometry for even one frame is far more offensive than a slow
+    // recovery — but "instant" and "correct" are now separated. The pull-in
+    // aims at the *anticipated* reach on a rate cap, and is then clamped to the
+    // reach the present frame actually permits. Since that clamp is applied
+    // last and only ever shortens, no amount of rate limiting can leave the
+    // boom past the obstruction: the cap can delay a pull-in the fan has not
+    // demanded yet, never one it has.
+    let target;
+    if (anticipated < this.distance) {
+      const pull = this.distance - anticipated;
+      const step = Math.max(SNAP_INSTANT, SNAP_IN_RATE * dt);
+      target = pull <= step ? anticipated : this.distance - step;
+    } else {
+      target = smooth(this.distance, anticipated, OCCLUDE_OUT_TAU, dt);
+    }
+    this.targetDistance = Math.min(target, allowed);
     this.distance = this.targetDistance;
 
     this.camPos.copy(this.pivot).addScaledVector(this._dir, -this.distance);
@@ -334,6 +452,46 @@ export class CameraRig {
     this._q.setFromRotationMatrix(this._m);
     ctx.camera.quaternion.copy(this._q);
     ctx.camera.rotateZ(this.roll);
+  }
+
+  /**
+   * The occlusion fan: a 5-ray sphere-cast approximation offset around the boom
+   * axis, fired backward from `from`. Returns the longest boom that stays clear
+   * of geometry, which is `boom` itself when nothing is in the way.
+   *
+   * It also leaves `_soft` holding the shortest reach *any* ray asked for,
+   * including hits _sliver waved through, which is what the #115 rate cap
+   * eases toward. `_soft` is the caller's to reset each frame.
+   */
+  _fan(ctx, from, boom) {
+    let allowed = boom;
+    if (!ctx.stage?.raycastDistance) return allowed;
+    const back = this._back.copy(this._dir).negate();
+    const reach = boom + CAM_RADIUS;
+    for (let i = 0; i < 5; i++) {
+      this._origin.copy(from);
+      if (i > 0) {
+        const a = (i - 1) * (Math.PI / 2);
+        this._origin.addScaledVector(this._right, Math.cos(a) * CAM_RADIUS);
+        this._origin.y += Math.sin(a) * CAM_RADIUS;
+      }
+      const d = ctx.stage.raycastDistance(this._origin, back, reach);
+      if (d < 0) continue;
+      const pull = Math.max(MIN_DIST, d - CAM_RADIUS);
+      // Only hits that would yank the boom in by more than SNAP_MAX in a
+      // single frame are worth a second question. Asking it of *every* hit
+      // was measured worse, not better: ignoring far slivers lets the boom
+      // stay long for a frame or two and then snap when the sliver widens,
+      // which trades one lurch for several.
+      if (pull < this.distance - SNAP_MAX && this._sliver(ctx, this._origin, back, reach, d)) {
+        // Skipped, not forgotten. See the SNAP_IN_RATE commentary above.
+        if (pull < this._soft) this._soft = pull;
+        continue;
+      }
+      allowed = Math.min(allowed, pull);
+      if (pull < this._soft) this._soft = pull;
+    }
+    return allowed;
   }
 
   /**

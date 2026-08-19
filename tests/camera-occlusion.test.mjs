@@ -117,13 +117,14 @@ function buildStage(index = STAGE) {
  * `speed`, and return every per-frame camera translation alongside the
  * penetration probe that watched the same frames.
  */
-function sprint(ctx, stage, { x, z, yaw, frames = 900, speed = 9 }) {
+function sprint(ctx, stage, { x, z, yaw, pitch, frames = 900, speed = 9 }) {
   const pen = probe(`sprint yaw ${yaw.toFixed(3)}`);
   const dx = Math.sin(yaw), dz = Math.cos(yaw);
   const rig = new CameraRig();
   rig.init(ctx);
   // Facing along travel: the boom trails behind, which is the #106 repro.
   rig.yaw = yaw + Math.PI;
+  if (pitch !== undefined) rig.pitch = pitch;
   const player = {
     position: new THREE.Vector3(x, 0, z),
     velocity: new THREE.Vector3(dx * speed, 0, dz * speed),
@@ -299,6 +300,60 @@ console.log('works biome: barriers thicker than SLIVER_MAX still clamp the boom'
   // go red on a mis-calibration rather than merely describe one.
   ok(clamped === BARRIERS.length,
      `all ${BARRIERS.length} above-threshold barriers constrain the boom (${clamped} did)`);
+  okClear(pen);
+}
+
+// --- #115: a skipped sliver is warning, not silence ------------------------
+//
+// The works biome collapses the boom by 6.83 m in one frame — 32x its own
+// free-flight mean — and unlike #110 these are not misattributed slivers. They
+// are clamps _sliver correctly leaves alone, and at every one of them
+// `distance` equals `allowedDistance` exactly, so the fan's *verdict* is what
+// teleports. That rules out a bare rate limit: any lag behind the verdict is a
+// boom past the obstruction, which is the rejected fix two arms above.
+//
+// What the measurement showed instead is that the rig was discarding warning it
+// already had. On headings 0 and 14, one fan ray closes monotonically over
+// three or four frames — 1.46, 1.28, 1.11, 0.94 m — while `allowed` sits at its
+// full 7.679 because each of those hits reads as a sliver. Then the skip stops
+// applying and the whole pull-in lands at once. The fix remembers a skipped
+// hit as a *soft* reach and eases the boom toward it under SNAP_IN_TAU, with
+// the hard reach still clamping last, so the anticipation can only ever shorten
+// the boom and can never seat the camera inside anything.
+//
+// Two headings, both from the sweep in reviews/camera-115/: heading 0 collapses
+// 6.830 m at frame 71 unfixed, heading 14 collapses 6.834 m at frame 232. Both
+// are pure skip-then-clamp, which is what makes them the right pin. The
+// residual worst frames on this stage are a different animal — every ray reads
+// -1 and then a hit, with no intervening frame — and are deliberately not
+// asserted here; see the issue.
+console.log('#115: an anticipatable collapse is spread, not teleported');
+{
+  const w = buildStage(WORKS);
+  const wSpawn = w.stage.spawnPoint();
+  const pen = tally('#115 anticipatable collapse');
+  // Windowed on the two events on purpose. These headings carry other
+  // collapses of 3.5-3.8 m that are *not* anticipatable — no ray reports
+  // anything at all on the frame before — and a whole-heading maximum would
+  // quietly grade this fix on those instead.
+  let worst = 0, worstA = -1;
+  for (const { a, at } of [{ a: 0, at: 71 }, { a: 14, at: 232 }]) {
+    const yaw = heading(a);
+    const run = sprint(w.ctx, w.stage, {
+      x: wSpawn.x - Math.sin(yaw) * 60, z: wSpawn.z - Math.cos(yaw) * 60,
+      yaw, pitch: -0.17,
+    });
+    absorb(pen, run.pen);
+    // deltas[k] is the translation arriving on frame k+1.
+    const max = Math.max(...run.deltas.slice(at - 12, at + 6));
+    console.log(`    heading ${a} frames ${at - 11}-${at + 6}: worst=${max.toFixed(3)}`);
+    if (max > worst) { worst = max; worstA = a; }
+  }
+  // Unfixed: 6.834. Raising SNAP_INSTANT past the pull size, or dropping the
+  // soft reach on the floor of _fan, restores it — this arm has been run red
+  // both ways.
+  ok(worst <= 2.0,
+     `no anticipatable collapse translates the camera more than 2 m (worst ${worst.toFixed(3)} on heading ${worstA})`);
   okClear(pen);
 }
 
