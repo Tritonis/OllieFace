@@ -538,7 +538,9 @@ if (!ready) {
       manifest.shots.push({ name: s.name, doc: s.doc, execIndex, error: String(e) });
     }
   }
-  // Fold the untouched shots back in and restore capture order.
+  // Fold the untouched shots back in and sort by NAME, not capture order — the two
+  // differ, which is exactly why each entry carries `execIndex` (see the header above
+  // SCENARIOS). Read `execIndex`, never this array's order, to know what ran when.
   manifest.shots = [...manifest.shots, ...carried].sort((a, b) => a.name.localeCompare(b.name));
   manifest.errors = errors;
   // Hoisted to the top of the file so it cannot be missed by a reader who only
