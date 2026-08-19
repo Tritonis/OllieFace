@@ -231,6 +231,22 @@ const SNAP_IN_RATE = 100;
 // incidence has a genuinely discontinuous intersection distance, and no amount
 // of memory anticipates a discontinuity. Smoothing those would mean holding the
 // boom out past the fan's verdict, which is a camera inside the hill.
+//
+// Lowering this to buy the boom back was tried against the capture gate on
+// 2026-08-19 and does not work; the sweep is `tools/camera-tau-sweep.mjs` and
+// the manifests are in reviews/115-retune/. Two things close the door. First
+// the legal window has a floor: the whole-surface stage-3 ceiling in
+// tests/camera-occlusion.test.mjs reads 6.492 m at tau 0.20 and 6.510 m at
+// 0.15, so anything below ~0.18 fails a shipped guard rather than merely
+// costing quality. Second, inside [0.20, 0.55] the gate the shots fail on is
+// not monotone in boom length at all. `worstGatedSep` is a minimum over a set
+// whose *membership* moves with framing -- a longer boom makes subjects
+// smaller, so fewer clear the pixel gate, so the min is taken over fewer
+// objects. Three full runs, 10-inventory's worst gated separation against the
+// 0.27 it needs: 0.27 at tau off (exactly the threshold, zero headroom), 0.19
+// at 0.25, 0.17 at 0.40, 0.19 at 0.55. It does not trend. tau 0.25 also broke
+// 06-loaded-hud, which neither the baseline nor 0.55 breaks. Restoring those
+// shots is a framing or a threshold question, not a tuning one.
 const SOFT_HOLD_TAU = 0.55;
 
 const POS_TAU = 0.055;      // camera position follow — short, stays responsive
