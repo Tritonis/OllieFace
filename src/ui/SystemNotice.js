@@ -25,6 +25,8 @@
  * name and an exception message are not markup this page gets to trust.
  */
 
+import { FALLBACK_PAUSE_LABEL } from './FallbackPause.js';
+
 const CSS = `
 .system-notice{position:fixed;right:16px;bottom:16px;z-index:9997;
  max-width:min(420px,calc(100vw - 32px));
@@ -40,9 +42,13 @@ const CSS = `
  font-size:11px;margin:0 0 4px}
 .system-notice__body{margin:0 0 4px}
 .system-notice__list{margin:0;padding-left:16px;color:#9aa4ac}
+.system-notice__recovery{margin:6px 0 0;color:#ffbe5a}
 `;
 
 const TITLE = 'A system was switched off';
+// Only shown when the system that went is `Menus`, because only then is there
+// nothing left to press. See `ui/FallbackPause.js`.
+const MENUS_LINE = `The menus are gone with it: press ${FALLBACK_PAUSE_LABEL} to pause, resume or restart.`;
 const BODY = 'It failed on every frame, so the game stopped running it. The run '
   + 'continues, but whatever it was responsible for is gone until you restart.';
 
@@ -51,6 +57,8 @@ let styleInjected = false;
  *  line rather than a second strip. */
 let current = null;
 let listNode = null;
+/** The "press F8" line, added once and only when it is the menus that went. */
+let recoveryNode = null;
 /** Names already listed, so a repeat cannot double an entry. */
 const listed = new Set();
 
@@ -99,6 +107,9 @@ export function showSystemDisabled(entry) {
     const message = entry?.message ? ` — ${entry.message}` : '';
     listNode.appendChild(el('li', null, `${name}${message}`));
   }
+  if (name === 'Menus' && !recoveryNode) {
+    recoveryNode = current.appendChild(el('p', 'system-notice__recovery', MENUS_LINE));
+  }
   return current;
 }
 
@@ -107,6 +118,7 @@ export function clearSystemNotices() {
   current?.remove();
   current = null;
   listNode = null;
+  recoveryNode = null;
   listed.clear();
 }
 
