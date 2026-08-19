@@ -26,6 +26,7 @@ import { Lobby } from './net/Lobby.js';
 import { maybeShowGpuNotice } from './ui/GpuNotice.js';
 import { installFatalOverlay } from './ui/FatalOverlay.js';
 import { installSystemNotice } from './ui/SystemNotice.js';
+import { installFallbackPause } from './ui/FallbackPause.js';
 import { installTelemetry } from './systems/Telemetry.js';
 import { initDesktopStore } from './core/DesktopStore.js';
 import { showSaveFailure, clearSaveFailure } from './ui/SaveIndicator.js';
@@ -62,6 +63,12 @@ installFatalOverlay(ctx);
 // must find a listener already there. A disabled system is survivable but never
 // invisible — the player is told which one went and that the run continues.
 installSystemNotice(ctx);
+// And the exit that survives losing the menus. `Menus` is the pause screen, the
+// death screen, settings and quit all at once, and it is noncritical: six
+// throws and the run goes on with no way to interrupt it. This is one key
+// listener, installed here rather than inside any system so that no disable can
+// take it too. It stands down entirely while `ctx.menus` is alive.
+installFallbackPause(ctx);
 
 ctx.input = new Input(canvas);
 ctx.pipeline = new RenderPipeline(canvas, quality);
