@@ -6,14 +6,17 @@
  * Issue #119. `Menus` is the pause screen, the death screen, settings, title,
  * survivor select and co-op, and it is `static critical = false` — six
  * consecutive throws in one phase and the Engine drops it for the rest of the
- * run, blanking `ctx.menus`. `ctx.paused` is written by exactly one
- * player-reachable place in the tree, `Menus.open()` (Menus.js:1624), so after
- * that disable the run is still playable and can never be interrupted again.
+ * run, blanking `ctx.menus`. `Menus.open()` (Menus.js:1624) is the last
+ * player-reachable writer of `ctx.paused` to go with it — `NetHost.js:553,570`
+ * also write the flag, but both branches are computed off `ctx.menus?.screen`
+ * and neither can fire again once that is permanently null. So after the
+ * disable the run is still playable and can never be interrupted again.
  *
  * The fallback under test is `src/ui/FallbackPause.js`: one document keydown
  * listener, installed at boot rather than inside any system, that writes
  * `ctx.paused` and offers a restart — and that stands down completely while
- * `ctx.menus` is alive.
+ * `ctx.menus` is alive, or while a co-op peer is still playing in the world the
+ * flag would freeze.
  *
  * The engine here is the shipped one and it is genuinely driven to the disable;
  * nothing asserts against a hand-set `ctx.menus = null`. There is no jsdom, so
@@ -22,6 +25,7 @@
  */
 import { Engine, DISABLE_AFTER } from '../src/core/Engine.js';
 import { Menus } from '../src/ui/Menus.js';
+import { NetHost } from '../src/net/NetHost.js';
 import {
   installFallbackPause, setFallbackPause, fallbackRestart, fallbackPauseOpen,
   clearFallbackPause, fallbackPauseNeeded, FALLBACK_PAUSE_KEY, FALLBACK_PAUSE_LABEL,
@@ -147,6 +151,71 @@ console.log('and can still reach a restart');
   clearFallbackPause();
 }
 
+// ------------------------------------------------- the co-op host (issue #119 review)
+
+/**
+ * A host's emergency pause must not freeze the people still playing.
+ *
+ * `ctx.paused` gates all of `Engine`'s fixedUpdate (`Engine.js:747`) and
+ * `NetHost.update` refuses to broadcast a snapshot while it is set
+ * (`NetHost.js:598`), so on an authority it is everyone's flag, not the local
+ * player's. `NetHost._holdSession` exists precisely because a host that froze
+ * itself left a peer "unable to finish, die or end the run" for four seconds
+ * (`NetHost.js:497-522`) — and it cannot cover this path, because everything it
+ * computes comes off `ctx.menus?.screen`, which is permanently null once the
+ * menus are gone.
+ *
+ * Real `NetHost`, real `_holdSession`, real snapshot path; the peer is a stub
+ * that counts what arrives.
+ */
+console.log('a co-op host pressing the emergency key does not starve its peer');
+{
+  const { ctx } = wedgeTheMenus();
+  const doc = fakeDoc();
+  ctx.input = { enabled: true };
+  installFallbackPause(ctx, doc);
+
+  const host = new NetHost({ maxPlayers: 4 });
+  let clock = 0;
+  host._now = () => clock;
+  host.init(ctx);
+  let sent = 0;
+  const peer = { id: 1, pumpSim() {}, send() { sent++; }, sendUnreliable() { sent++; }, sendState() { sent++; }, sendEvent() {}, close() {} };
+  host.clients.set(1, { peer, pawn: { alive: true }, inputs: [], lastTick: 0, netId: 1 });
+  ok(host.hasLivePeer() === true, 'a peer is connected and its pawn is alive');
+  ok(ctx.net === host, 'and the host published itself as ctx.net, which is what the fallback asks');
+
+  const pump = (n) => { sent = 0; for (let i = 0; i < n; i++) { clock += 50; ctx.tick = (ctx.tick | 0) + 1; host.tick++; host.update(ctx, 1 / 60); } return sent; };
+
+  const running = pump(5);
+  ok(running > 0, `the peer is being fed while the host plays (${running} sends)`);
+
+  doc.press(FALLBACK_PAUSE_KEY);
+  ok(fallbackPauseOpen() === true, 'the host raised the emergency overlay');
+  ok(ctx.paused === false,
+    'and the world did NOT freeze — a menu on a host with a live peer is an overlay, not a pause');
+  ok(ctx.input.enabled === false, 'the host set its own controls down');
+  const held = pump(5);
+  ok(held > 0, `the peer keeps receiving snapshots across the overlay (${held} sends)`);
+
+  // And the recovery the ticket is for is still there in this case.
+  const row = doc.body.children[0].children[0].children.find((c) => c.className === 'fallback-pause__row');
+  ok(row.children.some((b) => /restart/i.test(b.textContent)),
+    'restart is still on the overlay for a host that could not pause');
+
+  doc.press(FALLBACK_PAUSE_KEY);
+  ok(fallbackPauseOpen() === false && ctx.input.enabled === true,
+    'and the host takes the controls back up');
+
+  // Not a blanket refusal to pause: the last peer dies, and the same key
+  // freezes the world exactly as it does solo. Re-asked every press.
+  host.clients.get(1).pawn.alive = false;
+  doc.press(FALLBACK_PAUSE_KEY);
+  ok(ctx.paused === true, 'with nobody left playing, the same key freezes the world again');
+  clearFallbackPause();
+  ctx.paused = false;
+}
+
 // --------------------------------------------------------------- arbitration
 
 console.log('while the menus are alive they keep the pause outright');
@@ -182,9 +251,41 @@ console.log('the fallback is actually installed, and not from inside a system');
   const fs = await import('node:fs');
   const mainSrc = fs.readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
   const hudSrc = fs.readFileSync(new URL('../src/ui/HUD.js', import.meta.url), 'utf8');
-  // Anchored at the start of a line: a commented-out call is not an install,
-  // and a looser regex read one as one while this test was being written.
-  ok(/^installFallbackPause\(ctx\);/m.test(mainSrc), 'main.js installs it at boot');
+
+  // What the install DOES, observed rather than read: a real listener on a real
+  // document, and a handle that takes it off again. `main.js` cannot be
+  // imported here (it wants a canvas and a WebGL context), so the call site is
+  // checked separately below — but the thing being called is exercised.
+  {
+    const doc = fakeDoc();
+    const ctx = { menus: null, paused: false };
+    const off = installFallbackPause(ctx, doc);
+    doc.press(FALLBACK_PAUSE_KEY);
+    ok(ctx.paused === true, 'installFallbackPause registers a live keydown listener');
+    ok(typeof off === 'function', 'and returns an unsubscribe handle');
+    off();
+    setFallbackPause(ctx, false, doc);
+    doc.press(FALLBACK_PAUSE_KEY);
+    ok(ctx.paused === false, 'and the handle actually removes it');
+    clearFallbackPause();
+  }
+
+  // The call site: at module top level, not merely present in the text. The
+  // first spelling of this was a line-anchored regex and a dead branch
+  // (`if (false) { installFallbackPause(ctx); }`) walked straight through it,
+  // while a harmless re-indent of the live call false-failed. Brace depth
+  // answers both: a dead branch is depth 1, an indented top-level call is
+  // still depth 0. Comments and quoted text are stripped first so their braces
+  // cannot skew the count.
+  const code = mainSrc
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '')
+    .replace(/(['"`])(?:\\.|(?!\1)[\s\S])*\1/g, '""');
+  const at = code.search(/\binstallFallbackPause\s*\(\s*ctx\s*\)/);
+  ok(at >= 0, 'main.js calls installFallbackPause(ctx)');
+  const before = code.slice(0, Math.max(at, 0));
+  const depth = (before.split('{').length - 1) - (before.split('}').length - 1);
+  ok(at >= 0 && depth === 0, `and at module top level, so it always runs (brace depth ${depth})`);
   // Installed from a system's init, that system's own disable — or a throw in
   // its init — would take the recovery path with it. The whole point is that
   // no remove() can reach it.

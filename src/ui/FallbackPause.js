@@ -4,11 +4,20 @@
  * `Menus` is the pause screen, the death screen, settings, title, survivor
  * select and co-op — all of it. It is `static critical = false`, correctly: a
  * throw in a menu must not end a run. But six consecutive throws in one phase
- * drop it for the rest of the run and blank `ctx.menus`, and `ctx.paused` is
- * written in exactly one place in the whole tree that a player can reach —
- * `Menus.open()`. So a run that loses its menus stays playable and becomes
- * *uninterruptible*: no pause, no settings, no quit, no death screen. The
- * player's only exit is the window's close button.
+ * drop it for the rest of the run and blank `ctx.menus`, and `Menus.open()` is
+ * then the last player-reachable writer of `ctx.paused` to go.
+ *
+ * `Menus.open()` is *not* the only writer in the tree — a claim this file used
+ * to make, inherited from the issue and from `NetHost._holdSession`'s own
+ * docstring, and false: `NetHost.js:553` and `:570` write it directly too. What
+ * is true, and is the narrower thing this file leans on, is that both of those
+ * writes are computed from `ctx.menus?.screen`, so once `ctx.menus` is
+ * permanently null `hold` and `_holding` both settle false and neither branch
+ * fires again. After the disable, this file is the only writer left.
+ *
+ * So a run that loses its menus stays playable and becomes *uninterruptible*:
+ * no pause, no settings, no quit, no death screen. The player's only exit is
+ * the window's close button.
  *
  * This is the exit of last resort. Deliberately not a second menu system: one
  * key, one plain box, two things to press. It is styled to look like the
@@ -56,6 +65,12 @@ const TITLE = 'Emergency pause';
 const BODY = 'The menus were switched off after repeated failures, so this is '
   + 'standing in for them. The run is frozen. Restarting reloads the game and '
   + 'ends this run.';
+// The same box, honest about what it did and did not do. A host cannot stop a
+// world other people are still playing in.
+const BODY_SESSION = 'The menus were switched off after repeated failures, so '
+  + 'this is standing in for them. Others are still playing, so the world is '
+  + 'not frozen — your controls are just set down. Restarting reloads the game '
+  + 'and leaves the session.';
 
 let overlay = null;
 let styleInjected = false;
@@ -73,6 +88,20 @@ export function fallbackPauseOpen() { return overlay !== null; }
  * `Engine`'s fixedUpdate loop gates on — and only ever while the menus are
  * absent, so the two writers cannot both be live.
  *
+ * **Except on a host with a live peer**, where it deliberately does not write
+ * it at all. `ctx.paused` is not a local decision on an authority: it gates all
+ * of `Engine`'s fixedUpdate (`Engine.js:747`) and `NetHost.update` refuses to
+ * broadcast a snapshot while it is set (`NetHost.js:598`), so a host that
+ * freezes itself freezes everyone — measured on the host-death path as a peer
+ * left "unable to finish, die or end the run" for four seconds
+ * (`NetHost.js:497-522`). `_holdSession` fixed that with the rule *on a host
+ * with a live peer, a menu is an overlay, not a pause*, and cannot help here:
+ * it derives everything from `ctx.menus?.screen`, which is permanently null in
+ * exactly the situation this file exists for. So the same rule is applied
+ * again, directly, off its own predicate. The overlay goes up, local input is
+ * muted, the world keeps running for the people still in it, and Restart run is
+ * on the overlay either way — which is the recovery the ticket is actually for.
+ *
  * @param {object} ctx
  * @param {boolean} [want] - force a state; omitted, it toggles.
  * @param {Document|null} [doc] - injectable so the state half is testable with
@@ -82,10 +111,18 @@ export function fallbackPauseOpen() { return overlay !== null; }
  */
 export function setFallbackPause(ctx, want, doc = globalThis.document ?? null) {
   if (!fallbackPauseNeeded(ctx)) return !!ctx?.paused;
-  const next = want === undefined ? !ctx.paused : !!want;
-  ctx.paused = next;
-  // Give the stick back on resume, and take it away while frozen — `Menus`
-  // does the same through its own screen state, which is gone.
+  // Toggled off the overlay rather than off `ctx.paused`, because in a live
+  // session `ctx.paused` is deliberately never written and would answer false
+  // with the overlay up.
+  const next = want === undefined ? !fallbackPauseOpen() : !!want;
+  // Freezing the world is the host's to give away, not to take. Asked every
+  // time rather than latched once, so a solo run that has become a session —
+  // or a session whose last peer has died — gets the answer that is true now.
+  if (!ctx.net?.hasLivePeer?.()) ctx.paused = next;
+  // Give the stick back on resume, and take it away while the overlay is up —
+  // `Menus` does the same through its own screen state, which is gone. True in
+  // both branches: the co-op host is standing at an overlay over a world
+  // somebody else is playing, and must not be driving a survivor in it.
   if (ctx.input) ctx.input.enabled = !next;
   if (next) showOverlay(ctx, doc); else hideOverlay();
   return next;
@@ -115,7 +152,7 @@ function showOverlay(ctx, doc) {
   h.textContent = TITLE;
   const p = doc.createElement('p');
   p.className = 'fallback-pause__body';
-  p.textContent = BODY;
+  p.textContent = ctx.net?.hasLivePeer?.() ? BODY_SESSION : BODY;
   const row = doc.createElement('div');
   row.className = 'fallback-pause__row';
 
@@ -124,6 +161,9 @@ function showOverlay(ctx, doc) {
   resume.textContent = `Resume (${FALLBACK_PAUSE_LABEL})`;
   resume.addEventListener('click', () => setFallbackPause(ctx, false, doc));
 
+  // Present in both cases. A host that could not freeze its session still has
+  // to be able to leave it, or the recovery path is lost in exactly the
+  // configuration with the most people waiting on it.
   const restart = doc.createElement('button');
   restart.className = 'fallback-pause__btn';
   restart.textContent = 'Restart run';
