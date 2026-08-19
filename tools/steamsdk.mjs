@@ -27,12 +27,22 @@
  *
  * ## What it reads
  *
- * Declared symbols come from the installed Binding's own loader if it is present
+ * Declared symbols come from the installed Binding's own loader
  * (`node_modules/steamworks-ffi-node/dist/internal/SteamLibraryLoader.js`), so the
- * check tracks the real dependency rather than a copy of it that can drift. If the
- * Binding is not installed — which is the state before #54 lands — the check falls
- * back to `REQUIRED_SYMBOLS` below, the surface the single-box socket-pair gate
- * needs, and says so rather than quietly passing.
+ * check tracks the real dependency rather than a copy of it that can drift.
+ *
+ * `steamworks-ffi-node` is a pinned dependency, so its absence is a broken install
+ * and this tool now FAILS on it. It used to fall back to the four
+ * `REQUIRED_SYMBOLS` below and print PASS, which is a guard reporting success on a
+ * question it never asked — the same shape as the lazy-binding hazard it exists to
+ * catch. Those four are still checked, on every run, in addition to the declared
+ * set: they are flat-API entry points the Binding does not bind at all, so nothing
+ * else would notice them going missing.
+ *
+ * This tool answers the DLL-export question in plain node. It deliberately does not
+ * answer the loader question — whether koffi can resolve those names inside the
+ * Electron process that actually ships. `tools/steam-electron-init.mjs` does that,
+ * and `npm run steamsdk:electron` runs it.
  *
  * Exported names are read out of the DLL's bytes rather than its PE export table.
  * Export names are stored as plain ASCII, `SteamAPI_*` is an unambiguous prefix,
@@ -58,10 +68,10 @@ const BINDING_LOADER =
   'node_modules/steamworks-ffi-node/dist/internal/SteamLibraryLoader.js';
 
 /**
- * Checked when the Binding is not installed. These are the flat-API entry points
- * the single-box socket-pair gate needs and the Binding does not bind, so they are
- * worth asserting on their own: they are the reason an SDK swap could quietly
- * remove the only automated Conversation coverage we have.
+ * Checked on every run, on top of the Binding's declared set. These are the
+ * flat-API entry points the single-box socket-pair gate needs and the Binding does
+ * not bind, so they are worth asserting on their own: they are the reason an SDK
+ * swap could quietly remove the only automated Conversation coverage we have.
  */
 const REQUIRED_SYMBOLS = [
   'SteamAPI_ISteamNetworkingSockets_CreateSocketPair',
@@ -162,18 +172,23 @@ const dll = readFileSync(vendorAbs);
 const exports = exportedSymbols(dll);
 
 const loaderAbs = path.join(root, BINDING_LOADER);
-const bindingInstalled = existsSync(loaderAbs);
-const declared = bindingInstalled
-  ? declaredSymbols(readFileSync(loaderAbs, 'utf8'))
-  : REQUIRED_SYMBOLS;
+if (!existsSync(loaderAbs)) {
+  console.error(`\n[steamsdk] FAIL  the Binding is not installed at ${BINDING_LOADER}.`);
+  console.error("[steamsdk]       'steamworks-ffi-node' is a pinned dependency, so this is a broken");
+  console.error("[steamsdk]       install, not a supported mode. Run 'npm ci'. This tool will NOT");
+  console.error('[steamsdk]       substitute a weaker check and print PASS.');
+  process.exit(3);
+}
+
+const bindingDeclared = declaredSymbols(readFileSync(loaderAbs, 'utf8'));
+const declared = [...new Set([...bindingDeclared, ...REQUIRED_SYMBOLS])].sort();
 
 console.log(`\n[steamsdk] ${VENDOR_REL}`);
 console.log(`[steamsdk]   ${dll.length} bytes, sha256 ${sha256(dll)}`);
 console.log(`[steamsdk]   ${exports.size} SteamAPI_* names present`);
-console.log(bindingInstalled
-  ? `[steamsdk]   checking ${declared.length} symbols declared by ${BINDING_LOADER}`
-  : `[steamsdk]   Binding NOT installed — checking only the ${declared.length} symbols the`
-    + '\n[steamsdk]   socket-pair gate needs. This is a WEAKER check than the real one.');
+console.log(`[steamsdk]   FULL CHECK: ${bindingDeclared.length} symbols declared by ${BINDING_LOADER},`);
+console.log(`[steamsdk]   plus the ${REQUIRED_SYMBOLS.length} flat-API symbols the socket-pair gate needs`);
+console.log(`[steamsdk]   -> ${declared.length} distinct symbols checked`);
 
 const missing = declared.filter((s) => !exports.has(s));
 
@@ -193,7 +208,11 @@ if (missing.length) {
   console.error('\n[steamsdk] The Binding resolves symbols lazily, so this does NOT fail at');
   console.error('[steamsdk] init(). It fails the first time the affected call is made.');
 } else {
-  console.log(`\n[steamsdk] PASS  all ${declared.length} checked symbols are present.`);
+  console.log(`\n[steamsdk] PASS  FULL CHECK — all ${declared.length} symbols present`
+    + ` (${bindingDeclared.length} declared by the Binding).`);
+  console.log('[steamsdk]       That is the DLL-export question only. For the loader question —');
+  console.log('[steamsdk]       koffi resolving these names inside Electron — run');
+  console.log('[steamsdk]       `npm run steamsdk:electron`.');
 }
 
 if (args.json) {
@@ -203,7 +222,7 @@ if (args.json) {
     vendored: VENDOR_REL,
     bytes: dll.length,
     sha256: sha256(dll),
-    bindingInstalled,
+    bindingDeclared: bindingDeclared.length,
     checked: declared.length,
     missing,
   }, null, 2)}\n`);

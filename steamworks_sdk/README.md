@@ -58,6 +58,23 @@ npm run steamsdk                          # verify what is vendored
 node tools/steamsdk.mjs --zip <sdk.zip>   # adopt a different SDK, then verify
 ```
 
+## Two checks, not one
+
+`npm run steamsdk` reads names out of the DLL's bytes in plain node. It is fast, it
+needs no Steam client, and it is the check that catches an SDK bump like 1.65. It
+cannot tell you whether koffi can actually resolve those names *inside the runtime
+that ships*, which is Electron and not node.
+
+`npm run steamsdk:electron` (`tools/steam-electron-init.mjs`) answers that. It boots
+under Electron, opens the DLL through the Binding's own loader, forces every one of
+the 377 lazily-bound lookups immediately, then calls `SteamAPI_InitSafe`. Run it on
+an SDK bump, an Electron bump, or a `steamworks-ffi-node` bump. A false
+`SteamAPI_InitSafe` there means no logged-in Steam client and is reported separately
+from the symbol verdict — the symbol question is answerable without one.
+
+Verified against SDK 1.64 + `steamworks-ffi-node@0.11.1` + Electron 43.3.0:
+377/377 resolved, `InitSafe` true. Records in `reviews/steam-binding/`.
+
 It exits non-zero if any symbol the installed Binding declares is absent from the
 DLL, naming the version the DLL carries instead. Against 1.64 with the Binding
 present: **377 of 377 present**. Against 1.65: four missing.
