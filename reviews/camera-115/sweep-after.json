@@ -108,7 +108,7 @@
           "allowed": 4.538
         }
       ],
-      "penetration": 0,
+      "clampOrderViolation": 0,
       "penInfo": null,
       "buried": 9.17,
       "buriedInfo": "h8 f534"
@@ -220,7 +220,7 @@
           "allowed": 0.7
         }
       ],
-      "penetration": 0,
+      "clampOrderViolation": 0,
       "penInfo": null,
       "buried": 9.536,
       "buriedInfo": "h8 f535"
@@ -332,7 +332,7 @@
           "allowed": 7.679
         }
       ],
-      "penetration": 0,
+      "clampOrderViolation": 0,
       "penInfo": null,
       "buried": 9.347,
       "buriedInfo": "h8 f536"

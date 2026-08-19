@@ -192,6 +192,31 @@ const SNAP_IN_RATE = 100;
 //   0.55       6.012 / 2.930 / 3.092           4.089     sweep-after.json
 //   1.10       4.948 / 1.773 / 1.930           3.511     sweep-hold110.json
 //
+// That table is stage 3, which is where the ticket lives and where the knee was
+// found. The cost is not confined to stage 3, and an independent A/B at the
+// default pitch over the same 16x900 sweep on every stage says so plainly --
+// worst single-frame translation, frames translating over a metre, mean boom:
+//
+//   stage   worst            >1 m         mean boom
+//     0     6.840 -> 4.632   106 -> 115   6.517 -> 5.903   (-9.4 %)
+//     1     6.951 -> 6.860   283 -> 267   5.459 -> 4.436   (-18.7 %)
+//     2     3.954 -> 3.426    36 ->  48   5.403 -> 4.531   (-16.1 %)
+//     3     6.834 -> 6.012    53 ->  76   5.206 -> 4.089   (-21.4 %)
+//     4     6.832 -> 6.820   104 ->  89   5.742 -> 5.026   (-12.5 %)
+//
+// Stage 1 pays 18.7 % of its boom for 90 mm of worst frame; stage 4 pays 12.5 %
+// for 12 mm. Both are nearly all unwarned graze events, which memory cannot
+// help, so on those stages the tuning is close to pure cost. This was measured
+// and accepted rather than overlooked: 0.55 is a deliberate choice to spend
+// boom length everywhere to buy legibility where the warning exists.
+//
+// The >1 m column is the other half of the honesty and rises on stages 0, 2 and
+// 3 (53 -> 76 on stage 3, +43 %). That is the rate cap working as designed
+// rather than a regression: it converts one unbounded teleport into several
+// bounded steps, and SNAP_IN_RATE fixes the ceiling of a step at 1.67 m per
+// frame. More frames cross a metre; none of them cross 1.67 m unless the hard
+// clamp put them there.
+//
 // 0.55 is the knee. It halves the worst frame at the two pitches where the
 // warning exists to be remembered, for a fifth of the boom; going on to 1.10
 // buys another third of a metre of worst-case at the cost of another tenth of

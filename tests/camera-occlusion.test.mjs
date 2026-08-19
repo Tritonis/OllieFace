@@ -37,6 +37,17 @@ const WORKS = 3;   // Ferrous Muster, the only biome with precast barriers
 // second must never exceed the first: every metre it does is a metre the
 // camera sits past the obstruction, inside it. That is the assertion.
 //
+// Be precise about its reach, because #115's first write-up over-claimed it and
+// a review caught that. lateUpdate ends with `Math.min(target, allowed)`, so
+// this inequality holds by construction and the probe reads 0.00e+0 on the
+// unfixed rig exactly as readily as on the fixed one. It is not dead -- delete
+// that final clamp and it goes red at 4.73 m -- but what it guards is the
+// *clamp ordering*, i.e. that the rig obeys the reach it computed. It says
+// nothing about whether the reach was right, which is why the rejected-fix arm
+// below prints this clean bill over a camera 24.82 m inside a cliff, and why
+// `buried()` and not this probe is the assertion for that failure shape. Never
+// cite a 0.00e+0 here as evidence that a change does not clip.
+//
 // The float slack is genuine slack, not a fudge: on the ease-out path
 // `distance` is an exponential blend that approaches `allowedDistance` from
 // below and can land a few ulps over it.
@@ -89,7 +100,7 @@ function absorb(p, q) {
 }
 
 function okClear(p) {
-  console.log(`    penetration: worst=${p.worst.toExponential(2)} m over ${p.frames} frames in ${p.replays} replay(s)${p.at ? ` (${p.at})` : ''}`);
+  console.log(`    clamp-order violation: worst=${p.worst.toExponential(2)} m over ${p.frames} frames in ${p.replays} replay(s)${p.at ? ` (${p.at})` : ''}`);
   // Two guards, because there are two ways to see nothing. `blind` catches a
   // replay that watched no frames while its siblings did — the partial
   // blinding the sum would otherwise absorb. `frames > 0` catches the arm that
@@ -98,7 +109,7 @@ function okClear(p) {
      `${p.label}: every replay watched frames (blind: ${p.blind.join('; ') || 'none'})`);
   ok(p.frames > 0, `${p.label}: the penetration probe actually observed frames (${p.frames})`);
   ok(p.worst <= PEN_EPS,
-     `${p.label}: camera never sits closer than its allowed reach (worst ${p.worst.toExponential(2)} m)`);
+     `${p.label}: boom obeys the reach the fan computed -- clamp ordering, not clipping (worst ${p.worst.toExponential(2)} m)`);
 }
 
 function buildStage(index = STAGE) {
@@ -354,6 +365,42 @@ console.log('#115: an anticipatable collapse is spread, not teleported');
   // both ways.
   ok(worst <= 2.0,
      `no anticipatable collapse translates the camera more than 2 m (worst ${worst.toFixed(3)} on heading ${worstA})`);
+  okClear(pen);
+}
+
+// A ceiling on the whole stage-3 surface, not just the two windows above.
+//
+// The windowed arm is honest but narrow: 36 frames of 28,800, chosen because
+// they are the collapses this fix can actually reach. That leaves the residual
+// unguarded -- heading 5 frame 253 still translates 6.012 m and nothing went
+// red on it -- and a whole-heading maximum on stage 2 is no substitute, since
+// even the unfixed rig scores 3.954 there.
+//
+// So this arm asserts the one thing that is both true of the whole surface and
+// able to fail: unfixed, stage 3 peaks at 6.834 m; fixed, at 6.012. A 6.5 m
+// ceiling sits between them. It is deliberately not a claim that the residual
+// is *fixed* -- it is not, and the comment on SOFT_HOLD_TAU says why no memory
+// anticipates a grazing-incidence discontinuity. It is a ratchet: the residual
+// may not get worse, and the anticipatable collapses may not come back
+// anywhere on the stage rather than merely in the two windows above.
+console.log('works biome: a ceiling on the whole surface, not just the windows');
+{
+  const w = buildStage(WORKS);
+  const wSpawn = w.stage.spawnPoint();
+  const pen = tally('works biome whole surface');
+  let worst = 0, worstA = -1;
+  for (let a = 0; a < 16; a++) {
+    const yaw = heading(a);
+    const run = sprint(w.ctx, w.stage, {
+      x: wSpawn.x - Math.sin(yaw) * 60, z: wSpawn.z - Math.cos(yaw) * 60, yaw,
+    });
+    absorb(pen, run.pen);
+    const max = Math.max(...run.deltas);
+    if (max > worst) { worst = max; worstA = a; }
+  }
+  console.log(`    worst=${worst.toFixed(3)} on heading ${worstA}`);
+  ok(worst <= 6.5,
+     `no frame on stage 3 translates the camera more than 6.5 m (worst ${worst.toFixed(3)} on heading ${worstA})`);
   okClear(pen);
 }
 

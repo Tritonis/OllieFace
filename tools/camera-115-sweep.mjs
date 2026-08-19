@@ -44,6 +44,17 @@ for (const pitch of PITCHES) {
       player.position.z += dz * SPEED * dt;
       player.position.y = stage.sampleHeight(player.position.x, player.position.z);
       rig.lateUpdate(ctx, dt);
+      // NOT an anti-clipping measurement, despite reading like one. lateUpdate
+      // ends with `Math.min(target, allowed)`, so `distance <= allowedDistance`
+      // holds by construction and this counter is 0.00e+0 on the unfixed rig as
+      // readily as on the fixed one -- 172,800 frames of each without a single
+      // trip. What it actually guards is narrower and worth keeping: that the
+      // rig obeys the reach it computed. Delete that final clamp and it goes
+      // red at 4.73 m, so it is a live guard on the clamp ordering and nothing
+      // more. It says nothing about whether the reach was *right*: the suite's
+      // stage-2 arm prints this same clean bill over a camera 24.82 m inside a
+      // cliff, because that arm hides the geometry from the rig entirely.
+      // `buried` below is the instrument that speaks to geometry.
       const p = rig.distance - rig.allowedDistance;
       if (p > pen) { pen = p; penInfo = `h${a} f${f}`; }
       const b = stage.sampleHeight(rig.camPos.x, rig.camPos.z) - rig.camPos.y;
@@ -61,8 +72,8 @@ for (const pitch of PITCHES) {
   bigs.sort((x, y) => y.d - x.d);
   out.pitches.push({ pitch, worst: +worst.toFixed(4), worstInfo, mean: +(sum / n).toFixed(4),
     frames: n, floorFrames, meanDist: +(distSum / distN).toFixed(4), bigCount: bigs.length, bigs: bigs.slice(0, 12),
-    penetration: +pen.toExponential(3), penInfo, buried: +buried.toFixed(3), buriedInfo });
-  console.log(`pitch ${pitch}: worst=${worst.toFixed(4)} (${worstInfo}) mean=${(sum / n).toFixed(4)} ratio=${(worst / (sum / n)).toFixed(1)} big>1m=${bigs.length} floor=${floorFrames} meanDist=${(distSum/distN).toFixed(3)} pen=${pen.toExponential(2)} buried=${buried.toFixed(3)}`);
+    clampOrderViolation: +pen.toExponential(3), penInfo, buried: +buried.toFixed(3), buriedInfo });
+  console.log(`pitch ${pitch}: worst=${worst.toFixed(4)} (${worstInfo}) mean=${(sum / n).toFixed(4)} ratio=${(worst / (sum / n)).toFixed(1)} big>1m=${bigs.length} floor=${floorFrames} meanDist=${(distSum/distN).toFixed(3)} clampOrder=${pen.toExponential(2)} buried=${buried.toFixed(3)}`);
 }
 fs.mkdirSync(new URL('../reviews/camera-115/', import.meta.url), { recursive: true });
 const path = new URL(`../reviews/camera-115/sweep-${tag}.json`, import.meta.url);
