@@ -37,6 +37,17 @@ const WORKS = 3;   // Ferrous Muster, the only biome with precast barriers
 // second must never exceed the first: every metre it does is a metre the
 // camera sits past the obstruction, inside it. That is the assertion.
 //
+// Be precise about its reach, because #115's first write-up over-claimed it and
+// a review caught that. lateUpdate ends with `Math.min(target, allowed)`, so
+// this inequality holds by construction and the probe reads 0.00e+0 on the
+// unfixed rig exactly as readily as on the fixed one. It is not dead -- delete
+// that final clamp and it goes red at 4.73 m -- but what it guards is the
+// *clamp ordering*, i.e. that the rig obeys the reach it computed. It says
+// nothing about whether the reach was right, which is why the rejected-fix arm
+// below prints this clean bill over a camera 24.82 m inside a cliff, and why
+// `buried()` and not this probe is the assertion for that failure shape. Never
+// cite a 0.00e+0 here as evidence that a change does not clip.
+//
 // The float slack is genuine slack, not a fudge: on the ease-out path
 // `distance` is an exponential blend that approaches `allowedDistance` from
 // below and can land a few ulps over it.
@@ -89,7 +100,7 @@ function absorb(p, q) {
 }
 
 function okClear(p) {
-  console.log(`    penetration: worst=${p.worst.toExponential(2)} m over ${p.frames} frames in ${p.replays} replay(s)${p.at ? ` (${p.at})` : ''}`);
+  console.log(`    clamp-order violation: worst=${p.worst.toExponential(2)} m over ${p.frames} frames in ${p.replays} replay(s)${p.at ? ` (${p.at})` : ''}`);
   // Two guards, because there are two ways to see nothing. `blind` catches a
   // replay that watched no frames while its siblings did — the partial
   // blinding the sum would otherwise absorb. `frames > 0` catches the arm that
@@ -98,7 +109,7 @@ function okClear(p) {
      `${p.label}: every replay watched frames (blind: ${p.blind.join('; ') || 'none'})`);
   ok(p.frames > 0, `${p.label}: the penetration probe actually observed frames (${p.frames})`);
   ok(p.worst <= PEN_EPS,
-     `${p.label}: camera never sits closer than its allowed reach (worst ${p.worst.toExponential(2)} m)`);
+     `${p.label}: boom obeys the reach the fan computed -- clamp ordering, not clipping (worst ${p.worst.toExponential(2)} m)`);
 }
 
 function buildStage(index = STAGE) {
@@ -117,13 +128,14 @@ function buildStage(index = STAGE) {
  * `speed`, and return every per-frame camera translation alongside the
  * penetration probe that watched the same frames.
  */
-function sprint(ctx, stage, { x, z, yaw, frames = 900, speed = 9 }) {
+function sprint(ctx, stage, { x, z, yaw, pitch, frames = 900, speed = 9 }) {
   const pen = probe(`sprint yaw ${yaw.toFixed(3)}`);
   const dx = Math.sin(yaw), dz = Math.cos(yaw);
   const rig = new CameraRig();
   rig.init(ctx);
   // Facing along travel: the boom trails behind, which is the #106 repro.
   rig.yaw = yaw + Math.PI;
+  if (pitch !== undefined) rig.pitch = pitch;
   const player = {
     position: new THREE.Vector3(x, 0, z),
     velocity: new THREE.Vector3(dx * speed, 0, dz * speed),
@@ -299,6 +311,96 @@ console.log('works biome: barriers thicker than SLIVER_MAX still clamp the boom'
   // go red on a mis-calibration rather than merely describe one.
   ok(clamped === BARRIERS.length,
      `all ${BARRIERS.length} above-threshold barriers constrain the boom (${clamped} did)`);
+  okClear(pen);
+}
+
+// --- #115: a skipped sliver is warning, not silence ------------------------
+//
+// The works biome collapses the boom by 6.83 m in one frame — 32x its own
+// free-flight mean — and unlike #110 these are not misattributed slivers. They
+// are clamps _sliver correctly leaves alone, and at every one of them
+// `distance` equals `allowedDistance` exactly, so the fan's *verdict* is what
+// teleports. That rules out a bare rate limit: any lag behind the verdict is a
+// boom past the obstruction, which is the rejected fix two arms above.
+//
+// What the measurement showed instead is that the rig was discarding warning it
+// already had. On headings 0 and 14, one fan ray closes monotonically over
+// three or four frames — 1.46, 1.28, 1.11, 0.94 m — while `allowed` sits at its
+// full 7.679 because each of those hits reads as a sliver. Then the skip stops
+// applying and the whole pull-in lands at once. The fix remembers a skipped
+// hit as a *soft* reach and eases the boom toward it under SNAP_IN_TAU, with
+// the hard reach still clamping last, so the anticipation can only ever shorten
+// the boom and can never seat the camera inside anything.
+//
+// Two headings, both from the sweep in reviews/camera-115/: heading 0 collapses
+// 6.830 m at frame 71 unfixed, heading 14 collapses 6.834 m at frame 232. Both
+// are pure skip-then-clamp, which is what makes them the right pin. The
+// residual worst frames on this stage are a different animal — every ray reads
+// -1 and then a hit, with no intervening frame — and are deliberately not
+// asserted here; see the issue.
+console.log('#115: an anticipatable collapse is spread, not teleported');
+{
+  const w = buildStage(WORKS);
+  const wSpawn = w.stage.spawnPoint();
+  const pen = tally('#115 anticipatable collapse');
+  // Windowed on the two events on purpose. These headings carry other
+  // collapses of 3.5-3.8 m that are *not* anticipatable — no ray reports
+  // anything at all on the frame before — and a whole-heading maximum would
+  // quietly grade this fix on those instead.
+  let worst = 0, worstA = -1;
+  for (const { a, at } of [{ a: 0, at: 71 }, { a: 14, at: 232 }]) {
+    const yaw = heading(a);
+    const run = sprint(w.ctx, w.stage, {
+      x: wSpawn.x - Math.sin(yaw) * 60, z: wSpawn.z - Math.cos(yaw) * 60,
+      yaw, pitch: -0.17,
+    });
+    absorb(pen, run.pen);
+    // deltas[k] is the translation arriving on frame k+1.
+    const max = Math.max(...run.deltas.slice(at - 12, at + 6));
+    console.log(`    heading ${a} frames ${at - 11}-${at + 6}: worst=${max.toFixed(3)}`);
+    if (max > worst) { worst = max; worstA = a; }
+  }
+  // Unfixed: 6.834. Raising SNAP_INSTANT past the pull size, or dropping the
+  // soft reach on the floor of _fan, restores it — this arm has been run red
+  // both ways.
+  ok(worst <= 2.0,
+     `no anticipatable collapse translates the camera more than 2 m (worst ${worst.toFixed(3)} on heading ${worstA})`);
+  okClear(pen);
+}
+
+// A ceiling on the whole stage-3 surface, not just the two windows above.
+//
+// The windowed arm is honest but narrow: 36 frames of 28,800, chosen because
+// they are the collapses this fix can actually reach. That leaves the residual
+// unguarded -- heading 5 frame 253 still translates 6.012 m and nothing went
+// red on it -- and a whole-heading maximum on stage 2 is no substitute, since
+// even the unfixed rig scores 3.954 there.
+//
+// So this arm asserts the one thing that is both true of the whole surface and
+// able to fail: unfixed, stage 3 peaks at 6.834 m; fixed, at 6.012. A 6.5 m
+// ceiling sits between them. It is deliberately not a claim that the residual
+// is *fixed* -- it is not, and the comment on SOFT_HOLD_TAU says why no memory
+// anticipates a grazing-incidence discontinuity. It is a ratchet: the residual
+// may not get worse, and the anticipatable collapses may not come back
+// anywhere on the stage rather than merely in the two windows above.
+console.log('works biome: a ceiling on the whole surface, not just the windows');
+{
+  const w = buildStage(WORKS);
+  const wSpawn = w.stage.spawnPoint();
+  const pen = tally('works biome whole surface');
+  let worst = 0, worstA = -1;
+  for (let a = 0; a < 16; a++) {
+    const yaw = heading(a);
+    const run = sprint(w.ctx, w.stage, {
+      x: wSpawn.x - Math.sin(yaw) * 60, z: wSpawn.z - Math.cos(yaw) * 60, yaw,
+    });
+    absorb(pen, run.pen);
+    const max = Math.max(...run.deltas);
+    if (max > worst) { worst = max; worstA = a; }
+  }
+  console.log(`    worst=${worst.toFixed(3)} on heading ${worstA}`);
+  ok(worst <= 6.5,
+     `no frame on stage 3 translates the camera more than 6.5 m (worst ${worst.toFixed(3)} on heading ${worstA})`);
   okClear(pen);
 }
 
