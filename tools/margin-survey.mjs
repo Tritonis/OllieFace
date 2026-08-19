@@ -28,31 +28,44 @@ export function surveyManifest(manifest) {
     }
     for (const c of shot.subject?.checks ?? []) {
       if (c.kind !== 'pixels') continue;
+      // A check can carry BOTH gates at once: the sepP50 >= marginSep gate is
+      // set unconditionally for every non-minCarriedPx subject (Harness.js
+      // :2594-2609), and worstGatedSep/marginPerSep is set in addition
+      // whenever the subject is per-object (:2717-2725). Both independently
+      // gate marginOk, so both are surveyed as their own row here — this is
+      // not an either/or. Collapsing it to one silently drops whichever gate
+      // is checked second, which in a manifest where the two statistics
+      // invert would drop the row holding the true floor.
+      let matched = false;
       if ('worstGatedSep' in c && 'marginPerSep' in c) {
+        matched = true;
         rows.push({
           shot: shot.name, subject: c.subject,
           statName: 'worstGatedSep', stat: c.worstGatedSep,
           thresholdName: 'marginPerSep', threshold: c.marginPerSep,
           headroom: c.worstGatedSep - c.marginPerSep,
         });
-      } else if ('sepP50' in c && 'marginSep' in c) {
+      }
+      if ('sepP50' in c && 'marginSep' in c) {
+        matched = true;
         rows.push({
           shot: shot.name, subject: c.subject,
           statName: 'sepP50', stat: c.sepP50,
           thresholdName: 'marginSep', threshold: c.marginSep,
           headroom: c.sepP50 - c.marginSep,
         });
-      } else if ('sepP50' in c) {
+      }
+      if (matched) continue;
+      if ('sepP50' in c) {
         // Has a separation statistic but no threshold paired with it (e.g.
         // VFX aggregates gated on carriedPx instead) — not a graded
         // measurement, and not unrecognised either; just not in scope here.
         continue;
-      } else {
-        rows.push({
-          shot: shot.name, subject: c.subject,
-          unrecognised: true, keys: Object.keys(c),
-        });
       }
+      rows.push({
+        shot: shot.name, subject: c.subject,
+        unrecognised: true, keys: Object.keys(c),
+      });
     }
   }
   rows.sort((a, b) => {
