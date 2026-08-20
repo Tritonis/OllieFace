@@ -220,7 +220,15 @@ export function armsFor(portBase) {
       id: 'capture',
       tier: 'manual',
       manual: true,
-      label: 'headed GPU silhouette/separation capture (npm run shots) — run by hand, tracked so it can go OVERDUE',
+      // Decided 2026-08-20: the capture gate is advisory only — it reports,
+      // it never blocks a commit, merge or deploy. A recorded `fail` here is
+      // a set of legibility/separation findings for a human to look at, not
+      // a red build. This flag changes only how `printStaleness` RENDERS a
+      // recorded fail (see below); `stalenessReport`'s `verdict` field still
+      // says exactly what was recorded, and `recordManualRun`'s pass|fail
+      // requirement is unaffected — recording honestly still matters.
+      advisory: true,
+      label: 'headed GPU silhouette/separation capture (npm run shots) — run by hand, tracked so it can go OVERDUE; ADVISORY ONLY, never blocking',
       argv: ['npm', 'run', 'shots'],
       // `src` entire, not `src/core/Harness.js` alone. `tools/capture.mjs`
       // navigates the real dev server with `?harness=1` and photographs the
@@ -343,11 +351,25 @@ export function stalenessReport(arms, state = readState()) {
   });
 }
 
+/**
+ * The staleness-row rendering rule, pulled out so it can be tested without
+ * capturing console output: an advisory arm's recorded `fail` reads as
+ * ADVISORY rather than RED, since it is a finding for a human, not a
+ * blocking result — see the `advisory` flag on the `capture` arm.
+ */
+export function stalenessMark(row, advisoryIds) {
+  if (row.stale) return 'OVERDUE';
+  if (row.verdict === 'pass') return 'ok     ';
+  if (row.verdict === 'fail') return advisoryIds.has(row.id) ? 'ADVISORY' : 'RED    ';
+  return '?      ';
+}
+
 function printStaleness(arms) {
   const manualIds = new Set(arms.filter((a) => a.manual).map((a) => a.id));
+  const advisoryIds = new Set(arms.filter((a) => a.advisory).map((a) => a.id));
   say('\n--- gate staleness -------------------------------------------------');
   for (const r of stalenessReport(arms)) {
-    const mark = r.stale ? 'OVERDUE' : r.verdict === 'pass' ? 'ok     ' : r.verdict === 'fail' ? 'RED    ' : '?      ';
+    const mark = stalenessMark(r, advisoryIds);
     const tag = manualIds.has(r.id) ? ' (manual — run by hand, then: gates.mjs status --record ' + r.id + ' --verdict pass|fail)' : '';
     say(`  ${mark} ${r.id.padEnd(10)} ${r.reason}${tag}`);
   }

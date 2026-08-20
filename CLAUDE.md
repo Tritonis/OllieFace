@@ -93,6 +93,22 @@ that matter are Windows/GPU/Steam-bound, so a hosted Linux runner could run almo
   names no arm at all and so is invisible to the staleness report by design, while the capture gate
   is a full arm marked `manual: true` so it CAN go OVERDUE. Record a hand-run with
   `node tools/gates.mjs status --record capture`.
+
+  **Decided 2026-08-20: the capture gate is advisory only.** It reports; it never blocks a commit, a
+  merge or a deploy. A day was spent making it gate work, and the only substantive thing it ever
+  caught by doing so was an enemy model obscured by a spell effect — inspected by eye, its
+  subject/separation/margin findings read as effects obscuring models, not defects, and a gate is not
+  worth the friction of blocking on a claim that inspection this often overturns. `tools/capture.mjs`
+  now draws an explicit line (see `tools/lib/capture-verdict.mjs`, the module that owns it): a
+  legibility, separation, margin or stage-placement judgement — `subjectFailures`, the harness's own
+  `[harness]`-prefixed diagnostics, a failed `audioOk` — is reported prominently but never sets a
+  non-zero exit code. **Infrastructure failures still fail the run**: a boot that never reaches
+  `ready`, a scenario that throws (navigation or shot timeout, a page crash), or a genuine
+  (non-`[harness]`) console or page error. A black or missing screenshot falls under that last
+  bucket — `page.screenshot()` throws on a hung page rather than silently writing nothing — so it is
+  still never mistaken for an art problem. `gates:status` renders a recorded capture `fail` as
+  `ADVISORY` rather than `RED` for the same reason; recording still requires a stated `pass|fail`
+  verdict (`--verdict`), because honest recording still matters even though nothing blocks on it.
 - `npm test` — the full suite, ~1 minute.
 - `npm run smoke:steam` — the Steam socket-pair gate (ADR 0002 arm B), ~35 s. Needs a **running,
   logged-in Steam client**, so it is a local gate and never a CI one. Writes

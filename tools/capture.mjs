@@ -14,6 +14,7 @@ import { mkdir, writeFile, rm, readdir, readFile, stat } from 'node:fs/promises'
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { resolveOutDir } from './lib/evidence.mjs';
+import { captureVerdict } from './lib/capture-verdict.mjs';
 
 // Stamped onto every manifest so a baseline is attributable to the tree that
 // produced it, not just to a timestamp. Falls back to null rather than
@@ -901,6 +902,20 @@ if (!ready) {
   manifest.audioOk = A.failed.length === 0;
 }
 
+const failures = manifest.subjectFailures ?? [];
+
+// Advisory ONLY, since 2026-08-20 (issue #124): this file reports, it never
+// blocks. A day was spent making it gate commits and merges, and the only
+// substantive thing it ever caught was an enemy model obscured by a spell
+// effect — a legibility finding for a human, not a broken build. The exact
+// infrastructure-vs-advisory split is documented at the top of
+// `tools/lib/capture-verdict.mjs`, which owns the decision so it can be unit
+// tested without booting vite/chromium.
+const { infra, infraFailed, advisoryFindings } = captureVerdict({
+  ready, shots: manifest.shots, errors, subjectFailures: failures, audioOk: manifest.audioOk,
+});
+manifest.infra = infra;
+
 // A failed boot writes its own file rather than overwriting the record of
 // whatever capture is already on disk. See the note by the clear above.
 await writeFile(path.join(OUT, ready ? 'manifest.json' : 'manifest.FAILED.json'),
@@ -908,7 +923,6 @@ await writeFile(path.join(OUT, ready ? 'manifest.json' : 'manifest.FAILED.json')
 await browser.close();
 await server.close();
 
-const failures = manifest.subjectFailures ?? [];
 console.log(JSON.stringify({
   ready,
   clockPinned: pinned,
@@ -943,14 +957,33 @@ console.log(JSON.stringify({
 }, null, 2));
 if (errors.length) console.log('\nFIRST ERRORS:\n' + errors.slice(0, 8).join('\n---\n'));
 if (failures.length) {
-  console.log('\nSUBJECT FAILURES:\n' + JSON.stringify(failures, null, 2));
+  console.log('\nSUBJECT FAILURES (ADVISORY — reported, not blocking):\n' + JSON.stringify(failures, null, 2));
 }
 if (ready && manifest.audioOk === false) {
-  console.log(`\nAUDIO FAILURE: ${manifest.audio.failed.join(', ')}\n`
+  console.log(`\nAUDIO FINDING (ADVISORY — reported, not blocking): ${manifest.audio.failed.join(', ')}\n`
     + JSON.stringify(manifest.audio, null, 2));
 }
-// Non-zero on a missing subject as well as on a failed boot, and on a dead
-// audio system. A capture that produced twenty plausible-looking images without
-// their subjects is not a successful run, and neither is one whose soundtrack
-// never played a note; the exit code is the one signal a caller cannot ignore.
-process.exit(ready && !failures.length && manifest.audioOk !== false ? 0 : 1);
+if (infraFailed) {
+  console.log('\nINFRASTRUCTURE FAILURE (blocking — the run did not happen):\n'
+    + JSON.stringify(infra, null, 2));
+}
+
+// The verdict line a skimming reader sees last, and it must never read as a
+// plain pass/fail: this gate is advisory, so a run riddled with subject and
+// audio findings still says ADVISORY, never PASSED, and only an
+// infrastructure failure prints FAILED.
+if (infraFailed) {
+  console.log('\n=== CAPTURE: INFRASTRUCTURE FAILURE — the run did not happen; see above ===');
+} else if (advisoryFindings) {
+  console.log('\n=== CAPTURE: ADVISORY — findings above are for a human, not a blocking result (exit 0) ===');
+} else {
+  console.log('\n=== CAPTURE: ADVISORY — no findings this run (exit 0; this gate never blocks) ===');
+}
+
+// Exit code reflects only whether the run HAPPENED — a failed boot, a
+// scenario that threw (navigation/shot timeout, page crash), or a real
+// (non-`[harness]`) console/page error. Legibility, separation, margin and
+// stage-placement judgements (subjectFailures, `[harness]` diagnostics, and
+// the audio checks) are advisory: they are reported above and never flip
+// this. See `tools/lib/capture-verdict.mjs` for the exact split.
+process.exit(infraFailed ? 1 : 0);
