@@ -4082,6 +4082,26 @@ export function installHarness(ctx) {
           // move them.
           crowd: 2, crowdWhy: 'blast victims: knockback removes members from frame by design',
         },
+        // DIAG. See the note on `04-combat`'s: `info`, read-only, and it must sit
+        // immediately after the check it explains.
+        {
+          subject: 'DIAG victims', info: true,
+          detail: () => {
+            const per = lastPerObject() ?? [];
+            camera.updateMatrixWorld(true);
+            return victims.filter((e) => e?.rig?.root?.parent).map((e, i) => {
+              const h = e.def?.height ?? 2;
+              const s = screenOf(e.position.x, e.position.y + h * 0.5, e.position.z);
+              const d = Math.hypot(e.position.x - camera.position.x, e.position.z - camera.position.z);
+              return {
+                i, id: e.def?.id, d: +d.toFixed(1),
+                sx: +s.x.toFixed(3), sy: +s.y.toFixed(3),
+                wy: +e.position.y.toFixed(1),
+                ...(per[i] ?? {}),
+              };
+            });
+          },
+        },
         { subject: 'damage numbers', objects: () => vfxObjects(/^vfx\.damageNumbers$/), minPixels: 60 },
         // Composition, recorded on every run so a regression to "blast in empty
         // sky at screen y 0.26" is visible in the manifest without a critic.
@@ -4673,6 +4693,26 @@ export function installHarness(ctx) {
           // in it; requiring all of them would be requiring the blast not to
           // move them.
           crowd: 2, crowdWhy: 'blast victims: knockback removes members from frame by design',
+        },
+        // DIAG. See the note on `04-combat`'s: `info`, read-only, and it must sit
+        // immediately after the check it explains.
+        {
+          subject: 'DIAG victims (per-object)', info: true,
+          detail: () => {
+            const per = lastPerObject() ?? [];
+            camera.updateMatrixWorld(true);
+            return victims.filter((e) => e?.rig?.root?.parent).map((e, i) => {
+              const h = e.def?.height ?? 2;
+              const s = screenOf(e.position.x, e.position.y + h * 0.5, e.position.z);
+              const d = Math.hypot(e.position.x - camera.position.x, e.position.z - camera.position.z);
+              return {
+                i, id: e.def?.id, d: +d.toFixed(1),
+                sx: +s.x.toFixed(3), sy: +s.y.toFixed(3),
+                wy: +e.position.y.toFixed(1),
+                ...(per[i] ?? {}),
+              };
+            });
+          },
         },
         { subject: 'shutter (effect seconds)', dom: () => shutter?.exact === true, detail: () => shutter },
         /* How old each body in the subject is, and how far its dissolve has
