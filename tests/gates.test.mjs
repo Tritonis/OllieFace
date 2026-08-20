@@ -11,7 +11,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ARMS, assertNoSteam, assertManual, recordManualRun, stalenessReport } from '../tools/gates.mjs';
+import { ARMS, assertNoSteam, assertManual, recordManualRun, stalenessReport, stalenessMark } from '../tools/gates.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
@@ -159,6 +159,34 @@ console.log('the capture gate is a tracked-but-manual arm');
     .find((r) => r.id === 'capture');
   ok(failedRow.verdict === 'fail', 'a recorded FAIL is reported as fail, not as pass');
   ok(failedRow.stale === false, 'a recorded FAIL is still a run: it clears OVERDUE while reading RED');
+}
+
+console.log('the capture arm reads ADVISORY, not RED, on a recorded fail (issue #124)');
+{
+  const capture = ARMS.find((a) => a.id === 'capture');
+  ok(capture.advisory === true, 'the capture arm is flagged advisory');
+
+  // stalenessReport's own `verdict` field is untouched — still says exactly
+  // what was recorded ("recording honestly still matters").
+  const justNow = new Date().toISOString();
+  const failedRow2 = stalenessReport(ARMS, { arms: { capture: { at: justNow, verdict: 'fail' } } })
+    .find((r) => r.id === 'capture');
+  ok(failedRow2.verdict === 'fail', 'stalenessReport still reports the recorded verdict as fail, unrendered');
+
+  // stalenessMark is what changes: RENDERING a recorded fail on an advisory
+  // arm reads ADVISORY, never RED — demonstrated against a non-advisory arm
+  // too, so this cannot pass by always returning the same mark.
+  const advisoryIds = new Set(ARMS.filter((a) => a.advisory).map((a) => a.id));
+  ok(stalenessMark(failedRow2, advisoryIds) === 'ADVISORY', 'a recorded FAIL on the advisory capture arm renders ADVISORY');
+
+  const nonAdvisoryFailedRow = { id: 'gate:sp', verdict: 'fail', stale: false };
+  ok(stalenessMark(nonAdvisoryFailedRow, advisoryIds) === 'RED    ', 'a recorded FAIL on a non-advisory arm still renders RED');
+
+  // And OVERDUE / ok still take priority the same way for an advisory arm.
+  ok(stalenessMark({ id: 'capture', verdict: null, stale: true }, advisoryIds) === 'OVERDUE',
+    'a never-run advisory arm still reads OVERDUE');
+  ok(stalenessMark({ id: 'capture', verdict: 'pass', stale: false }, advisoryIds) === 'ok     ',
+    'a recorded PASS on the advisory arm still reads ok');
 }
 
 console.log('the audit allowlist is dated and reasoned');
