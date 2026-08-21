@@ -40,6 +40,19 @@ export const ACTIONS = [
   { id: 'special', label: 'Special skill', key: 'KeyR', pad: PAD_BUTTON.RB },
   { id: 'primary', label: 'Primary fire', key: MOUSE_LEFT, pad: PAD_BUTTON.RT },
   { id: 'secondary', label: 'Secondary fire', key: MOUSE_RIGHT, pad: PAD_BUTTON.LT },
+  // Camera zoom (#133). The mouse wheel is the primary path and needs no
+  // binding -- it is not a key -- so these two exist for the keyboard and,
+  // mainly, for the pad, which has no wheel and would otherwise be stuck at
+  // whatever distance the last mouse user chose.
+  //
+  // The stick clicks, not the D-pad, and not by preference: the D-pad is read
+  // RAW in two places that are live while the world is (Menus' MUTATE_PAD
+  // answers the mutation window on 14/12/15, and menu navigation reads 12-15
+  // off the gamepad directly), so binding zoom there would dolly the camera
+  // every time a player picked the second mutation offer. L3/R3 are claimed by
+  // nothing in this build.
+  { id: 'zoomIn', label: 'Camera zoom in', key: 'Equal', pad: PAD_BUTTON.L3 },
+  { id: 'zoomOut', label: 'Camera zoom out', key: 'Minus', pad: PAD_BUTTON.R3 },
 ];
 
 /** actionId -> the virtual code gameplay polls. Never changes. */
@@ -86,6 +99,8 @@ export function keyLabel(code) {
   if (code === MOUSE_LEFT) return 'LMB';
   if (code === MOUSE_RIGHT) return 'RMB';
   if (code === 'Space') return 'Space';
+  if (code === 'Equal') return '=';
+  if (code === 'Minus') return '-';
   if (code.startsWith('Key')) return code.slice(3);
   if (code.startsWith('Digit')) return code.slice(5);
   if (code.startsWith('Numpad')) return `Num ${code.slice(6)}`;

@@ -7,7 +7,7 @@
 
 export const DEADZONE = 0.15;
 
-export const PAD_BUTTON = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, LT: 6, RT: 7, BACK: 8, START: 9 };
+export const PAD_BUTTON = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, LT: 6, RT: 7, BACK: 8, START: 9, L3: 10, R3: 11 };
 
 /** Radial deadzone, rescaled so travel resumes from zero at the zone's edge
  *  rather than jumping to it. Returns {x, y} with magnitude <= 1. */
