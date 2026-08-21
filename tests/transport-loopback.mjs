@@ -169,8 +169,23 @@ function impair(peer, { lagMs = 0, jitterMs = 0, lossPct = 0 } = {}) {
   return clock;
 }
 
+/**
+ * Put the reliable path into one of the states `drained()` distinguishes.
+ *
+ * These three exist because the contract may not spell either transport's
+ * vocabulary: "bytes still to send" is `bufferedAmount` here and
+ * `pendingReliable` on a Steam connection. The suite names the state, the
+ * adapter knows how to produce it.
+ */
+function setPendingReliable(peer, bytes) { peer.events.bufferedAmount = bytes; }
+function closeReliable(peer) { peer.events.readyState = 'closed'; }
+function dropReliable(peer) { peer.events = null; }
+
 export const loopbackAdapter = {
   name: 'webrtc-loopback',
+  setPendingReliable,
+  closeReliable,
+  dropReliable,
   /** The transport `NetHost` is given. Real, minus the Introduction. */
   createHostTransport: () => new HostTransport(),
   connectPeer,

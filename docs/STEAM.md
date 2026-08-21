@@ -329,6 +329,7 @@ humans have played a game through it, because none have.
 | **Invite path (programmatic)** | **Wired against the Binding that carries it — still never met a second seat** | The overlay-less path from step 4 of the Phase 2 plan. Send side: `steam:list-friends` (`friends.getAllFriends()`, sanitised by `sanitizeFriendList`) and `steam:invite-friend` (`matchmaking.inviteUserToLobby`), drawn as an in-game picker in `src/ui/Menus.js`. Both stay feature-detected, and with the swap done the detection now *finds* them: `steamworks-ffi-node` declares both, where `steamworks.js@0.4.0` declared neither. Join side: `+connect_lobby <id>` for a closed game (parsed by `parseConnectLobbyArg`), a `second-instance` command line for a running one, and callback 333 for a running one Steam notifies directly — all three through `join-delivery.mjs`, collected once via `steam:pending-join`. **The 333 half cost a pump of our own.** This Binding has no broadcast-callback mechanism at all: everything it calls a callback is an API *call result* keyed by a `SteamAPICall_t`, and its 379 declared symbols contain no `ManualDispatch` entry. So `desktop/steam-callbacks.mjs` declares Valve's five manual-dispatch symbols against the library handle the Binding has already opened, and drains id 333 and nothing else; `tools/steamsdk.mjs` now checks those five on every run, so a DLL that stops exporting one fails the gate instead of failing at the first invite. **Proven:** the id, the decode, the bounded drain, the next/free pairing and the degradation, in plain node against an injected dispatch (`tests/desktop-steam-callbacks.test.mjs`, 29 assertions, red-then-green on the id). **Not proven, and not provable here:** that a live Steam client delivers 333 through Valve's manual dispatch loop inside Electron. That belongs to the sitting. **THE MODE-MIXING CAVEAT (review, 2026-08-21).** Valve documents manual dispatch as a REPLACEMENT for `SteamAPI_RunCallbacks()`, and this process runs both on one pipe: the Binding's `createLobby`/`joinLobby` await their results through `SteamCallbackPoller.poll()`, which calls `SteamAPI_RunCallbacks()` every 100 ms for up to 5 s, and the poller is constructed inside the Binding with that call unconditional — no option, no injection point, no way to disable it short of forking. Making the pump the only dispatcher is therefore impossible while the Binding opens the lobbies. What is done instead: `holdDispatch()` wraps both call sites and the pump skips its ticks entirely — no `RunFrame`, no `GetNextCallback` — while either is in flight, so the two never run concurrently. **This narrows the mixing, it does not remove it:** the mechanisms still alternate on one pipe across the process's life, and a 333 that Steam delivers DURING a create/join window is dispatched by `RunCallbacks` to a C++ callback nobody registered and is lost to the pump. A running joiner accepting an invite in that few-second window will not hear it; `+connect_lobby` and manual lobby-id entry are the fallback, which is why this is a degraded invite route and not a dead one. Only a live client can measure how often it happens. |
 | **Bridge** | **Wired** | `window.__STEAM__`, seventeen named functions over named IPC channels, `contextIsolation: true`. No client object, no generic pass-through. The exact key set is pinned by `tools/desktopprobe.mjs`, which goes red if anything is *added*. All Steam ids cross as decimal strings (they are `bigint` natively and `JSON.stringify` throws on those). |
 | **Lobby signalling** | **Wired against the seam, with named caveats — never run between two machines** | Both legs now travel over lobby metadata, which is the design the plan wanted originally. Host to joiner: the SDP offer chunked across `sdp.offer.*` LOBBY data (`setLobbyData`, one key per call now that `mergeFullData` is gone), read by the joiner's 1 s poll. Joiner to host: the SDP answer chunked across `sdp.answer.*` MEMBER data on the joiner's own membership (`setLobbyMemberData`), read by the host's own poll across every member (`steam:collect-member-data`, one IPC per tick, bounded on both axes before a single native call). **The owner-only workaround is retired.** `SetLobbyData` is still owner-only, but `SetLobbyMemberData` writes the CALLER's slot and no other — Steam offers no way to write another member's — so the answer leg needs no membership gate, and the joiner no longer has to learn the owner's Steam id in order to reply. **Why now:** `steamworks.js@0.4.0` bound no member-data API, which is the only reason the answer ever rode a P2P packet; `steamworks-ffi-node` binds it, and binds no `ISteamNetworking` at all, so the workaround lost its carrier on the same day it stopped being necessary. **Proven:** 273 assertions against the fake bridge, red-then-green on the joiner's write, the host's accept-exactly-once, the oversized answer, and both feature-detection refusals. **Caveats, named:** no two machines have run it; the answer's chunking is inherited from the offer and untested against a real one (an SDP answer measures ~918 chars against a 2000-char chunk and a 7680-byte budget, so it should always be a single chunk); and a joiner that leaves the Steam lobby now DELETES its own answer rather than merely racing it, so the joiner staying put matters more than it did. The vestigial `sendSignal`/`startSignalListen`/`stopSignalListen` channels remain, feature-detected and uncalled, and are retired with the WebRTC-era sweep (#56). See "the warm path" below. **THE STALE-ANSWER RULE (Critical, review 2026-08-21).** Member data is not a queue and reading it does not consume it, so a friend whose peer connection dropped — still a lobby member, which is exactly what re-advertise exists to recover from — leaves their previous `sdp.answer.*` sitting there. The first version of this leg re-accepted it on the re-advertise's first poll tick and never heard the real answer, silently, to both players. Fixed by naming the exchange: every offer carries a per-ATTEMPT nonce (`sdp.offer.nonce`), the joiner echoes the nonce of the offer it actually read from the same lobby-data snapshot (`sdp.answer.nonce`), and an answer whose echo does not match the current offer is skipped exactly as a half-written one is — so the poll keeps listening rather than stopping on it. Covered red-then-green by the reviewer's own reproduction; per-attempt minting is asserted separately, because a per-lobby nonce passes every other test and reintroduces the bug. |
+| **Conversation (Steam sockets)** | **Wired at the seam 2026-08-21 (#55) — has never met a live socket** | `src/net/SteamTransport.js`: `SteamPeer` / `SteamHostTransport` / `SteamClientTransport` over `ISteamNetworkingSockets`, carrying exactly the eight peer members section 8.5 enumerates. Selected by `src/net/TransportSelect.js`, which returns the WebRTC transports unless the shell has published a `window.__STEAM__.net` bridge — and **no shell publishes one yet**, so every runtime that exists today (browser, `npm run dev`, the current Electron build) is on WebRTC exactly as before. **Proven:** the whole transport contract, unedited, against a fake sockets layer faithful to the Binding's semantics (`npm test` -> `transport-conformance.test.mjs`, 88 assertions across both arms), plus the Steam rendezvous and the selection rule (`tests/steam-transport.test.mjs`, 24). Four mutations of the shipping transport were checked to make the suite go red. **Not proven, and not provable here:** anything about the real library. See 8.5's as-built note for what the socket-pair smoke and the two-seat sitting have to check. |
 | **Overlay** | **REFUTED 2026-08-21 — demoted to polish (#127)** | The determinative check ran and failed in three arrangements on Electron 43.3.0: the injection that made this row PROVISIONAL is real (`gameoverlayrenderer64.dll` resident, process registered as the game) but nothing ever paints, under `electronEnableSteamOverlay`'s switches, with `--use-angle=gl`, or via `steamworks-ffi-node`'s GL mirror (whose `beginFrameSubscription` never delivers a frame). Evidence: `reviews/spike-sitting-0820/VERDICT.md`. The invite path no longer depends on the overlay — it is programmatic (`inviteUserToLobby`), per the Phase 2 plan step 4. |
 | **Appid swap** | **Done 2026-08-20** | Valve completed partner processing; the real appid is `5150570` and both `steam_appid.txt` and `DEV_APP_ID` carry it (swapped in one commit per the procedure below). The Spacewar-era results do not transfer: the packaged smoke and the two-seat checkpoint (#13) must re-run on the real appid. |
 | **Packaged build carries Steam** | **Flipped 2026-08-21, unverified on an artifact** | `build.files` no longer excludes `node_modules/steamworks-ffi-node` or `node_modules/koffi`, and now admits the vendored `steamworks_sdk/redistributable_bin/win64/steam_api64.dll`; `steamworks.js` is gone from `package.json` entirely, because after the swap nothing imported it. `tests/steam-smoke.test.mjs` pins each of those as the shape to keep, so nobody re-adds the exclusion that caused #15. **Still unverified:** that the Binding's *relative* DLL lookup resolves from inside `resources/app` on a packed launch. Only a packed launch can answer that, and none has run. |
@@ -724,6 +725,95 @@ pure Introduction. #55 implements against these two seams.
 `addIceCandidate` on both transports. `Lobby` uses all three
 (`Lobby.js:338-339, 497, 694, 722`) and they have no Steam analogue — Steam does
 its own route-finding.
+
+### 8.5b The Steam transport as built (#55, 2026-08-21)
+
+**Status: wired at the seam, and it has never met a live Steam socket.** Every
+assertion behind it runs against `tests/steam-sockets-fake.mjs`. What follows is
+the as-built record the plan's step 5 asks for, including the two places the
+seam was not quite what the documents claimed.
+
+**One connection, two channels, and where the channel went.** Section 3 above
+reaches its "channel 0 unreliable, channel 1 reliable" shape through
+`ISteamNetworkingMessages`, which has per-message channels. The plan's step 5
+names `NetworkingSockets` instead, and that interface has **no send-side channel
+argument** through this Binding: `sendMessage(conn, data, flags)` is the whole
+surface, and the `channel` field on a received `NetworkMessage` is a lane number
+the sender cannot set. So the channel is carried as one leading byte on every
+message and the reliability stays a per-message flag on one shared connection —
+which is the half of section 3's claim that survives contact with the interface.
+Message granularity does the rest of the work: Steam delivers whole messages, so
+nothing has to re-frame a stream.
+
+**`pumpSim()` is not a no-op here, and that is a happy accident.** Section 8.5
+predicted a Steam peer would implement it as a no-op purely because
+`NetHost.js:532` calls it. In fact a Steam connection needs exactly what that
+hook is: a per-frame call, once per peer, to drain `receiveMessages`. So the
+frame hook the WebRTC latency rig left behind is spent on the receive pump. It
+is idempotent, because the queue is drained.
+
+**`drained()` reads `pendingReliable` + `sentUnackedReliable`** off
+`getConnectionRealTimeStatus`, and deliberately ignores `pendingUnreliable`: the
+predicate exists so a REFUSE gets out before the door shuts, and a refusal is a
+reliable message. `close()` passes `enableLinger = true` for the same reason.
+
+**The Introduction did not change, and did not need to.** The lobby/member-data
+courier carries opaque `{ v, role, id, ... }` base64 blobs; the WebRTC transport
+fills them with SDP and this one fills them with a Steam id. So
+`Lobby.createInvite` / `joinManual` / `acceptAnswer`, `Lobby._inviteIdFor` and
+every line of `SteamLobby.js` work unaltered — the rendezvous stops being a
+negotiation and becomes an address book, which is what Steam's own route-finding
+wants. The host admits only an identity it has read an answer for and closes any
+other connection request; the lobby is the guest list.
+
+**No callback dispatch is driven from the transport.** State changes and inbound
+requests are read with the Binding's *pull* accessors
+(`getPendingStateChanges`, `getPendingConnectionRequests`) rather than its
+callback registrars, so this code never enters `SteamAPI_RunCallbacks` and never
+needs the counted dispatch hold `desktop/main.mjs` keeps around the Binding's
+async methods (see section 7's mode-mixing caveat). That was a design constraint,
+not a discovery.
+
+**One thing section 8.5 had right in the enumeration and wrong in the fixture.**
+The peer surface is portable, and not one contract assertion had to be edited to
+admit the Steam arm. But three of them *set up* their state by writing
+`peer.events.bufferedAmount` and `peer.events.readyState` directly — WebRTC
+vocabulary, in the portable suite, for a fact both transports have under
+different names (`bufferedAmount` here, `pendingReliable` there). Those three
+setters moved behind the adapter (`setPendingReliable`, `closeReliable`,
+`dropReliable`); the assertions and their count are unchanged, and the WebRTC arm
+stays green. The `events` row left the *contract* when `drained()` landed; this
+is the same leak leaving the *fixture*.
+
+**The gap that stops this being usable, named.** `SteamTransport.js` takes its
+sockets object by injection and calls nothing else. In the main process that
+object is `steam.networkingSockets`. In the renderer, where `Lobby` lives, it
+must be an IPC bridge — and `desktop/preload.cjs` publishes `window.__STEAM__`
+for the Introduction only. **That bridge does not exist**, so nothing selects
+this transport yet, and building it is the next piece of work: it carries
+snapshot traffic at 60 Hz per peer across the process boundary, which is a
+design question (batch per frame? move `NetHost` out of the renderer?) and not a
+plumbing one.
+
+**What live verification must check**, none of which any test here can:
+
+- **The socket-pair smoke (`npm run smoke:steam`, arm B).** That the channel
+  byte survives a real connection; that an unreliable message really can be
+  dropped and a reliable one really cannot; that `pendingReliable` /
+  `sentUnackedReliable` fall to zero on a drained connection rather than idling
+  at some nonzero floor, which would make `drained()` always false and hold every
+  refused peer open to its retry cap; and that `receiveMessages(conn, 64)` at
+  60 Hz x 3 peers keeps up through Koffi.
+- **The two-seat sitting (#13, arm C).** That `connectP2P` reaches a listen
+  socket across two machines at all; that `getPendingConnectionRequests` reports
+  the joiner's identity in the same string form `getIdentity()` returns, since
+  the host's guest-list check is a string compare and a mismatched format would
+  refuse every honest joiner; and that a peer pulling its network cable produces
+  a `ClosedByPeer` or `ProblemDetectedLocally` state change rather than silence,
+  because that change is the only thing that reaches `onPeerLeave`.
+
+Neither is a formality. The identity-string compare and the drained floor are
+the two places where a fake that is faithful in shape can be wrong in fact.
 
 ### 8.6 A prerequisite discovered on the way, wider than #53
 
