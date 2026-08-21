@@ -27,6 +27,23 @@ export const MASK_UNIFORMS = {
 };
 
 /**
+ * The photographed overlay relief (#109 step 3). Deliberately a *separate*
+ * object from MASK_UNIFORMS rather than three more keys in it: the base set is
+ * assigned onto every patched program unconditionally, and a game that never
+ * throws the flag would otherwise carry three permanently-null sampler entries
+ * on every material in the library — inert, three.js drops dict entries with no
+ * program-side match, but it is still an unconditional touch of shared material
+ * state for a feature that is off. These are merged in only while the overlay
+ * is enabled, which is safe precisely because enabling forks the cache key and
+ * forces the recompile that re-runs `onBeforeCompile`.
+ */
+export const OVERLAY_UNIFORMS = {
+  uOvNor: { value: null },
+  uOvRough: { value: null },
+  uOvAo: { value: null },
+};
+
+/**
  * The field itself — uniforms, noise, and the coverage function — with no
  * varying of its own. Split out so a second hook (the character pass, which
  * carries different interpolators and samples in object space) can reuse this
@@ -136,7 +153,38 @@ ${MASK_FIELD}`;
 /** Fragment application — goes after `#include <emissivemap_fragment>`,
  *  where `diffuseColor` and `totalEmissiveRadiance` both exist and lighting
  *  has not yet consumed either (same anchor RimStandardMaterial uses). */
-export const MASK_APPLY = /* glsl */ `
+const OVERLAY_DECL = /* glsl */ `
+uniform sampler2D uOvNor;
+uniform sampler2D uOvRough;
+uniform sampler2D uOvAo;
+`;
+
+// The photographed near-field relief, applied only where the void has already
+// taken the fragment. No albedo is read: the tint above owns the colour of a
+// blighted surface, and a second photographed palette underneath it would be
+// two palettes arguing.
+//
+// **Near field only, and that boundary is deliberate.** This is a UV-locked
+// map, and past ~60 m its period closes on a pixel — the same aliasing the
+// metre-scale detail field at src/world/Materials.js:300 exists to retire.
+// What a blighted surface should carry BEYOND 60 m (parallax, a second
+// world-scale octave, or nothing at all) is issue #109 step 4's question and
+// is deliberately not answered here; this chunk simply retires itself.
+const OVERLAY_APPLY = /* glsl */ `
+    float ovFade = 1.0 - smoothstep(18.0, 60.0, distance(vBlightWorld, cameraPosition));
+    if (ovFade > 0.01) {
+      // 0.35 -> a 2.9 m period, inside the corruption's own 3.3 m warp, so the
+      // cracks read as the same event as the veins rather than a second one.
+      vec2 ovUv = vBlightWorld.xz * 0.35;
+      float ovW = bm * ovFade;
+      roughnessFactor = mix(roughnessFactor, texture2D(uOvRough, ovUv).g, ovW * 0.85);
+      diffuseColor.rgb *= mix(1.0, texture2D(uOvAo, ovUv).g, ovW * 0.8);
+      vec3 ovN = texture2D(uOvNor, ovUv).xyz * 2.0 - 1.0;
+      normal = normalize(normal + vec3(ovN.x, 0.0, ovN.y) * (0.6 * ovW));
+    }
+`;
+
+export function maskApply(overlay) { return /* glsl */ `
 if (uBlightCount > 0) {
   // Both derivatives are taken HERE, above the coverage branch, and that
   // placement is the whole of their correctness: a derivative taken inside
@@ -194,9 +242,12 @@ if (uBlightCount > 0) {
     float claim = smoothstep(0.30, 0.70, bn);
     diffuseColor.rgb = mix(diffuseColor.rgb, BM_TINT, bm * mix(0.64, 0.96, claim));
     totalEmissiveRadiance += BM_VEIN * vein * (0.35 + 0.10 * uBlightBand);
+${overlay ? OVERLAY_APPLY : ''}
   }
 }
-`;
+`; }
+
+export const MASK_APPLY = maskApply(false);
 
 const VERT_VARYING = /* glsl */ `#include <common>
 varying vec3 vBlightWorld;`;
@@ -235,15 +286,50 @@ export function attachBlightMask(material) {
   material.onBeforeCompile = function (shader, renderer) {
     if (prev) prev.call(this, shader, renderer);
     Object.assign(shader.uniforms, MASK_UNIFORMS);
+    if (_overlay) Object.assign(shader.uniforms, OVERLAY_UNIFORMS);
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', VERT_VARYING)
       .replace('#include <project_vertex>', VERT_WORLD);
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\n' + MASK_DECL)
-      .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n' + MASK_APPLY);
+      .replace('#include <common>',
+        '#include <common>\n' + MASK_DECL + (_overlay ? OVERLAY_DECL : ''))
+      .replace('#include <emissivemap_fragment>',
+        '#include <emissivemap_fragment>\n' + maskApply(_overlay));
   };
+  _patched.add(material);
   const prevKey = typeof material.customProgramCacheKey === 'function'
     ? material.customProgramCacheKey.bind(material) : null;
-  material.customProgramCacheKey = () => (prevKey ? prevKey() : '') + '|blightmask';
+  material.customProgramCacheKey = () =>
+    (prevKey ? prevKey() : '') + '|blightmask' + (_overlay ? '|ov' : '');
   return material;
 }
+
+// ---------------------------------------------------------------------------
+// Overlay relief (#109 step 3)
+//
+// Every material this hook has patched, so the swap can force the recompile
+// the conditional GLSL above needs. The toggle is a *program* change and not a
+// uniform on purpose: Blight.js rewrites this uniform set every frame, and a
+// flag living in it would be overwritten before the next present.
+const _patched = new Set();
+let _overlay = false;
+
+/**
+ * Bind (or clear) the photographed near-field relief. `set` is
+ * `{ normalMap, roughnessMap, aoMap }` or null. Flipping it recompiles every
+ * patched program, which is the point: flag-off emits shader text byte-for-
+ * byte identical to the text this file emitted before #109 touched it.
+ */
+export function setOverlayMaps(set) {
+  const on = !!set;
+  OVERLAY_UNIFORMS.uOvNor.value = set ? set.normalMap : null;
+  OVERLAY_UNIFORMS.uOvRough.value = set ? set.roughnessMap : null;
+  OVERLAY_UNIFORMS.uOvAo.value = set ? set.aoMap : null;
+  if (on === _overlay) return;
+  _overlay = on;
+  for (const m of _patched) m.needsUpdate = true;
+}
+
+/** Whether the overlay relief is currently bound — the observable the tests
+ *  and the harness read instead of the module-private flag. */
+export function overlayEnabled() { return _overlay; }

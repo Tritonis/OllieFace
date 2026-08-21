@@ -65,6 +65,16 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: 1600, height: 900 }, deviceScaleFactor: 1 });
 page.on('pageerror', (e) => console.log('PAGE ERROR:', e.message));
 
+// No surface flag, deliberately. The photographed set (#109) is what every
+// boot binds, so this measures the shipping surface and there is nothing to opt
+// into. The `--pbr` switch that used to live here appended `&pbr=1` to this
+// URL; adoption removed the query parameter and left the switch behind, which
+// made it a flag that changed nothing while still labelling the numbers as
+// though it had. An inert arm is worse than no arm, so it is gone rather than
+// rewired: driving `__HARNESS__.setPbr(false)` instead would fold a mid-session
+// swap and re-upload into the sample, which is exactly what the URL flag
+// existed to avoid. A procedural comparison is still reachable through the
+// harness the way `tools/capture-arteval.mjs` takes it.
 await page.goto(`http://127.0.0.1:5201/?seed=1337&quality=${QUALITY}&harness=1`, { waitUntil: 'load' });
 await page.waitForFunction(() => globalThis.__GAME__?.ctx?.stage != null && globalThis.__HARNESS__ != null, null, { timeout: 60000 });
 
