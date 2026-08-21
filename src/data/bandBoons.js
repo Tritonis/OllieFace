@@ -39,6 +39,46 @@ export const BOON = {
   ruin: { band: 4 },
 };
 
+/**
+ * Pristine's entry — the hole in this table, and the reason purity read as a
+ * fun tax even after every other band was paid back (issue #36, second pass).
+ *
+ * The clean route had no verb. Its complete action set was: do not press the
+ * thing; pay gold at a font whose price scales with the debt; and kill a
+ * Voidtouched elite, which bled the world and minted nothing. Only the last is
+ * something a player *does*, and it paid in a smaller number.
+ *
+ * So warding is now a verb with a currency behind it. Corruption bled by a
+ * player's own hand — a Voidtouched kill, an Argent Font press; there is no
+ * passive decay and nothing else calls `bleed` — accumulates on
+ * `Corruption._warded` and mints one argent mote per `per` points.
+ *
+ * Note what that forces, because it is the design rather than an accident:
+ * Voidtouched elites exist at a rate proportional to World Corruption, so a
+ * player who never corrupts anything never wards anything either and mints no
+ * motes. The clean route is a *cycle* — go in, bring it back out — not a
+ * refusal to play, and abstinence is deliberately not the way to farm this.
+ *
+ * A mote buys Sanctuary: `sanctuarySeconds` in which `Corruption.priceOf`
+ * returns zero and every chest, pickup and second of greed time is free. It is
+ * the pact's mirror — the pact spends marks on power and charges debt for it;
+ * sanctuary spends motes on greed and charges nothing — and it is a *timing*
+ * decision with a wrong answer, because greed time already doubles the price a
+ * sanctuary is waiving.
+ *
+ * Both numbers are first guesses. `per: 40` puts a mote at roughly one
+ * Voidtouched kill's refund at Blighted depth (`refund: 0.08` of a world near
+ * 500), which is the shape wanted: a mote is a thing you went and got, not a
+ * thing that accrued. Neither has been playtested.
+ */
+export const MOTE = { per: 40, sanctuarySeconds: 12, motes: 1 };
+
+/** One mote per `per` of corruption warded. The mirror of `marksMinted`. */
+export function motesMinted(warded) {
+  const w = Number.isFinite(warded) ? Math.max(0, warded) : 0;
+  return Math.floor(w / MOTE.per);
+}
+
 /** One mark per `markPer` of peak debt. Non-finite and negative read as none. */
 export function marksMinted(peak) {
   const p = Number.isFinite(peak) ? Math.max(0, peak) : 0;

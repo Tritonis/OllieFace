@@ -217,6 +217,13 @@ class RunRecorder {
       // criterion in one field: a run with a nonzero `fed` and an empty
       // `bargains` is a player who paid the whole tax and took nothing back.
       bargains: [],
+      // Purity's side (`data/bandBoons.js` MOTE). `greed` on each entry is the
+      // one that decides whether the window was spent well: greed time doubles
+      // the price a sanctuary waives, so a run whose sanctuaries all land
+      // outside it is a run that has not understood the offer — or an offer
+      // that arrives at the wrong moment, which is the same finding pointed at
+      // the designer instead of the player.
+      sanctuaries: [],
       mutations: [],
       stabilisations: [],
       fonts: [],
@@ -272,6 +279,7 @@ class RunRecorder {
     on('fontUse', this.onFontUse);
     on('voidMarksChanged', this.onVoidMarks);
     on('voidBargain', this.onVoidBargain);
+    on('voidSanctuary', this.onVoidSanctuary);
     on('voidRuin', this.onVoidRuin);
     on('goldChanged', this.onGoldChanged);
     on('realmOffer', this.onRealmOffer);
@@ -413,6 +421,16 @@ class RunRecorder {
       marks: Number(e?.marks) || 0,
       world: this.world(),
       band: this.band(),
+    });
+  }
+
+  /** A sanctuary window was bought. See `sanctuaries` for what `greed` decides. */
+  onVoidSanctuary(e) {
+    this.push(this.record.sanctuaries, {
+      t: this.t(),
+      seconds: Number(e?.seconds) || 0,
+      world: this.world(),
+      greed: !!e?.greed,
     });
   }
 

@@ -10,7 +10,7 @@ import {
 // three parts of the decision cannot drift apart between shrines (issue #30).
 import { pricedPrompt, biasFeedRange, idsFeed } from './corruptionPrice.js';
 // What each band gives back, and the currency it is bought with (issue #36).
-import { BOON, PACTS, RUIN, synergyPlan } from '../data/bandBoons.js';
+import { BOON, MOTE, PACTS, RUIN, synergyPlan } from '../data/bandBoons.js';
 import { RNG } from '../core/MathUtil.js';
 import { Items } from '../systems/Items.js';
 import { Roster } from '../systems/Roster.js';
@@ -1861,6 +1861,7 @@ export class VoidBargain extends Interactable {
 
   _band() { return this.ctx.corruption?.band ?? 0; }
   _marks() { return this.ctx.corruption?.marks ?? 0; }
+  _motes() { return this.ctx.corruption?.motes ?? 0; }
 
   /**
    * What the altar is offering *right now*, or null when it is offering
@@ -1879,20 +1880,47 @@ export class VoidBargain extends Interactable {
     const cor = this.ctx.corruption;
     if (band >= BOON.ruin.band) return cor?.ruined ? null : { kind: 'ruin', marks: 0 };
     if (band >= BOON.pact.band) {
-      return marks >= BOON.pact.marks ? { kind: 'pact', marks: BOON.pact.marks, pact: this.pact } : null;
+      if (marks >= BOON.pact.marks) return { kind: 'pact', marks: BOON.pact.marks, pact: this.pact };
+      return this._sanctuary();
     }
     if (band >= BOON.synergy.band) {
-      if (marks < BOON.synergy.marks) return null;
+      if (marks < BOON.synergy.marks) return this._sanctuary();
       const items = Items.of(this.ctx, this.ctx.player);
       const plan = items && synergyPlan(items.blightHeld(), items.convertibleStacks());
-      return plan ? { kind: 'synergy', marks: BOON.synergy.marks, plan } : null;
+      return plan ? { kind: 'synergy', marks: BOON.synergy.marks, plan } : this._sanctuary();
     }
-    if (band >= BOON.reroll.band) {
-      if (marks < BOON.reroll.marks) return null;
+    if (band >= BOON.reroll.band && marks >= BOON.reroll.marks) {
       const shops = this._terminals();
-      return shops.length ? { kind: 'reroll', marks: BOON.reroll.marks, shops } : null;
+      if (shops.length) return { kind: 'reroll', marks: BOON.reroll.marks, shops };
     }
-    return null;
+    return this._sanctuary();
+  }
+
+  /**
+   * Purity's offer (issue #36, second pass), and the reason it stands on *this*
+   * altar: at every band whose bargain the purse cannot meet, and at Pristine
+   * where there was never a bargain at all, this prop was a rock — the one
+   * thing on the stage with nothing to say to a player who had kept the world
+   * clean.
+   *
+   * It is the fallback rather than a competing offer, so the rule the class
+   * comment states is untouched: the void's own bargain is always checked
+   * first, and a party that can afford the pact is never argued down to a
+   * window. What changes is only the *null* case, which used to be silence.
+   *
+   * Not a shallower band's offer, either — the objection that made `offer()`
+   * refuse to fall through does not apply. Sanctuary is priced in the other
+   * currency entirely, so quoting it to an Overrun party one mark short is not
+   * arguing them back up the gauge; it is telling them what the other economy
+   * will still sell them.
+   *
+   * A ruined run is refused, like every other clean thing: `RUIN`'s whole
+   * proposition is that the exits stop existing.
+   */
+  _sanctuary() {
+    const cor = this.ctx.corruption;
+    if (cor?.ruined || (cor?.motes ?? 0) < MOTE.motes) return null;
+    return { kind: 'sanctuary', marks: 0, motes: MOTE.motes };
   }
 
   /** Every terminal on the stage that is still selling something. */
@@ -1913,6 +1941,18 @@ export class VoidBargain extends Interactable {
     }
     const price = `${offer.marks} of ${purse}`;
     switch (offer.kind) {
+      case 'sanctuary': {
+        // Priced in the other currency, so the purse quoted is the other purse.
+        // The greed clause is the whole decision: the window is worth exactly
+        // twice as much after the teleporter, and a player who cannot see that
+        // will spend it on the wrong chest.
+        const motes = this._motes();
+        return `Void Bargain - Sanctuary (${offer.motes} of ${motes} argent mote${motes === 1 ? '' : 's'})\n`
+          + `for ${MOTE.sanctuarySeconds}s nothing you take feeds the void\n`
+          + (this.ctx.corruption?.greed
+            ? 'greed time is running - the window is worth double right now'
+            : 'worth double once the teleporter is done');
+      }
       case 'reroll':
         return `Void Bargain - re-draw ${offer.shops.length} terminal${offer.shops.length === 1 ? '' : 's'} (${price})`;
       case 'synergy': {
@@ -1936,9 +1976,23 @@ export class VoidBargain extends Interactable {
   interact(pawn = this.ctx.player) {
     const offer = this.offer();
     if (!offer || this.spent) return false;
-    const items = Items.of(this.ctx, pawn);
     const cor = this.ctx.corruption;
-    if (!items || !cor) return false;
+    if (!cor) return false;
+
+    // Sanctuary is the one offer priced in motes and the one that never touches
+    // an inventory, so it settles before the pack is even looked up — a purity
+    // press must not be refused because the presser is carrying nothing.
+    if (offer.kind === 'sanctuary') {
+      if (!cor.spendMotes(offer.motes)) return false;
+      cor.sanctuary();
+      this.ctx.vfx?.burst?.(this.position, 0x9fd4ff);
+      this.ctx.audio?.play?.('shrineWin', this.position);
+      this.ctx.events.emit('voidBargain', { kind: 'sanctuary', motes: offer.motes, marks: 0, owner: pawn });
+      return true;
+    }
+
+    const items = Items.of(this.ctx, pawn);
+    if (!items) return false;
 
     // Ruin is free of marks and charged in the run instead, so it is settled
     // before the purse is ever touched.
@@ -1950,7 +2004,6 @@ export class VoidBargain extends Interactable {
       this.ctx.audio?.play?.('shrineBlood', this.position);
       return true;
     }
-
     // Everything else is paid first and delivered second: a bargain that could
     // fail after taking the marks would be the one dishonest thing here.
     if (!cor.spendMarks(offer.marks)) return false;

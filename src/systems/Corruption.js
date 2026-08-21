@@ -1,6 +1,6 @@
 // src/systems/Corruption.js
 import { bandOf, isVoidtouched, SOURCES, VOIDTOUCHED } from '../data/corruption.js';
-import { marksMinted } from '../data/bandBoons.js';
+import { MOTE, marksMinted, motesMinted } from '../data/bandBoons.js';
 import { ITEM_BY_ID } from '../data/items.js';
 
 /**
@@ -39,6 +39,17 @@ export class Corruption {
     // cleared, and read by the Argent Font: once the void has been let all the
     // way in, cleansing is not expensive, it is over.
     this.ruined = false;
+    // Purity's side of the same economy (data/bandBoons.js MOTE). `_warded` is
+    // every point of corruption a player's own hand has taken back out — which
+    // is every point `bleed` has ever removed, because nothing decays and the
+    // only two callers are a Voidtouched kill and an Argent Font press.
+    // Monotonic like `_peak`, and for the same reason: a mote is minted by
+    // having done the work, and feeding the void again does not un-do it.
+    this._warded = 0;
+    this._motesSpent = 0;
+    // The open sanctuary window, in seconds. Zero for every run that never
+    // wards, which is what keeps `update` and `priceOf` inert by default.
+    this._sanctuaryT = 0;
   }
 
   init(ctx) {
@@ -104,6 +115,59 @@ export class Corruption {
   /** Void marks in hand: what the descent minted, less what has been spent. */
   get marks() { return Math.max(0, marksMinted(this._peak) - this._spent); }
 
+  /** Corruption this run's players have taken back out by hand. Monotonic. */
+  get warded() { return this._warded; }
+
+  /** Argent motes in hand: what the warding minted, less what has been spent. */
+  get motes() { return Math.max(0, motesMinted(this._warded) - this._motesSpent); }
+
+  /** Is a sanctuary window open? Read by `priceOf` and by anything that renders it. */
+  get sanctified() { return this._sanctuaryT > 0; }
+
+  /**
+   * Spend `n` motes, all or nothing — `spendMarks` in the other currency, with
+   * the same authority gate and the same reason for it.
+   */
+  spendMotes(n) {
+    if (!this.ctx?.authority || !(n > 0) || this.motes < n) return false;
+    this._motesSpent += n;
+    this.ctx.events.emit('argentMotesChanged', { motes: this.motes, spent: n });
+    return true;
+  }
+
+  /**
+   * Open the sanctuary window — purity's bargain. The mote is spent by the
+   * caller (the altar), because the price is a property of the offer and the
+   * window is a property of the world, the same split `ruin()` uses.
+   *
+   * Re-opening while a window is already up *replaces* rather than extends it,
+   * so two motes spent back to back are two windows and not twenty-four
+   * seconds of one. That is deliberate: the decision this is meant to create is
+   * about *when*, and a stacking window would turn it into "spend everything".
+   */
+  sanctuary(seconds = MOTE.sanctuarySeconds) {
+    if (!this.ctx?.authority || !(seconds > 0)) return false;
+    this._sanctuaryT = seconds;
+    this.ctx.events.emit('voidSanctuary', { seconds, world: this._world, greed: this._greed });
+    return true;
+  }
+
+  /**
+   * The sanctuary clock. The only reason this class has an `update` at all, and
+   * it is a no-op — not a cheap branch, an actual early return — for every run
+   * that has never warded, which is what keeps a pristine run byte-identical to
+   * the run it was before this existed. No `ctx.rng` draw is taken here or
+   * anywhere else in this file.
+   */
+  update(ctx, dt) {
+    if (this._sanctuaryT <= 0) return;
+    this._sanctuaryT -= dt;
+    if (this._sanctuaryT <= 0) {
+      this._sanctuaryT = 0;
+      this.ctx.events.emit('voidSanctuaryEnd', { world: this._world });
+    }
+  }
+
   /**
    * Spend `n` marks, all or nothing. Authority-gated like every other state
    * change here, so a client's press resolves on the host at the host's purse
@@ -140,6 +204,12 @@ export class Corruption {
    */
   priceOf(amount) {
     if (!(amount > 0)) return 0;
+    // Sanctuary (data/bandBoons.js MOTE): inside the window the void takes
+    // nothing. It lives here rather than in `feed` precisely so the prompts
+    // quote it too — `pricedPrompt` reads this same expression, so a player
+    // standing in a sanctuary sees every chest re-price itself to +0 before
+    // they press, which is the entire point of having bought the window.
+    if (this._sanctuaryT > 0) return 0;
     const mult = this.ctx?.artifacts?.corruptionMods?.().feed ?? 1;
     return (this._greed ? amount * SOURCES.greedMult : amount) * mult;
   }
@@ -207,6 +277,14 @@ export class Corruption {
     }
     if (rest > 0) this._spread(player, rest);
     this._world -= taken;
+    // Warding rides `taken`, never the amount asked for: a bleed clamps to what
+    // exists, and minting off the request would pay a mote for scrubbing a
+    // world that was already clean.
+    const motesBefore = this.motes;
+    this._warded += taken;
+    if (this.motes !== motesBefore) {
+      this.ctx.events.emit('argentMotesChanged', { motes: this.motes, spent: 0 });
+    }
     const prev = this._band;
     this._band = bandOf(this._world);
     this.ctx.events.emit('corruptionChanged', { world: this._world, band: this._band });
