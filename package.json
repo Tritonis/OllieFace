@@ -45,7 +45,7 @@
       "!node_modules/three/**",
       "!node_modules/ws/**",
       "steamworks_sdk/redistributable_bin/win64/steam_api64.dll",
-      "!steam_appid.txt"
+      "!**/steam_appid.txt"
     ],
     "win": {
       "target": "dir",
