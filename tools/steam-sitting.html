@@ -1,0 +1,65 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Telluric Void — #52 sitting</title>
+<style>
+  body { margin:0; background:#0a0a12; color:#cfd3e0; font:14px/1.5 Consolas,monospace; overflow:hidden; }
+  #stage { position:fixed; inset:0; z-index:0; }
+  #panel { position:relative; z-index:1; padding:16px; max-width:640px; }
+  button { font:inherit; background:#1c2233; color:#cfd3e0; border:1px solid #3a4260; padding:6px 12px; margin:3px; cursor:pointer; }
+  button:hover { background:#2a3350; }
+  #log { margin-top:10px; height:320px; overflow-y:auto; background:#000a; padding:8px; white-space:pre-wrap; font-size:12px; }
+  input { font:inherit; background:#11141f; color:#cfd3e0; border:1px solid #3a4260; padding:5px; }
+  .hdr { color:#8fd0ff; }
+</style>
+<canvas id="stage"></canvas>
+<div id="panel">
+  <div class="hdr" id="who">…</div>
+  <div>
+    <button data-act="overlayFriends">1. Overlay: Friends</button>
+    <button data-act="createLobby">2. Create lobby (FriendsOnly)</button>
+    <button data-act="inviteDialog">3. Invite dialog (friend picker)</button>
+    <button data-act="lobbyScan">4. Lobby-space scan</button>
+    <button data-act="members">5. Lobby members</button>
+  </div>
+  <div style="margin-top:6px">
+    join by id: <input id="joinId" size="20"><button id="joinBtn">join</button>
+  </div>
+  <div style="margin-top:6px">
+    verdict: <input id="vCheck" size="10" placeholder="check"><input id="vVerdict" size="8" placeholder="pass/fail"><input id="vNote" size="30" placeholder="note"><button id="vBtn">record</button>
+  </div>
+  <div id="log"></div>
+</div>
+<script>
+  const { ipcRenderer } = require('electron');
+  const q = new URLSearchParams(location.search);
+  document.getElementById('who').textContent =
+    `seat: ${q.get('seat')}  |  persona: ${q.get('persona')}  |  overlay mode: ${q.get('mode')}  |  attach: ${q.get('attach')}  |  Shift+Tab is YOUR check`;
+  const logEl = document.getElementById('log');
+  const show = (r) => { logEl.textContent = JSON.stringify(r) + '\n' + logEl.textContent; };
+  const call = (action, arg) => ipcRenderer.invoke('sitting', action, arg).then(show);
+  document.querySelectorAll('button[data-act]').forEach(b => b.onclick = () => call(b.dataset.act));
+  document.getElementById('joinBtn').onclick = () => call('joinLobby', document.getElementById('joinId').value.trim());
+  document.getElementById('vBtn').onclick = () => call('verdict', {
+    check: document.getElementById('vCheck').value, verdict: document.getElementById('vVerdict').value,
+    note: document.getElementById('vNote').value });
+
+  // Continuous repaint: Chromium skips unchanged regions, and a static page can
+  // mask an unpainting overlay. Every frame moves.
+  const cv = document.getElementById('stage'), ctx = cv.getContext('2d');
+  const fit = () => { cv.width = innerWidth; cv.height = innerHeight; };
+  addEventListener('resize', fit); fit();
+  let f = 0;
+  (function loop() {
+    f++;
+    const g = ctx.createLinearGradient(0, 0, cv.width, cv.height);
+    g.addColorStop(0, `hsl(${(f / 3) % 360} 40% 12%)`);
+    g.addColorStop(1, `hsl(${(f / 3 + 120) % 360} 40% 6%)`);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.fillStyle = '#4a5578'; ctx.font = '16px Consolas';
+    ctx.fillText(`frame ${f}`, cv.width - 140, cv.height - 20);
+    ctx.beginPath();
+    ctx.arc(cv.width / 2 + Math.cos(f / 40) * 200, cv.height / 2 + Math.sin(f / 40) * 150, 24, 0, 7);
+    ctx.fillStyle = '#8fd0ff'; ctx.fill();
+    requestAnimationFrame(loop);
+  })();
+</script>

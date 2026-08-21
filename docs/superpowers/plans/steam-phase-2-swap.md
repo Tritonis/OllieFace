@@ -52,6 +52,14 @@ Four checks, any of which can stop the plan before porting work begins:
 - **Overlay.** `steamworks-ffi-node` loads under Electron; Shift+Tab visibly paints
   the Steam overlay over the running game, and the friend-picker dialog opens. This
   is #14's sentence asked of the new Binding.
+  **Resolved 2026-08-21: refuted, and survived by redefinition.** The sitting refuted
+  painting in three arrangements (Binding's GL mirror starves — `beginFrameSubscription`
+  never fires on Electron 43 for onscreen windows; the switches recipe and `--use-angle=gl`
+  both injected but never painted; evidence `reviews/spike-sitting-0820/VERDICT.md`).
+  Decision: the invite path goes programmatic — this Binding, unlike `steamworks.js`,
+  declares `inviteUserToLobby` and `getAllFriends`, so the overlay was the invite path's
+  *only* carrier in the old world and is merely polish in this one (#127). #14 is
+  restated below; step 4 carries the invite-path work.
 - **Throughput.** At 60 Hz with 3 peers, over a sustained run: **zero dropped
   reliable messages**, and **p99 added latency within the envelope `gate:mp1`
   records for WebRTC**.
@@ -113,9 +121,19 @@ WebRTC transport*. Written-but-unrun does not qualify.
 
 ### 4. Replace the Binding
 
-`steamworks.js` -> `steamworks-ffi-node` across the Introduction: lobby create/join,
-`openInviteDialog`, the `GameLobbyJoinRequested` callback, and the overlay. Everything
-`docs/STEAM.md` section 7 marks *Wired* reverts to unverified at this step.
+`steamworks.js` -> `steamworks-ffi-node` across the Introduction: lobby create/join
+and the invite path. Everything `docs/STEAM.md` section 7 marks *Wired* reverts to
+unverified at this step.
+
+**The invite path is programmatic (decided 2026-08-21, after the sitting refuted the
+overlay — see step 1):** an in-game friend picker over `friends.getAllFriends()`,
+`matchmaking.inviteUserToLobby()` on the send side, and on the joiner side Steam's
+client notification delivering `+connect_lobby <id>` launch arguments (parse them),
+plus lobby-id entry as the fallback. One bounded extension this costs: the Binding's
+callback poller does not carry `GameLobbyJoinRequested` (333), so a *running* joiner
+cannot hear an acceptance until that id is added — extend the poller (or carry a tiny
+fork/patch) rather than shipping a joiner that must be restarted to accept.
+`openInviteDialog` and every other overlay dependency are out (#127).
 
 **A prerequisite found during #53, now half-met:** unlike `steamworks.js`,
 `steamworks-ffi-node` ships no Steam redistributable — it loads `steam_api64.dll`
@@ -180,10 +198,14 @@ configured. The install-time overlay build when prebuilds are absent is the live
 hazard. `desktop/README.md:76-79` still applies: no `steam_appid.txt` anywhere in
 the packed folder.
 
-### 7. Re-verify the overlay (#14), on the packed artifact
+### 7. Re-verify the invite path (#14, restated 2026-08-21), on the packed artifact
 
-Both halves, one sitting, eyes on the screen. If either does not appear, the invite
-path is dead and no dead invite button ships.
+The overlay is out of this sentence (#127). What #14 now asks, one sitting, eyes on
+the screen, against the packed artifact: the in-game friend picker lists real friends,
+`inviteUserToLobby` lands a notification on the second account, and accepting it
+carries the joiner into the lobby (launch-args path). If any leg fails, the invite
+path is dead and no dead invite button ships — the STOP condition's teeth are
+unchanged, only its subject moved.
 
 This is the STOP condition the deletion below waits for: while it is unmet, falling
 back to `steamworks.js` is a branch, not a revert.

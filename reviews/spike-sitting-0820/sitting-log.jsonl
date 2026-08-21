@@ -1,0 +1,79 @@
+{"at":"2026-08-21T01:54:13.466Z","seat":"host","event":"init","ok":true,"persona":"Communism","binding":"0.11.1","electron":"43.3.0"}
+{"at":"2026-08-21T01:54:13.718Z","seat":"host","event":"overlay-attach","result":"attached"}
+{"at":"2026-08-21T01:55:21.308Z","seat":"host","event":"overlay-friends-requested","note":"verdict is human: did it PAINT?"}
+{"at":"2026-08-21T01:55:29.570Z","seat":"host","event":"create-lobby","success":true,"lobbyId":"109775242808446607","type":"FriendsOnly(1)"}
+{"at":"2026-08-21T01:55:39.526Z","seat":"host","event":"invite-dialog-requested","lobbyId":"109775242808446607","note":"verdict is human: did the friend picker OPEN?"}
+{"at":"2026-08-21T01:56:37.345Z","seat":"host","event":"lobby-scan","count":50,"sample":[{"id":"109775242807428784","members":null,"max":null},{"id":"109775242808444595","members":null,"max":null},{"id":"109775242807430792","members":null,"max":null},{"id":"109775242808445394","members":null,"max":null},{"id":"109775242808443624","members":null,"max":null},{"id":"109775242800513734","members":null,"max":null},{"id":"109775242808443188","members":null,"max":null},{"id":"109775242808443192","members":null,"max":null}],"oursListedInOwnScan":false}
+{"at":"2026-08-21T01:57:23.752Z","seat":"host","event":"HUMAN-VERDICT","check":"","verdict":"","note":""}
+{"at":"2026-08-21T01:57:30.180Z","seat":"host","event":"overlay-friends-requested","note":"verdict is human: did it PAINT?"}
+{"at":"2026-08-21T01:57:34.515Z","seat":"host","event":"create-lobby","success":true,"lobbyId":"109775242809606195","type":"FriendsOnly(1)"}
+{"at":"2026-08-21T02:12:50.501Z","seat":"host","mode":"native","event":"debug-mode","enabled":false,"error":"require(...).SteamLogger.setDebugMode is not a function"}
+{"at":"2026-08-21T02:12:50.721Z","seat":"host","mode":"native","event":"init","ok":true,"persona":"Communism","binding":"0.11.1","electron":"43.3.0"}
+{"at":"2026-08-21T02:12:50.960Z","seat":"host","mode":"native","event":"overlay-attach","attachReturned":true}
+{"at":"2026-08-21T02:12:50.961Z","seat":"host","mode":"native","event":"hint","note":"Alt+Tab to the window named \"Telluric Void spike sitting\" (the GL mirror). Does it show the animation? Shift+Tab with IT focused."}
+{"at":"2026-08-21T02:12:54.792Z","seat":"host","mode":"native","event":"injection-probe","injected":true,"modules":["gameoverlayrenderer64.dll"],"error":null}
+{"at":"2026-08-21T02:13:52.183Z","seat":"host","mode":"native","event":"HUMAN-VERDICT","check":"","verdict":"","note":""}
+{"at":"2026-08-21T02:14:34.083Z","seat":"host","mode":"native","event":"HUMAN-VERDICT","check":"overlay-native","verdict":"pass","note":"no overlay appeared. gradient moving"}
+{"at":"2026-08-21T02:14:36.558Z","seat":"host","mode":"native","event":"overlay-friends-requested","note":"verdict is human: did it PAINT?"}
+{"at":"2026-08-21T02:14:40.384Z","seat":"host","mode":"native","event":"create-lobby","success":true,"lobbyId":"109775242809609936","type":"FriendsOnly(1)"}
+{"at":"2026-08-21T02:15:23.025Z","seat":"host","mode":"native","event":"overlay-friends-requested","note":"verdict is human: did it PAINT?"}
+{"at":"2026-08-21T02:16:52.515Z","event":"console","ch":"log","line":"[Steamworks] Debug mode enabled"}
+{"at":"2026-08-21T02:16:52.614Z","event":"console","ch":"log","line":"[Steam Overlay] Loaded prebuild from ../../prebuilds/win32-x64/steam-overlay.node"}
+{"at":"2026-08-21T02:16:52.615Z","event":"console","ch":"log","line":"[Steam Overlay] Native module loaded (OpenGL)"}
+{"at":"2026-08-21T02:16:52.616Z","event":"console","ch":"log","line":"[Steamworks] Loading Steamworks SDK for App ID: 480"}
+{"at":"2026-08-21T02:16:52.618Z","event":"console","ch":"log","line":"[Steamworks] Loading library: C:\\Users\\tpzap\\source\\repos\\OllieFace\\steamworks_sdk\\redistributable_bin\\win64\\steam_api64.dll"}
+{"at":"2026-08-21T02:16:52.619Z","event":"console","ch":"log","line":"[Steamworks] Initializing Steam API..."}
+{"at":"2026-08-21T02:16:52.729Z","event":"console","ch":"log","line":"[Steamworks] Requesting current stats from Steam..."}
+{"at":"2026-08-21T02:16:52.729Z","event":"console","ch":"log","line":"[Steamworks] Steam API initialized successfully!"}
+{"at":"2026-08-21T02:16:52.730Z","event":"console","ch":"log","line":"[Steamworks] Connected to Steam for App ID: 480"}
+{"at":"2026-08-21T02:16:52.731Z","seat":"host","mode":"native","event":"init","ok":true,"persona":"Communism","binding":"0.11.1","electron":"43.3.0"}
+{"at":"2026-08-21T02:16:52.962Z","event":"console","ch":"log","line":"[Steam Overlay] Overlay window created, setting up frame subscription..."}
+{"at":"2026-08-21T02:16:52.962Z","event":"console","ch":"log","line":"[Steam Overlay] Starting frame subscription at 60 FPS"}
+{"at":"2026-08-21T02:16:52.965Z","event":"console","ch":"log","line":"[Steam Overlay] Overlay window shown (pass-through mode)"}
+{"at":"2026-08-21T02:16:52.966Z","event":"console","ch":"log","line":"[Steam Overlay] Successfully added Steam overlay to Electron window"}
+{"at":"2026-08-21T02:16:52.966Z","seat":"host","mode":"native","event":"overlay-attach","attachReturned":true}
+{"at":"2026-08-21T02:16:52.967Z","seat":"host","mode":"native","event":"hint","note":"Alt+Tab to the window named \"Telluric Void spike sitting\" (the GL mirror). Does it show the animation? Shift+Tab with IT focused."}
+{"at":"2026-08-21T02:16:52.991Z","event":"console","ch":"log","line":"[Steam Overlay] Electron window focused for input"}
+{"at":"2026-08-21T02:16:56.702Z","seat":"host","mode":"native","event":"injection-probe","injected":true,"modules":["gameoverlayrenderer64.dll"],"error":null}
+{"at":"2026-08-21T02:17:09.745Z","event":"console","ch":"log","line":"[Steam Overlay] Overlay window hidden (close)"}
+{"at":"2026-08-21T02:17:09.772Z","event":"console","ch":"log","line":"[Steam Overlay] Overlay window destroyed"}
+{"at":"2026-08-21T02:17:09.773Z","event":"console","ch":"log","line":"[Steamworks] Shutting down Steam API..."}
+{"at":"2026-08-21T02:17:09.776Z","event":"console","ch":"log","line":"[Steamworks] Native library unloaded"}
+{"at":"2026-08-21T02:17:09.777Z","event":"console","ch":"log","line":"[Steamworks] Steam API shutdown complete"}
+{"at":"2026-08-21T02:17:23.539Z","event":"console","ch":"log","line":"[Steamworks] Debug mode enabled"}
+{"at":"2026-08-21T02:17:23.637Z","event":"console","ch":"log","line":"[Steam Overlay] Loaded prebuild from ../../prebuilds/win32-x64/steam-overlay.node"}
+{"at":"2026-08-21T02:17:23.638Z","event":"console","ch":"log","line":"[Steam Overlay] Native module loaded (OpenGL)"}
+{"at":"2026-08-21T02:17:23.639Z","event":"console","ch":"log","line":"[Steamworks] Loading Steamworks SDK for App ID: 480"}
+{"at":"2026-08-21T02:17:23.643Z","event":"console","ch":"log","line":"[Steamworks] Loading library: C:\\Users\\tpzap\\source\\repos\\OllieFace\\steamworks_sdk\\redistributable_bin\\win64\\steam_api64.dll"}
+{"at":"2026-08-21T02:17:23.645Z","event":"console","ch":"log","line":"[Steamworks] Initializing Steam API..."}
+{"at":"2026-08-21T02:17:23.737Z","event":"console","ch":"log","line":"[Steamworks] Requesting current stats from Steam..."}
+{"at":"2026-08-21T02:17:23.738Z","event":"console","ch":"log","line":"[Steamworks] Steam API initialized successfully!"}
+{"at":"2026-08-21T02:17:23.738Z","event":"console","ch":"log","line":"[Steamworks] Connected to Steam for App ID: 480"}
+{"at":"2026-08-21T02:17:23.739Z","seat":"host","mode":"switches","event":"init","ok":true,"persona":"Communism","binding":"0.11.1","electron":"43.3.0"}
+{"at":"2026-08-21T02:17:23.740Z","seat":"host","mode":"switches","event":"overlay-attach","switches":["in-process-gpu","disable-direct-composition"],"note":"Shift+Tab over the Electron window itself"}
+{"at":"2026-08-21T02:17:27.411Z","seat":"host","mode":"switches","event":"injection-probe","injected":true,"modules":["gameoverlayrenderer64.dll"],"error":null}
+{"at":"2026-08-21T02:17:49.037Z","seat":"host","mode":"switches","event":"overlay-friends-requested","note":"verdict is human: did it PAINT?"}
+{"at":"2026-08-21T02:17:51.416Z","seat":"host","mode":"switches","event":"create-lobby","success":true,"lobbyId":"109775242810736992","type":"FriendsOnly(1)"}
+{"at":"2026-08-21T02:17:55.378Z","event":"console","ch":"log","line":"[Steamworks] Shutting down Steam API..."}
+{"at":"2026-08-21T02:17:55.382Z","event":"console","ch":"log","line":"[Steamworks] Native library unloaded"}
+{"at":"2026-08-21T02:17:55.383Z","event":"console","ch":"log","line":"[Steamworks] Steam API shutdown complete"}
+{"at":"2026-08-21T02:22:16.520Z","event":"console","ch":"log","line":"[Steamworks] Debug mode enabled"}
+{"at":"2026-08-21T02:22:16.639Z","event":"console","ch":"log","line":"[Steam Overlay] Loaded prebuild from ../../prebuilds/win32-x64/steam-overlay.node"}
+{"at":"2026-08-21T02:22:16.640Z","event":"console","ch":"log","line":"[Steam Overlay] Native module loaded (OpenGL)"}
+{"at":"2026-08-21T02:22:16.641Z","event":"console","ch":"log","line":"[Steamworks] Loading Steamworks SDK for App ID: 480"}
+{"at":"2026-08-21T02:22:16.643Z","event":"console","ch":"log","line":"[Steamworks] Loading library: C:\\Users\\tpzap\\source\\repos\\OllieFace\\steamworks_sdk\\redistributable_bin\\win64\\steam_api64.dll"}
+{"at":"2026-08-21T02:22:16.646Z","event":"console","ch":"log","line":"[Steamworks] Initializing Steam API..."}
+{"at":"2026-08-21T02:22:17.248Z","event":"console","ch":"log","line":"[Steamworks] Requesting current stats from Steam..."}
+{"at":"2026-08-21T02:22:17.249Z","event":"console","ch":"log","line":"[Steamworks] Steam API initialized successfully!"}
+{"at":"2026-08-21T02:22:17.250Z","event":"console","ch":"log","line":"[Steamworks] Connected to Steam for App ID: 480"}
+{"at":"2026-08-21T02:22:17.251Z","seat":"host","mode":"switches","event":"init","ok":true,"persona":"Communism","binding":"0.11.1","electron":"43.3.0"}
+{"at":"2026-08-21T02:22:17.251Z","seat":"host","mode":"switches","event":"overlay-attach","switches":["in-process-gpu","disable-direct-composition"],"note":"Shift+Tab over the Electron window itself"}
+{"at":"2026-08-21T02:22:20.976Z","seat":"host","mode":"switches","event":"injection-probe","injected":true,"modules":["gameoverlayrenderer64.dll"],"error":null}
+{"at":"2026-08-21T02:24:08.051Z","seat":"host","mode":"switches","event":"overlay-friends-requested","note":"verdict is human: did it PAINT?"}
+{"at":"2026-08-21T02:24:10.329Z","seat":"host","mode":"switches","event":"create-lobby","success":true,"lobbyId":"109775242810738271","type":"FriendsOnly(1)"}
+{"at":"2026-08-21T02:24:11.067Z","seat":"host","mode":"switches","event":"invite-dialog-requested","lobbyId":"109775242810738271","note":"verdict is human: did the friend picker OPEN?"}
+{"at":"2026-08-21T02:24:11.824Z","seat":"host","mode":"switches","event":"members","lobbyId":"109775242810738271","members":[{"id":"76561198037383365","name":null}]}
+{"at":"2026-08-21T02:24:11.836Z","seat":"host","mode":"switches","event":"lobby-scan","count":50,"sample":[{"id":"109775242807428784","members":null,"max":null},{"id":"109775242810737233","members":null,"max":null},{"id":"109775242808443993","members":null,"max":null},{"id":"109775242807430792","members":null,"max":null},{"id":"109775242789314602","members":null,"max":null},{"id":"109775242808443188","members":null,"max":null},{"id":"109775242808443192","members":null,"max":null},{"id":"109775242793616630","members":null,"max":null}],"oursListedInOwnScan":false}
+{"at":"2026-08-21T02:24:13.977Z","seat":"host","mode":"switches","event":"join-lobby","target":"null","success":false,"response":5}
+{"at":"2026-08-21T02:25:08.922Z","seat":"host","mode":"switches","event":"HUMAN-VERDICT","check":"overlay-switches","verdict":"fail","note":"no paint; injected true; recorded by controller from user report"}
+{"at":"2026-08-21T02:25:08.922Z","seat":"host","mode":"switches+use-angle=gl","event":"HUMAN-VERDICT","check":"overlay-gl","verdict":"fail","note":"no paint; window rendered normally; recorded by controller from user report"}
