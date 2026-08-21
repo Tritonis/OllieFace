@@ -84,12 +84,23 @@ if (!ready) {
 
 log('staging blight edge...');
 await page.evaluate(() => globalThis.__HARNESS__.blightEdge());
-// Frozen for the pair. Every difference between the two PNGs below is the
-// swap; nothing in the world is allowed to move between them.
+// Frozen for the pair, so nothing in the world moves between the shutters
+// except the swap — but `freeze()` is `engine.stop()`, which stops *rendering*
+// too, and a screenshot taken after it is the stale buffer from before it. The
+// first version of this file froze and shot three times and got three
+// near-identical PNGs: 0.02% of pixels apart, which read as "the swap is
+// invisible" when what had happened was "no frame was ever drawn with it". So
+// each shutter is preceded by exactly one hand-driven frame — the deterministic
+// single step `Engine._frame` documents itself as existing for — under the
+// pinned clock. Consecutive shots are therefore one pinned dt apart, and the
+// A-vs-C pair below measures what one dt alone is worth, which is the noise
+// floor any A-vs-B claim has to clear.
 await page.evaluate(() => globalThis.__HARNESS__.freeze());
 
 const shots = [];
+const step = () => page.evaluate(() => globalThis.__GAME__.engine._frame());
 const shoot = async (name) => {
+  await step();
   await page.screenshot({ path: `${OUT}/${name}.png` });
   shots.push(name);
   log(`shot ${name}`);
@@ -106,14 +117,11 @@ const bind = await page.evaluate(async () => {
   const bytes = res.reduce((a, r) => a + (r.transferSize || r.encodedBodySize || 0), 0);
   return { ms: Math.round(performance.now() - t), requests: res.length, bytes };
 });
-// A recompile lands on the next render; give the frozen page a few.
-await page.evaluate(() => globalThis.__HARNESS__.frames(6));
 await shoot('arteval-b-photographed');
 
 // And back, in the same session: if the "off" state is not restorable the A/B
 // is not a toggle, it is a one-way door, and every later comparison is suspect.
 await page.evaluate(async () => { await globalThis.__HARNESS__.setPbr(false); });
-await page.evaluate(() => globalThis.__HARNESS__.frames(6));
 await shoot('arteval-c-procedural-restored');
 
 const manifest = {

@@ -1,0 +1,55 @@
+{
+  "tool": "capture-arteval",
+  "seed": 1337,
+  "ready": true,
+  "capturedAt": "2026-08-21T20:25:33.516Z",
+  "gpu": {
+    "tier": 3,
+    "integrated": false,
+    "known": true,
+    "name": "NVIDIA GeForce RTX 2070",
+    "raw": "ANGLE (NVIDIA, NVIDIA GeForce RTX 2070 (0x00001F07) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "quality": 2
+  },
+  "determinism": {
+    "clockPinned": true,
+    "frameDt": 0.016666666666666666,
+    "frameTimeouts": 0
+  },
+  "bind": {
+    "ms": 467,
+    "requests": 12,
+    "bytes": 128161173
+  },
+  "shots": [
+    "arteval-a-procedural",
+    "arteval-b-photographed",
+    "arteval-c-procedural-restored"
+  ],
+  "errors": [],
+  "pixelDiff": {
+    "tool": "tools/shot-diff.mjs",
+    "aVsB": {
+      "meanAbs": 3.684,
+      "pctChangedOver2": 41.4,
+      "worst": 168.3
+    },
+    "aVsC": {
+      "meanAbs": 1.74,
+      "pctChangedOver2": 7.74,
+      "worst": 183
+    },
+    "note": "A-vs-C is the same procedural material set two pinned frames apart: the motion noise floor an A-vs-B claim has to clear. It does, 41.4% against 7.7%."
+  },
+  "perf": {
+    "off": "reviews/asset-budget/perf-combat24-pbr-off.json",
+    "on": "reviews/asset-budget/perf-combat24-pbr-on.json",
+    "offMedianMs": 15.6,
+    "onMedianMs": 13.4,
+    "offP95Ms": 23.5,
+    "onP95Ms": 23.6,
+    "texturesOff": 53,
+    "texturesOn": 64,
+    "note": "Same tree, same machine, minutes apart. Flag-on is not slower; the median spread across runs (11.9 baseline / 15.6 off / 13.4 on) is wider than the difference, so this says no regression rather than an improvement."
+  }
+}
