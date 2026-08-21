@@ -191,42 +191,70 @@ console.log('zoom round-trips through settings');
      'the slider wins when it moves: one number, two controls');
 }
 
-/* -- 4. the no-adjustment camera bypasses the fan ------------------------ */
+/* -- 4. the no-adjustment camera drops the fan, not the sphere ---------- */
 
-// Geometry off the boom axis: the four offset rays hit at 2 m, the centre ray
-// sees nothing. Assisted, that shortens the boom to keep the survivor clear.
-// Unassisted, it must not -- and the count of casts fired says which code path
-// ran, not merely what it concluded.
-const offAxis = (pivot) => (origin, dir) => {
+// The setting sells "no proactive adjustment", not "less collision", so the
+// unassisted path keeps the same five-ray CAM_RADIUS sphere the fan casts and
+// drops only what the fan does with it: sliver classification, the soft
+// warning, the hysteresis, the rate cap.
+//
+// The first cut of this arm pinned the opposite -- a single axial ray, and an
+// assertion that an off-axis obstruction left the boom at its full 7.10 m --
+// which is a camera sliding through a doorframe with a test certifying it.
+// These cases exist to make that shape red.
+
+/** Geometry that clips the camera sphere but misses the centreline exactly. */
+const offAxis = (pivot, at = 2.0) => (origin, dir) => {
   if (dir.z > 0) return -1;                       // the reverse sliver cast
   const offset = Math.abs(origin.x - pivot.x) > 1e-6 || Math.abs(origin.y - pivot.y) > 1e-6;
-  return offset ? 2.0 : -1;
+  return offset ? at : -1;
 };
 
-console.log('no-adjustment camera: the fan is skipped, collision is not');
+/** Only the right-hand ray hits: a pillar edge grazing one side of the lens. */
+const oneEdge = (pivot, at = 2.0) => (origin, dir) => {
+  if (dir.z > 0) return -1;
+  return origin.x - pivot.x > 1e-6 ? at : -1;
+};
+
+function withLog(rig, ctx, cast) {
+  const log = [];
+  ctx.stage = { raycastDistance: (o, d, m) => { log.push(d.z); return cast(o, d, m); } };
+  return log;
+}
+
+console.log('no-adjustment camera: the fan is skipped, the sphere is not');
 {
   const on = makeRig({ settings: { cameraAssist: 1 } });
-  on.ctx.stage = { raycastDistance: offAxis(on.rig.pivot) };
-  // re-wrap so the call log is populated
-  const onCalls = [];
-  const onCast = offAxis(on.rig.pivot);
-  on.ctx.stage.raycastDistance = (o, d, m) => { onCalls.push(d.z); return onCast(o, d, m); };
+  const onLog = withLog(on.rig, on.ctx, offAxis(on.rig.pivot));
   run(on.rig, on.ctx, 30);
-  ok(on.rig.distance < 2.0,
-     `assisted, an off-axis obstruction pulls the boom in (${on.rig.distance.toFixed(3)} m)`);
 
   const off = makeRig({ settings: { cameraAssist: 0 } });
-  const offCalls = [];
-  const offCast = offAxis(off.rig.pivot);
-  off.ctx.stage = { raycastDistance: (o, d, m) => { offCalls.push(d.z); return offCast(o, d, m); } };
+  const offLog = withLog(off.rig, off.ctx, offAxis(off.rig.pivot));
   run(off.rig, off.ctx, 30);
-  ok(Math.abs(off.rig.distance - DIST) < 0.01,
-     `unassisted, the same obstruction leaves the boom alone (${off.rig.distance.toFixed(3)} m)`);
-  ok(offCalls.length === 30 && onCalls.length > 30 * 4,
-     `and only one cast per frame is fired, not a fan (${offCalls.length} vs ${onCalls.length})`);
 
-  // Collision survives the setting. A wall squarely behind the survivor is on
-  // the boom axis, and the unassisted camera must still refuse to enter it.
+  ok(Math.abs(on.rig.distance - (2.0 - CAM_RADIUS)) < 0.01,
+     `assisted, an off-axis obstruction pulls the boom to the sphere's face (${on.rig.distance.toFixed(3)} m)`);
+  ok(Math.abs(off.rig.distance - on.rig.distance) < 0.01,
+     `unassisted lands in the same place -- collision is not what the setting removes (${off.rig.distance.toFixed(3)} m)`);
+
+  // Five rays a frame and not one reverse cast: the sphere is intact, the
+  // sliver test that only anticipation needs is gone.
+  const backward = offLog.filter((dz) => dz < 0).length;
+  const reverse = offLog.filter((dz) => dz > 0).length;
+  ok(backward === 150 && reverse === 0,
+     `unassisted fires the whole sphere and nothing else (${backward} backward, ${reverse} reverse)`);
+  ok(onLog.length > offLog.length,
+     `assisted fires strictly more casts than that (${onLog.length} vs ${offLog.length})`);
+
+  // A pillar edge on one side only -- inside CAM_RADIUS, nowhere near the
+  // centreline. This is the case a single axial cast cannot see at all.
+  const edge = makeRig({ settings: { cameraAssist: 0 } });
+  withLog(edge.rig, edge.ctx, oneEdge(edge.rig.pivot, 1.6));
+  run(edge.rig, edge.ctx, 30);
+  ok(Math.abs(edge.rig.distance - (1.6 - CAM_RADIUS)) < 0.01,
+     `unassisted, one grazing ray still stops the lens (${edge.rig.distance.toFixed(3)} m)`);
+
+  // Collision on the axis, unchanged.
   const wall = makeRig({ settings: { cameraAssist: 0 } });
   wall.ctx.stage = { raycastDistance: (o, d) => (d.z > 0 ? -1 : 3.0) };
   run(wall.rig, wall.ctx, 30);
@@ -234,6 +262,27 @@ console.log('no-adjustment camera: the fan is skipped, collision is not');
      `unassisted, an axial wall still stops the camera at its face (${wall.rig.distance.toFixed(3)} m)`);
   ok(wall.rig.distance <= wall.rig.allowedDistance + 1e-9,
      'and the published reach still bounds the boom it used');
+}
+
+console.log('no-adjustment camera: no anticipation, no memory, no easing');
+{
+  // A hit present on exactly one frame. Assisted, the rig remembers it and
+  // eases back out over SOFT_HOLD_TAU / OCCLUDE_OUT_TAU; unassisted, the boom
+  // is back at full length on the very next frame, because there is nothing
+  // held over between frames at all.
+  const script = (hitOn) => {
+    let f = -1;
+    const r = makeRig({ settings: { cameraAssist: 0 } });
+    r.ctx.stage = { raycastDistance: (o, d) => (d.z > 0 ? -1 : (f === hitOn ? 2.0 : -1)) };
+    const seen = [];
+    for (let i = 0; i < 20; i++) { f = i; r.rig.lateUpdate(r.ctx, dt); seen.push(r.rig.distance); }
+    return seen;
+  };
+  const seen = script(10);
+  ok(Math.abs(seen[10] - (2.0 - CAM_RADIUS)) < 0.01,
+     `the frame the obstruction exists, the boom is at its face (${seen[10].toFixed(3)} m)`);
+  ok(Math.abs(seen[11] - DIST) < 1e-9,
+     `the frame after, it is back at full length -- no ease-out, no memory (${seen[11].toFixed(3)} m)`);
 }
 
 /* -- 5. occlusion hysteresis: a one-frame spike does not snap ------------ */

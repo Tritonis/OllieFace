@@ -667,20 +667,50 @@ export class CameraRig {
   }
 
   /**
-   * Collision only: one cast straight back down the boom axis, no fan, no
-   * sliver test. The longest boom whose end is not inside a surface.
+   * One ray of the sphere-cast approximation: the centre of the cast for
+   * `i === 0`, and the four cardinal points of the CAM_RADIUS circle around
+   * the boom axis for 1-4. Writes `_origin` and returns it.
    *
-   * The offset rays exist to keep geometry out of the *frame*; this one exists
-   * to keep the camera out of the *world*. That is precisely the line the
-   * no-adjustment setting draws, so the two are separate casts rather than one
-   * with a flag.
+   * Shared by `_fan` and `_collide` rather than copied into each. The five
+   * offsets ARE the sphere: drop them and the "camera" being kept out of the
+   * world is a dimensionless point, which is a lens that slides through
+   * anything whose surface misses one exact line.
+   */
+  _ray(from, i) {
+    this._origin.copy(from);
+    if (i > 0) {
+      const a = (i - 1) * (Math.PI / 2);
+      this._origin.addScaledVector(this._right, Math.cos(a) * CAM_RADIUS);
+      this._origin.y += Math.sin(a) * CAM_RADIUS;
+    }
+    return this._origin;
+  }
+
+  /**
+   * Collision only: the same five-ray sphere as the fan, and nothing else the
+   * fan does. Every hard hit counts, at face value -- no sliver classification,
+   * no soft memory, no hysteresis, no anticipation, no rate cap. Returns the
+   * longest boom whose sphere is clear of geometry.
+   *
+   * The line the no-adjustment setting draws is between the rig making framing
+   * decisions and the rig staying in the world, and the sphere is on the
+   * staying-in-the-world side of it. A single axial cast would put it on the
+   * wrong side: geometry that clips the camera's own radius while missing the
+   * centreline -- a pillar edge, a doorframe, the lip of a ramp -- is exactly
+   * what a 0.34 m sphere is approximating, and ignoring it ships a lens inside
+   * the level. What the setting removes is proactive adjustment, not collision.
    */
   _collide(ctx, from, boom) {
     if (!ctx.stage?.raycastDistance) return boom;
     const back = this._back.copy(this._dir).negate();
-    const d = ctx.stage.raycastDistance(from, back, boom + CAM_RADIUS);
-    if (d < 0) return boom;
-    return clamp(d - CAM_RADIUS, MIN_DIST, boom);
+    const reach = boom + CAM_RADIUS;
+    let allowed = boom;
+    for (let i = 0; i < 5; i++) {
+      const d = ctx.stage.raycastDistance(this._ray(from, i), back, reach);
+      if (d < 0) continue;
+      allowed = Math.min(allowed, Math.max(MIN_DIST, d - CAM_RADIUS));
+    }
+    return allowed;
   }
 
   /**
@@ -698,13 +728,7 @@ export class CameraRig {
     const back = this._back.copy(this._dir).negate();
     const reach = boom + CAM_RADIUS;
     for (let i = 0; i < 5; i++) {
-      this._origin.copy(from);
-      if (i > 0) {
-        const a = (i - 1) * (Math.PI / 2);
-        this._origin.addScaledVector(this._right, Math.cos(a) * CAM_RADIUS);
-        this._origin.y += Math.sin(a) * CAM_RADIUS;
-      }
-      const d = ctx.stage.raycastDistance(this._origin, back, reach);
+      const d = ctx.stage.raycastDistance(this._ray(from, i), back, reach);
       if (d < 0) continue;
       const pull = Math.max(MIN_DIST, d - CAM_RADIUS);
       // Only hits that would yank the boom in by more than SNAP_MAX in a
