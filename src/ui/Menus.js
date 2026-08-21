@@ -14,8 +14,9 @@ import { Logbook, ModelPreview, disposeTree, renderRunReport } from './Logbook.j
 import { describeNet } from '../net/NetConfig.js';
 import { formatRoomCode, normalizeRoomCode, tidyRoomCode } from '../net/Lobby.js';
 import {
-  steamAvailable, hostViaSteam, joinViaSteam, onSteamInvite, openSteamInvite,
+  steamAvailable, hostViaSteam, joinViaSteam, onSteamInvite,
   steamInviteNeedsConfirm, steamInviteBlocked,
+  listSteamFriends, inviteSteamFriend, pendingSteamJoin,
 } from '../net/SteamLobby.js';
 import { shouldArmTutorial } from '../systems/Tutorial.js';
 import { showSteamInviteNotice } from './SteamInviteNotice.js';
@@ -537,11 +538,12 @@ export class Menus {
           <div class="coop-room" data-coop-steam hidden>
             <h3 class="coop-h">Steam</h3>
             <p class="coop-hint">The easiest way, if you and your friend are both on Steam. Host,
-              then invite them from the Steam overlay — they join with one click, no codes.</p>
+              then pick a friend below — Steam notifies them and they join with one click, no codes.</p>
             <nav class="menu-list menu-list--row">
               <button class="mbtn mbtn--go" data-nav data-act="coop-steam-host"><span>Host via Steam</span></button>
               <button class="mbtn" data-nav data-act="coop-steam-invite"><span>Invite friend</span></button>
             </nav>
+            <div class="coop-friends" data-coop-friends hidden></div>
           </div>
 
           <div class="coop-room">
@@ -739,6 +741,10 @@ export class Menus {
       // with el.click(), which bubbles here untrusted. Without this guard every
       // pad-confirmed menu action would hand device authority to the mouse.
       if (e.isTrusted) this.ctx.input?.deviceUsed?.('mouse');
+      // Before `[data-act]`: a friend row carries both, because it has to be a
+      // pad-navigable button AND name which friend it is.
+      const friend = e.target.closest('[data-steam-friend]');
+      if (friend) { this.coopInviteFriend(friend.dataset.steamFriend); return; }
       const btn = e.target.closest('[data-act]');
       if (btn) { this.act(btn.dataset.act); return; }
       const diff = e.target.closest('[data-difficulty]');
@@ -1891,28 +1897,47 @@ export class Menus {
       // player saying so. Already networked, joining could never succeed
       // (fix round 2 — `joinViaSteam` itself refuses that case now), so the
       // blocked check runs FIRST and never offers an Accept that cannot work.
-      onSteamInvite((lobbyId) => {
-        const lobby = this.ctx.lobby;
-        if (!lobby) return;
-        const join = async () => {
-          this.openCoop();
-          this.coopSay('Joining your friend through Steam…');
-          try { await joinViaSteam(lobby, lobbyId); }
-          catch (err) { this.coopSay(err?.message || 'That Steam invite did not work.'); }
-        };
-        if (steamInviteBlocked({ lobbyMode: lobby.mode })) {
-          showSteamInviteNotice({
-            body: lobby.mode === 'host'
-              ? "A friend's Steam invite arrived, but you're already hosting a game. Leave it first, then accept an invite."
-              : "A friend's Steam invite arrived, but you're already in a game. Leave it first, then accept another invite.",
-            actionable: false,
-          });
-          return;
-        }
-        if (!steamInviteNeedsConfirm({ hasActiveRun: !!this.ctx.player, lobbyMode: lobby.mode })) { join(); return; }
-        showSteamInviteNotice({ onAccept: join });
-      });
+      onSteamInvite((lobbyId) => this.acceptSteamInvite(lobbyId));
+      // ...and the other half of the same gesture. An invite accepted while the
+      // game was CLOSED never fires 333: Steam launches the game with the lobby
+      // on its command line instead, which is over before this page exists. The
+      // main process parks that id; this is the only ask for it, and it answers
+      // null in a browser, on a cold launch, and on every reload after the
+      // first.
+      const parked = await pendingSteamJoin();
+      if (parked) this.acceptSteamInvite(parked);
     } catch { /* the whole point of this path is that its absence is silent */ }
+  }
+
+  /**
+   * One accepted Steam invite, however it arrived — callback 333 while running,
+   * or `+connect_lobby` at launch.
+   *
+   * Idle at a menu, the gesture is trusted outright. Mid-run, it must not tear
+   * the run down without the player saying so. Already networked, joining could
+   * never succeed (`joinViaSteam` refuses that case itself), so the blocked
+   * check runs FIRST and never offers an Accept that cannot work.
+   */
+  acceptSteamInvite(lobbyId) {
+    const lobby = this.ctx.lobby;
+    if (!lobby) return;
+    const join = async () => {
+      this.openCoop();
+      this.coopSay('Joining your friend through Steam…');
+      try { await joinViaSteam(lobby, lobbyId); }
+      catch (err) { this.coopSay(err?.message || 'That Steam invite did not work.'); }
+    };
+    if (steamInviteBlocked({ lobbyMode: lobby.mode })) {
+      showSteamInviteNotice({
+        body: lobby.mode === 'host'
+          ? "A friend's Steam invite arrived, but you're already hosting a game. Leave it first, then accept an invite."
+          : "A friend's Steam invite arrived, but you're already in a game. Leave it first, then accept another invite.",
+        actionable: false,
+      });
+      return;
+    }
+    if (!steamInviteNeedsConfirm({ hasActiveRun: !!this.ctx.player, lobbyMode: lobby.mode })) { join(); return; }
+    showSteamInviteNotice({ onAccept: join });
   }
 
   /** All the co-op buttons. Every path here can fail, and every failure is
@@ -1971,8 +1996,12 @@ export class Menus {
         }
         case 'coop-steam-invite': {
           if (!this.steamLobbyId) return this.coopSay('Press “Host via Steam” first — the invite needs a lobby to point at.');
-          await openSteamInvite(this.steamLobbyId);
-          this.coopSay('Pick your friend in the Steam overlay. They join as soon as they accept.');
+          this.coopSay('Reading your Steam friends list…');
+          const friends = await listSteamFriends();
+          this.renderSteamFriends(friends);
+          this.coopSay(friends.length
+            ? 'Pick a friend and Steam will send them an invite.'
+            : 'Steam did not list any friends to invite. Use a room code or an invite code instead.');
           break;
         }
         case 'coop-room-host': {
@@ -2030,6 +2059,66 @@ export class Menus {
       // message the player has already fixed is a dead co-op screen.
       this._coopBusy.delete(action);
       if (button) button.disabled = false;
+    }
+  }
+
+  /**
+   * Draw the friend picker.
+   *
+   * Built with DOM calls rather than a template: a persona name is a string
+   * another Steam user chose, and the one place it must never be spliced into
+   * is markup. The main process already strips control characters; `textContent`
+   * is what makes the remaining angle brackets harmless.
+   */
+  renderSteamFriends(friends) {
+    const host = this.root.querySelector('[data-coop-friends]');
+    if (!host) return;
+    host.replaceChildren();
+    host.hidden = false;
+    if (!friends.length) {
+      const empty = document.createElement('p');
+      empty.className = 'coop-hint';
+      empty.textContent = 'No Steam friends to show.';
+      host.append(empty);
+      return;
+    }
+    const list = document.createElement('nav');
+    list.className = 'menu-list';
+    for (const f of friends) {
+      const btn = document.createElement('button');
+      btn.className = 'mbtn';
+      btn.dataset.nav = '';
+      btn.dataset.steamFriend = f.steamId;
+      const label = document.createElement('span');
+      // The suffix is the only reason to invite one friend before another, so
+      // it is part of the row rather than a colour nobody can name out loud.
+      label.textContent = f.inGame ? `${f.personaName} — in this game`
+        : f.personaState === 0 ? `${f.personaName} — offline`
+        : f.personaName;
+      btn.append(label);
+      list.append(btn);
+    }
+    host.append(list);
+    this.paintFocus?.(this.navTargets());
+  }
+
+  /** One row of the picker, pressed. */
+  async coopInviteFriend(steamId) {
+    if (!steamId) return;
+    if (!this.steamLobbyId) return this.coopSay('Press “Host via Steam” first — the invite needs a lobby to point at.');
+    // Guarded like every other co-op action: a double-press is two invites, and
+    // Steam shows the friend both of them.
+    this._coopBusy ??= new Set();
+    const key = `friend:${steamId}`;
+    if (this._coopBusy.has(key)) return;
+    this._coopBusy.add(key);
+    try {
+      await inviteSteamFriend(this.steamLobbyId, steamId);
+      this.coopSay('Invite sent. They join as soon as they accept it — even if the game is closed for them right now.');
+    } catch (err) {
+      this.coopSay(err?.message || 'That invite did not send.');
+    } finally {
+      this._coopBusy.delete(key);
     }
   }
 

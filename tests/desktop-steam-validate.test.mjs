@@ -21,6 +21,8 @@ import {
   parseSteamId, steamIdToString, validateMaxMembers, validateLobbyRecord,
   sanitizeLobbyData, encodeSignal, decodeSignal,
   lobbyRecordBytes, isAuthorizedSignalTarget,
+  sanitizeFriendList, sanitizePersonaName, parseConnectLobbyArg,
+  MAX_FRIENDS_LISTED, MAX_PERSONA_CHARS,
   MAX_LOBBY_VALUE_CHARS, MAX_LOBBY_KEYS, MAX_SIGNAL_PAYLOAD_BYTES, MAX_SIGNAL_FRAME_BYTES,
   MAX_LOBBY_TOTAL_BYTES, STEAM_LOBBY_TOTAL_BYTES,
 } from '../desktop/steam-validate.mjs';
@@ -233,6 +235,64 @@ console.log('\n-- isAuthorizedSignalTarget: send-signal may only address a lobby
   let threw = null;
   try { isAuthorizedSignalTarget(undefined, undefined); } catch (err) { threw = err; }
   ok(threw === null, 'garbage in either argument degrades to false, never throws');
+}
+
+console.log('\n-- the friends list on its way out to the picker');
+{
+  const list = sanitizeFriendList([
+    { steamId: '76561198037383365', personaName: 'Ada', personaState: 1, inGame: true },
+    { steamId: 76561198037383366n, personaName: 'Bo', personaState: 0 },
+    { steamId: 'not-an-id', personaName: 'Nobody' },
+    { personaName: 'Idless' },
+    null,
+    'a string',
+  ]);
+  ok(list.length === 2, 'a row without a readable id is dropped, not passed through half-formed');
+  ok(list[0].steamId === '76561198037383365' && list[0].personaName === 'Ada', 'a good row survives intact');
+  ok(list[0].inGame === true && list[1].inGame === false, 'inGame is a strict boolean either way');
+  ok(list[1].steamId === '76561198037383366', 'a bigint id becomes a decimal string -- IPC never carries one');
+  ok(typeof list[1].personaState === 'number', 'the state is always a number');
+
+  ok(sanitizeFriendList(null).length === 0, 'a Binding that answers with nothing yields an empty list, not a throw');
+  ok(sanitizeFriendList({ friends: [] }).length === 0, 'and neither does the wrong shape');
+
+  const huge = Array.from({ length: MAX_FRIENDS_LISTED + 50 }, (_, i) => ({ steamId: String(i + 1), personaName: 'F' }));
+  ok(sanitizeFriendList(huge).length === MAX_FRIENDS_LISTED,
+    'the list is capped before it reaches a renderer that has to draw every row of it');
+}
+
+console.log('\n-- persona names are text another player chose');
+{
+  const NUL = String.fromCharCode(0);
+  const RLO = String.fromCharCode(0x202e);
+  ok(sanitizePersonaName('Ada') === 'Ada', 'an ordinary name is left alone');
+  ok(sanitizePersonaName('A' + NUL + 'da') === 'Ada', 'control characters are stripped');
+  ok(sanitizePersonaName('A' + RLO + 'da') === 'Ada',
+    'and so are the bidi overrides that would otherwise repaint the row beside it');
+  ok(sanitizePersonaName('   ') === 'Unknown friend', 'a name that survives as nothing gets a placeholder');
+  ok(sanitizePersonaName(42) === 'Unknown friend', 'and so does one that was never a string');
+  ok(sanitizePersonaName('z'.repeat(500)).length === MAX_PERSONA_CHARS, 'a long name is capped');
+  // Deliberately NOT escaped here: the picker builds rows with `textContent`,
+  // and escaping on the way out too is how a name gets shown as entities.
+  ok(sanitizePersonaName('<b>Ada</b>') === '<b>Ada</b>', 'markup is left as text for the renderer to place as text');
+}
+
+console.log('\n-- +connect_lobby, the launch half of an accepted invite');
+{
+  const ID = '109775241996081388';
+  ok(parseConnectLobbyArg(['game.exe', '+connect_lobby', ID]) === ID, 'the id Steam appends is read back');
+  ok(parseConnectLobbyArg(['game.exe', '+connect_lobby=' + ID]) === ID, 'the joined spelling is read too');
+  ok(parseConnectLobbyArg(['game.exe', '--x', '+connect_lobby', ID, '--y']) === ID, 'position on the line does not matter');
+  ok(parseConnectLobbyArg(['game.exe']) === null, 'a plain launch carries no lobby');
+  ok(parseConnectLobbyArg(['+connect_lobby']) === null, 'a trailing flag with no value is not an id');
+  ok(parseConnectLobbyArg(['+connect_lobby', 'abc']) === null, 'and neither is a value that is not a decimal id');
+  ok(parseConnectLobbyArg(['+connect_lobby', '0x10']) === null, 'hex is refused, as parseSteamId refuses it everywhere else');
+  ok(parseConnectLobbyArg(['+connect_lobby', ' ' + ID]) === null, 'padding is refused');
+  ok(parseConnectLobbyArg(['+connect_lobby', '0']) === null, 'zero is not a lobby');
+  ok(parseConnectLobbyArg(['+connect_lobby', 'x', '+connect_lobby', ID]) === null,
+    'a broken FIRST occurrence is the answer -- Steam writes one, and scanning past it is how a crafted shortcut would win');
+  ok(parseConnectLobbyArg(null) === null, 'a non-array argv is refused rather than thrown through');
+  ok(parseConnectLobbyArg([null, undefined, 7, '+connect_lobby', ID]) === ID, 'non-string tokens are skipped, not read');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

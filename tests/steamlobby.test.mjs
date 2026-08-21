@@ -21,6 +21,7 @@
 import {
   chunkBlob, assembleBlob, steamAvailable, hostViaSteam, joinViaSteam, onSteamInvite, openSteamInvite,
   CHUNK_CHARS, MAX_LOBBY_TOTAL_BYTES, recordBytes, steamInviteNeedsConfirm, steamInviteBlocked,
+  listSteamFriends, inviteSteamFriend, pendingSteamJoin,
 } from '../src/net/SteamLobby.js';
 import { Lobby } from '../src/net/Lobby.js';
 
@@ -169,6 +170,17 @@ function makeBridge(overrides = {}) {
     async startSignalListen(id) { calls.push(['startSignalListen', id]); return { ok: true }; },
     stopSignalListen: record('stopSignalListen'),
     async openInviteDialog(id) { calls.push(['openInviteDialog', id]); return { ok: true, overlay: true }; },
+    async listFriends() {
+      calls.push(['listFriends']);
+      return { friends: [
+        { steamId: '3', personaName: 'Zoe', personaState: 1, inGame: false },
+        { steamId: '1', personaName: 'Ada', personaState: 0, inGame: false },
+        { steamId: '2', personaName: 'Bo', personaState: 1, inGame: true },
+        { steamId: '4', personaName: 'Ash', personaState: 1, inGame: false },
+      ] };
+    },
+    async inviteFriend(lobbyId, steamId) { calls.push(['inviteFriend', lobbyId, steamId]); return { ok: true }; },
+    async pendingJoin() { calls.push(['pendingJoin']); return { lobbyId: null }; },
     onSignal(cb) { listeners.signal.add(cb); return () => listeners.signal.delete(cb); },
     onSignalFail(cb) { listeners.fail.add(cb); return () => listeners.fail.delete(cb); },
     onJoinRequested(cb) { listeners.join.add(cb); return () => listeners.join.delete(cb); },
@@ -1074,6 +1086,78 @@ console.log('-- the real src/net/Lobby.js runs the Steam teardown from leave()')
   let threw = null;
   try { plain.leave(); } catch (e) { threw = e; }
   ok(threw === null, 'a Lobby that never saw Steam leaves without a murmur');
+}
+
+console.log('\n-- the friend picker: the list, in the order a picker wants it');
+{
+  const b = makeBridge();
+  const friends = await listSteamFriends();
+  ok(b.calls.some(([n]) => n === 'listFriends'), 'the bridge was asked');
+  ok(friends.map((f) => f.personaName).join(',') === 'Bo,Ash,Zoe,Ada',
+    `in this game, then online by name, then offline (got ${friends.map((f) => f.personaName).join(',')})`);
+  delete globalThis.window;
+
+  // An empty friends list is NOT an error: it is a picker that says so.
+  makeBridge({ async listFriends() { return { friends: [] }; } });
+  ok((await listSteamFriends()).length === 0, 'no friends is an empty list, not a throw');
+  delete globalThis.window;
+
+  makeBridge({ async listFriends() { return { friends: 'not an array' }; } });
+  ok((await listSteamFriends()).length === 0, 'and neither is a bridge that answers with the wrong shape');
+  delete globalThis.window;
+
+  // The graceful states the picker has to render.
+  makeBridge({ async listFriends() { return { error: 'friends-unavailable' }; } });
+  let threw2 = null;
+  try { await listSteamFriends(); } catch (e) { threw2 = e; }
+  ok(threw2 instanceof Error && /friends list/i.test(threw2.message),
+    `a Binding without a friends list explains itself in words (${threw2 && threw2.message})`);
+  delete globalThis.window;
+
+  globalThis.window = {};
+  let threw3 = null;
+  try { await listSteamFriends(); } catch (e) { threw3 = e; }
+  ok(threw3 instanceof Error, 'and a build with no bridge at all throws rather than hanging the picker');
+  delete globalThis.window;
+}
+
+console.log('\n-- the friend picker: sending one invite');
+{
+  const b = makeBridge();
+  await inviteSteamFriend('109775241996081388', '76561198037383365');
+  ok(b.calls.some(([n, l, s]) => n === 'inviteFriend' && l === '109775241996081388' && s === '76561198037383365'),
+    'the lobby and the friend both reach the bridge as decimal strings');
+  delete globalThis.window;
+
+  makeBridge({ async inviteFriend() { return { error: 'invite-refused' }; } });
+  let threw2 = null;
+  try { await inviteSteamFriend('1', '2'); } catch (e) { threw2 = e; }
+  ok(threw2 instanceof Error && /would not deliver/i.test(threw2.message),
+    `a refused invite is said out loud (${threw2 && threw2.message})`);
+  delete globalThis.window;
+}
+
+console.log('\n-- the launch-time invite: collected once, and only if it is an id');
+{
+  makeBridge({ async pendingJoin() { return { lobbyId: '109775241996081388' }; } });
+  ok(await pendingSteamJoin() === '109775241996081388', 'a parked lobby id is handed over');
+  delete globalThis.window;
+
+  makeBridge();
+  ok(await pendingSteamJoin() === null, 'a cold launch parks nothing');
+  delete globalThis.window;
+
+  makeBridge({ async pendingJoin() { return { lobbyId: 'not-an-id' }; } });
+  ok(await pendingSteamJoin() === null, 'and a command line carrying junk is not believed on this side either');
+  delete globalThis.window;
+
+  makeBridge({ async pendingJoin() { throw new Error('bridge died'); } });
+  ok(await pendingSteamJoin() === null, 'a throwing bridge cannot fail the boot for want of an invite');
+  delete globalThis.window;
+
+  globalThis.window = {};
+  ok(await pendingSteamJoin() === null, 'and a browser answers null without ever touching a channel');
+  delete globalThis.window;
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

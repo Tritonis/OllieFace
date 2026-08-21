@@ -326,7 +326,8 @@ humans have played a game through it, because none have.
 | Piece | Status | What that means, precisely |
 |---|---|---|
 | **Init** | **Wired** | `desktop/steam.mjs` `initSteam()` runs at module scope in `desktop/main.mjs`, before `app.whenReady()`. Every failure — Steam not running, missing native binary, missing `steam_appid.txt` — collapses to `{ available: false, reason }`. It throws nothing and blocks on nothing; Steam-absent init measures 26 ms. |
-| **Bridge** | **Wired** | `window.__STEAM__`, fourteen named functions over named IPC channels, `contextIsolation: true`. No client object, no generic pass-through. The exact key set is pinned by `tools/desktopprobe.mjs`, which goes red if anything is *added*. All Steam ids cross as decimal strings (they are `bigint` natively and `JSON.stringify` throws on those). |
+| **Invite path (programmatic)** | **Wired against the seam, never met a live Steam client** | The overlay-less path from step 4 of the Phase 2 plan. Send side: `steam:list-friends` (`friends.getAllFriends()`, sanitised by `sanitizeFriendList`) and `steam:invite-friend` (`matchmaking.inviteUserToLobby`), drawn as an in-game picker in `src/ui/Menus.js`. Join side: callback 333 for a running game, and `+connect_lobby <id>` for one that was closed — parsed by `parseConnectLobbyArg`, parked in main, collected once through `steam:pending-join`. **Both Binding calls are feature-detected**, because the live client is still `steamworks.js@0.4.0`, which binds neither: a shell running it answers `friends-unavailable`/`invite-unavailable` and the picker says so in words. The path becomes exercisable the moment `desktop/steam.mjs` loads `steamworks-ffi-node` — that swap is NOT done (see the note under section 8.6). |
+| **Bridge** | **Wired** | `window.__STEAM__`, seventeen named functions over named IPC channels, `contextIsolation: true`. No client object, no generic pass-through. The exact key set is pinned by `tools/desktopprobe.mjs`, which goes red if anything is *added*. All Steam ids cross as decimal strings (they are `bigint` natively and `JSON.stringify` throws on those). |
 | **Lobby signalling** | **Wired, never run between two machines** | `src/net/SteamLobby.js`. Host and join paths are complete and covered by 105 assertions against a fake bridge; the host half additionally ran against live Steam through the real UI. The joiner half **has never met a real host.** See "the warm path" below. |
 | **Overlay** | **REFUTED 2026-08-21 — demoted to polish (#127)** | The determinative check ran and failed in three arrangements on Electron 43.3.0: the injection that made this row PROVISIONAL is real (`gameoverlayrenderer64.dll` resident, process registered as the game) but nothing ever paints, under `electronEnableSteamOverlay`'s switches, with `--use-angle=gl`, or via `steamworks-ffi-node`'s GL mirror (whose `beginFrameSubscription` never delivers a frame). Evidence: `reviews/spike-sitting-0820/VERDICT.md`. The invite path no longer depends on the overlay — it is programmatic (`inviteUserToLobby`), per the Phase 2 plan step 4. |
 | **Appid swap** | **Pending Valve** | `steam_appid.txt` is `480` (Spacewar) and `DEV_APP_ID` in `desktop/steam.mjs` is `480`. The real id does not exist yet. Procedure below. |
@@ -708,6 +709,14 @@ pure Introduction. #55 implements against these two seams.
 its own route-finding.
 
 ### 8.6 A prerequisite discovered on the way, wider than #53
+
+> **Status note, 2026-08-21 (#54).** The Binding swap in `desktop/` has NOT
+> landed: `desktop/steam.mjs` still `require`s `steamworks.js`, and every handler
+> in `desktop/main.mjs` is written against that binding's `Lobby` handle objects.
+> `steamworks-ffi-node` is a dependency and is exercised by `tools/steamnet*.mjs`
+> and `tests/steam-smoke.test.mjs`, and nowhere in the shell. The invite path
+> above was built so that it does not have to wait for that swap and does not
+> pretend to have it: both Binding calls are feature-detected at the seam.
 
 `steamworks-ffi-node` **does not bundle the Steamworks redistributable.** Its
 loader looks for `steamworks_sdk/redistributable_bin/win64/steam_api64.dll`

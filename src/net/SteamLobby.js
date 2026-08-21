@@ -241,6 +241,11 @@ const BRIDGE_REASONS = {
     'Steam refused to store the invite in the lobby. That happens when the lobby is already full of data or somebody else owns it — leave the lobby and host again, or use a room code.',
   'signal-send-refused': 'Steam would not deliver the reply to the host. Ask them to host again.',
   'bad-steam-id': 'the host’s Steam account could not be identified, so the reply had nowhere to go.',
+  'friends-unavailable':
+    'this build of the Steam bridge cannot read your friends list, so there is nobody to pick. Use a room code or an invite code instead.',
+  'invite-unavailable':
+    'this build of the Steam bridge cannot send invites. Use a room code or an invite code instead.',
+  'invite-refused': 'Steam would not deliver that invite. They may have left, or blocked invites.',
   'signal-target-not-lobby-owner':
     'that Steam account is not the owner of a lobby you are in, so the reply was not sent. Ask your friend to host again.',
 };
@@ -757,6 +762,56 @@ export function onSteamInvite(handler) {
     const lobbyId = typeof msg?.lobbyId === 'string' ? msg.lobbyId : '';
     if (/^\d+$/.test(lobbyId)) handler(lobbyId);
   });
+}
+
+/**
+ * The picker's list: this player's Steam friends, ready to render.
+ *
+ * Rows arrive already sanitised by the main process; what is added here is the
+ * ordering the picker wants and nothing else — friends already in this game
+ * first, then everyone else online, then the offline, each group by name. A
+ * player looking for someone to invite is looking at the top of that list.
+ *
+ * Throws with a sentence when there is no bridge or Steam refuses, so the
+ * caller has something to say; an empty friends list is NOT an error, it is an
+ * empty array and a picker that says so.
+ */
+export async function listSteamFriends() {
+  const b = bridge();
+  if (!b || typeof b.listFriends !== 'function') throw new Error('This build has no Steam friends list.');
+  const res = unwrap(await b.listFriends(), 'Steam friends');
+  const friends = Array.isArray(res.friends) ? res.friends : [];
+  const rank = (f) => (f.inGame ? 0 : f.personaState === 0 ? 2 : 1);
+  return friends.slice().sort((a, b2) =>
+    rank(a) - rank(b2) || String(a.personaName).localeCompare(String(b2.personaName)));
+}
+
+/**
+ * Invite one friend to the lobby this session hosts. The overlay-less send
+ * side: Steam delivers a notification, and their accept comes back to us as
+ * either callback 333 (game running) or `+connect_lobby` (game closed).
+ */
+export async function inviteSteamFriend(lobbyId, steamId) {
+  const b = bridge();
+  if (!b || typeof b.inviteFriend !== 'function') throw new Error('This build cannot send Steam invites.');
+  return unwrap(await b.inviteFriend(String(lobbyId ?? ''), String(steamId ?? '')), 'Steam invite');
+}
+
+/**
+ * The invite this player accepted before the game was running, if there is one.
+ *
+ * Answers null in a browser, on a shell without the channel, and on the second
+ * ask — main hands it over exactly once. Never throws: a start-up path that can
+ * fail the boot for want of an invite is worse than the missed invite.
+ */
+export async function pendingSteamJoin() {
+  const b = bridge();
+  if (!b || typeof b.pendingJoin !== 'function') return null;
+  try {
+    const res = await b.pendingJoin();
+    const lobbyId = typeof res?.lobbyId === 'string' ? res.lobbyId : '';
+    return /^\d+$/.test(lobbyId) ? lobbyId : null;
+  } catch { return null; }
 }
 
 /** Open Steam's own invite dialog over the game. Needs the overlay. */

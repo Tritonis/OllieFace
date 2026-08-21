@@ -16,7 +16,7 @@ import { createSaveWriter, createQuitGuard } from './save-writer.mjs';
 import {
   parseSteamId, steamIdToString, validateMaxMembers, validateLobbyRecord,
   sanitizeLobbyData, encodeSignal, decodeSignal, MAX_SIGNAL_FRAME_BYTES,
-  isAuthorizedSignalTarget,
+  isAuthorizedSignalTarget, sanitizeFriendList, parseConnectLobbyArg,
 } from './steam-validate.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -113,6 +113,32 @@ let signalListen = null;
 /** A cap on how many packets one tick may drain, so a flood cannot starve the
  *  main loop. Anything beyond it waits 100 ms for the next tick. */
 const MAX_PACKETS_PER_TICK = 16;
+
+/**
+ * A lobby the player accepted an invite to before the page could listen.
+ *
+ * There are two ways an accepted invite arrives, and only one of them is a
+ * callback. A friend accepting while the game is already running fires 333 and
+ * the renderer hears it live. A friend accepting while the game is CLOSED makes
+ * Steam launch it with `+connect_lobby <id>` — which happens long before there
+ * is a window, let alone a page with a subscription — and a push into nothing
+ * is an invite the player watched Steam accept and the game silently ignore.
+ * So the launch case is parked here and collected by `steam:pending-join`,
+ * which the renderer asks once at start-up.
+ *
+ * Collected exactly once: it is a single gesture, and replaying it on every
+ * reload would drag a player back into a lobby they have since left.
+ */
+let pendingJoinLobbyId = parseConnectLobbyArg(process.argv);
+
+/** A second launch of an already-running game — which is how Steam delivers an
+ *  accepted invite when the shell has `requestSingleInstanceLock`. Live if the
+ *  page is up, parked if it is not, and never both. */
+function noteLaunchJoin(lobbyId) {
+  if (!lobbyId) return;
+  if (mainWindow && !mainWindow.isDestroyed()) pushToRenderer('steam:join-requested', { lobbyId });
+  else pendingJoinLobbyId = lobbyId;
+}
 
 /** A message for the renderer that is a string and only a string. `err` may
  *  carry a bigint somewhere in it, so it is never spread, serialised, or
@@ -285,6 +311,48 @@ function registerSteamBridge() {
     return { ok: true, overlay: overlayStatus.ok };
   });
 
+  // ------------------------------------------------------------- the picker
+  // The overlay was refuted as an invite surface (2026-08-21), so the invite is
+  // ours to draw: a list of friends, and a call per friend. Both halves are
+  // feature-detected rather than assumed, because the Binding that carries them
+  // is not the Binding every other handler above is written against — a shell
+  // running the older one answers `friends-unavailable` and the picker says so,
+  // which is a sentence a player can act on, unlike a button that does nothing.
+
+  handle('steam:list-friends', async () => {
+    const client = steamClient();
+    if (!client) return { error: 'steam-unavailable' };
+    const friends = client.friends;
+    if (!friends || typeof friends.getAllFriends !== 'function') return { error: 'friends-unavailable' };
+    // Sanitised, not forwarded: persona names are strings other players chose.
+    return { friends: sanitizeFriendList(friends.getAllFriends()) };
+  });
+
+  handle('steam:invite-friend', async (rawLobbyId, rawSteamId) => {
+    const client = steamClient();
+    if (!client) return { error: 'steam-unavailable' };
+    const target = parseSteamId(rawSteamId);
+    if (target === null) return { error: 'bad-steam-id' };
+    // A lobby THIS PROCESS HOLDS, and no other. The renderer names the lobby,
+    // and an invite is Steam telling another player where to connect — so an
+    // arbitrary id here would let a compromised page point a friend anywhere.
+    const lobby = lobbyFor(rawLobbyId);
+    if (!lobby) return { error: 'unknown-lobby' };
+    const mm = client.matchmaking;
+    if (!mm || typeof mm.inviteUserToLobby !== 'function') return { error: 'invite-unavailable' };
+    return mm.inviteUserToLobby(String(rawLobbyId), target.toString())
+      ? { ok: true }
+      : { error: 'invite-refused' };
+  });
+
+  // The launch-time half of the join side. Answers once and forgets; see
+  // `pendingJoinLobbyId`.
+  handle('steam:pending-join', async () => {
+    const lobbyId = pendingJoinLobbyId;
+    pendingJoinLobbyId = null;
+    return { lobbyId: lobbyId ?? null };
+  });
+
   handle('steam:write-lobby-data', async (rawLobbyId, record) => {
     const lobby = lobbyFor(rawLobbyId);
     if (!lobby) return { error: 'unknown-lobby' };
@@ -400,7 +468,11 @@ if (!app.requestSingleInstanceLock()) {
   if (steamStatus.available && !process.env.TELLURIC_NO_OVERLAY) overlayStatus = enableOverlay();
   registerSteamBridge();
 
-  app.on('second-instance', () => {
+  app.on('second-instance', (_event, argv) => {
+    // Steam delivers an accepted invite by LAUNCHING the game again, which the
+    // single-instance lock turns into this event — so the second instance's
+    // command line is where a running shell hears about it.
+    noteLaunchJoin(parseConnectLobbyArg(argv));
     if (!mainWindow) return;
     if (mainWindow.isMinimized()) mainWindow.restore();
     mainWindow.focus();
