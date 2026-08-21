@@ -204,7 +204,26 @@ class RunRecorder {
       artifacts: [],
       netRole: ctx.netRole ?? 'single',
       stages: [],
-      corruption: { peakWorld: 0, peakBand: 0, fed: 0, bled: 0, crossings: [] },
+      // `fed`/`bled` is the tax; `marks` and `ruined` are the half of #36 that
+      // the export could not see. A run whose `marks.minted` climbed and whose
+      // `marks.spent` stayed at 0 is the design's own refutation condition —
+      // an upside that accrued and that nobody ever found — and it has to be
+      // distinguishable from a run that simply never went deep enough to mint.
+      corruption: {
+        peakWorld: 0, peakBand: 0, fed: 0, bled: 0, crossings: [],
+        marks: { minted: 0, spent: 0 }, ruined: false,
+      },
+      // Every bargain actually struck, in order. This is issue #36's acceptance
+      // criterion in one field: a run with a nonzero `fed` and an empty
+      // `bargains` is a player who paid the whole tax and took nothing back.
+      bargains: [],
+      // Purity's side (`data/bandBoons.js` MOTE). `greed` on each entry is the
+      // one that decides whether the window was spent well: greed time doubles
+      // the price a sanctuary waives, so a run whose sanctuaries all land
+      // outside it is a run that has not understood the offer — or an offer
+      // that arrives at the wrong moment, which is the same finding pointed at
+      // the designer instead of the player.
+      sanctuaries: [],
       mutations: [],
       stabilisations: [],
       fonts: [],
@@ -219,6 +238,7 @@ class RunRecorder {
     this._stage = null;      // the open stage entry, or null before stage 0
     this._realm = null;      // the open realm visit, or null outside one
     this._lastWorld = 0;     // previous corruption world value, for feed/bleed direction
+    this._lastMarks = 0;     // previous void-mark balance, for the mint/spend split
     this._lastKill = null;   // the most recent kill of this machine's survivor
     // Offers whose door is still standing, so `goldChanged` can raise their
     // high-water purse. Emptied at `stageStart`, because that is where `Realms`
@@ -257,6 +277,10 @@ class RunRecorder {
     on('itemMutated', this.onItemMutated);
     on('itemStabilised', this.onItemStabilised);
     on('fontUse', this.onFontUse);
+    on('voidMarksChanged', this.onVoidMarks);
+    on('voidBargain', this.onVoidBargain);
+    on('voidSanctuary', this.onVoidSanctuary);
+    on('voidRuin', this.onVoidRuin);
     on('goldChanged', this.onGoldChanged);
     on('realmOffer', this.onRealmOffer);
     on('realmEnter', this.onRealmEnter);
@@ -359,6 +383,60 @@ class RunRecorder {
       worldBefore: e?.worldBefore ?? 0, worldAfter: e?.worldAfter ?? 0,
       bandBefore: e?.bandBefore ?? 0, bandAfter: e?.bandAfter ?? 0,
     });
+  }
+
+  /**
+   * The void-mark purse moved (issue #36). Two shapes ride one event: a mint,
+   * which raises the balance with `spent: 0`, and a spend, which lowers it by
+   * `spent`. Both totals are kept because they answer different questions — did
+   * the run go deep enough to earn the currency, and did anyone ever use it —
+   * and the second is the design's stated refutation condition.
+   *
+   * Derived from the balance delta rather than trusted from the payload, so a
+   * mint whose size the emitter did not state is still counted. `_lastMarks`
+   * starts at 0, which is where every run starts.
+   */
+  onVoidMarks(e) {
+    const marks = Number(e?.marks) || 0;
+    const spent = Math.max(0, Number(e?.spent) || 0);
+    const m = this.record.corruption.marks;
+    // balance_now = balance_before + minted - spent, so minted falls out.
+    const minted = marks - this._lastMarks + spent;
+    if (minted > 0) m.minted += minted;
+    m.spent += spent;
+    this._lastMarks = marks;
+  }
+
+  /**
+   * A bargain was struck — the one field #36's acceptance criterion is written
+   * in. The world and band at the moment of the press are recorded alongside
+   * the price, because the interesting question is not only whether players buy
+   * but *how deep they were willing to go* before they did.
+   */
+  onVoidBargain(e) {
+    this.push(this.record.bargains, {
+      t: this.t(),
+      kind: e?.kind ?? null,
+      id: e?.id ?? null,
+      marks: Number(e?.marks) || 0,
+      world: this.world(),
+      band: this.band(),
+    });
+  }
+
+  /** A sanctuary window was bought. See `sanctuaries` for what `greed` decides. */
+  onVoidSanctuary(e) {
+    this.push(this.record.sanctuaries, {
+      t: this.t(),
+      seconds: Number(e?.seconds) || 0,
+      world: this.world(),
+      greed: !!e?.greed,
+    });
+  }
+
+  /** Consumed's one-way door was opened. A flag, because it happens at most once. */
+  onVoidRuin() {
+    this.record.corruption.ruined = true;
   }
 
   /**

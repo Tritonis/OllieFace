@@ -39,10 +39,81 @@ export const BOON = {
   ruin: { band: 4 },
 };
 
+/**
+ * Pristine's entry — the hole in this table, and the reason purity read as a
+ * fun tax even after every other band was paid back (issue #36, second pass).
+ *
+ * The clean route had no verb. Its complete action set was: do not press the
+ * thing; pay gold at a font whose price scales with the debt; and kill a
+ * Voidtouched elite, which bled the world and minted nothing. Only the last is
+ * something a player *does*, and it paid in a smaller number.
+ *
+ * So warding is now a verb with a currency behind it. Corruption bled by a
+ * player's own hand — a Voidtouched kill, an Argent Font press; there is no
+ * passive decay and nothing else calls `bleed` — accumulates on
+ * `Corruption._warded` and mints one argent mote per `per` points.
+ *
+ * Note what that forces, because it is the design rather than an accident:
+ * Voidtouched elites exist at a rate proportional to World Corruption, so a
+ * player who never corrupts anything never wards anything either and mints no
+ * motes. The clean route is a *cycle* — go in, bring it back out — not a
+ * refusal to play, and abstinence is deliberately not the way to farm this.
+ *
+ * A mote buys Sanctuary: `sanctuarySeconds` in which `Corruption.priceOf`
+ * returns zero and every chest, pickup and second of greed time is free. It is
+ * the pact's mirror — the pact spends marks on power and charges debt for it;
+ * sanctuary spends motes on greed and charges nothing — and it is a *timing*
+ * decision with a wrong answer, because greed time already doubles the price a
+ * sanctuary is waiving.
+ *
+ * Both numbers are first guesses. `per: 40` puts a mote at roughly one
+ * Voidtouched kill's refund at Blighted depth (`refund: 0.08` of a world near
+ * 500), which is the shape wanted: a mote is a thing you went and got, not a
+ * thing that accrued. Neither has been playtested.
+ */
+export const MOTE = { per: 40, sanctuarySeconds: 12, motes: 1 };
+
+/** One mote per `per` of corruption warded. The mirror of `marksMinted`. */
+export function motesMinted(warded) {
+  const w = Number.isFinite(warded) ? Math.max(0, warded) : 0;
+  return Math.floor(w / MOTE.per);
+}
+
 /** One mark per `markPer` of peak debt. Non-finite and negative read as none. */
 export function marksMinted(peak) {
   const p = Number.isFinite(peak) ? Math.max(0, peak) : 0;
   return Math.floor(p / BOON.markPer);
+}
+
+/**
+ * What a press about to add `added` points would *earn*, given the run's
+ * current peak (issue #36, second pass).
+ *
+ * The first pass minted marks inside `Corruption.feed` and told nobody. The one
+ * surface a player reads before every corrupting press — `pricedPrompt` — quoted
+ * three clauses and all three were costs, so the whole upside economy was
+ * invisible at exactly the moment it was supposed to be arguing. This is the
+ * other half of that sentence.
+ *
+ * Pure, and expressed in terms of `marksMinted` rather than a second copy of
+ * the arithmetic, so the number the prompt promises and the number `feed` mints
+ * are the same function evaluated twice. `added` must already carry the greed
+ * multiplier and the artifact economy — the caller quotes through
+ * `Corruption.priceOf` for the same reason the debt clause does, or the prompt
+ * would under-promise on greed time by exactly the factor that makes greed time
+ * worth taking.
+ *
+ * `toNext` is the distance from where this press *lands* to the next boundary,
+ * not from where the run stands now: the question a player is asking at a chest
+ * is how much more greed the mark needs, and answering it from the pre-press
+ * peak over-quotes by exactly the press being considered. Meaningful only when
+ * `mints` is 0 — a minting press has already arrived.
+ */
+export function mintForecast(peak, added) {
+  const p = Number.isFinite(peak) ? Math.max(0, peak) : 0;
+  const a = Number.isFinite(added) ? Math.max(0, added) : 0;
+  const mints = marksMinted(p + a) - marksMinted(p);
+  return { mints, toNext: BOON.markPer - ((p + a) % BOON.markPer) };
 }
 
 /**

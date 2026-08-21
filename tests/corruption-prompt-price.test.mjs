@@ -17,6 +17,7 @@ import {
 import { MarketStall, Refinery, VaultChest } from '../src/world/realms/RealmProps.js';
 import { Corruption } from '../src/systems/Corruption.js';
 import { BANDS, SOURCES } from '../src/data/corruption.js';
+import { BOON } from '../src/data/bandBoons.js';
 import { ITEM_BY_ID, ITEMS_BY_TIER } from '../src/data/items.js';
 import { CAPRICE_TIERS } from '../src/data/artifacts.js';
 
@@ -83,12 +84,24 @@ function nextPart(world, added) {
   return added >= gap ? `${next.name} now: ${effect}` : `${next.name} in ${gap}: ${effect}`;
 }
 
+const MARK_PER = BOON.markPer;
 const amount = (lo, hi) => (lo === hi ? `+${lo}` : `+${lo}-${hi}`);
 /** The whole three-part line, as it reaches the HUD. */
-function priced(gain, lo, hi, { world = 0, qualifier = '', greed = false } = {}) {
+function priced(gain, lo, hi, { world = 0, qualifier = '', greed = false, peak = null } = {}) {
   let debt = `${amount(lo, hi)} corruption`;
   if (qualifier) debt += ` ${qualifier}`;
   if (greed) debt += ` (x${SOURCES.greedMult} greed time)`;
+  // The mint clause (issue #36, second pass). Re-derived here rather than
+  // imported, like every other expectation in this file: the point is to state
+  // the line independently of the code that formats it. It rides `hi` — the
+  // best case of the range, already multiplied — because that is the press the
+  // player is hoping for, and it rides the *peak*, which in these fixtures is
+  // whatever the fixture fed the real `Corruption` to get to `world`.
+  const p = peak === null ? world : peak;
+  const mints = Math.floor((p + hi) / MARK_PER) - Math.floor(p / MARK_PER);
+  debt += mints > 0
+    ? ` -> mints ${mints === 1 ? 'a void mark' : `${mints} void marks`}`
+    : ` (${MARK_PER - ((p + hi) % MARK_PER)} to the next void mark)`;
   return `${gain} | ${debt} | ${nextPart(world, lo)}`;
 }
 
