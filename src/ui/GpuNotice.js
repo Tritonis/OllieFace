@@ -29,7 +29,8 @@ const CSS = `
  border:1px solid rgba(120,200,220,.30);border-left:3px solid #39d6d2;
  font:13px/1.5 ui-monospace,"Cascadia Mono",Consolas,monospace;
  box-shadow:0 10px 40px rgba(0,0,0,.6);
- animation:gpu-notice-in .35s ease-out both}
+ animation:gpu-notice-in .35s ease-out both;
+ pointer-events:none}
 @keyframes gpu-notice-in{from{opacity:0;transform:translate(-50%,10px)}
  to{opacity:1;transform:translate(-50%,0)}}
 .gpu-notice__body{flex:1;min-width:0}
@@ -41,7 +42,8 @@ const CSS = `
 .gpu-notice code{color:#ffd9a0;background:rgba(255,217,160,.08);padding:0 4px}
 .gpu-notice__gpu{color:#ff9a6a}
 .gpu-notice__x{flex:0 0 auto;background:none;border:1px solid rgba(216,226,234,.25);
- color:#d8e2ea;cursor:pointer;font:inherit;line-height:1;padding:4px 9px}
+ color:#d8e2ea;cursor:pointer;font:inherit;line-height:1;padding:4px 9px;
+ pointer-events:auto}
 .gpu-notice__x:hover{border-color:#39d6d2;color:#39d6d2}
 `;
 
