@@ -276,3 +276,96 @@ export function decodeSignal(bytes) {
   if (Buffer.byteLength(payload, 'utf8') > MAX_SIGNAL_PAYLOAD_BYTES) return { ok: false, error: 'signal-payload-too-large' };
   return { ok: true, payload };
 }
+
+/** How many friends one `steam:list-friends` answer may carry. A Steam friends
+ *  list runs to thousands; the picker is a menu, not a directory, and a runaway
+ *  list is a renderer stall. */
+export const MAX_FRIENDS_LISTED = 512;
+
+/** Longest persona name the picker will render. Steam's own cap is 32 chars,
+ *  so this is slack rather than truncation in practice. */
+export const MAX_PERSONA_CHARS = 64;
+
+/**
+ * A friend's persona name on its way OUT to the renderer.
+ *
+ * Another player chose this string, so it is untrusted text: control characters
+ * — including the bidi overrides that let a name repaint the row beside it —
+ * are dropped, the result is capped, and a name that survives as nothing at all
+ * becomes a placeholder rather than an empty row nobody can read.
+ *
+ * @param {unknown} raw
+ * @returns {string}
+ */
+export function sanitizePersonaName(raw) {
+  if (typeof raw !== 'string') return 'Unknown friend';
+  const stripped = raw
+    .replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2060-\u206f\ufeff]/g, '')
+    .trim();
+  if (!stripped) return 'Unknown friend';
+  return stripped.length > MAX_PERSONA_CHARS ? stripped.slice(0, MAX_PERSONA_CHARS) : stripped;
+}
+
+/**
+ * The Binding's `friends.getAllFriends()` -> what may cross IPC.
+ *
+ * Ids become decimal strings (nothing bigint-shaped ever reaches the renderer),
+ * names are scrubbed, the state is a plain integer, and anything without a
+ * readable id is dropped entirely — an invite needs an id, so a row that cannot
+ * carry one is a row that could only fail when pressed.
+ *
+ * Never throws: a Binding answering with the wrong shape yields an empty list,
+ * which the picker already has to render for the friendless case.
+ *
+ * @param {unknown} raw
+ * @returns {Array<{ steamId: string, personaName: string, personaState: number, inGame: boolean }>}
+ */
+export function sanitizeFriendList(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  for (const entry of raw) {
+    if (out.length >= MAX_FRIENDS_LISTED) break;
+    if (!entry || typeof entry !== 'object') continue;
+    const steamId = steamIdToString(entry.steamId ?? entry.steamId64 ?? entry.id);
+    if (!steamId) continue;
+    out.push({
+      steamId,
+      personaName: sanitizePersonaName(entry.personaName ?? entry.name),
+      personaState: Number.isInteger(entry.personaState) ? entry.personaState : 0,
+      inGame: entry.inGame === true,
+    });
+  }
+  return out;
+}
+
+/**
+ * Steam's launch notification -> the lobby the player just accepted.
+ *
+ * When an invite is accepted while the game is NOT running, Steam starts it
+ * with `+connect_lobby <id>` on the command line; the running-game case arrives
+ * as callback 333 instead. This argv is attacker-adjacent in exactly the way
+ * every other id is — a desktop shortcut, a second instance, a protocol handler
+ * — so the id goes through `parseSteamId` and nothing else is taken from the
+ * line. A `+connect_lobby` whose value is not an id yields null rather than
+ * falling through to a later occurrence: the first one is the one Steam wrote.
+ *
+ * Both spellings are read (`+connect_lobby 123` and `+connect_lobby=123`): the
+ * separated form is what Steam sends, the joined form is what hand-written
+ * shortcuts and harnesses tend to carry.
+ *
+ * @param {unknown} argv
+ * @returns {string|null} the lobby id as a decimal string, or null
+ */
+export function parseConnectLobbyArg(argv) {
+  if (!Array.isArray(argv)) return null;
+  for (let i = 0; i < argv.length; i++) {
+    const token = argv[i];
+    if (typeof token !== 'string') continue;
+    let candidate;
+    if (token === '+connect_lobby') candidate = argv[i + 1];
+    else if (token.startsWith('+connect_lobby=')) candidate = token.slice('+connect_lobby='.length);
+    else continue;
+    return parseSteamId(candidate) === null ? null : candidate;
+  }
+  return null;
+}

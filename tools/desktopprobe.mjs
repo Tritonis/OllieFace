@@ -63,6 +63,9 @@ const STEAM_BRIDGE_KEYS = [
   'getFullLobbyData', 'getLobbyOwner', 'hostLobby', 'joinLobby', 'leaveLobby',
   'onJoinRequested', 'onSignal', 'onSignalFail', 'openInviteDialog', 'sendSignal',
   'startSignalListen', 'status', 'stopSignalListen', 'writeLobbyData',
+  // The overlay-less invite path (#54): our own friend picker on the send side,
+  // and the launch-args half of an accepted invite on the join side.
+  'listFriends', 'inviteFriend', 'pendingJoin',
 ].sort();
 
 const checks = [];

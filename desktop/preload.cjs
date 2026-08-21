@@ -73,6 +73,16 @@ contextBridge.exposeInMainWorld('__STEAM__', {
   // -> { ok: true, overlay: boolean } | { error: string }
   openInviteDialog: (lobbyId) => ipcRenderer.invoke('steam:open-invite', String(lobbyId)),
 
+  // The overlay-less invite path: our own picker, drawn by the page.
+  // -> { friends: Array<{ steamId, personaName, personaState, inGame }> } | { error }
+  listFriends: () => ipcRenderer.invoke('steam:list-friends'),
+  // -> { ok: true } | { error: string }
+  inviteFriend: (lobbyId, steamId) =>
+    ipcRenderer.invoke('steam:invite-friend', String(lobbyId), String(steamId)),
+  // An invite accepted while the game was CLOSED, delivered as launch args and
+  // answered exactly once. -> { lobbyId: string|null }
+  pendingJoin: () => ipcRenderer.invoke('steam:pending-join'),
+
   // record: { 'sdp.<key>': '<=7000 chars' } -- main enforces both, batched into
   // one mergeFullData. -> { ok: true } | { error: string }
   writeLobbyData: (lobbyId, record) => ipcRenderer.invoke('steam:write-lobby-data', String(lobbyId), record),
