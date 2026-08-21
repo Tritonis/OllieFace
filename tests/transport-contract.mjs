@@ -402,11 +402,12 @@ export async function runTransportContract(adapter, ok) {
   {
     const { host } = makeHost();
     const wire = adapter.connectPeer(host, 1);
-    const chan = wire.hostPeer.events;
-
-    // A peer that is not draining: the refusal goes into the channel and stays
-    // there.
-    chan.bufferedAmount = 4096;
+    // A peer that is not draining: the refusal goes into the reliable path and
+    // stays there. Stated through the adapter, because "bytes still to send" is
+    // `bufferedAmount` on a data channel and `pendingReliable` on a Steam
+    // connection - the same fact in two vocabularies, and reaching for either by
+    // name here is what would make this suite unportable.
+    adapter.setPendingReliable(wire.hostPeer, 4096);
     host.setNow(99);
     host._checkHelloDeadlines();
 
@@ -416,7 +417,7 @@ export async function runTransportContract(adapter, ok) {
     // Now it drains. The retry is on a 16 ms timer, so this is the one place the
     // suite waits on real time — polled rather than a fixed sleep so a loaded
     // box doesn't flake the assertion (#126).
-    chan.bufferedAmount = 0;
+    adapter.setPendingReliable(wire.hostPeer, 0);
     const drained = await pollUntil(() => wire.hostPeer.closed === true);
 
     ok(drained, t('and closed it once the channel drained'));
@@ -431,7 +432,7 @@ export async function runTransportContract(adapter, ok) {
 
     // Never drains, ever. The cap is what stops this peer holding a connection
     // open by doing nothing: 8 tries at 16 ms.
-    wire.hostPeer.events.bufferedAmount = 4096;
+    adapter.setPendingReliable(wire.hostPeer, 4096);
     host.setNow(99);
     host._checkHelloDeadlines();
 
@@ -523,26 +524,33 @@ export async function runTransportContract(adapter, ok) {
   // ==========================================================================
   //
   // Exercises the peer's own `drained()` directly, against the real reliable
-  // channel — the exact three states `_closeWhenFlushed` used to read off
+  // path — the exact states `_closeWhenFlushed` used to read off
   // `readyState`/`bufferedAmount` by hand.
+  //
+  // The states are named rather than spelled: "bytes still to send", "nothing
+  // left", "closed", "absent". Each transport's adapter puts its own connection
+  // into them, because the first two are `bufferedAmount` in WebRTC's
+  // vocabulary and `pendingReliable` in Steam's - a suite that wrote either
+  // name would be a suite only one transport could pass. This is the one place
+  // #55 found the enumeration portable and the *fixture* not.
   {
     const { host } = makeHost();
     const wire = adapter.connectPeer(host, 1);
 
-    wire.hostPeer.events.bufferedAmount = 4096;
+    adapter.setPendingReliable(wire.hostPeer, 4096);
     ok(wire.hostPeer.drained() === false,
-      t('an open channel with buffered bytes is not drained'));
+      t('an open reliable path with bytes still to send is not drained'));
 
-    wire.hostPeer.events.bufferedAmount = 0;
+    adapter.setPendingReliable(wire.hostPeer, 0);
     ok(wire.hostPeer.drained() === true,
-      t('an open channel with an empty buffer is drained'));
+      t('an open reliable path with nothing left to send is drained'));
 
-    wire.hostPeer.events.readyState = 'closed';
+    adapter.closeReliable(wire.hostPeer);
     ok(wire.hostPeer.drained() === true,
-      t('a closed channel counts as drained regardless of buffer'));
+      t('a closed reliable path counts as drained regardless of what it held'));
 
-    wire.hostPeer.events = null;
+    adapter.dropReliable(wire.hostPeer);
     ok(wire.hostPeer.drained() === true,
-      t('an absent channel counts as drained'));
+      t('an absent reliable path counts as drained'));
   }
 }

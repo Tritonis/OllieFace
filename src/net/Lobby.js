@@ -1,6 +1,10 @@
 import { NetHost } from './NetHost.js';
 import { NetClient } from './NetClient.js';
 import { signalUrl, signalIsLocal } from './NetConfig.js';
+// Which Conversation this session gets. Returns the WebRTC transports on every
+// runtime that has no Steam networking bridge, which is all of them today — see
+// `TransportSelect.js` for why the guard is shaped that way.
+import { makeHostTransport, makeClientTransport } from './TransportSelect.js';
 
 /**
  * A WebSocket failure gives no reason — the event carries nothing, by design,
@@ -363,7 +367,7 @@ export class Lobby {
   startHost({ maxPlayers = 4 } = {}) {
     if (this.net) throw new Error('Already networked');
     this.mode = 'host';
-    this.net = this.engine.add(new NetHost({ maxPlayers }));
+    this.net = this.engine.add(new NetHost({ maxPlayers, transport: makeHostTransport() }));
     this._bindHost();
     this._set('hosting');
     return this.net;
@@ -468,7 +472,7 @@ export class Lobby {
   async joinManual(inviteBlob, { trickle = false, onIceCandidate = null } = {}) {
     if (this.net) throw new Error('Already networked');
     this.mode = 'client';
-    const client = new NetClient();
+    const client = new NetClient({ transport: makeClientTransport() });
     this.net = this.engine.add(client);
     // Both are set before `client.join` and both have to be: `trickle` decides
     // whether that call waits for gathering at all, and gathering starts inside

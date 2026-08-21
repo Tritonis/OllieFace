@@ -16,11 +16,16 @@
  */
 import { runTransportContract } from './transport-contract.mjs';
 import { loopbackAdapter } from './transport-loopback.mjs';
+import { steamAdapter } from './transport-steam.mjs';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
 
 await runTransportContract(loopbackAdapter, ok);
+// The Steam arm (#55). Same assertions, not one of them edited to admit it —
+// only the three `drained()` state-setters moved behind the adapter, because
+// "bytes still to send" has a different name in each transport's vocabulary.
+await runTransportContract(steamAdapter, ok);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
