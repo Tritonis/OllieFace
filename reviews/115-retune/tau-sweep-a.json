@@ -1,0 +1,204 @@
+{
+  "taus": [
+    {
+      "tau": 0.1,
+      "stages": [
+        {
+          "stage": 0,
+          "pitch": -0.17,
+          "worst": 4.705,
+          "worstInfo": "h12 f89",
+          "big": 120,
+          "meanBoom": 6.378,
+          "windowed": null
+        },
+        {
+          "stage": 1,
+          "pitch": -0.17,
+          "worst": 6.951,
+          "worstInfo": "h0 f796",
+          "big": 290,
+          "meanBoom": 5.228,
+          "windowed": null
+        },
+        {
+          "stage": 2,
+          "pitch": -0.17,
+          "worst": 3.428,
+          "worstInfo": "h1 f479",
+          "big": 56,
+          "meanBoom": 5.155,
+          "windowed": null
+        },
+        {
+          "stage": 3,
+          "pitch": -0.17,
+          "worst": 6.52,
+          "worstInfo": "h5 f253",
+          "big": 100,
+          "meanBoom": 4.893,
+          "windowed": 1.824
+        },
+        {
+          "stage": 4,
+          "pitch": -0.17,
+          "worst": 6.832,
+          "worstInfo": "h6 f804",
+          "big": 106,
+          "meanBoom": 5.591,
+          "windowed": null
+        }
+      ]
+    },
+    {
+      "tau": 0.2,
+      "stages": [
+        {
+          "stage": 0,
+          "pitch": -0.17,
+          "worst": 4.7,
+          "worstInfo": "h12 f89",
+          "big": 117,
+          "meanBoom": 6.263,
+          "windowed": null
+        },
+        {
+          "stage": 1,
+          "pitch": -0.17,
+          "worst": 6.95,
+          "worstInfo": "h0 f796",
+          "big": 284,
+          "meanBoom": 5.021,
+          "windowed": null
+        },
+        {
+          "stage": 2,
+          "pitch": -0.17,
+          "worst": 3.428,
+          "worstInfo": "h1 f479",
+          "big": 54,
+          "meanBoom": 4.993,
+          "windowed": null
+        },
+        {
+          "stage": 3,
+          "pitch": -0.17,
+          "worst": 6.492,
+          "worstInfo": "h5 f253",
+          "big": 90,
+          "meanBoom": 4.677,
+          "windowed": 1.808
+        },
+        {
+          "stage": 4,
+          "pitch": -0.17,
+          "worst": 6.832,
+          "worstInfo": "h6 f804",
+          "big": 99,
+          "meanBoom": 5.448,
+          "windowed": null
+        }
+      ]
+    },
+    {
+      "tau": 0.3,
+      "stages": [
+        {
+          "stage": 0,
+          "pitch": -0.17,
+          "worst": 4.687,
+          "worstInfo": "h12 f89",
+          "big": 117,
+          "meanBoom": 6.154,
+          "windowed": null
+        },
+        {
+          "stage": 1,
+          "pitch": -0.17,
+          "worst": 6.946,
+          "worstInfo": "h0 f796",
+          "big": 279,
+          "meanBoom": 4.834,
+          "windowed": null
+        },
+        {
+          "stage": 2,
+          "pitch": -0.17,
+          "worst": 3.428,
+          "worstInfo": "h1 f479",
+          "big": 52,
+          "meanBoom": 4.846,
+          "windowed": null
+        },
+        {
+          "stage": 3,
+          "pitch": -0.17,
+          "worst": 6.417,
+          "worstInfo": "h5 f253",
+          "big": 84,
+          "meanBoom": 4.484,
+          "windowed": 1.781
+        },
+        {
+          "stage": 4,
+          "pitch": -0.17,
+          "worst": 6.832,
+          "worstInfo": "h6 f804",
+          "big": 92,
+          "meanBoom": 5.316,
+          "windowed": null
+        }
+      ]
+    },
+    {
+      "tau": 0.4,
+      "stages": [
+        {
+          "stage": 0,
+          "pitch": -0.17,
+          "worst": 4.668,
+          "worstInfo": "h12 f89",
+          "big": 117,
+          "meanBoom": 6.05,
+          "windowed": null
+        },
+        {
+          "stage": 1,
+          "pitch": -0.17,
+          "worst": 6.929,
+          "worstInfo": "h0 f796",
+          "big": 273,
+          "meanBoom": 4.664,
+          "windowed": null
+        },
+        {
+          "stage": 2,
+          "pitch": -0.17,
+          "worst": 3.428,
+          "worstInfo": "h1 f479",
+          "big": 49,
+          "meanBoom": 4.712,
+          "windowed": null
+        },
+        {
+          "stage": 3,
+          "pitch": -0.17,
+          "worst": 6.284,
+          "worstInfo": "h5 f253",
+          "big": 78,
+          "meanBoom": 4.312,
+          "windowed": 1.748
+        },
+        {
+          "stage": 4,
+          "pitch": -0.17,
+          "worst": 6.831,
+          "worstInfo": "h6 f804",
+          "big": 90,
+          "meanBoom": 5.194,
+          "windowed": null
+        }
+      ]
+    }
+  ]
+}

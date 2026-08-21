@@ -77,3 +77,6 @@
 {"at":"2026-08-21T02:24:13.977Z","seat":"host","mode":"switches","event":"join-lobby","target":"null","success":false,"response":5}
 {"at":"2026-08-21T02:25:08.922Z","seat":"host","mode":"switches","event":"HUMAN-VERDICT","check":"overlay-switches","verdict":"fail","note":"no paint; injected true; recorded by controller from user report"}
 {"at":"2026-08-21T02:25:08.922Z","seat":"host","mode":"switches+use-angle=gl","event":"HUMAN-VERDICT","check":"overlay-gl","verdict":"fail","note":"no paint; window rendered normally; recorded by controller from user report"}
+{"at":"2026-08-21T03:04:57.720Z","event":"console","ch":"log","line":"[Steamworks] Shutting down Steam API..."}
+{"at":"2026-08-21T03:04:57.746Z","event":"console","ch":"log","line":"[Steamworks] Native library unloaded"}
+{"at":"2026-08-21T03:04:57.747Z","event":"console","ch":"log","line":"[Steamworks] Steam API shutdown complete"}

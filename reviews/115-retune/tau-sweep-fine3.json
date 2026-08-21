@@ -1,0 +1,46 @@
+{
+  "taus": [
+    {
+      "tau": 0.15,
+      "stages": [
+        {
+          "stage": 3,
+          "pitch": -0.17,
+          "worst": 6.51,
+          "worstInfo": "h5 f253",
+          "big": 93,
+          "meanBoom": 4.782,
+          "windowed": 1.817
+        }
+      ]
+    },
+    {
+      "tau": 0.25,
+      "stages": [
+        {
+          "stage": 3,
+          "pitch": -0.17,
+          "worst": 6.462,
+          "worstInfo": "h5 f253",
+          "big": 87,
+          "meanBoom": 4.577,
+          "windowed": 1.796
+        }
+      ]
+    },
+    {
+      "tau": 0.35,
+      "stages": [
+        {
+          "stage": 3,
+          "pitch": -0.17,
+          "worst": 6.357,
+          "worstInfo": "h5 f253",
+          "big": 82,
+          "meanBoom": 4.395,
+          "windowed": 1.765
+        }
+      ]
+    }
+  ]
+}
