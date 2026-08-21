@@ -130,6 +130,14 @@ const QUALITY_NAMES = ['Low', 'Medium', 'High', 'Ultra'];
  */
 const CODE_PLACEHOLDER = '---------';
 
+/**
+ * Screens whose panel bounds its content in a scroller, and the scroller's
+ * selector. Read by `scrollRegion()`; the CSS that makes each one scroll lives
+ * beside `.screen--death .panel--wide` and `.screen--coop .panel--wide` in
+ * `hud.css`, and adding a screen here without that CSS buys nothing.
+ */
+const SCROLLERS = { death: '.run-report', coop: '.coop-body' };
+
 // Tiles per row inside one tier block on the run summary. Narrow on purpose:
 // the blocks wrap as units, so 8 lets two small tiers share a line instead of
 // each taking one of its own. At 16 the grouped grid was two rows taller than
@@ -531,6 +539,16 @@ export class Menus {
             </svg>
           </header>
 
+          <!-- Everything but the head and the footer buttons scrolls (#54).
+               The friend picker is the first content on this screen authored by
+               something other than this file -- a Steam friends list is as long
+               as it is -- and an unbounded list in a centred, overflow-less
+               .screen pushes the panel head off the top and Back off the
+               bottom. Bounded exactly like .screen--settings and
+               .screen--death: the panel flexes to a max-height, THIS wrapper
+               scrolls, and the buttons stay outside it. -->
+          <div class="coop-body" data-coop-body>
+
           <div class="coop-status" data-coop-status>
             Up to 4 players. One player hosts and runs the game; everyone else joins them.
           </div>
@@ -602,6 +620,8 @@ export class Menus {
           </div>
 
           <div class="coop-players" data-coop-players></div>
+
+          </div><!-- /.coop-body -->
 
           <nav class="menu-list menu-list--row">
             <button class="mbtn" data-nav data-act="coop-leave"><span>Leave co-op</span></button>
@@ -2418,8 +2438,16 @@ export class Menus {
    * scrolls anything, and it has nothing inside `.run-report` to land on.
    */
   scrollRegion() {
-    if (this.screen !== 'death') return null;
-    const el = this.screens.death?.querySelector('.run-report');
+    const sel = SCROLLERS[this.screen];
+    if (!sel) return null;
+    const el = this.screens[this.screen]?.querySelector(sel);
+    // THE GUARD IS THE WHOLE RULE, and co-op is why it is written as a rule
+    // rather than as `screen === 'death'`. A scroller holding `[data-nav]`
+    // controls is already scrolled by `paintFocus`'s `scrollIntoView` as the
+    // ring moves through it, so claiming the press here would trap the ring
+    // behind a scroller that was going to follow it anyway. Co-op's body is
+    // full of buttons and normally answers null for exactly that reason; it
+    // answers an element only in the states where it has none to land on.
     if (!el || el.querySelector('[data-nav]')) return null;
     return el.scrollHeight - el.clientHeight > 1 ? el : null;
   }
