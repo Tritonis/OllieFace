@@ -40,50 +40,89 @@ console.log('\n-- a throwing loader (Steam not running) degrades, it does not ex
   ok(getClient() === null, 'getClient() stays null after a failed init');
 }
 
-console.log('\n-- a loader that returns nothing is a failure too, not a half-live client');
+// ---------------------------------------------------------------------------
+// The fake SDK, in the shape `steamworks-ffi-node` actually has.
+//
+// ADAPTED 2026-08-21 with the Binding swap, and the adaptation is not cosmetic:
+// the old fakes were `{ init: () => client }`, because `steamworks.js` handed a
+// client BACK from init. This Binding is a singleton whose `init()` answers a
+// bare BOOLEAN, and every call goes through the instance. So "init worked" is a
+// strictly stronger question now — `true` AND the two interrogations — and the
+// fakes have to be able to answer it wrongly for the assertions to mean
+// anything. Nothing was weakened: the half-live-client case below is the same
+// case it always was, and one arm was ADDED for `init()` returning false, which
+// had no equivalent under a factory that could only return a client or throw.
+// ---------------------------------------------------------------------------
+const fakeSdk = (over = {}) => ({
+  init: () => true,
+  friends: { getPersonaName: () => 'Ollie' },
+  utils: { getAppID: () => 480 },
+  ...over,
+});
+
+console.log('\n-- a module with no init() at all is a failure, not a half-live client');
 {
   let threw = null, status = null;
-  try { status = initSteam(480, { load: () => ({ init: () => undefined }) }); }
+  try { status = initSteam(480, { load: () => ({}) }); }
   catch (err) { threw = err; }
 
-  ok(threw === null, 'a loader whose init() returns undefined does not throw');
-  ok(status?.available === false, 'available is false when init() yields no client');
+  ok(threw === null, 'a loader that hands over no init() does not throw');
+  ok(status?.available === false, 'available is false when there is nothing to initialise');
   ok(typeof status?.reason === 'string' && status.reason.length > 0, 'that path still names a reason');
   ok(getClient() === null, 'getClient() stays null');
 }
 
+console.log('\n-- init() answering false is a refusal, and must not read as success');
+{
+  // The trap this Binding brings and the old one did not: `init()` returns a
+  // boolean, so a truthiness check on the SDK object would pass even when Steam
+  // said no. Asserted rather than assumed.
+  const status = initSteam(480, { load: () => fakeSdk({ init: () => false }) });
+  ok(status.available === false, 'a false init() is unavailable');
+  ok(status.reason?.includes('reported failure'), `and says so (${JSON.stringify(status.reason)})`);
+  ok(getClient() === null, 'the refused SDK is not retained');
+}
+
 console.log('\n-- a working client reports what Steam actually says, not what we asked for');
 {
-  const fakeClient = {
-    localplayer: { getName: () => 'Ollie' },
-    utils: { getAppId: () => 480 },
-  };
-  const status = initSteam(9999, { load: () => ({ init: () => fakeClient }) });
+  const sdk = fakeSdk();
+  // Wrapped in the CJS module shape, and reached through getInstance(), which
+  // is how the real module hands its singleton over.
+  const status = initSteam(9999, { load: () => ({ SteamworksSDK: { getInstance: () => sdk } }) });
 
   ok(status.available === true, 'available is true');
-  ok(status.appId === 480, `appId comes from utils.getAppId(), not the argument (${status.appId})`);
-  ok(status.personaName === 'Ollie', `personaName from localplayer.getName() (${JSON.stringify(status.personaName)})`);
+  ok(status.appId === 480, `appId comes from utils.getAppID(), not the argument (${status.appId})`);
+  ok(status.personaName === 'Ollie', `personaName from friends.getPersonaName() (${JSON.stringify(status.personaName)})`);
   ok(status.reason === null, 'no reason on success');
-  ok(getClient() === fakeClient, 'getClient() hands back the live client');
+  ok(getClient() === sdk, 'getClient() hands back the live SDK instance');
   ok(getStatus() !== status, 'getStatus() returns a copy, so a caller cannot mutate the record');
   ok(getStatus().available === true, 'the copy carries the same values');
 }
 
 console.log('\n-- a client that survives init but cannot be interrogated still degrades');
 {
+  // This matters MORE under Koffi than it did under N-API: symbols resolve
+  // lazily, so `init()` succeeding proves one symbol exists and nothing else.
+  // The two read-backs are the first real proof the Binding works.
   const status = initSteam(480, {
-    load: () => ({ init: () => ({ localplayer: { getName() { throw new Error('nope'); } }, utils: { getAppId: () => 480 } }) }),
+    load: () => fakeSdk({ friends: { getPersonaName() { throw new Error('nope'); } } }),
   });
-  ok(status.available === false, 'a throwing getName() is a failed init, not a client with a null name');
+  ok(status.available === false, 'a throwing getPersonaName() is a failed init, not a client with a null name');
   ok(typeof status.reason === 'string' && status.reason.length > 0, 'and it names a reason');
   ok(getClient() === null, 'the half-live client is not retained');
+
+  const lazy = initSteam(480, { load: () => fakeSdk({ utils: { getAppID() { throw new Error('symbol not found'); } } }) });
+  ok(lazy.available === false, 'so is an appid read that dies at the first FFI call');
+  ok(lazy.reason?.includes('symbol not found'), 'with the lazy-resolution failure carried into the reason');
 }
 
 console.log('\n-- the overlay is enabled only when Steam actually answered');
 {
-  // The binding constraint: a Steam-absent player gets ZERO appended command
-  // -line switches and zero repaint timers. `enableOverlay` is the only place
-  // that can breach it, so the guard is asserted here rather than trusted.
+  // The binding constraint that outlives the overlay itself: a Steam-absent
+  // player gets ZERO appended command-line switches and zero repaint timers.
+  // `enableOverlay` is the only place that can breach it, so the guard is
+  // asserted here rather than trusted — including now that the shipping Binding
+  // has no overlay entry point at all (REFUTED 2026-08-21, #127).
   initSteam(480, { load: () => { throw new Error('Steam is not running'); } });
   let called = 0;
   const result = enableOverlay();
@@ -91,13 +130,20 @@ console.log('\n-- the overlay is enabled only when Steam actually answered');
   ok(result.reason === 'steam-unavailable', `and says why (${JSON.stringify(result.reason)})`);
   ok(called === 0, 'electronEnableSteamOverlay was never reached -- no switches appended');
 
+  // The shipping shape: a module that binds no overlay entry point says so,
+  // rather than reporting an overlay that is not there.
+  initSteam(480, { load: () => fakeSdk() });
+  const bare = enableOverlay();
+  ok(bare.ok === false, 'a Binding with no overlay export does not claim one');
+  ok(bare.reason === 'overlay-not-bound-by-this-binding', `and names the shape, not a crash (${JSON.stringify(bare.reason)})`);
+
   const mod = {
-    init: () => ({ localplayer: { getName: () => 'Ollie' }, utils: { getAppId: () => 480 } }),
+    ...fakeSdk(),
     electronEnableSteamOverlay: (arg) => { called++; ok(arg === undefined, 'called with the default arg (keeps the 60 Hz invalidator)'); },
   };
   initSteam(480, { load: () => mod });
   const on = enableOverlay();
-  ok(on.ok === true, 'a successful init enables the overlay');
+  ok(on.ok === true, 'a module that DOES carry one is still honoured');
   ok(called === 1, 'exactly once');
 
   // A module whose overlay call explodes must not take the boot with it.

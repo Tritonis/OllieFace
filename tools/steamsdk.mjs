@@ -78,6 +78,16 @@ const REQUIRED_SYMBOLS = [
   'SteamAPI_ISteamNetworkingUtils_SetGlobalConfigValueInt32',
   'SteamAPI_ISteamNetworkingSockets_CreateListenSocketIP',
   'SteamAPI_ISteamNetworkingSockets_ConnectByIPAddress',
+  // The manual dispatch loop `desktop/steam-callbacks.mjs` declares for itself,
+  // because the Binding declares no broadcast-callback path and callback 333 is
+  // the running joiner's only way to hear an accepted invite. Same reasoning as
+  // the four above: nothing else in the repo would notice these going missing,
+  // and they would go missing at the first invite rather than at init.
+  'SteamAPI_ManualDispatch_Init',
+  'SteamAPI_ManualDispatch_RunFrame',
+  'SteamAPI_ManualDispatch_GetNextCallback',
+  'SteamAPI_ManualDispatch_FreeLastCallback',
+  'SteamAPI_GetHSteamPipe',
 ];
 
 // ------------------------------------------------------------------ arguments

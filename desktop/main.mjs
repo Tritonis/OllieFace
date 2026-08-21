@@ -11,6 +11,7 @@ import { app, BrowserWindow, ipcMain, protocol, net } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import { pathToFileURL, fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 import { initSteam, getClient, getStatus, enableOverlay } from './steam.mjs';
 import { createSaveWriter, createQuitGuard } from './save-writer.mjs';
 import {
@@ -19,7 +20,9 @@ import {
   isAuthorizedSignalTarget, sanitizeFriendList, parseConnectLobbyArg,
 } from './steam-validate.mjs';
 import { createJoinDelivery } from './join-delivery.mjs';
+import { startCallbackPump } from './steam-callbacks.mjs';
 
+const requireCjs = createRequire(import.meta.url);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.join(HERE, '..', 'dist');
 
@@ -103,17 +106,50 @@ let overlayStatus = { ok: false, reason: 'not attempted' };
 //      renderer, and a hostile or malformed one is dropped, never thrown.
 // ---------------------------------------------------------------------------
 
-/** Lobby handles by decimal id string. The steamworks API is instance methods
- *  on a `Lobby`, but only an id can cross IPC — this is the join between them. */
-const steamLobbies = new Map();
+/**
+ * The lobbies THIS PROCESS holds, as decimal id strings.
+ *
+ * Was a `Map` of id -> `Lobby` handle under `steamworks.js`, whose matchmaking
+ * API was instance methods on an object only the main process could hold. The
+ * new Binding's matchmaking is flat — every call takes a `LobbyId` STRING, the
+ * same string that crosses IPC — so there is no handle left to join to, and the
+ * set is now purely an authorization record: which ids the renderer is allowed
+ * to name, and which the shell must leave on the way out. That is the same job
+ * the Map's KEYS were always doing; only its values are gone.
+ */
+const steamLobbies = new Set();
 
 /** The active P2P signal listener, or null. At most one at a time: the slice is
  *  two-seat, and a second listener would double-read the same packet queue. */
 let signalListen = null;
 
+/** The manual-dispatch pump that hears callback 333, or null. See
+ *  `desktop/steam-callbacks.mjs` for why it is ours to run at all. */
+let callbackPump = null;
+
 /** A cap on how many packets one tick may drain, so a flood cannot starve the
  *  main loop. Anything beyond it waits 100 ms for the next tick. */
 const MAX_PACKETS_PER_TICK = 16;
+
+/** `ELobbyType.FriendsOnly`. Spelled out rather than imported: the Binding's
+ *  enum lives in the module `steam.mjs` owns, and one number is a smaller thing
+ *  to carry than a second import path into the native library. */
+const LOBBY_TYPE_FRIENDS_ONLY = 1;
+
+/**
+ * A lobby data key stamped on every lobby this build creates, and the value it
+ * carries.
+ *
+ * The lobby space is shared: `requestLobbyList` returns whatever the appid's
+ * matchmaking has, and during the spike on Spacewar that meant other people's
+ * lobbies. Under our own appid that risk shrinks but does not vanish — an old
+ * build, a modified client, a future mode all land in the same space — so any
+ * enumeration this shell grows MUST filter on this key rather than trusting
+ * that everything it can see is one of ours. Nothing enumerates today; the
+ * stamp exists so that when something does, the lobbies are already marked.
+ */
+const LOBBY_TAG_KEY = 'telluric';
+const LOBBY_TAG_VALUE = 'void-coop-1';
 
 /**
  * The one door every accepted Steam invite goes through.
@@ -148,7 +184,13 @@ const steamError = (err) => {
  *  so a Steam-absent renderer gets a shape it can branch on, not a throw. */
 const steamClient = () => (steamStatus.available ? getClient() : null);
 
-const lobbyFor = (rawId) => (typeof rawId === 'string' ? steamLobbies.get(rawId) ?? null : null);
+/** The lobby id, if this process holds it; null otherwise. Every handler that
+ *  acts on a lobby goes through here, so a renderer cannot name a lobby the
+ *  shell never joined. */
+const lobbyFor = (rawId) => (typeof rawId === 'string' && steamLobbies.has(rawId) ? rawId : null);
+
+/** Matchmaking, or null when Steam never came up. */
+const matchmaking = () => steamClient()?.matchmaking ?? null;
 
 const pushToRenderer = (channel, payload) => {
   if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -158,21 +200,45 @@ const pushToRenderer = (channel, payload) => {
 /** Is this Steam id currently in this lobby? The gate on accepting a P2P
  *  session and on believing a packet — blanket-accepting sessions would let any
  *  Steam user on the internet open a channel into the main process. */
-const isLobbyMember = (lobby, steamId64) => {
+const isLobbyMember = (lobbyId, steamId) => {
+  if (!lobbyId || typeof steamId !== 'string') return false;
   try {
-    return lobby.getMembers().some((m) => m && m.steamId64 === steamId64);
+    const mm = matchmaking();
+    return !!mm && mm.getLobbyMembers(lobbyId).some((m) => steamIdToString(m) === steamId);
   } catch { return false; }
+};
+
+/**
+ * The legacy P2P surface, or null.
+ *
+ * `steamworks.js@0.4.0` bound `ISteamNetworking`, and the joiner's SDP answer
+ * rides it (`docs/STEAM.md` section 7). `steamworks-ffi-node` binds NONE of it
+ * — zero `SteamAPI_ISteamNetworking_*` symbols in its 379 declarations — so the
+ * answer leg has no carrier under this Binding and the two handlers that use it
+ * degrade to a named error instead of throwing at a renderer that expects a
+ * shape. This is the swap's one genuine regression and it is recorded as such
+ * in `docs/STEAM.md` section 7 rather than hidden behind a working-looking call.
+ *
+ * The replacement is not improvised here: this Binding DOES bind
+ * `setLobbyMemberData`/`getLobbyMemberData` and lobby chat, either of which
+ * carries the answer without a P2P packet, and either of which is a signalling
+ * change with its own tests. Feature-detected rather than deleted, so a shell
+ * running the old Binding is unaffected by the file it shares.
+ */
+const legacyNetworking = () => {
+  const p2p = steamClient()?.networking;
+  return p2p && typeof p2p.sendP2PPacket === 'function' ? p2p : null;
 };
 
 /** Drain the P2P queue, validate, forward. Total by construction: one bad
  *  packet is skipped, and a throwing native call ends the tick rather than the
  *  process. */
 function pumpSignals() {
-  const client = steamClient();
-  if (!client || !signalListen) return;
+  const p2p = legacyNetworking();
+  if (!p2p || !signalListen) return;
   try {
     for (let i = 0; i < MAX_PACKETS_PER_TICK; i++) {
-      const size = client.networking.isP2PPacketAvailable();
+      const size = p2p.isP2PPacketAvailable();
       if (!Number.isInteger(size) || size <= 0) return;
 
       // Read it at its FULL size even when it is far too big to be one of ours.
@@ -180,27 +246,30 @@ function pumpSignals() {
       // packet from a hostile member would otherwise wedge the handshake
       // permanently; Steam's own 1 MB Reliable ceiling is what bounds the cost
       // of draining it. The oversize check then drops it before it is decoded.
-      const packet = client.networking.readP2PPacket(size);
+      const packet = p2p.readP2PPacket(size);
       if (!packet || !packet.data) continue;
       if (size > MAX_SIGNAL_FRAME_BYTES) {
         console.error(`steam: dropped an oversized P2P packet (${size} bytes)`);
         continue;
       }
 
-      const from = packet.steamId && packet.steamId.steamId64;
-      if (typeof from !== 'bigint') continue;
+      // The sender's id, as the one string form everything downstream uses.
+      // `steamIdToString` takes the `{ steamId64: bigint }` shape and a decimal
+      // string alike, so this line does not care which Binding produced it.
+      const from = steamIdToString(packet.steamId);
+      if (!from) continue;
       if (!isLobbyMember(signalListen.lobby, from)) continue;   // non-members are silent drops
 
       const len = Number.isInteger(packet.size) && packet.size >= 0 && packet.size <= packet.data.length
         ? packet.size : packet.data.length;
       const decoded = decodeSignal(packet.data.subarray(0, len));
       if (!decoded.ok) {
-        // `from` is interpolated through .toString() deliberately — a template
-        // literal on the bigint itself is fine, but the packet object is not.
-        console.error(`steam: dropped a signal packet from ${from.toString()} (${decoded.error})`);
+        // `from` is already a string; the packet object it came out of never is
+        // interpolated, because it may carry a bigint somewhere inside it.
+        console.error(`steam: dropped a signal packet from ${from} (${decoded.error})`);
         continue;
       }
-      pushToRenderer('steam:signal', { fromSteamId: from.toString(), payload: decoded.payload });
+      pushToRenderer('steam:signal', { fromSteamId: from, payload: decoded.payload });
     }
   } catch (err) {
     console.error('steam: signal pump failed', steamError(err));
@@ -241,8 +310,9 @@ function releaseAllSteamState() {
   // next `bindSteam` would land nowhere. Park it instead.
   joinDelivery.release();
   stopSignalListen();
-  for (const lobby of steamLobbies.values()) {
-    try { lobby.leave(); } catch (err) { console.error('steam: lobby leave failed', steamError(err)); }
+  const mm = matchmaking();
+  for (const lobbyId of steamLobbies) {
+    try { mm?.leaveLobby(lobbyId); } catch (err) { console.error('steam: lobby leave failed', steamError(err)); }
   }
   steamLobbies.clear();
 }
@@ -264,50 +334,65 @@ function registerSteamBridge() {
   handle('steam:status', async () => getStatus());
 
   handle('steam:host-lobby', async (maxMembers) => {
-    const client = steamClient();
-    if (!client) return { error: 'steam-unavailable' };
+    const mm = matchmaking();
+    if (!mm) return { error: 'steam-unavailable' };
     const size = validateMaxMembers(maxMembers);
     if (!size.ok) return { error: size.error };
 
-    const lobby = await client.matchmaking.createLobby(client.matchmaking.LobbyType.FriendsOnly, size.value);
-    const lobbyId = steamIdToString(lobby.id);
+    // The Binding answers with a RESULT RECORD, not a handle: `{ success,
+    // lobbyId?, error? }`, where `lobbyId` is already the decimal string that
+    // crosses IPC. A failure here is a Steam refusal, not an exception, so it
+    // has to be read rather than caught.
+    const created = await mm.createLobby(LOBBY_TYPE_FRIENDS_ONLY, size.value);
+    if (!created || !created.success) return { error: created?.error || 'lobby-create-refused' };
+    const lobbyId = steamIdToString(created.lobbyId);
     if (!lobbyId) return { error: 'lobby-id-unreadable' };
-    steamLobbies.set(lobbyId, lobby);
+    steamLobbies.add(lobbyId);
+    // Stamp it as ours before anyone can see it. A lobby created and not tagged
+    // is a lobby no future filter can tell from a stranger's.
+    try { mm.setLobbyData(lobbyId, LOBBY_TAG_KEY, LOBBY_TAG_VALUE); }
+    catch (err) { console.error('steam: lobby tag write failed', steamError(err)); }
     return { lobbyId };
   });
 
   handle('steam:join-lobby', async (rawLobbyId) => {
-    const client = steamClient();
-    if (!client) return { error: 'steam-unavailable' };
-    const id = parseSteamId(rawLobbyId);
-    if (id === null) return { error: 'bad-lobby-id' };
+    const mm = matchmaking();
+    if (!mm) return { error: 'steam-unavailable' };
+    // Parsed for its STRICTNESS, not its value: the Binding takes the string,
+    // but `parseSteamId` is what keeps a renderer from handing Steam something
+    // it never issued.
+    if (parseSteamId(rawLobbyId) === null) return { error: 'bad-lobby-id' };
 
-    const lobby = await client.matchmaking.joinLobby(id);
-    // Key it under both the id we were given and the id the handle reports.
-    // They are the same number today; keying both means a normalisation we did
-    // not predict cannot orphan the handle the renderer is about to address.
-    const reported = steamIdToString(lobby.id);
-    steamLobbies.set(rawLobbyId, lobby);
-    if (reported && reported !== rawLobbyId) steamLobbies.set(reported, lobby);
+    const joined = await mm.joinLobby(rawLobbyId);
+    if (!joined || !joined.success) return { error: joined?.error || 'lobby-join-refused' };
+    // Hold both the id we were given and the id the result reports. They are
+    // the same number today; holding both means a normalisation we did not
+    // predict cannot orphan the lobby the renderer is about to address.
+    const reported = steamIdToString(joined.lobbyId);
+    steamLobbies.add(rawLobbyId);
+    if (reported && reported !== rawLobbyId) steamLobbies.add(reported);
     return { ok: true, lobbyId: reported ?? rawLobbyId };
   });
 
   handle('steam:leave-lobby', async (rawLobbyId) => {
-    const lobby = lobbyFor(rawLobbyId);
-    if (!lobby) return { ok: true };   // leaving a lobby we do not hold is done, not an error
-    if (signalListen && signalListen.lobby === lobby) stopSignalListen();
-    for (const [key, held] of steamLobbies) if (held === lobby) steamLobbies.delete(key);
-    lobby.leave();
+    const lobbyId = lobbyFor(rawLobbyId);
+    if (!lobbyId) return { ok: true };   // leaving a lobby we do not hold is done, not an error
+    if (signalListen && signalListen.lobby === lobbyId) stopSignalListen();
+    steamLobbies.delete(lobbyId);
+    matchmaking()?.leaveLobby(lobbyId);
     return { ok: true };
   });
 
   handle('steam:open-invite', async (rawLobbyId) => {
-    const lobby = lobbyFor(rawLobbyId);
-    if (!lobby) return { error: 'unknown-lobby' };
-    // The overlay is the only invite path this binding has; if it did not come
-    // up, this is a silent no-op rather than a dialog.
-    lobby.openInviteDialog();
-    return { ok: true, overlay: overlayStatus.ok };
+    const lobbyId = lobbyFor(rawLobbyId);
+    if (!lobbyId) return { error: 'unknown-lobby' };
+    // REFUTED as an invite surface (2026-08-21, #127) and this Binding binds no
+    // `openInviteDialog` at all, so the channel survives only as an honest
+    // answer: the picker in `src/ui/Menus.js` is the invite path now. Kept
+    // rather than removed because `preload.cjs`'s key set is pinned by
+    // `tools/desktopprobe.mjs` and dropping a key is a bridge change, not a
+    // Binding one.
+    return { error: 'overlay-unavailable', overlay: overlayStatus.ok };
   });
 
   // ------------------------------------------------------------- the picker
@@ -335,11 +420,11 @@ function registerSteamBridge() {
     // A lobby THIS PROCESS HOLDS, and no other. The renderer names the lobby,
     // and an invite is Steam telling another player where to connect — so an
     // arbitrary id here would let a compromised page point a friend anywhere.
-    const lobby = lobbyFor(rawLobbyId);
-    if (!lobby) return { error: 'unknown-lobby' };
+    const lobbyId = lobbyFor(rawLobbyId);
+    if (!lobbyId) return { error: 'unknown-lobby' };
     const mm = client.matchmaking;
     if (!mm || typeof mm.inviteUserToLobby !== 'function') return { error: 'invite-unavailable' };
-    return mm.inviteUserToLobby(String(rawLobbyId), target.toString())
+    return mm.inviteUserToLobby(lobbyId, target.toString())
       ? { ok: true }
       : { error: 'invite-refused' };
   });
@@ -351,30 +436,50 @@ function registerSteamBridge() {
   handle('steam:pending-join', async () => ({ lobbyId: joinDelivery.collect() ?? null }));
 
   handle('steam:write-lobby-data', async (rawLobbyId, record) => {
-    const lobby = lobbyFor(rawLobbyId);
-    if (!lobby) return { error: 'unknown-lobby' };
+    const lobbyId = lobbyFor(rawLobbyId);
+    if (!lobbyId) return { error: 'unknown-lobby' };
+    const mm = matchmaking();
+    if (!mm) return { error: 'steam-unavailable' };
     const checked = validateLobbyRecord(record);
     if (!checked.ok) return { error: checked.error };
-    // Owner-only in Steam; a joiner calling this simply gets false back.
-    return lobby.mergeFullData(checked.record) ? { ok: true } : { error: 'lobby-data-write-refused' };
+    // `mergeFullData` is gone: this Binding writes ONE KEY PER CALL. The batch
+    // is therefore ours to make, and its atomicity is ours to not have — which
+    // is the same position the old call was in, since Steam stores entries
+    // until it hits the 8 KB wall and refuses the rest. `validateLobbyRecord`
+    // already measures the whole record against `MAX_LOBBY_TOTAL_BYTES` before
+    // a single key is written, so the wall is not reached by anything that gets
+    // this far; a refusal here is Steam saying "you do not own this lobby",
+    // which is the joiner's expected answer and not an error to log.
+    for (const [key, value] of Object.entries(checked.record)) {
+      if (!mm.setLobbyData(lobbyId, key, value)) return { error: 'lobby-data-write-refused' };
+    }
+    return { ok: true };
   });
 
   handle('steam:get-full-lobby-data', async (rawLobbyId) => {
-    const lobby = lobbyFor(rawLobbyId);
-    if (!lobby) return { error: 'unknown-lobby' };
-    return { data: sanitizeLobbyData(lobby.getFullData()) };
+    const lobbyId = lobbyFor(rawLobbyId);
+    if (!lobbyId) return { error: 'unknown-lobby' };
+    const mm = matchmaking();
+    if (!mm) return { error: 'steam-unavailable' };
+    return { data: sanitizeLobbyData(mm.getAllLobbyData(lobbyId)) };
   });
 
   handle('steam:get-lobby-owner', async (rawLobbyId) => {
-    const lobby = lobbyFor(rawLobbyId);
-    if (!lobby) return { error: 'unknown-lobby' };
-    const steamId = steamIdToString(lobby.getOwner());
+    const lobbyId = lobbyFor(rawLobbyId);
+    if (!lobbyId) return { error: 'unknown-lobby' };
+    const mm = matchmaking();
+    if (!mm) return { error: 'steam-unavailable' };
+    const steamId = steamIdToString(mm.getLobbyOwner(lobbyId));
     return steamId ? { steamId } : { error: 'owner-unreadable' };
   });
 
   handle('steam:send-signal', async (rawSteamId, payload) => {
     const client = steamClient();
     if (!client) return { error: 'steam-unavailable' };
+    // See `legacyNetworking`: under `steamworks-ffi-node` there is no
+    // `ISteamNetworking` to send on, and a named refusal is the honest answer.
+    const p2p = legacyNetworking();
+    if (!p2p) return { error: 'p2p-unavailable' };
     const target = parseSteamId(rawSteamId);
     if (target === null) return { error: 'bad-steam-id' };
     // MINOR 1. This channel exists for exactly one purpose — the joiner's
@@ -382,39 +487,47 @@ function registerSteamBridge() {
     // and until here the shape check let it address ANY Steam id. The receive
     // side is already membership-gated (`isLobbyMember`, below); this is its
     // asymmetric other half.
+    const mm = matchmaking();
     const owners = [];
-    for (const lobby of steamLobbies.values()) {
-      try { const o = lobby.getOwner(); if (o && typeof o.steamId64 === 'bigint') owners.push(o.steamId64); }
-      catch { /* an unreadable owner is not a match either way */ }
+    for (const lobbyId of steamLobbies) {
+      try {
+        const owner = parseSteamId(steamIdToString(mm?.getLobbyOwner(lobbyId)));
+        if (owner !== null) owners.push(owner);
+      } catch { /* an unreadable owner is not a match either way */ }
     }
     if (!isAuthorizedSignalTarget(target, owners)) return { error: 'signal-target-not-lobby-owner' };
     const framed = encodeSignal(payload);
     if (!framed.ok) return { error: framed.error };
 
-    const sent = client.networking.sendP2PPacket(
-      target, client.networking.SendType.Reliable, Buffer.from(framed.frame, 'utf8'));
+    const sent = p2p.sendP2PPacket(
+      target, p2p.SendType.Reliable, Buffer.from(framed.frame, 'utf8'));
     return sent ? { ok: true } : { error: 'signal-send-refused' };
   });
 
   handle('steam:start-signal-listen', async (rawLobbyId) => {
     const client = steamClient();
     if (!client) return { error: 'steam-unavailable' };
-    const lobby = lobbyFor(rawLobbyId);
-    if (!lobby) return { error: 'unknown-lobby' };
+    const p2p = legacyNetworking();
+    if (!p2p) return { error: 'p2p-unavailable' };
+    const lobbyId = lobbyFor(rawLobbyId);
+    if (!lobbyId) return { error: 'unknown-lobby' };
     stopSignalListen();   // idempotent restart; never two pumps on one queue
 
+    // Callback registration is `steamworks.js`-shaped and feature-detected with
+    // the surface it belongs to: the two session callbacks are part of the same
+    // `ISteamNetworking` the send leg rides, and neither exists without it.
     const { SteamCallback } = client.callback;
     const sessionHandle = client.callback.register(SteamCallback.P2PSessionRequest, (event) => {
       try {
-        const remote = event && event.remote;
-        if (typeof remote !== 'bigint') return;
+        const remote = steamIdToString(event && event.remote);
+        if (!remote) return;
         // MEMBERS ONLY. Accepting every session request would open a channel
         // from any Steam user who learns our id.
-        if (!isLobbyMember(lobby, remote)) {
-          console.error(`steam: refused a P2P session from a non-member (${remote.toString()})`);
+        if (!isLobbyMember(lobbyId, remote)) {
+          console.error(`steam: refused a P2P session from a non-member (${remote})`);
           return;
         }
-        client.networking.acceptP2PSession(remote);
+        p2p.acceptP2PSession(parseSteamId(remote));
       } catch (err) { console.error('steam: P2P session request failed', steamError(err)); }
     });
     const failHandle = client.callback.register(SteamCallback.P2PSessionConnectFail, (event) => {
@@ -426,27 +539,37 @@ function registerSteamBridge() {
     const timer = setInterval(pumpSignals, 100);
     // Unref'd: the pump is a listener, not a reason for the process to live.
     if (typeof timer.unref === 'function') timer.unref();
-    signalListen = { lobby, timer, sessionHandle, failHandle };
+    signalListen = { lobby: lobbyId, timer, sessionHandle, failHandle };
     return { ok: true };
   });
 
   handle('steam:stop-signal-listen', async () => stopSignalListen());
 
-  // Push-only: a friend clicking "Join game" in the Steam client. The payload's
-  // fields are snake_case bigints (`callbacks.d.ts:47-50`) — the lobby id is
-  // stringified here and the rest is discarded.
+  // Push-only: a friend clicking "Join game" in the Steam client.
+  //
+  // `steamworks.js` had a callback registry and pumped it itself;
+  // `steamworks-ffi-node` has neither — no broadcast dispatch at all, and no
+  // `ManualDispatch` symbol among its 379 declarations. So the pump is ours,
+  // and `desktop/steam-callbacks.mjs` is the whole of it. It is started here,
+  // in the same place and for the same reason the old registration was: before
+  // `app.whenReady()`, because 333 fires with no window at all.
+  //
+  // Delivery goes through `joinDelivery`, NOT straight to the renderer, and
+  // this stays the only site in this file that offers an invite from a Steam
+  // callback — `tests/desktop-join-delivery.test.mjs` pins that.
   const client = steamClient();
   if (client) {
-    client.callback.register(client.callback.SteamCallback.GameLobbyJoinRequested, (event) => {
-      const lobbyId = steamIdToString(event && event.lobby_steam_id);
-      if (!lobbyId) return;
-      // Through `joinDelivery`, NOT straight to the renderer. This handler is
-      // registered before `app.whenReady()`, so it can fire with no window at
-      // all and routinely fires while the bundle is still loading — a direct
-      // push in either case is an invite the player watched Steam accept and
-      // the game silently drop.
-      joinDelivery.offer(lobbyId);
+    callbackPump = startCallbackPump({
+      library: () => client.libraryLoader?.getLibrary?.() ?? null,
+      koffi: (() => { try { return requireCjs('koffi'); } catch { return null; } })(),
+      onJoinRequested: (lobbyId) => joinDelivery.offer(lobbyId),
     });
+    if (!callbackPump.ok) {
+      // A joiner who was already running cannot hear an acceptance. The other
+      // two routes still work, so this is a degraded invite and not a dead one
+      // — and it is a line a player report can carry back.
+      console.error(`steam: callback 333 pump is off (${callbackPump.reason}); a running joiner must relaunch to accept an invite`);
+    }
   }
 }
 
