@@ -90,6 +90,15 @@ export const DEFAULTS = {
   motion: 1.0,
   spawnRate: 1.0,
   padSensitivity: 1.0,
+  // The player's camera dolly (#133): a scalar on the boom, clamped to the same
+  // range CameraRig enforces. Written by the settings slider and by the mouse
+  // wheel / zoom buttons in play, which round-trip through this same key.
+  cameraZoom: 1.0,
+  // Camera assist (#132). 1 = the occlusion fan pulls the boom in to keep the
+  // survivor visible; 0 = the boom stays where the player put it and only a
+  // collision cast stops it entering geometry. A number for the same reason
+  // `dynamicRes` is one: `load()` only adopts finite numbers.
+  cameraAssist: 1,
   renderScale: 1.0,
   // 1 = Auto (adaptive controller live), 0 = Off (pinned at renderScale).
   // A number, not a boolean: `load()` only adopts finite numbers.
@@ -149,6 +158,10 @@ export const SLIDERS = [
   { key: 'fov', label: 'Field of view', min: 60, max: 110, step: 1, fmt: (v) => `${v | 0}°` },
   { key: 'sensitivity', label: 'Mouse sensitivity', min: 0.2, max: 3, step: 0.05, fmt: (v) => v.toFixed(2) },
   { key: 'padSensitivity', label: 'Gamepad look', min: 0.2, max: 3, step: 0.05, fmt: (v) => v.toFixed(2) },
+  // Bounds must match ZOOM_MIN/ZOOM_MAX in CameraRig; tests/camera-zoom.test.mjs
+  // pins the two together, because a slider that can ask for a zoom the rig
+  // clamps away is a control that visibly stops responding at one end.
+  { key: 'cameraZoom', label: 'Camera distance', min: 0.45, max: 1.6, step: 0.05, fmt: pct },
   { key: 'master', label: 'Master volume', min: 0, max: 1, step: 0.01, fmt: pct },
   { key: 'sfx', label: 'SFX volume', min: 0, max: 1, step: 0.01, fmt: pct },
   { key: 'music', label: 'Music volume', min: 0, max: 1, step: 0.01, fmt: pct },
@@ -842,6 +855,15 @@ export class Menus {
     // into the settings blob and `save`s it exactly like `dynamicRes` — it is
     // read live by `Announcer.captionsOn` off `ctx.settings`, which is this
     // same object.
+    // Camera assist (#132). Off is a real choice, not a degraded mode: some
+    // players would rather turn out of an obstruction themselves than have the
+    // boom move without being asked.
+    html += row('Camera assist',
+      `<div class="sseg" data-seg="cameraAssist">
+         <button class="segbtn" data-nav data-val="1">On</button>
+         <button class="segbtn" data-nav data-val="0">Off</button>
+       </div>`);
+
     html += row('Audio captions',
       `<div class="sseg" data-seg="captions">
          <button class="segbtn" data-nav data-val="1">On</button>
@@ -1620,6 +1642,24 @@ export class Menus {
       setAudio(a, ['setSfxVolume', 'setSfx'], 'sfxVolume', settings.sfx);
       setAudio(a, ['setMusicVolume', 'setMusic'], 'musicVolume', settings.music);
     }
+  }
+
+  /**
+   * The in-play zoom, committed back into the settings blob (#133).
+   *
+   * CameraRig owns the live value while the player is spinning the wheel and
+   * calls this once the spin settles, so the slider, the store and the boom
+   * never disagree. Clamped here as well as in the rig -- this is a public
+   * entry point, and `save` must not write a value `load` would clamp back.
+   */
+  setCameraZoom(v) {
+    if (!Number.isFinite(v)) return;
+    const slider = SLIDERS.find((s) => s.key === 'cameraZoom');
+    const next = Math.min(slider.max, Math.max(slider.min, v));
+    if (next === this.settings.cameraZoom) return;
+    this.settings.cameraZoom = next;
+    this.syncSettings();
+    save(this.settings);
   }
 
   /** Challenges completed during the run in flight, for the summary screen. */
@@ -3008,6 +3048,10 @@ function load(fallbackQuality) {
     // Same normalisation, opposite bias: anything that is not an explicit 1 is
     // off, so a corrupted store cannot switch captions on for somebody.
     out.captions = out.captions === 1 ? 1 : 0;
+    // Assist on unless the store explicitly says otherwise: the assisted camera
+    // is what the game is tuned and captured against, so a corrupted blob must
+    // fail toward it.
+    out.cameraAssist = out.cameraAssist === 0 ? 0 : 1;
     // NOT the `=== 1 ? 1 : 0` shape its neighbours use, and the asymmetry is
     // the whole point: every settings blob written before #41 existed carries
     // no `firstRunSeen` at all, so adopting the DEFAULTS 0 would tell this

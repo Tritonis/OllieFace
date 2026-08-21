@@ -32,6 +32,11 @@ export class Input {
     this.mouse = { dx: 0, dy: 0, left: false, right: false, leftEdge: false, rightEdge: false };
     this.locked = false;
     this.enabled = true;
+    // Wheel notches accumulated this frame, positive = away from the player
+    // (zoom out). Kept off `mouse` on purpose: `mouse.dx/dy` are pixels the
+    // look path integrates, and the harness writes that object directly.
+    // Cleared in endFrame beside the other per-frame deltas.
+    this.wheel = 0;
 
     // Pad-owned state, kept apart from the DOM-owned Sets so a pad release can
     // never eat a really-held key and a keyup can never eat a held pad button.
@@ -113,6 +118,17 @@ export class Input {
       this.mouse.dy += e.movementY;
       if (e.movementX || e.movementY) this._padState.deviceUsed('mouse');
     });
+    // Only while locked: an unlocked wheel is the player scrolling a menu, and
+    // a settings screen that dollied the camera behind itself would be absurd.
+    canvas.addEventListener('wheel', (e) => {
+      if (!this.locked || this.enabled === false) return;
+      e.preventDefault();
+      // deltaMode 1 is lines, 2 is pages; normalise everything to notches so a
+      // trackpad's pixel stream and a wheel's 100-per-detent both behave.
+      const scale = e.deltaMode === 1 ? 1 / 3 : e.deltaMode === 2 ? 1 : 1 / 100;
+      this.wheel += e.deltaY * scale;
+      this._padState.deviceUsed('mouse');
+    }, { passive: false });
     document.addEventListener('pointerlockchange', () => {
       this.locked = document.pointerLockElement === canvas;
     });
@@ -271,6 +287,7 @@ export class Input {
     this.pressed.clear();
     this.mouse.dx = 0;
     this.mouse.dy = 0;
+    this.wheel = 0;
     this.mouse.leftEdge = false;
     this.mouse.rightEdge = false;
   }

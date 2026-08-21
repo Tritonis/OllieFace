@@ -272,11 +272,11 @@ input.pollPad();
   check('default glyph set is xbox', DEFAULT_GLYPH_SET === 'xbox');
   // Drift guard: `glyphs.js` hand-copies PAD_BUTTON's index->name table rather
   // than importing it (the import-boundaries rule forbids data/ -> core/), so
-  // nothing enforces the copy stays in step except this check. Walking ALL 10
+  // nothing enforces the copy stays in step except this check. Walking ALL 12
   // PAD_BUTTON entries against the xbox glyph naming (an identity map on the
   // face/shoulder buttons, 'View'/'Menu' on BACK/START) catches a drift on
   // any one of them, not just a sampled few.
-  const XBOX_NAME = { A: 'A', B: 'B', X: 'X', Y: 'Y', LB: 'LB', RB: 'RB', LT: 'LT', RT: 'RT', BACK: 'View', START: 'Menu' };
+  const XBOX_NAME = { A: 'A', B: 'B', X: 'X', Y: 'Y', LB: 'LB', RB: 'RB', LT: 'LT', RT: 'RT', BACK: 'View', START: 'Menu', L3: 'LS', R3: 'RS' };
   check('xbox glyphs match every PAD_BUTTON entry, not just a sample',
     Object.entries(PB).every(([name, idx]) => glyphLabel(idx, 'xbox') === XBOX_NAME[name]),
     Object.entries(PB).filter(([name, idx]) => glyphLabel(idx, 'xbox') !== XBOX_NAME[name]));

@@ -253,6 +253,56 @@ const POS_TAU = 0.055;      // camera position follow — short, stays responsiv
 const LOOK_TAU = 0.105;     // look-at target — longer, so framing lags the body
 const OCCLUDE_OUT_TAU = 0.30;
 
+// How many consecutive frames a *skipped* hit must keep warning before its
+// reach is allowed to pull the boom in (#132).
+//
+// The soft-hold memory added in #115 is deliberately hair-triggered: one frame
+// of warning and the boom starts easing in, because a warning that resolves
+// into a real clamp two frames later is worth acting on early. The playtest
+// cost of that is the other half of the same coin -- a single grazing frame
+// off a passing survivor, a corpse, or a slope crossing the fan for one
+// sixtieth of a second dollies the camera in and then eases it back out over
+// SOFT_HOLD_TAU, which is the "erratic" the packaged build was reported for.
+// Two frames is the smallest hysteresis that separates the two: a genuine
+// approach warns monotonically for three or four frames (#115's own repro
+// measures 1.46, 1.28, 1.11, 0.94) and loses one frame of anticipation, while
+// a one-frame graze now costs nothing at all.
+//
+// This gates only the SOFT path. The hard reach `_fan` returns still clamps on
+// the frame it appears -- hysteresis there would be a camera holding station
+// inside rock, which is the one thing this rig may never do.
+const SOFT_HOLD_FRAMES = 2;
+
+// How far an unconfirmed (single-frame) warning may pull the boom in, and the
+// speed below which that cap applies at all.
+//
+// The cap is speed-gated because the two failures it sits between are: at a
+// dead run, geometry that crosses the fan for one frame is almost always a
+// real approach -- the survivor is closing on it at 9 m/s -- and the boom has
+// to start easing on the first hint or the hard clamp lands as a teleport
+// (#115, and the sweep below: capping unconfirmed pulls at sprint re-inflates
+// heading 0 from 1.52 m to 3.37 m, straight through that issue's 2 m ceiling).
+// Standing or walking, the same one-frame reach change is a survivor walking
+// past, a corpse settling, or a slope at grazing incidence, and acting on it
+// is exactly the erratic dolly-in-and-back the packaged build was reported for
+// (#132). Nothing the player did moved the camera, so nothing should have.
+const UNCONFIRMED_PULL = 0.25;
+const HYSTERESIS_SPEED = 4.0;
+
+// --- player zoom (#133) -----------------------------------------------------
+// A scalar on the boom rather than an absolute distance, so it composes with
+// the speed extension instead of fighting it: at 1.6 a sprinting camera still
+// leads further than a standing one.
+const ZOOM_MIN = 0.45;      // 3.2 m -- over the shoulder, still third person
+const ZOOM_MAX = 1.6;       // 11.4 m
+const ZOOM_WHEEL_STEP = 0.08;   // per wheel notch
+const ZOOM_PAD_RATE = 0.6;      // per second held on the d-pad / zoom keys
+const ZOOM_TAU = 0.09;          // the dolly is smoothed, never stepped
+// Quiet time before a wheel-driven zoom is written to the settings blob. The
+// slider path saves on every input event because a drag is a handful of them;
+// a wheel spin is dozens, and localStorage is not free.
+const ZOOM_COMMIT_IDLE = 0.4;
+
 export class CameraRig {
   // Pure presentation. The one thing gameplay reads back is the aim basis, and
   // a rig that stopped updating makes aim stale rather than wrong — the player
@@ -279,6 +329,15 @@ export class CameraRig {
     this.camPos = new THREE.Vector3();
     this.distance = DIST;
     this.targetDistance = DIST;
+
+    // The player's dolly (#133). `zoomTarget` is what input moves; `zoom` is
+    // the smoothed value the boom actually uses. Seeded from the stored
+    // setting so a run opens at the distance the last one ended on.
+    this._zoomSetting = clamp(ctx.settings?.cameraZoom ?? 1, ZOOM_MIN, ZOOM_MAX);
+    this.zoomTarget = this._zoomSetting;
+    this.zoom = this._zoomSetting;
+    this._zoomIdle = 0;
+    this._zoomDirty = false;
     // The occlusion fan's verdict for the frame: the longest boom that stays
     // clear of geometry. `distance` is derived from this and must never exceed
     // it — a boom sitting longer than `allowedDistance` is a camera inside
@@ -312,6 +371,10 @@ export class CameraRig {
     this._soft = DIST;
     // The same, held across frames so a flickering graze is not forgotten.
     this._softHold = DIST;
+    // Consecutive frames the soft reach has been warning for. See SOFT_HOLD_FRAMES.
+    this._softStreak = 0;
+    // Deepest reach seen during the current streak.
+    this._softMin = Infinity;
     this._far = new THREE.Vector3();
     this._fwd = new THREE.Vector3();
     this._q = new THREE.Quaternion();
@@ -365,6 +428,8 @@ export class CameraRig {
       this.yaw -= pad.lookX * PAD_YAW_RATE * padSens * dt;
       this.pitch -= pad.lookY * PAD_PITCH_RATE * padSens * dt;
     }
+    this._zoomInput(ctx, input, settings, menuOpen, dt);
+
     this.pitch = clamp(this.pitch, PITCH_MIN, PITCH_MAX);
     if (this.yaw > Math.PI) this.yaw -= Math.PI * 2;
     else if (this.yaw < -Math.PI) this.yaw += Math.PI * 2;
@@ -416,9 +481,36 @@ export class CameraRig {
     // ease-out the occlusion path uses, so it never lurches.
     const sprintT = player.sprintBlend || 0;
     const speedT = clamp((player.horizontalSpeed || 0) / 14, 0, 1);
-    const boom = DIST + speedT * DIST_SPEED;
+    const boom = (DIST + speedT * DIST_SPEED) * this.zoom;
 
     this._desired.copy(this.pivot).addScaledVector(this._dir, -boom);
+
+    // The no-adjustment camera (#132). Occlusion *avoidance* -- the five-ray
+    // fan, the sliver test, the soft memory, the snap-in rate -- is the whole
+    // of what a player experiences as the camera moving on its own, and for
+    // some players that is worse than an obstructed view they can turn out of
+    // themselves. Off, the boom keeps exactly the length the player asked for
+    // and a single axial cast stops it entering a surface.
+    //
+    // Collision is deliberately kept. A camera that clips through the world is
+    // not "no adjustment", it is a bug with a settings entry: the horizon pops
+    // through the wall, the depth buffer fills with backfaces, and on a slope
+    // the view is simply underground. What the setting removes is the rig
+    // making framing decisions; what it keeps is the rig staying in the world.
+    if ((settings?.cameraAssist ?? 1) === 0) {
+      const hard = this._collide(ctx, this.pivot, boom);
+      this._soft = hard;
+      this._softHold = hard;
+      this._softStreak = 0;
+      this._softMin = Infinity;
+      this.allowedDistance = hard;
+      this.anticipatedDistance = hard;
+      this.targetDistance = hard;
+      this.distance = hard;
+      this._commit(ctx, dt, player, sprintT, speedT, strafe, settings);
+      return;
+    }
+
     this._soft = boom;
     const allowed = this._fan(ctx, this.pivot, boom);
     this.allowedDistance = allowed;
@@ -437,7 +529,28 @@ export class CameraRig {
     // on the same time constant the boom's own recovery uses. Memory of a
     // warning costs a slightly shorter boom for a few tenths of a second after
     // a graze; forgetting it costs the teleport.
-    this._softHold = Math.min(this._soft, smooth(this._softHold, boom, SOFT_HOLD_TAU, dt));
+    // Hysteresis, per SOFT_HOLD_FRAMES: a warning has to survive a second frame
+    // before the boom is allowed to act on it. Deferred, not discarded --
+    // `_softMin` keeps the deepest reach seen anywhere in the streak, so the
+    // frame the gate opens acts on the whole warning rather than on whatever
+    // the latest ray happened to say.
+    if (this._soft < boom - 1e-6) {
+      this._softStreak++;
+      this._softMin = Math.min(this._softMin, this._soft);
+    } else {
+      this._softStreak = 0;
+      this._softMin = Infinity;
+    }
+    // An unconfirmed warning is worth something -- it is how #115's collapses
+    // get anticipated at all -- but below walking pace it may pull the camera
+    // in by at most UNCONFIRMED_PULL, so a single grazing frame costs a nudge
+    // instead of a metres-long dolly in and back out again. A warning that
+    // repeats spends its full depth from the next frame on either way.
+    const settled = (player.horizontalSpeed || 0) < HYSTERESIS_SPEED;
+    const softReach = (this._softStreak >= SOFT_HOLD_FRAMES || !settled)
+      ? this._softMin
+      : Math.max(this._softMin, this.distance - UNCONFIRMED_PULL);
+    this._softHold = Math.min(softReach, smooth(this._softHold, boom, SOFT_HOLD_TAU, dt));
     // The rate cap's entire budget.
     const anticipated = Math.min(allowed, this._softHold);
     this.anticipatedDistance = anticipated;
@@ -461,6 +574,16 @@ export class CameraRig {
     this.targetDistance = Math.min(target, allowed);
     this.distance = this.targetDistance;
 
+    this._commit(ctx, dt, player, sprintT, speedT, strafe, settings);
+  }
+
+  /**
+   * Everything downstream of the boom length: camera position, FOV, roll and
+   * the transform. Its own method because the no-adjustment path above resolves
+   * the boom differently and then needs all of this, verbatim -- a second copy
+   * is how the two branches would drift.
+   */
+  _commit(ctx, dt, player, sprintT, speedT, strafe, settings) {
     this.camPos.copy(this.pivot).addScaledVector(this._dir, -this.distance);
 
     // --- fov ----------------------------------------------------------------
@@ -496,6 +619,101 @@ export class CameraRig {
   }
 
   /**
+   * The player's dolly (#133): wheel notches, plus the two bound zoom actions
+   * for the pad and the keyboard, into a clamped scalar on the boom.
+   *
+   * Gated exactly as the look path is -- pointer lock for the wheel (Input only
+   * accumulates while locked), `input.enabled` and "no screen open" for the
+   * buttons -- so a thumb on the d-pad behind the pause menu does not quietly
+   * re-frame the world the player comes back to.
+   *
+   * The committed value round-trips through `ctx.settings`, which Menus owns
+   * and replaces wholesale, so the setting is re-read every frame and adopted
+   * whenever it moves under us: the settings slider and the wheel are two views
+   * of one number rather than two numbers that drift.
+   */
+  _zoomInput(ctx, input, settings, menuOpen, dt) {
+    const stored = clamp(settings?.cameraZoom ?? 1, ZOOM_MIN, ZOOM_MAX);
+    if (stored !== this._zoomSetting) {
+      this._zoomSetting = stored;
+      this.zoomTarget = stored;
+      this._zoomDirty = false;
+    }
+
+    const live = input && input.enabled !== false && !menuOpen;
+    let delta = 0;
+    if (live) {
+      if (input.wheel) delta += input.wheel * ZOOM_WHEEL_STEP;
+      const b = input.bindings;
+      if (b) {
+        if (input.down(b.code('zoomOut'))) delta += ZOOM_PAD_RATE * dt;
+        if (input.down(b.code('zoomIn'))) delta -= ZOOM_PAD_RATE * dt;
+      }
+    }
+    if (delta) {
+      const next = clamp(this.zoomTarget + delta, ZOOM_MIN, ZOOM_MAX);
+      if (next !== this.zoomTarget) { this.zoomTarget = next; this._zoomDirty = true; }
+      this._zoomIdle = 0;
+    } else if (this._zoomDirty) {
+      this._zoomIdle += dt;
+      if (this._zoomIdle >= ZOOM_COMMIT_IDLE) {
+        this._zoomDirty = false;
+        this._zoomSetting = this.zoomTarget;
+        ctx.menus?.setCameraZoom?.(this.zoomTarget);
+      }
+    }
+
+    this.zoom = smooth(this.zoom, this.zoomTarget, ZOOM_TAU, dt);
+  }
+
+  /**
+   * One ray of the sphere-cast approximation: the centre of the cast for
+   * `i === 0`, and the four cardinal points of the CAM_RADIUS circle around
+   * the boom axis for 1-4. Writes `_origin` and returns it.
+   *
+   * Shared by `_fan` and `_collide` rather than copied into each. The five
+   * offsets ARE the sphere: drop them and the "camera" being kept out of the
+   * world is a dimensionless point, which is a lens that slides through
+   * anything whose surface misses one exact line.
+   */
+  _ray(from, i) {
+    this._origin.copy(from);
+    if (i > 0) {
+      const a = (i - 1) * (Math.PI / 2);
+      this._origin.addScaledVector(this._right, Math.cos(a) * CAM_RADIUS);
+      this._origin.y += Math.sin(a) * CAM_RADIUS;
+    }
+    return this._origin;
+  }
+
+  /**
+   * Collision only: the same five-ray sphere as the fan, and nothing else the
+   * fan does. Every hard hit counts, at face value -- no sliver classification,
+   * no soft memory, no hysteresis, no anticipation, no rate cap. Returns the
+   * longest boom whose sphere is clear of geometry.
+   *
+   * The line the no-adjustment setting draws is between the rig making framing
+   * decisions and the rig staying in the world, and the sphere is on the
+   * staying-in-the-world side of it. A single axial cast would put it on the
+   * wrong side: geometry that clips the camera's own radius while missing the
+   * centreline -- a pillar edge, a doorframe, the lip of a ramp -- is exactly
+   * what a 0.34 m sphere is approximating, and ignoring it ships a lens inside
+   * the level. What the setting removes is proactive adjustment, not collision.
+   */
+  _collide(ctx, from, boom) {
+    if (!ctx.stage?.raycastDistance) return boom;
+    const back = this._back.copy(this._dir).negate();
+    const reach = boom + CAM_RADIUS;
+    let allowed = boom;
+    for (let i = 0; i < 5; i++) {
+      const d = ctx.stage.raycastDistance(this._ray(from, i), back, reach);
+      if (d < 0) continue;
+      allowed = Math.min(allowed, Math.max(MIN_DIST, d - CAM_RADIUS));
+    }
+    return allowed;
+  }
+
+  /**
    * The occlusion fan: a 5-ray sphere-cast approximation offset around the boom
    * axis, fired backward from `from`. Returns the longest boom that stays clear
    * of geometry, which is `boom` itself when nothing is in the way.
@@ -510,13 +728,7 @@ export class CameraRig {
     const back = this._back.copy(this._dir).negate();
     const reach = boom + CAM_RADIUS;
     for (let i = 0; i < 5; i++) {
-      this._origin.copy(from);
-      if (i > 0) {
-        const a = (i - 1) * (Math.PI / 2);
-        this._origin.addScaledVector(this._right, Math.cos(a) * CAM_RADIUS);
-        this._origin.y += Math.sin(a) * CAM_RADIUS;
-      }
-      const d = ctx.stage.raycastDistance(this._origin, back, reach);
+      const d = ctx.stage.raycastDistance(this._ray(from, i), back, reach);
       if (d < 0) continue;
       const pull = Math.max(MIN_DIST, d - CAM_RADIUS);
       // Only hits that would yank the boom in by more than SNAP_MAX in a
