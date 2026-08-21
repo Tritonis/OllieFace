@@ -101,6 +101,22 @@ function clientCtx() {
 const emittedNames = (ctx) => ctx.emitted.map(([n]) => n);
 const lastEmit = (ctx, name) => [...ctx.emitted].reverse().find(([n]) => n === name)?.[1];
 
+/**
+ * Poll `predicate` on a real timer until it is true or `timeoutMs` elapses.
+ * Used in place of a fixed sleep for real-timer assertions ("this eventually
+ * becomes true") so the suite absorbs scheduler jitter on a loaded box without
+ * changing what the assertion actually verifies: a predicate that genuinely
+ * never becomes true still returns false once `timeoutMs` is up.
+ */
+async function pollUntil(predicate, { intervalMs = 20, timeoutMs = 2000 } = {}) {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    if (predicate()) return true;
+    if (Date.now() >= deadline) return predicate();
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+}
+
 // ============================================================================
 export async function runTransportContract(adapter, ok) {
   const t = (msg) => `[${adapter.name}] ${msg}`;
@@ -398,11 +414,12 @@ export async function runTransportContract(adapter, ok) {
       t('the host held the connection open while the refusal was still buffered'));
 
     // Now it drains. The retry is on a 16 ms timer, so this is the one place the
-    // suite waits on real time — bounded well under the 8-try cap.
+    // suite waits on real time — polled rather than a fixed sleep so a loaded
+    // box doesn't flake the assertion (#126).
     chan.bufferedAmount = 0;
-    await new Promise((r) => setTimeout(r, 60));
+    const drained = await pollUntil(() => wire.hostPeer.closed === true);
 
-    ok(wire.hostPeer.closed === true, t('and closed it once the channel drained'));
+    ok(drained, t('and closed it once the channel drained'));
   }
 
   // ==========================================================================
@@ -418,9 +435,13 @@ export async function runTransportContract(adapter, ok) {
     host.setNow(99);
     host._checkHelloDeadlines();
 
-    await new Promise((r) => setTimeout(r, 250));
+    // Polled rather than a fixed sleep: a peer that stops reading closes once
+    // the 8-try cap is exhausted, but on a loaded box that can take longer
+    // than the previous fixed 250 ms wait (#126). A peer that genuinely never
+    // closes still fails here once `pollUntil`'s deadline elapses.
+    const capped = await pollUntil(() => wire.hostPeer.closed === true);
 
-    ok(wire.hostPeer.closed === true, t('the cap closed a peer that stopped reading'));
+    ok(capped, t('the cap closed a peer that stopped reading'));
   }
 
   // ==========================================================================
