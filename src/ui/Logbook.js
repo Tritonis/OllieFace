@@ -93,13 +93,31 @@ export class ModelPreview {
     this.pivot = new THREE.Group();
     scene.add(this.pivot);
     this.resize();
+
+    // The tick loop only reaches resize() while the logbook is open and a
+    // frame is being drawn; a panel reflow that lands between ticks (a CSS
+    // transition finishing, a tab's flex box settling right after the DOM
+    // swap in showModel) would otherwise sit unframed until the next spin
+    // update happens to notice. ResizeObserver catches the box the instant
+    // layout actually changes, DOM-lag or not.
+    if (typeof ResizeObserver !== 'undefined') {
+      this._ro = new ResizeObserver(() => this.resize());
+      this._ro.observe(this.host);
+    }
     return true;
   }
 
   resize() {
     if (!this.renderer) return;
-    const w = Math.max(1, this.host.clientWidth | 0);
-    const h = Math.max(1, this.host.clientHeight | 0);
+    const w = this.host.clientWidth | 0;
+    const h = this.host.clientHeight | 0;
+    // A panel mid-reflow (display:none, a tab still animating in) can report
+    // zero on either axis. Clamping that to 1 used to hand the camera a
+    // wildly wrong aspect that then stuck — because it matched _w/_h and
+    // suppressed the next real resize's re-frame — until something else
+    // happened to jog the box. Skip the frame instead; the ResizeObserver
+    // retries the moment the box is real.
+    if (w <= 0 || h <= 0) return;
     if (w === this._w && h === this._h) return;
     this._w = w; this._h = h;
     this.renderer.setSize(w, h, false);
@@ -144,6 +162,11 @@ export class ModelPreview {
   setSubject(object3d, { release = null, lift = 0, spin = 0.6 } = {}) {
     if (!this.mount()) return;
     this.clear();
+    // A survivor switch can land after the panel reflowed without a resize
+    // event ever firing (the observer above debounces to layout ticks, not
+    // this call) — recheck the box now so the very first frame of the new
+    // subject uses a live aspect rather than whatever the last subject saw.
+    this.resize();
     if (!object3d) return;
     this.subject = object3d;
     this.release = release;
@@ -197,6 +220,8 @@ export class ModelPreview {
    * is the one that gets evicted.
    */
   dispose() {
+    this._ro?.disconnect();
+    this._ro = null;
     this.clear();
     for (const o of this.owned) o?.dispose?.();
     this.owned.length = 0;
