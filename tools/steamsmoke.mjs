@@ -11,6 +11,8 @@
  *     [--lag-ms 0]         k_ESteamNetworkingConfig_FakePacketLag_Recv
  *     [--loss-pct 0]       k_ESteamNetworkingConfig_FakePacketLoss_Recv
  *     [--no-loopback]      in-memory socket pair instead of 127.0.0.1 (see below)
+ *     [--via steamnet|binding]  which FFI surface carries the bytes: the test-only
+ *                          Koffi module, or steamworks-ffi-node's own loader
  *     [--label steam-socketpair-3peer-60hz]
  *     [--record reviews/net-baseline/<label>.json]
  *     [--compare reviews/net-baseline/webrtc-3peer-60hz.json]
@@ -79,6 +81,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MSG, Writer, EKIND, ESTATE, writeEntity } from '../src/net/Protocol.js';
 import { openSteamNet, SEND, CONFIG, RECV_DRAIN_BATCHES } from './steamnet.mjs';
+import { openSteamNetViaBinding, RECV_DRAIN_BATCHES as BINDING_RECV_DRAIN_BATCHES } from './steamnet-binding.mjs';
 import { dist, verdict } from './netstats.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -102,6 +105,10 @@ const LAG_MS = num('lag-ms', 0);
 const LOSS_PCT = num('loss-pct', 0);
 const LOOPBACK = !has('no-loopback');
 const LABEL = flag('label', 'steam-socketpair-3peer-60hz');
+// `--via binding` routes every send and receive through `steamworks-ffi-node`'s
+// own declarations instead of this repo's test-only ones. Issue #52 asks the
+// gate to be discharged that way, under Electron. Default is unchanged.
+const VIA = flag('via', 'steamnet');
 const RECORD = path.resolve(root, flag('record', `reviews/net-baseline/${LABEL}.json`));
 const COMPARE = flag('compare', 'reviews/net-baseline/webrtc-3peer-60hz.json');
 
@@ -191,7 +198,10 @@ let fatal = null;
 const links = [];
 
 try {
-  net = openSteamNet({ verbose: true });
+  if (VIA !== 'steamnet' && VIA !== 'binding') throw new Error(`--via must be steamnet or binding, got ${VIA}`);
+  net = VIA === 'binding'
+    ? openSteamNetViaBinding({ verbose: true })
+    : openSteamNet({ verbose: true });
 
   // Impairment is global, so it is armed once, before any connection exists,
   // and recorded whether or not it was used. Receive-side and one-directional —
@@ -431,7 +441,9 @@ await writeFile(RECORD, `${JSON.stringify({
   when: new Date().toISOString(),
   tool: 'tools/steamsmoke.mjs',
   label: LABEL,
-  transport: 'Steam ISteamNetworkingSockets::CreateSocketPair (tools/steamnet.mjs, test-only Koffi)',
+  transport: VIA === 'binding'
+    ? 'Steam ISteamNetworkingSockets via steamworks-ffi-node loader (tools/steamnet-binding.mjs; CreateSocketPair via lib.func on the Binding library handle)'
+    : 'Steam ISteamNetworkingSockets::CreateSocketPair (tools/steamnet.mjs, test-only Koffi)',
   measuredAt: 'SendMessageToConnection -> ReceiveMessagesOnConnection',
   meaning: 'transport and binding cost over loopback - encode, FFI, Steam '
     + 'packetisation and encryption, 127.0.0.1, decode. Both endpoints are in '
@@ -444,7 +456,7 @@ await writeFile(RECORD, `${JSON.stringify({
     // The receive drain is inside the loop that enforces `totalMs`, so it needs
     // a bound of its own or that cap cannot fire while it is running. What it
     // does not drain stays queued for the next pass.
-    recvDrainBatchesPerCall: RECV_DRAIN_BATCHES,
+    recvDrainBatchesPerCall: VIA === 'binding' ? BINDING_RECV_DRAIN_BATCHES : RECV_DRAIN_BATCHES,
     note: 'every wait in this tool is capped; the caps above are the only ones there are',
   },
   impairment: {

@@ -1,0 +1,284 @@
+{
+  "when": "2026-08-21T01:14:55.818Z",
+  "tool": "tools/steamsmoke.mjs",
+  "label": "steam-binding-node-3peer-60hz",
+  "transport": "Steam ISteamNetworkingSockets via steamworks-ffi-node loader (tools/steamnet-binding.mjs; CreateSocketPair via lib.func on the Binding library handle)",
+  "measuredAt": "SendMessageToConnection -> ReceiveMessagesOnConnection",
+  "meaning": "transport and binding cost over loopback - encode, FFI, Steam packetisation and encryption, 127.0.0.1, decode. Both endpoints are in one process sharing one performance.now(), so there is no clock-sync error in these figures and no internet flight time in them either. Not a player-facing latency number.",
+  "bounded": {
+    "drainMs": 1000,
+    "totalMs": 79500,
+    "warmupDiscardedS": 3,
+    "recvDrainBatchesPerCall": 64,
+    "note": "every wait in this tool is capped; the caps above are the only ones there are"
+  },
+  "impairment": {
+    "fakePacketLagRecvMs": 0,
+    "fakePacketLossRecvPct": 0,
+    "armed": false,
+    "note": "receive-side and one-directional, the same shape as the ?netlag= rig it replaces"
+  },
+  "capture": {
+    "argv": [
+      ".\\tools\\steamsmoke.mjs",
+      "--via",
+      "binding",
+      "--peers",
+      "3",
+      "--hz",
+      "60",
+      "--entities",
+      "60",
+      "--run-s",
+      "30",
+      "--warmup-s",
+      "3",
+      "--label",
+      "steam-binding-node-3peer-60hz"
+    ],
+    "command": "node tools/steamsmoke.mjs --via binding --peers 3 --hz 60 --entities 60 --run-s 30 --warmup-s 3 --label steam-binding-node-3peer-60hz"
+  },
+  "gate": {
+    "ok": true,
+    "checks": [
+      {
+        "name": "traffic",
+        "ok": true,
+        "detail": "state sent 5400, events sent 360"
+      },
+      {
+        "name": "reliable delivery",
+        "ok": true,
+        "detail": "360/360 received, 0 lost, 0 duplicated, 0 out of order"
+      },
+      {
+        "name": "state p99",
+        "ok": true,
+        "detail": "0.4 ms (limit 5 ms)"
+      },
+      {
+        "name": "events p99",
+        "ok": true,
+        "detail": "0.486 ms (limit 7.5 ms)"
+      }
+    ],
+    "limits": {
+      "stateP99Ms": 5,
+      "eventsP99Ms": 7.5
+    }
+  },
+  "comparison": {
+    "baseline": "reviews/net-baseline/webrtc-3peer-60hz.json",
+    "state": {
+      "steamP99Ms": 0.4,
+      "webrtcP99Ms": 2,
+      "ratio": 0.2
+    },
+    "events": {
+      "steamP99Ms": 0.486,
+      "webrtcP99Ms": 3,
+      "ratio": 0.16
+    }
+  },
+  "ok": true,
+  "steam": {
+    "via": "steamworks-ffi-node",
+    "bindingVersion": "0.11.1",
+    "runtime": "node",
+    "versions": {
+      "electron": null,
+      "node": "24.15.0",
+      "chrome": null
+    },
+    "accessors": {
+      "sockets": "SteamAPI_SteamNetworkingSockets_SteamAPI_v012"
+    },
+    "appId": 480,
+    "koffi": "3.1.5",
+    "dllBytes": 317080,
+    "viaBinding": {
+      "send": "SteamAPI_ISteamNetworkingSockets_SendMessageToConnection",
+      "receive": "SteamAPI_ISteamNetworkingSockets_ReceiveMessagesOnConnection",
+      "flush": "SteamAPI_ISteamNetworkingSockets_FlushMessagesOnConnection",
+      "release": "SteamAPI_SteamNetworkingMessage_t_Release",
+      "pump": [
+        "SteamAPI_ISteamNetworkingSockets_RunCallbacks",
+        "SteamAPI_RunCallbacks"
+      ],
+      "close": "SteamAPI_ISteamNetworkingSockets_CloseConnection",
+      "init": "SteamAPI_InitSafe"
+    },
+    "notViaBinding": [
+      "SteamAPI_ISteamNetworkingSockets_CreateSocketPair"
+    ]
+  },
+  "config": {
+    "peers": 3,
+    "hz": 60,
+    "entities": 60,
+    "runS": 30,
+    "warmupS": 3,
+    "eventHz": 4,
+    "snapshotBytes": 1031,
+    "eventBytes": 64,
+    "offeredBytesPerSecond": 185580,
+    "useNetworkLoopback": true,
+    "sendFlags": {
+      "state": "UnreliableNoNagle",
+      "events": "ReliableNoNagle"
+    }
+  },
+  "totals": {
+    "state": {
+      "sent": 5400,
+      "received": 5400,
+      "lost": 0,
+      "duplicates": 0,
+      "outOfOrder": 0,
+      "latencyMs": {
+        "n": 5400,
+        "p50": 0.188,
+        "p95": 0.302,
+        "p99": 0.4,
+        "max": 0.884,
+        "mean": 0.201
+      }
+    },
+    "events": {
+      "sent": 360,
+      "received": 360,
+      "lost": 0,
+      "duplicates": 0,
+      "outOfOrder": 0,
+      "latencyMs": {
+        "n": 360,
+        "p50": 0.208,
+        "p95": 0.362,
+        "p99": 0.486,
+        "max": 0.715,
+        "mean": 0.224
+      }
+    }
+  },
+  "perPeer": [
+    {
+      "peer": 1,
+      "state": {
+        "sent": 1800,
+        "received": 1800,
+        "lost": 0,
+        "duplicates": 0,
+        "outOfOrder": 0,
+        "arrivedOutsideWindow": 180,
+        "latencyMs": {
+          "n": 1800,
+          "p50": 0.184,
+          "p95": 0.291,
+          "p99": 0.376,
+          "max": 0.53,
+          "mean": 0.195
+        }
+      },
+      "events": {
+        "sent": 120,
+        "received": 120,
+        "lost": 0,
+        "duplicates": 0,
+        "outOfOrder": 0,
+        "arrivedOutsideWindow": 12,
+        "latencyMs": {
+          "n": 120,
+          "p50": 0.189,
+          "p95": 0.328,
+          "p99": 0.373,
+          "max": 0.503,
+          "mean": 0.204
+        }
+      },
+      "unknownTag": 0
+    },
+    {
+      "peer": 2,
+      "state": {
+        "sent": 1800,
+        "received": 1800,
+        "lost": 0,
+        "duplicates": 0,
+        "outOfOrder": 0,
+        "arrivedOutsideWindow": 180,
+        "latencyMs": {
+          "n": 1800,
+          "p50": 0.187,
+          "p95": 0.3,
+          "p99": 0.384,
+          "max": 0.767,
+          "mean": 0.199
+        }
+      },
+      "events": {
+        "sent": 120,
+        "received": 120,
+        "lost": 0,
+        "duplicates": 0,
+        "outOfOrder": 0,
+        "arrivedOutsideWindow": 12,
+        "latencyMs": {
+          "n": 120,
+          "p50": 0.206,
+          "p95": 0.36,
+          "p99": 0.439,
+          "max": 0.613,
+          "mean": 0.225
+        }
+      },
+      "unknownTag": 0
+    },
+    {
+      "peer": 3,
+      "state": {
+        "sent": 1800,
+        "received": 1800,
+        "lost": 0,
+        "duplicates": 0,
+        "outOfOrder": 0,
+        "arrivedOutsideWindow": 180,
+        "latencyMs": {
+          "n": 1800,
+          "p50": 0.195,
+          "p95": 0.317,
+          "p99": 0.416,
+          "max": 0.884,
+          "mean": 0.209
+        }
+      },
+      "events": {
+        "sent": 120,
+        "received": 120,
+        "lost": 0,
+        "duplicates": 0,
+        "outOfOrder": 0,
+        "arrivedOutsideWindow": 12,
+        "latencyMs": {
+          "n": 120,
+          "p50": 0.224,
+          "p95": 0.396,
+          "p99": 0.486,
+          "max": 0.715,
+          "mean": 0.244
+        }
+      },
+      "unknownTag": 0
+    }
+  ],
+  "sendLoop": {
+    "ticks": 1980,
+    "maxSendGapMs": 17.943,
+    "nominalStepMs": 16.667,
+    "wallMs": 33983,
+    "drainMs": 1000,
+    "loopIterations": 9195905,
+    "unknownTagTotal": 0
+  },
+  "fatal": null,
+  "totalMs": 34192
+}

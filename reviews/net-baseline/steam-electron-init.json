@@ -1,0 +1,13 @@
+{
+  "runtime": "electron",
+  "versions": {
+    "electron": "43.3.0",
+    "node": "24.18.1",
+    "chrome": "150.0.7871.212"
+  },
+  "declared": 377,
+  "resolved": 377,
+  "unresolved": [],
+  "steamRunning": true,
+  "initSafe": true
+}

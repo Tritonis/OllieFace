@@ -27,7 +27,8 @@
     "desktop:pack": "npm run build && electron-builder --win --dir",
     "steamsdk": "node tools/steamsdk.mjs",
     "steamsdk:electron": "electron tools/steam-electron-init.mjs",
-    "smoke:steam": "node tools/steamsmoke.mjs --peers 3 --hz 60 --entities 60 --run-s 30 --warmup-s 3 --label steam-socketpair-3peer-60hz"
+    "smoke:steam": "node tools/steamsmoke.mjs --peers 3 --hz 60 --entities 60 --run-s 30 --warmup-s 3 --label steam-socketpair-3peer-60hz",
+    "smoke:steam:binding": "electron tools/steamsmoke.mjs --via binding --peers 3 --hz 60 --entities 60 --run-s 30 --warmup-s 3 --label steam-binding-electron-3peer-60hz"
   },
   "build": {
     "appId": "com.olliface.telluricvoid",
