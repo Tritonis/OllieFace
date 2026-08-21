@@ -93,18 +93,26 @@ export class ModelPreview {
     this.pivot = new THREE.Group();
     scene.add(this.pivot);
     this.resize();
-
-    // The tick loop only reaches resize() while the logbook is open and a
-    // frame is being drawn; a panel reflow that lands between ticks (a CSS
-    // transition finishing, a tab's flex box settling right after the DOM
-    // swap in showModel) would otherwise sit unframed until the next spin
-    // update happens to notice. ResizeObserver catches the box the instant
-    // layout actually changes, DOM-lag or not.
-    if (typeof ResizeObserver !== 'undefined') {
-      this._ro = new ResizeObserver(() => this.resize());
-      this._ro.observe(this.host);
-    }
+    this._watch();
     return true;
+  }
+
+  /**
+   * Wire a ResizeObserver on the host so a layout change re-frames even
+   * between ticks. Split out of `mount()` so it can be exercised on its own —
+   * `mount()` itself needs a real GL context this repo's tests don't have.
+   *
+   * The tick loop only reaches `resize()` while the logbook is open and a
+   * frame is being drawn; a panel reflow that lands between ticks (a CSS
+   * transition finishing, a tab's flex box settling right after the DOM swap
+   * in `showModel`) would otherwise sit unframed until the next spin update
+   * happens to notice. ResizeObserver catches the box the instant layout
+   * actually changes, DOM-lag or not.
+   */
+  _watch() {
+    if (typeof ResizeObserver === 'undefined') return;
+    this._ro = new ResizeObserver(() => this.resize());
+    this._ro.observe(this.host);
   }
 
   resize() {
@@ -624,13 +632,14 @@ export class Logbook {
 
   renderDetail(entry) {
     if (this.preview) this.preview.clear();
-    if (!entry) { this.refs.detail.innerHTML = '<div class="book-empty">Nothing recorded.</div>'; return; }
+    if (!entry) { this.refs.detail.innerHTML = '<div class="book-empty">Nothing recorded.</div>'; this.closePreview(); return; }
     if (entry.locked) {
       this.refs.detail.innerHTML = `
         <div class="book-empty book-empty--locked">
           <div class="book-lock">Locked</div>
           <p>${escapeHtml(this.unlockHint(entry))}</p>
         </div>`;
+      this.closePreview();
       return;
     }
 
@@ -649,6 +658,18 @@ export class Logbook {
 
     const stage = this.refs.detail.querySelector('[data-viewer]');
     if (stage) this.showModel(stage, entry);
+    // No stage this render: the innerHTML swap above just detached whatever
+    // host the preview's renderer and ResizeObserver were still attached to.
+    // `clear()` only drops the subject — the context and observer are only
+    // torn down here, or a viewer-less entry leaks a GL context per visit.
+    else this.closePreview();
+  }
+
+  /** Tear the 3D preview all the way down, if one is up. */
+  closePreview() {
+    if (!this.preview) return;
+    this.preview.dispose();
+    this.preview = null;
   }
 
   unlockHint(entry) {
