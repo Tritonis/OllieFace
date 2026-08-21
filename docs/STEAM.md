@@ -646,11 +646,12 @@ row is a member a Steam-backed transport must provide.
 **The list is now machine-checked.** `tests/transport-contract.mjs` carries it as
 data and ends with an assertion that it is *sufficient*: a peer **generated from**
 the list — never hand-written alongside it, or the two drift — is driven through
-the real host loop behind a `Proxy` that records any read outside it. The `events`
-row gets a nested `Proxy` of its own against `CONTRACT.eventsChannel`, because
-that is the one member the host reaches *through*, and an unguarded object handed
-back by the outer trap would leave the riskiest row checked in name only. The
-refusal path is driven too, so those reads actually happen.
+the real host loop behind a `Proxy` that records any read outside it. There is no
+longer an `events` row to guard through: the raw `readyState`/`bufferedAmount`
+read that once made the host reach *through* a member was replaced by the
+transport-neutral `drained()` on the peer, so the outer trap now covers the whole
+surface on its own. The refusal path is driven too, so those reads actually
+happen.
 
 Verified to bite rather than merely to pass. Three mutations, each caught:
 
