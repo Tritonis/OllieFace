@@ -15,7 +15,7 @@ import { createRequire } from 'node:module';
 import { initSteam, getClient, getStatus, enableOverlay } from './steam.mjs';
 import { createSaveWriter, createQuitGuard } from './save-writer.mjs';
 import {
-  parseSteamId, steamIdToString, validateMaxMembers, validateLobbyRecord,
+  parseSteamId, steamIdToString, validateMaxMembers, validateLobbyRecord, validateLobbyKeys,
   sanitizeLobbyData, encodeSignal, decodeSignal, MAX_SIGNAL_FRAME_BYTES,
   isAuthorizedSignalTarget, sanitizeFriendList, parseConnectLobbyArg,
 } from './steam-validate.mjs';
@@ -462,6 +462,63 @@ function registerSteamBridge() {
     const mm = matchmaking();
     if (!mm) return { error: 'steam-unavailable' };
     return { data: sanitizeLobbyData(mm.getAllLobbyData(lobbyId)) };
+  });
+
+  // ------------------------------------------------------- the answer leg
+  // `SetLobbyData` is owner-only in Steam's model, which is why the joiner's
+  // SDP answer used to travel as a P2P packet. `steamworks-ffi-node` binds
+  // `setLobbyMemberData`/`getLobbyMemberData`, which `steamworks.js@0.4.0` did
+  // not, so the answer goes back the way the plan originally wanted it to: the
+  // joiner writes into ITS OWN member data and the host reads it off the
+  // member. Member data is per-member and self-written — Steam gives no way to
+  // write another member's, which is the property that makes this leg safe
+  // without the membership gate the P2P leg needed.
+
+  handle('steam:write-member-data', async (rawLobbyId, record) => {
+    const lobbyId = lobbyFor(rawLobbyId);
+    if (!lobbyId) return { error: 'unknown-lobby' };
+    const mm = matchmaking();
+    if (!mm) return { error: 'steam-unavailable' };
+    if (typeof mm.setLobbyMemberData !== 'function') return { error: 'member-data-unavailable' };
+    const checked = validateLobbyRecord(record);
+    if (!checked.ok) return { error: checked.error };
+    // One key per call, same as the owner-side write. `setLobbyMemberData`
+    // returns void rather than a boolean — Steam does not refuse a member their
+    // own slot — so there is no per-key verdict to read here.
+    for (const [key, value] of Object.entries(checked.record)) mm.setLobbyMemberData(lobbyId, key, value);
+    return { ok: true };
+  });
+
+  handle('steam:collect-member-data', async (rawLobbyId, rawKeys) => {
+    const lobbyId = lobbyFor(rawLobbyId);
+    if (!lobbyId) return { error: 'unknown-lobby' };
+    const mm = matchmaking();
+    if (!mm) return { error: 'steam-unavailable' };
+    if (typeof mm.getLobbyMemberData !== 'function') return { error: 'member-data-unavailable' };
+    const checked = validateLobbyKeys(rawKeys);
+    if (!checked.ok) return { error: checked.error };
+
+    // Bounded on BOTH axes before a single native call: the key list by
+    // `validateLobbyKeys`, the member list by the lobby size Steam itself
+    // enforces. One poll tick is therefore at most keys x members reads, and
+    // both factors are small integers.
+    const members = mm.getLobbyMembers(lobbyId);
+    const out = {};
+    for (const raw of Array.isArray(members) ? members : []) {
+      const steamId = steamIdToString(raw);
+      if (!steamId) continue;
+      const record = {};
+      for (const key of checked.keys) {
+        // Everything read here was written by another player's Steam client.
+        // Sanitised on the way out, exactly as lobby data is.
+        try {
+          const value = mm.getLobbyMemberData(lobbyId, steamId, key);
+          if (typeof value === 'string' && value !== '') record[key] = value;
+        } catch { /* an unreadable key is an absent key */ }
+      }
+      out[steamId] = sanitizeLobbyData(record);
+    }
+    return { members: out };
   });
 
   handle('steam:get-lobby-owner', async (rawLobbyId) => {

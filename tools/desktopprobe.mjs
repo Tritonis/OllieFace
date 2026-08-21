@@ -66,6 +66,9 @@ const STEAM_BRIDGE_KEYS = [
   // The overlay-less invite path (#54): our own friend picker on the send side,
   // and the launch-args half of an accepted invite on the join side.
   'listFriends', 'inviteFriend', 'pendingJoin',
+  // The answer leg after the Binding swap: the joiner writes its own member
+  // data, the host collects every member's in one call per poll tick.
+  'writeMemberData', 'collectMemberData',
 ].sort();
 
 const checks = [];

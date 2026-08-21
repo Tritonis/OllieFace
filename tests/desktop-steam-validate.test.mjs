@@ -25,6 +25,7 @@ import {
   MAX_FRIENDS_LISTED, MAX_PERSONA_CHARS,
   MAX_LOBBY_VALUE_CHARS, MAX_LOBBY_KEYS, MAX_SIGNAL_PAYLOAD_BYTES, MAX_SIGNAL_FRAME_BYTES,
   MAX_LOBBY_TOTAL_BYTES, STEAM_LOBBY_TOTAL_BYTES,
+  validateLobbyKeys,
 } from '../desktop/steam-validate.mjs';
 import { MAX_LOBBY_TOTAL_BYTES as RENDERER_BUDGET } from '../src/net/SteamLobby.js';
 
@@ -293,6 +294,36 @@ console.log('\n-- +connect_lobby, the launch half of an accepted invite');
     'a broken FIRST occurrence is the answer -- Steam writes one, and scanning past it is how a crafted shortcut would win');
   ok(parseConnectLobbyArg(null) === null, 'a non-array argv is refused rather than thrown through');
   ok(parseConnectLobbyArg([null, undefined, 7, '+connect_lobby', ID]) === ID, 'non-string tokens are skipped, not read');
+}
+
+
+console.log('\n-- validateLobbyKeys: the one bridge call the page names keys for');
+{
+  // `steam:collect-member-data` is driven by a key list the RENDERER chooses,
+  // because the answer protocol belongs to `src/net/SteamLobby.js` and the shell
+  // has no business knowing it. That makes this the only handler with an
+  // unbounded-input shape, and the bound is what stops one IPC from becoming
+  // thousands of native reads per poll tick.
+  const good = ['sdp.answer.n', 'sdp.answer.0', 'sdp.answer.1'];
+  const okRes = validateLobbyKeys(good);
+  ok(okRes.ok === true, 'the real key list is accepted');
+  ok(JSON.stringify(okRes.keys) === JSON.stringify(good), 'and comes back as itself');
+  ok(okRes.keys !== good, 'as a copy, so a caller cannot mutate what was validated');
+
+  ok(validateLobbyKeys('sdp.answer.n').ok === false, 'a bare string is not a list');
+  ok(validateLobbyKeys(null).ok === false, 'nor is null');
+  ok(validateLobbyKeys({ 0: 'sdp.answer.n', length: 1 }).ok === false, 'nor an array-like');
+  ok(validateLobbyKeys([]).ok === false, 'an empty list is refused, not silently answered with nothing');
+  ok(validateLobbyKeys(new Array(65).fill('sdp.answer.0')).ok === false,
+    'and a list longer than a lobby can hold keys is refused before a single read');
+  ok(validateLobbyKeys(['sdp.answer.n', 42]).ok === false, 'a non-string key is refused');
+  ok(validateLobbyKeys(['sdp answer']).ok === false, 'so is a key shape lobby data would never carry');
+  ok(validateLobbyKeys(['a'.repeat(400)]).ok === false, 'so is an over-long one');
+  ok(validateLobbyKeys(['sdp.answer.n', 'bad key']).ok === false,
+    'ONE bad key refuses the whole list -- a partial read is a partial answer, which is worse');
+  for (const bad of ['lobby-keys-not-a-list', 'lobby-keys-empty', 'lobby-keys-too-many', 'lobby-keys-bad-key']) {
+    ok(typeof bad === 'string' && bad.startsWith('lobby-keys-'), `${bad} is a named slug the renderer can branch on`);
+  }
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

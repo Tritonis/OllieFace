@@ -156,6 +156,37 @@ export function validateLobbyRecord(raw) {
 }
 
 /**
+ * A renderer-supplied LIST of lobby-data keys to read back.
+ *
+ * `steam:collect-member-data` is the one bridge call the page drives with keys
+ * of its own choosing, because the answer protocol (`sdp.answer.n`,
+ * `sdp.answer.<i>`) belongs to `src/net/SteamLobby.js` and the shell has no
+ * business knowing it. That makes the key list untrusted input in a place the
+ * other handlers do not have one: unbounded, it is a way for a compromised page
+ * to turn one IPC into thousands of native calls per poll tick.
+ *
+ * So it is bounded by the same two rules the write side already uses — the same
+ * key shape and the same key count — and nothing else is accepted. ONE bad key
+ * refuses the whole list rather than being skipped: a partial read is a partial
+ * answer, and a partial answer is exactly the half-written state the byte-budget
+ * guard exists to keep out of the poll.
+ *
+ * @returns {{ ok: true, keys: string[] }|{ ok: false, error: string }}
+ */
+export function validateLobbyKeys(raw) {
+  if (!Array.isArray(raw)) return { ok: false, error: 'lobby-keys-not-a-list' };
+  if (raw.length === 0) return { ok: false, error: 'lobby-keys-empty' };
+  if (raw.length > MAX_LOBBY_KEYS) return { ok: false, error: 'lobby-keys-too-many' };
+  const keys = [];
+  for (const key of raw) {
+    if (typeof key !== 'string' || key.length > MAX_LOBBY_KEY_CHARS || !LOBBY_KEY_RE.test(key))
+      return { ok: false, error: 'lobby-keys-bad-key' };
+    keys.push(key);
+  }
+  return { ok: true, keys };
+}
+
+/**
  * The byte cost of a record against `MAX_LOBBY_TOTAL_BYTES`, for a caller that
  * wants to refuse *before* it asks. Keys and values both count; the per-entry
  * framing Steam adds is what the budget's reserve is for.

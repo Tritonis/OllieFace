@@ -11,18 +11,31 @@
  *
  * ## Why the two directions travel differently
  *
- * `Lobby.setData` is owner-only in Steam's model, and steamworks.js@0.4.0 binds
- * neither lobby member data nor lobby chat (verified against the shipped
- * binary — see `.superpowers/sdd/2026-08-12-steamworks-wiring/`). So a joiner
- * has no way to write anything into lobby data. The exchange is therefore
- * asymmetric, and deliberately so:
+ * `SetLobbyData` is owner-only in Steam's model, so a joiner cannot write into
+ * the lobby's own data. Both legs nonetheless travel over lobby metadata now,
+ * symmetrically, because Steam has a second slot the joiner DOES own:
  *
- *   host -> joiner   the SDP offer, chunked across `sdp.offer.*` lobby-data
+ *   host -> joiner   the SDP offer, chunked across `sdp.offer.*` LOBBY-data
  *                    keys (the host IS the owner), read by a 1 s poll
- *   joiner -> host   the SDP answer, one reliable Steam P2P packet addressed to
- *                    the lobby owner. An answer is a few kB; Reliable carries up
- *                    to 1 MB, so this leg needs no chunking at all, and the host
- *                    learns the sender's Steam id for free.
+ *   joiner -> host   the SDP answer, chunked across `sdp.answer.*` MEMBER-data
+ *                    keys on the joiner's own membership, read by the host's own
+ *                    1 s poll across every member of the lobby
+ *
+ * `SetLobbyMemberData` writes the CALLER's member data and no one else's —
+ * Steam gives no API to write another member's — so the answer leg needs no
+ * membership gate of its own. That is a property of the platform, not of this
+ * code, and it is why this leg is simpler than the one it replaced.
+ *
+ * ## What this used to be, and why it changed
+ *
+ * Until 2026-08-21 the answer was one reliable Steam P2P packet addressed to the
+ * lobby owner, because `steamworks.js@0.4.0` bound neither lobby member data nor
+ * lobby chat (verified against the shipped binary — see
+ * `.superpowers/sdd/2026-08-12-steamworks-wiring/`). The Binding swap removed
+ * both halves of that: `steamworks-ffi-node` binds member data, and binds no
+ * `ISteamNetworking` at all, so the packet leg lost its carrier on the same day
+ * its workaround stopped being necessary. This is the design the plan wanted
+ * originally, arrived at late.
  *
  * The blobs themselves are the ones the manual copy/paste path already
  * produces: `Lobby.createInvite()` mints the offer, `Lobby.joinManual(offer)`
@@ -94,8 +107,36 @@ export function recordBytes(pairs) {
 }
 
 const OFFER_PREFIX = 'sdp.offer';
+/** The joiner's half of the exchange, on the joiner's own member data. */
+export const ANSWER_PREFIX = 'sdp.answer';
 const POLL_MS = 1000;
 const OFFER_WAIT_MS = 60000;
+
+/**
+ * How long the host keeps looking for an answer before it stops.
+ *
+ * Five minutes, not the joiner's sixty seconds, and the asymmetry is deliberate.
+ * The joiner's bound measures one thing that either happens promptly or not at
+ * all — the host writing an offer it has already minted. The host's bound spans
+ * a human: a friend has to see the invite, alt-tab, accept it, and let the game
+ * boot before they can even read the offer. A minute is well inside that, and
+ * an expired poll leaves the lobby advertised and deaf, which is the one state
+ * this module refuses everywhere else.
+ */
+const ANSWER_WAIT_MS = 300000;
+
+/**
+ * Every key the answer can occupy, computed once.
+ *
+ * Sent to the shell on every poll tick, so the shell never has to know the
+ * protocol and the page never gets to name an unbounded key list: it is
+ * `MAX_PARTS + 1` entries and it is a constant.
+ */
+export const answerKeys = () => {
+  const keys = [`${ANSWER_PREFIX}.n`];
+  for (let i = 0; i < MAX_PARTS; i++) keys.push(`${ANSWER_PREFIX}.${i}`);
+  return keys;
+};
 
 /**
  * Cut a blob into lobby-data pairs.
@@ -139,6 +180,36 @@ export function assembleBlob(getter, prefix) {
     parts.push(part);
   }
   return parts.join('');
+}
+
+/**
+ * Pick the first complete answer out of one `collectMemberData` reply.
+ *
+ * Pure, so the thing worth getting right is testable without a timer: every
+ * member's record is another player's bytes, `assembleBlob` already refuses a
+ * half-written or malformed one, and an EMPTY answer is not an answer — a
+ * member who has written nothing yet has no `sdp.answer.n` at all, and one who
+ * wrote an empty string has nothing for `acceptAnswer` to do.
+ *
+ * `exclude` is the host's own Steam id where the caller knows it. Steam counts
+ * the owner as a member, and a host that somehow read its own slot would hand
+ * its own blob to `acceptAnswer`; the empty-answer rule already covers it in
+ * practice, and this is the cheap belt.
+ *
+ * @param {Record<string, Record<string,string>>} members
+ * @param {string|null} [exclude]
+ * @returns {{ steamId: string, answer: string }|null}
+ */
+export function pickMemberAnswer(members, exclude = null) {
+  if (!members || typeof members !== 'object') return null;
+  for (const [steamId, record] of Object.entries(members)) {
+    if (steamId === exclude) continue;
+    if (!record || typeof record !== 'object') continue;
+    const answer = assembleBlob(
+      (k) => (Object.prototype.hasOwnProperty.call(record, k) ? record[k] : null), ANSWER_PREFIX);
+    if (typeof answer === 'string' && answer.trim()) return { steamId, answer: answer.trim() };
+  }
+  return null;
 }
 
 // -------------------------------------------------------------- the bridge
@@ -268,6 +339,20 @@ async function requireSteam(bridgeMs) {
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * A sleep that is not a reason for the process to live.
+ *
+ * Same discipline as the callback pump in the shell: the host answer poll runs
+ * in the background for minutes, and a ref'd timer would keep node alive for
+ * the whole of it in any test that forgets to tear the host down. `unref` does
+ * not exist on a browser timer id, which is why it is asked for rather than
+ * assumed.
+ */
+const idleSleep = (ms) => new Promise((r) => {
+  const t = setTimeout(r, ms);
+  if (t && typeof t.unref === 'function') t.unref();
+});
 
 /**
  * Claim this Lobby for one Steam operation, or refuse.
@@ -412,21 +497,28 @@ function armCleanup(lobby, steps, { holds = null, release = [] } = {}) {
  * two-seat feature, and re-minting per joiner is the relay path's problem to
  * have (`Lobby.js:261-272`).
  */
-export async function hostViaSteam(lobby, { maxMembers = 2, bridgeMs = BRIDGE_TIMEOUT_MS } = {}) {
+export async function hostViaSteam(lobby, { maxMembers = 2, bridgeMs = BRIDGE_TIMEOUT_MS, pollMs = POLL_MS, answerMs = ANSWER_WAIT_MS } = {}) {
   // Synchronous, before the first `await`: see `beginSteamOp`. Nothing below
   // this line can begin while another Steam operation on this Lobby is still
   // undecided, which is what makes "decide, then release" true on every path
   // rather than only on the ones `lobby.mode` can see.
   const endOp = beginSteamOp(lobby, 'host');
   try {
-    return await hostViaSteamBody(lobby, maxMembers, endOp, bridgeMs);
+    return await hostViaSteamBody(lobby, maxMembers, endOp, bridgeMs, pollMs, answerMs);
   } finally {
     endOp();
   }
 }
 
-async function hostViaSteamBody(lobby, maxMembers, endOp, bridgeMs) {
+async function hostViaSteamBody(lobby, maxMembers, endOp, bridgeMs, pollMs, answerMs) {
   const b = await requireSteam(bridgeMs);
+
+  // Checked before a lobby is opened, not after it is advertised. A shell whose
+  // bridge predates the member-data answer leg can host a lobby a friend can
+  // join and can never hear their answer, which is the advertised-but-deaf
+  // state this module refuses on every other path too. One sentence, up front.
+  if (typeof b.collectMemberData !== 'function')
+    throw new Error('Steam lobby: this build cannot hear a joiner answer. Use a room code or an invite code instead.');
 
   // FIX ROUND 2 (re-review, the host-then-accept-invite finding's mirror
   // case). Checked before anything below touches the bridge — no new Steam
@@ -504,7 +596,6 @@ async function hostViaSteamBody(lobby, maxMembers, endOp, bridgeMs) {
   let offSignal = null;
   let offFail = null;
   const release = [
-    () => b.stopSignalListen?.(),
     () => b.leaveLobby?.(lobbyId),
     () => { if (lobby && lobby._steamLobbyId === lobbyId) lobby._steamLobbyId = null; },
   ];
@@ -534,32 +625,47 @@ async function hostViaSteamBody(lobby, maxMembers, endOp, bridgeMs) {
         + 'so it cannot be posted. That usually means your network is offering an unusual number of connection routes — '
         + 'use a room code or an invite code instead.');
     unwrap(await b.writeLobbyData(lobbyId, Object.fromEntries(pairs)), 'Steam lobby');
-    unwrap(await b.startSignalListen(lobbyId), 'Steam lobby');
 
-    offSignal = b.onSignal(async (msg) => {
-      // Another player's bytes. The bridge already validated the envelope in the
-      // main process; this is the second look, because a renderer that trusts
-      // its own preload is one preload bug away from feeding `acceptAnswer`
-      // whatever arrived on the wire.
-      const answer = typeof msg?.payload === 'string' ? msg.payload.trim() : '';
-      if (!answer) return;
-      // One answer is the whole exchange for two seats. Stop listening first, so
-      // a second packet arriving during `acceptAnswer` cannot start a second one.
-      offSignal?.();
-      offSignal = null;
-      try {
-        await lobby.acceptAnswer(answer);
-      } catch {
-        // `acceptAnswer` already set `peerFailed` with the reason; there is no
-        // caller left to throw at — this is a bridge callback.
-      } finally {
-        b.stopSignalListen?.();
+    // THE ANSWER POLL, started before the room is advertised.
+    //
+    // Same rule the P2P listener it replaces obeyed, and for the same reason:
+    // an advertised lobby that cannot hear an answer is worse than one that was
+    // never advertised. `offSignal` keeps its name and its slot in the latch —
+    // every teardown path in this function already spends it — but what it now
+    // holds is this poll's stop function rather than a subscription.
+    let polling = true;
+    offSignal = () => { polling = false; };
+    (async () => {
+      const deadline = Date.now() + answerMs;
+      while (polling && Date.now() < deadline) {
+        await idleSleep(pollMs);
+        if (!polling) return;
+        let members = null;
+        try {
+          const res = await b.collectMemberData(lobbyId, answerKeys());
+          // A refusal is not fatal to the poll: Steam can be briefly unhappy and
+          // the friend has minutes left to answer. A THROW is not fatal either.
+          members = res && !res.error ? res.members : null;
+        } catch { members = null; }
+
+        const hit = pickMemberAnswer(members);
+        if (!hit) continue;
+        // One answer is the whole exchange for two seats. Stop polling first, so
+        // a second tick cannot start a second `acceptAnswer` while this one is
+        // still awaiting.
+        polling = false;
+        offSignal = null;
+        try {
+          await lobby.acceptAnswer(hit.answer);
+        } catch {
+          // `acceptAnswer` already set `peerFailed` with the reason; there is no
+          // caller left to throw at — this is a background poll.
+        }
+        return;
       }
-    });
+    })();
 
-    offFail = b.onSignalFail?.(() => {
-      lobby._set?.('peerFailed', { detail: 'Steam could not open a connection to that player.' });
-    }) || null;
+    offFail = null;
 
     lobby._set?.('roomOpen', { code: lobbyId, steam: true });
     // Last, after every statement that can throw. The replacement listen and both
@@ -690,13 +796,28 @@ async function joinViaSteamBody(lobby, lobbyId, pollMs, waitMs, endOp, bridgeMs)
     if (abandoned) throw new Error('Steam lobby: left before the host posted an invite.');
 
     const answer = await lobby.joinManual(offer);
-    const { steamId } = unwrap(await b.getLobbyOwner(id), 'Steam lobby');
-    if (typeof steamId !== 'string' || !steamId) throw new Error('Steam lobby: the lobby has no owner to answer.');
-    unwrap(await b.sendSignal(steamId, answer), 'Steam lobby');
+    if (typeof b.writeMemberData !== 'function')
+      throw new Error('Steam lobby: this build cannot send a joiner answer. Use a room code or an invite code instead.');
 
-    // Deliberately still in the Steam lobby. The host only accepts a P2P session
-    // from a *current member* of its lobby, so leaving the instant the answer is
-    // sent would race the packet and lose. The lobby is released on
+    // The same chunking and the same budget guard as the offer, on the same
+    // reasoning: a member-data write Steam refuses part-way through leaves
+    // `sdp.answer.n` counting parts that are not there, and the host then burns
+    // its whole poll on them. In practice an answer is one chunk — a real SDP
+    // answer measures ~918 chars against a 2000-char chunk — so this refuses
+    // only a blob that could not have travelled the other leg either.
+    const pairs = chunkBlob(ANSWER_PREFIX, answer);
+    const bytes = recordBytes(pairs);
+    if (bytes > MAX_LOBBY_TOTAL_BYTES || pairs.length - 1 > MAX_PARTS)
+      throw new Error(
+        `Steam lobby: this answer needs ${bytes} bytes and a Steam lobby holds ${MAX_LOBBY_TOTAL_BYTES} in total, `
+        + 'so it cannot be posted. That usually means your network is offering an unusual number of connection routes — '
+        + 'use a room code or an invite code instead.');
+    unwrap(await b.writeMemberData(id, Object.fromEntries(pairs)), 'Steam lobby');
+
+    // Deliberately still in the Steam lobby, and now for a stronger reason than
+    // before: the answer IS the membership. Member data lives on the membership
+    // that wrote it, so leaving does not race a packet — it deletes the answer
+    // outright, before the host's poll has read it. The lobby is released on
     // `Lobby.leave()` like the host's.
   } catch (err) {
     cleanup();
