@@ -190,5 +190,44 @@ console.log('the recorded rumble stays out of the graph until it is asked for');
   ok(a._pbrRumbleOn === false, 'but the intent is now recorded, so a later true can act on it');
 }
 
+console.log('the packaging seam ships the staged set into the artifact and not into the default one');
+{
+  // The evaluation set has to reach the packed build (the #109 playtest is on
+  // the artifact, not the dev server) WITHOUT becoming part of the default
+  // artifact, because nothing binary is accepted until #26 closes. Those are
+  // two claims and each needs its own assertion, or "it packs" and "it packs
+  // for everyone" become the same green.
+  const pkg = JSON.parse(read('package.json'));
+  const files = pkg.build.files.map(String);
+  ok(!files.some((f) => f.includes('assets-staging')),
+     'build.files never admits the staged set, so the ordinary pack stays binary-free');
+  ok(pkg.build.extraResources === undefined,
+     'and no standing extraResources entry carries it either');
+  ok(!pkg.scripts['desktop:pack'].includes('assets-staging'),
+     'the ordinary pack script is untouched by the evaluation');
+  ok(pkg.scripts['desktop:pack:pbr']?.includes('-c.extraResources=assets-staging'),
+     'the evaluation pack adds it as a one-flag override rather than a second config file');
+
+  // The shell is the only place the dev-server URL and the packaged URL are
+  // allowed to differ. If this moves back into src/, the renderer starts
+  // carrying knowledge of how it was packaged.
+  const shell = read('desktop/main.mjs');
+  ok(shell.includes("process.argv.includes('--pbr')"), 'the shell reads the flag off its command line');
+  ok(shell.includes("TELLURIC_PBR"), 'and off an environment variable, for a shortcut-less launch');
+  ok(/loadURL\(`app:\/\/game\/index\.html\$\{PBR_EVAL \? '\?pbr=1' : ''\}`\)/.test(shell),
+     'and maps it onto the query string the renderer already reads');
+  ok(shell.includes('app.isPackaged ? process.resourcesPath'),
+     'the packaged asset root is resources/, the unpacked one the repo root');
+  ok(shell.includes("rel.startsWith(EVAL_PREFIX)"), 'the app:// handler serves the staged set');
+  ok(/asset\.startsWith\(path\.join\(base, 'assets-staging'\) \+ path\.sep\)/.test(shell),
+     'and the new root carries its own traversal containment check');
+
+  // One resolution point, as the brief requires: src/ knows a relative path
+  // and nothing else about where the files live.
+  const evalSrc = read('src/world/PbrEval.js');
+  ok(evalSrc.includes("const ROOT = 'assets-staging'"), 'the renderer holds one relative root');
+  ok(!/resourcesPath|isPackaged|file:\/\//.test(evalSrc), 'and no packaging knowledge at all');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
