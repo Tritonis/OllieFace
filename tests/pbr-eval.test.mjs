@@ -23,8 +23,8 @@
 // The `maskApply(false)` branch and `setPbr(false)` are still exercised below:
 // they are no longer a shipping flag, they are the procedural arm of the A/B
 // that `tools/capture-arteval.mjs` takes its evidence with.
-import { existsSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as THREE from 'three';
 import {
@@ -36,6 +36,10 @@ import { Audio } from '../src/systems/Audio.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const read = (p) => readFileSync(join(here, '..', p), 'utf8');
+/** Every file under a directory, recursively — for the tree-wide sweeps below,
+ *  which exist because a per-file allowlist is what let a stale path ship. */
+const walk = (d) => readdirSync(d, { withFileTypes: true })
+  .flatMap((e) => (e.isDirectory() ? walk(join(d, e.name)) : [join(d, e.name)]));
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
@@ -224,8 +228,55 @@ console.log('the maps live where vite serves them in dev and ships them in a bui
   // test looks.
   const evalSrc = read('src/world/PbrEval.js');
   ok(evalSrc.includes("const ROOT = 'game-assets'"), 'the renderer holds one relative root');
-  ok(!/resourcesPath|isPackaged|file:\/\/|assets-staging/.test(evalSrc),
-     'and no packaging knowledge, and no memory of the staging directory');
+  ok(!/resourcesPath|isPackaged|file:\/\//.test(evalSrc), 'and no packaging knowledge');
+
+  // The whole tree, not the four files this section used to name. `PbrEval.js`
+  // was checked for a stale `assets-staging` reference and passed while
+  // `Audio.js` fetched the rumble from that exact directory: the map path and
+  // the audio path were migrated by different edits and only one of them was
+  // under a guard. A directory that no longer exists cannot be referenced from
+  // ANYWHERE in shipped code, so the sweep is the tree.
+  //
+  // It survived review because it fails only where no unit test looks: the
+  // staging directory still sat untracked on the developer's disk, so the dev
+  // server served it and the fetch worked locally. In a fresh clone the same
+  // line 404s, `decodeAudioData` rejects, and the rumble is silently absent
+  // from a build whose visuals loaded perfectly.
+  const stale = [];
+  for (const dir of ['src', 'tools', 'desktop']) {
+    for (const f of walk(join(here, '..', dir))) {
+      if (!/\.(m?js|cjs)$/.test(f)) continue;
+      if (readFileSync(f, 'utf8').includes('assets-staging')) {
+        stale.push(relative(join(here, '..'), f).replace(/\\/g, '/'));
+      }
+    }
+  }
+  ok(stale.length === 0,
+     `no file under src/, tools/ or desktop/ names the retired staging directory${stale.length ? ` — found in: ${stale.join(', ')}` : ''}`);
+
+  // Same sweep, same reason, for the other half of the migration: every asset
+  // URL in shipped code has to point at the one tracked home.
+  const audio = read('src/systems/Audio.js');
+  ok(audio.includes("'game-assets/audio/"), 'the rumble is fetched from the tracked home');
+
+  // And the same sweep for the retired query parameter. `tools/perf.mjs` kept a
+  // `--pbr` switch that appended `&pbr=1` to its boot URL for a whole review
+  // cycle after `main.js` stopped reading the parameter: the arm ran, the flag
+  // did nothing, and the numbers were labelled as though it had. A benchmark
+  // that lies about which surface it measured is worse than one arm fewer.
+  const liars = [];
+  for (const dir of ['src', 'tools']) {
+    for (const f of walk(join(here, '..', dir))) {
+      if (!/\.(m?js|cjs)$/.test(f)) continue;
+      const body = readFileSync(f, 'utf8');
+      // A comment may discuss the retired flag — several explain why it went.
+      // Only a live `pbr=1` inside a URL or a string is a claim on behaviour.
+      const code = body.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+      if (/pbr=1/.test(code)) liars.push(relative(join(here, '..'), f).replace(/\\/g, '/'));
+    }
+  }
+  ok(liars.length === 0,
+     `no tool still passes the retired ?pbr=1 parameter${liars.length ? ` — found in: ${liars.join(', ')}` : ''}`);
 
   const files = [];
   for (const spec of Object.values(SETS)) {

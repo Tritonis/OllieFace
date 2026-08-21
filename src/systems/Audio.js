@@ -1488,16 +1488,17 @@ export class Audio {
   }
 
   /**
-   * The photographed-asset evaluation's audio arm: a recorded low-frequency
-   * rumble looped beneath the synthesized void bed. Behind the same `?pbr=1`
-   * flag as the texture swap, and like it, the file is not fetched at all
-   * until the flag asks for it.
+   * The photographed set's audio arm: a recorded low-frequency
+   * rumble looped beneath the synthesized void bed, loaded at boot along with
+   * the photographed surface set it belongs to (#109). There is no flag: the
+   * recording is part of the game's ambience, and `on` exists only so the
+   * capture A/B can take it away with the maps it was mixed against.
    */
   async setPbrRumble(on) {
     this._pbrRumbleOn = !!on;
     if (!on || !this.ac || this.pbrRumbleGain) return;
     const ac = this.ac;
-    const url = 'assets-staging/audio/735011__vladislavzh__trembling-low-frequency-rumble.wav';
+    const url = 'game-assets/audio/735011__vladislavzh__trembling-low-frequency-rumble.wav';
     const buf = await ac.decodeAudioData(await (await fetch(url)).arrayBuffer());
     // A second toggle may have raced the decode; honour the latest intent.
     if (this.pbrRumbleGain) return;

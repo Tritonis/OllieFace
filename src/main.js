@@ -213,10 +213,6 @@ if (!params.has('harness')) maybeShowGpuNotice(ctx.gpu);
 // Exposed for the Playwright screenshot harness (deterministic captures).
 globalThis.__GAME__ = { engine, ctx, THREE, seed };
 
-// The photographed-asset evaluation set (#109 step 3). Default off, and the
-// import itself is behind the flag: flag-off nothing under `assets-staging/`
-// is fetched, so the 148 MiB stays on disk and the frame is the frame we
-// shipped. `__HARNESS__.setPbr` drives the same seam for a within-session A/B.
 if (params.has('harness')) {
   const { installHarness } = await import('./core/Harness.js');
   installHarness(ctx);

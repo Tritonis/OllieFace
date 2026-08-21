@@ -101,6 +101,10 @@ function loadSets() {
     }
     return out;
   })();
+  // A rejected promise must not be the cached answer for the rest of the
+  // session: one flaky read at boot would otherwise make the procedural
+  // fallback permanent until a reload, with no way for anything to try again.
+  _loaded.catch(() => { _loaded = null; });
   return _loaded;
 }
 
