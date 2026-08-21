@@ -185,3 +185,27 @@ symptom kept being reported after `b09c3d4`.
 Rule this earns: **when an adjudication in this file is acted on, amend the adjudication
 to name the commit.** A refutation that does not record its own resolution reads as an
 open work item forever.
+
+---
+
+## 2026-08-21 — THE PURCHASE LANDED. The set above is adopted; this file is now history.
+
+Per this file's own rule, the resolution is recorded with its commit: **`eef20fe` merges the
+photographed set as the shipping game.** Worn Rock Natural 01 (terrain), Corrugated Iron 03
+(props), Mud Cracked Dry Riverbed 002 (Void overlay, no albedo — the tint mix owns colour),
+and the Trembling Low Frequency Rumble under the void bed, all CC0, confirmed by the user on
+the asset pages at download (2026-08-21), tracked at `public/game-assets/`, bound through
+`src/world/Materials.js` via `src/world/PbrEval.js`, always-on with a procedural fallback.
+
+Two statements above are therefore stale and stay only as history:
+
+- *"Today the game has essentially zero asset payload"* — the shipped `dist/` now carries
+  172.26 MiB of maps and audio, measured against `docs/art/asset-budget.json`'s ceilings
+  (assets 200 MiB, shipped 205 MiB) by `tests/asset-budget.test.mjs`.
+- *"A small PBR set, not an HDRI, is the purchase with a measured defect waiting for it"* —
+  that purchase is the one that landed. The evaluation evidence lives in
+  `reviews/asset-budget/` (branch-point perf baseline, matched-pair on/off, one-boot A/B
+  capture manifest); the acceptance and its trail are on issue #109.
+
+Still open from this file's plan: mesh kits (the #24/#26 fork) were never nominated and
+remain undecided; HDRIs stay refuted per the 2026-08-01 adjudication above.
