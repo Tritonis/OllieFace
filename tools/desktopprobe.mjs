@@ -123,6 +123,27 @@ try {
       && (steam.available ? steam.reason === null : typeof steam.reason === 'string' && steam.reason.length > 0),
     steam);
 
+  // The Conversation's bridge, and the reason this check exists at all: the
+  // first shipped version of it required a project-local file from the preload,
+  // which Electron's sandboxed loader cannot resolve -- so the require threw,
+  // the call to the undefined factory threw, and every `exposeInMainWorld`
+  // after it never ran. Both key checks above went red with EMPTY lists, which
+  // is a symptom that could mean anything. This one names the thing: with Steam
+  // up, `net` must be a live sockets surface; without it, exactly null.
+  const conversation = await page.evaluate(() => {
+    const net = globalThis.__STEAM__?.net;
+    return {
+      isNull: net === null,
+      kind: typeof net,
+      members: net ? ['sendMessage', 'receiveMessages', 'connectP2P', 'getIdentity'].filter((k) => typeof net[k] === 'function') : [],
+    };
+  });
+  check('boot 1: __STEAM__.net matches what Steam answered -- a live sockets surface, or exactly null',
+    steam.available
+      ? conversation.kind === 'object' && !conversation.isNull && conversation.members.length === 4
+      : conversation.isNull,
+    { available: steam.available, ...conversation });
+
   // A prefixed write must reach the file through the mirror.
   await page.evaluate(() => localStorage.setItem('telluric.probeMark', 'boot1'));
   await page.waitForTimeout(1500);   // > DesktopStore debounce

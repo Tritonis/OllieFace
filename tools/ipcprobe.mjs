@@ -48,7 +48,7 @@
  */
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -83,7 +83,37 @@ const RECORD = path.resolve(root, String(flag('record', `reviews/net-baseline/${
  * figure is the pessimistic one).
  */
 const ENVELOPE = { stateP99Ms: 2.0, eventsP99Ms: 3.0 };
-const STEAM_LEG_P99 = { state: 0.242, events: 0.277 };
+
+/**
+ * The Steam leg, READ from the socket-pair records rather than typed in here.
+ *
+ * A literal was correct on the day it was written and would have gone quietly
+ * stale the first time anyone re-measured Steam, with nothing tying it back to
+ * the file it came from. So the worst p99 across every
+ * `steam-socketpair-3peer-60hz*.json` in `reviews/net-baseline/` is what gets
+ * composed -- worst, so the composition is the pessimistic one -- and a run
+ * with no such record refuses to compose at all rather than inventing a leg.
+ */
+function readSteamLeg(dir) {
+  const files = readdirSync(dir).filter((f) => /^steam-socketpair-3peer-60hz.*\.json$/.test(f));
+  let state = null;
+  let events = null;
+  const from = [];
+  for (const f of files) {
+    let rec = null;
+    try { rec = JSON.parse(readFileSync(path.join(dir, f), 'utf8')); } catch { continue; }
+    const s = rec?.totals?.state?.latencyMs?.p99;
+    const e = rec?.totals?.events?.latencyMs?.p99;
+    if (typeof s !== 'number' || typeof e !== 'number') continue;
+    state = state === null ? s : Math.max(state, s);
+    events = events === null ? e : Math.max(events, e);
+    from.push(f);
+  }
+  if (state === null) throw new Error(`no usable steam-socketpair record in ${dir} to compose the Steam leg with`);
+  return { state, events, from };
+}
+
+const STEAM_LEG_P99 = readSteamLeg(path.join(root, 'reviews', 'net-baseline'));
 
 const gitSha = () => {
   try { return execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim(); }
@@ -290,7 +320,7 @@ app.whenReady().then(async () => {
     },
     addedLatencyMs: added,
     toFrameHookMs: toFrameHook,
-    steamLegP99Ms: STEAM_LEG_P99,
+    steamLegP99Ms: { state: STEAM_LEG_P99.state, events: STEAM_LEG_P99.events, from: STEAM_LEG_P99.from },
     composedP99Ms: composed,
     envelope: ENVELOPE,
     checks,

@@ -55,6 +55,24 @@ nothing. The renderer batches per frame because that is when the game produces b
 bytes the instant the IPC lands. `desktop/net-bridge-main.mjs` still polls Steam's pull
 accessors on a 60 Hz timer, which is a different thing: that is how often Steam is *asked*.
 
+### And one thing the numbers could never have told us
+
+The first version of the renderer half lived in its own file and `preload.cjs` required it.
+Every suite in this repo passed, because every suite wires the two halves together in plain
+Node. Electron's *sandboxed* preload -- the default under `contextIsolation: true` with no
+`sandbox: false`, which is what this shell deliberately builds -- resolves only a short
+allowlist of built-in modules, so that relative require threw, the factory was undefined, and
+the call to it killed the rest of `preload.cjs`: no `__DESKTOP__`, no `__STEAM__`, on every
+boot where Steam was actually available. Only `tools/desktopprobe.mjs`, run on a box with
+Steam logged in, could see it, and it went red with two empty key lists.
+
+The bridge is now inline in `preload.cjs`, which requires nothing project-local and never may.
+`desktop/net-bridge-renderer.cjs` no longer holds a copy of it -- it reads the block back out
+of `preload.cjs` and compiles it, so `tests/transport-steam-bridged.mjs` asserts against the
+exact characters the shell runs (mutate the block in `preload.cjs` and the contract goes
+122/10). And the probe now names the condition instead of inferring it: *with Steam up, `net`
+is a live sockets surface; without it, exactly null.*
+
 ## The files, and the command that produced them
 
 ```
