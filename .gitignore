@@ -64,3 +64,13 @@ steamworks_sdk_*.zip
 
 # Staging for the #109 art evaluation set. Nothing binary enters git until #26 closes.
 assets-staging/
+
+# Downloaded asset shortlists and the runner-up cache. The 2026-08-21 "leftovers"
+# commit swept 775 MiB of these into history and had to be filter-branched back
+# out; the ignore is the guard that stops the next bulk `git add .` from repeating
+# it. Supersedes the narrower `assets/kit/` rule above.
+assets/
+
+# The controller's briefs, task reports and reviews — gitignored working material
+# per CLAUDE.md's table; the same 2026-08-21 sweep committed 12 of them.
+.superpowers/
