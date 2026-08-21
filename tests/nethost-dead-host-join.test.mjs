@@ -81,6 +81,7 @@ function makePeer(id = 1) {
     sendState() { p.states++; },
     sendEvent() { p.events_++; },
     pumpSim() {},
+    drained() { return !p.events || p.events.readyState !== 'open' || p.events.bufferedAmount === 0; },
     // `Peer.close` fires `onClose`, which is what carries a refusal through to
     // `_onPeerLeave`. Without it the fake would report a peer that was closed
     // and never left, which is not a state the real transport can produce.

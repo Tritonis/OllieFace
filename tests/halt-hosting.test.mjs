@@ -45,6 +45,7 @@ function makePeer(id = 1) {
     id, states: 0, events_: 0, closed: false,
     events: { readyState: 'open', bufferedAmount: 0 },
     sendState() { p.states++; }, sendEvent() { p.events_++; }, pumpSim() {},
+    drained() { return !p.events || p.events.readyState !== 'open' || p.events.bufferedAmount === 0; },
     close() { if (p.closed) return; p.closed = true; p.onClose?.(); },
   };
   return p;
