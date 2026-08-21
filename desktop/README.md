@@ -73,11 +73,29 @@ every pack:
   `electron` and node builtins. Packed folder must contain **no**
   `node_modules/` at all. (This is docs/STEAM.md section 4's warning read in
   reverse: the source tree must not ride along.)
-- **`!steam_appid.txt`** — the repo root carries `steam_appid.txt` for the dev
+- **`!**/steam_appid.txt`** — the repo root carries `steam_appid.txt` for the dev
   loop, and it must never ship. A stray appid file inside a packaged build
   overrides what Steam tells the process and breaks release-build detection.
   Packed folder must contain **no** `steam_appid.txt` anywhere, not just under
-  `resources/app/`. Verified after every pack, same as the two above.
+  `resources/app/`. The pattern is deliberately unanchored: `!steam_appid.txt`
+  named only the root copy, and `desktop/**` would have carried any other one
+  in regardless. Verified after every pack, same as the two above.
+
+One *inclusion* is load-bearing in the same way:
+
+- **`steamworks_sdk/redistributable_bin/win64/steam_api64.dll`** — named as a
+  single file, not a tree. `steamworks-ffi-node` is Koffi over Valve's flat C
+  API and bundles no redistributable; its loader searches this exact path
+  *relative to the project root*, which with `asar: false` is `resources/app/`
+  inside the artifact. Without it a packed launch reports Steam unavailable and
+  the reason is a setup message about a missing SDK. Nothing else under
+  `steamworks_sdk/` ships (see `steamworks_sdk/README.md` on why only one file
+  is vendored at all).
+
+`tests/steam-sdk-packaging.test.mjs` holds both of these: it evaluates
+`build.files` the way electron-builder does — ordered globs, last match wins,
+`!` excludes — and goes red if the DLL stops being packed, if it is missing or
+truncated on disk, or if an appid file becomes packable from anywhere.
 
 ### Consequence: the packed build carries no Steam (open gap)
 
