@@ -209,7 +209,7 @@ move them:
 
 1. §2.2 the mint clause in `pricedPrompt`, off a new pure `mintForecast`.
 2. §3 the telemetry: `bargains`, `sanctuaries`, `corruption.marks/motes/ruined`.
-3. §2.1 warding, argent motes, and Sanctuary at the Argent Font, with the
+3. §2.1 warding, argent motes, and Sanctuary at the Void Bargain altar, with the
    font prompt disclosing the offer before the press.
 
 **Not built, deliberately, and named so the review can weigh them:**
