@@ -21,6 +21,7 @@ import {
 } from './steam-validate.mjs';
 import { createJoinDelivery } from './join-delivery.mjs';
 import { startCallbackPump, holdDispatch } from './steam-callbacks.mjs';
+import { createNetBridgeMain } from './net-bridge-main.mjs';
 
 const requireCjs = createRequire(import.meta.url);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -322,7 +323,47 @@ function releaseAllSteamState() {
  * `ipcMain.handle` is legal that early, and registering there means a renderer
  * that races the first frame still finds every channel already listening.
  */
+/**
+ * The Conversation's own bridge (#128), armed synchronously at preload.
+ *
+ * Separate from every channel below because it is not request/response: the
+ * renderer's frame produces one batch of commands and this side pushes one
+ * batch of arrivals, both fire-and-forget. `steam:net-init` is the only
+ * synchronous call in the pair, and it exists because
+ * `SteamTransport.getIdentity()` has no mailbox to read and no frame to wait.
+ *
+ * A Steam-less boot answers `{ available: false }`, the preload publishes
+ * `net: null`, and `TransportSelect.steamSockets()` takes the WebRTC branch it
+ * has always taken. That is the whole of the inertness contract.
+ */
+let netBridge = null;
+
+function registerNetBridge() {
+  ipcMain.on('steam:net-init', (event) => {
+    const sockets = steamClient()?.networkingSockets ?? null;
+    if (!sockets) { event.returnValue = { available: false, identity: null }; return; }
+    let identity = null;
+    try { identity = sockets.getIdentity(); } catch { identity = null; }
+    if (identity == null) { event.returnValue = { available: false, identity: null }; return; }
+    netBridge?.stop();
+    netBridge = createNetBridgeMain({
+      sockets,
+      push: (payload) => pushToRenderer('steam:net-recv', payload),
+    });
+    netBridge.start();
+    event.returnValue = { available: true, identity: String(identity) };
+  });
+
+  // One channel, one batch, no reply. The renderer flushes whatever the frame
+  // produced; ordering inside the batch is the renderer's and is preserved.
+  ipcMain.on('steam:net-send', (_event, batch) => {
+    if (Array.isArray(batch)) netBridge?.apply(batch);
+  });
+}
+
 function registerSteamBridge() {
+  registerNetBridge();
+
   // Every handler is `async` and every one of them returns a plain object with
   // string/boolean/number fields only. No handler ever returns a bigint, a
   // Lobby, a Buffer, or an Error.

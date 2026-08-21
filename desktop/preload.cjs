@@ -14,6 +14,7 @@
  * Nothing else crosses: no fs, no ipc pass-through.
  */
 const { contextBridge, ipcRenderer } = require('electron');
+const { createNetBridgeRenderer } = require('./net-bridge-renderer.cjs');
 
 // A structural ceiling, tighter than Node's default warning of ten. (Minor
 // 4.) `ipcRenderer` is one EventEmitter and Node counts listeners per channel
@@ -23,9 +24,12 @@ const { contextBridge, ipcRenderer } = require('electron');
 // listener are one permanent listener each for the page's life, and
 // `onSignal`/`onSignalFail` are at most one live pair at a time now that a
 // second "Host via Steam" runs the previous latch before arming a new one --
-// so six is a ceiling a working build can never approach and a regression
-// trips loudly, well short of Node's own default.
-ipcRenderer.setMaxListeners(6);
+// so six was a ceiling a working build could never approach. Seven now: the
+// Conversation's `steam:net-recv` is one more permanent listener for the page's
+// life (#128), and it is permanent rather than paired, so the headroom the
+// ceiling was protecting is unchanged. A regression still trips loudly, well
+// short of Node's own default.
+ipcRenderer.setMaxListeners(7);
 
 // Push channels hand the renderer the payload only -- never the IpcRendererEvent,
 // which carries `sender` and would be a hole straight back through the bridge.
@@ -39,6 +43,20 @@ const subscribe = (channel, cb) => {
 // { ok, raw }: raw is the file text, or null. ok:false means the file exists
 // and could not be read -- the renderer must not treat that as a first boot.
 const initial = ipcRenderer.sendSync('store:load');   // once, at boot
+
+// The Conversation's bridge (#128), decided once here because
+// `TransportSelect.steamSockets()` asks a synchronous question -- "did the
+// shell publish one?" -- and a promise is not an answer it can use. On a boot
+// with no Steam this is `{ available: false }` and `net` below is null, which
+// is exactly the state every runtime has been in until now.
+const netInit = ipcRenderer.sendSync('steam:net-init');
+const netBridge = netInit && netInit.available
+  ? createNetBridgeRenderer({
+    post: (batch) => { ipcRenderer.send('steam:net-send', batch); },
+    identity: String(netInit.identity),
+  })
+  : null;
+if (netBridge) ipcRenderer.on('steam:net-recv', (_event, payload) => { netBridge.deliver(payload); });
 
 // The last save verdict main has pushed, latched here so it survives the gap
 // between it being sent and the renderer subscribing. Without the latch a save
@@ -61,6 +79,11 @@ contextBridge.exposeInMainWorld('__DESKTOP__', {
 });
 
 contextBridge.exposeInMainWorld('__STEAM__', {
+  // The Conversation, or null. Always present as a KEY, so the surface the
+  // desktop probe pins does not change shape between a Steam boot and a
+  // Steam-less one; `TransportSelect` reads the VALUE.
+  net: netBridge ? netBridge.sockets : null,
+
   // -> { available, appId, personaName, reason }
   status: () => ipcRenderer.invoke('steam:status'),
 

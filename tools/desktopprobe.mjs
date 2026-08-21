@@ -69,6 +69,9 @@ const STEAM_BRIDGE_KEYS = [
   // The answer leg after the Binding swap: the joiner writes its own member
   // data, the host collects every member's in one call per poll tick.
   'writeMemberData', 'collectMemberData',
+  // The Conversation (#128). A KEY, not a function: null when the shell has no
+  // Steam sockets to lend, the batched sockets surface when it has.
+  'net',
 ].sort();
 
 const checks = [];
