@@ -105,8 +105,8 @@ try {
   }));
   check('boot 1: renderer has no node (require/process undefined)',
     iso.req === 'undefined' && iso.proc === 'undefined', iso);
-  check('boot 1: bridge exposes exactly loadStore + saveStore',
-    JSON.stringify(iso.keys) === '["loadStore","saveStore"]', iso.keys);
+  check('boot 1: bridge exposes exactly loadStore + onSaveStatus + saveStore',
+    JSON.stringify(iso.keys) === '["loadStore","onSaveStatus","saveStore"]', iso.keys);
   // The Steam bridge is the second surface the isolation claim now rests on.
   // Pinned as an exact set, not a subset: the danger is something ARRIVING
   // here -- a client object, a getClient, a generic invoke -- and a
