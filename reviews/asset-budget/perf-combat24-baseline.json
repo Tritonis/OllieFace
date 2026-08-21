@@ -1,0 +1,86 @@
+{
+  "scenario": "combat-24",
+  "medianFrameMs": 11.9,
+  "p95FrameMs": 16.1,
+  "quality": 3,
+  "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 2070 (0x00001F07) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "transcribed": false,
+  "capturedAt": "2026-08-21T20:13:13.696Z",
+  "raw": {
+    "env": {
+      "devicePixelRatio": 1,
+      "rendererPixelRatio": 1,
+      "drawingBuffer": [
+        1600,
+        900
+      ],
+      "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 2070 (0x00001F07) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "shadowMapSize": [
+        "4096x4096",
+        "512x512",
+        "512x512"
+      ],
+      "gtaoSamples": "on"
+    },
+    "quality": 3,
+    "results": [
+      {
+        "label": "idle",
+        "frames": 1,
+        "avgFrameMs": 0,
+        "medianFrameMs": 0,
+        "p95FrameMs": 0,
+        "worstFrameMs": 0,
+        "maxSubsteps": 0,
+        "saturatedFrames": 0,
+        "hitstopFrames": 0,
+        "perSystemMs": {},
+        "geometries": 413,
+        "textures": 53,
+        "programs": 72
+      },
+      {
+        "label": "combat-24",
+        "frames": 149,
+        "avgFrameMs": 12.38,
+        "medianFrameMs": 11.9,
+        "p95FrameMs": 16.1,
+        "worstFrameMs": 20.6,
+        "maxSubsteps": 5,
+        "saturatedFrames": 2,
+        "hitstopFrames": 28,
+        "perSystemMs": {
+          "Object.lateUpdate": 7.209,
+          "VFX.lateUpdate": 2.959,
+          "Director.fixedUpdate": 0.611,
+          "CameraRig.lateUpdate": 0.471,
+          "Director.update": 0.288,
+          "Player.fixedUpdate": 0.258,
+          "HUD.update": 0.197,
+          "Environment.update": 0.161,
+          "Audio.update": 0.044,
+          "Player.update": 0.034,
+          "VFX.update": 0.027,
+          "Input.pollPad": 0.015,
+          "Combat.fixedUpdate": 0.011,
+          "Blight.update": 0.011,
+          "Progression.fixedUpdate": 0.008,
+          "Progression.update": 0.007,
+          "Items.fixedUpdate": 0.005,
+          "Items.update": 0.005,
+          "Menus.update": 0.005,
+          "Realms.fixedUpdate": 0.003,
+          "Coop.fixedUpdate": 0.003,
+          "Coop.update": 0.003,
+          "Realms.update": 0.002,
+          "Revive.fixedUpdate": 0.001,
+          "Corruption.update": 0.001,
+          "Menus.lateUpdate": 0.001
+        },
+        "geometries": 430,
+        "textures": 53,
+        "programs": 73
+      }
+    ]
+  }
+}
