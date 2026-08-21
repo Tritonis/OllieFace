@@ -1478,9 +1478,32 @@ export class Audio {
     // in the same per-frame writer as the bed, for the reason the whole
     // evaluation flag is a swap and not a uniform: a level set once at load
     // would be overwritten by the next frame of this method.
-    // The flag can be set before the context exists (it is gated on a user
-    // gesture); pick the intent back up on the first frame that has one.
-    if (this._pbrRumbleOn && !this.pbrRumbleGain && this.ac) this.setPbrRumble(true);
+    // The intent can be set before the context exists (it is gated on a user
+    // gesture), so the first frame that HAS one picks the intent back up. Three
+    // guards stand between that retry and a per-frame catastrophe, and each one
+    // has a failure behind it:
+    //
+    //  - `_pbrRumbleLoading` — the load is a 25 MB fetch and a ~49 MB decode,
+    //    and `pbrRumbleGain` does not exist until both finish. Without an
+    //    in-flight flag every frame between the first attempt and its landing
+    //    starts another one: sixty new fetches a second, gigabytes in transit,
+    //    for one file.
+    //  - `_pbrRumbleFailed` — a 404 (an artifact built without the recording)
+    //    never resolves into a gain, so a retry that is not stopped is a retry
+    //    forever. It is set from the rejection below, and it is one-shot on
+    //    purpose: this is ambience, not something worth re-attempting at 60 Hz.
+    //  - `.catch` — this call is deliberately not awaited (the frame must not
+    //    wait on a decode), and an un-awaited rejection is an unhandled promise
+    //    rejection. Per frame. Which Playwright reports as a page error, so the
+    //    missing file would also take down every capture run as infrastructure.
+    if (this._pbrRumbleOn && !this.pbrRumbleGain && !this._pbrRumbleLoading
+        && !this._pbrRumbleFailed && this.ac) {
+      // The rejection is already flagged and logged inside `setPbrRumble`; this
+      // catch exists so an un-awaited call from the frame loop cannot surface as
+      // an unhandled promise rejection, which Playwright reports as a page error
+      // and which would therefore fail every capture run as infrastructure.
+      this.setPbrRumble(true).catch(() => {});
+    }
     if (this.pbrRumbleGain) {
       const g = voidLayerGain(ctx.corruption?.band) * (this._pbrRumbleOn ? 0.55 : 0);
       this.pbrRumbleGain.gain.setTargetAtTime(g, ac.currentTime, 2.0);
@@ -1496,29 +1519,53 @@ export class Audio {
    */
   async setPbrRumble(on) {
     this._pbrRumbleOn = !!on;
-    if (!on || !this.ac || this.pbrRumbleGain) return;
+    if (!on || !this.ac || this.pbrRumbleGain || this._pbrRumbleLoading) return;
+    // Set synchronously, BEFORE the first await, and that ordering is the whole
+    // guard: a flag raised after an await is raised a microtask too late, and
+    // every caller that arrived in the meantime has already started its own
+    // fetch. The frame loop is exactly such a caller, sixty times a second.
+    this._pbrRumbleLoading = true;
     const ac = this.ac;
     const url = 'game-assets/audio/735011__vladislavzh__trembling-low-frequency-rumble.wav';
-    const buf = await ac.decodeAudioData(await (await fetch(url)).arrayBuffer());
-    // A second toggle may have raced the decode; honour the latest intent.
-    if (this.pbrRumbleGain) return;
-    const gain = ac.createGain();
-    gain.gain.value = 0;
-    // The recording carries content well above where a sub layer belongs, and
-    // the bed already owns 2.4 kHz. Everything above 220 Hz is somebody else's.
-    const lp = ac.createBiquadFilter();
-    lp.type = 'lowpass';
-    lp.frequency.value = 220;
-    lp.Q.value = 0.5;
-    lp.connect(gain);
-    gain.connect(this.master);
-    const src = ac.createBufferSource();
-    src.buffer = buf;
-    src.loop = true;
-    src.connect(lp);
-    src.start();
-    this.pbrRumbleSrc = src;
-    this.pbrRumbleGain = gain;
+    try {
+      const buf = await ac.decodeAudioData(await (await fetch(url)).arrayBuffer());
+      // A second toggle may have raced the decode; honour the latest intent.
+      if (this.pbrRumbleGain) return;
+      const gain = ac.createGain();
+      gain.gain.value = 0;
+      // The recording carries content well above where a sub layer belongs, and
+      // the bed already owns 2.4 kHz. Everything above 220 Hz is somebody else's.
+      const lp = ac.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 220;
+      lp.Q.value = 0.5;
+      lp.connect(gain);
+      gain.connect(this.master);
+      const src = ac.createBufferSource();
+      src.buffer = buf;
+      src.loop = true;
+      src.connect(lp);
+      src.start();
+      this.pbrRumbleSrc = src;
+      this.pbrRumbleGain = gain;
+    } catch (err) {
+      // Marked at the source, not at the call site. The caller cannot do it in
+      // time: this function clears the in-flight flag in its `finally`, which
+      // runs a microtask BEFORE any `.catch` the caller attached, so a frame
+      // landing in that gap starts one more doomed load. Setting it here closes
+      // the window - measured as the difference between three attempts and two.
+      this._pbrRumbleFailed = true;
+      // Logged here for the same reason it is flagged here: this is the one
+      // place that knows the load failed no matter which caller started it, and
+      // the retry stop above means it can only be reached once per session.
+      console.warn('audio: the recorded rumble layer did not load; the synthesized bed carries the void alone.', err);
+      throw err;
+    } finally {
+      // In `finally`, so a throw releases the flag too. A rejection that left
+      // it raised would be indistinguishable from a load still in flight, and
+      // nothing would ever try again even where a retry is legitimate.
+      this._pbrRumbleLoading = false;
+    }
   }
 
   /* ------------------------------------------------------------------ */

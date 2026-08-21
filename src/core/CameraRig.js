@@ -336,6 +336,8 @@ export class CameraRig {
     this._zoomSetting = clamp(ctx.settings?.cameraZoom ?? 1, ZOOM_MIN, ZOOM_MAX);
     this.zoomTarget = this._zoomSetting;
     this.zoom = this._zoomSetting;
+    // False until the first `_zoomInput`: see the snap-vs-ease note there.
+    this._zoomAdopted = false;
     this._zoomIdle = 0;
     this._zoomDirty = false;
     // The occlusion fan's verdict for the frame: the longest boom that stays
@@ -638,7 +640,19 @@ export class CameraRig {
       this._zoomSetting = stored;
       this.zoomTarget = stored;
       this._zoomDirty = false;
+      // The FIRST adoption is a snap, every later one an ease, and the split is
+      // about who moved the number. The constructor seeds `zoom` from
+      // `ctx.settings`, but Menus publishes the stored settings blob after the
+      // rig is added, so the real value always arrives on a later frame than
+      // the default did — and easing to it meant every boot opened at the
+      // default distance and glided ~0.3 s to the player's chosen one. A camera
+      // drifting on its own the moment a run starts reads as a bug, not a
+      // preference being honoured. Once the player is in the world, though, a
+      // settings change under the same code path is a change they are watching
+      // for, and there the ease is the right answer.
+      if (!this._zoomAdopted) this.zoom = stored;
     }
+    this._zoomAdopted = true;
 
     const live = input && input.enabled !== false && !menuOpen;
     let delta = 0;

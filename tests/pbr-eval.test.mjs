@@ -216,6 +216,100 @@ console.log('the recorded rumble stays out of the graph until it is asked for');
   ok(a._pbrRumbleOn === false, 'but the intent is now recorded, so a later true can act on it');
 }
 
+console.log('the per-frame retry cannot stampede, and a missing file stops it for good');
+{
+  // The defect this section exists for. `setPbrRumble` only sets
+  // `pbrRumbleGain` after an awaited fetch AND decode, and the frame loop
+  // retries whenever that gain is absent -- so without an in-flight guard every
+  // frame from the first attempt until it lands starts another 25 MB fetch and
+  // ~49 MB decode. At 60 Hz over a multi-second load that is gigabytes in
+  // transit for a single file, and the call is un-awaited, so a 404 is also an
+  // unhandled rejection once per frame forever (which Playwright reports as a
+  // page error, taking every capture run down as infrastructure).
+  //
+  // Both halves are asserted by COUNTING, not by inspecting flags: a guard
+  // checked through the private field it sets is a guard checked against
+  // itself.
+  const param = () => ({ value: 0, setTargetAtTime() {}, setValueAtTime() {} });
+  const node = (kind) => {
+    const n = { kind, out: [], gain: param(), frequency: param(), Q: param(),
+                connect(d) { n.out.push(d); return d; }, disconnect() {}, start() {}, stop() {} };
+    return n;
+  };
+  const makeAudio = () => {
+    const a = new Audio();
+    a.ac = {
+      currentTime: 0, listener: {}, createGain: () => node('gain'),
+      createBiquadFilter: () => node('filter'), createBufferSource: () => node('src'),
+      decodeAudioData: async () => ({ duration: 1 }),
+    };
+    a.ready = true;
+    a.master = node('master');
+    a.voidGain = node('voidGain');
+    a.musicEngine = { update() {} };
+    return a;
+  };
+  const frames = async (a, n) => {
+    for (let i = 0; i < n; i++) {
+      a.update({ corruption: { band: 4 } }, 1 / 60);
+      await Promise.resolve();      // let any .catch settle between frames
+    }
+  };
+
+  // --- a slow load: many frames, exactly one fetch -------------------------
+  const realFetch = globalThis.fetch;
+  let fetches = 0;
+  let release;
+  const gate = new Promise((res) => { release = res; });
+  globalThis.fetch = async () => { fetches++; await gate; return { arrayBuffer: async () => new ArrayBuffer(8) }; };
+
+  const slow = makeAudio();
+  slow.setPbrRumble(true);
+  await frames(slow, 30);
+  ok(fetches === 1, `thirty frames over one in-flight load fetch the file once (fetched ${fetches})`);
+  ok(!slow.pbrRumbleGain, 'and nothing is wired until the decode actually lands');
+  release();
+  // Several awaits separate the released fetch from a built gain (body, decode,
+  // then the builder); a macrotask turn drains all of them without guessing a count.
+  await new Promise((r) => setTimeout(r, 0));
+  await frames(slow, 2);
+  ok(fetches === 1, 'and the landing does not trigger one more');
+  ok(!!slow.pbrRumbleGain, 'the layer is built exactly once the buffer exists');
+  await frames(slow, 5);
+  ok(fetches === 1, 'nor does any later frame, now that the gain exists');
+
+  // --- a 404: one attempt, then silence ------------------------------------
+  fetches = 0;
+  globalThis.fetch = async () => { fetches++; throw new Error('404'); };
+  const warns = [];
+  const realWarn = console.warn;
+  console.warn = (...a) => warns.push(a[0]);
+  const rejections = [];
+  const onRejection = (e) => { rejections.push(e); e.preventDefault?.(); };
+  process.on('unhandledRejection', onRejection);
+
+  const broken = makeAudio();
+  // Exactly the production sequence, and the reason it is written this way: at
+  // boot main.js asks for the rumble BEFORE a user gesture has created the
+  // AudioContext, so that call records the intent and returns without loading.
+  // The load is therefore started by the frame loop, un-awaited - the one path
+  // whose rejection has nobody to catch it.
+  broken._pbrRumbleOn = true;
+  await frames(broken, 40);
+  // The load rejects, so the retry must stop: a file that is not in the build
+  // will not appear later, and ambience is not worth 60 attempts a second.
+  ok(fetches === 1, `a rejecting load is attempted once, not once per frame (attempted ${fetches})`);
+  ok(warns.some((w) => typeof w === 'string' && w.includes('rumble')),
+     'and the player-visible log says once what was lost');
+  await new Promise((r) => setTimeout(r, 0));
+  ok(rejections.length === 0, 'no unhandled rejection escapes the frame loop');
+  ok(!broken.pbrRumbleGain, 'and no half-built layer is left behind');
+
+  process.off('unhandledRejection', onRejection);
+  console.warn = realWarn;
+  if (realFetch) globalThis.fetch = realFetch; else delete globalThis.fetch;
+}
+
 console.log('the maps live where vite serves them in dev and ships them in a build');
 {
   // The home is load-bearing and nothing else in the repo would notice it
