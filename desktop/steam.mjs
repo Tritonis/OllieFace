@@ -28,7 +28,7 @@ const requireCjs = createRequire(import.meta.url);
 // Spacewar, Valve's public test id. The real app id replaces this when it
 // arrives; `steam_appid.txt` at the repo root carries the same number for the
 // dev loop, and shipping builds exclude that file and get the id from Steam.
-export const DEV_APP_ID = 480;
+export const DEV_APP_ID = 5150570;
 
 let client = null;
 // The steamworks.js MODULE (not the client): `electronEnableSteamOverlay` hangs
