@@ -26,9 +26,10 @@
  * `NetHost` and `NetClient` touch a peer through "exactly three methods", and
  * that was wrong in two ways that would each have shipped a broken Steam
  * transport: `NetHost.js:532` calls `pumpSim()` unconditionally every frame, and
- * `NetHost.js:404-405` reads `readyState`/`bufferedAmount` off the peer's raw
- * `events` channel. A conformance suite built from the count would have passed
- * while leaving both holes.
+ * `NetHost.js:404-405` used to read `readyState`/`bufferedAmount` off the peer's
+ * raw `events` channel; that leak is closed as of the transport-neutral
+ * `drained()` predicate below. A conformance suite built from the count would
+ * have passed while leaving both holes.
  *
  * So the last section of this suite does not test behaviour at all. It builds a
  * peer carrying *exactly* the enumerated members and nothing else, drives the
@@ -42,13 +43,9 @@ import { MSG, Writer, Reader, EKIND, ESTATE, PROTOCOL_VERSION } from '../src/net
 /** `docs/STEAM.md` section 8.5, as data. */
 export const CONTRACT = {
   peer: [
-    'id', 'sendState', 'sendEvent', 'onMessage', 'onClose', 'pumpSim', 'close', 'events',
+    'id', 'sendState', 'sendEvent', 'onMessage', 'onClose', 'pumpSim', 'close', 'drained',
   ],
   hostTransport: ['onPeer', 'onPeerLeave', 'peers', 'broadcastEvent', 'close'],
-  // On the raw channel behind `peer.events`, reached through the peer by
-  // `NetHost._closeWhenFlushed`. Listed separately because it is a leak rather
-  // than a design, and #55 is expected to replace it with `drained()`.
-  eventsChannel: ['readyState', 'bufferedAmount'],
 };
 
 const SURVIVOR = 'anvil';
@@ -440,29 +437,6 @@ export async function runTransportContract(adapter, ok) {
     const touched = new Set();
     const missing = [];
 
-    /**
-     * The `events` channel gets a `Proxy` of its own, against
-     * `CONTRACT.eventsChannel`.
-     *
-     * Without this the check has a hole exactly where the risk is. `peer.events`
-     * is the one member the host reaches *through* — `_closeWhenFlushed` reads
-     * `readyState` and `bufferedAmount` off the raw channel — and a plain object
-     * handed back by the outer trap is unguarded from there down, so a future
-     * reach for a third `RTCDataChannel` member (`label`, `id`, `send`) would be
-     * invisible. That is the same class of omission this section exists to
-     * catch, one level lower.
-     */
-    function guardedChannel() {
-      const chan = {};
-      for (const m of CONTRACT.eventsChannel) chan[m] = m === 'readyState' ? 'open' : 0;
-      return new Proxy(chan, {
-        get(target, prop) {
-          if (typeof prop === 'string' && !(prop in target)) missing.push(`events.${prop}`);
-          return target[prop];
-        },
-      });
-    }
-
     // Built *from* `CONTRACT`, never alongside it. A hand-written fixture is a
     // second copy of the list, and two copies drift: drop a member from
     // `CONTRACT` while the fixture still implements it and this check goes on
@@ -473,7 +447,9 @@ export async function runTransportContract(adapter, ok) {
       if (member === 'id') return 7;
       // Assigned by `_onPeer`, not called by it.
       if (member === 'onMessage' || member === 'onClose') return null;
-      if (member === 'events') return guardedChannel();
+      // Reports drained so the refusal path closes on the first check, same as
+      // the original `readyState`/`bufferedAmount` fixture did.
+      if (member === 'drained') return () => { touched.add(member); return true; };
       return () => { touched.add(member); };
     };
 
@@ -518,6 +494,34 @@ export async function runTransportContract(adapter, ok) {
       t('and it did reach for pumpSim — the member section 3 of docs/STEAM.md omitted'));
     ok(touched.has('sendState'), t('and sendState, so the loop really ran'));
     ok(touched.has('sendEvent') && touched.has('close'),
-      t('and the refusal path ran, so peer.events was read through the nested guard'));
+      t('and the refusal path ran, so peer.drained() was called instead of a raw channel read'));
+  }
+
+  // ==========================================================================
+  console.log(`\n${adapter.name} — drained() is transport-neutral`);
+  // ==========================================================================
+  //
+  // Exercises the peer's own `drained()` directly, against the real reliable
+  // channel — the exact three states `_closeWhenFlushed` used to read off
+  // `readyState`/`bufferedAmount` by hand.
+  {
+    const { host } = makeHost();
+    const wire = adapter.connectPeer(host, 1);
+
+    wire.hostPeer.events.bufferedAmount = 4096;
+    ok(wire.hostPeer.drained() === false,
+      t('an open channel with buffered bytes is not drained'));
+
+    wire.hostPeer.events.bufferedAmount = 0;
+    ok(wire.hostPeer.drained() === true,
+      t('an open channel with an empty buffer is drained'));
+
+    wire.hostPeer.events.readyState = 'closed';
+    ok(wire.hostPeer.drained() === true,
+      t('a closed channel counts as drained regardless of buffer'));
+
+    wire.hostPeer.events = null;
+    ok(wire.hostPeer.drained() === true,
+      t('an absent channel counts as drained'));
   }
 }

@@ -294,6 +294,17 @@ export class Peer {
     if (this.events?.readyState === 'open') this.events.send(bytes);
   }
 
+  /**
+   * True once the reliable channel has nothing left to deliver: closed or
+   * never opened, or open with an empty send buffer. Transport-neutral so a
+   * caller (the flush-then-close path in NetHost) never has to read the
+   * channel's raw internals itself.
+   */
+  drained() {
+    const ch = this.events;
+    return !ch || ch.readyState !== 'open' || ch.bufferedAmount === 0;
+  }
+
   close() {
     if (this.closed) return;
     this.closed = true;

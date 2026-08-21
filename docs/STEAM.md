@@ -144,12 +144,13 @@ without touching a line of gameplay code. The refactor the research recommends
 doing first has, in effect, already been done.
 
 > **Corrected — see section 8.5.** "Exactly three methods" is wrong, and it was
-> wrong when written. The real peer surface is eight members, one of which
-> (`peer.events.readyState` / `.bufferedAmount`) is a raw `RTCDataChannel` read
-> from inside `NetHost`. The paragraph's conclusion survives — the seam is still
-> narrow and no gameplay code is touched — but a Steam transport built to satisfy
-> the sentence above would throw on its first frame. Section 8.5 enumerates the
-> surface instead of counting it.
+> wrong when written. The real peer surface is eight members. One of them used to
+> be `peer.events.readyState` / `.bufferedAmount`, a raw `RTCDataChannel` read
+> from inside `NetHost` — closed as of the transport-neutral `drained()`
+> predicate on the peer (2026-08-20, ahead of #55). The paragraph's conclusion
+> survives — the seam is still narrow and no gameplay code is touched — but a
+> Steam transport built to satisfy the sentence above would throw on its first
+> frame. Section 8.5 enumerates the surface instead of counting it.
 
 ### Do you still need TURN?
 
@@ -645,19 +646,19 @@ row is a member a Steam-backed transport must provide.
 **The list is now machine-checked.** `tests/transport-contract.mjs` carries it as
 data and ends with an assertion that it is *sufficient*: a peer **generated from**
 the list — never hand-written alongside it, or the two drift — is driven through
-the real host loop behind a `Proxy` that records any read outside it. The `events`
-row gets a nested `Proxy` of its own against `CONTRACT.eventsChannel`, because
-that is the one member the host reaches *through*, and an unguarded object handed
-back by the outer trap would leave the riskiest row checked in name only. The
-refusal path is driven too, so those reads actually happen.
+the real host loop behind a `Proxy` that records any read outside it. There is no
+longer an `events` row to guard through: the raw `readyState`/`bufferedAmount`
+read that once made the host reach *through* a member was replaced by the
+transport-neutral `drained()` on the peer, so the outer trap now covers the whole
+surface on its own. The refusal path is driven too, so those reads actually
+happen.
 
 Verified to bite rather than merely to pass. Three mutations, each caught:
 
 | Mutation | Caught as |
 |---|---|
-| `NetHost` reaches for a fourth channel member (`peer.events.label`) | `saw events.label` |
 | `pumpSim` dropped from the list alone | throw, **and** `saw pumpSim` |
-| `bufferedAmount` dropped from the channel list | `saw events.bufferedAmount` |
+| `drained` dropped from the list alone | throw on the refusal path |
 
 So if `NetHost` grows a reach this table does not have — at either level — that
 test fails, and this table is what gets fixed.
@@ -673,15 +674,14 @@ test fails, and this table is what gets fixed.
 | `onClose = () => {}` | `NetHost.js:147`, `NetClient.js:104` | Per-peer, and *distinct* from the transport's `onPeerLeave`. |
 | `pumpSim()` | **`NetHost.js:532`** | Called unconditionally, every frame, with no optional chaining. A transport that omits it makes `NetHost.update` throw on the first frame with a connected client. `NetClient.js:456` guards it; the host does not. |
 | `close()` | `NetHost.js:406`, `NetClient.js:236` | |
-| `events.readyState` / `events.bufferedAmount` | **`NetHost.js:404-405`** | The one genuine leak. `_closeWhenFlushed` reads the raw `RTCDataChannel` to decide whether a refusal has drained before it hangs up. |
+| `drained()` | `NetHost.js:465` | Transport-neutral. True once the reliable channel is closed, absent, or open with an empty send buffer — replaces the raw `events.readyState` / `events.bufferedAmount` read `_closeWhenFlushed` used to make. |
 
-The last two rows are why "no gameplay code is touched" needs qualifying.
-`pumpSim` exists only for the WebRTC `?netlag=` rig and is meaningless on a Steam
+The `pumpSim` row is why "no gameplay code is touched" still needs qualifying.
+It exists only for the WebRTC `?netlag=` rig and is meaningless on a Steam
 connection, yet it is on the contract because `NetHost` calls it — so a Steam peer
-either implements it as a no-op or `NetHost.js:532` changes. The `events` read is
-worse: it is `RTCDataChannel`'s vocabulary, in `NetHost`, and it needs a
-transport-neutral replacement (a `drained()` predicate on the peer is the obvious
-one) before #55 rather than after.
+either implements it as a no-op or `NetHost.js:532` changes. The old `events` read
+was worse: it was `RTCDataChannel`'s vocabulary, in `NetHost`. That leak is closed
+now that `drained()` sits on the peer instead.
 
 **On the host transport:** `onPeer`, `onPeerLeave`, `peers` (a `Map`, whose size
 `Lobby` bounds), `broadcastEvent(bytes, except)`, `close()`.

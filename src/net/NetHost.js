@@ -442,9 +442,10 @@ export class NetHost {
    *    which is a bet on the send having drained in that time, and at 60 KB the
    *    bet lost on loopback with zero latency: measured, the refusal was
    *    delivered at 300 bytes and dropped at 60 000, leaving the joiner reading
-   *    the generic shrug this whole path exists to replace. `bufferedAmount` is
-   *    the actual question, so ask it — under a cap, because a peer that never
-   *    drains must not keep the connection open for ever.
+   *    the generic shrug this whole path exists to replace. Whether the buffer
+   *    has drained is the actual question, so ask the peer — via `drained()`,
+   *    transport-neutral — under a cap, because a peer that never drains must
+   *    not keep the connection open for ever.
    */
   _refuse(peer, reason, detail = '') {
     const short = String(detail ?? '').slice(0, REFUSE_DETAIL_MAX);
@@ -461,8 +462,7 @@ export class NetHost {
    * reading from holding a connection open by doing nothing.
    */
   _closeWhenFlushed(peer, tries = 0) {
-    const ch = peer?.events;
-    const drained = !ch || ch.readyState !== 'open' || ch.bufferedAmount === 0;
+    const drained = !peer || peer.drained();
     if (drained || tries >= REFUSE_FLUSH_TRIES) return void peer.close();
     setTimeout(() => this._closeWhenFlushed(peer, tries + 1), REFUSE_FLUSH_MS);
   }
