@@ -851,10 +851,6 @@ export class Menus {
          <button class="segbtn" data-nav data-val="0">Off</button>
        </div>`);
 
-    // Captions (#46). A `data-seg` row, so the click handler below writes it
-    // into the settings blob and `save`s it exactly like `dynamicRes` — it is
-    // read live by `Announcer.captionsOn` off `ctx.settings`, which is this
-    // same object.
     // Camera assist (#132). Off is a real choice, not a degraded mode: some
     // players would rather turn out of an obstruction themselves than have the
     // boom move without being asked.
@@ -864,6 +860,10 @@ export class Menus {
          <button class="segbtn" data-nav data-val="0">Off</button>
        </div>`);
 
+    // Captions (#46). A `data-seg` row, so the click handler below writes it
+    // into the settings blob and `save`s it exactly like `dynamicRes` — it is
+    // read live by `Announcer.captionsOn` off `ctx.settings`, which is this
+    // same object.
     html += row('Audio captions',
       `<div class="sseg" data-seg="captions">
          <button class="segbtn" data-nav data-val="1">On</button>

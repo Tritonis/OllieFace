@@ -341,5 +341,32 @@ console.log('occlusion hysteresis: one grazing frame is not a collapse');
      `at sprint the same single frame is still acted on in full (${fastDrop.toFixed(3)} m)`);
 }
 
+console.log('the stored distance is adopted on frame one, not eased into');
+{
+  // Menus publishes the settings blob AFTER the rig is added, so the stored
+  // zoom always arrives on a later frame than the constructor's default. Easing
+  // to it meant every boot opened at the default distance and glided to the
+  // player's own over ~0.3 s -- a camera that moves on its own the instant a run
+  // starts, which reads as a bug rather than as a preference being honoured.
+  //
+  // Written as a pair: the boot adoption must snap, and a change made later --
+  // the same code path, the same field -- must still ease, or the fix would have
+  // bought frame one at the cost of the settings slider going jerky.
+  const settings = {};
+  const { ctx, rig } = makeRig({ settings });
+  const dflt = rig.zoom;
+  settings.cameraZoom = 1.6;                 // what Menus publishes a frame later
+  rig.lateUpdate(ctx, dt);
+  ok(Math.abs(rig.zoom - 1.6) < 1e-6,
+     `the first frame with a stored zoom opens AT it (${rig.zoom.toFixed(3)}, was ${dflt.toFixed(3)})`);
+
+  settings.cameraZoom = 0.7;                 // the player moves the slider mid-run
+  rig.lateUpdate(ctx, dt);
+  ok(rig.zoom > 0.7 + 1e-3 && rig.zoom < 1.6,
+     `a later change still eases rather than snapping (${rig.zoom.toFixed(3)})`);
+  run(rig, ctx, 60);
+  ok(Math.abs(rig.zoom - 0.7) < 1e-2, `and arrives (${rig.zoom.toFixed(3)})`);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

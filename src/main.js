@@ -190,11 +190,15 @@ installTelemetry(ctx);
 // materials are not built until they drop into a run. Awaiting it would trade a
 // live title screen for ten seconds of black.
 //
-// The consequence, stated rather than hidden: on a cold boot on a slow disk it
-// is possible to reach a stage before the maps land, and a surface would then
-// change under the player once. Measured on this machine the load finishes
-// several seconds inside the title screen, so the pop is theoretical rather
-// than observed — but it is why this line sits as early as it does.
+// The consequence, stated rather than hidden: the pop is GUARANTEED, not a risk.
+// `Stage.init` has already built and shown the title-screen world by the time
+// this resolves, so those surfaces are procedural for the length of the load and
+// then change. What the placement buys is not avoidance but timing — the change
+// happens behind the title screen, seconds before the player drops into a run,
+// rather than under their feet mid-stage. Awaiting it instead would move the
+// cost to a black screen of the same length, which is a worse trade for a
+// surface nobody is looking at yet. If it ever needs to be invisible, the fix is
+// a boot gate on the title screen, not moving this line.
 //
 // A failure here is not fatal and must not be: the procedural library is a
 // complete surface on its own, so a 404 or a decode error costs the game its
