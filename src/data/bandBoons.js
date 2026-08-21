@@ -46,6 +46,37 @@ export function marksMinted(peak) {
 }
 
 /**
+ * What a press about to add `added` points would *earn*, given the run's
+ * current peak (issue #36, second pass).
+ *
+ * The first pass minted marks inside `Corruption.feed` and told nobody. The one
+ * surface a player reads before every corrupting press — `pricedPrompt` — quoted
+ * three clauses and all three were costs, so the whole upside economy was
+ * invisible at exactly the moment it was supposed to be arguing. This is the
+ * other half of that sentence.
+ *
+ * Pure, and expressed in terms of `marksMinted` rather than a second copy of
+ * the arithmetic, so the number the prompt promises and the number `feed` mints
+ * are the same function evaluated twice. `added` must already carry the greed
+ * multiplier and the artifact economy — the caller quotes through
+ * `Corruption.priceOf` for the same reason the debt clause does, or the prompt
+ * would under-promise on greed time by exactly the factor that makes greed time
+ * worth taking.
+ *
+ * `toNext` is the distance from where this press *lands* to the next boundary,
+ * not from where the run stands now: the question a player is asking at a chest
+ * is how much more greed the mark needs, and answering it from the pre-press
+ * peak over-quotes by exactly the press being considered. Meaningful only when
+ * `mints` is 0 — a minting press has already arrived.
+ */
+export function mintForecast(peak, added) {
+  const p = Number.isFinite(peak) ? Math.max(0, peak) : 0;
+  const a = Number.isFinite(added) ? Math.max(0, added) : 0;
+  const mints = marksMinted(p + a) - marksMinted(p);
+  return { mints, toNext: BOON.markPer - ((p + a) % BOON.markPer) };
+}
+
+/**
  * Corrupted-item synergies — the Blighted band's offer.
  *
  * Each names two blight cards that do something together that neither does

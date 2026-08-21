@@ -3,6 +3,7 @@ import { BANDS, MUTATION, SOURCES, bandOf, pressureAt } from '../data/corruption
 import { ITEM_BY_ID, ITEMS_BY_TIER } from '../data/items.js';
 import { CAPRICE_TIERS } from '../data/artifacts.js';
 import { ORDINARY_TIERS } from '../systems/Items.js';
+import { mintForecast } from '../data/bandBoons.js';
 
 /**
  * The price tag every corruption-feeding prompt wears (issue #30).
@@ -182,6 +183,20 @@ export function pricedPrompt(ctx, gain, min, max = min, qualifier = '') {
   let debt = `${lo === hi ? `+${fmt(lo)}` : `+${fmt(lo)}-${fmt(hi)}`} corruption`;
   if (qualifier) debt += ` ${qualifier}`;
   if (cor.greed) debt += ` (x${fmt(SOURCES.greedMult)} greed time)`;
+  // The other half of the transaction (issue #36, second pass). Every clause of
+  // this prompt was a cost, including the one describing a press that mints the
+  // currency the whole upside economy runs on. The forecast is quoted off the
+  // *best* case of the range — the press the player is hoping for — and off the
+  // already-multiplied `hi`, because `feed` mints against what it charged and
+  // not against face value. A corruption stub with no `peak` (older fixtures,
+  // and a co-op client before replication) gets no clause at all rather than a
+  // mark quoted off `undefined`.
+  if (Number.isFinite(cor.peak)) {
+    const { mints, toNext } = mintForecast(cor.peak, hi);
+    debt += mints > 0
+      ? ` -> mints ${mints === 1 ? 'a void mark' : `${mints} void marks`}`
+      : ` (${fmt(toNext)} to the next void mark)`;
+  }
   // The toll floor is `Items`' answer, never a second derivation here. Absent
   // an item system (stub contexts) it degrades to `MUTATION.minBand`, which is
   // the right answer for a run that has crossed nothing.
