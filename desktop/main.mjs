@@ -131,13 +131,34 @@ const MAX_PACKETS_PER_TICK = 16;
  */
 let pendingJoinLobbyId = parseConnectLobbyArg(process.argv);
 
+/**
+ * Has a live page collected its parked invite yet?
+ *
+ * A window existing is NOT the same claim as a page listening: `mainWindow` is
+ * constructed long before the bundle runs, and `bindSteam` subscribes to
+ * `steam:join-requested` and only THEN asks for the parked id — so this flag
+ * going true is proof the subscription exists, and the only such proof the main
+ * process has. A push sent before it would be delivered into a page with no
+ * listener and silently lost, which is why the second-instance path parks
+ * instead of pushing until it flips.
+ *
+ * `releaseAllSteamState()` clears it, because every one of that function's call
+ * sites — a main-frame navigation, a dead renderer, the window closing — means
+ * the page that held the subscription is gone. The reload window is then parked
+ * like any other pre-subscription moment, and the next `bindSteam` collects it.
+ */
+let rendererCollectedJoin = false;
+
 /** A second launch of an already-running game — which is how Steam delivers an
- *  accepted invite when the shell has `requestSingleInstanceLock`. Live if the
- *  page is up, parked if it is not, and never both. */
+ *  accepted invite when the shell has `requestSingleInstanceLock`. Pushed live
+ *  only to a page proven to be listening; parked otherwise, and never both. */
 function noteLaunchJoin(lobbyId) {
   if (!lobbyId) return;
-  if (mainWindow && !mainWindow.isDestroyed()) pushToRenderer('steam:join-requested', { lobbyId });
-  else pendingJoinLobbyId = lobbyId;
+  if (rendererCollectedJoin && mainWindow && !mainWindow.isDestroyed()) {
+    pushToRenderer('steam:join-requested', { lobbyId });
+  } else {
+    pendingJoinLobbyId = lobbyId;
+  }
 }
 
 /** A message for the renderer that is a string and only a string. `err` may
@@ -241,6 +262,9 @@ function stopSignalListen() {
  * kind of bug that only shows up the second time this runs.
  */
 function releaseAllSteamState() {
+  // The page that was listening is gone; anything pushed from here until the
+  // next `bindSteam` would land nowhere. Park it instead.
+  rendererCollectedJoin = false;
   stopSignalListen();
   for (const lobby of steamLobbies.values()) {
     try { lobby.leave(); } catch (err) { console.error('steam: lobby leave failed', steamError(err)); }
@@ -348,6 +372,10 @@ function registerSteamBridge() {
   // The launch-time half of the join side. Answers once and forgets; see
   // `pendingJoinLobbyId`.
   handle('steam:pending-join', async () => {
+    // The ask itself is the proof of a live subscription; see
+    // `rendererCollectedJoin`. Set even when there is nothing parked — what it
+    // records is that a page is listening, not that an invite arrived.
+    rendererCollectedJoin = true;
     const lobbyId = pendingJoinLobbyId;
     pendingJoinLobbyId = null;
     return { lobbyId: lobbyId ?? null };

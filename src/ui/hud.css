@@ -2339,6 +2339,41 @@ body.menu-open { cursor: default; }
    Two columns — host on the left, join on the right — because the flow is a
    trade of two codes and the player has to see both ends of it at once. */
 
+/* Bounded exactly like `.screen--settings .panel--wide` above and
+   `.screen--death .panel--wide` before it, and for the same reason (#43, now
+   #54): `.screen` is `inset: 0; justify-content: center` with no overflow, so
+   a panel taller than the viewport loses its head off the top and its Back
+   button off the bottom with no way to reach either. Co-op earned the bound
+   when the Steam friend picker arrived: it is the first content on this screen
+   whose length is decided by something other than this repo -- a friends list
+   is as long as it is, and the only cap anywhere is MAX_FRIENDS_LISTED=512 at
+   the IPC seam, which is a flood guard, not a layout one.
+
+   `min-height: 0` is the flex-child escape hatch (without it a flex item
+   refuses to shrink below its content and `overflow` never engages), and
+   `flex-shrink: 0` is its counterweight at the outer level, where `.screen`
+   is itself a flex container and would otherwise squeeze the whole panel down
+   to its padded box even with max-height headroom to spare. Both are the
+   settings block's hard-won pair; see its comment for the full account. */
+.screen--coop .panel--wide {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex-shrink: 0;
+  max-height: calc(100vh - 3em);
+}
+.coop-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+/* Outside the scroller by design: however long the friends list runs, Leave
+   and Back are on screen. */
+.screen--coop .panel--wide > .menu-list {
+  flex: 0 0 auto;
+}
+
 .coop-status {
   padding: 0.7em 0.9em;
   margin-bottom: 1.2em;
