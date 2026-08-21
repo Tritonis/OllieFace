@@ -18,6 +18,7 @@ import {
   sanitizeLobbyData, encodeSignal, decodeSignal, MAX_SIGNAL_FRAME_BYTES,
   isAuthorizedSignalTarget, sanitizeFriendList, parseConnectLobbyArg,
 } from './steam-validate.mjs';
+import { createJoinDelivery } from './join-delivery.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.join(HERE, '..', 'dist');
@@ -115,51 +116,25 @@ let signalListen = null;
 const MAX_PACKETS_PER_TICK = 16;
 
 /**
- * A lobby the player accepted an invite to before the page could listen.
+ * The one door every accepted Steam invite goes through.
  *
- * There are two ways an accepted invite arrives, and only one of them is a
- * callback. A friend accepting while the game is already running fires 333 and
- * the renderer hears it live. A friend accepting while the game is CLOSED makes
- * Steam launch it with `+connect_lobby <id>` — which happens long before there
- * is a window, let alone a page with a subscription — and a push into nothing
- * is an invite the player watched Steam accept and the game silently ignore.
- * So the launch case is parked here and collected by `steam:pending-join`,
- * which the renderer asks once at start-up.
- *
- * Collected exactly once: it is a single gesture, and replaying it on every
- * reload would drag a player back into a lobby they have since left.
+ * All THREE routes — `+connect_lobby` at launch, a `second-instance` command
+ * line, and callback 333 — can fire before the page is listening, 333 included:
+ * it is registered in `registerSteamBridge()`, which runs before
+ * `app.whenReady()`. An earlier version of this file believed 333 was the safe
+ * one and pushed it straight at the renderer; that push had no window to land
+ * in during boot and no subscription to land in during load, and the invite was
+ * gone with nothing parked. `join-delivery.mjs` holds the whole rule and the
+ * reasoning; nothing in this file may push `steam:join-requested` around it.
  */
-let pendingJoinLobbyId = parseConnectLobbyArg(process.argv);
-
-/**
- * Has a live page collected its parked invite yet?
- *
- * A window existing is NOT the same claim as a page listening: `mainWindow` is
- * constructed long before the bundle runs, and `bindSteam` subscribes to
- * `steam:join-requested` and only THEN asks for the parked id — so this flag
- * going true is proof the subscription exists, and the only such proof the main
- * process has. A push sent before it would be delivered into a page with no
- * listener and silently lost, which is why the second-instance path parks
- * instead of pushing until it flips.
- *
- * `releaseAllSteamState()` clears it, because every one of that function's call
- * sites — a main-frame navigation, a dead renderer, the window closing — means
- * the page that held the subscription is gone. The reload window is then parked
- * like any other pre-subscription moment, and the next `bindSteam` collects it.
- */
-let rendererCollectedJoin = false;
-
-/** A second launch of an already-running game — which is how Steam delivers an
- *  accepted invite when the shell has `requestSingleInstanceLock`. Pushed live
- *  only to a page proven to be listening; parked otherwise, and never both. */
-function noteLaunchJoin(lobbyId) {
-  if (!lobbyId) return;
-  if (rendererCollectedJoin && mainWindow && !mainWindow.isDestroyed()) {
-    pushToRenderer('steam:join-requested', { lobbyId });
-  } else {
-    pendingJoinLobbyId = lobbyId;
-  }
-}
+const joinDelivery = createJoinDelivery({
+  push: (lobbyId) => pushToRenderer('steam:join-requested', { lobbyId }),
+  windowAlive: () => !!mainWindow && !mainWindow.isDestroyed(),
+  // The closed-game route, read off this process's own command line. Parked
+  // from the first line of the module, because there is no page for most of
+  // what happens next.
+  initial: parseConnectLobbyArg(process.argv),
+});
 
 /** A message for the renderer that is a string and only a string. `err` may
  *  carry a bigint somewhere in it, so it is never spread, serialised, or
@@ -264,7 +239,7 @@ function stopSignalListen() {
 function releaseAllSteamState() {
   // The page that was listening is gone; anything pushed from here until the
   // next `bindSteam` would land nowhere. Park it instead.
-  rendererCollectedJoin = false;
+  joinDelivery.release();
   stopSignalListen();
   for (const lobby of steamLobbies.values()) {
     try { lobby.leave(); } catch (err) { console.error('steam: lobby leave failed', steamError(err)); }
@@ -369,17 +344,11 @@ function registerSteamBridge() {
       : { error: 'invite-refused' };
   });
 
-  // The launch-time half of the join side. Answers once and forgets; see
-  // `pendingJoinLobbyId`.
-  handle('steam:pending-join', async () => {
-    // The ask itself is the proof of a live subscription; see
-    // `rendererCollectedJoin`. Set even when there is nothing parked — what it
-    // records is that a page is listening, not that an invite arrived.
-    rendererCollectedJoin = true;
-    const lobbyId = pendingJoinLobbyId;
-    pendingJoinLobbyId = null;
-    return { lobbyId: lobbyId ?? null };
-  });
+  // The renderer collecting whatever invite arrived before it was listening,
+  // by whichever of the three routes. Answers once and forgets; the ask is
+  // also what tells `joinDelivery` a subscription now exists, so everything
+  // after this point is pushed live instead of parked.
+  handle('steam:pending-join', async () => ({ lobbyId: joinDelivery.collect() ?? null }));
 
   handle('steam:write-lobby-data', async (rawLobbyId, record) => {
     const lobby = lobbyFor(rawLobbyId);
@@ -471,7 +440,12 @@ function registerSteamBridge() {
     client.callback.register(client.callback.SteamCallback.GameLobbyJoinRequested, (event) => {
       const lobbyId = steamIdToString(event && event.lobby_steam_id);
       if (!lobbyId) return;
-      pushToRenderer('steam:join-requested', { lobbyId });
+      // Through `joinDelivery`, NOT straight to the renderer. This handler is
+      // registered before `app.whenReady()`, so it can fire with no window at
+      // all and routinely fires while the bundle is still loading — a direct
+      // push in either case is an invite the player watched Steam accept and
+      // the game silently drop.
+      joinDelivery.offer(lobbyId);
     });
   }
 }
@@ -500,7 +474,7 @@ if (!app.requestSingleInstanceLock()) {
     // Steam delivers an accepted invite by LAUNCHING the game again, which the
     // single-instance lock turns into this event — so the second instance's
     // command line is where a running shell hears about it.
-    noteLaunchJoin(parseConnectLobbyArg(argv));
+    joinDelivery.offer(parseConnectLobbyArg(argv));
     if (!mainWindow) return;
     if (mainWindow.isMinimized()) mainWindow.restore();
     mainWindow.focus();
