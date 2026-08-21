@@ -1,19 +1,29 @@
 // tests/pbr-eval.test.mjs
 //
-// The photographed-asset evaluation set (#109 step 3) is a feature whose whole
-// contract is about what happens when it is OFF: no fetch, no shader change,
-// no cache-key change, no audio node. That contract is invisible to every gate
-// in the repo -- a full `gates:cheap` pass says nothing about it, because the
-// flag is off in all of them and "nothing happened" is exactly what a passing
-// run looks like either way.
+// The photographed surface set (#109), guarded after adoption.
 //
-// So this file guards the absence rather than the presence. Each assertion is
-// paired: the off state is asserted alongside the on state that proves the
-// off state was a decision and not a broken switch. An assertion that can only
-// ever read "nothing changed" is the guard-that-passes-while-blind shape this
-// repo keeps rediscovering, and a pair cannot take that shape -- if the flag
-// stops working, the ON half fails.
-import { readFileSync } from 'node:fs';
+// While it was an experiment this file pinned the OFF state: no fetch, no
+// shader change, no audio node unless the flag asked. Adoption inverts most of
+// that. The set is the game's surface now, so what needs guarding is that no
+// route back to optional survives, that the maps sit where vite serves them in
+// dev AND ships them in a build, and that the desktop shell has been left
+// knowing nothing about any of it.
+//
+// Two habits carry over unchanged, because they are what makes these
+// assertions worth running:
+//
+//  - **Paired, never single-sided.** Every "X is absent" sits beside the "X is
+//    present" that proves the absence was a decision rather than a broken
+//    switch. An assertion that can only ever read "nothing changed" is the
+//    guard-that-passes-while-blind shape this repo keeps rediscovering.
+//  - **Mutation-checked.** Each keystone assertion here has been watched to
+//    fail against a deliberate break of the thing it claims. A guard nobody
+//    has seen fail is a guard nobody knows the polarity of.
+//
+// The `maskApply(false)` branch and `setPbr(false)` are still exercised below:
+// they are no longer a shipping flag, they are the procedural arm of the A/B
+// that `tools/capture-arteval.mjs` takes its evidence with.
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as THREE from 'three';
@@ -122,33 +132,45 @@ console.log('the asset assignment carries no albedo on the overlay and no displa
   ok(!('crystal' in ASSIGNMENT), 'the emissive accent is left alone');
 }
 
-console.log('flag-off can never fetch: the module is imported inside the flag branch');
+console.log('every boot binds the photographed set, and no flag can decline it');
 {
-  // A drift guard in the style of the glyph-atlas mirror test. The claim
-  // "flag-off fetches nothing" rests entirely on the import being dynamic and
-  // guarded; a later refactor hoisting it to the top of main.js would keep
-  // every other assertion in this file green while shipping a 122 MiB fetch to
-  // every player.
+  // The inverse of what this section guarded before adoption. It used to pin
+  // that a flag-off boot could not possibly fetch; the set is the game's
+  // surface now, so what needs pinning is that no route back to optional
+  // exists — a reintroduced query-string branch would make the shipping
+  // surface depend on how the app happened to be launched, which is exactly
+  // the state #109 step 6 closed.
   const main = read('src/main.js');
-  ok(!/^import[^\n]*PbrEval/m.test(main), 'main.js never statically imports PbrEval');
+  ok(/^import \{[^\n]*setPbr[^\n]*\} from '\.\/world\/PbrEval\.js';$/m.test(main),
+     'main.js imports the surface set statically — it is boot work, not an option');
+  ok(!/params[^\n]*['"]pbr['"]/.test(main), 'no query parameter decides the surface any more');
+  ok(main.includes('setPbr(true)'), 'and the boot path binds it');
 
-  const guard = "if (params.get('pbr') === '1') {";
-  const at = main.indexOf(guard);
-  ok(at >= 0, 'the boot flag is still spelled ?pbr=1');
-  // Walk the braces from the guard to find its block, so the assertion is
-  // about containment rather than about line numbers.
-  let depth = 0, end = -1;
-  for (let i = at + guard.length - 1; i < main.length; i++) {
+  // Unconditional means unconditional: the call must not sit inside any `if`.
+  // Checked by brace depth from the top of the module, which no rewording of
+  // a guard can slip past.
+  const at = main.indexOf('setPbr(true)');
+  let depth = 0;
+  for (let i = 0; i < at; i++) {
     if (main[i] === '{') depth++;
-    else if (main[i] === '}' && --depth === 0) { end = i; break; }
+    else if (main[i] === '}') depth--;
   }
-  const block = end > 0 ? main.slice(at, end) : '';
-  ok(block.includes("import('./world/PbrEval.js')"), 'the dynamic import lives inside the flag branch');
-  ok(block.includes('catch'), 'and a missing asset set is caught rather than abandoning module evaluation');
+  ok(depth === 0, 'the bind sits at module top level, inside no branch at all');
+
+  const tail = main.slice(at, at + 400);
+  ok(tail.includes('.catch('), 'a failed load is caught, so the procedural library remains the fallback');
+  ok(tail.includes('setPbrRumble'), 'and the recorded rumble rides the same unconditional path');
+
+  // The shell must know nothing about any of it: no switch, no asset root, no
+  // second serving branch. `dist/` carries the maps and app:// already serves
+  // `dist/`, which is the whole reason `public/game-assets/` was the home.
+  const shell = read('desktop/main.mjs');
+  ok(!/pbr|PBR|assets-staging/.test(shell), 'the desktop shell carries no surface knowledge at all');
+  ok(shell.includes("win.loadURL('app://game/index.html')"), 'and loads the game with no query string');
 
   const harness = main.indexOf("if (params.has('harness'))");
   ok(harness > 0 && main.slice(harness).includes('installPbrHarness'),
-     'the harness hook is installed from the harness branch, which registers but never calls');
+     'the A/B hook stays harness-only, so nothing a player runs can turn the surface off');
 }
 
 console.log('the recorded rumble stays out of the graph until it is asked for');
@@ -190,44 +212,43 @@ console.log('the recorded rumble stays out of the graph until it is asked for');
   ok(a._pbrRumbleOn === false, 'but the intent is now recorded, so a later true can act on it');
 }
 
-console.log('the packaging seam ships the staged set into the artifact and not into the default one');
+console.log('the maps live where vite serves them in dev and ships them in a build');
 {
-  // The evaluation set has to reach the packed build (the #109 playtest is on
-  // the artifact, not the dev server) WITHOUT becoming part of the default
-  // artifact, because nothing binary is accepted until #26 closes. Those are
-  // two claims and each needs its own assertion, or "it packs" and "it packs
-  // for everyone" become the same green.
-  const pkg = JSON.parse(read('package.json'));
-  const files = pkg.build.files.map(String);
-  ok(!files.some((f) => f.includes('assets-staging')),
-     'build.files never admits the staged set, so the ordinary pack stays binary-free');
-  ok(pkg.build.extraResources === undefined,
-     'and no standing extraResources entry carries it either');
-  ok(!pkg.scripts['desktop:pack'].includes('assets-staging'),
-     'the ordinary pack script is untouched by the evaluation');
-  ok(pkg.scripts['desktop:pack:pbr']?.includes('-c.extraResources=assets-staging'),
-     'the evaluation pack adds it as a one-flag override rather than a second config file');
-
-  // The shell is the only place the dev-server URL and the packaged URL are
-  // allowed to differ. If this moves back into src/, the renderer starts
-  // carrying knowledge of how it was packaged.
-  const shell = read('desktop/main.mjs');
-  ok(shell.includes("process.argv.includes('--pbr')"), 'the shell reads the flag off its command line');
-  ok(shell.includes("TELLURIC_PBR"), 'and off an environment variable, for a shortcut-less launch');
-  ok(/loadURL\(`app:\/\/game\/index\.html\$\{PBR_EVAL \? '\?pbr=1' : ''\}`\)/.test(shell),
-     'and maps it onto the query string the renderer already reads');
-  ok(shell.includes('app.isPackaged ? process.resourcesPath'),
-     'the packaged asset root is resources/, the unpacked one the repo root');
-  ok(shell.includes("rel.startsWith(EVAL_PREFIX)"), 'the app:// handler serves the staged set');
-  ok(/asset\.startsWith\(path\.join\(base, 'assets-staging'\) \+ path\.sep\)/.test(shell),
-     'and the new root carries its own traversal containment check');
-
-  // One resolution point, as the brief requires: src/ knows a relative path
-  // and nothing else about where the files live.
+  // The home is load-bearing and nothing else in the repo would notice it
+  // moving. `public/` is vite's static root: served at the site root by the dev
+  // server and copied wholesale into `dist/` by a build. The desktop shell
+  // already serves the whole of `dist/` over app://, so one relative URL is
+  // correct in all three worlds and the shell needs no branch — which is what
+  // let the packaging seam be deleted at adoption. A move to any other
+  // directory silently breaks the packaged build only, the one place no unit
+  // test looks.
   const evalSrc = read('src/world/PbrEval.js');
-  ok(evalSrc.includes("const ROOT = 'assets-staging'"), 'the renderer holds one relative root');
-  ok(!/resourcesPath|isPackaged|file:\/\//.test(evalSrc), 'and no packaging knowledge at all');
+  ok(evalSrc.includes("const ROOT = 'game-assets'"), 'the renderer holds one relative root');
+  ok(!/resourcesPath|isPackaged|file:\/\/|assets-staging/.test(evalSrc),
+     'and no packaging knowledge, and no memory of the staging directory');
+
+  const files = [];
+  for (const spec of Object.values(SETS)) {
+    for (const kind of Object.values(spec.maps)) files.push(`${spec.dir}/${spec.stem}_${kind}_4k.jpg`);
+  }
+  // Derived from SETS rather than listed by hand: a renamed map has to fail
+  // here rather than at runtime in a packed build.
+  const missing = files.filter((f) => !existsSync(join(here, '..', 'public', f)));
+  ok(missing.length === 0, `every map SETS names is on disk under public/${missing.length ? ` — missing: ${missing.join(', ')}` : ''}`);
+  ok(files.length === 11, `all eleven bound maps are accounted for (found ${files.length})`);
+  ok(existsSync(join(here, '..', 'public', 'game-assets', 'audio',
+                     '735011__vladislavzh__trembling-low-frequency-rumble.wav')),
+     'and the rumble recording, under the filename that carries its attribution');
+
+  // The packaging seam is gone, and must not come back: the default pack now
+  // carries the maps through dist/, so a second route would be a second answer.
+  const pkg = JSON.parse(read('package.json'));
+  ok(pkg.scripts['desktop:pack:pbr'] === undefined, 'the evaluation pack script is gone');
+  ok(pkg.build.extraResources === undefined, 'and no extraResources route survives it');
+  ok(!JSON.stringify(pkg.build.files).includes('assets-staging'), 'and build.files names no staging directory');
 }
 
-console.log(`\n${pass} passed, ${fail} failed`);
+
+console.log(`
+${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

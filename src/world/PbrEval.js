@@ -1,18 +1,26 @@
 /**
- * The photographed-surface evaluation set (#109 step 3).
+ * The photographed surface set (#109, adopted after the step 6 playtest).
  *
- * Three downloaded PBR sets are bound over the procedural material library so
- * the two can be compared in one boot: worn rock on the stone classes,
- * corrugated iron on the ruin metal, and a cracked riverbed's relief on the
- * corruption overlay. Nothing here is on by default and nothing here is
- * fetched until it is: `?pbr=1` at boot, or `__HARNESS__.setPbr(true)` at
- * runtime, is the only thing that reaches the network. Flag-off the game
- * builds exactly the textures it built yesterday.
+ * Three PBR sets are bound over the procedural material library at boot: worn
+ * rock on the stone classes, corrugated iron on the ruin metal, and a cracked
+ * riverbed's relief on the corruption overlay. This is the game's surface now,
+ * not an experiment behind a flag — `?pbr=1` and the shell's `--pbr` switch
+ * are gone with the evaluation they served.
  *
- * The files live in `assets-staging/`, which is gitignored — no binary enters
- * the tree until #26 closes and a pack is actually chosen. That is also why
- * this module is a *swap over* the library rather than a replacement of it:
- * delete the directory and the game still runs, it simply refuses the flag.
+ * The files live in `public/game-assets/`, which is the whole of why that
+ * directory was chosen: vite serves `public/` at the site root in dev and
+ * copies it into `dist/` on build, and the desktop shell already serves the
+ * whole of `dist/` over `app://`. One relative URL is therefore correct in the
+ * browser, under `npm run dev`, and inside the packed artifact, and the shell
+ * needs no branch of its own. Issue #26 accepting the set is what let 173 MiB
+ * of binaries into git at all; before that they sat in a gitignored staging
+ * directory and the shell carried a packaging seam to reach them.
+ *
+ * The library is still *swapped over* rather than replaced. Two reasons it
+ * stays that way: the procedural sets remain the fallback when a map fails to
+ * load, and `setPbr(false)` is the A/B the capture tooling takes its evidence
+ * with (`tools/capture-arteval.mjs`) — the comparison that justified adopting
+ * this set has to stay reproducible after adoption.
  *
  * What is deliberately NOT bound:
  *
@@ -37,7 +45,7 @@ import * as THREE from 'three';
 import { getMaterials } from './Materials.js';
 import { setOverlayMaps } from '../shaders/BlightMask.js';
 
-const ROOT = 'assets-staging';
+const ROOT = 'game-assets';
 
 export const SETS = {
   rock: {
@@ -140,9 +148,12 @@ function restore(mat) {
 }
 
 /**
- * Turn the evaluation set on or off in a live session. Returns when the swap
- * is actually on the materials, so a capture harness can await it and shoot
- * the next frame.
+ * Bind the photographed set, or fall back to the procedural one, in a live
+ * session. Returns when the swap is actually on the materials, so a caller can
+ * render the next frame knowing which surface it will get.
+ *
+ * `true` is the boot path; `false` exists for the capture A/B and for any
+ * future fallback that needs the procedural library back without a reload.
  *
  * The A/B is deliberately a *material* swap and not a uniform: uniforms on
  * these materials are rewritten every frame by the detail and blight update

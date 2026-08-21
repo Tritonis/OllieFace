@@ -27,31 +27,6 @@ const requireCjs = createRequire(import.meta.url);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.join(HERE, '..', 'dist');
 
-/* ---------------------------------------------------------------------------
- * EVALUATION APPARATUS (#109 step 3) — removed or reshaped when the asset
- * question is settled (#26). Nothing below is part of the shipping game.
- *
- * Two things the packaged build needs that the dev server gave for free:
- *
- *  1. A way to *say* `?pbr=1`. The renderer reads the flag off
- *     `location.search`, and nobody can type a query string into a packed
- *     window — so the shell maps a command line switch onto the URL it loads.
- *     `--pbr` follows the precedent already in this file: `+connect_lobby` is
- *     read off `process.argv` at launch and again from `second-instance`.
- *  2. A place to *serve* the files from. `assets-staging/` is gitignored and
- *     is NOT in `build.files`, so it does not enter the default artifact at
- *     all; `npm run desktop:pack:pbr` adds it as an extraResource, which lands
- *     it in `resources/assets-staging/` beside `resources/app/`. The renderer
- *     asks for the same relative `assets-staging/...` URL in both worlds and
- *     the resolution difference lives here, in the protocol handler, rather
- *     than being scattered through `src/world/PbrEval.js`.
- */
-const PBR_EVAL = process.argv.includes('--pbr') || process.env.TELLURIC_PBR === '1';
-const EVAL_PREFIX = '/assets-staging/';
-// Packed: `resources/assets-staging`. Unpacked (`npm run desktop:run`): the
-// repo root, which is where the staging directory already sits for vite.
-const EVAL_ROOT = () => (app.isPackaged ? process.resourcesPath : path.join(HERE, '..'));
-
 if (process.env.TELLURIC_USERDATA) app.setPath('userData', process.env.TELLURIC_USERDATA);
 
 // Must run before app ready.
@@ -745,17 +720,6 @@ if (!app.requestSingleInstanceLock()) {
       const url = new URL(request.url);
       let rel = decodeURIComponent(url.pathname);
       if (rel === '/' || rel === '') rel = '/index.html';
-      // Evaluation apparatus (#109): the staged texture set lives outside
-      // `dist/`, so it gets its own root and its own containment check. Same
-      // traversal rule as below — a `..` in the request can never climb out of
-      // the directory the branch chose.
-      if (rel.startsWith(EVAL_PREFIX)) {
-        const base = EVAL_ROOT();
-        const asset = path.normalize(path.join(base, rel));
-        if (!asset.startsWith(path.join(base, 'assets-staging') + path.sep))
-          return new Response('forbidden', { status: 403 });
-        return net.fetch(pathToFileURL(asset).toString());
-      }
       const target = path.normalize(path.join(DIST, rel));
       if (!target.startsWith(DIST + path.sep))
         return new Response('forbidden', { status: 403 });
@@ -794,11 +758,7 @@ if (!app.requestSingleInstanceLock()) {
     // A crashed or killed renderer is the same problem from the other side:
     // nothing left to hear `steam:signal` or `steam:signal-fail` either way.
     win.webContents.on('render-process-gone', () => releaseAllSteamState());
-    // The query string is the whole of the evaluation flag's reach into the
-    // shell: with it absent the packed app is byte-for-byte the app that
-    // shipped before #109 touched it.
-    if (PBR_EVAL) console.log('pbr: evaluation asset set requested (--pbr)');
-    win.loadURL(`app://game/index.html${PBR_EVAL ? '?pbr=1' : ''}`);
+    win.loadURL('app://game/index.html');
 
     // The Optimus diagnostic (docs/STEAM.md section 1): which adapter Chromium
     // actually picked, written where a player report can find it.

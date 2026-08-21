@@ -1,10 +1,14 @@
 /**
- * EVALUATION APPARATUS (#109 step 3) — deleted with the rest of the seam.
+ * EVIDENCE TOOLING (#109) — kept after adoption, along with
+ * `tools/capture-arteval.mjs` and `tools/shot-diff.mjs`. The packaging seam it
+ * was written against is gone; the question it answers is not, because no unit
+ * test can see the packed artifact and a build that ships the maps but cannot
+ * serve them looks identical from the filesystem.
  *
  * Boots nothing itself: it attaches to an ALREADY-RUNNING packed shell over
  * CDP and asks the renderer the question the packer cannot answer.
  *
- *   "dist-desktop/win-unpacked/TELLURIC VOID.exe" --pbr --remote-debugging-port=9222
+ *   "dist-desktop/win-unpacked/TELLURIC VOID.exe" --remote-debugging-port=9222
  *   node tools/pbr-packed-check.mjs [--port 9222]
  *
  * `tools/capture.mjs` cannot drive the packed app — it owns its own vite server
@@ -37,7 +41,7 @@ page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') 
 await page.waitForFunction(() => globalThis.__GAME__?.ctx?.stage != null, null, { timeout: 90000 });
 
 const out = await page.evaluate(async () => {
-  const url = 'assets-staging/terrain/worn_rock_natural_01/worn_rock_natural_01_diff_4k.jpg';
+  const url = 'game-assets/terrain/worn_rock_natural_01/worn_rock_natural_01_diff_4k.jpg';
   const res = { href: location.href, resolved: new URL(url, location.href).href };
   try {
     const r = await fetch(res.resolved);

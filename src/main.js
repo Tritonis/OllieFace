@@ -28,6 +28,7 @@ import { installFatalOverlay } from './ui/FatalOverlay.js';
 import { installSystemNotice } from './ui/SystemNotice.js';
 import { installFallbackPause } from './ui/FallbackPause.js';
 import { installTelemetry } from './systems/Telemetry.js';
+import { setPbr, installPbrHarness } from './world/PbrEval.js';
 import { initDesktopStore } from './core/DesktopStore.js';
 import { showSaveFailure, clearSaveFailure } from './ui/SaveIndicator.js';
 
@@ -182,6 +183,27 @@ ctx.camera.updateProjectionMatrix();
 // returns having subscribed to nothing at all.
 installTelemetry(ctx);
 
+// The photographed surface set (#109). Started here — before the loop, and
+// deliberately not awaited by it — because it is the longest pole in the boot
+// by an order of magnitude (122 MiB of 4K maps to fetch and decode) and nothing
+// on screen needs it yet: the player is on the title screen, and the stage's
+// materials are not built until they drop into a run. Awaiting it would trade a
+// live title screen for ten seconds of black.
+//
+// The consequence, stated rather than hidden: on a cold boot on a slow disk it
+// is possible to reach a stage before the maps land, and a surface would then
+// change under the player once. Measured on this machine the load finishes
+// several seconds inside the title screen, so the pop is theoretical rather
+// than observed — but it is why this line sits as early as it does.
+//
+// A failure here is not fatal and must not be: the procedural library is a
+// complete surface on its own, so a 404 or a decode error costs the game its
+// photographs and nothing else. Unhandled it would instead reject out of module
+// evaluation and take everything below it with it.
+setPbr(true)
+  .then(() => ctx.audio?.setPbrRumble?.(true))
+  .catch((e) => console.warn('surfaces: the photographed set did not load; staying procedural.', e));
+
 engine.start();
 
 // Only after the first frame is scheduled — the banner is advice, not a gate.
@@ -195,24 +217,6 @@ globalThis.__GAME__ = { engine, ctx, THREE, seed };
 // import itself is behind the flag: flag-off nothing under `assets-staging/`
 // is fetched, so the 148 MiB stays on disk and the frame is the frame we
 // shipped. `__HARNESS__.setPbr` drives the same seam for a within-session A/B.
-//
-// The failure path matters more than the happy one here: `assets-staging/` is
-// gitignored, so on any clone that has not fetched it every texture request
-// 404s and `setPbr` rejects. Unhandled, that rejection propagates out of this
-// top-level await and abandons the rest of module evaluation — including the
-// harness install below — so a missing optional asset set would present as a
-// game with no harness and no explanation. Caught, the flag simply declines
-// and the player gets the procedural world.
-if (params.get('pbr') === '1') {
-  try {
-    const { setPbr } = await import('./world/PbrEval.js');
-    await setPbr(true);
-    await ctx.audio?.setPbrRumble?.(true);
-  } catch (e) {
-    console.warn('pbr=1: the evaluation asset set did not load; staying procedural.', e);
-  }
-}
-
 if (params.has('harness')) {
   const { installHarness } = await import('./core/Harness.js');
   installHarness(ctx);
@@ -221,8 +225,9 @@ if (params.has('harness')) {
   // rather than in Harness.js so the two sets can be worked on independently.
   const { installRealmHarness } = await import('./world/realms/RealmHarness.js');
   installRealmHarness(ctx);
-  // `setPbr` for the within-session A/B (#109 step 3). Importing the module
-  // does not fetch anything; only calling it with `true` does.
-  const { installPbrHarness } = await import('./world/PbrEval.js');
+  // `setPbr` for the within-session surface A/B (#109). Kept after adoption:
+  // photographed-vs-procedural is now a comparison against the *shipping*
+  // surface, and `tools/capture-arteval.mjs` is the only way that evidence can
+  // be retaken. Harness-only, so nothing a player runs can reach it.
   installPbrHarness(ctx);
 }

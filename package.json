@@ -25,7 +25,6 @@
     "desktop": "npm run build && electron .",
     "desktop:run": "electron .",
     "desktop:pack": "npm run build && electron-builder --win --dir",
-    "desktop:pack:pbr": "npm run build && electron-builder --win --dir -c.extraResources=assets-staging",
     "steamsdk": "node tools/steamsdk.mjs",
     "steamsdk:electron": "electron tools/steam-electron-init.mjs",
     "smoke:steam": "node tools/steamsmoke.mjs --peers 3 --hz 60 --entities 60 --run-s 30 --warmup-s 3 --label steam-socketpair-3peer-60hz",

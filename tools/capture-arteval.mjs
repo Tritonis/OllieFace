@@ -66,9 +66,12 @@ page.on('pageerror', (e) => errors.push(`${e.message}\n${e.stack ?? ''}`));
 
 await mkdir(OUT, { recursive: true });
 log('navigating...');
-// No `pbr=1`: the pair always starts from the shipped build and the flag is
-// thrown from inside the session, so the "off" frame is the real flag-off path
-// and not a flag-on path with the maps swapped back out.
+// EVIDENCE TOOLING, kept after adoption (#109). The polarity has flipped since
+// this file was written: the photographed set is now what every boot binds, so
+// shot A is the *shipping* surface and the harness toggle takes it away for
+// shot B rather than adding it. The pair below is renamed accordingly. Nothing
+// about the method changes — one boot, one frozen frame, two shutters — because
+// cross-boot frames still do not compare (#122).
 await page.goto(`http://127.0.0.1:${PORT}/?seed=${SEED}&quality=3&harness=1&pinclock=1`,
                 { waitUntil: 'load', timeout: 120000 });
 const ready = await page
@@ -106,23 +109,27 @@ const shoot = async (name) => {
   log(`shot ${name}`);
 };
 
-await shoot('arteval-a-procedural');
+// The boot already bound the photographed set, so shot A is the surface a
+// player gets. Wait for that rather than assuming it: the load is started at
+// boot and not awaited by the loop, so a fast harness can reach here first and
+// photograph the procedural fallback under the wrong name.
+await page.waitForFunction(() => globalThis.__HARNESS__?.pbr?.() === true, null, { timeout: 120000 });
+await shoot('arteval-a-photographed');
 
-log('binding the evaluation set...');
+log('taking the photographed set back off...');
 const bind = await page.evaluate(async () => {
   const t = performance.now();
-  const before = performance.getEntriesByType('resource').length;
-  await globalThis.__HARNESS__.setPbr(true);
-  const res = performance.getEntriesByType('resource').slice(before);
-  const bytes = res.reduce((a, r) => a + (r.transferSize || r.encodedBodySize || 0), 0);
-  return { ms: Math.round(performance.now() - t), requests: res.length, bytes };
+  await globalThis.__HARNESS__.setPbr(false);
+  return { ms: Math.round(performance.now() - t), to: 'procedural' };
 });
-await shoot('arteval-b-photographed');
+await shoot('arteval-b-procedural');
 
-// And back, in the same session: if the "off" state is not restorable the A/B
-// is not a toggle, it is a one-way door, and every later comparison is suspect.
-await page.evaluate(async () => { await globalThis.__HARNESS__.setPbr(false); });
-await shoot('arteval-c-procedural-restored');
+// And back, in the same session: if the shipping surface is not restorable the
+// A/B is not a toggle, it is a one-way door, and every later comparison is
+// suspect. A-vs-C is also the noise floor — two pinned frames apart, same
+// surface — that any A-vs-B claim has to clear.
+await page.evaluate(async () => { await globalThis.__HARNESS__.setPbr(true); });
+await shoot('arteval-c-photographed-restored');
 
 const manifest = {
   tool: 'capture-arteval', seed: SEED, ready: true,
