@@ -326,5 +326,103 @@ console.log('a winning player is not told they died by a HUD that is already gon
     'and the sub-line is the ending’s own');
 }
 
+// ------------------------------------------ the event path — issue #120
+
+/**
+ * The other half of #118: a menu reached through the *event* bus.
+ *
+ * `HUD.bind` registers `itemPickup`, `playerDead` and `mutationChoiceOffered`
+ * listeners that call `showPickup`, `showDeath` and `showMutationChoice`. A
+ * listener runs inside the phase of whichever system emitted, so those three
+ * calls execute inside `Items.update` and `Player.update` — both CRITICAL. The
+ * Engine bills a throw to the phase it escaped, so a defect in a pickup card
+ * was charged to `Items` and ended the run, which is exactly what #118 removed
+ * for the update path and nothing removed for this one. (Before that even
+ * showed, `EventBus.emit` swallowed it: nobody billed, nothing disabled, and a
+ * menu that threw on every pickup threw for the rest of the run.)
+ *
+ * Settled by the project owner on 2026-08-21: UI work dispatched through
+ * events bills to `Menus`. `HUD.menus` is the seam — every call this file
+ * makes into the menus goes through it, so a fourth handler written tomorrow
+ * is covered without touching it.
+ *
+ * Written to be red on the old structure: strip the billing out of
+ * `HUD.get menus()` and the three arms below fail, because nobody is billed
+ * at all.
+ */
+function wedgeTheMenusThroughAnEvent(method, emitter) {
+  const engine = new Engine({ canvas: null, seed: 1 });
+  engine.running = true;
+
+  const menus = Object.create(Menus.prototype);
+  menus.update = () => {};
+  menus.lateUpdate = () => {};
+  menus.init = (ctx) => { ctx.menus = menus; };
+  menus[method] = () => { throw new Error(`${method} threw`); };
+
+  const hud = Object.create(HUD.prototype);
+  hud.init = (ctx) => { ctx.hud = hud; };
+  hud.update = () => {};
+
+  // A critical emitter, standing in for Items/Player: it does what they do,
+  // which is raise the event from inside its own update phase.
+  // Named so the Engine reports the same string `Items`/`Player` would, and
+  // declaring itself critical the same way they do.
+  const Emitter = {
+    [emitter]: class {
+      static critical = true;
+      update(ctx) { ctx.events.emit('uiEvent', {}); }
+    },
+  }[emitter];
+  const critical = new Emitter();
+
+  engine.add(menus);
+  engine.add(hud);
+  engine.add(critical);
+  hud.ctx = engine.ctx;
+
+  // The shape of every one of the three real listeners: reach the menus
+  // through `hud.menus`, from inside somebody else's phase.
+  engine.ctx.events.on('uiEvent', () => hud.menus?.[method]({}));
+
+  const disabled = [];
+  engine.ctx.events.on('systemDisabled', (e) => disabled.push(e));
+  quietly(() => { for (let i = 0; i < DISABLE_AFTER; i++) engine._frame(); });
+  return { engine, menus, hud, critical, disabled };
+}
+
+console.log('a menu that throws down an event path is billed to Menus, not to the emitter');
+for (const [method, emitter] of [['showPickup', 'Items'], ['showDeath', 'Player'], ['showMutationChoice', 'Items']]) {
+  const { engine, menus, critical, disabled } = wedgeTheMenusThroughAnEvent(method, emitter);
+
+  ok(engine.ctx.lastFrameError?.who === `Menus.${method}`,
+    `${method} from ${emitter}'s phase is billed to Menus.${method} (billed ${engine.ctx.lastFrameError?.who})`);
+  ok(engine.ctx.fatalError === null && engine.running === true,
+    `the run survives it — ${emitter} is critical and a card is not`);
+  ok(disabled.length === 1 && disabled[0]?.name === 'Menus',
+    `Menus alone was given up on (${disabled.map((d) => d.name).join(', ') || 'nothing'})`);
+  ok(!engine.systems.includes(menus), 'the menus are out of the update list');
+  ok(engine.systems.includes(critical), `and ${emitter} is still running`);
+}
+
+/** The billing must not eat the successes: a call that returns still returns. */
+console.log('billing a menu call does not change what it does');
+{
+  const engine = new Engine({ canvas: null, seed: 1 });
+  const menus = Object.create(Menus.prototype);
+  menus.init = (ctx) => { ctx.menus = menus; };
+  menus.update = () => {};
+  menus.lateUpdate = () => {};
+  let seen = null;
+  menus.showPickup = (arg) => { seen = arg; return 'shown'; };
+  engine.add(menus);
+
+  const hud = Object.create(HUD.prototype);
+  hud.ctx = engine.ctx;
+  ok(hud.menus.showPickup({ id: 'ichor' }) === 'shown', 'the return value comes back');
+  ok(seen?.id === 'ichor', 'and the argument went through');
+  ok(hud.menus.screen === menus.screen, 'plain state reads straight through');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

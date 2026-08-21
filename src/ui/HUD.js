@@ -138,6 +138,49 @@ const CLIENT_RING_CAP = 0.95;
 // is two interfaces at once.
 const FULL_SCREENS = new Set(['title', 'death', 'select', 'logbook', 'difficulty', 'artifacts']);
 
+/**
+ * One proxy per menus object, so the identity the HUD hands out is stable and
+ * the `Proxy` is built once rather than on every `this.menus` read — the
+ * update phase takes several a frame.
+ */
+const BILLED = new WeakMap();
+
+/**
+ * Wrap `menus` so every call the HUD makes into it is billed to `Menus` (#120).
+ *
+ * The HUD's event handlers run inside the *emitting* system's phase:
+ * `showPickup` is reached from `Items.update`, `showDeath` from `Player`,
+ * `showMutationChoice` from `Items` again. The Engine bills a throw to the
+ * phase it escaped, so a menu defect on any of those paths was charged to a
+ * CRITICAL system and halted the run — the exact outcome #118 removed for the
+ * update path, surviving on the event path.
+ *
+ * The seam is here rather than on each handler because every route into the
+ * menus from this file goes through `this.menus`: the three above, `close`,
+ * `hideMutationChoice`, and whatever the next one is. Property reads are
+ * untouched — `menus.screen` and `menus.root` are plain state.
+ */
+function billed(menus, ctx) {
+  let proxy = BILLED.get(menus);
+  if (proxy) return proxy;
+  proxy = new Proxy(menus, {
+    get(target, prop, receiver) {
+      const value = Reflect.get(target, prop, receiver);
+      if (typeof value !== 'function') return value;
+      return function billedCall(...args) {
+        const engine = ctx?.engine;
+        // No engine to bill (tests, boot) means no accounting to do — call it
+        // straight, so a throw still surfaces rather than being swallowed by
+        // a mechanism that exists to attribute it.
+        if (!engine?.callInto) return Reflect.apply(value, target, args);
+        return engine.callInto(target, String(prop), () => Reflect.apply(value, target, args));
+      };
+    },
+  });
+  BILLED.set(menus, proxy);
+  return proxy;
+}
+
 export class HUD {
   // Reads state and draws it, and owns none of it. A blind player is a degraded
   // player, not a desynced one, and ending their run over a gauge would be the
@@ -155,7 +198,10 @@ export class HUD {
    * mode. A stub set that way keeps winning only while there is no live
    * `ctx.menus` to prefer.
    */
-  get menus() { return this.ctx?.menus ?? this._menus ?? null; }
+  get menus() {
+    const m = this.ctx?.menus ?? this._menus ?? null;
+    return m ? billed(m, this.ctx) : null;
+  }
   set menus(m) { this._menus = m; }
 
   init(ctx) {
