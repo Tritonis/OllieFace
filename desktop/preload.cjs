@@ -91,9 +91,27 @@ contextBridge.exposeInMainWorld('__STEAM__', {
   // -> { steamId: string } | { error: string }
   getLobbyOwner: (lobbyId) => ipcRenderer.invoke('steam:get-lobby-owner', String(lobbyId)),
 
-  // One reliable Steam P2P packet to the lobby owner: the joiner's answer leg,
-  // which lobby data cannot carry (setData is owner-only in Steam).
+  // The answer leg. A member may only ever write its OWN member data, which is
+  // Steam's rule and not ours — so the joiner writes and the host reads, and no
+  // membership gate is needed on either side.
+  // record: same shape and same budget as writeLobbyData.
   // -> { ok: true } | { error: string }
+  writeMemberData: (lobbyId, record) =>
+    ipcRenderer.invoke('steam:write-member-data', String(lobbyId), record),
+  // keys: a bounded list of key names to read off EVERY member, in one IPC per
+  // poll tick. -> { members: Record<steamId, Record<string,string>> } | { error }
+  collectMemberData: (lobbyId, keys) =>
+    ipcRenderer.invoke('steam:collect-member-data', String(lobbyId), keys),
+
+  // VESTIGIAL (2026-08-21). The joiner's answer used to ride one reliable Steam
+  // P2P packet, because `steamworks.js@0.4.0` bound no member-data API. The new
+  // Binding binds none of `ISteamNetworking`, so these three channels answer
+  // `p2p-unavailable` and nothing in `src/` calls them any more. Kept, not
+  // deleted, because deleting them is the WebRTC-era sweep (#56) and takes
+  // `encodeSignal`/`decodeSignal`/`isAuthorizedSignalTarget` and their tests
+  // with it — a change with no behavioural effect and a real coverage cost,
+  // which does not belong in the same commit as the leg that replaced them.
+  // -> { error: 'p2p-unavailable' }
   sendSignal: (steamId, payload) => ipcRenderer.invoke('steam:send-signal', String(steamId), payload),
   // -> { ok: true } | { error: string }
   startSignalListen: (lobbyId) => ipcRenderer.invoke('steam:start-signal-listen', String(lobbyId)),

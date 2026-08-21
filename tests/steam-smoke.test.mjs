@@ -166,7 +166,13 @@ console.log('\n-- test-only: the gate is not reachable from shipping code');
   // assert on that.
   const koffiInLock = lock.packages?.['node_modules/koffi'];
   ok(koffiInLock !== undefined, 'koffi is present in the production dependency closure (transitively, via steamworks-ffi-node)');
-  ok('koffi' in (pkg.devDependencies ?? {}), 'koffi is a devDependency');
+  // INVERTED 2026-08-21 by the Binding swap (#54). koffi was a devDependency
+  // while the only thing that called it was a gate; `desktop/main.mjs` now
+  // requires it by name for the manual-dispatch pump, so listing it as a dev
+  // dependency would be a lie the packager is entitled to act on.
+  ok('koffi' in (pkg.dependencies ?? {}), 'koffi is a runtime dependency, because the shell requires it by name');
+  ok(!('steamworks.js' in (pkg.dependencies ?? {})) && !('steamworks.js' in (pkg.devDependencies ?? {})),
+    'steamworks.js is gone: nothing imports it after the swap');
 
   // `build.files` is what electron-builder packs. `tools/` is absent from it and
   // must stay absent: an FFI module that can open raw sockets has no business in
@@ -175,10 +181,21 @@ console.log('\n-- test-only: the gate is not reachable from shipping code');
   // that pulls it in - or electron-builder will pack the whole closure it finds.
   const files = pkg.build?.files ?? [];
   ok(!files.some((f) => String(f).startsWith('tools')), 'build.files does not pack tools/');
-  ok(files.includes('!node_modules/koffi/**'),
-    'build.files excludes node_modules/koffi from the shipped build, even though koffi is a production dependency');
-  ok(files.includes('!node_modules/steamworks-ffi-node/**'),
-    'build.files excludes node_modules/steamworks-ffi-node from the shipped build');
+  // FLIPPED 2026-08-21, and this is the flip the Phase 2 plan named as #54's
+  // acceptance item (step 6): while the Binding was gate-only, packing it was
+  // the defect; now it IS the shell's Steam layer, and EXCLUDING it recreates
+  // #15's exact bug -- a packaged launch that always reports available: false.
+  // Asserted as an absence rather than deleted, because "nobody re-adds the
+  // exclusion" is the thing worth guarding.
+  ok(!files.includes('!node_modules/steamworks-ffi-node/**'),
+    'build.files no longer excludes the Binding: it is what the packed shell inits Steam with');
+  ok(!files.includes('!node_modules/koffi/**'),
+    'nor koffi, which the Binding and the callback pump both go through');
+  // And the redistributable the Binding loads by relative path. `steamworks-
+  // ffi-node` ships no DLL of its own; without this line the packed app has a
+  // Binding and nothing for it to bind to.
+  ok(files.some((f) => String(f).includes('steamworks_sdk')),
+    'build.files admits the vendored steam_api64.dll');
 
   const shipping = [];
   const walk = (dir) => {
@@ -190,13 +207,31 @@ console.log('\n-- test-only: the gate is not reachable from shipping code');
   };
   walk('src'); walk('desktop');
 
-  const offenders = shipping.filter((rel) => {
+  // NARROWED 2026-08-21. This used to say "no shipping file names koffi or the
+  // Binding", which was true while both were gate-only and is false by design
+  // now: `desktop/steam.mjs` requires the Binding and `desktop/main.mjs`
+  // requires koffi. What is still worth forbidding -- and is the containment
+  // this check was really about -- is the GATE's own modules, which open raw
+  // sockets and have no business in a shipped build. The two allowed names are
+  // pinned to their files, so a third file quietly reaching for the native
+  // layer is still a failure.
+  const BINDING_CALLERS = new Set(['desktop/steam.mjs', 'desktop/main.mjs']);
+  const gateOffenders = shipping.filter((rel) => {
     const src = readFileSync(path.join(root, rel), 'utf8');
-    return /['"]koffi['"]/.test(src) || /['"]steamworks-ffi-node['"]/.test(src)
-      || /steamnet\.mjs/.test(src) || /steamsmoke\.mjs/.test(src);
+    return /steamnet\.mjs/.test(src) || /steamsmoke\.mjs/.test(src);
   });
-  ok(offenders.length === 0,
-    `no file under src/ or desktop/ reaches for koffi or the gate's modules${offenders.length ? `: ${offenders.join(', ')}` : ` (${shipping.length} files scanned)`}`);
+  ok(gateOffenders.length === 0,
+    `no file under src/ or desktop/ reaches for the gate's modules${gateOffenders.length ? `: ${gateOffenders.join(', ')}` : ` (${shipping.length} files scanned)`}`);
+
+  const nativeCallers = shipping.filter((rel) => {
+    const src = readFileSync(path.join(root, rel), 'utf8');
+    return /require(?:Cjs)?\(\s*['"](?:koffi|steamworks-ffi-node)['"]\s*\)/.test(src);
+  });
+  ok(nativeCallers.every((rel) => BINDING_CALLERS.has(rel)),
+    `only the two files that own the Steam layer load it (${nativeCallers.join(', ') || 'none'})`);
+  ok(!shipping.some((rel) => rel.startsWith('src/')
+    && /require(?:Cjs)?\(\s*['"](?:koffi|steamworks-ffi-node)['"]\s*\)/.test(readFileSync(path.join(root, rel), 'utf8'))),
+    'and nothing in src/ does -- the renderer never touches the native layer');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

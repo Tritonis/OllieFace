@@ -148,13 +148,24 @@ console.log('\n-- and main.mjs has no way around the door');
   ok(/initial: parseConnectLobbyArg\(process\.argv\)/.test(wiring),
     'and the launch-args route is the seam\'s initial value');
 
-  // Callback 333 specifically -- the reported MAJOR. Sliced to the handler's
-  // own body rather than matched within a character budget, so a comment
-  // growing between the two lines cannot quietly retire the check.
-  const cbStart = main.indexOf('SteamCallback.GameLobbyJoinRequested');
+  // Callback 333 specifically -- the reported MAJOR. Sliced to the wiring's own
+  // body rather than matched within a character budget, so a comment growing
+  // between the two lines cannot quietly retire the check.
+  //
+  // RE-ANCHORED 2026-08-21 with the Binding swap. The claim is unchanged and so
+  // is its strength: 333 must reach the renderer through the seam and by no
+  // other path. What changed underneath is where 333 is heard --
+  // `steamworks.js` had a callback registry (`SteamCallback.GameLobbyJoin-
+  // Requested`) and `steamworks-ffi-node` has none, so the shell runs its own
+  // manual-dispatch pump and the anchor is that pump's wiring. Leaving the old
+  // anchor in place would have been the worse outcome by far: the string is
+  // gone from the file, so the check would have found nothing and could only
+  // ever fail -- or, matched loosely, pass while watching a call site that no
+  // longer exists.
+  const cbStart = main.indexOf('startCallbackPump({');
   const cbEnd = main.indexOf('    });', cbStart);
   const cbBody = main.slice(cbStart, cbEnd);
-  ok(cbStart > 0 && cbBody.includes('joinDelivery.offer(lobbyId)'),
+  ok(cbStart > 0 && /onJoinRequested:\s*\(lobbyId\)\s*=>\s*joinDelivery\.offer\(lobbyId\)/.test(cbBody),
     'callback 333 reaches the renderer through the seam');
   ok(!cbBody.includes('pushToRenderer'),
     'and does NOT push at the renderer itself -- the exact shape of the reported MAJOR');
