@@ -191,6 +191,16 @@ if (!params.has('harness')) maybeShowGpuNotice(ctx.gpu);
 // Exposed for the Playwright screenshot harness (deterministic captures).
 globalThis.__GAME__ = { engine, ctx, THREE, seed };
 
+// The photographed-asset evaluation set (#109 step 3). Default off, and the
+// import itself is behind the flag: flag-off nothing under `assets-staging/`
+// is fetched, so the 148 MiB stays on disk and the frame is the frame we
+// shipped. `__HARNESS__.setPbr` drives the same seam for a within-session A/B.
+if (params.get('pbr') === '1') {
+  const { setPbr } = await import('./world/PbrEval.js');
+  await setPbr(true);
+  ctx.audio?.setPbrRumble(true);
+}
+
 if (params.has('harness')) {
   const { installHarness } = await import('./core/Harness.js');
   installHarness(ctx);
@@ -199,4 +209,8 @@ if (params.has('harness')) {
   // rather than in Harness.js so the two sets can be worked on independently.
   const { installRealmHarness } = await import('./world/realms/RealmHarness.js');
   installRealmHarness(ctx);
+  // `setPbr` for the within-session A/B (#109 step 3). Importing the module
+  // does not fetch anything; only calling it with `true` does.
+  const { installPbrHarness } = await import('./world/PbrEval.js');
+  installPbrHarness(ctx);
 }

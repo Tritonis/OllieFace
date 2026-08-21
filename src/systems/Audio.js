@@ -1471,6 +1471,53 @@ export class Audio {
       // GRADE_BLEND — the world sickens in one motion, not two.
       this.voidGain.gain.setTargetAtTime(voidLayerGain(ctx.corruption?.band), ac.currentTime, 2.0);
     }
+
+    // The recorded sub layer (#109 step 3), under the synthesized bed and on
+    // the same band curve, so it can only ever thicken what the bed already
+    // says rather than announce anything of its own. It is driven from HERE,
+    // in the same per-frame writer as the bed, for the reason the whole
+    // evaluation flag is a swap and not a uniform: a level set once at load
+    // would be overwritten by the next frame of this method.
+    // The flag can be set before the context exists (it is gated on a user
+    // gesture); pick the intent back up on the first frame that has one.
+    if (this._pbrRumbleOn && !this.pbrRumbleGain && this.ac) this.setPbrRumble(true);
+    if (this.pbrRumbleGain) {
+      const g = voidLayerGain(ctx.corruption?.band) * (this._pbrRumbleOn ? 0.55 : 0);
+      this.pbrRumbleGain.gain.setTargetAtTime(g, ac.currentTime, 2.0);
+    }
+  }
+
+  /**
+   * The photographed-asset evaluation's audio arm: a recorded low-frequency
+   * rumble looped beneath the synthesized void bed. Behind the same `?pbr=1`
+   * flag as the texture swap, and like it, the file is not fetched at all
+   * until the flag asks for it.
+   */
+  async setPbrRumble(on) {
+    this._pbrRumbleOn = !!on;
+    if (!on || !this.ac || this.pbrRumbleGain) return;
+    const ac = this.ac;
+    const url = 'assets-staging/audio/735011__vladislavzh__trembling-low-frequency-rumble.wav';
+    const buf = await ac.decodeAudioData(await (await fetch(url)).arrayBuffer());
+    // A second toggle may have raced the decode; honour the latest intent.
+    if (this.pbrRumbleGain) return;
+    const gain = ac.createGain();
+    gain.gain.value = 0;
+    // The recording carries content well above where a sub layer belongs, and
+    // the bed already owns 2.4 kHz. Everything above 220 Hz is somebody else's.
+    const lp = ac.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 220;
+    lp.Q.value = 0.5;
+    lp.connect(gain);
+    gain.connect(this.master);
+    const src = ac.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+    src.connect(lp);
+    src.start();
+    this.pbrRumbleSrc = src;
+    this.pbrRumbleGain = gain;
   }
 
   /* ------------------------------------------------------------------ */

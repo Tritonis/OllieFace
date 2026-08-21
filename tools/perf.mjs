@@ -65,7 +65,12 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: 1600, height: 900 }, deviceScaleFactor: 1 });
 page.on('pageerror', (e) => console.log('PAGE ERROR:', e.message));
 
-await page.goto(`http://127.0.0.1:5201/?seed=1337&quality=${QUALITY}&harness=1`, { waitUntil: 'load' });
+// `--pbr` boots with the photographed evaluation set bound (#109 step 3). The
+// flag goes in the URL rather than through the harness toggle on purpose: this
+// arm is measuring the cost of *running* with those maps resident, and a
+// mid-session swap would fold the one-off decode and upload into the sample.
+const PBR = args.pbr ? '&pbr=1' : '';
+await page.goto(`http://127.0.0.1:5201/?seed=1337&quality=${QUALITY}&harness=1${PBR}`, { waitUntil: 'load' });
 await page.waitForFunction(() => globalThis.__GAME__?.ctx?.stage != null && globalThis.__HARNESS__ != null, null, { timeout: 60000 });
 
 const env = await page.evaluate(() => {
