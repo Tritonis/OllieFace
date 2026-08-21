@@ -81,6 +81,12 @@ cor.marks = 1;
 bus.emit('voidMarksChanged', { marks: 1, spent: 3 });
 bus.emit('voidBargain', { kind: 'pact', marks: 3, id: 'famine', owner: player });
 
+// A guest's press, seen by the host's authority loop. The dealer is named in
+// `owner` and it is not this seat's player, so the host's ledger must not
+// claim it — the `b.length === 2` assertion below is what catches it if the
+// ledger does.
+bus.emit('voidBargain', { kind: 'reroll', marks: 2, count: 1, owner: { id: 'guest-pawn' } });
+
 // And the one-way door.
 at(150);
 setCor(200, 4);

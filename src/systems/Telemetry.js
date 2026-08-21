@@ -414,6 +414,7 @@ class RunRecorder {
    * but *how deep they were willing to go* before they did.
    */
   onVoidBargain(e) {
+    if (!isLocalOwner(this.ctx, e)) return;
     this.push(this.record.bargains, {
       t: this.t(),
       kind: e?.kind ?? null,
