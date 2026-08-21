@@ -74,7 +74,8 @@ export const MAX_LOBBY_TOTAL_BYTES = 7680;
  *
  * Derived, not chosen for comfort: with a 7680-byte budget, framing costs
  * `sdp.offer.n` plus its count (12 bytes) and 11 bytes per chunk key, so the
- * budget carries 7624 chars of payload once four chunk keys are paid for. 2000
+ * budget carries 7598 chars of payload once four chunk keys and the exchange
+ * nonce (`sdp.offer.nonce`, 15 bytes of key and ~11 of value) are paid for. 2000
  * is the largest round size that lets a blob use the whole budget — at 6000 a
  * second chunk would already overflow it, which would have thrown away 22% of
  * the capacity Steam does offer. It is also comfortably under the bridge's
@@ -109,6 +110,71 @@ export function recordBytes(pairs) {
 const OFFER_PREFIX = 'sdp.offer';
 /** The joiner's half of the exchange, on the joiner's own member data. */
 export const ANSWER_PREFIX = 'sdp.answer';
+
+/**
+ * The key each side stamps with the exchange's nonce.
+ *
+ * ## Why an exchange needs a name
+ *
+ * Member data is not a queue and reading it does not consume it. A friend's
+ * `sdp.answer.*` sits in their membership until they overwrite it or leave —
+ * and "leave" is exactly what a friend recovering from a dropped peer
+ * connection does NOT do, because their Steam lobby membership survives a dead
+ * WebRTC connection. So when the host re-advertises (mints a new offer over the
+ * same lobby, which is the whole point of re-advertise), the fresh poll's very
+ * first tick finds the PREVIOUS attempt's answer still sitting there, hands it
+ * to `acceptAnswer`, and stops. The friend's real answer to the new offer is
+ * written a moment later and never read, and nothing surfaces to either player:
+ * the host believes it heard, the friend believes it answered.
+ *
+ * A timestamp would not fix this — clocks are two different machines' — and
+ * "clear the member data first" cannot be done, because only the member who
+ * owns a slot may write it. What distinguishes the two answers is not when they
+ * arrived but WHICH OFFER they are an answer to. So every offer is stamped with
+ * a nonce, the joiner echoes the nonce of the offer it actually read, and an
+ * answer whose echo does not match the current offer is not an answer at all —
+ * it is last round's, and the poll keeps listening.
+ */
+const NONCE_KEY = 'nonce';
+const OFFER_NONCE_KEY = `${OFFER_PREFIX}.${NONCE_KEY}`;
+const ANSWER_NONCE_KEY = `${ANSWER_PREFIX}.${NONCE_KEY}`;
+
+/**
+ * A fresh exchange name.
+ *
+ * Not cryptographic and does not need to be: it names one handshake between two
+ * consenting players, and the only thing it has to beat is the PREVIOUS value
+ * on the same lobby. Time plus randomness gives that, monotonically enough that
+ * two attempts a millisecond apart still differ, and it stays inside the
+ * lobby-data key shape (`LOBBY_KEY_RE`, alphanumerics and dots) that the shell
+ * validates on the way through.
+ */
+export function mintNonce() {
+  return `${Date.now().toString(36)}${Math.floor(Math.random() * 0xffffff).toString(36).padStart(5, '0')}`;
+}
+
+/**
+ * Exactly what the host writes into lobby data, and what the joiner writes into
+ * its own member data — chunks plus the stamp.
+ *
+ * Both exist so that "how big is the record" has ONE answer. The byte guard,
+ * the write, and the test that proves the budget is usable to its last byte all
+ * measure the same function; before these, the guard measured `chunkBlob` and
+ * the write added a key to it, which is how a budget check quietly stops
+ * checking the thing that is written.
+ */
+/**
+ * How many CHUNKS a pair list carries.
+ *
+ * Counted by key shape rather than by list length, because the list also holds
+ * `.n` and the exchange nonce. `pairs.length - 1` was right until the nonce was
+ * added, and then quietly refused a legal four-chunk offer as a five-part one —
+ * a budget guard that had started measuring something other than the budget.
+ */
+const countParts = (pairs) => pairs.filter(([k]) => /\.\d+$/.test(k)).length;
+
+export const offerPairs = (blob, nonce) => [...chunkBlob(OFFER_PREFIX, blob), [OFFER_NONCE_KEY, nonce]];
+export const answerPairs = (blob, nonce) => [...chunkBlob(ANSWER_PREFIX, blob), [ANSWER_NONCE_KEY, nonce ?? '']];
 const POLL_MS = 1000;
 const OFFER_WAIT_MS = 60000;
 
@@ -133,7 +199,7 @@ const ANSWER_WAIT_MS = 300000;
  * `MAX_PARTS + 1` entries and it is a constant.
  */
 export const answerKeys = () => {
-  const keys = [`${ANSWER_PREFIX}.n`];
+  const keys = [`${ANSWER_PREFIX}.n`, ANSWER_NONCE_KEY];
   for (let i = 0; i < MAX_PARTS; i++) keys.push(`${ANSWER_PREFIX}.${i}`);
   return keys;
 };
@@ -183,7 +249,8 @@ export function assembleBlob(getter, prefix) {
 }
 
 /**
- * Pick the first complete answer out of one `collectMemberData` reply.
+ * Pick the first complete answer to THIS offer out of one `collectMemberData`
+ * reply.
  *
  * Pure, so the thing worth getting right is testable without a timer: every
  * member's record is another player's bytes, `assembleBlob` already refuses a
@@ -191,20 +258,31 @@ export function assembleBlob(getter, prefix) {
  * member who has written nothing yet has no `sdp.answer.n` at all, and one who
  * wrote an empty string has nothing for `acceptAnswer` to do.
  *
+ * `nonce` is the current offer's, and it is the load-bearing argument: without
+ * it a re-advertise re-accepts the previous attempt's leftover answer on its
+ * first tick and never hears the real one (see `NONCE_KEY`). A record whose
+ * echo does not match is skipped exactly as a half-written one is — the poll
+ * keeps listening, which is the whole point. A caller may pass `null` to mean
+ * "any answer", and nothing in this module does.
+ *
  * `exclude` is the host's own Steam id where the caller knows it. Steam counts
  * the owner as a member, and a host that somehow read its own slot would hand
  * its own blob to `acceptAnswer`; the empty-answer rule already covers it in
  * practice, and this is the cheap belt.
  *
  * @param {Record<string, Record<string,string>>} members
+ * @param {string|null} [nonce] the nonce the current offer was stamped with
  * @param {string|null} [exclude]
  * @returns {{ steamId: string, answer: string }|null}
  */
-export function pickMemberAnswer(members, exclude = null) {
+export function pickMemberAnswer(members, nonce = null, exclude = null) {
   if (!members || typeof members !== 'object') return null;
   for (const [steamId, record] of Object.entries(members)) {
     if (steamId === exclude) continue;
     if (!record || typeof record !== 'object') continue;
+    // The echo first, because it is the cheap test and the one that makes a
+    // stale answer invisible rather than merely unwanted.
+    if (nonce !== null && record[ANSWER_NONCE_KEY] !== nonce) continue;
     const answer = assembleBlob(
       (k) => (Object.prototype.hasOwnProperty.call(record, k) ? record[k] : null), ANSWER_PREFIX);
     if (typeof answer === 'string' && answer.trim()) return { steamId, answer: answer.trim() };
@@ -612,14 +690,18 @@ async function hostViaSteamBody(lobby, maxMembers, endOp, bridgeMs, pollMs, answ
 
   try {
     const invite = await lobby.createInvite();
-    const pairs = chunkBlob(OFFER_PREFIX, invite.blob);
+    // One name per ATTEMPT, minted here rather than per lobby: a re-advertise
+    // reuses the lobby and it is the offer, not the lobby, that the answer is
+    // an answer to.
+    const nonce = mintNonce();
+    const pairs = offerPairs(invite.blob, nonce);
     // Measured before the write, not discovered by it. A `mergeFullData` Steam
     // refuses does not refuse cleanly: it stores entries until it hits the wall,
     // so `sdp.offer.n` can land without the chunks it counts and a joiner then
     // spends its whole 60 s poll waiting for a part that is never coming. Asking
     // first is the only way that state is never reached.
     const bytes = recordBytes(pairs);
-    if (bytes > MAX_LOBBY_TOTAL_BYTES || pairs.length - 1 > MAX_PARTS)
+    if (bytes > MAX_LOBBY_TOTAL_BYTES || countParts(pairs) > MAX_PARTS)
       throw new Error(
         `Steam lobby: this invite needs ${bytes} bytes and a Steam lobby holds ${MAX_LOBBY_TOTAL_BYTES} in total, `
         + 'so it cannot be posted. That usually means your network is offering an unusual number of connection routes — '
@@ -648,7 +730,7 @@ async function hostViaSteamBody(lobby, maxMembers, endOp, bridgeMs, pollMs, answ
           members = res && !res.error ? res.members : null;
         } catch { members = null; }
 
-        const hit = pickMemberAnswer(members);
+        const hit = pickMemberAnswer(members, nonce);
         if (!hit) continue;
         // One answer is the whole exchange for two seats. Stop polling first, so
         // a second tick cannot start a second `acceptAnswer` while this one is
@@ -780,11 +862,17 @@ async function joinViaSteamBody(lobby, lobbyId, pollMs, waitMs, endOp, bridgeMs)
   try {
     const deadline = Date.now() + waitMs;
     let offer = null;
+    let offerNonce = null;
     for (;;) {
       if (abandoned) throw new Error('Steam lobby: left before the host posted an invite.');
       const { data } = unwrap(await b.getFullLobbyData(id), 'Steam lobby');
       const record = data && typeof data === 'object' ? data : {};
-      offer = assembleBlob((k) => (Object.prototype.hasOwnProperty.call(record, k) ? record[k] : null), OFFER_PREFIX);
+      const read = (k) => (Object.prototype.hasOwnProperty.call(record, k) ? record[k] : null);
+      offer = assembleBlob(read, OFFER_PREFIX);
+      // Taken from the SAME snapshot as the offer, deliberately: the echo has
+      // to name the offer this joiner actually read, and a second `getFullLobbyData`
+      // could straddle a re-advertise and pair a new nonce with an old blob.
+      if (offer !== null) offerNonce = typeof read(OFFER_NONCE_KEY) === 'string' ? read(OFFER_NONCE_KEY) : null;
       // `!== null`, not truthy: `chunkBlob('sdp.offer', '')` is a legal write —
       // `sdp.offer.n = '0'` and no parts — and `assembleBlob` correctly returns
       // `''` for it. A bare `if (offer)` reads that as "not yet" and burns the
@@ -805,9 +893,12 @@ async function joinViaSteamBody(lobby, lobbyId, pollMs, waitMs, endOp, bridgeMs)
     // its whole poll on them. In practice an answer is one chunk — a real SDP
     // answer measures ~918 chars against a 2000-char chunk — so this refuses
     // only a blob that could not have travelled the other leg either.
-    const pairs = chunkBlob(ANSWER_PREFIX, answer);
+    // A host that stamped no nonce is a host running an older build of this
+    // module. Echoing an empty string rather than refusing keeps this joiner
+    // usable against one — `pickMemberAnswer` on that side is not checking.
+    const pairs = answerPairs(answer, offerNonce);
     const bytes = recordBytes(pairs);
-    if (bytes > MAX_LOBBY_TOTAL_BYTES || pairs.length - 1 > MAX_PARTS)
+    if (bytes > MAX_LOBBY_TOTAL_BYTES || countParts(pairs) > MAX_PARTS)
       throw new Error(
         `Steam lobby: this answer needs ${bytes} bytes and a Steam lobby holds ${MAX_LOBBY_TOTAL_BYTES} in total, `
         + 'so it cannot be posted. That usually means your network is offering an unusual number of connection routes — '

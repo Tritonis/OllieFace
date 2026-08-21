@@ -16,7 +16,7 @@
  */
 import {
   decodeJoinRequested, drainCallbacks, startCallbackPump,
-  GAME_LOBBY_JOIN_REQUESTED, MAX_CALLBACKS_PER_TICK,
+  GAME_LOBBY_JOIN_REQUESTED, MAX_CALLBACKS_PER_TICK, holdDispatch, dispatchHeld,
 } from '../desktop/steam-callbacks.mjs';
 
 let pass = 0, fail = 0;
@@ -158,6 +158,60 @@ console.log('\n-- an armed pump ticks, and stops when told');
   ok(pump.tick() === 1 && seen[0] === '31337', 'one tick drains one invite');
   pump.stop();
   ok(true, 'stop() ran clean');
+}
+
+
+console.log('\n-- the dispatch hold: the pump stands down while the Binding is using RunCallbacks');
+{
+  // The Major from review. `matchmaking.createLobby`/`joinLobby` await their
+  // results through the Binding's own `SteamAPI_RunCallbacks` loop; this pump
+  // dispatches manually on the SAME pipe; Valve documents the two as
+  // alternatives, not companions. `holdDispatch` makes them stop overlapping.
+  const d = fakeDispatch([{ id: GAME_LOBBY_JOIN_REQUESTED, data: payload(9n) }]);
+  const seen = [];
+
+  let held = true;
+  const delivered = drainCallbacks(d, (id) => seen.push(id), () => {}, () => held);
+  ok(delivered === 0 && seen.length === 0, 'a held tick delivers nothing');
+  // The strong form: not even `RunFrame`. A tick that ran RunFrame and then
+  // declined to read would be mixing the two mechanisms while claiming not to.
+  ok(d.counts.frames === 0, `and does not touch the pipe at all (runFrame calls: ${d.counts.frames})`);
+  ok(d.counts.frees === 0, 'nor free');
+
+  held = false;
+  ok(drainCallbacks(d, (id) => seen.push(id), () => {}, () => held) === 1,
+    'and the very next tick after the hold is released drains normally');
+  ok(seen.join(',') === '9', `the invite was not lost, only deferred (${seen.join(',')})`);
+  ok(d.counts.frames === 1, 'one runFrame, on the unheld tick');
+}
+
+console.log('\n-- holdDispatch: the hold is a counter, and it is always released');
+{
+  ok(dispatchHeld() === false, 'nothing is held to begin with');
+
+  let sawInside = null;
+  const res = await holdDispatch(async () => { sawInside = dispatchHeld(); return 'value'; });
+  ok(sawInside === true, 'the hold is up while the operation runs');
+  ok(res === 'value', 'and the operation\'s own result passes straight through');
+  ok(dispatchHeld() === false, 'and comes down after it');
+
+  // A THROWING operation is the case that matters: a leaked hold is a pump that
+  // never ticks again, which turns a narrowed risk into a dead invite route.
+  let threw = null;
+  try { await holdDispatch(async () => { throw new Error('Steam refused'); }); } catch (e) { threw = e; }
+  ok(threw instanceof Error && threw.message === 'Steam refused', 'a failure passes through unchanged');
+  ok(dispatchHeld() === false, 'and the hold is still released');
+
+  // Two overlapping operations: the first to finish must NOT re-open the pipe
+  // under the second, which is why this is a counter and not a boolean.
+  let releaseA, releaseB;
+  const a = holdDispatch(() => new Promise((r) => { releaseA = r; }));
+  const b = holdDispatch(() => new Promise((r) => { releaseB = r; }));
+  ok(dispatchHeld() === true, 'two in flight, held');
+  releaseA(); await a;
+  ok(dispatchHeld() === true, 'one finished, still held by the other');
+  releaseB(); await b;
+  ok(dispatchHeld() === false, 'both finished, released');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -19,7 +19,7 @@
  * which is exactly how the module's own guard is exercised rather than bypassed.
  */
 import {
-  chunkBlob, assembleBlob, pickMemberAnswer, steamAvailable, hostViaSteam, joinViaSteam, onSteamInvite, openSteamInvite,
+  chunkBlob, assembleBlob, pickMemberAnswer, mintNonce, offerPairs, answerPairs, steamAvailable, hostViaSteam, joinViaSteam, onSteamInvite, openSteamInvite,
   CHUNK_CHARS, MAX_LOBBY_TOTAL_BYTES, recordBytes, steamInviteNeedsConfirm, steamInviteBlocked,
   listSteamFriends, inviteSteamFriend, pendingSteamJoin,
 } from '../src/net/SteamLobby.js';
@@ -39,7 +39,10 @@ const BUDGET_FIT = (() => {
   let lo = 0, hi = MAX_LOBBY_TOTAL_BYTES;
   while (lo + 1 < hi) {
     const mid = (lo + hi) >> 1;
-    if (recordBytes(chunkBlob('sdp.offer', 'q'.repeat(mid))) > MAX_LOBBY_TOTAL_BYTES) hi = mid; else lo = mid;
+    // `offerPairs`, not `chunkBlob`: the host writes the exchange nonce too, and
+    // a budget probe that measured only the chunks would call a record legal
+    // that the guard then refuses.
+    if (recordBytes(offerPairs('q'.repeat(mid), mintNonce())) > MAX_LOBBY_TOTAL_BYTES) hi = mid; else lo = mid;
   }
   return lo;
 })();
@@ -237,9 +240,20 @@ async function waitFor(pred, ms = 1000) {
   return pred();
 }
 
-/** Write an answer into the joiner's member slot, the way `joinViaSteam` does. */
+/**
+ * Write an answer into the joiner's member slot, the way `joinViaSteam` does —
+ * INCLUDING the echo of whatever nonce the host actually posted. Reading the
+ * nonce out of `b.data` rather than taking it as an argument is what makes this
+ * helper model a friend answering the current offer, which is the only thing
+ * the host is supposed to accept.
+ */
 const putAnswer = (b, blob, steamId = JOINER_ID) => {
-  b.members[steamId] = Object.fromEntries(chunkBlob('sdp.answer', blob));
+  b.members[steamId] = Object.fromEntries(answerPairs(blob, b.data['sdp.offer.nonce'] ?? ''));
+};
+
+/** ...and the same thing with a nonce that is deliberately not the current one. */
+const putStaleAnswer = (b, blob, steamId = JOINER_ID) => {
+  b.members[steamId] = Object.fromEntries(answerPairs(blob, 'an-older-exchange'));
 };
 
 /** Enough of `src/net/Lobby.js` to see what the dance does to it. */
@@ -303,8 +317,9 @@ console.log('-- hosting: lobby, offer, and the answer that comes back on the joi
     'the host is polling member data for an answer');
   const asked = b.calls.find(([n]) => n === 'collectMemberData');
   ok(asked[1] === '109775241996081388', `it polls the lobby it opened (${asked[1]})`);
-  ok(Array.isArray(asked[2]) && asked[2][0] === 'sdp.answer.n' && asked[2].length === 5,
+  ok(Array.isArray(asked[2]) && asked[2][0] === 'sdp.answer.n' && asked[2].length === 6,
     `and names a bounded, constant key list (${JSON.stringify(asked[2])})`);
+  ok(asked[2].includes('sdp.answer.nonce'), 'including the echo the stale-answer guard reads');
 
   // Garbage first: this is another player's member data, and the bridge is one
   // bug away from being wrong about it.
@@ -315,6 +330,9 @@ console.log('-- hosting: lobby, offer, and the answer that comes back on the joi
     { 'sdp.answer.n': '1e3', 'sdp.answer.0': 'x' },        // ...nor is this, to Number()
     { 'sdp.answer.n': '1', 'sdp.answer.0': '   ' },        // present but empty
     { 'sdp.answer.0': 'orphan' },                          // parts with no count
+    // A COMPLETE, well-formed answer to a DIFFERENT offer. Indistinguishable
+    // from the real thing by every other rule in `pickMemberAnswer`.
+    Object.fromEntries(answerPairs('AN-ANSWER-TO-SOMETHING-ELSE', 'an-older-exchange')),
   ];
   for (const record of junk) {
     b.members[JOINER_ID] = record;
@@ -336,6 +354,97 @@ console.log('-- hosting: lobby, offer, and the answer that comes back on the joi
     'the poll stopped on the answer it accepted, rather than reading it forever');
   ok(lobby.accepted.length === 1, 'so a second exchange never started');
   lobby._steamCleanup?.();
+  delete globalThis.window;
+}
+
+console.log('-- CRITICAL (2026-08-21): a re-advertise must not accept the PREVIOUS exchange\'s answer');
+{
+  // The reviewer's reproduction, and the reason the exchange has a name.
+  //
+  // A friend whose peer connection dropped is STILL A MEMBER of the Steam lobby
+  // — WebRTC dying does not remove them — so their old `sdp.answer.*` is still
+  // sitting in their member data when the host presses "Host via Steam" again.
+  // Re-advertise reuses that lobby, so the fresh poll's very first tick used to
+  // find the stale blob, hand it to `acceptAnswer`, and stop. The friend's real
+  // answer to the newly-minted offer was written moments later and never read,
+  // with nothing surfacing to either player.
+  //
+  // Why the existing double-host test could not catch it: it writes the answer
+  // only AFTER the second `hostViaSteam`, so there is never a pre-existing value
+  // to be fooled by. This block seeds one first, which is the whole difference.
+  const b = makeBridge();
+  let n = 200;
+  b.hostLobby = async () => { const id = String(n++); b.calls.push(['hostLobby']); return { lobbyId: id }; };
+  const lobby = makeLobby();
+
+  const first = await hostViaSteam(lobby, FAST);
+  putAnswer(b, 'STALE-OLD-ANSWER');                        // answers the FIRST offer
+  ok(await waitFor(() => lobby.accepted.length === 1), 'precondition: the first exchange completed');
+  ok(lobby.accepted[0] === 'STALE-OLD-ANSWER', 'with the answer to the first offer');
+
+  // The friend never left, so their member data still holds that answer.
+  ok(pickMemberAnswer(
+    { [JOINER_ID]: b.members[JOINER_ID] }, b.data['sdp.offer.nonce'])?.answer === 'STALE-OLD-ANSWER',
+    'precondition: the old answer is still sitting in their member data');
+
+  lobby.accepted.length = 0;
+  lobby.mode = 'host';
+  const second = await hostViaSteam(lobby, FAST);
+  ok(second.lobbyId === first.lobbyId, `the re-advertise reused the lobby (${first.lobbyId})`);
+  ok(b.calls.filter(([nm]) => nm === 'hostLobby').length === 1, 'and opened no second one');
+
+  // The offer is new, so the exchange has a new name and the leftover answer is
+  // an answer to something else. Several poll ticks, deliberately: the bug was
+  // on the FIRST tick, so one tick is not enough evidence that it is gone.
+  const ticks = b.calls.filter(([nm]) => nm === 'collectMemberData').length;
+  await waitFor(() => b.calls.filter(([nm]) => nm === 'collectMemberData').length > ticks + 4);
+  ok(lobby.accepted.length === 0,
+    `the stale answer was NOT re-accepted (${JSON.stringify(lobby.accepted)})`);
+
+  // ...and the poll is still listening, which is the other half of the fix: a
+  // host that merely refuses the stale answer and stops is just as deaf.
+  putAnswer(b, 'THE-FRESH-ANSWER');                        // answers the SECOND offer
+  ok(await waitFor(() => lobby.accepted.length === 1), 'the poll was still listening for the real one');
+  ok(lobby.accepted[0] === 'THE-FRESH-ANSWER',
+    `and accepted only it (${JSON.stringify(lobby.accepted)})`);
+  lobby._steamCleanup?.();
+  delete globalThis.window;
+}
+
+console.log('-- the joiner echoes the nonce of the offer it actually read');
+{
+  // The echo is only worth anything if it names the offer this joiner answered.
+  // Read from the same lobby-data snapshot as the offer, so a re-advertise
+  // landing between two reads cannot pair a new nonce with an old blob.
+  const b = makeBridge();
+  const host = makeLobby();
+  await hostViaSteam(host, FAST);
+  const posted = b.data['sdp.offer.nonce'];
+  ok(typeof posted === 'string' && posted.length > 0, `the host stamped the offer (${posted})`);
+
+  const joiner = makeLobby();
+  await joinViaSteam(joiner, '109775241996081388', { pollMs: 2, waitMs: 1000 });
+  const written = b.calls.find(([nm]) => nm === 'writeMemberData')[2];
+  ok(written['sdp.answer.nonce'] === posted,
+    `the answer echoes it (${written['sdp.answer.nonce']} vs ${posted})`);
+  ok(pickMemberAnswer({ [JOINER_ID]: b.members[JOINER_ID] }, posted)?.answer === 'ANSWER-BLOB',
+    'so the host accepts it');
+  ok(pickMemberAnswer({ [JOINER_ID]: b.members[JOINER_ID] }, mintNonce()) === null,
+    'and would not accept it against any other offer');
+  host._steamCleanup?.();
+  delete globalThis.window;
+
+  // A host that stamps nothing is an older build of this module. The joiner
+  // still answers it rather than refusing, because that host is not checking.
+  const b2 = makeBridge();
+  const host2 = makeLobby();
+  await hostViaSteam(host2, FAST);
+  delete b2.data['sdp.offer.nonce'];
+  const joiner2 = makeLobby();
+  await joinViaSteam(joiner2, '109775241996081388', { pollMs: 2, waitMs: 1000 });
+  const written2 = b2.calls.find(([nm]) => nm === 'writeMemberData')[2];
+  ok(written2['sdp.answer.nonce'] === '', 'an unstamped offer is answered with an empty echo');
+  host2._steamCleanup?.();
   delete globalThis.window;
 }
 
@@ -407,23 +516,35 @@ console.log("-- the answer leg: an answer is measured against the same byte budg
 
 console.log('-- pickMemberAnswer: whose answer, and whether it is one at all');
 {
-  const chunk = (blob) => Object.fromEntries(chunkBlob('sdp.answer', blob));
-  ok(pickMemberAnswer({ '5': chunk('HI') })?.answer === 'HI', 'a complete record is an answer');
-  ok(pickMemberAnswer({ '5': chunk('HI') })?.steamId === '5', 'and it says whose');
-  ok(pickMemberAnswer({ '5': chunk('  HI  ') })?.answer === 'HI', 'trimmed');
-  ok(pickMemberAnswer({ '5': chunk('') }) === null, 'an empty answer is not an answer');
-  ok(pickMemberAnswer({ '5': chunk('   ') }) === null, 'nor is whitespace');
-  ok(pickMemberAnswer({ '5': {} }) === null, 'nor a member who has written nothing');
-  ok(pickMemberAnswer({ '5': { 'sdp.answer.n': '2', 'sdp.answer.0': 'a' } }) === null,
+  const N = 'exchange-1';
+  const chunk = (blob, nonce = N) => Object.fromEntries(answerPairs(blob, nonce));
+  ok(pickMemberAnswer({ '5': chunk('HI') }, N)?.answer === 'HI', 'a complete record is an answer');
+  ok(pickMemberAnswer({ '5': chunk('HI') }, N)?.steamId === '5', 'and it says whose');
+  ok(pickMemberAnswer({ '5': chunk('  HI  ') }, N)?.answer === 'HI', 'trimmed');
+  ok(pickMemberAnswer({ '5': chunk('') }, N) === null, 'an empty answer is not an answer');
+  ok(pickMemberAnswer({ '5': chunk('   ') }, N) === null, 'nor is whitespace');
+  ok(pickMemberAnswer({ '5': {} }, N) === null, 'nor a member who has written nothing');
+  ok(pickMemberAnswer({ '5': { 'sdp.answer.n': '2', 'sdp.answer.0': 'a', 'sdp.answer.nonce': N } }, N) === null,
     'nor a half-written one');
-  ok(pickMemberAnswer({}) === null, 'nor an empty lobby');
-  ok(pickMemberAnswer(null) === null, 'and a missing reply is null, not a throw');
-  ok(pickMemberAnswer({ '5': null, '6': chunk('YES') })?.steamId === '6',
+  ok(pickMemberAnswer({}, N) === null, 'nor an empty lobby');
+  ok(pickMemberAnswer(null, N) === null, 'and a missing reply is null, not a throw');
+  ok(pickMemberAnswer({ '5': null, '6': chunk('YES') }, N)?.steamId === '6',
     'one bad record does not hide a good one behind it');
-  ok(pickMemberAnswer({ '5': chunk('MINE') }, '5') === null,
+  ok(pickMemberAnswer({ '5': chunk('MINE') }, N, '5') === null,
     'the host never reads its own slot back');
-  ok(pickMemberAnswer({ '5': chunk('MINE'), '6': chunk('THEIRS') }, '5')?.answer === 'THEIRS',
+  ok(pickMemberAnswer({ '5': chunk('MINE'), '6': chunk('THEIRS') }, N, '5')?.answer === 'THEIRS',
     'and skips past it to the member who did answer');
+
+  // THE STALE-ANSWER RULE (Critical, 2026-08-21). A complete, well-formed answer
+  // to a different offer is not an answer to this one.
+  ok(pickMemberAnswer({ '5': chunk('LAST-ROUND', 'exchange-0') }, N) === null,
+    'an answer echoing a different nonce is skipped, not accepted');
+  ok(pickMemberAnswer({ '5': chunk('LAST-ROUND', 'exchange-0'), '6': chunk('THIS-ROUND') }, N)?.answer === 'THIS-ROUND',
+    'and the poll looks past it to the member who answered THIS offer');
+  ok(pickMemberAnswer({ '5': Object.fromEntries(chunkBlob('sdp.answer', 'NO-ECHO')) }, N) === null,
+    'an answer with no echo at all is skipped too');
+  ok(pickMemberAnswer({ '5': chunk('ANY', 'whatever') }, null)?.answer === 'ANY',
+    'a null nonce means "any answer" -- the escape hatch, unused by this module');
 }
 
 console.log('-- hosting: an answer acceptAnswer rejects does not throw out of the bridge callback');

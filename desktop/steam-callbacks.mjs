@@ -43,6 +43,36 @@
  *   reports `{ ok: false, reason }` and the shell keeps both other invite
  *   routes. Nothing above it branches on the pump existing.
  *
+ * ## THE MODE-MIXING CAVEAT (found in review, 2026-08-21)
+ *
+ * Valve's manual dispatch is documented as a REPLACEMENT for
+ * `SteamAPI_RunCallbacks()`, not a supplement to it, and this process runs both
+ * on the same pipe. Not by choice: the Binding's own `createLobby`/`joinLobby`
+ * await their results through `SteamCallbackPoller.poll()`, which calls
+ * `apiCore.runCallbacks()` -> `SteamAPI_RunCallbacks()` in a loop, every 100 ms
+ * for up to 5 s. The poller is constructed inside the Binding and its
+ * `runCallbacks()` call is unconditional — there is no option, no injection
+ * point, and no way to disable it short of forking the package. Making our pump
+ * the ONLY dispatcher is therefore impossible while the Binding is the thing
+ * opening lobbies.
+ *
+ * What IS done about it: `holdDispatch()` wraps every Binding async call site,
+ * and this pump SKIPS its ticks entirely — no `RunFrame`, no `GetNextCallback`
+ * — for as long as any of them is in flight. The two mechanisms no longer run
+ * concurrently.
+ *
+ * **What that does NOT fix, stated plainly.** The mixing is narrowed, not
+ * eliminated: the two mechanisms still alternate on one pipe across the life of
+ * the process, which is not what Valve's contract describes. And there is a
+ * concrete, accepted consequence — a `GameLobbyJoinRequested` that Steam
+ * delivers DURING a create/join window is dispatched by `SteamAPI_RunCallbacks`
+ * to a C++ callback nobody registered, and is gone before this pump looks
+ * again. A running joiner who accepts an invite in exactly that window (a few
+ * seconds, at most, around hosting or joining) will not hear it. The two other
+ * invite routes — `+connect_lobby` on a closed game, and typing the lobby id —
+ * are the fallback, and they are why this is a degraded invite rather than a
+ * lost one. Only a live client can measure how often it actually happens.
+ *
  * ## What is NOT proven here
  *
  * That the live Steam client delivers 333 through this loop. Nothing in plain
@@ -53,6 +83,42 @@
  *
  * Imports nothing from Electron, and nothing from the Binding, on purpose.
  */
+
+/**
+ * How many Binding async operations are in flight right now.
+ *
+ * Module-level rather than passed around, because the two things it separates
+ * live in different files and share only the Steam pipe: `desktop/main.mjs`
+ * holds it across `matchmaking.createLobby`/`joinLobby`, and the pump below
+ * reads it. A counter and not a boolean: two overlapping operations must both
+ * be finished before dispatch resumes, and a boolean would let the first one to
+ * settle re-open the pipe under the second.
+ */
+let dispatchHolds = 0;
+
+/** True while any Binding async call is awaiting `SteamAPI_RunCallbacks`. */
+export const dispatchHeld = () => dispatchHolds > 0;
+
+/**
+ * Run a Binding async call with this pump stood down for its duration.
+ *
+ * `finally`, always: a hold that leaks is a pump that never ticks again, which
+ * turns a narrowed risk into a dead invite route. The operation's own result
+ * and its own failure both pass straight through — this wrapper decides
+ * nothing about the call it wraps.
+ *
+ * @template T
+ * @param {() => Promise<T>|T} op
+ * @returns {Promise<T>}
+ */
+export async function holdDispatch(op) {
+  dispatchHolds++;
+  try {
+    return await op();
+  } finally {
+    dispatchHolds--;
+  }
+}
 
 /** `k_iSteamFriendsCallbacks` (300) + 33. Steam pushes this when a friend's
  *  "Join game" is clicked, or an invite accepted, while the game is running. */
@@ -95,10 +161,17 @@ export function decodeJoinRequested(data) {
  *           free: () => void }} dispatch
  * @param {(lobbyId: string) => void} onJoinRequested
  * @param {(message: string) => void} [onError]
+ * @param {() => boolean} [held] true while a Binding async call is using
+ *   `SteamAPI_RunCallbacks` on this same pipe. A held tick does NOTHING — not
+ *   even `RunFrame` — which is the whole of the mitigation described above.
  * @returns {number} how many 333s were delivered this tick
  */
-export function drainCallbacks(dispatch, onJoinRequested, onError = () => {}) {
+export function drainCallbacks(dispatch, onJoinRequested, onError = () => {}, held = dispatchHeld) {
   let delivered = 0;
+  // Before `runFrame`, deliberately: `RunFrame` is itself a dispatch call, and
+  // a tick that ran it and then declined to read would be mixing the two
+  // mechanisms while claiming not to.
+  if (held()) return 0;
   try {
     dispatch.runFrame();
   } catch (err) {
@@ -189,7 +262,7 @@ export function createKoffiDispatch(lib, koffi) {
  */
 export function startCallbackPump({
   dispatch, library, koffi, onJoinRequested,
-  intervalMs = 100, onError = (m) => console.error(m),
+  intervalMs = 100, onError = (m) => console.error(m), held = dispatchHeld,
 }) {
   const off = (reason) => ({ ok: false, reason, stop: () => {}, tick: () => 0 });
   let d = dispatch ?? null;
@@ -203,7 +276,7 @@ export function startCallbackPump({
     }
   }
 
-  const tick = () => drainCallbacks(d, onJoinRequested, onError);
+  const tick = () => drainCallbacks(d, onJoinRequested, onError, held);
   const timer = setInterval(tick, intervalMs);
   if (typeof timer.unref === 'function') timer.unref();
   return { ok: true, reason: null, stop: () => clearInterval(timer), tick };

@@ -20,7 +20,7 @@ import {
   isAuthorizedSignalTarget, sanitizeFriendList, parseConnectLobbyArg,
 } from './steam-validate.mjs';
 import { createJoinDelivery } from './join-delivery.mjs';
-import { startCallbackPump } from './steam-callbacks.mjs';
+import { startCallbackPump, holdDispatch } from './steam-callbacks.mjs';
 
 const requireCjs = createRequire(import.meta.url);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -343,7 +343,13 @@ function registerSteamBridge() {
     // lobbyId?, error? }`, where `lobbyId` is already the decimal string that
     // crosses IPC. A failure here is a Steam refusal, not an exception, so it
     // has to be read rather than caught.
-    const created = await mm.createLobby(LOBBY_TYPE_FRIENDS_ONLY, size.value);
+    // `holdDispatch`: this call awaits its result through the Binding's own
+    // `SteamAPI_RunCallbacks` loop, and the 333 pump dispatches manually on the
+    // same pipe. Valve's manual dispatch replaces `RunCallbacks` rather than
+    // supplementing it, so the pump stands down for the duration. See the
+    // mode-mixing caveat in `desktop/steam-callbacks.mjs` for what this does
+    // and does not fix.
+    const created = await holdDispatch(() => mm.createLobby(LOBBY_TYPE_FRIENDS_ONLY, size.value));
     if (!created || !created.success) return { error: created?.error || 'lobby-create-refused' };
     const lobbyId = steamIdToString(created.lobbyId);
     if (!lobbyId) return { error: 'lobby-id-unreadable' };
@@ -363,7 +369,7 @@ function registerSteamBridge() {
     // it never issued.
     if (parseSteamId(rawLobbyId) === null) return { error: 'bad-lobby-id' };
 
-    const joined = await mm.joinLobby(rawLobbyId);
+    const joined = await holdDispatch(() => mm.joinLobby(rawLobbyId));   // see `steam:host-lobby`
     if (!joined || !joined.success) return { error: joined?.error || 'lobby-join-refused' };
     // Hold both the id we were given and the id the result reports. They are
     // the same number today; holding both means a normalisation we did not
