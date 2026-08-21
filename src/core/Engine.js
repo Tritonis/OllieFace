@@ -355,6 +355,39 @@ export class Engine {
   }
 
   /**
+   * Run a call *into* `system` on that system's own account, wherever the
+   * stack came from (#120).
+   *
+   * `_call` bills a throw to whichever system's phase it escaped, which is the
+   * right answer for frame work and the wrong one for work dispatched through
+   * the event bus: `HUD`'s `itemPickup` listener runs inside `Items.update`,
+   * so a menu that threw out of `showPickup` was billed to `Items` — a
+   * CRITICAL system, so a cosmetic card ended the run outright instead of
+   * costing the player the menus. The project owner settled the rule on
+   * 2026-08-21: UI work dispatched through events bills to the UI, not to the
+   * emitter that happened to be on the stack.
+   *
+   * Same accounting as a phase, deliberately — a consecutive run of failures
+   * disables a noncritical system, and a call that returns clears the streak
+   * for that entry point alone. `phase` is the method name, so a wedged
+   * `showPickup` cannot be rescued by a healthy `showDeath`.
+   *
+   * The throw does not propagate: the caller is somebody else's phase and must
+   * not wear this. A halted engine runs nothing further, here as in `_call`.
+   */
+  callInto(system, phase, fn) {
+    if (this.fatal) return undefined;
+    try {
+      const v = fn();
+      this._streak.get(system)?.delete(phase);
+      return v;
+    } catch (e) {
+      this._onFrameError(e, system, phase);
+      return undefined;
+    }
+  }
+
+  /**
    * Per-system timing. Off by default — `performance.now()` twice per system
    * per phase is itself measurable at 60Hz, so profiling must never be the
    * thing that makes the game slow.
