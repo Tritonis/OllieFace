@@ -75,6 +75,13 @@ The fallback is written down here, and in the ADR, deliberately in advance: a ga
 with an undefined failure branch gets argued down by whoever just spent a week on
 the work.
 
+**Amended 2026-08-20:** the throughput arm may not be discharged by the #64
+socket-pair measurement alone — that ran through a test-only Koffi module in bare
+node, and #52 itself forbids treating a near-fit runtime as the runtime. Before
+the gate is declared passed, the same 3-peer 60 Hz smoke must run **through
+`steamworks-ffi-node` under Electron**. It is automatable on one box (socket pair,
+network loopback) and needs no keyboard sitting.
+
 ### 3. Coverage, before anything is deleted
 
 Deleting the WebRTC Conversation also deletes `npm run probe:coop` — two browser
@@ -100,9 +107,9 @@ splits three ways:
 - **C. A scripted two-machine run** (#13, promoted from manual) for identity,
   rendezvous and SDR — the half no single box can run.
 
-**This changes step 6's entry condition.** The deletion may not proceed until
-arm A is green *against the WebRTC transport*. Written-but-unrun does not
-qualify.
+**This changes the deletion step's entry condition** (step 8, since the 2026-08-20
+re-sequence). The deletion may not proceed until arm A is green *against the
+WebRTC transport*. Written-but-unrun does not qualify.
 
 ### 4. Replace the Binding
 
@@ -145,11 +152,48 @@ checked during #53 and is wrong in two places that cost work here:
 Everything else about the claim holds: gameplay code proper is untouched, and the
 two repairs above are both inside `NetHost`.
 
-### 6. Delete the WebRTC era
+**Re-sequenced 2026-08-20: the deletion now runs last of the engineering steps.**
+The spike's overlay check runs unpacked, and the named packaging hazard —
+`steamworks-ffi-node` builds a native overlay module at install time when prebuilds
+are absent — is exactly a way the overlay passes the spike and fails on the
+artifact. Deleting the WebRTC era before #14 passes on the packed artifact would
+turn the `steamworks.js` fallback from a branch into a revert of three merged
+steps. The deletion's entry conditions do not decay by waiting; step 8's failure
+branch is now defined, which the old order left undefined.
 
-**Entry condition, from step 3: MET 2026-08-15.** `npm test` runs
-`tests/transport-conformance.test.mjs`, 36 assertions green against the WebRTC
-transport (#63). The parachute is packed; the altimeter may now be removed.
+### 6. Package (#15 — closed 2026-08-18, one flip remains)
+
+#15 closed ahead of this plan: the Binding was a devDependency all along, so the fix
+promoted `steamworks.js` to a runtime dependency, and the blanket `!node_modules/**`
+exclusion is **gone** — replaced by per-package exclusions (`three`, `ws`, `koffi`,
+`steamworks-ffi-node`). Two consequences this plan now carries:
+
+- **The flip is #54's acceptance item, not a packaging step**: remove the
+  `!node_modules/steamworks-ffi-node/**` exclusion, drop `steamworks.js`, and admit
+  the vendored `steamworks_sdk/` redistributable (#65). An agent that lands #54
+  without touching `build.files` recreates #15's exact defect with #15 closed.
+- **Any new runtime dependency now ships into the artifact by default.** Adding one
+  means deciding its exclusion explicitly.
+
+`asar: false` is already set, so asar packing of native modules is moot as
+configured. The install-time overlay build when prebuilds are absent is the live
+hazard. `desktop/README.md:76-79` still applies: no `steam_appid.txt` anywhere in
+the packed folder.
+
+### 7. Re-verify the overlay (#14), on the packed artifact
+
+Both halves, one sitting, eyes on the screen. If either does not appear, the invite
+path is dead and no dead invite button ships.
+
+This is the STOP condition the deletion below waits for: while it is unmet, falling
+back to `steamworks.js` is a branch, not a revert.
+
+### 8. Delete the WebRTC era
+
+**Entry conditions:** arm A green against the WebRTC transport — **MET 2026-08-15**
+(`npm test` runs `tests/transport-conformance.test.mjs`, 36 assertions, #63) — and,
+since the 2026-08-20 re-sequence, **#14 green on the packed artifact** (step 7).
+The parachute is packed; the altimeter comes off only after the landing is seen.
 
 Code and docs both, cleanly — not marked superseded in place. This repo already
 carries the cost of documents whose later halves overturn their earlier ones, and
@@ -160,27 +204,12 @@ reasoning.
   `npm run signal`, `npm run probe:coop` / `tools/coopprobe.mjs`,
   `docs/MULTIPLAYER.md`.
 - Rewrite: `docs/STEAM.md` section 7 to describe the Binding that exists.
-- Close #12 as **superseded, not fixed**, with the reason on it, so that a later gate
-  failure means reopening rather than re-deriving.
+- #12 is already closed (2026-08-17, out of scope with the web build); its close
+  reason is corrected by comment to preserve the fallback branch: if the gate falls
+  through to WebRTC + TURN, #12 reopens as a Public Launch blocker — the desktop
+  binary carries the credential problem without any web build.
 - Re-check #10 (`leave()` racing `createInvite`) — it is a page-side Lobby defect and
   may be deleted along with the code it describes.
-
-### 7. Package once (#15)
-
-Promote the final Binding to a runtime dependency and admit exactly its
-`node_modules` subtree, preserving the `!node_modules/**` exclusion that keeps
-`three`'s src out. Note `asar: false` is already set, so asar packing of native
-modules — listed among #15's hazards — is moot as configured. `steamworks-ffi-node`
-builds a native overlay module at install time when prebuilds are absent, which is
-the hazard that replaces it.
-
-`desktop/README.md:76-79` still applies: no `steam_appid.txt` anywhere in the packed
-folder.
-
-### 8. Re-verify the overlay (#14), on the packed artifact
-
-Both halves, one sitting, eyes on the screen. If either does not appear, the invite
-path is dead and no dead invite button ships.
 
 ### 9. Two-seat invite test (#13), two machines, scripted
 
