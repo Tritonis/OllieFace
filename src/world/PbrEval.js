@@ -39,7 +39,7 @@ import { setOverlayMaps } from '../shaders/BlightMask.js';
 
 const ROOT = 'assets-staging';
 
-const SETS = {
+export const SETS = {
   rock: {
     dir: `${ROOT}/terrain/worn_rock_natural_01`,
     stem: 'worn_rock_natural_01',
@@ -58,7 +58,7 @@ const SETS = {
 };
 
 /** Which library material takes which photographed set. */
-const ASSIGNMENT = {
+export const ASSIGNMENT = {
   terrain: 'rock', rock: 'rock', cliff: 'rock', wetStone: 'rock',
   metalRuin: 'metal',
 };

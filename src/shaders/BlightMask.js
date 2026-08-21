@@ -24,10 +24,20 @@ export const MASK_UNIFORMS = {
   uBlightPatches: { value: Array.from({ length: MAX_MASK }, () => [0, 0, 0, 0]).flat() },
   uBlightTime: { value: 0 },
   uBlightBand: { value: 0 },
-  // The photographed overlay relief (#109 step 3), null until `?pbr=1` loads
-  // it. Declared here so every patched program shares one set of textures; the
-  // GLSL that reads them is only emitted when they exist, so a flag-off
-  // program never carries an unbound sampler.
+};
+
+/**
+ * The photographed overlay relief (#109 step 3). Deliberately a *separate*
+ * object from MASK_UNIFORMS rather than three more keys in it: the base set is
+ * assigned onto every patched program unconditionally, and a game that never
+ * throws the flag would otherwise carry three permanently-null sampler entries
+ * on every material in the library — inert, three.js drops dict entries with no
+ * program-side match, but it is still an unconditional touch of shared material
+ * state for a feature that is off. These are merged in only while the overlay
+ * is enabled, which is safe precisely because enabling forks the cache key and
+ * forces the recompile that re-runs `onBeforeCompile`.
+ */
+export const OVERLAY_UNIFORMS = {
   uOvNor: { value: null },
   uOvRough: { value: null },
   uOvAo: { value: null },
@@ -174,7 +184,7 @@ const OVERLAY_APPLY = /* glsl */ `
     }
 `;
 
-function maskApply(overlay) { return /* glsl */ `
+export function maskApply(overlay) { return /* glsl */ `
 if (uBlightCount > 0) {
   // Both derivatives are taken HERE, above the coverage branch, and that
   // placement is the whole of their correctness: a derivative taken inside
@@ -276,6 +286,7 @@ export function attachBlightMask(material) {
   material.onBeforeCompile = function (shader, renderer) {
     if (prev) prev.call(this, shader, renderer);
     Object.assign(shader.uniforms, MASK_UNIFORMS);
+    if (_overlay) Object.assign(shader.uniforms, OVERLAY_UNIFORMS);
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', VERT_VARYING)
       .replace('#include <project_vertex>', VERT_WORLD);
@@ -311,10 +322,14 @@ let _overlay = false;
  */
 export function setOverlayMaps(set) {
   const on = !!set;
-  MASK_UNIFORMS.uOvNor.value = set ? set.normalMap : null;
-  MASK_UNIFORMS.uOvRough.value = set ? set.roughnessMap : null;
-  MASK_UNIFORMS.uOvAo.value = set ? set.aoMap : null;
+  OVERLAY_UNIFORMS.uOvNor.value = set ? set.normalMap : null;
+  OVERLAY_UNIFORMS.uOvRough.value = set ? set.roughnessMap : null;
+  OVERLAY_UNIFORMS.uOvAo.value = set ? set.aoMap : null;
   if (on === _overlay) return;
   _overlay = on;
   for (const m of _patched) m.needsUpdate = true;
 }
+
+/** Whether the overlay relief is currently bound — the observable the tests
+ *  and the harness read instead of the module-private flag. */
+export function overlayEnabled() { return _overlay; }

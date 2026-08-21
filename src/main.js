@@ -195,10 +195,22 @@ globalThis.__GAME__ = { engine, ctx, THREE, seed };
 // import itself is behind the flag: flag-off nothing under `assets-staging/`
 // is fetched, so the 148 MiB stays on disk and the frame is the frame we
 // shipped. `__HARNESS__.setPbr` drives the same seam for a within-session A/B.
+//
+// The failure path matters more than the happy one here: `assets-staging/` is
+// gitignored, so on any clone that has not fetched it every texture request
+// 404s and `setPbr` rejects. Unhandled, that rejection propagates out of this
+// top-level await and abandons the rest of module evaluation — including the
+// harness install below — so a missing optional asset set would present as a
+// game with no harness and no explanation. Caught, the flag simply declines
+// and the player gets the procedural world.
 if (params.get('pbr') === '1') {
-  const { setPbr } = await import('./world/PbrEval.js');
-  await setPbr(true);
-  ctx.audio?.setPbrRumble(true);
+  try {
+    const { setPbr } = await import('./world/PbrEval.js');
+    await setPbr(true);
+    await ctx.audio?.setPbrRumble?.(true);
+  } catch (e) {
+    console.warn('pbr=1: the evaluation asset set did not load; staying procedural.', e);
+  }
 }
 
 if (params.has('harness')) {
