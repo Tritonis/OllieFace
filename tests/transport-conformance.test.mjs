@@ -17,6 +17,7 @@
 import { runTransportContract } from './transport-contract.mjs';
 import { loopbackAdapter } from './transport-loopback.mjs';
 import { steamAdapter } from './transport-steam.mjs';
+import { bridgedSteamAdapter } from './transport-steam-bridged.mjs';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
@@ -26,6 +27,10 @@ await runTransportContract(loopbackAdapter, ok);
 // only the three `drained()` state-setters moved behind the adapter, because
 // "bytes still to send" has a different name in each transport's vocabulary.
 await runTransportContract(steamAdapter, ok);
+// The same assertions once more with the renderer/main IPC bridge in the middle
+// (#128). The Steam arm above proves the transport; this one proves that the
+// seam the desktop shell has to put under it does not change a single answer.
+await runTransportContract(bridgedSteamAdapter, ok);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

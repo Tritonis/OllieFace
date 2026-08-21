@@ -1,0 +1,103 @@
+{
+  "tool": "tools/ipcprobe.mjs",
+  "label": "ipc-bridge-3peer-60hz-run2",
+  "command": "electron tools/ipcprobe.mjs --peers 3 --hz 60 --entities 60 --run-s 30 --warmup-s 3 --label ipc-bridge-3peer-60hz-run2",
+  "when": "2026-08-21T15:58:40.885Z",
+  "sha": "7a9808b915202e90d9bc5d9a1e0c5508475dbb08",
+  "electron": "43.3.0",
+  "shape": "a: one batched IPC per frame each way, synchronous drain from a renderer-side buffer",
+  "config": {
+    "peers": 3,
+    "hz": 60,
+    "entities": 60,
+    "runS": 30,
+    "warmupS": 3,
+    "eventHz": 4,
+    "snapshotBytes": 1031,
+    "eventBytes": 64
+  },
+  "frames": 2063,
+  "totals": {
+    "state": {
+      "sent": 5628,
+      "received": 5628,
+      "lost": 0
+    },
+    "events": {
+      "sent": 375,
+      "received": 375,
+      "lost": 0
+    }
+  },
+  "addedLatencyMs": {
+    "state": {
+      "n": 5628,
+      "p50": 0.3,
+      "p95": 0.6,
+      "p99": 0.8,
+      "max": 3.5,
+      "mean": 0.369
+    },
+    "events": {
+      "n": 375,
+      "p50": 0.4,
+      "p95": 0.6,
+      "p99": 0.8,
+      "max": 1.2,
+      "mean": 0.388
+    }
+  },
+  "toFrameHookMs": {
+    "state": {
+      "n": 5625,
+      "p50": 16,
+      "p95": 17,
+      "p99": 17.2,
+      "max": 17.6,
+      "mean": 15.977
+    },
+    "events": {
+      "n": 375,
+      "p50": 15.9,
+      "p95": 17,
+      "p99": 17.3,
+      "max": 17.5,
+      "mean": 15.874
+    }
+  },
+  "steamLegP99Ms": {
+    "state": 0.242,
+    "events": 0.277
+  },
+  "composedP99Ms": {
+    "stateP99Ms": 1.042,
+    "eventsP99Ms": 1.077
+  },
+  "envelope": {
+    "stateP99Ms": 2,
+    "eventsP99Ms": 3
+  },
+  "checks": [
+    {
+      "name": "traffic",
+      "ok": true,
+      "detail": "state sent 5628, events sent 375"
+    },
+    {
+      "name": "events delivered",
+      "ok": true,
+      "detail": "375/375"
+    },
+    {
+      "name": "composed state p99 within the WebRTC envelope",
+      "ok": true,
+      "detail": "1.042 ms <= 2 ms"
+    },
+    {
+      "name": "composed events p99 within the WebRTC envelope",
+      "ok": true,
+      "detail": "1.077 ms <= 3 ms"
+    }
+  ],
+  "ok": true
+}

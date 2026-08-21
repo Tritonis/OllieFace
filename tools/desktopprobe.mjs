@@ -69,6 +69,9 @@ const STEAM_BRIDGE_KEYS = [
   // The answer leg after the Binding swap: the joiner writes its own member
   // data, the host collects every member's in one call per poll tick.
   'writeMemberData', 'collectMemberData',
+  // The Conversation (#128). A KEY, not a function: null when the shell has no
+  // Steam sockets to lend, the batched sockets surface when it has.
+  'net',
 ].sort();
 
 const checks = [];
@@ -119,6 +122,27 @@ try {
     steam !== null && typeof steam === 'object' && typeof steam.available === 'boolean'
       && (steam.available ? steam.reason === null : typeof steam.reason === 'string' && steam.reason.length > 0),
     steam);
+
+  // The Conversation's bridge, and the reason this check exists at all: the
+  // first shipped version of it required a project-local file from the preload,
+  // which Electron's sandboxed loader cannot resolve -- so the require threw,
+  // the call to the undefined factory threw, and every `exposeInMainWorld`
+  // after it never ran. Both key checks above went red with EMPTY lists, which
+  // is a symptom that could mean anything. This one names the thing: with Steam
+  // up, `net` must be a live sockets surface; without it, exactly null.
+  const conversation = await page.evaluate(() => {
+    const net = globalThis.__STEAM__?.net;
+    return {
+      isNull: net === null,
+      kind: typeof net,
+      members: net ? ['sendMessage', 'receiveMessages', 'connectP2P', 'getIdentity'].filter((k) => typeof net[k] === 'function') : [],
+    };
+  });
+  check('boot 1: __STEAM__.net matches what Steam answered -- a live sockets surface, or exactly null',
+    steam.available
+      ? conversation.kind === 'object' && !conversation.isNull && conversation.members.length === 4
+      : conversation.isNull,
+    { available: steam.available, ...conversation });
 
   // A prefixed write must reach the file through the mirror.
   await page.evaluate(() => localStorage.setItem('telluric.probeMark', 'boot1'));
