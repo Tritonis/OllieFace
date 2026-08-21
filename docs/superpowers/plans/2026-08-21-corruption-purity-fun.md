@@ -111,7 +111,14 @@ void's three.
 * **The currency is the argent mote**, one per `MOTE.per` (40) points warded.
   Same monotone-high-water honesty as marks: minted by having done the work,
   and spending is tracked separately so nothing can be laundered.
-* **The bargain is Sanctuary.** Spend 1 mote at an Argent Font: for
+* **The bargain is Sanctuary**, and it stands on the **Void Bargain altar**,
+  not the Argent Font. (This document originally proposed the font; the altar
+  is where it went, and the reason is better: `VoidBargain.offer()` returns
+  `null` — a rock with nothing to say — at Pristine *and* at every band whose
+  price the purse cannot meet, which is exactly the population that has been
+  warding. Sanctuary is the fallback in that null case only, so the void's own
+  bargain is still checked first and a party that can afford the pact is never
+  argued down to a window.) Spend 1 mote: for
   `MOTE.sanctuarySeconds` seconds, `Corruption.priceOf` returns 0 — every
   chest, every pickup, every point of greed time is *free*.
 
@@ -122,9 +129,11 @@ void's three.
   (where the multiplier is 2.0) and one mote is worth twice as much. The clean
   player is no longer abstaining — they are hunting Voidtouched to bank a window
   in which they can loot like a greedy one.
-* **Where you see it before committing.** The font prompt gains a fourth line
-  naming the mote price, the window, and the greed multiplier currently in
-  force. The gauge carries the mote count beside the mark count.
+* **Where you see it before committing.** The altar prompt names the mote
+  price, the purse it is priced against, the window length, and — the clause
+  that *is* the decision — whether greed time is running, because the window is
+  worth exactly double while it is. The gauge should carry the mote count
+  beside the mark count; that half is not built (see §4).
 
 ### 2.2 Seeded — *the mint clause*
 
@@ -218,4 +227,16 @@ move them:
 
 **Sim-path honesty.** Slice 3 adds `Corruption.update` and a zero-branch inside
 `priceOf`. Both are inert while `_sanctuaryT === 0`, no `ctx.rng` draw is added
-anywhere, and `gate:sp` was run on the result — see the branch's final report.
+anywhere, and `gate:sp --lane C` reported *no fields moved* against
+`reviews/round7/baseline-00f8900.json` on the finished branch.
+
+**One consequence worth arguing about in the morning.** Sanctuary makes
+`priceOf` return 0, and `pricedPrompt` quotes through `priceOf` — so inside a
+window every chest prompt re-prices itself to `+0 corruption`, which is
+intended and is most of the pleasure of the thing. But `pricedPrompt` then
+appends the mint clause off that same zero, so a sanctified prompt reads
+"+0 corruption (25 to the next void mark)". That is *true* — a free press mints
+nothing — but it reads as a discouragement in the one moment the player should
+feel unleashed. Suppressing the mint clause while `sanctified` is a one-line
+change and I did not make it, because it is a wording call rather than a
+correctness one and it belongs to whoever reviews this.
