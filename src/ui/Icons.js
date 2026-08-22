@@ -31,9 +31,9 @@ const SIZE = 64;
 /*
  * Tier colours, rebuilt against `tools/colour-vision.mjs`.
  *
- * The seven hues are the ones the game has always used — white, green, red,
- * gold, cyan, magenta, amber — but their *lightnesses* are no longer whatever
- * each one happened to be. The previous table put Uncommon at L* 80 and Umbral
+ * The hues are the ones the game has always used — white, green, red, gold,
+ * cyan, magenta, amber, and now a silver — but their *lightnesses* are no longer
+ * whatever each one happened to be. The first table put Uncommon at L* 80 and Umbral
  * at L* 81, which is a measured CIEDE2000 of **0.7** once colour is taken away:
  * two tiers, one grey. Under protanopia Uncommon and Boss came back at 3.3,
  * which is "a slightly different shade of the same colour".
@@ -54,11 +54,11 @@ const SIZE = 64;
  *   **3:1** against every surface where it becomes a graphic — enumerated, not
  *   assumed, in `SURFACES` in `tools/colour-vision.mjs`.
  *
- * The feasible region for seven saturated hues under both is very nearly a
- * point, and the two constraints decide the lightnesses between them: saturated
- * red, magenta and amber exist only low in sRGB, the contrast floor puts a hard
- * bottom at L* 52, and gold only exists high. Two colours still moved a long
- * way and it is worth saying which and why:
+ * The feasible region under both is very nearly a point, and the two constraints
+ * decide the lightnesses between them: saturated red, magenta and amber exist
+ * only low in sRGB, the contrast floor puts a hard bottom at L* 52, and gold
+ * only exists high. Two colours moved a long way in the first cut and it is
+ * worth saying which and why:
  *
  * - **Equipment** is amber-bronze rather than orange. Orange sits between
  *   Legendary's red and Boss's gold, and for a deuteranope all three are one
@@ -69,62 +69,66 @@ const SIZE = 64;
  * - **Umbral** is a deeper teal-cyan. Cyan cannot be saturated and bright at
  *   once, and it needed to clear both Common above it and Uncommon beside it.
  *
- * None of this is sufficient on its own — see `TIER_MARKS`. Seven bright
+ * None of this is sufficient on its own — see `TIER_MARKS`. Eight bright
  * colours cannot be told apart by lightness alone without one of them being
  * nearly invisible on a near-black plate, which is why every plate also carries
  * a shape.
+ *
+ * #140 added the eighth. The first search for it kept the seven above frozen
+ * and swept all 17,576 three-digit hexes for a partner, and found none: with
+ * seven points already sitting on the feasible region's boundary there is no
+ * room left in it for an eighth. So the whole table was re-cut at once instead,
+ * every hue held inside six degrees of where it was and only lightness and
+ * chroma allowed to move. That is a solvable problem, and `tools/tier-palette-
+ * search.mjs` is what solved it; the shipped answer moves the seven by a mean
+ * CIEDE2000 of 3.6, the largest single move being Blight's 9.7.
  */
 export const TIERS = {
-  common:    { label: 'Common',    color: '#e6ecf4', dim: '#7c7f84', plate: '#1b1f26' },
-  uncommon:  { label: 'Uncommon',  color: '#3bf695', dim: '#208550', plate: '#14231a' },
-  legendary: { label: 'Legendary', color: '#ff6472', dim: '#8a363e', plate: '#26120f' },
-  boss:      { label: 'Boss',      color: '#d9bf30', dim: '#75671a', plate: '#241d0c' },
-  lunar:     { label: 'Umbral',    color: '#00c2d0', dim: '#006970', plate: '#0e2029' },
+  common:    { label: 'Common',    color: '#e9f0f9', dim: '#7e8286', plate: '#1b1f26' },
+  uncommon:  { label: 'Uncommon',  color: '#5ff799', dim: '#338553', plate: '#14231a' },
+  legendary: { label: 'Legendary', color: '#e5596d', dim: '#7c303b', plate: '#26120f' },
+  boss:      { label: 'Boss',      color: '#dcc326', dim: '#776915', plate: '#241d0c' },
+  lunar:     { label: 'Umbral',    color: '#05c4d6', dim: '#036a74', plate: '#0e2029' },
   // Blight draws like every other tier (see `itemArt`), and it keeps the
   // magenta no other tier is using. What changed is its lightness: at L* 58 it
   // was 2.7 from Legendary once desaturated and, under a tritan projection that
   // actually discards a dimension, the two were 4.0 apart — red and magenta are
   // one colour without the S cone. It is also the tier that binds the contrast
   // floor, at 4.59:1 on the logbook's hover row.
-  blight:    { label: 'Blight',    color: '#c44fbc', dim: '#6a2b66', plate: '#26101c' },
-  equipment: { label: 'Equipment', color: '#bb7e00', dim: '#654400', plate: '#26160b' },
-  // INTERIM, and outside the proven palette on purpose — see `CONTENT_TIERS`
-  // below for why, and #140 for the decision that will replace it. It is the
-  // pale blue `data/items.js` already ships for argent world drops, so the two
-  // tables agree today; it has NOT been measured for tier separation or
-  // contrast, and it must be measured (and probably moved) when #140 lands and
-  // `argent` joins `TIER_ORDER`. Until then it is here so that an argent card
-  // has a label and a tint of its own rather than reading as Common.
-  argent:    { label: 'Argent',    color: '#8fd7ff', dim: '#4a7c96', plate: '#101f28' },
+  blight:    { label: 'Blight',    color: '#9f6ba4', dim: '#563a59', plate: '#26101c' },
+  equipment: { label: 'Equipment', color: '#cc8717', dim: '#6e490c', plate: '#26160b' },
+  // Argent, and no longer interim: it is inside `TIER_ORDER` and carries the
+  // same proof as the other seven. Its value is the one free choice in the
+  // table — nothing in the fiction fixes a silver's hue the way fire fixes
+  // Legendary's — and the search took it to a near-neutral with a cold cast,
+  // which is what the tier is meant to read as.
+  argent:    { label: 'Argent',    color: '#9fa5a6', dim: '#56595a', plate: '#101f28' },
 };
 
 // Each entry carries its own id, so a `tierMeta` result is self-describing and
 // the draw path can reach its mark without the caller passing the tier twice.
 for (const [key, meta] of Object.entries(TIERS)) meta.key = key;
 
-export const TIER_ORDER = ['common', 'uncommon', 'legendary', 'boss', 'lunar', 'blight', 'equipment'];
+export const TIER_ORDER = ['common', 'uncommon', 'legendary', 'boss', 'lunar',
+                           'blight', 'equipment', 'argent'];
 
 /**
  * Every tier that can appear in an inventory, in the order the strip, the haul
- * grid and the logbook read them — which is `TIER_ORDER` plus Argent.
+ * grid and the logbook read them.
  *
- * The two lists are not the same list, and the difference is deliberate.
- * `TIER_ORDER` is the *palette*: the readability gate iterates it and proves
- * every member 12 CIEDE2000 apart in four vision models and 4.5:1 against every
- * surface it becomes text on. The feasible region for seven saturated hues
- * under both constraints is very nearly a point (see above), and no eighth
- * colour clears it — an argent hue that separates from Common's white and
- * Umbral's cyan cannot also hold its contrast. So the tier's colour is a parked
- * human decision (#140), and until it is made Argent is not in the gated table:
- * putting a placeholder there would mean loosening the gate for the other seven
- * to accommodate a colour nobody chose, which is worse than the tier drawing in
- * an interim blue.
+ * Since #140 this is the same *set* as `TIER_ORDER` — Argent is inside the
+ * gated palette now, not beside it — and the two lists differ only in order:
+ * `TIER_ORDER` is a proof and its order is arbitrary, while this one is a
+ * reading order and puts Argent before Equipment because that is where a
+ * purity drop sits in the ladder the player sees. Deriving one from the other
+ * would mean deriving the reading order from the proof's, which is backwards,
+ * so both are written out and the gate compares them.
  *
- * What it must not be is *absent*, which is what it was: a haul grid that
- * filtered on `TIER_ORDER` silently dropped every argent card the run bought,
- * and a strip with no argent group dropped them into Common. Grouping, sorting,
- * labelling and grid membership all read this list instead; only the colour
- * proof reads `TIER_ORDER`.
+ * The distinction still earns its name: grouping, sorting, labelling and grid
+ * membership read this list, and only the colour proof reads `TIER_ORDER`. What
+ * a content list must not be is *short* — a haul grid that filtered on the
+ * palette once silently dropped every argent card the run bought, and a strip
+ * with no argent group dropped them into Common.
  */
 export const CONTENT_TIERS = ['common', 'uncommon', 'legendary', 'boss', 'lunar',
                               'blight', 'argent', 'equipment'];
@@ -134,16 +138,16 @@ export const CONTENT_TIERS = ['common', 'uncommon', 'legendary', 'boss', 'lunar'
  * The half of tier legibility that does not depend on colour at all.
  *
  * A plate used to say its tier with one thing: the hue of its 3px rule. That is
- * the single worst channel to put a seven-way distinction in — it is what a
+ * the single worst channel to put an eight-way distinction in — it is what a
  * dichromat has least of, and it is also the first thing a bad monitor, a dark
  * room or a compressed stream takes away. So every plate now also carries a
  * small mark in its top-right corner, and the mark is the tier.
  *
  * The three ordinary tiers are a tally, because they are a ladder and a ladder
- * should count: one stroke, two, three. The four that are not on that ladder are
+ * should count: one stroke, two, three. The five that are not on that ladder are
  * emblems instead, because they are categories rather than rungs — a star for a
  * boss drop, a ring for the Umbral pool, a saltire for Blight, a chevron for the
- * Q-slot hardware. Reading "three strokes" is a different act from reading "a
+ * Q-slot hardware, a lozenge for Argent. Reading "three strokes" is a different act from reading "a
  * star", which is the point: nothing in the set has to be told apart from
  * anything else by a judgement of degree.
  *
@@ -192,6 +196,13 @@ export const TIER_MARKS = {
     [[0.76, 0.10], [0.90, 0.24], [0.24, 0.90], [0.10, 0.76]],
   ],
   equipment: [[[0.50, 0.10], [0.95, 0.72], [0.95, 0.90], [0.50, 0.42], [0.05, 0.90], [0.05, 0.72]]],
+  // Argent is a lozenge — one solid convex body with no points, no bore and no
+  // crossing. That makes it the only mark in the set whose outline is a single
+  // unbroken run in every scanline band, which is the property the silhouette
+  // metric reads it by: the star has notches, the ring has a hole, the saltire
+  // and the chevron have a re-entrant middle, and the tally marks come apart
+  // into two and three runs. A struck coin, which is what the tier is.
+  argent:    [[[0.50, 0.08], [0.92, 0.50], [0.50, 0.92], [0.08, 0.50]]],
 };
 
 export function tierMeta(tier) {

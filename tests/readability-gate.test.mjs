@@ -470,7 +470,7 @@ console.log('the shipped palettes clear them');
 
   // Every tier is graded, not just the ones that happened to be in the object.
   ok(gt.checks.length === (TIER_ORDER.length * (TIER_ORDER.length - 1) / 2) * 5,
-     'all 21 tier pairs, all five visions');
+     `all ${TIER_ORDER.length * (TIER_ORDER.length - 1) / 2} tier pairs, all five visions`);
 }
 
 console.log('the contrast floor catches what separating the palette cost it');
@@ -534,14 +534,19 @@ console.log('the contrast floor catches what separating the palette cost it');
   ok(worst.ratio >= 4.5,
      `and the worst check of all is ${worst.id}/${worst.surface} at ${worst.ratio.toFixed(2)}:1 vs ${worst.min}`);
 
-  // The margin, pinned. Blight is the binding tier and 4.99:1 is what the
-  // backing buys it — 0.49 over the floor, against a lower-bound measurement,
-  // which is the margin the ticket asked for. Held to two decimals so that a
-  // change to either the palette or `--tier-bg` that spends the margin has to
-  // say so here rather than sliding under a bare `>= 4.5`.
+  // The margin, pinned. Blight is still the binding tier and 4.91:1 is what the
+  // backing buys it — 0.41 over the floor, against a lower-bound measurement.
+  // Held to two decimals so that a change to either the palette or `--tier-bg`
+  // that spends the margin has to say so here rather than sliding under a bare
+  // `>= 4.5`. This is that saying-so: #140 re-cut the whole table to fit an
+  // eighth tier and the binding case moved from 4.99 to 4.91. The 0.08 bought
+  // Argent a place in the gated palette, and the alternative tables the search
+  // offered at 5.09 all paid for it somewhere more visible — the cheapest of
+  // them washed Uncommon from a saturated green to a pale mint. The floor
+  // itself did not move and `CONTRAST.text` is asserted at 4.5 above.
   const textChecks = g.checks.filter((c) => c.kind === 'text');
   const worstText = textChecks[0];
-  ok(worstText.id === 'blight' && Math.abs(worstText.ratio - 4.99) < 0.005,
+  ok(worstText.id === 'blight' && Math.abs(worstText.ratio - 4.91) < 0.005,
      `blight is the binding tier at ${worstText.ratio.toFixed(3)}:1 on ${worstText.surface}`);
   ok(textChecks.every((c) => c.ground === '#05070a'),
      'every tier-text check is graded on the opaque --tier-bg, not on a panel fill');
@@ -701,7 +706,7 @@ console.log('and no tier colour is painted as type without one');
   // A `color` whose value reaches the tier ladder: the seven `--t-*` variables,
   // the `--tc` and `--tier` relays that carry one, or `inherit` inside a tier
   // container. `--tier-bg` must not match `--tier`, hence the delimiter.
-  const TIER_VAR = /var\(\s*--t-(?:common|uncommon|legendary|boss|lunar|blight|equipment)\s*[,)]/;
+  const TIER_VAR = /var\(\s*--t-(?:common|uncommon|legendary|boss|lunar|blight|equipment|argent)\s*[,)]/;
   const RELAY = /var\(\s*(?:--tc|--tier)\s*[,)]/;
   const paintsTier = (body) => body.split(';').some((d) => {
     const m = /^\s*color\s*:\s*([\s\S]+)$/.exec(d);
@@ -720,11 +725,10 @@ console.log('and no tier colour is painted as type without one');
   // `.ditem b` to #05070a on an opaque tier fill) or is in the backed set
   // (`.book-row-name`). This list is explicit and short on purpose — it is the
   // only escape hatch, and a stale entry fails below.
-  // `.t-argent` is a container like the other eight and is listed for the same
-  // reason. It is NOT in the colour proof above: argent's hue is a parked
-  // decision (#140) and `TIER_ORDER` — which every separation and contrast
-  // check iterates — deliberately excludes it, so nothing here is loosened on
-  // its account. See `CONTENT_TIERS` in `src/ui/Icons.js`.
+  // `.t-argent` is a container like the other seven and is listed for the same
+  // reason, and only that reason: since #140 it is inside `TIER_ORDER` and
+  // carries the full colour proof above, so its entry here is no longer an
+  // escape hatch from anything. Eight containers, eight gated colours.
   const CONTAINERS = ['.t-common', '.t-uncommon', '.t-legendary', '.t-boss',
                       '.t-lunar', '.t-blight', '.t-equipment', '.t-argent'];
 

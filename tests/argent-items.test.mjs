@@ -78,7 +78,10 @@ function makeApi(over = {}) {
 console.log('the argent tier exists in both tables and carries five cards');
 {
   ok(TIERS.argent?.weight === 0, 'argent sits at weight 0 in the tier table');
-  ok(TIERS.argent?.css === '#8fd7ff', `and takes the pale blue (${TIERS.argent?.css})`);
+  // #140's silver, replacing the interim pale blue. The three-table agreement
+  // is proved in `tests/readability-gate`; this literal is here so that a
+  // change to the data layer alone still trips something local.
+  ok(TIERS.argent?.css === '#9fa5a6', `and takes the silver (${TIERS.argent?.css})`);
   const pool = ITEMS_BY_TIER.argent || [];
   ok(pool.length === 5, `five argent cards (${pool.length})`);
   const want = ['wardens-tally', 'quicksilver-vein', 'unblemished-plate', 'chime-of-absolution', 'pale-standard'];

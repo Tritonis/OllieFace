@@ -48,7 +48,13 @@ function makeItems() {
 console.log('the tier is in the content ladder, and the palette stays the palette');
 {
   ok(CONTENT_TIERS.includes('argent'), 'argent is a content tier');
-  ok(!TIER_ORDER.includes('argent'), 'and is out of the gated palette until #140 picks a colour');
+  // #140 put it in the gated palette too, by re-cutting all eight colours at
+  // once rather than hunting an eighth against seven frozen ones. The two lists
+  // are now the same set and differ only in order — the palette's order is
+  // arbitrary, the content list's is the order the player reads.
+  ok(TIER_ORDER.includes('argent'), 'and is in the gated palette as well');
+  ok([...TIER_ORDER].sort().join() === [...CONTENT_TIERS].sort().join(),
+     'the two lists carry the same tiers, and only their order differs');
   for (const t of TIER_ORDER) ok(CONTENT_TIERS.includes(t), `${t} is in both`);
   ok(CONTENT_TIERS.indexOf('argent') > CONTENT_TIERS.indexOf('blight'),
      'argent reads after blight');

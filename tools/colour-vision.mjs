@@ -519,9 +519,9 @@ export const AURA = {
  *
  * 0.72 is `READABILITY.maxSurvivorSimilarity` rather than a new number: the
  * question is identical — can these two shapes be told apart at a glance — so a
- * second, differently-argued threshold for it would be a liability. The seven
- * shipped marks measure 0.63 on their worst pair, Uncommon's two strokes against
- * Blight's saltire.
+ * second, differently-argued threshold for it would be a liability. The eight
+ * shipped marks measure 0.67 on their worst pair, Boss's star against Argent's
+ * lozenge.
  */
 export const MARK_SIMILARITY = 0.72;
 
