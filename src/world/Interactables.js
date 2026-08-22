@@ -1829,6 +1829,13 @@ function beaconTint(ctx) {
  * dormant. Stale display, not a stale transaction — `spendMarks`, `feed` and
  * `ruin` are all authority-gated and the press resolves on the host.
  */
+// The maw's two voices, and the reason there are exactly two: a colour change
+// is the only altar state a player can resolve at a distance where the prompt
+// is unreadable. Violet is the void's own light and means the bargain is
+// standing; the ember is a debt still being paid off, and it climbs.
+const AFFORD_EMISSIVE = 0x7a2fae;
+const SHORT_EMISSIVE = 0xa8412a;
+
 export class VoidBargain extends Interactable {
   constructor(ctx, position, stageIndex = 0) {
     super(ctx, position);
@@ -1852,6 +1859,7 @@ export class VoidBargain extends Interactable {
         roughness: 0.35, metalness: 0.1, envMapIntensity: 2.0,
       })
     );
+    this._pulse = 0;
     base.castShadow = this.maw.castShadow = true;
     base.receiveShadow = true;
     this.group.add(base, this.maw);
@@ -1923,6 +1931,66 @@ export class VoidBargain extends Interactable {
     return { kind: 'sanctuary', marks: 0, motes: MOTE.motes };
   }
 
+  /**
+   * What this band's own bargain costs in marks, or null where the band prices
+   * nothing in them: Pristine has no bargain, and Consumed's price is the run.
+   * Derived from the same `BOON` table `offer()` reads, so the shortfall the
+   * altar quotes and the shortfall it enforces cannot drift apart.
+   */
+  _price() {
+    const band = this._band();
+    if (band >= BOON.ruin.band || band < BOON.reroll.band) return null;
+    if (band >= BOON.pact.band) return BOON.pact.marks;
+    if (band >= BOON.synergy.band) return BOON.synergy.marks;
+    return BOON.reroll.marks;
+  }
+
+  /**
+   * The gap between the purse and this band's price, or null when there is no
+   * gap (or no price). `toNext` is the corruption still owed on the *next*
+   * mark, read off the peak because that is what mints one - the run has to go
+   * deeper, and bleeding back at a font will not do it.
+   */
+  shortfall() {
+    const want = this._price();
+    if (want == null) return null;
+    const held = this._marks();
+    if (held >= want) return null;
+    const peak = this.ctx.corruption?.peak ?? 0;
+    return { want, held, toNext: BOON.markPer - (peak % BOON.markPer) };
+  }
+
+  /**
+   * What the maw is saying from across the stage (issue #36, D3). The first
+   * pass lerped one intensity between "afforded" and "rock", which answers
+   * *whether* the bargain is reachable and says nothing about how near it is -
+   * so a party twelve corruption from a pact read the same dead cone as a party
+   * that had spent everything, and saving toward the altar looked like nothing
+   * happening. `progress` is the missing term: whole marks held plus the
+   * fraction of the next one the run has already dug, over the price.
+   */
+  signal() {
+    if (this.spent) return { state: 'spent', want: 0, held: this._marks(), progress: 1 };
+    const short = this.shortfall();
+    const held = this._marks();
+    if (!short) {
+      // An offer that is standing - the band's own bargain, or Sanctuary in the
+      // other currency - reads as afforded; anything else is a rock.
+      return this.offer()
+        ? { state: 'afford', want: this._price() ?? 0, held, progress: 1 }
+        : { state: 'dormant', want: this._price() ?? 0, held, progress: 0 };
+    }
+    const peak = this.ctx.corruption?.peak ?? 0;
+    const frac = (peak % BOON.markPer) / BOON.markPer;
+    return {
+      state: 'short',
+      want: short.want,
+      held: short.held,
+      toNext: short.toNext,
+      progress: Math.min(0.999, (short.held + frac) / short.want),
+    };
+  }
+
   /** Every terminal on the stage that is still selling something. */
   _terminals() {
     return (this.ctx.interactables?.list || [])
@@ -1937,7 +2005,15 @@ export class VoidBargain extends Interactable {
       if (this.ctx.corruption?.ruined) return 'Void Bargain - the bargain is struck; nothing is left to trade';
       const band = this._band();
       if (band < BOON.reroll.band) return `Void Bargain - dormant until Seeded (${purse})`;
-      return `Void Bargain - ${BANDS[band].name} wants more than you hold (${purse})`;
+      const short = this.shortfall();
+      if (!short) return `Void Bargain - ${BANDS[band].name} has nothing to sell you (${purse})`;
+      // The number is the whole sentence (issue #36, D3). "Wants more than you
+      // hold" tells a party one mark short exactly what it already knew; what
+      // it cannot see is the price, its own purse and - the clause that turns
+      // the next chest into a purchase - how much more greed the mark costs.
+      return `Void Bargain - ${BANDS[band].name} wants ${short.want} mark${short.want === 1 ? '' : 's'}; you hold ${short.held}
+`
+        + `${Math.ceil(short.toNext)} more corruption mints the next`;
     }
     const price = `${offer.marks} of ${purse}`;
     switch (offer.kind) {
@@ -2034,11 +2110,25 @@ export class VoidBargain extends Interactable {
   }
 
   update(dt) {
-    // The maw brightens with the purse: an altar you can afford is the only
-    // lit thing on the stage, and one you cannot is a rock.
-    const want = this.spent ? 2.4 : (this.offer() ? 1.6 : 0.35);
+    // The maw brightens with the purse, and now it brightens *toward* it: an
+    // altar you can afford burns violet and breathes, one you are saving for
+    // glows a cold ember that climbs with every mark, and one with nothing to
+    // sell is a rock. All three are legible from across the stage, which is the
+    // point - the decision to walk over here is made before you arrive.
+    const sig = this.signal();
+    this._pulse = (this._pulse + dt) % 1000;
+    let want = 0.35;
+    let hue = SHORT_EMISSIVE;
+    if (sig.state === 'spent') { want = 2.4; hue = AFFORD_EMISSIVE; }
+    else if (sig.state === 'afford') {
+      want = 1.6 + 0.2 * Math.sin(this._pulse * 3.4);
+      hue = AFFORD_EMISSIVE;
+    } else if (sig.state === 'short') {
+      want = 0.4 + 0.7 * sig.progress;
+    }
     const m = this.maw.material;
     m.emissiveIntensity += (want - m.emissiveIntensity) * Math.min(1, dt * 3);
+    if (m.emissive.getHex() !== hue) m.emissive.setHex(hue);
   }
 }
 
