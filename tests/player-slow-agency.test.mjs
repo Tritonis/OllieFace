@@ -21,6 +21,7 @@
 import * as THREE from 'three';
 import { Combat } from '../src/systems/Combat.js';
 import { Projectiles } from '../src/systems/Director.js';
+import { Enemy } from '../src/entities/Enemy.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
@@ -121,6 +122,47 @@ console.log("an enemy shell's rider rides the shell's hit");
   combat.statuses.delete(player);
   shells.detonate(ctx, shell());   // same instant, i-frames still up
   ok(combat.statusStacks(player, 'slow') === 0, 'the shell the mercy window refused did not');
+}
+
+console.log("an elite's melee affix rides the swing that connected");
+{
+  const { ctx, combat, player } = makeWorld();
+  player.position.set(0, 0, 1);
+  const brute = Object.create(Enemy.prototype);
+  Object.assign(brute, {
+    alive: true, team: 'monster', damage: 12, yaw: 0, radius: 0.5,
+    position: new THREE.Vector3(0, 0, 0), velocity: new THREE.Vector3(),
+    targetPlayer: player, distToPlayer: 1, elite: { slow: true, burn: true, burnTick: 3 },
+    atk: { kind: 'melee', range: 2, arc: 1, lunge: 0 },
+  });
+  brute.fireAttack(ctx);
+  ok(combat.statusStacks(player, 'slow') === 1, 'the swing that landed slowed the player');
+  ok(combat.statusStacks(player, 'burn') === 2, 'and lit the affix burn too');
+  const hp = player.health;
+  combat.statuses.delete(player);
+  brute.fireAttack(ctx);   // same instant, i-frames still up
+  ok(player.health === hp, 'the second swing dealt no damage (i-frames held)');
+  ok(combat.statusStacks(player, 'slow') === 0, 'the swing the mercy window refused left no slow');
+  ok(combat.statusStacks(player, 'burn') === 0, 'and no fire either');
+}
+
+console.log('an emberclad aura only burns on the tick that connected');
+{
+  const { ctx, combat, player } = makeWorld();
+  const ember = Object.create(Enemy.prototype);
+  Object.assign(ember, {
+    alive: true, team: 'monster', damage: 12, auraT: 0,
+    position: new THREE.Vector3(0, 0, 0), targetPlayer: player, distToPlayer: 0,
+    elite: { auraDps: 0.5, auraRadius: 3, burnTick: 3 },
+  });
+  ember.emberTick(ctx, 0.016);
+  ok(combat.statusStacks(player, 'burn') === 1, 'the tick that landed applied its burn');
+  const hp = player.health;
+  combat.statuses.delete(player);
+  ember.auraT = 0;
+  ember.emberTick(ctx, 0.016);   // same instant, i-frames still up
+  ok(player.health === hp, 'the second tick dealt no damage (i-frames held)');
+  ok(combat.statusStacks(player, 'burn') === 0, 'and left no burn behind either');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

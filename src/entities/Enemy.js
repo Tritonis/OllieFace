@@ -597,16 +597,7 @@ export class Enemy {
 
     // Emberclad units cook anything standing next to them.
     const em = this.elite;
-    if (em && em.auraDps && this.alive) {
-      this.auraT -= h;
-      if (this.auraT <= 0) {
-        this.auraT = 0.5;
-        if (this.distToPlayer < em.auraRadius) {
-          hurtPlayer(ctx, this.targetPlayer, this, this.damage * em.auraDps, 'burn');
-          statusPlayer(ctx, this.targetPlayer, this, 'burn', 1, eliteStatusOverride(em));
-        }
-      }
-    }
+    this.emberTick(ctx, h);
 
     // Withering: the tier-2 healing lock. Line of sight matters — breaking
     // contact is the counterplay, and without the LOS test the debuff would be
@@ -640,6 +631,26 @@ export class Enemy {
 
     this.fsm.update(ctx, h);
     this.applyMovement(ctx, h);
+  }
+
+  /**
+   * The emberclad aura's half-second tick. Its own method because it is a
+   * player-facing on-hit rider like the melee affix and the shell blast, and a
+   * rider that cannot be exercised without standing up the whole FSM is a
+   * rider nobody tests (#135).
+   */
+  emberTick(ctx, h) {
+    const em = this.elite;
+    if (!(em && em.auraDps && this.alive)) return;
+    this.auraT -= h;
+    if (this.auraT > 0) return;
+    this.auraT = 0.5;
+    if (this.distToPlayer >= em.auraRadius) return;
+    // Asked before the burn, not after: the tick arms the mercy window itself,
+    // so a tick the survivor's i-frames ate must not leave its fire behind.
+    const rides = ctx.combat?.wouldHit?.(this.targetPlayer) !== false;
+    hurtPlayer(ctx, this.targetPlayer, this, this.damage * em.auraDps, 'burn');
+    if (rides) statusPlayer(ctx, this.targetPlayer, this, 'burn', 1, eliteStatusOverride(em));
   }
 
   checkLOS(ctx) {
