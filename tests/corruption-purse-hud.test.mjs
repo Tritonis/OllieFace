@@ -55,6 +55,10 @@ function boundHUD() {
     corruptionPurse: el(), purseMarks: el(), purseMotes: el(),
     inventory: { addEventListener: () => {} },
   };
+  // A mint also toasts (D5, tests/corruption-mint-toast.test.mjs owns that
+  // contract); `toast` builds DOM, so it is stubbed out here rather than
+  // dragged into a test about the gauge.
+  self.toast = () => {};
   const listeners = new Map();
   const ctx = {
     events: {
