@@ -1040,7 +1040,7 @@ export class Director {
 // enemy projectiles
 // ---------------------------------------------------------------------------
 
-class Projectiles {
+export class Projectiles {
   constructor() {
     this.list = [];
     this.pool = [];
@@ -1132,10 +1132,15 @@ class Projectiles {
       const dz = p.pos.z - player.position.z;
       const dy = p.pos.y - (player.position.y + 0.9);
       if (dx * dx + dy * dy + dz * dz < reach * reach && owner) {
+        // Asked before the hit: afterwards the mercy window has been re-armed
+        // by this very shell and the answer is always no.
+        const rides = ctx.combat?.wouldHit?.(player) !== false;
         damagePlayer(ctx, player, dmg, owner, p.pos, 'projectile');
         // Riders travel with the shell, not with the shooter — bile slows, a
         // pyre burns, and the player learns which shell is which by colour.
-        if (d.status) ctx.combat?.applyStatus?.(player, d.status, owner, 1);
+        // They ride the *hit*, though: a shell the i-frames refused leaves no
+        // slow behind, or a wall of fire chains into a stun-lock (#135).
+        if (d.status && rides) ctx.combat?.applyStatus?.(player, d.status, owner, 1);
         ctx.pipeline?.addShake?.(0.05);
       }
     }

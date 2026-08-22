@@ -38,6 +38,17 @@ const STATUS_DEFS = {
 // a full-health survivor through the rider alone.
 const PLAYER_DOT_STACK_CAP = 3;
 
+// How many stacks of one *movement* debuff (slow, freeze - the statuses that
+// carry a `magnitude` and no damage rider) may sit on the survivor at once.
+// Monsters stay uncapped. Slows multiply: two stacks is 36% speed and three
+// pins the survivor on the 25% floor, and 2.0 s of duration is longer than the
+// gap between shells in a volley, so sustained fire was a stun-lock with no
+// exit - the run ended at a quarter speed with the player never getting
+// control back. Held to one refreshed stack the worst case is 60% speed for as
+// long as the fire keeps landing: the debuff still bites, the survivor can
+// still walk out from under it.
+const PLAYER_SLOW_STACK_CAP = 1;
+
 export class Combat {
   // The single damage authority. A throw part-way through `applyDamage` leaves
   // a hit half-resolved: shields spent, health untouched, procs unfired.
@@ -421,8 +432,12 @@ export class Combat {
       // still the thing that applies it. Without this the blast that lights a
       // burn colours its own spark correctly (its `type` is real) but has no
       // way to tell the tick sparks that follow what family they belong to.
+      // A blast the survivor's i-frames refuse is not a hit, and a rider that
+      // lands anyway is a debuff with no dodge in it. Monsters keep the old
+      // behaviour: the status rides the blast, gate or no gate.
+      const rides = !e.isPlayer || this.wouldHit(e);
       this.applyDamage(e, amount, { source, procCoefficient: proc, procDepth, position: point, type, status });
-      if (status) this.applyStatus(e, status, source, 1);
+      if (status && rides) this.applyStatus(e, status, source, 1);
     }
     this._popScratch(targets);
     this.ctx.vfx?.explosion?.(point, radius);
@@ -775,6 +790,24 @@ export class Combat {
       if (live >= PLAYER_DOT_STACK_CAP) return;
       count = Math.min(count, PLAYER_DOT_STACK_CAP - live);
     }
+    // Movement debuffs on the survivor refresh rather than compound. A further
+    // application pushes every live stack's timer back out to full - sustained
+    // fire keeps the player slowed for as long as it lands - but never
+    // multiplies the penalty into a lock. See `PLAYER_SLOW_STACK_CAP`.
+    if (entity.isPlayer && (def.stackDamage ?? 0) === 0 && (def.magnitude ?? 0) > 0) {
+      const duration = overrides?.duration ?? def.duration;
+      const live0 = this.statuses.get(entity);
+      let live = 0;
+      if (live0) {
+        for (let i = 0; i < live0.length; i++) {
+          if (live0[i].type !== type) continue;
+          live++;
+          live0[i].remaining = Math.max(live0[i].remaining, duration);
+        }
+      }
+      if (live >= PLAYER_SLOW_STACK_CAP) { this.ctx.vfx?.status?.(entity, type, def.colour); return; }
+      count = Math.min(count, PLAYER_SLOW_STACK_CAP - live);
+    }
     let list = this.statuses.get(entity);
     if (!list) { list = []; this.statuses.set(entity, list); }
     const srcDamage = source?.stats?.damage || source?.damage || 12;
@@ -792,6 +825,22 @@ export class Combat {
       });
     }
     this.ctx.vfx?.status?.(entity, type, def.colour);
+  }
+
+  /**
+   * Would an ordinary hit on `target` land right now, or will the mercy window
+   * refuse it? On-hit riders ask this *before* calling `applyDamage`, because
+   * afterwards the window has just been re-armed by the very hit in question.
+   *
+   * Riders used to skip the question entirely and apply their status whether or
+   * not the damage stuck, which is how a wall of shells chained slows the
+   * player had already dodged into an inescapable stun-lock (#135). It asks
+   * only about i-frames, not about the shield: a hit a barrier ate whole is
+   * still a hit that connected, and it should still chill.
+   */
+  wouldHit(target) {
+    if (!target) return false;
+    return !(target._iframeUntil > this.ctx.time);
   }
 
   hasStatus(entity, type) {

@@ -1013,6 +1013,8 @@ export class Enemy {
         if (p && this.distToPlayer < a.range + this.radius) {
           _v2.set(p.position.x - this.position.x, 0, p.position.z - this.position.z).normalize();
           if (_v2.dot(dir) > Math.cos(a.arc || 1)) {
+            // Before the swing, not after: the swing arms the window itself.
+            const rides = ctx.combat?.wouldHit?.(p) !== false;
             hurtPlayer(ctx, p, this, this.damage, 'melee');
             // The affix's melee rider. `burn` is the gate and `burnTick` is the
             // rate, and they are deliberately independent: no shipping affix
@@ -1020,10 +1022,12 @@ export class Enemy {
             // this arm is currently unreachable, and it carries the override so
             // that the next affix to switch it on gets the elite burn rate
             // rather than the 21-dps-per-stack player rate the last one did.
-            if (this.elite && this.elite.burn) {
+            // The affix rides the hit. A swing the survivor's i-frames ate is
+            // not a hit, and its slow would be a debuff with no dodge (#135).
+            if (rides && this.elite && this.elite.burn) {
               statusPlayer(ctx, p, this, 'burn', 2, eliteStatusOverride(this.elite));
             }
-            if (this.elite && this.elite.slow) statusPlayer(ctx, p, this, 'slow', 1);
+            if (rides && this.elite && this.elite.slow) statusPlayer(ctx, p, this, 'slow', 1);
             ctx.pipeline?.addShake?.(0.03);
           }
         }
