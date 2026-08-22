@@ -1,6 +1,6 @@
 // tests/blight-mask.test.mjs
 import * as THREE from 'three';
-import { MAX_MASK, MASK_UNIFORMS, attachBlightMask } from '../src/shaders/BlightMask.js';
+import { MAX_MASK, MASK_UNIFORMS, attachBlightMask, patchedCount } from '../src/shaders/BlightMask.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
@@ -108,6 +108,30 @@ console.log('the prop ladders outside the library are patched too');
                         ['VaultChest', VaultChest], ['Obelisk', Obelisk]]) {
     ok(count(new C(ctx, pos).group) > 0, `${n}'s substrate takes the mask`);
   }
+}
+
+// #137: realm rungs allocate their own materials per visit and dispose them
+// (RealmArena.js:29, RealmProps.js:100). Before the release path existed the
+// patch registry kept every one of them alive forever, and post-#109 each pins
+// 4K maps. A disposed material must leave the registry.
+console.log('a disposed material leaves the patch registry');
+{
+  const before = patchedCount();
+  const mats = [];
+  for (let i = 0; i < 5; i++) mats.push(attachBlightMask(new THREE.MeshStandardMaterial()));
+  ok(patchedCount() === before + 5, 'five throwaway rungs register while alive');
+  for (const m of mats) m.dispose();
+  ok(patchedCount() === before, 'all five are released on dispose');
+
+  const visit = () => {
+    const v = [];
+    for (let i = 0; i < 4; i++) v.push(attachBlightMask(new THREE.MeshStandardMaterial()));
+    for (const m of v) m.dispose();
+  };
+  visit();
+  const afterFirst = patchedCount();
+  visit();
+  ok(patchedCount() === afterFirst, 'registry does not grow across repeated visits');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
