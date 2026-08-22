@@ -2118,13 +2118,15 @@ export class VoidBargain extends Interactable {
     const sig = this.signal();
     this._pulse = (this._pulse + dt) % 1000;
     let want = 0.35;
-    let hue = SHORT_EMISSIVE;
-    if (sig.state === 'spent') { want = 2.4; hue = AFFORD_EMISSIVE; }
+    // Dormant keeps the rock's own violet — the ember is a debt being paid off,
+    // and a dormant altar holds no debt.
+    let hue = AFFORD_EMISSIVE;
+    if (sig.state === 'spent') { want = 2.4; }
     else if (sig.state === 'afford') {
       want = 1.6 + 0.2 * Math.sin(this._pulse * 3.4);
-      hue = AFFORD_EMISSIVE;
     } else if (sig.state === 'short') {
       want = 0.4 + 0.7 * sig.progress;
+      hue = SHORT_EMISSIVE;
     }
     const m = this.maw.material;
     m.emissiveIntensity += (want - m.emissiveIntensity) * Math.min(1, dt * 3);
