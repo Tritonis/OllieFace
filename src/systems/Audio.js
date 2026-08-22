@@ -180,6 +180,17 @@ export function voidLayerGain(band) {
   return VOID_LAYER[Math.max(0, Math.min(b, VOID_LAYER.length - 1))];
 }
 
+/**
+ * What a refused or impossible sustained voice hands back. Shares the handle's
+ * shape so no call site has to branch, and is frozen so a caller cannot revive
+ * it by assignment and believe it is holding something.
+ */
+const NULL_SUSTAIN = Object.freeze({
+  active: false,
+  move() {},
+  release() {},
+});
+
 const _camPos = new THREE.Vector3();
 const _camDir = new THREE.Vector3();
 const _camUp = new THREE.Vector3();
@@ -718,6 +729,137 @@ export class Audio {
     o.stop(t0 + dur + 0.02);
     this._release(o);
     return { osc: o, gain: g };
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Sustained voices                                                    */
+  /* ------------------------------------------------------------------ */
+
+  /**
+   * A positioned voice that holds until something tells it to stop.
+   *
+   * Every other primitive here schedules a fixed-duration burst, which is why
+   * pulls, beams and telegraph windups are structurally silent: there was no
+   * way to say "keep making this noise, here, until I say stop". This is that
+   * primitive. It is deliberately budget-symmetric with the bursts — a held
+   * voice occupies its cost for as long as it is held, and gives it back when
+   * it ends, through the same `_release`/`onended` path — because a sustained
+   * sound that charged nothing would be a hole in the cap exactly where the
+   * longest-lived sounds live.
+   *
+   * Returns a handle. A refused voice returns a handle too (an inert one), so
+   * callers never have to null-check before releasing; the failure mode this
+   * avoids is a caller that skips `release()` on the refused case and then
+   * leaks its own bookkeeping.
+   */
+  startSustained(pos, {
+    tones = [{ type: 'sawtooth', f0: 180, gain: 0.14 }],
+    noise = null,
+    attack = 0.04,
+    release = 0.09,
+    priority = false,
+    refDistance = 8,
+    maxDistance = 140,
+  } = {}) {
+    const ac = this._ensure();
+    const cost = tones.length + (noise ? 1 : 0);
+    if (!ac || cost < 1 || !this._take(cost, priority)) return NULL_SUSTAIN;
+
+    const t = ac.currentTime;
+    const out = this._out(pos, refDistance, maxDistance);
+    // Only a real panner can be moved; `_out` hands back the dry bus for
+    // unplaceable or camera-local positions and that has no position params.
+    const panner = out === this.sfx ? null : out;
+    const sources = [];
+    const gains = [];
+
+    for (const spec of tones) {
+      const o = ac.createOscillator();
+      o.type = spec.type || 'sawtooth';
+      o.detune.value = spec.detune || 0;
+      o.frequency.setValueAtTime(spec.f0 ?? 180, t);
+      const g = ac.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(Math.max(0.0002, spec.gain ?? 0.14), t + attack);
+      o.connect(g).connect(out);
+      o.start(t);
+      this._release(o);
+      sources.push(o);
+      gains.push(g);
+    }
+
+    if (noise) {
+      const src = ac.createBufferSource();
+      src.buffer = this.noiseBuf;
+      src.loop = true;
+      src.playbackRate.value = 0.9 + Math.random() * 0.2;
+      const f = ac.createBiquadFilter();
+      f.type = noise.type || 'bandpass';
+      f.frequency.setValueAtTime(noise.freq ?? 1200, t);
+      f.Q.value = noise.q ?? 1;
+      const g = ac.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(Math.max(0.0002, noise.gain ?? 0.2), t + attack);
+      src.connect(f).connect(g).connect(out);
+      src.start(t, Math.random() * 1.5);
+      this._release(src);
+      sources.push(src);
+      gains.push(g);
+    }
+
+    let live = true;
+    return {
+      get active() { return live; },
+      move: (p) => {
+        if (!live || !panner || !p) return;
+        if (!Number.isFinite(p.x) || !Number.isFinite(p.y) || !Number.isFinite(p.z)) return;
+        if (panner.positionX) {
+          panner.positionX.value = p.x; panner.positionY.value = p.y; panner.positionZ.value = p.z;
+        } else {
+          panner.setPosition(p.x, p.y, p.z);
+        }
+      },
+      release: (fade = release) => {
+        // Idempotent on purpose: the callers this exists for are game states,
+        // and a state that can be left twice (death during a beam, say) must
+        // not be able to stop an oscillator twice or double-count the budget.
+        if (!live) return;
+        live = false;
+        const now = ac.currentTime;
+        const end = now + Math.max(0.01, fade);
+        for (const g of gains) {
+          // Ramp before stop, always — cutting a held oscillator at full
+          // amplitude is an audible click, and a sustained voice is the case
+          // where that is loudest.
+          if (g.gain.cancelAndHoldAtTime) g.gain.cancelAndHoldAtTime(now);
+          else { g.gain.cancelScheduledValues(now); g.gain.setValueAtTime(Math.max(0.0002, g.gain.value), now); }
+          g.gain.exponentialRampToValueAtTime(0.0001, end);
+        }
+        for (const s of sources) {
+          // A source already stopped by the context (a lost context, a
+          // suspended page torn down) throws on a second stop; the voice is
+          // gone either way and `onended` has already settled the budget.
+          try { s.stop(end + 0.02); } catch { /* already ended */ }
+        }
+      },
+    };
+  }
+
+  /**
+   * Demonstration of the sustained primitive: a beam that hums while it is
+   * being fired. Nothing calls it yet — `zap` and the beam repeat hack in `hit`
+   * are unchanged — so existing behaviour only moves when a caller opts in.
+   */
+  startBeam(pos) {
+    return this.startSustained(pos, {
+      tones: [
+        { type: 'sawtooth', f0: 220, gain: 0.10 },
+        { type: 'square', f0: 110, detune: 7, gain: 0.06 },
+      ],
+      noise: { type: 'bandpass', freq: 3200, q: 6, gain: 0.12 },
+      attack: 0.05,
+      release: 0.10,
+    });
   }
 
   /* ------------------------------------------------------------------ */
