@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { clamp } from '../core/MathUtil.js';
 import { isLocalOwner } from '../core/Engine.js';
 import { MusicEngine } from './Music.js';
+import { SAMPLES_BY_ID } from '../data/samples.js';
 
 /**
  * Fully procedural WebAudio. No files, no network, no decode step.
@@ -246,6 +247,14 @@ export class Audio {
     this._itemCounts = new Map();
     this._shotIndex = 0;
     this._footIndex = 0;
+
+    // Sampled playback (#148). Decoded buffers by effect id; the in-flight
+    // promises so N triggers in one frame start one fetch; and the ids whose
+    // load failed, which are never retried and never logged twice — a missing
+    // recording is a silent voice, not a per-frame warning.
+    this._sampleBufs = new Map();
+    this._sampleLoads = new Map();
+    this._sampleFailed = new Set();
   }
 
   init(ctx) {
@@ -737,6 +746,110 @@ export class Audio {
     o.stop(t0 + dur + 0.02);
     this._release(o);
     return { osc: o, gain: g };
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Sampled voices (#148)                                               */
+  /* ------------------------------------------------------------------ */
+
+  /**
+   * Decode one registry sample, once. Resolves to the buffer, or to `null` for
+   * anything that could not be loaded — a rejection here would have to be
+   * caught at every trigger site, and a trigger site is a gameplay event
+   * handler where a throw takes the rest of the dispatch with it.
+   *
+   * Failure is remembered and never retried: a recording that is not on disk
+   * will not be on disk sixty times a second either, and the one warning this
+   * emits is worth reading precisely because it cannot repeat.
+   */
+  loadSample(id) {
+    const def = SAMPLES_BY_ID.get(id);
+    if (!def || this._sampleFailed.has(id)) return Promise.resolve(null);
+    if (this._sampleBufs.has(id)) return Promise.resolve(this._sampleBufs.get(id));
+    const cached = this._sampleLoads.get(id);
+    if (cached) return cached;
+    const ac = this._ensure();
+    // No context yet means no gesture yet. Not a failure — don't poison the id.
+    if (!ac) return Promise.resolve(null);
+    const p = (async () => {
+      try {
+        const res = await fetch(def.url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const buf = await ac.decodeAudioData(await res.arrayBuffer());
+        this._sampleBufs.set(id, buf);
+        return buf;
+      } catch (err) {
+        this._sampleFailed.add(id);
+        console.warn(`audio: the sampled voice '${id}' did not load; it will be silent this session.`, err);
+        return null;
+      } finally {
+        this._sampleLoads.delete(id);
+      }
+    })();
+    this._sampleLoads.set(id, p);
+    return p;
+  }
+
+  /**
+   * Warm every sampled voice. Fire-and-forget by design — the frame must never
+   * wait on a decode — and safe to call repeatedly, since each id's load is
+   * cached and each id's failure is terminal.
+   */
+  ensureSamples() {
+    return Promise.all([...SAMPLES_BY_ID.keys()].map((id) => this.loadSample(id)));
+  }
+
+  /**
+   * Trigger a sampled voice at `pos`.
+   *
+   * Deliberately identical in shape to a synthesized burst: it spends `_take`
+   * from the same budget, hangs off the same `_out` positional chain into the
+   * same SFX bus, and gives its unit back through the same `_release`/`onended`
+   * path. There is no sample mixer to find, and nothing about a sampled voice
+   * can outbid a synthesized one.
+   *
+   * The first trigger for an id starts the decode and is silent; every trigger
+   * after the buffer lands sounds. That is on purpose — the alternative is
+   * making a gameplay event await a network fetch.
+   *
+   * @returns {boolean} whether a voice actually started.
+   */
+  playSample(id, pos, { gain = 1, rate = 1, priority = false } = {}) {
+    const def = SAMPLES_BY_ID.get(id);
+    if (!def) return false;
+    const ac = this._ensure();
+    if (!ac) return false;
+    const buf = this._sampleBufs.get(id);
+    if (!buf) {
+      // Lazy first use. The `.catch` is belt to `loadSample`'s own braces: an
+      // un-awaited rejection from a gameplay handler surfaces as a page error.
+      this.loadSample(id)?.catch?.(() => {});
+      return false;
+    }
+    if (!this._take(def.cost, priority)) return false;
+    try {
+      const t0 = ac.currentTime;
+      const src = ac.createBufferSource();
+      src.buffer = buf;
+      // Pitch variation per trigger, the same reason `_noise` rolls one: the
+      // identical sample twice in a row is what reads as a machine gun.
+      const spread = num(def.rateVar, 0, 0);
+      src.playbackRate.value = Math.max(
+        0.05,
+        num(rate, 1, 0.05) * (1 + (Math.random() * 2 - 1) * spread),
+      );
+      const g = ac.createGain();
+      g.gain.value = Math.max(0, num(def.gain, 0.5, 0) * num(gain, 1, 0));
+      src.connect(g).connect(this._out(pos, def.refDistance, def.maxDistance));
+      src.start(t0);
+      this._release(src);
+      return true;
+    } catch (err) {
+      // The take is already spent but nothing was charged: `_take` only gates,
+      // `_release` charges, so an unwind here leaves every counter where it was.
+      console.warn(`audio: the sampled voice '${id}' failed to start.`, err);
+      return false;
+    }
   }
 
   /* ------------------------------------------------------------------ */
