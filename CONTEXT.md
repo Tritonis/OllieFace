@@ -45,6 +45,20 @@ remains is scheduling. Distinct from a Decision Block in that it is never
 *stuck*, only *unscheduled*.
 _Avoid_: blocked, manual test, user-only
 
+## Assets
+
+**Seam-Compatible**:
+A model pack the game's existing import route can carry as-is — judged by the
+published screening criteria, never assumed. Incompatibility disqualifies a
+candidate outright; the route is not extended to accommodate a purchase.
+_Avoid_: convertible, importable, supported format
+
+**Round Cap**:
+The total money one decision round may spend across all its purchases,
+agreed before the search begins. A search bound for agents; every actual
+purchase is still an individual human decision.
+_Avoid_: budget, spending limit
+
 ## Networking
 
 The two halves below are independent, and conflating them is the single most
