@@ -18,6 +18,16 @@ import { createServer } from 'vite';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { resolveOutDir } from './lib/evidence.mjs';
+import { TIERS } from '../src/ui/Icons.js';
+
+// The tier colours as the browser will report them, so every assertion below
+// compares against the shipped table rather than against a copy of it.
+const rgbOf = (hex) => ({
+  r: parseInt(hex.slice(1, 3), 16),
+  g: parseInt(hex.slice(3, 5), 16),
+  b: parseInt(hex.slice(5, 7), 16),
+});
+const cssRgb = (hex) => { const c = rgbOf(hex); return `rgb(${c.r}, ${c.g}, ${c.b})`; };
 
 const args = {};
 for (let i = 2; i < process.argv.length; i++) {
@@ -274,11 +284,18 @@ ok(bl.hue.r > bl.hue.g + 25 && bl.hue.b > bl.hue.g + 15,
 // Against the tier's declared colour, not against the other tiers: `common` is
 // deliberately near-neutral (chroma 14), so a floor derived from the controls
 // would be ~8 and would pass a tile with no tier colour in it at all.
-const TIER_RGB = { r: 196, g: 79, b: 188 };   // TIERS.blight.color, #c44fbc
-ok(bl.chroma > 80 && ['r', 'g', 'b'].every((k) => Math.abs(bl.hue[k] - TIER_RGB[k]) <= 40),
-  `and it is the declared tier colour, saturated (chroma ${bl.chroma}, off #c44fbc by `
-  + `${Math.max(...['r', 'g', 'b'].map((k) => Math.abs(bl.hue[k] - TIER_RGB[k])))})`);
-ok(pol.rule === 'rgb(196, 79, 188)', `the magenta tier rule survives (.t-blight color ${pol.rule})`);
+//
+// Read out of `Icons.js`, not written down here. This probe carried the tier's
+// rgb as three literals and #140's re-cut of the palette turned four of its
+// checks red without anything being wrong with the build — a probe that has to
+// be edited every time the thing it measures legitimately changes is a probe
+// people learn to edit without looking.
+const TIER_RGB = rgbOf(TIERS.blight.color);
+const off = (h) => Math.max(...['r', 'g', 'b'].map((k) => Math.abs(h[k] - TIER_RGB[k])));
+ok(bl.chroma > 80 && off(bl.hue) <= 40,
+  `and it is the declared tier colour, saturated (chroma ${bl.chroma}, off ${TIERS.blight.color} by ${off(bl.hue)})`);
+ok(pol.rule === cssRgb(TIERS.blight.color),
+  `the magenta tier rule survives (.t-blight color ${pol.rule}, want ${cssRgb(TIERS.blight.color)})`);
 
 // The measurement above is of one surface. It generalises to the other eight
 // only because all nine call sites (HUD strip, pickup toast, pickup banner,
@@ -309,8 +326,20 @@ const tip = await page.evaluate(() => {
   return { name: n.textContent.trim(), color: cs.color, bg: cs.backgroundColor, inline: n.getAttribute('style') || '' };
 });
 ok(!!tip, 'hovering the blight tile opens its card');
-ok(tip?.color === 'rgb(196, 79, 188)', `the blight name is written in the tier magenta (${tip?.color})`);
-ok(tip?.bg === 'rgba(0, 0, 0, 0)', `and sits on no chip of its own (background ${tip?.bg})`);
+ok(tip?.color === cssRgb(TIERS.blight.color),
+  `the blight name is written in the tier magenta (${tip?.color}, want ${cssRgb(TIERS.blight.color)})`);
+// The chip it must not have is the *inverted* one — a magenta field with black
+// type punched out of it — and the way that chip would come back is inline, off
+// the hover path that sets it, where it would then follow the player onto the
+// next card. What the name does sit on is `--tier-bg`, the opaque near-black
+// backing #104 put behind every tier-coloured string so the lit scene stops
+// reaching the type; that is a stylesheet rule, it is deliberate, and the
+// readability gate asserts it. This arm read `rgba(0, 0, 0, 0)` from before
+// #104 and has been red on master since, measuring the fix as if it were the
+// defect. It asks the real question now, and the inline check below is what
+// actually guards the stale-chip case.
+ok(tip?.bg === 'rgb(5, 7, 10)',
+  `and sits on the opaque tier backing, not a chip of its own (background ${tip?.bg})`);
 ok(!/background|padding/.test(tip?.inline ?? ''), `no inverted chip styling survives inline (style="${tip?.inline}")`);
 await shot('07-tooltip-blight.png');
 console.log(`  polarity: ${Object.entries(pol.tiers).map(([t, v]) => `${t} ${v.polarity} (median ${v.median})`).join(' | ')}`);

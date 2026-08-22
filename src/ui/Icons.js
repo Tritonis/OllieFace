@@ -81,28 +81,28 @@ const SIZE = 64;
  * every hue held inside six degrees of where it was and only lightness and
  * chroma allowed to move. That is a solvable problem, and `tools/tier-palette-
  * search.mjs` is what solved it; the shipped answer moves the seven by a mean
- * CIEDE2000 of 3.6, the largest single move being Blight's 9.7.
+ * CIEDE2000 of 3.0, the largest single move being Blight's 4.9.
  */
 export const TIERS = {
-  common:    { label: 'Common',    color: '#e9f0f9', dim: '#7e8286', plate: '#1b1f26' },
-  uncommon:  { label: 'Uncommon',  color: '#5ff799', dim: '#338553', plate: '#14231a' },
-  legendary: { label: 'Legendary', color: '#e5596d', dim: '#7c303b', plate: '#26120f' },
-  boss:      { label: 'Boss',      color: '#dcc326', dim: '#776915', plate: '#241d0c' },
-  lunar:     { label: 'Umbral',    color: '#05c4d6', dim: '#036a74', plate: '#0e2029' },
+  common:    { label: 'Common',    color: '#f0f4f9', dim: '#828486', plate: '#1b1f26' },
+  uncommon:  { label: 'Uncommon',  color: '#7af8a1', dim: '#428657', plate: '#14231a' },
+  legendary: { label: 'Legendary', color: '#fc6c78', dim: '#883a41', plate: '#26120f' },
+  boss:      { label: 'Boss',      color: '#e8cc00', dim: '#7d6e00', plate: '#241d0c' },
+  lunar:     { label: 'Umbral',    color: '#1abbcf', dim: '#0e6570', plate: '#0e2029' },
   // Blight draws like every other tier (see `itemArt`), and it keeps the
   // magenta no other tier is using. What changed is its lightness: at L* 58 it
   // was 2.7 from Legendary once desaturated and, under a tritan projection that
   // actually discards a dimension, the two were 4.0 apart — red and magenta are
   // one colour without the S cone. It is also the tier that binds the contrast
   // floor, at 4.59:1 on the logbook's hover row.
-  blight:    { label: 'Blight',    color: '#9f6ba4', dim: '#563a59', plate: '#26101c' },
-  equipment: { label: 'Equipment', color: '#cc8717', dim: '#6e490c', plate: '#26160b' },
+  blight:    { label: 'Blight',    color: '#c547d8', dim: '#6a2675', plate: '#26101c' },
+  equipment: { label: 'Equipment', color: '#b98116', dim: '#64460c', plate: '#26160b' },
   // Argent, and no longer interim: it is inside `TIER_ORDER` and carries the
   // same proof as the other seven. Its value is the one free choice in the
   // table — nothing in the fiction fixes a silver's hue the way fire fixes
   // Legendary's — and the search took it to a near-neutral with a cold cast,
   // which is what the tier is meant to read as.
-  argent:    { label: 'Argent',    color: '#9fa5a6', dim: '#56595a', plate: '#101f28' },
+  argent:    { label: 'Argent',    color: '#b1bdbc', dim: '#606666', plate: '#101f28' },
 };
 
 // Each entry carries its own id, so a `tierMeta` result is self-describing and

@@ -39,25 +39,25 @@
      or if any pair stops clearing the colour-vision bars. The lightness spread
      across them is deliberate and load-bearing; see the note above `TIERS` in
      `Icons.js` for why each colour sits where it does. */
-  --t-common:    #e9f0f9;
-  --t-uncommon:  #5ff799;
-  --t-legendary: #e5596d;
-  --t-boss:      #dcc326;
-  --t-lunar:     #05c4d6;
+  --t-common:    #f0f4f9;
+  --t-uncommon:  #7af8a1;
+  --t-legendary: #fc6c78;
+  --t-boss:      #e8cc00;
+  --t-lunar:     #1abbcf;
   /* Blight shipped without a variable of its own, so `.t-blight` fell through
      to the inherited near-white and the tier drew a `currentColor` rule at
      (234,241,249) — within 5 of the common tier's (230,236,244). Two tiers,
      one rule colour, in a strip whose entire job is tier legibility; measured
      off `reviews/round6/FINAL/10-inventory.png` and reproduced independently
      in `16-run-summary`. */
-  --t-blight:    #9f6ba4;
-  --t-equipment: #cc8717;
+  --t-blight:    #c547d8;
+  --t-equipment: #b98116;
   /* Argent, gated like the seven above it since #140. No eighth colour cleared
      the bars against the *frozen* other seven — that search was over one free
      variable — so the seven were re-lightnessed with it, all eight at once,
      each hue held inside six degrees of where it was. `tools/tier-palette-
      search.mjs` is the search; the gate is the proof. */
-  --t-argent:    #9fa5a6;
+  --t-argent:    #b1bdbc;
 
   /* The ground tier-coloured *type* is graded against, and the reason it is
      opaque (#104). Every panel that carries a tier name is `rgba()` over the

@@ -468,6 +468,27 @@ console.log('the shipped palettes clear them');
   ok(pinned < PALETTE.colour && pinned >= AURA.colour,
      `the pinned pair sits between the two bars at ${pinned.toFixed(1)} — this is why AURA.colour is ${AURA.colour}`);
 
+  // The separation cushion, pinned per arm — the same discipline the contrast
+  // margins get below, and for a reason the first cut of #140 demonstrated: the
+  // table it shipped cleared the colour bar by 0.011 and the mono bar by 0.028,
+  // both green, both one rounding from red, and nothing here could tell that
+  // from a table with real room. `gradePalette` reports `ok` and a table on the
+  // bar is `ok`; only a number written down can say how *nearly* it is.
+  //
+  // The search was re-run to maximise the thinnest cushion rather than to
+  // minimise drift, and the answer costs nothing: 12.68 on the colour arm and
+  // 4.43 on the mono arm, at *less* total drift from the pre-#140 seven than
+  // the thin table had. So there is no trade being recorded here — the thin
+  // table was simply an arbitrary pick from a feasible set the search had no
+  // reason to rank. Both numbers are floors, not equalities: a future table may
+  // hold more, and must not hold less without saying why.
+  const worstColour = gt.checks.filter((c) => c.vision !== 'mono')[0];
+  const worstMono = gt.checks.filter((c) => c.vision === 'mono')[0];
+  ok(worstColour.delta >= 12.6,
+     `the thinnest colour cushion is ${worstColour.id} ${worstColour.vision} at ${worstColour.delta.toFixed(3)} vs a bar of ${worstColour.min}`);
+  ok(worstMono.delta >= 4.4,
+     `and the thinnest greyscale cushion is ${worstMono.id} at ${worstMono.delta.toFixed(3)} vs a bar of ${worstMono.min}`);
+
   // Every tier is graded, not just the ones that happened to be in the object.
   ok(gt.checks.length === (TIER_ORDER.length * (TIER_ORDER.length - 1) / 2) * 5,
      `all ${TIER_ORDER.length * (TIER_ORDER.length - 1) / 2} tier pairs, all five visions`);
@@ -531,23 +552,30 @@ console.log('the contrast floor catches what separating the palette cost it');
   ok(failing.length === 0,
      `nothing is under its floor over the brightest measured ground ${WORST_MEASURED} (${
        failing.map((c) => `${c.id}/${c.surface} ${c.ratio.toFixed(2)}`).join(', ') || 'none'})`);
-  ok(worst.ratio >= 4.5,
+  // Each arm is pinned against its own floor, not both against the text one.
+  // Until #140 the overall worst check happened to be a text check, so a bare
+  // `worst.ratio >= 4.5` read as true and looked like a statement about the
+  // whole grade; it was not one. It held Blight's *plate glow* — a graphical
+  // object whose floor is 3.0 — to 4.5 by accident, and the first palette that
+  // moved the binding case onto the graphic arm turned that accident red for a
+  // table that was in fact compliant. What the sentence wanted to say is below,
+  // once per arm, and the margins are pinned with it.
+  ok(worst.ratio >= worst.min,
      `and the worst check of all is ${worst.id}/${worst.surface} at ${worst.ratio.toFixed(2)}:1 vs ${worst.min}`);
 
-  // The margin, pinned. Blight is still the binding tier and 4.91:1 is what the
-  // backing buys it — 0.41 over the floor, against a lower-bound measurement.
-  // Held to two decimals so that a change to either the palette or `--tier-bg`
-  // that spends the margin has to say so here rather than sliding under a bare
-  // `>= 4.5`. This is that saying-so: #140 re-cut the whole table to fit an
-  // eighth tier and the binding case moved from 4.99 to 4.91. The 0.08 bought
-  // Argent a place in the gated palette, and the alternative tables the search
-  // offered at 5.09 all paid for it somewhere more visible — the cheapest of
-  // them washed Uncommon from a saturated green to a pale mint. The floor
-  // itself did not move and `CONTRAST.text` is asserted at 4.5 above.
+  // The margins, pinned to two decimals, so that a change to either the palette
+  // or `--tier-bg` that spends one has to say so here rather than sliding under
+  // a bare `>= floor`. #140 re-cut the whole table to seat an eighth tier and
+  // both binding cases moved: text from 4.99 to 5.06, graphic from 3.61 to
+  // 3.56. Blight binds both arms and always has — it is the darkest colour in
+  // the table and its own plate glow is the ground it reads against.
   const textChecks = g.checks.filter((c) => c.kind === 'text');
   const worstText = textChecks[0];
-  ok(worstText.id === 'blight' && Math.abs(worstText.ratio - 4.91) < 0.005,
-     `blight is the binding tier at ${worstText.ratio.toFixed(3)}:1 on ${worstText.surface}`);
+  ok(worstText.id === 'blight' && Math.abs(worstText.ratio - 5.06) < 0.005,
+     `blight is the binding tier for text at ${worstText.ratio.toFixed(3)}:1 on ${worstText.surface}`);
+  const worstGraphic = g.checks.filter((c) => c.kind === 'graphic')[0];
+  ok(worstGraphic.id === 'blight' && Math.abs(worstGraphic.ratio - 3.56) < 0.005,
+     `and for graphics at ${worstGraphic.ratio.toFixed(3)}:1 on ${worstGraphic.surface}`);
   ok(textChecks.every((c) => c.ground === '#05070a'),
      'every tier-text check is graded on the opaque --tier-bg, not on a panel fill');
 

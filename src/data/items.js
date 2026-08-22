@@ -41,24 +41,24 @@ import { isVoidtouched } from './corruption.js';
  * table it is measured against, above `TIERS` in `src/ui/Icons.js`.
  */
 export const TIERS = {
-  common: { name: 'Common', colour: 0xe9f0f9, css: '#e9f0f9', weight: 80 },
-  uncommon: { name: 'Uncommon', colour: 0x5ff799, css: '#5ff799', weight: 20 },
-  legendary: { name: 'Legendary', colour: 0xe5596d, css: '#e5596d', weight: 1 },
-  boss: { name: 'Boss', colour: 0xdcc326, css: '#dcc326', weight: 0 },
-  lunar: { name: 'Umbral', colour: 0x05c4d6, css: '#05c4d6', weight: 0 },
+  common: { name: 'Common', colour: 0xf0f4f9, css: '#f0f4f9', weight: 80 },
+  uncommon: { name: 'Uncommon', colour: 0x7af8a1, css: '#7af8a1', weight: 20 },
+  legendary: { name: 'Legendary', colour: 0xfc6c78, css: '#fc6c78', weight: 1 },
+  boss: { name: 'Boss', colour: 0xe8cc00, css: '#e8cc00', weight: 0 },
+  lunar: { name: 'Umbral', colour: 0x1abbcf, css: '#1abbcf', weight: 0 },
   // Blight sits at weight 0 for the same reason boss and lunar do: it is never
   // reached by multiplying the generic ladder. `Items.rollTier` adds it as an
   // explicit share of whatever table it was handed, so one constant sets the
   // rate for every chest in the game at once — see BLIGHT_SHARE there.
-  blight: { name: 'Blight', colour: 0x9f6ba4, css: '#9f6ba4', weight: 0 },
+  blight: { name: 'Blight', colour: 0xc547d8, css: '#c547d8', weight: 0 },
   // Argent is the only tier no chest can reach at all. Blight is weight 0 but
   // `rollTier` folds it back in as an explicit share; argent is not folded in
   // anywhere, and the single door into the pool is `Items.rollArgent()`, which
   // the Consecration press calls. A run that never presses the reliquary takes
   // no extra `ctx.rng` draw, which is what keeps the sp-equivalence baseline
   // still.
-  argent: { name: 'Argent', colour: 0x9fa5a6, css: '#9fa5a6', weight: 0 },
-  equipment: { name: 'Equipment', colour: 0xcc8717, css: '#cc8717', weight: 0 },
+  argent: { name: 'Argent', colour: 0xb1bdbc, css: '#b1bdbc', weight: 0 },
+  equipment: { name: 'Equipment', colour: 0xb98116, css: '#b98116', weight: 0 },
 };
 
 /**

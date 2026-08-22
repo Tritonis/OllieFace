@@ -29,12 +29,12 @@ const WAS = {
 const HUE_BAND = 6;
 const SPEC = {
   common:    { L: [70, 96], C: [0, 14] },
-  uncommon:  { L: [55, 92], C: [20, 90] },
-  legendary: { L: [45, 80], C: [30, 90] },
-  boss:      { L: [50, 90], C: [30, 95] },
-  lunar:     { L: [40, 85], C: [20, 70] },
-  blight:    { L: [40, 80], C: [30, 85] },
-  equipment: { L: [45, 80], C: [30, 90] },
+  uncommon:  { L: [55, 92], C: [45, 90] },
+  legendary: { L: [45, 80], C: [42, 90] },
+  boss:      { L: [50, 90], C: [45, 95] },
+  lunar:     { L: [40, 85], C: [30, 70] },
+  blight:    { L: [40, 80], C: [40, 85] },
+  equipment: { L: [45, 80], C: [40, 90] },
   // Argent is the new one: silver, cold cast. Its hue anchor is the one free
   // choice in the whole table and is swept from the command line.
   argent:    { L: [55, 92], C: [2, 26], hue: Number(process.env.ARGENT_HUE || 225) },
@@ -72,27 +72,77 @@ for (const k of ORDER) if (SPEC[k].hue !== undefined) BASE[k].h = SPEC[k].hue;
 // ticket asks for. Argent keeps the plate it shipped with.
 const PLATES = Object.fromEntries(ORDER.map((k) => [k, TIERS[k].plate]));
 
-/** Total constraint violation, in deltaE units. Zero means the gate is clear. */
+// The bars are floors; these are the targets the search aims at. Solving to the
+// floor exactly is how a table ships with a 0.01 cushion that the next edit
+// spends without anyone noticing, so the separation arms are pushed to a target
+// above their bar and the shortfall below it is what is penalised.
+const SEP_T = Number(process.env.SEP_TARGET || PALETTE.colour);
+const MONO_T = Number(process.env.MONO_TARGET || PALETTE.mono);
+const TEXT_T = Number(process.env.TEXT_TARGET || 5.05);
+
+/**
+ * The thinnest cushion any pair holds over its own bar, as a ratio.
+ *
+ * A ratio and not a difference, because the two arms are not on one scale: 0.5
+ * of deltaE over the mono bar of 4 is an eighth of headroom, while 0.5 over the
+ * colour bar of 12 is a twenty-fourth. Ranked on the difference the search
+ * cheerfully buys mono cushion nobody needed with colour cushion that was the
+ * scarce thing. 1.0 is exactly on the bar; 1.04 is four percent clear of it.
+ */
+function minMargin(set) {
+  let m = Infinity, at = null, abs = 0;
+  for (let i = 0; i < ORDER.length; i++) for (let j = i + 1; j < ORDER.length; j++) {
+    for (const vision of VISIONS) {
+      const bar = vision === 'mono' ? PALETTE.mono : PALETTE.colour;
+      const d = deltaEUnder(set[ORDER[i]], set[ORDER[j]], vision);
+      if (d / bar < m) { m = d / bar; at = ORDER[i] + '/' + ORDER[j] + ' ' + vision; abs = d; }
+    }
+  }
+  return { margin: m, at, delta: abs };
+}
+
+/** Does this table clear the gate exactly as the gate asks it? */
+function feasible(set) {
+  if (minMargin(set).margin < 1) return false;
+  for (const scene of ['#05070a', '#ffe662']) {
+    if (!gradeContrast(set, PLATES, undefined, scene).ok) return false;
+  }
+  return true;
+}
+
 function cost(set) {
   let v = 0;
-  const ids = ORDER;
-  for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) {
+  for (let i = 0; i < ORDER.length; i++) for (let j = i + 1; j < ORDER.length; j++) {
     for (const vision of VISIONS) {
-      const min = vision === 'mono' ? PALETTE.mono : PALETTE.colour;
-      const d = deltaEUnder(set[ids[i]], set[ids[j]], vision);
-      if (d < min) v += (min - d) * 4;
+      const want = vision === 'mono' ? MONO_T : SEP_T;
+      const d = deltaEUnder(set[ORDER[i]], set[ORDER[j]], vision);
+      if (d < want) v += (want - d) * 4;
     }
   }
   for (const scene of ['#05070a', '#ffe662']) {
     for (const c of gradeContrast(set, PLATES, undefined, scene).checks) {
       if (!c.ok) v += (c.min - c.ratio) * 30;
-      // The shipped table keeps ~0.5 of headroom over the 4.5 text floor and
-      // the gate pins that margin. Search for a table that keeps it rather than
-      // one that lands on the floor and spends it.
-      if (c.kind === 'text' && c.ratio < 5.05) v += (5.05 - c.ratio) * 30;
+      if (c.kind === 'text' && c.ratio < TEXT_T) v += (TEXT_T - c.ratio) * 30;
     }
   }
   return v;
+}
+
+/**
+ * Which of two feasible tables is the better answer.
+ *
+ * Min-margin first, drift second, and in that order deliberately. Ranking on
+ * drift alone is what shipped a table whose worst pair cleared its bar by 0.01:
+ * every such table is feasible, the search has no reason to prefer any of them,
+ * and the one it happens to return is a table one rounding away from red.
+ * `MARGIN_FLOOR` is how much cushion is worth paying drift for; past it the
+ * tables are treated as equally safe and the least-drifted one wins.
+ */
+const MARGIN_FLOOR = Number(process.env.MARGIN_FLOOR || 1.04);
+function better(a, b) {
+  const ca = Math.min(a.min, MARGIN_FLOOR), cb = Math.min(b.min, MARGIN_FLOOR);
+  if (Math.abs(ca - cb) > 1e-6) return ca > cb;
+  return a.drift < b.drift;
 }
 
 /** Perceptual drift from the shipping seven; argent is new so it does not count. */
@@ -135,7 +185,12 @@ function anneal(seed, iters) {
     const c = cost(set) + drift(set) * 0.05;
     if (c <= cur || rand() < Math.exp((cur - c) / T)) {
       cur = c;
-      if (cost(set) === 0 && (!best || drift(set) < best.drift)) best = { set, drift: drift(set) };
+      // Feasibility is judged against the gate's bars; `cost` aims past them
+      // and would never reach zero, which is a different question.
+      if (feasible(set)) {
+        const cand = { set, drift: drift(set), min: minMargin(set).margin };
+        if (!best || better(cand, best)) best = cand;
+      }
     } else state[k] = prev;
   }
   return best;
@@ -145,7 +200,10 @@ const iters = Number(process.argv[2] || 40000);
 let overall = null;
 for (let seed = 1; seed <= 24; seed++) {
   const r = anneal(seed * 7919, iters);
-  if (r && (!overall || r.drift < overall.drift)) { overall = r; console.log(`seed ${seed}: drift ${r.drift.toFixed(1)}`); }
+  if (r && (!overall || better(r, overall))) {
+    overall = r;
+    console.log(`seed ${seed}: min-margin ${r.min.toFixed(2)}, drift ${r.drift.toFixed(1)}`);
+  }
 }
 if (!overall) { console.log('INFEASIBLE over the searched space'); process.exit(1); }
 console.log('\nbest table, total drift', overall.drift.toFixed(1));
