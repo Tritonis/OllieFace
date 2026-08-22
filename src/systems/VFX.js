@@ -183,6 +183,25 @@ const _ax2 = new THREE.Vector3();
 const _proj = new THREE.Vector3();
 const UP = new THREE.Vector3(0, 1, 0);
 
+/**
+ * A colour derived from `hex` by independently scaling its R/G/B bytes.
+ * Plain 0-255 byte arithmetic, not THREE.Color math: Color.set()/getHex()
+ * round-trip through linear-light colour management, so scaling the linear
+ * components does not reproduce the byte ratio between two sRGB hex
+ * literals. Working on the raw bytes here keeps a driven path byte-identical
+ * to hand-picking the hex, the same way the default (untouched) path is.
+ */
+export function _shiftWarm(hex, rScale, gScale, bScale) {
+  const r = clampByte(((hex >> 16) & 0xff) * rScale);
+  const g = clampByte(((hex >> 8) & 0xff) * gScale);
+  const b = clampByte((hex & 0xff) * bScale);
+  return (r << 16) | (g << 8) | b;
+}
+
+function clampByte(v) {
+  return Math.min(255, Math.max(0, Math.round(v)));
+}
+
 export class VFX {
   // The impact layer. Nothing reads it back, and a run without sparks is still
   // the same run — this is the case the noncritical half of the rule exists for.
@@ -471,13 +490,23 @@ export class VFX {
     _v1.copy(dir);
     if (_v1.lengthSq() < 1e-8) _v1.set(0, 1, 0); else _v1.normalize();
 
+    // Layer colours as byte ratios of the default 0x9c0d18 (156, 13, 24):
+    //   gout trail -> 0x3c040a (60, 4, 10)
+    //   mist near  -> 0x7a0a14 (122, 10, 20)
+    //   mist far   -> 0x2c0308 (44, 3, 8)
+    //   spark      -> 0xff5a5a (255, 90, 90)
+    const goutTrail = _shiftWarm(colour, 60 / 156, 4 / 13, 10 / 24);
+    const mistNear = _shiftWarm(colour, 122 / 156, 10 / 13, 20 / 24);
+    const mistFar = _shiftWarm(colour, 44 / 156, 3 / 13, 8 / 24);
+    const sparkColour_ = _shiftWarm(colour, 255 / 156, 90 / 13, 90 / 24);
+
     let e = this._ep();
     e.count = 14; e.position.copy(pos);
     e.dir.copy(_v1); e.spread = 0.75;
     e.speed = 7.5; e.speedVar = 0.75;
     e.life = 0.55; e.lifeVar = 0.5;
     e.size0 = 0.13; e.size1 = 0.05;
-    e.color0.set(colour); e.color1.set(0x3c040a);
+    e.color0.set(colour); e.color1.set(goutTrail);
     e.alpha0 = 1; e.alpha1 = 0.9; e.alphaPow = 0.6;
     e.layer = 'alpha';
     e.frame = FRAME.BLOB; e.spin = 8; e.gravity = 22; e.drag = 1.1;
@@ -491,12 +520,12 @@ export class VFX {
     e.speed = 3.2; e.speedVar = 0.8;
     e.life = 0.5; e.lifeVar = 0.4;
     e.size0 = 0.1; e.size1 = 0.5;
-    e.color0.set(0x7a0a14); e.color1.set(0x2c0308);
+    e.color0.set(mistNear); e.color1.set(mistFar);
     e.alpha0 = 0.42; e.frame = FRAME.DUST;
     e.drag = 3.2; e.gravity = 3; e.turbulence = 0.4; e.fadeIn = 0.08;
     this.particles.emit(e);
 
-    this.hitSpark(pos, 0xff5a5a, 0.8);
+    this.hitSpark(pos, sparkColour_, 0.8);
     // Throw the splat along the hit direction and let it fall to the floor.
     _v2.copy(pos).addScaledVector(_v1, 0.4);
     _v3.set(_v1.x * 0.35, -1, _v1.z * 0.35).normalize();
@@ -507,9 +536,18 @@ export class VFX {
    * Explosion: white flash, fireball, expanding shockwave ring, debris,
    * lingering smoke column, scorch decal, light burst, shake and hitstop.
    */
-  explosion(pos, radius = 4, colour = 0xff8a20) {
+  explosion(pos, radius = 4, colour = 0xff8a20, coreColour = null) {
     const r = Math.max(0.5, radius);
     const s = r / 4;
+
+    // Core flash + inner pip default to the hand-picked pair below. `coreColour`
+    // drives both when given; the companion of each pair is derived by the
+    // same byte ratio the hand-picked pairs already have to each other, so a
+    // driven blast keeps the same cool/hot shaping as the default one.
+    const core0 = coreColour != null ? coreColour : 0xffdc96;
+    const core1 = coreColour != null ? _shiftWarm(core0, 1, 9 / 11, 37 / 75) : 0xffb44a;
+    const pip0 = coreColour != null ? _shiftWarm(core0, 1, 61 / 55, 36 / 25) : 0xfff4d8;
+    const pip1 = coreColour != null ? _shiftWarm(pip0, 1, 52 / 61, 61 / 108) : 0xffd07a;
 
     // 1. Flash core. Deliberately *smaller* than the fireball it sits inside.
     // A core wider than the blast body occludes every other layer for the first
@@ -552,7 +590,7 @@ export class VFX {
     // carried by the profile rather than by the tonemapper.
     e.life = 0.42; e.lifeVar = 0;
     e.size0 = r * 0.7; e.size1 = r * 1.5;
-    e.color0.set(0xffdc96); e.color1.set(0xffb44a);
+    e.color0.set(core0); e.color1.set(core1);
     e.alpha0 = 0.6;
     e.frame = FRAME.CORE; e.drag = 8; e.alphaPow = 1.7; e.fadeIn = 0.001; e.soft = 0.8;
     this.particles.emit(e);
@@ -565,7 +603,7 @@ export class VFX {
     e.count = 1; e.position.copy(pos);
     e.life = 0.28; e.lifeVar = 0;
     e.size0 = r * 0.3; e.size1 = r * 0.75;
-    e.color0.set(0xfff4d8); e.color1.set(0xffd07a);
+    e.color0.set(pip0); e.color1.set(pip1);
     // Deliberately the highest ceiling of the three, and on the smallest quad:
     // the peak of the radial profile has to be here, in the middle, or the
     // blast has a plateau instead of a centre.
