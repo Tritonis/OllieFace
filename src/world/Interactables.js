@@ -10,7 +10,7 @@ import {
 // three parts of the decision cannot drift apart between shrines (issue #30).
 import { pricedPrompt, biasFeedRange, idsFeed } from './corruptionPrice.js';
 // What each band gives back, and the currency it is bought with (issue #36).
-import { BOON, MOTE, PACTS, RUIN, synergyPlan } from '../data/bandBoons.js';
+import { BOON, MOTE, PACTS, RELIQUARY, RUIN, synergyPlan } from '../data/bandBoons.js';
 import { RNG } from '../core/MathUtil.js';
 import { Items } from '../systems/Items.js';
 import { Roster } from '../systems/Roster.js';
@@ -1889,19 +1889,19 @@ export class VoidBargain extends Interactable {
     if (band >= BOON.ruin.band) return cor?.ruined ? null : { kind: 'ruin', marks: 0 };
     if (band >= BOON.pact.band) {
       if (marks >= BOON.pact.marks) return { kind: 'pact', marks: BOON.pact.marks, pact: this.pact };
-      return this._sanctuary();
+      return this._argent();
     }
     if (band >= BOON.synergy.band) {
-      if (marks < BOON.synergy.marks) return this._sanctuary();
+      if (marks < BOON.synergy.marks) return this._argent();
       const items = Items.of(this.ctx, this.ctx.player);
       const plan = items && synergyPlan(items.blightHeld(), items.convertibleStacks());
-      return plan ? { kind: 'synergy', marks: BOON.synergy.marks, plan } : this._sanctuary();
+      return plan ? { kind: 'synergy', marks: BOON.synergy.marks, plan } : this._argent();
     }
     if (band >= BOON.reroll.band && marks >= BOON.reroll.marks) {
       const shops = this._terminals();
       if (shops.length) return { kind: 'reroll', marks: BOON.reroll.marks, shops };
     }
-    return this._sanctuary();
+    return this._argent();
   }
 
   /**
@@ -1925,10 +1925,47 @@ export class VoidBargain extends Interactable {
    * A ruined run is refused, like every other clean thing: `RUIN`'s whole
    * proposition is that the exits stop existing.
    */
-  _sanctuary() {
+  _argent() {
     const cor = this.ctx.corruption;
-    if (cor?.ruined || (cor?.motes ?? 0) < MOTE.motes) return null;
-    return { kind: 'sanctuary', marks: 0, motes: MOTE.motes };
+    if (cor?.ruined) return null;
+    const motes = cor?.motes ?? 0;
+    // The deeper rung replaces the shallower one — `offer()`'s own rule, in the
+    // other currency. Banking past Sanctuary is the decision this is for, and
+    // the two rungs eat the same purse, so every window taken is a card not
+    // bought.
+    if (motes >= RELIQUARY.motes) {
+      const id = this._reliquaryId();
+      if (id) return { kind: 'consecrate', marks: 0, motes: RELIQUARY.motes, id };
+    }
+    if (motes >= MOTE.motes) return { kind: 'sanctuary', marks: 0, motes: MOTE.motes };
+    return null;
+  }
+
+  /**
+   * What the reliquary would hand over, or null when the pool is not there.
+   * Derived once per altar and cached, never re-drawn per frame: the prompt
+   * names the card before the press (the §2.0 principle — priced, previewed,
+   * posted), and a card that changed every frame would be a slot machine rather
+   * than an offer. Null-safe against `rollArgent` not existing, so this surface
+   * merges and stays inert on its own — with no pool in the tree the altar
+   * offers Sanctuary at any purse, exactly as it did before.
+   */
+  _reliquaryId() {
+    if (this._relic === undefined) {
+      this._relic = Items.of(this.ctx, this.ctx.player)?.rollArgent?.() ?? null;
+    }
+    return this._relic;
+  }
+
+  /**
+   * How much an argent card pays at the gauge's current reading: 1 at Pristine,
+   * 0 at Overrun and below. The altar computes it rather than importing the
+   * pool's own `grace`, for `_reliquaryId`'s reason — this lane must read
+   * correctly with no pool in the tree.
+   */
+  _grace() {
+    const world = this.ctx.corruption?.world ?? 0;
+    return Math.max(0, Math.min(1, 1 - world / RELIQUARY.fadeAt));
   }
 
   /**
@@ -2029,6 +2066,18 @@ export class VoidBargain extends Interactable {
             ? 'greed time is running - the window is worth double right now'
             : 'worth double once the teleporter is done');
       }
+      case 'consecrate': {
+        // The third clause is the decision, exactly as the greed clause is for
+        // Sanctuary: it is the only place the game says out loud that a
+        // purchase is worth less the dirtier the gauge is.
+        const motes = this._motes();
+        const name = ITEM_BY_ID.get(offer.id)?.name || offer.id;
+        const band = this._band();
+        const world = Math.round(this.ctx.corruption?.world ?? 0);
+        return `Void Bargain - Consecrate: ${name} (${offer.motes} of ${motes} argent mote${motes === 1 ? '' : 's'})\n`
+          + 'argent cards pay full at Pristine and nothing at Overrun\n'
+          + `the world stands at ${world} - ${BANDS[band].name} - paying ${Math.round(this._grace() * 100)}%`;
+      }
       case 'reroll':
         return `Void Bargain - re-draw ${offer.shops.length} terminal${offer.shops.length === 1 ? '' : 's'} (${price})`;
       case 'synergy': {
@@ -2069,6 +2118,24 @@ export class VoidBargain extends Interactable {
 
     const items = Items.of(this.ctx, pawn);
     if (!items) return false;
+
+    // Consecration is the reliquary's rung: paid in motes, delivered as a
+    // permanent card. Paid first and delivered second like every other bargain,
+    // and a press that could not pay leaves the offer standing — the card is
+    // only forgotten when the press succeeded.
+    if (offer.kind === 'consecrate') {
+      if (!cor.spendMotes(offer.motes)) return false;
+      items.grant(offer.id);
+      this.spent = true;
+      this.ctx.vfx?.burst?.(this.position, 0x9fd4ff);
+      this.ctx.audio?.play?.('shrineWin', this.position);
+      this.ctx.events.emit('voidBargain', { kind: 'consecrate', id: offer.id, marks: 0, motes: offer.motes, owner: pawn });
+      this.ctx.events.emit('argentConsecrate', {
+        id: offer.id, motes: offer.motes,
+        world: this.ctx.corruption?.world ?? 0, band: this._band(), owner: pawn,
+      });
+      return true;
+    }
 
     // Ruin is free of marks and charged in the run instead, so it is settled
     // before the purse is ever touched.
