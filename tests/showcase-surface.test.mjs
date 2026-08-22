@@ -16,6 +16,7 @@ import { ABILITIES } from '../src/data/abilities.js';
 import { EQUIPMENT } from '../src/data/equipment.js';
 import { ITEMS, TIERS } from '../src/data/items.js';
 import { SPAWN_CARDS, BOSS_CARDS, ELITE_STATS } from '../src/data/enemies.js';
+import { SAMPLES } from '../src/data/samples.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log(`PASS  ${msg}`); } else { fail++; console.log(`FAIL  ${msg}`); } };
@@ -75,6 +76,9 @@ console.log('-- every table in the surface reaches the menu');
   ok(byGroup('pickup').length === Object.keys(TIERS).length,
     `all ${Object.keys(TIERS).length} item tiers have a pickup entry`);
   ok(byGroup('moment').length >= 10, 'the run-level moments are listed');
+
+  ok(byGroup('sample').length === SAMPLES.length,
+    `all ${SAMPLES.length} sampled voices are listed`);
 }
 
 console.log('\n-- and the menu is navigable');

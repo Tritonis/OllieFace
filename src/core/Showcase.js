@@ -3,6 +3,7 @@ import { ABILITIES } from '../data/abilities.js';
 import { EQUIPMENT } from '../data/equipment.js';
 import { ITEMS, TIERS } from '../data/items.js';
 import { SPAWN_CARDS, BOSS_CARDS, ELITE_STATS } from '../data/enemies.js';
+import { SAMPLES } from '../data/samples.js';
 
 /**
  * The effects showcase (#144) — every player-facing effect, on demand, by eye
@@ -264,6 +265,16 @@ export function installShowcase(ctx) {
     });
   }
 
+  // --- sampled voices (#148) ---------------------------------------------
+  // Read off the registry, so a sample added or renamed there appears here
+  // without anyone remembering to. The first press of a cold entry starts the
+  // decode and is silent by design; the second one sounds.
+  for (const def of SAMPLES) {
+    add('sample', `sample:${def.id}`, `Sample — ${def.id}`, (l) => {
+      ctx.audio?.playSample?.(def.id, ground(ctx, 10, l));
+    });
+  }
+
   // --- run-level moments --------------------------------------------------
   // Not table-driven because they are not table-backed: each is a one-off VFX
   // or Audio call the game makes at a named moment, and the enumeration that
@@ -408,6 +419,9 @@ export function installShowcase(ctx) {
     // The showcase is judged by eye and ear against a live game, so the sim
     // keeps running underneath — only the keyboard is borrowed.
     if (v) render();
+    // Warm the sampled voices the moment the menu opens, so the first press of
+    // a sample entry is not the silent one that starts its decode.
+    if (v) ctx.audio?.ensureSamples?.()?.catch?.(() => {});
   };
 
   const onKey = (ev) => {

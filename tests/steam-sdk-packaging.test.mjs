@@ -19,6 +19,7 @@
 import { readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { SAMPLES } from '../src/data/samples.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 let pass = 0, fail = 0;
@@ -117,6 +118,15 @@ console.log('\n-- build.files ships it, and still refuses steam_appid.txt');
     'nor its sourcemap');
   ok(packs(files, 'dist/assets/index.js'),
     'and refusing it did not cost the bundle its own chunks');
+
+  // The sampled voices (#148) are the opposite case: they are the sound
+  // itself, and a build that shipped without them would be silent for seven
+  // effects with nothing in the logs until a player heard the hole. Every
+  // registry entry is asserted individually, so an entry pointing outside the
+  // copied asset tree fails here rather than in the field.
+  for (const def of SAMPLES) {
+    ok(packs(files, `dist/${def.url}`), `the sampled voice ${def.id} IS packed`);
+  }
 }
 
 /**

@@ -61,7 +61,8 @@ lines on a pass and replays the failing arm in full on a fail.
 
 `src/core/Showcase.js` fires every player-facing effect on demand: all survivor abilities,
 all 14 equipment, every item `onHit`/`onKill`/`onDamaged`/`onInterval` hook, every telegraphed
-enemy attack, all six elite modifiers, a pickup per tier, and the run-level moments — 164
+enemy attack, all six elite modifiers, a pickup per tier, the seven sampled voices (#148) and
+the run-level moments — 171
 entries, all derived from the data tables, none typed by hand (`tests/showcase-surface.test.mjs` re-derives the totals and
 objects if the list falls behind). Effects fire down their real paths, so audio arrives through
 the real `Audio` bus and spends the real voice budget; there is no mixer bypass to find.
