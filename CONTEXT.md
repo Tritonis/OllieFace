@@ -59,6 +59,22 @@ agreed before the search begins. A search bound for agents; every actual
 purchase is still an individual human decision.
 _Avoid_: budget, spending limit
 
+## Effects
+
+**Effect Language**:
+The shared vocabulary in which effects become tellable-apart: each dimension
+of an effect — colour, shape family, motion, audio signature — carries meaning
+about its source and class, and every effect is a point in that space. Includes
+fittingness: an effect's look and sound must evoke what it is (fire reads as
+fire). The language is a skeleton; hero effects are authored beyond it.
+_Avoid_: style guide, VFX standards, theming
+
+**Collision**:
+Two effects occupying the same point in the Effect Language — indistinguishable
+by the dimensions that are supposed to separate them. Found mechanically by
+enumeration, judged for severity by a human.
+_Avoid_: duplicate, overlap, similarity
+
 ## Networking
 
 The two halves below are independent, and conflating them is the single most
