@@ -81,6 +81,18 @@ ipcMain.on('store:save', (_e, json) => {
 // blocks a double launch, but the deliverable is a double-clickable exe.
 let mainWindow = null;
 
+// "Restart run", from inside the shell. The page cannot reload itself here —
+// the `will-navigate` denial installed on the window (see IMPORTANT 3 below)
+// blocks a renderer-initiated reload, which is exactly how #136 shipped a
+// dead button. A reload main starts is not renderer navigation, so it goes
+// through; it still raises `did-start-navigation`, so the Steam teardown that
+// hangs off that event still runs. Fire-and-forget: the answer is the page
+// disappearing.
+ipcMain.on('shell:reload', (event) => {
+  const wc = event.sender;
+  if (wc && !wc.isDestroyed()) wc.reload();
+});
+
 // The Steam verdict for this run, decided once before ready and never re-asked.
 // Held here so the IPC bridge has one source of truth, and so a Steam-absent
 // boot is a recorded fact rather than a repeated failed call.
@@ -743,15 +755,21 @@ if (!app.requestSingleInstanceLock()) {
     // two denials keep it that way without needing anyone to remember.
     win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     win.webContents.on('will-navigate', (e) => e.preventDefault());
-    // IMPORTANT 3. `will-navigate` never fires for a reload (Ctrl+R / the
-    // bound `reload`/`forcereload` accelerators on the default application
-    // menu `autoHideMenuBar` only hides, it does not remove), so a reload was
-    // the one path that left the Steam lobby, the 100 ms pump and both
-    // callback handles running against a renderer that had just been thrown
-    // away — invisible, and rearmed by every subsequent host/join, not just
-    // the first. `did-start-navigation` fires for every navigation INCLUDING
-    // reload; `isSameDocument` excludes hash changes and pushState, which
-    // never touch the renderer's Steam state and must not tear it down.
+    // IMPORTANT 3. This comment used to claim `will-navigate` never fires for a
+    // reload. The packaged shell proved that false: a renderer-initiated
+    // `location.reload()` IS routed through `will-navigate`, so the
+    // preventDefault above ate every "Restart run" in the shipped build —
+    // sentinel intact, href unchanged, no error anywhere (#136). The page
+    // therefore does not navigate itself any more; it asks main to, on
+    // `shell:reload` below, and a reload main starts is not renderer
+    // navigation and is not blocked.
+    //
+    // `did-start-navigation` fires for every navigation INCLUDING a reload from
+    // either side, which is what releases the Steam lobby, the 100 ms pump and
+    // both callback handles instead of leaving them running against a renderer
+    // that has just been thrown away. `isSameDocument` excludes hash changes
+    // and pushState, which never touch the renderer's Steam state and must not
+    // tear it down.
     win.webContents.on('did-start-navigation', (details) => {
       if (details?.isMainFrame && !details?.isSameDocument) releaseAllSteamState();
     });

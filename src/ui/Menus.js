@@ -36,6 +36,7 @@ import { GLYPH_SETS, DEFAULT_GLYPH_SET, isGlyphSet, glyphLabel } from '../data/g
 const MUTATE_PAD = [14, 12, 15];
 import { telemetryEnabled, setTelemetryEnabled, readRuns, downloadRuns, clearRuns } from '../systems/Telemetry.js';
 import { markDialog, focusablesIn, installFocusTrap } from './Dialogs.js';
+import { restartRun } from '../core/restartRun.js';
 
 /**
  * A refused join, in the language of the person it happened to.
@@ -1842,11 +1843,11 @@ export class Menus {
         this.syncTelemetry();
         break;
       case 'quit':
-        if (this.screen === 'pause') { location.reload(); }
+        if (this.screen === 'pause') { restartRun(); }
         else { this.open('title'); }
         break;
       case 'restart':
-        location.reload();
+        restartRun();
         break;
       case 'coop':
         this.openCoop();
