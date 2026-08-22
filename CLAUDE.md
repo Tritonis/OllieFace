@@ -62,8 +62,7 @@ lines on a pass and replays the failing arm in full on a fail.
 `src/core/Showcase.js` fires every player-facing effect on demand: all survivor abilities,
 all 14 equipment, every item `onHit`/`onKill`/`onDamaged`/`onInterval` hook, every telegraphed
 enemy attack, all six elite modifiers, a pickup per tier, and the run-level moments — 164
-entries, all derived from the
-data tables, none typed by hand (`tests/showcase-surface.test.mjs` re-derives the totals and
+entries, all derived from the data tables, none typed by hand (`tests/showcase-surface.test.mjs` re-derives the totals and
 objects if the list falls behind). Effects fire down their real paths, so audio arrives through
 the real `Audio` bus and spends the real voice budget; there is no mixer bypass to find.
 
@@ -76,7 +75,9 @@ npm run build && npm run desktop:pack && npm run showcase:install
 ```
 
 Keys: arrows move, Enter fires, Space marks, `g` fires everything marked together at adjacent
-offsets, `1`-`8` are curated pile-ups (all six elites side by side is `8`) (every `onHit` proc at once, and so on), letters filter.
+offsets, `1`-`8` are curated pile-ups (every `onHit` proc at once, all six elites side by side,
+and so on), letters filter. An elite's aura tick is forced through `forceAuraTick`, which
+`tests/showcase-elite-tick.test.mjs` holds to landing real damage rather than merely not throwing.
 
 ### Capture gate — advisory only (decided 2026-08-20)
 

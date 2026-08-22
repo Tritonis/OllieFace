@@ -55,6 +55,51 @@ function ground(ctx, dist = 12, lateral = 0) {
   return new THREE.Vector3(x, Number.isFinite(y) ? y + 0.1 : cam.position.y - 1.6, z);
 }
 
+/**
+ * Take exactly one tick of an elite's aura, and prove it bit.
+ *
+ * The naive version of this — set `distToPlayer = 0` and step the unit — is
+ * dead code, and quietly: `Enemy.fixedUpdate` recomputes `distToPlayer` from
+ * the real player position (Enemy.js:583-587) *before* any aura block reads
+ * it, so the write is overwritten every time. A showcase elite stands where
+ * the lens can see it, ~5 m from a player behind a boomed camera, which is
+ * outside Emberclad's 3.2 m and the void's 3.6 m — three of the six modifiers
+ * demonstrated nothing and reported no error about it.
+ *
+ * So move the unit genuinely inside its own smallest ring for the one step,
+ * pin line of sight past the staggered re-check (`losT`, Enemy.js:592-596)
+ * rather than hoping the 85% lands, then put it back. The player is made whole
+ * afterwards: an instrument must not be able to down the person holding it.
+ *
+ * Exported for `tests/showcase-elite-tick.test.mjs`, which drives a real Enemy
+ * through this exact function rather than a copy of it.
+ *
+ * @returns {boolean} true if this affix has an aura and a tick was taken.
+ */
+export function forceAuraTick(ctx, e, player) {
+  const s = e?.elite;
+  if (!s || !(s.auraDps || s.denyRadius || s.siphonDps) || !player?.position) return false;
+  // The smallest ring the unit owns, because the tick only pays inside all of
+  // them: Withering denies healing out to 16 m but only draws blood inside 4.
+  const ring = Math.min(...[s.auraRadius, s.siphonRadius, s.denyRadius].filter(Number.isFinite));
+  const home = { x: e.position.x, y: e.position.y, z: e.position.z };
+  const hp = player.health;
+
+  e.position.x = player.position.x + ring * 0.3;
+  e.position.z = player.position.z;
+  e.targetPlayer = player;
+  e.hasLOS = true;
+  e.losT = 1;      // past the stagger: this step reads the value above, not a raycast
+  e.auraT = 0;     // the tick is due now rather than up to half a second from now
+  try {
+    e.fixedUpdate?.(ctx, 1 / 60);
+  } finally {
+    e.position.x = home.x; e.position.y = home.y; e.position.z = home.z;
+    if (hp != null) player.health = hp;
+  }
+  return true;
+}
+
 export function installShowcase(ctx) {
   /* ------------------------------------------------------------ targets */
 
@@ -189,19 +234,7 @@ export function installShowcase(ctx) {
       const e = ctx.director?.spawnOne?.(ctx, card, ground(ctx, 12, lateral), affix);
       if (!e) return;
       const p = player();
-      if (stats.auraDps || stats.denyRadius || stats.siphonDps) {
-        // The aura ticks are distance-gated and LOS-gated, and the evaluator is
-        // standing wherever they are standing. Put the unit's own view of the
-        // range where the tick can happen, take exactly one, and give the
-        // player back the health it cost — an instrument must not be able to
-        // down the person holding it.
-        const hp = p?.health;
-        e.distToPlayer = 0;
-        e.hasLOS = true;
-        e.auraT = 0;
-        e.fixedUpdate?.(ctx, 1 / 60);
-        if (p && hp != null) p.health = hp;
-      }
+      forceAuraTick(ctx, e, p);
       // The corpse effects — Galvanic's shock blast, Rimebound's freezing nova,
       // Warded's reflected pop — through the real killing blow, so the death
       // signature and dissolve arrive with them exactly as in play.
