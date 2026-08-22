@@ -15,7 +15,7 @@
 import { ABILITIES } from '../src/data/abilities.js';
 import { EQUIPMENT } from '../src/data/equipment.js';
 import { ITEMS, TIERS } from '../src/data/items.js';
-import { SPAWN_CARDS, BOSS_CARDS } from '../src/data/enemies.js';
+import { SPAWN_CARDS, BOSS_CARDS, ELITE_STATS } from '../src/data/enemies.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log(`PASS  ${msg}`); } else { fail++; console.log(`FAIL  ${msg}`); } };
@@ -61,6 +61,16 @@ console.log('-- every table in the surface reaches the menu');
     .flatMap((c) => c.attacks ?? []).filter((a) => a.telegraph || a.blast).length;
   ok(wantTelegraphs > 0 && byGroup('telegraph').length === wantTelegraphs,
     `all ${wantTelegraphs} telegraphed enemy attacks are listed`);
+
+  // Elite modifiers carry player-facing surface of their own — a tint, an
+  // aura, and a signature proc each — and #143's audit names them, so the
+  // showcase owes them a line apiece. `voidtouched` is the one that catches a
+  // lazy enumeration: it is deliberately absent from `ELITE_TIERS`, so
+  // iterating `ELITE_AFFIXES` would list five of the six and look complete.
+  ok(byGroup('elite').length === Object.keys(ELITE_STATS).length,
+    `all ${Object.keys(ELITE_STATS).length} elite modifiers are listed`);
+  ok(byGroup('elite').some((e) => e.id === 'elite:voidtouched'),
+    'including voidtouched, which no elite tier contains');
 
   ok(byGroup('pickup').length === Object.keys(TIERS).length,
     `all ${Object.keys(TIERS).length} item tiers have a pickup entry`);

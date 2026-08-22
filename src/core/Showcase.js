@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { ABILITIES } from '../data/abilities.js';
 import { EQUIPMENT } from '../data/equipment.js';
 import { ITEMS, TIERS } from '../data/items.js';
-import { SPAWN_CARDS, BOSS_CARDS } from '../data/enemies.js';
+import { SPAWN_CARDS, BOSS_CARDS, ELITE_STATS } from '../data/enemies.js';
 
 /**
  * The effects showcase (#144) — every player-facing effect, on demand, by eye
@@ -173,6 +173,44 @@ export function installShowcase(ctx) {
     }
   }
 
+  // --- elite modifiers ----------------------------------------------------
+  // Iterated off `ELITE_STATS`, not `ELITE_AFFIXES`: the void's own affix is
+  // deliberately absent from `ELITE_TIERS` (the Director's void path is its
+  // only door), so the tier list would enumerate five of six and look right.
+  //
+  // Each affix is shown the only way it is honest to show one — a real elite
+  // spawned with it, so the tint and aura come off the same rig a fight would
+  // build. Then its signature: one forced aura tick for the three that drain,
+  // and a real killing blow for the three whose signature is a corpse, which
+  // also pops a Warded barrier because Combat drains the shield on the way.
+  for (const [affix, stats] of Object.entries(ELITE_STATS)) {
+    add('elite', `elite:${affix}`, `${stats.label} — aura, tint and signature`, (lateral) => {
+      const card = SPAWN_CARDS.find((c) => c.id === 'skink') ?? SPAWN_CARDS[0];
+      const e = ctx.director?.spawnOne?.(ctx, card, ground(ctx, 12, lateral), affix);
+      if (!e) return;
+      const p = player();
+      if (stats.auraDps || stats.denyRadius || stats.siphonDps) {
+        // The aura ticks are distance-gated and LOS-gated, and the evaluator is
+        // standing wherever they are standing. Put the unit's own view of the
+        // range where the tick can happen, take exactly one, and give the
+        // player back the health it cost — an instrument must not be able to
+        // down the person holding it.
+        const hp = p?.health;
+        e.distToPlayer = 0;
+        e.hasLOS = true;
+        e.auraT = 0;
+        e.fixedUpdate?.(ctx, 1 / 60);
+        if (p && hp != null) p.health = hp;
+      }
+      // The corpse effects — Galvanic's shock blast, Rimebound's freezing nova,
+      // Warded's reflected pop — through the real killing blow, so the death
+      // signature and dissolve arrive with them exactly as in play.
+      setTimeout(() => {
+        if (e.alive) ctx.combat?.applyDamage?.(e, e.maxHealth * 10, { source: p, type: 'showcase' });
+      }, 1400);
+    });
+  }
+
   // --- pickups ------------------------------------------------------------
   // One representative card per tier, chosen from the table rather than named:
   // the tier ladder is what the pickup jingle is pitched against, and Audio
@@ -240,6 +278,7 @@ export function installShowcase(ctx) {
       entries.filter((e) => ['killSignature', 'damageNumber', 'levelUp', 'pickup:legendary'].includes(e.id))],
     ['6', 'every status at one point', () => idsOf((e) => e.id.startsWith('status:'))],
     ['7', 'three telegraphs overlapping', () => idsOf((e) => e.group === 'telegraph').slice(0, 3)],
+    ['8', 'all six elite modifiers side by side', () => idsOf((e) => e.group === 'elite')],
   ];
 
   /* ------------------------------------------------------------- firing */
@@ -306,7 +345,7 @@ export function installShowcase(ctx) {
       `SHOWCASE  ${rows.length}/${entries.length} effects` +
       `${filter ? `  filter:"${filter}"` : ''}  marked:${marked.size}` +
       '   [up/down] move  [enter] fire  [space] mark  [g] fire marked  [c] clear' +
-      '  [1-7] presets  [type] filter  [esc] close';
+      '  [1-8] presets  [type] filter  [esc] close';
     list.innerHTML = '';
     let group = null;
     rows.forEach((e, i) => {
@@ -364,7 +403,7 @@ export function installShowcase(ctx) {
       case 'KeyC': marked.clear(); flash('marks cleared'); break;
       case 'Backspace': filter = filter.slice(0, -1); break;
       default:
-        if (/^Digit[1-7]$/.test(ev.code)) {
+        if (/^Digit[1-8]$/.test(ev.code)) {
           const p = presets[Number(ev.code.slice(5)) - 1];
           const set = p[2]();
           if (set.length) { fireGroup(set); flash(`preset: ${p[1]} (${set.length})`); }
