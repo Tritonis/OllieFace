@@ -1,0 +1,33 @@
+{
+  "result": {
+    "blinded": [],
+    "scale": 0.1,
+    "seconds": 20,
+    "peak_lin": 0.96152,
+    "peak_dBFS": -0.34,
+    "clippedSamples": 0,
+    "totalSamples": 1920000,
+    "rms_dBFS": -15.14,
+    "loudest50ms_lin": 0.96152,
+    "p95_50ms_lin": 0.91821,
+    "voices": {
+      "peak": 24,
+      "takes": 144,
+      "refusals": 0,
+      "refusalRate": 0
+    },
+    "sfxLimiter_dB": {
+      "mean": -3.92,
+      "worst": -13.71
+    },
+    "masterLimiter_dB": {
+      "mean": -0.63,
+      "worst": -13.89
+    },
+    "grSamples": 197
+  },
+  "logs": [
+    "debug: [vite] connecting...",
+    "debug: [vite] connected."
+  ]
+}
