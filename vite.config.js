@@ -15,5 +15,19 @@ export default defineConfig({
     host: '127.0.0.1',
     watch: { ignored: ['**/dist-desktop/**'] },
   },
-  build: { target: 'es2022', sourcemap: true },
+  build: {
+    target: 'es2022',
+    sourcemap: true,
+    rollupOptions: {
+      output: {
+        // The effects showcase (#144) is the one chunk whose *name* is load
+        // bearing: `build.files` refuses it by exact path so no player build
+        // carries the instrument, and a content hash would make that path
+        // change every time the file does — the exclusion would silently stop
+        // matching and the showcase would ship. Everything else keeps its hash.
+        chunkFileNames: (chunk) =>
+          (chunk.name === 'Showcase' ? 'assets/showcase.js' : 'assets/[name]-[hash].js'),
+      },
+    },
+  },
 });

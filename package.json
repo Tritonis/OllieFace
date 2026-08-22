@@ -27,6 +27,7 @@
     "desktop:pack": "npm run build && electron-builder --win --dir",
     "steamsdk": "node tools/steamsdk.mjs",
     "steamsdk:electron": "electron tools/steam-electron-init.mjs",
+    "showcase:install": "node tools/showcase-install.mjs",
     "smoke:steam": "node tools/steamsmoke.mjs --peers 3 --hz 60 --entities 60 --run-s 30 --warmup-s 3 --label steam-socketpair-3peer-60hz",
     "smoke:steam:binding": "electron tools/steamsmoke.mjs --via binding --peers 3 --hz 60 --entities 60 --run-s 30 --warmup-s 3 --label steam-binding-electron-3peer-60hz"
   },
@@ -42,6 +43,7 @@
       "!desktop/net-bridge-renderer.cjs",
       "dist/**",
       "!dist/**/*.map",
+      "!dist/assets/showcase.js",
       "package.json",
       "!node_modules/three/**",
       "!node_modules/ws/**",
