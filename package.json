@@ -39,6 +39,7 @@
     },
     "files": [
       "desktop/**",
+      "!desktop/net-bridge-renderer.cjs",
       "dist/**",
       "!dist/**/*.map",
       "package.json",

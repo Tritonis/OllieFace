@@ -99,6 +99,12 @@ console.log('\n-- build.files ships it, and still refuses steam_appid.txt');
   // overrides what Steam tells the process and breaks release-build detection.
   ok(!packs(files, 'steam_appid.txt'), 'steam_appid.txt is excluded from the packed folder');
   ok(!packs(files, 'desktop/steam_appid.txt'), 'and nowhere else in it either');
+
+  // desktop/net-bridge-renderer.cjs is test-only scaffolding: at test time it
+  // reads the inlined block back out of preload.cjs; nothing requires it at
+  // runtime, so the packed artifact must not carry it (#130 minor 1).
+  ok(!packs(files, 'desktop/net-bridge-renderer.cjs'),
+    'the test-only net-bridge extractor is not packed');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
