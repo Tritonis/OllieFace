@@ -212,6 +212,12 @@ class RunRecorder {
       corruption: {
         peakWorld: 0, peakBand: 0, fed: 0, bled: 0, crossings: [],
         marks: { minted: 0, spent: 0 }, ruined: false,
+        // Purity's purse, the backfill §3 promised and never shipped. Without
+        // it §3's refutation conditions cannot be evaluated at all: `warded` is
+        // whether anyone plays the verb, `minted` versus `spent` whether the
+        // currency it pays out ever leaves the pocket. A run that never wards
+        // leaves all three at 0, which is a finding and not a gap.
+        motes: { minted: 0, spent: 0, warded: 0 },
       },
       // Every bargain actually struck, in order. This is issue #36's acceptance
       // criterion in one field: a run with a nonzero `fed` and an empty
@@ -224,6 +230,10 @@ class RunRecorder {
       // that arrives at the wrong moment, which is the same finding pointed at
       // the designer instead of the player.
       sanctuaries: [],
+      // Every consecration, with the gauge it was bought at (§5.6). An argent
+      // card is worth what `grace` says at the moment it fires, so the world
+      // at the press is the only honest price tag on the row.
+      argent: [],
       mutations: [],
       stabilisations: [],
       fonts: [],
@@ -239,6 +249,8 @@ class RunRecorder {
     this._realm = null;      // the open realm visit, or null outside one
     this._lastWorld = 0;     // previous corruption world value, for feed/bleed direction
     this._lastMarks = 0;     // previous void-mark balance, for the mint/spend split
+    this._lastMotes = 0;     // previous argent-mote balance, same split
+    this._motesBefore = 0;   // the purse an in-flight spend is being taken from
     this._lastKill = null;   // the most recent kill of this machine's survivor
     // Offers whose door is still standing, so `goldChanged` can raise their
     // high-water purse. Emptied at `stageStart`, because that is where `Realms`
@@ -278,6 +290,8 @@ class RunRecorder {
     on('itemStabilised', this.onItemStabilised);
     on('fontUse', this.onFontUse);
     on('voidMarksChanged', this.onVoidMarks);
+    on('argentMotesChanged', this.onArgentMotes);
+    on('argentConsecrate', this.onArgentConsecrate);
     on('voidBargain', this.onVoidBargain);
     on('voidSanctuary', this.onVoidSanctuary);
     on('voidRuin', this.onVoidRuin);
@@ -327,6 +341,10 @@ class RunRecorder {
     const c = this.record.corruption;
     if (delta > 0) c.fed += delta; else c.bled -= delta;
     if (world > c.peakWorld) c.peakWorld = world;
+    // `warded` is monotonic on the system and is simply mirrored: a bleed
+    // clamps to what exists, so the system's own total is the only one that
+    // cannot over-count.
+    c.motes.warded = round(this.ctx.corruption?.warded ?? 0);
   }
 
   onCorruptionBand(e) {
@@ -408,6 +426,36 @@ class RunRecorder {
   }
 
   /**
+   * The same split for the other purse. `_motesBefore` is the balance the spend
+   * was taken *from*, kept because `sanctuaries[].motesHeld` is the ladder
+   * decision measured: a window bought at one mote is a player who could not
+   * wait for the reliquary, one bought at two chose the window over the card.
+   * The spend event fires before the window opens, so this is always current.
+   */
+  onArgentMotes(e) {
+    const motes = Number(e?.motes) || 0;
+    const spent = Math.max(0, Number(e?.spent) || 0);
+    const m = this.record.corruption.motes;
+    const minted = motes - this._lastMotes + spent;
+    if (minted > 0) m.minted += minted;
+    m.spent += spent;
+    if (spent > 0) this._motesBefore = motes + spent;
+    this._lastMotes = motes;
+  }
+
+  /** An argent card was bought. `world` is its price tag; see `argent`. */
+  onArgentConsecrate(e) {
+    if (!isLocalOwner(this.ctx, e)) return;
+    this.push(this.record.argent, {
+      t: this.t(),
+      id: e?.id ?? null,
+      motes: Number(e?.motes) || 0,
+      world: this.world(),
+      band: this.band(),
+    });
+  }
+
+  /**
    * A bargain was struck — the one field #36's acceptance criterion is written
    * in. The world and band at the moment of the press are recorded alongside
    * the price, because the interesting question is not only whether players buy
@@ -432,6 +480,7 @@ class RunRecorder {
       seconds: Number(e?.seconds) || 0,
       world: this.world(),
       greed: !!e?.greed,
+      motesHeld: this._motesBefore,
     });
   }
 

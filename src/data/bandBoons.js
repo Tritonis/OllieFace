@@ -73,6 +73,21 @@ export const BOON = {
  */
 export const MOTE = { per: 40, sanctuarySeconds: 12, motes: 1 };
 
+/**
+ * The reliquary's rung (issue #36, third pass, plan §5). Three motes buys one
+ * argent item, and the deeper rung *replaces* Sanctuary rather than joining it:
+ * spend at one mote and you never bank to three, which is the recurring
+ * decision the purity route has never had.
+ *
+ * Only the *price* lives here, beside the other purse. The argent tier itself —
+ * the `ARGENT` table, `grace`, and the five cards — lives in `data/items.js`
+ * with the pool it prices; the altar deliberately does not import it, so the
+ * spend surface reads, tests and merges with no pool in the tree at all.
+ * `fadeAt` is duplicated rather than imported for exactly that reason, and it
+ * is Overrun's own `at` (`data/corruption.js` BANDS) in both places.
+ */
+export const RELIQUARY = { motes: 3, fadeAt: 110 };
+
 /** One mote per `per` of corruption warded. The mirror of `marksMinted`. */
 export function motesMinted(warded) {
   const w = Number.isFinite(warded) ? Math.max(0, warded) : 0;
