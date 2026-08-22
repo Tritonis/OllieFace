@@ -105,6 +105,39 @@ console.log('\n-- build.files ships it, and still refuses steam_appid.txt');
   // runtime, so the packed artifact must not carry it (#130 minor 1).
   ok(!packs(files, 'desktop/net-bridge-renderer.cjs'),
     'the test-only net-bridge extractor is not packed');
+
+  // The effects showcase (#144) is an evaluation instrument, not a feature: it
+  // is lazy-imported by a keybind and vite emits it as its own chunk at a
+  // pinned, unhashed name precisely so `build.files` can refuse it by that
+  // name. A player build must not carry it; an evaluation build gets it back
+  // with `node tools/showcase-install.mjs`.
+  ok(!packs(files, 'dist/assets/showcase.js'),
+    'the effects showcase chunk is not packed');
+  ok(!packs(files, 'dist/assets/showcase.js.map'),
+    'nor its sourcemap');
+  ok(packs(files, 'dist/assets/index.js'),
+    'and refusing it did not cost the bundle its own chunks');
+}
+
+/**
+ * The exclusion above names one exact path, so it is only worth anything while
+ * vite is actually pinned to emit that path. Left to its default the showcase
+ * chunk would ship as `showcase-a1b2c3d4.js` and walk straight past the `!`
+ * line with every test here still green — the characteristic guard that
+ * reports pass because it is blind. So ask the real config what it would name
+ * the chunk.
+ */
+console.log('\n-- vite pins the showcase chunk to the name build.files refuses');
+{
+  const cfg = (await import('../vite.config.js')).default;
+  const naming = cfg?.build?.rollupOptions?.output?.chunkFileNames;
+  ok(typeof naming === 'function', 'the build declares a chunkFileNames rule');
+  if (typeof naming === 'function') {
+    ok(naming({ name: 'Showcase' }) === 'dist/assets/showcase.js'.slice(5),
+      'a chunk named Showcase is emitted at assets/showcase.js, unhashed');
+    ok(/\[hash\]/.test(String(naming({ name: 'Harness' }))),
+      'every other chunk keeps its content hash');
+  }
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

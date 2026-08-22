@@ -217,6 +217,20 @@ if (!params.has('harness')) maybeShowGpuNotice(ctx.gpu);
 // Exposed for the Playwright screenshot harness (deterministic captures).
 globalThis.__GAME__ = { engine, ctx, THREE, seed };
 
+// The effects showcase (#144) is an evaluation instrument that ships in no
+// player build: `build.files` refuses `dist/assets/showcase.js` by name. What
+// is left here is the doorbell — five lines that try to load a chunk which,
+// in a player build, is simply not there. The import then rejects and the
+// keypress does nothing, which is the intended behaviour and not a fault.
+// `tools/showcase-install.mjs` puts the chunk into a packed artifact when
+// somebody is actually evaluating one.
+window.addEventListener('keydown', (ev) => {
+  if (ev.code !== 'F9' || !ev.shiftKey || globalThis.__SHOWCASE__) return;
+  import('./core/Showcase.js')
+    .then((m) => m.installShowcase(ctx).open())
+    .catch(() => console.info('showcase: not present in this build.'));
+});
+
 if (params.has('harness')) {
   const { installHarness } = await import('./core/Harness.js');
   installHarness(ctx);

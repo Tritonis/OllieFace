@@ -57,6 +57,26 @@ lines on a pass and replays the failing arm in full on a fail.
   library-global, so never two at once, never in a lane, excluded from every tier.
 - Probe and gate runs are foreground (timeout up to 600000 ms); backgrounding one has zombied.
 
+### Effects showcase — judging by eye and ear (#144)
+
+`src/core/Showcase.js` fires every player-facing effect on demand: all survivor abilities,
+all 14 equipment, every item `onHit`/`onKill`/`onDamaged`/`onInterval` hook, every telegraphed
+enemy attack, a pickup per tier, and the run-level moments — 158 entries, all derived from the
+data tables, none typed by hand (`tests/showcase-surface.test.mjs` re-derives the totals and
+objects if the list falls behind). Effects fire down their real paths, so audio arrives through
+the real `Audio` bus and spends the real voice budget; there is no mixer bypass to find.
+
+Open with **Shift+F9** in dev (`npm run dev`). In a packed build the chunk is deliberately
+absent — `build.files` refuses `dist/assets/showcase.js` and `tests/steam-sdk-packaging.test.mjs`
+proves it, the same shape as the net-bridge exclusion. To evaluate against the packed artifact:
+
+```
+npm run build && npm run desktop:pack && npm run showcase:install
+```
+
+Keys: arrows move, Enter fires, Space marks, `g` fires everything marked together at adjacent
+offsets, `1`-`7` are curated pile-ups (every `onHit` proc at once, and so on), letters filter.
+
 ### Capture gate — advisory only (decided 2026-08-20)
 
 `npm run shots` is a manual arm: tracked by `gates:status` (it can go OVERDUE), never invoked by
