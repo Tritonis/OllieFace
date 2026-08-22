@@ -75,6 +75,12 @@ by the dimensions that are supposed to separate them. Found mechanically by
 enumeration, judged for severity by a human.
 _Avoid_: duplicate, overlap, similarity
 
+**Capability Gap**:
+Something the current effect frameworks demonstrably cannot express, as opposed
+to merely do not yet — proven against the primitives, never assumed from absence.
+The only finding class that may open a purchase or a new subsystem.
+_Avoid_: limitation, missing feature, tech debt
+
 ## Networking
 
 The two halves below are independent, and conflating them is the single most
