@@ -524,7 +524,7 @@ tier colour), `tests/argent-items.test.mjs`.
 Does **not** touch `Interactables.js`, `Telemetry.js`, `Corruption.js`,
 `bandBoons.js`.
 
-Colour: `#8fd7ff` in both `data/items.js` TIERS and `ui/Icons.js` TIERS.
+Colour: `#b1bdbc` in both `data/items.js` TIERS and `ui/Icons.js` TIERS. (The interim `#8fd7ff` this line originally named was replaced when #140 re-cut the whole eight-colour table; the gate now proves argent like every other tier.)
 `tests/readability-gate.test.mjs` fails if they diverge and must be run.
 
 Acceptance (headless, `tests/argent-items.test.mjs`):

@@ -27,6 +27,7 @@ import {
 import { prewarm, makeProjectile, makeShockwave, makeTelegraph } from '../entities/EnemyMeshes.js';
 import { clamp, lerp, RNG } from '../core/MathUtil.js';
 import { VOIDTOUCHED, voidCreditRate, voidBankCap, PRESSURE } from '../data/corruption.js';
+import { TIERS } from '../data/items.js';
 import { Roster } from './Roster.js';
 import { isLocalVictim } from '../core/Engine.js';
 
@@ -704,9 +705,11 @@ export class Director {
     const at = this.findVoidPoint(ctx, seed);
     if (!at) return;
     this.voidCredits -= unit;
-    // The Blight tier's own magenta (`TIERS.blight` in `src/data/items.js`), so
-    // the warning on the ground and the drop it heralds are one colour.
-    this.spawnTelegraph(at.x, at.z, 2.2, VOIDTOUCHED.telegraph, 0xc44fbc);
+    // Read, not copied. The warning on the ground and the drop it heralds are
+    // one colour by construction, so a palette change moves both at once —
+    // which a literal here would not do. It shipped as one, and #140's re-cut
+    // of the tier table left the ground painting last season's magenta.
+    this.spawnTelegraph(at.x, at.z, 2.2, VOIDTOUCHED.telegraph, TIERS.blight.colour);
     this._voidPending.push({ t: VOIDTOUCHED.telegraph, x: at.x, y: at.y, z: at.z, card });
   }
 
