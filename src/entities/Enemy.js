@@ -125,9 +125,9 @@ function eliteStatusOverride(em) {
   return em && em.burnTick != null ? { stackDamage: em.burnTick } : null;
 }
 
-function fx(ctx, name, a, b, c) {
+function fx(ctx, name, a, b, c, d) {
   const v = ctx.vfx;
-  if (v && typeof v[name] === 'function') v[name](a, b, c);
+  if (v && typeof v[name] === 'function') v[name](a, b, c, d);
 }
 
 function sfx(ctx, name, a, b) {
@@ -1448,10 +1448,10 @@ export class Enemy {
 // effect spawners routed through the director (it owns the pools)
 // ---------------------------------------------------------------------------
 
-function spawnBlast(ctx, e, radius, damage, color, status) {
+function spawnBlast(ctx, e, radius, damage, color, status, coreColour) {
   explodeAt(ctx, e, e.position, radius, damage, status);
   ctx.director?.spawnWave?.(e.position, radius, 60, 0, null, color);
-  fx(ctx, 'explosion', e.position, radius, color);
+  fx(ctx, 'explosion', e.position, radius, color, coreColour);
   ctx.pipeline?.addShake?.(clamp(radius * 0.02, 0.05, 0.4));
 }
 
