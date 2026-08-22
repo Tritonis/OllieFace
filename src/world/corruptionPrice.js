@@ -191,7 +191,14 @@ export function pricedPrompt(ctx, gain, min, max = min, qualifier = '') {
   // not against face value. A corruption stub with no `peak` (older fixtures,
   // and a co-op client before replication) gets no clause at all rather than a
   // mark quoted off `undefined`.
-  if (Number.isFinite(cor.peak)) {
+  // ...except inside a Sanctuary window, where the clause is true and useless:
+  // `priceOf` returns 0, so the forecast is always "(25 to the next void mark)"
+  // - a free press mints nothing - and it reads as a scolding in the one
+  // moment the design wants the player unleashed. The design note leaves this
+  // call to review (2026-08-21 plan, section 4, last paragraph); this is the
+  // review taking it. The prompt inside a window is the gain and the free
+  // press, with no ledger attached.
+  if (Number.isFinite(cor.peak) && !cor.sanctified) {
     const { mints, toNext } = mintForecast(cor.peak, hi);
     debt += mints > 0
       ? ` -> mints ${mints === 1 ? 'a void mark' : `${mints} void marks`}`

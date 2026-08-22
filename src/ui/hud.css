@@ -695,6 +695,63 @@ body.menu-open { cursor: default; }
   text-transform: uppercase;
   color: #b9a1e8;
 }
+/* The purse (#36 D2): what the gauge has *earned*, sitting under the band it
+   was earned in. Two counts on one row, hidden until the run mints its first
+   of either - an empty purse is not information, and the gauge column is
+   13em wide with three rows already competing for it.
+
+   Each count wears a shape rather than a glyph font: a diamond in the void's
+   pink for a mark, a hollow ring in the argent blue for a mote. The two
+   currencies are opposites and the palette already says so everywhere else on
+   this instrument (`cortickband` vs `cortickbanddown`), so the purse borrows
+   the same two inks rather than inventing a third. Filled vs hollow carries
+   the same distinction a second time, for anyone who cannot separate the
+   hues. No emoji anywhere - this HUD is rendered into a canvas overlay and a
+   colour-font fallback is not something the layout can absorb. */
+.corruption-purse {
+  display: none;
+  gap: 0.7em;
+  font-size: var(--fs-micro);
+  letter-spacing: var(--track-label);
+  line-height: 1.3;
+  color: #b9a1e8;
+  opacity: 0.85;
+}
+.corruption-purse.is-on { display: flex; }
+.purse {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32em;
+  opacity: 0.45;
+}
+.corruption-purse.has-marks .purse--marks,
+.corruption-purse.has-motes .purse--motes { opacity: 1; }
+.purse::before {
+  content: '';
+  width: 0.5em;
+  height: 0.5em;
+  flex: none;
+}
+.purse--marks::before {
+  background: #ff8fd6;
+  transform: rotate(45deg);
+}
+.purse--motes::before {
+  border: 1px solid #cfe8ff;
+  border-radius: 50%;
+}
+.purse--marks { color: #f3c7e6; }
+.purse--motes { color: #cfe8ff; }
+.purse-marks, .purse-motes {
+  font-weight: var(--fw-label);
+  font-variant-numeric: tabular-nums;
+}
+.purse-label {
+  text-transform: uppercase;
+  letter-spacing: var(--track-eyebrow);
+  opacity: 0.7;
+}
+
 /* The scale legend (#31): what the needle is moving towards, and what arriving
    costs. It wraps rather than truncating — the gauge column is 13em and this is
    the one row on the instrument whose whole job is to be read, so a clipped

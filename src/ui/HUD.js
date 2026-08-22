@@ -400,6 +400,21 @@ export class HUD {
     // No owner test needed: the body is empty. The gold readout is polled off
     // `ctx.items` — the viewer's own instance — in `update`, so a teammate's
     // purse cannot reach it however loud this channel gets.
+    // The purse (issue #36, D2). Marks and motes are minted and spent deep in
+    // `Corruption`, and until now the only place either number appeared was the
+    // altar prompt - a currency you cannot see is a currency you cannot save
+    // toward. Both readouts are event-driven rather than polled in `update`:
+    // the counts change a handful of times in a run, so a per-frame read would
+    // be sixty diffs a second to catch one.
+    //
+    // No owner test, unlike the item events above: `Corruption` is a single
+    // authority-side system and is not replicated, so there is exactly one
+    // purse in the world and these two events are it. (A client therefore reads
+    // zeroes until the gauge itself is replicated - the same standing caveat
+    // `pricedPrompt` already carries.)
+    on('voidMarksChanged', (e) => this.setPurse({ marks: e?.marks }));
+    on('argentMotesChanged', (e) => this.setPurse({ motes: e?.motes }));
+
     on('goldChanged', () => { /* value polled in update; event kept for parity */ });
     on('abilityUsed', ({ slot }) => {
       const i = slotIndex(slot);
@@ -542,6 +557,33 @@ export class HUD {
    * keeps the card on `def`, so `def.name` is the reliable read; `name` and
    * `displayName` are honoured first for when the entity carries its own.
    */
+  /**
+   * Paint the void-mark / argent-mote purse on the gauge (issue #36, D2).
+   *
+   * Partial by design: each event carries only its own currency, so a field
+   * that is not a finite number leaves the other half of the purse alone
+   * rather than zeroing it. The row stays hidden while both are empty - a
+   * gauge corner is expensive real estate and two zeroes teach nothing - and
+   * lights the moment either currency exists, which is also the moment it
+   * becomes something the player can spend.
+   */
+  setPurse(next) {
+    const p = this._purse || (this._purse = { marks: 0, motes: 0 });
+    if (Number.isFinite(next?.marks)) p.marks = Math.max(0, Math.round(next.marks));
+    if (Number.isFinite(next?.motes)) p.motes = Math.max(0, Math.round(next.motes));
+    const refs = this.refs;
+    if (refs.purseMarks) refs.purseMarks.textContent = String(p.marks);
+    if (refs.purseMotes) refs.purseMotes.textContent = String(p.motes);
+    const purse = refs.corruptionPurse;
+    if (!purse) return;
+    purse.classList.toggle('is-on', p.marks > 0 || p.motes > 0);
+    purse.classList.toggle('has-marks', p.marks > 0);
+    purse.classList.toggle('has-motes', p.motes > 0);
+    purse.setAttribute('aria-label',
+      p.marks + ' void mark' + (p.marks === 1 ? '' : 's')
+      + ', ' + p.motes + ' argent mote' + (p.motes === 1 ? '' : 's'));
+  }
+
   setBoss(enemy) {
     if (!enemy) return;
     this.boss = enemy;
@@ -1610,6 +1652,9 @@ function collectRefs(root) {
     corruptionBand: q('.corruption-band'),
     corruptionNext: q('.corruption-next'),
     corruptionRoute: q('.corruption-route'),
+    corruptionPurse: q('.corruption-purse'),
+    purseMarks: q('.purse-marks'),
+    purseMotes: q('.purse-motes'),
     inventory: q('.inventory'),
     tierGroups: Object.fromEntries(
       TIER_ORDER.map((t) => [t, root.querySelector(`.inv-group[data-tier="${t}"]`)])
@@ -1759,6 +1804,10 @@ const TEMPLATE = (slots, notches, dirSlots) => `
       <path d="M 0.00 5.00 L 100.00 5.00" />
     </svg>
     <b class="corruption-band">Pristine</b>
+    <div class="corruption-purse" aria-label="0 void marks, 0 argent motes">
+      <span class="purse purse--marks"><b class="purse-marks">0</b><span class="purse-label">marks</span></span>
+      <span class="purse purse--motes"><b class="purse-motes">0</b><span class="purse-label">motes</span></span>
+    </div>
     <i class="corruption-next"></i>
     <i class="corruption-route"></i>
   </div>
