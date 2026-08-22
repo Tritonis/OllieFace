@@ -55,7 +55,14 @@ function makeAc() {
     createPanner: () => make('panner'),
     sources: () => made.filter((n) => n.kind === 'osc' || n.kind === 'src'),
     // Everything the context would eventually hand back, handed back now.
-    endAll() { for (const n of made) if (n.onended) { const f = n.onended; n.onended = null; f(); } },
+    // A source nobody stopped is deliberately NOT ended: `onended` only fires
+    // at a scheduled stop, so a voice that was never stopped keeps its budget
+    // forever, and a stub that ended it anyway would hide exactly that leak.
+    endAll() {
+      for (const n of made) {
+        if (n.onended && n.stops.length) { const f = n.onended; n.onended = null; f(); }
+      }
+    },
   };
 }
 function makeAudio() {
@@ -181,6 +188,75 @@ console.log('no context, unplaceable positions, and a dead source do not throw')
   threw = false;
   try { dead.release(); } catch { threw = true; }
   ok(!threw, 'a source the context already tore down does not escape release()');
+}
+
+console.log('a poisoned recipe param never reaches a node');
+{
+  // Real `AudioParam` scheduling throws on a non-finite value, and `_out`
+  // already guards positions for that reason. The same discipline applies to
+  // the recipe: a bad number in a later layer must not be able to throw after
+  // an earlier layer has already started.
+  const a = makeAudio();
+  const bad = [];
+  for (const p of [{ value: NaN }, { value: Infinity }, { value: undefined }]) {
+    const h = a.startSustained({ x: 0, y: 0, z: 0 }, {
+      tones: [{ f0: 180, gain: 0.14 }, { f0: p.value, gain: p.value, detune: p.value }],
+      attack: p.value,
+    });
+    bad.push(h);
+  }
+  ok(bad.every((h) => h.active), 'each voice survived its poisoned layer');
+  ok(a.voices === 6, `both layers of all three voices are charged (saw ${a.voices})`);
+  const ramps = a.ac.made.filter((n) => n.kind === 'gain').flatMap((n) => n.gain.ramps);
+  ok(ramps.length > 0 && ramps.every(([v, t]) => Number.isFinite(v) && Number.isFinite(t)),
+    'every scheduled ramp value and time is finite');
+  const freqs = a.ac.made.filter((n) => n.kind === 'osc').flatMap((n) => n.frequency.sets);
+  ok(freqs.every((v) => Number.isFinite(v) && v >= 1), 'every scheduled frequency is finite and audible');
+  for (const h of bad) h.release();
+  a.ac.endAll();
+  ok(counters(a).join() === '0,0,0', 'and all of it came back');
+}
+
+console.log('a mid-construction throw strands nothing');
+{
+  // The leak this guards: sustained sources have no self-expiry, so a source
+  // started before the throw would play forever on budget nothing can free.
+  // Poisoned numbers are handled above, so this drives the residual case — a
+  // node the context itself refuses to build — through the same unwind.
+  const a = makeAudio();
+  const before = counters(a);
+  let built = 0;
+  const realOsc = a.ac.createOscillator;
+  a.ac.createOscillator = function () {
+    if (++built === 3) throw new Error('context refused the node');
+    return realOsc.call(this);
+  };
+
+  let threw = false;
+  let h = null;
+  try {
+    h = a.startSustained({ x: 0, y: 0, z: 0 }, {
+      tones: [{ f0: 100 }, { f0: 120 }, { f0: 140 }, { f0: 160 }],
+    });
+  } catch { threw = true; }
+
+  ok(!threw, 'the throw did not escape into the caller');
+  ok(h && !h.active, 'the caller gets an inert handle, not a half-built voice');
+
+  const started = a.ac.sources();
+  ok(started.length === 2, `two sources were started before the failure (saw ${started.length})`);
+  ok(started.every((s) => s.stops.length === 1), 'every started source had a stop scheduled by the unwind');
+
+  a.ac.endAll();
+  ok(counters(a).join() === before.join(), 'every unit of budget the part-built voice took came back');
+
+  // And the mixer is not poisoned for the next caller.
+  a.ac.createOscillator = realOsc;
+  const next = a.startSustained(null, { tones: [{ f0: 200 }] });
+  ok(next.active, 'the next voice still starts');
+  next.release();
+  a.ac.endAll();
+  ok(counters(a).join() === '0,0,0', 'and settles back to nothing');
 }
 
 console.log('move() repositions a placed voice');

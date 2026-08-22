@@ -191,6 +191,14 @@ const NULL_SUSTAIN = Object.freeze({
   release() {},
 });
 
+/**
+ * An `AudioParam` value a caller supplied. Non-finite values throw out of the
+ * scheduling methods, so a recipe with one bad number would otherwise take a
+ * whole sustained voice — and the frame around it — down with it.
+ */
+const num = (v, fallback, min = -Infinity) =>
+  (Number.isFinite(v) ? Math.max(min, v) : fallback);
+
 const _camPos = new THREE.Vector3();
 const _camDir = new THREE.Vector3();
 const _camUp = new THREE.Vector3();
@@ -772,39 +780,61 @@ export class Audio {
     const panner = out === this.sfx ? null : out;
     const sources = [];
     const gains = [];
+    // Attack of zero would make the ramp's end time equal its start, which some
+    // implementations reject; the burst primitives never see it because their
+    // attacks are literals, but a recipe comes from a caller.
+    const atk = num(attack, 0.04, 0.001);
 
-    for (const spec of tones) {
-      const o = ac.createOscillator();
-      o.type = spec.type || 'sawtooth';
-      o.detune.value = spec.detune || 0;
-      o.frequency.setValueAtTime(spec.f0 ?? 180, t);
-      const g = ac.createGain();
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(Math.max(0.0002, spec.gain ?? 0.14), t + attack);
-      o.connect(g).connect(out);
-      o.start(t);
-      this._release(o);
-      sources.push(o);
-      gains.push(g);
-    }
+    // A sustained source has no self-expiry: unlike `_tone`/`_noise`, which
+    // schedule their own `stop` in the same breath as `_release`, anything
+    // started here plays until this method's own handle stops it. So a throw
+    // part-way through construction would strand the sources already started —
+    // charged to the budget, audible forever, with no handle in any caller's
+    // hand to release them. Every param is sanitised up front so the ordinary
+    // cases never reach a node at all, and the build is unwound on the way out
+    // if one gets through anyway; refusing the voice is the same choice `_out`
+    // makes for a non-finite position (see there), and for the same reason —
+    // a mixer throw takes the rest of the caller's frame with it.
+    try {
+      for (const spec of tones) {
+        const o = ac.createOscillator();
+        o.type = spec.type || 'sawtooth';
+        o.detune.value = num(spec.detune, 0);
+        o.frequency.setValueAtTime(num(spec.f0, 180, 1), t);
+        const g = ac.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(Math.max(0.0002, num(spec.gain, 0.14, 0)), t + atk);
+        o.connect(g).connect(out);
+        o.start(t);
+        this._release(o);
+        sources.push(o);
+        gains.push(g);
+      }
 
-    if (noise) {
-      const src = ac.createBufferSource();
-      src.buffer = this.noiseBuf;
-      src.loop = true;
-      src.playbackRate.value = 0.9 + Math.random() * 0.2;
-      const f = ac.createBiquadFilter();
-      f.type = noise.type || 'bandpass';
-      f.frequency.setValueAtTime(noise.freq ?? 1200, t);
-      f.Q.value = noise.q ?? 1;
-      const g = ac.createGain();
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(Math.max(0.0002, noise.gain ?? 0.2), t + attack);
-      src.connect(f).connect(g).connect(out);
-      src.start(t, Math.random() * 1.5);
-      this._release(src);
-      sources.push(src);
-      gains.push(g);
+      if (noise) {
+        const src = ac.createBufferSource();
+        src.buffer = this.noiseBuf;
+        src.loop = true;
+        src.playbackRate.value = 0.9 + Math.random() * 0.2;
+        const f = ac.createBiquadFilter();
+        f.type = noise.type || 'bandpass';
+        f.frequency.setValueAtTime(num(noise.freq, 1200, 1), t);
+        f.Q.value = num(noise.q, 1, 0.0001);
+        const g = ac.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(Math.max(0.0002, num(noise.gain, 0.2, 0)), t + atk);
+        src.connect(f).connect(g).connect(out);
+        src.start(t, Math.random() * 1.5);
+        this._release(src);
+        sources.push(src);
+        gains.push(g);
+      }
+    } catch {
+      // Stop what was started. `_release` has already charged each of these, so
+      // stopping is what gives the budget back — `onended` cannot fire for a
+      // source nothing ever stops.
+      for (const s of sources) { try { s.stop(t); } catch { /* never started */ } }
+      return NULL_SUSTAIN;
     }
 
     let live = true;
