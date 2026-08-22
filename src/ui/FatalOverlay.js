@@ -13,6 +13,7 @@
  * told the run stopped on purpose will report it, and a player shown nothing
  * will conclude the game hung.
  */
+import { restartRun } from '../core/restartRun.js';
 
 const CSS = `
 .fatal-overlay{position:fixed;inset:0;z-index:10000;
@@ -70,7 +71,7 @@ export function showFatalOverlay(entry) {
   el.querySelector('.fatal-overlay__code').textContent = entry?.who ?? 'unknown';
   el.querySelector('.fatal-overlay__frame').textContent = String(entry?.frame ?? -1);
   el.querySelector('.fatal-overlay__msg').textContent = entry?.message ?? '';
-  el.querySelector('.fatal-overlay__btn').addEventListener('click', () => location.reload());
+  el.querySelector('.fatal-overlay__btn').addEventListener('click', () => restartRun());
 
   document.body.appendChild(el);
   return el;

@@ -2,8 +2,9 @@
  * The desktop shell under instruments: two boots against a scratch userData.
  *
  * Boot 1: app:// serves the real dist, the title screen renders, the renderer
- * has no node and exactly the two-function bridge, a profile write lands in
- * save.json (atomically: no .tmp left behind), gpu-info.json exists.
+ * has no node and exactly the named bridge, a profile write lands in
+ * save.json (atomically: no .tmp left behind), gpu-info.json exists, and
+ * "Restart run" through `__DESKTOP__.reload()` really does take the page down.
  * Boot 2: the save hydrates back into localStorage before the game reads it.
  *
  * Two modes, same checks:
@@ -105,8 +106,8 @@ try {
   }));
   check('boot 1: renderer has no node (require/process undefined)',
     iso.req === 'undefined' && iso.proc === 'undefined', iso);
-  check('boot 1: bridge exposes exactly loadStore + onSaveStatus + saveStore',
-    JSON.stringify(iso.keys) === '["loadStore","onSaveStatus","saveStore"]', iso.keys);
+  check('boot 1: bridge exposes exactly loadStore + onSaveStatus + reload + saveStore',
+    JSON.stringify(iso.keys) === '["loadStore","onSaveStatus","reload","saveStore"]', iso.keys);
   // The Steam bridge is the second surface the isolation claim now rests on.
   // Pinned as an exact set, not a subset: the danger is something ARRIVING
   // here -- a client object, a getClient, a generic invoke -- and a
@@ -153,6 +154,34 @@ try {
   const snap = existsSync(savePath) ? JSON.parse(readFileSync(savePath, 'utf8')) : {};
   check('boot 1: the write is in the file', snap['telluric.probeMark'] === 'boot1');
   check('boot 1: no page errors', errors.length === 0, errors);
+
+  // ---- "Restart run" actually restarts (#136) ----
+  //
+  // The assertion is a SENTINEL, not readiness. A window flag set before the
+  // restart is fired must not survive it. Every readiness probe -- the title
+  // screen being present, `[data-screen]` resolving, the canvas drawing -- is
+  // GREEN on a page that never reloaded at all, which is precisely how a dead
+  // "Restart run" shipped: nothing looked wrong, because nothing had changed.
+  const SENT = () => globalThis.__restartSentinel ?? null;
+  await page.evaluate(() => { globalThis.__restartSentinel = 'boot1'; });
+  check('restart: sentinel is set before the trigger', await page.evaluate(SENT) === 'boot1');
+
+  // The negative half, kept as a live check rather than a comment: a
+  // page-initiated reload IS blocked here. This is the fault #136 reported and
+  // the reason the bridge exists; if Electron ever stops blocking it, this
+  // goes red and the bridge can be reconsidered rather than cargo-culted.
+  try { await page.evaluate(() => globalThis.location.reload()); } catch {}
+  await page.waitForTimeout(2000);
+  check('restart: location.reload() is swallowed by the will-navigate denial (why the bridge exists)',
+    await page.evaluate(SENT) === 'boot1');
+
+  // The fix. Main performs the reload, so it is not renderer navigation.
+  await page.evaluate(() => globalThis.__DESKTOP__.reload());
+  await page.waitForSelector('[data-screen="title"]', { timeout: 60000 });
+  const survived = await page.evaluate(SENT);
+  check('restart: __DESKTOP__.reload() tears the page down -- the sentinel does NOT survive',
+    survived === null, survived);
+  check('restart: and the shell is still on app:// afterwards', page.url().startsWith('app://'), page.url());
 } finally { await app.close(); }
 // gpu-info is written from an awaited getGPUInfo after loadURL -- checking
 // it mid-session races a slow GPU-process boot. After close it must exist.

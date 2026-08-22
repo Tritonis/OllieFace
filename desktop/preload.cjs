@@ -256,6 +256,11 @@ contextBridge.exposeInMainWorld('__DESKTOP__', {
     if (lastSaveStatus && typeof cb === 'function') cb(lastSaveStatus);
     return off;
   },
+  // Start the run over. `location.reload()` is blocked in this shell by the
+  // window's `will-navigate` denial (#136), so the reload is asked of main,
+  // which is allowed to perform it. Fire-and-forget: nothing comes back
+  // because nothing is left to come back to.
+  reload: () => { ipcRenderer.send('shell:reload'); },
 });
 
 contextBridge.exposeInMainWorld('__STEAM__', {

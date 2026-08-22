@@ -42,6 +42,8 @@
 
 /** The key that raises it. Chosen off the bound set entirely: not Escape, and
  *  not something a survivor is steering with. `SystemNotice` names it. */
+import { restartRun } from '../core/restartRun.js';
+
 export const FALLBACK_PAUSE_KEY = 'F8';
 export const FALLBACK_PAUSE_LABEL = 'F8';
 
@@ -130,11 +132,13 @@ export function setFallbackPause(ctx, want, doc = globalThis.document ?? null) {
 
 /**
  * End the run and start over. This is `Menus.act('restart')` and the pause
- * screen's `act('quit')` verbatim — both are `location.reload()` — reached
- * directly because the object that used to own that switch is gone.
+ * screen's `act('quit')` verbatim — both are `restartRun()` — reached directly
+ * because the object that used to own that switch is gone. Delegating rather
+ * than repeating the reload is what keeps this path alive in the packaged
+ * shell, where a page-initiated `location.reload()` is blocked (#136).
  */
 export function fallbackRestart(loc = globalThis.location ?? null) {
-  loc?.reload?.();
+  restartRun(globalThis.__DESKTOP__, loc);
 }
 
 function showOverlay(ctx, doc) {
