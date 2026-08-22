@@ -79,6 +79,15 @@ console.log('the mint announces itself on the log; the spend does not');
   emit('voidMarksChanged', { marks: 0, spent: 1 });
   emit('argentMotesChanged', { motes: 0, spent: 2 });
   eq(toasts.length, 2, 'spending either currency toasts nothing -- a purchase is not an earning');
+
+  // A PARTIAL spend is the shape that actually distinguishes the two paths.
+  // Spending to zero is caught by the count test alone, so a mint guard that
+  // had lost its `spent` check would still pass the two lines above; these
+  // carry a full purse and a charge at the same time, exactly as `spendMarks`
+  // and `spendMotes` emit them.
+  emit('voidMarksChanged', { marks: 3, spent: 2 });
+  emit('argentMotesChanged', { motes: 4, spent: 1 });
+  eq(toasts.length, 2, 'spending PART of a purse is silent too -- the count left over is not a mint');
 }
 
 console.log('\na malformed or empty mint says nothing');
@@ -155,7 +164,32 @@ console.log('\nspending is silent');
   emit('voidMarksChanged', { marks: 0, spent: 1 });
   emit('argentMotesChanged', { motes: 0, spent: 1 });
   emit('voidMarksChanged', undefined);
-  eq(ac.oscCount(), before, 'no spend and no malformed payload reaches the graph');
+  // The partial spend again: a purse with three marks left and two charged is
+  // the emit shape a real altar purchase produces, and it must not ring.
+  emit('voidMarksChanged', { marks: 3, spent: 2 });
+  emit('argentMotesChanged', { motes: 4, spent: 1 });
+  eq(ac.oscCount(), before, 'no spend, partial or total, and no malformed payload reaches the graph');
+}
+
+console.log('\ntwo mints in the same instant are one sound');
+{
+  // Both purses can move off a single feed or bleed. The cue is throttled so
+  // that pair lands as one sting rather than two stacked on top of each other,
+  // and the suppressed second one must not charge the reserve it never used.
+  const { a, ac, emit } = boundAudio();
+  emit('voidMarksChanged', { marks: 1, spent: 0 });
+  const charged = a.priorityVoices;
+  const oscs = ac.oscCount();
+  ok(charged > 0, 'the first mint plays');
+
+  ac.currentTime = 0.05;
+  emit('argentMotesChanged', { motes: 1, spent: 0 });
+  eq(ac.oscCount(), oscs, 'a second mint inside the window builds nothing');
+  eq(a.priorityVoices, charged, 'and charges the priority pool exactly once');
+
+  ac.currentTime = 0.2;
+  emit('argentMotesChanged', { motes: 2, spent: 0 });
+  ok(ac.oscCount() > oscs, 'and the throttle opens again once the window has passed');
 }
 
 console.log('\nthe sting is cheap enough to fire mid-fight');
