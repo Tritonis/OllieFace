@@ -17,6 +17,10 @@
  * folds in the hit's proc coefficient and any luck (Clover) the player has.
  */
 
+// The Warden's Tally asks the same question the void's own reward multiplier
+// does, and there is exactly one answer to it in the codebase.
+import { isVoidtouched } from './corruption.js';
+
 /**
  * Tier table. `weight` is the *default* pull weight for a generic roll; the
  * concrete drop tables live in `systems/Items.js` (DROP_TABLES) because which
@@ -47,8 +51,39 @@ export const TIERS = {
   // explicit share of whatever table it was handed, so one constant sets the
   // rate for every chest in the game at once — see BLIGHT_SHARE there.
   blight: { name: 'Blight', colour: 0xc44fbc, css: '#c44fbc', weight: 0 },
+  // Argent is the only tier no chest can reach at all. Blight is weight 0 but
+  // `rollTier` folds it back in as an explicit share; argent is not folded in
+  // anywhere, and the single door into the pool is `Items.rollArgent()`, which
+  // the Consecration press calls. A run that never presses the reliquary takes
+  // no extra `ctx.rng` draw, which is what keeps the sp-equivalence baseline
+  // still.
+  argent: { name: 'Argent', colour: 0x8fd7ff, css: '#8fd7ff', weight: 0 },
   equipment: { name: 'Equipment', colour: 0xbb7e00, css: '#bb7e00', weight: 0 },
 };
+
+/**
+ * The argent tier's one dial and its one rule.
+ *
+ * `fadeAt` is Overrun's `at` (`data/corruption.js` BANDS), so the fade lands on
+ * a band boundary the player already reads: full pay at Pristine, half at
+ * Blighted, nothing at Overrun. Blight cards do the opposite, which is what
+ * makes a hedged inventory worse than either pure line.
+ *
+ * `reliquary.motes` is the Consecration price; Lane A's altar reads it.
+ */
+export const ARGENT = { fadeAt: 110, reliquary: { motes: 3 } };
+
+/**
+ * How much an argent card pays right now: 1 at Pristine, 0 at Overrun.
+ *
+ * This reads LIVE world corruption, which is why every argent payoff rides a
+ * `hooks` entry and never `stat(count, s)`: `Items.stats()` is frame-cached
+ * behind `_dirty`, and `_dirty` moves on inventory and buff changes only, so a
+ * `stat` that called this would hand back whatever the gauge said the last time
+ * somebody picked something up. Hooks are evaluated at use and get `api.ctx`.
+ */
+export const grace = (ctx) =>
+  Math.max(0, Math.min(1, 1 - (ctx?.corruption?.world ?? 0) / ARGENT.fadeAt));
 
 /** Chance stacking. k is the first-stack value; the curve never reaches 1. */
 export const hyperbolic = (k, count) => (count <= 0 ? 0 : 1 - 1 / (1 + k * count));
@@ -413,6 +448,78 @@ export const ITEMS = [
         if (frac < 0.25) return amount * hyperbolicMult(0.5, api.count);
         return amount;
       },
+    },
+  },
+
+  // ------------------------------------------------------------------ ARGENT
+  //
+  // The purity pool. Zero-weight, unreachable from any chest, bought one card
+  // at a time off the Argent Reliquary for three warded motes. Every payoff
+  // except the Warden's Tally is multiplied by `grace(api.ctx)` and every one
+  // of them lives in `hooks` - see the note on `grace` for why `stat` is
+  // forbidden here.
+  {
+    id: 'wardens-tally', name: "Warden's Tally", tier: 'argent', glyph: 'ring',
+    flavour: 'One notch for every thing you sent back where it came from.',
+    description: (n) => `Killing a Voidtouched enemy grants +${pct(linear(0.12, n))} attack speed for 8s, up to 3 stacks.`,
+    // The one argent card the gauge does not fade, because it pays the purity
+    // verb directly: Voidtouched exist in proportion to World Corruption, so a
+    // clean world already rate-limits it harder than any multiplier would.
+    hooks: {
+      onKill: (e, api) => {
+        if (!isVoidtouched(e.victim)) return;
+        api.items.addBuff('frenzy', 8, 3, linear(0.12, api.count));
+      },
+    },
+  },
+  {
+    id: 'quicksilver-vein', name: 'Quicksilver Vein', tier: 'argent', glyph: 'drop',
+    flavour: 'It runs bright, and it runs cold, and it will not run through filth.',
+    description: (n) => `${pct(hyperbolic(0.08, n))} chance on hit to arc for 160% damage across 2 targets. Scaled by how clean the world is.`,
+    hooks: {
+      onHit: (e, api) => {
+        if (!api.roll(hyperbolic(0.08, api.count) * grace(api.ctx))) return;
+        chainLightning(api, e, api.items.baseDamage() * 1.6, 2);
+      },
+    },
+  },
+  {
+    id: 'unblemished-plate', name: 'Unblemished Plate', tier: 'argent', glyph: 'shield',
+    flavour: 'Not one scratch. That is either very good armour or a very short career.',
+    description: (n) => `Taking damage grants +${linear(14, n)} armour for 4s. Scaled by how clean the world is.`,
+    hooks: {
+      onDamaged: (e, api) => {
+        api.items.addBuff('aegis', 4, 1, linear(14, api.count) * grace(api.ctx));
+      },
+    },
+  },
+  {
+    id: 'chime-of-absolution', name: 'Chime of Absolution', tier: 'argent', glyph: 'hex',
+    flavour: 'It only rings in consecrated air. Elsewhere it is a lump of cold metal.',
+    description: (n) => `While a Sanctuary is open, each kill wards ${linear(1.5, n)} corruption out of the world.`,
+    // The only argent card that is worthless at Pristine, deliberately: `bleed`
+    // clamps to what exists. It closes the purity loop into an engine - ward,
+    // mote, window, the Chime wards harder - while still requiring the spend
+    // verb to turn the crank, so it can never run without the player choosing.
+    hooks: {
+      onKill: (e, api) => {
+        const cor = api.ctx?.corruption;
+        if (!api.ctx?.authority || !cor?.sanctified) return;
+        cor.bleed(api.player, linear(1.5, api.count));
+      },
+    },
+  },
+  {
+    id: 'pale-standard', name: 'Pale Standard', tier: 'argent', glyph: 'triangle',
+    flavour: 'Carried ahead of the column so that everyone behind it knows what they are for.',
+    description: (n) => `Deal +${pct(linear(0.30, n))} damage, scaled by how clean the world is. Half again as much while you hold a Warden's Tally.`,
+    // The whole of the "argent synergies" shape: a held-other multiplier inside
+    // one card's own hook needs no second table and no new preview surface, and
+    // it is the seam a previewed argent bargain would grow from.
+    hooks: {
+      outgoing: (amount, target, info, api) => amount * (1 + linear(0.30, api.count)
+        * grace(api.ctx)
+        * (api.items.count('wardens-tally') > 0 ? 1.5 : 1)),
     },
   },
 

@@ -1658,6 +1658,24 @@ export class Items {
     return this._rng().pick(pool).id;
   }
 
+  /**
+   * One argent id off the purity pool — what a Consecration hands over.
+   *
+   * The only door into the tier. `rollTier` never returns `'argent'` and no
+   * `DROP_TABLES` entry can reach it, so a run that never presses the Argent
+   * Reliquary takes no draw here at all and the sp-equivalence baseline cannot
+   * move on account of this pool existing.
+   *
+   * Host only, like every other draw off the gameplay stream: a client that
+   * asked gets null and never touches `ctx.rng`.
+   */
+  rollArgent() {
+    if (!this.ctx.authority) return null;
+    const pool = ITEMS_BY_TIER.argent;
+    if (!pool?.length) return null;
+    return this._rng().pick(pool).id;
+  }
+
   /** One equipment id off the equipment pool — what a barrel hands out. */
   rollEquipment() {
     if (!this.ctx.authority) return null;
