@@ -1666,6 +1666,13 @@ export class Items {
    * Reliquary takes no draw here at all and the sp-equivalence baseline cannot
    * move on account of this pool existing.
    *
+   * That claim is only true if nothing *previews* a card, which is what it
+   * stopped being once the altar named the card in its prompt: `prompt()` runs
+   * off the render loop, so the draw landed on the shared gameplay stream at a
+   * frame-rate-dependent moment and two runs on one seed diverged by how fast
+   * the machine was. So this is a press-time call and nothing else may make it
+   * - `argentStocked()` is what a preview asks instead.
+   *
    * Host only, like every other draw off the gameplay stream: a client that
    * asked gets null and never touches `ctx.rng`.
    */
@@ -1674,6 +1681,15 @@ export class Items {
     const pool = ITEMS_BY_TIER.argent;
     if (!pool?.length) return null;
     return this._rng().pick(pool).id;
+  }
+
+  /**
+   * Is there an argent card to be had at all? The question `rollArgent`'s
+   * callers used to answer by drawing one. Same guards, no draw: a prompt may
+   * ask this every frame forever and `ctx.rng` never moves.
+   */
+  argentStocked() {
+    return !!this.ctx.authority && !!ITEMS_BY_TIER.argent?.length;
   }
 
   /** One equipment id off the equipment pool — what a barrel hands out. */
@@ -1883,7 +1899,12 @@ export class Items {
 // tier the player took a risk on, and it reads as an answer to the run rather
 // than as part of the ladder. It must also be the last *item* tier, because the
 // cards above it in the strip are the ones it ate out of.
-const TIER_ORDER = { common: 0, uncommon: 1, legendary: 2, boss: 3, lunar: 4, blight: 5, equipment: 6 };
+// Argent sits after Blight and before Equipment, matching `CONTENT_TIERS` in
+// `src/ui/Icons.js`: it is the answer to the run that Blight is the risk on,
+// and equipment is hardware rather than a card. An unlisted tier here is not a
+// cosmetic fault — the comparator subtracts undefined, the NaN makes every
+// comparison false, and the whole strip falls back to a name sort.
+const TIER_ORDER = { common: 0, uncommon: 1, legendary: 2, boss: 3, lunar: 4, blight: 5, argent: 6, equipment: 7 };
 const BASE_KEYS = ['maxHealth', 'healthRegen', 'moveSpeed', 'attackSpeed', 'damage',
   'critChance', 'critMult', 'armor', 'cooldownMult', 'jumpCount'];
 

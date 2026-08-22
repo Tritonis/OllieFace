@@ -52,6 +52,13 @@
      in `16-run-summary`. */
   --t-blight:    #c44fbc;
   --t-equipment: #bb7e00;
+  /* Argent is INTERIM and, unlike the seven above it, is not part of the proven
+     palette: no eighth colour clears both the separation and the contrast bars
+     at once, so the tier's colour is a parked decision (#140) and the gate does
+     not iterate it. It is here so an argent card has a tint of its own instead
+     of falling through to Common's near-white, and it is the same value
+     `data/items.js` and `Icons.js` carry. See `CONTENT_TIERS` in `Icons.js`. */
+  --t-argent:    #8fd7ff;
 
   /* The ground tier-coloured *type* is graded against, and the reason it is
      opaque (#104). Every panel that carries a tier name is `rgba()` over the
@@ -870,6 +877,7 @@ body.menu-open { cursor: default; }
 .t-lunar     { --tc: var(--t-lunar);     color: var(--tc); }
 .t-blight    { --tc: var(--t-blight);    color: var(--tc); }
 .t-equipment { --tc: var(--t-equipment); color: var(--tc); }
+.t-argent    { --tc: var(--t-argent);    color: var(--tc); }
 
 /* Every place a tier colour is painted as *type* — and this list is no longer
    maintained by hand-remembering. `tests/readability-gate.test.mjs` enumerates

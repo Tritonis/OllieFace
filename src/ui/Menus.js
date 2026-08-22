@@ -5,7 +5,7 @@
 // class exposes plain methods rather than the system lifecycle.
 
 import * as THREE from 'three';
-import { itemArt, equipmentArt, unknownIcon, tierMeta, abilityArt, hexOf, markIcon, TIER_ORDER, tracePath, tracePathFrom } from './Icons.js';
+import { itemArt, equipmentArt, unknownIcon, tierMeta, abilityArt, hexOf, markIcon, CONTENT_TIERS, tracePath, tracePathFrom } from './Icons.js';
 import { ITEMS_BY_TIER } from '../data/items.js';
 import { EQUIPMENT } from '../data/equipment.js';
 import { Tooltip } from './Tooltip.js';
@@ -1501,7 +1501,7 @@ export class Menus {
   commandActive() { return !!this.ctx.artifacts?.has?.('command'); }
 
   /** Tiers Command can actually resolve a drop into, in ladder order. */
-  edictTiers() { return TIER_ORDER.filter((t) => ITEMS_BY_TIER[t]?.length); }
+  edictTiers() { return CONTENT_TIERS.filter((t) => ITEMS_BY_TIER[t]?.length); }
 
   /**
    * File or revoke one order.
@@ -2322,7 +2322,7 @@ export class Menus {
     const itemsLabel = this.root.querySelector('[data-items-label]');
     if (itemsLabel) itemsLabel.textContent = 'Items Collected';
 
-    // One shrink-wrapped block per tier, in `TIER_ORDER`.
+    // One shrink-wrapped block per tier, in `CONTENT_TIERS`.
     //
     // The grid used to be a single wrapping row of `stats.items` in pickup
     // order, so tier boundaries fell wherever the wrap happened to put them:
@@ -2330,7 +2330,7 @@ export class Menus {
     // found **five** of six boundaries mid-row, against round 2/3's four. It
     // also ordered the haul magenta-first here while `10-inventory`'s HUD strip
     // ordered the identical 83-item haul magenta-last — two screens, one haul,
-    // opposite tier order. Grouping here off the same `TIER_ORDER` the strip
+    // opposite tier order. Grouping here off the same `CONTENT_TIERS` the strip
     // uses fixes both at once.
     //
     // Rows inside a block are explicit rather than `flex-wrap`, for the reason
@@ -2346,7 +2346,10 @@ export class Menus {
     }
     const tile = (it) => `<div class="ditem t-${it.tier}"><img src="${itemArt(it.id, it.tier)}" alt="" />
              ${it.count > 1 ? `<b>x${it.count}</b>` : ''}</div>`;
-    const tiers = TIER_ORDER.filter((t) => byTier.get(t)?.length);
+    // `CONTENT_TIERS`, not `TIER_ORDER`: the palette list has no Argent in it
+    // (see Icons.js), and filtering the haul on it dropped every argent card
+    // the run bought straight off the end-of-run screen.
+    const tiers = CONTENT_TIERS.filter((t) => byTier.get(t)?.length);
     grid.innerHTML = tiers.length
       ? tiers.map((t) => {
         const list = byTier.get(t);

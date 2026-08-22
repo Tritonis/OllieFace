@@ -32,7 +32,7 @@ import { glyphLabel, DEFAULT_GLYPH_SET } from '../data/glyphs.js';
 // through `Roster.targetable` and `BTN.INTERACT`) and is only *printed* here.
 import { Roster } from '../systems/Roster.js';
 import { BTN } from '../net/Protocol.js';
-import { abilityIcon, abilityArt, equipmentArt, itemArt, hexOf, TIER_ORDER, tracePathFrom } from './Icons.js';
+import { abilityIcon, abilityArt, equipmentArt, itemArt, hexOf, CONTENT_TIERS, tracePathFrom } from './Icons.js';
 import { Tooltip, describeItem, prettify } from './Tooltip.js';
 import { Announcer } from './Announcer.js';
 import { Tutorial } from '../systems/Tutorial.js';
@@ -1681,7 +1681,7 @@ function collectRefs(root) {
     purseMotes: q('.purse-motes'),
     inventory: q('.inventory'),
     tierGroups: Object.fromEntries(
-      TIER_ORDER.map((t) => [t, root.querySelector(`.inv-group[data-tier="${t}"]`)])
+      CONTENT_TIERS.map((t) => [t, root.querySelector(`.inv-group[data-tier="${t}"]`)])
     ),
 
     objective: q('.objective'),
@@ -1836,7 +1836,7 @@ const TEMPLATE = (slots, notches, dirSlots) => `
     <i class="corruption-route"></i>
   </div>
   <div class="inventory">
-    ${TIER_ORDER.map((t) => `<div class="inv-group t-${t}" data-tier="${t}"></div>`).join('')}
+    ${CONTENT_TIERS.map((t) => `<div class="inv-group t-${t}" data-tier="${t}"></div>`).join('')}
   </div>
 </div>
 

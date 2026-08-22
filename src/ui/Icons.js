@@ -88,6 +88,14 @@ export const TIERS = {
   // floor, at 4.59:1 on the logbook's hover row.
   blight:    { label: 'Blight',    color: '#c44fbc', dim: '#6a2b66', plate: '#26101c' },
   equipment: { label: 'Equipment', color: '#bb7e00', dim: '#654400', plate: '#26160b' },
+  // INTERIM, and outside the proven palette on purpose — see `CONTENT_TIERS`
+  // below for why, and #140 for the decision that will replace it. It is the
+  // pale blue `data/items.js` already ships for argent world drops, so the two
+  // tables agree today; it has NOT been measured for tier separation or
+  // contrast, and it must be measured (and probably moved) when #140 lands and
+  // `argent` joins `TIER_ORDER`. Until then it is here so that an argent card
+  // has a label and a tint of its own rather than reading as Common.
+  argent:    { label: 'Argent',    color: '#8fd7ff', dim: '#4a7c96', plate: '#101f28' },
 };
 
 // Each entry carries its own id, so a `tierMeta` result is self-describing and
@@ -95,6 +103,31 @@ export const TIERS = {
 for (const [key, meta] of Object.entries(TIERS)) meta.key = key;
 
 export const TIER_ORDER = ['common', 'uncommon', 'legendary', 'boss', 'lunar', 'blight', 'equipment'];
+
+/**
+ * Every tier that can appear in an inventory, in the order the strip, the haul
+ * grid and the logbook read them — which is `TIER_ORDER` plus Argent.
+ *
+ * The two lists are not the same list, and the difference is deliberate.
+ * `TIER_ORDER` is the *palette*: the readability gate iterates it and proves
+ * every member 12 CIEDE2000 apart in four vision models and 4.5:1 against every
+ * surface it becomes text on. The feasible region for seven saturated hues
+ * under both constraints is very nearly a point (see above), and no eighth
+ * colour clears it — an argent hue that separates from Common's white and
+ * Umbral's cyan cannot also hold its contrast. So the tier's colour is a parked
+ * human decision (#140), and until it is made Argent is not in the gated table:
+ * putting a placeholder there would mean loosening the gate for the other seven
+ * to accommodate a colour nobody chose, which is worse than the tier drawing in
+ * an interim blue.
+ *
+ * What it must not be is *absent*, which is what it was: a haul grid that
+ * filtered on `TIER_ORDER` silently dropped every argent card the run bought,
+ * and a strip with no argent group dropped them into Common. Grouping, sorting,
+ * labelling and grid membership all read this list instead; only the colour
+ * proof reads `TIER_ORDER`.
+ */
+export const CONTENT_TIERS = ['common', 'uncommon', 'legendary', 'boss', 'lunar',
+                              'blight', 'argent', 'equipment'];
 
 /* --------------------------------------------------------------- tier marks
  *
