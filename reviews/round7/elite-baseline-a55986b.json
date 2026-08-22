@@ -1,0 +1,282 @@
+{
+  "mode": "elite-dps",
+  "source": {
+    "tool": "tests/sp-equivalence.mjs",
+    "mode": "elite-dps",
+    "coopHost": false,
+    "seed": 20260804,
+    "commit": "a55986b794b1d00d6be2f179b47efdf26db2e7a7",
+    "dirty": false,
+    "capturedAt": "2026-08-22T14:33:54.212Z"
+  },
+  "card": "lasher",
+  "arms": {
+    "emberclad@2.5": {
+      "affix": "emberclad",
+      "card": "lasher",
+      "metres": 2.5,
+      "hold": true,
+      "seconds": 40,
+      "damage": 1630.86,
+      "dps": 40.7715,
+      "auraDirectDps": 9.324,
+      "burnDotDps": 17.7975,
+      "meleeDps": 13.65,
+      "byType": {
+        "burn": 372.96,
+        "burn:dot": 711.9,
+        "melee": 546
+      },
+      "sourceKeys": {
+        "lasher+emberclad": 1630.86
+      },
+      "events": 313,
+      "foreignDamage": 0,
+      "auraRadius": 3.2,
+      "hasAura": true,
+      "unitDamageStat": 42,
+      "baseDamage": 21,
+      "unitLevel": 1,
+      "eliteAlive": true,
+      "enemiesOnStage": 1,
+      "inAuraFraction": 1,
+      "meanBurnStacks": 2.856667,
+      "maxBurnStacks": 3,
+      "meanDist": 2.5,
+      "minDist": 2.5,
+      "playerMaxHealth": 110,
+      "playerAlive": true
+    },
+    "emberclad@11": {
+      "affix": "emberclad",
+      "card": "lasher",
+      "metres": 11,
+      "hold": false,
+      "seconds": 27,
+      "damage": 603.33,
+      "dps": 22.345556,
+      "auraDirectDps": 3.173333,
+      "burnDotDps": 5.95,
+      "meleeDps": 1.555556,
+      "byType": {
+        "burn": 85.68,
+        "burn:dot": 160.65,
+        "melee": 42,
+        "projectile": 69.3,
+        "pull": 245.7
+      },
+      "sourceKeys": {
+        "lasher+emberclad": 603.33
+      },
+      "events": 85,
+      "foreignDamage": 0,
+      "auraRadius": 3.2,
+      "hasAura": true,
+      "unitDamageStat": 42,
+      "baseDamage": 21,
+      "unitLevel": 1,
+      "eliteAlive": true,
+      "enemiesOnStage": 1,
+      "inAuraFraction": 0.306173,
+      "meanBurnStacks": 0.964815,
+      "maxBurnStacks": 3,
+      "meanDist": 4.856779,
+      "minDist": 0.002399,
+      "playerMaxHealth": 110,
+      "playerAlive": true
+    },
+    "rimebound@2.5": {
+      "affix": "rimebound",
+      "card": "lasher",
+      "metres": 2.5,
+      "hold": true,
+      "seconds": 40,
+      "damage": 714,
+      "dps": 17.85,
+      "auraDirectDps": 0,
+      "burnDotDps": 0,
+      "meleeDps": 17.85,
+      "byType": {
+        "melee": 714
+      },
+      "sourceKeys": {
+        "lasher+rimebound": 714
+      },
+      "events": 17,
+      "foreignDamage": 0,
+      "auraRadius": 0,
+      "hasAura": false,
+      "unitDamageStat": 42,
+      "baseDamage": 21,
+      "unitLevel": 1,
+      "eliteAlive": true,
+      "enemiesOnStage": 1,
+      "inAuraFraction": 0,
+      "meanBurnStacks": 0,
+      "maxBurnStacks": 0,
+      "meanDist": 2.5,
+      "minDist": 2.5,
+      "playerMaxHealth": 110,
+      "playerAlive": true
+    },
+    "rimebound@11": {
+      "affix": "rimebound",
+      "card": "lasher",
+      "metres": 11,
+      "hold": false,
+      "seconds": 27,
+      "damage": 399,
+      "dps": 14.777778,
+      "auraDirectDps": 0,
+      "burnDotDps": 0,
+      "meleeDps": 1.555556,
+      "byType": {
+        "melee": 42,
+        "projectile": 92.4,
+        "pull": 264.6
+      },
+      "sourceKeys": {
+        "lasher+rimebound": 399
+      },
+      "events": 19,
+      "foreignDamage": 0,
+      "auraRadius": 0,
+      "hasAura": false,
+      "unitDamageStat": 42,
+      "baseDamage": 21,
+      "unitLevel": 1,
+      "eliteAlive": true,
+      "enemiesOnStage": 1,
+      "inAuraFraction": 0,
+      "meanBurnStacks": 0,
+      "maxBurnStacks": 0,
+      "meanDist": 4.787791,
+      "minDist": 0.028735,
+      "playerMaxHealth": 110,
+      "playerAlive": true
+    },
+    "plain@2.5": {
+      "affix": "none",
+      "card": "lasher",
+      "metres": 2.5,
+      "hold": true,
+      "seconds": 40,
+      "damage": 357,
+      "dps": 8.925,
+      "auraDirectDps": 0,
+      "burnDotDps": 0,
+      "meleeDps": 8.925,
+      "byType": {
+        "melee": 357
+      },
+      "sourceKeys": {
+        "lasher": 357
+      },
+      "events": 17,
+      "foreignDamage": 0,
+      "auraRadius": 0,
+      "hasAura": false,
+      "unitDamageStat": 21,
+      "baseDamage": 21,
+      "unitLevel": 1,
+      "eliteAlive": true,
+      "enemiesOnStage": 1,
+      "inAuraFraction": 0,
+      "meanBurnStacks": 0,
+      "maxBurnStacks": 0,
+      "meanDist": 2.5,
+      "minDist": 2.5,
+      "playerMaxHealth": 110,
+      "playerAlive": true
+    },
+    "plain@11": {
+      "affix": "none",
+      "card": "lasher",
+      "metres": 11,
+      "hold": false,
+      "seconds": 27,
+      "damage": 187.95,
+      "dps": 6.961111,
+      "auraDirectDps": 0,
+      "burnDotDps": 0,
+      "meleeDps": 0.777778,
+      "byType": {
+        "melee": 21,
+        "projectile": 34.65,
+        "pull": 132.3
+      },
+      "sourceKeys": {
+        "lasher": 187.95
+      },
+      "events": 18,
+      "foreignDamage": 0,
+      "auraRadius": 0,
+      "hasAura": false,
+      "unitDamageStat": 21,
+      "baseDamage": 21,
+      "unitLevel": 1,
+      "eliteAlive": true,
+      "enemiesOnStage": 1,
+      "inAuraFraction": 0,
+      "meanBurnStacks": 0,
+      "maxBurnStacks": 0,
+      "meanDist": 4.854626,
+      "minDist": 0.003823,
+      "playerMaxHealth": 110,
+      "playerAlive": true
+    }
+  },
+  "lethal": {
+    "affix": "emberclad",
+    "card": "lasher",
+    "metres": 2.5,
+    "startHealth": 110,
+    "timeToDeath": 3.5,
+    "survivedWindow": false,
+    "windowSeconds": 40,
+    "stepsRun": 210,
+    "damageTaken": 124.53,
+    "byType": {
+      "burn": 35.28,
+      "burn:dot": 47.25,
+      "melee": 42
+    },
+    "sourceKeys": {
+      "lasher+emberclad": 124.53
+    },
+    "events": 23,
+    "foreignDamage": 0,
+    "unitDamageStat": 42,
+    "playerMaxHealth": 110,
+    "playerAlive": false,
+    "runEnded": true
+  },
+  "diagnostics": {
+    "liveness": {
+      "gate": "fired",
+      "paused": false,
+      "localTick": 61,
+      "menuScreen": null,
+      "time": 1.017,
+      "engineRunning": true,
+      "stageIndex": 0
+    },
+    "gate": {
+      "paused": false,
+      "menuScreen": null,
+      "localTick": 120,
+      "expectedLocalTick": 120,
+      "progressionStarted": true,
+      "playerAlive": true,
+      "playerMaxHealth": 110,
+      "engineRunning": false,
+      "authority": true,
+      "netRole": "single",
+      "netClients": null,
+      "cardFound": true
+    },
+    "rawCtxTime": 206.50000000005647,
+    "stepsTaken": 12390,
+    "clockDrift": 5.647393663821276e-11
+  }
+}

@@ -11,7 +11,7 @@
     "gates:heavy": "node tools/gates.mjs heavy",
     "gates:status": "node tools/gates.mjs status",
     "gate:sp": "node tests/sp-equivalence.mjs --compare reviews/round7/baseline-00f8900.json",
-    "gate:elite": "node tests/sp-equivalence.mjs --mode elite-dps --compare reviews/round7/elite-baseline-00f8900.json",
+    "gate:elite": "node tests/sp-equivalence.mjs --mode elite-dps --compare reviews/round7/elite-baseline-a55986b.json",
     "gate:mp1": "node tests/sp-equivalence.mjs --coop-host --compare reviews/round7/baseline-00f8900.json",
     "build": "vite build",
     "preview": "vite preview",
