@@ -1582,13 +1582,52 @@ export function applyBiomeMaterials(biome) {
   return M;
 }
 
+/**
+ * Release the shared material library and everything it owns, and reset the
+ * lazy singletons so the next `getMaterials()` builds a fresh one.
+ *
+ * **This has no production caller, on purpose (#137).** The library is
+ * deliberately permanent for the life of the session: `Stage._teardown()`
+ * leaves it standing because disposing it would force a full shader recompile
+ * on the next stage, which is the multi-second freeze the whole design exists
+ * to avoid, and the only other seam - process exit - is a place where the
+ * driver reclaims everything anyway, so a teardown there would be ceremony.
+ * It is kept, and kept *correct*, for the callers that legitimately want a
+ * clean slate inside one process: tests, the probe tools, and any future mode
+ * that rebuilds the world from scratch. The per-stage growth that actually
+ * leaked - the blight patch registry pinning throwaway realm materials - is
+ * released at each material's own dispose, in BlightMask.attachBlightMask.
+ *
+ * Textures are deduplicated: the library shares uploads across materials
+ * (`buildSets`), and PbrEval swaps in clones while stashing the originals in
+ * `userData.pbrOrig`, so the same texture reaches this loop several times over
+ * and three's second dispose would fire a second GPU release event.
+ *
+ * Not covered, and not this function's to cover: the `withRepeat()` clones
+ * held by Interactables and the realm prop sets. Those materials belong to
+ * their own ladders and dispose themselves.
+ */
 export function disposeMaterials() {
   if (!_mats) return;
+  const seen = new Set();
+  const drop = (t) => { if (t && !seen.has(t)) { seen.add(t); t.dispose(); } };
+
   for (const m of Object.values(_mats)) {
-    for (const k of ['map', 'roughnessMap', 'normalMap', 'metalnessMap']) m[k]?.dispose();
+    for (const k of ['map', 'roughnessMap', 'normalMap', 'metalnessMap', 'aoMap',
+                     'emissiveMap', 'alphaMap']) drop(m[k]);
+    // The pre-swap originals PbrEval parked here (PbrEval.js:119). If the swap
+    // ran, the slots above hold clones and these are the only handles left on
+    // what the material shipped with.
+    const orig = m.userData?.pbrOrig;
+    if (orig) for (const k of ['map', 'normalMap', 'roughnessMap', 'aoMap']) drop(orig[k]);
     m.dispose();
   }
-  for (const set of Object.values(_sets)) for (const t of Object.values(set)) t.dispose();
+  for (const set of Object.values(_sets)) for (const t of Object.values(set)) drop(t);
+
+  // The detail pass's noise texture is a module singleton handed to every
+  // patched material by uniform, so no material's slots reach it.
+  _detNoiseTex?.dispose();
+  _detNoiseTex = null;
   _mats = null;
   _sets = null;
 }

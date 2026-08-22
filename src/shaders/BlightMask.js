@@ -296,7 +296,16 @@ export function attachBlightMask(material) {
       .replace('#include <emissivemap_fragment>',
         '#include <emissivemap_fragment>\n' + maskApply(_overlay));
   };
+  // The registry below is a strong reference, and it has to be: setOverlayMaps
+  // iterates it to force the recompile the overlay toggle needs, which a
+  // WeakSet cannot do. So the pin is released the moment its material dies.
+  // three dispatches `dispose` from Material.dispose(), so every ladder that
+  // already disposes its own materials (the realm rungs, RealmProps.js:100,
+  // allocate and drop a fresh set per visit) is covered without a new call.
+  // #137: without this, one realm visit's rungs stayed alive for the session,
+  // each pinning the 4K maps #109 gave them.
   _patched.add(material);
+  material.addEventListener('dispose', () => { _patched.delete(material); });
   const prevKey = typeof material.customProgramCacheKey === 'function'
     ? material.customProgramCacheKey.bind(material) : null;
   material.customProgramCacheKey = () =>
@@ -333,3 +342,6 @@ export function setOverlayMaps(set) {
 /** Whether the overlay relief is currently bound — the observable the tests
  *  and the harness read instead of the module-private flag. */
 export function overlayEnabled() { return _overlay; }
+
+/** Live size of the patch registry — the observable #137's leak test reads. */
+export function patchedCount() { return _patched.size; }
