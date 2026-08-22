@@ -305,7 +305,16 @@ export function attachBlightMask(material) {
   // #137: without this, one realm visit's rungs stayed alive for the session,
   // each pinning the 4K maps #109 gave them.
   _patched.add(material);
-  material.addEventListener('dispose', () => { _patched.delete(material); });
+  // Self-removing: three keeps the listener array for the life of the material,
+  // so a handler that never unhooks accumulates a copy per re-patch and leaves
+  // a dead closure behind after the first dispose. Removing it as it fires
+  // makes a second dispose (and a re-patch of the same material) a no-op
+  // instead of a growing pile.
+  const onDispose = () => {
+    material.removeEventListener('dispose', onDispose);
+    _patched.delete(material);
+  };
+  material.addEventListener('dispose', onDispose);
   const prevKey = typeof material.customProgramCacheKey === 'function'
     ? material.customProgramCacheKey.bind(material) : null;
   material.customProgramCacheKey = () =>

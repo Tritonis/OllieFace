@@ -837,9 +837,15 @@ export class Combat {
    * player had already dodged into an inescapable stun-lock (#135). It asks
    * only about i-frames, not about the shield: a hit a barrier ate whole is
    * still a hit that connected, and it should still chill.
+   *
+   * It mirrors `applyDamage`'s downed refusal for the same reason it asks about
+   * i-frames at all: a rider whose damage is going to be refused must not land
+   * its status either. A downed pawn's clock is `bleedout` and nothing may
+   * shorten it, so chilling or stunning a body on the floor is a status applied
+   * to a hit that never happened.
    */
   wouldHit(target) {
-    if (!target) return false;
+    if (!target || target.downed) return false;
     return !(target._iframeUntil > this.ctx.time);
   }
 

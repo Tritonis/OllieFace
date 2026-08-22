@@ -132,6 +132,22 @@ console.log('a disposed material leaves the patch registry');
   const afterFirst = patchedCount();
   visit();
   ok(patchedCount() === afterFirst, 'registry does not grow across repeated visits');
+
+  // The registry emptying is not the whole of the leak. three keeps a
+  // material's listener array for the life of the material, so a `dispose`
+  // handler that never unhooks leaves a dead closure behind after it fires and
+  // stacks a fresh one every time the same material is patched again. The
+  // handler must remove itself.
+  const m = attachBlightMask(new THREE.MeshStandardMaterial());
+  const listeners = () => (m._listeners?.dispose || []).length;
+  ok(listeners() === 1, `one dispose listener while patched (${listeners()})`);
+  m.dispose();
+  ok(listeners() === 0, `and none once it has fired (${listeners()})`);
+  // A second dispose, and a re-patch of the same material, must not accumulate.
+  m.dispose();
+  for (let i = 0; i < 3; i++) { attachBlightMask(m); m.dispose(); }
+  ok(listeners() === 0, `no accumulation across re-patch and double dispose (${listeners()})`);
+  ok(patchedCount() === afterFirst, 'and the registry is still clean');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
