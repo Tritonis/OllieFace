@@ -720,8 +720,13 @@ console.log('and no tier colour is painted as type without one');
   // `.ditem b` to #05070a on an opaque tier fill) or is in the backed set
   // (`.book-row-name`). This list is explicit and short on purpose — it is the
   // only escape hatch, and a stale entry fails below.
+  // `.t-argent` is a container like the other eight and is listed for the same
+  // reason. It is NOT in the colour proof above: argent's hue is a parked
+  // decision (#140) and `TIER_ORDER` — which every separation and contrast
+  // check iterates — deliberately excludes it, so nothing here is loosened on
+  // its account. See `CONTENT_TIERS` in `src/ui/Icons.js`.
   const CONTAINERS = ['.t-common', '.t-uncommon', '.t-legendary', '.t-boss',
-                      '.t-lunar', '.t-blight', '.t-equipment'];
+                      '.t-lunar', '.t-blight', '.t-equipment', '.t-argent'];
 
   const unbacked = sites.filter((s) => !backed.includes(s) && !CONTAINERS.includes(s));
   ok(unbacked.length === 0,

@@ -1883,6 +1883,7 @@ export class VoidBargain extends Interactable {
    * band, which is precisely backwards.
    */
   offer() {
+    if (this.spent) return null;
     const band = this._band();
     const marks = this._marks();
     const cor = this.ctx.corruption;
@@ -1933,28 +1934,36 @@ export class VoidBargain extends Interactable {
     // other currency. Banking past Sanctuary is the decision this is for, and
     // the two rungs eat the same purse, so every window taken is a card not
     // bought.
-    if (motes >= RELIQUARY.motes) {
-      const id = this._reliquaryId();
-      if (id) return { kind: 'consecrate', marks: 0, motes: RELIQUARY.motes, id };
+    // Stocked, not drawn. `offer()` is read from `update()` every frame the
+    // altar is in the world, so anything this asks is asked at the frame rate;
+    // drawing the card here put a `ctx.rng` pull on the render path and made
+    // two runs on one seed diverge by how fast the machine was. The card is
+    // named by the press, in `interact`.
+    if (motes >= RELIQUARY.motes && this._reliquaryStocked()) {
+      return { kind: 'consecrate', marks: 0, motes: RELIQUARY.motes };
     }
     if (motes >= MOTE.motes) return { kind: 'sanctuary', marks: 0, motes: MOTE.motes };
     return null;
   }
 
   /**
-   * What the reliquary would hand over, or null when the pool is not there.
-   * Derived once per altar and cached, never re-drawn per frame: the prompt
-   * names the card before the press (the §2.0 principle — priced, previewed,
-   * posted), and a card that changed every frame would be a slot machine rather
-   * than an offer. Null-safe against `rollArgent` not existing, so this surface
-   * merges and stays inert on its own — with no pool in the tree the altar
-   * offers Sanctuary at any purse, exactly as it did before.
+   * Whether the reliquary has anything to hand over — the question the offer
+   * and the prompt are allowed to ask, because it draws nothing.
+   *
+   * The rung is previewed and priced; what it is not is *named* before the
+   * press. Naming it meant drawing it, and the only draw available is the
+   * shared gameplay stream, which the render loop must never touch: `update()`
+   * reads `signal()` reads `offer()`, so a previewed card made the run's random
+   * sequence a function of frame rate. §5's prompt language does not require
+   * the card by name, so the rung is quoted for what it is and `interact`
+   * draws.
+   *
+   * Null-safe against `argentStocked` not existing, so this surface merges and
+   * stays inert on its own — with no pool in the tree the altar offers
+   * Sanctuary at any purse, exactly as it did before.
    */
-  _reliquaryId() {
-    if (this._relic === undefined) {
-      this._relic = Items.of(this.ctx, this.ctx.player)?.rollArgent?.() ?? null;
-    }
-    return this._relic;
+  _reliquaryStocked() {
+    return Items.of(this.ctx, this.ctx.player)?.argentStocked?.() === true;
   }
 
   /**
@@ -2071,10 +2080,11 @@ export class VoidBargain extends Interactable {
         // Sanctuary: it is the only place the game says out loud that a
         // purchase is worth less the dirtier the gauge is.
         const motes = this._motes();
-        const name = ITEM_BY_ID.get(offer.id)?.name || offer.id;
         const band = this._band();
         const world = Math.round(this.ctx.corruption?.world ?? 0);
-        return `Void Bargain - Consecrate: ${name} (${offer.motes} of ${motes} argent mote${motes === 1 ? '' : 's'})\n`
+        // The rung is named; the card is not. Naming it means drawing it, and
+        // the draw belongs to the press - see `_reliquaryStocked`.
+        return `Void Bargain - Consecrate: one warded card (${offer.motes} of ${motes} argent mote${motes === 1 ? '' : 's'})\n`
           + 'argent cards pay full at Pristine and nothing at Overrun\n'
           + `the world stands at ${world} - ${BANDS[band].name} - paying ${Math.round(this._grace() * 100)}%`;
       }
@@ -2099,7 +2109,7 @@ export class VoidBargain extends Interactable {
   }
 
   interact(pawn = this.ctx.player) {
-    const offer = this.offer();
+    let offer = this.offer();
     if (!offer || this.spent) return false;
     const cor = this.ctx.corruption;
     if (!cor) return false;
@@ -2124,6 +2134,12 @@ export class VoidBargain extends Interactable {
     // and a press that could not pay leaves the offer standing — the card is
     // only forgotten when the press succeeded.
     if (offer.kind === 'consecrate') {
+      // The draw, and the only one: press-time, so the gameplay stream advances
+      // on an input rather than on a frame. Drawn before the purse is touched,
+      // so a pool that cannot answer leaves the motes where they were.
+      const id = items.rollArgent?.() ?? null;
+      if (!id) return false;
+      offer = { ...offer, id };
       if (!cor.spendMotes(offer.motes)) return false;
       items.grant(offer.id);
       this.spent = true;

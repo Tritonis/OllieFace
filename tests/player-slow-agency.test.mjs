@@ -146,6 +146,35 @@ console.log("an elite's melee affix rides the swing that connected");
   ok(combat.statusStacks(player, 'burn') === 0, 'and no fire either');
 }
 
+// The same question one step further out. `applyDamage` refuses a downed pawn
+// outright - its clock is `bleedout` and nothing may shorten it - but
+// `wouldHit` only ever asked about i-frames, so a rider could still chill or
+// burn a body on the floor off damage that was never dealt.
+console.log('and nothing rides a hit on a survivor already on the floor');
+{
+  const { ctx, combat, player } = makeWorld();
+  player.downed = true;
+  ok(combat.wouldHit(player) === false, 'a downed survivor cannot be hit');
+  ok(combat.applyDamage(player, 12, null) === 0, 'which is what applyDamage already said');
+
+  const brute = Object.create(Enemy.prototype);
+  Object.assign(brute, {
+    alive: true, team: 'monster', damage: 12, yaw: 0, radius: 0.5,
+    position: new THREE.Vector3(0, 0, 0), velocity: new THREE.Vector3(),
+    targetPlayer: player, distToPlayer: 1, elite: { slow: true, burn: true, burnTick: 3 },
+    atk: { kind: 'melee', range: 2, arc: 1, lunge: 0 },
+  });
+  player.position.set(0, 0, 1);
+  const hp = player.health;
+  brute.fireAttack(ctx);
+  ok(player.health === hp, 'the swing dealt no damage');
+  ok(combat.statusStacks(player, 'slow') === 0, 'and left no slow on the downed body');
+  ok(combat.statusStacks(player, 'burn') === 0, 'and no fire either');
+
+  player.downed = false;
+  ok(combat.wouldHit(player) === true, 'and the refusal lifts the moment they are up');
+}
+
 console.log('an emberclad aura only burns on the tick that connected');
 {
   const { ctx, combat, player } = makeWorld();

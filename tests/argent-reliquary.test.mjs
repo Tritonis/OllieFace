@@ -8,8 +8,15 @@
  * Two of these tests are written against failure modes rather than features.
  * The inert-alone guarantee (the pool lives in another lane) is only worth
  * anything if it is the `?.` doing the work — remove the optional call in
- * `_reliquaryId` and the "no pool" case throws instead of offering Sanctuary,
- * which is what the test asserts against. And the refused press asserts that
+ * `_reliquaryStocked` and the "no pool" case throws instead of offering
+ * Sanctuary, which is what the test asserts against.
+ *
+ * The third is the one that made the preview stop naming the card: `update()`
+ * reads `signal()` reads `offer()` on every render frame, so a card drawn to be
+ * previewed was a `ctx.rng` pull on the render path — the run's random sequence
+ * became a function of frame rate the instant three motes were banked, with no
+ * press anywhere. The draw is `interact`'s now, and the frame-loop arm below
+ * counts. And the refused press asserts that
  * *nothing* moved — no grant, no event, no `spent` — because a bargain that
  * could fail after taking the purse is the one dishonest thing here.
  */
@@ -53,7 +60,12 @@ function makeCtx({ pool = RELIC, spendMotes = null } = {}) {
     // one under test - which is precisely the party this rung is written for.
     blightHeld: () => new Map(), convertibleStacks: () => new Map(), addBuff: () => {},
   };
-  if (pool !== 'absent') ctx.items.rollArgent = () => pool;
+  if (pool !== 'absent') {
+    ctx.items.rollArgent = () => pool;
+    // The preview's question, and the only one it is allowed to ask: stocked,
+    // not drawn. `null` is the pool present but empty.
+    ctx.items.argentStocked = () => pool !== null;
+  }
   const corruption = new Corruption();
   corruption.init(ctx);
   if (spendMotes) corruption.spendMotes = spendMotes;
@@ -82,7 +94,8 @@ console.log('the ladder: one mote is a window, three is a card');
   const offer = altarOf(f)._argent();
   ok(f.ctx.corruption.motes >= RELIQUARY.motes, `${RELIQUARY.motes} motes in the purse`);
   ok(offer?.kind === 'consecrate', 'the deeper rung replaces the shallower one');
-  ok(offer.motes === RELIQUARY.motes && offer.id === RELIC, `and names its price and its card (${offer.id})`);
+  ok(offer.motes === RELIQUARY.motes, `and names its price (${offer.motes})`);
+  ok(offer.id === undefined, 'and does not name the card, which would mean drawing it');
   ok(offer.marks === 0, 'priced in the other currency entirely');
 }
 
@@ -94,9 +107,9 @@ console.log('and none of it at zero');
 
 console.log('inert alone: with no pool in the tree the altar is exactly what it was');
 {
-  // The guarantee this lane merges on. Remove the `?.` from `rollArgent?.()` in
-  // `_reliquaryId` and this case throws a TypeError instead of falling to
-  // Sanctuary - which is the failure this assertion exists to catch.
+  // The guarantee this lane merges on. Remove the `?.` from `argentStocked?.()`
+  // in `_reliquaryStocked` and this case throws a TypeError instead of falling
+  // to Sanctuary - which is the failure this assertion exists to catch.
   for (const pool of ['absent', null]) {
     const f = withMotes(makeCtx({ pool }), RELIQUARY.motes + 1);
     const altar = altarOf(f);
@@ -104,24 +117,52 @@ console.log('inert alone: with no pool in the tree the altar is exactly what it 
     try { offer = altar._argent(); } catch { /* offer stays 'threw' */ }
     ok(offer !== 'threw', `a ${pool === null ? 'null draw' : 'missing rollArgent'} does not throw`);
     ok(offer?.kind === 'sanctuary', 'and a rich purse still buys the window');
-    ok(altar._reliquaryId() === null, 'the seam reports no card');
+    ok(altar._reliquaryStocked() === false, 'the seam reports no card');
   }
 }
 
-console.log('the card is named once, not re-drawn per frame');
+console.log('the card is drawn by the press and by nothing else');
 {
+  // The whole of the regression, stated as a count. A full purse and a render
+  // loop: 240 frames of `update()`, every prompt read, every signal read, and
+  // the gameplay stream must not have moved a single step. It is `ctx.rng` that
+  // is counted and not just the stub, because it is `ctx.rng` that same-seed
+  // runs share - a preview that drew from it made frame rate an input.
   let draws = 0;
   const f = makeCtx();
-  f.ctx.items.rollArgent = () => { draws++; return `relic-${draws}`; };
-  withMotes(f, RELIQUARY.motes);
+  f.ctx.rng = {
+    next() { draws++; return 0.5; },
+    range(a) { draws++; return a; },
+    pick(list) { draws++; return list[0]; },
+  };
+  let rolls = 0;
+  // The stub models the real `Items.rollArgent`, which is a `ctx.rng.pick`.
+  f.ctx.items.rollArgent = () => { rolls++; return f.ctx.rng.pick([RELIC]); };
+  withMotes(f, RELIQUARY.motes + 2);
   const altar = altarOf(f);
-  const first = altar._reliquaryId();
-  let stable = true;
-  for (let i = 0; i < 100; i++) if (altar._reliquaryId() !== first) stable = false;
-  ok(stable, `the same card across 100 reads (${first})`);
-  ok(draws === 1, `and the pool was drawn from exactly once (${draws})`);
-  // A second altar is a second offer: the cache is per-prop, not per-run.
-  ok(altarOf(f)._reliquaryId() !== first, 'a different altar draws its own');
+  ok(f.ctx.corruption.motes >= RELIQUARY.motes, 'the purse is full enough to consecrate');
+  draws = 0; rolls = 0;
+  for (let i = 0; i < 240; i++) {
+    altar.update(1 / 60);
+    altar.signal();
+    altar.prompt();
+    altar.available();
+  }
+  ok(rolls === 0, `240 frames at a full purse draw no card (${rolls})`);
+  ok(draws === 0, `and take nothing off the gameplay stream (${draws})`);
+  ok(altar.offer()?.kind === 'consecrate', 'though the rung was standing the whole time');
+  ok(!/Pale Standard|Warden/.test(altar.prompt()), 'and the prompt never named a card');
+
+  // The press is where it happens, exactly once.
+  ok(altar.interact(f.ctx.player) === true, 'the press succeeds');
+  ok(rolls === 1 && draws === 1, `and draws once (${rolls} roll, ${draws} draw)`);
+
+  // A spent altar stops evaluating anything: `offer()` refuses before it can
+  // ask the pool a question at all.
+  const after = draws;
+  for (let i = 0; i < 60; i++) { altar.update(1 / 60); altar.prompt(); }
+  ok(altar.offer() === null, 'a spent altar offers nothing');
+  ok(draws === after, `and draws nothing further (${draws})`);
 }
 
 console.log('a ruined run is refused at every purse');
