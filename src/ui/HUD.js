@@ -412,8 +412,22 @@ export class HUD {
     // purse in the world and these two events are it. (A client therefore reads
     // zeroes until the gauge itself is replicated - the same standing caveat
     // `pricedPrompt` already carries.)
-    on('voidMarksChanged', (e) => this.setPurse({ marks: e?.marks }));
-    on('argentMotesChanged', (e) => this.setPurse({ motes: e?.motes }));
+    //
+    // The mint moment (D5). The purse is a readout, and a readout that ticks
+    // during a fight is a thing nobody sees change - the causal link "I took
+    // that risk, I got that" needs a line on the log at the instant it happens.
+    // Only a *mint* toasts: `spent` is 0 on the mint path in `Corruption` and
+    // the amount charged on both spend paths, so a purchase at the altar
+    // repaints the purse and says nothing, which is right - spending is a
+    // thing the player already knows they did.
+    on('voidMarksChanged', (e) => {
+      this.setPurse({ marks: e?.marks });
+      if (isMint(e)) this.toast(`Void mark minted — ${e.marks} in hand`, 'blight');
+    });
+    on('argentMotesChanged', (e) => {
+      this.setPurse({ motes: e?.motes });
+      if (isMint(e)) this.toast(`Argent mote minted — ${e.motes} in hand`, 'lunar');
+    });
 
     on('goldChanged', () => { /* value polled in update; event kept for parity */ });
     on('abilityUsed', ({ slot }) => {
@@ -1548,6 +1562,16 @@ function renderPips(host, charges, max) {
  */
 function holdingInteract(p) {
   return p?.interactPressed === true || ((p?.lastCommand?.buttons | 0) & BTN.INTERACT) !== 0;
+}
+
+/**
+ * Did this purse event *mint*, as opposed to spend? `Corruption` emits both
+ * currencies' changes on one channel each, with `spent: 0` on the mint path and
+ * the charge on the spend paths. The count test is the second half: a mint the
+ * player cannot bank (a malformed payload, or a zero) has nothing to announce.
+ */
+function isMint(e) {
+  return !(e?.spent > 0) && (e?.marks > 0 || e?.motes > 0);
 }
 
 function formatTime(sec) {

@@ -286,6 +286,13 @@ export class Audio {
       if ((p?.index ?? 0) === 0) this.beginRun();
     });
     e.on('corruptionBand', (p) => this.bandSting(p?.band ?? 0, p?.prev ?? 0));
+    // The mint (issue #36, D5). Both purses ride one channel each for gains and
+    // spends alike, and only a gain gets a sound: `spent` is 0 on the mint path
+    // and the charge on the spend paths, and a purchase at the altar already
+    // has its own cue. No owner test — `Corruption` is a single authority-side
+    // system, so there is exactly one purse in the world.
+    e.on('voidMarksChanged', (p) => { if (!(p?.spent > 0) && p?.marks > 0) this.mintSting('mark'); });
+    e.on('argentMotesChanged', (p) => { if (!(p?.spent > 0) && p?.motes > 0) this.mintSting('mote'); });
     e.on('bossSpawn', () => { this.bossHorn(); this.musicEngine?.bump(0.7); });
     e.on('teleporterComplete', () => this.stageSting());
     // Only the local survivor's death silences the local soundtrack. `NetHost`
@@ -1271,6 +1278,35 @@ export class Audio {
     }
   }
 
+  /**
+   * A currency was minted (issue #36, D5). Two notes and a breath of air, out
+   * of the priority reserve: this fires in the middle of the fight that earned
+   * it, so it has to survive a crowded world pool without ever sounding like a
+   * fanfare — a level-up spends twelve nodes here and this spends three.
+   *
+   * One shape, two colours. A void mark rises through a bare fifth off the
+   * corruption root; an argent mote rings a fifth higher and brighter. Same
+   * gesture, so the player learns "something was banked" once, and different
+   * enough in the ear to say which purse without looking at it.
+   */
+  mintSting(kind = 'mark') {
+    const ac = this._ensure();
+    if (!ac) return;
+    // Marks and motes can both land off one bleed or one feed; a pair arriving
+    // in the same instant is one sound, not two stacked. The throttle comes
+    // before the budget so a suppressed cue never charges the reserve.
+    if (!this._throttle('mint', 0.12)) return;
+    if (!this._take(3, true)) return;
+    const t = ac.currentTime;
+    const mote = kind === 'mote';
+    const f = mote ? 880 : 587.33;
+    this._tone(t, 0.16, { type: 'triangle', f0: f, gain: 0.11, attack: 0.003 });
+    this._tone(t + 0.07, 0.26, { type: 'triangle', f0: f * 1.5, gain: 0.09, attack: 0.004 });
+    this._noise(t, 0.12, {
+      type: 'highpass', freq: mote ? 7000 : 4200, gain: mote ? 0.06 : 0.04, attack: 0.004,
+    });
+  }
+
   uiClick(kind = 0) {
     const ac = this._ensure();
     if (!ac || !this._take(2)) return;
@@ -1610,6 +1646,7 @@ export class Audio {
       case 'deny': return this.deny();
       case 'shrineBlood': return this.shrineBlood(pos);
       case 'teleporterStart': return this.teleporterStart(pos);
+      case 'mint': case 'mintSting': return this.mintSting(arg ?? 'mark');
       case 'ui': case 'uiClick': return this.uiClick(arg ?? 0);
       default: return this.uiClick(0);
     }
