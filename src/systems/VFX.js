@@ -191,7 +191,7 @@ const UP = new THREE.Vector3(0, 1, 0);
  * literals. Working on the raw bytes here keeps a driven path byte-identical
  * to hand-picking the hex, the same way the default (untouched) path is.
  */
-function _shiftWarm(hex, rScale, gScale, bScale) {
+export function _shiftWarm(hex, rScale, gScale, bScale) {
   const r = clampByte(((hex >> 16) & 0xff) * rScale);
   const g = clampByte(((hex >> 8) & 0xff) * gScale);
   const b = clampByte((hex & 0xff) * bScale);
