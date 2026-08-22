@@ -597,16 +597,7 @@ export class Enemy {
 
     // Emberclad units cook anything standing next to them.
     const em = this.elite;
-    if (em && em.auraDps && this.alive) {
-      this.auraT -= h;
-      if (this.auraT <= 0) {
-        this.auraT = 0.5;
-        if (this.distToPlayer < em.auraRadius) {
-          hurtPlayer(ctx, this.targetPlayer, this, this.damage * em.auraDps, 'burn');
-          statusPlayer(ctx, this.targetPlayer, this, 'burn', 1, eliteStatusOverride(em));
-        }
-      }
-    }
+    this.emberTick(ctx, h);
 
     // Withering: the tier-2 healing lock. Line of sight matters — breaking
     // contact is the counterplay, and without the LOS test the debuff would be
@@ -640,6 +631,26 @@ export class Enemy {
 
     this.fsm.update(ctx, h);
     this.applyMovement(ctx, h);
+  }
+
+  /**
+   * The emberclad aura's half-second tick. Its own method because it is a
+   * player-facing on-hit rider like the melee affix and the shell blast, and a
+   * rider that cannot be exercised without standing up the whole FSM is a
+   * rider nobody tests (#135).
+   */
+  emberTick(ctx, h) {
+    const em = this.elite;
+    if (!(em && em.auraDps && this.alive)) return;
+    this.auraT -= h;
+    if (this.auraT > 0) return;
+    this.auraT = 0.5;
+    if (this.distToPlayer >= em.auraRadius) return;
+    // Asked before the burn, not after: the tick arms the mercy window itself,
+    // so a tick the survivor's i-frames ate must not leave its fire behind.
+    const rides = ctx.combat?.wouldHit?.(this.targetPlayer) !== false;
+    hurtPlayer(ctx, this.targetPlayer, this, this.damage * em.auraDps, 'burn');
+    if (rides) statusPlayer(ctx, this.targetPlayer, this, 'burn', 1, eliteStatusOverride(em));
   }
 
   checkLOS(ctx) {
@@ -1013,6 +1024,8 @@ export class Enemy {
         if (p && this.distToPlayer < a.range + this.radius) {
           _v2.set(p.position.x - this.position.x, 0, p.position.z - this.position.z).normalize();
           if (_v2.dot(dir) > Math.cos(a.arc || 1)) {
+            // Before the swing, not after: the swing arms the window itself.
+            const rides = ctx.combat?.wouldHit?.(p) !== false;
             hurtPlayer(ctx, p, this, this.damage, 'melee');
             // The affix's melee rider. `burn` is the gate and `burnTick` is the
             // rate, and they are deliberately independent: no shipping affix
@@ -1020,10 +1033,12 @@ export class Enemy {
             // this arm is currently unreachable, and it carries the override so
             // that the next affix to switch it on gets the elite burn rate
             // rather than the 21-dps-per-stack player rate the last one did.
-            if (this.elite && this.elite.burn) {
+            // The affix rides the hit. A swing the survivor's i-frames ate is
+            // not a hit, and its slow would be a debuff with no dodge (#135).
+            if (rides && this.elite && this.elite.burn) {
               statusPlayer(ctx, p, this, 'burn', 2, eliteStatusOverride(this.elite));
             }
-            if (this.elite && this.elite.slow) statusPlayer(ctx, p, this, 'slow', 1);
+            if (rides && this.elite && this.elite.slow) statusPlayer(ctx, p, this, 'slow', 1);
             ctx.pipeline?.addShake?.(0.03);
           }
         }
