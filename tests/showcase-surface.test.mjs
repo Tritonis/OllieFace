@@ -58,10 +58,17 @@ console.log('-- every table in the surface reaches the menu');
       `all ${want} items carrying ${hook} are listed`);
   }
 
-  const wantTelegraphs = [...SPAWN_CARDS, ...BOSS_CARDS]
-    .flatMap((c) => c.attacks ?? []).filter((a) => a.telegraph || a.blast).length;
+  const attacks = [...SPAWN_CARDS, ...BOSS_CARDS].flatMap((c) => c.attacks ?? []);
+  const wantTelegraphs = attacks.filter((a) => a.telegraph || a.blast).length;
   ok(wantTelegraphs > 0 && byGroup('telegraph').length === wantTelegraphs,
     `all ${wantTelegraphs} telegraphed enemy attacks are listed`);
+
+  // The silent half. These are the windows the effect language's C6 group is
+  // about, and the reason they must be on the menu is the reason they are easy
+  // to leave off it: nothing about them is visible in play.
+  const wantWindups = attacks.filter((a) => !(a.telegraph || a.blast)).length;
+  ok(wantWindups > 0 && byGroup('windup').length === wantWindups,
+    `all ${wantWindups} un-telegraphed enemy attack windows are listed`);
 
   // Elite modifiers carry player-facing surface of their own — a tint, an
   // aura, and a signature proc each — and #143's audit names them, so the
@@ -79,6 +86,59 @@ console.log('-- every table in the surface reaches the menu');
 
   ok(byGroup('sample').length === SAMPLES.length,
     `all ${SAMPLES.length} sampled voices are listed`);
+}
+
+console.log('\n-- the set-level presets carry their whole set (#149)');
+{
+  const attacks = [...SPAWN_CARDS, ...BOSS_CARDS]
+    .flatMap((c) => (c.attacks ?? []).map((a) => ({ id: `${c.id}:${a.id}`, kind: a.kind })));
+  // Re-derived here from the same tables, by hand and independently of the
+  // module's own predicates: if the preset filters on a kind list that has
+  // fallen behind `enemies.js`, the two disagree and this fails.
+  const ofKinds = (...kinds) => attacks.filter((a) => kinds.includes(a.kind)).map((a) => a.id);
+  const preset = (key) => api.presets.find((p) => p.key === key);
+  const same = (key, want) => {
+    const got = preset(key)?.ids ?? [];
+    return got.length === want.length && want.every((id) => got.includes(id));
+  };
+
+  // C2 (EFFECT-LANGUAGE.md:280) — every nova at one point. The document says
+  // 13 nova/slam/stomp users; the tables now carry 14 (the doc's roster
+  // predates one), which is exactly the drift a derived preset absorbs and a
+  // typed one would not. The three elites are the ones whose corpse is a nova,
+  // read off the radius in their stat block rather than named.
+  const novas = ofKinds('nova', 'slam', 'stomp');
+  const deathNovaElites = Object.entries(ELITE_STATS)
+    .filter(([, s]) => s.blastRadius || s.novaRadius).map(([a]) => `elite:${a}`);
+  ok(novas.length === 14, `${novas.length} nova/slam/stomp attacks derived from the cards`);
+  ok(deathNovaElites.length === 3 && ['galvanic', 'rimebound', 'warded']
+    .every((a) => deathNovaElites.includes(`elite:${a}`)),
+  'the death-nova elites derive to exactly galvanic, rimebound and warded');
+  ok(same('9', [...novas, ...deathNovaElites]),
+    `preset 9 fires all ${novas.length + deathNovaElites.length} of them together`);
+
+  // C3 (:294) — the beam users, uncapped, unlike preset 7's `.slice(0, 3)`.
+  // The document names nine, two of which (`tesla-crown`, `gravity-snare`) are
+  // equipment and one of which (`herald`) is not a card in `enemies.js`; the
+  // equipment table carries no property that marks a beam, so the derivable
+  // set is the six enemy beams and barrages. The doc itself says the player
+  // side is covered by the filter + mark + `g` workflow.
+  const beams = ofKinds('beam', 'barrage');
+  ok(beams.length === 6, `${beams.length} beam/barrage attacks derived from the cards`);
+  ok(same('0', beams), 'preset 10 charges every one of them at once, uncapped');
+
+  // C4 (:308) — the full-horde release: every projectile shooter.
+  const shots = ofKinds('projectile');
+  ok(shots.length === 11, `${shots.length} projectile releases derived from the cards`);
+  ok(same('-', shots), 'preset 11 releases the whole horde together');
+
+  // C6 (:318) — the silent windows. The document counts 16 and the tables
+  // derive 16: melee windups, charges, summon casts and the shrike's dive.
+  const windows = ofKinds('melee', 'charge', 'summon', 'dive');
+  ok(windows.length === 16, `${windows.length} silent windows derived, matching C6's count`);
+  ok(same('=', windows), 'preset 12 stands all sixteen windows up together');
+
+  ok(api.presets.every((p) => p.ids.length > 0), 'no preset resolves to an empty set');
 }
 
 console.log('\n-- and the menu is navigable');
