@@ -1,5 +1,9 @@
 # The Effect Language
 
+**Adopted 2026-08-22** (grill session, #145): shock split, re-elementings, reserved
+hues, proc-grammar floor all confirmed; geometric-primitive expansion deliberately
+parked to a backlog ticket until a re-authored build has been judged by eye.
+
 Issue #145, Legible Effects milestone. Scoping document:
 `.superpowers/sdd/legible-effects/audit.md` (159 rows, 10 co-occurring Collisions,
 86 fittingness gaps, Capability Gaps G1-G4). Vocabulary is `CONTEXT.md`'s:

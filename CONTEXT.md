@@ -75,6 +75,25 @@ by the dimensions that are supposed to separate them. Found mechanically by
 enumeration, judged for severity by a human.
 _Avoid_: duplicate, overlap, similarity
 
+**Proc Grammar**:
+The minimum cue every item proc must emit — a small element-coloured mark and a
+quiet positioned sound at the point it acted. A floor that buys noticeability
+for everything at once; never a design, and never the whole of any effect.
+_Avoid_: default VFX, placeholder effect
+
+**Hero Effect**:
+An effect authored beyond the Effect Language's skeleton. The language
+constrains only its element, its source polarity and its intensity step;
+everything else is a taste call. One that reads as "the language plus more
+particles" has failed differently but has still failed.
+_Avoid_: bespoke VFX, polish pass, juice
+
+**Degraded Point**:
+Where an effect lands in the Effect Language when its ideal presentation is
+unavailable — a sampled voice falling back to synthesis. Part of the language:
+a separation that exists only at the ideal point does not exist.
+_Avoid_: fallback, graceful degradation
+
 **Capability Gap**:
 Something the current effect frameworks demonstrably cannot express, as opposed
 to merely do not yet — proven against the primitives, never assumed from absence.
