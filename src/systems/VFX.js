@@ -325,6 +325,12 @@ export class VFX {
       const pp = ctx.player?.position;
       if (pp) this.coinSpark(pp);
     });
+    // Purity's verb, made visible (issue #154). `Corruption.bleed` has exactly
+    // two callers — a Voidtouched kill and an Argent Font press — so listening
+    // here marks both moments at once and cannot miss a third that gets added
+    // later. The cue lands on the warder's own body, which is what makes "THIS
+    // is what feeds warding" learnable by watching rather than by reading.
+    e.on('corruptionWarded', (p) => this._onWarded(p));
     e.on('playerDead', (p) => {
       // Somebody else's death does not black out your screen.
       if (!isLocalVictim(ctx, p)) return;
@@ -1301,6 +1307,129 @@ export class VFX {
 
     if (amount > 0) this.numbers.spawn(pos, amount, false, 0x7dff9a);
     this.ctx.audio?.heal(pos);
+  }
+
+  /**
+   * `corruptionWarded` (issue #154), on its own method so a test can drive the
+   * real body rather than a re-typed copy of it — the wiring line above is
+   * asserted separately.
+   *
+   * The cue lands on the warder's own body where there is one, and falls back
+   * to the viewer's: a client reading a host-side ward has no pawn reference,
+   * and no cue at all would be worse than one at the wrong feet.
+   */
+  _onWarded(p) {
+    const at = p?.player?.position || this.ctx?.player?.position;
+    if (at) this.wardingMote(at, p?.progress ?? 0, !!p?.minted);
+  }
+
+  /**
+   * Corruption taken back out by hand (issue #154). The mote-source cue: it
+   * fires on a Voidtouched kill and on an Argent Font press, the only two acts
+   * that ward, so watching it is how a player learns what feeds the purse.
+   *
+   * Restorative mint-green (§1.1) at player polarity — white-hot core, mint rim
+   * (§1.2) — as a rising radial-spark, which is C5's healing point and correct:
+   * warding *is* the restorative family, and it is feedback rather than damage,
+   * so the reserved hue is legal here.
+   *
+   * `progress` is what the invisible half of the system looked like. The ground
+   * ring's radius carries it, so a ward that nearly fills a mote draws a wider
+   * circle than one that barely moved the needle, and the last ward before a
+   * mint is visibly the biggest. `minted` promotes the whole cue from tick to
+   * event intensity — a light, a wider ring, twice the motes.
+   */
+  wardingMote(pos, progress = 0, minted = false) {
+    if (!pos) return;
+    const p = Math.max(0, Math.min(1, Number.isFinite(progress) ? progress : 0));
+    const e = this._ep();
+    e.count = minted ? 16 : 7; e.position.copy(pos); e.position.y += 0.6; e.jitter = 0.35;
+    e.dir.set(0, 1, 0); e.spread = 0.45;
+    e.speed = 2.6 + p * 1.4; e.speedVar = 0.5;
+    e.life = 0.55; e.lifeVar = 0.3;
+    e.size0 = 0.13; e.size1 = 0.02;
+    // White core, mint rim: this is the player's own doing, not the world's.
+    e.color0.set(0xf4fff6); e.color1.set(0x6fe0a8);
+    e.frame = FRAME.SPARK; e.spin = 2; e.gravity = -1.6; e.drag = 2.4;
+    this.particles.emit(e);
+
+    // The gauge that was never on the ground. 0.5 m at a fresh mote, 2.6 m at
+    // the brim; a mint draws the full circle regardless, because a mint always
+    // completes one.
+    const r = minted ? 3.2 : 0.5 + p * 2.1;
+    this.rings.spawn(pos, UP, 0x8ff0bc, r * 0.35, r, minted ? 0.55 : 0.4, minted ? 0.9 : 0.5);
+    if (minted) this.lights.flick(pos, 0x8ff0bc, 14, 6, 0.16);
+    this.ctx?.audio?.warding?.(pos, p, minted);
+  }
+
+  /**
+   * A Sanctuary window opening (issue #154). It cost a mote and it was one
+   * small blue burst; it is now the protective **lattice** class (§1.3) at
+   * *event* intensity — a dome of spinning `HEX` going up around the altar,
+   * a wide restorative ring and a light — because what it buys is a shell of
+   * free ground around the party for twelve seconds.
+   *
+   * Deliberately no sustained voice: the window has three exits (expiry,
+   * replacement by a second press, and the run ending) and an unreleased hold
+   * on any of them is this repo's recurring failure. The window's *duration*
+   * is carried on the HUD chip instead, where it can simply be recomputed.
+   */
+  sanctuaryOpen(pos) {
+    if (!pos) return;
+    let e = this._ep();
+    e.count = 22; e.position.copy(pos); e.shell = 0.7;
+    e.dir.set(0, 1, 0); e.spread = Math.PI * 0.55;
+    e.speed = 4.4; e.speedVar = 0.5;
+    e.life = 0.95; e.lifeVar = 0.3;
+    e.size0 = 0.24; e.size1 = 0.06;
+    e.color0.set(0xffffff); e.color1.set(0x5fdca4);
+    e.frame = FRAME.HEX; e.spin = 6; e.gravity = -1.2; e.drag = 1.6;
+    this.particles.emit(e);
+
+    e = this._ep();
+    e.count = 1; e.position.copy(pos); e.position.y += 0.4;
+    e.life = 0.7; e.size0 = 0.6; e.size1 = 7.5;
+    e.color0.set(0xdfffee); e.color1.set(0x3fbf88);
+    e.alpha0 = 0.4; e.frame = FRAME.RING; e.drag = 5; e.soft = 0;
+    this.particles.emit(e);
+
+    this.rings.spawn(pos, UP, 0x8ff0bc, 0.6, 7.5, 0.7, 0.85);
+    this.lights.flick(pos, 0x9fffcf, 26, 9, 0.3);
+  }
+
+  /**
+   * A Consecration — three motes turned into a permanent argent card. It had no
+   * sound at all and one generic burst. Restorative lattice like Sanctuary,
+   * because both are the purity route paying out, but *rising* rather than
+   * expanding: a column of motes drawn up out of the altar, then the argent
+   * tier's own pale hue closing over it. The tier colour appears only on the
+   * item plate the grant paints (§2); this is mint, the effect surface's ink.
+   */
+  consecration(pos) {
+    if (!pos) return;
+    let e = this._ep();
+    e.count = 26; e.position.copy(pos); e.jitter = 0.5;
+    e.dir.set(0, 1, 0); e.spread = 0.22;
+    e.speed = 6.5; e.speedVar = 0.9;
+    e.life = 1.1; e.lifeVar = 0.35;
+    e.size0 = 0.2; e.size1 = 0.03;
+    e.color0.set(0xffffff); e.color1.set(0x6fe0a8);
+    e.frame = FRAME.HEX; e.spin = 8; e.gravity = -2.2; e.drag = 1.1;
+    this.particles.emit(e);
+
+    e = this._ep();
+    e.count = 12; e.position.copy(pos); e.position.y += 2.2; e.shell = 0.5;
+    e.dir.set(0, 1, 0); e.spread = Math.PI;
+    e.speed = 2.4; e.speedVar = 0.4;
+    e.life = 0.8; e.lifeVar = 0.3;
+    e.size0 = 0.16; e.size1 = 0.01;
+    e.color0.set(0xffffff); e.color1.set(0xb1bdbc);
+    e.frame = FRAME.CROSS; e.spin = 3; e.gravity = 1.4; e.drag = 2.2;
+    this.particles.emit(e);
+
+    this.rings.spawn(pos, UP, 0xcfe8d8, 0.4, 4.6, 0.6, 0.9);
+    this.lights.flick(pos, 0xdfffee, 30, 8, 0.35);
+    this._shakeAt(pos, 0.03);
   }
 
   shieldBreak(pos) {

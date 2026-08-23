@@ -2122,8 +2122,12 @@ export class VoidBargain extends Interactable {
     if (offer.kind === 'sanctuary') {
       if (!cor.spendMotes(offer.motes)) return false;
       cor.sanctuary();
-      this.ctx.vfx?.burst?.(this.position, 0x9fd4ff);
-      this.ctx.audio?.play?.('shrineWin', this.position);
+      // Issue #154: a mote bought this, and it used to look and sound exactly
+      // like a chest paying out. Lattice going up, restorative chord, at the
+      // altar rather than at the presser — the shell is a property of the
+      // ground, which is why `VFX` does not ride `voidSanctuary` for it.
+      this.ctx.vfx?.sanctuaryOpen?.(this.position);
+      this.ctx.audio?.sanctuary?.(this.position);
       this.ctx.events.emit('voidBargain', { kind: 'sanctuary', motes: offer.motes, marks: 0, owner: pawn });
       return true;
     }
@@ -2145,8 +2149,11 @@ export class VoidBargain extends Interactable {
       if (!cor.spendMotes(offer.motes)) return false;
       items.grant(offer.id);
       this.spent = true;
-      this.ctx.vfx?.burst?.(this.position, 0x9fd4ff);
-      this.ctx.audio?.play?.('shrineWin', this.position);
+      // The most expensive press on the purity route had no sound at all
+      // (issue #154). The Sanctuary chord walked and an octave up, under a
+      // rising column of motes: the deeper rung has to read as the deeper one.
+      this.ctx.vfx?.consecration?.(this.position);
+      this.ctx.audio?.consecrate?.(this.position);
       this.ctx.events.emit('voidBargain', { kind: 'consecrate', id: offer.id, marks: 0, motes: offer.motes, owner: pawn });
       this.ctx.events.emit('argentConsecrate', {
         id: offer.id, motes: offer.motes,

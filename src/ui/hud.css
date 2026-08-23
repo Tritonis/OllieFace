@@ -757,6 +757,74 @@ body.menu-open { cursor: default; }
   letter-spacing: var(--track-eyebrow);
   opacity: 0.7;
 }
+/* Warding progress and the sanctuary clock (#154). The complaint the issue is
+   written against is that forty points of warding accumulated with nothing on
+   screen and then announced themselves as a toast; a bar that fills is the
+   cheapest honest answer, and it sits beside the count it is filling toward so
+   the two read as one instrument.
+
+   Restorative mint rather than the mote's argent blue, and deliberately: the
+   dot is a currency you hold, the bar is an act you are performing, and the
+   effect language gives that act the mint family everywhere else in the game.
+   Both hide until they mean something, the same rule the row itself obeys. */
+.purse--warding, .purse--sanctuary { display: none; }
+.corruption-purse.has-warding .purse--warding,
+.corruption-purse.is-sanctified .purse--sanctuary { display: inline-flex; opacity: 1; }
+.purse--warding { color: #a8ecc6; }
+.warding-track {
+  width: 3em;
+  height: 0.32em;
+  flex: none;
+  background: rgba(168, 236, 198, 0.16);
+  border: 1px solid rgba(168, 236, 198, 0.35);
+  overflow: hidden;
+}
+.warding-fill {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: #8ff0bc;
+  /* Slow enough to be seen arriving, short enough that a font press reads as
+     one act rather than as an animation the player waits out. */
+  transition: width 0.35s ease-out;
+}
+.purse--sanctuary {
+  color: #d8fff0;
+  animation: sanctuarypulse 1.6s ease-in-out infinite;
+}
+.purse--sanctuary::before {
+  border: 1px solid #8ff0bc;
+  transform: rotate(45deg);
+}
+@keyframes sanctuarypulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.62; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .warding-fill { transition: none; }
+  .purse--sanctuary { animation: none; }
+}
+/* The argent dead state (#154, deliverable 3). Every argent payoff is scaled by
+   `grace`, which is 1 at Pristine and 0 at Overrun, so past that line the whole
+   tier is inert - and until now the pack showed five bright cards that did
+   nothing whatever. `--grace` is written each time the value moves and the
+   group fades with it, so the decay is legible on the way down rather than only
+   at the floor; `is-graceless` is the floor itself, and it desaturates as well
+   as fades because opacity alone reads as "distant", not as "spent". Both come
+   straight back off the same poll when a font or a Voidtouched kill buys grace
+   back - there is no latched state here to get stuck. */
+.inv-group[data-tier="argent"] {
+  opacity: calc(0.45 + 0.55 * var(--grace, 1));
+  filter: saturate(calc(0.3 + 0.7 * var(--grace, 1)));
+  transition: opacity 0.4s ease-out, filter 0.4s ease-out;
+}
+.inv-group[data-tier="argent"].is-graceless {
+  opacity: 0.32;
+  filter: saturate(0) brightness(0.75);
+}
+@media (prefers-reduced-motion: reduce) {
+  .inv-group[data-tier="argent"] { transition: none; }
+}
 
 /* The scale legend (#31): what the needle is moving towards, and what arriving
    costs. It wraps rather than truncating — the gauge column is 13em and this is

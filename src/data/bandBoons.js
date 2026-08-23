@@ -94,6 +94,21 @@ export function motesMinted(warded) {
   return Math.floor(w / MOTE.per);
 }
 
+/**
+ * How far the warding is through the mote it is currently earning, 0..1.
+ *
+ * The whole of issue #154's first complaint is that this number exists and has
+ * never been on screen: warding accumulates silently for forty points and then
+ * a toast appears out of nowhere. Pure and exported so the gauge, the world cue
+ * and the tests all read one arithmetic rather than three copies of `% per`.
+ *
+ * Non-finite and negative read as 0, the same degradation `motesMinted` takes.
+ */
+export function wardedProgress(warded) {
+  const w = Number.isFinite(warded) ? Math.max(0, warded) : 0;
+  return (w % MOTE.per) / MOTE.per;
+}
+
 /** One mark per `markPer` of peak debt. Non-finite and negative read as none. */
 export function marksMinted(peak) {
   const p = Number.isFinite(peak) ? Math.max(0, peak) : 0;
