@@ -361,10 +361,35 @@ export class Enemy {
     return this;
   }
 
+  /**
+   * Give back every held voice this unit is carrying.
+   *
+   * A sustained voice charges the mixer budget for as long as it is held, so
+   * a handle nobody releases is a budget slot lost for the rest of the run.
+   * The state machine releases on the paths it owns - a windup that fires, a
+   * pull that finishes - but two paths bypass it entirely and both are
+   * ordinary: a unit killed mid-windup leaves through `onDeath`, and
+   * `Director.clear` calls `despawn` directly at every stage transition with
+   * no `fsm.set` in between, so no `exit` handler ever runs. Hence one place
+   * that knows the whole set, called from both.
+   *
+   * Idempotent, because all three handles are: the release path this drives is
+   * the same one a normal exit takes.
+   */
+  releaseVoices() {
+    this.tellVoice?.release?.();
+    this.tellVoice = null;
+    this.pullVoice?.release?.();
+    this.pullVoice = null;
+    this.witherVoice?.release?.();
+    this.witherVoice = null;
+  }
+
   despawn(ctx) {
     if (this.despawned) return;
     this.despawned = true;
     this.alive = false;
+    this.releaseVoices();
     if (ctx.combat && ctx.combat.unregister) ctx.combat.unregister(this);
     this.registered = false;
     releaseRig(this.rig);
@@ -493,6 +518,9 @@ export class Enemy {
     if (this.dying) return;
     this.dying = true;
     this.alive = false;
+    // Before the ctx guard below: a voice is released through the handle it
+    // was handed, and needs no context to end.
+    this.releaseVoices();
     const ctx = this._ctx;
     if (!ctx) return;
 
