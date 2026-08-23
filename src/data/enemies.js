@@ -35,6 +35,16 @@
 //   'stationary' never leaves its anchor; the arena moves, it does not
 //   'burrower'   submerges out of reach and resurfaces underneath you
 
+// `hurtbox` is asymmetric forgiveness, and it is deliberately NOT the body.
+// `radius`/`height` stay the collision capsule: walls, shoving, melee reach,
+// blast overlap and enemy-fired shots all keep testing those, so a unit that is
+// easier to hit is not thereby fatter, longer-armed or easier to hit *back*
+// with. `hurtbox` is a pair of multipliers on that capsule that only
+// PLAYER-FIRED projectiles test, because the complaint (#187) is one-sided:
+// flying, small and habitually distant kinds are the ones the player's shots
+// slide past. Absent, it is 1.0 in both axes and nothing changes.
+// Hitscan is a separate ray path (`Combat.hitscan` -> `_raySphere`, which has
+// its own 1.15 fudge) and is untouched by this.
 export const TEAM = 'monster';
 
 export const ENEMIES = [
@@ -56,6 +66,8 @@ export const ENEMIES = [
     attackRange: 1.9,
     radius: 0.34,
     height: 0.5,
+    // Hurtbox: the smallest body and the fastest legs in the roster; a 0.5 m capsule sits under most shot arcs.
+    hurtbox: { radius: 1.45, height: 1.5 },
     mass: 0.4,
     xp: 1,
     isFlyer: false,
@@ -113,6 +125,8 @@ export const ENEMIES = [
     attackRange: 20,
     radius: 0.48,
     height: 1.0,
+    // Hurtbox: a kiter that fights from 20 m by design, so it is almost always at the range where aim error is widest.
+    hurtbox: { radius: 1.3, height: 1 },
     mass: 0.9,
     xp: 2,
     isFlyer: false,
@@ -176,6 +190,8 @@ export const ENEMIES = [
     attackRange: 26,
     radius: 0.5,
     height: 1.1,
+    // Hurtbox: hovers at 4.2 m on a small slow body: the shot has to be lofted, and the loft is where it is lost.
+    hurtbox: { radius: 1.6, height: 1.3 },
     hoverHeight: 4.2,
     mass: 0.6,
     xp: 2,
@@ -215,6 +231,8 @@ export const ENEMIES = [
     attackRange: 15,
     radius: 0.5,
     height: 1.0,
+    // Hurtbox: a 1.0 m tall flyer - the vertical extent is the axis shots miss on, so height takes the larger share.
+    hurtbox: { radius: 1.6, height: 1.4 },
     hoverHeight: 3.4,
     mass: 0.5,
     xp: 2,
@@ -249,6 +267,8 @@ export const ENEMIES = [
     attackRange: 22,
     radius: 0.55,
     height: 1.3,
+    // Hurtbox: the fastest flyer in the game and a kiter at 5.6 m; the single worst offender in the complaint.
+    hurtbox: { radius: 1.8, height: 1.5 },
     hoverHeight: 5.6,
     mass: 0.7,
     xp: 3,
@@ -333,6 +353,8 @@ export const ENEMIES = [
     attackRange: 24,
     radius: 0.5,
     height: 1.2,
+    // Hurtbox: the highest of the small flyers and a kiter, so it is distant and off-plane at once.
+    hurtbox: { radius: 1.7, height: 1.4 },
     hoverHeight: 6.4,
     mass: 0.5,
     xp: 2,
@@ -477,6 +499,8 @@ export const ENEMIES = [
     attackRange: 3.2,
     radius: 0.5,
     height: 1.9,
+    // Hurtbox: grounded but fast and thin (r 0.5 at 7.4 m/s); a modest radius bump only, no vertical change.
+    hurtbox: { radius: 1.25, height: 1 },
     mass: 1.4,
     xp: 6,
     isFlyer: false,
@@ -965,6 +989,8 @@ export const ENEMIES = [
     attackRange: 50,
     radius: 2.4,
     height: 5.0,
+    // Hurtbox: a large body, but at 11 m altitude the range makes it feel thin; a small bump, not a flyer-sized one.
+    hurtbox: { radius: 1.15, height: 1 },
     hoverHeight: 11,
     mass: 10,
     xp: 42,
@@ -1234,6 +1260,8 @@ ENEMIES.push(
     attackRange: 60,
     radius: 2.7,
     height: 6.8,
+    // Hurtbox: already a 2.7 m flyer - it needs the flyer rule honoured rather than real forgiveness.
+    hurtbox: { radius: 1.1, height: 1 },
     hoverHeight: 6.0,
     mass: 26,
     xp: 90,

@@ -12,7 +12,8 @@ import * as THREE from 'three';
 import { S, StateMachine } from '../ai/StateMachine.js';
 import {
   arrive, seek, separate, avoidObstacles, moveGrounded, moveFlying,
-  groundAt, orbitPoint, turnToward, angleDelta, approachArc, keepRange, pursue,
+  groundAt, groundClamp, orbitPoint, turnToward, angleDelta, approachArc, keepRange, pursue,
+  walkableNear,
 } from '../ai/Steering.js';
 import { acquireRig, releaseRig, configureShadows, makeAnim, BEAM_MAX_LEN, ELITE } from './EnemyMeshes.js';
 import { ELITE_STATS } from '../data/enemies.js';
@@ -26,6 +27,36 @@ let NEXT_ID = 1;
 
 const DEATH_TIME = 1.5;
 const FLASH_TIME = 0.075;
+
+/**
+ * The stuck watch (#186).
+ *
+ * There is no navmesh here, so nothing stops a unit walking into a water
+ * channel or a crevasse it cannot climb out of; on the canyon stages a pack
+ * could spend the rest of the run treading the bottom of one. Local steering
+ * cannot solve that in general — the answer to "which way is out" is global
+ * information the unit does not have — so the safety net is a *liveness* test
+ * instead: a unit that wants to move and has covered no ground for this long
+ * has failed, whatever the terrain did to it, and gets rescued.
+ *
+ * `move` is deliberately generous. It is not "did it move", it is "did it get
+ * anywhere": a unit grinding against a wall, or orbiting a two-metre pit floor,
+ * covers distance every step and still qualifies as stuck.
+ *
+ * Exported as a mutable object so a test can disable the watch and show the
+ * trap it built is a real one — a recovery test that cannot fail is worth
+ * nothing (see tests/enemy-stuck-recovery.test.mjs).
+ */
+export const STUCK = {
+  time: 3.5,        // seconds of no progress before the rescue fires
+  move: 1.6,        // metres that count as progress and re-arm the window
+  extractMax: 4.0,  // seconds underground before it surfaces wherever it is
+};
+
+// The spoil-mound and puff hue for a rescue. Not an attack colour — nothing
+// about this is a threat — so it borrows the neutral earth tone the burrow
+// attacks default to rather than any element.
+const EXTRACT_HUE = 0xd8a860;
 
 // ---------------------------------------------------------------------------
 // cross-system helpers — every call is guarded, the game must run with any
@@ -222,6 +253,11 @@ export class Enemy {
     this.arcCurve = 0;
     this.commitT = 0;
     this.stallT = 0;
+    // Stuck watch: seconds without progress, and the point progress is measured
+    // from, plus the distance to its target when that window opened. See STUCK
+    // and `trackStuck`.
+    this.stuckT = 0;
+    this._stuckDist0 = 999;
     this.noise = 0;
     this.hasLOS = true;
     this.losT = 0;
@@ -246,6 +282,8 @@ export class Enemy {
     this._avoid = new THREE.Vector3();
     this._orbit = new THREE.Vector3();
     this._tmp = new THREE.Vector3();
+    this._stuckFrom = new THREE.Vector3();
+    this._extractTo = new THREE.Vector3();
   }
 
   // -------------------------------------------------------------------------
@@ -269,6 +307,11 @@ export class Enemy {
     this.despawned = false;
     this.radius = def.radius;
     this.height = def.height;
+    // Player-shot-only forgiveness; see the `hurtbox` note in data/enemies.js.
+    // Resolved to absolute metres here so the hot collision test is two reads
+    // and no multiply.
+    this.hurtRadius = def.radius * (def.hurtbox?.radius ?? 1);
+    this.hurtHeight = def.height * (def.hurtbox?.height ?? 1);
     this.isBoss = !!def.isBoss;
     this.phase = 1;
     // Health fractions at which the fight changes shape. `phase2At` is the
@@ -302,6 +345,10 @@ export class Enemy {
     if (!def.isFlyer) this.position.y = groundAt(ctx, at.x, at.z);
     else this.position.y = groundAt(ctx, at.x, at.z) + def.hoverHeight;
     this.velocity.set(0, 0, 0);
+    this.stuckT = 0;
+    this._stuckDist0 = 999;
+    this._stuckFrom.copy(this.position);
+    this._extractTo.copy(this.position);
     this.yaw = ctx.rng.range(-Math.PI, Math.PI);
 
     this.cd.fill(0);
@@ -810,6 +857,12 @@ export class Enemy {
       return d.set(Math.sin(this.yaw) * s, 0, Math.cos(this.yaw) * s);
     }
 
+    if (st === S.EXTRACT) {
+      // Rescue travel: the same underground movement as a burrow, aimed at the
+      // point the rescue picked rather than at the player.
+      return seek(d, this, this._extractTo, def.burrowSpeed || speed * 2);
+    }
+
     if (st === S.SUBMERGED) {
       // Underground it is faster than it is on the surface and it steers
       // perfectly, because nothing down there can be dodged — the dodge is the
@@ -937,7 +990,7 @@ export class Enemy {
       if (a) this.chargeContact(ctx, a, h);
       return;
     }
-    if (st === S.SUBMERGED) {
+    if (st === S.SUBMERGED || st === S.EXTRACT) {
       const s = (def.burrowSpeed || this.moveSpeed * 2) * slow;
       const len = Math.hypot(d.x, d.z) || 1;
       this.position.x += (d.x / len) * s * h;
@@ -946,8 +999,9 @@ export class Enemy {
       // surface exactly, whatever the terrain does above it.
       this.position.y = groundAt(ctx, this.position.x, this.position.z) - this.height - 0.6;
       this.velocity.set(0, 0, 0);
+      const face = st === S.EXTRACT ? this._extractTo : this.target;
       this.yaw = turnToward(this.yaw,
-        Math.atan2(this.target.x - this.position.x, this.target.z - this.position.z), 8, h);
+        Math.atan2(face.x - this.position.x, face.z - this.position.z), 8, h);
       return;
     }
 
@@ -1054,6 +1108,101 @@ export class Enemy {
     if (st === S.WINDUP) rate *= 0.45;           // committing means you can dodge it
     else if (st === S.ATTACK || st === S.RECOVER) rate *= 0.1;
     if (!dying) this.yaw = turnToward(this.yaw, want, rate, h);
+
+    this.trackStuck(ctx, h, d, slow);
+  }
+
+  /**
+   * The liveness half of the stuck watch: does this unit still qualify as
+   * making progress, and for how long has it not?
+   *
+   * Only the states where a unit is *supposed* to be covering ground are
+   * eligible, so nothing that legitimately holds still is ever rescued: a
+   * wind-up, an attack, a stagger, the spawn pop, IDLE patrol, a stationary
+   * turret, a burrow already under way, and a dash all sit outside the gate. A
+   * frozen or slowed unit is excluded too — it is not moving because the player
+   * paid for it not to move, and teleporting it out of a Frost Lattice would
+   * undo the item.
+   *
+   * Flyers are excluded on the same principle: they hold an altitude band above
+   * the heightfield, so a channel floor is scenery to them, not a trap.
+   */
+  trackStuck(ctx, h, desired, slow) {
+    const st = this.fsm.state;
+    const wants = desired.x * desired.x + desired.z * desired.z > 1;
+    const eligible = this.alive && !this.dying && !this.submerged && !this.def.isFlyer
+      && wants && slow > 0.999 && this.behavior !== 'stationary'
+      // A unit that can reach its target is not stuck, whatever its feet are
+      // doing — it is in the fight.
+      && this.distToPlayer > (this.def.attackRange || 3) * 1.2
+      && (st === S.CHASE || st === S.CIRCLE || st === S.REPOSITION);
+    // A commitment pauses the watch; it does not clear it. Clearing was the
+    // first version and it was worthless on the very stage this exists for: a
+    // skink in a channel can still see the player and still lob a fireball
+    // every five seconds, and each of those wind-ups reset the window, so a
+    // unit that could not pursue and could not use its melee at all was
+    // permanently "fine". Its clock stops while it swings and resumes after.
+    if (st === S.WINDUP || st === S.ATTACK || st === S.RECOVER
+      || st === S.STAGGER || st === S.CHARGE) return;
+    if (!eligible) return this.armStuck();
+    this.stuckT += h;
+    if (this.stuckT < STUCK.time) return;
+
+    // End of a window. Two independent ways to have been doing fine, and it
+    // only takes one:
+    //
+    //  * it got meaningfully closer to what it is chasing — the goal test; or
+    //  * it covered a decent fraction of the ground its own speed promised over
+    //    the window — the travel test, measured as *net* displacement, so a
+    //    unit grinding a circle on a pit floor fails it however many metres of
+    //    path it wore out. This is the clause that stops a monster chasing a
+    //    kiting player being "rescued" onto their head: it is running flat out
+    //    in a straight line, so it is not stuck, it is losing a race.
+    const dx = this.position.x - this._stuckFrom.x;
+    const dz = this.position.z - this._stuckFrom.z;
+    const net = Math.hypot(dx, dz);
+    const closer = this._stuckDist0 - this.distToPlayer > STUCK.move;
+    const travelled = net > this.moveSpeed * STUCK.time * 0.5;
+    if (closer || travelled) return this.armStuck();
+    this.beginExtract(ctx);
+  }
+
+  /** Start a fresh progress window from where the unit is now. */
+  armStuck() {
+    this.stuckT = 0;
+    this._stuckFrom.copy(this.position);
+    this._stuckDist0 = this.distToPlayer;
+  }
+
+  /**
+   * Sink, travel, resurface somewhere it can actually fight from.
+   *
+   * The destination is a standable point on the *target's* level — the whole
+   * failure being fixed is that the unit is on a level it cannot leave, so
+   * anywhere near where it already is would be no rescue at all. It stands off
+   * by a little more than its own reach so the resurface is an arrival, not an
+   * ambush in the player's lap.
+   *
+   * If the ring scan finds nothing, the unit goes anyway, to the ring point it
+   * would have preferred: an unvalidated surface point on the player's level
+   * beats certain paralysis, and the watch simply re-arms if that lands badly.
+   */
+  beginExtract(ctx) {
+    this.stuckT = 0;
+    this._stuckFrom.copy(this.position);
+    const anchor = this.targetPlayer?.position || this.home;
+    const reach = clamp((this.def.attackRange || 3) * 1.2, 4, 9);
+    // `noise` is the per-unit phase already drawn at spawn, so two units rescued
+    // from the same hole do not surface on the same spot — and no new RNG draw
+    // is made, which is what keeps single-player equivalence intact.
+    const phase = this.noise;
+    const found = walkableNear(this._extractTo, ctx, anchor, reach, phase);
+    if (!found) {
+      const x = anchor.x + Math.cos(phase) * reach;
+      const z = anchor.z + Math.sin(phase) * reach;
+      this._extractTo.set(x, groundAt(ctx, x, z), z);
+    }
+    this.fsm.set(S.EXTRACT, ctx);
   }
 
   // -------------------------------------------------------------------------
@@ -1898,6 +2047,61 @@ const STATES = {
       // the follow-through, and it is also the window to punish the miss.
       e.velocity.x *= 0.35;
       e.velocity.z *= 0.35;
+    },
+  },
+
+  [S.EXTRACT]: {
+    // Presentation is deliberately the burrow's, because the player has already
+    // been taught to read it: the ground bursts, the unit is gone, a mound
+    // tracks across the surface, and it comes back up somewhere else. A unit
+    // that simply appeared thirty metres away would read as a bug; this reads
+    // as a monster deciding it had had enough of the hole.
+    enter(e, ctx) {
+      e.submerged = true;
+      e.invuln = true;
+      e.moundT = 0;
+      e.velocity.set(0, 0, 0);
+      if (e.rig) e.rig.root.visible = false;
+      fx(ctx, 'explosion', e.position, 2.0, EXTRACT_HUE);
+      sfx(ctx, 'explosion', e.position, 0.3);
+    },
+    update(e, ctx, h, fsm) {
+      e.moundT -= h;
+      if (e.moundT <= 0) {
+        e.moundT = 0.1;
+        ctx.director?.spawnTelegraph?.(e.position.x, e.position.z, e.radius * 1.6, 0.45, EXTRACT_HUE);
+      }
+      const dx = e._extractTo.x - e.position.x, dz = e._extractTo.z - e.position.z;
+      // The cap matters more than the arrival test: the destination can move out
+      // from under the unit (the player is walking), and an underground unit
+      // chasing a receding point forever is the original bug with extra steps.
+      if (dx * dx + dz * dz < 0.36 || fsm.t > STUCK.extractMax) fsm.set(S.CHASE, ctx);
+    },
+    exit(e, ctx) {
+      e.submerged = false;
+      e.invuln = false;
+      if (e.rig) e.rig.root.visible = true;
+      // A unit killed underground leaves through DIE, and the death path does
+      // its own surfacing — placing a corpse on the rescue point would drag it
+      // across the arena on the way out.
+      if (e.alive && !e.dying) {
+        // It surfaces where it actually got to — the travel is real, so the
+        // arrival should be too. The one exception is a run out of time still
+        // below the level it set out for, which means the hole is wider than
+        // the budget: that unit is placed on the destination, because surfacing
+        // back in the crevasse is the failure this whole path exists to end.
+        const here = groundAt(ctx, e.position.x, e.position.z);
+        if (Math.abs(here - e._extractTo.y) > 2.5) {
+          e.position.x = e._extractTo.x;
+          e.position.z = e._extractTo.z;
+        }
+        groundClamp(e, ctx);
+        e.velocity.set(0, 0, 0);
+        e.stuckT = 0;
+        e._stuckFrom.copy(e.position);
+        fx(ctx, 'explosion', e.position, 2.2, EXTRACT_HUE);
+        sfx(ctx, 'explosion', e.position, 0.35);
+      }
     },
   },
 

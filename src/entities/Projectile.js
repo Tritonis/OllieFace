@@ -300,16 +300,31 @@ export class ProjectilePool {
  * only, with the vertical extent tested against the capsule's own half-height,
  * which is why a shot passing over a scarab misses and the same shot at a
  * sentinel's knee hits.
+ *
+ * Player-fired shots test the *hurtbox* instead of the body where the target
+ * declares one (#187): flyers and small distant kinds are forgiven a margin
+ * that nothing else in the engine sees. The forgiveness is one-directional on
+ * purpose — enemy fire, melee reach, shoving and blast overlap all still test
+ * the body, so an enlarged hurtbox never makes a unit more dangerous or more
+ * obstructive. The enlarged capsule stays centred on the body's centre so the
+ * margin is given above and below equally, which is the axis a shot passing
+ * over a mite is lost on.
  */
+export function hurtboxOf(p, e) {
+  const bodyHalf = (e.height || 1.6) * 0.5;
+  if (p.owner?.team !== 'player') return { r: e.radius || 0.5, hh: bodyHalf, cy: bodyHalf };
+  return { r: e.hurtRadius ?? (e.radius || 0.5), hh: (e.hurtHeight ?? (e.height || 1.6)) * 0.5, cy: bodyHalf };
+}
+
 function hits(p, e) {
   if (!e || !e.alive || e === p.owner) return false;
   if (p.owner && e.team === p.owner.team) return false;
-  const hh = (e.height || 1.6) * 0.5;
+  const box = hurtboxOf(p, e);
   const dx = e.position.x - p.position.x;
   const dz = e.position.z - p.position.z;
-  const dy = (e.position.y + hh) - p.position.y;
-  const r = (e.radius || 0.5) + p.radius;
-  return dx * dx + dz * dz < r * r && Math.abs(dy) < hh + p.radius;
+  const dy = (e.position.y + box.cy) - p.position.y;
+  const r = box.r + p.radius;
+  return dx * dx + dz * dz < r * r && Math.abs(dy) < box.hh + p.radius;
 }
 
 export function enemyList(ctx) {

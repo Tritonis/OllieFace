@@ -256,6 +256,43 @@ export function groundAt(ctx, x, z) {
 }
 
 /**
+ * A standable point on the anchor's own level, on a ring around it.
+ *
+ * This is the "where is it safe to put a unit down" question the spawner asks,
+ * asked without the spawner's RNG: `randomWalkablePoint` draws from `ctx.rng`,
+ * and single-player equivalence is measured against the exact draw sequence, so
+ * a recovery that fired mid-run would shift every subsequent roll. A fixed ring
+ * scan is deterministic, allocation-free, and answers the same question.
+ *
+ * `stage.isWalkable` is the spawner's own predicate (slope plus prop clearance).
+ * The level test is the part that matters for a crevasse: a channel floor is
+ * perfectly flat and therefore perfectly "walkable", so a point is only accepted
+ * if it also stands within `levelTol` of the anchor's ground height — otherwise
+ * the recovery drops the unit back into the hole it just left.
+ *
+ * Returns null when nothing on either ring qualifies; the caller decides what a
+ * failed search means.
+ */
+const RING_STEPS = 12;
+export function walkableNear(out, ctx, anchor, radius, phase = 0, levelTol = 2.5) {
+  const stage = ctx.stage;
+  const base = groundAt(ctx, anchor.x, anchor.z);
+  for (let r = 0; r < 2; r++) {
+    const rad = radius * (1 + r * 0.6);
+    for (let i = 0; i < RING_STEPS; i++) {
+      const a = phase + (i / RING_STEPS) * Math.PI * 2;
+      const x = anchor.x + Math.cos(a) * rad;
+      const z = anchor.z + Math.sin(a) * rad;
+      if (stage && stage.isWalkable && !stage.isWalkable(x, z)) continue;
+      const y = groundAt(ctx, x, z);
+      if (Math.abs(y - base) > levelTol) continue;
+      return out.set(x, y, z);
+    }
+  }
+  return null;
+}
+
+/**
  * Pick a strafing offset around a target — used by `reposition` so ranged
  * units circle instead of standing in the open, and so packs fan out.
  */
