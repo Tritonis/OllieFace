@@ -221,6 +221,176 @@ function clampByte(v) {
   return Math.min(255, Math.max(0, Math.round(v)));
 }
 
+/* ==================================================================== *
+ * The three geometries the vocabulary could not draw
+ * (docs/superpowers/plans/2026-08-23-new-vfx-geometries.md)
+ *
+ * Everything below is *pure arithmetic on plain numbers*, deliberately.
+ * The drawing half of each geometry is a shader or a pool spawn, neither of
+ * which a Node test can execute; the *shape* half is the part that can be
+ * wrong in the ways the plan names (an aperture that is ignored, a spiral
+ * that does not turn, a chain whose links do not meet), so it is factored
+ * out to where a test can drive it directly rather than infer it from a
+ * screenshot. The pool methods below consume exactly these functions — they
+ * do not carry a second copy of the maths.
+ * ==================================================================== */
+
+/**
+ * The perpendicular basis a ring, sector or helix is drawn in.
+ *
+ * Chosen exactly as `RingVert` chooses it — same degenerate-axis pick at
+ * |n.y| > 0.95, same cross order — so that a CPU-side geometry and a
+ * GPU-side one agree about which way zero degrees points. Writes into `out`;
+ * allocates nothing.
+ */
+export function axisBasis(a, out = {}) {
+  const l = Math.hypot(a.x, a.y, a.z) || 1;
+  const nx = a.x / l, ny = a.y / l, nz = a.z / l;
+  // t1 in RingVert: (1,0,0) when the axis is near-vertical, (0,1,0) otherwise.
+  const t0 = Math.abs(ny) > 0.95 ? 1 : 0;
+  const t1 = Math.abs(ny) > 0.95 ? 0 : 1;
+  let bx = ny * 0 - nz * t1, by = nz * t0 - nx * 0, bz = nx * t1 - ny * t0;
+  const bl = Math.hypot(bx, by, bz) || 1;
+  bx /= bl; by /= bl; bz /= bl;
+  const cx = ny * bz - nz * by, cy = nz * bx - nx * bz, cz = nx * by - ny * bx;
+  out.nx = nx; out.ny = ny; out.nz = nz;
+  out.bx = bx; out.by = by; out.bz = bz;
+  out.cx = cx; out.cy = cy; out.cz = cz;
+  return out;
+}
+
+/**
+ * Width, in cosine, of the soft edge on a sector's two bounding radii.
+ *
+ * Declared once and interpolated into `SectorFrag` rather than typed there:
+ * the JS twin below and the shader must agree about where the arc ends, and
+ * two hand-typed 0.06s are two things that can drift apart.
+ */
+export const SECTOR_EDGE_SOFT = 0.06;
+
+/**
+ * G-1's angular clip, in the sector's own 2D disc space.
+ *
+ * `c` is the fragment offset from the origin, `f` the facing, both already
+ * projected into the basis above; `halfAperture` is half the arc's opening in
+ * radians. Returns 0 outside the arc, 1 well inside it, and a smooth edge
+ * between — so a half-aperture of PI is exactly a full ring and anything less
+ * is genuinely narrower, which is the property the whole geometry exists for.
+ */
+export function sectorMask(cx, cy, fx, fy, halfAperture) {
+  // A half-aperture of PI is the full ring, and it has to be the full ring
+  // *everywhere*: taking the general path leaves the one direction exactly
+  // opposite the facing on the wrong side of a `<=`, which draws a hairline
+  // seam down the back of every 360-degree arc.
+  if (halfAperture >= Math.PI) return 1;
+  const rl = Math.hypot(cx, cy);
+  if (rl < 1e-5) return 1;
+  const fl = Math.hypot(fx, fy);
+  if (fl < 1e-5) return 0;
+  const cosA = (cx * fx + cy * fy) / (rl * fl);
+  const lim = Math.cos(halfAperture);
+  if (cosA <= lim) return 0;
+  const k = Math.min(1, (cosA - lim) / SECTOR_EDGE_SOFT);
+  return k * k * (3 - 2 * k);
+}
+
+/**
+ * One lace point on G-2's rising helix / G-3's inward vortex.
+ *
+ * `k` indexes 0..o.count-1 along the path from `o.from` to `o.to`. The two
+ * geometries share this function and separate on `o.inward` alone, which is
+ * §1.3's own argument applied to motion: same family, opposite radial sign.
+ * The spin direction is NOT flipped — a vortex that also turned the other way
+ * would be a different shape rather than the same one running backwards.
+ *
+ * Writes position, velocity and the local radial/tangential units into `out`.
+ */
+export function helixSample(out, k, o) {
+  const n = Math.max(1, o.count | 0);
+  const t = n === 1 ? 0 : k / (n - 1);
+  const ax = o.to.x - o.from.x, ay = o.to.y - o.from.y, az = o.to.z - o.from.z;
+  const len = Math.hypot(ax, ay, az);
+  _av.x = ax; _av.y = ay; _av.z = az;
+  const B = axisBasis(_av, _hb);
+
+  const ang = (o.phase || 0) + t * (o.turns ?? 2) * Math.PI * 2;
+  const ca = Math.cos(ang), sa = Math.sin(ang);
+  // The vortex closes on its endpoint; the helix keeps its radius as it climbs.
+  const rad = (o.radius ?? 1) * (o.inward ? 1 - t : 1);
+
+  const rx = B.bx * ca + B.cx * sa, ry = B.by * ca + B.cy * sa, rz = B.bz * ca + B.cz * sa;
+  const tx = -B.bx * sa + B.cx * ca, ty = -B.by * sa + B.cy * ca, tz = -B.bz * sa + B.cz * ca;
+
+  out.px = o.from.x + B.nx * len * t + rx * rad;
+  out.py = o.from.y + B.ny * len * t + ry * rad;
+  out.pz = o.from.z + B.nz * len * t + rz * rad;
+
+  const swirl = o.swirl ?? 2.2;
+  const radial = (o.radialSpeed ?? 0.8) * (o.inward ? -1 : 1);
+  const climb = o.climb ?? 1.4;
+  out.vx = tx * swirl + rx * radial + B.nx * climb;
+  out.vy = ty * swirl + ry * radial + B.ny * climb;
+  out.vz = tz * swirl + rz * radial + B.nz * climb;
+
+  out.radialX = rx; out.radialY = ry; out.radialZ = rz;
+  out.tangX = tx; out.tangY = ty; out.tangZ = tz;
+  out.axisX = B.nx; out.axisY = B.ny; out.axisZ = B.nz;
+  out.angle = ang; out.radius = rad; out.k = t;
+  return out;
+}
+
+const _hb = {};
+const _av = { x: 0, y: 0, z: 0 };
+/* Steady-state scratch for the three new geometries. Nothing here allocates
+ * per call — the same rule the rest of this file lives by. */
+const _NO_OPTS = Object.freeze({});
+const _helixOpts = {};
+const _vortexOpts = {};
+const _chainOpts = {};
+const _hs = {};
+const _cn0 = { x: 0, y: 0, z: 0 };
+const _cn1 = { x: 0, y: 0, z: 0 };
+/** The two bounding radii of a sector, as signed multiples of its half-aperture. */
+const SECTOR_EDGES = [-1, 1];
+
+/** Deterministic hash in [0,1) — the jag has to be repeatable to be testable. */
+function _h1f(s) {
+  const v = Math.sin(s * 127.1 + 311.7) * 43758.5453;
+  return v - Math.floor(v);
+}
+
+/**
+ * Node `i` (0..o.segments) of G-4's jagged path from `o.from` to `o.to`.
+ *
+ * Midpoint displacement, perpendicular to the hop and tapering to nothing at
+ * both ends: node 0 IS `from` and node `segments` IS `to`, exactly, so a
+ * caller that walks i -> i+1 gets a contiguous polyline by construction and
+ * lands on the endpoints it was given. That is the property `chainBolt` is
+ * allowed to rely on, and the one the test breaks to prove the guard bites.
+ */
+export function chainNode(out, i, o) {
+  const n = Math.max(1, o.segments | 0);
+  const t = Math.min(1, Math.max(0, i / n));
+  const ax = o.to.x - o.from.x, ay = o.to.y - o.from.y, az = o.to.z - o.from.z;
+  out.x = o.from.x + ax * t;
+  out.y = o.from.y + ay * t;
+  out.z = o.from.z + az * t;
+  if (i <= 0 || i >= n) return out;
+
+  _av.x = ax; _av.y = ay; _av.z = az;
+  const B = axisBasis(_av, _hb);
+  const seed = (o.seed || 0) + i * 7.13;
+  const d1 = (_h1f(seed) * 2 - 1);
+  const d2 = (_h1f(seed + 91.7) * 2 - 1);
+  // Full displacement mid-hop, none at the ends — a taper, not a clamp, so the
+  // link nearest a target does not kink away from it.
+  const amp = (o.jitter ?? 0.35) * Math.sin(Math.PI * t) * Math.hypot(ax, ay, az) * 0.25;
+  out.x += (B.bx * d1 + B.cx * d2) * amp;
+  out.y += (B.by * d1 + B.cy * d2) * amp;
+  out.z += (B.bz * d1 + B.cz * d2) * amp;
+  return out;
+}
+
 export class VFX {
   // The impact layer. Nothing reads it back, and a run without sparks is still
   // the same run — this is the case the noncritical half of the rule exists for.
@@ -284,11 +454,14 @@ export class VFX {
     this.lights = new LightPool(ctx, 6);
     this.beams = new BeamPool(ctx, 192);
     this.rings = new RingPool(ctx, 48);
+    // Ground arcs are a telegraph layer, not an impact layer: a handful are on
+    // screen at once, where rings come in threes off every blast.
+    this.sectors = new SectorPool(ctx, 24);
     this.numbers = new DamageNumbers(ctx, 384);
 
     this._roots = [
       this.particles.root, this.trails.root, this.decals.mesh,
-      this.beams.mesh, this.rings.mesh, this.numbers.mesh,
+      this.beams.mesh, this.rings.mesh, this.sectors.mesh, this.numbers.mesh,
     ];
 
     const e = ctx.events;
@@ -1957,8 +2130,10 @@ export class VFX {
       ctx.pipeline?.renderer?.getDrawingBufferSize(_ringSize)
         ?? _ringSize.set(innerWidth, innerHeight);
       this.rings.update(dt, soft.depthTexture, _ringSize, ctx.camera.near, ctx.camera.far);
+      this.sectors.update(dt, soft.depthTexture, _ringSize, ctx.camera.near, ctx.camera.far);
     } else {
       this.rings.update(dt, null);
+      this.sectors.update(dt, null);
     }
     this.numbers.update(ctx, dt);
     this._updateDistortion(ctx, dt);
@@ -2286,6 +2461,153 @@ export class VFX {
     return _ax2.set(0, 1, 0).addScaledVector(_ax1, -0.40).normalize();
   }
 
+  /* ---------------------------------------------------------------- *
+   * The four new geometries, as engine vocabulary.
+   *
+   * Nothing in `data/` names these yet — which ability or item adopts which
+   * shape is the user's design call, not this layer's. They exist so that a
+   * cone attack can stop being drawn as a full ring, and so that "spiralling"
+   * and "arcing between targets" are things the language can say at all.
+   *
+   * Every colour here arrives as an argument from a declared table. There is
+   * no hex literal in any of these methods, and `tests/vfx-geometries.test.mjs`
+   * scans them to keep it that way — the #160 lesson, which was demonstrated
+   * rather than argued: a hue typed at a call site is outside every guard.
+   * ---------------------------------------------------------------- */
+
+  /**
+   * G-1 — a ground arc that says *where*, not just *how big*.
+   *
+   * `facing` is flattened onto the ground plane: a telegraph aimed slightly up
+   * or down the terrain still means the same compass bearing, and letting the
+   * pitch through would narrow the arc as the attacker looked at their feet.
+   * The two bounding radii are drawn as beams over the arc, so the wedge has
+   * edges a player can read at a glance rather than only a gradient.
+   */
+  sectorTelegraph(pos, facing, halfAperture, colour, r0, r1, life = 0.6, alpha = 0.9) {
+    _v1.copy(facing); _v1.y = 0;
+    if (_v1.lengthSq() < 1e-6) _v1.set(0, 0, 1);
+    _v1.normalize();
+    this.sectors.spawn(pos, UP, _v1, halfAperture, colour, r0, r1, life, alpha);
+
+    const half = Math.min(Math.PI, Math.max(1e-3, halfAperture));
+    _tmpColor.set(colour);
+    for (const sign of SECTOR_EDGES) {
+      const a = Math.atan2(_v1.x, _v1.z) + sign * half;
+      _v2.set(pos.x, pos.y + 0.07, pos.z);
+      _v3.set(pos.x + Math.sin(a) * r1, pos.y + 0.07, pos.z + Math.cos(a) * r1);
+      this.beams.spawn(_v2, _v3, _tmpColor, 0.05, 0.05, life, 0.7, 0);
+    }
+  }
+
+  /**
+   * G-2 — particles laced on a spiral from `from` to `to`.
+   *
+   * The lace is emitted in one pass rather than animated: each particle is
+   * placed at its point on the spiral and given the spiral's own tangent, so
+   * the shape is legible on the first frame and then flies apart along it.
+   * That is what makes it a *rising* motion in §1.4's sense rather than a
+   * static helix-shaped decal.
+   */
+  helixLace(from, to, colour, opts = _NO_OPTS) {
+    const o = _helixOpts;
+    o.from = from; o.to = to;
+    o.count = opts.count ?? 26;
+    o.turns = opts.turns ?? 2.5;
+    o.radius = opts.radius ?? 0.9;
+    o.phase = opts.phase ?? 0;
+    o.swirl = opts.swirl ?? 2.2;
+    o.radialSpeed = opts.radialSpeed ?? 0.8;
+    o.climb = opts.climb ?? 1.4;
+    o.inward = !!opts.inward;
+    const life = opts.life ?? 0.55;
+    const size = opts.size ?? 0.2;
+
+    for (let k = 0; k < o.count; k++) {
+      helixSample(_hs, k, o);
+      const speed = Math.hypot(_hs.vx, _hs.vy, _hs.vz);
+      const e = this._ep();
+      e.count = 1;
+      e.position.set(_hs.px, _hs.py, _hs.pz);
+      e.dir.set(_hs.vx, _hs.vy, _hs.vz);
+      e.speed = speed; e.speedVar = 0.08; e.spread = 0;
+      e.life = life; e.lifeVar = 0.15;
+      e.size0 = size; e.size1 = size * 0.15; e.sizeVar = 0.2;
+      e.color0.set(colour); e.color1.set(colour);
+      // Inward reads hotter and heavier than outward — a vortex is something
+      // arriving, a helix something leaving.
+      e.frame = o.inward ? FRAME.EMBER : FRAME.SPARK;
+      e.stretch = o.inward ? 0.2 : 0.45;
+      e.drag = 1.6; e.alphaPow = 1.2;
+      this.particles.emit(e);
+    }
+    return o.count;
+  }
+
+  /**
+   * G-3 — the same lace run inward, and nothing else.
+   *
+   * It shares G-2's family on purpose (§1.3) and separates on motion alone:
+   * the radial velocity flips sign and the radius closes on the endpoint. The
+   * spin direction is untouched, because a vortex is not a helix played
+   * backwards — it is a helix falling in.
+   */
+  vortexDraw(from, to, colour, opts = _NO_OPTS) {
+    const o = _vortexOpts;
+    o.count = opts.count ?? 30;
+    o.turns = opts.turns ?? 3;
+    o.radius = opts.radius ?? 2.2;
+    o.phase = opts.phase ?? 0;
+    o.swirl = opts.swirl ?? 2.6;
+    o.radialSpeed = opts.radialSpeed ?? 1.6;
+    o.climb = opts.climb ?? 1.1;
+    o.life = opts.life ?? 0.5;
+    o.size = opts.size ?? 0.16;
+    o.inward = true;
+    return this.helixLace(from, to, colour, o);
+  }
+
+  /**
+   * G-4 — a jagged multi-hop arc through `points`.
+   *
+   * Composed out of `BeamPool` segments, the `latticeShell` precedent: a path
+   * is a path whether its links came from a new mesh or from short straight
+   * ones, and the pool already draws a tapered, cored, additive segment. Each
+   * hop is split into `segments` links whose interior nodes are displaced
+   * perpendicular; `chainNode` pins node 0 and node N to the hop's own
+   * endpoints, so the polyline is contiguous and lands on its targets by
+   * construction rather than by luck.
+   */
+  chainBolt(points, colour, opts = _NO_OPTS) {
+    if (!points || points.length < 2) return 0;
+    const o = _chainOpts;
+    o.segments = opts.segments ?? 5;
+    o.jitter = opts.jitter ?? 0.35;
+    const life = opts.life ?? 0.14;
+    const width = opts.width ?? 0.11;
+    const seed0 = opts.seed ?? 0;
+    _tmpColor.set(colour);
+
+    let drawn = 0;
+    for (let h = 0; h < points.length - 1; h++) {
+      o.from = points[h]; o.to = points[h + 1];
+      o.seed = seed0 + h * 31.7;
+      chainNode(_cn0, 0, o);
+      for (let i = 0; i < o.segments; i++) {
+        chainNode(_cn1, i + 1, o);
+        _v2.set(_cn0.x, _cn0.y, _cn0.z);
+        _v3.set(_cn1.x, _cn1.y, _cn1.z);
+        this.beams.spawn(_v2, _v3, _tmpColor, width, width, life, 0.8, 0);
+        // §1.2's player polarity: element rim, white-hot core, the same
+        // doubling every other beam in the file carries.
+        this.beams.spawn(_v2, _v3, WHITE_HOT, width * 0.34, width * 0.34, life * 0.8, 2.4, 0);
+        _cn0.x = _cn1.x; _cn0.y = _cn1.y; _cn0.z = _cn1.z;
+        drawn++;
+      }
+    }
+    return drawn;
+  }
+
   _ep() {
     const e = this._e;
     e.layer = 'add';
@@ -2461,7 +2783,7 @@ void main() {
 `;
 
 /** Instanced camera-facing segments: tracers, lightning links, beam FX. */
-class BeamPool {
+export class BeamPool {
   constructor(ctx, capacity) {
     this.capacity = capacity;
     this.head = 0;
@@ -2517,6 +2839,25 @@ class BeamPool {
     const s = this.aShape.array;
     s[i * 4] = width0; s[i * 4 + 1] = width1; s[i * 4 + 2] = core; s[i * 4 + 3] = taper;
     this.dirty = true;
+  }
+
+  /**
+   * How many instances are still inside their own lifetime.
+   *
+   * A ring buffer never frees anything, so "did this effect give its resources
+   * back" is not a question about allocation — it is the question of whether
+   * every slot it claimed has aged out. Both this and `SectorPool.live` exist
+   * so a test can assert a return to baseline rather than assert that nothing
+   * threw, which is this repo's recurring way of shipping a leak.
+   */
+  get live() {
+    let n = 0;
+    const a = this.aTime.array;
+    for (let i = 0; i < this.capacity; i++) {
+      const life = a[i * 2 + 1];
+      if (life > 0 && this.time - a[i * 2] < life) n++;
+    }
+    return n;
   }
 
   update(dt) {
@@ -2730,6 +3071,246 @@ class RingPool {
     if (!this.dirty) return;
     this.dirty = false;
     this.aOrigin.needsUpdate = this.aAxis.needsUpdate = this.aTime.needsUpdate = true;
+    this.aColor.needsUpdate = this.aShape.needsUpdate = true;
+  }
+}
+
+/* ------------------------------------------------------- G-1: the sector */
+
+const SectorVert = /* glsl */ `
+attribute vec3 aOrigin;
+attribute vec3 aAxis;
+attribute vec3 aFacing;
+attribute vec2 aTime;
+attribute vec4 aColor;
+attribute vec4 aShape;  // r0, r1, thickness, halfAperture
+uniform float uTime;
+varying vec2 vUv;
+varying vec4 vColor;
+varying vec2 vFacing;
+varying float vAper;
+varying float vK;
+varying float vThick;
+varying float vFacingDot;
+varying float vViewZ;
+void main() {
+  float age = uTime - aTime.x;
+  if (age < 0.0 || age >= aTime.y || aTime.y <= 0.0) {
+    vUv = vec2(0.0); vColor = vec4(0.0); vFacing = vec2(1.0, 0.0);
+    vAper = 0.0; vK = 0.0; vThick = 0.0; vFacingDot = 0.0; vViewZ = 0.0;
+    gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+    return;
+  }
+  float k = age / aTime.y;
+  // A telegraph fills at a steady rate: the whole point is that the player can
+  // read how much time is left off how far the fill has got, which an
+  // ease-out (the ring's curve) actively lies about.
+  float r = mix(aShape.x, aShape.y, k);
+
+  vec3 n = normalize(aAxis);
+  vec3 t1 = abs(n.y) > 0.95 ? vec3(1.0, 0.0, 0.0) : vec3(0.0, 1.0, 0.0);
+  vec3 bx = normalize(cross(n, t1));
+  vec3 by = normalize(cross(n, bx));
+  vec3 p = aOrigin + (bx * position.x + by * position.y) * (r * 2.0);
+
+  vUv = uv;
+  vColor = aColor;
+  // The facing, projected into the very basis the quad is drawn in. Doing it
+  // here rather than on the CPU is what keeps axisBasis and this shader from
+  // needing to agree about anything except the basis itself.
+  vFacing = vec2(dot(aFacing, bx), dot(aFacing, by));
+  vAper = aShape.w;
+  vK = k;
+  vThick = aShape.z;
+  vec4 wv = viewMatrix * vec4(p, 1.0);
+  vViewZ = wv.z;
+  vFacingDot = abs(dot(normalize(p - cameraPosition), n));
+  gl_Position = projectionMatrix * wv;
+}
+`;
+
+const SectorFrag = /* glsl */ `
+precision highp float;
+uniform sampler2D uDepth;
+uniform vec2 uResolution;
+uniform vec2 uCamPlanes;
+uniform float uSoftEnabled;
+uniform float uSoftDist;
+varying vec2 vUv;
+varying vec4 vColor;
+varying vec2 vFacing;
+varying float vAper;
+varying float vK;
+varying float vThick;
+varying float vFacingDot;
+varying float vViewZ;
+
+float sectorViewZ(float d, float n, float f) {
+  return (n * f) / ((f - n) * d - f);
+}
+
+// The twin of \`sectorMask\` in this file's JS half. The soft-edge width is
+// interpolated from the one declared constant rather than typed here, so the
+// two cannot drift; the rest is the same three lines.
+float sectorMask(vec2 c, vec2 f, float halfAperture) {
+  if (halfAperture >= 3.14159265) return 1.0;
+  float rl = length(c);
+  if (rl < 1e-5) return 1.0;
+  float fl = length(f);
+  if (fl < 1e-5) return 0.0;
+  float cosA = dot(c, f) / (rl * fl);
+  float lim = cos(halfAperture);
+  if (cosA <= lim) return 0.0;
+  return smoothstep(lim, lim + ${SECTOR_EDGE_SOFT.toFixed(4)}, cosA);
+}
+
+void main() {
+  vec2 c = vUv - 0.5;
+  float r = length(c) * 2.0;
+  if (r > 1.0) discard;
+
+  // The angular clip. Without this line a sector IS a ring, which is the whole
+  // defect the geometry was added to make impossible.
+  float wedge = sectorMask(c, vFacing, vAper);
+  if (wedge <= 0.0) discard;
+
+  // A bright leading arc over a dim body: the arc is where the damage stops,
+  // and it is the thing the player is actually reading.
+  float d = r - 0.92;
+  float arc = 1.0 - smoothstep(0.0, vThick, abs(d));
+  float body = (1.0 - smoothstep(0.55, 1.0, r)) * 0.28;
+  vec3 col = mix(vColor.rgb * 0.55, vColor.rgb * 1.15, arc);
+  float a = (arc + body) * wedge * vColor.a;
+  a *= clamp(vFacingDot / 0.28, 0.0, 1.0);
+
+  if (uSoftEnabled > 0.5) {
+    vec2 suv = gl_FragCoord.xy / uResolution;
+    float dep = texture2D(uDepth, suv).x;
+    if (dep < 1.0) {
+      float sceneZ = sectorViewZ(dep, uCamPlanes.x, uCamPlanes.y);
+      a *= clamp((vViewZ - sceneZ) / uSoftDist, 0.0, 1.0);
+    }
+  }
+
+  if (a < 0.004) discard;
+  gl_FragColor = vec4(col * (arc + body), a);
+}
+`;
+
+/**
+ * Instanced ground arcs — the one genuinely new mesh (G-1).
+ *
+ * Shaped after `RingPool` deliberately: same instanced quad, same soft-particle
+ * depth fade off the particle layer's prepass, same `_roots`/update/registration
+ * in the `VFX` constructor. It differs in exactly two things, and both are the
+ * point — a facing and a half-aperture, so a telegraph can say WHERE it will
+ * land, and a linear rather than eased fill, so it can say WHEN.
+ */
+export class SectorPool {
+  constructor(ctx, capacity) {
+    this.capacity = capacity;
+    this.head = 0;
+    this.time = 0;
+
+    const quad = new THREE.PlaneGeometry(1, 1);
+    const geo = new THREE.InstancedBufferGeometry();
+    geo.index = quad.index;
+    geo.setAttribute('position', quad.getAttribute('position'));
+    geo.setAttribute('uv', quad.getAttribute('uv'));
+    geo.instanceCount = capacity;
+
+    this.aOrigin = inst(capacity, 3);
+    this.aAxis = inst(capacity, 3);
+    this.aFacing = inst(capacity, 3);
+    this.aTime = inst(capacity, 2);
+    this.aColor = inst(capacity, 4);
+    this.aShape = inst(capacity, 4);
+    geo.setAttribute('aOrigin', this.aOrigin);
+    geo.setAttribute('aAxis', this.aAxis);
+    geo.setAttribute('aFacing', this.aFacing);
+    geo.setAttribute('aTime', this.aTime);
+    geo.setAttribute('aColor', this.aColor);
+    geo.setAttribute('aShape', this.aShape);
+
+    this.mat = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 },
+        uDepth: { value: null },
+        uResolution: { value: new THREE.Vector2(1, 1) },
+        uCamPlanes: { value: new THREE.Vector2(0.1, 2000) },
+        uSoftEnabled: { value: 0 },
+        uSoftDist: { value: 2.2 },
+      },
+      vertexShader: SectorVert,
+      fragmentShader: SectorFrag,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      toneMapped: false,
+    });
+
+    this.mesh = new THREE.Mesh(geo, this.mat);
+    this.mesh.frustumCulled = false;
+    this.mesh.renderOrder = 11;
+    this.mesh.matrixAutoUpdate = false;
+    this.mesh.name = 'vfx.sectors';
+    ctx.scene.add(this.mesh);
+  }
+
+  /**
+   * `halfAperture` is half the arc's opening, in radians, and is clamped into
+   * (0, PI]. PI is a full ring and is legal — it is what a caller asks for when
+   * it genuinely means "all around" — but it is not the default, and nothing
+   * here silently widens a narrow arc into one.
+   */
+  spawn(origin, axis, facing, halfAperture, colour, r0, r1, life, alpha = 1) {
+    const i = this.head;
+    this.head = (this.head + 1) % this.capacity;
+    const o = this.aOrigin.array, a = this.aAxis.array, f = this.aFacing.array;
+    o[i * 3] = origin.x; o[i * 3 + 1] = origin.y + 0.06; o[i * 3 + 2] = origin.z;
+    a[i * 3] = axis.x; a[i * 3 + 1] = axis.y; a[i * 3 + 2] = axis.z;
+    f[i * 3] = facing.x; f[i * 3 + 1] = facing.y; f[i * 3 + 2] = facing.z;
+    this.aTime.array[i * 2] = this.time;
+    this.aTime.array[i * 2 + 1] = life;
+    _tmpColor.set(colour);
+    const c = this.aColor.array;
+    c[i * 4] = _tmpColor.r; c[i * 4 + 1] = _tmpColor.g;
+    c[i * 4 + 2] = _tmpColor.b; c[i * 4 + 3] = alpha;
+    const s = this.aShape.array;
+    s[i * 4] = r0; s[i * 4 + 1] = r1; s[i * 4 + 2] = 0.14;
+    s[i * 4 + 3] = Math.min(Math.PI, Math.max(1e-3, halfAperture));
+    this.dirty = true;
+    return i;
+  }
+
+  /** See `BeamPool.live`. */
+  get live() {
+    let n = 0;
+    const a = this.aTime.array;
+    for (let i = 0; i < this.capacity; i++) {
+      const life = a[i * 2 + 1];
+      if (life > 0 && this.time - a[i * 2] < life) n++;
+    }
+    return n;
+  }
+
+  update(dt, depth, resolution, near, far) {
+    this.time += dt;
+    const u = this.mat.uniforms;
+    u.uTime.value = this.time;
+    if (depth) {
+      u.uDepth.value = depth;
+      u.uResolution.value.copy(resolution);
+      u.uCamPlanes.value.set(near, far);
+      u.uSoftEnabled.value = 1;
+    } else {
+      u.uSoftEnabled.value = 0;
+    }
+    if (!this.dirty) return;
+    this.dirty = false;
+    this.aOrigin.needsUpdate = this.aAxis.needsUpdate = true;
+    this.aFacing.needsUpdate = this.aTime.needsUpdate = true;
     this.aColor.needsUpdate = this.aShape.needsUpdate = true;
   }
 }

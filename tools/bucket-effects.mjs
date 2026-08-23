@@ -23,7 +23,7 @@
  * two members of a group may still share all four dimensions.
  */
 
-import { allEffects, ELEMENTS } from '../src/data/effects.js';
+import { allEffects, ELEMENTS, GEOMETRY_DEMOS } from '../src/data/effects.js';
 import { SAMPLES_BY_ID } from '../src/data/samples.js';
 
 // The bucketing rules themselves live in `src/data/colourFamily.js`, so that
@@ -34,6 +34,31 @@ export { familyOf } from '../src/data/colourFamily.js';
 import { familyOf } from '../src/data/colourFamily.js';
 
 // -------------------------------------------------------------- the re-run
+
+/**
+ * §1.3's frame families, and the only names a row may put in its `frame`.
+ *
+ * The bucketing re-run below is a *name* comparison: two rows separate because
+ * their frame strings differ, so a typo separates them just as convincingly as
+ * a genuinely different shape does, and a family this map has never heard of is
+ * a family no collision check can reason about. Hence the arm that objects.
+ *
+ * `sector`, `helix` and `chain` are the three geometries added on 2026-08-23.
+ * They are registered here on the day they were built and before any gameplay
+ * row names them, which is the point: the check can speak about them from the
+ * start, rather than being taught about them by the first collision.
+ */
+export const FRAME_FAMILIES = {
+  'line': 'directed single-target — beam, tracer, BOLT',
+  'ring': 'area / zone / persistent hazard',
+  'radial-spark': 'point impact / proc landing',
+  'streak': 'travelling ordnance',
+  'lattice': 'protective / warded — HEX or SQUARE shell, spin != 0',
+  'pose-ring': 'telegraph / windup — a pose plus a ground ring',
+  'sector': 'directed ground arc — origin, facing, aperture (G-1)',
+  'helix': 'rotation about a path — rising helix out, vortex in (G-2, G-3)',
+  'chain': 'a path that is not a line — jagged multi-segment arc (G-4)',
+};
 
 /** The groups this wave was written to resolve, by their audit names. */
 const GROUPS = {
@@ -83,6 +108,20 @@ function main() {
   for (const r of rows) {
     if (r.drift) {
       console.error(`DRIFT  ${r.id}: hue buckets as ${r.colour}, table declares ${r.drift}`);
+      failed++;
+    }
+  }
+
+  // A frame family nobody declared. See `FRAME_FAMILIES`.
+  for (const r of rows) {
+    if (!(r.frame in FRAME_FAMILIES)) {
+      console.error(`FRAME  ${r.id}: names undeclared frame family "${r.frame}"`);
+      failed++;
+    }
+  }
+  for (const [id, d] of Object.entries(GEOMETRY_DEMOS)) {
+    if (!(d.frame in FRAME_FAMILIES)) {
+      console.error(`FRAME  geometry demo ${id}: names undeclared frame family "${d.frame}"`);
       failed++;
     }
   }

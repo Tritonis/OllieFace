@@ -82,6 +82,38 @@ export const ELEMENTS = {
 /** §1.4's three intensity steps. Motion and audio must agree on one of them. */
 export const STEPS = ['tick', 'event', 'heavy'];
 
+/**
+ * The four geometries added on 2026-08-23, as vocabulary rather than as
+ * gameplay (`docs/superpowers/plans/2026-08-23-new-vfx-geometries.md`).
+ *
+ * No ability or item names them yet — which effect adopts which shape is a
+ * design decision, deliberately left open. What this table is for is the
+ * showcase: each row is one demo entry, and its hue is read off `ELEMENTS`
+ * above rather than typed at the call site, so the demos sit inside the same
+ * walk every other authored colour does.
+ *
+ * `frame` names the §1.3 family the geometry belongs to; `vortex` shares
+ * `helix` on purpose and separates on motion alone.
+ */
+export const GEOMETRY_DEMOS = {
+  sector: {
+    frame: 'sector', element: 'fire', motion: 'expanding-ring',
+    label: 'Sector — a ground arc with a facing and an aperture',
+  },
+  helix: {
+    frame: 'helix', element: 'restorative', motion: 'rising',
+    label: 'Helix — particles laced on a rising spiral',
+  },
+  vortex: {
+    frame: 'helix', element: 'gravity', motion: 'contracting',
+    label: 'Vortex — the same lace, falling inward',
+  },
+  chain: {
+    frame: 'chain', element: 'shock', motion: 'travelling',
+    label: 'Chain — a jagged multi-hop arc',
+  },
+};
+
 // -------------------------------------------------------------------- voices
 
 /**

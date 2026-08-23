@@ -17,6 +17,7 @@ import { EQUIPMENT } from '../src/data/equipment.js';
 import { ITEMS, TIERS } from '../src/data/items.js';
 import { SPAWN_CARDS, BOSS_CARDS, ELITE_STATS } from '../src/data/enemies.js';
 import { SAMPLES } from '../src/data/samples.js';
+import { GEOMETRY_DEMOS } from '../src/data/effects.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log(`PASS  ${msg}`); } else { fail++; console.log(`FAIL  ${msg}`); } };
@@ -86,6 +87,26 @@ console.log('-- every table in the surface reaches the menu');
 
   ok(byGroup('sample').length === SAMPLES.length,
     `all ${SAMPLES.length} sampled voices are listed`);
+
+  // The 2026-08-23 geometries. Nothing in `abilities.js` or `items.js` adopts
+  // them, so the showcase is the only surface they appear on at all — which
+  // makes this the one count that, if it fell behind, would leave a shape
+  // nobody could look at. Derived from the table, like every other line here:
+  // adding a row to `GEOMETRY_DEMOS` without giving `Showcase` a way to draw
+  // it fails right here rather than showing a short menu.
+  ok(byGroup('geometry').length === Object.keys(GEOMETRY_DEMOS).length,
+    `all ${Object.keys(GEOMETRY_DEMOS).length} new geometries have a demo entry`);
+  for (const [id, def] of Object.entries(GEOMETRY_DEMOS)) {
+    const e = byGroup('geometry').find((x) => x.id === `geometry:${id}`);
+    ok(!!e && e.meta.frame === def.frame,
+      `${id} is listed and carries its declared frame family '${def.frame}'`);
+  }
+  // `vortex` is the row that catches a lazy registration: it deliberately does
+  // NOT get a frame family of its own, and a demo table that gave it one would
+  // have spent a §1.3 shape on a difference motion already carries.
+  ok(GEOMETRY_DEMOS.vortex.frame === GEOMETRY_DEMOS.helix.frame
+    && GEOMETRY_DEMOS.vortex.motion !== GEOMETRY_DEMOS.helix.motion,
+  'vortex shares the helix family and separates on motion alone');
 }
 
 console.log('\n-- the set-level presets carry their whole set (#149)');
