@@ -38,6 +38,24 @@
 
 import * as THREE from 'three';
 import { chainLightning, seekingStrike, nearbyHostiles } from './items.js';
+// The Effect Language (docs/art/EFFECT-LANGUAGE.md): element hues, and the
+// procedural voice recipes every active now speaks in its own element rather
+// than borrowing whichever shared sound happened to be nearest.
+import { ELEMENTS, EQUIPMENT_EFFECTS, voice } from './effects.js';
+
+/**
+ * Speak one equipment's own row out of EQUIPMENT_EFFECTS.
+ *
+ * A one-liner here rather than inlined at each site so that the row — element,
+ * envelope family, intensity step — is the single thing deciding what an active
+ * sounds like, and a bucketing re-run over that table is reading the values the
+ * game actually plays rather than a second copy of them.
+ */
+function speak(api, id, pos, opts) {
+  const row = EQUIPMENT_EFFECTS[id];
+  if (!row) return null;
+  return voice(api.ctx?.audio, row.element, row.envelope, pos, row.step, opts);
+}
 
 // Scratch vectors. Equipment fires at human rates, not per-frame, but the
 // allocation-free idiom is the house style and a blink that runs during a
@@ -125,11 +143,17 @@ export const EQUIPMENT = [
     cooldown: 26,
     description: () => 'Bore a searing lance through up to 5 enemies for 1400% damage each, igniting them.',
     use: (api) => {
+      // A bored lance is the line class (§1.3) in the fire element, and this
+      // card had no vfx call of its own at all: the beams below are now
+      // ember-orange rather than an unassigned amber, and the voice is the fire
+      // recipe at *heavy* intensity instead of the shared explosion body, which
+      // is a blast sound on a card whose whole subject is heat.
       const hit = seekingStrikeCount(api, api.player.position,
-        api.items.baseDamage() * 14, 5, 0xffb347, 'lance');
+        api.items.baseDamage() * 14, 5, ELEMENTS.fire.hue, 'lance');
       if (!hit) return false;
       api.ctx.pipeline?.addShake?.(0.35);
-      api.ctx.audio?.play?.('explosion', api.player.position, 6);
+      api.ctx.hitstop = Math.max(api.ctx.hitstop || 0, 0.05);
+      speak(api, 'thermal-lance', api.player.position);
       return true;
     },
   },
@@ -150,9 +174,22 @@ export const EQUIPMENT = [
           api.combat.applyStatus(t, 'slow', api.player, 2);
         }
       }
-      api.ctx.vfx?.ring?.(at, 22, 0x9b5cff);
-      api.ctx.vfx?.burst?.(at, 0x9b5cff);
-      api.ctx.audio?.play?.('zap', at);
+      // Mass, not arcing. The rings run *inward* — the one place §1.3 sanctions
+      // contracting motion — and the voice is the gravity recipe held for the
+      // length of the pull rather than a one-shot zap. That is what takes this
+      // card out of C3's beam family, where it never belonged: nothing about a
+      // snare is a swept line.
+      api.ctx.vfx?.rings?.spawn?.(at, _up, ELEMENTS.gravity.hue, 22, 1.5, 0.75, 0.95);
+      api.ctx.vfx?.rings?.spawn?.(at, _up, ELEMENTS.gravity.hue, 14, 1.0, 0.55, 0.7);
+      api.ctx.vfx?.burst?.(at, ELEMENTS.gravity.hue);
+      // The pull is a state with an end, so its voice has one too — which is
+      // the entire reason the sustained primitive exists. The immediate release
+      // is the fallback for a pawn that cannot schedule, never a leak.
+      const held = speak(api, 'gravity-snare', at, { hold: true });
+      if (held) {
+        if (api.player.schedule) api.player.schedule(1.5, () => held.release(0.45));
+        else held.release(0.45);
+      }
       return true;
     },
   },
@@ -183,9 +220,16 @@ export const EQUIPMENT = [
       api.combat.explode(at, 16, api.items.baseDamage() * 11, api.player, {
         team: 'player', proc: 0.6, procDepth: api.procDepth, type: 'overload', status: 'shock',
       });
-      api.ctx.vfx?.explosion?.(at, 12, 0xffd76a);
+      // The loudest-looking equipment in the tier was literally silent. Blast
+      // element at *heavy* intensity (§4.1): amber-warm, an expanding ring over
+      // the blast's own debris, and a noise transient on a sine sub with a long
+      // tail. The shake and the hitstop were already here and were agreeing
+      // with nothing at all.
+      api.ctx.vfx?.explosion?.(at, 12, ELEMENTS.blast.hue);
+      api.ctx.vfx?.ring?.(at, 16, ELEMENTS.blast.hue);
       api.ctx.pipeline?.addShake?.(0.7);
       api.ctx.hitstop = Math.max(api.ctx.hitstop || 0, 0.07);
+      speak(api, 'overload-cell', at);
       return true;
     },
   },
@@ -199,9 +243,13 @@ export const EQUIPMENT = [
       const targets = nearbyHostiles(api, at, 26);
       if (!targets.length) return false;
       for (const t of targets) api.combat.applyStatus(t, 'freeze', api.player, 2);
-      api.ctx.vfx?.ring?.(at, 26, 0x9fe8ff);
-      api.ctx.vfx?.burst?.(at, 0xd8f6ff);
-      api.ctx.audio?.play?.('shieldBreak', at);
+      // Frost, and its own identity rather than another effect's. The expanding
+      // ring stays; the voice is the frost recipe — a high triangle partial over
+      // a highpass hiss, no sub — instead of shieldBreak, which is the sound of
+      // a shield *ending* and belongs to nothing here (§3 C8, §4.1).
+      api.ctx.vfx?.ring?.(at, 26, ELEMENTS.frost.hue);
+      api.ctx.vfx?.burst?.(at, ELEMENTS.frost.hue);
+      speak(api, 'frostbite-canister', at);
       return true;
     },
   },
@@ -386,11 +434,36 @@ export const EQUIPMENT = [
         if (a.player.position.distanceTo(at) <= AEGIS_RADIUS) {
           a.items.addBuff('aegis', 0.7, 1, AEGIS_ARMOR);
         }
-        a.ctx.vfx?.ring?.(at, AEGIS_RADIUS, 0x8fd8ff);
+        // A held boundary, not a nova redrawn twice a second: the radius does
+        // not move, which is what §1.3 asks of any ring that is a standing
+        // thing rather than an event.
+        a.ctx.vfx?.rings?.spawn?.(at, _up, ELEMENTS.restorative.hue,
+          AEGIS_RADIUS, AEGIS_RADIUS, 0.55, 0.35);
       });
-      api.ctx.vfx?.rings?.spawn?.(at, _up, 0x8fd8ff, 0.4, AEGIS_RADIUS, 0.6, 0.9);
-      api.ctx.vfx?.burst?.(at, 0xbfe8ff);
-      api.ctx.audio?.play?.('shieldBreak', at);
+      // Lattice class, rising (§1.3, §4.1). Stacked rings at shrinking radii and
+      // lifting centres, so the figure reads as a shell going *up* rather than a
+      // wave going out — a shield going up and a freeze going off must not be
+      // the same shape, which is the whole content of C8.
+      //
+      // This is as close to the lattice class as the public VFX surface
+      // reaches. The class is defined as spinning HEX frames on a shell, and the
+      // only code emitting those is VFX.shieldBreak — a shield *ending*, with
+      // its own voice and its own shake welded in. A world-point lattice
+      // primitive is the one helper this wave wanted and did not have.
+      for (let i = 0; i < 4; i++) {
+        const f = 1 - i * 0.22;
+        api.ctx.vfx?.rings?.spawn?.(at.clone().setY(at.y + i * 1.5), _up,
+          ELEMENTS.restorative.hue, AEGIS_RADIUS * 0.2, AEGIS_RADIUS * f, 0.5 + i * 0.12, 0.85);
+      }
+      api.ctx.vfx?.burst?.(at, ELEMENTS.restorative.hue);
+      // A voice that builds and holds while the dome stands. The old cue was
+      // shieldBreak — semantically inverted, a shield ending announcing a shield
+      // beginning — and §4.1 says it must go.
+      const dome = speak(api, 'aegis-emitter', at, { hold: true });
+      if (dome) {
+        if (api.player.schedule) api.player.schedule(BUFF.aegis, () => dome.release(0.8));
+        else dome.release(0.8);
+      }
       return true;
     },
   },

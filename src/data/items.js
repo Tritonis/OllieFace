@@ -20,6 +20,9 @@
 // The Warden's Tally asks the same question the void's own reward multiplier
 // does, and there is exactly one answer to it in the codebase.
 import { isVoidtouched } from './corruption.js';
+// The Effect Language (docs/art/EFFECT-LANGUAGE.md), as data: element hues and
+// the proc-grammar floor every item hook now speaks through.
+import { ELEMENTS, cue } from './effects.js';
 
 /**
  * Tier table. `weight` is the *default* pull weight for a generic roll; the
@@ -100,15 +103,25 @@ const pct = (v) => `${Math.round(v * 1000) / 10}%`;
 // same primitives — an equipment nuke that reached for its own copy of these
 // would be the second place proc depth is accounted for, and one of the two
 // would eventually be wrong.
-export function chainLightning(api, origin, damage, bounces) {
+export function chainLightning(api, origin, damage, bounces, opts = {}) {
   const { combat, player, ctx } = api;
+  // Colour and frame are the caller's, because they are the caller's *element*
+  // and *effect class* (EFFECT-LANGUAGE §1.1, §1.3) and not a property of
+  // chaining. Seven items shared this one blue line, which is precisely the
+  // C1 collision: Arc Rot is rot, Quicksilver Vein is a metal, and neither is
+  // lightning. The defaults are the shock recipe, so a caller that says nothing
+  // still lands somewhere legible.
+  const colour = opts.colour ?? ELEMENTS.shock.hue;
+  const frame = opts.frame || 'line';
   let from = origin.position || origin;
   let last = origin.entity || origin;
   const hit = [last];
   for (let i = 0; i < bounces; i++) {
     const next = combat.nearestHostile(last.position || from, 14, 'player', hit);
     if (!next) break;
-    ctx.vfx?.beam?.(last.position || from, next.position, 0x9fd8ff);
+    if (frame === 'radial-spark') ctx.vfx?.hitSpark?.(next.position, colour, 0.9);
+    else if (frame === 'streak') ctx.vfx?.missile?.(last.position || from, next.position, colour);
+    else ctx.vfx?.beam?.(last.position || from, next.position, colour);
     combat.applyDamage(next, damage, {
       source: player, position: next.position, type: 'lightning',
       procCoefficient: 0.2, procDepth: api.procDepth,
@@ -118,14 +131,19 @@ export function chainLightning(api, origin, damage, bounces) {
   }
 }
 
-export function seekingStrike(api, from, damage, count, colour, type) {
+export function seekingStrike(api, from, damage, count, colour, type, frame = 'line') {
   const { combat, player, ctx } = api;
   const seen = [];
   for (let i = 0; i < count; i++) {
     const target = combat.nearestHostile(from, 30, 'player', seen);
     if (!target) break;
     seen.push(target);
-    ctx.vfx?.beam?.(from, target.position, colour);
+    // Effect class, per EFFECT-LANGUAGE §1.3: a line is a directed strike, a
+    // streak is travelling ordnance, a radial-spark is a shatter that happens
+    // at a point. Three items that were all lines are three different things.
+    if (frame === 'radial-spark') ctx.vfx?.hitSpark?.(target.position, colour, 0.9);
+    else if (frame === 'streak') ctx.vfx?.missile?.(from, target.position, colour);
+    else ctx.vfx?.beam?.(from, target.position, colour);
     combat.applyDamage(target, damage, {
       source: player, position: target.position, type,
       procCoefficient: 1, procDepth: api.procDepth,
@@ -351,7 +369,9 @@ export const ITEMS = [
     hooks: {
       onHit: (e, api) => {
         if (!api.roll(hyperbolic(0.40, api.count))) return;
-        chainLightning(api, e, api.items.baseDamage() * 1.1, 3 + linear(2, api.count));
+        chainLightning(api, e, api.items.baseDamage() * 1.1, 3 + linear(2, api.count),
+          { colour: ELEMENTS.toxic.hue });
+        cue(api, 'arc-rot', e);
         // Charged per *proc*, not per stack: stacking already buys more procs, so
         // a per-stack bill would make the cost quadratic in the count.
         payHealth(api, api.player.health * 0.015);
@@ -367,7 +387,8 @@ export const ITEMS = [
     hooks: {
       onHit: (e, api) => {
         if (!api.roll(hyperbolic(0.22, api.count))) return;
-        api.ctx.vfx?.missile?.(api.player.position, e.position);
+        api.ctx.vfx?.missile?.(api.player.position, e.position, ELEMENTS.toxic.hue);
+        cue(api, 'bile-shell', e);
         api.combat.explode(e.position, 5, api.items.baseDamage() * linear(4.5, api.count), api.player, {
           team: 'player', proc: 0.6, procDepth: api.procDepth, type: 'missile',
         });
@@ -381,7 +402,11 @@ export const ITEMS = [
     description: (n) => `Critical strikes heal you for ${linear(24, n)}. You no longer regenerate health passively. Consumes every ${consumes('reaping-hook')} you hold.`,
     stat: (n, s) => { s.noRegen = true; },
     hooks: {
-      onHit: (e, api) => { if (e.crit) api.combat.heal(api.player, linear(24, api.count)); },
+      onHit: (e, api) => {
+        if (!e.crit) return;
+        api.combat.heal(api.player, linear(24, api.count));
+        cue(api, 'gristle-sickle');
+      },
     },
   },
   {
@@ -397,6 +422,7 @@ export const ITEMS = [
         api.combat.explode(e.position, 2.5 + linear(1, api.count), e.amount * 1.05, api.player, {
           team: 'player', proc: 0, procDepth: api.procDepth, type: 'gall', falloff: false,
         });
+        cue(api, 'rupture-gall', e);
       },
     },
   },
@@ -427,6 +453,7 @@ export const ITEMS = [
       onKill: (e, api) => {
         const p = api.player;
         api.combat.heal(p, (p.stats?.maxHealth || 100) * linear(0.07, api.count));
+        cue(api, 'gorge-tooth');
       },
     },
   },
@@ -469,6 +496,7 @@ export const ITEMS = [
       onKill: (e, api) => {
         if (!isVoidtouched(e.victim)) return;
         api.items.addBuff('frenzy', 8, 3, linear(0.12, api.count));
+        cue(api, 'wardens-tally');
       },
     },
   },
@@ -479,7 +507,9 @@ export const ITEMS = [
     hooks: {
       onHit: (e, api) => {
         if (!api.roll(hyperbolic(0.08, api.count) * grace(api.ctx))) return;
-        chainLightning(api, e, api.items.baseDamage() * 1.6, 2);
+        chainLightning(api, e, api.items.baseDamage() * 1.6, 2,
+          { colour: ELEMENTS.physical.hue });
+        cue(api, 'quicksilver-vein', e);
       },
     },
   },
@@ -490,6 +520,7 @@ export const ITEMS = [
     hooks: {
       onDamaged: (e, api) => {
         api.items.addBuff('aegis', 4, 1, linear(14, api.count) * grace(api.ctx));
+        cue(api, 'unblemished-plate');
       },
     },
   },
@@ -506,6 +537,7 @@ export const ITEMS = [
         const cor = api.ctx?.corruption;
         if (!api.ctx?.authority || !cor?.sanctified) return;
         cor.bleed(api.player, linear(1.5, api.count));
+        cue(api, 'chime-of-absolution');
       },
     },
   },
@@ -547,7 +579,10 @@ export const ITEMS = [
     flavour: 'Found under the vending machine. Still counts.',
     description: (n) => `Gain ${linear(2, n)} gold whenever you are hurt.`,
     hooks: {
-      onDamaged: (e, api) => { api.items.addGold(linear(2, api.count)); },
+      onDamaged: (e, api) => {
+        api.items.addGold(linear(2, api.count));
+        cue(api, 'bruised-coinpurse');
+      },
     },
   },
   {
@@ -581,6 +616,7 @@ export const ITEMS = [
       onHit: (e, api) => {
         if (!e.crit) return;
         api.items.addBuff('frenzy', 3, 3, linear(0.12, api.count));
+        cue(api, 'bloodscent');
       },
     },
   },
@@ -600,6 +636,7 @@ export const ITEMS = [
         api.combat.explode(e.position, 4, api.items.baseDamage() * 1.8, api.player, {
           team: 'player', proc: 0.3, procDepth: api.procDepth, type: 'sticky',
         });
+        cue(api, 'tar-charge', e);
       },
     },
   },
@@ -620,7 +657,8 @@ export const ITEMS = [
           });
           api.combat.applyStatus(t, 'burn', api.player, api.count);
         }
-        api.ctx.vfx?.ring?.(e.position, radius, 0xff7a2a);
+        api.ctx.vfx?.ring?.(e.position, radius, ELEMENTS.fire.hue);
+        cue(api, 'leaking-jerrycan', e);
       },
     },
   },
@@ -632,6 +670,7 @@ export const ITEMS = [
       onKill: (e, api) => {
         const p = api.player;
         api.combat.heal(p, linear(8, api.count) + (p.stats?.maxHealth || 100) * linear(0.02, api.count));
+        cue(api, 'marrow-tooth');
       },
     },
   },
@@ -640,7 +679,10 @@ export const ITEMS = [
     flavour: 'A gift from someone who is now dead.',
     description: (n) => `Killing an enemy grants a temporary ${linear(15, n)} point barrier.`,
     hooks: {
-      onKill: (e, api) => { api.items.addBarrier(linear(15, api.count)); },
+      onKill: (e, api) => {
+        api.items.addBarrier(linear(15, api.count));
+        cue(api, 'amber-clasp');
+      },
     },
   },
   {
@@ -652,6 +694,7 @@ export const ITEMS = [
         if (!api.items.cooldownReady('stitch-kit', 1.2)) return;
         const p = api.player;
         api.combat.heal(p, linear(10, api.count) + (p.stats?.maxHealth || 100) * linear(0.03, api.count));
+        cue(api, 'stitch-kit');
       },
     },
   },
@@ -688,7 +731,10 @@ export const ITEMS = [
     flavour: 'Keep moving. Whatever it was is still behind you.',
     description: (n) => `Killing an enemy grants +${pct(0.2)} movement speed for ${linear(3, n)}s.`,
     hooks: {
-      onKill: (e, api) => { api.items.addBuff('quickfoot', linear(3, api.count), 1, 0.2); },
+      onKill: (e, api) => {
+        api.items.addBuff('quickfoot', linear(3, api.count), 1, 0.2);
+        cue(api, 'spurs');
+      },
     },
   },
   {
@@ -699,6 +745,7 @@ export const ITEMS = [
       onHit: (e, api) => {
         if (!api.roll(hyperbolic(0.08, api.count))) return;
         api.combat.applyStatus(e.target, 'burn', api.player, 1);
+        cue(api, 'warm-coals', e);
       },
     },
   },
@@ -710,6 +757,7 @@ export const ITEMS = [
       onHit: (e, api) => {
         if (!api.roll(hyperbolic(0.05, api.count))) return;
         chainLightning(api, e, api.items.baseDamage() * linear(0.6, api.count), 1);
+        cue(api, 'copper-wire', e);
       },
     },
   },
@@ -742,6 +790,7 @@ export const ITEMS = [
         if (api.items.timeSinceHurt() < 5) return;
         if (!api.items.cooldownReady('field-dressing', 1)) return;
         api.items.addBarrier(linear(12, api.count));
+        cue(api, 'field-dressing');
       },
     },
   },
@@ -754,6 +803,7 @@ export const ITEMS = [
         const p = api.player;
         if (!p?.alive || p.health > (p.stats?.maxHealth || 100) * 0.5) return;
         api.combat.heal(p, linear(2.5, api.count) * e.dt);
+        cue(api, 'salt-lick');
       },
     },
   },
@@ -779,6 +829,7 @@ export const ITEMS = [
       onKill: (e, api) => {
         if (!api.roll(hyperbolic(0.10, api.count))) return;
         api.items.addBuff('quickhands', 3, 1, 0.4);
+        cue(api, 'bandolier');
       },
     },
   },
@@ -789,7 +840,9 @@ export const ITEMS = [
     hooks: {
       onKill: (e, api) => {
         if (!api.roll(hyperbolic(0.12, api.count))) return;
-        seekingStrike(api, e.position, api.items.baseDamage() * linear(1.1, api.count), 1, 0xb9e4ff, 'spark');
+        seekingStrike(api, e.position, api.items.baseDamage() * linear(1.1, api.count), 1,
+          ELEMENTS.shock.hue, 'spark', 'streak');
+        cue(api, 'spark-plug', e);
       },
     },
   },
@@ -874,6 +927,7 @@ export const ITEMS = [
         const p = api.player;
         if (!p?.alive || p.health > (p.stats?.maxHealth || 100) * 0.4) return;
         api.items.addBuff('preyfoot', 0.5, 1, linear(0.18, api.count));
+        cue(api, 'prey-instinct');
       },
     },
   },
@@ -887,6 +941,7 @@ export const ITEMS = [
       onHit: (e, api) => {
         if (!api.roll(hyperbolic(0.25, api.count))) return;
         chainLightning(api, e, api.items.baseDamage() * 0.8, 2 + linear(2, api.count));
+        cue(api, 'cracked-zither', e);
       },
     },
   },
@@ -897,7 +952,8 @@ export const ITEMS = [
     hooks: {
       onHit: (e, api) => {
         if (!api.roll(hyperbolic(0.10, api.count))) return;
-        api.ctx.vfx?.missile?.(api.player.position, e.position);
+        api.ctx.vfx?.missile?.(api.player.position, e.position, ELEMENTS.blast.hue);
+        cue(api, 'missile-rack', e);
         api.combat.explode(e.position, 5, api.items.baseDamage() * linear(3, api.count), api.player, {
           team: 'player', proc: 0.6, procDepth: api.procDepth, type: 'missile',
         });
@@ -912,6 +968,7 @@ export const ITEMS = [
       onHit: (e, api) => {
         if (!api.roll(hyperbolic(0.15, api.count))) return;
         api.combat.applyStatus(e.target, 'bleed', api.player, 1);
+        cue(api, 'gutting-shiv', e);
       },
     },
   },
@@ -923,6 +980,7 @@ export const ITEMS = [
       onHit: (e, api) => {
         if (!api.roll(hyperbolic(0.05, api.count))) return;
         api.combat.applyStatus(e.target, 'shock', api.player, 1);
+        cue(api, 'concussion-charge', e);
       },
     },
   },
@@ -938,6 +996,7 @@ export const ITEMS = [
         api.combat.explode(e.position, 6, api.items.baseDamage() * linear(2.5, api.count), api.player, {
           team: 'player', proc: 0.3, procDepth: api.procDepth, type: 'frost',
         });
+        cue(api, 'hoarfrost-band', e);
       },
     },
   },
@@ -946,7 +1005,10 @@ export const ITEMS = [
     flavour: 'Every kill makes you a little more permanent.',
     description: (n) => `Killing an enemy permanently grants +1 max health, up to +${linear(100, n)}.`,
     hooks: {
-      onKill: (e, api) => { api.items.addPermanentHealth(1, linear(100, api.count)); },
+      onKill: (e, api) => {
+        api.items.addPermanentHealth(1, linear(100, api.count));
+        cue(api, 'feeding-vial');
+      },
     },
   },
   {
@@ -954,7 +1016,11 @@ export const ITEMS = [
     flavour: 'It takes its cut on the way past.',
     description: (n) => `Critical strikes heal you for ${linear(8, n)}.`,
     hooks: {
-      onHit: (e, api) => { if (e.crit) api.combat.heal(api.player, linear(8, api.count)); },
+      onHit: (e, api) => {
+        if (!e.crit) return;
+        api.combat.heal(api.player, linear(8, api.count));
+        cue(api, 'reaping-hook');
+      },
     },
   },
   {
@@ -962,7 +1028,10 @@ export const ITEMS = [
     flavour: 'It drinks and it grows.',
     description: (n) => `Dealing damage heals you for ${linear(1, n)}.`,
     hooks: {
-      onHit: (e, api) => { api.combat.heal(api.player, linear(1, api.count)); },
+      onHit: (e, api) => {
+        api.combat.heal(api.player, linear(1, api.count));
+        cue(api, 'thirsting-burr');
+      },
     },
   },
   {
@@ -1001,6 +1070,7 @@ export const ITEMS = [
         api.combat.explode(e.position, 8, api.items.baseDamage() * linear(3, api.count), api.player, {
           team: 'player', proc: 0.2, procDepth: api.procDepth, type: 'fire', status: 'burn',
         });
+        cue(api, 'corpse-flare', e);
       },
     },
   },
@@ -1025,6 +1095,7 @@ export const ITEMS = [
       onKill: (e, api) => {
         if (!api.items.tallyKillWindow(3, 1.0)) return;
         api.items.addBuff('berzerk', linear(6, api.count), 1, 0.3);
+        cue(api, 'red-mist-pauldron');
       },
     },
   },
@@ -1054,7 +1125,9 @@ export const ITEMS = [
     hooks: {
       onHit: (e, api) => {
         if (!api.roll(hyperbolic(0.12, api.count))) return;
-        seekingStrike(api, e.position, api.items.baseDamage() * linear(1.8, api.count), 4, 0xd6f4ff, 'wind');
+        seekingStrike(api, e.position, api.items.baseDamage() * linear(1.8, api.count), 4,
+          ELEMENTS.bone.hue, 'wind', 'streak');
+        cue(api, 'squall-charm', e);
       },
     },
   },
@@ -1063,7 +1136,10 @@ export const ITEMS = [
     flavour: 'Expiry: illegible. Contents: enthusiastic.',
     description: (n) => `Killing an enemy heals ${linear(20, n)} health over 4s.`,
     hooks: {
-      onKill: (e, api) => { api.items.addBuff('mending', 4, 8, linear(5, api.count)); },
+      onKill: (e, api) => {
+        api.items.addBuff('mending', 4, 8, linear(5, api.count));
+        cue(api, 'ration-pack');
+      },
       onInterval: (e, api) => {
         const b = api.items.buffStacks('mending');
         if (b <= 0) return;
@@ -1084,6 +1160,7 @@ export const ITEMS = [
           source: api.player, position: src.position, type: 'thorns',
           procCoefficient: 0, procDepth: api.procDepth,
         });
+        cue(api, 'iron-thorns', src);
       },
     },
   },
@@ -1104,7 +1181,10 @@ export const ITEMS = [
       // The mark itself is bookkeeping, not a status: Combat's status table is
       // for things that tick, and a pure damage multiplier that ticks nothing
       // would pay a full status slot plus its VFX for a number.
-      onHit: (e, api) => { api.items.mark(e.target, 8); },
+      onHit: (e, api) => {
+        api.items.mark(e.target, 8);
+        cue(api, 'hunters-tag', e);
+      },
       outgoing: (amount, target, info, api) =>
         (api.items.isMarked(target) ? amount * (1 + linear(0.18, api.count)) : amount),
     },
@@ -1130,6 +1210,7 @@ export const ITEMS = [
         if (!api.roll(hyperbolic(0.15, api.count))) return;
         const deep = api.items.tally('frost-lattice', 4);
         api.combat.applyStatus(e.target, deep ? 'freeze' : 'slow', api.player, 1);
+        cue(api, 'frost-lattice', e);
       },
     },
   },
@@ -1140,6 +1221,7 @@ export const ITEMS = [
     hooks: {
       onKill: (e, api) => {
         api.items.addGold(api.items.killReward(e.victim) * linear(0.30, api.count));
+        cue(api, 'scrap-magnet');
       },
     },
   },
@@ -1148,7 +1230,10 @@ export const ITEMS = [
     flavour: 'Sung once, badly, by a survivor who did not survive.',
     description: (n) => `Being hurt grants +${pct(linear(0.15, n))} attack speed for 5s, up to 3 stacks.`,
     hooks: {
-      onDamaged: (e, api) => { api.items.addBuff('frenzy', 5, 3, linear(0.15, api.count)); },
+      onDamaged: (e, api) => {
+        api.items.addBuff('frenzy', 5, 3, linear(0.15, api.count));
+        cue(api, 'battle-hymn');
+      },
     },
   },
   {
@@ -1164,6 +1249,7 @@ export const ITEMS = [
             source: api.player, position: t.position, type: 'swarm',
             procCoefficient: 0, procDepth: api.procDepth,
           });
+          cue(api, 'carrion-flies', t);
         }
       },
     },
@@ -1285,8 +1371,9 @@ export const ITEMS = [
         // `status`: this card never claimed to ignite, and giving it burn would
         // quietly make an uncommon into an ailment engine.
         api.items.addCloud(api.player.position, 3.2, 4, linear(0.55, api.count), {
-          colour: 0xff7a2a, type: 'fire',
+          colour: ELEMENTS.fire.hue, type: 'fire',
         });
+        cue(api, 'emberwake', api.player.position);
       },
     },
   },
@@ -1306,7 +1393,9 @@ export const ITEMS = [
       onHit: (e, api) => {
         if (api.items.buffStacks('arccharge') <= 0) return;
         api.items.clearBuff('arccharge');
-        chainLightning(api, e, api.items.baseDamage() * linear(2.2, api.count), 3 + linear(1, api.count));
+        chainLightning(api, e, api.items.baseDamage() * linear(2.2, api.count), 3 + linear(1, api.count),
+          { frame: 'radial-spark' });
+        cue(api, 'arc-capacitor', e);
       },
     },
   },
@@ -1405,6 +1494,9 @@ export const ITEMS = [
         api.combat.explode(e.position, 2.5 + linear(1.5, api.count), e.amount * 0.6, api.player, {
           team: 'player', proc: 0, procDepth: api.procDepth, type: 'shrapnel-heart', falloff: false,
         });
+        // Tick intensity and throttled, per §4.2: this is the highest-frequency
+        // proc in the game and a full-intensity cue on it dominates the mix.
+        cue(api, 'shrapnel-heart', e);
       },
     },
   },
@@ -1450,7 +1542,9 @@ export const ITEMS = [
     description: (n) => `Killing an enemy releases ${linear(1, n) + 2} seeking daggers dealing ${pct(linear(1.5, n))} damage.`,
     hooks: {
       onKill: (e, api) => {
-        seekingStrike(api, e.position, api.items.baseDamage() * linear(1.5, api.count), 2 + linear(1, api.count), 0xff5fd0, 'dagger');
+        seekingStrike(api, e.position, api.items.baseDamage() * linear(1.5, api.count),
+          2 + linear(1, api.count), ELEMENTS.void.hue, 'dagger');
+        cue(api, 'mourners-dagger', e);
       },
     },
   },
@@ -1462,6 +1556,7 @@ export const ITEMS = [
       onKill: (e, api) => {
         if (!e.victim?.isElite) return;
         api.items.addBuff('nocooldown', linear(4, api.count), 1, 1);
+        cue(api, 'whisper-stalks');
       },
     },
   },
@@ -1485,6 +1580,7 @@ export const ITEMS = [
         api.combat.explode(e.position, 7, api.items.baseDamage() * linear(6, api.count), api.player, {
           team: 'player', proc: 0.5, procDepth: api.procDepth, type: 'resonance',
         });
+        cue(api, 'resonance-coil', e);
       },
     },
   },
@@ -1493,7 +1589,10 @@ export const ITEMS = [
     flavour: 'It does not make you faster. It makes the wait shorter.',
     description: (n) => `Each kill grants a stacking ${pct(0.05)} cooldown reduction for 8s, up to ${linear(4, n) + 4} stacks.`,
     hooks: {
-      onKill: (e, api) => { api.items.addBuff('overclock', 8, 4 + linear(4, api.count), 0.05); },
+      onKill: (e, api) => {
+        api.items.addBuff('overclock', 8, 4 + linear(4, api.count), 0.05);
+        cue(api, 'chronal-governor');
+      },
     },
   },
   {
@@ -1506,6 +1605,7 @@ export const ITEMS = [
         if (api.items.timeSinceHurt() < 1) return;
         if (!api.items.cooldownReady('siege-battery', 1)) return;
         api.items.addBuff('siege', 999, 10, linear(0.06, api.count));
+        cue(api, 'siege-battery');
       },
       outgoing: (amount, target, info, api) =>
         amount * (1 + api.items.buffStacks('siege') * api.items.buffMagnitude('siege')),
@@ -1531,8 +1631,11 @@ export const ITEMS = [
     hooks: {
       onHit: (e, api) => {
         if (!e.crit) return;
+        // A crit shatter, so it happens *at the crit point*: bone-cream shards
+        // in a radial-spark, not violet lines (§3 C9).
         seekingStrike(api, e.position, api.items.baseDamage() * linear(1.1, api.count),
-          2 + linear(2, api.count), 0xb98cff, 'prism');
+          2 + linear(2, api.count), ELEMENTS.bone.hue, 'prism', 'radial-spark');
+        cue(api, 'prism-splinter', e);
       },
     },
   },
@@ -1554,7 +1657,8 @@ export const ITEMS = [
             api.combat.applyStatus(t, 'slow', api.player, 1);
           }
         }
-        api.ctx.vfx?.ring?.(at, 12, 0x9b5cff);
+        api.ctx.vfx?.ring?.(at, 12, ELEMENTS.gravity.hue);
+        cue(api, 'gravity-well', { position: at });
         api.combat.explode(at, 12, api.items.baseDamage() * linear(3, api.count), api.player, {
           team: 'player', proc: 0.4, procDepth: api.procDepth, type: 'gravity', falloff: false,
         });
@@ -1570,12 +1674,14 @@ export const ITEMS = [
         if (!api.combat.hasStatus(e.victim, 'burn')) return;
         const targets = nearbyHostiles(api, e.position, 14).slice(0, 2 + linear(3, api.count));
         for (const t of targets) {
-          api.ctx.vfx?.beam?.(e.position, t.position, 0xff7a2a);
+          // A spread, not an arc: travelling streaks between victims (§3 C7).
+          api.ctx.vfx?.missile?.(e.position, t.position, ELEMENTS.fire.hue);
           api.combat.applyStatus(t, 'burn', api.player, 1);
           api.combat.applyDamage(t, api.items.baseDamage() * linear(2, api.count), {
             source: api.player, position: t.position, type: 'fire',
             procCoefficient: 0.2, procDepth: api.procDepth,
           });
+          cue(api, 'warlock-ember', t);
         }
       },
     },
@@ -1591,6 +1697,7 @@ export const ITEMS = [
         api.combat.explode(api.player.position, 9, api.items.baseDamage() * linear(4, api.count), api.player, {
           team: 'player', proc: 0.3, procDepth: api.procDepth, type: 'kinetic',
         });
+        cue(api, 'kinetic-recycler');
       },
     },
   },
@@ -1685,7 +1792,10 @@ export const ITEMS = [
     flavour: 'It feeds on the pain of its host. Symbiotically.',
     description: (n) => `Heal for ${linear(15, n)} whenever you are hit.`,
     hooks: {
-      onDamaged: (e, api) => { api.combat.heal(api.player, linear(15, api.count)); },
+      onDamaged: (e, api) => {
+        api.combat.heal(api.player, linear(15, api.count));
+        cue(api, 'grafted-polyp');
+      },
     },
   },
   {
@@ -1695,7 +1805,10 @@ export const ITEMS = [
     hooks: {
       onInterval: (e, api) => {
         if (!api.items.cooldownReady('gland', 10)) return;
-        seekingStrike(api, api.player.position, api.items.baseDamage() * 2, linear(3, api.count), 0xd9b8ff, 'swarm');
+        // A swarm of motes, so acid-green streaks — the gland was never gravity.
+        seekingStrike(api, api.player.position, api.items.baseDamage() * 2, linear(3, api.count),
+          ELEMENTS.toxic.hue, 'swarm', 'streak');
+        cue(api, 'hive-gland', api.player.position);
       },
     },
   },
@@ -1708,6 +1821,7 @@ export const ITEMS = [
       onDamaged: (e, api) => {
         if (!api.items.cooldownReady('sunken-vertebra', 1)) return;
         api.items.addBarrier(linear(30, api.count));
+        cue(api, 'sunken-vertebra');
       },
     },
   },
@@ -1721,6 +1835,7 @@ export const ITEMS = [
         api.combat.explode(api.player.position, 10, api.items.baseDamage() * linear(4, api.count), api.player, {
           team: 'player', proc: 0.3, procDepth: api.procDepth, type: 'fire', status: 'burn',
         });
+        cue(api, 'molten-core');
       },
     },
   },
@@ -1738,7 +1853,10 @@ export const ITEMS = [
     flavour: 'It bursts. Then everything nearby has a very bad week.',
     description: (n) => `Killing an enemy leaves a spore cloud dealing ${pct(linear(1.2, n))} damage per second for 5s.`,
     hooks: {
-      onKill: (e, api) => { api.items.addCloud(e.position, 6, 5, linear(1.2, api.count)); },
+      onKill: (e, api) => {
+        api.items.addCloud(e.position, 6, 5, linear(1.2, api.count));
+        cue(api, 'spore-sac', e);
+      },
     },
   },
 
@@ -1836,7 +1954,10 @@ export const ITEMS = [
     description: (n) => `Kills pay +${pct(linear(2, n))} gold. All of your damage is reduced by ${pct(1 - hyperbolicMult(0.45, n))}.`,
     stat: (n, s) => { s.damageMult *= hyperbolicMult(0.45, n); },
     hooks: {
-      onKill: (e, api) => { api.items.addGold(api.items.killReward(e.victim) * linear(2, api.count)); },
+      onKill: (e, api) => {
+        api.items.addGold(api.items.killReward(e.victim) * linear(2, api.count));
+        cue(api, 'tithe-of-ash');
+      },
     },
   },
   {
@@ -1852,6 +1973,7 @@ export const ITEMS = [
       onKill: (e, api) => {
         const p = api.player;
         api.combat.heal(p, (p.stats?.maxHealth || 100) * linear(0.08, api.count));
+        cue(api, 'charnel-bloom');
       },
     },
   },
@@ -1864,6 +1986,7 @@ export const ITEMS = [
       onHit: (e, api) => {
         if (!e.crit) return;
         payHealth(api, api.player.health * linear(0.03, api.count));
+        cue(api, 'brittle-edge');
       },
     },
   },
@@ -1912,7 +2035,10 @@ export const ITEMS = [
       // per *second held* rather than per hit, so it does not scale with attack
       // speed and cannot be outrun by a fast primary; the only way to reduce it
       // is to be worth less health, which is its own decision.
-      onHit: (e, api) => { api.combat.applyStatus(e.target, 'burn', api.player, 1); },
+      onHit: (e, api) => {
+        api.combat.applyStatus(e.target, 'burn', api.player, 1);
+        cue(api, 'ashen-pact', e);
+      },
       onInterval: (e, api) => {
         if (!api.items.cooldownReady('ashen-pact', 1)) return;
         // Two numbers here, and both of them were wrong in the same direction.
