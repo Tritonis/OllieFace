@@ -176,5 +176,38 @@ console.log('enemy stuck recovery (#186)');
   ok(e.stuckT === 0, 'and no stuck time accumulates during it');
 }
 
+// --- non-trigger: open ground, and a player it can never catch --------------
+{
+  // The expensive false positive. A unit chasing a player who is simply faster
+  // never closes the distance and never will, and rescuing it would teleport
+  // monsters onto a kiting survivor - deleting the counterplay that kiting is.
+  // Flat ground, no walls, player walking away at 1.2x the unit's speed.
+  const w = makeWorld(6);
+  w.ctx.stage = {
+    sampleHeight: () => 0,
+    isWalkable: () => true,
+    raycast: () => null,
+    capsuleResolve(position, radius, height, velocity, h) {
+      const p = new THREE.Vector3(position.x + velocity.x * h, 0, position.z + velocity.z * h);
+      if (velocity.y < 0) velocity.y = 0;
+      return { position: p, velocity, grounded: true };
+    },
+  };
+  const e = new Enemy();
+  e.spawn(w.ctx, card('skink'), { x: 0, y: 0, z: 0 }, {});
+  w.ctx.director.enemies.push(e);
+  const h = 1 / 60;
+  let sawExtract = false;
+  for (let i = 0; i < Math.round(25 / h); i++) {
+    w.ctx.time += h;
+    w.player.position.x += e.moveSpeed * 1.2 * h;
+    w.player.velocity.x = e.moveSpeed * 1.2;
+    e.fixedUpdate(w.ctx, h);
+    if (e.fsm.state === S.EXTRACT) sawExtract = true;
+  }
+  ok(!sawExtract, 'a unit running flat out after a faster player is never rescued');
+  ok(e.position.x > 20, `and it really was running (x=${e.position.x.toFixed(1)})`);
+}
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);
