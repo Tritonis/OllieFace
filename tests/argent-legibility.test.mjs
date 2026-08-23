@@ -40,7 +40,10 @@ import { VOIDTOUCHED } from '../src/data/corruption.js';
 import {
   PURITY_PALETTE, PURITY_STEMS, PURITY_METHODS, PURITY_METHOD_EXCEPTIONS,
 } from '../src/data/effects.js';
-import { reservedViolationOnFeedback } from '../src/data/colourFamily.js';
+import { reservedViolationOnFeedback, hsl } from '../src/data/colourFamily.js';
+import { KILL_SIGNATURE } from '../src/systems/VFX.js';
+import { ELEMENT_HUE } from '../src/data/damageTypes.js';
+import { FRAME } from '../src/fx/ParticleSystem.js';
 import { readFileSync } from 'node:fs';
 
 globalThis.addEventListener = globalThis.addEventListener || (() => {});
@@ -437,6 +440,56 @@ console.log('\nthe new effects are inside the reserved-hue guard, not beside it'
   const effectsSrc = readFileSync(new URL('../src/data/effects.js', import.meta.url), 'utf8');
   ok(/\n\s*assertAuthoredPalette\(\);/.test(effectsSrc),
     'the palette arm is called from `assertLanguage`, at module load');
+}
+
+/* ------------------------------------- 3c. argent's white-gold core (#189) */
+
+console.log('\nargent wears white-gold at its core and mint at its rim');
+{
+  // The hue is pinned, not merely "warm": a recolour is a decision the palette
+  // records, and drifting it is a change someone has to come here and make.
+  eq(PURITY_PALETTE.argentPale.hex, 0xf3e9cf,
+    'the argent core is the authored white-gold');
+  eq(PURITY_PALETTE.argentRing.hex, 0xcfe8d8,
+    'and the ring it closes under is unchanged — the rim stays mint-side');
+
+  const core = hsl(PURITY_PALETTE.argentPale.hex);
+  ok(core.h >= 30 && core.h <= 55, `the core is warm, not brass or lemon (h=${core.h.toFixed(1)})`);
+  ok(core.l > 0.8, `and stays high-key with the rest of the purity family (l=${core.l.toFixed(2)})`);
+  ok(core.s < 0.75, `candlelit ivory rather than saturated gold (s=${core.s.toFixed(2)})`);
+  eq(reservedViolationOnFeedback(PURITY_PALETTE.argentPale.hex, 'restorative'), null,
+    'and it spends no reserved hue on a feedback surface');
+
+  // The condition the Effect Language attached to accepting this recolour: the
+  // core's nearest hue neighbour is now fire, so hue can no longer be the thing
+  // that separates them, and something non-chromatic has to carry the read.
+  // First, establish that the nearness is real — if a later edit walks argent
+  // back away from fire the premise below stops applying and should be revisited.
+  const fire = hsl(ELEMENT_HUE.fire.core);
+  const gap = Math.abs(((core.h - fire.h + 540) % 360) - 180);
+  ok(gap < 20,
+    `argent's core really does sit beside fire's on the wheel (${gap.toFixed(1)} deg apart)`);
+
+  // So: shape and motion. Consecration is a rising column of hex/cross motes
+  // closing under a ground ring; fire's signature is an ember spray that rises
+  // on negative gravity and draws no column. The frame vocabularies must be
+  // disjoint — paste FRAME.EMBER into `consecration` and this fails.
+  const body = VFX.prototype.consecration.toString();
+  const frames = new Set((body.match(/FRAME\.([A-Z]+)/g) || []).map((m) => m.slice(6)));
+  ok(frames.size > 0, `consecration names its frames (${[...frames].join(', ')})`);
+  const fireFrame = Object.entries(FRAME).find(([, v]) => v === KILL_SIGNATURE.fire.frame)[0];
+  eq(fireFrame, 'EMBER', 'fire\'s kill signature is the ember frame');
+  ok(!frames.has(fireFrame),
+    `and argent borrows none of it (argent: ${[...frames].join('/')}, fire: ${fireFrame})`);
+  ok(/this\.rings\.spawn\(/.test(body),
+    'argent closes under a ground ring, which the ember spray has no equivalent of');
+  ok(/e\.dir\.set\(0, 1, 0\)/.test(body),
+    'and its motion is an explicit upward column, not an outward spray');
+
+  // The separation check can fail — run it against the mutation it exists for.
+  const mutated = 'e.frame = FRAME.EMBER; e.spin = 8;';
+  ok(new Set((mutated.match(/FRAME\.([A-Z]+)/g) || []).map((m) => m.slice(6))).has(fireFrame),
+    'a consecration redressed as an ember spray IS seen by the scan above');
 }
 
 /* ----------------------------------------------------------- 4. the gauge */
