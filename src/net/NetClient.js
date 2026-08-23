@@ -38,6 +38,12 @@ export class NetClient {
   // belongs in `join` and the async methods beside it, where it already lives.
   static critical = true;
 
+  // Same exemption, same reason as `NetHost` (#182): the client's own stage
+  // transition must not stop it acknowledging the host. Its command stream and
+  // its snapshot application are how the session stays alive, and a second of
+  // silence is indistinguishable from a dropped peer at the far end.
+  static runsDuringStageChange = true;
+
   /** The client half of `NetHost`'s transport seam — see its constructor. */
   constructor({ transport = new ClientTransport() } = {}) {
     this.transport = transport;

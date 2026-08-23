@@ -67,6 +67,14 @@ export class NetHost {
   // belongs in the async methods, where it already lives.
   static critical = true;
 
+  // A stage change freezes the simulation for about a second (#182). The wire
+  // is not part of the simulation and must not go quiet with it: `this.tick`
+  // advances only from `fixedUpdate`, and a peer that stops receiving snapshots
+  // for a second has no way to tell a stage transition from a host that died.
+  // The snapshots sent through the window describe a world that is not moving,
+  // which is exactly what is true.
+  static runsDuringStageChange = true;
+
   /**
    * `transport` is a seam, not a setting. Everything this class needs from one
    * is enumerated in `docs/STEAM.md` section 8.5, and taking it as an argument

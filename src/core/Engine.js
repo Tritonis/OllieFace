@@ -79,6 +79,36 @@ export function isCriticalSystem(system) {
 }
 
 /**
+ * May this system keep taking fixed steps while the world is being replaced?
+ *
+ * `ctx.stageChanging` is up for the length of a stage transition — the second
+ * or so during which `Progression` fades the screen out, generates the next
+ * stage a step at a time, swaps it in and fades back (#182). The player has no
+ * controls for that whole window, and a simulation that keeps running against a
+ * player who cannot act is a simulation that can kill them for it. It used to
+ * be impossible: the old `Stage.build()` did the whole transition inside one
+ * synchronous call, so it blocked the frame loop outright and nothing ticked.
+ * Spreading the build over real frames took that protection away by accident,
+ * and this puts it back on purpose.
+ *
+ * **The default is to stop**, for the same reason the criticality default is to
+ * halt: the systems that must keep running through a stage change are a short,
+ * arguable list, and everything else is safer frozen. Declaring
+ * `static runsDuringStageChange = true` is how a system makes that argument.
+ * Today the whole list is the net layer — the wire cannot go quiet for a second
+ * without the peer on the other end concluding this machine has died — and it
+ * is deliberately a narrower exemption than the old behaviour granted, which
+ * was none at all.
+ *
+ * Only `fixedUpdate` is gated. `update`/`lateUpdate` are presentation, they run
+ * throughout, and one of them is `Progression.update` — the thing driving the
+ * transition. Freezing those would wedge the game in the dark forever.
+ */
+export function runsDuringStageChange(system) {
+  return (system?.constructor?.runsDuringStageChange ?? system?.runsDuringStageChange) === true;
+}
+
+/**
  * Thrown to unwind the remainder of a frame after a critical failure.
  *
  * Stopping the loop is not enough on its own: the throw happened inside one
@@ -143,6 +173,10 @@ export class Engine {
       // Set to >0 to freeze gameplay for impact frames; presentation keeps running.
       hitstop: 0,
       paused: false,
+      // True for the length of a stage transition. Freezes the simulation
+      // without freezing presentation — see `runsDuringStageChange`. Written by
+      // `Progression`, which is the only thing that knows a stage is changing.
+      stageChanging: false,
       // Which survivor the next `Player.init` will boot. The UI writes this
       // before the run starts; `Player` publishes `ctx.setSurvivor(id)` for
       // changing it afterwards. A literal rather than an import from
@@ -787,7 +821,17 @@ export class Engine {
         // whose tick ends the session calls `remove()`, and splicing the live
         // array under `for...of` silently skips whichever system followed it
         // for that phase.
-        for (const s of [...this.systems]) if (s.fixedUpdate) this._call(s, 'fixedUpdate', ctx, FIXED);
+        // `ctx.stageChanging` freezes the simulation for the length of a stage
+        // transition — see `runsDuringStageChange`. The step itself still
+        // happens (`ctx.time` advances, the accumulator drains) so the net
+        // layer's tick numbering stays continuous across the change; what
+        // stops is everything that could act on a player who has no controls.
+        const frozen = !!ctx.stageChanging;
+        for (const s of [...this.systems]) {
+          if (!s.fixedUpdate) continue;
+          if (frozen && !runsDuringStageChange(s)) continue;
+          this._call(s, 'fixedUpdate', ctx, FIXED);
+        }
       }
       // Bleed off unpayable debt rather than spiralling.
       if (steps === MAX_SUBSTEPS) this.accumulator = 0;

@@ -455,6 +455,15 @@ export class Progression {
     this.transition = t;
     this._nameStage(index);
 
+    // Stop the world, not the frame. Combat, the Director, enemy AI, the
+    // projectiles already in the air and every damage-over-time clock come off
+    // the fixed step for the length of the transition — see
+    // `runsDuringStageChange` in Engine.js for the whole argument. The short
+    // version: the player has no controls for the next second and it is not
+    // acceptable to be killed during it. The old synchronous build gave this
+    // for free by blocking the loop; it is deliberate now.
+    if (this.ctx) this.ctx.stageChanging = true;
+
     // The player is a passenger for the length of the fade. Saved and restored
     // rather than forced back to true: the emergency pause overlay owns this
     // same switch, and a transition must not be the thing that hands control
@@ -528,6 +537,16 @@ export class Progression {
   _settle(t) {
     if (t.settled) return;
     t.settled = true;
+    // `director.reset` used to run *before* the player was reseated; it now
+    // runs one to two steps after, because seating cannot wait — the player is
+    // standing on a heightfield that has just stopped existing. That leaves a
+    // window in which the outgoing stage's enemy pool is still allocated while
+    // the player stands on the new ground, and the window is harmless for a
+    // reason worth stating rather than assuming: the Director does not tick
+    // during a transition at all. It has no `runsDuringStageChange`, so the
+    // Engine skips its fixed step for the whole window, and an enemy that never
+    // gets a step cannot chase, spawn or hit anything. See the assertion in
+    // `tests/stage-transition.test.mjs`.
     this.ctx.director?.reset?.(t.index);
     if (t.host) this._openStage(t.index);
   }
@@ -545,9 +564,22 @@ export class Progression {
     this._endTransition();
   }
 
+  /**
+   * Hand the world back.
+   *
+   * Unconditional, and reached from both ends — the in-fade finishing and
+   * `_drainTransition` — because the two things released here are the two
+   * things that must never be left switched on. A run that ended during the
+   * transition (an enemy's last damage-over-time tick landing in the frame
+   * before it began, `playerDead` -> `_endRun` firing under the veil) still
+   * comes through here: the death screen is a `ctx.paused` matter and has
+   * nothing to say about whether the simulation is frozen, so leaving
+   * `stageChanging` up would freeze the fixed step for the rest of the session.
+   */
   _endTransition() {
     const t = this.transition;
     this.transition = null;
+    if (this.ctx) this.ctx.stageChanging = false;
     const input = this.ctx?.input;
     if (input && t.inputWas !== undefined) input.enabled = t.inputWas;
     this._paintVeil(0);

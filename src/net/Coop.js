@@ -19,6 +19,12 @@ export class Coop {
   // the party stops matching everyone else's.
   static critical = true;
 
+  // Roster bookkeeping for the two above, and exempt from the stage-change
+  // freeze for the same reason they are (#182): a peer that joins or leaves
+  // during a transition has to be answered in the frame it happens, not a
+  // second later.
+  static runsDuringStageChange = true;
+
   constructor() {
     this.pawns = [];
   }
