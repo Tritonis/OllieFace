@@ -297,6 +297,8 @@ export class Menus {
     this.preview = null;         // survivor-select 3D portrait
     this.navIndex = 0;
     this.navRepeat = 0;
+    // A resume waiting for the Escape key that triggered it to be released.
+    this.relockPending = false;
     this.pad = { axis: 0, buttons: new Set() };
     this.newChallenges = [];     // completed during the run in flight
     this.steamLobbyId = null;    // the open Steam lobby, if this session hosts one
@@ -316,13 +318,17 @@ export class Menus {
     installFocusTrap(this, document);
 
     // Losing pointer lock mid-run means the player hit Esc — pause for them.
-    document.addEventListener('pointerlockchange', () => {
-      // Player exposes `alive`, never `dead`. `!== false` keeps the original
-      // behaviour for the window before Player has published itself.
-      if (!document.pointerLockElement && !this.screen && ctx.player?.alive !== false) {
-        this.open('pause');
-      }
-    });
+    // A method rather than an inline body so the reopen path is reachable from
+    // a test without a DOM to dispatch the event into (issue #184).
+    document.addEventListener('pointerlockchange', () => this.onPointerLockChange());
+  }
+
+  /** Pointer lock lost with no screen up: the player hit Esc, so pause. */
+  onPointerLockChange() {
+    if (document.pointerLockElement) return;
+    // Player exposes `alive`, never `dead`. `!== false` keeps the original
+    // behaviour for the window before Player has published itself.
+    if (!this.screen && this.ctx.player?.alive !== false) this.open('pause');
   }
 
   // ------------------------------------------------------------------ build
@@ -1689,6 +1695,8 @@ export class Menus {
     this.root.dataset.screen = name || '';
     document.body.classList.toggle('menu-open', !!name);
     this.ctx.paused = !!name;
+    // A screen going up outranks a resume still waiting on the Escape key.
+    if (name) this.relockPending = false;
     if (name && document.pointerLockElement) document.exitPointerLock();
 
     // Every screen that owns a GL context releases it on the way out. This is
@@ -1775,9 +1783,7 @@ export class Menus {
         break;
       case 'resume':
         this.close();
-        if (!this.ctx.input?.padActive) {
-          try { this.ctx.input?.canvas?.requestPointerLock?.()?.catch?.(() => {}); } catch { /* no lock, no problem */ }
-        }
+        this.relockPointer();
         break;
       case 'settings':
       case 'logbook':
@@ -2587,6 +2593,41 @@ export class Menus {
     if (back) this.escape();
   }
 
+  /**
+   * Hand the mouse back to the world — but never while the Escape that asked
+   * for it is still down.
+   *
+   * Exiting pointer lock with Escape is the *browser's* gesture, not the page's.
+   * While the canvas is locked Chrome swallows the Escape keydown before it
+   * reaches us, which is why the constructor's `pointerlockchange` listener —
+   * not any key handler — is what opens the pause screen. That gesture stays
+   * live for the whole press, so a `requestPointerLock` issued from inside the
+   * same press is granted and then revoked a frame or two later; the revocation
+   * arrives as an unlock with no screen open, the listener reads it as "the
+   * player hit Esc" and re-opens the pause. One press, closed and re-opened —
+   * issue #184. Captured from real OS key input against Chromium:
+   *
+   *   keydown Escape screen=pause    navigate() -> escape() -> act('resume')
+   *   open(null)                     the menu closes
+   *   pointerlockchange lock=yes     +1ms    our request is granted
+   *   pointerlockchange lock=no      +86ms   the still-live Escape revokes it
+   *   open(pause)                    the listener re-opens the pause screen
+   *
+   * So the lock is asked for only once the key is up. The wait is polled from
+   * `update` rather than hung off a keyup listener for two reasons: a blur
+   * clears `Input.keys` without ever delivering the keyup, and a listener would
+   * have to be torn down on every path out of here. Resuming by mouse or by the
+   * Resume button holds no Escape and re-locks in the same frame, as before.
+   */
+  relockPointer() {
+    this.relockPending = false;
+    if (this.ctx.input?.padActive) return;
+    // `down` reads the held set, so an Escape released while we were not
+    // looking (blur) reads as up and the lock is taken on the next frame.
+    if (this.ctx.input?.down?.('Escape')) { this.relockPending = true; return; }
+    try { this.ctx.input?.canvas?.requestPointerLock?.()?.catch?.(() => {}); } catch { /* no lock, no problem */ }
+  }
+
   /** Escape / B: one level out, never straight to the desktop. */
   escape() {
     switch (this.screen) {
@@ -2654,6 +2695,10 @@ export class Menus {
     // A capture dialog owns every input while it is up: navigate() must not
     // read the press being bound as a menu move.
     if (this.capture) { this.pollCapture(ctx); return; }
+    // A resume that had to wait for the Escape key to come up (see
+    // `relockPointer`). Only while the world is showing — re-opening a screen
+    // cancels it through `open`.
+    if (this.relockPending && !this.screen) this.relockPointer();
     if (this.bannerTimer > 0) {
       this.bannerTimer -= dt;
       if (this.bannerTimer <= 0) this.banner.classList.remove('is-on');
