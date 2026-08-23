@@ -4,6 +4,7 @@ import { EQUIPMENT } from '../data/equipment.js';
 import { ITEMS, TIERS } from '../data/items.js';
 import { SPAWN_CARDS, BOSS_CARDS, ELITE_STATS } from '../data/enemies.js';
 import { SAMPLES } from '../data/samples.js';
+import { attackElement, sustainNodeCost } from '../data/elementVoice.js';
 
 /**
  * The effects showcase (#144) — every player-facing effect, on demand, by eye
@@ -287,7 +288,13 @@ export function installShowcase(ctx) {
     const attacks = card.attacks ?? [];
     for (let i = 0; i < attacks.length; i++) {
       const a = attacks[i];
-      const meta = { kind: a.kind, cardId: card.id, tier: card.tier, attackId: a.id };
+      // `element` is the same call `beginAttack` makes to pick the held windup
+      // voice, so the jury headroom below is sized off the voices that will
+      // actually be asked for rather than off a guess at them.
+      const meta = {
+        kind: a.kind, cardId: card.id, tier: card.tier, attackId: a.id,
+        element: attackElement(a),
+      };
       const radius = a.telegraph || a.blast;
       if (radius) {
         add('telegraph', `${card.id}:${a.id}`, `${card.name} — ${a.id} (r${radius})`,
@@ -443,6 +450,26 @@ export function installShowcase(ctx) {
   ];
 
   /**
+   * The windup nodes the greediest jury panel will ask the mixer for.
+   *
+   * Every enemy-attack entry drives the real `beginAttack`, which holds one
+   * element voice for the whole of its window — so a preset's demand on the
+   * windup sub-budget is the sum of its members' element costs, and the panel
+   * that needs the most is the one the headroom has to fit. Derived off the
+   * same predicates the presets are (and off `attackElement`, the same call
+   * the attack itself makes), never a number typed here: a card added to
+   * `enemies.js` grows this with it rather than silently re-muting the jury.
+   *
+   * The shipped 12-node cap admits about seven of the largest panel's
+   * seventeen windups, which is the instrument staging exactly the absence it
+   * was opened to judge (#155).
+   */
+  const windupCost = (e) =>
+    (e.group === 'telegraph' || e.group === 'windup') ? sustainNodeCost(e.meta.element) : 0;
+  const juryWindupNodes = presets.reduce((most, [, , resolve]) =>
+    Math.max(most, resolve().reduce((sum, e) => sum + windupCost(e), 0)), 0);
+
+  /**
    * The physical key a preset is bound to. Twelve presets outrun the digit
    * row, so 10-12 take the three keys that continue it: `0`, `-`, `=`.
    */
@@ -545,6 +572,11 @@ export function installShowcase(ctx) {
     // Closing ends the session: any demonstrator still mid-window is retired
     // here, which returns its held voice with it.
     if (!v) for (const e of [...demos]) retire(e);
+    // Jury headroom, for as long as the instrument is open and not a moment
+    // longer: the windup sub-budget alone is raised to fit the greediest panel
+    // and returned to its shipped value on the way out (#155). Nothing else in
+    // the mixer moves, and this door exists only in this dev-only module.
+    ctx.audio?.setJuryHeadroom?.(v ? juryWindupNodes : 0);
     // Warm the sampled voices the moment the menu opens, so the first press of
     // a sample entry is not the silent one that starts its decode.
     if (v) ctx.audio?.ensureSamples?.()?.catch?.(() => {});
@@ -604,6 +636,9 @@ export function installShowcase(ctx) {
     // `tests/showcase-surface.test.mjs` can re-derive each preset's membership
     // from the tables and object when a preset falls behind them.
     presets: presets.map(([k, name, resolve]) => ({ key: k, name, ids: resolve().map((e) => e.id) })),
+    // Exposed so `tests/voice-budget-headroom.test.mjs` can hold the raise to
+    // the tables rather than to a number, and re-derive it independently.
+    juryWindupNodes,
     open: () => setOpen(true),
     close: () => setOpen(false),
     fire: (id) => {
@@ -619,6 +654,9 @@ export function installShowcase(ctx) {
       // voice it is holding is returned. Closing the instrument must not leave
       // a windup chord sounding over the game underneath it.
       for (const e of [...demos]) retire(e);
+      // And the sub-budget goes back with them: disposing the instrument must
+      // not leave a raised cap standing over the game underneath it.
+      ctx.audio?.setJuryHeadroom?.(0);
     },
   };
   globalThis.__SHOWCASE__ = api;

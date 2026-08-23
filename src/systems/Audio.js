@@ -3,7 +3,7 @@ import { clamp } from '../core/MathUtil.js';
 import { isLocalOwner } from '../core/Engine.js';
 import { MusicEngine } from './Music.js';
 import { SAMPLES_BY_ID } from '../data/samples.js';
-import { SUSTAIN, TRANSIENT } from '../data/elementVoice.js';
+import { SUSTAIN, TRANSIENT, sustainNodeCost } from '../data/elementVoice.js';
 
 /**
  * Fully procedural WebAudio. No files, no network, no decode step.
@@ -255,6 +255,9 @@ export class Audio {
     // the sub-budget is measured against.
     this._windups = [];
     this.windupNodes = 0;
+    // The live sub-budget. `WINDUP_VOICES` in every build a player can reach;
+    // only the dev-only showcase may raise it, and only while it is open.
+    this._windupCap = WINDUP_VOICES;
     // Where the mix is listening from, mirrored out of `update` so a sound can
     // be culled *before* it is charged. A panner attenuates a distant windup
     // but still spends its nodes, which is the half of the problem that showed.
@@ -1065,7 +1068,7 @@ export class Audio {
     const r = SUSTAIN[element] || SUSTAIN.kinetic;
     const rise = Math.max(0.05, duration || 0.5);
     const scale = (g) => Math.max(0.0002, g * gain);
-    const cost = r.tones.length + (r.noise ? 1 : 0);
+    const cost = sustainNodeCost(element);
     const d2 = this._listenerDist2(pos);
     // Out of earshot: refused before it is charged, not after it is attenuated.
     if (d2 > WINDUP_CULL * WINDUP_CULL) { this._takes++; this._refusals++; return NULL_SUSTAIN; }
@@ -1092,23 +1095,50 @@ export class Audio {
   }
 
   /**
+   * Jury headroom: raise the *windup sub-budget alone* to `nodes` for the
+   * length of an evaluation session, and `setJuryHeadroom(0)` to put it back.
+   *
+   * This is an instrument, not a mixer bypass. The world bucket, the priority
+   * reserve, the distance cull and the nearest-N eviction are all untouched —
+   * a windup admitted under headroom is charged to `worldVoices` exactly as it
+   * always was, so nothing here can make the mix louder than the budget the
+   * game ships with allows. All it removes is the sub-cap, which exists to stop
+   * a *fight* being held shut by telegraphs and has no business muting a panel
+   * convened specifically to hear sixteen telegraphs side by side (#155): the
+   * showcase's largest jury preset fires 16-17 windups and the shipped 12-node
+   * cap admitted about seven of them, which is the instrument staging the
+   * absence of the thing it was opened to judge.
+   *
+   * Only `src/core/Showcase.js` calls this, and only from `setOpen`/`dispose`.
+   * That module is excluded from every packed build (`build.files` refuses
+   * `dist/assets/showcase.js`; `tests/steam-sdk-packaging.test.mjs` proves it),
+   * so a shipped game has no door into this mode at all. It is idempotent, and
+   * it never *lowers* the sub-budget below the shipped value.
+   */
+  setJuryHeadroom(nodes) {
+    const want = Number.isFinite(nodes) ? Math.ceil(nodes) : 0;
+    this._windupCap = Math.max(WINDUP_VOICES, want);
+  }
+
+  /**
    * Make `cost` nodes of room in the windup sub-budget for a voice `d2` away,
    * by releasing held windups that are further off than it. Returns false — and
    * evicts nothing — when even taking every further one would not be enough, so
    * a refused voice never costs an audible one its place.
    */
   _makeWindupRoom(cost, d2) {
-    if (cost < 1 || cost > WINDUP_VOICES) return false;
-    if (this.windupNodes + cost <= WINDUP_VOICES) return true;
+    const cap = this._windupCap;
+    if (cost < 1 || cost > cap) return false;
+    if (this.windupNodes + cost <= cap) return true;
     const further = this._windups.filter((w) => w.d2 > d2).sort((a, b) => b.d2 - a.d2);
     let freed = 0;
     const doomed = [];
     for (const w of further) {
-      if (this.windupNodes - freed + cost <= WINDUP_VOICES) break;
+      if (this.windupNodes - freed + cost <= cap) break;
       freed += w.cost;
       doomed.push(w);
     }
-    if (this.windupNodes - freed + cost > WINDUP_VOICES) return false;
+    if (this.windupNodes - freed + cost > cap) return false;
     // Release, not stop: the fade and the budget give-back are the handle's own.
     for (const w of doomed) w.h.release(0.05);
     return true;

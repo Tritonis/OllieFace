@@ -77,7 +77,10 @@ share a bucket. Periwinkle-blue is already an occupied, distinct bucket
 
 Two hues are **reserved and may never be spent on damage**: mint-green
 (restorative) and magenta (void). A mint-green damage effect is a language
-violation regardless of how it is authored.
+violation regardless of how it is authored. The reservation forbids a *non-void*
+effect wearing magenta, not magenta itself: void damage may wear it, which is
+precisely what magenta means, and that is the reading `src/data/effects.js` and
+`colourFamily.js` already enforce (ratified 2026-08-22, #157).
 
 ### 1.2 Colour — core/rim polarity means source
 

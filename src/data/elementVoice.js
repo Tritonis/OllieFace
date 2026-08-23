@@ -78,6 +78,20 @@ export const SUSTAIN = {
 };
 
 /**
+ * The audio-node cost of one held windup voice in `element`: one node per
+ * tonal partial plus one for the noise bed, and `kinetic` for anything the
+ * table does not name.
+ *
+ * Exported because two places must agree on it and must not drift: the mixer,
+ * which charges a live windup against its sub-budget, and the showcase, which
+ * sizes its jury headroom off the same tables the presets are derived from.
+ */
+export function sustainNodeCost(element) {
+  const r = SUSTAIN[element] || SUSTAIN.kinetic;
+  return r.tones.length + (r.noise ? 1 : 0);
+}
+
+/**
  * The per-element attack transient layered over a shared body (§3 C2). The
  * `explosion` rumble stays common — all novas are novas — and this is the
  * elemental part of the onset.
