@@ -226,5 +226,109 @@ console.log('a dome and a snare together still leave room for playerHurt');
   ok(p._heldVoices.length === 0, 'death released everything the pawn was holding');
 }
 
+/* ------------------------------------------------------------------ */
+/* #155 — jury headroom: the panel the sub-budget was muting            */
+/* ------------------------------------------------------------------ */
+//
+// The showcase's enemy-attack entries drive the real `beginAttack`, so the
+// largest jury preset asks for sixteen or seventeen *held* windups at once and
+// the shipped 12-node sub-budget admitted about seven of them: the instrument
+// staging the absence of exactly what the panel was convened to hear. While
+// the showcase is open the sub-budget alone is raised to fit that panel, and on
+// close it is the shipped value again.
+//
+// Written so it CAN fail: drop the `setJuryHeadroom` call from `setOpen`, or
+// drop the restore on the way out, and a named line below goes red.
+
+// The thinnest DOM the overlay builds against — `showcase-surface.test.mjs`'s.
+const el = () => {
+  const n = {
+    style: { cssText: '' }, textContent: '', innerHTML: '', id: '', children: [],
+    append: (...k) => n.children.push(...k),
+    appendChild: (k) => { n.children.push(k); return k; },
+    scrollIntoView() {}, remove() {},
+  };
+  return n;
+};
+globalThis.document = { createElement: el, body: el() };
+globalThis.window = { addEventListener() {}, removeEventListener() {} };
+const { installShowcase } = await import('../src/core/Showcase.js');
+const { sustainNodeCost } = await import('../src/data/elementVoice.js');
+
+console.log('\nthe jury panel the showcase was muting');
+{
+  const a = makeAudio();
+  const show = installShowcase({
+    audio: a,
+    camera: { position: { x: 0, y: 2, z: 0 }, getWorldDirection: (v) => v.set(0, 0, -1) },
+    stage: { sampleHeight: () => 0 },
+  });
+
+  // The greediest panel, re-derived here off the entries rather than read back
+  // off the module's own arithmetic.
+  const byId = new Map(show.entries.map((e) => [e.id, e]));
+  const windups = (p) => p.ids.map((id) => byId.get(id))
+    .filter((e) => e && (e.group === 'telegraph' || e.group === 'windup'));
+  const panel = show.presets.reduce((best, p) =>
+    (windups(p).reduce((s, e) => s + sustainNodeCost(e.meta.element), 0)
+      > windups(best).reduce((s, e) => s + sustainNodeCost(e.meta.element), 0) ? p : best));
+  const members = windups(panel);
+  const want = members.reduce((s, e) => s + sustainNodeCost(e.meta.element), 0);
+  ok(members.length >= 14, `the largest panel is a real pile-up (${panel.name}, ${members.length} windups)`);
+  ok(want > 12, `and it asks for more than the shipped sub-budget (${want} nodes)`);
+  ok(show.juryWindupNodes === want, `the showcase sized its headroom off the same tables (${show.juryWindupNodes})`);
+
+  // Fire the panel: every member at a different bearing, all inside earshot.
+  const firePanel = () => {
+    const held = members.map((e, i) => {
+      const th = (i / members.length) * Math.PI * 2;
+      return a.windupVoice({ x: Math.cos(th) * 20, y: 0, z: Math.sin(th) * 20 }, e.meta.element, 1.2);
+    });
+    return held;
+  };
+
+  // 1. Closed: the panel is half-heard, which is the bug.
+  let held = firePanel();
+  ok(held.filter((h) => h.active).length < members.length,
+    `with the instrument closed the panel is part-muted (${held.filter((h) => h.active).length}/${members.length})`);
+  ok(a.windupNodes <= 12, `and the shipped sub-budget held (${a.windupNodes})`);
+  for (const h of held) h.release();
+  a.ac.endStopped();
+
+  // 2. Open: every member of the panel is audible.
+  show.open();
+  held = firePanel();
+  ok(held.every((h) => h.active),
+    `with the showcase open every panel member is heard (${held.filter((h) => h.active).length}/${members.length})`);
+  ok(a.windupNodes === want, `and the sub-budget holds exactly the panel (${a.windupNodes}/${want})`);
+  ok(a.worldVoices <= 44, `still inside the world bucket it always spent (${a.worldVoices}/44)`);
+  for (const h of held) h.release();
+  a.ac.endStopped();
+
+  // 3. Closed again: the shipped cap is back, twice over, and idempotently.
+  show.close();
+  show.close();
+  held = firePanel();
+  ok(a.windupNodes <= 12, `closing put the sub-budget back at 12 (${a.windupNodes})`);
+  for (const h of held) h.release();
+  a.ac.endStopped();
+
+  // And the shipped scenario the cap exists for still holds under it.
+  const horde = [];
+  for (let i = 0; i < 14; i++) {
+    const th = (i / 14) * Math.PI * 2;
+    horde.push(a.windupVoice({ x: Math.cos(th) * 20, y: 0, z: Math.sin(th) * 20 }, 'shock', 1.9));
+  }
+  ok(a.windupNodes <= 12, `the review's horde is capped again (${a.windupNodes})`);
+  ok(a._take(7) === true, 'and a zap is admitted over it, as it was before the showcase opened');
+
+  // Dispose is the other exit, and it restores too.
+  show.open();
+  show.dispose();
+  const after = a.windupVoice({ x: 1, y: 0, z: 0 }, 'shock', 1.0);
+  ok(a._windupCap === 12, 'disposing the instrument left no raised cap behind');
+  after.release();
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
