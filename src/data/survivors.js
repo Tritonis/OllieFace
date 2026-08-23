@@ -23,6 +23,17 @@ import { ABILITIES, SLOT_ORDER } from './abilities.js';
  *   cinder   125 hp / 13 dmg / 6.9 m/s   almost no damage on contact; all of it
  *                                        arrives seconds later, as burn
  *
+ * `shapeSignature` is the class's half of the co-op collision fix
+ * (EFFECT-LANGUAGE.md §3.1, groups X1-X3). Class-kit colours co-occur in co-op
+ * and are *not* re-hued — a class's colour is part of its identity — so two
+ * amber players are told apart by §1.2 polarity plus the shape their amber
+ * takes: Ranger lines, Anvil rings, Kestrel charged lines with bead spool-ups,
+ * Rook lattices, Cinder cones of streaks. Each ability declares the shape family
+ * it actually draws (`shape` in `abilities.js`, the same declared-shape field
+ * `equipment.js` already carries), and `tests/coop-shape-signature.test.mjs`
+ * holds the roster to it: signatures are unique, and a class's signature is
+ * visible in at least half its kit rather than in one ability nobody presses.
+ *
  * `unlock` is `null` for anything available from the first run. Anything else
  * is a challenge id for `systems/Profile.js` (agent B1) to evaluate — the field
  * is declared here so the roster is complete the day that system lands, and
@@ -65,6 +76,7 @@ export const SURVIVORS = [
     // the Ranger's roll has always been cold cyan against his warm kit, and
     // that contrast is what makes the i-frame window readable at a glance.
     trailColor: 0x8fd8ff,
+    shapeSignature: 'line',
     unlock: null,
     baseStats: {
       maxHealth: 110,
@@ -101,6 +113,7 @@ export const SURVIVORS = [
     hurtHeight: 1.4931,
     accentColor: 0xff5a2a,
     trailColor: 0xff8a3d,
+    shapeSignature: 'ring',
     unlock: null,
     baseStats: {
       maxHealth: 170,
@@ -139,6 +152,7 @@ export const SURVIVORS = [
     hurtHeight: 2.1989,
     accentColor: 0xc9a4ff,
     trailColor: 0xd6b4ff,
+    shapeSignature: 'charged-line',
     unlock: null,
     baseStats: {
       maxHealth: 90,
@@ -178,6 +192,7 @@ export const SURVIVORS = [
     hurtHeight: 1.6175,
     accentColor: 0x9dff5a,
     trailColor: 0xbfff7a,
+    shapeSignature: 'lattice',
     unlock: null,
     baseStats: {
       maxHealth: 135,
@@ -222,6 +237,7 @@ export const SURVIVORS = [
     // Ranger's cold-cyan roll, applied to a survivor whose kit is already
     // orange: the trail has to be the *hottest* thing, not another one of them.
     trailColor: 0xffd76a,
+    shapeSignature: 'streak-cone',
     unlock: null,
     baseStats: {
       // 125/13/6.9 — inside the Ranger's shadow on every axis rather than beside
@@ -261,6 +277,32 @@ export const DEFAULT_SURVIVOR = 'ranger';
 
 export const SURVIVOR_BY_ID = Object.create(null);
 for (const s of SURVIVORS) SURVIVOR_BY_ID[s.id] = s;
+
+/**
+ * A survivor's index in `SURVIVORS` — the wire name for a class.
+ *
+ * The snapshot's `typeId` byte is already "index into the type table" for every
+ * other replicated kind (an enemy's index in `ENEMIES`, an interactable's type),
+ * so a player's class crosses the same way rather than as a string. That is what
+ * lets a client build a remote teammate's rig, hurtbox and accent from the
+ * teammate's own card instead of the default survivor's (see NetViews.PlayerView).
+ *
+ * Adding a survivor is append-only for the wire; reordering `SURVIVORS` is a
+ * protocol change and must bump `PROTOCOL_VERSION`.
+ */
+export const SURVIVOR_INDEX = Object.create(null);
+for (let i = 0; i < SURVIVORS.length; i++) SURVIVOR_INDEX[SURVIVORS[i].id] = i;
+
+/** Wire index -> card, falling back to the default for an id this build lacks. */
+export function survivorByIndex(i) {
+  return SURVIVORS[i] || SURVIVOR_BY_ID[DEFAULT_SURVIVOR];
+}
+
+/** Card -> wire index. Unknown ids take the default survivor's index. */
+export function survivorIndexOf(id) {
+  const i = SURVIVOR_INDEX[id];
+  return i === undefined ? SURVIVOR_INDEX[DEFAULT_SURVIVOR] : i;
+}
 
 /**
  * Resolve a survivor id to its card, falling back to the default.

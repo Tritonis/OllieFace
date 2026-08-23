@@ -22,7 +22,7 @@ import { EKIND, ESTATE } from './Protocol.js';
 import { ENEMY_BY_TYPE } from '../data/enemies.js';
 import { acquireRig, releaseRig, configureShadows, makeAnim } from '../entities/EnemyMeshes.js';
 import { CharacterMesh } from '../entities/CharacterMesh.js';
-import { getSurvivor, DEFAULT_SURVIVOR } from '../data/survivors.js';
+import { survivorByIndex } from '../data/survivors.js';
 import { createInteractableView } from '../world/Interactables.js';
 
 // Matches Enemy's own LOD cut (57m²·, i.e. ~56 units out).
@@ -157,7 +157,22 @@ class EnemyView {
 
 class PlayerView {
   constructor(rec, ctx) {
-    this.mesh = new CharacterMesh();
+    // The peer's own card, off the wire (protocol 8). `typeId` is a survivor's
+    // index in `SURVIVORS` for a PLAYER record exactly as it is an enemy's
+    // index in `ENEMIES` for an ENEMY one, and `survivorByIndex` falls back to
+    // the default for an index this build has no card for, so a newer host's
+    // sixth survivor draws as a Ranger instead of throwing every snapshot.
+    this.card = survivorByIndex(rec.typeId);
+    this.survivorId = this.card.id;
+    // What the class is *for*, here: colour alone cannot separate two amber
+    // players, so a teammate's effects carry their class's shape signature
+    // (EFFECT-LANGUAGE.md §3.1). Held on the view so anything reading a party
+    // member — the HUD strip, a future effect replayed client-side — asks the
+    // same question of a remote player as of a local one.
+    this.shapeSignature = this.card.shapeSignature;
+    this.accentColor = this.card.accentColor;
+
+    this.mesh = new CharacterMesh(this.card.meshKey);
     this.group = this.mesh.group;
 
     this.position = new THREE.Vector3(rec.x, rec.y, rec.z);
@@ -179,16 +194,11 @@ class PlayerView {
     this.health = 100;
     this.radius = 0.45;
     // Matched to the rig this view actually draws, not to the old shared 1.8
-    // (#70). `this.mesh = new CharacterMesh()` above takes no mesh key, because
-    // the wire carries no survivor id — so every remote player is *rendered*
-    // with the default survivor's rig whichever one they picked. The hurtbox has
-    // to agree with what is on screen, so it reads the same card, and "what you
-    // see is what is hittable" holds for a teammate too.
-    //
-    // The real gap here is the missing survivor id on the wire, which makes a
-    // remote Anvil look like a Ranger. That predates this change and is tracked
-    // separately; when it is fixed, this should read the peer's own card.
-    this.height = getSurvivor(DEFAULT_SURVIVOR).hurtHeight;
+    // (#70) and no longer to the default survivor's: it is the same card the
+    // mesh key came from, so "what you see is what is hittable" holds for a
+    // teammate whichever class they picked. Anvil and Kestrel differ by 0.7 m
+    // here, which is the whole of the gap this used to carry.
+    this.height = this.card.hurtHeight;
 
     // The state block CharacterMesh animates from. Reused — a remote player
     // must not allocate one of these every frame.

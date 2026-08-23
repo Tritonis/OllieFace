@@ -86,7 +86,16 @@
 // 7: downed & revive (mp-p3). `ESTATE.DOWNED` joins the snapshot vocabulary —
 //    a v6 peer reading a v7 host's `netState` byte would see an unrecognised
 //    value where it expected ALIVE/DEAD/SPAWNING.
-export const PROTOCOL_VERSION = 7;
+// 8: a player's `typeId` is its survivor's index in `SURVIVORS`, where it used
+//    to be a constant 0. No byte moved — this is the same vocabulary argument
+//    as 5. A v7 host writes 0 for every player, and a v8 client would read that
+//    as "everyone is the Ranger" and build every teammate the Ranger's rig,
+//    hurtbox and accent; a v7 client on a v8 host ignores the field and does
+//    the same thing quietly. Both are the exact bug this bump exists to end:
+//    per-class shape signatures (EFFECT-LANGUAGE.md §3.1) are unreadable if the
+//    class does not cross, and "the wrong survivor, silently" is precisely the
+//    trusted-but-wrong session `PROTOCOL_VERSION` refuses.
+export const PROTOCOL_VERSION = 8;
 
 export const MSG = {
   HELLO: 1,       // client -> host
