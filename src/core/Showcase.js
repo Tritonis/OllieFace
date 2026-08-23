@@ -405,6 +405,29 @@ export function installShowcase(ctx) {
     ctx.audio?.coin?.();
     ctx.vfx?.coinSpark?.(at);
   });
+  // The purity route's three moments (#154). They were the least judgeable
+  // effects in the game — one of them had no sound at all — and none of them
+  // could be reached from the showcase, so nobody could hear the set together.
+  // Fired down the real VFX methods and the real voices, like every other row.
+  add('moment', 'warding', 'Warding — corruption taken back out', (l) => {
+    const p = player(); const at = p?.position || ground(ctx, 5, l);
+    ctx.vfx?.wardingMote?.(at, 0.85, false);
+  });
+  add('moment', 'wardingMint', 'Warding — a mote mints', (l) => {
+    const p = player(); const at = p?.position || ground(ctx, 5, l);
+    ctx.vfx?.wardingMote?.(at, 1, true);
+    ctx.audio?.mintSting?.('mote');
+  });
+  add('moment', 'sanctuary', 'Sanctuary opens', (l) => {
+    const at = ground(ctx, 8, l);
+    ctx.vfx?.sanctuaryOpen?.(at);
+    ctx.audio?.sanctuary?.(at);
+  });
+  add('moment', 'consecrate', 'Consecration — an argent card', (l) => {
+    const at = ground(ctx, 8, l);
+    ctx.vfx?.consecration?.(at);
+    ctx.audio?.consecrate?.(at);
+  });
   add('moment', 'killSignature', 'Kill signature', (l) => {
     const t = target(l); if (!t) return;
     ctx.vfx?.killSignature?.(t.position, t.def?.color ?? 0xff8844);

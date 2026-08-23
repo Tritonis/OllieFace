@@ -84,3 +84,26 @@ export function reservedViolation(hex, element) {
   if ((family === 'magenta' || family === 'magenta-violet') && element !== 'void') return family;
   return null;
 }
+
+/**
+ * The same reservation over a *feedback* surface — something drawn at or for
+ * the player rather than at a victim.
+ *
+ * §1.1 reserves two hues and they are not symmetric. Mint-green is reserved
+ * *for* restorative, so a heal, a ward or a shield granted may wear it and a
+ * damage surface may not; the predicate above forbids it outright because
+ * every surface it walks is a damage surface. Magenta is reserved for void on
+ * every surface there is, and a feedback effect is no exception — mistaking a
+ * ward for a siphon is exactly the confusion the reservation exists to
+ * prevent.
+ *
+ * So this is the damage predicate with the mint clause lifted and the magenta
+ * clause intact. Returns the offending family name, or null.
+ */
+export function reservedViolationOnFeedback(hex, element) {
+  if (!Number.isFinite(hex)) return null;
+  if (hsl(hex).s < CHROMA_FLOOR) return null;
+  const family = familyOf(hex);
+  if ((family === 'magenta' || family === 'magenta-violet') && element !== 'void') return family;
+  return null;
+}

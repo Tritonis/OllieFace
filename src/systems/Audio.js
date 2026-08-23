@@ -1798,6 +1798,94 @@ export class Audio {
     }
   }
 
+  /**
+   * Corruption warded (issue #154) — the voice on purity's verb. Restorative
+   * recipe, §1.4: a pure sine ladder, ascending, no noise bed and no transient
+   * crack, so a ward can never be mistaken for a hit.
+   *
+   * `progress` is the audible half of the invisible gauge: the ladder starts on
+   * the same root every time and climbs a little further the fuller the mote
+   * is, so a run of wards up to a mint reads as one phrase resolving rather
+   * than as the same blip five times. A mint takes the fourth rung and the
+   * priority reserve; an ordinary ward is a *tick* out of the world pool.
+   *
+   * Throttled: `chime-of-absolution` wards on every kill inside a Sanctuary,
+   * which is exactly the horde case that would otherwise turn the mix to mush.
+   * Throttle before budget, so a suppressed cue never charges the reserve —
+   * `mintSting`'s ordering, and for the same reason.
+   */
+  warding(pos, progress = 0, minted = false) {
+    const ac = this._ensure();
+    if (!ac) return;
+    if (!this._throttle('warding', minted ? 0.05 : 0.14)) return;
+    if (!this._take(minted ? 4 : 2, minted)) return;
+    const t = ac.currentTime;
+    const out = this._out(pos, minted ? 8 : 4, 60);
+    const p = Math.max(0, Math.min(1, Number.isFinite(progress) ? progress : 0));
+    const rungs = minted ? 4 : 2 + Math.round(p);
+    for (let i = 0; i < rungs; i++) {
+      // The step the ladder climbs widens with the mote's fill, so the interval
+      // itself carries the progress and not merely the note count.
+      const step = SCALE[Math.min(SCALE.length - 1, 2 + i + Math.round(p * 2))];
+      this._tone(t + i * 0.055, 0.32 + i * 0.06, {
+        type: 'sine', f0: ROOT * 4 * Math.pow(2, step / 12),
+        gain: minted ? 0.13 : 0.075, out, attack: 0.008,
+      });
+    }
+  }
+
+  /**
+   * A Sanctuary window opening. It shared `shrineWin` with every other paid
+   * shrine in the game, which is why a mote spent and a chest bought sounded
+   * identical. Restorative rather than bell: a slow sine chord that *opens* —
+   * the bed sweeps upward under it — because what it buys is a shell going up.
+   *
+   * A one-shot on purpose. The window lasts twelve seconds and has three exits
+   * (expiry, replacement by a second press, run end); a held voice across those
+   * is the leak this repo keeps writing, and the HUD chip carries the duration.
+   */
+  sanctuary(pos) {
+    const ac = this._ensure();
+    if (!ac || !this._take(8, true)) return;
+    const t = ac.currentTime;
+    const out = this._out(pos, 10, 120);
+    // Fifths and an octave — the protective interval `playerRevived` and the
+    // `warded` affix already wear, so a shell going up is one learnable chord.
+    for (const d of [0, 7, 12, 19]) {
+      this._tone(t, 1.6, {
+        type: 'sine', f0: ROOT * 3 * Math.pow(2, d / 12), gain: 0.1, out, attack: 0.09,
+      });
+    }
+    this._tone(t, 1.8, { type: 'sine', f0: ROOT, f1: ROOT * 2, gain: 0.2, out, attack: 0.12 });
+    this._noise(t, 1.2, { type: 'bandpass', freq: 1200, freqEnd: 6000, q: 1.2, gain: 0.09, out, attack: 0.1 });
+  }
+
+  /**
+   * A Consecration — three motes for one permanent card, and until now the only
+   * transaction in the game that made no sound whatsoever. The Sanctuary chord
+   * again, because both are purity paying out, but *walked* rather than struck
+   * and resolving an octave higher: this is the deeper rung and it must sound
+   * like the more expensive one.
+   */
+  consecrate(pos) {
+    const ac = this._ensure();
+    if (!ac || !this._take(9, true)) return;
+    const t = ac.currentTime;
+    const out = this._out(pos, 10, 120);
+    const IVS = [0, 7, 12, 19, 24];
+    for (let i = 0; i < IVS.length; i++) {
+      const f = ROOT * 3 * Math.pow(2, IVS[i] / 12);
+      this._tone(t + i * 0.11, 1.5 - i * 0.12, {
+        type: 'sine', f0: f, gain: 0.12, out, attack: 0.01,
+      });
+      // One pale partial per rung. Not the bell's 2.76x inharmonic — an argent
+      // card is a clean thing, and a bell here would put it back on `shrineWin`.
+      this._tone(t + i * 0.11, 0.5, { type: 'triangle', f0: f * 2, gain: 0.03, out, attack: 0.02 });
+    }
+    this._tone(t, 1.9, { type: 'sine', f0: ROOT * 0.75, f1: ROOT * 3, gain: 0.22, out, attack: 0.14 });
+    this._noise(t + 0.4, 1.0, { type: 'highpass', freq: 6500, gain: 0.09, out, attack: 0.2 });
+  }
+
   shieldBreak(pos) {
     const ac = this._ensure();
     if (!ac || !this._take(3, true)) return;
@@ -2388,6 +2476,12 @@ export class Audio {
       case 'shrineBlood': return this.shrineBlood(pos);
       case 'teleporterStart': return this.teleporterStart(pos);
       case 'mint': case 'mintSting': return this.mintSting(arg ?? 'mark');
+      // Purity's three voices (issue #154). Named here as well as on the class
+      // so the altar and the font can keep dispatching by string like every
+      // other interactable does.
+      case 'warding': return this.warding(pos, arg ?? 0);
+      case 'sanctuary': return this.sanctuary(pos);
+      case 'consecrate': return this.consecrate(pos);
       case 'ui': case 'uiClick': return this.uiClick(arg ?? 0);
       default: return this.uiClick(0);
     }

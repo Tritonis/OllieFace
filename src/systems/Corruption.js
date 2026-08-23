@@ -1,6 +1,6 @@
 // src/systems/Corruption.js
 import { bandOf, isVoidtouched, SOURCES, VOIDTOUCHED } from '../data/corruption.js';
-import { MOTE, marksMinted, motesMinted } from '../data/bandBoons.js';
+import { MOTE, marksMinted, motesMinted, wardedProgress } from '../data/bandBoons.js';
 import { ITEM_BY_ID } from '../data/items.js';
 
 /**
@@ -41,8 +41,11 @@ export class Corruption {
     this.ruined = false;
     // Purity's side of the same economy (data/bandBoons.js MOTE). `_warded` is
     // every point of corruption a player's own hand has taken back out — which
-    // is every point `bleed` has ever removed, because nothing decays and the
-    // only two callers are a Voidtouched kill and an Argent Font press.
+    // is every point `bleed` has ever removed, because nothing decays: there is
+    // no passive path in, only acts (a Voidtouched kill, an Argent Font press,
+    // `chime-of-absolution`'s per-kill ward inside a Sanctuary). The identity is
+    // "whatever `bleed` took", not a list of callers, which is why the count
+    // this comment used to give went stale the moment a third one appeared.
     // Monotonic like `_peak`, and for the same reason: a mote is minted by
     // having done the work, and feeding the void again does not un-do it.
     this._warded = 0;
@@ -282,9 +285,24 @@ export class Corruption {
     // world that was already clean.
     const motesBefore = this.motes;
     this._warded += taken;
-    if (this.motes !== motesBefore) {
+    const minted = this.motes !== motesBefore;
+    if (minted) {
       this.ctx.events.emit('argentMotesChanged', { motes: this.motes, spent: 0 });
     }
+    // Purity's verb, announced at the instant it happens (issue #154). The mote
+    // channel above only speaks once every forty points, which is why a player
+    // could ward all run and see nothing until a toast arrived unattached to any
+    // act. This fires on *every* bleed, carries the partial progress, and names
+    // who did it — so the world cue lands on the hand that earned it and the
+    // gauge can fill toward a mote instead of jumping to one.
+    //
+    // Emitted here rather than at the call sites on purpose: coverage is then a
+    // property of `bleed` and not of a caller list that can grow behind it —
+    // `chime-of-absolution` is already a third caller past the two named above.
+    this.ctx.events.emit('corruptionWarded', {
+      player, amount: taken, warded: this._warded,
+      progress: wardedProgress(this._warded), motes: this.motes, minted,
+    });
     const prev = this._band;
     this._band = bandOf(this._world);
     this.ctx.events.emit('corruptionChanged', { world: this._world, band: this._band });

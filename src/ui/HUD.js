@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { clamp, damp, invLerp } from '../core/MathUtil.js';
-import { ITEM_BY_ID } from '../data/items.js';
+import { ITEM_BY_ID, grace } from '../data/items.js';
 // The affix keys are internal ids (three are RoR2's elite prefixes verbatim);
 // only the label may reach the screen. tests/branding-display.test.mjs pins it.
 import { ELITE_STATS } from '../data/enemies.js';
@@ -428,6 +428,31 @@ export class HUD {
       this.setPurse({ motes: e?.motes });
       if (isMint(e)) this.toast(`Argent mote minted — ${e.motes} in hand`, 'lunar');
     });
+    // Issue #154. The mote channel above speaks once every forty points; this
+    // one speaks on every ward, which is what turns the purse from a thing that
+    // surprises the player into a thing they can watch fill. Event-driven for
+    // the same reason the counts are: warding moves on presses and kills, not
+    // on frames.
+    on('corruptionWarded', (e) => {
+      this.setPurse({ warded: e?.warded, progress: e?.progress, motes: e?.motes });
+    });
+    // The window is a clock, and a clock the player bought. `update` counts it
+    // down locally off the same seconds `Corruption` is counting, so the chip
+    // does not need sixty events a second to move.
+    on('voidSanctuary', (e) => {
+      this._sanctuaryT = Math.max(0, e?.seconds ?? 0);
+      this.setPurse({ sanctuary: this._sanctuaryT });
+      this.toast(`Sanctuary — ${Math.round(this._sanctuaryT)}s of free ground`, 'argent');
+    });
+    on('voidSanctuaryEnd', () => {
+      this._sanctuaryT = 0;
+      this.setPurse({ sanctuary: 0 });
+      this.toast('Sanctuary closes', 'argent');
+    });
+    on('argentConsecrate', (e) => {
+      const item = ITEM_BY_ID.get(e?.id);
+      this.toast(`Consecrated — ${item?.name || prettify(e?.id)}`, 'argent', e?.id);
+    });
 
     on('goldChanged', () => { /* value polled in update; event kept for parity */ });
     on('abilityUsed', ({ slot }) => {
@@ -580,22 +605,76 @@ export class HUD {
    * gauge corner is expensive real estate and two zeroes teach nothing - and
    * lights the moment either currency exists, which is also the moment it
    * becomes something the player can spend.
+   *
+   * Issue #154 adds two more fields on the same row and the same partial rule.
+   * `progress` is the mote being *earned*: forty points of warding used to
+   * accumulate with no readout at all and then announce themselves as a toast
+   * with nothing on screen leading up to it, which is the single largest reason
+   * a playtester noticed none of this system. `sanctuary` is the open window's
+   * remaining seconds — the one purchase whose whole value is a clock.
    */
   setPurse(next) {
-    const p = this._purse || (this._purse = { marks: 0, motes: 0 });
+    const p = this._purse
+      || (this._purse = { marks: 0, motes: 0, progress: 0, warded: 0, sanctuary: 0 });
     if (Number.isFinite(next?.marks)) p.marks = Math.max(0, Math.round(next.marks));
     if (Number.isFinite(next?.motes)) p.motes = Math.max(0, Math.round(next.motes));
+    if (Number.isFinite(next?.warded)) p.warded = Math.max(0, next.warded);
+    if (Number.isFinite(next?.progress)) p.progress = Math.max(0, Math.min(1, next.progress));
+    if (Number.isFinite(next?.sanctuary)) p.sanctuary = Math.max(0, next.sanctuary);
     const refs = this.refs;
     if (refs.purseMarks) refs.purseMarks.textContent = String(p.marks);
     if (refs.purseMotes) refs.purseMotes.textContent = String(p.motes);
+    // The bar is the mote in progress, not the motes in hand: it fills and
+    // resets, so the mint the toast announces is the moment it came full.
+    if (refs.wardingFill) refs.wardingFill.style.width = `${Math.round(p.progress * 100)}%`;
+    if (refs.sanctuaryTime) refs.sanctuaryTime.textContent = String(Math.ceil(p.sanctuary));
     const purse = refs.corruptionPurse;
     if (!purse) return;
-    purse.classList.toggle('is-on', p.marks > 0 || p.motes > 0);
+    const warding = p.warded > 0;
+    purse.classList.toggle('is-on', p.marks > 0 || p.motes > 0 || warding);
     purse.classList.toggle('has-marks', p.marks > 0);
     purse.classList.toggle('has-motes', p.motes > 0);
+    // Warding shows from the first point taken back out, which is the whole
+    // point — the row must be up *before* there is a mote to show in it.
+    purse.classList.toggle('has-warding', warding);
+    purse.classList.toggle('is-sanctified', p.sanctuary > 0);
     purse.setAttribute('aria-label',
       p.marks + ' void mark' + (p.marks === 1 ? '' : 's')
-      + ', ' + p.motes + ' argent mote' + (p.motes === 1 ? '' : 's'));
+      + ', ' + p.motes + ' argent mote' + (p.motes === 1 ? '' : 's')
+      + (warding ? `, ${Math.round(p.progress * 100)}% toward the next mote` : '')
+      + (p.sanctuary > 0 ? `, sanctuary ${Math.ceil(p.sanctuary)}s` : ''));
+  }
+
+  /**
+   * The argent tier's dead state (issue #154, deliverable 3).
+   *
+   * Every argent payoff is multiplied by `grace`, which is 1 at Pristine and
+   * reaches 0 at Overrun — so on a corrupted run five cards sit in the pack
+   * doing literally nothing, and until now the pack said nothing about it. The
+   * group carries the live fraction as a custom property and a class at the
+   * floor, so the strip fades as the world rots rather than only snapping off
+   * at the end, and comes straight back the instant a font press or a
+   * Voidtouched kill buys grace back.
+   *
+   * Polled rather than event-driven, unlike the purse: `grace` is a function of
+   * *live* world corruption, which moves on every feed, and there is no single
+   * event that means "the argent payoff changed". Through `this.set`, so a run
+   * whose corruption is not moving costs zero DOM writes — the gauge's own rule.
+   *
+   * Nothing is latched here. That is the half of the deliverable worth having:
+   * a dead state that could not be undone would be a different bug.
+   */
+  setArgentGrace(ctx) {
+    const group = this.refs.tierGroups?.argent;
+    if (!group) return;
+    const g = Math.round(grace(ctx) * 100);
+    this.set('argentGrace', g, (v) => {
+      group.style.setProperty('--grace', String(v / 100));
+      group.classList.toggle('is-graceless', v <= 0);
+      group.setAttribute('title', v <= 0
+        ? 'Argent: spent — the world is too corrupt for these to pay anything'
+        : `Argent: paying ${v}% — falls to nothing at Overrun`);
+    });
   }
 
   setBoss(enemy) {
@@ -932,6 +1011,19 @@ export class HUD {
     // Corruption gauge: world value + band, polled like gold and sitting under
     // it, because they are the two prices of the same transaction. Band 4's
     // `at` is the top of the bar; past it the bar just stays full.
+    this.setArgentGrace(ctx);
+
+    // The sanctuary clock, counted down against the same seconds `Corruption`
+    // is counting. `voidSanctuaryEnd` is the authority on the window closing;
+    // this only stops the digits before it arrives, and clamps at zero rather
+    // than going negative if the event is late or never comes (a client).
+    if (this._sanctuaryT > 0) {
+      this._sanctuaryT = Math.max(0, this._sanctuaryT - dt);
+      this.set('sanctuaryT', Math.ceil(this._sanctuaryT), () => {
+        this.setPurse({ sanctuary: this._sanctuaryT });
+      });
+    }
+
     const cor = ctx.corruption;
     if (cor && this.refs.corruption) {
       const top = BANDS[BANDS.length - 1].at;
@@ -1679,6 +1771,8 @@ function collectRefs(root) {
     corruptionPurse: q('.corruption-purse'),
     purseMarks: q('.purse-marks'),
     purseMotes: q('.purse-motes'),
+    wardingFill: q('.warding-fill'),
+    sanctuaryTime: q('.sanctuary-time'),
     inventory: q('.inventory'),
     tierGroups: Object.fromEntries(
       CONTENT_TIERS.map((t) => [t, root.querySelector(`.inv-group[data-tier="${t}"]`)])
@@ -1831,6 +1925,8 @@ const TEMPLATE = (slots, notches, dirSlots) => `
     <div class="corruption-purse" aria-label="0 void marks, 0 argent motes">
       <span class="purse purse--marks"><b class="purse-marks">0</b><span class="purse-label">marks</span></span>
       <span class="purse purse--motes"><b class="purse-motes">0</b><span class="purse-label">motes</span></span>
+      <span class="purse purse--warding"><i class="warding-track"><i class="warding-fill"></i></i><span class="purse-label">warding</span></span>
+      <span class="purse purse--sanctuary"><b class="sanctuary-time">0</b><span class="purse-label">sanctuary</span></span>
     </div>
     <i class="corruption-next"></i>
     <i class="corruption-route"></i>
