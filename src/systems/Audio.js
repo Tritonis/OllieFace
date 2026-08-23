@@ -1677,6 +1677,10 @@ export class Audio {
     const direct = this._downedMarkers.get(this._markerKey(owner));
     if (direct) return [this._markerKey(owner), direct];
     const wantId = typeof owner === 'object' ? owner.netId : owner;
+    // First structural match wins. Safe only because NetHost._netId is a
+    // monotonic counter that never reuses an id within a session; if ids ever
+    // become reusable, two live markers could share one and this scan would
+    // release the older entry.
     for (const [key, entry] of this._downedMarkers) {
       if (entry.pawn && entry.pawn === owner) return [key, entry];
       // `entry.pawn.netId` rather than `entry.netId`: the point is to see an

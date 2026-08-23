@@ -63,7 +63,7 @@ lines on a pass and replays the failing arm in full on a fail.
 all 14 equipment, every item `onHit`/`onKill`/`onDamaged`/`onInterval` hook, every telegraphed
 enemy attack, every un-telegraphed attack window (#149), all six elite
 modifiers, a pickup per tier, the seven sampled voices (#148) and
-the run-level moments — 194
+the run-level moments — 198
 entries, all derived from the data tables, none typed by hand (`tests/showcase-surface.test.mjs` re-derives the totals and
 objects if the list falls behind). Effects fire down their real paths, so audio arrives through
 the real `Audio` bus and spends the real voice budget; there is no mixer bypass to find.
