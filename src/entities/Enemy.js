@@ -14,8 +14,10 @@ import {
   arrive, seek, separate, avoidObstacles, moveGrounded, moveFlying,
   groundAt, orbitPoint, turnToward, angleDelta, approachArc, keepRange, pursue,
 } from '../ai/Steering.js';
-import { acquireRig, releaseRig, configureShadows, makeAnim, BEAM_MAX_LEN } from './EnemyMeshes.js';
+import { acquireRig, releaseRig, configureShadows, makeAnim, BEAM_MAX_LEN, ELITE } from './EnemyMeshes.js';
 import { ELITE_STATS } from '../data/enemies.js';
+import { attackElement, enemyCore } from '../data/elementVoice.js';
+import { ELEMENT_HUE } from '../data/damageTypes.js';
 import { ESTATE } from '../net/Protocol.js';
 import { Roster, acquireTarget } from '../systems/Roster.js';
 import { clamp, damp, lerp } from '../core/MathUtil.js';
@@ -130,9 +132,9 @@ function fx(ctx, name, a, b, c, d) {
   if (v && typeof v[name] === 'function') v[name](a, b, c, d);
 }
 
-function sfx(ctx, name, a, b) {
+function sfx(ctx, name, a, b, c) {
   const s = ctx.audio;
-  if (s && typeof s[name] === 'function') s[name](a, b);
+  if (s && typeof s[name] === 'function') s[name](a, b, c);
 }
 
 // ---------------------------------------------------------------------------
@@ -140,6 +142,13 @@ function sfx(ctx, name, a, b) {
 const _v1 = new THREE.Vector3();
 const _v2 = new THREE.Vector3();
 const _v3 = new THREE.Vector3();
+const _beadCol = new THREE.Color();
+
+// Affix hues, taken from the affix table rather than re-typed, so a tint that
+// moves for colour vision moves its aura cues with it.
+const EMBER_HUE = ELITE.emberclad.aura;
+const WITHER_HUE = ELITE.withering.aura;
+const VOID_HUE = ELITE.voidtouched.tint;
 
 export class Enemy {
   constructor() {
@@ -527,9 +536,14 @@ export class Enemy {
     // Galvanic unit at range and never stand on a Rimebound's corpse.
     const em = this.elite;
     if (em && em.deathBlast) {
-      spawnBlast(ctx, this, em.blastRadius, this.damage * em.deathBlast, 0x74a6ff, 'shock');
+      // Galvanic's blue only survives now the blast core is parameterised.
+      spawnBlast(ctx, this, em.blastRadius, this.damage * em.deathBlast, 0x74a6ff, 'shock', enemyCore('shock'));
+      sfx(ctx, 'elementTransient', this.position, 'shock', 1.2);
     } else if (em && em.novaRadius) {
-      spawnBlast(ctx, this, em.novaRadius, this.damage * em.novaDamage, 0x8fe4ff, 'slow');
+      // Off 0x8fe4ff - the pale cyan a prior round moved the ambient aura away
+      // from for reading as paper, and which the death nova alone kept.
+      spawnBlast(ctx, this, em.novaRadius, this.damage * em.novaDamage, ELEMENT_HUE.ice.ring, 'slow', enemyCore('ice'));
+      sfx(ctx, 'elementTransient', this.position, 'ice', 1.2);
     }
   }
 
@@ -604,13 +618,34 @@ export class Enemy {
     // a flat "no healing on this stage" with nothing to do about it.
     if (em && em.denyRadius && this.alive && !this.submerged) {
       this.auraT -= h;
+      // The boundary is the mechanic, so the boundary is drawn: a held ground
+      // ring at denyRadius, renewed just longer than its own tick so it never
+      // blinks and never expands - a hazard ring, not an event ring.
+      ctx.director?.spawnTelegraph?.(this.position.x, this.position.z,
+        em.denyRadius, 0.46, WITHER_HUE);
       if (this.auraT <= 0) {
         this.auraT = 0.4;
         if (this.distToPlayer < em.denyRadius && this.hasLOS) {
+          const wasDenied = ctx.director?.healingDeniedFor?.(this.targetPlayer);
           ctx.director?.denyHealing?.(em.denyTime, this.targetPlayer);
+          // A held void bed for as long as a player stands inside it. Started
+          // on the edge that crosses in, released when they leave or it dies.
+          if (!this.witherVoice) {
+            this.witherVoice = ctx.audio?.windupVoice?.(this.position, 'void', 1.6, 0.55);
+          } else {
+            this.witherVoice.move?.(this.position);
+          }
+          // The boundary carries affix identity, but the denial itself is void:
+          // it is a heal being unmade, and that is the one thing in the affix
+          // the language names a hue for outright.
+          if (!wasDenied) fx(ctx, 'healDenied', this.targetPlayer?.position);
           if (this.distToPlayer < em.auraRadius) {
             hurtPlayer(ctx, this.targetPlayer, this, this.damage * em.thornDps, 'wither');
+            sfx(ctx, 'elementTick', this.targetPlayer?.position || this.position, 'void', 1.1);
           }
+        } else if (this.witherVoice) {
+          this.witherVoice.release?.();
+          this.witherVoice = null;
         }
       }
     }
@@ -623,8 +658,20 @@ export class Enemy {
       if (this.auraT <= 0) {
         this.auraT = 0.5;
         if (this.distToPlayer < em.siphonRadius) {
+          const before = this.health;
           hurtPlayer(ctx, this.targetPlayer, this, this.damage * em.siphonDps, 'void');
           this.health = Math.min(this.maxHealth, this.health + this.maxHealth * em.siphonHeal);
+          // Both halves of the loop, because the loop is the affix: the drain
+          // on the player, and the damage it undoes on the unit. A Hollowed
+          // visibly failing to die used to give no feedback for either.
+          ctx.director?.spawnTelegraph?.(this.position.x, this.position.z,
+            em.siphonRadius, 0.56, VOID_HUE);
+          fx(ctx, 'healDenied', this.targetPlayer?.position, VOID_HUE);
+          sfx(ctx, 'elementTick', this.targetPlayer?.position || this.position, 'void', 0.8);
+          if (this.health > before) {
+            fx(ctx, 'status', this, 'void', VOID_HUE);
+            sfx(ctx, 'elementTick', this.position, 'void', 1.9);
+          }
         }
       }
     }
@@ -645,7 +692,17 @@ export class Enemy {
     this.auraT -= h;
     if (this.auraT > 0) return;
     this.auraT = 0.5;
+    // The aura is the whole card, and it was invisible and inaudible on the
+    // player: `_onDamage` and the audio damage handler both early-return for
+    // player targets, so the tick that defines the affix landed as a number.
+    // The held ring is drawn whether or not anyone is standing in it - that is
+    // what "legible from outside its radius" means.
+    ctx.director?.spawnTelegraph?.(this.position.x, this.position.z,
+      em.auraRadius, 0.56, EMBER_HUE);
     if (this.distToPlayer >= em.auraRadius) return;
+    const at = this.targetPlayer?.position || this.position;
+    fx(ctx, 'hitSpark', at, EMBER_HUE, 0.7);
+    sfx(ctx, 'elementTick', at, 'fire', 1);
     // Asked before the burn, not after: the tick arms the mercy window itself,
     // so a tick the survivor's i-frames ate must not leave its fire behind.
     const rides = ctx.combat?.wouldHit?.(this.targetPlayer) !== false;
@@ -1066,9 +1123,11 @@ export class Enemy {
       case 'slam':
       case 'stomp': {
         spawnWave(ctx, this, a);
+        const slamEl = attackElement(a);
         sfx(ctx, 'explosion', this.position, a.blast * 0.5);
+        sfx(ctx, 'elementTransient', this.position, slamEl, a.kind === 'slam' ? 1.3 : 1);
         ctx.pipeline?.addShake?.(a.kind === 'slam' ? 0.5 : 0.3);
-        fx(ctx, 'explosion', this.position, a.blast * 0.4, a.color);
+        fx(ctx, 'explosion', this.position, a.blast * 0.4, a.color, enemyCore(slamEl));
         break;
       }
       case 'barrage': {
@@ -1079,10 +1138,17 @@ export class Enemy {
         // Radial, self-centred, undodgeable by aim — only by distance. The
         // telegraph ring went up during the windup, so the player has already
         // been told how far "away" is.
-        spawnBlast(ctx, this, a.blast, this.damage * a.damage, a.color, a.status || null);
+        // Enemy polarity: the core takes the element hue at full chroma
+        // instead of the fixed warm centre that made thirteen different novas
+        // one nova in thirteen rims (C2). The rumble stays common - all novas
+        // are novas - and only the attack is elemental.
+        const el = attackElement(a);
+        const heavy = (a.phase || 1) > 1;
+        spawnBlast(ctx, this, a.blast, this.damage * a.damage, a.color, a.status || null, enemyCore(el));
         ctx.director?.spawnWave?.(this.position, a.blast, a.waveSpeed || 24, 0, null, a.color);
         sfx(ctx, 'explosion', this.position, a.blast * 0.5);
-        ctx.pipeline?.addShake?.(clamp(a.blast * 0.025, 0.1, 0.5));
+        sfx(ctx, 'elementTransient', this.position, el, heavy ? 1.5 : 1);
+        ctx.pipeline?.addShake?.(clamp(a.blast * 0.025, 0.1, heavy ? 0.7 : 0.5));
         break;
       }
       case 'summon': {
@@ -1101,8 +1167,12 @@ export class Enemy {
       }
       case 'pull': {
         // Nothing happens on the strike frame; the suction lives for the whole
-        // active window and is applied per step in the ATTACK state.
-        sfx(ctx, 'zap', this.position);
+        // active window and is applied per step in the ATTACK state - and so,
+        // now, does its voice. One arc-crackle at the top of a 1.7s drag was
+        // the signature mechanic going unvoiced for its own duration.
+        this.pullVoice?.release?.();
+        this.pullVoice = ctx.audio?.windupVoice?.(
+          this.position, attackElement(a), a.active * this.timeScale, 1.1);
         break;
       }
       default: break;
@@ -1455,6 +1525,113 @@ function spawnBlast(ctx, e, radius, damage, color, status, coreColour) {
   ctx.pipeline?.addShake?.(clamp(radius * 0.02, 0.05, 0.4));
 }
 
+/**
+ * How big the ground ring for one windup should be.
+ *
+ * A blast card already says where the damage lands, so it wins. Everything
+ * else gets a ring sized to the reach the attack actually has — a melee arc's
+ * lunge, a charger's stance, a summoner's cast footprint — because a ring that
+ * lied about reach would be worse than the silence it replaces.
+ */
+function telegraphRadius(e, a) {
+  if (a.blast) return a.blast;
+  switch (a.kind) {
+    case 'melee': return Math.max(1.6, (a.range || 2) + (a.lunge || 0) * 0.12);
+    case 'charge': return Math.max(1.8, e.radius * 2.4);
+    case 'summon': return Math.max(2.4, (a.spread || 3) * 1.1);
+    case 'dive': return Math.max(1.8, e.radius * 2.2);
+    case 'beam': case 'barrage': case 'projectile': case 'mend':
+      return Math.max(1.2, e.radius * 1.6);
+    default: return Math.max(1.4, e.radius * 1.8);
+  }
+}
+
+/**
+ * The per-kind half of the telegraph (EFFECT-LANGUAGE §4.3). The ring and the
+ * held voice are universal; this is what makes a drag read as a drag and a
+ * sprint read as a sprint rather than all sixteen windows reading as one
+ * grammar in sixteen colours.
+ */
+function windupTell(e, ctx, a, dur, t, h) {
+  const p = clamp(dur > 0 ? t / dur : 1, 0, 1);
+  const el = e.tellElement || 'kinetic';
+  const hue = a.color ?? enemyCore(el);
+  switch (a.kind) {
+    case 'pull': {
+      // Being dragged. The one place inward motion is sanctioned: the ring
+      // closes on the puller for the whole window.
+      e.tellT -= h;
+      if (e.tellT <= 0) {
+        e.tellT = 0.22;
+        const r = Math.max(1.5, (a.range || 20) * (1 - 0.72 * p));
+        ctx.director?.spawnTelegraph?.(e.position.x, e.position.z, r, 0.26, hue);
+      }
+      break;
+    }
+    case 'charge': {
+      // A wind-up to a sprint: it paws the ground, and the pawing gets faster.
+      e.tellT -= h;
+      if (e.tellT <= 0) {
+        e.tellT = 0.24 - 0.17 * p;
+        _v1.copy(e.position); _v1.y += 0.05;
+        _v2.set(0, 1, 0);
+        fx(ctx, 'impact', _v1, _v2);
+        sfx(ctx, 'elementTick', e.position, el, 0.7 + p * 1.4);
+      }
+      break;
+    }
+    case 'summon': {
+      // Something arriving from elsewhere: the rift opens before it does.
+      e.tellT -= h;
+      if (e.tellT <= 0) {
+        e.tellT = 0.3;
+        ctx.director?.spawnTelegraph?.(e.position.x, e.position.z,
+          Math.max(1.2, (a.spread || 3) * (0.35 + p * 0.85)), 0.34, hue);
+      }
+      break;
+    }
+    case 'beam': case 'barrage': {
+      // A weapon spooling. The kestrelLance grammar, at enemy polarity: beads
+      // collapsing onto the muzzle down the aim line the player is already
+      // reading, six of them across the window whatever its length.
+      const want = Math.floor(p * 6);
+      while (e.tellBeads < want) {
+        const k = e.tellBeads / 6;
+        e.tellBeads++;
+        _v1.copy(e.position); _v1.y += e.height * 0.7;
+        const r = 2.2 * (1 - k) + 0.25;
+        const ang = k * 5.1 + e.position.x;
+        _v2.copy(_v1).add(_v3.set(Math.cos(ang) * r, Math.sin(ang * 1.7) * r * 0.5, Math.sin(ang) * r));
+        ctx.vfx?.beams?.spawn?.(_v2, _v1, _beadCol.setHex(hue), 0.09 * (1 - k) + 0.02, 0.005, 0.16, 1.4 + k * 2, 1);
+        ctx.vfx?.lights?.flick?.(_v1, hue, 4 + k * 12, 3 + k * 4, 0.08);
+      }
+      break;
+    }
+    case 'projectile': {
+      // Aiming. A muzzle-side charge glow that brightens into the release;
+      // the release cue itself is untouched.
+      e.tellT -= h;
+      if (e.tellT <= 0) {
+        e.tellT = 0.12;
+        _v1.copy(e.position); _v1.y += e.height * 0.65;
+        ctx.vfx?.lights?.flick?.(_v1, hue, 3 + p * 12, 2.5 + p * 3, 0.1);
+      }
+      break;
+    }
+    case 'dive': {
+      // The shadow the diver casts, tracking it in, tightening as it commits.
+      e.tellT -= h;
+      if (e.tellT <= 0) {
+        e.tellT = 0.15;
+        ctx.director?.spawnTelegraph?.(e.position.x, e.position.z,
+          Math.max(1.2, e.radius * (2.6 - p * 1.1)), 0.2, hue);
+      }
+      break;
+    }
+    default: break;
+  }
+}
+
 function spawnWave(ctx, e, a) {
   ctx.director?.spawnWave?.(e.position, a.blast, a.waveSpeed, e.damage * a.damage, e, a.color);
 }
@@ -1584,17 +1761,32 @@ const STATES = {
       e.anim.windup = 0;
       e.anim.swing = 0;
       const a = e.atk;
-      // Ground telegraph for anything that is about to make a hole in the
-      // floor. The ring is placed and sized where the damage will be and lives
-      // exactly as long as the wind-up, so the wind-up *is* the warning rather
-      // than being a pose the player has to have learned.
-      if (a && a.blast && (a.kind === 'nova' || a.kind === 'slam' || a.kind === 'stomp' || a.kind === 'pull')) {
-        ctx.director?.spawnTelegraph?.(e.position.x, e.position.z, a.blast,
-          a.windup * e.timeScale, a.color);
+      if (!a) return;
+      const dur = a.windup * e.timeScale;
+      // Ground telegraph for *every* windup, not only the ones that are about
+      // to make a hole in the floor. Sixteen windows — every melee swing, every
+      // non-blink charge, every summon cast and the shrike's dive — used to
+      // pass with no ring and no sound at all, so the only signal was an
+      // animation the player had to have already learned (C6). The ring is
+      // placed and sized where the damage will be and lives exactly as long as
+      // the wind-up, so the wind-up *is* the warning.
+      e.tellElement = attackElement(a);
+      e.tellT = 0;
+      e.tellBeads = 0;
+      const ring = telegraphRadius(e, a);
+      if (ring > 0) {
+        ctx.director?.spawnTelegraph?.(e.position.x, e.position.z, ring, dur,
+          a.color ?? enemyCore(e.tellElement));
       }
+      // The windup voice: held, in the attacker's element, rising for exactly
+      // the length of the window and released when it ends. A suicide diver
+      // gets it at heavy intensity — it is the riskiest gap on the roster.
+      const heavy = a.kind === 'dive';
+      e.tellVoice = ctx.audio?.windupVoice?.(e.position, e.tellElement, dur, heavy ? 1.7 : 1);
+      if (heavy) sfx(ctx, 'elementTransient', e.position, e.tellElement);
       // Beams show their targeting line for the whole windup: that thin line
       // is the entire "get out of the way" signal.
-      if (a && (a.kind === 'beam' || a.kind === 'barrage')) {
+      if (a.kind === 'beam' || a.kind === 'barrage') {
         e.anim.beamOn = true;
         // Drawn length only. The hitscan still runs to `a.range` (55 m for the
         // colossus); the quad stops at BEAM_MAX_LEN so a distant shooter fires a
@@ -1610,6 +1802,8 @@ const STATES = {
       if (a.kind === 'beam' || a.kind === 'barrage') {
         e.anim.beamLen = lerp(e.anim.beamLen, Math.min(a.range, Math.max(4, e.distToPlayer), BEAM_MAX_LEN), 0.2);
       }
+      e.tellVoice?.move?.(e.position);
+      windupTell(e, ctx, a, dur, fsm.t, h);
       // A dash and a burrow both leave the wind-up into a state of their own —
       // they have real travel between the tell and the hit, which is exactly
       // the window the player is being given.
@@ -1619,7 +1813,14 @@ const STATES = {
         else fsm.set(S.ATTACK, ctx);
       }
     },
-    exit(e) { e.anim.windup = 0; },
+    exit(e) {
+      e.anim.windup = 0;
+      // The window is over, so the voice that meant "a window is open" ends
+      // with it. Idempotent by construction, which matters here: a unit killed
+      // mid-windup leaves through DIE, not through the fire path.
+      e.tellVoice?.release?.();
+      e.tellVoice = null;
+    },
   },
 
   [S.CHARGE]: {
@@ -1707,7 +1908,12 @@ const STATES = {
       e.anim.swing = 0.001;
       e.fireAttack(ctx);
       const at = e.atk;
-      if (at && (at.kind === 'beam' || at.kind === 'barrage')) sfx(ctx, 'zap', e.position);
+      // The universal beam voice stops being universal (C3): each beam takes
+      // its own element recipe, and shock beams still crackle because shock's
+      // recipe *is* a crackling sweep.
+      if (at && (at.kind === 'beam' || at.kind === 'barrage')) {
+        sfx(ctx, 'elementBeam', e.position, attackElement(at));
+      }
     },
     update(e, ctx, h, fsm) {
       const a = e.atk;
@@ -1745,6 +1951,7 @@ const STATES = {
         // The suction is the attack. It runs every step of the active window
         // and the damage only starts once you have actually been dragged in.
         e.pullPlayer(ctx, a, h);
+        e.pullVoice?.move?.(e.position);
         e.anim.beamOn = true;
         e.anim.beamLen = Math.min(a.range, Math.max(4, e.distToPlayer));
       } else if (a.kind === 'dive') {
@@ -1762,6 +1969,8 @@ const STATES = {
       e.anim.beamOn = false;
       e.anim.sweep = 0;
       e.diving = false;
+      e.pullVoice?.release?.();
+      e.pullVoice = null;
       if (e.atk && e.atk.kind === 'dive' && e.alive) e.detonate(e._ctx);
     },
   },

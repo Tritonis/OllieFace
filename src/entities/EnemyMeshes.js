@@ -321,7 +321,17 @@ export const ELITE = {
   // A cloud of thorns on a sick green body. Nine bits in a slow vertical helix
   // rather than a ring: the read is "infected", and infection spreads
   // rather than orbiting.
-  withering:   { tint: 0x00ad5d, aura: 0x86ffb4, glow: 2.4, name: 'Withering', tier: 2, bands: 0, bits: 9, shape: 'spike', bitScale: 0.15, helix: 1 },
+  // The aura was 0x86ffb4, a mint green - the hue the Effect Language reserves
+  // for healing and shields, worn by the one affix in the table whose whole
+  // mechanic is *denying* healing. It is now a yellow-leaning acid green: the
+  // toxic bucket, which is where the affix'"'"'s own 0x00ad5d tint already sits and
+  // which damage is allowed to use. It is deliberately NOT the void hue the
+  // language asks for - voidtouched already owns the void region, and a sweep
+  // of the whole cube under colour-vision simulation found no second void
+  // value clearing the aura gate against it (best non-white candidate 12.6 of
+  // a required 10 only by leaving the family entirely). Two affixes cannot be
+  // legible by hue in one family; these two separate on shape instead.
+  withering:   { tint: 0x00ad5d, aura: 0xc0f878, glow: 2.4, name: 'Withering', tier: 2, bands: 0, bits: 9, shape: 'spike', bitScale: 0.15, helix: 1 },
   // No bits at all — a hard faceted barrier instead, which is the one
   // silhouette change in the table that alters the unit's actual outline. It is
   // allowed to, but it is now a wireframe crystal rather than a filled sphere,
