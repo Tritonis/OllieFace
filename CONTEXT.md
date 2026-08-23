@@ -100,6 +100,25 @@ to merely do not yet — proven against the primitives, never assumed from absen
 The only finding class that may open a purchase or a new subsystem.
 _Avoid_: limitation, missing feature, tech debt
 
+## Alignment
+
+**Argent**:
+The purity-aligned item tier — the counterpart of Blight. An Argent item's
+strength is a claim about the world's purity: it fades toward nothing as
+corruption rises. Reached through purity work, never through ordinary loot.
+_Avoid_: pure item, white item, void item (that is another game's word)
+
+**Blight**:
+The corruption-aligned item tier — the counterpart of Argent. Power bought by
+letting the world rot.
+_Avoid_: corrupted item, void item
+
+**Argent Mote**:
+The currency that purity work mints and purity purchases spend. Earned by
+removing corruption from the world; the purse that makes purity an economy
+rather than a stat.
+_Avoid_: purity points, purity currency
+
 ## Networking
 
 The two halves below are independent, and conflating them is the single most
