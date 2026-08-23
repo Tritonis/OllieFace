@@ -353,72 +353,14 @@ export class Environment {
    * one material variant here would fork every program in the scene.
    */
   applyBiome(biome = BIOMES[0]) {
-    const ctx = this.ctx;
-    const scene = ctx.scene;
-
-    // --- sun vector: shared by the sky disc, the key light and the shadows ---
-    const { elevation, azimuth } = biome.sun;
-    const ce = Math.cos(elevation);
-    this.sunDir.set(ce * Math.sin(azimuth), Math.sin(elevation), ce * Math.cos(azimuth)).normalize();
-    this.skyUniforms.uSunDir.value.copy(this.sunDir);
-
-    // --- sky ---
-    // Matching _buildSky: these uniforms are fed to a ShaderMaterial that works
-    // in linear space, and the pipeline's own conversion is applied on top, so
-    // the same double step is repeated here or biome 0 would not reproduce the
-    // reference sky exactly.
-    const S = biome.sky;
-    const set = (name, hex) => {
-      this.skyUniforms[name].value.setHex(hex).convertSRGBToLinear();
-    };
-    set('uZenith', S.zenith);
-    set('uHorizon', S.horizon);
-    set('uHaze', S.haze);
-    set('uGround', S.ground);
-    set('uSunColor', S.sun);
-    set('uCloud', S.cloud);
-    set('uCeiling', S.ceiling ?? 0x000000);
-    this._deriveSkyMid();
-    this.skyUniforms.uCloudAmount.value = S.cloudAmount;
-    // The two per-biome atmosphere shape controls. `hazePow` is how tightly the
-    // hot band hugs the horizon; `ceilingAmount` turns the upper dome to rock
-    // and is non-zero for exactly one biome. See SkyShader.
-    this.skyUniforms.uHazePow.value = S.hazePow ?? 9.0;
-    this.skyUniforms.uCeilingAmount.value = S.ceilingAmount ?? 0;
+    const scene = this.ctx.scene;
+    this._dress(this._liveRig, biome);
 
     // The reflected world has to move with the sky, or the roughness ladder is
     // reflecting the wrong place. Once per stage build. See `_bakeEnvironment`.
+    // Nothing `_dress` writes reaches it — `_probeScene` holds the unlit sky
+    // dome and nothing else — so it reads the same sky whichever side it sits.
     this._bakeEnvironment();
-
-    // --- fog ---
-    if (scene.fog) {
-      scene.fog.color.copy(fogColor(biome));
-      scene.fog.density = biome.fog.density * FOG.density;
-    }
-
-    // --- lights ---
-    this.key.color.set(biome.sun.color);
-    this.key.intensity = biome.sun.intensity * KEY_GAIN;
-    const L = biome.light;
-    this.hemi.color.set(L.hemiSky);
-    this.hemi.groundColor.set(L.hemiGround).multiplyScalar(FILL.groundBoost);
-    this.hemi.intensity = Math.max(L.hemiIntensity * FILL.hemiScale, FILL.hemiMin);
-    // The rim keeps its colour untouched: it is the violet back light that makes
-    // a shadow a hue change rather than a darker version of the lit colour, and
-    // the warm-key / cool-shadow split is the thing this build gets right. Only
-    // its *intensity* comes down, because at 1.45 against a 4.2 key it was
-    // winning on any surface angled away from the sun — which is why the
-    // establishing shot had props measuring brighter on their shadow side.
-    this.rim.color.set(L.rim);
-    this.rim.intensity = Math.max(L.rimIntensity * FILL.rimScale, FILL.rimMin);
-    // Back light stays opposite the key wherever the key has moved to.
-    this.rim.position.set(this.sunDir.x * -120, 34, this.sunDir.z * -120);
-    // Third azimuth. Ground colour, boosted the same way the hemisphere's lower
-    // half is, because it stands for the same bounce. See `BOUNCE`.
-    this.bounce.color.set(L.hemiGround).multiplyScalar(FILL.groundBoost);
-    this.bounce.intensity = Math.max(L.hemiIntensity * BOUNCE.scale, BOUNCE.min);
-    this._placeBounce();
-    scene.environmentIntensity = Math.max(L.envIntensity * FILL.envScale, FILL.envMin) * ENV_PROBE_TRIM;
 
     // --- dust ---
     this.dustMaterial.color.set(biome.dust.color);
@@ -434,6 +376,84 @@ export class Environment {
       fogColor: scene.fog ? scene.fog.color.clone() : null,
       fogDensity: scene.fog ? scene.fog.density : 0,
     };
+  }
+
+  /**
+   * Write a biome onto one atmosphere rig: sky uniforms, fog, the four lights
+   * and the IBL exposure.
+   *
+   * A *rig* is `{ scene, sunDir, uniforms, key, hemi, rim, bounce }`. The live
+   * world is one (`_liveRig`, whose `sunDir` and `uniforms` are the very
+   * objects the rest of the class reads); `_probeRig` is a detached second one
+   * standing in its own scene, which is how a realm's reflection probe can be
+   * photographed under the realm's air without the world ever wearing it.
+   *
+   * Everything touched here is a *uniform* — no material is created, no light
+   * is added or removed, no define changes — so not one shader program is
+   * invalidated.
+   */
+  _dress(rig, biome = BIOMES[0]) {
+    const scene = rig.scene;
+
+    // --- sun vector: shared by the sky disc, the key light and the shadows ---
+    const { elevation, azimuth } = biome.sun;
+    const ce = Math.cos(elevation);
+    rig.sunDir.set(ce * Math.sin(azimuth), Math.sin(elevation), ce * Math.cos(azimuth)).normalize();
+    rig.uniforms.uSunDir.value.copy(rig.sunDir);
+
+    // --- sky ---
+    // Matching _buildSky: these uniforms are fed to a ShaderMaterial that works
+    // in linear space, and the pipeline's own conversion is applied on top, so
+    // the same double step is repeated here or biome 0 would not reproduce the
+    // reference sky exactly.
+    const S = biome.sky;
+    const set = (name, hex) => {
+      rig.uniforms[name].value.setHex(hex).convertSRGBToLinear();
+    };
+    set('uZenith', S.zenith);
+    set('uHorizon', S.horizon);
+    set('uHaze', S.haze);
+    set('uGround', S.ground);
+    set('uSunColor', S.sun);
+    set('uCloud', S.cloud);
+    set('uCeiling', S.ceiling ?? 0x000000);
+    this._deriveSkyMid(rig.uniforms);
+    rig.uniforms.uCloudAmount.value = S.cloudAmount;
+    // The two per-biome atmosphere shape controls. `hazePow` is how tightly the
+    // hot band hugs the horizon; `ceilingAmount` turns the upper dome to rock
+    // and is non-zero for exactly one biome. See SkyShader.
+    rig.uniforms.uHazePow.value = S.hazePow ?? 9.0;
+    rig.uniforms.uCeilingAmount.value = S.ceilingAmount ?? 0;
+
+    // --- fog ---
+    if (scene.fog) {
+      scene.fog.color.copy(fogColor(biome));
+      scene.fog.density = biome.fog.density * FOG.density;
+    }
+
+    // --- lights ---
+    rig.key.color.set(biome.sun.color);
+    rig.key.intensity = biome.sun.intensity * KEY_GAIN;
+    const L = biome.light;
+    rig.hemi.color.set(L.hemiSky);
+    rig.hemi.groundColor.set(L.hemiGround).multiplyScalar(FILL.groundBoost);
+    rig.hemi.intensity = Math.max(L.hemiIntensity * FILL.hemiScale, FILL.hemiMin);
+    // The rim keeps its colour untouched: it is the violet back light that makes
+    // a shadow a hue change rather than a darker version of the lit colour, and
+    // the warm-key / cool-shadow split is the thing this build gets right. Only
+    // its *intensity* comes down, because at 1.45 against a 4.2 key it was
+    // winning on any surface angled away from the sun — which is why the
+    // establishing shot had props measuring brighter on their shadow side.
+    rig.rim.color.set(L.rim);
+    rig.rim.intensity = Math.max(L.rimIntensity * FILL.rimScale, FILL.rimMin);
+    // Back light stays opposite the key wherever the key has moved to.
+    rig.rim.position.set(rig.sunDir.x * -120, 34, rig.sunDir.z * -120);
+    // Third azimuth. Ground colour, boosted the same way the hemisphere's lower
+    // half is, because it stands for the same bounce. See `BOUNCE`.
+    rig.bounce.color.set(L.hemiGround).multiplyScalar(FILL.groundBoost);
+    rig.bounce.intensity = Math.max(L.hemiIntensity * BOUNCE.scale, BOUNCE.min);
+    this._placeBounce(rig);
+    scene.environmentIntensity = Math.max(L.envIntensity * FILL.envScale, FILL.envMin) * ENV_PROBE_TRIM;
   }
 
   _buildSky(ctx) {
@@ -607,8 +627,7 @@ export class Environment {
    * separate authored colour, so every biome gets a mid that already belongs to
    * its own sky and `Materials.js` needs no new field.
    */
-  _deriveSkyMid() {
-    const u = this.skyUniforms;
+  _deriveSkyMid(u = this.skyUniforms) {
     u.uMid.value.copy(u.uZenith.value).lerp(u.uHaze.value, 0.20);
     // Ground bounce: the biome's own ground colour carrying a third of its own
     // horizon band. Derived rather than authored for the same reason `uMid` is
@@ -617,26 +636,40 @@ export class Environment {
     u.uBounce.value.copy(u.uGround.value).lerp(u.uHorizon.value, 0.34);
   }
 
-  _buildLights(scene) {
+  /**
+   * The four-light rig, built once per scene that needs one.
+   *
+   * The world gets one at boot; `_probeRig` gets a second, identical but for
+   * its shadow. Sharing the constructor is the point: a detached probe that
+   * lit its arena with a hand-rolled light set would photograph a realm the
+   * player never walks into, and the drift would be invisible.
+   *
+   * `shadows` is false for the probe rig, and that is a fidelity *match* rather
+   * than a saving: the live `bakeProbe` photographs an arena standing at
+   * `REALM_ORIGIN_X`, four kilometres outside the key's shadow frustum, so the
+   * arena has never appeared shadowed in its own probe either.
+   */
+  _buildLightSet(scene, { shadows = true } = {}) {
     const L = PALETTE.light;
 
     const key = new THREE.DirectionalLight(L.key, 4.2 * KEY_GAIN);
     key.position.copy(SUN_DIR).multiplyScalar(SUN_DISTANCE);
     key.target.position.set(0, 0, 0);
-    key.castShadow = true;
-    const sh = key.shadow;
-    sh.camera.near = 1;
-    sh.camera.far = SUN_DISTANCE + 260;
-    // VSM: bias is handled by the variance itself; normalBias is what kills
-    // the peter-panning on the big faceted cliff walls. 0.25 is nearly five
-    // texels at the ULTRA density, which is enough to walk a dead tree's or a
-    // boulder's shadow off its own base — the props that most need a contact
-    // shadow are exactly the ones thin enough for that offset to erase.
-    sh.bias = 0;
-    sh.normalBias = 0.10;
+    key.castShadow = shadows;
+    if (shadows) {
+      const sh = key.shadow;
+      sh.camera.near = 1;
+      sh.camera.far = SUN_DISTANCE + 260;
+      // VSM: bias is handled by the variance itself; normalBias is what kills
+      // the peter-panning on the big faceted cliff walls. 0.25 is nearly five
+      // texels at the ULTRA density, which is enough to walk a dead tree's or a
+      // boulder's shadow off its own base — the props that most need a contact
+      // shadow are exactly the ones thin enough for that offset to erase.
+      sh.bias = 0;
+      sh.normalBias = 0.10;
+    }
     scene.add(key);
     scene.add(key.target);
-    this.key = key;
 
     // The key still needs darkness to carve into, but at 0.50 with a nearly
     // black ground colour there was nothing left below the terminator at all.
@@ -645,7 +678,6 @@ export class Environment {
     hemi.groundColor.multiplyScalar(FILL.groundBoost);
     hemi.position.set(0, 60, 0);
     scene.add(hemi);
-    this.hemi = hemi;
 
     // Cool back light, opposite the key and slightly below it, so ridges and
     // props get a violet edge instead of dissolving into the fog. It is also
@@ -654,7 +686,6 @@ export class Environment {
     rim.position.set(SUN_DIR.x * -120, 34, SUN_DIR.z * -120);
     rim.castShadow = false;
     scene.add(rim);
-    this.rim = rim;
 
     // See `BOUNCE`. One more directional light is one more program variant,
     // compiled once at boot alongside the other three — it is not a per-biome
@@ -663,19 +694,116 @@ export class Environment {
     bounce.color.multiplyScalar(FILL.groundBoost);
     bounce.castShadow = false;
     scene.add(bounce);
-    this.bounce = bounce;
+
+    return { key, hemi, rim, bounce };
+  }
+
+  _buildLights(scene) {
+    const { key, hemi, rim, bounce } = this._buildLightSet(scene, { shadows: true });
+    this.key = key; this.hemi = hemi; this.rim = rim; this.bounce = bounce;
+
+    // The live atmosphere, addressed exactly the way a detached probe rig is,
+    // so `_dress` is the one place the biome maths lives. `sunDir` and
+    // `uniforms` are the very objects the rest of the class reads.
+    this._liveRig = {
+      scene, sunDir: this.sunDir, uniforms: this.skyUniforms, key, hemi, rim, bounce,
+    };
     this._placeBounce();
+  }
+
+  /**
+   * A second, detached atmosphere: its own scene, its own sky dome, its own
+   * four lights and its own fog. Built the first time a realm asks for a probe
+   * and kept, because the sky's `SphereGeometry(900)` and its ShaderMaterial
+   * are not worth re-allocating per door.
+   *
+   * This is what makes a warm-time bake honest. The alternative — dressing the
+   * *world's* Environment in realm air, baking, and dressing it back — has to
+   * be right about every field `applyBiome` touches and has to be sure no frame
+   * is presented in between; this one cannot show realm air on the world stage
+   * because the world stage is not in the picture.
+   */
+  _probeRigFor(biome, center) {
+    if (!this._probeRig) {
+      const uniforms = THREE.UniformsUtils.clone(SkyShader.uniforms);
+      for (const k of ['uZenith', 'uHorizon', 'uHaze', 'uGround', 'uSunColor', 'uCloud', 'uCeiling', 'uBounce']) {
+        uniforms[k].value.convertSRGBToLinear();
+      }
+      uniforms.uSunDir.value.copy(SUN_DIR);
+
+      const mat = new THREE.ShaderMaterial({
+        uniforms,
+        vertexShader: SkyShader.vertexShader,
+        fragmentShader: SkyShader.fragmentShader,
+        side: THREE.BackSide,
+        depthWrite: false,
+        depthTest: true,
+        fog: false,
+        toneMapped: false,
+      });
+      const sky = new THREE.Mesh(new THREE.SphereGeometry(900, 48, 32), mat);
+      sky.name = 'probe-sky';
+      sky.frustumCulled = false;
+      sky.renderOrder = -1000;
+      sky.castShadow = false;
+      sky.receiveShadow = false;
+
+      const scene = new THREE.Scene();
+      scene.add(sky);
+      scene.fog = new THREE.FogExp2(0x000000, 0);
+      const lights = this._buildLightSet(scene, { shadows: false });
+      this._probeRig = { scene, sky, uniforms, sunDir: new THREE.Vector3(), ...lights };
+    }
+    const rig = this._probeRig;
+    this._dress(rig, biome);
+    // Concentric with the probe, for the same reason `bakeProbe` re-centres the
+    // world's dome: at radius 900 against a 2000 far plane, a dome left at the
+    // origin while the probe stands at `REALM_ORIGIN_X` clips away entirely.
+    rig.sky.position.copy(center);
+    return rig;
+  }
+
+  /**
+   * Photograph `root` under `biome`'s air, in a scene of our own, and hand back
+   * the render target. Nothing about the live world is read or written.
+   *
+   * `root` is borrowed for the duration of the bake and put back where it was
+   * found — including "nowhere", which is where a parked arena lives.
+   */
+  bakeDetachedProbe(biome, root, center = new THREE.Vector3()) {
+    if (!this._pmrem) return null;
+    const rig = this._probeRigFor(biome, center);
+    const parent = root.parent;
+    rig.scene.add(root);
+    try {
+      return this._pmrem.fromScene(rig.scene, 0.05, 0.5, 2000, { position: center });
+    } finally {
+      rig.scene.remove(root);
+      if (parent) parent.add(root);
+    }
+  }
+
+  /**
+   * Take ownership of a probe baked earlier — the warm-time realm bake. Same
+   * postcondition as `bakeProbe`, minus the second and a bit it costs.
+   */
+  adoptProbe(rt) {
+    if (!rt) return;
+    const prev = this.envRT;
+    this.ctx.scene.environment = rt.texture;
+    this.envRT = rt;
+    if (prev !== rt) prev?.dispose();
   }
 
   /** Park the bounce light 250 degrees round from the sun and just below the
    *  horizon, so it moves with the biome's sun the way the rim does. */
-  _placeBounce() {
-    const sd = this.sunDir;
+  _placeBounce(rig = this._liveRig) {
+    const sd = rig.sunDir;
     const a = Math.atan2(sd.x, sd.z) + BOUNCE.azimuth;
     const ce = Math.cos(BOUNCE.elevation) * BOUNCE_DISTANCE;
-    this.bounce.position.set(Math.sin(a) * ce,
-                             Math.sin(BOUNCE.elevation) * BOUNCE_DISTANCE,
-                             Math.cos(a) * ce);
+    rig.bounce.position.set(Math.sin(a) * ce,
+                            Math.sin(BOUNCE.elevation) * BOUNCE_DISTANCE,
+                            Math.cos(a) * ce);
   }
 
   _buildDust(ctx) {

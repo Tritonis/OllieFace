@@ -613,6 +613,57 @@ export class VaultChest extends RealmProp {
   }
 }
 
+/**
+ * One throwaway instance of every prop a realm's *interior* can hold, built so
+ * their shader programs can be compiled before anyone walks in (#183).
+ *
+ * The arena itself is cheap to warm — it is one object with one root. Its props
+ * are not: they are allocated fresh per visit inside `controller.enter`, at the
+ * moment of entry, and three programs of the entry stall were still being
+ * compiled on the entry frame after the arena's own were warmed. A material's
+ * compiled program is shared by *cache key*, not by identity, so a throwaway
+ * built here warms the real one built later.
+ *
+ * It lives here, beside the constructors, on purpose. The alternative — a list
+ * of prop classes kept in `RealmWarm` — is a second place to remember when a
+ * prop is added, and the failure when it is forgotten is silent (a slow entry,
+ * not a broken one). The gateways are deliberately absent: they stand in
+ * ordinary stages and are warm long before any door is offered.
+ *
+ * Every constructor is guarded. A prop that cannot be stood up from nothing
+ * costs its own warm and nothing else — a cold entry is slow, never broken.
+ *
+ * The caller owns what comes back and must keep it **alive**: three drops a
+ * program from its cache when the last material referencing it is disposed, so
+ * a warm set that is thrown away immediately warms nothing at all. See
+ * `fx/Prewarm.js`, which keeps its character materials for the same reason.
+ */
+export function warmPropSet(ctx, position) {
+  const out = [];
+  const at = position.clone();
+  // Prop ids are handed to `Interactables` and reach clients by number, so a
+  // warm that consumed a few would shift every subsequent id on the host and
+  // on no client. Put the counter back exactly where it was found.
+  const idBefore = nextId;
+  const build = (make) => { try { out.push(make()); } catch { /* see above */ } };
+
+  build(() => new RealmPortal(ctx, at, { label: 'warm', tint: 0x9b5cff, onEnter: () => {} }));
+  build(() => new Refinery(ctx, at, 90));
+  build(() => new Obelisk(ctx, at));
+  build(() => new TrialPlinth(ctx, at));
+  build(() => new VaultChest(ctx, at, []));
+  // One stall per tier: the frame is shared but the plaque tint and the item
+  // icon are not, and the icon is where the extra programs were.
+  for (const tier of Object.keys(TIERS)) {
+    const pool = ITEMS_BY_TIER[tier];
+    if (!pool?.length) continue;
+    build(() => new MarketStall(ctx, at, pool[0].id, 40, 0));
+  }
+
+  nextId = idBefore;
+  return out;
+}
+
 /** Deterministic market stock: one item per tier band, rolled once on entry. */
 export function rollMarketStock(ctx, stageIndex) {
   const pick = (tier) => {
