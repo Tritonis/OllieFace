@@ -28,7 +28,10 @@ import { SAMPLES } from '../data/samples.js';
  *  2. **Effects fire down their real paths.** Abilities go through
  *     `def.fire(ctx, player)`, equipment through `ctx.items.useEquipment()`,
  *     item hooks through `ctx.items.onHit/onKill/...` with a Combat-shaped
- *     payload, pickups through `ctx.items.give()`. Nothing here calls VFX or
+ *     payload, pickups through `ctx.items.give()`, and every enemy attack
+ *     through a real unit's own `beginAttack` and state machine — a stand-in
+ *     for one of those stages the absence of whatever the real path grew
+ *     since. Nothing here calls VFX or
  *     Audio in a way gameplay would not, so audio arrives through the real
  *     `Audio` bus and spends the real voice budget. An effect that is
  *     inaudible under the budget is *evidence*, and a mixer bypass would
@@ -209,38 +212,78 @@ export function installShowcase(ctx) {
   // --- enemy attack windows -----------------------------------------------
   // Every attack on every card, split by whether the table gives it something
   // to see. The ones with a ring or a blast are the telegraphed half; the rest
-  // are the effect language's C6 group — windows that are *silent*, which is
-  // precisely why the showcase has to be able to fire them. An enumeration
-  // that skipped them would omit the sixteen effects most in need of judging.
+  // are the effect language's C6 group — windows that used to be *silent*,
+  // which is precisely why the showcase has to be able to fire them. An
+  // enumeration that skipped them would omit the effects most in need of
+  // judging.
+  //
+  // Both halves fire the same way: a real unit off the card, driven into the
+  // real `WINDUP` -> release state machine by `beginAttack`. The earlier
+  // version drew stand-ins — a ring, a blip, an `explosion()` with no core
+  // colour — and that was tolerable only while play did the same. It no longer
+  // does: the windup now carries a ground ring, a held rising voice in the
+  // attacker's element and a per-kind tell, and a nova's core is tinted by the
+  // caster's element (#151). A stand-in showcase therefore staged the *absence*
+  // of exactly what the jury presets were convened to judge. Nothing below
+  // re-implements any of that; it only spawns the unit and opens the window.
+  const demos = new Set();
+
+  /**
+   * Retire a demonstrator down the real path.
+   *
+   * `despawn` is what `Director.clear` calls at every stage transition, and it
+   * is the call that returns every held voice (`Enemy.releaseVoices`) — the
+   * windup voice above all, which is *held* for the length of its window. An
+   * instrument that leaked one would poison the voice-budget evidence it exists
+   * to collect, so this runs on the timer, again on close, and is idempotent.
+   */
+  const retire = (e) => {
+    if (!demos.delete(e)) return;
+    e.despawn?.(ctx);
+    const list = ctx.director?.enemies;
+    const i = list ? list.indexOf(e) : -1;
+    if (i >= 0) list.splice(i, 1);
+  };
+
+  /**
+   * Stand a real unit of `card` up and make it perform attack `index`.
+   *
+   * The mercy window is not squeamishness: the attack lands for real, on the
+   * real player, through the real Combat, and an evaluation session that ends
+   * with the evaluator downed answers a question nobody asked. `grantIFrames`
+   * is the same gate a dash opens, so the damage still travels its whole path
+   * and is refused at the last step rather than never being dealt.
+   */
+  const perform = (card, a, index, lateral) => {
+    const at = ground(ctx, 14, lateral);
+    const e = ctx.director?.spawnOne?.(ctx, card, at, null);
+    if (!e) return;
+    const p = player();
+    e.health = e.maxHealth = 1e6;
+    e.targetPlayer = p ?? null;
+    e.hasLOS = true;
+    e.losT = 1;         // past the staggered LOS re-check, as `forceAuraTick` does
+    e.gcd = 0;
+    e.cd?.fill?.(0);
+    demos.add(e);
+    const span = (a.windup ?? 0.6) * (e.timeScale ?? 1) + (a.active ?? 0) + 1.2;
+    p?.grantIFrames?.(span + 0.5);
+    e.beginAttack(ctx, index);
+    setTimeout(() => retire(e), span * 1000);
+  };
   for (const card of [...SPAWN_CARDS, ...BOSS_CARDS]) {
-    for (const a of card.attacks ?? []) {
+    const attacks = card.attacks ?? [];
+    for (let i = 0; i < attacks.length; i++) {
+      const a = attacks[i];
       const meta = { kind: a.kind, cardId: card.id, tier: card.tier, attackId: a.id };
       const radius = a.telegraph || a.blast;
       if (radius) {
-        add('telegraph', `${card.id}:${a.id}`, `${card.name} — ${a.id} (r${radius})`, (lateral) => {
-          const at = ground(ctx, 14, lateral);
-          // Ring life is the shell's flight in play; the impact is what the ring
-          // is a deadline *for*, so fire both or the effect reads as half of one.
-          const life = a.telegraph ? 1.1 : 0.4;
-          ctx.director?.spawnTelegraph?.(at.x, at.z, radius, life, a.color ?? 0xff5a3c);
-          ctx.audio?.play?.('shoot', at, 1.2);
-          setTimeout(() => {
-            ctx.vfx?.explosion?.(at, radius, a.color ?? 0xff5a3c);
-            ctx.audio?.play?.('explosion', at, radius);
-          }, life * 1000);
-        }, meta);
+        add('telegraph', `${card.id}:${a.id}`, `${card.name} — ${a.id} (r${radius})`,
+          (lateral) => perform(card, a, i, lateral), meta);
       } else {
         const win = a.windup ?? 0.6;
-        add('windup', `${card.id}:${a.id}`, `${card.name} — ${a.id} (silent s)`, (lateral) => {
-          const at = ground(ctx, 14, lateral);
-          // Nothing during the window, deliberately: the claim under test is
-          // that a windup is distinguishable from an idle enemy, and a
-          // stand-in ring drawn here would answer a question play never asks.
-          setTimeout(() => {
-            ctx.vfx?.explosion?.(at, Math.min(6, Math.max(2, a.range ?? 4)), a.color ?? 0xff5a3c);
-            ctx.audio?.play?.('shoot', at, 1.2);
-          }, win * 1000);
-        }, meta);
+        add('windup', `${card.id}:${a.id}`, `${card.name} — ${a.id} (windup ${win}s)`,
+          (lateral) => perform(card, a, i, lateral), meta);
       }
     }
   }
@@ -483,6 +526,9 @@ export function installShowcase(ctx) {
     // The showcase is judged by eye and ear against a live game, so the sim
     // keeps running underneath — only the keyboard is borrowed.
     if (v) render();
+    // Closing ends the session: any demonstrator still mid-window is retired
+    // here, which returns its held voice with it.
+    if (!v) for (const e of [...demos]) retire(e);
     // Warm the sampled voices the moment the menu opens, so the first press of
     // a sample entry is not the silent one that starts its decode.
     if (v) ctx.audio?.ensureSamples?.()?.catch?.(() => {});
@@ -550,7 +596,14 @@ export function installShowcase(ctx) {
       fire(e, 0);
       return true;
     },
-    dispose: () => { window.removeEventListener('keydown', onKey, true); root.remove(); },
+    dispose: () => {
+      window.removeEventListener('keydown', onKey, true);
+      root.remove();
+      // Every demonstrator still standing goes now, which is also how every
+      // voice it is holding is returned. Closing the instrument must not leave
+      // a windup chord sounding over the game underneath it.
+      for (const e of [...demos]) retire(e);
+    },
   };
   globalThis.__SHOWCASE__ = api;
   console.log(`[showcase] ${entries.length} effects catalogued; Shift+F9 to open.`);
