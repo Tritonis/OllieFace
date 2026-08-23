@@ -95,10 +95,9 @@ console.log('a status landing is pitched by status type');
   for (const s of ['burn', 'freeze', 'shock', 'slow', 'void']) {
     ok(!!STATUS_VOICE[s], `${s} has a voice`);
   }
-  const named = ['burn', 'freeze', 'shock', 'slow', 'void'];
-  const rates = named.map((s) => STATUS_VOICE[s].rate);
-  ok(new Set(rates).size === named.length,
-    `the five named statuses sit on five distinct rates (${rates.join(', ')})`);
+  const rates = Object.values(STATUS_VOICE).map((v) => v.rate);
+  ok(new Set(rates).size === rates.length,
+    `every status in the table sits on its own rate (${rates.join(', ')})`);
   // The specific pair that used to collide: same recipe, and before this change
   // the same rate, which made them the same sound.
   ok(statusVoiceOf('freeze').element === statusVoiceOf('slow').element,
@@ -108,19 +107,71 @@ console.log('a status landing is pitched by status type');
   ok(statusVoiceOf('nonesuch').element === 'kinetic', 'an unnamed status falls back to kinetic');
 }
 
-console.log('statusVoice hands the status rate to the element transient');
+console.log('every status renders to audio nothing else in the table renders to');
+{
+  // The claim under test is about *rendered* parameters, not about the numbers
+  // in the table, and it covers all seven statuses rather than a chosen five.
+  // The first version of this asserted on a stubbed `elementTransient` and so
+  // could not see that `void` (0.30) and `wither` (0.24) were being passed as a
+  // gain, hit the 0.35 clamp floor, and rendered byte-identical audio. Nothing
+  // is stubbed here: `statusVoice` runs down the real path onto the stub graph
+  // and the fingerprint is read back off the nodes it actually built.
+  const all = Object.keys(STATUS_VOICE);
+  ok(all.length === 7, `the table names seven statuses (${all.join(', ')})`);
+
+  /** Every parameter the graph actually received, as a comparable string. */
+  const render = (status) => {
+    const a = makeAudio();
+    a.statusVoice({ x: 0, y: 0, z: 0 }, status);
+    const parts = a.ac.made
+      .filter((n) => n.kind === 'osc' || n.kind === 'filter' || n.kind === 'src')
+      .map((n) => [
+        n.kind,
+        n.frequency.value,
+        n.Q.value,
+        n.detune.value,
+        n.starts[0] ?? '',
+        n.stops[0] ?? '',
+      ].join(':'));
+    ok(parts.length > 0, `${status} builds a real voice`);
+    const osc = a.ac.made.find((n) => n.kind === 'osc');
+    return {
+      print: parts.join('|'),
+      f: osc ? osc.frequency.value : 0,
+      dur: osc ? (osc.stops[0] - osc.starts[0]) : 0,
+    };
+  };
+
+  const r = new Map(all.map((s) => [s, render(s)]));
+  for (const [i, s] of all.entries()) {
+    for (const t of all.slice(i + 1)) {
+      ok(r.get(s).print !== r.get(t).print, `${s} and ${t} are not the same sound`);
+    }
+  }
+  ok(new Set([...r.values()].map((v) => v.print)).size === 7, 'seven statuses, seven renderings');
+
+  // And the distinctness is in the pitch and the length, not the loudness — a
+  // status landing is never louder than another status landing. Compared
+  // within an element, which is where two statuses can actually collide:
+  // void/wither share the void recipe and freeze/slow share ice.
+  ok(r.get('wither').f < r.get('void').f,
+    `wither sits below void (${r.get('wither').f.toFixed(1)} < ${r.get('void').f.toFixed(1)} Hz)`);
+  ok(r.get('slow').f < r.get('freeze').f,
+    `slow sits below freeze (${r.get('slow').f.toFixed(1)} < ${r.get('freeze').f.toFixed(1)} Hz)`);
+  ok(r.get('wither').dur > r.get('void').dur, 'and the lower voice is the longer one');
+}
+
+console.log('statusVoice sends each status down its own element');
 {
   const a = makeAudio();
   const seen = [];
-  a.elementTransient = (pos, el, rate) => seen.push({ el, rate });
-  for (const s of ['burn', 'freeze', 'shock', 'slow', 'void']) {
-    a._throttles?.clear?.();
-    a.statusVoice({ x: 0, y: 0, z: 0 }, s);
-  }
-  ok(seen.length === 5, 'all five landed (the throttle is per-status, not global)');
-  ok(seen.every((v, i) => v.el === statusVoiceOf(['burn', 'freeze', 'shock', 'slow', 'void'][i]).element),
-    'each in its own element');
-  ok(new Set(seen.map((v) => v.rate)).size === 5, 'at five distinct rates');
+  a.elementTransient = (pos, el, gain, rate) => seen.push({ el, gain, rate });
+  const named = Object.keys(STATUS_VOICE);
+  for (const s of named) a.statusVoice({ x: 0, y: 0, z: 0 }, s);
+  ok(seen.length === named.length, 'all of them landed (the throttle is per-status, not global)');
+  ok(seen.every((v, i) => v.el === statusVoiceOf(named[i]).element), 'each in its own element');
+  ok(new Set(seen.map((v) => v.gain)).size === 1, 'at one shared tick loudness');
+  ok(new Set(seen.map((v) => v.rate)).size === named.length, 'and its own transposition');
 }
 
 console.log('a status with no overlay recipe still gets its voice');
@@ -158,14 +209,17 @@ console.log('downing a player is a descending figure, not one fading tone');
 console.log('the held body marker is a real sustained voice');
 {
   const a = makeAudio();
-  ok(a._downedMarker === null, 'idle mixer holds no marker');
-  a.playerDowned({ x: 3, y: 0, z: 4 });
-  ok(!!a._downedMarker && a._downedMarker.active === true, 'downing starts one');
+  const owner = { alive: true, netId: 1 };
+  ok(a.downedMarkerCount === 0, 'idle mixer holds no marker');
+  a.playerDowned({ x: 3, y: 0, z: 4 }, owner);
+  const first = a._downedMarkers.get(1);
+  ok(!!first && first.active === true, 'downing starts one');
   ok(a.priorityVoices > 0, 'and it is charged against the budget while it is held');
-  // A second down releases the first: one field, one voice.
-  const first = a._downedMarker;
-  a.playerDowned({ x: 9, y: 0, z: 9 });
-  ok(a._downedMarker !== first, 'a second down replaces the handle');
+  // Re-downing the same owner replaces that owner's handle rather than
+  // stranding it. (Two *different* owners keeping two markers is
+  // `tests/downed-marker-release.test.mjs`.)
+  a.playerDowned({ x: 9, y: 0, z: 9 }, owner);
+  ok(a._downedMarkers.get(1) !== first, 'a second down replaces the handle');
   ok(first.active === false, 'and releases the first rather than stranding it');
 }
 

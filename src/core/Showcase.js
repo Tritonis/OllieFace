@@ -594,6 +594,25 @@ export function installShowcase(ctx) {
     }
   };
 
+  /**
+   * Everything this instrument may still be holding, given back.
+   *
+   * Two kinds, and they leave by different doors: a demonstrator's windup voice
+   * goes when the demonstrator is retired, and the downed body marker has no
+   * demonstrator at all — `playerDowned` with no `playerRevived` after it is
+   * one keypress, and the marker then outlives the panel that started it.
+   *
+   * Shared by `close` and `dispose` because the leak the reviewer reproduced
+   * was exactly the gap between them: `dispose()` retired the demonstrators and
+   * left the marker sounding over a game with no showcase on screen. Anything
+   * added here must be idempotent; both doors can be walked through in a row.
+   */
+  const releaseHeld = () => {
+    for (const e of [...demos]) retire(e);
+    ctx.audio?.releaseDownedMarker?.();
+    ctx.vfx?.playerRevived?.(null, null);
+  };
+
   const setOpen = (v) => {
     open = v;
     root.style.display = v ? 'block' : 'none';
@@ -602,12 +621,7 @@ export function installShowcase(ctx) {
     if (v) render();
     // Closing ends the session: any demonstrator still mid-window is retired
     // here, which returns its held voice with it.
-    if (!v) for (const e of [...demos]) retire(e);
-    // The downed marker is the one held voice the showcase can start without a
-    // demonstrator to retire — `playerDowned` with no `playerRevived` after it
-    // is one keypress. Closing the instrument is an exit from the downed state
-    // like any other, so it releases both halves of the marker.
-    if (!v) { ctx.audio?.releaseDownedMarker?.(); ctx.vfx?.playerRevived?.(null, null); }
+    if (!v) releaseHeld();
     // Jury headroom, for as long as the instrument is open and not a moment
     // longer: the windup sub-budget alone is raised to fit the greediest panel
     // and returned to its shipped value on the way out (#155). Nothing else in
@@ -686,10 +700,10 @@ export function installShowcase(ctx) {
     dispose: () => {
       window.removeEventListener('keydown', onKey, true);
       root.remove();
-      // Every demonstrator still standing goes now, which is also how every
-      // voice it is holding is returned. Closing the instrument must not leave
-      // a windup chord sounding over the game underneath it.
-      for (const e of [...demos]) retire(e);
+      // Every held voice goes now — demonstrators and the downed marker alike.
+      // Disposing the instrument must not leave a windup chord or a beacon
+      // sounding over the game underneath it.
+      releaseHeld();
       // And the sub-budget goes back with them: disposing the instrument must
       // not leave a raised cap standing over the game underneath it.
       ctx.audio?.setJuryHeadroom?.(0);

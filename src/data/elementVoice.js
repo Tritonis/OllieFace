@@ -198,9 +198,16 @@ export function attackElement(a) {
  * two different things, the halt and the drag, and the only thing separating
  * them is where they sit on the ladder.
  *
- * `rate` is `elementTransient`'s playback rate, so a lower number is a lower,
- * longer voice. The ordering encodes the fiction: shock is the highest and
- * shortest, void and wither the lowest and longest.
+ * `rate` is `elementTransient`'s *transposition*, not its gain: every frequency
+ * in the recipe moves with it and the envelope stretches as it falls, so a
+ * lower number is a lower, longer voice. The ordering encodes the fiction:
+ * shock is the highest and shortest, void and wither the lowest and longest.
+ *
+ * It has to be pitch. Passing these numbers as the gain instead — the first
+ * version of this — hit `elementTransient`'s 0.35 loudness floor, so `void`
+ * (0.30) and `wither` (0.24) rendered byte-identical audio while the table
+ * claimed seven distinct voices. Two statuses in one element are told apart
+ * here or nowhere.
  */
 export const STATUS_VOICE = {
   __proto__: null,
@@ -212,6 +219,13 @@ export const STATUS_VOICE = {
   void: { element: 'void', rate: 0.30 },
   wither: { element: 'void', rate: 0.24 },
 };
+
+/**
+ * Tick intensity, as a gain. One number for every status on purpose: a status
+ * landing is never louder than another status landing, so loudness carries no
+ * information here and the pitch carries all of it.
+ */
+export const STATUS_TICK_GAIN = 0.45;
 
 /** The voice for one status name; anything unnamed is a kinetic tick. */
 export function statusVoiceOf(status) {

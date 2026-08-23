@@ -87,6 +87,7 @@ function makeAudio(ctx) {
 }
 
 const held = (a) => a.voices + a.worldVoices + a.priorityVoices;
+const pawnOf = (netId) => ({ alive: true, netId, position: { x: 0, y: 0, z: 0 } });
 
 /**
  * Down a player, assert the marker is really held, then run `exit` and assert
@@ -95,15 +96,17 @@ const held = (a) => a.voices + a.worldVoices + a.priorityVoices;
 function exitCase(name, exit, ctxFor = () => ({ events: makeBus(), player: { alive: true } })) {
   const ctx = ctxFor();
   const a = makeAudio(ctx);
-  a.playerDowned({ x: 2, y: 0, z: 3 });
-  const h = a._downedMarker;
+  // The body on the floor is `downedPawn` where a case names one — a peer's
+  // mixer watching somebody else go down — and the local player otherwise.
+  a.playerDowned({ x: 2, y: 0, z: 3 }, ctx.downedPawn ?? ctx.player);
+  const h = [...a._downedMarkers.values()][0];
   const before = held(a);
   ok(!!h && h.active === true && before > 0, `${name}: a body is down and holding a voice`);
 
   exit(a, ctx);
   a.ac.endAll();
 
-  ok(a._downedMarker === null, `${name}: the handle is dropped`);
+  ok(a.downedMarkerCount === 0, `${name}: the handle is dropped`);
   ok(h.active === false, `${name}: the voice is released`);
   ok(held(a) === 0, `${name}: every unit of budget is back (held ${held(a)})`);
   // The strongest form: the graph nodes the marker started were actually told
@@ -113,17 +116,67 @@ function exitCase(name, exit, ctxFor = () => ({ events: makeBus(), player: { ali
 }
 
 console.log('every exit from the downed state releases the held marker');
-exitCase('revive', (a) => a.playerRevived({ x: 2, y: 0, z: 3 }));
+exitCase('revive', (a, ctx) => a.playerRevived({ x: 2, y: 0, z: 3 }, ctx.player));
 exitCase('revive over the bus', (a, ctx) => ctx.events.emit('playerRevived', { player: ctx.player, position: { x: 2, y: 0, z: 3 } }));
 exitCase('the downed player dies', (a, ctx) => {
   ctx.player.alive = false;
   ctx.events.emit('playerDead', { victim: ctx.player });
 });
-// The case that leaked: the handler returns early for a body that is not the
-// local survivor, so the release has to happen ahead of that guard.
-exitCase('a teammate dies', (a, ctx) => ctx.events.emit('playerDead', { victim: { netId: 7 } }));
+// The case that leaked once: the handler returns early for a body that is not
+// the local survivor, so the release has to happen ahead of that guard. Here
+// the *downed* player is the one who dies, and the mixer is a remote peer's
+// (`ctx.player` is somebody else), so the early return is taken.
+exitCase('a downed teammate dies on a peer’s mixer',
+  (a, ctx) => ctx.events.emit('playerDead', { victim: ctx.downedPawn }),
+  () => {
+    const downedPawn = pawnOf(7);
+    return { events: makeBus(), player: { alive: true, netId: 3 }, downedPawn };
+  });
 exitCase('the stage changes', (a, ctx) => ctx.events.emit('stageStart', { index: 2 }));
-exitCase('an explicit release', (a) => a.releaseDownedMarker());
+exitCase('an explicit release', (a, ctx) => a.releaseDownedMarker(ctx.player));
+exitCase('a blanket release', (a) => a.releaseDownedMarker());
+
+console.log('two bodies on the floor are two beacons, and they end separately');
+{
+  // The Critical this file was extended for: with a single handle field, B
+  // going down silently killed A's beacon, and reviving A released whichever
+  // marker was in the field rather than A's own.
+  const ctx = { events: makeBus(), player: { alive: true, netId: 1 } };
+  const a = makeAudio(ctx);
+  const A = pawnOf(1), B = pawnOf(2);
+
+  ctx.events.emit('playerDowned', { player: A, position: { x: 1, y: 0, z: 0 } });
+  const hA = [...a._downedMarkers.values()][0];
+  ctx.events.emit('playerDowned', { player: B, position: { x: 9, y: 0, z: 0 } });
+  const hB = a._downedMarkers.get(2);
+
+  ok(a.downedMarkerCount === 2, 'both bodies hold a marker at once');
+  ok(hA.active === true, 'B going down does not kill A’s beacon');
+  ok(hB && hB !== hA && hB.active === true, 'and B has a beacon of its own');
+
+  ctx.events.emit('playerRevived', { player: A, position: { x: 1, y: 0, z: 0 } });
+  ok(hA.active === false, 'reviving A releases A’s marker');
+  ok(hB.active === true, 'and leaves B’s sounding — B is still on the floor');
+  ok(a.downedMarkerCount === 1, 'exactly one beacon left');
+
+  ctx.events.emit('playerDead', { victim: B });
+  a.ac.endAll();
+  ok(hB.active === false, 'B’s own exit is what ends B’s marker');
+  ok(a.downedMarkerCount === 0 && held(a) === 0, 'and the budget is whole again');
+}
+
+console.log('re-downing the same body replaces only that body’s marker');
+{
+  const a = makeAudio();
+  const A = pawnOf(1), B = pawnOf(2);
+  a.playerDowned({ x: 0, y: 0, z: 0 }, A);
+  const first = a._downedMarkers.get(1);
+  a.playerDowned({ x: 0, y: 0, z: 0 }, B);
+  a.playerDowned({ x: 0, y: 0, z: 0 }, A);
+  ok(first.active === false, 'the same owner’s previous handle is released');
+  ok(a._downedMarkers.get(2).active === true, 'the other body is untouched');
+  ok(a.downedMarkerCount === 2, 'and no handle was stranded');
+}
 
 console.log('releasing is idempotent and safe to call with nothing down');
 {
@@ -131,11 +184,14 @@ console.log('releasing is idempotent and safe to call with nothing down');
   a.releaseDownedMarker();
   ok(held(a) === 0, 'releasing an absent marker costs nothing');
   a.playerDowned({ x: 0, y: 0, z: 0 });
+  ok(a.downedMarkerCount === 1, 'an owner-less down still gets exactly one marker');
+  a.playerDowned({ x: 0, y: 0, z: 0 });
+  ok(a.downedMarkerCount === 1, 'and a second one does not pile up an anonymous second');
   a.releaseDownedMarker();
   a.ac.endAll();
   const after = held(a);
   a.releaseDownedMarker();
-  a.releaseDownedMarker();
+  a.releaseDownedMarker(null);
   ok(held(a) === after && held(a) === 0, 'and releasing three times does not double-credit the budget');
 }
 
@@ -199,6 +255,49 @@ console.log('a body that dies or teleports stops being a marker');
   ok(w._downed.size === 2, 'two bodies, two markers');
   w.playerRevived(null, null);
   ok(w._downed.size === 0, 'a stage change clears every marker at once');
+}
+
+/* ------------------------------------------- the showcase is an exit too */
+
+console.log('the showcase gives the marker back through both of its doors');
+{
+  // Reproduces the reviewer's leak: fire the `playerDowned` moment, then
+  // `dispose()` the instrument. `dispose` retired the demonstrators and left
+  // the marker sounding over a game with no showcase on screen — the marker is
+  // the one held voice the showcase can start *without* a demonstrator to
+  // retire, so retiring them all was not enough.
+  const el = () => {
+    const n = {
+      style: { cssText: '' }, textContent: '', innerHTML: '', id: '', children: [],
+      append: (...k) => n.children.push(...k),
+      appendChild: (k) => { n.children.push(k); return k; },
+      scrollIntoView() {}, remove() {},
+    };
+    return n;
+  };
+  globalThis.document = { createElement: el, body: el() };
+  globalThis.window = { addEventListener() {}, removeEventListener() {} };
+  const { installShowcase } = await import('../src/core/Showcase.js');
+
+  const showcaseCtx = (a) => ({
+    audio: a,
+    camera: { position: { x: 0, y: 2, z: 0 }, getWorldDirection: (v) => v.set(0, 0, -1) },
+    stage: { sampleHeight: () => 0 },
+  });
+
+  for (const [door, run] of [['dispose', (api) => api.dispose()], ['close', (api) => api.close()]]) {
+    const a = makeAudio();
+    const api = installShowcase(showcaseCtx(a));
+    ok(api.fire('playerDowned'), `${door}: the downed moment fired`);
+    const h = [...a._downedMarkers.values()][0];
+    ok(!!h && h.active === true && held(a) > 0, `${door}: it left a marker holding a voice`);
+
+    run(api);
+    a.ac.endAll();
+    ok(a.downedMarkerCount === 0, `${door}: the marker is dropped`);
+    ok(h.active === false, `${door}: and its voice is released`);
+    ok(held(a) === 0, `${door}: every unit of budget is back (held ${held(a)})`);
+  }
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

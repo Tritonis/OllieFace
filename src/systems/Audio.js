@@ -3,7 +3,9 @@ import { clamp } from '../core/MathUtil.js';
 import { isLocalOwner } from '../core/Engine.js';
 import { MusicEngine } from './Music.js';
 import { SAMPLES_BY_ID } from '../data/samples.js';
-import { SUSTAIN, TRANSIENT, sustainNodeCost, statusVoiceOf, unitElement } from '../data/elementVoice.js';
+import {
+  SUSTAIN, TRANSIENT, sustainNodeCost, statusVoiceOf, unitElement, STATUS_TICK_GAIN,
+} from '../data/elementVoice.js';
 
 /**
  * Fully procedural WebAudio. No files, no network, no decode step.
@@ -160,6 +162,12 @@ const SCALE = [0, 3, 5, 7, 10, 12, 15, 17, 19, 22];
 const ROOT = 110; // A2
 
 /**
+ * The marker key for a caller that names no owner. A unique object rather than
+ * a string or `null`, so it can never collide with a pawn's own netId.
+ */
+const SOLO_MARKER = Symbol('solo-downed-marker');
+
+/**
  * The world-state audio layer (launch design §1, world state): gain per
  * corruption band on the void shimmer bed. Zero through band 1 for the same
  * reason BAND_GRADE's early entries are zero — an atmosphere that sickens
@@ -255,10 +263,11 @@ export class Audio {
     // the sub-budget is measured against.
     this._windups = [];
     this.windupNodes = 0;
-    // The one held voice this mixer owns on its own behalf: the downed body
-    // marker (§4.4). Exactly one field, so there is exactly one thing to
-    // release and nowhere for a second handle to hide.
-    this._downedMarker = null;
+    // The held voices this mixer owns on its own behalf: one downed body
+    // marker per downed pawn (§4.4), keyed by `_markerKey`. A Map rather than
+    // a field because a co-op party can have four bodies on the floor at once
+    // and each is a separate place to walk to.
+    this._downedMarkers = new Map();
     // The live sub-budget. `WINDUP_VOICES` in every build a player can reach;
     // only the dev-only showcase may raise it, and only while it is open.
     this._windupCap = WINDUP_VOICES;
@@ -328,8 +337,8 @@ export class Audio {
     // to every client — every peer needs to hear a teammate go down or get
     // back up, not just the pawn it happened to. Positional (`pos`), unlike
     // `playerHurt`/`playerDead` which are always about the local survivor.
-    e.on('playerDowned', (p) => this.playerDowned(p?.position));
-    e.on('playerRevived', (p) => this.playerRevived(p?.position));
+    e.on('playerDowned', (p) => this.playerDowned(p?.position, p?.player ?? null));
+    e.on('playerRevived', (p) => this.playerRevived(p?.position, p?.player ?? null));
     // Both cues speak for the person holding the headphones. On a host the bus
     // carries every pawn's economy, so without the owner test a four-player
     // party gave the viewer a jingle for every teammate's pickup and a coin for
@@ -386,8 +395,9 @@ export class Audio {
       // being a body to walk to whoever it belonged to, and the guard below
       // exists to decide whose *soundtrack* stops, which is a different
       // question. A teammate's death returning early here is what leaked the
-      // held marker for the rest of the stage.
-      this.releaseDownedMarker();
+      // held marker for the rest of the stage. Per-victim: a teammate dying
+      // must not silence a *different* teammate's beacon.
+      this.releaseDownedMarker(p?.victim ?? null);
       const me = this.ctx?.player;
       const myNetId = this.ctx?.authority === false ? (this.ctx.net?.myNetId ?? 0) : 0;
       const victimNetId = p?.victim?.netId;
@@ -1193,7 +1203,7 @@ export class Audio {
    * shared `explosion` body, never instead of it: all novas are novas, so the
    * rumble stays common and only the attack is elemental.
    */
-  elementTransient(pos, element, scale = 1) {
+  elementTransient(pos, element, scale = 1, rate = 1) {
     const ac = this._ensure();
     if (!ac) return;
     const r = TRANSIENT[element] || TRANSIENT.kinetic;
@@ -1202,10 +1212,34 @@ export class Audio {
     const t = ac.currentTime;
     const out = this._out(pos, 12, 180);
     const g = clamp(scale, 0.35, 1.6);
-    if (r.tone) this._tone(t, r.tone.dur, { ...r.tone, gain: r.tone.gain * g, out });
+    // `rate` transposes: every frequency in the recipe moves with it and the
+    // envelope stretches as it falls, so a lower rate is a lower *and* longer
+    // voice. This is a separate knob from `scale` on purpose — `scale` is the
+    // gain and it is clamped to a floor of 0.35, so two callers a whisker apart
+    // in loudness render byte-identically. Anything that needs to tell two
+    // sounds in one element apart has to move the pitch, and this is the only
+    // parameter that does. The stretch is `1/sqrt(k)` rather than `1/k`: a
+    // 0.24-rate voice at the linear law runs for nearly two seconds, which is
+    // not a tick any more.
+    const k = clamp(rate, 0.15, 3);
+    const stretch = 1 / Math.sqrt(k);
+    if (r.tone) {
+      this._tone(t, r.tone.dur * stretch, {
+        ...r.tone,
+        f0: r.tone.f0 * k,
+        f1: r.tone.f1 === undefined ? undefined : r.tone.f1 * k,
+        gain: r.tone.gain * g,
+        out,
+      });
+    }
     if (r.noise) {
-      this._noise(t, r.noise.dur, {
-        ...r.noise, gain: r.noise.gain * g, out, attack: r.noise.attack ?? 0.004,
+      this._noise(t, r.noise.dur * stretch, {
+        ...r.noise,
+        freq: r.noise.freq * k,
+        freqEnd: r.noise.freqEnd === undefined ? undefined : r.noise.freqEnd * k,
+        gain: r.noise.gain * g,
+        out,
+        attack: r.noise.attack ?? 0.004,
       });
     }
   }
@@ -1229,7 +1263,13 @@ export class Audio {
   statusVoice(pos, status) {
     const v = statusVoiceOf(status);
     if (!this._throttle(`status:${status}`, 0.08)) return;
-    this.elementTransient(pos, v.element, v.rate);
+    // Tick intensity is the *gain*, and it is one number for every status: a
+    // status landing is never louder than another status landing. The pitch is
+    // what tells them apart. Passing the rate as the gain — which is what this
+    // did first — put `void` and `wither` both on the 0.35 clamp floor and made
+    // them the same sound; `tests/run-moment-voices.test.mjs` renders all seven
+    // through this path and fails if any two come out alike.
+    this.elementTransient(pos, v.element, STATUS_TICK_GAIN, v.rate);
   }
 
   /**
@@ -1563,13 +1603,18 @@ export class Audio {
    * the body so a teammate can hear where to walk.
    *
    * The marker is a real sustained voice, which makes it the one thing here
-   * that can leak the mixer budget. It is held in exactly one field, a second
-   * down releases the first, and every way a body can stop being down —
-   * revive, death, stage change, mixer teardown — routes through
-   * `releaseDownedMarker()`. `tests/downed-marker-release.test.mjs` fails if
-   * any of those exits stops calling it.
+   * that can leak the mixer budget. Every way a body can stop being down —
+   * revive, death, stage change, teardown — routes through
+   * `releaseDownedMarker()`, and `tests/downed-marker-release.test.mjs` fails
+   * if any of those exits stops calling it.
+   *
+   * Keyed **per owner**, not held in one field. Four players can be down at
+   * once and each body is a separate place to walk to; with a single field the
+   * second player going down silently killed the first one's beacon, and
+   * reviving anybody released whichever marker happened to be in the field
+   * rather than that player's own. `owner` is the pawn the event names.
    */
-  playerDowned(pos) {
+  playerDowned(pos, owner = null) {
     const ac = this._ensure();
     if (!ac || !this._take(3, true)) return;
     const t = ac.currentTime;
@@ -1585,7 +1630,24 @@ export class Audio {
       });
     }
     this._noise(t + 0.2, 0.9, { type: 'lowpass', freq: 800, freqEnd: 140, q: 0.6, gain: 0.07, out, attack: 0.04 });
-    this.startDownedMarker(pos);
+    this.startDownedMarker(pos, owner);
+  }
+
+  /**
+   * The identity a marker is filed under.
+   *
+   * A netId when the pawn has one, because that is the only handle that
+   * survives the wire: `playerDowned` names a live pawn by reference while
+   * `playerDead` can arrive from `sanitise` carrying nothing but a netId, and
+   * the two have to reach the same entry or a death stops releasing what a
+   * down started. The pawn itself in single-player, where there are no netIds
+   * and object identity is exact. `SOLO` for a caller that names no owner at
+   * all — the showcase, and any older call site — so those still get exactly
+   * one marker rather than an unbounded pile of anonymous ones.
+   */
+  _markerKey(owner) {
+    if (owner == null) return SOLO_MARKER;
+    return owner.netId ?? owner;
   }
 
   /**
@@ -1593,10 +1655,14 @@ export class Audio {
    * being ignored for a minute without becoming the loudest thing in the mix,
    * and it has to be findable, so it is positional with a short reference
    * distance and a long roll-off.
+   *
+   * Re-downing the *same* owner replaces that owner's marker; downing a
+   * different one leaves every other beacon alone.
    */
-  startDownedMarker(pos) {
-    this.releaseDownedMarker();
-    this._downedMarker = this.startSustained(pos, {
+  startDownedMarker(pos, owner = null) {
+    const key = this._markerKey(owner);
+    this.releaseDownedMarker(owner);
+    const h = this.startSustained(pos, {
       tones: [
         { type: 'sine', f0: ROOT * 0.5, gain: 0.075 },
         { type: 'triangle', f0: ROOT * 0.75, detune: -6, gain: 0.035 },
@@ -1607,19 +1673,34 @@ export class Audio {
       refDistance: 6,
       maxDistance: 90,
     });
-    return this._downedMarker;
+    this._downedMarkers.set(key, h);
+    return h;
   }
 
   /**
-   * Idempotent: the handle is dropped before `release()` is called, so a
-   * re-entrant exit path (a body that is revived and killed in the same frame)
-   * cannot release twice, and a caller that has no marker pays nothing.
+   * Release one owner's marker, or — called with no argument — every marker
+   * there is, which is what a stage change and a teardown need.
+   *
+   * Idempotent: each handle is deleted from the map before `release()` is
+   * called, so a re-entrant exit (a body revived and killed in the same frame)
+   * cannot release twice, and a caller with no marker pays nothing.
    */
-  releaseDownedMarker() {
-    const h = this._downedMarker;
-    this._downedMarker = null;
-    h?.release?.();
+  releaseDownedMarker(owner) {
+    if (arguments.length === 0) {
+      const all = [...this._downedMarkers.values()];
+      this._downedMarkers.clear();
+      for (const h of all) h?.release?.();
+      return;
+    }
+    const key = this._markerKey(owner);
+    const h = this._downedMarkers.get(key);
+    if (!h) return;
+    this._downedMarkers.delete(key);
+    h.release?.();
   }
+
+  /** Live markers, for tests and for anything that needs to know if any body is down. */
+  get downedMarkerCount() { return this._downedMarkers.size; }
 
   /**
    * Revived (§4.4) — the most consequential co-op event, and so its own voice
@@ -1628,8 +1709,9 @@ export class Audio {
    * rather than in sequence, opening outward through a filter that climbs, and
    * the marker's low bed lifted off the world in the same breath.
    */
-  playerRevived(pos) {
-    this.releaseDownedMarker();
+  playerRevived(pos, owner = null) {
+    // This player's own beacon, not whichever one happened to be latest.
+    this.releaseDownedMarker(owner);
     const ac = this._ensure();
     if (!ac || !this._take(6, true)) return;
     const t = ac.currentTime;
