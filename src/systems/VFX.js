@@ -1205,12 +1205,23 @@ export class VFX {
   }
 
   /**
+   * The marker stops, with no revive spectacle attached. A peer that
+   * disconnects while down is not revived — its body simply leaves the world —
+   * so the despawn path needs the bookkeeping half of `playerRevived` without
+   * the ring and the light burst. Idempotent and total: a pawn clears that one,
+   * nothing clears every marker, which is what a stage change needs.
+   */
+  clearDownedMarker(pawn) {
+    if (pawn) this._downed.delete(pawn); else this._downed.clear();
+  }
+
+  /**
    * The marker stops. Idempotent and total: called with a pawn it clears that
    * one, called with nothing it clears every marker in the world, which is what
    * a stage change needs.
    */
   playerRevived(pawn, pos) {
-    if (pawn) this._downed.delete(pawn); else this._downed.clear();
+    this.clearDownedMarker(pawn);
     const at = pos || pawn?.position;
     if (!at) return;
     // Expanding lattice, restorative, heavy — the exact inverse of the

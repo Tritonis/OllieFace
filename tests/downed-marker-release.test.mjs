@@ -20,6 +20,7 @@
 // commit message.
 import { Audio } from '../src/systems/Audio.js';
 import { VFX } from '../src/systems/VFX.js';
+import { Coop } from '../src/net/Coop.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
@@ -131,6 +132,27 @@ exitCase('a downed teammate dies on a peer’s mixer',
   () => {
     const downedPawn = pawnOf(7);
     return { events: makeBus(), player: { alive: true, netId: 3 }, downedPawn };
+  });
+// The leak the run-end review found: a peer whose body is on the floor
+// disconnects. `NetHost._onPeerLeave` reaches `Coop._despawnPawn` through
+// `ctx.despawnRemotePlayer`, and that path used to unregister and dispose the
+// pawn and nothing else — `netPlayerLeft` carries a transport peer id, which no
+// listener can resolve back to a marker. The pawn reference is only in hand
+// here, so this is where the release has to be. Driven through the real
+// `Coop`, not a stand-in for it.
+exitCase('a downed peer disconnects',
+  (a, ctx) => ctx.despawnRemotePlayer(ctx.downedPawn),
+  () => {
+    const downedPawn = pawnOf(11);
+    const ctx = {
+      events: makeBus(), player: { alive: true, netId: 3 }, downedPawn,
+      combat: { unregister() {} }, vfx: { clearDownedMarker() {} },
+    };
+    new Coop().init(ctx);
+    ctx.coop.pawns.push(downedPawn);
+    // `init` claims `ctx.audio` nowhere; the harness assigns it after the
+    // mixer exists, exactly as the engine does.
+    return ctx;
   });
 exitCase('the stage changes', (a, ctx) => ctx.events.emit('stageStart', { index: 2 }));
 exitCase('an explicit release', (a, ctx) => a.releaseDownedMarker(ctx.player));
@@ -285,6 +307,23 @@ console.log('the world marker pulses while a body is down and stops when it is n
   v.pulses.length = 0;
   v._updateDownedMarkers(2.0);
   ok(v.pulses.length === 0, 'and the pulse stops (a marker that survived revive would beat here)');
+}
+
+console.log('a disconnecting peer takes its world marker with it');
+{
+  const v = fakeVFX(), p = pawn();
+  v.playerDowned(p, p.position);
+  const ctx = { events: makeBus(), combat: { unregister() {} }, vfx: v };
+  new Coop().init(ctx);
+  ctx.coop.pawns.push(p);
+  v.pulses.length = 0;
+  ctx.despawnRemotePlayer(p);
+  ok(!v._downed.has(p), 'the despawn unregisters the body');
+  // Clearing is the bookkeeping half of a revive and nothing more: a peer who
+  // dropped is not revived, so no restorative ring is spawned for them.
+  ok(v.pulses.length === 0, 'with no revive spectacle attached');
+  v._updateDownedMarkers(2.0);
+  ok(v.pulses.length === 0, 'and nothing beats over the empty ground it left');
 }
 
 console.log('the collapsing ring collapses');

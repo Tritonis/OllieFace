@@ -80,6 +80,15 @@ export class Coop {
     // list going empty while the listeners accumulated is exactly what made the
     // leak invisible — `pawns.length` read zero and looked correct. The pawn's
     // satellite `Items` has the same problem and the same fix.
+    // A peer that drops while its body is down leaves a beacon calling for a
+    // player who is no longer in the world: `netPlayerLeft` carries a transport
+    // peer id, not a netId, so no listener downstream can resolve the marker.
+    // Here — and only here — the pawn itself is still in hand, which is the one
+    // identity `_findMarker` always matches. Same for the VFX marker, which is
+    // keyed by pawn and would otherwise pulse over an empty patch of ground
+    // until the next stage.
+    this.ctx.audio?.releaseDownedMarker?.(pawn);
+    this.ctx.vfx?.clearDownedMarker?.(pawn);
     pawn.items?.dispose?.();
     pawn.dispose?.();
   }
