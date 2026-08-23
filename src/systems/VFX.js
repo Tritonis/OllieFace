@@ -172,6 +172,11 @@ const STATUS = {
   shock:  { color: 0xc9b5ff, tip: 0xd8c4ff, frame: FRAME.SPARK, rise: 0.2,  rate: 18, dur: 1.4, tipAlpha: 0.6 },
 };
 
+// Rook's sentry fire (#198). The trail is the ribbon's hue, the accent is the
+// missile body's — a shade harder, so the nose reads against its own wake.
+const SENTRY_TRAIL = 0xbfff7a;
+const SENTRY_ACCENT = 0x9dff5a;
+
 // Two separate scratch pools. Effect methods use _v*, event handlers use _h*.
 // Sharing one pool would let a handler's position vector be clobbered by the
 // effect it just passed that vector into — a class of bug that shows up as
@@ -452,6 +457,8 @@ export class VFX {
     this.decals.init(ctx);
 
     this.lights = new LightPool(ctx, 6);
+    // Missile bodies for hitscan shots dressed as projectiles (#198).
+    this.darts = new DartPool(ctx, this, 16);
     this.beams = new BeamPool(ctx, 192);
     this.rings = new RingPool(ctx, 48);
     // Ground arcs are a telegraph layer, not an impact layer: a handful are on
@@ -1904,26 +1911,37 @@ export class VFX {
   }
 
   /**
-   * The sentry's shot, dressed as a missile (#190).
+   * The sentry's shot, dressed as a Salvo micro-missile (#190, restyled #198).
    *
    * Purely presentational: Rook's turret is and stays hitscan, the damage has
-   * already landed by the time this runs, and nothing here is stepped or
-   * queried. What changes is that a deployed sentry stops firing an anonymous
-   * green wire and starts firing something with a nose and a wake — a small
-   * bright body flying the shot line under a short trail, then a spark where it
-   * lands.
+   * already landed by the time this runs, and nothing here is stepped, queried
+   * or spawned into the projectile pool. What changes is that a deployed sentry
+   * stops firing an anonymous green wire and starts firing the same thing
+   * Ranger's Suppressive Salvo fires — a little cone-nosed missile body under a
+   * white-cored ribbon trail — only in Rook's green and a size down, flying a
+   * line whose far end is already decided.
+   *
+   * The body and the ribbon come from `DartPool`, which borrows the projectile
+   * renderer's geometry, material and trail wholesale; see its own note for
+   * what is and is not shared. The particles left here are the two moments a
+   * mesh cannot express: the launch puff and the impact.
    *
    * "Effectively instantly" is a real constraint and not a hedge: the body's
    * whole flight is `FLIGHT` seconds regardless of range, so a 4 m shot and a
    * 30 m shot both arrive within a frame or two of the hit they illustrate and
    * the eye never gets the chance to see the visual lag the damage. It is a
-   * streak with direction, not a projectile.
+   * dressed streak with direction, not a projectile.
    *
    * Kept cheap because a field of turrets fires this several times a second:
-   * three pooled emits and one light, no beams, no geometry, no per-shot
-   * allocation beyond the shared scratch vectors.
+   * one pooled mesh, one pooled ribbon, two pooled emits and one light — no
+   * geometry built, no material compiled, no per-shot allocation beyond the
+   * shared scratch vectors.
+   *
+   * @param {THREE.Vector3} from muzzle
+   * @param {THREE.Vector3} to   where the hitscan already landed
+   * @param {number} colour      ribbon hue; the body takes `accent`
    */
-  sentryMissile(from, to, colour = 0xbfff7a) {
+  sentryMissile(from, to, colour = SENTRY_TRAIL, accent = SENTRY_ACCENT) {
     if (!from || !to) return;
     _v1.subVectors(to, from);
     const dist = _v1.length();
@@ -1931,33 +1949,23 @@ export class VFX {
     _v1.divideScalar(dist);
     const FLIGHT = 0.05;
 
-    // The body: one stretched spark covering the whole gap, white-hot at the
-    // nose and falling to Rook's green behind it.
-    let e = this._ep();
-    e.count = 1; e.position.copy(from);
-    e.dir.copy(_v1);
-    e.speed = dist / FLIGHT; e.speedVar = 0;
-    e.life = FLIGHT; e.lifeVar = 0;
-    e.size0 = 0.22; e.size1 = 0.16; e.sizeVar = 0;
-    e.color0.set(0xffffff); e.color1.set(colour);
-    e.frame = FRAME.SPARK; e.stretch = 2.2; e.drag = 0.001;
-    e.alphaPow = 0.4; e.soft = 0; e.fadeIn = 0;
-    this.particles.emit(e);
+    // The body: a real missile mesh flying the shot line, dragging the same
+    // ribbon a Salvo missile drags, at 0.75 of a Salvo missile's size.
+    this.darts?.fire(from, to, {
+      colour: accent, trailColour: colour,
+      scale: 0.75, life: FLIGHT, width: 0.12, trailLife: 0.16,
+    });
 
-    // The wake: a handful of soft motes strung along the line behind it. They
-    // travel at a fraction of the body's speed and die fast, so what is left a
-    // frame later is a short tail near the muzzle rather than a full-length
-    // beam — the read is "something went that way", not "a line exists here".
-    e = this._ep();
-    e.layer = 'alpha';
-    e.count = 5; e.position.copy(from);
-    e.dir.copy(_v1);
-    e.speed = dist / FLIGHT * 0.35; e.speedVar = 0.3;
-    e.life = 0.13; e.lifeVar = 0.35;
-    e.size0 = 0.09; e.size1 = 0.26;
-    e.color0.set(colour); e.color1.set(0x24361a);
-    e.alpha0 = 0.32; e.frame = FRAME.SOFT;
-    e.drag = 6; e.turbulence = 0.2; e.fadeIn = 0.02;
+    // Launch puff at the muzzle, so the body is seen leaving rather than simply
+    // appearing. Wide and short — it is gone before the body is half way.
+    let e = this._ep();
+    e.count = 3; e.position.copy(from);
+    e.dir.copy(_v1); e.spread = 0.5;
+    e.speed = 3.2; e.speedVar = 0.6;
+    e.life = 0.1; e.lifeVar = 0.3;
+    e.size0 = 0.14; e.size1 = 0.02;
+    e.color0.set(0xffffff); e.color1.set(colour);
+    e.frame = FRAME.SPARK; e.stretch = 1.4; e.drag = 6;
     this.particles.emit(e);
 
     // Terminal spark, at the far end, delayed by the flight so the impact and
@@ -2272,6 +2280,9 @@ export class VFX {
     this._dt = dt;
 
     this.particles.update(ctx, dt);
+    // Darts before trails: a body moved this frame must have fed its ribbon a
+    // point before the ribbon is rebuilt, or the trail lags the mesh by a frame.
+    this.darts?.update(dt);
     this.trails.update(ctx, dt);
     this.decals.update(ctx, dt);
     this.lights.update(dt);
@@ -2829,6 +2840,119 @@ function firstObject3D(...candidates) {
  * only ever changes `intensity`, which costs nothing: a point light at
  * intensity 0 contributes nothing to the shading result.
  */
+/**
+ * Pooled micro-missile bodies for shots that want a projectile's *look* without
+ * a projectile's travel (#198).
+ *
+ * The visual vocabulary is borrowed wholesale from `ProjectilePool`, which is
+ * how Ranger's Suppressive Salvo darts are drawn: the same six-sided cone
+ * pointing down +Z, the same flat-shaded emissive standard material keyed by
+ * colour, oriented with `lookAt` along travel, dragging one of the same ribbon
+ * trails behind it with a white core. What is deliberately *not* borrowed is
+ * anything that touches gameplay — a dart has no motion of its own to steer, no
+ * collision, no harm to do and no target. It flies a fixed pair of endpoints
+ * over a fixed duration and then stops existing.
+ *
+ * Everything is allocated once. `fire` only flips flags, so a field of sentries
+ * emptying into a horde never allocates and never triggers a GC pause; when the
+ * pool is empty the *oldest* body is stolen, so the shot that is nearly over is
+ * the one that loses rather than the shot just fired.
+ */
+class DartPool {
+  constructor(ctx, vfx, count = 16) {
+    this.vfx = vfx;
+    // ProjectilePool.geo.body, to the millimetre — the whole point is that this
+    // and a Salvo missile are the same silhouette at different scales.
+    const geo = new THREE.ConeGeometry(0.12, 0.46, 6);
+    geo.rotateX(Math.PI / 2);
+    this.geo = geo;
+    this.mats = new Map();
+
+    this.root = new THREE.Group();
+    this.root.name = 'vfx.darts';
+    this.root.matrixAutoUpdate = false;
+    ctx.scene.add(this.root);
+
+    this.items = [];
+    for (let i = 0; i < count; i++) {
+      const mesh = new THREE.Mesh(geo, this._material(0xffffff));
+      mesh.visible = false;
+      mesh.castShadow = false;
+      this.root.add(mesh);
+      this.items.push({
+        mesh, alive: false, t: 0, dur: 1, trail: null,
+        from: new THREE.Vector3(), to: new THREE.Vector3(),
+      });
+    }
+  }
+
+  _material(color) {
+    let m = this.mats.get(color);
+    if (!m) {
+      m = new THREE.MeshStandardMaterial({
+        color, emissive: color, emissiveIntensity: 2.2,
+        roughness: 0.4, metalness: 0, flatShading: true,
+      });
+      this.mats.set(color, m);
+    }
+    return m;
+  }
+
+  /**
+   * Send one body down `from` -> `to`, arriving in exactly `life` seconds.
+   * @param {object} o { colour, trailColour, scale, life, width, trailLife }
+   */
+  fire(from, to, o = {}) {
+    let d = null;
+    for (const c of this.items) if (!c.alive) { d = c; break; }
+    if (!d) {
+      d = this.items[0];
+      let worst = -1;
+      for (const c of this.items) {
+        const age = c.t / c.dur;
+        if (age > worst) { worst = age; d = c; }
+      }
+      if (d.trail) { this.vfx.trails?.kill(d.trail); d.trail = null; }
+    }
+
+    d.alive = true;
+    d.t = 0;
+    d.dur = Math.max(1e-3, o.life ?? 0.05);
+    d.from.copy(from);
+    d.to.copy(to);
+
+    d.mesh.material = this._material(o.colour ?? 0xffffff);
+    d.mesh.position.copy(from);
+    d.mesh.scale.setScalar(o.scale ?? 1);
+    d.mesh.lookAt(to);
+    d.mesh.visible = true;
+
+    d.trail = this.vfx.trails?.spawn({
+      position: from, color: o.trailColour ?? o.colour ?? 0xffffff, coreColor: 0xffffff,
+      width: o.width ?? 0.12, life: o.trailLife ?? 0.16, minDist: 0.12,
+    }) || null;
+    return d;
+  }
+
+  update(dt) {
+    const trails = this.vfx.trails;
+    for (const d of this.items) {
+      if (!d.alive) continue;
+      d.t += dt;
+      const k = clamp(d.t / d.dur, 0, 1);
+      d.mesh.position.lerpVectors(d.from, d.to, k);
+      if (d.trail && trails) trails.move(d.trail, d.mesh.position.x, d.mesh.position.y, d.mesh.position.z);
+      if (k >= 1) {
+        d.alive = false;
+        d.mesh.visible = false;
+        // Stop emitting and let the ribbon age out on its own, exactly as a
+        // spent shot does — the tail outliving the body IS the wake.
+        if (d.trail) { trails?.stop(d.trail); d.trail = null; }
+      }
+    }
+  }
+}
+
 class LightPool {
   constructor(ctx, count) {
     this.lights = [];
