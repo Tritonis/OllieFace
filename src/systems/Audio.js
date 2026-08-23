@@ -3,6 +3,7 @@ import { clamp } from '../core/MathUtil.js';
 import { isLocalOwner } from '../core/Engine.js';
 import { MusicEngine } from './Music.js';
 import { SAMPLES_BY_ID } from '../data/samples.js';
+import { SUSTAIN, TRANSIENT } from '../data/elementVoice.js';
 
 /**
  * Fully procedural WebAudio. No files, no network, no decode step.
@@ -881,6 +882,7 @@ export class Audio {
     priority = false,
     refDistance = 8,
     maxDistance = 140,
+    rise = 0,
   } = {}) {
     const ac = this._ensure();
     const cost = tones.length + (noise ? 1 : 0);
@@ -913,7 +915,14 @@ export class Audio {
         const o = ac.createOscillator();
         o.type = spec.type || 'sawtooth';
         o.detune.value = num(spec.detune, 0);
-        o.frequency.setValueAtTime(num(spec.f0, 180, 1), t);
+        const f0 = num(spec.f0, 180, 1);
+        o.frequency.setValueAtTime(f0, t);
+        // Monotone climb for the whole of a game state — the `sustained-rise`
+        // envelope family. Absent `f1`/`rise` this is exactly the fixed-pitch
+        // hold it has always been.
+        const f1 = num(spec.f1, 0, 0);
+        const riseT = num(spec.rise ?? rise, 0, 0);
+        if (f1 > 0 && riseT > 0) o.frequency.exponentialRampToValueAtTime(f1, t + riseT);
         const g = ac.createGain();
         g.gain.setValueAtTime(0.0001, t);
         g.gain.exponentialRampToValueAtTime(Math.max(0.0002, num(spec.gain, 0.14, 0)), t + atk);
@@ -931,7 +940,11 @@ export class Audio {
         src.playbackRate.value = 0.9 + Math.random() * 0.2;
         const f = ac.createBiquadFilter();
         f.type = noise.type || 'bandpass';
-        f.frequency.setValueAtTime(num(noise.freq, 1200, 1), t);
+        const nf0 = num(noise.freq, 1200, 1);
+        f.frequency.setValueAtTime(nf0, t);
+        const nf1 = num(noise.freqEnd, 0, 0);
+        const nRise = num(noise.rise ?? rise, 0, 0);
+        if (nf1 > 0 && nRise > 0) f.frequency.exponentialRampToValueAtTime(nf1, t + nRise);
         f.Q.value = num(noise.q, 1, 0.0001);
         const g = ac.createGain();
         g.gain.setValueAtTime(0.0001, t);
@@ -1003,6 +1016,104 @@ export class Audio {
       attack: 0.05,
       release: 0.10,
     });
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Element voices — the Effect Language's §1.4 recipes                  */
+  /* ------------------------------------------------------------------ */
+
+  /**
+   * The windup voice: a held voice in the attacker's element whose pitch or
+   * filter cutoff climbs for exactly the length of the telegraph window and
+   * releases when the window ends (§1.4 `sustained-rise`, C6).
+   *
+   * `duration` is the window, not a hint — it is what makes a 1.9s Colossus
+   * barrage and a 0.66s scarab lunge two lengths of one grammar rather than
+   * two unrelated noises. Returns the same handle `startSustained` does, so a
+   * caller that never gets to release (a unit killed mid-windup) is the
+   * handle's idempotence problem and not a leak.
+   */
+  windupVoice(pos, element, duration, gain = 1) {
+    const r = SUSTAIN[element] || SUSTAIN.kinetic;
+    const rise = Math.max(0.05, duration || 0.5);
+    const scale = (g) => Math.max(0.0002, g * gain);
+    return this.startSustained(pos, {
+      tones: r.tones.map((t) => ({ ...t, gain: scale(t.gain) })),
+      noise: r.noise ? { ...r.noise, gain: scale(r.noise.gain) } : null,
+      attack: Math.min(r.attack, rise * 0.6),
+      release: 0.08,
+      rise,
+      refDistance: 10,
+      maxDistance: 120,
+    });
+  }
+
+  /**
+   * The elemental half of a detonation's onset (§3 C2). Layered *over* the
+   * shared `explosion` body, never instead of it: all novas are novas, so the
+   * rumble stays common and only the attack is elemental.
+   */
+  elementTransient(pos, element, scale = 1) {
+    const ac = this._ensure();
+    if (!ac) return;
+    const r = TRANSIENT[element] || TRANSIENT.kinetic;
+    const cost = (r.tone ? 1 : 0) + (r.noise ? 1 : 0);
+    if (!this._take(cost || 1)) return;
+    const t = ac.currentTime;
+    const out = this._out(pos, 12, 180);
+    const g = clamp(scale, 0.35, 1.6);
+    if (r.tone) this._tone(t, r.tone.dur, { ...r.tone, gain: r.tone.gain * g, out });
+    if (r.noise) {
+      this._noise(t, r.noise.dur, {
+        ...r.noise, gain: r.noise.gain * g, out, attack: r.noise.attack ?? 0.004,
+      });
+    }
+  }
+
+  /**
+   * An enemy beam firing, in its own element (§3 C3). `zap()` stops being the
+   * universal beam voice here: a shock beam still sounds like `zap` because
+   * shock's recipe *is* a crackling sweep, and a void lance no longer does.
+   */
+  elementBeam(pos, element) {
+    if (element === 'shock') { this.zap(pos); return; }
+    if (!this._throttle(`beam:${element}`, 0.05)) return;
+    this.elementTransient(pos, element, 1.15);
+  }
+
+  /**
+   * A status landing (§4.4 `statusApplied`). Tick intensity, pitched by status
+   * type so burn, freeze, shock, slow and void are five audible things rather
+   * than five silent ones.
+   */
+  statusVoice(pos, status) {
+    const el = status === 'burn' ? 'fire'
+      : status === 'freeze' || status === 'slow' ? 'ice'
+        : status === 'shock' ? 'shock'
+          : status === 'wither' || status === 'void' ? 'void' : 'kinetic';
+    if (!this._throttle(`status:${status}`, 0.08)) return;
+    this.elementTransient(pos, el, 0.45);
+  }
+
+  /**
+   * The floor voice for anything acting at tick intensity — an aura tick, a
+   * reflect, a siphon, a charge scuff. Short, positioned, quiet, and pitched
+   * by `rate` so an accelerating series reads as accelerating.
+   */
+  elementTick(pos, element, rate = 1) {
+    const ac = this._ensure();
+    if (!ac) return;
+    if (!this._take(1)) return;
+    const t = ac.currentTime;
+    const out = this._out(pos, 8, 90);
+    const r = TRANSIENT[element] || TRANSIENT.kinetic;
+    const spec = r.tone || null;
+    const k = clamp(rate, 0.5, 2.4);
+    if (spec) {
+      this._tone(t, 0.075, { type: spec.type, f0: spec.f0 * k, f1: spec.f0 * k * 0.45, gain: 0.13, out });
+    } else {
+      this._noise(t, 0.06, { type: r.noise.type, freq: r.noise.freq * k, freqEnd: r.noise.freq * k * 0.3, q: 1, gain: 0.16, out, attack: 0.001 });
+    }
   }
 
   /* ------------------------------------------------------------------ */

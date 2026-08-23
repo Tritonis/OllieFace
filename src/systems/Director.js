@@ -239,6 +239,10 @@ export class Director {
       this._reflect.source = t;
       this._reflect.position = t.position;
       this.ctx.combat?.applyDamage?.(p, e.amount * em.reflect, this._reflect);
+      // `type:'reflect'` has been set here since the affix shipped and read by
+      // nothing, so a barrier turning your own shot around read as an ordinary
+      // unattributed hit. The lattice is the ward's own class.
+      this.ctx.vfx?.wardReflect?.(t.position);
     });
 
     this.updateDifficulty(ctx);

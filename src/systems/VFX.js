@@ -6,7 +6,7 @@ import { makeDissolvable } from '../shaders/DissolveShader.js';
 import { cloneCharacterBlightMaterial } from '../shaders/CharacterBlight.js';
 import { MAX_BLASTS } from '../shaders/DistortShader.js';
 import { clamp, lerp } from '../core/MathUtil.js';
-import { elementOf, sparkColour, ELEMENT_HUE } from '../data/damageTypes.js';
+import { elementOf, sparkColour, goreColour, ELEMENT_HUE } from '../data/damageTypes.js';
 import { isLocalVictim, isLocalOwner } from '../core/Engine.js';
 import { GATE, shouldLaunch } from './LaunchGate.js';
 import {
@@ -1165,6 +1165,47 @@ export class VFX {
   }
 
   /**
+   * A Warded elite turning a hit around. Lattice class (§1.3): `HEX` with
+   * spin, the shape reserved for protective and warded things, so a reflect
+   * cannot be mistaken for an ordinary unattributed hit — which is what
+   * `type:'reflect'` being set and read by nothing produced.
+   */
+  wardReflect(pos, colour = 0xb291ff) {
+    if (!pos) return;
+    const e = this._ep();
+    e.count = 9; e.position.copy(pos); e.position.y += 1.1; e.shell = 0.6;
+    e.dir.set(0, 1, 0); e.spread = Math.PI;
+    e.speed = 3.2; e.speedVar = 0.5;
+    e.life = 0.34; e.lifeVar = 0.3;
+    e.size0 = 0.22; e.size1 = 0.03;
+    e.color0.set(colour); e.color1.set(0x2a1240);
+    e.frame = FRAME.HEX; e.spin = 9; e.drag = 4.5;
+    this.particles.emit(e);
+    this.lights.flick(pos, colour, 9, 4, 0.1);
+    this.ctx?.audio?.elementTick?.(pos, 'void', 1.6);
+  }
+
+  /**
+   * A heal that a Withering elite ate. Healing being denied has to *show* the
+   * denial, or the affix's whole mechanic is a number that quietly does not
+   * happen. Void, per §1.1 — colouring denial with the restorative hue is the
+   * violation this replaces.
+   */
+  healDenied(pos, colour = 0xab00ac) {
+    if (!pos) return;
+    const e = this._ep();
+    e.count = 7; e.position.copy(pos); e.position.y += 1.2;
+    e.dir.set(0, -1, 0); e.spread = 0.9;
+    e.speed = 2.6; e.speedVar = 0.5;
+    e.life = 0.3; e.lifeVar = 0.3;
+    e.size0 = 0.16; e.size1 = 0.01;
+    e.color0.set(colour); e.color1.set(0x1a0420);
+    e.frame = FRAME.CROSS; e.drag = 5; e.gravity = 3;
+    this.particles.emit(e);
+    this.ctx?.audio?.elementTick?.(pos, 'void', 0.6);
+  }
+
+  /**
    * Ongoing status overlay on an entity, for `duration` seconds.
    * Returns the live entry, so callers that want to dress the application
    * itself do not have to go looking for it.
@@ -1194,6 +1235,9 @@ export class VFX {
     // reads distinctly from the ongoing overlay.
     const p = entity.position;
     if (!p) return;
+    // Every status application in the game was silent: a burn, a freeze and a
+    // shock landed with only the caller's own attack sound to mark them.
+    this.ctx?.audio?.statusVoice?.(p, type);
     const e = this._ep();
     e.count = 8; e.position.copy(p); e.position.y += (entity.height ?? 1.6) * 0.5;
     e.shell = entity.radius ?? 0.5;
@@ -1436,7 +1480,10 @@ export class VFX {
     // the two literals this line used to carry.
     const element = elementOf(p.type, p.status);
     this.hitSpark(_h1, sparkColour(element, p.crit), p.crit ? 1.35 : 1);
-    this.bloodHit(_h1, _h2, 0x9c0d18);
+    // The primary gout carries the killing element too, not just the spark:
+    // one fixed red on every hit in the game was what defeated element
+    // attribution in the one place the player is actually looking.
+    this.bloodHit(_h1, _h2, goreColour(element));
     this.hitFlash(target, p.crit ? ELEMENT_HUE[element].critTail : ELEMENT_HUE[element].core,
                   p.crit ? 0.09 : 0.06);
     this.damageNumber(_h1, p.amount, p.crit, undefined, target);

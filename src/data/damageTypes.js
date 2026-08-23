@@ -93,6 +93,27 @@ export function elementOf(type, status) {
   return 'kinetic';
 }
 
+/**
+ * The gore hue for a hit of this family — `VFX.bloodHit`'s `colour` argument.
+ *
+ * The Effect Language files gore as "element-tinted red": it stays blood, but
+ * a shock-killed enemy and a void-killed one must not bleed the same. So the
+ * shipped red is pulled part-way toward the family's own tail and no further —
+ * pulled all the way it would stop reading as blood and start reading as a
+ * second spark layer. `kinetic` is the identity case and returns the exact
+ * literal the game has always used, so an untyped hit is byte-identical.
+ */
+export function goreColour(element) {
+  const h = ELEMENT_HUE[element];
+  if (!h || element === 'kinetic') return 0x9c0d18;
+  const k = 0.42;
+  const mix = (a, b) => Math.round(a + (b - a) * k);
+  const r = mix(0x9c, (h.tail >> 16) & 255);
+  const g = mix(0x0d, (h.tail >> 8) & 255);
+  const b = mix(0x18, h.tail & 255);
+  return (r << 16) | (g << 8) | b;
+}
+
 /** The single hex `VFX.hitSpark(pos, colour, scale)` wants. */
 export function sparkColour(element, crit) {
   const h = ELEMENT_HUE[element] || ELEMENT_HUE.kinetic;
