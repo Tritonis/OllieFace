@@ -83,9 +83,44 @@ console.log('Identity below the knee');
   ok(softenMove(7, 7 * 1.42) === 7 * 1.42, 'three Cloven Hoof is bit-for-bit identity');
   ok(noKnee(7, 7 * 1.42) !== 7 * 1.42, 'MUTATION: a curve without a knee would move three Hoof');
 
-  // Penalties must ride through untouched — a drawback is not a refund.
-  ok(softenMove(7, 7 * 0.8) === 7 * 0.8, 'a net penalty (Slag Ingot) is passed straight through');
-  ok(noKnee(7, 7 * 0.8) !== 7 * 0.8, 'MUTATION: a knee-less curve would refund part of the penalty');
+  // A gain-only build under the knee, with a cost on top, must come out at the
+  // old arithmetic exactly: the curve is identity on the gains, and the cost
+  // multiplies the finished number.
+  const slag = 1 / (1 + 0.20);   // hyperbolicMult(0.20, 1), the shipped expression
+  const hoof3Slag = speedWith([['cloven-hoof', 3], ['slag-ingot', 1]]);
+  ok(hoof3Slag === hoof(3) * slag,
+    `three Hoof plus a Slag Ingot is bit-for-bit the old arithmetic (${hoof3Slag.toFixed(5)})`);
+}
+
+console.log('\nCosts keep their whole bite, however deep the stack');
+{
+  // The case the review constructed. Above the knee, the penalty must still
+  // remove exactly its advertised fraction of the curved speed — the surrounding
+  // stack must not pay it off.
+  const slag = 1 / (1 + 0.20);
+  for (const n of [8, 12, 20, 40]) {
+    const clean = hoof(n);
+    const cursed = speedWith([['cloven-hoof', n], ['slag-ingot', 1]]);
+    const bite = clean - cursed;
+    const want = clean * (1 - slag);
+    ok(Math.abs(bite - want) < 1e-12,
+      `${n} Hoof + Slag: bite ${bite.toFixed(4)} m/s is the full ${((1 - slag) * 100).toFixed(2)}% of ${clean.toFixed(4)}`);
+  }
+
+  // MUTATION: fold the cost back into the aggregate — the shape that shipped
+  // first — and the bite at eight Hoof collapses to well under its advertised
+  // fraction. The measured survival there was 57%.
+  const folded = (n) => softenMove(BASE.moveSpeed, BASE.moveSpeed * (1 + 0.14 * n) * slag);
+  const foldedBite = hoof(8) - folded(8);
+  const foldedWant = hoof(8) * (1 - slag);
+  ok(foldedBite < foldedWant * 0.7,
+    `MUTATION: folding the cost into the aggregate refunds most of it (${foldedBite.toFixed(4)} vs ${foldedWant.toFixed(4)} m/s)`);
+
+  // And below the knee the two arrangements agree, which is why the first cut
+  // looked correct: there is nothing above the knee for the curve to compress.
+  ok(Math.abs((hoof(2) - speedWith([['cloven-hoof', 2], ['slag-ingot', 1]]))
+    - (BASE.moveSpeed * 1.28 * (1 - slag))) < 1e-12,
+    'below the knee the split makes no difference at all');
 }
 
 console.log('\nMonotone increasing, forever');

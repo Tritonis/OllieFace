@@ -358,7 +358,13 @@ export const ITEMS = [
     description: (n) => `Reduce all incoming damage by ${linear(13, n)}. Your movement speed is reduced to ${pct(hyperbolicMult(0.20, n))}. Consumes every ${consumes('trauma-plate')} you hold.`,
     stat: (n, s) => {
       s.flatReduction += linear(13, n);
-      s.moveSpeed *= hyperbolicMult(0.20, n);
+      // `moveSpeedPenalty`, not `moveSpeed`: the speed knee curves the *gain*
+      // side of the aggregate, and a cost folded in with the gains would be
+      // compressed by that curve along with them — at eight Cloven Hoof this
+      // ingot kept only 57% of its bite, which is a drawback the stack
+      // quietly refunds. Penalties are applied to the finished, curved number
+      // instead, so this always costs exactly the fraction it advertises.
+      s.moveSpeedPenalty *= hyperbolicMult(0.20, n);
     },
   },
   {
