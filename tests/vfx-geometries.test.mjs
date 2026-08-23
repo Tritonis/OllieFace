@@ -450,14 +450,17 @@ console.log('\n-- firing all four demos and closing the instrument returns every
   ok(sectors.live > 0 && beams.live > 0 && emitted > 0,
     `the four demos claim real resources (${sectors.live} arcs, ${beams.live} beams, ${emitted} particles)`);
 
-  // Closing and disposing must not leave a demo standing, and — the part that
-  // matters — the pools must age back to baseline rather than hold slots for a
-  // panel that is no longer on screen.
+  // The geometry demos are one-shots with sub-second lifetimes: the pools age
+  // back to baseline on their own, with or without close()/dispose() (those
+  // sweep tracked demonstrators and held voices, which these entries never
+  // create). The two `live` assertions below therefore prove self-cleaning by
+  // lifetime, not a close/dispose-dependent sweep; only the listener assertion
+  // exercises dispose().
   api.close();
   api.dispose();
   for (let i = 0; i < 90; i++) { sectors.update(1 / 60, null); beams.update(1 / 60); }
-  ok(sectors.live === 0, 'the sector pool is back at baseline after close and dispose');
-  ok(beams.live === 0, 'and so is the beam pool');
+  ok(sectors.live === 0, 'the sector pool self-cleans back to baseline by lifetime');
+  ok(beams.live === 0, 'and so does the beam pool');
   ok(!listeners.some((l) => l.t === 'keydown'),
     'and the key handler is gone — the instrument holds no listener either');
 }
