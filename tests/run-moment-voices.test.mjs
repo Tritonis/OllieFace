@@ -26,7 +26,7 @@
 // commit message.
 import { Audio } from '../src/systems/Audio.js';
 import { VFX } from '../src/systems/VFX.js';
-import { STATUS_VOICE, statusVoiceOf, COIN_HUE, unitElement } from '../src/data/elementVoice.js';
+import { STATUS_VOICE, statusVoiceOf, COIN_HUE, unitElement, TRANSIENT } from '../src/data/elementVoice.js';
 import { FRAME } from '../src/fx/ParticleSystem.js';
 
 let pass = 0, fail = 0;
@@ -283,7 +283,24 @@ console.log('a boss arrival comes from somewhere, in its own element');
   a.bossHorn({ x: 20, y: 0, z: 5 }, 'void');
   ok(seen.length === 1, 'the horn carries an elemental onset');
   ok(seen[0].el === 'void' && seen[0].pos.x === 20, 'in the boss element, at the spawn point');
-  ok(seen[0].rate < 1, `at heavy intensity (rate ${seen[0].rate})`);
+
+  // Heaviness is asserted on the *rendered* onset, not on an argument slot.
+  // The first version of this destructured the third argument as `rate` and
+  // asserted it below 1 — which passed by construction against a call that was
+  // in fact passing 0.55 as the gain, leaving rate at 1 and the transient at
+  // the recipe's own pitch. Nothing is stubbed below: the horn runs down the
+  // real path onto the stub graph and the last oscillator it builds — the
+  // elemental transient, which `bossHorn` fires last — is read back.
+  const real = makeAudio();
+  real.bossHorn({ x: 20, y: 0, z: 5 }, 'void');
+  const oscs = real.ac.oscs();
+  const onset = oscs[oscs.length - 1];
+  const recipe = TRANSIENT.void.tone;
+  ok(!!onset, 'the onset reaches the graph as a real oscillator');
+  ok(onset.frequency.value < recipe.f0,
+    `pitched below the recipe (${onset.frequency.value.toFixed(1)} < ${recipe.f0} Hz)`);
+  ok((onset.stops[0] - onset.starts[0]) > recipe.dur,
+    `and stretched past it (${(onset.stops[0] - onset.starts[0]).toFixed(3)} > ${recipe.dur} s)`);
 
   const b = makeAudio();
   const none = [];

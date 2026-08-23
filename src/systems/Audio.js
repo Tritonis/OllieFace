@@ -2062,7 +2062,10 @@ export class Audio {
     this._noise(t, 2.0, { type: 'lowpass', freq: 600, freqEnd: 140, q: 0.6, gain: 0.16, attack: 0.4 });
     // Heavy intensity, positioned: rate below 1 is the low, long end of the
     // transient, which is what separates an arrival from a proc.
-    if (pos) this.elementTransient(pos, element, 0.55);
+    // Scale 1 (the recipe's own gain, not a duck): an arrival is the loudest
+    // elemental onset in the run, so nothing is taken off the top; the 0.55
+    // belongs in `rate`, which is the knob that makes it low and long.
+    if (pos) this.elementTransient(pos, element, 1, 0.55);
   }
 
   stageSting() {
