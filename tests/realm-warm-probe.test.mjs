@@ -164,11 +164,21 @@ ok(leaked.includes('fog.density') || leaked.includes('key.intensity') || leaked.
       let root = cat;
       while (root.parent) root = root.parent;
       const kinds = new Set();
-      cat.traverse((o) => { if (o.material) kinds.add(o.material.type || 'patched'); });
+      const names = new Set();
+      cat.traverse((o) => {
+        if (o.material) kinds.add(o.material.type || 'patched');
+        if (o.name) names.add(o.name);
+      });
+      // The other half of the double-count trap, from the catalogue's side: it
+      // must offer three the live scene's *materials* and never its lights.
+      const catLights = [];
+      cat.traverseVisible((o) => { if (o.isPointLight) catLights.push(o.name || 'arena'); });
       compiles.push({
         inScene: root === target,
         meshes: cat.children.length,
         kinds: [...kinds],
+        names: [...names],
+        catLights,
         pointLights,
         env: target.environment,
       });
@@ -190,6 +200,21 @@ ok(leaked.includes('fog.density') || leaked.includes('key.intensity') || leaked.
   };
   scene.environment = { world: true };
 
+  // #192: the live scene is half the catalogue now. Three things stand in it —
+  // one drawn, one hidden by the author, and the world terrain the entry pose
+  // hides — and only the first may reach the compile.
+  const liveDrawn = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+  liveDrawn.name = 'live-drawn';
+  const liveHidden = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+  liveHidden.name = 'live-hidden';
+  liveHidden.visible = false;
+  ctx.stage.terrainMesh.name = 'live-terrain';
+  ctx.stage.terrainMesh.geometry = new THREE.BoxGeometry();
+  ctx.stage.terrainMesh.material = new THREE.MeshStandardMaterial();
+  const liveLight = new THREE.PointLight(0xffffff, 1);
+  liveLight.name = 'live-light';
+  scene.add(liveDrawn, liveHidden, ctx.stage.terrainMesh, liveLight);
+
   const warm = new RealmWarm(ctx);
   const flush = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };
 
@@ -210,7 +235,7 @@ ok(leaked.includes('fog.density') || leaked.includes('key.intensity') || leaked.
   ok(warm._props?.length > 0 && rec.step === 'compile',
     `step three stands up the realm's props and stops (${warm._props?.length} of them)`);
 
-  for (let i = 0; i < 12 && rec.step !== 'ready'; i++) { warm.step(); await flush(); }
+  for (let i = 0; i < 12 && rec.step !== "ready"; i++) { warm.step(); await flush(); }
   ok(rec.step === 'ready', 'the compile spread runs itself out and reports ready');
   ok(warm.ready('crucible'), 'and ready() agrees');
 
@@ -224,6 +249,20 @@ ok(leaked.includes('fog.density') || leaked.includes('key.intensity') || leaked.
     `the catalogue carries the realm's props and geometry proxies, not just the arena (${compiles[0].meshes} entries)`);
   ok(new Set(compiles.map((c) => c.pointLights)).size === compiles.length,
     `each pass warms a different light count (${compiles.map((c) => c.pointLights).join(', ')})`);
+
+  // #192. The entry frame goes on drawing the world's own interactables at the
+  // realm's raised light count, and until this they were never warmed at all.
+  const sawName = (n) => compiles.some((c) => c.names.includes(n));
+  ok(sawName('live-drawn'),
+    'the posed live scene is in the catalogue — what the entry frame keeps drawing is what #192 was');
+  ok(!sawName('live-hidden'),
+    'but only what is actually drawn: an author-hidden object is not warmed');
+  ok(!sawName('live-terrain'),
+    'and not the terrain, which the entry pose hides — warming it at a realm light count warms a program no frame asks for');
+  ok(compiles.every((c) => !c.catLights.includes('live-light')),
+    'the catalogue offers the live scene for materials and never for lights — three already walks the target scene, and offering them twice warms a key nothing draws');
+  ok(compiles.some((c) => c.catLights.length > 0),
+    'and it does still offer the arena\'s own braziers, so the check above is looking at something');
   ok(compiles.every((c) => c.env === probe.texture),
     'every pass is keyed to the realm\'s own probe, not the world\'s');
 

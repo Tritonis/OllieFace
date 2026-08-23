@@ -1,4 +1,4 @@
-import { Group, InstancedMesh, Mesh, PointLight } from 'three';
+import { Group, InstancedMesh, Mesh, Points, PointLight } from 'three';
 import { REALM_BY_ID } from '../../data/realms.js';
 import { RealmStage } from './RealmStage.js';
 import { buildArena } from './RealmArena.js';
@@ -39,8 +39,38 @@ import { warmPropSet } from './RealmProps.js';
  *   3. `compileAsync` the arena's materials against that probe, with the
  *      composer's target bound — the two things the boot prewarm got wrong.
  *
- * Each of those is its own frame's work: three steps, one per frame, never two
- * at once.
+ * Each of those is its own frame's work, one step per frame.
+ *
+ * ## What was still cold afterwards (#192)
+ *
+ * That left 3-4 s and eight programs, and the eight were the giveaway: their
+ * keys matched warmed ones except in the packed per-object booleans. They did
+ * not belong to the arena at all. A realm hides two things — the terrain and
+ * the world prop group — and goes on drawing everything else the player could
+ * already see, at a point-light count the arena has just raised. The world's
+ * own interactables were the cold ones, and no warm pointed at the arena could
+ * ever have reached them. `WarmCatalogue` below is the answer: the posed live
+ * scene goes into the compile alongside the arena, as the real objects rather
+ * than as reconstructions of them. Measured on the entry frame's own render,
+ * per realm: crucible 2896 -> 14 ms, vault 3799 -> 16, market 4019 -> 18,
+ * fracture 4202 -> 20.
+ *
+ * ### What it costs, which is not nothing
+ *
+ * The warm now hands three materials the world is *currently drawing*, at a
+ * light count the world is not drawing them at, and three's program cache does
+ * not love that: a program acquired for the realm count and then not used can
+ * be released and re-linked when the next real frame asks for the world count.
+ * That surfaces as occasional long warm frames, and it is realm-shaped —
+ * crucible and vault and market stay at or under 50 ms, but the fracture, which
+ * is the heaviest VFX scene of the four, threw five frames up to 262 ms where
+ * before it threw none over 22. Five dropped frames spread across the walk
+ * against a four-second freeze on the frame the player presses E is the right
+ * side of the trade, but it is a real cost and #192's follow-up is to stop the
+ * cache thrashing rather than to spread it further: chunking the live half
+ * across frames and overlapping the compiles were both tried and both made it
+ * worse (588 ms at four chunks), because more passes in flight is more chances
+ * for a walking frame to find a program mid-link.
  *
  * Entry then adopts what is standing: `attach()` the parked root, assign the
  * stored probe instead of baking one. Nothing else about entry moves — the
@@ -72,6 +102,65 @@ import { warmPropSet } from './RealmProps.js';
  */
 const LIGHT_SPREAD = 4;
 
+/**
+ * Walk `root` and its descendants, stopping at anything not being drawn.
+ *
+ * `visible` is the pose: `_compile` hides the world's terrain and prop group
+ * exactly as entry will, so a walk that honours it yields precisely the set of
+ * objects the entry frame still draws — and, just as importantly, does not warm
+ * the terrain at a realm light count no frame will ever ask for.
+ */
+function traverseDrawn(root, cb) {
+  if (!root.visible) return;
+  cb(root);
+  for (const c of root.children) traverseDrawn(c, cb);
+}
+
+/**
+ * The catalogue three is asked to compile: the arena and its props, *plus* the
+ * live scene as the entry frame will still be drawing it.
+ *
+ * That second half is what #192 was. A realm does not replace the world's
+ * contents, it hides two of them — the terrain mesh and the world prop group —
+ * and everything else the player was looking at a moment ago is still drawn
+ * inside the arena: the interactables root with its teleporter and its shrines,
+ * the VFX roots, the sky. Every one of those is a lit material, the realm's
+ * point-light count is in its program key, and the count goes up by the arena's
+ * braziers the instant `attach` happens. So they are *cold*, all of them, and
+ * no amount of warming aimed at the arena reaches them: measured, three world
+ * surfaces and one double-sided one, 2.85 s of the 2.9 s entry frame, owned by
+ * objects the warm had never heard of.
+ *
+ * Reaching them by hand is the trap. A reconstruction of a live object is only
+ * ever a guess at the object parameters in its key — instancing, skinning,
+ * morph counts, `receiveShadow` — and #192's whole diagnosis was warm keys that
+ * missed by one packed boolean. So the warm hands three the real objects
+ * instead, and the way it does that without moving a single one of them out of
+ * the scene they belong to is this class: `compile` reaches a scene through
+ * exactly two doors, `traverseVisible` for lights and `traverse` for materials,
+ * and this is an ordinary `Group` that answers the second one for the live
+ * scene as well as for itself.
+ *
+ * The asymmetry between the two overrides is deliberate and is the
+ * double-count trap the file's `_compile` comment records: `compile` already
+ * gathers lights from its *target* scene, which is the live scene, so a
+ * `traverseVisible` that offered them again would count every world light
+ * twice and warm a set of keys nothing will ever draw.
+ */
+class WarmCatalogue extends Group {
+  constructor() {
+    super();
+    this.name = 'realm-warm-catalogue';
+    /** The posed live scene, walked for materials only. */
+    this.liveRoot = null;
+  }
+
+  traverse(cb) {
+    super.traverse(cb);
+    if (this.liveRoot) traverseDrawn(this.liveRoot, cb);
+  }
+}
+
 export class RealmWarm {
   constructor(ctx) {
     this.ctx = ctx;
@@ -85,7 +174,10 @@ export class RealmWarm {
     if (this.records.has(id)) return;
     if (!REALM_BY_ID.has(id)) return;
     if (!this.ctx.pipeline?.renderer) return; // headless: nothing to warm
-    this.records.set(id, { def: REALM_BY_ID.get(id), stage: null, rt: null, step: 'build', spread: 0 });
+    this.records.set(id, {
+      def: REALM_BY_ID.get(id), stage: null, rt: null, step: 'build',
+      spread: 0,
+    });
   }
 
   /** Whether `id` is fully warm. Diagnostics and tests read this. */
@@ -216,18 +308,21 @@ export class RealmWarm {
    * Everything the entry frame will draw for the first time, gathered into one
    * parentless group for `compileAsync` to harvest.
    *
-   * Three things go in, and the third is the one that is easy to miss:
+   * Four things go in, and the last two are the ones that were missed:
    *
    *  - the arena root, borrowed from wherever it is parked;
    *  - one of every realm prop (`warmPropSet`), because `controller.enter`
    *    allocates its props at the moment of entry and their programs were
    *    still being compiled on the entry frame after the arena's were warm;
+   *  - the posed live scene (`liveRoot`), which is everything the player was
+   *    already looking at and will go on looking at from inside the arena. See
+   *    `WarmCatalogue`: this was #192, and it was four fifths of the bill;
    *  - a proxy for every distinct geometry wearing GTAO's **normal-pass
-   *    override material**. `compile` only ever warms an object's *own*
-   *    material, and the ambient-occlusion pass draws the whole scene again
-   *    through `scene.overrideMaterial` — so those programs are invisible to
-   *    any amount of warming aimed at the arena's materials, and they showed up
-   *    at entry as `normal,...` keys nothing had asked for.
+   *    override material**, from both halves. `compile` only ever warms an
+   *    object's *own* material, and the ambient-occlusion pass draws the whole
+   *    scene again through `scene.overrideMaterial` — so those programs are
+   *    invisible to any amount of warming aimed at materials, and they showed
+   *    up at entry as `normal,...` keys nothing had asked for.
    *
    * The group is parentless: `compile` walks its first argument *and* the
    * target scene for lights, so putting this in the scene would count the
@@ -235,34 +330,44 @@ export class RealmWarm {
    * fourteen-second frame this whole file exists to avoid.
    */
   _catalogue(rec) {
-    const cat = new Group();
-    cat.name = 'realm-warm-catalogue';
+    const cat = new WarmCatalogue();
     rec.catParent = rec.stage.root.parent;
     cat.add(rec.stage.root);
     for (const p of this._props ?? []) cat.add(p.group);
+    // Everything the entry frame keeps drawing. See `WarmCatalogue`.
+    cat.liveRoot = this.ctx.scene ?? null;
+
 
     const normalMat = this.ctx.pipeline?.passes?.gtao?.normalMaterial;
     if (normalMat) {
       const seen = new Set();
       const proxy = (o) => {
-        if (!o.isMesh || !o.geometry) return;
+        if (!o.geometry || !(o.isMesh || o.isPoints)) return;
         // `receiveShadow` is an *object* parameter and it is in the cache key,
         // so one proxy per geometry is not enough — the same geometry drawn
         // shadowed and unshadowed is two programs. Keyed on both.
-        const tag = `${o.geometry.uuid}|${o.receiveShadow ? 1 : 0}|${o.castShadow ? 1 : 0}`;
+        const tag = `${o.geometry.uuid}|${o.receiveShadow ? 1 : 0}|${o.castShadow ? 1 : 0}|${o.isPoints ? 'p' : 'm'}`;
         if (seen.has(tag)) return;
         seen.add(tag);
         // Instancing is a define, so an InstancedMesh needs an instanced proxy
-        // or the warmed program is the one the pass will not use.
-        const m = o.isInstancedMesh
-          ? new InstancedMesh(o.geometry, normalMat, 1)
-          : new Mesh(o.geometry, normalMat);
+        // or the warmed program is the one the pass will not use. So is being
+        // a point cloud: the override pass draws `Points` too, and a `Mesh`
+        // proxy over the same geometry warms the wrong program.
+        const m = o.isPoints
+          ? new Points(o.geometry, normalMat)
+          : o.isInstancedMesh
+            ? new InstancedMesh(o.geometry, normalMat, 1)
+            : new Mesh(o.geometry, normalMat);
         m.receiveShadow = o.receiveShadow;
         m.castShadow = o.castShadow;
         m.frustumCulled = false;
         cat.add(m);
       };
+      // Both halves: the arena's own meshes, and the live ones that stay drawn.
+      // The override pass redraws the *whole* scene, so a live object is as
+      // cold in it as an arena one.
       for (const child of [...cat.children]) child.traverse(proxy);
+      if (cat.liveRoot) traverseDrawn(cat.liveRoot, proxy);
     }
     return cat;
   }
@@ -272,6 +377,7 @@ export class RealmWarm {
     cat.remove(rec.stage.root);
     if (rec.catParent) rec.catParent.add(rec.stage.root);
     for (const p of this._props ?? []) cat.remove(p.group);
+    cat.liveRoot = null;
     cat.clear();
   }
 

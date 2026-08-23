@@ -187,6 +187,26 @@ const out = await page.evaluate(async ({ realmId, warm, skip, twice }) => {
     return [...seen];
   };
   res.matKeysParked = matKeys(ctx.realms.warm.records.get(realmId)?.stage?.root);
+  // The warm prop set is the half of the catalogue that stands in for what
+  // `controller.enter` will build. If it is short, or its materials answer with
+  // a different key from the real props', the entry frame pays for the gap.
+  {
+    const props = ctx.realms.warm._props ?? [];
+    res.warmPropCount = props.length;
+    res.warmPropKeys = [];
+    for (const p of props) {
+      let meshes = 0;
+      const keys = new Set();
+      p.group?.traverse((o) => {
+        if (!o.material) return;
+        meshes++;
+        for (const m of (Array.isArray(o.material) ? o.material : [o.material])) {
+          if (m) keys.add(String(m.customProgramCacheKey()).slice(0, 24).replace(/\s+/g, ' '));
+        }
+      });
+      res.warmPropKeys.push(`${p.constructor.name} vis=${p.group?.visible} n=${meshes} ${[...keys].join(' ')}`);
+    }
+  }
 
   res.lightsBeforeEntry = countLightsNow();
   {
@@ -194,6 +214,29 @@ const out = await page.evaluate(async ({ realmId, warm, skip, twice }) => {
     let all = 0, vis = 0;
     rec?.stage?.root.traverse((o) => { if (o.isPointLight) { all++; if (o.visible) vis++; } });
     res.warmArenaLights = `${vis} visible / ${all} total`;
+  }
+
+  // Who *owns* each program the entry frame compiles. A cache key names the
+  // state a program was built for and never the object that asked for it, so
+  // three rounds of this investigation guessed at owners from key fragments.
+  // `renderBufferDirect` is the one place both are in scope at once: count the
+  // renderer's programs across each draw and, when the count moves, write down
+  // the object that moved it.
+  const owners = [];
+  {
+    const realRBD = pipe.renderer.renderBufferDirect.bind(pipe.renderer);
+    pipe.renderer.renderBufferDirect = (cam, sc, geo, mat, obj, group) => {
+      const n = pipe.renderer.info.programs.length;
+      const t = now();
+      realRBD(cam, sc, geo, mat, obj, group);
+      if (pipe.renderer.info.programs.length === n) return;
+      let path = obj?.name || obj?.type, p = obj?.parent;
+      while (p) { path = (p.name || p.type) + '/' + path; p = p.parent; }
+      owners.push(`${(now() - t).toFixed(0)}ms ${mat?.type}${sc?.overrideMaterial === mat ? '(override)' : ''}`
+        + ` ${obj?.isInstancedMesh ? 'inst' : 'mesh'}`
+        + `${obj?.geometry?.attributes?.normal ? '' : ' NO-NORMAL'}`
+        + `${mat?.side === 2 ? ' 2sided' : ''} ${path}`);
+    };
   }
 
   await H.frames(10);
@@ -221,6 +264,22 @@ const out = await page.evaluate(async ({ realmId, warm, skip, twice }) => {
     });
     res.worldSurfaceOwners = [...owners];
   }
+  res.programOwners = owners;
+  // The same read as `warmPropKeys`, taken of the props the controller really
+  // built. Line them up: a class in one list and not the other, or the same
+  // class answering with a different key, is the whole of the entry-frame bill.
+  res.livePropKeys = (ctx.realms.props ?? []).map((p) => {
+    const keys = new Set();
+    let meshes = 0;
+    p.group?.traverse((o) => {
+      if (!o.material) return;
+      meshes++;
+      for (const m of (Array.isArray(o.material) ? o.material : [o.material])) {
+        if (m) keys.add(String(m.customProgramCacheKey()).slice(0, 24).replace(/\s+/g, ' '));
+      }
+    });
+    return `${p.constructor.name} n=${meshes} ${[...keys].join(' ')}`;
+  });
   const rm = renderTimes.length;
   res.rendersAfter = renderTimes.slice(Math.max(0, rm - 20));
   res.programsAfter = pipe.renderer.info.programs.length;
@@ -263,7 +322,13 @@ const keyDump = out.keyDump;
 delete out.keyDump;
 
 console.log(`\n=== realm entry timing: ${REALM}${WARM ? ' (prewarmed)' : ''} ===`);
+const PER_LINE = new Set(['livePropKeys', 'warmPropKeys', 'programOwners', 'worldSurfaceOwners', 'newAtEntry', 'nearMiss']);
 for (const [k, v] of Object.entries(out)) {
+  if (PER_LINE.has(k) && Array.isArray(v)) {
+    console.log(`  ${k}`);
+    for (const line of v) console.log(`      ${line}`);
+    continue;
+  }
   console.log(`  ${k.padEnd(14)} ${Array.isArray(v) ? v.join(' ') : (typeof v === 'number' ? v.toFixed(1) + ' ms' : v)}`);
 }
 
