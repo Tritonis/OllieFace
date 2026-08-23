@@ -102,7 +102,7 @@ export const TIERS = {
   // table — nothing in the fiction fixes a silver's hue the way fire fixes
   // Legendary's — and the search took it to a near-neutral with a cold cast,
   // which is what the tier is meant to read as.
-  argent:    { label: 'Argent',    color: '#b1bdbc', dim: '#606666', plate: '#101f28' },
+  argent:    { label: 'Argent',    color: '#bbbbaf', dim: '#606666', plate: '#101f28' },
 };
 
 // Each entry carries its own id, so a `tierMeta` result is self-describing and

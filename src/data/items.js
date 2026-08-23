@@ -60,7 +60,7 @@ export const TIERS = {
   // the Consecration press calls. A run that never presses the reliquary takes
   // no extra `ctx.rng` draw, which is what keeps the sp-equivalence baseline
   // still.
-  argent: { name: 'Argent', colour: 0xb1bdbc, css: '#b1bdbc', weight: 0 },
+  argent: { name: 'Argent', colour: 0xbbbbaf, css: '#bbbbaf', weight: 0 },
   equipment: { name: 'Equipment', colour: 0xb98116, css: '#b98116', weight: 0 },
 };
 
