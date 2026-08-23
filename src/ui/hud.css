@@ -57,7 +57,7 @@
      variable — so the seven were re-lightnessed with it, all eight at once,
      each hue held inside six degrees of where it was. `tools/tier-palette-
      search.mjs` is the search; the gate is the proof. */
-  --t-argent:    #b1bdbc;
+  --t-argent:    #bbbbaf;
 
   /* The ground tier-coloured *type* is graded against, and the reason it is
      opaque (#104). Every panel that carries a tier name is `rgba()` over the
