@@ -160,64 +160,120 @@ export class Stage {
    * old one's GPU buffers go back to the driver on the way out.
    *
    * Deliberately takes no RNG argument. See stageSeed() above.
+   *
+   * Synchronous: the whole transition happens inside this call, which on a real
+   * GPU is the several-second hitch #182 is about. It survives as the only
+   * entry point that can promise "the stage is standing when I return" — the
+   * capture harness, the probe tools and every test rely on exactly that — but
+   * the *game* goes through `buildSteps` instead. Both drain the same generator
+   * in the same order, so a stage built either way is the same stage.
    */
   build(stageIndex = 0) {
-    const ctx = this.ctx;
-    this._teardown();
+    for (const _step of this.buildSteps(stageIndex)) { /* drained in one frame */ }
+    return this;
+  }
 
+  /**
+   * The same build, cut into steps a caller can spend across several frames.
+   *
+   * Two things make this safe to stretch out, and both are structural rather
+   * than a matter of who remembers to check a flag:
+   *
+   *  · **Nothing is installed until it is finished.** The heightfield, the
+   *    prop group and the collider grid are all generated into locals; the
+   *    standing stage is torn down and replaced in one synchronous block at
+   *    the `commit` step. So a camera fan, an enemy's ground sample or an
+   *    interactable's placement query that lands mid-build reads the *old*
+   *    stage — complete and correct — and the next one reads the new one.
+   *    There is no window in which a half-built stage is observable, which is
+   *    a stronger promise than gating every reader could make. The price is
+   *    that both stages' geometry is resident for the length of the
+   *    transition; a stage is a few megabytes and the window is under a
+   *    second.
+   *
+   *  · **The order is the order `build` always used.** The biome dressing
+   *    still lands before any of the new geometry is drawn, and the probe
+   *    still bakes last, off a scene that is complete. Generation reads the
+   *    biome it was handed, never the shared library, so the two are
+   *    genuinely independent — but the ordering is kept anyway, because the
+   *    cheapest way to know an incremental build produces the identical stage
+   *    is for it to be the identical sequence of statements.
+   *
+   * Yields a short name per step, for a driver that wants to say where it is.
+   */
+  *buildSteps(stageIndex = 0) {
+    const ctx = this.ctx;
     const biome = biomeFor(stageIndex);
-    this.stageIndex = stageIndex;
-    this.biome = biome;
-    this.stageName = stageNameFor(stageIndex);
 
     // Retint the shared library and re-light the sky before anything is built,
-    // so the terrain's first compile already sees the biome's environment.
+    // so the terrain's first compile already sees the biome's environment. This
+    // is the one step that touches state the old stage is still drawn from — it
+    // will be wearing the new biome's palette for the rest of the transition,
+    // which is why the driver fades out before starting.
     applyBiomeMaterials(biome);
     ctx.environment?.applyBiome?.(biome);
+    yield 'dress';
 
-    this.terrain = new Terrain(stageSeed(ctx.seed, stageIndex, SALT_TERRAIN), biome);
-    this.terrainMesh = this.terrain.build();
-    ctx.scene.add(this.terrainMesh);
+    const terrain = new Terrain(stageSeed(ctx.seed, stageIndex, SALT_TERRAIN), biome);
+    // The heightfield and its mesh: the single largest slice of the build, and
+    // the one worth having a frame to itself.
+    const terrainMesh = terrain.build();
+    yield 'terrain';
 
-    this.props = new Props(
-      new RNG(stageSeed(ctx.seed, stageIndex, SALT_PROPS)), this.terrain, biome, stageIndex);
-    this.propsGroup = this.props.build();
-    ctx.scene.add(this.propsGroup);
-    // The kit's 2-3 hand-authored structures, as `{ kind, x, y, z, r }`. Read
-    // by Interactables so chests and the teleporter are sited against something
-    // the player can navigate by rather than sprinkled over the basin.
-    this.landmarks = this.props.landmarks;
+    const props = new Props(
+      new RNG(stageSeed(ctx.seed, stageIndex, SALT_PROPS)), terrain, biome, stageIndex);
+    const propsGroup = props.build();
+    yield 'props';
 
-    this.grid = new ColliderGrid(STAGE_HALF, CELL);
-    this.platforms = [];
-    for (const c of this.props.colliders) {
-      if (c.kind === 'platform') this.platforms.push(c);
-      this.grid.insert(c);
+    const grid = new ColliderGrid(STAGE_HALF, CELL);
+    const platforms = [];
+    for (const c of props.colliders) {
+      if (c.kind === 'platform') platforms.push(c);
+      grid.insert(c);
     }
-
-    // Raycast targets, cached: rebuilding this list per query would allocate
-    // every time something aims. Terrain is deliberately not in here — it is
-    // marched analytically instead (see _terrainRay).
-    this.propTargets = this.props.meshes.slice();
 
     // Vertical extent of the heightfield, used to clip rays before marching.
     let lo = Infinity, hi = -Infinity;
-    for (const h of this.terrain.grid) {
+    for (const h of terrain.grid) {
       if (h < lo) lo = h;
       if (h > hi) hi = h;
     }
+    yield 'collision';
+
+    // --- commit: the old world ends and the new one begins, in one block ----
+    this._teardown();
+    this.stageIndex = stageIndex;
+    this.biome = biome;
+    this.stageName = stageNameFor(stageIndex);
+    this.terrain = terrain;
+    this.terrainMesh = terrainMesh;
+    ctx.scene.add(terrainMesh);
+    this.props = props;
+    this.propsGroup = propsGroup;
+    ctx.scene.add(propsGroup);
+    // The kit's 2-3 hand-authored structures, as `{ kind, x, y, z, r }`. Read
+    // by Interactables so chests and the teleporter are sited against something
+    // the player can navigate by rather than sprinkled over the basin.
+    this.landmarks = props.landmarks;
+    this.grid = grid;
+    this.platforms = platforms;
+    // Raycast targets, cached: rebuilding this list per query would allocate
+    // every time something aims. Terrain is deliberately not in here — it is
+    // marched analytically instead (see _terrainRay).
+    this.propTargets = props.meshes.slice();
     this.minY = lo;
     this.maxY = hi;
+    yield 'commit';
 
     // The reflection probe, now that there is a stage to reflect. `applyBiome`
     // above re-lights the sky and re-bakes from it, which is what the terrain's
     // first compile needs; this is the bake that actually puts terrain, props
     // and structures into the environment map, and it can only run once they
-    // exist. Same frame as the rebuild above, once per stage transition — see
-    // `Environment.bakeProbe`.
-    ctx.environment?.bakeProbe?.(this.terrain.sampleHeight(0, 0) + 12);
-
-    return this;
+    // exist. Its own step: it is six full renders of the scene plus a roughness
+    // chain, and it is the first time the new geometry is drawn at all, so it
+    // is the step most likely to be the expensive one on any given machine.
+    ctx.environment?.bakeProbe?.(terrain.sampleHeight(0, 0) + 12);
+    yield 'probe';
   }
 
   /**

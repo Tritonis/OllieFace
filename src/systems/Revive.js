@@ -172,8 +172,10 @@ export class Revive {
    * health and where the pawn is standing.
    *
    * Placement copies `Coop._spawnPawn`: park them on the local player, who
-   * `Progression._applyStage` has already moved onto the new ground by the time
-   * `stageStart` is emitted. The anchor is read once, before anyone moves, so a
+   * `Progression._seatPlayer` has already moved onto the new ground by the time
+   * `stageStart` is emitted — the stage swap seats the player in the same frame
+   * it happens, and `stageStart` is not emitted until the whole transition has
+   * finished building. The anchor is read once, before anyone moves, so a
    * party of four does not walk itself two metres further out per pawn.
    *
    * A pawn coming back from a real death (`alive` was `false`, not just

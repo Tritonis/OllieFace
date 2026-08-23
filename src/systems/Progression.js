@@ -35,6 +35,22 @@ const CHARGE_TIME = 5;       // DEV ONLY (#165): shipping value is 45 — restor
 const LOOT_WINDOW = 8;       // beat between "boss dead" and the portal opening
 const CHARGE_EMIT_STEP = 0.01;
 
+// The stage transition (#182).
+//
+// Taking a portal used to run the entire rebuild — heightfield, props,
+// colliders, biome dressing and a six-face reflection bake — inside one call,
+// which is one frame, which on a real GPU is several seconds of a game that has
+// stopped answering. `Stage.buildSteps` cuts that into steps; these are the
+// beats the driver below spends them over.
+//
+// Out is short and in is longer on purpose. Going to black wants to feel like a
+// consequence of the thing you just did, so it is nearly a cut; coming back
+// wants to feel like arriving somewhere, so it takes its time. The build sits
+// between them at full black and runs as fast as it can, so the transition is
+// as long as the machine needs and never shorter than these two.
+const VEIL_OUT = 0.30;
+const VEIL_IN = 0.55;
+
 /**
  * Survivor level.
  *
@@ -115,6 +131,24 @@ export class Progression {
 
     this._started = false;
     this._tmp = new THREE.Vector3();
+
+    /**
+     * The stage change in flight, or null. `{ index, host, phase, t, steps }`.
+     * Public because it is the one honest answer to "is the world currently
+     * being replaced" — `_tickTeleporter` reads it, and so should anything else
+     * that must not act during the swap.
+     */
+    this.transition = null;
+    /** Last published veil opacity, so `stageVeil` only fires on a change. */
+    this._veil = 0;
+
+    /**
+     * Whether a stage change is spread over frames. Left undefined so the
+     * answer is derived (below) from whether there is a renderer with a frame
+     * to protect; set it explicitly to drive the incremental path from a
+     * headless test, or to force the old all-at-once build.
+     */
+    this.stretchTransitions = undefined;
   }
 
   init(ctx) {
@@ -238,8 +272,14 @@ export class Progression {
     // replicated rather than re-rolled, so it never populates.
     ctx.events.on('stageStart', (p) => {
       if (ctx.authority) return;
-      this._applyStage(typeof p?.index === 'number' ? p.index : 0, false);
+      // Cleared here rather than at the swap. A client's interactables are
+      // replicated, not rolled, and the host's new stage is already standing by
+      // the time this event lands — so anything that arrives during the
+      // transition belongs to the stage we are travelling *to*, and a clear at
+      // the far end would throw it away. What goes now is the old stage's
+      // furniture, which is about to lose the ground it stands on anyway.
       this.interactables.clear();
+      this._startTransition(typeof p?.index === 'number' ? p.index : 0, false);
     });
   }
 
@@ -269,6 +309,13 @@ export class Progression {
 
   update(ctx, dt) {
     this.interactables.update(ctx, dt);
+    // Driven from `update`, not `fixedUpdate`, and deliberately not gated on
+    // `ctx.paused`: a transition is a piece of machinery halfway through
+    // replacing the world, and a player who opens the menu mid-fade must not be
+    // able to leave it there. Real frame time for the same reason — the veil is
+    // a wall-clock animation, and the fixed step is exactly the thing that will
+    // not be running smoothly while a stage is being built.
+    if (this.transition) this._stepTransition(dt);
   }
 
   /**
@@ -300,7 +347,62 @@ export class Progression {
 
   /** Host-side stage entry: build it, fill it, announce it. */
   _beginStage(index, first = false) {
-    this._applyStage(index, first);
+    // Stage 0 is already standing — `Stage.init` built it before any of this
+    // existed, so there is nothing to fade over and nothing to generate. It
+    // goes straight to the far side of the transition.
+    if (first) {
+      this._nameStage(index);
+      this._openStage(index);
+      return;
+    }
+    this._startTransition(index, true);
+  }
+
+  /**
+   * The half both roles run: name the stage and clear the run flags it owns.
+   *
+   * Split out of the old `_applyStage` because it is now the *first* thing a
+   * transition does rather than something that happens alongside the rebuild.
+   * Zeroing the teleporter state at the top of the fade is what stops the
+   * charge ring, the boss gate and the loot window from continuing to tick
+   * against a stage that is on its way out; `_tickTeleporter` carries a second,
+   * explicit guard on the same fact, because "the flags happen to be idle" is a
+   * weaker statement than "there is a transition in flight".
+   */
+  _nameStage(index) {
+    this.stageIndex = index;
+    this.stageName = fullStageName(index);
+    this.state = 'idle';
+    this.charge = 0;
+    this._lastEmitted = -1;
+    this.bossAlive = false;
+    this.bossCleared = false;
+    this.lootTimer = 0;
+    // The old stage's teleporter is gone; the new one is published by
+    // `_openStage` once the stage is populated. A client leaves this null until
+    // the host replicates the interactable.
+    this.teleporterPosition = null;
+  }
+
+  /**
+   * Put the player on the new ground. Runs in the same frame as the stage swap,
+   * never before it — a spawn point sampled off the old heightfield would drop
+   * the player through the new one.
+   */
+  _seatPlayer() {
+    const ctx = this.ctx;
+    const p = ctx.player;
+    if (!p) return;
+    const spawn = ctx.stage?.spawnPoint?.() || this._tmp.set(0, 2, 0);
+    if (p.respawnAt) p.respawnAt(spawn);
+    else {
+      p.position.copy(spawn);
+      p.velocity?.set(0, 0, 0);
+    }
+  }
+
+  /** Host-side: fill the standing stage and announce it. */
+  _openStage(index) {
     // Before the stage is populated, so the purse the player arrives with is
     // the one the chest prices are about to be measured against.
     this._settleVault(index);
@@ -316,48 +418,145 @@ export class Progression {
     this.ctx.audio?.play?.('stageStart');
   }
 
+  // -------------------------------------------------------------- transitions
+
   /**
-   * The half both roles run: name the stage, rebuild the terrain from the
-   * shared seed, reset the run flags, put the player on the new ground.
+   * Is a stage change allowed to take several frames?
+   *
+   * Only where there is a rendered frame whose smoothness is the entire point.
+   * Every headless caller — the tests, `coopprobe`, the review probes — asks
+   * for a stage and expects to have one when the call returns, and giving them
+   * a transition that needs an `update` pump they do not run would hang them.
+   * `stretchTransitions` overrides both ways so the incremental path is
+   * reachable from a test rather than only from a machine with a GPU.
    */
-  _applyStage(index, first = false) {
-    const ctx = this.ctx;
-    this.stageIndex = index;
-    this.stageName = fullStageName(index);
-    this.state = 'idle';
-    this.charge = 0;
-    this._lastEmitted = -1;
-    this.bossAlive = false;
-    this.bossCleared = false;
-    this.lootTimer = 0;
-    // The old stage's teleporter is gone; the new one is published by
-    // _beginStage once the stage is populated. A client leaves this null until
-    // the host replicates the interactable.
-    this.teleporterPosition = null;
+  _canStretch() {
+    if (typeof this.stretchTransitions === 'boolean') return this.stretchTransitions;
+    return !!this.ctx?.pipeline?.renderer;
+  }
 
-    if (!first) {
-      // Stage 0 is already standing (Stage.init built it); every subsequent
-      // stage is a full regeneration. `build` takes no RNG on purpose — it is a
-      // pure function of (ctx.seed, index), so host and client land on the same
-      // world even though their gameplay streams have long since diverged.
-      ctx.stage?.build?.(index);
-      ctx.director?.reset?.(index);
+  /**
+   * Begin replacing the world with stage `index`.
+   *
+   * `host` says whether this side rolls the stage's contents or waits to be
+   * told them; everything else about the sequence is identical on both, which
+   * is deliberate — a client used to eat the same multi-second freeze the host
+   * did, from the same `Stage.build` call, and fixing it on one side only would
+   * have left co-op with the bug.
+   */
+  _startTransition(index, host) {
+    // A second transition while one is running can only mean the world already
+    // owes us a stage we have not finished arriving at — a client handed two
+    // `stageStart`s in quick succession. Land the first one before leaving for
+    // the second; skipping it would leak the old stage's geometry.
+    if (this.transition) this._drainTransition();
+
+    const t = { index, host, phase: 'out', t: 0, steps: null, veil: 0 };
+    this.transition = t;
+    this._nameStage(index);
+
+    // The player is a passenger for the length of the fade. Saved and restored
+    // rather than forced back to true: the emergency pause overlay owns this
+    // same switch, and a transition must not be the thing that hands control
+    // back to a session that had deliberately taken it away.
+    const input = this.ctx?.input;
+    if (input) {
+      t.inputWas = input.enabled;
+      input.enabled = false;
     }
 
-    // Reposition the player onto the freshly built ground before anything asks
-    // for a spawn-relative point. Also derived from the seed, not from ctx.rng.
-    const spawn = ctx.stage?.spawnPoint?.() || this._tmp.set(0, 2, 0);
-    const p = ctx.player;
-    if (p && !first) {
-      if (p.respawnAt) p.respawnAt(spawn);
-      else {
-        p.position.copy(spawn);
-        p.velocity?.set(0, 0, 0);
+    if (!this._canStretch()) this._drainTransition();
+  }
+
+  /** One frame of the transition. See VEIL_OUT / VEIL_IN. */
+  _stepTransition(dt) {
+    const t = this.transition;
+    if (t.phase === 'out') {
+      t.t += dt;
+      t.veil = Math.min(1, t.t / VEIL_OUT);
+      if (t.veil >= 1) {
+        t.phase = 'build';
+        t.steps = this.ctx.stage?.buildSteps?.(t.index) ?? null;
+        // Nothing to build (a stage-less test ctx) is not a failure; the
+        // transition still has to reach its far side and give input back.
+        if (!t.steps) { this._commit(t); this._settle(t); t.phase = 'in'; t.t = 0; }
       }
+    } else if (t.phase === 'build') {
+      // One generator step per frame. The screen is full black by now, so the
+      // only thing this rate trades against is how long the black lasts — and
+      // a step per frame is what keeps any single one of them from being long
+      // enough to notice.
+      const step = t.steps.next();
+      if (step.done) { this._settle(t); t.phase = 'in'; t.t = 0; }
+      else if (step.value === 'commit') this._commit(t);
+    } else {
+      t.t += dt;
+      t.veil = Math.max(0, 1 - t.t / VEIL_IN);
+      if (t.veil <= 0) return this._endTransition();
     }
+    this._paintVeil(t.veil);
+  }
+
+  /**
+   * Publish the veil's opacity. An event rather than a call into `src/ui/`:
+   * a system may not import the UI layer (`tests/import-boundaries.test.mjs`
+   * rule 1), and the indirection earns its keep anyway — every headless driver
+   * runs this same transition and none of them has a screen to darken.
+   */
+  _paintVeil(alpha) {
+    if (alpha === this._veil) return;
+    this._veil = alpha;
+    this.ctx?.events?.emit?.('stageVeil', { alpha });
+  }
+
+  /**
+   * The new stage has just replaced the old one. Only the player moves here,
+   * and it moves *now* rather than with the rest of the arrival below: it is
+   * standing on a heightfield that no longer exists, and one fixed step of that
+   * is one fixed step of falling through the world.
+   */
+  _commit(t) {
+    this._seatPlayer();
+    t.committed = true;
+  }
+
+  /**
+   * Everything that used to follow `Stage.build()` in `_beginStage`, in the
+   * order it followed it: the stage is complete, its probe is baked, and only
+   * then does anything get put on it.
+   */
+  _settle(t) {
+    if (t.settled) return;
+    t.settled = true;
+    this.ctx.director?.reset?.(t.index);
+    if (t.host) this._openStage(t.index);
+  }
+
+  /** Run whatever is left of the transition right now, all in this frame. */
+  _drainTransition() {
+    const t = this.transition;
+    if (!t) return;
+    if (!t.steps && t.phase !== 'in') t.steps = this.ctx.stage?.buildSteps?.(t.index) ?? null;
+    if (t.steps) {
+      for (const step of t.steps) if (step === 'commit') this._commit(t);
+    }
+    if (!t.committed) this._commit(t);
+    this._settle(t);
+    this._endTransition();
+  }
+
+  _endTransition() {
+    const t = this.transition;
+    this.transition = null;
+    const input = this.ctx?.input;
+    if (input && t.inputWas !== undefined) input.enabled = t.inputWas;
+    this._paintVeil(0);
   }
 
   advanceStage() {
+    // The portal is a prop the player can stand on and press twice, and the
+    // second press used to start a second rebuild on top of the first.
+    if (this.transition) return;
     this.stats.stagesCleared++;
     this._beginStage(this.stageIndex + 1);
   }
@@ -380,6 +579,13 @@ export class Progression {
   // -------------------------------------------------------------- teleporter
 
   _tickTeleporter(ctx, h) {
+    // Not while the world is being replaced. `_nameStage` has already zeroed
+    // every flag this reads, so on today's code paths this guard changes
+    // nothing — but "the state happens to be idle" is an accident of ordering
+    // and "there is a transition in flight" is the actual reason, and the
+    // teleporter still standing on the outgoing stage is exactly the object
+    // this must not spawn a boss around.
+    if (this.transition) return;
     const tp = this.interactables.teleporter;
     if (!tp) return;
 

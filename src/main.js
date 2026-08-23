@@ -27,6 +27,7 @@ import { maybeShowGpuNotice } from './ui/GpuNotice.js';
 import { installFatalOverlay } from './ui/FatalOverlay.js';
 import { installSystemNotice } from './ui/SystemNotice.js';
 import { installFallbackPause } from './ui/FallbackPause.js';
+import { installStageVeil } from './ui/StageVeil.js';
 import { installTelemetry } from './systems/Telemetry.js';
 import { setPbr, installPbrHarness } from './world/PbrEval.js';
 import { initDesktopStore } from './core/DesktopStore.js';
@@ -64,6 +65,10 @@ installFatalOverlay(ctx);
 // must find a listener already there. A disabled system is survivable but never
 // invisible — the player is told which one went and that the run continues.
 installSystemNotice(ctx);
+// The black between stages (#182). Subscribed here beside the other page-level
+// listeners, because `Progression` owns the timing and the compositor owns the
+// picture, and a system is not allowed to reach across into `src/ui/`.
+installStageVeil(ctx);
 // And the exit that survives losing the menus. `Menus` is the pause screen, the
 // death screen, settings and quit all at once, and it is noncritical: six
 // throws and the run goes on with no way to interrupt it. This is one key
