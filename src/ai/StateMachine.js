@@ -22,6 +22,11 @@ export const S = {
   // Under the terrain: untouchable, unshootable, and closing. The surfacing
   // eruption is a normal WINDUP/ATTACK pair on the other side of it.
   SUBMERGED: 'submerged',
+  // Self-rescue. A unit that has made no progress toward its goal for several
+  // seconds — wedged in a water channel, pinned in a crevasse — sinks, travels
+  // under the terrain to a validated point on the player's level, and comes
+  // back up. Mechanically it is the burrow, minus the attack on the far end.
+  EXTRACT: 'extract',
   // Support units park here while their heal channel runs; they hold position
   // on an ally rather than on the player, which is what makes them read as
   // something other than a shy shooter.
