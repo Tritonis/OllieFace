@@ -318,10 +318,19 @@ console.log('\nthe new effects are inside the reserved-hue guard, not beside it'
   // carry no colour literal of their own. Written against the mutation: paste
   // `0xff00ff` into wardingMote and this fails.
   // The scanned set is DERIVED, not typed here. Two independent derivations off
-  // the palette itself must both agree with `PURITY_METHODS`, so the way to add
-  // a purity method without falling under the scan is to add one that neither
-  // reads `PURITY.` nor carries a palette word in its name — and both of those
-  // omissions are themselves failures below.
+  // the palette itself must both agree with `PURITY_METHODS`: every method that
+  // reads `PURITY.`, and every method whose name carries a palette word. Either
+  // one alone catches a forgotten purity method, so the list cannot silently
+  // fall behind `VFX`.
+  //
+  // Be exact about the reach, because the first draft of this comment was not
+  // and a reviewer falsified it: a method with NEITHER a palette word in its
+  // name NOR a `PURITY.` read enters neither derivation and is invisible to the
+  // per-method scans below. `absolveGlow(pos) { e.color0.set(0xff00ff); }` is
+  // the demonstrated case. Its *decimal* half is caught anyway by the file-wide
+  // scan further down; its hex half is not, and belongs to whole-file literal
+  // discipline — issue #163, filed for exactly this class. A hue reached
+  // through a variable escapes all of it, and always did.
   const protoNames = Object.getOwnPropertyNames(VFX.prototype)
     .filter((n) => n !== 'constructor' && typeof VFX.prototype[n] === 'function');
   const bySource = protoNames.filter((n) => /\bPURITY\./.test(VFX.prototype[n].toString()));
@@ -329,7 +338,7 @@ console.log('\nthe new effects are inside the reserved-hue guard, not beside it'
   const byName = protoNames.filter((n) => stemRe.test(n));
 
   const declared = new Set(PURITY_METHODS);
-  const excused = new Set(PURITY_METHOD_EXCEPTIONS);
+  const excused = new Set(Object.keys(PURITY_METHOD_EXCEPTIONS));
   for (const n of bySource) {
     ok(declared.has(n),
       `${n} reads the purity palette, so it must be declared in PURITY_METHODS`);
@@ -342,7 +351,7 @@ console.log('\nthe new effects are inside the reserved-hue guard, not beside it'
       `${n} wears a purity word (${PURITY_STEMS.join('/')}), so it is either a purity`
       + ' method or an explicitly excused one — silence is not an option');
   }
-  for (const n of PURITY_METHOD_EXCEPTIONS) {
+  for (const n of excused) {
     ok(protoNames.includes(n), `the excused ${n} still exists — stale exemptions rot`);
   }
 
@@ -381,6 +390,34 @@ console.log('\nthe new effects are inside the reserved-hue guard, not beside it'
       + ` (found: ${positional.join(', ') || 'none'})`);
     ok(/PURITY\./.test(body), `${name} reads its hues from the guarded palette`);
   }
+
+  // An excused method skips the *classification* checks, not the hue scan. Its
+  // literals are pinned verbatim, so a third one arriving in `wardReflect` is a
+  // failure rather than a free ride bought with a name.
+  for (const [name, allowed] of Object.entries(PURITY_METHOD_EXCEPTIONS)) {
+    const body = VFX.prototype[name].toString();
+    const found = body.match(/0x[0-9a-fA-F]{3,8}/g) || [];
+    eq(found.join(','), allowed.join(','),
+      `the excused ${name} carries exactly its declared hues and no others`);
+    const stray = colourLiterals(body).filter((lit) => !allowed.includes(lit));
+    ok(stray.length === 0,
+      `and no undeclared number in a colour position (found: ${stray.join(', ') || 'none'})`);
+  }
+
+  // The residual, narrowed where it is free. A method that neither wears a
+  // palette word nor reads `PURITY.` escapes everything above — but no colour
+  // position anywhere in `VFX.js` holds a decimal literal today, so that scan
+  // costs an allow-list of exactly zero entries and runs over the whole file.
+  // It catches `set(16711935)` wherever it is written, in a method nobody has
+  // classified. The same treatment of *hex* would need ~50 allow-list entries
+  // (74 hex literals sit in colour positions, all legitimately named at their
+  // own call sites), which is a rival registry rather than a guard — left to
+  // #163 deliberately.
+  const vfxSrc = readFileSync(new URL('../src/systems/VFX.js', import.meta.url), 'utf8');
+  const fileWideDecimals = colourLiterals(vfxSrc).filter((lit) => !/^0x/.test(lit));
+  eq(fileWideDecimals.length, 0,
+    'no colour position anywhere in VFX.js holds a decimal hue'
+    + ` (found: ${fileWideDecimals.join(', ') || 'none'})`);
 
   // And the positional scanner can itself fail — the decimal evasion, run
   // against the check rather than merely asserted about it.
