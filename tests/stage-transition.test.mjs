@@ -355,5 +355,82 @@ class Wire {
   }
 }
 
+// --- 5. the exemption is the wire, not the simulation ----------------------
+//
+// A remote co-op pawn is never an Engine system — `NetHost.fixedUpdate` feeds
+// it `applyCommand` straight off the wire — so the `runsDuringStageChange` gate
+// in `Engine._runFrame` cannot reach it, and NetHost's exemption drove remote
+// players' whole gameplay simulation (weapon fire, ability casts, and the
+// projectile/placeable pumps that live inside `applyCommand`) right through the
+// freeze. Checking the static flag says nothing about this; only driving
+// `NetHost.fixedUpdate` does.
+//
+// Mutation-checked: remove `if (ctx.stageChanging) return;` from
+// NetHost.fixedUpdate and both damage assertions below go red.
+console.log('\n-- an exempt system still may not simulate --');
+{
+  const host = Object.create(NetHost.prototype);
+  host.tick = 0;
+  host.clients = new Map();
+  host._checkHelloDeadlines = () => {};
+
+  const enemy = { health: 500 };
+  // Stands in for a remote survivor's pawn. `applyCommand` is the single door
+  // the Engine cannot see through — and the door the in-flight projectile and
+  // placeable pumps are behind, which is why suppressing it is enough.
+  const pawn = {
+    lastCommand: { tick: 0, buttons: 1 },
+    applied: 0, projectileSteps: 0,
+    applyCommand(cmd) { this.applied++; this.projectileSteps++; enemy.health -= 25; },
+  };
+  host.clients.set(0, { peer: null, pawn, inputs: [], lastTick: 0 });
+
+  const ctx = { stageChanging: false };
+  const queue = () => host.clients.get(0).inputs.push({ tick: host.tick + 1, buttons: 1 });
+
+  queue();
+  host.fixedUpdate(ctx, 1 / 60);
+  ok(pawn.applied === 1, 'a queued remote command is applied in an ordinary tick');
+  ok(enemy.health === 475, 'and it lands real damage');
+
+  ctx.stageChanging = true;
+  const appliedBefore = pawn.applied;
+  const stepsBefore = pawn.projectileSteps;
+  const tickBefore = host.tick;
+  for (let i = 0; i < 60; i++) { queue(); host.fixedUpdate(ctx, 1 / 60); }
+
+  ok(pawn.applied === appliedBefore, `no remote command is applied during the freeze (${pawn.applied - appliedBefore} applied)`);
+  ok(enemy.health === 475, `and no damage lands (enemy at ${enemy.health}, want 475)`);
+  ok(pawn.projectileSteps === stepsBefore,
+     'the pawn\'s in-flight projectiles and placeables stop with it — both pumps live inside applyCommand');
+  ok(host.tick === tickBefore + 60, `but the wire keeps its tick (${host.tick - tickBefore} ticks)`);
+  ok(host.clients.get(0).inputs.length > 0,
+     'commands received during the window are kept, not drained — the existing MAX_INPUT_BACKLOG trim decides how many');
+  ok(host.clients.get(0).lastTick === 1, 'and none of them is acked, so nothing is silently swallowed');
+
+  ctx.stageChanging = false;
+  host.fixedUpdate(ctx, 1 / 60);
+  ok(pawn.applied === appliedBefore + 1, 'the backlog resumes draining one command per tick afterwards');
+}
+
+{
+  // The other end of the same symmetry: a client's own sampler reads the key
+  // state directly and never consults `input.enabled`, so without its own check
+  // it would keep walking and firing through its own veil.
+  const client = Object.create(NetClient.prototype);
+  const hot = {
+    moveAxis: () => ({ x: 1, z: 1 }),
+    down: () => true,
+    mouse: { left: true, right: true },
+  };
+  const live = client._sampleInput({ input: hot, stageChanging: false, cameraRig: { yaw: 0.5, pitch: 0.2 } });
+  ok(live.buttons !== 0 && live.moveX === 1, 'the client samples real input normally');
+
+  const veiled = client._sampleInput({ input: hot, stageChanging: true, cameraRig: { yaw: 0.5, pitch: 0.2 } });
+  ok(veiled.buttons === 0, 'no buttons are sent during a stage change');
+  ok(veiled.moveX === 0 && veiled.moveZ === 0, 'and no movement');
+  ok(veiled.yaw === 0.5 && veiled.pitch === 0.2, 'but the view is still reported, so nothing snaps');
+}
+
 console.log(`\n${fail === 0 ? 'OK' : 'FAILED'}  ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

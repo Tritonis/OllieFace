@@ -96,9 +96,19 @@ export function isCriticalSystem(system) {
  * arguable list, and everything else is safer frozen. Declaring
  * `static runsDuringStageChange = true` is how a system makes that argument.
  * Today the whole list is the net layer — the wire cannot go quiet for a second
- * without the peer on the other end concluding this machine has died — and it
- * is deliberately a narrower exemption than the old behaviour granted, which
- * was none at all.
+ * without the peer on the other end concluding this machine has died.
+ *
+ * **An exemption is a promise, not a hole.** It buys the right to keep the
+ * transport running; it does not buy the right to keep simulating, and the
+ * exempt system is responsible for the difference because this gate cannot
+ * police it. `NetHost` is the live example and the reason this paragraph
+ * exists: a remote co-op pawn is deliberately not an Engine system — nothing
+ * steps it from here, `NetHost.fixedUpdate` feeds it `applyCommand` straight
+ * off the wire — so the loop below cannot reach it, and a first cut of this
+ * design left remote players moving, firing and killing through a freeze meant
+ * to stop exactly that. `NetHost` and `NetClient` now check `ctx.stageChanging`
+ * themselves and suppress command application. Any future exemption owes the
+ * same audit: what does this system drive that the systems list does not see?
  *
  * Only `fixedUpdate` is gated. `update`/`lateUpdate` are presentation, they run
  * throughout, and one of them is `Progression.update` — the thing driving the
