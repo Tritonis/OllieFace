@@ -696,6 +696,46 @@ export const HUE = Object.fromEntries(
   Object.entries(PURITY_PALETTE).map(([k, v]) => [k, v.hex]));
 
 /**
+ * The vocabulary the palette itself owns, read off its own keys: `wardCore`
+ * and `wardRim` say `ward`, `sanctuaryVeil` says `sanctuary`, `argentPale`
+ * says `argent`. The guard uses these stems to *find* purity surfaces in
+ * `VFX` rather than being told where they are — see `PURITY_METHODS`.
+ */
+export const PURITY_STEMS = [...new Set(
+  Object.keys(PURITY_PALETTE).map((k) => k.match(/^[a-z]+/)[0]))];
+
+/**
+ * The `VFX` methods that draw the purity family. This is *not* a hand list the
+ * guard trusts: `tests/argent-legibility.test.mjs` re-derives the same set two
+ * independent ways — every prototype method that reads `PURITY.`, and every
+ * prototype method whose name carries a `PURITY_STEMS` word — and fails if
+ * either derivation disagrees with what is written here.
+ *
+ * The reach of that is exactly two cases and no more: a method that wears a
+ * palette word, and a method that reads the palette. A purity effect written
+ * with *neither* — no stem in its name, every hue typed as a literal — is
+ * invisible to this list by construction, and is issue #163's business, not
+ * this one's.
+ */
+export const PURITY_METHODS = ['wardingMote', 'sanctuaryOpen', 'consecration'];
+
+/**
+ * Names that carry a purity stem while deliberately drawing something else, so
+ * the stem net does not misfile them. This is a *classification* exemption and
+ * nothing more: an excused method skips the derivation-agreement checks, but
+ * its hues are still scanned, against the literals recorded here — so a third
+ * literal appearing in `wardReflect` fails like any other undeclared hue.
+ *
+ * - `wardReflect` is the void-polarity shield bounce: arcane, not restorative,
+ *   and its two hues are the void family's own.
+ * - `_onWarded` is the event handler; it delegates and draws no colour at all.
+ */
+export const PURITY_METHOD_EXCEPTIONS = {
+  wardReflect: ['0xb291ff', '0x2a1240'],
+  _onWarded: [],
+};
+
+/**
  * The authored-palette arm. Same predicate, same failure mode, at load.
  *
  * A guard nobody has seen fail is worth nothing, so this one is written
