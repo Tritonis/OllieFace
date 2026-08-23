@@ -46,8 +46,15 @@ export class RealmStage {
   /**
    * @param ctx            engine ctx
    * @param def            the entry from `data/realms.js`
+   * @param parked         build the arena without putting it in the scene
+   *
+   * A *parked* stage is one being warmed ahead of the door being taken (see
+   * `RealmWarm`). It must stay out of the scene graph: an arena standing at
+   * `REALM_ORIGIN_X` and drawable is four kilometres of shadow frustum and
+   * culling volume the live frame has to carry, measured at fourteen seconds.
+   * `attach()` puts it in at the moment of entry.
    */
-  constructor(ctx, def) {
+  constructor(ctx, def, { parked = false } = {}) {
     this.ctx = ctx;
     this.def = def;
     this.isRealm = true;
@@ -79,7 +86,8 @@ export class RealmStage {
 
     this.root = new THREE.Group();
     this.root.name = `realm:${def.id}`;
-    ctx.scene.add(this.root);
+    this.parked = parked;
+    if (!parked) ctx.scene.add(this.root);
 
     this._owned = [];               // geometry/materials this realm allocated
     this._floorMesh = null;
@@ -87,6 +95,14 @@ export class RealmStage {
   }
 
   // --- construction ---------------------------------------------------------
+
+  /** Put a parked arena into the scene. Idempotent; a no-op for a live one. */
+  attach() {
+    if (!this.parked) return this;
+    this.parked = false;
+    this.ctx.scene.add(this.root);
+    return this;
+  }
 
   /** Register a mesh as part of the arena. `solid` puts it in the raycast set. */
   addMesh(mesh, { solid = true } = {}) {

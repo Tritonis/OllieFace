@@ -6,6 +6,7 @@ import {
 import { SPAWN_CARDS, TIER_UNLOCK, ENEMY_BY_ID, eliteAffixesFor } from '../../data/enemies.js';
 import { RealmStage, pullToFloor } from './RealmStage.js';
 import { buildArena } from './RealmArena.js';
+import { RealmWarm } from './RealmWarm.js';
 import {
   RealmGateway, RealmPortal, MarketStall, Refinery, Obelisk, TrialPlinth, VaultChest,
   rollMarketStock,
@@ -66,6 +67,11 @@ export class Realms {
     this.ctx = ctx;
     ctx.realms = this;
 
+    // A door is announced long before it is taken, and the walk to it is what
+    // pays for the arena behind it. See `RealmWarm`.
+    this.warm = new RealmWarm(ctx);
+    ctx.events.on('realmOffer', (e) => { if (e?.id) this.warm.offer(e.id); });
+
     // A new stage clears anything realm-shaped that belonged to the old one.
     // The armed flag goes with it: an altar paid for on stage 3 opens a portal
     // on stage 3, and carrying it forward would be a free second visit.
@@ -74,6 +80,8 @@ export class Realms {
       this.armedRealm = null;
       this._finaleAt = null;
       this._finaleOpen.clear();
+      // The doors of the old stage are gone; so are the arenas warmed for them.
+      this.warm.clear();
     });
 
     // Corruption is the router, and the router keeps routing after the gate
@@ -284,7 +292,11 @@ export class Realms {
     this.active.controller?.fixedUpdate?.(ctx, h);
   }
 
-  update(ctx, dt) { this.active?.controller?.update?.(ctx, dt); }
+  update(ctx, dt) {
+    this.active?.controller?.update?.(ctx, dt);
+    // At most one warm step per frame, and none at all once we are inside.
+    this.warm?.step();
+  }
 
   _enter(id, { replicated = false } = {}) {
     const ctx = this.ctx;
@@ -308,8 +320,13 @@ export class Realms {
     if (world?.terrainMesh) world.terrainMesh.visible = false;
     if (world?.propsGroup) world.propsGroup.visible = false;
 
-    const stage = new RealmStage(ctx, def);
-    buildArena(stage);
+    // If the door was warmed, the arena is already built and parked out of the
+    // scene and its probe is already photographed; entry is then an `attach`
+    // and a pointer swap. See `RealmWarm` for what that buys and why.
+    const warmed = this.warm?.take(id) ?? null;
+    const stage = warmed?.stage ?? new RealmStage(ctx, def);
+    if (warmed) stage.attach();
+    else buildArena(stage);
     ctx.stage = stage;
 
     // The director keeps ticking (its enemies still move, still die, still get
@@ -332,7 +349,12 @@ export class Realms {
     // at 0.88 — and against a sky-only probe those two rungs resolve to the same
     // pixel everywhere the sun is not. The arena stands at its own origin four
     // kilometres out, not at the world's. See `Environment.bakeProbe`.
-    ctx.environment?.bakeProbe?.(12, stage.origin.x, stage.origin.z);
+    //
+    // Unless the door was warmed, in which case the same photograph was taken
+    // on the offer, in a detached scene, and only has to be adopted — which is
+    // the second of the two seconds #183 was about.
+    if (warmed?.rt) ctx.environment?.adoptProbe?.(warmed.rt);
+    else ctx.environment?.bakeProbe?.(12, stage.origin.x, stage.origin.z);
 
     const spawn = stage.spawnPoint();
     const p = ctx.player;

@@ -114,6 +114,7 @@ const out = await page.evaluate(async ({ realmId, warm, skip, twice }) => {
   pipe.render = (...a) => { const t = now(); realRender(...a); renderTimes.push(+(now() - t).toFixed(1)); };
   res.programsBefore = pipe.renderer.info.programs.length;
   let keysWarm = new Set(pipe.renderer.info.programs.map((pr) => pr.cacheKey));
+  const keysBoot = new Set(keysWarm);
   const sm = pipe.renderer.shadowMap;
   const realShadow = sm.render.bind(sm);
   const shadowTimes = [];
@@ -125,20 +126,56 @@ const out = await page.evaluate(async ({ realmId, warm, skip, twice }) => {
   const tick = () => { const t = now(); frameTimes.push(+(t - last).toFixed(1)); last = t; requestAnimationFrame(tick); };
   requestAnimationFrame(tick);
 
+  // Visible point lights are in every lit program's cache key, so a warm that
+  // counts them differently from the entry frame warms nothing. Note that
+  // `renderer.compile` walks BOTH its target scene and its first argument, so
+  // an arena root put into the scene *for* the compile is counted twice — the
+  // trap this counter exists to expose.
+  const countLightsNow = () => {
+    let world = 0, arena = 0;
+    const walk = (o, inRealm) => {
+      if (!o.visible) return;
+      const r = inRealm || (o.name || '').startsWith('realm:');
+      if (o.isPointLight) { if (r) arena++; else world++; }
+      for (const c of o.children) walk(c, r);
+    };
+    walk(ctx.scene, false);
+    return `${world} world + ${arena} arena`;
+  };
+
   if (warm) {
+    // Read the light count from *inside* each posed compile: it is in every
+    // lit program's cache key, so a warm that counts differently warms nothing.
+    const realCA = pipe.renderer.compileAsync.bind(pipe.renderer);
+    res.lightsAtCompile = [];
+    pipe.renderer.compileAsync = (...a) => { res.lightsAtCompile.push(countLightsNow()); return realCA(...a); };
+
     // Exactly what a door opening does. Then let the prewarm run its course.
     const w0 = renderTimes.length;
     ctx.events.emit('realmOffer', { id: realmId, kind: 'gateway', stage: 3, cost: 0 });
     await H.frames(200);
     const during = renderTimes.slice(w0);
-    res.warmStanding = ctx.realms._warm.has(realmId);
-    res.warmTexturesLeft = ctx.realms._warm.get(realmId)
-      ? ctx.realms._warm.get(realmId).textures.length - ctx.realms._warm.get(realmId).i : -1;
+    res.warmStanding = ctx.realms.warm.records.has(realmId);
+    res.warmStep = ctx.realms.warm.records.get(realmId)?.step ?? 'taken';
+    res.warmReady = ctx.realms.warm.ready(realmId);
+    res.warmSpread = ctx.realms.warm.records.get(realmId)?.spread ?? -1;
+    res.warmNewCount = pipe.renderer.info.programs.filter((pr) => !keysBoot.has(pr.cacheKey)).length;
     res.programsWarm = pipe.renderer.info.programs.length;
     keysWarm = new Set(pipe.renderer.info.programs.map((pr) => pr.cacheKey));
+    res.newAtWarm = pipe.renderer.info.programs
+      .filter((pr) => !keysBoot.has(pr.cacheKey))
+      .map((pr) => pr.cacheKey.slice(150, 260));
     res.warmRenderMax = Math.max(...during);
     res.warmRenderSum = during.reduce((a, b) => a + b, 0);
     res.warmOver50 = during.filter((t) => t > 50).length;
+  }
+
+  res.lightsBeforeEntry = countLightsNow();
+  {
+    const rec = ctx.realms.warm.records.get(realmId);
+    let all = 0, vis = 0;
+    rec?.stage?.root.traverse((o) => { if (o.isPointLight) { all++; if (o.visible) vis++; } });
+    res.warmArenaLights = `${vis} visible / ${all} total`;
   }
 
   await H.frames(10);
@@ -149,12 +186,24 @@ const out = await page.evaluate(async ({ realmId, warm, skip, twice }) => {
   res.framesBefore = frameTimes.slice(Math.max(0, mark - 6), mark);
   res.framesAfter = frameTimes.slice(mark, mark + 12);
   res.inRealm = ctx.realms.inRealm;
+  res.lightsAfterEntry = countLightsNow();
   const rm = renderTimes.length;
   res.rendersAfter = renderTimes.slice(Math.max(0, rm - 20));
   res.programsAfter = pipe.renderer.info.programs.length;
-  res.newAtEntry = pipe.renderer.info.programs
-    .filter((pr) => !keysWarm.has(pr.cacheKey))
-    .map((pr) => pr.cacheKey.slice(0, 150));
+  const fresh = pipe.renderer.info.programs.filter((pr) => !keysWarm.has(pr.cacheKey));
+  res.newAtEntry = fresh.map((pr) => pr.cacheKey.slice(150, 260));
+  // Which warmed key each entry-time program *nearly* matched, and where they
+  // part company: a one-token difference is a warm aimed at the wrong state.
+  const warmList = [...keysWarm];
+  res.nearMiss = fresh.map((pr) => {
+    let best = null, bestAt = -1;
+    for (const w of warmList) {
+      let i = 0;
+      while (i < w.length && i < pr.cacheKey.length && w[i] === pr.cacheKey[i]) i++;
+      if (i > bestAt) { bestAt = i; best = w; }
+    }
+    return `@${bestAt}:${pr.cacheKey.slice(0, 12)}:${pr.cacheKey.slice(bestAt, bestAt + 14)}`;
+  });
   if (twice) {
     ctx.realms._exit();
     await H.frames(20);
