@@ -185,10 +185,10 @@ export const EQUIPMENT = [
       // The pull is a state with an end, so its voice has one too — which is
       // the entire reason the sustained primitive exists. The immediate release
       // is the fallback for a pawn that cannot schedule, never a leak.
-      const held = speak(api, 'gravity-snare', at, { hold: true });
+      const held = speak(api, 'gravity-snare', at, { hold: true, priority: false });
       if (held) {
-        if (api.player.schedule) api.player.schedule(1.5, () => held.release(0.45));
-        else held.release(0.45);
+        api.player.holdVoice?.(held);
+        if (!api.player.schedule?.(1.5, () => held.release(0.45))) held.release(0.45);
       }
       return true;
     },
@@ -459,10 +459,10 @@ export const EQUIPMENT = [
       // A voice that builds and holds while the dome stands. The old cue was
       // shieldBreak — semantically inverted, a shield ending announcing a shield
       // beginning — and §4.1 says it must go.
-      const dome = speak(api, 'aegis-emitter', at, { hold: true });
+      const dome = speak(api, 'aegis-emitter', at, { hold: true, priority: false });
       if (dome) {
-        if (api.player.schedule) api.player.schedule(BUFF.aegis, () => dome.release(0.8));
-        else dome.release(0.8);
+        api.player.holdVoice?.(dome);
+        if (!api.player.schedule?.(BUFF.aegis, () => dome.release(0.8))) dome.release(0.8);
       }
       return true;
     },

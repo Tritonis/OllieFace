@@ -161,6 +161,9 @@ export class Player {
     // invariant comment on the netState getter and NetHost's snapshot skip —
     // and only `bleedout` counts it toward an actual death.
     this.downed = false;
+    // Sustained voices this pawn's own kit is holding — see `holdVoice`.
+    this._heldVoices = [];
+    this._wasDowned = false;
     this.bleedout = 0; // seconds remaining before a downed pawn dies, 0 when not downed
     this.revive = 0; // host-side revive progress, 0..1
     this.radius = RADIUS;
@@ -475,6 +478,14 @@ export class Player {
     // here rather than in the downed branch below because this runs above both
     // gates, and a shot that spawns motionless at a downed muzzle is the exact
     // artefact the pumps at the tail of this method exist to prevent.
+    // Downing is set on this pawn from outside (`Combat.enterDowned`, and the
+    // client's snapshot apply), so the edge is read here rather than hooked
+    // there. It is the moment the scheduled releases stop running, so it is the
+    // moment anything waiting on one has to be let go instead.
+    if (this.downed !== this._wasDowned) {
+      this._wasDowned = this.downed;
+      if (this.downed) this.releaseVoices(0.35);
+    }
     if (!replay && !this.downed) this._runSchedule(dt);
     this._tickTimers(dt);
     this._tickCooldowns(dt);
@@ -1097,12 +1108,51 @@ export class Player {
     }
   }
 
-  /** Run `fn` after `delay` seconds of gameplay time. Never allocates. */
+  /**
+   * Run `fn` after `delay` seconds of gameplay time. Never allocates.
+   *
+   * Returns false when every slot is taken, so a caller whose scheduled work is
+   * an *ending* — a held voice's release — can do it now rather than never. It
+   * used to fall out of the loop silently, which is how a dome's chord outlived
+   * its dome.
+   */
   schedule(delay, fn) {
     for (let i = 0; i < MAX_SCHEDULED; i++) {
       const e = this._sched[i];
-      if (!e.fn) { e.t = delay; e.fn = fn; return; }
+      if (!e.fn) { e.t = delay; e.fn = fn; return true; }
     }
+    return false;
+  }
+
+  /**
+   * Take ownership of a sustained voice the player's own kit started.
+   *
+   * The scheduled release remains the ordinary ending; this is the guarantee
+   * behind it, because `_runSchedule` is frozen while the pawn is downed and the
+   * dome's eight seconds do not stop for that. Every exit from playing — downed,
+   * death, disposal — releases the whole set. The same defect class
+   * `Enemy.releaseVoices` exists for, on the side that had no equivalent.
+   */
+  holdVoice(h) {
+    if (!h || typeof h.release !== 'function') return h;
+    if (!this._heldVoices) this._heldVoices = [];
+    // Voices that ended the ordinary way are dropped here rather than by a
+    // callback, so the list is bounded by concurrency and not by run length.
+    for (let i = this._heldVoices.length - 1; i >= 0; i--) {
+      if (this._heldVoices[i].active === false) this._heldVoices.splice(i, 1);
+    }
+    this._heldVoices.push(h);
+    return h;
+  }
+
+  /** Release every voice the player is holding. Idempotent, as the handles are. */
+  releaseVoices(fade = 0.2) {
+    // Lazily present: a pawn built on the prototype rather than through the
+    // constructor (the net fixtures, the test idiom) holds nothing, and a
+    // release path that throws for it would take the frame with it.
+    if (!this._heldVoices) return;
+    for (const h of this._heldVoices) { try { h.release(fade); } catch { /* inert handle */ } }
+    this._heldVoices.length = 0;
   }
 
   _runSchedule(h) {
@@ -1240,6 +1290,7 @@ export class Player {
    * its own. Nothing here is shared with a pawn that is still standing.
    */
   dispose() {
+    this.releaseVoices(0.05);
     this.ctx?.roster?.remove?.(this);
     this._offStageStart?.();
     this._offStageStart = null;
@@ -1441,6 +1492,7 @@ export class Player {
     this.projectiles.clear();
     this.placeables.clear();
     this._buffs.length = 0;
+    this.releaseVoices();
   }
 
   // ------------------------------------------------------------ presentation
