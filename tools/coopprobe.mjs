@@ -5,6 +5,9 @@
  *   node tools/coopprobe.mjs
  *     [--port 5214]          vite dev server port (started by this probe)
  *     [--signal-port 5215]   local signal server port (spawned by this probe)
+ *     [--lane A|B|C]         resolves both ports from the lane's block
+ *                            (base+4/base+5); mutually exclusive with --port
+ *                            and --signal-port
  *     [--seed 1337]
  *     [--netlag 40-90]       optional: appended as ?netlag= to the CLIENT page only
  *     [--netloss 2]          optional: ?netloss= on the client page
@@ -62,6 +65,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { REVIVE } from '../src/data/revive.js';
 import { resolveOutDir } from './lib/evidence.mjs';
+import { laneBase } from './lib/lanes.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -79,6 +83,23 @@ for (let i = 2; i < process.argv.length; i++) {
   else { args[key] = next; i++; }
 }
 
+// --lane and --port/--signal-port are MUTUALLY EXCLUSIVE, same shape as
+// gates.mjs and sp-equivalence.mjs (#158): both name the same ports, and
+// silently letting one win is the #68 failure mode (`--lane C` ignored,
+// probe runs on the shared defaults) wearing a different hat.
+if (args.lane !== undefined && (args.port !== undefined || args.signalPort !== undefined)) {
+  console.error('coopprobe: --lane and --port/--signal-port both set the ports — pass one, not both.');
+  process.exit(64);
+}
+if (args.lane !== undefined) {
+  let base;
+  try { base = laneBase(args.lane); }
+  catch (e) { console.error(`coopprobe: ${e.message}`); process.exit(64); }
+  // base+4/base+5: base and base+1..3 are the ports gates.mjs's arms already
+  // claim within a lane block, so coopprobe sits one step further in.
+  args.port = String(base + 4);
+  args.signalPort = String(base + 5);
+}
 const PORT = Number(args.port ?? 5214);
 const SIGNAL_PORT = Number(args.signalPort ?? 5215);
 const SEED = Number(args.seed ?? 1337);

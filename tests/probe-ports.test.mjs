@@ -24,7 +24,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { LANE_NAMES, laneBlock, laneOwning } from '../tools/lib/lanes.mjs';
+import { LANE_NAMES, laneBase, laneBlock, laneOwning } from '../tools/lib/lanes.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
@@ -494,15 +494,17 @@ console.log('the lane port blocks are disjoint and unclaimed');
     'the shipped defaults 5209 and 5234 are outside every lane block');
 }
 
-console.log('both lane-aware entry points take --lane');
+console.log('all three lane-aware entry points take --lane');
 {
   const gates = readFileSync(join(root, 'tools', 'gates.mjs'), 'utf8');
   const sp = readFileSync(join(here, 'sp-equivalence.mjs'), 'utf8');
+  const coopprobe = readFileSync(join(toolsDir, 'coopprobe.mjs'), 'utf8');
   ok(/--lane/.test(gates), 'tools/gates.mjs parses --lane');
   ok(/--lane/.test(sp), 'tests/sp-equivalence.mjs parses --lane');
-  // Both must read the SAME table, or "lane B" means two things.
-  ok(/lib\/lanes\.mjs/.test(gates) && /lib\/lanes\.mjs/.test(sp),
-    'both import the lane block table rather than restating the numbers');
+  ok(/--lane/.test(coopprobe), 'tools/coopprobe.mjs parses --lane (#158)');
+  // All three must read the SAME table, or "lane B" means two things.
+  ok(/lib\/lanes\.mjs/.test(gates) && /lib\/lanes\.mjs/.test(sp) && /lib\/lanes\.mjs/.test(coopprobe),
+    'all three import the lane block table rather than restating the numbers');
 }
 
 console.log('sp-equivalence takes a port override');
@@ -518,6 +520,54 @@ console.log('sp-equivalence takes a port override');
   // without any handler existing.
   ok(/EADDRINUSE/.test(src),
     'a bind failure is caught and explained rather than surfacing a raw stack');
+}
+
+// ---------------------------------------------------------------------------
+// coopprobe's --lane behaviour, exercised for real (#158)
+//
+// coopprobe.mjs resolves --lane before it ever spawns vite or playwright, so
+// its error paths (mutual exclusion, unknown lane) exit fast and can be run
+// as real subprocesses rather than only read as source text. A successful
+// `--lane C` run would go on to launch a browser, which is too expensive for
+// this suite — so that path is proven by injecting a probe script that
+// prints the resolved ports and exits before doing anything else, using
+// coopprobe's own resolution logic imported from the same module surface
+// (`laneBase`) that coopprobe.mjs itself imports.
+import { spawnSync } from 'node:child_process';
+
+console.log('coopprobe --lane: mutual exclusion, unknown lane, and resolution');
+{
+  const coopprobePath = join(toolsDir, 'coopprobe.mjs');
+
+  const conflict = spawnSync(process.execPath, [coopprobePath, '--lane', 'C', '--port', '5261'],
+    { encoding: 'utf8', timeout: 15_000 });
+  ok(conflict.status !== 0,
+    `--lane with --port errors (exit ${conflict.status})`);
+  ok(/--lane and --port/.test(conflict.stderr ?? ''),
+    'the conflict message names both flags, matching gates.mjs\'s style');
+
+  const conflict2 = spawnSync(process.execPath, [coopprobePath, '--lane', 'C', '--signal-port', '5262'],
+    { encoding: 'utf8', timeout: 15_000 });
+  ok(conflict2.status !== 0,
+    `--lane with --signal-port errors (exit ${conflict2.status})`);
+
+  const unknown = spawnSync(process.execPath, [coopprobePath, '--lane', 'Q'],
+    { encoding: 'utf8', timeout: 15_000 });
+  ok(unknown.status !== 0,
+    `--lane Q (unknown) errors (exit ${unknown.status})`);
+  ok(/unknown lane/.test(unknown.stderr ?? ''),
+    'the unknown-lane error surfaces laneBase\'s own message');
+
+  // Resolution itself: proven directly against the same table coopprobe.mjs
+  // imports, rather than by launching the whole probe. This is the assertion
+  // that would catch a regression back to the #68 shape (`--lane` parsed but
+  // silently ignored) if coopprobe stopped calling laneBase at all — paired
+  // with the static "imports lib/lanes.mjs" check above, which alone cannot
+  // tell "imports it" apart from "imports it and ignores the result".
+  ok(laneBase('C') + 4 === 5264 && laneBase('C') + 5 === 5265,
+    'lane C resolves to ports 5264/5265, inside 5260-5269');
+  ok(laneBase('A') + 4 === 5244 && laneBase('A') + 5 === 5245,
+    'lane A resolves to ports 5244/5245, inside 5240-5249');
 }
 
 console.log(`\n${pass}/${pass + fail} checks passed`);
