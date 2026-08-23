@@ -1647,7 +1647,44 @@ export class Audio {
    */
   _markerKey(owner) {
     if (owner == null) return SOLO_MARKER;
-    return owner.netId ?? owner;
+    // The pawn object first, always, when there is one. A netId is *assigned*,
+    // not intrinsic: `NetHost._netId` hands one out lazily the first time a
+    // snapshot needs it, which is the first tick after a client joins. Deriving
+    // the key from `owner.netId` at every call therefore filed a marker under
+    // the pawn before that tick and looked it up under a number afterwards, and
+    // the lookup missed — a body downed in the seconds before the first guest's
+    // first snapshot leaked its beacon for the rest of the stage. Object
+    // identity is the one name a pawn has that nothing can change underneath us.
+    return owner;
+  }
+
+  /**
+   * The live entry for one owner, whatever the owner looks like *now*.
+   *
+   * Two identities have to reach one marker and neither is reliable on its own:
+   * the pawn reference (which a wire payload does not carry — `sanitise` names
+   * a victim by netId alone) and the netId (which may not have existed when the
+   * marker was filed). So: the direct key first, then a scan matching on either
+   * identity, re-reading each entry's pawn for a netId assigned since. The map
+   * holds one entry per downed body — at most a party's worth — so the scan is
+   * over a handful of entries and it beats a leak by a distance.
+   */
+  _findMarker(owner) {
+    if (owner == null) {
+      const solo = this._downedMarkers.get(SOLO_MARKER);
+      return solo ? [SOLO_MARKER, solo] : null;
+    }
+    const direct = this._downedMarkers.get(this._markerKey(owner));
+    if (direct) return [this._markerKey(owner), direct];
+    const wantId = typeof owner === 'object' ? owner.netId : owner;
+    for (const [key, entry] of this._downedMarkers) {
+      if (entry.pawn && entry.pawn === owner) return [key, entry];
+      // `entry.pawn.netId` rather than `entry.netId`: the point is to see an
+      // id assigned *after* the marker was filed.
+      if (wantId != null && entry.pawn && entry.pawn.netId === wantId) return [key, entry];
+      if (wantId != null && entry.netId === wantId) return [key, entry];
+    }
+    return null;
   }
 
   /**
@@ -1673,7 +1710,15 @@ export class Audio {
       refDistance: 6,
       maxDistance: 90,
     });
-    this._downedMarkers.set(key, h);
+    // Both identities are recorded at start: the pawn (re-read at release, so
+    // an id assigned later is still found) and whatever id it had at the time
+    // (so a pawn dropped from the roster before its release still matches a
+    // wire payload carrying only that number).
+    this._downedMarkers.set(key, {
+      h,
+      pawn: owner && typeof owner === 'object' ? owner : null,
+      netId: owner && typeof owner === 'object' ? owner.netId : owner,
+    });
     return h;
   }
 
@@ -1689,18 +1734,25 @@ export class Audio {
     if (arguments.length === 0) {
       const all = [...this._downedMarkers.values()];
       this._downedMarkers.clear();
-      for (const h of all) h?.release?.();
+      for (const e of all) e?.h?.release?.();
       return;
     }
-    const key = this._markerKey(owner);
-    const h = this._downedMarkers.get(key);
-    if (!h) return;
+    const found = this._findMarker(owner);
+    if (!found) return;
+    const [key, entry] = found;
     this._downedMarkers.delete(key);
-    h.release?.();
+    entry.h?.release?.();
   }
 
   /** Live markers, for tests and for anything that needs to know if any body is down. */
   get downedMarkerCount() { return this._downedMarkers.size; }
+
+  /**
+   * The live handle for one owner, resolved the same way a release resolves it.
+   * Exists so callers and tests can ask "is this body still calling?" without
+   * reaching into the map and re-implementing the identity rules.
+   */
+  downedMarkerFor(owner) { return this._findMarker(owner)?.[1].h ?? null; }
 
   /**
    * Revived (§4.4) — the most consequential co-op event, and so its own voice

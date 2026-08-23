@@ -99,7 +99,7 @@ function exitCase(name, exit, ctxFor = () => ({ events: makeBus(), player: { ali
   // The body on the floor is `downedPawn` where a case names one — a peer's
   // mixer watching somebody else go down — and the local player otherwise.
   a.playerDowned({ x: 2, y: 0, z: 3 }, ctx.downedPawn ?? ctx.player);
-  const h = [...a._downedMarkers.values()][0];
+  const h = [...a._downedMarkers.values()][0]?.h;
   const before = held(a);
   ok(!!h && h.active === true && before > 0, `${name}: a body is down and holding a voice`);
 
@@ -146,9 +146,9 @@ console.log('two bodies on the floor are two beacons, and they end separately');
   const A = pawnOf(1), B = pawnOf(2);
 
   ctx.events.emit('playerDowned', { player: A, position: { x: 1, y: 0, z: 0 } });
-  const hA = [...a._downedMarkers.values()][0];
+  const hA = a.downedMarkerFor(A);
   ctx.events.emit('playerDowned', { player: B, position: { x: 9, y: 0, z: 0 } });
-  const hB = a._downedMarkers.get(2);
+  const hB = a.downedMarkerFor(B);
 
   ok(a.downedMarkerCount === 2, 'both bodies hold a marker at once');
   ok(hA.active === true, 'B going down does not kill A’s beacon');
@@ -170,12 +170,70 @@ console.log('re-downing the same body replaces only that body’s marker');
   const a = makeAudio();
   const A = pawnOf(1), B = pawnOf(2);
   a.playerDowned({ x: 0, y: 0, z: 0 }, A);
-  const first = a._downedMarkers.get(1);
+  const first = a.downedMarkerFor(A);
   a.playerDowned({ x: 0, y: 0, z: 0 }, B);
   a.playerDowned({ x: 0, y: 0, z: 0 }, A);
   ok(first.active === false, 'the same owner’s previous handle is released');
-  ok(a._downedMarkers.get(2).active === true, 'the other body is untouched');
+  ok(a.downedMarkerFor(B).active === true, 'the other body is untouched');
   ok(a.downedMarkerCount === 2, 'and no handle was stranded');
+}
+
+console.log('a netId assigned after the body went down still finds its marker');
+{
+  // The reviewer's host-side leak, exactly. `NetHost._netId` hands out ids
+  // lazily — the first time a snapshot needs one, i.e. the first tick after a
+  // client joins — so a pawn downed in the seconds before that has no netId
+  // when its marker is filed and has one by the time the release comes. A key
+  // re-derived from `owner.netId` at every call missed, and the beacon sounded
+  // for the rest of the stage.
+  const a = makeAudio();
+  const pawn = { alive: true, position: { x: 0, y: 0, z: 0 } }; // netId unset
+  a.playerDowned({ x: 1, y: 0, z: 2 }, pawn);
+  const h = a.downedMarkerFor(pawn);
+  ok(!!h && h.active === true && a.downedMarkerCount === 1, 'the body is down with no netId yet');
+
+  pawn.netId = 7; // NetHost assigns, mid-down
+
+  ok(a.downedMarkerFor(pawn) === h, 'the marker is still findable by the pawn it belongs to');
+  a.releaseDownedMarker(pawn);
+  a.ac.endAll();
+  ok(a.downedMarkerCount === 0, 'releasing by pawn reference succeeds across the assignment');
+  ok(h.active === false && held(a) === 0, 'and the voice and its budget come back');
+}
+
+console.log('and a wire payload carrying only a netId finds it too');
+{
+  // `sanitise` names a victim by netId alone, so the release that arrives over
+  // the wire has no pawn reference to offer — and the marker was filed before
+  // the pawn had a number at all.
+  const a = makeAudio();
+  const pawn = { alive: true, position: { x: 0, y: 0, z: 0 } };
+  a.playerDowned({ x: 1, y: 0, z: 2 }, pawn);
+  const h = a.downedMarkerFor(pawn);
+  pawn.netId = 7;
+
+  ok(a.downedMarkerFor({ netId: 7 }) === h, 'the wire identity resolves to the same marker');
+  a.releaseDownedMarker({ netId: 7 });
+  a.ac.endAll();
+  ok(a.downedMarkerCount === 0 && h.active === false, 'releasing by netId alone succeeds');
+  ok(held(a) === 0, 'and the budget is whole');
+}
+
+console.log('the late-netId resolution does not release the wrong body');
+{
+  const a = makeAudio();
+  const A = { alive: true, position: { x: 0, y: 0, z: 0 } };
+  const B = { alive: true, position: { x: 0, y: 0, z: 0 } };
+  a.playerDowned({ x: 0, y: 0, z: 0 }, A);
+  a.playerDowned({ x: 5, y: 0, z: 0 }, B);
+  const hA = a.downedMarkerFor(A), hB = a.downedMarkerFor(B);
+  A.netId = 3; B.netId = 4;
+  a.releaseDownedMarker({ netId: 4 });
+  ok(hB.active === false, 'the named body is released');
+  ok(hA.active === true && a.downedMarkerCount === 1, 'and the other one is not');
+  // An id nobody holds releases nothing at all.
+  a.releaseDownedMarker({ netId: 99 });
+  ok(hA.active === true && a.downedMarkerCount === 1, 'an unknown netId is a miss, not a scattershot');
 }
 
 console.log('releasing is idempotent and safe to call with nothing down');
@@ -289,7 +347,7 @@ console.log('the showcase gives the marker back through both of its doors');
     const a = makeAudio();
     const api = installShowcase(showcaseCtx(a));
     ok(api.fire('playerDowned'), `${door}: the downed moment fired`);
-    const h = [...a._downedMarkers.values()][0];
+    const h = [...a._downedMarkers.values()][0]?.h;
     ok(!!h && h.active === true && held(a) > 0, `${door}: it left a marker holding a voice`);
 
     run(api);

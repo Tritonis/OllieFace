@@ -212,14 +212,14 @@ console.log('the held body marker is a real sustained voice');
   const owner = { alive: true, netId: 1 };
   ok(a.downedMarkerCount === 0, 'idle mixer holds no marker');
   a.playerDowned({ x: 3, y: 0, z: 4 }, owner);
-  const first = a._downedMarkers.get(1);
+  const first = a.downedMarkerFor(owner);
   ok(!!first && first.active === true, 'downing starts one');
   ok(a.priorityVoices > 0, 'and it is charged against the budget while it is held');
   // Re-downing the same owner replaces that owner's handle rather than
   // stranding it. (Two *different* owners keeping two markers is
   // `tests/downed-marker-release.test.mjs`.)
   a.playerDowned({ x: 9, y: 0, z: 9 }, owner);
-  ok(a._downedMarkers.get(1) !== first, 'a second down replaces the handle');
+  ok(a.downedMarkerFor(owner) !== first, 'a second down replaces the handle');
   ok(first.active === false, 'and releases the first rather than stranding it');
 }
 
