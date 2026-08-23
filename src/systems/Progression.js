@@ -31,7 +31,7 @@ function fullStageName(index) {
   return stageNameFor(index) + (index >= NAME_CYCLE ? ` (Loop ${Math.floor(index / NAME_CYCLE) + 1})` : '');
 }
 
-const CHARGE_TIME = 45;      // seconds of standing in the ring to fill it
+const CHARGE_TIME = 5;       // DEV ONLY (#165): shipping value is 45 — restore before deploy
 const LOOT_WINDOW = 8;       // beat between "boss dead" and the portal opening
 const CHARGE_EMIT_STEP = 0.01;
 
