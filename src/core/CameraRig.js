@@ -375,8 +375,10 @@ export class CameraRig {
     this._softHold = DIST;
     // Consecutive frames the soft reach has been warning for. See SOFT_HOLD_FRAMES.
     this._softStreak = 0;
-    // Deepest reach seen during the current streak.
-    this._softMin = Infinity;
+    // The remembered soft reach. Finite from the first frame and finite for
+    // ever after: it is now eased rather than wiped (see lateUpdate), and an
+    // Infinity sentinel through `smooth` is a NaN boom.
+    this._softMin = DIST;
     this._far = new THREE.Vector3();
     this._fwd = new THREE.Vector3();
     this._q = new THREE.Quaternion();
@@ -504,7 +506,7 @@ export class CameraRig {
       this._soft = hard;
       this._softHold = hard;
       this._softStreak = 0;
-      this._softMin = Infinity;
+      this._softMin = hard;
       this.allowedDistance = hard;
       this.anticipatedDistance = hard;
       this.targetDistance = hard;
@@ -536,23 +538,72 @@ export class CameraRig {
     // `_softMin` keeps the deepest reach seen anywhere in the streak, so the
     // frame the gate opens acts on the whole warning rather than on whatever
     // the latest ray happened to say.
-    if (this._soft < boom - 1e-6) {
-      this._softStreak++;
-      this._softMin = Math.min(this._softMin, this._soft);
-    } else {
-      this._softStreak = 0;
-      this._softMin = Infinity;
-    }
+    //
+    // The memory *releases*; it does not latch (#185). `_softMin` used to be
+    // the least reach seen anywhere in the streak, held until a frame arrived
+    // on which no ray warned at all and then wiped outright, and both halves of
+    // that are wrong once the obstruction stops being an event.
+    //
+    // A canyon is the case that shows it. With a wall either side, some ray is
+    // warning on every frame of the crossing, so the streak never ends: the
+    // all-time minimum ratchets down to the tightest instant of the tightest
+    // pinch and stays there. The synthetic corridor in
+    // tests/camera-valley.test.mjs measures 21 consecutive frames with the fan
+    // reporting the way clear out to 5.76 m and the boom pinned at 1.77 m
+    // because of a graze thirty frames earlier. Then the two walls finish
+    // handing the shortest-reach role between them, one frame reads fully
+    // clear, the wipe fires, and the boom springs the whole 4 m back out --
+    // straight into the next re-latch. Pin, cliff, pin is what reads as the
+    // camera going crazy, and both the pin and the cliff are this branch.
+    //
+    // So once the warning has served its purpose -- bridging the
+    // SOFT_HOLD_FRAMES hysteresis window, which is the only thing an all-time
+    // minimum was ever needed for -- the memory eases back toward the full boom
+    // on SOFT_HOLD_TAU, the same constant #115 always said it should be
+    // released on. During a monotone approach this changes nothing at all: the
+    // current reading *is* the minimum while it is falling, so the two rules
+    // agree frame for frame, and #115's anticipation is untouched. They differ
+    // only where the reading recovers, which is precisely the canyon.
+    //
+    // None of this can put the camera in rock. `_softMin` feeds `anticipated`
+    // only, and `targetDistance` is clamped to the hard reach last, so a longer
+    // memory can lengthen the boom no further than the fan already allows.
+    if (this._soft < boom - 1e-6) this._softStreak++;
+    else this._softStreak = 0;
+
     // An unconfirmed warning is worth something -- it is how #115's collapses
     // get anticipated at all -- but below walking pace it may pull the camera
     // in by at most UNCONFIRMED_PULL, so a single grazing frame costs a nudge
     // instead of a metres-long dolly in and back out again. A warning that
     // repeats spends its full depth from the next frame on either way.
+    //
+    // The cap is applied here, to what the frame's warning is *worth*, and not
+    // further down to what the memory reports. That is not a tidy-up: it is
+    // load-bearing, and getting it the other way round is a ratchet. The cap
+    // reads `this.distance`, so it is a floor relative to wherever the boom
+    // has got to rather than an absolute one -- harmless while the memory was
+    // wiped the instant a warning stopped, because the cap then applied on one
+    // frame and never again. Against a memory that releases over
+    // SOFT_HOLD_TAU it applies on every frame of the release, each time
+    // measured against the boom the last one moved, and a 0.25 m nudge
+    // compounds into 4 m over the thirty-odd frames it takes to let go
+    // (tests/camera-zoom.test.mjs's one-frame graze arm, which caught exactly
+    // this). Capping the deposit instead of the withdrawal costs the nudge
+    // once, which is what it was always meant to cost.
     const settled = (player.horizontalSpeed || 0) < HYSTERESIS_SPEED;
-    const softReach = (this._softStreak >= SOFT_HOLD_FRAMES || !settled)
-      ? this._softMin
-      : Math.max(this._softMin, this.distance - UNCONFIRMED_PULL);
-    this._softHold = Math.min(softReach, smooth(this._softHold, boom, SOFT_HOLD_TAU, dt));
+    const worth = (this._softStreak >= SOFT_HOLD_FRAMES || !settled)
+      ? this._soft
+      : Math.max(this._soft, this.distance - UNCONFIRMED_PULL);
+    this._softMin = this._softStreak > 0 && this._softStreak < SOFT_HOLD_FRAMES
+      ? Math.min(this._softMin, worth)
+      : Math.min(worth, smooth(this._softMin, boom, SOFT_HOLD_TAU, dt));
+    // One release stage, not two. Easing `_softHold` toward the boom was how the
+    // memory used to let go, because `_softMin` never did; now that `_softMin`
+    // eases on the same constant, a second lag in series with it buys nothing
+    // and costs boom -- two cascaded first-order releases at one tau recover on
+    // an S-curve, so the canyon corridor sat 2.3 m short of the reach the fan
+    // was already granting. The hold is now just what the memory says.
+    this._softHold = this._softMin;
     // The rate cap's entire budget.
     const anticipated = Math.min(allowed, this._softHold);
     this.anticipatedDistance = anticipated;
