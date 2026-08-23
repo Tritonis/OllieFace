@@ -61,7 +61,7 @@ lines on a pass and replays the failing arm in full on a fail.
 
 `src/core/Showcase.js` fires every player-facing effect on demand: all survivor abilities,
 all 14 equipment, every item `onHit`/`onKill`/`onDamaged`/`onInterval` hook, every telegraphed
-enemy attack, every un-telegraphed attack window (the silent ones, #149), all six elite
+enemy attack, every un-telegraphed attack window (#149), all six elite
 modifiers, a pickup per tier, the seven sampled voices (#148) and
 the run-level moments — 194
 entries, all derived from the data tables, none typed by hand (`tests/showcase-surface.test.mjs` re-derives the totals and
@@ -79,7 +79,10 @@ npm run build && npm run desktop:pack && npm run showcase:install
 Keys: arrows move, Enter fires, Space marks, `g` fires everything marked together at adjacent
 offsets, `1`-`9` then `0`, `-`, `=` are curated pile-ups (every `onHit` proc at once, all six
 elites side by side, and the four set-level ones #149 added: every nova at one point, all beam
-users charging together, the full-horde release, all sixteen silent windows), letters filter. An elite's aura tick is forced through `forceAuraTick`, which
+users charging together, the full-horde release, all sixteen attack windows), letters filter. Enemy-attack entries stand a
+real unit up and drive it through the real `beginAttack` state machine — ring, held element voice,
+per-kind tell and element-cored release — with the evaluator inside a mercy window;
+`tests/showcase-enemy-attack.test.mjs` holds that path open. An elite's aura tick is forced through `forceAuraTick`, which
 `tests/showcase-elite-tick.test.mjs` holds to landing real damage rather than merely not throwing.
 
 ### Capture gate — advisory only (decided 2026-08-20)
