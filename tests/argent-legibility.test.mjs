@@ -173,6 +173,79 @@ console.log('\nboth mote sources are marked, from one listener');
   eq(hs.cues.length, 0, 'an ordinary kill wards nothing and is not dressed as if it did');
 }
 
+/**
+ * A `VFX` running the REAL `wardingMote` against stubbed pools, recording one
+ * entry per ring actually drawn. The gate lives in `wardingMote`, so a double
+ * that stubs it out (`spyVfx`) cannot see the gate at all — this is the only
+ * shape that tests it, and it is also the shape the Showcase uses.
+ */
+function ringVfx() {
+  const v = Object.create(VFX.prototype);
+  const draws = [];
+  v.ctx = { audio: { warding: () => {} } };
+  v.particles = { emit: () => {} };
+  v.rings = { spawn: (pos, r, ...rest) => draws.push({ r, rest }) };
+  v.lights = { flick: () => {} };
+  v._ep = () => ({
+    position: new THREE.Vector3(), dir: new THREE.Vector3(),
+    color0: new THREE.Color(), color1: new THREE.Color(),
+  });
+  v.time = 0;
+  return { v, draws };
+}
+
+console.log('\nthe ring is gated wherever it is called from (#161)');
+{
+  // The Showcase's `warding`/`wardingMint` moments call `wardingMote` directly
+  // and `fireGroup` fires marked entries in one synchronous pass — so a `g`
+  // pile-up drew two rings while Audio's own gate dropped the second chime.
+  const { v, draws } = ringVfx();
+  const at = new THREE.Vector3();
+
+  v.wardingMote(at, 0.85, false);
+  eq(draws.length, 1, 'a lone Showcase press after idle always draws');
+  v.wardingMote(at, 1, true);
+  eq(draws.length, 1, 'but a second call in the same instant — the `g` pile-up — draws nothing more');
+
+  v.time = 0.141;
+  v.wardingMote(at, 0.85, false);
+  eq(draws.length, 2, 'and once the window has passed the ring returns');
+
+  // Minted rides the shorter gate, exactly as the voice does.
+  const m = ringVfx();
+  m.v.wardingMote(at, 1, true);
+  m.v.time = 0.06;
+  m.v.wardingMote(at, 1, true);
+  eq(m.draws.length, 2, 'a minted ring is gated at 0.05s, not 0.14s');
+  m.v.time = 0.09;
+  m.v.wardingMote(at, 1, true);
+  eq(m.draws.length, 2, 'but 0.03s after the last one is still too soon');
+}
+
+console.log('\nand the gate is reached through the real event path too (#161)');
+{
+  // A ward storm: `Audio.warding` drops everything inside 0.14s, so an ungated
+  // ring drew ~8 times per chime. `_onWarded` stays thin, but the ring it asks
+  // for must still be dropped — so this drives the real handler into the real
+  // `wardingMote` against a hand-wound clock.
+  const f = makeCtx();
+  const { v, draws } = ringVfx();
+  v.ctx.player = f.ctx.player;
+  f.ctx.events.on('corruptionWarded', (p) => v._onWarded(p));
+  const ward = () => f.ctx.events.emit('corruptionWarded', { progress: 0.5, minted: false });
+
+  ward();
+  eq(draws.length, 1, 'the first ward after idle always draws');
+  ward();
+  v.time = 0.13;
+  ward();
+  eq(draws.length, 1, 'and two more inside the 0.14s window draw nothing');
+
+  v.time = 0.141;
+  ward();
+  eq(draws.length, 2, 'past the window the ring returns');
+}
+
 console.log('\nand the game really subscribes — not just this test');
 {
   ok(typeof VFX.prototype.wardingMote === 'function', '`VFX.wardingMote` exists');
