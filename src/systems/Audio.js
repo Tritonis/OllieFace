@@ -3,7 +3,7 @@ import { clamp } from '../core/MathUtil.js';
 import { isLocalOwner } from '../core/Engine.js';
 import { MusicEngine } from './Music.js';
 import { SAMPLES_BY_ID } from '../data/samples.js';
-import { SUSTAIN, TRANSIENT, sustainNodeCost } from '../data/elementVoice.js';
+import { SUSTAIN, TRANSIENT, sustainNodeCost, statusVoiceOf, unitElement } from '../data/elementVoice.js';
 
 /**
  * Fully procedural WebAudio. No files, no network, no decode step.
@@ -255,6 +255,10 @@ export class Audio {
     // the sub-budget is measured against.
     this._windups = [];
     this.windupNodes = 0;
+    // The one held voice this mixer owns on its own behalf: the downed body
+    // marker (§4.4). Exactly one field, so there is exactly one thing to
+    // release and nowhere for a second handle to hide.
+    this._downedMarker = null;
     // The live sub-budget. `WINDUP_VOICES` in every build a player can reach;
     // only the dev-only showcase may raise it, and only while it is open.
     this._windupCap = WINDUP_VOICES;
@@ -336,6 +340,8 @@ export class Audio {
     e.on('abilityUsed', (p) => this.ability(p?.slot ?? 0));
     e.on('levelUp', () => this.musicEngine?.bump(0.22));
     e.on('stageStart', (p) => {
+      // No body survives a teleport, so neither does its marker.
+      this.releaseDownedMarker();
       this.stageSting();
       // A new stage starts empty. Carrying the last fight's heat across the
       // teleport left the track at full tilt over an empty arena.
@@ -353,7 +359,10 @@ export class Audio {
     // system, so there is exactly one purse in the world.
     e.on('voidMarksChanged', (p) => { if (!(p?.spent > 0) && p?.marks > 0) this.mintSting('mark'); });
     e.on('argentMotesChanged', (p) => { if (!(p?.spent > 0) && p?.motes > 0) this.mintSting('mote'); });
-    e.on('bossSpawn', () => { this.bossHorn(); this.musicEngine?.bump(0.7); });
+    e.on('bossSpawn', (p) => {
+      this.bossHorn(p?.enemy?.position || null, unitElement(p?.enemy));
+      this.musicEngine?.bump(0.7);
+    });
     e.on('teleporterComplete', () => this.stageSting());
     // Only the local survivor's death silences the local soundtrack. `NetHost`
     // broadcasts this event to every client, where `NetClient` re-emits it, so
@@ -373,6 +382,12 @@ export class Audio {
     // `sanitise` carries it as a netId), the liveness test as the fallback for
     // single-player and for any emit that carries no victim.
     e.on('playerDead', (p) => {
+      // Before the local-victim guard, deliberately: a body that dies stops
+      // being a body to walk to whoever it belonged to, and the guard below
+      // exists to decide whose *soundtrack* stops, which is a different
+      // question. A teammate's death returning early here is what leaked the
+      // held marker for the rest of the stage.
+      this.releaseDownedMarker();
       const me = this.ctx?.player;
       const myNetId = this.ctx?.authority === false ? (this.ctx.net?.myNetId ?? 0) : 0;
       const victimNetId = p?.victim?.netId;
@@ -1212,12 +1227,9 @@ export class Audio {
    * than five silent ones.
    */
   statusVoice(pos, status) {
-    const el = status === 'burn' ? 'fire'
-      : status === 'freeze' || status === 'slow' ? 'ice'
-        : status === 'shock' ? 'shock'
-          : status === 'wither' || status === 'void' ? 'void' : 'kinetic';
+    const v = statusVoiceOf(status);
     if (!this._throttle(`status:${status}`, 0.08)) return;
-    this.elementTransient(pos, el, 0.45);
+    this.elementTransient(pos, v.element, v.rate);
   }
 
   /**
@@ -1546,35 +1558,94 @@ export class Audio {
   }
 
   /**
-   * Downed (mp-p3), placeholder pending the audio pass proper (memory: the
-   * audio graph carries a known flaw ticket, so this deliberately adds no new
-   * graph nodes — `_out`'s PannerNode is the same per-call, non-persistent
-   * node every positional sound already creates). The floor the brief sets:
-   * `playerDead`'s own descending tone, reused at a fraction of its gain, with
-   * none of `playerDead`'s choreography — no `_musicOff`, no bus fade,
-   * because a downed body has not ended anyone's run and the soundtrack has
-   * no business stopping for it.
+   * Downed (§4.4). *A person falling*, not a quieter death: three descending
+   * steps that land rather than one tone that fades, and then a held marker at
+   * the body so a teammate can hear where to walk.
+   *
+   * The marker is a real sustained voice, which makes it the one thing here
+   * that can leak the mixer budget. It is held in exactly one field, a second
+   * down releases the first, and every way a body can stop being down —
+   * revive, death, stage change, mixer teardown — routes through
+   * `releaseDownedMarker()`. `tests/downed-marker-release.test.mjs` fails if
+   * any of those exits stops calling it.
    */
   playerDowned(pos) {
     const ac = this._ensure();
     if (!ac || !this._take(3, true)) return;
     const t = ac.currentTime;
     const out = this._out(pos, 10);
-    this._tone(t, 1.4, { type: 'sine', f0: ROOT, f1: ROOT * 0.55, gain: 0.12, out, attack: 0.02 });
-    this._noise(t, 0.9, { type: 'lowpass', freq: 800, freqEnd: 140, q: 0.6, gain: 0.06, out, attack: 0.04 });
-  }
-
-  /** Revived (mp-p3), same placeholder status as `playerDowned` — reuses `heal`'s rising arpeggio. */
-  playerRevived(pos) {
-    const ac = this._ensure();
-    if (!ac || !this._take(3, true)) return;
-    const t = ac.currentTime;
-    const out = this._out(pos, 10);
+    // The fall: three steps down a minor descent, each shorter and quieter
+    // than the last, the way weight goes out of a body.
     for (let i = 0; i < 3; i++) {
-      this._tone(t + i * 0.05, 0.3, {
-        type: 'sine', f0: ROOT * 4 * Math.pow(2, SCALE[i + 2] / 12), gain: 0.16, out, attack: 0.01,
+      this._tone(t + i * 0.09, 0.5 - i * 0.1, {
+        type: 'sine',
+        f0: ROOT * 2 * Math.pow(2, -(i * 3) / 12),
+        f1: ROOT * 2 * Math.pow(2, -(i * 3 + 5) / 12),
+        gain: 0.13 - i * 0.02, out, attack: 0.012,
       });
     }
+    this._noise(t + 0.2, 0.9, { type: 'lowpass', freq: 800, freqEnd: 140, q: 0.6, gain: 0.07, out, attack: 0.04 });
+    this.startDownedMarker(pos);
+  }
+
+  /**
+   * The held body marker. Low, quiet and slow-breathing — it has to survive
+   * being ignored for a minute without becoming the loudest thing in the mix,
+   * and it has to be findable, so it is positional with a short reference
+   * distance and a long roll-off.
+   */
+  startDownedMarker(pos) {
+    this.releaseDownedMarker();
+    this._downedMarker = this.startSustained(pos, {
+      tones: [
+        { type: 'sine', f0: ROOT * 0.5, gain: 0.075 },
+        { type: 'triangle', f0: ROOT * 0.75, detune: -6, gain: 0.035 },
+      ],
+      attack: 0.6,
+      release: 0.5,
+      priority: true,
+      refDistance: 6,
+      maxDistance: 90,
+    });
+    return this._downedMarker;
+  }
+
+  /**
+   * Idempotent: the handle is dropped before `release()` is called, so a
+   * re-entrant exit path (a body that is revived and killed in the same frame)
+   * cannot release twice, and a caller that has no marker pays nothing.
+   */
+  releaseDownedMarker() {
+    const h = this._downedMarker;
+    this._downedMarker = null;
+    h?.release?.();
+  }
+
+  /**
+   * Revived (§4.4) — the most consequential co-op event, and so its own voice
+   * rather than `heal`'s three-rung ladder, which it used to borrow. Lattice,
+   * expanding, heavy, restorative: a stack of fifths that arrives together
+   * rather than in sequence, opening outward through a filter that climbs, and
+   * the marker's low bed lifted off the world in the same breath.
+   */
+  playerRevived(pos) {
+    this.releaseDownedMarker();
+    const ac = this._ensure();
+    if (!ac || !this._take(6, true)) return;
+    const t = ac.currentTime;
+    const out = this._out(pos, 10);
+    // Lattice: struck as one chord, not walked. Fifths and an octave — the
+    // interval `warded` and every other protective voice uses.
+    for (const d of [0, 7, 12, 19]) {
+      this._tone(t, 1.1, {
+        type: 'triangle',
+        f0: ROOT * 2 * Math.pow(2, d / 12),
+        gain: 0.11, out, attack: 0.02,
+      });
+    }
+    // Expanding: the bed opens upward under the chord rather than decaying.
+    this._tone(t, 1.3, { type: 'sine', f0: ROOT * 0.75, f1: ROOT * 1.5, gain: 0.16, out, attack: 0.08 });
+    this._noise(t, 1.0, { type: 'bandpass', freq: 900, freqEnd: 5200, q: 1.1, gain: 0.12, out, attack: 0.06 });
   }
 
   heal(pos) {
@@ -1745,7 +1816,14 @@ export class Audio {
     this._tone(t, 0.28, { type: 'sine', f0: 140, f1: 60, gain: 0.24 });
   }
 
-  bossHorn() {
+  /**
+   * A boss arrives (§4.4). The horn is camera-local and always was — it is an
+   * announcement, not a thing in the room — but the announcement now says
+   * *what* arrived and *where*: a heavy elemental onset at the spawn point,
+   * under the horn, in the boss's own element. Without it every boss in the
+   * game sounded identical and came from nowhere.
+   */
+  bossHorn(pos = null, element = 'kinetic') {
     const ac = this._ensure();
     if (!ac || !this._take(5)) return;
     const t = ac.currentTime;
@@ -1756,6 +1834,9 @@ export class Audio {
     }
     this._tone(t, 2.8, { type: 'sine', f0: 41, gain: 0.5, attack: 0.3 });
     this._noise(t, 2.0, { type: 'lowpass', freq: 600, freqEnd: 140, q: 0.6, gain: 0.16, attack: 0.4 });
+    // Heavy intensity, positioned: rate below 1 is the low, long end of the
+    // transient, which is what separates an arrival from a proc.
+    if (pos) this.elementTransient(pos, element, 0.55);
   }
 
   stageSting() {

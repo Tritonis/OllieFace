@@ -189,3 +189,60 @@ export function attackElement(a) {
   if (Number.isFinite(a.color)) return elementFromHex(a.color);
   return 'kinetic';
 }
+
+/**
+ * §4.4 `statusApplied`. A status landing takes a short voice in its element's
+ * recipe, *pitched by status type* — the pitch is what makes five statuses
+ * five audible things rather than one repeated blip. `freeze` and `slow` share
+ * ice's recipe and must not share its rate: they are the same element saying
+ * two different things, the halt and the drag, and the only thing separating
+ * them is where they sit on the ladder.
+ *
+ * `rate` is `elementTransient`'s playback rate, so a lower number is a lower,
+ * longer voice. The ordering encodes the fiction: shock is the highest and
+ * shortest, void and wither the lowest and longest.
+ */
+export const STATUS_VOICE = {
+  __proto__: null,
+  shock: { element: 'shock', rate: 0.82 },
+  burn: { element: 'fire', rate: 0.64 },
+  freeze: { element: 'ice', rate: 0.52 },
+  bleed: { element: 'kinetic', rate: 0.46 },
+  slow: { element: 'ice', rate: 0.36 },
+  void: { element: 'void', rate: 0.30 },
+  wither: { element: 'void', rate: 0.24 },
+};
+
+/** The voice for one status name; anything unnamed is a kinetic tick. */
+export function statusVoiceOf(status) {
+  return STATUS_VOICE[status] || { element: 'kinetic', rate: 0.45 };
+}
+
+/**
+ * The coin hue (§4.4 `coin`), amber-warm, and **fixed**.
+ *
+ * Gold is not a tiered item and has no tier to carry, so it must never be
+ * coloured from `TIERS`: `itemPickupBurst` is the only tier-coloured world
+ * effect in the game and §2's rule stands or falls on it staying the only one.
+ * Deliberately a constant rather than a lookup, so there is nothing to pass a
+ * tier into.
+ */
+export const COIN_HUE = 0xffc46a;
+
+/**
+ * The element of a whole unit, for the one-shot moments that are about the
+ * unit rather than about a particular attack (§4.4 `bossHorn`). A card's first
+ * attack is its identity — the thing it opens with — so this is
+ * `attackElement` of that, with the card's own colour as the fallback for a
+ * unit that has no attacks at all (a spawn card, or a test fixture).
+ *
+ * Shared rather than duplicated because the horn and the ring have to name the
+ * same element or the arrival reads as two events.
+ */
+export function unitElement(enemy) {
+  const def = enemy?.def || enemy;
+  const a = def?.attacks?.[0];
+  if (a) return attackElement(a);
+  if (Number.isFinite(def?.color)) return elementFromHex(def.color);
+  return 'kinetic';
+}
