@@ -17,7 +17,7 @@ for (let i = 2; i < process.argv.length; i++) {
   const next = process.argv[i + 1];
   args[tok.slice(2)] = next && !next.startsWith('--') ? (i++, next) : true;
 }
-const PORT = Number(args.port ?? 5251);
+const PORT = Number(args.port ?? 5238);
 const REALM = String(args.realm ?? 'crucible');
 const WARM = !!args.warm;
 const SKIP = String(args.skip ?? '');
