@@ -161,6 +161,12 @@ export const EQUIPMENT = [
     id: 'gravity-snare', name: 'Gravity Snare', tier: 'equipment', glyph: 'snare',
     flavour: 'Everything within twenty metres agrees to be somewhere else.',
     cooldown: 34,
+    // The player half of C3 (EFFECT-LANGUAGE.md §3). A beam is a *shape* — a
+    // swept line with a charge in front of it — and until this field existed
+    // the equipment table carried nothing that said so, which is why the
+    // showcase's "all beam users charging together" preset could only reach
+    // the enemy cards. Read by `Showcase.js`'s preset `0`, never by play.
+    shape: 'beam',
     description: () => 'Drag every enemy within 22m to your reticle and slow them for 5s.',
     use: (api) => {
       const at = api.player.position.clone();
@@ -325,6 +331,9 @@ export const EQUIPMENT = [
     id: 'tesla-crown', name: 'Tesla Crown', tier: 'equipment', glyph: 'crown',
     flavour: 'Wear it. Do not touch anyone.',
     cooldown: 42,
+    // See `gravity-snare` above: C3's other player-side beam, marked so the
+    // set can be judged whole rather than remembered by name.
+    shape: 'beam',
     description: () => `For ${BUFF.crown}s, arc chain lightning through 5 enemies every 0.4s for 250% damage.`,
     use: (api) => {
       api.items.addEffect('tesla-crown', BUFF.crown, 0.4, (a) => {

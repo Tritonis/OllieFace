@@ -51,6 +51,18 @@ export const ELEMENTS = {
   frost:       { hue: 0x9fe8ff, family: 'ice-blue' },
   toxic:       { hue: 0x9be035, family: 'acid-green' },
   restorative: { hue: 0x74ffc8, family: 'mint-green', damage: false },
+  // Violet here, magenta-violet on the damage spark, and that pair is
+  // deliberate. `gravity` is a *cue* element; the damage vocabulary is the
+  // closed seven of `damageTypes.js`, which has no violet, so `gravity` is
+  // projected onto `void` — its nearest neighbour, one bucket away
+  // (0x9b5cff h 262 `violet` / 0xab00ac h 300 `magenta-violet`). Closing the
+  // gap costs more than it buys in either direction: moving this hue into
+  // magenta-violet would put the gravity cue in the void spark's family and so
+  // trade this adjacency for a gravity/void one, and moving the void spark
+  // into violet would break `ELEMENT_HUE`'s standing rule that each family
+  // borrows its affix's own colour (voidtouched's tint 0xab00ac). The third
+  // option — an eighth damage family — is a change to the closed set, not a
+  // hygiene fix. See `damageTypes.js`'s `TYPE_ELEMENT.gravity` and §1.1.
   gravity:     { hue: 0x9b5cff, family: 'violet' },
   // Magenta is listed as reserved alongside mint-green in §1.1, but §3's C9
   // resolution then assigns it to `mourners-dagger` — a kill-triggered damage

@@ -125,7 +125,19 @@ export function installShowcase(ctx) {
       dummy.health = dummy.maxHealth = 1e6;
       // A showcase dummy that walks out of frame mid-comparison is a dummy
       // that answers a different question than the one being asked.
-      dummy.frozen = true;
+      //
+      // `frozen = true` used to stand here and nothing read it — Enemy has no
+      // such field, so the dummy wandered exactly as before. The unit's own
+      // `moveSpeed` is the field that actually holds it: `applyMovement`
+      // scales *every* term of the desired velocity by it — the seek, the
+      // separation push, the obstacle avoidance and the shrike jitter alike —
+      // so zero is a complete stop rather than a slowed drift under its
+      // neighbours. It is also not a status: applying `freeze` would have held
+      // it just as well and then multiplied every incoming hit by 1.35 and
+      // tinted it ice-blue, which is a poor thing to do to the target the
+      // colour language is being judged against. Damage, procs and death are
+      // untouched.
+      dummy.moveSpeed = 0;
     }
     return dummy;
   };
@@ -169,7 +181,7 @@ export function installShowcase(ctx) {
       items.equipTimer = 0;
       const fired = items.useEquipment();
       if (!fired) console.warn(`[showcase] ${def.id} declined to fire (nothing in range?)`);
-    });
+    }, { shape: def.shape });
   }
 
   // --- item combat hooks --------------------------------------------------
@@ -420,8 +432,12 @@ export function installShowcase(ctx) {
     // added to `enemies.js` joins its set without anyone remembering to.
     ['9', 'every nova at one point', () =>
       idsOf((e) => NOVA_KINDS.has(e.meta.kind) || isDeathNovaElite(e))],
+    // C3 is not an enemy-only group: `tesla-crown` and `gravity-snare` are
+    // named in it, and a preset that showed only the six enemy beams staged
+    // half the comparison the document asks for. The equipment table now says
+    // `shape: 'beam'` so this stays a predicate over the data.
     ['0', 'all beam users charging together', () =>
-      idsOf((e) => BEAM_KINDS.has(e.meta.kind))],
+      idsOf((e) => BEAM_KINDS.has(e.meta.kind) || e.meta.shape === 'beam')],
     ['-', 'full-horde release', () => idsOf((e) => e.meta.kind === 'projectile')],
     ['=', 'all telegraph windows at once', () => idsOf((e) => WINDOW_KINDS.has(e.meta.kind))],
   ];
