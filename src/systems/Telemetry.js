@@ -244,6 +244,10 @@ class RunRecorder {
       outcome: null,
       stats: null,
       fatal: null,
+      // Names of hooks that threw and were individually disabled, with the
+      // message each died on. Empty on a clean run, so a consumer never has to
+      // special-case its absence. See `guard()`.
+      brokenHooks: [],
     };
     this._stage = null;      // the open stage entry, or null before stage 0
     this._realm = null;      // the open realm visit, or null outside one
@@ -257,6 +261,11 @@ class RunRecorder {
     // clears its gateways and drops the armed realm — every door in the list
     // ceases to exist at exactly that moment.
     this._openOffers = [];
+    // Names of hooks disabled by their own throw — see `guard()`. Separate from
+    // `this.broken`, which is reserved for a failure that really is global (the
+    // storage write itself failing in `save()`): a defect confined to one hook
+    // must not cost every other hook's data, or the run export.
+    this._brokenHooks = new Set();
   }
 
   // ------------------------------------------------------------------ wiring
@@ -278,9 +287,44 @@ class RunRecorder {
     };
   }
 
+  /**
+   * Same contract as `guard()`, but isolated to the one hook rather than
+   * joining the global `broken` latch — for the four void-economy hooks
+   * (`onVoidMarks`, `onVoidBargain`, `onVoidSanctuary`, `onVoidRuin`), which
+   * previously shared `guard()` and so a defect in any one of them — say
+   * `onVoidBargain` choking on a malformed payload — silently stopped
+   * `onVoidSanctuary`, `onVoidRuin`, and every *other* hook in the file from
+   * recording anything for the rest of the run, with the export giving no
+   * sign which hook had died.
+   *
+   * `this.broken` is still checked first and still unconditional: a truly
+   * global failure (the storage write itself failing in `save()`) is not
+   * something any hook's data survives, so it still wins over per-hook
+   * isolation. What it no longer does is get *set* by one hook's throw.
+   *
+   * `record.brokenHooks` is what keeps this backward-compatible in the shape
+   * that matters: a reader that never looks at the field sees exactly the
+   * record it always did, and one that wants to know what died can.
+   */
+  guardHook(fn) {
+    const name = fn.name || 'hook';
+    return (payload) => {
+      if (this.broken || this._brokenHooks.has(name)) return;
+      try {
+        fn.call(this, payload);
+      } catch (err) {
+        this._brokenHooks.add(name);
+        this.record.brokenHooks.push({ name, message: String(err && err.message || err) });
+        console.error(`[telemetry] hook ${name} disabled after an error`, err);
+      }
+    };
+  }
+
   install() {
     const { ctx } = this;
     const on = (name, fn) => ctx.events.on(name, this.guard(fn));
+    // The four void-economy hooks get their own isolation — see `guardHook()`.
+    const onIsolated = (name, fn) => ctx.events.on(name, this.guardHook(fn));
 
     on('stageStart', this.onStageStart);
     on('corruptionChanged', this.onCorruptionChanged);
@@ -289,12 +333,12 @@ class RunRecorder {
     on('itemMutated', this.onItemMutated);
     on('itemStabilised', this.onItemStabilised);
     on('fontUse', this.onFontUse);
-    on('voidMarksChanged', this.onVoidMarks);
+    onIsolated('voidMarksChanged', this.onVoidMarks);
     on('argentMotesChanged', this.onArgentMotes);
     on('argentConsecrate', this.onArgentConsecrate);
-    on('voidBargain', this.onVoidBargain);
-    on('voidSanctuary', this.onVoidSanctuary);
-    on('voidRuin', this.onVoidRuin);
+    onIsolated('voidBargain', this.onVoidBargain);
+    onIsolated('voidSanctuary', this.onVoidSanctuary);
+    onIsolated('voidRuin', this.onVoidRuin);
     on('goldChanged', this.onGoldChanged);
     on('realmOffer', this.onRealmOffer);
     on('realmEnter', this.onRealmEnter);

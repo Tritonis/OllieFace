@@ -61,6 +61,11 @@ dist-desktop/win-unpacked/
     package.json             for `main` and metadata
 ```
 
+`desktop/net-bridge-renderer.cjs` is **not** in that tree. It is test-only
+scaffolding that reads the inlined block out of `preload.cjs` at test time —
+nothing at runtime requires it — so `build.files` excludes it by name.
+`tests/steam-sdk-packaging.test.mjs` proves it stays out.
+
 Two exclusions in the `build.files` list are load-bearing, both verified after
 every pack:
 
