@@ -1113,6 +1113,14 @@ export class Items {
     // `stat` functions add into `damage`/`maxHealth` and multiply into these.
     s.damageMult = 1;
     s.healthMult = 1;
+    // The *cost* side of movement speed, kept apart from `moveSpeed` itself
+    // for a reason the other accumulators do not have: `moveSpeed` is curved
+    // above the knee (see `softenMove`), and anything folded into it before
+    // that is compressed by the curve. A drawback compressed by the curve is a
+    // drawback the surrounding stack pays off. Sub-1.0 move-speed
+    // contributions therefore go here — Slag Ingot's is the only one today —
+    // and land on the finished number at full strength.
+    s.moveSpeedPenalty = 1;
     // Scales the *bonus* half of the crit multiplier (Clouded Eye). Kept apart
     // from `critMult` itself so a crit can never be reduced below a normal hit
     // however many stacks are held, and so the reduction does not depend on
@@ -1172,6 +1180,17 @@ export class Items {
     const overclock = this.buffs.get('overclock');
     if (overclock) s.cooldownMult *= Math.max(0.15, 1 - overclock.stacks * overclock.magnitude);
     if (this.buffs.has('nocooldown')) s.cooldownMult = 0;
+
+    // Every move-speed contribution has now landed — item `stat` functions and
+    // the three buff slots above — so this is the one place the *aggregate*
+    // sustained multiplier exists. Soften it here rather than per item: a
+    // per-item curve would make pickup order matter and would punish a single
+    // Mercury Anklet as hard as the eighth Cloven Hoof. See `softenMove`.
+    //
+    // The curve takes the *gains* only; costs are multiplied onto the result
+    // afterwards, at full proportional strength. Both halves are products, so
+    // the separation costs nothing in order-independence.
+    s.moveSpeed = softenMove(base.moveSpeed, s.moveSpeed) * s.moveSpeedPenalty;
 
     if (s.noDefensive) { s.blockChance = 0; s.flatReduction = 0; }
     if (s.noRegen) s.healthRegen = 0;
@@ -1907,6 +1926,69 @@ export class Items {
 const TIER_ORDER = { common: 0, uncommon: 1, legendary: 2, boss: 3, lunar: 4, blight: 5, argent: 6, equipment: 7 };
 const BASE_KEYS = ['maxHealth', 'healthRegen', 'moveSpeed', 'attackSpeed', 'damage',
   'critChance', 'critMult', 'armor', 'cooldownMult', 'jumpCount'];
+
+/**
+ * Where sustained movement speed stops being free (#188).
+ *
+ * A stacked movement build did not become *strong*, it became unsteerable: at
+ * eight Cloven Hoof the survivor covers a whole arena between two of the
+ * player's decisions, and the camera, the dodge distances and the enemy lead
+ * times are all tuned around something near base. The knee is the point past
+ * which extra speed is bought at a rising price.
+ *
+ * 1.45 is chosen against the *commons*, deliberately: three Cloven Hoof is
+ * +42%, three Runner's Chalk is +15%, and neither the normal mid-run build nor
+ * any mix of three movement commons reaches the knee. A player who took the
+ * movement commons on offer feels literally nothing — the curve is identity,
+ * not merely gentle. One Mercury Anklet lands at 1.50, a hair over, and keeps
+ * essentially all of its +50%: the item that is *meant* to be a shock still is.
+ */
+export const MOVE_KNEE = 1.45;
+
+/**
+ * Headroom above the knee. The curve approaches `MOVE_KNEE + MOVE_SPAN` and
+ * never reaches it, so 2.95x base is an asymptote rather than a cap: every
+ * further stack is still worth something, which is the whole point of not
+ * clamping. At 12 Cloven Hoof a thirteenth is still +0.29 m/s on a 7.0 base.
+ */
+export const MOVE_SPAN = 1.5;
+
+/**
+ * Soften the aggregate sustained move-speed *gain* multiplier.
+ *
+ * Gains only. Costs — anything that multiplies movement speed by less than
+ * one, which today is Slag Ingot alone — accumulate in `moveSpeedPenalty` and
+ * are applied to this function's result by the caller, never to its input.
+ * That split is not cosmetic: the curve compresses everything above the knee
+ * toward the asymptote, so a cost folded in with the gains shrinks as the
+ * stack around it deepens. Measured on the first cut of this curve, a Slag
+ * Ingot kept 57% of its bite at eight Cloven Hoof and 18% at twenty — the
+ * deeper the build, the cheaper its drawbacks, which is precisely backwards.
+ * Applied afterwards, a cost always removes the exact fraction it advertises.
+ *
+ * Below the knee this is the identity function — bit-for-bit, not
+ * approximately, so no existing build's number moves. Above it the excess is
+ * passed through `e -> e / (1 + e / SPAN)`, whose derivative
+ * `1 / (1 + e/SPAN)^2` is positive everywhere and strictly falling: monotone
+ * increasing (more items are never worse) with diminishing returns (each one
+ * is worth less than the last), and no dead pickups at any stack count.
+ *
+ * The *aggregate* is the input, so this is order-independent in the same sense
+ * as `damageMult` and `critEdge` above.
+ *
+ * Burst movement — dashes, vaults, jump stats — never reaches here. Those are
+ * skill-side and stay linear (#188 scope). The two short buffs that *are* pure
+ * move-speed multipliers, Bloodied Spurs' `quickfoot` and Prey Instinct's
+ * `preyfoot`, do enter the aggregate: they multiply the same steering problem
+ * the knee exists to bound, and they land on top of exactly the stacked build
+ * that is already past it. A 3 s window on a base build is still fully linear
+ * (1.20 is under the knee); only the window stacked on eight Hoof is trimmed.
+ */
+export function softenMove(baseSpeed, speed) {
+  if (!(baseSpeed > 0) || !(speed > baseSpeed * MOVE_KNEE)) return speed;
+  const excess = speed / baseSpeed - MOVE_KNEE;
+  return baseSpeed * (MOVE_KNEE + excess / (1 + excess / MOVE_SPAN));
+}
 
 /**
  * Equipment keybind. One constant so the HUD can print the same letter the
