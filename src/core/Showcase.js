@@ -4,7 +4,8 @@ import { EQUIPMENT } from '../data/equipment.js';
 import { ITEMS, TIERS } from '../data/items.js';
 import { SPAWN_CARDS, BOSS_CARDS, ELITE_STATS } from '../data/enemies.js';
 import { SAMPLES } from '../data/samples.js';
-import { attackElement, sustainNodeCost } from '../data/elementVoice.js';
+import { attackElement, sustainNodeCost, STATUS_VOICE } from '../data/elementVoice.js';
+import { ELEMENT_HUE } from '../data/damageTypes.js';
 
 /**
  * The effects showcase (#144) — every player-facing effect, on demand, by eye
@@ -372,14 +373,38 @@ export function installShowcase(ctx) {
     ctx.vfx?.levelUp?.(p.position); ctx.audio?.play?.('levelUp');
   });
   add('moment', 'teleporterAura', 'Teleporter aura', (l) => ctx.vfx?.teleporterAura?.(ground(ctx, 10, l), 12));
-  add('moment', 'bossHorn', 'Boss horn', () => ctx.audio?.bossHorn?.());
+  add('moment', 'bossHorn', 'Boss arrival', (l) => {
+    // A boss arrival is a *placed* event now, so the showcase has to place it:
+    // firing the horn with no position would exercise a path the game never
+    // takes and hide the half of the moment that lives in the world.
+    const at = ground(ctx, 14, l);
+    ctx.audio?.bossHorn?.(at, 'void');
+    ctx.vfx?.bossArrival?.(at, 'void');
+  });
   add('moment', 'stageStart', 'Stage sting', () => ctx.audio?.play?.('stageStart'));
   add('moment', 'shieldBreak', 'Shield break', (l) => {
     const at = ground(ctx, 8, l);
     ctx.vfx?.shieldBreak?.(at); ctx.audio?.play?.('shieldBreak', at);
   });
-  add('moment', 'playerDowned', 'Player downed', () => ctx.audio?.playerDowned?.(player()?.position));
-  add('moment', 'playerRevived', 'Player revived', () => ctx.audio?.playerRevived?.(player()?.position));
+  // Downed and revived are a pair and are evaluated as one: downing starts a
+  // held marker (voice and ring both), reviving is the only thing that stops
+  // it, so pressing them in order is what the showcase is for. Closing the
+  // instrument releases the marker too — see `close()`.
+  add('moment', 'playerDowned', 'Player downed', (l) => {
+    const p = player(); const at = p?.position || ground(ctx, 4, l);
+    ctx.audio?.playerDowned?.(at);
+    ctx.vfx?.playerDowned?.(p || null, at);
+  });
+  add('moment', 'playerRevived', 'Player revived', (l) => {
+    const p = player(); const at = p?.position || ground(ctx, 4, l);
+    ctx.audio?.playerRevived?.(at);
+    ctx.vfx?.playerRevived?.(null, at);
+  });
+  add('moment', 'coin', 'Coin — gold gained', (l) => {
+    const at = ground(ctx, 5, l);
+    ctx.audio?.coin?.();
+    ctx.vfx?.coinSpark?.(at);
+  });
   add('moment', 'killSignature', 'Kill signature', (l) => {
     const t = target(l); if (!t) return;
     ctx.vfx?.killSignature?.(t.position, t.def?.color ?? 0xff8844);
@@ -391,10 +416,16 @@ export function installShowcase(ctx) {
     ctx.vfx?.damageNumber?.(t.position, 1337, true);
     ctx.audio?.play?.('hit', t.position, true);
   });
-  for (const s of ['burn', 'slow', 'shock', 'bleed']) {
+  // Every status the language names a voice for, not the four that happened to
+  // be listed: the point of §4.4's `statusApplied` is that burn, freeze, shock,
+  // slow and void are five audible things, and a showcase missing two of them
+  // cannot show that. `status()` rather than `statusApplied()` because only the
+  // former plays the voice — the latter is the overlay bookkeeping alone, and
+  // pressing it was silent.
+  for (const s of Object.keys(STATUS_VOICE)) {
     add('moment', `status:${s}`, `Status applied — ${s}`, (l) => {
       const t = target(l); if (!t) return;
-      ctx.vfx?.statusApplied?.(t.position, s);
+      ctx.vfx?.status?.(t, s, (ELEMENT_HUE[STATUS_VOICE[s].element] || ELEMENT_HUE.kinetic).tail);
     });
   }
 
@@ -563,6 +594,25 @@ export function installShowcase(ctx) {
     }
   };
 
+  /**
+   * Everything this instrument may still be holding, given back.
+   *
+   * Two kinds, and they leave by different doors: a demonstrator's windup voice
+   * goes when the demonstrator is retired, and the downed body marker has no
+   * demonstrator at all — `playerDowned` with no `playerRevived` after it is
+   * one keypress, and the marker then outlives the panel that started it.
+   *
+   * Shared by `close` and `dispose` because the leak the reviewer reproduced
+   * was exactly the gap between them: `dispose()` retired the demonstrators and
+   * left the marker sounding over a game with no showcase on screen. Anything
+   * added here must be idempotent; both doors can be walked through in a row.
+   */
+  const releaseHeld = () => {
+    for (const e of [...demos]) retire(e);
+    ctx.audio?.releaseDownedMarker?.();
+    ctx.vfx?.playerRevived?.(null, null);
+  };
+
   const setOpen = (v) => {
     open = v;
     root.style.display = v ? 'block' : 'none';
@@ -571,7 +621,7 @@ export function installShowcase(ctx) {
     if (v) render();
     // Closing ends the session: any demonstrator still mid-window is retired
     // here, which returns its held voice with it.
-    if (!v) for (const e of [...demos]) retire(e);
+    if (!v) releaseHeld();
     // Jury headroom, for as long as the instrument is open and not a moment
     // longer: the windup sub-budget alone is raised to fit the greediest panel
     // and returned to its shipped value on the way out (#155). Nothing else in
@@ -650,10 +700,10 @@ export function installShowcase(ctx) {
     dispose: () => {
       window.removeEventListener('keydown', onKey, true);
       root.remove();
-      // Every demonstrator still standing goes now, which is also how every
-      // voice it is holding is returned. Closing the instrument must not leave
-      // a windup chord sounding over the game underneath it.
-      for (const e of [...demos]) retire(e);
+      // Every held voice goes now — demonstrators and the downed marker alike.
+      // Disposing the instrument must not leave a windup chord or a beacon
+      // sounding over the game underneath it.
+      releaseHeld();
       // And the sub-budget goes back with them: disposing the instrument must
       // not leave a raised cap standing over the game underneath it.
       ctx.audio?.setJuryHeadroom?.(0);

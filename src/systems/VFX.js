@@ -7,6 +7,7 @@ import { cloneCharacterBlightMaterial } from '../shaders/CharacterBlight.js';
 import { MAX_BLASTS } from '../shaders/DistortShader.js';
 import { clamp, lerp } from '../core/MathUtil.js';
 import { elementOf, sparkColour, goreColour, ELEMENT_HUE } from '../data/damageTypes.js';
+import { COIN_HUE, unitElement } from '../data/elementVoice.js';
 import { isLocalVictim, isLocalOwner } from '../core/Engine.js';
 import { GATE, shouldLaunch } from './LaunchGate.js';
 import {
@@ -183,6 +184,19 @@ const _ax2 = new THREE.Vector3();
 const _proj = new THREE.Vector3();
 const UP = new THREE.Vector3(0, 1, 0);
 
+/* --- §4.4 run-level moments ------------------------------------------ *
+ * A downed body is bone-cream: the physical family, deliberately *not* an
+ * element and deliberately not mint-green, because being down is neither a
+ * damage type nor a heal. Revival is restorative, which is the one place
+ * mint-green is not only allowed but required (§1.1's reservation reserves it
+ * *for* this). Both wear a white-hot core over their hue, which is §1.2's
+ * player-facing polarity.
+ */
+const DOWNED_HUE = 0xe8ded0;
+const REVIVE_HUE = 0x74ffc8;
+/** Seconds between marker pulses — slow enough to read as a beacon, not a fire. */
+const MARKER_PERIOD = 1.1;
+
 /**
  * A colour derived from `hex` by independently scaling its R/G/B bytes.
  * Plain 0-255 byte arithmetic, not THREE.Color math: Color.set()/getHex()
@@ -236,6 +250,10 @@ export class VFX {
     this._teleAccum = 0;
     this._teleRing = 0;
     this._teleProgress = 0;
+    // Live downed-body markers, keyed by pawn. Entries only ever leave through
+    // `playerRevived` (which a revive, a death and a stage change all reach) or
+    // the liveness sweep in `_updateDownedMarkers`.
+    this._downed = new Map();
     this._dt = 0;
 
     // Live shockwaves feeding the grade pass's distortion term.
@@ -287,9 +305,25 @@ export class VFX {
       const pp = ctx.player?.position;
       if (pp) this.explosion(pp, 6, 0x66ddff);
     });
-    e.on('bossSpawn', () => {
+    e.on('bossSpawn', (p) => {
       ctx.pipeline?.addShake(0.16);
       this._hitstop(HITSTOP.boss, true);
+      this.bossArrival(p?.enemy?.position, unitElement(p?.enemy));
+    });
+    // Downed and revived are broadcast for every pawn, not just the local one:
+    // the marker exists precisely so that *someone else* can find the body.
+    e.on('playerDowned', (p) => this.playerDowned(p?.player, p?.position));
+    e.on('playerRevived', (p) => this.playerRevived(p?.player, p?.position));
+    // Both other exits from the downed state. A body that dies stops being a
+    // body to walk to, and nothing survives a teleport.
+    e.on('playerDead', (p) => { if (p?.victim) this._downed.delete(p.victim); });
+    e.on('stageStart', () => this._downed.clear());
+    // Gold has no position on the wire, so the gain point is the viewer's own
+    // feet; the owner test keeps a teammate's payout off this player's body.
+    e.on('goldChanged', (p) => {
+      if (!isLocalOwner(ctx, p)) return;
+      const pp = ctx.player?.position;
+      if (pp) this.coinSpark(pp);
     });
     e.on('playerDead', (p) => {
       // Somebody else's death does not black out your screen.
@@ -1125,6 +1159,128 @@ export class VFX {
     this.ctx.audio?.zap(to);
   }
 
+  /**
+   * A body going down (§4.4 `playerDowned`). Two halves, and they are not the
+   * same effect: a ring that *collapses inward* — every other ring in this file
+   * expands, so inward is what makes it read as falling rather than as a nova —
+   * and then a held marker registered at the body so a teammate can find it.
+   *
+   * Player-facing polarity (§1.2): white-hot core, element rim.
+   */
+  playerDowned(pawn, pos) {
+    const at = pos || pawn?.position;
+    if (!at) return;
+    // Collapsing: r0 > r1. `RingPool.spawn` interpolates from r0 to r1, so the
+    // inversion is the whole effect and swapping the pair breaks it.
+    this.rings.spawn(at, UP, DOWNED_HUE, 4.5, 0.4, 0.55, 0.85);
+    this.rings.spawn(at, UP, 0xffffff, 3.0, 0.2, 0.4, 0.6);
+
+    const e = this._ep();
+    e.layer = 'alpha';
+    e.count = 16; e.position.copy(at); e.shell = 1.6;
+    e.dir.set(0, -0.4, 0); e.spread = 1.2;
+    e.speed = 2.4; e.speedVar = 0.5;
+    e.life = 0.7; e.lifeVar = 0.3;
+    e.size0 = 0.3; e.size1 = 0.04;
+    e.color0.set(0xffffff); e.color1.set(DOWNED_HUE);
+    e.alpha0 = 0.5; e.frame = FRAME.DUST; e.drag = 3.4; e.gravity = -3;
+    this.particles.emit(e);
+
+    this.lights.flick(at, DOWNED_HUE, 10, 12, 0.35);
+    if (pawn) this._downed.set(pawn, { t: MARKER_PERIOD });
+  }
+
+  /**
+   * The marker stops. Idempotent and total: called with a pawn it clears that
+   * one, called with nothing it clears every marker in the world, which is what
+   * a stage change needs.
+   */
+  playerRevived(pawn, pos) {
+    if (pawn) this._downed.delete(pawn); else this._downed.clear();
+    const at = pos || pawn?.position;
+    if (!at) return;
+    // Expanding lattice, restorative, heavy — the exact inverse of the
+    // collapse above, and deliberately not `healPop`, which would also fire
+    // `heal`'s audio.
+    this.rings.spawn(at, UP, REVIVE_HUE, 0.4, 7, 0.6, 0.9);
+    this.rings.spawn(at, UP, 0xffffff, 0.2, 4, 0.4, 0.7);
+
+    const e = this._ep();
+    e.count = 22; e.position.copy(at); e.shell = 0.4;
+    e.dir.set(0, 1, 0); e.spread = 0.9;
+    e.speed = 5.5; e.speedVar = 0.8;
+    e.life = 0.8; e.lifeVar = 0.3;
+    e.size0 = 0.24; e.size1 = 0.02;
+    e.color0.set(0xffffff); e.color1.set(REVIVE_HUE);
+    e.frame = FRAME.CROSS; e.spin = 4; e.drag = 2.4;
+    this.particles.emit(e);
+
+    this.lights.flick(at, REVIVE_HUE, 24, 18, 0.3);
+  }
+
+  /**
+   * A boss arrives (§4.4 `bossHorn`): the horn now has a place it came from —
+   * an expanding ring out of the spawn point and a light burst, at heavy
+   * intensity, in the boss's own element.
+   */
+  bossArrival(pos, element = 'kinetic') {
+    if (!pos) return;
+    const hue = (ELEMENT_HUE[element] || ELEMENT_HUE.kinetic).tail;
+    this.rings.spawn(pos, UP, hue, 1, 26, 0.85, 0.95);
+    this.rings.spawn(pos, UP, 0xffffff, 0.5, 14, 0.5, 0.7);
+    this.burst(pos, hue);
+    this.lights.flick(pos, hue, 40, 60, 0.5);
+    this.shockwave(pos, 22, 0.5, 0.03);
+  }
+
+  /**
+   * Gold arriving (§4.4 `coin`): a small rising spark at the gain point, under
+   * the pip that already plays.
+   *
+   * The hue is `COIN_HUE` and nothing may pass one in. Gold has no tier, so a
+   * tier-coloured coin spark would make `itemPickupBurst` no longer the only
+   * tier-coloured world effect — see the constant's own note.
+   */
+  coinSpark(pos) {
+    if (!pos) return;
+    const e = this._ep();
+    e.count = 5; e.position.copy(pos); e.position.y += 0.6; e.jitter = 0.3;
+    e.dir.set(0, 1, 0); e.spread = 0.35;
+    e.speed = 3.4; e.speedVar = 0.7;
+    e.life = 0.45; e.lifeVar = 0.2;
+    e.size0 = 0.12; e.size1 = 0.01;
+    e.color0.set(0xffffff); e.color1.set(COIN_HUE);
+    e.frame = FRAME.SPARK; e.spin = 5;
+    e.gravity = -1.5; e.drag = 2.6;
+    this.particles.emit(e);
+  }
+
+  /**
+   * Re-lay every live downed marker. A ring has a life measured in fractions of
+   * a second and a body stays down for as long as it takes someone to walk
+   * over, so the marker is a slow pulse re-spawned here rather than one
+   * long-lived object — and it stops the instant the entry leaves `_downed`,
+   * which is the property `tests/downed-marker-release.test.mjs` asserts.
+   */
+  _updateDownedMarkers(dt) {
+    if (this._downed.size === 0) return;
+    for (const [pawn, m] of this._downed) {
+      // A pawn that died or despawned is not a body to mark; the marker dies
+      // with it rather than pulsing over an empty patch of floor for the rest
+      // of the stage. Liveness only — `downed === false` would also be true of
+      // the showcase's stand-in, which is a live pawn playing a downed one.
+      if (!pawn?.position || pawn.alive === false) {
+        this._downed.delete(pawn);
+        continue;
+      }
+      m.t += dt;
+      if (m.t < MARKER_PERIOD) continue;
+      m.t = 0;
+      this.rings.spawn(pawn.position, UP, DOWNED_HUE, 0.3, 2.2, 0.9, 0.4);
+      this.lights.flick(pawn.position, DOWNED_HUE, 6, 14, 0.5);
+    }
+  }
+
   healPop(pos, amount = 0) {
     let e = this._ep();
     e.count = 14; e.position.copy(pos); e.jitter = 0.3;
@@ -1230,14 +1386,20 @@ export class VFX {
   /** Combat's calling convention: (entity, type, colour). */
   status(entity, type, colour) {
     const s = this.statusApplied(entity, type);
-    if (colour === undefined || !s) return;
-    // One-shot application pop in the status's own colour, so a fresh proc
-    // reads distinctly from the ongoing overlay.
-    const p = entity.position;
+    const p = entity?.position;
     if (!p) return;
     // Every status application in the game was silent: a burn, a freeze and a
     // shock landed with only the caller's own attack sound to mark them.
+    //
+    // Ahead of the `!s` return, deliberately. `STATUS` has overlay recipes for
+    // five types and the game applies more than five — `void` and `wither` have
+    // no overlay — and behind the return those applications stayed completely
+    // silent, which is precisely the hole §4.4 says to close. A status with no
+    // overlay still gets its voice.
     this.ctx?.audio?.statusVoice?.(p, type);
+    if (colour === undefined || !s) return;
+    // One-shot application pop in the status's own colour, so a fresh proc
+    // reads distinctly from the ongoing overlay.
     const e = this._ep();
     e.count = 8; e.position.copy(p); e.position.y += (entity.height ?? 1.6) * 0.5;
     e.shell = entity.radius ?? 0.5;
@@ -1669,6 +1831,7 @@ export class VFX {
     this._updateLaunches(dt);
     this._updateStatuses(dt);
     this._updateDamageDirections(dt);
+    this._updateDownedMarkers(dt);
 
     if (this._teleProgress > 0) {
       const tp = ctx.progression?.teleporterPosition ?? ctx.stage?.teleporterPosition;
