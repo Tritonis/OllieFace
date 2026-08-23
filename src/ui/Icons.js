@@ -99,9 +99,10 @@ export const TIERS = {
   equipment: { label: 'Equipment', color: '#b98116', dim: '#64460c', plate: '#26160b' },
   // Argent, and no longer interim: it is inside `TIER_ORDER` and carries the
   // same proof as the other seven. Its value is the one free choice in the
-  // table — nothing in the fiction fixes a silver's hue the way fire fixes
-  // Legendary's — and the search took it to a near-neutral with a cold cast,
-  // which is what the tier is meant to read as.
+  // table — nothing in the fiction fixes this tier's hue the way fire fixes
+  // Legendary's — and since #191 the search runs warm instead of cold: the
+  // warmest candlelit near-neutral the mono-vision floor will seat against
+  // lunar, so the plate agrees with the white-gold the argent effects burn.
   argent:    { label: 'Argent',    color: '#bbbbaf', dim: '#606666', plate: '#101f28' },
 };
 
