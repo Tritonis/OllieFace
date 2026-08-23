@@ -1539,10 +1539,31 @@ export class VFX {
    * The cue lands on the warder's own body where there is one, and falls back
    * to the viewer's: a client reading a host-side ward has no pawn reference,
    * and no cue at all would be worse than one at the wrong feet.
+   *
+   * The rate gate lives in `wardingMote`, not here, so the Showcase's own
+   * direct calls are covered too (issue #161).
    */
   _onWarded(p) {
     const at = p?.player?.position || this.ctx?.player?.position;
     if (at) this.wardingMote(at, p?.progress ?? 0, !!p?.minted);
+  }
+
+  /**
+   * Rate limit by key on VFX's own accumulated clock. Returns false if the
+   * effect should be dropped. The counterpart to `Audio._throttle`, which
+   * keys the same way against the AudioContext clock; reaching across for
+   * that clock would tie the picture to whether audio ever started.
+   *
+   * A first fire after idle always passes — `-1` is further back than any
+   * interval — which is what keeps a lone Showcase press drawing.
+   */
+  _throttle(key, minInterval) {
+    const now = this.time ?? 0;
+    const map = (this._throttles ??= new Map());
+    const last = map.get(key) ?? -1;
+    if (now - last < minInterval) return false;
+    map.set(key, now);
+    return true;
   }
 
   /**
@@ -1560,9 +1581,28 @@ export class VFX {
    * circle than one that barely moved the needle, and the last ward before a
    * mint is visibly the biggest. `minted` promotes the whole cue from tick to
    * event intensity — a light, a wider ring, twice the motes.
+   *
+   * Rate-gated on the same key and the same two constants as the voice it
+   * speaks at the end — `Audio.warding` (issue #161). A kill-storm inside a
+   * Sanctuary wards on every kill; ungated, the ring drew roughly eight times
+   * for each chime it was supposed to belong to. The gate sits here rather
+   * than in `_onWarded` because the Showcase's `warding`/`wardingMint`
+   * moments call this method directly, and a `g` pile-up of both would
+   * otherwise draw two rings for one chime — the very mismatch, in the tool
+   * meant for judging it.
+   *
+   * The two gates are not one gate: VFX counts its own accumulated `dt`,
+   * Audio counts `ac.currentTime`. They agree because `dt` reaching VFX is
+   * only ever truncated relative to real time (`Engine`'s 0.1s clamp; hitstop
+   * scales the fixed gameplay step, not this one), never inflated — so
+   * passing VFX's gate implies at least as much real time has passed, which
+   * implies Audio's gate passes too. Feed VFX a scaled-up `dt` and that
+   * invariant is what breaks; change one constant without the other and the
+   * mismatch is immediate.
    */
   wardingMote(pos, progress = 0, minted = false) {
     if (!pos) return;
+    if (!this._throttle('warding', minted ? 0.05 : 0.14)) return;
     const p = Math.max(0, Math.min(1, Number.isFinite(progress) ? progress : 0));
     const e = this._ep();
     e.count = minted ? 16 : 7; e.position.copy(pos); e.position.y += 0.6; e.jitter = 0.35;
