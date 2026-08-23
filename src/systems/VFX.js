@@ -1502,6 +1502,36 @@ export class VFX {
   }
 
   /**
+   * An enemy support unit topping an ally back up (C5, issue #159).
+   *
+   * The shape stays where §3 puts healing — radial-spark, rising — because it
+   * *is* a heal and re-shaping it would separate two things that mean the same
+   * thing. What separates it from the player's own mend is **polarity** (§1.2):
+   * player heals carry a white-hot core with an element rim, and this one is
+   * inverted — the element is the core and the rim falls away dark. An
+   * Acolyte's heal is therefore visibly not the player's at a glance, before
+   * either colour or position is read.
+   *
+   * Deliberately not `healPop`: that method speaks `heal()`, the player's own
+   * restorative voice, and an enemy mend must not borrow it. The caster's
+   * voice is spoken once at the caster, by the caller.
+   */
+  enemyMend(pos, hue = 0x74ffc8) {
+    if (!pos) return;
+    const e = this._ep();
+    e.count = 12; e.position.copy(pos); e.position.y += 0.4; e.jitter = 0.3;
+    e.dir.set(0, 1, 0); e.spread = 0.45;
+    e.speed = 3.0; e.speedVar = 0.6;
+    e.life = 0.65; e.lifeVar = 0.3;
+    e.size0 = 0.18; e.size1 = 0.02;
+    // Element core, dark rim: the inversion of `healPop`'s pale-to-mint ramp.
+    e.color0.set(hue); e.color1.set(0x0d3b30);
+    e.frame = FRAME.CROSS; e.spin = 3; e.gravity = -2.2; e.drag = 2.2;
+    this.particles.emit(e);
+    this.lights.flick(pos, hue, 8, 10, 0.22);
+  }
+
+  /**
    * `corruptionWarded` (issue #154), on its own method so a test can drive the
    * real body rather than a re-typed copy of it — the wiring line above is
    * asserted separately.
