@@ -1277,7 +1277,10 @@ export class Enemy {
       // have one and it is what makes an un-answered acolyte feel like a wall.
       o.maxShield = Math.max(o.maxShield, o.maxHealth * (a.shieldFrac || 0.2));
       o.shield = o.maxShield;
-      fx(ctx, 'explosion', o.position, 1.2, a.color);
+      // C5 (#159): a mend is not a blast. Healing's own shape, at enemy
+      // polarity — element core, dark rim — so it reads as a heal and as
+      // theirs, and never as the player's mint flare.
+      fx(ctx, 'enemyMend', o.position, a.color);
       n++;
     }
     sfx(ctx, 'heal', this.position);
