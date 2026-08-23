@@ -685,9 +685,21 @@ export const PURITY_PALETTE = {
   sanctuaryVeil:   { hex: 0xdfffee, element: 'restorative' },
   sanctuaryVeilIn: { hex: 0x3fbf88, element: 'restorative' },
   sanctuaryLight:  { hex: 0x9fffcf, element: 'restorative' },
-  // The argent tier's own pale grey, below the chroma floor: it is spending no
-  // hue at all, which is the point — a consecrated card is a clean thing.
-  argentPale:      { hex: 0xb1bdbc, element: 'restorative' },
+  // Argent's core, white-gold (#189). It used to be a hueless pale grey chosen
+  // to spend no hue at all — and it read as nothing: a grey core inside a family
+  // of sanctuary white and mint rims is the *absence* of a tier, not a tier. A
+  // consecration is the route's most expensive press and it now looks like one.
+  //
+  // Candlelit ivory rather than brass: h~43 deg at l=0.88, so the value stays in
+  // the family's high-key band and only the warmth changes. Its nearest hue
+  // neighbour in the whole vocabulary is fire's 0xff8a20, and that nearness was
+  // accepted on one condition — argent and fire never separate on hue. They
+  // separate on shape and motion: argent is a rising column of HEX/CROSS motes
+  // under an expanding ground ring, fire is EMBER spray with negative gravity
+  // and no ring of its own. `tests/argent-legibility.test.mjs` holds that
+  // condition, on the frame/motion fields rather than on the hexes.
+  argentPale:      { hex: 0xf3e9cf, element: 'restorative' },
+  // The rim stays mint. Argent is still purity family; only its core is gold.
   argentRing:      { hex: 0xcfe8d8, element: 'restorative' },
 };
 

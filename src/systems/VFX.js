@@ -1903,6 +1903,79 @@ export class VFX {
     this.ctx.audio?.shoot(from, 0.7);
   }
 
+  /**
+   * The sentry's shot, dressed as a missile (#190).
+   *
+   * Purely presentational: Rook's turret is and stays hitscan, the damage has
+   * already landed by the time this runs, and nothing here is stepped or
+   * queried. What changes is that a deployed sentry stops firing an anonymous
+   * green wire and starts firing something with a nose and a wake — a small
+   * bright body flying the shot line under a short trail, then a spark where it
+   * lands.
+   *
+   * "Effectively instantly" is a real constraint and not a hedge: the body's
+   * whole flight is `FLIGHT` seconds regardless of range, so a 4 m shot and a
+   * 30 m shot both arrive within a frame or two of the hit they illustrate and
+   * the eye never gets the chance to see the visual lag the damage. It is a
+   * streak with direction, not a projectile.
+   *
+   * Kept cheap because a field of turrets fires this several times a second:
+   * three pooled emits and one light, no beams, no geometry, no per-shot
+   * allocation beyond the shared scratch vectors.
+   */
+  sentryMissile(from, to, colour = 0xbfff7a) {
+    if (!from || !to) return;
+    _v1.subVectors(to, from);
+    const dist = _v1.length();
+    if (dist < 0.01) return;
+    _v1.divideScalar(dist);
+    const FLIGHT = 0.05;
+
+    // The body: one stretched spark covering the whole gap, white-hot at the
+    // nose and falling to Rook's green behind it.
+    let e = this._ep();
+    e.count = 1; e.position.copy(from);
+    e.dir.copy(_v1);
+    e.speed = dist / FLIGHT; e.speedVar = 0;
+    e.life = FLIGHT; e.lifeVar = 0;
+    e.size0 = 0.22; e.size1 = 0.16; e.sizeVar = 0;
+    e.color0.set(0xffffff); e.color1.set(colour);
+    e.frame = FRAME.SPARK; e.stretch = 2.2; e.drag = 0.001;
+    e.alphaPow = 0.4; e.soft = 0; e.fadeIn = 0;
+    this.particles.emit(e);
+
+    // The wake: a handful of soft motes strung along the line behind it. They
+    // travel at a fraction of the body's speed and die fast, so what is left a
+    // frame later is a short tail near the muzzle rather than a full-length
+    // beam — the read is "something went that way", not "a line exists here".
+    e = this._ep();
+    e.layer = 'alpha';
+    e.count = 5; e.position.copy(from);
+    e.dir.copy(_v1);
+    e.speed = dist / FLIGHT * 0.35; e.speedVar = 0.3;
+    e.life = 0.13; e.lifeVar = 0.35;
+    e.size0 = 0.09; e.size1 = 0.26;
+    e.color0.set(colour); e.color1.set(0x24361a);
+    e.alpha0 = 0.32; e.frame = FRAME.SOFT;
+    e.drag = 6; e.turbulence = 0.2; e.fadeIn = 0.02;
+    this.particles.emit(e);
+
+    // Terminal spark, at the far end, delayed by the flight so the impact and
+    // the arrival are the same event.
+    e = this._ep();
+    e.count = 4; e.position.copy(to);
+    e.dir.copy(_v1).negate(); e.spread = 1.1;
+    e.speed = 4.5; e.speedVar = 0.6;
+    e.life = 0.13; e.lifeVar = 0.4;
+    e.size0 = 0.11; e.size1 = 0.01;
+    e.color0.set(0xffffff); e.color1.set(colour);
+    e.frame = FRAME.SPARK; e.stretch = 1.0; e.drag = 5; e.gravity = 4;
+    e.delay = FLIGHT;
+    this.particles.emit(e);
+
+    this.lights.flick(from, colour, 6, 3, 0.06);
+  }
+
   /** Damage fully negated: a hard metallic ring, no blood, no shake. */
   block(pos) {
     if (!pos) return;
