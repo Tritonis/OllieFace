@@ -25,52 +25,12 @@
 
 import { allEffects, ELEMENTS } from '../src/data/effects.js';
 
-// ------------------------------------------------------- audit §2.1 colour
-
-/** sRGB hex to HSL, degrees / 0-1 / 0-1. */
-function hsl(hex) {
-  const r = ((hex >> 16) & 255) / 255, g = ((hex >> 8) & 255) / 255, b = (hex & 255) / 255;
-  const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
-  const l = (max + min) / 2;
-  let h = 0;
-  if (d) {
-    if (max === r) h = ((g - b) / d) % 6;
-    else if (max === g) h = (b - r) / d + 2;
-    else h = (r - g) / d + 4;
-    h *= 60;
-    if (h < 0) h += 360;
-  }
-  const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
-  return { h, s, l };
-}
-
-/**
- * The audit's table, in order. First match wins, exactly as a hand re-run of
- * the rules would read them top to bottom.
- */
-const RULES = [
-  ['bone-cream',      (c) => c.h >= 30 && c.h <= 50 && c.s < 0.40 && c.l > 0.75],
-  ['ember-orange',    (c) => c.h >= 10 && c.h <= 30 && c.s > 0.7 && c.l >= 0.35 && c.l <= 0.60],
-  ['tan-brown',       (c) => c.h >= 25 && c.h <= 45 && c.s >= 0.3 && c.s <= 0.6 && c.l >= 0.45 && c.l <= 0.70],
-  ['earth-brown',     (c) => c.h >= 25 && c.h <= 45 && c.s < 0.35 && c.l < 0.45],
-  ['amber-warm',      (c) => c.h >= 25 && c.h <= 50 && c.l > 0.60],
-  ['coral-red',       (c) => c.h >= 0 && c.h <= 15 && c.l > 0.55],
-  ['crimson-red',     (c) => c.h >= 335 && c.s > 0.7],
-  ['pink-rose',       (c) => (c.h >= 340 || c.h <= 10) && c.s >= 0.5 && c.l > 0.65],
-  ['magenta',         (c) => c.h >= 300 && c.h <= 330 && c.s > 0.6],
-  ['magenta-violet',  (c) => c.h >= 285 && c.h < 300 && c.s > 0.7],
-  ['violet',          (c) => c.h >= 255 && c.h < 285],
-  ['periwinkle-blue', (c) => c.h >= 220 && c.h <= 235],
-  ['ice-blue',        (c) => c.h >= 185 && c.h <= 215],
-  ['mint-green',      (c) => c.h >= 140 && c.h <= 175],
-  ['acid-green',      (c) => c.h >= 70 && c.h <= 110],
-];
-
-export function familyOf(hex) {
-  const c = hsl(hex);
-  for (const [name, rule] of RULES) if (rule(c)) return name;
-  return `unbucketed(h=${c.h.toFixed(1)} s=${c.s.toFixed(2)} l=${c.l.toFixed(2)})`;
-}
+// The bucketing rules themselves live in `src/data/colourFamily.js`, so that
+// `effects.js`'s load-time `assertLanguage()` can run them over the enemy-side
+// tables too without importing a tool (and without a cycle back through this
+// file). Re-exported here because the rules are still this tool's subject.
+export { familyOf } from '../src/data/colourFamily.js';
+import { familyOf } from '../src/data/colourFamily.js';
 
 // -------------------------------------------------------------- the re-run
 

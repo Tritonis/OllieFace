@@ -280,6 +280,46 @@ console.log('\nthe audit §2.1 bucketing re-run separates every group this wave 
   }
 }
 
+console.log('\nthe reservation is checked over the enemy tables too, and can fail there');
+{
+  const { reservedViolation } = await import('../src/data/colourFamily.js');
+  const { ELEMENT_HUE, goreColour, elementOf } = await import('../src/data/damageTypes.js');
+  const { enemyCore, enemyRim, elementFromHex } = await import('../src/data/elementVoice.js');
+
+  // RED arm: the exact hue `nature` shipped with, on the exact surface it
+  // shipped on. If this stops being reported the guard has gone blind, which
+  // is the failure mode that let a mint-green nova through in the first place.
+  ok(reservedViolation(0x00ad5d, 'nature') === 'mint-green',
+    'the emerald that was nature.tail is still recognised as a reserved-hue violation');
+  ok(reservedViolation(0x3fd07a, 'nature') === 'mint-green'
+    && reservedViolation(0x86ffb4, 'nature') === 'mint-green',
+    'so are the ring and crit-tail that went with it');
+  ok(reservedViolation(0xff5fd0, 'fire') === 'magenta' && reservedViolation(0xff5fd0, 'void') === null,
+    'magenta is refused for a fire hit and allowed for a void one');
+  ok(reservedViolation(0xffffff, 'kinetic') === null,
+    'and white is not a hue anyone is spending, whatever band it falls in');
+
+  // GREEN arm: every hue the enemy side can actually put on a damage surface.
+  for (const [element, hues] of Object.entries(ELEMENT_HUE)) {
+    for (const [where, hex] of Object.entries(hues)) {
+      ok(reservedViolation(hex, element) === null, `${element}.${where} is a legal damage hue`);
+    }
+    for (const [where, hex] of [['enemyCore', enemyCore(element)], ['enemyRim', enemyRim(element)],
+      ['goreColour', goreColour(element)]]) {
+      ok(reservedViolation(hex, element) === null, `${element} ${where} is a legal damage hue`);
+    }
+  }
+
+  // One element, one green: the two tables name the same literal.
+  ok(ELEMENT_HUE.nature.tail === ELEMENTS.toxic.hue,
+    'nature and toxic are the same green in both tables');
+  ok(familyOf(enemyCore('nature')) === 'acid-green' && familyOf(enemyRim('nature')) === 'acid-green',
+    'and the enemy nova core and rim carry it');
+  // m2: the gravity cue and the sparks it throws are one family, not two.
+  ok(elementFromHex(ELEMENTS.gravity.hue) === elementOf('gravity'),
+    'a gravity proc buckets to the same family its own hue does');
+}
+
 console.log('\na voice with no audio, and a cue with no row, are quiet rather than fatal');
 {
   ok(voice(null, 'fire', 'crack-body', { x: 0, y: 0, z: 0 }) === null, 'voice() survives a missing Audio');
