@@ -80,9 +80,23 @@ export class Realms {
       this.armedRealm = null;
       this._finaleAt = null;
       this._finaleOpen.clear();
-      // The doors of the old stage are gone; so are the arenas warmed for them.
-      this.warm.clear();
     });
+
+    // The arenas warmed for the old stage's doors go one event *earlier*, when
+    // the transition begins. `stageStart` is emitted immediately after
+    // `onStagePopulated` has offered this stage's gateways, so clearing there
+    // wiped every gateway record a microsecond after it was created and no
+    // gateway was ever warmed at all (integration review 2026-08-23, MAJOR-1).
+    // `stageChanging` is raised by `Progression._startTransition`, at the moment
+    // the doors it is about to free actually stop existing — which is also what
+    // the old comment here claimed to be waiting for.
+    //
+    // A realm round trip (`exit !== 'advance'`) raises neither event, so the
+    // sibling doors still standing on this stage keep their warm records across
+    // the visit; only the door taken is consumed, by `warm.take`. That was
+    // already the behaviour and is now deliberate. An exit that *advances*
+    // reaches `advanceStage` -> `_startTransition`, and clears here as it must.
+    ctx.events.on('stageChanging', () => this.warm.clear());
 
     // Corruption is the router, and the router keeps routing after the gate
     // opens. The band can climb (or bleed back) while the party walks to the

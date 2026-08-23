@@ -292,5 +292,142 @@ ok(leaked.includes('fog.density') || leaked.includes('key.intensity') || leaked.
   ok(warm.take('crucible') === null, 'a second take finds nothing');
 }
 
+// ------------------------------- 5. the gateway survives the real emit order
+//
+// The bug this section exists for (integration review 2026-08-23, MAJOR-1): a
+// gateway's warm record was created by `Realms.onStagePopulated` and destroyed
+// by the `stageStart` emitted on the very next line of `Progression._openStage`,
+// so the ordinary hidden-realm door was never warmed once. Both instruments
+// written for #183/#192 injected `realmOffer` by hand and never drove a stage,
+// which is exactly why neither could see it. So this drives the *real*
+// `_openStage` and the *real* `_startTransition` on a real `Realms`, and the
+// order of the emits comes from the source rather than from this file.
+{
+  const { Realms } = await import('../src/world/realms/Realms.js');
+  const { Progression } = await import('../src/systems/Progression.js');
+
+  const makeBus = () => {
+    const m = new Map();
+    return {
+      on(n, f) { if (!m.has(n)) m.set(n, new Set()); m.get(n).add(f); return () => m.get(n).delete(f); },
+      emit(n, p) { for (const f of [...(m.get(n) ?? [])]) f(p); },
+    };
+  };
+
+  const offered = [];
+  const at = new THREE.Vector3(30, 0, 30);
+  const ctx = {
+    events: makeBus(),
+    authority: true,
+    // Truthy renderer only: `RealmWarm.offer` refuses to record anything
+    // headless, and the record is the whole subject here. Nothing compiles —
+    // `step()` is never pumped in this section.
+    pipeline: { renderer: {} },
+    scene: new THREE.Scene(),
+    rng: { next: () => 0, pick: (a) => a[0] },
+    player: { position: new THREE.Vector3() },
+    stage: { landmarks: [], randomWalkablePoint: () => at.clone() },
+    interactables: { list: [], add() {}, populate: () => ({ position: new THREE.Vector3() }), clear() {} },
+    audio: { play() {} },
+  };
+  ctx.events.on('realmOffer', (e) => offered.push(e.id));
+
+  const realms = new Realms();
+  realms.init(ctx);
+
+  const prog = Object.create(Progression.prototype);
+  prog.ctx = ctx;
+  prog.vault = null;
+  prog.interactables = ctx.interactables;
+  prog.transition = null;
+  // Keep the transition incremental so `_startTransition` returns without
+  // building a stage this fixture does not have.
+  prog.stretchTransitions = true;
+
+  prog._openStage(3);
+
+  const gateways = [...realms.warm.records.keys()];
+  ok(offered.length > 0, `the real stage populate offers at least one gateway (${offered.join(', ') || 'none'})`);
+  ok(gateways.length === offered.length && offered.every((id) => realms.warm.records.has(id)),
+    `and every gateway offered is still warm after the stageStart that follows it (records: ${gateways.join(', ') || 'none'})`);
+
+  // The positive control for the assertion above: put the clear back where it
+  // was and the same sequence must lose the record. Without this the check
+  // above passes on a fixture that simply never offered anything.
+  {
+    const ctx2 = { ...ctx, events: makeBus(), interactables: { ...ctx.interactables } };
+    const realms2 = new Realms();
+    realms2.init(ctx2);
+    ctx2.events.on('stageStart', () => realms2.warm.clear());   // the old wiring
+    const prog2 = Object.create(Progression.prototype);
+    Object.assign(prog2, prog, { ctx: ctx2, interactables: ctx2.interactables });
+    prog2._openStage(3);
+    ok(realms2.warm.records.size === 0,
+      'and clearing on stageStart instead loses it — the check can fail');
+  }
+
+  // The other half of the move: the record must still die when the stage it
+  // belongs to does, and that is the *start* of the transition away from it.
+  prog._startTransition(4, true);
+  ok(realms.warm.records.size === 0,
+    'the transition off the stage takes its warmed arenas with it');
+
+  // A realm round trip raises neither event, so the doors still standing on
+  // this stage keep their records across a visit. Documented, not new.
+  realms.warm.offer('crucible');
+  realms.warm.offer('vault');
+  realms.warm.take('crucible');
+  ok(realms.warm.records.has('vault'),
+    'entering one door leaves its siblings on the same stage warm');
+}
+
+// ------------------------------------- 6. clear() hands the compile lock back
+{
+  const { RealmWarm } = await import('../src/world/realms/RealmWarm.js');
+  // A renderer whose `compileAsync` never settles — the exact shape minor-2
+  // described, where the only thing that ever released `_busy` never runs.
+  let settle;
+  const ctx = {
+    scene: new THREE.Scene(),
+    camera: new THREE.PerspectiveCamera(),
+    realms: { inRealm: false },
+    pipeline: {
+      renderer: {
+        getRenderTarget: () => null,
+        setRenderTarget() {},
+        compileAsync: () => new Promise((r) => { settle = r; }),
+      },
+      composer: { renderTarget1: {} },
+      passes: {},
+    },
+    environment: { bakeDetachedProbe: () => ({ texture: {}, dispose() {} }) },
+    stage: {},
+  };
+  const warm = new RealmWarm(ctx);
+  warm.offer('crucible');
+  for (let i = 0; i < 4; i++) warm.step();     // build, bake, props, compile
+  ok(warm._busy === true, 'a compile in flight holds the warm lock');
+
+  const orphan = settle;   // the promise the cleared record left in flight
+  settle = null;
+  warm.clear();
+  ok(warm._busy === false, 'and clear() hands it back rather than wedging the session');
+
+  warm.offer('vault');
+  warm.step();
+  ok(warm.records.get('vault')?.stage != null,
+    'so warming works again after a stage change landed mid-compile');
+
+  // The orphaned promise finally settles. It must not touch the lock the new
+  // generation is holding.
+  const rec = warm.records.get('vault');
+  for (let i = 0; i < 3; i++) { warm.step(); }
+  const busyBefore = warm._busy;
+  orphan?.();
+  await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+  ok(warm._busy === busyBefore && rec.step !== 'ready',
+    'the orphaned compile releases nothing and promotes nothing');
+}
+
 console.log(`\n${fail ? 'FAIL' : 'PASS'}  realm-warm-probe: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

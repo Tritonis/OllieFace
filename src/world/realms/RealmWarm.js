@@ -167,6 +167,8 @@ export class RealmWarm {
     /** id -> { def, stage, rt, step, error } */
     this.records = new Map();
     this._busy = false;
+    /** Bumped by `clear()`; a compile from an older generation reports nowhere. */
+    this._gen = 0;
   }
 
   /** A door has spawned. Start warming, once. */
@@ -223,7 +225,12 @@ export class RealmWarm {
         rec.spread++;
         rec.step = 'compiling';
         this._busy = true;
+        const gen = this._gen;
         this._compile(rec, extra).finally(() => {
+          // A `clear()` landed while this was in flight: the record is gone and
+          // the lock has already been handed to whatever warms next. Writing
+          // `_busy` from here would unlock a compile that is still running.
+          if (gen !== this._gen) return;
           this._busy = false;
           if (rec.step !== 'compiling') return;
           rec.step = rec.spread < LIGHT_SPREAD ? 'compile' : 'ready';
@@ -426,5 +433,12 @@ export class RealmWarm {
     this.records.clear();
     for (const p of this._props ?? []) p.dispose?.();
     this._props = null;
+    // The lock goes with them. `_busy` is only ever released by a `compileAsync`
+    // promise settling, so a stage change landing mid-compile against a driver
+    // that never settles that promise would otherwise wedge `step()` — and with
+    // it every future warm — for the rest of the session. The generation bump is
+    // what stops the old promise from releasing a lock it no longer holds.
+    this._gen++;
+    this._busy = false;
   }
 }

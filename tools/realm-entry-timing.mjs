@@ -151,9 +151,16 @@ const out = await page.evaluate(async ({ realmId, warm, skip, twice }) => {
     res.lightsAtCompile = [];
     pipe.renderer.compileAsync = (...a) => { res.lightsAtCompile.push(countLightsNow()); return realCA(...a); };
 
-    // Exactly what a door opening does. Then let the prewarm run its course.
+    // Exactly what a door opening does — *including* what happens on the very
+    // next line of `Progression._openStage`, which is a `stageStart`. Offering
+    // by itself is the convenient sequence, not the real one, and measuring
+    // against it is how a gateway that never warmed at all read as 14 ms for a
+    // whole round of review (integration review 2026-08-23, MAJOR-1). The
+    // survival of the record across that emit is now a reported fact.
     const w0 = renderTimes.length;
     ctx.events.emit('realmOffer', { id: realmId, kind: 'gateway', stage: 3, cost: 0 });
+    ctx.events.emit('stageStart', { index: ctx.progression?.stageIndex ?? 3, name: ctx.progression?.stageName ?? '' });
+    res.warmSurvivedStageStart = ctx.realms.warm.records.has(realmId);
     // Wait for the warm to finish rather than for a fixed count: how many
     // frames of walking it needs is one of the numbers this tool is for.
     let waited = 0;

@@ -464,6 +464,15 @@ export class Progression {
     // for free by blocking the loop; it is deliberate now.
     if (this.ctx) this.ctx.stageChanging = true;
 
+    // The outgoing stage's furniture dies *here*, not at `stageStart`.
+    // `stageStart` is emitted from `_openStage`, one statement after
+    // `Realms.onStagePopulated` has already offered the *new* stage's gateways,
+    // so a listener that tears realm state down on `stageStart` destroys the
+    // records it was meant to protect (integration review 2026-08-23, MAJOR-1:
+    // no gateway was ever warmed). Anything keyed to the stage being left
+    // listens to this instead, and gets the whole build to work in.
+    this.ctx?.events?.emit?.('stageChanging', { index, host });
+
     // The player is a passenger for the length of the fade. Saved and restored
     // rather than forced back to true: the emergency pause overlay owns this
     // same switch, and a transition must not be the thing that hands control
