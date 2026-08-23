@@ -141,7 +141,7 @@ export const EQUIPMENT = [
     id: 'thermal-lance', name: 'Thermal Lance', tier: 'equipment', glyph: 'lance',
     flavour: 'A mining tool. The manual is very clear about that.',
     cooldown: 26,
-    description: () => 'Bore a searing lance through up to 5 enemies for 1400% damage each, igniting them.',
+    description: () => 'Bore a lance of concentrated heat through up to 5 enemies for 1400% damage each. It sears in the moment and leaves nothing burning.',
     use: (api) => {
       // A bored lance is the line class (§1.3) in the fire element, and this
       // card had no vfx call of its own at all: the beams below are now
