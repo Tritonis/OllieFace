@@ -131,9 +131,14 @@ export const EQUIPMENT = [
       const max = p.stats?.maxHealth || 100;
       api.combat.heal(p, max * 0.5);
       api.items.addBarrier(max * 0.25);
-      api.ctx.vfx?.ring?.(p.position, 6, 0x8bffbe);
+      // C5: the healing family is radial-spark · rising, and this stays in it
+      // at heavy intensity rather than borrowing the equipment ring. The
+      // shared `heal` voice is the *tick* sound of a heal-over-time and made a
+      // half-bar restoration sound like an item proc; the row's own ascending
+      // ladder is what says how much just happened.
       api.ctx.vfx?.healPop?.(p.position, Math.round(max * 0.5));
-      api.ctx.audio?.play?.('heal', p.position);
+      api.ctx.vfx?.hitSpark?.(p.position, ELEMENTS.restorative.hue, 1.6);
+      speak(api, 'mending-flare', p.position);
       return true;
     },
   },

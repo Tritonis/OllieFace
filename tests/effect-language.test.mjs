@@ -22,7 +22,9 @@
 import * as THREE from 'three';
 import { ITEM_BY_ID } from '../src/data/items.js';
 import { EQUIPMENT_BY_ID } from '../src/data/equipment.js';
-import { ELEMENTS, ITEM_EFFECTS, EQUIPMENT_EFFECTS, effectOf, cue, voice } from '../src/data/effects.js';
+import { ELEMENTS, ITEM_EFFECTS, EQUIPMENT_EFFECTS, effectOf, cue, voice,
+  NAMED_PROMISE, degradedKey, degradedCollision, allEffects } from '../src/data/effects.js';
+import { SAMPLES } from '../src/data/samples.js';
 import { buckets, familyOf } from '../tools/bucket-effects.mjs';
 
 let pass = 0, fail = 0;
@@ -35,24 +37,33 @@ const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } e
  * every element recipe goes through: the tones, the noise band and the envelope
  * are all arguments to it, so recording the call is recording the voice.
  */
-function rig() {
+function rig({ samples = false } = {}) {
   const sparks = [], sustains = [], beams = [], missiles = [], rings = [];
+  const bursts = [], explosions = [], healPops = [], sampled = [];
   const ctx = {
     time: 10,
     authority: true,
     vfx: {
       hitSpark: (pos, colour, scale) => sparks.push({ pos, colour, scale }),
-      beam: (from, to, colour) => beams.push({ colour }),
-      missile: (from, to, colour) => missiles.push({ colour }),
-      ring: (pos, r, colour) => rings.push({ colour }),
-      burst: () => {},
-      explosion: () => {},
-      healPop: () => {},
+      beam: (from, to, colour) => beams.push({ from, to, colour }),
+      missile: (from, to, colour) => missiles.push({ from, to, colour }),
+      ring: (pos, r, colour) => rings.push({ pos, r, colour }),
+      burst: (pos, colour) => bursts.push({ pos, colour }),
+      explosion: (pos, radius, colour) => explosions.push({ pos, radius, colour }),
+      healPop: (pos, amount) => healPops.push({ pos, amount }),
       rings: { spawn: (o, a, colour, r0, r1) => rings.push({ colour, r0, r1 }) },
     },
     audio: {
       played: [],
       play: (name) => ctx.audio.played.push(name),
+      // `samples: false` is the degraded mode #148 may leave behind — a sample
+      // that is declined, unloaded or missing refuses, and the cue must fall
+      // through to the procedural recipe rather than going silent.
+      playSample: (id, pos, opts) => {
+        if (!samples) return false;
+        sampled.push({ id, pos, opts });
+        return true;
+      },
       startSustained: (pos, recipe) => {
         sustains.push({ pos, recipe });
         return { active: true, move: () => {}, release: () => {} };
@@ -60,7 +71,7 @@ function rig() {
     },
     pipeline: { addShake: () => {} },
   };
-  return { ctx, sparks, sustains, beams, missiles, rings };
+  return { ctx, sparks, sustains, beams, missiles, rings, bursts, explosions, healPops, sampled };
 }
 
 /** The `api` an item hook is handed, with just enough of Items to run one. */
@@ -326,6 +337,153 @@ console.log('\na voice with no audio, and a cue with no row, are quiet rather th
   const { ctx, sparks } = rig();
   ok(cue(apiFor(ctx), 'no-such-item', { x: 1, y: 0, z: 1 }) === false && sparks.length === 0,
     'cue() refuses an id with no row');
+}
+
+// ------------------------------------------------------------------------
+// §4.2, second bullet: the thirteen named-promise items.
+//
+// Each was promised an effect of its own by name and each was getting the
+// generic floor. What is under test is not "it emits something" — the floor
+// already did that — but that it emits *its own figure*: the particular
+// primitives, in its own element, and nothing of the floor's spark on top.
+console.log('\nthe thirteen named-promise items each draw a figure of their own');
+{
+  const t = victim();
+  /** Fire one item's real hook and hand back everything the ctx recorded. */
+  const fire = (id, how, opts) => {
+    const r = rig(opts);
+    const api = apiFor(r.ctx);
+    api.combat.sphereOverlap = () => 1;
+    api.combat.overlapAt = () => t;
+    api.combat.nearestHostile = () => t;
+    api.ctx.corruption = { sanctified: true, bleed: () => {} };
+    how(ITEM_BY_ID.get(id).hooks, api, r);
+    return r;
+  };
+  const onHit = (e = {}) => (h, api) => h.onHit({ target: t, position: t.position, amount: 400, ...e }, api);
+  const onKill = (h, api) => h.onKill({ target: t, victim: t, position: t.position }, api);
+  const onDamaged = (h, api) => h.onDamaged({ amount: 10 }, api);
+
+  // Each row: id, how to fire it, and the claim its figure makes.
+  const CASES = [
+    ['chime-of-absolution', onKill, 'void',
+      (r) => r.rings.length === 2 && r.rings[0].r !== r.rings[1].r, 'two concentric rings, a bell seen'],
+    ['battle-hymn', onDamaged, 'restorative',
+      (r) => r.bursts.length === 1 && r.rings.length === 1, 'a burst lifting inside a ring'],
+    ['whisper-stalks', onKill, 'void',
+      (r) => r.beams.length === 3 && r.beams.every((b) => b.to.y > b.from.y), 'three lines that stand up'],
+    ['carrion-flies', (h, api) => h.onInterval({ dt: 0.1 }, api), 'toxic',
+      (r) => r.missiles.length === 2, 'streaks hanging on the body'],
+    ['charnel-bloom', onKill, 'restorative',
+      (r) => r.rings.length === 1 && r.healPops.length === 1, 'a ring opening over a heal'],
+    ['concussion-charge', onHit(), 'shock',
+      (r) => r.rings.length === 1 && r.sparks.length === 1, 'one hard ring and a flash'],
+    ['red-mist-pauldron', onKill, 'blast',
+      (r) => r.bursts.length === 1 && r.rings.length === 1, 'mist climbing the survivor'],
+    ['corpse-flare', onKill, 'fire',
+      (r) => r.beams.length === 1 && r.beams[0].to.y > r.beams[0].from.y + 5, 'a pillar, not a puff'],
+    ['molten-core', (h, api) => h.onInterval({ dt: 0.1 }, api), 'fire',
+      (r) => r.explosions.length === 1 && r.explosions[0].radius >= 10, 'the mountain, at ten metres'],
+    ['resonance-coil', onHit(), 'blast',
+      (r) => r.rings.length === 3, 'three rings out of one strike'],
+    ['hoarfrost-band', onHit(), 'frost',
+      (r) => r.rings.length === 1 && r.beams.length === 4, 'a front of shards, not a smooth ring'],
+    ['kinetic-recycler', onDamaged, 'blast',
+      (r) => r.rings.length === 1 && r.bursts.length === 1, 'the hit handed back as a shell'],
+    ['shrapnel-heart', onHit({ type: 'primary' }), 'blast',
+      (r) => r.sparks.length === 1 && r.sparks[0].scale <= 0.5, 'deliberately small, per §4.2'],
+  ];
+  ok(CASES.length === 13, `${CASES.length} named-promise items covered`);
+  ok(NAMED_PROMISE.length === 13 && CASES.every(([id]) => NAMED_PROMISE.includes(id)),
+    'and the thirteen the code authors are the thirteen the document names');
+
+  for (const [id, how, element, claim, what] of CASES) {
+    const r = fire(id, how);
+    const drawn = [...r.rings, ...r.beams, ...r.missiles, ...r.bursts, ...r.explosions, ...r.sparks];
+    ok(drawn.length > 0, `${id} draws`);
+    ok(claim(r), `${id}: ${what}`);
+    ok(drawn.every((d) => d.colour === undefined || d.colour === ELEMENTS[element].hue),
+      `${id} draws entirely in ${element}`);
+    // The floor's spark on top of an authored figure is the language adding
+    // particles rather than meaning. Shrapnel Heart *is* the spark, by design.
+    if (id !== 'shrapnel-heart' && id !== 'concussion-charge') {
+      ok(r.sparks.length === 0, `${id} does not also fire the generic floor spark`);
+    }
+    ok(r.sustains.length === 1, `${id} speaks once, in its own envelope`);
+    const row = effectOf(id);
+    ok(Math.abs(r.sustains[0].recipe.release - ({
+      'pip': 0.05, 'tick-thump': 0.09, 'crack-body': 0.20, 'crack-tonal-fall': 0.34,
+      'crack-rumble-sub': 0.60, 'sweep-crackle': 0.24, 'ascending-sine': 0.30, 'chord': 0.45,
+      'plucked-tonal': 0.45, 'wobble-drone': 0.55, 'sustained-low-chord': 0.80,
+      'sustained-rise': 0.40,
+    })[row.envelope]) < 1e-6, `${id}'s voice is the ${row.envelope} envelope it declares`);
+  }
+
+  // The floor is untouched by all of this: an item nobody promised anything to
+  // still gets exactly the spark and the tick voice §4.2's first bullet buys.
+  const plain = rig();
+  const papi = apiFor(plain.ctx);
+  ITEM_BY_ID.get('tar-charge').hooks.onHit({ target: t, position: t.position, amount: 40 }, papi);
+  ok(plain.sparks.length === 1 && plain.rings.length === 0 && plain.beams.length === 0,
+    'a floor item still emits the floor, and only the floor');
+}
+
+console.log('\nthe sampled voices ride the samples, and survive their absence');
+{
+  const t = victim();
+  const drive = (opts) => {
+    const r = rig(opts);
+    const api = apiFor(r.ctx);
+    ITEM_BY_ID.get('battle-hymn').hooks.onDamaged({ amount: 10 }, api);
+    return r;
+  };
+  const withSample = drive({ samples: true });
+  ok(withSample.sampled.length === 1 && withSample.sampled[0].id === 'battle-hymn',
+    'battle-hymn plays its recording when #148 supplied one');
+  ok(withSample.sustains.length === 0, 'and does not double up with the synthesized recipe');
+
+  // The degraded mode. This is the arm that matters: #148 may decline.
+  const without = drive({ samples: false });
+  ok(without.sampled.length === 0 && without.sustains.length === 1,
+    'a refused sample falls through to the procedural recipe rather than to silence');
+  ok(without.sustains[0].recipe.tones.every((x) => x.type === 'sine'),
+    'in the restorative recipe it degrades to');
+
+  // §4.2's Degraded Point rule, checked with the timbre axis struck out.
+  const { rows } = buckets();
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  const sampledIds = SAMPLES.map((s) => s.id).filter((id) => byId.has(id));
+  ok(sampledIds.length >= 6, `${sampledIds.length} sampled voices reach the item surface`);
+  const points = new Set(sampledIds.map((id) => degradedKey(effectOf(id))));
+  ok(points.size === sampledIds.length,
+    `all ${sampledIds.length} separate on colour, frame or motion — never on timbre alone`);
+
+  // RED arm. A guard that has only ever been run over a clean surface is a
+  // guard nobody has watched fail, which is this repo's characteristic defect.
+  const forged = [effectOf('carrion-flies'), { ...effectOf('hive-gland'), motion: 'held' }];
+  const clash = degradedCollision(forged);
+  ok(clash?.a === 'carrion-flies' && clash?.b === 'hive-gland',
+    'and the check reports a collision when two sampled rows are given one');
+  ok(degradedCollision(allEffects()) === null, 'while the real surface has none');
+}
+
+console.log('\nC5: the mending flare is a heal at event scale, not another ring');
+{
+  const r = rig();
+  const api = apiFor(r.ctx);
+  EQUIPMENT_BY_ID.get('mending-flare').use(api);
+  ok(r.healPops.length === 1, 'it still pops a heal');
+  ok(r.rings.length === 0, 'and has stopped drawing the equipment tier\'s ring over it');
+  ok(r.sparks.length === 1 && r.sparks[0].colour === ELEMENTS.restorative.hue
+    && r.sparks[0].scale >= 1.5,
+    'the healing family\'s radial-spark, at the scale half a health bar deserves');
+  ok(!r.ctx.audio.played.includes('heal'),
+    'it no longer borrows the heal-tick voice a per-second regen uses');
+  ok(r.sustains.length === 1 && Math.abs(r.sustains[0].recipe.release - 0.30) < 1e-6,
+    'speaking instead on its own ascending ladder');
+  const row = EQUIPMENT_EFFECTS['mending-flare'];
+  ok(row.frame === 'radial-spark' && row.motion === 'rising',
+    'and it stays in §3 C5\'s healing family: radial-spark, rising');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
