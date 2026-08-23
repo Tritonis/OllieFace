@@ -55,18 +55,16 @@ dist-desktop/win-unpacked/
   resources/app/
     desktop/main.mjs         the shell
     desktop/preload.cjs      the bridge
-    desktop/net-bridge-renderer.cjs  test-only scaffolding, see below
     desktop/steam.mjs        guarded steamworks.js init
     desktop/steam-validate.mjs   input validation for the Steam IPC surface
     dist/                    the built game (index.html + assets/)
     package.json             for `main` and metadata
 ```
 
-`desktop/net-bridge-renderer.cjs` ships too, deliberately unexcluded. It is
-test-only scaffolding that reads the inlined block out of `preload.cjs` at
-test time, so nothing at runtime requires it. Shipping it costs nothing worth
-a special-cased exclusion (#130), so `build.files` leaves it in the same way
-it leaves in every other `desktop/*` source file.
+`desktop/net-bridge-renderer.cjs` is **not** in that tree. It is test-only
+scaffolding that reads the inlined block out of `preload.cjs` at test time —
+nothing at runtime requires it — so `build.files` excludes it by name.
+`tests/steam-sdk-packaging.test.mjs` proves it stays out.
 
 Two exclusions in the `build.files` list are load-bearing, both verified after
 every pack:
