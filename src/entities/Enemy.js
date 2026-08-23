@@ -646,13 +646,16 @@ export class Enemy {
     // a flat "no healing on this stage" with nothing to do about it.
     if (em && em.denyRadius && this.alive && !this.submerged) {
       this.auraT -= h;
-      // The boundary is the mechanic, so the boundary is drawn: a held ground
-      // ring at denyRadius, renewed just longer than its own tick so it never
-      // blinks and never expands - a hazard ring, not an event ring.
-      ctx.director?.spawnTelegraph?.(this.position.x, this.position.z,
-        em.denyRadius, 0.46, WITHER_HUE);
       if (this.auraT <= 0) {
         this.auraT = 0.4;
+        // The boundary is the mechanic, so the boundary is drawn: a held ground
+        // ring at denyRadius, renewed just longer than its own tick so it never
+        // blinks and never expands - a hazard ring, not an event ring. Inside
+        // the cadence gate, like emberclad's and voidtouched's: spawned above it
+        // this ran once per frame, 60 rings a second, and 29 coincident
+        // additive rings render the 0.62 opacity ceiling as a filled disc.
+        ctx.director?.spawnTelegraph?.(this.position.x, this.position.z,
+          em.denyRadius, 0.46, WITHER_HUE);
         if (this.distToPlayer < em.denyRadius && this.hasLOS) {
           const wasDenied = ctx.director?.healingDeniedFor?.(this.targetPlayer);
           ctx.director?.denyHealing?.(em.denyTime, this.targetPlayer);

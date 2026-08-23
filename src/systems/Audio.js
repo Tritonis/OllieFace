@@ -99,6 +99,25 @@ import { SUSTAIN, TRANSIENT } from '../data/elementVoice.js';
  */
 const WORLD_VOICES = 44;
 const PRIORITY_RESERVE = 28;
+/**
+ * Windup voices are the one world sound that is *held* for its whole window —
+ * up to 1.9 s for a Colossus barrage — and `maxAlive` is per-card, so fourteen
+ * of them at once is ordinary rather than pathological. Measured, fourteen
+ * shock windups took 42 of the 44 world nodes on their own and every zap after
+ * them was refused: a class of sound that can hold the bucket shut for two
+ * seconds is not a world sound competing, it is a world sound starving.
+ *
+ * So they get a sub-budget of their own inside the world bucket. 12 nodes is
+ * three or four simultaneous telegraphs of the most expensive elements, which
+ * is as many as a player can read at once anyway, and it leaves at least 32
+ * world nodes standing for the zap (7), the impacts and the item cues that the
+ * telegraph is warning about. When the sub-budget is full the *nearest* windup
+ * wins — a telegraph exists to be reacted to, and the one across the arena is
+ * the one you are not reacting to.
+ */
+const WINDUP_VOICES = 12;
+/** Beyond `windupVoice`'s own `maxDistance` a windup is inaudible; do not charge for it. */
+const WINDUP_CULL = 120;
 const MAX_VOICES = WORLD_VOICES + PRIORITY_RESERVE;
 
 /**
@@ -231,6 +250,15 @@ export class Audio {
     // the loudest fight in the game.
     this.priorityVoices = 0;
     this._priorityCharge = false;
+    // Live windup voices, nearest-first bookkeeping for WINDUP_VOICES. Each
+    // entry is { h, cost, d2 }; `windupNodes` is their summed cost and is what
+    // the sub-budget is measured against.
+    this._windups = [];
+    this.windupNodes = 0;
+    // Where the mix is listening from, mirrored out of `update` so a sound can
+    // be culled *before* it is charged. A panner attenuates a distant windup
+    // but still spends its nodes, which is the half of the problem that showed.
+    this._listener = { x: 0, y: 0, z: 0 };
     // Gate diagnostics. Read by the audio probes; nothing makes decisions on
     // them. They are here because "how often is the mix being deleted" was
     // reported from a one-off instrumented build twice and disagreed with
@@ -1037,15 +1065,82 @@ export class Audio {
     const r = SUSTAIN[element] || SUSTAIN.kinetic;
     const rise = Math.max(0.05, duration || 0.5);
     const scale = (g) => Math.max(0.0002, g * gain);
-    return this.startSustained(pos, {
+    const cost = r.tones.length + (r.noise ? 1 : 0);
+    const d2 = this._listenerDist2(pos);
+    // Out of earshot: refused before it is charged, not after it is attenuated.
+    if (d2 > WINDUP_CULL * WINDUP_CULL) { this._takes++; this._refusals++; return NULL_SUSTAIN; }
+    if (!this._makeWindupRoom(cost, d2)) { this._takes++; this._refusals++; return NULL_SUSTAIN; }
+    const h = this.startSustained(pos, {
       tones: r.tones.map((t) => ({ ...t, gain: scale(t.gain) })),
       noise: r.noise ? { ...r.noise, gain: scale(r.noise.gain) } : null,
       attack: Math.min(r.attack, rise * 0.6),
       release: 0.08,
       rise,
       refDistance: 10,
-      maxDistance: 120,
+      maxDistance: WINDUP_CULL,
     });
+    if (!h.active) return h;
+    return this._trackWindup(h, cost, d2);
+  }
+
+  /** Squared distance from the listener, or 0 for an unplaceable sound. */
+  _listenerDist2(pos) {
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return 0;
+    const L = this._listener;
+    const dx = pos.x - L.x, dy = (pos.y ?? 0) - L.y, dz = pos.z - L.z;
+    return dx * dx + dy * dy + dz * dz;
+  }
+
+  /**
+   * Make `cost` nodes of room in the windup sub-budget for a voice `d2` away,
+   * by releasing held windups that are further off than it. Returns false — and
+   * evicts nothing — when even taking every further one would not be enough, so
+   * a refused voice never costs an audible one its place.
+   */
+  _makeWindupRoom(cost, d2) {
+    if (cost < 1 || cost > WINDUP_VOICES) return false;
+    if (this.windupNodes + cost <= WINDUP_VOICES) return true;
+    const further = this._windups.filter((w) => w.d2 > d2).sort((a, b) => b.d2 - a.d2);
+    let freed = 0;
+    const doomed = [];
+    for (const w of further) {
+      if (this.windupNodes - freed + cost <= WINDUP_VOICES) break;
+      freed += w.cost;
+      doomed.push(w);
+    }
+    if (this.windupNodes - freed + cost > WINDUP_VOICES) return false;
+    // Release, not stop: the fade and the budget give-back are the handle's own.
+    for (const w of doomed) w.h.release(0.05);
+    return true;
+  }
+
+  /**
+   * Enrol a live windup in the sub-budget. The handle is wrapped rather than
+   * decorated so every exit — the caller's release, an eviction, an idempotent
+   * second release — gives the nodes back exactly once.
+   */
+  _trackWindup(h, cost, d2) {
+    const entry = { h: null, cost, d2 };
+    let counted = true;
+    this.windupNodes += cost;
+    const drop = () => {
+      if (!counted) return;
+      counted = false;
+      this.windupNodes = Math.max(0, this.windupNodes - cost);
+      const i = this._windups.indexOf(entry);
+      if (i >= 0) this._windups.splice(i, 1);
+    };
+    const wrapped = {
+      get active() { return h.active; },
+      move: (p) => {
+        h.move(p);
+        entry.d2 = this._listenerDist2(p) || entry.d2;
+      },
+      release: (fade) => { drop(); h.release(fade); },
+    };
+    entry.h = wrapped;
+    this._windups.push(entry);
+    return wrapped;
   }
 
   /**
@@ -1860,6 +1955,7 @@ export class Audio {
     const cam = ctx.camera;
     if (cam) {
       cam.getWorldPosition(_camPos);
+      this._listener.x = _camPos.x; this._listener.y = _camPos.y; this._listener.z = _camPos.z;
       _mat.extractRotation(cam.matrixWorld);
       _camDir.set(0, 0, -1).applyMatrix4(_mat);
       _camUp.set(0, 1, 0).applyMatrix4(_mat);

@@ -159,7 +159,8 @@ const STEP_GAIN = { tick: 0.45, event: 1, heavy: 1.5 };
  * event (a snare's pull, a dome standing) can hold it and release at the end;
  * every other caller ignores it, because the release is already scheduled.
  */
-export function voice(audio, element, envelope, pos, step = 'event', { hold = null, pitch = 1 } = {}) {
+export function voice(audio, element, envelope, pos, step = 'event',
+  { hold = null, pitch = 1, priority = null } = {}) {
   if (!audio?.startSustained) return null;
   const env = ENVELOPES[envelope];
   const recipe = RECIPES[element];
@@ -172,8 +173,13 @@ export function voice(audio, element, envelope, pos, step = 'event', { hold = nu
     attack: env.attack,
     release: env.hold,
     // A held voice is a state and outranks a burst for the last slot in the
-    // budget; a tick proc never does.
-    priority: hold === true && step !== 'tick',
+    // budget; a tick proc never does. A caller may say otherwise, and the held
+    // equipment ambiences do: the reserve is sized for the *transient* feedback
+    // a player must hear at the instant it happens (a pickup, a level-up and a
+    // hurt overlapping is 26 of its 28 nodes), and a chord that stands for eight
+    // seconds is not that. Measured, one held dome spent the reserve's entire
+    // remaining headroom and a second refused `playerHurt` outright.
+    priority: priority === null ? (hold === true && step !== 'tick') : priority === true,
   });
   // `hold === true` means the caller owns the ending. Everything else is a
   // burst: released immediately, so `attack` is the onset and `release` the
