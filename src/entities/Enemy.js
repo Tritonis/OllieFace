@@ -307,6 +307,11 @@ export class Enemy {
     this.despawned = false;
     this.radius = def.radius;
     this.height = def.height;
+    // Player-shot-only forgiveness; see the `hurtbox` note in data/enemies.js.
+    // Resolved to absolute metres here so the hot collision test is two reads
+    // and no multiply.
+    this.hurtRadius = def.radius * (def.hurtbox?.radius ?? 1);
+    this.hurtHeight = def.height * (def.hurtbox?.height ?? 1);
     this.isBoss = !!def.isBoss;
     this.phase = 1;
     // Health fractions at which the fight changes shape. `phase2At` is the

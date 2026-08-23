@@ -38,6 +38,23 @@ const STATUS_DEFS = {
 // a full-health survivor through the rider alone.
 const PLAYER_DOT_STACK_CAP = 3;
 
+/**
+ * The widest circle an entity can be touched on, body or hurtbox.
+ *
+ * The broadphase is only allowed to be *conservative*: `candidatesNear` is
+ * asked for everything within `p.radius + maxEntityRadius`, and anything the
+ * hash omits the narrow test never gets to see. A hurtbox (#187) is larger
+ * than the body it wraps, so measuring the pile by body radius alone would
+ * quietly drop exactly the forgiving hits the hurtbox exists to grant — and
+ * drop them only on the hash path, leaving it disagreeing with the linear
+ * scan. Nothing here changes what a body *does*; it only widens the sieve.
+ */
+function broadphaseRadius(e) {
+  const r = e.radius || 0.5;
+  const h = e.hurtRadius || 0;
+  return h > r ? h : r;
+}
+
 // How many stacks of one *movement* debuff (slow, freeze - the statuses that
 // carry a `magnitude` and no damage rider) may sit on the survivor at once.
 // Monsters stay uncapped. Slows multiply: two stacks is 36% speed and three
@@ -112,7 +129,7 @@ export class Combat {
     entity._cellKey = null;
     // A unit spawned after this step's reindex has to widen the broadphase
     // immediately; the reindex will re-measure the whole registry next step.
-    const r = entity.radius || 0.5;
+    const r = broadphaseRadius(entity);
     if (r > this._maxEntityRadius) this._maxEntityRadius = r;
     entity._iframeUntil = 0;
     this.entities.push(entity);
@@ -168,7 +185,7 @@ export class Combat {
     let maxR = 0;
     for (let i = 0; i < this.entities.length; i++) {
       const e = this.entities[i];
-      const r = e.radius || 0.5;
+      const r = broadphaseRadius(e);
       if (r > maxR) maxR = r;
       if (!e.alive) continue;
       this._reindex(e);
