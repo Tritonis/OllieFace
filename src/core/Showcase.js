@@ -4,6 +4,7 @@ import { EQUIPMENT } from '../data/equipment.js';
 import { ITEMS, TIERS } from '../data/items.js';
 import { SPAWN_CARDS, BOSS_CARDS, ELITE_STATS } from '../data/enemies.js';
 import { SAMPLES } from '../data/samples.js';
+import { GEOMETRY_DEMOS, ELEMENTS } from '../data/effects.js';
 import { attackElement, sustainNodeCost, STATUS_VOICE } from '../data/elementVoice.js';
 import { ELEMENT_HUE } from '../data/damageTypes.js';
 
@@ -46,6 +47,11 @@ import { ELEMENT_HUE } from '../data/damageTypes.js';
 const _v = new THREE.Vector3();
 const _side = new THREE.Vector3();
 const UP = new THREE.Vector3(0, 1, 0);
+/* Scratch for the geometry demos — the VFX layer reads these and never keeps
+ * them, the same contract every other call site here relies on. */
+const _up0 = new THREE.Vector3();
+const _up1 = new THREE.Vector3();
+const _hop = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
 
 /** A point `dist` metres ahead of the camera, `lateral` metres to its right, on the ground. */
 function ground(ctx, dist = 12, lateral = 0) {
@@ -450,6 +456,51 @@ export function installShowcase(ctx) {
       const t = target(l); if (!t) return;
       ctx.vfx?.status?.(t, s, (ELEMENT_HUE[STATUS_VOICE[s].element] || ELEMENT_HUE.kinetic).tail);
     });
+  }
+
+  // --- new geometries -----------------------------------------------------
+  // Vocabulary, not gameplay: no ability or item adopts these yet, so the
+  // showcase is the *only* place they can be judged at all, which is exactly
+  // why they land here on the same day they are built rather than after
+  // something adopts them.
+  //
+  // The roster and every hue come off `GEOMETRY_DEMOS` and `ELEMENTS`; only
+  // the draw call — which is genuinely different per geometry — is written
+  // here, and `tests/showcase-surface.test.mjs` counts the entries against the
+  // table, so a row added without a draw is a failing test rather than a
+  // silently missing demo.
+  const GEOMETRY_DRAW = {
+    sector: (at, hue) => {
+      _v.set(0, 0, 1);
+      ctx.camera?.getWorldDirection?.(_v);
+      _v.y = 0;
+      ctx.vfx?.sectorTelegraph?.(at, _v, Math.PI / 5, hue, 0.6, 7, 0.9, 0.95);
+    },
+    helix: (at, hue) => {
+      _up0.set(at.x, at.y, at.z);
+      _up1.set(at.x, at.y + 5, at.z);
+      ctx.vfx?.helixLace?.(_up0, _up1, hue);
+    },
+    vortex: (at, hue) => {
+      _up0.set(at.x, at.y + 4.5, at.z);
+      _up1.set(at.x, at.y + 0.2, at.z);
+      ctx.vfx?.vortexDraw?.(_up0, _up1, hue);
+    },
+    chain: (at, hue) => {
+      // Three hops, so the multi-waypoint half of G-4 is what is on screen —
+      // a single A->B arc would demo only half the geometry.
+      _hop[0].set(at.x - 5, at.y + 1.2, at.z);
+      _hop[1].set(at.x, at.y + 1.6, at.z + 2.5);
+      _hop[2].set(at.x + 5, at.y + 1.2, at.z);
+      ctx.vfx?.chainBolt?.(_hop, hue, { segments: 6, jitter: 0.4, seed: 3 });
+    },
+  };
+  for (const [id, def] of Object.entries(GEOMETRY_DEMOS)) {
+    const draw = GEOMETRY_DRAW[id];
+    if (!draw) continue;
+    add('geometry', `geometry:${id}`, def.label,
+      (l) => draw(ground(ctx, 13, l), ELEMENTS[def.element].hue),
+      { frame: def.frame, motion: def.motion, element: def.element });
   }
 
   /* ------------------------------------------------------------- presets */

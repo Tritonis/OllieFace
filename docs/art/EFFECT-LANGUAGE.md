@@ -111,6 +111,24 @@ has a white core, a Harrier's amber barrage does not.
 | travelling ordnance | **streak** | `SPARK` stretched, `EMBER`, trail |
 | protective / warded | **lattice** | `HEX`, `SQUARE` shell, spin ≠ 0 |
 | telegraph / windup | **pose + ring** | pose plus a ground `SHOCK` ring |
+| directed ground area | **sector** | `SectorPool` arc — origin, facing, aperture |
+| ascent / descent about a path | **helix** | `SPARK`/`EMBER` laced on a spiral |
+| conduction / arcing between points | **chain** | jagged multi-segment `BeamPool` path |
+
+The last three were added on 2026-08-23
+(`docs/superpowers/plans/2026-08-23-new-vfx-geometries.md`) for three things the
+vocabulary could not draw at all: **where** an attack will land rather than only
+how far (a full ring is the only telegraph the language had), rotation about a
+path, and a path that is not a straight line. They are registered here and in
+`tools/bucket-effects.mjs`'s `FRAME_FAMILIES` before any ability or item names
+one — a family the bucketing check has never heard of is a family it cannot
+reason about, so the registration comes first and adoption is a separate,
+deliberate decision.
+
+**Helix** covers both directions. A rising helix and an inward vortex are one
+family separating on *motion* — outward/rising versus inward/contracting — which
+is §1.4's axis doing exactly the work it exists for; giving the vortex its own
+frame family would spend a shape on a difference motion already carries.
 
 **Lattice** is a new class name for an existing capability (`HEX` with spin,
 already used by `shieldBreak`), introduced so that "a shield is going up" and "a
