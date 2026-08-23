@@ -10,6 +10,21 @@ import { clamp } from '../core/MathUtil.js';
  * accounting and the `abilityUsed` event all live in Player — an ability only
  * describes what happens when it goes off.
  *
+ * `shape` is the §1.3 shape family this ability actually draws, declared the
+ * same way `data/equipment.js` declares `shape: 'beam'` rather than in a
+ * parallel scheme. It is read by nothing in play; it exists so the co-op
+ * collision fix (EFFECT-LANGUAGE.md §3.1, X1-X3) is *checkable*. In co-op two
+ * classes' kit colours co-occur — Ranger amber beside Cinder orange — and the
+ * language refuses to re-hue either, so the separation is §1.2 polarity plus
+ * the shape the colour takes. `tests/coop-shape-signature.test.mjs` holds each
+ * class's `shapeSignature` (survivors.js) to being unique on the roster and
+ * present in at least half its own kit.
+ *
+ * The families beyond §1.3's six are two compounds the roster needed:
+ * `charged-line` (Kestrel — a bead spool-up in front of a line, which is what
+ * `chargeTell` draws) and `streak-cone` (Cinder — a spray of short streaks down
+ * an axis, deliberately not `arcSlash`'s crescent, which is a swing).
+ *
  * `cooldown` is in seconds *before* `stats.cooldownMult`.
  * `scalesWithAttackSpeed` makes the recovery divide by `stats.attackSpeed`
  * (primary only, matching how RoR2 treats basic attacks).
@@ -276,6 +291,53 @@ function chargeTell(ctx, player, duration, colour, beads = 5) {
   }
 }
 
+/**
+ * Rook's shape signature: a hex cage struck up around a placed structure.
+ *
+ * §1.3 names **lattice** as the protective/warded family and calls out that it
+ * must not be the same shape as a nova going off — which is exactly what Ward
+ * and Sentry used to be, a beam and two expanding rings, indistinguishable at a
+ * glance from Anvil's Slam in a different colour. That is X1-X3's whole
+ * complaint, and it is answered here rather than by re-huing lime.
+ *
+ * Drawn out of `beams.spawn` alone: six uprights plus a top and bottom chord
+ * between them is a hexagonal prism, and a cage is a cage whether its edges
+ * came from a HEX sprite or from line segments. The one thing this cannot do is
+ * §1.3's non-zero *spin* — the beam pool draws static segments — so the lattice
+ * reads as a structure that snapped up and stayed, which is the right reading
+ * for a placeable and leaves spin available to whatever needs to move.
+ *
+ * Every edge is doubled with a white core, so the cage carries §1.2 player
+ * polarity (white-hot core, element rim) the same way the deploy beam does.
+ */
+function latticeShell(ctx, at, radius, height, colour, life = 0.55) {
+  const beams = ctx.vfx?.beams;
+  if (!beams?.spawn) return;
+  _col.set(colour);
+  const SIDES = 6;
+  for (let i = 0; i < SIDES; i++) {
+    const a0 = (i / SIDES) * Math.PI * 2;
+    const a1 = ((i + 1) / SIDES) * Math.PI * 2;
+    const x0 = at.x + Math.cos(a0) * radius, z0 = at.z + Math.sin(a0) * radius;
+    const x1 = at.x + Math.cos(a1) * radius, z1 = at.z + Math.sin(a1) * radius;
+
+    // Upright.
+    _a.set(x0, at.y, z0);
+    _b.set(x0, at.y + height, z0);
+    beams.spawn(_a, _b, _col, 0.09, 0.03, life, 0.9, 0);
+    beams.spawn(_a, _b, WHITE, 0.03, 0.01, life * 0.8, 2.2, 0);
+
+    // Bottom and top chords — the two that make it a cage rather than a fence.
+    _a.set(x0, at.y + 0.05, z0);
+    _b.set(x1, at.y + 0.05, z1);
+    beams.spawn(_a, _b, _col, 0.07, 0.07, life, 0.8, 0);
+    _a.set(x0, at.y + height, z0);
+    _b.set(x1, at.y + height, z1);
+    beams.spawn(_a, _b, _col, 0.06, 0.06, life, 0.8, 0);
+    beams.spawn(_a, _b, WHITE, 0.02, 0.02, life * 0.8, 2.0, 0);
+  }
+}
+
 export const ABILITIES = {
 
   /* ======================================================================== */
@@ -284,6 +346,7 @@ export const ABILITIES = {
 
   rangerDoubleTap: {
     id: 'rangerDoubleTap',
+    shape: 'line',
     name: 'Double Tap',
     slot: 'primary',
     key: 'M1',
@@ -311,6 +374,7 @@ export const ABILITIES = {
 
   rangerPhaseRound: {
     id: 'rangerPhaseRound',
+    shape: 'line',
     name: 'Phase Round',
     slot: 'secondary',
     key: 'M2',
@@ -337,6 +401,7 @@ export const ABILITIES = {
 
   rangerTacticalDive: {
     id: 'rangerTacticalDive',
+    shape: 'line',
     name: 'Tactical Dive',
     slot: 'utility',
     // Shift is held for sprint, so the dash lives on Q (and RMB-free).
@@ -358,6 +423,7 @@ export const ABILITIES = {
 
   rangerSalvo: {
     id: 'rangerSalvo',
+    shape: 'streak',
     name: 'Suppressive Salvo',
     slot: 'special',
     key: 'R',
@@ -413,6 +479,7 @@ export const ABILITIES = {
 
   anvilSweep: {
     id: 'anvilSweep',
+    shape: 'ring',
     name: 'Riving Sweep',
     slot: 'primary',
     key: 'M1',
@@ -471,6 +538,7 @@ export const ABILITIES = {
 
   anvilSlam: {
     id: 'anvilSlam',
+    shape: 'ring',
     name: 'Seismic Slam',
     slot: 'secondary',
     key: 'M2',
@@ -543,6 +611,7 @@ export const ABILITIES = {
 
   anvilBreach: {
     id: 'anvilBreach',
+    shape: 'line',
     name: 'Breach Charge',
     slot: 'utility',
     key: 'Q',
@@ -605,6 +674,7 @@ export const ABILITIES = {
 
   anvilBulwark: {
     id: 'anvilBulwark',
+    shape: 'ring',
     name: 'Bulwark',
     slot: 'special',
     key: 'R',
@@ -661,6 +731,7 @@ export const ABILITIES = {
 
   kestrelMark: {
     id: 'kestrelMark',
+    shape: 'line',
     name: 'Mark',
     slot: 'primary',
     key: 'M1',
@@ -695,6 +766,7 @@ export const ABILITIES = {
 
   kestrelLance: {
     id: 'kestrelLance',
+    shape: 'charged-line',
     name: 'Focus Lance',
     slot: 'secondary',
     key: 'M2',
@@ -749,6 +821,7 @@ export const ABILITIES = {
 
   kestrelVault: {
     id: 'kestrelVault',
+    shape: 'line',
     name: 'Vault',
     slot: 'utility',
     key: 'Q',
@@ -800,6 +873,7 @@ export const ABILITIES = {
 
   kestrelEclipse: {
     id: 'kestrelEclipse',
+    shape: 'charged-line',
     name: 'Eclipse Round',
     slot: 'special',
     key: 'R',
@@ -855,6 +929,7 @@ export const ABILITIES = {
 
   rookRivet: {
     id: 'rookRivet',
+    shape: 'line',
     name: 'Rivet Gun',
     slot: 'primary',
     key: 'M1',
@@ -879,6 +954,7 @@ export const ABILITIES = {
 
   rookMines: {
     id: 'rookMines',
+    shape: 'streak',
     name: 'Scatter Charges',
     slot: 'secondary',
     key: 'M2',
@@ -929,6 +1005,7 @@ export const ABILITIES = {
 
   rookWard: {
     id: 'rookWard',
+    shape: 'lattice',
     name: 'Harmonic Ward',
     slot: 'utility',
     key: 'Q',
@@ -955,6 +1032,9 @@ export const ABILITIES = {
       ctx.vfx?.beams?.spawn?.(_a, _origin, _col, 0.22, 0.05, 0.22, 0.9, 1);
       ctx.vfx?.beams?.spawn?.(_a, _origin, WHITE, 0.07, 0.015, 0.18, 2.2, 1);
       ctx.vfx?.ring?.(_origin, 6, 0x9dff5a);
+      // Rook's signature, and the reason this cannot be read as a nova: the
+      // ward's boundary is a standing cage, not an expanding front.
+      latticeShell(ctx, _origin, 6, 2.4, 0x9dff5a, 0.7);
       ctx.vfx?.rings?.spawn?.(_origin, _up, 0xdcffb0, 0.3, 3.0, 0.35, 0.9);
       ctx.vfx?.impact?.(_origin, _up, 'dirt');
       ctx.vfx?.lights?.flick?.(_origin, 0x9dff5a, 24, 14, 0.3);
@@ -966,6 +1046,7 @@ export const ABILITIES = {
 
   rookTurret: {
     id: 'rookTurret',
+    shape: 'lattice',
     name: 'Sentry',
     slot: 'special',
     key: 'R',
@@ -1003,6 +1084,9 @@ export const ABILITIES = {
           ctx.vfx?.impact?.(_b, _up, 'metal');
         });
       }
+      // The same cage as the Ward, tight around the sentry: both of Rook's
+      // placeables are bolted-down structures and both say so in one shape.
+      latticeShell(ctx, _origin, 1.3, 1.8, 0x9dff5a, 0.5);
       ctx.vfx?.rings?.spawn?.(_origin, _up, 0x9dff5a, 0.3, 3.2, 0.42, 0.9);
       ctx.vfx?.burst?.(_origin, 0xbfff7a);
       ctx.vfx?.lights?.flick?.(_origin, 0x9dff5a, 28, 15, 0.28);
@@ -1030,6 +1114,7 @@ export const ABILITIES = {
 
   cinderStoke: {
     id: 'cinderStoke',
+    shape: 'streak-cone',
     name: 'Stoke',
     slot: 'primary',
     key: 'M1',
@@ -1094,6 +1179,7 @@ export const ABILITIES = {
 
   cinderPyreFlask: {
     id: 'cinderPyreFlask',
+    shape: 'streak',
     name: 'Pyre Flask',
     slot: 'secondary',
     key: 'M2',
@@ -1168,6 +1254,7 @@ export const ABILITIES = {
 
   cinderBackdraft: {
     id: 'cinderBackdraft',
+    shape: 'streak-cone',
     name: 'Backdraft',
     slot: 'utility',
     key: 'Q',
@@ -1235,6 +1322,7 @@ export const ABILITIES = {
 
   cinderConflagration: {
     id: 'cinderConflagration',
+    shape: 'ring',
     name: 'Conflagration',
     slot: 'special',
     key: 'R',

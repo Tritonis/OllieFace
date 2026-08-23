@@ -3,7 +3,7 @@ import {
   REFUSE, writeRefuse, REFUSE_DETAIL_MAX,
 } from './Protocol.js';
 import { HostTransport } from './Transport.js';
-import { SURVIVOR_BY_ID } from '../data/survivors.js';
+import { SURVIVOR_BY_ID, survivorIndexOf } from '../data/survivors.js';
 import { REVIVE } from '../data/revive.js';
 
 /**
@@ -630,6 +630,14 @@ export class NetHost {
       if (!e.alive && e.netState !== ESTATE.DEAD) continue;
       this._netId(e);
       e.kind = e.isPlayer ? EKIND.PLAYER : (e.kind ?? EKIND.ENEMY);
+      // A player's `typeId` is its survivor's roster index (protocol 8). The
+      // field was a constant 0 on players, which is why a remote Anvil arrived
+      // as a Ranger — the class simply never crossed, and with it went the rig,
+      // the hurtbox and the per-class shape signature the co-op colour fix
+      // rests on (EFFECT-LANGUAGE.md §3.1). Written here rather than on the
+      // pawn so `setSurvivor` mid-run needs no hook, and before the DOWNED
+      // branch below so `_downedRecord` copies the class through too.
+      if (e.isPlayer) e.typeId = survivorIndexOf(e.survivorId);
       // A downed pawn spends `healthFrac` on its bleed-out clock instead of its
       // health — see `_downedRecord`.
       writeEntity(w, e.netState === ESTATE.DOWNED ? this._downedRecord(e) : e);
