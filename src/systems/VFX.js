@@ -8,6 +8,11 @@ import { MAX_BLASTS } from '../shaders/DistortShader.js';
 import { clamp, lerp } from '../core/MathUtil.js';
 import { elementOf, sparkColour, goreColour, ELEMENT_HUE } from '../data/damageTypes.js';
 import { COIN_HUE, unitElement } from '../data/elementVoice.js';
+// The purity route's authored palette (#154). Imported rather than typed: a
+// hex literal at these call sites sits outside every guard in effects.js, which
+// was demonstrated rather than argued - full magenta planted on the warding
+// core left the entire suite green. Declared hues are walked at load.
+import { HUE as PURITY } from '../data/effects.js';
 import { isLocalVictim, isLocalOwner } from '../core/Engine.js';
 import { GATE, shouldLaunch } from './LaunchGate.js';
 import {
@@ -325,11 +330,14 @@ export class VFX {
       const pp = ctx.player?.position;
       if (pp) this.coinSpark(pp);
     });
-    // Purity's verb, made visible (issue #154). `Corruption.bleed` has exactly
-    // two callers — a Voidtouched kill and an Argent Font press — so listening
-    // here marks both moments at once and cannot miss a third that gets added
-    // later. The cue lands on the warder's own body, which is what makes "THIS
-    // is what feeds warding" learnable by watching rather than by reading.
+    // Purity's verb, made visible (issue #154). The coverage here is
+    // *structural*, not a headcount of call sites: the event is emitted inside
+    // `Corruption.bleed` itself, so every path that wards is marked by
+    // construction — the Voidtouched kill, the Argent Font press, and
+    // `chime-of-absolution`'s per-kill ward (`data/items.js`), which is exactly
+    // the third caller a "there are only two" argument would have missed. The
+    // cue lands on the warder's own body, which is what makes "THIS is what
+    // feeds warding" learnable by watching rather than by reading.
     e.on('corruptionWarded', (p) => this._onWarded(p));
     e.on('playerDead', (p) => {
       // Somebody else's death does not black out your screen.
@@ -1349,7 +1357,7 @@ export class VFX {
     e.life = 0.55; e.lifeVar = 0.3;
     e.size0 = 0.13; e.size1 = 0.02;
     // White core, mint rim: this is the player's own doing, not the world's.
-    e.color0.set(0xf4fff6); e.color1.set(0x6fe0a8);
+    e.color0.set(PURITY.wardCore); e.color1.set(PURITY.wardRim);
     e.frame = FRAME.SPARK; e.spin = 2; e.gravity = -1.6; e.drag = 2.4;
     this.particles.emit(e);
 
@@ -1357,8 +1365,8 @@ export class VFX {
     // the brim; a mint draws the full circle regardless, because a mint always
     // completes one.
     const r = minted ? 3.2 : 0.5 + p * 2.1;
-    this.rings.spawn(pos, UP, 0x8ff0bc, r * 0.35, r, minted ? 0.55 : 0.4, minted ? 0.9 : 0.5);
-    if (minted) this.lights.flick(pos, 0x8ff0bc, 14, 6, 0.16);
+    this.rings.spawn(pos, UP, PURITY.wardRing, r * 0.35, r, minted ? 0.55 : 0.4, minted ? 0.9 : 0.5);
+    if (minted) this.lights.flick(pos, PURITY.wardRing, 14, 6, 0.16);
     this.ctx?.audio?.warding?.(pos, p, minted);
   }
 
@@ -1382,19 +1390,19 @@ export class VFX {
     e.speed = 4.4; e.speedVar = 0.5;
     e.life = 0.95; e.lifeVar = 0.3;
     e.size0 = 0.24; e.size1 = 0.06;
-    e.color0.set(0xffffff); e.color1.set(0x5fdca4);
+    e.color0.set(PURITY.sanctuaryCore); e.color1.set(PURITY.sanctuaryRim);
     e.frame = FRAME.HEX; e.spin = 6; e.gravity = -1.2; e.drag = 1.6;
     this.particles.emit(e);
 
     e = this._ep();
     e.count = 1; e.position.copy(pos); e.position.y += 0.4;
     e.life = 0.7; e.size0 = 0.6; e.size1 = 7.5;
-    e.color0.set(0xdfffee); e.color1.set(0x3fbf88);
+    e.color0.set(PURITY.sanctuaryVeil); e.color1.set(PURITY.sanctuaryVeilIn);
     e.alpha0 = 0.4; e.frame = FRAME.RING; e.drag = 5; e.soft = 0;
     this.particles.emit(e);
 
-    this.rings.spawn(pos, UP, 0x8ff0bc, 0.6, 7.5, 0.7, 0.85);
-    this.lights.flick(pos, 0x9fffcf, 26, 9, 0.3);
+    this.rings.spawn(pos, UP, PURITY.wardRing, 0.6, 7.5, 0.7, 0.85);
+    this.lights.flick(pos, PURITY.sanctuaryLight, 26, 9, 0.3);
   }
 
   /**
@@ -1413,7 +1421,7 @@ export class VFX {
     e.speed = 6.5; e.speedVar = 0.9;
     e.life = 1.1; e.lifeVar = 0.35;
     e.size0 = 0.2; e.size1 = 0.03;
-    e.color0.set(0xffffff); e.color1.set(0x6fe0a8);
+    e.color0.set(PURITY.sanctuaryCore); e.color1.set(PURITY.wardRim);
     e.frame = FRAME.HEX; e.spin = 8; e.gravity = -2.2; e.drag = 1.1;
     this.particles.emit(e);
 
@@ -1423,12 +1431,12 @@ export class VFX {
     e.speed = 2.4; e.speedVar = 0.4;
     e.life = 0.8; e.lifeVar = 0.3;
     e.size0 = 0.16; e.size1 = 0.01;
-    e.color0.set(0xffffff); e.color1.set(0xb1bdbc);
+    e.color0.set(PURITY.sanctuaryCore); e.color1.set(PURITY.argentPale);
     e.frame = FRAME.CROSS; e.spin = 3; e.gravity = 1.4; e.drag = 2.2;
     this.particles.emit(e);
 
-    this.rings.spawn(pos, UP, 0xcfe8d8, 0.4, 4.6, 0.6, 0.9);
-    this.lights.flick(pos, 0xdfffee, 30, 8, 0.35);
+    this.rings.spawn(pos, UP, PURITY.argentRing, 0.4, 4.6, 0.6, 0.9);
+    this.lights.flick(pos, PURITY.sanctuaryVeil, 30, 8, 0.35);
     this._shakeAt(pos, 0.03);
   }
 

@@ -29,7 +29,7 @@
  * exactly that distinction so a bucketing re-run could see it.
  */
 
-import { reservedViolation } from './colourFamily.js';
+import { reservedViolation, reservedViolationOnFeedback } from './colourFamily.js';
 import { ELEMENT_HUE, goreColour } from './damageTypes.js';
 import { enemyCore, enemyRim } from './elementVoice.js';
 import { SAMPLES_BY_ID } from './samples.js';
@@ -558,6 +558,7 @@ function assertLanguage() {
     if (!(row.envelope in ENVELOPES)) throw new Error(`[effects] "${row.id}" names unknown envelope family "${row.envelope}"`);
   }
   assertEnemyLanguage();
+  assertAuthoredPalette();
   assertDegradedSeparation();
 }
 
@@ -620,6 +621,65 @@ function assertDegradedSeparation() {
  * `void` may wear magenta — the narrow reading documented on `ELEMENTS` above.
  * Nothing may wear mint-green.
  */
+/**
+ * The purity route's authored palette (issue #154).
+ *
+ * These are hero-ish, player-facing figures — a ward landing, a Sanctuary
+ * going up, a Consecration paying out — so they are not rows in the table
+ * above and `ELEMENT_HUE` never reaches them: they are drawn straight by
+ * `VFX.wardingMote`, `VFX.sanctuaryOpen` and `VFX.consecration`. Written as
+ * hex literals at those call sites they were **outside every guard in this
+ * file**, which was demonstrated rather than argued: planting full magenta on
+ * the warding core left the entire suite green.
+ *
+ * Declaring them here puts them back inside the walk. Each entry names the
+ * element it is spending, and `assertAuthoredPalette` runs the same
+ * reservation predicate over every hex at load — the *feedback* reading of it
+ * (`reservedViolationOnFeedback`), because mint-green is reserved **for**
+ * restorative and these are the restorative family by design, while magenta
+ * stays void-only here exactly as it is everywhere else.
+ *
+ * `tests/argent-legibility.test.mjs` holds the other half of the seam shut:
+ * `VFX`'s three methods must reference this table rather than re-typing a
+ * literal, or the declaration would guard a copy nobody draws.
+ */
+export const PURITY_PALETTE = {
+  // White-hot core, mint rim: player polarity, §1.2.
+  wardCore:        { hex: 0xf4fff6, element: 'restorative' },
+  wardRim:         { hex: 0x6fe0a8, element: 'restorative' },
+  wardRing:        { hex: 0x8ff0bc, element: 'restorative' },
+  sanctuaryCore:   { hex: 0xffffff, element: 'restorative' },
+  sanctuaryRim:    { hex: 0x5fdca4, element: 'restorative' },
+  sanctuaryVeil:   { hex: 0xdfffee, element: 'restorative' },
+  sanctuaryVeilIn: { hex: 0x3fbf88, element: 'restorative' },
+  sanctuaryLight:  { hex: 0x9fffcf, element: 'restorative' },
+  // The argent tier's own pale grey, below the chroma floor: it is spending no
+  // hue at all, which is the point — a consecrated card is a clean thing.
+  argentPale:      { hex: 0xb1bdbc, element: 'restorative' },
+  argentRing:      { hex: 0xcfe8d8, element: 'restorative' },
+};
+
+/** Just the hexes, for the call sites: `HUE.wardRim` reads as a colour. */
+export const HUE = Object.fromEntries(
+  Object.entries(PURITY_PALETTE).map(([k, v]) => [k, v.hex]));
+
+/**
+ * The authored-palette arm. Same predicate, same failure mode, at load.
+ *
+ * A guard nobody has seen fail is worth nothing, so this one is written
+ * against the exact mutation that falsified its absence: put magenta on
+ * `wardCore` and the module throws before a frame is drawn.
+ */
+function assertAuthoredPalette() {
+  for (const [name, { hex, element }] of Object.entries(PURITY_PALETTE)) {
+    const bad = reservedViolationOnFeedback(hex, element);
+    if (bad) {
+      throw new Error(`[effects] PURITY_PALETTE "${name}" = 0x${hex.toString(16).padStart(6, '0')}`
+        + ` spends the reserved hue ${bad} on a feedback surface (EFFECT-LANGUAGE §1.1)`);
+    }
+  }
+}
+
 function assertEnemyLanguage() {
   const blame = (element, where, hex, family) => {
     throw new Error(`[effects] damageTypes "${element}".${where} = 0x${hex.toString(16).padStart(6, '0')}`

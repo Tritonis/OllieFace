@@ -13,10 +13,13 @@
  *  1. warding announces itself on every ward, not once per forty points. The
  *     assertion is on the partial `progress`, so restoring the old
  *     "emit only when the mote count moves" behaviour fails it.
- *  2. both mote sources are marked, and they are marked at *one* site: `bleed`
- *     has exactly two callers and `VFX` rides the event rather than the call
- *     sites, so the test presses a real Argent Font and lands a real
- *     Voidtouched kill and expects the same cue from both.
+ *  2. every act that wards is marked, and marked at *one* site. The coverage is
+ *     structural rather than counted: the event is emitted inside
+ *     `Corruption.bleed` itself and `VFX` rides the event, so any caller is
+ *     covered — including `chime-of-absolution`'s per-kill ward, a third caller
+ *     an argument from "there are only two" would have missed. The test presses
+ *     a real Argent Font and lands a real Voidtouched kill and expects the same
+ *     cue from both, and expects nothing from a kill that wards nothing.
  *  3. the argent tier greys as `grace` falls and comes *back*. The un-grey half
  *     is the one worth having: a latched dead state would pass a one-way test.
  *  4. Sanctuary and Consecration call their own presentation rather than the
@@ -34,6 +37,9 @@ import { Audio } from '../src/systems/Audio.js';
 import { HUD } from '../src/ui/HUD.js';
 import { grace, ARGENT } from '../src/data/items.js';
 import { VOIDTOUCHED } from '../src/data/corruption.js';
+import { PURITY_PALETTE } from '../src/data/effects.js';
+import { reservedViolationOnFeedback } from '../src/data/colourFamily.js';
+import { readFileSync } from 'node:fs';
 
 globalThis.addEventListener = globalThis.addEventListener || (() => {});
 
@@ -205,6 +211,52 @@ console.log('\nthe cues survive a stubbed world without throwing, and refuse a m
     try { v[name](null); } catch (err) { nullThrew = err; }
     ok(nullThrew === null, `${name} declines a missing position rather than throwing`);
   }
+}
+
+/* -------------------------------------- 3b. the reserved-hue guard reaches */
+
+console.log('\nthe new effects are inside the reserved-hue guard, not beside it');
+{
+  // The hole this closes was demonstrated, not theorised: with the hues written
+  // as hex literals in `VFX`, planting full magenta (0xff00ff, the void-only
+  // family) on the warding core left the ENTIRE suite green — `assertLanguage`
+  // walks `ELEMENT_HUE` and this file's own table, and reaches nothing a hero
+  // effect types by hand. Two assertions hold it shut, and both must be here:
+  // the table is walked, AND the call sites are made to use the table.
+  ok(Object.keys(PURITY_PALETTE).length >= 10, 'the purity palette is declared as data');
+  for (const [name, { hex, element }] of Object.entries(PURITY_PALETTE)) {
+    ok(reservedViolationOnFeedback(hex, element) === null,
+      `${name} spends no reserved hue`);
+  }
+
+  // The predicate itself can fail — a guard nobody has watched fail is worth
+  // nothing. This is the reviewer's exact mutation, run against the check.
+  eq(reservedViolationOnFeedback(0xff00ff, 'restorative'), 'magenta',
+    'and full magenta on a restorative surface IS caught — the mutation that used to pass');
+  eq(reservedViolationOnFeedback(0xff00ff, 'void'), null,
+    'while void may still wear it, the narrow reading effects.js documents');
+  eq(reservedViolationOnFeedback(0x6fe0a8, 'restorative'), null,
+    'and mint is legal on feedback, which is the whole difference from the damage predicate');
+
+  // The other half of the seam. A hue typed at the call site would be outside
+  // the walk again however well the table is guarded, so the three methods must
+  // carry no colour literal of their own. Written against the mutation: paste
+  // `0xff00ff` into wardingMote and this fails.
+  for (const name of ['wardingMote', 'sanctuaryOpen', 'consecration']) {
+    const body = VFX.prototype[name].toString();
+    const literals = body.match(/0x[0-9a-fA-F]{6}/g) || [];
+    ok(literals.length === 0,
+      `${name} draws only declared hues — no raw colour literal (found: ${literals.join(', ') || 'none'})`);
+    ok(/PURITY\./.test(body), `${name} reads its hues from the guarded palette`);
+  }
+
+  // And the walk actually runs at load, rather than being an exported function
+  // nobody calls.
+  // `assertLanguage` is module-private, so the call is read off the file. The
+  // regex is anchored on the call inside the aggregate, not on the definition.
+  const effectsSrc = readFileSync(new URL('../src/data/effects.js', import.meta.url), 'utf8');
+  ok(/\n\s*assertAuthoredPalette\(\);/.test(effectsSrc),
+    'the palette arm is called from `assertLanguage`, at module load');
 }
 
 /* ----------------------------------------------------------- 4. the gauge */
