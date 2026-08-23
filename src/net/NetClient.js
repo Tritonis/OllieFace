@@ -38,6 +38,12 @@ export class NetClient {
   // belongs in `join` and the async methods beside it, where it already lives.
   static critical = true;
 
+  // Same exemption, same reason as `NetHost` (#182): the client's own stage
+  // transition must not stop it acknowledging the host. Its command stream and
+  // its snapshot application are how the session stays alive, and a second of
+  // silence is indistinguishable from a dropped peer at the far end.
+  static runsDuringStageChange = true;
+
   /** The client half of `NetHost`'s transport seam — see its constructor. */
   constructor({ transport = new ClientTransport() } = {}) {
     this.transport = transport;
@@ -296,6 +302,22 @@ export class NetClient {
 
   _sampleInput(ctx) {
     const i = ctx.input;
+    // The sending half of the stage-change freeze (#182), and it has to be here
+    // rather than left to `input.enabled`: unlike `Player._sampleCommand`, this
+    // sampler reads the key state directly and never asks whether input is
+    // switched on, so a client would otherwise keep walking and firing through
+    // its own veil. A neutral command rather than no command — the wire must
+    // keep carrying a tick, and standing still is what the host is going to
+    // apply anyway once the same transition reaches it, so prediction and
+    // authority agree instead of needing a correction on the far side. Yaw and
+    // pitch are still reported so the camera does not snap when it lifts.
+    if (ctx.stageChanging) {
+      return {
+        tick: 0, moveX: 0, moveZ: 0, buttons: 0,
+        yaw: ctx.cameraRig?.yaw ?? 0,
+        pitch: ctx.cameraRig?.pitch ?? 0,
+      };
+    }
     const m = i.moveAxis();
     let buttons = 0;
     if (i.down('Space')) buttons |= BTN.JUMP;

@@ -67,6 +67,14 @@ export class NetHost {
   // belongs in the async methods, where it already lives.
   static critical = true;
 
+  // A stage change freezes the simulation for about a second (#182). The wire
+  // is not part of the simulation and must not go quiet with it: `this.tick`
+  // advances only from `fixedUpdate`, and a peer that stops receiving snapshots
+  // for a second has no way to tell a stage transition from a host that died.
+  // The snapshots sent through the window describe a world that is not moving,
+  // which is exactly what is true.
+  static runsDuringStageChange = true;
+
   /**
    * `transport` is a seam, not a setting. Everything this class needs from one
    * is enumerated in `docs/STEAM.md` section 8.5, and taking it as an argument
@@ -475,6 +483,33 @@ export class NetHost {
   fixedUpdate(ctx, h) {
     this._checkHelloDeadlines();
     this.tick++;
+    // Nobody's controls are live while the world is being replaced (#182).
+    //
+    // The `runsDuringStageChange` exemption above keeps the *wire* alive —
+    // deadlines, the tick, the snapshot stream — and that is the whole of what
+    // it was granted for. It is not a licence to keep simulating: a remote pawn
+    // is deliberately not an Engine system (see `Player`'s note on why nothing
+    // steps it from the engine), so the Engine's freeze cannot reach it, and
+    // `applyCommand` is the one door it comes through. Left open, a client kept
+    // running, firing and killing on a host whose Combat and Director were
+    // frozen and could not answer — the local survivor stood in the dark unable
+    // to act while somebody else played on. Suppressing application here is the
+    // remote half of the local `input.enabled = false`, and it is symmetric:
+    // every machine's controls are dead for the same replicated stage change.
+    //
+    // It also closes the indirect paths, and that is not a happy accident: a
+    // pawn's projectiles and placeables are pumped from inside `applyCommand`
+    // and nowhere else, so a shot already in the air stops advancing with the
+    // hand that fired it, exactly as it did when the synchronous build blocked
+    // the whole loop.
+    //
+    // Queued commands are left where they are — not drained, not acked. The
+    // backlog is already capped at MAX_INPUT_BACKLOG and trimmed oldest-first
+    // on arrival, so the window keeps the newest fifth of a second and the rest
+    // takes the resync path that cap exists to select. This is precisely what a
+    // host used to produce while `Stage.build()` blocked it for seconds, which
+    // is the behaviour the backlog rule was tuned against.
+    if (ctx.stageChanging) return;
     for (const c of this.clients.values()) {
       if (!c.pawn) continue;
       const cmd = c.inputs.shift();
