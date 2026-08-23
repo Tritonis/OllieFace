@@ -131,9 +131,16 @@ export function installShowcase(ctx) {
 
   /* ---------------------------------------------------------- catalogue */
 
-  /** @type {{group:string,id:string,label:string,fire:(lateral:number)=>void}[]} */
+  /**
+   * `meta` is the table row an entry came off — the attack's `kind`, an
+   * elite's stat block. Presets filter on it rather than on names, so a set
+   * named in the effect language stays a *property* of the data and cannot
+   * quietly fall behind it.
+   *
+   * @type {{group:string,id:string,label:string,fire:(lateral:number)=>void,meta:object}[]}
+   */
   const entries = [];
-  const add = (group, id, label, fire) => entries.push({ group, id, label, fire });
+  const add = (group, id, label, fire, meta = {}) => entries.push({ group, id, label, fire, meta });
 
   // --- survivor abilities -------------------------------------------------
   for (const def of Object.values(ABILITIES)) {
@@ -199,23 +206,42 @@ export function installShowcase(ctx) {
     }
   }
 
-  // --- enemy telegraphs ---------------------------------------------------
+  // --- enemy attack windows -----------------------------------------------
+  // Every attack on every card, split by whether the table gives it something
+  // to see. The ones with a ring or a blast are the telegraphed half; the rest
+  // are the effect language's C6 group — windows that are *silent*, which is
+  // precisely why the showcase has to be able to fire them. An enumeration
+  // that skipped them would omit the sixteen effects most in need of judging.
   for (const card of [...SPAWN_CARDS, ...BOSS_CARDS]) {
     for (const a of card.attacks ?? []) {
+      const meta = { kind: a.kind, cardId: card.id, tier: card.tier, attackId: a.id };
       const radius = a.telegraph || a.blast;
-      if (!radius) continue;
-      add('telegraph', `${card.id}:${a.id}`, `${card.name} — ${a.id} (r${radius})`, (lateral) => {
-        const at = ground(ctx, 14, lateral);
-        // Ring life is the shell's flight in play; the impact is what the ring
-        // is a deadline *for*, so fire both or the effect reads as half of one.
-        const life = a.telegraph ? 1.1 : 0.4;
-        ctx.director?.spawnTelegraph?.(at.x, at.z, radius, life, a.color ?? 0xff5a3c);
-        ctx.audio?.play?.('shoot', at, 1.2);
-        setTimeout(() => {
-          ctx.vfx?.explosion?.(at, radius, a.color ?? 0xff5a3c);
-          ctx.audio?.play?.('explosion', at, radius);
-        }, life * 1000);
-      });
+      if (radius) {
+        add('telegraph', `${card.id}:${a.id}`, `${card.name} — ${a.id} (r${radius})`, (lateral) => {
+          const at = ground(ctx, 14, lateral);
+          // Ring life is the shell's flight in play; the impact is what the ring
+          // is a deadline *for*, so fire both or the effect reads as half of one.
+          const life = a.telegraph ? 1.1 : 0.4;
+          ctx.director?.spawnTelegraph?.(at.x, at.z, radius, life, a.color ?? 0xff5a3c);
+          ctx.audio?.play?.('shoot', at, 1.2);
+          setTimeout(() => {
+            ctx.vfx?.explosion?.(at, radius, a.color ?? 0xff5a3c);
+            ctx.audio?.play?.('explosion', at, radius);
+          }, life * 1000);
+        }, meta);
+      } else {
+        const win = a.windup ?? 0.6;
+        add('windup', `${card.id}:${a.id}`, `${card.name} — ${a.id} (silent s)`, (lateral) => {
+          const at = ground(ctx, 14, lateral);
+          // Nothing during the window, deliberately: the claim under test is
+          // that a windup is distinguishable from an idle enemy, and a
+          // stand-in ring drawn here would answer a question play never asks.
+          setTimeout(() => {
+            ctx.vfx?.explosion?.(at, Math.min(6, Math.max(2, a.range ?? 4)), a.color ?? 0xff5a3c);
+            ctx.audio?.play?.('shoot', at, 1.2);
+          }, win * 1000);
+        }, meta);
+      }
     }
   }
 
@@ -242,7 +268,7 @@ export function installShowcase(ctx) {
       setTimeout(() => {
         if (e.alive) ctx.combat?.applyDamage?.(e, e.maxHealth * 10, { source: p, type: 'showcase' });
       }, 1400);
-    });
+    }, { affix, stats });
   }
 
   // --- pickups ------------------------------------------------------------
@@ -313,6 +339,24 @@ export function installShowcase(ctx) {
   /* ------------------------------------------------------------- presets */
 
   const idsOf = (pred) => entries.filter(pred);
+
+  // The effect language's set memberships, expressed as the property that
+  // *defines* each set rather than as the roster it happened to have on the
+  // day the document was written.
+  //
+  //  C2 — the expanding-ring novas: every attack kind that ends in a blast at
+  //       the attacker's feet, plus the three elite affixes whose death is one.
+  //  C3 — the sweeping lines: beams and barrages, which share a long charge
+  //       and a swept delivery.
+  //  C4 — every projectile release.
+  //  C6 — the silent windows: melee swings, charges, summon casts and the
+  //       shrike's dive, none of which marks the ground it is aimed at.
+  const NOVA_KINDS = new Set(['nova', 'slam', 'stomp']);
+  const BEAM_KINDS = new Set(['beam', 'barrage']);
+  const WINDOW_KINDS = new Set(['melee', 'charge', 'summon', 'dive']);
+  /** An elite whose corpse is a nova — read off the radius its stat block carries. */
+  const isDeathNovaElite = (e) =>
+    e.group === 'elite' && !!(e.meta.stats?.blastRadius || e.meta.stats?.novaRadius);
   const presets = [
     ['1', 'every onHit proc at once', () => idsOf((e) => e.group === 'item:onHit')],
     ['2', 'every onKill proc at once', () => idsOf((e) => e.group === 'item:onKill')],
@@ -323,7 +367,27 @@ export function installShowcase(ctx) {
     ['6', 'every status at one point', () => idsOf((e) => e.id.startsWith('status:'))],
     ['7', 'three telegraphs overlapping', () => idsOf((e) => e.group === 'telegraph').slice(0, 3)],
     ['8', 'all six elite modifiers side by side', () => idsOf((e) => e.group === 'elite')],
+
+    // --- set-level presets (#149) -----------------------------------------
+    // Four groups the effect language (docs/art/EFFECT-LANGUAGE.md C2-C6)
+    // names as needing to be judged *whole*, and which no earlier preset can
+    // reach: 4 caps at four, 7 caps at three, and the silent windows had no
+    // entries at all until this file grew them. Each membership is a
+    // predicate over the data tables, never a list of names, so an attack
+    // added to `enemies.js` joins its set without anyone remembering to.
+    ['9', 'every nova at one point', () =>
+      idsOf((e) => NOVA_KINDS.has(e.meta.kind) || isDeathNovaElite(e))],
+    ['0', 'all beam users charging together', () =>
+      idsOf((e) => BEAM_KINDS.has(e.meta.kind))],
+    ['-', 'full-horde release', () => idsOf((e) => e.meta.kind === 'projectile')],
+    ['=', 'all telegraph windows at once', () => idsOf((e) => WINDOW_KINDS.has(e.meta.kind))],
   ];
+
+  /**
+   * The physical key a preset is bound to. Twelve presets outrun the digit
+   * row, so 10-12 take the three keys that continue it: `0`, `-`, `=`.
+   */
+  const codeOf = (k) => (/^[0-9]$/.test(k) ? `Digit${k}` : { '-': 'Minus', '=': 'Equal' }[k]);
 
   /* ------------------------------------------------------------- firing */
 
@@ -389,7 +453,7 @@ export function installShowcase(ctx) {
       `SHOWCASE  ${rows.length}/${entries.length} effects` +
       `${filter ? `  filter:"${filter}"` : ''}  marked:${marked.size}` +
       '   [up/down] move  [enter] fire  [space] mark  [g] fire marked  [c] clear' +
-      '  [1-8] presets  [type] filter  [esc] close';
+      '  [1-9 0 - =] presets  [type] filter  [esc] close';
     list.innerHTML = '';
     let group = null;
     rows.forEach((e, i) => {
@@ -450,8 +514,8 @@ export function installShowcase(ctx) {
       case 'KeyC': marked.clear(); flash('marks cleared'); break;
       case 'Backspace': filter = filter.slice(0, -1); break;
       default:
-        if (/^Digit[1-8]$/.test(ev.code)) {
-          const p = presets[Number(ev.code.slice(5)) - 1];
+        if (presets.some(([k]) => codeOf(k) === ev.code)) {
+          const p = presets.find(([k]) => codeOf(k) === ev.code);
           const set = p[2]();
           if (set.length) { fireGroup(set); flash(`preset: ${p[1]} (${set.length})`); }
           else flash(`preset: ${p[1]} — nothing matched`);
@@ -474,7 +538,10 @@ export function installShowcase(ctx) {
 
   const api = {
     entries,
-    presets: presets.map(([k, name]) => ({ key: k, name })),
+    // `ids` is resolved here rather than exposed as a thunk so that
+    // `tests/showcase-surface.test.mjs` can re-derive each preset's membership
+    // from the tables and object when a preset falls behind them.
+    presets: presets.map(([k, name, resolve]) => ({ key: k, name, ids: resolve().map((e) => e.id) })),
     open: () => setOpen(true),
     close: () => setOpen(false),
     fire: (id) => {
