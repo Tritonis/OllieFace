@@ -24,6 +24,7 @@
  */
 
 import { allEffects, ELEMENTS } from '../src/data/effects.js';
+import { SAMPLES_BY_ID } from '../src/data/samples.js';
 
 // The bucketing rules themselves live in `src/data/colourFamily.js`, so that
 // `effects.js`'s load-time `assertLanguage()` can run them over the enemy-side
@@ -55,6 +56,10 @@ function point(row) {
     motion: row.motion,
     envelope: row.envelope,
     key: [measured, row.frame, row.motion, row.envelope].join(' · '),
+    // The same point with the timbre axis struck out — what is left of an
+    // effect when #148's recording is absent. See §4.2's Degraded Point rule.
+    degraded: [measured, row.frame, row.motion].join(' · '),
+    sampled: SAMPLES_BY_ID.has(row.id),
   };
 }
 
@@ -106,6 +111,21 @@ function main() {
     } else {
       console.log(`  ${name}: separated — ${present.length}/${ids.length} rows on ${seen.size} distinct points`
         + (missing.length ? ` (not on this surface: ${missing.join(', ')})` : ''));
+    }
+  }
+
+  // §4.2's Degraded Point rule. A sampled entry whose only separation is its
+  // recording has no separation at all in the mode where #148 declines, so the
+  // sampled rows are re-bucketed with the timbre axis removed.
+  console.log('\nG1 degraded points (sample declined or absent):');
+  const degraded = new Map();
+  for (const r of rows.filter((x) => x.sampled)) {
+    if (degraded.has(r.degraded)) {
+      console.log(`  COLLIDING — ${degraded.get(r.degraded)} = ${r.id} (${r.degraded})`);
+      failed++;
+    } else {
+      degraded.set(r.degraded, r.id);
+      console.log(`  ${r.id.padEnd(20)} ${r.degraded}`);
     }
   }
 

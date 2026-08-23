@@ -32,6 +32,7 @@
 import { reservedViolation } from './colourFamily.js';
 import { ELEMENT_HUE, goreColour } from './damageTypes.js';
 import { enemyCore, enemyRim } from './elementVoice.js';
+import { SAMPLES_BY_ID } from './samples.js';
 
 // ------------------------------------------------------------------ elements
 
@@ -260,7 +261,11 @@ export const ITEM_EFFECTS = {
   'gorge-tooth':         { element: 'restorative', at: 'player' },
   'wardens-tally':       { element: 'bone',        at: 'player' },
   'unblemished-plate':   { element: 'restorative', at: 'player', every: 0.35 },
-  'chime-of-absolution': { element: 'void',        at: 'player' },
+  // A struck bell in consecrated air: two concentric rings standing off the
+  // player, and a plucked tonal with no noise bed at all. Rising, because
+  // absolution goes upward.
+  'chime-of-absolution': { element: 'void', at: 'player', bespoke: true,
+    frame: 'lattice', motion: 'rising', envelope: 'plucked-tonal', step: 'event' },
   'bruised-coinpurse':   { element: 'blast',       at: 'player', envelope: 'pip' },
   'tar-charge':          { element: 'blast',       at: 'victim' },
   'marrow-tooth':        { element: 'restorative', at: 'player' },
@@ -272,33 +277,73 @@ export const ITEM_EFFECTS = {
   'salt-lick':           { element: 'restorative', at: 'player', every: 1.0 },
   'prey-instinct':       { element: 'physical',    at: 'player', every: 1.0 },
   'gutting-shiv':        { element: 'physical',    at: 'victim' },
-  'concussion-charge':   { element: 'shock',       at: 'victim' },
-  'hoarfrost-band':      { element: 'frost',       at: 'victim' },
+  // Loud and bright, and it stops a body where it stood: one hard expanding
+  // shock ring at the victim with a crack on the front of it.
+  'concussion-charge': { element: 'shock', at: 'victim', bespoke: true,
+    frame: 'ring', motion: 'expanding-ring', envelope: 'crack-body', step: 'event' },
+  // A heart stopped mid-beat: ice grows as a lattice of shards out of the
+  // freeze point, and the voice falls away rather than cracking flat.
+  'hoarfrost-band': { element: 'frost', at: 'victim', bespoke: true,
+    frame: 'lattice', motion: 'expanding-ring', envelope: 'crack-tonal-fall', step: 'event' },
   'feeding-vial':        { element: 'restorative', at: 'player' },
   'reaping-hook':        { element: 'restorative', at: 'player', every: 0.25 },
   'thirsting-burr':      { element: 'restorative', at: 'player', every: 0.25 },
-  'corpse-flare':        { element: 'fire',        at: 'victim' },
-  'red-mist-pauldron':   { element: 'blast',       at: 'player' },
+  // "Follow the light." A pillar is a vertical line that goes up, which is the
+  // one fire effect on the surface that is not a ring or a travelling streak.
+  'corpse-flare': { element: 'fire', at: 'victim', bespoke: true,
+    frame: 'line', motion: 'rising', envelope: 'crack-rumble-sub', step: 'event' },
+  // Three at once and the world goes red: a mist that climbs the survivor,
+  // held low and long rather than struck.
+  'red-mist-pauldron': { element: 'blast', at: 'player', bespoke: true,
+    frame: 'lattice', motion: 'rising', envelope: 'sustained-low-chord', step: 'event' },
   'ration-pack':         { element: 'restorative', at: 'player' },
   'iron-thorns':         { element: 'physical',    at: 'victim', every: 0.20 },
   'hunters-tag':         { element: 'bone',        at: 'victim', every: 0.50 },
   'frost-lattice':       { element: 'frost',       at: 'victim' },
   'scrap-magnet':        { element: 'blast',       at: 'player', envelope: 'pip' },
-  'battle-hymn':         { element: 'restorative', at: 'player' },
-  'carrion-flies':       { element: 'toxic',       at: 'victim', every: 0.50 },
+  // A sung line, sampled (#148). Degraded it is a restorative chord — so its
+  // separation from `charnel-bloom`, the other sampled mint entry, is carried
+  // by frame and motion, never by timbre (§4.2, §3.2).
+  'battle-hymn': { element: 'restorative', at: 'player', bespoke: true,
+    frame: 'lattice', motion: 'rising', envelope: 'chord', step: 'event' },
+  // A swarm that hangs on the body it is eating rather than flying to it —
+  // held streaks, which is what keeps it off `hive-gland`'s travelling ones in
+  // the degraded case where both are the same toxic drone.
+  'carrion-flies': { element: 'toxic', at: 'victim', every: 0.50, bespoke: true,
+    frame: 'streak', motion: 'held', envelope: 'wobble-drone', step: 'tick' },
   // §4.2 names this one explicitly: the highest-frequency proc in the game, so
   // it is authored at tick intensity or it dominates the mix.
-  'shrapnel-heart':      { element: 'blast',       at: 'victim', every: 0.20 },
-  'whisper-stalks':      { element: 'void',        at: 'player' },
-  'resonance-coil':      { element: 'blast',       at: 'victim' },
+  // Bespoke but deliberately small: it keeps the floor's spark and takes only
+  // an onset of its own, because §4.2 names it as the entry that dominates the
+  // mix if it is authored any louder.
+  'shrapnel-heart': { element: 'blast', at: 'victim', every: 0.20, bespoke: true,
+    frame: 'radial-spark', motion: 'instant-radial', envelope: 'crack-body', step: 'tick' },
+  // Stalks: vertical lines that rise around the survivor and whisper. Sampled;
+  // degraded it is a void swell, separated from `mourners-dagger`'s magenta
+  // line by motion.
+  'whisper-stalks': { element: 'void', at: 'player', bespoke: true,
+    frame: 'line', motion: 'rising', envelope: 'sustained-rise', step: 'event' },
+  // "The one the metal remembers": concentric rings and a struck tonal.
+  'resonance-coil': { element: 'blast', at: 'victim', bespoke: true,
+    frame: 'ring', motion: 'expanding-ring', envelope: 'plucked-tonal', step: 'event' },
   'chronal-governor':    { element: 'void',        at: 'player' },
   'siege-battery':       { element: 'shock',       at: 'player' },
-  'kinetic-recycler':    { element: 'blast',       at: 'player' },
+  // The hit comes back out as a shell: a lattice thrown off the survivor as
+  // the refunded barrier forms, over a chord rather than a bang.
+  'kinetic-recycler': { element: 'blast', at: 'player', bespoke: true,
+    frame: 'lattice', motion: 'expanding-ring', envelope: 'chord', step: 'event' },
   'grafted-polyp':       { element: 'restorative', at: 'player' },
   'sunken-vertebra':     { element: 'restorative', at: 'player' },
-  'molten-core':         { element: 'fire',        at: 'player' },
+  // The mountain opening: the only item row authored at heavy, because a 10m
+  // eruption every six seconds is an event the player plans around.
+  'molten-core': { element: 'fire', at: 'player', bespoke: true,
+    frame: 'ring', motion: 'expanding-ring', envelope: 'crack-rumble-sub', step: 'heavy' },
   'tithe-of-ash':        { element: 'blast',       at: 'player', envelope: 'pip' },
-  'charnel-bloom':       { element: 'restorative', at: 'player' },
+  // A flower opening where something stopped: a ring that opens outward, not a
+  // column that climbs — which is exactly the frame/motion pair that keeps it
+  // off `battle-hymn` when #148's samples are absent and both are mint chords.
+  'charnel-bloom': { element: 'restorative', at: 'player', bespoke: true,
+    frame: 'ring', motion: 'expanding-ring', envelope: 'ascending-sine', step: 'event' },
   'brittle-edge':        { element: 'physical',    at: 'player', every: 0.25 },
   'ashen-pact':          { element: 'fire',        at: 'victim', every: 0.30 },
   'bloodscent':          { element: 'physical',    at: 'player', every: 0.25 },
@@ -316,7 +361,102 @@ export const EQUIPMENT_EFFECTS = {
   'overload-cell':      { element: 'blast',       frame: 'ring',    motion: 'expanding-ring', envelope: 'crack-rumble-sub', step: 'heavy' },
   'frostbite-canister': { element: 'frost',       frame: 'ring',    motion: 'expanding-ring', envelope: 'crack-body',       step: 'event' },
   'aegis-emitter':      { element: 'restorative', frame: 'lattice', motion: 'rising',         envelope: 'sustained-rise',   step: 'event' },
+  // C5. §3's healing family is radial-spark · rising and the flare stays in it —
+  // it is a heal, and re-shaping it would be the language separating things
+  // that mean the same thing. What separates it from an ordinary `healPop` tick
+  // is intensity and envelope: half a health bar at once is an *event*, on a
+  // ladder that climbs rather than a thump. The expanding mint ring it used to
+  // draw is gone: a ring is the equipment tier's hazard/blast shape, and wearing
+  // it put a heal in the same frame family as the canister and the cell.
+  'mending-flare':      { element: 'restorative', frame: 'radial-spark', motion: 'rising',    envelope: 'ascending-sine',   step: 'heavy' },
 };
+
+// ------------------------------------------------------------ bespoke figures
+//
+// §4.2's second bullet: thirteen items were promised an effect of their own by
+// name, and the proc-grammar floor — a spark in the element — is precisely what
+// the promise was not. Each figure below is drawn from the primitives `VFX`
+// already offers, so the language buys these thirteen without asking the engine
+// for a new verb.
+//
+// A figure receives the resolved point and its element hue and draws; the voice
+// is the row's own and is spoken by `cue` afterwards, sample first (§4.2's G1
+// note) and procedural when the sample is absent.
+
+/** A point `h` metres above `pos`, in whatever shape the caller handed us. */
+const above = (pos, h) => ({ x: pos.x, y: (pos.y || 0) + h, z: pos.z });
+/** A point offset in the ground plane. */
+const beside = (pos, dx, dz) => ({ x: pos.x + dx, y: pos.y || 0, z: pos.z + dz });
+
+const FIGURES = {
+  // Two concentric rings standing off the player: a bell, seen.
+  'chime-of-absolution': (vfx, pos, hue) => {
+    vfx.ring?.(pos, 3, hue);
+    vfx.ring?.(pos, 5.5, hue);
+  },
+  // A voice lifting off the survivor.
+  'battle-hymn': (vfx, pos, hue) => {
+    vfx.burst?.(pos, hue);
+    vfx.ring?.(pos, 4, hue);
+  },
+  // Three stalks standing up around the survivor, whispering.
+  'whisper-stalks': (vfx, pos, hue) => {
+    for (const [dx, dz] of [[1.4, 0.6], [-1.1, 1.3], [-0.4, -1.6]]) {
+      vfx.beam?.(beside(pos, dx, dz), above(beside(pos, dx, dz), 4), hue);
+    }
+  },
+  // Flies hanging on the body, not flying to it: short streaks at the victim.
+  'carrion-flies': (vfx, pos, hue) => {
+    vfx.missile?.(above(beside(pos, 0.9, 0.5), 1.2), pos, hue);
+    vfx.missile?.(above(beside(pos, -0.7, -0.8), 1.4), pos, hue);
+  },
+  // A flower opening where something stopped.
+  'charnel-bloom': (vfx, pos, hue) => {
+    vfx.ring?.(pos, 2.5, hue);
+    vfx.healPop?.(pos, 0);
+  },
+  // Loud, bright, and it stops the body where it stood.
+  'concussion-charge': (vfx, pos, hue) => {
+    vfx.ring?.(pos, 3, hue);
+    vfx.hitSpark?.(pos, hue, 1.1);
+  },
+  // Ice growing outward as shards, not as a smooth front.
+  'hoarfrost-band': (vfx, pos, hue) => {
+    vfx.ring?.(pos, 6, hue);
+    for (const [dx, dz] of [[3, 0], [0, 3], [-3, 0], [0, -3]]) {
+      vfx.beam?.(pos, above(beside(pos, dx, dz), 1.2), hue);
+    }
+  },
+  // Follow the light: a pillar of fire off the corpse.
+  'corpse-flare': (vfx, pos, hue) => {
+    vfx.beam?.(pos, above(pos, 9), hue);
+    vfx.burst?.(pos, hue);
+  },
+  // The world going red around the survivor.
+  'red-mist-pauldron': (vfx, pos, hue) => {
+    vfx.burst?.(pos, hue);
+    vfx.ring?.(pos, 2.2, hue);
+  },
+  // The mountain, still open.
+  'molten-core': (vfx, pos, hue) => {
+    vfx.explosion?.(pos, 10, hue);
+    vfx.ring?.(pos, 10, hue);
+  },
+  // What the metal remembers: three rings out of one strike.
+  'resonance-coil': (vfx, pos, hue) => {
+    for (const r of [2.5, 4.5, 7]) vfx.ring?.(pos, r, hue);
+  },
+  // The hit, handed back as a shell.
+  'kinetic-recycler': (vfx, pos, hue) => {
+    vfx.ring?.(pos, 9, hue);
+    vfx.burst?.(pos, hue);
+  },
+  // Deliberately the floor's own spark: §4.2 authors this one *quiet*.
+  'shrapnel-heart': (vfx, pos, hue) => { vfx.hitSpark?.(pos, hue, 0.5); },
+};
+
+/** The thirteen §4.2 named-promise ids, derived rather than re-listed. */
+export const NAMED_PROMISE = Object.keys(FIGURES);
 
 // The floor's own four dimensions. Applied to every §1d row, which is what
 // makes them a *floor* — one grammar, one shape, differing only in element.
@@ -367,12 +507,34 @@ export function cue(api, id, at) {
   // chain's lines, a swarm's streaks, an ignition's ring — and a spark on top
   // of it would be the language adding particles rather than meaning. Those
   // rows come here for the voice alone, which is the half they were missing.
-  if (row.frame === 'radial-spark') {
+  const figure = FIGURES[id];
+  if (figure) {
+    // A named-promise item (§4.2, second bullet) draws its own figure and
+    // nothing else — the floor's spark on top of it would be the language
+    // adding particles rather than meaning, exactly as for the authored rows.
+    if (api?.ctx?.vfx) figure(api.ctx.vfx, pos, el.hue, row);
+  } else if (row.frame === 'radial-spark') {
     const scale = row.step === 'tick' ? 0.5 : row.step === 'heavy' ? 1.6 : 0.9;
     api?.ctx?.vfx?.hitSpark?.(pos, el.hue, scale);
   }
-  voice(api?.ctx?.audio, row.element, row.envelope, pos, row.step);
+  speak(api?.ctx?.audio, row, pos);
   return true;
+}
+
+/**
+ * The voice half of a cue: the sampled timbre where #148 supplied one, and the
+ * procedural recipe where it did not.
+ *
+ * The fallback is not a courtesy. §4.2 says a G1 entry's *degraded* point is
+ * part of the language, so a declined or unloaded sample must leave a legible
+ * effect behind rather than silence — and it is why every sampled row is
+ * separated from its neighbours on frame and motion, which survive the
+ * downgrade, rather than on timbre, which does not.
+ */
+function speak(audio, row, pos) {
+  if (SAMPLES_BY_ID.has(row.id) && audio?.playSample?.(row.id, pos,
+    { gain: STEP_GAIN[row.step] ?? 1 }) === true) return true;
+  return voice(audio, row.element, row.envelope, pos, row.step) !== null;
 }
 
 // ------------------------------------------------------------- conformance
@@ -396,6 +558,51 @@ function assertLanguage() {
     if (!(row.envelope in ENVELOPES)) throw new Error(`[effects] "${row.id}" names unknown envelope family "${row.envelope}"`);
   }
   assertEnemyLanguage();
+  assertDegradedSeparation();
+}
+
+/**
+ * §4.2's Degraded Point rule, checked rather than promised.
+ *
+ * #148 may decline: a sample can be refused, unloaded or missing, and then a
+ * sampled row falls back to its element's procedural recipe. Any separation
+ * that lived in the recording is gone at that moment. So every row with a
+ * sample must differ from every other such row on a dimension that *survives*
+ * the downgrade — colour, frame or motion — and never on timbre alone. This is
+ * the `hive-gland`/`arc-rot` case of §C9 generalised to all seven.
+ *
+ * The key deliberately omits the envelope as well as the element: the envelope
+ * is the other half of the timbre axis, and a pair separated only by envelope
+ * would still be two drones of the same colour in the same shape.
+ */
+export function degradedKey(row) {
+  return [ELEMENTS[row.element].family, row.frame, row.motion].join(' · ');
+}
+
+/**
+ * The first pair of sampled rows sharing a degraded point, or null.
+ *
+ * Takes its rows as an argument so a test can hand it a deliberately colliding
+ * pair and watch it report one — a guard that can only ever be run over a
+ * surface already known to be clean is a guard nobody has seen fail.
+ */
+export function degradedCollision(rows) {
+  const seen = new Map();
+  for (const row of rows) {
+    if (!SAMPLES_BY_ID.has(row.id)) continue;
+    const key = degradedKey(row);
+    if (seen.has(key)) return { a: seen.get(key), b: row.id, key };
+    seen.set(key, row.id);
+  }
+  return null;
+}
+
+function assertDegradedSeparation() {
+  const clash = degradedCollision(allEffects());
+  if (clash) {
+    throw new Error(`[effects] sampled "${clash.b}" and "${clash.a}" share the degraded point`
+      + ` ${clash.key} — separable only by timbre, which #148 may not supply (EFFECT-LANGUAGE §4.2)`);
+  }
 }
 
 /**
