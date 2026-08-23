@@ -37,7 +37,9 @@ import { Audio } from '../src/systems/Audio.js';
 import { HUD } from '../src/ui/HUD.js';
 import { grace, ARGENT } from '../src/data/items.js';
 import { VOIDTOUCHED } from '../src/data/corruption.js';
-import { PURITY_PALETTE } from '../src/data/effects.js';
+import {
+  PURITY_PALETTE, PURITY_STEMS, PURITY_METHODS, PURITY_METHOD_EXCEPTIONS,
+} from '../src/data/effects.js';
 import { reservedViolationOnFeedback } from '../src/data/colourFamily.js';
 import { readFileSync } from 'node:fs';
 
@@ -315,13 +317,81 @@ console.log('\nthe new effects are inside the reserved-hue guard, not beside it'
   // the walk again however well the table is guarded, so the three methods must
   // carry no colour literal of their own. Written against the mutation: paste
   // `0xff00ff` into wardingMote and this fails.
-  for (const name of ['wardingMote', 'sanctuaryOpen', 'consecration']) {
+  // The scanned set is DERIVED, not typed here. Two independent derivations off
+  // the palette itself must both agree with `PURITY_METHODS`, so the way to add
+  // a purity method without falling under the scan is to add one that neither
+  // reads `PURITY.` nor carries a palette word in its name — and both of those
+  // omissions are themselves failures below.
+  const protoNames = Object.getOwnPropertyNames(VFX.prototype)
+    .filter((n) => n !== 'constructor' && typeof VFX.prototype[n] === 'function');
+  const bySource = protoNames.filter((n) => /\bPURITY\./.test(VFX.prototype[n].toString()));
+  const stemRe = new RegExp(`(${PURITY_STEMS.join('|')})`, 'i');
+  const byName = protoNames.filter((n) => stemRe.test(n));
+
+  const declared = new Set(PURITY_METHODS);
+  const excused = new Set(PURITY_METHOD_EXCEPTIONS);
+  for (const n of bySource) {
+    ok(declared.has(n),
+      `${n} reads the purity palette, so it must be declared in PURITY_METHODS`);
+  }
+  for (const n of PURITY_METHODS) {
+    ok(bySource.includes(n), `${n} is declared purity and really reads PURITY.`);
+  }
+  for (const n of byName) {
+    ok(declared.has(n) || excused.has(n),
+      `${n} wears a purity word (${PURITY_STEMS.join('/')}), so it is either a purity`
+      + ' method or an explicitly excused one — silence is not an option');
+  }
+  for (const n of PURITY_METHOD_EXCEPTIONS) {
+    ok(protoNames.includes(n), `the excused ${n} still exists — stale exemptions rot`);
+  }
+
+  // Colour positions: `.set(x)`, `.setHex(x)`, `new THREE.Color(x)`, the rings'
+  // third argument and the lights' second. A *numeric* literal in any of them is
+  // a hue typed at the call site — which is what `16711935` was: plain decimal
+  // 0xff00ff, invisible to a hex scan. Value is irrelevant; the rule is that a
+  // colour position holds a name, never a number.
+  //
+  // `.set(0, 1, 0)` is a direction, not a colour, so the single-argument form is
+  // what the setters match: a hue is always set with one number.
+  const NUM = '(0x[0-9a-fA-F]+|\\d[\\d_.eE+]*)';
+  const COLOUR_POSITIONS = [
+    new RegExp(`\\.set(?:Hex)?\\(\\s*${NUM}\\s*\\)`, 'g'),
+    new RegExp(`\\bColor\\(\\s*${NUM}\\s*[,)]`, 'g'),
+    new RegExp(`\\.spawn\\(\\s*[^,()]+,\\s*[^,()]+,\\s*${NUM}`, 'g'),
+    new RegExp(`\\.flick\\(\\s*[^,()]+,\\s*${NUM}`, 'g'),
+  ];
+  const colourLiterals = (body) => {
+    const found = [];
+    for (const re of COLOUR_POSITIONS) {
+      re.lastIndex = 0;
+      for (const m of body.matchAll(re)) found.push(m[1]);
+    }
+    return found;
+  };
+
+  for (const name of [...new Set([...PURITY_METHODS, ...bySource, ...byName.filter((n) => !excused.has(n))])]) {
     const body = VFX.prototype[name].toString();
-    const literals = body.match(/0x[0-9a-fA-F]{6}/g) || [];
+    const literals = body.match(/0x[0-9a-fA-F]{3,8}/g) || [];
     ok(literals.length === 0,
       `${name} draws only declared hues — no raw colour literal (found: ${literals.join(', ') || 'none'})`);
+    const positional = colourLiterals(body);
+    ok(positional.length === 0,
+      `${name} puts no bare number in a colour position — decimal is a colour too`
+      + ` (found: ${positional.join(', ') || 'none'})`);
     ok(/PURITY\./.test(body), `${name} reads its hues from the guarded palette`);
   }
+
+  // And the positional scanner can itself fail — the decimal evasion, run
+  // against the check rather than merely asserted about it.
+  ok(colourLiterals('e.color0.set(16711935);').length === 1,
+    'a decimal hue in a colour position IS seen — the evasion that used to pass');
+  ok(colourLiterals('this.rings.spawn(pos, UP, 16711935, 1, 2);').length === 1,
+    'and in the rings\' hue argument too');
+  eq(colourLiterals('e.dir.set(0, 1, 0);').length, 0,
+    'while a three-argument direction is left alone — the scan is about hues');
+  ok(colourLiterals('e.color1.setHex(0xff00ff);').length === 1,
+    'and the hex form of the same position is seen too');
 
   // And the walk actually runs at load, rather than being an exported function
   // nobody calls.

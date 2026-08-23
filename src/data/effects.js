@@ -696,6 +696,36 @@ export const HUE = Object.fromEntries(
   Object.entries(PURITY_PALETTE).map(([k, v]) => [k, v.hex]));
 
 /**
+ * The vocabulary the palette itself owns, read off its own keys: `wardCore`
+ * and `wardRim` say `ward`, `sanctuaryVeil` says `sanctuary`, `argentPale`
+ * says `argent`. The guard uses these stems to *find* purity surfaces in
+ * `VFX` rather than being told where they are — see `PURITY_METHODS`.
+ */
+export const PURITY_STEMS = [...new Set(
+  Object.keys(PURITY_PALETTE).map((k) => k.match(/^[a-z]+/)[0]))];
+
+/**
+ * The `VFX` methods that draw the purity family. This is *not* a hand list the
+ * guard trusts: `tests/argent-legibility.test.mjs` re-derives the same set two
+ * independent ways — every prototype method that reads `PURITY.`, and every
+ * prototype method whose name carries a `PURITY_STEMS` word — and fails if
+ * either derivation disagrees with what is written here. So a new purity
+ * method cannot be added *and forgotten*: forgetting is exactly what fails.
+ */
+export const PURITY_METHODS = ['wardingMote', 'sanctuaryOpen', 'consecration'];
+
+/**
+ * Names that carry a purity stem while deliberately drawing something else,
+ * so the stem net does not drag them in. Escaping the net is thereby a
+ * conscious, reviewable act — never an omission, which is the whole failure
+ * this seam is written against.
+ *
+ * - `wardReflect` is the void-polarity shield bounce: arcane, not restorative.
+ * - `_onWarded` is the event handler; it delegates and draws no colour at all.
+ */
+export const PURITY_METHOD_EXCEPTIONS = ['wardReflect', '_onWarded'];
+
+/**
  * The authored-palette arm. Same predicate, same failure mode, at load.
  *
  * A guard nobody has seen fail is worth nothing, so this one is written
