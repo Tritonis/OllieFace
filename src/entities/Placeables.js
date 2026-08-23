@@ -368,7 +368,10 @@ export class PlaceablePool {
       damage: p.damage, source: p.owner, team: 'player', pierce: 0, proc: p.proc, type: 'hitscan',
     });
     _v.copy(_from).addScaledVector(_dir, Math.min(dist, p.range));
-    ctx.vfx?.tracer?.(_from, _v, 0xbfff7a);
+    // Dressed as a missile rather than a bare tracer (#190) — presentation
+    // only. The hitscan above has already resolved; this draws the shot that
+    // just happened, in Rook's green, and arrives inside a couple of frames.
+    ctx.vfx?.sentryMissile?.(_from, _v, 0xbfff7a);
     ctx.vfx?.muzzleFlash?.(_from, _dir, 0.32);
   }
 
