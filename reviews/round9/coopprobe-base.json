@@ -1,5 +1,5 @@
 {
-  "when": "2026-08-15T00:18:38.514Z",
+  "when": "2026-08-23T05:49:41.912Z",
   "probe": "tools/coopprobe.mjs",
   "label": "base",
   "flags": {
@@ -62,76 +62,76 @@
     ],
     "note": "every wait in this probe is capped; the caps above are the only ones there are"
   },
-  "roomCode": "ZDNS-97AA",
-  "formationMs": 4988,
+  "roomCode": "D7M9-QNUW",
+  "formationMs": 7198,
   "phases": [
     {
       "name": "relay",
-      "ms": 104,
+      "ms": 101,
       "ok": true,
       "detail": "ws://127.0.0.1:5215"
     },
     {
       "name": "vite",
-      "ms": 98,
+      "ms": 124,
       "ok": true,
       "detail": "http://127.0.0.1:5214"
     },
     {
       "name": "host-boot",
-      "ms": 16162,
+      "ms": 30224,
       "ok": true,
       "detail": "title screen up, seed 1337"
     },
     {
       "name": "host-room",
-      "ms": 1358,
+      "ms": 800,
       "ok": true,
-      "detail": "ZDNS-97AA"
+      "detail": "D7M9-QNUW"
     },
     {
       "name": "host-launch",
-      "ms": 2580,
+      "ms": 3808,
       "ok": true,
-      "detail": "hosting room ZDNS-97AA with the world running"
+      "detail": "hosting room D7M9-QNUW with the world running"
     },
     {
       "name": "client-boot",
-      "ms": 2453,
+      "ms": 4862,
       "ok": true,
       "detail": "title screen up"
     },
     {
       "name": "formation",
-      "ms": 5612,
+      "ms": 7547,
       "ok": true,
-      "detail": "4988 ms from the Join click to two open channels and a host roster of 2"
+      "detail": "7198 ms from the Join click to two open channels and a host roster of 2"
     },
     {
       "name": "client-launch",
-      "ms": 2235,
+      "ms": 2755,
       "ok": true,
       "detail": "joined and running"
     },
     {
       "name": "run-window",
-      "ms": 60027,
+      "ms": 60049,
       "ok": true,
-      "detail": "60 s of scripted play, 81 alternating key holds, both survivors alive"
+      "detail": "60 s of scripted play, 82 alternating key holds, both survivors alive"
     }
   ],
   "timings": {
-    "totalMs": 98295,
+    "totalMs": 118022,
     "byPhase": {
-      "relay": 104,
-      "vite": 98,
-      "host-boot": 16162,
-      "host-room": 1358,
-      "host-launch": 2580,
-      "client-boot": 2453,
-      "formation": 5612,
-      "client-launch": 2235,
-      "run-window": 60027
+      "relay": 101,
+      "vite": 124,
+      "host-boot": 30224,
+      "host-room": 800,
+      "host-launch": 3808,
+      "client-boot": 4862,
+      "formation": 7547,
+      "client-launch": 2755,
+      "run-window": 60049
     }
   },
   "consoleErrors": {
@@ -143,13 +143,13 @@
       "name": "host-running",
       "set": "base",
       "pass": true,
-      "detail": "host paused=false NetHost.tick=3883 (want > 60) screen=null role=host"
+      "detail": "host paused=false NetHost.tick=3934 (want > 60) screen=null role=host"
     },
     {
       "name": "client-running",
       "set": "base",
       "pass": true,
-      "detail": "client paused=false NetClient.tick=3615 (want > 60) screen=null role=client connected=true myNetId=1"
+      "detail": "client paused=false NetClient.tick=3614 (want > 60) screen=null role=client connected=true myNetId=1"
     },
     {
       "name": "roster-2-both",
@@ -161,7 +161,7 @@
       "name": "ticks-advance",
       "set": "base",
       "pass": true,
-      "detail": "over 5000 ms: host tick 3886 -> 4188 (+302), client tick 3618 -> 3919 (+301); want both strictly increasing"
+      "detail": "over 5000 ms: host tick 3935 -> 4227 (+292), client tick 3616 -> 3916 (+300); want both strictly increasing"
     },
     {
       "name": "both-alive",
@@ -173,7 +173,7 @@
       "name": "shared-world",
       "set": "base",
       "pass": true,
-      "detail": "host has 28 replicated netIds, client sees 28; intersection 28 [2,1,27,28,3,4,5,6,...]"
+      "detail": "host has 29 replicated netIds, client sees 29; intersection 29 [2,1,28,29,3,4,5,6,...]"
     },
     {
       "name": "no page errors",
