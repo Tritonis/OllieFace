@@ -8,10 +8,11 @@
  * authored three times at three call sites.
  *
  * The element vocabulary is `src/data/damageTypes.js`'s closed seven, not a
- * second one — the language's nine families project onto it (gravity and
- * physical both land on `kinetic`, restorative is never a damage element and
- * therefore never reaches here). Growing a parallel taxonomy is exactly the
- * failure `damageTypes.js` was written to avoid.
+ * second one — the language's nine families project onto it (physical lands on
+ * `kinetic`, gravity on `void` as the nearest family to its reserved violet,
+ * restorative is never a damage element and therefore never reaches here).
+ * Growing a parallel taxonomy is exactly the failure `damageTypes.js` was
+ * written to avoid.
  */
 
 import { ELEMENT_HUE } from './damageTypes.js';
@@ -123,6 +124,20 @@ export function darken(hex, k) {
  * new hand-written table: a card that changes colour changes element with it,
  * which is the property that keeps the ring, the voice and the blast core
  * agreeing without a second place to edit.
+ *
+ * **This is not `colourFamily.js`'s `familyOf`, and the two are not
+ * interchangeable.** `familyOf` answers the audit's §2.1 *presentation* family
+ * and has saturation and lightness gates; this answers which of the closed
+ * seven an enemy card belongs to, from hue alone, with every degree assigned to
+ * something. The bands differ at the edges on purpose: `familyOf` leaves
+ * h 50-70 unbucketed, this one has to put it somewhere. Consequently a player
+ * hue routed through here can come back surprising — `ELEMENTS.fire.hue`
+ * 0xff7a2a (h 22.5) answers `blast`, `ELEMENTS.physical` answers `blast` too.
+ *
+ * The governing rule: for a *player* effect the element is the one its
+ * `effects.js` row names, and nothing may re-derive it from the hex. This
+ * function is for enemy attack cards, which carry a colour and no element, and
+ * it should be called on nothing else.
  */
 export function elementFromHex(hex) {
   if (!Number.isFinite(hex)) return 'kinetic';

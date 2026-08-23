@@ -29,6 +29,10 @@
  * exactly that distinction so a bucketing re-run could see it.
  */
 
+import { reservedViolation } from './colourFamily.js';
+import { ELEMENT_HUE, goreColour } from './damageTypes.js';
+import { enemyCore, enemyRim } from './elementVoice.js';
+
 // ------------------------------------------------------------------ elements
 
 /**
@@ -372,6 +376,40 @@ function assertLanguage() {
     }
     if (!STEPS.includes(row.step)) throw new Error(`[effects] "${row.id}" is at no intensity step`);
     if (!(row.envelope in ENVELOPES)) throw new Error(`[effects] "${row.id}" names unknown envelope family "${row.envelope}"`);
+  }
+  assertEnemyLanguage();
+}
+
+/**
+ * The same two reservations over the *enemy* half of the vocabulary.
+ *
+ * This is the arm that was missing. The check above walks only this file's
+ * table, so `damageTypes.js` and everything `elementVoice.js` derives from it
+ * were unguarded — which is how `nature` came to spend mint-green on six live
+ * enemy damage surfaces while a load-time assert stood two files away
+ * reporting green. Every hue in `ELEMENT_HUE` reaches a damage surface by
+ * construction: `sparkColour` draws `tail`/`critTail`, `enemyCore` is the nova
+ * and telegraph core, `enemyRim` is its rim, `goreColour` is the splat. So all
+ * of them are checked, and the failure is at load, not at review.
+ *
+ * `void` may wear magenta — the narrow reading documented on `ELEMENTS` above.
+ * Nothing may wear mint-green.
+ */
+function assertEnemyLanguage() {
+  const blame = (element, where, hex, family) => {
+    throw new Error(`[effects] damageTypes "${element}".${where} = 0x${hex.toString(16).padStart(6, '0')}`
+      + ` spends the reserved hue ${family} on damage (EFFECT-LANGUAGE §1.1)`);
+  };
+  for (const [element, hues] of Object.entries(ELEMENT_HUE)) {
+    for (const [where, hex] of Object.entries(hues)) {
+      const bad = reservedViolation(hex, element);
+      if (bad) blame(element, where, hex, bad);
+    }
+    for (const [where, hex] of [['enemyCore', enemyCore(element)], ['enemyRim', enemyRim(element)],
+      ['goreColour', goreColour(element)]]) {
+      const bad = reservedViolation(hex, element);
+      if (bad) blame(element, where, hex, bad);
+    }
   }
 }
 assertLanguage();
