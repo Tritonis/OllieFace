@@ -57,6 +57,18 @@ re-run of its bucketing rules is a mechanical check of conformance.
 | physical / earth | tan-brown, earth-brown, bone-cream | debris, impact dust, bone, rebar |
 | gore | element-tinted red (partly **[#147 G4]**, see §6) | `bloodHit` splat, tinted by the killing element |
 
+**Gravity and void are adjacent on purpose.** The cue table above gives gravity
+its own violet; the damage vocabulary (`src/data/damageTypes.js`) is a closed
+seven with no violet in it, so a gravity hit is projected onto `void` and its
+spark comes out one bucket over in magenta-violet. Neither hue may move: making
+the cue magenta-violet would only trade this adjacency for a gravity/void one,
+and making the void spark violet would break the rule that each damage family
+borrows the colour its own elite affix already wears. The pair is separated by
+**shape and motion**, not by hue — gravity contracts, void unmakes — and both
+sites carry the ruling in comment (`effects.js` `ELEMENTS.gravity`,
+`damageTypes.js` `TYPE_ELEMENT.gravity`). An eighth damage family would close it
+and is a change to the closed set, not a correction.
+
 The consequential move is **splitting shock out of ice-blue into
 periwinkle-blue**. Today ice-blue means both lightning and frost, which is the
 root of C1 and C8 and the reason seven chain-lightning items and a freeze nova
@@ -277,8 +289,8 @@ and a bucketing re-run on audit §2.1's rules as the mechanical check — that
 re-run is precisely what would catch this group re-forming at a new point, and a
 resolution that only re-hued it would fail it.
 
-**C2 — warm · ring+radial-spark · expanding-ring · crack-rumble-sub** (13
-tier-2 nova/slam/stomp users plus `galvanic`, `rimebound`, `warded`).
+**C2 — warm · ring+radial-spark · expanding-ring · crack-rumble-sub** (14
+tier-2 nova/slam/stomp attacks plus `galvanic`, `rimebound`, `warded`).
 Separated on **colour**, and it cannot be separated any other way: the fix is
 the parameterised `spawnBlast` core **[#147 G3]**. Core takes the source's
 element hue at enemy polarity (§1.2), rim keeps the smoke. Audio gains a
@@ -286,8 +298,8 @@ per-element transient layered over the shared `explosion` body, so the rumble
 stays common (all novas are novas) and the attack is elemental. Boss phase novas
 take *heavy* intensity where ordinary ones take *event*. *Demonstrated by*: preset `8` (all six elite
 modifiers side by side), which stands `galvanic`, `rimebound` and `warded`
-together and is the exact case the fixed core defeats today. The 13 tier-2
-nova/slam users are not covered by any existing preset — judging those together
+together and is the exact case the fixed core defeats today. The 14 tier-2
+nova/slam attacks are not covered by any existing preset — judging those together
 **requires a new showcase preset** (every nova at one point), which is a
 dependency of adopting C2's enemy-side half.
 
@@ -301,9 +313,12 @@ enemy beams take element-core. The windup gains a sustained charge voice
 also resolves C3's compounding with C6. *Demonstrated by*: preset `7` (three
 telegraphs overlapping), judged for whether two beams charging at once are
 separable — note that preset `7` is capped at three entries, so covering the
-beam users as a set **requires a new showcase preset**. The player side
-(`tesla-crown`, `gravity-snare`) is covered today by the filter + mark + `g`
-workflow over the equipment entries.
+beam users as a set **requires a new showcase preset**. All seven cards above
+are real (`herald` included), but `herald` is on neither `SPAWN_CARDS` nor
+`BOSS_CARDS`, so the preset — which enumerates those two lists — stands six of
+them up. The player side (`tesla-crown`, `gravity-snare`) is in the preset too:
+both rows carry `shape: 'beam'` in `equipment.js`, which is the property the
+membership is derived from, so the set is judged whole rather than by hand.
 
 **C4 — radial-spark · instant-radial · crack-body** (every projectile release).
 Separated on **audio pitch-per-source** — an existing, unused capability, not a

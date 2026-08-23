@@ -93,6 +93,16 @@ const TYPE_ELEMENT = {
   // `gravity-well` at 0xff9a30's opposite end of the wheel) — one proc, two
   // families. `elementFromHex(0x9b5cff)` independently answers `void` for that
   // same cue hue, so this is the mapping the bucketer already implies.
+  //
+  // What remains after that move is one bucket of daylight, and it is
+  // intentional: the cue buckets `violet` (h 262) and this family's spark
+  // buckets `magenta-violet` (h 300), adjacent bands on the same side of the
+  // wheel. The closed seven has no violet to give gravity, and neither way of
+  // forcing a single family is free — see the note on `ELEMENTS.gravity` in
+  // `effects.js` for both, and §1.1 for the ruling. A reader is asked to tell
+  // gravity from void by shape and motion (a contracting ring, a descending
+  // detuned sweep) rather than by hue alone; nothing else in the language
+  // leans on those two being distinguishable at a glance.
   gravity: 'void',
 };
 

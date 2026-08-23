@@ -118,14 +118,20 @@ console.log('\n-- the set-level presets carry their whole set (#149)');
     `preset 9 fires all ${novas.length + deathNovaElites.length} of them together`);
 
   // C3 (:294) — the beam users, uncapped, unlike preset 7's `.slice(0, 3)`.
-  // The document names nine, two of which (`tesla-crown`, `gravity-snare`) are
-  // equipment and one of which (`herald`) is not a card in `enemies.js`; the
-  // equipment table carries no property that marks a beam, so the derivable
-  // set is the six enemy beams and barrages. The doc itself says the player
-  // side is covered by the filter + mark + `g` workflow.
+  // The document names nine: seven cards and two equipment. All seven cards
+  // exist (`herald` among them, `enemies.js` `id: 'herald'`), but `herald`,
+  // like `anchor` and `warden_vault`, is on neither `SPAWN_CARDS` nor
+  // `BOSS_CARDS`, so the showcase — which enumerates those two lists — reaches
+  // six of them. The player half is no longer left to the filter + mark
+  // workflow: `equipment.js` marks both rows `shape: 'beam'` and the preset
+  // unions them in, so the derived set is 6 + 2.
   const beams = ofKinds('beam', 'barrage');
-  ok(beams.length === 6, `${beams.length} beam/barrage attacks derived from the cards`);
-  ok(same('0', beams), 'preset 10 charges every one of them at once, uncapped');
+  ok(beams.length === 6, `${beams.length} beam/barrage attacks derived from the spawn and boss cards`);
+  const beamEquip = EQUIPMENT.filter((d) => d.shape === 'beam').map((d) => d.id);
+  ok(beamEquip.length === 2 && ['tesla-crown', 'gravity-snare'].every((id) => beamEquip.includes(id)),
+    'the equipment table marks exactly C3\'s two player beams');
+  ok(same('0', [...beams, ...beamEquip]),
+    `preset 10 charges all ${beams.length + beamEquip.length} of them at once, uncapped`);
 
   // C4 (:308) — the full-horde release: every projectile shooter.
   const shots = ofKinds('projectile');
