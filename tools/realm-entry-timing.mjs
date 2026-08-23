@@ -7,6 +7,7 @@
  *
  *   node tools/realm-entry-timing.mjs [--realm crucible] [--port 5251]
  */
+import { writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 import { createServer } from 'vite';
 
@@ -153,7 +154,11 @@ const out = await page.evaluate(async ({ realmId, warm, skip, twice }) => {
     // Exactly what a door opening does. Then let the prewarm run its course.
     const w0 = renderTimes.length;
     ctx.events.emit('realmOffer', { id: realmId, kind: 'gateway', stage: 3, cost: 0 });
-    await H.frames(200);
+    // Wait for the warm to finish rather than for a fixed count: how many
+    // frames of walking it needs is one of the numbers this tool is for.
+    let waited = 0;
+    while (!ctx.realms.warm.ready(realmId) && waited < 1500) { await H.frames(10); waited += 10; }
+    res.warmFrames = waited;
     const during = renderTimes.slice(w0);
     res.warmStanding = ctx.realms.warm.records.has(realmId);
     res.warmStep = ctx.realms.warm.records.get(realmId)?.step ?? 'taken';
@@ -169,6 +174,19 @@ const out = await page.evaluate(async ({ realmId, warm, skip, twice }) => {
     res.warmRenderSum = during.reduce((a, b) => a + b, 0);
     res.warmOver50 = during.filter((t) => t > 50).length;
   }
+
+  // What each arena material says its program key suffix is, parked vs live.
+  // A material that answers differently on the two sides cannot be warmed.
+  const matKeys = (root) => {
+    const seen = new Set();
+    root?.traverse((o) => {
+      for (const m of (Array.isArray(o.material) ? o.material : [o.material])) {
+        if (m) seen.add(String(m.customProgramCacheKey()).slice(0, 40).replace(/\s+/g, ' '));
+      }
+    });
+    return [...seen];
+  };
+  res.matKeysParked = matKeys(ctx.realms.warm.records.get(realmId)?.stage?.root);
 
   res.lightsBeforeEntry = countLightsNow();
   {
@@ -187,11 +205,35 @@ const out = await page.evaluate(async ({ realmId, warm, skip, twice }) => {
   res.framesAfter = frameTimes.slice(mark, mark + 12);
   res.inRealm = ctx.realms.inRealm;
   res.lightsAfterEntry = countLightsNow();
+  res.matKeysLive = matKeys(ctx.stage?.root);
+  // Who in the whole scene answers with a world-surface key. The warm has to
+  // stand up an equivalent of each, or its program is compiled on entry.
+  {
+    const owners = new Set();
+    ctx.scene.traverse((o) => {
+      if (!o.material) return;
+      for (const m of (Array.isArray(o.material) ? o.material : [o.material])) {
+        if (!m || !String(m.customProgramCacheKey()).startsWith('det')) continue;
+        let path = o.name || o.type, p = o.parent;
+        while (p) { path = (p.name || p.type) + '/' + path; p = p.parent; }
+        owners.add(`${path}#${o.receiveShadow ? 'r' : '-'}${o.castShadow ? 'c' : '-'}`);
+      }
+    });
+    res.worldSurfaceOwners = [...owners];
+  }
   const rm = renderTimes.length;
   res.rendersAfter = renderTimes.slice(Math.max(0, rm - 20));
   res.programsAfter = pipe.renderer.info.programs.length;
   const fresh = pipe.renderer.info.programs.filter((pr) => !keysWarm.has(pr.cacheKey));
   res.newAtEntry = fresh.map((pr) => pr.cacheKey.slice(150, 260));
+  // The whole keys, for offline diffing. A cache key is one long comma list and
+  // the interesting token is never in the same place twice, so eyeballing a
+  // slice of it has twice sent this investigation down the wrong path.
+  res.keyDump = {
+    boot: [...keysBoot],
+    warm: pipe.renderer.info.programs.filter((pr) => !keysBoot.has(pr.cacheKey) && keysWarm.has(pr.cacheKey)).map((pr) => pr.cacheKey),
+    entry: fresh.map((pr) => pr.cacheKey),
+  };
   // Which warmed key each entry-time program *nearly* matched, and where they
   // part company: a one-token difference is a warm aimed at the wrong state.
   const warmList = [...keysWarm];
@@ -217,9 +259,18 @@ const out = await page.evaluate(async ({ realmId, warm, skip, twice }) => {
   return res;
 }, { realmId: REALM, warm: WARM, skip: SKIP, twice: TWICE });
 
+const keyDump = out.keyDump;
+delete out.keyDump;
+
 console.log(`\n=== realm entry timing: ${REALM}${WARM ? ' (prewarmed)' : ''} ===`);
 for (const [k, v] of Object.entries(out)) {
   console.log(`  ${k.padEnd(14)} ${Array.isArray(v) ? v.join(' ') : (typeof v === 'number' ? v.toFixed(1) + ' ms' : v)}`);
+}
+
+if (keyDump && args['dump-keys']) {
+  const path = typeof args['dump-keys'] === 'string' ? args['dump-keys'] : 'realm-keys.json';
+  await writeFile(path, JSON.stringify(keyDump, null, 1));
+  console.log(`\n  program cache keys written to ${path}`);
 }
 
 await browser.close();

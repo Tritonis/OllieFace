@@ -1,7 +1,8 @@
-import { PointLight } from 'three';
+import { Group, InstancedMesh, Mesh, PointLight } from 'three';
 import { REALM_BY_ID } from '../../data/realms.js';
 import { RealmStage } from './RealmStage.js';
 import { buildArena } from './RealmArena.js';
+import { warmPropSet } from './RealmProps.js';
 
 /**
  * Build a realm before anyone walks into it (#183).
@@ -115,7 +116,14 @@ export class RealmWarm {
       if (rec.step === 'bake') {
         rec.rt = this.ctx.environment?.bakeDetachedProbe?.(
           rec.def.air, rec.stage.root, rec.stage.origin);
-        rec.step = rec.rt ? 'compile' : 'ready';
+        rec.step = rec.rt ? 'props' : 'ready';
+        return;
+      }
+      if (rec.step === 'props') {
+        // One set for the whole stage, not one per door: the prop classes are
+        // shared across realms and their programs are shared by cache key.
+        this._props ??= warmPropSet(this.ctx, rec.stage.origin);
+        rec.step = 'compile';
         return;
       }
       if (rec.step === 'compile') {
@@ -178,7 +186,7 @@ export class RealmWarm {
     if (!renderer || !camera || !rec.rt) return Promise.resolve();
 
     const world = ctx.stage;
-    const root = rec.stage.root;
+    let cat = null;
     const prevTarget = renderer.getRenderTarget();
     const prevEnv = scene.environment;
     const prevTerrain = world?.terrainMesh?.visible;
@@ -190,9 +198,11 @@ export class RealmWarm {
       if (world?.terrainMesh) world.terrainMesh.visible = false;
       if (world?.propsGroup) world.propsGroup.visible = false;
       for (let i = 0; i < extraLights; i++) scene.add(this._stand(i));
-      root.updateMatrixWorld(true);
-      promise = renderer.compileAsync(root, camera, scene);
+      cat = this._catalogue(rec);
+      cat.updateMatrixWorld(true);
+      promise = renderer.compileAsync(cat, camera, scene);
     } finally {
+      if (cat) this._releaseCatalogue(cat, rec);
       for (let i = 0; i < extraLights; i++) scene.remove(this._stand(i));
       if (world?.terrainMesh) world.terrainMesh.visible = prevTerrain;
       if (world?.propsGroup) world.propsGroup.visible = prevProps;
@@ -200,6 +210,69 @@ export class RealmWarm {
       renderer.setRenderTarget(prevTarget);
     }
     return promise;
+  }
+
+  /**
+   * Everything the entry frame will draw for the first time, gathered into one
+   * parentless group for `compileAsync` to harvest.
+   *
+   * Three things go in, and the third is the one that is easy to miss:
+   *
+   *  - the arena root, borrowed from wherever it is parked;
+   *  - one of every realm prop (`warmPropSet`), because `controller.enter`
+   *    allocates its props at the moment of entry and their programs were
+   *    still being compiled on the entry frame after the arena's were warm;
+   *  - a proxy for every distinct geometry wearing GTAO's **normal-pass
+   *    override material**. `compile` only ever warms an object's *own*
+   *    material, and the ambient-occlusion pass draws the whole scene again
+   *    through `scene.overrideMaterial` — so those programs are invisible to
+   *    any amount of warming aimed at the arena's materials, and they showed up
+   *    at entry as `normal,...` keys nothing had asked for.
+   *
+   * The group is parentless: `compile` walks its first argument *and* the
+   * target scene for lights, so putting this in the scene would count the
+   * arena's braziers twice, and drawing it at `REALM_ORIGIN_X` is the
+   * fourteen-second frame this whole file exists to avoid.
+   */
+  _catalogue(rec) {
+    const cat = new Group();
+    cat.name = 'realm-warm-catalogue';
+    rec.catParent = rec.stage.root.parent;
+    cat.add(rec.stage.root);
+    for (const p of this._props ?? []) cat.add(p.group);
+
+    const normalMat = this.ctx.pipeline?.passes?.gtao?.normalMaterial;
+    if (normalMat) {
+      const seen = new Set();
+      const proxy = (o) => {
+        if (!o.isMesh || !o.geometry) return;
+        // `receiveShadow` is an *object* parameter and it is in the cache key,
+        // so one proxy per geometry is not enough — the same geometry drawn
+        // shadowed and unshadowed is two programs. Keyed on both.
+        const tag = `${o.geometry.uuid}|${o.receiveShadow ? 1 : 0}|${o.castShadow ? 1 : 0}`;
+        if (seen.has(tag)) return;
+        seen.add(tag);
+        // Instancing is a define, so an InstancedMesh needs an instanced proxy
+        // or the warmed program is the one the pass will not use.
+        const m = o.isInstancedMesh
+          ? new InstancedMesh(o.geometry, normalMat, 1)
+          : new Mesh(o.geometry, normalMat);
+        m.receiveShadow = o.receiveShadow;
+        m.castShadow = o.castShadow;
+        m.frustumCulled = false;
+        cat.add(m);
+      };
+      for (const child of [...cat.children]) child.traverse(proxy);
+    }
+    return cat;
+  }
+
+  /** Put the borrowed roots back and drop the proxies. */
+  _releaseCatalogue(cat, rec) {
+    cat.remove(rec.stage.root);
+    if (rec.catParent) rec.catParent.add(rec.stage.root);
+    for (const p of this._props ?? []) cat.remove(p.group);
+    cat.clear();
   }
 
   /**
@@ -229,12 +302,23 @@ export class RealmWarm {
     return rec;
   }
 
-  /** Throw away anything still standing — a new stage, or the run ending. */
+  /**
+   * Throw away anything still standing — a new stage, or the run ending.
+   *
+   * The prop set outlives `take()` on purpose and is only released here. Its
+   * whole job is to hold the entry frame's programs in three's cache until the
+   * real props exist to reference them; disposing it at entry would free the
+   * program a moment before the thing it was warmed for asks for it. A stage is
+   * the right bound — #137's warning about realm materials pinning 4K maps for
+   * the session applies to anything kept longer.
+   */
   clear() {
     for (const rec of this.records.values()) {
       rec.stage?.dispose();
       rec.rt?.dispose();
     }
     this.records.clear();
+    for (const p of this._props ?? []) p.dispose?.();
+    this._props = null;
   }
 }

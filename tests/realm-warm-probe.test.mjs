@@ -154,13 +154,24 @@ ok(leaked.includes('fog.density') || leaked.includes('key.intensity') || leaked.
   const renderer = {
     getRenderTarget: () => null,
     setRenderTarget() {},
-    compileAsync(root, cam, target) {
+    compileAsync(cat, cam, target) {
       // What the scene looked like at the one moment that decides the cache
-      // key. `root.parent` is the fourteen-second trap; `pointLights` is the
-      // double-count one — three walks the target scene *and* this root.
+      // key. `inScene` is the fourteen-second trap — nothing being compiled may
+      // be reachable from the live scene, arena root included. `pointLights` is
+      // the double-count one: three walks the target scene *and* this argument.
       let pointLights = 0;
       target.traverseVisible((o) => { if (o.isPointLight) pointLights++; });
-      compiles.push({ rootInScene: root.parent === target, pointLights, env: target.environment });
+      let root = cat;
+      while (root.parent) root = root.parent;
+      const kinds = new Set();
+      cat.traverse((o) => { if (o.material) kinds.add(o.material.type || 'patched'); });
+      compiles.push({
+        inScene: root === target,
+        meshes: cat.children.length,
+        kinds: [...kinds],
+        pointLights,
+        env: target.environment,
+      });
       return Promise.resolve();
     },
   };
@@ -169,7 +180,11 @@ ok(leaked.includes('fog.density') || leaked.includes('key.intensity') || leaked.
     scene,
     camera,
     realms: { inRealm: false },
-    pipeline: { renderer, composer: { renderTarget1: {} } },
+    pipeline: {
+      renderer,
+      composer: { renderTarget1: {} },
+      passes: { gtao: { normalMaterial: new THREE.MeshNormalMaterial() } },
+    },
     environment: { bakeDetachedProbe: () => probe },
     stage: { terrainMesh: new THREE.Mesh(), propsGroup: new THREE.Group() },
   };
@@ -189,15 +204,24 @@ ok(leaked.includes('fog.density') || leaked.includes('key.intensity') || leaked.
   ok(!scene.children.includes(rec.stage.root), 'the live scene never sees a warming arena');
 
   warm.step();
-  ok(rec.rt === probe && rec.step === 'compile', 'step two bakes the probe and stops');
+  ok(rec.rt === probe && rec.step === 'props', 'step two bakes the probe and stops');
+
+  warm.step();
+  ok(warm._props?.length > 0 && rec.step === 'compile',
+    `step three stands up the realm's props and stops (${warm._props?.length} of them)`);
 
   for (let i = 0; i < 12 && rec.step !== 'ready'; i++) { warm.step(); await flush(); }
   ok(rec.step === 'ready', 'the compile spread runs itself out and reports ready');
   ok(warm.ready('crucible'), 'and ready() agrees');
 
   ok(compiles.length >= 2, `the compile covers a spread of light counts (${compiles.length} passes)`);
-  ok(compiles.every((c) => !c.rootInScene),
-    'the arena is never in the scene during a compile — three counts its lights from the root argument, and a drawable arena at REALM_ORIGIN_X is a 14 s frame');
+  ok(compiles.every((c) => !c.inScene),
+    'nothing being compiled is reachable from the live scene — three counts lights from the compile argument too, and a drawable arena at REALM_ORIGIN_X is a 14 s frame');
+  ok(rec.stage.root.parent === null, 'and the arena is back where it was parked afterwards');
+  ok(compiles.every((c) => c.kinds.includes('MeshNormalMaterial')),
+    'every pass warms GTAO\'s normal-pass override too — compile only ever sees an object\'s own material, and the AO pass redraws the scene through an override');
+  ok(compiles.every((c) => c.meshes > 1),
+    `the catalogue carries the realm's props and geometry proxies, not just the arena (${compiles[0].meshes} entries)`);
   ok(new Set(compiles.map((c) => c.pointLights)).size === compiles.length,
     `each pass warms a different light count (${compiles.map((c) => c.pointLights).join(', ')})`);
   ok(compiles.every((c) => c.env === probe.texture),
@@ -209,6 +233,19 @@ ok(leaked.includes('fog.density') || leaked.includes('key.intensity') || leaked.
   let stands = 0;
   scene.traverse((o) => { if (o.name === 'realm-warm-stand-in') stands++; });
   ok(stands === 0, 'no stand-in light is left behind in the scene');
+
+  // Prop ids reach clients by number and a client never warms, so a warm that
+  // consumed ids would shift every subsequent id on the host alone.
+  {
+    const { warmPropSet, Obelisk } = await import('../src/world/realms/RealmProps.js');
+    const at = new THREE.Vector3();
+    const idBefore = new Obelisk(ctx, at).id;
+    const set = warmPropSet(ctx, at);
+    const idAfter = new Obelisk(ctx, at).id;
+    ok(set.length > 0, `warmPropSet stands up the realm's prop classes (${set.length})`);
+    ok(idAfter === idBefore + 1,
+      `and hands the id counter back untouched (${idBefore} -> ${idAfter}, ${set.length} props built in between)`);
+  }
 
   const taken = warm.take('crucible');
   ok(taken?.stage === rec.stage && taken.rt === probe, 'entry takes the arena and its probe');
