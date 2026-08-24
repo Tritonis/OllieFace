@@ -2185,6 +2185,15 @@ export class VoidBargain extends Interactable {
       this.spent = true;
       this.maw.material.emissiveIntensity = 2.4;
       this.ctx.audio?.play?.('shrineBlood', this.position);
+      // Ruin was the one altar branch that announced itself only through
+      // `voidRuin` — `Corruption.ruin()` commits its own weight, so nothing
+      // needed a bargain event and none was emitted. That silence was a hole:
+      // #177's restraint vow watches `voidBargain`, so a run could press the
+      // heaviest corrupt act in the table (24) and still close the Vow of the
+      // Closed Hand kept. It is a bargain struck at the altar like the others
+      // and now says so in the others' shape. Deliberately absent from
+      // `Corruption`'s BARGAIN_COMMIT map, so this cannot double-bill `ruin`.
+      this.ctx.events.emit('voidBargain', { kind: 'ruin', marks: 0, motes: 0, owner: pawn });
       return true;
     }
     // Everything else is paid first and delivered second: a bargain that could

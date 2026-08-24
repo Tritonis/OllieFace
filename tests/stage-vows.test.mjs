@@ -13,6 +13,7 @@
  * answers diverge. A guard that only ever sees the passing case is the defect
  * shape this repo keeps finding; these do not have that shape.
  */
+import { readFileSync } from 'node:fs';
 import { Corruption } from '../src/systems/Corruption.js';
 import { Vows } from '../src/systems/Vows.js';
 import { VOWS, VOW_WARD, VOW_BY_ID, selectVow } from '../src/data/vows.js';
@@ -151,6 +152,7 @@ console.log('\n-- (b) the restraint vow fails when its condition is violated --'
     ['a lid forced on void credit', 'itemOffer', { kind: 'chest', outcome: 'corrupt' }],
     ['an item taken as a corrupted upgrade', 'itemOfferResolved', { kind: 'item', outcome: 'corrupt' }],
     ['a pact struck at the altar', 'voidBargain', { kind: 'pact', marks: 3 }],
+    ['the void let all the way in', 'voidBargain', { kind: 'ruin', marks: 0, motes: 0 }],
   ]) {
     const b = makeCtx(seed);
     b.ctx.events.emit('stageStart', { index: stage });
@@ -163,6 +165,43 @@ console.log('\n-- (b) the restraint vow fails when its condition is violated --'
     ok(b.cor.ledger.pure === pureBefore,
       `${label}: no purity is paid, at the break or at the close (${b.cor.ledger.pure})`);
     ok(b.cor.warded === 0, `${label}: and nothing is warded`);
+  }
+
+  // RUIN — the review's Critical, driven through the real verb rather than the
+  // event alone. `Corruption.ruin()` is the heaviest corrupt act in the table
+  // (24, above the capstone floor by itself) and the altar used to settle it
+  // silently, so a run could let the void all the way in and still be paid for
+  // the Vow of the Closed Hand in the same stage.
+  {
+    const r = makeCtx(seed);
+    r.ctx.events.emit('stageStart', { index: stage });
+    ok(r.vows.active?.vow.id === 'take-nothing-offered', 'the Closed Hand is standing');
+    // Exactly what the altar's ruin branch does, in its order: the verb first,
+    // then the bargain event that announces it.
+    const opened = r.cor.ruin();
+    r.ctx.events.emit('voidBargain', { kind: 'ruin', marks: 0, motes: 0, owner: r.ctx.player });
+    ok(opened && r.cor.ruined, 'the one-way door is open');
+    ok(r.cor.ledger.corrupt === weightOf('ruin', 1),
+      `and the run is billed ruin's full weight (${r.cor.ledger.corrupt})`);
+    ok(r.vows.active === null, 'RUIN breaks the vow');
+    r.ctx.events.emit('stageStart', { index: stage + 1 });
+    ok(r.cor.warded === 0 && r.cor.ledger.pure === 0,
+      `and the stage closes paying nothing at all (warded ${r.cor.warded}, pure ${r.cor.ledger.pure})`);
+    ok(!pureCapstoneEligible(r.cor.ledger) && alignmentOf(r.cor.ledger) === 'corrupt',
+      'the run reads corrupt, with no purity bought on the way in');
+  }
+
+  // The event is only half the fix; the altar has to actually emit it. Read out
+  // of the source, because a test that drives the event by hand passes just as
+  // happily against a ruin branch that emits nothing — which is exactly the
+  // state this finding was found in.
+  {
+    const src = readFileSync(new URL('../src/world/Interactables.js', import.meta.url), 'utf8');
+    const branch = src.slice(src.indexOf("if (offer.kind === 'ruin')"));
+    const body = branch.slice(0, branch.indexOf('\n    }'));
+    ok(body.includes('cor.ruin()'), 'the altar ruin branch is where it was expected');
+    ok(/emit\('voidBargain',\s*\{\s*kind:\s*'ruin'/.test(body),
+      "and it emits a voidBargain of kind 'ruin' — the vow has something to hear");
   }
 
   // Failure never costs. This is the adjudicated contract and the reason

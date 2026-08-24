@@ -59,9 +59,19 @@ import { isVoidtouched } from './corruption.js';
  */
 export const VOW_WARD = 16;
 
-/** Void Bargain kinds that break a restraint vow. Sanctuary and Consecration
- *  are purity's own presses and must not. */
-const CORRUPT_BARGAIN = new Set(['reroll', 'synergy', 'pact']);
+/**
+ * Void Bargain kinds that break a restraint vow. Sanctuary and Consecration are
+ * purity's own presses and must not.
+ *
+ * `ruin` is here and is the one that matters most: it is the heaviest corrupt
+ * act in `data/alignment.js` (24, above the capstone floor on its own), and the
+ * altar used to settle it by calling `Corruption.ruin()` directly without
+ * emitting anything a vow could hear. A run could let the void all the way in
+ * and still be paid for the Vow of the Closed Hand in the same stage. The altar
+ * now emits `{ kind: 'ruin' }` alongside the other bargains; this set is the
+ * other half of that fix and `tests/stage-vows.test.mjs` holds both open.
+ */
+const CORRUPT_BARGAIN = new Set(['reroll', 'synergy', 'pact', 'ruin']);
 
 export const VOWS = [
   {
