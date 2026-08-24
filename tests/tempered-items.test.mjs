@@ -11,6 +11,7 @@
 // throw": a hook that quietly reverted to a parent's own formula, or that
 // forgot to cap/decay its tension dial, fails on a literal here.
 import { Items } from '../src/systems/Items.js';
+import { Corruption } from '../src/systems/Corruption.js';
 import { ITEM_BY_ID, TEMPERED_ITEMS, TEMPER_BY_ID, linear, hyperbolic, hyperbolicMult } from '../src/data/items.js';
 import { RNG } from '../src/core/MathUtil.js';
 
@@ -139,6 +140,47 @@ console.log('Items.temper(): consumes BOTH parents wholesale, grants exactly one
   ok(client.temper('tempered-capacitor') === 0, 'a client cannot temper');
   ok(client.count('quicksilver-vein') === 1 && client.count('arc-rot') === 1,
     'and neither parent is touched on a client');
+}
+
+console.log('a full temper charges NO corruption at all, against the REAL Corruption class (review Major, m1/m3)');
+{
+  // The reviewer's repro: an unmarked grant let `Corruption`'s generic
+  // `itemPickup` feed charge `SOURCES.itemFeed['tempered'] ?? 1` on the
+  // Tempered card's own arrival — an unpriced, unpreviewed toll no offer this
+  // player saw ever quoted (world 9 -> 10 across one temper). Both parents
+  // were already charged corruption at their own tier when picked up, and
+  // this trade destroys them rather than duplicating anything, so the whole
+  // temper — the two zeroing writes AND the grant — must move `world` by
+  // exactly zero. Driven against the REAL `Corruption` class on the real
+  // event bus, not the stubbed `ctx.corruption` the hook-level tests above
+  // use, because the toll lives entirely in that class's own `itemPickup`
+  // listener.
+  const listeners = new Map();
+  const ctx = {
+    authority: true, seed: 13, rng: new RNG(13), time: 0,
+    player: { isPlayer: true, alive: true },
+    events: {
+      emit(name, p) { for (const fn of listeners.get(name) || []) fn(p); },
+      on(name, fn) { if (!listeners.has(name)) listeners.set(name, []); listeners.get(name).push(fn); },
+    },
+  };
+  const items = new Items();
+  items.init(ctx);
+  const corruption = new Corruption();
+  corruption.init(ctx);
+
+  // A baseline away from zero — the reviewer's own "9", so a toll that fired
+  // would read as a visible step (9 -> 10), not a floor-clamped no-op.
+  corruption.feed(ctx.player, 9);
+  ok(corruption.world === 9, `baseline world is 9 (${corruption.world})`);
+
+  items.counts.set('quicksilver-vein', 1);
+  items.counts.set('arc-rot', 1);
+  const before = corruption.world;
+  items.temper('tempered-capacitor');
+  ok(corruption.world === before,
+    `the whole temper charges nothing at all — world unmoved (${before} -> ${corruption.world})`);
+  ok(!corruption.sanctified, 'and opens no sanctuary either — sanity, unrelated to this toll');
 }
 
 console.log('temper() does not falsely inflate or discover through the logbook (Profile) — review Major');
