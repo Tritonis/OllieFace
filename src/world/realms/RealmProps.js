@@ -5,7 +5,7 @@ import { Items } from '../../systems/Items.js';
 import { getTextureSets, withRepeat, attachWorldSurface } from '../Materials.js';
 // A realm's goods feed the void exactly as a stage's do, so its prompts wear
 // the same three-part price tag (issue #30).
-import { pricedPrompt, tierClaimRange, claimOutcomeRange } from '../corruptionPrice.js';
+import { pricedPrompt, tierClaimRange, fixedClaimFace } from '../corruptionPrice.js';
 import { openItemOffer } from '../itemTransaction.js';
 
 /**
@@ -317,15 +317,18 @@ export class MarketStall extends RealmProp {
   }
 
   // The stall names its tier already; what it did not name is the corrupted
-  // claim's premium (issue #176) — the safe claim of a paid-for item is free,
-  // the same as every other adopted feeder. Deterministic stock, so the debt
-  // is one exact number rather than a range.
+  // claim's exact face price (issue #176) — the safe claim of a paid-for item
+  // is free, the same as every other adopted feeder. `fixedClaimFace`, not a
+  // range: `this.itemId` is fixed at construction and never re-rolled at
+  // claim time, so neither corruption's blight share nor Caprice's shelf swap
+  // applies — quoting either would advertise a re-roll `resolve('corrupt')`
+  // can never produce (review A1). Deterministic stock either way, so the
+  // debt was always one exact number.
   prompt() {
     const def = ITEM_BY_ID.get(this.itemId);
     if (!def) return `Item ($${this.cost})`;
-    const claim = claimOutcomeRange({ [def.tier]: 1 }, this.ctx);
-    return pricedPrompt(this.ctx, `${def.name} — ${def.tier} ($${this.cost})`,
-      claim.corrupt.min, claim.corrupt.max);
+    const face = fixedClaimFace(def.tier);
+    return pricedPrompt(this.ctx, `${def.name} — ${def.tier} ($${this.cost})`, face, face);
   }
 
   interact(pawn = this.ctx.player) {

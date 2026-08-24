@@ -49,6 +49,11 @@ function tierClaimOf(...tiers) {
   const corrupt = tiers.map((t) => (FEED[t] ?? 1) + premiumFor(t));
   return { min: Math.min(...corrupt), max: Math.max(...corrupt) };
 }
+// The terminal's and the stall's own shape (review A1): the item is fixed at
+// construction and never re-rolled at claim time, so the quote is one exact
+// number with neither corruption's blight share nor Caprice's shelf swap
+// folded in — both describe a re-roll `resolve('corrupt')` can never produce.
+function fixedFaceOf(tier) { return (FEED[tier] ?? 1) + premiumFor(tier); }
 const SMALL_CLAIM = claimOf('common', 'uncommon', 'legendary');
 const LARGE_CLAIM = claimOf('uncommon', 'legendary');
 const LEG_CLAIM = claimOf('legendary');
@@ -229,9 +234,9 @@ console.log('a shop terminal knows exactly which item it sells, so it quotes exa
   const ctx = makeCtx({ gold: 1000 });
   const shop = new MultishopTerminal(ctx, new THREE.Vector3(), 44, [], 0);
   const def = ITEM_BY_ID.get(shop.itemId);
-  const claim = claimOf(def.tier);
-  eq(shop.prompt(), priced(`${def.name} ($44)`, claim.corrupt.min, claim.corrupt.max),
-    'a known item quotes its corrupted claim only, never the safe one');
+  const face = fixedFaceOf(def.tier);
+  eq(shop.prompt(), priced(`${def.name} ($44)`, face, face),
+    'a known item quotes its corrupted claim only, never the safe one, and never a re-roll it cannot pay');
 }
 
 console.log('the Auric Cairn prices the corrupted claim it might offer');
@@ -273,8 +278,8 @@ console.log('the market and the vault price their known goods');
   const ctx = makeCtx({ gold: 1000 });
   const stall = new MarketStall(ctx, new THREE.Vector3(), SHOP_ITEM, 90, 0);
   const def = ITEM_BY_ID.get(SHOP_ITEM);
-  const claim = claimOf(def.tier);
-  eq(stall.prompt(), priced(`${def.name} — ${def.tier} ($90)`, claim.corrupt.min, claim.corrupt.max),
+  const stallFace = fixedFaceOf(def.tier);   // fixed stock, never re-rolled — same reason as the terminal above
+  eq(stall.prompt(), priced(`${def.name} — ${def.tier} ($90)`, stallFace, stallFace),
     'a market stall quotes the corrupted claim of the tier it is holding up');
 
   const drops = [SHOP_ITEM, ITEMS_BY_TIER.legendary[0].id];

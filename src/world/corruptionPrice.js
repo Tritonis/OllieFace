@@ -154,6 +154,21 @@ export function tierClaimRange(tiers, ctx = null) {
 }
 
 /**
+ * The corrupted claim's face price for an item that is not rolled at claim
+ * time at all — already chosen, sitting behind a terminal's screen or on a
+ * stall's shelf (issue #176, review A1). Deliberately takes no `ctx`: unlike
+ * `tierClaimRange`, whose tier list stands in for a roll `interact()` is
+ * about to make, this id is never re-rolled, so Caprice's shelf swap — a real
+ * fact about a *future* roll — has nothing here to apply to. Folding it in
+ * anyway is exactly the bug this function exists to not repeat: it would
+ * advertise a re-roll `resolve('corrupt')` can never produce, for a second
+ * reason on top of the blight one `tierClaimRange`'s own docstring names.
+ */
+export function fixedClaimFace(tier) {
+  return tierFeed(tier) + premiumFor(tier);
+}
+
+/**
  * The face-value range one roll off a `TIER_BIAS`-shaped table can feed.
  *
  * Mirrors `Items.rollTier` deliberately, in both of its rules: a zero weight

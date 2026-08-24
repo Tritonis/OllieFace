@@ -249,5 +249,66 @@ console.log('-- and that guard CAN fail: blind the feed and the trial payout cha
     + `(got ${cor.world}) - so "world === 0" above is a guard that can go red`);
 }
 
+// ------------------------------------------------- review A1: quote vs charge
+//
+// The guard that was missing: nothing compared a fixed-item feeder's own
+// quoted max against what `resolve('corrupt')` actually charges, so
+// `MultishopTerminal`/`MarketStall` shipped a quote ~5x the real price and the
+// suite stayed green (both a bias-table `claimOutcomeRange` fold and the test
+// file's own `claimOf` helper independently always append a 'blight' branch,
+// so they agreed with each other and with the bug). This section compares the
+// PRINTED number against the REAL charge, off the real modules, for both
+// feeders whose item is fixed at construction rather than rolled at claim
+// time.
+
+/** The `+N` or `+N-M corruption` clause's ceiling, off the printed prompt. */
+function quotedMax(line) {
+  const m = line.match(/\+(\d+)(?:-(\d+))?\s+corruption/);
+  return m ? Number(m[2] ?? m[1]) : NaN;
+}
+
+console.log('-- red: the pre-fix formula (blight always folded into a fixed item) does NOT match the real charge --');
+{
+  // Reproduces exactly what `claimOutcomeRange({ [tier]: 1 })` computed before
+  // the fix — the tier's own face price AND corruption's blight share, ceiling
+  // taken over both. `adrenal-syringe` is common, and this is the review's own
+  // reproduction: quoted max 16 against an actual charge of 3.
+  const buggyMax = Math.max(
+    SOURCES.itemFeed.common + premiumFor('common'),
+    SOURCES.itemFeed.blight + premiumFor('blight'),
+  );
+  const { ctx, cor } = makeWorld();
+  const shop = new MultishopTerminal(ctx, new THREE.Vector3(), 44, [], 0);
+  shop.itemId = BASE;
+  shop.interact(ctx.player);
+  shop.answer('corrupt');
+  ok(buggyMax !== cor.world,
+    `the old blight-folded formula quoted ${buggyMax} while the real charge is ${cor.world} `
+    + '- that mismatch is exactly what the assertions below must catch, and did not before this fix');
+}
+
+console.log('green: the terminal\'s quoted max is exactly what a corrupted claim charges');
+{
+  const { ctx, cor } = makeWorld();
+  const shop = new MultishopTerminal(ctx, new THREE.Vector3(), 44, [], 0);
+  shop.itemId = BASE;
+  const max = quotedMax(shop.prompt());
+  ok(Number.isFinite(max), 'the prompt names a corruption ceiling');
+  ok(shop.interact(ctx.player) === true, 'the purchase succeeds');
+  ok(shop.answer('corrupt')?.outcome === 'corrupt', 'the corrupted card resolves');
+  ok(cor.world === max, `the quoted max (${max}) is exactly what landed (${cor.world}), no re-roll premium included`);
+}
+
+console.log('green: the market stall\'s quoted max is exactly what a corrupted claim charges');
+{
+  const { ctx, cor } = makeWorld();
+  const stall = new MarketStall(ctx, new THREE.Vector3(), BASE, 90, 0);
+  const max = quotedMax(stall.prompt());
+  ok(Number.isFinite(max), 'the prompt names a corruption ceiling');
+  ok(stall.interact(ctx.player) === true, 'the purchase succeeds');
+  ok(stall.answer('corrupt')?.outcome === 'corrupt', 'the corrupted card resolves');
+  ok(cor.world === max, `the quoted max (${max}) is exactly what landed (${cor.world}), no re-roll premium included`);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

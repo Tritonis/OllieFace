@@ -8,7 +8,7 @@ import {
 } from '../data/corruption.js';
 // Every prompt that feeds the void is priced through one formatter, so the
 // three parts of the decision cannot drift apart between shrines (issue #30).
-import { pricedPrompt, claimOutcomeRange } from './corruptionPrice.js';
+import { pricedPrompt, claimOutcomeRange, fixedClaimFace } from './corruptionPrice.js';
 // The chest's payout is a transaction, not a tax (issue #175).
 import { openItemOffer } from './itemTransaction.js';
 // What each band gives back, and the currency it is bought with (issue #36).
@@ -680,14 +680,17 @@ export class MultishopTerminal extends Interactable {
   // `pricedPrompt` returns the bare gain line for a zero feed.
   // The terminal no longer feeds anything for the item itself (issue #176):
   // the claim is a transaction now, exactly the chest's, and the safe outcome
-  // is free. What is left to quote is the corrupted claim's premium, so the
-  // debt is a range built off this one item's own tier rather than the
-  // multi-tier span `claimOutcomeRange` models for a whole bias table.
+  // is free. What is left to quote is the corrupted claim's exact face price
+  // — `fixedClaimFace`, not a range: the item is already rolled
+  // (`this.itemId`, fixed at construction) and never re-rolled at claim
+  // time, so neither corruption's blight share nor Caprice's shelf swap has
+  // anything to apply to, and quoting either would advertise a re-roll
+  // `resolve('corrupt')` can never actually produce (review A1).
   prompt() {
     const known = ITEM_BY_ID.get(this.itemId);
     if (!known) return `${'Item'} ($${this.cost})`;
-    const claim = claimOutcomeRange({ [known.tier]: 1 }, this.ctx);
-    return pricedPrompt(this.ctx, `${known.name} ($${this.cost})`, claim.corrupt.min, claim.corrupt.max);
+    const face = fixedClaimFace(known.tier);
+    return pricedPrompt(this.ctx, `${known.name} ($${this.cost})`, face, face);
   }
 
   /**
