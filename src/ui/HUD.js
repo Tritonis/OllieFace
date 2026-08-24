@@ -408,11 +408,17 @@ export class HUD {
     });
     // The chest's three-way claim (issue #175), through the same one window the
     // blight toll uses. Owner-tested like every other addressed panel: a
-    // teammate's chest is a teammate's decision, and this build does not send
-    // the offer over the wire — an unaddressed seat simply never sees a panel
-    // and the host's clock lapses the window into the safe claim, which is the
-    // item, unfed. The cards are built off the quote's own numbers so the panel
-    // cannot state a price the transaction will not charge.
+    // teammate's chest is a teammate's decision, and it never reaches this
+    // machine to be tested — the offer is a `_forwardOwned` send addressed to
+    // the single peer holding the pawn (issue #205), so a guest raises this
+    // panel over their own lid and nobody else's. The answer goes back the way
+    // the blight toll's does: `chooseOffer` echoes the host's own identifier as
+    // one `MSG.MUTATE`, and the host decides. A seat that never answers is
+    // still lapsed safe by the host's clock — the item, unfed — which is what
+    // every guest used to get, because until #205 the offer stayed home.
+    //
+    // The cards are built off the quote's own numbers so the panel cannot state
+    // a price the transaction will not charge.
     on('itemOfferOpened', (e) => {
       if (!isLocalOwner(ctx, e)) return;
       const q = e.quote;

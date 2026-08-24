@@ -936,6 +936,14 @@ export class Items {
   hasChoiceWindow() { return !!this._muteChoice; }
 
   /**
+   * Which kind is standing, or null for none. The two are not interchangeable
+   * to a caller deciding whether to paint over one (integration review M3): an
+   * argent window is a purchase already made and must never be forfeited, while
+   * a blight toll is involuntary and pays the same either way.
+   */
+  choiceWindowKind() { return this._muteChoice?.kind ?? null; }
+
+  /**
    * The open offer, for the UI that paints it. Null when no window is open.
    *
    * On a client that is the offer the host addressed to this machine
