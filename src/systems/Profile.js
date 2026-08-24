@@ -9,7 +9,7 @@ import { catalogueSizes, catalogueHas, unlockName } from './UnlockRegistry.js';
 import { isLocalVictim, isLocalOwner } from '../core/Engine.js';
 import { adoptLegacyKey } from '../core/LegacyStorage.js';
 import { renameItemId, renameEnemyId } from '../data/renamedIds.js';
-import { ALIGNMENT } from '../data/alignment.js';
+import { ALIGNMENT, ALIGNMENT_UNKNOWN } from '../data/alignment.js';
 
 /**
  * The persistent player profile — everything that outlives a run.
@@ -876,10 +876,7 @@ export class Profile {
         // written before this existed, which is exactly the case `alignmentOr`
         // and `num` handle: an old run loads as a neutral, zero-commitment one
         // and every field it already carried is untouched.
-        alignment: alignmentOr(r.alignment),
-        commitCorrupt: num(r.commitCorrupt, 0),
-        commitPure: num(r.commitPure, 0),
-        commitMixed: num(r.commitMixed, 0),
+        ...alignmentSummary(r),
         inventory: Array.isArray(r.inventory)
           ? r.inventory.filter(isObj).map((i) => ({ id: str(i.id), count: num(i.count, 0) }))
           : [],
@@ -1376,10 +1373,7 @@ export class Profile {
       // And what the run *committed* to, which is the question the live band
       // above cannot answer (issue #169): a run that cleansed at the door ends
       // at band 0 and still reads 'corrupt' here.
-      alignment: alignmentOr(stats?.alignment),
-      commitCorrupt: num(stats?.commitCorrupt, 0),
-      commitPure: num(stats?.commitPure, 0),
-      commitMixed: num(stats?.commitMixed, 0),
+      ...alignmentSummary(stats),
       inventory: Array.isArray(stats.inventory)
         ? stats.inventory.map((i) => ({ id: str(i.id), count: num(i.count, 0) }))
         : [],
@@ -1819,12 +1813,26 @@ const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const num = (v, d) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
 const str = (v) => (typeof v === 'string' ? v : null);
 /**
- * A stored alignment, or 'neutral' (issue #169). Anything not in the partition
- * — an absent field on an old record, a typo, a value from a newer build — is a
- * run that committed to nothing, never a fourth alignment the readers of this
- * field would have to learn about.
+ * The alignment summary a run record carries (issue #169).
+ *
+ * Anything not in the partition — an absent field on a pre-#169 record, a
+ * record written by a guest whose ledger is host-local, a typo, a value from a
+ * newer build — is `ALIGNMENT_UNKNOWN`, and its commitment totals are `null`
+ * rather than `0`. That distinction is the fix for the co-op defect: a zero
+ * total is the claim "this run committed to nothing", which is exactly what a
+ * guest is not entitled to say. `null` says "this machine did not simulate it".
+ *
+ * A reader must therefore treat `unknown` as "ask the host", never as neutral.
  */
-const alignmentOr = (v) => (Object.values(ALIGNMENT).includes(v) ? v : ALIGNMENT.neutral);
+const alignmentSummary = (r) => {
+  const known = Object.values(ALIGNMENT).includes(r?.alignment);
+  return {
+    alignment: known ? r.alignment : ALIGNMENT_UNKNOWN,
+    commitCorrupt: known ? num(r.commitCorrupt, 0) : null,
+    commitPure: known ? num(r.commitPure, 0) : null,
+    commitMixed: known ? num(r.commitMixed, 0) : null,
+  };
+};
 
 /**
  * Which challenge, if any, gates this (type, id)?

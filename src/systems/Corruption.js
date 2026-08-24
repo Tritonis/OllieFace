@@ -82,6 +82,12 @@ export class Corruption {
     // this. Monotone by construction: `commit` is the one writer and it only
     // adds. Host-local and deliberately off the wire; see `applyNetState`.
     this._ledger = emptyLedger();
+    // Which mutation thresholds this run has already been billed for. Keyed by
+    // band value, which is what makes world-threshold commitment independent of
+    // both seat count and feed batching — see the `itemMutated` listener in
+    // `init`. Never reset: a band is billed at most once per run, even after
+    // bleeding below it and climbing back — see the decay-path note in `bleed`.
+    this._billedBands = new Set();
   }
 
   init(ctx) {
@@ -147,7 +153,37 @@ export class Corruption {
     ctx.events.on('itemOffer', ({ outcome }) => {
       if (outcome === 'corrupt') this.commit('corruptChest');
     });
-    ctx.events.on('itemMutated', () => { this.commit('blightMutation'); });
+    // A band crossing is a WORLD threshold, but the mutation toll it triggers
+    // runs once per *seat*: every pawn's `Items` emits its own `itemMutated`.
+    // Billing each of them made corrupt commitment scale linearly with party
+    // size against a `warded` side that runs once through `bleed` — measured
+    // with zero deliberate acts and every choice window lapsed, one crossing at
+    // Consumed billed 12 solo, 24 at two seats and 48 at four, so any two-seat
+    // co-op run was automatically corrupt-capstone eligible and could never
+    // read pure. See ADR-0003, "Seat independence".
+    //
+    // So the toll is billed once per *threshold*, on whichever seat's mutation
+    // lands first, and every later mutation naming the same threshold is the
+    // same world event arriving again.
+    //
+    // Keyed on the band the payload carries, NOT on a per-`feed` counter. An
+    // earlier fix counted calls, which was the inverse defect: `Items` queues
+    // one mutation per DISTINCT band crossed and drains them in one frame, so a
+    // single feed jumping several thresholds — a legendary void-credit chest is
+    // 45, doubled to 90 on greed time — billed once for what the ADR rule says
+    // is three acts, under-counting solo runs. The band value is the honest key
+    // because it names the threshold rather than the transaction that crossed
+    // it, which makes the billing independent of how feeds are batched.
+    //
+    // A payload with no band is billed unconditionally: it is a synthetic or
+    // CONTRACTS.md-shaped event with no threshold to deduplicate against, and
+    // silently dropping it would be worse than counting it.
+    ctx.events.on('itemMutated', ({ band } = {}) => {
+      if (!Number.isFinite(band)) { this.commit('blightMutation'); return; }
+      if (this._billedBands.has(band)) return;
+      this._billedBands.add(band);
+      this.commit('blightMutation');
+    });
     ctx.events.on('itemStabilised', () => { this.commit('stabilised'); });
     // Sanctuary is absent from this map on purpose: `sanctuary()` commits it,
     // and the altar emits *both* that call and a `voidBargain` of kind
@@ -443,6 +479,14 @@ export class Corruption {
     });
     const prev = this._band;
     this._band = bandOf(this._world);
+    // Deliberately NOT forgetting billed bands on the way down. The first
+    // instinct is that re-crossing a threshold should re-bill, and an earlier
+    // draft of this file did that — but `Items._mutePeak` is monotone
+    // (`nextTollBand`, Items.js:825), so the real emitter never tolls a band
+    // twice and no second `itemMutated` exists to bill. Resetting here would
+    // have been reachable only from a synthetic event, which means it would
+    // have been a rule provable only against a fixture. A band is billed at
+    // most once per run because it is *tolled* at most once per run.
     this.ctx.events.emit('corruptionChanged', { world: this._world, band: this._band });
     if (this._band !== prev) this.ctx.events.emit('corruptionBand', { band: this._band, prev });
     return taken;

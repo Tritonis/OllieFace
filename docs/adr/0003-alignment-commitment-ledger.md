@@ -61,6 +61,51 @@ reader own the balance consequences of doing so.
    capped at `HISTORY_MAX` and drops its oldest rows. The class counters are
    separate and stay exact. Never re-derive a total by summing `history`.
 
+### Seat independence
+
+Added after the integration review refuted the first draft. **A commitment
+derived from a world threshold is billed once per threshold, at any party
+size; only a deliberate per-seat act is billed per seat.**
+
+The rule in one line: **N distinct toll thresholds crossed bills exactly N
+times, at any seat count, under any batching of feeds** — while a deliberate
+per-seat act is billed per press.
+
+The defect: a band crossing is one world event, but the mutation toll it fires
+runs once per *seat* — each pawn's `Items` emits its own `itemMutated` — and the
+listener was deliberately un-owner-filtered. With zero deliberate acts and every
+choice window lapsed, one descent to Consumed billed 12 solo, 24 at two seats,
+48 at four. `CAPSTONE.corrupt` is 20, so **any two-seat co-op run was
+automatically corrupt-capstone eligible and could never read pure**, while
+`warded` ran once through `bleed` and stayed at solo rate. The asymmetry was not
+a tuning error; it made the partition a function of party size.
+
+`Corruption` therefore bills the toll **once per band value**, keyed on the band
+each `itemMutated` payload carries, on whichever seat's mutation lands first.
+
+The key must be the band and not the transaction. A first fix counted `feed`
+calls and deduped per call, which was the inverse defect: `Items` queues one
+mutation per *distinct* band crossed and drains them in one frame
+(`Items.js:440-446`), so a single feed jumping several thresholds — a legendary
+void-credit chest is 45, doubled to 90 on greed time — billed once for what this
+rule calls three acts, under-counting solo runs. Keying on the band names the
+threshold rather than the transaction that crossed it, which makes billing
+independent of how feeds are batched as well as of seat count.
+
+**A band is billed at most once per run, and is not re-billed after bleeding
+below it and climbing back.** That is not a softening of the rule — it is the
+emitter's own behaviour: `Items._mutePeak` is monotone (`nextTollBand`,
+`Items.js:825`), so a re-crossed threshold produces no second `itemMutated` to
+bill. An earlier draft reset the billed set on the way down; that branch was
+reachable only from a synthetic event, and a rule provable only against a
+fixture is not a rule.
+
+Deliberate acts are the other side of the rule and are unchanged: a bargain, a
+chest forced on void credit, a stabilisation and a sanctuary are each one pawn's
+press with one emitter, so per-seat billing is the correct billing. A *chosen*
+mutation is still world-threshold commitment — the choice is which stack
+festers, not whether the crossing happened — so it stays once per crossing.
+
 ### What the tolerance is for
 
 A strict partition would cost a corrupted run its capstone for two incidental
@@ -87,10 +132,26 @@ from the host events it observes.
 - `MSG.WORLD` is a fixed 27-byte record (protocol version 10). The ledger is
   three floats plus a variable-length history; carrying it means a new
   variable-length message and a version bump for write-only state.
-- The failure mode a *half*-replicated ledger would have — a guest computing a
-  different alignment from the host and acting on it — cannot occur here,
-  because a guest computes a consistent `'neutral'` and nothing reads it. That
-  is enforced by test, not by convention.
+- A guest computes a consistent `'neutral'` ledger rather than a partial one.
+
+**The first draft's claim that "nothing reads it, enforced by test" was false**,
+and the integration review was right to refute it: the test asserted the guest's
+ledger *is* empty — the symptom — while `Progression._endRun`, which is not
+authority-gated, read that empty ledger and filed it. A guest's permanent
+logbook recorded every co-op run as `alignment: 'neutral', commitCorrupt: 0`,
+in flat disagreement with the host's record of the same run.
+
+The fix is that **a machine may only file a verdict it simulated.**
+`runStats` contributes the alignment fields only under `ctx.authority`; off the
+host they are absent, and `Profile` stores `ALIGNMENT_UNKNOWN` with `null`
+totals. The `null` is load-bearing: `0` is the claim "committed nothing", which
+is exactly what a guest is not entitled to say, whereas `null` says "not
+simulated here". A reader must treat `unknown` as *ask the host*, never as
+neutral.
+
+`ALIGNMENT_UNKNOWN` is deliberately not a fifth member of `ALIGNMENT`. The
+partition still has four values and invariant 2 is untouched — this is a
+property of the logbook, not of a ledger.
 
 **The first ticket to give the ledger a client-side reader owns replicating
 it**, and owns the `PROTOCOL_VERSION` bump and `NETCODE.md` entry that come with
@@ -100,21 +161,29 @@ is a reader.
 ## Persistence
 
 `Profile` stores an `alignment` string and three commitment totals per run.
-Absent, malformed, or unrecognised values read as a neutral, zero-commitment run
-— so every record written before this existed loads with all its existing fields
-untouched. The run history is deliberately **not** persisted: it is a run-scoped
-diagnostic, and the logbook wants the verdict.
+Absent, malformed, or unrecognised values read as `ALIGNMENT_UNKNOWN` with
+`null` totals — never as neutral. That covers three cases with one honest
+answer: a record written by a guest, a record written before this system
+existed, and a record from a future build this one does not understand. Every
+field an old record already carried loads untouched.
+
+The run history is deliberately **not** persisted: it is a run-scoped
+diagnostic, and the logbook wants the verdict. #177's vow scopes will want it
+and should revisit this.
 
 ## Consequences
 
 - `Corruption` gains a second concern. Accepted: the alternative is a system
   that must be initialised, replicated, and persisted alongside the gauge while
   being definitionally derived from the same acts.
-- Telemetry does not yet record commitment. The run record already carries every
-  underlying act (`itemOffers`, `bargains`, `mutations`, `stabilisations`,
-  `corruption.ruined`), so the ledger is reconstructible from a run record
-  today; a first-class `alignment` field belongs with the playtest work in the
-  audit's Priority 8.
+- Telemetry does not yet record commitment. **In solo** the run record carries
+  every underlying act (`itemOffers`, `bargains`, `mutations`,
+  `stabilisations`, `corruption.ruined`), so the ledger is reconstructible from
+  it. **In co-op it is not**: `Telemetry` owner-filters to the local player, so
+  a guest's record is missing the host's acts and a host's is missing the
+  guests'. A first-class `alignment` field — replicated or host-filed — belongs
+  with the playtest work in the audit's Priority 8, and until it exists
+  commitment cannot be analysed from co-op records at all.
 - The unwired sources in `SOURCES` (Wounds #178, Vows #177, Tempering #179) are
   declared and priced but have no call site. That is the extension point: those
   tickets add one `commit` call each. It is not dead code — it is the contract

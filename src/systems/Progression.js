@@ -818,10 +818,17 @@ export class Progression {
       corruptionPeakBand: Math.max(this.corruptionPeakBand, this.ctx.corruption?.band ?? 0),
       // The alignment commitment summary (issue #169) — history rather than
       // final state, so the logbook records what a run *did* and not only where
-      // it happened to be standing when it ended. Spread so a build without a
-      // `Corruption` (the tests' bare contexts) simply omits the fields, which
-      // `Profile._coerce` already reads as a neutral run.
-      ...(this.ctx.corruption?.ledgerSummary?.() ?? {}),
+      // it happened to be standing when it ended.
+      //
+      // Authority-gated, and that gate is the whole correctness of the field.
+      // `_endRun` runs on every machine, but the ledger is host-local, so a
+      // guest asking its own `Corruption` for a verdict gets an empty one and
+      // would file a deeply corrupted co-op run as 'neutral' — permanently, and
+      // in disagreement with the host's record of the same run. Off the host
+      // the fields are simply absent, and `Profile` writes ALIGNMENT_UNKNOWN.
+      // Spread rather than assigned so a context with no `Corruption` at all
+      // (the tests' bare worlds) lands in the same honest place.
+      ...(this.ctx.authority ? (this.ctx.corruption?.ledgerSummary?.() ?? {}) : {}),
       inventory: items,
       timeText: formatTime(this.stats.time),
       // Which ending this was, or null for the ordinary one (death). Read by

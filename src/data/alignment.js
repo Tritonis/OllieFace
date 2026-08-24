@@ -129,6 +129,23 @@ export const SOURCES = {
  */
 export const TOLERANCE = { corrupt: 3, pure: 3, mixed: 0 };
 
+/**
+ * What a *stored run record* says when there is no verdict to give.
+ *
+ * Deliberately not a fifth member of `ALIGNMENT`: the partition still has
+ * exactly four values and invariant 2 is untouched. This is a property of the
+ * logbook, not of a ledger — a record whose run was simulated somewhere else.
+ *
+ * It exists because absence is not neutrality. `Progression._endRun` runs on
+ * every machine, host and guest alike, but the ledger is host-local, so a guest
+ * reaching the end of a deeply corrupted co-op run holds an empty ledger.
+ * Filing that as 'neutral' writes a false verdict into a permanent logbook —
+ * the guest's own history would disagree with the host's about the same run.
+ * 'unknown' is the honest answer, and it is equally the honest answer for every
+ * record written before this system existed.
+ */
+export const ALIGNMENT_UNKNOWN = 'unknown';
+
 /** Commitment in a class needed before its capstone is on the table. */
 export const CAPSTONE = { corrupt: 20, pure: 20 };
 
