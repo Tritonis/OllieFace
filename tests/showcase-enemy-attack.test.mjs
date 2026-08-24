@@ -59,7 +59,7 @@ function makeRng(seed = 1234) {
 }
 
 function makeWorld() {
-  const rec = { explosions: [], voices: [], beams: [], telegraphs: [] };
+  const rec = { explosions: [], voices: [], beams: [], telegraphs: [], mends: [], heals: 0 };
   const ctx = {
     rng: makeRng(), time: 0, scene: new THREE.Scene(),
     events: { emit() {}, on() {} },
@@ -93,6 +93,7 @@ function makeWorld() {
   ctx.vfx = {
     explosion: (...args) => rec.explosions.push(args),
     beams: { spawn() {} }, lights: { flick() {} }, impact() {},
+    enemyMend: (pos, hue) => rec.mends.push(hue),
   };
   ctx.audio = {
     windupVoice(pos, element) {
@@ -101,10 +102,13 @@ function makeWorld() {
       return v;
     },
     elementBeam: (pos, element) => rec.beams.push(element),
+    heal: () => { rec.heals++; },
     play() {}, explosion() {}, elementTransient() {}, elementTick() {},
   };
   return { ctx, rec, enemies, player };
 }
+
+const dist2 = (a, b) => Math.hypot(a.position.x - b.position.x, a.position.z - b.position.z);
 
 const step = (ctx, enemies, seconds) => {
   const h = 1 / 60;
@@ -166,7 +170,39 @@ console.log('-- a beam showcase entry reaches elementBeam, not the universal bli
   api.dispose();
 }
 
-/* -- 3. closing mid-window returns every held voice ------------------------ */
+/* -- 3. a mend entry has somebody to mend ---------------------------------- */
+// A lone acolyte mends nobody: every candidate in `mendAllies` is itself or
+// nothing, so the entry used to spend its whole window producing one `heal`
+// blip and not a single ring — the effect the showcase was opened to judge
+// (#159's enemy-polarity heal) never appeared on screen. The demonstration
+// only tells the truth if a wounded neighbour is standing there to be topped up.
+console.log('-- a mend showcase entry actually heals somebody, ring and all');
+{
+  const { ctx, rec, enemies } = makeWorld();
+  const api = installShowcase(ctx);
+  const entry = api.entries.find((e) => e.meta.kind === 'mend');
+  ok(!!entry, 'the catalogue has a mend entry to fire');
+
+  const { SPAWN_CARDS, BOSS_CARDS } = await import('../src/data/enemies.js');
+  const card = [...SPAWN_CARDS, ...BOSS_CARDS].find((c) => c.id === entry.meta.cardId);
+  const a = card.attacks.find((x) => x.id === entry.meta.attackId);
+
+  entry.fire(0);
+  ok(enemies.length >= 2, 'a patient was stood up alongside the mender');
+  const patient = enemies[1];
+  ok(!!patient && patient.health < patient.maxHealth, 'and it is actually wounded');
+  ok(patient ? dist2(patient, enemies[0]) <= a.range : false, `within the mend's range (${a.range})`);
+
+  const before = patient?.health ?? 0;
+  step(ctx, enemies, (a.windup ?? 0.8) + (a.active ?? 0) + 0.4);
+  ok(rec.mends.length >= 1 && rec.mends[0] === a.color,
+    `the enemyMend ring rendered in the attack's hue (0x${a.color.toString(16)})`);
+  ok(rec.heals >= 1, 'and the heal sounded');
+  ok((patient?.health ?? 0) > before, 'the patient was topped up down the real path');
+  api.dispose();
+}
+
+/* -- 4. closing mid-window returns every held voice ------------------------ */
 console.log('-- closing the showcase mid-window returns every held voice');
 {
   const { ctx, rec, enemies } = makeWorld();
