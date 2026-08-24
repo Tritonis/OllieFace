@@ -88,6 +88,41 @@ export const ARGENT = { fadeAt: 110, reliquary: { motes: 3 } };
 export const grace = (ctx) =>
   Math.max(0, Math.min(1, 1 - (ctx?.corruption?.world ?? 0) / ARGENT.fadeAt));
 
+/**
+ * The blight tier's dial: the mirror of `ARGENT`.
+ *
+ * `activeAt` is the same 110 the argent fade lands on, so the two curves cross
+ * at Blighted (55) with each side paying half, and neither side is ever at full
+ * strength while the other is. `floor` is the residue a blight card keeps in a
+ * scrubbed world: without it a cleansed blight card would be *strictly* a cost,
+ * since every drawback in the tier is billed at full strength no matter what
+ * the gauge says (see `blightGrace`), and a card that can only hurt is not a
+ * bet the player can ever want to have taken.
+ */
+export const BLIGHT = { activeAt: 110, floor: 0.25 };
+
+/**
+ * How much a blight card pays right now: 25% at Pristine, 50% at Blighted, all
+ * of it from Overrun on.
+ *
+ * This is the promise the tier's own header has been making since it was
+ * written — "Blight cards do the opposite" — finally implemented. It reads LIVE
+ * world corruption, exactly as `grace` does, and so the same caching hazard
+ * applies: `Items.stats()` is memoised behind `_dirty`, so anything reading
+ * this from a `stat` function needs the cache invalidated when the curve moves.
+ * `Items.update` does that by watching this value; hooks are evaluated at use
+ * and need nothing.
+ *
+ * **Drawbacks are deliberately NOT scaled.** Cleansing buys back the argent
+ * payoff and relinquishes the blight payoff; it does not also refund the price
+ * the blight card charged for being in the pack. Scaling both halves together
+ * would leave the card's ratio unchanged at every world value, i.e. it would
+ * not constrain anything at all — the whole point is that a hedged inventory is
+ * worse than either pure line.
+ */
+export const blightGrace = (ctx) =>
+  Math.max(BLIGHT.floor, Math.min(1, (ctx?.corruption?.world ?? 0) / BLIGHT.activeAt));
+
 /** Chance stacking. k is the first-stack value; the curve never reaches 1. */
 export const hyperbolic = (k, count) => (count <= 0 ? 0 : 1 - 1 / (1 + k * count));
 /** Flat stacking. */
@@ -319,9 +354,9 @@ export const ITEMS = [
     id: 'spasm-gland', name: 'Spasm Gland', tier: 'blight', glyph: 'spasmgland',
     corrupts: 'adrenal-syringe',
     flavour: 'It fires whether or not you asked. The asking was always the slow part.',
-    description: (n) => `+${pct(linear(0.26, n))} attack speed. Your maximum health is reduced to ${pct(hyperbolicMult(0.15, n))}. Consumes every ${consumes('adrenal-syringe')} you hold.`,
-    stat: (n, s) => {
-      s.attackSpeed += linear(0.26, n);
+    description: (n) => `+${pct(linear(0.26, n))} attack speed, scaled by how corrupt the world is. Your maximum health is reduced to ${pct(hyperbolicMult(0.15, n))}, always. Consumes every ${consumes('adrenal-syringe')} you hold.`,
+    stat: (n, s, ctx) => {
+      s.attackSpeed += linear(0.26, n) * blightGrace(ctx);
       s.healthMult *= hyperbolicMult(0.15, n);
     },
   },
@@ -329,9 +364,9 @@ export const ITEMS = [
     id: 'bloat-cyst', name: 'Bloat Cyst', tier: 'blight', glyph: 'bloatcyst',
     corrupts: 'cured-haunch',
     flavour: 'More of you to hit, and less of you willing to stop it.',
-    description: (n) => `+${linear(55, n)} maximum health. -${linear(9, n)} armor. Consumes every ${consumes('cured-haunch')} you hold.`,
-    stat: (n, s) => {
-      s.maxHealth += linear(55, n);
+    description: (n) => `+${linear(55, n)} maximum health, scaled by how corrupt the world is. -${linear(9, n)} armor, always. Consumes every ${consumes('cured-haunch')} you hold.`,
+    stat: (n, s, ctx) => {
+      s.maxHealth += linear(55, n) * blightGrace(ctx);
       // Negative armor is asymptotic in Combat's mitigation curve, so no stack
       // count turns this into infinite incoming damage the way a multiplier
       // eventually would.
@@ -342,9 +377,9 @@ export const ITEMS = [
     id: 'clouded-eye', name: 'Clouded Eye', tier: 'blight', glyph: 'cloudedeye',
     corrupts: 'gunsmiths-loupe',
     flavour: 'You see the weak point in everything now. You just cannot see it well.',
-    description: (n) => `+${pct(hyperbolic(0.20, n))} critical strike chance. Critical strikes deal ${pct(1 - hyperbolicMult(0.30, n))} less bonus damage. Consumes every ${consumes('gunsmiths-loupe')} you hold.`,
-    stat: (n, s) => {
-      s.critChance = 1 - (1 - s.critChance) * (1 - hyperbolic(0.20, n));
+    description: (n) => `+${pct(hyperbolic(0.20, n))} critical strike chance, scaled by how corrupt the world is. Critical strikes deal ${pct(1 - hyperbolicMult(0.30, n))} less bonus damage, always. Consumes every ${consumes('gunsmiths-loupe')} you hold.`,
+    stat: (n, s, ctx) => {
+      s.critChance = 1 - (1 - s.critChance) * (1 - hyperbolic(0.20, n) * blightGrace(ctx));
       // `critEdge` scales the *bonus* half of the multiplier and is applied once
       // the inventory has finished, so a crit can never land below a normal hit
       // and the result never depends on pickup order.
@@ -355,9 +390,9 @@ export const ITEMS = [
     id: 'slag-ingot', name: 'Slag Ingot', tier: 'blight', glyph: 'slagingot',
     corrupts: 'trauma-plate',
     flavour: 'Poured straight onto the plate carrier while it was still on him.',
-    description: (n) => `Reduce all incoming damage by ${linear(13, n)}. Your movement speed is reduced to ${pct(hyperbolicMult(0.20, n))}. Consumes every ${consumes('trauma-plate')} you hold.`,
-    stat: (n, s) => {
-      s.flatReduction += linear(13, n);
+    description: (n) => `Reduce all incoming damage by ${linear(13, n)}, scaled by how corrupt the world is. Your movement speed is reduced to ${pct(hyperbolicMult(0.20, n))}, always. Consumes every ${consumes('trauma-plate')} you hold.`,
+    stat: (n, s, ctx) => {
+      s.flatReduction += linear(13, n) * blightGrace(ctx);
       // `moveSpeedPenalty`, not `moveSpeed`: the speed knee curves the *gain*
       // side of the aggregate, and a cost folded in with the gains would be
       // compressed by that curve along with them — at eight Cloven Hoof this
@@ -371,11 +406,15 @@ export const ITEMS = [
     id: 'arc-rot', name: 'Arc Rot', tier: 'blight', glyph: 'arcrot',
     corrupts: 'cracked-zither',
     flavour: 'The current has to come from somewhere, and you are the nearest wet thing.',
-    description: (n) => `${pct(hyperbolic(0.40, n))} chance on hit to arc for 110% damage across ${3 + linear(2, n)} targets. Every arc costs 1.5% of your current health, down to 30%. Consumes every ${consumes('cracked-zither')} you hold.`,
+    description: (n) => `${pct(hyperbolic(0.40, n))} chance on hit to arc for 110% damage across ${3 + linear(2, n)} targets. The arc is scaled by how corrupt the world is; the ${'1.5%'} of current health it costs, down to 30%, is not. Consumes every ${consumes('cracked-zither')} you hold.`,
+    // The proc *chance* is left alone and the arc's damage is scaled instead,
+    // which is not interchangeable: the health bill is billed per proc, so
+    // fading the chance would have faded the cost along with the payoff and
+    // handed a cleansed inventory a cheaper card rather than a weaker one.
     hooks: {
       onHit: (e, api) => {
         if (!api.roll(hyperbolic(0.40, api.count))) return;
-        chainLightning(api, e, api.items.baseDamage() * 1.1, 3 + linear(2, api.count),
+        chainLightning(api, e, api.items.baseDamage() * 1.1 * blightGrace(api.ctx), 3 + linear(2, api.count),
           { colour: ELEMENTS.toxic.hue });
         cue(api, 'arc-rot', e);
         // Charged per *proc*, not per stack: stacking already buys more procs, so
@@ -388,14 +427,14 @@ export const ITEMS = [
     id: 'bile-shell', name: 'Bile Shell', tier: 'blight', glyph: 'bileshell',
     corrupts: 'missile-rack',
     flavour: 'It was a warhead before something digested it.',
-    description: (n) => `${pct(hyperbolic(0.22, n))} chance on hit to fire a shell for ${pct(linear(4.5, n))} damage. All of your damage is reduced to ${pct(hyperbolicMult(0.20, n))}. Consumes every ${consumes('missile-rack')} you hold.`,
+    description: (n) => `${pct(hyperbolic(0.22, n))} chance on hit to fire a shell for ${pct(linear(4.5, n))} damage, scaled by how corrupt the world is. All of your damage is reduced to ${pct(hyperbolicMult(0.20, n))}, always. Consumes every ${consumes('missile-rack')} you hold.`,
     stat: (n, s) => { s.damageMult *= hyperbolicMult(0.20, n); },
     hooks: {
       onHit: (e, api) => {
         if (!api.roll(hyperbolic(0.22, api.count))) return;
         api.ctx.vfx?.missile?.(api.player.position, e.position, ELEMENTS.toxic.hue);
         cue(api, 'bile-shell', e);
-        api.combat.explode(e.position, 5, api.items.baseDamage() * linear(4.5, api.count), api.player, {
+        api.combat.explode(e.position, 5, api.items.baseDamage() * linear(4.5, api.count) * blightGrace(api.ctx), api.player, {
           team: 'player', proc: 0.6, procDepth: api.procDepth, type: 'missile',
         });
       },
@@ -405,12 +444,12 @@ export const ITEMS = [
     id: 'gristle-sickle', name: 'Gristle Sickle', tier: 'blight', glyph: 'gristlesickle',
     corrupts: 'reaping-hook',
     flavour: 'It will keep you alive exactly as long as you keep finding throats.',
-    description: (n) => `Critical strikes heal you for ${linear(24, n)}. You no longer regenerate health passively. Consumes every ${consumes('reaping-hook')} you hold.`,
+    description: (n) => `Critical strikes heal you for ${linear(24, n)}, scaled by how corrupt the world is. You no longer regenerate health passively, ever. Consumes every ${consumes('reaping-hook')} you hold.`,
     stat: (n, s) => { s.noRegen = true; },
     hooks: {
       onHit: (e, api) => {
         if (!e.crit) return;
-        api.combat.heal(api.player, linear(24, api.count));
+        api.combat.heal(api.player, linear(24, api.count) * blightGrace(api.ctx));
         cue(api, 'gristle-sickle');
       },
     },
@@ -419,13 +458,13 @@ export const ITEMS = [
     id: 'rupture-gall', name: 'Rupture Gall', tier: 'blight', glyph: 'rupturegall',
     corrupts: 'shrapnel-heart',
     flavour: 'A tumour that learned what a shaped charge is.',
-    description: (n) => `ALL of your attacks explode in a ${2.5 + linear(1, n)}m radius for an extra 105% damage. Your maximum health is reduced to ${pct(hyperbolicMult(0.35, n))}. Consumes every ${consumes('shrapnel-heart')} you hold.`,
+    description: (n) => `ALL of your attacks explode in a ${2.5 + linear(1, n)}m radius for an extra 105% damage, scaled by how corrupt the world is. Your maximum health is reduced to ${pct(hyperbolicMult(0.35, n))}, always. Consumes every ${consumes('shrapnel-heart')} you hold.`,
     stat: (n, s) => { s.healthMult *= hyperbolicMult(0.35, n); },
     hooks: {
       onHit: (e, api) => {
         if (e.type === 'gall') return; // never detonate our own detonation
         if (api.procDepth > api.combat.MAX_PROC_DEPTH - 1) return;
-        api.combat.explode(e.position, 2.5 + linear(1, api.count), e.amount * 1.05, api.player, {
+        api.combat.explode(e.position, 2.5 + linear(1, api.count), e.amount * 1.05 * blightGrace(api.ctx), api.player, {
           team: 'player', proc: 0, procDepth: api.procDepth, type: 'gall', falloff: false,
         });
         cue(api, 'rupture-gall', e);
@@ -436,9 +475,12 @@ export const ITEMS = [
     id: 'loaded-knucklebone', name: 'Loaded Knucklebone', tier: 'blight', glyph: 'knucklebone',
     corrupts: 'pressed-clover',
     flavour: 'Weighted on one face. Someone had to be hollowed out to do it.',
-    description: (n) => `All random effects are rolled +${linear(2, n)} extra times for a favourable outcome. You take ${pct(2 - 100 / (100 + linear(40, n)))} more damage. Consumes every ${consumes('pressed-clover')} you hold.`,
-    stat: (n, s) => {
-      s.luck += linear(2, n);
+    description: (n) => `All random effects are rolled +${linear(2, n)} extra times for a favourable outcome, scaled by how corrupt the world is. You take ${pct(2 - 100 / (100 + linear(40, n)))} more damage, always. Consumes every ${consumes('pressed-clover')} you hold.`,
+    // Fractional luck is not a half-roll: `Items.roll` floors it. So a scrubbed
+    // world does not shave this card, it switches whole rerolls off one at a
+    // time, which is the only way a count of dice can fade at all.
+    stat: (n, s, ctx) => {
+      s.luck += linear(2, n) * blightGrace(ctx);
       s.armor -= linear(40, n);
     },
   },
@@ -447,7 +489,7 @@ export const ITEMS = [
     id: 'gorge-tooth', name: 'Gorging Tooth', tier: 'blight', glyph: 'gorgetooth',
     corrupts: 'marrow-tooth',
     flavour: 'It does not chew. It only ever swallows, and it is always the wrong size for you.',
-    description: (n) => `Killing an enemy heals ${pct(linear(0.07, n))} of maximum health. Your maximum health is reduced to ${pct(hyperbolicMult(0.22, n))}. Consumes every ${consumes('marrow-tooth')} you hold.`,
+    description: (n) => `Killing an enemy heals ${pct(linear(0.07, n))} of maximum health, scaled by how corrupt the world is. Your maximum health is reduced to ${pct(hyperbolicMult(0.22, n))}, always. Consumes every ${consumes('marrow-tooth')} you hold.`,
     // The base heals a flat amount plus a small fraction; this heals a *large*
     // fraction of a bar it has also shrunk. The two halves fight each other on
     // purpose: the smaller the pool, the larger a percentage heal refills and
@@ -458,7 +500,7 @@ export const ITEMS = [
     hooks: {
       onKill: (e, api) => {
         const p = api.player;
-        api.combat.heal(p, (p.stats?.maxHealth || 100) * linear(0.07, api.count));
+        api.combat.heal(p, (p.stats?.maxHealth || 100) * linear(0.07, api.count) * blightGrace(api.ctx));
         cue(api, 'gorge-tooth');
       },
     },
@@ -467,7 +509,7 @@ export const ITEMS = [
     id: 'splinter-bar', name: 'Splinter Bar', tier: 'blight', glyph: 'splinterbar',
     corrupts: 'pry-bar',
     flavour: 'Superb at opening things. Useless once they are open, and it knows it.',
-    description: (n) => `Deal +${pct(linear(1.3, n))} damage to enemies above 90% health. You deal ${pct(1 - hyperbolicMult(0.5, n))} less damage to enemies below 25% health. Consumes every ${consumes('pry-bar')} you hold.`,
+    description: (n) => `Deal +${pct(linear(1.3, n))} damage to enemies above 90% health, scaled by how corrupt the world is. You deal ${pct(1 - hyperbolicMult(0.5, n))} less damage to enemies below 25% health, always. Consumes every ${consumes('pry-bar')} you hold.`,
     // Both halves live in one `outgoing` and are therefore multiplicative and
     // order-independent by construction, which is the rule the tier is written
     // to. The cost is deliberately placed on the *other* end of the health bar
@@ -477,7 +519,7 @@ export const ITEMS = [
     hooks: {
       outgoing: (amount, target, info, api) => {
         const frac = target.health / (target.maxHealth || 1);
-        if (frac > 0.9) return amount * (1 + linear(1.3, api.count));
+        if (frac > 0.9) return amount * (1 + linear(1.3, api.count) * blightGrace(api.ctx));
         if (frac < 0.25) return amount * hyperbolicMult(0.5, api.count);
         return amount;
       },

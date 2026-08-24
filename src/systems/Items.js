@@ -1,4 +1,5 @@
-import { ITEMS, ITEM_BY_ID, ITEMS_BY_TIER, TIERS, BLIGHT_BY_BASE, hyperbolic } from '../data/items.js';
+import { ITEMS, ITEM_BY_ID, ITEMS_BY_TIER, TIERS, BLIGHT_BY_BASE, hyperbolic, blightGrace } from '../data/items.js';
+import { SYNERGY_BY_ID } from '../data/bandBoons.js';
 import { EQUIPMENT, EQUIPMENT_BY_ID } from '../data/equipment.js';
 import { MUTATION, VOIDTOUCHED, isVoidtouched } from '../data/corruption.js';
 import { RNG } from '../core/MathUtil.js';
@@ -173,6 +174,11 @@ export class Items {
     this._dirty = true;
     this._cache = null;
     this._base = {};
+    // Corrupted synergies bought off a Void Bargain, by id. Permanent for the
+    // run, but their strength is re-read from the gauge every time the block is
+    // rebuilt — see `stats` and the `_blightGrace` watch in `fixedUpdate`.
+    this._synergies = new Set();
+    this._blightGrace = -1;
     // Hook lists rebuilt on inventory change so the per-hit path never scans
     // the full item table.
     this._hooks = { onHit: [], onKill: [], onDamaged: [], onJump: [], onInterval: [], onAbility: [], outgoing: [] };
@@ -1286,7 +1292,34 @@ export class Items {
 
     for (const [id, count] of this.counts) {
       const def = ITEM_BY_ID.get(id);
-      if (def?.stat && count > 0) def.stat(count, s);
+      // `ctx` is the third argument for one tier only: blight `stat` functions
+      // scale their payoff by `blightGrace`, which reads live world corruption.
+      // Every other item ignores it. The cache that memoises this block is
+      // invalidated from `update` when that curve moves — see `_blightGrace`.
+      if (def?.stat && count > 0) def.stat(count, s, this.ctx);
+    }
+    // Permanent blight synergy buffs are re-derived here rather than stored as
+    // a fixed magnitude, for exactly the reason the cards are: a synergy bought
+    // at Overrun and then cleansed away must relinquish its payoff along with
+    // the cards that earned it. They have their own accumulators rather than
+    // sharing the `frenzy`/`aegis`/`preyfoot` buff slots, because those slots
+    // also carry argent and common items and a shared name would let one
+    // clobber the other (`addBuff`'s rule).
+    if (this._synergies.size) {
+      const bg = blightGrace(this.ctx);
+      for (const id of this._synergies) {
+        const g = SYNERGY_BY_ID.get(id)?.grant;
+        if (!g) continue;
+        // `maxStacks` is a *ceiling* on a repeatable grant, not a multiplier: a
+        // synergy is bought once and `synergyPlan` stops offering it the moment
+        // both its cards are held, so the buff it used to write could only ever
+        // reach one stack. Folding the ceiling in here paid Rotting Chorus 0.44
+        // where the old path paid 0.22.
+        const m = g.magnitude * bg;
+        if (g.buff === 'frenzy') s.attackSpeed += m;
+        else if (g.buff === 'aegis') s.armor += m;
+        else if (g.buff === 'preyfoot') s.moveSpeed *= 1 + m;
+      }
     }
 
     s.damage *= s.damageMult;
@@ -1878,6 +1911,25 @@ export class Items {
    * barrel calls, and it is here rather than in the barrel so that "equipment
    * replaces, items accumulate" is stated once.
    */
+  /**
+   * Record a corrupted synergy bought at a Void Bargain.
+   *
+   * Deliberately not an `addBuff` with the grant's magnitude baked in, which is
+   * what this used to be: a buff is a frozen number, and a frozen number is the
+   * exact shape of the laundering the tier now forbids — buy the synergy deep,
+   * scrub the gauge clean, keep every point of it. The id is what is permanent;
+   * the strength is re-read off the live gauge in `stats`.
+   */
+  grantSynergy(synergy) {
+    if (!synergy?.id) return false;
+    this._synergies.add(synergy.id);
+    this._dirty = true;
+    return true;
+  }
+
+  /** Ids of the corrupted synergies this pack has bought. */
+  synergies() { return [...this._synergies]; }
+
   grant(id) {
     if (!this.ctx.authority || !id) return null;
     if (EQUIPMENT_BY_ID.has(id)) return this.setEquipment(id);
@@ -1924,6 +1976,15 @@ export class Items {
       b.remaining -= h;
       if (b.remaining <= 0) { this.buffs.delete(name); this._dirty = true; }
     }
+
+    // The blight activation curve is the one input to `stats` that moves
+    // without anybody touching the inventory, so it is the one input the
+    // `_dirty` flag cannot learn about on its own. Watching it here is what
+    // keeps a cleansed pack from reading its Overrun stat block for the rest of
+    // the run. Quantised to a thousandth: the comparison has to be cheap and a
+    // sub-0.1% move in a payoff is not worth rebuilding the block for.
+    const bg = Math.round(blightGrace(this.ctx) * 1000);
+    if (bg !== this._blightGrace) { this._blightGrace = bg; this._dirty = true; }
 
     // Barrier decays so it reads as a temporary reward, not a second health bar.
     // The owner's barrier: a satellite grants onto its own pawn (`addBarrier`),
