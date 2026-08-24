@@ -2414,9 +2414,10 @@ export class Menus {
    * the player is choosing between two transformations rather than picking a
    * casualty.
    */
-  showMutationChoice({ offers, seconds, onPick, onRefuse }) {
+  showMutationChoice({ offers, seconds, onPick, onRefuse, id = null }) {
     if (!offers?.length) return;
     this.showChoice({
+      id,
       title: 'The blight chooses a stack',
       seconds,
       onPick,
@@ -2450,9 +2451,9 @@ export class Menus {
    * windowDefault`), so a band crossing that opens a mutation window on top of
    * a chest offer costs the player the *choice*, never the item.
    */
-  showChoice({ title, cards, seconds, remaining = null, onPick, onRefuse, refuseLabel = '' }) {
+  showChoice({ id = null, title, cards, seconds, remaining = null, onPick, onRefuse, refuseLabel = '' }) {
     if (!cards?.length) return;
-    this.mutate = { onPick, onRefuse, remaining: seconds, readRemaining: remaining };
+    this.mutate = { id, onPick, onRefuse, remaining: seconds, readRemaining: remaining };
     if (this.mutateRefs.title) this.mutateRefs.title.textContent = title || '';
     this.mutateRefs.offers.innerHTML = cards.map((c, i) => `
       <button class="mutate-card" data-mutate-pick="${escapeHtml(c.pick)}">
@@ -2480,7 +2481,7 @@ export class Menus {
   }
 
   /** Close a window opened by `showChoice`. Same slot, same panel. */
-  hideChoice() { this.hideMutationChoice(); }
+  hideChoice(id = null) { this.hideMutationChoice(id); }
 
   /**
    * The label the nth offer's card prints: the keyboard digit, or the pad
@@ -2500,8 +2501,19 @@ export class Menus {
     for (const el of keys) el.textContent = this.mutateKeyLabel(Number(el.dataset.mutateKey), !!padActive);
   }
 
-  /** Closed by the system that owns the decision, never by this panel. */
-  hideMutationChoice() {
+  /**
+   * Closed by the system that owns the decision, never by this panel.
+   *
+   * `id` is which decision is closing, and a window only closes on its own id.
+   * Two systems share this slot and their clocks interleave freely — a chest
+   * offer runs 8 s, a mutation window 6 s, and either can open on top of the
+   * other — so an unconditional hide let the *older* decision's resolution tear
+   * down the window the player was actually looking at, cards and `onPick` and
+   * all (integration review, Major). A caller with no id closes whatever is
+   * open, which is what the run-ending and death paths mean.
+   */
+  hideMutationChoice(id = null) {
+    if (id !== null && this.mutate && this.mutate.id !== null && this.mutate.id !== id) return;
     this.mutate = null;
     this.mutateEl.classList.remove('is-on');
   }

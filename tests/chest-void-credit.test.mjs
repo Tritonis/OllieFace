@@ -11,7 +11,7 @@
 // Chest is exported from Interactables.js purely so this test can construct one
 // without dragging in the whole world; the export changes no behaviour.
 import * as THREE from 'three';
-import { Chest } from '../src/world/Interactables.js';
+import { Chest, Interactables } from '../src/world/Interactables.js';
 import { Corruption } from '../src/systems/Corruption.js';
 import { Items } from '../src/systems/Items.js';
 import { SOURCES } from '../src/data/corruption.js';
@@ -160,6 +160,46 @@ console.log('the claim is billed to the pawn that pressed, not to the local play
   ok(Items.of(ctx, mate).count(BLIGHT) === 1, 'the teammate got the card');
   ok(ctx.items.count(BLIGHT) === 0, 'and the local pack did not');
   ok(chest.openOffer() === null, 'the offer was theirs to answer');
+  void cor;
+}
+
+console.log('two chests cannot hold two open offers over one seat');
+{
+  const { ctx, cor } = makeCtx({ gold: 1000 });
+  // The real `Interactables` methods on a real list, with only the orb courier
+  // stubbed: `openOfferFor`, `chooseOffer` and `settleOpenOffers` are the code
+  // under test and a renderer is not.
+  const world = Object.create(Interactables.prototype);
+  world.ctx = ctx;
+  world.list = [];
+  const courier = ctx.interactables;
+  world.spawnOrb = courier.spawnOrb.bind(courier);
+  const deliver = () => courier.deliver();
+  ctx.interactables = world;
+
+  const a = chestAt(ctx, 0, 0);
+  const b = chestAt(ctx, 6, 0);
+  b.ctx.items.rollItem = () => 'cloven-hoof';
+  world.list.push(a, b);
+
+  a.interact();
+  const itemA = a.offer.itemId;
+  ctx.items.rollItem = () => 'cloven-hoof';
+  b.interact();
+
+  ok(a.openOffer() === null, 'opening the second offer settled the first');
+  ok(a.offer.outcome === 'safe', 'and settled it as the safe claim, exactly as its own lapse would');
+  ok(b.openOffer() !== null, 'the second chest holds the only live offer');
+  ok(world.openOfferFor(ctx.player) === b.offer,
+    'which is the one the panel is painting, so the press and the picture agree');
+
+  // The press the player makes on what they can see lands on what they can see.
+  const r = world.chooseOffer('salvage', ctx.player);
+  ok(r?.itemId === 'cloven-hoof', `the press answered the shown chest (${r?.itemId})`);
+  ok(b.offer.outcome === 'salvage', 'the shown chest carries the outcome');
+  ok(a.offer.outcome === 'safe', 'and the older one was never answered by that press');
+  deliver();
+  ok(ctx.items.count(itemA) === 1, 'the older chest\'s item is still the player\'s');
   void cor;
 }
 

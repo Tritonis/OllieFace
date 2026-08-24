@@ -430,7 +430,16 @@ export class Chest extends Interactable {
       outcome: paid ? 'gold' : 'corrupt', owner: pawn,
     });
     const id = items.rollItem(null, TIER_BIAS[this.size]);
-    // The lid is bought; the item is *offered* (issue #175). Nothing is fed for
+    // One open offer per pawn, enforced here rather than asserted in a comment
+    // (integration review, Critical). Two chests sited around one landmark are
+    // routinely both inside the 8 s window, and the panel paints the newest
+    // while the world held two — so a press meant for the chest on screen could
+    // settle the one behind it. Opening a second offer settles the first as a
+    // SAFE claim, which is exactly what its own lapse would have done: the
+    // player keeps the item, is charged nothing for it, and is never asked two
+    // questions at once.
+    this.ctx.interactables?.settleOpenOffers?.(pawn);
+    // The lid is bought; the item is *offered*. Nothing is fed for
     // the item here and nothing is spawned here: `openItemOffer` owns the
     // claim, charges it exactly once, and delivers it as an orb from this
     // chest's own position when the player answers — or when the window lapses
@@ -3010,11 +3019,45 @@ export class Interactables {
    * The first found wins, which is the older of the two by list order.
    */
   openOfferFor(pawn) {
+    return this._offerHolder(pawn)?.openOffer?.() ?? null;
+  }
+
+  /**
+   * The interactable holding `pawn`'s open offer — the NEWEST one, by offer id,
+   * not the first in list order (integration review, Critical). List order is
+   * siting order and has nothing to do with which offer the player is looking
+   * at; the panel always paints the most recently opened, so that is the one a
+   * press must land on. `settleOpenOffers` should mean there is never more than
+   * one, and this is what makes the disagreement harmless if there ever is.
+   */
+  _offerHolder(pawn) {
+    let best = null;
+    let bestId = -1;
     for (let i = 0; i < this.list.length; i++) {
       const offer = this.list[i].openOffer?.();
-      if (offer && offer.owner === pawn) return offer;
+      if (!offer || offer.owner !== pawn) continue;
+      const id = offer.offerId ?? 0;
+      if (id < bestId) continue;
+      best = this.list[i];
+      bestId = id;
     }
-    return null;
+    return best;
+  }
+
+  /**
+   * Settle every offer `pawn` has open, as the safe claim. Called before a new
+   * one opens, so one seat is never asked two questions at once: the settled
+   * offer's item lands exactly as its own lapse would have delivered it, unfed
+   * and uncommitted, and the panel that repaints is describing the only live
+   * transaction there is.
+   */
+  settleOpenOffers(pawn) {
+    let settled = 0;
+    for (let i = 0; i < this.list.length; i++) {
+      const it = this.list[i];
+      if (it.openOffer?.()?.owner === pawn && it.answer?.('safe')) settled++;
+    }
+    return settled;
   }
 
   /**
@@ -3024,11 +3067,7 @@ export class Interactables {
    * a handle on the bus.
    */
   chooseOffer(outcome, pawn = this.ctx.player) {
-    for (let i = 0; i < this.list.length; i++) {
-      const it = this.list[i];
-      if (it.openOffer?.()?.owner === pawn) return it.answer(outcome);
-    }
-    return null;
+    return this._offerHolder(pawn)?.answer(outcome) ?? null;
   }
 
   /** Nearest available interactable within prompt range of `entity`. */

@@ -378,6 +378,10 @@ export class HUD {
     on('mutationChoiceOffered', (e) => {
       if (!isLocalOwner(ctx, e)) return;
       this.menus?.showMutationChoice({
+        // Which decision this window is, so its close cannot tear down a chest
+        // offer's window painted over it, nor be torn down by one. Per-band,
+        // which is what a mutation window is.
+        id: `mutation:${e.band}`,
         offers: e.offers,
         seconds: e.seconds,
         onPick: (id) => ctx.items?.chooseMutation?.(id),
@@ -386,7 +390,7 @@ export class HUD {
     });
     on('mutationChoiceClosed', (e) => {
       if (!isLocalOwner(ctx, e)) return;
-      this.menus?.hideMutationChoice();
+      this.menus?.hideMutationChoice(`mutation:${e.band}`);
     });
     // The chest's three-way claim (issue #175), through the same one window the
     // blight toll uses. Owner-tested like every other addressed panel: a
@@ -415,6 +419,7 @@ export class HUD {
         };
       });
       this.menus?.showChoice({
+        id: `offer:${e.offerId}`,
         title: 'The chest offers a choice',
         cards,
         seconds: e.seconds,
@@ -424,7 +429,9 @@ export class HUD {
     });
     on('itemOfferResolved', (e) => {
       if (!isLocalOwner(ctx, e)) return;
-      this.menus?.hideChoice();
+      // Only this offer's own window. A lapse arriving under a mutation window
+      // that painted over it must not take that window down with it.
+      this.menus?.hideChoice(`offer:${e.offerId}`);
     });
     // The same line, run backwards: the Argent Font's reward moves a stack out
     // of the blight tier and back into its own, and without this the strip just
