@@ -1,5 +1,9 @@
 // src/systems/Corruption.js
 import { bandOf, isVoidtouched, SOURCES, VOIDTOUCHED } from '../data/corruption.js';
+import {
+  HISTORY_MAX, alignmentOf, classOf, corruptCapstoneEligible, emptyLedger,
+  pureCapstoneEligible, routeHistory, weightOf,
+} from '../data/alignment.js';
 import { MOTE, marksMinted, motesMinted, wardedProgress } from '../data/bandBoons.js';
 import { ITEM_BY_ID } from '../data/items.js';
 
@@ -18,6 +22,19 @@ import { ITEM_BY_ID } from '../data/items.js';
  * staying off the shared stream is what keeps sp-equivalence green.
  */
 const MAX_SEEDS = 64;
+
+/**
+ * Which commitment source a `voidBargain` kind pays into (issue #169). A map
+ * rather than a switch so an unlisted kind is silently uncommitted — which is
+ * the correct default for a bargain nobody has priced yet, and what keeps
+ * 'sanctuary' (billed by `sanctuary()` itself) out of this path.
+ */
+const BARGAIN_COMMIT = {
+  reroll: 'bargainReroll',
+  synergy: 'bargainSynergy',
+  pact: 'bargainPact',
+  consecrate: 'consecration',
+};
 
 export class Corruption {
   // The run's second economy, host-authoritative. A throw mid-`feed` leaves the
@@ -59,6 +76,12 @@ export class Corruption {
     // opening and never otherwise, so a replica can tell "the altar opened a
     // sanctuary" from "the clock you already ran out is a hair behind mine".
     this._sanctEpoch = 0;
+    // The alignment commitment ledger (issue #169, data/alignment.js). Live
+    // corruption above is *danger*; this is *history*, and it is the number the
+    // audit found missing — cleansing empties the gauge but must never empty
+    // this. Monotone by construction: `commit` is the one writer and it only
+    // adds. Host-local and deliberately off the wire; see `applyNetState`.
+    this._ledger = emptyLedger();
   }
 
   init(ctx) {
@@ -110,6 +133,29 @@ export class Corruption {
       const refund = this.ctx.artifacts?.corruptionMods?.().refund ?? 1;
       this.bleed(player, this._world * VOIDTOUCHED.refund * refund);
     });
+    // --- The commitment ledger's wired sources (issue #169). ----------------
+    // Ridden as events for the same reason every other source here is: the
+    // emitters (chests, the mutation toll, the altar, the stabiliser) stay
+    // ignorant that commitment exists. The two acts this class *owns* — a bleed
+    // and a ruin — commit inside their own methods instead, because riding
+    // their events would double-count against a client's `applyNetState`, which
+    // re-emits them.
+    //
+    // Not owner-filtered, deliberately, and for the same reason `feed` is not:
+    // commitment is the *run's* history, not a player's, and a teammate forcing
+    // a lid on void credit has committed the party as surely as anyone.
+    ctx.events.on('itemOffer', ({ outcome }) => {
+      if (outcome === 'corrupt') this.commit('corruptChest');
+    });
+    ctx.events.on('itemMutated', () => { this.commit('blightMutation'); });
+    ctx.events.on('itemStabilised', () => { this.commit('stabilised'); });
+    // Sanctuary is absent from this map on purpose: `sanctuary()` commits it,
+    // and the altar emits *both* that call and a `voidBargain` of kind
+    // 'sanctuary' for the same press. Listening to both would bill it twice.
+    ctx.events.on('voidBargain', ({ kind }) => {
+      const source = BARGAIN_COMMIT[kind];
+      if (source) this.commit(source);
+    });
   }
 
   get world() { return this._world; }
@@ -132,6 +178,77 @@ export class Corruption {
 
   /** Is a sanctuary window open? Read by `priceOf` and by anything that renders it. */
   get sanctified() { return this._sanctuaryT > 0; }
+
+  /**
+   * The commitment ledger (issue #169). The live object, because the queries in
+   * `data/alignment.js` are pure and copy what they hand back — there is no
+   * accessor here that can be used to *write* it, which is the point.
+   */
+  get ledger() { return this._ledger; }
+
+  /** What this run has committed to: 'neutral' | 'pure' | 'corrupt' | 'mixed'. */
+  get alignment() { return alignmentOf(this._ledger); }
+
+  /**
+   * Capstone gates, exposed and not yet consumed. #171 (finale routing) and
+   * #170 (mutual constraint) adopt them; nothing in the game reads them today,
+   * which is why #169 changes no behaviour.
+   *
+   * They cannot both be true — `alignmentOf` is single-valued and each of them
+   * requires it to have returned a different one of its values.
+   */
+  get pureCapstone() { return pureCapstoneEligible(this._ledger); }
+  get corruptCapstone() { return corruptCapstoneEligible(this._ledger); }
+
+  /** What this run committed to, in order. See `data/alignment.js` routeHistory. */
+  history(filter) { return routeHistory(this._ledger, filter); }
+
+  /**
+   * Commit the run — the ledger's ONE writer, and the reason invariant 1 holds
+   * by construction rather than by review. It only ever adds; there is no
+   * decrement anywhere in this file or any other.
+   *
+   * `amount` is a count of acts for most sources and a quantity for the ones
+   * priced `perUnit` (warding, which arrives as corruption removed). An unknown
+   * source is a no-op rather than a throw: this is the extension point the
+   * unwired sources in `SOURCES` are declared against, and a typo in a
+   * downstream ticket should cost that ticket a red test, not the run a crash.
+   *
+   * Authority-gated like every other mutator here. A guest accrues nothing —
+   * see `applyNetState` for why that is the whole design and not an omission.
+   */
+  commit(source, amount = 1) {
+    if (!this.ctx?.authority) return 0;
+    const cls = classOf(source);
+    const value = weightOf(source, amount);
+    if (!cls || !(value > 0)) return 0;
+    this._ledger[cls] += value;
+    // The history is a bounded window over an unbounded total (invariant 4):
+    // the counters above already carry every act, so dropping the oldest row
+    // costs a long run some detail and costs it no correctness.
+    this._ledger.history.push({
+      t: this.ctx?.progression?.stats?.time ?? 0,
+      stage: this.ctx?.progression?.stageIndex ?? null,
+      source, class: cls, amount: value,
+    });
+    if (this._ledger.history.length > HISTORY_MAX) this._ledger.history.shift();
+    this.ctx.events?.emit?.('alignmentCommitted', {
+      source, class: cls, amount: value,
+      corrupt: this._ledger.corrupt, pure: this._ledger.pure, mixed: this._ledger.mixed,
+      alignment: this.alignment,
+    });
+    return value;
+  }
+
+  /** The ledger as the logbook stores it (`Profile._coerce`). Pure. */
+  ledgerSummary() {
+    return {
+      alignment: this.alignment,
+      commitCorrupt: this._ledger.corrupt,
+      commitPure: this._ledger.pure,
+      commitMixed: this._ledger.mixed,
+    };
+  }
 
   /**
    * Spend `n` motes, all or nothing — `spendMarks` in the other currency, with
@@ -157,6 +274,10 @@ export class Corruption {
   sanctuary(seconds = MOTE.sanctuarySeconds) {
     if (!this.ctx?.authority || !(seconds > 0)) return false;
     this._sanctuaryT = seconds;
+    // Purity's cheapest press is still a press (issue #169). Billed here and
+    // not off the altar's `voidBargain` of kind 'sanctuary', so the two paths
+    // to the same window cannot bill it twice.
+    this.commit('sanctuary');
     // Wraps at 16 bits, which is what the replica's `>` comparison is written
     // to tolerate — 65535 altar presses in one run is not a session.
     this._sanctEpoch = (this._sanctEpoch + 1) & 0xffff;
@@ -201,6 +322,10 @@ export class Corruption {
   ruin() {
     if (!this.ctx?.authority || this.ruined) return false;
     this.ruined = true;
+    // The heaviest single act in the table (issue #169). Committed here rather
+    // than off `voidRuin`, because `applyNetState` re-emits that event on a
+    // client and the ledger is host-local.
+    this.commit('ruin');
     this.ctx.events.emit('voidRuin', { world: this._world, band: this._band });
     return true;
   }
@@ -294,6 +419,10 @@ export class Corruption {
     // world that was already clean.
     const motesBefore = this.motes;
     this._warded += taken;
+    // Pure commitment rides the same `taken`, for the same reason the mint does
+    // (issue #169): scrubbing a world that was already clean commits nothing.
+    // Here rather than off `corruptionWarded`, because a client re-emits that.
+    this.commit('warded', taken);
     const minted = this.motes !== motesBefore;
     if (minted) {
       this.ctx.events.emit('argentMotesChanged', { motes: this.motes, spent: 0 });
@@ -354,6 +483,28 @@ export class Corruption {
    * Emits only on genuine change, and emits the same events the authoritative
    * mutators do, so a joiner's HUD, toasts and `Progression.corruptionPeakBand`
    * build themselves from the replica exactly as they would from a live run.
+   *
+   * **The commitment ledger is deliberately NOT here (issue #169).** It is
+   * host-local, and the treatment is a decision rather than an oversight:
+   *
+   * - Nothing consumes it yet. #169 defines and exposes; the tickets that read
+   *   it (#171 finale routing, #170 mutual constraint) are downstream, and
+   *   spending wire budget on a field with no reader is how a protocol grows
+   *   fields nobody can remove.
+   * - `MSG.WORLD` is a fixed 27-byte record; the ledger is a variable-length
+   *   history plus three floats. Carrying it would mean a new variable-length
+   *   message and a `PROTOCOL_VERSION` bump for state that is, today, write-only.
+   * - A guest therefore reads a *consistent* neutral ledger — never a partial
+   *   one. `commit` is authority-gated, so a client that observes the host's
+   *   `itemOffer`/`itemMutated`/`voidBargain` events accrues nothing from them,
+   *   and this method adds nothing. The failure mode a half-replicated ledger
+   *   would have (a guest computing a different alignment from the host and
+   *   acting on it) cannot occur, because a guest computes 'neutral' and no
+   *   code reads it. `tests/alignment-ledger.test.mjs` holds that shut.
+   *
+   * The first ticket to give the ledger a client-side reader owns replicating
+   * it, and owns the version bump and `NETCODE.md` entry that come with that.
+   * See `docs/adr/0003-alignment-commitment-ledger.md`.
    */
   applyNetState(s) {
     if (this.ctx?.authority || !s) return false;
