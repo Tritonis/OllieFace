@@ -62,6 +62,16 @@ console.log('the tier is in the content ladder, and the palette stays the palett
      'and before the hardware slot');
   ok(new Set(CONTENT_TIERS).size === CONTENT_TIERS.length, 'no duplicates');
   for (const t of CONTENT_TIERS) ok(!!TIERS[t], `${t} has an entry in TIERS`);
+  // Bidirectional (#209 review, m2): a `TIERS` entry missing from
+  // `CONTENT_TIERS` is exactly the shape tempered shipped in — live in the
+  // colour table, absent from the content ladder — and the check above cannot
+  // see it, because it only ever walks `CONTENT_TIERS` looking for `TIERS`
+  // entries. Walking `TIERS` looking for `CONTENT_TIERS` entries is the other
+  // half. Provably not vacuous: temporarily unlisting `tempered` here and
+  // re-running this loop fails it, then restoring the array is what makes it
+  // green again — the same proof `TIER_ORDER`'s bidirectional loop above
+  // stands on.
+  for (const t of Object.keys(TIERS)) ok(CONTENT_TIERS.includes(t), `${t} is in CONTENT_TIERS`);
 }
 
 console.log('the banner calls it Argent, not Common');
@@ -145,6 +155,43 @@ console.log('and the stylesheet has somewhere to paint it');
   // Every argent card the pool ships can be drawn as a plate.
   for (const def of ITEMS_BY_TIER.argent || []) {
     ok(ITEM_BY_ID.get(def.id)?.tier === 'argent', `${def.id} is an argent card`);
+  }
+}
+
+console.log('tempered is a real ninth tier, not a Common card in a hybrid coat (#209)');
+{
+  // The regression this proves against: `tierMeta('tempered')` had no entry to
+  // find in `TIERS` and fell through to `TIERS.common`, so a Tempered card's
+  // logbook subtitle and pickup banner both said "Common" and its plate drew
+  // Common white. Same shape argent and blight each shipped with once.
+  const meta = tierMeta('tempered');
+  ok(meta.label === 'Tempered', `tierMeta('tempered') is labelled ${JSON.stringify(meta.label)}`);
+  ok(meta !== tierMeta('common'), 'and is not the Common fallback object');
+  ok(meta.color !== tierMeta('common').color, 'nor Common\'s colour');
+
+  ok(CONTENT_TIERS.includes('tempered'), 'tempered is a content tier');
+  ok(TIER_ORDER.includes('tempered'), 'and is in the gated palette as well');
+  ok(CONTENT_TIERS.indexOf('tempered') > CONTENT_TIERS.indexOf('argent'),
+     'tempered reads after argent, where a purity drop hybridises with a corrupt one');
+  ok(CONTENT_TIERS.indexOf('tempered') < CONTENT_TIERS.indexOf('equipment'),
+     'and before the hardware slot');
+
+  const css = src('../src/ui/hud.css');
+  const m = css.match(/--t-tempered:\s*(#[0-9a-f]{6})/i);
+  ok(!!m, `hud.css declares --t-tempered (${m?.[1]})`);
+  ok(m?.[1]?.toLowerCase() === TIERS.tempered.color, 'and it agrees with Icons.js');
+  ok(/\.t-tempered\s*\{[^}]*--tc:\s*var\(--t-tempered\)/.test(css), '.t-tempered relays it as --tc');
+
+  // The strip and the haul grid group off `CONTENT_TIERS`, so a tempered card
+  // is not misfiled into the common group and does not vanish off the
+  // end-of-run haul screen the way an argent card once did.
+  const held = new Map([['tempered', [{ id: 'z', tier: 'tempered', count: 1 }]],
+                        ['common', [{ id: 'y', tier: 'common', count: 1 }]]]);
+  const shown = CONTENT_TIERS.filter((t) => held.get(t)?.length);
+  ok(shown.includes('tempered'), `a tempered haul survives the filter (${shown.join(', ')})`);
+
+  for (const def of ITEMS_BY_TIER.tempered || []) {
+    ok(ITEM_BY_ID.get(def.id)?.tier === 'tempered', `${def.id} is a tempered card`);
   }
 }
 

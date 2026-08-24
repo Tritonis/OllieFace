@@ -84,26 +84,45 @@ const SIZE = 64;
  * CIEDE2000 of 3.0, the largest single move being Blight's 4.9.
  */
 export const TIERS = {
-  common:    { label: 'Common',    color: '#f0f4f9', dim: '#828486', plate: '#1b1f26' },
-  uncommon:  { label: 'Uncommon',  color: '#7af8a1', dim: '#428657', plate: '#14231a' },
-  legendary: { label: 'Legendary', color: '#fc6c78', dim: '#883a41', plate: '#26120f' },
-  boss:      { label: 'Boss',      color: '#e8cc00', dim: '#7d6e00', plate: '#241d0c' },
-  lunar:     { label: 'Umbral',    color: '#1abbcf', dim: '#0e6570', plate: '#0e2029' },
+  // #209 re-cut all eight of these together to seat a ninth tier, the same
+  // discipline #140 used going from seven to eight: the mean CIEDE2000 move is
+  // 5.4 (vs #140's 3.0), because a direct grid sweep proved the nine-tier
+  // problem has no solution at all with these eight frozen at their #140
+  // values — the true supremum sits at margin 1.000 exactly (blight/tempered,
+  // protan, delta 12.00 against a bar of 12), the identical "already on the
+  // boundary" shape #140's own note below described for seven-to-eight. Every
+  // plate is untouched; only `color`/`dim` moved. See `tools/tier-palette-
+  // search.mjs` for the search and its widened bands.
+  common:    { label: 'Common',    color: '#f5faff', dim: '#818486', plate: '#1b1f26' },
+  uncommon:  { label: 'Uncommon',  color: '#76e8a1', dim: '#3d7c55', plate: '#14231a' },
+  legendary: { label: 'Legendary', color: '#f3697e', dim: '#863944', plate: '#26120f' },
+  boss:      { label: 'Boss',      color: '#fee542', dim: '#877920', plate: '#241d0c' },
+  lunar:     { label: 'Umbral',    color: '#01b4c8', dim: '#0c626d', plate: '#0e2029' },
   // Blight draws like every other tier (see `itemArt`), and it keeps the
   // magenta no other tier is using. What changed is its lightness: at L* 58 it
   // was 2.7 from Legendary once desaturated and, under a tritan projection that
   // actually discards a dimension, the two were 4.0 apart — red and magenta are
   // one colour without the S cone. It is also the tier that binds the contrast
   // floor, at 4.59:1 on the logbook's hover row.
-  blight:    { label: 'Blight',    color: '#c547d8', dim: '#6a2675', plate: '#26101c' },
-  equipment: { label: 'Equipment', color: '#b98116', dim: '#64460c', plate: '#26160b' },
+  blight:    { label: 'Blight',    color: '#bd4dde', dim: '#692b7b', plate: '#26101c' },
+  equipment: { label: 'Equipment', color: '#e1a657', dim: '#7a592e', plate: '#26160b' },
   // Argent, and no longer interim: it is inside `TIER_ORDER` and carries the
   // same proof as the other seven. Its value is the one free choice in the
   // table — nothing in the fiction fixes this tier's hue the way fire fixes
   // Legendary's — and since #191 the search runs warm instead of cold: the
   // warmest candlelit near-neutral the mono-vision floor will seat against
   // lunar, so the plate agrees with the white-gold the argent effects burn.
-  argent:    { label: 'Argent',    color: '#bbbbaf', dim: '#606666', plate: '#101f28' },
+  argent:    { label: 'Argent',    color: '#bbc3c5', dim: '#646869', plate: '#101f28' },
+  // Tempered (#209): the hybridisation tier `Items.temper()` grants, fused from
+  // a held Argent card and its named Blight partner. It was live in
+  // `src/data/items.js` since #179 but absent from every table that decides
+  // what a card *looks like* — this table, `TIER_ORDER`, `CONTENT_TIERS`,
+  // `TIER_MARKS` and `hud.css` — so `tierMeta('tempered')` fell through to the
+  // `|| TIERS.common` fallback and a Tempered card presented as Common, the
+  // same regression shape argent shipped with at #140 and blight shipped with
+  // above. Colour is `tools/tier-palette-search.mjs` extended to nine tiers,
+  // proven against the same CIEDE2000/WCAG bars as the eight above it.
+  tempered:  { label: 'Tempered',  color: '#b57799', dim: '#644154', plate: '#1a1420' },
 };
 
 // Each entry carries its own id, so a `tierMeta` result is self-describing and
@@ -111,7 +130,7 @@ export const TIERS = {
 for (const [key, meta] of Object.entries(TIERS)) meta.key = key;
 
 export const TIER_ORDER = ['common', 'uncommon', 'legendary', 'boss', 'lunar',
-                           'blight', 'equipment', 'argent'];
+                           'blight', 'equipment', 'argent', 'tempered'];
 
 /**
  * Every tier that can appear in an inventory, in the order the strip, the haul
@@ -132,7 +151,7 @@ export const TIER_ORDER = ['common', 'uncommon', 'legendary', 'boss', 'lunar',
  * with no argent group dropped them into Common.
  */
 export const CONTENT_TIERS = ['common', 'uncommon', 'legendary', 'boss', 'lunar',
-                              'blight', 'argent', 'equipment'];
+                              'blight', 'argent', 'tempered', 'equipment'];
 
 /* --------------------------------------------------------------- tier marks
  *
@@ -204,6 +223,14 @@ export const TIER_MARKS = {
   // and the chevron have a re-entrant middle, and the tally marks come apart
   // into two and three runs. A struck coin, which is what the tier is.
   argent:    [[[0.50, 0.08], [0.92, 0.50], [0.50, 0.92], [0.08, 0.50]]],
+  // Tempered is an hourglass: two triangles pinched at a shared waist, the two
+  // parents' single stack of value squeezed through the one trade
+  // `Items.temper()` makes. A hexagon measured 0.851 against Argent's lozenge
+  // here — too convex, too similar in aspect, the exact failure mode
+  // `MARK_SIMILARITY` exists to catch — so the mark needed a waist, not
+  // another solid body: it is the only mark besides the ring with a
+  // concavity, and its concavity pinches rather than bores a hole.
+  tempered:  [[[0.16, 0.10], [0.84, 0.10], [0.50, 0.50], [0.84, 0.90], [0.16, 0.90], [0.50, 0.50]]],
 };
 
 export function tierMeta(tier) {
