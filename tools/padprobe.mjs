@@ -20,15 +20,17 @@ import { createServer } from 'vite';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { resolveOutDir } from './lib/evidence.mjs';
-import { parseArgs } from './lib/parse-args.mjs';
+import { parseArgs, strArg } from './lib/parse-args.mjs';
 
-const args = parseArgs(process.argv.slice(2));
-const SEED = Number(args.seed ?? 1337);
-const PORT = Number(args.port ?? 5210);
+let args;
+try { args = parseArgs(process.argv.slice(2)); }
+catch (e) { console.error(`padprobe: ${e.message}`); process.exit(64); }
+const SEED = Number(strArg(args.seed, 1337));
+const PORT = Number(strArg(args.port) ?? 5210);
 // shots-pad matches the ignored `shots-*` prefix; the helper notes that at
 // write time instead of leaving it to whoever tries to cite a frame (#71).
-const OUT = resolveOutDir(args.out ?? 'shots-pad', { tool: 'padprobe' });
-const RECORD = path.resolve(args.record ?? 'reviews/round9/padprobe-record.json');
+const OUT = resolveOutDir(strArg(args.out, 'shots-pad'), { tool: 'padprobe' });
+const RECORD = path.resolve(strArg(args.record, 'reviews/round9/padprobe-record.json'));
 const W = 1600, H = 900;
 
 // A pre-slice settings blob: every key the game shipped with before this slice,

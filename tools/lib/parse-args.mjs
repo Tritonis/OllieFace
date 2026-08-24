@@ -84,3 +84,21 @@ export function hasArg(argv, flag) {
   const eqPrefix = `${flag}=`;
   return argv.includes(flag) || argv.some((t) => t.startsWith(eqPrefix));
 }
+
+/**
+ * A `parseArgs` result value is only ever a genuine value if it is a string —
+ * `true` means the flag was given with nothing after it (end of argv, or the
+ * next token was itself a `--flag`). A value-bearing flag (`--out`, `--port`,
+ * `--seed`, ...) given bare must fall back to its default rather than let
+ * `true` reach `Number(true) === 1` or `path.resolve(true)`, matching what
+ * this repo's parsers did before `--flag=value` support existed: a value-less
+ * flag was simply absent from the parsed object.
+ *
+ * @param {string|true|undefined} value
+ * @param {T} fallback
+ * @returns {string|T}
+ * @template T
+ */
+export function strArg(value, fallback) {
+  return typeof value === 'string' ? value : fallback;
+}

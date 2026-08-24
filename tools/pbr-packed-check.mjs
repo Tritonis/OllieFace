@@ -33,7 +33,10 @@ import { chromium } from 'playwright';
 import { argValue } from './lib/parse-args.mjs';
 
 const argv = process.argv;
-const port = Number(argValue(argv, '--port') ?? 9222);
+let portVal;
+try { portVal = argValue(argv, '--port'); }
+catch (e) { console.error(`pbr-packed-check: ${e.message}`); process.exit(64); }
+const port = Number(portVal ?? 9222);
 
 const browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`);
 const ctx = browser.contexts()[0];

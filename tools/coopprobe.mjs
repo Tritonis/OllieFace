@@ -66,7 +66,7 @@ import { fileURLToPath } from 'node:url';
 import { REVIVE } from '../src/data/revive.js';
 import { resolveOutDir } from './lib/evidence.mjs';
 import { laneBase } from './lib/lanes.mjs';
-import { parseArgs } from './lib/parse-args.mjs';
+import { parseArgs, strArg } from './lib/parse-args.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -74,7 +74,9 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 // padprobe's idiom, widened for hyphenated names: `--signal-port` and `--run-s`
 // arrive as `signalPort` / `runS`, and a flag followed by another flag (or by
 // nothing) is a boolean.
-const args = parseArgs(process.argv.slice(2));
+let args;
+try { args = parseArgs(process.argv.slice(2)); }
+catch (e) { console.error(`coopprobe: ${e.message}`); process.exit(64); }
 
 // --lane and --port/--signal-port are MUTUALLY EXCLUSIVE, same shape as
 // gates.mjs and sp-equivalence.mjs (#158): both name the same ports, and
@@ -93,12 +95,12 @@ if (args.lane !== undefined) {
   args.port = String(base + 4);
   args.signalPort = String(base + 5);
 }
-const PORT = Number(args.port ?? 5214);
-const SIGNAL_PORT = Number(args.signalPort ?? 5215);
-const SEED = Number(args.seed ?? 1337);
+const PORT = Number(strArg(args.port) ?? 5214);
+const SIGNAL_PORT = Number(strArg(args.signalPort) ?? 5215);
+const SEED = Number(strArg(args.seed, 1337));
 const NETLAG = typeof args.netlag === 'string' ? args.netlag : null;
 const NETLOSS = typeof args.netloss === 'string' ? args.netloss : null;
-const RUN_S = Number(args.runS ?? 60);
+const RUN_S = Number(strArg(args.runS, 60));
 // A shipped settings key, not a stub: `settings.spawnRate` is the "Enemy spawn
 // rate" slider, and `Director` reads it as a live multiplier. Two survivors
 // left to a scripted walk on the tuned curve die inside a minute — the first
@@ -106,16 +108,16 @@ const RUN_S = Number(args.runS ?? 60);
 // a second at 0.35 died at 55.1 s — a co-op probe that measures a corpse
 // measures nothing. Turned down, not off: enemies still spawn, still replicate,
 // still fill the snapshot (31 netIds crossed the wire at 0.35).
-const SPAWN_RATE = Number(args.spawnRate ?? 0.12);
+const SPAWN_RATE = Number(strArg(args.spawnRate, 0.12));
 const SPAWN_SIGNAL = args.noSignal !== true;
 const LABEL = typeof args.label === 'string' ? args.label
   : !SPAWN_SIGNAL ? 'deadsignal' : (NETLAG || NETLOSS) ? 'lag' : 'base';
-const RECORD = path.resolve(args.record ?? `reviews/round9/coopprobe-${LABEL}.json`);
+const RECORD = path.resolve(strArg(args.record, `reviews/round9/coopprobe-${LABEL}.json`));
 // The directory itself isn't caught by a `shots-` rule, but every file it
 // writes is a .png and `.gitignore` discards those under reviews/** anyway —
 // route through the helper regardless, so the next reader finds it here (#71).
-const OUT = resolveOutDir(args.out ?? 'reviews/round9/coopprobe-shots', { tool: 'coopprobe' });
-const SETS = String(args.checks ?? 'base').split(',').map((s) => s.trim()).filter(Boolean);
+const OUT = resolveOutDir(strArg(args.out, 'reviews/round9/coopprobe-shots'), { tool: 'coopprobe' });
+const SETS = strArg(args.checks, 'base').split(',').map((s) => s.trim()).filter(Boolean);
 
 const W = 1280, H = 720;
 

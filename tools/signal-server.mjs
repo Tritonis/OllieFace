@@ -381,7 +381,9 @@ export function start({ port = defaultPort() } = {}) {
 }
 
 function defaultPort() {
-  const argPort = argValue(process.argv, '--port');
+  let argPort;
+  try { argPort = argValue(process.argv, '--port'); }
+  catch (e) { console.error(`signal-server: ${e.message}`); process.exit(64); }
   return Number(argPort ?? process.env.PORT ?? 8787);
 }
 
