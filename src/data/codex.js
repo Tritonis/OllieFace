@@ -24,13 +24,17 @@
  * given and falls back to the general shape when there are none, so a codex
  * carried forward from a build that recorded fewer of them still reads.
  *
- * A data module, so it may not import a system (CONTRACTS.md). It imports two
- * other data modules and nothing else.
+ * A data module, so it may not import a system (CONTRACTS.md). It imports three
+ * other data modules and nothing else. `bandBoons.js` is the purity purse's
+ * table — the mote price, the sanctuary window and the reliquary's rung — and it
+ * is imported for the same reason the tuning table is: The Argent Font quotes
+ * all three and none of them may be typed into the copy.
  */
 
 import {
-  BANDS, SOURCES, VOIDTOUCHED, MUTATION, CLEANSE, PRESSURE,
+  BANDS, SOURCES, VOIDTOUCHED, MUTATION, CLEANSE, PRESSURE, bandOf,
 } from './corruption.js';
+import { MOTE, RELIQUARY } from './bandBoons.js';
 import { FINALE_ROUTES, FINALE_STAGE } from './realms.js';
 
 /** The displayed stage number the finale briefing is written at. */
@@ -97,6 +101,10 @@ export const CODEX = [
         + 'Hollowed killed at 400 pays back more than eleven killed at 30.',
         'This is the only counterplay that pays no gold. The void funds its own undoing '
         + 'and the rate it funds it at is a function of how far in you already are.',
+        `And what it pays back it also banks. Every point taken off the gauge by your own `
+        + `hand is warded, counted for the rest of the run, and every ${MOTE.per} of it `
+        + 'condenses into an argent mote — so the Hollowed are not merely the way down, they '
+        + 'are the way the clean line is funded at all.',
       ];
       if (n(f.world) !== null) out.push(`The world stood at ${round(f.world)} when this was written.`);
       return out;
@@ -112,9 +120,13 @@ export const CODEX = [
       const out = [
         `${BANDS[1].name} is the warning. ${BANDS[MUTATION.minBand].name} is where the world starts taking.`,
         `From ${BANDS[MUTATION.minBand].name} up, every upward crossing collects a toll from your `
-        + 'pack: one held stack, chosen for you, converted whole into its blight counterpart. '
-        + 'Not some of the stack — all of it. A threshold is charged once and never re-arms, so '
-        + 'spiking into a band and bleeding back down does not buy the toll twice.',
+        + 'pack: one held stack, converted whole into its blight counterpart. Not some of the '
+        + 'stack — all of it. A threshold is charged once and never re-arms, so spiking into a '
+        + 'band and bleeding back down does not buy the toll twice.',
+        `You are not simply told which. At the crossing the void names ${MUTATION.choiceOffers} `
+        + `of your stacks and gives you ${MUTATION.choiceSeconds} seconds to say which one `
+        + 'festers. Say nothing and it chooses — the toll is collected either way, and the only '
+        + 'thing hesitation costs you is the say in it.',
         'Not everything is eligible. Only stacks with a blight counterpart can be taken, '
         + 'and a blight card you already hold cannot be taken again.',
       ];
@@ -130,7 +142,7 @@ export const CODEX = [
   {
     id: 'argent-font',
     name: 'The Argent Font',
-    sub: 'The price of coming back',
+    sub: 'What the bleeding is worth',
     hint: 'Recorded the first time you pay one.',
     lines: (f) => {
       const before = n(f.worldBefore);
@@ -155,11 +167,35 @@ export const CODEX = [
         + `${CLEANSE.amount}, so a font is worth most when you are worst. A font takes `
         + `${CLEANSE.maxUses} presses and the price climbs ${CLEANSE.costClimb}x per press, `
         + 'per stage, and with the debt being retired — corrupting all run and laundering at '
-        + 'the door was never going to be free.');
-      out.push('A press also hands one blight stack back as its base item. That is what makes '
-        + 'a font an investment rather than a refund.');
-      out.push(`From ${BANDS[CLEANSE.guaranteeBand].name} up, every stage places at least one. `
-        + 'Staying clean has to be achievable, not merely priced.');
+        + 'the door was never going to be free. A press also hands one blight stack back as '
+        + 'its base item.');
+      out.push('And then the gold stops being the interesting half. Nothing here rots away on '
+        + 'its own: every point that has ever left the gauge left because a hand reached in and '
+        + 'took it — this press, a Hollowed put down, a bell rung in consecrated air. The world '
+        + 'keeps that tally under the name of warding, and unlike the gauge it never falls. '
+        + 'Feeding the void again does not un-do work you already did.');
+      out.push(`Every ${MOTE.per} points warded condenses into an argent mote. No chest holds `
+        + 'one and no price list sells one; the only way to have a mote is to have gone in and '
+        + 'carried something back out. Abstinence mints nothing, because a world you never '
+        + 'darkened has nothing to bring back.');
+      out.push(`Carry a mote to an altar and it opens a sanctuary: ${MOTE.sanctuarySeconds} `
+        + 'seconds in which every chest, every item and every second of greed time is free. '
+        + 'Opening a second window replaces the first rather than lengthening it, so the '
+        + 'question is never how many — it is when, and greed time is exactly the hour worth '
+        + 'waiving.');
+      out.push(`Hold ${RELIQUARY.motes} instead and the altar stops offering the window and `
+        + 'offers Consecration: one argent card, yours for the rest of the run. Both rungs eat '
+        + 'the same purse. Every sanctuary spent is a card not bought, and that is the whole '
+        + 'decision the clean line has to make.');
+      out.push('Argent is the one tier that keeps reading the gauge after you have it. A card '
+        + `pays in full at ${BANDS[0].name} and nothing at all from `
+        + `${bandName(bandOf(RELIQUARY.fadeAt))} up, dimming the whole way between. So a font `
+        + 'is not only distance from the next toll — it is the strength of everything argent '
+        + 'in your pack, bought back point by point.');
+      out.push(`From ${BANDS[CLEANSE.guaranteeBand].name} up, every stage places at least one `
+        + `font. Staying clean has to be achievable, not merely priced. But go all the way to `
+        + `${BANDS[BANDS.length - 1].name} and take what it offers, and the fonts stop `
+        + 'answering for good: the clean exit is not priced out of reach, it is gone.');
       return out;
     },
   },

@@ -19,7 +19,8 @@ import { Corruption } from '../src/systems/Corruption.js';
 import { Codex } from '../src/systems/Codex.js';
 import { Profile } from '../src/systems/Profile.js';
 import { CODEX, CODEX_IDS, CODEX_BY_ID, ROUTE_BRIEF_STAGE } from '../src/data/codex.js';
-import { BANDS, MUTATION } from '../src/data/corruption.js';
+import { BANDS, MUTATION, bandOf } from '../src/data/corruption.js';
+import { MOTE, RELIQUARY } from '../src/data/bandBoons.js';
 import { BLIGHT_BY_BASE, ITEM_BY_ID } from '../src/data/items.js';
 import { UNLOCK_TYPES } from '../src/data/challenges.js';
 
@@ -194,6 +195,36 @@ console.log('every page renders, with the facts it was given and without any');
   const gauge = CODEX_BY_ID.get('first-feed').lines({ world: 5, band: 0 }).join(' ');
   ok(gauge.includes(String(BANDS[1].at)) && gauge.includes(BANDS[1].name),
     'the gauge page quotes the next threshold off BANDS');
+}
+
+// The codex is the written spec playtesters read, so a page that describes a
+// retired mechanic is a defect and not a copy nit (issue #199). These are the
+// checks the stale font page would have failed: it explained fonts purely as a
+// gold-for-gauge refund and never mentioned the purity purse the bleeding
+// actually feeds, and the toll page said the stack was "chosen for you" a
+// release after `MUTATION.choiceOffers` gave the player the say. Asserted
+// through the live constants for the usual reason — a re-tuned mote price must
+// break this rather than leave the page quoting the old one.
+console.log('the pages describe the economy the code actually runs');
+{
+  const font = CODEX_BY_ID.get('argent-font').lines({}).join(' ');
+  ok(/mote/i.test(font) && font.includes(String(MOTE.per)),
+    'the font page names the mote and what a mote costs in warding');
+  ok(/sanctuary/i.test(font) && font.includes(String(MOTE.sanctuarySeconds)),
+    'and the window a mote buys, with its length off MOTE');
+  ok(/consecration/i.test(font) && font.includes(String(RELIQUARY.motes)),
+    'and the deeper rung that replaces it, priced off RELIQUARY');
+  ok(font.includes(BANDS[bandOf(RELIQUARY.fadeAt)].name),
+    'and the band at which an argent card has faded to nothing');
+
+  const toll = CODEX_BY_ID.get('blight-toll').lines({}).join(' ');
+  ok(toll.includes(String(MUTATION.choiceOffers)) && toll.includes(String(MUTATION.choiceSeconds)),
+    'the toll page gives the player the choice the crossing actually offers');
+  ok(!/chosen for you/i.test(toll), 'and no longer says the stack is chosen for you');
+
+  const seeded = CODEX_BY_ID.get('seeded').lines({}).join(' ');
+  ok(/ward/i.test(seeded) && seeded.includes(String(MOTE.per)),
+    'the Hollowed page says the refund is also what mints a mote');
 }
 
 console.log('pages survive the browser closing');
