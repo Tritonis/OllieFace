@@ -1,0 +1,290 @@
+// tests/alignment-ledger.test.mjs
+// The alignment commitment ledger and its anti-laundering invariants (#169).
+//
+// The defect this guards is the 2026-08-23 audit's Critical: cleansing drops
+// live corruption while every historical benefit survives, so a run can hold
+// the corrupt build and buy back the clean route. These tests hold the four
+// invariants in src/data/alignment.js — monotonicity, capstone exclusivity by
+// construction, history read from the ledger rather than the band, and totals
+// surviving a truncated history — and they hold each *wired* source to
+// incrementing exactly one class exactly once per act.
+import { Corruption } from '../src/systems/Corruption.js';
+import {
+  ALIGNMENT, CAPSTONE, COMMITMENT, HISTORY_MAX, SOURCES, TOLERANCE,
+  alignmentOf, classOf, commitmentTotals, corruptCapstoneEligible, emptyLedger,
+  hasCommitted, pureCapstoneEligible, routeHistory, sanitizeLedger, weightOf,
+} from '../src/data/alignment.js';
+import { Profile } from '../src/systems/Profile.js';
+
+let pass = 0, fail = 0;
+const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
+
+const P = () => ({ isPlayer: true, alive: true });
+
+function makeCtx({ authority = true } = {}) {
+  const listeners = new Map();
+  const seen = [];
+  const ctx = {
+    authority,
+    player: P(),
+    events: {
+      emit(name, p) { seen.push({ name, payload: p }); for (const fn of listeners.get(name) || []) fn(p); },
+      on(name, fn) { if (!listeners.has(name)) listeners.set(name, []); listeners.get(name).push(fn); },
+    },
+    interactables: { list: [] },
+  };
+  const cor = new Corruption();
+  cor.init(ctx);
+  return { ctx, cor, seen };
+}
+
+console.log('\n-- the ledger is monotone: cleansing lowers danger, never commitment --');
+{
+  const { ctx, cor } = makeCtx();
+  const p = ctx.player;
+  cor.feed(p, 200);
+  cor.commit('ruin');
+  cor.commit('bargainSynergy');
+  const committed = cor.ledger.corrupt;
+  ok(committed > 0, `a descent commits (${committed})`);
+  ok(cor.world === 200, `the world is deep (${cor.world})`);
+
+  cor.bleed(p, 200);          // the whole gauge cleansed at a font
+  ok(cor.world === 0, 'cleansing takes the live gauge to zero');
+  ok(cor.band === 0, 'and the live band with it');
+  ok(cor.ledger.corrupt === committed,
+    `corrupt commitment is unmoved by cleansing (${cor.ledger.corrupt} vs ${committed})`);
+  ok(cor.peak === 200, 'peak survives too, as it always did');
+
+  // Sanctuary is the other live-danger valve; it must not launder either.
+  cor.sanctuary(12);
+  ok(cor.ledger.corrupt === committed, 'opening a sanctuary does not reduce commitment');
+}
+
+console.log('\n-- exclusivity is a property of the partition, not of two thresholds --');
+{
+  // The impossibility attempt. `alignmentOf` is single-valued, so both
+  // capstones cannot be open at once for ANY ledger — not merely for the ones
+  // the current weights happen to produce. Enumerate a wide grid, including
+  // absurd and hostile values, and try to construct a counterexample.
+  const values = [
+    0, 1, TOLERANCE.pure, TOLERANCE.pure + 0.001, TOLERANCE.corrupt, TOLERANCE.corrupt + 0.001,
+    CAPSTONE.pure - 0.001, CAPSTONE.pure, CAPSTONE.corrupt, CAPSTONE.corrupt + 1,
+    1e6, Number.MAX_SAFE_INTEGER,
+  ];
+  let both = null, neitherName = 0;
+  for (const corrupt of values) {
+    for (const pure of values) {
+      for (const mixed of [0, 1, 1e6]) {
+        const l = { corrupt, pure, mixed, history: [] };
+        if (corruptCapstoneEligible(l) && pureCapstoneEligible(l)) both = l;
+        const a = alignmentOf(l);
+        if (![ALIGNMENT.neutral, ALIGNMENT.pure, ALIGNMENT.corrupt, ALIGNMENT.mixed].includes(a)) neitherName++;
+      }
+    }
+  }
+  ok(both === null, `no ledger in ${values.length ** 2 * 3} constructed states is both-eligible`);
+  ok(neitherName === 0, 'every ledger reads as exactly one of the four alignments');
+
+  // Junk and hostile shapes too — the predicates must not throw or agree.
+  for (const l of [null, undefined, {}, { corrupt: NaN, pure: NaN }, { corrupt: -5, pure: -5 },
+    { corrupt: Infinity, pure: Infinity }, { corrupt: '99', pure: '99' }]) {
+    if (corruptCapstoneEligible(l) && pureCapstoneEligible(l)) both = l;
+  }
+  ok(both === null, 'nor is any malformed ledger');
+
+  // And the ends of the reachable space, built through the real verb.
+  const { ctx: c1, cor: maxCorrupt } = makeCtx();
+  maxCorrupt.commit('ruin'); maxCorrupt.commit('bargainPact'); maxCorrupt.commit('blightMutation');
+  ok(corruptCapstoneEligible(maxCorrupt.ledger), 'a committed corrupt run is corrupt-capstone eligible');
+  ok(!pureCapstoneEligible(maxCorrupt.ledger), 'and is NOT pure-capstone eligible');
+  ok(alignmentOf(maxCorrupt.ledger) === ALIGNMENT.corrupt, 'it reads as corrupt');
+  void c1;
+
+  const { cor: maxPure } = makeCtx();
+  maxPure.commit('warded', 400); maxPure.commit('consecration'); maxPure.commit('sanctuary');
+  ok(pureCapstoneEligible(maxPure.ledger), 'a committed pure run is pure-capstone eligible');
+  ok(!corruptCapstoneEligible(maxPure.ledger), 'and is NOT corrupt-capstone eligible');
+
+  // The launderer: everything corruption mints, then the gauge scrubbed clean.
+  const { ctx, cor: launder } = makeCtx();
+  launder.feed(ctx.player, 400);
+  launder.commit('bargainSynergy'); launder.commit('blightMutation'); launder.commit('corruptChest');
+  launder.bleed(ctx.player, 400);   // 400 warded = 20 pure commitment
+  ok(launder.world === 0 && launder.band === 0, 'the launderer checks out at Pristine');
+  ok(alignmentOf(launder.ledger) === ALIGNMENT.mixed, 'but the ledger reads mixed');
+  ok(!pureCapstoneEligible(launder.ledger) && !corruptCapstoneEligible(launder.ledger),
+    'and neither capstone is open to it — the laundering buys nothing');
+}
+
+console.log('\n-- each wired source increments exactly one class, exactly once per act --');
+{
+  // The mis-wire guard. Every wired source is driven through its real path and
+  // the delta compared against an expectation written HERE, in literals.
+  //
+  // That duplication is the point and must not be refactored away: an earlier
+  // draft read the expected class out of `classOf(source)`, which is the same
+  // table the wiring reads — flipping `stabilised` from pure to corrupt in
+  // SOURCES kept every assertion green, because the guard moved with the bug.
+  // A guard that reads its own subject cannot fail. These literals are a second
+  // opinion; changing an alignment on purpose costs one line here and should.
+  const cases = [
+    ['corruptChest', COMMITMENT.corrupt, 3, (c, ctx) => ctx.events.emit('itemOffer', { kind: 'chest', size: 'small', outcome: 'corrupt', owner: ctx.player })],
+    ['blightMutation', COMMITMENT.corrupt, 4, (c, ctx) => ctx.events.emit('itemMutated', { baseId: 'a', blightId: 'b', count: 1, band: 2, owner: ctx.player })],
+    ['bargainReroll', COMMITMENT.corrupt, 1, (c, ctx) => ctx.events.emit('voidBargain', { kind: 'reroll', marks: 1, owner: ctx.player })],
+    ['bargainSynergy', COMMITMENT.corrupt, 4, (c, ctx) => ctx.events.emit('voidBargain', { kind: 'synergy', marks: 2, owner: ctx.player })],
+    ['bargainPact', COMMITMENT.corrupt, 5, (c, ctx) => ctx.events.emit('voidBargain', { kind: 'pact', marks: 3, owner: ctx.player })],
+    ['sanctuary', COMMITMENT.pure, 2, (c) => c.sanctuary(12)],
+    ['consecration', COMMITMENT.pure, 5, (c, ctx) => ctx.events.emit('voidBargain', { kind: 'consecrate', motes: 3, owner: ctx.player })],
+    ['stabilised', COMMITMENT.pure, 3, (c, ctx) => ctx.events.emit('itemStabilised', { blightId: 'b', baseId: 'a', count: 1, owner: ctx.player })],
+    ['ruin', COMMITMENT.corrupt, 24, (c) => c.ruin()],
+  ];
+  for (const [source, cls, want, act] of cases) {
+    const { ctx, cor } = makeCtx();
+    const before = commitmentTotals(cor.ledger);
+    act(cor, ctx);
+    const after = commitmentTotals(cor.ledger);
+    ok(classOf(source) === cls && Math.abs(weightOf(source, 1) - want) < 1e-9,
+      `${source} is declared as ${want} into ${cls} (table says ${weightOf(source, 1)} into ${classOf(source)})`);
+    const moved = Object.keys(after).filter((k) => after[k] !== before[k]);
+    ok(moved.length === 1 && moved[0] === cls && Math.abs(after[cls] - before[cls] - want) < 1e-9,
+      `${source} pays ${want} into ${cls} and nothing else (moved ${JSON.stringify(moved)}, ` +
+      `delta ${(after[cls] - before[cls]).toFixed(3)})`);
+    const rows = routeHistory(cor.ledger, { source });
+    ok(rows.length === 1, `${source} writes exactly one history entry (${rows.length})`);
+  }
+
+  // Warding is priced per point, not per act, and rides `taken` not the ask.
+  const { ctx, cor } = makeCtx();
+  cor.feed(ctx.player, 50);
+  cor.bleed(ctx.player, 500);       // clamps to 50
+  ok(Math.abs(cor.ledger.pure - weightOf('warded', 50)) < 1e-9,
+    `warding pays for what was actually taken (${cor.ledger.pure})`);
+
+  // The blight re-stack is not a fresh corruption act — `reason: 'corrupt'` is
+  // the mutation writing back stacks it already charged for.
+  const { ctx: c2, cor: c2cor } = makeCtx();
+  c2.events.emit('itemOffer', { kind: 'chest', size: 'small', outcome: 'gold', owner: c2.player });
+  ok(c2cor.ledger.corrupt === 0, 'a chest paid for in gold commits nothing');
+
+  // Every source in the table is either wired and covered above, or explicitly
+  // future work. A new wired source with no case here fails this.
+  const covered = new Set(cases.map((c) => c[0]).concat(['warded']));
+  const missing = Object.entries(SOURCES)
+    .filter(([id, d]) => d.wired && !covered.has(id)).map(([id]) => id);
+  ok(missing.length === 0, `every wired source has a case (missing: ${missing.join(', ') || 'none'})`);
+  const stubs = Object.entries(SOURCES).filter(([, d]) => !d.wired).map(([id]) => id);
+  ok(stubs.length > 0 && stubs.every((s) => weightOf(s, 1) > 0 && classOf(s)),
+    `the future sources are declared and priced, not merely named (${stubs.join(', ')})`);
+  // And the extension point works: a downstream ticket adds one call, no more.
+  const { cor: stubCor } = makeCtx();
+  stubCor.commit('vowKept');
+  ok(stubCor.ledger.pure === weightOf('vowKept', 1), 'an unwired source commits the moment it is called');
+}
+
+console.log('\n-- the queries are pure --');
+{
+  const l = sanitizeLedger({
+    corrupt: 12, pure: 4, mixed: 0,
+    history: [{ t: 1, stage: 0, source: 'ruin', amount: 24 }, { t: 2, stage: 1, source: 'warded', amount: 40 }],
+  });
+  const snap = JSON.stringify(l);
+  const seq = [alignmentOf, corruptCapstoneEligible, pureCapstoneEligible, commitmentTotals,
+    hasCommitted, (x) => routeHistory(x), (x) => routeHistory(x, { cls: COMMITMENT.pure }),
+    (x) => routeHistory(x, { sinceStage: 1 })];
+  const first = seq.map((f) => JSON.stringify(f(l)));
+  for (let i = 0; i < 40; i++) {
+    const f = seq[i % seq.length];
+    ok(JSON.stringify(f(l)) === first[i % seq.length], `${f.name || 'query'} is deterministic across repeats`);
+  }
+  ok(JSON.stringify(l) === snap, 'no query mutated the ledger');
+  const copy = routeHistory(l);
+  copy[0].source = 'tempered';
+  ok(routeHistory(l)[0].source === 'ruin', 'routeHistory hands back a copy, not the live rows');
+  ok(routeHistory(l, { cls: COMMITMENT.pure }).length === 1, 'history filters by class');
+  ok(routeHistory(l, { sinceStage: 1 }).length === 1, 'and by stage boundary');
+  ok(alignmentOf(emptyLedger()) === ALIGNMENT.neutral && !hasCommitted(emptyLedger()),
+    'an untouched run is neutral and has committed nothing');
+}
+
+console.log('\n-- totals are authoritative; history is a bounded window --');
+{
+  const { cor } = makeCtx();
+  for (let i = 0; i < HISTORY_MAX + 50; i++) cor.commit('bargainReroll');
+  ok(cor.ledger.history.length === HISTORY_MAX, `history is capped at ${HISTORY_MAX} (${cor.ledger.history.length})`);
+  ok(Math.abs(cor.ledger.corrupt - weightOf('bargainReroll', 1) * (HISTORY_MAX + 50)) < 1e-9,
+    `the total counts every act, not just the retained ones (${cor.ledger.corrupt})`);
+}
+
+console.log('\n-- commitment is host-local: a guest never half-sees it --');
+{
+  // The replication decision (#169, see docs/adr/0003). The ledger does not
+  // ride the wire: `commit` is authority-gated like every other mutator here,
+  // and `applyNetState` deliberately leaves it alone. A guest therefore reads a
+  // *consistent* neutral ledger, never a partial one built from its own
+  // locally-observed events.
+  const { ctx, cor: guest } = makeCtx({ authority: false });
+  ctx.events.emit('itemOffer', { kind: 'chest', size: 'small', outcome: 'corrupt', owner: ctx.player });
+  ctx.events.emit('voidBargain', { kind: 'pact', marks: 3, owner: ctx.player });
+  ctx.events.emit('itemMutated', { baseId: 'a', blightId: 'b', count: 1, band: 3, owner: ctx.player });
+  guest.commit('ruin');
+  ok(guest.ledger.corrupt === 0 && guest.ledger.pure === 0,
+    'a guest accrues nothing locally, however many host events it observes');
+
+  const host = makeCtx();
+  host.cor.feed(host.ctx.player, 300);
+  host.cor.ruin();
+  const applied = guest.applyNetState(host.cor.netState());
+  ok(applied === true, 'the guest still adopts the world economy');
+  ok(guest.world === 300 && guest.ruined === true, 'gauge, band and the one-way door cross as before');
+  ok(!('ledger' in host.cor.netState()) && !('commitCorrupt' in host.cor.netState()),
+    'the ledger is not on the wire — no field for a guest to half-read');
+  ok(guest.ledger.corrupt === 0 && guest.ledger.pure === 0 && guest.ledger.history.length === 0,
+    'and applying the host state leaves the guest ledger neutral, not partial');
+  ok(alignmentOf(guest.ledger) === ALIGNMENT.neutral,
+    'so a guest reads a consistent neutral alignment rather than a wrong one');
+}
+
+console.log('\n-- old saves load unchanged --');
+{
+  // A run record in exactly the shape master writes today, with no ledger
+  // fields at all. It must survive normalisation with every existing value
+  // intact and a neutral ledger appended.
+  const legacy = {
+    v: 1,
+    runs: [{
+      at: 1700000000000, survivorId: 'ranger', difficultyId: 'normal', difficulty: 1.5,
+      stage: 3, stageName: 'Ashen Reach', time: 900, kills: 400, elites: 9, bosses: 1,
+      damageDealt: 90000, damageTaken: 4000, highestHit: 3000, items: 22, gold: 500,
+      level: 14, outcome: 'victory', corruption: 12, corruptionBand: 1, corruptionPeakBand: 4,
+      inventory: [{ id: 'cured-haunch', count: 3 }],
+    }],
+  };
+  const before = JSON.parse(JSON.stringify(legacy.runs[0]));
+  const p = new Profile();
+  const norm = p._coerce(legacy);
+  const r = norm.runs[0];
+  let intact = true;
+  for (const k of Object.keys(before)) if (JSON.stringify(r[k]) !== JSON.stringify(before[k])) intact = false;
+  ok(intact, 'every field an old record already carried survives normalisation unchanged');
+  ok(r.alignment === ALIGNMENT.neutral, `an absent ledger reads neutral (${r.alignment})`);
+  ok(r.commitCorrupt === 0 && r.commitPure === 0 && r.commitMixed === 0,
+    'and its commitment totals default to zero');
+
+  // A record written by this build round-trips.
+  const modern = { ...before, alignment: ALIGNMENT.corrupt, commitCorrupt: 33, commitPure: 1, commitMixed: 0 };
+  const r2 = p._coerce({ v: 1, runs: [modern] }).runs[0];
+  ok(r2.alignment === ALIGNMENT.corrupt && r2.commitCorrupt === 33 && r2.commitPure === 1,
+    'a modern record round-trips its ledger summary');
+
+  // Junk in the alignment slot falls back to neutral rather than propagating.
+  const junk = { ...before, alignment: 'sovereign', commitCorrupt: 'lots' };
+  const r3 = p._coerce({ v: 1, runs: [junk] }).runs[0];
+  ok(r3.alignment === ALIGNMENT.neutral && r3.commitCorrupt === 0, 'an unknown alignment reads neutral');
+
+  ok(sanitizeLedger({ corrupt: 5, history: [{ source: 'nope', amount: 9 }, { t: 1, stage: 0, source: 'ruin', amount: 24 }] })
+    .history.length === 1, 'sanitizeLedger drops history rows naming sources that do not exist');
+}
+
+console.log(`\n  ${pass} passed, ${fail} failed`);
+if (fail) process.exit(1);

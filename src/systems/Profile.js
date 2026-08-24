@@ -9,6 +9,7 @@ import { catalogueSizes, catalogueHas, unlockName } from './UnlockRegistry.js';
 import { isLocalVictim, isLocalOwner } from '../core/Engine.js';
 import { adoptLegacyKey } from '../core/LegacyStorage.js';
 import { renameItemId, renameEnemyId } from '../data/renamedIds.js';
+import { ALIGNMENT } from '../data/alignment.js';
 
 /**
  * The persistent player profile — everything that outlives a run.
@@ -871,6 +872,14 @@ export class Profile {
         corruption: num(r.corruption, 0),
         corruptionBand: num(r.corruptionBand, 0),
         corruptionPeakBand: num(r.corruptionPeakBand, 0),
+        // The alignment commitment summary (issue #169). Absent on every record
+        // written before this existed, which is exactly the case `alignmentOr`
+        // and `num` handle: an old run loads as a neutral, zero-commitment one
+        // and every field it already carried is untouched.
+        alignment: alignmentOr(r.alignment),
+        commitCorrupt: num(r.commitCorrupt, 0),
+        commitPure: num(r.commitPure, 0),
+        commitMixed: num(r.commitMixed, 0),
         inventory: Array.isArray(r.inventory)
           ? r.inventory.filter(isObj).map((i) => ({ id: str(i.id), count: num(i.count, 0) }))
           : [],
@@ -1364,6 +1373,13 @@ export class Profile {
       corruption: num(stats?.corruption, 0),
       corruptionBand: num(stats?.corruptionBand, 0),
       corruptionPeakBand: num(stats?.corruptionPeakBand, 0),
+      // And what the run *committed* to, which is the question the live band
+      // above cannot answer (issue #169): a run that cleansed at the door ends
+      // at band 0 and still reads 'corrupt' here.
+      alignment: alignmentOr(stats?.alignment),
+      commitCorrupt: num(stats?.commitCorrupt, 0),
+      commitPure: num(stats?.commitPure, 0),
+      commitMixed: num(stats?.commitMixed, 0),
       inventory: Array.isArray(stats.inventory)
         ? stats.inventory.map((i) => ({ id: str(i.id), count: num(i.count, 0) }))
         : [],
@@ -1802,6 +1818,13 @@ export class Profile {
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const num = (v, d) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
 const str = (v) => (typeof v === 'string' ? v : null);
+/**
+ * A stored alignment, or 'neutral' (issue #169). Anything not in the partition
+ * — an absent field on an old record, a typo, a value from a newer build — is a
+ * run that committed to nothing, never a fourth alignment the readers of this
+ * field would have to learn about.
+ */
+const alignmentOr = (v) => (Object.values(ALIGNMENT).includes(v) ? v : ALIGNMENT.neutral);
 
 /**
  * Which challenge, if any, gates this (type, id)?
