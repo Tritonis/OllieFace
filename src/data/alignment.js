@@ -111,7 +111,14 @@ export const SOURCES = {
   /** An item forgone and salvaged toward purity (#174, `itemOfferResolved`
    *  outcome 'salvage'). The act's own weight; the warding it pays out is
    *  separately committed through `bleed` as `warded`, which is correct — the
-   *  decision and the points it returned are two different commitments. */
+   *  decision and the points it returned are two different commitments.
+   *
+   *  Billed ONLY when the salvage warded something. A decline against a clean
+   *  world buys no purity here: a flat per-act weight on a free, unlimited
+   *  action is a commitment tap, and the integration review found it could flip
+   *  a corrupt run to mixed in two presses and open the pure capstone in eight
+   *  without a point of corruption ever leaving the world. See the gate in
+   *  `Corruption`'s `itemOfferResolved` listener. */
   salvaged: { class: COMMITMENT.pure, per: 3, wired: true },
   /** A Wound sealed (#178). */
   woundSealed: { class: COMMITMENT.pure, per: 5, wired: false },

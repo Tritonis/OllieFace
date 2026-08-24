@@ -12,7 +12,7 @@ import { RNG } from '../core/MathUtil.js';
  * authored data, so a throwing one degrades to silence rather than taking the
  * fixed step down with it — the same contract `ui/Tooltip.js` keeps.
  */
-function describeBlight(def, count) {
+export function describeBlight(def, count) {
   if (typeof def?.description !== 'function') return typeof def?.description === 'string' ? def.description : '';
   try { return String(def.description(Math.max(1, count | 0))); } catch { return ''; }
 }

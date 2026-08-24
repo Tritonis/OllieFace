@@ -1,10 +1,10 @@
 // src/world/itemTransaction.js
 import { BANDS, MUTATION, bandOf } from '../data/corruption.js';
-import { BLIGHT_BY_BASE, ITEM_BY_ID } from '../data/items.js';
+import { BLIGHT_BY_BASE, ITEM_BY_ID, blightGrace } from '../data/items.js';
 import { OFFER, premiumFor, salvageFor } from '../data/itemOffers.js';
 import { marksMinted, motesMinted } from '../data/bandBoons.js';
 import { classOf, weightOf } from '../data/alignment.js';
-import { Items } from '../systems/Items.js';
+import { Items, describeBlight } from '../systems/Items.js';
 import { pricedPrompt, tierFeed } from './corruptionPrice.js';
 
 /**
@@ -58,28 +58,48 @@ import { pricedPrompt, tierFeed } from './corruptionPrice.js';
 /** The outcomes an offer can resolve to. 'cancel' is a non-resolution. */
 export const OUTCOMES = ['safe', 'corrupt', 'salvage'];
 
-/** What the corrupted outcome of offering `itemId` actually hands over. */
+/**
+ * What the corrupted outcome of offering `itemId` hands over — or `null` where
+ * there is nothing corrupt to hand over at all.
+ *
+ * Only 11 of the catalogue's items have a blight counterpart. For the other 91
+ * an untargeted "corruption" was the *same item* for a real corruption charge
+ * and a real corrupt commitment: a strictly dominated button, and worse than
+ * useless — it is a way to buy corrupt alignment with no power attached, which
+ * is exactly the incoherent transaction this ticket exists to remove. So the
+ * outcome is not offered rather than offered empty (integration review m2).
+ */
 export function corruptRewardFor(itemId) {
   const blight = BLIGHT_BY_BASE.get(itemId);
-  return blight
-    ? { itemId: blight.id, targeted: true }
-    : { itemId, targeted: false };
+  return blight ? { itemId: blight.id, targeted: true } : null;
+}
+
+/** Which outcomes `itemId` can actually be resolved to. Pure. */
+export function offeredOutcomes(itemId) {
+  return corruptRewardFor(itemId) ? [...OUTCOMES] : OUTCOMES.filter((o) => o !== 'corrupt');
 }
 
 /**
  * The threshold clause: what `added` corruption does to the world's bands.
  *
- * Reads `Items.nextTollBand()` for the same reason `corruptionPrice.bandEffect`
- * does — whether a crossing costs a mutation is a fact about what the run has
+ * Reads `nextTollBand()` for the same reason `corruptionPrice.bandEffect` does
+ * — whether a crossing costs a mutation is a fact about what the run has
  * already paid, not about the band — and degrades to `MUTATION.minBand` in a
  * context with no item system.
+ *
+ * Off the OWNER's own `Items`, never the viewer singleton (integration review
+ * m4). The toll is per-inventory: a remote pawn whose stacks have already
+ * festered through band 2 owes nothing there, and quoting the host's history at
+ * them promises a mutation that their own `_mutePeak` will not collect. `of`
+ * resolves the singleton for the local player and null-owner alike, so a
+ * single-player quote is the same call it was.
  */
-function thresholdOf(ctx, added) {
+function thresholdOf(ctx, added, owner = null) {
   const world = ctx?.corruption?.world ?? 0;
   const after = Math.max(0, world + added);
   const from = bandOf(world);
   const to = bandOf(after);
-  const tollRaw = ctx?.items?.nextTollBand?.();
+  const tollRaw = ctx ? Items.of(ctx, owner)?.nextTollBand?.() : undefined;
   const toll = Number.isFinite(tollRaw) ? tollRaw : MUTATION.minBand;
   const next = BANDS[from + 1] || null;
   return {
@@ -129,6 +149,7 @@ export function quoteItemOffer(ctx, itemId, { owner = null } = {}) {
   const def = ITEM_BY_ID.get(itemId);
   if (!def) return null;
   const cor = ctx?.corruption;
+  const pawn = owner || ctx?.player || null;
   const price = (n) => (typeof cor?.priceOf === 'function' ? cor.priceOf(n) : n);
 
   const corruptReward = corruptRewardFor(itemId);
@@ -146,44 +167,77 @@ export function quoteItemOffer(ctx, itemId, { owner = null } = {}) {
       reward: { itemId, count: 1, targeted: false },
       corruption: 0,
       mint: mintOf(ctx, {}),
-      threshold: thresholdOf(ctx, 0),
+      threshold: thresholdOf(ctx, 0, pawn),
       commitment: commitmentOf(null),
     },
-    corrupt: {
-      outcome: 'corrupt',
-      reward: { itemId: corruptReward.itemId, count: 1, targeted: corruptReward.targeted },
-      corruption: corruptCharge,
-      face: faceFeed,
-      mint: mintOf(ctx, { added: corruptCharge }),
-      threshold: thresholdOf(ctx, corruptCharge),
-      commitment: commitmentOf('corruptUpgrade'),
-    },
+    // Null where the item has no blight counterpart — see `corruptRewardFor`.
+    // A null outcome is a *closed* outcome, not a missing field: `resolve`
+    // refuses it and `offeredOutcomes` leaves it off the list, so an adopter
+    // that renders `q[name]` for each of `offeredOutcomes` renders two buttons
+    // there and three here without knowing why.
+    corrupt: null,
     salvage: {
       outcome: 'salvage',
       reward: { itemId: null, count: 0, warded: salvageTaken },
       corruption: -salvageTaken,
       ask: salvage,
       mint: mintOf(ctx, { warded: salvageTaken }),
-      threshold: thresholdOf(ctx, -salvageTaken),
-      // Two commitments, because the decision and the points it returned are
-      // two acts: `salvaged` is billed by the `itemOfferResolved` listener and
-      // `warded` by `bleed` itself. Quoting only one of them would under-quote
-      // the press by exactly the amount the player is being sold on.
-      commitment: commitmentOf('salvaged'),
+      threshold: thresholdOf(ctx, -salvageTaken, pawn),
+      // The decision commits ONLY when it actually warded something
+      // (integration review M1). A decline against a clean world is a decline,
+      // not an act of purity: banking a flat 3 for it meant two no-op salvages
+      // flipped a fully corrupt run to mixed and shut its capstone, and eight
+      // of them opened the pure capstone to a run that had never taken a single
+      // point back out. The audit's pure sources are warding, Vows and sealed
+      // Wounds — things done — and restraint gets its own verb in #177, not a
+      // free rider on this one.
+      commitment: salvageTaken > 0 ? commitmentOf('salvaged') : commitmentOf(null),
+      // `warded` is billed separately, by `bleed` itself, and is quoted here
+      // because a press's total pure commitment is both halves.
       warding: commitmentOf('warded', salvageTaken),
     },
   };
 
+  if (corruptReward) {
+    const blightDef = ITEM_BY_ID.get(corruptReward.itemId);
+    outcomes.corrupt = {
+      outcome: 'corrupt',
+      reward: {
+        itemId: corruptReward.itemId, count: 1, targeted: true,
+        // What the card is worth *right now*. Blight strength rides live world
+        // corruption (#170's `blightGrace`), so a Pristine buyer is paying full
+        // price for a floored effect — the one number that decides whether this
+        // press is a good deal, and the quote said nothing about it
+        // (integration review m1). The description is the catalogue's own
+        // stack-aware line, the same one the mutation choice card prints.
+        description: describeBlight(blightDef, 1),
+        grace: blightGrace(ctx),
+      },
+      corruption: corruptCharge,
+      face: faceFeed,
+      mint: mintOf(ctx, { added: corruptCharge }),
+      threshold: thresholdOf(ctx, corruptCharge, pawn),
+      commitment: commitmentOf('corruptUpgrade'),
+    };
+  }
+
   const name = def.name || itemId;
-  const corruptName = ITEM_BY_ID.get(corruptReward.itemId)?.name || corruptReward.itemId;
   outcomes.safe.line = `Take ${name}`;
-  outcomes.corrupt.line = pricedPrompt(
-    ctx, `Corrupt into ${corruptName}`, faceFeed, faceFeed
-  );
+  if (outcomes.corrupt) {
+    const corruptName = ITEM_BY_ID.get(corruptReward.itemId)?.name || corruptReward.itemId;
+    const grace = outcomes.corrupt.reward.grace;
+    outcomes.corrupt.line = pricedPrompt(
+      ctx, `Corrupt into ${corruptName} (at ${Math.round(grace * 100)}% strength)`, faceFeed, faceFeed
+    );
+  }
   outcomes.salvage.line = `Salvage ${name} | -${salvageTaken} corruption warded`
     + (outcomes.salvage.mint.motes > 0 ? ' -> mints an argent mote' : '');
 
-  return { itemId, tier: def.tier, owner: owner || ctx?.player || null, ...outcomes };
+  return {
+    itemId, tier: def.tier, owner: pawn,
+    outcomes: offeredOutcomes(itemId),
+    ...outcomes,
+  };
 }
 
 /**
@@ -256,7 +310,7 @@ export function openItemOffer(ctx, {
      * `Items.give` already take.
      */
     resolve(outcome, { lapsed = false } = {}) {
-      if (offer.resolved || !OUTCOMES.includes(outcome)) return null;
+      if (offer.resolved || !offeredOutcomes(itemId).includes(outcome)) return null;
       if (!ctx?.authority) return null;
       offer.resolved = true;
       offer.outcome = outcome;
@@ -282,6 +336,11 @@ export function openItemOffer(ctx, {
 
       const result = {
         outcome, itemId, owner: pawn, corruption, granted,
+        // What the salvage actually took back out, which is what the ledger
+        // gate reads (integration review M1): a decline that wards nothing
+        // must commit nothing, and the listener cannot tell the difference
+        // from the outcome name alone.
+        warded: outcome === 'salvage' ? -corruption : 0,
         reward: q[outcome].reward, commitment: q[outcome].commitment,
       };
       // The ledger's hook. `Corruption` listens and commits — an event rather
