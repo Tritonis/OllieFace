@@ -141,6 +141,65 @@ console.log('Items.temper(): consumes BOTH parents wholesale, grants exactly one
     'and neither parent is touched on a client');
 }
 
+console.log('temper() does not falsely inflate or discover through the logbook (Profile) — review Major');
+{
+  // `Items.temper()`'s parent-zeroing writes (`_set(argent, 0, 'temper')`,
+  // `_set(blight, 0, 'temper')`) ride the same `itemPickup` bus a genuine
+  // pickup does. `Profile._onItemPickup` used to floor any absolute `count`
+  // — including a freshly-emptied stack's `0` — up to 1 via `Math.max(1,
+  // count)`, so each zeroing write booked a phantom acquisition AND
+  // discovered the very item the trade just spent. One temper (2 parent
+  // writes + 1 real grant) inflated `run.items`/`data.stats.items` by +2 and
+  // falsely `discover()`-ed both consumed parents.
+  globalThis.localStorage = (() => {
+    const store = new Map();
+    return {
+      getItem: (k) => (store.has(k) ? store.get(k) : null),
+      setItem: (k, v) => store.set(k, String(v)),
+      removeItem: (k) => store.delete(k),
+      clear: () => store.clear(),
+    };
+  })();
+  const { Profile } = await import('../src/systems/Profile.js');
+
+  const ctx = makeCtx();
+  ctx.player = { isPlayer: true, alive: true, survivorId: null };
+
+  const items = new Items();
+  items.init(ctx);
+  const profile = new Profile();
+  profile.init(ctx);
+  profile.beginRun();
+
+  items.give('quicksilver-vein', 2);
+  items.give('arc-rot', 3);
+  // Each `give()` books the copies it actually handed over (2, then 3): 5
+  // real item copies acquired so far, and the baseline the temper below must
+  // not inflate.
+  ok(profile.run.items === 5, `the two genuine pickups book 2 + 3 = 5 (${profile.run.items})`);
+  ok(!profile.isDiscovered('item', 'tempered-capacitor'), 'the Tempered card is not yet met');
+
+  items.temper('tempered-capacitor');
+
+  // The reviewer's own repro: temper() must add exactly 1 — its own grant —
+  // never 3 (the grant plus the two zeroing writes silently counted as
+  // phantom pickups of the parents it just spent).
+  ok(profile.run.items === 6, `temper() adds exactly 1 on top of the 5 baseline — never +3 for the 2 zeroing writes (${profile.run.items})`);
+  ok(profile.data.stats.items === 6, `and the persisted lifetime counter agrees (${profile.data.stats.items})`);
+  ok(profile.isDiscovered('item', 'tempered-capacitor'), 'the Tempered card IS discovered — it was genuinely acquired');
+  // Both parents were already discovered by the real `give()` above, so this
+  // is not the interesting half of the claim; the interesting half is the
+  // NEXT temper, against parents this profile has never met before.
+  items.give('unblemished-plate', 1);
+  items.give('slag-ingot', 1);
+  ok(!profile.isDiscovered('item', 'tempered-bulwark'), 'the second Tempered card is not yet met');
+  const beforeSecond = profile.run.items;
+  items.temper('tempered-bulwark');
+  ok(profile.run.items === beforeSecond + 1,
+    `a second temper adds exactly 1 — the grant alone, not +3 for the grant plus two phantom re-pickups of its parents (${profile.run.items - beforeSecond})`);
+  ok(profile.isDiscovered('item', 'tempered-bulwark'), 'and the new Tempered card is discovered on its own real grant');
+}
+
 console.log('Tempered Capacitor (offense): strain rises and caps, decays only via the buff window, and costs health as it climbs');
 {
   const capacitor = card('tempered-capacitor');
@@ -165,14 +224,31 @@ console.log('Tempered Capacitor (offense): strain rises and caps, decays only vi
   // Each proc arcs across 2 + linear(1, count) = 3 targets at count 1.
   ok(api.rec.damage.length === 3, `arcs across 3 targets at 1 stack (${api.rec.damage.length})`);
 
-  // NO FULL PARENT RETENTION, on every axis the card touches:
-  //  - the cap on arc damage (1.95x) is below the sum of the two parents kept
-  //    whole (Quicksilver's flat 160% + Arc Rot's 110% = 270%);
-  //  - the proc chance (14%/stack) is strictly weaker than Arc Rot's own 40%;
-  //  - the per-proc cost (0.8% base) is strictly weaker than Arc Rot's flat 1.5%.
-  ok(1.2 + 0.15 * 5 < 1.6 + 1.1, 'capped arc damage is below the sum of both parents kept whole');
-  ok(hyperbolic(0.14, 1) < hyperbolic(0.40, 1), 'proc chance is weaker than the blight parent alone');
-  ok(0.008 < 0.015, 'base health cost is weaker than the blight parent\'s flat toll');
+  // NO FULL PARENT RETENTION, on every axis the card touches — and the
+  // comparison values are DERIVED by driving each parent's own live hook at
+  // its own full strength, not hand-typed literals, so a future rebalance of
+  // either parent moves this guard along with it instead of leaving it
+  // proving a number the parents no longer carry.
+  const veinApi = makeApi(); // world 0 -> grace(ctx) = 1, Quicksilver Vein's peak
+  veinApi.roll = (p) => p > 0;
+  card('quicksilver-vein').hooks.onHit({ position: { x: 0, y: 0, z: 0 } }, veinApi);
+  const veinArcMult = veinApi.rec.damage[0] / 10;
+
+  const rotApi = makeApi(); // world 110 -> blightGrace(ctx) = 1, Arc Rot's peak
+  rotApi.ctx.corruption.world = 110;
+  const rotRolls = [];
+  rotApi.roll = (p) => { rotRolls.push(p); return p > 0; };
+  card('arc-rot').hooks.onHit({ position: { x: 0, y: 0, z: 0 } }, rotApi);
+  const rotArcMult = rotApi.rec.damage[0] / 10;
+  const rotProcChance = rotRolls[0];
+  const rotCostFrac = (100 - rotApi.player.health) / 100;
+
+  ok(1.2 + 0.15 * 5 < veinArcMult + rotArcMult,
+    `capped arc damage (${(1.2 + 0.15 * 5).toFixed(2)}) is below the live sum of both parents kept whole (${(veinArcMult + rotArcMult).toFixed(2)})`);
+  ok(hyperbolic(0.14, 1) < rotProcChance,
+    `proc chance is weaker than the blight parent's own live chance (${hyperbolic(0.14, 1).toFixed(3)} vs ${rotProcChance.toFixed(3)})`);
+  ok(0.008 < rotCostFrac,
+    `base health cost (0.008) is weaker than the blight parent's own live toll (${rotCostFrac.toFixed(4)})`);
 
   // Strain fades to nothing once the buff's own window elapses — proven by
   // rebuilding a fresh api (an expired buff reads back as 0 stacks exactly
@@ -269,6 +345,26 @@ console.log('Tempered Cairn (sustain): crits bank pressure, only a kill vents it
   cairn.hooks.onKill({}, idle); // no prior crit at all
   ok(idle.rec.heals.length === 0 && idle.rec.bleeds.length === 0,
     'a kill inside a Sanctuary with zero banked pressure pays out nothing on either axis');
+
+  // And on the numbers too: per point banked, this card's heal and ward are
+  // both weaker than either parent's own live payoff, kept whole. Derived by
+  // driving each parent's own hook at its own full strength, per the same
+  // rule the Capacitor's guard above uses — not hand-typed literals.
+  const sickleApi = makeApi(); // world 110 -> blightGrace(ctx) = 1, Gristle Sickle's peak
+  sickleApi.ctx.corruption.world = 110;
+  card('gristle-sickle').hooks.onHit({ crit: true }, sickleApi);
+  const sickleHealPerPoint = sickleApi.rec.heals[0];
+
+  const chimeApi = makeApi();
+  chimeApi.ctx.corruption.sanctified = true;
+  chimeApi.ctx.authority = true;
+  card('chime-of-absolution').hooks.onKill({}, chimeApi);
+  const chimeWardPerPoint = chimeApi.rec.bleeds[0];
+
+  ok(linear(9, 1) < sickleHealPerPoint,
+    `heal per point banked (9) is weaker than Gristle Sickle's own live heal (${sickleHealPerPoint})`);
+  ok(linear(1, 1) < chimeWardPerPoint,
+    `ward per point banked (1) is weaker than Chime of Absolution's own live ward (${chimeWardPerPoint})`);
 }
 
 console.log(`\n  ${pass} passed, ${fail} failed`);
