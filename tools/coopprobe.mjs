@@ -278,6 +278,91 @@ const CHECKS = [
     },
   },
 
+  {
+    // The blight toll's lever, over the wire (issue #168, `MSG.MUTATE`). The
+    // only round trip in this probe that runs *against* the flow — every other
+    // check watches the host tell the client something, and this one watches
+    // the client answer.
+    //
+    // It is driven through the real UI on purpose: the card is clicked in the
+    // client's own DOM, so the path under test is the whole one — `Menus`'
+    // panel, `HUD`'s `onPick`, `Items.chooseMutation` on a replica, the
+    // `mutationAnswer` bus hop, `NetClient`'s send, `NetHost._onMutate`'s
+    // ownership lookup and `Items.answerMutation`'s validation — rather than a
+    // hand-built message posted into the middle of it.
+    //
+    // Runs after `world-economy-replicates` and depends on nothing it did
+    // except that the gauge is already partway up the first band; the feed here
+    // is whatever the toll's own threshold still needs. The window is six
+    // seconds (`MUTATION.choiceSeconds`), which is why the polls below are
+    // 100 ms and the stacks are handed out *before* the feed.
+    name: 'remote-mutation-round-trip',
+    set: 'base',
+    async run({ host, client }) {
+      const setup = await host.evaluate(async () => {
+        const ctx = globalThis.__GAME__?.ctx;
+        const pawn = ctx?.coop?.pawns?.[0];
+        if (!pawn?.items) return { error: 'the host has no remote pawn with an inventory' };
+        const { BLIGHT_BY_BASE } = await import('/src/data/items.js');
+        const { BANDS, MUTATION } = await import('/src/data/corruption.js');
+        // Four eligible stacks, so the field is worth opening a window over.
+        const held = [...BLIGHT_BY_BASE.keys()].sort().slice(0, 4);
+        for (const id of held) pawn.items.give(id, 2);
+        const need = BANDS[MUTATION.minBand].at + 1 - ctx.corruption.world;
+        const fed = need > 0 ? ctx.corruption.feed(ctx.player, need) : 0;
+        return { held, fed, band: ctx.corruption.band, want: MUTATION.minBand };
+      });
+      if (setup.error) return { pass: false, detail: setup.error };
+
+      // The panel, in the client's own document. `data-mutate-pick` is what
+      // `Menus.showMutationChoice` writes and what its click handler reads.
+      let cards = [];
+      let deadline = Date.now() + 4000;
+      while (Date.now() < deadline) {
+        cards = await client.evaluate(() =>
+          [...document.querySelectorAll('[data-mutate-pick]')].map((el) => el.dataset.mutatePick));
+        if (cards.length) break;
+        await sleep(100);
+      }
+      if (!cards.length) {
+        return { pass: false, detail: `no offer reached the client (host fed ${setup.fed}, band ${setup.band}/${setup.want})` };
+      }
+
+      const picked = cards[0];
+      const clicked = await client.evaluate((id) => {
+        const el = document.querySelector(`[data-mutate-pick="${id}"]`);
+        if (!el) return false;
+        el.click();
+        return true;
+      }, picked);
+
+      let after = null;
+      deadline = Date.now() + 4000;
+      while (Date.now() < deadline) {
+        after = await host.evaluate(async (id) => {
+          const { BLIGHT_BY_BASE } = await import('/src/data/items.js');
+          const items = globalThis.__GAME__.ctx.coop.pawns[0].items;
+          return { base: items.count(id), blight: items.count(BLIGHT_BY_BASE.get(id).id), open: !!items.mutationChoice() };
+        }, picked);
+        if (after && after.base === 0 && after.blight > 0) break;
+        await sleep(100);
+      }
+      const untouched = await host.evaluate((held) => {
+        const items = globalThis.__GAME__.ctx.coop.pawns[0].items;
+        return held.map((id) => items.count(id));
+      }, setup.held.filter((id) => id !== picked));
+
+      const pass = clicked && !!after && after.base === 0 && after.blight === 2 && !after.open
+        && untouched.every((n) => n === 2);
+      return {
+        pass,
+        detail: `the client clicked ${picked} out of ${cards.length} cards;`
+          + ` the host's satellite now holds ${after?.base} of it and ${after?.blight} of its blight,`
+          + ` window open=${after?.open}, the other offered stacks read [${untouched.join(',')}]`,
+      };
+    },
+  },
+
   // ------------------------------------------------------------- p2 check-set
   //
   // Per-pawn economy (PROTOCOL_VERSION 6, `docs/superpowers/plans/2026-08-12-

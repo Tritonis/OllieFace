@@ -1,10 +1,10 @@
 {
-  "when": "2026-08-23T05:49:41.912Z",
+  "when": "2026-08-24T03:34:39.968Z",
   "probe": "tools/coopprobe.mjs",
   "label": "base",
   "flags": {
-    "port": 5214,
-    "signalPort": 5215,
+    "port": 5254,
+    "signalPort": 5255,
     "seed": 1337,
     "netlag": null,
     "netloss": null,
@@ -12,14 +12,14 @@
     "checks": [
       "base"
     ],
-    "record": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round9\\coopprobe-base.json",
-    "out": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round9\\coopprobe-shots",
+    "record": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\.claude\\worktrees\\agent-ac03bbb24ebb87959\\reviews\\round9\\coopprobe-base.json",
+    "out": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\.claude\\worktrees\\agent-ac03bbb24ebb87959\\reviews\\round9\\coopprobe-shots",
     "signalServerSpawned": true,
     "spawnRate": 0.12
   },
   "urls": {
-    "host": "/index.html?seed=1337&quality=2&harness=1&signal=ws://127.0.0.1:5215",
-    "client": "/index.html?seed=1337&quality=2&harness=1&signal=ws://127.0.0.1:5215"
+    "host": "/index.html?seed=1337&quality=2&harness=1&signal=ws://127.0.0.1:5255",
+    "client": "/index.html?seed=1337&quality=2&harness=1&signal=ws://127.0.0.1:5255"
   },
   "bounded": {
     "bootMs": 120000,
@@ -62,76 +62,76 @@
     ],
     "note": "every wait in this probe is capped; the caps above are the only ones there are"
   },
-  "roomCode": "D7M9-QNUW",
-  "formationMs": 7198,
+  "roomCode": "LXLP-A5J6",
+  "formationMs": 975,
   "phases": [
     {
       "name": "relay",
-      "ms": 101,
+      "ms": 99,
       "ok": true,
-      "detail": "ws://127.0.0.1:5215"
+      "detail": "ws://127.0.0.1:5255"
     },
     {
       "name": "vite",
-      "ms": 124,
+      "ms": 105,
       "ok": true,
-      "detail": "http://127.0.0.1:5214"
+      "detail": "http://127.0.0.1:5254"
     },
     {
       "name": "host-boot",
-      "ms": 30224,
+      "ms": 19645,
       "ok": true,
       "detail": "title screen up, seed 1337"
     },
     {
       "name": "host-room",
-      "ms": 800,
+      "ms": 798,
       "ok": true,
-      "detail": "D7M9-QNUW"
+      "detail": "LXLP-A5J6"
     },
     {
       "name": "host-launch",
-      "ms": 3808,
+      "ms": 3681,
       "ok": true,
-      "detail": "hosting room D7M9-QNUW with the world running"
+      "detail": "hosting room LXLP-A5J6 with the world running"
     },
     {
       "name": "client-boot",
-      "ms": 4862,
+      "ms": 4604,
       "ok": true,
       "detail": "title screen up"
     },
     {
       "name": "formation",
-      "ms": 7547,
+      "ms": 1318,
       "ok": true,
-      "detail": "7198 ms from the Join click to two open channels and a host roster of 2"
+      "detail": "975 ms from the Join click to two open channels and a host roster of 2"
     },
     {
       "name": "client-launch",
-      "ms": 2755,
+      "ms": 9823,
       "ok": true,
       "detail": "joined and running"
     },
     {
       "name": "run-window",
-      "ms": 60049,
+      "ms": 60032,
       "ok": true,
-      "detail": "60 s of scripted play, 82 alternating key holds, both survivors alive"
+      "detail": "60 s of scripted play, 81 alternating key holds, both survivors alive"
     }
   ],
   "timings": {
-    "totalMs": 118022,
+    "totalMs": 108190,
     "byPhase": {
-      "relay": 101,
-      "vite": 124,
-      "host-boot": 30224,
-      "host-room": 800,
-      "host-launch": 3808,
-      "client-boot": 4862,
-      "formation": 7547,
-      "client-launch": 2755,
-      "run-window": 60049
+      "relay": 99,
+      "vite": 105,
+      "host-boot": 19645,
+      "host-room": 798,
+      "host-launch": 3681,
+      "client-boot": 4604,
+      "formation": 1318,
+      "client-launch": 9823,
+      "run-window": 60032
     }
   },
   "consoleErrors": {
@@ -143,13 +143,13 @@
       "name": "host-running",
       "set": "base",
       "pass": true,
-      "detail": "host paused=false NetHost.tick=3934 (want > 60) screen=null role=host"
+      "detail": "host paused=false NetHost.tick=3794 (want > 60) screen=null role=host"
     },
     {
       "name": "client-running",
       "set": "base",
       "pass": true,
-      "detail": "client paused=false NetClient.tick=3614 (want > 60) screen=null role=client connected=true myNetId=1"
+      "detail": "client paused=false NetClient.tick=3539 (want > 60) screen=null role=client connected=true myNetId=1"
     },
     {
       "name": "roster-2-both",
@@ -161,7 +161,7 @@
       "name": "ticks-advance",
       "set": "base",
       "pass": true,
-      "detail": "over 5000 ms: host tick 3935 -> 4227 (+292), client tick 3616 -> 3916 (+300); want both strictly increasing"
+      "detail": "over 5000 ms: host tick 3796 -> 4074 (+278), client tick 3540 -> 3841 (+301); want both strictly increasing"
     },
     {
       "name": "both-alive",
@@ -174,6 +174,18 @@
       "set": "base",
       "pass": true,
       "detail": "host has 29 replicated netIds, client sees 29; intersection 29 [2,1,28,29,3,4,5,6,...]"
+    },
+    {
+      "name": "world-economy-replicates",
+      "set": "base",
+      "pass": true,
+      "detail": "host fed 25 (world 0.0 -> 25.0); client reads world 25.0 band 1 peak 25.0 marks 1; host band 1 peak 25.0 marks 1"
+    },
+    {
+      "name": "remote-mutation-round-trip",
+      "set": "base",
+      "pass": true,
+      "detail": "the client clicked adrenal-syringe out of 3 cards; the host's satellite now holds 0 of it and 2 of its blight, window open=false, the other offered stacks read [2,2,2]"
     },
     {
       "name": "no page errors",

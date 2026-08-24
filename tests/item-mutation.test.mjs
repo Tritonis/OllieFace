@@ -583,8 +583,10 @@ console.log('a client is never asked, and neither is a teammate\'s pack');
   ok(!emitted.some((e) => e.name === 'mutationChoiceOffered'), 'a client opens no window');
   ok(!items.mutationChoice() && items.chooseMutation(baseA) === false, 'and has nothing to answer');
 
-  // Host-side satellite: a remote pawn's toll keeps the void-chooses path,
-  // because there is no wire for a remote answer to come back on.
+  // Host-side satellite: a remote pawn is asked now (issue #168), on its own
+  // window, and the offer names the pawn it belongs to. What has NOT changed is
+  // where a silence lands — the whole of that path lives in
+  // `tests/mutation-remote-choice.test.mjs`; this arm only holds the seam.
   const host = makeCtx();
   const remote = { isPlayer: true, alive: true, peerId: 2 };
   const sat = new Items(remote);
@@ -593,9 +595,13 @@ console.log('a client is never asked, and neither is a teammate\'s pack');
   sat.give(baseB, 2);
   host.ctx.events.emit('corruptionBand', { band: MUTATION.minBand, prev: 0 });
   step(host.ctx, sat);
-  ok(!host.emitted.some((e) => e.name === 'mutationChoiceOffered'), 'no window for a remote pawn');
+  const offered = host.emitted.find((e) => e.name === 'mutationChoiceOffered');
+  ok(offered?.payload.owner === remote, 'a remote pawn is asked, and the offer says whose toll it is');
+  ok(offered?.payload.offerId > 0, 'and carries the identifier its answer has to quote');
+  ok(!host.emitted.some((e) => e.name === 'itemMutated'), 'nothing festers while that window stands');
+  for (let t = 0; t < MUTATION.choiceSeconds * 60 + 2 && sat.mutationChoice(); t++) step(host.ctx, sat);
   const m = host.emitted.find((e) => e.name === 'itemMutated' && e.payload.owner === remote);
-  ok(!!m && m.payload.chosen === false, 'the remote toll was paid the void\'s way, and says so');
+  ok(!!m && m.payload.chosen === false, 'an unanswered remote toll is still paid the void\'s way, and says so');
 }
 
 console.log('the HUD raises and drops the panel on the local seat only');

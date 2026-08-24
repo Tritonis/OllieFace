@@ -106,7 +106,16 @@
 // 10: `MSG.WORLD` grows a `sanctEpoch` — layout, so the bump is the obvious
 //    half of the rule. A v9 pairing would mis-frame the two bytes after the
 //    sanctuary clock and read ruin and greed out of an epoch counter.
-export const PROTOCOL_VERSION = 10;
+// 11: the blight toll's lever crosses the wire (issue #168). `MSG.MUTATE` is the
+//    first client -> host *request* this protocol has ever carried, and
+//    `mutationChoiceOffered`/`mutationChoiceClosed` join the addressed-event
+//    vocabulary. No layout moved, so this is the vocabulary argument 5 and 8
+//    made — but louder, because the pairing it refuses is one where a player is
+//    asked a question their build cannot answer: a v10 client on a v11 host
+//    would raise the three-card panel out of the forwarded offer, press a card,
+//    and send nothing at all, then watch the void take a stack it had just been
+//    promised it could choose. A refused join says that; a dead button does not.
+export const PROTOCOL_VERSION = 11;
 
 export const MSG = {
   HELLO: 1,       // client -> host
@@ -119,7 +128,51 @@ export const MSG = {
   BYE: 8,
   REFUSE: 9,      // host   -> client, last message before the channel closes
   WORLD: 10,      // host   -> client, the run's world-level economy (issue #167)
+  MUTATE: 11,     // client -> host  (events channel), one answer to one offer
 };
+
+/**
+ * A remote player's answer to the blight toll's three cards (issue #168).
+ *
+ * The only client -> host *request* in this protocol, and it is deliberately
+ * the smallest one that can exist: the identifier of the offer the host itself
+ * minted, and the id of a card that offer carried. Nothing else. Every field a
+ * card is painted from — the counterpart, its name, its effect text, the stack
+ * size — was written by the host and is still held by the host, so a client
+ * that lies about any of them is lying to itself.
+ *
+ * The reply names no pawn. Whose pack it touches is re-derived from the peer
+ * the bytes arrived on (`NetHost._onMutate`), which is the one fact a sender
+ * cannot forge, so ownership is structural rather than checked.
+ *
+ * An empty `baseId` is a refusal — the same "no" the panel's decline button
+ * makes, told out loud rather than by silence, so the toll resolves at once
+ * instead of after the window's whole clock.
+ */
+export function writeMutate(w, { offerId = 0, baseId = '' } = {}) {
+  w.u8(MSG.MUTATE);
+  w.u32(offerId >>> 0);
+  w.str(String(baseId ?? ''));
+  return w;
+}
+
+// The longest item id in the catalogue is well under this; it exists so a peer
+// cannot choose how much of this machine's memory its answer occupies. Read
+// defensively for `readHello`'s reason — a truncated reply must cost the reply,
+// not the session — but a manufactured value must never reach a decision, and
+// neither of these can: offer 0 is never minted and no offer ever carried ''.
+export const MUTATE_BASE_MAX = 64;
+
+export function readMutate(r, out = {}) {
+  out.offerId = r.remaining >= 4 ? r.u32() : 0;
+  out.baseId = r.remaining >= 2 ? r.str() : '';
+  // `null`, not `''`: an empty card id is a *refusal*, which pays a real toll.
+  // An id no catalogue could hold is a malformed message, and answering it with
+  // a refusal would let a peer spend somebody's stack by sending garbage.
+  // `NetHost._onMutate` drops a null outright.
+  if (out.baseId.length > MUTATE_BASE_MAX) out.baseId = null;
+  return out;
+}
 
 /**
  * The signature economy on the wire (issue #167).
