@@ -74,13 +74,22 @@ const wounds = (inter) => inter.list.filter((i) => i instanceof Wound);
 
 console.log('\n-- promotion is bounded, and the bound can fail --');
 {
+  // The literals matter and are NOT read off `WOUND`. An earlier draft asserted
+  // `grown.length <= WOUND.max` alone, and raising `max` to 99 left it green —
+  // the guard was reading the very constant it was supposed to be holding. The
+  // tuned numbers ARE the contract this prototype was adjudicated on, so they
+  // are written out here and a retune has to come and argue with this line.
+  ok(WOUND.max === 3, `at most three wounds per stage (WOUND.max=${WOUND.max})`);
+  ok(WOUND.expandCap === 3, `a fed patch grows by at most 3 strength (${WOUND.expandCap})`);
+  ok(WOUND.minSpacing >= 12, `wounds stand apart (${WOUND.minSpacing}m)`);
+
   const { cor, inter } = makeCtx();
   // Twenty qualifying seeds, every one of them past `minSpacing` from all the
   // others, so nothing but `WOUND.max` can be what stops this.
   for (let i = 0; i < 20; i++) plant(cor, i * 120, 0, 4);
   const grown = wounds(inter);
   ok(grown.length > 0, `twenty greed marks grow at least one wound (${grown.length})`);
-  ok(grown.length <= WOUND.max, `and never more than WOUND.max=${WOUND.max} (${grown.length})`);
+  ok(grown.length <= 3, `and never more than three (${grown.length})`);
 
   // Spacing: no two wounds may stand on top of each other.
   let tooClose = 0;
