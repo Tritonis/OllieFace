@@ -981,16 +981,44 @@ export class Items {
     });
   }
 
-  /** Whether a choice window of any kind is standing on this pack. */
-  hasChoiceWindow() { return !!this._muteChoice; }
+  /**
+   * Whether a choice window of any kind is standing on this pack — the host's
+   * own `_muteChoice`, or (integration review, Major M2) a client's addressed
+   * shadow of one, `_muteOffer`. Before this a client-side caller (the
+   * tutorial's glossary defer is the reviewer's repro, but the method makes no
+   * promise that is only true for that one caller) read `false` for the
+   * entire lifetime of a remote window: `_muteOffer` is exactly what
+   * `mutationChoiceOffered` populates on a client (above), `_muteChoice` is
+   * never set there at all — a guest's `ctx.authority` is false, so the
+   * window-opening methods (`openWoundChoice` and friends) are never even
+   * reached on that machine — and the two are population-exclusive by
+   * construction (`_openChoice` only runs where `ctx.authority` is true), so
+   * checking both is never a double-count.
+   *
+   * Every existing caller runs inside `Interactable.interact`, reached only
+   * through `Interactables.requestInteract`, which refuses outright unless
+   * `ctx.authority` (Interactables.js: `if (!this.ctx.authority ...) return
+   * false`). `_muteOffer` is therefore always null on every machine any of
+   * those callers can run on, so widening this check changes nothing for the
+   * chest/altar/wound/anvil guards or the chest-queue drain — they keep
+   * reading `_muteChoice` alone in every case that can reach them. The
+   * widening is pure addition: it only ever starts returning `true` in a
+   * state (client, a window addressed to this pawn standing) that every
+   * existing caller could never previously observe.
+   */
+  hasChoiceWindow() { return !!this._muteChoice || !!this._muteOffer; }
 
   /**
    * Which kind is standing, or null for none. The two are not interchangeable
    * to a caller deciding whether to paint over one (integration review M3): an
    * argent window is a purchase already made and must never be forfeited, while
    * a blight toll is involuntary and pays the same either way.
+   *
+   * Reads `_muteOffer`'s kind too, for `hasChoiceWindow`'s reason directly
+   * above: population-exclusive with `_muteChoice`, so there is never a case
+   * where both are set and one has to win.
    */
-  choiceWindowKind() { return this._muteChoice?.kind ?? null; }
+  choiceWindowKind() { return this._muteChoice?.kind ?? this._muteOffer?.kind ?? null; }
 
   /**
    * The open offer, for the UI that paints it. Null when no window is open.
