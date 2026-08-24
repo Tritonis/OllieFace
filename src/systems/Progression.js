@@ -5,6 +5,7 @@ import { BIOMES, stageNameFor } from '../world/Materials.js';
 import { Profile } from './Profile.js';
 import { isLocalVictim, isLocalKill, isLocalOwner } from '../core/Engine.js';
 import { VOIDTOUCHED, isVoidtouched } from '../data/corruption.js';
+import { muteInput } from '../core/InputMute.js';
 
 /**
  * Progression drives the run: which stage we're on, how hard the game is
@@ -48,6 +49,9 @@ const CHARGE_EMIT_STEP = 0.01;
 // wants to feel like arriving somewhere, so it takes its time. The build sits
 // between them at full black and runs as fast as it can, so the transition is
 // as long as the machine needs and never shorter than these two.
+/** This system's name on the input mute. See `src/core/InputMute.js`. */
+const INPUT_MUTE = 'stageTransition';
+
 const VEIL_OUT = 0.30;
 const VEIL_IN = 0.55;
 
@@ -473,15 +477,20 @@ export class Progression {
     // listens to this instead, and gets the whole build to work in.
     this.ctx?.events?.emit?.('stageChanging', { index, host });
 
-    // The player is a passenger for the length of the fade. Saved and restored
-    // rather than forced back to true: the emergency pause overlay owns this
-    // same switch, and a transition must not be the thing that hands control
-    // back to a session that had deliberately taken it away.
-    const input = this.ctx?.input;
-    if (input) {
-      t.inputWas = input.enabled;
-      input.enabled = false;
-    }
+    // The player is a passenger for the length of the fade — but only one of
+    // three parts of the build that can be saying so at once. `input.enabled`
+    // has three writers (this one, `NetHost._holdSession` and
+    // `FallbackPause.setFallbackPause`) and no boolean can hold three claims,
+    // so none of them writes it: they claim and release a named mute and the
+    // boolean is derived (`src/core/InputMute.js`, #197).
+    //
+    // This used to be a save-and-restore, which was the same idea aimed at only
+    // one of the other two — and it got the answer wrong whenever a menu went
+    // up *during* the fade, because the value it restored was saved before that
+    // menu existed. The far side of the transition then handed the stick back
+    // under an open pause overlay, with nothing left that would ever take it
+    // away again. See `tests/input-ownership.test.mjs`.
+    muteInput(this.ctx?.input, INPUT_MUTE, true);
 
     if (!this._canStretch()) this._drainTransition();
   }
@@ -586,11 +595,11 @@ export class Progression {
    * `stageChanging` up would freeze the fixed step for the rest of the session.
    */
   _endTransition() {
-    const t = this.transition;
     this.transition = null;
     if (this.ctx) this.ctx.stageChanging = false;
-    const input = this.ctx?.input;
-    if (input && t.inputWas !== undefined) input.enabled = t.inputWas;
+    // Releases this claim only. If a menu or a co-op hold is also claiming, the
+    // controls stay gone until *that* owner releases them.
+    muteInput(this.ctx?.input, INPUT_MUTE, false);
     this._paintVeil(0);
   }
 

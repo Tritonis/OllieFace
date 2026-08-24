@@ -5,6 +5,7 @@ import {
 import { HostTransport } from './Transport.js';
 import { SURVIVOR_BY_ID, survivorIndexOf } from '../data/survivors.js';
 import { REVIVE } from '../data/revive.js';
+import { muteInput } from '../core/InputMute.js';
 
 /**
  * Authoritative host.
@@ -41,6 +42,9 @@ const MAX_INPUT_BACKLOG = 12;
 // snapshot carrying that peer's death can reach it. Three snapshot intervals
 // plus a frame, rounded up; see `_holdSession`.
 const HOLD_GRACE = 1.5;
+
+/** This file's name on the input mute. See `src/core/InputMute.js`. */
+const INPUT_MUTE = 'coopHold';
 // How long a peer may take to identify itself before the host gives up on it.
 //
 // Counted in seconds, not host ticks. It used to be 120 ticks, which reads as
@@ -600,10 +604,15 @@ export class NetHost {
       // local menu is open the host is not playing it — leaving input live let
       // pause-menu keystrokes drive the survivor for up to HOLD_GRACE (1.5 s)
       // after the last peer died.
-      if (ctx.input) ctx.input.enabled = !live && !screen;
+      //
+      // Claimed rather than written (`src/core/InputMute.js`, #197): a stage
+      // transition and the fallback pause overlay mute the same stick, and the
+      // last frame to write the boolean used to win. Releasing this claim now
+      // releases only this claim.
+      muteInput(ctx.input, INPUT_MUTE, live || !!screen);
     } else if (this._holding) {
       ctx.paused = !!screen;
-      if (ctx.input) ctx.input.enabled = true;
+      muteInput(ctx.input, INPUT_MUTE, false);
     }
     this._holding = hold;
   }
