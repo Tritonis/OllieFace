@@ -356,12 +356,19 @@ console.log('— the clean path is stocked, and stocking it costs a pristine run
   // cannot. A future conditional draw at band 0 moves the count, the hash, or
   // both, and the numbers are regenerable: check out b1979c3's Interactables
   // and re-run this block.
+  // Regenerated for the Tempering Anvil's entry into the shrine bag (#208):
+  // a new `stageIndex >= 1` weighted competitor changes which shrine
+  // `rng.weighted` picks at unchanged draw counts, so every stage-1..6 hash
+  // above the anvil's gate moves even though nothing was taken off `ctx.rng`
+  // — draw counts are untouched, confirming the change is a bag-composition
+  // shift, not a draw leak. Regenerable the same way the comment above
+  // documents: check out this revision's `Interactables` and re-run this block.
   const GOLDEN_B1979C3 = [
-    [1234, 0, 68, '1576708f'], [1234, 1, 95, '90eb9ca4'], [1234, 2, 110, '98b60237'],
-    [1234, 3, 121, 'b918879f'], [1234, 4, 140, '36b9f4d0'], [1234, 5, 162, 'cb332085'],
-    [1234, 6, 186, '03057e76'],
-    [1337, 0, 76, 'c494c9e5'], [1337, 1, 93, 'b2fac454'], [1337, 2, 116, 'c740cb49'],
-    [1337, 3, 133, '2744d0cf'], [1337, 4, 150, 'd22cb99f'], [1337, 5, 179, 'fe0f4259'],
+    [1234, 0, 68, '1576708f'], [1234, 1, 95, '90eb9ca4'], [1234, 2, 110, 'bcf07d6a'],
+    [1234, 3, 121, '46f5a0b0'], [1234, 4, 140, 'cd210889'], [1234, 5, 162, 'cfc8e4cc'],
+    [1234, 6, 186, 'bc1c9146'],
+    [1337, 0, 76, 'c494c9e5'], [1337, 1, 93, 'b2fac454'], [1337, 2, 116, '0dc9958e'],
+    [1337, 3, 133, 'f1bf809f'], [1337, 4, 150, '328ded91'], [1337, 5, 179, '4ea41fe2'],
     [1337, 6, 194, 'dd78453d'],
   ];
   let countDrift = 0, hashDrift = 0;

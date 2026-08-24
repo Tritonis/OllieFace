@@ -402,6 +402,19 @@ export class HUD {
         });
         return;
       }
+      // The Tempering Anvil's forge decision (#208) — the fourth kind, same
+      // slot, same clock, same answer path. Its lapse leaves the pack
+      // untouched, which `TemperingAnvil.interact` owns; nothing here has to
+      // know that.
+      if (e.kind === 'temper') {
+        this.menus?.showTemperChoice({
+          id: `temper:${e.offerId}`,
+          offers: e.offers,
+          seconds: e.seconds,
+          onPick: (id) => ctx.items?.chooseMutation?.(id),
+        });
+        return;
+      }
       this.menus?.showMutationChoice({
         // Which decision this window is, so its close cannot tear down a chest
         // offer's window painted over it, nor be torn down by one. Per-band,
@@ -418,7 +431,8 @@ export class HUD {
       this.menus?.hideMutationChoice(
         e.kind === 'argent' ? `argent:${e.offerId}`
           : e.kind === 'wound' ? `wound:${e.offerId}`
-            : `mutation:${e.band}`);
+            : e.kind === 'temper' ? `temper:${e.offerId}`
+              : `mutation:${e.band}`);
     });
     // The chest's three-way claim (issue #175), through the same one window the
     // blight toll uses. Owner-tested like every other addressed panel: a

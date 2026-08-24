@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { ITEM_BY_ID, TIERS } from '../data/items.js';
+import { ITEM_BY_ID, TIERS, TEMPER_BY_ID, TEMPERED_ITEMS, ANVIL } from '../data/items.js';
 import { eliteAffixesFor } from '../data/enemies.js';
 import {
   SOURCES, CLEANSE, PACT, BANDS, MUTATION, PRESSURE,
@@ -63,6 +63,8 @@ const TYPE_ID = {
   equipmentBarrel: 16,
   // Blight Wounds, round 9 (#178).
   wound: 17,
+  // The Tempering Anvil, round 9 (#208).
+  temperingAnvil: 18,
 };
 
 const CHEST_TYPE = { small: TYPE_ID.chest, large: TYPE_ID.chestLarge, legendary: TYPE_ID.chestLegendary };
@@ -419,7 +421,9 @@ export class Chest extends Interactable {
     // guard stands in front of both currencies below. A wound window is the
     // same standing ground: 'argent' and 'wound' are both a player's own
     // decision, and neither may be stolen by a lid — refused outright, same as
-    // each other.
+    // each other. The anvil's 'temper' window (#208) joins them for the same
+    // reason: nothing is charged until the card is chosen, so a lid must not
+    // paint over parents the player is still deciding whether to spend.
     //
     // The blight toll is the third kind and gets neither treatment (issue
     // #207). It is involuntary, arrives on the void's clock rather than a
@@ -441,7 +445,7 @@ export class Chest extends Interactable {
     // lid stays shut until the drain actually opens it — at which point it is
     // exactly the ordinary open below, with a fresh, full-duration offer.
     const kind = items.choiceWindowKind?.();
-    if (kind === 'argent' || kind === 'wound') return false;
+    if (kind === 'argent' || kind === 'wound' || kind === 'temper') return false;
     if (kind === 'blight') {
       this.ctx.interactables?.queueChestOpen?.(this, pawn);
       return true;
@@ -2827,6 +2831,153 @@ export class Wound extends Interactable {
   }
 }
 
+// ------------------------------------------------------------ tempering anvil
+
+/**
+ * The Tempering Anvil (issue #208) — the world-side door onto `Items.temper()`
+ * (#179), which existed for four rounds with no way to reach it in real play.
+ *
+ * Free to press: the parents are the price, exactly as `temper()`'s own doc
+ * comment states (#179's review settled that no unquoted toll may ride a
+ * temper), so unlike every other shrine here there is no `this.cost` and no
+ * `markGreed` charge on the press itself — only on a successful forge, the
+ * same rung a chest's paid open plants (issue #30's every-greed-act-plants-
+ * a-seed rule, applied to the one genuinely greedy act this prop offers).
+ *
+ * Unlimited uses, unlike the Kiln's three or the Covenant Stone's capped run
+ * — deliberately. Both of those cap an otherwise-free conversion because nothing
+ * else bounds how often a player could take it; the anvil's bound is already
+ * structural, since every press still needs a fresh, named argent-and-blight
+ * pair in the pack, and there are at most three such pairs a run can ever
+ * hold. Capping uses on top of that would be a toll on a decision the recipe
+ * table already prices.
+ *
+ * The press itself is a real standing decision, guarded in both directions
+ * exactly like the altar and the wound (issue #204/#207 house law): a chest
+ * offer already open refuses this press outright, and this press's own window
+ * refuses to open over anyone else's for the same reason.
+ */
+export class TemperingAnvil extends Interactable {
+  constructor(ctx, position) {
+    super(ctx, position);
+    this.typeId = TYPE_ID.temperingAnvil;
+    this.radius = 2.2;
+
+    const base = new THREE.Mesh(sharedGeo('anvilBase', () => plinthGeo(1.0, 6)), STONE());
+    base.castShadow = true;
+    base.receiveShadow = true;
+    // The classic anvil silhouette, low and horned, so it reads as "strike
+    // here" from across a stage the way the Kiln's chimney reads as "burn".
+    const body = new THREE.Mesh(
+      sharedGeo('anvilBody', () => {
+        const parts = [
+          box(0.62, 0.20, 0.62, 0, 0.20, 0),                 // foot
+          box(0.30, 0.40, 0.30, 0, 0.60, 0),                 // waist
+          box(0.86, 0.24, 0.56, 0, 0.94, 0),                 // face
+          box(0.30, 0.16, 0.30, -0.62, 0.90, 0),              // horn base
+          box(0.20, 0.14, 0.20, -0.86, 0.88, 0),              // horn tip
+        ];
+        const g = mergeGeometries(parts, false);
+        for (const p of parts) p.dispose();
+        return g;
+      }),
+      IRON_DARK()
+    );
+    body.castShadow = true;
+    // Per-instance: the ember in the face brightens while a forge decision is
+    // standing open, the same "the prop tells you a window is live" language
+    // the altar's maw and the wound's shard both speak.
+    this.ember = new THREE.Mesh(
+      sharedGeo('anvilEmber', () => box(0.50, 0.05, 0.30, 0, 1.065, 0)),
+      new THREE.MeshStandardMaterial({
+        color: 0x120603, emissive: 0xd9b34a, emissiveIntensity: 0.4, roughness: 0.4,
+      })
+    );
+    this.group.add(base, body, this.ember);
+  }
+
+  /**
+   * Every Tempered recipe `pawn` could actually forge right now — both named
+   * parents held, in any amount. Sorted by id, the same total order the
+   * Kiln's `_fuel` keeps, so the prompt, the window and a second peer looking
+   * at the same pack can never disagree about which recipes are on the table.
+   */
+  _eligible(pawn = this.ctx.player) {
+    const items = Items.of(this.ctx, pawn);
+    if (!items) return [];
+    const out = [];
+    for (const t of TEMPERED_ITEMS) {
+      const parents = TEMPER_BY_ID.get(t.id);
+      if (items.count(parents.argent) > 0 && items.count(parents.blight) > 0) out.push(t.id);
+    }
+    out.sort();
+    return out;
+  }
+
+  prompt() {
+    const eligible = this._eligible();
+    if (!eligible.length) {
+      return 'Tempering Anvil — needs a warded card and the blight it names, held together';
+    }
+    const names = eligible.map((id) => ITEM_BY_ID.get(id)?.name || id).join(', ');
+    return `Tempering Anvil — forge ${names}`;
+  }
+
+  interact(pawn = this.ctx.player) {
+    const items = Items.of(this.ctx, pawn);
+    if (!items || !pawn) return false;
+    const eligible = this._eligible(pawn);
+    // Nothing to forge: the press is a no-op, exactly what the prompt already
+    // told the player standing here.
+    if (!eligible.length) return false;
+    // The altar's rule (#204/M3), the same direction the wound's press takes
+    // it: a standing chest offer is not this press's to paint over.
+    if (this.ctx.interactables?.openOfferFor?.(pawn)) return false;
+
+    const forge = (id) => { if (TEMPER_BY_ID.has(id)) items.temper(id); };
+    // Declining, by button or by silence, always leaves the pack untouched —
+    // `forge` above is a no-op for anything that is not a real recipe id, so
+    // the decline card below and a lapsed window resolve identically.
+    const DECLINE = 'temper:decline';
+    const cards = eligible.map((id) => {
+      const { argent, blight } = TEMPER_BY_ID.get(id);
+      const def = ITEM_BY_ID.get(id);
+      const consumes = `consumes ${ITEM_BY_ID.get(argent)?.name || argent} + ${ITEM_BY_ID.get(blight)?.name || blight}`;
+      return {
+        baseId: id,
+        woundName: `Forge ${def?.name || id}`,
+        woundDescription: typeof def?.description === 'function' ? def.description(1) : (def?.description || ''),
+        note: consumes,
+      };
+    });
+    // A field of one is still a real decision here, unlike the altar's single-
+    // card auto-deliver: forging is destructive and irreversible, so even one
+    // recipe gets an explicit accept/decline rather than being handed over on
+    // the press alone. The decline card is what buys that second door.
+    cards.push({
+      baseId: DECLINE,
+      woundName: 'Leave the parents whole',
+      woundDescription: 'Walk away. Nothing is spent, nothing is forged.',
+      note: '',
+    });
+
+    const opened = items.openTemperChoice?.({ seconds: ANVIL.choiceSeconds, cards, resolve: forge });
+    if (opened) return true;
+    // A pack with none of this machinery, or a window already standing on it
+    // (the two callers this file's overlap guard exists for): refuse rather
+    // than steal, same as the wound.
+    if (items.hasChoiceWindow?.()) return false;
+    forge(eligible[0]);
+    return true;
+  }
+
+  update(dt) {
+    const live = this.ctx.items?.choiceWindowKind?.() === 'temper';
+    const target = live ? 1.8 + Math.sin(this.ctx.time * 4.0) * 0.5 : 0.4;
+    this.ember.material.emissiveIntensity = target;
+  }
+}
+
 class Teleporter extends Interactable {
   constructor(ctx, position) {
     super(ctx, position);
@@ -3430,6 +3581,11 @@ export class Interactables {
       { w: stageIndex >= 1 ? 20 : 0, build: (p) => new GildedSnare(ctx, p, stageIndex) },
       { w: stageIndex >= 1 ? 18 : 0, build: (p) => new MarrowKiln(ctx, p, stageIndex) },
       { w: stageIndex >= 1 ? 16 : 0, build: (p) => new FallowVault(ctx, p, stageIndex) },
+      // The Tempering Anvil (#208): same gate as the Kiln and the Vault — a
+      // stage 0 pack has never had time to hold a named argent-and-blight
+      // pair, so there is nothing this shrine could ever forge before there
+      // is a run to have earned one.
+      { w: stageIndex >= 1 ? 16 : 0, build: (p) => new TemperingAnvil(ctx, p) },
       // Counterplay joins the bag once there is a run to have regrets about,
       // and gets heavier as the debt does: the deeper the red, the likelier
       // the bag itself offers the way out. At band 0 the weight is the

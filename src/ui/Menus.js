@@ -2483,6 +2483,31 @@ export class Menus {
   }
 
   /**
+   * The Tempering Anvil's forge decision (#208), through the same one window.
+   *
+   * No refusal button, the wound's reason rather than the altar's: nothing
+   * has been charged by the press that opened this, and the offer always
+   * carries its own explicit "leave the parents whole" card as one of the
+   * cards — see `TemperingAnvil.interact` — so a decline is a pick like any
+   * other rather than a second door onto the same room.
+   */
+  showTemperChoice({ offers, seconds, onPick, id = null }) {
+    if (!offers?.length) return;
+    this.showChoice({
+      id,
+      title: 'The anvil waits',
+      seconds,
+      onPick,
+      cards: offers.map((o) => ({
+        pick: o.baseId,
+        name: o.woundName,
+        desc: o.woundDescription || '',
+        note: o.note || '',
+      })),
+    });
+  }
+
+  /**
    * The one choice window, for whatever system owns a decision this second
    * (issue #175). The blight toll opened it first and the chest's three-way
    * item offer is the second caller, so the panel now takes cards rather than

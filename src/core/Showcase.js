@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { ABILITIES } from '../data/abilities.js';
 import { EQUIPMENT } from '../data/equipment.js';
-import { ITEMS, TIERS } from '../data/items.js';
+import { ITEMS, TIERS, TEMPERED_ITEMS } from '../data/items.js';
 import { SPAWN_CARDS, BOSS_CARDS, ELITE_STATS } from '../data/enemies.js';
 import { SAMPLES } from '../data/samples.js';
 import { GEOMETRY_DEMOS, ELEMENTS } from '../data/effects.js';
@@ -449,6 +449,22 @@ export function installShowcase(ctx) {
     const at = ground(ctx, 8, l);
     ctx.vfx?.consecration?.(at);
     ctx.audio?.consecrate?.(at);
+  });
+  // The Tempering Anvil's forge (#208) — real parents, given rather than
+  // rolled, so the anvil's own real path (`Items.temper`) has something to
+  // consume. First of the run's three recipes, arbitrarily; there is nothing
+  // recipe-specific about the effect the forge fires.
+  add('moment', 'temper', 'Tempering — a warded card is forged', (l) => {
+    const items = ctx.items;
+    const t = TEMPERED_ITEMS[0];
+    if (!items || !t) return;
+    const { argent, blight } = t.tempers;
+    items.give(argent, 1);
+    items.give(blight, 1);
+    items.temper(t.id);
+    const at = ground(ctx, 8, l);
+    ctx.vfx?.burst?.(at, 0xd9b34a);
+    ctx.audio?.play?.('shrineWin', at);
   });
   add('moment', 'killSignature', 'Kill signature', (l) => {
     const t = target(l); if (!t) return;

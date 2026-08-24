@@ -2314,6 +2314,11 @@ export const TEMPER_BY_ID = (() => {
   return m;
 })();
 
+/** The Tempering Anvil's choice window (issue #208) — same rung as the
+ *  reliquary's, the widest of this file's neighbours, because a forge press
+ *  is choosing among named parents rather than a blight toll's random field. */
+export const ANVIL = { choiceSeconds: 8 };
+
 // ---------------------------------------------------------------------- icons
 
 const iconCache = new Map();
