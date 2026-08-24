@@ -287,6 +287,22 @@ export function installShowcase(ctx) {
     e.cd?.fill?.(0);
     demos.add(e);
     const span = (a.windup ?? 0.6) * (e.timeScale ?? 1) + (a.active ?? 0) + 1.2;
+    // A mend needs a patient. `mendAllies` walks the director's list and skips
+    // itself, the dead, the far and the unhurt — so a lone acolyte demonstrates
+    // a heal by producing one blip and no ring at all, staging the absence of
+    // exactly the effect (#159's enemy-polarity mend) the entry exists to show.
+    // One wounded neighbour off the same card, well inside `a.range`, is the
+    // whole fix: the ring then comes off the real path, per target, as in play.
+    if (a.kind === 'mend') {
+      const beside = ground(ctx, 14, lateral + 2.5);
+      const o = ctx.director?.spawnOne?.(ctx, card, beside, null);
+      if (o) {
+        o.health = o.maxHealth * 0.5;
+        o.gcd = 1e6;    // a patient, not a second attacker
+        demos.add(o);
+        setTimeout(() => retire(o), span * 1000);
+      }
+    }
     p?.grantIFrames?.(span + 0.5);
     e.beginAttack(ctx, index);
     setTimeout(() => retire(e), span * 1000);
