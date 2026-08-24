@@ -4,6 +4,7 @@ import { damp } from '../core/MathUtil.js';
 import { MASK_UNIFORMS, MAX_MASK } from '../shaders/BlightMask.js';
 import { MAX_RIMS } from '../shaders/BlightShimmer.js';
 import { FRAME } from '../fx/ParticleSystem.js';
+import { WOUND } from '../data/wounds.js';
 
 /**
  * Blight fields — the visible consequence of greed. Corruption records where
@@ -458,6 +459,55 @@ export class Blight {
       if (pipe) pipe.aberration = (pipe.aberration || 0) + SNAP.aberration * mult;
     });
     ctx.events.on('stageStart', () => this._clear());
+    ctx.events.on('woundResolved', (e) => this._woundResolved(e));
+  }
+
+  /**
+   * A Wound answered, drawn (#178). Presentation still — the wound is the
+   * gameplay object, this is the mark it leaves on the ground.
+   *
+   * The patch is found by proximity rather than held by id, because a wound is
+   * *promoted from* a seed and the two are the same place by construction. The
+   * search radius is the wound's own interaction radius, doubled: the seed's
+   * recorded x/z and the prop's position are the same point today, and a
+   * generous window costs nothing but survives a later ticket siting the prop a
+   * couple of metres off the seed.
+   *
+   * `expand` is clamped against `WOUND.expandCap` HERE and not trusted from the
+   * payload. The whole prototype risk is a patch that grows without bound; the
+   * clamp belongs at the thing that grows, so a caller — or a wire payload, the
+   * moment wounds cross it — asking for 99 gets the cap and no more.
+   */
+  _woundResolved(e) {
+    const outcome = e?.outcome;
+    if (outcome !== 'seal' && outcome !== 'feed') return;
+    const x = e?.x, z = e?.z;
+    if (!Number.isFinite(x) || !Number.isFinite(z)) return;
+    const reach = (Number.isFinite(e?.radius) ? e.radius : WOUND.radius) * 2;
+    let best = -1, bestD = reach * reach;
+    for (let i = 0; i < this.patches.length; i++) {
+      const p = this.patches[i];
+      const dx = p.x - x, dz = p.z - z;
+      const d = dx * dx + dz * dz;
+      if (d <= bestD) { bestD = d; best = i; }
+    }
+    if (best < 0) return;
+    const patch = this.patches[best];
+    if (outcome === 'seal') {
+      // The ground closes. The mesh goes back to the pool and the registry row
+      // goes with it — a zero-radius patch left in the list would keep a draw
+      // call and a mask slot for something the player was told is gone.
+      this._recycle(patch);
+      this.patches.splice(best, 1);
+      return;
+    }
+    const asked = Number.isFinite(e?.expand) ? e.expand : WOUND.feedExpand;
+    const grow = Math.max(0, Math.min(asked, WOUND.expandCap));
+    if (!(grow > 0)) return;
+    patch.strength += grow;
+    // `radiusOf` already clamps to RADIUS.cap, and `update` walks the mesh's
+    // uRadius toward the new target at GROW_RATE — so the spread is visible
+    // rather than a pop, and it is bounded twice over.
   }
 
   /**

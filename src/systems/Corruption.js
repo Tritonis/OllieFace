@@ -214,6 +214,25 @@ export class Corruption {
     // Sanctuary is absent from this map on purpose: `sanctuary()` commits it,
     // and the altar emits *both* that call and a `voidBargain` of kind
     // 'sanctuary' for the same press. Listening to both would bill it twice.
+    // A Blight Wound answered (#178). Both arms are billed here rather than in
+    // the prop, so the ledger keeps its one writer and the table test can drive
+    // them off the event like every other wired source.
+    //
+    // A seal's pure delta is TWO weights — `woundSealed` plus the `warded` its
+    // payout earns through `bleed` — the same split `salvaged` and `vowKept`
+    // use, and for the same reason: the decision and the points it gave back
+    // are different commitments. `bleed` clamps to the world, so sealing a
+    // wound on an already-clean world commits the act and wards nothing, which
+    // is correct — there was nothing there to take back.
+    ctx.events.on('woundResolved', ({ outcome, owner = null, ward = 0, corruption = 0 } = {}) => {
+      if (outcome === 'seal') {
+        this.commit('woundSealed');
+        if (ward > 0) this.bleed(owner, ward);
+      } else if (outcome === 'feed') {
+        this.commit('woundFed');
+        if (corruption > 0 && owner) this.feed(owner, corruption);
+      }
+    });
     ctx.events.on('voidBargain', ({ kind }) => {
       const source = BARGAIN_COMMIT[kind];
       if (source) this.commit(source);

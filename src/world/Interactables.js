@@ -13,6 +13,8 @@ import { pricedPrompt, biasFeedRange, claimOutcomeRange, idsFeed } from './corru
 import { openItemOffer } from './itemTransaction.js';
 // What each band gives back, and the currency it is bought with (issue #36).
 import { BOON, MOTE, PACTS, RELIQUARY, RUIN, synergyPlan } from '../data/bandBoons.js';
+// Blight Wounds: the caps, and the pure promotion predicate (#178).
+import { WOUND, promoteWound } from '../data/wounds.js';
 import { RNG } from '../core/MathUtil.js';
 import { Items } from '../systems/Items.js';
 import { Roster } from '../systems/Roster.js';
@@ -58,6 +60,8 @@ const TYPE_ID = {
   voidBargain: 15,
   // The equipment barrel — the only in-run source of the Q slot (issue #39).
   equipmentBarrel: 16,
+  // Blight Wounds, round 9 (#178).
+  wound: 17,
 };
 
 const CHEST_TYPE = { small: TYPE_ID.chest, large: TYPE_ID.chestLarge, legendary: TYPE_ID.chestLegendary };
@@ -2398,6 +2402,154 @@ export class VoidBargain extends Interactable {
   }
 }
 
+// --------------------------------------------------------------- blight wound
+
+/**
+ * A Blight Wound (#178): a blight patch that can be argued with.
+ *
+ * Promoted from a seed the run itself planted, never sited — so a wound is
+ * always standing on ground the party chose to spoil, and a run that never got
+ * greedy never sees one. Placement is `Interactables._promoteWound`.
+ *
+ * ## Host authority
+ *
+ * Like every other interactable, the press is resolved on the host:
+ * `Interactables.requestInteract` gates on `ctx.authority` and a guest's E only
+ * sets the command bit. Guests build a view through `VIEW_BUILDERS` and see the
+ * prop and its availability; they do NOT see the seal window's progress, which
+ * is host-local state with no snapshot field — the same gap a client's cost
+ * text already has, and noted rather than closed by this prototype.
+ *
+ * ## Why the outcome is selected and not keyed
+ *
+ * There is no alternate-interact binding in `core/Bindings.js`, so this follows
+ * `VoidBargain.selectConsecration`'s precedent exactly: `selectOutcome` aims
+ * the press, `interact` resolves whatever it is aimed at, and the prompt quotes
+ * BOTH outcomes with their payouts so the decision is legible before the press
+ * whichever way input eventually reaches it.
+ */
+export class Wound extends Interactable {
+  constructor(ctx, position, strength = WOUND.minStrength) {
+    super(ctx, position);
+    this.typeId = TYPE_ID.wound;
+    this.radius = WOUND.radius;
+    this.strength = strength;
+    this.state = 'open';          // open -> sealing -> sealed | fed
+    this.outcome = 'seal';        // what the next press resolves
+    this.hold = 0;                // seconds held inside `sealHold`
+    this.sealer = null;           // the pawn holding it
+
+    const base = new THREE.Mesh(sharedGeo('woundBase', () => plinthGeo(1.1, 7)), STONE());
+    // A torn ring lying in the ground rather than a plinth standing on it: the
+    // wound is the ground, and anything proud of it would read as another
+    // shrine. The shard is the only vertical, and it leans.
+    this.ring = new THREE.Mesh(
+      sharedGeo('woundRing', () => new THREE.TorusGeometry(1.5, 0.13, 6, 18).rotateX(Math.PI / 2).translate(0, 0.12, 0)),
+      glowMat(0xb64ad0)
+    );
+    this.shard = new THREE.Mesh(
+      sharedGeo('woundShard', () => new THREE.ConeGeometry(0.3, 1.3, 5).rotateZ(0.22).translate(0, 0.85, 0)),
+      glowMat(0x7a46c8)
+    );
+    base.receiveShadow = true;
+    this.shard.castShadow = true;
+    this.group.add(base, this.ring, this.shard);
+  }
+
+  available() { return this.enabled && this.state !== 'sealed' && this.state !== 'fed'; }
+
+  /** Aim the press. Costs nothing, spends nothing, commits nothing. */
+  selectOutcome(outcome) {
+    if (outcome !== 'seal' && outcome !== 'feed') return false;
+    if (!this.available()) return false;
+    if (outcome !== this.outcome) this.hold = 0;
+    this.outcome = outcome;
+    this.state = 'open';
+    this.sealer = null;
+    return true;
+  }
+
+  /**
+   * Both outcomes, always, with their numbers — the whole preview. A wound is
+   * the one prop on the stage where the two economies are the same press, so
+   * quoting only the aimed one would hide half the decision.
+   */
+  prompt() {
+    if (this.state === 'sealed') return 'Blight Wound - sealed; the ground is quiet';
+    if (this.state === 'fed') return 'Blight Wound - fed; it is spreading';
+    const seal = `Seal (hold ${WOUND.sealWindow}s, -${WOUND.sealWard} corruption, pure commitment)`;
+    const feed = `Feed (+${WOUND.feedCorruption} corruption toward marks, the patch spreads, corrupt commitment)`;
+    if (this.state === 'sealing') {
+      const left = Math.max(0, WOUND.sealWindow - this.hold);
+      return `Blight Wound - sealing, ${left.toFixed(1)}s left (stay within ${WOUND.sealHold}m) | ${feed}`;
+    }
+    return this.outcome === 'feed'
+      ? `Blight Wound - ${feed} | or ${seal}`
+      : `Blight Wound - ${seal} | or ${feed}`;
+  }
+
+  interact(pawn = this.ctx.player) {
+    if (!this.available() || !pawn) return;
+    if (this.outcome === 'feed') { this._feed(pawn); return; }
+    if (this.state === 'sealing') return;   // already holding; the window is the act
+    this.state = 'sealing';
+    this.sealer = pawn;
+    this.hold = 0;
+  }
+
+  update(dt) {
+    if (this.state !== 'sealing') return;
+    const pawn = this.sealer;
+    // Straying — or bleeding out — resets rather than fails: the window is a
+    // commitment of attention, and a wound you can never re-attempt is a
+    // hazard with a punish attached, not a decision.
+    if (!pawn?.alive || pawn.position.distanceTo(this.position) > WOUND.sealHold) {
+      this.state = 'open';
+      this.sealer = null;
+      this.hold = 0;
+      return;
+    }
+    this.hold += dt;
+    if (this.hold >= WOUND.sealWindow) this._seal(pawn);
+  }
+
+  _seal(pawn) {
+    this.state = 'sealed';
+    this.used = true;
+    this.hold = 0;
+    this.sealer = null;
+    this.ring.visible = this.shard.visible = false;
+    this._resolve('seal', pawn);
+  }
+
+  _feed(pawn) {
+    this.state = 'fed';
+    this.used = true;
+    this.ring.material = glowMat(0xc8379b);
+    this._resolve('feed', pawn);
+  }
+
+  /**
+   * One event, three listeners, no direct calls: `Corruption` bills the ledger
+   * and moves the world, `Blight` closes or spreads the patch, `Director` drops
+   * the sealed seed out of the void's spawn list. Routing it this way is what
+   * lets `tests/alignment-ledger.test.mjs` drive the commitment off an event
+   * like every other wired source, and keeps this class from knowing that
+   * blight is drawn at all.
+   */
+  _resolve(outcome, pawn) {
+    this.ctx.events?.emit?.('woundResolved', {
+      outcome, owner: pawn ?? null,
+      x: this.position.x, z: this.position.z,
+      stage: this.ctx.progression?.stageIndex ?? null,
+      radius: this.radius,
+      ward: WOUND.sealWard,
+      corruption: WOUND.feedCorruption,
+      expand: WOUND.feedExpand,
+    });
+  }
+}
+
 class Teleporter extends Interactable {
   constructor(ctx, position) {
     super(ctx, position);
@@ -2684,12 +2836,63 @@ export class Interactables {
     this.teleporter = null;
     this.focus = null;
     this._lastPrompt = null;
+    // Wound promotion state, per stage. `_woundOrdinal` counts blight seeds as
+    // they are planted, which is what the promotion predicate is a function of.
+    this._woundStage = 0;
+    this._woundOrdinal = 0;
+    this._wounds = [];
   }
 
   init(ctx) {
     this.ctx = ctx;
     ctx.interactables = this;
     ctx.scene.add(this.root);
+    // Registered once, not per `populate`: a listener added per stage would
+    // leak one subscription per teleport and promote each seed N times.
+    ctx.events.on('blightSeed', (s) => this._promoteWound(s));
+  }
+
+  /**
+   * Promote a freshly planted blight seed into a Wound, or don't.
+   *
+   * Placement is a *filter over what the run already did*, not a siting pass —
+   * that is the whole design. Wounds cannot be placed in `populate` because at
+   * populate time the stage has no seeds on it: seeds are planted by greed as
+   * the stage is played, and the previous stage's are stale ground (`Blight`
+   * and `Director` both wipe their copies at `stageStart`). So `populate`
+   * resets the counters and this hook does the promoting.
+   *
+   * Four bounds, in order, and every one of them is asserted in
+   * `tests/wounds.test.mjs`:
+   *
+   *   - `WOUND.max` wounds per stage, checked first so nothing else can be
+   *     reached once the stage is full;
+   *   - `WOUND.minStrength`, so a scuff is not a decision;
+   *   - `WOUND.minSpacing` from every wound already standing;
+   *   - `promoteWound`, the pure (seed, stage, ordinal) predicate — which is
+   *     also why nothing here touches `ctx.rng`.
+   */
+  _promoteWound(seed) {
+    const ctx = this.ctx;
+    if (!ctx || !ctx.authority) return null;
+    if (this._wounds.length >= WOUND.max) return null;
+    const x = seed?.x, z = seed?.z, strength = seed?.strength;
+    if (!Number.isFinite(x) || !Number.isFinite(z) || !(strength >= WOUND.minStrength)) return null;
+    const ordinal = this._woundOrdinal++;
+    if (!promoteWound(ctx.seed ?? 0, this._woundStage, ordinal)) return null;
+    const min2 = WOUND.minSpacing * WOUND.minSpacing;
+    for (const w of this._wounds) {
+      const dx = w.position.x - x, dz = w.position.z - z;
+      if (dx * dx + dz * dz < min2) return null;
+    }
+    const y = ctx.stage?.sampleHeight?.(x, z);
+    const w = new Wound(ctx, new THREE.Vector3(x, Number.isFinite(y) ? y : 0, z), strength);
+    this._wounds.push(w);
+    this.add(w);
+    ctx.events.emit('woundOffered', {
+      stage: ctx.progression?.stageIndex ?? null, ordinal, x, z, strength,
+    });
+    return w;
   }
 
   /** Wipes the stage's interactables. Called on every stage transition. */
@@ -2702,6 +2905,8 @@ export class Interactables {
     this.focus = null;
     // The altar's reserved spot belongs to the stage that was just torn down.
     this._bargainSite = null;
+    // So does every wound: the ground they were torn in is gone.
+    this._wounds.length = 0;
   }
 
   add(obj) {
@@ -2760,6 +2965,10 @@ export class Interactables {
   populate(stageIndex) {
     this.clear();
     const ctx = this.ctx;
+    // Wounds are promoted as this stage's greed plants seeds (`_promoteWound`),
+    // so all `populate` owes them is a clean per-stage slate.
+    this._woundStage = stageIndex | 0;
+    this._woundOrdinal = 0;
     const scale = Math.pow(1.25, stageIndex);
     // Cloned: _bargainSite may resolve this long after populate(), and a live
     // reference would make late placement depend on where the player stands.
@@ -3222,6 +3431,7 @@ const VIEW_BUILDERS = {
   [TYPE_ID.covenantStone]: (ctx, p) => new CovenantStone(ctx, p),
   [TYPE_ID.voidBargain]: (ctx, p) => new VoidBargain(ctx, p, 0),
   [TYPE_ID.equipmentBarrel]: (ctx, p) => new EquipmentBarrel(ctx, p),
+  [TYPE_ID.wound]: (ctx, p) => new Wound(ctx, p),
   [TYPE_ID.teleporter]: (ctx, p) => new Teleporter(ctx, p),
   [TYPE_ID.portal]: (ctx, p) => new Portal(ctx, p, null),
 };

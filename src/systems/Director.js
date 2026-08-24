@@ -212,6 +212,32 @@ export class Director {
       this._voidSeeds.push({ x: s.x, z: s.z, strength: s.strength });
       if (this._voidSeeds.length > 32) this._voidSeeds.shift();
     });
+    /**
+     * A Blight Wound sealed (#178): the void stops surfacing *there*.
+     *
+     * Deliberately local and deliberately not a stat. The obvious
+     * implementation is a global `voidCreditRate` discount, and it is the wrong
+     * one twice over: it would pay a party for sealing a wound on the far side
+     * of the map, and it would make three seals a run-long spawn-rate purchase
+     * rather than a place made safe. Dropping the seed instead means the
+     * suppression is exactly the ground that was closed — `spendVoidCredits`
+     * picks a seed to surface at, so a stage with no seeds left simply banks
+     * its void credits and surfaces nothing, which is the honest reading of
+     * "the party sealed every wound on this stage".
+     *
+     * Queued surfacings already telegraphed are left to ripen: the ground is
+     * painted and the player has been told something is coming.
+     */
+    ctx.events.on('woundResolved', ({ outcome, x, z, radius } = {}) => {
+      if (outcome !== 'seal' || !Number.isFinite(x) || !Number.isFinite(z)) return;
+      const r = (Number.isFinite(radius) ? radius : 3.2) * 2;
+      const r2 = r * r;
+      for (let i = this._voidSeeds.length - 1; i >= 0; i--) {
+        const s = this._voidSeeds[i];
+        const dx = s.x - x, dz = s.z - z;
+        if (dx * dx + dz * dz <= r2) this._voidSeeds.splice(i, 1);
+      }
+    });
     // On a host a remote pawn's death is not the end of the run - stopping the
     // spawner then would empty the arena for everyone still alive.
     ctx.events.on('playerDead', (p) => { if (isLocalVictim(ctx, p)) this.enabled = false; });

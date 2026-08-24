@@ -92,8 +92,10 @@ export const SOURCES = {
    *  outcome 'corrupt'). Priced with `blightMutation`: the act is the same one —
    *  a stack that will fester — with the difference that the player asked. */
   corruptUpgrade: { class: COMMITMENT.corrupt, per: 4, wired: true },
-  /** A Wound fed rather than sealed (#178). */
-  woundFed: { class: COMMITMENT.corrupt, per: 5, wired: false },
+  /** A Wound fed rather than sealed (#178). Committed by `Corruption`'s
+   *  `woundResolved` listener, alongside the corruption the feed charges —
+   *  which is the payout too, since the mint rides `peak`. */
+  woundFed: { class: COMMITMENT.corrupt, per: 5, wired: true },
   /**
    * A Vow broken (#177) — declared, priced, and DELIBERATELY LEFT UNWIRED.
    *
@@ -131,8 +133,12 @@ export const SOURCES = {
    *  without a point of corruption ever leaving the world. See the gate in
    *  `Corruption`'s `itemOfferResolved` listener. */
   salvaged: { class: COMMITMENT.pure, per: 3, wired: true },
-  /** A Wound sealed (#178). */
-  woundSealed: { class: COMMITMENT.pure, per: 5, wired: false },
+  /** A Wound sealed (#178). Committed by `Corruption`'s `woundResolved`
+   *  listener alongside the `WOUND.sealWard` it bleeds back, which commits
+   *  separately as `warded` — the same two-weight split `salvaged` and
+   *  `vowKept` use, and the reason its case lives in `tests/wounds.test.mjs`
+   *  rather than in the single-class table in `tests/alignment-ledger`. */
+  woundSealed: { class: COMMITMENT.pure, per: 5, wired: true },
   /** A Vow kept to the end of its scope (#177). Committed by `systems/Vows.js`
    *  alongside the `VOW_WARD` payout it also earns, which commits separately as
    *  `warded` — the promise and the points it returned are two commitments, the

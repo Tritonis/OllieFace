@@ -143,6 +143,11 @@ console.log('\n-- each wired source increments exactly one class, exactly once p
     // world commits nothing at all. See the arm below.
     ['salvaged', COMMITMENT.pure, 3, (c, ctx) => ctx.events.emit('itemOfferResolved', { kind: 'item', itemId: 'a', outcome: 'salvage', warded: 4, owner: ctx.player })],
     ['ruin', COMMITMENT.corrupt, 24, (c) => c.ruin()],
+    // A Wound fed (#178). `corruption: 0` keeps this a single-class delta: the
+    // real feed also charges corruption, which mints marks and — on a world
+    // with something in it — would ward nothing but still moves other numbers.
+    // The full path, corruption and all, is `tests/wounds.test.mjs`.
+    ['woundFed', COMMITMENT.corrupt, 5, (c, ctx) => ctx.events.emit('woundResolved', { outcome: 'feed', owner: ctx.player, corruption: 0 })],
   ];
   for (const [source, cls, want, act] of cases) {
     const { ctx, cor } = makeCtx();
@@ -191,7 +196,12 @@ console.log('\n-- each wired source increments exactly one class, exactly once p
   // and cannot be written as this table's single literal. Its real path — the
   // Vows system driven through a stage boundary — is held open by
   // `tests/stage-vows.test.mjs`, which blinds the payout to prove it fails.
-  const covered = new Set(cases.map((c) => c[0]).concat(['warded', 'vowKept']));
+  // `woundSealed` joins them for exactly the same reason: a seal pays
+  // `woundSealed` AND the `warded` its bleed earns, so its delta into `pure` is
+  // two weights. Its real path — a Wound held to the end of its window against
+  // a dirtied world — is held open by `tests/wounds.test.mjs`, which blinds the
+  // payout to prove it fails.
+  const covered = new Set(cases.map((c) => c[0]).concat(['warded', 'vowKept', 'woundSealed']));
   const missing = Object.entries(SOURCES)
     .filter(([id, d]) => d.wired && !covered.has(id)).map(([id]) => id);
   ok(missing.length === 0, `every wired source has a case (missing: ${missing.join(', ') || 'none'})`);
@@ -199,9 +209,12 @@ console.log('\n-- each wired source increments exactly one class, exactly once p
   ok(stubs.length > 0 && stubs.every((s) => weightOf(s, 1) > 0 && classOf(s)),
     `the future sources are declared and priced, not merely named (${stubs.join(', ')})`);
   // And the extension point works: a downstream ticket adds one call, no more.
+  // `tempered` (#179) is the standing example now that #178 wired both wound
+  // sources. The guard is the same and it can still fail: point it at a source
+  // that is not in the table and `weightOf` returns 0.
   const { cor: stubCor } = makeCtx();
-  stubCor.commit('woundSealed');
-  ok(stubCor.ledger.pure === weightOf('woundSealed', 1), 'an unwired source commits the moment it is called');
+  stubCor.commit('tempered');
+  ok(stubCor.ledger.mixed === weightOf('tempered', 1), 'an unwired source commits the moment it is called');
 }
 
 console.log('\n-- the queries are pure --');
