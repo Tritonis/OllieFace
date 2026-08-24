@@ -2028,6 +2028,14 @@ export class VoidBargain extends Interactable {
     if (this.spent) return { state: 'spent', want: 0, held: this._marks(), progress: 1 };
     const short = this.shortfall();
     const held = this._marks();
+    // An offer priced in the other purse is affordable *now*, whatever the mark
+    // shortfall says (issue #172). Reading the ember at a stage where the party
+    // can walk over and spend motes told them the altar had nothing for them,
+    // which is the at-range half of purity being unspendable.
+    if (short) {
+      const off = this.offer();
+      if (off && (off.motes ?? 0) > 0) return { state: 'afford', want: short.want, held, progress: 1 };
+    }
     if (!short) {
       // An offer that is standing - the band's own bargain, or Sanctuary in the
       // other currency - reads as afforded; anything else is a rock.
@@ -2531,6 +2539,8 @@ export class Interactables {
     this.orbs.length = 0;
     this.teleporter = null;
     this.focus = null;
+    // The altar's reserved spot belongs to the stage that was just torn down.
+    this._bargainSite = null;
   }
 
   add(obj) {
@@ -2775,11 +2785,56 @@ export class Interactables {
     // as the font block above and for the same reasons: after every `ctx.rng`
     // draw, off a salted local stream, so a pristine run reaches this line and
     // draws nothing and `gate:sp` cannot move.
-    if (band >= BOON.reroll.band) {
-      const brng = new RNG(((ctx.seed >>> 0) ^ (0x2545f491 * (stageIndex + 1))) >>> 0 || 1);
-      const m = mark(1 + brng.int(0, 2));
-      this.add(new VoidBargain(ctx, this._sited(m, (m?.r ?? 0) + 3.5, (m?.r ?? 0) + 11, spawn, brng), stageIndex));
-    }
+    //
+    // Motes join the band as a reason to place it (issue #172). A run that
+    // entered the stage Pristine with a purse of banked motes used to find no
+    // altar at all, which made the purity currency unspendable exactly when the
+    // player had played purely — the one failure mode the second pass of #36
+    // was supposed to close.
+    this._bargainSite = { stageIndex, mark, spawn };
+    if (band >= BOON.reroll.band || (ctx.corruption?.motes ?? 0) >= MOTE.motes) this._placeBargain();
+  }
+
+  /**
+   * Put the altar down, once, wherever the seed says it goes.
+   *
+   * Placement is a pure function of (run seed, stage index) off the same salted
+   * stream the guaranteed block always used, so an altar placed at population
+   * and an altar surfaced forty seconds later stand in the same spot, and
+   * `ctx.rng` is untouched either way — a mid-stage spawn cannot move a single
+   * later chest.
+   *
+   * The dedup is the guard rather than the caller's discretion: motes cross
+   * `MOTE.motes` once but the band can cross afterwards, and each crossing asks
+   * for an altar.
+   */
+  _placeBargain() {
+    const site = this._bargainSite;
+    if (!site) return null;
+    // Cleared either way: the stage gets one altar, and after that this stops
+    // costing a list walk on every frame that a band or a purse qualifies.
+    this._bargainSite = null;
+    if (this.list.some((i) => i instanceof VoidBargain)) return null;
+    const ctx = this.ctx;
+    const { stageIndex, mark, spawn } = site;
+    const brng = new RNG(((ctx.seed >>> 0) ^ (0x2545f491 * (stageIndex + 1))) >>> 0 || 1);
+    const m = mark(1 + brng.int(0, 2));
+    return this.add(new VoidBargain(ctx, this._sited(m, (m?.r ?? 0) + 3.5, (m?.r ?? 0) + 11, spawn, brng), stageIndex));
+  }
+
+  /**
+   * The other half of #172: a purse that becomes spendable *during* a stage.
+   *
+   * Warding mints motes mid-stage and a band can be crossed mid-stage, so the
+   * altar's absence is not a fact settled at population time. Host-only — a
+   * client's props all arrive by replication, and a guest conjuring its own
+   * altar would be a prop the host has never heard of.
+   */
+  _surfaceBargain() {
+    if (!this._bargainSite || !this.ctx.authority) return;
+    const cor = this.ctx.corruption;
+    if ((cor?.band ?? 0) < BOON.reroll.band && (cor?.motes ?? 0) < MOTE.motes) return;
+    this._placeBargain();
   }
 
   /**
@@ -2908,6 +2963,7 @@ export class Interactables {
   }
 
   update(ctx, dt) {
+    this._surfaceBargain();
     for (let i = 0; i < this.list.length; i++) this.list[i].update(dt);
     for (let i = 0; i < this.orbs.length; i++) this.orbs[i].update(dt);
   }
