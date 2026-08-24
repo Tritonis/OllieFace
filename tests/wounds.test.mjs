@@ -18,8 +18,9 @@ import * as THREE from 'three';
 import { Corruption } from '../src/systems/Corruption.js';
 import { Blight, radiusOf } from '../src/systems/Blight.js';
 import { Director } from '../src/systems/Director.js';
+import { Items } from '../src/systems/Items.js';
 import { Interactables, Wound } from '../src/world/Interactables.js';
-import { WOUND, promoteWound } from '../src/data/wounds.js';
+import { WOUND, WOUND_PICK, promoteWound } from '../src/data/wounds.js';
 import { weightOf } from '../src/data/alignment.js';
 
 let pass = 0, fail = 0;
@@ -261,6 +262,126 @@ console.log('\n-- a guest neither promotes wounds nor accrues from them --');
   ctx.events.emit('woundResolved', { outcome: 'seal', x: 0, z: 0, radius: WOUND.radius, ward: 8, owner: ctx.player });
   ctx.events.emit('woundResolved', { outcome: 'feed', x: 0, z: 0, radius: WOUND.radius, corruption: 18, owner: ctx.player });
   ok(cor.ledger.pure === 0 && cor.ledger.corrupt === 0, "and a guest's ledger stays empty");
+}
+
+// ---------------------------------------------------------------------------
+// The integration review's M1 and M2 (reviews/round9-integration-2026-08-24).
+// ---------------------------------------------------------------------------
+
+console.log('\n-- the feed quote is the feed charge, greed time included (M1) --');
+{
+  // The review's probe A, as a test. Greed time is the condition that produces
+  // MOST wounds — `Corruption.seed` adds +1 strength while greed is on and
+  // `WOUND.minStrength` is 2 — so a face-value quote is wrong exactly where
+  // wounds actually appear. Remove the `pricedPrompt` routing from
+  // `Wound.prompt` and both lines below go red.
+  const { ctx, cor, inter } = makeCtx();
+  const p = ctx.player;
+  cor.feed(p, 25);                       // world 25, band 1 — the review's scenario
+  // Greed time the way the run turns it on: the teleporter has finished and
+  // looting past it cuts deeper. This is also why wounds mostly exist —
+  // `Corruption.seed` adds +1 strength while it is on, and `WOUND.minStrength`
+  // is 2, so the common seeders only ever qualify inside this window.
+  ctx.events.emit('teleporterComplete', {});
+  ok(cor.greed === true, 'greed time is on');
+  ok(cor.priceOf(WOUND.feedCorruption) === WOUND.feedCorruption * 2,
+    `a greed-time feed really costs double (${cor.priceOf(WOUND.feedCorruption)})`);
+
+  plant(cor, 0, 0, 4);
+  const w = inter._promoteWound({ x: 0, z: 0, strength: 4 })
+    || wounds(inter)[0]
+    || inter.add(new Wound(ctx, new THREE.Vector3(0, 0, 0), 4));
+  const quote = w.prompt();
+  const charge = cor.priceOf(WOUND.feedCorruption);
+  ok(quote.includes(`+${charge} corruption`),
+    `the prompt quotes the multiplied charge, not face value (${quote})`);
+  ok(/greed time/.test(quote), 'and says why it is doubled');
+  // The band edge: 25 + 36 clears Blighted at 55, and a crossing queues an item
+  // toll. An unquoted crossing is the expensive half of M1.
+  ok(/Blighted/.test(quote), 'and names the band the press is about to cross');
+
+  // And the quote is the charge, measured rather than asserted about.
+  const before = cor.world;
+  w.selectOutcome('feed');
+  w.interact(p);
+  ok(cor.world - before === charge,
+    `the press charged exactly what the prompt quoted (${cor.world - before} vs ${charge})`);
+}
+
+console.log('\n-- the seal line quotes what bleed will actually give back (m4) --');
+{
+  const { ctx, cor, inter } = makeCtx();
+  cor.feed(ctx.player, 3);               // less world than the ward is worth
+  const w = inter.add(new Wound(ctx, new THREE.Vector3(0, 0, 0), 4));
+  ok(w.prompt().includes('-3 corruption'),
+    `a shallow world is quoted at what it can give (${w.prompt().split(' - or - ')[0]})`);
+  const { ctx: c2, cor: cor2, inter: i2 } = makeCtx();
+  cor2.feed(c2.player, 500);
+  const w2 = i2.add(new Wound(c2, new THREE.Vector3(0, 0, 0), 4));
+  ok(w2.prompt().includes(`-${WOUND.sealWard} corruption`),
+    'and a deep one is quoted at the full ward');
+}
+
+console.log('\n-- the press raises a real choice window, and the pick decides (M2) --');
+{
+  // Real `Items`, real `_openChoice`, real `chooseMutation` — the same window
+  // the blight toll and the argent altar use. Blind the routing (drop the
+  // `resolve` handoff, or ignore the picked id in `Wound.interact`) and the
+  // feed arm goes red while the lapse arm stays green.
+  const feedRun = () => {
+    const { ctx, cor, blight, inter } = makeCtx();
+    const items = new Items();
+    items.init(ctx);
+    const offers = [];
+    ctx.events.on('mutationChoiceOffered', (e) => offers.push(e));
+    plant(cor, 0, 0, 4);
+    const w = inter.add(new Wound(ctx, new THREE.Vector3(0, 0, 0), 4));
+    return { ctx, cor, blight, items, offers, w };
+  };
+
+  const a = feedRun();
+  ok(a.w.interact(a.ctx.player) === true, 'the press is accepted');
+  ok(a.offers.length === 1 && a.offers[0].kind === 'wound',
+    `and raises a window of kind 'wound' (${a.offers.map((o) => o.kind).join(',')})`);
+  ok(a.offers[0].offers?.length === 2, 'with two cards on it');
+  ok(a.offers[0].offers.map((c) => c.baseId).sort().join(',') === `${WOUND_PICK.feed},${WOUND_PICK.seal}`,
+    'named seal and feed');
+  ok(a.w.state === 'open', 'and resolves nothing until the window is answered');
+  ok(a.cor.ledger.corrupt === 0 && a.cor.ledger.pure === 0, 'the ledger is untouched while it stands');
+
+  const patch = a.blight.patches[0];
+  const before = patch.strength;
+  ok(a.items.chooseMutation(WOUND_PICK.feed) === true, 'the feed card can be picked');
+  ok(a.w.state === 'fed', 'and the pick really feeds the wound');
+  ok(a.cor.ledger.corrupt === weightOf('woundFed', 1),
+    `which commits corrupt (${a.cor.ledger.corrupt})`);
+  ok(patch.strength - before === WOUND.feedExpand, 'and spreads the patch');
+
+  // Picking the seal card starts the hold rather than sealing outright — the
+  // window buys the attempt, not the outcome.
+  const b = feedRun();
+  b.w.interact(b.ctx.player);
+  ok(b.items.chooseMutation(WOUND_PICK.seal) === true, 'the seal card can be picked');
+  ok(b.w.state === 'sealing', 'and the pick opens the hold');
+  ok(b.cor.ledger.pure === 0, 'sealing is not free — the pick alone commits nothing');
+
+  // Lapse is the seal, which is the safe half.
+  const c = feedRun();
+  c.w.interact(c.ctx.player);
+  c.items.refuseMutation('timeout');
+  ok(c.w.state === 'sealing', 'a lapsed window lands on the seal, not the feed');
+  ok(c.cor.ledger.corrupt === 0, 'and never on the corrupt side');
+
+  // A window already standing on this pack is not this press's to paint over.
+  const d = feedRun();
+  d.items.openArgentChoice({
+    cards: [{ baseId: 'x', argentId: 'x', argentName: 'x' }, { baseId: 'y', argentId: 'y', argentName: 'y' }],
+    seconds: 5, resolve: () => {},
+  });
+  const n = d.offers.length;
+  ok(d.w.interact(d.ctx.player) === false, 'a wound press is refused while another window stands');
+  ok(d.offers.length === n, 'and paints nothing over it');
+  ok(d.w.state === 'open', 'the wound is left exactly as it was');
 }
 
 console.log(`\n${fail === 0 ? 'PASS' : 'FAIL'} — ${pass} passed, ${fail} failed`);

@@ -2459,6 +2459,30 @@ export class Menus {
   }
 
   /**
+   * A Blight Wound's two outcomes (#178), through the same one window.
+   *
+   * No refusal button, and here that is the *shape of the decision* rather than
+   * a consequence of having already paid: the wound offers two answers and
+   * walking away is the third, which the window's lapse spends on the seal. A
+   * "decline" button would be a fourth door onto the same three rooms.
+   */
+  showWoundChoice({ offers, seconds, onPick, id = null }) {
+    if (!offers?.length) return;
+    this.showChoice({
+      id,
+      title: 'The ground is torn open',
+      seconds,
+      onPick,
+      cards: offers.map((o) => ({
+        pick: o.baseId,
+        name: o.woundName,
+        desc: o.woundDescription || '',
+        note: o.note || '',
+      })),
+    });
+  }
+
+  /**
    * The one choice window, for whatever system owns a decision this second
    * (issue #175). The blight toll opened it first and the chest's three-way
    * item offer is the second caller, so the panel now takes cards rather than
