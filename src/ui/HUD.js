@@ -381,6 +381,18 @@ export class HUD {
       // says which: the toll names a casualty, the Argent altar names a
       // purchase already paid for. Same slot, same clock, same answer path —
       // only the title and the faces on the cards differ.
+      // A Blight Wound's seal/feed (#178) — the third kind, same slot, same
+      // clock, same answer path. Its lapse is the seal, which `Wound.interact`
+      // owns; nothing here has to know that.
+      if (e.kind === 'wound') {
+        this.menus?.showWoundChoice({
+          id: `wound:${e.offerId}`,
+          offers: e.offers,
+          seconds: e.seconds,
+          onPick: (id) => ctx.items?.chooseMutation?.(id),
+        });
+        return;
+      }
       if (e.kind === 'argent') {
         this.menus?.showArgentChoice({
           id: `argent:${e.offerId}`,
@@ -404,7 +416,9 @@ export class HUD {
     on('mutationChoiceClosed', (e) => {
       if (!isLocalOwner(ctx, e)) return;
       this.menus?.hideMutationChoice(
-        e.kind === 'argent' ? `argent:${e.offerId}` : `mutation:${e.band}`);
+        e.kind === 'argent' ? `argent:${e.offerId}`
+          : e.kind === 'wound' ? `wound:${e.offerId}`
+            : `mutation:${e.band}`);
     });
     // The chest's three-way claim (issue #175), through the same one window the
     // blight toll uses. Owner-tested like every other addressed panel: a

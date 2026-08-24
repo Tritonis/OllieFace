@@ -104,6 +104,15 @@ export const VOWS = [
       // `itemOffer` is the chest's own open and `itemOfferResolved` is the
       // three-way verdict; either arriving as 'corrupt' is the same act of
       // spending void credit, and a vow broken twice is still broken once.
+      //
+      // Deliberately UNFILTERED BY OWNER, adjudicated 2026-08-24. Since #205 a
+      // guest sees the chest panel on their own screen and their answer comes
+      // back on the host's bus, so a teammate's corrupt claim now breaks this
+      // vow — which pre-#205 it could not, because every guest offer lapsed to
+      // 'safe'. That is the intended reading: a run-scoped restraint vow is the
+      // *run's* restraint, and any seat spending void credit is the run
+      // spending it. Adding an owner filter would make the vow a solo promise
+      // that a co-op party could keep while buying on credit all stage.
       return payload?.outcome === 'corrupt' ? 'broken' : null;
     },
   },

@@ -51,7 +51,21 @@ export const WOUND = {
    *  that asks for 99 gets `expandCap` and the patch cannot run away. */
   feedExpand: 2,
   expandCap: 3,
+
+  // --- The press ----------------------------------------------------------
+  /** Seconds the seal/feed window stands before it lapses into the seal. */
+  choiceSeconds: 10,
 };
+
+/**
+ * The two tokens the choice window answers with (#178, integration M2).
+ *
+ * They ride the `baseId` field the blight toll and the argent altar already
+ * use, so the panel, `chooseMutation` and the reply path need no second
+ * vocabulary — the same reason #204 gave for reusing it. Namespaced so a token
+ * can never collide with a real item id.
+ */
+export const WOUND_PICK = { seal: 'wound:seal', feed: 'wound:feed' };
 
 /**
  * Whether the `ordinal`-th blight seed of this stage is promoted to a Wound.

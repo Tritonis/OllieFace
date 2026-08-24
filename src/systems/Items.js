@@ -932,6 +932,31 @@ export class Items {
     });
   }
 
+  /**
+   * Open a Blight Wound's two outcomes (#178), through the same one window.
+   *
+   * The third kind, and the only one whose lapse is a *decision the player
+   * would have made anyway*: nothing has been charged by the press that opened
+   * it — unlike the argent kind, where the motes are already gone — and nothing
+   * festers if it ends in silence, unlike the toll. So `resolve(null)` means
+   * "seal", the safe half, and the caller says so rather than this class
+   * guessing which of its two tokens is the harmless one.
+   *
+   * Refused while another window stands, for `openArgentChoice`'s reason: the
+   * older decision is not this press's to paint over, and a wound is standing
+   * ground the party can walk back to.
+   */
+  openWoundChoice({ cards, seconds, resolve }) {
+    if (this._muteChoice || !(cards?.length > 1)) return false;
+    return this._openChoice({
+      kind: 'wound',
+      offers: cards.map((c) => c.baseId),
+      cards,
+      seconds,
+      resolve: (id) => resolve(id || null),
+    });
+  }
+
   /** Whether a choice window of any kind is standing on this pack. */
   hasChoiceWindow() { return !!this._muteChoice; }
 

@@ -14,7 +14,7 @@ import { openItemOffer } from './itemTransaction.js';
 // What each band gives back, and the currency it is bought with (issue #36).
 import { BOON, MOTE, PACTS, RELIQUARY, RUIN, synergyPlan } from '../data/bandBoons.js';
 // Blight Wounds: the caps, and the pure promotion predicate (#178).
-import { WOUND, promoteWound } from '../data/wounds.js';
+import { WOUND, WOUND_PICK, promoteWound } from '../data/wounds.js';
 import { saltedSeed } from '../data/rngSalt.js';
 import { RNG } from '../core/MathUtil.js';
 import { Items } from '../systems/Items.js';
@@ -2501,13 +2501,20 @@ export class VoidBargain extends Interactable {
  * is host-local state with no snapshot field — the same gap a client's cost
  * text already has, and noted rather than closed by this prototype.
  *
- * ## Why the outcome is selected and not keyed
+ * ## How the two outcomes are reached
  *
- * There is no alternate-interact binding in `core/Bindings.js`, so this follows
- * `VoidBargain.selectConsecration`'s precedent exactly: `selectOutcome` aims
- * the press, `interact` resolves whatever it is aimed at, and the prompt quotes
- * BOTH outcomes with their payouts so the decision is legible before the press
- * whichever way input eventually reaches it.
+ * The press raises them as a two-card choice window — the machinery #204
+ * generalised for the argent altar, with `kind: 'wound'` as its third caller.
+ * There is still no alternate-interact binding in `core/Bindings.js` and none
+ * is wanted: a wound is a decision, not a second verb.
+ *
+ * The first draft followed `VoidBargain.selectConsecration`'s precedent
+ * instead — an aim method and one press. That precedent did not survive: #204
+ * removed it from the altar for exactly the reason the integration review then
+ * found here, that nothing in `src/` ever called the aim, so every wound sealed
+ * and half the prompt advertised an outcome the player could not take.
+ * `selectOutcome` remains as the aim for contexts with no window machinery at
+ * all, which is the only place it now decides anything.
  */
 export class Wound extends Interactable {
   constructor(ctx, position, strength = WOUND.minStrength) {
@@ -2551,28 +2558,112 @@ export class Wound extends Interactable {
   }
 
   /**
+   * What a seal would actually hand back, live.
+   *
+   * `Corruption.bleed` clamps to the world, so quoting the flat `WOUND.sealWard`
+   * told a party standing on a world of 3 that sealing would return 8 — the
+   * integration review's m4. The commitment is unconditional and the ward is
+   * not, so only this half moves.
+   */
+  _sealQuote() {
+    const world = this.ctx?.corruption?.world;
+    const n = Number.isFinite(world) ? Math.min(WOUND.sealWard, world) : WOUND.sealWard;
+    return Number.isInteger(n) ? String(n) : String(Math.round(n * 10) / 10);
+  }
+
+  /**
    * Both outcomes, always, with their numbers — the whole preview. A wound is
    * the one prop on the stage where the two economies are the same press, so
    * quoting only the aimed one would hide half the decision.
+   *
+   * The feed clause goes through `pricedPrompt` like every other corrupting
+   * press in this file (`AuricCairn`, `GildedSnare`), and the reason is not
+   * consistency for its own sake — it was the integration review's M1. Hand-
+   * building the clause quoted face value, and greed time is the condition that
+   * produces most wounds: `Corruption.seed` adds +1 strength while greed is on
+   * and `WOUND.minStrength` is 2, so the common seeders only qualify while the
+   * multiplier is on. A wound quoted +18 charged 36, and a 36-point charge off
+   * a world of 25 clears Blighted in one press — a band crossing that queues an
+   * item toll, with no line of text about it. `pricedPrompt` is the one
+   * expression that quotes the multiplier, the mint forecast and the band edge,
+   * so the quote and the charge cannot drift again.
+   *
+   * It goes LAST because it returns its own pipe-joined ledger lines, and a
+   * clause appended after them would read as one of them.
    */
   prompt() {
     if (this.state === 'sealed') return 'Blight Wound - sealed; the ground is quiet';
     if (this.state === 'fed') return 'Blight Wound - fed; it is spreading';
-    const seal = `Seal (hold ${WOUND.sealWindow}s, -${WOUND.sealWard} corruption, pure commitment)`;
-    const feed = `Feed (+${WOUND.feedCorruption} corruption toward marks, the patch spreads, corrupt commitment)`;
+    const seal = `Seal (hold ${WOUND.sealWindow}s, -${this._sealQuote()} corruption, pure commitment)`;
+    const feed = pricedPrompt(this.ctx, 'Feed (the patch spreads, corrupt commitment)', WOUND.feedCorruption);
     if (this.state === 'sealing') {
       const left = Math.max(0, WOUND.sealWindow - this.hold);
-      return `Blight Wound - sealing, ${left.toFixed(1)}s left (stay within ${WOUND.sealHold}m) | ${feed}`;
+      return `Blight Wound - sealing, ${left.toFixed(1)}s left (stay within ${WOUND.sealHold}m) - or - ${feed}`;
     }
-    return this.outcome === 'feed'
-      ? `Blight Wound - ${feed} | or ${seal}`
-      : `Blight Wound - ${seal} | or ${feed}`;
+    return `Blight Wound - ${seal} - or - ${feed}`;
   }
 
+  /**
+   * The press raises the wound's two outcomes as a choice window (#178,
+   * integration M2) — the machinery #204 generalised for the argent altar,
+   * with a third kind.
+   *
+   * Before this the prompt advertised a Feed nothing could reach:
+   * `selectOutcome` had no production caller, `this.outcome` was born 'seal'
+   * and never moved, so every wound in the build sealed while half the prompt
+   * described an offer the player could not take.
+   *
+   * Host-side by construction and therefore no wire change: a guest's E only
+   * sets the command bit and `requestInteract` gates on `ctx.authority`, so the
+   * window is always opened on the machine that will resolve it. The addressed
+   * `mutationChoiceOffered` still names the owner, so a host holding two seats
+   * paints the panel on the right one.
+   */
   interact(pawn = this.ctx.player) {
+    if (!this.available() || !pawn) return false;
+    if (this.state === 'sealing') return false;   // already holding; the window is the act
+    // Lapse and an explicit seal are the same landing: the safe half. Sealing
+    // still costs the hold — silence buys the *attempt*, not the seal, which is
+    // the honest default because it is what walking up to a wound and doing
+    // nothing in particular should mean.
+    const answer = (id) => {
+      if (id === WOUND_PICK.feed) this._feed(pawn);
+      else this._beginSeal(pawn);
+    };
+    const items = Items.of(this.ctx, pawn);
+    const aimed = this.outcome === 'feed' ? WOUND_PICK.feed : WOUND_PICK.seal;
+    // A pack with none of this machinery (stub contexts, the pre-#204 surface)
+    // resolves the aimed outcome outright rather than losing the press.
+    if (!items?.openWoundChoice) { answer(aimed); return true; }
+    const opened = items.openWoundChoice({
+      seconds: WOUND.choiceSeconds,
+      cards: [
+        {
+          baseId: WOUND_PICK.seal,
+          woundName: 'Seal the wound',
+          woundDescription: `Hold this ground for ${WOUND.sealWindow}s. The patch closes, the void stops surfacing here, and the run commits to purity.`,
+          note: `returns ${this._sealQuote()} corruption`,
+        },
+        {
+          baseId: WOUND_PICK.feed,
+          woundName: 'Feed the wound',
+          woundDescription: 'The patch spreads and the ground round here gets worse. The corruption it charges mints against the descent.',
+          note: pricedPrompt(this.ctx, 'toward void marks', WOUND.feedCorruption),
+        },
+      ],
+      resolve: answer,
+    });
+    if (opened) return true;
+    // A window already standing on this pack is somebody else's decision. The
+    // wound is repeatable and free, so refusing the press costs a press;
+    // painting over a blight toll would cost a stack.
+    if (items.hasChoiceWindow?.()) return false;
+    answer(aimed);
+    return true;
+  }
+
+  _beginSeal(pawn) {
     if (!this.available() || !pawn) return;
-    if (this.outcome === 'feed') { this._feed(pawn); return; }
-    if (this.state === 'sealing') return;   // already holding; the window is the act
     this.state = 'sealing';
     this.sealer = pawn;
     this.hold = 0;
