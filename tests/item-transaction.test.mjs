@@ -1,9 +1,11 @@
 // tests/item-transaction.test.mjs
 //
 // The three-way item offer (issue #174). Real `Items` and real `Corruption` on
-// one bus throughout: the whole contract lives in the seam between them — a
-// safe claim is only safe because the automatic `itemPickup` feed declined to
-// charge it — and a synthetic event bus cannot show that seam at all.
+// one bus throughout: the whole contract lives in the seam between them, and a
+// synthetic event bus cannot show it. #176 part 2 retired the automatic
+// `itemPickup` feed a safe claim used to bypass — the transaction's corrupt
+// outcome now feeds explicitly (`itemTransaction.js`'s `cor.feed` call) and
+// every other grant, safe claim included, feeds nothing at all.
 import { Corruption } from '../src/systems/Corruption.js';
 import { Items } from '../src/systems/Items.js';
 import { SOURCES } from '../src/data/corruption.js';
@@ -355,14 +357,13 @@ console.log('orb delivery carries the settlement, so the courier does not re-cha
   ok(cor.world === 0, `and the delivery fed nothing (world ${cor.world})`);
 }
 
-console.log('legacy pickups are untouched by the bypass existing');
+console.log('issue #176 part 2: an ordinary give feeds nothing, safe or not');
 {
   const { ctx, cor } = makeWorld();
   ctx.items.give(BASE, 1);
-  ok(cor.world === SOURCES.itemFeed.common,
-    'an ordinary give still feeds exactly as it did before #174');
+  ok(cor.world === 0, 'an ordinary give feeds nothing now that the auto-feed is gone');
   ctx.items.give(PLAIN, 2);
-  ok(cor.world === SOURCES.itemFeed.common * 3, 'and so does a stack of two');
+  ok(cor.world === 0, 'and neither does a stack of two');
 }
 
 console.log('an item with no blight counterpart is not offered a corrupt outcome');

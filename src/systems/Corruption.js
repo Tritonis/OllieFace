@@ -5,7 +5,6 @@ import {
   pureCapstoneEligible, routeHistory, weightOf,
 } from '../data/alignment.js';
 import { MOTE, marksMinted, motesMinted, wardedProgress } from '../data/bandBoons.js';
-import { ITEM_BY_ID } from '../data/items.js';
 
 /**
  * The run's second economy. Corruption rises only through choices — chest
@@ -97,47 +96,21 @@ export class Corruption {
     // passive-looking source, and it is still a choice — leaving is free.
     ctx.events.on('teleporterComplete', () => { this._greed = true; });
     ctx.events.on('stageStart', () => { this._greed = false; });
-    // Items feed by tier. Riding the event rather than patching Items keeps
-    // the systems decoupled (CONTRACTS.md) and means blight transforms, chest
-    // bursts and shop buys all pay without knowing corruption exists. `feed`
-    // is authority-gated, so the same event firing on a client is inert.
-    // `count` on the wire is the absolute new stack total (Items.js:_set), not
-    // a pickup delta — feeding by it would double-count every restack and even
-    // reward removals. `delta` carries the actual change; mirror the same
-    // fix Audio.js already needed for this event. Fall back to treating
-    // `count` as the delta only when a payload omits `delta` entirely (older
-    // synthetic/CONTRACTS.md-shaped events).
+    // Issue #176 (part 2): item pickups used to feed corruption through a
+    // blanket `itemPickup` listener here — every grant, whatever its source,
+    // billed itself by tier unless explicitly marked `safe`. That is gone.
+    // Every intended item-pickup corruption source is explicit now: the item
+    // transaction's corrupt outcome (`world/itemTransaction.js`) calls `feed`
+    // itself, at the same `SOURCES.itemFeed`-derived price this listener used
+    // to charge, before granting the item safe. Every other grant in the game
+    // — boss drops, shrine/altar/vault/trial payouts, the equipment barrel, a
+    // Consecration card, a plain `Items.give()` — is an ordinary reward and
+    // was never meant to silently tax the player a second time on top of
+    // whatever already paid for it (a chest's tithe, a fight, gold, motes).
+    // The sweep that retired this listener (#176) found every one of those
+    // sites already paying its own price elsewhere, so nothing here needs to
+    // become explicit — the reward simply stops being taxed twice.
     //
-    // `reason: 'corrupt'` is the blight transform re-stacking copies the player
-    // already owns, and it is not a pickup: taking the blight card emitted its
-    // own 'give' at the blight tier — the full, highest price in the table —
-    // and the base stacks were charged at their own tier when they arrived.
-    // Feeding the re-stack too would bill a five-syringe stack a second time at
-    // 8 each, an unprompted 40-point spike the player never chose. A later,
-    // genuine pickup of another copy of the same blight card still arrives as
-    // 'give' and still pays.
-    //
-    // Not owner-*filtered* — owner-*attributed*. Corruption is the world's
-    // number and every hand that takes loot raises it, so a teammate's pickup
-    // still feeds; what `owner` decides is whose ledger the greed is written
-    // against (`corruptionOf`), the same rule the void-credit charge follows.
-    // An untagged payload still means the local player, so single-player is the
-    // call it always was.
-    //
-    // `safe` is the transaction gate (issue #174, `world/itemTransaction.js`).
-    // A three-way offer settles its own corruption — exactly once, at the
-    // moment the player picks an outcome — and then grants the item marked
-    // safe, so this listener must not charge it a second time. It is a *bypass*
-    // and never a disable: an unmarked pickup, which is every legacy path in
-    // the game today, feeds precisely as it always has. That is what lets
-    // #175/#176 adopt the transaction one reward source at a time.
-    ctx.events.on('itemPickup', ({ id, count = 1, delta, reason, owner, safe }) => {
-      if (reason === 'corrupt' || safe) return;
-      const change = delta === undefined ? count : delta;
-      if (!(change > 0)) return;
-      const tier = ITEM_BY_ID.get(id)?.tier;
-      this.feed(owner || ctx.player, (SOURCES.itemFeed[tier] ?? 1) * change);
-    });
     // Counterplay: a Voidtouched kill bleeds a fraction of the world's
     // corruption back to whoever landed it. Riding the kill event keeps
     // Combat ignorant of corruption — the same one-way rule as every feed.
