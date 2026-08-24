@@ -69,8 +69,15 @@ export const PARTIAL_KEY = 'telluric.telemetry.partial';
  *     say whether a priced gateway was affordable, which is half of #38's
  *     denominator, and `tools/realmstats.mjs` refuses a verdict on them rather
  *     than approximating one.
+ *
+ * 3 — alignment telemetry (#166): `itemOffers`, `mutationChoices`, and the
+ *     purse/inventory halves of the stage and realm boundary snapshots. Older
+ *     records simply lack the keys, and every reader here treats an absent key
+ *     as "this run cannot answer that question" rather than as a zero — a run
+ *     that recorded no chest opens because the build could not see them is not
+ *     a run in which the player left every chest.
  */
-export const RECORD_VERSION = 2;
+export const RECORD_VERSION = 3;
 
 /**
  * How many finished runs are kept. Fifty is roughly a fortnight of playtesting
@@ -88,6 +95,36 @@ const MAX_RUNS = 50;
  * recorded rather than silent: see `truncated`.
  */
 const MAX_EVENTS = 100;
+
+/**
+ * `Items`' own word for how a mutation window ended, in the audit's terms
+ * (#166). Every one of these except `chosen` leaves the void with the pick, so
+ * they are indistinguishable in `mutations` — which is precisely why the
+ * distinction has to be recorded here. `superseded` is kept separate from
+ * `timeout` because a window buried by the next threshold is a window the
+ * player may never have had time to read.
+ */
+const MUTATION_OUTCOME = {
+  chosen: 'explicit-choice',
+  refused: 'refusal',
+  timeout: 'timeout',
+  superseded: 'superseded',
+  death: 'death',
+  runEnd: 'run-end',
+};
+
+/**
+ * Is this interactable a chest? Duck-typed on the three fields only `Chest`
+ * carries together — property names, which survive minification, where a class
+ * name does not — rather than on its wire `typeId`, which would mean keeping a
+ * second copy of a numbering this module has no business knowing.
+ * `tests/alignment-telemetry.test.mjs` checks the predicate against a real
+ * `Chest` and against the other interactables, so a drift here is caught.
+ */
+export function isChestLike(i) {
+  return !!i && i.openT !== undefined && i.size !== undefined
+    && i.cost !== undefined && typeof i.available === 'function';
+}
 
 export function telemetryEnabled(storage = globalThis.localStorage) {
   try { return storage?.getItem(ENABLED_KEY) === '1'; } catch { return false; }
@@ -202,6 +239,12 @@ class RunRecorder {
       // after the engine is built, and a run started from the harness never
       // writes them at all.
       artifacts: [],
+      // Provisional. `NetClient.init` sets `ctx.netRole` *after* the engine is
+      // built, so the value read here says 'single' on a machine that is about
+      // to become a guest — and a guest's record is not a record of local play
+      // at all: its `Corruption` is written by the host's replicated events, so
+      // the whole corruption trajectory is the host's, counted once per peer.
+      // Refreshed at every checkpoint and at run end; see `refreshRole`.
       netRole: ctx.netRole ?? 'single',
       stages: [],
       // `fed`/`bled` is the tax; `marks` and `ruined` are the half of #36 that
@@ -235,7 +278,21 @@ class RunRecorder {
       // at the press is the only honest price tag on the row.
       argent: [],
       mutations: [],
+      // Every mutation window that opened, with how it resolved (#166). The
+      // audit's question is whether the lever is *played* — an explicit choice
+      // — or merely suffered, and a timeout, a refusal and a death all look
+      // identical in `mutations` alone because all three end in the void's own
+      // pick. See `onMutationClosed` for the reason-to-outcome mapping.
+      mutationChoices: [],
       stabilisations: [],
+      // Item offers the player actually resolved, one entry per chest opened
+      // (#166). The taxonomy is deliberately narrow: `taken-normally` and
+      // `taken-corrupted` are the two currencies a chest can be paid in, and
+      // they are the only two acquisition outcomes any system in the game can
+      // distinguish today. `left` is not an entry here — an offer nobody
+      // touched raises no event, so it is counted at stage close instead; see
+      // `chestsLeft` on each stage.
+      itemOffers: [],
       fonts: [],
       realmOffers: [],
       realmVisits: [],
@@ -261,6 +318,12 @@ class RunRecorder {
     // clears its gateways and drops the armed realm — every door in the list
     // ceases to exist at exactly that moment.
     this._openOffers = [];
+    // The mutation window currently standing, or null. Kept so a run that ends
+    // with one open still records the offer — `Items` closes it from its own
+    // `runEnd` listener, and listener order on the bus is not a thing this
+    // module gets to depend on. Whichever of the two arrives first wins; see
+    // `onMutationClosed`.
+    this._openChoice = null;
     // Names of hooks disabled by their own throw — see `guard()`. Separate from
     // `this.broken`, which is reserved for a failure that really is global (the
     // storage write itself failing in `save()`): a defect confined to one hook
@@ -332,6 +395,9 @@ class RunRecorder {
     on('itemPickup', this.onItemPickup);
     on('itemMutated', this.onItemMutated);
     on('itemStabilised', this.onItemStabilised);
+    on('itemOffer', this.onItemOffer);
+    on('mutationChoiceOffered', this.onMutationOffered);
+    on('mutationChoiceClosed', this.onMutationClosed);
     on('fontUse', this.onFontUse);
     onIsolated('voidMarksChanged', this.onVoidMarks);
     on('argentMotesChanged', this.onArgentMotes);
@@ -363,6 +429,16 @@ class RunRecorder {
       corruptionOut: null,
       bandIn: this.band(),
       bandOut: null,
+      // The alignment state at the boundary (#166). Corruption alone says how
+      // deep the run went; these say what the run is *holding* while it is
+      // that deep, which is the pair the "do mixed inventories dominate"
+      // question is asked of.
+      alignIn: this.align(),
+      alignOut: null,
+      // Chests still standing when this stage closed — the `left` arm of the
+      // offer taxonomy. Null when the stage ended somewhere the interactable
+      // list could not be read, which is a different fact from zero.
+      chestsLeft: null,
       items: 0,
       kills: 0,
     };
@@ -436,6 +512,55 @@ class RunRecorder {
     this.push(this.record.stabilisations, {
       t: this.t(), blightId: e?.blightId ?? null, baseId: e?.baseId ?? null, count: e?.count ?? 0,
     });
+  }
+
+  /**
+   * A chest was opened, and in which currency (#166). `outcome` is the
+   * emitter's own word for the branch it took, mapped here onto the audit's
+   * vocabulary so a reader never has to know what "voidCredit" meant.
+   */
+  onItemOffer(e) {
+    if (!isLocalOwner(this.ctx, e)) return;
+    this.push(this.record.itemOffers, {
+      t: this.t(), stage: this._stage?.index ?? null,
+      kind: e?.kind ?? null, size: e?.size ?? null, cost: Number(e?.cost) || 0,
+      outcome: e?.outcome === 'corrupt' ? 'taken-corrupted' : 'taken-normally',
+      world: this.world(), band: this.band(),
+    });
+  }
+
+  /** A mutation window opened. Held, not pushed: the entry needs its ending. */
+  onMutationOffered(e) {
+    if (!isLocalOwner(this.ctx, e)) return;
+    this._openChoice = {
+      t: this.t(), stage: this._stage?.index ?? null,
+      band: e?.band ?? null, seconds: Number(e?.seconds) || 0,
+      offers: Array.isArray(e?.offers) ? e.offers.map((o) => o?.baseId ?? null) : [],
+      reason: null, outcome: null, baseId: null, resolvedAt: null,
+    };
+  }
+
+  /**
+   * The window resolved. `Items` names the reason; the outcome is that reason
+   * in the audit's five terms, and an unrecognised reason is carried through
+   * verbatim rather than binned into `refusal` — a resolution nobody
+   * anticipated must be visible as one.
+   */
+  onMutationClosed(e) {
+    if (this.record.complete || !isLocalOwner(this.ctx, e)) return;
+    const c = this._openChoice;
+    this._openChoice = null;
+    // A window this recorder never saw open (installed mid-band, or truncated
+    // away) still resolved, and the resolution is the interesting half.
+    const entry = c ?? {
+      t: this.t(), stage: this._stage?.index ?? null, band: e?.band ?? null,
+      seconds: 0, offers: [],
+    };
+    entry.reason = e?.reason ?? null;
+    entry.outcome = MUTATION_OUTCOME[entry.reason] ?? entry.reason ?? 'unknown';
+    entry.baseId = e?.baseId ?? null;
+    entry.resolvedAt = this.t();
+    this.push(this.record.mutationChoices, entry);
   }
 
   onFontUse(e) {
@@ -590,6 +715,8 @@ class RunRecorder {
       // itself the interesting case for #38 and must not be filled in with a
       // guess.
       corruptionOut: null,
+      alignIn: this.align(),
+      alignOut: null,
     };
     if (this.record.route.offered.includes(id)) this.record.route.taken = id;
   }
@@ -601,6 +728,7 @@ class RunRecorder {
     r.exitedAt = this.t();
     r.duration = r.exitedAt - r.enteredAt;
     r.corruptionOut = this.world();
+    r.alignOut = this.align();
     this.push(this.record.realmVisits, r);
   }
 
@@ -638,6 +766,10 @@ class RunRecorder {
    */
   onRunEnd(e) {
     if (this.record.complete) return;
+    // A window still standing when the run ended is a resolution too, and it is
+    // the one the run's own listener may or may not get to first. Filed here
+    // and then refused above if `Items` closes it a moment later.
+    if (this._openChoice) this.onMutationClosed({ reason: 'runEnd', owner: this.ctx.player });
     this.closeStage();
     // The realm the run ended inside is still worth having, marked as unfinished.
     if (this._realm) { this.push(this.record.realmVisits, this._realm); this._realm = null; }
@@ -647,6 +779,7 @@ class RunRecorder {
     this.record.survivor = this.ctx.survivorId ?? this.record.survivor;
     this.record.difficulty = this.ctx.difficultyId ?? this.record.difficulty;
     this.record.artifacts = artifactIds(this.ctx);
+    this.refreshRole();
     this.record.outcome = {
       won: !!e?.won,
       ending: stats?.ending ?? null,
@@ -667,6 +800,7 @@ class RunRecorder {
   onFatalError(e) {
     if (this.record.complete) return;
     this.record.fatal = { who: e?.who ?? null, message: e?.message ?? null, frame: e?.frame ?? null };
+    this.refreshRole();
     this.closeStage();
     this.commit();
   }
@@ -678,6 +812,73 @@ class RunRecorder {
   band() { return this.ctx.corruption?.band ?? 0; }
   gold() { return Math.round(this.ctx.items?.gold ?? 0); }
 
+  /**
+   * Stamp the role the run is *actually* being played in.
+   *
+   * Sticky in one direction: a run that was ever a guest stays labelled one,
+   * because the reason the label exists is that a guest's corruption numbers
+   * came off the wire, and a teardown that clears `ctx.netRole` on the way out
+   * does not un-replicate them. Host and single may still be corrected upward
+   * — a run that opened solo and became a host is a host's record.
+   */
+  refreshRole() {
+    if (this.record.netRole === 'client') return;
+    const role = this.ctx.netRole;
+    if (typeof role === 'string' && role) this.record.netRole = role;
+  }
+
+  /**
+   * The alignment snapshot (#166): both purses, and the shape of the shelf.
+   *
+   * `argent` and `blight` are counted as *copies held*, not as distinct cards,
+   * because the audit's "do mixed inventories dominate" is a question about
+   * weight rather than variety — one player holding four blight stacks and one
+   * argent card is not in the same place as one holding one of each. `other`
+   * closes the arithmetic so a reader never has to sum the tiers to learn how
+   * much of the shelf the two poles account for.
+   */
+  align() {
+    const c = this.ctx.corruption;
+    const inv = this.inventoryOf();
+    return {
+      marks: Math.max(0, Math.round(c?.marks ?? 0)),
+      motes: Math.max(0, Math.round(c?.motes ?? 0)),
+      warded: round(c?.warded ?? 0),
+      argent: inv.argent, blight: inv.blight, other: inv.other,
+    };
+  }
+
+  /** Copies held, split into the two poles and everything else. */
+  inventoryOf() {
+    const out = { argent: 0, blight: 0, other: 0 };
+    let list = null;
+    try { list = this.ctx.items?.inventory?.(); } catch { list = null; }
+    if (!Array.isArray(list)) return out;
+    for (const e of list) {
+      const n = Number(e?.count) || 0;
+      const tier = e?.def?.tier;
+      if (tier === 'argent') out.argent += n;
+      else if (tier === 'blight') out.blight += n;
+      else out.other += n;
+    }
+    return out;
+  }
+
+  /**
+   * Chests still standing, which is the only way `left` is observable: an offer
+   * nobody walked up to raises no event, so it has to be counted by looking at
+   * what survived the stage. Null when there is no interactable list to read —
+   * a harness run, or a stage closed after the world was already torn down —
+   * because a zero there would read as "the player took everything".
+   */
+  chestsLeft() {
+    const list = this.ctx.interactables?.list;
+    if (!Array.isArray(list)) return null;
+    let n = 0;
+    for (const i of list) if (isChestLike(i) && i.available?.()) n++;
+    return n;
+  }
+
   closeStage() {
     const s = this._stage;
     if (!s) return;
@@ -685,6 +886,9 @@ class RunRecorder {
     s.leftAt = this.t();
     s.corruptionOut = this.world();
     s.bandOut = this.band();
+    s.alignOut = this.align();
+    s.chestsLeft = this.chestsLeft();
+    this.refreshRole();
     this.push(this.record.stages, s);
     // A stage boundary is the crash checkpoint: a handful of writes per run
     // rather than one per event, and it bounds what a browser tab closed

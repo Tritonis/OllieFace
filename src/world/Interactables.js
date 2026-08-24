@@ -394,7 +394,10 @@ export class Chest extends Interactable {
     const items = Items.of(this.ctx, pawn);
     if (!items) return false;
     const cor = this.ctx.corruption;
+    // Which currency paid for the lid, for the alignment audit (#166).
+    let paid = false;
     if (items.spendGold(this.cost)) {
+      paid = true;
       // Paid open: gold as before, plus the tithe — and the mark. Every greed
       // act plants a seed (spec §1); paying in gold only makes it gentler.
       cor?.feed(pawn, SOURCES.chestTithe[this.size] ?? SOURCES.chestTithe.small, this.position);
@@ -411,6 +414,10 @@ export class Chest extends Interactable {
     }
     this.used = true;
     this.openT = 0;
+    this.ctx.events?.emit?.('itemOffer', {
+      kind: 'chest', size: this.size, cost: this.cost,
+      outcome: paid ? 'gold' : 'corrupt', owner: pawn,
+    });
     const id = items.rollItem(null, TIER_BIAS[this.size]);
     this.ctx.interactables.spawnOrb(this.position, id, 1.2 * this._scale, pawn);
     this.ctx.audio?.play?.('chest', this.position);
